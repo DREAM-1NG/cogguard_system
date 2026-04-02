@@ -6,7 +6,7 @@
 -->
 <template>
   <div>
-    <h2 style="margin-bottom: 24px">监测看板</h2>
+    <PageHeader title="监测看板" description="系统概览：展示采集任务、数据总量、风险预警和协同群体等核心指标。后续接入 ECharts 图表可视化。" />
 
     <!-- 统计卡片 -->
     <a-row :gutter="16">
@@ -30,6 +30,7 @@
 
 <script setup lang="ts">
 import { reactive } from 'vue'
+import PageHeader from '@/components/PageHeader.vue'
 
 /** 概览统计卡片数据（占位） */
 const statCards = reactive([

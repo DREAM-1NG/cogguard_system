@@ -1,0 +1,16 @@
+feat: 第二阶段核心模块完成 - 协同检测/传播归因/账户监测 + UX 增强
+
+后端新增模块：
+- 协同检测：CooRTweet 算法 Python 重写（detect_groups/generate_coordinated_network/flag_speed_share/stats）
+- 传播归因：传播子图构建、关键角色识别（起爆/桥接/扩散，介数中心性）
+- 账户监测：行为画像（发文频率/作息/规律性）、自动化倾向评分（0-100）
+- 新增 API：/coordination/detect、/propagation/analyze、/accounts/profiles
+
+前端新增：
+- 协同检测页：参数配置 + Canvas 力导向网络可视化 + 统计表
+- 传播归因页：三栏关键角色卡片 + Claim 表格 + 时间线
+- 账户监测页：四色概览统计 + 评分进度条 + 画像表格
+- 通用组件：PageHeader（标题+悬浮说明）、TableSettings（密度/每页条数）
+- 面包屑导航、侧边栏悬浮描述
+
+文档更新：TODO_LIST.md 同步记录第二阶段完成状态
