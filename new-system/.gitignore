@@ -1,0 +1,36 @@
+# ===== Python =====
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+dist/
+build/
+*.egg
+
+# ===== Node.js =====
+node_modules/
+dist/
+
+# ===== 环境与配置 =====
+.env
+*.local
+
+# ===== IDE =====
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ===== 日志 =====
+logs/
+*.log
+
+# ===== 系统文件 =====
+.DS_Store
+Thumbs.db
+
+# ===== 测试与缓存 =====
+.pytest_cache/
+.coverage
+htmlcov/

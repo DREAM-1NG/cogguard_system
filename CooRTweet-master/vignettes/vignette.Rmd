@@ -1,0 +1,197 @@
+---
+title: "Introduction to CooRTweet"
+author: "Nicola Righetti & Paul Balluff"
+date: "14, March 2025"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Introduction to CooRTweet}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+bibliography: references.bib
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+library(CooRTweet)
+```
+
+## Overview
+
+The `CooRTweet` package is a R tool for detecting and analyzing coordinated behavior across social media platforms. Named after Twitter, a quintessential site for coordinated message amplification through its features like hashtags and trending topics, CooRTweet is applicable to any social media platform, enabling analysis on mono-platform, multi-platform, and cross-platform datasets. Besides being platform-independent, it is also content-independent, supporting a wide range of content types (including hashtags, URLs, images, and any other objects of interest to the researcher). The package allows for flexible thresholds to identify coordination while also accounting for the uncoordinated network in which the coordination is contextualized. CooRTweet is one of the first software tools for coordinated detection to have undergone rigorous validation. With its output, researchers can effectively explore networks of coordinated activity.
+
+## Installation
+
+You can install the `CooRTweet` package from CRAN or GitHub:
+
+```{r install, eval = FALSE}
+# Install from CRAN
+install.packages("CooRTweet")
+
+# Or install the development version from GitHub
+devtools::install_github("username/CooRTweet") # Replace with actual GitHub repository
+```
+
+## Key Features
+
+1. **Flexible Data Handling**: Works with mono-modal, multi-modal, and cross-platform datasets, and any type of object.
+2. **Customizable Thresholds**: Set time intervals and repetition/edge-weight thresholds to detect coordinated activities.
+3. **Graph-Based Analysis**: Outputs coordination networks as `igraph` objects for further analysis and visualization.
+4. **Included Data**: Comes with datasets for learning [@Kulichkina2024, @Righetti2022] and a `simulate_data` function to generate synthetic coordinated networks.
+
+## Getting Started
+
+### Input Data Format
+
+The input dataset should include the following columns:
+
+- `object_id`: A unique identifier for the shared content (data type: character).
+- `account_id`: The user account identifier (data type: character).
+- `content_id`: The unique ID of the post (data type: character).
+- `timestamp_share`: The timestamp when the content was shared (data type: integer, UNIX format).
+
+Example:
+
+```{r data-preparation}
+library(CooRTweet)
+head(russian_coord_tweets)
+```
+
+### Detect Coordinated Groups
+
+Use the `detect_groups()` function to find groups of accounts coordinating within a specified time window.
+
+```{r detect-groups}
+result <- detect_groups(
+  x = russian_coord_tweets,
+  min_participation = 2,
+  time_window = 60
+)
+head(result)
+```
+
+### Generate Coordination Networks
+
+Convert detected groups into a coordination network using `generate_coordinated_network()`. Notice the option `subgraph = 1`, which is required to return the graph filtered by edge weight. The default option, `subgraph = 0`, returns the non-filtered graph with an additional edge attribute, `weight_threshold`, set to 0 if the edge does not exceed the `edge_weight` threshold and 1 otherwise.
+
+```{r generate-network}
+graph <- generate_coordinated_network(
+  result,
+  edge_weight = 0.5,
+  subgraph = 1
+)
+graph
+```
+
+## Advanced Usage
+
+### Multi-Modal and Multi-Platform Analysis
+
+To analyze multiple types of content (e.g., URLs, hashtags), run `detect_groups()` separately for each type and combine the results.
+
+We provide an anonymized sample from the authentic dataset by @Righetti2022 that showcases coordinated behavior during the German federal elections in 2021.
+
+```{r german-elections}
+# Example datasets for different content types
+head(german_elections)
+```
+
+First we prepare shared URLs:
+```{r multimodal-urls}
+# URLs
+urls_data <- prep_data(german_elections,
+                       object_id = "url_id",
+                       account_id = "account_id",
+                       content_id = "post_id",
+                       timestamp_share = "timestamp")
+
+urls_data <- unique(urls_data,
+                    by = c("object_id", "account_id", "content_id", "timestamp_share"))
+
+urls_data <- urls_data[!is.na(object_id)]
+
+urls_data$object_id <- paste0("url_", urls_data$object_id)
+```
+
+Next, we prepare images. We used the [pHash algorithm](https://en.wikipedia.org/wiki/Perceptual_hashing) to uniquely identify images. The algorithm is implemented in the `OpenImageR` package [@OpenImageR].
+
+```{r multimodal-images}
+# images (pHash)
+img_data <- prep_data(german_elections,
+                      object_id = "phash_id",
+                      account_id = "account_id",
+                      content_id = "post_id",
+                      timestamp_share = "timestamp")
+
+img_data <- unique(img_data,
+                   by = c("object_id", "account_id", "content_id", "timestamp_share"))
+
+img_data <- img_data[!is.na(object_id)]
+
+img_data$object_id <- paste0("hash_", img_data$object_id)
+```
+
+Next, we perform the first step of coordination detection on each subset of the data with the `detect_groups` function:
+
+```{r multimodal-detect groups}
+# Detect coordinated groups for URLs and hashtags  --------------------
+result_urls <- detect_groups(urls_data, time_window = 30,
+                             min_participation = 2)
+
+result_images <- detect_groups(img_data, time_window = 30,
+                               min_participation = 2)
+
+```
+
+Then we can simply stack both resulting `data.tables`:
+
+```{r multimodal-stack}
+# Combine results  --------------------
+library(data.table)
+
+combined_results <- rbindlist( 
+    list(result_urls, result_images),
+    use.names = TRUE,
+    fill = TRUE
+)
+```
+
+Now we can let the network analysis run with the default settings to find accounts that show coordinated behavior in terms of image and URL sharing:
+
+```{r multimodal-generate-network}
+# Generate the coordinated multi-modal network  --------------------
+graph <- generate_coordinated_network(combined_results, 
+                                      edge_weight = 0.5,
+                                      subgraph = 1)
+graph
+```
+
+### Visualization
+
+Visualize the coordination network using `igraph`:
+
+```{r visualize-network, eval = FALSE}
+library(igraph)
+plot.igraph(
+    graph,
+    layout = layout.fruchterman.reingold,
+    edge.width = 0.5,
+    edge.curved = 0.3,
+    vertex.size = 3,
+    vertex.frame.color = "grey",
+    vertex.frame.width = 0.1,
+    vertex.label = NA
+)
+```
+
+## Additional features
+
+The CooRTweet package includes several additional functions and features that enable refined exploration of coordinated networks, as detailed in the package documentation.
+
+## Conclusion
+
+The `CooRTweet` package enables researchers to study coordinated behaviors with a high degree of flexibility and precision. Its generalized architecture makes it adaptable to various contexts and datasets, empowering social media research and analysis.
+
+## References

@@ -1,0 +1,161 @@
+{
+  "app": {
+    "title": "Smart News Extractor",
+    "subtitle": "One-click extraction of news content from the web. Supports 12 mainstream platforms including WeChat, Toutiao, NetEase, Sohu, Tencent, Lenny, Naver, Detik, Quora, BBC, CNN, and Twitter/X",
+    "stats": {
+      "platforms": "Platforms",
+      "accuracy": "Accuracy",
+      "responseTime": "Response Time"
+    }
+  },
+  "platforms": {
+    "title": "Supported Platforms",
+    "selectTitle": "Select Platform",
+    "selectDesc": "Choose the platform to extract content from, or paste a link for auto-detection",
+    "wechat": {
+      "name": "WeChat Official Accounts",
+      "description": "Extract WeChat article content"
+    },
+    "toutiao": {
+      "name": "Toutiao",
+      "description": "Extract Toutiao article content"
+    },
+    "netease": {
+      "name": "NetEase News",
+      "description": "Extract NetEase news content"
+    },
+    "sohu": {
+      "name": "Sohu News",
+      "description": "Extract Sohu news content"
+    },
+    "tencent": {
+      "name": "Tencent News",
+      "description": "Extract Tencent news content"
+    },
+    "lenny": {
+      "name": "Lenny's Newsletter",
+      "description": "Extract Lenny subscription content"
+    },
+    "naver": {
+      "name": "Naver Blog",
+      "description": "Extract Naver blog articles"
+    },
+    "detik": {
+      "name": "Detik News",
+      "description": "Extract Detik news content"
+    },
+    "quora": {
+      "name": "Quora",
+      "description": "Extract Quora Q&A content"
+    },
+    "bbc": {
+      "name": "BBC News",
+      "description": "Extract BBC news content"
+    },
+    "cnn": {
+      "name": "CNN News",
+      "description": "Extract CNN news content"
+    },
+    "twitter": {
+      "name": "Twitter/X",
+      "description": "Extract tweets and threads"
+    }
+  },
+  "input": {
+    "title": "Enter URL",
+    "placeholder": "Enter the complete article URL...",
+    "placeholders": {
+      "wechat": "Paste or enter WeChat article link, e.g.: https://mp.weixin.qq.com/s/xxxxx",
+      "toutiao": "Paste or enter Toutiao article link, e.g.: https://www.toutiao.com/article/7123456789012345678",
+      "netease": "Paste or enter NetEase news link, e.g.: https://www.163.com/news/article/KC12OUHK000189FH.html",
+      "sohu": "Paste or enter Sohu news link, e.g.: https://www.sohu.com/a/945014338_160447",
+      "tencent": "Paste or enter Tencent news link, e.g.: https://news.qq.com/rain/a/20251016A07W8J00",
+      "lenny": "Paste or enter Lenny's Newsletter link, e.g.: https://www.lennysnewsletter.com/p/article-title",
+      "naver": "Paste or enter Naver blog link, e.g.: https://blog.naver.com/username/223618759620",
+      "detik": "Paste or enter Detik News link, e.g.: https://news.detik.com/berita/d-7123456/news-title",
+      "quora": "Paste or enter Quora answer link, e.g.: https://www.quora.com/question/answers/123456789",
+      "bbc": "Paste or enter BBC News link, e.g.: https://www.bbc.com/news/articles/c797qlx93j0o",
+      "cnn": "Paste or enter CNN News link, e.g.: https://edition.cnn.com/2025/10/27/uk/sami-hamdi-detained-ice-intl",
+      "twitter": "Paste or enter Twitter/X link, e.g.: https://x.com/username/status/1234567890",
+      "default": "Paste or enter news link, supports WeChat, Toutiao, Lenny, Naver, Detik, Quora, BBC, CNN, Twitter"
+    },
+    "cookieHint": "Public tweets can be extracted without Cookie. For protected tweets, paste your x.com Cookie (get it from browser DevTools after logging in)",
+    "cookiePlaceholder": "Paste your x.com Cookie here...",
+    "selectPlatform": "Please select a platform first",
+    "extractButton": "Start Extraction",
+    "extracting": "Extracting...",
+    "clear": "Clear",
+    "detectedPlatform": "Detected Platform",
+    "smartDetection": "Smart Detection"
+  },
+  "progress": {
+    "title": "Extraction Progress",
+    "detecting": "Detecting platform...",
+    "extracting": "Extracting content...",
+    "converting": "Converting format...",
+    "completed": "Extraction completed!",
+    "failed": "Extraction failed"
+  },
+  "results": {
+    "title": "Extraction Results",
+    "tabs": {
+      "json": "JSON Data",
+      "markdown": "Markdown",
+      "preview": "Preview",
+      "images": "Images"
+    },
+    "metadata": {
+      "title": "Article Information",
+      "articleTitle": "Title",
+      "author": "Author",
+      "publishTime": "Published",
+      "url": "Original URL",
+      "platform": "Platform",
+      "extractTime": "Extracted"
+    },
+    "content": {
+      "texts": "Text Content",
+      "images": "Images",
+      "videos": "Videos",
+      "paragraphs": "Paragraphs",
+      "image": "Image",
+      "imageAlt": "Image",
+      "viewVideo": "View Video",
+      "viewOriginal": "View Original",
+      "noImages": "No images in this article",
+      "imageLoadFailed": "Image load failed"
+    },
+    "actions": {
+      "copy": "Copy",
+      "download": "Download",
+      "copied": "Copied to clipboard",
+      "copyFailed": "Copy failed, please copy manually",
+      "downloadJson": "Download JSON",
+      "downloadMarkdown": "Download Markdown"
+    }
+  },
+  "errors": {
+    "invalidUrl": "Please enter a valid URL",
+    "extractFailed": "Extraction failed, please try again later",
+    "networkError": "Network error, please check your connection",
+    "unsupportedPlatform": "Unsupported platform",
+    "emptyUrl": "URL cannot be empty"
+  },
+  "common": {
+    "loading": "Loading...",
+    "retry": "Retry",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "close": "Close",
+    "back": "Back",
+    "next": "Next",
+    "comingSoon": "Coming Soon",
+    "extractNew": "Extract New Content",
+    "about": "About",
+    "connecting": "Connecting...",
+    "fetchingHtml": "Fetching HTML...",
+    "parsingContent": "Parsing content...",
+    "almostDone": "Almost done...",
+    "extractComplete": "Extraction complete ✓"
+  }
+}
