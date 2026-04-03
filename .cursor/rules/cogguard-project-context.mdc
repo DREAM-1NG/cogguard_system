@@ -1,0 +1,12 @@
+---
+description: Read the core project docs before development
+alwaysApply: true
+---
+
+# CogGuard Project Context
+
+- Before substantial work, read `doc/TODO_LIST.md`, `doc/ENV_SETUP.md`, `doc/DEVELOPMENT_LOG.md`, and `new-system/README.md`.
+- Treat `doc/TODO_LIST.md` as the source of truth for current status, priority, and remaining work.
+- Treat `new-system/` as the active development system.
+- Use `CooRTweet-master`, `MediaCrawler-main`, and `NewsCrawler-main` as reference implementations only unless the user explicitly asks to modify them.
+- If code and docs disagree, surface the mismatch and confirm direction before making major changes.

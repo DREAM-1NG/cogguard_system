@@ -21,9 +21,20 @@ router = APIRouter()
 
 SUPPORTED_PLATFORMS = [
     {"id": "mock_weibo", "name": "模拟微博（测试）", "status": "active"},
-    {"id": "weibo", "name": "微博", "status": "coming_soon"},
-    {"id": "douyin", "name": "抖音", "status": "coming_soon"},
-    {"id": "xhs", "name": "小红书", "status": "coming_soon"},
+    {
+        "id": "weibo",
+        "name": "微博（MediaCrawler）",
+        "status": "active",
+        "hint": "需配置 MEDIACRAWLER_ROOT 与 Cookie/扫码登录环境",
+    },
+    {"id": "douyin", "name": "抖音（MediaCrawler）", "status": "active", "hint": "需配置 MEDIACRAWLER_ROOT"},
+    {"id": "xhs", "name": "小红书（MediaCrawler）", "status": "active", "hint": "需配置 MEDIACRAWLER_ROOT"},
+    {
+        "id": "news",
+        "name": "新闻链接（NewsCrawler）",
+        "status": "active",
+        "hint": "在「链接」中填写文章 URL，需 NEWSCRAWLER_API_BASE 或 NEWSCRAWLER_ROOT",
+    },
 ]
 
 

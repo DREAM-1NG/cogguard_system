@@ -33,7 +33,7 @@
 | 数据采集模块（Mock） | ✅ 已完成 | P0 | 项目骨架 |
 | 前端 - 布局与认证 | ✅ 已完成 | P0 | 后端认证模块 |
 | 前端 - 采集管理页 | ✅ 已完成 | P0 | 后端采集模块 |
-| 数据采集模块（真实爬虫） | 🔲 待开发 | P1 | Mock 模块完成 |
+| 数据采集模块（真实爬虫） | ✅ 已完成 | P1 | Mock 模块完成 |
 | 协同检测模块 | ✅ 已完成 | P1 | 数据采集 |
 | 传播归因模块 | ✅ 已完成 | P1 | 数据采集、协同检测 |
 | 账户监测模块 | ✅ 已完成 | P1 | 数据采集 |
@@ -86,16 +86,16 @@
 
 ### 第二阶段：核心功能开发
 
-#### 2.0 真实爬虫接入 🔲
+#### 2.0 真实爬虫接入 ✅
 
-- [ ] MediaCrawler 封装层 (`core/crawler/social.py`)
-  - [ ] 将 MediaCrawler 作为本地 Python 依赖接入
-  - [ ] 封装统一 `SocialCrawler` 接口（搜索、帖子采集、评论采集）
-  - [ ] 支持平台：微博（优先）、其他平台逐步接入
-- [ ] NewsCrawler 封装层 (`core/crawler/news.py`)
-  - [ ] 通过 HTTP 调用 NewsCrawler API 或模块导入
-  - [ ] 封装统一 `NewsCrawler` 接口
-- [ ] `crawl_tasks.py` 中按平台名路由到对应爬虫（mock / social / news）
+- [x] MediaCrawler 封装层 (`core/crawler/social.py`)
+  - [x] 通过配置 `MEDIACRAWLER_ROOT` 调用上游 `uv run main.py`（子进程），解析 `data/<平台>/jsonl` 产出
+  - [x] `MediaSocialCrawler` 实现 `BaseCrawler`（搜索关键词、评论 JSONL 批量入库）
+  - [x] 支持平台：weibo / douyin / xhs / kuaishou / bilibili / tieba / zhihu（与 MediaCrawler 一致）
+- [x] NewsCrawler 封装层 (`core/crawler/news.py`)
+  - [x] `NEWSCRAWLER_API_BASE` HTTP 调用 `POST /api/extract`，或 `NEWSCRAWLER_ROOT` 进程内 `ExtractorService`
+  - [x] `NewsExtractCrawler`：按文章 URL 列表（`post_ids` 或关键词中的 http 链接）提取
+- [x] `crawl_tasks.py` 中按平台名路由（`factory.build_crawler`：mock / 社交 / news）
 
 #### 2.1 协同检测模块 ✅
 
@@ -242,6 +242,7 @@
 ## 参考资料
 
 - [环境搭建指南](ENV_SETUP.md) - Docker、Python、Node.js 安装与配置
+- [开发变更日志](DEVELOPMENT_LOG.md) - 开发过程变更记录，与本文档同步维护
 - [系统开发文档](../new-system/README.md) - 目录结构、API、部署、测试、使用方式
 - [开题报告](开题报告.doc) - 项目背景、创新性分析、功能说明、技术路线
 - [MediaCrawler](../MediaCrawler-main/README.md) - 社交媒体爬虫参考

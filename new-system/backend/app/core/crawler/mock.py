@@ -45,6 +45,9 @@ _MOCK_URLS = [
 class MockCrawler(BaseCrawler):
     platform = "mock_weibo"
 
+    def __init__(self) -> None:
+        super().__init__()
+
     async def search(self, keywords: list[str], max_posts: int = 50) -> list[StandardPost]:
         posts: list[StandardPost] = []
         base_time = datetime.now(timezone.utc) - timedelta(hours=6)

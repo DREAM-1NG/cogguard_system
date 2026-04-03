@@ -7,9 +7,12 @@ from pydantic import BaseModel, Field
 
 class CrawlRequest(BaseModel):
     """创建采集任务的请求体。"""
-    platform: str = Field(..., description="平台名称: weibo / douyin / xhs / toutiao / wechat / ...")
-    keywords: list[str] = Field(default_factory=list, description="搜索关键词列表")
-    post_ids: list[str] = Field(default_factory=list, description="指定帖子ID列表")
+    platform: str = Field(..., description="平台名称: mock_weibo / weibo / news / ...")
+    keywords: list[str] = Field(default_factory=list, description="搜索关键词列表（社交）；新闻平台可填 URL")
+    post_ids: list[str] = Field(
+        default_factory=list,
+        description="指定帖子/文章 URL 列表（新闻平台必填至少一条 http(s) 链接）",
+    )
     max_posts: int = Field(default=50, ge=1, le=1000)
     crawl_comments: bool = Field(default=True)
 

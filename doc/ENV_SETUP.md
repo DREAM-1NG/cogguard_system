@@ -61,7 +61,14 @@ docker compose logs -f
 | MongoDB | 27017 | 用户名 cogguard / 密码 cogguard123 |
 | Redis | 6379 | 密码 cogguard123 |
 
-## 4. 启动后端
+## 4. 真实爬虫（可选）
+
+在 `.env` 中配置（参见 `new-system/.env.example`）：
+
+- **MediaCrawler**（微博等）：`MEDIACRAWLER_ROOT` 指向本机 MediaCrawler 仓库根目录；`MEDIACRAWLER_LOGIN_TYPE` / `MEDIACRAWLER_COOKIES` 按上游要求登录。
+- **NewsCrawler**：`NEWSCRAWLER_API_BASE` 指向已启动的 `news_extractor_backend`（例如 `http://127.0.0.1:8020`），或配置 `NEWSCRAWLER_ROOT` 使用进程内提取。
+
+## 5. 启动后端
 
 ```bash
 cd new-system/backend
@@ -83,7 +90,7 @@ uvicorn app.main:app --reload --port 8000
 - API 文档: http://localhost:8000/docs
 - 健康检查: http://localhost:8000/api/v1/health
 
-## 5. 启动前端
+## 6. 启动前端
 
 ```bash
 cd new-system/frontend
@@ -94,19 +101,20 @@ npm run dev
 
 前端启动后访问: http://localhost:5173
 
-## 6. 运行测试
+## 7. 运行测试
 
 ```bash
 cd new-system/backend
 
-# 运行全部测试
+# 安装含 pytest 的开发依赖后运行全部测试
+uv sync --extra dev
 uv run pytest -v
 
 # 或使用 pip 环境
 pytest -v
 ```
 
-## 7. 停止服务
+## 8. 停止服务
 
 ```bash
 cd new-system
@@ -114,16 +122,16 @@ docker compose down          # 停止容器（保留数据）
 docker compose down -v       # 停止并删除数据卷
 ```
 
-## 8. 在其他电脑部署
+## 9. 在其他电脑部署
 
 1. 安装 Docker Desktop、Python ≥3.11、Node.js ≥18
 2. 克隆项目代码
 3. `cd new-system && cp .env.example .env`
 4. 按需修改 `.env` 中的密码等配置
 5. `docker compose up -d`
-6. 按第 4、5 节启动后端和前端
+6. 按第 5、6 节启动后端和前端
 
-## 9. 常见问题
+## 10. 常见问题
 
 **Q: Docker 启动失败？**
 - 确认 WSL2 已启用：`wsl --status`

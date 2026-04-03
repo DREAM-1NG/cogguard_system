@@ -19,8 +19,9 @@ async def create_crawl_job(
     req: CrawlRequest, user_id: int, db: AsyncSession
 ) -> CrawlJob:
     """创建采集任务记录并写入 MySQL，返回新建的 CrawlJob 实例。"""
+    job_type = "news" if req.platform == "news" else "social"
     job = CrawlJob(
-        job_type="social",
+        job_type=job_type,
         platform=req.platform,
         params_json=json.dumps(req.model_dump(), ensure_ascii=False, default=str),
         status="pending",

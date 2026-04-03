@@ -149,7 +149,7 @@ CogGuard 系统旨在构建一个面向实战的"跨平台隐蔽协同操纵网�
 ## 项目结构
 
 ```
-new_workspace/
+cogguard_system/
 ├── README.md                       # 项目总览（本文件）
 ├── doc/                            # 项目文档
 │   ├── 开题报告.doc                 # 开题报告

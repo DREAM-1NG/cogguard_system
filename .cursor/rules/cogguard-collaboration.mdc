@@ -1,0 +1,13 @@
+---
+description: Follow the user's collaboration and communication preferences
+alwaysApply: true
+---
+
+# CogGuard Collaboration Rules
+
+- Always respond in Simplified Chinese.
+- If there are multiple reasonable implementation options, pause and present the options plus trade-offs before choosing one.
+- If background, requirements, or data assumptions are missing, ask for clarification instead of guessing.
+- Before substantial edits, briefly state the intended change and keep progress updates concise.
+- Do not claim a feature is verified unless it was actually tested in the required environment.
+- When discussing real crawlers, distinguish clearly between mock data, parsing/unit tests, and true end-to-end validation.

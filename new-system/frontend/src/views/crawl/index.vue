@@ -16,7 +16,10 @@
           </a-select>
         </a-form-item>
         <a-form-item label="关键词">
-          <a-input v-model:value="keywordsInput" placeholder="多个关键词用逗号分隔" style="width: 240px" />
+          <a-input v-model:value="keywordsInput" placeholder="社交：逗号分隔；新闻可将 URL 填在此处" style="width: 260px" />
+        </a-form-item>
+        <a-form-item label="链接">
+          <a-textarea v-model:value="postIdsInput" placeholder="新闻平台：每行一条文章 http(s) 链接（可选）" :rows="2" style="width: 320px" />
         </a-form-item>
         <a-form-item label="最大帖子数">
           <a-input-number v-model:value="crawlForm.max_posts" :min="1" :max="1000" />
@@ -85,6 +88,7 @@ const dataPageSize = ref(20)
 const platforms = ref<Array<{ id: string; name: string; status: string }>>([])
 const creating = ref(false)
 const keywordsInput = ref('')
+const postIdsInput = ref('')
 const crawlForm = reactive({ platform: 'mock_weibo', max_posts: 50, crawl_comments: true })
 
 const jobs = ref<unknown[]>([])
@@ -118,7 +122,17 @@ async function handleCreateJob() {
   creating.value = true
   try {
     const keywords = keywordsInput.value.split(/[,，]/).map(s => s.trim()).filter(Boolean)
-    await createCrawlJob({ platform: crawlForm.platform, keywords, max_posts: crawlForm.max_posts, crawl_comments: crawlForm.crawl_comments })
+    const post_ids = postIdsInput.value
+      .split(/[\n,，]/)
+      .map(s => s.trim())
+      .filter(s => s.startsWith('http://') || s.startsWith('https://'))
+    await createCrawlJob({
+      platform: crawlForm.platform,
+      keywords,
+      post_ids,
+      max_posts: crawlForm.max_posts,
+      crawl_comments: crawlForm.crawl_comments,
+    })
     message.success('采集任务已创建')
     await fetchJobs()
   } catch { /* handled */ } finally { creating.value = false }

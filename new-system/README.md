@@ -26,13 +26,22 @@ new-system/
 │   │   │   └── v1/
 │   │   │       ├── router.py       # v1 路由聚合 + 健康检查接口
 │   │   │       ├── auth.py         # 认证接口（注册/登录/刷新/个人信息）
-│   │   │       └── crawl.py        # 数据采集接口（创建任务/任务列表/数据查询）
+│   │   │       ├── crawl.py        # 数据采集接口（创建任务/任务列表/数据查询）
+│   │   │       ├── coordination.py # 协同检测接口
+│   │   │       ├── propagation.py  # 传播归因接口
+│   │   │       └── accounts.py     # 账户监测接口
 │   │   │
 │   │   ├── core/                   # 核心业务逻辑
 │   │   │   ├── security.py         # JWT 认证 + bcrypt 密码哈希
+│   │   │   ├── propagation.py      # 传播子图与时间线、关键角色
+│   │   │   ├── account_profiler.py # 账户行为画像与自动化倾向评分
+│   │   │   ├── coordination/       # CooRTweet 算法 Python 实现（检测/网络/统计）
 │   │   │   └── crawler/            # 爬虫引擎
 │   │   │       ├── base.py         # 爬虫抽象基类（定义统一接口）
 │   │   │       ├── mock.py         # 模拟数据爬虫（生成含协同模式的测试数据）
+│   │   │       ├── social.py       # MediaCrawler 子进程封装（微博等）
+│   │   │       ├── news.py         # News 提取（HTTP 或本地 ExtractorService）
+│   │   │       ├── factory.py      # 按平台构造爬虫
 │   │   │       └── normalizer.py   # 跨平台数据标准化器
 │   │   │
 │   │   ├── models/                 # 数据库模型
@@ -46,10 +55,13 @@ new-system/
 │   │   │
 │   │   ├── services/               # 业务服务层
 │   │   │   ├── auth_service.py     # 认证业务（注册/登录/刷新/用户信息）
-│   │   │   └── crawl_service.py    # 采集业务（任务管理/数据查询）
+│   │   │   ├── crawl_service.py    # 采集业务（任务管理/数据查询）
+│   │   │   ├── coordination_service.py
+│   │   │   ├── propagation_service.py
+│   │   │   └── account_service.py
 │   │   │
 │   │   ├── tasks/                  # Celery 异步任务
-│   │   │   └── crawl_tasks.py      # 采集任务执行（调用 MockCrawler → MongoDB）
+│   │   │   └── crawl_tasks.py      # 采集任务执行（Mock / MediaCrawler / News → MongoDB）
 │   │   │
 │   │   ├── db/                     # 数据库连接管理
 │   │   │   ├── mysql.py            # SQLAlchemy 异步引擎 + Session
@@ -79,16 +91,24 @@ new-system/
         │
         ├── api/                    # 后端 API 请求封装
         │   ├── auth.ts             # 认证 API（登录/注册/刷新/用户信息）
-        │   └── crawl.ts            # 采集 API（创建任务/任务列表/数据查询）
+        │   ├── crawl.ts            # 采集 API（创建任务/任务列表/数据查询）
+        │   ├── coordination.ts     # 协同检测 API
+        │   ├── propagation.ts      # 传播归因 API
+        │   └── accounts.ts         # 账户监测 API
         │
         ├── views/                  # 页面视图
         │   ├── login/index.vue     # 登录页面
-        │   ├── dashboard/index.vue # 监测看板（占位）
-        │   └── crawl/index.vue     # 数据采集管理
+        │   ├── dashboard/index.vue # 监测看板（占位，见 doc/TODO_LIST 监测看板）
+        │   ├── crawl/index.vue     # 数据采集管理
+        │   ├── coordination/index.vue  # 协同网络可视化
+        │   ├── propagation/index.vue   # 传播时间线与关键角色
+        │   └── accounts/index.vue      # 账户画像列表
         │
         ├── components/
-        │   └── layout/
-        │       └── BasicLayout.vue # 全局布局（侧边栏 + 顶栏 + 内容区）
+        │   ├── layout/
+        │   │   └── BasicLayout.vue # 全局布局（侧边栏 + 顶栏 + 内容区）
+        │   ├── PageHeader.vue
+        │   └── TableSettings.vue   # 表格密度与分页条数
         │
         ├── stores/
         │   └── auth.ts             # Pinia 认证状态（Token + 用户信息）

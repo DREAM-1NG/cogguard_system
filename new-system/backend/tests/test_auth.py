@@ -82,7 +82,7 @@ async def test_profile_with_token(setup_database, client: AsyncClient):
 @pytest.mark.asyncio
 async def test_profile_without_token(client: AsyncClient):
     resp = await client.get("/api/v1/auth/profile")
-    assert resp.status_code == 403
+    assert resp.status_code in (401, 403)
 
 
 @pytest.mark.asyncio

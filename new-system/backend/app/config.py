@@ -48,6 +48,21 @@ class Settings(BaseSettings):
         "http://localhost:5173",
     ]
 
+    # ----- Real crawlers (optional; see doc/ENV_SETUP.md) -----
+    # MediaCrawler 仓库根目录绝对路径；未配置时无法执行 weibo/douyin 等社交采集
+    MEDIACRAWLER_ROOT: str = ""
+    # 调用 MediaCrawler CLI 时的登录方式：qrcode | cookie | phone
+    MEDIACRAWLER_LOGIN_TYPE: str = "cookie"
+    # cookie 登录时从环境读取 Cookie 字符串（微博等）
+    MEDIACRAWLER_COOKIES: str = ""
+    # uv 可执行文件名（Windows 可为 uv.cmd）
+    MEDIACRAWLER_UV_BIN: str = "uv"
+
+    # NewsCrawler：HTTP 方式，填写新闻提取 API 根地址，例如 http://127.0.0.1:8020
+    NEWSCRAWLER_API_BASE: str = ""
+    # 或直接指向 NewsCrawler 仓库根目录，通过 import 调用 ExtractorService（与 API 二选一即可）
+    NEWSCRAWLER_ROOT: str = ""
+
     @property
     def mysql_url(self) -> str:
         return (

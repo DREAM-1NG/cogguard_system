@@ -16,6 +16,10 @@ class BaseCrawler(ABC):
     """爬虫基类，所有平台爬虫需继承此类并实现抽象方法。"""
     platform: str = ""
 
+    def __init__(self) -> None:
+        #: 新闻等场景下的文章 URL 列表（与 Celery 任务参数 ``post_ids`` 对应）
+        self.post_ids: list[str] = []
+
     @abstractmethod
     async def search(self, keywords: list[str], max_posts: int = 50) -> list[StandardPost]:
         ...
