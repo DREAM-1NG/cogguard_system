@@ -1,0 +1,108 @@
+# 风险研判模块配置
+# 所有阈值可在此调整，无需修改代码
+
+# ---------------------------------------------------------------------------
+# 阶段检测 (Phase Detector)
+# ---------------------------------------------------------------------------
+phase:
+  # 滑动窗口大小（分钟）
+  window_minutes: 30
+
+  # 阶段分类阈值
+  seed:
+    coordination_density_max: 0.05
+    burstiness_max: 1.0
+  synchronize:
+    coordination_density_min: 0.05
+    burstiness_max: 2.0
+  breakout:
+    burstiness_min: 2.0
+    bridge_ratio_min: 0.1
+  saturation:
+    burstiness_max: 1.5
+    cross_cluster_spread_min: 3
+  regeneration:
+    automation_entropy_delta_min: 0.3
+
+  # Hazard 估计权重（logistic regression）
+  hazard_weights:
+    burstiness: 1.2
+    bridge_ratio: 2.0
+    high_automation_ratio: 1.5
+    coordination_density: 1.8
+    bias: -3.0
+
+# ---------------------------------------------------------------------------
+# D-S 证据融合 (Dempster-Shafer Fusion)
+# ---------------------------------------------------------------------------
+fusion:
+  # 质量分配权重
+  coordination:
+    density_weight: 0.4
+    symmetry_weight: 0.3
+    ratio_weight: 0.3
+    risk_scale: 0.9
+    safe_scale: 0.5
+  propagation:
+    bridge_weight: 0.35
+    burstiness_weight: 0.35
+    spread_weight: 0.3
+    burstiness_norm: 5.0
+    spread_norm: 10.0
+    risk_scale: 0.85
+    safe_scale: 0.4
+  accounts:
+    automation_weight: 0.5
+    entropy_weight: 0.3
+    regularity_weight: 0.2
+    entropy_max: 2.3
+    risk_scale: 0.85
+    safe_scale: 0.5
+
+  # 阶段调制系数
+  phase_multipliers:
+    seed: 0.6
+    synchronize: 0.8
+    breakout: 1.0
+    saturation: 0.9
+    regeneration: 0.7
+
+  # 冲突阈值
+  conflict_escalation_threshold: 0.3
+  mass_cap: 0.95
+
+# ---------------------------------------------------------------------------
+# DISARM 攻击路径评分 (Attack-Path Scorer)
+# ---------------------------------------------------------------------------
+disarm:
+  # 证据→技术映射阈值
+  mapping_thresholds:
+    coordinated_accounts_min: 5
+    high_automation_ratio_min: 0.3
+    burstiness_min: 2.0
+    bridge_ratio_min: 0.1
+    component_size_min: 10
+
+  # 路径评分权重
+  path_scoring:
+    depth_weight: 0.4
+    breadth_weight: 0.3
+    completeness_weight: 0.3
+    depth_norm: 4
+    breadth_norm: 5
+
+# ---------------------------------------------------------------------------
+# 综合评分 (Overall Risk Score)
+# ---------------------------------------------------------------------------
+scoring:
+  # 维度权重
+  manipulation_weight: 0.40
+  authenticity_weight: 0.35
+  impact_weight: 0.25
+
+  # 风险等级阈值
+  levels:
+    low_max: 25
+    medium_max: 50
+    high_max: 75
+    # > 75 = critical

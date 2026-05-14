@@ -100,7 +100,7 @@ const menuItems = [
   { path: '/coordination', label: '协同检测', icon: ApartmentOutlined, desc: '检测时间窗口内的协调分享行为，构建协同网络', disabled: false },
   { path: '/propagation', label: '传播归因', icon: ShareAltOutlined, desc: '分析信息传播路径，识别起爆/桥接/扩散关键角色', disabled: false },
   { path: '/accounts', label: '账户监测', icon: UserOutlined, desc: '账户行为画像、作息节律、自动化倾向评估', disabled: false },
-  { path: '/risk', label: '风险研判', icon: AlertOutlined, desc: '三维评估（真实性×操纵性×危害性），待开发', disabled: true },
+  { path: '/risk', label: '风险研判', icon: AlertOutlined, desc: '阶段感知风险评估、D-S 证据融合、DISARM 攻击路径分析', disabled: false },
 ]
 
 const selectedKeys = computed(() => [route.path])

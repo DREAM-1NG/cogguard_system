@@ -63,6 +63,11 @@ class Settings(BaseSettings):
     # 或直接指向 NewsCrawler 仓库根目录，通过 import 调用 ExtractorService（与 API 二选一即可）
     NEWSCRAWLER_ROOT: str = ""
 
+    # ----- LLM API (趋势预测用) -----
+    LLM_API_KEY: str = ""
+    LLM_API_BASE: str = "https://api.deepseek.com/v1"
+    LLM_MODEL: str = "deepseek-chat"
+
     @property
     def mysql_url(self) -> str:
         return (

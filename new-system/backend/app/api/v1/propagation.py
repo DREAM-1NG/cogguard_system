@@ -1,4 +1,4 @@
-"""传播归因相关 API 路由。"""
+"""传播归因与趋势预测 API 路由。"""
 
 from fastapi import APIRouter, Depends, Query
 
@@ -16,4 +16,14 @@ async def analyze(
     _current_user: User = Depends(get_current_user),
 ):
     result = await propagation_service.analyze_propagation(platform)
+    return success(data=result)
+
+
+@router.post("/predict-trend")
+async def predict_trend(
+    platform: str | None = Query(None),
+    _current_user: User = Depends(get_current_user),
+):
+    """预测传播趋势（CascadeSwitch）。"""
+    result = await propagation_service.predict_propagation_trend(platform)
     return success(data=result)

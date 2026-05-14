@@ -51,6 +51,12 @@ const router = createRouter({
           component: () => import('@/views/accounts/index.vue'),
           meta: { title: '账户监测' },
         },
+        {
+          path: 'risk',
+          name: 'Risk',
+          component: () => import('@/views/risk/index.vue'),
+          meta: { title: '风险研判' },
+        },
       ],
     },
   ],

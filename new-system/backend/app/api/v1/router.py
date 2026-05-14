@@ -5,7 +5,7 @@
 
 from fastapi import APIRouter
 
-from app.api.v1 import auth, crawl, coordination, accounts, propagation
+from app.api.v1 import auth, crawl, coordination, accounts, propagation, risk
 
 api_router = APIRouter(prefix="/api/v1")
 
@@ -14,6 +14,7 @@ api_router.include_router(crawl.router, prefix="/crawl", tags=["数据采集"])
 api_router.include_router(coordination.router, prefix="/coordination", tags=["协同检测"])
 api_router.include_router(accounts.router, prefix="/accounts", tags=["账户监测"])
 api_router.include_router(propagation.router, prefix="/propagation", tags=["传播归因"])
+api_router.include_router(risk.router, prefix="/risk", tags=["风险研判"])
 
 
 @api_router.get("/health", tags=["系统"])
