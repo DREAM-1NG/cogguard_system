@@ -1,4 +1,4 @@
-"""应用配置管理模块。
+﻿"""应用配置管理模块。
 
 通过 pydantic-settings 从 .env 文件加载环境变量，集中管理
 MySQL / MongoDB / Redis / JWT 等所有配置项，并暴露组装后的
@@ -48,7 +48,7 @@ class Settings(BaseSettings):
         "http://localhost:5173",
     ]
 
-    # ----- Real crawlers (optional; see doc/ENV_SETUP.md) -----
+    # ----- Real crawlers (optional; see doc/engineering/environment-setup.md) -----
     # MediaCrawler 仓库根目录绝对路径；未配置时无法执行 weibo/douyin 等社交采集
     MEDIACRAWLER_ROOT: str = ""
     # 调用 MediaCrawler CLI 时的登录方式：qrcode | cookie | phone

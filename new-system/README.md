@@ -1,10 +1,10 @@
-# CogGuard 系统开发文档
+﻿# CogGuard 系统开发文档
 
 > 仓库定位：
 > - `new-system/` 是当前唯一产品代码根
 > - 长期文档位于 `../doc/`
 > - ARIS 工作空间位于 `../aris/`
-> - 当前状态与优先级以 `../doc/TODO_LIST.md` 为准
+> - 当前状态与优先级以 `../doc/engineering/development-roadmap.md` 为准
 
 ## 实际目录结构
 
@@ -135,7 +135,7 @@ new-system/
 | Docker + Docker Compose | 最新 | 是 | MySQL/MongoDB/Redis 服务 |
 | uv | 最新 | 推荐 | Python 包管理（可用 pip 替代） |
 
-> 详细安装步骤见 [doc/ENV_SETUP.md](../doc/ENV_SETUP.md)
+> 详细安装步骤见 [doc/engineering/environment-setup.md](../doc/engineering/environment-setup.md)
 
 ## 部署与启动
 
