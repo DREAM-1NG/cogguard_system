@@ -1,6 +1,10 @@
-# CogGuard 设计方案与开发进度
+﻿# CogGuard 设计方案与开发进度
 
-> 最后更新：2026-04-03
+> **用途**：记录当前工程状态、模块优先级、剩余开发任务和已通过验证。  
+> **受众**：开发者、项目维护者、后续执行任务的 AI agent。  
+> **维护规则**：只维护可执行工程路线和状态；研究定位、文献依据和关键技术背景放入 `../research/`。
+
+> 最后更新：2026-05-17
 
 ## 技术决策记录
 
@@ -22,6 +26,20 @@
 
 ---
 
+## ARIS 仓库治理与三技术工作空间
+
+- [x] 新增根 `CLAUDE.md`、`aris/README.md` 与 `doc/research/key-technology-background/`，明确仓库分层
+- [x] 新增 `aris/shared/`，统一维护 runner、GPU 模板、产物策略与评审清单
+- [x] 新增 `aris/tech-01-coordination/`，为关键技术一提供独立 brief / plan / tracker / acceptance
+- [x] 新增 `aris/tech-02-propagation/`，为关键技术二提供独立 brief / plan / tracker / acceptance
+- [x] 新增 `aris/tech-03-risk/`，为关键技术三提供独立 brief / plan / tracker / acceptance
+- [x] 2026-05-10 `aris/tech-01-coordination/systemDesign.md` 单文件落盘（系统设计 × MVP × CCF-B+ 综述），含错位矩阵 M1–M5 + ADR-001 + T1–T6 时序原则 + M0–M6 里程碑
+- [ ] 使用 `aris/tech-01-coordination/` 完成关键技术一代码落地（PSL 新方向；旧方向 CooRTweet 共享对象 MVP 已在 `new-system/`）
+- [~] 使用 `aris/tech-02-propagation/` 完成关键技术二代码落地（Hybrid TS + LLM 路线：WP1-3 已完成，WP4-5 未启动）
+- [x] 使用 `aris/tech-03-risk/` 完成关键技术三代码落地（`core/risk/` 1,340 行 MVP + `risk_service` 编排层）
+
+---
+
 ## 模块开发进度
 
 ### 总览
@@ -34,16 +52,19 @@
 | 前端 - 布局与认证 | ✅ 已完成 | P0 | 后端认证模块 |
 | 前端 - 采集管理页 | ✅ 已完成 | P0 | 后端采集模块 |
 | 数据采集模块（真实爬虫） | ✅ 已完成 | P1 | Mock 模块完成 |
-| 协同检测模块 | ✅ 已完成 | P1 | 数据采集 |
-| 传播归因模块 | ✅ 已完成 | P1 | 数据采集、协同检测 |
+| 协同检测模块（旧方向 CooRTweet） | ✅ MVP 已完成 | P1 | 数据采集 |
+| 协同检测模块（新方向 PSL） | 🔲 待实现（设计已就绪） | P1 | 旧方向 MVP |
+| 传播监控模块（KT2 WP1-3） | ✅ 已完成 | P1 | 数据采集、协同检测 |
+| 传播监控模块（KT2 WP4-5 立场/危害） | 🔲 待开发 | P1 | WP1-3 |
 | 账户监测模块 | ✅ 已完成 | P1 | 数据采集 |
 | 前端 - 协同检测页（网络可视化） | ✅ 已完成 | P1 | 后端协同检测 |
 | 前端 - 传播归因页（时间线+角色） | ✅ 已完成 | P1 | 后端传播归因 |
 | 前端 - 账户监测页（画像+评分） | ✅ 已完成 | P1 | 后端账户监测 |
+| 前端 - 风险研判页 | ✅ 已完成 | P1 | 后端风险研判 |
 | 前端 - UX 增强（密度/分页/引导） | ✅ 已完成 | P1 | 各前端页面 |
-| 风险研判模块 | 🔲 待开发 | P2 | 协同检测、传播归因、账户监测 |
+| 风险研判模块 | ✅ MVP 已完成 | P2 | 协同检测、传播归因、账户监测 |
 | 前端 - 监测看板 | 🔲 待开发 | P1 | 后端各模块 |
-| 系统联调与测试 | 🔲 待开发 | P2 | 所有模块 |
+| 系统联调与测试 | 🔧 部分（8 套件 1,196 行测试） | P2 | 所有模块 |
 
 状态说明：🔲 待开发 | 🔧 开发中 | ✅ 已完成 | ⏸️ 暂停 | ❌ 取消
 
@@ -145,15 +166,18 @@
 
 ### 第三阶段：研判与集成
 
-#### 3.1 风险研判模块 🔲
+#### 3.1 风险研判模块 ✅ MVP 已完成
 
-- [ ] 三维评估引擎（真实性/操纵性/危害性）
-- [ ] 规则引擎（可配置判定规则）
-- [ ] 多源证据汇聚
-- [ ] 结构化研判报告生成
-- [ ] LLM 接口预留 (`core/risk/llm_bridge.py`)
-- [ ] 风险研判相关 API 接口
-- [ ] 前端研判工作台
+- [x] 三维评估引擎（真实性/操纵性/危害性）— `core/risk/ds_fusion.py` (234 行)
+- [x] DISARM 战术映射 + 攻击路径评分 — `core/risk/disarm_scorer.py` (381 行)
+- [x] 传播阶段检测 — `core/risk/phase_detector.py` (169 行)
+- [x] 多源证据汇聚与证据链 — `core/risk/evidence_builder.py` (244 行)
+- [x] 结构化研判报告生成 — `core/risk/report_builder.py` (278 行)
+- [x] 风险研判服务层 — `services/risk_service.py` (153 行)
+- [x] 风险研判 API — `api/v1/risk.py` (68 行)
+- [x] 前端研判工作台 — `frontend/src/views/risk/index.vue`
+- [ ] 数据库迁移补齐（`models/risk_assessment.py` 50 行已建模型，缺 alembic 迁移）⚠️ 部署阻塞
+- [ ] LLM 桥接 `core/risk/llm_bridge.py`（当前 30 行 stub，需补 LLM 客户端依赖）
 
 #### 3.2 预警管理 🔲
 
@@ -241,10 +265,12 @@
 
 ## 参考资料
 
-- [环境搭建指南](ENV_SETUP.md) - Docker、Python、Node.js 安装与配置
-- [开发变更日志](DEVELOPMENT_LOG.md) - 开发过程变更记录，与本文档同步维护
+- [环境搭建指南](environment-setup.md) - Docker、Python、Node.js 安装与配置
+- [开发变更日志](development-log.md) - 开发过程变更记录，与本文档同步维护
+- [ARIS 工作空间入口](../aris/README.md) - 三条关键技术的独立执行入口
+- [技术背景总览](research/key-technology-background/overview.md) - 从开题报告与现有代码提炼的长期背景文档
 - [系统开发文档](../new-system/README.md) - 目录结构、API、部署、测试、使用方式
-- [开题报告](开题报告.doc) - 项目背景、创新性分析、功能说明、技术路线
+- [开题报告](../../materials/开题报告.doc) - 项目背景、创新性分析、功能说明、技术路线
 - [MediaCrawler](../MediaCrawler-main/README.md) - 社交媒体爬虫参考
 - [NewsCrawler](../NewsCrawler-main/README.md) - 新闻爬虫参考
 - [CooRTweet](../CooRTweet-master/README.md) - 协调行为检测算法参考
