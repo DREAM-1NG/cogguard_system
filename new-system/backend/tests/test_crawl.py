@@ -1,15 +1,12 @@
-"""数据采集模块测试。
-
-包含两类测试：
-1. 纯单元测试（无需外部服务）：MockCrawler 数据生成、DataNormalizer 字段映射
-2. API 测试（需要 MySQL）：采集任务创建、平台列表查询、鉴权校验
-"""
+"""Tests for crawl APIs and crawl-related helpers."""
 
 import pytest
 from httpx import AsyncClient
 
 from app.core.crawler.mock import MockCrawler
 from app.core.crawler.normalizer import DataNormalizer
+from app.models.task import CrawlJob
+from tests.conftest import needs_db, test_session_factory
 
 
 @pytest.mark.asyncio
@@ -17,11 +14,11 @@ async def test_mock_crawler_generates_posts():
     crawler = MockCrawler()
     posts = await crawler.search(keywords=["测试话题"], max_posts=10)
     assert len(posts) == 10
-    for p in posts:
-        assert p.platform == "mock_weibo"
-        assert p.content
-        assert p.author_id
-        assert p.timestamp
+    for post in posts:
+        assert post.platform == "mock_weibo"
+        assert post.content
+        assert post.author_id
+        assert post.timestamp
 
 
 @pytest.mark.asyncio
@@ -29,23 +26,21 @@ async def test_mock_crawler_generates_comments():
     crawler = MockCrawler()
     comments = await crawler.fetch_comments("post_123")
     assert len(comments) > 0
-    for c in comments:
-        assert c.post_id == "post_123"
-        assert c.content
-        assert c.author_id
+    for comment in comments:
+        assert comment.post_id == "post_123"
+        assert comment.content
+        assert comment.author_id
 
 
 @pytest.mark.asyncio
 async def test_mock_crawler_coordinated_pattern():
-    """Verify that mock data includes coordinated-looking posts (tight time window)."""
     crawler = MockCrawler()
     posts = await crawler.search(keywords=["协同测试"], max_posts=20)
-    timestamps = sorted(p.timestamp for p in posts)
-    min_gaps = []
-    for i in range(1, len(timestamps)):
-        gap = (timestamps[i] - timestamps[i - 1]).total_seconds()
-        min_gaps.append(gap)
-    assert min(min_gaps) < 60, "Expected some posts within 60 seconds of each other"
+    timestamps = sorted(post.timestamp for post in posts)
+    gaps = []
+    for index in range(1, len(timestamps)):
+        gaps.append((timestamps[index] - timestamps[index - 1]).total_seconds())
+    assert min(gaps) < 60
 
 
 def test_normalizer_standardizes_weibo_post():
@@ -84,16 +79,83 @@ def test_normalizer_standardizes_comment():
 
 @pytest.mark.asyncio
 async def test_list_platforms(client: AsyncClient):
-    resp = await client.get("/api/v1/crawl/platforms")
-    assert resp.status_code == 200
-    data = resp.json()["data"]
-    assert any(p["id"] == "mock_weibo" for p in data)
+    response = await client.get("/api/v1/crawl/platforms")
+    assert response.status_code == 200
+    data = response.json()["data"]
+    assert any(platform["id"] == "mock_weibo" for platform in data)
 
 
 @pytest.mark.asyncio
 async def test_create_crawl_job_requires_auth(client: AsyncClient):
-    resp = await client.post(
+    response = await client.post(
         "/api/v1/crawl/social",
         json={"platform": "mock_weibo", "keywords": ["test"], "max_posts": 5},
     )
-    assert resp.status_code == 403
+    assert response.status_code == 403
+
+
+@pytest.mark.asyncio
+@needs_db
+async def test_list_jobs_includes_system_owned_records_for_user(
+    setup_database, auth_client: AsyncClient
+):
+    async with test_session_factory() as session:
+        session.add(
+            CrawlJob(
+                job_type="social",
+                platform="weibo",
+                params_json="{}",
+                status="completed",
+                progress=100,
+                created_by=0,
+            )
+        )
+        session.add(
+            CrawlJob(
+                job_type="social",
+                platform="xhs",
+                params_json="{}",
+                status="completed",
+                progress=100,
+                created_by=1,
+            )
+        )
+        await session.commit()
+
+    response = await auth_client.get("/api/v1/crawl/jobs?page=1&page_size=20")
+    assert response.status_code == 200
+    items = response.json()["data"]["items"]
+    platforms = {item["platform"] for item in items}
+    assert {"weibo", "xhs"}.issubset(platforms)
+
+
+@pytest.mark.asyncio
+@needs_db
+async def test_preview_token_can_read_crawl_jobs(setup_database, client: AsyncClient):
+    await client.post(
+        "/api/v1/auth/register",
+        json={
+            "username": "previewuser",
+            "email": "preview@example.com",
+            "password": "testpass123",
+        },
+    )
+
+    async with test_session_factory() as session:
+        session.add(
+            CrawlJob(
+                job_type="social",
+                platform="douyin",
+                params_json="{}",
+                status="completed",
+                progress=100,
+                created_by=0,
+            )
+        )
+        await session.commit()
+
+    client.headers["Authorization"] = "Bearer cogguard-preview-token"
+    response = await client.get("/api/v1/crawl/jobs?page=1&page_size=20")
+    assert response.status_code == 200
+    items = response.json()["data"]["items"]
+    assert any(item["platform"] == "douyin" for item in items)

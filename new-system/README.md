@@ -17,6 +17,8 @@ new-system/
 ├── backend/                        # 后端服务 (Python 3.11+ / FastAPI)
 │   ├── pyproject.toml              # 项目元数据与依赖管理 (uv)
 │   ├── requirements.txt            # pip 兼容依赖列表
+│   ├── scripts/
+│   │   └── verify_mediacrawler_env.py # MediaCrawler 宿主机环境校验脚本
 │   ├── alembic.ini                 # 数据库迁移配置
 │   ├── alembic/                    # 迁移脚本目录
 │   │   ├── env.py                  # 迁移环境（异步引擎 + 自动导入模型）
@@ -44,8 +46,9 @@ new-system/
 │   │   │   ├── coordination/       # CooRTweet 算法 Python 实现（检测/网络/统计）
 │   │   │   └── crawler/            # 爬虫引擎
 │   │   │       ├── base.py         # 爬虫抽象基类（定义统一接口）
+│   │   │       ├── mediacrawler_env.py # MediaCrawler 的 uv / node / PATH 解析
 │   │   │       ├── mock.py         # 模拟数据爬虫（生成含协同模式的测试数据）
-│   │   │       ├── social.py       # MediaCrawler 子进程封装（微博等）
+│   │   │       ├── social.py       # MediaCrawler 直连执行 + JSONL 增量入库（微博等）
 │   │   │       ├── news.py         # News 提取（HTTP 或本地 ExtractorService）
 │   │   │       ├── factory.py      # 按平台构造爬虫
 │   │   │       └── normalizer.py   # 跨平台数据标准化器
@@ -67,7 +70,7 @@ new-system/
 │   │   │   └── account_service.py
 │   │   │
 │   │   ├── tasks/                  # Celery 异步任务
-│   │   │   └── crawl_tasks.py      # 采集任务执行（Mock / MediaCrawler / News → MongoDB）
+│   │   │   └── crawl_tasks.py      # 采集任务执行（社交平台直连 MediaCrawler → MongoDB）
 │   │   │
 │   │   ├── db/                     # 数据库连接管理
 │   │   │   ├── mysql.py            # SQLAlchemy 异步引擎 + Session
@@ -83,7 +86,8 @@ new-system/
 │       ├── conftest.py             # 测试 fixtures（DB/Client/Auth）
 │       ├── test_health.py          # 健康检查测试
 │       ├── test_auth.py            # 认证模块测试（需要 MySQL）
-│       └── test_crawl.py           # 采集模块测试（含纯单元测试）
+│       ├── test_crawl.py           # 采集模块测试（含纯单元测试）
+│       └── test_mediacrawler_env.py # MediaCrawler 环境解析测试
 │
 └── frontend/                       # 前端应用 (Vue 3 + TypeScript)
     ├── package.json                # 依赖声明与脚本
@@ -104,7 +108,7 @@ new-system/
         │
         ├── views/                  # 页面视图
         │   ├── login/index.vue     # 登录页面
-        │   ├── dashboard/index.vue # 监测看板（占位，见 doc/TODO_LIST 监测看板）
+        │   ├── dashboard/index.vue # 监测看板（占位，见 ../doc/engineering/development-roadmap.md）
         │   ├── crawl/index.vue     # 数据采集管理
         │   ├── coordination/index.vue  # 协同网络可视化
         │   ├── propagation/index.vue   # 传播时间线与关键角色
@@ -148,30 +152,128 @@ docker compose up -d         # 启动 MySQL + MongoDB + Redis
 docker compose ps            # 确认所有服务 healthy
 ```
 
-### 第二步：启动后端
+> `docker compose` 只负责 MySQL / MongoDB / Redis。MediaCrawler 需要在宿主机环境中运行，社交平台采集任务会直接执行它，并把本次新增 JSONL 行入库。
+
+### 第二步（可选）：配置并验证 MediaCrawler
+
+如果要采集 `weibo` / `xhs` / `douyin`，请先在 `new-system/.env` 中配置：
+
+```dotenv
+MEDIACRAWLER_ROOT=G:/CISCN/cogguard_system/MediaCrawler-main
+MEDIACRAWLER_LOGIN_TYPE=qrcode
+MEDIACRAWLER_COOKIES=
+MEDIACRAWLER_UV_BIN=C:/Users/p/.local/bin/uv.exe
+MEDIACRAWLER_PYTHON_BIN=C:/Users/p/AppData/Roaming/uv/python/cpython-3.11-windows-x86_64-none/python.exe
+MEDIACRAWLER_NODE_DIR=D:/node
+MEDIACRAWLER_UV_CACHE_DIR=G:/CISCN/cogguard_system/MediaCrawler-main/.uv-cache
+MEDIACRAWLER_PROXY=http://127.0.0.1:7897
+MEDIACRAWLER_GET_SUB_COMMENTS=true
+MEDIACRAWLER_MAX_COMMENTS_PER_POST=200
+```
+
+说明：
+
+- `MEDIACRAWLER_PYTHON_BIN` 用来固定 MediaCrawler 的 3.11 启动解释器；`uv sync` 时会基于它创建 `MediaCrawler-main/.venv`。
+- `MEDIACRAWLER_NODE_DIR` 适用于 Node.js 已安装但没有加入系统 `PATH` 的机器；后端会在调用 MediaCrawler 时自动把该目录注入子进程 `PATH`。
+- `MEDIACRAWLER_UV_CACHE_DIR` 适用于 Windows 上 `uv` 默认缓存目录存在权限问题的情况；一旦 `MediaCrawler-main/.venv` 建好，后端运行时会优先直接使用该虚拟环境，而不是再嵌套 `uv run`。
+- `MEDIACRAWLER_PROXY` 适用于 Clash Verge TUN / 虚拟网卡 / fake-ip 模式下浏览器进程无法直连目标站点的情况；当前本机可用端口验证为 `http://127.0.0.1:7897`。配置后，后端会把代理注入 MediaCrawler 子进程，并让 CDP Chrome 通过 `--proxy-server` 显式走代理。
+- `douyin` 登录态除了传统的 `HasUserLogin` / `LOGIN_STATUS` 之外，现在也会识别持久化 `sessionid(_ss)` + `xmst` 等会话信号；如果扫码后落到“验证码中间页”，登录轮询期间会继续触发滑块验证，避免卡在中间态。
+- `MEDIACRAWLER_GET_SUB_COMMENTS=true` 会把 MediaCrawler 的二级评论抓取打开；当前上游能力上限就是“一级评论 + 二级评论”，不是无限递归整棵评论树。
+- `MEDIACRAWLER_MAX_COMMENTS_PER_POST` 会把单帖评论抓取上限从上游默认的 `10` 提高到你配置的值；`200` 适合事件级联调，热点事件可按机器性能继续上调。
+- `toutiao` 不属于 MediaCrawler 支持范围，在 CogGuard 中应走 `news` 采集链路，而不是 `weibo/xhs/douyin` 这条社交爬虫链路。
+- MediaCrawler 原始抓取结果默认写入 `MediaCrawler-main/data/<platform>/jsonl/`；本次抖音真实验证输出位于 `MediaCrawler-main/data/douyin/jsonl/`。
+- 当前社交平台采集链路不再整份回读“当天最新文件”；任务启动前会记录 `search_contents_<date>.jsonl` / `search_comments_<date>.jsonl` 的文件偏移量，执行完成后只读取本次新增行并直接入库，避免把同一天前一批关键词结果混进当前任务。
+
+当前这条 `weibo / xhs / douyin` 采集链路，入库后的保真策略是：
+
+- 帖子保留标准字段，同时把原始 MediaCrawler JSONL 行完整落到 `raw_data`
+- 评论保留 `reply_to`、`sub_comment_count`、`author_id`，可还原两层评论树
+- 帖子和评论都会额外保留 `author_profile`
+- 帖子 / 评论里的图片、视频、封面、音频等可解析媒体链接会归一到 `media_urls`
+- 微博搜索结果会在 MediaCrawler 侧对每条帖子补抓详情 raw，并把 `pics`、`thumbnail_pic`、`bmiddle_pic`、`original_pic`、`page_info`、`mix_media_info`、`media_urls`、`post_details_raw` 写入 JSONL；CogGuard 会从这些字段中提取微博图片、视频、封面链接。
+
+如果你需要“作者主页级”的完整粉丝数 / 关注数 / 简介等资料，上游要走 `creator` 模式；当前 CogGuard 这一版先保留搜索结果里已有的用户字段，并把两层评论链路对齐好。
+
+采集 API 还支持三个可选参数，用于把后续增强点纳入同一条任务链：
+
+```json
+{
+  "recursive_comments": true,
+  "enrich_author_profiles": true,
+  "comment_sort": "like_count_desc"
+}
+```
+
+- `recursive_comments=true` 表示请求完整递归评论树；当前 MediaCrawler 后端会降级到上游实际支持的两层评论，并在 `crawl_metadata.effective_comment_depth=2`、`recursive_comments_supported=false` 中显式记录。
+- `enrich_author_profiles=true` 表示请求作者主页级画像补全；当前搜索链路先记录请求并保留搜索结果已有的 `author_profile`，真正的主页级补全需要后续串接 MediaCrawler `creator` 模式。
+- `comment_sort` 支持 `none`、`like_count_desc`、`reply_count_desc`，分别表示不排序、按点赞数倒序、按被回复数倒序；排序发生在评论入库前。
+
+准备 MediaCrawler 依赖并执行校验：
 
 ```bash
-cd backend
-uv sync                      # 安装依赖（或 pip install -r requirements.txt）
-alembic upgrade head          # 执行数据库迁移（创建 users/crawl_jobs 表）
-uvicorn app.main:app --reload --port 8000
+cd ../MediaCrawler-main
+C:/Users/p/.local/bin/uv.exe sync --python C:/Users/p/AppData/Roaming/uv/python/cpython-3.11-windows-x86_64-none/python.exe
+C:/Users/p/.local/bin/uv.exe run --python C:/Users/p/AppData/Roaming/uv/python/cpython-3.11-windows-x86_64-none/python.exe playwright install chromium
+
+cd ../new-system/backend
+uv run python scripts/verify_mediacrawler_env.py
+```
+
+### 第三步：启动后端
+
+```powershell
+cd G:\CISCN\cogguard_system\new-system\backend
+$env:UV_CACHE_DIR='G:\CISCN\cogguard_system\new-system\backend\.uv-cache'
+uv sync
+uv run alembic upgrade head
+uv run uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
 启动成功后：
 - API 文档：http://localhost:8000/docs（Swagger UI）
 - 健康检查：http://localhost:8000/api/v1/health
 
-### 第三步：启动前端
+### 第四步：启动前端
 
-```bash
-cd frontend
-npm install                   # 安装依赖（国内建议先 npm config set registry https://registry.npmmirror.com）
-npm run dev                   # 启动开发服务器
+```powershell
+cd G:\CISCN\cogguard_system\new-system\frontend
+npm.cmd install
+npm.cmd run dev -- --host 127.0.0.1 --port 5173
 ```
 
 启动成功后访问：http://localhost:5173
 
-### 第四步（可选）：启动 Celery Worker
+#### 前端预览入口（免登录）
+
+如果只需要查看前端页面结构、导航和功能设计，而本机暂时没有启动 MySQL / MongoDB / Redis，可以使用预览入口绕过真实登录：
+
+```powershell
+cd G:\CISCN\cogguard_system\new-system\backend
+$env:UV_CACHE_DIR='G:\CISCN\cogguard_system\new-system\backend\.uv-cache'
+.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+
+cd ..\frontend
+npm.cmd run dev -- --host 127.0.0.1 --port 5173
+```
+
+然后访问：
+
+- 预览入口：http://127.0.0.1:5173/preview
+- 等价入口：http://127.0.0.1:5173/?preview=1
+
+预览入口会在浏览器本地写入临时 `Preview` 用户身份，跳过路由登录守卫并进入主界面。它只用于查看前端信息架构和页面设计；需要真实数据、注册登录、采集任务、协同/传播/账号/风险接口联调时，仍需按第一步启动 MySQL / MongoDB / Redis，并使用真实账号登录。
+
+注意：
+
+- 后端 `uvicorn` 和前端 `vite` 必须保持运行，关闭任一终端后预览都会中断。
+- 如果你只是要快速查看页面，可以直接执行项目根目录下的 `start-preview.ps1`：
+
+```powershell
+cd G:\CISCN\cogguard_system\new-system
+powershell.exe -ExecutionPolicy Bypass -File .\start-preview.ps1
+```
+
+### 第五步（可选）：启动 Celery Worker
 
 采集任务的异步执行需要 Celery Worker：
 
@@ -196,6 +298,9 @@ uv run pytest -v
 # 仅运行不需要外部服务的单元测试
 uv run pytest tests/test_crawl.py tests/test_health.py -v
 
+# 仅验证 MediaCrawler 环境解析与脚本逻辑
+uv run pytest tests/test_mediacrawler_env.py -v
+
 # 运行认证测试（需要 MySQL 运行中）
 uv run pytest tests/test_auth.py -v
 ```
@@ -206,6 +311,7 @@ uv run pytest tests/test_auth.py -v
 |---------|------|---------|
 | `test_health.py` | 健康检查接口 | 无 |
 | `test_crawl.py` | MockCrawler 数据生成、Normalizer 字段映射、平台列表、鉴权校验 | 部分需 MySQL |
+| `test_mediacrawler_env.py` | MediaCrawler 的 `.env` / `uv` / `node` 路径解析 | 无 |
 | `test_auth.py` | 注册、登录、密码错误、Token 鉴权、Token 刷新 | MySQL |
 
 ### 预期测试结果

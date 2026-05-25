@@ -1,10 +1,3 @@
-/**
- * 路由配置
- *
- * 定义页面路由和导航守卫：
- * - 未登录用户访问受保护页面时自动跳转 /login
- * - 已登录用户访问 /login 时自动跳转首页
- */
 import { createRouter, createWebHistory } from 'vue-router'
 
 const router = createRouter({
@@ -14,6 +7,11 @@ const router = createRouter({
       path: '/login',
       name: 'Login',
       component: () => import('@/views/login/index.vue'),
+      meta: { requiresAuth: false },
+    },
+    {
+      path: '/preview',
+      redirect: '/?preview=1',
       meta: { requiresAuth: false },
     },
     {
@@ -62,8 +60,20 @@ const router = createRouter({
   ],
 })
 
-/** 全局导航守卫 */
-router.beforeEach((to, _from, next) => {
+router.beforeEach(async (to, _from, next) => {
+  const wantsPreview = to.query.preview === '1' || to.path === '/preview'
+  if (wantsPreview) {
+    const { useAuthStore } = await import('@/stores/auth')
+    const authStore = useAuthStore()
+    authStore.enablePreview()
+    if (to.path === '/preview') {
+      next('/')
+    } else {
+      next({ path: to.path, query: {}, replace: true })
+    }
+    return
+  }
+
   const token = localStorage.getItem('access_token')
   if (to.meta.requiresAuth !== false && !token) {
     next('/login')

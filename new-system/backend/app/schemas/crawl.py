@@ -15,6 +15,19 @@ class CrawlRequest(BaseModel):
     )
     max_posts: int = Field(default=50, ge=1, le=1000)
     crawl_comments: bool = Field(default=True)
+    recursive_comments: bool = Field(
+        default=False,
+        description="请求递归完整评论树；当前 MediaCrawler 实际最多落到二级评论，并在 crawl_metadata 中标明降级。",
+    )
+    enrich_author_profiles: bool = Field(
+        default=False,
+        description="请求作者主页级画像补全；当前先保留请求元数据，搜索链路只使用结果载荷中的用户字段。",
+    )
+    comment_sort: str = Field(
+        default="none",
+        pattern="^(none|like_count_desc|reply_count_desc)$",
+        description="评论入库排序：none / like_count_desc / reply_count_desc。",
+    )
 
 
 class CrawlJobResponse(BaseModel):
@@ -45,6 +58,7 @@ class PostResponse(BaseModel):
     comments_count: int = 0
     media_urls: list[str] = Field(default_factory=list)
     hashtags: list[str] = Field(default_factory=list)
+    author_profile: dict | None = None
 
 
 class PostListResponse(BaseModel):

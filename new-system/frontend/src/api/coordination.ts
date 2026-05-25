@@ -9,6 +9,7 @@ export function runCoordinationDetection(params: {
   min_participation?: number
   edge_weight?: number
   platform?: string
+  event_id?: string
 }) {
   return request.post('/coordination/detect', null, { params })
 }

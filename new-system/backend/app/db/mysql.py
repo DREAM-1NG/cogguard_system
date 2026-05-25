@@ -6,14 +6,27 @@
 """
 
 from collections.abc import AsyncGenerator
+from functools import lru_cache
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 
 from app.config import settings
 
-engine = create_async_engine(settings.mysql_url, echo=settings.BACKEND_DEBUG, pool_pre_ping=True)
-async_session_factory = async_sessionmaker(engine, expire_on_commit=False)
+
+@lru_cache(maxsize=1)
+def _get_engine():
+    return create_async_engine(settings.mysql_url, echo=settings.BACKEND_DEBUG, pool_pre_ping=True)
+
+
+@lru_cache(maxsize=1)
+def _get_session_factory():
+    return async_sessionmaker(_get_engine(), expire_on_commit=False)
+
+
+def async_session_factory():
+    """Backward-compatible session factory accessor."""
+    return _get_session_factory()()
 
 
 class Base(DeclarativeBase):
@@ -21,7 +34,7 @@ class Base(DeclarativeBase):
 
 
 async def get_db() -> AsyncGenerator[AsyncSession]:
-    async with async_session_factory() as session:
+    async with _get_session_factory()() as session:
         try:
             yield session
             await session.commit()

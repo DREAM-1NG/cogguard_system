@@ -24,6 +24,7 @@ class DataNormalizer:
             comments_count=raw.get("comments_count", raw.get("comment_count", 0)),
             media_urls=raw.get("media_urls", []),
             hashtags=raw.get("hashtags", []),
+            author_profile=raw.get("author_profile"),
             raw_data=raw,
         )
 
@@ -39,4 +40,8 @@ class DataNormalizer:
             timestamp=raw.get("timestamp", raw.get("created_at")),
             reply_to=raw.get("reply_to"),
             likes=raw.get("likes", 0),
+            media_urls=raw.get("media_urls", []),
+            sub_comment_count=raw.get("sub_comment_count", 0),
+            author_profile=raw.get("author_profile"),
+            raw_data=raw,
         )

@@ -10,8 +10,18 @@ import traceback
 from app.celery_app import celery_app
 from app.core.crawler.factory import build_crawler
 from app.core.crawler.news import NewsExtractCrawler
-from app.core.crawler.social import MediaSocialCrawler
+from app.core.crawler.social import COGGUARD_TO_MEDIA, MediaSocialCrawler
 from app.db.mongodb import get_mongo_db
+
+
+def apply_crawl_options(crawler, params: dict) -> None:
+    """Apply optional crawl-time controls supported by concrete crawlers."""
+    if isinstance(crawler, MediaSocialCrawler):
+        crawler.configure_runtime_options(
+            recursive_comments=bool(params.get("recursive_comments", False)),
+            enrich_author_profiles=bool(params.get("enrich_author_profiles", False)),
+            comment_sort=str(params.get("comment_sort", "none") or "none"),
+        )
 
 
 def _run_async(coro):
@@ -33,37 +43,64 @@ def execute_crawl_job(self, job_id: int, params_json: str):
     crawl_comments = params.get("crawl_comments", True)
 
     async def _do_crawl():
+        mongo_db = get_mongo_db()
+        if platform in COGGUARD_TO_MEDIA:
+            crawler = MediaSocialCrawler(platform)
+            crawler.post_ids = post_ids
+            apply_crawl_options(crawler, params)
+            batch = await crawler.execute_search_batch(keywords=keywords, max_posts=max_posts)
+
+            post_dicts = []
+            for post in batch.posts:
+                data = post.model_dump(mode="json")
+                data["crawl_job_id"] = job_id
+                data["crawl_metadata"] = crawler.crawl_metadata
+                post_dicts.append(data)
+            if post_dicts:
+                await mongo_db["raw_posts"].insert_many(post_dicts)
+
+            all_comments: list = []
+            if crawl_comments:
+                for comment in batch.comments:
+                    data = comment.model_dump(mode="json")
+                    data["crawl_job_id"] = job_id
+                    data["crawl_metadata"] = crawler.crawl_metadata
+                    all_comments.append(data)
+                if all_comments:
+                    await mongo_db["raw_comments"].insert_many(all_comments)
+
+            return {
+                "posts_count": len(post_dicts),
+                "comments_count": len(all_comments) if crawl_comments else 0,
+                "platform": platform,
+                "crawl_metadata": crawler.crawl_metadata,
+            }
+
         crawler = build_crawler(platform)
         crawler.post_ids = post_ids
-        mongo_db = get_mongo_db()
-
+        apply_crawl_options(crawler, params)
         posts = await crawler.search(keywords=keywords, max_posts=max_posts)
 
         post_dicts = []
-        for p in posts:
-            d = p.model_dump(mode="json")
-            d["crawl_job_id"] = job_id
-            post_dicts.append(d)
+        for post in posts:
+            data = post.model_dump(mode="json")
+            data["crawl_job_id"] = job_id
+            post_dicts.append(data)
 
         if post_dicts:
             await mongo_db["raw_posts"].insert_many(post_dicts)
 
         all_comments: list = []
         if crawl_comments:
-            if isinstance(crawler, MediaSocialCrawler):
-                for c in crawler.last_comments:
-                    d = c.model_dump(mode="json")
-                    d["crawl_job_id"] = job_id
-                    all_comments.append(d)
-            elif isinstance(crawler, NewsExtractCrawler):
+            if isinstance(crawler, NewsExtractCrawler):
                 pass
             else:
-                for p in posts[:10]:
-                    comments = await crawler.fetch_comments(p.post_id)
-                    for c in comments:
-                        d = c.model_dump(mode="json")
-                        d["crawl_job_id"] = job_id
-                        all_comments.append(d)
+                for post in posts[:10]:
+                    comments = await crawler.fetch_comments(post.post_id)
+                    for comment in comments:
+                        data = comment.model_dump(mode="json")
+                        data["crawl_job_id"] = job_id
+                        all_comments.append(data)
             if all_comments:
                 await mongo_db["raw_comments"].insert_many(all_comments)
 
@@ -71,6 +108,7 @@ def execute_crawl_job(self, job_id: int, params_json: str):
             "posts_count": len(post_dicts),
             "comments_count": len(all_comments) if crawl_comments else 0,
             "platform": platform,
+            "crawl_metadata": {},
         }
 
     try:

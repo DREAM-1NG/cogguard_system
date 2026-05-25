@@ -104,6 +104,7 @@ const menuItems = [
 ]
 
 const selectedKeys = computed(() => [route.path])
+const currentMenu = computed(() => menuItems.find(item => item.path === route.path))
 
 // ---- 标签页管理 ----
 const openTabs = ref<Array<{ path: string; label: string }>>([])

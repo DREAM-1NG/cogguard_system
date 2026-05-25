@@ -1,18 +1,12 @@
-"""数据采集相关 API 路由。
-
-提供采集任务创建、任务列表查询、采集数据查询以及支持平台列表接口。
-所有需要鉴权的接口通过 ``get_current_user`` 依赖保护。
-"""
-
-import json
+"""Data collection API routes."""
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.security import get_current_user
+from app.core.security import get_current_user, get_current_user_or_preview
 from app.db.mysql import get_db
 from app.models.user import User
-from app.schemas.crawl import CrawlDataQuery, CrawlJobResponse, CrawlRequest, PostListResponse
+from app.schemas.crawl import CrawlDataQuery, CrawlJobResponse, CrawlRequest
 from app.services import crawl_service
 from app.tasks.crawl_tasks import execute_crawl_job
 from app.utils.response import success
@@ -27,13 +21,23 @@ SUPPORTED_PLATFORMS = [
         "status": "active",
         "hint": "需配置 MEDIACRAWLER_ROOT 与 Cookie/扫码登录环境",
     },
-    {"id": "douyin", "name": "抖音（MediaCrawler）", "status": "active", "hint": "需配置 MEDIACRAWLER_ROOT"},
-    {"id": "xhs", "name": "小红书（MediaCrawler）", "status": "active", "hint": "需配置 MEDIACRAWLER_ROOT"},
+    {
+        "id": "douyin",
+        "name": "抖音（MediaCrawler）",
+        "status": "active",
+        "hint": "需配置 MEDIACRAWLER_ROOT",
+    },
+    {
+        "id": "xhs",
+        "name": "小红书（MediaCrawler）",
+        "status": "active",
+        "hint": "需配置 MEDIACRAWLER_ROOT",
+    },
     {
         "id": "news",
         "name": "新闻链接（NewsCrawler）",
         "status": "active",
-        "hint": "在「链接」中填写文章 URL，需 NEWSCRAWLER_API_BASE 或 NEWSCRAWLER_ROOT",
+        "hint": "在“链接”中填写文章 URL，需 NEWSCRAWLER_API_BASE 或 NEWSCRAWLER_ROOT",
     },
 ]
 
@@ -50,11 +54,14 @@ async def create_social_crawl(
     current_user: User = Depends(get_current_user),
 ):
     job = await crawl_service.create_crawl_job(req, current_user.id, db)
-
     task = execute_crawl_job.delay(job.id, job.params_json)
 
     await crawl_service.update_job_status(
-        job.id, "running", db, progress=0, celery_task_id=task.id
+        job.id,
+        "running",
+        db,
+        progress=0,
+        celery_task_id=task.id,
     )
 
     return success(data=CrawlJobResponse.model_validate(job).model_dump(mode="json"))
@@ -65,10 +72,16 @@ async def list_jobs(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_or_preview),
 ):
-    jobs, total = await crawl_service.list_jobs(db, current_user.id, page, page_size)
-    items = [CrawlJobResponse.model_validate(j).model_dump(mode="json") for j in jobs]
+    jobs, total = await crawl_service.list_jobs(
+        db,
+        current_user.id,
+        page,
+        page_size,
+        include_system_owned=True,
+    )
+    items = [CrawlJobResponse.model_validate(job).model_dump(mode="json") for job in jobs]
     return success(data={"total": total, "items": items})
 
 
@@ -102,8 +115,13 @@ async def query_data(
     keyword: str | None = None,
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
-    _current_user: User = Depends(get_current_user),
+    _current_user: User = Depends(get_current_user_or_preview),
 ):
-    query = CrawlDataQuery(platform=platform, keyword=keyword, page=page, page_size=page_size)
+    query = CrawlDataQuery(
+        platform=platform,
+        keyword=keyword,
+        page=page,
+        page_size=page_size,
+    )
     items, total = await crawl_service.query_posts(query)
     return success(data={"total": total, "items": items})

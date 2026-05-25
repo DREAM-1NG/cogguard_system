@@ -129,7 +129,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { message } from 'ant-design-vue'
-import PageHeader from '@/components/common/PageHeader.vue'
+import PageHeader from '@/components/PageHeader.vue'
 import { assessRisk, listRiskReports } from '@/api/risk'
 
 const params = ref({ platform: undefined as string | undefined, time_window: 60 })

@@ -1,13 +1,13 @@
-"""协同网络构建（对应 CooRTweet generate_coordinated_network）。
-
-从 detect_groups 的配对结果构建加权无向图，按边权分位数标记异常协调对。
-"""
+"""协同网络构建与聚类分析。"""
 
 from __future__ import annotations
 
+from collections import defaultdict
+
+import networkx as nx
 import numpy as np
 import pandas as pd
-import networkx as nx
+from networkx.algorithms.community import greedy_modularity_communities
 
 
 def generate_coordinated_network(
@@ -16,24 +16,7 @@ def generate_coordinated_network(
     fast_net: bool = False,
     subgraph: int = 0,
 ) -> nx.Graph:
-    """从协调配对结果构建加权无向图。
-
-    Parameters
-    ----------
-    result : DataFrame
-        detect_groups 的输出
-    edge_weight : float
-        边权百分位阈值 (0-1)，超过此百分位的边标记为协调
-    fast_net : bool
-        是否区分全窗 / 快窗权重（需先调用 flag_speed_share）
-    subgraph : int
-        0=完整图, 1=仅保留超阈值边, 2=快窗超阈值边, 3=快窗+邻居上下文
-
-    Returns
-    -------
-    nx.Graph
-        节点=账户, 边属性含 weight, avg_time_delta, edge_symmetry_score 等
-    """
+    """从协调配对结果构建加权无向图。"""
     if not 0 <= edge_weight <= 1:
         raise ValueError("edge_weight 必须在 0-1 之间")
 
@@ -42,7 +25,6 @@ def generate_coordinated_network(
 
     data = result.copy()
 
-    # 统一无序对方向
     a1 = data["account_id"].values
     a2 = data["account_id_y"].values
     data["account_id"] = np.minimum(a1, a2)
@@ -84,11 +66,14 @@ def generate_coordinated_network(
             for n in G.nodes():
                 G.nodes[n]["is_coordinated"] = 1 if n in fast_nodes else 0
 
+    _annotate_communities(G)
     return G
 
 
 def graph_to_dict(G: nx.Graph) -> dict:
-    """将 networkx 图转为可序列化的字典（供 API 返回）。"""
+    """将 networkx 图转为可序列化字典。"""
+    _annotate_communities(G)
+
     nodes = []
     for n, attrs in G.nodes(data=True):
         nodes.append({"id": str(n), **attrs})
@@ -101,6 +86,7 @@ def graph_to_dict(G: nx.Graph) -> dict:
         edges.append(edge)
 
     components = list(nx.connected_components(G))
+    clusters = _cluster_summary(G)
     return {
         "nodes": nodes,
         "edges": edges,
@@ -111,12 +97,10 @@ def graph_to_dict(G: nx.Graph) -> dict:
             {"size": len(c), "members": [str(m) for m in c]}
             for c in sorted(components, key=len, reverse=True)
         ],
+        "cluster_count": len(clusters),
+        "clusters": clusters,
     }
 
-
-# ---------------------------------------------------------------------------
-# 内部函数
-# ---------------------------------------------------------------------------
 
 def _build_graph(data: pd.DataFrame) -> nx.Graph:
     """聚合配对并构建加权无向图。"""
@@ -136,6 +120,8 @@ def _build_graph(data: pd.DataFrame) -> nx.Graph:
 
     G = nx.Graph()
     for _, row in agg.iterrows():
+        if str(row["account_id"]) == str(row["account_id_y"]):
+            continue
         G.add_edge(
             str(row["account_id"]),
             str(row["account_id_y"]),
@@ -153,7 +139,10 @@ def _apply_weight_threshold(G: nx.Graph, percentile: float, weight_attr: str, th
     weights = [d.get(weight_attr, 0) for _, _, d in G.edges(data=True)]
     if not weights:
         return
-    threshold = float(np.percentile([w for w in weights if w], percentile * 100))
+    positive = [w for w in weights if w]
+    if not positive:
+        return
+    threshold = float(np.percentile(positive, percentile * 100))
     for u, v, d in G.edges(data=True):
         d[threshold_attr] = 1 if d.get(weight_attr, 0) > threshold else 0
 
@@ -164,3 +153,78 @@ def _extract_subgraph(G: nx.Graph, threshold_attr: str) -> nx.Graph:
     sub = G.edge_subgraph(edges).copy()
     sub.remove_nodes_from([n for n in sub.nodes() if sub.degree(n) == 0])
     return sub
+
+
+def _annotate_communities(G: nx.Graph) -> None:
+    """为节点补充社区标注与局部统计。"""
+    if G.number_of_nodes() == 0:
+        return
+
+    clusters = _cluster_sets(G)
+    node_to_cluster: dict[str, int] = {}
+    for cluster_id, members in enumerate(clusters):
+        for node in members:
+            node_to_cluster[str(node)] = cluster_id
+
+    for node in G.nodes():
+        cluster_id = node_to_cluster.get(str(node), -1)
+        cluster_members = clusters[cluster_id] if cluster_id >= 0 and cluster_id < len(clusters) else {node}
+        G.nodes[node]["cluster_id"] = cluster_id
+        G.nodes[node]["cluster_size"] = len(cluster_members)
+        G.nodes[node]["cluster_degree"] = int(G.degree(node, weight="weight"))
+
+
+def _cluster_sets(G: nx.Graph) -> list[set[str]]:
+    """优先用加权社区发现；孤立点单独成簇。"""
+    if G.number_of_nodes() == 0:
+        return []
+
+    weighted_communities: list[set[str]] = []
+    non_isolates = G.copy()
+    non_isolates.remove_edges_from(nx.selfloop_edges(non_isolates))
+    isolates = [str(node) for node, degree in G.degree() if degree == 0]
+    non_isolates.remove_nodes_from(isolates)
+
+    if non_isolates.number_of_nodes() > 0 and non_isolates.number_of_edges() > 0:
+        communities = greedy_modularity_communities(non_isolates, weight="weight")
+        weighted_communities = [set(map(str, community)) for community in communities]
+
+    if not weighted_communities:
+        weighted_communities = [{str(node)} for node in G.nodes()]
+
+    assigned = set().union(*weighted_communities) if weighted_communities else set()
+    for node in G.nodes():
+        if str(node) not in assigned:
+            weighted_communities.append({str(node)})
+
+    weighted_communities.sort(key=lambda members: (-len(members), sorted(members)[0]))
+    return weighted_communities
+
+
+def _cluster_summary(G: nx.Graph) -> list[dict]:
+    clusters = _cluster_sets(G)
+    if not clusters:
+        return []
+
+    summaries: list[dict] = []
+    for cluster_id, members in enumerate(clusters):
+        subgraph = G.subgraph(members)
+        degree_map = {str(node): int(G.degree(node, weight="weight")) for node in members}
+        summaries.append(
+            {
+                "cluster_id": cluster_id,
+                "size": len(members),
+                "members": [str(node) for node in sorted(members)],
+                "edge_count": subgraph.number_of_edges(),
+                "total_weight": int(sum(d.get("weight", 0) for _, _, d in subgraph.edges(data=True))),
+                "avg_degree": round(sum(degree_map.values()) / len(degree_map), 4) if degree_map else 0,
+                "top_nodes": [
+                    {
+                        "account_id": node,
+                        "cluster_degree": degree,
+                    }
+                    for node, degree in sorted(degree_map.items(), key=lambda item: (-item[1], item[0]))[:5]
+                ],
+            }
+        )
+    return summaries

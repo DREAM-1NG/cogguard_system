@@ -8,6 +8,9 @@ from pydantic import BaseModel, Field
 class StandardPost(BaseModel):
     platform: str
     post_id: str
+    event_id: str | None = None
+    source_keyword: str | None = None
+    dedupe_key: str | None = None
     content: str
     author_id: str
     author_name: str
@@ -18,6 +21,7 @@ class StandardPost(BaseModel):
     comments_count: int = 0
     media_urls: list[str] = Field(default_factory=list)
     hashtags: list[str] = Field(default_factory=list)
+    author_profile: dict | None = None
     crawl_job_id: int | None = None
     raw_data: dict | None = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
@@ -27,11 +31,18 @@ class StandardComment(BaseModel):
     platform: str
     comment_id: str
     post_id: str
+    event_id: str | None = None
+    source_keyword: str | None = None
+    dedupe_key: str | None = None
     content: str
     author_id: str
     author_name: str
     timestamp: datetime
     reply_to: str | None = None
     likes: int = 0
+    media_urls: list[str] = Field(default_factory=list)
+    sub_comment_count: int = 0
+    author_profile: dict | None = None
     crawl_job_id: int | None = None
+    raw_data: dict | None = None
     created_at: datetime = Field(default_factory=datetime.utcnow)

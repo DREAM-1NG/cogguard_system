@@ -1,49 +1,82 @@
-/**
- * 认证状态管理 (Pinia)
- *
- * 管理用户的登录状态、令牌存储和用户信息。
- * Token 持久化到 localStorage，页面刷新后自动恢复。
- */
+import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
 import { login as loginApi, getProfile as getProfileApi } from '@/api/auth'
 import router from '@/router'
 
+const PREVIEW_ACCESS_TOKEN = 'cogguard-preview-token'
+const PREVIEW_REFRESH_TOKEN = 'cogguard-preview-refresh-token'
+
+export interface AuthUserInfo {
+  id: number
+  username: string
+  email: string
+  role: string
+}
+
+const PREVIEW_USER = {
+  id: 0,
+  username: 'Preview',
+  email: 'preview@local',
+  role: 'designer',
+} satisfies AuthUserInfo
+
 export const useAuthStore = defineStore('auth', () => {
-  /** JWT access token */
   const accessToken = ref(localStorage.getItem('access_token') || '')
-  /** JWT refresh token */
   const refreshToken = ref(localStorage.getItem('refresh_token') || '')
-  /** 当前用户信息 */
-  const userInfo = ref<Record<string, unknown> | null>(null)
+  const userInfo = ref<AuthUserInfo | null>(
+    localStorage.getItem('cogguard_preview') === '1' ? PREVIEW_USER : null,
+  )
 
-  /** 是否已登录 */
   const isLoggedIn = computed(() => !!accessToken.value)
+  const isPreviewMode = computed(() => accessToken.value === PREVIEW_ACCESS_TOKEN)
 
-  /** 登录：调用 API 并存储令牌 */
   async function login(username: string, password: string) {
     const res = await loginApi({ username, password }) as { data: { access_token: string; refresh_token: string } }
     accessToken.value = res.data.access_token
     refreshToken.value = res.data.refresh_token
+    userInfo.value = null
+    localStorage.removeItem('cogguard_preview')
     localStorage.setItem('access_token', res.data.access_token)
     localStorage.setItem('refresh_token', res.data.refresh_token)
   }
 
-  /** 获取当前用户信息 */
   async function fetchProfile() {
-    const res = await getProfileApi() as { data: Record<string, unknown> }
+    if (isPreviewMode.value) {
+      userInfo.value = PREVIEW_USER
+      return
+    }
+    const res = await getProfileApi() as { data: AuthUserInfo }
     userInfo.value = res.data
   }
 
-  /** 登出：清除令牌和用户信息，跳转登录页 */
+  function enablePreview() {
+    accessToken.value = PREVIEW_ACCESS_TOKEN
+    refreshToken.value = PREVIEW_REFRESH_TOKEN
+    userInfo.value = PREVIEW_USER
+    localStorage.setItem('access_token', PREVIEW_ACCESS_TOKEN)
+    localStorage.setItem('refresh_token', PREVIEW_REFRESH_TOKEN)
+    localStorage.setItem('cogguard_preview', '1')
+  }
+
   function logout() {
     accessToken.value = ''
     refreshToken.value = ''
     userInfo.value = null
     localStorage.removeItem('access_token')
     localStorage.removeItem('refresh_token')
+    localStorage.removeItem('cogguard_preview')
     router.push('/login')
   }
 
-  return { accessToken, refreshToken, userInfo, isLoggedIn, login, fetchProfile, logout }
+  return {
+    accessToken,
+    refreshToken,
+    userInfo,
+    isLoggedIn,
+    isPreviewMode,
+    login,
+    fetchProfile,
+    enablePreview,
+    logout,
+  }
 })

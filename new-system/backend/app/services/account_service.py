@@ -1,29 +1,31 @@
-"""账户监测业务逻辑服务。"""
+"""Account profiling service."""
 
 from __future__ import annotations
 
+from typing import Any
+
 from app.core.account_profiler import build_account_profiles
 from app.db.mongodb import get_mongo_db
+from app.services.event_data import build_event_filter, load_event_posts
 
 
-async def get_account_profiles(platform: str | None = None) -> list[dict]:
-    """获取所有账户的行为画像。"""
+async def get_account_profiles(platform: str | None = None, event_id: str | None = None) -> list[dict]:
+    """Return account behavior profiles over optionally event-scoped posts."""
     mongo_db = get_mongo_db()
-
-    mongo_filter: dict = {}
-    if platform:
-        mongo_filter["platform"] = platform
-
-    cursor = mongo_db["raw_posts"].find(mongo_filter, {"_id": 0})
-    posts = await cursor.to_list(length=10000)
-
+    posts = await load_event_posts(mongo_db, event_id=event_id, platform=platform)
     return build_account_profiles(posts)
 
 
-async def get_account_detail(account_id: str) -> dict | None:
-    """获取单个账户的详细画像及其帖子列表。"""
+async def get_account_detail(
+    account_id: str,
+    platform: str | None = None,
+    event_id: str | None = None,
+) -> dict | None:
+    """Return one account profile and recent posts, optionally scoped to an event/platform."""
     mongo_db = get_mongo_db()
-    cursor = mongo_db["raw_posts"].find({"author_id": account_id}, {"_id": 0})
+    mongo_filter: dict[str, Any] = build_event_filter(event_id=event_id, platform=platform)
+    mongo_filter["author_id"] = account_id
+    cursor = mongo_db["raw_posts"].find(mongo_filter, {"_id": 0})
     posts = await cursor.to_list(length=1000)
 
     if not posts:
@@ -33,11 +35,10 @@ async def get_account_detail(account_id: str) -> dict | None:
     profile = profiles[0] if profiles else {}
 
     recent_posts = sorted(posts, key=lambda p: p.get("timestamp", ""), reverse=True)[:20]
-    for p in recent_posts:
-        if "raw_data" in p:
-            del p["raw_data"]
-        for k, v in p.items():
-            if hasattr(v, "isoformat"):
-                p[k] = v.isoformat()
+    for post in recent_posts:
+        post.pop("raw_data", None)
+        for key, value in list(post.items()):
+            if hasattr(value, "isoformat"):
+                post[key] = value.isoformat()
 
     return {**profile, "recent_posts": recent_posts}

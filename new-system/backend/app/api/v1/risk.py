@@ -15,6 +15,7 @@ router = APIRouter()
 @router.post("/assess")
 async def assess_risk(
     platform: str | None = Query(None, description="限定平台"),
+    event_id: str | None = Query(None, description="限定事件 ID"),
     time_window: int = Query(60, ge=1, le=3600, description="协同检测时间窗口（秒）"),
     min_participation: int = Query(2, ge=1, description="最低参与次数"),
     edge_weight: float = Query(0.5, ge=0, le=1, description="边权百分位阈值"),
@@ -24,6 +25,7 @@ async def assess_risk(
     """执行风险评估：阶段检测 + D-S 融合 + DISARM 攻击路径分析。"""
     report = await risk_service.assess_risk(
         platform=platform,
+        event_id=event_id,
         time_window=time_window,
         min_participation=min_participation,
         edge_weight=edge_weight,
@@ -36,6 +38,7 @@ async def assess_risk(
 @router.get("/reports")
 async def list_reports(
     platform: str | None = Query(None),
+    event_id: str | None = Query(None),
     risk_level: str | None = Query(None),
     phase: str | None = Query(None),
     page: int = Query(1, ge=1),
@@ -46,6 +49,7 @@ async def list_reports(
     """查询历史风险报告列表。"""
     items, total = await risk_service.list_reports(
         platform=platform,
+        event_id=event_id,
         risk_level=risk_level,
         phase=phase,
         page=page,

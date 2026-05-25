@@ -1,42 +1,656 @@
-<!--
-  监测看板页面
-
-  展示系统概览统计卡片。当前为占位数据，
-  后续接入后端 /dashboard/* 接口后替换为真实数据。
--->
 <template>
-  <div>
-    <PageHeader title="监测看板" description="系统概览：展示采集任务、数据总量、风险预警和协同群体等核心指标。后续接入 ECharts 图表可视化。" />
+  <div class="dashboard-page">
+    <PageHeader title="监测看板" description="跨平台事件态势、采集规模、风险与地理位置概览" />
 
-    <!-- 统计卡片 -->
-    <a-row :gutter="16">
-      <a-col :span="6" v-for="card in statCards" :key="card.title">
-        <a-card>
-          <a-statistic :title="card.title" :value="card.value" :prefix="card.prefix">
-            <template #suffix>
-              <span style="font-size: 14px; color: #999">{{ card.suffix }}</span>
-            </template>
-          </a-statistic>
+    <div class="toolbar">
+      <a-input
+        v-model:value="eventId"
+        class="event-input"
+        allow-clear
+        placeholder="event_id"
+        @pressEnter="loadOverview"
+      />
+      <a-button type="primary" :loading="loading" @click="loadOverview">刷新</a-button>
+      <a-tag :color="mongoStatus === 'ok' ? 'green' : 'orange'">Mongo {{ mongoStatus }}</a-tag>
+      <a-tag :color="mysqlStatus === 'ok' ? 'green' : 'orange'">MySQL {{ mysqlStatus }}</a-tag>
+      <span v-if="overview?.meta.generated_at" class="generated-at">
+        {{ formatTime(overview.meta.generated_at) }}
+      </span>
+    </div>
+
+    <a-alert
+      v-if="loadError"
+      class="status-alert"
+      type="warning"
+      show-icon
+      :message="loadError"
+    />
+
+    <a-row :gutter="[16, 16]" class="stat-grid">
+      <a-col :xs="24" :sm="12" :lg="6" v-for="card in statCards" :key="card.title">
+        <a-card class="stat-card" size="small">
+          <div class="stat-title">{{ card.title }}</div>
+          <div class="stat-value">{{ card.value }}</div>
+          <div class="stat-note">{{ card.note }}</div>
         </a-card>
       </a-col>
     </a-row>
 
-    <!-- 占位提示 -->
-    <a-card style="margin-top: 24px">
-      <a-empty description="图表区域（后续接入 ECharts 可视化组件）" />
-    </a-card>
+    <a-row :gutter="[16, 16]" class="main-grid">
+      <a-col :xs="24" :xl="16">
+        <a-card title="事件位置地图" size="small">
+          <div class="map-shell">
+            <div ref="mapRef" class="map-canvas" />
+            <div class="heatmap-panel">
+              <div class="heatmap-title">事件热力</div>
+              <div class="heatmap-bar" />
+              <div class="heatmap-scale">
+                <span>低</span>
+                <span>{{ heatLegendMax }}</span>
+              </div>
+              <div class="heatmap-note">帖子 + 评论</div>
+            </div>
+          </div>
+        </a-card>
+      </a-col>
+      <a-col :xs="24" :xl="8">
+        <a-card title="平台数据分布" :loading="loading" size="small">
+          <a-table
+            :columns="platformColumns"
+            :data-source="overview?.platforms || []"
+            row-key="platform"
+            size="small"
+            :pagination="false"
+          />
+          <a-empty
+            v-if="!loading && !overview?.platforms.length"
+            description="暂无平台数据"
+            :image-style="{ height: '36px' }"
+          />
+        </a-card>
+      </a-col>
+    </a-row>
+
+    <a-row :gutter="[16, 16]" class="detail-grid">
+      <a-col :xs="24" :xl="14">
+        <a-card title="事件定位明细" size="small">
+          <a-table
+            :columns="eventColumns"
+            :data-source="overview?.event_locations || []"
+            row-key="event_id"
+            size="small"
+            :pagination="false"
+          >
+            <template #bodyCell="{ column, record }">
+              <template v-if="column.key === 'event'">
+                <div class="event-cell-title">{{ record.event_name }}</div>
+                <div class="event-cell-meta">{{ record.event_id || '-' }}</div>
+              </template>
+              <template v-else-if="column.key === 'origin'">
+                <div>{{ record.origin_author || '-' }}</div>
+                <div class="event-cell-meta">
+                  {{ originLocationMeta(record) }}
+                </div>
+              </template>
+              <template v-else-if="column.key === 'location'">
+                <a-tag :color="record.resolved ? 'blue' : 'orange'">{{ record.location_region }}</a-tag>
+                <div class="event-cell-meta">
+                  {{ record.location_resolution_method === 'origin_post' ? '首帖定位' : record.location_resolution_method === 'first_geolocated_post' ? '回退到最早可解析帖子' : '无法解析' }}
+                </div>
+              </template>
+              <template v-else-if="column.key === 'scale'">
+                <span>{{ record.posts }} 帖 / {{ record.comments }} 评</span>
+              </template>
+            </template>
+          </a-table>
+          <a-empty
+            v-if="!loading && !overview?.event_locations.length"
+            description="暂无事件定位"
+            :image-style="{ height: '36px' }"
+          />
+        </a-card>
+      </a-col>
+      <a-col :xs="24" :xl="10">
+        <a-card title="最早发帖样本" size="small">
+          <a-list
+            v-if="overview?.recent_posts.length"
+            :data-source="overview.recent_posts"
+            size="small"
+            class="recent-list"
+          >
+            <template #renderItem="{ item }">
+              <a-list-item>
+                <div class="recent-item">
+                  <div class="recent-meta">
+                    <a-tag>{{ platformLabel(item.platform) }}</a-tag>
+                    <strong>{{ item.author_name || item.author_id || '-' }}</strong>
+                    <span>{{ formatTime(item.timestamp) }}</span>
+                  </div>
+                  <div class="recent-content">{{ item.content || '-' }}</div>
+                </div>
+              </a-list-item>
+            </template>
+          </a-list>
+          <a-empty
+            v-else
+            description="暂无发帖样本"
+            :image-style="{ height: '36px' }"
+          />
+        </a-card>
+      </a-col>
+    </a-row>
   </div>
 </template>
 
 <script setup lang="ts">
-import { reactive } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { message } from 'ant-design-vue'
+import * as echarts from 'echarts'
+import type { EChartsOption } from 'echarts'
 import PageHeader from '@/components/PageHeader.vue'
+import { getDashboardOverview, type DashboardOverview, type EventLocation } from '@/api/dashboard'
 
-/** 概览统计卡片数据（占位） */
-const statCards = reactive([
-  { title: '监测任务', value: 0, prefix: '', suffix: '个' },
-  { title: '采集数据', value: 0, prefix: '', suffix: '条' },
-  { title: '风险预警', value: 0, prefix: '', suffix: '条' },
-  { title: '协同群体', value: 0, prefix: '', suffix: '个' },
-])
+const DEFAULT_EVENT_ID = 'trump_visit_2026_05_21'
+const WORLD_GEOJSON_URL = new URL('../../assets/world-countries.geojson', import.meta.url).href
+
+const eventId = ref(DEFAULT_EVENT_ID)
+const loading = ref(false)
+const loadError = ref('')
+const overview = ref<DashboardOverview | null>(null)
+const mapRef = ref<HTMLDivElement | null>(null)
+let chart: echarts.ECharts | null = null
+let worldMapPromise: Promise<void> | null = null
+
+function ensureWorldMap() {
+  if (!worldMapPromise) {
+    worldMapPromise = fetch(WORLD_GEOJSON_URL)
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`世界底图加载失败 (${response.status})`)
+        }
+        return response.json()
+      })
+      .then((geoJson) => {
+        echarts.registerMap('cogguard-world', geoJson as any)
+      })
+      .catch((error) => {
+        worldMapPromise = null
+        throw error
+      })
+  }
+  return worldMapPromise
+}
+
+const mongoStatus = computed(() => overview.value?.meta.data_source_status.mongo || 'unknown')
+const mysqlStatus = computed(() => overview.value?.meta.data_source_status.mysql || 'unknown')
+
+const statCards = computed(() => {
+  const summary = overview.value?.summary
+  return [
+    { title: '事件数', value: summary?.event_count ?? 0, note: overview.value?.meta.event_id || '全部事件' },
+    { title: '采集帖子', value: summary?.posts ?? 0, note: `${summary?.comments ?? 0} 条评论` },
+    { title: '平台覆盖', value: summary?.platform_count ?? 0, note: 'weibo / xhs / douyin' },
+    { title: '风险报告', value: summary?.risk_reports ?? 0, note: '已持久化研判' },
+  ]
+})
+
+const resolvedLocations = computed(() => (overview.value?.event_locations || []).filter((item) => item.resolved && item.coordinates))
+const mapPoints = computed(() => {
+  return resolvedLocations.value.map((item) => ({
+    name: item.event_name,
+    value: [...(item.coordinates as [number, number]), item.posts + item.comments],
+    raw: item,
+  }))
+})
+
+const heatLegendMax = computed(() => {
+  const maxValue = Math.max(...mapPoints.value.map((point) => Number(point.value[2]) || 0), 0)
+  return maxValue.toLocaleString('zh-CN')
+})
+
+const geoRegions = computed(() => {
+  const count = (name: string) => resolvedLocations.value.filter((item) => item.location_country === name).length
+  return [
+    {
+      name: 'China',
+      itemStyle: { areaColor: count('China') > 0 ? '#2f80ed' : '#102a52' },
+    },
+    {
+      name: 'United States of America',
+      itemStyle: { areaColor: count('United States of America') > 0 ? '#7c3aed' : '#102a52' },
+    },
+    {
+      name: 'Japan',
+      itemStyle: { areaColor: count('Japan') > 0 ? '#f97316' : '#102a52' },
+    },
+    {
+      name: 'South Korea',
+      itemStyle: { areaColor: count('South Korea') > 0 ? '#14b8a6' : '#102a52' },
+    },
+  ]
+})
+
+const platformColumns = [
+  { title: '平台', dataIndex: 'platform', key: 'platform', customRender: ({ text }: { text: string }) => platformLabel(text) },
+  { title: '帖子', dataIndex: 'posts', key: 'posts', align: 'right' },
+  { title: '评论', dataIndex: 'comments', key: 'comments', align: 'right' },
+  { title: '合计', dataIndex: 'total', key: 'total', align: 'right' },
+]
+
+const eventColumns = [
+  { title: '事件', key: 'event' },
+  { title: '第一发帖者', key: 'origin' },
+  { title: '地图位置', key: 'location' },
+  { title: '规模', key: 'scale', align: 'right' },
+]
+
+function platformLabel(platform?: string | null) {
+  const labels: Record<string, string> = {
+    weibo: '微博',
+    xhs: '小红书',
+    douyin: '抖音',
+  }
+  return platform ? labels[platform] || platform : '-'
+}
+
+function formatTime(value?: string | null) {
+  if (!value) return '-'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return date.toLocaleString('zh-CN', { hour12: false })
+}
+
+function originLocationMeta(record: EventLocation) {
+  const platform = platformLabel(record.origin_platform)
+  if (record.origin_ip_location) {
+    return `${platform} · ${record.origin_ip_location}`
+  }
+  if (record.location_source_ip_location) {
+    return `${platform} · 首帖无属地，回退属地：${record.location_source_ip_location}`
+  }
+  return `${platform} · 未解析属地`
+}
+
+function buildMapOption(points: typeof mapPoints.value): EChartsOption {
+  const markerLayers = points.map((point) => ({
+    name: point.name,
+    value: point.value,
+    raw: point.raw,
+  }))
+  const maxValue = Math.max(...points.map((point) => Number(point.value[2]) || 0), 1)
+
+  return {
+    backgroundColor: 'transparent',
+    visualMap: {
+      show: false,
+      min: 0,
+      max: maxValue,
+      seriesIndex: 0,
+      inRange: {
+        color: ['rgba(34, 211, 238, 0.24)', 'rgba(59, 130, 246, 0.38)', 'rgba(250, 204, 21, 0.62)', 'rgba(249, 115, 22, 0.84)', 'rgba(239, 68, 68, 1)'],
+      },
+    },
+    tooltip: {
+      trigger: 'item',
+      formatter: (params: any) => {
+        const raw = params.data?.raw as EventLocation | undefined
+        if (!raw) return params.name
+        return [
+          `<strong>${raw.event_name}</strong>`,
+          `第一发帖者：${raw.origin_author || '-'}`,
+          `平台：${platformLabel(raw.origin_platform)}`,
+          `IP 属地：${raw.ip_location || '-'}`,
+          `规模：${raw.posts} 帖 / ${raw.comments} 评`,
+        ].join('<br/>')
+      },
+    },
+    geo: {
+      map: 'cogguard-world',
+      roam: true,
+      zoom: 1.06,
+      center: [12, 20],
+      aspectScale: 0.88,
+      scaleLimit: {
+        min: 0.8,
+        max: 4.5,
+      },
+      itemStyle: {
+        areaColor: '#102a52',
+        borderColor: '#5ea2ff',
+        borderWidth: 0.8,
+        shadowBlur: 18,
+        shadowColor: 'rgba(8, 20, 45, 0.48)',
+      },
+      emphasis: {
+        itemStyle: {
+          areaColor: '#2f6fff',
+        },
+      },
+      label: {
+        show: false,
+        color: '#eff6ff',
+        fontSize: 11,
+      },
+      regions: geoRegions.value,
+    },
+    series: [
+      {
+        name: '事件热力',
+        type: 'heatmap',
+        coordinateSystem: 'geo',
+        data: points.map((point) => [point.value[0], point.value[1], point.value[2]]),
+        pointSize: 34,
+        blurSize: 58,
+        silent: true,
+        zlevel: 1,
+        z: 1,
+        blendMode: 'lighter',
+        itemStyle: {
+          opacity: 0.98,
+        },
+      },
+      {
+        name: '事件位置光晕',
+        type: 'effectScatter',
+        coordinateSystem: 'geo',
+        data: markerLayers,
+        zlevel: 2,
+        z: 2,
+        rippleEffect: {
+          brushType: 'stroke',
+          scale: 3.4,
+        },
+        symbolSize: (value: number[]) => Math.max(16, Math.min(38, Math.sqrt(value[2] || 1) * 2.2)),
+        itemStyle: {
+          color: '#facc15',
+          shadowBlur: 18,
+          shadowColor: 'rgba(250, 204, 21, 0.72)',
+        },
+        label: {
+          show: false,
+        },
+      },
+      {
+        name: '事件位置',
+        type: 'scatter',
+        coordinateSystem: 'geo',
+        data: markerLayers,
+        zlevel: 3,
+        z: 3,
+        symbolSize: (value: number[]) => Math.max(12, Math.min(28, Math.sqrt(value[2] || 1) * 1.8)),
+        itemStyle: {
+          color: '#ffe58f',
+          borderColor: '#fff',
+          borderWidth: 2,
+          shadowBlur: 12,
+          shadowColor: 'rgba(255, 214, 102, 0.5)',
+        },
+        label: {
+          show: true,
+          formatter: '{b}',
+          position: 'right',
+          color: '#f8fafc',
+          fontSize: 12,
+          fontWeight: 600,
+          backgroundColor: 'rgba(8, 13, 33, 0.72)',
+          borderColor: 'rgba(56, 189, 248, 0.56)',
+          borderWidth: 1,
+          borderRadius: 4,
+          padding: [4, 6],
+        },
+      },
+    ],
+  }
+}
+
+async function renderMap() {
+  await nextTick()
+  if (!mapRef.value || mapRef.value.offsetWidth === 0 || mapRef.value.offsetHeight === 0) return
+  try {
+    await ensureWorldMap()
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : '世界底图加载失败'
+    loadError.value = detail
+    message.warning('世界底图加载失败')
+    return
+  }
+  if (!chart) {
+    chart = echarts.init(mapRef.value)
+  }
+  chart.setOption(buildMapOption(mapPoints.value), true)
+  chart.resize()
+}
+
+async function loadOverview() {
+  loading.value = true
+  loadError.value = ''
+  try {
+    const params = eventId.value.trim() ? { event_id: eventId.value.trim() } : undefined
+    const res = await getDashboardOverview(params) as { data: DashboardOverview }
+    overview.value = res.data
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : '看板数据加载失败'
+    loadError.value = `无法加载真实看板数据：${detail}`
+    overview.value = null
+    message.warning('监测看板数据加载失败')
+  } finally {
+    loading.value = false
+    await renderMap()
+  }
+}
+
+function resizeChart() {
+  chart?.resize()
+}
+
+watch(mapPoints, () => {
+  void renderMap()
+})
+
+watch(loading, (value) => {
+  if (!value) {
+    void renderMap()
+  }
+})
+
+onMounted(() => {
+  void renderMap()
+  void loadOverview()
+  window.addEventListener('resize', resizeChart)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', resizeChart)
+  chart?.dispose()
+  chart = null
+})
 </script>
+
+<style scoped lang="less">
+.dashboard-page {
+  color: #1f2329;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.event-input {
+  width: min(420px, 100%);
+}
+
+.generated-at {
+  color: #86909c;
+  font-size: 12px;
+}
+
+.status-alert {
+  margin-bottom: 16px;
+}
+
+.stat-grid,
+.main-grid,
+.detail-grid {
+  margin-bottom: 16px;
+}
+
+.stat-card {
+  min-height: 112px;
+}
+
+.stat-title {
+  color: #667085;
+  font-size: 13px;
+}
+
+.stat-value {
+  margin-top: 8px;
+  font-size: 30px;
+  line-height: 36px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.stat-note {
+  margin-top: 8px;
+  color: #86909c;
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.map-shell {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  gap: 12px;
+  padding: 12px;
+  min-height: 460px;
+  overflow: hidden;
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 50% 112%, rgba(69, 103, 200, 0.22), transparent 30%),
+    radial-gradient(circle at 18% 24%, rgba(14, 165, 233, 0.18), transparent 26%),
+    radial-gradient(circle at 70% 34%, rgba(59, 130, 246, 0.14), transparent 30%),
+    linear-gradient(180deg, #081229 0%, #071127 54%, #050b1e 100%);
+  box-shadow: inset 0 0 0 1px rgba(96, 165, 250, 0.12), inset 0 -80px 140px rgba(9, 16, 38, 0.72);
+}
+
+.map-shell::before {
+  position: absolute;
+  inset: 0;
+  content: '';
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(96, 165, 250, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(96, 165, 250, 0.07) 1px, transparent 1px);
+  background-size: 42px 42px;
+  mask-image: radial-gradient(circle at center, black 0%, transparent 78%);
+}
+
+.map-canvas {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 460px;
+  width: 100%;
+}
+
+.heatmap-panel {
+  position: relative;
+  align-self: flex-end;
+  flex: 0 0 180px;
+  width: 180px;
+  height: 132px;
+  padding: 8px;
+  border-radius: 8px;
+  background: rgba(4, 10, 33, 0.76);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(96, 165, 250, 0.18);
+  z-index: 3;
+}
+
+.heatmap-title {
+  color: #dbeafe;
+  font-size: 12px;
+  margin-bottom: 10px;
+}
+
+.heatmap-bar {
+  width: 100%;
+  height: 14px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #113b8f 0%, #3ef0ff 32%, #fff36a 62%, #ff8a00 82%, #ff3b30 100%);
+  box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.22);
+}
+
+.heatmap-scale {
+  margin-top: 8px;
+  display: flex;
+  justify-content: space-between;
+  color: #dbeafe;
+  font-size: 11px;
+}
+
+.heatmap-note {
+  margin-top: 6px;
+  color: rgba(219, 234, 254, 0.72);
+  font-size: 11px;
+}
+
+@media (max-width: 1280px) {
+  .map-shell {
+    flex-direction: column;
+  }
+
+  .map-canvas {
+    height: 420px;
+  }
+
+  .heatmap-panel {
+    flex-basis: auto;
+    width: 100%;
+    height: 132px;
+    align-self: stretch;
+  }
+}
+
+.event-cell-title {
+  font-weight: 600;
+}
+
+.event-cell-meta {
+  margin-top: 2px;
+  color: #86909c;
+  font-size: 12px;
+}
+
+.recent-list {
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.recent-item {
+  width: 100%;
+}
+
+.recent-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #86909c;
+  font-size: 12px;
+  margin-bottom: 4px;
+  flex-wrap: wrap;
+}
+
+.recent-content {
+  color: #1f2329;
+  line-height: 1.6;
+  word-break: break-word;
+}
+</style>

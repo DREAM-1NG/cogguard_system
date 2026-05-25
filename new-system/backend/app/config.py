@@ -6,9 +6,11 @@ MySQL / MongoDB / Redis / JWT 等所有配置项，并暴露组装后的
 """
 
 from pathlib import Path
-from pydantic_settings import BaseSettings
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+PROJECT_ROOT = BASE_DIR.parent
 
 
 class Settings(BaseSettings):
@@ -57,6 +59,18 @@ class Settings(BaseSettings):
     MEDIACRAWLER_COOKIES: str = ""
     # uv 可执行文件名（Windows 可为 uv.cmd）
     MEDIACRAWLER_UV_BIN: str = "uv"
+    # MediaCrawler 使用的 Python 解释器；为空时回退到当前后端 Python
+    MEDIACRAWLER_PYTHON_BIN: str = ""
+    # Node.js 安装目录（例如 D:/node）；会在 MediaCrawler 子进程里注入 PATH
+    MEDIACRAWLER_NODE_DIR: str = ""
+    # uv 缓存目录；Windows 上可指向项目本地目录以避开用户缓存权限问题
+    MEDIACRAWLER_UV_CACHE_DIR: str = ""
+    # 宿主机本地 HTTP/SOCKS 代理；Clash Verge TUN/fake-ip 模式下建议填 http://127.0.0.1:7897
+    MEDIACRAWLER_PROXY: str = ""
+    # 是否抓取二级评论（MediaCrawler 当前支持的评论树上限）
+    MEDIACRAWLER_GET_SUB_COMMENTS: bool = False
+    # 单条帖子最多抓取多少条评论（含一级评论与可选二级评论）
+    MEDIACRAWLER_MAX_COMMENTS_PER_POST: int = 200
 
     # NewsCrawler：HTTP 方式，填写新闻提取 API 根地址，例如 http://127.0.0.1:8020
     NEWSCRAWLER_API_BASE: str = ""
@@ -96,7 +110,10 @@ class Settings(BaseSettings):
             f"@{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
         )
 
-    model_config = {"env_file": str(BASE_DIR / ".env"), "extra": "ignore"}
+    model_config = SettingsConfigDict(
+        env_file=(str(PROJECT_ROOT / ".env"), str(BASE_DIR / ".env")),
+        extra="ignore",
+    )
 
 
 settings = Settings()

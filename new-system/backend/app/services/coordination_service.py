@@ -1,15 +1,82 @@
-"""协同检测业务逻辑服务。
-
-从 MongoDB 读取已采集数据，运行协同检测算法，返回网络和统计结果。
-"""
+"""Coordination detection service."""
 
 from __future__ import annotations
 
+from typing import Any
+
 import pandas as pd
 
-from app.core.coordination import detect_groups, generate_coordinated_network, account_stats, group_stats
+from app.core.coordination import account_stats, detect_groups, generate_coordinated_network, group_stats
 from app.core.coordination.network import graph_to_dict
 from app.db.mongodb import get_mongo_db
+from app.services.event_data import build_event_filter, load_event_posts
+
+
+def _summary(
+    *,
+    event_id: str | None,
+    platform: str | None,
+    total_posts: int,
+    total_pairs: int = 0,
+    coordinated_accounts: int = 0,
+    coordinated_edges: int = 0,
+    components: int = 0,
+    clusters: int = 0,
+) -> dict[str, Any]:
+    return {
+        "event_id": event_id,
+        "platform": platform,
+        "total_posts": total_posts,
+        "total_pairs": total_pairs,
+        "coordinated_accounts": coordinated_accounts,
+        "coordinated_edges": coordinated_edges,
+        "components": components,
+        "cluster_count": clusters,
+    }
+
+
+def _empty_result(event_id: str | None, platform: str | None, total_posts: int, *, error: str | None = None) -> dict:
+    result = {
+        "network": {
+            "nodes": [],
+            "edges": [],
+            "node_count": 0,
+            "edge_count": 0,
+            "component_count": 0,
+            "components": [],
+            "cluster_count": 0,
+            "clusters": [],
+        },
+        "account_stats": [],
+        "group_stats": [],
+        "summary": _summary(event_id=event_id, platform=platform, total_posts=total_posts),
+        "cluster_stats": [],
+    }
+    if error:
+        result["error"] = error
+    return result
+
+
+def _iter_values(value: Any) -> list[str]:
+    if value is None:
+        return []
+    if isinstance(value, str):
+        return [value] if value else []
+    if isinstance(value, dict):
+        return [str(item) for item in value.values() if item]
+    if isinstance(value, (list, tuple, set)):
+        return [str(item) for item in value if item]
+    return [str(value)]
+
+
+def _shared_objects(post: dict[str, Any]) -> list[str]:
+    objects: list[str] = []
+    objects.extend(_iter_values(post.get("hashtags")))
+    url = post.get("url")
+    if url:
+        objects.append(str(url))
+    objects.extend(_iter_values(post.get("media_urls")))
+    return list(dict.fromkeys(objects))
 
 
 async def run_coordination_detection(
@@ -17,74 +84,69 @@ async def run_coordination_detection(
     min_participation: int = 2,
     edge_weight: float = 0.5,
     platform: str | None = None,
+    event_id: str | None = None,
 ) -> dict:
-    """对已采集数据执行协同检测，返回完整分析结果。"""
+    """Run coordination detection over optionally event-scoped MongoDB posts."""
     mongo_db = get_mongo_db()
-
-    mongo_filter: dict = {}
-    if platform:
-        mongo_filter["platform"] = platform
-
-    cursor = mongo_db["raw_posts"].find(mongo_filter, {"_id": 0})
-    posts = await cursor.to_list(length=10000)
+    posts = await load_event_posts(mongo_db, event_id=event_id, platform=platform)
 
     if not posts:
-        return {"error": "没有可分析的数据，请先执行数据采集"}
+        return _empty_result(
+            event_id,
+            platform,
+            0,
+            error="No analyzable posts found. Run data collection or choose another event/platform.",
+        )
 
     rows = []
-    for p in posts:
-        obj_ids = []
-        for tag in p.get("hashtags", []):
-            obj_ids.append(tag)
-        url = p.get("url", "")
-        if url:
-            obj_ids.append(url)
-        if not obj_ids:
-            continue
+    for post in posts:
+        timestamp = post.get("timestamp")
+        if isinstance(timestamp, str):
+            timestamp = pd.Timestamp(timestamp).timestamp()
+        elif hasattr(timestamp, "timestamp"):
+            timestamp = timestamp.timestamp()
 
-        ts = p.get("timestamp")
-        if isinstance(ts, str):
-            ts = pd.Timestamp(ts).timestamp()
-        elif hasattr(ts, "timestamp"):
-            ts = ts.timestamp()
-
-        for obj_id in obj_ids:
-            rows.append({
-                "object_id": obj_id,
-                "account_id": p.get("author_id", ""),
-                "content_id": p.get("post_id", ""),
-                "timestamp_share": ts,
-            })
+        for object_id in _shared_objects(post):
+            rows.append(
+                {
+                    "object_id": object_id,
+                    "account_id": post.get("author_id", ""),
+                    "content_id": post.get("post_id", ""),
+                    "timestamp_share": timestamp,
+                }
+            )
 
     if not rows:
-        return {"error": "数据中没有可分析的共享对象（URL/标签）"}
+        return _empty_result(
+            event_id,
+            platform,
+            len(posts),
+            error="Posts do not contain analyzable shared objects (hashtags, URLs, or media URLs).",
+        )
 
-    df = pd.DataFrame(rows)
+    pairs = detect_groups(pd.DataFrame(rows), time_window=time_window, min_participation=min_participation)
+    if pairs.empty:
+        return _empty_result(event_id, platform, len(posts))
 
-    result = detect_groups(df, time_window=time_window, min_participation=min_participation)
-
-    if result.empty:
-        return {
-            "network": {"nodes": [], "edges": [], "node_count": 0, "edge_count": 0, "component_count": 0, "components": []},
-            "account_stats": [],
-            "group_stats": [],
-            "summary": {"total_posts": len(posts), "total_pairs": 0, "coordinated_accounts": 0},
-        }
-
-    G = generate_coordinated_network(result, edge_weight=edge_weight)
-    network_data = graph_to_dict(G)
-    a_stats = account_stats(G, result)
-    g_stats = group_stats(G, result)
+    graph = generate_coordinated_network(pairs, edge_weight=edge_weight)
+    network_data = graph_to_dict(graph)
+    account_data = account_stats(graph, pairs)
+    group_data = group_stats(graph, pairs)
+    cluster_data = network_data.get("clusters", [])
 
     return {
         "network": network_data,
-        "account_stats": a_stats.to_dict(orient="records"),
-        "group_stats": g_stats.to_dict(orient="records"),
-        "summary": {
-            "total_posts": len(posts),
-            "total_pairs": len(result),
-            "coordinated_accounts": G.number_of_nodes(),
-            "coordinated_edges": G.number_of_edges(),
-            "components": network_data["component_count"],
-        },
+        "account_stats": account_data.to_dict(orient="records"),
+        "group_stats": group_data.to_dict(orient="records"),
+        "cluster_stats": cluster_data,
+        "summary": _summary(
+            event_id=event_id,
+            platform=platform,
+            total_posts=len(posts),
+            total_pairs=len(pairs),
+            coordinated_accounts=graph.number_of_nodes(),
+            coordinated_edges=graph.number_of_edges(),
+            components=network_data["component_count"],
+            clusters=network_data["cluster_count"],
+        ),
     }

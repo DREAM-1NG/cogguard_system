@@ -1,14 +1,10 @@
-"""风险研判业务逻辑服务。
-
-编排完整风险评估流水线：
-  上游数据 → 证据构建 → 阶段检测 → D-S 融合 → DISARM 评分 → 报告生成 → 持久化
-"""
+"""Risk assessment orchestration service."""
 
 from __future__ import annotations
 
 import json
 
-from sqlalchemy import select, func, desc
+from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.risk.disarm_scorer import score_attack_path_full
@@ -17,7 +13,7 @@ from app.core.risk.evidence_builder import build_evidence_pack
 from app.core.risk.phase_detector import detect_phase
 from app.core.risk.report_builder import build_report
 from app.models.risk_assessment import RiskAssessment
-from app.services import coordination_service, propagation_service, account_service
+from app.services import account_service, coordination_service, propagation_service
 
 
 async def assess_risk(
@@ -27,35 +23,27 @@ async def assess_risk(
     edge_weight: float = 0.5,
     user_id: int = 0,
     db: AsyncSession | None = None,
+    event_id: str | None = None,
 ) -> dict:
-    """执行完整风险评估流水线。"""
-
-    # 1. 调用上游服务
+    """Run the full risk assessment pipeline over one optional event scope."""
     coord_data = await coordination_service.run_coordination_detection(
         time_window=time_window,
         min_participation=min_participation,
         edge_weight=edge_weight,
         platform=platform,
+        event_id=event_id,
     )
-    prop_data = await propagation_service.analyze_propagation(platform=platform)
-    acct_data = await account_service.get_account_profiles(platform=platform)
+    prop_data = await propagation_service.analyze_propagation(platform=platform, event_id=event_id)
+    acct_data = await account_service.get_account_profiles(platform=platform, event_id=event_id)
 
-    # 2. 构建证据包
     evidence_pack = build_evidence_pack(coord_data, prop_data, acct_data)
-
-    # 3. 阶段检测
     phase_result = detect_phase(evidence_pack)
-
-    # 4. D-S 证据融合
     fusion_result = fuse_evidence(evidence_pack, phase_result)
-
-    # 5. DISARM 攻击路径评分
     disarm_result = score_attack_path_full(evidence_pack, phase_result, fusion_result)
 
-    # 6. 组装报告
-    event_id = platform or "all_platforms"
+    report_event_id = event_id or platform or "all_platforms"
     report = build_report(
-        event_id=event_id,
+        event_id=report_event_id,
         platform=platform or "all",
         evidence_pack=evidence_pack,
         phase_result=phase_result,
@@ -63,7 +51,6 @@ async def assess_risk(
         disarm_result=disarm_result,
     )
 
-    # 7. 持久化到 MySQL
     if db is not None:
         scores = report["scores"]
         phase = report["phase"]
@@ -99,14 +86,18 @@ async def list_reports(
     page: int = 1,
     page_size: int = 20,
     db: AsyncSession | None = None,
+    event_id: str | None = None,
 ) -> tuple[list[dict], int]:
-    """查询历史风险报告列表。"""
+    """List persisted risk reports, optionally filtered by event/platform."""
     if db is None:
         return [], 0
 
     stmt = select(RiskAssessment)
     count_stmt = select(func.count(RiskAssessment.id))
 
+    if event_id:
+        stmt = stmt.where(RiskAssessment.event_id == event_id)
+        count_stmt = count_stmt.where(RiskAssessment.event_id == event_id)
     if platform:
         stmt = stmt.where(RiskAssessment.platform == platform)
         count_stmt = count_stmt.where(RiskAssessment.platform == platform)
@@ -127,24 +118,24 @@ async def list_reports(
 
     items = [
         {
-            "report_id": r.report_id,
-            "event_id": r.event_id,
-            "platform": r.platform,
-            "assessed_at": r.assessed_at.isoformat() if r.assessed_at else None,
-            "overall_risk_score": r.overall_risk_score,
-            "risk_level": r.risk_level,
-            "current_phase": r.current_phase,
-            "conflict_mass": r.conflict_mass,
-            "escalation_required": bool(r.escalation_required),
-            "attack_path_score": r.attack_path_score,
+            "report_id": row.report_id,
+            "event_id": row.event_id,
+            "platform": row.platform,
+            "assessed_at": row.assessed_at.isoformat() if row.assessed_at else None,
+            "overall_risk_score": row.overall_risk_score,
+            "risk_level": row.risk_level,
+            "current_phase": row.current_phase,
+            "conflict_mass": row.conflict_mass,
+            "escalation_required": bool(row.escalation_required),
+            "attack_path_score": row.attack_path_score,
         }
-        for r in rows
+        for row in rows
     ]
     return items, total
 
 
 async def get_report_detail(report_id: str, db: AsyncSession) -> dict | None:
-    """获取单个报告的完整 JSON。"""
+    """Return the full JSON payload for one persisted risk report."""
     stmt = select(RiskAssessment).where(RiskAssessment.report_id == report_id)
     result = await db.execute(stmt)
     row = result.scalar_one_or_none()

@@ -10,6 +10,7 @@
 
 import asyncio
 import os
+import warnings
 from collections.abc import AsyncGenerator
 
 import pytest
@@ -56,6 +57,24 @@ def event_loop():
     loop = asyncio.new_event_loop()
     yield loop
     loop.close()
+
+
+@pytest.fixture(autouse=True)
+def ensure_default_event_loop():
+    """Keep legacy get_event_loop() tests working after asyncio.run() closes a loop."""
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", DeprecationWarning)
+            asyncio.get_event_loop()
+    except RuntimeError:
+        asyncio.set_event_loop(asyncio.new_event_loop())
+    yield
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", DeprecationWarning)
+            asyncio.get_event_loop()
+    except RuntimeError:
+        asyncio.set_event_loop(asyncio.new_event_loop())
 
 
 @pytest.fixture
