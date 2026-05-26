@@ -41,10 +41,11 @@ def detect_groups(
 
     data = df[list(required)].copy()
     data["timestamp_share"] = pd.to_numeric(data["timestamp_share"], errors="coerce")
+    data = data.dropna(subset=["timestamp_share"])
 
     if min_participation >= 1:
-        counts = data.groupby("account_id")["content_id"].transform("count")
-        data = data[counts >= min_participation].copy()
+        active_accounts = _active_accounts_by_unique_content(data, min_participation)
+        data = data[data["account_id"].isin(active_accounts)].copy()
 
     if data.empty:
         return _empty_result()
@@ -163,11 +164,17 @@ def _filter_min_participation(
         return result
     content_ids = set(result["content_id"]).union(result["content_id_y"])
     filtered = original[original["content_id"].isin(content_ids)]
-    active = filtered.groupby("account_id").filter(lambda g: len(g) >= min_participation)
-    valid_cids = set(active["content_id"])
+    active_accounts = _active_accounts_by_unique_content(filtered, min_participation)
     return result[
-        result["content_id"].isin(valid_cids) | result["content_id_y"].isin(valid_cids)
+        result["account_id"].isin(active_accounts) & result["account_id_y"].isin(active_accounts)
     ]
+
+
+def _active_accounts_by_unique_content(data: pd.DataFrame, min_participation: int) -> set[str]:
+    if data.empty:
+        return set()
+    counts = data.groupby("account_id")["content_id"].nunique()
+    return set(counts[counts >= min_participation].index.astype(str))
 
 
 def _empty_result() -> pd.DataFrame:

@@ -32,6 +32,51 @@ COGGUARD_TO_MEDIA: dict[str, tuple[str, str]] = {
 }
 
 COMMENT_SORT_OPTIONS = {"none", "like_count_desc", "reply_count_desc"}
+# Match standard ASCII URL characters so text parsing stops before CJK punctuation and prose.
+URL_PATTERN = re.compile(r"https?://[A-Za-z0-9._~:/?#\[\]@!$&'()*+,;=%-]+", re.IGNORECASE)
+HASHTAG_BLOCK_PATTERN = re.compile(r"#([^#\r\n]{1,64})#")
+HASHTAG_WORD_PATTERN = re.compile(r"(?<!\w)#([A-Za-z0-9_\-\u4e00-\u9fff]{1,64})")
+SHARED_URL_FIELD_KEYS = {
+    "shared_urls",
+    "share_url",
+    "content_url",
+    "link_url",
+    "jump_url",
+    "web_url",
+    "copy_link",
+    "short_url",
+    "schema",
+}
+SHARED_URL_CONTAINER_KEYS = {
+    "share",
+    "share_info",
+    "share_data",
+    "share_link",
+    "link",
+    "link_info",
+    "link_data",
+    "card",
+    "card_info",
+    "external",
+    "external_link",
+    "attachment",
+    "attachments",
+    "quote",
+    "quoted",
+    "jump",
+    "web",
+}
+SHARED_URL_EXCLUDED_KEYS = {
+    "avatar",
+    "profile_url",
+    "note_url",
+    "aweme_url",
+    "cover_url",
+    "video_url",
+    "video_download_url",
+    "music_download_url",
+    "note_download_url",
+}
 
 
 @dataclass
@@ -131,6 +176,32 @@ def _split_string_values(value: str) -> list[str]:
             return [str(item).strip() for item in parsed if str(item).strip()]
     parts = re.split(r"[\n,;|]+", text)
     return [part.strip() for part in parts if part.strip()]
+
+
+def _extract_text_urls(text: str | None) -> list[str]:
+    if not text:
+        return []
+    urls: list[str] = []
+    for match in URL_PATTERN.findall(text):
+        normalized = _normalize_url(match.rstrip(".,!?;:'\")]}>"))
+        if normalized:
+            urls.append(normalized)
+    return _unique_preserve_order(urls)
+
+
+def _extract_text_hashtags(text: str | None) -> list[str]:
+    if not text:
+        return []
+    hashtags: list[str] = []
+    for match in HASHTAG_BLOCK_PATTERN.findall(text):
+        tag = match.strip()
+        if tag:
+            hashtags.append(tag)
+    for match in HASHTAG_WORD_PATTERN.findall(text):
+        tag = match.strip()
+        if tag:
+            hashtags.append(tag)
+    return _unique_preserve_order(hashtags)
 
 
 def _collect_media_urls(target: list[str], value: Any) -> None:
@@ -323,6 +394,67 @@ def _extract_hashtags(raw: dict[str, Any]) -> list[str]:
     return []
 
 
+def _normalize_key_name(value: Any) -> str:
+    return str(value).strip().lower()
+
+
+def _is_shared_url_container(key: str) -> bool:
+    if key in SHARED_URL_CONTAINER_KEYS or key in SHARED_URL_FIELD_KEYS:
+        return True
+    return key.endswith(("_card", "_info", "_link", "_attachment"))
+
+
+def _should_collect_shared_url_value(key: str, parent_key: str | None = None) -> bool:
+    if key in SHARED_URL_FIELD_KEYS:
+        return True
+    return key in {"url", "urls"} and bool(parent_key) and _is_shared_url_container(parent_key)
+
+
+def _collect_nested_shared_urls(
+    target: list[str],
+    value: Any,
+    *,
+    parent_key: str | None = None,
+    depth: int = 0,
+) -> None:
+    if value is None or depth > 4:
+        return
+    if isinstance(value, dict):
+        for key, nested_value in value.items():
+            key_name = _normalize_key_name(key)
+            if _should_collect_shared_url_value(key_name, parent_key):
+                _collect_media_urls(target, nested_value)
+                if isinstance(nested_value, str):
+                    target.extend(_extract_text_urls(nested_value))
+            if _is_shared_url_container(key_name):
+                _collect_nested_shared_urls(target, nested_value, parent_key=key_name, depth=depth + 1)
+        return
+    if isinstance(value, (list, tuple, set)):
+        for nested_value in value:
+            _collect_nested_shared_urls(target, nested_value, parent_key=parent_key, depth=depth + 1)
+
+
+def _shared_url_exclusions(raw: dict[str, Any]) -> set[str]:
+    excluded: list[str] = []
+    for key in SHARED_URL_EXCLUDED_KEYS:
+        _collect_media_urls(excluded, raw.get(key))
+    excluded.extend(_extract_media_urls(raw))
+    return set(_unique_preserve_order(excluded))
+
+
+def _extract_shared_urls(raw: dict[str, Any], text: str | None = None) -> list[str]:
+    collected: list[str] = []
+    for key in ("shared_urls", "url", "urls", "share_url", "content_url", "link_url", "jump_url", "web_url"):
+        raw_value = raw.get(key)
+        _collect_media_urls(collected, raw_value)
+        if isinstance(raw_value, str):
+            collected.extend(_extract_text_urls(raw_value))
+    _collect_nested_shared_urls(collected, raw)
+    collected.extend(_extract_text_urls(text))
+    exclusions = _shared_url_exclusions(raw)
+    return [url for url in _unique_preserve_order(collected) if url not in exclusions]
+
+
 def _extract_author_profile(raw: dict[str, Any]) -> dict[str, Any] | None:
     profile: dict[str, Any] = {}
     for key in (
@@ -429,6 +561,7 @@ def _build_standard_comment(
     post_id: str,
     content: str,
 ) -> StandardComment:
+    comment_hashtags = _unique_preserve_order(_extract_hashtags(raw) + _extract_text_hashtags(content))
     return StandardComment(
         platform=cogguard_platform,
         comment_id=comment_id,
@@ -457,7 +590,9 @@ def _build_standard_comment(
             comment_id,
         ),
         likes=_to_int(raw.get("comment_like_count"), raw.get("like_count"), raw.get("liked_count")),
+        shared_urls=_extract_shared_urls(raw, content),
         media_urls=_extract_media_urls(raw),
+        hashtags=comment_hashtags,
         sub_comment_count=_to_int(raw.get("sub_comment_count")),
         author_profile=_extract_author_profile(raw),
         raw_data=raw,
@@ -547,6 +682,7 @@ class MediaSocialCrawler(BaseCrawler):
         self.recursive_comments = False
         self.enrich_author_profiles = False
         self.comment_sort = "none"
+        self.max_comments_per_post = max(1, settings.MEDIACRAWLER_MAX_COMMENTS_PER_POST)
         self.crawl_metadata: dict[str, Any] = self._build_crawl_metadata()
 
     def _build_crawl_metadata(
@@ -558,11 +694,12 @@ class MediaSocialCrawler(BaseCrawler):
         metadata: dict[str, Any] = {
             "recursive_comments_requested": self.recursive_comments,
             "recursive_comments_supported": False,
-            "effective_comment_depth": 2 if settings.MEDIACRAWLER_GET_SUB_COMMENTS else 1,
+            "effective_comment_depth": 2 if self.recursive_comments else 1,
             "author_profile_enrichment_requested": self.enrich_author_profiles,
             "author_profile_enrichment_supported": False,
             "author_profile_source": "search_result_payload",
             "comment_sort": self.comment_sort,
+            "max_comments_per_post": self.max_comments_per_post,
             "execution_mode": "direct_mediacrawler_cli",
             "ingestion_mode": "jsonl_delta",
         }
@@ -578,12 +715,15 @@ class MediaSocialCrawler(BaseCrawler):
         recursive_comments: bool = False,
         enrich_author_profiles: bool = False,
         comment_sort: str = "none",
+        max_comments_per_post: int | None = None,
     ) -> None:
         if comment_sort not in COMMENT_SORT_OPTIONS:
             raise ValueError(f"Unsupported comment_sort: {comment_sort!r}")
         self.recursive_comments = recursive_comments
         self.enrich_author_profiles = enrich_author_profiles
         self.comment_sort = comment_sort
+        if max_comments_per_post is not None and max_comments_per_post > 0:
+            self.max_comments_per_post = max_comments_per_post
         self.crawl_metadata = self._build_crawl_metadata()
 
     def _build_command(self, runtime_python: str | None, uv_bin: str | None, keywords: list[str]) -> list[str]:
@@ -616,9 +756,9 @@ class MediaSocialCrawler(BaseCrawler):
                 "--get_comment",
                 "yes",
                 "--get_sub_comment",
-                "yes" if settings.MEDIACRAWLER_GET_SUB_COMMENTS else "no",
+                "yes" if self.recursive_comments else "no",
                 "--max_comments_count_singlenotes",
-                str(max(1, settings.MEDIACRAWLER_MAX_COMMENTS_PER_POST)),
+                str(max(1, self.max_comments_per_post)),
                 "--save_data_option",
                 "jsonl",
             ]

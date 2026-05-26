@@ -1,6 +1,8 @@
 import asyncio
 
 import pandas as pd
+import pytest
+from httpx import AsyncClient
 
 from app.services import account_service, coordination_service, propagation_service, risk_service
 from app.api.v1 import coordination as coordination_api
@@ -30,13 +32,26 @@ class FakeMongoDB(dict):
     pass
 
 
-def _post(event_id, platform, post_id, author_id, timestamp, *, hashtags=None, media_urls=None):
+class FakeMotorStyleDB:
+    def __init__(self, collections):
+        self.collections = collections
+
+    def __getitem__(self, name):
+        return self.collections[name]
+
+    def __getattr__(self, name):
+        if name == "get":
+            return self.collections.get(name)
+        raise AttributeError(name)
+
+
+def _post(event_id, platform, post_id, author_id, timestamp, *, hashtags=None, media_urls=None, author_name=None):
     return {
         "event_id": event_id,
         "platform": platform,
         "post_id": post_id,
         "author_id": author_id,
-        "author_name": author_id,
+        "author_name": author_name or author_id,
         "timestamp": timestamp,
         "content": f"content {post_id}",
         "url": "https://example.com/shared",
@@ -45,6 +60,36 @@ def _post(event_id, platform, post_id, author_id, timestamp, *, hashtags=None, m
         "likes": 1,
         "reposts": 0,
         "comments_count": 0,
+    }
+
+
+def _comment(
+    event_id,
+    platform,
+    comment_id,
+    post_id,
+    author_id,
+    timestamp,
+    *,
+    hashtags=None,
+    media_urls=None,
+    shared_urls=None,
+    author_name=None,
+):
+    return {
+        "event_id": event_id,
+        "platform": platform,
+        "comment_id": comment_id,
+        "post_id": post_id,
+        "author_id": author_id,
+        "author_name": author_name or author_id,
+        "timestamp": timestamp,
+        "content": f"content {comment_id}",
+        "hashtags": hashtags or [],
+        "shared_urls": shared_urls or [],
+        "media_urls": media_urls or [],
+        "likes": 1,
+        "sub_comment_count": 0,
     }
 
 
@@ -87,7 +132,187 @@ def test_build_event_filter_combines_event_id_and_platform():
     assert coordination_service.build_event_filter(None, None) == {}
 
 
+def test_load_event_posts_uses_item_access_for_motor_style_db():
+    rows = [{"post_id": "p1"}]
+    fake_db = FakeMotorStyleDB({"raw_posts": FakeCollection(rows), "get": FakeCollection([])})
+
+    result = asyncio.run(coordination_service.load_event_posts(fake_db))
+
+    assert result == rows
+
+
 def test_coordination_detection_filters_by_event_and_includes_metadata(monkeypatch):
+    posts = [
+        _post(
+            "event-1",
+            "weibo",
+            "p1",
+            "u1",
+            "2026-05-21T00:00:00+00:00",
+            media_urls=["https://img/a.jpg"],
+            author_name="账号甲",
+        ),
+        _post(
+            "event-1",
+            "weibo",
+            "p2",
+            "u2",
+            "2026-05-21T00:00:20+00:00",
+            media_urls=["https://img/a.jpg"],
+            author_name="账号乙",
+        ),
+    ]
+    comments = [
+        _comment(
+            "event-1",
+            "weibo",
+            "c1",
+            "p1",
+            "u3",
+            "2026-05-21T00:00:15+00:00",
+            hashtags=["coord-tag"],
+            shared_urls=["https://coord.example/shared"],
+            author_name="评论账号丙",
+        )
+    ]
+    raw_posts = FakeCollection(posts)
+    raw_comments = FakeCollection(comments)
+    fake_db = FakeMongoDB(raw_posts=raw_posts, raw_comments=raw_comments)
+    monkeypatch.setattr(coordination_service, "get_mongo_db", lambda: fake_db)
+
+    result = asyncio.run(
+        coordination_service.run_coordination_detection(
+            event_id="event-1",
+            platform="weibo",
+            time_window=60,
+            min_participation=1,
+        )
+    )
+
+    assert raw_posts.calls[0]["query"] == {"event_id": "event-1", "platform": "weibo"}
+    assert raw_comments.calls[0]["query"] == {"event_id": "event-1", "platform": "weibo"}
+    assert result["summary"]["event_id"] == "event-1"
+    assert result["summary"]["platform"] == "weibo"
+    assert result["summary"]["total_posts"] == 2
+    assert result["summary"]["total_comments"] == 1
+    assert result["summary"]["total_items"] == 3
+    assert result["summary"]["total_pairs"] >= 1
+    assert "cluster_count" in result["summary"]
+    assert "cluster_stats" in result
+    assert all("first_seen_at" in node for node in result["network"]["nodes"])
+    assert all("coordinated_object_count" in node for node in result["network"]["nodes"])
+    assert any(node.get("account_label") == "账号甲" for node in result["network"]["nodes"])
+    assert all("shared_objects_preview" in node for node in result["network"]["nodes"])
+    assert any(edge.get("shared_objects_preview") for edge in result["network"]["edges"])
+    assert any(edge.get("shared_content_previews") for edge in result["network"]["edges"])
+    assert result["account_stats"][0]["account_label"]
+    assert "shared_objects_preview" in result["account_stats"][0]
+    assert result["group_stats"][0]["object_type"] in {"话题", "链接", "图片"}
+    assert "core_nodes" in result["cluster_stats"][0]
+    assert "bridge_nodes" in result["cluster_stats"][0]
+    assert "early_nodes" in result["cluster_stats"][0]
+    assert "shared_objects_preview" in result["cluster_stats"][0]
+
+
+def test_coordination_detection_supports_comment_only_shared_objects(monkeypatch):
+    comments = [
+        _comment(
+            "event-1",
+            "weibo",
+            "c1",
+            "p1",
+            "u1",
+            "2026-05-21T00:00:00+00:00",
+            hashtags=["coord-tag"],
+            shared_urls=["https://coord.example/shared"],
+        ),
+        _comment(
+            "event-1",
+            "weibo",
+            "c2",
+            "p1",
+            "u2",
+            "2026-05-21T00:00:20+00:00",
+            hashtags=["coord-tag"],
+            shared_urls=["https://coord.example/shared"],
+        ),
+    ]
+    raw_posts = FakeCollection([])
+    raw_comments = FakeCollection(comments)
+    fake_db = FakeMongoDB(raw_posts=raw_posts, raw_comments=raw_comments)
+    monkeypatch.setattr(coordination_service, "get_mongo_db", lambda: fake_db)
+
+    result = asyncio.run(
+        coordination_service.run_coordination_detection(
+            event_id="event-1",
+            platform="weibo",
+            time_window=60,
+            min_participation=1,
+        )
+    )
+
+    assert raw_comments.calls[0]["query"] == {"event_id": "event-1", "platform": "weibo"}
+    assert result["summary"]["total_posts"] == 0
+    assert result["summary"]["total_comments"] == 2
+    assert result["summary"]["total_items"] == 2
+    assert result["summary"]["total_pairs"] >= 1
+    assert {node["id"] for node in result["network"]["nodes"]} == {"u1", "u2"}
+    assert {row["object_id"] for row in result["group_stats"]} == {
+        "coord-tag",
+        "https://coord.example/shared",
+    }
+
+
+def test_coordination_detection_extracts_account_labels_from_nested_profile_fields(monkeypatch):
+    first = _post(
+        "event-1",
+        "weibo",
+        "p1",
+        "u1",
+        "2026-05-21T00:00:00+00:00",
+        media_urls=["https://img/a.jpg"],
+        author_name="",
+    )
+    first["author_profile"] = {"screen_name": "账号甲"}
+
+    second = _post(
+        "event-1",
+        "weibo",
+        "p2",
+        "u2",
+        "2026-05-21T00:00:18+00:00",
+        media_urls=["https://img/a.jpg"],
+        author_name="",
+    )
+    second["raw_data"] = {
+        "mblog": {
+            "user": {
+                "screen_name": "账号乙",
+            }
+        }
+    }
+
+    raw_posts = FakeCollection([first, second])
+    raw_comments = FakeCollection([])
+    fake_db = FakeMongoDB(raw_posts=raw_posts, raw_comments=raw_comments)
+    monkeypatch.setattr(coordination_service, "get_mongo_db", lambda: fake_db)
+
+    result = asyncio.run(
+        coordination_service.run_coordination_detection(
+            event_id="event-1",
+            platform="weibo",
+            time_window=60,
+            min_participation=1,
+        )
+    )
+
+    node_map = {node["id"]: node for node in result["network"]["nodes"]}
+    assert node_map["u1"]["account_label"] == "账号甲"
+    assert node_map["u2"]["account_label"] == "账号乙"
+    assert {row["account_label"] for row in result["account_stats"]} == {"账号甲", "账号乙"}
+
+
+def test_coordination_detection_tolerates_missing_comment_collection(monkeypatch):
     posts = [
         _post("event-1", "weibo", "p1", "u1", "2026-05-21T00:00:00+00:00", media_urls=["https://img/a.jpg"]),
         _post("event-1", "weibo", "p2", "u2", "2026-05-21T00:00:20+00:00", media_urls=["https://img/a.jpg"]),
@@ -101,16 +326,12 @@ def test_coordination_detection_filters_by_event_and_includes_metadata(monkeypat
             event_id="event-1",
             platform="weibo",
             time_window=60,
+            min_participation=1,
         )
     )
 
-    assert raw_posts.calls[0]["query"] == {"event_id": "event-1", "platform": "weibo"}
-    assert result["summary"]["event_id"] == "event-1"
-    assert result["summary"]["platform"] == "weibo"
-    assert result["summary"]["total_posts"] == 2
+    assert result["summary"]["total_comments"] == 0
     assert result["summary"]["total_pairs"] >= 1
-    assert "cluster_count" in result["summary"]
-    assert "cluster_stats" in result
 
 
 def test_generate_network_adds_cluster_annotations():
@@ -122,7 +343,12 @@ def test_generate_network_adds_cluster_annotations():
     assert all("cluster_id" in node for node in network["nodes"])
     assert all("cluster_size" in node for node in network["nodes"])
     assert all("cluster_degree" in node for node in network["nodes"])
+    assert all("cross_cluster_edge_count" in node for node in network["nodes"])
+    assert all("bridge_score" in node for node in network["nodes"])
     assert any(cluster["members"] for cluster in network["clusters"])
+    assert all("core_nodes" in cluster for cluster in network["clusters"])
+    assert all("bridge_nodes" in cluster for cluster in network["clusters"])
+    assert all("early_nodes" in cluster for cluster in network["clusters"])
 
 
 def test_generate_network_handles_isolates_and_single_edges():
@@ -150,6 +376,49 @@ def test_generate_network_handles_isolates_and_single_edges():
     assert "u9" not in {node["id"] for node in network["nodes"]}
     assert network["component_count"] == 1
     assert network["cluster_count"] == 1
+
+
+@pytest.mark.asyncio
+async def test_coordination_api_allows_preview_token_without_db_user(client: AsyncClient, monkeypatch):
+    calls = {}
+
+    async def fake_run_coordination_detection(**kwargs):
+        calls.update(kwargs)
+        return {
+            "network": {
+                "nodes": [{"id": "u1", "cluster_id": 0, "cluster_size": 2, "cluster_degree": 2}],
+                "edges": [{"source": "u1", "target": "u2", "weight": 1.5}],
+                "node_count": 2,
+                "edge_count": 1,
+                "component_count": 1,
+                "components": [["u1", "u2"]],
+                "cluster_count": 1,
+                "clusters": [{"cluster_id": 0, "size": 2, "members": ["u1", "u2"]}],
+            },
+            "account_stats": [],
+            "group_stats": [],
+            "cluster_stats": [{"cluster_id": 0, "size": 2, "members": ["u1", "u2"]}],
+            "summary": {"coordinated_accounts": 2, "cluster_count": 1},
+        }
+
+    monkeypatch.setattr(
+        coordination_api.coordination_service,
+        "run_coordination_detection",
+        fake_run_coordination_detection,
+    )
+
+    client.headers["Authorization"] = "Bearer cogguard-preview-token"
+    response = await client.post("/api/v1/coordination/detect?time_window=45&min_participation=1&edge_weight=0.4")
+
+    assert response.status_code == 200
+    assert calls == {
+        "time_window": 45,
+        "min_participation": 1,
+        "edge_weight": 0.4,
+        "platform": None,
+        "event_id": None,
+    }
+    assert response.json()["data"]["summary"]["coordinated_accounts"] == 2
 
 
 def test_propagation_analysis_filters_posts_and_comments_by_event(monkeypatch):

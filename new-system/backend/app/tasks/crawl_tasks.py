@@ -7,6 +7,8 @@ import asyncio
 import json
 import traceback
 
+from pymongo import UpdateOne
+
 from app.celery_app import celery_app
 from app.core.crawler.factory import build_crawler
 from app.core.crawler.news import NewsExtractCrawler
@@ -21,6 +23,7 @@ def apply_crawl_options(crawler, params: dict) -> None:
             recursive_comments=bool(params.get("recursive_comments", False)),
             enrich_author_profiles=bool(params.get("enrich_author_profiles", False)),
             comment_sort=str(params.get("comment_sort", "none") or "none"),
+            max_comments_per_post=int(params.get("max_comments_per_post") or 0) or None,
         )
 
 
@@ -33,8 +36,63 @@ def _run_async(coro):
         loop.close()
 
 
-@celery_app.task(name="crawl.execute", bind=True)
-def execute_crawl_job(self, job_id: int, params_json: str):
+def _first_keyword(params: dict) -> str | None:
+    keywords = params.get("keywords") or []
+    for keyword in keywords:
+        text = str(keyword).strip()
+        if text:
+            return text
+    return None
+
+
+def _resolve_event_id(params: dict, job_id: int) -> str:
+    event_id = str(params.get("event_id") or "").strip()
+    return event_id or f"crawl_job_{job_id}"
+
+
+def _resolve_source_keyword(params: dict) -> str:
+    return str(params.get("source_keyword") or _first_keyword(params) or "").strip()
+
+
+def prepare_crawl_document(
+    data: dict,
+    *,
+    params: dict,
+    job_id: int,
+    item_type: str,
+    crawl_metadata: dict,
+) -> dict:
+    """Attach event metadata and deterministic dedupe keys before MongoDB writes."""
+    document = dict(data)
+    platform = str(document.get("platform") or params.get("platform") or "")
+    item_id = str(document.get("post_id") if item_type == "post" else document.get("comment_id") or "")
+    event_id = _resolve_event_id(params, job_id)
+
+    document["crawl_job_id"] = job_id
+    document["event_id"] = event_id
+    document["source_keyword"] = _resolve_source_keyword(params)
+    document["crawl_metadata"] = crawl_metadata
+    if platform and item_id:
+        document["dedupe_key"] = f"{event_id}:{platform}:{item_type}:{item_id}"
+    return document
+
+
+async def _write_documents(collection, documents: list[dict]) -> None:
+    if not documents:
+        return
+    if all(document.get("dedupe_key") for document in documents):
+        await collection.bulk_write(
+            [
+                UpdateOne({"dedupe_key": document["dedupe_key"]}, {"$set": document}, upsert=True)
+                for document in documents
+            ],
+            ordered=False,
+        )
+        return
+    await collection.insert_many(documents)
+
+
+def run_crawl_job(job_id: int, params_json: str):
     params = json.loads(params_json)
     platform = params.get("platform", "mock_weibo")
     keywords = params.get("keywords", [])
@@ -52,22 +110,30 @@ def execute_crawl_job(self, job_id: int, params_json: str):
 
             post_dicts = []
             for post in batch.posts:
-                data = post.model_dump(mode="json")
-                data["crawl_job_id"] = job_id
-                data["crawl_metadata"] = crawler.crawl_metadata
-                post_dicts.append(data)
-            if post_dicts:
-                await mongo_db["raw_posts"].insert_many(post_dicts)
+                post_dicts.append(
+                    prepare_crawl_document(
+                        post.model_dump(mode="json"),
+                        params=params,
+                        job_id=job_id,
+                        item_type="post",
+                        crawl_metadata=crawler.crawl_metadata,
+                    )
+                )
+            await _write_documents(mongo_db["raw_posts"], post_dicts)
 
             all_comments: list = []
             if crawl_comments:
                 for comment in batch.comments:
-                    data = comment.model_dump(mode="json")
-                    data["crawl_job_id"] = job_id
-                    data["crawl_metadata"] = crawler.crawl_metadata
-                    all_comments.append(data)
-                if all_comments:
-                    await mongo_db["raw_comments"].insert_many(all_comments)
+                    all_comments.append(
+                        prepare_crawl_document(
+                            comment.model_dump(mode="json"),
+                            params=params,
+                            job_id=job_id,
+                            item_type="comment",
+                            crawl_metadata=crawler.crawl_metadata,
+                        )
+                    )
+                await _write_documents(mongo_db["raw_comments"], all_comments)
 
             return {
                 "posts_count": len(post_dicts),
@@ -83,12 +149,17 @@ def execute_crawl_job(self, job_id: int, params_json: str):
 
         post_dicts = []
         for post in posts:
-            data = post.model_dump(mode="json")
-            data["crawl_job_id"] = job_id
-            post_dicts.append(data)
+            post_dicts.append(
+                prepare_crawl_document(
+                    post.model_dump(mode="json"),
+                    params=params,
+                    job_id=job_id,
+                    item_type="post",
+                    crawl_metadata={},
+                )
+            )
 
-        if post_dicts:
-            await mongo_db["raw_posts"].insert_many(post_dicts)
+        await _write_documents(mongo_db["raw_posts"], post_dicts)
 
         all_comments: list = []
         if crawl_comments:
@@ -98,11 +169,16 @@ def execute_crawl_job(self, job_id: int, params_json: str):
                 for post in posts[:10]:
                     comments = await crawler.fetch_comments(post.post_id)
                     for comment in comments:
-                        data = comment.model_dump(mode="json")
-                        data["crawl_job_id"] = job_id
-                        all_comments.append(data)
-            if all_comments:
-                await mongo_db["raw_comments"].insert_many(all_comments)
+                        all_comments.append(
+                            prepare_crawl_document(
+                                comment.model_dump(mode="json"),
+                                params=params,
+                                job_id=job_id,
+                                item_type="comment",
+                                crawl_metadata={},
+                            )
+                        )
+            await _write_documents(mongo_db["raw_comments"], all_comments)
 
         return {
             "posts_count": len(post_dicts),
@@ -120,6 +196,11 @@ def execute_crawl_job(self, job_id: int, params_json: str):
 
     _update_job_in_db(job_id, "completed", 100, json.dumps(result, ensure_ascii=False))
     return result
+
+
+@celery_app.task(name="crawl.execute", bind=True)
+def execute_crawl_job(self, job_id: int, params_json: str):
+    return run_crawl_job(job_id, params_json)
 
 
 def _update_job_in_db(job_id: int, status: str, progress: int, result_summary: str | None = None):

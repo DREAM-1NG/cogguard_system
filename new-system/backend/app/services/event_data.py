@@ -17,6 +17,17 @@ def build_event_filter(event_id: str | None = None, platform: str | None = None)
     return mongo_filter
 
 
+def _get_collection(mongo_db: Any, collection_name: str) -> Any | None:
+    if isinstance(mongo_db, dict):
+        collection = mongo_db.get(collection_name)
+        if collection is not None:
+            return collection
+    try:
+        return mongo_db[collection_name]
+    except (KeyError, TypeError):
+        return None
+
+
 async def load_event_posts(
     mongo_db: Any,
     *,
@@ -24,7 +35,10 @@ async def load_event_posts(
     platform: str | None = None,
     limit: int = POST_ANALYSIS_LIMIT,
 ) -> list[dict[str, Any]]:
-    cursor = mongo_db["raw_posts"].find(build_event_filter(event_id, platform), {"_id": 0})
+    collection = _get_collection(mongo_db, "raw_posts")
+    if collection is None:
+        return []
+    cursor = collection.find(build_event_filter(event_id, platform), {"_id": 0})
     return await cursor.to_list(length=limit)
 
 
@@ -35,7 +49,10 @@ async def load_event_comments(
     platform: str | None = None,
     limit: int = COMMENT_ANALYSIS_LIMIT,
 ) -> list[dict[str, Any]]:
-    cursor = mongo_db["raw_comments"].find(build_event_filter(event_id, platform), {"_id": 0})
+    collection = _get_collection(mongo_db, "raw_comments")
+    if collection is None:
+        return []
+    cursor = collection.find(build_event_filter(event_id, platform), {"_id": 0})
     return await cursor.to_list(length=limit)
 
 

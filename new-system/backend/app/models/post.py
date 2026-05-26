@@ -40,7 +40,9 @@ class StandardComment(BaseModel):
     timestamp: datetime
     reply_to: str | None = None
     likes: int = 0
+    shared_urls: list[str] = Field(default_factory=list)
     media_urls: list[str] = Field(default_factory=list)
+    hashtags: list[str] = Field(default_factory=list)
     sub_comment_count: int = 0
     author_profile: dict | None = None
     crawl_job_id: int | None = None

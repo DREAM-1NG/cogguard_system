@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections import defaultdict
+from collections import Counter
 
 import networkx as nx
 import numpy as np
@@ -169,9 +169,27 @@ def _annotate_communities(G: nx.Graph) -> None:
     for node in G.nodes():
         cluster_id = node_to_cluster.get(str(node), -1)
         cluster_members = clusters[cluster_id] if cluster_id >= 0 and cluster_id < len(clusters) else {node}
+        weighted_degree = int(G.degree(node, weight="weight"))
+        intra_cluster_weight = 0
+        cross_cluster_weight = 0
+        cross_cluster_edge_count = 0
+        for neighbor in G.neighbors(node):
+            edge_weight = int(G.edges[node, neighbor].get("weight", 0))
+            if node_to_cluster.get(str(neighbor), -1) == cluster_id:
+                intra_cluster_weight += edge_weight
+            else:
+                cross_cluster_weight += edge_weight
+                cross_cluster_edge_count += 1
         G.nodes[node]["cluster_id"] = cluster_id
         G.nodes[node]["cluster_size"] = len(cluster_members)
-        G.nodes[node]["cluster_degree"] = int(G.degree(node, weight="weight"))
+        G.nodes[node]["cluster_degree"] = weighted_degree
+        G.nodes[node]["weighted_degree"] = weighted_degree
+        G.nodes[node]["intra_cluster_weight"] = intra_cluster_weight
+        G.nodes[node]["cross_cluster_weight"] = cross_cluster_weight
+        G.nodes[node]["cross_cluster_edge_count"] = cross_cluster_edge_count
+        G.nodes[node]["bridge_score"] = (
+            round(cross_cluster_weight / weighted_degree, 4) if weighted_degree > 0 else 0
+        )
 
 
 def _cluster_sets(G: nx.Graph) -> list[set[str]]:
@@ -209,7 +227,19 @@ def _cluster_summary(G: nx.Graph) -> list[dict]:
     summaries: list[dict] = []
     for cluster_id, members in enumerate(clusters):
         subgraph = G.subgraph(members)
-        degree_map = {str(node): int(G.degree(node, weight="weight")) for node in members}
+        degree_map = {
+            str(node): int(G.nodes[node].get("cluster_degree", G.degree(node, weight="weight")))
+            for node in members
+        }
+        external_edges = [
+            (str(u), str(v), data)
+            for u, v, data in G.edges(members, data=True)
+            if (str(u) in members) ^ (str(v) in members)
+        ]
+        core_nodes = _rank_cluster_core_nodes(G, members)
+        bridge_nodes = _rank_cluster_bridge_nodes(G, members)
+        early_nodes = _rank_cluster_early_nodes(G, members)
+        shared_objects = _rank_cluster_shared_objects(G, members)
         summaries.append(
             {
                 "cluster_id": cluster_id,
@@ -217,14 +247,127 @@ def _cluster_summary(G: nx.Graph) -> list[dict]:
                 "members": [str(node) for node in sorted(members)],
                 "edge_count": subgraph.number_of_edges(),
                 "total_weight": int(sum(d.get("weight", 0) for _, _, d in subgraph.edges(data=True))),
+                "external_edge_count": len(external_edges),
+                "external_weight": int(sum(data.get("weight", 0) for _, _, data in external_edges)),
                 "avg_degree": round(sum(degree_map.values()) / len(degree_map), 4) if degree_map else 0,
-                "top_nodes": [
-                    {
-                        "account_id": node,
-                        "cluster_degree": degree,
-                    }
-                    for node, degree in sorted(degree_map.items(), key=lambda item: (-item[1], item[0]))[:5]
-                ],
+                "top_nodes": core_nodes,
+                "core_nodes": core_nodes,
+                "bridge_nodes": bridge_nodes,
+                "early_nodes": early_nodes,
+                "shared_objects": shared_objects,
+                "shared_objects_preview": [item.get("preview", "") for item in shared_objects],
             }
         )
     return summaries
+
+
+def _rank_cluster_core_nodes(G: nx.Graph, members: set[str], limit: int = 5) -> list[dict]:
+    ranked = sorted(
+        (str(node) for node in members),
+        key=lambda node: (
+            -int(G.nodes[node].get("cluster_degree", 0)),
+            -int(G.nodes[node].get("intra_cluster_weight", 0)),
+            -int(G.nodes[node].get("cross_cluster_weight", 0)),
+            node,
+        ),
+    )
+    return [
+        {
+            "account_id": node,
+            "account_label": G.nodes[node].get("account_label", node),
+            "cluster_degree": int(G.nodes[node].get("cluster_degree", 0)),
+            "intra_cluster_weight": int(G.nodes[node].get("intra_cluster_weight", 0)),
+            "cross_cluster_weight": int(G.nodes[node].get("cross_cluster_weight", 0)),
+            "bridge_score": float(G.nodes[node].get("bridge_score", 0)),
+            "shared_objects_preview": G.nodes[node].get("shared_objects_preview", [])[:3],
+        }
+        for node in ranked[:limit]
+    ]
+
+
+def _rank_cluster_bridge_nodes(G: nx.Graph, members: set[str], limit: int = 5) -> list[dict]:
+    ranked = sorted(
+        (
+            str(node)
+            for node in members
+            if int(G.nodes[node].get("cross_cluster_edge_count", 0)) > 0
+        ),
+        key=lambda node: (
+            -int(G.nodes[node].get("cross_cluster_weight", 0)),
+            -int(G.nodes[node].get("cross_cluster_edge_count", 0)),
+            -float(G.nodes[node].get("bridge_score", 0)),
+            -int(G.nodes[node].get("cluster_degree", 0)),
+            node,
+        ),
+    )
+    return [
+        {
+            "account_id": node,
+            "account_label": G.nodes[node].get("account_label", node),
+            "cross_cluster_weight": int(G.nodes[node].get("cross_cluster_weight", 0)),
+            "cross_cluster_edge_count": int(G.nodes[node].get("cross_cluster_edge_count", 0)),
+            "bridge_score": float(G.nodes[node].get("bridge_score", 0)),
+            "cluster_degree": int(G.nodes[node].get("cluster_degree", 0)),
+            "shared_objects_preview": G.nodes[node].get("shared_objects_preview", [])[:3],
+        }
+        for node in ranked[:limit]
+    ]
+
+
+def _rank_cluster_early_nodes(G: nx.Graph, members: set[str], limit: int = 5) -> list[dict]:
+    ranked = sorted(
+        (
+            str(node)
+            for node in members
+            if G.nodes[node].get("first_seen_ts") is not None
+        ),
+        key=lambda node: (
+            float(G.nodes[node].get("first_seen_ts", 0)),
+            -int(G.nodes[node].get("cluster_degree", 0)),
+            node,
+        ),
+    )
+    return [
+        {
+            "account_id": node,
+            "account_label": G.nodes[node].get("account_label", node),
+            "first_seen_ts": float(G.nodes[node].get("first_seen_ts", 0)),
+            "first_seen_at": G.nodes[node].get("first_seen_at"),
+            "cluster_degree": int(G.nodes[node].get("cluster_degree", 0)),
+            "coordinated_object_count": int(G.nodes[node].get("coordinated_object_count", 0)),
+            "coordinated_content_count": int(G.nodes[node].get("coordinated_content_count", 0)),
+            "shared_objects_preview": G.nodes[node].get("shared_objects_preview", [])[:3],
+        }
+        for node in ranked[:limit]
+    ]
+
+
+def _rank_cluster_shared_objects(G: nx.Graph, members: set[str], limit: int = 5) -> list[dict]:
+    object_counter: Counter[str] = Counter()
+    for node in members:
+        for entry in G.nodes[node].get("shared_object_entries", []):
+            object_id = str(entry.get("object_id") or "").strip()
+            if object_id:
+                object_counter[object_id] += int(entry.get("count", 0))
+
+    ranked: list[dict] = []
+    for object_id, count in object_counter.most_common(limit):
+        preview = ""
+        object_type = "内容"
+        for node in members:
+            for entry in G.nodes[node].get("shared_object_entries", []):
+                if str(entry.get("object_id") or "").strip() == object_id:
+                    preview = entry.get("preview", object_id)
+                    object_type = entry.get("object_type", object_type)
+                    break
+            if preview:
+                break
+        ranked.append(
+            {
+                "object_id": object_id,
+                "object_type": object_type,
+                "count": int(count),
+                "preview": preview or object_id,
+            }
+        )
+    return ranked

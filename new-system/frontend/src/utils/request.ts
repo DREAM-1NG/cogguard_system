@@ -26,13 +26,17 @@ request.interceptors.response.use(
   },
   (error) => {
     const isPreviewMode = localStorage.getItem('cogguard_preview') === '1'
+    const requestUrl = String(error.config?.url || '')
+    const suppressPreviewAuthToast = isPreviewMode && requestUrl.includes('/coordination/detect')
     if (error.response?.status === 401) {
       if (!isPreviewMode) {
         localStorage.removeItem('access_token')
         localStorage.removeItem('refresh_token')
         router.push('/login')
       }
-      message.error(isPreviewMode ? '预览态接口需要真实登录或数据库服务' : '登录已过期，请重新登录')
+      if (!suppressPreviewAuthToast) {
+        message.error(isPreviewMode ? '预览态接口需要真实登录或数据库服务' : '登录已过期，请重新登录')
+      }
     } else {
       message.error(error.response?.data?.msg || error.message || '网络错误')
     }

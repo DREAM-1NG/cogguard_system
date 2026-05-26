@@ -14,9 +14,16 @@ export function getPlatforms() {
 export function createCrawlJob(data: {
   platform: string
   keywords?: string[]
+  event_id?: string
+  source_keyword?: string
   post_ids?: string[]
   max_posts?: number
   crawl_comments?: boolean
+  recursive_comments?: boolean
+  enrich_author_profiles?: boolean
+  comment_sort?: 'none' | 'like_count_desc' | 'reply_count_desc'
+  max_comments_per_post?: number
+  execution_mode?: 'local' | 'queued'
 }) {
   return request.post('/crawl/social', data)
 }

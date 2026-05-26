@@ -10,11 +10,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
-from app.db.mysql import get_db
+from app.db.mysql import async_session_factory, get_db
 from app.models.user import User
 from app.utils.exceptions import AuthError
 
 security_scheme = HTTPBearer()
+optional_security_scheme = HTTPBearer(auto_error=False)
 PREVIEW_ACCESS_TOKEN = "cogguard-preview-token"
 
 
@@ -96,3 +97,18 @@ async def get_current_user_or_preview(
     if token == PREVIEW_ACCESS_TOKEN:
         return await _get_preview_backing_user(db)
     return await _resolve_user_from_token(token, db)
+
+
+async def get_current_user_or_local_preview(
+    credentials: HTTPAuthorizationCredentials | None = Depends(optional_security_scheme),
+) -> User | None:
+    """Allow the local preview token without forcing a backing DB user lookup."""
+    if credentials is None:
+        raise AuthError(msg="Authentication required")
+
+    token = credentials.credentials
+    if token == PREVIEW_ACCESS_TOKEN:
+        return None
+
+    async with async_session_factory() as session:
+        return await _resolve_user_from_token(token, session)

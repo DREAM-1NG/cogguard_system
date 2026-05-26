@@ -98,7 +98,7 @@ const menuItems = [
   { path: '/', label: '监测看板', icon: DashboardOutlined, desc: '系统概览：任务统计、风险趋势、数据总量', disabled: false },
   { path: '/crawl', label: '数据采集', icon: CloudDownloadOutlined, desc: '创建采集任务，管理多平台数据抓取', disabled: false },
   { path: '/coordination', label: '协同检测', icon: ApartmentOutlined, desc: '检测时间窗口内的协调分享行为，构建协同网络', disabled: false },
-  { path: '/propagation', label: '传播归因', icon: ShareAltOutlined, desc: '分析信息传播路径，识别起爆/桥接/扩散关键角色', disabled: false },
+  { path: '/propagation', label: '传播监控', icon: ShareAltOutlined, desc: '查看趋势预测、证据链与关键传播角色，汇总当前传播监控能力', disabled: false },
   { path: '/accounts', label: '账户监测', icon: UserOutlined, desc: '账户行为画像、作息节律、自动化倾向评估', disabled: false },
   { path: '/risk', label: '风险研判', icon: AlertOutlined, desc: '阶段感知风险评估、D-S 证据融合、DISARM 攻击路径分析', disabled: false },
 ]

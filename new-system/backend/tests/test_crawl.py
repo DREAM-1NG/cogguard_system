@@ -3,6 +3,7 @@
 import pytest
 from httpx import AsyncClient
 
+from app.api.v1 import crawl as crawl_api
 from app.core.crawler.mock import MockCrawler
 from app.core.crawler.normalizer import DataNormalizer
 from app.models.task import CrawlJob
@@ -159,3 +160,35 @@ async def test_preview_token_can_read_crawl_jobs(setup_database, client: AsyncCl
     assert response.status_code == 200
     items = response.json()["data"]["items"]
     assert any(item["platform"] == "douyin" for item in items)
+
+
+@pytest.mark.asyncio
+@needs_db
+async def test_create_crawl_job_local_execution_schedules_backend_task(
+    setup_database, auth_client: AsyncClient, monkeypatch
+):
+    calls = []
+
+    def fake_run_crawl_job(job_id: int, params_json: str):
+        calls.append((job_id, params_json))
+
+    monkeypatch.setattr(crawl_api, "run_crawl_job", fake_run_crawl_job)
+
+    response = await auth_client.post(
+        "/api/v1/crawl/social",
+        json={
+            "platform": "mock_weibo",
+            "keywords": ["前端任务"],
+            "event_id": "frontend_smoke",
+            "max_posts": 2,
+            "crawl_comments": False,
+            "execution_mode": "local",
+        },
+    )
+
+    assert response.status_code == 200
+    data = response.json()["data"]
+    assert data["status"] == "running"
+    assert data["celery_task_id"].startswith("local:")
+    assert calls
+    assert '"execution_mode": "local"' in calls[0][1]

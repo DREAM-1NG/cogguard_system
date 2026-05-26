@@ -1,6 +1,6 @@
 """Data collection API routes."""
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import get_current_user, get_current_user_or_preview
@@ -8,7 +8,7 @@ from app.db.mysql import get_db
 from app.models.user import User
 from app.schemas.crawl import CrawlDataQuery, CrawlJobResponse, CrawlRequest
 from app.services import crawl_service
-from app.tasks.crawl_tasks import execute_crawl_job
+from app.tasks.crawl_tasks import execute_crawl_job, run_crawl_job
 from app.utils.response import success
 
 router = APIRouter()
@@ -50,19 +50,28 @@ async def list_platforms():
 @router.post("/social")
 async def create_social_crawl(
     req: CrawlRequest,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_or_preview),
 ):
     job = await crawl_service.create_crawl_job(req, current_user.id, db)
-    task = execute_crawl_job.delay(job.id, job.params_json)
+
+    celery_task_id = f"local:{job.id}"
+    if req.execution_mode == "queued":
+        task = execute_crawl_job.delay(job.id, job.params_json)
+        celery_task_id = task.id
+    else:
+        background_tasks.add_task(run_crawl_job, job.id, job.params_json)
 
     await crawl_service.update_job_status(
         job.id,
         "running",
         db,
         progress=0,
-        celery_task_id=task.id,
+        celery_task_id=celery_task_id,
     )
+    await db.commit()
+    await db.refresh(job)
 
     return success(data=CrawlJobResponse.model_validate(job).model_dump(mode="json"))
 

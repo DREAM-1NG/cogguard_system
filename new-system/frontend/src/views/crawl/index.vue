@@ -10,16 +10,16 @@
       type="info"
       show-icon
       style="margin-bottom: 16px"
-      message="预览态已接入真实历史采集数据"
-      description="当前支持浏览历史采集任务和帖子数据；创建、取消、删除采集任务仍需要切换到真实登录。"
+      message="预览态已接入真实历史采集数据与本地任务执行"
+      description="可以创建本地后台采集任务；取消和删除仍建议切换真实登录后操作。"
     />
 
     <a-card title="创建采集任务" size="small" style="margin-bottom: 16px">
-      <a-form layout="inline" :model="crawlForm" @finish="handleCreateJob">
+      <a-form layout="vertical" :model="crawlForm" @finish="handleCreateJob">
+        <div class="crawl-form-grid">
         <a-form-item label="平台">
           <a-select
             v-model:value="crawlForm.platform"
-            style="width: 180px"
             placeholder="选择平台"
           >
             <a-select-option
@@ -33,11 +33,31 @@
           </a-select>
         </a-form-item>
 
+        <a-form-item label="事件 ID">
+          <a-input
+            v-model:value="crawlForm.event_id"
+            placeholder="例如 trump_visit_2026_05_21；留空则按任务生成"
+          />
+        </a-form-item>
+
+        <a-form-item label="执行方式">
+          <a-segmented
+            v-model:value="crawlForm.execution_mode"
+            :options="executionModeOptions"
+          />
+        </a-form-item>
+
         <a-form-item label="关键词">
           <a-input
             v-model:value="keywordsInput"
-            placeholder="社交平台按逗号分隔；新闻平台可留空"
-            style="width: 260px"
+            placeholder="多个关键词用逗号分隔"
+          />
+        </a-form-item>
+
+        <a-form-item label="主关键词">
+          <a-input
+            v-model:value="crawlForm.source_keyword"
+            placeholder="留空则使用第一个关键词"
           />
         </a-form-item>
 
@@ -46,24 +66,60 @@
             v-model:value="postIdsInput"
             placeholder="新闻平台可填写每行一条 http(s) 链接"
             :rows="2"
-            style="width: 320px"
           />
         </a-form-item>
 
         <a-form-item label="最大帖子数">
-          <a-input-number v-model:value="crawlForm.max_posts" :min="1" :max="1000" />
+          <a-input-number
+            v-model:value="crawlForm.max_posts"
+            :min="1"
+            :max="1000"
+            style="width: 100%"
+          />
         </a-form-item>
 
-        <a-form-item>
+        <a-form-item label="单帖评论上限">
+          <a-input-number
+            v-model:value="crawlForm.max_comments_per_post"
+            :min="0"
+            :max="5000"
+            style="width: 100%"
+          />
+        </a-form-item>
+
+        <a-form-item label="评论排序">
+          <a-select v-model:value="crawlForm.comment_sort">
+            <a-select-option value="none">默认顺序</a-select-option>
+            <a-select-option value="like_count_desc">按点赞数降序</a-select-option>
+            <a-select-option value="reply_count_desc">按回复数降序</a-select-option>
+          </a-select>
+        </a-form-item>
+
+        <a-form-item label="抓取评论">
+          <a-switch v-model:checked="crawlForm.crawl_comments" />
+        </a-form-item>
+
+        <a-form-item label="二级评论">
+          <a-switch
+            v-model:checked="crawlForm.recursive_comments"
+            :disabled="!crawlForm.crawl_comments"
+          />
+        </a-form-item>
+
+        <a-form-item label="作者画像">
+          <a-switch v-model:checked="crawlForm.enrich_author_profiles" />
+        </a-form-item>
+
+        <a-form-item class="crawl-form-submit">
           <a-button
             type="primary"
             html-type="submit"
             :loading="creating"
-            :disabled="isPreviewMode"
           >
             开始采集
           </a-button>
         </a-form-item>
+        </div>
       </a-form>
     </a-card>
 
@@ -142,7 +198,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import PageHeader from '@/components/PageHeader.vue'
 import TableSettings from '@/components/TableSettings.vue'
@@ -162,6 +218,7 @@ interface PlatformOption {
   id: string
   name: string
   status: string
+  hint?: string
 }
 
 interface CrawlJobItem {
@@ -195,8 +252,15 @@ const keywordsInput = ref('')
 const postIdsInput = ref('')
 const crawlForm = reactive({
   platform: 'mock_weibo',
+  event_id: '',
+  source_keyword: '',
   max_posts: 50,
+  max_comments_per_post: 200,
   crawl_comments: true,
+  recursive_comments: true,
+  enrich_author_profiles: false,
+  comment_sort: 'none' as 'none' | 'like_count_desc' | 'reply_count_desc',
+  execution_mode: 'local' as 'local' | 'queued',
 })
 
 const jobs = ref<CrawlJobItem[]>([])
@@ -204,6 +268,12 @@ const loadingJobs = ref(false)
 const postData = ref<PostItem[]>([])
 const postTotal = ref(0)
 const loadingData = ref(false)
+let refreshTimer: number | undefined
+
+const executionModeOptions = [
+  { label: '本地后台执行', value: 'local' },
+  { label: 'Celery 队列', value: 'queued' },
+]
 
 const jobColumns = [
   { title: 'ID', dataIndex: 'id', key: 'id', width: 72 },
@@ -236,11 +306,6 @@ function statusColor(status: string) {
 }
 
 async function handleCreateJob() {
-  if (isPreviewMode.value) {
-    message.info('预览态仅支持查看历史采集数据，请切换真实登录后创建任务')
-    return
-  }
-
   creating.value = true
   try {
     const keywords = keywordsInput.value
@@ -253,16 +318,36 @@ async function handleCreateJob() {
       .map((item) => item.trim())
       .filter((item) => item.startsWith('http://') || item.startsWith('https://'))
 
+    if (crawlForm.platform === 'news' && post_ids.length === 0) {
+      message.warning('新闻采集需要填写至少一条 http(s) 链接')
+      return
+    }
+    if (crawlForm.platform !== 'news' && keywords.length === 0) {
+      message.warning('社交平台采集需要填写至少一个关键词')
+      return
+    }
+
     await createCrawlJob({
       platform: crawlForm.platform,
       keywords,
+      event_id: crawlForm.event_id.trim() || undefined,
+      source_keyword: crawlForm.source_keyword.trim() || keywords[0],
       post_ids,
       max_posts: crawlForm.max_posts,
       crawl_comments: crawlForm.crawl_comments,
+      recursive_comments: crawlForm.crawl_comments && crawlForm.recursive_comments,
+      enrich_author_profiles: crawlForm.enrich_author_profiles,
+      comment_sort: crawlForm.comment_sort,
+      max_comments_per_post: crawlForm.max_comments_per_post,
+      execution_mode: crawlForm.execution_mode,
     })
 
-    message.success('采集任务已创建')
+    message.success(crawlForm.execution_mode === 'local' ? '采集任务已在本地后台启动' : '采集任务已投递队列')
     await fetchJobs()
+    window.setTimeout(() => {
+      void fetchJobs()
+      void fetchData()
+    }, 1500)
   } finally {
     creating.value = false
   }
@@ -323,5 +408,30 @@ onMounted(async () => {
   platforms.value = response.data
   void fetchJobs()
   void fetchData()
+  refreshTimer = window.setInterval(() => {
+    if (jobs.value.some((job) => job.status === 'pending' || job.status === 'running')) {
+      void fetchJobs()
+      void fetchData()
+    }
+  }, 5000)
+})
+
+onUnmounted(() => {
+  if (refreshTimer !== undefined) {
+    window.clearInterval(refreshTimer)
+  }
 })
 </script>
+
+<style scoped>
+.crawl-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px 16px;
+  align-items: end;
+}
+
+.crawl-form-submit {
+  align-self: end;
+}
+</style>

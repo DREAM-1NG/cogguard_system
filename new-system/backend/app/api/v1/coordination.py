@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, Depends, Query
 
-from app.core.security import get_current_user
+from app.core.security import get_current_user_or_local_preview
 from app.models.user import User
 from app.services import coordination_service
 from app.utils.response import success
@@ -17,7 +17,7 @@ async def run_detection(
     edge_weight: float = Query(0.5, ge=0, le=1, description="边权百分位阈值"),
     platform: str | None = Query(None, description="限定平台"),
     event_id: str | None = Query(None, description="限定事件 ID"),
-    _current_user: User = Depends(get_current_user),
+    _current_user: User | None = Depends(get_current_user_or_local_preview),
 ):
     result = await coordination_service.run_coordination_detection(
         time_window=time_window,

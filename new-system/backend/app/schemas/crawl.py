@@ -9,6 +9,14 @@ class CrawlRequest(BaseModel):
     """创建采集任务的请求体。"""
     platform: str = Field(..., description="平台名称: mock_weibo / weibo / news / ...")
     keywords: list[str] = Field(default_factory=list, description="搜索关键词列表（社交）；新闻平台可填 URL")
+    event_id: str | None = Field(
+        default=None,
+        description="事件标识；用于多平台同一事件数据对齐与去重，例如 trump_visit_2026_05_21。",
+    )
+    source_keyword: str | None = Field(
+        default=None,
+        description="本次采集的主关键词；未填写时默认使用 keywords[0]。",
+    )
     post_ids: list[str] = Field(
         default_factory=list,
         description="指定帖子/文章 URL 列表（新闻平台必填至少一条 http(s) 链接）",
@@ -28,6 +36,17 @@ class CrawlRequest(BaseModel):
         pattern="^(none|like_count_desc|reply_count_desc)$",
         description="评论入库排序：none / like_count_desc / reply_count_desc。",
     )
+    max_comments_per_post: int = Field(
+        default=200,
+        ge=0,
+        le=5000,
+        description="单条帖子最多抓取评论数；0 表示不额外限制并由爬虫默认策略决定。",
+    )
+    execution_mode: str = Field(
+        default="local",
+        pattern="^(local|queued)$",
+        description="任务执行方式：local=FastAPI 本地后台执行；queued=投递 Celery 队列。",
+    )
 
 
 class CrawlJobResponse(BaseModel):
@@ -38,6 +57,7 @@ class CrawlJobResponse(BaseModel):
     status: str
     progress: int
     result_summary: str | None
+    celery_task_id: str | None
     created_at: datetime
     finished_at: datetime | None
 

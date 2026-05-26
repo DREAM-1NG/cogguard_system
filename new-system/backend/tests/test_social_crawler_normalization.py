@@ -14,16 +14,16 @@ from app.core.crawler.social import (
 
 def test_media_social_crawler_build_command_includes_sub_comments_and_comment_cap(monkeypatch):
     crawler = MediaSocialCrawler("xhs")
+    crawler.configure_runtime_options(recursive_comments=True, max_comments_per_post=1000)
     monkeypatch.setattr(settings, "MEDIACRAWLER_LOGIN_TYPE", "cookie")
     monkeypatch.setattr(settings, "MEDIACRAWLER_COOKIES", "sid=abc")
-    monkeypatch.setattr(settings, "MEDIACRAWLER_GET_SUB_COMMENTS", True)
     monkeypatch.setattr(settings, "MEDIACRAWLER_MAX_COMMENTS_PER_POST", 200)
 
     cmd = crawler._build_command("G:/mc/.venv/Scripts/python.exe", None, ["事件A", " 事件B "])
 
     assert cmd[:2] == ["G:/mc/.venv/Scripts/python.exe", "main.py"]
     assert cmd[cmd.index("--get_sub_comment") + 1] == "yes"
-    assert cmd[cmd.index("--max_comments_count_singlenotes") + 1] == "200"
+    assert cmd[cmd.index("--max_comments_count_singlenotes") + 1] == "1000"
     assert cmd[cmd.index("--keywords") + 1] == "事件A,事件B"
     assert cmd[cmd.index("--cookies") + 1] == "sid=abc"
 
@@ -156,6 +156,55 @@ def test_generic_jsonl_to_comment_preserves_tree_media_and_raw_payload():
         "ip_location": "上海",
     }
     assert comment.raw_data == raw
+
+
+def test_generic_jsonl_to_comment_extracts_shared_urls_and_hashtags_from_content():
+    raw = {
+        "comment_id": "c2",
+        "note_id": "x1",
+        "content": "鏌ョ湅 #浜嬩欢A# https://example.com/topic?a=1锛屽啀鐪? #Topic_2",
+        "user_id": "u3",
+        "nickname": "annotator",
+        "create_time": 1710000020,
+        "note_url": "https://www.xiaohongshu.com/explore/x1",
+    }
+
+    comment = generic_jsonl_to_comment(raw, "xhs")
+
+    assert comment.shared_urls == ["https://example.com/topic?a=1"]
+    assert comment.hashtags == ["浜嬩欢A", "Topic_2"]
+    assert "https://www.xiaohongshu.com/explore/x1" not in comment.shared_urls
+
+
+def test_generic_jsonl_to_comment_extracts_nested_share_urls_but_skips_profile_and_media_urls():
+    raw = {
+        "comment_id": "c3",
+        "note_id": "x2",
+        "content": "璇勮鏈韩涓嶅惈閾炬帴",
+        "user_id": "u4",
+        "nickname": "link-user",
+        "create_time": 1710000030,
+        "share_info": {
+            "url": "https://share.example.com/a",
+            "deep_link": {"url": "https://share.example.com/b"},
+        },
+        "attachment": {"web_url": "https://share.example.com/c"},
+        "profile_url": "https://example.com/u/u4",
+        "avatar": "https://cdn.example.com/avatar-4.jpg",
+        "pictures": "https://cdn.example.com/comment-3.jpg",
+        "note_url": "https://www.xiaohongshu.com/explore/x2",
+    }
+
+    comment = generic_jsonl_to_comment(raw, "xhs")
+
+    assert comment.shared_urls == [
+        "https://share.example.com/a",
+        "https://share.example.com/b",
+        "https://share.example.com/c",
+    ]
+    assert "https://example.com/u/u4" not in comment.shared_urls
+    assert "https://cdn.example.com/comment-3.jpg" not in comment.shared_urls
+    assert "https://www.xiaohongshu.com/explore/x2" not in comment.shared_urls
 
 
 def test_sort_comments_by_likes_or_reply_count_desc():
