@@ -1,222 +1,136 @@
-# CogGuard：面向跨域认知操纵的智能联合防御系统
+﻿# CogGuard：面向跨平台协同操纵分析的证据驱动原型系统
 
-## 项目背景
+CogGuard 是一个面向竞赛和研究验证的开源原型，目标是围绕跨平台协同操纵活动建立一条可解释、可复核的分析链路：
 
-随着社交媒体平台深度融入社会生活，规模化、高度隐蔽的网络水军及虚假信息传播已从早期的商业黑灰产演变为针对公共舆论的认知操纵威胁。这种群体级协调操纵（Coordinated Inauthentic Behavior, CIB）通过跨平台的协同注入、虚假互动和叙事劫持，试图干预公共舆论、撕裂社会共识。
+`事件 -> 证据 -> 协同 -> 传播 -> 风险 -> 处置`
 
-**核心挑战：**
+仓库当前以 `release-0.2` 为工程基线，主线代码位于 [new-system/README.md](new-system/README.md) 对应的 `new-system/` 目录。
 
-- **数据孤岛**：各平台间数据隔离严重，跨平台协同行为难以追踪
-- **部分可观测**：安全管理员无法获取完整社交图谱，传统图模型失效
-- **人机共生**：LLM 驱动的高级水军与真人难以区分，传统静态画像检测失效
-- **上下文劫持**：恶意账号通过回复真实讨论植入宣传叙事，表面语义相关但深层逻辑断裂
+## 当前基线
 
-CogGuard 系统旨在构建一个面向实战的"跨平台隐蔽协同操纵网络溯源引擎"，实现从数据采集、协同检测、传播归因、账户监测到风险研判的全链路闭环防御。
+- 当前工程基线：`release-0.2`
+- 当前唯一产品代码根：`new-system/`
+- 当前短期验证范围：`mock_weibo`、`weibo`、`news`
+- 参考/依赖边界：`MediaCrawler-main/`、`NewsCrawler-main/`、`CooRTweet-master/`
+- 竞赛材料目录：[`../materials/`](../materials/)（PPT、申报书、开题材料等，不放入产品代码目录）
+- 仓库级上下文入口：[`AGENTS.md`](AGENTS.md)
+- ARIS 工作空间入口：[`aris/README.md`](aris/README.md)
+- 项目结构边界说明：[`doc/engineering/project-map.md`](doc/engineering/project-map.md)
 
-## 系统架构
+## 仓库分层
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                         表示层 (Frontend)                        │
-│    Vue 3 + TypeScript + Ant Design Vue + ECharts/D3.js          │
-│  ┌──────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────────┐  │
-│  │ 监测看板  │ │任务管理│ │研判工作台│ │预警中心│ │ 报告中心    │  │
-│  └──────────┘ └────────┘ └────────┘ └────────┘ └────────────┘  │
-└───────────────────────────┬─────────────────────────────────────┘
-                            │ RESTful API / WebSocket
-┌───────────────────────────┴─────────────────────────────────────┐
-│                         服务层 (Backend)                         │
-│                    Python 3.11+ / FastAPI                        │
-│  ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌──────────────┐  │
-│  │身份认证│ │任务管理│ │结果分析│ │用户管理│ │  预警管理     │  │
-│  └────────┘ └────────┘ └────────┘ └────────┘ └──────────────┘  │
-└───────────────────────────┬─────────────────────────────────────┘
-                            │
-┌───────────────────────────┴─────────────────────────────────────┐
-│                       业务逻辑层 (Core)                          │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌────────┐ ┌────────┐  │
-│  │ 爬虫引擎 │ │协同检测  │ │社交机器人│ │意图识别│ │追踪溯源│  │
-│  │MediaCrawl│ │CooRTweet │ │  检测    │ │  NLP   │ │传播归因│  │
-│  │NewsCrawl │ │Python重写│ │          │ │        │ │        │  │
-│  └──────────┘ └──────────┘ └──────────┘ └────────┘ └────────┘  │
-│  ┌──────────┐ ┌──────────────────────────────────────────────┐  │
-│  │结果分析  │ │         风险研判引擎 (规则+NLP, 预留LLM)      │  │
-│  └──────────┘ └──────────────────────────────────────────────┘  │
-└───────────────────────────┬─────────────────────────────────────┘
-                            │
-┌───────────────────────────┴─────────────────────────────────────┐
-│                      数据访问层 (DAL)                             │
-│     ┌───────────────┐  ┌──────────────┐  ┌──────────────────┐   │
-│     │ MySQL (ORM)   │  │MongoDB (ODM) │  │Redis (Cache/MQ)  │   │
-│     │ SQLAlchemy    │  │ Motor/Beanie │  │                  │   │
-│     └───────┬───────┘  └──────┬───────┘  └────────┬─────────┘   │
-└─────────────┼────────────────┼────────────────────┼─────────────┘
-              │                │                    │
-┌─────────────┴────────────────┴────────────────────┴─────────────┐
-│                       数据存储层                                  │
-│  ┌───────────┐       ┌────────────┐         ┌─────────────┐     │
-│  │  MySQL    │       │  MongoDB   │         │    Redis    │     │
-│  │结构化数据 │       │非结构化数据 │         │ 缓存/队列  │     │
-│  │用户/任务  │       │帖子/评论   │         │ 会话/锁    │     │
-│  │告警/案例  │       │爬取原始数据 │         │            │     │
-│  └───────────┘       └────────────┘         └─────────────┘     │
-│                                                                  │
-│  [预留] Neo4j 图数据库 - 协同网络持久化与复杂图查询               │
-└──────────────────────────────────────────────────────────────────┘
-```
-
-## 技术选型
-
-### 后端
-
-| 类别 | 技术 | 版本 | 说明 |
-|------|------|------|------|
-| 语言 | Python | ≥3.11 | 与 MediaCrawler 保持一致 |
-| Web 框架 | FastAPI | 最新 | 异步高性能，自动生成 OpenAPI 文档 |
-| ORM | SQLAlchemy | 2.0+ | 异步支持，MySQL 访问 |
-| ODM | Motor + Beanie | 最新 | 异步 MongoDB 驱动 |
-| 任务队列 | Celery + Redis | 最新 | 异步任务调度（爬虫、分析等耗时操作） |
-| 数据校验 | Pydantic | v2 | 请求/响应模型校验 |
-| 认证 | JWT (python-jose) | - | Token 认证 |
-| NLP | Transformers + Sentence-Transformers | 最新 | 文本表示、语义相似度 |
-| 图分析 | NetworkX + igraph | 最新 | 内存图分析，预留 Neo4j 扩展接口 |
-
-### 前端
-
-| 类别 | 技术 | 版本 | 说明 |
-|------|------|------|------|
-| 框架 | Vue 3 | 3.x | Composition API |
-| 语言 | TypeScript | 5.x | 类型安全 |
-| 构建 | Vite | 5.x | 快速构建 |
-| UI 组件库 | Ant Design Vue | 4.x | 中后台管理组件 |
-| 状态管理 | Pinia | 最新 | Vue 3 官方推荐 |
-| 路由 | Vue Router | 4.x | - |
-| HTTP | Axios | 最新 | API 请求 |
-| 图表 | ECharts | 5.x | 数据可视化 |
-| 图可视化 | vis-network / D3.js | 最新 | 协同网络、传播路径可视化 |
-
-### 数据存储
-
-| 类别 | 技术 | 用途 |
+| 层 | 路径 | 作用 |
 |------|------|------|
-| MySQL | 8.0+ | 结构化数据：用户、任务、告警、案例、账户画像 |
-| MongoDB | 6.0+ | 非结构化数据：爬取的帖子、评论、原始数据 |
-| Redis | 7.0+ | 缓存、会话管理、Celery 消息队列 |
-| [预留] Neo4j | 5.x | 协同网络图存储与查询（当前用 NetworkX 内存分析） |
+| 长期文档层 | [`doc/`](doc/) | 开发进度、环境说明、技术背景、变更日志 |
+| ARIS 工作空间层 | [`aris/`](aris/) | 针对关键技术一/二/三的独立 ARIS 执行入口 |
+| 产品代码层 | [`new-system/`](new-system/) | 当前唯一有效的后端、前端、部署与测试代码 |
+| 参考边界层 | `MediaCrawler-main/` `NewsCrawler-main/` `CooRTweet-master/` | 上游参考与依赖，不作为默认修改范围 |
+| 外层竞赛材料层 | [`../materials/`](../materials/) | PPT、申报书、开题材料与竞赛交付材料 |
 
-### 参考项目集成
+## 当前工程状态
 
-| 参考项目 | 集成方式 | 用途 |
-|---------|---------|------|
-| MediaCrawler | Python 包封装调用 | 社交媒体数据采集（微博、抖音、小红书、B站等） |
-| NewsCrawler | Python 包封装调用 | 新闻平台数据采集（公众号、头条、网易等） |
-| CooRTweet | **核心算法 Python 重写** | 协调行为检测、协同网络构建（原 R 语言） |
+以 [`doc/engineering/development-roadmap.md`](doc/engineering/development-roadmap.md) 为准，当前状态可概括为：
 
-## 功能模块
-
-系统由五大核心模块组成：
-
-### 1. 数据采集模块
-- 跨平台社交媒体数据采集（封装 MediaCrawler）
-- 新闻平台内容采集（封装 NewsCrawler）
-- 数据标准化与证据编码
-- 任务化增量采集
-
-### 2. 协同检测模块
-- 时间窗口内共享行为检测（重写 CooRTweet 算法）
-- 多行为异构协同网络构建
-- 显著性筛查（区分自然共振与人为协同）
-- 可疑协同群体发现与排序
-
-### 3. 传播归因模块
-- 传播子图重建与时序分析
-- 关键角色识别（起爆/桥接/扩散节点）
-- 高危实体定位（claim/thread 级别）
-- 归因证据链生成
-
-### 4. 账户监测模块
-- 账户行为画像（发文频率、作息节律、互动模式）
-- 自动化倾向评估
-- 历史参与追踪
-- 账户级动态预警
-
-### 5. 风险研判模块
-- 三维评估：真实性 × 操纵性 × 危害性
-- 多源证据汇聚
-- 结构化研判报告
-- 预留 LLM 接口（后续用于证据编排与解释生成）
-
-## 项目结构
-
-```
-cogguard_system/
-├── README.md                       # 项目总览（本文件）
-├── doc/                            # 项目文档
-│   ├── 开题报告.doc                 # 开题报告
-│   ├── TODO_LIST.md                # 设计方案与开发进度
-│   └── ENV_SETUP.md                # 环境搭建指南
-├── new-system/                     # 系统源码
-│   ├── README.md                   # 系统开发文档（部署/测试/使用/API）
-│   ├── docker-compose.yml          # Docker 服务编排
-│   ├── .env.example                # 环境变量模板
-│   ├── backend/                    # 后端 (Python 3.11+ / FastAPI)
-│   │   ├── app/                    # 应用代码
-│   │   │   ├── api/v1/             # REST API 路由
-│   │   │   ├── core/               # 核心业务逻辑（认证、爬虫）
-│   │   │   ├── models/             # ORM 模型
-│   │   │   ├── schemas/            # 请求/响应数据模式
-│   │   │   ├── services/           # 业务服务层
-│   │   │   ├── tasks/              # Celery 异步任务
-│   │   │   ├── db/                 # 数据库连接管理
-│   │   │   └── utils/              # 通用工具
-│   │   ├── tests/                  # 测试套件
-│   │   └── alembic/                # 数据库迁移
-│   └── frontend/                   # 前端 (Vue 3 + TypeScript + Ant Design Vue)
-│       └── src/
-│           ├── api/                # API 请求封装
-│           ├── views/              # 页面视图
-│           ├── components/         # 公共组件
-│           ├── stores/             # Pinia 状态管理
-│           └── router/             # 路由配置
-├── MediaCrawler-main/              # [参考] 社交媒体爬虫
-├── NewsCrawler-main/               # [参考] 新闻爬虫
-└── CooRTweet-master/               # [参考] 协调行为检测 (R)
-```
+| 模块 | 状态 | 说明 |
+|------|------|------|
+| 数据采集 | MVP 已完成 | Mock + 真实爬虫封装已接入 |
+| 协同检测 | MVP 已完成 | 已有共享对象协同检测（旧方向），PSL 新方向在 `aris/tech-01-coordination/` 已完成系统设计 |
+| 传播监控 | WP1-3 已完成 | Hybrid TS + LLM 路线，已实现 `ts_features` / `llm_context` / `regime_model` / `trend_predictor`；WP4-5（立场/危害）未启动 |
+| 账户监测 | MVP 已完成 | 已有画像与自动化评分，待补历史参与与 NLP |
+| 报告研判 | MVP 已完成 | `core/risk/` 1,340 行（DISARM 评分 / D-S 融合 / 证据链 / 报告生成 / 阶段检测）+ `risk_service` 编排层 + 风险 API + 前端风险页 |
+| 看板/预警/报告 | 待开发 | `dashboard/index.vue` 仍为占位，预警与报告管理未启动 |
 
 ## 快速开始
 
 ```bash
-# 1. 启动基础服务（需要 Docker）
+# 1. 启动基础服务
 cd new-system
 cp .env.example .env
 docker compose up -d
 
 # 2. 启动后端
 cd backend
-uv sync                          # 安装依赖
-alembic upgrade head             # 数据库迁移
-uvicorn app.main:app --reload    # 启动 API 服务
+uv sync
+uv run alembic upgrade head
+uv run uvicorn app.main:app --reload --port 8000
 
 # 3. 启动前端
 cd ../frontend
 npm install
-npm run dev                      # http://localhost:5173
+npm run dev
 ```
 
-> 详细步骤见 [doc/ENV_SETUP.md](doc/ENV_SETUP.md)，
-> 完整开发文档见 [new-system/README.md](new-system/README.md)
+- 详细环境与启动步骤见 [`doc/engineering/environment-setup.md`](doc/engineering/environment-setup.md)
+- 详细系统开发说明见 [`new-system/README.md`](new-system/README.md)
 
-## 开发计划
+## ARIS 工作流
 
-| 阶段 | 内容 | 状态 |
-|------|------|------|
-| 第一阶段 | 项目骨架、认证模块、数据采集（Mock 模式）、前端骨架 | ✅ 已完成 |
-| 第二阶段 | 真实爬虫接入、协同检测、传播归因、账户监测 | 🔲 待开发 |
-| 第三阶段 | 风险研判、预警管理、监测看板、报告中心 | 🔲 待开发 |
-| 第四阶段 | 集成测试、性能优化、全栈 Docker 部署 | 🔲 待开发 |
+如果任务由 ARIS/Claude Code/Codex 驱动，不直接在仓库根随意开工，按下面路径执行：
 
-> 详细进度请查看 [doc/TODO_LIST.md](doc/TODO_LIST.md)
+1. 先读 [`AGENTS.md`](AGENTS.md)、[`doc/engineering/development-roadmap.md`](doc/engineering/development-roadmap.md)、[`new-system/README.md`](new-system/README.md)
+2. 进入 [`aris/README.md`](aris/README.md)，选择目标技术工作空间
+3. 从 `release-0.2` 拉出技术分支：
+   - `aris/t1-*`
+   - `aris/t2-*`
+   - `aris/t3-*`
+4. 阅读该技术目录下的 `README.md`、`RESEARCH_BRIEF.md`、`ACCEPTANCE.md`
+5. 只在该工作空间明确允许的路径内修改代码与文档
+
+说明：
+
+- 本仓库不 vendoring 上游 ARIS skill 代码，只提供本地适配层和稳定文档
+- 不使用仓库根单一 `RESEARCH_BRIEF.md`
+- 每次执行都从目标 `aris/tech-*` 工作空间进入，避免不同技术线互相覆盖
+
+## 仓库结构
+
+```text
+cogguard_system/
+├── AGENTS.md
+├── CLAUDE.md
+├── README.md
+├── aris/
+│   ├── README.md
+│   ├── shared/
+│   ├── tech-01-coordination/
+│   ├── tech-02-propagation/
+│   └── tech-03-risk/
+├── doc/
+│   ├── engineering/
+│   │   ├── product-requirements.md
+│   │   ├── project-map.md
+│   │   ├── development-roadmap.md
+│   │   ├── development-log.md
+│   │   └── environment-setup.md
+│   └── research/
+│       ├── project-positioning-baseline.md
+│       ├── literature-references.md
+│       ├── time-series-forecasting-notes.md
+│       └── key-technology-background/
+├── new-system/
+├── MediaCrawler-main/
+├── NewsCrawler-main/
+└── CooRTweet-master/
+```
+
+## 关键文档
+
+- [`AGENTS.md`](AGENTS.md)：仓库级上下文、约束与主线叙事
+- [`doc/engineering/project-map.md`](doc/engineering/project-map.md)：项目地图、目录边界与默认修改范围
+- [`doc/engineering/development-roadmap.md`](doc/engineering/development-roadmap.md)：当前状态与优先级
+- [`doc/research/key-technology-background/overview.md`](doc/research/key-technology-background/overview.md)：总技术背景
+- [`aris/README.md`](aris/README.md)：ARIS 入口与工作流说明
+- [`new-system/README.md`](new-system/README.md)：主线代码运行与接口说明
+- [`../materials/README.md`](../materials/README.md)：竞赛材料目录说明（位于仓库外层）
+
+## 参考边界
+
+- `MediaCrawler-main/`：社交媒体采集参考与上游依赖
+- `NewsCrawler-main/`：新闻提取参考与上游依赖
+- `CooRTweet-master/`：协同检测方法参考
+
+默认情况下，这三个目录不在当前实现范围内，除非任务明确要求修改。
 
 ## 许可证
 
-本项目仅用于学术研究和学习用途。
+本项目仅用于学术研究、教学演示和竞赛原型验证。

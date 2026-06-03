@@ -21,17 +21,67 @@
 import asyncio
 import functools
 import sys
-from typing import Optional
+from typing import Dict, Optional
 
 from playwright.async_api import BrowserContext, Page
 from playwright.async_api import TimeoutError as PlaywrightTimeoutError
-from tenacity import (RetryError, retry, retry_if_result, stop_after_attempt,
-                      wait_fixed)
 
 import config
 from base.base_crawler import AbstractLogin
 from cache.cache_factory import CacheFactory
 from tools import utils
+
+
+TRUTHY_LOGIN_VALUES = {"1", "true", "yes"}
+VERIFICATION_PAGE_KEYWORDS = ("验证码中间页", "captcha", "verify")
+SESSION_COOKIE_NAMES = (
+    "sessionid",
+    "sessionid_ss",
+    "sid_guard",
+    "uid_tt",
+    "uid_tt_ss",
+)
+SESSION_TOKEN_KEYS = (
+    "xmst",
+    "msToken",
+    "passport_csrf_token",
+    "passport_csrf_token_default",
+)
+
+
+def _is_truthy_login_value(value: Optional[str]) -> bool:
+    return str(value or "").strip().lower() in TRUTHY_LOGIN_VALUES
+
+
+def is_verification_interstitial(page_title: str = "", page_url: str = "") -> bool:
+    normalized_title = (page_title or "").strip().lower()
+    normalized_url = (page_url or "").strip().lower()
+    for keyword in VERIFICATION_PAGE_KEYWORDS:
+        keyword = keyword.lower()
+        if keyword in normalized_title or keyword in normalized_url:
+            return True
+    return False
+
+
+def has_logged_in_state(
+    local_storage: Optional[Dict],
+    cookie_dict: Optional[Dict],
+    *,
+    page_title: str = "",
+    page_url: str = "",
+) -> bool:
+    local_storage = local_storage or {}
+    cookie_dict = cookie_dict or {}
+    if is_verification_interstitial(page_title=page_title, page_url=page_url):
+        return False
+    has_session_cookie = any(cookie_dict.get(cookie_name) for cookie_name in SESSION_COOKIE_NAMES)
+    has_session_token = any(local_storage.get(key) or cookie_dict.get(key) for key in SESSION_TOKEN_KEYS)
+    has_login_marker = (
+        _is_truthy_login_value(local_storage.get("HasUserLogin"))
+        or _is_truthy_login_value(cookie_dict.get("LOGIN_STATUS"))
+        or has_session_token
+    )
+    return has_session_cookie and has_login_marker
 
 
 class DouYinLogin(AbstractLogin):
@@ -77,9 +127,8 @@ class DouYinLogin(AbstractLogin):
 
         # check login state
         utils.logger.info(f"[DouYinLogin.begin] login finished then check login state ...")
-        try:
-            await self.check_login_state()
-        except RetryError:
+        login_success = await self.check_login_state()
+        if not login_success:
             utils.logger.info("[DouYinLogin.begin] login failed please confirm ...")
             sys.exit()
 
@@ -88,29 +137,50 @@ class DouYinLogin(AbstractLogin):
         utils.logger.info(f"[DouYinLogin.begin] Login successful then wait for {wait_redirect_seconds} seconds redirect ...")
         await asyncio.sleep(wait_redirect_seconds)
 
-    @retry(stop=stop_after_attempt(600), wait=wait_fixed(1), retry=retry_if_result(lambda value: value is False))
-    async def check_login_state(self):
+    async def check_login_state(self, max_attempts: int = 600, wait_seconds: float = 1.0):
         """Check if the current login status is successful and return True otherwise return False"""
-        current_cookie = await self.browser_context.cookies()
-        _, cookie_dict = utils.convert_cookies(current_cookie)
+        for attempt in range(1, max_attempts + 1):
+            current_cookie = await self.browser_context.cookies()
+            _, cookie_dict = utils.convert_cookies(current_cookie)
+            handled_verification = False
 
-        for page in self.browser_context.pages:
-            try:
-                local_storage = await page.evaluate("() => window.localStorage")
-                if local_storage.get("HasUserLogin", "") == "1":
-                    return True
-            except Exception as e:
-                # utils.logger.warn(f"[DouYinLogin] check_login_state waring: {e}")
-                await asyncio.sleep(0.1)
+            for page in self.browser_context.pages:
+                try:
+                    local_storage = await page.evaluate("() => window.localStorage")
+                    page_title = await page.title()
+                    page_url = getattr(page, "url", "")
 
-        if cookie_dict.get("LOGIN_STATUS") == "1":
-            return True
+                    if has_logged_in_state(
+                        local_storage,
+                        cookie_dict,
+                        page_title=page_title,
+                        page_url=page_url,
+                    ):
+                        return True
+
+                    if is_verification_interstitial(page_title=page_title, page_url=page_url):
+                        utils.logger.info(
+                            f"[DouYinLogin.check_login_state] verification page detected at attempt "
+                            f"{attempt}/{max_attempts}, retry slider verification ..."
+                        )
+                        await self.check_page_display_slider(move_step=3, slider_level="hard")
+                        handled_verification = True
+                        break
+                except Exception:
+                    await asyncio.sleep(0.1)
+
+            if attempt % 10 == 0 or handled_verification:
+                utils.logger.info(
+                    f"[DouYinLogin.check_login_state] waiting login success, attempt {attempt}/{max_attempts}"
+                )
+            if attempt < max_attempts:
+                await asyncio.sleep(wait_seconds)
 
         return False
 
     async def popup_login_dialog(self):
         """If the login dialog box does not pop up automatically, we will manually click the login button"""
-        dialog_selector = "xpath=//div[@id='login-panel-new']"
+        dialog_selector = "css=div#login-panel-new:visible, div[id^='login-full-panel-']:visible"
         try:
             # check dialog box is auto popup and wait for 10 seconds
             await self.context_page.wait_for_selector(dialog_selector, timeout=1000 * 10)

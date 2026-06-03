@@ -38,6 +38,7 @@ if TYPE_CHECKING:
 from .exception import *
 from .field import *
 from .help import *
+from .login import has_logged_in_state
 
 
 class DouYinClient(AbstractApiClient, ProxyRefreshMixin):
@@ -142,11 +143,14 @@ class DouYinClient(AbstractApiClient, ProxyRefreshMixin):
 
     async def pong(self, browser_context: BrowserContext) -> bool:
         local_storage = await self.playwright_page.evaluate("() => window.localStorage")
-        if local_storage.get("HasUserLogin", "") == "1":
-            return True
-
+        page_title = ""
+        page_url = getattr(self.playwright_page, "url", "")
+        try:
+            page_title = await self.playwright_page.title()
+        except Exception:
+            pass
         _, cookie_dict = utils.convert_cookies(await browser_context.cookies())
-        return cookie_dict.get("LOGIN_STATUS") == "1"
+        return has_logged_in_state(local_storage, cookie_dict, page_title=page_title, page_url=page_url)
 
     async def update_cookies(self, browser_context: BrowserContext):
         cookie_str, cookie_dict = utils.convert_cookies(await browser_context.cookies())

@@ -1,20 +1,34 @@
 # CogGuard research / engineering 分工总览
 
-> **用途**：作为后续团队分工的权威分割表。把三大功能（F-COORD / F-PROP / F-RISK）按"算法创新（research）"与"工程拼装（engineering）"二分，明确哪些任务由 Claude Code 在本仓库快速完成、哪些任务需要本地实验探究。
-> **维护规则**：每条 research 任务完成本地实验产出后，要回写参数 / 结论到对应 `aris/tech-NN/REQUIREMENTS.md`；每条 engineering 任务完成提交后，要勾选状态并同步 `development-log.md`。
-> **最后更新**：2026-05-17
+> **用途**：作为后续团队分工的权威分割表。把三大核心功能（F-COORD / F-PROP / F-RISK）+ 横向支撑功能（F-ACCT）按"算法创新（research）"与"工程拼装（engineering）"二分，明确哪些任务由 Claude Code 在本仓库快速完成、哪些任务需要本地实验探究。
+> **维护规则**：每条 research 任务完成本地实验产出后，要回写参数 / 结论到对应 `aris/tech-NN/REQUIREMENTS.md` 或 `doc/engineering/F-ACCT-account-profiling.md`；每条 engineering 任务完成提交后，要勾选状态并同步 `development-log.md`。
+> **最后更新**：2026-05-20
 
 ---
 
-## 一、三大功能与主要技术对应表
+## 一、功能架构与主要技术对应表
 
-CogGuard 主链路：`事件 → 证据 → 协同 → 传播 → 风险 → 处置`。三大核心功能各由一项关键技术（KT）支撑，但每个功能还会调用多项其他技术。
+CogGuard 主链路：`事件 → 证据 → 协同 → 传播 → 风险 → 处置`。
 
-| 功能简称 | 中文名 | 主要技术（创新载体） | 其他技术支持 | 系统位置 |
-|---|---|---|---|---|
-| **F-COORD** | 跨平台协同检测 | KT1 PSL（Pair Surprisal Layer） | CooRTweet 共享对象、统计检验、语义向量、图算法、ECharts | `core/coordination/` + `aris/tech-01-coordination/` |
-| **F-PROP** | 传播监控与趋势预测 | KT2 CascadeSwitch（体制切换预测） | 时序特征工程、LLM API、立场/危害评估、混合预测、可视化 | `core/propagation/` + `aris/tech-02-propagation/` |
-| **F-RISK** | 风险研判与攻击路径 | KT3 Phase-Aware Hazard + DISARM 路径推理 | Dempster-Shafer 融合、证据特征、DISARM 映射、报告模板、规则引擎 | `core/risk/` + `aris/tech-03-risk/` |
+**三大核心功能**各由一项关键技术（KT）支撑，**一项横向支撑功能（F-ACCT）**被三大功能共同消费。
+
+```
+                ┌──────────────────────────────────────┐
+                │     F-ACCT 深度账号画像（横向支撑）    │
+                │  bot / stance 聚合 / KOL / activity   │
+                └────┬───────────┬───────────┬─────────┘
+                     │           │           │
+                     ▼           ▼           ▼
+                  F-COORD    F-PROP      F-RISK
+                  (KT1 PSL)  (KT2 CSw)  (KT3 PA-H+DISARM)
+```
+
+| 功能简称 | 中文名 | 类型 | 主要技术（创新载体） | 其他技术支持 | 系统位置 |
+|---|---|---|---|---|---|
+| **F-COORD** | 跨平台协同检测 | 核心 | KT1 PSL（Pair Surprisal Layer） | CooRTweet 共享对象、统计检验、语义向量、图算法、ECharts | `core/coordination/` + `aris/tech-01-coordination/` |
+| **F-PROP** | 传播监控与趋势预测 | 核心 | KT2 CascadeSwitch（体制切换预测） | 时序特征工程、LLM API、立场/危害评估（帖级）、混合预测、可视化 | `core/propagation/` + `aris/tech-02-propagation/` |
+| **F-RISK** | 报告研判与攻击路径 | 核心 | KT3 Phase-Aware Hazard + DISARM 路径推理 | Dempster-Shafer 融合、证据特征、DISARM 映射、报告模板、规则引擎 | `core/risk/` + `aris/tech-03-risk/` |
+| **F-ACCT** | 深度账号画像 | **支撑** | 预训练 Bot 检测（Botometer / Twibot-22 RoBERTa） | 账号级 stance 聚合、规则化 KOL 识别、行为画像、作息节律 | `core/account/` + `doc/engineering/F-ACCT-account-profiling.md` |
 
 ---
 
@@ -87,7 +101,7 @@ CogGuard 主链路：`事件 → 证据 → 协同 → 传播 → 风险 → 处
 
 ---
 
-## 五、F-RISK（风险研判与攻击路径）拆分
+## 五、F-RISK（报告研判与攻击路径）拆分
 
 ### 5.1 主要技术：KT3 Phase-Aware Hazard + DISARM
 
@@ -107,12 +121,45 @@ CogGuard 主链路：`事件 → 证据 → 协同 → 传播 → 风险 → 处
 | DISARM 技术映射规则表 | 45 种技术硬编码映射 | engineering | ✅ 已实现 | `disarm_scorer.py` 内（需专家校验） |
 | 结构化报告 JSON 模板 | 18 顶层字段 + 证据链 + 风险因子 + 建议 | engineering | ✅ 已实现 | `report_builder.py` (278) |
 | LLM 桥接 | 报告解释生成 + 反制建议自然语言化 | engineering | ❌ stub | `llm_bridge.py` (30, 待补) |
-| 风险研判 API | `POST /api/v1/risk/assess` + 报告列表/详情 | engineering | ✅ 已实现 | `api/v1/risk.py` (68) |
+| 报告研判 API | `POST /api/v1/risk/assess` + 报告列表/详情 | engineering | ✅ 已实现 | `api/v1/risk.py` (68) |
 | 服务层编排 | 串联 evidence → phase → fusion → DISARM → report | engineering | ✅ 已实现 | `risk_service.py` (153) |
 | 数据库持久化 | RiskAssessment 表 + alembic 迁移 | engineering | ⚠️ 缺迁移 | `alembic/versions/xxx_add_risk.py` 待新增 |
-| 前端风险研判页 | 报告列表 + 详情 + DISARM 路径可视化 | engineering | 基础页已有 | `risk/index.vue`（路径图待补） |
+| 前端报告研判页 | 报告列表 + 详情 + DISARM 路径可视化 | engineering | 基础页已有 | `risk/index.vue`（路径图待补） |
 
 详见 [aris/tech-03-risk/REQUIREMENTS.md](../../aris/tech-03-risk/REQUIREMENTS.md)。
+
+---
+
+## 五bis、F-ACCT（深度账号画像，横向支撑功能）拆分
+
+> **定位提醒**：F-ACCT 不是第 4 个关键技术，而是被 F-COORD / F-PROP / F-RISK 共同消费的横向证据层。
+
+### 5bis.1 主要技术：Bot 检测预训练模型
+
+| 子项 | 简述 | 标签 | 当前状态 | 落点 / 阻塞 |
+|---|---|---|---|---|
+| Botometer X API 调用 | 工业基线，准确率高，需 RAPIDAPI_KEY | engineering | 未开始 | `core/account/bot_detector.py`（待新增） |
+| Twibot-22 RoBERTa 本地推断 | HuggingFace transformers，CPU 友好 | research（中文 zero-shot 性能未知） | 未开始 | 同上 |
+| 规则统计特征（10-15 个） | 发文间隔CV / 作息规律 / 跨平台重贴 / 头像缺失等 | research（特征清单待论证） | 部分已在 `automation_score` | `core/account/bot_detector.py` |
+| 三路降级 + Fusion | API → 模型 → 规则；final=0.4·rule+0.6·ml | engineering | 未开始 | 同上 |
+
+### 5bis.2 其他技术支持
+
+| 子项 | 简述 | 标签 | 当前状态 | 落点 |
+|---|---|---|---|---|
+| 账号级 stance 聚合 | 加权频率 + 极化指数 + 一致性 | 边界（公式 research + 实现 engineering） | ❌ 阻塞于 KT2 WP4 | `core/account/stance_aggregator.py`（待新增） |
+| KOL 识别 | 规则化分级（head/mid/tail） + 配置阈值 | engineering | 未开始 | `core/account/kol_identifier.py`（待新增） |
+| 行为画像（旧） | 发文频率/作息/内容多样性 | engineering | ✅ MVP 已实现 | `core/account_profiler.py` (185)，待迁入新包 |
+| 自动化倾向评分（旧） | 多维 0-100 综合评分 | engineering | ✅ MVP 已实现 | 同上 |
+| **单用户主页采集（F-ACCT-6）** | 调用 MediaCrawler creator 模式抓主页元数据 + 全部发文 | engineering | 未开始 | `core/account/homepage_collector.py` + `core/crawler/social.py` 扩展 `mode=creator` |
+| **内容巡检（F-ACCT-6）** | 对账号全部发文做风险/立场/模板化检测，**全部复用上游算法** | engineering（编排） | ❌ 阻塞于 KT2 WP4/5 + F-COORD 通道 | `core/account/content_checker.py` |
+| 账号画像 API | `GET /accounts/profile/{id}` + 4 个子端点 + F-ACCT-6 三个新端点 | engineering | 雏形 | `api/v1/accounts.py` (30) |
+| 服务层 | 聚合所有子模块 + 缓存 + 编排主页采集 | engineering | 雏形 | `services/account_service.py` (43, 待扩) |
+| 缓存层 | Redis + TTL（bot 7d / stance 6h / kol 30d） | engineering | 未开始 | `account_service.py` 内 |
+| 前端账号画像页 | 评分 + 排序 + bot / stance / KOL 三段 | engineering | 基础页已有 | `frontend/views/accounts/` |
+| **前端账户详情页（F-ACCT-6）** | 主页元数据 + 内容流 + 巡检结果三栏 | engineering | 未开始 | `frontend/views/accounts/detail/index.vue` |
+
+详见 [F-ACCT-account-profiling.md](./F-ACCT-account-profiling.md)。
 
 ---
 
@@ -144,8 +191,12 @@ CogGuard 主链路：`事件 → 证据 → 协同 → 传播 → 风险 → 处
 | P1 | F-RISK | Phase-Aware Hazard 5 参数 | 参数未校准 | 历史战役 case study + 转换准确率 |
 | P1 | F-RISK | D-S 融合 9+5 参数 | 边界 case 未测试 | mass=0 / mass=1 / 冲突质量极高 三种边界 |
 | P2 | F-COORD | 级联通道（Cascade Channel） | 子类型统计性质未验证 | 评论链超几何检验合理性 |
-| P2 | F-PROP | 立场检测 + 危害评估 | 标签体系未定 | 先与导师/竞赛指导确定 6 类立场 + 危害维度 |
+| P2 | F-PROP | 立场检测 + 危害评估（**帖级**，KT2 WP4-5） | 标签体系未定 | 先与导师/竞赛指导确定 6 类立场 + 危害维度 |
 | P2 | F-RISK | DISARM 18 条路径转换概率 | 当前为领域先验 | 实战 case 迭代 |
+| P2 | F-ACCT | Bot detection 预训练模型选择（R1） | 中文 zero-shot 性能未知 | 100 条标注微博账号上对比 Botometer / Twibot-22 / 规则 |
+| P2 | F-ACCT | 规则特征清单论证（R3） | 10-15 个特征未定 | 与现有 `automation_score` 特征对比 + 文献综述 |
+| P2 | F-ACCT | 账号级 stance 聚合公式（R4） | 加权 vs 简单频率 / 极化定义 | 标注账号上人工评估 6 维分布 |
+| P2 | F-ACCT | KOL 阈值平台校准（R5） | 跨平台阈值差异 | weibo/douyin/xhs 各 50 个标注账号 |
 
 **本地实验执行约定**：
 
@@ -170,6 +221,20 @@ CogGuard 主链路：`事件 → 证据 → 协同 → 传播 → 风险 → 处
 | P1 | F-PROP | `cascade_events.py` 级联形态事件检测（规则化降级） | 3 h | 在 mock 数据上输出 6 类事件 |
 | P1 | F-PROP | `propagation_service.py` 扩展以串通 WP1-3 | 2 h | API 联调通过 |
 | P1 | F-RISK | 前端 DISARM 路径可视化（ECharts force-directed） | 4-6 h | 18 条边渲染正确 |
+| P0 | F-ACCT | 目录迁移：`core/account_profiler.py` → `core/account/activity_profiler.py` + shim | 1 h | 旧 import 路径不破坏 |
+| P0 | F-ACCT | 补 `pyproject.toml`（transformers/torch CPU）+ `.env` 环境变量 | 30 min | `uv sync` 通过 |
+| P0 | F-ACCT | alembic 迁移 `account_profile_cache` 表 | 30 min | `alembic upgrade head` 不报错 |
+| P1 | F-ACCT | `bot_detector.py` 双层 + 3 路降级 + mock（规则路径先行） | 5-7 h | API/模型/规则三路均可触发 |
+| P1 | F-ACCT | `kol_identifier.py` 规则化 + 配置加载 | 2-3 h | 三种 KOL tier 标注正确 |
+| P1 | F-ACCT | `account_service.py` 扩展 4 个新方法 | 2 h | 服务层联调通过 |
+| P1 | F-ACCT | `api/v1/accounts.py` 新增 4 个端点 | 2 h | API 联调通过 |
+| P1 | F-ACCT | 前端 3 个 Panel 组件（Bot/Stance/KOL） + 路由 | 5-6 h | 三段展示正确 |
+| P2 | F-ACCT | `stance_aggregator.py`（依赖 F-PROP WP4 完成） | 2-3 h | 与 F-PROP 接口联调 |
+| P2 | F-ACCT | Redis 缓存层 + TTL 策略 | 2 h | 命中率监控 |
+| P1 | F-ACCT | F-ACCT-6 主页采集：`homepage_collector.py` + `social.py` 扩展 `mode=creator` | 6-8 h | weibo/douyin/xhs 三平台主页可拉取 |
+| P1 | F-ACCT | F-ACCT-6 内容巡检：`content_checker.py` 编排（上游缺失时 mock fallback） | 3-4 h | 单账号语料批处理 |
+| P1 | F-ACCT | F-ACCT-6 alembic 迁移 `account_homepage` 表 + ORM | 1 h | `alembic upgrade head` |
+| P1 | F-ACCT | F-ACCT-6 API 3 端点 + 前端账户详情页（主页 + 内容流 + 巡检三栏） | 8-10 h | E2E 渲染正确 |
 | P2 | 全局 | 监测看板（系统概览 + 热点排行 + 风险趋势） | 1-2 d | 接入后端统计 API |
 | P2 | 全局 | 报告中心（列表 + PDF 导出 + 案例归档） | 1-2 d | 端到端生成报告 |
 | P2 | 全局 | 预警管理（规则配置 + 告警状态） | 1-2 d | 触发流程联调 |
@@ -183,6 +248,13 @@ CogGuard 主链路：`事件 → 证据 → 协同 → 传播 → 风险 → 处
 | F-COORD | F-PROP | `coord_groups` / `network_density` / `evidence_edges` | `aris/shared/CROSS_KT_DEPS.md` | 字段约定完成，接口未联调 |
 | F-PROP | F-RISK | `trend / stance / harm / source / scope` | 同上 | KT3 已用占位数据，等 KT2 WP4-5 完成后替换 |
 | F-RISK | UI | `risk_assessment_report.json` 结构化 | `aris/tech-03-risk/ACCEPTANCE.md` | 字段约定完成，前端路径图待补 |
+| F-ACCT | F-COORD | `bot_score` / `is_kol` 用于过滤 / 加权 | F-ACCT 文档 §8.1 | 字段约定完成，待 F-ACCT MVP 上线 |
+| F-ACCT | F-PROP | 账号画像（KOL 标识 / 自动化倾向）作为事件评分 e 的输入 | F-ACCT 文档 §8.2 | 同上 |
+| F-ACCT | F-RISK | group `bot_ratio` / KOL 分布作为 mass(manipulation) 输入 | F-ACCT 文档 §8.3 | 同上 |
+| F-PROP WP4 | F-ACCT | **帖级** stance → F-ACCT 聚合为**账号级** stance | F-ACCT 文档 §8.4 | ⚠️ 阻塞 F-ACCT-2，需 F-PROP 暴露 `/propagation/stance/by-account` |
+| KT2 WP4/WP5 | F-ACCT-6 | 帖级立场 + 帖级危害评分作为内容巡检的字段输入 | F-ACCT 文档 §8.5 | ⚠️ 阻塞 content_checker 真实输出；上游缺失时 mock fallback |
+| F-COORD channels.py | F-ACCT-6 | 单账号语料模板化检测（语义重复 / hashtag 模板） | F-ACCT 文档 §8.5 | ⚠️ 阻塞 template_detector 子接口；上游缺失时返回 null |
+| MediaCrawler creator 模式 | F-ACCT-6 | 主页元数据 + 全量发文流采集 | `core/crawler/social.py` 扩展 `mode=creator` | weibo / douyin / xhs 已支持，需 social.py 接入 |
 
 ---
 
@@ -210,10 +282,11 @@ CogGuard 主链路：`事件 → 证据 → 协同 → 传播 → 风险 → 处
 
 ## 十一、引用
 
-- 三份功能级需求文档：
-  - [aris/tech-01-coordination/REQUIREMENTS.md](../../aris/tech-01-coordination/REQUIREMENTS.md)
-  - [aris/tech-02-propagation/REQUIREMENTS.md](../../aris/tech-02-propagation/REQUIREMENTS.md)
-  - [aris/tech-03-risk/REQUIREMENTS.md](../../aris/tech-03-risk/REQUIREMENTS.md)
+- 四份功能级需求文档：
+  - [aris/tech-01-coordination/REQUIREMENTS.md](../../aris/tech-01-coordination/REQUIREMENTS.md)（F-COORD）
+  - [aris/tech-02-propagation/REQUIREMENTS.md](../../aris/tech-02-propagation/REQUIREMENTS.md)（F-PROP）
+  - [aris/tech-03-risk/REQUIREMENTS.md](../../aris/tech-03-risk/REQUIREMENTS.md)（F-RISK）
+  - [F-ACCT-account-profiling.md](./F-ACCT-account-profiling.md)（F-ACCT 横向支撑）
 - 工程主线文档：
   - [development-roadmap.md](./development-roadmap.md)
   - [development-log.md](./development-log.md)

@@ -4,7 +4,7 @@
 > **受众**：开发者、项目维护者、后续执行任务的 AI agent。  
 > **维护规则**：只维护可执行工程路线和状态；研究定位、文献依据和关键技术背景放入 `../research/`。
 
-> 最后更新：2026-05-17
+> 最后更新：2026-05-23
 
 ## 技术决策记录
 
@@ -58,12 +58,12 @@
 | 传播监控模块（KT2 WP4-5 立场/危害） | 🔲 待开发 | P1 | WP1-3 |
 | 账户监测模块 | ✅ 已完成 | P1 | 数据采集 |
 | 前端 - 协同检测页（网络可视化） | ✅ 已完成 | P1 | 后端协同检测 |
-| 前端 - 传播归因页（时间线+角色） | ✅ 已完成 | P1 | 后端传播归因 |
+| 前端 - 传播监控页（时间线+角色） | ✅ 已完成 | P1 | 后端传播监控 |
 | 前端 - 账户监测页（画像+评分） | ✅ 已完成 | P1 | 后端账户监测 |
-| 前端 - 风险研判页 | ✅ 已完成 | P1 | 后端风险研判 |
+| 前端 - 报告研判页 | ✅ 已完成 | P1 | 后端报告研判 |
 | 前端 - UX 增强（密度/分页/引导） | ✅ 已完成 | P1 | 各前端页面 |
-| 风险研判模块 | ✅ MVP 已完成 | P2 | 协同检测、传播归因、账户监测 |
-| 前端 - 监测看板 | 🔲 待开发 | P1 | 后端各模块 |
+| 报告研判模块 | ✅ MVP 已完成 | P2 | 协同检测、传播监控、账户监测 |
+| 前端 - 监测看板 | 🔧 开发中（真实数据 + 地图） | P1 | Dashboard API、Mongo 事件数据 |
 | 系统联调与测试 | 🔧 部分（8 套件 1,196 行测试） | P2 | 所有模块 |
 
 状态说明：🔲 待开发 | 🔧 开发中 | ✅ 已完成 | ⏸️ 暂停 | ❌ 取消
@@ -111,7 +111,8 @@
 
 - [x] MediaCrawler 封装层 (`core/crawler/social.py`)
   - [x] 通过配置 `MEDIACRAWLER_ROOT` 调用上游 `uv run main.py`（子进程），解析 `data/<平台>/jsonl` 产出
-  - [x] `MediaSocialCrawler` 实现 `BaseCrawler`（搜索关键词、评论 JSONL 批量入库）
+  - [x] 支持从 `new-system/.env` 读取 `MEDIACRAWLER_*` 变量，并可通过 `MEDIACRAWLER_PYTHON_BIN` / `MEDIACRAWLER_NODE_DIR` 为子进程补充 Python / Node.js 运行时
+  - [x] `MediaSocialCrawler` 实现 `BaseCrawler`（直接执行 MediaCrawler，并按 JSONL 增量批次入库）
   - [x] 支持平台：weibo / douyin / xhs / kuaishou / bilibili / tieba / zhihu（与 MediaCrawler 一致）
 - [x] NewsCrawler 封装层 (`core/crawler/news.py`)
   - [x] `NEWSCRAWLER_API_BASE` HTTP 调用 `POST /api/extract`，或 `NEWSCRAWLER_ROOT` 进程内 `ExtractorService`
@@ -129,16 +130,20 @@
 - [x] 协同检测 API 接口（`POST /api/v1/coordination/detect`）
 - [x] 前端协同网络 Canvas 力导向可视化 + 统计表格
 - [ ] 多行为协同边构建（时间同步、共链接、共媒体、语义近似）
+- [ ] 数据清洗后按事件顺序进行分平台聚合，再做跨平台聚合
+- [ ] 用户聚类与聚类解释（平台内聚类 + 跨平台聚类）
 - [ ] 自然共振 vs 人为协同显著性筛查
 
-#### 2.2 传播归因模块 ✅
+#### 2.2 传播监控模块 ✅
 
 - [x] 传播子图构建（基于共享对象时序关系，`core/propagation.py`）
 - [x] 传播时间线重建
 - [x] 关键角色识别算法（起爆/桥接/扩散节点，介数中心性）
 - [x] 高危 claim/thread 定位与排序
-- [x] 传播归因 API 接口（`GET /api/v1/propagation/analyze`）
+- [x] 传播监控 API 接口（`GET /api/v1/propagation/analyze`）
 - [x] 前端传播时间线 + 关键角色卡片 + Claim 表格
+- [ ] 页面命名由“传播归因”调整为“传播监控”
+- [ ] 相关发帖用户检测与高影响力节点识别
 - [ ] 归因证据链生成
 
 #### 2.3 账户监测模块 ✅
@@ -150,12 +155,14 @@
 - [x] 自动化倾向评估算法（0-100 分，多维度综合评分）
 - [x] 账户监测 API 接口（`GET /api/v1/accounts/profiles`、`GET /api/v1/accounts/detail/{id}`）
 - [x] 前端账户画像列表页（评分排序、进度条着色）
+- [ ] 单个用户主页采集：支持主页链接/用户 ID，收集主页元数据与全部发文
+- [ ] 账户详情页：查看用户主页、全部内容、内容风险/立场/模板化检测结果
 - [ ] 历史参与追踪
 - [ ] NLP 能力建设（中文文本向量化、语义相似度、情感分析）
 
 #### 2.4 前端 UX 增强 ✅
 
-- [x] 侧边栏启用协同检测、传播归因、账户监测
+- [x] 侧边栏启用协同检测、传播监控、账户监测
 - [x] 登录页增加注册表单切换
 - [x] 采集任务列表增加删除/取消操作
 - [x] 侧边栏模块悬浮描述提示
@@ -166,15 +173,15 @@
 
 ### 第三阶段：研判与集成
 
-#### 3.1 风险研判模块 ✅ MVP 已完成
+#### 3.1 报告研判模块 ✅ MVP 已完成
 
 - [x] 三维评估引擎（真实性/操纵性/危害性）— `core/risk/ds_fusion.py` (234 行)
 - [x] DISARM 战术映射 + 攻击路径评分 — `core/risk/disarm_scorer.py` (381 行)
 - [x] 传播阶段检测 — `core/risk/phase_detector.py` (169 行)
 - [x] 多源证据汇聚与证据链 — `core/risk/evidence_builder.py` (244 行)
 - [x] 结构化研判报告生成 — `core/risk/report_builder.py` (278 行)
-- [x] 风险研判服务层 — `services/risk_service.py` (153 行)
-- [x] 风险研判 API — `api/v1/risk.py` (68 行)
+- [x] 报告研判服务层 — `services/risk_service.py` (153 行)
+- [x] 报告研判 API — `api/v1/risk.py` (68 行)
 - [x] 前端研判工作台 — `frontend/src/views/risk/index.vue`
 - [ ] 数据库迁移补齐（`models/risk_assessment.py` 50 行已建模型，缺 alembic 迁移）⚠️ 部署阻塞
 - [ ] LLM 桥接 `core/risk/llm_bridge.py`（当前 30 行 stub，需补 LLM 客户端依赖）
@@ -186,11 +193,13 @@
 - [ ] 告警状态管理
 - [ ] 前端预警中心页面
 
-#### 3.3 监测看板 🔲
+#### 3.3 监测看板 🔧
 
-- [ ] 系统概览数据（接入后端统计 API）
+- [x] 新增 Dashboard API 聚合 MongoDB 事件数据（默认 `trump_visit_2026_05_21`）
+- [x] 前端统计卡片接入真实 posts/comments/platform/risk report 数据
+- [x] ECharts 世界地图展示事件位置，按第一发帖者 IP 属地定位
+- [x] 平台数据统计与事件定位明细表
 - [ ] 热点事件排行
-- [ ] 平台数据统计
 - [ ] 风险趋势图表（ECharts）
 
 #### 3.4 报告中心 🔲
@@ -238,6 +247,7 @@
 | `test_normalizer_standardizes_weibo_post` | 微博帖子字段标准化 | ✅ 通过 |
 | `test_normalizer_standardizes_comment` | 评论字段标准化 | ✅ 通过 |
 | `test_list_platforms` | 平台列表接口 | ✅ 通过 |
+| `test_mediacrawler_env` | MediaCrawler 的 `.env` / `uv` / `node` 解析 | ✅ 通过 |
 | `test_register_success` | 用户注册 | ✅ 通过（需 MySQL） |
 | `test_register_duplicate_username` | 重复用户名注册 | ✅ 通过（需 MySQL） |
 | `test_login_success` | 用户登录 | ✅ 通过（需 MySQL） |
@@ -254,7 +264,7 @@
 | 编号 | 事项 | 说明 | 状态 |
 |------|------|------|------|
 | T-01 | Neo4j 接入 | 当前用 NetworkX 内存图分析，后续可切换到 Neo4j | 📋 待定 |
-| T-02 | LLM 接入 | 风险研判模块预留了接口，可接入通义千问/智谱/DeepSeek | 📋 待定 |
+| T-02 | LLM 接入 | 报告研判模块预留了接口，可接入通义千问/智谱/DeepSeek | 📋 待定 |
 | T-03 | DISARM 战术映射 | 将操纵行为映射为 DISARM tactics/techniques | 📋 待定 |
 | T-04 | 线上部署 | 当前本地部署，后续可云服务器部署 | 📋 待定 |
 | T-05 | 更多平台支持 | 当前仅 Mock 微博，逐步接入真实平台 | 📋 待定 |

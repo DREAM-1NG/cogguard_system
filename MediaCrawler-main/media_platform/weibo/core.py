@@ -416,8 +416,8 @@ class WeiboCrawler(AbstractCrawler):
 
     async def get_note_full_text(self, note_item: Dict) -> Dict:
         """
-        Get full text content of a post
-        If the post content is truncated (isLongText=True), request the detail API to get complete content
+        Get post detail data for a search result.
+        The detail API carries media fields that are often absent from search cards.
         :param note_item: Post data, contains mblog field
         :return: Updated post data
         """
@@ -428,27 +428,21 @@ class WeiboCrawler(AbstractCrawler):
         if not mblog:
             return note_item
 
-        # Check if it's a long text
-        is_long_text = mblog.get("isLongText", False)
-        if not is_long_text:
-            return note_item
-
         note_id = mblog.get("id")
         if not note_id:
             return note_item
 
         try:
-            utils.logger.info(f"[WeiboCrawler.get_note_full_text] Fetching full text for note: {note_id}")
+            utils.logger.info(f"[WeiboCrawler.get_note_full_text] Fetching detail for note: {note_id}")
             full_note = await self.wb_client.get_note_info_by_id(note_id)
             if full_note and full_note.get("mblog"):
-                # Replace original content with complete content
                 note_item["mblog"] = full_note["mblog"]
-                utils.logger.info(f"[WeiboCrawler.get_note_full_text] Successfully fetched full text for note: {note_id}")
+                utils.logger.info(f"[WeiboCrawler.get_note_full_text] Successfully fetched detail for note: {note_id}")
 
             # Sleep after request to avoid rate limiting
             await asyncio.sleep(config.CRAWLER_MAX_SLEEP_SEC)
         except DataFetchError as ex:
-            utils.logger.error(f"[WeiboCrawler.get_note_full_text] Failed to fetch full text for note {note_id}: {ex}")
+            utils.logger.error(f"[WeiboCrawler.get_note_full_text] Failed to fetch detail for note {note_id}: {ex}")
         except Exception as ex:
             utils.logger.error(f"[WeiboCrawler.get_note_full_text] Unexpected error for note {note_id}: {ex}")
 

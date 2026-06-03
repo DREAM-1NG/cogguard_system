@@ -144,6 +144,14 @@ class BrowserLauncher:
             "--disable-infobars",  # Disable info bars
         ]
 
+        proxy_server = (
+            os.getenv("MEDIACRAWLER_BROWSER_PROXY", "").strip()
+            or os.getenv("BROWSER_PROXY_SERVER", "").strip()
+        )
+        if proxy_server:
+            args.append(f"--proxy-server={proxy_server}")
+            utils.logger.info("[BrowserLauncher] Browser proxy enabled from environment")
+
         # Headless mode
         if headless:
             args.extend([

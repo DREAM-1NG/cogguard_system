@@ -12,7 +12,7 @@
 
 ### 0.1 选取原则
 
-- 优先收录与本项目三条核心技术主线直接相关的论文：协同群体发现、传播归因与高危定位、事件/叙事风险研判。
+- 优先收录与本项目三条核心技术主线直接相关的论文：协同群体发现、传播监控与高危定位、事件/叙事报告研判。
 - 优先收录 CCF A / B 论文；如为 PNAS、Science Advances 等高影响力交叉期刊，则标注为“非 CCF”。
 - 优先使用 DOI、出版社页面、期刊官网或作者机构页面核验元数据。
 
@@ -97,7 +97,7 @@ CCF 等级以中国计算机学会 2024-06-28 后更新的推荐目录页面为�
 - 价值：对“thread / reply 区域被组织化注入”的检测非常直接，适合支撑“高危 thread 定位”和“目标账号作为传感器”的思路。
 - DOI：https://doi.org/10.1609/icwsm.v19i1.35889
 
-## 2. 传播归因、角色识别与高危定位
+## 2. 传播监控、角色识别与高危定位
 
 ### 2.1 Catch me if you can: A Participant-Level Rumor Detection Framework via Fine-Grained User Representation Learning
 
@@ -147,7 +147,7 @@ CCF 等级以中国计算机学会 2024-06-28 后更新的推荐目录页面为�
 - 价值：适合作为“claim 与 fact-check diffusion tracking”以及扩散可视化流程的参考文献。
 - DOI：https://doi.org/10.1609/icwsm.v12i1.14986
 
-## 3. 事件 / 叙事风险研判、证据推理与可审计解释
+## 3. 事件 / 叙事报告研判、证据推理与可审计解释
 
 ### 3.1 Detecting Breaking News Rumors of Emerging Topics in Social Media
 
@@ -162,7 +162,7 @@ CCF 等级以中国计算机学会 2024-06-28 后更新的推荐目录页面为�
 - 作者：Tiening Sun, Chengwei Liu, Lizhi Chen, Zhong Qian, Peifeng Li, Qiaoming Zhu
 - 出处：Information Processing & Management, 2025
 - CCF：B
-- 价值：直接支撑“多模态源信息 + 动态对话图 + evolving stances”的三级风险研判框架。
+- 价值：直接支撑“多模态源信息 + 动态对话图 + evolving stances”的三级报告研判框架。
 - DOI：https://doi.org/10.1016/j.ipm.2025.104066
 
 ### 3.3 End-to-End Multimodal Fact-Checking and Explanation Generation: A Challenging Dataset and Models
