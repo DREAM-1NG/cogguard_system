@@ -1,0 +1,14 @@
+.DS_Store
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Local datasets and generated heavy artifacts.
+data/
+outputs/*
+!outputs/FINAL_REPORT.md
+!outputs/FINAL_REPORT.json
+
+# Local logs / scratch output.
+*.log

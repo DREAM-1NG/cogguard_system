@@ -1,0 +1,94 @@
+{
+  "datasets": [
+    {
+      "key": "weibo_rumor",
+      "label": "Weibo Rumor / Ma-Weibo",
+      "status": "ok",
+      "inspect_status": "ok",
+      "events": 4664,
+      "nodes": 3805656,
+      "edges": 3800992,
+      "participants": 2856741,
+      "ignition_points": 15789,
+      "focus_event_id": "3501712684038955",
+      "path_auc": 0.9352529517260297,
+      "path_samples": 750000,
+      "size_rmse": 316.3154772232554,
+      "size_train_events": 3498,
+      "size_test_events": 1166,
+      "artifacts": {
+        "dashboard.html": "outputs/weibo_rumor_full/dashboard.html",
+        "event_report.md": "outputs/weibo_rumor_full/event_report.md",
+        "analysis_summary.json": "outputs/weibo_rumor_full/analysis_summary.json",
+        "participants.csv": "outputs/weibo_rumor_full/participants.csv",
+        "ignition_points.csv": "outputs/weibo_rumor_full/ignition_points.csv",
+        "paths.json": "outputs/weibo_rumor_full/paths.json",
+        "prediction_report.json": "outputs/weibo_rumor_full/prediction_report.json"
+      },
+      "notes": [
+        "Weibo Rumor 已全量运行 4664 个事件；路径预测候选边采用 reservoir sampling。",
+        "Full event set traversed; candidate edges were reservoir-sampled for bounded memory."
+      ]
+    },
+    {
+      "key": "pheme",
+      "label": "PHEME",
+      "status": "ok",
+      "inspect_status": "ok",
+      "events": 6425,
+      "nodes": 104582,
+      "edges": 98157,
+      "participants": 50593,
+      "ignition_points": 23364,
+      "focus_event_id": "552806610490646528",
+      "path_auc": 0.930550511118505,
+      "path_samples": 309820,
+      "size_rmse": 1.7499268473905534,
+      "size_train_events": 4818,
+      "size_test_events": 1607,
+      "artifacts": {
+        "dashboard.html": "outputs/pheme_full/dashboard.html",
+        "event_report.md": "outputs/pheme_full/event_report.md",
+        "analysis_summary.json": "outputs/pheme_full/analysis_summary.json",
+        "participants.csv": "outputs/pheme_full/participants.csv",
+        "ignition_points.csv": "outputs/pheme_full/ignition_points.csv",
+        "paths.json": "outputs/pheme_full/paths.json",
+        "prediction_report.json": "outputs/pheme_full/prediction_report.json"
+      },
+      "notes": [
+        "PHEME loader 跳过 annotation/structure 伪节点，只使用 source-tweets 与 reactions 构建传播树。"
+      ]
+    },
+    {
+      "key": "rumor_rvnn",
+      "label": "Rumor_RvNN Twitter15/16",
+      "status": "ok",
+      "inspect_status": "warning",
+      "events": 3098,
+      "nodes": 161038,
+      "edges": 157940,
+      "participants": 814,
+      "ignition_points": 44519,
+      "focus_event_id": "716451800581279744",
+      "path_auc": 0.977124746691963,
+      "path_samples": 891326,
+      "size_rmse": 1.244570612515248,
+      "size_train_events": 2323,
+      "size_test_events": 775,
+      "artifacts": {
+        "dashboard.html": "outputs/rumor_rvnn_full/dashboard.html",
+        "event_report.md": "outputs/rumor_rvnn_full/event_report.md",
+        "analysis_summary.json": "outputs/rumor_rvnn_full/analysis_summary.json",
+        "participants.csv": "outputs/rumor_rvnn_full/participants.csv",
+        "ignition_points.csv": "outputs/rumor_rvnn_full/ignition_points.csv",
+        "paths.json": "outputs/rumor_rvnn_full/paths.json",
+        "prediction_report.json": "outputs/rumor_rvnn_full/prediction_report.json"
+      },
+      "notes": [
+        "Rumor_RvNN processed 文件中 959 个 root 无 Twitter15/16 label/nfold 匹配，报告中已保留该警告。",
+        "959 parsed events have no matching Twitter15/16 label entry."
+      ]
+    }
+  ],
+  "report": "outputs/FINAL_REPORT.md"
+}
