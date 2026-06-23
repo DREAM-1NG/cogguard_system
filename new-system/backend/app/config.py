@@ -9,6 +9,7 @@ from pathlib import Path
 from pydantic_settings import BaseSettings
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+PROJECT_ROOT = BASE_DIR.parent
 
 
 class Settings(BaseSettings):
@@ -63,6 +64,12 @@ class Settings(BaseSettings):
     # 或直接指向 NewsCrawler 仓库根目录，通过 import 调用 ExtractorService（与 API 二选一即可）
     NEWSCRAWLER_ROOT: str = ""
 
+    # ----- Risk LLM bridge (optional) -----
+    RISK_LLM_PROVIDER: str = ""
+    RISK_LLM_MODEL: str = ""
+    RISK_LLM_BASE_URL: str = ""
+    RISK_LLM_API_KEY: str = ""
+
     @property
     def mysql_url(self) -> str:
         return (
@@ -91,7 +98,10 @@ class Settings(BaseSettings):
             f"@{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
         )
 
-    model_config = {"env_file": str(BASE_DIR / ".env"), "extra": "ignore"}
+    model_config = {
+        "env_file": (str(PROJECT_ROOT / ".env"), str(BASE_DIR / ".env")),
+        "extra": "ignore",
+    }
 
 
 settings = Settings()
