@@ -43,6 +43,9 @@ cd new-system
 # 复制环境变量（首次需要）
 cp .env.example .env
 
+# （推荐）先创建项目专属数据目录，便于管理和清理
+mkdir -p docker-data/mysql docker-data/mongo docker-data/redis
+
 # 启动 MySQL + MongoDB + Redis
 docker compose up -d
 
@@ -52,6 +55,14 @@ docker compose ps
 # 查看日志（如有问题）
 docker compose logs -f
 ```
+
+默认数据目录：
+
+| 路径 | 说明 |
+|------|------|
+| `new-system/docker-data/mysql` | MySQL 数据文件 |
+| `new-system/docker-data/mongo` | MongoDB 数据文件 |
+| `new-system/docker-data/redis` | Redis 数据文件 |
 
 服务端口：
 
@@ -118,8 +129,8 @@ pytest -v
 
 ```bash
 cd new-system
-docker compose down          # 停止容器（保留数据）
-docker compose down -v       # 停止并删除数据卷
+docker compose down          # 停止容器（保留项目目录中的数据）
+rm -rf docker-data           # 如需彻底清理本项目数据库数据，再手动删除项目数据目录
 ```
 
 ## 9. 在其他电脑部署

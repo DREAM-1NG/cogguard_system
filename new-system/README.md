@@ -29,12 +29,14 @@ new-system/
 │   │   │       ├── crawl.py        # 数据采集接口（创建任务/任务列表/数据查询）
 │   │   │       ├── coordination.py # 协同检测接口
 │   │   │       ├── propagation.py  # 传播归因接口
-│   │   │       └── accounts.py     # 账户监测接口
+│   │   │       ├── accounts.py     # 账户监测接口
+│   │   │       └── risk.py         # 风险研判接口
 │   │   │
 │   │   ├── core/                   # 核心业务逻辑
 │   │   │   ├── security.py         # JWT 认证 + bcrypt 密码哈希
 │   │   │   ├── propagation.py      # 传播子图与时间线、关键角色
 │   │   │   ├── account_profiler.py # 账户行为画像与自动化倾向评分
+│   │   │   ├── risk/               # 风险研判核心能力（harmful / stance / evidence / report）
 │   │   │   ├── coordination/       # CooRTweet 算法 Python 实现（检测/网络/统计）
 │   │   │   └── crawler/            # 爬虫引擎
 │   │   │       ├── base.py         # 爬虫抽象基类（定义统一接口）
@@ -51,14 +53,16 @@ new-system/
 │   │   │
 │   │   ├── schemas/                # Pydantic 请求/响应模式
 │   │   │   ├── auth.py             # 认证相关（Login/Register/Token/UserInfo）
-│   │   │   └── crawl.py            # 采集相关（CrawlRequest/JobResponse/PostResponse）
+│   │   │   ├── crawl.py            # 采集相关（CrawlRequest/JobResponse/PostResponse）
+│   │   │   └── risk.py             # 风险研判请求体
 │   │   │
 │   │   ├── services/               # 业务服务层
 │   │   │   ├── auth_service.py     # 认证业务（注册/登录/刷新/用户信息）
 │   │   │   ├── crawl_service.py    # 采集业务（任务管理/数据查询）
 │   │   │   ├── coordination_service.py
 │   │   │   ├── propagation_service.py
-│   │   │   └── account_service.py
+│   │   │   ├── account_service.py
+│   │   │   └── risk_service.py
 │   │   │
 │   │   ├── tasks/                  # Celery 异步任务
 │   │   │   └── crawl_tasks.py      # 采集任务执行（Mock / MediaCrawler / News → MongoDB）
@@ -77,7 +81,8 @@ new-system/
 │       ├── conftest.py             # 测试 fixtures（DB/Client/Auth）
 │       ├── test_health.py          # 健康检查测试
 │       ├── test_auth.py            # 认证模块测试（需要 MySQL）
-│       └── test_crawl.py           # 采集模块测试（含纯单元测试）
+│       ├── test_crawl.py           # 采集模块测试（含纯单元测试）
+│       └── test_risk.py            # 风险研判模块测试
 │
 └── frontend/                       # 前端应用 (Vue 3 + TypeScript)
     ├── package.json                # 依赖声明与脚本
@@ -94,7 +99,8 @@ new-system/
         │   ├── crawl.ts            # 采集 API（创建任务/任务列表/数据查询）
         │   ├── coordination.ts     # 协同检测 API
         │   ├── propagation.ts      # 传播归因 API
-        │   └── accounts.ts         # 账户监测 API
+        │   ├── accounts.ts         # 账户监测 API
+        │   └── risk.ts             # 风险研判 API
         │
         ├── views/                  # 页面视图
         │   ├── login/index.vue     # 登录页面
@@ -102,7 +108,8 @@ new-system/
         │   ├── crawl/index.vue     # 数据采集管理
         │   ├── coordination/index.vue  # 协同网络可视化
         │   ├── propagation/index.vue   # 传播时间线与关键角色
-        │   └── accounts/index.vue      # 账户画像列表
+        │   ├── accounts/index.vue      # 账户画像列表
+        │   └── risk/index.vue          # 风险研判工作台
         │
         ├── components/
         │   ├── layout/
@@ -138,6 +145,7 @@ new-system/
 ```bash
 cd new-system
 cp .env.example .env        # 首次需要，按需修改密码
+mkdir -p docker-data/mysql docker-data/mongo docker-data/redis
 docker compose up -d         # 启动 MySQL + MongoDB + Redis
 docker compose ps            # 确认所有服务 healthy
 ```
@@ -272,17 +280,20 @@ curl -X POST http://localhost:8000/api/v1/auth/login \
 - **后续**：在 `core/account/` 中实现行为画像、自动化倾向评估、历史追踪
 
 ### 风险研判
-- **当前**：未实现
-- **后续**：在 `core/risk/` 中实现三维评估（真实性/操纵性/危害性）、规则引擎、报告生成
-- **LLM 接口**：已预留 `llm_bridge.py`，后续可接入通义千问/DeepSeek 等
+- **当前**：已实现 MVP，支持 harmful / stance / evidence / phase / DISARM / report / countermeasure 后端闭环，以及前端研判工作台
+- **数据来源**：优先使用已采集微博/Mock 数据；当 `platform=mock_weibo` 且库中无数据时，自动回退到内置 Mock 样本，真实 `weibo` 仍严格依赖已采集微博数据
+- **当前增强**：已补充 `llm_bridge.py` 预留接口、前端 JSON 导出与历史报告详情加载；当前 LLM 桥接默认不调用外部模型，仅返回配置状态与建议 Prompt
+- **研究复现进展**：已补统一数据集 schema、harmful baseline、stance baseline，以及 `rule/model` 双模式接入骨架；当模型权重存在时可切换到 model 模式，否则自动回退 rule 模式
+- **正式实验骨架**：已补训练/评估流水线与模型工件生成入口，可在真实研究数据集到位后直接产出 baseline 权重并接入系统
+- **后续**：继续接入真实研究数据集与训练产物，迭代更强模型并补完整实验指标
 
 ### 图数据库
 - **当前**：使用 NetworkX 内存图分析
 - **后续**：可扩展到 Neo4j 做持久化图存储和复杂图查询
 
 ### 前端可视化
-- **当前**：监测看板为占位页面，协同检测/传播归因等页面尚未开发
-- **后续**：接入 ECharts 图表、vis-network/D3.js 网络可视化
+- **当前**：监测看板仍为占位页面；数据采集、协同检测、传播归因、账户监测、风险研判页面均已接入
+- **后续**：接入 ECharts 图表、vis-network/D3.js 网络可视化，并补充预警中心/报告中心页面
 
 ### 部署
 - **当前**：本地开发部署（手动启动各服务）
@@ -307,6 +318,14 @@ curl -X POST http://localhost:8000/api/v1/auth/login \
 | POST | `/api/v1/crawl/social` | 创建社交媒体采集任务 | 是 |
 | GET  | `/api/v1/crawl/jobs` | 获取采集任务列表 | 是 |
 | GET  | `/api/v1/crawl/data` | 查询已采集的帖子数据 | 是 |
+
+### 风险研判模块
+
+| 方法 | 路径 | 说明 | 鉴权 |
+|------|------|------|------|
+| POST | `/api/v1/risk/assess` | 执行风险研判并生成结构化报告 | 是 |
+| GET  | `/api/v1/risk/reports` | 获取历史风险报告列表 | 是 |
+| GET  | `/api/v1/risk/reports/{report_id}` | 获取单个风险报告详情 | 是 |
 
 ### 系统
 

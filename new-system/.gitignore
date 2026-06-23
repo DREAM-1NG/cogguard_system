@@ -15,6 +15,7 @@ dist/
 # ===== 环境与配置 =====
 .env
 *.local
+docker-data/
 
 # ===== IDE =====
 .vscode/

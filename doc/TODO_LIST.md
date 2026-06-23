@@ -41,7 +41,7 @@
 | 前端 - 传播归因页（时间线+角色） | ✅ 已完成 | P1 | 后端传播归因 |
 | 前端 - 账户监测页（画像+评分） | ✅ 已完成 | P1 | 后端账户监测 |
 | 前端 - UX 增强（密度/分页/引导） | ✅ 已完成 | P1 | 各前端页面 |
-| 风险研判模块 | 🔲 待开发 | P2 | 协同检测、传播归因、账户监测 |
+| 风险研判模块 | 🔧 开发中 | P2 | 协同检测、传播归因、账户监测 |
 | 前端 - 监测看板 | 🔲 待开发 | P1 | 后端各模块 |
 | 系统联调与测试 | 🔲 待开发 | P2 | 所有模块 |
 
@@ -145,15 +145,16 @@
 
 ### 第三阶段：研判与集成
 
-#### 3.1 风险研判模块 🔲
+#### 3.1 风险研判模块 🔧
 
-- [ ] 三维评估引擎（真实性/操纵性/危害性）
-- [ ] 规则引擎（可配置判定规则）
-- [ ] 多源证据汇聚
-- [ ] 结构化研判报告生成
-- [ ] LLM 接口预留 (`core/risk/llm_bridge.py`)
-- [ ] 风险研判相关 API 接口
-- [ ] 前端研判工作台
+- [x] 三维评估引擎（真实性/操纵性/危害性）
+- [x] 规则引擎（可配置判定规则）
+- [x] 多源证据汇聚
+- [x] 结构化研判报告生成
+- [x] LLM 接口预留 (`core/risk/llm_bridge.py`)
+- [x] 风险研判相关 API 接口
+- [x] 前端研判工作台
+- [x] 研究复现基线（阶段1-5：统一数据集 schema、harmful baseline、stance baseline、model/rule 双模式接入、训练/评估流水线）
 
 #### 3.2 预警管理 🔲
 
@@ -196,6 +197,8 @@
 
 #### 4.3 部署与文档 🔲
 
+- [x] 本地 Docker 数据目录隔离（`new-system/docker-data/`）
+
 - [ ] 后端 Dockerfile
 - [ ] 前端 Dockerfile
 - [ ] 全栈 Docker Compose 一键部署
@@ -222,6 +225,15 @@
 | `test_profile_without_token` | 无 Token 拒绝访问 | ✅ 通过 |
 | `test_refresh_token` | Token 刷新 | ✅ 通过（需 MySQL） |
 | 前端构建 | `vite build` 编译成功 | ✅ 通过 |
+| `tests/test_risk.py` | 风险研判模块单元测试（含 mock 回退、LLM 预留、话题清洗、ObjectId 回归） | ✅ 通过 |
+| `tests/test_risk_research.py` | 阶段1 数据集 schema / 标签映射 / 评估基线 | ✅ 通过 |
+| `tests/test_harmful_baseline.py` | 阶段2 harmful baseline 训练 / 评估 / 持久化 | ✅ 通过 |
+| `tests/test_stance_baseline.py` | 阶段3 stance baseline 训练 / 评估 / 持久化 | ✅ 通过 |
+| `tests/test_risk_model_mode.py` | 阶段4 model/rule 双模式接入 | ✅ 通过 |
+| `tests/test_research_trainers.py` | 阶段5 harmful/stance 训练流水线与模型工件生成 | ✅ 通过 |
+| mock 正式联调 | Docker + MySQL/MongoDB/Redis + Celery + risk API 打通 | ✅ 通过 |
+| 真实微博采集联调 | MediaCrawler + weibo 数据入库（`posts_count=5` / `comments_count=112`） | ✅ 通过 |
+| 真实微博 risk API | 真实微博数据上的风险研判后端闭环 | ✅ 通过 |
 
 ---
 
