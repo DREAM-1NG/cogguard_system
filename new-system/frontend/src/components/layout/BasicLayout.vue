@@ -23,20 +23,20 @@
       <!-- 顶部栏 -->
       <a-layout-header class="app-header">
         <div class="header-left">
-          <span class="header-module">{{ currentMenu?.label || 'CogGuard' }}</span>
+          <span class="header-module">{{ (currentMenu as any)?.label || 'CogGuard' }}</span>
         </div>
         <div class="header-right">
           <a-dropdown>
             <div class="user-badge">
               <a-avatar size="small" style="background-color: #001529; font-size: 12px">
-                {{ (authStore.userInfo?.username || 'U').charAt(0).toUpperCase() }}
+                {{ ((authStore.userInfo as any)?.username || 'U').charAt(0).toUpperCase() }}
               </a-avatar>
-              <span class="user-name">{{ authStore.userInfo?.username || '用户' }}</span>
+              <span class="user-name">{{ (authStore.userInfo as any)?.username || '用户' }}</span>
             </div>
             <template #overlay>
               <a-menu>
                 <a-menu-item disabled>
-                  <UserOutlined /> 角色：{{ authStore.userInfo?.role || '-' }}
+                  <UserOutlined /> 角色：{{ (authStore.userInfo as any)?.role || '-' }}
                 </a-menu-item>
                 <a-menu-divider />
                 <a-menu-item @click="handleLogout" danger>
@@ -100,9 +100,10 @@ const menuItems = [
   { path: '/coordination', label: '协同检测', icon: ApartmentOutlined, desc: '检测时间窗口内的协调分享行为，构建协同网络', disabled: false },
   { path: '/propagation', label: '传播归因', icon: ShareAltOutlined, desc: '分析信息传播路径，识别起爆/桥接/扩散关键角色', disabled: false },
   { path: '/accounts', label: '账户监测', icon: UserOutlined, desc: '账户行为画像、作息节律、自动化倾向评估', disabled: false },
-  { path: '/risk', label: '风险研判', icon: AlertOutlined, desc: '三维评估（真实性×操纵性×危害性），待开发', disabled: true },
+  { path: '/risk', label: '风险研判', icon: AlertOutlined, desc: '有害内容、立场、风险阶段、DISARM 与反制建议分析', disabled: false },
 ]
 
+const currentMenu = computed(() => menuItems.find(m => m.path === route.path))
 const selectedKeys = computed(() => [route.path])
 
 // ---- 标签页管理 ----
