@@ -3,6 +3,8 @@
 提供全局单例 Redis 客户端，用于缓存、会话管理和 Celery 消息队列。
 """
 
+from __future__ import annotations
+
 import redis.asyncio as aioredis
 
 from app.config import settings

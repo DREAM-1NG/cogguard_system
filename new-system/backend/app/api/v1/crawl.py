@@ -4,6 +4,8 @@
 所有需要鉴权的接口通过 ``get_current_user`` 依赖保护。
 """
 
+from __future__ import annotations
+
 import json
 
 from fastapi import APIRouter, Depends, Query

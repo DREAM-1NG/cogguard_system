@@ -4,7 +4,10 @@
 通过 ``celery_task_id`` 与 Celery 异步任务关联。
 """
 
+from __future__ import annotations
+
 from datetime import datetime
+from typing import Optional
 
 from sqlalchemy import DateTime, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
@@ -22,8 +25,8 @@ class CrawlJob(Base):
     params_json: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
     status: Mapped[str] = mapped_column(String(16), nullable=False, default="pending", index=True, comment="pending/running/completed/failed")
     progress: Mapped[int] = mapped_column(Integer, default=0, comment="0-100")
-    result_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
-    celery_task_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    result_summary: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    celery_task_id: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
     created_by: Mapped[int] = mapped_column(Integer, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
-    finished_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    finished_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)

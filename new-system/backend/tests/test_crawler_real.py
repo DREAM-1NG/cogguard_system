@@ -1,10 +1,16 @@
 """真实爬虫封装单元测试（不启动 MediaCrawler / News 进程）。"""
 
+from pathlib import Path
+
 import pytest
 
 from app.core.crawler.factory import build_crawler
-from app.core.crawler.social import weibo_comment_line_to_comment, weibo_content_line_to_post
 from app.core.crawler.news import news_data_to_post
+from app.core.crawler.social import (
+    _resolve_mediacrawler_runner,
+    weibo_comment_line_to_comment,
+    weibo_content_line_to_post,
+)
 
 
 def test_build_crawler_mock():
@@ -67,3 +73,16 @@ def test_news_dict_to_post():
     p = news_data_to_post(data, "toutiao")
     assert p.platform == "news"
     assert "段落" in p.content
+
+
+def test_resolve_mediacrawler_runner_falls_back_to_local_venv(tmp_path, monkeypatch):
+    mc_root = tmp_path / "MediaCrawler"
+    python_bin = mc_root / ".venv" / "bin" / "python"
+    python_bin.parent.mkdir(parents=True)
+    python_bin.write_text("#!/bin/sh\n")
+    python_bin.chmod(0o755)
+
+    monkeypatch.setattr("app.core.crawler.social.shutil.which", lambda _name: None)
+
+    runner = _resolve_mediacrawler_runner(Path(mc_root))
+    assert runner == [str(python_bin)]

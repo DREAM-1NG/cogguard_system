@@ -3,6 +3,8 @@
 根据 ``platform`` 路由到 MockCrawler、MediaCrawler 封装或 News 提取。
 """
 
+from __future__ import annotations
+
 import asyncio
 import json
 import traceback

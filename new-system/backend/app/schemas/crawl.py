@@ -1,5 +1,7 @@
 """数据采集相关的请求 / 响应数据模式。"""
 
+from __future__ import annotations
+
 from datetime import datetime
 
 from pydantic import BaseModel, Field

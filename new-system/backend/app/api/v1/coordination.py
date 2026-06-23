@@ -1,5 +1,7 @@
 """协同检测相关 API 路由。"""
 
+from __future__ import annotations
+
 from fastapi import APIRouter, Depends, Query
 
 from app.core.security import get_current_user

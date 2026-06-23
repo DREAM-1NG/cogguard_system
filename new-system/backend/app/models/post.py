@@ -1,5 +1,7 @@
 """MongoDB document schemas for crawled data (used with Motor, not ORM)."""
 
+from __future__ import annotations
+
 from datetime import datetime
 
 from pydantic import BaseModel, Field

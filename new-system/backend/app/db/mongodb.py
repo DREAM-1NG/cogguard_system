@@ -3,6 +3,8 @@
 使用 Motor 驱动，维护全局单例 client，提供按库名获取 database 的工具函数。
 """
 
+from __future__ import annotations
+
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 
 from app.config import settings

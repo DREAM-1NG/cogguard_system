@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import shutil
 from datetime import datetime, timezone
 from pathlib import Path
@@ -78,6 +79,30 @@ def weibo_comment_line_to_comment(raw: dict, cogguard_platform: str) -> Standard
     )
 
 
+def _resolve_mediacrawler_runner(mc_root: Path) -> list[str]:
+    """解析 MediaCrawler 的可执行入口，优先 uv，其次项目本地 Python。"""
+    uv_bin = (settings.MEDIACRAWLER_UV_BIN or "").strip() or "uv"
+    uv = shutil.which(uv_bin)
+    if uv:
+        return [uv, "run"]
+
+    local_python_candidates = [
+        mc_root / ".venv" / "bin" / "python",
+        mc_root / "venv" / "bin" / "python",
+    ]
+    for candidate in local_python_candidates:
+        if candidate.is_file() and os.access(candidate, os.X_OK):
+            return [str(candidate)]
+
+    global_python = shutil.which("python3.11") or shutil.which("python3")
+    if global_python:
+        return [global_python]
+
+    raise RuntimeError(
+        "未找到可用的 MediaCrawler 运行环境：既没有全局 uv，也没有 MediaCrawler 本地 .venv/venv Python。"
+    )
+
+
 def generic_jsonl_to_post(raw: dict, cogguard_platform: str) -> StandardPost:
     """其他平台 JSONL 的宽松映射（字段因平台而异）。"""
     pid = str(raw.get("note_id") or raw.get("aweme_id") or raw.get("id") or raw.get("video_id") or "")
@@ -123,10 +148,6 @@ class MediaSocialCrawler(BaseCrawler):
                 " 请设置环境变量为 MediaCrawler 仓库根目录绝对路径。"
             )
 
-        uv = shutil.which(settings.MEDIACRAWLER_UV_BIN.strip() or "uv")
-        if not uv:
-            raise RuntimeError("未找到 uv 可执行文件，请安装 uv 或设置 MEDIACRAWLER_UV_BIN。")
-
         kw = ",".join(k.strip() for k in keywords if k.strip())
         if not kw:
             raise ValueError("关键词不能为空（社交搜索模式）。")
@@ -138,10 +159,10 @@ class MediaSocialCrawler(BaseCrawler):
 
         lt = settings.MEDIACRAWLER_LOGIN_TYPE.strip() or "cookie"
         cookies = settings.MEDIACRAWLER_COOKIES or ""
+        runner = _resolve_mediacrawler_runner(mc_root)
 
         cmd: list[str] = [
-            uv,
-            "run",
+            *runner,
             "main.py",
             "--platform",
             self._mc_code,

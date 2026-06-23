@@ -4,6 +4,8 @@
 以及从 MongoDB 查询已采集的标准化数据。
 """
 
+from __future__ import annotations
+
 import json
 from datetime import datetime, timezone
 

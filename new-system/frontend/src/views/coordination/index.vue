@@ -127,12 +127,13 @@ function renderNetwork(net: any) {
   const ctx = canvas.getContext('2d')
   if (!ctx) return
 
-  const nodes = net.nodes.map((n: any, i: number) => ({
+  interface NetNode { id: string; x: number; y: number; [k: string]: any }
+  const nodes: NetNode[] = net.nodes.map((n: any, i: number) => ({
     ...n,
     x: width / 2 + Math.cos(2 * Math.PI * i / net.nodes.length) * Math.min(width, height) / 2.5,
     y: height / 2 + Math.sin(2 * Math.PI * i / net.nodes.length) * Math.min(width, height) / 2.5,
   }))
-  const nodeMap = new Map(nodes.map((n: any) => [n.id, n]))
+  const nodeMap = new Map<string, NetNode>(nodes.map((n) => [n.id, n]))
 
   for (let iter = 0; iter < 100; iter++) {
     for (const n1 of nodes) for (const n2 of nodes) {
