@@ -13,6 +13,7 @@ from sklearn.metrics import (
     average_precision_score,
     mean_absolute_error,
     mean_squared_error,
+    mean_squared_log_error,
     r2_score,
     roc_auc_score,
 )
@@ -33,7 +34,11 @@ def run_prediction(events: List[PropagationEvent], output_dir: str, observation_
 
 
 def path_prediction(events: List[PropagationEvent], observation_ratio: float) -> Dict:
-    X, y = [], []
+    X, y, groups = [], [], []
+    group_id = 0
+    total_queries = 0
+    covered_by_observed = 0
+    injected_true_parent = 0
     for event in events:
         graph = event.to_graph()
         ordered = [n.node_id for n in sorted_nodes_by_time(event)]
@@ -49,28 +54,46 @@ def path_prediction(events: List[PropagationEvent], observation_ratio: float) ->
         for child in future:
             true_parent = event.nodes[child].parent_id
             candidates = list(observed)
+            total_queries += 1
+            if true_parent and true_parent in candidates:
+                covered_by_observed += 1
             if true_parent and true_parent not in candidates and true_parent in graph.nodes:
                 candidates.append(true_parent)
-            negatives = candidates[:20]
-            for parent in negatives:
+                injected_true_parent += 1
+            limited_candidates = _limit_candidates(candidates, true_parent, 20)
+            for parent in limited_candidates:
                 if parent == child:
                     continue
                 X.append(_edge_features(event, graph, parent, child, depths, pagerank))
                 y.append(1 if parent == true_parent else 0)
+                groups.append(group_id)
+            group_id += 1
     if len(set(y)) < 2 or len(y) < 20:
         return {"status": "skipped", "reason": "not enough positive/negative candidate edges"}
     X = np.asarray(X, dtype=float)
     y = np.asarray(y, dtype=int)
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42, stratify=y)
+    groups = np.asarray(groups, dtype=int)
+    train_mask, test_mask = _group_train_test_mask(groups, test_size=0.3, random_state=42)
+    X_train, X_test = X[train_mask], X[test_mask]
+    y_train, y_test = y[train_mask], y[test_mask]
+    g_test = groups[test_mask]
+    if len(set(y_train.tolist())) < 2 or len(set(y_test.tolist())) < 2:
+        return {"status": "skipped", "reason": "group split lacks positive/negative candidate edges"}
     clf = LogisticRegression(max_iter=1000, class_weight="balanced")
     clf.fit(X_train, y_train)
     prob = clf.predict_proba(X_test)[:, 1]
+    hits_k, map_k = _hits_and_map_at_k(y_test, prob, g_test)
     return {
         "status": "ok",
         "samples": int(len(y)),
         "positive_rate": float(y.mean()),
+        "candidate_recall_observed": float(covered_by_observed / max(total_queries, 1)),
+        "offline_true_parent_injected": int(injected_true_parent),
+        "note": "Offline edge-classification baseline: future child is known and true parent may be injected into candidates.",
         "auc": _safe_auc(y_test, prob),
         "average_precision": float(average_precision_score(y_test, prob)),
+        **hits_k,
+        **map_k,
     }
 
 
@@ -93,12 +116,15 @@ def size_prediction(events: List[PropagationEvent], observation_ratio: float) ->
     pred = model.predict(X_test)
     rmse = float(mean_squared_error(y_test, pred) ** 0.5)
     mape = float(np.mean(np.abs((y_test - pred) / np.maximum(y_test, 1))) * 100)
+    pred_clipped = np.maximum(pred, 0)
+    msle = float(mean_squared_log_error(y_test, pred_clipped))
     return {
         "status": "ok",
         "train_events": int(len(y_train)),
         "test_events": int(len(y_test)),
         "mae": float(mean_absolute_error(y_test, pred)),
         "rmse": rmse,
+        "msle": msle,
         "mape_percent": mape,
         "r2": float(r2_score(y_test, pred)) if len(y_test) > 1 else None,
         "examples": [
@@ -141,6 +167,62 @@ def _cascade_features(graph: nx.DiGraph, observed: set) -> List[float]:
         float(duration),
         float(sub.number_of_nodes() / max(duration, 1.0)),
     ]
+
+
+def _limit_candidates(candidates: List[str], true_parent: str | None, limit: int) -> List[str]:
+    if len(candidates) <= limit:
+        return candidates
+    limited = candidates[:limit]
+    if true_parent and true_parent in candidates and true_parent not in limited:
+        limited[-1] = true_parent
+    return limited
+
+
+def _group_train_test_mask(groups: np.ndarray, test_size: float, random_state: int) -> Tuple[np.ndarray, np.ndarray]:
+    unique_groups = np.unique(groups)
+    train_groups, test_groups = train_test_split(unique_groups, test_size=test_size, random_state=random_state)
+    train_set = set(train_groups.tolist())
+    test_set = set(test_groups.tolist())
+    return np.isin(groups, list(train_set)), np.isin(groups, list(test_set))
+
+
+def _hits_and_map_at_k(y_true: np.ndarray, prob: np.ndarray, groups: np.ndarray, ks: Tuple[int, ...] = (10, 50, 100)) -> Tuple[Dict, Dict]:
+    """Compute Hits@K and MAP@K grouped by query (child node)."""
+    unique_groups = np.unique(groups)
+    hits = {k: 0 for k in ks}
+    ap_sums = {k: 0.0 for k in ks}
+    valid_queries = 0
+
+    for g in unique_groups:
+        mask = groups == g
+        g_y = y_true[mask]
+        g_prob = prob[mask]
+        if g_y.sum() == 0:
+            continue
+        valid_queries += 1
+        ranked_idx = np.argsort(-g_prob)
+        ranked_labels = g_y[ranked_idx]
+        for k in ks:
+            top_k = ranked_labels[:k]
+            if top_k.sum() > 0:
+                hits[k] += 1
+            relevant_seen = 0
+            precision_sum = 0.0
+            for i, label in enumerate(top_k):
+                if label == 1:
+                    relevant_seen += 1
+                    precision_sum += relevant_seen / (i + 1)
+            ap_sums[k] += precision_sum / max(g_y.sum(), 1)
+
+    if valid_queries == 0:
+        return (
+            {f"hits@{k}": None for k in ks},
+            {f"map@{k}": None for k in ks},
+        )
+    return (
+        {f"hits@{k}": float(hits[k] / valid_queries) for k in ks},
+        {f"map@{k}": float(ap_sums[k] / valid_queries) for k in ks},
+    )
 
 
 def _safe_auc(y_true, prob):

@@ -7,6 +7,7 @@ from propagation.loaders import load_dataset, make_synthetic_events
 from propagation.prediction import run_prediction
 from propagation.reporting import build_final_report
 from propagation.visualization import build_dashboard
+from benchmark.adapters.hyperidp_protocol_proxy import candidate_rows, prefix_features, train_statistics
 
 
 def test_smoke_pipeline():
@@ -109,3 +110,32 @@ def test_final_report_builder_handles_missing_artifacts():
         text = report.read_text(encoding="utf-8")
         assert "任务覆盖" in text
         assert "验收结论" in text
+
+
+def test_hyperidp_protocol_proxy_temporal_hyperedge_candidates():
+    cascades = [
+        [(1, 0), (2, 10), (3, 20), (4, 90000)],
+        [(1, 0), (3, 10), (5, 20), (6, 30)],
+    ]
+    popularity, transitions, hyper_neighbors = train_statistics(
+        cascades,
+        bucket_seconds=3600,
+        max_bucket_users=10,
+    )
+    social_neighbors = {1: {7}, 7: {1}}
+
+    rows = candidate_rows(
+        observed_users=[1],
+        popularity=popularity,
+        transitions=transitions,
+        hyper_neighbors=hyper_neighbors,
+        social_neighbors=social_neighbors,
+        global_candidates=[],
+        max_candidates=10,
+    )
+    candidates = {row[0] for row in rows}
+
+    assert 1 not in candidates
+    assert {2, 3, 7}.issubset(candidates)
+    assert hyper_neighbors[1][3] == 2
+    assert len(prefix_features([1, 2], [0, 10], popularity, transitions, hyper_neighbors, social_neighbors)) == 10

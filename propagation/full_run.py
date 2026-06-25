@@ -13,7 +13,7 @@ import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import average_precision_score, mean_absolute_error, mean_squared_error, r2_score, roc_auc_score
+from sklearn.metrics import average_precision_score, mean_absolute_error, mean_squared_error, mean_squared_log_error, r2_score, roc_auc_score
 from sklearn.model_selection import train_test_split
 
 from .analysis import (
@@ -282,12 +282,14 @@ def _fit_size_prediction(size_X: List[List[float]], size_y: List[int]) -> Dict:
     model = RandomForestRegressor(n_estimators=200, random_state=42, min_samples_leaf=1)
     model.fit(X_train, y_train)
     pred = model.predict(X_test)
+    pred_clipped = np.maximum(pred, 0)
     return {
         "status": "ok",
         "train_events": int(len(y_train)),
         "test_events": int(len(y_test)),
         "mae": float(mean_absolute_error(y_test, pred)),
         "rmse": float(mean_squared_error(y_test, pred) ** 0.5),
+        "msle": float(mean_squared_log_error(y_test, pred_clipped)),
         "mape_percent": float(np.mean(np.abs((y_test - pred) / np.maximum(y_test, 1))) * 100),
         "r2": float(r2_score(y_test, pred)) if len(y_test) > 1 else None,
         "examples": [{"true_size": float(t), "predicted_size": float(p)} for t, p in zip(y_test[:10], pred[:10])],

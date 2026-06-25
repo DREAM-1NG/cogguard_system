@@ -1,0 +1,41 @@
+[
+  {
+    "model": "HyperIDPProtocolProxy",
+    "dataset": "douban",
+    "obs_ratio": 0.1,
+    "msle": 0.3508914737973896,
+    "mae": 4.925929534918923,
+    "candidate_recall_full": 0.8038111402561333,
+    "hits@100": 0.30850977138714825,
+    "map@100": 0.08718757282084615,
+    "mrr": 0.3344225810836023,
+    "ndcg@100": 0.21727908771924034,
+    "elapsed_s": 62.4
+  },
+  {
+    "model": "HyperIDPProtocolProxy",
+    "dataset": "douban",
+    "obs_ratio": 0.3,
+    "msle": 0.02278310399458854,
+    "mae": 2.096639098518506,
+    "candidate_recall_full": 0.8131476415485368,
+    "hits@100": 0.3088056174070778,
+    "map@100": 0.08364720301693632,
+    "mrr": 0.3220519459152507,
+    "ndcg@100": 0.2109399196260634,
+    "elapsed_s": 74.3
+  },
+  {
+    "model": "HyperIDPProtocolProxy",
+    "dataset": "douban",
+    "obs_ratio": 0.5,
+    "msle": 0.005682324415014798,
+    "mae": 1.9466685621124624,
+    "candidate_recall_full": 0.8236618565141746,
+    "hits@100": 0.30776311441659304,
+    "map@100": 0.07680647112664392,
+    "mrr": 0.26720767435210924,
+    "ndcg@100": 0.19147884645757102,
+    "elapsed_s": 83.1
+  }
+]
