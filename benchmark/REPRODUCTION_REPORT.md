@@ -26,7 +26,7 @@ HyperIDP 论文 PDF 标注代码地址为 `https://github.com/HowieHsu0126/Hyper
 | 模型 | 来源 | 代码状态 | 本地运行状态 |
 |------|------|----------|-------------|
 | MINDS | AAAI 2024, github.com/cspjiao/MINDS | 公开可用 | 已成功运行（christianity, 30 epochs, best valid MAP@100 epoch=29） |
-| FOREST | IJCAI 2019, github.com/yangchengbupt/FOREST | 公开可用 | 已成功运行（douban, 1 epoch sanity run） |
+| FOREST | IJCAI 2019, github.com/yangchengbupt/FOREST | 公开可用 | 已成功运行（douban, 30 epochs, best valid MAP@100 epoch=10, sequence-only） |
 | RF_Baseline | scikit-learn RandomForestRegressor | 自建 | 已成功运行（douban） |
 | TemporalSizeBaseline | 固定时间窗中位数增长倍数 | 自建 | 已成功运行（douban, 7-day observation window） |
 | LR_EdgeClassifier | scikit-learn LogisticRegression | 自建 | 已成功运行（douban observed-candidate protocol） |
@@ -114,12 +114,13 @@ HyperIDP 论文 PDF 标注代码地址为 `https://github.com/HowieHsu0126/Hyper
 | HyperIDPProtocolProxy | douban | 0.8131 | 0.3088 | 0.0836 | 0.3221 | 0.2109 | n/a |
 | HyperIDPAdversarialProxy | douban | 0.8131 | 0.3075 | 0.0826 | 0.3158 | 0.2094 | 5 |
 | MINDS | christianity | — | 0.5848 | 0.1895 | — | — | 30 |
-| FOREST | douban | — | 0.2149 | 0.0584 | — | — | 1 |
+| FOREST | douban | — | 0.3289 | 0.0868 | — | — | 30 |
 | HyperIDP (论文) | christianity | — | 0.5187 | 0.1914 | — | — | 30 |
 | HyperIDP (论文) | douban | — | 0.3052 | 0.0998 | — | — | 30 |
 
 注：
-- MINDS 已完成 30 epochs 训练，并使用验证集 MAP@100 选择 epoch，最终测试集只评估一次；FOREST 当前仍仅用于验证 pipeline，非完整训练结果。
+- MINDS 与 FOREST 均已完成 30 epochs 训练，并使用验证集 MAP@100 选择 epoch，最终测试集只评估一次。
+- FOREST douban 30 epochs 最佳验证点为 epoch 10，测试 Hits@100=0.3289、MAP@100=0.0868；由于 DeepWalk 嵌入缺失，network 模式关闭，仅代表 sequence-only 复现结果。训练日志全程打印 `loss: nan`，但 validation/test Hits/MAP 正常产出，因此该结果可作为运行记录，不能视为与原论文完全同配置。
 - LR_EdgeClassifier 默认不注入未来真实 parent，`candidate_recall_observed=0.0884`，因此 Hits/MAP 同时反映候选覆盖瓶颈；其 AUC=0.9911、AP=0.4043 仍属于离线候选边分类指标，不能单独代表线上下一节点预测能力。
 - ProspectiveHeuristic 是严格前瞻候选协议：不使用未来真实节点，候选池覆盖 0.8773，Top-100 Hits 为 0.3080、MRR 为 0.3201、NDCG@100 为 0.2101。
 - ProspectiveRanker 在较小候选池设置下覆盖 0.8111，Top-100 Hits 为 0.3083、MRR 为 0.3225、NDCG@100 为 0.2109，排序略优于启发式但提升有限，说明下一步应增强特征或换用 GNN/temporal graph 模型。
@@ -183,17 +184,17 @@ HyperIDP 论文 PDF 标注代码地址为 `https://github.com/HowieHsu0126/Hyper
 
 | 阶段 | 行动 | 产出 |
 |------|------|------|
-| 当前 | 以 MINDS Christianity 为可运行统一 baseline，完成 30 epochs 对齐论文指标 | 完整训练结果 + 性能差距量化 |
+| 当前 | 以 MINDS Christianity 与 FOREST douban 为可运行统一 baseline，完成 30 epochs 对齐论文指标 | 完整训练结果 + 性能差距量化 |
 | 短期 | 在 HyperIDP proxy 基础上补 temporal hypergraph NAS | 更接近论文的 protocol-level reproduction 代码 |
 | 中期 | 若 HyperIDP 官方仓库可公开访问，验证并替换自建实现 | 完整复现或证伪 |
 | 落地 | 将验证后的最优模型封装为 CogGuard 传播预测 API | 系统集成 |
 
 ### 5.3 当前瓶颈
 
-1. **训练时长**：FOREST douban CPU 1 epoch 约 12 分钟；完整 30 epochs 需要 GPU 或长时间后台任务
-2. **DeepWalk 嵌入缺失**：FOREST network 模式无法启用
+1. **训练成本**：FOREST douban CPU 30 epochs 已完成一次，耗时约 2.5 小时；重复长训仍建议后台任务或 GPU
+2. **DeepWalk 嵌入缺失**：FOREST network 模式无法启用，当前结果为 sequence-only
 3. **数据集覆盖**：本地 MINDS 仓库仅有 Christianity；douban/android 需获取数据后进一步验证
-4. **HyperIDP 复现深度**：已有 protocol/adversarial proxy，但从论文复现 NAS 模块工程量仍大，MINDS 30 epochs 已可作为当前统一 baseline 参照
+4. **HyperIDP 复现深度**：已有 protocol/adversarial proxy，但从论文复现 NAS 模块工程量仍大，MINDS/FOREST 30 epochs 已可作为当前统一 baseline 参照
 
 ---
 
@@ -230,6 +231,13 @@ python -m benchmark.run_benchmark \
   --models minds \
   --datasets christianity \
   --minds_dir /path/to/MINDS \
+  --python /path/to/torch/python \
+  --epochs 30
+
+python -m benchmark.run_benchmark \
+  --models forest \
+  --datasets douban \
+  --forest_dir /path/to/FOREST \
   --python /path/to/torch/python \
   --epochs 30
 

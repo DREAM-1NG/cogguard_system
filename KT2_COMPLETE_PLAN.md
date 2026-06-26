@@ -24,7 +24,7 @@ CascadeSwitch 暂不作为本轮主实现。若后续恢复该路线，LLM 或�
 |---|---|---|
 | 事件条件体制切换 | HyperIDP/MINDS temporal hypergraph 协议参照 | 尚未显式建模 seeding/amplification/peak/decay |
 | 规模预测 | TemporalSizeBaseline + RF baseline + MINDS macro MSLE + HyperIDP protocol/adversarial proxy | 已有简单时间外推 baseline；MINDS Christianity 已完成 30 epochs；HyperIDP proxy 已产出 douban macro/micro 联合指标与 t_obs 曲线；douban/android 数据仍待补齐 |
-| 下一节点预测 | ProspectiveRanker + ProspectiveHeuristic + LR observed-candidate baseline + FOREST/MINDS micro metrics + HyperIDP protocol/adversarial proxy | 已有严格前瞻浅层学习排序 baseline；HyperIDP proxy 已补 temporal hyperedge proxy 和 adversarial multi-task proxy；MINDS Christianity 已完成 30 epochs；FOREST 仍缺完整长训，强 temporal graph/GNN 排序模型仍待补 |
+| 下一节点预测 | ProspectiveRanker + ProspectiveHeuristic + LR observed-candidate baseline + FOREST/MINDS micro metrics + HyperIDP protocol/adversarial proxy | 已有严格前瞻浅层学习排序 baseline；HyperIDP proxy 已补 temporal hyperedge proxy 和 adversarial multi-task proxy；MINDS Christianity 与 FOREST douban 已完成 30 epochs；强 temporal graph/GNN 排序模型仍待补 |
 | 系统解释 | 已观测图角色和证据链 | 与协同检测结果的联动接口需固化 |
 
 ## 分阶段计划
@@ -32,7 +32,7 @@ CascadeSwitch 暂不作为本轮主实现。若后续恢复该路线，LLM 或�
 | 阶段 | 目标 | 交付物 | 完成标准 |
 |---|---|---|---|
 | P0 | 固化当前 baseline 与文档口径 | `benchmark/`、`REPRODUCTION_REPORT.md`、状态矩阵 | RF/LR/Temporal/Prospective/MINDS/FOREST 均有可复现实验记录，并明确泄漏边界 |
-| P1 | 完整训练可运行 baseline | MINDS 30 epochs、FOREST 可选 30 epochs、固定时间窗规模预测对照 | MINDS Christianity 已完成；FOREST 完整训练和 MINDS douban/android 需数据/算力继续补齐 |
+| P1 | 完整训练可运行 baseline | MINDS 30 epochs、FOREST 30 epochs、固定时间窗规模预测对照 | MINDS Christianity 与 FOREST douban 已完成；MINDS douban/android 需数据继续补齐；FOREST network 模式因 DeepWalk 嵌入缺失仍不可用 |
 | P2 | prospective next-hop 协议 | 候选生成、Candidate Recall、Hits/MAP/MRR/NDCG | 已完成非学习和浅层学习排序 sanity baseline；下一步增强特征或接入 temporal graph/GNN |
 | P3 | HyperIDP protocol-level 模型 | temporal hypergraph + adversarial/macro-micro loss 最小复现 | 已完成 douban temporal coactivation hyperedge proxy、gradient-reversal adversarial proxy 与 t_obs 曲线；剩余为 NAS 或官方实现 |
 | P4 | 系统集成 | 预测 API、dashboard/前端展示口径 | 仅展示已验证能力，未完成能力带实验标签 |
@@ -42,6 +42,6 @@ CascadeSwitch 暂不作为本轮主实现。若后续恢复该路线，LLM 或�
 - 不把 LR 离线边分类 AUC/AP 写成线上下一节点预测完成。
 - 不把 ProspectiveHeuristic 写成最终模型；它只是无泄漏协议和候选覆盖/排序拆分的 sanity baseline。
 - 不把按最终序列比例切分的 RF 结果当成唯一规模预测证据；固定时间窗 baseline 应作为更接近早期预警的最低对照。
-- 不把 FOREST 1 epoch sanity run 写成论文复现结果；MINDS Christianity 30 epochs 可作为当前完整训练 baseline，但不代表 douban/android 已完成。
+- 不把 FOREST sequence-only 30 epochs 写成完整论文复现结果；其 DeepWalk network 模式缺失且训练 loss 为 nan。MINDS Christianity 与 FOREST douban 30 epochs 可作为当前完整训练 baseline，但不代表 douban/android 已全部完成。
 - 不把 HyperIDPProtocolProxy / HyperIDPAdversarialProxy 写成 HyperIDP 论文架构复现；它们只证明 macro/micro 协议支架、temporal hyperedge proxy 和 adversarial multi-task 代理可运行。
 - 不把 HyperIDP 预设为最终落地模型；当前只是主复现目标。

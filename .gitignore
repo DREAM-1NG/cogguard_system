@@ -12,3 +12,5 @@ outputs/*
 
 # Local logs / scratch output.
 *.log
+*.exit
+*.result.json

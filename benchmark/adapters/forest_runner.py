@@ -107,6 +107,8 @@ def test_epoch(model, test_data, k_list):
 
 
 def main():
+    run_started = time.time()
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--data_name", default="twitter")
     parser.add_argument("--epochs", type=int, default=30)
@@ -221,6 +223,7 @@ def main():
         result[f"map@{k}"] = float(test_scores[f"map@{k}"])
     result["msle"] = None
     result["mae"] = None
+    result["elapsed_s"] = round(time.time() - run_started, 1)
 
     print(json.dumps(result))
 

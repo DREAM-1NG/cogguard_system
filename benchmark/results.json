@@ -64,16 +64,20 @@
   {
     "model": "FOREST",
     "dataset": "douban",
-    "epochs": 1,
-    "hits@10": 0.10163385611877297,
-    "map@10": 0.05471471487082273,
-    "hits@50": 0.16662421309268222,
-    "map@50": 0.057726180934839215,
-    "hits@100": 0.21487573232415122,
-    "map@100": 0.05839224469488873,
+    "epochs": 30,
+    "selection": "best_valid_map@100",
+    "best_epoch": 10,
+    "valid_map@100": 0.07659255797519657,
+    "hits@10": 0.14857537935300752,
+    "map@10": 0.08077095690355761,
+    "hits@50": 0.2612350351151705,
+    "map@50": 0.08584092751720897,
+    "hits@100": 0.3288817728612496,
+    "map@100": 0.08679841068518254,
     "msle": null,
     "mae": null,
-    "elapsed_s": 727.4
+    "note": "30-epoch CPU run. DeepWalk network embeddings were missing, so FOREST ran in sequence-only mode. Training loss printed nan throughout; checkpoint selection and final metrics used validation MAP@100.",
+    "elapsed_s": 8998.0
   },
   {
     "model": "ProspectiveHeuristic",
