@@ -11,12 +11,14 @@ from app.core.risk import (
     analyze_harmful_batch,
     analyze_stance_batch,
     assess_risk_phase,
+    build_agent_countermeasures,
     build_evidence_pack,
     build_llm_bridge_result,
     build_risk_report,
     derive_stance_target,
     generate_countermeasures,
     map_to_disarm,
+    run_kt3_agent_workflow,
 )
 from app.core.risk.research.inference import (
     build_harmful_samples,
@@ -127,6 +129,7 @@ async def assess_risk(req) -> dict:
 
     target = derive_stance_target(posts, req.stance_target, req.keyword)
     requested_mode = (getattr(req, "analysis_mode", "rule") or "rule").lower()
+    use_agent = requested_mode == "agent"
     use_model = requested_mode == "model" and harmful_model_available() and stance_model_available()
     harmful_results, stance_results = (
         _inject_model_predictions(posts, target)
@@ -135,8 +138,30 @@ async def assess_risk(req) -> dict:
     )
     evidence_pack = build_evidence_pack(posts, harmful_results, stance_results, target)
     phase_result = assess_risk_phase(evidence_pack)
-    disarm_result = map_to_disarm(evidence_pack, phase_result)
-    recommendations = generate_countermeasures(evidence_pack, phase_result, disarm_result)
+    agent_outputs = {}
+    if use_agent:
+        agent_outputs = run_kt3_agent_workflow(
+            posts=posts,
+            target=target,
+            evidence_pack=evidence_pack,
+            phase_result=phase_result,
+            disarm_result={},
+            requested_mode=requested_mode,
+            enable_fact_check=getattr(req, "enable_fact_check", True),
+            enable_hate_detection=getattr(req, "enable_hate_detection", True),
+        )
+    disarm_result = map_to_disarm(evidence_pack, phase_result, agent_outputs if use_agent else None)
+    if use_agent and getattr(req, "enable_countermeasure", True):
+        recommendations = build_agent_countermeasures(
+            evidence_pack=evidence_pack,
+            phase_result=phase_result,
+            disarm_result=disarm_result,
+            fact_check_results=agent_outputs.get("fact_check_results", []),
+            hate_results=agent_outputs.get("hate_results", []),
+            community_harmfulness=agent_outputs.get("community_harmfulness", {}),
+        )
+    else:
+        recommendations = generate_countermeasures(evidence_pack, phase_result, disarm_result)
     llm_result = build_llm_bridge_result(
         target=target,
         phase_result=phase_result,
@@ -155,9 +180,11 @@ async def assess_risk(req) -> dict:
         disarm_result=disarm_result,
         recommendations=recommendations,
         llm_result=llm_result,
+        agent_outputs=agent_outputs,
+        report_format=(getattr(req, "report_format", "json") or "json").lower(),
     )
     report["data_source"] = data_source
-    report["analysis_mode"] = "model" if use_model else "rule"
+    report["analysis_mode"] = "agent" if use_agent else ("model" if use_model else "rule")
 
     mongo_db = get_mongo_db()
     await mongo_db["risk_reports"].insert_one(deepcopy(report))

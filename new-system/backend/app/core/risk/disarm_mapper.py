@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 
-def map_to_disarm(evidence_pack: dict, phase_result: dict) -> dict:
+def map_to_disarm(evidence_pack: dict, phase_result: dict, agent_outputs: dict | None = None) -> dict:
     """将证据映射为简化版 DISARM 战术/技术。"""
     content = evidence_pack["content_summary"]
     coordination = evidence_pack["coordination"]["summary"]
     accounts = evidence_pack["accounts"]
+    agent_outputs = agent_outputs or {}
+    fact_checks = agent_outputs.get("fact_check_results", []) or []
+    community_harm = agent_outputs.get("community_harmfulness", {}) or {}
 
     techniques: list[dict] = []
     next_steps: list[str] = []
@@ -46,6 +49,24 @@ def map_to_disarm(evidence_pack: dict, phase_result: dict) -> dict:
             "score": 0.61,
             "reason": "支持性表态占比较高，叙事正在被持续灌输",
         })
+
+    if any(item.get("verdict") in {"refuted", "conflicting"} for item in fact_checks):
+        techniques.append({
+            "tactic": "TA05 Manipulate",
+            "technique": "Misleading Claim Amplification",
+            "score": 0.78,
+            "reason": "事实核查 Agent 检测到冲突或被反驳的高传播 claim",
+        })
+        next_steps.append("继续包装争议 claim 并利用多账户放大")
+
+    if community_harm.get("level") in {"high", "critical"}:
+        techniques.append({
+            "tactic": "TA10 Persist",
+            "technique": "Coordinated Harmful Community Operation",
+            "score": 0.8 if community_harm.get("level") == "high" else 0.9,
+            "reason": "社区级 harmfulness Judge 判定为高风险协同群体",
+        })
+        next_steps.append("跨账号持续维持话题热度并转移到新共享对象")
 
     if not techniques:
         techniques.append({

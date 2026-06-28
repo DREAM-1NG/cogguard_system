@@ -93,6 +93,11 @@ def test_build_llm_bridge_result_disabled_by_default():
     assert "suggested_prompt" in result
 
 
+def test_risk_assess_request_defaults_to_agent_mode():
+    req = RiskAssessRequest()
+    assert req.analysis_mode == "agent"
+
+
 @pytest.mark.asyncio
 async def test_assess_risk_generates_structured_report(monkeypatch):
     posts = [
@@ -195,3 +200,113 @@ async def test_assess_risk_uses_mock_fallback_for_mock_platform(monkeypatch):
     assert result["target"]
     assert result["llm_enhancement"]["status"] == "disabled"
     assert fake_db["risk_reports"].inserted
+
+
+@pytest.mark.asyncio
+async def test_assess_risk_agent_mode_generates_kt3_closed_loop_report(monkeypatch):
+    posts = [
+        {
+            "platform": "weibo",
+            "post_id": "p1",
+            "content": "这是假的，别信，外地人都是垃圾人，必须转发扩散！",
+            "author_id": "u1",
+            "author_name": "用户1",
+            "timestamp": "2026-06-01T10:00:00Z",
+            "url": "https://example.com/claim",
+            "hashtags": ["#热点事件A#"],
+            "likes": 2,
+            "reposts": 8,
+            "comments_count": 1,
+        },
+        {
+            "platform": "weibo",
+            "post_id": "p2",
+            "content": "官方通报称该说法已核实，但也有人质疑来源",
+            "author_id": "u2",
+            "author_name": "用户2",
+            "timestamp": "2026-06-01T10:00:20Z",
+            "url": "https://example.com/claim",
+            "hashtags": ["#热点事件A#"],
+            "likes": 3,
+            "reposts": 4,
+            "comments_count": 2,
+        },
+        {
+            "platform": "weibo",
+            "post_id": "p3",
+            "content": "求证这个说法是否属实，有证据吗？",
+            "author_id": "u3",
+            "author_name": "用户3",
+            "timestamp": "2026-06-01T10:00:40Z",
+            "url": "https://example.com/claim",
+            "hashtags": ["#热点事件A#"],
+            "likes": 1,
+            "reposts": 2,
+            "comments_count": 3,
+        },
+    ]
+    fake_db = _FakeDB(
+        raw_posts=_FakeCollection(posts),
+        risk_reports=_FakeCollection(),
+    )
+    monkeypatch.setattr(risk_service, "get_mongo_db", lambda: fake_db)
+
+    result = await risk_service.assess_risk(
+        RiskAssessRequest(
+            platform="weibo",
+            keyword="热点事件A",
+            max_posts=10,
+            stance_target="热点事件A",
+            analysis_mode="agent",
+            report_format="markdown",
+        )
+    )
+
+    assert result["analysis_mode"] == "agent"
+    assert result["fact_check_results"]
+    assert result["hate_results"]
+    assert result["community_harmfulness"]["level"] in {"low", "medium", "high", "critical"}
+    assert result["optimization_trace"]["strategy"] == "maro_style_rule_and_prompt_optimization"
+    assert result["evidence_table"]
+    assert result["agent_trace"]
+    assert "Misleading Claim Amplification" in result["disarm_assessment"]["summary"]
+    assert any(item["action"] in {"事实纠偏", "反制叙事", "社区级处置"} for item in result["countermeasures"])
+    assert result["markdown_report"].startswith("# KT3 风险研判报告")
+    assert fake_db["risk_reports"].inserted
+
+
+@pytest.mark.asyncio
+async def test_assess_risk_agent_mode_respects_agent_switches(monkeypatch):
+    posts = [{
+        "platform": "mock_weibo",
+        "post_id": "p1",
+        "content": "热点事件A 持续传播",
+        "author_id": "u1",
+        "author_name": "用户1",
+        "timestamp": "2026-06-01T10:00:00Z",
+        "url": "https://example.com/a",
+        "hashtags": ["#热点事件A#"],
+        "likes": 1,
+        "reposts": 2,
+        "comments_count": 3,
+    }]
+    fake_db = _FakeDB(raw_posts=_FakeCollection(posts), risk_reports=_FakeCollection())
+    monkeypatch.setattr(risk_service, "get_mongo_db", lambda: fake_db)
+
+    result = await risk_service.assess_risk(
+        RiskAssessRequest(
+            platform="mock_weibo",
+            keyword="热点事件A",
+            max_posts=5,
+            analysis_mode="agent",
+            enable_fact_check=False,
+            enable_hate_detection=False,
+            enable_countermeasure=False,
+        )
+    )
+
+    assert result["analysis_mode"] == "agent"
+    assert result["fact_check_results"] == []
+    assert result["hate_results"] == []
+    assert {item["agent"]: item["status"] for item in result["agent_trace"]}["FactCheck Agent"] == "disabled"
+    assert result["countermeasures"]
