@@ -1,65 +1,72 @@
-# 关键技术二：传播监测与关键角色识别
+# 关键技术二：传播监控
 
 > **用途**：定义 KT2 的研究问题、当前工程落点、研究目标、实现方向和验证方式。  
-> **受众**：KT2 研究实现者、传播归因/趋势预测模块维护者。  
-> **维护规则**：只写关键技术背景与研究方案；产品接口和任务状态放入 `../../engineering/`。
+> **受众**：KT2 研究实现者、传播监控模块维护者、答辩材料编写者。  
+> **维护规则**：只写关键技术背景与研究方案；产品接口和任务状态放入工程文档。
 
-> 方向更新（2026-06-02）：KT2 关键技术定位为 **LLM + 时序预测**，核心任务从“传播归因/画一张传播图”转为 **传播趋势预测**——预测事件规模与传播走向。功能层借鉴“知微”(Zhiwei) 商业传播分析产品的呈现形态；已有的传播子图 / 时间线 / 关键角色 / 证据链作为“源头追溯与范围估计”子功能保留。
+> 方向更新（2026-06-23）：KT2 主功能收敛为 **规模预测 + 角色定位 + 下一跳预测**。传播时间线、证据链、范围估计、立场/危害/情感线索、影响力指数和前端可视化均为 auxiliary。方法层不绑定 CascadeSwitch、HyperIDP 或任何单一模型，允许根据数据条件选择轻量启发式、传统模型、图模型、多尺度扩散模型或组合方案。
 
 ## 1. 问题定义
 
-KT2 要回答的核心问题不是“这条叙事长什么样”，而是 **“这条叙事接下来会怎么扩散、会扩散到多大”**。围绕一个已识别的协同攻击事件及其早期传播数据：
+KT2 要回答的核心问题是：**一个传播事件接下来会扩散到多大，关键协同用户在传播中扮演什么角色，下一步可能传播到哪里。**
 
-- **事件规模预测**：给定早期观测窗口 [0, t_obs]，预测 t_pred 时刻的最终级联规模（转发/传播量）+ 方向 + 置信区间（关键技术，已落地）
-- **传播态势刻画**：传播子图、时间线、起爆/桥接/扩散关键角色（子功能，已落地）
-- **源头追溯与证据链**：claim 源头、关键路径回溯、支撑帖子（子功能，已落地）
-- **传播路径预测**：预测未来下一跳/路径结构（**功能创新方向，当前未落地，仅有已观测图上的路径回溯/取证，不是预测**）
-- **立场检测 / 危害性评估**：内容层子功能（**未落地；按闭环分工，内容分析统一归 KT3，KT2 是否承载待与 KT3 切分**）
+- **规模预测**：给定早期观测窗口 `[0, t_obs]`，预测未来 `t_pred` 或最终时刻的传播规模、方向和可选置信度。
+- **角色定位**：对已经参与传播且已被 KT1 判定为协同的用户，识别起爆、桥接、扩散、放大等角色，并给出图结构或证据链依据。
+- **下一跳预测**：在不使用未来真实节点或真实边的条件下，预测未来窗口内最可能被激活的用户或传播边。
+- **辅助能力**：传播子图、时间线、源头追溯、证据链、范围估计、内容线索和前端可视化，为三项主功能提供解释和展示支撑。
+
+严格区分两类路径能力：
+
+- **路径回溯 / 证据追溯**：在已观测传播图上解释过去发生了什么，当前已有实现基础。
+- **下一跳 / 路径预测**：在观测窗口结束时预测未来会发生什么，当前仍需补齐无泄漏候选生成和排序协议。
 
 ## 2. 当前代码基线
 
 当前代码落点：
 
-- `new-system/backend/app/core/propagation/`：`ts_features.py` / `llm_context.py` / `regime_model.py` / `trend_predictor.py`（CascadeSwitch 趋势预测，WP1-3）
-- `new-system/backend/app/core/propagation_legacy.py`：源头追溯 + 证据链 + 关键路径（MultiDiGraph，子功能保留）
+- `new-system/backend/app/core/propagation_legacy.py`：传播子图、关键角色、证据链、关键路径回溯。
+- `new-system/backend/app/core/propagation/`：时序特征、事件上下文、体制模型、趋势预测等规模预测基础实现。
 - `new-system/backend/app/services/propagation_service.py`
 - `new-system/backend/app/api/v1/propagation.py`
 
-当前已实现：
+当前已实现或已有基础：
 
-- 时序特征提取（volume / velocity / acceleration / burst_zscore）
-- 事件条件体制切换级联规模预测（CascadeSwitch：4 体制混合预测 + 置信区间 + 解释）
-- 传播子图、时间线、关键角色、证据链、关键路径回溯（legacy 子功能）
+- 传播图构建、时间线、关键角色、证据链、关键路径回溯。
+- 规模/趋势预测相关特征和轻量预测流程。
+- 前端传播监控页的部分展示能力。
 
-当前未实现 / 需注意：
+当前需要补齐：
 
-- **传播路径预测**（未来结构预测）——尚无设计与代码，对外表述须区分“路径预测”与已落地的“路径回溯/取证”
-- 在线 LLM 事件提取尚未接通（`propagation_service.py` 趋势预测当前走 `mock_llm=True`，`pyproject.toml` 缺 LLM 客户端依赖）
-- 评估脚本与公开数据集基准（DeepHawkes/CasFlow）未落地，“超越基线”暂无实证
-- 立场检测 / 危害性评估子功能未启动
+- 规模预测在公开数据集上的基准验证和与 baseline 的对比。
+- 角色定位与 KT1 协同用户集合的显式联动。
+- 下一跳预测的候选集构造、排序模型和无未来泄漏评估协议。
+- 辅助能力与主功能的边界说明，避免把内容分析或前端展示写成主功能本体。
 
-## 3. 这一技术线要解决的核心问题
+## 3. 方法空间
 
-- 如何在非平稳（受外生事件驱动发生体制转换）的级联上做可解释、零训练的规模前瞻预测
-- LLM 如何作为“事件抽取器”增强时序预测，而非不可靠的数值预测器
-- 如何借鉴知微的产品形态（功能/可视化）而不沦为“抄产品”——差异化锚在方法层（CascadeSwitch 可计算后验、可解释、自带预测能力，知微以事后分析为主）
+KT2 不预设唯一技术路线。可选方法包括：
 
-## 4. 推荐实现方向
+- **规模预测**：随机森林、统计外推、Hawkes/点过程、CascadeSwitch、CasFlow、CasFT、ConCat、CasDO、HyperIDP、MINDS、FOREST 等。
+- **角色定位**：degree、betweenness、PageRank、结构洞、社区桥接、传播路径证据、协同组条件化角色规则或学习模型。
+- **下一跳预测**：逻辑回归排序、Topo-LSTM、DeepInf、FOREST、MINDS、HyperIDP、TGAT、TGN、CAW、DyGFormer、TGSL 等。
 
-- 关键技术 = 事件条件体制切换（CascadeSwitch）：时序特征 + LLM/级联形态事件检测 + 4 体制 softmax 后验混合预测，零训练、白盒、带置信区间
-- 优先接通真实 LLM 事件提取并补基准实验数值，把“方法设计”坐实为“已验证”
-- “传播路径预测”若要成为关键技术，需补未来结构预测的设计与数据；否则诚实表述为“路径回溯/取证（事后）+ 规模预测（事前）”
-- 输出格式优先面向 KT3 报告研判消费
+工程落地可以分阶段推进：先保证启发式和传统 baseline 可跑，再逐步接入更强模型。方法创新空间包括但不限于协同用户条件化预测、多尺度联合建模、证据链可解释角色定位、低资源数据下的下一跳候选生成。
 
-## 5. 推荐验证方式
+## 4. 推荐验证方式
 
-- 用 `mock_weibo` 验证时间线和路径输出的稳定性
-- 用真实 `weibo`/`news` 样例验证角色排序是否可解释
-- 在服务层补回归测试，验证新增证据链字段不破坏现有响应
+- 用 `mock_weibo` 验证接口、前端和证据链展示不回归。
+- 用公开传播树或级联数据验证规模预测和下一跳预测。
+- 用 KT1 输出的协同群组验证角色定位能否按协同用户过滤和解释。
+- 每项预测任务都报告观测窗口、预测窗口、数据划分方式和是否存在未来泄漏。
 
-## 6. 参考文献线索
+## 5. 参考文献线索
 
-- `Temporally Evolving Graph Neural Network for Fake News Detection` (IPM 2021)
+- `HyperIDP: Customizing Temporal Hypergraph Neural Networks for Multi-Scale Information Diffusion Prediction` (COLING 2025)
+- `Enhancing Multi-Scale Diffusion Prediction via Sequential Hypergraphs and Adversarial Learning` (AAAI 2024)
+- `FOREST: Multi-scale Information Diffusion Prediction with Reinforced Recurrent Networks` (IJCAI 2019)
+- `DeepCas: An End-to-end Predictor of Information Cascades` (WWW 2017)
+- `DeepHawkes: Bridging the Gap between Prediction and Understanding of Information Cascades` (CIKM 2017)
+- `Topological Recurrent Neural Network for Diffusion Prediction` (ICDM 2017)
+- `Temporal Graph Networks for Deep Learning on Dynamic Graphs` (2020)
+- `Provenance for Online Information Diffusion` (2018)
 - `Rumor Detection on Social Media with Bi-Directional Graph Convolutional Networks` (AAAI 2020)
-- `A Weakly Supervised Propagation Model for Rumor Verification and Stance Detection with Multiple Instance Learning` (SIGIR 2022)
-- `Filter-based Stance Network for Rumor Verification` (TOIS 2024)

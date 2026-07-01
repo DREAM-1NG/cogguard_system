@@ -227,6 +227,11 @@ CogGuard 面向网络舆论对抗场景，以 **跨平台协同攻击行为** �
 **涉及页面**：协同检测（`/coordination`）
 **涉及 API**：`POST /api/v1/coordination/detect`
 
+
+**研究任务边界**：工程页面沿用“协同检测”命名，但 KT1 研究流程分为 Discover 和 Detect。Discover 是无标签协同社区发现，输出社区、协同边和证据对象；Detect 是有标签协同区分，使用 Discover 输出作为特征判断账号/社区是否属于 IO driver、coordinated attacker 或 organic user。Discover 的 Leiden 社区结果不能直接当作攻击标签，只能作为 Detect 的结构化输入。
+
+**KT1 后端口径更新**：Discover 采用 MAGNN/Leiden 输出可审计社区；Detect 的论文主后端为 `gfm_lm_gnn`，参考 IOHunter/SocGFM 的 LM+GNN/GFM 检测范式，融合 Discover embedding、社区特征、LM/TF-IDF 语义特征和 Discover 重加权多关系图。工程接口仍可保留 `classifier`、`relation_gnn`、`fusion_gnn` 作为基线或降级路径。
+
 ### 2.4 场景 S3：传播路径分析与趋势预测
 
 **背景**：发现协同行为后，分析人员需要追溯信息传播路径，识别关键传播角色，并预测传播趋势。
