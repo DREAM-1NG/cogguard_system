@@ -7,6 +7,7 @@ from app.api.v1 import crawl as crawl_api
 from app.core.crawler.mock import MockCrawler
 from app.core.crawler.normalizer import DataNormalizer
 from app.models.task import CrawlJob
+from app.services import crawl_service
 from tests.conftest import needs_db, test_session_factory
 
 
@@ -83,7 +84,11 @@ async def test_list_platforms(client: AsyncClient):
     response = await client.get("/api/v1/crawl/platforms")
     assert response.status_code == 200
     data = response.json()["data"]
-    assert any(platform["id"] == "mock_weibo" for platform in data)
+    ids = {platform["id"] for platform in data}
+    names = {platform["name"] for platform in data}
+    assert "mock_weibo" not in ids
+    assert {"微博", "抖音", "小红书"}.issubset(names)
+    assert all("MediaCrawler" not in name for name in names)
 
 
 @pytest.mark.asyncio
@@ -92,7 +97,7 @@ async def test_create_crawl_job_requires_auth(client: AsyncClient):
         "/api/v1/crawl/social",
         json={"platform": "mock_weibo", "keywords": ["test"], "max_posts": 5},
     )
-    assert response.status_code == 403
+    assert response.status_code == 401
 
 
 @pytest.mark.asyncio
@@ -192,3 +197,82 @@ async def test_create_crawl_job_local_execution_schedules_backend_task(
     assert data["celery_task_id"].startswith("local:")
     assert calls
     assert '"execution_mode": "local"' in calls[0][1]
+
+
+@pytest.mark.asyncio
+@needs_db
+async def test_create_media_download_job_schedules_backend_task(
+    setup_database, auth_client: AsyncClient, monkeypatch
+):
+    calls = []
+
+    def fake_run_media_download_job(job_id: int, params_json: str):
+        calls.append((job_id, params_json))
+        return {}
+
+    monkeypatch.setattr(
+        crawl_api.media_download_service,
+        "run_media_download_job",
+        fake_run_media_download_job,
+    )
+
+    response = await auth_client.post(
+        "/api/v1/crawl/media-downloads",
+        json={
+            "platform": "douyin",
+            "keyword": "测试",
+            "event_id": "event_1",
+            "post_ids": ["p1"],
+            "media_types": ["video", "image"],
+        },
+    )
+
+    assert response.status_code == 200
+    data = response.json()["data"]
+    assert data["job_type"] == "media_download"
+    assert data["platform"] == "media_download"
+    assert data["status"] == "running"
+    assert data["celery_task_id"].startswith("local:")
+    assert calls
+    payload = calls[0][1]
+    assert '"platform": "douyin"' in payload
+    assert '"event_id": "event_1"' in payload
+
+
+@pytest.mark.asyncio
+@needs_db
+async def test_delete_media_download_job_does_not_delete_raw_crawl_data(
+    setup_database, monkeypatch
+):
+    delete_calls = []
+
+    class FakeCollection:
+        async def delete_many(self, query):
+            delete_calls.append(query)
+
+    class FakeMongo:
+        def __getitem__(self, _name):
+            return FakeCollection()
+
+    monkeypatch.setattr(crawl_service, "get_mongo_db", lambda: FakeMongo())
+
+    async with test_session_factory() as session:
+        job = CrawlJob(
+            job_type="media_download",
+            platform="media_download",
+            params_json="{}",
+            status="completed",
+            progress=100,
+            created_by=1,
+        )
+        session.add(job)
+        await session.commit()
+        await session.refresh(job)
+        job_id = job.id
+
+    async with test_session_factory() as session:
+        deleted = await crawl_service.delete_job(job_id, 1, session)
+        await session.commit()
+
+    assert deleted is True
+    assert delete_calls == []

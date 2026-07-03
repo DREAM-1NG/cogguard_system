@@ -4,12 +4,12 @@ CogGuard 是一个面向竞赛和研究验证的开源原型，目标是围绕�
 
 `事件 -> 证据 -> 协同 -> 传播 -> 风险 -> 处置`
 
-仓库当前以 `release-0.2` 为工程基线，主线代码位于 [new-system/README.md](new-system/README.md) 对应的 `new-system/` 目录。
+仓库当前以 `release-0.2` 为工程基线，主线代码位于 [system/README.md](system/README.md) 对应的 `system/` 目录。
 
 ## 当前基线
 
 - 当前工程基线：`release-0.2`
-- 当前唯一产品代码根：`new-system/`
+- 当前唯一产品代码根：`system/`
 - 当前短期验证范围：`mock_weibo`、`weibo`、`news`
 - 参考/依赖边界：`MediaCrawler-main/`、`NewsCrawler-main/`、`CooRTweet-master/`
 - 竞赛材料目录：[`../materials/`](../materials/)（PPT、申报书、开题材料等，不放入产品代码目录）
@@ -23,7 +23,7 @@ CogGuard 是一个面向竞赛和研究验证的开源原型，目标是围绕�
 |------|------|------|
 | 长期文档层 | [`doc/`](doc/) | 开发进度、环境说明、技术背景、变更日志 |
 | ARIS 工作空间层 | [`aris/`](aris/) | 针对关键技术一/二/三的独立 ARIS 执行入口 |
-| 产品代码层 | [`new-system/`](new-system/) | 当前唯一有效的后端、前端、部署与测试代码 |
+| 产品代码层 | [`system/`](system/) | 当前唯一有效的后端、前端、部署与测试代码 |
 | 参考边界层 | `MediaCrawler-main/` `NewsCrawler-main/` `CooRTweet-master/` | 上游参考与依赖，不作为默认修改范围 |
 | 外层竞赛材料层 | [`../materials/`](../materials/) | PPT、申报书、开题材料与竞赛交付材料 |
 
@@ -36,7 +36,7 @@ CogGuard 是一个面向竞赛和研究验证的开源原型，目标是围绕�
 | 数据采集 | MVP 已完成 | Mock + 真实爬虫封装已接入 |
 | 协同检测 | MVP 已完成 | 已有共享对象协同检测（旧方向），PSL 新方向在 `aris/tech-01-coordination/` 已完成系统设计 |
 | 传播监控 | WP1-3 已完成 | Hybrid TS + LLM 路线，已实现 `ts_features` / `llm_context` / `regime_model` / `trend_predictor`；WP4-5（立场/危害）未启动 |
-| 账户监测 | MVP 已完成 | 已有画像与自动化评分，待补历史参与与 NLP |
+| 账户监测 | MVP 已完成 | 已有画像、自动化评分与 BotRHG 风格社交机器人检测 API，待补历史参与与前端深度展示 |
 | 报告研判 | MVP 已完成 | `core/risk/` 1,340 行（DISARM 评分 / D-S 融合 / 证据链 / 报告生成 / 阶段检测）+ `risk_service` 编排层 + 风险 API + 前端风险页 |
 | 看板/预警/报告 | 待开发 | `dashboard/index.vue` 仍为占位，预警与报告管理未启动 |
 
@@ -44,7 +44,7 @@ CogGuard 是一个面向竞赛和研究验证的开源原型，目标是围绕�
 
 ```bash
 # 1. 启动基础服务
-cd new-system
+cd system
 cp .env.example .env
 docker compose up -d
 
@@ -61,13 +61,13 @@ npm run dev
 ```
 
 - 详细环境与启动步骤见 [`doc/engineering/environment-setup.md`](doc/engineering/environment-setup.md)
-- 详细系统开发说明见 [`new-system/README.md`](new-system/README.md)
+- 详细系统开发说明见 [`system/README.md`](system/README.md)
 
 ## ARIS 工作流
 
 如果任务由 ARIS/Claude Code/Codex 驱动，不直接在仓库根随意开工，按下面路径执行：
 
-1. 先读 [`AGENTS.md`](AGENTS.md)、[`doc/engineering/development-roadmap.md`](doc/engineering/development-roadmap.md)、[`new-system/README.md`](new-system/README.md)
+1. 先读 [`AGENTS.md`](AGENTS.md)、[`doc/engineering/development-roadmap.md`](doc/engineering/development-roadmap.md)、[`system/README.md`](system/README.md)
 2. 进入 [`aris/README.md`](aris/README.md)，选择目标技术工作空间
 3. 从 `release-0.2` 拉出技术分支：
    - `aris/t1-*`
@@ -107,7 +107,7 @@ cogguard_system/
 │       ├── literature-references.md
 │       ├── time-series-forecasting-notes.md
 │       └── key-technology-background/
-├── new-system/
+├── system/
 ├── MediaCrawler-main/
 ├── NewsCrawler-main/
 └── CooRTweet-master/
@@ -120,7 +120,7 @@ cogguard_system/
 - [`doc/engineering/development-roadmap.md`](doc/engineering/development-roadmap.md)：当前状态与优先级
 - [`doc/research/key-technology-background/overview.md`](doc/research/key-technology-background/overview.md)：总技术背景
 - [`aris/README.md`](aris/README.md)：ARIS 入口与工作流说明
-- [`new-system/README.md`](new-system/README.md)：主线代码运行与接口说明
+- [`system/README.md`](system/README.md)：主线代码运行与接口说明
 - [`../materials/README.md`](../materials/README.md)：竞赛材料目录说明（位于仓库外层）
 
 ## 参考边界

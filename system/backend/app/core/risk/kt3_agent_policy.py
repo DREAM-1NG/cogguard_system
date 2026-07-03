@@ -19,6 +19,17 @@ DEFAULT_POLICY = {
     "abstain_threshold": 0.45,
     "retrieval_threshold": 0.58,
     "countermeasure_threshold": 0.72,
+    "trigger_conditions": {
+        "retrieval_on_claim_uncertainty": True,
+        "review_on_cross_view_conflict": True,
+        "countermeasure_requires_human_review": True,
+    },
+    "report_template_constraints": {
+        "require_platform_reference": True,
+        "require_evidence_sufficiency": True,
+        "require_human_confirmation_items": True,
+        "countermeasure_internal_only": True,
+    },
     "agent_weights": {
         "PostHarmAgent": 0.22,
         "MultimodalConsistencyAgent": 0.16,
@@ -134,13 +145,7 @@ def refine_kt3_agent_policy_loop(
         if enable_llm_rule_generator:
             try:
                 if rule_generator is None:
-                    proposal_failures.append(
-                        {
-                            "source": "DecisionRuleOptimizerAgent",
-                            "status": "skipped",
-                            "reason": "llm_rule_generator_not_configured",
-                        }
-                    )
+                    raise ValueError("DecisionRuleOptimizerAgent requires an active text_llm provider")
                 else:
                     proposals.extend(
                         _normalize_rule_generator_output(
@@ -150,10 +155,24 @@ def refine_kt3_agent_policy_loop(
                                 error_summary=round_errors,
                                 feedback_summary=feedback_summary,
                                 validation_metrics=round_start["metrics"],
+                                held_out_audit=_score_policy(current_policy, held_out_cases)["metrics"] if held_out_cases else None,
+                                historical_rules=[
+                                    {
+                                        "rule_id": item.get("rule_id"),
+                                        "source": item.get("source"),
+                                        "description": item.get("description"),
+                                        "status": item.get("status"),
+                                        "objective_score": item.get("objective_score"),
+                                    }
+                                    for item in candidate_rules[-12:]
+                                    if isinstance(item, dict)
+                                ],
                             )
                         )
                     )
             except Exception as exc:
+                if not proposals:
+                    raise
                 proposal_failures.append(
                     {
                         "source": "DecisionRuleOptimizerAgent",
@@ -445,10 +464,13 @@ def _deterministic_rule_candidates(
     if counts.get("retrieval_needed_on_error", 0) > 0:
         proposals.append(
             {
-                "source": "deterministic_error_analysis",
+                "source": "data_error",
                 "description": "Trigger retrieval earlier for cases that failed under uncertainty.",
                 "policy_patch": {
                     "retrieval_threshold": current_policy["retrieval_threshold"] - 0.04,
+                    "trigger_conditions": {
+                        "retrieval_on_claim_uncertainty": True,
+                    },
                 },
             }
         )
@@ -464,13 +486,27 @@ def _deterministic_rule_candidates(
         )
     proposals.append(
         {
-            "source": "deterministic_neighbor_search",
+            "source": "validation_metric",
             "description": f"Round {iteration} conservative neighbor around current policy.",
             "policy_patch": {
                 "review_threshold": current_policy["review_threshold"] + (0.02 if iteration % 2 == 0 else -0.02),
                 "abstain_threshold": current_policy["abstain_threshold"],
                 "retrieval_threshold": current_policy["retrieval_threshold"],
                 "countermeasure_threshold": current_policy["countermeasure_threshold"],
+            },
+        }
+    )
+    proposals.append(
+        {
+            "source": "platform_template",
+            "description": "Require governance reports to cite public platform reference basis and human confirmation items.",
+            "policy_patch": {
+                "report_template_constraints": {
+                    "require_platform_reference": True,
+                    "require_evidence_sufficiency": True,
+                    "require_human_confirmation_items": True,
+                    "countermeasure_internal_only": True,
+                }
             },
         }
     )
@@ -494,10 +530,12 @@ def _normalize_rule_generator_output(raw: Any) -> list[dict[str, Any]]:
 
 def _prepare_rule_record(raw_rule: dict[str, Any], *, iteration: int, index: int) -> dict[str, Any]:
     rule_id = str(raw_rule.get("rule_id") or f"rule-r{iteration}-{index}")
+    source = _normalize_rule_source(raw_rule.get("source"))
     return {
         "rule_id": rule_id,
         "round": iteration,
-        "source": str(raw_rule.get("source") or "DecisionRuleOptimizerAgent"),
+        "source": source,
+        "source_detail": str(raw_rule.get("source_detail") or raw_rule.get("source") or source),
         "description": str(raw_rule.get("description") or raw_rule.get("rationale") or ""),
         "policy_patch": raw_rule.get("policy_patch") or raw_rule.get("patch") or {},
         "raw_rule": raw_rule,
@@ -515,6 +553,8 @@ def _validate_rule_candidate(rule: dict[str, Any], current_policy: dict[str, Any
         "retrieval_threshold",
         "countermeasure_threshold",
         "agent_weights",
+        "trigger_conditions",
+        "report_template_constraints",
     }
     unknown = sorted(set(patch) - allowed)
     if unknown:
@@ -538,9 +578,60 @@ def _validate_rule_candidate(rule: dict[str, Any], current_policy: dict[str, Any
             if unknown_agents:
                 errors.append(f"unknown_agent_weights:{','.join(unknown_agents)}")
             candidate["agent_weights"] = {**candidate.get("agent_weights", {}), **weights}
+    if "trigger_conditions" in patch:
+        trigger_conditions = patch.get("trigger_conditions")
+        if not isinstance(trigger_conditions, dict):
+            errors.append("trigger_conditions_must_be_object")
+        else:
+            candidate["trigger_conditions"] = {
+                **(candidate.get("trigger_conditions") or {}),
+                **{
+                    str(key): bool(value)
+                    for key, value in trigger_conditions.items()
+                    if isinstance(key, str)
+                },
+            }
+    if "report_template_constraints" in patch:
+        constraints = patch.get("report_template_constraints")
+        if not isinstance(constraints, dict):
+            errors.append("report_template_constraints_must_be_object")
+        else:
+            candidate["report_template_constraints"] = {
+                **(candidate.get("report_template_constraints") or {}),
+                **{
+                    str(key): bool(value)
+                    for key, value in constraints.items()
+                    if isinstance(key, str)
+                },
+            }
     if errors:
         return {"valid": False, "errors": errors}
     return {"valid": True, "errors": [], "policy": _normalize_policy(candidate)}
+
+
+def _normalize_rule_source(value: Any) -> str:
+    text = str(value or "").strip()
+    allowed_sources = {
+        "data_error",
+        "human_feedback",
+        "platform_template",
+        "validation_metric",
+        "DecisionRuleOptimizerAgent",
+        "deterministic_error_analysis",
+        "deterministic_neighbor_search",
+    }
+    if text in allowed_sources:
+        return text
+    lowered = text.lower()
+    if "feedback" in lowered or "human" in lowered:
+        return "human_feedback"
+    if "platform" in lowered or "template" in lowered or "governance" in lowered:
+        return "platform_template"
+    if "metric" in lowered or "validation" in lowered:
+        return "validation_metric"
+    if "error" in lowered or "false_" in lowered:
+        return "data_error"
+    return "DecisionRuleOptimizerAgent"
 
 
 def _candidate_policies(baseline: dict[str, Any]) -> list[dict[str, Any]]:
@@ -733,6 +824,14 @@ def _normalize_policy(policy: dict[str, Any]) -> dict[str, Any]:
         "abstain_threshold": _clamp(_safe_float(policy.get("abstain_threshold"), 0.45)),
         "retrieval_threshold": _clamp(_safe_float(policy.get("retrieval_threshold"), 0.58)),
         "countermeasure_threshold": _clamp(_safe_float(policy.get("countermeasure_threshold"), 0.72)),
+        "trigger_conditions": {
+            **DEFAULT_POLICY["trigger_conditions"],
+            **(policy.get("trigger_conditions") or {}),
+        },
+        "report_template_constraints": {
+            **DEFAULT_POLICY["report_template_constraints"],
+            **(policy.get("report_template_constraints") or {}),
+        },
         "agent_weights": {**DEFAULT_POLICY["agent_weights"], **(policy.get("agent_weights") or {})},
     }
     weight_sum = sum(max(0.0, _safe_float(value)) for value in normalized["agent_weights"].values()) or 1.0

@@ -6,30 +6,35 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.security import get_current_user, get_current_user_or_preview
 from app.db.mysql import get_db
 from app.models.user import User
-from app.schemas.crawl import CrawlDataQuery, CrawlJobResponse, CrawlRequest
+from app.schemas.crawl import (
+    CrawlDataQuery,
+    CrawlJobResponse,
+    CrawlRequest,
+    MediaDownloadRequest,
+)
 from app.services import crawl_service
+from app.services import media_download_service
 from app.tasks.crawl_tasks import execute_crawl_job, run_crawl_job
 from app.utils.response import success
 
 router = APIRouter()
 
 SUPPORTED_PLATFORMS = [
-    {"id": "mock_weibo", "name": "模拟微博（测试）", "status": "active"},
     {
         "id": "weibo",
-        "name": "微博（MediaCrawler）",
+        "name": "微博",
         "status": "active",
         "hint": "需配置 MEDIACRAWLER_ROOT 与 Cookie/扫码登录环境",
     },
     {
         "id": "douyin",
-        "name": "抖音（MediaCrawler）",
+        "name": "抖音",
         "status": "active",
         "hint": "需配置 MEDIACRAWLER_ROOT",
     },
     {
         "id": "xhs",
-        "name": "小红书（MediaCrawler）",
+        "name": "小红书",
         "status": "active",
         "hint": "需配置 MEDIACRAWLER_ROOT",
     },
@@ -94,6 +99,40 @@ async def list_jobs(
     return success(data={"total": total, "items": items})
 
 
+@router.post("/media-downloads")
+async def create_media_download(
+    req: MediaDownloadRequest,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user_or_preview),
+):
+    job = await media_download_service.create_media_download_job(req, current_user.id, db)
+    celery_task_id = f"local:{job.id}"
+    background_tasks.add_task(media_download_service.run_media_download_job, job.id, job.params_json)
+    await crawl_service.update_job_status(
+        job.id,
+        "running",
+        db,
+        progress=0,
+        celery_task_id=celery_task_id,
+    )
+    await db.commit()
+    await db.refresh(job)
+    return success(data=CrawlJobResponse.model_validate(job).model_dump(mode="json"))
+
+
+@router.get("/media-downloads/{job_id}")
+async def get_media_download(
+    job_id: int,
+    db: AsyncSession = Depends(get_db),
+    _current_user: User = Depends(get_current_user_or_preview),
+):
+    job = await media_download_service.get_media_download_job(job_id, db)
+    if job is None:
+        return success(data=None, msg="下载任务不存在")
+    return success(data=job)
+
+
 @router.delete("/jobs/{job_id}")
 async def delete_job(
     job_id: int,
@@ -122,6 +161,8 @@ async def cancel_job(
 async def query_data(
     platform: str | None = None,
     keyword: str | None = None,
+    event_id: str | None = None,
+    has_media: bool | None = None,
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     _current_user: User = Depends(get_current_user_or_preview),
@@ -129,6 +170,8 @@ async def query_data(
     query = CrawlDataQuery(
         platform=platform,
         keyword=keyword,
+        event_id=event_id,
+        has_media=has_media,
         page=page,
         page_size=page_size,
     )

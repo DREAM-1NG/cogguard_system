@@ -145,6 +145,14 @@
 
           <template v-else-if="column.key === 'action'">
             <a-space v-if="!isPreviewMode">
+              <a-button
+                v-if="record.job_type === 'media_download'"
+                size="small"
+                type="link"
+                @click="openDownloadDetail(record.id)"
+              >
+                详情
+              </a-button>
               <a-popconfirm
                 v-if="record.status === 'pending' || record.status === 'running'"
                 title="确定取消？"
@@ -178,6 +186,41 @@
         <TableSettings v-model:size="tableSize" v-model:pageSize="dataPageSize" />
       </template>
 
+      <div class="data-filter-bar">
+        <a-select
+          v-model:value="dataFilters.platform"
+          allow-clear
+          placeholder="平台"
+          style="width: 140px"
+          @change="handleDataFilterChange"
+        >
+          <a-select-option value="xhs">小红书</a-select-option>
+          <a-select-option value="douyin">抖音</a-select-option>
+          <a-select-option value="weibo">微博</a-select-option>
+        </a-select>
+        <a-input
+          v-model:value="dataFilters.keyword"
+          allow-clear
+          placeholder="关键词"
+          style="width: 180px"
+          @pressEnter="handleDataFilterChange"
+        />
+        <a-input
+          v-model:value="dataFilters.event_id"
+          allow-clear
+          placeholder="事件 ID"
+          style="width: 180px"
+          @pressEnter="handleDataFilterChange"
+        />
+        <a-checkbox v-model:checked="dataFilters.has_media" @change="handleDataFilterChange">
+          仅含媒体
+        </a-checkbox>
+        <a-button @click="handleDataFilterChange">筛选</a-button>
+        <a-button type="primary" :loading="creatingDownload" @click="handleCreateDownload">
+          下载媒体
+        </a-button>
+      </div>
+
       <a-table
         v-if="postData.length > 0"
         :columns="dataColumns"
@@ -194,6 +237,54 @@
         :image-style="{ height: '40px' }"
       />
     </a-card>
+
+    <a-drawer
+      v-model:open="downloadDrawerOpen"
+      title="媒体下载详情"
+      width="720"
+    >
+      <a-spin :spinning="loadingDownloadDetail">
+        <a-descriptions
+          v-if="downloadDetail"
+          bordered
+          size="small"
+          :column="2"
+          style="margin-bottom: 16px"
+        >
+          <a-descriptions-item label="任务 ID">{{ downloadDetail.id }}</a-descriptions-item>
+          <a-descriptions-item label="状态">
+            <a-tag :color="statusColor(downloadDetail.status)">{{ downloadDetail.status }}</a-tag>
+          </a-descriptions-item>
+          <a-descriptions-item label="保存目录" :span="2">
+            <span class="path-text">{{ downloadDetail.summary?.save_root || '-' }}</span>
+          </a-descriptions-item>
+          <a-descriptions-item label="总数">{{ downloadDetail.summary?.total ?? 0 }}</a-descriptions-item>
+          <a-descriptions-item label="已下载">{{ downloadDetail.summary?.downloaded ?? 0 }}</a-descriptions-item>
+          <a-descriptions-item label="失败">{{ downloadDetail.summary?.failed ?? 0 }}</a-descriptions-item>
+          <a-descriptions-item label="跳过">{{ downloadDetail.summary?.skipped ?? 0 }}</a-descriptions-item>
+        </a-descriptions>
+
+        <a-table
+          :columns="downloadColumns"
+          :data-source="downloadDetail?.items || []"
+          row-key="url"
+          size="small"
+          :pagination="{ pageSize: 8 }"
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'status'">
+              <a-tag :color="downloadStatusColor(record.status)">{{ record.status }}</a-tag>
+            </template>
+            <template v-else-if="column.key === 'local_path'">
+              <span class="path-text">{{ record.local_path || '-' }}</span>
+            </template>
+            <template v-else-if="column.key === 'url'">
+              <a :href="record.url" target="_blank" rel="noopener noreferrer">原始链接</a>
+            </template>
+          </template>
+        </a-table>
+      </a-spin>
+    </a-drawer>
   </div>
 </template>
 
@@ -206,7 +297,9 @@ import { useAuthStore } from '@/stores/auth'
 import {
   cancelCrawlJob,
   createCrawlJob,
+  createMediaDownloadJob,
   deleteCrawlJob,
+  getMediaDownloadJob,
   getPlatforms,
   listCrawlJobs,
   queryCrawlData,
@@ -223,9 +316,11 @@ interface PlatformOption {
 
 interface CrawlJobItem {
   id: number
+  job_type: string
   platform: string
   status: string
   progress: number
+  result_summary?: string | null
   created_at: string
 }
 
@@ -237,6 +332,35 @@ interface PostItem {
   likes: number
   reposts: number
   timestamp: string
+  media_urls?: string[]
+}
+
+interface DownloadSummary {
+  save_root?: string
+  total?: number
+  downloaded?: number
+  failed?: number
+  skipped?: number
+}
+
+interface DownloadItem {
+  platform: string
+  post_id: string
+  media_type: string
+  url: string
+  local_path?: string
+  status: string
+  error?: string
+}
+
+interface DownloadDetail {
+  id: number
+  job_type: string
+  platform: string
+  status: string
+  progress: number
+  summary?: DownloadSummary
+  items: DownloadItem[]
 }
 
 const authStore = useAuthStore()
@@ -251,7 +375,7 @@ const creating = ref(false)
 const keywordsInput = ref('')
 const postIdsInput = ref('')
 const crawlForm = reactive({
-  platform: 'mock_weibo',
+  platform: 'weibo',
   event_id: '',
   source_keyword: '',
   max_posts: 50,
@@ -268,7 +392,18 @@ const loadingJobs = ref(false)
 const postData = ref<PostItem[]>([])
 const postTotal = ref(0)
 const loadingData = ref(false)
+const creatingDownload = ref(false)
+const downloadDrawerOpen = ref(false)
+const loadingDownloadDetail = ref(false)
+const downloadDetail = ref<DownloadDetail | null>(null)
 let refreshTimer: number | undefined
+
+const dataFilters = reactive({
+  platform: undefined as string | undefined,
+  keyword: '',
+  event_id: '',
+  has_media: true,
+})
 
 const executionModeOptions = [
   { label: '本地后台执行', value: 'local' },
@@ -293,6 +428,15 @@ const dataColumns = [
   { title: '时间', dataIndex: 'timestamp', key: 'timestamp', width: 180 },
 ]
 
+const downloadColumns = [
+  { title: '平台', dataIndex: 'platform', key: 'platform', width: 90 },
+  { title: '帖子', dataIndex: 'post_id', key: 'post_id', width: 130, ellipsis: true },
+  { title: '类型', dataIndex: 'media_type', key: 'media_type', width: 80 },
+  { title: '状态', dataIndex: 'status', key: 'status', width: 90 },
+  { title: '本地路径', dataIndex: 'local_path', key: 'local_path', ellipsis: true },
+  { title: '链接', dataIndex: 'url', key: 'url', width: 90 },
+]
+
 function statusColor(status: string) {
   return (
     {
@@ -303,6 +447,17 @@ function statusColor(status: string) {
       cancelled: 'warning',
     } as Record<string, string>
   )[status] || 'default'
+}
+
+function downloadStatusColor(status: string) {
+  return (
+    {
+      pending: 'default',
+      downloaded: 'success',
+      failed: 'error',
+      skipped: 'warning',
+    } as Record<string, string>
+  )[status] || statusColor(status)
 }
 
 async function handleCreateJob() {
@@ -374,6 +529,46 @@ async function handleDelete(jobId: number) {
   await fetchData()
 }
 
+async function handleCreateDownload() {
+  const platform = dataFilters.platform
+  if (platform && !['xhs', 'douyin'].includes(platform)) {
+    message.warning('媒体下载当前支持小红书和抖音')
+    return
+  }
+
+  creatingDownload.value = true
+  try {
+    const response = (await createMediaDownloadJob({
+      platform,
+      keyword: dataFilters.keyword.trim() || undefined,
+      event_id: dataFilters.event_id.trim() || undefined,
+      media_types: ['video', 'image'],
+    })) as { data: CrawlJobItem }
+    message.success('媒体下载任务已启动')
+    await fetchJobs()
+    if (response.data?.id) {
+      void openDownloadDetail(response.data.id)
+    }
+  } finally {
+    creatingDownload.value = false
+  }
+}
+
+async function openDownloadDetail(jobId: number) {
+  downloadDrawerOpen.value = true
+  loadingDownloadDetail.value = true
+  try {
+    const response = (await getMediaDownloadJob(jobId)) as { data: DownloadDetail | null }
+    downloadDetail.value = response.data
+  } finally {
+    loadingDownloadDetail.value = false
+  }
+}
+
+function handleDataFilterChange() {
+  void fetchData(1)
+}
+
 async function fetchJobs() {
   loadingJobs.value = true
   try {
@@ -389,7 +584,14 @@ async function fetchJobs() {
 async function fetchData(page = 1) {
   loadingData.value = true
   try {
-    const response = (await queryCrawlData({ page, page_size: dataPageSize.value })) as {
+    const response = (await queryCrawlData({
+      platform: dataFilters.platform,
+      keyword: dataFilters.keyword.trim() || undefined,
+      event_id: dataFilters.event_id.trim() || undefined,
+      has_media: dataFilters.has_media || undefined,
+      page,
+      page_size: dataPageSize.value,
+    })) as {
       data: { items: PostItem[]; total: number }
     }
     postData.value = response.data.items
@@ -433,5 +635,19 @@ onUnmounted(() => {
 
 .crawl-form-submit {
   align-self: end;
+}
+
+.data-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 12px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.path-text {
+  word-break: break-all;
+  font-family: Consolas, 'Courier New', monospace;
+  font-size: 12px;
 }
 </style>

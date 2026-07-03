@@ -12,7 +12,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.v1.router import api_router
 from app.config import settings
 from app.db.mongodb import close_mongo
+from app.db.mysql import async_session_factory
 from app.db.redis import close_redis
+from app.services.auth_service import ensure_default_admin
 from app.utils.exceptions import AppException, app_exception_handler, generic_exception_handler
 from app.utils.logger import logger
 
@@ -20,6 +22,9 @@ from app.utils.logger import logger
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("CogGuard backend starting up...")
+    async with async_session_factory() as session:
+        await ensure_default_admin(session)
+        await session.commit()
     yield
     logger.info("CogGuard backend shutting down...")
     await close_mongo()

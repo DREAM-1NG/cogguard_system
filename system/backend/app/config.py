@@ -71,6 +71,8 @@ class Settings(BaseSettings):
     MEDIACRAWLER_GET_SUB_COMMENTS: bool = False
     # 单条帖子最多抓取多少条评论（含一级评论与可选二级评论）
     MEDIACRAWLER_MAX_COMMENTS_PER_POST: int = 200
+    # Downloaded social media files are stored under project output by default.
+    MEDIA_DOWNLOAD_ROOT: str = str(PROJECT_ROOT / "output" / "media_downloads")
 
     # NewsCrawler：HTTP 方式，填写新闻提取 API 根地址，例如 http://127.0.0.1:8020
     NEWSCRAWLER_API_BASE: str = ""
@@ -82,9 +84,19 @@ class Settings(BaseSettings):
     LLM_API_BASE: str = "https://api.deepseek.com/v1"
     LLM_MODEL: str = "deepseek-chat"
     LLM_API_WIRE: str = "chat_completions"
+    LLM_TIMEOUT_SECONDS: float = 180.0
     LLM_INCLUDE_MEDIA_BASE64: bool = False
     LLM_REQUIRE_VISION: bool = False
     KT3_EXTERNAL_RETRIEVAL_ENABLED: bool = False
+    KT3_RETRIEVAL_API_KEY: str = ""
+    KT3_RETRIEVAL_BASE_URL: str = ""
+    KT3_RETRIEVAL_SEARCH_PATH: str = "/search"
+    KT3_RETRIEVAL_PROVIDER_NAME: str = ""
+    KT3_RETRIEVAL_ADAPTER: str = ""
+    # Master key used to encrypt API keys stored in KT3 provider configs.
+    # Keep it independent from JWT_SECRET_KEY so provider credentials can be
+    # rotated and audited separately from authentication tokens.
+    KT3_CONFIG_ENCRYPTION_KEY: str = ""
 
     @property
     def mysql_url(self) -> str:

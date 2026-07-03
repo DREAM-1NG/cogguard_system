@@ -47,8 +47,26 @@ export function cancelCrawlJob(jobId: number) {
 export function queryCrawlData(params: {
   platform?: string
   keyword?: string
+  event_id?: string
+  has_media?: boolean
   page?: number
   page_size?: number
 }) {
   return request.get('/crawl/data', { params })
+}
+
+/** 创建已采集媒体下载任务 */
+export function createMediaDownloadJob(data: {
+  platform?: string
+  keyword?: string
+  event_id?: string
+  post_ids?: string[]
+  media_types?: Array<'video' | 'image'>
+}) {
+  return request.post('/crawl/media-downloads', data)
+}
+
+/** 获取媒体下载任务详情 */
+export function getMediaDownloadJob(jobId: number) {
+  return request.get(`/crawl/media-downloads/${jobId}`)
 }

@@ -1,0 +1,195 @@
+{
+  "schema_version": "kt3-governance-reference-library-v1",
+  "updated_at": "2026-07-03",
+  "purpose": "Public platform governance references for analyst-facing social media risk review reports. These references guide report structure and action vocabulary only; they must not override detector outputs or human decisions.",
+  "report_template": {
+    "audience": "平台治理研判人员",
+    "required_sections": [
+      "风险类型",
+      "原始内容摘要",
+      "传播范围",
+      "账号行为",
+      "主张核验",
+      "媒体一致性",
+      "用户举报或系统检测来源",
+      "证据充分性",
+      "争议点",
+      "处置建议",
+      "人工确认项"
+    ],
+    "evidence_sufficiency_values": [
+      "充分",
+      "部分充分",
+      "不充分"
+    ],
+    "recommended_actions": [
+      "不处置",
+      "补证",
+      "人审",
+      "限流",
+      "标注",
+      "辟谣推荐",
+      "删除建议",
+      "账号处置建议",
+      "反制叙事草案"
+    ],
+    "audit_requirements": [
+      "触发原因",
+      "规则依据",
+      "证据引用",
+      "人工确认项",
+      "争议点",
+      "不可自动化判断原因"
+    ]
+  },
+  "platform_references": [
+    {
+      "ref_id": "meta-community-standards-enforcement",
+      "platform": "Meta",
+      "title": "Community Standards Enforcement Report",
+      "url": "https://transparency.meta.com/reports/community-standards-enforcement/",
+      "reference_type": "透明度报告",
+      "governance_use": "参考按治理类别统计执行结果、说明检测/执行来源和透明度披露口径。"
+    },
+    {
+      "ref_id": "meta-community-standards",
+      "platform": "Meta",
+      "title": "Community Standards",
+      "url": "https://transparency.meta.com/policies/community-standards/",
+      "reference_type": "社区规则",
+      "governance_use": "参考社区规则分类、公共利益例外、内容处置与表达边界说明。"
+    },
+    {
+      "ref_id": "youtube-guidelines-enforcement",
+      "platform": "YouTube",
+      "title": "Community Guidelines Enforcement",
+      "url": "https://transparencyreport.google.com/youtube-policy?hl=en",
+      "reference_type": "透明度报告",
+      "governance_use": "参考自动检测、人工举报、删除原因和执行统计的披露方式。"
+    },
+    {
+      "ref_id": "tiktok-guidelines-enforcement",
+      "platform": "TikTok",
+      "title": "Community Guidelines Enforcement transparency update",
+      "url": "https://newsroom.tiktok.com/en-us/bringing-even-more-transparency",
+      "reference_type": "透明度公告",
+      "governance_use": "参考社区准则执行、主动治理、内容下架和透明度公告口径。"
+    },
+    {
+      "ref_id": "x-global-transparency-h1-2024",
+      "platform": "X",
+      "title": "X Global Transparency Report H1 2024",
+      "url": "https://transparency.x.com/content/dam/transparency-twitter/2024/x-global-transparency-report-h1.pdf",
+      "reference_type": "透明度报告",
+      "governance_use": "参考举报、执行、账号处置和全球透明度报告结构。"
+    },
+    {
+      "ref_id": "weibo-community-convention",
+      "platform": "微博",
+      "title": "微博社区公约",
+      "url": "https://service.account.weibo.com/roles/gongyue",
+      "reference_type": "社区公约",
+      "governance_use": "参考中文社区秩序、用户行为规范、违规内容处置和平台治理表述。"
+    },
+    {
+      "ref_id": "weibo-rumor-governance-case",
+      "platform": "微博",
+      "title": "微博谣言治理公告案例",
+      "url": "https://xinwen.bjd.com.cn/content/s67b6d9fce4b08edd28f546a1.html",
+      "reference_type": "公开治理案例",
+      "governance_use": "参考谣言治理公告中的事实核验、账号处置和辟谣提示写法；转载类案例仅作补充。"
+    },
+    {
+      "ref_id": "douyin-trust-center",
+      "platform": "抖音",
+      "title": "抖音安全与信任中心",
+      "url": "https://trust.douyin.com/",
+      "reference_type": "安全与信任中心",
+      "governance_use": "参考短视频平台安全治理、内容规范、举报处置和用户保护口径。"
+    },
+    {
+      "ref_id": "douyin-annual-trust-report-news",
+      "platform": "抖音",
+      "title": "抖音安全与信任年度报告报道",
+      "url": "https://www.news.cn/tech/20260122/04c02add69f94669bef9b6d80392a66c/c.html",
+      "reference_type": "权威媒体披露",
+      "governance_use": "参考年度治理报告公开披露中的风险类型、治理动作和平台责任表达；优先级低于官方原文。"
+    },
+    {
+      "ref_id": "xiaohongshu-community-norms",
+      "platform": "小红书",
+      "title": "小红书社区规范",
+      "url": "https://agree.xiaohongshu.com/h5/terms/ZXXY20221213003/-1",
+      "reference_type": "社区规范",
+      "governance_use": "参考内容社区的真实友善、侵权争议、虚假误导、交易营销等治理边界。"
+    }
+  ],
+  "governance_categories": [
+    {
+      "category_id": "misinformation",
+      "name": "谣言/误导信息",
+      "signals": ["谣言", "误导", "虚假", "fake", "rumour", "rumor", "misinformation", "veracity", "claim", "evidence"],
+      "default_actions": ["补证", "人审", "标注", "辟谣推荐"],
+      "reference_refs": ["meta-community-standards", "youtube-guidelines-enforcement", "weibo-rumor-governance-case", "douyin-trust-center"]
+    },
+    {
+      "category_id": "hate_harassment",
+      "name": "仇恨与骚扰",
+      "signals": ["仇恨", "歧视", "骚扰", "辱骂", "攻击", "hate", "hateful", "harassment", "abuse", "target"],
+      "default_actions": ["人审", "限流", "删除建议", "账号处置建议"],
+      "reference_refs": ["meta-community-standards", "youtube-guidelines-enforcement", "weibo-community-convention", "xiaohongshu-community-norms"]
+    },
+    {
+      "category_id": "cyberbullying_attack",
+      "name": "网暴与人身攻击",
+      "signals": ["网暴", "人身攻击", "羞辱", "挂人", "威胁", "cyberbullying", "insult", "threat"],
+      "default_actions": ["人审", "限流", "删除建议", "账号处置建议"],
+      "reference_refs": ["youtube-guidelines-enforcement", "weibo-community-convention", "xiaohongshu-community-norms"]
+    },
+    {
+      "category_id": "impersonation",
+      "name": "虚假身份/冒充",
+      "signals": ["冒充", "虚假身份", "impersonation", "fake account", "identity"],
+      "default_actions": ["补证", "人审", "账号处置建议"],
+      "reference_refs": ["x-global-transparency-h1-2024", "weibo-community-convention", "xiaohongshu-community-norms"]
+    },
+    {
+      "category_id": "malicious_marketing",
+      "name": "恶意营销",
+      "signals": ["营销", "引流", "诈骗", "spam", "scam", "fraud", "promotion"],
+      "default_actions": ["标注", "限流", "删除建议", "账号处置建议"],
+      "reference_refs": ["youtube-guidelines-enforcement", "tiktok-guidelines-enforcement", "x-global-transparency-h1-2024"]
+    },
+    {
+      "category_id": "group_polarization",
+      "name": "群体对立煽动",
+      "signals": ["煽动", "对立", "群体", "mobilize", "incitement", "polarization"],
+      "default_actions": ["人审", "限流", "标注", "反制叙事草案"],
+      "reference_refs": ["meta-community-standards", "weibo-community-convention", "douyin-trust-center"]
+    },
+    {
+      "category_id": "ai_manipulation",
+      "name": "AI伪造",
+      "signals": ["AI", "AIGC", "深度伪造", "伪造", "deepfake", "synthetic", "manipulated"],
+      "default_actions": ["补证", "人审", "标注", "辟谣推荐"],
+      "reference_refs": ["meta-community-standards-enforcement", "tiktok-guidelines-enforcement", "douyin-trust-center"]
+    },
+    {
+      "category_id": "multimodal_context_mismatch",
+      "name": "多模态语境错配",
+      "signals": ["图文不一致", "语境错配", "跨模态冲突", "out-of-context", "multimodal", "media", "ocr", "asr", "caption"],
+      "default_actions": ["补证", "人审", "标注", "辟谣推荐"],
+      "reference_refs": ["meta-community-standards", "youtube-guidelines-enforcement", "tiktok-guidelines-enforcement", "douyin-trust-center"]
+    }
+  ],
+  "source_priority": [
+    "社区规则",
+    "社区公约",
+    "社区规范",
+    "安全与信任中心",
+    "透明度报告",
+    "透明度公告",
+    "公开治理案例",
+    "权威媒体披露"
+  ]
+}

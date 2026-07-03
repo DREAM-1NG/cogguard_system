@@ -1,7 +1,7 @@
 ﻿# CogGuard 系统开发文档
 
 > 仓库定位：
-> - `new-system/` 是当前唯一产品代码根
+> - `system/` 是当前唯一产品代码根
 > - 长期文档位于 `../doc/`
 > - ARIS 工作空间位于 `../aris/`
 > - 当前状态与优先级以 `../doc/engineering/development-roadmap.md` 为准
@@ -9,7 +9,7 @@
 ## 实际目录结构
 
 ```
-new-system/
+system/
 ├── docker-compose.yml              # Docker 服务编排（MySQL + MongoDB + Redis）
 ├── .env.example                    # 环境变量模板（复制为 .env 使用）
 ├── .env                            # 实际环境变量（不提交到 Git）
@@ -37,12 +37,13 @@ new-system/
 │   │   │       ├── crawl.py        # 数据采集接口（创建任务/任务列表/数据查询）
 │   │   │       ├── coordination.py # 协同检测接口
 │   │   │       ├── propagation.py  # 传播归因接口
-│   │   │       └── accounts.py     # 账户监测接口
+│   │   │       └── accounts.py     # 账户监测与 BotRHG 社交机器人检测接口
 │   │   │
 │   │   ├── core/                   # 核心业务逻辑
 │   │   │   ├── security.py         # JWT 认证 + bcrypt 密码哈希
 │   │   │   ├── propagation.py      # 传播子图与时间线、关键角色
 │   │   │   ├── account_profiler.py # 账户行为画像与自动化倾向评分
+│   │   │   ├── bot_detection.py    # BotRHG 风格账号级社交机器人检测
 │   │   │   ├── coordination/       # CooRTweet 算法 Python 实现（检测/网络/统计）
 │   │   │   └── crawler/            # 爬虫引擎
 │   │   │       ├── base.py         # 爬虫抽象基类（定义统一接口）
@@ -67,7 +68,8 @@ new-system/
 │   │   │   ├── crawl_service.py    # 采集业务（任务管理/数据查询）
 │   │   │   ├── coordination_service.py
 │   │   │   ├── propagation_service.py
-│   │   │   └── account_service.py
+│   │   │   ├── account_service.py
+│   │   │   └── bot_detection_service.py
 │   │   │
 │   │   ├── tasks/                  # Celery 异步任务
 │   │   │   └── crawl_tasks.py      # 采集任务执行（社交平台直连 MediaCrawler → MongoDB）
@@ -146,7 +148,7 @@ new-system/
 ### 第一步：启动基础服务
 
 ```bash
-cd new-system
+cd system
 cp .env.example .env        # 首次需要，按需修改密码
 docker compose up -d         # 启动 MySQL + MongoDB + Redis
 docker compose ps            # 确认所有服务 healthy
@@ -156,7 +158,7 @@ docker compose ps            # 确认所有服务 healthy
 
 ### 第二步（可选）：配置并验证 MediaCrawler
 
-如果要采集 `weibo` / `xhs` / `douyin`，请先在 `new-system/.env` 中配置：
+如果要采集 `weibo` / `xhs` / `douyin`，请先在 `system/.env` 中配置：
 
 ```dotenv
 MEDIACRAWLER_ROOT=G:/CISCN/cogguard_system/MediaCrawler-main
@@ -215,15 +217,15 @@ cd ../MediaCrawler-main
 C:/Users/p/.local/bin/uv.exe sync --python C:/Users/p/AppData/Roaming/uv/python/cpython-3.11-windows-x86_64-none/python.exe
 C:/Users/p/.local/bin/uv.exe run --python C:/Users/p/AppData/Roaming/uv/python/cpython-3.11-windows-x86_64-none/python.exe playwright install chromium
 
-cd ../new-system/backend
+cd ../system/backend
 uv run python scripts/verify_mediacrawler_env.py
 ```
 
 ### 第三步：启动后端
 
 ```powershell
-cd G:\CISCN\cogguard_system\new-system\backend
-$env:UV_CACHE_DIR='G:\CISCN\cogguard_system\new-system\backend\.uv-cache'
+cd G:\CISCN\CogGuard\system\backend
+$env:UV_CACHE_DIR='G:\CISCN\CogGuard\system\backend\.uv-cache'
 uv sync
 uv run alembic upgrade head
 uv run uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
@@ -236,7 +238,7 @@ uv run uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 ### 第四步：启动前端
 
 ```powershell
-cd G:\CISCN\cogguard_system\new-system\frontend
+cd G:\CISCN\CogGuard\system\frontend
 npm.cmd install
 npm.cmd run dev -- --host 127.0.0.1 --port 5173
 ```
@@ -248,8 +250,8 @@ npm.cmd run dev -- --host 127.0.0.1 --port 5173
 如果只需要查看前端页面结构、导航和功能设计，而本机暂时没有启动 MySQL / MongoDB / Redis，可以使用预览入口绕过真实登录：
 
 ```powershell
-cd G:\CISCN\cogguard_system\new-system\backend
-$env:UV_CACHE_DIR='G:\CISCN\cogguard_system\new-system\backend\.uv-cache'
+cd G:\CISCN\CogGuard\system\backend
+$env:UV_CACHE_DIR='G:\CISCN\CogGuard\system\backend\.uv-cache'
 .venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 
 cd ..\frontend
@@ -269,7 +271,7 @@ npm.cmd run dev -- --host 127.0.0.1 --port 5173
 - 如果你只是要快速查看页面，可以直接执行项目根目录下的 `start-preview.ps1`：
 
 ```powershell
-cd G:\CISCN\cogguard_system\new-system
+cd G:\CISCN\CogGuard\system
 powershell.exe -ExecutionPolicy Bypass -File .\start-preview.ps1
 ```
 
@@ -379,8 +381,9 @@ curl -X POST http://localhost:8000/api/v1/auth/login \
 - **后续**：补充证据链生成、关键路径展示与更强的隐式传播边建模
 
 ### 账户监测
-- **当前**：已实现账户行为画像与自动化倾向评分
-- **后续**：补充历史参与追踪、中文 NLP 特征与跨事件画像聚合
+- **当前**：已实现账户行为画像、自动化倾向评分，以及 `POST /api/v1/accounts/bot-detection` 的 BotRHG 风格账号级社交机器人检测。该接口从已采集帖子中构造 profile/text/activity 特征，生成 KNN 支持超边，按局部可靠性选择低可靠账号做残差修正，并返回 base/final bot 概率、路由状态、support evidence 与 model card。
+- **前端**：账户监测页已提供轻量 BotRHG 触发入口和结果表，展示账号数、路由数、bot 数、最终 bot 概率、局部可靠性与 support 节点。
+- **后续**：补充历史参与追踪、中文 NLP 特征、跨事件画像聚合，以及前端 BotRHG 证据详情深度展示。
 
 ### 报告研判
 - **当前**：未实现
@@ -436,6 +439,7 @@ curl -X POST http://localhost:8000/api/v1/auth/login \
 | 方法 | 路径 | 说明 | 鉴权 |
 |------|------|------|------|
 | GET  | `/api/v1/accounts/profiles` | 获取账户画像列表 | 是 |
+| POST | `/api/v1/accounts/bot-detection` | 执行 BotRHG 风格社交机器人检测，支持 `event_id` / `platform` / `routing_budget` / `support_k` | 是 |
 | GET  | `/api/v1/accounts/detail/{id}` | 获取单账户详细画像 | 是 |
 
 ### 系统

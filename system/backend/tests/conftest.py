@@ -10,17 +10,22 @@
 
 import asyncio
 import os
+import sys
 import warnings
 from collections.abc import AsyncGenerator
 
 import pytest
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy.pool import NullPool
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.config import settings
 from app.db.mysql import Base, get_db
 from app.db.mongodb import get_mongo_db
 from app.main import app
+
+if sys.platform.startswith("win"):
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 _DB_AVAILABLE = None
 
@@ -48,7 +53,7 @@ needs_db = pytest.mark.skipif(
     reason="MySQL test database not available (set COGGUARD_TEST_DB=1 to force)",
 )
 
-test_engine = create_async_engine(settings.mysql_url_test, echo=False) if _check_db_available() else None
+test_engine = create_async_engine(settings.mysql_url_test, echo=False, poolclass=NullPool) if _check_db_available() else None
 test_session_factory = async_sessionmaker(test_engine, expire_on_commit=False) if test_engine else None
 
 

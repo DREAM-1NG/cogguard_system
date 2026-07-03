@@ -12,6 +12,15 @@ import pytest
 
 from app.core.propagation import build_propagation_graph
 
+import sys
+from pathlib import Path
+
+COGGUARD_DEV = Path(__file__).resolve().parents[3] / "subsystems" / "cogguard_dev"
+if str(COGGUARD_DEV) not in sys.path:
+    sys.path.insert(0, str(COGGUARD_DEV))
+
+from benchmark.adapters.kt2_sequence_joint_model import build_event_inference_bundle, predict_event_with_checkpoint
+
 
 # ---------------------------------------------------------------------------
 # Fixtures: 构造测试数据
@@ -71,6 +80,9 @@ class TestBackwardCompatibility:
         assert "claims" in result
         assert "timeline" in result
         assert "evidence_chains" in result  # 新增字段
+        assert "path_analysis" in result
+        assert "diffusion_summary" in result
+        assert "user_quality" in result
 
     def test_graph_structure(self):
         result = build_propagation_graph(_make_posts())
@@ -86,6 +98,24 @@ class TestBackwardCompatibility:
         assert "originators" in kr
         assert "bridges" in kr
         assert "amplifiers" in kr
+
+    def test_bridge_roles_fallback_to_relay_structure_when_betweenness_is_sparse(self):
+        posts = [
+            {"post_id": "p1", "author_id": "source", "author_name": "Source",
+             "timestamp": _ts(0), "url": "https://example.com/a", "hashtags": [], "content": "root"},
+            {"post_id": "p2", "author_id": "relay", "author_name": "Relay",
+             "timestamp": _ts(1), "url": "https://example.com/a", "hashtags": [], "content": "relay-in"},
+            {"post_id": "p3", "author_id": "leaf", "author_name": "Leaf",
+             "timestamp": _ts(2), "url": "https://example.com/a", "hashtags": [], "content": "leaf"},
+        ]
+
+        result = build_propagation_graph(posts)
+        bridges = result["key_roles"]["bridges"]
+
+        assert bridges
+        assert bridges[0]["account_id"] == "relay"
+        assert bridges[0]["in_degree"] > 0
+        assert bridges[0]["out_degree"] > 0
 
     def test_claims_structure(self):
         result = build_propagation_graph(_make_posts())
@@ -108,16 +138,162 @@ class TestBackwardCompatibility:
         result = build_propagation_graph([])
         assert result["graph"]["node_count"] == 0
         assert result["evidence_chains"] == []
+        assert result["diffusion_summary"]["visible_nodes"] == []
 
     def test_no_comments_graceful(self):
         """无评论时不崩溃，证据链仍可生成（仅隐式边）。"""
         result = build_propagation_graph(_make_posts())
         assert isinstance(result["evidence_chains"], list)
 
+
+class TestKT2EventInferenceAdapter:
+    def test_event_bundle_maps_real_user_candidates(self):
+        bundle = build_event_inference_bundle(
+            _make_posts(),
+            _make_comments(),
+            max_sequence_len=16,
+            user_hash_buckets=128,
+            relation_neighbor_count=4,
+            hyperedge_count=4,
+            relation_neighbors={},
+        )
+
+        assert bundle["status"] == "ok"
+        assert bundle["candidate_meta"]["u1"]["author_name"] == "Alice"
+        assert bundle["candidate_meta"]["u2"]["author_name"] == "Bob"
+        assert bundle["candidate_buckets"]
+
+    def test_event_bundle_accepts_collected_field_aliases(self):
+        bundle = build_event_inference_bundle(
+            [
+                {"post_id": "p1", "user_id": "u1", "screen_name": "Alice Screen", "created_at": _ts(0)},
+                {"post_id": "p2", "uid": "u2", "username": "Bob User", "publish_time": _ts(1)},
+                {"post_id": "p3", "account_id": "u3", "account_label": "Carol Account", "published_at": _ts(2)},
+            ],
+            [],
+            max_sequence_len=16,
+            user_hash_buckets=128,
+            relation_neighbor_count=4,
+            hyperedge_count=4,
+            relation_neighbors={},
+        )
+
+        assert bundle["status"] == "ok"
+        assert bundle["candidate_meta"]["u1"]["author_name"] == "Alice Screen"
+        assert bundle["candidate_meta"]["u2"]["author_name"] == "Bob User"
+        assert bundle["candidate_meta"]["u3"]["author_name"] == "Carol Account"
+
+    def test_missing_checkpoint_returns_unavailable_status(self, tmp_path):
+        result = predict_event_with_checkpoint(
+            tmp_path / "missing-twitter-checkpoint.pt",
+            _make_posts(),
+            _make_comments(),
+        )
+
+        assert result["status"] == "missing_checkpoint"
+
     def test_empty_comments(self):
         """显式传入空评论列表。"""
         result = build_propagation_graph(_make_posts(), comments=[])
         assert isinstance(result["evidence_chains"], list)
+
+    def test_zhiview_style_summaries_from_observed_metadata(self):
+        posts = [
+            {
+                "post_id": "p1",
+                "author_id": "u1",
+                "author_name": "Alice",
+                "timestamp": _ts(0),
+                "url": "https://example.com/a",
+                "hashtags": [],
+                "content": "源头",
+                "source": "微博 weibo.com",
+                "author_profile": {"ip_location": "北京", "followers_count": 20000, "verified": True},
+            },
+            {
+                "post_id": "p2",
+                "author_id": "u2",
+                "author_name": "Bob",
+                "timestamp": _ts(5),
+                "url": "https://example.com/a",
+                "hashtags": [],
+                "content": "转发",
+                "source": "小米手机",
+                "author_profile": {"ip_location": "广东", "followers_count": 800, "verified": False},
+            },
+            {
+                "post_id": "p3",
+                "author_id": "u3",
+                "author_name": "Carol",
+                "timestamp": _ts(10),
+                "url": "https://example.com/a",
+                "hashtags": [],
+                "content": "继续转发",
+                "source": "小米手机",
+                "author_profile": {"ip_location": "广东", "followers_count": 50},
+            },
+        ]
+
+        result = build_propagation_graph(posts)
+
+        assert result["path_analysis"]["edge_count"] > 0
+        assert result["path_analysis"]["layer_distribution"]
+        assert result["user_quality"]["total_users"] == 3
+        assert result["user_quality"]["verified_count"] == 1
+        assert any(row["quality"] == "高" and row["count"] == 1 for row in result["user_quality"]["buckets"])
+
+    def test_diffusion_summary_uses_observed_root_and_readable_backbone(self):
+        posts = [
+            {"post_id": "p0", "author_id": "root", "author_name": "Root", "timestamp": _ts(0),
+             "url": "https://example.com/main", "hashtags": [], "content": "root"},
+            {"post_id": "p1", "author_id": "a", "author_name": "A", "timestamp": _ts(1),
+             "url": "https://example.com/main", "hashtags": [], "content": "a"},
+            {"post_id": "p2", "author_id": "b", "author_name": "B", "timestamp": _ts(2),
+             "url": "https://example.com/main", "hashtags": [], "content": "b"},
+            {"post_id": "p3", "author_id": "c", "author_name": "C", "timestamp": _ts(3),
+             "url": "https://example.com/main", "hashtags": [], "content": "c"},
+            {"post_id": "p4", "author_id": "parallel", "author_name": "Parallel", "timestamp": _ts(4),
+             "url": "https://example.com/side", "hashtags": [], "content": "parallel"},
+            {"post_id": "p5", "author_id": "side", "author_name": "Side", "timestamp": _ts(5),
+             "url": "https://example.com/side", "hashtags": [], "content": "side"},
+        ]
+
+        result = build_propagation_graph(posts)
+        summary = result["diffusion_summary"]
+
+        assert summary["root_node"]["id"] == "root"
+        assert len(summary["visible_nodes"]) <= 300
+        assert summary["tree_edges"]
+        assert summary["layers"][0]["level"] == 0
+        visible_ids = {node["id"] for node in summary["visible_nodes"]}
+        assert {"root", "a", "b", "c"}.issubset(visible_ids)
+        assert "root" in summary["detail_index"]["nodes"]
+        assert "https://example.com/main" in summary["detail_index"]["objects"]
+
+    def test_diffusion_summary_aligns_root_with_key_path_origin(self):
+        posts = [
+            {"post_id": "p0", "author_id": "global", "author_name": "Global", "timestamp": _ts(0),
+             "url": "https://example.com/noise-a", "hashtags": [], "content": "global"},
+            {"post_id": "p1", "author_id": "noise1", "author_name": "Noise1", "timestamp": _ts(1),
+             "url": "https://example.com/noise-a", "hashtags": [], "content": "noise"},
+            {"post_id": "p2", "author_id": "noise2", "author_name": "Noise2", "timestamp": _ts(2),
+             "url": "https://example.com/noise-a", "hashtags": [], "content": "noise"},
+            {"post_id": "p3", "author_id": "origin", "author_name": "Origin", "timestamp": _ts(3),
+             "url": "https://example.com/key", "hashtags": [], "content": "origin"},
+            {"post_id": "p4", "author_id": "hop1", "author_name": "Hop1", "timestamp": _ts(4),
+             "url": "https://example.com/key", "hashtags": [], "content": "hop1"},
+            {"post_id": "p5", "author_id": "hop2", "author_name": "Hop2", "timestamp": _ts(5),
+             "url": "https://example.com/key", "hashtags": [], "content": "hop2"},
+        ]
+
+        result = build_propagation_graph(posts)
+        summary = result["diffusion_summary"]
+        top_path = result["path_analysis"]["key_paths"][0]["nodes"]
+        edge_keys = {(edge["source"], edge["target"]) for edge in summary["tree_edges"]}
+
+        assert summary["root_node"]["id"] == top_path[0]
+        assert (top_path[0], top_path[1]) in edge_keys
+        assert (top_path[1], top_path[2]) in edge_keys
 
 
 # ---------------------------------------------------------------------------
@@ -144,14 +320,33 @@ class TestEdgeTypes:
         assert "explicit" in types
 
     def test_explicit_edge_direction(self):
-        """回复边方向：评论者 → 被回复者。"""
+        """回复边方向：被回复内容作者 → 评论者。"""
         result = build_propagation_graph(_make_posts(), _make_comments())
         explicit = [e for e in result["graph"]["edges"] if e["type"] == "explicit"]
-        # c1: u2 回复 p1(u1) → u2→u1
-        sources = {e["source"] for e in explicit}
-        targets = {e["target"] for e in explicit}
-        assert "u2" in sources  # Bob 回复了 Alice
-        assert "u1" in targets
+        # c1: u2 回复 p1(u1)，传播方向应为 u1→u2。
+        assert any(e["source"] == "u1" and e["target"] == "u2" for e in explicit)
+
+    def test_diffusion_root_requires_observed_post_evidence(self):
+        posts = [
+            {"post_id": "p1", "author_id": "poster", "author_name": "Poster",
+             "timestamp": _ts(0), "url": "https://example.com/root", "hashtags": [], "content": "source"},
+            {"post_id": "p2", "author_id": "follower", "author_name": "Follower",
+             "timestamp": _ts(5), "url": "https://example.com/root", "hashtags": [], "content": "follow"},
+        ]
+        comments = [
+            {"comment_id": "c1", "post_id": "p1", "author_id": "comment_only", "author_name": "CommentOnly",
+             "timestamp": _ts(1), "reply_to": "p1", "content": "reply"},
+            {"comment_id": "c2", "post_id": "p1", "author_id": "second_commenter", "author_name": "SecondCommenter",
+             "timestamp": _ts(2), "reply_to": "c1", "content": "reply to comment"},
+        ]
+
+        result = build_propagation_graph(posts, comments)
+        summary = result["diffusion_summary"]
+        root_detail = summary["detail_index"]["nodes"][summary["root_node"]["id"]]
+
+        assert summary["root_node"]["id"] == "poster"
+        assert root_detail["post_count"] > 0
+        assert root_detail["posts"]
 
 
 # ---------------------------------------------------------------------------

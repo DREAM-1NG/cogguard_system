@@ -32,6 +32,7 @@ from app.db.mongodb import get_mongo_db
 from app.models.risk_assessment import RiskAssessment
 from app.services.event_data import load_event_posts
 from app.services import account_service, coordination_service, propagation_service
+from app.services import kt3_system_service
 
 _KT3_POLICY_REGISTRY: dict[str, dict] = {}
 _KT3_ACTIVE_POLICY_ID: str | None = None
@@ -191,6 +192,7 @@ async def run_kt3_agent_review(
     selected_post_ids: list[str] | None = None,
     selected_tree_ids: list[str] | None = None,
     enable_active_retrieval: bool = False,
+    enable_external_retrieval: bool | None = None,
     enable_light_debate: bool = False,
     enable_full_debate: bool = False,
     debate_max_rounds: int = 3,
@@ -200,9 +202,20 @@ async def run_kt3_agent_review(
     user_id: int = 0,
     db: AsyncSession | None = None,
     provider=None,
+    provider_name: str = "openai-compatible",
+    provider_model: str | None = None,
+    include_media_base64: bool | None = None,
+    require_vision: bool | None = None,
     active_retriever=None,
+    append_legacy_report_json: bool = True,
 ) -> dict:
-    """Run analyst-triggered KT3 LLM agent reports and append them to report JSON."""
+    """Run analyst-triggered KT3 LLM agent reports.
+
+    ``append_legacy_report_json`` keeps old frontend consumers working for the
+    synchronous compatibility path. Background jobs persist normalized rows and
+    append a bounded legacy summary in ``kt3_system_service`` instead, so they
+    pass ``False`` here to avoid duplicate legacy JSON entries.
+    """
     if db is None:
         raise ValueError("db is required for persisted KT3 agent reviews")
     stmt = select(RiskAssessment).where(RiskAssessment.report_id == report_id)
@@ -213,8 +226,19 @@ async def run_kt3_agent_review(
 
     report = json.loads(row.report_json)
     llm_provider = provider if provider is not None else build_llm_provider_from_settings(settings)
+    resolved_external_retrieval = (
+        True if enable_external_retrieval is None and enable_active_retrieval else bool(enable_external_retrieval)
+    )
     selected_policy_id = active_policy_id or policy_id or _KT3_ACTIVE_POLICY_ID
     policy = _KT3_POLICY_REGISTRY.get(selected_policy_id or "") if selected_policy_id else None
+    if policy is None and db is not None:
+        if selected_policy_id:
+            policy = await kt3_system_service.get_policy_artifact_from_db(selected_policy_id, db)
+        else:
+            policy = await kt3_system_service.get_active_policy_artifact(db)
+    error_memory_summary = {}
+    if isinstance(policy, dict):
+        error_memory_summary = policy.get("error_memory_summary") or {}
     review_result = await run_manual_kt3_agent_review(
         report=report,
         agent_names=agent_names,
@@ -223,19 +247,37 @@ async def run_kt3_agent_review(
         selected_tree_ids=selected_tree_ids or [],
         human_triggered_by=user_id,
         provider=llm_provider,
-        model=settings.LLM_MODEL,
-        provider_name="openai-compatible",
-        include_media_base64=bool(getattr(settings, "LLM_INCLUDE_MEDIA_BASE64", False)),
-        require_vision=bool(getattr(settings, "LLM_REQUIRE_VISION", False)),
+        model=provider_model if provider_model is not None else settings.LLM_MODEL,
+        provider_name=provider_name,
+        include_media_base64=(
+            bool(include_media_base64)
+            if include_media_base64 is not None
+            else bool(getattr(settings, "LLM_INCLUDE_MEDIA_BASE64", False))
+        ),
+        require_vision=(
+            bool(require_vision)
+            if require_vision is not None
+            else bool(getattr(settings, "LLM_REQUIRE_VISION", False))
+        ),
         enable_active_retrieval=enable_active_retrieval,
         enable_light_debate=enable_light_debate,
         enable_full_debate=enable_full_debate,
         debate_max_rounds=debate_max_rounds,
         retrieval_top_k=retrieval_top_k,
         active_retriever=active_retriever,
-        external_retrieval_enabled=bool(getattr(settings, "KT3_EXTERNAL_RETRIEVAL_ENABLED", False)),
+        external_retrieval_enabled=resolved_external_retrieval,
         policy=policy,
+        error_memory_summary=error_memory_summary,
     )
+    if not append_legacy_report_json:
+        return {
+            "report_id": report_id,
+            "review_result": review_result,
+            "agent_reviews": review_result["agent_reports"],
+            "summary": review_result["summary"],
+            "persistence": {"persisted": False, "target": "normalized_kt3_job_persistence"},
+        }
+
     existing_reviews = report.get("agent_reviews")
     if not isinstance(existing_reviews, list):
         existing_reviews = []
@@ -263,6 +305,22 @@ async def run_kt3_agent_review(
     }
 
 
+async def create_kt3_agent_review_job(
+    *,
+    job_type: str,
+    payload: dict,
+    user_id: int,
+    db: AsyncSession,
+) -> dict:
+    """Create an async KT3 Agent review job for analyst-triggered review."""
+    return await kt3_system_service.create_kt3_job(
+        job_type=job_type,
+        payload=payload,
+        user_id=user_id,
+        db=db,
+    )
+
+
 def optimize_kt3_policy(dataset_manifest: dict) -> dict:
     """Optimize and store an auditable KT3 Agent review policy."""
     result = optimize_kt3_agent_policy(dataset_manifest)
@@ -277,7 +335,7 @@ async def record_kt3_agent_feedback(
     user_id: int = 0,
     db: AsyncSession | None = None,
 ) -> dict:
-    """Append human audit feedback to RiskAssessment.report_json.agent_feedback."""
+    """Record human audit feedback in normalized storage and legacy report JSON."""
     if db is None:
         raise ValueError("db is required for persisted KT3 agent feedback")
     stmt = select(RiskAssessment).where(RiskAssessment.report_id == report_id)
@@ -289,20 +347,14 @@ async def record_kt3_agent_feedback(
     feedback_rows = report.get("agent_feedback")
     if not isinstance(feedback_rows, list):
         feedback_rows = []
-    corrected_label = feedback.get("corrected_label") or feedback.get("corrected_harmfulness")
+    record = await kt3_system_service.persist_feedback(
+        report_id=report_id,
+        feedback=feedback,
+        user_id=user_id,
+        db=db,
+    )
     record = {
-        "feedback_id": f"kt3-feedback-{len(feedback_rows) + 1}",
-        "report_id": report_id,
-        "review_id": feedback.get("review_id"),
-        "run_id": feedback.get("run_id"),
-        "case_id": feedback.get("case_id"),
-        "human_label": feedback.get("human_label"),
-        "corrected_harmfulness": corrected_label,
-        "corrected_label": corrected_label,
-        "error_types": feedback.get("error_types") or [],
-        "notes": feedback.get("notes") or "",
-        "evidence_refs": feedback.get("evidence_refs") or [],
-        "reviewer_confidence": feedback.get("reviewer_confidence", 0.5),
+        **record,
         "created_at": _utc_now(),
         "human_triggered_by": str(user_id),
         "capability_boundary": {
@@ -319,7 +371,10 @@ async def record_kt3_agent_feedback(
         "report_id": report_id,
         "feedback": record,
         "summary": {"feedback_count": len(feedback_rows)},
-        "persistence": {"persisted": True, "target": "risk_assessments.report_json.agent_feedback"},
+        "persistence": {
+            "persisted": True,
+            "target": "kt3_agent_feedback + risk_assessments.report_json.agent_feedback",
+        },
     }
 
 
@@ -337,7 +392,10 @@ async def refine_kt3_policy(
     """Run MARO-style rule refinement and store the candidate policy."""
     feedback_memory = []
     if feedback_report_ids and db is not None:
-        feedback_memory = await _load_agent_feedback(feedback_report_ids, db)
+        try:
+            feedback_memory = await kt3_system_service.feedback_memory_from_db(feedback_report_ids, db)
+        except Exception:
+            feedback_memory = await _load_agent_feedback(feedback_report_ids, db)
     baseline = _KT3_POLICY_REGISTRY.get(baseline_policy_id or "") if baseline_policy_id else None
     baseline_policy = baseline.get("policy") if isinstance(baseline, dict) else None
     result = refine_kt3_agent_policy_loop(
@@ -388,7 +446,12 @@ def get_kt3_policy(policy_id: str) -> dict | None:
 
 
 async def _load_agent_feedback(report_ids: list[str], db: AsyncSession) -> list[dict]:
-    feedback_rows: list[dict] = []
+    try:
+        feedback_rows: list[dict] = await kt3_system_service.feedback_memory_from_db(report_ids, db)
+        if feedback_rows:
+            return feedback_rows
+    except Exception:
+        feedback_rows = []
     for report_id in report_ids:
         stmt = select(RiskAssessment).where(RiskAssessment.report_id == report_id)
         result = await db.execute(stmt)

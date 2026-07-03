@@ -596,8 +596,10 @@
 |------|------|-----------|------|--------------|
 | MCP-Orchestrated Multi-Agent System for Automated Disinformation Detection | — | arXiv 2508.10143, 2025 | https://arxiv.org/html/2508.10143v1 【已核实】 | 直接对标：Agent 编排集成检测（95.3% acc），KT3 编排层需差异化（白盒 tool） |
 | Multi-agent Systems for the Misinformation Lifecycle | A. Gautam | arXiv 2505.17511, 2025 | https://arxiv.org/html/2505.17511v1 【已核实】 | 多 Agent 全流程编排的最直接对标 |
-| Multi-Agent Debate for Visual Misinformation Detection | — | arXiv 2410.20140, 2024 | https://arxiv.org/abs/2410.20140 【存疑】(编号未直接命中，需复核) | 支撑 Agent 间辩论/交叉验证编排机制 |
-| A Multi-Agent Framework with Automated Decision Rule Optimization (cross-domain) | — | arXiv 2503.23329, 2025 | https://arxiv.org/abs/2503.23329 【存疑】(编号未直接核实) | 支撑 Agent 自适应规则方向 |
+| MAD-Sherlock: Multi-Agent Debate for Visual Misinformation Detection | Lakara et al. | arXiv 2410.20140, 2024/2025 | https://arxiv.org/abs/2410.20140 【已核实】 | 支撑图文语境错配、OOC 检索与 Agent 辩论机制 |
+| A Multi-Agent Framework with Automated Decision Rule Optimization for Cross-Domain Misinformation Detection | Li et al. | EMNLP 2025 | https://aclanthology.org/2025.emnlp-main.291/ 【已核实】；仓库 https://github.com/Brtulien/MARO 【已核实】 | 支撑 Agent 自适应规则、question-reflection、validation-driven decision rule optimization |
+| Debate-to-Detect: Reformulating Misinformation Detection as a Real-World Debate with Large Language Models | Han et al. | EMNLP 2025 | https://aclanthology.org/2025.emnlp-main.764/ 【已核实】；仓库 https://github.com/hanshenmesen/Debate-to-Detect 【已核实】 | 支撑分阶段辩论协议、shared memory 与多维裁决 |
+| RAMA: Retrieval-Augmented Multi-Agent Framework for Misinformation Detection in Multimodal Fact-Checking | Yang et al. | arXiv 2507.09174, 2025 | https://arxiv.org/abs/2507.09174 【已核实】；仓库 https://github.com/kalendsyang/RAMA 【已核实】 | 支撑多模态 claim-to-query、多源证据聚合与多模型交叉核查 |
 
 ### 数据集
 
@@ -606,6 +608,7 @@
 | 无专属数据集（编排层） | — | — | 编排本身复用子功能 1-5 的证据，无独立数据需求 |
 
 > 诚实说明：编排是设计稿；已有 MCP 编排先例（2508.10143），KT3 差异点在"白盒规则 tool + 不做最终裁决"，需在汇报中明确避免被指"Agent 外壳被覆盖"。
+> 详细的逐篇 `Motivation - Method - Result` 解析见 `aris/tech-03-risk/Multiagents.md`。
 
 ---
 

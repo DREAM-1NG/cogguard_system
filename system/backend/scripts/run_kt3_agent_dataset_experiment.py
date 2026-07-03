@@ -1,0 +1,411 @@
+"""Run GPT-based KT3 MARO-style agent experiments over local kt3-post-case-v1 datasets.
+
+This script is for offline dataset experiments, not the live system API flow.
+It converts normalized post cases into minimal risk-report contexts, runs the
+existing MARO-style agent layer directly, and writes machine-readable reports.
+"""
+
+from __future__ import annotations
+
+import argparse
+import asyncio
+import json
+import os
+import sys
+from collections import Counter, defaultdict
+from pathlib import Path
+from typing import Any
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from app.core.risk.kt3_agent_review import OpenAICompatibleAgentProvider  # noqa: E402
+from app.core.risk.kt3_agent_review import OpenAICompatibleConfig  # noqa: E402
+from app.core.risk.kt3_agent_review import run_manual_kt3_agent_review  # noqa: E402
+from app.core.risk.post_semantics import assess_post_semantics  # noqa: E402
+
+
+DEFAULT_DATASETS = ["HateXplain", "MultiOFF", "PHEME", "mcfend", "FakeSV"]
+DEFAULT_AGENTS = [
+    "PostHarmAgent",
+    "MultimodalConsistencyAgent",
+    "ClaimEvidenceAgent",
+    "QuestionReflectionAgent",
+    "HarmfulnessJudgeAgent",
+    "CountermeasureAgent",
+]
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--case-dir", default=r"G:\CISCN\tmp\kt3_offline_validation_20260703\cases")
+    parser.add_argument("--output-dir", default=r"G:\CISCN\tmp\kt3_agent_dataset_experiment")
+    parser.add_argument("--datasets", nargs="*", default=DEFAULT_DATASETS)
+    parser.add_argument("--agents", nargs="*", default=DEFAULT_AGENTS)
+    parser.add_argument("--max-cases-per-dataset", type=int, default=10)
+    parser.add_argument("--prefer-embeddings", action="store_true")
+    parser.add_argument("--include-media-base64", action="store_true")
+    parser.add_argument("--require-vision", action="store_true")
+    parser.add_argument("--enable-active-retrieval", action="store_true")
+    parser.add_argument("--enable-external-retrieval", action="store_true")
+    parser.add_argument("--enable-light-debate", action="store_true")
+    parser.add_argument("--enable-full-debate", action="store_true")
+    parser.add_argument("--debate-max-rounds", type=int, default=3)
+    parser.add_argument("--retrieval-top-k", type=int, default=3)
+    parser.add_argument("--api-key", default=os.getenv("LLM_API_KEY", ""))
+    parser.add_argument("--base-url", default=os.getenv("LLM_API_BASE", "https://api.openai.com/v1"))
+    parser.add_argument("--model", default=os.getenv("LLM_MODEL", "gpt-5.4"))
+    parser.add_argument("--wire-api", default=os.getenv("LLM_API_WIRE", "responses"))
+    parser.add_argument("--timeout-seconds", type=float, default=float(os.getenv("LLM_TIMEOUT_SECONDS", "180")))
+    args = parser.parse_args()
+
+    if not args.api_key.strip():
+        raise SystemExit("Missing API key. Pass --api-key or set LLM_API_KEY.")
+
+    case_dir = Path(args.case_dir)
+    output_dir = Path(args.output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    provider = OpenAICompatibleAgentProvider(
+        OpenAICompatibleConfig(
+            api_key=args.api_key.strip(),
+            base_url=args.base_url.strip(),
+            model=args.model.strip(),
+            wire_api=args.wire_api.strip(),
+            timeout_seconds=float(args.timeout_seconds),
+            include_media_base64=bool(args.include_media_base64),
+            require_vision=bool(args.require_vision),
+        )
+    )
+
+    report: dict[str, Any] = {
+        "schema": "kt3-agent-dataset-experiment-v1",
+        "case_dir": str(case_dir),
+        "output_dir": str(output_dir),
+        "datasets_requested": args.datasets,
+        "agents": args.agents,
+        "llm": {
+            "base_url": args.base_url,
+            "model": args.model,
+            "wire_api": args.wire_api,
+            "include_media_base64": bool(args.include_media_base64),
+            "require_vision": bool(args.require_vision),
+            "api_key_configured": True,
+        },
+        "method": {
+            "runner": "offline_dataset_to_maro_agent_review",
+            "online_llm_agent": True,
+            "system_api_required": False,
+            "external_retrieval_enabled": bool(args.enable_external_retrieval),
+        },
+        "datasets": {},
+    }
+
+    for dataset in args.datasets:
+        dataset_result = asyncio.run(
+            evaluate_dataset(
+                dataset=dataset,
+                case_dir=case_dir,
+                output_dir=output_dir / safe_name(dataset),
+                max_cases=args.max_cases_per_dataset,
+                prefer_embeddings=bool(args.prefer_embeddings),
+                provider=provider,
+                model=args.model,
+                agent_names=list(args.agents),
+                include_media_base64=bool(args.include_media_base64),
+                require_vision=bool(args.require_vision),
+                enable_active_retrieval=bool(args.enable_active_retrieval),
+                enable_external_retrieval=bool(args.enable_external_retrieval),
+                enable_light_debate=bool(args.enable_light_debate),
+                enable_full_debate=bool(args.enable_full_debate),
+                debate_max_rounds=int(args.debate_max_rounds),
+                retrieval_top_k=int(args.retrieval_top_k),
+            )
+        )
+        report["datasets"][dataset] = dataset_result
+
+    report["summary"] = summarize_suite(report["datasets"])
+    report_path = output_dir / "report.json"
+    report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(json.dumps(report["summary"], ensure_ascii=False, indent=2))
+    print(f"wrote {report_path}")
+    return 0
+
+
+async def evaluate_dataset(
+    *,
+    dataset: str,
+    case_dir: Path,
+    output_dir: Path,
+    max_cases: int,
+    prefer_embeddings: bool,
+    provider: OpenAICompatibleAgentProvider,
+    model: str,
+    agent_names: list[str],
+    include_media_base64: bool,
+    require_vision: bool,
+    enable_active_retrieval: bool,
+    enable_external_retrieval: bool,
+    enable_light_debate: bool,
+    enable_full_debate: bool,
+    debate_max_rounds: int,
+    retrieval_top_k: int,
+) -> dict[str, Any]:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    case_path = case_dir / f"{safe_name(dataset)}.jsonl"
+    cases = load_cases(case_path)
+    if max_cases > 0:
+        cases = cases[:max_cases]
+    if not cases:
+        return {"dataset": dataset, "status": "skipped", "reason": f"missing or empty case file: {case_path}"}
+
+    rows = []
+    for case in cases:
+        row = await evaluate_case(
+            case=case,
+            provider=provider,
+            model=model,
+            agent_names=agent_names,
+            prefer_embeddings=prefer_embeddings,
+            include_media_base64=include_media_base64,
+            require_vision=require_vision,
+            enable_active_retrieval=enable_active_retrieval,
+            enable_external_retrieval=enable_external_retrieval,
+            enable_light_debate=enable_light_debate,
+            enable_full_debate=enable_full_debate,
+            debate_max_rounds=debate_max_rounds,
+            retrieval_top_k=retrieval_top_k,
+        )
+        rows.append(row)
+
+    prediction_path = output_dir / "agent_predictions.jsonl"
+    write_jsonl(prediction_path, rows)
+    return {
+        "dataset": dataset,
+        "status": "evaluated",
+        "case_count": len(rows),
+        "prediction_path": str(prediction_path),
+        "metrics": compute_metrics(rows),
+    }
+
+
+async def evaluate_case(
+    *,
+    case: dict[str, Any],
+    provider: OpenAICompatibleAgentProvider,
+    model: str,
+    agent_names: list[str],
+    prefer_embeddings: bool,
+    include_media_base64: bool,
+    require_vision: bool,
+    enable_active_retrieval: bool,
+    enable_external_retrieval: bool,
+    enable_light_debate: bool,
+    enable_full_debate: bool,
+    debate_max_rounds: int,
+    retrieval_top_k: int,
+) -> dict[str, Any]:
+    report = build_minimal_report(case, prefer_embeddings=prefer_embeddings)
+    selected_post_ids = [item.get("post_id") for item in (report.get("post_semantics") or {}).get("posts") or [] if item.get("post_id")]
+    agent_result = await run_manual_kt3_agent_review(
+        report=report,
+        agent_names=agent_names,
+        case_id=str(case.get("case_id") or ""),
+        selected_post_ids=[str(item) for item in selected_post_ids[:1]],
+        selected_tree_ids=[],
+        human_triggered_by="offline_dataset_experiment",
+        provider=provider,
+        model=model,
+        provider_name="offline_llm_experiment",
+        include_media_base64=include_media_base64,
+        require_vision=require_vision,
+        enable_active_retrieval=enable_active_retrieval,
+        enable_light_debate=enable_light_debate,
+        enable_full_debate=enable_full_debate,
+        debate_max_rounds=debate_max_rounds,
+        retrieval_top_k=retrieval_top_k,
+        active_retriever=None,
+        external_retrieval_enabled=enable_external_retrieval,
+        policy={},
+        error_memory_summary={},
+    )
+    judge_report = next(
+        (item for item in agent_result["agent_reports"] if item.get("report_role") == "judge_final"),
+        next((item for item in agent_result["agent_reports"] if item.get("agent_name") == "HarmfulnessJudgeAgent"), {}),
+    )
+    return {
+        "case_id": case.get("case_id"),
+        "dataset": case.get("dataset"),
+        "split": case.get("split"),
+        "source_id": case.get("source_id"),
+        "gold_harmfulness": ((case.get("labels") or {}).get("harmfulness") or "unknown"),
+        "agent_summary": agent_result.get("summary") or {},
+        "judge_status": judge_report.get("status"),
+        "judge_report_text": judge_report.get("report_text"),
+        "judge_sidecar": judge_report.get("structured_sidecar") or {},
+        "all_agent_reports": [
+            {
+                "agent_name": item.get("agent_name"),
+                "report_role": item.get("report_role"),
+                "status": item.get("status"),
+                "report_text": item.get("report_text"),
+            }
+            for item in agent_result.get("agent_reports") or []
+        ],
+    }
+
+
+def build_minimal_report(case: dict[str, Any], *, prefer_embeddings: bool) -> dict[str, Any]:
+    post = {
+        "post_id": str(case.get("source_id") or case.get("case_id") or ""),
+        "author_id": str((case.get("metadata") or {}).get("author_id") or ""),
+        "author_name": str((case.get("metadata") or {}).get("author_name") or ""),
+        "platform": str((case.get("metadata") or {}).get("platform") or case.get("dataset") or ""),
+        "event_id": str(case.get("split") or case.get("dataset") or ""),
+        "content": text_of(case),
+        "hashtags": hashtags_of(case),
+        "media_urls": media_refs_of(case),
+        "raw_data": raw_data_of(case),
+    }
+    claim_context = case.get("claim_context") or {}
+    claim_id = str(claim_context.get("claim_id") or case.get("source_id") or case.get("case_id") or "claim-1")
+    claim_text = str(claim_context.get("claim_text") or text_of(case)[:200] or "unknown claim").strip()
+    prop_data = {
+        "global_summary": {
+            "claim_rank": [
+                {
+                    "claim_id": claim_id,
+                    "claim_text": claim_text,
+                    "share_count": 1,
+                    "account_count": 1,
+                }
+            ]
+        }
+    }
+    post_semantics = assess_post_semantics([post], prop_data, prefer_embeddings=prefer_embeddings, max_output_posts=1)
+    harmful_label = ((case.get("labels") or {}).get("harmfulness") or "unknown")
+    return {
+        "report_id": f"offline::{case.get('dataset')}::{case.get('case_id')}",
+        "event_id": str(case.get("dataset") or ""),
+        "platform": str((case.get("metadata") or {}).get("platform") or case.get("dataset") or ""),
+        "scores": {"risk_level": "high" if harmful_label == "harmful" else "low"},
+        "post_semantics": post_semantics,
+        "kt3_harmfulness": {
+            "global_summary": {
+                "kt3_harm_risk_level": "high" if harmful_label == "harmful" else "low",
+                "claim_rank": prop_data["global_summary"]["claim_rank"],
+            },
+            "review_queue": {
+                "retrieval_tasks": [{"query": claim_text}] if claim_text else [],
+                "review_items": [{"post_id": post["post_id"], "reason": "offline_dataset_case"}],
+            },
+            "review_execution": {"retrieval_results": []},
+            "graph_export": {"summary": {"nodes": 1, "edges": 0}},
+        },
+        "disarm_analysis": {},
+    }
+
+
+def compute_metrics(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    if not rows:
+        return {}
+    judge_completed = sum(1 for row in rows if row.get("judge_status") == "completed")
+    failed = sum(1 for row in rows if row.get("judge_status") != "completed")
+    agent_completed = sum((row.get("agent_summary") or {}).get("completed", 0) for row in rows)
+    agent_failed = sum((row.get("agent_summary") or {}).get("failed", 0) for row in rows)
+    return {
+        "cases": len(rows),
+        "judge_completed": judge_completed,
+        "judge_failed": failed,
+        "judge_completion_rate": round(judge_completed / len(rows), 6),
+        "agent_completed_reports": agent_completed,
+        "agent_failed_reports": agent_failed,
+        "gold_distribution": dict(Counter(row.get("gold_harmfulness") for row in rows)),
+    }
+
+
+def summarize_suite(datasets: dict[str, Any]) -> dict[str, Any]:
+    totals = defaultdict(int)
+    evaluated = []
+    for dataset, item in datasets.items():
+        if item.get("status") != "evaluated":
+            continue
+        evaluated.append(dataset)
+        metrics = item.get("metrics") or {}
+        totals["cases"] += int(metrics.get("cases", 0))
+        totals["judge_completed"] += int(metrics.get("judge_completed", 0))
+        totals["judge_failed"] += int(metrics.get("judge_failed", 0))
+        totals["agent_completed_reports"] += int(metrics.get("agent_completed_reports", 0))
+        totals["agent_failed_reports"] += int(metrics.get("agent_failed_reports", 0))
+    totals["evaluated_datasets"] = evaluated
+    if totals["cases"]:
+        totals["judge_completion_rate"] = round(totals["judge_completed"] / totals["cases"], 6)
+    else:
+        totals["judge_completion_rate"] = 0.0
+    return dict(totals)
+
+
+def load_cases(path: Path) -> list[dict[str, Any]]:
+    if not path.exists():
+        return []
+    rows = []
+    with path.open("r", encoding="utf-8") as handle:
+        for line in handle:
+            line = line.strip()
+            if not line:
+                continue
+            rows.append(json.loads(line))
+    return rows
+
+
+def write_jsonl(path: Path, rows: list[dict[str, Any]]) -> None:
+    with path.open("w", encoding="utf-8", newline="\n") as handle:
+        for row in rows:
+            handle.write(json.dumps(row, ensure_ascii=False, default=str))
+            handle.write("\n")
+
+
+def safe_name(value: str) -> str:
+    return "".join(ch.lower() if ch.isalnum() else "_" for ch in value).strip("_")
+
+
+def text_of(case: dict[str, Any]) -> str:
+    return str(case.get("text") or "").strip()
+
+
+def hashtags_of(case: dict[str, Any]) -> list[str]:
+    raw = (case.get("metadata") or {}).get("hashtag") or (case.get("metadata") or {}).get("hashtags") or []
+    if isinstance(raw, list):
+        return [str(item).strip() for item in raw if str(item).strip()]
+    if isinstance(raw, str):
+        return [part.strip() for part in raw.replace(",", " ").split() if part.strip()]
+    return []
+
+
+def media_refs_of(case: dict[str, Any]) -> list[str]:
+    views = case.get("views") or {}
+    refs = []
+    for key in ("img", "video", "meme"):
+        view = views.get(key) or {}
+        for field in ("media_path", "media_url"):
+            value = str(view.get(field) or "").strip()
+            if value:
+                refs.append(value)
+    return refs
+
+
+def raw_data_of(case: dict[str, Any]) -> dict[str, Any]:
+    claim_context = case.get("claim_context") or {}
+    metadata = case.get("metadata") or {}
+    return {
+        "ocr_text": str(metadata.get("ocr_text") or ""),
+        "asr_text": str(metadata.get("asr_text") or ""),
+        "caption": str(metadata.get("caption") or metadata.get("title") or ""),
+        "claim_text": str(claim_context.get("claim_text") or ""),
+        "evidence_text": str(claim_context.get("evidence_text") or ""),
+    }
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

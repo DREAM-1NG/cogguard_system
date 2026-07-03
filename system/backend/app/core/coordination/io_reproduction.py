@@ -77,7 +77,17 @@ IOHUNTER_GRAPH_RELATION_MAP = {
 }
 IOHUNTER_CANONICAL_RELATIONS = tuple(dict.fromkeys(IOHUNTER_GRAPH_RELATION_MAP.values()))
 TARGET_RELATIONS = {"retweet_target", "reply_target", "quote_target", "mention_target"}
-TEXT_COLUMNS = ("content", "text", "tweet_text", "body")
+TEXT_COLUMNS = (
+    "content",
+    "text",
+    "tweet_text",
+    "body",
+    "desc",
+    "description",
+    "title",
+    "note_text",
+    "post_text",
+)
 LABEL_COLUMNS = ("label", "is_io_driver", "io_driver", "target")
 # Kept for backward-compatible CLI parsing and historical ablation replay.
 # KT1 Discover mainline no longer activates Unmasking-style node pruning.
@@ -159,8 +169,12 @@ def normalize_event_table(frame: pd.DataFrame) -> pd.DataFrame:
     rename_map = {
         "userid": "account_id",
         "user_id": "account_id",
+        "uid": "account_id",
         "author_id": "account_id",
         "relation_type": "relation",
+        "event_type": "relation",
+        "action_type": "relation",
+        "interaction_type": "relation",
         "channel": "relation",
         "entity": "object_id",
         "object": "object_id",
@@ -169,10 +183,33 @@ def normalize_event_table(frame: pd.DataFrame) -> pd.DataFrame:
         "time": "timestamp",
         "tweetid": "content_id",
         "post_id": "content_id",
+        "note_id": "content_id",
+        "aweme_id": "content_id",
+        "video_id": "content_id",
         "target_user": "target_account_id",
         "target_user_id": "target_account_id",
+        "target_uid": "target_account_id",
+        "reply_to_user_id": "target_account_id",
     }
     normalized = normalized.rename(columns={key: value for key, value in rename_map.items() if key in normalized})
+    copy_alias_map = {
+        "platform": ("source_platform", "platform_name", "app_name"),
+        "nickname": ("author_name", "user_name", "display_name", "name"),
+        "screen_name": ("username", "handle", "user_handle", "author_handle"),
+        "profile_url": ("user_url", "account_url", "author_url", "homepage", "home_url", "profile_link"),
+        "post_url": ("note_url", "video_url", "aweme_url", "share_url", "link", "post_link"),
+        "comment_id": ("commentid",),
+        "note_id": ("noteid",),
+        "aweme_id": ("awemeid",),
+        "video_id": ("videoid",),
+    }
+    for canonical, aliases in copy_alias_map.items():
+        if canonical in normalized:
+            continue
+        for alias in aliases:
+            if alias in normalized:
+                normalized[canonical] = normalized[alias]
+                break
     if "account_id" not in normalized:
         raise ValueError("Event table must contain account_id/userid/user_id")
     if "relation" not in normalized:
@@ -183,6 +220,11 @@ def normalize_event_table(frame: pd.DataFrame) -> pd.DataFrame:
         normalized["timestamp"] = 0
     if "content_id" not in normalized:
         normalized["content_id"] = [f"content-{index}" for index in range(len(normalized))]
+    if "content" not in normalized:
+        for alias in TEXT_COLUMNS[1:]:
+            if alias in normalized:
+                normalized["content"] = normalized[alias]
+                break
     normalized["account_id"] = normalized["account_id"].map(_canonical_account_id)
     normalized["relation"] = normalized["relation"].astype(str)
     normalized["object_id"] = normalized["object_id"].astype(str)
@@ -1735,6 +1777,24 @@ def _user_content(events: pd.DataFrame) -> dict[str, str]:
     return {account_id: " ".join(parts) for account_id, parts in documents.items()}
 
 
+def _account_display_name_map(events: pd.DataFrame) -> dict[str, str]:
+    display_names: dict[str, str] = {}
+    candidate_columns = ("nickname", "screen_name", "author_name", "user_name")
+    available_columns = [column for column in candidate_columns if column in events.columns]
+    if not available_columns:
+        return display_names
+    for row in events.itertuples(index=False):
+        account_id = str(getattr(row, "account_id", "")).strip()
+        if not account_id or account_id in display_names:
+            continue
+        for column in available_columns:
+            value = str(getattr(row, column, "") or "").strip()
+            if value:
+                display_names[account_id] = value
+                break
+    return display_names
+
+
 def _metadata_text(events: pd.DataFrame) -> dict[str, str]:
     metadata: dict[str, list[str]] = defaultdict(list)
     for row in events.itertuples(index=False):
@@ -1916,23 +1976,24 @@ def _community_evidence(
     top_k: int = 10,
 ) -> dict[str, object]:
     community_events = events[events["account_id"].astype(str).isin(community)]
-    object_counts: Counter[str] = Counter()
+    object_counts: Counter[tuple[str, str]] = Counter()
     relation_counts: Counter[str] = Counter()
     for row in community_events.itertuples(index=False):
         object_id = _clean_object_id(getattr(row, "object_id", ""))
         relation = str(getattr(row, "relation", ""))
         if object_id:
-            object_counts[object_id] += 1
+            object_counts[(relation, object_id)] += 1
         if relation:
             relation_counts[relation] += 1
     total_objects = sum(object_counts.values())
     top_objects = [
         {
+            "relation": relation,
             "object_id": object_id,
             "count": count,
             "share": round(_safe_divide(count, total_objects), 6),
         }
-        for object_id, count in object_counts.most_common(top_k)
+        for (relation, object_id), count in object_counts.most_common(top_k)
     ]
     return {
         "top_objects": top_objects,
@@ -2202,6 +2263,7 @@ def _deep_discover_summary(
     structure_filter_use_weights: bool = False,
 ) -> dict[str, object]:
     events = _label_free_events(events)
+    display_names = _account_display_name_map(events)
     graphs = build_unmasking_similarity_graphs(events, relations=relations, include_text_similarity=False)
     fused = fuse_similarity_graphs(graphs)
     dynamic_relation_graphs = build_dynamic_relation_graphs(events, relations=relations)
@@ -2302,6 +2364,7 @@ def _deep_discover_summary(
         "nodes": [
             {
                 "account_id": node,
+                "nickname": display_names.get(node),
                 "node_score": round(node_score_map[node], 6),
                 "deep_node_score": round(node_score_map[node], 6),
                 "embedding_norm": round(float(np.linalg.norm(embedding[index])), 6) if embedding.size else 0.0,
@@ -2965,7 +3028,7 @@ def _counter_entropy(counter: Counter[str]) -> float:
 
 def _evidence_summary(result: Mapping[str, object], top_k: int = 10) -> dict[str, object]:
     relation_counts: Counter[str] = Counter()
-    top_objects: Counter[str] = Counter()
+    top_objects: Counter[tuple[str, str]] = Counter()
     communities = result.get("communities") if isinstance(result.get("communities"), Sequence) else []
     for community in communities:
         if not isinstance(community, Mapping):
@@ -2975,11 +3038,11 @@ def _evidence_summary(result: Mapping[str, object], top_k: int = 10) -> dict[str
             relation_counts.update({str(key): int(value) for key, value in breakdown.items()})
         for item in community.get("top_objects", []):
             if isinstance(item, Mapping):
-                top_objects[str(item.get("object_id"))] += int(item.get("count", 0))
+                top_objects[(str(item.get("relation", "") or ""), str(item.get("object_id")))] += int(item.get("count", 0))
     return {
         "top_objects": [
-            {"object_id": object_id, "count": count}
-            for object_id, count in top_objects.most_common(top_k)
+            {"relation": relation, "object_id": object_id, "count": count}
+            for (relation, object_id), count in top_objects.most_common(top_k)
         ],
         "relation_breakdown": dict(relation_counts),
         "top_edges": result.get("edges", [])[:top_k],

@@ -1,6 +1,7 @@
 """数据采集相关的请求 / 响应数据模式。"""
 
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -90,7 +91,37 @@ class CrawlDataQuery(BaseModel):
     """采集数据查询参数。"""
     platform: str | None = None
     keyword: str | None = None
+    event_id: str | None = None
+    has_media: bool | None = None
     start_time: datetime | None = None
     end_time: datetime | None = None
     page: int = Field(default=1, ge=1)
     page_size: int = Field(default=20, ge=1, le=100)
+
+
+class MediaDownloadRequest(BaseModel):
+    """Create a media download job from already collected post media links."""
+
+    platform: str | None = Field(default=None, description="xhs / douyin; empty means both")
+    keyword: str | None = None
+    event_id: str | None = None
+    post_ids: list[str] = Field(default_factory=list)
+    media_types: list[Literal["video", "image"]] = Field(default_factory=lambda: ["video", "image"])
+
+
+class MediaDownloadJobResponse(BaseModel):
+    """Media download job detail response."""
+
+    id: int
+    job_type: str
+    platform: str
+    status: str
+    progress: int
+    result_summary: str | None
+    celery_task_id: str | None
+    created_at: datetime
+    finished_at: datetime | None
+    summary: dict | None = None
+    items: list[dict] = Field(default_factory=list)
+
+    model_config = {"from_attributes": True}

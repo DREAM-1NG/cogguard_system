@@ -189,6 +189,28 @@ CCF 等级以中国计算机学会 2024-06-28 后更新的推荐目录页面为�
 - 价值：对中文多来源场景非常重要，适合作为“跨源泛化、中文多平台 / 多来源”部分的数据支撑文献。
 - DOI：https://doi.org/10.1145/3589334.3645385
 
+### 3.6 KT3 多智能体研判与自优化参考簇
+
+> 逐篇的 `Motivation - Method - Result` 深度笔记统一维护在 `../../aris/tech-03-risk/Multiagents.md`。本节只保留正式参考文献层面的索引。
+
+| 论文 | venue | 论文链接 | 仓库链接 | 适用位置 |
+|---|---|---|---|---|
+| A Multi-Agent Framework with Automated Decision Rule Optimization for Cross-Domain Misinformation Detection | EMNLP 2025 | https://aclanthology.org/2025.emnlp-main.291/ | https://github.com/Brtulien/MARO | KT3 专家报告、question-reflection、规则优化主参考 |
+| Debate-to-Detect: Reformulating Misinformation Detection as a Real-World Debate with Large Language Models | EMNLP 2025 | https://aclanthology.org/2025.emnlp-main.764/ | https://github.com/hanshenmesen/Debate-to-Detect | KT3 高冲突样本 full debate 主参考 |
+| Beyond Detection: Exploring Evidence-based Multi-Agent Debate for Misinformation Intervention and Persuasion | AAAI 2026 | https://ojs.aaai.org/index.php/AAAI/article/view/41196 | 未确认开源仓库 | KT3 反制安全闸与解释风险控制 |
+| RAMA: Retrieval-Augmented Multi-Agent Framework for Misinformation Detection in Multimodal Fact-Checking | arXiv 2025 | https://arxiv.org/abs/2507.09174 | https://github.com/kalendsyang/RAMA | KT3 主张证据检索、多模态 RAG |
+| MAD-Sherlock: Multi-Agent Debate for Visual Misinformation Detection | arXiv 2024/2025 | https://arxiv.org/abs/2410.20140 | 未确认开源仓库 | KT3 图文错配、OOC 检测 |
+| T2Agent: A Tool-augmented Multimodal Misinformation Detection Agent with Monte Carlo Tree Search | AAAI 2026 | https://ojs.aaai.org/index.php/AAAI/article/view/36977 | 未确认开源仓库 | KT3 工具增强验证和搜索式规划 |
+| An Agentic Operationalization of DISARM for FIMI Investigation on Social Media | 2026 | https://arxiv.org/abs/2601.15109 | 未确认开源仓库 | KT3 DISARM 映射对标 |
+| Reflexion: language agents with verbal reinforcement learning | NeurIPS 2023 | https://papers.nips.cc/paper_files/paper/2023/hash/1b44b878bb782e6954cd888628510e90-Abstract-Conference.html | https://github.com/noahshinn/reflexion | KT3 error memory / feedback memory |
+| Self-Refine: Iterative Refinement with Self-Feedback | 2023 | https://arxiv.org/abs/2303.17651 | https://github.com/madaan/self-refine | KT3 报告迭代修订 |
+| Automatic Prompt Optimization with “Gradient Descent” and Beam Search | EMNLP 2023 | https://aclanthology.org/2023.emnlp-main.494/ | https://github.com/pree-dew/protegi | KT3 prompt 优化，仓库为社区实现 |
+| Large Language Models as Optimizers | 2023 | https://arxiv.org/abs/2309.03409 | https://github.com/google-deepmind/opro | KT3 规则候选生成 |
+| Optimizing Instructions and Demonstrations for Multi-Stage Language Model Programs | EMNLP 2024 | https://aclanthology.org/2024.emnlp-main.525/ | https://github.com/stanfordnlp/dspy | KT3 作为 LM program 的系统级优化 |
+| TextGrad: Automatic “Differentiation” via Text | 2024 | https://arxiv.org/abs/2406.07496 | https://github.com/zou-group/textgrad | KT3 文本组件自动优化 |
+| Automated Design of Agentic Systems | ICLR 2025 | https://arxiv.org/abs/2408.08435 | https://github.com/ShengranHu/ADAS | KT3 长期工作流自动发现 |
+| AFlow: Automating Agentic Workflow Generation | ICLR 2025 | https://arxiv.org/abs/2410.10762 | https://github.com/FoundationAgents/AFlow | KT3 长期 workflow search |
+
 ## 4. 当前最建议优先进正式参考文献表的核心清单
 
 如果后续要从上面的长清单中选一版“最能支撑本项目设计”的短清单，建议优先保留以下 12 篇：
@@ -215,3 +237,4 @@ CCF 等级以中国计算机学会 2024-06-28 后更新的推荐目录页面为�
 - 对话图中的 stance 演化与 thread-level 风险传播
 - 中文场景下的多平台公开数据集与早期预警 benchmark
 - 事实核查检索、结构化解释生成、审计化报告生成
+- 多智能体规则自优化、反馈记忆与工作流自动发现

@@ -21,9 +21,15 @@ const router = createRouter({
       children: [
         {
           path: '',
+          name: 'Home',
+          component: () => import('@/views/home/index.vue'),
+          meta: { title: '首页' },
+        },
+        {
+          path: 'dashboard',
           name: 'Dashboard',
           component: () => import('@/views/dashboard/index.vue'),
-          meta: { title: '监测看板' },
+          meta: { title: '数据看板' },
         },
         {
           path: 'crawl',
@@ -47,7 +53,13 @@ const router = createRouter({
           path: 'accounts',
           name: 'Accounts',
           component: () => import('@/views/accounts/index.vue'),
-          meta: { title: '账户监测' },
+          meta: { title: '用户画像' },
+        },
+        {
+          path: 'system',
+          name: 'SystemManagement',
+          component: () => import('@/views/system/index.vue'),
+          meta: { title: '系统管理', roles: ['admin'] },
         },
         {
           path: 'risk',
@@ -80,6 +92,24 @@ router.beforeEach(async (to, _from, next) => {
   } else if (to.path === '/login' && token) {
     next('/')
   } else {
+    const requiredRoles = to.meta.roles as string[] | undefined
+    if (requiredRoles?.length) {
+      const { useAuthStore } = await import('@/stores/auth')
+      const authStore = useAuthStore()
+      if (!authStore.userInfo) {
+        try {
+          await authStore.fetchProfile()
+        } catch {
+          authStore.logout()
+          return
+        }
+      }
+      const currentRole = authStore.userInfo?.role || ''
+      if (!requiredRoles.includes(currentRole)) {
+        next('/')
+        return
+      }
+    }
     next()
   }
 })

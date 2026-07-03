@@ -86,9 +86,10 @@ async def delete_job(job_id: int, user_id: int, db: AsyncSession) -> bool:
     if job is None:
         return False
 
-    mongo_db = get_mongo_db()
-    await mongo_db["raw_posts"].delete_many({"crawl_job_id": job_id})
-    await mongo_db["raw_comments"].delete_many({"crawl_job_id": job_id})
+    if job.job_type != "media_download":
+        mongo_db = get_mongo_db()
+        await mongo_db["raw_posts"].delete_many({"crawl_job_id": job_id})
+        await mongo_db["raw_comments"].delete_many({"crawl_job_id": job_id})
 
     await db.delete(job)
     await db.flush()
@@ -123,6 +124,12 @@ async def query_posts(query: CrawlDataQuery) -> tuple[list[dict], int]:
         mongo_filter["platform"] = query.platform
     if query.keyword:
         mongo_filter["content"] = {"$regex": query.keyword, "$options": "i"}
+    if query.event_id:
+        mongo_filter["event_id"] = query.event_id
+    if query.has_media is True:
+        mongo_filter["media_urls.0"] = {"$exists": True}
+    elif query.has_media is False:
+        mongo_filter["media_urls.0"] = {"$exists": False}
     if query.start_time:
         mongo_filter.setdefault("timestamp", {})["$gte"] = query.start_time
     if query.end_time:

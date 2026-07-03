@@ -20,6 +20,40 @@ if (-not $frontendNpm) {
     throw 'npm.cmd not found in PATH and D:\node\npm.cmd is unavailable.'
 }
 
+function Stop-StaleLocalPortOwner {
+    param(
+        [int]$Port,
+        [string]$Name,
+        [string]$ExpectedPattern
+    )
+
+    $owners = Get-NetTCPConnection -LocalAddress '127.0.0.1' -LocalPort $Port -State Listen -ErrorAction SilentlyContinue |
+        Select-Object -ExpandProperty OwningProcess -Unique
+
+    foreach ($pid in $owners) {
+        if (-not $pid) {
+            continue
+        }
+
+        $process = Get-CimInstance Win32_Process -Filter "ProcessId = $pid" -ErrorAction SilentlyContinue
+        if (-not $process) {
+            continue
+        }
+
+        $commandLine = [string]$process.CommandLine
+        if ($commandLine -notmatch $ExpectedPattern) {
+            throw "$Name port $Port is already used by PID $pid and does not look like a CogGuard process: $commandLine"
+        }
+
+        Write-Host "Stopping stale $Name process on 127.0.0.1:$Port (PID $pid)..."
+        Stop-Process -Id $pid -Force
+        Start-Sleep -Seconds 1
+    }
+}
+
+Stop-StaleLocalPortOwner -Port 8000 -Name 'backend' -ExpectedPattern 'uvicorn\s+app\.main:app'
+Stop-StaleLocalPortOwner -Port 5173 -Name 'frontend' -ExpectedPattern 'vite(\.js)?|npm.*run\s+dev'
+
 $backendCommand = "cd /d `"$backendDir`" && `"$backendPython`" -m uvicorn app.main:app --host 127.0.0.1 --port 8000"
 
 $frontendCommand = "cd /d `"$frontendDir`" && `"$frontendNpm`" run dev -- --host 127.0.0.1 --port 5173"

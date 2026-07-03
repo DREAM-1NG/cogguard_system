@@ -1,8 +1,7 @@
 """Active evidence retrieval for analyst-triggered KT3 agent reviews.
 
-The default path is intentionally local and reproducible. Optional external
-providers are injected explicitly and audited; they are never called from
-``/risk/assess``.
+The default path is local-first and auditable. Optional external providers
+may enrich manual reviews, but are never called from ``/risk/assess``.
 """
 
 from __future__ import annotations
@@ -87,13 +86,14 @@ async def retrieve_active_evidence(
             "external_calls": len(external_results) + len(failures),
             "failures": failures,
             "default_local_first": True,
+            "manual_review_default_external_attempted": bool(external_enabled),
             "query_refinement_enabled": True,
             "conflict_requery_enabled": True,
         },
         "capability_boundary": {
             "runs_only_in_manual_agent_review": True,
             "does_not_fit_dataset_labels": True,
-            "external_retrieval_default_enabled": False,
+            "external_retrieval_default_enabled": True,
             "claim_to_query": True,
             "source_quality_scoring": True,
             "conflict_requery": True,
@@ -368,14 +368,29 @@ def _refine_queries(base_queries: list[str], context: dict[str, Any]) -> dict[st
     for post in context.get("selected_posts") or []:
         claim_text = _text(_get(post, "primary_claim", "claim_text"))
         stance_label = _text(_get(post, "stance", "label"))
+        uncertainty = bool(_get(post, "stance", "abstain")) or stance_label in {"uncertain", "query"}
+        entity_clues = _entity_time_event_clues(post)
         if claim_text:
-            query = " ".join(part for part in [claim_text, stance_label, "evidence verification"] if part)[:240]
+            query = " ".join(
+                part
+                for part in [
+                    claim_text,
+                    stance_label,
+                    "uncertain stance" if uncertainty else "",
+                    entity_clues,
+                    "evidence verification",
+                ]
+                if part
+            )[:240]
             refined.append(query)
             trace.append(
                 {
                     "source": "claim_to_query",
                     "post_id": _text(post.get("post_id")),
                     "base_claim": claim_text[:160],
+                    "stance": stance_label,
+                    "uncertain": uncertainty,
+                    "entity_event_time_clues": entity_clues,
                     "query": query,
                 }
             )
@@ -389,19 +404,23 @@ def _refine_queries(base_queries: list[str], context: dict[str, Any]) -> dict[st
             if _text(value)
         )
         if media_text:
-            query = f"{media_text[:180]} multimodal context consistency"
+            conflict_note = ""
+            if _get(post, "post_view_detection", "conflict") or _as_float(_get(post, "post_view_detection", "conflict", "score")) >= 0.35:
+                conflict_note = "multimodal conflict check"
+            query = " ".join(part for part in [media_text[:180], conflict_note, "multimodal context consistency"] if part)
             refined.append(query)
             trace.append(
                 {
                     "source": "multimodal_to_query",
                     "post_id": _text(post.get("post_id")),
+                    "entity_event_time_clues": entity_clues,
                     "query": query,
                 }
             )
     for claim in _get(context, "propagation_context", "claim_rank") or []:
         claim_text = _text(claim.get("claim_text"))
         if claim_text:
-            query = f"{claim_text[:200]} propagation stance evidence"
+            query = f"{claim_text[:200]} propagation stance evidence event verification"
             refined.append(query)
             trace.append(
                 {
@@ -460,13 +479,17 @@ def _aggregate_source_quality(
     conflict_refs = [item for result in conflict_requery_results for item in result.get("top_evidence") or []]
     avg_score_values = [_as_float(item.get("score")) for item in [*local_refs, *external_refs, *conflict_refs]]
     avg_score = sum(avg_score_values) / len(avg_score_values) if avg_score_values else 0.0
+    high_conf_external = sum(1 for item in external_refs if _as_float(item.get("score")) >= 0.7)
+    external_domains = sorted({_host(item.get("url")) for item in external_refs if _host(item.get("url"))})
     return {
         "local_evidence": len(local_refs),
         "external_evidence": len(external_refs),
         "conflict_requery_evidence": len(conflict_refs),
         "external_url_refs": sum(1 for item in external_refs if item.get("url")),
+        "high_confidence_external_evidence": high_conf_external,
+        "external_domains": external_domains[:12],
         "avg_retrieval_score": round(avg_score, 6),
-        "quality_note": "local_first_claim_query_refinement_with_optional_external",
+        "quality_note": "local_first_rama_style_claim_to_query_with_optional_external_requery",
     }
 
 
@@ -603,6 +626,7 @@ def _source_quality(local_refs: list[dict[str, Any]], external_refs: list[dict[s
         "local_evidence": len(local_refs),
         "external_evidence": len(external_refs),
         "external_url_refs": sum(1 for item in external_refs if item.get("url")),
+        "external_domains": sorted({_host(item.get("url")) for item in external_refs if _host(item.get("url"))})[:12],
         "quality_note": "local_first_optional_external",
     }
 
@@ -749,6 +773,35 @@ def _text(value: Any) -> str:
     if value is None:
         return ""
     return str(value).strip()
+
+
+def _entity_time_event_clues(post: dict[str, Any]) -> str:
+    candidates = [
+        _text(post.get("excerpt")),
+        _text(_get(post, "primary_claim", "claim_text")),
+        _text(_get(post, "evidence", "caption")),
+    ]
+    merged = " ".join(part for part in candidates if part)
+    tokens = _tokens(merged)
+    if not tokens:
+        return ""
+    interesting = []
+    for token in tokens:
+        if any(ch.isdigit() for ch in token) or token[:1].isupper() or len(token) >= 6:
+            interesting.append(token)
+        if len(interesting) >= 6:
+            break
+    return " ".join(interesting)
+
+
+def _host(url: Any) -> str:
+    text = _text(url)
+    if not text or "://" not in text:
+        return ""
+    try:
+        return text.split("://", 1)[1].split("/", 1)[0].lower()
+    except Exception:
+        return ""
 
 
 def _utc_now() -> str:

@@ -3,7 +3,7 @@
 from datetime import datetime, timedelta, timezone
 
 import bcrypt
-from fastapi import Depends
+from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 from sqlalchemy import select
@@ -87,6 +87,23 @@ async def get_current_user(
     db: AsyncSession = Depends(get_db),
 ) -> User:
     return await _resolve_user_from_token(credentials.credentials, db)
+
+
+def require_roles(*allowed_roles: str):
+    """FastAPI dependency factory for coarse role-gated endpoints."""
+    allowed = {str(role) for role in allowed_roles}
+
+    def _require_role(current_user: User = Depends(get_current_user)) -> User:
+        role = str(getattr(current_user, "role", "") or "")
+        if role not in allowed:
+            expected = ", ".join(sorted(allowed))
+            raise HTTPException(
+                status_code=403,
+                detail=f"KT3 operation requires role in [{expected}], current role: {role or 'unknown'}",
+            )
+        return current_user
+
+    return _require_role
 
 
 async def get_current_user_or_preview(

@@ -1,16 +1,12 @@
-<!--
-  全局布局：侧边栏 + 顶部用户栏 + 标签页导航 + 主内容区
--->
 <template>
   <a-layout class="app-layout">
-    <!-- 侧边栏 -->
     <a-layout-sider v-model:collapsed="collapsed" collapsible theme="dark">
       <div class="logo">
         <span v-if="!collapsed">CogGuard</span>
         <span v-else>CG</span>
       </div>
       <a-menu theme="dark" mode="inline" :selectedKeys="selectedKeys" @click="handleMenuClick">
-        <a-menu-item v-for="item in menuItems" :key="item.path" :disabled="item.disabled">
+        <a-menu-item v-for="item in visibleMenuItems" :key="item.path" :disabled="item.disabled">
           <a-tooltip :title="item.desc" placement="right" :mouseEnterDelay="0.4">
             <component :is="item.icon" />
             <span>{{ item.label }}</span>
@@ -20,7 +16,6 @@
     </a-layout-sider>
 
     <a-layout>
-      <!-- 顶部栏 -->
       <a-layout-header class="app-header">
         <div class="header-left">
           <span class="header-module">{{ currentMenu?.label || 'CogGuard' }}</span>
@@ -48,7 +43,6 @@
         </div>
       </a-layout-header>
 
-      <!-- 标签页导航 -->
       <div class="tab-bar">
         <div
           v-for="tab in openTabs"
@@ -65,7 +59,6 @@
         </div>
       </div>
 
-      <!-- 主内容区 -->
       <a-layout-content class="app-content">
         <router-view />
       </a-layout-content>
@@ -77,12 +70,14 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import {
+  HomeOutlined,
   DashboardOutlined,
   CloudDownloadOutlined,
   ApartmentOutlined,
   ShareAltOutlined,
   UserOutlined,
   AlertOutlined,
+  SettingOutlined,
   LogoutOutlined,
   CloseOutlined,
 } from '@ant-design/icons-vue'
@@ -95,32 +90,43 @@ const authStore = useAuthStore()
 const collapsed = ref(false)
 
 const menuItems = [
-  { path: '/', label: '监测看板', icon: DashboardOutlined, desc: '系统概览：任务统计、风险趋势、数据总量', disabled: false },
+  { path: '/', label: '首页', icon: HomeOutlined, desc: '系统首页：态势概览、任务摘要、风险报告与快捷入口', disabled: false },
+  { path: '/dashboard', label: '数据看板', icon: DashboardOutlined, desc: '数据看板：地图定位、平台分布、近期采集样本', disabled: false },
   { path: '/crawl', label: '数据采集', icon: CloudDownloadOutlined, desc: '创建采集任务，管理多平台数据抓取', disabled: false },
   { path: '/coordination', label: '协同检测', icon: ApartmentOutlined, desc: '检测时间窗口内的协调分享行为，构建协同网络', disabled: false },
-  { path: '/propagation', label: '传播监控', icon: ShareAltOutlined, desc: '查看趋势预测、证据链与关键传播角色，汇总当前传播监控能力', disabled: false },
-  { path: '/accounts', label: '账户监测', icon: UserOutlined, desc: '账户行为画像、作息节律、自动化倾向评估', disabled: false },
-  { path: '/risk', label: '风险研判', icon: AlertOutlined, desc: '阶段感知风险评估、D-S 证据融合、DISARM 攻击路径分析', disabled: false },
+  { path: '/propagation', label: '传播监控', icon: ShareAltOutlined, desc: '查看趋势预测、证据链与关键传播角色', disabled: false },
+  { path: '/accounts', label: '用户画像', icon: UserOutlined, desc: '用户行为画像、作息节律、自动化倾向评估', disabled: false },
+  { path: '/risk', label: '风险研判', icon: AlertOutlined, desc: '阶段感知风险评估、D-S 证据融合、DISARM 路径分析', disabled: false },
+  { path: '/system', label: '系统管理', icon: SettingOutlined, desc: 'KT3 Provider、Gate Dataset、Policy、Jobs 与 Backfill', disabled: false, roles: ['admin'] },
 ]
 
-const selectedKeys = computed(() => [route.path])
-const currentMenu = computed(() => menuItems.find(item => item.path === route.path))
+const visibleMenuItems = computed(() => {
+  const role = authStore.userInfo?.role
+  return menuItems.filter((item) => !item.roles || item.roles.includes(String(role)))
+})
 
-// ---- 标签页管理 ----
+const selectedKeys = computed(() => {
+  const exact = visibleMenuItems.value.find((item) => item.path === route.path)
+  if (exact) return [exact.path]
+  const prefix = visibleMenuItems.value.find((item) => item.path !== '/' && route.path.startsWith(item.path))
+  return [prefix?.path || route.path]
+})
+const currentMenu = computed(() => visibleMenuItems.value.find((item) => item.path === selectedKeys.value[0]))
+
 const openTabs = ref<Array<{ path: string; label: string }>>([])
 
 function findLabel(path: string): string {
-  return menuItems.find(m => m.path === path)?.label || '页面'
+  return visibleMenuItems.value.find((item) => item.path === path)?.label || '页面'
 }
 
 function addTab(path: string) {
-  if (!openTabs.value.find(t => t.path === path)) {
+  if (!openTabs.value.find((tab) => tab.path === path)) {
     openTabs.value.push({ path, label: findLabel(path) })
   }
 }
 
 function closeTab(path: string) {
-  const idx = openTabs.value.findIndex(t => t.path === path)
+  const idx = openTabs.value.findIndex((tab) => tab.path === path)
   if (idx === -1) return
   openTabs.value.splice(idx, 1)
   if (path === route.path && openTabs.value.length > 0) {
@@ -129,7 +135,7 @@ function closeTab(path: string) {
   }
 }
 
-watch(() => route.path, (p) => addTab(p), { immediate: true })
+watch(() => route.path, (path) => addTab(path), { immediate: true })
 
 function handleMenuClick({ key }: { key: string }) {
   router.push(key)
@@ -141,7 +147,11 @@ function handleLogout() {
 
 onMounted(async () => {
   if (authStore.isLoggedIn && !authStore.userInfo) {
-    try { await authStore.fetchProfile() } catch { /* handled */ }
+    try {
+      await authStore.fetchProfile()
+    } catch {
+      // The request interceptor handles auth failures globally.
+    }
   }
 })
 </script>
@@ -201,6 +211,7 @@ onMounted(async () => {
   background: #f0f5ff;
   border: 1px solid #d6e4ff;
   transition: all 0.2s;
+
   &:hover {
     background: #e6f0ff;
     box-shadow: 0 2px 6px rgba(24, 144, 255, 0.15);
@@ -213,7 +224,6 @@ onMounted(async () => {
   font-size: 13px;
 }
 
-// ---- 标签页 ----
 .tab-bar {
   display: flex;
   align-items: center;
@@ -261,6 +271,7 @@ onMounted(async () => {
   border-radius: 50%;
   padding: 2px;
   transition: all 0.15s;
+
   &:hover {
     color: #f5222d;
     background: #fff1f0;

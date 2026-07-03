@@ -7,7 +7,7 @@ Future coding sessions should treat this file as the quick-start project context
 
 - Active engineering baseline: `release-0.2`
 - Do not use `main` as the source of truth for implementation status until it is explicitly synced.
-- Current active system lives in `new-system/`.
+- Current active system lives in `system/`.
 
 ## Read Before Coding
 
@@ -16,7 +16,7 @@ Read these files before making substantial changes:
 1. `doc/engineering/development-roadmap.md`
 2. `doc/engineering/environment-setup.md`
 3. `doc/engineering/development-log.md`
-4. `new-system/README.md`
+4. `system/README.md`
 5. `README.md`
 6. If the task is ARIS-driven or targets one of the three key technologies, also read:
    - `aris/README.md`
@@ -40,8 +40,8 @@ If code and docs disagree, trust code first, then update docs in the same change
 - For major feature work, update at least:
   - `doc/engineering/development-roadmap.md`
   - `doc/engineering/development-log.md`
-  - `README.md` or `new-system/README.md` when behavior or architecture changes
-- Prefer extending `new-system/backend/app/` and `new-system/frontend/src/` rather than adding duplicate entrypoints elsewhere.
+  - `README.md` or `system/README.md` when behavior or architecture changes
+- Prefer extending `system/backend/app/` and `system/frontend/src/` rather than adding duplicate entrypoints elsewhere.
 - Keep risk, coordination, and propagation outputs evidence-backed and explainable.
 - Do not vendor upstream ARIS skill code into this repository; keep only local workspace docs under `aris/`.
 
@@ -62,6 +62,6 @@ As of the `release-0.2` baseline:
 
 ## Notes For Future Sessions
 
-- If a task touches algorithm behavior, prefer adding unit tests under `new-system/backend/tests/`.
+- If a task touches algorithm behavior, prefer adding unit tests under `system/backend/tests/`.
 - If a task changes project status or roadmap interpretation, update the docs in the same turn.
 - If a future session needs a clean implementation starting point, branch from `release-0.2`, not `main`.

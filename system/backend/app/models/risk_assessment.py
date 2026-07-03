@@ -6,7 +6,8 @@
 
 from datetime import datetime
 
-from sqlalchemy import DateTime, Float, Integer, String, Text, func
+from sqlalchemy import DateTime, Float, Integer, String, func
+from sqlalchemy.dialects.mysql import LONGTEXT
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.mysql import Base
@@ -42,7 +43,7 @@ class RiskAssessment(Base):
     attack_path_depth: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
     # 完整报告 JSON
-    report_json: Mapped[str] = mapped_column(Text, nullable=False)
+    report_json: Mapped[str] = mapped_column(LONGTEXT, nullable=False)
 
     # 元数据
     assessed_by: Mapped[int] = mapped_column(Integer, nullable=False)

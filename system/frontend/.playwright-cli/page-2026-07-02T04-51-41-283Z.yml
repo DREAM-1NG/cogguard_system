@@ -1,0 +1,545 @@
+- generic [ref=e1]:
+  - generic [ref=e46]:
+    - complementary [ref=e47]:
+      - generic [ref=e48]:
+        - generic [ref=e50]: CogGuard
+        - menu [ref=e51]:
+          - menuitem "home 首页" [ref=e52] [cursor=pointer]:
+            - generic [ref=e54]:
+              - img "home" [ref=e55]:
+                - img [ref=e56]
+              - text: 首页
+          - menuitem "dashboard 数据看板" [ref=e58] [cursor=pointer]:
+            - generic [ref=e60]:
+              - img "dashboard" [ref=e61]:
+                - img [ref=e62]
+              - text: 数据看板
+          - menuitem "cloud-download 数据采集" [ref=e64] [cursor=pointer]:
+            - generic [ref=e66]:
+              - img "cloud-download" [ref=e67]:
+                - img [ref=e68]
+              - text: 数据采集
+          - menuitem "apartment 协同检测" [active] [ref=e71] [cursor=pointer]:
+            - generic [ref=e73]:
+              - img "apartment" [ref=e74]:
+                - img [ref=e75]
+              - text: 协同检测
+          - menuitem "share-alt 传播监控" [ref=e77] [cursor=pointer]:
+            - generic [ref=e79]:
+              - img "share-alt" [ref=e80]:
+                - img [ref=e81]
+              - text: 传播监控
+          - menuitem "user 账户监测" [ref=e83] [cursor=pointer]:
+            - generic [ref=e85]:
+              - img "user" [ref=e86]:
+                - img [ref=e87]
+              - text: 账户监测
+          - menuitem "alert 风险研判" [ref=e89] [cursor=pointer]:
+            - generic [ref=e91]:
+              - img "alert" [ref=e92]:
+                - img [ref=e93]
+              - text: 风险研判
+          - menuitem "setting 系统管理" [ref=e95] [cursor=pointer]:
+            - generic [ref=e97]:
+              - img "setting" [ref=e98]:
+                - img [ref=e99]
+              - text: 系统管理
+      - img "left" [ref=e102] [cursor=pointer]:
+        - img [ref=e103]
+    - generic [ref=e105]:
+      - generic [ref=e106]:
+        - generic [ref=e108]: 协同检测
+        - generic [ref=e110] [cursor=pointer]:
+          - generic [ref=e112]: A
+          - generic [ref=e113]: admin
+      - generic [ref=e114]:
+        - generic [ref=e115] [cursor=pointer]:
+          - generic [ref=e116]: 首页
+          - img "close" [ref=e298]:
+            - img [ref=e299]
+        - generic [ref=e301] [cursor=pointer]:
+          - generic [ref=e302]: 协同检测
+          - img "close" [ref=e303]:
+            - img [ref=e304]
+      - main [ref=e117]:
+        - generic [ref=e306]:
+          - generic [ref=e307]:
+            - heading "协同检测" [level=2] [ref=e308]
+            - img "question-circle" [ref=e309]:
+              - img [ref=e310]
+          - generic [ref=e315]:
+            - generic [ref=e316]:
+              - button "刷新数据集" [ref=e317] [cursor=pointer]:
+                - generic [ref=e318]: 刷新数据集
+              - button "上传标准事件表" [ref=e321]:
+                - button "上传标准事件表" [ref=e322] [cursor=pointer]:
+                  - generic [ref=e323]: 上传标准事件表
+            - button "重新运行主线模型" [ref=e325] [cursor=pointer]:
+              - generic [ref=e326]: 重新运行主线模型
+          - generic [ref=e327]:
+            - generic [ref=e330]: 历史数据集总览
+            - generic [ref=e334]:
+              - generic [ref=e337] [cursor=pointer]:
+                - generic [ref=e338]:
+                  - generic [ref=e339]:
+                    - generic [ref=e340]: china
+                    - generic [ref=e341]:
+                      - generic [ref=e342]: 系统归档
+                      - generic [ref=e343]: 带标签
+                  - generic [ref=e344]: 历史归档
+                - generic [ref=e345]:
+                  - generic [ref=e346]: 事件数 32,350
+                  - generic [ref=e347]: 账号数 23,028
+                  - generic [ref=e348]: 对象数 27,689
+                  - generic [ref=e349]: 边数 4,652
+                - generic [ref=e350]:
+                  - generic [ref=e351]: AUC 0.9999
+                  - generic [ref=e352]: AUPRC 0.9981
+                  - generic [ref=e353]: F1 0.9445
+              - generic [ref=e356] [cursor=pointer]:
+                - generic [ref=e357]:
+                  - generic [ref=e358]:
+                    - generic [ref=e359]: cuba
+                    - generic [ref=e360]:
+                      - generic [ref=e361]: 系统归档
+                      - generic [ref=e362]: 带标签
+                  - generic [ref=e363]: 历史归档
+                - generic [ref=e364]:
+                  - generic [ref=e365]: 事件数 44,905
+                  - generic [ref=e366]: 账号数 20,247
+                  - generic [ref=e367]: 对象数 32,576
+                  - generic [ref=e368]: 边数 12,211
+                - generic [ref=e369]:
+                  - generic [ref=e370]: AUC 0.9942
+                  - generic [ref=e371]: AUPRC 0.9393
+                  - generic [ref=e372]: F1 0.5795
+              - generic [ref=e375] [cursor=pointer]:
+                - generic [ref=e376]:
+                  - generic [ref=e377]:
+                    - generic [ref=e378]: iran
+                    - generic [ref=e379]:
+                      - generic [ref=e380]: 系统归档
+                      - generic [ref=e381]: 带标签
+                  - generic [ref=e382]: 历史归档
+                - generic [ref=e383]:
+                  - generic [ref=e384]: 事件数 20,120
+                  - generic [ref=e385]: 账号数 14,486
+                  - generic [ref=e386]: 对象数 17,303
+                  - generic [ref=e387]: 边数 2,692
+                - generic [ref=e388]:
+                  - generic [ref=e389]: AUC 0.9940
+                  - generic [ref=e390]: AUPRC 0.9665
+                  - generic [ref=e391]: F1 0.9809
+              - generic [ref=e394] [cursor=pointer]:
+                - generic [ref=e395]:
+                  - generic [ref=e396]:
+                    - generic [ref=e397]: russia
+                    - generic [ref=e398]:
+                      - generic [ref=e399]: 系统归档
+                      - generic [ref=e400]: 带标签
+                  - generic [ref=e401]: 已完成
+                - generic [ref=e402]:
+                  - generic [ref=e403]: 事件数 12,146
+                  - generic [ref=e404]: 账号数 716
+                  - generic [ref=e405]: 对象数 6,431
+                  - generic [ref=e406]: 边数 5,039
+              - generic [ref=e409] [cursor=pointer]:
+                - generic [ref=e410]:
+                  - generic [ref=e411]:
+                    - generic [ref=e412]: UAE
+                    - generic [ref=e413]:
+                      - generic [ref=e414]: 系统归档
+                      - generic [ref=e415]: 带标签
+                  - generic [ref=e416]: 历史归档
+                - generic [ref=e417]:
+                  - generic [ref=e418]: 事件数 26,487
+                  - generic [ref=e419]: 账号数 9,391
+                  - generic [ref=e420]: 对象数 17,939
+                  - generic [ref=e421]: 边数 8,444
+                - generic [ref=e422]:
+                  - generic [ref=e423]: AUC 0.9832
+                  - generic [ref=e424]: AUPRC 0.9555
+                  - generic [ref=e425]: F1 0.9646
+              - generic [ref=e428] [cursor=pointer]:
+                - generic [ref=e429]:
+                  - generic [ref=e430]:
+                    - generic [ref=e431]: venezuela
+                    - generic [ref=e432]:
+                      - generic [ref=e433]: 系统归档
+                      - generic [ref=e434]: 带标签
+                  - generic [ref=e435]: 历史归档
+                - generic [ref=e436]:
+                  - generic [ref=e437]: 事件数 9,701
+                  - generic [ref=e438]: 账号数 5,021
+                  - generic [ref=e439]: 对象数 7,361
+                  - generic [ref=e440]: 边数 2,154
+                - generic [ref=e441]:
+                  - generic [ref=e442]: AUC 0.9908
+                  - generic [ref=e443]: AUPRC 0.9858
+                  - generic [ref=e444]: F1 0.9576
+          - generic [ref=e446]:
+            - generic [ref=e447]:
+              - generic [ref=e449]:
+                - generic [ref=e452]: 数据集信息
+                - generic [ref=e454]:
+                  - generic [ref=e455]:
+                    - generic [ref=e456]: 名称
+                    - strong [ref=e457]: china
+                  - generic [ref=e458]:
+                    - generic [ref=e459]: 来源
+                    - strong [ref=e460]: 系统归档
+                  - generic [ref=e461]:
+                    - generic [ref=e462]: 标签状态
+                    - strong [ref=e463]: 带标签
+                  - generic [ref=e464]:
+                    - generic [ref=e465]: 关系数
+                    - strong [ref=e466]: "5"
+                  - generic [ref=e467]:
+                    - generic [ref=e468]: 事件数
+                    - strong [ref=e469]: 32,350
+                  - generic [ref=e470]:
+                    - generic [ref=e471]: 账号数
+                    - strong [ref=e472]: 23,028
+                  - generic [ref=e473]:
+                    - generic [ref=e474]: 对象数
+                    - strong [ref=e475]: 27,689
+                  - generic [ref=e476]:
+                    - generic [ref=e477]: 边数
+                    - strong [ref=e478]: 4,652
+              - generic [ref=e480]:
+                - generic [ref=e483]: 结果摘要
+                - generic [ref=e485]:
+                  - generic [ref=e486]:
+                    - generic [ref=e487]: 结果来源
+                    - strong [ref=e488]: archive
+                  - generic [ref=e489]:
+                    - generic [ref=e490]: 状态
+                    - strong [ref=e491]: 历史归档
+                  - generic [ref=e492]:
+                    - generic [ref=e493]: Discover
+                    - strong [ref=e494]: MAGNN + Leiden
+                  - generic [ref=e495]:
+                    - generic [ref=e496]: Detect
+                    - strong [ref=e497]: SBERT + fusion_gnn
+                  - generic [ref=e498]:
+                    - generic [ref=e499]: LM 特征源
+                    - strong [ref=e500]: tfidf_object_bag_fallback
+                  - generic [ref=e501]:
+                    - generic [ref=e502]: 检测模式
+                    - strong [ref=e503]: 带标签 Detect
+            - generic [ref=e504]:
+              - generic [ref=e508]:
+                - generic [ref=e509]: AUC
+                - generic [ref=e511]:
+                  - generic [ref=e512]: "1"
+                  - text: ".0000"
+              - generic [ref=e516]:
+                - generic [ref=e517]: AUPRC
+                - generic [ref=e519]:
+                  - generic [ref=e520]: "1"
+                  - text: ".0000"
+              - generic [ref=e524]:
+                - generic [ref=e525]: Macro-F1
+                - generic [ref=e527]:
+                  - generic [ref=e528]: "0"
+                  - text: ".9524"
+              - generic [ref=e532]:
+                - generic [ref=e533]: Modularity
+                - generic [ref=e535]:
+                  - generic [ref=e536]: "0"
+                  - text: ".9768"
+              - generic [ref=e540]:
+                - generic [ref=e541]: 社区数量
+                - generic [ref=e544]: 22,258
+              - generic [ref=e548]:
+                - generic [ref=e549]: 对象集中度
+                - generic [ref=e551]:
+                  - generic [ref=e552]: "0"
+                  - text: ".9910"
+            - generic [ref=e553]:
+              - generic [ref=e556]: 协同网络发现
+              - generic [ref=e558]:
+                - generic [ref=e559]:
+                  - generic [ref=e560]: 当前展示 200 / 23028 个节点
+                  - generic [ref=e561]: 展示边 0 / 100
+                  - generic [ref=e562]: 可通过筛选控制显示规模
+                - generic [ref=e563]:
+                  - generic [ref=e564] [cursor=pointer]:
+                    - generic [ref=e565]:
+                      - combobox [ref=e567]
+                      - generic [ref=e568]: Top 200
+                    - generic:
+                      - img:
+                        - img
+                  - generic [ref=e569]:
+                    - generic [ref=e570]: 节点分数阈值
+                    - generic [ref=e571]:
+                      - generic [ref=e572]:
+                        - button "Increase Value" [ref=e573] [cursor=pointer]:
+                          - img "up" [ref=e574]:
+                            - img [ref=e575]
+                        - button "Decrease Value" [disabled] [ref=e577]:
+                          - img "down" [ref=e578]:
+                            - img [ref=e579]
+                      - spinbutton [ref=e582]: "0.00"
+                  - switch [ref=e583] [cursor=pointer]
+                  - generic [ref=e586]: 显示节点标签
+                  - button "重置视角" [ref=e587] [cursor=pointer]:
+                    - generic [ref=e588]: 重置视角
+            - generic [ref=e597]:
+              - generic [ref=e599]:
+                - generic [ref=e602]: 社区发现结果
+                - generic [ref=e606]:
+                  - table [ref=e610]:
+                    - rowgroup [ref=e619]:
+                      - row "社区ID 规模 社区分数 密度 对象集中度 关键节点 关系构成" [ref=e620]:
+                        - columnheader "社区ID" [ref=e621]
+                        - columnheader "规模" [ref=e622]
+                        - columnheader "社区分数" [ref=e623]
+                        - columnheader "密度" [ref=e624]
+                        - columnheader "对象集中度" [ref=e625]
+                        - columnheader "关键节点" [ref=e626]
+                        - columnheader "关系构成" [ref=e627]
+                    - rowgroup [ref=e628]:
+                      - row "116 2 0.999631 1 0.333333 18152, 18146 profile:2 | retweet_target:2 | url_share:2" [ref=e629]:
+                        - cell "116" [ref=e630]
+                        - cell "2" [ref=e631]
+                        - cell "0.999631" [ref=e632]
+                        - cell "1" [ref=e633]
+                        - cell "0.333333" [ref=e634]
+                        - cell "18152, 18146" [ref=e635]
+                        - cell "profile:2 | retweet_target:2 | url_share:2" [ref=e636]
+                      - row "124 2 0.995062 1 0.333333 19304, 19302 profile:2 | retweet_target:2 | url_share:2" [ref=e637]:
+                        - cell "124" [ref=e638]
+                        - cell "2" [ref=e639]
+                        - cell "0.995062" [ref=e640]
+                        - cell "1" [ref=e641]
+                        - cell "0.333333" [ref=e642]
+                        - cell "19304, 19302" [ref=e643]
+                        - cell "profile:2 | retweet_target:2 | url_share:2" [ref=e644]
+                      - row "71 2 0.98945 1 0.333333 3894, 3893 profile:2 | retweet_target:2 | url_share:2" [ref=e645]:
+                        - cell "71" [ref=e646]
+                        - cell "2" [ref=e647]
+                        - cell "0.98945" [ref=e648]
+                        - cell "1" [ref=e649]
+                        - cell "0.333333" [ref=e650]
+                        - cell "3894, 3893" [ref=e651]
+                        - cell "profile:2 | retweet_target:2 | url_share:2" [ref=e652]
+                      - row "87 2 0.918679 1 0.333333 2161, 2160 profile:2 | retweet_target:2 | url_share:2" [ref=e653]:
+                        - cell "87" [ref=e654]
+                        - cell "2" [ref=e655]
+                        - cell "0.918679" [ref=e656]
+                        - cell "1" [ref=e657]
+                        - cell "0.333333" [ref=e658]
+                        - cell "2161, 2160" [ref=e659]
+                        - cell "profile:2 | retweet_target:2 | url_share:2" [ref=e660]
+                      - row "69 2 0.889303 1 0.333333 389, 331 profile:2 | retweet_target:2 | fast_retweet:2" [ref=e661]:
+                        - cell "69" [ref=e662]
+                        - cell "2" [ref=e663]
+                        - cell "0.889303" [ref=e664]
+                        - cell "1" [ref=e665]
+                        - cell "0.333333" [ref=e666]
+                        - cell "389, 331" [ref=e667]
+                        - cell "profile:2 | retweet_target:2 | fast_retweet:2" [ref=e668]
+                      - row "76 2 0.882716 1 0.333333 122, 189 profile:2 | retweet_target:2 | fast_retweet:2" [ref=e669]:
+                        - cell "76" [ref=e670]
+                        - cell "2" [ref=e671]
+                        - cell "0.882716" [ref=e672]
+                        - cell "1" [ref=e673]
+                        - cell "0.333333" [ref=e674]
+                        - cell "122, 189" [ref=e675]
+                        - cell "profile:2 | retweet_target:2 | fast_retweet:2" [ref=e676]
+                      - row "179 2 0.740648 1 0.5 13584, 22496 profile:2 | retweet_target:2" [ref=e677]:
+                        - cell "179" [ref=e678]
+                        - cell "2" [ref=e679]
+                        - cell "0.740648" [ref=e680]
+                        - cell "1" [ref=e681]
+                        - cell "0.5" [ref=e682]
+                        - cell "13584, 22496" [ref=e683]
+                        - cell "profile:2 | retweet_target:2" [ref=e684]
+                      - row "196 2 0.739979 1 0.333333 383, 382 profile:2 | retweet_target:2 | fast_retweet:2" [ref=e685]:
+                        - cell "196" [ref=e686]
+                        - cell "2" [ref=e687]
+                        - cell "0.739979" [ref=e688]
+                        - cell "1" [ref=e689]
+                        - cell "0.333333" [ref=e690]
+                        - cell "383, 382" [ref=e691]
+                        - cell "profile:2 | retweet_target:2 | fast_retweet:2" [ref=e692]
+                  - list [ref=e693]:
+                    - listitem "Previous Page" [ref=e694]:
+                      - button "left" [disabled] [ref=e695]:
+                        - img "left" [ref=e696]:
+                          - img [ref=e697]
+                    - listitem "1" [ref=e699] [cursor=pointer]:
+                      - generic [ref=e700]: "1"
+                    - listitem "2" [ref=e701] [cursor=pointer]:
+                      - generic [ref=e702]: "2"
+                    - listitem "3" [ref=e703] [cursor=pointer]:
+                      - generic [ref=e704]: "3"
+                    - listitem "Next Page" [ref=e705] [cursor=pointer]:
+                      - button "right" [ref=e706]:
+                        - img "right" [ref=e707]:
+                          - img [ref=e708]
+              - generic [ref=e711]:
+                - generic [ref=e714]: 全局关键节点
+                - generic [ref=e718]:
+                  - table [ref=e722]:
+                    - rowgroup [ref=e730]:
+                      - row "账号 节点分数 预测标签 社区ID 社区分数 共享对象" [ref=e731]:
+                        - columnheader "账号" [ref=e732]
+                        - columnheader "节点分数" [ref=e733]
+                        - columnheader "预测标签" [ref=e734]
+                        - columnheader "社区ID" [ref=e735]
+                        - columnheader "社区分数" [ref=e736]
+                        - columnheader "共享对象" [ref=e737]
+                    - rowgroup [ref=e738]:
+                      - row "20872 0.993596 1 12085 0 china:profile:20870" [ref=e739]:
+                        - cell "20872" [ref=e740]
+                        - cell "0.993596" [ref=e741]
+                        - cell "1" [ref=e742]
+                        - cell "12085" [ref=e743]
+                        - cell "0" [ref=e744]
+                        - cell "china:profile:20870" [ref=e745]
+                      - row "20879 0.993596 1 12092 0 china:profile:20877" [ref=e746]:
+                        - cell "20879" [ref=e747]
+                        - cell "0.993596" [ref=e748]
+                        - cell "1" [ref=e749]
+                        - cell "12092" [ref=e750]
+                        - cell "0" [ref=e751]
+                        - cell "china:profile:20877" [ref=e752]
+                      - row "20881 0.993596 1 12095 0 china:profile:2088" [ref=e753]:
+                        - cell "20881" [ref=e754]
+                        - cell "0.993596" [ref=e755]
+                        - cell "1" [ref=e756]
+                        - cell "12095" [ref=e757]
+                        - cell "0" [ref=e758]
+                        - cell "china:profile:2088" [ref=e759]
+                      - row "20882 0.993596 1 12096 0 china:profile:20880" [ref=e760]:
+                        - cell "20882" [ref=e761]
+                        - cell "0.993596" [ref=e762]
+                        - cell "1" [ref=e763]
+                        - cell "12096" [ref=e764]
+                        - cell "0" [ref=e765]
+                        - cell "china:profile:20880" [ref=e766]
+                      - row "20887 0.993596 1 12099 0 china:profile:20884" [ref=e767]:
+                        - cell "20887" [ref=e768]
+                        - cell "0.993596" [ref=e769]
+                        - cell "1" [ref=e770]
+                        - cell "12099" [ref=e771]
+                        - cell "0" [ref=e772]
+                        - cell "china:profile:20884" [ref=e773]
+                      - row "20889 0.993596 1 12101 0 china:profile:20887" [ref=e774]:
+                        - cell "20889" [ref=e775]
+                        - cell "0.993596" [ref=e776]
+                        - cell "1" [ref=e777]
+                        - cell "12101" [ref=e778]
+                        - cell "0" [ref=e779]
+                        - cell "china:profile:20887" [ref=e780]
+                      - row "20895 0.993596 1 12107 0 china:profile:20893" [ref=e781]:
+                        - cell "20895" [ref=e782]
+                        - cell "0.993596" [ref=e783]
+                        - cell "1" [ref=e784]
+                        - cell "12107" [ref=e785]
+                        - cell "0" [ref=e786]
+                        - cell "china:profile:20893" [ref=e787]
+                      - row "20898 0.993596 1 12110 0 china:profile:20896" [ref=e788]:
+                        - cell "20898" [ref=e789]
+                        - cell "0.993596" [ref=e790]
+                        - cell "1" [ref=e791]
+                        - cell "12110" [ref=e792]
+                        - cell "0" [ref=e793]
+                        - cell "china:profile:20896" [ref=e794]
+                      - row "20907 0.993596 1 12119 0 china:profile:20905" [ref=e795]:
+                        - cell "20907" [ref=e796]
+                        - cell "0.993596" [ref=e797]
+                        - cell "1" [ref=e798]
+                        - cell "12119" [ref=e799]
+                        - cell "0" [ref=e800]
+                        - cell "china:profile:20905" [ref=e801]
+                      - row "20912 0.993596 1 12124 0 china:profile:2091" [ref=e802]:
+                        - cell "20912" [ref=e803]
+                        - cell "0.993596" [ref=e804]
+                        - cell "1" [ref=e805]
+                        - cell "12124" [ref=e806]
+                        - cell "0" [ref=e807]
+                        - cell "china:profile:2091" [ref=e808]
+                  - list [ref=e809]:
+                    - listitem "Previous Page" [ref=e810]:
+                      - button "left" [disabled] [ref=e811]:
+                        - img "left" [ref=e812]:
+                          - img [ref=e813]
+                    - listitem "1" [ref=e815] [cursor=pointer]:
+                      - generic [ref=e816]: "1"
+                    - listitem "2" [ref=e817] [cursor=pointer]:
+                      - generic [ref=e818]: "2"
+                    - listitem "3" [ref=e819] [cursor=pointer]:
+                      - generic [ref=e820]: "3"
+                    - listitem "4" [ref=e821] [cursor=pointer]:
+                      - generic [ref=e822]: "4"
+                    - listitem "5" [ref=e823] [cursor=pointer]:
+                      - generic [ref=e824]: "5"
+                    - listitem "6" [ref=e825] [cursor=pointer]:
+                      - generic [ref=e826]: "6"
+                    - listitem "Next Page" [ref=e827] [cursor=pointer]:
+                      - button "right" [ref=e828]:
+                        - img "right" [ref=e829]:
+                          - img [ref=e830]
+                    - listitem [ref=e832]:
+                      - generic [ref=e833] [cursor=pointer]:
+                        - generic [ref=e834]:
+                          - combobox [ref=e836]
+                          - generic [ref=e837]: 10 / page
+                        - generic:
+                          - img:
+                            - img
+            - generic [ref=e838]:
+              - generic [ref=e841]: 共享对象证据
+              - generic [ref=e845]:
+                - table [ref=e849]:
+                  - rowgroup [ref=e853]:
+                    - row "对象 次数" [ref=e854]:
+                      - columnheader "对象" [ref=e855]
+                      - columnheader "次数" [ref=e856]
+                  - rowgroup [ref=e857]:
+                    - row "china:coRT:edge:18146:18152 2" [ref=e858]:
+                      - cell "china:coRT:edge:18146:18152" [ref=e859]
+                      - cell "2" [ref=e860]
+                    - row "china:coURL:edge:18146:18152 2" [ref=e861]:
+                      - cell "china:coURL:edge:18146:18152" [ref=e862]
+                      - cell "2" [ref=e863]
+                    - row "china:coRT:edge:19302:19304 2" [ref=e864]:
+                      - cell "china:coRT:edge:19302:19304" [ref=e865]
+                      - cell "2" [ref=e866]
+                    - row "china:coURL:edge:19302:19304 2" [ref=e867]:
+                      - cell "china:coURL:edge:19302:19304" [ref=e868]
+                      - cell "2" [ref=e869]
+                    - row "china:coRT:edge:3893:3894 2" [ref=e870]:
+                      - cell "china:coRT:edge:3893:3894" [ref=e871]
+                      - cell "2" [ref=e872]
+                    - row "china:coURL:edge:3893:3894 2" [ref=e873]:
+                      - cell "china:coURL:edge:3893:3894" [ref=e874]
+                      - cell "2" [ref=e875]
+                    - row "china:coRT:edge:2160:2161 2" [ref=e876]:
+                      - cell "china:coRT:edge:2160:2161" [ref=e877]
+                      - cell "2" [ref=e878]
+                    - row "china:coURL:edge:2160:2161 2" [ref=e879]:
+                      - cell "china:coURL:edge:2160:2161" [ref=e880]
+                      - cell "2" [ref=e881]
+                    - row "china:coRT:edge:389:331 2" [ref=e882]:
+                      - cell "china:coRT:edge:389:331" [ref=e883]
+                      - cell "2" [ref=e884]
+                    - row "china:fastRT:edge:331:389 2" [ref=e885]:
+                      - cell "china:fastRT:edge:331:389" [ref=e886]
+                      - cell "2" [ref=e887]
+                - list [ref=e888]:
+                  - listitem "Previous Page" [ref=e889]:
+                    - button "left" [disabled] [ref=e890]:
+                      - img "left" [ref=e891]:
+                        - img [ref=e892]
+                  - listitem "1" [ref=e894] [cursor=pointer]:
+                    - generic [ref=e895]: "1"
+                  - listitem "Next Page" [ref=e896]:
+                    - button "right" [disabled] [ref=e897]:
+                      - img "right" [ref=e898]:
+                        - img [ref=e899]
+  - tooltip "检测时间窗口内的协调分享行为，构建协同网络" [ref=e903]

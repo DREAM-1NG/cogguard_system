@@ -1,6 +1,6 @@
 <template>
   <div class="dashboard-page">
-    <PageHeader title="监测看板" description="跨平台事件态势、采集规模、风险与地理位置概览" />
+    <PageHeader title="数据看板" description="跨平台事件态势、采集规模、风险与地理位置概览" />
 
     <div class="toolbar">
       <a-input
@@ -11,8 +11,6 @@
         @pressEnter="loadOverview"
       />
       <a-button type="primary" :loading="loading" @click="loadOverview">刷新</a-button>
-      <a-tag :color="mongoStatus === 'ok' ? 'green' : 'orange'">Mongo {{ mongoStatus }}</a-tag>
-      <a-tag :color="mysqlStatus === 'ok' ? 'green' : 'orange'">MySQL {{ mysqlStatus }}</a-tag>
       <span v-if="overview?.meta.generated_at" class="generated-at">
         {{ formatTime(overview.meta.generated_at) }}
       </span>
@@ -25,16 +23,6 @@
       show-icon
       :message="loadError"
     />
-
-    <a-row :gutter="[16, 16]" class="stat-grid">
-      <a-col :xs="24" :sm="12" :lg="6" v-for="card in statCards" :key="card.title">
-        <a-card class="stat-card" size="small">
-          <div class="stat-title">{{ card.title }}</div>
-          <div class="stat-value">{{ card.value }}</div>
-          <div class="stat-note">{{ card.note }}</div>
-        </a-card>
-      </a-col>
-    </a-row>
 
     <a-row :gutter="[16, 16]" class="main-grid">
       <a-col :xs="24" :xl="16">
@@ -53,7 +41,7 @@
           </div>
         </a-card>
       </a-col>
-      <a-col :xs="24" :xl="8">
+      <a-col :xs="24" :xl="8" class="side-column">
         <a-card title="平台数据分布" :loading="loading" size="small">
           <a-table
             :columns="platformColumns"
@@ -68,11 +56,37 @@
             :image-style="{ height: '36px' }"
           />
         </a-card>
+        <a-card title="最早发帖样本" size="small">
+          <a-list
+            v-if="overview?.recent_posts.length"
+            :data-source="overview.recent_posts"
+            size="small"
+            class="recent-list side-recent-list"
+          >
+            <template #renderItem="{ item }">
+              <a-list-item>
+                <div class="recent-item">
+                  <div class="recent-meta">
+                    <a-tag>{{ platformLabel(item.platform) }}</a-tag>
+                    <strong>{{ item.author_name || item.author_id || '-' }}</strong>
+                    <span>{{ formatTime(item.timestamp) }}</span>
+                  </div>
+                  <div class="recent-content">{{ item.content || '-' }}</div>
+                </div>
+              </a-list-item>
+            </template>
+          </a-list>
+          <a-empty
+            v-else
+            description="暂无发帖样本"
+            :image-style="{ height: '36px' }"
+          />
+        </a-card>
       </a-col>
     </a-row>
 
     <a-row :gutter="[16, 16]" class="detail-grid">
-      <a-col :xs="24" :xl="14">
+      <a-col :span="24">
         <a-card title="事件定位明细" size="small">
           <a-table
             :columns="eventColumns"
@@ -106,34 +120,6 @@
           <a-empty
             v-if="!loading && !overview?.event_locations.length"
             description="暂无事件定位"
-            :image-style="{ height: '36px' }"
-          />
-        </a-card>
-      </a-col>
-      <a-col :xs="24" :xl="10">
-        <a-card title="最早发帖样本" size="small">
-          <a-list
-            v-if="overview?.recent_posts.length"
-            :data-source="overview.recent_posts"
-            size="small"
-            class="recent-list"
-          >
-            <template #renderItem="{ item }">
-              <a-list-item>
-                <div class="recent-item">
-                  <div class="recent-meta">
-                    <a-tag>{{ platformLabel(item.platform) }}</a-tag>
-                    <strong>{{ item.author_name || item.author_id || '-' }}</strong>
-                    <span>{{ formatTime(item.timestamp) }}</span>
-                  </div>
-                  <div class="recent-content">{{ item.content || '-' }}</div>
-                </div>
-              </a-list-item>
-            </template>
-          </a-list>
-          <a-empty
-            v-else
-            description="暂无发帖样本"
             :image-style="{ height: '36px' }"
           />
         </a-card>
@@ -180,19 +166,6 @@ function ensureWorldMap() {
   }
   return worldMapPromise
 }
-
-const mongoStatus = computed(() => overview.value?.meta.data_source_status.mongo || 'unknown')
-const mysqlStatus = computed(() => overview.value?.meta.data_source_status.mysql || 'unknown')
-
-const statCards = computed(() => {
-  const summary = overview.value?.summary
-  return [
-    { title: '事件数', value: summary?.event_count ?? 0, note: overview.value?.meta.event_id || '全部事件' },
-    { title: '采集帖子', value: summary?.posts ?? 0, note: `${summary?.comments ?? 0} 条评论` },
-    { title: '平台覆盖', value: summary?.platform_count ?? 0, note: 'weibo / xhs / douyin' },
-    { title: '风险报告', value: summary?.risk_reports ?? 0, note: '已持久化研判' },
-  ]
-})
 
 const resolvedLocations = computed(() => (overview.value?.event_locations || []).filter((item) => item.resolved && item.coordinates))
 const mapPoints = computed(() => {
@@ -492,36 +465,15 @@ onBeforeUnmount(() => {
   margin-bottom: 16px;
 }
 
-.stat-grid,
 .main-grid,
 .detail-grid {
   margin-bottom: 16px;
 }
 
-.stat-card {
-  min-height: 112px;
-}
-
-.stat-title {
-  color: #667085;
-  font-size: 13px;
-}
-
-.stat-value {
-  margin-top: 8px;
-  font-size: 30px;
-  line-height: 36px;
-  font-weight: 700;
-  color: #111827;
-}
-
-.stat-note {
-  margin-top: 8px;
-  color: #86909c;
-  font-size: 12px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.side-column {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .map-shell {
@@ -632,6 +584,10 @@ onBeforeUnmount(() => {
 .recent-list {
   max-height: 360px;
   overflow-y: auto;
+}
+
+.side-recent-list {
+  max-height: 318px;
 }
 
 .recent-item {

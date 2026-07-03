@@ -69,7 +69,14 @@ class KT3AgentReviewRunRequest(BaseModel):
     )
     enable_active_retrieval: bool = Field(
         False,
-        description="Run local-first active evidence retrieval during manual Agent review",
+        description="Run active evidence retrieval during manual review",
+    )
+    enable_external_retrieval: bool | None = Field(
+        None,
+        description=(
+            "Whether manual review should try external retrieval in addition to local evidence. "
+            "None means use the manual-review default when active retrieval is enabled."
+        ),
     )
     enable_light_debate: bool = Field(
         False,
@@ -124,6 +131,46 @@ class KT3PolicyRefineRequest(BaseModel):
         True,
         description="Require held-out/gate split audit before candidate policy can be activatable",
     )
+
+
+class KT3ProviderConfigRequest(BaseModel):
+    """Create/update request for KT3 LLM or retrieval providers."""
+    name: str = Field(..., min_length=1, max_length=128)
+    provider_type: str = Field(..., description="text_llm | vision_llm | retrieval")
+    base_url: str = Field("", description="OpenAI-compatible base URL or retrieval endpoint")
+    model: str = Field("", description="Provider model identifier")
+    wire_api: str = Field("chat_completions", description="chat_completions | responses")
+    api_key: str | None = Field(None, description="Plaintext key; encrypted server-side and never returned")
+    supports_vision: bool = Field(False)
+    metadata: dict = Field(default_factory=dict)
+
+
+class KT3ProviderUpdateRequest(BaseModel):
+    """Partial update request for KT3 provider configs."""
+    name: str | None = Field(None, min_length=1, max_length=128)
+    provider_type: str | None = Field(None, description="text_llm | vision_llm | retrieval")
+    base_url: str | None = Field(None, description="OpenAI-compatible base URL or retrieval endpoint")
+    model: str | None = Field(None, description="Provider model identifier")
+    wire_api: str | None = Field(None, description="chat_completions | responses")
+    api_key: str | None = Field(None, description="Plaintext key; encrypted server-side and never returned")
+    supports_vision: bool | None = Field(None)
+    metadata: dict | None = Field(None)
+
+
+class KT3ProviderActivateRequest(BaseModel):
+    """Activate/deactivate a provider for its capability bucket."""
+    is_active: bool = Field(True)
+
+
+class KT3GateDatasetUploadRequest(BaseModel):
+    """JSON-body alternative to multipart Gate Dataset upload."""
+    kt3_gate_dataset: dict = Field(default_factory=dict)
+
+
+class KT3BackfillRequest(BaseModel):
+    """Start idempotent backfill from legacy RiskAssessment.report_json."""
+    report_ids: list[str] = Field(default_factory=list)
+    limit: int = Field(500, ge=1, le=5000)
 
 
 class KT3AgentFeedbackRequest(BaseModel):

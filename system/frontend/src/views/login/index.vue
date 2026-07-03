@@ -106,7 +106,7 @@ const loading = ref(false)
 const isRegister = ref(false)
 const loginError = ref('')
 
-const loginForm = reactive({ username: '', password: '' })
+const loginForm = reactive({ username: 'admin', password: '123123' })
 const registerForm = reactive({ username: '', email: '', password: '' })
 
 const loginRules = {

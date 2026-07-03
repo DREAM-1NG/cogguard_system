@@ -1,0 +1,145 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e46]:
+    - complementary [ref=e47]:
+      - generic [ref=e48]:
+        - generic [ref=e50]: CogGuard
+        - menu [ref=e51]:
+          - menuitem "home 首页" [ref=e52] [cursor=pointer]:
+            - generic [ref=e54]:
+              - img "home" [ref=e55]:
+                - img [ref=e56]
+              - text: 首页
+          - menuitem "dashboard 数据看板" [ref=e58] [cursor=pointer]:
+            - generic [ref=e60]:
+              - img "dashboard" [ref=e61]:
+                - img [ref=e62]
+              - text: 数据看板
+          - menuitem "cloud-download 数据采集" [ref=e64] [cursor=pointer]:
+            - generic [ref=e66]:
+              - img "cloud-download" [ref=e67]:
+                - img [ref=e68]
+              - text: 数据采集
+          - menuitem "apartment 协同检测" [ref=e71] [cursor=pointer]:
+            - generic [ref=e73]:
+              - img "apartment" [ref=e74]:
+                - img [ref=e75]
+              - text: 协同检测
+          - menuitem "share-alt 传播监控" [ref=e77] [cursor=pointer]:
+            - generic [ref=e79]:
+              - img "share-alt" [ref=e80]:
+                - img [ref=e81]
+              - text: 传播监控
+          - menuitem "user 账户监测" [ref=e83] [cursor=pointer]:
+            - generic [ref=e85]:
+              - img "user" [ref=e86]:
+                - img [ref=e87]
+              - text: 账户监测
+          - menuitem "alert 风险研判" [ref=e89] [cursor=pointer]:
+            - generic [ref=e91]:
+              - img "alert" [ref=e92]:
+                - img [ref=e93]
+              - text: 风险研判
+          - menuitem "setting 系统管理" [ref=e95] [cursor=pointer]:
+            - generic [ref=e97]:
+              - img "setting" [ref=e98]:
+                - img [ref=e99]
+              - text: 系统管理
+      - img "left" [ref=e102] [cursor=pointer]:
+        - img [ref=e103]
+    - generic [ref=e105]:
+      - generic [ref=e106]:
+        - generic [ref=e108]: 首页
+        - generic [ref=e110] [cursor=pointer]:
+          - generic [ref=e112]: A
+          - generic [ref=e113]: admin
+      - generic [ref=e116] [cursor=pointer]: 首页
+      - main [ref=e117]:
+        - generic [ref=e118]:
+          - generic [ref=e119]:
+            - generic [ref=e121]:
+              - generic [ref=e122]:
+                - generic [ref=e123]:
+                  - heading "近期走势" [level=2] [ref=e124]
+                  - paragraph [ref=e125]: 围绕当前事件证据池生成的跨平台关注度变化
+                - generic [ref=e127]:
+                  - generic [ref=e128] [cursor=pointer]:
+                    - radio "小时" [checked]
+                    - generic [ref=e129]: 小时
+                  - generic [ref=e130] [cursor=pointer]:
+                    - radio "天"
+                    - generic [ref=e131]: 天
+              - generic [ref=e133]:
+                - generic [ref=e134]: 等待数据加载
+                - button "事件热度" [ref=e135] [cursor=pointer]:
+                  - generic [ref=e137]: 事件热度
+            - generic [ref=e142]:
+              - generic [ref=e143]:
+                - generic [ref=e144]:
+                  - heading "事件榜" [level=2] [ref=e145]
+                  - paragraph [ref=e146]: 按事件热度与风险线索排序
+                - button "查看更多" [ref=e147] [cursor=pointer]:
+                  - generic [ref=e148]: 查看更多
+              - generic [ref=e149]:
+                - generic [ref=e150]: 排名
+                - generic [ref=e151]: 事件名
+                - generic [ref=e152]: 舆论场占比
+                - generic [ref=e153]: 事件热度
+                - generic [ref=e154]: 趋势
+              - generic [ref=e156]:
+                - generic [ref=e157]: "1"
+                - strong [ref=e158]: 当前事件
+                - generic [ref=e159]: 100.0%
+                - generic [ref=e160]: "0"
+                - emphasis [ref=e161]: "--"
+          - generic [ref=e162]:
+            - generic [ref=e164]:
+              - generic [ref=e166]:
+                - heading "近期采集样本" [level=2] [ref=e167]
+                - paragraph [ref=e168]: 事件证据池中的最近对象
+              - generic [ref=e169]:
+                - img [ref=e171]
+                - paragraph [ref=e183]: 暂无采集样本
+            - generic [ref=e185]:
+              - generic [ref=e186]:
+                - generic [ref=e187]:
+                  - heading "最近风险报告" [level=2] [ref=e188]
+                  - paragraph [ref=e189]: 历史研判结果摘要
+                - button "查看报告" [ref=e190] [cursor=pointer]:
+                  - generic [ref=e191]: 查看报告
+              - generic [ref=e192]:
+                - img [ref=e194]
+                - paragraph [ref=e206]: 暂无风险报告
+            - generic [ref=e208]:
+              - generic [ref=e210]:
+                - heading "模块快捷入口" [level=2] [ref=e211]
+                - paragraph [ref=e212]: 进入主要分析与复核页面
+              - generic [ref=e213]:
+                - button "dashboard 数据看板 地图与平台分布" [ref=e214] [cursor=pointer]:
+                  - img "dashboard" [ref=e215]:
+                    - img [ref=e216]
+                  - generic [ref=e218]: 数据看板
+                  - emphasis [ref=e219]: 地图与平台分布
+                - button "cloud-download 数据采集 创建采集任务" [ref=e220] [cursor=pointer]:
+                  - img "cloud-download" [ref=e221]:
+                    - img [ref=e222]
+                  - generic [ref=e225]: 数据采集
+                  - emphasis [ref=e226]: 创建采集任务
+                - button "apartment 协同检测 群组与共享对象" [ref=e227] [cursor=pointer]:
+                  - img "apartment" [ref=e228]:
+                    - img [ref=e229]
+                  - generic [ref=e231]: 协同检测
+                  - emphasis [ref=e232]: 群组与共享对象
+                - button "share-alt 传播监测 路径与趋势说明" [ref=e233] [cursor=pointer]:
+                  - img "share-alt" [ref=e234]:
+                    - img [ref=e235]
+                  - generic [ref=e237]: 传播监测
+                  - emphasis [ref=e238]: 路径与趋势说明
+                - button "alert 风险研判 证据与报告生成" [ref=e239] [cursor=pointer]:
+                  - img "alert" [ref=e240]:
+                    - img [ref=e241]
+                  - generic [ref=e243]: 风险研判
+                  - emphasis [ref=e244]: 证据与报告生成
+  - generic [ref=e246]:
+    - img "check-circle" [ref=e247]:
+      - img [ref=e248]
+    - text: 登录成功

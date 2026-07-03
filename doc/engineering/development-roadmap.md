@@ -4,7 +4,7 @@
 > **受众**：开发者、项目维护者、后续执行任务的 AI agent。  
 > **维护规则**：只维护可执行工程路线和状态；研究定位、文献依据和关键技术背景放入 `../research/`。
 
-> 最后更新：2026-05-23
+> 最后更新：2026-07-02
 
 ## 技术决策记录
 
@@ -20,6 +20,7 @@
 | 缓存/队列 | Redis 7.0+ | 缓存、会话管理、Celery 消息队列 |
 | 图分析 | NetworkX + igraph (内存) | 当前阶段使用内存图分析，预留 Neo4j 扩展接口 |
 | CooRTweet 集成 | Python 重写核心算法 | 避免 R 依赖，使用 pandas + networkx 实现 |
+| BotRHG 社交机器人检测 | 轻量系统适配器 | 对接 NLPCC 2026 BotRHG 方法契约，输出可靠性路由、KNN 支持超边与选择性残差修正结果 |
 | LLM 支持 | 暂不集成，预留接口 | 当前用规则引擎 + NLP 模型，后续可接入 LLM |
 | 任务队列 | Celery + Redis | 爬虫、分析等耗时操作异步执行 |
 | 包管理 | uv (后端) / npm (前端) | 高效依赖管理 |
@@ -34,7 +35,7 @@
 - [x] 新增 `aris/tech-02-propagation/`，为关键技术二提供独立 brief / plan / tracker / acceptance
 - [x] 新增 `aris/tech-03-risk/`，为关键技术三提供独立 brief / plan / tracker / acceptance
 - [x] 2026-05-10 `aris/tech-01-coordination/systemDesign.md` 单文件落盘（系统设计 × MVP × CCF-B+ 综述），含错位矩阵 M1–M5 + ADR-001 + T1–T6 时序原则 + M0–M6 里程碑
-- [ ] 使用 `aris/tech-01-coordination/` 完成关键技术一代码落地（PSL 新方向；旧方向 CooRTweet 共享对象 MVP 已在 `new-system/`）
+- [ ] 使用 `aris/tech-01-coordination/` 完成关键技术一代码落地（PSL 新方向；旧方向 CooRTweet 共享对象 MVP 已在 `system/`）
 - [~] 使用 `aris/tech-02-propagation/` 完成关键技术二代码落地（Hybrid TS + LLM 路线：WP1-3 已完成，WP4-5 未启动）
 - [x] 使用 `aris/tech-03-risk/` 完成关键技术三代码落地（`core/risk/` 1,340 行 MVP + `risk_service` 编排层）
 
@@ -56,7 +57,7 @@
 | 协同检测模块（新方向 PSL） | 🔲 待实现（设计已就绪） | P1 | 旧方向 MVP |
 | 传播监控模块（KT2 WP1-3） | ✅ 已完成 | P1 | 数据采集、协同检测 |
 | 传播监控模块（KT2 WP4-5 立场/危害） | 🔲 待开发 | P1 | WP1-3 |
-| 账户监测模块 | ✅ 已完成 | P1 | 数据采集 |
+| 账户监测模块 | ✅ 已完成（含 BotRHG API） | P1 | 数据采集 |
 | 前端 - 协同检测页（网络可视化） | ✅ 已完成 | P1 | 后端协同检测 |
 | 前端 - 传播监控页（时间线+角色） | ✅ 已完成 | P1 | 后端传播监控 |
 | 前端 - 账户监测页（画像+评分） | ✅ 已完成 | P1 | 后端账户监测 |
@@ -64,7 +65,7 @@
 | 前端 - UX 增强（密度/分页/引导） | ✅ 已完成 | P1 | 各前端页面 |
 | 报告研判模块 | ✅ MVP 已完成 | P2 | 协同检测、传播监控、账户监测 |
 | 前端 - 监测看板 | 🔧 开发中（真实数据 + 地图） | P1 | Dashboard API、Mongo 事件数据 |
-| 系统联调与测试 | 🔧 部分（8 套件 1,196 行测试） | P2 | 所有模块 |
+| 系统联调与测试 | 🔧 部分（新增 BotRHG 后端回归测试） | P2 | 所有模块 |
 
 状态说明：🔲 待开发 | 🔧 开发中 | ✅ 已完成 | ⏸️ 暂停 | ❌ 取消
 
@@ -111,7 +112,7 @@
 
 - [x] MediaCrawler 封装层 (`core/crawler/social.py`)
   - [x] 通过配置 `MEDIACRAWLER_ROOT` 调用上游 `uv run main.py`（子进程），解析 `data/<平台>/jsonl` 产出
-  - [x] 支持从 `new-system/.env` 读取 `MEDIACRAWLER_*` 变量，并可通过 `MEDIACRAWLER_PYTHON_BIN` / `MEDIACRAWLER_NODE_DIR` 为子进程补充 Python / Node.js 运行时
+  - [x] 支持从 `system/.env` 读取 `MEDIACRAWLER_*` 变量，并可通过 `MEDIACRAWLER_PYTHON_BIN` / `MEDIACRAWLER_NODE_DIR` 为子进程补充 Python / Node.js 运行时
   - [x] `MediaSocialCrawler` 实现 `BaseCrawler`（直接执行 MediaCrawler，并按 JSONL 增量批次入库）
   - [x] 支持平台：weibo / douyin / xhs / kuaishou / bilibili / tieba / zhihu（与 MediaCrawler 一致）
 - [x] NewsCrawler 封装层 (`core/crawler/news.py`)
@@ -154,6 +155,7 @@
   - [x] 内容多样性（标签/URL 统计）
 - [x] 自动化倾向评估算法（0-100 分，多维度综合评分）
 - [x] 账户监测 API 接口（`GET /api/v1/accounts/profiles`、`GET /api/v1/accounts/detail/{id}`）
+- [x] BotRHG 风格社交机器人检测 API（`POST /api/v1/accounts/bot-detection`）：从已采集帖子构造 profile/text/activity 特征、KNN 支持超边和局部可靠性路由，对低可靠账号执行选择性残差修正并返回 base/final bot 概率与解释证据
 - [x] 前端账户画像列表页（评分排序、进度条着色）
 - [ ] 单个用户主页采集：支持主页链接/用户 ID，收集主页元数据与全部发文
 - [ ] 账户详情页：查看用户主页、全部内容、内容风险/立场/模板化检测结果
@@ -279,7 +281,8 @@
 - [开发变更日志](development-log.md) - 开发过程变更记录，与本文档同步维护
 - [ARIS 工作空间入口](../aris/README.md) - 三条关键技术的独立执行入口
 - [技术背景总览](research/key-technology-background/overview.md) - 从开题报告与现有代码提炼的长期背景文档
-- [系统开发文档](../new-system/README.md) - 目录结构、API、部署、测试、使用方式
+- [系统开发文档](../../system/README.md) - 目录结构、API、部署、测试、使用方式
+- [BotRHG 社交机器人检测接入计划](botrhg-social-bot-detection-plan.md) - 后端 API、方法契约与研究边界
 - [开题报告](../../materials/开题报告.doc) - 项目背景、创新性分析、功能说明、技术路线
 - [MediaCrawler](../MediaCrawler-main/README.md) - 社交媒体爬虫参考
 - [NewsCrawler](../NewsCrawler-main/README.md) - 新闻爬虫参考

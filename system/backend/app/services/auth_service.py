@@ -19,6 +19,27 @@ from app.schemas.auth import LoginRequest, RegisterRequest, TokenResponse, UserI
 from app.utils.exceptions import AuthError, ConflictError
 
 
+async def ensure_default_admin(db: AsyncSession) -> None:
+    """Ensure the local demo administrator account is available."""
+    result = await db.execute(select(User).where(User.username == "admin"))
+    user = result.scalar_one_or_none()
+    if user is None:
+        db.add(
+            User(
+                username="admin",
+                email="admin@cogguard.local",
+                hashed_password=hash_password("123123"),
+                role="admin",
+                is_active=True,
+            )
+        )
+        return
+
+    user.hashed_password = hash_password("123123")
+    user.role = "admin"
+    user.is_active = True
+
+
 async def register(req: RegisterRequest, db: AsyncSession) -> UserInfo:
     """注册新用户，用户名或邮箱重复时抛出 ConflictError。"""
     result = await db.execute(

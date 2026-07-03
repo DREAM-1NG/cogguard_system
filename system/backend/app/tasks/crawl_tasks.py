@@ -10,10 +10,10 @@ import traceback
 from pymongo import UpdateOne
 
 from app.celery_app import celery_app
+from app.config import settings
 from app.core.crawler.factory import build_crawler
 from app.core.crawler.news import NewsExtractCrawler
 from app.core.crawler.social import COGGUARD_TO_MEDIA, MediaSocialCrawler
-from app.db.mongodb import get_mongo_db
 
 
 def apply_crawl_options(crawler, params: dict) -> None:
@@ -34,6 +34,13 @@ def _run_async(coro):
         return loop.run_until_complete(coro)
     finally:
         loop.close()
+
+
+def _create_task_mongo_client():
+    """Create a Mongo client owned by the crawl task's event loop."""
+    from motor.motor_asyncio import AsyncIOMotorClient
+
+    return AsyncIOMotorClient(settings.mongo_url)
 
 
 def _first_keyword(params: dict) -> str | None:
@@ -101,91 +108,95 @@ def run_crawl_job(job_id: int, params_json: str):
     crawl_comments = params.get("crawl_comments", True)
 
     async def _do_crawl():
-        mongo_db = get_mongo_db()
-        if platform in COGGUARD_TO_MEDIA:
-            crawler = MediaSocialCrawler(platform)
-            crawler.post_ids = post_ids
-            apply_crawl_options(crawler, params)
-            batch = await crawler.execute_search_batch(keywords=keywords, max_posts=max_posts)
+        mongo_client = _create_task_mongo_client()
+        try:
+            mongo_db = mongo_client[settings.MONGO_DATABASE]
+            if platform in COGGUARD_TO_MEDIA:
+                crawler = MediaSocialCrawler(platform)
+                crawler.post_ids = post_ids
+                apply_crawl_options(crawler, params)
+                batch = await crawler.execute_search_batch(keywords=keywords, max_posts=max_posts)
 
-            post_dicts = []
-            for post in batch.posts:
-                post_dicts.append(
-                    prepare_crawl_document(
-                        post.model_dump(mode="json"),
-                        params=params,
-                        job_id=job_id,
-                        item_type="post",
-                        crawl_metadata=crawler.crawl_metadata,
-                    )
-                )
-            await _write_documents(mongo_db["raw_posts"], post_dicts)
-
-            all_comments: list = []
-            if crawl_comments:
-                for comment in batch.comments:
-                    all_comments.append(
+                post_dicts = []
+                for post in batch.posts:
+                    post_dicts.append(
                         prepare_crawl_document(
-                            comment.model_dump(mode="json"),
+                            post.model_dump(mode="json"),
                             params=params,
                             job_id=job_id,
-                            item_type="comment",
+                            item_type="post",
                             crawl_metadata=crawler.crawl_metadata,
                         )
                     )
-                await _write_documents(mongo_db["raw_comments"], all_comments)
+                await _write_documents(mongo_db["raw_posts"], post_dicts)
 
-            return {
-                "posts_count": len(post_dicts),
-                "comments_count": len(all_comments) if crawl_comments else 0,
-                "platform": platform,
-                "crawl_metadata": crawler.crawl_metadata,
-            }
-
-        crawler = build_crawler(platform)
-        crawler.post_ids = post_ids
-        apply_crawl_options(crawler, params)
-        posts = await crawler.search(keywords=keywords, max_posts=max_posts)
-
-        post_dicts = []
-        for post in posts:
-            post_dicts.append(
-                prepare_crawl_document(
-                    post.model_dump(mode="json"),
-                    params=params,
-                    job_id=job_id,
-                    item_type="post",
-                    crawl_metadata={},
-                )
-            )
-
-        await _write_documents(mongo_db["raw_posts"], post_dicts)
-
-        all_comments: list = []
-        if crawl_comments:
-            if isinstance(crawler, NewsExtractCrawler):
-                pass
-            else:
-                for post in posts[:10]:
-                    comments = await crawler.fetch_comments(post.post_id)
-                    for comment in comments:
+                all_comments: list = []
+                if crawl_comments:
+                    for comment in batch.comments:
                         all_comments.append(
                             prepare_crawl_document(
                                 comment.model_dump(mode="json"),
                                 params=params,
                                 job_id=job_id,
                                 item_type="comment",
-                                crawl_metadata={},
+                                crawl_metadata=crawler.crawl_metadata,
                             )
                         )
-            await _write_documents(mongo_db["raw_comments"], all_comments)
+                    await _write_documents(mongo_db["raw_comments"], all_comments)
 
-        return {
-            "posts_count": len(post_dicts),
-            "comments_count": len(all_comments) if crawl_comments else 0,
-            "platform": platform,
-            "crawl_metadata": {},
-        }
+                return {
+                    "posts_count": len(post_dicts),
+                    "comments_count": len(all_comments) if crawl_comments else 0,
+                    "platform": platform,
+                    "crawl_metadata": crawler.crawl_metadata,
+                }
+
+            crawler = build_crawler(platform)
+            crawler.post_ids = post_ids
+            apply_crawl_options(crawler, params)
+            posts = await crawler.search(keywords=keywords, max_posts=max_posts)
+
+            post_dicts = []
+            for post in posts:
+                post_dicts.append(
+                    prepare_crawl_document(
+                        post.model_dump(mode="json"),
+                        params=params,
+                        job_id=job_id,
+                        item_type="post",
+                        crawl_metadata={},
+                    )
+                )
+
+            await _write_documents(mongo_db["raw_posts"], post_dicts)
+
+            all_comments: list = []
+            if crawl_comments:
+                if isinstance(crawler, NewsExtractCrawler):
+                    pass
+                else:
+                    for post in posts[:10]:
+                        comments = await crawler.fetch_comments(post.post_id)
+                        for comment in comments:
+                            all_comments.append(
+                                prepare_crawl_document(
+                                    comment.model_dump(mode="json"),
+                                    params=params,
+                                    job_id=job_id,
+                                    item_type="comment",
+                                    crawl_metadata={},
+                                )
+                            )
+                await _write_documents(mongo_db["raw_comments"], all_comments)
+
+            return {
+                "posts_count": len(post_dicts),
+                "comments_count": len(all_comments) if crawl_comments else 0,
+                "platform": platform,
+                "crawl_metadata": {},
+            }
+        finally:
+            mongo_client.close()
 
     try:
         result = _run_async(_do_crawl())

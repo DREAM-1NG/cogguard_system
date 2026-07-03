@@ -6,6 +6,8 @@
 
 本文用于把 KT3 从“多模态 harmfulness 分类器集合”进一步收敛为“面向协同群体 characterization 的 Harmfulness Agentic Judge”。核心参考不是把 LLM Agent 当作每条帖子的在线主分类器，而是参考 MARO 一类工作，把 Agent 放在证据复核、问题反思、规则优化、解释生成和反制措施编排位置。
 
+按论文逐篇展开的详细笔记、论文链接和开源仓库链接，统一维护在 [Multiagents.md](./Multiagents.md)。本文保留“研究簇 -> KT3 模块映射”的工程视角，不再在这里重复逐篇长述。
+
 KT3 的目标闭环应为：
 
 ```text
@@ -40,6 +42,9 @@ KT3 的目标闭环应为：
 | 多 Agent 辩论与事实解释 | [D2D, EMNLP 2025](https://aclanthology.org/2025.emnlp-main.764.pdf)、[ED2D, AAAI 2026](https://ojs.aaai.org/index.php/AAAI/article/view/41196) | 结构化多轮辩论、证据检索、检测和 debunking 联合输出 | 用于低置信和强冲突样本的复核：让支持方、质疑方、证据方分别陈述，再由 Judge Agent 归纳；ED2D 还提示误判解释可能强化误解，因此反制必须有安全闸 | 当前缺少 debate transcript、agent disagreement、debunking safety gate |
 | 多模态 RAG 多 Agent fact-checking | [RAMA, 2025](https://arxiv.org/abs/2507.09174) | 多模态 claim 转查询、WebRetriever、跨源证据聚合、多 Agent ensemble | 用于 ClaimEvidenceAgent：把图文/视频 claim 变为检索查询，聚合外部证据，判断 evidence sufficiency | 当前 `kt3_rag.py` 是轻量本地 RAG，占位能力为主；未接入跨源检索与证据可信度评分 |
 | 视觉误导与图文语境错配 | [MAD-Sherlock, 2024/2025](https://arxiv.org/abs/2410.20140) | 多模态 Agent debate、外部信息请求、out-of-context 判断 | 用于 MultimodalConsistencyAgent：判断图片真实但配文误导、图文组合才 harmful、旧图新用、语境错配 | 当前 MultiOFF / CLIP 分支能跑图文 baseline，但缺少 OOC 检索、视觉证据定位和 debate 解释 |
+| Agent 自改进与失败记忆 | [Reflexion, NeurIPS 2023](https://papers.nips.cc/paper_files/paper/2023/hash/1b44b878bb782e6954cd888628510e90-Abstract-Conference.html)、[Self-Refine, 2023](https://arxiv.org/abs/2303.17651) | verbal reflection、episodic memory、draft-feedback-refine | 用于 KT3 的人工反馈回流、误判类型记忆、报告二次修订和经验积累 | 当前已有 feedback 入口和 report revision scaffold，但还没有真正的记忆驱动自改进 |
+| Prompt / Rule / Program 优化 | [ProTeGi, EMNLP 2023](https://aclanthology.org/2023.emnlp-main.494/)、[OPRO, 2023](https://arxiv.org/abs/2309.03409)、[MIPRO, EMNLP 2024](https://aclanthology.org/2024.emnlp-main.525/)、[TextGrad, 2024](https://arxiv.org/abs/2406.07496) | 文本梯度、黑盒候选搜索、Bayesian program optimization、textual backprop | 用于 KT3 的 Judge prompt、retrieval template、rule proposal、LM program 优化 | 当前只实现了规则候选评估与 policy artifact，尚未把这些优化器接入系统 |
+| 工作流自动发现 | [ADAS, ICLR 2025](https://arxiv.org/abs/2408.08435)、[AFlow, ICLR 2025](https://arxiv.org/abs/2410.10762)、[T2Agent, AAAI 2026](https://ojs.aaai.org/index.php/AAAI/article/view/36977) | meta-agent code search、MCTS workflow search、tool-planning verification | 用于 KT3 后续从“调权重”升级到“搜索 Agent 工作流、工具顺序、验证路径” | 当前不应优先实现，建议在帖子级与 Judge/policy 稳定后再进入 |
 | 跨模态取证流水线 | [MACAW, 2024](https://openreview.net/pdf/4cf35992fa22738d28f8a67156a71de666b4eeae.pdf) | Retrieval Agent、Detective Agent、Analyst Agent 顺序工作 | 把 KT3 编排成“检索 -> 取证 -> 裁决”的流水线，适合 claim/evidence 与视觉一致性复核 | 当前没有明确拆出 retrieval / forensic / analyst 三阶段黑板 |
 | FIMI / DISARM Agent 化 | [Agentic DISARM, 2026](https://arxiv.org/html/2601.15109v3)、[DISARM 框架说明](https://www.hybridcoe.fi/publications/hybrid-coe-research-report-7-foreign-information-manipulation-and-interference-defence-standards-test-for-rapid-adoption-of-the-common-language-and-framework-disarm/) | Agent 协同识别操纵行为并映射到 DISARM TTP | 用于 DISARMMappingAgent：把 harmfulness 证据进一步映射为操纵技术、攻击路径和反制方向 | 当前 `disarm_scorer.py` 有 DISARM 路径评分，但 KT3 Agent 输出尚未系统映射到 DISARM TTP |
 | 传播树谣言检测 | [RumourEval 2019](https://aclanthology.org/S19-2147/)、[Tree-LSTM, ACL 2019](https://aclanthology.org/P19-1498/)、[RvNN, ACL 2018](https://aclanthology.org/P18-1184/) | 回复树、stance 演化、树结构递归/Tree-LSTM，多任务 stance + veracity | 用于 PropagationTreeAgent：PHEME 必须读取 tree structure、reaction stance、时间演化和关键分支，不应只做文本分类 | 当前 PHEME 分支主要是文本/claim baseline，尚未接入 `structure.json + reactions` 的树编码 |

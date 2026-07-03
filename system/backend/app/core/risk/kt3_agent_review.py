@@ -26,6 +26,8 @@ from app.core.risk.kt3_active_retrieval import build_light_debate_trace
 from app.core.risk.kt3_active_retrieval import build_sidecar_for_agent
 from app.core.risk.kt3_active_retrieval import retrieve_active_evidence
 from app.core.risk.kt3_active_retrieval import should_trigger_light_debate
+from app.core.risk.kt3_governance_reference import build_governance_reference_context
+from app.core.risk.kt3_governance_reference import build_governance_report_sidecar
 
 
 AGENT_ORDER = (
@@ -136,6 +138,13 @@ AGENT_METHOD_TRACE = [
             "unsafe automatic publication of debunking content."
         ),
     },
+    {
+        "paper": "Public platform governance reports and community rules",
+        "transfer": (
+            "Use public platform policy categories, transparency report structure, "
+            "and enforcement-action vocabulary as report-template guidance only."
+        ),
+    },
 ]
 
 
@@ -160,7 +169,7 @@ class OpenAICompatibleConfig:
     base_url: str
     model: str
     wire_api: str = "chat_completions"
-    timeout_seconds: float = 60.0
+    timeout_seconds: float = 180.0
     include_media_base64: bool = False
     require_vision: bool = False
 
@@ -200,10 +209,17 @@ class OpenAICompatibleAgentProvider:
                 "temperature": 0.2,
             }
         headers = {"Authorization": f"Bearer {self.config.api_key}"}
-        async with httpx.AsyncClient(timeout=self.config.timeout_seconds) as client:
-            response = await client.post(url, headers=headers, json=payload)
-            response.raise_for_status()
-            data = response.json()
+        try:
+            async with httpx.AsyncClient(timeout=self.config.timeout_seconds) as client:
+                response = await client.post(url, headers=headers, json=payload)
+                response.raise_for_status()
+                data = response.json()
+        except httpx.HTTPStatusError as exc:
+            body = exc.response.text[:1000] if exc.response is not None else ""
+            raise RuntimeError(f"{agent_name} provider HTTP {exc.response.status_code if exc.response else 'error'}: {body}") from exc
+        except Exception as exc:
+            detail = str(exc) or exc.__class__.__name__
+            raise RuntimeError(f"{agent_name} provider request failed: {detail}") from exc
         if wire_api == "responses":
             return _extract_responses_text(data, agent_name)
         choices = data.get("choices") or []
@@ -239,6 +255,7 @@ async def run_manual_kt3_agent_review(
     active_retriever: ActiveEvidenceProvider | None = None,
     external_retrieval_enabled: bool = False,
     policy: dict[str, Any] | None = None,
+    error_memory_summary: dict[str, Any] | None = None,
     require_vision: bool = False,
 ) -> dict[str, Any]:
     """Run analyst-triggered natural-language KT3 agent reports."""
@@ -254,6 +271,7 @@ async def run_manual_kt3_agent_review(
     )
     context["policy"] = policy or {}
     context["active_policy"] = policy or {}
+    context["error_memory_summary"] = error_memory_summary or {}
     retrieval_bundle = (
         await retrieve_active_evidence(
             context=context,
@@ -368,15 +386,15 @@ async def run_manual_kt3_agent_review(
     for agent in ("HarmfulnessJudgeAgent", "CountermeasureAgent"):
         if agent not in followup_agents:
             continue
-        [result] = await _run_agent_batch(
-            [agent],
+        staged_results = await _run_self_refined_agent(
+            agent_name=agent,
             context=context,
             reports_by_agent=reports_by_agent,
             provider=provider,
             state=state,
         )
-        results.append(result)
-        reports_by_agent.update(_completed_by_agent([result]))
+        results.extend(staged_results)
+        reports_by_agent.update(_completed_by_agent([staged_results[-1]]))
 
     audit = {
         "run_id": run_id,
@@ -399,7 +417,7 @@ async def run_manual_kt3_agent_review(
             "fits_benchmark_labels": False,
             "natural_language_reports": True,
             "failure_policy": "record_failure_without_synthetic_report",
-            "active_retrieval_default_external": False,
+            "active_retrieval_default_external": True,
             "policy_does_not_modify_detector_outputs": True,
             "strict_vision_required": require_vision,
             "full_debate_optional": True,
@@ -441,6 +459,7 @@ def build_llm_provider_from_settings(settings: Any) -> OpenAICompatibleAgentProv
         base_url=str(getattr(settings, "LLM_API_BASE", "") or "https://api.deepseek.com/v1"),
         model=str(getattr(settings, "LLM_MODEL", "") or "deepseek-chat"),
         wire_api=str(getattr(settings, "LLM_API_WIRE", "") or "chat_completions"),
+        timeout_seconds=float(getattr(settings, "LLM_TIMEOUT_SECONDS", 180.0) or 180.0),
         include_media_base64=bool(getattr(settings, "LLM_INCLUDE_MEDIA_BASE64", False)),
         require_vision=bool(getattr(settings, "LLM_REQUIRE_VISION", False)),
     )
@@ -580,6 +599,51 @@ async def _run_reflection_response_batch(
     return await asyncio.gather(*tasks) if tasks else []
 
 
+async def _run_self_refined_agent(
+    *,
+    agent_name: str,
+    context: dict[str, Any],
+    reports_by_agent: dict[str, dict[str, Any]],
+    provider: KT3LLMAgentProvider | None,
+    state: dict[str, Any],
+) -> list[dict[str, Any]]:
+    draft = await _run_single_agent(
+        agent_name,
+        context=context,
+        reports_by_agent=reports_by_agent,
+        provider=provider,
+        state=state,
+        report_role_override=_report_role_name(agent_name, "draft"),
+    )
+    if draft.get("status") != "completed" or provider is None:
+        if draft.get("status") == "completed":
+            draft["report_role"] = _report_role_name(agent_name, "final")
+        return [draft]
+    critique = await _run_single_revision_step(
+        agent_name=agent_name,
+        revision_kind="critique",
+        source_report=draft,
+        context=context,
+        reports_by_agent=reports_by_agent,
+        provider=provider,
+        state=state,
+    )
+    if critique.get("status") != "completed":
+        draft["report_role"] = _report_role_name(agent_name, "final")
+        return [draft, critique]
+    final_report = await _run_single_revision_step(
+        agent_name=agent_name,
+        revision_kind="final",
+        source_report=draft,
+        critique_report=critique,
+        context=context,
+        reports_by_agent=reports_by_agent,
+        provider=provider,
+        state=state,
+    )
+    return [draft, critique, final_report]
+
+
 async def _run_single_reflection_response(
     agent_name: str,
     *,
@@ -619,21 +683,23 @@ async def _run_single_reflection_response(
             model=state["model"],
         )
     except Exception as exc:  # pragma: no cover
+        error_text = str(exc) or exc.__class__.__name__
         sidecar = build_sidecar_for_agent(
             agent_name=agent_name,
             context=context,
             retrieval_bundle=state.get("retrieval_bundle"),
             debate_bundle=state.get("debate_bundle"),
         )
+        sidecar = _enrich_agent_sidecar(sidecar, agent_name=agent_name, context=context)
         return {
             **base,
             "status": "failed",
-            "error": str(exc),
+            "error": error_text,
             "analysis_report": _analysis_report_payload(
                 agent_name=response_agent_name,
                 report_text=None,
                 status="failed",
-                error=str(exc),
+                error=error_text,
             ),
             "report_text": None,
             "system_audit_sidecar": sidecar,
@@ -645,6 +711,12 @@ async def _run_single_reflection_response(
         context=context,
         retrieval_bundle=state.get("retrieval_bundle"),
         debate_bundle=state.get("debate_bundle"),
+    )
+    sidecar = _enrich_agent_sidecar(
+        sidecar,
+        agent_name=response_agent_name,
+        context=context,
+        report_text=str(report_text).strip(),
     )
     return {
         **base,
@@ -662,6 +734,103 @@ async def _run_single_reflection_response(
     }
 
 
+async def _run_single_revision_step(
+    *,
+    agent_name: str,
+    revision_kind: str,
+    source_report: dict[str, Any],
+    context: dict[str, Any],
+    reports_by_agent: dict[str, dict[str, Any]],
+    provider: KT3LLMAgentProvider,
+    state: dict[str, Any],
+    critique_report: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    review_id = str(uuid4())
+    report_role = _report_role_name(agent_name, revision_kind)
+    base = {
+        "review_id": review_id,
+        "run_id": state["run_id"],
+        "agent_name": agent_name,
+        "report_role": report_role,
+        "model": state["model"],
+        "provider_name": state["provider_name"],
+        "input_refs": context["input_refs"],
+        "input_hash": state["input_hash"],
+        "created_at": state["created_at"],
+        "human_triggered_by": state["human_triggered_by"],
+    }
+    system_prompt = _revision_system_prompt(agent_name, revision_kind)
+    user_prompt = _revision_user_prompt(
+        agent_name=agent_name,
+        revision_kind=revision_kind,
+        source_report=source_report,
+        critique_report=critique_report,
+        context=context,
+        reports_by_agent=reports_by_agent,
+    )
+    try:
+        report_text = await provider(
+            agent_name=f"{agent_name}:{revision_kind}",
+            system_prompt=system_prompt,
+            user_prompt=user_prompt,
+            input_bundle=context,
+            model=state["model"],
+        )
+    except Exception as exc:  # pragma: no cover
+        error_text = str(exc) or exc.__class__.__name__
+        sidecar = build_sidecar_for_agent(
+            agent_name=agent_name,
+            context=context,
+            retrieval_bundle=state.get("retrieval_bundle"),
+            debate_bundle=state.get("debate_bundle"),
+        )
+        sidecar = _enrich_agent_sidecar(sidecar, agent_name=agent_name, context=context)
+        return {
+            **base,
+            "status": "failed",
+            "error": error_text,
+            "analysis_report": _analysis_report_payload(
+                agent_name=agent_name,
+                report_text=None,
+                status="failed",
+                error=error_text,
+            ),
+            "report_text": None,
+            "system_audit_sidecar": sidecar,
+            "structured_sidecar": sidecar,
+            "safety_flags": ["provider_failure", "no_synthetic_fallback"],
+        }
+    sidecar = build_sidecar_for_agent(
+        agent_name=agent_name,
+        context=context,
+        retrieval_bundle=state.get("retrieval_bundle"),
+        debate_bundle=state.get("debate_bundle"),
+    )
+    sidecar = _enrich_agent_sidecar(
+        sidecar,
+        agent_name=agent_name,
+        context=context,
+        report_text=str(report_text).strip(),
+    )
+    return {
+        **base,
+        "status": "completed",
+        "analysis_report": _analysis_report_payload(
+            agent_name=agent_name,
+            report_text=str(report_text).strip(),
+            status="completed",
+        ),
+        "report_text": str(report_text).strip(),
+        "report_format": "maro_style_natural_language_analysis_report",
+        "system_audit_sidecar": sidecar,
+        "structured_sidecar": sidecar,
+        "sections_expected": AGENT_REPORT_SECTIONS[agent_name],
+        "vision_required": _agent_requires_vision(agent_name, context=context, state=state),
+        "vision_input_status": _vision_input_status(context),
+        "safety_flags": _agent_safety_flags(agent_name),
+    }
+
+
 async def _run_single_agent(
     agent_name: str,
     *,
@@ -669,12 +838,14 @@ async def _run_single_agent(
     reports_by_agent: dict[str, dict[str, Any]],
     provider: KT3LLMAgentProvider | None,
     state: dict[str, Any],
+    report_role_override: str | None = None,
 ) -> dict[str, Any]:
     review_id = str(uuid4())
     base = {
         "review_id": review_id,
         "run_id": state["run_id"],
         "agent_name": agent_name,
+        "report_role": report_role_override or "expert_initial",
         "model": state["model"],
         "provider_name": state["provider_name"],
         "input_refs": context["input_refs"],
@@ -689,6 +860,7 @@ async def _run_single_agent(
             retrieval_bundle=state.get("retrieval_bundle"),
             debate_bundle=state.get("debate_bundle"),
         )
+        sidecar = _enrich_agent_sidecar(sidecar, agent_name=agent_name, context=context)
         return {
             **base,
             "status": "failed",
@@ -713,6 +885,7 @@ async def _run_single_agent(
                 retrieval_bundle=state.get("retrieval_bundle"),
                 debate_bundle=state.get("debate_bundle"),
             )
+            sidecar = _enrich_agent_sidecar(sidecar, agent_name=agent_name, context=context)
             return {
                 **base,
                 "status": "failed",
@@ -742,21 +915,23 @@ async def _run_single_agent(
             model=state["model"],
         )
     except Exception as exc:  # pragma: no cover - covered through API/core tests
+        error_text = str(exc) or exc.__class__.__name__
         sidecar = build_sidecar_for_agent(
             agent_name=agent_name,
             context=context,
             retrieval_bundle=state.get("retrieval_bundle"),
             debate_bundle=state.get("debate_bundle"),
         )
+        sidecar = _enrich_agent_sidecar(sidecar, agent_name=agent_name, context=context)
         return {
             **base,
             "status": "failed",
-            "error": str(exc),
+            "error": error_text,
             "analysis_report": _analysis_report_payload(
                 agent_name=agent_name,
                 report_text=None,
                 status="failed",
-                error=str(exc),
+                error=error_text,
             ),
             "report_text": None,
             "system_audit_sidecar": sidecar,
@@ -770,6 +945,12 @@ async def _run_single_agent(
         context=context,
         retrieval_bundle=state.get("retrieval_bundle"),
         debate_bundle=state.get("debate_bundle"),
+    )
+    sidecar = _enrich_agent_sidecar(
+        sidecar,
+        agent_name=agent_name,
+        context=context,
+        report_text=str(report_text).strip(),
     )
     analysis_report = _analysis_report_payload(
         agent_name=agent_name,
@@ -824,14 +1005,57 @@ def _completed_by_agent(results: list[dict[str, Any]]) -> dict[str, dict[str, An
     }
 
 
+def _enrich_agent_sidecar(
+    sidecar: dict[str, Any],
+    *,
+    agent_name: str,
+    context: dict[str, Any],
+    report_text: str | None = None,
+) -> dict[str, Any]:
+    enriched = dict(sidecar)
+    governance_reference = context.get("governance_reference") or build_governance_reference_context(context)
+    enriched["platform_reference_refs"] = governance_reference.get("platform_reference_refs") or []
+    enriched["governance_reference"] = {
+        "matched_categories": governance_reference.get("matched_categories") or [],
+        "report_template": governance_reference.get("report_template") or {},
+        "usage_boundary": governance_reference.get("usage_boundary") or {},
+    }
+    if agent_name == "HarmfulnessJudgeAgent":
+        enriched["governance_report"] = build_governance_report_sidecar(
+            context=context,
+            report_text=report_text,
+        )
+    return enriched
+
+
 def _agent_system_prompt(agent_name: str) -> str:
     sections = "\n".join(f"- {section}" for section in AGENT_REPORT_SECTIONS[agent_name])
     judge_policy_note = (
         "\nFor HarmfulnessJudgeAgent: explicitly read selected_context.active_policy "
         "when present. Explain which policy thresholds/rule explanations support "
         "review, abstain, retrieval, or countermeasure recommendations, and state "
-        "that the policy is advisory until human approval.\n"
+        "that the policy is advisory until human approval. Produce a unified "
+        "Chinese governance review report for platform analysts, covering risk "
+        "type, evidence, disputes, recommended action, public platform reference "
+        "basis, and human confirmation items.\n"
         if agent_name == "HarmfulnessJudgeAgent"
+        else ""
+    )
+    countermeasure_note = (
+        "\nFor CountermeasureAgent: output internal governance recommendations only. "
+        "Do not write public-facing propaganda or auto-publication copy. Recommend "
+        "actions such as evidence supplementation, human review, labeling, reduced "
+        "distribution, debunking recommendation, account review, victim protection, "
+        "or quality-content support only when evidence supports them. Read active policy, "
+        "accepted rule references, and error memory summary when present.\n"
+        if agent_name == "CountermeasureAgent"
+        else ""
+    )
+    reflection_note = (
+        "\nFor QuestionReflectionAgent: read active policy, accepted rule refs, and "
+        "error memory summary. Ask questions that target repeated failure modes, "
+        "missing evidence, and cross-modal or claim conflicts.\n"
+        if agent_name == "QuestionReflectionAgent"
         else ""
     )
     optimizer_note = (
@@ -839,15 +1063,22 @@ def _agent_system_prompt(agent_name: str) -> str:
         "If policy context is present, cite it as provenance rather than changing it.\n"
     )
     return (
-        "You are a KT3 MARO-style expert agent for harmfulness characterization. "
-        "Write a role-specific natural-language analysis report in Chinese. "
+        "You are a MARO-style social media governance review expert. "
+        "Write a role-specific natural-language analysis report in Chinese for "
+        "platform governance analysts. Use public platform community rules, "
+        "transparency report structure, and enforcement vocabulary only as "
+        "reference templates; never treat them as automatic legal or enforcement "
+        "authority. "
         "Do not output JSON as the main report. Do not claim to be the final "
         "automatic classifier. Separate evidence from uncertainty and make clear "
-        "what requires human confirmation.\n\n"
+        "what requires human confirmation. Cite the supplied governance_reference "
+        "categories or state that no direct platform template matches.\n\n"
         f"Agent: {agent_name}\n"
         "Required report sections:\n"
         f"{sections}\n"
         f"{judge_policy_note}"
+        f"{countermeasure_note}"
+        f"{reflection_note}"
         f"{optimizer_note}"
     )
 
@@ -872,6 +1103,7 @@ def _agent_user_prompt(
             "the system verdict."
         ),
         "policy_guidance": _policy_guidance_for_prompt(context),
+        "error_memory_summary": context.get("error_memory_summary") or {},
         "selected_context": context,
         "prior_agent_reports": prior_reports,
     }
@@ -902,6 +1134,7 @@ def _reflection_response_prompt(
             "report_text": reflection_report.get("report_text"),
         },
         "selected_context": context,
+        "error_memory_summary": context.get("error_memory_summary") or {},
         "expected_response": [
             "which reflection questions affect the original analysis",
             "what evidence remains missing",
@@ -942,6 +1175,7 @@ def _policy_guidance_for_prompt(context: dict[str, Any]) -> dict[str, Any]:
             "countermeasure_threshold": active_policy.get("countermeasure_threshold"),
         },
         "accepted_rule_refs": accepted_rules[:8],
+        "error_memory_summary": context.get("error_memory_summary") or {},
         "judge_should_note": (
             "Use the active policy as advisory provenance for review/retrieval/"
             "countermeasure recommendations; do not overwrite detector outputs."
@@ -1048,7 +1282,7 @@ def _build_agent_context(
         "post_ids": [_text(post.get("post_id")) for post in posts if _text(post.get("post_id"))],
         "tree_ids": selected_tree_ids,
     }
-    return {
+    context = {
         "schema_version": "kt3-agent-input-bundle-v1",
         "input_refs": input_refs,
         "selected_posts": posts,
@@ -1064,6 +1298,8 @@ def _build_agent_context(
             "account_identifiers_should_be_treated_as_pseudonymous": True,
         },
     }
+    context["governance_reference"] = build_governance_reference_context(context)
+    return context
 
 
 def _select_posts(post_semantics: dict[str, Any], selected_post_ids: list[str]) -> list[dict[str, Any]]:
@@ -1071,7 +1307,7 @@ def _select_posts(post_semantics: dict[str, Any], selected_post_ids: list[str]) 
     if not selected_post_ids:
         return posts[:5]
     wanted = {str(item) for item in selected_post_ids}
-    selected = [post for post in posts if str(post.get("post_id")) in wanted]
+    selected = [post for post in _all_semantic_posts(post_semantics) if str(post.get("post_id")) in wanted]
     return selected[:20]
 
 
@@ -1167,6 +1403,74 @@ def _agent_safety_flags(agent_name: str) -> list[str]:
     return flags
 
 
+def _report_role_name(agent_name: str, stage: str) -> str:
+    if agent_name == "HarmfulnessJudgeAgent":
+        return {
+            "draft": "judge_draft",
+            "critique": "judge_critique",
+            "final": "judge_final",
+        }.get(stage, "judge_final")
+    if agent_name == "CountermeasureAgent":
+        return {
+            "draft": "countermeasure_draft",
+            "critique": "countermeasure_critique",
+            "final": "countermeasure_final",
+        }.get(stage, "countermeasure_final")
+    return "expert_initial"
+
+
+def _revision_system_prompt(agent_name: str, revision_kind: str) -> str:
+    if revision_kind == "critique":
+        return (
+            f"You are reviewing the draft report of {agent_name}. "
+            "Write a Chinese critique focused on missing evidence, unsupported inference, "
+            "policy misuse, uncertainty handling, and what should be revised. "
+            "Do not output JSON."
+        )
+    return (
+        f"You are revising the {agent_name} draft after critique. "
+        "Write a stronger Chinese final report that explicitly addresses the critique, "
+        "keeps evidence and uncertainty separate, follows active policy as advisory context, "
+        "and does not claim automatic classifier authority."
+    )
+
+
+def _revision_user_prompt(
+    *,
+    agent_name: str,
+    revision_kind: str,
+    source_report: dict[str, Any],
+    context: dict[str, Any],
+    reports_by_agent: dict[str, dict[str, Any]],
+    critique_report: dict[str, Any] | None = None,
+) -> str:
+    payload = {
+        "agent_name": agent_name,
+        "revision_kind": revision_kind,
+        "selected_context": context,
+        "policy_guidance": _policy_guidance_for_prompt(context),
+        "error_memory_summary": context.get("error_memory_summary") or {},
+        "source_report": {
+            "report_role": source_report.get("report_role"),
+            "status": source_report.get("status"),
+            "report_text": source_report.get("report_text"),
+            "analysis_report": source_report.get("analysis_report"),
+        },
+        "critique_report": {
+            "report_role": (critique_report or {}).get("report_role"),
+            "status": (critique_report or {}).get("status"),
+            "report_text": (critique_report or {}).get("report_text"),
+        }
+        if critique_report
+        else None,
+        "prior_agent_reports": {
+            name: {"status": item.get("status"), "report_text": item.get("report_text")}
+            for name, item in reports_by_agent.items()
+        },
+    }
+    return json.dumps(payload, ensure_ascii=False, default=str)
+
+
 def _agent_requires_vision(
     agent_name: str,
     *,
@@ -1241,6 +1545,21 @@ def _semantic_posts(post_semantics: dict[str, Any]) -> list[dict[str, Any]]:
     if posts:
         return posts
     return _as_list(post_semantics.get("aggregation_posts"))
+
+
+def _all_semantic_posts(post_semantics: dict[str, Any]) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for post in _as_list(post_semantics.get("posts")) + _as_list(post_semantics.get("aggregation_posts")):
+        if not isinstance(post, dict):
+            continue
+        post_id = str(post.get("post_id") or "")
+        key = post_id or json.dumps(post, ensure_ascii=False, sort_keys=True, default=str)
+        if key in seen:
+            continue
+        seen.add(key)
+        rows.append(post)
+    return rows
 
 
 def _hash_payload(payload: Any) -> str:

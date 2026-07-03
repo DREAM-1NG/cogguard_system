@@ -10,6 +10,8 @@ from __future__ import annotations
 
 from datetime import datetime
 from collections import Counter
+from typing import Any
+from urllib.parse import urljoin
 
 import numpy as np
 import pandas as pd
@@ -43,6 +45,8 @@ def _analyze_account(account_id: str, posts: pd.DataFrame) -> dict:
     """分析单个账户的行为特征。"""
     n = len(posts)
     author_name = posts["author_name"].iloc[0] if "author_name" in posts.columns else account_id
+    platform = str(posts["platform"].iloc[0] or "") if "platform" in posts.columns else ""
+    user_url = _account_profile_url(account_id, posts)
 
     ts_sorted = posts["ts"].sort_values()
     hours = ts_sorted.dt.hour.values
@@ -105,6 +109,8 @@ def _analyze_account(account_id: str, posts: pd.DataFrame) -> dict:
     return {
         "account_id": account_id,
         "author_name": author_name,
+        "platform": platform,
+        "user_url": user_url,
         "post_count": n,
         "time_span_hours": time_span_hours,
         "avg_interval_seconds": round(avg_interval, 1),
@@ -120,6 +126,75 @@ def _analyze_account(account_id: str, posts: pd.DataFrame) -> dict:
         "unique_urls": unique_urls,
         "automation_score": automation_score,
     }
+
+
+def _account_profile_url(account_id: str, posts: pd.DataFrame) -> str:
+    for _, row in posts.iterrows():
+        row_data = row.to_dict()
+        url = _first_profile_url(row_data)
+        if url:
+            return url
+
+    platform = ""
+    if "platform" in posts.columns and not posts["platform"].empty:
+        platform = str(posts["platform"].iloc[0] or "").strip().lower()
+
+    if platform == "weibo" and account_id:
+        return f"https://weibo.com/u/{account_id}"
+    if platform in {"xhs", "xiaohongshu"} and account_id:
+        return f"https://www.xiaohongshu.com/user/profile/{account_id}"
+    if platform == "douyin" and account_id:
+        return f"https://www.douyin.com/user/{account_id}"
+    return ""
+
+
+def _first_profile_url(row: dict[str, Any]) -> str:
+    for path in (
+        ("author_url",),
+        ("profile_url",),
+        ("user_url",),
+        ("homepage",),
+        ("author_profile", "profile_url"),
+        ("author_profile", "url"),
+        ("author_profile", "homepage"),
+        ("author_profile", "user_url"),
+        ("raw_data", "profile_url"),
+        ("raw_data", "user_url"),
+        ("raw_data", "homepage"),
+        ("raw_data", "user", "profile_url"),
+        ("raw_data", "user", "url"),
+        ("raw_data", "mblog", "user", "profile_url"),
+        ("raw_data", "mblog", "user", "url"),
+        ("raw_data", "post_detail", "user", "profile_url"),
+        ("raw_data", "post_detail", "user", "url"),
+    ):
+        value = _nested_value(row, path)
+        url = _normalize_profile_url(value)
+        if url:
+            return url
+    return ""
+
+
+def _nested_value(source: Any, path: tuple[str, ...]) -> Any:
+    current = source
+    for key in path:
+        if not isinstance(current, dict):
+            return None
+        current = current.get(key)
+    return current
+
+
+def _normalize_profile_url(value: Any) -> str:
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    if text.startswith(("http://", "https://")):
+        return text
+    if text.startswith("//"):
+        return f"https:{text}"
+    if text.startswith("/"):
+        return urljoin("https://weibo.com", text)
+    return ""
 
 
 def _calc_automation_score(

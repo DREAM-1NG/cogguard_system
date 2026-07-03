@@ -18,6 +18,16 @@
 
 ---
 
+## 2026-07-02
+
+- 接入 BotRHG 风格社交机器人检测后端能力，将 NLPCC 2026 投稿方法的“特征编码 → KNN 支持超边 → 可靠性路由 → 选择性残差修正”落为账号级 API 契约。
+- `system/backend/app/core/bot_detection.py`：新增确定性 BotRHG 系统适配器，输出 base/final bot 概率、local reliability、routed hyperedge、support evidence 与 model card。
+- `system/backend/app/services/bot_detection_service.py`、`system/backend/app/api/v1/accounts.py`：新增 `POST /api/v1/accounts/bot-detection`，支持 `event_id`、`platform`、`routing_budget`、`support_k`，复用现有 Mongo 事件过滤和预览 token 认证。
+- `system/backend/tests/test_botrhg_bot_detection.py`：新增回归测试，覆盖路由/残差修正、服务过滤、API 参数传递。
+- `system/frontend/src/api/accounts.ts`、`system/frontend/src/views/accounts/index.vue`：账户监测页新增轻量 BotRHG 触发入口和结果表。
+- `doc/engineering/botrhg-social-bot-detection-plan.md`、`README.md`、`system/README.md`、`doc/engineering/development-roadmap.md`、`AGENTS.md`：同步当前真实代码根 `system/`、新增 BotRHG API 与研究边界。
+- 验证：`python -m pytest tests/test_botrhg_bot_detection.py -q`、`uv run python -m pytest tests/test_botrhg_bot_detection.py -q`、`uv run python -m pytest tests/test_event_scoped_analysis.py tests/test_health.py tests/test_coordination_detector.py tests/test_coordination_network.py -q`、`npm.cmd run build`。
+
 ## 2026-05-21
 
 - 增强 MediaCrawler 微博搜索媒体保真：搜索结果不再只对长文本微博补抓详情，而是在 `ENABLE_WEIBO_FULL_TEXT=true` 时对每条微博详情补抓，并把 mblog 图片、视频、封面字段与 detail raw 写入输出。

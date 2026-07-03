@@ -35,6 +35,8 @@ from app.core.risk.kt3_graph_exporter import write_kt3_graph_artifact
 from app.core.risk.kt3_agent_review import run_manual_kt3_agent_review
 from app.core.risk.kt3_agent_review import OpenAICompatibleAgentProvider
 from app.core.risk.kt3_agent_review import OpenAICompatibleConfig
+from app.core.risk.kt3_governance_reference import build_governance_reference_context
+from app.core.risk.kt3_governance_reference import load_governance_reference_library
 from app.core.risk.kt3_agent_policy import optimize_kt3_agent_policy
 from app.core.risk.kt3_agent_policy import refine_kt3_agent_policy_loop
 from app.core.risk.kt3_agent_policy import summarize_feedback_memory
@@ -2194,6 +2196,32 @@ class TestKT3ManualAgentReview:
             "disarm_analysis": {"countermeasures": [{"action": "fact-check"}]},
         }
 
+    def test_governance_reference_loader_matches_platform_refs(self):
+        library = load_governance_reference_library()
+        assert library["schema_version"] == "kt3-governance-reference-library-v1"
+        ref_ids = {item["ref_id"] for item in library["platform_references"]}
+        assert "meta-community-standards" in ref_ids
+        assert "weibo-community-convention" in ref_ids
+        assert "douyin-trust-center" in ref_ids
+
+        context = {
+            "selected_posts": [
+                {
+                    "post_id": "p1",
+                    "text": "该帖子疑似传播谣言并存在图文不一致。",
+                    "stance": {"label": "query", "claim_id": "c1"},
+                    "post_view_detection": {"conflict": {"score": 0.8}},
+                }
+            ],
+            "media_inputs": [{"media_type": "image", "uri": "G:/media/a.jpg"}],
+            "propagation_context": {"claim_rank": [{"claim_id": "c1"}]},
+        }
+        reference = build_governance_reference_context(context)
+        categories = {item["category_id"] for item in reference["matched_categories"]}
+        assert "misinformation" in categories
+        assert reference["platform_reference_refs"]
+        assert reference["usage_boundary"]["does_not_override_detector_outputs"] is True
+
     def test_manual_agent_review_writes_natural_language_reports(self):
         calls = []
 
@@ -2224,16 +2252,21 @@ class TestKT3ManualAgentReview:
         assert result["schema_version"] == "kt3-manual-agent-review-v1"
         assert result["audit"]["capability_boundary"]["manual_human_triggered"] is True
         assert result["audit"]["capability_boundary"]["fits_benchmark_labels"] is False
-        assert result["summary"]["completed"] == 11
+        assert result["summary"]["completed"] == 15
         assert result["summary"]["failed"] == 0
         assert result["summary"]["reflection_response_reports"] == 4
-        assert len(calls) == 11
+        assert len(calls) == 15
         assert calls[0][0] == "PostHarmAgent"
-        assert calls[-1][0] == "CountermeasureAgent"
+        assert calls[-1][0] == "CountermeasureAgent:final"
         assert result["input_bundle"]["input_refs"]["post_ids"] == ["p1"]
-        main_reports = [item for item in result["agent_reports"] if item.get("report_role") != "reflection_response"]
+        assert result["input_bundle"]["governance_reference"]["platform_reference_refs"]
+        main_reports = [
+            item
+            for item in result["agent_reports"]
+            if item.get("report_role") not in {"reflection_response", "judge_critique", "countermeasure_critique"}
+        ]
         reflection_reports = [item for item in result["agent_reports"] if item.get("report_role") == "reflection_response"]
-        assert len(main_reports) == 7
+        assert len(main_reports) == 9
         assert len(reflection_reports) == 4
         for report in result["agent_reports"]:
             assert report["status"] == "completed"
@@ -2243,6 +2276,23 @@ class TestKT3ManualAgentReview:
             assert "not_a_classifier_output" in report["safety_flags"]
             assert report["system_audit_sidecar"]["not_agent_primary_output"] is True
             assert report["structured_sidecar"]["schema_version"] == "kt3-agent-sidecar-v1"
+            assert report["structured_sidecar"]["platform_reference_refs"]
+
+        judge_report = next(item for item in result["agent_reports"] if item["agent_name"] == "HarmfulnessJudgeAgent")
+        governance_report = judge_report["structured_sidecar"]["governance_report"]
+        assert governance_report["governance_report_text"]
+        assert governance_report["platform_reference_refs"]
+        assert governance_report["recommended_action"] in {
+            "补证",
+            "人审",
+            "限流",
+            "标注",
+            "辟谣推荐",
+            "删除建议",
+            "账号处置建议",
+            "反制叙事草案",
+            "不处置",
+        }
 
     def test_manual_agent_review_adds_active_retrieval_and_light_debate_sidecar(self):
         calls = []
@@ -2277,10 +2327,11 @@ class TestKT3ManualAgentReview:
             )
         )
 
-        assert result["summary"]["completed"] == 4
+        assert result["summary"]["completed"] == 6
         assert result["summary"]["reflection_response_reports"] == 1
         assert result["summary"]["active_retrieval_used"] is True
         assert result["active_retrieval"]["audit"]["external_provider_configured"] is True
+        assert result["active_retrieval"]["capability_boundary"]["external_retrieval_default_enabled"] is True
         assert result["active_retrieval"]["external_results"]
         assert "light_debate" in calls[0][1]
         for report in result["agent_reports"]:
@@ -2586,8 +2637,22 @@ class TestKT3ManualAgentReview:
                     },
                     {
                         "rule_id": "lower-review",
+                        "source": "human_feedback",
                         "description": "catch validation false negatives",
                         "policy_patch": {"review_threshold": 0.54, "retrieval_threshold": 0.62},
+                    },
+                    {
+                        "rule_id": "platform-template",
+                        "source": "platform_template",
+                        "description": "require public platform reference in governance reports",
+                        "policy_patch": {
+                            "trigger_conditions": {"retrieval_on_claim_uncertainty": True},
+                            "report_template_constraints": {
+                                "require_platform_reference": True,
+                                "require_human_confirmation_items": True,
+                                "countermeasure_internal_only": True,
+                            },
+                        },
                     },
                 ]
             }
@@ -2609,8 +2674,28 @@ class TestKT3ManualAgentReview:
         assert result["capability_boundary"]["human_approval_required_for_activation"] is True
         assert any(rule["status"] == "rejected_schema" for rule in result["candidate_rules"])
         assert any(rule.get("rule_id") == "lower-review" for rule in result["candidate_rules"])
+        platform_rule = next(rule for rule in result["candidate_rules"] if rule.get("rule_id") == "platform-template")
+        assert platform_rule["source"] == "platform_template"
+        assert platform_rule["status"] in {"evaluated", "accepted_for_round"}
+        assert result["policy"]["report_template_constraints"]["require_platform_reference"] is True
+        assert result["policy"]["trigger_conditions"]["retrieval_on_claim_uncertainty"] is True
         assert result["validation_metrics_by_round"][0]["stage"] == "baseline"
         assert result["refinement_trace"]
+
+    def test_refine_policy_loop_requires_real_llm_generator_when_enabled(self):
+        manifest = {
+            "dataset_id": "mock-kt3-refine",
+            "splits": {
+                "validation": [{"case_id": "v1", "gold_label": "harmful", "harm_score": 0.6}],
+                "held_out": [{"case_id": "h1", "gold_label": "harmful", "harm_score": 0.6}],
+            },
+        }
+        with pytest.raises(ValueError):
+            refine_kt3_agent_policy_loop(
+                manifest,
+                enable_llm_rule_generator=True,
+                rule_generator=None,
+            )
 
     def test_feedback_summary_counts_error_memory(self):
         summary = summarize_feedback_memory(
@@ -2677,7 +2762,7 @@ class TestKT3ManualAgentReview:
             )
         )
 
-        [judge_report] = result["agent_reports"]
+        judge_report = next(item for item in result["agent_reports"] if item.get("report_role") == "judge_final")
         prompt_payload = json.loads(captured["HarmfulnessJudgeAgent"]["user_prompt"])
         assert prompt_payload["policy_guidance"]["active_policy_present"] is True
         assert prompt_payload["policy_guidance"]["policy_id"] == "kt3-refined-policy-test"
@@ -2685,6 +2770,28 @@ class TestKT3ManualAgentReview:
         assert "active_policy" in captured["HarmfulnessJudgeAgent"]["input_bundle"]
         assert judge_report["structured_sidecar"]["active_policy_id"] == "kt3-refined-policy-test"
         assert judge_report["structured_sidecar"]["policy_rule_refs"][0]["rule_id"] == "lower-review"
+
+    def test_manual_agent_review_self_refines_judge_and_countermeasure(self):
+        async def mock_provider(*, agent_name, system_prompt, user_prompt, input_bundle, model):
+            return f"{agent_name} 输出"
+
+        result = asyncio.run(
+            run_manual_kt3_agent_review(
+                report=self._report(),
+                agent_names=["HarmfulnessJudgeAgent", "CountermeasureAgent"],
+                selected_post_ids=["p1"],
+                human_triggered_by=42,
+                provider=mock_provider,
+                model="mock-model",
+            )
+        )
+        roles = [item.get("report_role") for item in result["agent_reports"]]
+        assert "judge_draft" in roles
+        assert "judge_critique" in roles
+        assert "judge_final" in roles
+        assert "countermeasure_draft" in roles
+        assert "countermeasure_critique" in roles
+        assert "countermeasure_final" in roles
 
     def test_full_debate_triggers_for_high_conflict_and_low_conflict_stays_off(self):
         async def mock_provider(*, agent_name, system_prompt, user_prompt, input_bundle, model):
@@ -3237,26 +3344,19 @@ class TestRiskAPIKT3Integration:
         assert calls["user_id"] == 42
         assert calls["run_legacy_multi_agent"] is False
 
-    def test_run_kt3_agent_review_api_triggers_manual_service(self, monkeypatch):
+    def test_run_kt3_agent_review_api_creates_async_job(self, monkeypatch):
         calls = {}
-        expected = {
-            "report_id": "r1",
-            "summary": {"completed": 1, "failed": 0},
-            "agent_reviews": [
-                {
-                    "agent_name": "PostHarmAgent",
-                    "status": "completed",
-                    "report_text": "自然语言报告",
-                }
-            ],
-            "persistence": {"persisted": True},
-        }
 
-        async def mock_run_kt3_agent_review(**kwargs):
+        async def mock_create_kt3_agent_review_job(**kwargs):
             calls.update(kwargs)
-            return expected
+            return {
+                "job_id": 777,
+                "job_type": "agent_review",
+                "status": "pending",
+                "poll_url": "/api/v1/risk/kt3/jobs/777",
+            }
 
-        monkeypatch.setattr(risk_api.risk_service, "run_kt3_agent_review", mock_run_kt3_agent_review)
+        monkeypatch.setattr(risk_api.risk_service, "create_kt3_agent_review_job", mock_create_kt3_agent_review_job)
 
         response = asyncio.run(
             risk_api.run_kt3_agent_review(
@@ -3276,16 +3376,19 @@ class TestRiskAPIKT3Integration:
         )
 
         assert response["code"] == 0
-        assert response["data"]["summary"]["completed"] == 1
-        assert response["data"]["agent_reviews"][0]["report_text"] == "自然语言报告"
-        assert calls["report_id"] == "r1"
-        assert calls["agent_names"] == ["PostHarmAgent"]
-        assert calls["selected_post_ids"] == ["p1"]
-        assert calls["selected_tree_ids"] == ["tree-1"]
-        assert calls["enable_active_retrieval"] is True
-        assert calls["enable_light_debate"] is True
-        assert calls["policy_id"] == "kt3-policy-test"
-        assert calls["retrieval_top_k"] == 5
+        assert response["data"]["job_id"] == 777
+        assert response["data"]["status"] == "pending"
+        assert response["data"]["poll_url"] == "/api/v1/risk/kt3/jobs/777"
+        assert calls["job_type"] == "agent_review"
+        assert calls["payload"]["report_id"] == "r1"
+        assert calls["payload"]["agent_names"] == ["PostHarmAgent"]
+        assert calls["payload"]["selected_post_ids"] == ["p1"]
+        assert calls["payload"]["selected_tree_ids"] == ["tree-1"]
+        assert calls["payload"]["enable_active_retrieval"] is True
+        assert calls["payload"]["enable_external_retrieval"] is None
+        assert calls["payload"]["enable_light_debate"] is True
+        assert calls["payload"]["policy_id"] == "kt3-policy-test"
+        assert calls["payload"]["retrieval_top_k"] == 5
         assert calls["user_id"] == 42
 
     def test_kt3_policy_optimize_and_get_api(self, monkeypatch):

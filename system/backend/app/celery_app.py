@@ -13,7 +13,7 @@ celery_app = Celery(
     "cogguard",
     broker=settings.redis_url,
     backend=settings.redis_url,
-    include=["app.tasks.crawl_tasks"],
+    include=["app.tasks.crawl_tasks", "app.tasks.kt3_tasks"],
 )
 
 celery_app.conf.update(
@@ -25,5 +25,6 @@ celery_app.conf.update(
     task_track_started=True,
     task_routes={
         "crawl.*": {"queue": "crawl"},
+        "kt3.*": {"queue": "kt3"},
     },
 )

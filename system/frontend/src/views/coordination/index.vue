@@ -2,1231 +2,1145 @@
   <div class="coordination-page">
     <PageHeader
       title="协同检测"
-      description="基于共享对象与时间窗识别协同配对，并对加权协同网络做社区发现与可视化展示。"
+      description="查看历史协同数据集，展示 MAGNN + Leiden 的协同网络发现结果，以及 SBERT + fusion_gnn 的关键节点识别结果。"
     />
 
     <a-card size="small" class="panel">
-      <a-form layout="inline" :model="params" @finish="handleDetect">
-        <a-form-item label="时间窗口(秒)">
-          <a-input-number v-model:value="params.time_window" :min="1" :max="3600" />
-        </a-form-item>
-        <a-form-item label="最低参与">
-          <a-input-number v-model:value="params.min_participation" :min="1" :max="100" />
-        </a-form-item>
-        <a-form-item label="边权阈值">
-          <a-slider v-model:value="params.edge_weight" :min="0" :max="1" :step="0.05" style="width: 160px" />
-        </a-form-item>
-        <a-form-item>
-          <a-button type="primary" html-type="submit" :loading="detecting">运行检测</a-button>
-        </a-form-item>
-        <a-form-item v-if="authStore.isPreviewMode">
-          <a-button :disabled="detecting" @click="handleLoadDemo">加载示例网络</a-button>
-        </a-form-item>
-      </a-form>
-    </a-card>
-
-    <a-alert
-      v-if="showPreviewAlert"
-      class="panel"
-      type="warning"
-      show-icon
-      :message="previewAlertTitle"
-      :description="previewAlertDescription"
-    >
-      <template #action>
-        <a-space v-if="authStore.isPreviewMode">
-          <a-button size="small" @click="handleLoadDemo">加载示例</a-button>
-          <a-button v-if="usingPreviewDemo" size="small" type="link" @click="handleDetect">重新获取真实结果</a-button>
-        </a-space>
-      </template>
-    </a-alert>
-
-    <a-row :gutter="[16, 16]" class="metric-row" v-if="summary">
-      <a-col :xs="12" :lg="6">
-        <a-card size="small"><a-statistic title="分析帖子" :value="summary.total_posts" /></a-card>
-      </a-col>
-      <a-col :xs="12" :lg="6">
-        <a-card size="small"><a-statistic title="协调配对" :value="summary.total_pairs" /></a-card>
-      </a-col>
-      <a-col :xs="12" :lg="6">
-        <a-card size="small"><a-statistic title="协调账户" :value="summary.coordinated_accounts" /></a-card>
-      </a-col>
-      <a-col :xs="12" :lg="6">
-        <a-card size="small"><a-statistic title="社区数量" :value="summary.cluster_count" /></a-card>
-      </a-col>
-    </a-row>
-
-    <a-row :gutter="[16, 16]" class="metric-row" v-if="summary">
-      <a-col :xs="12" :lg="8">
-        <a-card size="small"><a-statistic title="协调边数" :value="summary.coordinated_edges" /></a-card>
-      </a-col>
-      <a-col :xs="12" :lg="8">
-        <a-card size="small"><a-statistic title="连通分量" :value="summary.components" /></a-card>
-      </a-col>
-      <a-col :xs="12" :lg="8">
-        <a-card size="small"><a-statistic title="用户聚类" :value="clusterStats.length" /></a-card>
-      </a-col>
-    </a-row>
-
-    <a-card size="small" title="协同网络" class="panel">
-      <div ref="networkRef" class="network-chart">
-        <a-empty v-if="!hasNetwork" description="运行检测后展示协同网络" />
+      <div class="toolbar">
+        <div class="toolbar-left">
+          <a-button @click="loadDatasets" :loading="loadingDatasets">刷新数据集</a-button>
+          <a-upload :show-upload-list="false" :before-upload="beforeUpload">
+            <a-button type="primary" :loading="uploading">上传标准事件表</a-button>
+          </a-upload>
+        </div>
+        <div class="toolbar-right">
+          <a-button v-if="selectedDatasetId" type="primary" :loading="running" @click="handleRerun">
+            重新运行主线模型
+          </a-button>
+        </div>
       </div>
     </a-card>
 
-    <a-row :gutter="[16, 16]" class="metric-row">
-      <a-col :xs="24" :xl="12">
-        <a-card size="small" title="用户聚类统计" class="panel">
-          <a-table
-            v-if="clusterStats.length"
-            :columns="clusterColumns"
-            :data-source="clusterTableRows"
-            :pagination="{ pageSize }"
-            :scroll="{ x: 1180 }"
-            row-key="cluster_id"
-            size="middle"
-          />
-          <a-empty v-else description="暂无聚类数据" />
-        </a-card>
-      </a-col>
-      <a-col :xs="24" :xl="12">
-        <a-card size="small" title="协同账户排名" class="panel">
-          <template #extra v-if="accountStats.length">
-            <TableSettings v-model:size="tableSize" v-model:pageSize="pageSize" />
+    <a-spin :spinning="loadingDetail || loadingResult">
+      <template v-if="selectedDataset && resultSnapshot">
+        <a-card size="small" class="panel">
+          <template #title>
+            <div class="network-panel-head">
+              <span>协同网络发现</span>
+              <a-select
+                v-if="datasets.length"
+                v-model:value="selectedDatasetId"
+                class="dataset-select"
+                size="middle"
+                placeholder="选择数据集"
+                @change="handleDatasetSelect"
+              >
+                <a-select-option v-for="item in datasets" :key="item.dataset_id" :value="item.dataset_id">
+                  {{ datasetOptionLabel(item) }}
+                </a-select-option>
+              </a-select>
+            </div>
           </template>
-          <a-table
-            v-if="accountStats.length"
-            :columns="accountColumns"
-            :data-source="accountTableRows"
-            :pagination="{ pageSize }"
-            :scroll="{ x: 1480 }"
-            row-key="account_id"
-            :size="tableSize"
+          <div class="network-toolbar">
+            <div class="network-meta">
+              <span>
+                当前显示 {{ graphPayload?.summary?.rendered_node_count || 0 }} /
+                {{ graphPayload?.summary?.total_nodes || resultSnapshot.network?.total_nodes || 0 }} 个节点
+              </span>
+              <span>
+                显示边 {{ graphPayload?.summary?.rendered_edge_count || 0 }} /
+                {{ graphPayload?.summary?.total_edges || resultSnapshot.network?.total_edges || 0 }}
+              </span>
+            </div>
+            <div class="network-controls">
+              <a-select v-model:value="nodeLimit" size="small" class="node-limit-select" @change="loadGraph">
+                <a-select-option :value="50">前 50</a-select-option>
+                <a-select-option :value="100">前 100</a-select-option>
+                <a-select-option :value="200">前 200</a-select-option>
+                <a-select-option :value="500">前 500</a-select-option>
+                <a-select-option :value="1000">前 1000</a-select-option>
+                <a-select-option :value="0">全部</a-select-option>
+              </a-select>
+              <div class="score-filter">
+                <span>风险阈值</span>
+                <a-slider
+                  v-model:value="minNodeScore"
+                  class="score-slider"
+                  :min="0"
+                  :max="1"
+                  :step="0.01"
+                  :tooltip-formatter="(value: number | undefined) => formatMetric(value)"
+                  @change="scheduleGraphReload"
+                />
+                <span class="score-value">{{ formatMetric(minNodeScore) }}</span>
+              </div>
+              <a-switch v-model:checked="showNodeLabels" size="small" />
+              <span class="switch-label">显示节点标签</span>
+              <a-button size="small" @click="resetGraphCamera">重置视角</a-button>
+            </div>
+          </div>
+          <CoordinationGraph3D
+            ref="graph3dRef"
+            :nodes="graphPayload?.nodes || []"
+            :links="graphPayload?.links || []"
+            :show-labels="showNodeLabels"
+            :loading="loadingGraph"
+            @node-click="handleNodeClick"
           />
-          <a-empty v-else description="暂无数据" />
         </a-card>
-      </a-col>
-    </a-row>
 
-    <a-card size="small" title="高频共享对象" class="panel">
-      <a-table
-        v-if="groupStats.length"
-        :columns="groupColumns"
-        :data-source="groupTableRows"
-        :pagination="{ pageSize }"
-        :scroll="{ x: 1120 }"
-        row-key="object_id"
-        :size="tableSize"
-      />
-      <a-empty v-else description="暂无数据" />
-    </a-card>
+        <a-row :gutter="[16, 16]" class="panel-row panel-row--equal">
+          <a-col :xs="24" :xl="12" class="stretch-col">
+            <a-card size="small" title="社区发现结果" class="panel">
+              <a-table
+                :columns="communityColumns"
+                :data-source="resultSnapshot.communities || []"
+                row-key="cluster_id"
+                :pagination="{ pageSize: 8 }"
+                size="small"
+                :scroll="{ x: 960 }"
+              >
+                <template #bodyCell="{ column, record }">
+                  <template v-if="column.key === 'cluster_id'">
+                    <a class="table-action-link" @click.prevent="handleCommunityIdClick(record)">
+                      {{ record.cluster_id }}
+                    </a>
+                  </template>
+                  <template v-else-if="column.key === 'top_nodes'">
+                    <div class="inline-link-list">
+                      <a
+                        v-for="nodeId in (record.top_nodes || []).slice(0, 5)"
+                        :key="`${record.cluster_id}-${nodeId}`"
+                        class="table-action-link"
+                        @click.prevent="handleCommunityTopNodeClick(String(nodeId), record)"
+                      >
+                        {{ nodeId }}
+                      </a>
+                    </div>
+                  </template>
+                </template>
+              </a-table>
+            </a-card>
+          </a-col>
+          <a-col :xs="24" :xl="12" class="stretch-col">
+            <a-card size="small" title="全局关键节点" class="panel">
+              <a-table
+                :columns="keyNodeColumns"
+                :data-source="resultSnapshot.global_key_nodes || []"
+                row-key="account_id"
+                :pagination="{ pageSize: 10 }"
+                size="small"
+                :scroll="{ x: 1100 }"
+              >
+                <template #bodyCell="{ column, record }">
+                  <template v-if="column.key === 'account_id'">
+                    <div class="account-cell">
+                      <div class="account-main">
+                        <a class="table-action-link account-nickname" @click.prevent="handleKeyNodeClick(record)">
+                          {{ record.nickname || record.account_id }}
+                        </a>
+                        <a
+                          v-if="record.profile_url"
+                          class="external-link"
+                          :href="record.profile_url"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          @click.stop
+                        >
+                          主页
+                        </a>
+                      </div>
+                      <div class="account-sub">{{ record.account_id }}</div>
+                    </div>
+                  </template>
+                  <template v-else-if="column.key === 'cluster_id'">
+                    <a class="table-action-link" @click.prevent="handleCommunityIdClick(record)">
+                      {{ record.cluster_id }}
+                    </a>
+                  </template>
+                </template>
+              </a-table>
+            </a-card>
+          </a-col>
+        </a-row>
+      </template>
+
+      <a-empty v-else class="panel" description="请选择一个历史数据集查看协同检测结果" />
+    </a-spin>
+
+    <a-drawer
+      v-model:open="communityDrawerOpen"
+      width="620"
+      :title="drawerMode === 'community' ? '社区详情' : '账户详情'"
+      placement="right"
+      :destroy-on-close="false"
+    >
+      <a-spin :spinning="loadingCommunity">
+        <template v-if="selectedNode || communityDetail">
+          <div class="drawer-section">
+            <div class="drawer-title">
+              {{ drawerMode === 'community' ? `社区 ${communityDetail?.cluster_id ?? '-'}` : (selectedNode?.label || selectedNode?.id || '-') }}
+            </div>
+            <div class="drawer-grid">
+              <div><span>{{ drawerMode === 'community' ? '社区 ID' : '账号' }}</span><strong>{{ drawerMode === 'community' ? (communityDetail?.cluster_id ?? '-') : (selectedNode?.id ?? '-') }}</strong></div>
+              <div><span>{{ drawerMode === 'community' ? '成员规模' : '平台' }}</span><strong>{{ drawerMode === 'community' ? (communityDetail?.size ?? '-') : formatPlatformLabel(selectedNode?.platform) }}</strong></div>
+              <div><span>{{ drawerMode === 'community' ? '社区分数' : '节点分数' }}</span><strong>{{ formatMetric(drawerMode === 'community' ? communityDetail?.community_score : selectedNode?.node_score) }}</strong></div>
+              <div><span>{{ drawerMode === 'community' ? '对象集中度' : '社区分数' }}</span><strong>{{ formatMetric(drawerMode === 'community' ? communityDetail?.object_concentration : selectedNode?.community_score) }}</strong></div>
+              <div><span>社区规模</span><strong>{{ communityDetail?.size ?? selectedNode?.community_size ?? '-' }}</strong></div>
+              <div><span>密度</span><strong>{{ formatMetric(communityDetail?.density) }}</strong></div>
+              <div><span>对象集中度</span><strong>{{ formatMetric(communityDetail?.object_concentration) }}</strong></div>
+              <div><span>社区</span><strong>{{ selectedNode?.cluster_id ?? communityDetail?.cluster_id ?? '-' }}</strong></div>
+            </div>
+          </div>
+
+          <div class="drawer-section">
+            <div class="section-head">{{ drawerMode === 'community' ? '社区共享对象证据' : '该用户参与的共享对象证据' }}</div>
+            <div v-if="communityDetail?.top_objects?.length" class="object-evidence-list">
+              <div
+                v-for="item in communityDetail?.top_objects || []"
+                :key="`${item.relation || 'relation'}:${item.object_id}`"
+                class="object-evidence-card"
+              >
+                <div class="object-evidence-head">
+                  <div class="object-evidence-meta">
+                    <a-tag color="blue">{{ item.relation_label || '共享对象' }}</a-tag>
+                    <span>次数 {{ item.count ?? '-' }}</span>
+                    <span>占比 {{ formatPercent(item.share) }}</span>
+                  </div>
+                  <a
+                    v-if="item.object_url"
+                    :href="item.object_url"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="object-evidence-link"
+                  >
+                    打开原始链接
+                  </a>
+                </div>
+                <div class="object-evidence-value">{{ formatObjectDisplayText(item) }}</div>
+                <div v-if="item.evidence_examples?.length" class="object-example-list">
+                  <template v-if="drawerMode === 'account'">
+                    <div v-if="getMyExamples(item.evidence_examples).length" class="object-example-group">
+                      <div class="object-example-group-title">我的样例</div>
+                      <div
+                        v-for="(example, index) in getMyExamples(item.evidence_examples)"
+                        :key="`${item.object_id}:mine:${index}`"
+                        class="object-example-card object-example-card--mine"
+                      >
+                        <div class="object-example-head">
+                          <strong>{{ example.nickname || example.account_id || '当前账号' }}</strong>
+                          <a
+                            v-if="example.post_url"
+                            :href="example.post_url"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="object-example-link"
+                          >
+                            原帖
+                          </a>
+                        </div>
+                        <div class="object-example-content">{{ example.content || '无内容摘要' }}</div>
+                      </div>
+                    </div>
+                    <div v-if="getReferenceExamples(item.evidence_examples).length" class="object-example-group">
+                      <div class="object-example-group-title">
+                        {{ getMyExamples(item.evidence_examples).length ? '社区参考样例' : '样例' }}
+                      </div>
+                      <div
+                        v-for="(example, index) in getReferenceExamples(item.evidence_examples)"
+                        :key="`${item.object_id}:ref:${index}`"
+                        class="object-example-card"
+                      >
+                        <div class="object-example-head">
+                          <strong>{{ example.nickname || example.account_id || '样例账号' }}</strong>
+                          <a
+                            v-if="example.post_url"
+                            :href="example.post_url"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="object-example-link"
+                          >
+                            原帖
+                          </a>
+                        </div>
+                        <div class="object-example-content">{{ example.content || '无内容摘要' }}</div>
+                      </div>
+                    </div>
+                  </template>
+                  <template v-else>
+                    <div
+                      v-for="(example, index) in getPreviewExamples(item.evidence_examples)"
+                      :key="`${item.object_id}:example:${index}`"
+                      class="object-example-card"
+                    >
+                      <div class="object-example-head">
+                        <strong>{{ example.nickname || example.account_id || '样例账号' }}</strong>
+                        <a
+                          v-if="example.post_url"
+                          :href="example.post_url"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          class="object-example-link"
+                        >
+                          原帖
+                        </a>
+                      </div>
+                      <div class="object-example-content">{{ example.content || '无内容摘要' }}</div>
+                    </div>
+                  </template>
+                </div>
+              </div>
+            </div>
+            <a-empty v-else description="暂无共享对象证据" />
+          </div>
+
+          <div class="drawer-section">
+            <div class="section-head">社区成员</div>
+            <a-table
+              :columns="memberColumns"
+              :data-source="communityDetail?.members || []"
+              row-key="id"
+              :pagination="{ pageSize: 8 }"
+              size="small"
+              :scroll="{ x: 900 }"
+            >
+              <template #bodyCell="{ column, record }">
+                <template v-if="column.key === 'id'">
+                  <div class="account-cell">
+                    <div class="account-main">
+                      <a class="table-action-link account-nickname" @click.prevent="handleMemberClick(record)">
+                        {{ record.nickname || record.id }}
+                      </a>
+                      <a
+                        v-if="record.profile_url"
+                        class="external-link"
+                        :href="record.profile_url"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        @click.stop
+                      >
+                        主页
+                      </a>
+                    </div>
+                    <div class="account-sub">{{ record.id }}</div>
+                  </div>
+                </template>
+              </template>
+            </a-table>
+          </div>
+        </template>
+        <a-empty v-else description="点击网络节点查看社区详情" />
+      </a-spin>
+    </a-drawer>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, h, nextTick, onBeforeUnmount, onMounted, ref, reactive, watch } from 'vue'
+import { computed, onBeforeUnmount, ref } from 'vue'
 import { message } from 'ant-design-vue'
-import * as echarts from 'echarts'
-import type { ECharts, EChartsOption } from 'echarts'
+
 import PageHeader from '@/components/PageHeader.vue'
-import TableSettings from '@/components/TableSettings.vue'
-import { runCoordinationDetection } from '@/api/coordination'
-import { useAuthStore } from '@/stores/auth'
+import {
+  createCoordinationRun,
+  getCoordinationCommunityDetail,
+  getCoordinationDatasetDetail,
+  getCoordinationDatasetLatestResult,
+  getCoordinationGraph,
+  getCoordinationRun,
+  listCoordinationDatasets,
+  uploadCoordinationDataset,
+} from '@/api/coordination'
+import type { CoordinationCommunityDetail, CoordinationGraphNode, CoordinationGraphPayload } from '@/api/coordination'
+import CoordinationGraph3D from './CoordinationGraph3D.vue'
 
-type NodeData = {
-  id: string
-  name?: string
-  degree?: number
-  cluster_id?: number
-  cluster_size?: number
-  cluster_degree?: number
-  [key: string]: any
+type DatasetItem = {
+  dataset_id: number
+  slug?: string
+  display_name: string
+  source_type: string
+  has_labels: boolean
+  event_rows: number
+  account_nodes: number
+  object_ids: number
+  user_user_edges: number
+  available_relations: string[]
+  latest_status?: string
+  latest_metrics?: Record<string, number | null>
 }
 
-type EdgeData = {
-  source: string
-  target: string
-  weight?: number
-  avg_time_delta?: number
-  edge_symmetry_score?: number
-  [key: string]: any
-}
+const datasets = ref<DatasetItem[]>([])
+const selectedDatasetId = ref<number | null>(null)
+const datasetDetail = ref<any>(null)
+const resultSnapshot = ref<any>(null)
+const loadingDatasets = ref(false)
+const loadingDetail = ref(false)
+const loadingResult = ref(false)
+const loadingGraph = ref(false)
+const loadingCommunity = ref(false)
+const uploading = ref(false)
+const running = ref(false)
+const pollingRunId = ref<number | null>(null)
+const graphPayload = ref<CoordinationGraphPayload | null>(null)
+const nodeLimit = ref<number>(200)
+const minNodeScore = ref<number>(0)
+const showNodeLabels = ref(false)
+const graph3dRef = ref<InstanceType<typeof CoordinationGraph3D> | null>(null)
+const communityDrawerOpen = ref(false)
+const selectedNode = ref<CoordinationGraphNode | null>(null)
+const communityDetail = ref<CoordinationCommunityDetail | null>(null)
+const drawerMode = ref<'account' | 'community'>('account')
+let pollTimer: number | null = null
+let graphReloadTimer: number | null = null
 
-type ClusterRepresentative = {
-  account_id: string
-  account_label?: string
-  cluster_degree?: number
-  cross_cluster_weight?: number
-  cross_cluster_edge_count?: number
-  bridge_score?: number
-  first_seen_at?: string
-  first_seen_ts?: number
-  coordinated_object_count?: number
-  coordinated_content_count?: number
-  shared_objects_preview?: string[]
-  [key: string]: any
-}
-
-type ClusterData = {
-  cluster_id: number
-  size: number
-  total_weight?: number
-  avg_degree?: number
-  core_nodes?: ClusterRepresentative[]
-  bridge_nodes?: ClusterRepresentative[]
-  early_nodes?: ClusterRepresentative[]
-  top_nodes?: ClusterRepresentative[]
-  shared_objects?: Array<{ object_id: string; object_type?: string; preview?: string; count?: number }>
-  shared_objects_preview?: string[]
-  [key: string]: any
-}
-
-const previewDetectionResult = {
-  network: {
-    nodes: [
-      {
-        id: 'acct_alpha',
-        name: 'acct_alpha',
-        account_label: 'acct_alpha',
-        degree: 3,
-        cluster_id: 0,
-        cluster_size: 3,
-        cluster_degree: 6.4,
-        cross_cluster_weight: 0.8,
-        bridge_score: 0.18,
-        first_seen_at: '2026-05-21T00:00:03+00:00',
-        coordinated_object_count: 3,
-        coordinated_content_count: 4,
-        shared_objects_preview: ['#联合话题', 'https://coord.example/shared-brief', 'https://media.example/assets/banner-a.jpg'],
-        content_previews: ['首批转发统一话题主帖', '沿用统一海报图传播', '评论区补充相同链接摘要'],
-      },
-      {
-        id: 'acct_beta',
-        name: 'acct_beta',
-        account_label: 'acct_beta',
-        degree: 4,
-        cluster_id: 0,
-        cluster_size: 3,
-        cluster_degree: 7.1,
-        cross_cluster_weight: 2.4,
-        bridge_score: 0.68,
-        first_seen_at: '2026-05-21T00:00:06+00:00',
-        coordinated_object_count: 4,
-        coordinated_content_count: 5,
-        shared_objects_preview: ['#联合话题', 'https://coord.example/shared-brief', 'https://media.example/assets/banner-a.jpg'],
-        content_previews: ['二次扩散统一口径文案', '同步转发摘要链接', '桥接到另一簇的引流评论'],
-      },
-      {
-        id: 'acct_gamma',
-        name: 'acct_gamma',
-        account_label: 'acct_gamma',
-        degree: 2,
-        cluster_id: 0,
-        cluster_size: 3,
-        cluster_degree: 4.6,
-        cross_cluster_weight: 0,
-        bridge_score: 0,
-        first_seen_at: '2026-05-21T00:00:18+00:00',
-        coordinated_object_count: 2,
-        coordinated_content_count: 3,
-        shared_objects_preview: ['#联合话题', 'https://coord.example/shared-brief'],
-        content_previews: ['跟进转发同主题话题', '补发短评并附上同一链接'],
-      },
-      {
-        id: 'acct_delta',
-        name: 'acct_delta',
-        account_label: 'acct_delta',
-        degree: 4,
-        cluster_id: 1,
-        cluster_size: 3,
-        cluster_degree: 6.9,
-        cross_cluster_weight: 2.4,
-        bridge_score: 0.63,
-        first_seen_at: '2026-05-21T00:00:09+00:00',
-        coordinated_object_count: 4,
-        coordinated_content_count: 5,
-        shared_objects_preview: ['#联动话题扩散', 'https://coord.example/shared-brief', 'https://media.example/assets/banner-a.jpg'],
-        content_previews: ['从另一社区接力扩散链接', '图文同步转发统一海报', '补充评论引导跳转'],
-      },
-      {
-        id: 'acct_epsilon',
-        name: 'acct_epsilon',
-        account_label: 'acct_epsilon',
-        degree: 2,
-        cluster_id: 1,
-        cluster_size: 3,
-        cluster_degree: 4.8,
-        cross_cluster_weight: 0.3,
-        bridge_score: 0.07,
-        first_seen_at: '2026-05-21T00:00:14+00:00',
-        coordinated_object_count: 3,
-        coordinated_content_count: 3,
-        shared_objects_preview: ['#联动话题扩散', 'https://coord.example/shared-brief', 'https://media.example/assets/banner-a.jpg'],
-        content_previews: ['快速转载图文卡片', '评论区复用同一短链说明'],
-      },
-      {
-        id: 'acct_zeta',
-        name: 'acct_zeta',
-        account_label: 'acct_zeta',
-        degree: 1,
-        cluster_id: 1,
-        cluster_size: 3,
-        cluster_degree: 3.5,
-        cross_cluster_weight: 0,
-        bridge_score: 0,
-        first_seen_at: '2026-05-21T00:00:27+00:00',
-        coordinated_object_count: 2,
-        coordinated_content_count: 2,
-        shared_objects_preview: ['https://media.example/assets/banner-a.jpg', 'https://coord.example/shared-brief'],
-        content_previews: ['复用同一张海报图片', '附带统一跳转链接'],
-      },
-    ],
-    edges: [
-      {
-        source: 'acct_alpha',
-        target: 'acct_beta',
-        weight: 4.2,
-        avg_time_delta: 6,
-        edge_symmetry_score: 0.94,
-        shared_objects_preview: ['#联合话题', 'https://coord.example/shared-brief'],
-        shared_content_previews: ['统一转发主帖文案', '短链摘要同步扩散'],
-      },
-      {
-        source: 'acct_beta',
-        target: 'acct_gamma',
-        weight: 3.4,
-        avg_time_delta: 9,
-        edge_symmetry_score: 0.88,
-        shared_objects_preview: ['#联合话题', 'https://coord.example/shared-brief'],
-        shared_content_previews: ['话题评论同步补发', '摘要链接二次扩散'],
-      },
-      {
-        source: 'acct_alpha',
-        target: 'acct_gamma',
-        weight: 2.2,
-        avg_time_delta: 14,
-        edge_symmetry_score: 0.73,
-        shared_objects_preview: ['#联合话题'],
-        shared_content_previews: ['统一话题下的跟进帖子'],
-      },
-      {
-        source: 'acct_delta',
-        target: 'acct_epsilon',
-        weight: 4.0,
-        avg_time_delta: 7,
-        edge_symmetry_score: 0.91,
-        shared_objects_preview: ['#联动话题扩散', 'https://media.example/assets/banner-a.jpg'],
-        shared_content_previews: ['图文卡片同步搬运', '统一海报素材转发'],
-      },
-      {
-        source: 'acct_delta',
-        target: 'acct_zeta',
-        weight: 2.8,
-        avg_time_delta: 12,
-        edge_symmetry_score: 0.79,
-        shared_objects_preview: ['https://media.example/assets/banner-a.jpg'],
-        shared_content_previews: ['海报素材复用', '引流评论同步配图'],
-      },
-      {
-        source: 'acct_epsilon',
-        target: 'acct_zeta',
-        weight: 2.1,
-        avg_time_delta: 15,
-        edge_symmetry_score: 0.7,
-        shared_objects_preview: ['https://coord.example/shared-brief', 'https://media.example/assets/banner-a.jpg'],
-        shared_content_previews: ['短链说明同步发布'],
-      },
-      {
-        source: 'acct_beta',
-        target: 'acct_delta',
-        weight: 1.8,
-        avg_time_delta: 22,
-        edge_symmetry_score: 0.58,
-        shared_objects_preview: ['https://coord.example/shared-brief'],
-        shared_content_previews: ['跨社区引流评论', '桥接账号同步转发'],
-      },
-    ],
-    node_count: 6,
-    edge_count: 7,
-    component_count: 1,
-    components: [['acct_alpha', 'acct_beta', 'acct_gamma', 'acct_delta', 'acct_epsilon', 'acct_zeta']],
-    cluster_count: 2,
-    clusters: [
-      {
-        cluster_id: 0,
-        size: 3,
-        total_weight: 9.8,
-        avg_degree: 3,
-        members: ['acct_alpha', 'acct_beta', 'acct_gamma'],
-        shared_objects_preview: ['#联合话题', 'https://coord.example/shared-brief', 'https://media.example/assets/banner-a.jpg'],
-        core_nodes: [
-          { account_id: 'acct_beta', account_label: 'acct_beta', cluster_degree: 7.1, first_seen_at: '2026-05-21T00:00:06+00:00' },
-          { account_id: 'acct_alpha', account_label: 'acct_alpha', cluster_degree: 6.4, first_seen_at: '2026-05-21T00:00:03+00:00' },
-        ],
-        bridge_nodes: [
-          {
-            account_id: 'acct_beta',
-            account_label: 'acct_beta',
-            cluster_degree: 7.1,
-            cross_cluster_weight: 2.4,
-            bridge_score: 0.68,
-            first_seen_at: '2026-05-21T00:00:06+00:00',
-          },
-        ],
-        early_nodes: [{ account_id: 'acct_alpha', account_label: 'acct_alpha', first_seen_at: '2026-05-21T00:00:03+00:00' }],
-        top_nodes: [
-          { account_id: 'acct_beta', account_label: 'acct_beta', cluster_degree: 7.1, first_seen_at: '2026-05-21T00:00:06+00:00' },
-          { account_id: 'acct_alpha', account_label: 'acct_alpha', cluster_degree: 6.4, first_seen_at: '2026-05-21T00:00:03+00:00' },
-        ],
-      },
-      {
-        cluster_id: 1,
-        size: 3,
-        total_weight: 8.9,
-        avg_degree: 2.33,
-        members: ['acct_delta', 'acct_epsilon', 'acct_zeta'],
-        shared_objects_preview: ['#联动话题扩散', 'https://coord.example/shared-brief', 'https://media.example/assets/banner-a.jpg'],
-        core_nodes: [
-          { account_id: 'acct_delta', account_label: 'acct_delta', cluster_degree: 6.9, first_seen_at: '2026-05-21T00:00:09+00:00' },
-        ],
-        bridge_nodes: [
-          {
-            account_id: 'acct_delta',
-            account_label: 'acct_delta',
-            cluster_degree: 6.9,
-            cross_cluster_weight: 2.4,
-            bridge_score: 0.63,
-            first_seen_at: '2026-05-21T00:00:09+00:00',
-          },
-        ],
-        early_nodes: [{ account_id: 'acct_delta', account_label: 'acct_delta', first_seen_at: '2026-05-21T00:00:09+00:00' }],
-        top_nodes: [
-          { account_id: 'acct_delta', account_label: 'acct_delta', cluster_degree: 6.9, first_seen_at: '2026-05-21T00:00:09+00:00' },
-        ],
-      },
-    ],
-  },
-  account_stats: [
-    {
-      account_id: 'acct_beta',
-      account_label: 'acct_beta',
-      degree: 4,
-      avg_weight: 3.13,
-      avg_time_delta: 12.33,
-      avg_edge_symmetry: 0.8,
-      coordinated_shares_count: 5,
-      shared_objects_preview: ['#联合话题', 'https://coord.example/shared-brief', 'https://media.example/assets/banner-a.jpg'],
-      content_previews: ['二次扩散统一口径文案', '同步转发摘要链接'],
-    },
-    {
-      account_id: 'acct_delta',
-      account_label: 'acct_delta',
-      degree: 4,
-      avg_weight: 2.87,
-      avg_time_delta: 13.67,
-      avg_edge_symmetry: 0.76,
-      coordinated_shares_count: 5,
-      shared_objects_preview: ['#联动话题扩散', 'https://coord.example/shared-brief', 'https://media.example/assets/banner-a.jpg'],
-      content_previews: ['从另一社区接力扩散链接', '图文同步转发统一海报'],
-    },
-    {
-      account_id: 'acct_alpha',
-      account_label: 'acct_alpha',
-      degree: 3,
-      avg_weight: 3.2,
-      avg_time_delta: 10,
-      avg_edge_symmetry: 0.84,
-      coordinated_shares_count: 4,
-      shared_objects_preview: ['#联合话题', 'https://coord.example/shared-brief', 'https://media.example/assets/banner-a.jpg'],
-      content_previews: ['首批转发统一话题主帖', '沿用统一海报图传播'],
-    },
-    {
-      account_id: 'acct_epsilon',
-      account_label: 'acct_epsilon',
-      degree: 2,
-      avg_weight: 3.05,
-      avg_time_delta: 11,
-      avg_edge_symmetry: 0.81,
-      coordinated_shares_count: 3,
-      shared_objects_preview: ['#联动话题扩散', 'https://coord.example/shared-brief'],
-      content_previews: ['快速转载图文卡片'],
-    },
-    {
-      account_id: 'acct_gamma',
-      account_label: 'acct_gamma',
-      degree: 2,
-      avg_weight: 2.8,
-      avg_time_delta: 11.5,
-      avg_edge_symmetry: 0.76,
-      coordinated_shares_count: 3,
-      shared_objects_preview: ['#联合话题', 'https://coord.example/shared-brief'],
-      content_previews: ['跟进转发同主题话题'],
-    },
-    {
-      account_id: 'acct_zeta',
-      account_label: 'acct_zeta',
-      degree: 1,
-      avg_weight: 2.45,
-      avg_time_delta: 13.5,
-      avg_edge_symmetry: 0.74,
-      coordinated_shares_count: 2,
-      shared_objects_preview: ['https://media.example/assets/banner-a.jpg', 'https://coord.example/shared-brief'],
-      content_previews: ['复用同一张海报图片'],
-    },
-  ],
-  group_stats: [
-    { object_id: '#联合话题', object_type: '话题', num_accounts: 4, num_pairs: 5 },
-    { object_id: 'https://coord.example/shared-brief', object_type: '链接', num_accounts: 5, num_pairs: 6 },
-    { object_id: 'https://media.example/assets/banner-a.jpg', object_type: '图片', num_accounts: 3, num_pairs: 3 },
-  ],
-  cluster_stats: [],
-  summary: {
-    event_id: 'preview-demo',
-    platform: 'preview',
-    total_posts: 18,
-    total_comments: 9,
-    total_items: 27,
-    total_pairs: 18,
-    coordinated_accounts: 6,
-    coordinated_edges: 7,
-    components: 1,
-    cluster_count: 2,
-  },
-}
-
-const detecting = ref(false)
-const tableSize = ref<'small' | 'middle' | 'default'>('middle')
-const pageSize = ref(10)
-const summary = ref<any>(null)
-const network = ref<{ nodes: NodeData[]; edges: EdgeData[]; clusters?: any[] } | null>(null)
-const accountStats = ref<any[]>([])
-const groupStats = ref<any[]>([])
-const clusterStats = ref<any[]>([])
-const networkRef = ref<HTMLDivElement | null>(null)
-const chart = ref<ECharts | null>(null)
-let resizeHandler: (() => void) | null = null
-const authStore = useAuthStore()
-const dataMode = ref<'live' | 'demo'>('live')
-
-const params = reactive({ time_window: 60, min_participation: 2, edge_weight: 0.5 })
-
-const hasNetwork = computed(() => Boolean(network.value?.nodes?.length && network.value?.edges?.length))
-
-const clusterRoleMap = computed(() => {
-  const roleMap = new Map<string, string[]>()
-  const appendRole = (accountId: string, role: string) => {
-    const current = roleMap.get(accountId) || []
-    if (!current.includes(role)) {
-      current.push(role)
-      roleMap.set(accountId, current)
-    }
-  }
-
-  ;(clusterStats.value as ClusterData[]).forEach((cluster) => {
-    ;(cluster.core_nodes || cluster.top_nodes || []).forEach((item) => appendRole(String(item.account_id), '核心'))
-    ;(cluster.bridge_nodes || []).forEach((item) => appendRole(String(item.account_id), '桥接'))
-    ;(cluster.early_nodes || []).forEach((item) => appendRole(String(item.account_id), '早发'))
-  })
-
-  return roleMap
-})
-
-const clusterTableRows = computed(() =>
-  (clusterStats.value as ClusterData[]).map((cluster) => ({
-    ...cluster,
-    core_nodes_preview: formatCoreNodes(cluster.core_nodes || cluster.top_nodes || []),
-    bridge_nodes_preview: formatBridgeNodes(cluster.bridge_nodes || []),
-    early_nodes_preview: formatEarlyNodes(cluster.early_nodes || []),
-    shared_objects_preview_text: formatPreviewList(cluster.shared_objects_preview || cluster.shared_objects || []),
-  })),
+const selectedDataset = computed(() =>
+  datasets.value.find((item) => item.dataset_id === selectedDatasetId.value) || null,
 )
 
-const accountTableRows = computed(() =>
-  accountStats.value.map((account) => ({
-    ...account,
-    account_display: formatAccountName(account.account_label, account.account_id),
-    shared_objects_display: formatPreviewList(account.shared_object_entries || account.shared_objects_preview || [], 8),
-    content_previews_display: formatPreviewList(account.content_preview_entries || account.content_previews || [], 8),
-  })),
-)
-
-const groupTableRows = computed(() =>
-  groupStats.value.map((group) => ({
-    ...group,
-    object_display: formatGroupObject(group.object_type, group.object_id),
-  })),
-)
-
-const nodeLabelMap = computed(() => {
-  const labels = new Map<string, string>()
-  ;(network.value?.nodes || []).forEach((node) => {
-    labels.set(String(node.id), formatAccountName(node.account_label, node.id))
-  })
-  return labels
-})
-
-const usingPreviewDemo = computed(() => dataMode.value === 'demo')
-const showPreviewAlert = computed(() => authStore.isPreviewMode || usingPreviewDemo.value)
-const previewAlertTitle = computed(() =>
-  usingPreviewDemo.value ? '当前显示的是示例协同网络' : '当前处于预览登录态',
-)
-const previewAlertDescription = computed(() =>
-  usingPreviewDemo.value
-    ? '图中的账号名称、链接与协同对象来自本地示例数据，仅用于界面预览，不代表真实检测结果。'
-    : '页面会优先请求后端真实协同数据。若接口无数据或未检出协同行为，将保留真实空结果，不再自动伪造示例账号名称。',
-)
-
-const palette = ['#2563eb', '#059669', '#dc2626', '#d97706', '#7c3aed', '#db2777', '#0891b2', '#16a34a']
-
-const accountColumns = [
+const communityColumns = [
+  { title: '社区 ID', dataIndex: 'cluster_id', key: 'cluster_id', width: 90 },
+  { title: '规模', dataIndex: 'size', key: 'size', width: 80 },
+  { title: '社区分数', dataIndex: 'community_score', key: 'community_score', width: 110, customRender: ({ text }: any) => formatMetric(text) },
+  { title: '密度', dataIndex: 'density', key: 'density', width: 90, customRender: ({ text }: any) => formatMetric(text) },
+  { title: '对象集中度', dataIndex: 'object_concentration', key: 'object_concentration', width: 120, customRender: ({ text }: any) => formatMetric(text) },
   {
-    title: '账户',
-    dataIndex: 'account_display',
-    key: 'account_display',
-    width: 200,
-    customRender: ({ record }: any) => renderAccountCell(record),
-  },
-  { title: '度数', dataIndex: 'degree', key: 'degree', width: 90, sorter: (a: any, b: any) => a.degree - b.degree },
-  { title: '加权度', dataIndex: 'avg_weight', key: 'avg_weight', width: 110, sorter: (a: any, b: any) => a.avg_weight - b.avg_weight },
-  { title: '平均时差', dataIndex: 'avg_time_delta', key: 'avg_time_delta', width: 110 },
-  { title: '对称性', dataIndex: 'avg_edge_symmetry', key: 'avg_edge_symmetry', width: 100 },
-  { title: '协同分享数', dataIndex: 'coordinated_shares_count', key: 'coordinated_shares_count', width: 110 },
-  {
-    title: '协同对象',
-    dataIndex: 'shared_object_entries',
-    key: 'shared_object_entries',
-    width: 420,
-    customRender: ({ record }: any) => renderObjectListCell(record.shared_object_entries || record.shared_objects_preview || []),
-  },
-  {
-    title: '内容示例',
-    dataIndex: 'content_preview_entries',
-    key: 'content_preview_entries',
-    width: 340,
-    customRender: ({ record }: any) => renderPreviewListCell(record.content_preview_entries || record.content_previews || []),
+    title: '关键节点',
+    dataIndex: 'top_nodes',
+    key: 'top_nodes',
+    width: 300,
+    customRender: ({ record }: any) => (record.top_nodes || []).slice(0, 5).join(', '),
   },
 ]
 
-const groupColumns = [
-  { title: '对象类型', dataIndex: 'object_type', key: 'object_type', width: 100 },
+const keyNodeColumns = [
+  { title: '账号', dataIndex: 'account_id', key: 'account_id', width: 240 },
+  { title: '平台', dataIndex: 'platform', key: 'platform', width: 90, customRender: ({ text }: any) => formatPlatformLabel(text) },
+  { title: '节点分数', dataIndex: 'node_score', key: 'node_score', width: 120, customRender: ({ text }: any) => formatMetric(text) },
+  { title: '社区 ID', dataIndex: 'cluster_id', key: 'cluster_id', width: 90 },
+  { title: '社区分数', dataIndex: 'community_score', key: 'community_score', width: 110, customRender: ({ text }: any) => formatMetric(text) },
+  { title: '社区规模', dataIndex: 'community_size', key: 'community_size', width: 100 },
   {
     title: '共享对象',
-    dataIndex: 'object_display',
-    key: 'object_display',
-    width: 660,
-    customRender: ({ record }: any) => renderSingleObjectCell(record.object_id, record.object_type),
-  },
-  { title: '涉及账户数', dataIndex: 'num_accounts', key: 'num_accounts', width: 120, sorter: (a: any, b: any) => a.num_accounts - b.num_accounts },
-  { title: '协同配对数', dataIndex: 'num_pairs', key: 'num_pairs', width: 120, sorter: (a: any, b: any) => a.num_pairs - b.num_pairs },
-]
-
-const clusterColumns = [
-  { title: '社区ID', dataIndex: 'cluster_id', key: 'cluster_id', width: 90, sorter: (a: any, b: any) => a.cluster_id - b.cluster_id },
-  { title: '规模', dataIndex: 'size', key: 'size', width: 80, sorter: (a: any, b: any) => a.size - b.size },
-  { title: '总权重', dataIndex: 'total_weight', key: 'total_weight', width: 100, sorter: (a: any, b: any) => a.total_weight - b.total_weight },
-  { title: '平均度', dataIndex: 'avg_degree', key: 'avg_degree', width: 100, sorter: (a: any, b: any) => a.avg_degree - b.avg_degree },
-  { title: '核心节点', dataIndex: 'core_nodes_preview', key: 'core_nodes_preview', width: 210, ellipsis: true },
-  { title: '桥接节点', dataIndex: 'bridge_nodes_preview', key: 'bridge_nodes_preview', width: 210, ellipsis: true },
-  { title: '早发节点', dataIndex: 'early_nodes_preview', key: 'early_nodes_preview', width: 210, ellipsis: true },
-  {
-    title: '协同对象',
     dataIndex: 'shared_objects',
     key: 'shared_objects',
-    width: 320,
-    customRender: ({ record }: any) => renderObjectListCell(record.shared_objects || record.shared_objects_preview || []),
+    width: 340,
+    customRender: ({ record }: any) => formatSharedObjectPreview(record.shared_objects),
   },
 ]
 
-const accountLabelPaths = [
-  ['account_label'],
-  ['account_name'],
-  ['author_name'],
-  ['author_username'],
-  ['author_screen_name'],
-  ['author_nickname'],
-  ['nickname'],
-  ['screen_name'],
-  ['user_name'],
-  ['username'],
-  ['display_name'],
-  ['label'],
-  ['name'],
-  ['author_profile', 'author_name'],
-  ['author_profile', 'display_name'],
-  ['author_profile', 'screen_name'],
-  ['author_profile', 'nickname'],
-  ['author_profile', 'user_name'],
-  ['author_profile', 'username'],
-  ['author_profile', 'name'],
-  ['raw_data', 'author_name'],
-  ['raw_data', 'display_name'],
-  ['raw_data', 'screen_name'],
-  ['raw_data', 'nickname'],
-  ['raw_data', 'username'],
-  ['raw_data', 'user_name'],
-  ['raw_data', 'user', 'screen_name'],
-  ['raw_data', 'user', 'nickname'],
-  ['raw_data', 'user', 'name'],
-  ['raw_data', 'mblog', 'user', 'screen_name'],
-  ['raw_data', 'mblog', 'user', 'nickname'],
-  ['raw_data', 'mblog', 'user', 'name'],
-  ['raw_data', 'post_details_raw', 'mblog', 'user', 'screen_name'],
-  ['raw_data', 'post_details_raw', 'mblog', 'user', 'nickname'],
-  ['raw_data', 'post_details_raw', 'mblog', 'user', 'name'],
+const memberColumns = [
+  { title: '账号', dataIndex: 'id', key: 'id', width: 240 },
+  { title: '平台', dataIndex: 'platform', key: 'platform', width: 90, customRender: ({ text }: any) => formatPlatformLabel(text) },
+  { title: '节点分数', dataIndex: 'node_score', key: 'node_score', width: 110, customRender: ({ text }: any) => formatMetric(text) },
+  { title: '出向权重', dataIndex: 'directed_out_weight', key: 'directed_out_weight', width: 110, customRender: ({ text }: any) => formatMetric(text) },
+  { title: '入向权重', dataIndex: 'directed_in_weight', key: 'directed_in_weight', width: 110, customRender: ({ text }: any) => formatMetric(text) },
 ]
 
-function getNestedValue(source: any, path: string[]) {
-  let current = source
-  for (const key of path) {
-    if (!current || typeof current !== 'object') {
-      return ''
-    }
-    current = current[key]
-  }
-  return current
-}
-
-function resolveAccountLabel(source: any, fallbackId?: unknown) {
-  const accountId = String(fallbackId ?? source?.account_id ?? source?.author_id ?? source?.id ?? '').trim()
-  let fallback = ''
-  for (const path of accountLabelPaths) {
-    const value = String(getNestedValue(source, path) || '').trim()
-    if (!value) continue
-    if (!fallback) {
-      fallback = value
-    }
-    if (value !== accountId) {
-      return value
+const communityNodeMap = computed(() => {
+  const mapping = new Map<string, any>()
+  const communities = Array.isArray(resultSnapshot.value?.communities) ? resultSnapshot.value.communities : []
+  const keyNodes = Array.isArray(resultSnapshot.value?.global_key_nodes) ? resultSnapshot.value.global_key_nodes : []
+  for (const node of keyNodes) {
+    if (node?.account_id) {
+      mapping.set(String(node.account_id), node)
     }
   }
-  return fallback || accountId || '-'
-}
-
-function normalizeClusterRepresentative(record: any) {
-  return {
-    ...record,
-    account_label: resolveAccountLabel(record, record?.account_id),
+  for (const community of communities) {
+    const topNodes = Array.isArray(community?.top_nodes) ? community.top_nodes : []
+    for (const nodeId of topNodes) {
+      const key = String(nodeId)
+      if (!mapping.has(key)) {
+        mapping.set(key, {
+          account_id: key,
+          nickname: key,
+          cluster_id: community?.cluster_id,
+          community_score: community?.community_score,
+          community_size: community?.size,
+        })
+      }
+    }
   }
-}
+  return mapping
+})
 
-function normalizeClusterRecord(record: any): ClusterData {
-  return {
-    ...record,
-    core_nodes: (record?.core_nodes || []).map((item: any) => normalizeClusterRepresentative(item)),
-    bridge_nodes: (record?.bridge_nodes || []).map((item: any) => normalizeClusterRepresentative(item)),
-    early_nodes: (record?.early_nodes || []).map((item: any) => normalizeClusterRepresentative(item)),
-    top_nodes: (record?.top_nodes || []).map((item: any) => normalizeClusterRepresentative(item)),
-  }
-}
-
-function normalizeNodeRecord(record: any): NodeData {
-  return {
-    ...record,
-    account_label: resolveAccountLabel(record, record?.id),
-  }
-}
-
-function normalizeAccountRecord(record: any) {
-  return {
-    ...record,
-    account_label: resolveAccountLabel(record, record?.account_id),
-  }
-}
-
-function hasRenderableDetection(data: any) {
-  return Boolean(data?.network?.nodes?.length && data?.network?.edges?.length)
-}
-
-async function applyDetectionResult(data: any) {
-  const normalizedClusters = ((data.cluster_stats?.length ? data.cluster_stats : data.network?.clusters) || []).map((cluster: any) =>
-    normalizeClusterRecord(cluster),
-  )
-  const rawNetwork = data.network || { nodes: [], edges: [], clusters: [] }
-
-  dataMode.value = 'live'
-  summary.value = data.summary || null
-  network.value = {
-    ...rawNetwork,
-    nodes: (rawNetwork.nodes || []).map((node: any) => normalizeNodeRecord(node)),
-    edges: rawNetwork.edges || [],
-    clusters: normalizedClusters,
-  }
-  accountStats.value = (data.account_stats || []).map((account: any) => normalizeAccountRecord(account))
-  groupStats.value = data.group_stats || []
-  clusterStats.value = normalizedClusters
-  await nextTick()
-  renderNetwork()
-}
-
-async function loadPreviewDetectionResult(notice?: string) {
-  dataMode.value = 'demo'
-  await applyDetectionResult({
-    ...previewDetectionResult,
-    cluster_stats: previewDetectionResult.network.clusters,
-  })
-  dataMode.value = 'demo'
-  if (notice) {
-    message.info(notice)
-  }
-}
-
-async function runDetection(options: { silent?: boolean } = {}) {
-  detecting.value = true
+async function loadDatasets() {
+  loadingDatasets.value = true
   try {
-    const res = (await runCoordinationDetection(params)) as { data: any }
-    const data = res.data
-    await applyDetectionResult(data)
-
-    if (data.error) {
-      if (!options.silent) {
-        message.warning(data.error)
-      }
-      return
-    }
-
-    if (!hasRenderableDetection(data)) {
-      if (!options.silent) {
-        message.info('未检测到满足当前阈值的协同行为，已保留真实空结果。')
-      }
-      return
-    }
-
-    if (!options.silent) {
-      message.success(`检测完成：发现 ${data.summary?.coordinated_accounts ?? 0} 个协同账户`)
-    }
-  } catch (error) {
-    if (!options.silent) {
-      message.error('协同检测失败，请检查后端接口或数据库连接。')
+    const resp = await listCoordinationDatasets()
+    datasets.value = resp.data || []
+    if (!selectedDatasetId.value && datasets.value.length) {
+      const preferredDataset =
+        datasets.value.find((item) => isPreferredRealDataset(item) && item.latest_status === 'completed') ||
+        datasets.value.find((item) => isPreferredRealDataset(item) && item.latest_status === 'archived') ||
+        datasets.value.find((item) => item.latest_status === 'completed') ||
+        datasets.value.find((item) => item.slug === 'russia') ||
+        datasets.value[0]
+      selectedDatasetId.value = preferredDataset.dataset_id
     }
   } finally {
-    detecting.value = false
+    loadingDatasets.value = false
   }
 }
 
-async function handleDetect() {
-  await runDetection()
+async function handleDatasetSelect(datasetId: number) {
+  await selectDataset(datasetId)
 }
 
-async function handleLoadDemo() {
-  await loadPreviewDetectionResult('已加载本地示例网络，仅用于界面预览。')
+async function selectDataset(datasetId: number) {
+  selectedDatasetId.value = datasetId
+  communityDrawerOpen.value = false
+  selectedNode.value = null
+  communityDetail.value = null
+  await Promise.all([loadDatasetDetail(datasetId), loadLatestResult(datasetId), loadGraph()])
 }
 
-function buildOption(): EChartsOption {
-  const net = network.value
-  if (!net) return {}
-
-  const nodes = net.nodes.map((node) => ({
-    ...node,
-    name: formatAccountName(node.account_label, node.name || node.id),
-    symbolSize: Math.max(18, Math.min(48, (node.cluster_degree || node.degree || 1) * 3)),
-    category: node.cluster_id ?? 0,
-    itemStyle: {
-      color: palette[(node.cluster_id ?? 0) % palette.length],
-    },
-  }))
-
-  const categories = clusterStats.value.map((cluster) => ({
-    name: formatClusterLegend(cluster),
-    itemStyle: {
-      color: palette[cluster.cluster_id % palette.length],
-    },
-  }))
-
-  const links = net.edges.map((edge) => ({
-    ...edge,
-    lineStyle: {
-      width: Math.max(1, Math.min(8, Number(edge.weight || 1))),
-      opacity: 0.55,
-      color: '#94a3b8',
-    },
-  }))
-
-  return {
-    animationDuration: 900,
-    tooltip: {
-      trigger: 'item',
-      enterable: true,
-      formatter: (params: any) => buildTooltip(params),
-    },
-    legend: {
-      type: 'scroll',
-      bottom: 0,
-      data: categories.map((item) => item.name),
-      textStyle: { color: '#475569' },
-    },
-    series: [
-      {
-        type: 'graph',
-        layout: 'force',
-        data: nodes,
-        links,
-        categories,
-        roam: true,
-        label: {
-          show: true,
-          position: 'right',
-          formatter: '{b}',
-          color: '#1f2937',
-        },
-        force: {
-          repulsion: 260,
-          edgeLength: [70, 160],
-          gravity: 0.05,
-        },
-        lineStyle: {
-          curveness: 0.08,
-        },
-        emphasis: {
-          focus: 'adjacency',
-          label: {
-            show: true,
-          },
-        },
-      },
-    ],
-  }
-}
-
-function buildTooltip(params: any) {
-  const data = params.data || {}
-  if (data.source && data.target) {
-    const sourceLabel = nodeLabelMap.value.get(String(data.source)) || String(data.source)
-    const targetLabel = nodeLabelMap.value.get(String(data.target)) || String(data.target)
-    return [
-      `<strong>${escapeHtml(sourceLabel)} → ${escapeHtml(targetLabel)}</strong>`,
-      `权重：${data.weight ?? 0}`,
-      `平均时差：${data.avg_time_delta ?? '-'}`,
-      `对称性：${data.edge_symmetry_score ?? '-'}`,
-      `协同对象：<br/>${formatTooltipList(data.shared_object_entries || data.shared_objects_preview || [], { linkify: true })}`,
-      `内容示例：<br/>${formatTooltipList(data.shared_content_entries || data.shared_content_previews || [], { linkify: false })}`,
-    ].join('<br/>')
-  }
-  const roles = clusterRoleMap.value.get(String(data.id || data.name || '')) || []
-  const accountName = formatAccountName(data.account_label, data.name || data.id)
-  return [
-    `<strong>${escapeHtml(accountName)}</strong>`,
-    data.account_label && data.id && data.account_label !== data.id
-      ? `账户ID：${escapeHtml(String(data.id))}`
-      : '',
-    `cluster_id：${data.cluster_id ?? '-'}`,
-    `cluster_size：${data.cluster_size ?? '-'}`,
-    `cluster_degree：${data.cluster_degree ?? '-'}`,
-    `角色：${roles.length ? roles.join(' / ') : '普通成员'}`,
-    `bridge_score：${formatNumber(data.bridge_score)}`,
-    `cross_cluster_weight：${data.cross_cluster_weight ?? 0}`,
-    `首次出现：${data.first_seen_at ?? '-'}`,
-    `协同对象数：${data.coordinated_object_count ?? 0}`,
-    `协同内容数：${data.coordinated_content_count ?? 0}`,
-    `协同对象：<br/>${formatTooltipList(data.shared_object_entries || data.shared_objects_preview || [], { linkify: true })}`,
-    `内容示例：<br/>${formatTooltipList(data.content_preview_entries || data.content_previews || [], { linkify: false })}`,
-  ]
-    .filter(Boolean)
-    .join('<br/>')
-}
-
-function formatNumber(value: unknown, digits = 4) {
-  const num = Number(value)
-  if (!Number.isFinite(num)) return '-'
-  return num.toFixed(digits).replace(/\.?0+$/, '')
-}
-
-function escapeHtml(value: unknown) {
-  return String(value ?? '-')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;')
-}
-
-function parseSafeExternalUrl(value: unknown) {
-  const text = String(value || '').trim()
-  if (!/^https?:\/\//i.test(text)) return null
+async function loadDatasetDetail(datasetId: number) {
+  loadingDetail.value = true
   try {
-    const parsed = new URL(text)
-    if (!['http:', 'https:'].includes(parsed.protocol)) return null
-    if (!parsed.hostname || parsed.username || parsed.password) return null
-    return parsed.toString()
-  } catch {
-    return null
+    const resp = await getCoordinationDatasetDetail(datasetId)
+    datasetDetail.value = resp.data
+  } finally {
+    loadingDetail.value = false
   }
 }
 
-function normalizePreviewItems(value: unknown, limit = 8) {
-  if (!value) return []
-  const source = Array.isArray(value) ? value : [value]
-  return source
-    .map((item) => {
-      if (typeof item === 'string') {
-        const text = item.trim()
-        const href = parseSafeExternalUrl(text)
-        return text ? { text: href || text, href, type: '' } : null
-      }
-      if (item && typeof item === 'object') {
-        const hrefSource = item.object_id || item.primary_url || ''
-        const href = parseSafeExternalUrl(hrefSource)
-        const previewText = String(item.preview || item.content_preview || item.object_id || item.content_id || '').trim()
-        const text = href || previewText
-        return text
-          ? {
-              text,
-              href,
-              type: String(item.object_type || item.content_type || '').trim(),
-            }
-          : null
-      }
-      const text = String(item || '').trim()
-      const href = parseSafeExternalUrl(text)
-      return text ? { text: href || text, href, type: '' } : null
-    })
-    .filter((item): item is { text: string; href: string | null; type: string } => Boolean(item))
-    .slice(0, limit)
+async function loadLatestResult(datasetId: number) {
+  loadingResult.value = true
+  try {
+    const resp = await getCoordinationDatasetLatestResult(datasetId)
+    resultSnapshot.value = resp.data
+  } finally {
+    loadingResult.value = false
+  }
 }
 
-function formatTooltipList(value: unknown, options: { linkify?: boolean; limit?: number } = {}) {
-  const items = normalizePreviewItems(value, options.limit ?? 5)
+async function loadGraph() {
+  if (!selectedDatasetId.value) return
+  loadingGraph.value = true
+  try {
+    const resp = await getCoordinationGraph(selectedDatasetId.value, {
+      node_limit: nodeLimit.value,
+      min_node_score: minNodeScore.value,
+    })
+    graphPayload.value = resp.data
+  } finally {
+    loadingGraph.value = false
+  }
+}
+
+function scheduleGraphReload() {
+  if (graphReloadTimer !== null) {
+    window.clearTimeout(graphReloadTimer)
+  }
+  graphReloadTimer = window.setTimeout(() => {
+    graphReloadTimer = null
+    loadGraph()
+  }, 180)
+}
+
+function resetGraphCamera() {
+  graph3dRef.value?.resetCamera()
+}
+
+async function openCommunityDetail(
+  clusterId: string | number | null | undefined,
+  options: { preserveSelectedNode?: boolean } = {},
+) {
+  if (!selectedDatasetId.value || clusterId === null || clusterId === undefined) return
+  drawerMode.value = 'community'
+  communityDrawerOpen.value = true
+  loadingCommunity.value = true
+  try {
+    const resp = await getCoordinationCommunityDetail(selectedDatasetId.value, clusterId)
+    communityDetail.value = resp.data
+    if (!options.preserveSelectedNode) {
+      selectedNode.value = null
+    }
+  } finally {
+    loadingCommunity.value = false
+  }
+}
+
+async function openAccountDetail(nodeLike: any) {
+  const accountId = String(nodeLike?.id || nodeLike?.account_id || '')
+  if (!accountId) return
+  drawerMode.value = 'account'
+  selectedNode.value = {
+    id: accountId,
+    label: String(nodeLike?.nickname || nodeLike?.label || accountId),
+    nickname: nodeLike?.nickname || nodeLike?.label || accountId,
+    platform: nodeLike?.platform || null,
+    profile_url: nodeLike?.profile_url || null,
+    cluster_id: nodeLike?.cluster_id ?? null,
+    node_score: nodeLike?.node_score ?? null,
+    community_score: nodeLike?.community_score ?? null,
+    community_size: nodeLike?.community_size ?? null,
+  }
+  communityDrawerOpen.value = true
+  communityDetail.value = null
+  if (selectedNode.value.cluster_id === null || selectedNode.value.cluster_id === undefined) return
+  await openCommunityDetail(selectedNode.value.cluster_id, { preserveSelectedNode: true })
+  drawerMode.value = 'account'
+}
+
+async function handleNodeClick(node: CoordinationGraphNode) {
+  await openAccountDetail(node)
+}
+
+async function handleCommunityIdClick(record: any) {
+  await openCommunityDetail(record?.cluster_id)
+}
+
+async function handleKeyNodeClick(record: any) {
+  await openAccountDetail(record)
+}
+
+async function handleMemberClick(record: any) {
+  await openAccountDetail({
+    ...record,
+    cluster_id: communityDetail.value?.cluster_id ?? selectedNode.value?.cluster_id ?? null,
+    community_score: communityDetail.value?.community_score ?? selectedNode.value?.community_score ?? null,
+    community_size: communityDetail.value?.size ?? selectedNode.value?.community_size ?? null,
+  })
+}
+
+async function handleCommunityTopNodeClick(accountId: string, communityRecord: any) {
+  const fallback = communityNodeMap.value.get(String(accountId)) || {}
+  await openAccountDetail({
+    ...fallback,
+    account_id: String(accountId),
+    nickname: fallback?.nickname || String(accountId),
+    cluster_id: communityRecord?.cluster_id ?? fallback?.cluster_id ?? null,
+    community_score: communityRecord?.community_score ?? fallback?.community_score ?? null,
+    community_size: communityRecord?.size ?? fallback?.community_size ?? null,
+  })
+}
+
+async function beforeUpload(file: File) {
+  uploading.value = true
+  try {
+    const resp = await uploadCoordinationDataset(file)
+    message.success('数据集上传成功')
+    await loadDatasets()
+    if (resp.data?.dataset_id) {
+      await selectDataset(resp.data.dataset_id)
+    }
+  } finally {
+    uploading.value = false
+  }
+  return false
+}
+
+async function handleRerun() {
+  if (!selectedDatasetId.value) return
+  running.value = true
+  try {
+    const resp = await createCoordinationRun(selectedDatasetId.value)
+    const runId = resp.data?.run_id
+    if (!runId) {
+      throw new Error('未返回运行任务 ID')
+    }
+    pollingRunId.value = runId
+    message.success(`已提交运行任务 #${runId}`)
+    await loadDatasetDetail(selectedDatasetId.value)
+    startPolling(runId)
+  } catch (error: any) {
+    running.value = false
+    throw error
+  }
+}
+
+function startPolling(runId: number) {
+  stopPolling()
+  const loop = async () => {
+    try {
+      const resp = await getCoordinationRun(runId)
+      const run = resp.data
+      if (datasetDetail.value?.runs?.length) {
+        datasetDetail.value.runs = [run, ...datasetDetail.value.runs.filter((item: any) => item.run_id !== run.run_id)].slice(0, 10)
+      }
+      if (run.status === 'completed') {
+        stopPolling()
+        running.value = false
+        if (selectedDatasetId.value) {
+          await Promise.all([loadDatasets(), loadDatasetDetail(selectedDatasetId.value), loadLatestResult(selectedDatasetId.value), loadGraph()])
+        }
+        message.success('协同检测模型运行完成')
+        return
+      }
+      if (run.status === 'failed') {
+        stopPolling()
+        running.value = false
+        await loadDatasetDetail(selectedDatasetId.value as number)
+        message.error(run.error || '协同检测模型运行失败')
+        return
+      }
+    } catch {
+      stopPolling()
+      running.value = false
+      return
+    }
+    pollTimer = window.setTimeout(loop, 3000)
+  }
+  loop()
+}
+
+function stopPolling() {
+  if (pollTimer !== null) {
+    window.clearTimeout(pollTimer)
+    pollTimer = null
+  }
+}
+
+function formatMetric(value: any) {
+  if (value === null || value === undefined || value === '') return '-'
+  const numeric = Number(value)
+  return Number.isFinite(numeric) ? numeric.toFixed(4) : String(value)
+}
+
+function formatPercent(value: any) {
+  if (value === null || value === undefined || value === '') return '-'
+  const numeric = Number(value)
+  return Number.isFinite(numeric) ? `${(numeric * 100).toFixed(2)}%` : String(value)
+}
+
+function formatRelationLabel(value: any) {
+  const mapping: Record<string, string> = {
+    url_share: '共享 URL',
+    hashtag_share: '共享话题',
+    retweet_target: '同转推目标',
+    reply_target: '同回复目标',
+    quote_target: '同引用目标',
+    mention_target: '同提及目标',
+    fast_retweet: '快速转推',
+    tweet_similarity: '文本相似',
+    courl: '共链 URL',
+    cort: '共转推',
+    fastrt: '快速转推',
+    hashseq: '话题序列',
+    profile: '账号画像',
+  }
+  const key = String(value || '').toLowerCase()
+  return mapping[key] || String(value || '-')
+}
+
+function formatPlatformLabel(value: any) {
+  const key = String(value || '').toLowerCase()
+  if (!key) {
+    if (isPreferredRealDataset(selectedDataset.value)) return '微博'
+    return '-'
+  }
+  if (key === 'weibo') return '微博'
+  if (key === 'twitter') return 'X/Twitter'
+  if (key === 'xiaohongshu') return '小红书'
+  if (key === 'douyin') return '抖音'
+  return String(value)
+}
+
+function formatSharedObjectPreview(value: any) {
+  const items = Array.isArray(value) ? value : []
   if (!items.length) return '-'
   return items
-    .map((item) => {
-      const label = item.type ? `[${item.type}] ${item.text}` : item.text
-      if (options.linkify && item.href) {
-        return `<a class="tooltip-link" href="${escapeHtml(item.href)}" target="_blank" rel="noreferrer">${escapeHtml(label)}</a>`
-      }
-      return escapeHtml(label)
+    .slice(0, 2)
+    .map((item: any) => {
+      const relation = item?.relation_label || formatRelationLabel(item?.relation)
+      const objectText = item?.display_value || item?.object_url || item?.object_id || '-'
+      return `${relation}：${objectText}`
     })
-    .join('<br/>')
+    .join('；')
 }
 
-function formatAccountName(accountLabel: unknown, accountId: unknown) {
-  const label = String(accountLabel || '').trim()
-  const id = String(accountId || '').trim()
-  return label || id || '-'
+function isPreferredRealDataset(item: DatasetItem | null | undefined) {
+  const slug = String(item?.slug || '').toLowerCase()
+  const name = String(item?.display_name || '').toLowerCase()
+  return slug.includes('weibo-trump-visit-2026-05-21-2') || name.includes('weibo trump visit 2026-05-21')
 }
 
-function formatGroupObject(objectType: unknown, objectId: unknown) {
-  const preview = String(objectId || '').trim() || '-'
-  const type = String(objectType || '').trim()
-  return type ? `[${type}] ${preview}` : preview
+function datasetOptionLabel(item: DatasetItem) {
+  const source = item.source_type === 'system_archive' ? '归档' : '上传'
+  const tag = isPreferredRealDataset(item) ? '真实微博' : source
+  return `${item.display_name} · ${tag}`
 }
 
-function formatClusterLegend(cluster: ClusterData) {
-  const clusterLabel = `社区 ${Number(cluster.cluster_id ?? 0) + 1}`
-  const topObject = normalizePreviewItems(cluster.shared_objects || cluster.shared_objects_preview || [], 1)[0]
-  if (!topObject) return clusterLabel
-  const suffix = topObject.type ? `[${topObject.type}] ${topObject.text}` : topObject.text
-  return `${clusterLabel} · ${suffix}`
+function formatObjectDisplayText(item: any) {
+  return item?.display_value || item?.object_url || item?.object_id || '-'
 }
 
-function formatPreviewList(value: unknown, limit = 3) {
-  const items = normalizePreviewItems(value, limit)
-  if (!items.length) return '-'
-  return items
-    .map((item) => (item.type ? `[${item.type}] ${item.text}` : item.text))
-    .join(' / ')
+function filterExamplesForSelectedNode(examples: any[] | undefined) {
+  const rows = Array.isArray(examples) ? examples : []
+  const selectedId = String(selectedNode.value?.id || '')
+  if (!selectedId) return rows
+  const matched = rows.filter((example: any) => String(example?.account_id || '') === selectedId)
+  if (!matched.length) return rows
+  const rest = rows.filter((example: any) => String(example?.account_id || '') !== selectedId)
+  return [...matched, ...rest]
 }
-
-function renderAccountCell(record: any) {
-  const label = formatAccountName(record.account_label, record.account_id)
-  const accountId = String(record.account_id || '').trim()
-  return h('div', { class: 'account-cell' }, [
-    h('div', { class: 'account-cell__label' }, label),
-    record.account_label && accountId && record.account_label !== accountId
-      ? h('div', { class: 'account-cell__id' }, accountId)
-      : null,
-  ])
-}
-
-function renderSingleObjectCell(objectId: unknown, objectType?: unknown) {
-  return renderObjectListCell([{ object_id: objectId, object_type: objectType, preview: objectId }], 1)
-}
-
-function renderObjectListCell(value: unknown, limit = 50) {
-  const items = normalizePreviewItems(value, limit)
-  if (!items.length) {
-    return h('span', '-')
-  }
-  return h(
-    'div',
-    { class: 'object-link-list' },
-    items.map((item) => {
-      const label = item.type ? `[${item.type}] ${item.text}` : item.text
-      return item.href
-        ? h(
-            'a',
-            {
-              class: 'object-link-list__item object-link-list__item--link',
-              href: item.href,
-              target: '_blank',
-              rel: 'noreferrer',
-              title: item.href,
-            },
-            label,
-          )
-        : h(
-            'span',
-            {
-              class: 'object-link-list__item',
-              title: item.text,
-            },
-            label,
-          )
-    }),
-  )
-}
-
-function renderPreviewListCell(value: unknown, limit = 50) {
-  const items = normalizePreviewItems(value, limit)
-  if (!items.length) {
-    return h('span', '-')
-  }
-  return h(
-    'div',
-    { class: 'preview-text-list' },
-    items.map((item) =>
-      h(
-        'div',
-        {
-          class: 'preview-text-list__item',
-          title: item.text,
-        },
-        item.text,
-      ),
-    ),
-  )
-}
-
-function formatCoreNodes(nodes: ClusterRepresentative[]) {
-  return nodes.length
-    ? nodes
-        .slice(0, 3)
-        .map((node) => `${formatAccountName(node.account_label, node.account_id)} (度 ${node.cluster_degree ?? 0})`)
-        .join(' / ')
-    : '-'
-}
-
-function formatBridgeNodes(nodes: ClusterRepresentative[]) {
-  return nodes.length
-    ? nodes
-        .slice(0, 3)
-        .map((node) => `${formatAccountName(node.account_label, node.account_id)} (跨簇 ${node.cross_cluster_weight ?? 0})`)
-        .join(' / ')
-    : '-'
-}
-
-function formatEarlyNodes(nodes: ClusterRepresentative[]) {
-  return nodes.length
-    ? nodes
-        .slice(0, 3)
-        .map((node) => `${formatAccountName(node.account_label, node.account_id)} (${formatTime(node.first_seen_at)})`)
-        .join(' / ')
-    : '-'
-}
-
-function formatTime(value: unknown) {
-  if (!value) return '-'
-  const text = String(value)
-  return text.replace('T', ' ').replace('+00:00', ' UTC')
-}
-
-function renderNetwork() {
-  if (!networkRef.value) return
-  if (!hasNetwork.value) {
-    chart.value?.clear()
-    return
-  }
-  if (!chart.value) {
-    chart.value = echarts.init(networkRef.value)
-  }
-  chart.value.setOption(buildOption(), true)
-  chart.value.resize()
-}
-
-function resizeChart() {
-  chart.value?.resize()
-}
-
-watch(network, () => {
-  void nextTick().then(renderNetwork)
-})
-
-onMounted(() => {
-  if (authStore.isPreviewMode) {
-    void runDetection({ silent: true })
-  }
-})
 
 onBeforeUnmount(() => {
-  if (resizeHandler) {
-    window.removeEventListener('resize', resizeHandler)
+  stopPolling()
+  if (graphReloadTimer !== null) {
+    window.clearTimeout(graphReloadTimer)
+    graphReloadTimer = null
   }
-  chart.value?.dispose()
-  chart.value = null
 })
 
-resizeHandler = resizeChart
-window.addEventListener('resize', resizeHandler)
+loadDatasets().then(async () => {
+  if (selectedDatasetId.value) {
+    await selectDataset(selectedDatasetId.value)
+  }
+})
 </script>
 
-<style scoped lang="less">
+<style scoped>
 .coordination-page {
-  color: #1f2937;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .panel {
-  margin-bottom: 16px;
+  border-radius: 14px;
 }
 
-.metric-row {
-  margin-bottom: 16px;
+.panel-row {
+  margin-top: 0;
 }
 
-.network-chart {
+.panel-row--equal {
+  align-items: stretch;
+}
+
+.stretch-col {
+  display: flex;
+}
+
+.stretch-col :deep(.ant-card) {
   width: 100%;
-  min-height: 520px;
-  background:
-    radial-gradient(circle at 20% 20%, rgba(37, 99, 235, 0.08), transparent 32%),
-    radial-gradient(circle at 80% 20%, rgba(16, 185, 129, 0.08), transparent 28%),
-  linear-gradient(180deg, #ffffff, #f8fafc);
 }
 
-:deep(.tooltip-link) {
-  color: #2563eb;
-  text-decoration: underline;
+.stretch-col :deep(.ant-card-body) {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.stretch-col :deep(.ant-table-wrapper) {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.stretch-col :deep(.ant-spin-nested-loading),
+.stretch-col :deep(.ant-spin-container),
+.stretch-col :deep(.ant-table) {
+  height: 100%;
+}
+
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.toolbar-left,
+.toolbar-right {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.network-panel-head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.dataset-select {
+  min-width: 320px;
+}
+
+.summary-item {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.summary-item span {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.summary-item strong {
+  color: #0f172a;
+  font-size: 14px;
+  word-break: break-all;
+}
+
+.network-meta {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.network-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.network-controls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.node-limit-select {
+  width: 124px;
+}
+
+.score-filter {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 320px;
+  color: #475569;
+  font-size: 13px;
+}
+
+.score-slider {
+  flex: 1;
+  min-width: 180px;
+  margin: 0 4px;
+}
+
+.score-value {
+  min-width: 52px;
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.switch-label {
+  color: #475569;
+  font-size: 13px;
 }
 
 .account-cell {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
 }
 
-.account-cell__label {
-  color: #111827;
-  font-weight: 500;
+.account-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
-.account-cell__id {
+.account-nickname {
+  color: #0f172a;
+  font-weight: 600;
+  word-break: break-word;
+}
+
+.account-sub {
+  color: #64748b;
+  font-size: 12px;
+  word-break: break-all;
+}
+
+.external-link {
+  color: #2563eb;
+  font-size: 12px;
+  text-decoration: none;
+}
+
+.external-link:hover {
+  text-decoration: underline;
+}
+
+.table-action-link {
+  color: #2563eb;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.table-action-link:hover {
+  text-decoration: underline;
+}
+
+.inline-link-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.drawer-section {
+  margin-bottom: 22px;
+}
+
+.drawer-title {
+  margin-bottom: 12px;
+  color: #0f172a;
+  font-size: 18px;
+  font-weight: 700;
+  word-break: break-all;
+}
+
+.drawer-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.drawer-grid div {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.drawer-grid span {
   color: #64748b;
   font-size: 12px;
 }
 
-.object-link-list,
-.preview-text-list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 300px;
-}
-
-.object-link-list__item,
-.preview-text-list__item {
-  color: #334155;
-  line-height: 1.5;
+.drawer-grid strong {
+  color: #0f172a;
+  font-size: 14px;
   word-break: break-all;
 }
 
-.object-link-list__item--link {
+.section-head {
+  margin-bottom: 10px;
+  color: #0f172a;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.object-evidence-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.object-evidence-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 14px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+}
+
+.object-evidence-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.object-evidence-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  color: #475569;
+  font-size: 12px;
+}
+
+.object-evidence-link,
+.object-example-link {
   color: #2563eb;
+  font-size: 12px;
+  text-decoration: none;
+}
+
+.object-evidence-link:hover,
+.object-example-link:hover {
   text-decoration: underline;
+}
+
+.object-evidence-value {
+  margin-top: 10px;
+  color: #0f172a;
+  font-size: 14px;
+  line-height: 1.6;
+  word-break: break-all;
+}
+
+.object-example-list {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.object-example-card {
+  border-radius: 12px;
+  background: #f8fafc;
+  padding: 10px 12px;
+}
+
+.object-example-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.object-example-head strong {
+  color: #0f172a;
+  font-size: 13px;
+  word-break: break-all;
+}
+
+.object-example-content {
+  color: #475569;
+  font-size: 13px;
+  line-height: 1.6;
+  word-break: break-word;
+}
+
+@media (max-width: 960px) {
+  .network-panel-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .dataset-select {
+    min-width: 100%;
+  }
+
+  .network-toolbar {
+    align-items: flex-start;
+  }
+
+  .network-controls {
+    justify-content: flex-start;
+  }
+
+  .score-filter {
+    min-width: 100%;
+  }
+
+  .drawer-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
