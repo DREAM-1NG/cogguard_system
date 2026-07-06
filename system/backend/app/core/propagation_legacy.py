@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 from collections import Counter
+import hashlib
 from itertools import islice
 import re
 from typing import Any
@@ -31,6 +32,7 @@ DIFFUSION_MAX_DEPTH = 6
 def build_propagation_graph(
     posts: list[dict],
     comments: list[dict] | None = None,
+    diffusion_node_limit: int = DIFFUSION_VISIBLE_NODE_LIMIT,
 ) -> dict:
     """从帖子列表构建传播图，按共享对象（URL/标签）追踪传播链。
 
@@ -129,7 +131,14 @@ def build_propagation_graph(
 
     evidence_chains = _extract_evidence_chains(G, shared_objects, key_roles, bc, df)
     path_analysis = _build_path_analysis(G, evidence_chains)
-    diffusion_summary = _build_diffusion_summary(G, evidence_chains, shared_objects, df, comments or [])
+    diffusion_summary = _build_diffusion_summary(
+        G,
+        evidence_chains,
+        shared_objects,
+        df,
+        comments or [],
+        node_limit=diffusion_node_limit,
+    )
     user_quality = _build_user_quality_portrait(posts, comments or [])
 
     # --- 序列化 ---
@@ -467,6 +476,7 @@ def _build_diffusion_summary(
     shared_objects: dict[str, list],
     df: pd.DataFrame,
     comments: list[dict],
+    node_limit: int = DIFFUSION_VISIBLE_NODE_LIMIT,
 ) -> dict:
     """Build a stable radial diffusion-tree summary from the full observed graph.
 
@@ -474,8 +484,9 @@ def _build_diffusion_summary(
     layers from key paths. Full graph data is used for scoring, but only a
     readable backbone is returned for the first-screen visualization.
     """
+    resolved_node_limit = _resolve_diffusion_node_limit(node_limit, G.number_of_nodes())
     if G.number_of_nodes() == 0:
-        return _empty_diffusion_summary()
+        return _empty_diffusion_summary(resolved_node_limit, requested_node_limit=node_limit)
 
     simple_G = _to_weighted_digraph(G)
     key_paths = _flatten_key_paths(evidence_chains)
@@ -491,6 +502,7 @@ def _build_diffusion_summary(
     subtree_sizes = _estimate_subtree_sizes(simple_G, root_id)
     post_index = _build_post_index(df)
     comment_index = _build_comment_index(comments)
+    is_full_view = resolved_node_limit >= G.number_of_nodes()
 
     visible_nodes: set[str] = set()
     tree_edges: dict[tuple[str, str], dict] = {}
@@ -499,7 +511,7 @@ def _build_diffusion_summary(
     def add_node(node_id: str, layer: int, *, force: bool = False) -> bool:
         if not node_id or not simple_G.has_node(node_id):
             return False
-        if len(visible_nodes) >= DIFFUSION_VISIBLE_NODE_LIMIT and node_id not in visible_nodes and not force:
+        if len(visible_nodes) >= resolved_node_limit and node_id not in visible_nodes and not force:
             return False
         visible_nodes.add(node_id)
         node_layers[node_id] = min(layer, node_layers.get(node_id, layer))
@@ -560,7 +572,7 @@ def _build_diffusion_summary(
             path_layer = min(index, DIFFUSION_MAX_DEPTH) if starts_at_root else (
                 0 if node == root_id else min(index + 1, DIFFUSION_MAX_DEPTH)
             )
-            if not add_node(node, path_layer, force=len(visible_nodes) < DIFFUSION_VISIBLE_NODE_LIMIT):
+            if not add_node(node, path_layer, force=len(visible_nodes) < resolved_node_limit):
                 continue
             if index > 0:
                 source = nodes[index - 1]
@@ -576,6 +588,27 @@ def _build_diffusion_summary(
                         "is_parallel_root": False,
                     })
 
+    if is_full_view:
+        full_layers = _diffusion_all_node_layers(simple_G, root_id)
+        for node_id, layer in full_layers.items():
+            visible_nodes.add(node_id)
+            node_layers[node_id] = layer
+        for source, target, edge_data in simple_G.edges(data=True):
+            if source == target:
+                continue
+            source_layer = node_layers.get(source)
+            target_layer = node_layers.get(target)
+            if source_layer == target_layer:
+                continue
+            tree_edges.setdefault((source, target), {
+                "source": source,
+                "target": target,
+                "weight": edge_data.get("weight", 1),
+                "type": edge_data.get("type", "implicit"),
+                "object_id": edge_data.get("object_id"),
+                "is_parallel_root": False,
+            })
+
     visible_node_rows = [
         _diffusion_node_row(G, simple_G, node_id, node_layers.get(node_id, -1), key_node_set, root_id)
         for node_id in sorted(
@@ -588,12 +621,21 @@ def _build_diffusion_summary(
     tree_edge_rows = [
         edge for edge in tree_edges.values()
         if edge["source"] in visible_node_ids and edge["target"] in visible_node_ids
+        and node_layers.get(edge["source"]) != node_layers.get(edge["target"])
     ]
     highlight_edges = [
         _diffusion_highlight_edge(simple_G, source, target)
         for source, target in key_edge_set
         if source in visible_node_ids and target in visible_node_ids
+        and node_layers.get(source) != node_layers.get(target)
     ]
+    visible_node_rows = _apply_clustered_diffusion_layout(
+        visible_node_rows,
+        tree_edge_rows,
+        shared_objects,
+        root_id,
+        simple_G,
+    )
 
     layers = _diffusion_layer_rows(visible_node_rows, simple_G.number_of_nodes())
     detail_index = _build_diffusion_detail_index(
@@ -620,19 +662,37 @@ def _build_diffusion_summary(
         "detail_index": detail_index,
         "meta": {
             "mode": "layered_summary",
-            "layout": "radial",
+            "layout": "clustered_similarity",
             "source": "full_observed_graph",
             "total_nodes": G.number_of_nodes(),
             "total_edges": G.number_of_edges(),
-            "visible_node_limit": DIFFUSION_VISIBLE_NODE_LIMIT,
+            "requested_node_limit": int(node_limit or 0),
+            "visible_node_limit": resolved_node_limit,
             "visible_node_count": len(visible_node_rows),
+            "is_full_view": is_full_view,
             "tree_edge_count": len(tree_edge_rows),
             "highlight_edge_count": len(highlight_edges),
         },
     }
 
 
-def _empty_diffusion_summary() -> dict:
+def _resolve_diffusion_node_limit(node_limit: int | None, total_nodes: int) -> int:
+    if total_nodes <= 0:
+        return 0
+    try:
+        requested = int(node_limit if node_limit is not None else DIFFUSION_VISIBLE_NODE_LIMIT)
+    except (TypeError, ValueError):
+        requested = DIFFUSION_VISIBLE_NODE_LIMIT
+    if requested <= 0:
+        return total_nodes
+    return min(max(requested, 1), total_nodes)
+
+
+def _empty_diffusion_summary(
+    visible_node_limit: int = DIFFUSION_VISIBLE_NODE_LIMIT,
+    *,
+    requested_node_limit: int | None = None,
+) -> dict:
     return {
         "root_node": None,
         "parallel_roots": [],
@@ -647,8 +707,10 @@ def _empty_diffusion_summary() -> dict:
             "source": "full_observed_graph",
             "total_nodes": 0,
             "total_edges": 0,
-            "visible_node_limit": DIFFUSION_VISIBLE_NODE_LIMIT,
+            "requested_node_limit": int(requested_node_limit or visible_node_limit or 0),
+            "visible_node_limit": visible_node_limit,
             "visible_node_count": 0,
+            "is_full_view": True,
             "tree_edge_count": 0,
             "highlight_edge_count": 0,
         },
@@ -761,6 +823,31 @@ def _estimate_subtree_sizes(simple_G: nx.DiGraph, root_id: str) -> dict[str, int
     return subtree_sizes
 
 
+def _diffusion_all_node_layers(simple_G: nx.DiGraph, root_id: str) -> dict[str, int]:
+    if simple_G.number_of_nodes() == 0:
+        return {}
+
+    layers: dict[str, int] = {}
+    if root_id and simple_G.has_node(root_id):
+        for node, layer in nx.single_source_shortest_path_length(simple_G, root_id).items():
+            layers[node] = min(int(layer), DIFFUSION_MAX_DEPTH)
+
+    roots = [
+        node for node in simple_G.nodes()
+        if node != root_id and simple_G.in_degree(node) == 0 and simple_G.out_degree(node) > 0
+    ]
+    for root in roots:
+        root_layer = 1 if root_id else 0
+        layers[root] = min(root_layer, layers.get(root, root_layer))
+        for node, layer in nx.single_source_shortest_path_length(simple_G, root).items():
+            candidate_layer = min(root_layer + int(layer), DIFFUSION_MAX_DEPTH)
+            layers[node] = min(candidate_layer, layers.get(node, candidate_layer))
+
+    for node in simple_G.nodes():
+        layers.setdefault(node, DIFFUSION_MAX_DEPTH)
+    return layers
+
+
 def _diffusion_child_score(
     simple_G: nx.DiGraph,
     G: nx.MultiDiGraph,
@@ -819,6 +906,238 @@ def _diffusion_highlight_edge(simple_G: nx.DiGraph, source: str, target: str) ->
         "object_id": edge_data.get("object_id"),
         "is_key_path": True,
     }
+
+
+def _apply_clustered_diffusion_layout(
+    visible_nodes: list[dict],
+    tree_edges: list[dict],
+    shared_objects: dict[str, list],
+    root_id: str,
+    simple_G: nx.DiGraph,
+) -> list[dict]:
+    if not visible_nodes:
+        return visible_nodes
+
+    node_ids = {str(node.get("id", "")) for node in visible_nodes if node.get("id")}
+    object_weights = {
+        str(object_id): max(float(len(shares)), 1.0)
+        for object_id, shares in shared_objects.items()
+    }
+    node_object_map = _build_node_object_weight_map(shared_objects, tree_edges, node_ids)
+    root_objects = node_object_map.get(root_id, {})
+
+    parent_by_child = {
+        str(edge.get("target")): str(edge.get("source"))
+        for edge in tree_edges
+        if edge.get("source") and edge.get("target")
+    }
+    children_by_parent: dict[str, list[str]] = {}
+    for child, parent in parent_by_child.items():
+        children_by_parent.setdefault(parent, []).append(child)
+
+    node_by_id = {str(node["id"]): node for node in visible_nodes}
+    first_layer_nodes = [
+        node for node in visible_nodes
+        if int(node.get("layer", 0) or 0) == 1
+    ]
+    first_layer_nodes.sort(
+        key=lambda node: (
+            -int(node.get("out_degree", 0) or 0),
+            -int(node.get("post_count", 0) or 0),
+            str(node.get("id", "")),
+        )
+    )
+
+    cluster_anchor_ids = [str(node["id"]) for node in first_layer_nodes[:18]]
+    if not cluster_anchor_ids and root_id:
+        cluster_anchor_ids = [
+            str(node["id"]) for node in visible_nodes
+            if str(node.get("id")) != root_id
+        ][:1]
+    cluster_angles = {
+        anchor_id: (-np.pi / 2) + (2 * np.pi * index / max(len(cluster_anchor_ids), 1))
+        for index, anchor_id in enumerate(cluster_anchor_ids)
+    }
+
+    cluster_by_node: dict[str, str] = {}
+    for anchor_id in cluster_anchor_ids:
+        cluster_by_node[anchor_id] = anchor_id
+
+    for node in sorted(visible_nodes, key=lambda item: int(item.get("layer", 0) or 0)):
+        node_id = str(node.get("id", ""))
+        if not node_id or node_id == root_id or node_id in cluster_by_node:
+            continue
+        parent = parent_by_child.get(node_id)
+        if parent and parent in cluster_by_node:
+            cluster_by_node[node_id] = cluster_by_node[parent]
+            continue
+        cluster_by_node[node_id] = _nearest_object_cluster(
+            node_id,
+            cluster_anchor_ids,
+            node_object_map,
+        )
+
+    nodes_by_cluster: dict[str, list[dict]] = {}
+    for node in visible_nodes:
+        node_id = str(node.get("id", ""))
+        cluster_id = "root" if node_id == root_id else cluster_by_node.get(node_id) or "root"
+        nodes_by_cluster.setdefault(cluster_id, []).append(node)
+
+    laid_out: list[dict] = []
+    for node in visible_nodes:
+        node_id = str(node.get("id", ""))
+        layer = max(int(node.get("layer", 0) or 0), 0)
+        node_objects = node_object_map.get(node_id, {})
+        similarity_to_root = _weighted_jaccard(node_objects, root_objects, object_weights)
+        shared_object_ids = sorted(
+            node_objects.keys(),
+            key=lambda object_id: (-node_objects.get(object_id, 0), object_id),
+        )[:8]
+
+        if node_id == root_id:
+            layout_x = 0.0
+            layout_y = 0.0
+            layout_radius = 0.0
+            cluster_id = "root"
+        else:
+            cluster_id = cluster_by_node.get(node_id) or "root"
+            cluster_nodes = nodes_by_cluster.get(cluster_id, [])
+            cluster_index = max(0, _node_index_in_cluster(cluster_nodes, node_id))
+            cluster_size = max(len(cluster_nodes), 1)
+            base_angle = cluster_angles.get(cluster_id, _stable_angle(cluster_id))
+            angle_spread = 0.92 if layer <= 1 else 0.68 if layer <= 3 else 0.44
+            angle = base_angle + _cluster_offset(cluster_index, cluster_size, angle_spread) + _stable_jitter(node_id, 0.035)
+            layout_radius = _cluster_layout_radius(layer, similarity_to_root, cluster_index, cluster_size)
+            layout_x = float(np.cos(angle) * layout_radius)
+            layout_y = float(np.sin(angle) * layout_radius)
+
+        enriched = dict(node)
+        enriched.update({
+            "layout_x": round(layout_x, 3),
+            "layout_y": round(layout_y, 3),
+            "layout_cluster": cluster_id,
+            "layout_radius": round(layout_radius, 3),
+            "similarity_to_root": round(float(similarity_to_root), 4),
+            "shared_object_ids": shared_object_ids,
+        })
+        laid_out.append(enriched)
+
+    return laid_out
+
+
+def _build_node_object_weight_map(
+    shared_objects: dict[str, list],
+    tree_edges: list[dict],
+    visible_node_ids: set[str],
+) -> dict[str, dict[str, float]]:
+    node_objects: dict[str, dict[str, float]] = {node_id: {} for node_id in visible_node_ids}
+
+    def add_object(node_id: str, object_id: str, weight: float) -> None:
+        if not node_id or node_id not in visible_node_ids or not object_id:
+            return
+        bucket = node_objects.setdefault(node_id, {})
+        bucket[object_id] = bucket.get(object_id, 0.0) + max(float(weight), 1.0)
+
+    for object_id, shares in shared_objects.items():
+        share_weight = max(float(len(shares)), 1.0)
+        for share in shares:
+            add_object(str(share.get("author_id", "")), str(object_id), share_weight)
+
+    for edge in tree_edges:
+        object_id = str(edge.get("object_id") or "")
+        if not object_id:
+            continue
+        weight = float(edge.get("weight", 1) or 1)
+        add_object(str(edge.get("source", "")), object_id, weight)
+        add_object(str(edge.get("target", "")), object_id, weight)
+
+    return node_objects
+
+
+def _weighted_jaccard(left: dict[str, float], right: dict[str, float], object_weights: dict[str, float]) -> float:
+    keys = set(left) | set(right)
+    if not keys:
+        return 0.0
+    numerator = 0.0
+    denominator = 0.0
+    for key in keys:
+        weight = max(float(object_weights.get(key, 1.0)), 1.0)
+        left_value = float(left.get(key, 0.0)) * weight
+        right_value = float(right.get(key, 0.0)) * weight
+        numerator += min(left_value, right_value)
+        denominator += max(left_value, right_value)
+    return numerator / denominator if denominator else 0.0
+
+
+def _nearest_object_cluster(
+    node_id: str,
+    cluster_anchor_ids: list[str],
+    node_object_map: dict[str, dict[str, float]],
+) -> str:
+    if not cluster_anchor_ids:
+        return "root"
+    node_objects = node_object_map.get(node_id, {})
+    return max(
+        cluster_anchor_ids,
+        key=lambda anchor_id: (
+            _weighted_jaccard(node_objects, node_object_map.get(anchor_id, {}), {}),
+            anchor_id,
+        ),
+    )
+
+
+def _node_index_in_cluster(cluster_nodes: list[dict], node_id: str) -> int:
+    ordered = sorted(
+        cluster_nodes,
+        key=lambda node: (
+            int(node.get("layer", 0) or 0),
+            -int(node.get("out_degree", 0) or 0),
+            str(node.get("id", "")),
+        ),
+    )
+    for index, node in enumerate(ordered):
+        if str(node.get("id", "")) == node_id:
+            return index
+    return 0
+
+
+def _cluster_layout_radius(layer: int, similarity_to_root: float, cluster_index: int, cluster_size: int) -> float:
+    if layer <= 1:
+        base = 92.0
+        spread = 42.0
+    elif layer == 2:
+        base = 190.0
+        spread = 82.0
+    elif layer == 3:
+        base = 292.0
+        spread = 112.0
+    else:
+        base = 390.0 + min(layer - 4, 3) * 74.0
+        spread = 132.0
+    density_offset = (cluster_index / max(cluster_size - 1, 1)) * spread
+    similarity_pull = float(similarity_to_root) * 44.0
+    return max(36.0, base + density_offset - similarity_pull)
+
+
+def _cluster_offset(index: int, size: int, spread: float) -> float:
+    if size <= 1:
+        return 0.0
+    normalized = (index / max(size - 1, 1)) - 0.5
+    return normalized * spread
+
+
+def _stable_angle(value: str) -> float:
+    fraction = _stable_fraction(value)
+    return -np.pi + fraction * 2 * np.pi
+
+
+def _stable_jitter(value: str, scale: float) -> float:
+    return (_stable_fraction(value) - 0.5) * 2 * scale
+
+
+def _stable_fraction(value: str) -> float:
+    digest = hashlib.sha1(str(value).encode("utf-8")).hexdigest()
+    return int(digest[:10], 16) / float(16 ** 10 - 1)
 
 
 def _diffusion_layer_rows(visible_nodes: list[dict], total_nodes: int) -> list[dict]:

@@ -2227,7 +2227,7 @@ class TestKT3ManualAgentReview:
 
         async def mock_provider(*, agent_name, system_prompt, user_prompt, input_bundle, model):
             calls.append((agent_name, system_prompt, user_prompt, input_bundle, model))
-            return f"{agent_name} 自然语言分析报告\n\n本报告仅供人工复核。"
+            return f"{agent_name} report"
 
         result = asyncio.run(
             run_manual_kt3_agent_review(
@@ -2252,33 +2252,33 @@ class TestKT3ManualAgentReview:
         assert result["schema_version"] == "kt3-manual-agent-review-v1"
         assert result["audit"]["capability_boundary"]["manual_human_triggered"] is True
         assert result["audit"]["capability_boundary"]["fits_benchmark_labels"] is False
-        assert result["summary"]["completed"] == 15
+        assert result["audit"]["effective_runtime_mode"] == "complex"
+        assert result["summary"]["completed"] == 11
         assert result["summary"]["failed"] == 0
         assert result["summary"]["reflection_response_reports"] == 4
-        assert len(calls) == 15
+        assert len(calls) == 11
         assert calls[0][0] == "PostHarmAgent"
-        assert calls[-1][0] == "CountermeasureAgent:final"
+        assert calls[-1][0] == "CountermeasureAgent"
         assert result["input_bundle"]["input_refs"]["post_ids"] == ["p1"]
         assert result["input_bundle"]["governance_reference"]["platform_reference_refs"]
-        main_reports = [
-            item
-            for item in result["agent_reports"]
-            if item.get("report_role") not in {"reflection_response", "judge_critique", "countermeasure_critique"}
-        ]
+        roles = [item.get("report_role") for item in result["agent_reports"]]
         reflection_reports = [item for item in result["agent_reports"] if item.get("report_role") == "reflection_response"]
-        assert len(main_reports) == 9
+        assert roles.count("expert_initial") == 4
+        assert "reflection" in roles
+        assert "judge_final" in roles
+        assert "countermeasure_final" in roles
         assert len(reflection_reports) == 4
         for report in result["agent_reports"]:
             assert report["status"] == "completed"
             assert report["analysis_report"]["format"] == "natural_language_or_semi_structured_report"
             assert report["analysis_report"]["capability_boundary"]["not_json_classifier"] is True
-            assert "自然语言分析报告" in report["report_text"]
+            assert report["report_text"]
             assert "not_a_classifier_output" in report["safety_flags"]
             assert report["system_audit_sidecar"]["not_agent_primary_output"] is True
             assert report["structured_sidecar"]["schema_version"] == "kt3-agent-sidecar-v1"
             assert report["structured_sidecar"]["platform_reference_refs"]
 
-        judge_report = next(item for item in result["agent_reports"] if item["agent_name"] == "HarmfulnessJudgeAgent")
+        judge_report = next(item for item in result["agent_reports"] if item.get("report_role") == "judge_final")
         governance_report = judge_report["structured_sidecar"]["governance_report"]
         assert governance_report["governance_report_text"]
         assert governance_report["platform_reference_refs"]
@@ -2299,7 +2299,7 @@ class TestKT3ManualAgentReview:
 
         async def mock_provider(*, agent_name, system_prompt, user_prompt, input_bundle, model):
             calls.append((agent_name, input_bundle))
-            return f"{agent_name} 自然语言分析报告\n\n包含证据复核与不确定性。"
+            return f"{agent_name} report"
 
         async def mock_retriever(*, query, context, top_k):
             return [
@@ -2314,7 +2314,7 @@ class TestKT3ManualAgentReview:
         result = asyncio.run(
             run_manual_kt3_agent_review(
                 report=self._report(),
-                agent_names=["PostHarmAgent", "QuestionReflectionAgent", "HarmfulnessJudgeAgent"],
+                agent_names=["ClaimEvidenceAgent", "MultimodalConsistencyAgent", "HarmfulnessJudgeAgent"],
                 selected_post_ids=["p1"],
                 selected_tree_ids=["tree-1"],
                 human_triggered_by=42,
@@ -2327,18 +2327,20 @@ class TestKT3ManualAgentReview:
             )
         )
 
-        assert result["summary"]["completed"] == 6
-        assert result["summary"]["reflection_response_reports"] == 1
+        assert result["summary"]["completed"] == 7
+        assert result["summary"]["reflection_response_reports"] == 2
         assert result["summary"]["active_retrieval_used"] is True
+        assert result["summary"]["light_debate_triggered"] is True
         assert result["active_retrieval"]["audit"]["external_provider_configured"] is True
         assert result["active_retrieval"]["capability_boundary"]["external_retrieval_default_enabled"] is True
         assert result["active_retrieval"]["external_results"]
-        assert "light_debate" in calls[0][1]
         for report in result["agent_reports"]:
             sidecar = report["structured_sidecar"]
             assert sidecar["active_retrieval_used"] is True
             assert sidecar["retrieval_queries"]
             assert sidecar["source_quality"]["external_evidence"] >= 1
+        multimodal_report = next(item for item in result["agent_reports"] if item["agent_name"] == "MultimodalConsistencyAgent")
+        assert multimodal_report["structured_sidecar"]["light_debate_used"] is True
 
     def test_manual_agent_review_records_failure_without_synthetic_report(self):
         result = asyncio.run(
@@ -2349,16 +2351,19 @@ class TestKT3ManualAgentReview:
                 human_triggered_by=42,
                 provider=None,
                 model="mock-model",
+                runtime_mode="simple",
             )
         )
 
         assert result["summary"]["completed"] == 0
-        assert result["summary"]["failed"] == 1
-        [report] = result["agent_reports"]
-        assert report["status"] == "failed"
-        assert report["report_text"] is None
-        assert report["structured_sidecar"]["schema_version"] == "kt3-agent-sidecar-v1"
-        assert "no_synthetic_fallback" in report["safety_flags"]
+        assert result["summary"]["failed"] == 2
+        assert result["audit"]["effective_runtime_mode"] == "simple"
+        assert {item["agent_name"] for item in result["agent_reports"]} == {"PostHarmAgent", "HarmfulnessJudgeAgent"}
+        for report in result["agent_reports"]:
+            assert report["status"] == "failed"
+            assert report["report_text"] is None
+            assert report["structured_sidecar"]["schema_version"] == "kt3-agent-sidecar-v1"
+            assert "no_synthetic_fallback" in report["safety_flags"]
 
     def test_manual_agent_review_requires_vision_for_multimodal_agent(self):
         calls = []
@@ -2377,18 +2382,20 @@ class TestKT3ManualAgentReview:
                 model="mock-model",
                 include_media_base64=False,
                 require_vision=True,
+                runtime_mode="simple",
             )
         )
 
-        assert calls == []
-        assert result["summary"]["completed"] == 0
+        assert "MultimodalConsistencyAgent" not in calls
+        assert calls == ["HarmfulnessJudgeAgent"]
+        assert result["summary"]["completed"] == 1
         assert result["summary"]["failed"] == 1
-        [report] = result["agent_reports"]
-        assert report["status"] == "failed"
-        assert report["vision_required"] is True
-        assert report["vision_input_status"]["has_vision_input"] is False
-        assert "missing_vision_input" in report["safety_flags"]
-        assert report["report_text"] is None
+        failed_report = next(item for item in result["agent_reports"] if item["status"] == "failed")
+        assert failed_report["agent_name"] == "MultimodalConsistencyAgent"
+        assert failed_report["vision_required"] is True
+        assert failed_report["vision_input_status"]["has_vision_input"] is False
+        assert "missing_vision_input" in failed_report["safety_flags"]
+        assert failed_report["report_text"] is None
 
     def test_openai_provider_uses_responses_api_with_image_input(self, tmp_path, monkeypatch):
         image_path = tmp_path / "frame.png"
@@ -2539,9 +2546,9 @@ class TestKT3ManualAgentReview:
         db = FakeSession(row)
 
         async def mock_provider(*, agent_name, system_prompt, user_prompt, input_bundle, model):
-            assert agent_name == "PostHarmAgent"
+            assert agent_name in {"PostHarmAgent", "HarmfulnessJudgeAgent"}
             assert input_bundle["input_refs"]["case_id"] == "case-1"
-            return "PostHarmAgent 自然语言报告：仅供人工复核。"
+            return f"{agent_name} 自然语言报告：仅供人工复核。"
 
         result = asyncio.run(
             risk_service.run_kt3_agent_review(
@@ -2550,8 +2557,7 @@ class TestKT3ManualAgentReview:
                 agent_names=["PostHarmAgent"],
                 selected_post_ids=["p1"],
                 selected_tree_ids=["tree-1"],
-                enable_active_retrieval=True,
-                enable_light_debate=True,
+                runtime_mode="simple",
                 user_id=42,
                 db=db,
                 provider=mock_provider,
@@ -2560,13 +2566,13 @@ class TestKT3ManualAgentReview:
 
         persisted = json.loads(row.report_json)
         assert db.flushed is True
-        assert result["summary"]["completed"] == 1
+        assert result["summary"]["completed"] == 2
         assert persisted["agent_reviews"][0]["report_format"] == "maro_style_natural_language_analysis_report"
         assert persisted["agent_reviews"][0]["analysis_report"]["capability_boundary"]["primary_agent_output"] is True
-        assert persisted["agent_reviews"][0]["structured_sidecar"]["active_retrieval_used"] is True
+        assert persisted["agent_reviews"][0]["structured_sidecar"]["active_retrieval_used"] is False
         assert persisted["agent_reviews"][0]["human_triggered_by"] == "42"
         assert persisted["agent_review_runs"][0]["case_id"] == "case-1"
-        assert persisted["agent_review_runs"][0]["active_retrieval"]["schema_version"] == "kt3-active-evidence-v1"
+        assert persisted["agent_review_runs"][0]["effective_runtime_mode"] == "simple"
         assert persisted["agent_review_runs"][0]["input_refs"]["post_ids"] == ["p1"]
         assert persisted["kt3_harmfulness"]["agent_review_suggestions"]["manual_trigger_required"] is True
 
@@ -2771,9 +2777,9 @@ class TestKT3ManualAgentReview:
         assert judge_report["structured_sidecar"]["active_policy_id"] == "kt3-refined-policy-test"
         assert judge_report["structured_sidecar"]["policy_rule_refs"][0]["rule_id"] == "lower-review"
 
-    def test_manual_agent_review_self_refines_judge_and_countermeasure(self):
+    def test_manual_agent_review_runs_single_pass_judge_and_post_judge_countermeasure_by_default(self):
         async def mock_provider(*, agent_name, system_prompt, user_prompt, input_bundle, model):
-            return f"{agent_name} 输出"
+            return f"{agent_name} output"
 
         result = asyncio.run(
             run_manual_kt3_agent_review(
@@ -2786,12 +2792,33 @@ class TestKT3ManualAgentReview:
             )
         )
         roles = [item.get("report_role") for item in result["agent_reports"]]
+        assert "judge_final" in roles
+        assert "countermeasure_final" in roles
+        assert "judge_draft" not in roles
+        assert "countermeasure_draft" not in roles
+
+    def test_manual_agent_review_enable_deep_judge_self_refines_judge_only(self):
+        async def mock_provider(*, agent_name, system_prompt, user_prompt, input_bundle, model):
+            return f"{agent_name} output"
+
+        result = asyncio.run(
+            run_manual_kt3_agent_review(
+                report=self._report(),
+                agent_names=["HarmfulnessJudgeAgent", "CountermeasureAgent"],
+                selected_post_ids=["p1"],
+                human_triggered_by=42,
+                provider=mock_provider,
+                model="mock-model",
+                enable_deep_judge=True,
+            )
+        )
+        roles = [item.get("report_role") for item in result["agent_reports"]]
         assert "judge_draft" in roles
         assert "judge_critique" in roles
         assert "judge_final" in roles
-        assert "countermeasure_draft" in roles
-        assert "countermeasure_critique" in roles
         assert "countermeasure_final" in roles
+        assert "countermeasure_draft" not in roles
+        assert "countermeasure_critique" not in roles
 
     def test_full_debate_triggers_for_high_conflict_and_low_conflict_stays_off(self):
         async def mock_provider(*, agent_name, system_prompt, user_prompt, input_bundle, model):
@@ -2800,12 +2827,11 @@ class TestKT3ManualAgentReview:
         high_conflict = asyncio.run(
             run_manual_kt3_agent_review(
                 report=self._report(),
-                agent_names=["PostHarmAgent", "HarmfulnessJudgeAgent"],
+                agent_names=["MultimodalConsistencyAgent", "HarmfulnessJudgeAgent"],
                 selected_post_ids=["p1"],
                 human_triggered_by=42,
                 provider=mock_provider,
                 model="mock-model",
-                enable_active_retrieval=True,
                 enable_full_debate=True,
                 debate_max_rounds=2,
             )
@@ -2829,12 +2855,11 @@ class TestKT3ManualAgentReview:
         low_conflict = asyncio.run(
             run_manual_kt3_agent_review(
                 report=low_report,
-                agent_names=["PostHarmAgent"],
+                agent_names=["MultimodalConsistencyAgent", "HarmfulnessJudgeAgent"],
                 selected_post_ids=["p1"],
                 human_triggered_by=42,
                 provider=mock_provider,
                 model="mock-model",
-                enable_active_retrieval=False,
                 enable_full_debate=True,
             )
         )
@@ -2842,6 +2867,57 @@ class TestKT3ManualAgentReview:
         assert low_conflict["summary"]["full_debate_triggered"] is False
         assert low_conflict["full_debate"] is None
         assert low_conflict["agent_reports"][0]["structured_sidecar"]["debate_mode"] == "light_debate"
+
+    def test_manual_agent_review_simple_mode_skips_complex_enhancements(self):
+        async def mock_provider(*, agent_name, system_prompt, user_prompt, input_bundle, model):
+            return f"{agent_name} output"
+
+        result = asyncio.run(
+            run_manual_kt3_agent_review(
+                report=self._report(),
+                agent_names=["PostHarmAgent", "ClaimEvidenceAgent"],
+                selected_post_ids=["p1"],
+                human_triggered_by=42,
+                provider=mock_provider,
+                model="mock-model",
+                runtime_mode="simple",
+            )
+        )
+
+        assert result["audit"]["effective_runtime_mode"] == "simple"
+        assert result["summary"]["active_retrieval_used"] is False
+        assert result["summary"]["light_debate_triggered"] is False
+        assert result["summary"]["full_debate_triggered"] is False
+        assert result["summary"]["reflection_response_reports"] == 0
+        assert {item["agent_name"] for item in result["agent_reports"]} == {
+            "PostHarmAgent",
+            "ClaimEvidenceAgent",
+            "HarmfulnessJudgeAgent",
+        }
+        assert all(item["report_role"] != "reflection" for item in result["agent_reports"])
+        assert all(item["agent_name"] != "CountermeasureAgent" for item in result["agent_reports"])
+
+    def test_manual_agent_review_upgrades_simple_request_when_complex_features_are_enabled(self):
+        async def mock_provider(*, agent_name, system_prompt, user_prompt, input_bundle, model):
+            return f"{agent_name} output"
+
+        result = asyncio.run(
+            run_manual_kt3_agent_review(
+                report=self._report(),
+                agent_names=["PostHarmAgent"],
+                selected_post_ids=["p1"],
+                human_triggered_by=42,
+                provider=mock_provider,
+                model="mock-model",
+                runtime_mode="simple",
+                enable_active_retrieval=True,
+            )
+        )
+
+        assert result["audit"]["recommended_runtime_mode"] == "complex"
+        assert result["audit"]["effective_runtime_mode"] == "complex"
+        assert result["audit"]["runtime_upgraded_by_requested_features"] is True
+        assert "enabled_active_retrieval" in result["audit"]["runtime_reasons"]
 
     def test_service_feedback_refine_and_activate_policy(self):
         report = self._report()

@@ -16,6 +16,7 @@ from uuid import uuid4
 import asyncio
 import base64
 import json
+import random
 from pathlib import Path
 
 import httpx
@@ -172,6 +173,8 @@ class OpenAICompatibleConfig:
     timeout_seconds: float = 180.0
     include_media_base64: bool = False
     require_vision: bool = False
+    max_retries: int = 2
+    retry_backoff_seconds: float = 2.0
 
 
 class OpenAICompatibleAgentProvider:
@@ -209,17 +212,31 @@ class OpenAICompatibleAgentProvider:
                 "temperature": 0.2,
             }
         headers = {"Authorization": f"Bearer {self.config.api_key}"}
-        try:
-            async with httpx.AsyncClient(timeout=self.config.timeout_seconds) as client:
-                response = await client.post(url, headers=headers, json=payload)
-                response.raise_for_status()
-                data = response.json()
-        except httpx.HTTPStatusError as exc:
-            body = exc.response.text[:1000] if exc.response is not None else ""
-            raise RuntimeError(f"{agent_name} provider HTTP {exc.response.status_code if exc.response else 'error'}: {body}") from exc
-        except Exception as exc:
-            detail = str(exc) or exc.__class__.__name__
-            raise RuntimeError(f"{agent_name} provider request failed: {detail}") from exc
+        data = None
+        last_error: Exception | None = None
+        max_attempts = max(1, int(self.config.max_retries or 0) + 1)
+        for attempt in range(1, max_attempts + 1):
+            try:
+                async with httpx.AsyncClient(timeout=self.config.timeout_seconds) as client:
+                    response = await client.post(url, headers=headers, json=payload)
+                    response.raise_for_status()
+                    data = response.json()
+                    break
+            except httpx.HTTPStatusError as exc:
+                last_error = exc
+                status_code = exc.response.status_code if exc.response is not None else None
+                if attempt >= max_attempts or not _should_retry_status(status_code):
+                    body = exc.response.text[:1000] if exc.response is not None else ""
+                    raise RuntimeError(f"{agent_name} provider HTTP {status_code if status_code else 'error'}: {body}") from exc
+            except Exception as exc:
+                last_error = exc
+                if attempt >= max_attempts or not _should_retry_exception(exc):
+                    detail = str(exc) or exc.__class__.__name__
+                    raise RuntimeError(f"{agent_name} provider request failed: {detail}") from exc
+            await asyncio.sleep(_retry_delay_seconds(self.config.retry_backoff_seconds, attempt))
+        if data is None:
+            detail = str(last_error) if last_error is not None else "unknown provider error"
+            raise RuntimeError(f"{agent_name} provider request failed: {detail}")
         if wire_api == "responses":
             return _extract_responses_text(data, agent_name)
         choices = data.get("choices") or []
@@ -257,6 +274,8 @@ async def run_manual_kt3_agent_review(
     policy: dict[str, Any] | None = None,
     error_memory_summary: dict[str, Any] | None = None,
     require_vision: bool = False,
+    runtime_mode: str = "auto",
+    enable_deep_judge: bool = False,
 ) -> dict[str, Any]:
     """Run analyst-triggered natural-language KT3 agent reports."""
     normalized_agents = _normalize_agent_names(agent_names)
@@ -272,6 +291,28 @@ async def run_manual_kt3_agent_review(
     context["policy"] = policy or {}
     context["active_policy"] = policy or {}
     context["error_memory_summary"] = error_memory_summary or {}
+    runtime_decision = _resolve_runtime_mode(
+        report=report,
+        context=context,
+        normalized_agents=normalized_agents,
+        requested_runtime_mode=runtime_mode,
+        enable_active_retrieval=enable_active_retrieval,
+        enable_light_debate=enable_light_debate,
+        enable_full_debate=enable_full_debate,
+        enable_deep_judge=enable_deep_judge,
+    )
+    effective_runtime_mode = runtime_decision["effective_runtime_mode"]
+    execution_plan = _execution_plan_for_runtime(
+        requested_agents=normalized_agents,
+        runtime_mode=effective_runtime_mode,
+        enable_deep_judge=enable_deep_judge,
+    )
+    retrieval_requested = bool(enable_active_retrieval and effective_runtime_mode == "complex")
+    retrieval_enabled = bool(
+        retrieval_requested
+        and execution_plan["claim_agent_enabled"]
+        and "ClaimEvidenceAgent" in execution_plan["expert_agents"]
+    )
     retrieval_bundle = (
         await retrieve_active_evidence(
             context=context,
@@ -279,16 +320,21 @@ async def run_manual_kt3_agent_review(
             external_provider=active_retriever,
             external_enabled=external_retrieval_enabled,
         )
-        if enable_active_retrieval
+        if retrieval_enabled
         else None
     )
     if retrieval_bundle is not None:
         context["active_retrieval"] = retrieval_bundle
+    debate_requested = bool(
+        effective_runtime_mode == "complex"
+        and execution_plan["multimodal_agent_enabled"]
+        and (enable_light_debate or enable_full_debate)
+    )
     debate_triggered, debate_reasons = should_trigger_light_debate(
         context=context,
         retrieval_bundle=retrieval_bundle,
     )
-    if enable_full_debate and debate_triggered:
+    if enable_full_debate and debate_requested and debate_triggered:
         debate_bundle = await build_full_debate_trace(
             context=context,
             retrieval_bundle=retrieval_bundle,
@@ -304,7 +350,7 @@ async def run_manual_kt3_agent_review(
                 retrieval_bundle=retrieval_bundle,
                 reasons=debate_reasons,
             )
-            if enable_light_debate and debate_triggered
+            if enable_light_debate and debate_requested and debate_triggered
             else {"schema_version": "kt3-light-debate-v1", "triggered": False, "reasons": debate_reasons}
         )
     context["debate_trace"] = debate_bundle
@@ -325,6 +371,9 @@ async def run_manual_kt3_agent_review(
             "enable_active_retrieval": enable_active_retrieval,
             "enable_light_debate": enable_light_debate,
             "enable_full_debate": enable_full_debate,
+            "runtime_mode": runtime_mode,
+            "effective_runtime_mode": effective_runtime_mode,
+            "enable_deep_judge": enable_deep_judge,
             "debate_max_rounds": debate_max_rounds,
             "policy_id": (policy or {}).get("policy_id"),
             "context": context,
@@ -342,6 +391,12 @@ async def run_manual_kt3_agent_review(
         "debate_bundle": debate_bundle,
         "require_vision": require_vision,
         "enable_full_debate": enable_full_debate,
+        "runtime_mode": effective_runtime_mode,
+        "requested_runtime_mode": runtime_mode,
+        "enable_deep_judge": enable_deep_judge,
+        "runtime_reasons": runtime_decision["runtime_reasons"],
+        "recommended_runtime_mode": runtime_decision["recommended_runtime_mode"],
+        "runtime_upgraded_by_requested_features": runtime_decision["runtime_upgraded_by_requested_features"],
     }
     reports_by_agent = {
         str(item.get("agent_name")): item
@@ -350,8 +405,8 @@ async def run_manual_kt3_agent_review(
     }
 
     results: list[dict[str, Any]] = []
-    expert_agents = [agent for agent in normalized_agents if agent in EXPERT_AGENTS]
-    followup_agents = [agent for agent in normalized_agents if agent in FOLLOWUP_AGENTS]
+    expert_agents = execution_plan["expert_agents"]
+    followup_agents = execution_plan["followup_agents"]
 
     expert_results = await _run_agent_batch(
         expert_agents,
@@ -363,7 +418,7 @@ async def run_manual_kt3_agent_review(
     results.extend(expert_results)
     reports_by_agent.update(_completed_by_agent(expert_results))
 
-    if "QuestionReflectionAgent" in followup_agents:
+    if execution_plan["run_question_reflection"] and "QuestionReflectionAgent" in followup_agents:
         [reflection_result] = await _run_agent_batch(
             ["QuestionReflectionAgent"],
             context=context,
@@ -373,28 +428,55 @@ async def run_manual_kt3_agent_review(
         )
         results.append(reflection_result)
         reports_by_agent.update(_completed_by_agent([reflection_result]))
-        reflection_responses = await _run_reflection_response_batch(
-            expert_agents,
-            context=context,
-            reports_by_agent=reports_by_agent,
-            provider=provider,
-            state=state,
-        )
-        results.extend(reflection_responses)
-        reports_by_agent.update(_completed_by_agent(reflection_responses))
+        if execution_plan["run_reflection_responses"]:
+            reflection_responses = await _run_reflection_response_batch(
+                expert_agents,
+                context=context,
+                reports_by_agent=reports_by_agent,
+                provider=provider,
+                state=state,
+            )
+            results.extend(reflection_responses)
+            reports_by_agent.update(_completed_by_agent(reflection_responses))
 
-    for agent in ("HarmfulnessJudgeAgent", "CountermeasureAgent"):
-        if agent not in followup_agents:
-            continue
-        staged_results = await _run_self_refined_agent(
-            agent_name=agent,
-            context=context,
-            reports_by_agent=reports_by_agent,
-            provider=provider,
-            state=state,
-        )
-        results.extend(staged_results)
-        reports_by_agent.update(_completed_by_agent([staged_results[-1]]))
+    if "HarmfulnessJudgeAgent" in followup_agents:
+        if execution_plan["deep_judge"]:
+            judge_results = await _run_self_refined_agent(
+                agent_name="HarmfulnessJudgeAgent",
+                context=context,
+                reports_by_agent=reports_by_agent,
+                provider=provider,
+                state=state,
+            )
+        else:
+            judge_results = [
+                await _run_single_agent(
+                    "HarmfulnessJudgeAgent",
+                    context=context,
+                    reports_by_agent=reports_by_agent,
+                    provider=provider,
+                    state=state,
+                )
+            ]
+        results.extend(judge_results)
+        reports_by_agent.update(_completed_by_agent([judge_results[-1]]))
+
+    countermeasure_requested = "CountermeasureAgent" in normalized_agents
+    countermeasure_allowed = execution_plan["run_countermeasure"]
+    if countermeasure_allowed and (
+        countermeasure_requested or _should_postpone_countermeasure(report=report, reports_by_agent=reports_by_agent)
+    ):
+        countermeasure_results = [
+            await _run_single_agent(
+                "CountermeasureAgent",
+                context=context,
+                reports_by_agent=reports_by_agent,
+                provider=provider,
+                state=state,
+            )
+        ]
+        results.extend(countermeasure_results)
+        reports_by_agent.update(_completed_by_agent([countermeasure_results[-1]]))
 
     audit = {
         "run_id": run_id,
@@ -411,6 +493,21 @@ async def run_manual_kt3_agent_review(
         "light_debate": debate_bundle,
         "full_debate": debate_bundle if debate_bundle.get("schema_version") == "kt3-full-debate-v1" else None,
         "policy_id": (policy or {}).get("policy_id"),
+        "recommended_runtime_mode": runtime_decision["recommended_runtime_mode"],
+        "effective_runtime_mode": effective_runtime_mode,
+        "runtime_reasons": runtime_decision["runtime_reasons"],
+        "runtime_upgraded_by_requested_features": runtime_decision["runtime_upgraded_by_requested_features"],
+        "candidate_rule_hints": _candidate_rule_hints(
+            report=report,
+            context=context,
+            retrieval_bundle=retrieval_bundle,
+            reports_by_agent=reports_by_agent,
+        ),
+        "failure_mode_tags": _failure_mode_tags(
+            report=report,
+            context=context,
+            retrieval_bundle=retrieval_bundle,
+        ),
         "capability_boundary": {
             "manual_human_triggered": True,
             "not_a_classifier": True,
@@ -423,6 +520,8 @@ async def run_manual_kt3_agent_review(
             "full_debate_optional": True,
             "full_debate_high_conflict_only": True,
             "maro_question_reflection_loop": "expert_reports_then_reflection_then_expert_response",
+            "runtime_mode_enabled": True,
+            "countermeasure_post_judge_only": True,
         },
     }
     return {
@@ -446,6 +545,11 @@ async def run_manual_kt3_agent_review(
                 1 for item in results if item.get("report_role") == "reflection_response"
             ),
             "report_ids": [item.get("review_id") for item in results],
+            "recommended_runtime_mode": runtime_decision["recommended_runtime_mode"],
+            "effective_runtime_mode": effective_runtime_mode,
+            "runtime_reasons": runtime_decision["runtime_reasons"],
+            "runtime_upgraded_by_requested_features": runtime_decision["runtime_upgraded_by_requested_features"],
+            "candidate_rule_hints": audit["candidate_rule_hints"],
         },
     }
 
@@ -472,6 +576,14 @@ def agent_review_suggestions(report: dict[str, Any]) -> dict[str, Any]:
     review_queue = kt3.get("review_queue") or {}
     review_items = _as_list(review_queue.get("review_items"))
     posts = _semantic_posts(report.get("post_semantics") or {})
+    suggestion_context = {
+        "selected_posts": posts[:5],
+        "review_queue": review_queue,
+    }
+    recommended_runtime_mode, runtime_reasons = _recommended_runtime_mode(
+        report=report,
+        context=suggestion_context,
+    )
 
     suggested: list[dict[str, Any]] = []
     if review_items:
@@ -544,12 +656,192 @@ def agent_review_suggestions(report: dict[str, Any]) -> dict[str, Any]:
         "all_agents": list(AGENT_ORDER),
         "review_required": bool(deduped),
         "review_reason": "; ".join(item["reason"] for item in deduped[:4]),
+        "recommended_runtime_mode": recommended_runtime_mode,
+        "runtime_reasons": runtime_reasons,
         "capability_boundary": {
             "llm_called": False,
             "manual_confirmation_required": True,
             "not_a_benchmark_fitting_step": True,
         },
     }
+
+
+def _resolve_runtime_mode(
+    *,
+    report: dict[str, Any],
+    context: dict[str, Any],
+    normalized_agents: list[str],
+    requested_runtime_mode: str,
+    enable_active_retrieval: bool,
+    enable_light_debate: bool,
+    enable_full_debate: bool,
+    enable_deep_judge: bool,
+) -> dict[str, Any]:
+    recommended, reasons = _recommended_runtime_mode(report=report, context=context)
+    requested = str(requested_runtime_mode or "auto").strip().lower()
+    if requested not in {"auto", "simple", "complex"}:
+        requested = "auto"
+
+    upgraded = False
+    forced_complex_reasons: list[str] = []
+    if enable_active_retrieval:
+        forced_complex_reasons.append("enabled_active_retrieval")
+    if enable_light_debate or enable_full_debate:
+        forced_complex_reasons.append("enabled_debate")
+    if enable_deep_judge:
+        forced_complex_reasons.append("enabled_deep_judge")
+    if "CountermeasureAgent" in normalized_agents:
+        forced_complex_reasons.append("countermeasure_selected")
+
+    if requested == "auto":
+        effective = recommended
+    elif requested == "simple":
+        if forced_complex_reasons:
+            effective = "complex"
+            upgraded = True
+            reasons = [*reasons, *forced_complex_reasons]
+        else:
+            effective = "simple"
+    else:
+        effective = "complex"
+        if recommended == "simple":
+            reasons = [*reasons, "analyst_requested_complex_mode"]
+
+    return {
+        "recommended_runtime_mode": recommended,
+        "effective_runtime_mode": effective,
+        "runtime_reasons": _dedupe_strs(reasons),
+        "runtime_upgraded_by_requested_features": upgraded,
+    }
+
+
+def _recommended_runtime_mode(*, report: dict[str, Any], context: dict[str, Any]) -> tuple[str, list[str]]:
+    reasons: list[str] = []
+    selected_posts = _as_list(context.get("selected_posts"))
+    review_queue = _get(report, "kt3_harmfulness", "review_queue") or {}
+    if len(selected_posts) > 1:
+        reasons.append("multiple_selected_posts")
+    if any(_post_has_multimodal_conflict(post) for post in selected_posts):
+        reasons.append("multimodal_conflict_or_media_gap")
+    if review_queue.get("retrieval_tasks"):
+        reasons.append("claim_retrieval_tasks_present")
+    if _has_propagation_tree_context(report):
+        reasons.append("propagation_context_present")
+    if any(_post_has_uncertain_stance_or_view(post) for post in selected_posts):
+        reasons.append("stance_or_post_view_uncertain")
+    return ("complex", reasons) if reasons else ("simple", ["single_post_low_conflict"])
+
+
+def _execution_plan_for_runtime(
+    *,
+    requested_agents: list[str],
+    runtime_mode: str,
+    enable_deep_judge: bool,
+) -> dict[str, Any]:
+    requested = [agent for agent in requested_agents if agent in AGENT_ORDER]
+    if runtime_mode == "simple":
+        expert_agents = [
+            agent
+            for agent in requested
+            if agent in {"PostHarmAgent", "ClaimEvidenceAgent", "PropagationTreeAgent", "MultimodalConsistencyAgent"}
+        ]
+        if "HarmfulnessJudgeAgent" not in requested:
+            requested = [*requested, "HarmfulnessJudgeAgent"]
+        return {
+            "expert_agents": expert_agents,
+            "followup_agents": ["HarmfulnessJudgeAgent"],
+            "run_question_reflection": False,
+            "run_reflection_responses": False,
+            "deep_judge": False,
+            "run_countermeasure": False,
+            "claim_agent_enabled": "ClaimEvidenceAgent" in expert_agents,
+            "multimodal_agent_enabled": "MultimodalConsistencyAgent" in expert_agents,
+        }
+    expert_agents = [agent for agent in requested if agent in EXPERT_AGENTS]
+    run_question_reflection = bool(expert_agents)
+    followup_agents: list[str] = []
+    if run_question_reflection:
+        followup_agents.append("QuestionReflectionAgent")
+    followup_agents.append("HarmfulnessJudgeAgent")
+    if "CountermeasureAgent" in requested:
+        followup_agents.append("CountermeasureAgent")
+    return {
+        "expert_agents": expert_agents,
+        "followup_agents": _dedupe_strs(followup_agents),
+        "run_question_reflection": run_question_reflection,
+        "run_reflection_responses": run_question_reflection,
+        "deep_judge": bool(enable_deep_judge),
+        "run_countermeasure": True,
+        "claim_agent_enabled": "ClaimEvidenceAgent" in expert_agents,
+        "multimodal_agent_enabled": "MultimodalConsistencyAgent" in expert_agents,
+    }
+
+
+def _should_postpone_countermeasure(*, report: dict[str, Any], reports_by_agent: dict[str, dict[str, Any]]) -> bool:
+    if _has_countermeasure_context(report):
+        return True
+    judge_report = reports_by_agent.get("HarmfulnessJudgeAgent") or {}
+    judge_text = str(judge_report.get("report_text") or "").lower()
+    return "反制" in str(judge_report.get("report_text") or "") or "countermeasure" in judge_text
+
+
+def _candidate_rule_hints(
+    *,
+    report: dict[str, Any],
+    context: dict[str, Any],
+    retrieval_bundle: dict[str, Any] | None,
+    reports_by_agent: dict[str, dict[str, Any]],
+) -> list[dict[str, Any]]:
+    hints: list[dict[str, Any]] = []
+    selected_posts = _as_list(context.get("selected_posts"))
+    if any(_post_has_multimodal_conflict(post) for post in selected_posts):
+        hints.append(
+            {
+                "hint_type": "multimodal_conflict",
+                "description": "Cross-view conflict or undecodable media may justify stronger multimodal review triggers.",
+            }
+        )
+    if any(_post_has_uncertain_stance_or_view(post) for post in selected_posts):
+        hints.append(
+            {
+                "hint_type": "uncertainty_cluster",
+                "description": "Repeated stance/post-view uncertainty may justify earlier review or retrieval thresholds.",
+            }
+        )
+    if retrieval_bundle and not any(result.get("top_evidence") for result in retrieval_bundle.get("local_results") or []):
+        hints.append(
+            {
+                "hint_type": "retrieval_gap",
+                "description": "Local evidence coverage was weak; retrieval thresholds or query templates may need refinement.",
+            }
+        )
+    if _has_countermeasure_context(report) or "CountermeasureAgent" in reports_by_agent:
+        hints.append(
+            {
+                "hint_type": "countermeasure_context",
+                "description": "High-risk context suggests reviewing post-judge countermeasure trigger conditions.",
+            }
+        )
+    return hints[:8]
+
+
+def _failure_mode_tags(
+    *,
+    report: dict[str, Any],
+    context: dict[str, Any],
+    retrieval_bundle: dict[str, Any] | None,
+) -> list[str]:
+    tags: list[str] = []
+    selected_posts = _as_list(context.get("selected_posts"))
+    if any(_post_has_multimodal_conflict(post) for post in selected_posts):
+        tags.append("multimodal_conflict")
+    if any(_post_has_uncertain_stance_or_view(post) for post in selected_posts):
+        tags.append("uncertain_post_or_stance")
+    if retrieval_bundle and (retrieval_bundle.get("audit") or {}).get("failures"):
+        tags.append("external_retrieval_failure")
+    if _has_propagation_tree_context(report):
+        tags.append("propagation_context_present")
+    return _dedupe_strs(tags)
 
 
 async def _run_agent_batch(
@@ -675,11 +967,15 @@ async def _run_single_reflection_response(
     )
     user_prompt = _reflection_response_prompt(agent_name, context, reports_by_agent)
     try:
+        provider_input_bundle = _provider_input_bundle_for_agent(
+            response_agent_name,
+            context=context,
+        )
         report_text = await provider(
             agent_name=response_agent_name,
             system_prompt=system_prompt,
             user_prompt=user_prompt,
-            input_bundle=context,
+            input_bundle=provider_input_bundle,
             model=state["model"],
         )
     except Exception as exc:  # pragma: no cover
@@ -769,11 +1065,15 @@ async def _run_single_revision_step(
         reports_by_agent=reports_by_agent,
     )
     try:
+        provider_input_bundle = _provider_input_bundle_for_agent(
+            f"{agent_name}:{revision_kind}",
+            context=context,
+        )
         report_text = await provider(
             agent_name=f"{agent_name}:{revision_kind}",
             system_prompt=system_prompt,
             user_prompt=user_prompt,
-            input_bundle=context,
+            input_bundle=provider_input_bundle,
             model=state["model"],
         )
     except Exception as exc:  # pragma: no cover
@@ -841,11 +1141,12 @@ async def _run_single_agent(
     report_role_override: str | None = None,
 ) -> dict[str, Any]:
     review_id = str(uuid4())
+    default_report_role = report_role_override or _default_report_role(agent_name)
     base = {
         "review_id": review_id,
         "run_id": state["run_id"],
         "agent_name": agent_name,
-        "report_role": report_role_override or "expert_initial",
+        "report_role": default_report_role,
         "model": state["model"],
         "provider_name": state["provider_name"],
         "input_refs": context["input_refs"],
@@ -907,11 +1208,15 @@ async def _run_single_agent(
     system_prompt = _agent_system_prompt(agent_name)
     user_prompt = _agent_user_prompt(agent_name, context, reports_by_agent)
     try:
+        provider_input_bundle = _provider_input_bundle_for_agent(
+            agent_name,
+            context=context,
+        )
         report_text = await provider(
             agent_name=agent_name,
             system_prompt=system_prompt,
             user_prompt=user_prompt,
-            input_bundle=context,
+            input_bundle=provider_input_bundle,
             model=state["model"],
         )
     except Exception as exc:  # pragma: no cover - covered through API/core tests
@@ -1254,6 +1559,20 @@ def _normalize_wire_api(value: str) -> str:
     raise RuntimeError(f"Unsupported LLM_API_WIRE: {value}")
 
 
+def _should_retry_status(status_code: int | None) -> bool:
+    return status_code in {408, 409, 429, 500, 502, 503, 504}
+
+
+def _should_retry_exception(exc: Exception) -> bool:
+    return isinstance(exc, (httpx.TimeoutException, httpx.NetworkError, httpx.RemoteProtocolError))
+
+
+def _retry_delay_seconds(base_delay: float, attempt: int) -> float:
+    base = max(0.25, float(base_delay or 0.0))
+    jitter = random.uniform(0.0, 0.35)
+    return min(8.0, base * attempt) + jitter
+
+
 def _build_agent_context(
     report: dict[str, Any],
     *,
@@ -1419,6 +1738,16 @@ def _report_role_name(agent_name: str, stage: str) -> str:
     return "expert_initial"
 
 
+def _default_report_role(agent_name: str) -> str:
+    if agent_name == "QuestionReflectionAgent":
+        return "reflection"
+    if agent_name == "HarmfulnessJudgeAgent":
+        return "judge_final"
+    if agent_name == "CountermeasureAgent":
+        return "countermeasure_final"
+    return "expert_initial"
+
+
 def _revision_system_prompt(agent_name: str, revision_kind: str) -> str:
     if revision_kind == "critique":
         return (
@@ -1498,6 +1827,33 @@ def _vision_input_status(context: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _provider_input_bundle_for_agent(
+    agent_name: str,
+    *,
+    context: dict[str, Any],
+) -> dict[str, Any]:
+    """Avoid sending heavy visual payloads to agents that do not review raw media.
+
+    The full agent context still reaches prompts via ``user_prompt``. This helper
+    only trims provider-side ``media_inputs`` so that text-only agents do not pay
+    repeated image/base64 transfer cost on multimodal datasets.
+    """
+    if _provider_should_receive_media(agent_name):
+        return context
+    trimmed = dict(context)
+    trimmed["media_inputs"] = []
+    return trimmed
+
+
+def _provider_should_receive_media(agent_name: str) -> bool:
+    normalized = str(agent_name or "")
+    return (
+        normalized == "MultimodalConsistencyAgent"
+        or normalized.startswith("MultimodalConsistencyAgent")
+        or normalized.startswith("FullDebate:")
+    )
+
+
 def _normalize_agent_names(agent_names: list[str]) -> list[str]:
     aliases = {
         "PostHarm": "PostHarmAgent",
@@ -1526,6 +1882,17 @@ def _post_has_multimodal_conflict(post: dict[str, Any]) -> bool:
         return True
     review_reasons = _as_list(view.get("review_reason"))
     return any("conflict" in str(reason) or "media" in str(reason) for reason in review_reasons)
+
+
+def _post_has_uncertain_stance_or_view(post: dict[str, Any]) -> bool:
+    stance = post.get("stance") or {}
+    post_view = post.get("post_view_detection") or {}
+    if stance.get("abstain") or str(stance.get("label") or "").lower() in {"uncertain", "query", "unlinked"}:
+        return True
+    if str(post_view.get("final_harmfulness") or "").lower() == "uncertain":
+        return True
+    review_reasons = _as_list(post_view.get("review_reason"))
+    return any("uncertain" in str(reason).lower() for reason in review_reasons)
 
 
 def _has_propagation_tree_context(report: dict[str, Any]) -> bool:
@@ -1585,6 +1952,18 @@ def _as_list(value: Any) -> list[Any]:
     if isinstance(value, list):
         return value
     return [value]
+
+
+def _dedupe_strs(values: list[Any]) -> list[str]:
+    seen: set[str] = set()
+    deduped: list[str] = []
+    for item in values:
+        value = str(item or "").strip()
+        if not value or value in seen:
+            continue
+        seen.add(value)
+        deduped.append(value)
+    return deduped
 
 
 def _text(value: Any) -> str:

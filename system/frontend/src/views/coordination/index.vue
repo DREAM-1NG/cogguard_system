@@ -765,14 +765,35 @@ function formatObjectDisplayText(item: any) {
   return item?.display_value || item?.object_url || item?.object_id || '-'
 }
 
-function filterExamplesForSelectedNode(examples: any[] | undefined) {
+function splitExamplesForSelectedNode(examples: any[] | undefined) {
   const rows = Array.isArray(examples) ? examples : []
   const selectedId = String(selectedNode.value?.id || '')
-  if (!selectedId) return rows
+  if (!selectedId) {
+    return {
+      mine: [] as any[],
+      refs: rows.slice(0, 3),
+    }
+  }
+
   const matched = rows.filter((example: any) => String(example?.account_id || '') === selectedId)
-  if (!matched.length) return rows
   const rest = rows.filter((example: any) => String(example?.account_id || '') !== selectedId)
-  return [...matched, ...rest]
+  return {
+    mine: matched.slice(0, 3),
+    refs: (matched.length ? rest : rows).slice(0, 3),
+  }
+}
+
+function getMyExamples(examples: any[] | undefined) {
+  return splitExamplesForSelectedNode(examples).mine
+}
+
+function getReferenceExamples(examples: any[] | undefined) {
+  return splitExamplesForSelectedNode(examples).refs
+}
+
+function getPreviewExamples(examples: any[] | undefined) {
+  const rows = Array.isArray(examples) ? examples : []
+  return rows.slice(0, 3)
 }
 
 onBeforeUnmount(() => {
@@ -1090,10 +1111,27 @@ loadDatasets().then(async () => {
   gap: 10px;
 }
 
+.object-example-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.object-example-group-title {
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 700;
+}
+
 .object-example-card {
   border-radius: 12px;
   background: #f8fafc;
   padding: 10px 12px;
+}
+
+.object-example-card--mine {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
 }
 
 .object-example-head {

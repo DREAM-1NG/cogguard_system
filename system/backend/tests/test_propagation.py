@@ -295,6 +295,64 @@ class TestKT2EventInferenceAdapter:
         assert (top_path[0], top_path[1]) in edge_keys
         assert (top_path[1], top_path[2]) in edge_keys
 
+    def test_diffusion_summary_contains_clustered_similarity_layout(self):
+        posts = [
+            {"post_id": "p0", "author_id": "root", "author_name": "Root", "timestamp": _ts(0),
+             "url": "https://example.com/main", "hashtags": ["#main"], "content": "root"},
+            {"post_id": "p1", "author_id": "near", "author_name": "Near", "timestamp": _ts(1),
+             "url": "https://example.com/main", "hashtags": ["#main"], "content": "near"},
+            {"post_id": "p2", "author_id": "mid", "author_name": "Mid", "timestamp": _ts(2),
+             "url": "https://example.com/main", "hashtags": [], "content": "mid"},
+            {"post_id": "p3", "author_id": "far", "author_name": "Far", "timestamp": _ts(3),
+             "url": "https://example.com/other", "hashtags": [], "content": "far"},
+            {"post_id": "p4", "author_id": "far2", "author_name": "Far2", "timestamp": _ts(4),
+             "url": "https://example.com/other", "hashtags": [], "content": "far2"},
+        ]
+
+        result = build_propagation_graph(posts)
+        summary = result["diffusion_summary"]
+        nodes = {node["id"]: node for node in summary["visible_nodes"]}
+
+        assert summary["meta"]["layout"] == "clustered_similarity"
+        assert nodes["root"]["layout_x"] == 0
+        assert nodes["root"]["layout_y"] == 0
+        assert nodes["near"]["shared_object_ids"]
+        assert nodes["near"]["similarity_to_root"] > nodes["far"]["similarity_to_root"]
+        assert nodes["near"]["layout_radius"] <= nodes["mid"]["layout_radius"]
+        assert all("layout_cluster" in node for node in nodes.values())
+
+        graph_edge_keys = {(edge["source"], edge["target"]) for edge in result["graph"]["edges"]}
+        for edge in summary["tree_edges"]:
+            assert edge["type"] != "similarity"
+            if not edge.get("is_parallel_root"):
+                assert (edge["source"], edge["target"]) in graph_edge_keys
+
+    def test_diffusion_summary_respects_dynamic_node_limit_and_full_view(self):
+        posts = [
+            {"post_id": f"p{i}", "author_id": f"u{i}", "author_name": f"User{i}",
+             "timestamp": _ts(i), "url": "https://example.com/dynamic-limit",
+             "hashtags": [], "content": f"post {i}"}
+            for i in range(12)
+        ]
+
+        limited = build_propagation_graph(posts, diffusion_node_limit=5)["diffusion_summary"]
+        full = build_propagation_graph(posts, diffusion_node_limit=0)["diffusion_summary"]
+
+        assert limited["meta"]["visible_node_limit"] == 5
+        assert limited["meta"]["visible_node_count"] <= 5
+        assert limited["meta"]["is_full_view"] is False
+        assert full["meta"]["visible_node_limit"] == 12
+        assert full["meta"]["visible_node_count"] == 12
+        assert full["meta"]["is_full_view"] is True
+
+    def test_diffusion_summary_edges_do_not_connect_same_layer_nodes(self):
+        result = build_propagation_graph(_make_posts(), _make_comments(), diffusion_node_limit=0)
+        summary = result["diffusion_summary"]
+        layer_by_node = {node["id"]: node["layer"] for node in summary["visible_nodes"]}
+
+        for edge in summary["tree_edges"] + summary["highlight_edges"]:
+            assert layer_by_node[edge["source"]] != layer_by_node[edge["target"]]
+
 
 # ---------------------------------------------------------------------------
 # 边类型测试

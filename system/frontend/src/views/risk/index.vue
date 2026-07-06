@@ -25,12 +25,16 @@
           <IntelligentReviewPane
             :report="report"
             :all-analysis-names="allAnalysisNames"
+            :recommended-runtime-mode="recommendedRuntimeMode"
+            :runtime-reasons="runtimeReasons"
             v-model:selectedNames="selectedAnalysisNames"
             v-model:selectedPostIds="selectedPostIds"
             v-model:selectedTreeIds="selectedTreeIds"
+            v-model:runtimeMode="runtimeMode"
             v-model:enableActiveRetrieval="enableActiveRetrieval"
             v-model:enableLightDebate="enableLightDebate"
             v-model:enableFullDebate="enableFullDebate"
+            v-model:enableDeepJudge="enableDeepJudge"
             v-model:retrievalTopK="retrievalTopK"
             v-model:debateMaxRounds="debateMaxRounds"
             :loading="reviewLoading"
@@ -61,7 +65,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { message } from 'ant-design-vue'
 import PageHeader from '@/components/PageHeader.vue'
 import {
@@ -91,9 +95,11 @@ const currentJob = ref<any>(null)
 const selectedAnalysisNames = ref<string[]>([])
 const selectedPostIds = ref('')
 const selectedTreeIds = ref('')
+const runtimeMode = ref<'auto' | 'simple' | 'complex'>('auto')
 const enableActiveRetrieval = ref(true)
 const enableLightDebate = ref(true)
 const enableFullDebate = ref(false)
+const enableDeepJudge = ref(false)
 const retrievalTopK = ref(3)
 const debateMaxRounds = ref(3)
 
@@ -105,6 +111,8 @@ const historyLoading = ref(false)
 const postSemantics = computed(() => report.value?.post_semantics || null)
 const analysisSuggestions = computed(() => report.value?.kt3_harmfulness?.agent_review_suggestions || null)
 const suggestedAnalysis = computed(() => analysisSuggestions.value?.suggested_agents || [])
+const recommendedRuntimeMode = computed(() => analysisSuggestions.value?.recommended_runtime_mode || 'simple')
+const runtimeReasons = computed(() => analysisSuggestions.value?.runtime_reasons || [])
 const allAnalysisNames = computed(() => analysisSuggestions.value?.all_agents || [
   'PostHarmAgent',
   'MultimodalConsistencyAgent',
@@ -115,6 +123,26 @@ const allAnalysisNames = computed(() => analysisSuggestions.value?.all_agents ||
   'CountermeasureAgent',
 ])
 const analysisReports = computed(() => report.value?.agent_reviews || [])
+
+watch(recommendedRuntimeMode, (value) => {
+  if (runtimeMode.value === 'auto') {
+    if (value !== 'complex') {
+      enableActiveRetrieval.value = false
+      enableLightDebate.value = false
+      enableFullDebate.value = false
+      enableDeepJudge.value = false
+    }
+  }
+})
+
+watch(runtimeMode, (value) => {
+  if (value === 'simple') {
+    enableActiveRetrieval.value = false
+    enableLightDebate.value = false
+    enableFullDebate.value = false
+    enableDeepJudge.value = false
+  }
+})
 
 const claimEvidencePosts = computed(() => {
   const rows = postSemantics.value?.aggregation_posts || postSemantics.value?.posts || []
@@ -142,6 +170,7 @@ function normalizeClaimPost(post: any) {
     ...post,
     post_id: String(post?.post_id || ''),
     authorName: post?.author_name || post?.author_id || '',
+    platformName: post?.platform || post?.source_platform || report.value?.platform || '',
     excerpt: post?.excerpt || post?.text || '',
     primaryClaimId: primaryClaim?.claim_id || '',
     primaryClaimText: primaryClaim?.claim_text || '',
@@ -182,14 +211,19 @@ function splitCsvLike(value: string) {
 }
 
 function buildReviewPayload() {
+  const effectiveRuntimeMode = runtimeMode.value === 'auto'
+    ? recommendedRuntimeMode.value
+    : runtimeMode.value
   return {
     report_id: report.value.report_id,
     selected_post_ids: splitCsvLike(selectedPostIds.value),
     selected_tree_ids: splitCsvLike(selectedTreeIds.value),
     agent_names: normalizeSelectedAnalysis(),
-    enable_active_retrieval: enableActiveRetrieval.value,
-    enable_light_debate: enableLightDebate.value,
-    enable_full_debate: enableFullDebate.value,
+    runtime_mode: runtimeMode.value,
+    enable_active_retrieval: effectiveRuntimeMode === 'complex' ? enableActiveRetrieval.value : false,
+    enable_light_debate: effectiveRuntimeMode === 'complex' ? enableLightDebate.value : false,
+    enable_full_debate: effectiveRuntimeMode === 'complex' ? enableFullDebate.value : false,
+    enable_deep_judge: effectiveRuntimeMode === 'complex' ? enableDeepJudge.value : false,
     debate_max_rounds: debateMaxRounds.value,
     retrieval_top_k: retrievalTopK.value,
   }

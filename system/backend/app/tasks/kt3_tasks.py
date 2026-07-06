@@ -160,6 +160,8 @@ async def _execute_agent_review(*, payload: dict[str, Any], user_id: int, db: As
         enable_light_debate=bool(payload.get("enable_light_debate")),
         enable_full_debate=bool(payload.get("enable_full_debate")),
         debate_max_rounds=int(payload.get("debate_max_rounds") or 3),
+        runtime_mode=str(payload.get("runtime_mode") or "auto"),
+        enable_deep_judge=bool(payload.get("enable_deep_judge")),
         policy_id=payload.get("policy_id"),
         active_policy_id=payload.get("active_policy_id"),
         retrieval_top_k=int(payload.get("retrieval_top_k") or 3),

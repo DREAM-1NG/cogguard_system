@@ -30,23 +30,23 @@ function Stop-StaleLocalPortOwner {
     $owners = Get-NetTCPConnection -LocalAddress '127.0.0.1' -LocalPort $Port -State Listen -ErrorAction SilentlyContinue |
         Select-Object -ExpandProperty OwningProcess -Unique
 
-    foreach ($pid in $owners) {
-        if (-not $pid) {
+    foreach ($ownerPid in $owners) {
+        if (-not $ownerPid) {
             continue
         }
 
-        $process = Get-CimInstance Win32_Process -Filter "ProcessId = $pid" -ErrorAction SilentlyContinue
+        $process = Get-CimInstance Win32_Process -Filter "ProcessId = $ownerPid" -ErrorAction SilentlyContinue
         if (-not $process) {
             continue
         }
 
         $commandLine = [string]$process.CommandLine
         if ($commandLine -notmatch $ExpectedPattern) {
-            throw "$Name port $Port is already used by PID $pid and does not look like a CogGuard process: $commandLine"
+            throw "$Name port $Port is already used by PID $ownerPid and does not look like a CogGuard process: $commandLine"
         }
 
-        Write-Host "Stopping stale $Name process on 127.0.0.1:$Port (PID $pid)..."
-        Stop-Process -Id $pid -Force
+        Write-Host "Stopping stale $Name process on 127.0.0.1:$Port (PID $ownerPid)..."
+        Stop-Process -Id $ownerPid -Force
         Start-Sleep -Seconds 1
     }
 }

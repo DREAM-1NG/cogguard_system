@@ -42,7 +42,12 @@ def _attach_scope(
     return result
 
 
-async def analyze_propagation(platform: str | None = None, event_id: str | None = None) -> dict:
+async def analyze_propagation(
+    platform: str | None = None,
+    event_id: str | None = None,
+    *,
+    node_limit: int = 300,
+) -> dict:
     """Analyze propagation paths over optionally event-scoped data."""
     mongo_db = get_mongo_db()
 
@@ -51,7 +56,7 @@ async def analyze_propagation(platform: str | None = None, event_id: str | None 
         return _empty_result(event_id, platform)
 
     comments = await load_event_comments(mongo_db, event_id=event_id, platform=platform)
-    result = build_propagation_graph(posts, comments)
+    result = build_propagation_graph(posts, comments, diffusion_node_limit=node_limit)
 
     return _attach_scope(
         result,

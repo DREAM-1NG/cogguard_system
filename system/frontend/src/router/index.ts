@@ -47,7 +47,7 @@ const router = createRouter({
           path: 'propagation',
           name: 'Propagation',
           component: () => import('@/views/propagation/index.vue'),
-          meta: { title: '传播监控' },
+          meta: { title: '传播监测' },
         },
         {
           path: 'accounts',

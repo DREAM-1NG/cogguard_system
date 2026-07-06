@@ -1,11 +1,11 @@
 <!--
-  传播监控页面
+  传播监测页面
 -->
 <template>
   <div class="propagation-page">
-    <PageHeader title="传播监控">
+    <PageHeader title="传播监测">
       <template #description>
-        展示关键传播路径、共享对象、关键角色、证据链与时间线预测。
+        展示传播路径、共享对象、关键角色、证据链与时间线预测。
       </template>
     </PageHeader>
 
@@ -24,11 +24,28 @@
     </div>
 
     <a-tabs v-model:activeKey="activeTab" class="propagation-tabs">
-      <a-tab-pane key="path" tab="关键传播路径">
+      <a-tab-pane key="path" tab="传播路径">
         <a-row :gutter="16" style="margin-bottom: 16px">
           <a-col :xs="24" :xl="15">
-            <a-card size="small" title="关键传播路径" :loading="analyzing && !analysisReady" class="analysis-card path-card">
+            <a-card size="small" title="传播路径" :loading="analyzing && !analysisReady" class="analysis-card path-card">
               <div v-if="diffusionReady" class="path-visual-layout">
+                <div class="path-node-control">
+                  <span class="path-node-control-label">显示节点</span>
+                  <a-slider
+                    v-model:value="diffusionPendingNodeLimit"
+                    class="path-node-slider"
+                    :min="diffusionSliderMin"
+                    :max="diffusionSliderMax"
+                    :step="diffusionSliderStep"
+                    :tooltipOpen="false"
+                    @change="handleDiffusionLimitChange"
+                    @afterChange="handleDiffusionLimitCommit"
+                  />
+                  <span class="path-node-control-count">
+                    {{ diffusionVisibleCount }} / {{ diffusionTotalNodes }}
+                  </span>
+                  <a-button size="small" type="link" @click="showFullDiffusionGraph">全量</a-button>
+                </div>
                 <div class="path-graph-shell">
                   <div ref="pathGraphRef" class="path-graph" />
                 </div>
@@ -88,7 +105,7 @@
 
       <a-tab-pane key="evidence" tab="角色分析">
         <a-row :gutter="16" style="margin-bottom: 16px">
-          <a-col :xs="24" :lg="8">
+          <a-col :xs="24" :lg="12">
             <a-card size="small" title="起爆节点" :loading="analyzing && !analysisReady">
               <a-list v-if="keyRoles?.originators?.length" :dataSource="keyRoles.originators" size="small">
                 <template #renderItem="{ item }">
@@ -101,19 +118,7 @@
               <a-empty v-else description="暂无起爆节点结果" :image-style="{ height: '30px' }" />
             </a-card>
           </a-col>
-          <a-col :xs="24" :lg="8">
-            <a-card size="small" title="桥接节点" :loading="analyzing && !analysisReady">
-              <a-list v-if="keyRoles?.bridges?.length" :dataSource="keyRoles.bridges" size="small">
-                <template #renderItem="{ item }">
-                  <a-list-item>
-                    <span>{{ item.author_name || item.account_id }}</span>
-                  </a-list-item>
-                </template>
-              </a-list>
-              <a-empty v-else description="暂无桥接节点结果" :image-style="{ height: '30px' }" />
-            </a-card>
-          </a-col>
-          <a-col :xs="24" :lg="8">
+          <a-col :xs="24" :lg="12">
             <a-card size="small" title="扩散节点" :loading="analyzing && !analysisReady">
               <a-list v-if="keyRoles?.amplifiers?.length" :dataSource="keyRoles.amplifiers" size="small">
                 <template #renderItem="{ item }">
@@ -230,7 +235,7 @@
           </template>
         </a-list>
         <a-empty v-else description="当前时间线样本中暂无匹配记录" :image-style="{ height: '36px' }" />
-        <div class="section-title drawer-section">关键传播路径</div>
+        <div class="section-title drawer-section">传播路径</div>
         <a-list v-if="claimEvidenceMatches.length" :dataSource="claimEvidenceMatches" size="small">
           <template #renderItem="{ item }">
             <a-list-item>
@@ -245,18 +250,18 @@
                     type="button"
                     @click="openClaimPathDetail(item, path, index)"
                   >
-                    {{ path.explanation || `关键传播路径 ${index + 1}` }}
+                    {{ path.explanation || `传播路径 ${index + 1}` }}
                   </button>
                 </div>
               </div>
             </a-list-item>
           </template>
         </a-list>
-        <a-empty v-else description="暂无关键传播路径" :image-style="{ height: '36px' }" />
+        <a-empty v-else description="暂无传播路径" :image-style="{ height: '36px' }" />
       </template>
     </a-drawer>
 
-    <a-drawer v-model:open="claimPathDetailOpen" width="620" title="关键传播路径详情" placement="right">
+    <a-drawer v-model:open="claimPathDetailOpen" width="620" title="传播路径详情" placement="right">
       <template v-if="selectedClaimPathDetail">
         <a-descriptions size="small" :column="1" bordered style="margin-bottom: 16px">
           <a-descriptions-item label="共享对象">{{ selectedClaimPathDetail.chain.claim_id }}</a-descriptions-item>
@@ -455,6 +460,12 @@ type DiffusionNode = {
   in_degree?: number
   is_root?: boolean
   is_key?: boolean
+  layout_x?: number
+  layout_y?: number
+  layout_cluster?: string
+  layout_radius?: number
+  similarity_to_root?: number
+  shared_object_ids?: string[]
 }
 
 type DiffusionEdge = {
@@ -600,6 +611,10 @@ const lastSyncedAt = ref('')
 const eventId = ref(DEFAULT_EVENT_ID)
 const platform = ref('')
 const activeTab = ref('path')
+const DEFAULT_DIFFUSION_NODE_LIMIT = 300
+const diffusionNodeLimit = ref(DEFAULT_DIFFUSION_NODE_LIMIT)
+const diffusionPendingNodeLimit = ref(DEFAULT_DIFFUSION_NODE_LIMIT)
+const diffusionFullViewRequested = ref(false)
 const route = useRoute()
 const layerChartRef = ref<HTMLDivElement | null>(null)
 const pathGraphRef = ref<HTMLDivElement | null>(null)
@@ -620,6 +635,18 @@ const diffusionSummary = computed(() => {
   return buildClientDiffusionSummary(analysisResult.value)
 })
 const diffusionReady = computed(() => (diffusionSummary.value?.visible_nodes?.length ?? 0) > 0)
+const diffusionMeta = computed(() => diffusionSummary.value?.meta ?? {})
+const diffusionTotalNodes = computed(() => {
+  const total = Number(diffusionMeta.value.total_nodes ?? analysisResult.value?.graph?.node_count ?? 0)
+  return Number.isFinite(total) && total > 0 ? Math.floor(total) : DEFAULT_DIFFUSION_NODE_LIMIT
+})
+const diffusionVisibleCount = computed(() => {
+  const count = Number(diffusionMeta.value.visible_node_count ?? diffusionSummary.value?.visible_nodes?.length ?? 0)
+  return Number.isFinite(count) && count > 0 ? Math.floor(count) : 0
+})
+const diffusionSliderMin = computed(() => Math.min(DEFAULT_DIFFUSION_NODE_LIMIT, diffusionSliderMax.value))
+const diffusionSliderMax = computed(() => Math.max(diffusionTotalNodes.value, DEFAULT_DIFFUSION_NODE_LIMIT))
+const diffusionSliderStep = computed(() => (diffusionSliderMax.value > 1000 ? 50 : 10))
 const layerRows = computed(() => diffusionSummary.value?.layers?.length ? diffusionSummary.value.layers : (pathAnalysis.value?.layer_distribution ?? []))
 const displayLayerRows = computed(() => normalizeLayerRows(layerRows.value))
 const userNameById = computed(() => {
@@ -684,7 +711,7 @@ const claimEvidenceMatches = computed(() => {
     .slice(0, 10)
 })
 const requestParams = computed(() => {
-  const params: { event_id?: string; platform?: string } = {}
+  const params: { event_id?: string; platform?: string; node_limit?: number } = {}
   const event = eventId.value.trim()
   const currentPlatform = platform.value.trim()
   if (event) {
@@ -693,6 +720,7 @@ const requestParams = computed(() => {
   if (currentPlatform) {
     params.platform = currentPlatform
   }
+  params.node_limit = diffusionFullViewRequested.value ? 0 : diffusionNodeLimit.value
   return params
 })
 
@@ -897,6 +925,41 @@ function shortNodeLabel(value: string) {
   const text = String(value || '').trim()
   if (!text) return '--'
   return text.length > 10 ? `${text.slice(0, 10)}…` : text
+}
+
+function stableHash(value: string) {
+  let hash = 0
+  for (let index = 0; index < value.length; index += 1) {
+    hash = ((hash << 5) - hash + value.charCodeAt(index)) | 0
+  }
+  return Math.abs(hash)
+}
+
+function layeredEdgeCurveness(source: string, target: string, sourceLayer: number, targetLayer: number) {
+  const layerGap = Math.max(1, Math.abs(targetLayer - sourceLayer))
+  const direction = stableHash(`${source}->${target}`) % 2 === 0 ? 1 : -1
+  return direction * Math.min(0.28, 0.1 + layerGap * 0.055)
+}
+
+function updatePathGraphLabelsByZoom(event?: unknown) {
+  if (!pathGraphChart) return
+  const option = pathGraphChart.getOption() as any
+  const series = option?.series?.[0]
+  const optionZoom = Array.isArray(series?.zoom) ? series.zoom[0] : series?.zoom
+  const eventZoom = typeof event === 'object' && event !== null && 'zoom' in event
+    ? Number((event as { zoom?: number }).zoom)
+    : undefined
+  const zoom = Number(eventZoom ?? optionZoom ?? 1)
+  const rootId = String(diffusionSummary.value?.root_node?.id || diffusionSummary.value?.visible_nodes?.find((node) => node.is_root)?.id || '')
+  const compact = Number.isFinite(zoom) && zoom < 0.65
+  const data = (series?.data ?? []).map((node: any) => ({
+    ...node,
+    label: {
+      ...(node.label ?? {}),
+      show: compact ? String(node.userId || node.id) === rootId : true,
+    },
+  }))
+  pathGraphChart.setOption({ series: [{ data }] }, false)
 }
 
 function displayUserName(userId: string) {
@@ -1115,7 +1178,6 @@ function buildPathGraphOption(summary?: DiffusionSummary | null): EChartsOption 
   const nodeById = new Map(nodes.map((node) => [String(node.id), node]))
   const rootId = String(summary?.root_node?.id || nodes.find((node) => node.is_root)?.id || nodes[0]?.id || '')
   const keyEdgeKeys = new Set(highlightEdges.map((edge) => `${edge.source}->${edge.target}`))
-  const topPerLayer = new Set<string>()
 
   const nodesByLayer = new Map<number, DiffusionNode[]>()
   for (const node of nodes) {
@@ -1123,43 +1185,46 @@ function buildPathGraphOption(summary?: DiffusionSummary | null): EChartsOption 
     if (!nodesByLayer.has(layer)) nodesByLayer.set(layer, [])
     nodesByLayer.get(layer)?.push(node)
   }
-  for (const layerNodes of nodesByLayer.values()) {
-    layerNodes
-      .slice()
-      .sort((left, right) => {
-        const leftScore = Number(left.out_degree ?? 0) + Number(left.post_count ?? 0) + (left.is_key ? 100 : 0)
-        const rightScore = Number(right.out_degree ?? 0) + Number(right.post_count ?? 0) + (right.is_key ? 100 : 0)
-        return rightScore - leftScore
-      })
-      .slice(0, 4)
-      .forEach((node) => topPerLayer.add(String(node.id)))
-  }
 
   const positions = new Map<string, { x: number; y: number; layer: number }>()
   const radialGap = 95
   positions.set(rootId, { x: 0, y: 0, layer: 0 })
 
-  for (const [layer, layerNodes] of nodesByLayer.entries()) {
-    if (layer === 0) continue
-    const ringNodes = layerNodes
-      .filter((node) => String(node.id) !== rootId)
-      .sort((left, right) => {
-        const leftScore = Number(left.out_degree ?? 0) + Number(left.post_count ?? 0) + (left.is_key ? 100 : 0)
-        const rightScore = Number(right.out_degree ?? 0) + Number(right.post_count ?? 0) + (right.is_key ? 100 : 0)
-        return rightScore - leftScore
+  const hasBackendLayout = nodes.some((node) => Number.isFinite(Number(node.layout_x)) && Number.isFinite(Number(node.layout_y)))
+  if (hasBackendLayout) {
+    for (const node of nodes) {
+      const id = String(node.id)
+      if (Number.isFinite(Number(node.layout_x)) && Number.isFinite(Number(node.layout_y))) {
+        positions.set(id, {
+          x: Number(node.layout_x),
+          y: Number(node.layout_y),
+          layer: Number(node.layer ?? 0),
+        })
+      }
+    }
+  } else {
+    for (const [layer, layerNodes] of nodesByLayer.entries()) {
+      if (layer === 0) continue
+      const ringNodes = layerNodes
+        .filter((node) => String(node.id) !== rootId)
+        .sort((left, right) => {
+          const leftScore = Number(left.out_degree ?? 0) + Number(left.post_count ?? 0) + (left.is_key ? 100 : 0)
+          const rightScore = Number(right.out_degree ?? 0) + Number(right.post_count ?? 0) + (right.is_key ? 100 : 0)
+          return rightScore - leftScore
+        })
+      if (!ringNodes.length) continue
+      const radius = Math.max(1, layer) * radialGap
+      const step = (Math.PI * 2) / Math.max(ringNodes.length, 1)
+      const offset = layer % 2 === 0 ? -Math.PI / 2 : -Math.PI / 2 + step / 2
+      ringNodes.forEach((node, index) => {
+        const angle = offset + step * index
+        positions.set(String(node.id), {
+          x: Math.cos(angle) * radius,
+          y: Math.sin(angle) * radius,
+          layer,
+        })
       })
-    if (!ringNodes.length) continue
-    const radius = Math.max(1, layer) * radialGap
-    const step = (Math.PI * 2) / Math.max(ringNodes.length, 1)
-    const offset = layer % 2 === 0 ? -Math.PI / 2 : -Math.PI / 2 + step / 2
-    ringNodes.forEach((node, index) => {
-      const angle = offset + step * index
-      positions.set(String(node.id), {
-        x: Math.cos(angle) * radius,
-        y: Math.sin(angle) * radius,
-        layer,
-      })
-    })
+    }
   }
 
   const graphData = nodes.map((node) => {
@@ -1167,7 +1232,6 @@ function buildPathGraphOption(summary?: DiffusionSummary | null): EChartsOption 
     const position = positions.get(id) || { x: 0, y: 0, layer: Number(node.layer ?? 0) }
     const isRoot = id === rootId || Boolean(node.is_root)
     const isKey = Boolean(node.is_key)
-    const shouldLabel = isRoot || topPerLayer.has(id)
     const value = Math.max(1, Number(node.post_count ?? 1))
     return {
       id,
@@ -1179,7 +1243,7 @@ function buildPathGraphOption(summary?: DiffusionSummary | null): EChartsOption 
       category: isRoot ? 0 : isKey ? 1 : 2,
       symbolSize: isRoot ? 26 : isKey ? 8 : Math.max(2.6, Math.min(5.4, Math.sqrt(value) * 1.1 + 1.8)),
       label: {
-        show: shouldLabel,
+        show: true,
         formatter: shortNodeLabel(node.author_name || displayUserName(id)),
       },
       itemStyle: {
@@ -1193,100 +1257,37 @@ function buildPathGraphOption(summary?: DiffusionSummary | null): EChartsOption 
     mergedEdges.set(`${edge.source}->${edge.target}`, edge)
   }
   for (const edge of highlightEdges) {
-    mergedEdges.set(`${edge.source}->${edge.target}`, { ...edge, is_key_path: true })
-  }
-
-  const incomingEdges = new Map<string, DiffusionEdge[]>()
-  for (const edge of mergedEdges.values()) {
-    const source = String(edge.source)
-    const target = String(edge.target)
-    if (!nodeById.has(source) || !nodeById.has(target) || source === target) continue
-    if (!incomingEdges.has(target)) incomingEdges.set(target, [])
-    incomingEdges.get(target)?.push(edge)
-  }
-
-  const nodeLayer = (nodeId: string) => Math.max(0, Number(nodeById.get(nodeId)?.layer ?? 0))
-  const parentScore = (edge: DiffusionEdge, targetLayer: number) => {
-    const source = String(edge.source)
-    const sourceNode = nodeById.get(source)
-    const sourceLayer = nodeLayer(source)
-    const isOuterAnchor = sourceLayer >= 3 && sourceLayer < targetLayer
-    return (
-      (sourceNode?.is_key ? 10000 : 0) +
-      (isOuterAnchor ? 5000 : 0) +
-      Number(sourceNode?.out_degree ?? 0) * 20 +
-      Number(sourceNode?.post_count ?? 0) -
-      Math.abs(targetLayer - sourceLayer) * 2
-    )
-  }
-  const pickOuterParent = (targetId: string, visited = new Set<string>()): string => {
-    if (visited.has(targetId)) return rootId
-    visited.add(targetId)
-    const targetLayer = nodeLayer(targetId)
-    const candidates = (incomingEdges.get(targetId) ?? [])
-      .filter((edge) => String(edge.source) !== targetId && nodeLayer(String(edge.source)) < targetLayer)
-      .sort((left, right) => parentScore(right, targetLayer) - parentScore(left, targetLayer))
-
-    const directAnchor = candidates.find((edge) => {
-      const source = String(edge.source)
-      const sourceNode = nodeById.get(source)
-      const sourceLayer = nodeLayer(source)
-      return sourceNode?.is_key || sourceLayer >= 3
-    })
-    if (directAnchor) return String(directAnchor.source)
-
-    const nextParent = candidates[0] ? String(candidates[0].source) : ''
-    if (nextParent && nextParent !== rootId) {
-      const liftedParent = pickOuterParent(nextParent, visited)
-      if (liftedParent && liftedParent !== rootId) return liftedParent
-      return nextParent
+    const key = `${edge.source}->${edge.target}`
+    const existingEdge = mergedEdges.get(key)
+    if (existingEdge) {
+      mergedEdges.set(key, { ...existingEdge, is_key_path: true })
     }
-    return rootId
   }
 
-  const innerRootLayerLimit = 4
-  const displayEdges = new Map<string, DiffusionEdge>()
-  const addDisplayEdge = (sourceId: string, targetId: string, type: string, forcePlain = false) => {
-    if (!sourceId || !targetId || sourceId === targetId || !nodeById.has(sourceId) || !nodeById.has(targetId)) return
-    const edgeKey = `${sourceId}->${targetId}`
-    const originalEdge = mergedEdges.get(edgeKey)
-    displayEdges.set(edgeKey, {
-      ...(originalEdge ?? {}),
-      source: sourceId,
-      target: targetId,
-      weight: Number(originalEdge?.weight ?? 1) || 1,
-      type: originalEdge?.type || type,
-      is_key_path: forcePlain ? false : Boolean(originalEdge?.is_key_path) || keyEdgeKeys.has(edgeKey),
-      is_synthetic: !originalEdge,
+  const graphLinks = Array.from(mergedEdges.values())
+    .filter((edge) => {
+      const source = String(edge.source)
+      const target = String(edge.target)
+      if (!source || !target || source === target || !nodeById.has(source) || !nodeById.has(target)) return false
+      const sourceLayer = Number(nodeById.get(source)?.layer ?? -1)
+      const targetLayer = Number(nodeById.get(target)?.layer ?? -1)
+      return sourceLayer !== targetLayer
     })
-  }
-
-  for (const node of nodes) {
-    const target = String(node.id)
-    if (!target || target === rootId) continue
-    const layer = nodeLayer(target)
-    if (layer < 1 || !nodeById.has(rootId)) continue
-    const source = layer <= innerRootLayerLimit ? rootId : pickOuterParent(target)
-    if (!source || source === target || !nodeById.has(source)) continue
-    addDisplayEdge(source, target, layer <= innerRootLayerLimit ? 'root_spoke' : 'outer_branch', layer <= innerRootLayerLimit)
-  }
-
-  const graphLinks = Array.from(displayEdges.values())
     .map((edge) => {
       const source = String(edge.source)
       const target = String(edge.target)
       const highlighted = Boolean(edge.is_key_path) || keyEdgeKeys.has(`${source}->${target}`)
-      const targetLayer = nodeLayer(target)
-      const isRootSpoke = source === rootId && targetLayer <= innerRootLayerLimit
+      const sourceLayer = Number(nodeById.get(source)?.layer ?? 0)
+      const targetLayer = Number(nodeById.get(target)?.layer ?? sourceLayer + 1)
       return {
         source,
         target,
         value: Number(edge.weight ?? 1) || 1,
         lineStyle: {
-          color: highlighted ? 'rgba(125, 211, 252, 0.58)' : 'rgba(96, 165, 250, 0.36)',
-          width: highlighted ? 1.15 : isRootSpoke ? 0.95 : 0.7,
-          curveness: 0,
-          opacity: highlighted ? 0.48 : isRootSpoke ? 0.48 : 0.32,
+          color: highlighted ? 'rgba(56, 189, 248, 0.72)' : 'rgba(96, 165, 250, 0.3)',
+          width: highlighted ? 1.35 : 0.72,
+          curveness: layeredEdgeCurveness(source, target, sourceLayer, targetLayer),
+          opacity: highlighted ? 0.62 : 0.28,
         },
       }
     })
@@ -1345,12 +1346,15 @@ function buildPathGraphOption(summary?: DiffusionSummary | null): EChartsOption 
           fontSize: 10,
           position: 'right',
         },
+        labelLayout: {
+          hideOverlap: true,
+        },
         edgeSymbol: ['none', 'none'],
         edgeSymbolSize: [0, 0],
         lineStyle: {
           color: 'source',
           opacity: 0.18,
-          curveness: 0,
+          curveness: 0.16,
         },
         emphasis: {
           focus: 'adjacency',
@@ -1380,11 +1384,16 @@ async function renderPathGraph() {
     pathGraphChart = echarts.init(pathGraphRef.value)
   }
   pathGraphChart.off('click')
+  pathGraphChart.off('graphRoam')
+  pathGraphChart.off('georoam')
   pathGraphChart.on('click', (params: any) => {
     if (params.dataType !== 'node') return
     openNodeDetail(String(params.data?.userId || params.data?.id || ''))
   })
+  pathGraphChart.on('graphRoam', updatePathGraphLabelsByZoom)
+  pathGraphChart.on('georoam', updatePathGraphLabelsByZoom)
   pathGraphChart.setOption(buildPathGraphOption(diffusionSummary.value), true)
+  updatePathGraphLabelsByZoom()
   pathGraphChart.resize()
 }
 
@@ -1488,7 +1497,32 @@ async function loadAnalysis(showToast = false) {
 }
 
 async function handleAnalyze() {
+  diffusionFullViewRequested.value = false
+  diffusionNodeLimit.value = Math.min(DEFAULT_DIFFUSION_NODE_LIMIT, diffusionSliderMax.value)
+  diffusionPendingNodeLimit.value = diffusionNodeLimit.value
   await loadAnalysis(true)
+}
+
+function handleDiffusionLimitChange(value: number) {
+  diffusionPendingNodeLimit.value = Math.max(1, Math.floor(Number(value) || DEFAULT_DIFFUSION_NODE_LIMIT))
+}
+
+async function handleDiffusionLimitCommit(value: number) {
+  const nextLimit = Math.max(1, Math.floor(Number(value) || DEFAULT_DIFFUSION_NODE_LIMIT))
+  diffusionPendingNodeLimit.value = nextLimit
+  const shouldRequestFull = diffusionTotalNodes.value > DEFAULT_DIFFUSION_NODE_LIMIT && nextLimit >= diffusionSliderMax.value
+  if (nextLimit === diffusionNodeLimit.value && shouldRequestFull === diffusionFullViewRequested.value) return
+  diffusionNodeLimit.value = nextLimit
+  diffusionFullViewRequested.value = shouldRequestFull
+  await loadAnalysis(false)
+}
+
+async function showFullDiffusionGraph() {
+  const fullLimit = diffusionSliderMax.value
+  diffusionPendingNodeLimit.value = fullLimit
+  diffusionNodeLimit.value = fullLimit
+  diffusionFullViewRequested.value = true
+  await loadAnalysis(false)
 }
 
 async function handlePredict() {
@@ -1520,6 +1554,9 @@ watch(
   () => [route.query.event_id, route.query.platform],
   () => {
     syncScopeFromRoute()
+    diffusionFullViewRequested.value = false
+    diffusionNodeLimit.value = DEFAULT_DIFFUSION_NODE_LIMIT
+    diffusionPendingNodeLimit.value = DEFAULT_DIFFUSION_NODE_LIMIT
     void loadAnalysis(false)
   },
 )
@@ -1529,6 +1566,11 @@ watch(displayLayerRows, () => {
 })
 
 watch(diffusionSummary, () => {
+  const maxLimit = diffusionSliderMax.value
+  if (diffusionNodeLimit.value > maxLimit) {
+    diffusionNodeLimit.value = maxLimit
+  }
+  diffusionPendingNodeLimit.value = diffusionNodeLimit.value
   void renderPathTabCharts()
 })
 
@@ -1580,6 +1622,29 @@ onBeforeUnmount(() => {
 
 .path-visual-layout {
   min-height: 450px;
+}
+
+.path-node-control {
+  display: grid;
+  grid-template-columns: auto minmax(160px, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  padding: 8px 10px;
+  border: 1px solid rgba(14, 165, 233, 0.14);
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.04), rgba(14, 165, 233, 0.06));
+}
+
+.path-node-control-label,
+.path-node-control-count {
+  color: #475569;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.path-node-slider {
+  min-width: 0;
 }
 
 .path-graph-shell {

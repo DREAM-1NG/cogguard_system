@@ -12,6 +12,7 @@ import asyncio
 import json
 import os
 import sys
+import time
 from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any
@@ -24,6 +25,8 @@ from app.core.risk.kt3_agent_review import OpenAICompatibleAgentProvider  # noqa
 from app.core.risk.kt3_agent_review import OpenAICompatibleConfig  # noqa: E402
 from app.core.risk.kt3_agent_review import run_manual_kt3_agent_review  # noqa: E402
 from app.core.risk.post_semantics import assess_post_semantics  # noqa: E402
+from app.config import settings  # noqa: E402
+from app.tasks.kt3_tasks import _build_http_retrieval_provider  # noqa: E402
 
 
 DEFAULT_DATASETS = ["HateXplain", "MultiOFF", "PHEME", "mcfend", "FakeSV"]
@@ -53,11 +56,14 @@ def main() -> int:
     parser.add_argument("--enable-full-debate", action="store_true")
     parser.add_argument("--debate-max-rounds", type=int, default=3)
     parser.add_argument("--retrieval-top-k", type=int, default=3)
-    parser.add_argument("--api-key", default=os.getenv("LLM_API_KEY", ""))
-    parser.add_argument("--base-url", default=os.getenv("LLM_API_BASE", "https://api.openai.com/v1"))
-    parser.add_argument("--model", default=os.getenv("LLM_MODEL", "gpt-5.4"))
-    parser.add_argument("--wire-api", default=os.getenv("LLM_API_WIRE", "responses"))
-    parser.add_argument("--timeout-seconds", type=float, default=float(os.getenv("LLM_TIMEOUT_SECONDS", "180")))
+    parser.add_argument("--api-key", default=(os.getenv("LLM_API_KEY") or settings.LLM_API_KEY or ""))
+    parser.add_argument("--base-url", default=(os.getenv("LLM_API_BASE") or settings.LLM_API_BASE or "https://api.openai.com/v1"))
+    parser.add_argument("--model", default=(os.getenv("LLM_MODEL") or settings.LLM_MODEL or "gpt-5.4"))
+    parser.add_argument("--wire-api", default=(os.getenv("LLM_API_WIRE") or settings.LLM_API_WIRE or "responses"))
+    parser.add_argument("--timeout-seconds", type=float, default=float(os.getenv("LLM_TIMEOUT_SECONDS") or settings.LLM_TIMEOUT_SECONDS or "180"))
+    parser.add_argument("--case-timeout-seconds", type=float, default=float(os.getenv("KT3_AGENT_CASE_TIMEOUT_SECONDS") or "600"))
+    parser.add_argument("--flush-every-case", action="store_true")
+    parser.add_argument("--verbose-progress", action="store_true")
     args = parser.parse_args()
 
     if not args.api_key.strip():
@@ -78,6 +84,7 @@ def main() -> int:
             require_vision=bool(args.require_vision),
         )
     )
+    active_retriever = build_env_retriever() if args.enable_external_retrieval else None
 
     report: dict[str, Any] = {
         "schema": "kt3-agent-dataset-experiment-v1",
@@ -121,6 +128,10 @@ def main() -> int:
                 enable_full_debate=bool(args.enable_full_debate),
                 debate_max_rounds=int(args.debate_max_rounds),
                 retrieval_top_k=int(args.retrieval_top_k),
+                case_timeout_seconds=float(args.case_timeout_seconds),
+                flush_every_case=bool(args.flush_every_case),
+                verbose_progress=bool(args.verbose_progress),
+                active_retriever=active_retriever,
             )
         )
         report["datasets"][dataset] = dataset_result
@@ -151,6 +162,10 @@ async def evaluate_dataset(
     enable_full_debate: bool,
     debate_max_rounds: int,
     retrieval_top_k: int,
+    case_timeout_seconds: float,
+    flush_every_case: bool,
+    verbose_progress: bool,
+    active_retriever,
 ) -> dict[str, Any]:
     output_dir.mkdir(parents=True, exist_ok=True)
     case_path = case_dir / f"{safe_name(dataset)}.jsonl"
@@ -160,26 +175,48 @@ async def evaluate_dataset(
     if not cases:
         return {"dataset": dataset, "status": "skipped", "reason": f"missing or empty case file: {case_path}"}
 
-    rows = []
-    for case in cases:
-        row = await evaluate_case(
-            case=case,
-            provider=provider,
-            model=model,
-            agent_names=agent_names,
-            prefer_embeddings=prefer_embeddings,
-            include_media_base64=include_media_base64,
-            require_vision=require_vision,
-            enable_active_retrieval=enable_active_retrieval,
-            enable_external_retrieval=enable_external_retrieval,
-            enable_light_debate=enable_light_debate,
-            enable_full_debate=enable_full_debate,
-            debate_max_rounds=debate_max_rounds,
-            retrieval_top_k=retrieval_top_k,
-        )
-        rows.append(row)
-
     prediction_path = output_dir / "agent_predictions.jsonl"
+    rows = []
+    total = len(cases)
+    for index, case in enumerate(cases, start=1):
+        case_id = str(case.get("case_id") or f"{dataset}:{index}")
+        if verbose_progress:
+            print(f"[dataset:{dataset}] case {index}/{total} start {case_id}", flush=True)
+        started_at = time.time()
+        try:
+            row = await asyncio.wait_for(
+                evaluate_case(
+                    case=case,
+                    provider=provider,
+                    model=model,
+                    agent_names=agent_names,
+                    prefer_embeddings=prefer_embeddings,
+                    include_media_base64=include_media_base64,
+                    require_vision=require_vision,
+                    enable_active_retrieval=enable_active_retrieval,
+                    enable_external_retrieval=enable_external_retrieval,
+                    enable_light_debate=enable_light_debate,
+                    enable_full_debate=enable_full_debate,
+                    debate_max_rounds=debate_max_rounds,
+                    retrieval_top_k=retrieval_top_k,
+                    active_retriever=active_retriever,
+                ),
+                timeout=case_timeout_seconds,
+            )
+        except asyncio.TimeoutError:
+            row = timeout_row(case=case, dataset=dataset, timeout_seconds=case_timeout_seconds)
+        elapsed_seconds = round(time.time() - started_at, 3)
+        row["elapsed_seconds"] = elapsed_seconds
+        rows.append(row)
+        if flush_every_case:
+            write_jsonl(prediction_path, rows)
+        if verbose_progress:
+            print(
+                f"[dataset:{dataset}] case {index}/{total} done {case_id} "
+                f"judge={row.get('judge_status')} elapsed={elapsed_seconds}s",
+                flush=True,
+            )
+
     write_jsonl(prediction_path, rows)
     return {
         "dataset": dataset,
@@ -205,6 +242,7 @@ async def evaluate_case(
     enable_full_debate: bool,
     debate_max_rounds: int,
     retrieval_top_k: int,
+    active_retriever,
 ) -> dict[str, Any]:
     report = build_minimal_report(case, prefer_embeddings=prefer_embeddings)
     selected_post_ids = [item.get("post_id") for item in (report.get("post_semantics") or {}).get("posts") or [] if item.get("post_id")]
@@ -225,7 +263,7 @@ async def evaluate_case(
         enable_full_debate=enable_full_debate,
         debate_max_rounds=debate_max_rounds,
         retrieval_top_k=retrieval_top_k,
-        active_retriever=None,
+        active_retriever=active_retriever,
         external_retrieval_enabled=enable_external_retrieval,
         policy={},
         error_memory_summary={},
@@ -253,6 +291,31 @@ async def evaluate_case(
             }
             for item in agent_result.get("agent_reports") or []
         ],
+    }
+
+
+def timeout_row(*, case: dict[str, Any], dataset: str, timeout_seconds: float) -> dict[str, Any]:
+    return {
+        "case_id": case.get("case_id"),
+        "dataset": case.get("dataset") or dataset,
+        "split": case.get("split"),
+        "source_id": case.get("source_id"),
+        "gold_harmfulness": ((case.get("labels") or {}).get("harmfulness") or "unknown"),
+        "agent_summary": {
+            "requested_agents": 0,
+            "completed": 0,
+            "failed": 1,
+            "timeout_seconds": timeout_seconds,
+        },
+        "judge_status": "timeout",
+        "judge_report_text": None,
+        "judge_sidecar": {
+            "schema_version": "kt3-agent-sidecar-v1",
+            "timeout_seconds": timeout_seconds,
+            "review_required": True,
+        },
+        "all_agent_reports": [],
+        "error": f"case_timeout_after_{timeout_seconds}_seconds",
     }
 
 
@@ -364,6 +427,21 @@ def write_jsonl(path: Path, rows: list[dict[str, Any]]) -> None:
         for row in rows:
             handle.write(json.dumps(row, ensure_ascii=False, default=str))
             handle.write("\n")
+
+
+def build_env_retriever():
+    api_key = (os.getenv("KT3_RETRIEVAL_API_KEY") or settings.KT3_RETRIEVAL_API_KEY or "").strip()
+    base_url = (os.getenv("KT3_RETRIEVAL_BASE_URL") or settings.KT3_RETRIEVAL_BASE_URL or "").strip()
+    if not api_key or not base_url:
+        return None
+    return _build_http_retrieval_provider(
+        base_url=base_url,
+        api_key=api_key,
+        search_path=(os.getenv("KT3_RETRIEVAL_SEARCH_PATH") or settings.KT3_RETRIEVAL_SEARCH_PATH or "/search").strip() or "/search",
+        timeout_seconds=float(os.getenv("KT3_RETRIEVAL_TIMEOUT_SECONDS") or "20"),
+        provider_name=(os.getenv("KT3_RETRIEVAL_PROVIDER_NAME") or settings.KT3_RETRIEVAL_PROVIDER_NAME or "").strip() or "env_retrieval",
+        adapter=(os.getenv("KT3_RETRIEVAL_ADAPTER") or settings.KT3_RETRIEVAL_ADAPTER or "").strip(),
+    )
 
 
 def safe_name(value: str) -> str:

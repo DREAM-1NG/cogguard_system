@@ -1,6 +1,7 @@
 """风险研判相关的请求 / 响应数据模式。"""
 
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -67,6 +68,10 @@ class KT3AgentReviewRunRequest(BaseModel):
             "QuestionReflectionAgent, HarmfulnessJudgeAgent, CountermeasureAgent."
         ),
     )
+    runtime_mode: Literal["auto", "simple", "complex"] = Field(
+        "auto",
+        description="Review runtime profile. auto lets the backend recommend simple or complex orchestration.",
+    )
     enable_active_retrieval: bool = Field(
         False,
         description="Run active evidence retrieval during manual review",
@@ -91,6 +96,10 @@ class KT3AgentReviewRunRequest(BaseModel):
         ge=1,
         le=5,
         description="Maximum free-debate rounds for optional full debate",
+    )
+    enable_deep_judge: bool = Field(
+        False,
+        description="Run Judge self-refinement (draft/critique/final) instead of the default single-pass judgement.",
     )
     policy_id: str | None = Field(None, description="Optional optimized KT3 Agent policy ID")
     active_policy_id: str | None = Field(

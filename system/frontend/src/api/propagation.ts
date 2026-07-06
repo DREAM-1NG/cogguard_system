@@ -1,6 +1,6 @@
 import request from '@/utils/request'
 
-export function analyzePropagation(params?: { platform?: string; event_id?: string }) {
+export function analyzePropagation(params?: { platform?: string; event_id?: string; node_limit?: number }) {
   return request.get('/propagation/analyze', { params })
 }
 

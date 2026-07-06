@@ -164,20 +164,13 @@ def should_trigger_light_debate(
     reasons = []
     for post in context.get("selected_posts") or []:
         view = post.get("post_view_detection") or {}
-        stance = post.get("stance") or {}
         if view.get("conflict"):
             reasons.append(f"post:{post.get('post_id')}:cross_view_conflict")
-        if stance.get("abstain") or stance.get("label") in {"uncertain", "query"}:
-            reasons.append(f"post:{post.get('post_id')}:claim_stance_uncertain")
         if _as_float(view.get("conflict", {}).get("score")) >= 0.35:
             reasons.append(f"post:{post.get('post_id')}:high_conflict_score")
-
-    retrieval_bundle = retrieval_bundle or {}
-    for result in retrieval_bundle.get("local_results") or []:
-        if not result.get("top_evidence"):
-            reasons.append(f"query:{_hash_text(result.get('query'))}:no_local_evidence")
-    for failure in (retrieval_bundle.get("audit") or {}).get("failures") or []:
-        reasons.append(f"external_retrieval_failure:{failure.get('error_type')}")
+        review_reasons = _as_list(view.get("review_reason"))
+        if any("media" in str(reason).lower() for reason in review_reasons):
+            reasons.append(f"post:{post.get('post_id')}:media_context_unclosed")
     return bool(reasons), reasons[:8]
 
 
@@ -767,6 +760,14 @@ def _as_float(value: Any, default: float = 0.0) -> float:
         return float(value)
     except (TypeError, ValueError):
         return default
+
+
+def _as_list(value: Any) -> list[Any]:
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return value
+    return [value]
 
 
 def _text(value: Any) -> str:

@@ -94,7 +94,7 @@ const menuItems = [
   { path: '/dashboard', label: '数据看板', icon: DashboardOutlined, desc: '数据看板：地图定位、平台分布、近期采集样本', disabled: false },
   { path: '/crawl', label: '数据采集', icon: CloudDownloadOutlined, desc: '创建采集任务，管理多平台数据抓取', disabled: false },
   { path: '/coordination', label: '协同检测', icon: ApartmentOutlined, desc: '检测时间窗口内的协调分享行为，构建协同网络', disabled: false },
-  { path: '/propagation', label: '传播监控', icon: ShareAltOutlined, desc: '查看趋势预测、证据链与关键传播角色', disabled: false },
+  { path: '/propagation', label: '传播监测', icon: ShareAltOutlined, desc: '查看趋势预测、证据链与关键传播角色', disabled: false },
   { path: '/accounts', label: '用户画像', icon: UserOutlined, desc: '用户行为画像、作息节律、自动化倾向评估', disabled: false },
   { path: '/risk', label: '风险研判', icon: AlertOutlined, desc: '阶段感知风险评估、D-S 证据融合、DISARM 路径分析', disabled: false },
   { path: '/system', label: '系统管理', icon: SettingOutlined, desc: 'KT3 Provider、Gate Dataset、Policy、Jobs 与 Backfill', disabled: false, roles: ['admin'] },

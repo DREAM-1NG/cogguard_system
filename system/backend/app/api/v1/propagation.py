@@ -14,9 +14,14 @@ router = APIRouter()
 async def analyze(
     platform: str | None = Query(None, description="限定平台"),
     event_id: str | None = Query(None, description="限定事件 ID"),
+    node_limit: int = Query(300, ge=0, description="传播路径图节点数量；0 表示全量"),
     _current_user: User | None = Depends(get_current_user_or_local_preview),
 ):
-    result = await propagation_service.analyze_propagation(platform=platform, event_id=event_id)
+    result = await propagation_service.analyze_propagation(
+        platform=platform,
+        event_id=event_id,
+        node_limit=node_limit,
+    )
     return success(data=result)
 
 

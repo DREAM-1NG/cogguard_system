@@ -43,9 +43,11 @@ export function runKT3AgentReview(body: {
   selected_post_ids?: string[]
   selected_tree_ids?: string[]
   agent_names: string[]
+  runtime_mode?: 'auto' | 'simple' | 'complex'
   enable_active_retrieval?: boolean
   enable_light_debate?: boolean
   enable_full_debate?: boolean
+  enable_deep_judge?: boolean
   debate_max_rounds?: number
   policy_id?: string
   active_policy_id?: string
