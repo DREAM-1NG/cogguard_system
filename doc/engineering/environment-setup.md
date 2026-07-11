@@ -99,22 +99,18 @@ docker compose logs -f
 
 ## 5. 真实爬虫（可选）
 
-在 `.env` 中配置（参见 `new-system/.env.example`）：
+社交与新闻采集核心已经内置在 `system/runtimes/`，不需要配置外部仓库路径或单独启动新闻后端。`docker compose` 仍只负责 MySQL、MongoDB 和 Redis；crawler runtime 在宿主机由后端直接调用。
 
-- **MediaCrawler**（`weibo` / `xhs` / `douyin`）：运行在宿主机，不在 `docker compose` 中启动。`MEDIACRAWLER_ROOT` 指向本机 MediaCrawler 仓库根目录；`MEDIACRAWLER_LOGIN_TYPE` / `MEDIACRAWLER_COOKIES` 按上游要求登录；`MEDIACRAWLER_UV_BIN` 指向可用的 `uv`；`MEDIACRAWLER_PYTHON_BIN` 指向可用的 Python 3.11+ 解释器；如果 Node.js 没有加入系统 `PATH`，可通过 `MEDIACRAWLER_NODE_DIR` 指向安装目录（例如 `D:/node`）；Windows 上如果 `uv` 默认用户缓存目录有权限问题，可额外设置 `MEDIACRAWLER_UV_CACHE_DIR` 指向项目内缓存目录。
-- **NewsCrawler**：`NEWSCRAWLER_API_BASE` 指向已启动的 `news_extractor_backend`（例如 `http://127.0.0.1:8020`），或配置 `NEWSCRAWLER_ROOT` 使用进程内提取。
-- **Toutiao / 头条**：不走 MediaCrawler 封装；在 CogGuard 中应走 `news` 路径（NewsCrawler / 新闻抽取链路）。
+- **Social runtime**：支持 `weibo` / `xhs` / `douyin`，按需配置登录、Cookie、Node.js 和代理。
+- **News runtime**：支持 detector 驱动的文章 URL 提取，不读取 `NEWSCRAWLER_API_BASE` 或 `NEWSCRAWLER_ROOT`。
+- **Toutiao / 头条**：使用 `news` 平台和文章 URL，不进入 social runtime。
 
 建议的本机配置示例：
 
 ```dotenv
-MEDIACRAWLER_ROOT=G:/CISCN/cogguard_system/MediaCrawler-main
 MEDIACRAWLER_LOGIN_TYPE=qrcode
 MEDIACRAWLER_COOKIES=
-MEDIACRAWLER_UV_BIN=C:/Users/p/.local/bin/uv.exe
-MEDIACRAWLER_PYTHON_BIN=C:/Users/p/AppData/Roaming/uv/python/cpython-3.11-windows-x86_64-none/python.exe
 MEDIACRAWLER_NODE_DIR=D:/node
-MEDIACRAWLER_UV_CACHE_DIR=G:/CISCN/cogguard_system/MediaCrawler-main/.uv-cache
 MEDIACRAWLER_PROXY=http://127.0.0.1:7897
 MEDIACRAWLER_GET_SUB_COMMENTS=true
 MEDIACRAWLER_MAX_COMMENTS_PER_POST=200
@@ -122,12 +118,15 @@ MEDIACRAWLER_MAX_COMMENTS_PER_POST=200
 
 如果本机开启 Clash Verge 的 TUN / 虚拟网卡 / fake-ip 模式，并且目标站点解析到 `198.18.x.x` 后出现 `ERR_NETWORK_ACCESS_DENIED`，请配置 `MEDIACRAWLER_PROXY` 指向 Clash 的本地 HTTP 代理端口。CogGuard 会把该值传给 MediaCrawler 子进程，并让 CDP Chrome 通过 `--proxy-server` 显式走代理；同时也会设置 `HTTP_PROXY` / `HTTPS_PROXY`，供 MediaCrawler 内部 HTTP 客户端使用。当前本机 Clash Verge 验证可用端口为 `http://127.0.0.1:7897`。
 
-首次准备 MediaCrawler 运行时：
+首次准备内置运行时：
 
 ```bash
-cd MediaCrawler-main
-C:/Users/p/.local/bin/uv.exe sync --python C:/Users/p/AppData/Roaming/uv/python/cpython-3.11-windows-x86_64-none/python.exe
-C:/Users/p/.local/bin/uv.exe run --python C:/Users/p/AppData/Roaming/uv/python/cpython-3.11-windows-x86_64-none/python.exe playwright install chromium
+cd system/runtimes/social_runtime
+uv sync --frozen
+uv run playwright install chromium
+
+cd ../news_runtime
+uv sync --frozen
 ```
 
 补充说明：
@@ -138,8 +137,8 @@ C:/Users/p/.local/bin/uv.exe run --python C:/Users/p/AppData/Roaming/uv/python/c
 - `douyin` 现已补充更稳健的登录态判断：除了 `HasUserLogin` / `LOGIN_STATUS`，还会识别持久化 `sessionid(_ss)` + `xmst` 等会话信号；如果扫码后进入“验证码中间页”，轮询期间也会继续处理滑块验证，而不是固定等待后直接判失败。
 - CogGuard 当前会把帖子 / 评论的原始 JSONL 行保留在 `raw_data`，并把可解析的多模态链接归一到 `media_urls`；评论侧还会保留 `reply_to` 和 `sub_comment_count`，方便还原两层评论树。
 - 采集请求可额外传 `recursive_comments`、`enrich_author_profiles`、`comment_sort`。其中 `recursive_comments` 和 `enrich_author_profiles` 目前会写入 `crawl_metadata` 并按当前 MediaCrawler 能力降级执行；`comment_sort` 已支持 `none`、`like_count_desc`、`reply_count_desc`。
-- MediaCrawler 直接运行时，原始抓取结果默认落在 `MediaCrawler-main/data/<platform>/jsonl/`；例如抖音搜索结果会写到 `MediaCrawler-main/data/douyin/jsonl/search_contents_<date>.jsonl` 和 `search_comments_<date>.jsonl`。
-- CogGuard 当前社交采集任务会直接执行 MediaCrawler 命令，然后只读取本次运行新增的 JSONL 行再入库；不会再整份回读“当天最新文件”，从而避免把同一天前一批关键词残留数据混入当前任务。
+- social runtime 原始抓取结果默认落在 `system/runtimes/social_runtime/data/<platform>/jsonl/`。
+- CogGuard 当前社交采集任务会直接执行内置 runtime，然后只读取本次运行新增的 JSONL 行再入库；不会整份回读当天文件。
 - 微博搜索链路会在 `ENABLE_WEIBO_FULL_TEXT=true` 时对每条搜索结果补抓详情页 raw，而不再只补长文本；输出行会保留 `pics` / `page_info` / `mix_media_info` 等 mblog 媒体字段、`media_urls` 和 `post_details_raw`，方便 CogGuard 后续归一化图片、视频与封面链接。
 
 ## 6. 启动后端
@@ -164,20 +163,14 @@ uvicorn app.main:app --reload --port 8000
 - API 文档: http://localhost:8000/docs
 - 健康检查: http://localhost:8000/api/v1/health
 
-如果需要验证 MediaCrawler 宿主机环境是否就绪，可执行：
+如果需要验证内置 social runtime 是否就绪，可执行：
 
 ```bash
 cd new-system/backend
 uv run python scripts/verify_mediacrawler_env.py
 ```
 
-该脚本会检查：
-
-- 后端是否能从 `new-system/.env` 读取 MediaCrawler 配置
-- `MEDIACRAWLER_ROOT`、`main.py`、`uv`、MediaCrawler `.venv` 解释器是否可用
-- `MEDIACRAWLER_NODE_DIR` 注入后 `node -v` 是否正常
-- `MediaCrawler-main/.venv` 直启 `main.py --help` 与 Playwright Chromium 启动烟雾测试
-- `weibo` / `xhs` / `douyin` 的环境就绪状态，以及 `toutiao` 的路由说明
+该脚本会检查内置 runtime 入口、冻结 Python 环境、Node.js 注入、Playwright Chromium，以及 `weibo` / `xhs` / `douyin` 平台路由。新闻 runtime 可在 `system/runtimes/news_runtime` 执行 `uv run --frozen python -c "from news_extractor_core.services.extractor import ExtractorService"` 验证。
 
 ## 7. 启动前端
 

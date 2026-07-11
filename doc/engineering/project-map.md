@@ -30,9 +30,11 @@ in the research workspaces.
 | `new-system/` | Current product system root. Contains the runnable backend, frontend, deployment configuration, and tests. | Product code only: keep implementations here when they are reachable through API/UI/tests/demo flows. |
 | `aris/` | Research execution workspace for the three key technologies. | Use for technical exploration, experiment plans, acceptance criteria, reviews, and algorithm work before product integration. |
 | `doc/` | Long-lived engineering and project documentation. | Use for PRD, setup, development log, project map, technical background, and migrated baseline/reference documents. |
-| `MediaCrawler-main/` | Upstream social-media crawler reference/dependency boundary. | Keep in place; do not modify by default. |
-| `NewsCrawler-main/` | Upstream news extraction reference/dependency boundary. | Keep in place; do not modify by default. |
-| `CooRTweet-master/` | Upstream coordination-detection method reference. | Keep in place; do not modify by default. |
+| `system/runtimes/social_runtime/` | Vendored social crawler runtime used by the product. | Product runtime code; modify when crawler cutover or maintenance requires it. |
+| `system/runtimes/news_runtime/` | Vendored news extraction runtime used by the product. | Product runtime code; modify when extractor cutover or maintenance requires it. |
+| `MediaCrawler-main/` | Upstream social-media crawler reference boundary. | Reference only by default; not part of runtime execution path. |
+| `NewsCrawler-main/` | Upstream news extraction reference boundary. | Reference only by default; not part of runtime execution path. |
+| `CooRTweet-master/` | Upstream coordination-detection method reference. | Reference only by default; not part of runtime execution path. |
 
 ## Documentation Split
 
@@ -76,6 +78,10 @@ cogguard_system/
   doc/
     engineering/  PRD, setup, roadmap, development log, project map
     research/     positioning, literature, key-technology background, notes
+  system/
+    runtimes/
+      social_runtime/
+      news_runtime/
   MediaCrawler-main/
   NewsCrawler-main/
   CooRTweet-master/
@@ -84,16 +90,16 @@ research-wiki/
   Papers, ideas, claims, experiments, gap map, research status
 ```
 
-## Reference Project Policy
+## Runtime Boundary Policy
 
-The three bundled reference projects are intentionally left in their existing
-locations to avoid breaking paths already used by documentation, configuration,
-or local experiments. Treat them as external/reference boundaries unless a task
-explicitly says to modify them.
+Crawler runtime execution now happens inside `system/runtimes/`. The vendored
+runtime trees are part of the product surface and should carry only the
+minimum upstream core needed by the live system.
 
-If product code needs functionality from a reference project, add a wrapper or
-integration point under `new-system/` and document the dependency. Do not mix
-active CogGuard product code into the reference project directories.
+The upstream repositories remain in place only for provenance, license review,
+and diffing against upstream behavior. Product execution, tests, docs, and
+configuration should not depend on `MediaCrawler-main/`, `NewsCrawler-main/`,
+or `CooRTweet-master/`.
 
 ## Migrated Root Documents
 

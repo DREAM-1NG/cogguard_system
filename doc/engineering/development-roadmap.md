@@ -110,15 +110,14 @@
 
 #### 2.0 真实爬虫接入 ✅
 
-- [x] MediaCrawler 封装层 (`core/crawler/social.py`)
-  - [x] 通过配置 `MEDIACRAWLER_ROOT` 调用上游 `uv run main.py`（子进程），解析 `data/<平台>/jsonl` 产出
-  - [x] 支持从 `system/.env` 读取 `MEDIACRAWLER_*` 变量，并可通过 `MEDIACRAWLER_PYTHON_BIN` / `MEDIACRAWLER_NODE_DIR` 为子进程补充 Python / Node.js 运行时
-  - [x] `MediaSocialCrawler` 实现 `BaseCrawler`（直接执行 MediaCrawler，并按 JSONL 增量批次入库）
-  - [x] 支持平台：weibo / douyin / xhs / kuaishou / bilibili / tieba / zhihu（与 MediaCrawler 一致）
-- [x] NewsCrawler 封装层 (`core/crawler/news.py`)
-  - [x] `NEWSCRAWLER_API_BASE` HTTP 调用 `POST /api/extract`，或 `NEWSCRAWLER_ROOT` 进程内 `ExtractorService`
-  - [x] `NewsExtractCrawler`：按文章 URL 列表（`post_ids` 或关键词中的 http 链接）提取
-- [x] `crawl_tasks.py` 中按平台名路由（`factory.build_crawler`：mock / 社交 / news）
+- [x] 内置 social runtime（`system/runtimes/social_runtime`）
+  - [x] `MediaSocialCrawler.collect()` 通过仓库内 subprocess adapter 执行 runtime，并按 JSONL 增量批次入库
+  - [x] 支持 `weibo` / `douyin` / `xhs`；未迁入平台不出现在生产平台清单
+  - [x] 登录、Cookie、Node.js、代理、评论开关和单帖评论上限由保留的 `MEDIACRAWLER_*` 配置控制
+- [x] 内置 news runtime（`system/runtimes/news_runtime`）
+  - [x] `NewsExtractCrawler.collect()` 直接调用内部 `ExtractorService`，不依赖 HTTP 后端或外部根路径
+  - [x] detector 识别 URL 平台，并保留当前注册 adapter 的完整提取能力
+- [x] `crawl_tasks.py` 只依赖 `BaseCrawler.collect() -> CrawlBatch`，统一写入帖子、评论和 `crawl_metadata`
 
 #### 2.1 协同检测模块 ✅
 

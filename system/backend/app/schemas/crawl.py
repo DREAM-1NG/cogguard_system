@@ -5,10 +5,12 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from app.config import settings
+
 
 class CrawlRequest(BaseModel):
     """创建采集任务的请求体。"""
-    platform: str = Field(..., description="平台名称: mock_weibo / weibo / news / ...")
+    platform: str = Field(..., description="平台名称: weibo / douyin / xhs / news；mock_weibo 仅用于测试")
     keywords: list[str] = Field(default_factory=list, description="搜索关键词列表（社交）；新闻平台可填 URL")
     event_id: str | None = Field(
         default=None,
@@ -25,7 +27,7 @@ class CrawlRequest(BaseModel):
     max_posts: int = Field(default=50, ge=1, le=1000)
     crawl_comments: bool = Field(default=True)
     recursive_comments: bool = Field(
-        default=False,
+        default_factory=lambda: settings.MEDIACRAWLER_GET_SUB_COMMENTS,
         description="请求递归完整评论树；当前 MediaCrawler 实际最多落到二级评论，并在 crawl_metadata 中标明降级。",
     )
     enrich_author_profiles: bool = Field(
@@ -38,7 +40,7 @@ class CrawlRequest(BaseModel):
         description="评论入库排序：none / like_count_desc / reply_count_desc。",
     )
     max_comments_per_post: int = Field(
-        default=200,
+        default_factory=lambda: settings.MEDIACRAWLER_MAX_COMMENTS_PER_POST,
         ge=0,
         le=5000,
         description="单条帖子最多抓取评论数；0 表示不额外限制并由爬虫默认策略决定。",

@@ -1,7 +1,7 @@
-"""Import existing MediaCrawler JSONL search outputs into MongoDB.
+"""Import existing vendored social runtime JSONL search outputs into MongoDB.
 
 This is meant for backfilling real raw social data that already exists under
-``MediaCrawler-main/data/<platform>/jsonl`` without rerunning a crawl task.
+``system/runtimes/social_runtime/data/<platform>/jsonl`` without rerunning a crawl task.
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ from typing import Any, Callable
 
 from pymongo import UpdateOne
 
-from app.config import settings
+from app.config import PROJECT_ROOT
 from app.core.crawler.social import (
     generic_jsonl_to_comment,
     generic_jsonl_to_post,
@@ -64,8 +64,8 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--data-root",
-        default=settings.MEDIACRAWLER_ROOT or "",
-        help="MediaCrawler project root. Defaults to MEDIACRAWLER_ROOT from .env.",
+        default=str(PROJECT_ROOT / "runtimes" / "social_runtime"),
+        help="Built-in social runtime root. Defaults to system/runtimes/social_runtime.",
     )
     parser.add_argument(
         "--date",
@@ -252,7 +252,7 @@ async def main() -> int:
     args = parse_args()
     data_root = Path(args.data_root).resolve() if args.data_root else None
     if data_root is None or not data_root.is_dir():
-        raise SystemExit("MEDIACRAWLER_ROOT/data root is not configured or does not exist.")
+        raise SystemExit("Built-in social runtime root does not exist.")
 
     platforms = args.platform or sorted(PLATFORM_CONFIG)
     dates = set(args.date or [])

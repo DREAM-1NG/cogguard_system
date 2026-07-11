@@ -1,6 +1,10 @@
-"""传播监控子包：趋势预测、源头追溯、范围估计。"""
+"""Public entry points for propagation analysis."""
 
-# 保留旧模块的公共接口
-from app.core.propagation_legacy import build_propagation_graph
+
+def build_propagation_graph(*args, **kwargs):
+    from app.core.propagation_legacy import build_propagation_graph as _build_propagation_graph
+
+    return _build_propagation_graph(*args, **kwargs)
+
 
 __all__ = ["build_propagation_graph"]

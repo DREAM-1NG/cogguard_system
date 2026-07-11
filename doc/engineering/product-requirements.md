@@ -633,11 +633,11 @@ CogGuard 面向网络舆论对抗场景，以 **跨平台协同攻击行为** �
 
 | 平台 ID | 名称 | 状态 | 备注 |
 |---------|------|------|------|
-| `mock_weibo` | 模拟微博（测试） | active | 默认选中，用于演示 |
-| `weibo` | 微博（MediaCrawler） | active | 需配置 MEDIACRAWLER_ROOT 与 Cookie |
-| `douyin` | 抖音（MediaCrawler） | active | 需配置 MEDIACRAWLER_ROOT |
-| `xhs` | 小红书（MediaCrawler） | active | 需配置 MEDIACRAWLER_ROOT |
-| `news` | 新闻链接（NewsCrawler） | active | 在「链接」中填写文章 URL |
+| `mock_weibo` | 模拟微博（测试） | test-only | 仅用于自动化测试与本地假数据 |
+| `weibo` | 微博（内置 social runtime） | active | 按登录方式配置 Cookie 或扫码 |
+| `douyin` | 抖音（内置 social runtime） | active | 首次运行需安装 Playwright Chromium |
+| `xhs` | 小红书（内置 social runtime） | active | 首次运行需安装 Playwright Chromium |
+| `news` | 新闻链接（内置 news runtime） | active | 在「链接」中填写受支持的文章 URL |
 
 ### 交互流程
 

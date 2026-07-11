@@ -1,7 +1,4 @@
-"""Celery tasks for crawl jobs.
-
-根据 ``platform`` 路由到 MockCrawler、MediaCrawler 封装或 News 提取。
-"""
+"""Celery tasks for crawl jobs."""
 
 import asyncio
 import json
@@ -12,19 +9,7 @@ from pymongo import UpdateOne
 from app.celery_app import celery_app
 from app.config import settings
 from app.core.crawler.factory import build_crawler
-from app.core.crawler.news import NewsExtractCrawler
-from app.core.crawler.social import COGGUARD_TO_MEDIA, MediaSocialCrawler
-
-
-def apply_crawl_options(crawler, params: dict) -> None:
-    """Apply optional crawl-time controls supported by concrete crawlers."""
-    if isinstance(crawler, MediaSocialCrawler):
-        crawler.configure_runtime_options(
-            recursive_comments=bool(params.get("recursive_comments", False)),
-            enrich_author_profiles=bool(params.get("enrich_author_profiles", False)),
-            comment_sort=str(params.get("comment_sort", "none") or "none"),
-            max_comments_per_post=int(params.get("max_comments_per_post") or 0) or None,
-        )
+from app.core.crawler.types import CrawlRequestOptions
 
 
 def _run_async(coro):
@@ -99,101 +84,72 @@ async def _write_documents(collection, documents: list[dict]) -> None:
     await collection.insert_many(documents)
 
 
+def _build_request_options(params: dict) -> CrawlRequestOptions:
+    return CrawlRequestOptions(
+        keywords=list(params.get("keywords") or []),
+        post_ids=list(params.get("post_ids") or []),
+        max_posts=int(params.get("max_posts", 50) or 50),
+        crawl_comments=bool(params.get("crawl_comments", True)),
+        recursive_comments=bool(
+            params.get("recursive_comments", settings.MEDIACRAWLER_GET_SUB_COMMENTS)
+        ),
+        enrich_author_profiles=bool(params.get("enrich_author_profiles", False)),
+        comment_sort=str(params.get("comment_sort", "none") or "none"),
+        max_comments_per_post=int(
+            params.get(
+                "max_comments_per_post",
+                settings.MEDIACRAWLER_MAX_COMMENTS_PER_POST,
+            )
+            or 0
+        )
+        or None,
+    )
+
+
 def run_crawl_job(job_id: int, params_json: str):
     params = json.loads(params_json)
     platform = params.get("platform", "mock_weibo")
-    keywords = params.get("keywords", [])
-    post_ids = params.get("post_ids", []) or []
-    max_posts = params.get("max_posts", 50)
-    crawl_comments = params.get("crawl_comments", True)
+    request = _build_request_options(params)
 
     async def _do_crawl():
         mongo_client = _create_task_mongo_client()
         try:
             mongo_db = mongo_client[settings.MONGO_DATABASE]
-            if platform in COGGUARD_TO_MEDIA:
-                crawler = MediaSocialCrawler(platform)
-                crawler.post_ids = post_ids
-                apply_crawl_options(crawler, params)
-                batch = await crawler.execute_search_batch(keywords=keywords, max_posts=max_posts)
-
-                post_dicts = []
-                for post in batch.posts:
-                    post_dicts.append(
-                        prepare_crawl_document(
-                            post.model_dump(mode="json"),
-                            params=params,
-                            job_id=job_id,
-                            item_type="post",
-                            crawl_metadata=crawler.crawl_metadata,
-                        )
-                    )
-                await _write_documents(mongo_db["raw_posts"], post_dicts)
-
-                all_comments: list = []
-                if crawl_comments:
-                    for comment in batch.comments:
-                        all_comments.append(
-                            prepare_crawl_document(
-                                comment.model_dump(mode="json"),
-                                params=params,
-                                job_id=job_id,
-                                item_type="comment",
-                                crawl_metadata=crawler.crawl_metadata,
-                            )
-                        )
-                    await _write_documents(mongo_db["raw_comments"], all_comments)
-
-                return {
-                    "posts_count": len(post_dicts),
-                    "comments_count": len(all_comments) if crawl_comments else 0,
-                    "platform": platform,
-                    "crawl_metadata": crawler.crawl_metadata,
-                }
-
             crawler = build_crawler(platform)
-            crawler.post_ids = post_ids
-            apply_crawl_options(crawler, params)
-            posts = await crawler.search(keywords=keywords, max_posts=max_posts)
+            batch = await crawler.collect(request)
 
             post_dicts = []
-            for post in posts:
+            for post in batch.posts:
                 post_dicts.append(
                     prepare_crawl_document(
                         post.model_dump(mode="json"),
                         params=params,
                         job_id=job_id,
                         item_type="post",
-                        crawl_metadata={},
+                        crawl_metadata=batch.crawl_metadata,
                     )
                 )
-
             await _write_documents(mongo_db["raw_posts"], post_dicts)
 
             all_comments: list = []
-            if crawl_comments:
-                if isinstance(crawler, NewsExtractCrawler):
-                    pass
-                else:
-                    for post in posts[:10]:
-                        comments = await crawler.fetch_comments(post.post_id)
-                        for comment in comments:
-                            all_comments.append(
-                                prepare_crawl_document(
-                                    comment.model_dump(mode="json"),
-                                    params=params,
-                                    job_id=job_id,
-                                    item_type="comment",
-                                    crawl_metadata={},
-                                )
-                            )
+            if request.crawl_comments:
+                for comment in batch.comments:
+                    all_comments.append(
+                        prepare_crawl_document(
+                            comment.model_dump(mode="json"),
+                            params=params,
+                            job_id=job_id,
+                            item_type="comment",
+                            crawl_metadata=batch.crawl_metadata,
+                        )
+                    )
                 await _write_documents(mongo_db["raw_comments"], all_comments)
 
             return {
                 "posts_count": len(post_dicts),
-                "comments_count": len(all_comments) if crawl_comments else 0,
+                "comments_count": len(all_comments) if request.crawl_comments else 0,
                 "platform": platform,
-                "crawl_metadata": {},
+                "crawl_metadata": batch.crawl_metadata,
             }
         finally:
             mongo_client.close()

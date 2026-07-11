@@ -455,8 +455,8 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--keyword", default=DEFAULT_KEYWORD)
     parser.add_argument(
         "--data-runs-root",
-        default=str(BACKEND_DIR.parents[1] / "MediaCrawler-main" / "data_runs"),
-        help="MediaCrawler-main/data_runs root directory.",
+        default=str(BACKEND_DIR.parents[1] / "system" / "runtimes" / "social_runtime" / "data_runs"),
+        help="Vendored social runtime data_runs root directory.",
     )
     parser.add_argument("--execute", action="store_true", help="Write to MySQL and MongoDB. Omit for dry-run.")
     return parser

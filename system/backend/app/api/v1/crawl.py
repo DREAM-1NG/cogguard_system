@@ -24,25 +24,25 @@ SUPPORTED_PLATFORMS = [
         "id": "weibo",
         "name": "微博",
         "status": "active",
-        "hint": "需配置 MEDIACRAWLER_ROOT 与 Cookie/扫码登录环境",
+        "hint": "使用仓库内置 social runtime，需准备 Cookie 或扫码登录环境",
     },
     {
         "id": "douyin",
         "name": "抖音",
         "status": "active",
-        "hint": "需配置 MEDIACRAWLER_ROOT",
+        "hint": "使用仓库内置 social runtime",
     },
     {
         "id": "xhs",
         "name": "小红书",
         "status": "active",
-        "hint": "需配置 MEDIACRAWLER_ROOT",
+        "hint": "使用仓库内置 social runtime",
     },
     {
         "id": "news",
-        "name": "新闻链接（NewsCrawler）",
+        "name": "新闻链接",
         "status": "active",
-        "hint": "在“链接”中填写文章 URL，需 NEWSCRAWLER_API_BASE 或 NEWSCRAWLER_ROOT",
+        "hint": "在“链接”中填写文章 URL，系统将使用仓库内置 news runtime 提取内容",
     },
 ]
 

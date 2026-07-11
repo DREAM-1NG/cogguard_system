@@ -12,17 +12,21 @@ from __future__ import annotations
 from collections import Counter
 import hashlib
 from itertools import islice
-import re
-from typing import Any
 
 import networkx as nx
 import numpy as np
 import pandas as pd
 
-EXACT_BETWEENNESS_NODE_LIMIT = 500
-APPROX_BETWEENNESS_SAMPLE_SIZE = 128
-DIFFUSION_VISIBLE_NODE_LIMIT = 300
-DIFFUSION_MAX_DEPTH = 6
+from app.core.propagation.builders import build_claims, build_timeline
+from app.core.propagation.constants import (
+    APPROX_BETWEENNESS_SAMPLE_SIZE,
+    DIFFUSION_MAX_DEPTH,
+    DIFFUSION_VISIBLE_NODE_LIMIT,
+    EXACT_BETWEENNESS_NODE_LIMIT,
+)
+from app.core.propagation.quality import build_user_quality_portrait
+from app.core.propagation.roles import identify_key_roles
+
 
 
 # ---------------------------------------------------------------------------
@@ -124,10 +128,10 @@ def build_propagation_graph(
 
     # --- 分析 ---
     bc = _betweenness(G)
-    key_roles = _identify_key_roles(G, bc)
+    key_roles = identify_key_roles(G, bc)
 
-    claims = _build_claims(shared_objects)
-    timeline = _build_timeline(df)
+    claims = build_claims(shared_objects)
+    timeline = build_timeline(df)
 
     evidence_chains = _extract_evidence_chains(G, shared_objects, key_roles, bc, df)
     path_analysis = _build_path_analysis(G, evidence_chains)
@@ -139,7 +143,7 @@ def build_propagation_graph(
         comments or [],
         node_limit=diffusion_node_limit,
     )
-    user_quality = _build_user_quality_portrait(posts, comments or [])
+    user_quality = build_user_quality_portrait(posts, comments or [])
 
     # --- 序列化 ---
     nodes = []
@@ -266,122 +270,6 @@ def _betweenness(G: nx.MultiDiGraph) -> dict[str, float]:
         )
     except Exception:
         return {}
-
-
-# ---------------------------------------------------------------------------
-# Key roles
-# ---------------------------------------------------------------------------
-
-def _identify_key_roles(G: nx.MultiDiGraph, bc: dict[str, float]) -> dict:
-    """识别传播网络中的关键角色。"""
-    if G.number_of_nodes() == 0:
-        return {"originators": [], "bridges": [], "amplifiers": []}
-
-    # 起爆节点：出度高、入度低
-    originators = []
-    for n in G.nodes():
-        out_d = G.out_degree(n)
-        in_d = G.in_degree(n)
-        if out_d > 0 and out_d >= in_d:
-            originators.append({
-                "account_id": n,
-                "out_degree": out_d,
-                "in_degree": in_d,
-                "author_name": G.nodes[n].get("author_name", n),
-            })
-    originators.sort(key=lambda x: x["out_degree"], reverse=True)
-
-    # 桥接节点：优先取介数中心性高的中继节点；若传播图过浅导致介数全为 0，
-    # 则退化为“同时承接上游且继续扩散下游”的结构桥接节点。
-    bridges = []
-    for n, score in sorted(bc.items(), key=lambda x: x[1], reverse=True):
-        in_d = G.in_degree(n)
-        out_d = G.out_degree(n)
-        if score > 0:
-            bridges.append({
-                "account_id": n,
-                "betweenness": round(score, 4),
-                "bridge_score": round(score, 4),
-                "in_degree": in_d,
-                "out_degree": out_d,
-                "author_name": G.nodes[n].get("author_name", n),
-            })
-        if len(bridges) >= 10:
-            break
-
-    if not bridges:
-        relay_candidates = []
-        for n in G.nodes():
-            in_d = G.in_degree(n)
-            out_d = G.out_degree(n)
-            if in_d > 0 and out_d > 0:
-                relay_candidates.append({
-                    "account_id": n,
-                    "betweenness": round(float(bc.get(n, 0.0)), 4),
-                    "bridge_score": round((2 * in_d * out_d) / max(in_d + out_d, 1), 4),
-                    "in_degree": in_d,
-                    "out_degree": out_d,
-                    "author_name": G.nodes[n].get("author_name", n),
-                })
-        relay_candidates.sort(
-            key=lambda item: (
-                item["bridge_score"],
-                item["out_degree"],
-                item["in_degree"],
-            ),
-            reverse=True,
-        )
-        bridges = relay_candidates[:10]
-
-    # 扩散节点：入度最高
-    amplifiers = []
-    for n in G.nodes():
-        in_d = G.in_degree(n)
-        if in_d > 0:
-            amplifiers.append({
-                "account_id": n,
-                "in_degree": in_d,
-                "author_name": G.nodes[n].get("author_name", n),
-            })
-    amplifiers.sort(key=lambda x: x["in_degree"], reverse=True)
-
-    return {
-        "originators": originators[:10],
-        "bridges": bridges[:10],
-        "amplifiers": amplifiers[:10],
-    }
-
-
-# ---------------------------------------------------------------------------
-# Claims & timeline (unchanged logic, extracted for clarity)
-# ---------------------------------------------------------------------------
-
-def _build_claims(shared_objects: dict[str, list]) -> list[dict]:
-    claims = []
-    for obj_id, shares in sorted(
-        shared_objects.items(), key=lambda x: len(x[1]), reverse=True
-    )[:20]:
-        accounts = list({s["author_id"] for s in shares})
-        claims.append({
-            "object_id": obj_id,
-            "share_count": len(shares),
-            "account_count": len(accounts),
-            "first_share": str(shares[0]["ts"]) if shares else "",
-        })
-    return claims
-
-
-def _build_timeline(df: pd.DataFrame) -> list[dict]:
-    timeline = []
-    for _, row in df.head(100).iterrows():
-        timeline.append({
-            "post_id": str(row.get("post_id", "")),
-            "author_id": str(row.get("author_id", "")),
-            "author_name": row.get("author_name", ""),
-            "timestamp": str(row["ts"]),
-            "content": str(row.get("content", ""))[:100],
-        })
-    return timeline
 
 
 # ---------------------------------------------------------------------------
@@ -1280,204 +1168,6 @@ def _node_key_path_details(node_id: str, evidence_chains: list[dict]) -> list[di
             })
     details.sort(key=lambda item: item.get("score", 0), reverse=True)
     return details[:8]
-
-
-def _build_user_quality_portrait(posts: list[dict], comments: list[dict]) -> dict:
-    users: dict[str, dict] = {}
-    for record in list(posts) + list(comments):
-        user_id = str(record.get("author_id") or record.get("user_id") or "")
-        if not user_id:
-            continue
-        profile = users.setdefault(
-            user_id,
-            {
-                "account_id": user_id,
-                "author_name": record.get("author_name") or record.get("nickname") or user_id,
-                "post_count": 0,
-                "followers": None,
-                "following": None,
-                "statuses": None,
-                "verified": None,
-            },
-        )
-        profile["post_count"] += 1
-        for target, keys in {
-            "followers": ("followers_count", "followers", "fans_count", "fan_count"),
-            "following": ("friends_count", "following_count", "follow_count"),
-            "statuses": ("statuses_count", "post_count", "tweet_count", "weibo_count"),
-        }.items():
-            value = _to_number(_profile_value(record, *keys))
-            if value is not None:
-                profile[target] = max(profile[target] or 0, value)
-        verified = _to_bool(_profile_value(record, "verified", "is_verified", "verified_type"))
-        if verified is not None:
-            profile["verified"] = bool(profile["verified"] or verified)
-
-    bucket_counts: Counter[str] = Counter()
-    verified_count = 0
-    followers_values: list[int] = []
-    metrics_available = 0
-    top_accounts: list[dict] = []
-
-    for profile in users.values():
-        bucket = _quality_bucket(profile)
-        bucket_counts[bucket] += 1
-        if profile.get("verified"):
-            verified_count += 1
-        if profile.get("followers") is not None:
-            followers_values.append(int(profile["followers"]))
-        if any(profile.get(key) is not None for key in ("followers", "following", "statuses", "verified")):
-            metrics_available += 1
-        top_accounts.append({
-            "account_id": profile["account_id"],
-            "author_name": profile["author_name"],
-            "quality": bucket,
-            "followers": profile.get("followers"),
-            "verified": bool(profile.get("verified")),
-            "post_count": profile.get("post_count", 0),
-        })
-
-    total = max(len(users), 1)
-    top_accounts.sort(
-        key=lambda item: (
-            item["quality"] == "高",
-            item["quality"] == "中",
-            item.get("followers") or 0,
-            item.get("post_count") or 0,
-        ),
-        reverse=True,
-    )
-
-    return {
-        "total_users": len(users),
-        "metrics_available": metrics_available,
-        "verified_count": verified_count,
-        "verified_rate": round(verified_count / total, 4) if users else 0,
-        "avg_followers": round(sum(followers_values) / len(followers_values), 2) if followers_values else None,
-        "buckets": [
-            {"quality": label, "count": bucket_counts.get(label, 0), "ratio": round(bucket_counts.get(label, 0) / total, 4)}
-            for label in ("高", "中", "低", "未知")
-        ],
-        "top_accounts": top_accounts[:10],
-    }
-
-
-def _profile_value(record: dict, *keys: str) -> Any:
-    for key in keys:
-        for path in _field_paths(key):
-            value = _nested_get(record, path)
-            if value not in (None, ""):
-                return value
-    return None
-
-
-def _field_paths(key: str) -> list[tuple[str, ...]]:
-    return [
-        (key,),
-        ("author_profile", key),
-        ("user", key),
-        ("raw_data", key),
-        ("raw_data", "user", key),
-        ("raw_data", "mblog", key),
-        ("raw_data", "mblog", "user", key),
-        ("raw_data", "post_details_raw", key),
-        ("raw_data", "post_details_raw", "mblog", key),
-        ("raw_data", "post_details_raw", "mblog", "user", key),
-        ("post_details_raw", key),
-        ("post_details_raw", "mblog", key),
-        ("post_details_raw", "mblog", "user", key),
-    ]
-
-
-def _nested_get(data: dict, path: tuple[str, ...]) -> Any:
-    current: Any = data
-    for key in path:
-        if not isinstance(current, dict):
-            return None
-        current = current.get(key)
-    return current
-
-
-def _clean_label(value: Any) -> str:
-    if value is None:
-        return ""
-    cleaned = str(value).strip()
-    if not cleaned:
-        return ""
-    cleaned = re.sub(r"<[^>]+>", "", cleaned)
-    cleaned = re.sub(r"\s+", " ", cleaned).strip()
-    if cleaned.lower() in {"unknown", "none", "null", "nan", "unavailable"}:
-        return ""
-    if cleaned in {"未知", "未解析", "未定位", "未知属地"}:
-        return ""
-    return cleaned
-
-
-def _to_number(value: Any) -> int | None:
-    if value is None or value == "":
-        return None
-    if isinstance(value, bool):
-        return int(value)
-    if isinstance(value, (int, float)) and not pd.isna(value):
-        return int(value)
-    text = str(value).replace(",", "").strip()
-    if not text:
-        return None
-    multiplier = 1
-    if text.endswith("万"):
-        multiplier = 10000
-        text = text[:-1]
-    elif text.endswith("亿"):
-        multiplier = 100000000
-        text = text[:-1]
-    match = re.search(r"-?\d+(?:\.\d+)?", text)
-    if not match:
-        return None
-    return int(float(match.group(0)) * multiplier)
-
-
-def _to_bool(value: Any) -> bool | None:
-    if value is None or value == "":
-        return None
-    if isinstance(value, bool):
-        return value
-    if isinstance(value, (int, float)) and not pd.isna(value):
-        return bool(value)
-    text = str(value).strip().lower()
-    if text in {"true", "yes", "y", "1", "认证", "已认证"}:
-        return True
-    if text in {"false", "no", "n", "0", "未认证"}:
-        return False
-    return None
-
-
-def _quality_bucket(profile: dict) -> str:
-    has_signal = any(profile.get(key) is not None for key in ("followers", "following", "statuses", "verified"))
-    if not has_signal:
-        return "未知"
-
-    followers = profile.get("followers") or 0
-    following = profile.get("following") or 0
-    statuses = profile.get("statuses") or 0
-    score = 0
-    if followers >= 10000:
-        score += 3
-    elif followers >= 1000:
-        score += 2
-    elif followers >= 100:
-        score += 1
-    if profile.get("verified"):
-        score += 2
-    if statuses >= 1000:
-        score += 1
-    if following and followers / max(following, 1) >= 2:
-        score += 1
-
-    if score >= 4:
-        return "高"
-    if score >= 2:
-        return "中"
-    return "低"
 
 
 # ---------------------------------------------------------------------------

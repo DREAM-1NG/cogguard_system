@@ -5,7 +5,7 @@ from httpx import AsyncClient
 
 from app.api.v1 import crawl as crawl_api
 from app.core.crawler.mock import MockCrawler
-from app.core.crawler.normalizer import DataNormalizer
+from app.core.crawler.social import generic_jsonl_to_comment, generic_jsonl_to_post
 from app.models.task import CrawlJob
 from app.services import crawl_service
 from tests.conftest import needs_db, test_session_factory
@@ -47,16 +47,16 @@ async def test_mock_crawler_coordinated_pattern():
 
 def test_normalizer_standardizes_weibo_post():
     raw = {
-        "id": "wb_001",
-        "text": "原始微博内容",
+        "note_id": "wb_001",
+        "content": "原始微博内容",
         "user_id": "12345",
         "nickname": "测试用户",
-        "created_at": "2026-04-01T10:00:00",
-        "like_count": 100,
-        "repost_count": 50,
-        "comment_count": 30,
+        "create_time": "2026-04-01T10:00:00",
+        "liked_count": 100,
+        "shared_count": 50,
+        "comments_count": 30,
     }
-    post = DataNormalizer.normalize_post(raw, "weibo")
+    post = generic_jsonl_to_post(raw, "weibo")
     assert post.platform == "weibo"
     assert post.post_id == "wb_001"
     assert post.content == "原始微博内容"
@@ -66,14 +66,14 @@ def test_normalizer_standardizes_weibo_post():
 
 def test_normalizer_standardizes_comment():
     raw = {
-        "id": "cmt_001",
-        "post_id": "wb_001",
-        "text": "评论内容",
+        "comment_id": "cmt_001",
+        "note_id": "wb_001",
+        "content": "评论内容",
         "user_id": "67890",
         "nickname": "评论者",
-        "created_at": "2026-04-01T10:05:00",
+        "create_time": "2026-04-01T10:05:00",
     }
-    comment = DataNormalizer.normalize_comment(raw, "weibo")
+    comment = generic_jsonl_to_comment(raw, "weibo")
     assert comment.platform == "weibo"
     assert comment.comment_id == "cmt_001"
     assert comment.content == "评论内容"

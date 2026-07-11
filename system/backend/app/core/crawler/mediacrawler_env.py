@@ -1,4 +1,4 @@
-"""Helpers for resolving MediaCrawler runtime dependencies."""
+"""Helpers for resolving the internal social crawler runtime."""
 
 from __future__ import annotations
 
@@ -8,45 +8,30 @@ import sys
 from collections.abc import Mapping
 from pathlib import Path
 
-from app.config import settings
+from app.config import PROJECT_ROOT, settings
 
 
-def resolve_executable(candidate: str | None, default_name: str) -> str | None:
-    raw = (candidate or "").strip()
-    if raw:
-        candidate_path = Path(raw)
-        if candidate_path.is_file():
-            return str(candidate_path)
-        resolved = shutil.which(raw)
-        if resolved:
-            return resolved
+def resolve_social_runtime_root() -> Path:
+    return (PROJECT_ROOT / "runtimes" / "social_runtime").resolve()
+
+
+def resolve_executable(default_name: str) -> str | None:
     return shutil.which(default_name)
 
 
 def resolve_uv_bin() -> str | None:
-    return resolve_executable(settings.MEDIACRAWLER_UV_BIN, "uv")
+    return resolve_executable("uv")
 
 
 def resolve_python_bin() -> str:
-    raw = (settings.MEDIACRAWLER_PYTHON_BIN or "").strip()
-    if raw:
-        candidate_path = Path(raw)
-        if candidate_path.is_file():
-            return str(candidate_path)
-        resolved = shutil.which(raw)
-        if resolved:
-            return resolved
     return sys.executable
 
 
-def resolve_mediacrawler_runtime_python(root: str | Path | None) -> str | None:
-    if not root:
-        return None
-
-    root_path = Path(root)
+def resolve_mediacrawler_runtime_python(root: str | Path | None = None) -> str | None:
+    runtime_root = Path(root).resolve() if root else resolve_social_runtime_root()
     for candidate in (
-        root_path / ".venv" / "Scripts" / "python.exe",
-        root_path / ".venv" / "bin" / "python",
+        runtime_root / ".venv" / "Scripts" / "python.exe",
+        runtime_root / ".venv" / "bin" / "python",
     ):
         if candidate.is_file():
             return str(candidate)
@@ -69,15 +54,8 @@ def resolve_node_bin() -> str | None:
 def build_mediacrawler_env(base_env: Mapping[str, str] | None = None) -> dict[str, str]:
     env = dict(base_env or os.environ)
 
-    # Remove the parent uv virtualenv markers before nesting another
-    # ``uv run`` for MediaCrawler. Otherwise the child process may inherit
-    # backend-specific execution state and fail to bootstrap cleanly.
     for key in ("UV_RUN_RECURSION_DEPTH", "VIRTUAL_ENV"):
         env.pop(key, None)
-
-    uv_cache_dir = (settings.MEDIACRAWLER_UV_CACHE_DIR or "").strip()
-    if uv_cache_dir:
-        env["UV_CACHE_DIR"] = uv_cache_dir
 
     proxy = (settings.MEDIACRAWLER_PROXY or "").strip()
     if proxy:

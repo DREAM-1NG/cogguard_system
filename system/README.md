@@ -18,7 +18,7 @@ system/
 │   ├── pyproject.toml              # 项目元数据与依赖管理 (uv)
 │   ├── requirements.txt            # pip 兼容依赖列表
 │   ├── scripts/
-│   │   └── verify_mediacrawler_env.py # MediaCrawler 宿主机环境校验脚本
+│   │   └── verify_mediacrawler_env.py # 内置 social runtime 环境校验脚本
 │   ├── alembic.ini                 # 数据库迁移配置
 │   ├── alembic/                    # 迁移脚本目录
 │   │   ├── env.py                  # 迁移环境（异步引擎 + 自动导入模型）
@@ -49,10 +49,10 @@ system/
 │   │   │       ├── base.py         # 爬虫抽象基类（定义统一接口）
 │   │   │       ├── mediacrawler_env.py # MediaCrawler 的 uv / node / PATH 解析
 │   │   │       ├── mock.py         # 模拟数据爬虫（生成含协同模式的测试数据）
-│   │   │       ├── social.py       # MediaCrawler 直连执行 + JSONL 增量入库（微博等）
-│   │   │       ├── news.py         # News 提取（HTTP 或本地 ExtractorService）
+│   │   │       ├── social/         # 社交采集深 module（normalizer / runtime / metadata）
+│   │   │       ├── news/           # 新闻提取深 module（normalizer / runtime）
 │   │   │       ├── factory.py      # 按平台构造爬虫
-│   │   │       └── normalizer.py   # 跨平台数据标准化器
+│   │   │       └── types.py        # collect request / batch 类型
 │   │   │
 │   │   ├── models/                 # 数据库模型
 │   │   │   ├── user.py             # 用户表 (MySQL/SQLAlchemy)
@@ -72,7 +72,7 @@ system/
 │   │   │   └── bot_detection_service.py
 │   │   │
 │   │   ├── tasks/                  # Celery 异步任务
-│   │   │   └── crawl_tasks.py      # 采集任务执行（社交平台直连 MediaCrawler → MongoDB）
+│   │   │   └── crawl_tasks.py      # 采集任务执行（统一 collect seam → MongoDB）
 │   │   │
 │   │   ├── db/                     # 数据库连接管理
 │   │   │   ├── mysql.py            # SQLAlchemy 异步引擎 + Session
@@ -91,6 +91,9 @@ system/
 │       ├── test_crawl.py           # 采集模块测试（含纯单元测试）
 │       └── test_mediacrawler_env.py # MediaCrawler 环境解析测试
 │
+├── runtimes/                       # 内置 crawler runtime
+│   ├── social_runtime/             # vendored MediaCrawler core（仅 weibo / douyin / xhs）
+│   └── news_runtime/               # vendored NewsCrawler core（URL detector + adapters）
 └── frontend/                       # 前端应用 (Vue 3 + TypeScript)
     ├── package.json                # 依赖声明与脚本
     ├── vite.config.ts              # Vite 配置（代理、别名）
@@ -154,20 +157,16 @@ docker compose up -d         # 启动 MySQL + MongoDB + Redis
 docker compose ps            # 确认所有服务 healthy
 ```
 
-> `docker compose` 只负责 MySQL / MongoDB / Redis。MediaCrawler 需要在宿主机环境中运行，社交平台采集任务会直接执行它，并把本次新增 JSONL 行入库。
+> `docker compose` 只负责 MySQL / MongoDB / Redis。社交与新闻采集运行时已 vendored 到仓库内部，后端会直接调用 `system/runtimes/*`。
 
-### 第二步（可选）：配置并验证 MediaCrawler
+### 第二步（可选）：配置并验证内置 social runtime
 
 如果要采集 `weibo` / `xhs` / `douyin`，请先在 `system/.env` 中配置：
 
 ```dotenv
-MEDIACRAWLER_ROOT=G:/CISCN/cogguard_system/MediaCrawler-main
 MEDIACRAWLER_LOGIN_TYPE=qrcode
 MEDIACRAWLER_COOKIES=
-MEDIACRAWLER_UV_BIN=C:/Users/p/.local/bin/uv.exe
-MEDIACRAWLER_PYTHON_BIN=C:/Users/p/AppData/Roaming/uv/python/cpython-3.11-windows-x86_64-none/python.exe
 MEDIACRAWLER_NODE_DIR=D:/node
-MEDIACRAWLER_UV_CACHE_DIR=G:/CISCN/cogguard_system/MediaCrawler-main/.uv-cache
 MEDIACRAWLER_PROXY=http://127.0.0.1:7897
 MEDIACRAWLER_GET_SUB_COMMENTS=true
 MEDIACRAWLER_MAX_COMMENTS_PER_POST=200
@@ -175,24 +174,21 @@ MEDIACRAWLER_MAX_COMMENTS_PER_POST=200
 
 说明：
 
-- `MEDIACRAWLER_PYTHON_BIN` 用来固定 MediaCrawler 的 3.11 启动解释器；`uv sync` 时会基于它创建 `MediaCrawler-main/.venv`。
 - `MEDIACRAWLER_NODE_DIR` 适用于 Node.js 已安装但没有加入系统 `PATH` 的机器；后端会在调用 MediaCrawler 时自动把该目录注入子进程 `PATH`。
-- `MEDIACRAWLER_UV_CACHE_DIR` 适用于 Windows 上 `uv` 默认缓存目录存在权限问题的情况；一旦 `MediaCrawler-main/.venv` 建好，后端运行时会优先直接使用该虚拟环境，而不是再嵌套 `uv run`。
 - `MEDIACRAWLER_PROXY` 适用于 Clash Verge TUN / 虚拟网卡 / fake-ip 模式下浏览器进程无法直连目标站点的情况；当前本机可用端口验证为 `http://127.0.0.1:7897`。配置后，后端会把代理注入 MediaCrawler 子进程，并让 CDP Chrome 通过 `--proxy-server` 显式走代理。
-- `douyin` 登录态除了传统的 `HasUserLogin` / `LOGIN_STATUS` 之外，现在也会识别持久化 `sessionid(_ss)` + `xmst` 等会话信号；如果扫码后落到“验证码中间页”，登录轮询期间会继续触发滑块验证，避免卡在中间态。
-- `MEDIACRAWLER_GET_SUB_COMMENTS=true` 会把 MediaCrawler 的二级评论抓取打开；当前上游能力上限就是“一级评论 + 二级评论”，不是无限递归整棵评论树。
-- `MEDIACRAWLER_MAX_COMMENTS_PER_POST` 会把单帖评论抓取上限从上游默认的 `10` 提高到你配置的值；`200` 适合事件级联调，热点事件可按机器性能继续上调。
-- `toutiao` 不属于 MediaCrawler 支持范围，在 CogGuard 中应走 `news` 采集链路，而不是 `weibo/xhs/douyin` 这条社交爬虫链路。
-- MediaCrawler 原始抓取结果默认写入 `MediaCrawler-main/data/<platform>/jsonl/`；本次抖音真实验证输出位于 `MediaCrawler-main/data/douyin/jsonl/`。
-- 当前社交平台采集链路不再整份回读“当天最新文件”；任务启动前会记录 `search_contents_<date>.jsonl` / `search_comments_<date>.jsonl` 的文件偏移量，执行完成后只读取本次新增行并直接入库，避免把同一天前一批关键词结果混进当前任务。
+- `MEDIACRAWLER_GET_SUB_COMMENTS=true` 会把内置 social runtime 的二级评论抓取打开；当前上游能力上限就是“一级评论 + 二级评论”，不是无限递归整棵评论树。
+- `MEDIACRAWLER_MAX_COMMENTS_PER_POST` 会把单帖评论抓取上限提升到你配置的值；`200` 适合事件级联调，热点事件可按机器性能继续上调。
+- `toutiao` 不属于社交 runtime 支持范围，在 CogGuard 中应走 `news` 采集链路。
+- 内置 social runtime 原始抓取结果写入 `system/runtimes/social_runtime/data/<platform>/jsonl/`。
+- 当前社交平台采集链路只读取本次 crawl 新增的 JSONL 行，不再整份回读当天文件。
 
 当前这条 `weibo / xhs / douyin` 采集链路，入库后的保真策略是：
 
-- 帖子保留标准字段，同时把原始 MediaCrawler JSONL 行完整落到 `raw_data`
+- 帖子保留标准字段，同时把原始 runtime JSONL 行完整落到 `raw_data`
 - 评论保留 `reply_to`、`sub_comment_count`、`author_id`，可还原两层评论树
 - 帖子和评论都会额外保留 `author_profile`
 - 帖子 / 评论里的图片、视频、封面、音频等可解析媒体链接会归一到 `media_urls`
-- 微博搜索结果会在 MediaCrawler 侧对每条帖子补抓详情 raw，并把 `pics`、`thumbnail_pic`、`bmiddle_pic`、`original_pic`、`page_info`、`mix_media_info`、`media_urls`、`post_details_raw` 写入 JSONL；CogGuard 会从这些字段中提取微博图片、视频、封面链接。
+- 微博搜索结果会在内置 social runtime 侧对每条帖子补抓详情 raw，并把 `pics`、`thumbnail_pic`、`bmiddle_pic`、`original_pic`、`page_info`、`mix_media_info`、`media_urls`、`post_details_raw` 写入 JSONL；CogGuard 会从这些字段中提取微博图片、视频、封面链接。
 
 如果你需要“作者主页级”的完整粉丝数 / 关注数 / 简介等资料，上游要走 `creator` 模式；当前 CogGuard 这一版先保留搜索结果里已有的用户字段，并把两层评论链路对齐好。
 
@@ -206,18 +202,21 @@ MEDIACRAWLER_MAX_COMMENTS_PER_POST=200
 }
 ```
 
-- `recursive_comments=true` 表示请求完整递归评论树；当前 MediaCrawler 后端会降级到上游实际支持的两层评论，并在 `crawl_metadata.effective_comment_depth=2`、`recursive_comments_supported=false` 中显式记录。
-- `enrich_author_profiles=true` 表示请求作者主页级画像补全；当前搜索链路先记录请求并保留搜索结果已有的 `author_profile`，真正的主页级补全需要后续串接 MediaCrawler `creator` 模式。
+- `recursive_comments=true` 表示请求完整递归评论树；当前内置 runtime 会降级到上游实际支持的两层评论，并在 `crawl_metadata.effective_comment_depth=2`、`recursive_comments_supported=false` 中显式记录。
+- `enrich_author_profiles=true` 表示请求作者主页级画像补全；当前搜索链路先记录请求并保留搜索结果已有的 `author_profile`，真正的主页级补全需要后续串接 runtime `creator` 模式。
 - `comment_sort` 支持 `none`、`like_count_desc`、`reply_count_desc`，分别表示不排序、按点赞数倒序、按被回复数倒序；排序发生在评论入库前。
 
-准备 MediaCrawler 依赖并执行校验：
+准备内置 runtime 依赖并执行校验：
 
 ```bash
-cd ../MediaCrawler-main
-C:/Users/p/.local/bin/uv.exe sync --python C:/Users/p/AppData/Roaming/uv/python/cpython-3.11-windows-x86_64-none/python.exe
-C:/Users/p/.local/bin/uv.exe run --python C:/Users/p/AppData/Roaming/uv/python/cpython-3.11-windows-x86_64-none/python.exe playwright install chromium
+cd runtimes/social_runtime
+uv sync
+uv run playwright install chromium
 
-cd ../system/backend
+cd ../news_runtime/news_extractor_core
+uv sync
+
+cd ../../backend
 uv run python scripts/verify_mediacrawler_env.py
 ```
 
@@ -313,7 +312,7 @@ uv run pytest tests/test_auth.py -v
 |---------|------|---------|
 | `test_health.py` | 健康检查接口 | 无 |
 | `test_crawl.py` | MockCrawler 数据生成、Normalizer 字段映射、平台列表、鉴权校验 | 部分需 MySQL |
-| `test_mediacrawler_env.py` | MediaCrawler 的 `.env` / `uv` / `node` 路径解析 | 无 |
+| `test_mediacrawler_env.py` | 内置 social runtime 的 `uv` / `node` / 路径解析 | 无 |
 | `test_auth.py` | 注册、登录、密码错误、Token 鉴权、Token 刷新 | MySQL |
 
 ### 预期测试结果

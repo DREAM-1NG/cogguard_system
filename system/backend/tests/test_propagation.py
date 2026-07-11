@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone, timedelta
+import os
 
 import pytest
 
@@ -15,8 +16,22 @@ from app.core.propagation import build_propagation_graph
 import sys
 from pathlib import Path
 
-COGGUARD_DEV = Path(__file__).resolve().parents[3] / "subsystems" / "cogguard_dev"
-if str(COGGUARD_DEV) not in sys.path:
+def _find_cogguard_dev_root() -> Path | None:
+    env_root = os.getenv("COGGUARD_DEV_ROOT")
+    if env_root:
+        candidate = Path(env_root)
+        if candidate.exists():
+            return candidate
+
+    for parent in Path(__file__).resolve().parents:
+        candidate = parent / "subsystems" / "cogguard_dev"
+        if candidate.exists():
+            return candidate
+    return None
+
+
+COGGUARD_DEV = _find_cogguard_dev_root()
+if COGGUARD_DEV and str(COGGUARD_DEV) not in sys.path:
     sys.path.insert(0, str(COGGUARD_DEV))
 
 from benchmark.adapters.kt2_sequence_joint_model import build_event_inference_bundle, predict_event_with_checkpoint
@@ -144,6 +159,41 @@ class TestBackwardCompatibility:
         """无评论时不崩溃，证据链仍可生成（仅隐式边）。"""
         result = build_propagation_graph(_make_posts())
         assert isinstance(result["evidence_chains"], list)
+
+
+class TestUserQualityParsing:
+    def test_parses_chinese_follower_units_and_verified_values(self):
+        posts = [
+            {
+                "post_id": "p1",
+                "author_id": "u1",
+                "author_name": "High Reach",
+                "timestamp": _ts(0),
+                "url": "https://example.com/a",
+                "hashtags": [],
+                "content": "source",
+                "author_profile": {"followers_count": "1.2万", "verified": "认证"},
+            },
+            {
+                "post_id": "p2",
+                "author_id": "u2",
+                "author_name": "Mass Reach",
+                "timestamp": _ts(1),
+                "url": "https://example.com/a",
+                "hashtags": [],
+                "content": "follow",
+                "author_profile": {"followers_count": "2亿", "verified": "未认证"},
+            },
+        ]
+
+        result = build_propagation_graph(posts)
+        accounts = {row["account_id"]: row for row in result["user_quality"]["top_accounts"]}
+
+        assert accounts["u1"]["followers"] == 12000
+        assert accounts["u1"]["verified"] is True
+        assert accounts["u2"]["followers"] == 200000000
+        assert accounts["u2"]["verified"] is False
+        assert result["user_quality"]["verified_count"] == 1
 
 
 class TestKT2EventInferenceAdapter:

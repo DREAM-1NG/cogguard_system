@@ -10,8 +10,9 @@ CogGuard 是一个面向竞赛和研究验证的开源原型，目标是围绕�
 
 - 当前工程基线：`release-0.2`
 - 当前唯一产品代码根：`system/`
-- 当前短期验证范围：`mock_weibo`、`weibo`、`news`
-- 参考/依赖边界：`MediaCrawler-main/`、`NewsCrawler-main/`、`CooRTweet-master/`
+- 当前短期验证范围：`weibo`、`douyin`、`xhs`、`news`，`mock_weibo` 仅用于测试
+- 当前内置 runtime：`system/runtimes/social_runtime/`、`system/runtimes/news_runtime/`
+- 上游参考边界：`MediaCrawler-main/`、`NewsCrawler-main/`、`CooRTweet-master/` 仅保留作溯源与许可证归档
 - 竞赛材料目录：[`../materials/`](../materials/)（PPT、申报书、开题材料等，不放入产品代码目录）
 - 仓库级上下文入口：[`AGENTS.md`](AGENTS.md)
 - ARIS 工作空间入口：[`aris/README.md`](aris/README.md)
@@ -24,7 +25,8 @@ CogGuard 是一个面向竞赛和研究验证的开源原型，目标是围绕�
 | 长期文档层 | [`doc/`](doc/) | 开发进度、环境说明、技术背景、变更日志 |
 | ARIS 工作空间层 | [`aris/`](aris/) | 针对关键技术一/二/三的独立 ARIS 执行入口 |
 | 产品代码层 | [`system/`](system/) | 当前唯一有效的后端、前端、部署与测试代码 |
-| 参考边界层 | `MediaCrawler-main/` `NewsCrawler-main/` `CooRTweet-master/` | 上游参考与依赖，不作为默认修改范围 |
+| 内置 runtime 层 | `system/runtimes/social_runtime/` `system/runtimes/news_runtime/` | 当前系统实际执行的 vendored crawler runtime |
+| 上游参考层 | `MediaCrawler-main/` `NewsCrawler-main/` `CooRTweet-master/` | 上游参考与许可证溯源，不作为系统运行前提 |
 | 外层竞赛材料层 | [`../materials/`](../materials/) | PPT、申报书、开题材料与竞赛交付材料 |
 
 ## 当前工程状态
@@ -108,6 +110,9 @@ cogguard_system/
 │       ├── time-series-forecasting-notes.md
 │       └── key-technology-background/
 ├── system/
+│   └── runtimes/
+│       ├── social_runtime/
+│       └── news_runtime/
 ├── MediaCrawler-main/
 ├── NewsCrawler-main/
 └── CooRTweet-master/
@@ -123,13 +128,22 @@ cogguard_system/
 - [`system/README.md`](system/README.md)：主线代码运行与接口说明
 - [`../materials/README.md`](../materials/README.md)：竞赛材料目录说明（位于仓库外层）
 
-## 参考边界
+## Runtime 与溯源
 
-- `MediaCrawler-main/`：社交媒体采集参考与上游依赖
-- `NewsCrawler-main/`：新闻提取参考与上游依赖
-- `CooRTweet-master/`：协同检测方法参考
+- 系统运行时只依赖 `system/runtimes/social_runtime/` 与 `system/runtimes/news_runtime/`
+- `MediaCrawler-main/`、`NewsCrawler-main/`、`CooRTweet-master/` 保留作上游参考、许可证与差异溯源
+- `system/backend/app/core/coordination/` 是当前协同检测 canonical module，不以 `CooRTweet-master` 为执行前提
 
-默认情况下，这三个目录不在当前实现范围内，除非任务明确要求修改。
+## Attribution
+
+- `system/runtimes/social_runtime/` vendored 自 MediaCrawler 上游核心，保留其许可证与署名文件
+- `system/runtimes/news_runtime/` vendored 自 NewsCrawler 上游核心，保留其许可证与署名文件
+
+## Vendored Runtime License / Distribution
+
+- `system/runtimes/social_runtime/` follows the upstream non-commercial learning/research license and must not be treated as permissive commercial code.
+- `system/runtimes/news_runtime/` is distributed under GPL-3.0.
+- Distributors must review combined-work obligations before redistribution and preserve all upstream attribution and license files.
 
 ## 许可证
 

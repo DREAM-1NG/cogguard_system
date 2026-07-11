@@ -433,7 +433,7 @@ def test_propagation_analysis_filters_posts_and_comments_by_event(monkeypatch):
     monkeypatch.setattr(
         propagation_service,
         "build_propagation_graph",
-        lambda loaded_posts, loaded_comments: {
+        lambda loaded_posts, loaded_comments, **kwargs: {
             "graph": {"node_count": len(loaded_posts), "edge_count": len(loaded_comments)},
             "key_roles": {},
             "claims": [],
@@ -535,8 +535,8 @@ def test_coordination_api_accepts_cluster_enriched_payload(monkeypatch):
 def test_propagation_api_passes_event_id_to_services(monkeypatch):
     calls = {}
 
-    async def fake_analyze_propagation(platform=None, event_id=None):
-        calls["analyze"] = {"platform": platform, "event_id": event_id}
+    async def fake_analyze_propagation(platform=None, event_id=None, node_limit=300):
+        calls["analyze"] = {"platform": platform, "event_id": event_id, "node_limit": node_limit}
         return {}
 
     async def fake_predict_propagation_trend(platform=None, event_id=None):
@@ -546,10 +546,10 @@ def test_propagation_api_passes_event_id_to_services(monkeypatch):
     monkeypatch.setattr(propagation_api.propagation_service, "analyze_propagation", fake_analyze_propagation)
     monkeypatch.setattr(propagation_api.propagation_service, "predict_propagation_trend", fake_predict_propagation_trend)
 
-    asyncio.run(propagation_api.analyze(platform="douyin", event_id="event-1", _current_user=object()))
+    asyncio.run(propagation_api.analyze(platform="douyin", event_id="event-1", node_limit=300, _current_user=object()))
     asyncio.run(propagation_api.predict_trend(platform="douyin", event_id="event-1", _current_user=object()))
 
-    assert calls["analyze"] == {"platform": "douyin", "event_id": "event-1"}
+    assert calls["analyze"] == {"platform": "douyin", "event_id": "event-1", "node_limit": 300}
     assert calls["predict"] == {"platform": "douyin", "event_id": "event-1"}
 
 
@@ -625,8 +625,8 @@ def test_propagation_api_accepts_local_preview_dependency(monkeypatch):
     async def fake_preview_user():
         return None
 
-    async def fake_analyze_propagation(platform=None, event_id=None):
-        calls["analyze"] = {"platform": platform, "event_id": event_id}
+    async def fake_analyze_propagation(platform=None, event_id=None, node_limit=300):
+        calls["analyze"] = {"platform": platform, "event_id": event_id, "node_limit": node_limit}
         return {"event_id": event_id, "platform": platform}
 
     async def fake_predict_propagation_trend(platform=None, event_id=None):
@@ -655,7 +655,7 @@ def test_propagation_api_accepts_local_preview_dependency(monkeypatch):
     assert trend_resp.status_code == 200
     assert analyze_resp.json()["data"] == {"event_id": "event-1", "platform": "weibo"}
     assert trend_resp.json()["data"] == {"event_id": "event-1", "platform": "weibo"}
-    assert calls["analyze"] == {"platform": "weibo", "event_id": "event-1"}
+    assert calls["analyze"] == {"platform": "weibo", "event_id": "event-1", "node_limit": 300}
     assert calls["predict"] == {"platform": "weibo", "event_id": "event-1"}
 
 

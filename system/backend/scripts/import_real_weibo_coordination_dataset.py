@@ -362,8 +362,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--run-root",
         type=Path,
-        default=Path(r"G:/CISCN/CogGuard/MediaCrawler-main/data_runs/weibo_trump_visit_2026-05-21"),
-        help="Root folder of the MediaCrawler Weibo data run",
+        default=BACKEND_DIR.parents[1] / "runtimes" / "social_runtime" / "data_runs" / "weibo_trump_visit_2026-05-21",
+        help="Root folder of the vendored social runtime Weibo data run",
     )
     parser.add_argument(
         "--display-name",

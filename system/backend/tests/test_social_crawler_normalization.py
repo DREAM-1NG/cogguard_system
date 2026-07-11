@@ -2,10 +2,10 @@ import json
 
 from app.config import settings
 from app.core.crawler.social import (
-    MediaCrawlBatch,
     MediaSocialCrawler,
     generic_jsonl_to_comment,
     generic_jsonl_to_post,
+    read_appended_jsonl_rows,
     sort_comments,
     weibo_comment_line_to_comment,
     weibo_content_line_to_post,
@@ -14,7 +14,7 @@ from app.core.crawler.social import (
 
 def test_media_social_crawler_build_command_includes_sub_comments_and_comment_cap(monkeypatch):
     crawler = MediaSocialCrawler("xhs")
-    crawler.configure_runtime_options(recursive_comments=True, max_comments_per_post=1000)
+    crawler._configure_runtime_options(recursive_comments=True, max_comments_per_post=1000)
     monkeypatch.setattr(settings, "MEDIACRAWLER_LOGIN_TYPE", "cookie")
     monkeypatch.setattr(settings, "MEDIACRAWLER_COOKIES", "sid=abc")
     monkeypatch.setattr(settings, "MEDIACRAWLER_MAX_COMMENTS_PER_POST", 200)
@@ -28,10 +28,22 @@ def test_media_social_crawler_build_command_includes_sub_comments_and_comment_ca
     assert cmd[cmd.index("--cookies") + 1] == "sid=abc"
 
 
+def test_media_social_crawler_build_command_disables_comment_collection(monkeypatch):
+    crawler = MediaSocialCrawler("weibo")
+    crawler._configure_runtime_options(crawl_comments=False, recursive_comments=True)
+    monkeypatch.setattr(settings, "MEDIACRAWLER_LOGIN_TYPE", "qrcode")
+    monkeypatch.setattr(settings, "MEDIACRAWLER_COOKIES", "")
+
+    cmd = crawler._build_command("python", None, ["event"])
+
+    assert cmd[cmd.index("--get_comment") + 1] == "no"
+    assert cmd[cmd.index("--get_sub_comment") + 1] == "no"
+
+
 def test_media_social_crawler_runtime_options_record_effective_limits():
     crawler = MediaSocialCrawler("weibo")
 
-    crawler.configure_runtime_options(
+    crawler._configure_runtime_options(
         recursive_comments=True,
         enrich_author_profiles=True,
         comment_sort="reply_count_desc",
@@ -361,13 +373,15 @@ def test_read_appended_jsonl_rows_only_returns_current_batch(tmp_path):
     assert rows == [new_row, newer_row]
 
 
-async def _fake_execute_search_batch(*, keywords, max_posts):
-    return MediaCrawlBatch(posts=[], comments=[], output_files={}, raw_counts={})
+async def _fake_collect(_request):
+    from app.core.crawler.types import CrawlBatch
+
+    return CrawlBatch(posts=[], comments=[], crawl_metadata={})
 
 
 def test_search_delegates_to_execute_search_batch(monkeypatch):
     crawler = MediaSocialCrawler("weibo")
-    monkeypatch.setattr(crawler, "execute_search_batch", _fake_execute_search_batch)
+    monkeypatch.setattr(crawler, "collect", _fake_collect)
 
     import asyncio
 

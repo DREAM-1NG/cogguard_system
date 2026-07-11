@@ -19,8 +19,6 @@
 **Configuration Required**:
 ```bash
 # .env
-MEDIACRAWLER_ROOT=/path/to/MediaCrawler-main
-MEDIACRAWLER_UV_BIN=uv
 MEDIACRAWLER_LOGIN_TYPE=cookie
 MEDIACRAWLER_COOKIES=<platform_cookies>
 ```
