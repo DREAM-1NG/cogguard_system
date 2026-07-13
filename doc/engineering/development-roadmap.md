@@ -57,7 +57,7 @@
 | 统一分析运行底座 | 🔧 接口与持久化已完成 | P1 | 真实数据采集 |
 | 协同检测模块（旧方向 CooRTweet） | ✅ MVP 已完成 | P1 | 数据采集 |
 | 协同检测模块（新方向 PSL） | 🔲 待实现（设计已就绪） | P1 | 旧方向 MVP |
-| 传播监控模块（KT2 WP1-3） | ✅ 已完成 | P1 | 数据采集、协同检测 |
+| 传播监控模块（KT2 WP1-3） | ✅ 已完成（缓存证据已内置） | P1 | 数据采集、协同检测 |
 | 传播监控模块（KT2 WP4-5 立场/危害） | 🔲 待开发 | P1 | WP1-3 |
 | 账户监测模块 | ✅ 已完成（含 BotRHG API） | P1 | 数据采集 |
 | 前端 - 协同检测页（网络可视化） | ✅ 已完成 | P1 | 后端协同检测 |
@@ -157,9 +157,12 @@
 - [x] 高危 claim/thread 定位与排序
 - [x] 传播监控 API 接口（`GET /api/v1/propagation/analyze`）
 - [x] 前端传播时间线 + 关键角色卡片 + Claim 表格
+- [x] KT2 缓存证据内置到 `system/research/kt2/benchmark/`，系统服务不再读取 `subsystems/cogguard_dev`
+- [x] `kt2_prediction_service.py` 删除外部 `sys.path.insert`，未内置的 live runner / event checkpoint adapter 返回显式 unavailable
 - [ ] 页面命名由“传播归因”调整为“传播监控”
 - [ ] 相关发帖用户检测与高影响力节点识别
 - [ ] 归因证据链生成
+- [ ] KT2 live runner、公开数据 loader、checkpoint adapter 迁入 `system/research/kt2`
 
 #### 2.3 账户监测模块 ✅
 

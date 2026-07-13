@@ -25,9 +25,11 @@
 - `system/backend/app/api/v2/`、`system/backend/app/schemas/analysis.py`、`system/backend/app/main.py`：新增 `/api/v2/analysis/*` 路由并挂载 V2，包括快照创建、run 创建/查询、REST 事件恢复和 SSE backlog 输出。
 - `system/backend/app/models/analysis.py`、`system/backend/alembic/versions/9a2e4b7c1d55_add_analysis_persistence_tables.py`：修正 ReviewVerdictVersion 版本约束，`verdict_id` 改为普通索引，`(verdict_id, version)` 作为唯一约束。
 - `system/backend/tests/test_analysis_registry.py`、`system/backend/tests/test_analysis_v2_api.py`、`system/backend/tests/test_analysis_persistence_models.py`：新增/更新回归测试，覆盖 registry 幂等、run 状态转换、事件 cursor、SSE 格式和 V2 主应用挂载。
+- `system/research/kt2/benchmark/`、`system/backend/app/services/kt2_prediction_service.py`：迁入真实 KT2 缓存 benchmark artifact，默认预测读取系统内部 `system/research/kt2`；删除 `subsystems/cogguard_dev` 和 `sys.path.insert` 外部路径，未内置的 live runner / event checkpoint adapter 返回显式 unavailable。
+- `system/backend/tests/test_kt2_prediction_service.py`：新增回归测试，锁定 KT2 缓存结果来自内部 research artifact，且服务源码不再包含外部 research workspace 路径补丁。
 - 文档：`CONTEXT.md`、`doc/engineering/development-roadmap.md`、`system/README.md` 同步统一分析语言、接口状态和剩余接线任务。
-- 验证：`python -m pytest tests/test_analysis_contracts.py tests/test_analysis_persistence_models.py tests/test_analysis_registry.py tests/test_analysis_v2_api.py -q`。
-- 已知未完成：KT1/KT2/KT3 引擎尚未接到 V2 run 执行路径；`kt2_prediction_service.py` 仍有 `subsystems/cogguard_dev` 外部路径，需在 KT2 内置化阶段消除。
+- 验证：`python -m pytest tests/test_analysis_contracts.py tests/test_analysis_persistence_models.py tests/test_analysis_registry.py tests/test_analysis_v2_api.py tests/test_propagation.py -q`；`python -m pytest tests/test_kt2_prediction_service.py tests/test_event_scoped_analysis.py::test_kt2_prediction_service_loads_cached_macro_micro_result -q`。
+- 已知未完成：KT1/KT2/KT3 引擎尚未接到 V2 run 执行路径；KT2 live runner、公开数据 loader 与 event checkpoint adapter 仍需完整内置到 `system/research/kt2`。
 
 ---
 

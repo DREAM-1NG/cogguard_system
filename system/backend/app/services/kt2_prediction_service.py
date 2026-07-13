@@ -1,30 +1,24 @@
 """KT2 macro/micro propagation prediction bridge.
 
-This service connects the main CogGuard system to the KT2 research artifacts
-under ``subsystems/cogguard_dev``.  The default path reads the latest cached
-KT2SequenceJointModel benchmark result so the dashboard can respond quickly.
-An optional live small-run path is kept for development/debugging, but it is
-not used by the frontend by default because it trains a model on request.
+The system-facing path reads vetted KT2 research artifacts vendored under
+``system/research/kt2``. Live training and event checkpoint inference stay
+unavailable until their runners are internalized under the same boundary.
 """
 
 from __future__ import annotations
 
-import asyncio
-import importlib
 import json
-import sys
 from pathlib import Path
 from statistics import mean
 from typing import Any
 
 
 SYSTEM_ROOT = Path(__file__).resolve().parents[3]
-COGGUARD_ROOT = SYSTEM_ROOT.parent
-CISCN_ROOT = COGGUARD_ROOT.parent
-COGGUARD_DEV = COGGUARD_ROOT / "subsystems" / "cogguard_dev"
-KT2_SAMPLE_ARTIFACT = COGGUARD_DEV / "benchmark" / "kt2_sequence_vs_minds_sample_300c_5ep_3seed.json"
-FOREST_DATA_ROOT = CISCN_ROOT / "dataset" / "forest-data"
-KT2_TWITTER_CHECKPOINT = COGGUARD_DEV / "benchmark" / "checkpoints" / "kt2_sequence_twitter_system.pt"
+KT2_RESEARCH_ROOT = SYSTEM_ROOT / "research" / "kt2"
+KT2_BENCHMARK_ROOT = KT2_RESEARCH_ROOT / "benchmark"
+KT2_SAMPLE_ARTIFACT = KT2_BENCHMARK_ROOT / "kt2_sequence_vs_minds_sample_300c_5ep_3seed.json"
+FOREST_DATA_ROOT = KT2_RESEARCH_ROOT / "datasets" / "forest-data"
+KT2_TWITTER_CHECKPOINT = KT2_BENCHMARK_ROOT / "checkpoints" / "kt2_sequence_twitter_system.pt"
 
 KT2_MODEL_NAME = "KT2SequenceJointModel"
 MINDS_MODEL_NAME = "MINDS"
@@ -43,13 +37,15 @@ async def predict_kt2_macro_micro(
 
     dataset = _normalize_dataset(dataset)
     if run_live:
-        return await asyncio.to_thread(
-            _run_live_small_run,
+        return _missing_result(
             dataset=dataset,
             seed=seed or 42,
-            max_train_cascades=max_train_cascades,
-            max_test_cascades=max_test_cascades,
-            epochs=epochs,
+            source="live_small_run",
+            note=(
+                "KT2 live small-run is unavailable until the training runner "
+                "is internalized under system/research/kt2."
+            ),
+            artifact=str(FOREST_DATA_ROOT),
         )
     return _load_cached_result(dataset=dataset, seed=seed)
 
@@ -60,57 +56,24 @@ async def predict_event_macro_micro(
     comments: list[dict[str, Any]] | None = None,
     top_k: int = 10,
 ) -> dict[str, Any]:
-    """Run current-event KT2 macro/micro inference with the local Twitter checkpoint."""
+    """Run current-event KT2 macro/micro inference when an internal checkpoint exists."""
 
     if len(posts) + len(comments or []) < 3:
         return {
             "status": "data_insufficient",
             "model_status": "unavailable",
         }
-    return await asyncio.to_thread(
-        _predict_event_macro_micro_sync,
-        posts=posts,
-        comments=comments or [],
-        top_k=top_k,
-    )
-
-
-def _predict_event_macro_micro_sync(
-    *,
-    posts: list[dict[str, Any]],
-    comments: list[dict[str, Any]],
-    top_k: int,
-) -> dict[str, Any]:
-    try:
-        if str(COGGUARD_DEV) not in sys.path:
-            sys.path.insert(0, str(COGGUARD_DEV))
-        module = importlib.import_module("benchmark.adapters.kt2_sequence_joint_model")
-        predictor = getattr(module, "predict_event_with_checkpoint")
-        result = predictor(
-            KT2_TWITTER_CHECKPOINT,
-            posts,
-            comments,
-            top_k=top_k,
-            device="cpu",
-        )
-    except Exception:
+    if not KT2_TWITTER_CHECKPOINT.exists():
         return {
             "status": "model_unavailable",
             "model_status": "unavailable",
+            "note": f"KT2 event checkpoint not found inside system boundary: {KT2_TWITTER_CHECKPOINT}",
         }
-
-    if result.get("status") != "ok":
-        return {
-            "status": result.get("status", "model_unavailable"),
-            "model_status": "unavailable",
-        }
-
     return {
-        "status": "ok",
-        "model_status": "available",
-        "macro": result.get("macro") or {},
-        "micro": result.get("micro") or {},
-        "model": result.get("model") or {},
+        "status": "model_unavailable",
+        "model_status": "unavailable",
+        "note": "KT2 event checkpoint exists, but the internal checkpoint adapter is not wired yet.",
+        "artifact": str(KT2_TWITTER_CHECKPOINT),
     }
 
 
@@ -167,72 +130,6 @@ def _load_cached_result(*, dataset: str, seed: int | None) -> dict[str, Any]:
         evidence_level=str(payload.get("evidence_level", "sampled_experiment")),
         full_validation_passed=bool(payload.get("full_validation_passed", False)),
         boundary=str(payload.get("boundary", "")),
-    )
-
-
-def _run_live_small_run(
-    *,
-    dataset: str,
-    seed: int,
-    max_train_cascades: int,
-    max_test_cascades: int,
-    epochs: int,
-) -> dict[str, Any]:
-    data_dir = FOREST_DATA_ROOT / dataset
-    if not data_dir.exists():
-        return _missing_result(
-            dataset=dataset,
-            seed=seed,
-            source="live_small_run",
-            note=f"FOREST dataset directory not found: {data_dir}",
-        )
-
-    try:
-        if str(COGGUARD_DEV) not in sys.path:
-            sys.path.insert(0, str(COGGUARD_DEV))
-        module = importlib.import_module("benchmark.adapters.kt2_sequence_joint_model")
-        runner = getattr(module, "run_kt2_sequence_joint_model")
-        row = runner(
-            data_dir,
-            dataset=dataset,
-            seed=seed,
-            epochs=epochs,
-            max_train_cascades=max_train_cascades,
-            max_test_cascades=max_test_cascades,
-            batch_size=128,
-            hidden_dim=64,
-            device="cpu",
-        )
-    except Exception as exc:  # pragma: no cover - environment dependent.
-        return _missing_result(
-            dataset=dataset,
-            seed=seed,
-            source="live_small_run",
-            note=f"KT2 live small-run failed: {type(exc).__name__}: {exc}",
-        )
-
-    if row.get("status") != "ok":
-        return _missing_result(
-            dataset=dataset,
-            seed=seed,
-            source="live_small_run",
-            note=str(row.get("note") or "KT2 live small-run did not produce an ok result."),
-            raw_result=row,
-        )
-
-    return _format_result(
-        kt2_rows=[row],
-        minds_rows=[],
-        dataset=dataset,
-        seed=seed,
-        source="live_small_run",
-        artifact=None,
-        evidence_level="live_small_run",
-        full_validation_passed=False,
-        boundary=(
-            "Live system call runs a resource-bounded KT2SequenceJointModel small-run. "
-            "It is experimental prediction evidence, not a full validation result."
-        ),
     )
 
 
@@ -362,7 +259,6 @@ def _normalize_dataset(dataset: str) -> str:
     value = (dataset or "twitter").strip().lower()
     aliases = {
         "tweet": "twitter",
-        "weibo": "twitter",
         "douban": "douban",
         "memetracker": "memetracker",
     }

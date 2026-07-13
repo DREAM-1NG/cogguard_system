@@ -26,6 +26,7 @@ CogGuard 是一个面向竞赛和研究验证的开源原型，目标是围绕�
 | ARIS 工作空间层 | [`aris/`](aris/) | 针对关键技术一/二/三的独立 ARIS 执行入口 |
 | 产品代码层 | [`system/`](system/) | 当前唯一有效的后端、前端、部署与测试代码 |
 | 内置 runtime 层 | `system/runtimes/social_runtime/` `system/runtimes/news_runtime/` | 当前系统实际执行的 vendored crawler runtime |
+| 系统研究制品层 | `system/research/kt2/` | 系统可读取的 KT2 缓存 benchmark 与后续内置 runner/checkpoint 边界 |
 | 上游参考层 | `MediaCrawler-main/` `NewsCrawler-main/` `CooRTweet-master/` | 上游参考与许可证溯源，不作为系统运行前提 |
 | 外层竞赛材料层 | [`../materials/`](../materials/) | PPT、申报书、开题材料与竞赛交付材料 |
 

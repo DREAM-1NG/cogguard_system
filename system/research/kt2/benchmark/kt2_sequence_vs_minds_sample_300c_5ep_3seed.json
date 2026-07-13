@@ -1,0 +1,3570 @@
+{
+  "schema": "cogguard.kt2.minds_comparison.v1",
+  "status": "ok",
+  "config_id": "kt2-sample-300c-5ep-3seed",
+  "evidence_level": "preflight",
+  "full_validation_passed": false,
+  "full_run_requirements": {
+    "checks": {
+      "dataset_count_at_least_3": true,
+      "seed_count_at_least_3": true,
+      "minds_epochs_at_least_5": true,
+      "kt2_epochs_at_least_5": true,
+      "minds_uses_all_available_cascades": false,
+      "kt2_uses_all_train_and_test_cascades": false,
+      "kt2_unbudgeted_training_and_eval": true,
+      "no_missing_model_pairs": true,
+      "has_completed_comparisons": true
+    },
+    "passed": false,
+    "minimums": {
+      "datasets": 3,
+      "seeds": 3,
+      "epochs": 5
+    }
+  },
+  "boundary": "Compares trainable original MINDS public-code baseline against KT2SequenceJointModel on the same FOREST-source datasets. Handcrafted/heuristic baselines are excluded from the improvement verdict. preflight evidence proves the pipeline and a directional comparison only; full_validation_passed=true is required before claiming final KT2 improvement over MINDS.",
+  "comparison_model_filter": {
+    "allowed_models": [
+      "KT2SequenceJointModel",
+      "MINDS"
+    ],
+    "aliases": {
+      "KT2": "KT2SequenceJointModel",
+      "KT2Sequence": "KT2SequenceJointModel",
+      "KT2JointModel": "legacy_candidate_level_kt2"
+    },
+    "ignored_non_comparison_rows": [],
+    "ignored_non_comparison_row_count": 0,
+    "rule": "Only trainable MINDS and KT2SequenceJointModel rows can enter pair verdicts and metric deltas."
+  },
+  "datasets": [
+    "douban",
+    "twitter",
+    "memetracker"
+  ],
+  "seeds": [
+    42,
+    43,
+    44
+  ],
+  "common_metrics": [
+    "msle",
+    "hits@10",
+    "hits@50",
+    "hits@100",
+    "map@10",
+    "map@50",
+    "map@100"
+  ],
+  "overall_verdict": "does_not_support_kt2_improvement",
+  "metric_summary": {
+    "msle": {
+      "mean_better_direction_delta": 0.013658908437493433,
+      "std": 0.14035262339086835,
+      "n": 9,
+      "positive": 2,
+      "negative": 7,
+      "tie": 0
+    },
+    "hits@10": {
+      "mean_better_direction_delta": -0.10128567650307972,
+      "std": 0.03883047717162015,
+      "n": 9,
+      "positive": 0,
+      "negative": 9,
+      "tie": 0
+    },
+    "hits@50": {
+      "mean_better_direction_delta": -0.16327291353703036,
+      "std": 0.05077820820378139,
+      "n": 9,
+      "positive": 0,
+      "negative": 9,
+      "tie": 0
+    },
+    "hits@100": {
+      "mean_better_direction_delta": -0.18666196683375236,
+      "std": 0.05277563889781518,
+      "n": 9,
+      "positive": 0,
+      "negative": 9,
+      "tie": 0
+    },
+    "map@10": {
+      "mean_better_direction_delta": -0.06717577034832575,
+      "std": 0.014491085827124175,
+      "n": 9,
+      "positive": 0,
+      "negative": 9,
+      "tie": 0
+    },
+    "map@50": {
+      "mean_better_direction_delta": -0.0699777475004711,
+      "std": 0.015295762789110224,
+      "n": 9,
+      "positive": 0,
+      "negative": 9,
+      "tie": 0
+    },
+    "map@100": {
+      "mean_better_direction_delta": -0.07033563440709405,
+      "std": 0.015334135286991818,
+      "n": 9,
+      "positive": 0,
+      "negative": 9,
+      "tie": 0
+    }
+  },
+  "comparisons": [
+    {
+      "dataset": "douban",
+      "seed": 42,
+      "minds_status": "ok",
+      "kt2_status": "ok",
+      "metrics": {
+        "msle": {
+          "minds": 0.07470184052363038,
+          "kt2": 0.09564634115117628,
+          "raw_delta": 0.020944500627545895,
+          "better_direction_delta": -0.020944500627545895,
+          "interpretation": "supports_minds"
+        },
+        "hits@10": {
+          "minds": 0.1495798319327731,
+          "kt2": 0.01,
+          "raw_delta": -0.1395798319327731,
+          "better_direction_delta": -0.1395798319327731,
+          "interpretation": "supports_minds"
+        },
+        "hits@50": {
+          "minds": 0.2184873949579832,
+          "kt2": 0.02666666666666667,
+          "raw_delta": -0.19182072829131652,
+          "better_direction_delta": -0.19182072829131652,
+          "interpretation": "supports_minds"
+        },
+        "hits@100": {
+          "minds": 0.27899159663865547,
+          "kt2": 0.05333333333333334,
+          "raw_delta": -0.22565826330532213,
+          "better_direction_delta": -0.22565826330532213,
+          "interpretation": "supports_minds"
+        },
+        "map@10": {
+          "minds": 0.07982526466626079,
+          "kt2": 0.004,
+          "raw_delta": -0.07582526466626079,
+          "better_direction_delta": -0.07582526466626079,
+          "interpretation": "supports_minds"
+        },
+        "map@50": {
+          "minds": 0.08287747527370934,
+          "kt2": 0.004571504791518773,
+          "raw_delta": -0.07830597048219057,
+          "better_direction_delta": -0.07830597048219057,
+          "interpretation": "supports_minds"
+        },
+        "map@100": {
+          "minds": 0.08377054759434291,
+          "kt2": 0.0048881459532707115,
+          "raw_delta": -0.0788824016410722,
+          "better_direction_delta": -0.0788824016410722,
+          "interpretation": "supports_minds"
+        }
+      },
+      "missing_common_metrics": [],
+      "positive_metric_count": 0,
+      "negative_metric_count": 7,
+      "tie_metric_count": 0,
+      "verdict": "does_not_support_kt2_improvement"
+    },
+    {
+      "dataset": "douban",
+      "seed": 43,
+      "minds_status": "ok",
+      "kt2_status": "ok",
+      "metrics": {
+        "msle": {
+          "minds": 0.03718415295588784,
+          "kt2": 0.10783362822607041,
+          "raw_delta": 0.07064947527018257,
+          "better_direction_delta": -0.07064947527018257,
+          "interpretation": "supports_minds"
+        },
+        "hits@10": {
+          "minds": 0.15798319327731092,
+          "kt2": 0.006666666666666667,
+          "raw_delta": -0.15131652661064426,
+          "better_direction_delta": -0.15131652661064426,
+          "interpretation": "supports_minds"
+        },
+        "hits@50": {
+          "minds": 0.2218487394957983,
+          "kt2": 0.023333333333333334,
+          "raw_delta": -0.19851540616246496,
+          "better_direction_delta": -0.19851540616246496,
+          "interpretation": "supports_minds"
+        },
+        "hits@100": {
+          "minds": 0.2722689075630252,
+          "kt2": 0.05,
+          "raw_delta": -0.2222689075630252,
+          "better_direction_delta": -0.2222689075630252,
+          "interpretation": "supports_minds"
+        },
+        "map@10": {
+          "minds": 0.08083100078486595,
+          "kt2": 0.0015,
+          "raw_delta": -0.07933100078486595,
+          "better_direction_delta": -0.07933100078486595,
+          "interpretation": "supports_minds"
+        },
+        "map@50": {
+          "minds": 0.08308319644767698,
+          "kt2": 0.002088632987826536,
+          "raw_delta": -0.08099456345985044,
+          "better_direction_delta": -0.08099456345985044,
+          "interpretation": "supports_minds"
+        },
+        "map@100": {
+          "minds": 0.08375044069370302,
+          "kt2": 0.002407013655004809,
+          "raw_delta": -0.08134342703869821,
+          "better_direction_delta": -0.08134342703869821,
+          "interpretation": "supports_minds"
+        }
+      },
+      "missing_common_metrics": [],
+      "positive_metric_count": 0,
+      "negative_metric_count": 7,
+      "tie_metric_count": 0,
+      "verdict": "does_not_support_kt2_improvement"
+    },
+    {
+      "dataset": "douban",
+      "seed": 44,
+      "minds_status": "ok",
+      "kt2_status": "ok",
+      "metrics": {
+        "msle": {
+          "minds": 0.07768476009368896,
+          "kt2": 0.11547614658791483,
+          "raw_delta": 0.037791386494225865,
+          "better_direction_delta": -0.037791386494225865,
+          "interpretation": "supports_minds"
+        },
+        "hits@10": {
+          "minds": 0.15294117647058825,
+          "kt2": 0.01,
+          "raw_delta": -0.14294117647058824,
+          "better_direction_delta": -0.14294117647058824,
+          "interpretation": "supports_minds"
+        },
+        "hits@50": {
+          "minds": 0.20168067226890757,
+          "kt2": 0.02666666666666667,
+          "raw_delta": -0.1750140056022409,
+          "better_direction_delta": -0.1750140056022409,
+          "interpretation": "supports_minds"
+        },
+        "hits@100": {
+          "minds": 0.26554621848739496,
+          "kt2": 0.05333333333333334,
+          "raw_delta": -0.21221288515406161,
+          "better_direction_delta": -0.21221288515406161,
+          "interpretation": "supports_minds"
+        },
+        "map@10": {
+          "minds": 0.07998065948486328,
+          "kt2": 0.005,
+          "raw_delta": -0.07498065948486328,
+          "better_direction_delta": -0.07498065948486328,
+          "interpretation": "supports_minds"
+        },
+        "map@50": {
+          "minds": 0.08228663115942178,
+          "kt2": 0.005571504791518773,
+          "raw_delta": -0.07671512636790301,
+          "better_direction_delta": -0.07671512636790301,
+          "interpretation": "supports_minds"
+        },
+        "map@100": {
+          "minds": 0.08319886071341379,
+          "kt2": 0.00588814595327071,
+          "raw_delta": -0.07731071476014308,
+          "better_direction_delta": -0.07731071476014308,
+          "interpretation": "supports_minds"
+        }
+      },
+      "missing_common_metrics": [],
+      "positive_metric_count": 0,
+      "negative_metric_count": 7,
+      "tie_metric_count": 0,
+      "verdict": "does_not_support_kt2_improvement"
+    },
+    {
+      "dataset": "twitter",
+      "seed": 42,
+      "minds_status": "ok",
+      "kt2_status": "ok",
+      "metrics": {
+        "msle": {
+          "minds": 0.48228964069858193,
+          "kt2": 0.118403080754156,
+          "raw_delta": -0.3638865599444259,
+          "better_direction_delta": 0.3638865599444259,
+          "interpretation": "supports_kt2"
+        },
+        "hits@10": {
+          "minds": 0.05901116427432217,
+          "kt2": 0.0033333333333333335,
+          "raw_delta": -0.05567783094098883,
+          "better_direction_delta": -0.05567783094098883,
+          "interpretation": "supports_minds"
+        },
+        "hits@50": {
+          "minds": 0.09888357256778309,
+          "kt2": 0.01,
+          "raw_delta": -0.08888357256778309,
+          "better_direction_delta": -0.08888357256778309,
+          "interpretation": "supports_minds"
+        },
+        "hits@100": {
+          "minds": 0.14035087719298245,
+          "kt2": 0.02666666666666667,
+          "raw_delta": -0.11368421052631578,
+          "better_direction_delta": -0.11368421052631578,
+          "interpretation": "supports_minds"
+        },
+        "map@10": {
+          "minds": 0.04890762295639306,
+          "kt2": 0.0005555555555555556,
+          "raw_delta": -0.04835206740083751,
+          "better_direction_delta": -0.04835206740083751,
+          "interpretation": "supports_minds"
+        },
+        "map@50": {
+          "minds": 0.05045219053301895,
+          "kt2": 0.0007741935483870968,
+          "raw_delta": -0.04967799698463185,
+          "better_direction_delta": -0.04967799698463185,
+          "interpretation": "supports_minds"
+        },
+        "map@100": {
+          "minds": 0.05100423715521464,
+          "kt2": 0.0009925371859117688,
+          "raw_delta": -0.050011699969302874,
+          "better_direction_delta": -0.050011699969302874,
+          "interpretation": "supports_minds"
+        }
+      },
+      "missing_common_metrics": [],
+      "positive_metric_count": 1,
+      "negative_metric_count": 6,
+      "tie_metric_count": 0,
+      "verdict": "does_not_support_kt2_improvement"
+    },
+    {
+      "dataset": "twitter",
+      "seed": 43,
+      "minds_status": "ok",
+      "kt2_status": "ok",
+      "metrics": {
+        "msle": {
+          "minds": 0.0835547671886161,
+          "kt2": 0.16266365889160297,
+          "raw_delta": 0.07910889170298688,
+          "better_direction_delta": -0.07910889170298688,
+          "interpretation": "supports_minds"
+        },
+        "hits@10": {
+          "minds": 0.05263157894736842,
+          "kt2": 0.006666666666666667,
+          "raw_delta": -0.04596491228070175,
+          "better_direction_delta": -0.04596491228070175,
+          "interpretation": "supports_minds"
+        },
+        "hits@50": {
+          "minds": 0.10685805422647528,
+          "kt2": 0.013333333333333334,
+          "raw_delta": -0.09352472089314194,
+          "better_direction_delta": -0.09352472089314194,
+          "interpretation": "supports_minds"
+        },
+        "hits@100": {
+          "minds": 0.1467304625199362,
+          "kt2": 0.03,
+          "raw_delta": -0.11673046251993621,
+          "better_direction_delta": -0.11673046251993621,
+          "interpretation": "supports_minds"
+        },
+        "map@10": {
+          "minds": 0.04719564066739364,
+          "kt2": 0.0013888888888888887,
+          "raw_delta": -0.045806751778504746,
+          "better_direction_delta": -0.045806751778504746,
+          "interpretation": "supports_minds"
+        },
+        "map@50": {
+          "minds": 0.049352975933555594,
+          "kt2": 0.00160752688172043,
+          "raw_delta": -0.04774544905183516,
+          "better_direction_delta": -0.04774544905183516,
+          "interpretation": "supports_minds"
+        },
+        "map@100": {
+          "minds": 0.04992188905414782,
+          "kt2": 0.0018258705192451018,
+          "raw_delta": -0.048096018534902724,
+          "better_direction_delta": -0.048096018534902724,
+          "interpretation": "supports_minds"
+        }
+      },
+      "missing_common_metrics": [],
+      "positive_metric_count": 0,
+      "negative_metric_count": 7,
+      "tie_metric_count": 0,
+      "verdict": "does_not_support_kt2_improvement"
+    },
+    {
+      "dataset": "twitter",
+      "seed": 44,
+      "minds_status": "ok",
+      "kt2_status": "ok",
+      "metrics": {
+        "msle": {
+          "minds": 0.25396596849896014,
+          "kt2": 0.10533706908080175,
+          "raw_delta": -0.14862889941815838,
+          "better_direction_delta": 0.14862889941815838,
+          "interpretation": "supports_kt2"
+        },
+        "hits@10": {
+          "minds": 0.05901116427432217,
+          "kt2": 0.0033333333333333335,
+          "raw_delta": -0.05567783094098883,
+          "better_direction_delta": -0.05567783094098883,
+          "interpretation": "supports_minds"
+        },
+        "hits@50": {
+          "minds": 0.10845295055821372,
+          "kt2": 0.01,
+          "raw_delta": -0.09845295055821372,
+          "better_direction_delta": -0.09845295055821372,
+          "interpretation": "supports_minds"
+        },
+        "hits@100": {
+          "minds": 0.1371610845295056,
+          "kt2": 0.02666666666666667,
+          "raw_delta": -0.11049441786283892,
+          "better_direction_delta": -0.11049441786283892,
+          "interpretation": "supports_minds"
+        },
+        "map@10": {
+          "minds": 0.0483956101218289,
+          "kt2": 0.0005555555555555556,
+          "raw_delta": -0.04784005456627335,
+          "better_direction_delta": -0.04784005456627335,
+          "interpretation": "supports_minds"
+        },
+        "map@50": {
+          "minds": 0.050391475549725256,
+          "kt2": 0.0007741935483870968,
+          "raw_delta": -0.04961728200133816,
+          "better_direction_delta": -0.04961728200133816,
+          "interpretation": "supports_minds"
+        },
+        "map@100": {
+          "minds": 0.05080107638710424,
+          "kt2": 0.0009925371859117688,
+          "raw_delta": -0.04980853920119247,
+          "better_direction_delta": -0.04980853920119247,
+          "interpretation": "supports_minds"
+        }
+      },
+      "missing_common_metrics": [],
+      "positive_metric_count": 1,
+      "negative_metric_count": 6,
+      "tie_metric_count": 0,
+      "verdict": "does_not_support_kt2_improvement"
+    },
+    {
+      "dataset": "memetracker",
+      "seed": 42,
+      "minds_status": "ok",
+      "kt2_status": "ok",
+      "metrics": {
+        "msle": {
+          "minds": 0.02837570183328353,
+          "kt2": 0.10165726613454808,
+          "raw_delta": 0.07328156430126455,
+          "better_direction_delta": -0.07328156430126455,
+          "interpretation": "supports_minds"
+        },
+        "hits@10": {
+          "minds": 0.13495575221238937,
+          "kt2": 0.04666666666666667,
+          "raw_delta": -0.0882890855457227,
+          "better_direction_delta": -0.0882890855457227,
+          "interpretation": "supports_minds"
+        },
+        "hits@50": {
+          "minds": 0.25663716814159293,
+          "kt2": 0.06666666666666667,
+          "raw_delta": -0.18997050147492628,
+          "better_direction_delta": -0.18997050147492628,
+          "interpretation": "supports_minds"
+        },
+        "hits@100": {
+          "minds": 0.3252212389380531,
+          "kt2": 0.12333333333333334,
+          "raw_delta": -0.20188790560471975,
+          "better_direction_delta": -0.20188790560471975,
+          "interpretation": "supports_minds"
+        },
+        "map@10": {
+          "minds": 0.08629723354778458,
+          "kt2": 0.016777777777777777,
+          "raw_delta": -0.0695194557700068,
+          "better_direction_delta": -0.0695194557700068,
+          "interpretation": "supports_minds"
+        },
+        "map@50": {
+          "minds": 0.0919527063327553,
+          "kt2": 0.017509213250517595,
+          "raw_delta": -0.07444349308223772,
+          "better_direction_delta": -0.07444349308223772,
+          "interpretation": "supports_minds"
+        },
+        "map@100": {
+          "minds": 0.09289345804568941,
+          "kt2": 0.018253753728944333,
+          "raw_delta": -0.07463970431674508,
+          "better_direction_delta": -0.07463970431674508,
+          "interpretation": "supports_minds"
+        }
+      },
+      "missing_common_metrics": [],
+      "positive_metric_count": 0,
+      "negative_metric_count": 7,
+      "tie_metric_count": 0,
+      "verdict": "does_not_support_kt2_improvement"
+    },
+    {
+      "dataset": "memetracker",
+      "seed": 43,
+      "minds_status": "ok",
+      "kt2_status": "ok",
+      "metrics": {
+        "msle": {
+          "minds": 0.0873505799099803,
+          "kt2": 0.1503873893434734,
+          "raw_delta": 0.0630368094334931,
+          "better_direction_delta": -0.0630368094334931,
+          "interpretation": "supports_minds"
+        },
+        "hits@10": {
+          "minds": 0.13495575221238937,
+          "kt2": 0.023333333333333334,
+          "raw_delta": -0.11162241887905604,
+          "better_direction_delta": -0.11162241887905604,
+          "interpretation": "supports_minds"
+        },
+        "hits@50": {
+          "minds": 0.2588495575221239,
+          "kt2": 0.043333333333333335,
+          "raw_delta": -0.21551622418879057,
+          "better_direction_delta": -0.21551622418879057,
+          "interpretation": "supports_minds"
+        },
+        "hits@100": {
+          "minds": 0.33849557522123896,
+          "kt2": 0.1,
+          "raw_delta": -0.23849557522123896,
+          "better_direction_delta": -0.23849557522123896,
+          "interpretation": "supports_minds"
+        },
+        "map@10": {
+          "minds": 0.08642716850854654,
+          "kt2": 0.006944444444444443,
+          "raw_delta": -0.07948272406410209,
+          "better_direction_delta": -0.07948272406410209,
+          "interpretation": "supports_minds"
+        },
+        "map@50": {
+          "minds": 0.09214992227807509,
+          "kt2": 0.007672796352583586,
+          "raw_delta": -0.0844771259254915,
+          "better_direction_delta": -0.0844771259254915,
+          "interpretation": "supports_minds"
+        },
+        "map@100": {
+          "minds": 0.09321532629232492,
+          "kt2": 0.008416524380688791,
+          "raw_delta": -0.08479880191163612,
+          "better_direction_delta": -0.08479880191163612,
+          "interpretation": "supports_minds"
+        }
+      },
+      "missing_common_metrics": [],
+      "positive_metric_count": 0,
+      "negative_metric_count": 7,
+      "tie_metric_count": 0,
+      "verdict": "does_not_support_kt2_improvement"
+    },
+    {
+      "dataset": "memetracker",
+      "seed": 44,
+      "minds_status": "ok",
+      "kt2_status": "ok",
+      "metrics": {
+        "msle": {
+          "minds": 0.08452615956775844,
+          "kt2": 0.129298815163203,
+          "raw_delta": 0.04477265559544455,
+          "better_direction_delta": -0.04477265559544455,
+          "interpretation": "supports_minds"
+        },
+        "hits@10": {
+          "minds": 0.13716814159292035,
+          "kt2": 0.016666666666666666,
+          "raw_delta": -0.12050147492625368,
+          "better_direction_delta": -0.12050147492625368,
+          "interpretation": "supports_minds"
+        },
+        "hits@50": {
+          "minds": 0.25442477876106195,
+          "kt2": 0.03666666666666667,
+          "raw_delta": -0.21775811209439527,
+          "better_direction_delta": -0.21775811209439527,
+          "interpretation": "supports_minds"
+        },
+        "hits@100": {
+          "minds": 0.33185840707964603,
+          "kt2": 0.09333333333333334,
+          "raw_delta": -0.2385250737463127,
+          "better_direction_delta": -0.2385250737463127,
+          "interpretation": "supports_minds"
+        },
+        "map@10": {
+          "minds": 0.08622173239699507,
+          "kt2": 0.0027777777777777775,
+          "raw_delta": -0.08344395461921729,
+          "better_direction_delta": -0.08344395461921729,
+          "interpretation": "supports_minds"
+        },
+        "map@50": {
+          "minds": 0.09132884983467844,
+          "kt2": 0.00350612968591692,
+          "raw_delta": -0.08782272014876152,
+          "better_direction_delta": -0.08782272014876152,
+          "interpretation": "supports_minds"
+        },
+        "map@100": {
+          "minds": 0.09237735883324547,
+          "kt2": 0.004247956543091744,
+          "raw_delta": -0.08812940229015372,
+          "better_direction_delta": -0.08812940229015372,
+          "interpretation": "supports_minds"
+        }
+      },
+      "missing_common_metrics": [],
+      "positive_metric_count": 0,
+      "negative_metric_count": 7,
+      "tie_metric_count": 0,
+      "verdict": "does_not_support_kt2_improvement"
+    }
+  ],
+  "missing_pairs": [],
+  "schema_report": {
+    "schema": "cogguard.kt2.benchmark_result.v1",
+    "ok": true,
+    "rows": 18,
+    "errors": [],
+    "warnings": []
+  },
+  "rows": [
+    {
+      "model": "MINDS",
+      "dataset": "douban",
+      "adapter_dataset": "kt2_douban",
+      "task": "multi_scale",
+      "status": "ok",
+      "reproduction_level": "public_code_adapter",
+      "seed": 42,
+      "config_id": "kt2-sample-300c-5ep-3seed",
+      "epochs": 5,
+      "selection": "best_valid_map@100",
+      "best_epoch": 3,
+      "methodology": "Original MINDS public-code adapter: sequential hypergraphs, adversarial learning, macro/micro diffusion prediction.",
+      "protocol_source": "converted from FOREST douban cascade.txt",
+      "valid_map@100": 0.07101807958659935,
+      "valid_msle": 0.06541335524525493,
+      "hits@10": 0.1495798319327731,
+      "map@10": 0.07982526466626079,
+      "hits@50": 0.2184873949579832,
+      "map@50": 0.08287747527370934,
+      "hits@100": 0.27899159663865547,
+      "map@100": 0.08377054759434291,
+      "msle": 0.07470184052363038,
+      "mae": null,
+      "command": [
+        "D:\\Anaconda\\python.exe",
+        "-u",
+        "G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\adapters\\minds_runner.py",
+        "--dataset_name",
+        "kt2_douban",
+        "--report_dataset",
+        "douban",
+        "--protocol_source",
+        "converted from FOREST douban cascade.txt",
+        "--epochs",
+        "5",
+        "--batch_size",
+        "4",
+        "--emb_dim",
+        "32",
+        "--step_split",
+        "4",
+        "--max_seq_length",
+        "100",
+        "--device",
+        "cuda",
+        "--reproduction_level",
+        "public_code_adapter",
+        "--config_id",
+        "kt2-sample-300c-5ep-3seed",
+        "--seed",
+        "42"
+      ],
+      "cwd": "G:\\CISCN\\CogGuard\\subsystems\\kt2_repos\\MINDS\\.kt2_extracted\\MINDS",
+      "returncode": 0,
+      "elapsed_s": 187.7,
+      "log_path": "benchmark\\logs\\MINDS_douban_seed42_kt2-sample-300c-5ep-3seed.log",
+      "comparison_role": "trainable_original_minds_baseline",
+      "minds_staged_dataset": {
+        "status": "ok",
+        "dataset_name": "kt2_douban",
+        "path": "G:\\CISCN\\CogGuard\\subsystems\\kt2_repos\\MINDS\\.kt2_extracted\\MINDS\\data\\kt2_douban",
+        "cascades": 300,
+        "users": 4726,
+        "edges": 145706
+      }
+    },
+    {
+      "model": "KT2SequenceJointModel",
+      "dataset": "douban",
+      "task": "multi_scale",
+      "status": "ok",
+      "reproduction_level": "kt2_sequence_joint_model_small_run",
+      "seed": 42,
+      "mode": "sequence_joint_macro_micro_training",
+      "train_windows": 900,
+      "train_cascades_used": 300,
+      "eval_cascades_used": 100,
+      "obs_ratios": [
+        0.1,
+        0.3,
+        0.5
+      ],
+      "macro_micro_consistency": 0.0027224057443638637,
+      "rollout_summary": {
+        "rollout_steps": 5,
+        "rollout_step_count_mean": 5.0,
+        "rollout_unique_user_count_mean": 5.0,
+        "topk_examples": [
+          {
+            "event_id": 0,
+            "obs_ratio": 0.10000000149011612,
+            "top_users": [
+              {
+                "user_bucket": 3224,
+                "score": 0.0012578375171869993
+              },
+              {
+                "user_bucket": 1234,
+                "score": 0.0012138993479311466
+              },
+              {
+                "user_bucket": 2003,
+                "score": 0.0012034578248858452
+              },
+              {
+                "user_bucket": 3902,
+                "score": 0.0010667061433196068
+              },
+              {
+                "user_bucket": 652,
+                "score": 0.0009870730573311448
+              }
+            ]
+          },
+          {
+            "event_id": 0,
+            "obs_ratio": 0.30000001192092896,
+            "top_users": [
+              {
+                "user_bucket": 2423,
+                "score": 0.0016266219317913055
+              },
+              {
+                "user_bucket": 2003,
+                "score": 0.0014707138761878014
+              },
+              {
+                "user_bucket": 2469,
+                "score": 0.0012760451063513756
+              },
+              {
+                "user_bucket": 1234,
+                "score": 0.00123022950720042
+              },
+              {
+                "user_bucket": 3902,
+                "score": 0.0011742435162886977
+              }
+            ]
+          },
+          {
+            "event_id": 0,
+            "obs_ratio": 0.5,
+            "top_users": [
+              {
+                "user_bucket": 2423,
+                "score": 0.001593997934833169
+              },
+              {
+                "user_bucket": 2003,
+                "score": 0.001417817547917366
+              },
+              {
+                "user_bucket": 2469,
+                "score": 0.001261083292774856
+              },
+              {
+                "user_bucket": 1234,
+                "score": 0.0011888355948030949
+              },
+              {
+                "user_bucket": 3902,
+                "score": 0.0011612015077844262
+              }
+            ]
+          }
+        ]
+      },
+      "candidate_protocol_audit": {
+        "candidate_source": "sampled softmax negatives from training user universe; evaluation ranks train-user buckets",
+        "future_nodes_injected": false,
+        "candidate_generation_reads_future_tail": false,
+        "candidate_features_used_as_model_input": false,
+        "leakage_check_passed": true
+      },
+      "training_protocol": {
+        "backbone": "MINDS-style trainable DynamicCasHGNN + RelationGNN + SharedLSTM sequence state",
+        "backbone_components": [
+          "DynamicCasHGNN",
+          "RelationGNN",
+          "SharedLSTM",
+          "EulerTrendDecoder"
+        ],
+        "micro_target": "next_user_autoregressive_sampled_softmax",
+        "macro_target": "final_size_plus_future_cumulative_trend",
+        "obs_ratios": [
+          0.1,
+          0.3,
+          0.5
+        ],
+        "candidate_features_used_as_model_input": false,
+        "loss_weights": {
+          "final_size": 1.0,
+          "trend": 0.5,
+          "next_user": 0.5,
+          "soft_coupling": 0.05,
+          "adversarial": 0.02,
+          "diff_orthogonality": 0.01
+        },
+        "loss_normalization": "per-window losses are grouped by cascade event_id, averaged per cascade, then averaged across cascades",
+        "rollout": "autoregressive multi-step rollout aggregated into future-window Top-K",
+        "trend_decoder": "CasFT-style Euler latent dynamics with positive cumulative increments"
+      },
+      "methodology": "MINDS backbone sequence training with DynamicCasHGNN/RelationGNN/SharedLSTM macro final-size/trend heads, next-user autoregressive sampled softmax, FOREST-style soft macro/micro coupling, and CasFT-style Euler continuous cumulative trend decoding.",
+      "legacy_boundary": "This formal model replaces the legacy candidate-row KT2JointModel path; prefix+candidate feature rows are retained only for ablation.",
+      "note": "KT2SequenceJointModel is the formal sequence-based KT2 model. It is not an original MINDS, FOREST, or CasFT paper reproduction; it migrates their backbone/coupling/trend ideas.",
+      "research_migration": {
+        "MINDS": "Primary backbone orientation: dynamic cascade hypergraph, social graph, and shared sequence state.",
+        "FOREST": "Soft coupling uses expected micro rollout growth as an auxiliary macro trend signal.",
+        "CasFT": "Continuous trend head predicts monotonic future cumulative size checkpoints."
+      },
+      "msle": 0.09564634115117628,
+      "mae": 4.177747639020284,
+      "rmse": 12.801387168929182,
+      "mape_percent": 16.035675746924614,
+      "smape_percent": 14.569165628907257,
+      "direction_accuracy": 1.0,
+      "trend_mae": 244.30365272482237,
+      "trend_rmse": 318.8978632315272,
+      "candidate_recall_full": 0.9233333333333333,
+      "mrr": 0.005997476836316856,
+      "macro_micro_soft_consistency": 0.0027224057443638637,
+      "rollout_step_count_mean": 5.0,
+      "rollout_unique_user_count_mean": 5.0,
+      "rollout_topk_examples": [
+        {
+          "event_id": 0,
+          "obs_ratio": 0.10000000149011612,
+          "top_users": [
+            {
+              "user_bucket": 3224,
+              "score": 0.0012578375171869993
+            },
+            {
+              "user_bucket": 1234,
+              "score": 0.0012138993479311466
+            },
+            {
+              "user_bucket": 2003,
+              "score": 0.0012034578248858452
+            },
+            {
+              "user_bucket": 3902,
+              "score": 0.0010667061433196068
+            },
+            {
+              "user_bucket": 652,
+              "score": 0.0009870730573311448
+            }
+          ]
+        },
+        {
+          "event_id": 0,
+          "obs_ratio": 0.30000001192092896,
+          "top_users": [
+            {
+              "user_bucket": 2423,
+              "score": 0.0016266219317913055
+            },
+            {
+              "user_bucket": 2003,
+              "score": 0.0014707138761878014
+            },
+            {
+              "user_bucket": 2469,
+              "score": 0.0012760451063513756
+            },
+            {
+              "user_bucket": 1234,
+              "score": 0.00123022950720042
+            },
+            {
+              "user_bucket": 3902,
+              "score": 0.0011742435162886977
+            }
+          ]
+        },
+        {
+          "event_id": 0,
+          "obs_ratio": 0.5,
+          "top_users": [
+            {
+              "user_bucket": 2423,
+              "score": 0.001593997934833169
+            },
+            {
+              "user_bucket": 2003,
+              "score": 0.001417817547917366
+            },
+            {
+              "user_bucket": 2469,
+              "score": 0.001261083292774856
+            },
+            {
+              "user_bucket": 1234,
+              "score": 0.0011888355948030949
+            },
+            {
+              "user_bucket": 3902,
+              "score": 0.0011612015077844262
+            }
+          ]
+        }
+      ],
+      "hits@10": 0.01,
+      "map@10": 0.004,
+      "ndcg@10": 0.005495707714591522,
+      "hits@50": 0.02666666666666667,
+      "map@50": 0.004571504791518773,
+      "ndcg@50": 0.008862759884386683,
+      "hits@100": 0.05333333333333334,
+      "map@100": 0.0048881459532707115,
+      "ndcg@100": 0.013015383364648326,
+      "comparison_role": "trainable_kt2_sequence_candidate",
+      "config_id": "kt2-sample-300c-5ep-3seed",
+      "experiment_seed": 42,
+      "experiment_dataset": "douban",
+      "experiment_scope": "kt2_sequence_vs_original_minds_same_source"
+    },
+    {
+      "model": "MINDS",
+      "dataset": "douban",
+      "adapter_dataset": "kt2_douban",
+      "task": "multi_scale",
+      "status": "ok",
+      "reproduction_level": "public_code_adapter",
+      "seed": 43,
+      "config_id": "kt2-sample-300c-5ep-3seed",
+      "epochs": 5,
+      "selection": "best_valid_map@100",
+      "best_epoch": 5,
+      "methodology": "Original MINDS public-code adapter: sequential hypergraphs, adversarial learning, macro/micro diffusion prediction.",
+      "protocol_source": "converted from FOREST douban cascade.txt",
+      "valid_map@100": 0.071114849806624,
+      "valid_msle": 0.05243502254597843,
+      "hits@10": 0.15798319327731092,
+      "map@10": 0.08083100078486595,
+      "hits@50": 0.2218487394957983,
+      "map@50": 0.08308319644767698,
+      "hits@100": 0.2722689075630252,
+      "map@100": 0.08375044069370302,
+      "msle": 0.03718415295588784,
+      "mae": null,
+      "command": [
+        "D:\\Anaconda\\python.exe",
+        "-u",
+        "G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\adapters\\minds_runner.py",
+        "--dataset_name",
+        "kt2_douban",
+        "--report_dataset",
+        "douban",
+        "--protocol_source",
+        "converted from FOREST douban cascade.txt",
+        "--epochs",
+        "5",
+        "--batch_size",
+        "4",
+        "--emb_dim",
+        "32",
+        "--step_split",
+        "4",
+        "--max_seq_length",
+        "100",
+        "--device",
+        "cuda",
+        "--reproduction_level",
+        "public_code_adapter",
+        "--config_id",
+        "kt2-sample-300c-5ep-3seed",
+        "--seed",
+        "43"
+      ],
+      "cwd": "G:\\CISCN\\CogGuard\\subsystems\\kt2_repos\\MINDS\\.kt2_extracted\\MINDS",
+      "returncode": 0,
+      "elapsed_s": 169.1,
+      "log_path": "benchmark\\logs\\MINDS_douban_seed43_kt2-sample-300c-5ep-3seed.log",
+      "comparison_role": "trainable_original_minds_baseline",
+      "minds_staged_dataset": {
+        "status": "ok",
+        "dataset_name": "kt2_douban",
+        "path": "G:\\CISCN\\CogGuard\\subsystems\\kt2_repos\\MINDS\\.kt2_extracted\\MINDS\\data\\kt2_douban",
+        "cascades": 300,
+        "users": 4726,
+        "edges": 145706
+      }
+    },
+    {
+      "model": "KT2SequenceJointModel",
+      "dataset": "douban",
+      "task": "multi_scale",
+      "status": "ok",
+      "reproduction_level": "kt2_sequence_joint_model_small_run",
+      "seed": 43,
+      "mode": "sequence_joint_macro_micro_training",
+      "train_windows": 900,
+      "train_cascades_used": 300,
+      "eval_cascades_used": 100,
+      "obs_ratios": [
+        0.1,
+        0.3,
+        0.5
+      ],
+      "macro_micro_consistency": 0.0030140283972885096,
+      "rollout_summary": {
+        "rollout_steps": 5,
+        "rollout_step_count_mean": 5.0,
+        "rollout_unique_user_count_mean": 5.0,
+        "topk_examples": [
+          {
+            "event_id": 0,
+            "obs_ratio": 0.10000000149011612,
+            "top_users": [
+              {
+                "user_bucket": 1294,
+                "score": 0.001694943173788488
+              },
+              {
+                "user_bucket": 1474,
+                "score": 0.001439552870579064
+              },
+              {
+                "user_bucket": 3303,
+                "score": 0.0013296239776536822
+              },
+              {
+                "user_bucket": 543,
+                "score": 0.0012706492561846972
+              },
+              {
+                "user_bucket": 2933,
+                "score": 0.0012552664848044515
+              }
+            ]
+          },
+          {
+            "event_id": 0,
+            "obs_ratio": 0.30000001192092896,
+            "top_users": [
+              {
+                "user_bucket": 1294,
+                "score": 0.0023109850008040667
+              },
+              {
+                "user_bucket": 1474,
+                "score": 0.0016142333624884486
+              },
+              {
+                "user_bucket": 2933,
+                "score": 0.0014496349031105638
+              },
+              {
+                "user_bucket": 3303,
+                "score": 0.0013831054093316197
+              },
+              {
+                "user_bucket": 543,
+                "score": 0.0012903586030006409
+              }
+            ]
+          },
+          {
+            "event_id": 0,
+            "obs_ratio": 0.5,
+            "top_users": [
+              {
+                "user_bucket": 1294,
+                "score": 0.002379397628828883
+              },
+              {
+                "user_bucket": 1474,
+                "score": 0.001652311417274177
+              },
+              {
+                "user_bucket": 543,
+                "score": 0.0016014266293495893
+              },
+              {
+                "user_bucket": 2933,
+                "score": 0.0015090754022821784
+              },
+              {
+                "user_bucket": 3303,
+                "score": 0.001384084695018828
+              }
+            ]
+          }
+        ]
+      },
+      "candidate_protocol_audit": {
+        "candidate_source": "sampled softmax negatives from training user universe; evaluation ranks train-user buckets",
+        "future_nodes_injected": false,
+        "candidate_generation_reads_future_tail": false,
+        "candidate_features_used_as_model_input": false,
+        "leakage_check_passed": true
+      },
+      "training_protocol": {
+        "backbone": "MINDS-style trainable DynamicCasHGNN + RelationGNN + SharedLSTM sequence state",
+        "backbone_components": [
+          "DynamicCasHGNN",
+          "RelationGNN",
+          "SharedLSTM",
+          "EulerTrendDecoder"
+        ],
+        "micro_target": "next_user_autoregressive_sampled_softmax",
+        "macro_target": "final_size_plus_future_cumulative_trend",
+        "obs_ratios": [
+          0.1,
+          0.3,
+          0.5
+        ],
+        "candidate_features_used_as_model_input": false,
+        "loss_weights": {
+          "final_size": 1.0,
+          "trend": 0.5,
+          "next_user": 0.5,
+          "soft_coupling": 0.05,
+          "adversarial": 0.02,
+          "diff_orthogonality": 0.01
+        },
+        "loss_normalization": "per-window losses are grouped by cascade event_id, averaged per cascade, then averaged across cascades",
+        "rollout": "autoregressive multi-step rollout aggregated into future-window Top-K",
+        "trend_decoder": "CasFT-style Euler latent dynamics with positive cumulative increments"
+      },
+      "methodology": "MINDS backbone sequence training with DynamicCasHGNN/RelationGNN/SharedLSTM macro final-size/trend heads, next-user autoregressive sampled softmax, FOREST-style soft macro/micro coupling, and CasFT-style Euler continuous cumulative trend decoding.",
+      "legacy_boundary": "This formal model replaces the legacy candidate-row KT2JointModel path; prefix+candidate feature rows are retained only for ablation.",
+      "note": "KT2SequenceJointModel is the formal sequence-based KT2 model. It is not an original MINDS, FOREST, or CasFT paper reproduction; it migrates their backbone/coupling/trend ideas.",
+      "research_migration": {
+        "MINDS": "Primary backbone orientation: dynamic cascade hypergraph, social graph, and shared sequence state.",
+        "FOREST": "Soft coupling uses expected micro rollout growth as an auxiliary macro trend signal.",
+        "CasFT": "Continuous trend head predicts monotonic future cumulative size checkpoints."
+      },
+      "msle": 0.10783362822607041,
+      "mae": 6.497467524210612,
+      "rmse": 19.21034344792535,
+      "mape_percent": 16.169158413897208,
+      "smape_percent": 17.172832418045147,
+      "direction_accuracy": 1.0,
+      "trend_mae": 198.07551802059015,
+      "trend_rmse": 253.49916438981768,
+      "candidate_recall_full": 0.9233333333333333,
+      "mrr": 0.0035293822676454147,
+      "macro_micro_soft_consistency": 0.0030140283972885096,
+      "rollout_step_count_mean": 5.0,
+      "rollout_unique_user_count_mean": 5.0,
+      "rollout_topk_examples": [
+        {
+          "event_id": 0,
+          "obs_ratio": 0.10000000149011612,
+          "top_users": [
+            {
+              "user_bucket": 1294,
+              "score": 0.001694943173788488
+            },
+            {
+              "user_bucket": 1474,
+              "score": 0.001439552870579064
+            },
+            {
+              "user_bucket": 3303,
+              "score": 0.0013296239776536822
+            },
+            {
+              "user_bucket": 543,
+              "score": 0.0012706492561846972
+            },
+            {
+              "user_bucket": 2933,
+              "score": 0.0012552664848044515
+            }
+          ]
+        },
+        {
+          "event_id": 0,
+          "obs_ratio": 0.30000001192092896,
+          "top_users": [
+            {
+              "user_bucket": 1294,
+              "score": 0.0023109850008040667
+            },
+            {
+              "user_bucket": 1474,
+              "score": 0.0016142333624884486
+            },
+            {
+              "user_bucket": 2933,
+              "score": 0.0014496349031105638
+            },
+            {
+              "user_bucket": 3303,
+              "score": 0.0013831054093316197
+            },
+            {
+              "user_bucket": 543,
+              "score": 0.0012903586030006409
+            }
+          ]
+        },
+        {
+          "event_id": 0,
+          "obs_ratio": 0.5,
+          "top_users": [
+            {
+              "user_bucket": 1294,
+              "score": 0.002379397628828883
+            },
+            {
+              "user_bucket": 1474,
+              "score": 0.001652311417274177
+            },
+            {
+              "user_bucket": 543,
+              "score": 0.0016014266293495893
+            },
+            {
+              "user_bucket": 2933,
+              "score": 0.0015090754022821784
+            },
+            {
+              "user_bucket": 3303,
+              "score": 0.001384084695018828
+            }
+          ]
+        }
+      ],
+      "hits@10": 0.006666666666666667,
+      "map@10": 0.0015,
+      "ndcg@10": 0.0027250978843597826,
+      "hits@50": 0.023333333333333334,
+      "map@50": 0.002088632987826536,
+      "ndcg@50": 0.006117471507620892,
+      "hits@100": 0.05,
+      "map@100": 0.002407013655004809,
+      "ndcg@100": 0.010274811832386493,
+      "comparison_role": "trainable_kt2_sequence_candidate",
+      "config_id": "kt2-sample-300c-5ep-3seed",
+      "experiment_seed": 43,
+      "experiment_dataset": "douban",
+      "experiment_scope": "kt2_sequence_vs_original_minds_same_source"
+    },
+    {
+      "model": "MINDS",
+      "dataset": "douban",
+      "adapter_dataset": "kt2_douban",
+      "task": "multi_scale",
+      "status": "ok",
+      "reproduction_level": "public_code_adapter",
+      "seed": 44,
+      "config_id": "kt2-sample-300c-5ep-3seed",
+      "epochs": 5,
+      "selection": "best_valid_map@100",
+      "best_epoch": 3,
+      "methodology": "Original MINDS public-code adapter: sequential hypergraphs, adversarial learning, macro/micro diffusion prediction.",
+      "protocol_source": "converted from FOREST douban cascade.txt",
+      "valid_map@100": 0.07089729206110552,
+      "valid_msle": 0.05868939054198563,
+      "hits@10": 0.15294117647058825,
+      "map@10": 0.07998065948486328,
+      "hits@50": 0.20168067226890757,
+      "map@50": 0.08228663115942178,
+      "hits@100": 0.26554621848739496,
+      "map@100": 0.08319886071341379,
+      "msle": 0.07768476009368896,
+      "mae": null,
+      "command": [
+        "D:\\Anaconda\\python.exe",
+        "-u",
+        "G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\adapters\\minds_runner.py",
+        "--dataset_name",
+        "kt2_douban",
+        "--report_dataset",
+        "douban",
+        "--protocol_source",
+        "converted from FOREST douban cascade.txt",
+        "--epochs",
+        "5",
+        "--batch_size",
+        "4",
+        "--emb_dim",
+        "32",
+        "--step_split",
+        "4",
+        "--max_seq_length",
+        "100",
+        "--device",
+        "cuda",
+        "--reproduction_level",
+        "public_code_adapter",
+        "--config_id",
+        "kt2-sample-300c-5ep-3seed",
+        "--seed",
+        "44"
+      ],
+      "cwd": "G:\\CISCN\\CogGuard\\subsystems\\kt2_repos\\MINDS\\.kt2_extracted\\MINDS",
+      "returncode": 0,
+      "elapsed_s": 173.0,
+      "log_path": "benchmark\\logs\\MINDS_douban_seed44_kt2-sample-300c-5ep-3seed.log",
+      "comparison_role": "trainable_original_minds_baseline",
+      "minds_staged_dataset": {
+        "status": "ok",
+        "dataset_name": "kt2_douban",
+        "path": "G:\\CISCN\\CogGuard\\subsystems\\kt2_repos\\MINDS\\.kt2_extracted\\MINDS\\data\\kt2_douban",
+        "cascades": 300,
+        "users": 4726,
+        "edges": 145706
+      }
+    },
+    {
+      "model": "KT2SequenceJointModel",
+      "dataset": "douban",
+      "task": "multi_scale",
+      "status": "ok",
+      "reproduction_level": "kt2_sequence_joint_model_small_run",
+      "seed": 44,
+      "mode": "sequence_joint_macro_micro_training",
+      "train_windows": 900,
+      "train_cascades_used": 300,
+      "eval_cascades_used": 100,
+      "obs_ratios": [
+        0.1,
+        0.3,
+        0.5
+      ],
+      "macro_micro_consistency": 0.0019811490087237567,
+      "rollout_summary": {
+        "rollout_steps": 5,
+        "rollout_step_count_mean": 5.0,
+        "rollout_unique_user_count_mean": 5.0,
+        "topk_examples": [
+          {
+            "event_id": 0,
+            "obs_ratio": 0.10000000149011612,
+            "top_users": [
+              {
+                "user_bucket": 357,
+                "score": 0.0009354428038932383
+              },
+              {
+                "user_bucket": 2188,
+                "score": 0.0008334940648637712
+              },
+              {
+                "user_bucket": 3885,
+                "score": 0.0008119872654788196
+              },
+              {
+                "user_bucket": 2296,
+                "score": 0.0007496767211705446
+              },
+              {
+                "user_bucket": 3802,
+                "score": 0.0007046275422908366
+              }
+            ]
+          },
+          {
+            "event_id": 0,
+            "obs_ratio": 0.30000001192092896,
+            "top_users": [
+              {
+                "user_bucket": 3475,
+                "score": 0.001031763618811965
+              },
+              {
+                "user_bucket": 1800,
+                "score": 0.0009084762423299253
+              },
+              {
+                "user_bucket": 4026,
+                "score": 0.0008230751263909042
+              },
+              {
+                "user_bucket": 417,
+                "score": 0.0008199421572498977
+              },
+              {
+                "user_bucket": 3132,
+                "score": 0.000801596324890852
+              }
+            ]
+          },
+          {
+            "event_id": 0,
+            "obs_ratio": 0.5,
+            "top_users": [
+              {
+                "user_bucket": 3475,
+                "score": 0.0007870205445215106
+              },
+              {
+                "user_bucket": 4026,
+                "score": 0.0007700994028709829
+              },
+              {
+                "user_bucket": 735,
+                "score": 0.0007575997733511031
+              },
+              {
+                "user_bucket": 2138,
+                "score": 0.0007503690430894494
+              },
+              {
+                "user_bucket": 1800,
+                "score": 0.0007448580581694841
+              }
+            ]
+          }
+        ]
+      },
+      "candidate_protocol_audit": {
+        "candidate_source": "sampled softmax negatives from training user universe; evaluation ranks train-user buckets",
+        "future_nodes_injected": false,
+        "candidate_generation_reads_future_tail": false,
+        "candidate_features_used_as_model_input": false,
+        "leakage_check_passed": true
+      },
+      "training_protocol": {
+        "backbone": "MINDS-style trainable DynamicCasHGNN + RelationGNN + SharedLSTM sequence state",
+        "backbone_components": [
+          "DynamicCasHGNN",
+          "RelationGNN",
+          "SharedLSTM",
+          "EulerTrendDecoder"
+        ],
+        "micro_target": "next_user_autoregressive_sampled_softmax",
+        "macro_target": "final_size_plus_future_cumulative_trend",
+        "obs_ratios": [
+          0.1,
+          0.3,
+          0.5
+        ],
+        "candidate_features_used_as_model_input": false,
+        "loss_weights": {
+          "final_size": 1.0,
+          "trend": 0.5,
+          "next_user": 0.5,
+          "soft_coupling": 0.05,
+          "adversarial": 0.02,
+          "diff_orthogonality": 0.01
+        },
+        "loss_normalization": "per-window losses are grouped by cascade event_id, averaged per cascade, then averaged across cascades",
+        "rollout": "autoregressive multi-step rollout aggregated into future-window Top-K",
+        "trend_decoder": "CasFT-style Euler latent dynamics with positive cumulative increments"
+      },
+      "methodology": "MINDS backbone sequence training with DynamicCasHGNN/RelationGNN/SharedLSTM macro final-size/trend heads, next-user autoregressive sampled softmax, FOREST-style soft macro/micro coupling, and CasFT-style Euler continuous cumulative trend decoding.",
+      "legacy_boundary": "This formal model replaces the legacy candidate-row KT2JointModel path; prefix+candidate feature rows are retained only for ablation.",
+      "note": "KT2SequenceJointModel is the formal sequence-based KT2 model. It is not an original MINDS, FOREST, or CasFT paper reproduction; it migrates their backbone/coupling/trend ideas.",
+      "research_migration": {
+        "MINDS": "Primary backbone orientation: dynamic cascade hypergraph, social graph, and shared sequence state.",
+        "FOREST": "Soft coupling uses expected micro rollout growth as an auxiliary macro trend signal.",
+        "CasFT": "Continuous trend head predicts monotonic future cumulative size checkpoints."
+      },
+      "msle": 0.11547614658791483,
+      "mae": 6.825881363550822,
+      "rmse": 17.299701196576198,
+      "mape_percent": 16.99256877299003,
+      "smape_percent": 18.470099239456932,
+      "direction_accuracy": 1.0,
+      "trend_mae": 209.53199930628142,
+      "trend_rmse": 273.6662730671113,
+      "candidate_recall_full": 0.9233333333333333,
+      "mrr": 0.007008492021313565,
+      "macro_micro_soft_consistency": 0.0019811490087237567,
+      "rollout_step_count_mean": 5.0,
+      "rollout_unique_user_count_mean": 5.0,
+      "rollout_topk_examples": [
+        {
+          "event_id": 0,
+          "obs_ratio": 0.10000000149011612,
+          "top_users": [
+            {
+              "user_bucket": 357,
+              "score": 0.0009354428038932383
+            },
+            {
+              "user_bucket": 2188,
+              "score": 0.0008334940648637712
+            },
+            {
+              "user_bucket": 3885,
+              "score": 0.0008119872654788196
+            },
+            {
+              "user_bucket": 2296,
+              "score": 0.0007496767211705446
+            },
+            {
+              "user_bucket": 3802,
+              "score": 0.0007046275422908366
+            }
+          ]
+        },
+        {
+          "event_id": 0,
+          "obs_ratio": 0.30000001192092896,
+          "top_users": [
+            {
+              "user_bucket": 3475,
+              "score": 0.001031763618811965
+            },
+            {
+              "user_bucket": 1800,
+              "score": 0.0009084762423299253
+            },
+            {
+              "user_bucket": 4026,
+              "score": 0.0008230751263909042
+            },
+            {
+              "user_bucket": 417,
+              "score": 0.0008199421572498977
+            },
+            {
+              "user_bucket": 3132,
+              "score": 0.000801596324890852
+            }
+          ]
+        },
+        {
+          "event_id": 0,
+          "obs_ratio": 0.5,
+          "top_users": [
+            {
+              "user_bucket": 3475,
+              "score": 0.0007870205445215106
+            },
+            {
+              "user_bucket": 4026,
+              "score": 0.0007700994028709829
+            },
+            {
+              "user_bucket": 735,
+              "score": 0.0007575997733511031
+            },
+            {
+              "user_bucket": 2138,
+              "score": 0.0007503690430894494
+            },
+            {
+              "user_bucket": 1800,
+              "score": 0.0007448580581694841
+            }
+          ]
+        }
+      ],
+      "hits@10": 0.01,
+      "map@10": 0.005,
+      "ndcg@10": 0.006204510387155954,
+      "hits@50": 0.02666666666666667,
+      "map@50": 0.005571504791518773,
+      "ndcg@50": 0.009571562556951114,
+      "hits@100": 0.05333333333333334,
+      "map@100": 0.00588814595327071,
+      "ndcg@100": 0.01372418603721276,
+      "comparison_role": "trainable_kt2_sequence_candidate",
+      "config_id": "kt2-sample-300c-5ep-3seed",
+      "experiment_seed": 44,
+      "experiment_dataset": "douban",
+      "experiment_scope": "kt2_sequence_vs_original_minds_same_source"
+    },
+    {
+      "model": "MINDS",
+      "dataset": "twitter",
+      "adapter_dataset": "kt2_twitter",
+      "task": "multi_scale",
+      "status": "ok",
+      "reproduction_level": "public_code_adapter",
+      "seed": 42,
+      "config_id": "kt2-sample-300c-5ep-3seed",
+      "epochs": 5,
+      "selection": "best_valid_map@100",
+      "best_epoch": 3,
+      "methodology": "Original MINDS public-code adapter: sequential hypergraphs, adversarial learning, macro/micro diffusion prediction.",
+      "protocol_source": "converted from FOREST twitter cascade.txt",
+      "valid_map@100": 0.04675087662352124,
+      "valid_msle": 0.8126177648082376,
+      "hits@10": 0.05901116427432217,
+      "map@10": 0.04890762295639306,
+      "hits@50": 0.09888357256778309,
+      "map@50": 0.05045219053301895,
+      "hits@100": 0.14035087719298245,
+      "map@100": 0.05100423715521464,
+      "msle": 0.48228964069858193,
+      "mae": null,
+      "command": [
+        "D:\\Anaconda\\python.exe",
+        "-u",
+        "G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\adapters\\minds_runner.py",
+        "--dataset_name",
+        "kt2_twitter",
+        "--report_dataset",
+        "twitter",
+        "--protocol_source",
+        "converted from FOREST twitter cascade.txt",
+        "--epochs",
+        "5",
+        "--batch_size",
+        "4",
+        "--emb_dim",
+        "32",
+        "--step_split",
+        "4",
+        "--max_seq_length",
+        "100",
+        "--device",
+        "cuda",
+        "--reproduction_level",
+        "public_code_adapter",
+        "--config_id",
+        "kt2-sample-300c-5ep-3seed",
+        "--seed",
+        "42"
+      ],
+      "cwd": "G:\\CISCN\\CogGuard\\subsystems\\kt2_repos\\MINDS\\.kt2_extracted\\MINDS",
+      "returncode": 0,
+      "elapsed_s": 183.9,
+      "log_path": "benchmark\\logs\\MINDS_twitter_seed42_kt2-sample-300c-5ep-3seed.log",
+      "comparison_role": "trainable_original_minds_baseline",
+      "minds_staged_dataset": {
+        "status": "ok",
+        "dataset_name": "kt2_twitter",
+        "path": "G:\\CISCN\\CogGuard\\subsystems\\kt2_repos\\MINDS\\.kt2_extracted\\MINDS\\data\\kt2_twitter",
+        "cascades": 300,
+        "users": 7543,
+        "edges": 432840
+      }
+    },
+    {
+      "model": "KT2SequenceJointModel",
+      "dataset": "twitter",
+      "task": "multi_scale",
+      "status": "ok",
+      "reproduction_level": "kt2_sequence_joint_model_small_run",
+      "seed": 42,
+      "mode": "sequence_joint_macro_micro_training",
+      "train_windows": 900,
+      "train_cascades_used": 300,
+      "eval_cascades_used": 100,
+      "obs_ratios": [
+        0.1,
+        0.3,
+        0.5
+      ],
+      "macro_micro_consistency": 0.002107691949489274,
+      "rollout_summary": {
+        "rollout_steps": 5,
+        "rollout_step_count_mean": 5.0,
+        "rollout_unique_user_count_mean": 5.0,
+        "topk_examples": [
+          {
+            "event_id": 0,
+            "obs_ratio": 0.10000000149011612,
+            "top_users": [
+              {
+                "user_bucket": 3105,
+                "score": 0.0011429627193138003
+              },
+              {
+                "user_bucket": 417,
+                "score": 0.001040589646436274
+              },
+              {
+                "user_bucket": 3237,
+                "score": 0.0009850173955783248
+              },
+              {
+                "user_bucket": 1498,
+                "score": 0.0008209806983359158
+              },
+              {
+                "user_bucket": 1141,
+                "score": 0.0008018599473871291
+              }
+            ]
+          },
+          {
+            "event_id": 0,
+            "obs_ratio": 0.30000001192092896,
+            "top_users": [
+              {
+                "user_bucket": 121,
+                "score": 0.0011033678892999887
+              },
+              {
+                "user_bucket": 3105,
+                "score": 0.000849430391099304
+              },
+              {
+                "user_bucket": 1899,
+                "score": 0.0007758396677672863
+              },
+              {
+                "user_bucket": 2959,
+                "score": 0.0007294286624528468
+              },
+              {
+                "user_bucket": 1577,
+                "score": 0.0006719256052747369
+              }
+            ]
+          },
+          {
+            "event_id": 0,
+            "obs_ratio": 0.5,
+            "top_users": [
+              {
+                "user_bucket": 121,
+                "score": 0.0010900824563577771
+              },
+              {
+                "user_bucket": 3105,
+                "score": 0.0008152143564075232
+              },
+              {
+                "user_bucket": 1899,
+                "score": 0.0007606691215187311
+              },
+              {
+                "user_bucket": 417,
+                "score": 0.0006991690606810153
+              },
+              {
+                "user_bucket": 1577,
+                "score": 0.0006711712921969593
+              }
+            ]
+          }
+        ]
+      },
+      "candidate_protocol_audit": {
+        "candidate_source": "sampled softmax negatives from training user universe; evaluation ranks train-user buckets",
+        "future_nodes_injected": false,
+        "candidate_generation_reads_future_tail": false,
+        "candidate_features_used_as_model_input": false,
+        "leakage_check_passed": true
+      },
+      "training_protocol": {
+        "backbone": "MINDS-style trainable DynamicCasHGNN + RelationGNN + SharedLSTM sequence state",
+        "backbone_components": [
+          "DynamicCasHGNN",
+          "RelationGNN",
+          "SharedLSTM",
+          "EulerTrendDecoder"
+        ],
+        "micro_target": "next_user_autoregressive_sampled_softmax",
+        "macro_target": "final_size_plus_future_cumulative_trend",
+        "obs_ratios": [
+          0.1,
+          0.3,
+          0.5
+        ],
+        "candidate_features_used_as_model_input": false,
+        "loss_weights": {
+          "final_size": 1.0,
+          "trend": 0.5,
+          "next_user": 0.5,
+          "soft_coupling": 0.05,
+          "adversarial": 0.02,
+          "diff_orthogonality": 0.01
+        },
+        "loss_normalization": "per-window losses are grouped by cascade event_id, averaged per cascade, then averaged across cascades",
+        "rollout": "autoregressive multi-step rollout aggregated into future-window Top-K",
+        "trend_decoder": "CasFT-style Euler latent dynamics with positive cumulative increments"
+      },
+      "methodology": "MINDS backbone sequence training with DynamicCasHGNN/RelationGNN/SharedLSTM macro final-size/trend heads, next-user autoregressive sampled softmax, FOREST-style soft macro/micro coupling, and CasFT-style Euler continuous cumulative trend decoding.",
+      "legacy_boundary": "This formal model replaces the legacy candidate-row KT2JointModel path; prefix+candidate feature rows are retained only for ablation.",
+      "note": "KT2SequenceJointModel is the formal sequence-based KT2 model. It is not an original MINDS, FOREST, or CasFT paper reproduction; it migrates their backbone/coupling/trend ideas.",
+      "research_migration": {
+        "MINDS": "Primary backbone orientation: dynamic cascade hypergraph, social graph, and shared sequence state.",
+        "FOREST": "Soft coupling uses expected micro rollout growth as an auxiliary macro trend signal.",
+        "CasFT": "Continuous trend head predicts monotonic future cumulative size checkpoints."
+      },
+      "msle": 0.118403080754156,
+      "mae": 5.416385078430176,
+      "rmse": 13.033399326108913,
+      "mape_percent": 17.935836972604335,
+      "smape_percent": 18.08507076489137,
+      "direction_accuracy": 1.0,
+      "trend_mae": 182.93274513741335,
+      "trend_rmse": 213.84502605662558,
+      "candidate_recall_full": 0.9233333333333333,
+      "mrr": 0.0018449855630233484,
+      "macro_micro_soft_consistency": 0.002107691949489274,
+      "rollout_step_count_mean": 5.0,
+      "rollout_unique_user_count_mean": 5.0,
+      "rollout_topk_examples": [
+        {
+          "event_id": 0,
+          "obs_ratio": 0.10000000149011612,
+          "top_users": [
+            {
+              "user_bucket": 3105,
+              "score": 0.0011429627193138003
+            },
+            {
+              "user_bucket": 417,
+              "score": 0.001040589646436274
+            },
+            {
+              "user_bucket": 3237,
+              "score": 0.0009850173955783248
+            },
+            {
+              "user_bucket": 1498,
+              "score": 0.0008209806983359158
+            },
+            {
+              "user_bucket": 1141,
+              "score": 0.0008018599473871291
+            }
+          ]
+        },
+        {
+          "event_id": 0,
+          "obs_ratio": 0.30000001192092896,
+          "top_users": [
+            {
+              "user_bucket": 121,
+              "score": 0.0011033678892999887
+            },
+            {
+              "user_bucket": 3105,
+              "score": 0.000849430391099304
+            },
+            {
+              "user_bucket": 1899,
+              "score": 0.0007758396677672863
+            },
+            {
+              "user_bucket": 2959,
+              "score": 0.0007294286624528468
+            },
+            {
+              "user_bucket": 1577,
+              "score": 0.0006719256052747369
+            }
+          ]
+        },
+        {
+          "event_id": 0,
+          "obs_ratio": 0.5,
+          "top_users": [
+            {
+              "user_bucket": 121,
+              "score": 0.0010900824563577771
+            },
+            {
+              "user_bucket": 3105,
+              "score": 0.0008152143564075232
+            },
+            {
+              "user_bucket": 1899,
+              "score": 0.0007606691215187311
+            },
+            {
+              "user_bucket": 417,
+              "score": 0.0006991690606810153
+            },
+            {
+              "user_bucket": 1577,
+              "score": 0.0006711712921969593
+            }
+          ]
+        }
+      ],
+      "hits@10": 0.0033333333333333335,
+      "map@10": 0.0005555555555555556,
+      "ndcg@10": 0.0011873572903600739,
+      "hits@50": 0.01,
+      "map@50": 0.0007741935483870968,
+      "ndcg@50": 0.00252685424563374,
+      "hits@100": 0.02666666666666667,
+      "map@100": 0.0009925371859117688,
+      "ndcg@100": 0.005180951030242068,
+      "comparison_role": "trainable_kt2_sequence_candidate",
+      "config_id": "kt2-sample-300c-5ep-3seed",
+      "experiment_seed": 42,
+      "experiment_dataset": "twitter",
+      "experiment_scope": "kt2_sequence_vs_original_minds_same_source"
+    },
+    {
+      "model": "MINDS",
+      "dataset": "twitter",
+      "adapter_dataset": "kt2_twitter",
+      "task": "multi_scale",
+      "status": "ok",
+      "reproduction_level": "public_code_adapter",
+      "seed": 43,
+      "config_id": "kt2-sample-300c-5ep-3seed",
+      "epochs": 5,
+      "selection": "best_valid_map@100",
+      "best_epoch": 5,
+      "methodology": "Original MINDS public-code adapter: sequential hypergraphs, adversarial learning, macro/micro diffusion prediction.",
+      "protocol_source": "converted from FOREST twitter cascade.txt",
+      "valid_map@100": 0.04451117847229491,
+      "valid_msle": 0.0667777267517522,
+      "hits@10": 0.05263157894736842,
+      "map@10": 0.04719564066739364,
+      "hits@50": 0.10685805422647528,
+      "map@50": 0.049352975933555594,
+      "hits@100": 0.1467304625199362,
+      "map@100": 0.04992188905414782,
+      "msle": 0.0835547671886161,
+      "mae": null,
+      "command": [
+        "D:\\Anaconda\\python.exe",
+        "-u",
+        "G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\adapters\\minds_runner.py",
+        "--dataset_name",
+        "kt2_twitter",
+        "--report_dataset",
+        "twitter",
+        "--protocol_source",
+        "converted from FOREST twitter cascade.txt",
+        "--epochs",
+        "5",
+        "--batch_size",
+        "4",
+        "--emb_dim",
+        "32",
+        "--step_split",
+        "4",
+        "--max_seq_length",
+        "100",
+        "--device",
+        "cuda",
+        "--reproduction_level",
+        "public_code_adapter",
+        "--config_id",
+        "kt2-sample-300c-5ep-3seed",
+        "--seed",
+        "43"
+      ],
+      "cwd": "G:\\CISCN\\CogGuard\\subsystems\\kt2_repos\\MINDS\\.kt2_extracted\\MINDS",
+      "returncode": 0,
+      "elapsed_s": 183.6,
+      "log_path": "benchmark\\logs\\MINDS_twitter_seed43_kt2-sample-300c-5ep-3seed.log",
+      "comparison_role": "trainable_original_minds_baseline",
+      "minds_staged_dataset": {
+        "status": "ok",
+        "dataset_name": "kt2_twitter",
+        "path": "G:\\CISCN\\CogGuard\\subsystems\\kt2_repos\\MINDS\\.kt2_extracted\\MINDS\\data\\kt2_twitter",
+        "cascades": 300,
+        "users": 7543,
+        "edges": 432840
+      }
+    },
+    {
+      "model": "KT2SequenceJointModel",
+      "dataset": "twitter",
+      "task": "multi_scale",
+      "status": "ok",
+      "reproduction_level": "kt2_sequence_joint_model_small_run",
+      "seed": 43,
+      "mode": "sequence_joint_macro_micro_training",
+      "train_windows": 900,
+      "train_cascades_used": 300,
+      "eval_cascades_used": 100,
+      "obs_ratios": [
+        0.1,
+        0.3,
+        0.5
+      ],
+      "macro_micro_consistency": 0.0026764798515086846,
+      "rollout_summary": {
+        "rollout_steps": 5,
+        "rollout_step_count_mean": 5.0,
+        "rollout_unique_user_count_mean": 5.0,
+        "topk_examples": [
+          {
+            "event_id": 0,
+            "obs_ratio": 0.10000000149011612,
+            "top_users": [
+              {
+                "user_bucket": 3501,
+                "score": 0.001316961832344532
+              },
+              {
+                "user_bucket": 1671,
+                "score": 0.0011833823518827558
+              },
+              {
+                "user_bucket": 1026,
+                "score": 0.001156069920398295
+              },
+              {
+                "user_bucket": 183,
+                "score": 0.0010918753687292337
+              },
+              {
+                "user_bucket": 1951,
+                "score": 0.0010382152395322919
+              }
+            ]
+          },
+          {
+            "event_id": 0,
+            "obs_ratio": 0.30000001192092896,
+            "top_users": [
+              {
+                "user_bucket": 3501,
+                "score": 0.0010344811016693711
+              },
+              {
+                "user_bucket": 1671,
+                "score": 0.0010239089606329799
+              },
+              {
+                "user_bucket": 1026,
+                "score": 0.0010033899452537298
+              },
+              {
+                "user_bucket": 1951,
+                "score": 0.0009481331217102706
+              },
+              {
+                "user_bucket": 183,
+                "score": 0.0009002876468002796
+              }
+            ]
+          },
+          {
+            "event_id": 0,
+            "obs_ratio": 0.5,
+            "top_users": [
+              {
+                "user_bucket": 3501,
+                "score": 0.0010287154000252485
+              },
+              {
+                "user_bucket": 1026,
+                "score": 0.0010157589567825198
+              },
+              {
+                "user_bucket": 1671,
+                "score": 0.0010000347392633557
+              },
+              {
+                "user_bucket": 183,
+                "score": 0.0009137961897067726
+              },
+              {
+                "user_bucket": 1951,
+                "score": 0.000904194253962487
+              }
+            ]
+          }
+        ]
+      },
+      "candidate_protocol_audit": {
+        "candidate_source": "sampled softmax negatives from training user universe; evaluation ranks train-user buckets",
+        "future_nodes_injected": false,
+        "candidate_generation_reads_future_tail": false,
+        "candidate_features_used_as_model_input": false,
+        "leakage_check_passed": true
+      },
+      "training_protocol": {
+        "backbone": "MINDS-style trainable DynamicCasHGNN + RelationGNN + SharedLSTM sequence state",
+        "backbone_components": [
+          "DynamicCasHGNN",
+          "RelationGNN",
+          "SharedLSTM",
+          "EulerTrendDecoder"
+        ],
+        "micro_target": "next_user_autoregressive_sampled_softmax",
+        "macro_target": "final_size_plus_future_cumulative_trend",
+        "obs_ratios": [
+          0.1,
+          0.3,
+          0.5
+        ],
+        "candidate_features_used_as_model_input": false,
+        "loss_weights": {
+          "final_size": 1.0,
+          "trend": 0.5,
+          "next_user": 0.5,
+          "soft_coupling": 0.05,
+          "adversarial": 0.02,
+          "diff_orthogonality": 0.01
+        },
+        "loss_normalization": "per-window losses are grouped by cascade event_id, averaged per cascade, then averaged across cascades",
+        "rollout": "autoregressive multi-step rollout aggregated into future-window Top-K",
+        "trend_decoder": "CasFT-style Euler latent dynamics with positive cumulative increments"
+      },
+      "methodology": "MINDS backbone sequence training with DynamicCasHGNN/RelationGNN/SharedLSTM macro final-size/trend heads, next-user autoregressive sampled softmax, FOREST-style soft macro/micro coupling, and CasFT-style Euler continuous cumulative trend decoding.",
+      "legacy_boundary": "This formal model replaces the legacy candidate-row KT2JointModel path; prefix+candidate feature rows are retained only for ablation.",
+      "note": "KT2SequenceJointModel is the formal sequence-based KT2 model. It is not an original MINDS, FOREST, or CasFT paper reproduction; it migrates their backbone/coupling/trend ideas.",
+      "research_migration": {
+        "MINDS": "Primary backbone orientation: dynamic cascade hypergraph, social graph, and shared sequence state.",
+        "FOREST": "Soft coupling uses expected micro rollout growth as an auxiliary macro trend signal.",
+        "CasFT": "Continuous trend head predicts monotonic future cumulative size checkpoints."
+      },
+      "msle": 0.16266365889160297,
+      "mae": 7.180827392737071,
+      "rmse": 17.451704798178284,
+      "mape_percent": 19.58915775981364,
+      "smape_percent": 20.90604342966915,
+      "direction_accuracy": 1.0,
+      "trend_mae": 157.00487480570874,
+      "trend_rmse": 186.6996170463535,
+      "candidate_recall_full": 0.9233333333333333,
+      "mrr": 0.0026569780537359323,
+      "macro_micro_soft_consistency": 0.0026764798515086846,
+      "rollout_step_count_mean": 5.0,
+      "rollout_unique_user_count_mean": 5.0,
+      "rollout_topk_examples": [
+        {
+          "event_id": 0,
+          "obs_ratio": 0.10000000149011612,
+          "top_users": [
+            {
+              "user_bucket": 3501,
+              "score": 0.001316961832344532
+            },
+            {
+              "user_bucket": 1671,
+              "score": 0.0011833823518827558
+            },
+            {
+              "user_bucket": 1026,
+              "score": 0.001156069920398295
+            },
+            {
+              "user_bucket": 183,
+              "score": 0.0010918753687292337
+            },
+            {
+              "user_bucket": 1951,
+              "score": 0.0010382152395322919
+            }
+          ]
+        },
+        {
+          "event_id": 0,
+          "obs_ratio": 0.30000001192092896,
+          "top_users": [
+            {
+              "user_bucket": 3501,
+              "score": 0.0010344811016693711
+            },
+            {
+              "user_bucket": 1671,
+              "score": 0.0010239089606329799
+            },
+            {
+              "user_bucket": 1026,
+              "score": 0.0010033899452537298
+            },
+            {
+              "user_bucket": 1951,
+              "score": 0.0009481331217102706
+            },
+            {
+              "user_bucket": 183,
+              "score": 0.0009002876468002796
+            }
+          ]
+        },
+        {
+          "event_id": 0,
+          "obs_ratio": 0.5,
+          "top_users": [
+            {
+              "user_bucket": 3501,
+              "score": 0.0010287154000252485
+            },
+            {
+              "user_bucket": 1026,
+              "score": 0.0010157589567825198
+            },
+            {
+              "user_bucket": 1671,
+              "score": 0.0010000347392633557
+            },
+            {
+              "user_bucket": 183,
+              "score": 0.0009137961897067726
+            },
+            {
+              "user_bucket": 1951,
+              "score": 0.000904194253962487
+            }
+          ]
+        }
+      ],
+      "hits@10": 0.006666666666666667,
+      "map@10": 0.0013888888888888887,
+      "ndcg@10": 0.002622945817271384,
+      "hits@50": 0.013333333333333334,
+      "map@50": 0.00160752688172043,
+      "ndcg@50": 0.0039624427725450505,
+      "hits@100": 0.03,
+      "map@100": 0.0018258705192451018,
+      "ndcg@100": 0.006616539557153378,
+      "comparison_role": "trainable_kt2_sequence_candidate",
+      "config_id": "kt2-sample-300c-5ep-3seed",
+      "experiment_seed": 43,
+      "experiment_dataset": "twitter",
+      "experiment_scope": "kt2_sequence_vs_original_minds_same_source"
+    },
+    {
+      "model": "MINDS",
+      "dataset": "twitter",
+      "adapter_dataset": "kt2_twitter",
+      "task": "multi_scale",
+      "status": "ok",
+      "reproduction_level": "public_code_adapter",
+      "seed": 44,
+      "config_id": "kt2-sample-300c-5ep-3seed",
+      "epochs": 5,
+      "selection": "best_valid_map@100",
+      "best_epoch": 5,
+      "methodology": "Original MINDS public-code adapter: sequential hypergraphs, adversarial learning, macro/micro diffusion prediction.",
+      "protocol_source": "converted from FOREST twitter cascade.txt",
+      "valid_map@100": 0.04427435297514721,
+      "valid_msle": 0.16023088875226676,
+      "hits@10": 0.05901116427432217,
+      "map@10": 0.0483956101218289,
+      "hits@50": 0.10845295055821372,
+      "map@50": 0.050391475549725256,
+      "hits@100": 0.1371610845295056,
+      "map@100": 0.05080107638710424,
+      "msle": 0.25396596849896014,
+      "mae": null,
+      "command": [
+        "D:\\Anaconda\\python.exe",
+        "-u",
+        "G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\adapters\\minds_runner.py",
+        "--dataset_name",
+        "kt2_twitter",
+        "--report_dataset",
+        "twitter",
+        "--protocol_source",
+        "converted from FOREST twitter cascade.txt",
+        "--epochs",
+        "5",
+        "--batch_size",
+        "4",
+        "--emb_dim",
+        "32",
+        "--step_split",
+        "4",
+        "--max_seq_length",
+        "100",
+        "--device",
+        "cuda",
+        "--reproduction_level",
+        "public_code_adapter",
+        "--config_id",
+        "kt2-sample-300c-5ep-3seed",
+        "--seed",
+        "44"
+      ],
+      "cwd": "G:\\CISCN\\CogGuard\\subsystems\\kt2_repos\\MINDS\\.kt2_extracted\\MINDS",
+      "returncode": 0,
+      "elapsed_s": 183.4,
+      "log_path": "benchmark\\logs\\MINDS_twitter_seed44_kt2-sample-300c-5ep-3seed.log",
+      "comparison_role": "trainable_original_minds_baseline",
+      "minds_staged_dataset": {
+        "status": "ok",
+        "dataset_name": "kt2_twitter",
+        "path": "G:\\CISCN\\CogGuard\\subsystems\\kt2_repos\\MINDS\\.kt2_extracted\\MINDS\\data\\kt2_twitter",
+        "cascades": 300,
+        "users": 7543,
+        "edges": 432840
+      }
+    },
+    {
+      "model": "KT2SequenceJointModel",
+      "dataset": "twitter",
+      "task": "multi_scale",
+      "status": "ok",
+      "reproduction_level": "kt2_sequence_joint_model_small_run",
+      "seed": 44,
+      "mode": "sequence_joint_macro_micro_training",
+      "train_windows": 900,
+      "train_cascades_used": 300,
+      "eval_cascades_used": 100,
+      "obs_ratios": [
+        0.1,
+        0.3,
+        0.5
+      ],
+      "macro_micro_consistency": 0.0017239844487661842,
+      "rollout_summary": {
+        "rollout_steps": 5,
+        "rollout_step_count_mean": 5.0,
+        "rollout_unique_user_count_mean": 5.0,
+        "topk_examples": [
+          {
+            "event_id": 0,
+            "obs_ratio": 0.10000000149011612,
+            "top_users": [
+              {
+                "user_bucket": 3197,
+                "score": 0.0010567887220531702
+              },
+              {
+                "user_bucket": 1002,
+                "score": 0.0009018942364491522
+              },
+              {
+                "user_bucket": 1993,
+                "score": 0.0007719139684922993
+              },
+              {
+                "user_bucket": 443,
+                "score": 0.0007344348123297095
+              },
+              {
+                "user_bucket": 507,
+                "score": 0.0007175387581810355
+              }
+            ]
+          },
+          {
+            "event_id": 0,
+            "obs_ratio": 0.30000001192092896,
+            "top_users": [
+              {
+                "user_bucket": 3197,
+                "score": 0.0008867238648235798
+              },
+              {
+                "user_bucket": 1002,
+                "score": 0.0008168907952494919
+              },
+              {
+                "user_bucket": 1993,
+                "score": 0.0007798389415256679
+              },
+              {
+                "user_bucket": 443,
+                "score": 0.0007554180920124054
+              },
+              {
+                "user_bucket": 507,
+                "score": 0.0007111449958756566
+              }
+            ]
+          },
+          {
+            "event_id": 0,
+            "obs_ratio": 0.5,
+            "top_users": [
+              {
+                "user_bucket": 1002,
+                "score": 0.000826795760076493
+              },
+              {
+                "user_bucket": 3197,
+                "score": 0.0008012271719053388
+              },
+              {
+                "user_bucket": 1993,
+                "score": 0.0007846902590245008
+              },
+              {
+                "user_bucket": 443,
+                "score": 0.0007609011372551322
+              },
+              {
+                "user_bucket": 507,
+                "score": 0.0007146635325625539
+              }
+            ]
+          }
+        ]
+      },
+      "candidate_protocol_audit": {
+        "candidate_source": "sampled softmax negatives from training user universe; evaluation ranks train-user buckets",
+        "future_nodes_injected": false,
+        "candidate_generation_reads_future_tail": false,
+        "candidate_features_used_as_model_input": false,
+        "leakage_check_passed": true
+      },
+      "training_protocol": {
+        "backbone": "MINDS-style trainable DynamicCasHGNN + RelationGNN + SharedLSTM sequence state",
+        "backbone_components": [
+          "DynamicCasHGNN",
+          "RelationGNN",
+          "SharedLSTM",
+          "EulerTrendDecoder"
+        ],
+        "micro_target": "next_user_autoregressive_sampled_softmax",
+        "macro_target": "final_size_plus_future_cumulative_trend",
+        "obs_ratios": [
+          0.1,
+          0.3,
+          0.5
+        ],
+        "candidate_features_used_as_model_input": false,
+        "loss_weights": {
+          "final_size": 1.0,
+          "trend": 0.5,
+          "next_user": 0.5,
+          "soft_coupling": 0.05,
+          "adversarial": 0.02,
+          "diff_orthogonality": 0.01
+        },
+        "loss_normalization": "per-window losses are grouped by cascade event_id, averaged per cascade, then averaged across cascades",
+        "rollout": "autoregressive multi-step rollout aggregated into future-window Top-K",
+        "trend_decoder": "CasFT-style Euler latent dynamics with positive cumulative increments"
+      },
+      "methodology": "MINDS backbone sequence training with DynamicCasHGNN/RelationGNN/SharedLSTM macro final-size/trend heads, next-user autoregressive sampled softmax, FOREST-style soft macro/micro coupling, and CasFT-style Euler continuous cumulative trend decoding.",
+      "legacy_boundary": "This formal model replaces the legacy candidate-row KT2JointModel path; prefix+candidate feature rows are retained only for ablation.",
+      "note": "KT2SequenceJointModel is the formal sequence-based KT2 model. It is not an original MINDS, FOREST, or CasFT paper reproduction; it migrates their backbone/coupling/trend ideas.",
+      "research_migration": {
+        "MINDS": "Primary backbone orientation: dynamic cascade hypergraph, social graph, and shared sequence state.",
+        "FOREST": "Soft coupling uses expected micro rollout growth as an auxiliary macro trend signal.",
+        "CasFT": "Continuous trend head predicts monotonic future cumulative size checkpoints."
+      },
+      "msle": 0.10533706908080175,
+      "mae": 5.430569608211517,
+      "rmse": 13.989019453750762,
+      "mape_percent": 16.22192347911107,
+      "smape_percent": 16.804134714458137,
+      "direction_accuracy": 1.0,
+      "trend_mae": 182.46160497297842,
+      "trend_rmse": 213.60811933196516,
+      "candidate_recall_full": 0.9233333333333333,
+      "mrr": 0.0018448485881817083,
+      "macro_micro_soft_consistency": 0.0017239844487661842,
+      "rollout_step_count_mean": 5.0,
+      "rollout_unique_user_count_mean": 5.0,
+      "rollout_topk_examples": [
+        {
+          "event_id": 0,
+          "obs_ratio": 0.10000000149011612,
+          "top_users": [
+            {
+              "user_bucket": 3197,
+              "score": 0.0010567887220531702
+            },
+            {
+              "user_bucket": 1002,
+              "score": 0.0009018942364491522
+            },
+            {
+              "user_bucket": 1993,
+              "score": 0.0007719139684922993
+            },
+            {
+              "user_bucket": 443,
+              "score": 0.0007344348123297095
+            },
+            {
+              "user_bucket": 507,
+              "score": 0.0007175387581810355
+            }
+          ]
+        },
+        {
+          "event_id": 0,
+          "obs_ratio": 0.30000001192092896,
+          "top_users": [
+            {
+              "user_bucket": 3197,
+              "score": 0.0008867238648235798
+            },
+            {
+              "user_bucket": 1002,
+              "score": 0.0008168907952494919
+            },
+            {
+              "user_bucket": 1993,
+              "score": 0.0007798389415256679
+            },
+            {
+              "user_bucket": 443,
+              "score": 0.0007554180920124054
+            },
+            {
+              "user_bucket": 507,
+              "score": 0.0007111449958756566
+            }
+          ]
+        },
+        {
+          "event_id": 0,
+          "obs_ratio": 0.5,
+          "top_users": [
+            {
+              "user_bucket": 1002,
+              "score": 0.000826795760076493
+            },
+            {
+              "user_bucket": 3197,
+              "score": 0.0008012271719053388
+            },
+            {
+              "user_bucket": 1993,
+              "score": 0.0007846902590245008
+            },
+            {
+              "user_bucket": 443,
+              "score": 0.0007609011372551322
+            },
+            {
+              "user_bucket": 507,
+              "score": 0.0007146635325625539
+            }
+          ]
+        }
+      ],
+      "hits@10": 0.0033333333333333335,
+      "map@10": 0.0005555555555555556,
+      "ndcg@10": 0.0011873572903600739,
+      "hits@50": 0.01,
+      "map@50": 0.0007741935483870968,
+      "ndcg@50": 0.00252685424563374,
+      "hits@100": 0.02666666666666667,
+      "map@100": 0.0009925371859117688,
+      "ndcg@100": 0.005180951030242068,
+      "comparison_role": "trainable_kt2_sequence_candidate",
+      "config_id": "kt2-sample-300c-5ep-3seed",
+      "experiment_seed": 44,
+      "experiment_dataset": "twitter",
+      "experiment_scope": "kt2_sequence_vs_original_minds_same_source"
+    },
+    {
+      "model": "MINDS",
+      "dataset": "memetracker",
+      "adapter_dataset": "kt2_memetracker",
+      "task": "multi_scale",
+      "status": "ok",
+      "reproduction_level": "public_code_adapter",
+      "seed": 42,
+      "config_id": "kt2-sample-300c-5ep-3seed",
+      "epochs": 5,
+      "selection": "best_valid_map@100",
+      "best_epoch": 5,
+      "methodology": "Original MINDS public-code adapter: sequential hypergraphs, adversarial learning, macro/micro diffusion prediction.",
+      "protocol_source": "converted from FOREST memetracker cascade.txt",
+      "valid_map@100": 0.0840611552991787,
+      "valid_msle": 0.02834863093448803,
+      "hits@10": 0.13495575221238937,
+      "map@10": 0.08629723354778458,
+      "hits@50": 0.25663716814159293,
+      "map@50": 0.0919527063327553,
+      "hits@100": 0.3252212389380531,
+      "map@100": 0.09289345804568941,
+      "msle": 0.02837570183328353,
+      "mae": null,
+      "command": [
+        "D:\\Anaconda\\python.exe",
+        "-u",
+        "G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\adapters\\minds_runner.py",
+        "--dataset_name",
+        "kt2_memetracker",
+        "--report_dataset",
+        "memetracker",
+        "--protocol_source",
+        "converted from FOREST memetracker cascade.txt",
+        "--epochs",
+        "5",
+        "--batch_size",
+        "4",
+        "--emb_dim",
+        "32",
+        "--step_split",
+        "4",
+        "--max_seq_length",
+        "100",
+        "--device",
+        "cuda",
+        "--reproduction_level",
+        "public_code_adapter",
+        "--config_id",
+        "kt2-sample-300c-5ep-3seed",
+        "--seed",
+        "42"
+      ],
+      "cwd": "G:\\CISCN\\CogGuard\\subsystems\\kt2_repos\\MINDS\\.kt2_extracted\\MINDS",
+      "returncode": 0,
+      "elapsed_s": 167.9,
+      "log_path": "benchmark\\logs\\MINDS_memetracker_seed42_kt2-sample-300c-5ep-3seed.log",
+      "comparison_role": "trainable_original_minds_baseline",
+      "minds_staged_dataset": {
+        "status": "ok",
+        "dataset_name": "kt2_memetracker",
+        "path": "G:\\CISCN\\CogGuard\\subsystems\\kt2_repos\\MINDS\\.kt2_extracted\\MINDS\\data\\kt2_memetracker",
+        "cascades": 300,
+        "users": 1990,
+        "edges": 0
+      }
+    },
+    {
+      "model": "KT2SequenceJointModel",
+      "dataset": "memetracker",
+      "task": "multi_scale",
+      "status": "ok",
+      "reproduction_level": "kt2_sequence_joint_model_small_run",
+      "seed": 42,
+      "mode": "sequence_joint_macro_micro_training",
+      "train_windows": 900,
+      "train_cascades_used": 300,
+      "eval_cascades_used": 100,
+      "obs_ratios": [
+        0.1,
+        0.3,
+        0.5
+      ],
+      "macro_micro_consistency": 0.012572557598870316,
+      "rollout_summary": {
+        "rollout_steps": 5,
+        "rollout_step_count_mean": 5.0,
+        "rollout_unique_user_count_mean": 5.0,
+        "topk_examples": [
+          {
+            "event_id": 0,
+            "obs_ratio": 0.10000000149011612,
+            "top_users": [
+              {
+                "user_bucket": 184,
+                "score": 0.0054209125228226185
+              },
+              {
+                "user_bucket": 3430,
+                "score": 0.004414975177496672
+              },
+              {
+                "user_bucket": 1048,
+                "score": 0.003962424583733082
+              },
+              {
+                "user_bucket": 182,
+                "score": 0.0035278876312077045
+              },
+              {
+                "user_bucket": 3071,
+                "score": 0.003431417979300022
+              }
+            ]
+          },
+          {
+            "event_id": 0,
+            "obs_ratio": 0.30000001192092896,
+            "top_users": [
+              {
+                "user_bucket": 184,
+                "score": 0.005208911839872599
+              },
+              {
+                "user_bucket": 3430,
+                "score": 0.004606681410223246
+              },
+              {
+                "user_bucket": 1048,
+                "score": 0.0033414489589631557
+              },
+              {
+                "user_bucket": 182,
+                "score": 0.003229571972042322
+              },
+              {
+                "user_bucket": 3071,
+                "score": 0.0030447752214968204
+              }
+            ]
+          },
+          {
+            "event_id": 0,
+            "obs_ratio": 0.5,
+            "top_users": [
+              {
+                "user_bucket": 184,
+                "score": 0.0028394595719873905
+              },
+              {
+                "user_bucket": 3430,
+                "score": 0.0023308678064495325
+              },
+              {
+                "user_bucket": 1048,
+                "score": 0.0022594048641622066
+              },
+              {
+                "user_bucket": 43,
+                "score": 0.0022589003201574087
+              },
+              {
+                "user_bucket": 791,
+                "score": 0.0021322735119611025
+              }
+            ]
+          }
+        ]
+      },
+      "candidate_protocol_audit": {
+        "candidate_source": "sampled softmax negatives from training user universe; evaluation ranks train-user buckets",
+        "future_nodes_injected": false,
+        "candidate_generation_reads_future_tail": false,
+        "candidate_features_used_as_model_input": false,
+        "leakage_check_passed": true
+      },
+      "training_protocol": {
+        "backbone": "MINDS-style trainable DynamicCasHGNN + RelationGNN + SharedLSTM sequence state",
+        "backbone_components": [
+          "DynamicCasHGNN",
+          "RelationGNN",
+          "SharedLSTM",
+          "EulerTrendDecoder"
+        ],
+        "micro_target": "next_user_autoregressive_sampled_softmax",
+        "macro_target": "final_size_plus_future_cumulative_trend",
+        "obs_ratios": [
+          0.1,
+          0.3,
+          0.5
+        ],
+        "candidate_features_used_as_model_input": false,
+        "loss_weights": {
+          "final_size": 1.0,
+          "trend": 0.5,
+          "next_user": 0.5,
+          "soft_coupling": 0.05,
+          "adversarial": 0.02,
+          "diff_orthogonality": 0.01
+        },
+        "loss_normalization": "per-window losses are grouped by cascade event_id, averaged per cascade, then averaged across cascades",
+        "rollout": "autoregressive multi-step rollout aggregated into future-window Top-K",
+        "trend_decoder": "CasFT-style Euler latent dynamics with positive cumulative increments"
+      },
+      "methodology": "MINDS backbone sequence training with DynamicCasHGNN/RelationGNN/SharedLSTM macro final-size/trend heads, next-user autoregressive sampled softmax, FOREST-style soft macro/micro coupling, and CasFT-style Euler continuous cumulative trend decoding.",
+      "legacy_boundary": "This formal model replaces the legacy candidate-row KT2JointModel path; prefix+candidate feature rows are retained only for ablation.",
+      "note": "KT2SequenceJointModel is the formal sequence-based KT2 model. It is not an original MINDS, FOREST, or CasFT paper reproduction; it migrates their backbone/coupling/trend ideas.",
+      "research_migration": {
+        "MINDS": "Primary backbone orientation: dynamic cascade hypergraph, social graph, and shared sequence state.",
+        "FOREST": "Soft coupling uses expected micro rollout growth as an auxiliary macro trend signal.",
+        "CasFT": "Continuous trend head predicts monotonic future cumulative size checkpoints."
+      },
+      "msle": 0.10165726613454808,
+      "mae": 2.4636244932810465,
+      "rmse": 4.664019108888814,
+      "mape_percent": 16.83289830717584,
+      "smape_percent": 17.63348234536161,
+      "direction_accuracy": 1.0,
+      "trend_mae": 49.58112089912097,
+      "trend_rmse": 50.454161648321495,
+      "candidate_recall_full": 0.8366666666666667,
+      "mrr": 0.020120246190073604,
+      "macro_micro_soft_consistency": 0.012572557598870316,
+      "rollout_step_count_mean": 5.0,
+      "rollout_unique_user_count_mean": 5.0,
+      "rollout_topk_examples": [
+        {
+          "event_id": 0,
+          "obs_ratio": 0.10000000149011612,
+          "top_users": [
+            {
+              "user_bucket": 184,
+              "score": 0.0054209125228226185
+            },
+            {
+              "user_bucket": 3430,
+              "score": 0.004414975177496672
+            },
+            {
+              "user_bucket": 1048,
+              "score": 0.003962424583733082
+            },
+            {
+              "user_bucket": 182,
+              "score": 0.0035278876312077045
+            },
+            {
+              "user_bucket": 3071,
+              "score": 0.003431417979300022
+            }
+          ]
+        },
+        {
+          "event_id": 0,
+          "obs_ratio": 0.30000001192092896,
+          "top_users": [
+            {
+              "user_bucket": 184,
+              "score": 0.005208911839872599
+            },
+            {
+              "user_bucket": 3430,
+              "score": 0.004606681410223246
+            },
+            {
+              "user_bucket": 1048,
+              "score": 0.0033414489589631557
+            },
+            {
+              "user_bucket": 182,
+              "score": 0.003229571972042322
+            },
+            {
+              "user_bucket": 3071,
+              "score": 0.0030447752214968204
+            }
+          ]
+        },
+        {
+          "event_id": 0,
+          "obs_ratio": 0.5,
+          "top_users": [
+            {
+              "user_bucket": 184,
+              "score": 0.0028394595719873905
+            },
+            {
+              "user_bucket": 3430,
+              "score": 0.0023308678064495325
+            },
+            {
+              "user_bucket": 1048,
+              "score": 0.0022594048641622066
+            },
+            {
+              "user_bucket": 43,
+              "score": 0.0022589003201574087
+            },
+            {
+              "user_bucket": 791,
+              "score": 0.0021322735119611025
+            }
+          ]
+        }
+      ],
+      "hits@10": 0.04666666666666667,
+      "map@10": 0.016777777777777777,
+      "ndcg@10": 0.023867238708309653,
+      "hits@50": 0.06666666666666667,
+      "map@50": 0.017509213250517595,
+      "ndcg@50": 0.027953692678164787,
+      "hits@100": 0.12333333333333334,
+      "map@100": 0.018253753728944333,
+      "ndcg@100": 0.0369824372165951,
+      "comparison_role": "trainable_kt2_sequence_candidate",
+      "config_id": "kt2-sample-300c-5ep-3seed",
+      "experiment_seed": 42,
+      "experiment_dataset": "memetracker",
+      "experiment_scope": "kt2_sequence_vs_original_minds_same_source"
+    },
+    {
+      "model": "MINDS",
+      "dataset": "memetracker",
+      "adapter_dataset": "kt2_memetracker",
+      "task": "multi_scale",
+      "status": "ok",
+      "reproduction_level": "public_code_adapter",
+      "seed": 43,
+      "config_id": "kt2-sample-300c-5ep-3seed",
+      "epochs": 5,
+      "selection": "best_valid_map@100",
+      "best_epoch": 5,
+      "methodology": "Original MINDS public-code adapter: sequential hypergraphs, adversarial learning, macro/micro diffusion prediction.",
+      "protocol_source": "converted from FOREST memetracker cascade.txt",
+      "valid_map@100": 0.08475883968737948,
+      "valid_msle": 0.07423204113729298,
+      "hits@10": 0.13495575221238937,
+      "map@10": 0.08642716850854654,
+      "hits@50": 0.2588495575221239,
+      "map@50": 0.09214992227807509,
+      "hits@100": 0.33849557522123896,
+      "map@100": 0.09321532629232492,
+      "msle": 0.0873505799099803,
+      "mae": null,
+      "command": [
+        "D:\\Anaconda\\python.exe",
+        "-u",
+        "G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\adapters\\minds_runner.py",
+        "--dataset_name",
+        "kt2_memetracker",
+        "--report_dataset",
+        "memetracker",
+        "--protocol_source",
+        "converted from FOREST memetracker cascade.txt",
+        "--epochs",
+        "5",
+        "--batch_size",
+        "4",
+        "--emb_dim",
+        "32",
+        "--step_split",
+        "4",
+        "--max_seq_length",
+        "100",
+        "--device",
+        "cuda",
+        "--reproduction_level",
+        "public_code_adapter",
+        "--config_id",
+        "kt2-sample-300c-5ep-3seed",
+        "--seed",
+        "43"
+      ],
+      "cwd": "G:\\CISCN\\CogGuard\\subsystems\\kt2_repos\\MINDS\\.kt2_extracted\\MINDS",
+      "returncode": 0,
+      "elapsed_s": 167.7,
+      "log_path": "benchmark\\logs\\MINDS_memetracker_seed43_kt2-sample-300c-5ep-3seed.log",
+      "comparison_role": "trainable_original_minds_baseline",
+      "minds_staged_dataset": {
+        "status": "ok",
+        "dataset_name": "kt2_memetracker",
+        "path": "G:\\CISCN\\CogGuard\\subsystems\\kt2_repos\\MINDS\\.kt2_extracted\\MINDS\\data\\kt2_memetracker",
+        "cascades": 300,
+        "users": 1990,
+        "edges": 0
+      }
+    },
+    {
+      "model": "KT2SequenceJointModel",
+      "dataset": "memetracker",
+      "task": "multi_scale",
+      "status": "ok",
+      "reproduction_level": "kt2_sequence_joint_model_small_run",
+      "seed": 43,
+      "mode": "sequence_joint_macro_micro_training",
+      "train_windows": 900,
+      "train_cascades_used": 300,
+      "eval_cascades_used": 100,
+      "obs_ratios": [
+        0.1,
+        0.3,
+        0.5
+      ],
+      "macro_micro_consistency": 0.004742975370424098,
+      "rollout_summary": {
+        "rollout_steps": 5,
+        "rollout_step_count_mean": 5.0,
+        "rollout_unique_user_count_mean": 5.0,
+        "topk_examples": [
+          {
+            "event_id": 0,
+            "obs_ratio": 0.10000000149011612,
+            "top_users": [
+              {
+                "user_bucket": 1576,
+                "score": 0.0018906962359324098
+              },
+              {
+                "user_bucket": 929,
+                "score": 0.0016261760611087084
+              },
+              {
+                "user_bucket": 493,
+                "score": 0.0015683106612414122
+              },
+              {
+                "user_bucket": 1564,
+                "score": 0.0015176947927102447
+              },
+              {
+                "user_bucket": 219,
+                "score": 0.0014492464251816273
+              }
+            ]
+          },
+          {
+            "event_id": 0,
+            "obs_ratio": 0.30000001192092896,
+            "top_users": [
+              {
+                "user_bucket": 1564,
+                "score": 0.0018401870038360357
+              },
+              {
+                "user_bucket": 1576,
+                "score": 0.0016526224790140986
+              },
+              {
+                "user_bucket": 373,
+                "score": 0.0015264959074556828
+              },
+              {
+                "user_bucket": 2046,
+                "score": 0.001368720200844109
+              },
+              {
+                "user_bucket": 219,
+                "score": 0.0013604842824861407
+              }
+            ]
+          },
+          {
+            "event_id": 0,
+            "obs_ratio": 0.5,
+            "top_users": [
+              {
+                "user_bucket": 1564,
+                "score": 0.0019366603810340166
+              },
+              {
+                "user_bucket": 373,
+                "score": 0.0017005419358611107
+              },
+              {
+                "user_bucket": 219,
+                "score": 0.0014200517907738686
+              },
+              {
+                "user_bucket": 472,
+                "score": 0.0014111559139564633
+              },
+              {
+                "user_bucket": 1576,
+                "score": 0.0014072527410462499
+              }
+            ]
+          }
+        ]
+      },
+      "candidate_protocol_audit": {
+        "candidate_source": "sampled softmax negatives from training user universe; evaluation ranks train-user buckets",
+        "future_nodes_injected": false,
+        "candidate_generation_reads_future_tail": false,
+        "candidate_features_used_as_model_input": false,
+        "leakage_check_passed": true
+      },
+      "training_protocol": {
+        "backbone": "MINDS-style trainable DynamicCasHGNN + RelationGNN + SharedLSTM sequence state",
+        "backbone_components": [
+          "DynamicCasHGNN",
+          "RelationGNN",
+          "SharedLSTM",
+          "EulerTrendDecoder"
+        ],
+        "micro_target": "next_user_autoregressive_sampled_softmax",
+        "macro_target": "final_size_plus_future_cumulative_trend",
+        "obs_ratios": [
+          0.1,
+          0.3,
+          0.5
+        ],
+        "candidate_features_used_as_model_input": false,
+        "loss_weights": {
+          "final_size": 1.0,
+          "trend": 0.5,
+          "next_user": 0.5,
+          "soft_coupling": 0.05,
+          "adversarial": 0.02,
+          "diff_orthogonality": 0.01
+        },
+        "loss_normalization": "per-window losses are grouped by cascade event_id, averaged per cascade, then averaged across cascades",
+        "rollout": "autoregressive multi-step rollout aggregated into future-window Top-K",
+        "trend_decoder": "CasFT-style Euler latent dynamics with positive cumulative increments"
+      },
+      "methodology": "MINDS backbone sequence training with DynamicCasHGNN/RelationGNN/SharedLSTM macro final-size/trend heads, next-user autoregressive sampled softmax, FOREST-style soft macro/micro coupling, and CasFT-style Euler continuous cumulative trend decoding.",
+      "legacy_boundary": "This formal model replaces the legacy candidate-row KT2JointModel path; prefix+candidate feature rows are retained only for ablation.",
+      "note": "KT2SequenceJointModel is the formal sequence-based KT2 model. It is not an original MINDS, FOREST, or CasFT paper reproduction; it migrates their backbone/coupling/trend ideas.",
+      "research_migration": {
+        "MINDS": "Primary backbone orientation: dynamic cascade hypergraph, social graph, and shared sequence state.",
+        "FOREST": "Soft coupling uses expected micro rollout growth as an auxiliary macro trend signal.",
+        "CasFT": "Continuous trend head predicts monotonic future cumulative size checkpoints."
+      },
+      "msle": 0.1503873893434734,
+      "mae": 2.261559019088745,
+      "rmse": 4.118338760902419,
+      "mape_percent": 22.016636550306234,
+      "smape_percent": 18.77149336960208,
+      "direction_accuracy": 1.0,
+      "trend_mae": 57.13115896264712,
+      "trend_rmse": 58.06047570504401,
+      "candidate_recall_full": 0.8366666666666667,
+      "mrr": 0.010463660971217072,
+      "macro_micro_soft_consistency": 0.004742975370424098,
+      "rollout_step_count_mean": 5.0,
+      "rollout_unique_user_count_mean": 5.0,
+      "rollout_topk_examples": [
+        {
+          "event_id": 0,
+          "obs_ratio": 0.10000000149011612,
+          "top_users": [
+            {
+              "user_bucket": 1576,
+              "score": 0.0018906962359324098
+            },
+            {
+              "user_bucket": 929,
+              "score": 0.0016261760611087084
+            },
+            {
+              "user_bucket": 493,
+              "score": 0.0015683106612414122
+            },
+            {
+              "user_bucket": 1564,
+              "score": 0.0015176947927102447
+            },
+            {
+              "user_bucket": 219,
+              "score": 0.0014492464251816273
+            }
+          ]
+        },
+        {
+          "event_id": 0,
+          "obs_ratio": 0.30000001192092896,
+          "top_users": [
+            {
+              "user_bucket": 1564,
+              "score": 0.0018401870038360357
+            },
+            {
+              "user_bucket": 1576,
+              "score": 0.0016526224790140986
+            },
+            {
+              "user_bucket": 373,
+              "score": 0.0015264959074556828
+            },
+            {
+              "user_bucket": 2046,
+              "score": 0.001368720200844109
+            },
+            {
+              "user_bucket": 219,
+              "score": 0.0013604842824861407
+            }
+          ]
+        },
+        {
+          "event_id": 0,
+          "obs_ratio": 0.5,
+          "top_users": [
+            {
+              "user_bucket": 1564,
+              "score": 0.0019366603810340166
+            },
+            {
+              "user_bucket": 373,
+              "score": 0.0017005419358611107
+            },
+            {
+              "user_bucket": 219,
+              "score": 0.0014200517907738686
+            },
+            {
+              "user_bucket": 472,
+              "score": 0.0014111559139564633
+            },
+            {
+              "user_bucket": 1576,
+              "score": 0.0014072527410462499
+            }
+          ]
+        }
+      ],
+      "hits@10": 0.023333333333333334,
+      "map@10": 0.006944444444444443,
+      "ndcg@10": 0.010705708312045014,
+      "hits@50": 0.043333333333333335,
+      "map@50": 0.007672796352583586,
+      "ndcg@50": 0.014785634982529135,
+      "hits@100": 0.1,
+      "map@100": 0.008416524380688791,
+      "ndcg@100": 0.02381232212261365,
+      "comparison_role": "trainable_kt2_sequence_candidate",
+      "config_id": "kt2-sample-300c-5ep-3seed",
+      "experiment_seed": 43,
+      "experiment_dataset": "memetracker",
+      "experiment_scope": "kt2_sequence_vs_original_minds_same_source"
+    },
+    {
+      "model": "MINDS",
+      "dataset": "memetracker",
+      "adapter_dataset": "kt2_memetracker",
+      "task": "multi_scale",
+      "status": "ok",
+      "reproduction_level": "public_code_adapter",
+      "seed": 44,
+      "config_id": "kt2-sample-300c-5ep-3seed",
+      "epochs": 5,
+      "selection": "best_valid_map@100",
+      "best_epoch": 5,
+      "methodology": "Original MINDS public-code adapter: sequential hypergraphs, adversarial learning, macro/micro diffusion prediction.",
+      "protocol_source": "converted from FOREST memetracker cascade.txt",
+      "valid_map@100": 0.08429802215399862,
+      "valid_msle": 0.08912666141986847,
+      "hits@10": 0.13716814159292035,
+      "map@10": 0.08622173239699507,
+      "hits@50": 0.25442477876106195,
+      "map@50": 0.09132884983467844,
+      "hits@100": 0.33185840707964603,
+      "map@100": 0.09237735883324547,
+      "msle": 0.08452615956775844,
+      "mae": null,
+      "command": [
+        "D:\\Anaconda\\python.exe",
+        "-u",
+        "G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\adapters\\minds_runner.py",
+        "--dataset_name",
+        "kt2_memetracker",
+        "--report_dataset",
+        "memetracker",
+        "--protocol_source",
+        "converted from FOREST memetracker cascade.txt",
+        "--epochs",
+        "5",
+        "--batch_size",
+        "4",
+        "--emb_dim",
+        "32",
+        "--step_split",
+        "4",
+        "--max_seq_length",
+        "100",
+        "--device",
+        "cuda",
+        "--reproduction_level",
+        "public_code_adapter",
+        "--config_id",
+        "kt2-sample-300c-5ep-3seed",
+        "--seed",
+        "44"
+      ],
+      "cwd": "G:\\CISCN\\CogGuard\\subsystems\\kt2_repos\\MINDS\\.kt2_extracted\\MINDS",
+      "returncode": 0,
+      "elapsed_s": 163.7,
+      "log_path": "benchmark\\logs\\MINDS_memetracker_seed44_kt2-sample-300c-5ep-3seed.log",
+      "comparison_role": "trainable_original_minds_baseline",
+      "minds_staged_dataset": {
+        "status": "ok",
+        "dataset_name": "kt2_memetracker",
+        "path": "G:\\CISCN\\CogGuard\\subsystems\\kt2_repos\\MINDS\\.kt2_extracted\\MINDS\\data\\kt2_memetracker",
+        "cascades": 300,
+        "users": 1990,
+        "edges": 0
+      }
+    },
+    {
+      "model": "KT2SequenceJointModel",
+      "dataset": "memetracker",
+      "task": "multi_scale",
+      "status": "ok",
+      "reproduction_level": "kt2_sequence_joint_model_small_run",
+      "seed": 44,
+      "mode": "sequence_joint_macro_micro_training",
+      "train_windows": 900,
+      "train_cascades_used": 300,
+      "eval_cascades_used": 100,
+      "obs_ratios": [
+        0.1,
+        0.3,
+        0.5
+      ],
+      "macro_micro_consistency": 0.004713150332515908,
+      "rollout_summary": {
+        "rollout_steps": 5,
+        "rollout_step_count_mean": 5.0,
+        "rollout_unique_user_count_mean": 5.0,
+        "topk_examples": [
+          {
+            "event_id": 0,
+            "obs_ratio": 0.10000000149011612,
+            "top_users": [
+              {
+                "user_bucket": 815,
+                "score": 0.0019667809829115868
+              },
+              {
+                "user_bucket": 243,
+                "score": 0.0016625358257442713
+              },
+              {
+                "user_bucket": 631,
+                "score": 0.001661388436332345
+              },
+              {
+                "user_bucket": 1384,
+                "score": 0.0016340954462066293
+              },
+              {
+                "user_bucket": 745,
+                "score": 0.001607575104571879
+              }
+            ]
+          },
+          {
+            "event_id": 0,
+            "obs_ratio": 0.30000001192092896,
+            "top_users": [
+              {
+                "user_bucket": 815,
+                "score": 0.001946043106727302
+              },
+              {
+                "user_bucket": 1384,
+                "score": 0.0017944573191925883
+              },
+              {
+                "user_bucket": 745,
+                "score": 0.0016505722887814045
+              },
+              {
+                "user_bucket": 243,
+                "score": 0.0016397458966821432
+              },
+              {
+                "user_bucket": 3661,
+                "score": 0.001579045900143683
+              }
+            ]
+          },
+          {
+            "event_id": 0,
+            "obs_ratio": 0.5,
+            "top_users": [
+              {
+                "user_bucket": 815,
+                "score": 0.0022129889111965895
+              },
+              {
+                "user_bucket": 1384,
+                "score": 0.0018972717225551605
+              },
+              {
+                "user_bucket": 1445,
+                "score": 0.0017099636606872082
+              },
+              {
+                "user_bucket": 243,
+                "score": 0.0017067644512280822
+              },
+              {
+                "user_bucket": 745,
+                "score": 0.0016990115400403738
+              }
+            ]
+          }
+        ]
+      },
+      "candidate_protocol_audit": {
+        "candidate_source": "sampled softmax negatives from training user universe; evaluation ranks train-user buckets",
+        "future_nodes_injected": false,
+        "candidate_generation_reads_future_tail": false,
+        "candidate_features_used_as_model_input": false,
+        "leakage_check_passed": true
+      },
+      "training_protocol": {
+        "backbone": "MINDS-style trainable DynamicCasHGNN + RelationGNN + SharedLSTM sequence state",
+        "backbone_components": [
+          "DynamicCasHGNN",
+          "RelationGNN",
+          "SharedLSTM",
+          "EulerTrendDecoder"
+        ],
+        "micro_target": "next_user_autoregressive_sampled_softmax",
+        "macro_target": "final_size_plus_future_cumulative_trend",
+        "obs_ratios": [
+          0.1,
+          0.3,
+          0.5
+        ],
+        "candidate_features_used_as_model_input": false,
+        "loss_weights": {
+          "final_size": 1.0,
+          "trend": 0.5,
+          "next_user": 0.5,
+          "soft_coupling": 0.05,
+          "adversarial": 0.02,
+          "diff_orthogonality": 0.01
+        },
+        "loss_normalization": "per-window losses are grouped by cascade event_id, averaged per cascade, then averaged across cascades",
+        "rollout": "autoregressive multi-step rollout aggregated into future-window Top-K",
+        "trend_decoder": "CasFT-style Euler latent dynamics with positive cumulative increments"
+      },
+      "methodology": "MINDS backbone sequence training with DynamicCasHGNN/RelationGNN/SharedLSTM macro final-size/trend heads, next-user autoregressive sampled softmax, FOREST-style soft macro/micro coupling, and CasFT-style Euler continuous cumulative trend decoding.",
+      "legacy_boundary": "This formal model replaces the legacy candidate-row KT2JointModel path; prefix+candidate feature rows are retained only for ablation.",
+      "note": "KT2SequenceJointModel is the formal sequence-based KT2 model. It is not an original MINDS, FOREST, or CasFT paper reproduction; it migrates their backbone/coupling/trend ideas.",
+      "research_migration": {
+        "MINDS": "Primary backbone orientation: dynamic cascade hypergraph, social graph, and shared sequence state.",
+        "FOREST": "Soft coupling uses expected micro rollout growth as an auxiliary macro trend signal.",
+        "CasFT": "Continuous trend head predicts monotonic future cumulative size checkpoints."
+      },
+      "msle": 0.129298815163203,
+      "mae": 2.5333680311838784,
+      "rmse": 5.027652493193804,
+      "mape_percent": 18.655141632310848,
+      "smape_percent": 18.739696921599133,
+      "direction_accuracy": 1.0,
+      "trend_mae": 48.80870593190193,
+      "trend_rmse": 49.75958206918265,
+      "candidate_recall_full": 0.8366666666666667,
+      "mrr": 0.006316630271285216,
+      "macro_micro_soft_consistency": 0.004713150332515908,
+      "rollout_step_count_mean": 5.0,
+      "rollout_unique_user_count_mean": 5.0,
+      "rollout_topk_examples": [
+        {
+          "event_id": 0,
+          "obs_ratio": 0.10000000149011612,
+          "top_users": [
+            {
+              "user_bucket": 815,
+              "score": 0.0019667809829115868
+            },
+            {
+              "user_bucket": 243,
+              "score": 0.0016625358257442713
+            },
+            {
+              "user_bucket": 631,
+              "score": 0.001661388436332345
+            },
+            {
+              "user_bucket": 1384,
+              "score": 0.0016340954462066293
+            },
+            {
+              "user_bucket": 745,
+              "score": 0.001607575104571879
+            }
+          ]
+        },
+        {
+          "event_id": 0,
+          "obs_ratio": 0.30000001192092896,
+          "top_users": [
+            {
+              "user_bucket": 815,
+              "score": 0.001946043106727302
+            },
+            {
+              "user_bucket": 1384,
+              "score": 0.0017944573191925883
+            },
+            {
+              "user_bucket": 745,
+              "score": 0.0016505722887814045
+            },
+            {
+              "user_bucket": 243,
+              "score": 0.0016397458966821432
+            },
+            {
+              "user_bucket": 3661,
+              "score": 0.001579045900143683
+            }
+          ]
+        },
+        {
+          "event_id": 0,
+          "obs_ratio": 0.5,
+          "top_users": [
+            {
+              "user_bucket": 815,
+              "score": 0.0022129889111965895
+            },
+            {
+              "user_bucket": 1384,
+              "score": 0.0018972717225551605
+            },
+            {
+              "user_bucket": 1445,
+              "score": 0.0017099636606872082
+            },
+            {
+              "user_bucket": 243,
+              "score": 0.0017067644512280822
+            },
+            {
+              "user_bucket": 745,
+              "score": 0.0016990115400403738
+            }
+          ]
+        }
+      ],
+      "hits@10": 0.016666666666666666,
+      "map@10": 0.0027777777777777775,
+      "ndcg@10": 0.005936786451800369,
+      "hits@50": 0.03666666666666667,
+      "map@50": 0.00350612968591692,
+      "ndcg@50": 0.010016713122284493,
+      "hits@100": 0.09333333333333334,
+      "map@100": 0.004247956543091744,
+      "ndcg@100": 0.019037878546976292,
+      "comparison_role": "trainable_kt2_sequence_candidate",
+      "config_id": "kt2-sample-300c-5ep-3seed",
+      "experiment_seed": 44,
+      "experiment_dataset": "memetracker",
+      "experiment_scope": "kt2_sequence_vs_original_minds_same_source"
+    }
+  ],
+  "elapsed_s": 1748.5
+}
