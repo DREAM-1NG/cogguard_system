@@ -1,6 +1,13 @@
 """SQLAlchemy ORM model package exports."""
 
 from app.models.coordination_registry import CoordinationDataset, CoordinationRun
+from app.models.analysis import AnalysisModelActivation
+from app.models.analysis import AnalysisModelVersion
+from app.models.analysis import AnalysisRun
+from app.models.analysis import AnalysisRunEvent
+from app.models.analysis import EventSnapshotRecord
+from app.models.analysis import ReviewFeedback
+from app.models.analysis import ReviewVerdictVersion
 from app.models.kt3_system import KT3AgentDebateTrace
 from app.models.kt3_system import KT3AgentFeedback
 from app.models.kt3_system import KT3AgentReport
@@ -27,6 +34,13 @@ __all__ = [
     "CoordinationDataset",
     "CoordinationRun",
     "CrawlJob",
+    "AnalysisModelActivation",
+    "AnalysisModelVersion",
+    "AnalysisRun",
+    "AnalysisRunEvent",
+    "EventSnapshotRecord",
+    "ReviewFeedback",
+    "ReviewVerdictVersion",
     "KT3AgentDebateTrace",
     "KT3AgentFeedback",
     "KT3AgentReport",

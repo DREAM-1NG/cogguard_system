@@ -4,7 +4,7 @@
 > **受众**：开发者、项目维护者、后续执行任务的 AI agent。  
 > **维护规则**：只维护可执行工程路线和状态；研究定位、文献依据和关键技术背景放入 `../research/`。
 
-> 最后更新：2026-07-02
+> 最后更新：2026-07-13
 
 ## 技术决策记录
 
@@ -23,6 +23,7 @@
 | BotRHG 社交机器人检测 | 轻量系统适配器 | 对接 NLPCC 2026 BotRHG 方法契约，输出可靠性路由、KNN 支持超边与选择性残差修正结果 |
 | LLM 支持 | 暂不集成，预留接口 | 当前用规则引擎 + NLP 模型，后续可接入 LLM |
 | 任务队列 | Celery + Redis | 爬虫、分析等耗时操作异步执行 |
+| 统一分析入口 | EventSnapshot + AnalysisRun + V2 API | KT1/KT2/KT3 共享不可变输入、状态机、REST/SSE 恢复路径 |
 | 包管理 | uv (后端) / npm (前端) | 高效依赖管理 |
 
 ---
@@ -53,6 +54,7 @@
 | 前端 - 布局与认证 | ✅ 已完成 | P0 | 后端认证模块 |
 | 前端 - 采集管理页 | ✅ 已完成 | P0 | 后端采集模块 |
 | 数据采集模块（真实爬虫） | ✅ 已完成 | P1 | Mock 模块完成 |
+| 统一分析运行底座 | 🔧 接口与持久化已完成 | P1 | 真实数据采集 |
 | 协同检测模块（旧方向 CooRTweet） | ✅ MVP 已完成 | P1 | 数据采集 |
 | 协同检测模块（新方向 PSL） | 🔲 待实现（设计已就绪） | P1 | 旧方向 MVP |
 | 传播监控模块（KT2 WP1-3） | ✅ 已完成 | P1 | 数据采集、协同检测 |
@@ -118,6 +120,19 @@
   - [x] `NewsExtractCrawler.collect()` 直接调用内部 `ExtractorService`，不依赖 HTTP 后端或外部根路径
   - [x] detector 识别 URL 平台，并保留当前注册 adapter 的完整提取能力
 - [x] `crawl_tasks.py` 只依赖 `BaseCrawler.collect() -> CrawlBatch`，统一写入帖子、评论和 `crawl_metadata`
+
+#### 2.0.1 统一分析运行底座 🔧
+
+- [x] `EventSnapshot` 契约：事件、平台、核心/上下文时间窗、规范化内容、观测关系、质量报告、provenance、数据指纹
+- [x] `AnalysisRegistry`：从 MongoDB `raw_posts` / `raw_comments` 构建快照，幂等写入 `analysis_event_snapshots`，并注册 MySQL manifest
+- [x] `AnalysisRun` 状态机：`queued/running/needs_evidence/awaiting_review/completed/failed/cancelled`
+- [x] V2 初始接口：`/api/v2/analysis/snapshots`、`/runs`、`/runs/{run_id}`、`/runs/{run_id}/events`、`/runs/{run_id}/events/stream`
+- [x] SSE 恢复：使用 `Last-Event-ID` 或 REST `after_id` 返回追加事件
+- [x] 判决版本表支持同一 `verdict_id` 多版本，唯一性落在 `(verdict_id, version)`
+- [ ] 将 `CoordinationEngine.analyze(snapshot, options)` 接到 V2 run 执行路径
+- [ ] 将 `PropagationEngine.hindcast(snapshot, options)` 接到 V2 run 执行路径，并完成 KT2 内置化
+- [ ] 将 Student 同步推理与 Teacher 异步 job 接到 V2 run / verdict 治理
+- [ ] 前端分析员工作流迁移到 V2 运行与 SSE 恢复
 
 #### 2.1 协同检测模块 ✅
 

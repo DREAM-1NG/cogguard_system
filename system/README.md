@@ -31,16 +31,12 @@ system/
 │   │   ├── celery_app.py           # Celery 异步任务队列配置
 │   │   │
 │   │   ├── api/                    # API 路由层
-│   │   │   └── v1/
-│   │   │       ├── router.py       # v1 路由聚合 + 健康检查接口
-│   │   │       ├── auth.py         # 认证接口（注册/登录/刷新/个人信息）
-│   │   │       ├── crawl.py        # 数据采集接口（创建任务/任务列表/数据查询）
-│   │   │       ├── coordination.py # 协同检测接口
-│   │   │       ├── propagation.py  # 传播归因接口
-│   │   │       └── accounts.py     # 账户监测与 BotRHG 社交机器人检测接口
+│   │   │   ├── v1/                 # 既有业务 API（保留一个发布周期）
+│   │   │   └── v2/                 # 统一分析 API（EventSnapshot / AnalysisRun / SSE）
 │   │   │
 │   │   ├── core/                   # 核心业务逻辑
 │   │   │   ├── security.py         # JWT 认证 + bcrypt 密码哈希
+│   │   │   ├── analysis/           # 统一事件快照、运行状态机、registry、SSE 恢复
 │   │   │   ├── propagation.py      # 传播子图与时间线、关键角色
 │   │   │   ├── account_profiler.py # 账户行为画像与自动化倾向评分
 │   │   │   ├── bot_detection.py    # BotRHG 风格账号级社交机器人检测
@@ -55,11 +51,13 @@ system/
 │   │   │       └── types.py        # collect request / batch 类型
 │   │   │
 │   │   ├── models/                 # 数据库模型
+│   │   │   ├── analysis.py         # EventSnapshot manifest / AnalysisRun / verdict governance
 │   │   │   ├── user.py             # 用户表 (MySQL/SQLAlchemy)
 │   │   │   ├── task.py             # 采集任务表 (MySQL/SQLAlchemy)
 │   │   │   └── post.py             # 帖子/评论文档模型 (MongoDB/Pydantic)
 │   │   │
 │   │   ├── schemas/                # Pydantic 请求/响应模式
+│   │   │   ├── analysis.py         # V2 分析运行请求 schema
 │   │   │   ├── auth.py             # 认证相关（Login/Register/Token/UserInfo）
 │   │   │   └── crawl.py            # 采集相关（CrawlRequest/JobResponse/PostResponse）
 │   │   │
@@ -89,6 +87,8 @@ system/
 │       ├── test_health.py          # 健康检查测试
 │       ├── test_auth.py            # 认证模块测试（需要 MySQL）
 │       ├── test_crawl.py           # 采集模块测试（含纯单元测试）
+│       ├── test_analysis_registry.py # 统一分析 registry / run 事件测试
+│       ├── test_analysis_v2_api.py   # V2 分析 API / SSE 恢复测试
 │       └── test_mediacrawler_env.py # MediaCrawler 环境解析测试
 │
 ├── runtimes/                       # 内置 crawler runtime
@@ -158,6 +158,18 @@ docker compose ps            # 确认所有服务 healthy
 ```
 
 > `docker compose` 只负责 MySQL / MongoDB / Redis。社交与新闻采集运行时已 vendored 到仓库内部，后端会直接调用 `system/runtimes/*`。
+
+### 统一分析 V2 入口
+
+当前系统新增 `/api/v2/analysis/*` 作为 KT1、KT2、Student、Teacher 的统一入口层：
+
+- `POST /api/v2/analysis/snapshots`：从 MongoDB `raw_posts` / `raw_comments` 生成不可变 `EventSnapshot`，并注册 MySQL manifest。
+- `POST /api/v2/analysis/runs`：为一个 snapshot 创建 `AnalysisRun`，初始状态为 `queued`。
+- `GET /api/v2/analysis/runs/{run_id}`：查询 run 当前状态。
+- `GET /api/v2/analysis/runs/{run_id}/events?after_id=<id>`：REST 恢复路径，返回指定 cursor 之后的事件。
+- `GET /api/v2/analysis/runs/{run_id}/events/stream`：SSE backlog 输出，支持 `Last-Event-ID` 恢复。
+
+当前 V2 已完成输入、持久化、状态机和恢复路径。KT1/KT2/KT3 模型执行仍处于后续接线阶段，不应把该入口等同于三项关键技术的研究级完成。
 
 ### 第二步（可选）：配置并验证内置 social runtime
 

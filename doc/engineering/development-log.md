@@ -18,6 +18,19 @@
 
 ---
 
+## 2026-07-13
+
+- 建立统一分析运行底座：新增 EventSnapshot registry、AnalysisRun 事件流、V2 分析 API 与 SSE `Last-Event-ID` 恢复路径，为 KT1/KT2/Student/Teacher 接入提供统一入口。
+- `system/backend/app/core/analysis/`：新增 `registry.py` 与 `sse.py`，快照从 MongoDB `raw_posts` / `raw_comments` 构建，快照文档以 `$setOnInsert` 幂等写入 `analysis_event_snapshots`，run 事件按自增 ID 作为恢复 cursor。
+- `system/backend/app/api/v2/`、`system/backend/app/schemas/analysis.py`、`system/backend/app/main.py`：新增 `/api/v2/analysis/*` 路由并挂载 V2，包括快照创建、run 创建/查询、REST 事件恢复和 SSE backlog 输出。
+- `system/backend/app/models/analysis.py`、`system/backend/alembic/versions/9a2e4b7c1d55_add_analysis_persistence_tables.py`：修正 ReviewVerdictVersion 版本约束，`verdict_id` 改为普通索引，`(verdict_id, version)` 作为唯一约束。
+- `system/backend/tests/test_analysis_registry.py`、`system/backend/tests/test_analysis_v2_api.py`、`system/backend/tests/test_analysis_persistence_models.py`：新增/更新回归测试，覆盖 registry 幂等、run 状态转换、事件 cursor、SSE 格式和 V2 主应用挂载。
+- 文档：`CONTEXT.md`、`doc/engineering/development-roadmap.md`、`system/README.md` 同步统一分析语言、接口状态和剩余接线任务。
+- 验证：`python -m pytest tests/test_analysis_contracts.py tests/test_analysis_persistence_models.py tests/test_analysis_registry.py tests/test_analysis_v2_api.py -q`。
+- 已知未完成：KT1/KT2/KT3 引擎尚未接到 V2 run 执行路径；`kt2_prediction_service.py` 仍有 `subsystems/cogguard_dev` 外部路径，需在 KT2 内置化阶段消除。
+
+---
+
 ## 2026-07-02
 
 - 接入 BotRHG 风格社交机器人检测后端能力，将 NLPCC 2026 投稿方法的“特征编码 → KNN 支持超边 → 可靠性路由 → 选择性残差修正”落为账号级 API 契约。

@@ -1,3 +1,37 @@
+# CogGuard System Context
+
+This context defines shared language for the current system refactor. It separates deployed system contracts from research claims so implementation, evaluation, and documentation do not drift.
+
+## Unified Analysis Language
+
+**Event Snapshot**:
+An immutable, content-addressed analysis input built from MongoDB `raw_posts` and `raw_comments`. It contains event ID, platforms, core/context time windows, normalized content, observed relationships, quality report, provenance, and data fingerprint.
+_Avoid_: ad hoc event query, temporary dataframe, surface count
+
+**Analysis Run**:
+A MySQL-tracked execution request against one Event Snapshot. Its state is one of `queued`, `running`, `needs_evidence`, `awaiting_review`, `completed`, `failed`, or `cancelled`.
+_Avoid_: background task only, dashboard request, implicit pipeline state
+
+**Analysis Run Event**:
+An append-only event stream item for one Analysis Run. The numeric event ID is the recovery cursor for REST polling and SSE `Last-Event-ID`.
+_Avoid_: log line, progress string
+
+**Review Verdict**:
+A versioned review decision. `preliminary` and `teacher_advisory` are not canonical. Only an analyst-approved immutable version can become `canonical`.
+_Avoid_: latest label, model output, mutable review status
+
+**Teacher**:
+The asynchronous multi-agent research review runtime. It may advise, calibrate, and produce evidence, but does not become canonical without analyst approval.
+_Avoid_: rule engine, final detector
+
+**Student**:
+The synchronous deployable review runtime distilled from approved evidence and Teacher traces. It must be versioned, measured, and activated through explicit governance.
+_Avoid_: heuristic shortcut, unversioned classifier
+
+Current implementation status: Event Snapshot contracts, registry persistence, Analysis Run lifecycle, V2 REST routes, and SSE recovery are implemented as the system entry layer. KT1/KT2/KT3 engines still need to be wired behind this layer before research-grade completion can be claimed.
+
+---
+
 # CogGuard KT3 Context
 
 This context defines the shared language for KT3 harmfulness assessment. It keeps research, implementation, and evaluation discussions aligned around the same post-level and group-level concepts.
