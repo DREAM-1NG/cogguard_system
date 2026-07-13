@@ -7,7 +7,8 @@ from typing import Any
 import pytest
 
 from app.core.analysis import AnalysisRunStatus, InvalidRunTransition, TimeWindow
-from app.core.analysis.registry import AnalysisRegistry
+from app.core.analysis.registry import AnalysisRegistry, SqlAlchemyAnalysisStore
+from app.models.analysis import AnalysisRun
 
 
 class FakeCursor:
@@ -149,6 +150,14 @@ class FakeAnalysisStore:
         ][:limit]
 
 
+class FakeSession:
+    def __init__(self) -> None:
+        self.flush_count = 0
+
+    async def flush(self) -> None:
+        self.flush_count += 1
+
+
 def _dt(day: int, hour: int = 0) -> datetime:
     return datetime(2026, 5, day, hour, tzinfo=timezone.utc)
 
@@ -255,5 +264,39 @@ def test_registry_creates_run_events_and_recovers_after_cursor():
         assert [event["status"] for event in events_after_first] == ["running", "completed"]
         with pytest.raises(InvalidRunTransition):
             await registry.transition_run_status("run_fixed", AnalysisRunStatus.RUNNING)
+
+    asyncio.run(scenario())
+
+
+def test_sqlalchemy_store_persists_results_for_needs_evidence_runs():
+    async def scenario():
+        run = AnalysisRun(
+            run_id="run_needs_evidence",
+            event_id="trump_visit",
+            snapshot_id="snapshot_a",
+            status=AnalysisRunStatus.RUNNING.value,
+            requested_stages_json='["kt1"]',
+            options_json="{}",
+            artifact_manifest_json="{}",
+            created_by=1,
+        )
+        session = FakeSession()
+        store = SqlAlchemyAnalysisStore(session)  # type: ignore[arg-type]
+
+        async def fake_get_run(run_id: str):
+            assert run_id == "run_needs_evidence"
+            return run
+
+        store.get_run = fake_get_run  # type: ignore[method-assign]
+
+        updated = await store.update_run_status(
+            run_id="run_needs_evidence",
+            status=AnalysisRunStatus.NEEDS_EVIDENCE,
+            payload={"results": {"kt1": {"status": "unavailable"}}},
+            finished=False,
+        )
+
+        assert updated.result_json == '{"results": {"kt1": {"status": "unavailable"}}}'
+        assert session.flush_count == 1
 
     asyncio.run(scenario())

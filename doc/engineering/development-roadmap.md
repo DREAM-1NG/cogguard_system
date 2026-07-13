@@ -126,12 +126,13 @@
 - [x] `EventSnapshot` 契约：事件、平台、核心/上下文时间窗、规范化内容、观测关系、质量报告、provenance、数据指纹
 - [x] `AnalysisRegistry`：从 MongoDB `raw_posts` / `raw_comments` 构建快照，幂等写入 `analysis_event_snapshots`，并注册 MySQL manifest
 - [x] `AnalysisRun` 状态机：`queued/running/needs_evidence/awaiting_review/completed/failed/cancelled`
-- [x] V2 初始接口：`/api/v2/analysis/snapshots`、`/runs`、`/runs/{run_id}`、`/runs/{run_id}/events`、`/runs/{run_id}/events/stream`
+- [x] V2 初始接口：`/api/v2/analysis/snapshots`、`/runs`、`/runs/{run_id}`、`/runs/{run_id}/execute`、`/runs/{run_id}/events`、`/runs/{run_id}/events/stream`
 - [x] SSE 恢复：使用 `Last-Event-ID` 或 REST `after_id` 返回追加事件
 - [x] 判决版本表支持同一 `verdict_id` 多版本，唯一性落在 `(verdict_id, version)`
-- [ ] 将 `CoordinationEngine.analyze(snapshot, options)` 接到 V2 run 执行路径
-- [ ] 将 `PropagationEngine.hindcast(snapshot, options)` 接到 V2 run 执行路径，并完成 KT2 内置化
-- [ ] 将 Student 同步推理与 Teacher 异步 job 接到 V2 run / verdict 治理
+- [x] `AnalysisExecutor`：以 `EventSnapshot` 为输入，顺序调用 `CoordinationEngine.analyze`、`PropagationEngine.hindcast`、`StudentRuntime.predict`、`TeacherJobPort.submit` 端口并写入 run events
+- [ ] 将 KT1 canonical coordination engine 接到 `CoordinationEngine.analyze(snapshot, options)`，替换默认 unavailable
+- [ ] 将 KT2 live runner、公开数据 loader、checkpoint adapter 接到 `PropagationEngine.hindcast(snapshot, options)`，完成 KT2 内置化
+- [ ] 将 Student 同步推理与 Teacher 异步 Celery DAG 接到 V2 run / verdict 治理，替换默认 unavailable
 - [ ] 前端分析员工作流迁移到 V2 运行与 SSE 恢复
 
 #### 2.1 协同检测模块 ✅

@@ -36,7 +36,7 @@ system/
 │   │   │
 │   │   ├── core/                   # 核心业务逻辑
 │   │   │   ├── security.py         # JWT 认证 + bcrypt 密码哈希
-│   │   │   ├── analysis/           # 统一事件快照、运行状态机、registry、SSE 恢复
+│   │   │   ├── analysis/           # 统一事件快照、运行状态机、executor、registry、SSE 恢复
 │   │   │   ├── propagation.py      # 传播子图与时间线、关键角色
 │   │   │   ├── account_profiler.py # 账户行为画像与自动化倾向评分
 │   │   │   ├── bot_detection.py    # BotRHG 风格账号级社交机器人检测
@@ -88,7 +88,8 @@ system/
 │       ├── test_auth.py            # 认证模块测试（需要 MySQL）
 │       ├── test_crawl.py           # 采集模块测试（含纯单元测试）
 │       ├── test_analysis_registry.py # 统一分析 registry / run 事件测试
-│       ├── test_analysis_v2_api.py   # V2 分析 API / SSE 恢复测试
+│       ├── test_analysis_executor.py # V2 AnalysisRun 执行端口测试
+│       ├── test_analysis_v2_api.py   # V2 分析 API / execute / SSE 恢复测试
 │       └── test_mediacrawler_env.py # MediaCrawler 环境解析测试
 │
 ├── runtimes/                       # 内置 crawler runtime
@@ -167,11 +168,12 @@ docker compose ps            # 确认所有服务 healthy
 
 - `POST /api/v2/analysis/snapshots`：从 MongoDB `raw_posts` / `raw_comments` 生成不可变 `EventSnapshot`，并注册 MySQL manifest。
 - `POST /api/v2/analysis/runs`：为一个 snapshot 创建 `AnalysisRun`，初始状态为 `queued`。
+- `POST /api/v2/analysis/runs/{run_id}/execute`：通过统一 `AnalysisExecutor` 顺序调用 KT1、KT2、Student、Teacher 端口，并追加 run event。
 - `GET /api/v2/analysis/runs/{run_id}`：查询 run 当前状态。
 - `GET /api/v2/analysis/runs/{run_id}/events?after_id=<id>`：REST 恢复路径，返回指定 cursor 之后的事件。
 - `GET /api/v2/analysis/runs/{run_id}/events/stream`：SSE backlog 输出，支持 `Last-Event-ID` 恢复。
 
-当前 V2 已完成输入、持久化、状态机和恢复路径。KT1/KT2/KT3 模型执行仍处于后续接线阶段，不应把该入口等同于三项关键技术的研究级完成。
+当前 V2 已完成输入、持久化、状态机、恢复路径和执行端口。默认端口会对未接入的 KT1、Student、Teacher 返回明确 unavailable；KT2 仅能读取内部缓存证据或返回明确不可用，不应把该入口等同于三项关键技术的研究级完成。
 
 KT2 当前只内置了 dashboard 可读的缓存 benchmark artifact，位于 `system/research/kt2/benchmark/`。未内置的 live runner、公开数据 loader 和 event checkpoint adapter 会返回明确的 unavailable，不再从外部 research workspace 动态 import。
 

@@ -154,6 +154,17 @@ class AnalysisRegistry:
         run = await self.store.get_run(run_id)
         return _mapping(run) if run is not None else None
 
+    async def load_event_snapshot(self, snapshot_id: str) -> EventSnapshot:
+        record = await self.store.get_snapshot_record(snapshot_id)
+        if record is None:
+            raise KeyError(f"Event snapshot manifest not found: {snapshot_id}")
+        manifest = _mapping(record)
+        collection = _get_collection(self.mongo_db, str(manifest["mongo_collection"]))
+        document = await collection.find_one({"snapshot_id": str(manifest["mongo_key"])}, {"_id": 0})
+        if document is None:
+            raise KeyError(f"Event snapshot document not found: {snapshot_id}")
+        return EventSnapshot.model_validate(document)
+
     async def transition_run_status(
         self,
         run_id: str,
@@ -179,6 +190,22 @@ class AnalysisRegistry:
             payload=dict(payload or {}),
         )
         return _mapping(updated)
+
+    async def append_run_event(
+        self,
+        run_id: str,
+        *,
+        event_type: str,
+        status: AnalysisRunStatus | str,
+        payload: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        event = await self.store.append_run_event(
+            run_id=run_id,
+            event_type=event_type,
+            status=AnalysisRunStatus(status),
+            payload=dict(payload or {}),
+        )
+        return _mapping(event)
 
     async def list_run_events(
         self,
@@ -288,7 +315,11 @@ class SqlAlchemyAnalysisStore:
             raise KeyError(f"Analysis run not found: {run_id}")
         run.status = status.value
         run.updated_at = datetime.now(timezone.utc)
-        if status == AnalysisRunStatus.COMPLETED:
+        if status in {
+            AnalysisRunStatus.NEEDS_EVIDENCE,
+            AnalysisRunStatus.AWAITING_REVIEW,
+            AnalysisRunStatus.COMPLETED,
+        }:
             run.result_json = _json_dumps(payload)
         elif status == AnalysisRunStatus.FAILED:
             run.error = str(payload.get("error") or payload.get("message") or "")

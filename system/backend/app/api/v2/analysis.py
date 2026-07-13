@@ -7,6 +7,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.analysis import InvalidRunTransition
+from app.core.analysis.executor import AnalysisExecutor, default_analysis_engine_ports
 from app.core.analysis.registry import AnalysisRegistry, SqlAlchemyAnalysisStore
 from app.core.analysis.sse import iter_sse_events, parse_last_event_id
 from app.core.security import get_current_user_or_local_preview
@@ -28,6 +29,12 @@ def get_analysis_registry(
     mongo_db: Any = Depends(get_mongo_db),
 ) -> AnalysisRegistry:
     return AnalysisRegistry(mongo_db=mongo_db, store=SqlAlchemyAnalysisStore(db))
+
+
+def get_analysis_executor(
+    registry: AnalysisRegistry = Depends(get_analysis_registry),
+) -> AnalysisExecutor:
+    return AnalysisExecutor(registry=registry, engines=default_analysis_engine_ports())
 
 
 @router.post("/snapshots")
@@ -59,6 +66,21 @@ async def create_run(
         options=body.options,
         created_by=_user_id(current_user),
     )
+    return success(data=run)
+
+
+@router.post("/runs/{run_id}/execute")
+async def execute_run(
+    run_id: str,
+    executor: AnalysisExecutor = Depends(get_analysis_executor),
+    _current_user: User | None = Depends(get_current_user_or_local_preview),
+):
+    try:
+        run = await executor.execute_run(run_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except InvalidRunTransition as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     return success(data=run)
 
 

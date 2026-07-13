@@ -37,7 +37,7 @@ CogGuard 是一个面向竞赛和研究验证的开源原型，目标是围绕�
 | 模块 | 状态 | 说明 |
 |------|------|------|
 | 数据采集 | MVP 已完成 | Mock + 真实爬虫封装已接入 |
-| 统一分析底座 | 接口与持久化已完成 | `EventSnapshot` / `AnalysisRun` / V2 REST / SSE 恢复已接入，KT1/KT2/KT3 执行仍需接线 |
+| 统一分析底座 | 执行端口接线中 | `EventSnapshot` / `AnalysisRun` / V2 REST / SSE 恢复 / execute 入口已接入；KT2 可读内部缓存证据，KT1/Student/Teacher 仍需真实引擎 wiring |
 | 协同检测 | MVP 已完成 | 已有共享对象协同检测（旧方向），PSL 新方向在 `aris/tech-01-coordination/` 已完成系统设计 |
 | 传播监控 | WP1-3 已完成 | Hybrid TS + LLM 路线，已实现 `ts_features` / `llm_context` / `regime_model` / `trend_predictor`；WP4-5（立场/危害）未启动 |
 | 账户监测 | MVP 已完成 | 已有画像、自动化评分与 BotRHG 风格社交机器人检测 API，待补历史参与与前端深度展示 |
