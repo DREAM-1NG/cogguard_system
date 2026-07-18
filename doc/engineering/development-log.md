@@ -24,15 +24,16 @@
 - `system/backend/app/core/analysis/`：新增 `registry.py` 与 `sse.py`，快照从 MongoDB `raw_posts` / `raw_comments` 构建，快照文档以 `$setOnInsert` 幂等写入 `analysis_event_snapshots`，run 事件按自增 ID 作为恢复 cursor。
 - `system/backend/app/api/v2/`、`system/backend/app/schemas/analysis.py`、`system/backend/app/main.py`：新增 `/api/v2/analysis/*` 路由并挂载 V2，包括快照创建、run 创建/查询、REST 事件恢复和 SSE backlog 输出。
 - `system/backend/app/core/analysis/executor.py`、`system/backend/app/api/v2/analysis.py`：新增 `AnalysisExecutor` 与 `POST /api/v2/analysis/runs/{run_id}/execute`，统一以 `EventSnapshot` 调用 KT1、KT2、Student、Teacher 端口并追加 stage/run 事件。
-- 默认执行端口保持保守：KT2 仅通过内部 `kt2_prediction_service` 读取可用证据，KT1、Student、Teacher 在 canonical engine 未接入前返回明确 unavailable，不伪造完成状态。
+- 默认执行端口保持保守：KT1 已通过 `coordination-baseline-v1` 读取 `EventSnapshot` records 并运行现有 coordination baseline；KT2 仅通过内部 `kt2_prediction_service` 读取可用证据；Student、Teacher 在 canonical engine 未接入前返回明确 unavailable，不伪造完成状态。
+- `system/backend/app/services/coordination_service.py`：提取 `analyze_coordination_records()`，使 V1 Mongo 路由和 V2 EventSnapshot executor 共用同一 coordination baseline 实现。
 - `system/backend/app/models/analysis.py`、`system/backend/alembic/versions/9a2e4b7c1d55_add_analysis_persistence_tables.py`：修正 ReviewVerdictVersion 版本约束，`verdict_id` 改为普通索引，`(verdict_id, version)` 作为唯一约束。
 - `system/backend/tests/test_analysis_registry.py`、`system/backend/tests/test_analysis_v2_api.py`、`system/backend/tests/test_analysis_persistence_models.py`：新增/更新回归测试，覆盖 registry 幂等、run 状态转换、事件 cursor、SSE 格式和 V2 主应用挂载。
-- `system/backend/tests/test_analysis_executor.py`：新增执行器回归测试，覆盖 snapshot 加载、stage option 下发、KT1/KT2/Student/Teacher 端口调用、teacher job 后进入 `awaiting_review`。
+- `system/backend/tests/test_analysis_executor.py`：新增执行器回归测试，覆盖 snapshot 加载、stage option 下发、KT1/KT2/Student/Teacher 端口调用、KT1 baseline 默认接入、teacher job 后进入 `awaiting_review`。
 - `system/research/kt2/benchmark/`、`system/backend/app/services/kt2_prediction_service.py`：迁入真实 KT2 缓存 benchmark artifact，默认预测读取系统内部 `system/research/kt2`；删除 `subsystems/cogguard_dev` 和 `sys.path.insert` 外部路径，未内置的 live runner / event checkpoint adapter 返回显式 unavailable。
 - `system/backend/tests/test_kt2_prediction_service.py`：新增回归测试，锁定 KT2 缓存结果来自内部 research artifact，且服务源码不再包含外部 research workspace 路径补丁。
 - 文档：`CONTEXT.md`、`doc/engineering/development-roadmap.md`、`system/README.md` 同步统一分析语言、接口状态和剩余接线任务。
 - 验证：`python -m pytest tests/test_analysis_executor.py -q`；`python -m pytest tests/test_analysis_v2_api.py -q`；`python -m pytest tests/test_analysis_contracts.py tests/test_analysis_persistence_models.py tests/test_analysis_registry.py tests/test_analysis_v2_api.py tests/test_propagation.py -q`；`python -m pytest tests/test_kt2_prediction_service.py tests/test_event_scoped_analysis.py::test_kt2_prediction_service_loads_cached_macro_micro_result -q`。
-- 已知未完成：V2 run 执行端口已建立，但 KT1 canonical engine、KT2 live runner/checkpoint、Student deployed runtime、Teacher Celery DAG 仍需接入；前端分析员工作流尚未迁移到 V2/SSE。
+- 已知未完成：KT1 baseline 已接到 V2 run 执行端口，但研究级 KT1 Detect、KT2 live runner/checkpoint、Student deployed runtime、Teacher Celery DAG 仍需接入；前端分析员工作流尚未迁移到 V2/SSE。
 
 ---
 

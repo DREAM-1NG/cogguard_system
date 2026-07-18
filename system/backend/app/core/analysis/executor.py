@@ -105,12 +105,39 @@ class AnalysisExecutor:
         return {"status": "skipped", "reason": f"Unknown analysis stage: {stage}"}
 
 
-class UnavailableCoordinationEngine:
+class SnapshotCoordinationEngine:
     async def analyze(self, snapshot: EventSnapshot, options: dict[str, Any]) -> dict[str, Any]:
+        from app.services.coordination_service import analyze_coordination_records
+
+        result = analyze_coordination_records(
+            list(snapshot.posts),
+            list(snapshot.comments),
+            time_window=int(options.get("time_window", 60) or 60),
+            min_participation=int(options.get("min_participation", 2) or 2),
+            edge_weight=float(options.get("edge_weight", 0.5) or 0.5),
+            event_id=snapshot.event_id,
+            platform=str(options.get("platform") or _single_platform(snapshot) or "") or None,
+        )
+        status = "data_insufficient" if result.get("error") else "ok"
         return {
-            "status": "unavailable",
+            "status": status,
             "technology": "kt1",
-            "reason": "CoordinationEngine.analyze is not wired to EventSnapshot execution yet.",
+            "model_version": "coordination-baseline-v1",
+            "snapshot_id": snapshot.snapshot_id,
+            "summary": result.get("summary", {}),
+            "community_lineage": _coordination_community_lineage(result.get("network", {})),
+            "account_risk_tiers": _coordination_account_risk_tiers(result.get("account_stats", [])),
+            "evidence_edges": list(result.get("network", {}).get("edges", [])),
+            "domain_shift": {
+                "status": "not_evaluated",
+                "reason": "Baseline coordination runtime does not estimate domain shift.",
+            },
+            "abstain": status != "ok",
+            "network": result.get("network", {}),
+            "account_stats": result.get("account_stats", []),
+            "group_stats": result.get("group_stats", []),
+            "cluster_stats": result.get("cluster_stats", []),
+            "error": result.get("error"),
         }
 
 
@@ -148,7 +175,7 @@ class UnavailableTeacherJobPort:
 
 def default_analysis_engine_ports() -> AnalysisEnginePorts:
     return AnalysisEnginePorts(
-        coordination=UnavailableCoordinationEngine(),
+        coordination=SnapshotCoordinationEngine(),
         propagation=KT2PropagationEngine(),
         student=UnavailableStudentRuntime(),
         teacher=UnavailableTeacherJobPort(),
@@ -167,6 +194,54 @@ def _case_from_snapshot(snapshot: EventSnapshot, *, options: dict[str, Any]) -> 
         "provenance": [record.model_dump(mode="json") for record in snapshot.provenance],
         "options": dict(options),
     }
+
+
+def _single_platform(snapshot: EventSnapshot) -> str | None:
+    return snapshot.platforms[0] if len(snapshot.platforms) == 1 else None
+
+
+def _coordination_community_lineage(network: dict[str, Any]) -> list[dict[str, Any]]:
+    return [
+        {
+            "community_id": str(cluster.get("cluster_id", index)),
+            "size": int(cluster.get("size", 0) or 0),
+            "members": [str(member) for member in cluster.get("members", [])],
+            "evidence": {
+                "edge_count": int(cluster.get("edge_count", 0) or 0),
+                "total_weight": int(cluster.get("total_weight", 0) or 0),
+                "shared_objects": list(cluster.get("shared_objects", [])),
+            },
+        }
+        for index, cluster in enumerate(network.get("clusters", []) or [])
+        if isinstance(cluster, dict)
+    ]
+
+
+def _coordination_account_risk_tiers(account_rows: Any) -> list[dict[str, Any]]:
+    if not isinstance(account_rows, list):
+        return []
+    tiers: list[dict[str, Any]] = []
+    for row in account_rows:
+        if not isinstance(row, dict):
+            continue
+        account_id = str(row.get("account_id") or "").strip()
+        if not account_id:
+            continue
+        tiers.append(
+            {
+                "account_id": account_id,
+                "account_label": row.get("account_label") or account_id,
+                "tier": "observed_coordination",
+                "evidence": {
+                    "degree": int(row.get("degree", 0) or 0),
+                    "avg_weight": float(row.get("avg_weight", 0) or 0),
+                    "avg_time_delta": float(row.get("avg_time_delta", 0) or 0),
+                    "coordinated_shares_count": int(row.get("coordinated_shares_count", 0) or 0),
+                    "shared_objects_preview": list(row.get("shared_objects_preview", []) or []),
+                },
+            }
+        )
+    return tiers
 
 
 def _stage_options(options: dict[str, Any], stage: str) -> dict[str, Any]:

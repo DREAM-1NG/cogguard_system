@@ -9,6 +9,7 @@ from app.core.analysis.executor import (
     AnalysisEnginePorts,
     AnalysisExecutor,
     UnavailableTeacherJobPort,
+    default_analysis_engine_ports,
 )
 from app.core.analysis.registry import AnalysisRegistry
 
@@ -138,6 +139,35 @@ def _snapshot():
     )
 
 
+def _coordination_snapshot():
+    return build_event_snapshot(
+        event_id="trump_visit",
+        posts=[
+            {
+                "event_id": "trump_visit",
+                "platform": "weibo",
+                "post_id": "p1",
+                "author_id": "u1",
+                "timestamp": _dt(12),
+                "content": "shared claim 1",
+                "hashtags": ["#trump_visit"],
+            },
+            {
+                "event_id": "trump_visit",
+                "platform": "weibo",
+                "post_id": "p2",
+                "author_id": "u2",
+                "timestamp": _dt(12, 0),
+                "content": "shared claim 2",
+                "hashtags": ["#trump_visit"],
+            },
+        ],
+        comments=[],
+        core_window=TimeWindow(start=_dt(11), end=_dt(22)),
+        context_window=TimeWindow(start=_dt(1), end=_dt(31)),
+    )
+
+
 def test_executor_loads_snapshot_and_runs_requested_stage_ports():
     async def scenario():
         snapshot = _snapshot()
@@ -203,6 +233,49 @@ def test_executor_loads_snapshot_and_runs_requested_stage_ports():
             "teacher_job_submitted",
             "run_awaiting_review",
         ]
+
+    asyncio.run(scenario())
+
+
+def test_default_ports_run_coordination_baseline_for_kt1_snapshot():
+    async def scenario():
+        snapshot = _coordination_snapshot()
+        store = FakeAnalysisStore(
+            snapshot_record={
+                "snapshot_id": snapshot.snapshot_id,
+                "mongo_collection": "analysis_event_snapshots",
+                "mongo_key": snapshot.snapshot_id,
+            },
+            run={
+                "run_id": "run_kt1",
+                "event_id": snapshot.event_id,
+                "snapshot_id": snapshot.snapshot_id,
+                "status": "queued",
+                "requested_stages": ["kt1"],
+                "options": {"kt1": {"time_window": 60, "min_participation": 1}},
+                "finished_at": None,
+            },
+        )
+        registry = AnalysisRegistry(
+            mongo_db={
+                "analysis_event_snapshots": FakeSnapshotCollection(
+                    {snapshot.snapshot_id: snapshot.model_dump(mode="json")}
+                )
+            },
+            store=store,
+        )
+        executor = AnalysisExecutor(registry=registry, engines=default_analysis_engine_ports())
+
+        result = await executor.execute_run("run_kt1")
+        kt1 = result["results"]["kt1"]
+
+        assert result["status"] == "completed"
+        assert kt1["status"] == "ok"
+        assert kt1["technology"] == "kt1"
+        assert kt1["model_version"] == "coordination-baseline-v1"
+        assert kt1["summary"]["coordinated_edges"] == 1
+        assert kt1["evidence_edges"][0]["source"] in {"u1", "u2"}
+        assert kt1["account_risk_tiers"][0]["tier"] == "observed_coordination"
 
     asyncio.run(scenario())
 

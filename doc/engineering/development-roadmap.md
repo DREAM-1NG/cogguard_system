@@ -130,7 +130,7 @@
 - [x] SSE 恢复：使用 `Last-Event-ID` 或 REST `after_id` 返回追加事件
 - [x] 判决版本表支持同一 `verdict_id` 多版本，唯一性落在 `(verdict_id, version)`
 - [x] `AnalysisExecutor`：以 `EventSnapshot` 为输入，顺序调用 `CoordinationEngine.analyze`、`PropagationEngine.hindcast`、`StudentRuntime.predict`、`TeacherJobPort.submit` 端口并写入 run events
-- [ ] 将 KT1 canonical coordination engine 接到 `CoordinationEngine.analyze(snapshot, options)`，替换默认 unavailable
+- [x] 将 KT1 canonical coordination baseline 接到 `CoordinationEngine.analyze(snapshot, options)`，替换默认 unavailable
 - [ ] 将 KT2 live runner、公开数据 loader、checkpoint adapter 接到 `PropagationEngine.hindcast(snapshot, options)`，完成 KT2 内置化
 - [ ] 将 Student 同步推理与 Teacher 异步 Celery DAG 接到 V2 run / verdict 治理，替换默认 unavailable
 - [ ] 前端分析员工作流迁移到 V2 运行与 SSE 恢复

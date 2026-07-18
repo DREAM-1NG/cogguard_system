@@ -173,7 +173,7 @@ docker compose ps            # 确认所有服务 healthy
 - `GET /api/v2/analysis/runs/{run_id}/events?after_id=<id>`：REST 恢复路径，返回指定 cursor 之后的事件。
 - `GET /api/v2/analysis/runs/{run_id}/events/stream`：SSE backlog 输出，支持 `Last-Event-ID` 恢复。
 
-当前 V2 已完成输入、持久化、状态机、恢复路径和执行端口。默认端口会对未接入的 KT1、Student、Teacher 返回明确 unavailable；KT2 仅能读取内部缓存证据或返回明确不可用，不应把该入口等同于三项关键技术的研究级完成。
+当前 V2 已完成输入、持久化、状态机、恢复路径和执行端口。KT1 默认端口会从 `EventSnapshot` 直接运行现有 coordination baseline，并以 `coordination-baseline-v1` 标记输出。Student、Teacher 未接入时会返回明确 unavailable；KT2 仅能读取内部缓存证据或返回明确不可用，不应把该入口等同于三项关键技术的研究级完成。
 
 KT2 当前只内置了 dashboard 可读的缓存 benchmark artifact，位于 `system/research/kt2/benchmark/`。未内置的 live runner、公开数据 loader 和 event checkpoint adapter 会返回明确的 unavailable，不再从外部 research workspace 动态 import。
 

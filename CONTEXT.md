@@ -28,7 +28,7 @@ _Avoid_: rule engine, final detector
 The synchronous deployable review runtime distilled from approved evidence and Teacher traces. It must be versioned, measured, and activated through explicit governance.
 _Avoid_: heuristic shortcut, unversioned classifier
 
-Current implementation status: Event Snapshot contracts, registry persistence, Analysis Run lifecycle, V2 REST routes, SSE recovery, and the Analysis Run executor port are implemented as the system entry layer. KT2 dashboard evidence is readable from the internal research boundary. KT1, Student, Teacher, and KT2 live/checkpoint execution still need canonical engine wiring before research-grade completion can be claimed.
+Current implementation status: Event Snapshot contracts, registry persistence, Analysis Run lifecycle, V2 REST routes, SSE recovery, and the Analysis Run executor port are implemented as the system entry layer. KT1 now runs the canonical coordination baseline from EventSnapshot records. KT2 dashboard evidence is readable from the internal research boundary. Student, Teacher, and KT2 live/checkpoint execution still need canonical engine wiring before research-grade completion can be claimed.
 
 ---
 

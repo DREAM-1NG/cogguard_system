@@ -443,18 +443,17 @@ def _annotate_graph_context(
         ]
 
 
-async def run_coordination_detection(
+def analyze_coordination_records(
+    posts: list[dict[str, Any]],
+    comments: list[dict[str, Any]],
+    *,
     time_window: int = 60,
     min_participation: int = 2,
     edge_weight: float = 0.5,
     platform: str | None = None,
     event_id: str | None = None,
 ) -> dict:
-    """Run coordination detection over optionally event-scoped MongoDB posts."""
-    mongo_db = get_mongo_db()
-    posts = await load_event_posts(mongo_db, event_id=event_id, platform=platform)
-    comments = await load_event_comments(mongo_db, event_id=event_id, platform=platform)
-
+    """Run the canonical coordination baseline over already-normalized records."""
     if not posts and not comments:
         return _empty_result(
             event_id,
@@ -505,3 +504,25 @@ async def run_coordination_detection(
             clusters=network_data["cluster_count"],
         ),
     }
+
+
+async def run_coordination_detection(
+    time_window: int = 60,
+    min_participation: int = 2,
+    edge_weight: float = 0.5,
+    platform: str | None = None,
+    event_id: str | None = None,
+) -> dict:
+    """Run coordination detection over optionally event-scoped MongoDB posts."""
+    mongo_db = get_mongo_db()
+    posts = await load_event_posts(mongo_db, event_id=event_id, platform=platform)
+    comments = await load_event_comments(mongo_db, event_id=event_id, platform=platform)
+    return analyze_coordination_records(
+        posts,
+        comments,
+        time_window=time_window,
+        min_participation=min_participation,
+        edge_weight=edge_weight,
+        platform=platform,
+        event_id=event_id,
+    )
