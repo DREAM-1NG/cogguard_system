@@ -194,3 +194,4 @@ aris/**/scratch/
 
 # ===== Local-only workspace memory =====
 /memory/
+/.worktrees/

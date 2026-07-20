@@ -3,6 +3,7 @@
 This script is for offline dataset experiments, not the live system API flow.
 It converts normalized post cases into minimal risk-report contexts, runs the
 existing MARO-style agent layer directly, and writes machine-readable reports.
+It also exports `kt3-teacher-silver-v1` rows for offline student distillation.
 """
 
 from __future__ import annotations
@@ -25,6 +26,7 @@ from app.core.risk.kt3_agent_review import OpenAICompatibleAgentProvider  # noqa
 from app.core.risk.kt3_agent_review import OpenAICompatibleConfig  # noqa: E402
 from app.core.risk.kt3_agent_review import run_manual_kt3_agent_review  # noqa: E402
 from app.core.risk.post_semantics import assess_post_semantics  # noqa: E402
+from app.core.risk.kt3_trainable_post import build_teacher_silver_record  # noqa: E402
 from app.config import settings  # noqa: E402
 from app.tasks.kt3_tasks import _build_http_retrieval_provider  # noqa: E402
 
@@ -105,6 +107,8 @@ def main() -> int:
             "online_llm_agent": True,
             "system_api_required": False,
             "external_retrieval_enabled": bool(args.enable_external_retrieval),
+            "teacher_silver_schema": "kt3-teacher-silver-v1",
+            "teacher_silver_mode": "structured_supervision_with_full_traces_for_hard_cases",
         },
         "datasets": {},
     }
@@ -176,7 +180,9 @@ async def evaluate_dataset(
         return {"dataset": dataset, "status": "skipped", "reason": f"missing or empty case file: {case_path}"}
 
     prediction_path = output_dir / "agent_predictions.jsonl"
+    teacher_silver_path = output_dir / "teacher_silver.jsonl"
     rows = []
+    teacher_rows = []
     total = len(cases)
     for index, case in enumerate(cases, start=1):
         case_id = str(case.get("case_id") or f"{dataset}:{index}")
@@ -208,8 +214,10 @@ async def evaluate_dataset(
         elapsed_seconds = round(time.time() - started_at, 3)
         row["elapsed_seconds"] = elapsed_seconds
         rows.append(row)
+        teacher_rows.append(row.get("teacher_silver") or {})
         if flush_every_case:
             write_jsonl(prediction_path, rows)
+            write_jsonl(teacher_silver_path, [item for item in teacher_rows if item])
         if verbose_progress:
             print(
                 f"[dataset:{dataset}] case {index}/{total} done {case_id} "
@@ -218,11 +226,14 @@ async def evaluate_dataset(
             )
 
     write_jsonl(prediction_path, rows)
+    write_jsonl(teacher_silver_path, [item for item in teacher_rows if item])
     return {
         "dataset": dataset,
         "status": "evaluated",
         "case_count": len(rows),
         "prediction_path": str(prediction_path),
+        "teacher_silver_path": str(teacher_silver_path),
+        "teacher_silver_count": len([item for item in teacher_rows if item]),
         "metrics": compute_metrics(rows),
     }
 
@@ -282,6 +293,7 @@ async def evaluate_case(
         "judge_status": judge_report.get("status"),
         "judge_report_text": judge_report.get("report_text"),
         "judge_sidecar": judge_report.get("structured_sidecar") or {},
+        "teacher_silver": build_teacher_silver_record(case, agent_result),
         "all_agent_reports": [
             {
                 "agent_name": item.get("agent_name"),

@@ -18,6 +18,20 @@
 
 ---
 
+## 2026-07-21
+
+- 收口全局系统治理：新增统一术语表、系统治理文档和 ADR，要求后续代码变更同步文档、术语和架构决策。
+- `UBIQUITOUS_LANGUAGE.md`：新增跨系统术语、别名禁用、run/job/task、artifact/checkpoint/model version、Teacher Silver 与 Selective Student 定义。
+- `doc/engineering/system-governance.md`、`docs/adr/0002-system-governance-and-documentation-sync.md`：新增代码结构、公共边界、文档同步与长期迭代规则。
+- `AGENTS.md`、`CLAUDE.md`、`README.md`、`system/README.md`、`doc/engineering/project-map.md`：同步 Codex/Claude 读取顺序、文档更新要求和当前产品根 `system/`。
+- `system/backend/app/core/risk/kt3_teacher_silver.py`、`system/backend/app/core/risk/kt3_selective_student.py`：从 `kt3_trainable_post.py` 拆出 Teacher Silver 和 2+1 Selective Student 职责，原文件保留懒加载兼容导出。
+- 追加收口 KT1 正式方法名：`Coordination Discover` / `Coordination Detect`，同步 `UBIQUITOUS_LANGUAGE.md`、`doc/engineering/system-governance.md`、`README.md`、`system/README.md` 和研究总览。
+- `doc/engineering/environment-setup.md`、`doc/engineering/data-contract-mediacrawler.md`、`doc/research/key-technology-background/*.md`：把当前-facing 路径从历史产品根别名同步到 `system/`。
+- `system/backend/app/api/v1/propagation.py`、`system/backend/app/services/propagation_service.py`：补传播分析 `node_limit` / `diffusion_node_limit` 的旧调用面兼容，避免新增参数打断旧替身和旧集成测试。
+- 验证：`python -m pytest system/backend/tests/test_kt3_trainable_post.py system/backend/tests/test_governance_docs.py -q`；`python -m pytest system/backend/tests -q`（319 passed, 27 skipped）。
+
+---
+
 ## 2026-07-02
 
 - 接入 BotRHG 风格社交机器人检测后端能力，将 NLPCC 2026 投稿方法的“特征编码 → KNN 支持超边 → 可靠性路由 → 选择性残差修正”落为账号级 API 契约。

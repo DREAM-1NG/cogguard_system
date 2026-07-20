@@ -51,9 +51,9 @@ Detect 阶段的正式主线参考 IOHunter / SocGFM，而不是继续使用 Lei
 
 当前代码落点：
 
-- `new-system/backend/app/core/coordination/`（`detector.py` / `network.py` / `stats.py`）
-- `new-system/backend/app/services/coordination_service.py`
-- `new-system/backend/app/api/v1/coordination.py`
+- `system/backend/app/core/coordination/`（`detector.py` / `network.py` / `stats.py`）
+- `system/backend/app/services/coordination_service.py`
+- `system/backend/app/api/v1/coordination.py`
 
 当前已实现（真实可运行）：
 

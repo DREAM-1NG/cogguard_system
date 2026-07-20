@@ -1,5 +1,7 @@
 """传播归因与趋势预测 API 路由。"""
 
+from inspect import Parameter, signature
+
 from fastapi import APIRouter, Depends, Query
 
 from app.core.security import get_current_user_or_local_preview
@@ -10,6 +12,18 @@ from app.utils.response import success
 router = APIRouter()
 
 
+async def _call_analyze_propagation(*, platform: str | None, event_id: str | None, node_limit: int) -> dict:
+    analyze_fn = propagation_service.analyze_propagation
+    try:
+        parameters = signature(analyze_fn).parameters
+    except (TypeError, ValueError):
+        parameters = {}
+    supports_node_limit = "node_limit" in parameters or any(param.kind == Parameter.VAR_KEYWORD for param in parameters.values())
+    if supports_node_limit:
+        return await analyze_fn(platform=platform, event_id=event_id, node_limit=node_limit)
+    return await analyze_fn(platform=platform, event_id=event_id)
+
+
 @router.get("/analyze")
 async def analyze(
     platform: str | None = Query(None, description="限定平台"),
@@ -17,11 +31,7 @@ async def analyze(
     node_limit: int = Query(300, ge=0, description="传播路径图节点数量；0 表示全量"),
     _current_user: User | None = Depends(get_current_user_or_local_preview),
 ):
-    result = await propagation_service.analyze_propagation(
-        platform=platform,
-        event_id=event_id,
-        node_limit=node_limit,
-    )
+    result = await _call_analyze_propagation(platform=platform, event_id=event_id, node_limit=node_limit)
     return success(data=result)
 
 

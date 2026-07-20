@@ -17,8 +17,10 @@ Read these files before making substantial changes:
 2. `doc/engineering/environment-setup.md`
 3. `doc/engineering/development-log.md`
 4. `system/README.md`
-5. `README.md`
-6. If the task is ARIS-driven or targets one of the three key technologies, also read:
+5. `UBIQUITOUS_LANGUAGE.md`
+6. `doc/engineering/system-governance.md`
+7. `README.md`
+8. If the task is ARIS-driven or targets one of the three key technologies, also read:
    - `aris/README.md`
    - the selected `aris/tech-*/README.md`
    - the selected `aris/tech-*/ACCEPTANCE.md`
@@ -31,16 +33,22 @@ If code and docs disagree, trust code first, then update docs in the same change
 - Core goal: evidence-driven detection of cross-platform coordinated manipulation.
 - Preferred system narrative: `事件 -> 证据 -> 协同 -> 传播 -> 风险 -> 处置`
 - Avoid reverting to the older headline of `bot detection + 意图识别`.
+- KT1 method language is **Coordination Discover** + **Coordination Detect**.
 - Short-term validation scope: `mock_weibo`, `weibo`, `news`
 - Treat `MediaCrawler-main`, `NewsCrawler-main`, and `CooRTweet-master` as reference or dependency boundaries unless the user explicitly asks to modify them.
 
 ## Expected Engineering Behavior
 
 - Keep documentation aligned with the real implementation.
+- Perform **Documentation Sync** before reporting a task complete.
+- When code changes terminology, ownership, public APIs, or run flow, update
+  `UBIQUITOUS_LANGUAGE.md`, `doc/engineering/system-governance.md`, and the
+  relevant README/ADR in the same change.
 - For major feature work, update at least:
   - `doc/engineering/development-roadmap.md`
   - `doc/engineering/development-log.md`
   - `README.md` or `system/README.md` when behavior or architecture changes
+  - `docs/adr/` when the decision should remain durable
 - Prefer extending `system/backend/app/` and `system/frontend/src/` rather than adding duplicate entrypoints elsewhere.
 - Keep risk, coordination, and propagation outputs evidence-backed and explainable.
 - Do not vendor upstream ARIS skill code into this repository; keep only local workspace docs under `aris/`.

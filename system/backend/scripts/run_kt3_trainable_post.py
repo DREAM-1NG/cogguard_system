@@ -1,17 +1,16 @@
-"""Run KT3 trainable post-level defense-deliverable experiments.
+"""Run KT3 trainable post-level student experiments.
 
-This runner is deliberately separate from the existing LR ablation suite. It
-keeps the current gate/baseline semantics intact while adding a trainable v1
-path over already prepared local datasets:
+The default path is now the teacher-student first-stage student:
 
-- HateXplain/PHEME/mcfend/FakeSV/MultiOFF text detector
-- MultiOFF frozen-feature cross-attention adapter
-- FakeSV C3D temporal Transformer over pre-extracted features
-- PHEME/mcfend/FakeSV claim-context cross-encoder
-- uncertainty-aware gating fusion and deterministic agent review
+- frozen encoder features from XLM-R-base or Chinese RoBERTa
+- post text plus claim/context input
+- two main semantic axes: attack/offense and misinformation/claim risk
+- claim-linked stance auxiliary head
+- separate selective/defer routing head
 
-The default smoke mode caps cases per split to keep CPU runs practical. Use
-``--max-cases-per-split 0`` for full available local data.
+Legacy view-level experiments remain available behind ``--legacy-view-experiments``.
+The default smoke mode caps cases per split to keep local runs practical.
+Use ``--max-cases-per-split 0`` for full available local data.
 """
 
 from __future__ import annotations
@@ -42,6 +41,7 @@ from app.core.risk.kt3_trainable_post import (  # noqa: E402
     GatingFusionModel,
     MultitaskTextDetector,
     POSITIVE_LABEL,
+    STANCE_ORDER,
     TemporalC3DTransformer,
     binary_classification_metrics,
     binary_label,
@@ -66,11 +66,34 @@ from app.core.risk.kt3_trainable_post import (  # noqa: E402
     multitask_targets,
     write_jsonl,
 )
+from app.core.risk.kt3_selective_student import (  # noqa: E402
+    ATTACK_AXIS,
+    MISINFO_AXIS,
+    SelectiveStudentEncoder,
+    build_selective_student_prediction_rows,
+    build_selective_student_targets,
+    load_teacher_silver_index,
+    predict_selective_student_outputs,
+    student_main_axis_metrics,
+    student_overall_probability_for_case,
+    train_selective_student_model,
+)
+from app.core.risk.kt3_teacher_silver import build_teacher_silver_record  # noqa: E402
 from app.core.risk.kt3_rag import LocalHashRag, augment_context_with_rag  # noqa: E402
 from run_kt3_post_multiview_ablation import build_splits, video_id_of  # noqa: E402
 
 
 DEFAULT_DATASETS = ["HateXplain", "MultiOFF", "PHEME", "mcfend", "FakeSV"]
+STUDENT_BACKBONE_MODELS = {
+    "xlm-r-base": "FacebookAI/xlm-roberta-base",
+    "chinese-roberta-wwm-ext": "hfl/chinese-roberta-wwm-ext",
+}
+
+
+def resolve_student_model_name(backbone: str) -> str:
+    if backbone in STUDENT_BACKBONE_MODELS:
+        return STUDENT_BACKBONE_MODELS[backbone]
+    return STUDENT_BACKBONE_MODELS["xlm-r-base"]
 
 
 def main() -> int:
@@ -82,6 +105,14 @@ def main() -> int:
     parser.add_argument("--epochs", type=int, default=3)
     parser.add_argument("--batch-size", type=int, default=64)
     parser.add_argument("--hidden-dim", type=int, default=128)
+    parser.add_argument("--student-backbone", choices=["xlm-r-base", "chinese-roberta-wwm-ext", "auto"], default="xlm-r-base")
+    parser.add_argument(
+        "--student-encoder-backend",
+        choices=["hash", "hf-transformer", "auto", "sentence-transformer"],
+        default="hf-transformer",
+    )
+    parser.add_argument("--teacher-silver-dir", default="")
+    parser.add_argument("--legacy-view-experiments", action="store_true")
     parser.add_argument(
         "--text-backend",
         choices=["hash", "sentence-transformer", "hf-transformer", "auto"],
@@ -153,12 +184,23 @@ def main() -> int:
         "output_dir": str(output_dir),
         "datasets_requested": args.datasets,
         "method": {
-            "text": "frozen multilingual sentence features or deterministic hash fallback + trainable multitask head",
-            "meme_img": "frozen CLIP-style/hash features + trainable cross-attention adapter + supervised contrastive auxiliary loss",
-            "video": "FakeSV pre-extracted C3D sequence features + temporal Transformer; not raw-video encoding",
-            "claim_evidence": "post/claim pair cross-encoder head over local claim_context; not external RAG",
-            "fusion": "trainable gating over view probabilities, confidence, availability, abstain, conflict and context flags",
-            "agent": "deterministic reviewer/explainer/rule-optimizer over detector outputs only",
+            "student_mainline": {
+                "schema": "kt3-student-2plus1-v1",
+                "task_protocol": ["attack_hate_offense", "misinfo_claim_risk", "stance_aux", "defer_route"],
+                "backbone": resolve_student_model_name(args.student_backbone),
+                "encoder_backend": args.student_encoder_backend,
+                "teacher_silver_dir": str(args.teacher_silver_dir or ""),
+                "teacher_silver": bool(args.teacher_silver_dir.strip()),
+                "teacher_silver_schema": "kt3-teacher-silver-v1",
+            },
+            "legacy_view_experiments": bool(args.legacy_view_experiments),
+            "legacy_view_modules": {
+                "text": "kept for comparison only",
+                "meme_img": "kept for comparison only",
+                "video": "kept for comparison only",
+                "claim_evidence": "kept for comparison only",
+                "fusion": "kept for comparison only",
+            },
         },
         "capability_boundary": {
             "full_validation_gate": "not modified; strict P0 full-validation remains separate",
@@ -167,13 +209,16 @@ def main() -> int:
             "external_rag": False,
             "online_llm_agent": False,
             "smoke_mode": args.max_cases_per_split > 0,
+            "teacher_silver_structured_json": True,
+            "student_encoder_mainline": True,
+            "teacher_silver_available": bool(args.teacher_silver_dir.strip()),
         },
         "datasets": {},
     }
 
     try:
         for dataset in args.datasets:
-            report["datasets"][dataset] = evaluate_dataset(
+            report["datasets"][dataset] = evaluate_student_dataset(
                 dataset,
                 case_dir=case_dir,
                 output_dir=output_dir / safe_name(dataset),
@@ -325,6 +370,163 @@ def evaluate_dataset(dataset: str, *, case_dir: Path, output_dir: Path, args: ar
             else text_result.get("coverage_risk_curve")
         ),
     }
+    return result
+
+
+def load_teacher_silver_for_dataset(teacher_silver_root: Path | None, dataset: str) -> dict[str, dict[str, Any]]:
+    if teacher_silver_root is None or not teacher_silver_root.exists():
+        return {}
+    candidates = [
+        teacher_silver_root / safe_name(dataset) / "teacher_silver.jsonl",
+        teacher_silver_root / f"{safe_name(dataset)}.jsonl",
+        teacher_silver_root / "teacher_silver.jsonl",
+    ]
+    for path in candidates:
+        if path.exists():
+            return load_teacher_silver_index(load_cases(path))
+    return {}
+
+
+def evaluate_student_dataset(dataset: str, *, case_dir: Path, output_dir: Path, args: argparse.Namespace) -> dict[str, Any]:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    case_path = case_dir / f"{dataset}.jsonl"
+    cases = load_cases(case_path)
+    if not cases:
+        return {"dataset": dataset, "status": "skipped", "skip_reason": f"case jsonl missing or empty: {case_path}"}
+
+    split_cases, split_policy = build_splits(dataset, cases, args.random_state)
+    split_cases = cap_splits(split_cases, args.max_cases_per_split)
+    split_status = validate_splits(split_cases)
+    if split_status:
+        return {"dataset": dataset, "status": "skipped", "skip_reason": split_status, "split_policy": split_policy}
+
+    teacher_silver_root = Path(args.teacher_silver_dir).expanduser() if str(args.teacher_silver_dir or "").strip() else None
+    teacher_silver_index = load_teacher_silver_for_dataset(teacher_silver_root, dataset)
+    student_model_name = resolve_student_model_name(args.student_backbone)
+    student_backend = args.student_encoder_backend
+    if student_backend == "auto":
+        student_backend = "hf-transformer"
+
+    result: dict[str, Any] = {
+        "dataset": dataset,
+        "status": "evaluated",
+        "split_policy": split_policy,
+        "split_counts": {split: len(rows) for split, rows in split_cases.items()},
+        "experiments": {},
+    }
+
+    train = split_cases["train"]
+    validation = split_cases["validation"]
+    test = split_cases["test"]
+    all_cases = train + validation + test
+
+    post_bundle = encode_text_features(
+        [text_of(case) for case in all_cases],
+        backend=student_backend,
+        model_name=student_model_name,
+        revision=None,
+        cache_dir=args.hf_cache_dir,
+        dim=args.hash_dim,
+        batch_size=args.batch_size,
+        local_files_only=not args.allow_model_download,
+    )
+    claim_bundle = encode_text_features(
+        [claim_context_text(case) for case in all_cases],
+        backend=student_backend,
+        model_name=student_model_name,
+        revision=None,
+        cache_dir=args.hf_cache_dir,
+        dim=args.hash_dim,
+        batch_size=args.batch_size,
+        local_files_only=not args.allow_model_download,
+    )
+    student_matrix = np.concatenate([post_bundle.matrix, claim_bundle.matrix], axis=-1)
+    train_x, validation_x, test_x = split_feature_matrix(student_matrix, train, validation, test)
+    targets = build_selective_student_targets(all_cases, teacher_silver_index)
+    train_target_count = len(train)
+    train_targets = {key: value[:train_target_count] for key, value in targets.items()}
+
+    model = SelectiveStudentEncoder(input_dim=train_x.shape[1], hidden_dim=args.hidden_dim, stance_count=len(STANCE_ORDER))
+    train_info = train_selective_student_model(
+        model,
+        train_x,
+        train_targets,
+        epochs=args.epochs,
+        batch_size=args.batch_size,
+    )
+    validation_predictions = predict_selective_student_outputs(model, validation_x)
+    test_predictions = predict_selective_student_outputs(model, test_x)
+    validation_metrics = student_main_axis_metrics(validation, validation_predictions, teacher_silver_index=teacher_silver_index)
+    test_metrics = student_main_axis_metrics(test, test_predictions, teacher_silver_index=teacher_silver_index)
+
+    prediction_rows = build_selective_student_prediction_rows(test, test_predictions, teacher_silver_index=teacher_silver_index)
+    prediction_path = output_dir / "kt3_trainable_post_predictions.jsonl"
+    write_jsonl(prediction_path, prediction_rows)
+
+    student_experiment = {
+        "status": "evaluated",
+        "schema": "kt3-student-2plus1-v1",
+        "task_protocol": ["attack_hate_offense", "misinfo_claim_risk", "stance_aux", "defer_route"],
+        "model_name": student_model_name,
+        "model_backend": student_backend,
+        "teacher_silver_root": str(teacher_silver_root or ""),
+        "teacher_silver_used": bool(teacher_silver_index),
+        "teacher_silver_count": len(teacher_silver_index),
+        "train_count": len(train),
+        "validation_count": len(validation),
+        "test_count": len(test),
+        "validation_metrics": validation_metrics,
+        "test_metrics": test_metrics,
+        "train_info": train_info,
+        "prediction_path": str(prediction_path),
+        "capability_boundary": {
+            "teacher_silver_structured_json": True,
+            "rationale_summary_not_a_student_target": True,
+            "claim_context_required_for_stance": True,
+            "selective_routing_head": True,
+        },
+    }
+    if validation_predictions:
+        validation_overall = np.asarray(
+            [
+                student_overall_probability_for_case(
+                    case,
+                    float(validation_predictions[ATTACK_AXIS][index]),
+                    float(validation_predictions[MISINFO_AXIS][index]),
+                )
+                for index, case in enumerate(validation)
+            ],
+            dtype="float32",
+        )
+        student_experiment["validation_probabilities"] = {case["case_id"]: float(prob) for case, prob in zip(validation, validation_overall)}
+    if test_predictions:
+        test_overall = np.asarray(
+            [
+                student_overall_probability_for_case(
+                    case,
+                    float(test_predictions[ATTACK_AXIS][index]),
+                    float(test_predictions[MISINFO_AXIS][index]),
+                )
+                for index, case in enumerate(test)
+            ],
+            dtype="float32",
+        )
+        student_experiment["test_probabilities"] = {case["case_id"]: float(prob) for case, prob in zip(test, test_overall)}
+
+    result["experiments"]["student_2p1"] = compact_experiment(student_experiment)
+    result["prediction_path"] = str(prediction_path)
+    result["summary"] = summarize_dataset(result["experiments"])
+    result["calibration"] = {
+        "ece": test_metrics["overall"]["ece"],
+        "coverage_risk_curve": test_metrics["overall"]["coverage_risk_curve"],
+        "abstain_rate": test_metrics["overall"]["abstain_rate"],
+        "high_risk_recall": test_metrics["overall"]["high_risk_recall"],
+    }
+
+    if args.legacy_view_experiments:
+        legacy_result = evaluate_dataset(dataset, case_dir=case_dir, output_dir=output_dir / "legacy_view", args=args)
+        result["legacy_view_experiments"] = legacy_result
+
     return result
 
 
@@ -763,7 +965,15 @@ def summarize_dataset(experiments: dict[str, dict[str, Any]]) -> dict[str, Any]:
     }
     best = None
     for name, result in evaluated.items():
-        macro_f1 = (result.get("test_metrics") or {}).get("macro_f1")
+        metrics = result.get("test_metrics") or {}
+        macro_f1 = metrics.get("macro_f1")
+        if macro_f1 is None and isinstance(metrics.get("overall"), dict):
+            macro_f1 = metrics["overall"].get("macro_f1")
+        if macro_f1 is None:
+            attack_f1 = (metrics.get("attack") or {}).get("macro_f1")
+            misinfo_f1 = (metrics.get("misinfo") or {}).get("macro_f1")
+            if attack_f1 is not None and misinfo_f1 is not None:
+                macro_f1 = (float(attack_f1) + float(misinfo_f1)) / 2.0
         if macro_f1 is None:
             continue
         if best is None or macro_f1 > best["macro_f1"]:

@@ -24,10 +24,10 @@ KT2 要回答的核心问题是：**一个传播事件接下来会扩散到多�
 
 当前代码落点：
 
-- `new-system/backend/app/core/propagation_legacy.py`：传播子图、关键角色、证据链、关键路径回溯。
-- `new-system/backend/app/core/propagation/`：时序特征、事件上下文、体制模型、趋势预测等规模预测基础实现。
-- `new-system/backend/app/services/propagation_service.py`
-- `new-system/backend/app/api/v1/propagation.py`
+- `system/backend/app/core/propagation_legacy.py`：传播子图、关键角色、证据链、关键路径回溯。
+- `system/backend/app/core/propagation/`：时序特征、事件上下文、体制模型、趋势预测等规模预测基础实现。
+- `system/backend/app/services/propagation_service.py`
+- `system/backend/app/api/v1/propagation.py`
 
 当前已实现或已有基础：
 

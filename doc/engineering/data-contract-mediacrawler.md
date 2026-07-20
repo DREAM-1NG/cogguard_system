@@ -6,7 +6,7 @@
 > 覆盖平台：`weibo`、`xhs`、`douyin`  
 > 生成日期：2026-05-21
 
-本文档基于当前 MongoDB 中目标事件的真实入库数据，以及代码中的标准模型与 MediaCrawler 归一化逻辑整理。标准模型定义见 `new-system/backend/app/models/post.py`，MediaCrawler 字段映射见 `new-system/backend/app/core/crawler/social.py`。
+本文档基于当前 MongoDB 中目标事件的真实入库数据，以及代码中的标准模型与 MediaCrawler 归一化逻辑整理。标准模型定义见 `system/backend/app/models/post.py`，MediaCrawler 字段映射见 `system/backend/app/core/crawler/social.py`。
 
 ## 1. 标准数据模型
 

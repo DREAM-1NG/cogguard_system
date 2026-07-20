@@ -17,7 +17,7 @@ in the research workspaces.
 | Path | Role | Default edit policy |
 | --- | --- | --- |
 | `materials/` | Competition-facing materials: PPT, application forms, proposal/opening-report files, packaged submission assets. | Edit when preparing competition or application deliverables. |
-| `cogguard_system/` | Main engineering repository for CogGuard system development. | Edit for product code, engineering docs, ARIS workspaces, and reference-boundary notes. |
+| `CogGuard/` | Main engineering repository for CogGuard system development. | Edit for product code, engineering docs, ARIS workspaces, and reference-boundary notes. |
 | `research-wiki/` | Research knowledge base: papers, ideas, claims, gap maps, novelty notes, and accumulated research status. | Edit for research notes and literature/claim tracking. |
 | `_archive/` | Historical snapshots and pre-reposition archive material. | Read-only by default. |
 | `.omx/`, `.omc/`, `.remember/`, `.claude/` | Agent/runtime/tooling state and local automation context. | Do not reorganize as part of project structure cleanup. |
@@ -27,9 +27,11 @@ in the research workspaces.
 
 | Path | Role | Boundary |
 | --- | --- | --- |
-| `new-system/` | Current product system root. Contains the runnable backend, frontend, deployment configuration, and tests. | Product code only: keep implementations here when they are reachable through API/UI/tests/demo flows. |
+| `system/` | Current product system root. Contains the runnable backend, frontend, deployment configuration, and tests. | Product code only: keep implementations here when they are reachable through API/UI/tests/demo flows. |
 | `aris/` | Research execution workspace for the three key technologies. | Use for technical exploration, experiment plans, acceptance criteria, reviews, and algorithm work before product integration. |
 | `doc/` | Long-lived engineering and project documentation. | Use for PRD, setup, development log, project map, technical background, and migrated baseline/reference documents. |
+| `docs/adr/` | Architecture decision records. | Add or update when package boundaries, method boundaries, or governance rules change. |
+| `UBIQUITOUS_LANGUAGE.md` | Canonical cross-system vocabulary. | Update when a task changes terminology or resolves ambiguity. |
 | `MediaCrawler-main/` | Upstream social-media crawler reference/dependency boundary. | Keep in place; do not modify by default. |
 | `NewsCrawler-main/` | Upstream news extraction reference/dependency boundary. | Keep in place; do not modify by default. |
 | `CooRTweet-master/` | Upstream coordination-detection method reference. | Keep in place; do not modify by default. |
@@ -40,15 +42,22 @@ in the research workspaces.
 | --- | --- | --- |
 | `doc/engineering/` | Runnable-system and project-governance documentation. | Product requirements, environment setup, roadmap/status, development log, project map. |
 | `doc/research/` | Research positioning and technical exploration documentation. | Project positioning, literature references, key-technology background, algorithm notes. |
+| `docs/adr/` | Durable architecture decisions. | System governance, method boundaries, and long-lived design decisions. |
+
+## Governance Sources
+
+- `UBIQUITOUS_LANGUAGE.md` is the canonical vocabulary for code, docs, and agent sessions.
+- `doc/engineering/system-governance.md` is the canonical structure and documentation sync contract.
+- `docs/adr/` records durable decisions that should not be rediscovered in later sessions.
 
 ## Product vs Research Rule
 
-Product system code belongs in `new-system/` only when it satisfies at least one
+Product system code belongs in `system/` only when it satisfies at least one
 of these conditions:
 
 - It is called by a backend service, API route, Celery task, or frontend page.
-- It is covered by product-facing tests under `new-system/backend/tests/`.
-- It is part of the runnable demo path described by `new-system/README.md`.
+- It is covered by product-facing tests under `system/backend/tests/`.
+- It is part of the runnable demo path described by `system/README.md`.
 - It defines stable schemas, models, configuration, or integration points used by the product.
 
 Research work belongs in `aris/` or `research-wiki/` when it is:
@@ -64,8 +73,8 @@ Research work belongs in `aris/` or `research-wiki/` when it is:
 materials/
   Competition PPT, application forms, opening/proposal materials
 
-cogguard_system/
-  new-system/
+CogGuard/
+  system/
     backend/     FastAPI, Celery, MySQL/MongoDB/Redis access, product tests
     frontend/    Vue 3 + TypeScript management UI
     docker-compose.yml
@@ -92,7 +101,7 @@ or local experiments. Treat them as external/reference boundaries unless a task
 explicitly says to modify them.
 
 If product code needs functionality from a reference project, add a wrapper or
-integration point under `new-system/` and document the dependency. Do not mix
+integration point under `system/` and document the dependency. Do not mix
 active CogGuard product code into the reference project directories.
 
 ## Migrated Root Documents

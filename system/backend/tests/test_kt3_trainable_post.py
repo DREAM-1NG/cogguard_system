@@ -25,6 +25,16 @@ from app.core.risk.kt3_trainable_post import (
     train_multitask_text_model,
     multitask_targets,
 )
+from app.core.risk.kt3_selective_student import (
+    ATTACK_AXIS,
+    SelectiveStudentEncoder,
+    build_selective_student_targets,
+    load_teacher_silver_index,
+    predict_selective_student_outputs,
+    student_main_axis_metrics,
+    train_selective_student_model,
+)
+from app.core.risk.kt3_teacher_silver import build_teacher_silver_record
 from app.core.risk.kt3_rag import LocalHashRag, augment_context_with_rag
 
 
@@ -105,6 +115,140 @@ def test_multitask_targets_and_clip_fallback_contract():
     assert image_bundle.backend == "hash-smoke-image"
     assert text_bundle.matrix.shape == (2, 16)
     assert image_bundle.matrix.shape == (2, 16)
+
+
+def test_teacher_silver_and_selective_target_contract():
+    case = _case("a", "harmful claim")
+    case["dataset"] = "HateXplain"
+    review_result = {
+        "summary": {
+            "requested_agents": 7,
+            "completed": 7,
+            "runtime_reasons": ["claim_retrieval_tasks_present"],
+            "candidate_rule_hints": ["low_confidence"],
+            "reflection_response_reports": 1,
+        },
+        "audit": {
+            "failure_mode_tags": ["cross_view_conflict"],
+        },
+        "input_bundle": {
+            "selected_posts": [
+                {
+                    "post_id": "p1",
+                    "excerpt": "claim snippet",
+                    "content": "claim snippet",
+                }
+            ]
+        },
+        "agent_reports": [
+            {
+                "review_id": "judge-1",
+                "agent_name": "HarmfulnessJudgeAgent",
+                "report_role": "judge_final",
+                "status": "completed",
+                "structured_sidecar": {
+                    "confidence": 0.84,
+                    "review_required": True,
+                    "evidence_refs": [{"text": "evidence snippet"}],
+                    "uncertainties": ["low_confidence"],
+                    "debate_trace_refs": ["debate:1"],
+                },
+            }
+        ],
+    }
+
+    teacher = build_teacher_silver_record(case, review_result)
+    index = load_teacher_silver_index([teacher])
+    targets = build_selective_student_targets([case], index)
+
+    assert teacher["schema_version"] == "kt3-teacher-silver-v1"
+    assert teacher["main_axes"][ATTACK_AXIS]["available"] is True
+    assert teacher["main_axes"][ATTACK_AXIS]["label"] in {"harmful", "non_harmful"}
+    assert teacher["sample_mode"] == "hard_case"
+    assert teacher["trace_refs"]
+    assert targets["attack"].shape == (1,)
+    assert targets["attack_mask"][0] == 1.0
+    assert targets["defer"][0] == 1.0
+
+
+@pytest.mark.skipif(importlib.util.find_spec("torch") is None, reason="torch not installed")
+def test_selective_student_smoke_train():
+    cases = [_case("a", "harmful claim"), _case("b", "benign note", "non_harmful")]
+    for case in cases:
+        case["dataset"] = "HateXplain"
+    hard_review = {
+        "summary": {
+            "requested_agents": 7,
+            "completed": 7,
+            "runtime_reasons": ["claim_retrieval_tasks_present"],
+            "candidate_rule_hints": ["low_confidence"],
+            "reflection_response_reports": 1,
+        },
+        "audit": {"failure_mode_tags": ["cross_view_conflict"]},
+        "input_bundle": {"selected_posts": [{"post_id": "p1", "excerpt": "claim snippet", "content": "claim snippet"}]},
+        "agent_reports": [
+            {
+                "review_id": "judge-1",
+                "agent_name": "HarmfulnessJudgeAgent",
+                "report_role": "judge_final",
+                "status": "completed",
+                "structured_sidecar": {
+                    "confidence": 0.84,
+                    "review_required": True,
+                    "evidence_refs": [{"text": "evidence snippet"}],
+                    "uncertainties": ["low_confidence"],
+                    "debate_trace_refs": ["debate:1"],
+                },
+            }
+        ],
+    }
+    easy_review = {
+        "summary": {
+            "requested_agents": 7,
+            "completed": 7,
+            "runtime_reasons": [],
+            "candidate_rule_hints": [],
+            "reflection_response_reports": 0,
+        },
+        "audit": {"failure_mode_tags": []},
+        "input_bundle": {"selected_posts": [{"post_id": "p2", "excerpt": "benign snippet", "content": "benign snippet"}]},
+        "agent_reports": [
+            {
+                "review_id": "judge-2",
+                "agent_name": "HarmfulnessJudgeAgent",
+                "report_role": "judge_final",
+                "status": "completed",
+                "structured_sidecar": {
+                    "confidence": 0.62,
+                    "review_required": False,
+                    "evidence_refs": [{"text": "support snippet"}],
+                    "uncertainties": [],
+                    "debate_trace_refs": [],
+                },
+            }
+        ],
+    }
+    teacher_index = load_teacher_silver_index(
+        [
+            build_teacher_silver_record(cases[0], hard_review),
+            build_teacher_silver_record(cases[1], easy_review),
+        ]
+    )
+    post_features = encode_text_features([case["text"] for case in cases], backend="hash", dim=16).matrix
+    claim_features = encode_text_features([case["claim_context"]["claim_text"] for case in cases], backend="hash", dim=16).matrix
+    features = np.concatenate([post_features, claim_features], axis=-1)
+    targets = build_selective_student_targets(cases, teacher_index)
+
+    model = SelectiveStudentEncoder(input_dim=32, hidden_dim=8)
+    train_info = train_selective_student_model(model, features, targets, epochs=1, batch_size=2, device="cpu")
+    predictions = predict_selective_student_outputs(model, features, device="cpu")
+    metrics = student_main_axis_metrics(cases, predictions, teacher_silver_index=teacher_index)
+
+    assert train_info["epochs"] == 1
+    assert predictions[ATTACK_AXIS].shape == (2,)
+    assert predictions["defer"].shape == (2,)
+    assert metrics["overall"]["support_cases"] == 2
+    assert 0.0 <= metrics["macro_f1"] <= 1.0
 
 
 def test_local_hash_rag_retrieval_and_context_augmentation(tmp_path):

@@ -47,6 +47,13 @@ HARM_TYPE_ORDER = (
     "manipulative_amplification",
 )
 STANCE_ORDER = ("support", "deny", "query", "neutral", "unlinked")
+TEACHER_SILVER_SCHEMA = "kt3-teacher-silver-v1"
+ATTACK_AXIS = "attack_hate_offense"
+MISINFO_AXIS = "misinfo_claim_risk"
+STUDENT_AXIS_ORDER = (ATTACK_AXIS, MISINFO_AXIS)
+OFFENSIVE_DATASETS = {"HateXplain", "MultiOFF"}
+MISINFO_DATASETS = {"PHEME", "mcfend", "FakeSV"}
+CLAIM_LINKED_DATASETS = {"PHEME", "mcfend", "FakeSV"}
 
 
 @dataclass(frozen=True)
@@ -129,6 +136,38 @@ def rationale_tokens_of(case: dict[str, Any], max_tokens: int = 12) -> list[str]
 def target_groups_of(case: dict[str, Any]) -> list[str]:
     labels = case.get("labels") or {}
     return [str(group) for group in labels.get("target_groups") or []]
+
+
+def axis_supports_case(case: dict[str, Any], axis: str) -> bool:
+    dataset = str(case.get("dataset") or "")
+    labels = case.get("labels") or {}
+    harm_types = {str(harm_type).lower() for harm_type in labels.get("harm_type") or []}
+    if axis == ATTACK_AXIS:
+        return dataset in OFFENSIVE_DATASETS or bool(harm_types & {"offensive", "hate", "abusive", "toxic", "harassment"})
+    if axis == MISINFO_AXIS:
+        veracity = str(labels.get("veracity") or "").lower()
+        rumour_label = str(labels.get("rumour_label") or "").lower()
+        return dataset in MISINFO_DATASETS or veracity in {"false", "misinformation", "debunking"} or rumour_label in {"rumour", "false"}
+    return False
+
+
+def teacher_axis_label(case: dict[str, Any], axis: str) -> int | None:
+    if not axis_supports_case(case, axis):
+        return None
+    return binary_label(case)
+
+
+def teacher_axis_confidence(case: dict[str, Any], axis: str, *, teacher_confidence: float | None = None) -> float:
+    if not axis_supports_case(case, axis):
+        return 0.0
+    if teacher_confidence is not None:
+        return round(float(max(0.0, min(1.0, teacher_confidence))), 6)
+    labels = case.get("labels") or {}
+    if axis == ATTACK_AXIS:
+        return 0.9 if binary_label(case) else 0.82
+    if axis == MISINFO_AXIS:
+        return 0.88 if binary_label(case) else 0.8
+    return 0.0
 
 
 def multitask_targets(cases: list[dict[str, Any]]) -> dict[str, np.ndarray]:
@@ -371,13 +410,22 @@ def encode_text_features(
                 local_files_only=local_files_only,
                 use_fast=True,
             )
-            model = AutoModel.from_pretrained(
-                model_name,
-                revision=revision,
-                cache_dir=str(cache_dir) if cache_dir else None,
-                local_files_only=local_files_only,
-                use_safetensors=True,
-            )
+            try:
+                model = AutoModel.from_pretrained(
+                    model_name,
+                    revision=revision,
+                    cache_dir=str(cache_dir) if cache_dir else None,
+                    local_files_only=local_files_only,
+                    use_safetensors=True,
+                )
+            except OSError:
+                model = AutoModel.from_pretrained(
+                    model_name,
+                    revision=revision,
+                    cache_dir=str(cache_dir) if cache_dir else None,
+                    local_files_only=local_files_only,
+                    use_safetensors=False,
+                )
             device = resolve_torch_device()
             model.to(device)
             model.eval()
@@ -687,6 +735,36 @@ def train_multitask_text_model(
             "rationale": "0.05 * BCEWithLogitsLoss",
         },
     }
+
+
+def binary_pr_auc(y_true: np.ndarray, scores: np.ndarray) -> float:
+    if y_true.size == 0:
+        return 0.0
+    positives = int(y_true.sum())
+    negatives = int((1 - y_true).sum())
+    if positives == 0 or negatives == 0:
+        return 0.0
+    order = np.argsort(-scores)
+    sorted_true = y_true[order]
+    tp = np.cumsum(sorted_true)
+    fp = np.cumsum(1 - sorted_true)
+    precision = tp / np.maximum(tp + fp, 1)
+    recall = tp / positives
+    precision = np.concatenate([[1.0], precision])
+    recall = np.concatenate([[0.0], recall])
+    deltas = recall[1:] - recall[:-1]
+    heights = (precision[1:] + precision[:-1]) * 0.5
+    return float((deltas * heights).sum())
+
+
+def high_risk_recall_score(y_true: np.ndarray, scores: np.ndarray, *, threshold: float = 0.75) -> float:
+    if y_true.size == 0:
+        return 0.0
+    positives = y_true == 1
+    if not positives.any():
+        return 0.0
+    predicted_high_risk = scores >= threshold
+    return float((predicted_high_risk & positives).sum() / positives.sum())
 
 
 def supervised_contrastive_loss(embeddings: Any, labels: Any, temperature: float = 0.2) -> Any:
@@ -1012,3 +1090,45 @@ def write_jsonl(path: Path, rows: list[dict[str, Any]]) -> None:
     with path.open("w", encoding="utf-8", newline="\n") as handle:
         for row in rows:
             handle.write(json.dumps(row, ensure_ascii=False, separators=(",", ":")) + "\n")
+
+
+def __getattr__(name: str) -> Any:
+    if name in {
+        "build_teacher_silver_record",
+        "load_teacher_silver_index",
+    }:
+        from app.core.risk.kt3_teacher_silver import build_teacher_silver_record, load_teacher_silver_index
+
+        return {
+            "build_teacher_silver_record": build_teacher_silver_record,
+            "load_teacher_silver_index": load_teacher_silver_index,
+        }[name]
+    if name in {
+        "SelectiveStudentEncoder",
+        "build_selective_student_prediction_rows",
+        "build_selective_student_targets",
+        "predict_selective_student_outputs",
+        "student_main_axis_metrics",
+        "student_overall_probability_for_case",
+        "train_selective_student_model",
+    }:
+        from app.core.risk.kt3_selective_student import (
+            SelectiveStudentEncoder,
+            build_selective_student_prediction_rows,
+            build_selective_student_targets,
+            predict_selective_student_outputs,
+            student_main_axis_metrics,
+            student_overall_probability_for_case,
+            train_selective_student_model,
+        )
+
+        return {
+            "SelectiveStudentEncoder": SelectiveStudentEncoder,
+            "build_selective_student_prediction_rows": build_selective_student_prediction_rows,
+            "build_selective_student_targets": build_selective_student_targets,
+            "predict_selective_student_outputs": predict_selective_student_outputs,
+            "student_main_axis_metrics": student_main_axis_metrics,
+            "student_overall_probability_for_case": student_overall_probability_for_case,
+            "train_selective_student_model": train_selective_student_model,
+        }[name]
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

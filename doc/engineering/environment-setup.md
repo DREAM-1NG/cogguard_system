@@ -2,7 +2,7 @@
 
 > **用途**：说明本地/部署环境、基础服务、后端、前端、测试和可选 ARIS 开发方式。  
 > **受众**：开发者、部署者、后续执行任务的 AI agent。  
-> **维护规则**：只记录可复现的运行步骤；环境变量、端口、启动命令变化必须同步本文和 `../../new-system/README.md`。
+> **维护规则**：只记录可复现的运行步骤；环境变量、端口、启动命令变化必须同步本文和 `../../system/README.md`。
 
 ## 1. 前置依赖
 
@@ -18,12 +18,12 @@
 按下面顺序即可直接拉起数据库、后端和前端：
 
 ```powershell
-cd G:\CISCN\cogguard_system\new-system
+cd G:\CISCN\CogGuard\system
 docker compose up -d
 docker compose ps
 
 cd .\backend
-$env:UV_CACHE_DIR='G:\CISCN\cogguard_system\new-system\backend\.uv-cache'
+$env:UV_CACHE_DIR='G:\CISCN\CogGuard\system\backend\.uv-cache'
 uv sync
 .\.venv\Scripts\alembic.exe upgrade head
 .\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
@@ -74,7 +74,7 @@ docker compose version
 ## 4. 启动基础服务
 
 ```bash
-cd new-system
+cd system
 
 # 复制环境变量（首次需要）
 cp .env.example .env
@@ -99,7 +99,7 @@ docker compose logs -f
 
 ## 5. 真实爬虫（可选）
 
-在 `.env` 中配置（参见 `new-system/.env.example`）：
+在 `.env` 中配置（参见 `system/.env.example`）：
 
 - **MediaCrawler**（`weibo` / `xhs` / `douyin`）：运行在宿主机，不在 `docker compose` 中启动。`MEDIACRAWLER_ROOT` 指向本机 MediaCrawler 仓库根目录；`MEDIACRAWLER_LOGIN_TYPE` / `MEDIACRAWLER_COOKIES` 按上游要求登录；`MEDIACRAWLER_UV_BIN` 指向可用的 `uv`；`MEDIACRAWLER_PYTHON_BIN` 指向可用的 Python 3.11+ 解释器；如果 Node.js 没有加入系统 `PATH`，可通过 `MEDIACRAWLER_NODE_DIR` 指向安装目录（例如 `D:/node`）；Windows 上如果 `uv` 默认用户缓存目录有权限问题，可额外设置 `MEDIACRAWLER_UV_CACHE_DIR` 指向项目内缓存目录。
 - **NewsCrawler**：`NEWSCRAWLER_API_BASE` 指向已启动的 `news_extractor_backend`（例如 `http://127.0.0.1:8020`），或配置 `NEWSCRAWLER_ROOT` 使用进程内提取。
@@ -108,13 +108,13 @@ docker compose logs -f
 建议的本机配置示例：
 
 ```dotenv
-MEDIACRAWLER_ROOT=G:/CISCN/cogguard_system/MediaCrawler-main
+MEDIACRAWLER_ROOT=G:/CISCN/CogGuard/MediaCrawler-main
 MEDIACRAWLER_LOGIN_TYPE=qrcode
 MEDIACRAWLER_COOKIES=
 MEDIACRAWLER_UV_BIN=C:/Users/p/.local/bin/uv.exe
 MEDIACRAWLER_PYTHON_BIN=C:/Users/p/AppData/Roaming/uv/python/cpython-3.11-windows-x86_64-none/python.exe
 MEDIACRAWLER_NODE_DIR=D:/node
-MEDIACRAWLER_UV_CACHE_DIR=G:/CISCN/cogguard_system/MediaCrawler-main/.uv-cache
+MEDIACRAWLER_UV_CACHE_DIR=G:/CISCN/CogGuard/MediaCrawler-main/.uv-cache
 MEDIACRAWLER_PROXY=http://127.0.0.1:7897
 MEDIACRAWLER_GET_SUB_COMMENTS=true
 MEDIACRAWLER_MAX_COMMENTS_PER_POST=200
@@ -125,7 +125,7 @@ MEDIACRAWLER_MAX_COMMENTS_PER_POST=200
 首次准备 MediaCrawler 运行时：
 
 ```bash
-cd MediaCrawler-main
+cd ..\MediaCrawler-main
 C:/Users/p/.local/bin/uv.exe sync --python C:/Users/p/AppData/Roaming/uv/python/cpython-3.11-windows-x86_64-none/python.exe
 C:/Users/p/.local/bin/uv.exe run --python C:/Users/p/AppData/Roaming/uv/python/cpython-3.11-windows-x86_64-none/python.exe playwright install chromium
 ```
@@ -145,7 +145,7 @@ C:/Users/p/.local/bin/uv.exe run --python C:/Users/p/AppData/Roaming/uv/python/c
 ## 6. 启动后端
 
 ```bash
-cd new-system/backend
+cd system/backend
 
 # 方式一：使用 uv（推荐）
 uv sync
@@ -167,13 +167,13 @@ uvicorn app.main:app --reload --port 8000
 如果需要验证 MediaCrawler 宿主机环境是否就绪，可执行：
 
 ```bash
-cd new-system/backend
+cd system/backend
 uv run python scripts/verify_mediacrawler_env.py
 ```
 
 该脚本会检查：
 
-- 后端是否能从 `new-system/.env` 读取 MediaCrawler 配置
+- 后端是否能从 `system/.env` 读取 MediaCrawler 配置
 - `MEDIACRAWLER_ROOT`、`main.py`、`uv`、MediaCrawler `.venv` 解释器是否可用
 - `MEDIACRAWLER_NODE_DIR` 注入后 `node -v` 是否正常
 - `MediaCrawler-main/.venv` 直启 `main.py --help` 与 Playwright Chromium 启动烟雾测试
@@ -182,7 +182,7 @@ uv run python scripts/verify_mediacrawler_env.py
 ## 7. 启动前端
 
 ```bash
-cd new-system/frontend
+cd system/frontend
 
 npm install
 npm run dev
@@ -196,7 +196,7 @@ npm run dev
 
 ```bash
 # 启动后端 API 壳，至少保证健康检查和 Vite 代理目标存在
-cd new-system/backend
+cd system/backend
 .venv/Scripts/python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 
 # 启动前端开发服务器
@@ -223,14 +223,14 @@ D:/node/npm.cmd run dev -- --host 127.0.0.1 --port 5173
 - 如果只是想快速打开前端预览，可以直接运行项目根目录下的 `start-preview.ps1`，它会自动弹出两个 PowerShell 窗口分别启动后端和前端。
 
 ```powershell
-cd G:\CISCN\cogguard_system\new-system
+cd G:\CISCN\CogGuard\system
 powershell.exe -ExecutionPolicy Bypass -File .\start-preview.ps1
 ```
 
 ## 8. 运行测试
 
 ```bash
-cd new-system/backend
+cd system/backend
 
 # 安装含 pytest 的开发依赖后运行全部测试
 uv sync --extra dev
@@ -250,7 +250,7 @@ pytest -v
 
 1. `AGENTS.md`
 2. `doc/engineering/development-roadmap.md`
-3. `new-system/README.md`
+3. `system/README.md`
 4. `aris/README.md`
 5. 目标 `aris/tech-*/README.md`
 6. 对应 `doc/research/key-technology-background/*.md`
@@ -281,7 +281,7 @@ pytest -v
 ## 10. 停止服务
 
 ```bash
-cd new-system
+cd system
 docker compose down          # 停止容器（保留数据）
 docker compose down -v       # 停止并删除数据卷
 ```
@@ -290,7 +290,7 @@ docker compose down -v       # 停止并删除数据卷
 
 1. 安装 Docker Desktop、Python ≥3.11、Node.js ≥18
 2. 克隆项目代码
-3. `cd new-system && cp .env.example .env`
+3. `cd system && cp .env.example .env`
 4. 按需修改 `.env` 中的密码等配置
 5. `docker compose up -d`
 6. 按第 5、6 节启动后端和前端
