@@ -17,11 +17,13 @@
 # 详细许可条款请参阅项目根目录下的LICENSE文件。
 # 使用本代码即表示您同意遵守上述原则和LICENSE中的所有条款。
 
+import os
+
 # Basic configuration
 PLATFORM = "xhs"  # Platform, xhs | dy | wb
 KEYWORDS = "编程副业,编程兼职"  # Keyword search configuration, separated by English commas
 LOGIN_TYPE = "qrcode"  # qrcode or phone or cookie
-COOKIES = ""
+COOKIES = os.getenv("MEDIACRAWLER_COOKIES", "")
 CRAWLER_TYPE = (
     "search"  # Crawling type, search (keyword search) | detail (post details) | creator (creator homepage data)
 )

@@ -34,7 +34,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
-from app.core.risk.kt3_trainable_post import (  # noqa: E402
+from app.core.review.kt3_trainable_post import (  # noqa: E402
     ClaimEvidenceCrossEncoder,
     CrossModalAttentionAdapter,
     FeatureBundle,
@@ -66,7 +66,7 @@ from app.core.risk.kt3_trainable_post import (  # noqa: E402
     multitask_targets,
     write_jsonl,
 )
-from app.core.risk.kt3_rag import LocalHashRag, augment_context_with_rag  # noqa: E402
+from app.core.review.kt3_rag import LocalHashRag, augment_context_with_rag  # noqa: E402
 from run_kt3_post_multiview_ablation import build_splits, video_id_of  # noqa: E402
 
 

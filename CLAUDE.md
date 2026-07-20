@@ -39,7 +39,7 @@ out_of_scope: [明确排除的内容]
 1. `AGENTS.md`
 2. `doc/engineering/development-roadmap.md`
 3. `doc/engineering/development-log.md`
-4. `new-system/README.md`
+4. `system/README.md`
 5. `aris/README.md`
 6. 如果任务属于关键技术一/二/三或由 ARIS 驱动，继续读取：
    - 目标 `aris/tech-*/README.md`
@@ -49,7 +49,7 @@ out_of_scope: [明确排除的内容]
 ## 仓库规则
 
 - 当前工程基线：`release-0.2`
-- 当前唯一产品代码根：`new-system/`
+- 当前唯一产品代码根：`system/`
 - 参考仓库边界：`MediaCrawler-main/`、`NewsCrawler-main/`、`CooRTweet-master/`
 - 不在仓库内 vendoring 上游 ARIS skill 实现
 - 不创建仓库根单一 `RESEARCH_BRIEF.md`

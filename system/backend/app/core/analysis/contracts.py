@@ -7,6 +7,18 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field, model_validator
 
 
+ANALYSIS_STAGE_ALIASES: dict[str, str] = {
+    "coordination": "kt1",
+    "coordination_engine": "kt1",
+    "propagation": "kt2",
+    "propagation_engine": "kt2",
+    "kt3_student": "student",
+    "kt3_teacher": "teacher",
+}
+ANALYSIS_STAGE_ALLOWLIST = frozenset({"kt1", "kt2", "student", "teacher"})
+DEFAULT_ANALYSIS_STAGES = ("kt1",)
+
+
 class TimeWindow(BaseModel):
     start: datetime
     end: datetime
@@ -89,6 +101,10 @@ class InvalidRunTransition(ValueError):
     pass
 
 
+class UnknownAnalysisStage(ValueError):
+    pass
+
+
 _ALLOWED_TRANSITIONS: dict[AnalysisRunStatus, frozenset[AnalysisRunStatus]] = {
     AnalysisRunStatus.QUEUED: frozenset(
         {AnalysisRunStatus.RUNNING, AnalysisRunStatus.FAILED, AnalysisRunStatus.CANCELLED}
@@ -130,6 +146,14 @@ def transition_run_status(
     if target_status not in _ALLOWED_TRANSITIONS[current_status]:
         raise InvalidRunTransition(f"Cannot transition analysis run from {current_status} to {target_status}")
     return target_status
+
+
+def normalize_analysis_stage(stage: Any) -> str:
+    value = str(stage or "").strip().lower()
+    normalized = ANALYSIS_STAGE_ALIASES.get(value, value)
+    if normalized not in ANALYSIS_STAGE_ALLOWLIST:
+        raise UnknownAnalysisStage(f"Unknown analysis stage: {stage}")
+    return normalized
 
 
 def _as_utc(value: datetime) -> datetime:

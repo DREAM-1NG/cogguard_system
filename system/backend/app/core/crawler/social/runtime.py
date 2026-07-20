@@ -100,7 +100,6 @@ class MediaSocialCrawler(BaseCrawler):
         from app.config import settings
 
         login_type = settings.MEDIACRAWLER_LOGIN_TYPE.strip() or "cookie"
-        cookies = settings.MEDIACRAWLER_COOKIES or ""
         cmd.extend(
             [
                 "--platform",
@@ -121,9 +120,19 @@ class MediaSocialCrawler(BaseCrawler):
                 "jsonl",
             ]
         )
-        if cookies and login_type == "cookie":
-            cmd.extend(["--cookies", cookies])
         return cmd
+
+    def _build_runtime_env(self, base_env: dict[str, str] | None = None) -> dict[str, str]:
+        env = build_mediacrawler_env(base_env)
+        from app.config import settings
+
+        login_type = settings.MEDIACRAWLER_LOGIN_TYPE.strip() or "cookie"
+        cookies = settings.MEDIACRAWLER_COOKIES or ""
+        if login_type == "cookie":
+            env["MEDIACRAWLER_COOKIES"] = cookies
+        else:
+            env.pop("MEDIACRAWLER_COOKIES", None)
+        return env
 
     def _jsonl_output_path(self, runtime_root: Path, item_type: str) -> Path:
         from datetime import datetime
@@ -184,11 +193,12 @@ class MediaSocialCrawler(BaseCrawler):
         uv_bin = resolve_uv_bin()
         cmd = self._build_command(runtime_python, uv_bin, request.keywords)
         output_offsets = self._snapshot_output_offsets(runtime_root)
+        env = self._build_runtime_env()
 
         proc = await asyncio.create_subprocess_exec(
             *cmd,
             cwd=str(runtime_root),
-            env=build_mediacrawler_env(),
+            env=env,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )

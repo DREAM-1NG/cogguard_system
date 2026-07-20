@@ -1,9 +1,9 @@
 from datetime import datetime, timezone
 from pathlib import Path
 
-from app.core.coordination.io_reproduction import make_sample_events
+from app.core.coordination_baseline.io_reproduction import make_sample_events
 from app.models.coordination_registry import CoordinationDataset
-from app.core.coordination.io_reproduction import normalize_event_table
+from app.core.coordination_baseline.io_reproduction import normalize_event_table
 from app.services.coordination_model_service import (
     _build_coordination_community_payload,
     _build_coordination_graph_payload,

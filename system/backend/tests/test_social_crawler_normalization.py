@@ -20,12 +20,14 @@ def test_media_social_crawler_build_command_includes_sub_comments_and_comment_ca
     monkeypatch.setattr(settings, "MEDIACRAWLER_MAX_COMMENTS_PER_POST", 200)
 
     cmd = crawler._build_command("G:/mc/.venv/Scripts/python.exe", None, ["事件A", " 事件B "])
+    env = crawler._build_runtime_env({"PATH": "C:/Windows/System32"})
 
     assert cmd[:2] == ["G:/mc/.venv/Scripts/python.exe", "main.py"]
     assert cmd[cmd.index("--get_sub_comment") + 1] == "yes"
     assert cmd[cmd.index("--max_comments_count_singlenotes") + 1] == "1000"
     assert cmd[cmd.index("--keywords") + 1] == "事件A,事件B"
-    assert cmd[cmd.index("--cookies") + 1] == "sid=abc"
+    assert "--cookies" not in cmd
+    assert env["MEDIACRAWLER_COOKIES"] == "sid=abc"
 
 
 def test_media_social_crawler_build_command_disables_comment_collection(monkeypatch):

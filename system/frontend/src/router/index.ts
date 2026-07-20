@@ -38,6 +38,12 @@ const router = createRouter({
           meta: { title: '数据采集' },
         },
         {
+          path: 'analysis',
+          name: 'Analysis',
+          component: () => import('@/views/analysis/index.vue'),
+          meta: { title: '统一分析' },
+        },
+        {
           path: 'coordination',
           name: 'Coordination',
           component: () => import('@/views/coordination/index.vue'),

@@ -66,6 +66,15 @@ class Settings(BaseSettings):
     # Downloaded social media files are stored under project output by default.
     MEDIA_DOWNLOAD_ROOT: str = str(PROJECT_ROOT / "output" / "media_downloads")
 
+    # ----- KT1 research artifact runtime -----
+    KT1_MODE: str = "artifact_first"
+    KT1_ARTIFACT_ROOT: str = str(PROJECT_ROOT / "artifacts" / "kt1")
+    KT1_DEVICE: str = "cuda"
+    KT1_FALLBACK: str = "evidence_runtime_v2"
+    KT1_DETECT_ROLE: str = "validation_only"
+    KT1_MODALITY_POLICY: str = "platform_generic_only"
+    KT1_REQUIRE_LEIDEN: bool = True
+
     # ----- LLM API (趋势预测用) -----
     LLM_API_KEY: str = ""
     LLM_API_BASE: str = "https://api.deepseek.com/v1"

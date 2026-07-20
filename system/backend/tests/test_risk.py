@@ -1,4 +1,4 @@
-"""风险研判模块单元测试。
+"""Review 模块单元测试。
 
 测试核心模块：evidence_builder, phase_detector, ds_fusion, disarm_scorer, report_builder。
 不依赖数据库，使用 mock 数据。
@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pytest
 
-from app.core.risk.evidence_builder import (
+from app.core.review.evidence_builder import (
     EvidencePack,
     WindowFeatures,
     build_evidence_pack,
@@ -22,39 +22,39 @@ from app.core.risk.evidence_builder import (
     _shannon_entropy,
     _burstiness,
 )
-from app.core.risk.kt3_gate_suite import evaluate_kt3_gate_suite
-from app.core.risk.kt3_gate_suite import evaluate_kt3_gate_suite_from_dataset
-from app.core.risk.kt3_gate_dataset import get_kt3_gate_dataset_contract_spec
-from app.core.risk.kt3_gate_dataset import build_kt3_gate_dataset_manifest
-from app.core.risk.kt3_gate_dataset import gate_dataset_contract_view
-from app.core.risk.kt3_gate_dataset import normalize_kt3_gate_dataset
-from app.core.risk.kt3_gate_dataset import validate_kt3_gate_dataset_contract
-from app.core.risk.kt3_graph_exporter import export_kt3_heterogeneous_graph
-from app.core.risk.kt3_graph_exporter import read_kt3_graph_artifact
-from app.core.risk.kt3_graph_exporter import write_kt3_graph_artifact
-from app.core.risk.kt3_agent_review import run_manual_kt3_agent_review
-from app.core.risk.kt3_agent_review import OpenAICompatibleAgentProvider
-from app.core.risk.kt3_agent_review import OpenAICompatibleConfig
-from app.core.risk.kt3_governance_reference import build_governance_reference_context
-from app.core.risk.kt3_governance_reference import load_governance_reference_library
-from app.core.risk.kt3_agent_policy import optimize_kt3_agent_policy
-from app.core.risk.kt3_agent_policy import refine_kt3_agent_policy_loop
-from app.core.risk.kt3_agent_policy import summarize_feedback_memory
-from app.core.risk.kt3_multi_agent import execute_kt3_multi_agent_review
-from app.core.risk.kt3_post_gate import evaluate_kt3_post_gate
-from app.core.risk.kt3_community_gate import evaluate_kt3_community_gate
-from app.core.risk.kt3_review_executor import execute_kt3_review_queue
-from app.core.risk.kt3_reviewer import build_kt3_review_queue
-from app.core.risk.kt3_user_gate import evaluate_kt3_user_gate
-from app.core.risk.kt3_user_mil import score_user_mil
-from app.core.risk.layered_harmfulness import assess_layered_harmfulness
-from app.core.risk.phase_detector import (
+from app.core.review.kt3_gate_suite import evaluate_kt3_gate_suite
+from app.core.review.kt3_gate_suite import evaluate_kt3_gate_suite_from_dataset
+from app.core.review.kt3_gate_dataset import get_kt3_gate_dataset_contract_spec
+from app.core.review.kt3_gate_dataset import build_kt3_gate_dataset_manifest
+from app.core.review.kt3_gate_dataset import gate_dataset_contract_view
+from app.core.review.kt3_gate_dataset import normalize_kt3_gate_dataset
+from app.core.review.kt3_gate_dataset import validate_kt3_gate_dataset_contract
+from app.core.review.kt3_graph_exporter import export_kt3_heterogeneous_graph
+from app.core.review.kt3_graph_exporter import read_kt3_graph_artifact
+from app.core.review.kt3_graph_exporter import write_kt3_graph_artifact
+from app.core.review.kt3_agent_review import run_manual_kt3_agent_review
+from app.core.review.kt3_agent_review import OpenAICompatibleAgentProvider
+from app.core.review.kt3_agent_review import OpenAICompatibleConfig
+from app.core.review.kt3_governance_reference import build_governance_reference_context
+from app.core.review.kt3_governance_reference import load_governance_reference_library
+from app.core.review.kt3_agent_policy import optimize_kt3_agent_policy
+from app.core.review.kt3_agent_policy import refine_kt3_agent_policy_loop
+from app.core.review.kt3_agent_policy import summarize_feedback_memory
+from app.core.review.kt3_multi_agent import execute_kt3_multi_agent_review
+from app.core.review.kt3_post_gate import evaluate_kt3_post_gate
+from app.core.review.kt3_community_gate import evaluate_kt3_community_gate
+from app.core.review.kt3_review_executor import execute_kt3_review_queue
+from app.core.review.kt3_reviewer import build_kt3_review_queue
+from app.core.review.kt3_user_gate import evaluate_kt3_user_gate
+from app.core.review.kt3_user_mil import score_user_mil
+from app.core.review.layered_harmfulness import assess_layered_harmfulness
+from app.core.review.phase_detector import (
     PhaseResult,
     classify_phase,
     estimate_hazard,
     detect_phase,
 )
-from app.core.risk.ds_fusion import (
+from app.core.review.ds_fusion import (
     FusionResult,
     dempster_combine,
     mass_to_belief_interval,
@@ -63,19 +63,19 @@ from app.core.risk.ds_fusion import (
     account_mass,
     fuse_evidence,
 )
-from app.core.risk.disarm_scorer import (
+from app.core.review.disarm_scorer import (
     map_evidence_to_techniques,
     score_attack_path,
     predict_next_techniques,
     recommend_countermeasures,
     score_attack_path_full,
 )
-from app.core.risk.post_semantics import (
+from app.core.review.post_semantics import (
     assess_post_semantics,
     build_claim_candidates,
     normalize_multimodal_post,
 )
-from app.core.risk.report_builder import build_report
+from app.core.review.report_builder import build_report
 from app.api.v1 import risk as risk_api
 from app.services import risk_service
 
@@ -348,7 +348,7 @@ class TestDSFusion:
 
 class TestDisarmScorer:
     def _get_fusion_result(self):
-        from app.core.risk.ds_fusion import BeliefInterval
+        from app.core.review.ds_fusion import BeliefInterval
         return FusionResult(
             manipulation=BeliefInterval(belief=0.7, plausibility=0.9),
             authenticity=BeliefInterval(belief=0.6, plausibility=0.8),
@@ -2425,7 +2425,7 @@ class TestKT3ManualAgentReview:
                 captured["payload"] = json
                 return FakeResponse()
 
-        monkeypatch.setattr("app.core.risk.kt3_agent_review.httpx.AsyncClient", FakeAsyncClient)
+        monkeypatch.setattr("app.core.review.kt3_agent_review.httpx.AsyncClient", FakeAsyncClient)
         provider = OpenAICompatibleAgentProvider(
             OpenAICompatibleConfig(
                 api_key="sk-test-secret",

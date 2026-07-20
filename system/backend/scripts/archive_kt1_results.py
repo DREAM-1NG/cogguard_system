@@ -191,7 +191,7 @@ def _dataset_event_scale(dataset_root: Path | None) -> list[dict[str, object]]:
     if dataset_root is None or not dataset_root.exists():
         return []
     try:
-        from app.core.coordination.io_reproduction import iohunter_processed_to_event_table, load_iohunter_processed_dataset
+from app.core.coordination_baseline.io_reproduction import iohunter_processed_to_event_table, load_iohunter_processed_dataset
     except Exception:
         return []
     rows: list[dict[str, object]] = []

@@ -1,6 +1,6 @@
 # CogGuard 项目完整设计文档：功能设计与技术选型
 
-> 版本：2026-06-03 ｜ 基线：`release-0.2` ｜ 产品代码根：`new-system/`
+> 版本：2026-06-03 ｜ 基线：`release-0.2` ｜ 产品代码根：`system/`
 > 用途：结题答辩 / 项目交付用的单文件总览，覆盖系统定位、闭环、三大关键技术的功能设计与技术选型、真实落地状态与差距。
 > 维护规则：本文区分**已落地（代码可运行）**、**设计稿（仅文档/方案）**、**缺口（无设计无代码）**三态，不把计划当完成。
 
@@ -133,9 +133,9 @@ API：`GET /crawl/platforms`、`POST /crawl/social`、`GET /crawl/jobs`、`GET /
 
 | 部分 | 文件 | 状态 |
 |------|------|------|
-| 共享对象+时间窗配对（CooRTweet 重写） | `core/coordination/detector.py` (184行) | ✅ 已落地 |
-| 加权图 + 百分位阈值 + 社区发现 | `core/coordination/network.py` (373行) | ✅ 已落地 |
-| 账户/群组统计 | `core/coordination/stats.py` (142行) | ✅ 已落地 |
+| 共享对象+时间窗配对（CooRTweet 重写） | `core/coordination_baseline/detector.py` (184行) | ✅ 已落地 |
+| 加权图 + 百分位阈值 + 社区发现 | `core/coordination_baseline/network.py` (373行) | ✅ 已落地 |
+| 账户/群组统计 | `core/coordination_baseline/stats.py` (142行) | ✅ 已落地 |
 | PSL 显著性（超几何+Cauchy+BH-FDR） | `significance.py` | ❌ **设计稿，0 行** |
 | 多行为通道抽取 | `channels.py` | ❌ **设计稿，0 行** |
 | 语义通道 | `semantic.py` | ❌ 设计稿（且新方向倾向排除） |
@@ -238,12 +238,12 @@ API：`GET /propagation/analyze`、`POST /propagation/predict-trend`。
 
 | 层 | 文件 | 状态 |
 |----|------|------|
-| Layer 1 证据构建 | `core/risk/evidence_builder.py` (244) | ✅ 已落地 |
-| Layer 1 阶段检测 | `core/risk/phase_detector.py` (169) | ✅ 已落地 |
-| Layer 1 D-S 融合 | `core/risk/ds_fusion.py` (234) | ✅ 已落地 |
-| Layer 1 DISARM 路径 | `core/risk/disarm_scorer.py` (381) | ✅ 已落地 |
-| Layer 1 报告生成 | `core/risk/report_builder.py` (278) | ✅ 已落地 |
-| LLM 桥接 | `core/risk/llm_bridge.py` (~30) | ⚠️ 占位，return None |
+| Layer 1 证据构建 | `core/review/evidence_builder.py` (244) | ✅ 已落地 |
+| Layer 1 阶段检测 | `core/review/phase_detector.py` (169) | ✅ 已落地 |
+| Layer 1 D-S 融合 | `core/review/ds_fusion.py` (234) | ✅ 已落地 |
+| Layer 1 DISARM 路径 | `core/review/disarm_scorer.py` (381) | ✅ 已落地 |
+| Layer 1 报告生成 | `core/review/report_builder.py` (278) | ✅ 已落地 |
+| LLM 桥接 | `core/review/llm_bridge.py` (~30) | ⚠️ 占位，return None |
 | Layer 2 RAG 报告 | — | ❌ 设计稿 |
 | Layer 3 恶意言论/立场/反制叙事 Agent | — | ❌ 设计稿 |
 

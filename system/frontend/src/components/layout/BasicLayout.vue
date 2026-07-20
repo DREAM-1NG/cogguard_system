@@ -73,6 +73,7 @@ import {
   HomeOutlined,
   DashboardOutlined,
   CloudDownloadOutlined,
+  FileSearchOutlined,
   ApartmentOutlined,
   ShareAltOutlined,
   UserOutlined,
@@ -90,6 +91,7 @@ const authStore = useAuthStore()
 const collapsed = ref(false)
 
 const menuItems = [
+  { path: '/analysis', label: '统一分析', icon: FileSearchOutlined, desc: 'EventSnapshot 与 AnalysisRun：统一运行 KT1/KT2/Student/Teacher', disabled: false },
   { path: '/', label: '首页', icon: HomeOutlined, desc: '系统首页：态势概览、任务摘要、风险报告与快捷入口', disabled: false },
   { path: '/dashboard', label: '数据看板', icon: DashboardOutlined, desc: '数据看板：地图定位、平台分布、近期采集样本', disabled: false },
   { path: '/crawl', label: '数据采集', icon: CloudDownloadOutlined, desc: '创建采集任务，管理多平台数据抓取', disabled: false },

@@ -147,6 +147,7 @@ import {
   ApartmentOutlined,
   CloudDownloadOutlined,
   DashboardOutlined,
+  FileSearchOutlined,
   ShareAltOutlined,
 } from '@ant-design/icons-vue'
 import { getDashboardOverview, type DashboardOverview, type RecentPost } from '@/api/dashboard'
@@ -257,6 +258,7 @@ const eventRankRows = computed(() => {
 })
 
 const shortcuts = [
+  { title: '统一分析', desc: 'V2 快照与运行', path: '/analysis', icon: FileSearchOutlined },
   { title: '数据看板', desc: '地图与平台分布', path: '/dashboard', icon: DashboardOutlined },
   { title: '数据采集', desc: '创建采集任务', path: '/crawl', icon: CloudDownloadOutlined },
   { title: '协同检测', desc: '群组与共享对象', path: '/coordination', icon: ApartmentOutlined },

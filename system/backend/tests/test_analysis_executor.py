@@ -12,6 +12,7 @@ from app.core.analysis.executor import (
     default_analysis_engine_ports,
 )
 from app.core.analysis.registry import AnalysisRegistry
+from app.core.analysis import UnknownAnalysisStage
 
 
 class FakeSnapshotCollection:
@@ -96,6 +97,11 @@ class RecordingPropagationEngine:
     async def hindcast(self, snapshot, options):
         self.calls.append((snapshot.snapshot_id, dict(options)))
         return {"status": "ok", "scale_interval": [1, 3]}
+
+
+class MissingCheckpointPropagationEngine:
+    async def hindcast(self, snapshot, options):
+        return {"status": "missing_checkpoint"}
 
 
 class RecordingStudentRuntime:
@@ -237,7 +243,7 @@ def test_executor_loads_snapshot_and_runs_requested_stage_ports():
     asyncio.run(scenario())
 
 
-def test_default_ports_run_coordination_baseline_for_kt1_snapshot():
+def test_default_ports_run_evidence_coordination_runtime_for_kt1_snapshot():
     async def scenario():
         snapshot = _coordination_snapshot()
         store = FakeAnalysisStore(
@@ -272,10 +278,105 @@ def test_default_ports_run_coordination_baseline_for_kt1_snapshot():
         assert result["status"] == "completed"
         assert kt1["status"] == "ok"
         assert kt1["technology"] == "kt1"
-        assert kt1["model_version"] == "coordination-baseline-v1"
+        assert kt1["model_version"] == "coordination-evidence-runtime-v2"
         assert kt1["summary"]["coordinated_edges"] == 1
         assert kt1["evidence_edges"][0]["source"] in {"u1", "u2"}
-        assert kt1["account_risk_tiers"][0]["tier"] == "observed_coordination"
+        assert kt1["account_risk_tiers"][0]["tier"] == "light_coordination"
+
+    asyncio.run(scenario())
+
+
+def test_executor_marks_missing_checkpoint_as_needs_evidence():
+    async def scenario():
+        snapshot = _snapshot()
+        store = FakeAnalysisStore(
+            snapshot_record={
+                "snapshot_id": snapshot.snapshot_id,
+                "mongo_collection": "analysis_event_snapshots",
+                "mongo_key": snapshot.snapshot_id,
+            },
+            run={
+                "run_id": "run_checkpoint",
+                "event_id": snapshot.event_id,
+                "snapshot_id": snapshot.snapshot_id,
+                "status": "queued",
+                "requested_stages": ["kt2"],
+                "options": {},
+                "finished_at": None,
+            },
+        )
+        registry = AnalysisRegistry(
+            mongo_db={
+                "analysis_event_snapshots": FakeSnapshotCollection(
+                    {snapshot.snapshot_id: snapshot.model_dump(mode="json")}
+                )
+            },
+            store=store,
+        )
+        executor = AnalysisExecutor(
+            registry=registry,
+            engines=AnalysisEnginePorts(
+                coordination=RecordingCoordinationEngine(),
+                propagation=MissingCheckpointPropagationEngine(),
+                student=RecordingStudentRuntime(),
+                teacher=UnavailableTeacherJobPort(),
+            ),
+        )
+
+        result = await executor.execute_run("run_checkpoint")
+
+        assert result["status"] == "needs_evidence"
+        assert result["results"]["kt2"]["status"] == "missing_checkpoint"
+
+    asyncio.run(scenario())
+
+
+def test_executor_rejects_unknown_requested_stage_before_running():
+    async def scenario():
+        snapshot = _snapshot()
+        store = FakeAnalysisStore(
+            snapshot_record={
+                "snapshot_id": snapshot.snapshot_id,
+                "mongo_collection": "analysis_event_snapshots",
+                "mongo_key": snapshot.snapshot_id,
+            },
+            run={
+                "run_id": "run_unknown_stage",
+                "event_id": snapshot.event_id,
+                "snapshot_id": snapshot.snapshot_id,
+                "status": "queued",
+                "requested_stages": ["kt1", "bogus"],
+                "options": {},
+                "finished_at": None,
+            },
+        )
+        registry = AnalysisRegistry(
+            mongo_db={
+                "analysis_event_snapshots": FakeSnapshotCollection(
+                    {snapshot.snapshot_id: snapshot.model_dump(mode="json")}
+                )
+            },
+            store=store,
+        )
+        executor = AnalysisExecutor(
+            registry=registry,
+            engines=AnalysisEnginePorts(
+                coordination=RecordingCoordinationEngine(),
+                propagation=RecordingPropagationEngine(),
+                student=RecordingStudentRuntime(),
+                teacher=UnavailableTeacherJobPort(),
+            ),
+        )
+
+        try:
+            await executor.execute_run("run_unknown_stage")
+        except UnknownAnalysisStage:
+            pass
+        else:
+            raise AssertionError("Executor accepted an unknown stage")
+
+        events = await registry.list_run_events("run_unknown_stage")
+        assert events == []
 
     asyncio.run(scenario())
 

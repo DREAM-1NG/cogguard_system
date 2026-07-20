@@ -1,27 +1,146 @@
-"""KT2 macro/micro propagation prediction bridge.
+"""Propagation Analysis macro/micro prediction bridge.
 
-The system-facing path reads vetted KT2 research artifacts vendored under
-``system/research/kt2``. Live training and event checkpoint inference stay
-unavailable until their runners are internalized under the same boundary.
+The system-facing path reads vetted artifacts under
+``system/research/propagation_analysis``. Live training and event checkpoint
+inference stay unavailable until their runners are internalized under the same
+boundary.
 """
 
 from __future__ import annotations
 
+import importlib.util
 import json
+import sys
+from functools import lru_cache
 from pathlib import Path
 from statistics import mean
 from typing import Any
 
+from app.core.propagation.trend_predictor import predict_trend
+
 
 SYSTEM_ROOT = Path(__file__).resolve().parents[3]
-KT2_RESEARCH_ROOT = SYSTEM_ROOT / "research" / "kt2"
-KT2_BENCHMARK_ROOT = KT2_RESEARCH_ROOT / "benchmark"
-KT2_SAMPLE_ARTIFACT = KT2_BENCHMARK_ROOT / "kt2_sequence_vs_minds_sample_300c_5ep_3seed.json"
-FOREST_DATA_ROOT = KT2_RESEARCH_ROOT / "datasets" / "forest-data"
-KT2_TWITTER_CHECKPOINT = KT2_BENCHMARK_ROOT / "checkpoints" / "kt2_sequence_twitter_system.pt"
+PROPAGATION_ANALYSIS_ROOT = SYSTEM_ROOT / "research" / "propagation_analysis"
+PROPAGATION_BENCHMARK_ROOT = PROPAGATION_ANALYSIS_ROOT / "benchmark"
+PROPAGATION_EVENT_ADAPTER_PATH = PROPAGATION_BENCHMARK_ROOT / "adapters" / "kt2_event_adapter.py"
+PROPAGATION_LIVE_RUNTIME_PATH = PROPAGATION_ANALYSIS_ROOT / "runtime" / "live_runtime.py"
+PROPAGATION_PROTOCOL_PATH = PROPAGATION_ANALYSIS_ROOT / "runtime" / "protocol.py"
+PROPAGATION_PUBLIC_LOADER_PATH = PROPAGATION_BENCHMARK_ROOT / "loaders.py"
+PROPAGATION_SAMPLE_ARTIFACT = PROPAGATION_BENCHMARK_ROOT / "kt2_sequence_vs_minds_sample_300c_5ep_3seed.json"
+FOREST_DATA_ROOT = PROPAGATION_ANALYSIS_ROOT / "datasets" / "forest-data"
+PROPAGATION_TWITTER_CHECKPOINT = PROPAGATION_BENCHMARK_ROOT / "checkpoints" / "kt2_sequence_twitter_system.pt"
 
 KT2_MODEL_NAME = "KT2SequenceJointModel"
 MINDS_MODEL_NAME = "MINDS"
+
+
+@lru_cache(maxsize=1)
+def _load_kt2_event_adapter():
+    return _load_internal_module(
+        path=PROPAGATION_EVENT_ADAPTER_PATH,
+        module_name="cogguard_kt2_event_adapter",
+        label="KT2 event adapter",
+    )
+
+
+@lru_cache(maxsize=1)
+def _load_kt2_live_runtime():
+    return _load_internal_module(
+        path=PROPAGATION_LIVE_RUNTIME_PATH,
+        module_name="cogguard_kt2_live_runtime",
+        label="KT2 live runtime",
+    )
+
+
+@lru_cache(maxsize=1)
+def _load_kt2_protocol():
+    return _load_internal_module(
+        path=PROPAGATION_PROTOCOL_PATH,
+        module_name="cogguard_kt2_protocol",
+        label="KT2 hindcast protocol",
+    )
+
+
+@lru_cache(maxsize=1)
+def _load_kt2_public_loader():
+    return _load_internal_module(
+        path=PROPAGATION_PUBLIC_LOADER_PATH,
+        module_name="cogguard_kt2_public_loader",
+        label="KT2 public dataset loader",
+    )
+
+
+def _load_internal_module(*, path: Path, module_name: str, label: str):
+    if not path.is_file():
+        raise RuntimeError(f"{label} not found: {path}")
+    module = sys.modules.get(module_name)
+    if module is not None:
+        return module
+    spec = importlib.util.spec_from_file_location(module_name, path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"Unable to load {label} from {path}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def build_event_inference_bundle(
+    posts: list[dict[str, Any]],
+    comments: list[dict[str, Any]] | None = None,
+    *,
+    max_sequence_len: int = 64,
+    user_hash_buckets: int = 4096,
+    relation_neighbor_count: int = 4,
+    hyperedge_count: int = 4,
+    relation_neighbors: dict[int, list[int]] | None = None,
+) -> dict[str, Any]:
+    adapter = _load_kt2_event_adapter()
+    return adapter.build_event_inference_bundle(
+        posts,
+        comments,
+        max_sequence_len=max_sequence_len,
+        user_hash_buckets=user_hash_buckets,
+        relation_neighbor_count=relation_neighbor_count,
+        hyperedge_count=hyperedge_count,
+        relation_neighbors=relation_neighbors,
+    )
+
+
+def predict_event_with_checkpoint(
+    checkpoint_path: Path | str,
+    posts: list[dict[str, Any]],
+    comments: list[dict[str, Any]] | None = None,
+    *,
+    top_k: int = 10,
+    max_sequence_len: int = 64,
+    user_hash_buckets: int = 4096,
+    relation_neighbor_count: int = 4,
+    hyperedge_count: int = 4,
+    relation_neighbors: dict[int, list[int]] | None = None,
+) -> dict[str, Any]:
+    adapter = _load_kt2_event_adapter()
+    return adapter.predict_event_with_checkpoint(
+        checkpoint_path,
+        posts,
+        comments,
+        top_k=top_k,
+        max_sequence_len=max_sequence_len,
+        user_hash_buckets=user_hash_buckets,
+        relation_neighbor_count=relation_neighbor_count,
+        hyperedge_count=hyperedge_count,
+        relation_neighbors=relation_neighbors,
+    )
+
+
+def load_public_cascade_fixture(
+    path: Path | str,
+    *,
+    dataset: str,
+    limit: int | None = None,
+) -> dict[str, Any]:
+    loader = _load_kt2_public_loader()
+    return loader.load_public_cascade_fixture(path, dataset=dataset, limit=limit)
 
 
 async def predict_kt2_macro_micro(
@@ -43,7 +162,7 @@ async def predict_kt2_macro_micro(
             source="live_small_run",
             note=(
                 "KT2 live small-run is unavailable until the training runner "
-                "is internalized under system/research/kt2."
+                "is internalized under system/research/propagation_analysis."
             ),
             artifact=str(FOREST_DATA_ROOT),
         )
@@ -56,37 +175,76 @@ async def predict_event_macro_micro(
     comments: list[dict[str, Any]] | None = None,
     top_k: int = 10,
 ) -> dict[str, Any]:
-    """Run current-event KT2 macro/micro inference when an internal checkpoint exists."""
+    """Run current-event KT2 macro/micro inference using internal runtime seams."""
 
-    if len(posts) + len(comments or []) < 3:
-        return {
-            "status": "data_insufficient",
-            "model_status": "unavailable",
-        }
-    if not KT2_TWITTER_CHECKPOINT.exists():
-        return {
-            "status": "model_unavailable",
-            "model_status": "unavailable",
-            "note": f"KT2 event checkpoint not found inside system boundary: {KT2_TWITTER_CHECKPOINT}",
-        }
-    return {
-        "status": "model_unavailable",
-        "model_status": "unavailable",
-        "note": "KT2 event checkpoint exists, but the internal checkpoint adapter is not wired yet.",
-        "artifact": str(KT2_TWITTER_CHECKPOINT),
-    }
+    comments = comments or []
+    trend_forecast = await predict_trend(posts, comments, mock_llm=True)
+    bundle = build_event_inference_bundle(posts, comments)
+    checkpoint_available = PROPAGATION_TWITTER_CHECKPOINT.exists()
+    bundle["checkpoint_path"] = str(PROPAGATION_TWITTER_CHECKPOINT)
+    bundle["checkpoint_available"] = checkpoint_available
+    if checkpoint_available:
+        checkpoint_result = predict_event_with_checkpoint(
+            PROPAGATION_TWITTER_CHECKPOINT,
+            posts,
+            comments,
+            top_k=top_k,
+        )
+        if checkpoint_result.get("status") == "ok":
+            return _with_hindcast_protocol(
+                {"technology": "kt2", **checkpoint_result},
+                bundle=bundle,
+                posts=posts,
+                comments=comments,
+                top_k=top_k,
+            )
+
+    live_runtime = _load_kt2_live_runtime()
+    result = live_runtime.build_live_event_macro_micro(
+        bundle=bundle,
+        trend=trend_forecast,
+        top_k=top_k,
+        checkpoint_available=checkpoint_available,
+    )
+    return _with_hindcast_protocol(
+        {"technology": "kt2", **result},
+        bundle=bundle,
+        posts=posts,
+        comments=comments,
+        top_k=top_k,
+    )
+
+
+def _with_hindcast_protocol(
+    result: dict[str, Any],
+    *,
+    bundle: dict[str, Any],
+    posts: list[dict[str, Any]],
+    comments: list[dict[str, Any]],
+    top_k: int,
+) -> dict[str, Any]:
+    protocol = _load_kt2_protocol().build_hindcast_protocol(
+        bundle=bundle,
+        forecast=result,
+        posts=posts,
+        comments=comments,
+        top_k=top_k,
+    )
+    merged = dict(result)
+    merged.update(protocol)
+    return merged
 
 
 def _load_cached_result(*, dataset: str, seed: int | None) -> dict[str, Any]:
-    if not KT2_SAMPLE_ARTIFACT.exists():
+    if not PROPAGATION_SAMPLE_ARTIFACT.exists():
         return _missing_result(
             dataset=dataset,
             seed=seed,
             source="cached_artifact",
-            note=f"KT2 cached artifact not found: {KT2_SAMPLE_ARTIFACT}",
+            note=f"KT2 cached artifact not found: {PROPAGATION_SAMPLE_ARTIFACT}",
         )
 
-    payload = json.loads(KT2_SAMPLE_ARTIFACT.read_text(encoding="utf-8"))
+    payload = json.loads(PROPAGATION_SAMPLE_ARTIFACT.read_text(encoding="utf-8"))
     rows = [row for row in payload.get("rows", []) if isinstance(row, dict)]
     kt2_rows = [
         row
@@ -105,7 +263,7 @@ def _load_cached_result(*, dataset: str, seed: int | None) -> dict[str, Any]:
             seed=seed,
             source="cached_artifact",
             note=f"No KT2SequenceJointModel row for dataset={dataset}, seed={seed}.",
-            artifact=str(KT2_SAMPLE_ARTIFACT),
+            artifact=str(PROPAGATION_SAMPLE_ARTIFACT),
         )
 
     minds_rows = [
@@ -126,7 +284,7 @@ def _load_cached_result(*, dataset: str, seed: int | None) -> dict[str, Any]:
         dataset=dataset,
         seed=seed,
         source="cached_artifact",
-        artifact=str(KT2_SAMPLE_ARTIFACT),
+        artifact=str(PROPAGATION_SAMPLE_ARTIFACT),
         evidence_level=str(payload.get("evidence_level", "sampled_experiment")),
         full_validation_passed=bool(payload.get("full_validation_passed", False)),
         boundary=str(payload.get("boundary", "")),

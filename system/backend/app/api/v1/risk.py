@@ -7,8 +7,8 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import get_current_user, require_roles
-from app.core.risk.kt3_gate_dataset import get_kt3_gate_dataset_contract_spec
-from app.core.risk.kt3_gate_dataset import validate_kt3_gate_dataset_contract
+from app.core.review.kt3_gate_dataset import get_kt3_gate_dataset_contract_spec
+from app.core.review.kt3_gate_dataset import validate_kt3_gate_dataset_contract
 from app.db.mysql import get_db
 from app.models.user import User
 from app.schemas.risk import KT3AgentReviewRunRequest

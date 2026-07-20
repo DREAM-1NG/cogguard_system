@@ -31,7 +31,7 @@ if str(BACKEND_DIR) not in sys.path:
 import pandas as pd
 from sqlalchemy import select
 
-from app.core.coordination.io_reproduction import normalize_event_table
+from app.core.coordination_baseline.io_reproduction import normalize_event_table
 from app.core.crawler.social import weibo_comment_line_to_comment, weibo_content_line_to_post
 from app.db.mysql import async_session_factory
 from app.models.coordination_registry import CoordinationDataset

@@ -473,7 +473,7 @@
 # 第三部分 · KT3 报告研判
 
 
-> 仓库根：`g:/CISCN/cogguard_system/`；核心代码：`new-system/backend/app/core/risk/`
+> 仓库根：`g:/CISCN/cogguard_system/`；核心代码：`new-system/backend/app/core/review/`
 > 链接标注：【已核实】= 已通过 WebSearch/官方页核实可访问；【存疑】= 未能直接核实或需进一步确认。
 > 总叙事：KT3 从 detection 升级到 anticipation + countermeasure。头号创新是已落地的白盒前瞻引擎（Phase-Aware Hazard + DISARM 攻击路径预判 + D-S 融合）；多 Agent + RAG 是编排/呈现层（设计稿）。
 

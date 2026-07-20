@@ -3,8 +3,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Protocol
 
-from app.core.analysis.contracts import AnalysisRunStatus, EventSnapshot
+from app.core.analysis.contracts import AnalysisRunStatus, EventSnapshot, UnknownAnalysisStage, normalize_analysis_stage
 from app.core.analysis.registry import AnalysisRegistry
+from app.core.analysis.runtime import InternalStudentRuntime, InternalTeacherJobPort
 
 
 class CoordinationEngine(Protocol):
@@ -102,43 +103,23 @@ class AnalysisExecutor:
             return await self.engines.student.predict(_case_from_snapshot(snapshot, options=options))
         if stage == "teacher":
             return await self.engines.teacher.submit(_case_from_snapshot(snapshot, options=options))
-        return {"status": "skipped", "reason": f"Unknown analysis stage: {stage}"}
+        raise UnknownAnalysisStage(f"Unknown analysis stage: {stage}")
 
 
 class SnapshotCoordinationEngine:
     async def analyze(self, snapshot: EventSnapshot, options: dict[str, Any]) -> dict[str, Any]:
-        from app.services.coordination_service import analyze_coordination_records
+        from app.core.analysis.coordination_discover import analyze_coordination_discover_snapshot
+        from app.core.analysis.coordination_discover_adapter import try_load_coordination_discover_result
 
-        result = analyze_coordination_records(
-            list(snapshot.posts),
-            list(snapshot.comments),
-            time_window=int(options.get("time_window", 60) or 60),
-            min_participation=int(options.get("min_participation", 2) or 2),
-            edge_weight=float(options.get("edge_weight", 0.5) or 0.5),
-            event_id=snapshot.event_id,
-            platform=str(options.get("platform") or _single_platform(snapshot) or "") or None,
-        )
-        status = "data_insufficient" if result.get("error") else "ok"
-        return {
-            "status": status,
-            "technology": "kt1",
-            "model_version": "coordination-baseline-v1",
-            "snapshot_id": snapshot.snapshot_id,
-            "summary": result.get("summary", {}),
-            "community_lineage": _coordination_community_lineage(result.get("network", {})),
-            "account_risk_tiers": _coordination_account_risk_tiers(result.get("account_stats", [])),
-            "evidence_edges": list(result.get("network", {}).get("edges", [])),
-            "domain_shift": {
-                "status": "not_evaluated",
-                "reason": "Baseline coordination runtime does not estimate domain shift.",
-            },
-            "abstain": status != "ok",
-            "network": result.get("network", {}),
-            "account_stats": result.get("account_stats", []),
-            "group_stats": result.get("group_stats", []),
-            "cluster_stats": result.get("cluster_stats", []),
-            "error": result.get("error"),
-        }
+        research_result, fallback_reason = try_load_coordination_discover_result(snapshot, options)
+        if research_result is not None:
+            return research_result
+
+        result = analyze_coordination_discover_snapshot(snapshot, options)
+        result["fallback"] = True
+        result["fallback_reason"] = fallback_reason or "kt1_artifact_unavailable"
+        result["fallback_policy"] = "evidence_runtime_v2"
+        return result
 
 
 class KT2PropagationEngine:
@@ -156,20 +137,27 @@ class KT2PropagationEngine:
 class UnavailableStudentRuntime:
     async def predict(self, case: dict[str, Any]) -> dict[str, Any]:
         return {
+            "technology": "student",
             "status": "unavailable",
             "verdict_type": "preliminary",
-            "reason": "StudentRuntime.predict is not wired to an internal deployed student model yet.",
             "snapshot_id": case.get("snapshot_id"),
+            "event_id": case.get("event_id"),
+            "reason": "Student runtime is not configured for this executor.",
+            "abstain": True,
+            "review_required": True,
         }
 
 
 class UnavailableTeacherJobPort:
     async def submit(self, case: dict[str, Any]) -> dict[str, Any]:
         return {
+            "technology": "teacher",
             "status": "unavailable",
-            "job_id": None,
-            "reason": "TeacherJobPort.submit is not wired to an internal Celery teacher DAG yet.",
+            "verdict_type": "teacher_advisory",
             "snapshot_id": case.get("snapshot_id"),
+            "event_id": case.get("event_id"),
+            "reason": "Teacher job port is not configured for this executor.",
+            "review_required": True,
         }
 
 
@@ -177,8 +165,8 @@ def default_analysis_engine_ports() -> AnalysisEnginePorts:
     return AnalysisEnginePorts(
         coordination=SnapshotCoordinationEngine(),
         propagation=KT2PropagationEngine(),
-        student=UnavailableStudentRuntime(),
-        teacher=UnavailableTeacherJobPort(),
+        student=InternalStudentRuntime(),
+        teacher=InternalTeacherJobPort(),
     )
 
 
@@ -250,16 +238,7 @@ def _stage_options(options: dict[str, Any], stage: str) -> dict[str, Any]:
 
 
 def _normalize_stage(stage: Any) -> str:
-    value = str(stage or "").strip().lower()
-    aliases = {
-        "coordination": "kt1",
-        "coordination_engine": "kt1",
-        "propagation": "kt2",
-        "propagation_engine": "kt2",
-        "kt3_student": "student",
-        "kt3_teacher": "teacher",
-    }
-    return aliases.get(value, value)
+    return normalize_analysis_stage(stage)
 
 
 def _final_status(results: dict[str, Any]) -> AnalysisRunStatus:
@@ -289,5 +268,6 @@ def _needs_evidence(result: Any) -> bool:
         "unavailable",
         "missing_data",
         "model_unavailable",
+        "missing_checkpoint",
         "data_insufficient",
     }

@@ -2,7 +2,7 @@
 
 > **用途**：说明本地/部署环境、基础服务、后端、前端、测试和可选 ARIS 开发方式。  
 > **受众**：开发者、部署者、后续执行任务的 AI agent。  
-> **维护规则**：只记录可复现的运行步骤；环境变量、端口、启动命令变化必须同步本文和 `../../new-system/README.md`。
+> **维护规则**：只记录可复现的运行步骤；环境变量、端口、启动命令变化必须同步本文和 `../../system/README.md`。
 
 ## 1. 前置依赖
 
@@ -18,12 +18,12 @@
 按下面顺序即可直接拉起数据库、后端和前端：
 
 ```powershell
-cd G:\CISCN\cogguard_system\new-system
+cd system
 docker compose up -d
 docker compose ps
 
-cd .\backend
-$env:UV_CACHE_DIR='G:\CISCN\cogguard_system\new-system\backend\.uv-cache'
+cd backend
+$env:UV_CACHE_DIR='.\.uv-cache'
 uv sync
 .\.venv\Scripts\alembic.exe upgrade head
 .\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
@@ -74,7 +74,7 @@ docker compose version
 ## 4. 启动基础服务
 
 ```bash
-cd new-system
+cd system
 
 # 复制环境变量（首次需要）
 cp .env.example .env
@@ -144,7 +144,7 @@ uv sync --frozen
 ## 6. 启动后端
 
 ```bash
-cd new-system/backend
+cd system/backend
 
 # 方式一：使用 uv（推荐）
 uv sync
@@ -166,7 +166,7 @@ uvicorn app.main:app --reload --port 8000
 如果需要验证内置 social runtime 是否就绪，可执行：
 
 ```bash
-cd new-system/backend
+cd system/backend
 uv run python scripts/verify_mediacrawler_env.py
 ```
 
@@ -175,7 +175,7 @@ uv run python scripts/verify_mediacrawler_env.py
 ## 7. 启动前端
 
 ```bash
-cd new-system/frontend
+cd system/frontend
 
 npm install
 npm run dev
@@ -189,7 +189,7 @@ npm run dev
 
 ```bash
 # 启动后端 API 壳，至少保证健康检查和 Vite 代理目标存在
-cd new-system/backend
+cd system/backend
 .venv/Scripts/python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 
 # 启动前端开发服务器
@@ -216,14 +216,14 @@ D:/node/npm.cmd run dev -- --host 127.0.0.1 --port 5173
 - 如果只是想快速打开前端预览，可以直接运行项目根目录下的 `start-preview.ps1`，它会自动弹出两个 PowerShell 窗口分别启动后端和前端。
 
 ```powershell
-cd G:\CISCN\cogguard_system\new-system
+cd system
 powershell.exe -ExecutionPolicy Bypass -File .\start-preview.ps1
 ```
 
 ## 8. 运行测试
 
 ```bash
-cd new-system/backend
+cd system/backend
 
 # 安装含 pytest 的开发依赖后运行全部测试
 uv sync --extra dev
@@ -243,7 +243,7 @@ pytest -v
 
 1. `AGENTS.md`
 2. `doc/engineering/development-roadmap.md`
-3. `new-system/README.md`
+3. `system/README.md`
 4. `aris/README.md`
 5. 目标 `aris/tech-*/README.md`
 6. 对应 `doc/research/key-technology-background/*.md`
@@ -274,7 +274,7 @@ pytest -v
 ## 10. 停止服务
 
 ```bash
-cd new-system
+cd system
 docker compose down          # 停止容器（保留数据）
 docker compose down -v       # 停止并删除数据卷
 ```
@@ -283,7 +283,7 @@ docker compose down -v       # 停止并删除数据卷
 
 1. 安装 Docker Desktop、Python ≥3.11、Node.js ≥18
 2. 克隆项目代码
-3. `cd new-system && cp .env.example .env`
+3. `cd system && cp .env.example .env`
 4. 按需修改 `.env` 中的密码等配置
 5. `docker compose up -d`
 6. 按第 5、6 节启动后端和前端

@@ -1,4 +1,4 @@
-﻿# CogGuard 产品需求文档（PRD）
+# CogGuard 产品需求文档（PRD）
 
 > **用途**：定义产品目标、用户场景、页面信息架构、API/数据模型与验收口径。  
 > **受众**：系统开发者、产品/竞赛答辩准备者、AI 开发工具。  
@@ -1176,7 +1176,7 @@ CogGuard 系统围绕"数据采集 → 协同发现 → 传播监控 → 报告�
 
 ## 4.3 协同发现 — 子功能清单与优先级
 
-协同发现模块基于 CooRTweet 算法的 Python 重写，检测社交媒体上的协同行为（同一时间窗口内多账户分享相同对象）。核心实现位于 `app/core/coordination/`。
+协同发现模块基于 CooRTweet 算法的 Python 重写，检测社交媒体上的协同行为（同一时间窗口内多账户分享相同对象）。核心实现位于 `app/core/coordination_baseline/`。
 
 ### 子功能清单
 
@@ -1186,7 +1186,7 @@ CogGuard 系统围绕"数据采集 → 协同发现 → 传播监控 → 报告�
 |------|-----|
 | **优先级** | P0 |
 | **状态** | 已完成 |
-| **实现文件** | `core/coordination/detector.py` |
+| **实现文件** | `core/coordination_baseline/detector.py` |
 | **描述** | 在同一 `object_id`（URL/标签）下，检测 `time_window` 秒内发布的所有内容对。支持自环移除、最低参与次数过滤、快窗标记（`flag_speed_share`）。输入为标准化 DataFrame（`object_id, account_id, content_id, timestamp_share`），输出为协调配对表（`object_id, account_id, account_id_y, content_id, content_id_y, time_delta`）。 |
 | **依赖** | 数据采集（MongoDB `raw_posts`） |
 
@@ -1196,7 +1196,7 @@ CogGuard 系统围绕"数据采集 → 协同发现 → 传播监控 → 报告�
 |------|-----|
 | **优先级** | P0 |
 | **状态** | 已完成 |
-| **实现文件** | `core/coordination/network.py` |
+| **实现文件** | `core/coordination_baseline/network.py` |
 | **描述** | 从协调配对结果构建加权无向图（networkx）。边属性含 `weight`（配对次数）、`avg_time_delta`、`edge_symmetry_score`。支持边权百分位阈值过滤（`edge_weight` 参数）、快窗子图提取（`subgraph` 模式 0-3）。通过 `graph_to_dict()` 序列化为前端可渲染的 JSON（含连通分量分析）。 |
 | **依赖** | 共享对象协同检测 |
 
@@ -1206,7 +1206,7 @@ CogGuard 系统围绕"数据采集 → 协同发现 → 传播监控 → 报告�
 |------|-----|
 | **优先级** | P0 |
 | **状态** | 已完成 |
-| **实现文件** | `core/coordination/stats.py` |
+| **实现文件** | `core/coordination_baseline/stats.py` |
 | **描述** | `account_stats`: 按账户汇总协同指标（degree, avg_weight, avg_time_delta, avg_edge_symmetry, coordinated_shares_count）。`group_stats`: 按 `object_id` 汇总涉及的协调账户数和配对数。两者均返回排序后的 DataFrame。 |
 | **依赖** | 协同网络可视化 |
 
@@ -1324,7 +1324,7 @@ CogGuard 系统围绕"数据采集 → 协同发现 → 传播监控 → 报告�
 
 ## 4.5 报告研判 — 子功能清单与优先级
 
-报告研判模块是系统的最终决策层，编排上游三大模块的输出，通过证据构建 → 阶段检测 → D-S 融合 → DISARM 评分的流水线生成结构化风险报告。核心实现位于 `app/core/risk/`。
+报告研判模块是系统的最终决策层，编排上游三大模块的输出，通过证据构建 → 阶段检测 → D-S 融合 → DISARM 评分的流水线生成结构化风险报告。核心实现位于 `app/core/review/`。
 
 ### 子功能清单
 
@@ -1334,7 +1334,7 @@ CogGuard 系统围绕"数据采集 → 协同发现 → 传播监控 → 报告�
 |------|-----|
 | **优先级** | P0 |
 | **状态** | 已完成 |
-| **实现文件** | `core/risk/evidence_builder.py` |
+| **实现文件** | `core/review/evidence_builder.py` |
 | **描述** | 从协同、传播、账户三个上游模块的输出中提取结构化特征，构建统一 `EvidencePack`。特征维度包括：协同特征（coordination_density, edge_symmetry_mean, max_component_size, coordinated_account_ratio）、传播特征（bridge_ratio, originator_concentration, burstiness, cross_cluster_spread）、账户特征（automation_entropy, high_automation_ratio, regularity_mean）。内部使用 Gini 系数衡量分布集中度、Shannon 熵衡量自动化分布、变异系数衡量突发性。 |
 | **依赖** | 协同发现、传播监控、账户画像 |
 
@@ -1344,7 +1344,7 @@ CogGuard 系统围绕"数据采集 → 协同发现 → 传播监控 → 报告�
 |------|-----|
 | **优先级** | P0 |
 | **状态** | 已完成 |
-| **实现文件** | `core/risk/phase_detector.py` |
+| **实现文件** | `core/review/phase_detector.py` |
 | **描述** | 将协同操纵事件建模为 5 个生命周期阶段：seed → synchronize → breakout → saturation → regeneration。基于窗口特征的规则分类（按优先级匹配：breakout > regeneration > saturation > synchronize > seed），结合 logistic hazard 模型估计各阶段转换风险概率。输出 `PhaseResult`：当前阶段、置信度、各转换 hazard 分数、breakout 预估时间。 |
 | **依赖** | 证据构建 |
 
@@ -1354,7 +1354,7 @@ CogGuard 系统围绕"数据采集 → 协同发现 → 传播监控 → 报告�
 |------|-----|
 | **优先级** | P0 |
 | **状态** | 已完成 |
-| **实现文件** | `core/risk/ds_fusion.py` |
+| **实现文件** | `core/review/ds_fusion.py` |
 | **描述** | Dempster-Shafer 矛盾感知多源证据融合。将协同（操纵性）、传播（影响力）、账户（真实性）三个维度的证据转换为三元质量函数 `{risk, safe, uncertain}`，通过阶段感知质量调整（phase-conditioned mass adjustment）后，逐步执行 Dempster 组合规则。输出 `FusionResult`：三维度信念区间 `[belief, plausibility]`、总体信念区间、冲突质量（conflict_mass）、是否需要升级人工复核（escalation_required）。 |
 | **依赖** | 证据构建、阶段检测 |
 
@@ -1364,7 +1364,7 @@ CogGuard 系统围绕"数据采集 → 协同发现 → 传播监控 → 报告�
 |------|-----|
 | **优先级** | P0 |
 | **状态** | 已完成 |
-| **实现文件** | `core/risk/disarm_scorer.py` |
+| **实现文件** | `core/review/disarm_scorer.py` |
 | **描述** | 基于 DISARM Red Framework 构建技术转换图（12 个技术节点、18 条有向转换边），将上游证据映射到观测技术（如 T0101 Create Fake Accounts、T0105 Coordinate Activity 等）。评分攻击路径的深度（最长路径长度）、广度（涉及战术数）、完整度（覆盖技术比例），加权计算综合攻击路径分数。基于转换概率矩阵预测下一步可能技术，并从反制措施知识库推荐应对方案（含优先级排序）。 |
 | **依赖** | 证据构建、D-S 证据融合 |
 
@@ -1374,7 +1374,7 @@ CogGuard 系统围绕"数据采集 → 协同发现 → 传播监控 → 报告�
 |------|-----|
 | **优先级** | P0 |
 | **状态** | 已完成 |
-| **实现文件** | `core/risk/report_builder.py` |
+| **实现文件** | `core/review/report_builder.py` |
 | **描述** | 组装所有分析结果为最终 JSON 报告。计算三维度评分（操纵性、真实性、影响力）和综合风险评分（0-100），映射风险等级（low/medium/high/critical）。生成可解释的风险因子列表和处置建议（含 DISARM 反制措施）。报告持久化到 MySQL `risk_assessments` 表，支持分页查询和详情查看。 |
 | **依赖** | 阶段检测、D-S 证据融合、DISARM 攻击路径评分 |
 
@@ -1384,7 +1384,7 @@ CogGuard 系统围绕"数据采集 → 协同发现 → 传播监控 → 报告�
 |------|-----|
 | **优先级** | P1 |
 | **状态** | 占位（接口已定义） |
-| **实现文件** | `core/risk/llm_bridge.py` |
+| **实现文件** | `core/review/llm_bridge.py` |
 | **描述** | 为后续 LLM 集成预留的三个接口：`generate_summary()`（风险报告自然语言摘要生成）、`explain_evidence()`（证据链叙事化解释）、`assess_complex_scenario()`（复杂场景辅助判断）。当前均返回 `None`，待 LLM API 配置后启用。 |
 | **依赖** | 报告生成、LLM API 配置 |
 
@@ -1485,9 +1485,9 @@ P2 阶段扩展系统的分析深度和自动化程度。
 
 | 模块 | 子功能 | 优先级 | 状态 | 实现文件 | 关键技术 |
 |------|--------|:------:|------|----------|:--------:|
-| **协同发现** | 共享对象协同检测 | P0 | 已完成 | `core/coordination/detector.py` | |
-| | 协同网络可视化 | P0 | 已完成 | `core/coordination/network.py` | |
-| | 账户统计与群组统计 | P0 | 已完成 | `core/coordination/stats.py` | |
+| **协同发现** | 共享对象协同检测 | P0 | 已完成 | `core/coordination_baseline/detector.py` | |
+| | 协同网络可视化 | P0 | 已完成 | `core/coordination_baseline/network.py` | |
+| | 账户统计与群组统计 | P0 | 已完成 | `core/coordination_baseline/stats.py` | |
 | | 多任务框架协同检测 | P1 | 待 ARIS | 待创建 | KT1 |
 | | 多行为边构建 | P2 | 待开发 | 待创建 | |
 | | 显著性筛查 | P2 | 待开发 | 待创建 | |
@@ -1498,12 +1498,12 @@ P2 阶段扩展系统的分析深度和自动化程度。
 | | 立场检测 | P2 | 待开发 | 待创建 | |
 | | 危害性评估 | P2 | 待开发 | 待创建 | |
 | | 源头追溯 | P2 | 待开发 | 待创建 | |
-| **报告研判** | 证据构建 | P0 | 已完成 | `core/risk/evidence_builder.py` | |
-| | 阶段检测 | P0 | 已完成 | `core/risk/phase_detector.py` | |
-| | D-S 证据融合 | P0 | 已完成 | `core/risk/ds_fusion.py` | |
-| | DISARM 攻击路径评分 | P0 | 已完成 | `core/risk/disarm_scorer.py` | |
-| | 报告生成 | P0 | 已完成 | `core/risk/report_builder.py` | |
-| | LLM 桥接 | P1 | 占位 | `core/risk/llm_bridge.py` | |
+| **报告研判** | 证据构建 | P0 | 已完成 | `core/review/evidence_builder.py` | |
+| | 阶段检测 | P0 | 已完成 | `core/review/phase_detector.py` | |
+| | D-S 证据融合 | P0 | 已完成 | `core/review/ds_fusion.py` | |
+| | DISARM 攻击路径评分 | P0 | 已完成 | `core/review/disarm_scorer.py` | |
+| | 报告生成 | P0 | 已完成 | `core/review/report_builder.py` | |
+| | LLM 桥接 | P1 | 占位 | `core/review/llm_bridge.py` | |
 | | Agent + RAG 攻击分析 | P1 | 待 ARIS | 待创建 | KT3 |
 | | 预警系统 | P2 | 待开发 | 待创建 | |
 | | 案例入库与检索 | P3 | 待开发 | 待创建 | |
@@ -2508,7 +2508,7 @@ P2 阶段扩展系统的分析深度和自动化程度。
          │                │         │  │                 │
          ▼                ▼         │  ▼                 │
   ┌──────────────┐ ┌──────────────┐│ ┌─────────────────┐│
-  │  core/       │ │  core/       ││ │  core/risk/     ││
+  │  core/       │ │  core/       ││ │  core/review/     ││
   │ coordination │ │ propagation  ││ │                 ││
   │              │ │              ││ │ evidence_builder││
   │ detector     │ │ ts_features  ││ │ phase_detector  ││
@@ -2539,7 +2539,7 @@ P2 阶段扩展系统的分析深度和自动化程度。
 
 本节定义三个 ARIS（Algorithm-Runtime Interface Specification）关键技术接口，作为算法核心模块与业务服务层的契约边界。所有接口使用 Python `dataclass` 格式定义，确保类型安全和可序列化。
 
-> 代码引用：`app/core/coordination/detector.py`、`app/core/propagation/trend_predictor.py`、`app/core/risk/disarm_scorer.py`
+> 代码引用：`app/core/coordination_baseline/detector.py`、`app/core/propagation/trend_predictor.py`、`app/core/review/disarm_scorer.py`
 
 ### 5.15.1 协同检测接口（@version: v1）
 
@@ -2678,7 +2678,7 @@ class AttackAnalysisInput:
     """DISARM 攻击路径分析输入。@version: v1
 
     由 risk_service 在风险评估流水线中构建，
-    传入 core/risk/disarm_scorer 模块。
+    传入 core/review/disarm_scorer 模块。
     """
     # 上游证据包（由 evidence_builder 构建）
     evidence_pack: "EvidencePack" = None  # type: ignore
@@ -2733,7 +2733,7 @@ class AttackPathScoreItem:
 class AttackAnalysisOutput:
     """DISARM 攻击路径分析输出。@version: v1
 
-    由 core/risk/disarm_scorer 产出，
+    由 core/review/disarm_scorer 产出，
     供 report_builder 组装最终报告。
     """
     # 观测到的 DISARM 技术列表
@@ -2790,19 +2790,19 @@ class AttackAnalysisOutput:
 | **服务层** | `services/dashboard_service.py` | 待开发 | 看板数据聚合 |
 | **服务层** | `services/alert_service.py` | 待开发 | 预警管理 |
 | **服务层** | `services/report_service.py` | 待开发 | 报告管理 |
-| **核心算法** | `core/coordination/detector.py` | 已实现 | 协同配对检测（CooRTweet） |
-| **核心算法** | `core/coordination/network.py` | 已实现 | 协同网络构建 |
-| **核心算法** | `core/coordination/stats.py` | 已实现 | 协同统计 |
+| **核心算法** | `core/coordination_baseline/detector.py` | 已实现 | 协同配对检测（CooRTweet） |
+| **核心算法** | `core/coordination_baseline/network.py` | 已实现 | 协同网络构建 |
+| **核心算法** | `core/coordination_baseline/stats.py` | 已实现 | 协同统计 |
 | **核心算法** | `core/propagation/ts_features.py` | 已实现 | 时序特征提取 |
 | **核心算法** | `core/propagation/llm_context.py` | 已实现 | LLM 事件提取 |
 | **核心算法** | `core/propagation/regime_model.py` | 已实现 | 体制切换模型 |
 | **核心算法** | `core/propagation/trend_predictor.py` | 已实现 | 趋势预测编排 |
-| **核心算法** | `core/risk/evidence_builder.py` | 已实现 | 证据构建器 |
-| **核心算法** | `core/risk/phase_detector.py` | 已实现 | 阶段检测器 |
-| **核心算法** | `core/risk/ds_fusion.py` | 已实现 | D-S 证据融合 |
-| **核心算法** | `core/risk/disarm_scorer.py` | 已实现 | DISARM 攻击路径评分 |
-| **核心算法** | `core/risk/report_builder.py` | 已实现 | 报告组装 |
-| **核心算法** | `core/risk/llm_bridge.py` | 占位 | LLM 桥接（预留接口） |
+| **核心算法** | `core/review/evidence_builder.py` | 已实现 | 证据构建器 |
+| **核心算法** | `core/review/phase_detector.py` | 已实现 | 阶段检测器 |
+| **核心算法** | `core/review/ds_fusion.py` | 已实现 | D-S 证据融合 |
+| **核心算法** | `core/review/disarm_scorer.py` | 已实现 | DISARM 攻击路径评分 |
+| **核心算法** | `core/review/report_builder.py` | 已实现 | 报告组装 |
+| **核心算法** | `core/review/llm_bridge.py` | 占位 | LLM 桥接（预留接口） |
 | **核心算法** | `core/account_profiler.py` | 已实现 | 账户行为画像 |
 | **采集器** | `core/crawler/factory.py` | 已实现 | 爬虫工厂 |
 | **采集器** | `core/crawler/mock.py` | 已实现 | 模拟爬虫 |
@@ -2822,7 +2822,7 @@ class AttackAnalysisOutput:
 
 ## 附录 B：DISARM 技术知识库映射表
 
-> 代码引用：`app/core/risk/disarm_scorer.py` — `TECHNIQUE_INFO`、`TRANSITIONS`、`TRANSITION_PROBS`、`COUNTERMEASURES`
+> 代码引用：`app/core/review/disarm_scorer.py` — `TECHNIQUE_INFO`、`TRANSITIONS`、`TRANSITION_PROBS`、`COUNTERMEASURES`
 
 ### B.1 技术清单
 
@@ -2896,7 +2896,7 @@ T0101 ──→ T0102 ──→ T0105
 
 ## 附录 C：风险等级与阶段定义
 
-> 代码引用：`app/core/risk/phase_detector.py`、`app/core/risk/report_builder.py`
+> 代码引用：`app/core/review/phase_detector.py`、`app/core/review/report_builder.py`
 
 ### C.1 风险等级定义
 
@@ -2909,7 +2909,7 @@ T0101 ──→ T0102 ──→ T0105
 | `high` | 51 - 75 | 橙色 | 重点关注，安排分析师跟进 |
 | `critical` | 76 - 100 | 红色 | 立即启动应急响应 |
 
-> 代码引用：`app/core/risk/report_builder.py` — `_risk_level()` 函数，阈值可通过 `risk_config.yaml` 的 `scoring.levels` 配置。
+> 代码引用：`app/core/review/report_builder.py` — `_risk_level()` 函数，阈值可通过 `risk_config.yaml` 的 `scoring.levels` 配置。
 
 ### C.2 战役生命周期阶段定义
 

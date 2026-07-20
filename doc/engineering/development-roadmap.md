@@ -1,10 +1,10 @@
-﻿# CogGuard 设计方案与开发进度
+# CogGuard 设计方案与开发进度
 
 > **用途**：记录当前工程状态、模块优先级、剩余开发任务和已通过验证。  
 > **受众**：开发者、项目维护者、后续执行任务的 AI agent。  
 > **维护规则**：只维护可执行工程路线和状态；研究定位、文献依据和关键技术背景放入 `../research/`。
 
-> 最后更新：2026-07-13
+> 最后更新：2026-07-19
 
 ## 技术决策记录
 
@@ -38,7 +38,7 @@
 - [x] 2026-05-10 `aris/tech-01-coordination/systemDesign.md` 单文件落盘（系统设计 × MVP × CCF-B+ 综述），含错位矩阵 M1–M5 + ADR-001 + T1–T6 时序原则 + M0–M6 里程碑
 - [ ] 使用 `aris/tech-01-coordination/` 完成关键技术一代码落地（PSL 新方向；旧方向 CooRTweet 共享对象 MVP 已在 `system/`）
 - [~] 使用 `aris/tech-02-propagation/` 完成关键技术二代码落地（Hybrid TS + LLM 路线：WP1-3 已完成，WP4-5 未启动）
-- [x] 使用 `aris/tech-03-risk/` 完成关键技术三代码落地（`core/risk/` 1,340 行 MVP + `risk_service` 编排层）
+- [x] 使用 `aris/tech-03-risk/` 完成关键技术三代码落地（`core/review/` 1,340 行 MVP + `risk_service` 编排层）
 
 ---
 
@@ -54,10 +54,10 @@
 | 前端 - 布局与认证 | ✅ 已完成 | P0 | 后端认证模块 |
 | 前端 - 采集管理页 | ✅ 已完成 | P0 | 后端采集模块 |
 | 数据采集模块（真实爬虫） | ✅ 已完成 | P1 | Mock 模块完成 |
-| 统一分析运行底座 | 🔧 接口与持久化已完成 | P1 | 真实数据采集 |
-| 协同检测模块（旧方向 CooRTweet） | ✅ MVP 已完成 | P1 | 数据采集 |
-| 协同检测模块（新方向 PSL） | 🔲 待实现（设计已就绪） | P1 | 旧方向 MVP |
-| 传播监控模块（KT2 WP1-3） | ✅ 已完成（缓存证据已内置） | P1 | 数据采集、协同检测 |
+| 统一分析运行底座 | ✅ 关键技术端口已贯通 | P1 | 真实数据采集 |
+| 协同检测模块（KT1 evidence runtime） | ✅ 已接入统一分析 | P1 | 数据采集 |
+| 协同检测模块（公开检测评测） | 🔲 待实现 | P1 | KT1 evidence runtime |
+| 传播监控模块（KT2 hindcast protocol） | ✅ 已接入统一分析 | P1 | 数据采集、协同检测 |
 | 传播监控模块（KT2 WP4-5 立场/危害） | 🔲 待开发 | P1 | WP1-3 |
 | 账户监测模块 | ✅ 已完成（含 BotRHG API） | P1 | 数据采集 |
 | 前端 - 协同检测页（网络可视化） | ✅ 已完成 | P1 | 后端协同检测 |
@@ -65,7 +65,9 @@
 | 前端 - 账户监测页（画像+评分） | ✅ 已完成 | P1 | 后端账户监测 |
 | 前端 - 报告研判页 | ✅ 已完成 | P1 | 后端报告研判 |
 | 前端 - UX 增强（密度/分页/引导） | ✅ 已完成 | P1 | 各前端页面 |
+| KT3 Teacher-Student 审查 | ✅ runtime seam 已接入 | P1 | EventSnapshot、KT1、KT2 |
 | 报告研判模块 | ✅ MVP 已完成 | P2 | 协同检测、传播监控、账户监测 |
+| 前端 - 分析工作台 | ✅ 已接入 V2 关键技术输出 | P1 | 统一分析运行底座 |
 | 前端 - 监测看板 | 🔧 开发中（真实数据 + 地图） | P1 | Dashboard API、Mongo 事件数据 |
 | 系统联调与测试 | 🔧 部分（新增 BotRHG 后端回归测试） | P2 | 所有模块 |
 
@@ -130,14 +132,17 @@
 - [x] SSE 恢复：使用 `Last-Event-ID` 或 REST `after_id` 返回追加事件
 - [x] 判决版本表支持同一 `verdict_id` 多版本，唯一性落在 `(verdict_id, version)`
 - [x] `AnalysisExecutor`：以 `EventSnapshot` 为输入，顺序调用 `CoordinationEngine.analyze`、`PropagationEngine.hindcast`、`StudentRuntime.predict`、`TeacherJobPort.submit` 端口并写入 run events
-- [x] 将 KT1 canonical coordination baseline 接到 `CoordinationEngine.analyze(snapshot, options)`，替换默认 unavailable
-- [ ] 将 KT2 live runner、公开数据 loader、checkpoint adapter 接到 `PropagationEngine.hindcast(snapshot, options)`，完成 KT2 内置化
-- [ ] 将 Student 同步推理与 Teacher 异步 Celery DAG 接到 V2 run / verdict 治理，替换默认 unavailable
-- [ ] 前端分析员工作流迁移到 V2 运行与 SSE 恢复
+- [x] 将 KT1 evidence runtime 接到 `CoordinationEngine.analyze(snapshot, options)`，替换旧默认 baseline 输出
+- [x] 将 KT2 事件 bundle / checkpoint adapter / hindcast protocol 接到 `PropagationEngine.hindcast(snapshot, options)`，不再依赖外部 research workspace
+- [x] 将 KT2 public fixture loader、split-conformal interval 和 baseline registry 内化到 `system/research/propagation_analysis`
+- [x] 将 Student 同步 runtime 接到 `StudentRuntime.predict(case)`，没有 approved checkpoint 时显式 `shadow_untrained` 并强制 review
+- [x] 将 Teacher 异步 Celery job port 接到 `system/research/review_teacher` 的 5+1+1 advisory DAG
+- [x] 新增 canonical verdict、模型激活、回滚和主动学习治理 helper；数据库模型已具备 verdict/version/feedback/activation 表
+- [~] 前端分析员工作流迁移到 V2 运行与 SSE 恢复：`/analysis` 已展示 KT1/KT2/Student/Teacher 输出；完整 adjudication、verdict 审批与模型激活 UI 仍待实现
 
 #### 2.1 协同检测模块 ✅
 
-- [x] CooRTweet 核心算法 Python 重写（`core/coordination/`）
+- [x] CooRTweet 核心算法 Python 重写（`core/coordination_baseline/`）
   - [x] `detect_groups()` 重写：时间窗口内共享行为配对（pandas + numpy 向量化）
   - [x] `generate_coordinated_network()` 重写：加权无向图 + 分位数阈值（networkx）
   - [x] `flag_speed_share()` 重写：更窄时间窗打标
@@ -145,10 +150,12 @@
 - [x] 图引擎接口（NetworkX 实现，`graph_to_dict` 序列化）
 - [x] 协同检测 API 接口（`POST /api/v1/coordination/detect`）
 - [x] 前端协同网络 Canvas 力导向可视化 + 统计表格
-- [ ] 多行为协同边构建（时间同步、共链接、共媒体、语义近似）
-- [ ] 数据清洗后按事件顺序进行分平台聚合，再做跨平台聚合
-- [ ] 用户聚类与聚类解释（平台内聚类 + 跨平台聚类）
-- [ ] 自然共振 vs 人为协同显著性筛查
+- [x] 多行为 evidence edge 构建：URL、媒体、话题、实体、目标、原生转评赞/回复、近重复内容
+- [x] 1h/6h/24h 50% 重叠窗口、社区谱系、证据覆盖、零模型显著性和扰动鲁棒性
+- [x] `CoordinationEngine.analyze(snapshot, options) -> CoordinationResult` 作为统一分析入口
+- [ ] 数据清洗后按事件顺序进行更完整的分平台复核，再做跨平台聚合
+- [ ] 公开数据 Detect 评测：campaign/platform/time 留出、AUPRC、MaxF1、校准和 5-seed 置信区间
+- [ ] 分层人工复核工作台：每平台社区支持/反证/无法判断记录，不直接形成训练集
 
 #### 2.2 传播监控模块 ✅
 
@@ -158,12 +165,14 @@
 - [x] 高危 claim/thread 定位与排序
 - [x] 传播监控 API 接口（`GET /api/v1/propagation/analyze`）
 - [x] 前端传播时间线 + 关键角色卡片 + Claim 表格
-- [x] KT2 缓存证据内置到 `system/research/kt2/benchmark/`，系统服务不再读取 `subsystems/cogguard_dev`
-- [x] `kt2_prediction_service.py` 删除外部 `sys.path.insert`，未内置的 live runner / event checkpoint adapter 返回显式 unavailable
+- [x] KT2 缓存证据内置到 `system/research/propagation_analysis/benchmark/`，系统服务不再读取 `subsystems/cogguard_dev`
+- [x] `kt2_prediction_service.py` 删除外部 `sys.path.insert`，事件 bundle / checkpoint adapter 内置到 `system/research/propagation_analysis/benchmark/adapters/`
+- [x] KT2 current-event live runtime 已接通，并由 `kt2-hindcast-protocol-v1` 包装为统一预测协议
+- [x] 公开 fixture loader、EventSnapshot bundle adapter、80/95 split-conformal 区间、下一跳 ranking 和平台 hindcast 已内置
+- [x] EdgeBank、Hawkes-recency、persistence、historical-mean baseline registry 已内置；TGN/DyGFormer/CasFlow/CasFT checkpoint slot 显式返回缺 checkpoint/不可用
 - [ ] 页面命名由“传播归因”调整为“传播监控”
-- [ ] 相关发帖用户检测与高影响力节点识别
-- [ ] 归因证据链生成
-- [ ] KT2 live runner、公开数据 loader、checkpoint adapter 迁入 `system/research/kt2`
+- [ ] 相关发帖用户检测与高影响力节点识别的研究级评估
+- [ ] 可部署 TGN/DyGFormer/CasFlow/CasFT checkpoint runtime 与公开 benchmark 训练/评测 runner
 
 #### 2.3 账户监测模块 ✅
 
@@ -193,18 +202,28 @@
 
 ### 第三阶段：研判与集成
 
+#### 3.0 KT3 Teacher-Student 审查 ✅ runtime seam 已完成
+
+- [x] `system/runtimes/review_student/`：同步 `StudentRuntime.predict(case)`，输出 preliminary verdict、XLM-R-base / frozen multimodal / gating / MIL / community GNN 架构契约、主动学习信号和蒸馏计划
+- [x] `system/research/review_teacher/`：5+1+1 Teacher DAG（claim planning、trusted retrieval、text verification、multimodal verification、harm/stance/KT context、Gold aggregator、disagreement-only Critic/Judge）
+- [x] `app.core.analysis.governance`：canonical approval、model activation、rollback、active-learning batch helper
+- [x] Teacher 只生成 `teacher_advisory`，Student 只生成 `preliminary`；canonical 只能来自分析员审批
+- [ ] 真实多模型族在线 Teacher provider、可信检索 provider 和多模态核验 provider
+- [ ] approved feedback / Teacher traces 蒸馏训练 runner 与 Student approved checkpoint
+- [ ] adjudication UI、模型版本差异 UI、active pointer 激活/回滚 UI
+
 #### 3.1 报告研判模块 ✅ MVP 已完成
 
-- [x] 三维评估引擎（真实性/操纵性/危害性）— `core/risk/ds_fusion.py` (234 行)
-- [x] DISARM 战术映射 + 攻击路径评分 — `core/risk/disarm_scorer.py` (381 行)
-- [x] 传播阶段检测 — `core/risk/phase_detector.py` (169 行)
-- [x] 多源证据汇聚与证据链 — `core/risk/evidence_builder.py` (244 行)
-- [x] 结构化研判报告生成 — `core/risk/report_builder.py` (278 行)
+- [x] 三维评估引擎（真实性/操纵性/危害性）— `core/review/ds_fusion.py` (234 行)
+- [x] DISARM 战术映射 + 攻击路径评分 — `core/review/disarm_scorer.py` (381 行)
+- [x] 传播阶段检测 — `core/review/phase_detector.py` (169 行)
+- [x] 多源证据汇聚与证据链 — `core/review/evidence_builder.py` (244 行)
+- [x] 结构化研判报告生成 — `core/review/report_builder.py` (278 行)
 - [x] 报告研判服务层 — `services/risk_service.py` (153 行)
 - [x] 报告研判 API — `api/v1/risk.py` (68 行)
 - [x] 前端研判工作台 — `frontend/src/views/risk/index.vue`
 - [ ] 数据库迁移补齐（`models/risk_assessment.py` 50 行已建模型，缺 alembic 迁移）⚠️ 部署阻塞
-- [ ] LLM 桥接 `core/risk/llm_bridge.py`（当前 30 行 stub，需补 LLM 客户端依赖）
+- [ ] LLM 桥接 `core/review/llm_bridge.py`（当前 30 行 stub，需补 LLM 客户端依赖）
 
 #### 3.2 预警管理 🔲
 
@@ -268,6 +287,10 @@
 | `test_normalizer_standardizes_comment` | 评论字段标准化 | ✅ 通过 |
 | `test_list_platforms` | 平台列表接口 | ✅ 通过 |
 | `test_mediacrawler_env` | MediaCrawler 的 `.env` / `uv` / `node` 解析 | ✅ 通过 |
+| `test_analysis_kt1_runtime` | KT1 evidence runtime：多行为边、窗口、谱系、零模型、扰动鲁棒性 | ✅ 通过 |
+| `test_kt2_prediction_service` | KT2 内置 loader、hindcast protocol、conformal、baseline registry | ✅ 通过 |
+| `test_analysis_kt3_runtime` | KT3 Student/Teacher/governance seam | ✅ 通过 |
+| 后端全量测试 | `python -m pytest -q` | ✅ 361 passed, 27 skipped |
 | `test_register_success` | 用户注册 | ✅ 通过（需 MySQL） |
 | `test_register_duplicate_username` | 重复用户名注册 | ✅ 通过（需 MySQL） |
 | `test_login_success` | 用户登录 | ✅ 通过（需 MySQL） |
@@ -275,7 +298,7 @@
 | `test_profile_with_token` | Token 鉴权访问 | ✅ 通过（需 MySQL） |
 | `test_profile_without_token` | 无 Token 拒绝访问 | ✅ 通过 |
 | `test_refresh_token` | Token 刷新 | ✅ 通过（需 MySQL） |
-| 前端构建 | `vite build` 编译成功 | ✅ 通过 |
+| 前端构建 | `npm run build`（`vue-tsc -b && vite build`） | ✅ 通过 |
 
 ---
 

@@ -9,8 +9,8 @@ from urllib.parse import urlparse
 
 import pandas as pd
 
-from app.core.coordination import account_stats, detect_groups, generate_coordinated_network, group_stats
-from app.core.coordination.network import graph_to_dict
+from app.core.coordination_baseline import account_stats, detect_groups, generate_coordinated_network, group_stats
+from app.core.coordination_baseline.network import graph_to_dict
 from app.db.mongodb import get_mongo_db
 from app.services.event_data import build_event_filter, load_event_comments, load_event_posts
 

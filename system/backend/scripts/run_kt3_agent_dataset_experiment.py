@@ -21,10 +21,10 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from app.core.risk.kt3_agent_review import OpenAICompatibleAgentProvider  # noqa: E402
-from app.core.risk.kt3_agent_review import OpenAICompatibleConfig  # noqa: E402
-from app.core.risk.kt3_agent_review import run_manual_kt3_agent_review  # noqa: E402
-from app.core.risk.post_semantics import assess_post_semantics  # noqa: E402
+from app.core.review.kt3_agent_review import OpenAICompatibleAgentProvider  # noqa: E402
+from app.core.review.kt3_agent_review import OpenAICompatibleConfig  # noqa: E402
+from app.core.review.kt3_agent_review import run_manual_kt3_agent_review  # noqa: E402
+from app.core.review.post_semantics import assess_post_semantics  # noqa: E402
 from app.config import settings  # noqa: E402
 from app.tasks.kt3_tasks import _build_http_retrieval_provider  # noqa: E402
 

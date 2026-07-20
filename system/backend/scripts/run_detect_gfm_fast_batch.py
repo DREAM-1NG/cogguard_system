@@ -13,7 +13,7 @@ BACKEND_ROOT = Path(__file__).resolve().parents[1]
 if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 
-from app.core.coordination.io_reproduction import (  # noqa: E402
+from app.core.coordination_baseline.io_reproduction import (  # noqa: E402
     IOHUNTER_CANONICAL_RELATIONS,
     _amdn_hage_style_metrics,
     _cpu_light_gfm_lm_gnn_scores,

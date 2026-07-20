@@ -1,6 +1,6 @@
 import pandas as pd
 
-from app.core.coordination.detector import detect_groups
+from app.core.coordination_baseline.detector import detect_groups
 
 
 def test_detect_groups_counts_unique_contents_for_min_participation():

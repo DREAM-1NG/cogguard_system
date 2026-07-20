@@ -30,7 +30,7 @@ These were installed to support architecture scanning, incremental refactor plan
   - evidence-chain extraction
   - diffusion layout
   - user quality portrait
-- `system/backend/app/core/risk/kt3_agent_review.py` mixes provider setup, prompt building, batching, retry policy, and result shaping in one implementation.
+- `system/backend/app/core/review/kt3_agent_review.py` mixes provider setup, prompt building, batching, retry policy, and result shaping in one implementation.
 - `system/backend/app/services/` contains several orchestration modules that still know too much about concrete data loading and output shaping.
 
 ### Frontend
@@ -67,7 +67,7 @@ Success criteria:
 
 Scope:
 
-- Separate provider adapters, prompt construction, execution planning, retry policy, and payload normalization in `app/core/risk/kt3_agent_review.py`.
+- Separate provider adapters, prompt construction, execution planning, retry policy, and payload normalization in `app/core/review/kt3_agent_review.py`.
 - Reduce direct coupling between risk orchestration and concrete LLM/runtime decisions.
 
 ### Phase 3: Service-Layer Simplification

@@ -16,7 +16,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import PROJECT_ROOT
-from app.core.coordination.io_reproduction import (
+from app.core.coordination_baseline.io_reproduction import (
     DEFAULT_RELATIONS,
     build_unmasking_similarity_graphs,
     extract_labels,
@@ -26,7 +26,7 @@ from app.core.coordination.io_reproduction import (
     run_dyna_colm_detect,
     run_dyna_colm_discover,
 )
-from app.core.coordination.pretrained_detect import (
+from app.core.coordination_baseline.pretrained_detect import (
     PRETRAINED_CHECKPOINT_PATH,
     ensure_china_pretrained_fusion_checkpoint,
     run_china_pretrained_detect,

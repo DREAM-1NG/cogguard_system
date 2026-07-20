@@ -9,7 +9,7 @@ BACKEND_ROOT = Path(__file__).resolve().parents[1]
 if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 
-from app.core.coordination.io_reproduction import (
+from app.core.coordination_baseline.io_reproduction import (
     DEFAULT_RELATIONS,
     DISCOVER_STRUCTURE_FILTERS,
     DISCOVER_STRUCTURE_FILTER_METRICS,

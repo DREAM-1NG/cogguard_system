@@ -3,7 +3,7 @@ from pathlib import Path
 
 from scripts.run_twitter_io_coordination_experiment import parse_args
 
-from app.core.coordination.twitter_io_experiment import (
+from app.core.coordination_baseline.twitter_io_experiment import (
     BASE_RELATIONS,
     ExperimentConfig,
     METHOD_CATALOG,
@@ -56,7 +56,7 @@ def test_cli_accepts_all_catalog_methods(monkeypatch):
 
 def test_build_archive_stream_command_prefers_unzip(monkeypatch):
     monkeypatch.setattr(
-        "app.core.coordination.twitter_io_experiment.shutil.which",
+        "app.core.coordination_baseline.twitter_io_experiment.shutil.which",
         lambda name: "/usr/bin/unzip" if name == "unzip" else None,
     )
     backend, command = _build_archive_stream_command(Path("archive.zip"), "tweets.csv")

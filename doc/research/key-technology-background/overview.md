@@ -28,29 +28,30 @@
 ## 2. 当前工程基线
 
 - 工程基线：`release-0.2`
-- 产品代码根：`new-system/`
-- 短期验证范围：`mock_weibo`、`weibo`、`news`
+- 产品代码根：`system/`
+- 短期验证范围：`weibo`、`douyin`、`xhs`、`news`；`mock_weibo` 仅用于测试
 - 参考边界：`MediaCrawler-main/`、`NewsCrawler-main/`、`CooRTweet-master/`
 
 仓库分层如下：
 
 - `doc/`：长期文档与技术背景
 - `aris/`：按关键技术拆分的独立执行工作空间
-- `new-system/`：唯一产品代码主线
+- `system/`：唯一产品代码主线
 
 ## 3. 当前实现状态
 
 按 `release-0.2` 当前代码和 `doc/engineering/development-roadmap.md` 口径：
 
-- 数据采集：已完成 Mock 与真实爬虫封装接入
-- 协同发现（KT1）：已完成共享对象协同检测 MVP（CooRTweet 重写 + 加权图 + 社区发现）；最新方向"跨平台共同行为特征复用 + 显著性筛查（PSL）"尚为设计稿、未落地
-- 传播监控（KT2）：已完成 CascadeSwitch 趋势预测核心（WP1-3：时序特征 + LLM 事件上下文 + 体制混合预测）+ legacy 源头追溯/证据链；立场/危害子功能未启动，"传播路径预测"无设计无代码
-- 报告研判（KT3）：已完成 Layer 1 白盒核心（Phase-Aware Hazard + DISARM 路径 + D-S 融合，约 1340 行）；多 Agent 编排 + RAG 报告（Layer 2/3）为设计稿、未落地
-- 看板/预警/报告：轻于核心分析流水线，放在后续阶段
+- 数据采集：已完成内置 social/news runtime cutover；系统运行不再依赖 `MediaCrawler-main`、`NewsCrawler-main` 或 `CooRTweet-master`
+- 统一分析底座：`EventSnapshot` / `AnalysisRun` / V2 REST / SSE recovery / executor 已贯通，KT1、KT2、Student、Teacher 使用同一 snapshot seam
+- 协同发现（KT1）：已从共享对象 baseline 升级为 evidence-first runtime，覆盖 URL、媒体、话题、实体、目标、原生关系、近重复内容，并输出 1h/6h/24h 重叠窗口、社区谱系、零模型显著性和扰动鲁棒性
+- 传播监控（KT2）：已内置 event bundle、public fixture loader、live fallback、hindcast protocol、80/95 split-conformal interval、next-hop ranking、platform hindcast 和 baseline registry；可部署 TGN/DyGFormer/CasFlow/CasFT checkpoint 与公开 benchmark 正式评测仍待完成
+- 报告研判（KT3）：已接通同步 Student runtime、异步 Teacher 5+1+1 advisory DAG、canonical approval / active pointer / rollback / active learning governance helper；蒸馏训练、approved checkpoint 和完整 adjudication UI 仍待完成
+- 看板/预警/报告：`/analysis` 工作台已展示关键技术结果，预警中心、报告中心和模型治理 UI 放在后续阶段
 
 ## 4. 工程原则
 
-- 优先保持 `new-system/` 为唯一代码主线，不搬动产品代码根
+- 优先保持 `system/` 为唯一代码主线，不搬动产品代码根
 - 参考子仓默认只读，不在无明确任务时修改
 - 规则与证据优先于黑盒 LLM 裁决
 - ARIS 只作为执行工作空间和研发编排层，不进入产品运行时
@@ -71,7 +72,7 @@
 
 1. `AGENTS.md`
 2. `doc/engineering/development-roadmap.md`
-3. `new-system/README.md`
+3. `system/README.md`
 4. `aris/README.md`
 5. 目标 `aris/tech-*/README.md`
 6. 目标技术的背景文档

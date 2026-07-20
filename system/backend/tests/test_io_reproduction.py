@@ -17,8 +17,8 @@ from scripts.run_detect_encoder_batch import (
     _row_from_result as _detect_batch_row_from_result,
 )
 
-from app.core.coordination.deep_graph import DeepGraphDiscoverConfig, run_deep_graph_discover
-from app.core.coordination.io_reproduction import (
+from app.core.coordination_baseline.deep_graph import DeepGraphDiscoverConfig, run_deep_graph_discover
+from app.core.coordination_baseline.io_reproduction import (
     DEFAULT_RELATIONS,
     build_kt1_comparison_report,
     build_dynamic_relation_graphs,
@@ -625,7 +625,7 @@ def test_dyna_colm_detect_cpu_light_gfm_lm_gnn_runs_full_feature_path(tmp_path: 
 
 
 def test_lm_feature_matrix_writes_and_reuses_disk_cache(tmp_path: Path):
-    from app.core.coordination.io_reproduction import _lm_feature_matrix
+    from app.core.coordination_baseline.io_reproduction import _lm_feature_matrix
 
     events = make_sample_events()
     nodes = ["u1", "u2", "u3", "u4"]

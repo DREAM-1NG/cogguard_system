@@ -1,10 +1,13 @@
-﻿# CogGuard 系统开发文档
+# CogGuard 系统开发文档
 
 > 仓库定位：
 > - `system/` 是当前唯一产品代码根
 > - 长期文档位于 `../doc/`
 > - ARIS 工作空间位于 `../aris/`
 > - 当前状态与优先级以 `../doc/engineering/development-roadmap.md` 为准
+> - 命名与代码结构的正式规范以 `../doc/engineering/system-governance.md` 为准，术语以 `../UBIQUITOUS_LANGUAGE.md` 为准
+
+当前正式研究与运行时边界：`system/research/coordination_discover/`、`system/research/coordination_detect/`、`system/research/propagation_analysis/`、`system/research/review_teacher/`、`system/runtimes/review_student/`。
 
 ## 实际目录结构
 
@@ -36,11 +39,12 @@ system/
 │   │   │
 │   │   ├── core/                   # 核心业务逻辑
 │   │   │   ├── security.py         # JWT 认证 + bcrypt 密码哈希
-│   │   │   ├── analysis/           # 统一事件快照、运行状态机、executor、registry、SSE 恢复
+│   │   │   ├── analysis/           # EventSnapshot、AnalysisRun、Coordination Discover、Propagation Analysis、Review ports、SSE 恢复
 │   │   │   ├── propagation.py      # 传播子图与时间线、关键角色
 │   │   │   ├── account_profiler.py # 账户行为画像与自动化倾向评分
 │   │   │   ├── bot_detection.py    # BotRHG 风格账号级社交机器人检测
-│   │   │   ├── coordination/       # CooRTweet 算法 Python 实现（检测/网络/统计）
+│   │   │   ├── coordination_baseline/ # CooRTweet 风格兼容 baseline（检测/网络/统计）
+│   │   │   ├── review/             # Review、Student、Teacher 与治理辅助
 │   │   │   └── crawler/            # 爬虫引擎
 │   │   │       ├── base.py         # 爬虫抽象基类（定义统一接口）
 │   │   │       ├── mediacrawler_env.py # MediaCrawler 的 uv / node / PATH 解析
@@ -89,14 +93,20 @@ system/
 │       ├── test_crawl.py           # 采集模块测试（含纯单元测试）
 │       ├── test_analysis_registry.py # 统一分析 registry / run 事件测试
 │       ├── test_analysis_executor.py # V2 AnalysisRun 执行端口测试
+│       ├── test_analysis_kt1_runtime.py # KT1 evidence runtime 测试
+│       ├── test_analysis_kt3_runtime.py # KT3 Student/Teacher/governance 测试
 │       ├── test_analysis_v2_api.py   # V2 分析 API / execute / SSE 恢复测试
 │       └── test_mediacrawler_env.py # MediaCrawler 环境解析测试
 │
-├── runtimes/                       # 内置 crawler runtime
+├── runtimes/                       # 内置 runtime
 │   ├── social_runtime/             # vendored MediaCrawler core（仅 weibo / douyin / xhs）
-│   └── news_runtime/               # vendored NewsCrawler core（URL detector + adapters）
+│   ├── news_runtime/               # vendored NewsCrawler core（URL detector + adapters）
+│   └── review_student/             # synchronous deployable Student runtime
 ├── research/                       # 系统可读取的研究制品边界
-│   └── kt2/                        # KT2 缓存 benchmark / 后续 runner 与 checkpoint adapter
+│   ├── coordination_discover/      # KT1 platform-generic Coordination Discover pipeline
+│   ├── coordination_detect/        # KT1 public-label Coordination Detect validation boundary
+│   ├── propagation_analysis/       # KT2 benchmark loader / hindcast protocol / baseline registry
+│   └── review_teacher/             # KT3 5+1+1 Teacher advisory DAG
 └── frontend/                       # 前端应用 (Vue 3 + TypeScript)
     ├── package.json                # 依赖声明与脚本
     ├── vite.config.ts              # Vite 配置（代理、别名）
@@ -167,15 +177,22 @@ docker compose ps            # 确认所有服务 healthy
 当前系统新增 `/api/v2/analysis/*` 作为 KT1、KT2、Student、Teacher 的统一入口层：
 
 - `POST /api/v2/analysis/snapshots`：从 MongoDB `raw_posts` / `raw_comments` 生成不可变 `EventSnapshot`，并注册 MySQL manifest。
-- `POST /api/v2/analysis/runs`：为一个 snapshot 创建 `AnalysisRun`，初始状态为 `queued`。
+- `POST /api/v2/analysis/runs`：为一个 snapshot 创建 `AnalysisRun`，初始状态为 `queued`。默认 `requested_stages` 仅包含 `kt1`；KT2、Student、Teacher 需要显式请求。
 - `POST /api/v2/analysis/runs/{run_id}/execute`：通过统一 `AnalysisExecutor` 顺序调用 KT1、KT2、Student、Teacher 端口，并追加 run event。
 - `GET /api/v2/analysis/runs/{run_id}`：查询 run 当前状态。
 - `GET /api/v2/analysis/runs/{run_id}/events?after_id=<id>`：REST 恢复路径，返回指定 cursor 之后的事件。
 - `GET /api/v2/analysis/runs/{run_id}/events/stream`：SSE backlog 输出，支持 `Last-Event-ID` 恢复。
 
-当前 V2 已完成输入、持久化、状态机、恢复路径和执行端口。KT1 默认端口会从 `EventSnapshot` 直接运行现有 coordination baseline，并以 `coordination-baseline-v1` 标记输出。Student、Teacher 未接入时会返回明确 unavailable；KT2 仅能读取内部缓存证据或返回明确不可用，不应把该入口等同于三项关键技术的研究级完成。
+前端 `/analysis` 工作台位于 `system/frontend/src/views/analysis/index.vue`，可创建 snapshot、创建/执行 run、REST 恢复事件，并通过 `fetch` 携带 Bearer token 读取 SSE backlog。页面会展示 KT1 社区谱系、KT2 hindcast 区间/下一跳、Student preliminary verdict 与 Teacher advisory DAG；完整 adjudication UI 和模型激活审批 UI 仍需后续补齐。
 
-KT2 当前只内置了 dashboard 可读的缓存 benchmark artifact，位于 `system/research/kt2/benchmark/`。未内置的 live runner、公开数据 loader 和 event checkpoint adapter 会返回明确的 unavailable，不再从外部 research workspace 动态 import。
+当前 V2 已完成输入、持久化、状态机、恢复路径和执行端口。默认端口状态如下：
+
+- KT1：`CoordinationEngine.analyze(snapshot, options)` 运行 `coordination-evidence-runtime-v2`，输出多行为 evidence edge、1h/6h/24h 重叠窗口、社区谱系、零模型显著性、扰动鲁棒性、证据覆盖和域偏移。
+- KT2：`PropagationEngine.hindcast(snapshot, options)` 运行内置 event bundle + live fallback，并附加 `kt2-hindcast-protocol-v1`：独立激活账号规模、80/95 split-conformal 区间、下一跳 ranking、平台 hindcast、EdgeBank/Hawkes/persistence/historical-mean baseline，以及 TGN/DyGFormer/CasFlow/CasFT checkpoint 缺失状态。
+- Student：`StudentRuntime.predict(case)` 调用 `system/runtimes/review_student`，同步返回 preliminary verdict、XLM-R/gating/MIL/GNN 架构契约、蒸馏计划和主动学习信号。没有 approved checkpoint 时显式标记 `shadow_untrained` 并强制 review。
+- Teacher：`TeacherJobPort.submit(case)` 通过 Celery 异步提交，最终运行 `system/research/review_teacher` 的 5+1+1 advisory DAG。Teacher 结果不能直接 canonical；只有分析员审批后的 immutable verdict 才能成为 canonical。
+
+KT2 当前内置内容位于 `system/research/propagation_analysis/`：`benchmark/adapters/kt2_event_adapter.py` 负责事件 bundle 与 checkpoint seam，`benchmark/loaders.py` 负责公开 fixture/benchmark 归一化，`runtime/protocol.py` 负责 hindcast、split-conformal 和 baseline registry。不再从外部 research workspace 动态 import.
 
 ### 第二步（可选）：配置并验证内置 social runtime
 
@@ -241,8 +258,8 @@ uv run python scripts/verify_mediacrawler_env.py
 ### 第三步：启动后端
 
 ```powershell
-cd G:\CISCN\CogGuard\system\backend
-$env:UV_CACHE_DIR='G:\CISCN\CogGuard\system\backend\.uv-cache'
+cd backend
+$env:UV_CACHE_DIR='.\.uv-cache'
 uv sync
 uv run alembic upgrade head
 uv run uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
@@ -255,7 +272,7 @@ uv run uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 ### 第四步：启动前端
 
 ```powershell
-cd G:\CISCN\CogGuard\system\frontend
+cd frontend
 npm.cmd install
 npm.cmd run dev -- --host 127.0.0.1 --port 5173
 ```
@@ -267,8 +284,8 @@ npm.cmd run dev -- --host 127.0.0.1 --port 5173
 如果只需要查看前端页面结构、导航和功能设计，而本机暂时没有启动 MySQL / MongoDB / Redis，可以使用预览入口绕过真实登录：
 
 ```powershell
-cd G:\CISCN\CogGuard\system\backend
-$env:UV_CACHE_DIR='G:\CISCN\CogGuard\system\backend\.uv-cache'
+cd backend
+$env:UV_CACHE_DIR='.\.uv-cache'
 .venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 
 cd ..\frontend
@@ -288,7 +305,7 @@ npm.cmd run dev -- --host 127.0.0.1 --port 5173
 - 如果你只是要快速查看页面，可以直接执行项目根目录下的 `start-preview.ps1`：
 
 ```powershell
-cd G:\CISCN\CogGuard\system
+cd system
 powershell.exe -ExecutionPolicy Bypass -File .\start-preview.ps1
 ```
 
@@ -332,6 +349,9 @@ uv run pytest tests/test_auth.py -v
 | `test_crawl.py` | MockCrawler 数据生成、Normalizer 字段映射、平台列表、鉴权校验 | 部分需 MySQL |
 | `test_mediacrawler_env.py` | 内置 social runtime 的 `uv` / `node` / 路径解析 | 无 |
 | `test_auth.py` | 注册、登录、密码错误、Token 鉴权、Token 刷新 | MySQL |
+| `test_analysis_kt1_runtime.py` | KT1 evidence edge、重叠窗口、社区谱系、零模型和扰动鲁棒性 | 无 |
+| `test_kt2_prediction_service.py` | KT2 内置 event bundle、public loader、hindcast protocol、conformal 区间 | 无 |
+| `test_analysis_kt3_runtime.py` | KT3 Student runtime、Teacher DAG、canonical/activation/active-learning governance | 无 |
 
 ### 预期测试结果
 
@@ -404,7 +424,7 @@ curl -X POST http://localhost:8000/api/v1/auth/login \
 
 ### 报告研判
 - **当前**：未实现
-- **后续**：在 `core/risk/` 中实现三维评估（真实性/操纵性/危害性）、规则引擎、DISARM 映射与结构化报告生成
+- **后续**：在 `core/review/` 中实现三维评估（真实性/操纵性/危害性）、规则引擎、DISARM 映射与结构化报告生成
 - **LLM 接口**：后续仅作为桥接与解释增强，不作为第一阶段最终裁决来源
 
 ### 图数据库

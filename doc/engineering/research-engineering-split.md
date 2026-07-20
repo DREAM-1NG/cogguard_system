@@ -25,9 +25,9 @@ CogGuard 主链路：`事件 → 证据 → 协同 → 传播 → 风险 → 处
 
 | 功能简称 | 中文名 | 类型 | 主要技术（创新载体） | 其他技术支持 | 系统位置 |
 |---|---|---|---|---|---|
-| **F-COORD** | 跨平台协同检测 | 核心 | KT1 PSL（Pair Surprisal Layer） | CooRTweet 共享对象、统计检验、语义向量、图算法、ECharts | `core/coordination/` + `aris/tech-01-coordination/` |
+| **F-COORD** | 跨平台协同检测 | 核心 | KT1 PSL（Pair Surprisal Layer） | CooRTweet 共享对象、统计检验、语义向量、图算法、ECharts | `core/coordination_baseline/` + `aris/tech-01-coordination/` |
 | **F-PROP** | 传播监控与趋势预测 | 核心 | KT2 CascadeSwitch（体制切换预测） | 时序特征工程、LLM API、立场/危害评估（帖级）、混合预测、可视化 | `core/propagation/` + `aris/tech-02-propagation/` |
-| **F-RISK** | 报告研判与攻击路径 | 核心 | KT3 Phase-Aware Hazard + DISARM 路径推理 | Dempster-Shafer 融合、证据特征、DISARM 映射、报告模板、规则引擎 | `core/risk/` + `aris/tech-03-risk/` |
+| **F-RISK** | 报告研判与攻击路径 | 核心 | KT3 Phase-Aware Hazard + DISARM 路径推理 | Dempster-Shafer 融合、证据特征、DISARM 映射、报告模板、规则引擎 | `core/review/` + `aris/tech-03-risk/` |
 | **F-ACCT** | 深度账号画像 | **支撑** | 预训练 Bot 检测（Botometer / Twibot-22 RoBERTa） | 账号级 stance 聚合、规则化 KOL 识别、行为画像、作息节律 | `core/account/` + `doc/engineering/F-ACCT-account-profiling.md` |
 
 ---
@@ -48,7 +48,7 @@ CogGuard 主链路：`事件 → 证据 → 协同 → 传播 → 风险 → 处
 
 | 子项 | 简述 | 标签 | 当前状态 | 落点 / 阻塞 |
 |---|---|---|---|---|
-| 对称双账号超几何检验 | `p_pair = max(p_u, p_v)` 校正活跃度差异 | research | 未开始 | `core/coordination/significance.py`，需消融对比 max / min / product |
+| 对称双账号超几何检验 | `p_pair = max(p_u, p_v)` 校正活跃度差异 | research | 未开始 | `core/coordination_baseline/significance.py`，需消融对比 max / min / product |
 | Cauchy combination | 融合多 object / 多通道 p-values（无独立性假设） | research | 未开始 | 同上 |
 | Pair-level BH-FDR | 配对层级多重检验校正 | research | 未开始 | 同上，需 permutation-based FDR 校准 |
 | 多通道证据融合 | Object / Semantic / Cascade 通道权重 | research | 未开始 | 同上 + `channels.py` |
@@ -58,11 +58,11 @@ CogGuard 主链路：`事件 → 证据 → 协同 → 传播 → 风险 → 处
 
 | 子项 | 简述 | 标签 | 当前状态 | 落点 |
 |---|---|---|---|---|
-| CooRTweet 共享对象检测 | 时间窗内配对、快窗标记 | engineering | ✅ 已实现 | `core/coordination/detector.py` (177) |
-| 多通道 Object 提取 | url / hashtag / media / cascade → object_id | engineering | 未开始 | `core/coordination/channels.py` |
+| CooRTweet 共享对象检测 | 时间窗内配对、快窗标记 | engineering | ✅ 已实现 | `core/coordination_baseline/detector.py` (177) |
+| 多通道 Object 提取 | url / hashtag / media / cascade → object_id | engineering | 未开始 | `core/coordination_baseline/channels.py` |
 | 语义向量编码 | 冻结句向量 + mutual-kNN | 边界 | 未开始 | `semantic.py`（模型选择是研究、调用是工程） |
 | statsmodels BH-FDR 调用 | 现成包包装 | engineering | 未开始 | `significance.py` 内 |
-| 协同图聚合 | NetworkX 加权图 / 连通分量 / 社区 | engineering | ✅ 已实现 | `core/coordination/network.py` (166) |
+| 协同图聚合 | NetworkX 加权图 / 连通分量 / 社区 | engineering | ✅ 已实现 | `core/coordination_baseline/network.py` (166) |
 | 协同检测 API | `POST /api/v1/coordination/detect` | engineering | ✅ 已实现 | `api/v1/coordination.py` (27) |
 | 服务层编排 | 串联通道提取 → PSL → 网络聚合 | engineering | 雏形 | `services/coordination_service.py` (90, 待扩) |
 | 前端协同网络可视化 | ECharts force-directed | engineering | ✅ 已实现 | `frontend/src/views/coordination/index.vue` |

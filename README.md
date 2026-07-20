@@ -1,4 +1,4 @@
-﻿# CogGuard：面向跨平台协同操纵分析的证据驱动原型系统
+# CogGuard：面向跨平台协同操纵分析的证据驱动原型系统
 
 CogGuard 是一个面向竞赛和研究验证的开源原型，目标是围绕跨平台协同操纵活动建立一条可解释、可复核的分析链路：
 
@@ -11,7 +11,8 @@ CogGuard 是一个面向竞赛和研究验证的开源原型，目标是围绕�
 - 当前工程基线：`release-0.2`
 - 当前唯一产品代码根：`system/`
 - 当前短期验证范围：`weibo`、`douyin`、`xhs`、`news`，`mock_weibo` 仅用于测试
-- 当前内置 runtime：`system/runtimes/social_runtime/`、`system/runtimes/news_runtime/`
+- 当前内置 runtime：`system/runtimes/social_runtime/`、`system/runtimes/news_runtime/`、`system/runtimes/review_student/`
+- 当前研究 runtime：`system/research/coordination_discover/`、`system/research/coordination_detect/`、`system/research/propagation_analysis/`、`system/research/review_teacher/`
 - 上游参考边界：`MediaCrawler-main/`、`NewsCrawler-main/`、`CooRTweet-master/` 仅保留作溯源与许可证归档
 - 竞赛材料目录：[`../materials/`](../materials/)（PPT、申报书、开题材料等，不放入产品代码目录）
 - 仓库级上下文入口：[`AGENTS.md`](AGENTS.md)
@@ -25,8 +26,8 @@ CogGuard 是一个面向竞赛和研究验证的开源原型，目标是围绕�
 | 长期文档层 | [`doc/`](doc/) | 开发进度、环境说明、技术背景、变更日志 |
 | ARIS 工作空间层 | [`aris/`](aris/) | 针对关键技术一/二/三的独立 ARIS 执行入口 |
 | 产品代码层 | [`system/`](system/) | 当前唯一有效的后端、前端、部署与测试代码 |
-| 内置 runtime 层 | `system/runtimes/social_runtime/` `system/runtimes/news_runtime/` | 当前系统实际执行的 vendored crawler runtime |
-| 系统研究制品层 | `system/research/kt2/` | 系统可读取的 KT2 缓存 benchmark 与后续内置 runner/checkpoint 边界 |
+| 内置 runtime 层 | `system/runtimes/social_runtime/` `system/runtimes/news_runtime/` `system/runtimes/review_student/` | 当前系统实际执行的 vendored crawler runtime 与可部署 Student runtime |
+| 系统研究制品层 | `system/research/coordination_discover/` `system/research/coordination_detect/` `system/research/propagation_analysis/` `system/research/review_teacher/` | 系统可读取的 Coordination Discover/Detect、KT2 协议/benchmark 与 KT3 Teacher DAG 研究 runtime |
 | 上游参考层 | `MediaCrawler-main/` `NewsCrawler-main/` `CooRTweet-master/` | 上游参考与许可证溯源，不作为系统运行前提 |
 | 外层竞赛材料层 | [`../materials/`](../materials/) | PPT、申报书、开题材料与竞赛交付材料 |
 
@@ -37,12 +38,12 @@ CogGuard 是一个面向竞赛和研究验证的开源原型，目标是围绕�
 | 模块 | 状态 | 说明 |
 |------|------|------|
 | 数据采集 | MVP 已完成 | Mock + 真实爬虫封装已接入 |
-| 统一分析底座 | 执行端口接线中 | `EventSnapshot` / `AnalysisRun` / V2 REST / SSE 恢复 / execute 入口已接入；KT1 baseline 已接入，KT2 可读内部缓存证据，Student/Teacher 仍需真实引擎 wiring |
-| 协同检测 | MVP 已完成 | 已有共享对象协同检测（旧方向），PSL 新方向在 `aris/tech-01-coordination/` 已完成系统设计 |
-| 传播监控 | WP1-3 已完成 | Hybrid TS + LLM 路线，已实现 `ts_features` / `llm_context` / `regime_model` / `trend_predictor`；WP4-5（立场/危害）未启动 |
+| 统一分析底座 | 关键技术端口已贯通 | `EventSnapshot` / `AnalysisRun` / V2 REST / SSE 恢复 / execute 入口已接入；KT1、KT2、Student、Teacher 均经统一端口运行 |
+| 协同检测 | KT1 evidence runtime 已接入 | `CoordinationEngine.analyze(snapshot, options)` 默认运行 evidence-first KT1：多行为 evidence edge、1h/6h/24h 重叠窗口、社区谱系、零模型显著性、扰动鲁棒性 |
+| 传播监控 | KT2 hindcast 协议已接入 | `PropagationEngine.hindcast(snapshot, options)` 输出规模预测、80/95 split-conformal 区间、下一跳排名、平台 hindcast 和基线 registry；TGN/DyGFormer/CasFlow/CasFT 仍需 approved checkpoint 才能成为研究主张 |
 | 账户监测 | MVP 已完成 | 已有画像、自动化评分与 BotRHG 风格社交机器人检测 API，待补历史参与与前端深度展示 |
-| 报告研判 | MVP 已完成 | `core/risk/` 1,340 行（DISARM 评分 / D-S 融合 / 证据链 / 报告生成 / 阶段检测）+ `risk_service` 编排层 + 风险 API + 前端风险页 |
-| 看板/预警/报告 | 待开发 | `dashboard/index.vue` 仍为占位，预警与报告管理未启动 |
+| Teacher-Student 审查 | KT3 runtime seam 已接入 | Student 同步 shadow runtime、Teacher 5+1+1 advisory DAG、canonical 审批/模型激活/回滚/主动学习治理 helper 已落地；蒸馏训练与 approved checkpoint 仍是下一阶段 |
+| 看板/预警/报告 | 部分完成 | dashboard、风险页与 `/analysis` 工作台已落地；完整 adjudication UI、模型版本差异和报告中心仍待完善 |
 
 ## 快速开始
 
@@ -134,7 +135,7 @@ cogguard_system/
 
 - 系统运行时只依赖 `system/runtimes/social_runtime/` 与 `system/runtimes/news_runtime/`
 - `MediaCrawler-main/`、`NewsCrawler-main/`、`CooRTweet-master/` 保留作上游参考、许可证与差异溯源
-- `system/backend/app/core/coordination/` 是当前协同检测 canonical module，不以 `CooRTweet-master` 为执行前提
+- `system/backend/app/core/coordination_baseline/` 是当前 CooRTweet 风格兼容 baseline module，不以 `CooRTweet-master` 为执行前提；KT1 正式方法名使用 Coordination Discover / Coordination Detect
 
 ## Attribution
 

@@ -4,7 +4,7 @@ import argparse
 import json
 from pathlib import Path
 
-from app.core.coordination.twitter_io_experiment import (
+from app.core.coordination_baseline.twitter_io_experiment import (
     DEFAULT_METHODS,
     DEFAULT_RELATION_WEIGHTS,
     ExperimentConfig,

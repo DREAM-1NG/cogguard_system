@@ -7,34 +7,11 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone, timedelta
-import os
 
 import pytest
 
 from app.core.propagation import build_propagation_graph
-
-import sys
-from pathlib import Path
-
-def _find_cogguard_dev_root() -> Path | None:
-    env_root = os.getenv("COGGUARD_DEV_ROOT")
-    if env_root:
-        candidate = Path(env_root)
-        if candidate.exists():
-            return candidate
-
-    for parent in Path(__file__).resolve().parents:
-        candidate = parent / "subsystems" / "cogguard_dev"
-        if candidate.exists():
-            return candidate
-    return None
-
-
-COGGUARD_DEV = _find_cogguard_dev_root()
-if COGGUARD_DEV and str(COGGUARD_DEV) not in sys.path:
-    sys.path.insert(0, str(COGGUARD_DEV))
-
-from benchmark.adapters.kt2_sequence_joint_model import build_event_inference_bundle, predict_event_with_checkpoint
+from app.services.kt2_prediction_service import build_event_inference_bundle, predict_event_with_checkpoint
 
 
 # ---------------------------------------------------------------------------

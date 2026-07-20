@@ -19,15 +19,15 @@
 
 ## 2. 当前代码基线
 
-`core/risk/` 已落地（约 1340 行，CPU 白盒，已由 `risk_service.py` 跑通）：
+`core/review/` 已落地（约 1340 行，CPU 白盒，已由 `risk_service.py` 跑通）：
 
-- `new-system/backend/app/core/risk/evidence_builder.py`：多源证据包构建
-- `new-system/backend/app/core/risk/phase_detector.py`：5 状态战役生命周期 + logistic hazard 阶段转换/breakout 预测
-- `new-system/backend/app/core/risk/disarm_scorer.py`：DISARM 技术转换图 + 攻击路径评分 + 下一步技术预测 + 反制建议
-- `new-system/backend/app/core/risk/ds_fusion.py`：Dempster-Shafer 融合 + phase-conditioned 质量调制 + 冲突检测
-- `new-system/backend/app/core/risk/report_builder.py`：结构化报告生成
-- `new-system/backend/app/core/risk/llm_bridge.py`：**仅约 30 行占位**（待升级为 DeepSeek Agent 编排器）
-- `new-system/backend/app/services/risk_service.py`、`api/v1/risk.py`、前端 `views/risk/index.vue`
+- `system/backend/app/core/review/evidence_builder.py`：多源证据包构建
+- `system/backend/app/core/review/phase_detector.py`：5 状态战役生命周期 + logistic hazard 阶段转换/breakout 预测
+- `system/backend/app/core/review/disarm_scorer.py`：DISARM 技术转换图 + 攻击路径评分 + 下一步技术预测 + 反制建议
+- `system/backend/app/core/review/ds_fusion.py`：Dempster-Shafer 融合 + phase-conditioned 质量调制 + 冲突检测
+- `system/backend/app/core/review/report_builder.py`：结构化报告生成
+- `system/backend/app/core/review/llm_bridge.py`：**仅约 30 行占位**（待升级为 DeepSeek Agent 编排器）
+- `system/backend/app/services/risk_service.py`、`api/v1/risk.py`、前端 `views/risk/index.vue`
 
 未落地（设计稿）：Layer 2 RAG 报告生成、Layer 3 恶意言论/立场/反制叙事 Agent，以及 Agent 编排器本体（`agent`/`rag`/`retriever` 等文件不存在）。
 

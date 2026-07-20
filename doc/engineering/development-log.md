@@ -1,4 +1,4 @@
-﻿# 开发变更日志
+# 开发变更日志
 
 > **用途**：按时间记录与本仓库相关的代码、配置、文档变更，便于追溯。  
 > **受众**：开发者、评审者、后续维护 agent。  
@@ -18,6 +18,16 @@
 
 ---
 
+## 2026-07-19
+
+- 收敛当前入口文档与 V2 前端最小接线：把权威开发/启动文档从旧 `new-system/` 口径切回 `system/`，并新增统一分析运行面板暴露 `/api/v2/analysis/*`。
+- `CLAUDE.md`、`doc/engineering/environment-setup.md`、`doc/engineering/project-map.md`、`doc/PROJECT_OVERVIEW.md`、`system/README.md`：修正活动产品根、启动命令和 V2 分析面板说明。
+- `system/frontend/src/api/analysis.ts`、`system/frontend/src/views/analysis/index.vue`：新增 V2 Analysis API 客户端与最小运行面板，支持 EventSnapshot 创建、AnalysisRun 创建/执行、REST 事件恢复和携带 Bearer token 的 SSE backlog 读取。
+- `system/frontend/src/router/index.ts`、`system/frontend/src/components/layout/BasicLayout.vue`、`system/frontend/src/views/home/index.vue`：挂载 `/analysis` 路由、侧边栏入口和首页快捷入口。
+- 已知未完成：该页面不是完整 adjudication 工作流；KT2 live runner、StudentRuntime、TeacherJobPort、canonical verdict 审批和模型激活 UI 仍需后续接入。
+
+---
+
 ## 2026-07-13
 
 - 建立统一分析运行底座：新增 EventSnapshot registry、AnalysisRun 事件流、V2 分析 API 与 SSE `Last-Event-ID` 恢复路径，为 KT1/KT2/Student/Teacher 接入提供统一入口。
@@ -29,7 +39,7 @@
 - `system/backend/app/models/analysis.py`、`system/backend/alembic/versions/9a2e4b7c1d55_add_analysis_persistence_tables.py`：修正 ReviewVerdictVersion 版本约束，`verdict_id` 改为普通索引，`(verdict_id, version)` 作为唯一约束。
 - `system/backend/tests/test_analysis_registry.py`、`system/backend/tests/test_analysis_v2_api.py`、`system/backend/tests/test_analysis_persistence_models.py`：新增/更新回归测试，覆盖 registry 幂等、run 状态转换、事件 cursor、SSE 格式和 V2 主应用挂载。
 - `system/backend/tests/test_analysis_executor.py`：新增执行器回归测试，覆盖 snapshot 加载、stage option 下发、KT1/KT2/Student/Teacher 端口调用、KT1 baseline 默认接入、teacher job 后进入 `awaiting_review`。
-- `system/research/kt2/benchmark/`、`system/backend/app/services/kt2_prediction_service.py`：迁入真实 KT2 缓存 benchmark artifact，默认预测读取系统内部 `system/research/kt2`；删除 `subsystems/cogguard_dev` 和 `sys.path.insert` 外部路径，未内置的 live runner / event checkpoint adapter 返回显式 unavailable。
+- `system/research/propagation_analysis/benchmark/`、`system/backend/app/services/kt2_prediction_service.py`：迁入真实 KT2 缓存 benchmark artifact，默认预测读取系统内部 `system/research/propagation_analysis`；删除 `subsystems/cogguard_dev` 和 `sys.path.insert` 外部路径，未内置的 live runner / event checkpoint adapter 返回显式 unavailable。
 - `system/backend/tests/test_kt2_prediction_service.py`：新增回归测试，锁定 KT2 缓存结果来自内部 research artifact，且服务源码不再包含外部 research workspace 路径补丁。
 - 文档：`CONTEXT.md`、`doc/engineering/development-roadmap.md`、`system/README.md` 同步统一分析语言、接口状态和剩余接线任务。
 - 验证：`python -m pytest tests/test_analysis_executor.py -q`；`python -m pytest tests/test_analysis_v2_api.py -q`；`python -m pytest tests/test_analysis_contracts.py tests/test_analysis_persistence_models.py tests/test_analysis_registry.py tests/test_analysis_v2_api.py tests/test_propagation.py -q`；`python -m pytest tests/test_kt2_prediction_service.py tests/test_event_scoped_analysis.py::test_kt2_prediction_service_loads_cached_macro_micro_result -q`。
@@ -76,9 +86,9 @@
 - 总指挥触发项目实施情况盘点（3 个 Explore 子代理并行调查代码 / 文档 / ARIS 工作空间），交叉核对后发现**代码进度大幅领先文档**，特别是 KT3 报告研判已默默实现而 README/roadmap 仍标"待开发"。本条目记录本次审计与首轮文档对齐动作。
 - 代码盘点（实际验证）：
   - 后端约 5,664 行 Python，前端约 1,710 行 Vue/TS。
-  - KT1 协同检测（旧方向 CooRTweet）：`core/coordination/` 452 行 MVP；KT1 新方向 PSL 设计已在 `aris/tech-01-coordination/systemDesign.md` 落盘，但 `new-system/` 尚无对应实现。
+  - KT1 协同检测（旧方向 CooRTweet）：`core/coordination_baseline/` 452 行 MVP；KT1 新方向 PSL 设计已在 `aris/tech-01-coordination/systemDesign.md` 落盘，但 `new-system/` 尚无对应实现。
   - KT2 传播监控（Hybrid TS+LLM）：`core/propagation/` 含 4 个文件 ~673 行 → **WP1-3 完整完成**（`ts_features.py` 107 / `llm_context.py` 162 / `trend_predictor.py` 180 / `regime_model.py` 224）；**WP4 `stance_detector.py` 与 WP5 `harm_assessor.py` 完全未启动**；WP6-7 服务层与测试已存在但极薄。旧方向 `core/propagation_legacy.py` 仍在 import 路径并存。
-  - KT3 报告研判：`core/risk/` 6 模块 1,340 行 + `services/risk_service.py` 153 行 + `api/v1/risk.py` 68 行 + `frontend/src/views/risk/index.vue` + `tests/test_risk.py` 348 行 — **MVP 已完成，端到端串通**，但 README/roadmap 此前仍标"待开发"。
+  - KT3 报告研判：`core/review/` 6 模块 1,340 行 + `services/risk_service.py` 153 行 + `api/v1/risk.py` 68 行 + `frontend/src/views/risk/index.vue` + `tests/test_risk.py` 348 行 — **MVP 已完成，端到端串通**，但 README/roadmap 此前仍标"待开发"。
 - 文档对齐：
   - `README.md` 模块状态表：风险研判 `待开发 → MVP 已完成`；协同检测拆分新旧方向；传播监控按 WP1-3/WP4-5 分粒度；看板继续保留"待开发"（`dashboard/index.vue` 仍是占位）。
   - `doc/engineering/development-roadmap.md`：头注释日期 `2026-04-08 → 2026-05-17`；总览模块表细化到 WP 粒度；第 3.1 节风险研判模块由"🔲"翻面为"✅ MVP 已完成"，并把 8 个已完成子项打勾；保留 2 个未完成子项（alembic 迁移、LLM 桥接）。

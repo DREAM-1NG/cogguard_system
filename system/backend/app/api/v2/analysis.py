@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.analysis import InvalidRunTransition
+from app.core.analysis import InvalidRunTransition, UnknownAnalysisStage
 from app.core.analysis.executor import AnalysisExecutor, default_analysis_engine_ports
 from app.core.analysis.registry import AnalysisRegistry, SqlAlchemyAnalysisStore
 from app.core.analysis.sse import iter_sse_events, parse_last_event_id
@@ -81,6 +81,8 @@ async def execute_run(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except InvalidRunTransition as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except UnknownAnalysisStage as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     return success(data=run)
 
 

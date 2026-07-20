@@ -5,7 +5,7 @@ import importlib.util
 import numpy as np
 import pytest
 
-from app.core.risk.kt3_trainable_post import (
+from app.core.review.kt3_trainable_post import (
     CrossModalAttentionAdapter,
     GatingFusionModel,
     MultitaskTextDetector,
@@ -25,7 +25,7 @@ from app.core.risk.kt3_trainable_post import (
     train_multitask_text_model,
     multitask_targets,
 )
-from app.core.risk.kt3_rag import LocalHashRag, augment_context_with_rag
+from app.core.review.kt3_rag import LocalHashRag, augment_context_with_rag
 
 
 def _case(case_id: str, text: str, label: str = "harmful") -> dict:
