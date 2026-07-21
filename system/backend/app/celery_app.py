@@ -13,7 +13,7 @@ celery_app = Celery(
     "cogguard",
     broker=settings.redis_url,
     backend=settings.redis_url,
-    include=["app.tasks.crawl_tasks", "app.tasks.kt3_tasks"],
+    include=["app.tasks.crawl_tasks", "app.tasks.risk_review_tasks"],
 )
 
 celery_app.conf.update(

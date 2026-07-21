@@ -21,7 +21,7 @@ from app.schemas.risk import KT3ProviderConfigRequest
 from app.schemas.risk import KT3ProviderUpdateRequest
 from app.schemas.risk import KT3PolicyOptimizeRequest
 from app.schemas.risk import KT3PolicyRefineRequest
-from app.services import kt3_system_service
+from app.services import risk_review_system_service
 from app.services import risk_service
 from app.utils.response import success
 
@@ -129,7 +129,7 @@ async def upload_kt3_gate_dataset_file(
     """Upload and persist a KT3 Gate Dataset JSON file."""
     try:
         payload = json.loads((await file.read()).decode("utf-8"))
-        result = await kt3_system_service.persist_gate_dataset_upload(
+        result = await risk_review_system_service.persist_gate_dataset_upload(
             dataset=payload,
             uploaded_by=current_user.id,
             db=db,
@@ -148,7 +148,7 @@ async def upload_kt3_gate_dataset_json(
     db: AsyncSession = Depends(get_db),
 ):
     """Persist a KT3 Gate Dataset from a JSON request body."""
-    result = await kt3_system_service.persist_gate_dataset_upload(
+    result = await risk_review_system_service.persist_gate_dataset_upload(
         dataset=request.kt3_gate_dataset,
         uploaded_by=current_user.id,
         db=db,
@@ -163,7 +163,7 @@ async def list_kt3_gate_datasets(
     _current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    return success(data=await kt3_system_service.list_gate_datasets(db, page=page, page_size=page_size))
+    return success(data=await risk_review_system_service.list_gate_datasets(db, page=page, page_size=page_size))
 
 
 @router.get("/kt3/gate-datasets/{dataset_db_id}")
@@ -172,7 +172,7 @@ async def get_kt3_gate_dataset_detail(
     _current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await kt3_system_service.get_gate_dataset_detail(dataset_db_id, db)
+    result = await risk_review_system_service.get_gate_dataset_detail(dataset_db_id, db)
     if result is None:
         raise HTTPException(status_code=404, detail=f"KT3 Gate Dataset not found: {dataset_db_id}")
     return success(data=result)
@@ -183,7 +183,7 @@ async def list_kt3_providers(
     _current_user: User = Depends(require_roles("admin")),
     db: AsyncSession = Depends(get_db),
 ):
-    return success(data=await kt3_system_service.list_provider_configs(db))
+    return success(data=await risk_review_system_service.list_provider_configs(db))
 
 
 @router.post("/kt3/providers")
@@ -193,7 +193,7 @@ async def create_kt3_provider(
     db: AsyncSession = Depends(get_db),
 ):
     try:
-        result = await kt3_system_service.create_provider_config(
+        result = await risk_review_system_service.create_provider_config(
             payload=request.model_dump(),
             user_id=current_user.id,
             db=db,
@@ -211,7 +211,7 @@ async def update_kt3_provider(
     db: AsyncSession = Depends(get_db),
 ):
     try:
-        result = await kt3_system_service.update_provider_config(
+        result = await risk_review_system_service.update_provider_config(
             provider_id=provider_id,
             payload=request.model_dump(exclude_unset=True),
             db=db,
@@ -230,7 +230,7 @@ async def activate_kt3_provider(
     db: AsyncSession = Depends(get_db),
 ):
     try:
-        result = await kt3_system_service.activate_provider_config(
+        result = await risk_review_system_service.activate_provider_config(
             provider_id=provider_id,
             is_active=request.is_active,
             db=db,
@@ -247,7 +247,7 @@ async def test_kt3_provider(
     db: AsyncSession = Depends(get_db),
 ):
     try:
-        result = await kt3_system_service.test_provider_config(provider_id, db)
+        result = await risk_review_system_service.test_provider_config(provider_id, db)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return success(data=result)
@@ -317,7 +317,7 @@ async def refine_kt3_policy(
 ):
     """Create a MARO-style policy refinement background job."""
     try:
-        result = await kt3_system_service.create_kt3_job(
+        result = await risk_review_system_service.create_kt3_job(
             job_type="policy_refine",
             payload=request.model_dump(),
             user_id=current_user.id,
@@ -337,7 +337,7 @@ async def activate_kt3_policy(
 ):
     """Explicitly activate a KT3 policy for later manual Agent/Judge context."""
     try:
-        result = await kt3_system_service.activate_policy_in_db(
+        result = await risk_review_system_service.activate_policy_in_db(
             policy_id,
             user_id=current_user.id,
             db=db,
@@ -356,7 +356,7 @@ async def list_kt3_policies(
     _current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    return success(data=await kt3_system_service.list_policies(db, page=page, page_size=page_size))
+    return success(data=await risk_review_system_service.list_policies(db, page=page, page_size=page_size))
 
 
 @router.post("/kt3/backfill")
@@ -365,7 +365,7 @@ async def start_kt3_backfill(
     current_user: User = Depends(require_roles("admin")),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await kt3_system_service.create_kt3_job(
+    result = await risk_review_system_service.create_kt3_job(
         job_type="backfill",
         payload=request.model_dump(),
         user_id=current_user.id,
@@ -383,7 +383,7 @@ async def list_kt3_jobs(
     _current_user: User = Depends(require_roles("admin", "analyst")),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await kt3_system_service.list_kt3_jobs(
+    result = await risk_review_system_service.list_kt3_jobs(
         db,
         job_type=job_type,
         page=page,
@@ -398,7 +398,7 @@ async def get_kt3_job(
     _current_user: User = Depends(require_roles("admin", "analyst")),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await kt3_system_service.get_kt3_job(job_id, db)
+    result = await risk_review_system_service.get_kt3_job(job_id, db)
     if result is None:
         raise HTTPException(status_code=404, detail=f"KT3 job not found: {job_id}")
     return success(data=result)
@@ -413,7 +413,7 @@ async def get_kt3_policy(
     """Return an auditable KT3 Agent review policy artifact."""
     result = None
     if hasattr(db, "execute"):
-        result = await kt3_system_service.get_policy_artifact_from_db(policy_id, db)
+        result = await risk_review_system_service.get_policy_artifact_from_db(policy_id, db)
     if result is None:
         result = risk_service.get_kt3_policy(policy_id)
     if result is None:

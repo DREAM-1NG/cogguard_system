@@ -13,7 +13,7 @@ from app.db.mongodb import get_mongo_db
 from app.models.risk_assessment import RiskAssessment
 from app.services.event_data import load_event_posts
 from app.services import account_service, coordination_service, propagation_service
-from app.services import kt3_system_service
+from app.services import risk_review_system_service
 
 score_attack_path_full = review.disarm_scorer.score_attack_path_full
 fuse_evidence = review.ds_fusion.fuse_evidence
@@ -217,7 +217,7 @@ async def run_kt3_agent_review(
 
     ``append_legacy_report_json`` keeps old frontend consumers working for the
     synchronous compatibility path. Background jobs persist normalized rows and
-    append a bounded legacy summary in ``kt3_system_service`` instead, so they
+    append a bounded legacy summary in ``risk_review_system_service`` instead, so they
     pass ``False`` here to avoid duplicate legacy JSON entries.
     """
     if db is None:
@@ -237,9 +237,9 @@ async def run_kt3_agent_review(
     policy = _KT3_POLICY_REGISTRY.get(selected_policy_id or "") if selected_policy_id else None
     if policy is None and db is not None:
         if selected_policy_id:
-            policy = await kt3_system_service.get_policy_artifact_from_db(selected_policy_id, db)
+            policy = await risk_review_system_service.get_policy_artifact_from_db(selected_policy_id, db)
         else:
-            policy = await kt3_system_service.get_active_policy_artifact(db)
+            policy = await risk_review_system_service.get_active_policy_artifact(db)
     error_memory_summary = {}
     if isinstance(policy, dict):
         error_memory_summary = policy.get("error_memory_summary") or {}
@@ -319,7 +319,7 @@ async def create_kt3_agent_review_job(
     db: AsyncSession,
 ) -> dict:
     """Create an async KT3 Agent review job for analyst-triggered review."""
-    return await kt3_system_service.create_kt3_job(
+    return await risk_review_system_service.create_kt3_job(
         job_type=job_type,
         payload=payload,
         user_id=user_id,
@@ -353,7 +353,7 @@ async def record_kt3_agent_feedback(
     feedback_rows = report.get("agent_feedback")
     if not isinstance(feedback_rows, list):
         feedback_rows = []
-    record = await kt3_system_service.persist_feedback(
+    record = await risk_review_system_service.persist_feedback(
         report_id=report_id,
         feedback=feedback,
         user_id=user_id,
@@ -399,7 +399,7 @@ async def refine_kt3_policy(
     feedback_memory = []
     if feedback_report_ids and db is not None:
         try:
-            feedback_memory = await kt3_system_service.feedback_memory_from_db(feedback_report_ids, db)
+            feedback_memory = await risk_review_system_service.feedback_memory_from_db(feedback_report_ids, db)
         except Exception:
             feedback_memory = await _load_agent_feedback(feedback_report_ids, db)
     baseline = _KT3_POLICY_REGISTRY.get(baseline_policy_id or "") if baseline_policy_id else None
@@ -453,7 +453,7 @@ def get_kt3_policy(policy_id: str) -> dict | None:
 
 async def _load_agent_feedback(report_ids: list[str], db: AsyncSession) -> list[dict]:
     try:
-        feedback_rows: list[dict] = await kt3_system_service.feedback_memory_from_db(report_ids, db)
+        feedback_rows: list[dict] = await risk_review_system_service.feedback_memory_from_db(report_ids, db)
         if feedback_rows:
             return feedback_rows
     except Exception:

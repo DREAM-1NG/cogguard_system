@@ -1,4 +1,4 @@
-"""Celery tasks for KT3 Agent review, policy refinement, and backfill."""
+"""Celery tasks for Risk Review Agent review, policy refinement, and backfill."""
 
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ from app.celery_app import celery_app
 from app.config import settings
 from app.core import review
 from app.models.risk_assessment import RiskAssessment
-from app.services import kt3_system_service, risk_service
+from app.services import risk_review_system_service, risk_service
 
 refine_kt3_agent_policy_loop = review.kt3_agent_policy.refine_kt3_agent_policy_loop
 OpenAICompatibleAgentProvider = review.kt3_agent_provider.OpenAICompatibleAgentProvider
@@ -88,7 +88,7 @@ async def _execute_kt3_job_async(job_id: int) -> dict[str, Any]:
             elif row.job_type == "backfill":
                 result = await _execute_backfill(payload=payload, user_id=row.created_by, db=db)
             elif row.job_type == "gate_dataset_ingest":
-                result = await kt3_system_service.persist_gate_dataset_upload(
+                result = await risk_review_system_service.persist_gate_dataset_upload(
                     dataset=payload.get("kt3_gate_dataset") or payload,
                     uploaded_by=row.created_by,
                     db=db,
@@ -177,14 +177,14 @@ async def _execute_agent_review(*, payload: dict[str, Any], user_id: int, db: As
         active_retriever=retrieval_info["provider"],
         append_legacy_report_json=False,
     )
-    normalized = await kt3_system_service.persist_agent_review_result(
+    normalized = await risk_review_system_service.persist_agent_review_result(
         report_id=str(payload["report_id"]),
         case_id=payload.get("case_id"),
         result=review_result["review_result"],
         user_id=user_id,
         db=db,
     )
-    await kt3_system_service.append_report_json_agent_summary(
+    await risk_review_system_service.append_report_json_agent_summary(
         report_id=str(payload["report_id"]),
         review_result=review_result["review_result"],
         db=db,
@@ -199,7 +199,7 @@ async def _execute_agent_review(*, payload: dict[str, Any], user_id: int, db: As
 
 
 async def _execute_policy_refine(*, payload: dict[str, Any], user_id: int, db: AsyncSession) -> dict[str, Any]:
-    feedback_memory = await kt3_system_service.feedback_memory_from_db(
+    feedback_memory = await risk_review_system_service.feedback_memory_from_db(
         list(payload.get("feedback_report_ids") or []),
         db,
     )
@@ -207,7 +207,7 @@ async def _execute_policy_refine(*, payload: dict[str, Any], user_id: int, db: A
     baseline_policy = None
     baseline_policy_id = payload.get("baseline_policy_id")
     if baseline_policy_id:
-        artifact = await kt3_system_service.get_policy_artifact_from_db(str(baseline_policy_id), db)
+        artifact = await risk_review_system_service.get_policy_artifact_from_db(str(baseline_policy_id), db)
         baseline_policy = (artifact or {}).get("policy") if isinstance(artifact, dict) else None
     artifact = await asyncio.to_thread(
         refine_kt3_agent_policy_loop,
@@ -219,7 +219,7 @@ async def _execute_policy_refine(*, payload: dict[str, Any], user_id: int, db: A
         rule_generator=text_llm["rule_generator"],
         held_out_required=bool(payload.get("held_out_required", True)),
     )
-    persisted = await kt3_system_service.persist_policy_artifact(
+    persisted = await risk_review_system_service.persist_policy_artifact(
         artifact=artifact,
         user_id=user_id,
         db=db,
@@ -250,10 +250,10 @@ async def _execute_backfill(*, payload: dict[str, Any], user_id: int, db: AsyncS
             report_json = json.loads(row.report_json)
         except Exception:
             continue
-        extracted = kt3_system_service.extract_kt3_backfill_records(row.report_id, report_json, created_by=user_id)
+        extracted = risk_review_system_service.extract_kt3_backfill_records(row.report_id, report_json, created_by=user_id)
         agent_reports_extracted += extracted["summary"]["agent_reports_extracted"]
         feedback_extracted += extracted["summary"]["feedback_extracted"]
-        persisted_reports = await kt3_system_service.persist_agent_review_rows(
+        persisted_reports = await risk_review_system_service.persist_agent_review_rows(
             rows=extracted,
             user_id=user_id,
             db=db,
@@ -261,7 +261,7 @@ async def _execute_backfill(*, payload: dict[str, Any], user_id: int, db: AsyncS
         agent_reports_inserted += persisted_reports["inserted_report_count"]
         agent_reports_skipped += persisted_reports["skipped_report_count"]
         for feedback in extracted["feedback"]:
-            persisted_feedback = await kt3_system_service.persist_feedback_row(
+            persisted_feedback = await risk_review_system_service.persist_feedback_row(
                 row_data=feedback,
                 user_id=user_id,
                 db=db,
@@ -295,7 +295,7 @@ async def _provider_for_agent_run(db: AsyncSession) -> dict[str, Any]:
     )
     row = result.scalar_one_or_none()
     if row is not None and row.encrypted_api_key:
-        api_key = kt3_system_service.decrypt_provider_api_key(row.encrypted_api_key)
+        api_key = risk_review_system_service.decrypt_provider_api_key(row.encrypted_api_key)
         config = OpenAICompatibleConfig(
             api_key=api_key,
             base_url=row.base_url,
@@ -365,7 +365,7 @@ async def _retrieval_provider_for_agent_run(db: AsyncSession) -> dict[str, Any]:
             }
         return {"provider": None, "source": "not_configured"}
     metadata = json.loads(row.metadata_json or "{}")
-    api_key = kt3_system_service.decrypt_provider_api_key(row.encrypted_api_key) if row.encrypted_api_key else ""
+    api_key = risk_review_system_service.decrypt_provider_api_key(row.encrypted_api_key) if row.encrypted_api_key else ""
     timeout_seconds = float(metadata.get("timeout_seconds") or 20.0)
     search_path = str(metadata.get("search_path") or "/search")
     adapter = str(metadata.get("adapter") or "")

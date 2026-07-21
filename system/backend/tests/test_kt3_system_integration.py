@@ -1,6 +1,6 @@
-"""KT3 main-system integration tests.
+"""Risk Review main-system integration tests.
 
-These tests lock the system-level contract before wiring KT3 into the main
+These tests lock the system-level contract before wiring Risk Review into the main
 application: role-gated access, encrypted provider config, asynchronous jobs,
 dataset ingestion summaries, normalized report persistence helpers, and
 idempotent JSON backfill.
@@ -31,11 +31,11 @@ def test_require_roles_allows_admin_and_blocks_viewer():
 
 
 def test_provider_key_encryption_masks_and_round_trips(monkeypatch):
-    from app.services.kt3_system_service import decrypt_provider_api_key
-    from app.services.kt3_system_service import encrypted_provider_payload
-    from app.services.kt3_system_service import provider_public_view
+    from app.services.risk_review_system_service import decrypt_provider_api_key
+    from app.services.risk_review_system_service import encrypted_provider_payload
+    from app.services.risk_review_system_service import provider_public_view
 
-    monkeypatch.setattr("app.services.kt3_system_service.settings.KT3_CONFIG_ENCRYPTION_KEY", "unit-test-secret")
+    monkeypatch.setattr("app.services.risk_review_system_service.settings.KT3_CONFIG_ENCRYPTION_KEY", "unit-test-secret")
 
     payload = encrypted_provider_payload(
         {
@@ -61,9 +61,9 @@ def test_provider_key_encryption_masks_and_round_trips(monkeypatch):
 
 
 def test_missing_encryption_key_fails_closed(monkeypatch):
-    from app.services.kt3_system_service import encrypted_provider_payload
+    from app.services.risk_review_system_service import encrypted_provider_payload
 
-    monkeypatch.setattr("app.services.kt3_system_service.settings.KT3_CONFIG_ENCRYPTION_KEY", "")
+    monkeypatch.setattr("app.services.risk_review_system_service.settings.KT3_CONFIG_ENCRYPTION_KEY", "")
 
     with pytest.raises(ValueError) as exc_info:
         encrypted_provider_payload({"api_key": "sk-test"})
@@ -72,13 +72,13 @@ def test_missing_encryption_key_fails_closed(monkeypatch):
 
 
 def test_env_retrieval_provider_public_view(monkeypatch):
-    from app.services.kt3_system_service import env_provider_public_view
+    from app.services.risk_review_system_service import env_provider_public_view
 
-    monkeypatch.setattr("app.services.kt3_system_service.settings.KT3_RETRIEVAL_API_KEY", "exa-test-secret")
-    monkeypatch.setattr("app.services.kt3_system_service.settings.KT3_RETRIEVAL_BASE_URL", "https://api.exa.ai")
-    monkeypatch.setattr("app.services.kt3_system_service.settings.KT3_RETRIEVAL_SEARCH_PATH", "/search")
-    monkeypatch.setattr("app.services.kt3_system_service.settings.KT3_RETRIEVAL_PROVIDER_NAME", "Exa")
-    monkeypatch.setattr("app.services.kt3_system_service.settings.KT3_RETRIEVAL_ADAPTER", "exa")
+    monkeypatch.setattr("app.services.risk_review_system_service.settings.KT3_RETRIEVAL_API_KEY", "exa-test-secret")
+    monkeypatch.setattr("app.services.risk_review_system_service.settings.KT3_RETRIEVAL_BASE_URL", "https://api.exa.ai")
+    monkeypatch.setattr("app.services.risk_review_system_service.settings.KT3_RETRIEVAL_SEARCH_PATH", "/search")
+    monkeypatch.setattr("app.services.risk_review_system_service.settings.KT3_RETRIEVAL_PROVIDER_NAME", "Exa")
+    monkeypatch.setattr("app.services.risk_review_system_service.settings.KT3_RETRIEVAL_ADAPTER", "exa")
 
     public = env_provider_public_view("retrieval")
 
@@ -89,7 +89,7 @@ def test_env_retrieval_provider_public_view(monkeypatch):
 
 
 def test_gate_dataset_payload_normalizes_cases_and_fingerprint():
-    from app.services.kt3_system_service import normalize_gate_dataset_upload
+    from app.services.risk_review_system_service import normalize_gate_dataset_upload
 
     dataset = {
         "metadata": {
@@ -125,7 +125,7 @@ def test_gate_dataset_payload_normalizes_cases_and_fingerprint():
 
 
 def test_persist_agent_review_rows_preserves_natural_language_primary_output():
-    from app.services.kt3_system_service import normalize_agent_review_result
+    from app.services.risk_review_system_service import normalize_agent_review_result
 
     review_result = {
         "audit": {"run_id": "run-1", "input_hash": "hash-1"},
@@ -167,7 +167,7 @@ def test_persist_agent_review_rows_preserves_natural_language_primary_output():
 
 
 def test_backfill_report_json_is_idempotent():
-    from app.services.kt3_system_service import extract_kt3_backfill_records
+    from app.services.risk_review_system_service import extract_kt3_backfill_records
 
     report_json = {
         "agent_reviews": [
@@ -251,7 +251,7 @@ def test_run_agent_review_api_returns_async_job(monkeypatch):
 
 
 def test_exa_retrieval_adapter_maps_request_and_response(monkeypatch):
-    from app.tasks.kt3_tasks import _build_http_retrieval_provider
+    from app.tasks.risk_review_tasks import _build_http_retrieval_provider
     import asyncio
 
     captured = {}
@@ -290,7 +290,7 @@ def test_exa_retrieval_adapter_maps_request_and_response(monkeypatch):
             captured["json"] = json
             return FakeResponse()
 
-    monkeypatch.setattr("app.tasks.kt3_tasks.httpx.AsyncClient", FakeAsyncClient)
+    monkeypatch.setattr("app.tasks.risk_review_tasks.httpx.AsyncClient", FakeAsyncClient)
     provider = _build_http_retrieval_provider(
         base_url="https://api.exa.ai",
         api_key="exa-key",

@@ -241,10 +241,17 @@ def test_current_risk_review_product_callers_use_canonical_facade():
     root = Path(__file__).resolve().parents[3]
     caller_paths = [
         root / "system" / "backend" / "app" / "api" / "v1" / "risk.py",
-        root / "system" / "backend" / "app" / "services" / "kt3_system_service.py",
+        root / "system" / "backend" / "app" / "services" / "risk_review_system_service.py",
         root / "system" / "backend" / "app" / "services" / "risk_service.py",
-        root / "system" / "backend" / "app" / "tasks" / "kt3_tasks.py",
+        root / "system" / "backend" / "app" / "tasks" / "risk_review_tasks.py",
     ]
+    retired_product_paths = [
+        root / "system" / "backend" / "app" / "services" / ("k" + "t" + "3_system_service.py"),
+        root / "system" / "backend" / "app" / "tasks" / ("k" + "t" + "3_tasks.py"),
+    ]
+
+    for path in retired_product_paths:
+        assert not path.exists(), path
 
     for path in caller_paths:
         text = path.read_text(encoding="utf-8")

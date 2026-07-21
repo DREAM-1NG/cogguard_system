@@ -1,6 +1,6 @@
-"""KT3 main-system integration service.
+"""Risk Review system integration service.
 
-This service owns persistence-oriented transformations for the MARO-style KT3
+This service owns persistence-oriented transformations for the MARO-style Risk Review
 layer: encrypted provider configs, Gate Dataset ingestion, normalized Agent
 report rows, human feedback memory, async job records, and JSON backfill.
 """
@@ -391,7 +391,7 @@ async def create_kt3_job(
     celery_task_id = None
     if enqueue:
         try:
-            from app.tasks.kt3_tasks import execute_kt3_job
+            from app.tasks.risk_review_tasks import execute_kt3_job
 
             async_result = execute_kt3_job.delay(row.id)
             celery_task_id = async_result.id
@@ -417,7 +417,7 @@ def _start_inline_job_fallback(job_id: int) -> None:
 
     def _runner() -> None:
         try:
-            from app.tasks.kt3_tasks import execute_kt3_job_inline
+            from app.tasks.risk_review_tasks import execute_kt3_job_inline
 
             execute_kt3_job_inline(job_id, startup_delay_seconds=0.5)
         except Exception:
