@@ -82,6 +82,7 @@ def test_governance_boundaries_have_unique_adrs_and_explicit_public_modules():
     core = importlib.import_module("app.core")
     crawler = importlib.import_module("app.core.crawler")
 
+    assert "review" in core.__all__
     assert "risk" in core.__all__
     assert "crawler" in core.__all__
     assert "social" in crawler.__all__
@@ -95,6 +96,7 @@ def test_public_package_initializers_use_readable_boundary_docstrings():
         root / "system" / "backend" / "app" / "core" / "crawler" / "__init__.py",
         root / "system" / "backend" / "app" / "core" / "coordination" / "__init__.py",
         root / "system" / "backend" / "app" / "core" / "propagation" / "__init__.py",
+        root / "system" / "backend" / "app" / "core" / "review" / "__init__.py",
     ]
     mojibake_markers = ("鏍", "鍖", "鐖", "鍗", "浼", "銆", "€?", "鈥")
 
@@ -102,6 +104,19 @@ def test_public_package_initializers_use_readable_boundary_docstrings():
         text = path.read_text(encoding="utf-8")
         assert text.startswith('"""'), path
         assert not any(marker in text for marker in mojibake_markers), path
+
+
+def test_review_facade_is_thin_risk_review_compatibility_layer():
+    review = importlib.import_module("app.core.review")
+    risk = importlib.import_module("app.core.risk")
+    media = importlib.import_module("app.core.risk.kt3_agent_media")
+
+    assert review.__all__ == risk.__all__
+    assert review.kt3_agent_media is media
+    assert "kt3_agent_media" in dir(review)
+    assert "kt3_agent_review" in review.__all__
+    assert "app.core.risk" in (review.__doc__ or "")
+    assert "business logic" in (review.__doc__ or "")
 
 
 def test_kt3_trainable_post_exposes_split_boundaries_and_lazily_resolves_moved_symbols():

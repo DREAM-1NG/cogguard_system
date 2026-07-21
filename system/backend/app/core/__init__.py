@@ -11,6 +11,7 @@ __all__ = [
     "crawler",
     "propagation",
     "propagation_legacy",
+    "review",
     "risk",
     "security",
 ]

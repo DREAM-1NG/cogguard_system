@@ -96,7 +96,7 @@ phrasing can appear in narrative docs when helpful.
 
 ## Flagged Ambiguities
 
-- "risk" is an implementation package name in the current branch; use **Risk Review** for the KT3 domain concept.
+- "risk" is the legacy KT3 implementation package; use **Risk Review** for the domain concept and `app.core.review` as the canonical import facade for new backend code.
 - "student" can mean a training model or a deployable runtime; use **Selective Student** when referring to the current 2+1 KT3 protocol.
 - "teacher" can mean a multi-agent runtime or exported supervision; use **Teacher Silver** when referring to distillation data.
 - "propagation analysis" can mean trend/graph modeling or Agent review; use **Propagation Context** when referring to the compact input for `PropagationTreeAgent`.

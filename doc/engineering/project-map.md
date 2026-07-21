@@ -67,6 +67,13 @@ Research work belongs in `aris/` or `research-wiki/` when it is:
 - Literature evidence, novelty analysis, claim tracking, or gap mapping.
 - Prototype code or scratch output not yet connected to product APIs, UI, tests, or demos.
 
+## Backend Core Naming Map
+
+| Path | Role | Boundary |
+| --- | --- | --- |
+| `system/backend/app/core/review/` | Canonical KT3 Risk Review facade. | Use for new backend imports; keep it thin and free of independent business logic while `risk/` remains the implementation package. |
+| `system/backend/app/core/risk/` | Current KT3 implementation and compatibility layer. | Keep existing imports working during the one-version semantic migration window. |
+
 ## Current Functional Map
 
 ```text
