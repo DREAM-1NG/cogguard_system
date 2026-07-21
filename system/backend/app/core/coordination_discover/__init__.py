@@ -6,9 +6,10 @@ without duplicating baseline business logic.
 """
 
 from app.core.coordination.characterization_runner import run_dyna_colm_characterize
-from app.core.coordination.network import generate_coordinated_network
+from app.core.coordination.network import generate_coordinated_network, graph_to_dict
 
 __all__ = [
     "generate_coordinated_network",
+    "graph_to_dict",
     "run_dyna_colm_characterize",
 ]

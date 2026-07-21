@@ -91,6 +91,7 @@ def test_governance_boundaries_have_unique_adrs_and_explicit_public_modules():
     assert "risk" in core.__all__
     assert "detect_groups" in coordination_detect.__all__
     assert "generate_coordinated_network" in coordination_discover.__all__
+    assert "graph_to_dict" in coordination_discover.__all__
     assert "crawler" in core.__all__
     assert "propagation_analysis" in core.__all__
     assert "predict_trend" in propagation_analysis.__all__
@@ -129,11 +130,23 @@ def test_coordination_method_facades_alias_current_baseline_implementation():
     assert detect.account_stats is baseline.account_stats
     assert detect.group_stats is baseline.group_stats
     assert discover.generate_coordinated_network is baseline.generate_coordinated_network
+    assert discover.graph_to_dict.__module__ == "app.core.coordination.network"
     assert discover.run_dyna_colm_characterize is baseline.run_dyna_colm_characterize
     assert "app.core.coordination" in (detect.__doc__ or "")
     assert "app.core.coordination" in (discover.__doc__ or "")
     assert "independent" in (detect.__doc__ or "")
     assert "duplicating" in (discover.__doc__ or "")
+
+
+def test_current_coordination_service_uses_canonical_facades():
+    root = Path(__file__).resolve().parents[3]
+    path = root / "system" / "backend" / "app" / "services" / "coordination_service.py"
+    text = path.read_text(encoding="utf-8")
+
+    assert "from app.core.coordination_detect import account_stats, detect_groups, group_stats" in text
+    assert "from app.core.coordination_discover import generate_coordinated_network, graph_to_dict" in text
+    assert "from app.core.coordination import" not in text
+    assert "from app.core.coordination.network import" not in text
 
 
 def test_propagation_analysis_facade_aliases_current_kt2_implementation():
