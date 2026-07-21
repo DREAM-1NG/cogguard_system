@@ -199,6 +199,15 @@ def test_review_facade_is_thin_risk_review_compatibility_layer():
     assert "business logic" in (review.__doc__ or "")
 
 
+def test_current_risk_review_service_uses_canonical_facade():
+    root = Path(__file__).resolve().parents[3]
+    path = root / "system" / "backend" / "app" / "services" / "risk_service.py"
+    text = path.read_text(encoding="utf-8")
+
+    assert "from app.core import review" in text
+    assert "from app.core.risk" not in text
+
+
 def test_kt3_trainable_post_exposes_split_boundaries_and_lazily_resolves_moved_symbols():
     agent_review = importlib.import_module("app.core.risk.kt3_agent_review")
     contracts = importlib.import_module("app.core.risk.kt3_agent_contracts")

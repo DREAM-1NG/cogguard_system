@@ -7,32 +7,34 @@ import json
 from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.risk.disarm_scorer import score_attack_path_full
-from app.core.risk.ds_fusion import fuse_evidence
-from app.core.risk.evidence_builder import build_evidence_pack
-from app.core.risk.kt3_agent_review import agent_review_suggestions
-from app.core.risk.kt3_agent_provider import build_llm_provider_from_settings
-from app.core.risk.kt3_agent_review import run_manual_kt3_agent_review
-from app.core.risk.kt3_agent_policy import apply_policy_to_agent_suggestions
-from app.core.risk.kt3_agent_policy import DEFAULT_POLICY
-from app.core.risk.kt3_agent_policy import optimize_kt3_agent_policy
-from app.core.risk.kt3_agent_policy import refine_kt3_agent_policy_loop
-from app.core.risk.kt3_gate_suite import evaluate_kt3_gate_suite
-from app.core.risk.kt3_graph_exporter import export_kt3_heterogeneous_graph
-from app.core.risk.kt3_multi_agent import execute_kt3_multi_agent_review
-from app.core.risk.kt3_review_executor import execute_kt3_review_queue
-from app.core.risk.kt3_reviewer import build_kt3_review_queue
-from app.core.risk.kt3_user_mil import score_user_mil
-from app.core.risk.layered_harmfulness import assess_layered_harmfulness
-from app.core.risk.phase_detector import detect_phase
-from app.core.risk.post_semantics import assess_post_semantics
-from app.core.risk.report_builder import build_report
+from app.core import review
 from app.config import settings
 from app.db.mongodb import get_mongo_db
 from app.models.risk_assessment import RiskAssessment
 from app.services.event_data import load_event_posts
 from app.services import account_service, coordination_service, propagation_service
 from app.services import kt3_system_service
+
+score_attack_path_full = review.disarm_scorer.score_attack_path_full
+fuse_evidence = review.ds_fusion.fuse_evidence
+build_evidence_pack = review.evidence_builder.build_evidence_pack
+agent_review_suggestions = review.kt3_agent_review.agent_review_suggestions
+build_llm_provider_from_settings = review.kt3_agent_provider.build_llm_provider_from_settings
+run_manual_kt3_agent_review = review.kt3_agent_review.run_manual_kt3_agent_review
+apply_policy_to_agent_suggestions = review.kt3_agent_policy.apply_policy_to_agent_suggestions
+DEFAULT_POLICY = review.kt3_agent_policy.DEFAULT_POLICY
+optimize_kt3_agent_policy = review.kt3_agent_policy.optimize_kt3_agent_policy
+refine_kt3_agent_policy_loop = review.kt3_agent_policy.refine_kt3_agent_policy_loop
+evaluate_kt3_gate_suite = review.kt3_gate_suite.evaluate_kt3_gate_suite
+export_kt3_heterogeneous_graph = review.kt3_graph_exporter.export_kt3_heterogeneous_graph
+execute_kt3_multi_agent_review = review.kt3_multi_agent.execute_kt3_multi_agent_review
+execute_kt3_review_queue = review.kt3_review_executor.execute_kt3_review_queue
+build_kt3_review_queue = review.kt3_reviewer.build_kt3_review_queue
+score_user_mil = review.kt3_user_mil.score_user_mil
+assess_layered_harmfulness = review.layered_harmfulness.assess_layered_harmfulness
+detect_phase = review.phase_detector.detect_phase
+assess_post_semantics = review.post_semantics.assess_post_semantics
+build_report = review.report_builder.build_report
 
 _KT3_POLICY_REGISTRY: dict[str, dict] = {}
 _KT3_ACTIVE_POLICY_ID: str | None = None

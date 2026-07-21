@@ -42,6 +42,7 @@
 - `system/backend/app/core/propagation_analysis/__init__.py`：新增 KT2 Propagation Analysis canonical facade，转发现有 `app.core.propagation` 与 `propagation_legacy.py` 的传播图、趋势预测、时序特征、事件提取和体制模型入口；旧路径保留为兼容层。
 - `system/backend/app/services/propagation_service.py`、`system/backend/app/core/coordination/characterization.py`：把当前传播图和趋势预测调用点切到 `app.core.propagation_analysis`，治理测试禁止这些调用点回退到旧实现包直连。
 - `system/backend/app/services/coordination_service.py`：把当前协同检测产品服务切到 `coordination_detect` / `coordination_discover` facade；`coordination_discover` 同步公开 `graph_to_dict` 以承载网络结果序列化入口。
+- `system/backend/app/services/risk_service.py`：把当前 KT3 Risk Review 产品服务切到 `app.core.review` facade，并用治理测试禁止该服务重新直连旧 `app.core.risk` 实现包。
 
 ---
 
