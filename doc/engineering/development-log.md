@@ -35,6 +35,7 @@
 - `system/backend/app/core/risk/kt3_agent_provider.py`：从 `kt3_agent_review.py` 拆出 OpenAI-compatible provider、wire API payload、retry 与 settings factory；产品服务、Celery task 和离线实验脚本改用新 provider 边界，旧路径保留兼容导出。
 - `system/backend/app/core/risk/kt3_agent_contracts.py`：从 `kt3_agent_review.py` 拆出 Agent report sections、prompt builders、output contract、report role 与 safety flag，`kt3_agent_review.py` 保留薄包装兼容旧私有测试面。
 - `system/backend/app/core/risk/kt3_agent_runtime.py`：从 `kt3_agent_review.py` 拆出 Agent 顺序、别名归一化、simple/complex runtime 选择、execution plan、反制延后、candidate rule hints 与 failure tags。
+- `system/backend/app/core/risk/kt3_agent_media.py`：从 `kt3_agent_review.py` 拆出媒体输入抽取、vision gating、data URL 转换与 provider payload trimming，`kt3_agent_review.py` 仅保留旧私有 helper 兼容包装。
 
 ---
 

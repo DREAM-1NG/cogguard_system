@@ -48,6 +48,7 @@
 | Propagation | `system/backend/app/core/propagation/`, `system/backend/app/core/propagation.py` | KT2 spread and trend analysis. |
 | Risk Review | `system/backend/app/core/risk/` | KT3 review, harmfulness, DISARM, Teacher/Student research code, and reporting. |
 | KT3 Agent Contracts | `system/backend/app/core/risk/kt3_agent_contracts.py` | Manual Agent report sections, prompt builders, output contracts, report roles, and safety flags. |
+| KT3 Agent Media | `system/backend/app/core/risk/kt3_agent_media.py` | Manual Agent media input extraction, visual payload gating, data URL conversion, and provider bundle trimming; review orchestration must not own raw media transfer policy. |
 | KT3 Agent Provider | `system/backend/app/core/risk/kt3_agent_provider.py` | OpenAI-compatible LLM provider config, HTTP wire adapters, retries, and settings factory; review orchestration must import this boundary instead of owning provider HTTP details. |
 | KT3 Agent Runtime | `system/backend/app/core/risk/kt3_agent_runtime.py` | Agent ordering, alias normalization, simple/complex runtime selection, execution plan, post-judge countermeasure gating, candidate rule hints, and failure tags. |
 | Teacher Silver | `system/backend/app/core/risk/kt3_teacher_silver.py` | Structured Teacher supervision contract. |

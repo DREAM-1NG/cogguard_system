@@ -10,6 +10,7 @@ __all__ = [
     "evidence_builder",
     "kt3_active_retrieval",
     "kt3_agent_contracts",
+    "kt3_agent_media",
     "kt3_agent_provider",
     "kt3_agent_policy",
     "kt3_agent_review",
