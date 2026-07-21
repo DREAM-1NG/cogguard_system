@@ -98,6 +98,7 @@ phrasing can appear in narrative docs when helpful.
 
 - "risk" is the legacy KT3 implementation package; use **Risk Review** for the domain concept and `app.core.review` as the canonical import facade for new backend code.
 - "coordination" is the legacy KT1 baseline package; use **Coordination Discover** and **Coordination Detect** for method language and `app.core.coordination_discover` / `app.core.coordination_detect` as canonical import facades for new backend code.
+- "propagation" is the legacy KT2 implementation package; use **Propagation Analysis** for method language and `app.core.propagation_analysis` as the canonical import facade for new backend code.
 - "student" can mean a training model or a deployable runtime; use **Selective Student** when referring to the current 2+1 KT3 protocol.
 - "teacher" can mean a multi-agent runtime or exported supervision; use **Teacher Silver** when referring to distillation data.
 - "propagation analysis" can mean trend/graph modeling or Agent review; use **Propagation Context** when referring to the compact input for `PropagationTreeAgent`.

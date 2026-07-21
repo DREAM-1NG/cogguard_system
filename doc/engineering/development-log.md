@@ -39,6 +39,7 @@
 - `system/backend/app/core/{__init__.py,crawler/__init__.py,coordination/__init__.py,propagation/__init__.py}`：公共包入口统一改为英文 canonical boundary docstring，规避 Windows 控制台和 agent 工具中的 mojibake，并用治理测试防止回归。
 - `system/backend/app/core/review/__init__.py`：新增 KT3 Risk Review canonical facade，懒加载转发到现有 `app.core.risk` 实现包；`risk` 保留为一个版本窗口的兼容层，新代码命名优先使用 `review`。
 - `system/backend/app/core/coordination_discover/__init__.py`、`system/backend/app/core/coordination_detect/__init__.py`：新增 KT1 Coordination Discover / Detect canonical facade，分别转发现有 `app.core.coordination` 的发现入口与检测/统计入口；`coordination` 保留为 CooRTweet-style baseline 兼容层。
+- `system/backend/app/core/propagation_analysis/__init__.py`：新增 KT2 Propagation Analysis canonical facade，转发现有 `app.core.propagation` 与 `propagation_legacy.py` 的传播图、趋势预测、时序特征、事件提取和体制模型入口；旧路径保留为兼容层。
 
 ---
 

@@ -83,6 +83,7 @@ def test_governance_boundaries_have_unique_adrs_and_explicit_public_modules():
     coordination_detect = importlib.import_module("app.core.coordination_detect")
     coordination_discover = importlib.import_module("app.core.coordination_discover")
     crawler = importlib.import_module("app.core.crawler")
+    propagation_analysis = importlib.import_module("app.core.propagation_analysis")
 
     assert "coordination_detect" in core.__all__
     assert "coordination_discover" in core.__all__
@@ -91,6 +92,9 @@ def test_governance_boundaries_have_unique_adrs_and_explicit_public_modules():
     assert "detect_groups" in coordination_detect.__all__
     assert "generate_coordinated_network" in coordination_discover.__all__
     assert "crawler" in core.__all__
+    assert "propagation_analysis" in core.__all__
+    assert "predict_trend" in propagation_analysis.__all__
+    assert "build_propagation_graph" in propagation_analysis.__all__
     assert "social" in crawler.__all__
     assert "news" in crawler.__all__
 
@@ -104,6 +108,7 @@ def test_public_package_initializers_use_readable_boundary_docstrings():
         root / "system" / "backend" / "app" / "core" / "crawler" / "__init__.py",
         root / "system" / "backend" / "app" / "core" / "coordination" / "__init__.py",
         root / "system" / "backend" / "app" / "core" / "propagation" / "__init__.py",
+        root / "system" / "backend" / "app" / "core" / "propagation_analysis" / "__init__.py",
         root / "system" / "backend" / "app" / "core" / "review" / "__init__.py",
     ]
     mojibake_markers = ("鏍", "鍖", "鐖", "鍗", "浼", "銆", "€?", "鈥")
@@ -129,6 +134,25 @@ def test_coordination_method_facades_alias_current_baseline_implementation():
     assert "app.core.coordination" in (discover.__doc__ or "")
     assert "independent" in (detect.__doc__ or "")
     assert "duplicating" in (discover.__doc__ or "")
+
+
+def test_propagation_analysis_facade_aliases_current_kt2_implementation():
+    current = importlib.import_module("app.core.propagation")
+    llm_context = importlib.import_module("app.core.propagation.llm_context")
+    regime_model = importlib.import_module("app.core.propagation.regime_model")
+    trend_predictor = importlib.import_module("app.core.propagation.trend_predictor")
+    ts_features = importlib.import_module("app.core.propagation.ts_features")
+    facade = importlib.import_module("app.core.propagation_analysis")
+
+    assert facade.build_propagation_graph is current.build_propagation_graph
+    assert facade.predict_trend is trend_predictor.predict_trend
+    assert facade.extract_ts_features is ts_features.extract_ts_features
+    assert facade.extract_events is llm_context.extract_events
+    assert facade.compute_regime_posterior is regime_model.compute_regime_posterior
+    assert facade.mixture_forecast is regime_model.mixture_forecast
+    assert "app.core.propagation" in (facade.__doc__ or "")
+    assert "app.core.propagation_legacy" in (facade.__doc__ or "")
+    assert "independent business logic" in (facade.__doc__ or "")
 
 
 def test_review_facade_is_thin_risk_review_compatibility_layer():

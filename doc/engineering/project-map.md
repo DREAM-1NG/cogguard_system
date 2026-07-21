@@ -74,6 +74,8 @@ Research work belongs in `aris/` or `research-wiki/` when it is:
 | `system/backend/app/core/coordination_discover/` | Canonical KT1 Coordination Discover facade. | Use for new discovery-facing backend imports; keep it thin and free of independent business logic while `coordination/` remains the baseline implementation. |
 | `system/backend/app/core/coordination_detect/` | Canonical KT1 Coordination Detect facade. | Use for new detect/validation-facing backend imports; keep it thin and free of independent business logic while `coordination/` remains the baseline implementation. |
 | `system/backend/app/core/coordination/` | Current KT1 CooRTweet-style baseline implementation and compatibility layer. | Keep existing imports working during the one-version semantic migration window. |
+| `system/backend/app/core/propagation_analysis/` | Canonical KT2 Propagation Analysis facade. | Use for new KT2 backend imports; keep it thin and free of independent business logic while `propagation/` and `propagation_legacy.py` remain the implementation surface. |
+| `system/backend/app/core/propagation/`, `system/backend/app/core/propagation_legacy.py` | Current KT2 implementation and compatibility layer. | Keep existing imports working during the one-version semantic migration window. |
 | `system/backend/app/core/review/` | Canonical KT3 Risk Review facade. | Use for new backend imports; keep it thin and free of independent business logic while `risk/` remains the implementation package. |
 | `system/backend/app/core/risk/` | Current KT3 implementation and compatibility layer. | Keep existing imports working during the one-version semantic migration window. |
 

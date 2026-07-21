@@ -12,6 +12,7 @@ __all__ = [
     "coordination_discover",
     "crawler",
     "propagation",
+    "propagation_analysis",
     "propagation_legacy",
     "review",
     "risk",

@@ -48,7 +48,8 @@
 | Coordination Discover Facade | `system/backend/app/core/coordination_discover/` | Canonical KT1 discovery import facade for new backend code; it aliases current baseline discovery entry points and must not contain independent business logic. |
 | Coordination Detect Facade | `system/backend/app/core/coordination_detect/` | Canonical KT1 detect/validation import facade for new backend code; it aliases current baseline detect entry points and must not contain independent business logic. |
 | Coordination Baseline / Compatibility | `system/backend/app/core/coordination/` | Current CooRTweet-style baseline implementation and one-version compatibility layer for legacy imports. |
-| Propagation | `system/backend/app/core/propagation/`, `system/backend/app/core/propagation.py` | KT2 spread and trend analysis. |
+| Propagation Analysis Facade | `system/backend/app/core/propagation_analysis/` | Canonical KT2 import facade for new backend code; it aliases current spread, trend, event-context, and regime-model entry points and must not contain independent business logic. |
+| Propagation Analysis Implementation / Compatibility | `system/backend/app/core/propagation/`, `system/backend/app/core/propagation_legacy.py` | Current KT2 implementation and one-version compatibility layer for legacy imports. |
 | Risk Review Facade | `system/backend/app/core/review/` | Canonical KT3 import facade for new backend code; it lazily aliases the current implementation and must not contain independent business logic. |
 | Risk Review Implementation / Compatibility | `system/backend/app/core/risk/` | Current KT3 implementation package and one-version compatibility layer for legacy imports. |
 | KT3 Agent Contracts | `system/backend/app/core/risk/kt3_agent_contracts.py` | Manual Agent report sections, prompt builders, output contracts, report roles, and safety flags. |
