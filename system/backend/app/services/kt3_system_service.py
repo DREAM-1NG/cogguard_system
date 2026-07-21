@@ -21,8 +21,7 @@ from sqlalchemy import desc, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
-from app.core.risk.kt3_gate_dataset import normalize_kt3_gate_dataset
-from app.core.risk.kt3_gate_dataset import validate_kt3_gate_dataset_contract
+from app.core import review
 from app.models.kt3_system import KT3AgentDebateTrace
 from app.models.kt3_system import KT3AgentFeedback
 from app.models.kt3_system import KT3AgentReport
@@ -43,6 +42,9 @@ from app.models.kt3_system import KT3PolicyRule
 from app.models.kt3_system import KT3PolicyThreshold
 from app.models.kt3_system import KT3ProviderConfig
 from app.models.risk_assessment import RiskAssessment
+
+normalize_kt3_gate_dataset = review.kt3_gate_dataset.normalize_kt3_gate_dataset
+validate_kt3_gate_dataset_contract = review.kt3_gate_dataset.validate_kt3_gate_dataset_contract
 
 
 PROVIDER_TYPES = {"text_llm", "vision_llm", "retrieval"}

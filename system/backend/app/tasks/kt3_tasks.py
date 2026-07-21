@@ -15,11 +15,13 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 from app.celery_app import celery_app
 from app.config import settings
-from app.core.risk.kt3_agent_policy import refine_kt3_agent_policy_loop
-from app.core.risk.kt3_agent_provider import OpenAICompatibleAgentProvider
-from app.core.risk.kt3_agent_provider import OpenAICompatibleConfig
+from app.core import review
 from app.models.risk_assessment import RiskAssessment
 from app.services import kt3_system_service, risk_service
+
+refine_kt3_agent_policy_loop = review.kt3_agent_policy.refine_kt3_agent_policy_loop
+OpenAICompatibleAgentProvider = review.kt3_agent_provider.OpenAICompatibleAgentProvider
+OpenAICompatibleConfig = review.kt3_agent_provider.OpenAICompatibleConfig
 
 
 def _run_async(coro):
