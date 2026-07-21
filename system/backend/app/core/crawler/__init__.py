@@ -1,7 +1,7 @@
-"""爬虫引擎包。
+"""Crawler acquisition and normalization package.
 
-定义爬虫抽象基类(base)、模拟数据爬虫(mock)、MediaCrawler 封装(social)、
-News 提取(news)、工厂(factory)和数据标准化器(normalizer)。
+This package owns crawler interfaces, social and news adapters, mock fixtures,
+factory wiring, runtime environment helpers, and normalized record conversion.
 """
 
 __all__ = [

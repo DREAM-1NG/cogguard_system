@@ -36,6 +36,7 @@
 - Keep persistence models in `system/backend/app/models/` and request/response contracts in `system/backend/app/schemas/`.
 - Add focused modules when a file starts owning a second concept; do not keep expanding monoliths.
 - Every new public module should define `__all__`.
+- Public package `__init__.py` docstrings should use readable ASCII boundary wording to stay stable across Windows consoles and agent tooling.
 - Prefer absolute imports from `app.*` inside backend code.
 - Tests live under `system/backend/tests/` and should name behavior, not implementation trivia.
 

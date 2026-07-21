@@ -36,6 +36,7 @@
 - `system/backend/app/core/risk/kt3_agent_contracts.py`：从 `kt3_agent_review.py` 拆出 Agent report sections、prompt builders、output contract、report role 与 safety flag，`kt3_agent_review.py` 保留薄包装兼容旧私有测试面。
 - `system/backend/app/core/risk/kt3_agent_runtime.py`：从 `kt3_agent_review.py` 拆出 Agent 顺序、别名归一化、simple/complex runtime 选择、execution plan、反制延后、candidate rule hints 与 failure tags。
 - `system/backend/app/core/risk/kt3_agent_media.py`：从 `kt3_agent_review.py` 拆出媒体输入抽取、vision gating、data URL 转换与 provider payload trimming，`kt3_agent_review.py` 仅保留旧私有 helper 兼容包装。
+- `system/backend/app/core/{__init__.py,crawler/__init__.py,coordination/__init__.py,propagation/__init__.py}`：公共包入口统一改为英文 canonical boundary docstring，规避 Windows 控制台和 agent 工具中的 mojibake，并用治理测试防止回归。
 
 ---
 

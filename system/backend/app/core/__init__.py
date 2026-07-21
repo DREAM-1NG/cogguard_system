@@ -1,7 +1,7 @@
-"""核心业务逻辑包。
+"""Backend reusable domain logic.
 
-包含认证鉴权(security)、爬虫引擎(crawler)等核心能力，
-不依赖 FastAPI 路由层，可被 services 和 tasks 调用。
+Core modules are independent from FastAPI route wiring and can be called by
+services, tasks, scripts, and tests through explicit package boundaries.
 """
 
 __all__ = [

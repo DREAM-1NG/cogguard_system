@@ -88,6 +88,22 @@ def test_governance_boundaries_have_unique_adrs_and_explicit_public_modules():
     assert "news" in crawler.__all__
 
 
+def test_public_package_initializers_use_readable_boundary_docstrings():
+    root = Path(__file__).resolve().parents[3]
+    package_inits = [
+        root / "system" / "backend" / "app" / "core" / "__init__.py",
+        root / "system" / "backend" / "app" / "core" / "crawler" / "__init__.py",
+        root / "system" / "backend" / "app" / "core" / "coordination" / "__init__.py",
+        root / "system" / "backend" / "app" / "core" / "propagation" / "__init__.py",
+    ]
+    mojibake_markers = ("鏍", "鍖", "鐖", "鍗", "浼", "銆", "€?", "鈥")
+
+    for path in package_inits:
+        text = path.read_text(encoding="utf-8")
+        assert text.startswith('"""'), path
+        assert not any(marker in text for marker in mojibake_markers), path
+
+
 def test_kt3_trainable_post_exposes_split_boundaries_and_lazily_resolves_moved_symbols():
     agent_review = importlib.import_module("app.core.risk.kt3_agent_review")
     contracts = importlib.import_module("app.core.risk.kt3_agent_contracts")

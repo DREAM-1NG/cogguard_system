@@ -1,9 +1,8 @@
-"""协同检测模块（CooRTweet Python 重写）。
+"""Coordination Discover / Detect baseline compatibility package.
 
-将 CooRTweet R 包的核心算法用 pandas + networkx 重新实现：
-- detector: detect_groups / flag_speed_share
-- network:  generate_coordinated_network
-- stats:    account_stats / group_stats
+This package exposes the Python CooRTweet-style baseline while newer KT1
+research adapters continue to use the governed Coordination Discover / Detect
+method language.
 """
 
 from app.core.coordination.detector import detect_groups, flag_speed_share
