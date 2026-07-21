@@ -80,10 +80,16 @@ def test_governance_boundaries_have_unique_adrs_and_explicit_public_modules():
     assert len(adr_numbers) == len(set(adr_numbers))
 
     core = importlib.import_module("app.core")
+    coordination_detect = importlib.import_module("app.core.coordination_detect")
+    coordination_discover = importlib.import_module("app.core.coordination_discover")
     crawler = importlib.import_module("app.core.crawler")
 
+    assert "coordination_detect" in core.__all__
+    assert "coordination_discover" in core.__all__
     assert "review" in core.__all__
     assert "risk" in core.__all__
+    assert "detect_groups" in coordination_detect.__all__
+    assert "generate_coordinated_network" in coordination_discover.__all__
     assert "crawler" in core.__all__
     assert "social" in crawler.__all__
     assert "news" in crawler.__all__
@@ -93,6 +99,8 @@ def test_public_package_initializers_use_readable_boundary_docstrings():
     root = Path(__file__).resolve().parents[3]
     package_inits = [
         root / "system" / "backend" / "app" / "core" / "__init__.py",
+        root / "system" / "backend" / "app" / "core" / "coordination_detect" / "__init__.py",
+        root / "system" / "backend" / "app" / "core" / "coordination_discover" / "__init__.py",
         root / "system" / "backend" / "app" / "core" / "crawler" / "__init__.py",
         root / "system" / "backend" / "app" / "core" / "coordination" / "__init__.py",
         root / "system" / "backend" / "app" / "core" / "propagation" / "__init__.py",
@@ -104,6 +112,23 @@ def test_public_package_initializers_use_readable_boundary_docstrings():
         text = path.read_text(encoding="utf-8")
         assert text.startswith('"""'), path
         assert not any(marker in text for marker in mojibake_markers), path
+
+
+def test_coordination_method_facades_alias_current_baseline_implementation():
+    baseline = importlib.import_module("app.core.coordination")
+    detect = importlib.import_module("app.core.coordination_detect")
+    discover = importlib.import_module("app.core.coordination_discover")
+
+    assert detect.detect_groups is baseline.detect_groups
+    assert detect.flag_speed_share is baseline.flag_speed_share
+    assert detect.account_stats is baseline.account_stats
+    assert detect.group_stats is baseline.group_stats
+    assert discover.generate_coordinated_network is baseline.generate_coordinated_network
+    assert discover.run_dyna_colm_characterize is baseline.run_dyna_colm_characterize
+    assert "app.core.coordination" in (detect.__doc__ or "")
+    assert "app.core.coordination" in (discover.__doc__ or "")
+    assert "independent" in (detect.__doc__ or "")
+    assert "duplicating" in (discover.__doc__ or "")
 
 
 def test_review_facade_is_thin_risk_review_compatibility_layer():

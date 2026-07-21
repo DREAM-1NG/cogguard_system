@@ -45,7 +45,9 @@
 | Boundary | Path | Rule |
 | --- | --- | --- |
 | Crawler | `system/backend/app/core/crawler/` | Acquisition and normalization only. |
-| Coordination Discover / Detect | `system/backend/app/core/coordination/` | KT1 coordination baseline and research adapters; the package name remains `coordination` until a tested semantic migration is approved. |
+| Coordination Discover Facade | `system/backend/app/core/coordination_discover/` | Canonical KT1 discovery import facade for new backend code; it aliases current baseline discovery entry points and must not contain independent business logic. |
+| Coordination Detect Facade | `system/backend/app/core/coordination_detect/` | Canonical KT1 detect/validation import facade for new backend code; it aliases current baseline detect entry points and must not contain independent business logic. |
+| Coordination Baseline / Compatibility | `system/backend/app/core/coordination/` | Current CooRTweet-style baseline implementation and one-version compatibility layer for legacy imports. |
 | Propagation | `system/backend/app/core/propagation/`, `system/backend/app/core/propagation.py` | KT2 spread and trend analysis. |
 | Risk Review Facade | `system/backend/app/core/review/` | Canonical KT3 import facade for new backend code; it lazily aliases the current implementation and must not contain independent business logic. |
 | Risk Review Implementation / Compatibility | `system/backend/app/core/risk/` | Current KT3 implementation package and one-version compatibility layer for legacy imports. |

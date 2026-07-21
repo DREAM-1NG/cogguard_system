@@ -8,6 +8,8 @@ __all__ = [
     "account_profiler",
     "bot_detection",
     "coordination",
+    "coordination_detect",
+    "coordination_discover",
     "crawler",
     "propagation",
     "propagation_legacy",
