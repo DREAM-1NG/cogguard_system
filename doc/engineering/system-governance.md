@@ -49,6 +49,7 @@
 | Risk Review | `system/backend/app/core/risk/` | KT3 review, harmfulness, DISARM, Teacher/Student research code, and reporting. |
 | Teacher Silver | `system/backend/app/core/risk/kt3_teacher_silver.py` | Structured Teacher supervision contract. |
 | Selective Student | `system/backend/app/core/risk/kt3_selective_student.py` | KT3 2+1 Student targets, model, training, prediction, and metrics. |
+| Propagation Context | `system/backend/app/core/risk/kt3_propagation_context.py` | Compact thread evidence bundle for `PropagationTreeAgent`; claim lists or reaction counts must not masquerade as thread structure. |
 | Trainable Post Features | `system/backend/app/core/risk/kt3_trainable_post.py` | Shared post feature extraction, legacy view experiments, fusion, and compatibility exports. |
 
 ## Naming Rules

@@ -52,6 +52,11 @@ phrasing can appear in narrative docs when helpful.
 | **Selective Student** | The KT3 Student protocol with two semantic axes, stance auxiliary head, and defer routing. | all-label classifier, rationale student |
 | **Hard Case** | A case routed to Teacher or human review due to uncertainty, disagreement, OOD, or missing evidence. | harmful case, every positive sample |
 | **Canonical Verdict** | An immutable analyst-approved KT3 verdict. | teacher output, student output |
+| **Propagation Thread** | A source post plus linked replies, reposts, or reactions that form a conversation or spread tree. | claim list, graph summary only |
+| **Thread Context** | The normalized node-edge representation of one Propagation Thread. | reaction count, raw comments |
+| **Propagation Context** | The compact Agent-readable summary of Thread Context, including key branches, stance by depth, temporal snapshots, and missing fields. | whole graph dump, propagation score |
+| **Branch Evidence** | A selected source-to-leaf path used to explain how a claim, stance, or uncertainty evolved. | random replies, full thread |
+| **Escalation Point** | A thread node or branch that requires Teacher or human review because evidence is conflicting, missing, or unusually amplified. | harmful proof, final verdict |
 
 ## Governance
 
@@ -70,6 +75,8 @@ phrasing can appear in narrative docs when helpful.
 - An **Analysis Run** may create one or more **Artifacts**.
 - A **Checkpoint** can be part of an **Artifact**, but the **Model Version** is the governed identifier.
 - **Teacher Silver** can supervise a **Selective Student**, but it is not a **Canonical Verdict**.
+- A **Propagation Thread** is represented as **Thread Context** and summarized into **Propagation Context** before it reaches the **Teacher**.
+- **Branch Evidence** may justify an **Escalation Point**, but it is not itself a **Canonical Verdict**.
 - A **Compatibility Layer** must not contain independent business logic.
 - Every structural code change requires **Documentation Sync**.
 
@@ -92,5 +99,7 @@ phrasing can appear in narrative docs when helpful.
 - "risk" is an implementation package name in the current branch; use **Risk Review** for the KT3 domain concept.
 - "student" can mean a training model or a deployable runtime; use **Selective Student** when referring to the current 2+1 KT3 protocol.
 - "teacher" can mean a multi-agent runtime or exported supervision; use **Teacher Silver** when referring to distillation data.
+- "propagation analysis" can mean trend/graph modeling or Agent review; use **Propagation Context** when referring to the compact input for `PropagationTreeAgent`.
+- "tree" must not mean a claim list or empty graph summary; use **Thread Context** only when node-edge reply/reaction links are present.
 - "run", "job", and "task" must not be used interchangeably.
 - "docs" and "doc" are distinct: `doc/engineering/` stores maintained engineering docs, while `docs/adr/` stores ADRs.

@@ -11,9 +11,16 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import sys
 from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any, Iterable
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from app.core.risk.kt3_propagation_context import build_thread_context_from_pheme
 
 
 SCHEMA = "kt3-post-case-v1"
@@ -245,9 +252,23 @@ def convert_pheme(dataset_root: Path, output_path: Path, max_cases: int) -> dict
                     if not source_tweets:
                         continue
                     tweet = read_json(source_tweets[0])
+                    reaction_paths = sorted(
+                        p
+                        for p in (thread_dir / "reactions").glob("*.json")
+                        if not p.name.startswith("._")
+                    )
+                    reactions = [read_json(path) for path in reaction_paths]
                     text = str(tweet.get("text", "")).strip()
                     veracity = pheme_veracity(annotation, rumour_label)
                     harmful = rumour_label == "rumour" and veracity in {"false", "unverified"}
+                    thread_context = build_thread_context_from_pheme(
+                        tweet,
+                        reactions,
+                        event_name=event_name,
+                        tree_id=thread_dir.name,
+                        rumour_label=rumour_label,
+                        veracity=veracity,
+                    )
                     case = {
                         **base_case("PHEME", event_name, f"pheme::{event_name}::{thread_dir.name}"),
                         "source_id": str(tweet.get("id_str") or thread_dir.name),
@@ -276,6 +297,7 @@ def convert_pheme(dataset_root: Path, output_path: Path, max_cases: int) -> dict
                             "created_at": tweet.get("created_at", ""),
                             "reaction_count": count_files(thread_dir / "reactions", {".json"}),
                         },
+                        "thread_context": thread_context,
                     }
                     write_case(out, case)
                     update_manifest(manifest, case)

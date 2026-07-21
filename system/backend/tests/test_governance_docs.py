@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib
+import re
 from pathlib import Path
 
 
@@ -67,6 +68,24 @@ def test_governance_docs_and_glossary_are_present_and_cross_linked():
     ]
     for path in current_facing_docs:
         assert "new-system/" not in path.read_text(encoding="utf-8"), path
+
+
+def test_governance_boundaries_have_unique_adrs_and_explicit_public_modules():
+    root = Path(__file__).resolve().parents[3]
+    adr_numbers = []
+    for path in (root / "docs" / "adr").glob("*.md"):
+        match = re.match(r"^(\d{4})-", path.name)
+        assert match, path
+        adr_numbers.append(match.group(1))
+    assert len(adr_numbers) == len(set(adr_numbers))
+
+    core = importlib.import_module("app.core")
+    crawler = importlib.import_module("app.core.crawler")
+
+    assert "risk" in core.__all__
+    assert "crawler" in core.__all__
+    assert "social" in crawler.__all__
+    assert "news" in crawler.__all__
 
 
 def test_kt3_trainable_post_exposes_split_boundaries_and_lazily_resolves_moved_symbols():

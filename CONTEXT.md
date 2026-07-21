@@ -63,3 +63,15 @@ _Avoid_: mixing uncertainty into the harmfulness label
 **Rationale Boundary**:
 Evidence spans may be retained for audit and error analysis, but free-text rationale summaries are not a first-stage student output.
 _Avoid_: rationale-generation student
+
+**Thread Context**:
+A normalized node-edge representation of a source post and its linked replies/reactions. A reaction count or claim list is not enough.
+_Avoid_: graph summary only, available claims
+
+**Propagation Context**:
+The compact `kt3-propagation-context-v1` bundle read by `PropagationTreeAgent`, including tree metrics, key branches, stance-by-depth, temporal snapshots, central nodes, and missing fields.
+_Avoid_: full raw thread dump, single propagation score
+
+**Branch Evidence**:
+A source-to-leaf path selected from Thread Context to show how stance, uncertainty, or amplification evolves across replies.
+_Avoid_: random comment sample, whole tree pasted into prompt

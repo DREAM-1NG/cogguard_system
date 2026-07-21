@@ -25,6 +25,7 @@ if str(ROOT) not in sys.path:
 from app.core.risk.kt3_agent_review import OpenAICompatibleAgentProvider  # noqa: E402
 from app.core.risk.kt3_agent_review import OpenAICompatibleConfig  # noqa: E402
 from app.core.risk.kt3_agent_review import run_manual_kt3_agent_review  # noqa: E402
+from app.core.risk.kt3_propagation_context import build_propagation_context_for_case  # noqa: E402
 from app.core.risk.post_semantics import assess_post_semantics  # noqa: E402
 from app.core.risk.kt3_trainable_post import build_teacher_silver_record  # noqa: E402
 from app.config import settings  # noqa: E402
@@ -257,12 +258,14 @@ async def evaluate_case(
 ) -> dict[str, Any]:
     report = build_minimal_report(case, prefer_embeddings=prefer_embeddings)
     selected_post_ids = [item.get("post_id") for item in (report.get("post_semantics") or {}).get("posts") or [] if item.get("post_id")]
+    selected_tree_ids = tree_ids_of(case)
+    effective_agent_names = agent_names_for_case(agent_names, has_tree=bool(selected_tree_ids))
     agent_result = await run_manual_kt3_agent_review(
         report=report,
-        agent_names=agent_names,
+        agent_names=effective_agent_names,
         case_id=str(case.get("case_id") or ""),
         selected_post_ids=[str(item) for item in selected_post_ids[:1]],
-        selected_tree_ids=[],
+        selected_tree_ids=selected_tree_ids,
         human_triggered_by="offline_dataset_experiment",
         provider=provider,
         model=model,
@@ -360,6 +363,13 @@ def build_minimal_report(case: dict[str, Any], *, prefer_embeddings: bool) -> di
     }
     post_semantics = assess_post_semantics([post], prop_data, prefer_embeddings=prefer_embeddings, max_output_posts=1)
     harmful_label = ((case.get("labels") or {}).get("harmfulness") or "unknown")
+    propagation_context = build_propagation_context_for_case(
+        case,
+        claim_rank=prop_data["global_summary"]["claim_rank"],
+        graph_summary=(case.get("thread_context") or {}).get("summary") or {},
+        post_semantics_summary=post_semantics.get("summary") or {},
+    )
+    thread_metrics = propagation_context.get("tree_metrics") or {}
     return {
         "report_id": f"offline::{case.get('dataset')}::{case.get('case_id')}",
         "event_id": str(case.get("dataset") or ""),
@@ -376,7 +386,15 @@ def build_minimal_report(case: dict[str, Any], *, prefer_embeddings: bool) -> di
                 "review_items": [{"post_id": post["post_id"], "reason": "offline_dataset_case"}],
             },
             "review_execution": {"retrieval_results": []},
-            "graph_export": {"summary": {"nodes": 1, "edges": 0}},
+            "propagation_context": propagation_context,
+            "graph_export": {
+                "summary": {
+                    "node_count": int(thread_metrics.get("node_count", 1) or 1),
+                    "edge_count": int(thread_metrics.get("edge_count", 0) or 0),
+                    "graph_native_ready": bool(propagation_context.get("has_thread_context")),
+                    "source": "kt3-propagation-context-v1",
+                }
+            },
         },
         "disarm_analysis": {},
     }
@@ -483,6 +501,23 @@ def media_refs_of(case: dict[str, Any]) -> list[str]:
             if value:
                 refs.append(value)
     return refs
+
+
+def tree_ids_of(case: dict[str, Any]) -> list[str]:
+    thread_context = case.get("thread_context") if isinstance(case.get("thread_context"), dict) else {}
+    tree_id = str(thread_context.get("tree_id") or "").strip()
+    return [tree_id] if tree_id else []
+
+
+def agent_names_for_case(agent_names: list[str], *, has_tree: bool) -> list[str]:
+    names = list(agent_names)
+    if not has_tree or "PropagationTreeAgent" in names:
+        return names
+    try:
+        insert_at = names.index("QuestionReflectionAgent")
+    except ValueError:
+        insert_at = len(names)
+    return [*names[:insert_at], "PropagationTreeAgent", *names[insert_at:]]
 
 
 def raw_data_of(case: dict[str, Any]) -> dict[str, Any]:
