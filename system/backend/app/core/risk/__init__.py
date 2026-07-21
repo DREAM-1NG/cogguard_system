@@ -13,6 +13,7 @@ __all__ = [
     "kt3_agent_provider",
     "kt3_agent_policy",
     "kt3_agent_review",
+    "kt3_agent_runtime",
     "kt3_community_gate",
     "kt3_gate_dataset",
     "kt3_gate_suite",

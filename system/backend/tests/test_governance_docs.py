@@ -92,6 +92,7 @@ def test_kt3_trainable_post_exposes_split_boundaries_and_lazily_resolves_moved_s
     agent_review = importlib.import_module("app.core.risk.kt3_agent_review")
     contracts = importlib.import_module("app.core.risk.kt3_agent_contracts")
     provider = importlib.import_module("app.core.risk.kt3_agent_provider")
+    runtime = importlib.import_module("app.core.risk.kt3_agent_runtime")
     trainable = importlib.import_module("app.core.risk.kt3_trainable_post")
     teacher = importlib.import_module("app.core.risk.kt3_teacher_silver")
     student = importlib.import_module("app.core.risk.kt3_selective_student")
@@ -102,6 +103,12 @@ def test_kt3_trainable_post_exposes_split_boundaries_and_lazily_resolves_moved_s
     assert "OpenAICompatibleAgentProvider" in provider.__all__
     assert agent_review.OpenAICompatibleAgentProvider is provider.OpenAICompatibleAgentProvider
     assert agent_review.OpenAICompatibleConfig is provider.OpenAICompatibleConfig
+    assert "resolve_runtime_mode" in runtime.__all__
+    assert agent_review.AGENT_ORDER is runtime.AGENT_ORDER
+    assert agent_review._normalize_agent_names(["ClaimEvidence", "PostHarm"]) == [
+        "PostHarmAgent",
+        "ClaimEvidenceAgent",
+    ]
     assert "write_jsonl" in getattr(trainable, "__all__", []) or hasattr(trainable, "write_jsonl")
     assert "build_teacher_silver_record" in teacher.__all__
     assert "SelectiveStudentEncoder" in student.__all__

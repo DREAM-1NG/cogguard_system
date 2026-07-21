@@ -49,6 +49,7 @@
 | Risk Review | `system/backend/app/core/risk/` | KT3 review, harmfulness, DISARM, Teacher/Student research code, and reporting. |
 | KT3 Agent Contracts | `system/backend/app/core/risk/kt3_agent_contracts.py` | Manual Agent report sections, prompt builders, output contracts, report roles, and safety flags. |
 | KT3 Agent Provider | `system/backend/app/core/risk/kt3_agent_provider.py` | OpenAI-compatible LLM provider config, HTTP wire adapters, retries, and settings factory; review orchestration must import this boundary instead of owning provider HTTP details. |
+| KT3 Agent Runtime | `system/backend/app/core/risk/kt3_agent_runtime.py` | Agent ordering, alias normalization, simple/complex runtime selection, execution plan, post-judge countermeasure gating, candidate rule hints, and failure tags. |
 | Teacher Silver | `system/backend/app/core/risk/kt3_teacher_silver.py` | Structured Teacher supervision contract. |
 | Selective Student | `system/backend/app/core/risk/kt3_selective_student.py` | KT3 2+1 Student targets, model, training, prediction, and metrics. |
 | PropagationTreeAgent Boundary | `system/backend/app/core/risk/kt3_propagation_agent.py` | Field-constrained PropagationTreeAgent prompt contract, evidence eligibility, and context selection rules. |
