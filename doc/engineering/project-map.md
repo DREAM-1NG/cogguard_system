@@ -63,7 +63,7 @@ of these conditions:
 Research work belongs in `aris/` or `research-wiki/` when it is:
 
 - An algorithm idea, experiment plan, evaluation protocol, or review artifact.
-- A technical proposal for KT1, KT2, or KT3 before product integration.
+- A technical proposal for Coordination Discover, Coordination Detect, Propagation Analysis, or Risk Review before product integration.
 - Literature evidence, novelty analysis, claim tracking, or gap mapping.
 - Prototype code or scratch output not yet connected to product APIs, UI, tests, or demos.
 
@@ -71,13 +71,13 @@ Research work belongs in `aris/` or `research-wiki/` when it is:
 
 | Path | Role | Boundary |
 | --- | --- | --- |
-| `system/backend/app/core/coordination_discover/` | Canonical KT1 Coordination Discover facade. | Use for new discovery-facing backend imports; keep it thin and free of independent business logic while `coordination/` remains the baseline implementation. |
-| `system/backend/app/core/coordination_detect/` | Canonical KT1 Coordination Detect facade. | Use for new detect/validation-facing backend imports; keep it thin and free of independent business logic while `coordination/` remains the baseline implementation. |
-| `system/backend/app/core/coordination/` | Current KT1 CooRTweet-style baseline implementation and compatibility layer. | Keep existing imports working during the one-version semantic migration window. |
-| `system/backend/app/core/propagation_analysis/` | Canonical KT2 Propagation Analysis facade. | Use for new KT2 backend imports; keep it thin and free of independent business logic while `propagation/` and `propagation_legacy.py` remain the implementation surface. |
-| `system/backend/app/core/propagation/`, `system/backend/app/core/propagation_legacy.py` | Current KT2 implementation and compatibility layer. | Keep existing imports working during the one-version semantic migration window. |
-| `system/backend/app/core/review/` | Canonical KT3 Risk Review facade. | Use for new backend imports; keep it thin and free of independent business logic while `risk/` remains the implementation package. |
-| `system/backend/app/core/risk/` | Current KT3 implementation and compatibility layer. | Keep existing imports working during the one-version semantic migration window. |
+| `system/backend/app/core/coordination_discover/` | Canonical Coordination Discover facade. | Use for new discovery-facing backend imports, including event-table normalization and evidence graph rerun helpers; keep it thin and free of independent business logic while `coordination/` remains the baseline implementation. |
+| `system/backend/app/core/coordination_detect/` | Canonical Coordination Detect facade. | Use for new detect/validation-facing backend imports, including pretrained detect and label extraction helpers; keep it thin and free of independent business logic while `coordination/` remains the baseline implementation. |
+| `system/backend/app/core/coordination/` | Current CooRTweet-style coordination baseline implementation and compatibility layer. | Keep existing imports working during the one-version semantic migration window. |
+| `system/backend/app/core/propagation_analysis/` | Canonical Propagation Analysis facade. | Use for new propagation backend imports; keep it thin and free of independent business logic while `propagation/` and `propagation_legacy.py` remain the implementation surface. |
+| `system/backend/app/core/propagation/`, `system/backend/app/core/propagation_legacy.py` | Current propagation implementation and compatibility layer. | Keep existing imports working during the one-version semantic migration window. |
+| `system/backend/app/core/review/` | Canonical Risk Review facade. | Use for new backend imports; keep it thin and free of independent business logic while `risk/` remains the implementation package. |
+| `system/backend/app/core/risk/` | Current Risk Review implementation and compatibility layer. | Keep existing imports working during the one-version semantic migration window. |
 
 ## Current Functional Map
 

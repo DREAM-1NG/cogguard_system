@@ -38,7 +38,7 @@
 - Every new public module should define `__all__`.
 - Public package `__init__.py` docstrings should use readable ASCII boundary wording to stay stable across Windows consoles and agent tooling.
 - Prefer absolute imports from `app.*` inside backend code.
-- New or touched KT1/KT2/KT3 service callers should prefer canonical method facades (`coordination_discover`, `coordination_detect`, `propagation_analysis`, `review`) over legacy implementation packages unless a module migration is explicitly scoped.
+- New or touched method service callers should prefer canonical facades (`coordination_discover`, `coordination_detect`, `propagation_analysis`, `review`) over legacy implementation packages unless a module migration is explicitly scoped.
 - Tests live under `system/backend/tests/` and should name behavior, not implementation trivia.
 
 ## Current Domain Boundaries
@@ -46,27 +46,28 @@
 | Boundary | Path | Rule |
 | --- | --- | --- |
 | Crawler | `system/backend/app/core/crawler/` | Acquisition and normalization only. |
-| Coordination Discover Facade | `system/backend/app/core/coordination_discover/` | Canonical KT1 discovery import facade for new backend code; it aliases current baseline discovery entry points and must not contain independent business logic. |
-| Coordination Detect Facade | `system/backend/app/core/coordination_detect/` | Canonical KT1 detect/validation import facade for new backend code; it aliases current baseline detect entry points and must not contain independent business logic. |
+| Coordination Discover Facade | `system/backend/app/core/coordination_discover/` | Canonical discovery import facade for new backend code; it aliases current baseline discovery, evidence graph, event-table normalization, and rerun entry points and must not contain independent business logic. |
+| Coordination Detect Facade | `system/backend/app/core/coordination_detect/` | Canonical detect/validation import facade for new backend code; it aliases current baseline detect, pretrained detect, label extraction, and statistics entry points and must not contain independent business logic. |
 | Coordination Baseline / Compatibility | `system/backend/app/core/coordination/` | Current CooRTweet-style baseline implementation and one-version compatibility layer for legacy imports. |
-| Propagation Analysis Facade | `system/backend/app/core/propagation_analysis/` | Canonical KT2 import facade for new backend code; it aliases current spread, trend, event-context, and regime-model entry points and must not contain independent business logic. |
-| Propagation Analysis Implementation / Compatibility | `system/backend/app/core/propagation/`, `system/backend/app/core/propagation_legacy.py` | Current KT2 implementation and one-version compatibility layer for legacy imports. |
-| Risk Review Facade | `system/backend/app/core/review/` | Canonical KT3 import facade for new backend code; it lazily aliases the current implementation and must not contain independent business logic. |
-| Risk Review Implementation / Compatibility | `system/backend/app/core/risk/` | Current KT3 implementation package and one-version compatibility layer for legacy imports. |
-| KT3 Agent Contracts | `system/backend/app/core/risk/kt3_agent_contracts.py` | Manual Agent report sections, prompt builders, output contracts, report roles, and safety flags. |
-| KT3 Agent Media | `system/backend/app/core/risk/kt3_agent_media.py` | Manual Agent media input extraction, visual payload gating, data URL conversion, and provider bundle trimming; review orchestration must not own raw media transfer policy. |
-| KT3 Agent Provider | `system/backend/app/core/risk/kt3_agent_provider.py` | OpenAI-compatible LLM provider config, HTTP wire adapters, retries, and settings factory; review orchestration must import this boundary instead of owning provider HTTP details. |
-| KT3 Agent Runtime | `system/backend/app/core/risk/kt3_agent_runtime.py` | Agent ordering, alias normalization, simple/complex runtime selection, execution plan, post-judge countermeasure gating, candidate rule hints, and failure tags. |
-| Teacher Silver | `system/backend/app/core/risk/kt3_teacher_silver.py` | Structured Teacher supervision contract. |
-| Selective Student | `system/backend/app/core/risk/kt3_selective_student.py` | KT3 2+1 Student targets, model, training, prediction, and metrics. |
-| PropagationTreeAgent Boundary | `system/backend/app/core/risk/kt3_propagation_agent.py` | Field-constrained PropagationTreeAgent prompt contract, evidence eligibility, and context selection rules. |
-| Propagation Context | `system/backend/app/core/risk/kt3_propagation_context.py` | Compact thread evidence bundle for `PropagationTreeAgent`; claim lists or reaction counts must not masquerade as thread structure. |
-| Trainable Post Features | `system/backend/app/core/risk/kt3_trainable_post.py` | Shared post feature extraction, legacy view experiments, fusion, and compatibility exports. |
+| Propagation Analysis Facade | `system/backend/app/core/propagation_analysis/` | Canonical propagation import facade for new backend code; it aliases current spread, trend, event-context, and regime-model entry points and must not contain independent business logic. |
+| Propagation Analysis Implementation / Compatibility | `system/backend/app/core/propagation/`, `system/backend/app/core/propagation_legacy.py` | Current propagation implementation and one-version compatibility layer for legacy imports. |
+| Risk Review Facade | `system/backend/app/core/review/` | Canonical Risk Review import facade for new backend code; it lazily aliases the current implementation and must not contain independent business logic. |
+| Risk Review Implementation / Compatibility | `system/backend/app/core/risk/` | Current Risk Review implementation package and one-version compatibility layer for legacy imports. |
+| Risk Review Agent Contracts | `system/backend/app/core/risk/` | Manual Agent report sections, prompt builders, output contracts, report roles, and safety flags. |
+| Risk Review Agent Media | `system/backend/app/core/risk/` | Manual Agent media input extraction, visual payload gating, data URL conversion, and provider bundle trimming; review orchestration must not own raw media transfer policy. |
+| Risk Review Agent Provider | `system/backend/app/core/risk/` | OpenAI-compatible LLM provider config, HTTP wire adapters, retries, and settings factory; review orchestration must import this boundary instead of owning provider HTTP details. |
+| Risk Review Agent Runtime | `system/backend/app/core/risk/` | Agent ordering, alias normalization, simple/complex runtime selection, execution plan, post-judge countermeasure gating, candidate rule hints, and failure tags. |
+| Teacher Silver | `system/backend/app/core/risk/` | Structured Teacher supervision contract. |
+| Selective Student | `system/backend/app/core/risk/` | Risk Review 2+1 Student targets, model, training, prediction, and metrics. |
+| PropagationTreeAgent Boundary | `system/backend/app/core/risk/` | Field-constrained PropagationTreeAgent prompt contract, evidence eligibility, and context selection rules. |
+| Propagation Context | `system/backend/app/core/risk/` | Compact thread evidence bundle for `PropagationTreeAgent`; claim lists or reaction counts must not masquerade as thread structure. |
+| Trainable Post Features | `system/backend/app/core/risk/` | Shared post feature extraction, legacy view experiments, fusion, and compatibility exports. |
 
 ## Naming Rules
 
 - Use the terms in `UBIQUITOUS_LANGUAGE.md` for domain language.
-- Use **Coordination Discover** and **Coordination Detect** for KT1 method language; reserve "coordination detection" for legacy API/page names that have not been migrated.
+- Use **Coordination Discover**, **Coordination Detect**, **Propagation Analysis**, and **Risk Review** for method language; numbered key-technology shorthand is not formal vocabulary.
+- Do not add new files, public APIs, database tables, routes, docs, or user-facing text that use numbered key-technology shorthand; migrate legacy names behind compatibility wrappers in small verified slices.
 - Use `snake_case.py` for Python modules and `kebab-case.md` for narrative docs.
 - Use `PascalCase` for classes and dataclasses.
 - Use verb-first functions such as `build_*`, `load_*`, `run_*`, `train_*`, `predict_*`, `export_*`, and `validate_*`.

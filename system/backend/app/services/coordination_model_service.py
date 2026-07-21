@@ -1,4 +1,4 @@
-"""KT1 coordination dataset registry and rerun service."""
+"""Coordination Discover/Detect dataset registry and rerun service."""
 
 from __future__ import annotations
 
@@ -16,31 +16,51 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import PROJECT_ROOT
-from app.core.coordination.io_reproduction import (
+from app.core.coordination_detect import (
+    PRETRAINED_CHECKPOINT_PATH,
+    ensure_china_pretrained_fusion_checkpoint,
+    extract_labels,
+    run_china_pretrained_detect,
+    run_dyna_colm_detect,
+)
+from app.core.coordination_discover import (
     DEFAULT_RELATIONS,
     build_unmasking_similarity_graphs,
-    extract_labels,
     fuse_similarity_graphs,
     normalize_event_table,
     read_event_table,
-    run_dyna_colm_detect,
     run_dyna_colm_discover,
-)
-from app.core.coordination.pretrained_detect import (
-    PRETRAINED_CHECKPOINT_PATH,
-    ensure_china_pretrained_fusion_checkpoint,
-    run_china_pretrained_detect,
 )
 from app.db.mysql import async_session_factory
 from app.models.coordination_registry import CoordinationDataset, CoordinationRun
 
-KT1_EXPERIMENT_ROOT = PROJECT_ROOT / "backend" / "experiments" / "kt1_io_reproduction"
-ARCHIVE_ROOT = KT1_EXPERIMENT_ROOT / "archive_kt1_final_20260628"
+
+def _resolve_coordination_experiment_root() -> Path:
+    canonical = PROJECT_ROOT / "backend" / "experiments" / "coordination_io_reproduction"
+    if canonical.exists():
+        return canonical
+    experiments_root = PROJECT_ROOT / "backend" / "experiments"
+    for candidate in sorted(experiments_root.glob("*_io_reproduction")):
+        if any(candidate.glob("archive_*_final_*")):
+            return candidate
+    return canonical
+
+
+def _resolve_archive_root(experiment_root: Path) -> Path:
+    canonical = experiment_root / "archive_coordination_final_20260628"
+    if canonical.exists():
+        return canonical
+    matches = sorted(experiment_root.glob("archive_*_final_20260628"))
+    return matches[0] if matches else canonical
+
+
+COORDINATION_EXPERIMENT_ROOT = _resolve_coordination_experiment_root()
+ARCHIVE_ROOT = _resolve_archive_root(COORDINATION_EXPERIMENT_ROOT)
 ARCHIVE_MANIFEST_PATH = ARCHIVE_ROOT / "archive_manifest.json"
 ARCHIVE_DETECT_METRICS_PATH = ARCHIVE_ROOT / "detect" / "detect_metrics_mean_std.csv"
-ARCHIVE_FUSION_DETAIL_ROOT = KT1_EXPERIMENT_ROOT / "accept_detect_fusion_shards_6d_s5_ep20"
-ARCHIVE_DISCOVER_DETAIL_ROOT = KT1_EXPERIMENT_ROOT / "accept_discover_magnn_full_embeddings_6d_s5_ep20"
-ARCHIVE_EVENT_ROOT = KT1_EXPERIMENT_ROOT / "accept_detect_lm_gnn_6d_s5_ep20"
+ARCHIVE_FUSION_DETAIL_ROOT = COORDINATION_EXPERIMENT_ROOT / "accept_detect_fusion_shards_6d_s5_ep20"
+ARCHIVE_DISCOVER_DETAIL_ROOT = COORDINATION_EXPERIMENT_ROOT / "accept_discover_magnn_full_embeddings_6d_s5_ep20"
+ARCHIVE_EVENT_ROOT = COORDINATION_EXPERIMENT_ROOT / "accept_detect_lm_gnn_6d_s5_ep20"
 
 DATASET_STORAGE_ROOT = PROJECT_ROOT / "output" / "coordination_datasets"
 RUN_STORAGE_ROOT = PROJECT_ROOT / "output" / "coordination_runs"
@@ -94,7 +114,7 @@ OBJECT_ID_RELATION_HINTS = {
 
 
 def _coordination_runtime_config(dataset: CoordinationDataset) -> dict[str, int | str]:
-    """Return a UI-friendly rerun profile for the fixed KT1 mainline.
+    """Return a UI-friendly rerun profile for the fixed Coordination mainline.
 
     Historical archived experiments keep their original paper-facing settings.
     Uploaded real-world datasets, especially unlabeled ones, run on CPU in the
@@ -1939,7 +1959,7 @@ async def _execute_coordination_run(run_id: int) -> None:
         )
         if not str(lm_feature_source or "").startswith("sbert:"):
             raise RuntimeError(
-                "SBERT is required for KT1 reruns, but the runtime fell back to a non-SBERT LM feature source."
+                "SBERT is required for Coordination reruns, but the runtime fell back to a non-SBERT LM feature source."
             )
         metrics_payload = detect.get("metrics", {})
         summary_payload = {

@@ -27,10 +27,21 @@ from app.core.coordination.io_reproduction import (
     read_event_table,
 )
 
-KT1_EXPERIMENT_ROOT = PROJECT_ROOT / "backend" / "experiments" / "kt1_io_reproduction"
-CHINA_EVENTS_PATH = KT1_EXPERIMENT_ROOT / "accept_detect_lm_gnn_6d_s5_ep20" / "china" / "events.csv"
+def _resolve_coordination_experiment_root() -> Path:
+    canonical = PROJECT_ROOT / "backend" / "experiments" / "coordination_io_reproduction"
+    if canonical.exists():
+        return canonical
+    experiments_root = PROJECT_ROOT / "backend" / "experiments"
+    for candidate in sorted(experiments_root.glob("*_io_reproduction")):
+        if any(candidate.glob("archive_*_final_*")):
+            return candidate
+    return canonical
+
+
+COORDINATION_EXPERIMENT_ROOT = _resolve_coordination_experiment_root()
+CHINA_EVENTS_PATH = COORDINATION_EXPERIMENT_ROOT / "accept_detect_lm_gnn_6d_s5_ep20" / "china" / "events.csv"
 CHINA_DISCOVERY_PATH = (
-    KT1_EXPERIMENT_ROOT
+    COORDINATION_EXPERIMENT_ROOT
     / "accept_discover_magnn_full_embeddings_6d_s5_ep20"
     / "china"
     / "seed_42"
@@ -59,7 +70,7 @@ def _require_torch():
         import torch.nn as nn
         import torch.nn.functional as functional
     except ModuleNotFoundError as exc:  # pragma: no cover - depends on env
-        raise RuntimeError("KT1 Detect requires torch for fusion_gnn checkpoint inference") from exc
+        raise RuntimeError("Coordination Detect requires torch for fusion_gnn checkpoint inference") from exc
     return torch, nn, functional
 
 
@@ -183,7 +194,7 @@ def _load_json(path: Path) -> dict[str, object]:
 def _ensure_strict_sbert(lm_feature_source: str) -> None:
     if not str(lm_feature_source).startswith("sbert:"):
         raise RuntimeError(
-            "SBERT is required for KT1 mainline runs, but the runtime fell back to a non-SBERT LM feature source."
+            "SBERT is required for Coordination mainline runs, but the runtime fell back to a non-SBERT LM feature source."
         )
 
 

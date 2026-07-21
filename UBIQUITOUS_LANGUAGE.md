@@ -9,7 +9,7 @@ phrasing can appear in narrative docs when helpful.
 | Term | Definition | Aliases to avoid |
 | --- | --- | --- |
 | **Product System** | The runnable backend, frontend, deployment config, and tests under `system/`. | app root, new-system |
-| **ARIS Workspace** | The research execution workspace under `aris/` for KT1, KT2, and KT3 planning and acceptance. | product code, scratch repo |
+| **ARIS Workspace** | The research execution workspace under `aris/` for Coordination Discover, Coordination Detect, Propagation Analysis, and Risk Review planning and acceptance. | product code, scratch repo |
 | **Reference Boundary** | An upstream or source repository retained for provenance and diffing only. | runtime root, product dependency |
 | **Engineering Documentation** | Long-lived project and runnable-system documentation under `doc/engineering/`. | notes, scratch docs |
 | **Architecture Decision Record** | A durable decision record under `docs/adr/` explaining why a boundary or method choice changed. | comment, changelog |
@@ -38,20 +38,20 @@ phrasing can appear in narrative docs when helpful.
 | **Raw Post** | A source content item captured from a platform. | article, feed row |
 | **Raw Comment** | A reply or comment captured from a source platform. | remark, note |
 
-## Key Technologies
+## Research Methods
 
 | Term | Definition | Aliases to avoid |
 | --- | --- | --- |
-| **Coordination Discover** | KT1 discovery of coordinated actors and evidence patterns across social content. | bot detection, coordination score |
-| **Coordination Detect** | KT1 validation or classification of coordinated behavior using approved evidence and labels. | cluster naming, campaign claim |
-| **Propagation Analysis** | KT2 analysis of spread, next-hop behavior, trend, and evidence chains. | trend chart only, propagation guess |
-| **Risk Review** | KT3 harmfulness and manipulation review combining evidence, student models, teacher review, and governance. | risk score only, LLM verdict |
-| **Student** | The deployable low-latency KT3 model used for preliminary triage. | final judge, report generator |
-| **Teacher** | The expensive multi-agent KT3 review path used for advisory supervision and hard cases. | canonical verdict, automatic authority |
+| **Coordination Discover** | Discovery of coordinated actors and evidence patterns across social content. | numbered method label, bot detection, coordination score |
+| **Coordination Detect** | Validation or classification of coordinated behavior using approved evidence and labels. | numbered method label, cluster naming, campaign claim |
+| **Propagation Analysis** | Analysis of spread, next-hop behavior, trend, and evidence chains. | numbered method label, trend chart only, propagation guess |
+| **Risk Review** | Harmfulness and manipulation review combining evidence, student models, teacher review, and governance. | numbered method label, risk score only, LLM verdict |
+| **Student** | The deployable low-latency Risk Review model used for preliminary triage. | final judge, report generator |
+| **Teacher** | The expensive multi-agent Risk Review path used for advisory supervision and hard cases. | canonical verdict, automatic authority |
 | **Teacher Silver** | Structured supervision exported by the Teacher for Student distillation and audit. | full agent report, rationale text |
-| **Selective Student** | The KT3 Student protocol with two semantic axes, stance auxiliary head, and defer routing. | all-label classifier, rationale student |
+| **Selective Student** | The Risk Review Student protocol with two semantic axes, stance auxiliary head, and defer routing. | all-label classifier, rationale student |
 | **Hard Case** | A case routed to Teacher or human review due to uncertainty, disagreement, OOD, or missing evidence. | harmful case, every positive sample |
-| **Canonical Verdict** | An immutable analyst-approved KT3 verdict. | teacher output, student output |
+| **Canonical Verdict** | An immutable analyst-approved Risk Review verdict. | teacher output, student output |
 | **Propagation Thread** | A source post plus linked replies, reposts, or reactions that form a conversation or spread tree. | claim list, graph summary only |
 | **Thread Context** | The normalized node-edge representation of one Propagation Thread. | reaction count, raw comments |
 | **Propagation Context** | The compact Agent-readable summary of Thread Context, including key branches, stance by depth, temporal snapshots, and missing fields. | whole graph dump, propagation score |
@@ -82,7 +82,7 @@ phrasing can appear in narrative docs when helpful.
 
 ## Example Dialogue
 
-> **Dev:** "I added a new KT3 training helper. Is that just a utility in `kt3_trainable_post.py`?"
+> **Dev:** "I added a new Risk Review training helper. Is that just a utility in the legacy trainable-post module?"
 >
 > **Domain expert:** "Only if it belongs to the existing post-feature training boundary. If it owns Teacher Silver or Selective Student behavior, create a focused module and expose a clear **Public Boundary**."
 >
@@ -96,10 +96,11 @@ phrasing can appear in narrative docs when helpful.
 
 ## Flagged Ambiguities
 
-- "risk" is the legacy KT3 implementation package; use **Risk Review** for the domain concept and `app.core.review` as the canonical import facade for new backend code.
-- "coordination" is the legacy KT1 baseline package; use **Coordination Discover** and **Coordination Detect** for method language and `app.core.coordination_discover` / `app.core.coordination_detect` as canonical import facades for new backend code.
-- "propagation" is the legacy KT2 implementation package; use **Propagation Analysis** for method language and `app.core.propagation_analysis` as the canonical import facade for new backend code.
-- "student" can mean a training model or a deployable runtime; use **Selective Student** when referring to the current 2+1 KT3 protocol.
+- Numbered key-technology shorthand is not formal vocabulary; use **Coordination Discover**, **Coordination Detect**, **Propagation Analysis**, and **Risk Review** in code, docs, commits, and user-facing text.
+- "risk" is the legacy Risk Review implementation package; use **Risk Review** for the domain concept and `app.core.review` as the canonical import facade for new backend code.
+- "coordination" is the legacy coordination baseline package; use **Coordination Discover** and **Coordination Detect** for method language and `app.core.coordination_discover` / `app.core.coordination_detect` as canonical import facades for new backend code.
+- "propagation" is the legacy propagation implementation package; use **Propagation Analysis** for method language and `app.core.propagation_analysis` as the canonical import facade for new backend code.
+- "student" can mean a training model or a deployable runtime; use **Selective Student** when referring to the current 2+1 Risk Review protocol.
 - "teacher" can mean a multi-agent runtime or exported supervision; use **Teacher Silver** when referring to distillation data.
 - "propagation analysis" can mean trend/graph modeling or Agent review; use **Propagation Context** when referring to the compact input for `PropagationTreeAgent`.
 - "tree" must not mean a claim list or empty graph summary; use **Thread Context** only when node-edge reply/reaction links are present.

@@ -70,6 +70,19 @@ def test_governance_docs_and_glossary_are_present_and_cross_linked():
         assert "new-system/" not in path.read_text(encoding="utf-8"), path
 
 
+def test_canonical_governance_sources_use_method_names_not_numbered_shorthand():
+    root = Path(__file__).resolve().parents[3]
+    canonical_sources = [
+        root / "UBIQUITOUS_LANGUAGE.md",
+        root / "doc" / "engineering" / "project-map.md",
+        root / "doc" / "engineering" / "system-governance.md",
+    ]
+    shorthand_pattern = re.compile("".join(["K", "T", "[123]"]) + "|" + "".join(["k", "t", "[123]"]))
+
+    for path in canonical_sources:
+        assert shorthand_pattern.search(path.read_text(encoding="utf-8")) is None, path
+
+
 def test_governance_boundaries_have_unique_adrs_and_explicit_public_modules():
     root = Path(__file__).resolve().parents[3]
     adr_numbers = []
@@ -92,6 +105,9 @@ def test_governance_boundaries_have_unique_adrs_and_explicit_public_modules():
     assert "detect_groups" in coordination_detect.__all__
     assert "generate_coordinated_network" in coordination_discover.__all__
     assert "graph_to_dict" in coordination_discover.__all__
+    assert "run_dyna_colm_discover" in coordination_discover.__all__
+    assert "run_dyna_colm_detect" in coordination_detect.__all__
+    assert "run_china_pretrained_detect" in coordination_detect.__all__
     assert "crawler" in core.__all__
     assert "propagation_analysis" in core.__all__
     assert "predict_trend" in propagation_analysis.__all__
@@ -140,13 +156,18 @@ def test_coordination_method_facades_alias_current_baseline_implementation():
 
 def test_current_coordination_service_uses_canonical_facades():
     root = Path(__file__).resolve().parents[3]
-    path = root / "system" / "backend" / "app" / "services" / "coordination_service.py"
-    text = path.read_text(encoding="utf-8")
+    service_path = root / "system" / "backend" / "app" / "services" / "coordination_service.py"
+    model_service_path = root / "system" / "backend" / "app" / "services" / "coordination_model_service.py"
+    service_text = service_path.read_text(encoding="utf-8")
+    model_service_text = model_service_path.read_text(encoding="utf-8")
 
-    assert "from app.core.coordination_detect import account_stats, detect_groups, group_stats" in text
-    assert "from app.core.coordination_discover import generate_coordinated_network, graph_to_dict" in text
-    assert "from app.core.coordination import" not in text
-    assert "from app.core.coordination.network import" not in text
+    assert "from app.core.coordination_detect import account_stats, detect_groups, group_stats" in service_text
+    assert "from app.core.coordination_discover import generate_coordinated_network, graph_to_dict" in service_text
+    assert "from app.core.coordination_detect import (" in model_service_text
+    assert "from app.core.coordination_discover import (" in model_service_text
+    for text in (service_text, model_service_text):
+        assert "from app.core.coordination import" not in text
+        assert "from app.core.coordination." not in text
 
 
 def test_propagation_analysis_facade_aliases_current_kt2_implementation():
