@@ -4,6 +4,11 @@ from app.core.risk.kt3_agent_review import _has_propagation_tree_context
 from app.core.risk.kt3_agent_review import _agent_output_contract
 from app.core.risk.kt3_agent_review import _agent_system_prompt
 from app.core.risk.kt3_agent_review import _select_propagation_context
+from app.core.risk.kt3_agent_contracts import AGENT_REPORT_SECTIONS
+from app.core.risk.kt3_agent_contracts import build_agent_system_prompt
+from app.core.risk.kt3_agent_contracts import build_agent_user_prompt
+from app.core.risk.kt3_agent_contracts import build_default_report_role
+from app.core.risk.kt3_agent_contracts import build_safety_flags
 from app.core.risk.kt3_propagation_agent import PROPAGATION_AGENT_REPORT_SECTIONS
 from app.core.risk.kt3_propagation_agent import build_propagation_agent_output_contract
 from app.core.risk.kt3_propagation_agent import build_propagation_agent_prompt_note
@@ -166,3 +171,21 @@ def test_propagation_agent_boundary_module_owns_contract_and_routing_logic():
     assert has_propagation_tree_context(report) is True
     assert "selected_context.propagation_context" in prompt_note
     assert contract["required_headings"] == PROPAGATION_AGENT_REPORT_SECTIONS
+
+
+def test_agent_contracts_module_owns_prompt_sections_roles_and_payloads():
+    context = {"active_policy": {}, "error_memory_summary": {"known_issue": 1}}
+    prompt = build_agent_system_prompt("HarmfulnessJudgeAgent")
+    user_prompt = build_agent_user_prompt(
+        "HarmfulnessJudgeAgent",
+        context,
+        {"PostHarmAgent": {"status": "completed", "report_text": "post report"}},
+        policy_guidance={"active_policy_present": False},
+    )
+
+    assert AGENT_REPORT_SECTIONS["PropagationTreeAgent"] == PROPAGATION_AGENT_REPORT_SECTIONS
+    assert "Required report sections" in prompt
+    assert "HarmfulnessJudgeAgent" in prompt
+    assert "\"policy_guidance\"" in user_prompt
+    assert build_default_report_role("QuestionReflectionAgent") == "reflection"
+    assert "advisory_judgement_only" in build_safety_flags("HarmfulnessJudgeAgent")

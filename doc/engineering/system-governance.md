@@ -47,6 +47,7 @@
 | Coordination Discover / Detect | `system/backend/app/core/coordination/` | KT1 coordination baseline and research adapters; the package name remains `coordination` until a tested semantic migration is approved. |
 | Propagation | `system/backend/app/core/propagation/`, `system/backend/app/core/propagation.py` | KT2 spread and trend analysis. |
 | Risk Review | `system/backend/app/core/risk/` | KT3 review, harmfulness, DISARM, Teacher/Student research code, and reporting. |
+| KT3 Agent Contracts | `system/backend/app/core/risk/kt3_agent_contracts.py` | Manual Agent report sections, prompt builders, output contracts, report roles, and safety flags. |
 | KT3 Agent Provider | `system/backend/app/core/risk/kt3_agent_provider.py` | OpenAI-compatible LLM provider config, HTTP wire adapters, retries, and settings factory; review orchestration must import this boundary instead of owning provider HTTP details. |
 | Teacher Silver | `system/backend/app/core/risk/kt3_teacher_silver.py` | Structured Teacher supervision contract. |
 | Selective Student | `system/backend/app/core/risk/kt3_selective_student.py` | KT3 2+1 Student targets, model, training, prediction, and metrics. |
