@@ -4,6 +4,11 @@ from app.core.risk.kt3_agent_review import _has_propagation_tree_context
 from app.core.risk.kt3_agent_review import _agent_output_contract
 from app.core.risk.kt3_agent_review import _agent_system_prompt
 from app.core.risk.kt3_agent_review import _select_propagation_context
+from app.core.risk.kt3_propagation_agent import PROPAGATION_AGENT_REPORT_SECTIONS
+from app.core.risk.kt3_propagation_agent import build_propagation_agent_output_contract
+from app.core.risk.kt3_propagation_agent import build_propagation_agent_prompt_note
+from app.core.risk.kt3_propagation_agent import has_propagation_tree_context
+from app.core.risk.kt3_propagation_agent import select_propagation_context
 from app.core.risk.kt3_propagation_context import PROPAGATION_CONTEXT_SCHEMA
 from app.core.risk.kt3_propagation_context import THREAD_CONTEXT_SCHEMA
 from app.core.risk.kt3_propagation_context import build_propagation_context_for_case
@@ -138,3 +143,26 @@ def test_propagation_agent_prompt_is_field_constrained():
         "给综合裁决的传播结论",
     ]
     assert "missing_fields" in contract["allowed_evidence_refs"]
+
+
+def test_propagation_agent_boundary_module_owns_contract_and_routing_logic():
+    report = {
+        "kt3_harmfulness": {
+            "propagation_context": {
+                "tree_id": "tree-7",
+                "has_thread_context": True,
+                "tree_metrics": {"node_count": 2, "edge_count": 1},
+            },
+            "graph_export": {"summary": {"edge_count": 1}},
+        },
+        "post_semantics": {"summary": {"available_claims": 1}},
+    }
+
+    selected = select_propagation_context(report, [])
+    prompt_note = build_propagation_agent_prompt_note("PropagationTreeAgent")
+    contract = build_propagation_agent_output_contract("PropagationTreeAgent")
+
+    assert selected["selected_tree_ids"] == ["tree-7"]
+    assert has_propagation_tree_context(report) is True
+    assert "selected_context.propagation_context" in prompt_note
+    assert contract["required_headings"] == PROPAGATION_AGENT_REPORT_SECTIONS

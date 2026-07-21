@@ -17,6 +17,7 @@ __all__ = [
     "kt3_graph_exporter",
     "kt3_multi_agent",
     "kt3_post_gate",
+    "kt3_propagation_agent",
     "kt3_propagation_context",
     "kt3_rag",
     "kt3_review_executor",

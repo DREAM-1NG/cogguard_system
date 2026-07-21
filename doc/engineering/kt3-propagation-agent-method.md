@@ -73,6 +73,7 @@
 已完成第一阶段：
 
 - 新增 `app.core.risk.kt3_propagation_context`。
+- 新增 `app.core.risk.kt3_propagation_agent`，集中管理 `PropagationTreeAgent` 的字段约束 prompt、输出契约、证据路由和 context selection。
 - PHEME 转换写入 `thread_context`。
 - 离线 Agent runner 在 case 存在真实 `tree_id` 时自动插入 `PropagationTreeAgent`。
 - 离线 Agent runner 传入 `selected_tree_ids`。
@@ -82,7 +83,5 @@
 
 下一阶段建议：
 
-- 将 `PropagationTreeAgent` prompt 从通用章节改为字段约束型输出。
 - 在 teacher silver 中记录 `propagation_trace_refs` 和 `escalation_points`。
-- 将 `kt3_graph_exporter` 增加 post-post 的 `replies_to` / `quotes` / `reposts` 边，不再只用 account-account `propagates_to`。
 - 对 PHEME 跑一个 1-2 case 的 GPT smoke，确认报告正文不再自由臆测传播树。

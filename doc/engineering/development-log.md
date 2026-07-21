@@ -30,7 +30,7 @@
 - `system/backend/app/api/v1/propagation.py`、`system/backend/app/services/propagation_service.py`：补传播分析 `node_limit` / `diffusion_node_limit` 的旧调用面兼容，避免新增参数打断旧替身和旧集成测试。
 - 验证：`python -m pytest system/backend/tests/test_kt3_trainable_post.py system/backend/tests/test_governance_docs.py -q`；`python -m pytest system/backend/tests -q`（319 passed, 27 skipped）。
 - 收口 KT3 PropagationTreeAgent 证据边界：新增 Thread Context / Propagation Context 术语、ADR 与工程说明，PHEME 转换保留 node-edge reply tree，离线 Agent runner 只在真实传播树上下文存在时插入 `PropagationTreeAgent`。
-- `system/backend/app/core/risk/kt3_propagation_context.py`、`system/backend/app/core/risk/kt3_graph_exporter.py`：新增传播线程压缩上下文与 post-post `replies_to` / `reposts` / `quotes` 边导出，避免 claim-only 或 reaction-count-only 样本被伪装成传播树证据。
+- `system/backend/app/core/risk/kt3_propagation_agent.py`、`system/backend/app/core/risk/kt3_propagation_context.py`、`system/backend/app/core/risk/kt3_graph_exporter.py`：新增字段约束型 Agent 契约、传播线程压缩上下文与 post-post `replies_to` / `reposts` / `quotes` 边导出，避免 claim-only 或 reaction-count-only 样本被伪装成传播树证据。
 - `system/backend/tests/test_kt3_propagation_context.py`、`system/backend/tests/test_kt3_graph_exporter.py`、`system/backend/tests/test_governance_docs.py`：补 propagation context、图导出和 ADR 编号 / `__all__` 治理回归测试。
 
 ---
