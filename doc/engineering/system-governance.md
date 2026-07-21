@@ -38,6 +38,7 @@
 - Every new public module should define `__all__`.
 - Public package `__init__.py` docstrings should use readable ASCII boundary wording to stay stable across Windows consoles and agent tooling.
 - Prefer absolute imports from `app.*` inside backend code.
+- New or touched KT1/KT2/KT3 service callers should prefer canonical method facades (`coordination_discover`, `coordination_detect`, `propagation_analysis`, `review`) over legacy implementation packages unless a module migration is explicitly scoped.
 - Tests live under `system/backend/tests/` and should name behavior, not implementation trivia.
 
 ## Current Domain Boundaries

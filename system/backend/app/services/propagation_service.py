@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from inspect import Parameter, signature
 
-from app.core.propagation import build_propagation_graph
-from app.core.propagation.trend_predictor import predict_trend
+from app.core.propagation_analysis import build_propagation_graph
+from app.core.propagation_analysis import predict_trend
 from app.db.mongodb import get_mongo_db
 from app.services.event_data import analysis_scope_metadata, load_event_comments, load_event_posts
 from app.services.kt2_prediction_service import predict_event_macro_micro

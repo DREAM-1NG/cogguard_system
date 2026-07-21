@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 
 from app.core.account_profiler import build_account_profiles
-from app.core.propagation_legacy import build_propagation_graph
+from app.core.propagation_analysis import build_propagation_graph
 from app.core.risk.disarm_scorer import map_evidence_to_techniques, score_attack_path_full
 from app.core.risk.ds_fusion import fuse_evidence
 from app.core.risk.evidence_builder import build_evidence_pack
@@ -515,4 +515,3 @@ def characterize_detect_output(
         "communities": characterization_records,
         "summary": summary,
     }
-

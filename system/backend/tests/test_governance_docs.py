@@ -155,6 +155,24 @@ def test_propagation_analysis_facade_aliases_current_kt2_implementation():
     assert "independent business logic" in (facade.__doc__ or "")
 
 
+def test_current_propagation_callers_use_canonical_facade():
+    root = Path(__file__).resolve().parents[3]
+    caller_paths = [
+        root / "system" / "backend" / "app" / "services" / "propagation_service.py",
+        root / "system" / "backend" / "app" / "core" / "coordination" / "characterization.py",
+    ]
+    legacy_imports = (
+        "from app.core.propagation import",
+        "from app.core.propagation.trend_predictor import",
+        "from app.core.propagation_legacy import",
+    )
+
+    for path in caller_paths:
+        text = path.read_text(encoding="utf-8")
+        assert "from app.core.propagation_analysis import build_propagation_graph" in text, path
+        assert not any(import_line in text for import_line in legacy_imports), path
+
+
 def test_review_facade_is_thin_risk_review_compatibility_layer():
     review = importlib.import_module("app.core.review")
     risk = importlib.import_module("app.core.risk")
