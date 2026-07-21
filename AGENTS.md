@@ -33,7 +33,7 @@ If code and docs disagree, trust code first, then update docs in the same change
 - Core goal: evidence-driven detection of cross-platform coordinated manipulation.
 - Preferred system narrative: `事件 -> 证据 -> 协同 -> 传播 -> 风险 -> 处置`
 - Avoid reverting to the older headline of `bot detection + 意图识别`.
-- KT1 method language is **Coordination Discover** + **Coordination Detect**.
+- The formal method language is **Coordination Discover** + **Coordination Detect**.
 - Short-term validation scope: `mock_weibo`, `weibo`, `news`
 - Treat `MediaCrawler-main`, `NewsCrawler-main`, and `CooRTweet-master` as reference or dependency boundaries unless the user explicitly asks to modify them.
 

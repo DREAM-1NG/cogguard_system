@@ -20,6 +20,7 @@
 
 ## 2026-07-21
 
+- 收口仓库入口与 Risk Review 上下文命名：`README.md`、`system/README.md`、`AGENTS.md`、`CLAUDE.md`、`CONTEXT.md` 与 `plan/progress.md` 的当前-facing 术语统一为正式方法名与工作流表述。
 - 收口全局系统治理：新增统一术语表、系统治理文档和 ADR，要求后续代码变更同步文档、术语和架构决策。
 - `UBIQUITOUS_LANGUAGE.md`：新增跨系统术语、别名禁用、run/job/task、artifact/checkpoint/model version、Teacher Silver 与 Selective Student 定义。
 - `doc/engineering/system-governance.md`、`docs/adr/0002-system-governance-and-documentation-sync.md`：新增代码结构、公共边界、文档同步与长期迭代规则。

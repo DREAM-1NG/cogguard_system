@@ -8,20 +8,20 @@
 
 **每次新会话的读取顺序**:
 1. `memory/PLAYBOOK.md` — 全局视图 + 当前 Harness Window（60s）
-2. `memory/state_ktN.md`（仅目标 KT）— 文件路径 + 阻塞点（30s）
+2. `memory/state_<workspace>.md`（仅目标工作流）— 文件路径 + 阻塞点（30s）
 3. 本文件 — 仓库规则确认（20s）
 4. `aris/tech-N-*/ACCEPTANCE.md` — 范围边界确认（20s）
 5. `aris/tech-N-*/TASK_TRACKER.md` — 接续上次进度（10s）
 6. `UBIQUITOUS_LANGUAGE.md` 与 `doc/engineering/system-governance.md` — 全局术语与代码治理确认（20s）
 
-**不需要读**: research-wiki/（除非做文献工作）、其他 KT 的文件
+**不需要读**: research-wiki/（除非做文献工作）、其他工作流的文件
 
 ## Harness Window Protocol
 
 每次自主执行前，在 `memory/PLAYBOOK.md` 的 Active Harness Window 区域定义：
 
 ```
-scope: [KT? WP?-WP? 具体任务]
+scope: [workspace / work-package 具体任务]
 success_criteria: [可验证的完成标准]
 time_boundary: [预计时长，ARIS 标准：6-7 小时/窗口]
 checkpoint_at: [中间检查点]
@@ -33,7 +33,7 @@ out_of_scope: [明确排除的内容]
 - 范围边界命中（ACCEPTANCE.md 明确禁止）
 - 需要架构决策的阻塞点
 - 测试失败率 > 30% 且 2 次修复尝试后仍失败
-- 任何跨 KT 依赖变更（参考 `aris/shared/CROSS_KT_DEPS.md`）
+- 任何跨工作流依赖变更（参考 `aris/shared/CROSS_KT_DEPS.md`）
 
 ## 必读顺序
 
@@ -44,7 +44,7 @@ out_of_scope: [明确排除的内容]
 5. `aris/README.md`
 6. `UBIQUITOUS_LANGUAGE.md`
 7. `doc/engineering/system-governance.md`
-8. 如果任务属于关键技术一/二/三或由 ARIS 驱动，继续读取：
+8. 如果任务属于三个工作流之一或由 ARIS 驱动，继续读取：
    - 目标 `aris/tech-*/README.md`
    - 目标 `aris/tech-*/ACCEPTANCE.md`
    - 对应 `doc/research/key-technology-background/*.md`
@@ -53,7 +53,7 @@ out_of_scope: [明确排除的内容]
 
 - 当前工程基线：`release-0.2`
 - 当前唯一产品代码根：`system/`
-- KT1 正式方法名：`Coordination Discover` + `Coordination Detect`
+- `Coordination Discover` + `Coordination Detect` 是正式方法名
 - 参考仓库边界：`MediaCrawler-main/`、`NewsCrawler-main/`、`CooRTweet-master/`
 - 不在仓库内 vendoring 上游 ARIS skill 实现
 - 不创建仓库根单一 `RESEARCH_BRIEF.md`

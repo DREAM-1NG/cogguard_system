@@ -26,7 +26,7 @@ CogGuard 是一个面向竞赛和研究验证的开源原型，目标是围绕�
 |------|------|------|
 | 长期文档层 | [`doc/`](doc/) | 开发进度、环境说明、技术背景、变更日志 |
 | 架构决策层 | [`docs/adr/`](docs/adr/) | 重要架构、术语和边界决策记录 |
-| ARIS 工作空间层 | [`aris/`](aris/) | 针对关键技术一/二/三的独立 ARIS 执行入口 |
+| ARIS 工作空间层 | [`aris/`](aris/) | 针对 Coordination Discover、Propagation Analysis、Risk Review 的独立 ARIS 执行入口 |
 | 产品代码层 | [`system/`](system/) | 当前唯一有效的后端、前端、部署与测试代码 |
 | 参考边界层 | `MediaCrawler-main/` `NewsCrawler-main/` `CooRTweet-master/` | 上游参考与依赖，不作为默认修改范围 |
 | 外层竞赛材料层 | [`../materials/`](../materials/) | PPT、申报书、开题材料与竞赛交付材料 |
@@ -38,7 +38,7 @@ CogGuard 是一个面向竞赛和研究验证的开源原型，目标是围绕�
 | 模块 | 状态 | 说明 |
 |------|------|------|
 | 数据采集 | MVP 已完成 | Mock + 真实爬虫封装已接入 |
-| 协同发现 / 协同检测 | MVP 已完成 | 已有共享对象协同检测（旧方向），KT1 方法名已统一为 `Coordination Discover` / `Coordination Detect`，PSL 新方向在 `aris/tech-01-coordination/` 已完成系统设计 |
+| Coordination Discover / Coordination Detect | MVP 已完成 | 已有共享对象协同检测（旧方向），正式方法名已统一为 `Coordination Discover` / `Coordination Detect`，PSL 新方向在 `aris/tech-01-coordination/` 已完成系统设计 |
 | 传播监控 | WP1-3 已完成 | Hybrid TS + LLM 路线，已实现 `ts_features` / `llm_context` / `regime_model` / `trend_predictor`；WP4-5（立场/危害）未启动 |
 | 账户监测 | MVP 已完成 | 已有画像、自动化评分与 BotRHG 风格社交机器人检测 API，待补历史参与与前端深度展示 |
 | 报告研判 | MVP 已完成 | `core/risk/` 1,340 行（DISARM 评分 / D-S 融合 / 证据链 / 报告生成 / 阶段检测）+ `risk_service` 编排层 + 风险 API + 前端风险页 |

@@ -1,8 +1,8 @@
-# CogGuard KT3 Context
+# CogGuard Risk Review Context
 
-This context defines the shared language for KT3 harmfulness assessment. It keeps research, implementation, and evaluation discussions aligned around the same post-level and group-level concepts.
+This context defines the shared language for Risk Review assessment. It keeps research, implementation, and evaluation discussions aligned around the same post-level and group-level concepts.
 
-Global vocabulary lives in `UBIQUITOUS_LANGUAGE.md`; this file only carries the KT3-local context that is still easier to read in one place. Run **Documentation Sync** through `doc/engineering/system-governance.md` whenever this context changes.
+Global vocabulary lives in `UBIQUITOUS_LANGUAGE.md`; this file only carries the Risk Review-local context that is still easier to read in one place. Run **Documentation Sync** through `doc/engineering/system-governance.md` whenever this context changes.
 
 ## Language
 
@@ -37,11 +37,11 @@ A post-level decision rule that combines standardized View Detector outputs into
 _Avoid_: feature concatenation, manual scoring
 
 **Harmfulness Judgment**:
-The final KT3 post-level conclusion: harmful, non-harmful, or uncertain, with harm type and evidence when available.
+The final Risk Review post-level conclusion: harmful, non-harmful, or uncertain, with harm type and evidence when available.
 _Avoid_: toxicity score only, content score only
 
 **Teacher Silver**:
-Structured supervision exported from the offline multi-agent teacher as `kt3-teacher-silver-v1`. It contains main axes, stance, confidence, review reasons, evidence spans, trace references, and sample mode.
+Structured supervision exported from the offline multi-agent teacher as `risk-review-teacher-silver-v1`. It contains main axes, stance, confidence, review reasons, evidence spans, trace references, and sample mode.
 _Avoid_: training on the full natural-language agent report
 
 **Hard Case**:
@@ -69,7 +69,7 @@ A normalized node-edge representation of a source post and its linked replies/re
 _Avoid_: graph summary only, available claims
 
 **Propagation Context**:
-The compact `kt3-propagation-context-v1` bundle read by `PropagationTreeAgent`, including tree metrics, key branches, stance-by-depth, temporal snapshots, central nodes, and missing fields.
+The compact `risk-review-propagation-context-v1` bundle read by `PropagationTreeAgent`, including tree metrics, key branches, stance-by-depth, temporal snapshots, central nodes, and missing fields.
 _Avoid_: full raw thread dump, single propagation score
 
 **Branch Evidence**:

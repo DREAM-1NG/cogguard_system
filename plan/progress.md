@@ -124,7 +124,7 @@
 
 ## 当前增量：帖子级四视图 detect 与投票/融合形式化
 
-- 新增根目录 `CONTEXT.md`，统一 KT3 术语：Post View、View Detector、View Abstention、Majority Vote、View Fusion、Harmfulness Judgment。
+- 新增根目录 `CONTEXT.md`，统一 Risk Review 术语：Post View、View Detector、View Abstention、Majority Vote、View Fusion、Harmfulness Judgment。
 - 增强 `system/backend/app/core/risk/post_semantics.py`：在每条帖子输出中新增 `post_view_detection`，固定包含 `tweet / meme / img / video` 四类视图的 `view_results`，以及 `majority_vote`、`weighted_fusion`、`fusion_policy`、`final_harmfulness`、`conflict` 和 `review_reason`。
 - 形式化实现口径：`D_tweet / D_meme / D_img / D_video` 分别 detect，缺少可解码图像/视频证据时视图必须 `abstain`，多数投票只统计 confident non-abstained views；加权融合按 view prior weight 与 confidence 组合 score。
 - 本轮收紧边界：`img/video` 的 `available=true` 必须来自 OCR/ASR/caption 等可解码证据，单独的图片/视频 URL 不再被视为已理解内容；`weighted_fusion` 现在与多数投票一致，排除 `abstain=true` 的视图，避免把 tweet 正文重复计入 video/img 判断。

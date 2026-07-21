@@ -373,8 +373,8 @@ curl -X POST http://localhost:8000/api/v1/auth/login \
 - **当前**：MockCrawler 与真实爬虫封装都已接入；真实平台仍以本地/联调验证为主
 - **后续**：补充更稳定的端到端验证、失败回放与更多场景样例
 
-### 协同发现 / 协同检测
-- **当前**：已实现基于共享对象的协同检测、加权网络、账户/群组统计与前端可视化；KT1 方法名已统一为 `Coordination Discover` / `Coordination Detect`
+### Coordination Discover / Coordination Detect
+- **当前**：已实现基于共享对象的协同检测、加权网络、账户/群组统计与前端可视化；正式方法名已统一为 `Coordination Discover` / `Coordination Detect`
 - **后续**：补充多行为边（时间同步、共链接、共媒体、语义近似、传播互动）与显著性筛查
 
 ### 传播监控
@@ -423,7 +423,7 @@ curl -X POST http://localhost:8000/api/v1/auth/login \
 | GET  | `/api/v1/crawl/jobs` | 获取采集任务列表 | 是 |
 | GET  | `/api/v1/crawl/data` | 查询已采集的帖子数据 | 是 |
 
-### 协同发现 / 协同检测模块
+### Coordination Discover / Coordination Detect 模块
 
 | 方法 | 路径 | 说明 | 鉴权 |
 |------|------|------|------|
