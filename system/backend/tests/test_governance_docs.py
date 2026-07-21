@@ -89,10 +89,15 @@ def test_governance_boundaries_have_unique_adrs_and_explicit_public_modules():
 
 
 def test_kt3_trainable_post_exposes_split_boundaries_and_lazily_resolves_moved_symbols():
+    agent_review = importlib.import_module("app.core.risk.kt3_agent_review")
+    provider = importlib.import_module("app.core.risk.kt3_agent_provider")
     trainable = importlib.import_module("app.core.risk.kt3_trainable_post")
     teacher = importlib.import_module("app.core.risk.kt3_teacher_silver")
     student = importlib.import_module("app.core.risk.kt3_selective_student")
 
+    assert "OpenAICompatibleAgentProvider" in provider.__all__
+    assert agent_review.OpenAICompatibleAgentProvider is provider.OpenAICompatibleAgentProvider
+    assert agent_review.OpenAICompatibleConfig is provider.OpenAICompatibleConfig
     assert "write_jsonl" in getattr(trainable, "__all__", []) or hasattr(trainable, "write_jsonl")
     assert "build_teacher_silver_record" in teacher.__all__
     assert "SelectiveStudentEncoder" in student.__all__

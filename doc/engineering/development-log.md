@@ -32,6 +32,7 @@
 - 收口 KT3 PropagationTreeAgent 证据边界：新增 Thread Context / Propagation Context 术语、ADR 与工程说明，PHEME 转换保留 node-edge reply tree，离线 Agent runner 只在真实传播树上下文存在时插入 `PropagationTreeAgent`。
 - `system/backend/app/core/risk/kt3_propagation_agent.py`、`system/backend/app/core/risk/kt3_propagation_context.py`、`system/backend/app/core/risk/kt3_graph_exporter.py`：新增字段约束型 Agent 契约、传播线程压缩上下文与 post-post `replies_to` / `reposts` / `quotes` 边导出，避免 claim-only 或 reaction-count-only 样本被伪装成传播树证据。
 - `system/backend/tests/test_kt3_propagation_context.py`、`system/backend/tests/test_kt3_graph_exporter.py`、`system/backend/tests/test_governance_docs.py`：补 propagation context、图导出和 ADR 编号 / `__all__` 治理回归测试。
+- `system/backend/app/core/risk/kt3_agent_provider.py`：从 `kt3_agent_review.py` 拆出 OpenAI-compatible provider、wire API payload、retry 与 settings factory；产品服务、Celery task 和离线实验脚本改用新 provider 边界，旧路径保留兼容导出。
 
 ---
 

@@ -9,6 +9,7 @@ __all__ = [
     "ds_fusion",
     "evidence_builder",
     "kt3_active_retrieval",
+    "kt3_agent_provider",
     "kt3_agent_policy",
     "kt3_agent_review",
     "kt3_community_gate",

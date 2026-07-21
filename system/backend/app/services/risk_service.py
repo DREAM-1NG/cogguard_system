@@ -11,7 +11,7 @@ from app.core.risk.disarm_scorer import score_attack_path_full
 from app.core.risk.ds_fusion import fuse_evidence
 from app.core.risk.evidence_builder import build_evidence_pack
 from app.core.risk.kt3_agent_review import agent_review_suggestions
-from app.core.risk.kt3_agent_review import build_llm_provider_from_settings
+from app.core.risk.kt3_agent_provider import build_llm_provider_from_settings
 from app.core.risk.kt3_agent_review import run_manual_kt3_agent_review
 from app.core.risk.kt3_agent_policy import apply_policy_to_agent_suggestions
 from app.core.risk.kt3_agent_policy import DEFAULT_POLICY

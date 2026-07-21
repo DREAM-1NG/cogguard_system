@@ -16,8 +16,8 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from app.celery_app import celery_app
 from app.config import settings
 from app.core.risk.kt3_agent_policy import refine_kt3_agent_policy_loop
-from app.core.risk.kt3_agent_review import OpenAICompatibleAgentProvider
-from app.core.risk.kt3_agent_review import OpenAICompatibleConfig
+from app.core.risk.kt3_agent_provider import OpenAICompatibleAgentProvider
+from app.core.risk.kt3_agent_provider import OpenAICompatibleConfig
 from app.models.risk_assessment import RiskAssessment
 from app.services import kt3_system_service, risk_service
 

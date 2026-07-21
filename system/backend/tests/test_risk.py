@@ -33,8 +33,8 @@ from app.core.risk.kt3_graph_exporter import export_kt3_heterogeneous_graph
 from app.core.risk.kt3_graph_exporter import read_kt3_graph_artifact
 from app.core.risk.kt3_graph_exporter import write_kt3_graph_artifact
 from app.core.risk.kt3_agent_review import run_manual_kt3_agent_review
-from app.core.risk.kt3_agent_review import OpenAICompatibleAgentProvider
-from app.core.risk.kt3_agent_review import OpenAICompatibleConfig
+from app.core.risk.kt3_agent_provider import OpenAICompatibleAgentProvider
+from app.core.risk.kt3_agent_provider import OpenAICompatibleConfig
 from app.core.risk.kt3_governance_reference import build_governance_reference_context
 from app.core.risk.kt3_governance_reference import load_governance_reference_library
 from app.core.risk.kt3_agent_policy import optimize_kt3_agent_policy
@@ -2425,7 +2425,7 @@ class TestKT3ManualAgentReview:
                 captured["payload"] = json
                 return FakeResponse()
 
-        monkeypatch.setattr("app.core.risk.kt3_agent_review.httpx.AsyncClient", FakeAsyncClient)
+        monkeypatch.setattr("app.core.risk.kt3_agent_provider.httpx.AsyncClient", FakeAsyncClient)
         provider = OpenAICompatibleAgentProvider(
             OpenAICompatibleConfig(
                 api_key="sk-test-secret",

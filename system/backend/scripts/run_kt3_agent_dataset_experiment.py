@@ -22,8 +22,8 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from app.core.risk.kt3_agent_review import OpenAICompatibleAgentProvider  # noqa: E402
-from app.core.risk.kt3_agent_review import OpenAICompatibleConfig  # noqa: E402
+from app.core.risk.kt3_agent_provider import OpenAICompatibleAgentProvider  # noqa: E402
+from app.core.risk.kt3_agent_provider import OpenAICompatibleConfig  # noqa: E402
 from app.core.risk.kt3_agent_review import run_manual_kt3_agent_review  # noqa: E402
 from app.core.risk.kt3_propagation_context import build_propagation_context_for_case  # noqa: E402
 from app.core.risk.post_semantics import assess_post_semantics  # noqa: E402
