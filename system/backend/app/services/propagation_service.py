@@ -8,7 +8,7 @@ from app.core.propagation_analysis import build_propagation_graph
 from app.core.propagation_analysis import predict_trend
 from app.db.mongodb import get_mongo_db
 from app.services.event_data import analysis_scope_metadata, load_event_comments, load_event_posts
-from app.services.kt2_prediction_service import predict_event_macro_micro
+from app.services.propagation_prediction_service import predict_event_macro_micro
 
 
 def _empty_result(event_id: str | None, platform: str | None) -> dict:
@@ -106,7 +106,7 @@ async def predict_propagation_model_event(
     *,
     top_k: int = 10,
 ) -> dict:
-    """Run KT2SequenceJointModel inference over current event-scoped data."""
+    """Run sequence-joint propagation inference over current event-scoped data."""
     mongo_db = get_mongo_db()
 
     posts = await load_event_posts(mongo_db, event_id=event_id, platform=platform)

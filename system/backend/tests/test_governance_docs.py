@@ -207,6 +207,23 @@ def test_current_propagation_callers_use_canonical_facade():
         assert not any(import_line in text for import_line in legacy_imports), path
 
 
+def test_propagation_prediction_product_callers_use_method_names():
+    root = Path(__file__).resolve().parents[3]
+    api_path = root / "system" / "backend" / "app" / "api" / "v1" / "propagation.py"
+    service_path = root / "system" / "backend" / "app" / "services" / "propagation_service.py"
+    prediction_path = root / "system" / "backend" / "app" / "services" / "propagation_prediction_service.py"
+    shorthand_pattern = re.compile("".join(["K", "T", "[123]"]) + "|" + "".join(["k", "t", "[123]"]))
+
+    api_text = api_path.read_text(encoding="utf-8")
+    service_text = service_path.read_text(encoding="utf-8")
+    prediction_text = prediction_path.read_text(encoding="utf-8")
+
+    assert "propagation_prediction_service" in api_text
+    assert "from app.services.propagation_prediction_service import predict_event_macro_micro" in service_text
+    assert shorthand_pattern.search(api_text) is None
+    assert shorthand_pattern.search(prediction_text) is None
+
+
 def test_review_facade_is_thin_risk_review_compatibility_layer():
     review = importlib.import_module("app.core.review")
     risk = importlib.import_module("app.core.risk")

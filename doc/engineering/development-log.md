@@ -44,6 +44,7 @@
 - `system/backend/app/services/coordination_service.py`：把当前协同检测产品服务切到 `coordination_detect` / `coordination_discover` facade；`coordination_discover` 同步公开 `graph_to_dict` 以承载网络结果序列化入口。
 - `system/backend/app/services/coordination_model_service.py`：把 Coordination 数据集 registry、MAGNN+Leiden rerun 与 pretrained detect 调用切到 `coordination_discover` / `coordination_detect` facade，并扩展 facade `__all__` 作为模型服务公共入口。
 - `system/backend/app/api/v1/risk.py`、`system/backend/app/services/{risk_service.py,kt3_system_service.py}`、`system/backend/app/tasks/kt3_tasks.py`：把当前 KT3 Risk Review 产品调用面切到 `app.core.review` facade，并用治理测试禁止这些入口重新直连旧 `app.core.risk` 实现包。
+- `system/backend/app/services/propagation_prediction_service.py`、`system/backend/app/api/v1/propagation.py`：把传播预测桥接服务从编号缩写文件名迁到正式 Propagation Prediction 命名，移除旧编号路由，前端仍使用 `/propagation/model-predict`。
 
 ---
 

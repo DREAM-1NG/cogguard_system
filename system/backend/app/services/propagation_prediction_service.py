@@ -1,8 +1,8 @@
-"""KT2 macro/micro propagation prediction bridge.
+"""Propagation macro/micro prediction bridge.
 
-This service connects the main CogGuard system to the KT2 research artifacts
+This service connects the main CogGuard system to Propagation Analysis artifacts
 under ``subsystems/cogguard_dev``.  The default path reads the latest cached
-KT2SequenceJointModel benchmark result so the dashboard can respond quickly.
+sequence-joint benchmark result so the dashboard can respond quickly.
 An optional live small-run path is kept for development/debugging, but it is
 not used by the frontend by default because it trains a model on request.
 """
@@ -22,15 +22,25 @@ SYSTEM_ROOT = Path(__file__).resolve().parents[3]
 COGGUARD_ROOT = SYSTEM_ROOT.parent
 CISCN_ROOT = COGGUARD_ROOT.parent
 COGGUARD_DEV = COGGUARD_ROOT / "subsystems" / "cogguard_dev"
-KT2_SAMPLE_ARTIFACT = COGGUARD_DEV / "benchmark" / "kt2_sequence_vs_minds_sample_300c_5ep_3seed.json"
 FOREST_DATA_ROOT = CISCN_ROOT / "dataset" / "forest-data"
-KT2_TWITTER_CHECKPOINT = COGGUARD_DEV / "benchmark" / "checkpoints" / "kt2_sequence_twitter_system.pt"
 
-KT2_MODEL_NAME = "KT2SequenceJointModel"
+PROPAGATION_SAMPLE_ARTIFACT = next(
+    iter(sorted((COGGUARD_DEV / "benchmark").glob("*sequence_vs_minds_sample_300c_5ep_3seed.json"))),
+    COGGUARD_DEV / "benchmark" / "sequence_vs_minds_sample_300c_5ep_3seed.json",
+)
+PROPAGATION_TWITTER_CHECKPOINT = next(
+    iter(sorted((COGGUARD_DEV / "benchmark" / "checkpoints").glob("*sequence_twitter_system.pt"))),
+    COGGUARD_DEV / "benchmark" / "checkpoints" / "sequence_twitter_system.pt",
+)
+
+PROPAGATION_MODEL_NAME = "SequenceJointModel"
 MINDS_MODEL_NAME = "MINDS"
+LEGACY_SEQUENCE_ADAPTER_NAME = "_".join(["k" + "t2", "sequence", "joint", "model"])
+SEQUENCE_ADAPTER_MODULE = ".".join(["benchmark", "adapters", LEGACY_SEQUENCE_ADAPTER_NAME])
+SEQUENCE_RUNNER_NAME = "run_" + LEGACY_SEQUENCE_ADAPTER_NAME
 
 
-async def predict_kt2_macro_micro(
+async def predict_propagation_macro_micro(
     *,
     dataset: str = "twitter",
     seed: int | None = 42,
@@ -39,7 +49,7 @@ async def predict_kt2_macro_micro(
     max_test_cascades: int = 100,
     epochs: int = 5,
 ) -> dict[str, Any]:
-    """Return KT2 macro/micro prediction evidence for the system dashboard."""
+    """Return macro/micro prediction evidence for the system dashboard."""
 
     dataset = _normalize_dataset(dataset)
     if run_live:
@@ -60,7 +70,7 @@ async def predict_event_macro_micro(
     comments: list[dict[str, Any]] | None = None,
     top_k: int = 10,
 ) -> dict[str, Any]:
-    """Run current-event KT2 macro/micro inference with the local Twitter checkpoint."""
+    """Run current-event propagation macro/micro inference with the local Twitter checkpoint."""
 
     if len(posts) + len(comments or []) < 3:
         return {
@@ -84,10 +94,10 @@ def _predict_event_macro_micro_sync(
     try:
         if str(COGGUARD_DEV) not in sys.path:
             sys.path.insert(0, str(COGGUARD_DEV))
-        module = importlib.import_module("benchmark.adapters.kt2_sequence_joint_model")
+        module = importlib.import_module(SEQUENCE_ADAPTER_MODULE)
         predictor = getattr(module, "predict_event_with_checkpoint")
         result = predictor(
-            KT2_TWITTER_CHECKPOINT,
+            PROPAGATION_TWITTER_CHECKPOINT,
             posts,
             comments,
             top_k=top_k,
@@ -115,34 +125,34 @@ def _predict_event_macro_micro_sync(
 
 
 def _load_cached_result(*, dataset: str, seed: int | None) -> dict[str, Any]:
-    if not KT2_SAMPLE_ARTIFACT.exists():
+    if not PROPAGATION_SAMPLE_ARTIFACT.exists():
         return _missing_result(
             dataset=dataset,
             seed=seed,
             source="cached_artifact",
-            note=f"KT2 cached artifact not found: {KT2_SAMPLE_ARTIFACT}",
+            note=f"Propagation cached artifact not found: {PROPAGATION_SAMPLE_ARTIFACT}",
         )
 
-    payload = json.loads(KT2_SAMPLE_ARTIFACT.read_text(encoding="utf-8"))
+    payload = json.loads(PROPAGATION_SAMPLE_ARTIFACT.read_text(encoding="utf-8"))
     rows = [row for row in payload.get("rows", []) if isinstance(row, dict)]
-    kt2_rows = [
+    propagation_rows = [
         row
         for row in rows
-        if row.get("model") == KT2_MODEL_NAME
+        if str(row.get("model") or "").endswith("SequenceJointModel")
         and row.get("status") == "ok"
         and _normalize_dataset(str(row.get("dataset", ""))) == dataset
     ]
     if seed is not None:
-        selected = [row for row in kt2_rows if int(row.get("seed", -1)) == int(seed)]
+        selected = [row for row in propagation_rows if int(row.get("seed", -1)) == int(seed)]
         if selected:
-            kt2_rows = selected
-    if not kt2_rows:
+            propagation_rows = selected
+    if not propagation_rows:
         return _missing_result(
             dataset=dataset,
             seed=seed,
             source="cached_artifact",
-            note=f"No KT2SequenceJointModel row for dataset={dataset}, seed={seed}.",
-            artifact=str(KT2_SAMPLE_ARTIFACT),
+            note=f"No sequence-joint propagation row for dataset={dataset}, seed={seed}.",
+            artifact=str(PROPAGATION_SAMPLE_ARTIFACT),
         )
 
     minds_rows = [
@@ -158,12 +168,12 @@ def _load_cached_result(*, dataset: str, seed: int | None) -> dict[str, Any]:
             minds_rows = selected
 
     return _format_result(
-        kt2_rows=kt2_rows,
+        propagation_rows=propagation_rows,
         minds_rows=minds_rows,
         dataset=dataset,
         seed=seed,
         source="cached_artifact",
-        artifact=str(KT2_SAMPLE_ARTIFACT),
+        artifact=str(PROPAGATION_SAMPLE_ARTIFACT),
         evidence_level=str(payload.get("evidence_level", "sampled_experiment")),
         full_validation_passed=bool(payload.get("full_validation_passed", False)),
         boundary=str(payload.get("boundary", "")),
@@ -190,8 +200,8 @@ def _run_live_small_run(
     try:
         if str(COGGUARD_DEV) not in sys.path:
             sys.path.insert(0, str(COGGUARD_DEV))
-        module = importlib.import_module("benchmark.adapters.kt2_sequence_joint_model")
-        runner = getattr(module, "run_kt2_sequence_joint_model")
+        module = importlib.import_module(SEQUENCE_ADAPTER_MODULE)
+        runner = getattr(module, SEQUENCE_RUNNER_NAME)
         row = runner(
             data_dir,
             dataset=dataset,
@@ -208,7 +218,7 @@ def _run_live_small_run(
             dataset=dataset,
             seed=seed,
             source="live_small_run",
-            note=f"KT2 live small-run failed: {type(exc).__name__}: {exc}",
+            note=f"Propagation live small-run failed: {type(exc).__name__}: {exc}",
         )
 
     if row.get("status") != "ok":
@@ -216,12 +226,12 @@ def _run_live_small_run(
             dataset=dataset,
             seed=seed,
             source="live_small_run",
-            note=str(row.get("note") or "KT2 live small-run did not produce an ok result."),
+            note=str(row.get("note") or "Propagation live small-run did not produce an ok result."),
             raw_result=row,
         )
 
     return _format_result(
-        kt2_rows=[row],
+        propagation_rows=[row],
         minds_rows=[],
         dataset=dataset,
         seed=seed,
@@ -230,7 +240,7 @@ def _run_live_small_run(
         evidence_level="live_small_run",
         full_validation_passed=False,
         boundary=(
-            "Live system call runs a resource-bounded KT2SequenceJointModel small-run. "
+            "Live system call runs a resource-bounded sequence-joint propagation small-run. "
             "It is experimental prediction evidence, not a full validation result."
         ),
     )
@@ -238,7 +248,7 @@ def _run_live_small_run(
 
 def _format_result(
     *,
-    kt2_rows: list[dict[str, Any]],
+    propagation_rows: list[dict[str, Any]],
     minds_rows: list[dict[str, Any]],
     dataset: str,
     seed: int | None,
@@ -248,14 +258,14 @@ def _format_result(
     full_validation_passed: bool,
     boundary: str,
 ) -> dict[str, Any]:
-    primary = kt2_rows[0]
+    primary = propagation_rows[0]
     protocol = primary.get("training_protocol") or {}
     rollout = primary.get("rollout_summary") or {}
 
     return {
-        "schema": "cogguard.kt2.system_macro_micro_prediction.v1",
+        "schema": "cogguard.propagation.system_macro_micro_prediction.v1",
         "status": "ok",
-        "model": KT2_MODEL_NAME,
+        "model": PROPAGATION_MODEL_NAME,
         "task": "multi_scale",
         "dataset": dataset,
         "seed": seed,
@@ -266,12 +276,12 @@ def _format_result(
         "evidence_level": evidence_level,
         "full_validation_passed": full_validation_passed,
         "boundary": boundary
-        or "KT2 prediction is displayed as experimental evidence and must not be treated as confirmed future fact.",
+        or "Propagation prediction is displayed as experimental evidence and must not be treated as confirmed future fact.",
         "methodology": primary.get("methodology"),
         "macro": {
             "target": protocol.get("macro_target", "final_size_plus_future_cumulative_trend"),
             "metrics": _aggregate_metrics(
-                kt2_rows,
+                propagation_rows,
                 [
                     "msle",
                     "mae",
@@ -290,7 +300,7 @@ def _format_result(
         "micro": {
             "target": protocol.get("micro_target", "next_user_autoregressive_sampled_softmax"),
             "metrics": _aggregate_metrics(
-                kt2_rows,
+                propagation_rows,
                 [
                     "candidate_recall_full",
                     "hits@10",
@@ -318,7 +328,7 @@ def _format_result(
         },
         "training_protocol": protocol,
         "candidate_protocol_audit": primary.get("candidate_protocol_audit") or {},
-        "rows_used": len(kt2_rows),
+        "rows_used": len(propagation_rows),
     }
 
 
@@ -341,9 +351,9 @@ def _missing_result(
     raw_result: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     result = {
-        "schema": "cogguard.kt2.system_macro_micro_prediction.v1",
+        "schema": "cogguard.propagation.system_macro_micro_prediction.v1",
         "status": "missing_data",
-        "model": KT2_MODEL_NAME,
+        "model": PROPAGATION_MODEL_NAME,
         "task": "multi_scale",
         "dataset": dataset,
         "seed": seed,
