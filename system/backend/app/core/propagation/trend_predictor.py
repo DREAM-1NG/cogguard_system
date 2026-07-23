@@ -28,7 +28,7 @@ async def predict_trend(
     comments : list[dict] | None
         评论列表（当前未直接使用，预留接口）。
     coordination_signals : dict | None
-        KT1 协同检测信号。
+        CoordinationDiscover 协同检测信号。
     mock_llm : bool
         为 True 时跳过 LLM API 调用。
 

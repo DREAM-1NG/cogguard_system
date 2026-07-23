@@ -1,4 +1,4 @@
-# CogGuard System Governance
+﻿# CogGuard System Governance
 
 > Normative source of truth for repository naming, package boundaries, and code layout.
 > If this document conflicts with older docs, this document wins.
@@ -50,12 +50,12 @@ system/
     coordination_detect/   public-label Coordination Detect validation boundary
     propagation_analysis/  Propagation Analysis hindcast research pipeline
     review_teacher/        multi-agent Teacher DAG
-    kt1/, kt2/, kt3_teacher/ legacy compatibility aliases
+    coordination_discover/, propagation_analysis/, review_teacher/ legacy compatibility aliases
   runtimes/
     social_runtime/    vendored social crawler runtime
     news_runtime/      vendored news extractor runtime
     review_student/    deployable Student runtime
-    kt3_student/       legacy compatibility alias
+    review_student/       legacy compatibility alias
   frontend/
     src/
       api/             HTTP client wrappers
@@ -128,7 +128,7 @@ Use the glossary in `UBIQUITOUS_LANGUAGE.md` for domain terms. The system-level 
 - `system/runtimes/*` are product code and may contain executable vendor logic, but not upstream docs, tests, or notebooks.
 - `system/research/*` may contain training, evaluation, and export code, but should remain system-readable and small enough to load through explicit adapters.
 - Legacy compatibility code must be thin mapping only; business logic lives in the current canonical module.
-- `app.core.risk`, `app.core.coordination`, `system/research/kt1`, `system/research/kt2`, `system/research/kt3_teacher`, and `system/runtimes/kt3_student` are compatibility names only.
+- `app.core.risk`, `app.core.coordination`, `system/research/coordination_discover`, `system/research/propagation_analysis`, `system/research/review_teacher`, and `system/runtimes/review_student` are compatibility names only.
 
 ## Structural Rules
 
@@ -136,7 +136,7 @@ Use the glossary in `UBIQUITOUS_LANGUAGE.md` for domain terms. The system-level 
 - Keep UI, API, runtime, research, and docs separate.
 - Keep product API models in `schemas/`, persistent records in `models/`, and orchestration in `services/` or `core/`.
 - Keep analysis lifecycle logic in `app/core/analysis/`.
-- Keep KT-specific research logic in semantic research packages: `coordination_discover`, `coordination_detect`, `propagation_analysis`, and `review_teacher`.
+- Keep analysis capability-specific research logic in semantic research packages: `coordination_discover`, `coordination_detect`, `propagation_analysis`, and `review_teacher`.
 - Keep deployable ML/runtime code in `system/runtimes/*`.
 
 ## Governance Change Checklist
@@ -155,3 +155,4 @@ When introducing a new module, package, or term:
 - `review_student/runtime.py` is a runtime, not a research package.
 - `analysis_runs` is a persisted record name, not a UI term.
 - `model_activation` is a governance decision, not a training loop.
+

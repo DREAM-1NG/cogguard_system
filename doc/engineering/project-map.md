@@ -1,4 +1,4 @@
-# CogGuard Project Map
+﻿# CogGuard Project Map
 
 > **Purpose**: define project directory boundaries, default edit policies, and
 > the engineering/research documentation split.  
@@ -32,11 +32,11 @@ in the research workspaces.
 | `doc/` | Long-lived engineering and project documentation. | Use for PRD, setup, development log, project map, technical background, and migrated baseline/reference documents. |
 | `system/runtimes/social_runtime/` | Vendored social crawler runtime used by the product. | Product runtime code; modify when crawler cutover or maintenance requires it. |
 | `system/runtimes/news_runtime/` | Vendored news extraction runtime used by the product. | Product runtime code; modify when extractor cutover or maintenance requires it. |
-| `system/runtimes/review_student/` | Deployable KT3 Student runtime used by `StudentRuntime.predict(case)`. | Product runtime code; keep synchronous, checkpoint-gated, and governance-aware. |
-| `system/research/coordination_discover/` | KT1 platform-generic Coordination Discover pipeline and artifact export boundary. | System-readable research boundary; backend consumes it only through analysis adapters. |
-| `system/research/coordination_detect/` | KT1 public-label Coordination Detect validation boundary. | System-readable research boundary; validation only unless an approved artifact is activated. |
-| `system/research/propagation_analysis/` | KT2 public loader, event bundle adapter, hindcast protocol, conformal intervals, and baseline registry. | System-readable research boundary; never point backend code at external research workspaces. |
-| `system/research/review_teacher/` | KT3 multi-agent Teacher advisory DAG. | System-readable research runtime; advisory only, never canonical without analyst approval. |
+| `system/runtimes/review_student/` | Deployable Review Student runtime used by `StudentRuntime.predict(case)`. | Product runtime code; keep synchronous, checkpoint-gated, and governance-aware. |
+| `system/research/coordination_discover/` | Coordination Discover platform-generic Coordination Discover pipeline and artifact export boundary. | System-readable research boundary; backend consumes it only through analysis adapters. |
+| `system/research/coordination_detect/` | Coordination Discover public-label Coordination Detect validation boundary. | System-readable research boundary; validation only unless an approved artifact is activated. |
+| `system/research/propagation_analysis/` | Propagation Analysis public loader, event bundle adapter, hindcast protocol, conformal intervals, and baseline registry. | System-readable research boundary; never point backend code at external research workspaces. |
+| `system/research/review_teacher/` | Risk Review multi-agent Teacher advisory DAG. | System-readable research runtime; advisory only, never canonical without analyst approval. |
 | `MediaCrawler-main/` | Upstream social-media crawler reference boundary. | Reference only by default; not part of runtime execution path. |
 | `NewsCrawler-main/` | Upstream news extraction reference boundary. | Reference only by default; not part of runtime execution path. |
 | `CooRTweet-master/` | Upstream coordination-detection method reference. | Reference only by default; not part of runtime execution path. |
@@ -66,7 +66,7 @@ of these conditions:
 Research work belongs in `aris/` or `research-wiki/` when it is:
 
 - An algorithm idea, experiment plan, evaluation protocol, or review artifact.
-- A technical proposal for KT1, KT2, or KT3 before product integration.
+- A technical proposal for Coordination Discover, Propagation Analysis, or Review before product integration.
 - Literature evidence, novelty analysis, claim tracking, or gap mapping.
 - Prototype code or scratch output not yet connected to product APIs, UI, tests, or demos.
 
@@ -91,7 +91,7 @@ CogGuard/
   aris/
     tech-01-coordination/   Multi-behavior coordination and significance screening
     tech-02-propagation/    Propagation evidence chains, paths, and trend prediction
-    tech-03-risk/           Risk assessment, DISARM mapping, structured reports
+    tech-03-risk/           Risk Review, DISARM mapping, structured reports
   doc/
     engineering/  PRD, setup, roadmap, development log, project map
     research/     positioning, literature, key-technology background, notes
@@ -113,10 +113,10 @@ Crawler runtime execution now happens inside `system/runtimes/`. The vendored
 runtime trees are part of the product surface and should carry only the
 minimum upstream core needed by the live system.
 
-KT2 and KT3 research runtimes now have product-readable internal seams:
-`system/research/propagation_analysis/runtime/protocol.py` is the KT2 hindcast protocol module,
-and `system/research/review_teacher/dag.py` is the KT3 Teacher advisory module.
-The deployable KT3 Student lives in `system/runtimes/review_student/`.
+Propagation Analysis and Review research runtimes now have product-readable internal seams:
+`system/research/propagation_analysis/runtime/protocol.py` is the Propagation Analysis hindcast protocol module,
+and `system/research/review_teacher/dag.py` is the Review Teacher advisory module.
+The deployable Review Student lives in `system/runtimes/review_student/`.
 Backend code may call these internal seams through `EventSnapshot` / `AnalysisRun`
 ports, but must not treat missing checkpoints as successful research results.
 

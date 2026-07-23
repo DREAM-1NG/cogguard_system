@@ -1,49 +1,49 @@
-# KT3 多智能体文献总表：Multiagents
+# Risk Review 多智能体文献总表：Multiagents
 
 更新时间：2026-07-03
 
 ## 1. 文档定位
 
-本文档用于统一管理 KT3 在“帖子/传播树/证据/反制”方向上最关键的多智能体与自优化文献。整理原则不是堆论文名，而是回答四个问题：
+本文档用于统一管理 Risk Review 在“帖子/传播树/证据/反制”方向上最关键的多智能体与自优化文献。整理原则不是堆论文名，而是回答四个问题：
 
 - 这篇论文为什么要提出这个系统。
 - 它到底如何组织 Agent、检索、辩论、优化或自改进。
 - 它在实验上证明了什么。
-- 这些机制对 KT3 哪一层最有迁移价值，哪些地方不能直接照搬。
+- 这些机制对 Risk Review 哪一层最有迁移价值，哪些地方不能直接照搬。
 
-因此，本文全部按 `Motivation - Method - Result - 对 KT3 的启示` 组织，不复述论文摘要原句。
+因此，本文全部按 `Motivation - Method - Result - 对 Risk Review 的启示` 组织，不复述论文摘要原句。
 
 ## 2. 总览表
 
-| 论文 | 方向 | 论文链接 | 开源仓库 | 对 KT3 的直接价值 |
+| 论文 | 方向 | 论文链接 | 开源仓库 | 对 Risk Review 的直接价值 |
 |---|---|---|---|---|
-| MARO, EMNLP 2025 | 多专家分析 + 规则自优化 | https://aclanthology.org/2025.emnlp-main.291/ | https://github.com/Brtulien/MARO | 是 KT3 人工复核层、规则优化层的主参考 |
-| D2D, EMNLP 2025 | 多阶段辩论检测 | https://aclanthology.org/2025.emnlp-main.764/ | https://github.com/hanshenmesen/Debate-to-Detect | 是 KT3 高冲突样本 full debate 的主参考 |
-| ED2D, AAAI 2026 | 证据驱动辩论 + 反制说服 | https://ojs.aaai.org/index.php/AAAI/article/view/41196 | 未确认开源仓库 | 是 KT3 反制安全闸和解释风险控制的重要参考 |
-| RAMA, 2025 | 多模态 RAG + 多 Agent 验证 | https://arxiv.org/abs/2507.09174 | https://github.com/kalendsyang/RAMA | 是 KT3 主张证据检索和多模态验证的主参考 |
-| Self-RAG, ICLR 2024 | 自反思检索增强生成 | https://openreview.net/forum?id=hSyW5go0v8 | https://github.com/AkariAsai/self-rag | 支持 KT3 从固定 top-k 检索升级到“是否检索/是否再检索”的模型化决策 |
-| ARES, NAACL 2024 | RAG 自动评估 + LM judges | https://aclanthology.org/2024.naacl-long.20/ | https://github.com/stanford-futuredata/ARES | 支持 KT3 训练或调用证据相关性、回答忠实度、回答相关性评估器 |
-| RAGAS, EACL 2024 | RAG 评估指标框架 | https://aclanthology.org/2024.eacl-demo.16/ | https://github.com/explodinggradients/ragas | 可作为 KT3 证据研判与治理报告 factuality/faithfulness 自动评估基线 |
-| FActScore, EMNLP 2023 | 原子事实级事实性评估 | https://aclanthology.org/2023.emnlp-main.741/ | https://github.com/shmsw25/factscore | 支持 KT3 把治理报告和反制草案拆成 atomic facts 再核验证据支撑 |
-| RAFTS, ACL 2024 | 检索增强 + 支持/反驳对比论证 | https://aclanthology.org/2024.acl-long.556/ | 未确认开源仓库 | 支持 KT3 ClaimEvidenceAgent 生成 support/refute 双链路，而不是单向证据摘要 |
-| MAD-Sherlock, 2024/2025 | 图文语境错配 + 外部检索 | https://arxiv.org/abs/2410.20140 | 未确认开源仓库 | 是 KT3 图文错配和 OOC 检测的主参考 |
-| MOCHEG, SIGIR 2023 | 多模态 claim-evidence graph | https://dl.acm.org/doi/10.1145/3539618.3591879 | 未确认开源仓库 | 支持 KT3 把证据列表升级为多模态证据图 |
-| FACTIFY3M, EMNLP 2023 | 大规模多模态事实验证 + 5W 解释 | https://aclanthology.org/2023.emnlp-main.945/ | 未确认开源仓库 | 支持 KT3 用 Who/What/When/Where/Why 组织证据研判报告 |
-| VLM 基座簇：BLIP-2 / InstructBLIP / LLaVA / Qwen2.5-VL / InternVL2.5 | 视觉语言预训练与视觉指令调优 | https://arxiv.org/abs/2301.12597 / https://arxiv.org/abs/2305.06500 / https://papers.nips.cc/paper_files/paper/2023/hash/6dcf277ea32ce3288914faf369fe6de0-Abstract-Conference.html / https://arxiv.org/abs/2502.13923 / https://arxiv.org/abs/2412.05271 | 多数有官方或主仓库，部署时按模型逐项确认 | 是 KT3 多 VLM ensemble、视觉描述、OCR/版式理解和视频关键帧研判的基础 |
-| T2Agent, AAAI 2026 | 工具增强 + MCTS 搜索式验证 | https://ojs.aaai.org/index.php/AAAI/article/view/36977 | 未确认开源仓库 | 是 KT3 从固定链路升级到动态验证规划的重要参考 |
-| Agentic DISARM, 2026 | DISARM Agent 化落地 | https://arxiv.org/abs/2601.15109 | 未确认开源仓库 | 是 KT3 DISARM 映射层的直接对标 |
-| Reflexion, NeurIPS 2023 | 失败反思记忆 | https://papers.nips.cc/paper_files/paper/2023/hash/1b44b878bb782e6954cd888628510e90-Abstract-Conference.html | https://github.com/noahshinn/reflexion | 是 KT3 error memory / feedback memory 的主参考 |
-| Self-Refine, 2023 | 输出自反馈迭代 | https://arxiv.org/abs/2303.17651 | https://github.com/madaan/self-refine | 是 KT3 报告初稿 -> critique -> revised report 的主参考 |
+| MARO, EMNLP 2025 | 多专家分析 + 规则自优化 | https://aclanthology.org/2025.emnlp-main.291/ | https://github.com/Brtulien/MARO | 是 Risk Review 人工复核层、规则优化层的主参考 |
+| D2D, EMNLP 2025 | 多阶段辩论检测 | https://aclanthology.org/2025.emnlp-main.764/ | https://github.com/hanshenmesen/Debate-to-Detect | 是 Risk Review 高冲突样本 full debate 的主参考 |
+| ED2D, AAAI 2026 | 证据驱动辩论 + 反制说服 | https://ojs.aaai.org/index.php/AAAI/article/view/41196 | 未确认开源仓库 | 是 Risk Review 反制安全闸和解释风险控制的重要参考 |
+| RAMA, 2025 | 多模态 RAG + 多 Agent 验证 | https://arxiv.org/abs/2507.09174 | https://github.com/kalendsyang/RAMA | 是 Risk Review 主张证据检索和多模态验证的主参考 |
+| Self-RAG, ICLR 2024 | 自反思检索增强生成 | https://openreview.net/forum?id=hSyW5go0v8 | https://github.com/AkariAsai/self-rag | 支持 Risk Review 从固定 top-k 检索升级到“是否检索/是否再检索”的模型化决策 |
+| ARES, NAACL 2024 | RAG 自动评估 + LM judges | https://aclanthology.org/2024.naacl-long.20/ | https://github.com/stanford-futuredata/ARES | 支持 Risk Review 训练或调用证据相关性、回答忠实度、回答相关性评估器 |
+| RAGAS, EACL 2024 | RAG 评估指标框架 | https://aclanthology.org/2024.eacl-demo.16/ | https://github.com/explodinggradients/ragas | 可作为 Risk Review 证据研判与治理报告 factuality/faithfulness 自动评估基线 |
+| FActScore, EMNLP 2023 | 原子事实级事实性评估 | https://aclanthology.org/2023.emnlp-main.741/ | https://github.com/shmsw25/factscore | 支持 Risk Review 把治理报告和反制草案拆成 atomic facts 再核验证据支撑 |
+| RAFTS, ACL 2024 | 检索增强 + 支持/反驳对比论证 | https://aclanthology.org/2024.acl-long.556/ | 未确认开源仓库 | 支持 Risk Review ClaimEvidenceAgent 生成 support/refute 双链路，而不是单向证据摘要 |
+| MAD-Sherlock, 2024/2025 | 图文语境错配 + 外部检索 | https://arxiv.org/abs/2410.20140 | 未确认开源仓库 | 是 Risk Review 图文错配和 OOC 检测的主参考 |
+| MOCHEG, SIGIR 2023 | 多模态 claim-evidence graph | https://dl.acm.org/doi/10.1145/3539618.3591879 | 未确认开源仓库 | 支持 Risk Review 把证据列表升级为多模态证据图 |
+| FACTIFY3M, EMNLP 2023 | 大规模多模态事实验证 + 5W 解释 | https://aclanthology.org/2023.emnlp-main.945/ | 未确认开源仓库 | 支持 Risk Review 用 Who/What/When/Where/Why 组织证据研判报告 |
+| VLM 基座簇：BLIP-2 / InstructBLIP / LLaVA / Qwen2.5-VL / InternVL2.5 | 视觉语言预训练与视觉指令调优 | https://arxiv.org/abs/2301.12597 / https://arxiv.org/abs/2305.06500 / https://papers.nips.cc/paper_files/paper/2023/hash/6dcf277ea32ce3288914faf369fe6de0-Abstract-Conference.html / https://arxiv.org/abs/2502.13923 / https://arxiv.org/abs/2412.05271 | 多数有官方或主仓库，部署时按模型逐项确认 | 是 Risk Review 多 VLM ensemble、视觉描述、OCR/版式理解和视频关键帧研判的基础 |
+| T2Agent, AAAI 2026 | 工具增强 + MCTS 搜索式验证 | https://ojs.aaai.org/index.php/AAAI/article/view/36977 | 未确认开源仓库 | 是 Risk Review 从固定链路升级到动态验证规划的重要参考 |
+| Agentic DISARM, 2026 | DISARM Agent 化落地 | https://arxiv.org/abs/2601.15109 | 未确认开源仓库 | 是 Risk Review DISARM 映射层的直接对标 |
+| Reflexion, NeurIPS 2023 | 失败反思记忆 | https://papers.nips.cc/paper_files/paper/2023/hash/1b44b878bb782e6954cd888628510e90-Abstract-Conference.html | https://github.com/noahshinn/reflexion | 是 Risk Review error memory / feedback memory 的主参考 |
+| Self-Refine, 2023 | 输出自反馈迭代 | https://arxiv.org/abs/2303.17651 | https://github.com/madaan/self-refine | 是 Risk Review 报告初稿 -> critique -> revised report 的主参考 |
 | ProTeGi, EMNLP 2023 | 文本梯度 prompt 优化 | https://aclanthology.org/2023.emnlp-main.494/ | https://github.com/pree-dew/protegi | 可用于优化 Judge / 检索 / 反制 prompt，仓库为社区实现 |
 | OPRO, 2023 | LLM 作为优化器 | https://arxiv.org/abs/2309.03409 | https://github.com/google-deepmind/opro | 可用于生成规则候选与阈值候选 |
-| MIPRO / DSPy, EMNLP 2024 | 多阶段 LM program 优化 | https://aclanthology.org/2024.emnlp-main.525/ | https://github.com/stanfordnlp/dspy | 可把 KT3 Agent 链看成可编译的 LM program |
+| MIPRO / DSPy, EMNLP 2024 | 多阶段 LM program 优化 | https://aclanthology.org/2024.emnlp-main.525/ | https://github.com/stanfordnlp/dspy | 可把 Risk Review Agent 链看成可编译的 LM program |
 | TextGrad, 2024 | 文本反向传播式优化 | https://arxiv.org/abs/2406.07496 | https://github.com/zou-group/textgrad | 可优化 Judge rubric、检索模板、反制草案模板 |
-| RARG, NAACL 2024 | 证据驱动反制文本生成 | https://aclanthology.org/2024.naacl-long.313/ | 未确认开源仓库 | 支持 KT3 CountermeasureAgent 从“自由草案”升级为“证据约束反制建议” |
-| Counter Narrative Multi-Aspect Eval, NAACL 2024 | LLM-as-Judge 多维反制文本评估 | https://aclanthology.org/2024.naacl-short.14/ | https://github.com/OSU-NLP-Group/LLM-CN-Eval | 支持 KT3 评估反制草案的反驳性、信息量、适当性、流畅度与去激化 |
-| LLM-based CN Ranking, EMNLP Findings 2024 | 成对比较/锦标赛式反制文本排序 | https://aclanthology.org/2024.findings-emnlp.559/ | https://github.com/hitz-zentroa/cn-eval | 支持 KT3 用 pairwise ranking 替代 BLEU/ROUGE 式表层评估 |
-| CONAN / MultiTarget-CONAN | 专家反叙事与人机协同数据构建 | https://www.semanticscholar.org/paper/CONAN-COunter-NArratives-through-Nichesourcing%3A-a-Chung-Kuzmenko/1dae97251a05320f5749355baa50387607318832 / https://aclanthology.org/2021.acl-long.250/ | https://github.com/marcoguerini/CONAN | 支持 KT3 反制建议参考专家语料和 human-in-the-loop 审核，而不是直接外发 |
-| ADAS, ICLR 2025 | 自动设计 Agent 系统 | https://arxiv.org/abs/2408.08435 | https://github.com/ShengranHu/ADAS | 是 KT3 长期工作流自动发现的参考，而不是当前优先实现 |
-| AFlow, ICLR 2025 | MCTS 工作流搜索 | https://arxiv.org/abs/2410.10762 | https://github.com/FoundationAgents/AFlow | 是 KT3 未来从“调权重”升级到“搜工作流”的重要参考 |
+| RARG, NAACL 2024 | 证据驱动反制文本生成 | https://aclanthology.org/2024.naacl-long.313/ | 未确认开源仓库 | 支持 Risk Review CountermeasureAgent 从“自由草案”升级为“证据约束反制建议” |
+| Counter Narrative Multi-Aspect Eval, NAACL 2024 | LLM-as-Judge 多维反制文本评估 | https://aclanthology.org/2024.naacl-short.14/ | https://github.com/OSU-NLP-Group/LLM-CN-Eval | 支持 Risk Review 评估反制草案的反驳性、信息量、适当性、流畅度与去激化 |
+| LLM-based CN Ranking, EMNLP Findings 2024 | 成对比较/锦标赛式反制文本排序 | https://aclanthology.org/2024.findings-emnlp.559/ | https://github.com/hitz-zentroa/cn-eval | 支持 Risk Review 用 pairwise ranking 替代 BLEU/ROUGE 式表层评估 |
+| CONAN / MultiTarget-CONAN | 专家反叙事与人机协同数据构建 | https://www.semanticscholar.org/paper/CONAN-COunter-NArratives-through-Nichesourcing%3A-a-Chung-Kuzmenko/1dae97251a05320f5749355baa50387607318832 / https://aclanthology.org/2021.acl-long.250/ | https://github.com/marcoguerini/CONAN | 支持 Risk Review 反制建议参考专家语料和 human-in-the-loop 审核，而不是直接外发 |
+| ADAS, ICLR 2025 | 自动设计 Agent 系统 | https://arxiv.org/abs/2408.08435 | https://github.com/ShengranHu/ADAS | 是 Risk Review 长期工作流自动发现的参考，而不是当前优先实现 |
+| AFlow, ICLR 2025 | MCTS 工作流搜索 | https://arxiv.org/abs/2410.10762 | https://github.com/FoundationAgents/AFlow | 是 Risk Review 未来从“调权重”升级到“搜工作流”的重要参考 |
 
 ## 3. 核心论文闭环
 
@@ -64,10 +64,10 @@
 - 开源仓库
   - 论文：https://aclanthology.org/2025.emnlp-main.291/
   - 官方实现：https://github.com/Brtulien/MARO
-- 对 KT3 的启示
-  - KT3 最该继承的不是字段化输出，而是 `专家自然语言分析报告 -> reflection -> rule refinement loop`。
-  - KT3 的 `HarmfulnessJudgeAgent` 不应只读固定阈值，而应显式读取 active policy、规则解释、过往失败类型。
-  - KT3 当前已做出的“人工触发 Agent、人工激活 policy、deterministic evaluator 验证候选规则”的方向和 MARO 是同向的，但还没有完全到 MARO 的迭代深度。
+- 对 Risk Review 的启示
+  - Risk Review 最该继承的不是字段化输出，而是 `专家自然语言分析报告 -> reflection -> rule refinement loop`。
+  - Risk Review 的 `HarmfulnessJudgeAgent` 不应只读固定阈值，而应显式读取 active policy、规则解释、过往失败类型。
+  - Risk Review 当前已做出的“人工触发 Agent、人工激活 policy、deterministic evaluator 验证候选规则”的方向和 MARO 是同向的，但还没有完全到 MARO 的迭代深度。
 
 ### 3.2 D2D: Debate-to-Detect
 
@@ -86,9 +86,9 @@
 - 开源仓库
   - 论文：https://aclanthology.org/2025.emnlp-main.764/
   - 官方实现：https://github.com/hanshenmesen/Debate-to-Detect
-- 对 KT3 的启示
-  - KT3 不需要把所有样本都送去 full debate，但在“跨模态冲突、证据矛盾、Judge 低置信”的样本上，D2D 是非常合适的协议参考。
-  - 对 KT3 来说，最可迁移的是 `stage-aware debate protocol + shared memory + multi-dimensional judges`，而不是简单把几个 Agent 并排调用。
+- 对 Risk Review 的启示
+  - Risk Review 不需要把所有样本都送去 full debate，但在“跨模态冲突、证据矛盾、Judge 低置信”的样本上，D2D 是非常合适的协议参考。
+  - 对 Risk Review 来说，最可迁移的是 `stage-aware debate protocol + shared memory + multi-dimensional judges`，而不是简单把几个 Agent 并排调用。
 
 ### 3.3 ED2D: Beyond Detection
 
@@ -104,8 +104,8 @@
 - 开源仓库
   - 论文：https://ojs.aaai.org/index.php/AAAI/article/view/41196
   - 开源仓库：未确认
-- 对 KT3 的启示
-  - 这是 KT3 `CountermeasureAgent` 最必须吸收的一篇论文。
+- 对 Risk Review 的启示
+  - 这是 Risk Review `CountermeasureAgent` 最必须吸收的一篇论文。
   - 它说明反制不是“检测正确就自动生成一段话”这么简单。只有当证据充分、Judge 置信足够、争议点收敛时，系统才应给出反制草案；否则应该只建议人工复核，而不要输出看似完整但事实基础不足的反制解释。
 
 ### 3.4 RAMA: Retrieval-Augmented Multi-Agent Framework for Misinformation Detection in Multimodal Fact-Checking
@@ -113,7 +113,7 @@
 - Motivation
   - RAMA 关注的是多模态 claim 的核查难题。很多图文或视频 misinformation 的问题不在“图像里看到了什么”，而在“这段模态组合到底指向什么主张、缺了什么上下文、该去哪里找证据”。
 - Method
-  - RAMA 的第一步不是直接判断真假，而是 `strategic query formulation`：把多模态输入中的主张、事件、实体、时空线索整理成可执行的 web query。这一点对 KT3 很关键，因为 claim-to-query 往往比最终分类更决定上限。
+  - RAMA 的第一步不是直接判断真假，而是 `strategic query formulation`：把多模态输入中的主张、事件、实体、时空线索整理成可执行的 web query。这一点对 Risk Review 很关键，因为 claim-to-query 往往比最终分类更决定上限。
   - 第二步是 `cross-verification evidence aggregation`。系统不会用单一来源，而是尝试从多个权威来源收证，然后做交叉验证，以避免某一来源本身失真。
   - 第三步是 `multi-agent ensemble`。根据论文和官方仓库，RAMA 并不是单一 VLM 推全流程，而是把 Web retrieval、多个多模态模型和不同 prompt 变体组合起来，最后再聚合结果。官方实现里使用了 DeepResearcher 负责检索，Qwen2.5-VL 与 InternVL3 负责多模态判别，再用 voting 做整合。
 - Result
@@ -122,8 +122,8 @@
 - 开源仓库
   - 论文：https://arxiv.org/abs/2507.09174
   - 官方实现：https://github.com/kalendsyang/RAMA
-- 对 KT3 的启示
-  - KT3 的 `ClaimEvidenceAgent` 和 `ActiveEvidenceRetriever` 应优先对齐 RAMA，而不是停留在“claim 字符串回填 + 本地 RAG 占位”。
+- 对 Risk Review 的启示
+  - Risk Review 的 `ClaimEvidenceAgent` 和 `ActiveEvidenceRetriever` 应优先对齐 RAMA，而不是停留在“claim 字符串回填 + 本地 RAG 占位”。
   - 其中最值得迁移的不是挑战赛里的具体大模型组合，而是 `claim-to-query -> 多源证据聚合 -> 多模型交叉核查 -> 再融合` 这一机制。
 
 ### 3.5 MAD-Sherlock
@@ -140,9 +140,9 @@
 - 开源仓库
   - 论文：https://arxiv.org/abs/2410.20140
   - 开源仓库：未确认
-- 对 KT3 的启示
-  - 这篇论文直接支持 KT3 的 `MultimodalConsistencyAgent`。
-  - 对于 MultiOFF、mcfend 这类图文样本，KT3 不应只做 text score 和 image score 的后融合，而应显式建模“图像在什么原语境中成立、在当前文本语境中是否被误用”。
+- 对 Risk Review 的启示
+  - 这篇论文直接支持 Risk Review 的 `MultimodalConsistencyAgent`。
+  - 对于 MultiOFF、mcfend 这类图文样本，Risk Review 不应只做 text score 和 image score 的后融合，而应显式建模“图像在什么原语境中成立、在当前文本语境中是否被误用”。
 
 ### 3.6 T2Agent
 
@@ -159,9 +159,9 @@
 - 开源仓库
   - 论文：https://ojs.aaai.org/index.php/AAAI/article/view/36977
   - 开源仓库：未确认，论文当前口径为 code will be released
-- 对 KT3 的启示
-  - 如果 KT3 下一步要从“固定 Agent 顺序 + 固定 policy”升级到“搜索式验证”，T2Agent 是最直接的方法参考。
-  - 但这属于第二阶段工作。当前 KT3 更适合先补齐 MARO 式规则自优化，再考虑 T2Agent 式 verification path search。
+- 对 Risk Review 的启示
+  - 如果 Risk Review 下一步要从“固定 Agent 顺序 + 固定 policy”升级到“搜索式验证”，T2Agent 是最直接的方法参考。
+  - 但这属于第二阶段工作。当前 Risk Review 更适合先补齐 MARO 式规则自优化，再考虑 T2Agent 式 verification path search。
 
 ### 3.7 Agentic DISARM
 
@@ -170,15 +170,15 @@
 - Method
   - 这篇工作提出 framework-agnostic 的 multi-agent pipeline，先检测 candidate manipulative behaviors，再把这些行为透明地映射到 DISARM TTP。
   - 它的重点不是做 end-to-end 分类，而是把“检测”和“taxonomy mapping”分成两个阶段，并且让不同 Agent 对应不同子任务，从而保持映射过程可解释。
-  - 与 KT3 不同的是，它更接近 flat tagging，即把观察到的行为标注成 DISARM 技术，而不是做路径预测、阶段推演和反制规划。
+  - 与 Risk Review 不同的是，它更接近 flat tagging，即把观察到的行为标注成 DISARM 技术，而不是做路径预测、阶段推演和反制规划。
 - Result
   - 作者在两套由领域实践者标注的真实数据上评估，结论是这种 agent-based operationalization 能显著扩展原本高度依赖人工、且解释负担很重的 FIMI 分析工作。
 - 开源仓库
   - 论文：https://arxiv.org/abs/2601.15109
   - DISARM 本体资源：https://github.com/DISARMFoundation/DISARMframeworks
   - Agent 化实现：未确认开源仓库
-- 对 KT3 的启示
-  - KT3 在 DISARM 层不应只说“参考 DISARM”，而应明确回答：我们做的是 `DISARM path reasoning + next-step prediction + countermeasure planning`，而不是单纯 flat mapping。
+- 对 Risk Review 的启示
+  - Risk Review 在 DISARM 层不应只说“参考 DISARM”，而应明确回答：我们做的是 `DISARM path reasoning + next-step prediction + countermeasure planning`，而不是单纯 flat mapping。
 
 ### 3.8 Reflexion
 
@@ -194,8 +194,8 @@
 - 开源仓库
   - 论文：https://papers.nips.cc/paper_files/paper/2023/hash/1b44b878bb782e6954cd888628510e90-Abstract-Conference.html
   - 官方实现：https://github.com/noahshinn/reflexion
-- 对 KT3 的启示
-  - KT3 的 `feedback memory / error memory` 最值得直接借鉴 Reflexion。
+- 对 Risk Review 的启示
+  - Risk Review 的 `feedback memory / error memory` 最值得直接借鉴 Reflexion。
   - 人工纠错、误判类型、证据缺失原因不应只存在表里，而应在下一轮 policy refinement 和 report generation 中真正参与推理。
 
 ### 3.9 Self-Refine
@@ -211,8 +211,8 @@
 - 开源仓库
   - 论文：https://arxiv.org/abs/2303.17651
   - 官方实现：https://github.com/madaan/self-refine
-- 对 KT3 的启示
-  - KT3 当前的 `QuestionReflectionAgent` 更像“一次追问”。如果要进一步对齐高水平工作，应该支持 `报告初稿 -> critique -> revised report` 的真实修订链。
+- 对 Risk Review 的启示
+  - Risk Review 当前的 `QuestionReflectionAgent` 更像“一次追问”。如果要进一步对齐高水平工作，应该支持 `报告初稿 -> critique -> revised report` 的真实修订链。
 
 ### 3.10 ProTeGi
 
@@ -227,9 +227,9 @@
 - 开源仓库
   - 论文：https://aclanthology.org/2023.emnlp-main.494/
   - 社区实现：https://github.com/pree-dew/protegi
-- 对 KT3 的启示
+- 对 Risk Review 的启示
   - ProTeGi 非常适合优化 `Judge prompt`、`ClaimEvidenceAgent prompt`、`Countermeasure safety prompt`。
-  - 但它优化的是 prompt，而不是 governance rule 本身，所以它应该服务于 KT3 的报告质量提升，而不是取代 MARO 式 rule refinement。
+  - 但它优化的是 prompt，而不是 governance rule 本身，所以它应该服务于 Risk Review 的报告质量提升，而不是取代 MARO 式 rule refinement。
 
 ### 3.11 OPRO
 
@@ -244,9 +244,9 @@
 - 开源仓库
   - 论文：https://arxiv.org/abs/2309.03409
   - 官方实现：https://github.com/google-deepmind/opro
-- 对 KT3 的启示
-  - KT3 的 `DecisionRuleOptimizerAgent` 可以借鉴 OPRO 的候选生成方式：把过往 `<rule, score>`、失败类型、held-out 表现摘要送入优化器，生成新规则候选。
-  - 但 KT3 必须保留 deterministic evaluator 和 human activation，不能让 LLM 直接生效规则。
+- 对 Risk Review 的启示
+  - Risk Review 的 `DecisionRuleOptimizerAgent` 可以借鉴 OPRO 的候选生成方式：把过往 `<rule, score>`、失败类型、held-out 表现摘要送入优化器，生成新规则候选。
+  - 但 Risk Review 必须保留 deterministic evaluator 和 human activation，不能让 LLM 直接生效规则。
 
 ### 3.12 MIPRO / DSPy
 
@@ -265,9 +265,9 @@
   - 论文：https://aclanthology.org/2024.emnlp-main.525/
   - 官方实现：https://github.com/stanfordnlp/dspy
   - MIPROv2 文档：https://dspy.ai/api/optimizers/MIPROv2/
-- 对 KT3 的启示
-  - 如果把 KT3 看成 `Retriever -> Expert Agents -> Judge -> Countermeasure` 的 LM program，那么 MIPRO 比单纯的 prompt hack 更适合做系统级优化。
-  - 但 KT3 当前阶段仍应限制优化对象，优先优化 `Judge`、`retrieval query template`、`reflection template`，不要一开始就放开全链路联合搜索。
+- 对 Risk Review 的启示
+  - 如果把 Risk Review 看成 `Retriever -> Expert Agents -> Judge -> Countermeasure` 的 LM program，那么 MIPRO 比单纯的 prompt hack 更适合做系统级优化。
+  - 但 Risk Review 当前阶段仍应限制优化对象，优先优化 `Judge`、`retrieval query template`、`reflection template`，不要一开始就放开全链路联合搜索。
 
 ### 3.13 TextGrad
 
@@ -282,8 +282,8 @@
 - 开源仓库
   - 论文：https://arxiv.org/abs/2406.07496
   - 官方实现：https://github.com/zou-group/textgrad
-- 对 KT3 的启示
-  - TextGrad 很适合用来优化 KT3 中“文本性强、又有清晰目标函数”的组件，比如 Judge rubric、反制模板、安全提示词、检索 query 模板。
+- 对 Risk Review 的启示
+  - TextGrad 很适合用来优化 Risk Review 中“文本性强、又有清晰目标函数”的组件，比如 Judge rubric、反制模板、安全提示词、检索 query 模板。
   - 但它不直接等价于 MARO 的规则优化，因为 MARO 的对象是决策规则和验证闭环，TextGrad 的对象更偏语言组件。
 
 ### 3.14 ADAS
@@ -299,9 +299,9 @@
 - 开源仓库
   - 论文：https://arxiv.org/abs/2408.08435
   - 官方实现：https://github.com/ShengranHu/ADAS
-- 对 KT3 的启示
-  - ADAS 代表 KT3 的长期方向：未来可以自动搜索 `Agent 划分方式`、`角色配置`、`工作流结构`。
-  - 但它不应成为当前阶段的第一优先级，因为 KT3 目前连人工定义的治理闭环都还在完善，过早做工作流自动发现容易把系统推向不可控。
+- 对 Risk Review 的启示
+  - ADAS 代表 Risk Review 的长期方向：未来可以自动搜索 `Agent 划分方式`、`角色配置`、`工作流结构`。
+  - 但它不应成为当前阶段的第一优先级，因为 Risk Review 目前连人工定义的治理闭环都还在完善，过早做工作流自动发现容易把系统推向不可控。
 
 ### 3.15 AFlow
 
@@ -317,15 +317,15 @@
 - 开源仓库
   - 论文：https://arxiv.org/abs/2410.10762
   - 官方实现：https://github.com/FoundationAgents/AFlow
-- 对 KT3 的启示
-  - AFlow 非常适合作为 KT3 的第三阶段参考：当我们已经有稳定的 expert agents、judge、retrieval、policy optimizer 以后，再搜索“谁先谁后”“哪些样本触发 debate”“哪些样本跳过某些 Agent”。
+- 对 Risk Review 的启示
+  - AFlow 非常适合作为 Risk Review 的第三阶段参考：当我们已经有稳定的 expert agents、judge、retrieval、policy optimizer 以后，再搜索“谁先谁后”“哪些样本触发 debate”“哪些样本跳过某些 Agent”。
   - 在当前阶段，AFlow 应作为方法论储备，而不是马上并入主链路。
 
 ### 3.16 Self-RAG / ARES / RAGAS / FActScore / RAFTS：从手工来源打分升级到模型化证据验证
 
 - Motivation
   - 这些工作共同解决的问题是：RAG 系统不能只“检索到一些文本再生成答案”。在事实核查和治理研判场景中，更关键的是模型是否知道何时检索、检索证据是否相关、生成结论是否忠实于证据、以及结论中的每个事实断言是否被外部证据支持。
-  - 这直接回应 KT3 的一个风险：如果把多源 Web/RAG 做成手工来源分数、固定 top-k、固定权重融合，本质上仍然是特征工程，不能支撑高水平治理研判。
+  - 这直接回应 Risk Review 的一个风险：如果把多源 Web/RAG 做成手工来源分数、固定 top-k、固定权重融合，本质上仍然是特征工程，不能支撑高水平治理研判。
 - Method
   - Self-RAG 把“是否检索、是否使用证据、是否需要反思”变成模型内部的可学习/可生成控制流程，而不是固定规则。它让模型在生成过程中自我判断检索需求和证据使用质量。
   - ARES 使用自动生成的训练数据和轻量 LM judges 来评估 `context relevance`、`answer faithfulness`、`answer relevance`。它的关键思想是把 RAG 质量评估变成可训练的判别任务，而不是人工写来源权重。
@@ -342,8 +342,8 @@
   - RAGAS：https://aclanthology.org/2024.eacl-demo.16/ ，https://github.com/explodinggradients/ragas
   - FActScore：https://aclanthology.org/2023.emnlp-main.741/ ，https://github.com/shmsw25/factscore
   - RAFTS：https://aclanthology.org/2024.acl-long.556/
-- 对 KT3 的启示
-  - KT3 的 `ActiveEvidenceRetriever` 不应继续停留在固定 top-k 和来源字段拼接，而应升级为 `Adaptive Retrieval -> Evidence Judge -> Atomic Fact Verification -> Contrastive Argument -> Judge Synthesis`。
+- 对 Risk Review 的启示
+  - Risk Review 的 `ActiveEvidenceRetriever` 不应继续停留在固定 top-k 和来源字段拼接，而应升级为 `Adaptive Retrieval -> Evidence Judge -> Atomic Fact Verification -> Contrastive Argument -> Judge Synthesis`。
   - 证据可信度不要写成 `Authority + Relevance + Recency` 这种手工公式，而应通过 LM/NLI/VLM judge 学习或判别 evidence relevance、faithfulness、support/refute/insufficient。
   - `HarmfulnessJudgeAgent` 和 `CountermeasureAgent` 输出报告后，应经过 atomic fact checking；未被证据支持的事实断言必须降级为“待核验”，不能进入确定性处置建议。
 
@@ -366,9 +366,9 @@
   - LLaVA：https://papers.nips.cc/paper_files/paper/2023/hash/6dcf277ea32ce3288914faf369fe6de0-Abstract-Conference.html
   - Qwen2.5-VL：https://arxiv.org/abs/2502.13923
   - InternVL2.5：https://arxiv.org/abs/2412.05271
-- 对 KT3 的启示
-  - KT3 的多 VLM ensemble 不应做多数投票。更合理的是拆成视觉描述、OCR/版式理解、语境一致性、图像证据检索、最终裁决多个角色，每个角色输出自然语言证据和不确定性。
-  - 对 MultiOFF、mcfend、FakeSV 这类样本，KT3 应将媒体内容构造成 evidence graph，并让 Judge 读取图文/音视关系，而不是只看 late fusion score。
+- 对 Risk Review 的启示
+  - Risk Review 的多 VLM ensemble 不应做多数投票。更合理的是拆成视觉描述、OCR/版式理解、语境一致性、图像证据检索、最终裁决多个角色，每个角色输出自然语言证据和不确定性。
+  - 对 MultiOFF、mcfend、FakeSV 这类样本，Risk Review 应将媒体内容构造成 evidence graph，并让 Judge 读取图文/音视关系，而不是只看 late fusion score。
   - 多模型协同的关键是 disagreement handling：当 Qwen2.5-VL、InternVL、LLaVA 或其他视觉模型输出冲突时，应触发 MAD-Sherlock/D2D 式辩论和外部证据请求，而不是强行平均。
 
 ### 3.18 RARG / Counter-Narrative Evaluation / CONAN：反制文本质量自动评估
@@ -389,8 +389,8 @@
   - LLM-based ranking：https://aclanthology.org/2024.findings-emnlp.559/ ，https://github.com/hitz-zentroa/cn-eval
   - CONAN：https://www.semanticscholar.org/paper/CONAN-COunter-NArratives-through-Nichesourcing%3A-a-Chung-Kuzmenko/1dae97251a05320f5749355baa50387607318832 ，https://github.com/marcoguerini/CONAN
   - MultiTarget-CONAN：https://aclanthology.org/2021.acl-long.250/
-- 对 KT3 的启示
-  - KT3 应新增 `CountermeasureEvaluatorAgent`，让反制草案经过 evidence-grounded critique、multi-aspect judge、pairwise ranking 或 tournament ranking 后再展示。
+- 对 Risk Review 的启示
+  - Risk Review 应新增 `CountermeasureEvaluatorAgent`，让反制草案经过 evidence-grounded critique、multi-aspect judge、pairwise ranking 或 tournament ranking 后再展示。
   - 评估对象不是“文本好不好听”，而是是否证据支撑、是否去激化、是否避免扩大传播、是否符合平台公开治理口径、是否明确为内部建议草案。
   - 这一路线可以避免手工列一堆安全关键词，也避免 BLEU/ROUGE 这类不适合治理场景的表层指标。
 
@@ -401,9 +401,9 @@
 - 反制文本质量自动评估应参考 RARG、CONAN、MultiTarget-CONAN 和 LLM-as-Judge counter-narrative evaluation：做 evidence-grounded critique 和 pairwise ranking，而不是关键词过滤或 BLEU/ROUGE。
 - 长期自优化应参考 Reflexion、Self-Refine、ProTeGi、OPRO、MIPRO、TextGrad、MARO：把失败案例和人工反馈转成 prompt/rule/workflow 候选，再用 validation 评估和人工激活闭环控制风险。
 
-## 4. 对 KT3 的统一实现结论
+## 4. 对 Risk Review 的统一实现结论
 
-结合上述文献，KT3 的多智能体主线应该分成三层推进，而不是一口气追求“全自动自进化”。
+结合上述文献，Risk Review 的多智能体主线应该分成三层推进，而不是一口气追求“全自动自进化”。
 
 ### 4.1 当前应优先对齐
 
@@ -446,6 +446,6 @@
 
 ## 5. 管理约定
 
-- KT3 多智能体相关新增论文，优先补充到本文档，再在 `KT3_AGENTIC_MARO_REFERENCE.md` 和 `doc/research/literature-references.md` 中做摘要式映射。
+- Risk Review 多智能体相关新增论文，优先补充到本文档，再在 `REVIEW_AGENTIC_MARO_REFERENCE.md` 和 `doc/research/literature-references.md` 中做摘要式映射。
 - 若论文无官方开源仓库，统一写为“未确认开源仓库”，不要臆造 GitHub 链接。
 - 若存在社区实现而非官方实现，必须明确标注“社区实现”。

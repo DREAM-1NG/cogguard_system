@@ -4,10 +4,11 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Literal
 
-KT1_TECHNOLOGY = "kt1"
-KT1_MODEL_VERSION = "kt1-temporal-magnn-leiden-v0"
-COORDINATION_DISCOVER_TECHNOLOGY = KT1_TECHNOLOGY
-COORDINATION_DISCOVER_MODEL_VERSION = KT1_MODEL_VERSION
+COORDINATION_DISCOVER_TECHNOLOGY = "coordination_discover"
+COORDINATION_DISCOVER_MODEL_VERSION = "coordination_discover-temporal-magnn-leiden-v0"
+DEPRECATED_COORDINATION_DISCOVER_MODEL_VERSIONS = {
+    COORDINATION_DISCOVER_MODEL_VERSION: "deprecated_non_claimable_recon_regression",
+}
 MODALITY_POLICY = "platform_generic_only"
 FALLBACK_POLICY = "evidence_runtime_v2"
 
@@ -36,6 +37,12 @@ MODALITY_SPECIFIC_FIELD_MARKERS = (
     "asr",
     "frame",
     "embedding",
+)
+
+SEMANTIC_TEXT_EMBEDDING_FIELDS = (
+    "lm_text_embedding",
+    "semantic_text_embedding",
+    "text_embedding",
 )
 
 TOPOLOGY_AUDIT_FEATURE_NAMES = (
@@ -75,6 +82,28 @@ class EvidenceEdge:
 
 
 @dataclass(slots=True)
+class AccountMultigraphEdge:
+    source_account_id: str
+    target_account_id: str
+    evidence_kind: str
+    relation_type: str
+    platform: str
+    observed_at: float
+    weight: float
+    time_delta_seconds: float
+    source_content_id: str
+    target_content_id: str
+    evidence_objects: list[str]
+    evidence_refs: list[str]
+    direction: str
+    layer: str = "behavior"
+    component_kinds: list[str] = field(default_factory=list)
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass(slots=True)
 class EvidenceGraph:
     snapshot_id: str
     event_id: str
@@ -82,9 +111,11 @@ class EvidenceGraph:
     accounts: list[str]
     objects: list[EvidenceObject]
     edges: list[EvidenceEdge]
+    account_edges: list[AccountMultigraphEdge] = field(default_factory=list)
     excluded_fields: list[dict[str, str]] = field(default_factory=list)
     topology_audit_features: dict[str, Any] = field(default_factory=dict)
     coverage: dict[str, Any] = field(default_factory=dict)
+    representation_inputs: dict[str, Any] = field(default_factory=dict)
     modality_policy: str = MODALITY_POLICY
 
     def to_dict(self) -> dict[str, Any]:
@@ -95,9 +126,11 @@ class EvidenceGraph:
             "accounts": list(self.accounts),
             "objects": [item.to_dict() for item in self.objects],
             "edges": [item.to_dict() for item in self.edges],
+            "account_edges": [item.to_dict() for item in self.account_edges],
             "excluded_fields": list(self.excluded_fields),
             "topology_audit_features": dict(self.topology_audit_features),
             "coverage": dict(self.coverage),
+            "representation_inputs": dict(self.representation_inputs),
             "modality_policy": self.modality_policy,
         }
 
@@ -128,13 +161,13 @@ class DynamicDiscoverRequest:
     overlap_ratio: float = 0.5
     source_dataset: str = ""
     source_event: str = ""
-    model_version: str = KT1_MODEL_VERSION
+    model_version: str = COORDINATION_DISCOVER_MODEL_VERSION
     fallback_policy: str = FALLBACK_POLICY
     modality_policy: str = MODALITY_POLICY
 
 
 @dataclass(slots=True)
-class KT1ArtifactManifest:
+class CoordinationDiscoverArtifactManifest:
     data_fingerprint: str
     model_version: str
     config_hash: str
@@ -153,10 +186,10 @@ class KT1ArtifactManifest:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, value: dict[str, Any]) -> "KT1ArtifactManifest":
+    def from_dict(cls, value: dict[str, Any]) -> "CoordinationDiscoverArtifactManifest":
         return cls(
             data_fingerprint=str(value.get("data_fingerprint") or ""),
-            model_version=str(value.get("model_version") or KT1_MODEL_VERSION),
+            model_version=str(value.get("model_version") or COORDINATION_DISCOVER_MODEL_VERSION),
             config_hash=str(value.get("config_hash") or ""),
             source_dataset=str(value.get("source_dataset") or ""),
             source_event=str(value.get("source_event") or ""),
@@ -184,13 +217,14 @@ class DiscoverResult:
     lineage: list[dict[str, Any]]
     attention: dict[str, Any]
     audit_metrics: dict[str, Any]
-    manifest: KT1ArtifactManifest
+    manifest: CoordinationDiscoverArtifactManifest
     fallback_reason: str | None = None
+    dynamic_communities: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "status": self.status,
-            "technology": KT1_TECHNOLOGY,
+            "technology": COORDINATION_DISCOVER_TECHNOLOGY,
             "snapshot_id": self.snapshot_id,
             "event_id": self.event_id,
             "data_fingerprint": self.data_fingerprint,
@@ -203,6 +237,7 @@ class DiscoverResult:
             "audit_metrics": dict(self.audit_metrics),
             "manifest": self.manifest.to_dict(),
             "fallback_reason": self.fallback_reason,
+            "dynamic_communities": dict(self.dynamic_communities),
         }
 
 
@@ -233,6 +268,7 @@ def _utc_now() -> str:
 
 
 __all__ = [
+    "AccountMultigraphEdge",
     "DetectValidationRequest",
     "DetectValidationResult",
     "DiscoverResult",
@@ -243,12 +279,12 @@ __all__ = [
     "FALLBACK_POLICY",
     "COORDINATION_DISCOVER_MODEL_VERSION",
     "COORDINATION_DISCOVER_TECHNOLOGY",
-    "KT1ArtifactManifest",
-    "KT1_MODEL_VERSION",
-    "KT1_TECHNOLOGY",
+    "CoordinationDiscoverArtifactManifest",
+    "DEPRECATED_COORDINATION_DISCOVER_MODEL_VERSIONS",
     "MODALITY_POLICY",
     "MODALITY_SPECIFIC_FIELD_MARKERS",
     "PLATFORM_GENERIC_EVIDENCE_KINDS",
+    "SEMANTIC_TEXT_EMBEDDING_FIELDS",
     "TOPOLOGY_AUDIT_FEATURE_NAMES",
     "TemporalMAGNNConfig",
 ]

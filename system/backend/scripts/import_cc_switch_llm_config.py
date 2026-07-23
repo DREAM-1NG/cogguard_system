@@ -1,4 +1,4 @@
-"""Import KT3 LLM settings from the current CC-switch Codex provider.
+"""Import Review LLM settings from the current CC-switch Codex provider.
 
 The script reads the CC-switch SQLite database in read-only mode and writes only
 the local .env file. It never prints API keys or stores them in tracked files.
@@ -36,11 +36,11 @@ def main() -> int:
         "LLM_API_WIRE": provider["wire_api"],
         "LLM_INCLUDE_MEDIA_BASE64": args.include_media_base64,
         "LLM_REQUIRE_VISION": args.require_vision,
-        "KT3_EXTERNAL_RETRIEVAL_ENABLED": "false",
+        "Review_EXTERNAL_RETRIEVAL_ENABLED": "false",
     }
     upsert_env(env_path, env_values)
     print(
-        "Imported KT3 LLM config from CC-switch provider "
+        "Imported Review LLM config from CC-switch provider "
         f"'{provider['name']}' ({provider['id']})."
     )
     print(f"Target .env: {env_path}")
@@ -116,7 +116,7 @@ def upsert_env(env_path: Path, values: dict[str, str]) -> None:
     if values.keys() - seen:
         if output and output[-1].strip():
             output.append("")
-        output.append("# KT3 LLM / Agent Review imported from CC-switch")
+        output.append("# Review LLM / Agent Review imported from CC-switch")
         for key, value in values.items():
             if key not in seen:
                 output.append(f"{key}={value}")

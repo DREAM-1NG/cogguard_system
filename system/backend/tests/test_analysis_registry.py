@@ -239,7 +239,7 @@ def test_registry_creates_run_events_and_recovers_after_cursor():
         run = await registry.create_run(
             event_id="trump_visit",
             snapshot_id="snapshot_a",
-            requested_stages=["kt1", "kt2", "student"],
+            requested_stages=["coordination_discover", "propagation_analysis", "student"],
             options={"priority": "demo"},
             created_by=9,
             run_id="run_fixed",
@@ -275,7 +275,7 @@ def test_sqlalchemy_store_persists_results_for_needs_evidence_runs():
             event_id="trump_visit",
             snapshot_id="snapshot_a",
             status=AnalysisRunStatus.RUNNING.value,
-            requested_stages_json='["kt1"]',
+            requested_stages_json='["coordination_discover"]',
             options_json="{}",
             artifact_manifest_json="{}",
             created_by=1,
@@ -292,11 +292,11 @@ def test_sqlalchemy_store_persists_results_for_needs_evidence_runs():
         updated = await store.update_run_status(
             run_id="run_needs_evidence",
             status=AnalysisRunStatus.NEEDS_EVIDENCE,
-            payload={"results": {"kt1": {"status": "unavailable"}}},
+            payload={"results": {"coordination_discover": {"status": "unavailable"}}},
             finished=False,
         )
 
-        assert updated.result_json == '{"results": {"kt1": {"status": "unavailable"}}}'
+        assert updated.result_json == '{"results": {"coordination_discover": {"status": "unavailable"}}}'
         assert session.flush_count == 1
 
     asyncio.run(scenario())

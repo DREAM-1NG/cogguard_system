@@ -1,14 +1,14 @@
-<template>
+﻿<template>
   <div>
     <PageHeader title="系统管理">
       <template #description>
-        主系统接入管理：模型服务、评测数据集、策略优化、任务记录与历史报告回填。
+        管理智能研判服务、评测数据集、策略优化、任务记录和历史报告回填。
       </template>
     </PageHeader>
 
     <a-tabs v-model:activeKey="activeTab">
       <a-tab-pane key="providers" tab="服务配置">
-        <a-card size="small" title="模型服务配置" class="section-card provider-config-card">
+        <a-card size="small" title="智能研判服务配置" class="section-card provider-config-card">
           <a-form :model="providerForm" layout="vertical" class="provider-form">
             <div class="provider-form-grid">
               <a-form-item label="服务名称" class="provider-form-item">
@@ -56,12 +56,12 @@
             </div>
 
             <div class="provider-form-footer">
-              <a-checkbox v-model:checked="providerForm.supports_vision">支持视觉能力</a-checkbox>
+              <a-checkbox v-model:checked="providerForm.supports_vision">支持视觉输入</a-checkbox>
               <a-space :size="12" wrap>
                 <a-button type="primary" :loading="providerLoading" @click="handleCreateProvider">
-                  保存配置
+                  保存服务
                 </a-button>
-                <a-button @click="loadProviders">刷新列表</a-button>
+                <a-button @click="loadProviders">刷新服务</a-button>
               </a-space>
             </div>
           </a-form>
@@ -86,8 +86,8 @@
             </template>
             <template v-else-if="column.key === 'actions'">
               <a-space v-if="canOperateProvider(record)" :size="8" wrap>
-                <a-button size="small" @click="handleActivateProvider(record)">激活</a-button>
-                <a-button size="small" @click="handleTestProvider(record)">检测</a-button>
+                <a-button size="small" @click="handleActivateProvider(record)">启用</a-button>
+                <a-button size="small" @click="handleTestProvider(record)">测试</a-button>
               </a-space>
               <span v-else class="provider-action-hint">系统默认</span>
             </template>
@@ -100,14 +100,14 @@
           <a-textarea
             v-model:value="gateDatasetJson"
             :rows="8"
-            placeholder="请粘贴评测数据集 JSON 内容"
+            placeholder="粘贴评测数据集 JSON"
           />
           <div class="section-actions">
             <a-space :size="12" wrap>
               <a-button type="primary" :loading="datasetLoading" @click="handleUploadGateDataset">
                 上传入库
               </a-button>
-              <a-button @click="loadGateDatasets">刷新列表</a-button>
+              <a-button @click="loadGateDatasets">刷新数据集</a-button>
             </a-space>
           </div>
         </a-card>
@@ -139,7 +139,7 @@
             v-model:value="policyManifestJson"
             :rows="8"
             class="policy-textarea"
-            placeholder="请输入数据集清单 JSON"
+            placeholder="请输入策略优化清单 JSON"
           />
 
           <div class="section-actions">
@@ -187,10 +187,10 @@
       </a-tab-pane>
 
       <a-tab-pane key="backfill" tab="历史回填">
-        <a-card size="small" title="旧版报告回填" class="section-card">
+        <a-card size="small" title="历史报告回填" class="section-card">
           <a-input
             v-model:value="backfillReportIdsText"
-            placeholder="报告编号可留空；留空时将按下方数量自动扫描"
+            placeholder="可留空自动扫描，也可输入报告编号"
           />
           <a-input-number
             v-model:value="backfillLimit"
@@ -212,17 +212,17 @@ import { computed, onMounted, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import PageHeader from '@/components/PageHeader.vue'
 import {
-  activateKT3Policy,
-  activateKT3Provider,
-  createKT3Provider,
-  listKT3GateDatasets,
-  listKT3Jobs,
-  listKT3Policies,
-  listKT3Providers,
-  refineKT3Policy,
-  startKT3Backfill,
-  testKT3Provider,
-  uploadKT3GateDataset,
+  activateReviewPolicy,
+  activateReviewProvider,
+  createReviewProvider,
+  listReviewGateDatasets,
+  listReviewJobs,
+  listReviewPolicies,
+  listReviewProviders,
+  refineReviewPolicy,
+  startReviewBackfill,
+  testReviewProvider,
+  uploadReviewGateDataset,
 } from '@/api/risk'
 
 const activeTab = ref('providers')
@@ -243,7 +243,7 @@ const providerTypeOptions = [
 ]
 
 const wireApiOptions = [
-  { value: 'responses', label: '响应式接口' },
+  { value: 'responses', label: 'Responses 接口' },
   { value: 'chat_completions', label: '对话补全接口' },
 ]
 
@@ -312,7 +312,7 @@ const providerTypeLabelMap: Record<string, string> = {
 }
 
 const wireApiLabelMap: Record<string, string> = {
-  responses: '响应式接口',
+  responses: 'Responses 接口',
   chat_completions: '对话补全接口',
 }
 
@@ -349,15 +349,15 @@ const providerCheckStatusLabelMap: Record<string, string> = {
 }
 
 const providerNameAliasMap: Record<string, string> = {
-  'KT3 LLM Provider': '主系统模型服务',
-  'KT3 Provider': '主系统服务',
+  'Review LLM Provider': '主系统模型服务',
+  'Review Provider': '主系统服务',
   'Environment LLM Provider': '环境变量模型服务',
 }
 
 const feedbackReportIds = computed(() => splitCsvLike(policyForm.value.feedback_report_ids_text))
 
 function splitCsvLike(value: string) {
-  return (value || '').split(/[,\s，]+/).map((item) => item.trim()).filter(Boolean)
+  return (value || '').split(/[,，\s]+/).map((item) => item.trim()).filter(Boolean)
 }
 
 function parseJson(value: string, fallback: Record<string, unknown>) {
@@ -372,18 +372,7 @@ function formatProviderName(name: unknown, source?: unknown, providerType?: unkn
 
   const raw = String(name || '').trim()
   if (!raw) return '未命名服务'
-  if (providerNameAliasMap[raw]) return providerNameAliasMap[raw]
-  if (!/[A-Za-z]/.test(raw) && !/KT3/i.test(raw)) return raw
-
-  return raw
-    .replace(/\bKT3\b/gi, '主系统')
-    .replace(/\bEnvironment\b/gi, '环境变量')
-    .replace(/\bLLM\b/gi, '模型')
-    .replace(/\bProvider\b/gi, '服务')
-    .replace(/\bVision\b/gi, '视觉')
-    .replace(/\bText\b/gi, '文本')
-    .replace(/\bRetrieval\b/gi, '检索')
-    .replace(/\s+/g, '')
+  return providerNameAliasMap[raw] || raw
 }
 
 function formatProviderType(value: unknown) {
@@ -431,29 +420,29 @@ function canOperateProvider(record: any) {
 }
 
 async function loadProviders() {
-  const res = await listKT3Providers()
+  const res = await listReviewProviders()
   providers.value = res.data?.items || []
 }
 
 async function loadGateDatasets() {
-  const res = await listKT3GateDatasets({ page: 1, page_size: 20 })
+  const res = await listReviewGateDatasets({ page: 1, page_size: 20 })
   gateDatasets.value = res.data?.items || []
 }
 
 async function loadPolicies() {
-  const res = await listKT3Policies({ page: 1, page_size: 20 })
+  const res = await listReviewPolicies({ page: 1, page_size: 20 })
   policies.value = res.data?.items || []
 }
 
 async function loadJobs() {
-  const res = await listKT3Jobs({ page: 1, page_size: 50 })
+  const res = await listReviewJobs({ page: 1, page_size: 50 })
   jobs.value = res.data?.items || []
 }
 
 async function handleCreateProvider() {
   providerLoading.value = true
   try {
-    await createKT3Provider({
+    await createReviewProvider({
       ...providerForm.value,
       api_key: providerForm.value.api_key || undefined,
       metadata: {},
@@ -473,8 +462,8 @@ async function handleActivateProvider(record: any) {
     message.info('环境变量默认服务由系统配置直接提供，无需单独激活')
     return
   }
-  await activateKT3Provider(record.id, true)
-  message.success(`${formatProviderType(record.provider_type)}已激活`)
+  await activateReviewProvider(record.id, true)
+  message.success(`${formatProviderType(record.provider_type)}已启用`)
   await loadProviders()
 }
 
@@ -483,14 +472,14 @@ async function handleTestProvider(record: any) {
     message.info('环境变量默认服务没有独立配置记录，无法单独检测')
     return
   }
-  const res = await testKT3Provider(record.id)
+  const res = await testReviewProvider(record.id)
   message.info(`配置检测结果：${formatProviderCheckStatus(res.data?.status)}`)
 }
 
 async function handleUploadGateDataset() {
   datasetLoading.value = true
   try {
-    await uploadKT3GateDataset(parseJson(gateDatasetJson.value, {}))
+    await uploadReviewGateDataset(parseJson(gateDatasetJson.value, {}))
     message.success('评测数据集已入库')
     await loadGateDatasets()
   } catch (error: any) {
@@ -503,14 +492,14 @@ async function handleUploadGateDataset() {
 async function handleRefinePolicy() {
   policyLoading.value = true
   try {
-    const res = await refineKT3Policy({
+    const res = await refineReviewPolicy({
       dataset_manifest: parseJson(policyManifestJson.value, { splits: { validation: [], held_out: [] } }),
       feedback_report_ids: feedbackReportIds.value,
       max_iterations: policyForm.value.max_iterations,
       enable_llm_rule_generator: policyForm.value.enable_llm_rule_generator,
       held_out_required: policyForm.value.held_out_required,
     })
-    message.success(`策略优化任务已启动：#${res.data?.job_id}`)
+    message.success(`策略优化任务已启动：第 ${res.data?.job_id} 个`)
     await loadJobs()
   } catch (error: any) {
     message.error(error.response?.data?.detail || error.response?.data?.msg || error.message)
@@ -520,7 +509,7 @@ async function handleRefinePolicy() {
 }
 
 async function handleActivatePolicy(record: any) {
-  await activateKT3Policy(record.policy_id)
+  await activateReviewPolicy(record.policy_id)
   message.success('策略已人工激活')
   await loadPolicies()
 }
@@ -528,11 +517,11 @@ async function handleActivatePolicy(record: any) {
 async function handleBackfill() {
   backfillLoading.value = true
   try {
-    const res = await startKT3Backfill({
+    const res = await startReviewBackfill({
       report_ids: splitCsvLike(backfillReportIdsText.value),
       limit: backfillLimit.value,
     })
-    message.success(`历史回填任务已启动：#${res.data?.job_id}`)
+    message.success(`历史回填任务已启动：第 ${res.data?.job_id} 个`)
     await loadJobs()
   } catch (error: any) {
     message.error(error.response?.data?.detail || error.response?.data?.msg || error.message)
@@ -634,3 +623,4 @@ onMounted(async () => {
   }
 }
 </style>
+

@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Any, Mapping
 
 
-STUDENT_MODEL_VERSION = "kt3-student-runtime-v2"
+STUDENT_MODEL_VERSION = "review-student-runtime-v2"
 ARCHITECTURE = {
     "post_encoder": "xlm-roberta-base",
     "multimodal": "frozen_feature_inputs",
@@ -43,7 +43,7 @@ HARM_TERMS = {
 
 
 class StudentRuntime:
-    """Synchronous runtime for deployed KT3 review."""
+    """Synchronous runtime for deployed Review review."""
 
     def predict_sync(self, case: dict[str, Any]) -> dict[str, Any]:
         normalized = _normalize_case(case)
@@ -69,7 +69,7 @@ class StudentRuntime:
 
         return {
             "technology": "student",
-            "schema": "cogguard.kt3.review_verdict.v2",
+            "schema": "cogguard.review.review_verdict.v2",
             "status": "ok",
             "verdict_type": "preliminary",
             "verdict_id": _verdict_id("student", normalized),
@@ -222,7 +222,7 @@ def _attention_mil_scores(post_scores: list[dict[str, Any]]) -> dict[str, Any]:
         )
     accounts.sort(key=lambda row: (row["score"], row["post_count"], row["account_id"]), reverse=True)
     return {
-        "schema": "kt3-student-user-mil-v1",
+        "schema": "review-student-user-mil-v1",
         "accounts": accounts,
         "summary": {
             "account_count": len(accounts),
@@ -267,7 +267,7 @@ def _community_message_passing(case: Mapping[str, Any], user_scores: Mapping[str
             }
         )
     return {
-        "schema": "kt3-student-community-gnn-v1",
+        "schema": "review-student-community-gnn-v1",
         "checkpoint_status": "untrained_message_passing_scaffold",
         "communities": community_rows,
         "summary": {
@@ -311,7 +311,7 @@ def _normalize_case(case: dict[str, Any]) -> dict[str, Any]:
 def _insufficient_verdict(case: Mapping[str, Any], *, reason: str) -> dict[str, Any]:
     return {
         "technology": "student",
-        "schema": "cogguard.kt3.review_verdict.v2",
+        "schema": "cogguard.review.review_verdict.v2",
         "status": "data_insufficient",
         "verdict_type": "preliminary",
         "verdict_id": _verdict_id("student", case),

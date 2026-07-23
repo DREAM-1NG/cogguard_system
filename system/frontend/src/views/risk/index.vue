@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="risk-page">
     <PageHeader title="风险研判" />
 
@@ -70,10 +70,10 @@ import { message } from 'ant-design-vue'
 import PageHeader from '@/components/PageHeader.vue'
 import {
   assessRisk,
-  getKT3Job,
+  getReviewJob,
   getRiskReportDetail,
   listRiskReports,
-  runKT3AgentReview,
+  runReviewAgentReview,
 } from '@/api/risk'
 import EvidenceReviewPane from './components/EvidenceReviewPane.vue'
 import IntelligentReviewPane from './components/IntelligentReviewPane.vue'
@@ -109,7 +109,7 @@ const historyPage = ref(1)
 const historyLoading = ref(false)
 
 const postSemantics = computed(() => report.value?.post_semantics || null)
-const analysisSuggestions = computed(() => report.value?.kt3_harmfulness?.agent_review_suggestions || null)
+const analysisSuggestions = computed(() => report.value?.review_harmfulness?.agent_review_suggestions || null)
 const suggestedAnalysis = computed(() => analysisSuggestions.value?.suggested_agents || [])
 const recommendedRuntimeMode = computed(() => analysisSuggestions.value?.recommended_runtime_mode || 'simple')
 const runtimeReasons = computed(() => analysisSuggestions.value?.runtime_reasons || [])
@@ -240,7 +240,7 @@ async function startReviewJob() {
   }
   reviewLoading.value = true
   try {
-    const res = await runKT3AgentReview(buildReviewPayload())
+    const res = await runReviewAgentReview(buildReviewPayload())
     currentJob.value = res.data
     message.success(`研判任务已启动：${displayOrdinal(res.data?.job_id)}`)
     await pollReviewJob(res.data?.job_id)
@@ -257,7 +257,7 @@ async function pollReviewJob(jobId: number | string | undefined) {
   for (let attempt = 0; attempt < 150; attempt += 1) {
     let res
     try {
-      res = await getKT3Job(jobId)
+      res = await getReviewJob(jobId)
     } catch (e: any) {
       const status = e?.response?.status
       if (status === 404 && transientNotFoundCount < 8) {
@@ -273,13 +273,13 @@ async function pollReviewJob(jobId: number | string | undefined) {
         message.success(`研判任务 ${displayOrdinal(jobId)} 已完成`)
         await refreshCurrentReport()
       } else {
-        message.error(res.data?.error || `研判任务 ${displayOrdinal(jobId)} 失败`)
+        message.error(res.data?.error || `研判任务 ${displayOrdinal(jobId)} 执行失败`)
       }
       return
     }
     await wait(2000)
   }
-  message.warning(`研判任务 ${displayOrdinal(jobId)} 仍在执行，请稍后查看`)
+  message.warning(`研判任务 ${displayOrdinal(jobId)} 仍在执行，请稍后查看。`)
 }
 
 async function refreshCurrentReport() {
@@ -355,7 +355,7 @@ function displayOrdinal(value: string | number | undefined) {
   const text = String(value ?? '').trim()
   if (!text) return ''
   const numeric = Number(text)
-  return Number.isFinite(numeric) ? `第 ${numeric} 号` : '当前'
+  return Number.isFinite(numeric) ? `第 ${numeric} 个` : '当前任务'
 }
 
 function wait(ms: number) {
@@ -397,3 +397,4 @@ onMounted(() => {
   min-height: 320px;
 }
 </style>
+

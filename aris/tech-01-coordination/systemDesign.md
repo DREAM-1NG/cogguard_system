@@ -1,11 +1,11 @@
-﻿# KT1 系统设计：跨平台协同账号识别
+﻿# Coordination Discover 系统设计：跨平台协同账号识别
 
-> 文档定位：KT1 单文件系统设计 × MVP 指南 × CCF-B+ 多平台多模态检测文献综述。
+> 文档定位：Coordination Discover 单文件系统设计 × MVP 指南 × CCF-B+ 多平台多模态检测文献综述。
 > 版本：v0.1（2026-05-10，deep-interview 合并草案）
 > 范围：CogGuard `release-0.2` 基线 ∙ `aris/tech-01-coordination` 工作空间
 > 原则：**先合后拆**（T6）—— 在内容稳定验收前保持单文件；拆分留 `#sec-N` 锚点。
 
-> ⚠️ 方向对齐说明（2026-06-02，覆盖本文与之冲突的表述）：KT1 最新定位为
+> ⚠️ 方向对齐说明（2026-06-02，覆盖本文与之冲突的表述）：Coordination Discover 最新定位为
 > **跨平台协同发现——只用平台无关的"共同行为特征"做复用融合检测，内容检测不作为协同信号**。
 > 据此，本文 §4.1/§6.3/§6.4 中的 **Semantic Channel / Semantic Pair Adapter（text2vec 文本语义相似度）属"内容理解"，与新定位冲突**：
 > 应将其移出 Detection（协同判据），或仅以**行为型模板指纹**（如 MinHash/字符级近重复，不读语义）替代以补召回。
@@ -22,7 +22,7 @@
 - [§4 系统架构](#sec-4)
 - [§5 多模态展示层：搜索子系统（C2）](#sec-5)
 - [§6 检测 MVP（C3）](#sec-6)
-- [§7 跨 KT 输出契约](#sec-7)
+- [§7 跨 analysis capability 输出契约](#sec-7)
 - [§8 文献综述：CCF-B+ 多平台多模态方法](#sec-8)
 - [§9 工程约束与时序原则](#sec-9)
 - [§10 里程碑与交付](#sec-10)
@@ -37,10 +37,10 @@
 CogGuard 面向网络舆论对抗场景，以**跨平台协同攻击**为监测对象，整体叙事为
 `事件 → 证据 → 协同 → 传播 → 风险 → 处置`。
 
-KT1（关键技术一）聚焦该叙事的前半段——**"协同发现"**，承担子功能：协同行为检测、协同类型分类（roadmap）、协同群组发现、证据边提取。
+Coordination Discover（关键技术一）聚焦该叙事的前半段——**"协同发现"**，承担子功能：协同行为检测、协同类型分类（roadmap）、协同群组发现、证据边提取。
 
 ### 1.2 本文件职责
-`systemDesign.md` 在 KT1 工作空间内充当"单张地图"：
+`systemDesign.md` 在 Coordination Discover 工作空间内充当"单张地图"：
 
 - 对上承接 `project-positioning-baseline.md` 的统一口径、`aris/tech-01-coordination/RESEARCH_BRIEF.md` 的问题定义、`doc/research/key-technology-background/coordination-detection.md` 的技术背景；
 - 对下指导 `new-system/backend/app/core/coordination/`、`api/v1/coordination.py`、`api/v1/search.py`（新增）、协同前端页面的最小适配；
@@ -56,7 +56,7 @@ KT1（关键技术一）聚焦该叙事的前半段——**"协同发现"**，�
 ### 1.5 明确 non-goals（与旧任务骨架的边界）
 - 不做通用社交机器人检测（退出 "bot detection + 意图识别" 旧叙事）。
 - 不做跨平台用户身份解析（只做跨源证据池）。
-- 不在本期落地报告研判 / 报告生成（属 KT3）。
+- 不在本期落地报告研判 / 报告生成（属 Risk Review）。
 
 ---
 
@@ -73,7 +73,7 @@ KT1（关键技术一）聚焦该叙事的前半段——**"协同发现"**，�
 - **自然共振 vs 人为协同**：热门话题下正常账号间会出现大量偶然共现，单纯的"共享对象 + 时间窗"会产生严重误报；
 - **单信号不足**：只有"共享 URL/hashtag"过于单薄，需要与语义近似、回复级联结合；
 - **可解释性**：评委、分析师需要看到"**为什么**判这对账号是协同"的证据样本；
-- **展示层的多模态承诺**：系统允诺"多模态检测能力"，但 KT1 的技术创新并不以图像/视频为重点——需要在**展示层**承载多模态。
+- **展示层的多模态承诺**：系统允诺"多模态检测能力"，但 Coordination Discover 的技术创新并不以图像/视频为重点——需要在**展示层**承载多模态。
 
 ### 2.3 多模态承诺的收敛思路
 | 层级 | 如何体现多模态 |
@@ -93,11 +93,11 @@ KT1（关键技术一）聚焦该叙事的前半段——**"协同发现"**，�
 
 ## §3 系统功能 ↔ 关键技术错位矩阵 {#sec-3}
 
-本节是 C1 合入 C5 的产物，也是 `systemDesign.md` 最重要的一节——把**"系统承诺"与"KT1 创新技术范围"**的差异显式列出，并给出收敛策略 + 验收映射。
+本节是 C1 合入 C5 的产物，也是 `systemDesign.md` 最重要的一节——把**"系统承诺"与"Coordination Discover 创新技术范围"**的差异显式列出，并给出收敛策略 + 验收映射。
 
 ### 表 T3.1 错位矩阵
 
-| # | 系统功能承诺 | 关键技术 KT1 现状 | 错位性质 | 本期收敛策略 | 验收映射 |
+| # | 系统功能承诺 | 关键技术 Coordination Discover 现状 | 错位性质 | 本期收敛策略 | 验收映射 |
 |---|---------------|------------------|----------|--------------|----------|
 | **M1** | 多模态协同检测（界面展示图文视频） | PSL 基于行为图 + 文本语义，图/视频不是检测创新 | 展示 ≠ 创新 | 系统层：C2 搜索详情页"5 要素同屏"+ 6 facet；检测层：单模态 MVP，ADR-001 预留多模态通道扩展触发条件 | C2 §5 / ADR-001 §6 |
 | **M2** | 跨平台协同 | 短期仅 `mock_weibo` + `weibo` + `news`，且未做跨平台身份解析 | 范围收窄 | 对外宣称"**跨源**协同（社交+新闻）"而非"跨平台身份"；在 §1.5 显式列为 non-goal | §1.5 / §7 |
@@ -340,7 +340,7 @@ KT1（关键技术一）聚焦该叙事的前半段——**"协同发现"**，�
 | 字段 | 内容 |
 |------|------|
 | Status | Accepted（2026-05-10） |
-| Context | KT1 MVP 需要在轻量路线（pandas/numpy/networkx/scipy/statsmodels）下提供"协同 vs 自然共振"判别，且输出可被评审审计。 |
+| Context | Coordination Discover MVP 需要在轻量路线（pandas/numpy/networkx/scipy/statsmodels）下提供"协同 vs 自然共振"判别，且输出可被评审审计。 |
 | Decision | 采用 PSL 作为 primary；Object Channel + Semantic Channel 作为本期落地通道，Cascade Channel 列 roadmap。 |
 | Drivers | 1) 对称超几何校正双方活跃度；2) Cauchy combine 在任意依赖结构下有效；3) pair-level BH-FDR 提供形式化 FDR 保证；4) 与现有 `detect_groups` 兼容，不需重写引擎。 |
 | Alternatives | Sharma 2021 z-score（实现最简但只控 pair-level 单边，不抑热）；Manchanayaka 2024 Contrast Pattern（pattern 粒度，不直接给 pair 分数）；Iannucci 2025 Temporal Multiplex（多层时序网络，状态复杂）。 |
@@ -412,12 +412,12 @@ DataFrame[object_id, account_id, content_id, timestamp_share,
 
 ---
 
-## §7 跨 KT 输出契约 {#sec-7}
+## §7 跨 analysis capability 输出契约 {#sec-7}
 
-KT1 的输出必须被 KT2（传播监控）与 KT3（报告研判）稳定消费；本节固定接口数据结构，避免跨技术线来回改动。
+Coordination Discover 的输出必须被 Propagation Analysis（传播监控）与 Risk Review（报告研判）稳定消费；本节固定接口数据结构，避免跨技术线来回改动。
 
-### 7.1 → KT2（传播监控）
-KT2 需要从 KT1 拿到"**哪些账号属于同一协同群**"以驱动源头追溯、用户画像、立场检测：
+### 7.1 → Propagation Analysis（传播监控）
+Propagation Analysis 需要从 Coordination Discover 拿到"**哪些账号属于同一协同群**"以驱动源头追溯、用户画像、立场检测：
 
 ```jsonc
 // 服务层内调用：coordination_service.export_for_propagation(task_id)
@@ -436,8 +436,8 @@ KT2 需要从 KT1 拿到"**哪些账号属于同一协同群**"以驱动源头�
 }
 ```
 
-### 7.2 → KT3（报告研判）
-KT3 需要从 KT1 拿到"**这组协同有多可疑 + 证据是什么**"以驱动 DISARM 映射与报告生成：
+### 7.2 → Risk Review（报告研判）
+Risk Review 需要从 Coordination Discover 拿到"**这组协同有多可疑 + 证据是什么**"以驱动 DISARM 映射与报告生成：
 
 ```jsonc
 // 服务层内调用：coordination_service.export_for_risk(task_id)
@@ -451,8 +451,8 @@ KT3 需要从 KT1 拿到"**这组协同有多可疑 + 证据是什么**"以驱�
 ```
 
 ### 7.3 不侵入原则
-- KT1 只产出 JSON；**不调用** KT2/KT3 的模块；
-- KT2/KT3 如需新增字段，走 ADR 扩展流程（新增一个 `ADR-00N`），不私自改 IO。
+- Coordination Discover 只产出 JSON；**不调用** Propagation Analysis/Risk Review 的模块；
+- Propagation Analysis/Risk Review 如需新增字段，走 ADR 扩展流程（新增一个 `ADR-00N`），不私自改 IO。
 
 ---
 
@@ -558,7 +558,7 @@ human_review_trigger / out_of_scope
 | **M2 搜索后端** | MongoDB text + 复合索引 + facet pipeline | `search_service.py` 完整实现 + 单测 | p95 达标（§5.6）；单测 3 条通过 |
 | **M3 搜索前端** | 搜索页 + 详情页 5 要素同屏 + 6 facet | `views/search/` 子路由 + 1 条 Playwright | E2E 闭环通过（§5.7） |
 | **M4 检测 PSL** | significance.py + channels.py（Object + Semantic）+ `evidence_samples[]` 填充 | 单测 5 条 + 服务层 1 条 | mock_weibo 上 FDR / Recall 基线报告进 DEVELOPMENT_LOG |
-| **M5 联调** | 搜索 ↔ 协同页跳转；KT2/KT3 契约冒烟 | 跳转流程可视；KT2/KT3 契约函数 `export_for_*` 可调 | `docs/research/key-technology-background/propagation-analysis.md` / `03-risk-disarm.md` 引用通过 |
+| **M5 联调** | 搜索 ↔ 协同页跳转；Propagation Analysis/Risk Review 契约冒烟 | 跳转流程可视；Propagation Analysis/Risk Review 契约函数 `export_for_*` 可调 | `docs/research/key-technology-background/propagation-analysis.md` / `03-risk-disarm.md` 引用通过 |
 | **M6 roadmap**（不在 MVP） | Cascade Channel + 协同类型分类；可能的 Image/Video 通道 | — | — |
 
 ### 10.1 时间原则映射

@@ -10,19 +10,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.review.disarm_scorer import score_attack_path_full
 from app.core.review.ds_fusion import fuse_evidence
 from app.core.review.evidence_builder import build_evidence_pack
-from app.core.review.kt3_agent_review import agent_review_suggestions
-from app.core.review.kt3_agent_review import build_llm_provider_from_settings
-from app.core.review.kt3_agent_review import run_manual_kt3_agent_review
-from app.core.review.kt3_agent_policy import apply_policy_to_agent_suggestions
-from app.core.review.kt3_agent_policy import DEFAULT_POLICY
-from app.core.review.kt3_agent_policy import optimize_kt3_agent_policy
-from app.core.review.kt3_agent_policy import refine_kt3_agent_policy_loop
-from app.core.review.kt3_gate_suite import evaluate_kt3_gate_suite
-from app.core.review.kt3_graph_exporter import export_kt3_heterogeneous_graph
-from app.core.review.kt3_multi_agent import execute_kt3_multi_agent_review
-from app.core.review.kt3_review_executor import execute_kt3_review_queue
-from app.core.review.kt3_reviewer import build_kt3_review_queue
-from app.core.review.kt3_user_mil import score_user_mil
+from app.core.review.agent_review import agent_review_suggestions
+from app.core.review.agent_review import build_llm_provider_from_settings
+from app.core.review.agent_review import run_manual_agent_review
+from app.core.review.agent_policy import apply_policy_to_agent_suggestions
+from app.core.review.agent_policy import DEFAULT_POLICY
+from app.core.review.agent_policy import optimize_agent_policy
+from app.core.review.agent_policy import refine_agent_policy_loop
+from app.core.review.gate_suite import evaluate_gate_suite
+from app.core.review.graph_exporter import export_review_heterogeneous_graph
+from app.core.review.multi_agent import execute_multi_agent_review
+from app.core.review.review_executor import execute_review_queue
+from app.core.review.review_queue import build_review_queue
+from app.core.review.user_mil import score_user_mil
 from app.core.review.layered_harmfulness import assess_layered_harmfulness
 from app.core.review.phase_detector import detect_phase
 from app.core.review.post_semantics import assess_post_semantics
@@ -32,10 +32,10 @@ from app.db.mongodb import get_mongo_db
 from app.models.risk_assessment import RiskAssessment
 from app.services.event_data import load_event_posts
 from app.services import account_service, coordination_service, propagation_service
-from app.services import kt3_system_service
+from app.services import review_system_service
 
-_KT3_POLICY_REGISTRY: dict[str, dict] = {}
-_KT3_ACTIVE_POLICY_ID: str | None = None
+_Review_POLICY_REGISTRY: dict[str, dict] = {}
+_Review_ACTIVE_POLICY_ID: str | None = None
 
 
 async def assess_risk(
@@ -46,7 +46,7 @@ async def assess_risk(
     user_id: int = 0,
     db: AsyncSession | None = None,
     event_id: str | None = None,
-    kt3_gate_dataset: dict | None = None,
+    gate_dataset: dict | None = None,
     run_legacy_multi_agent: bool = False,
 ) -> dict:
     """Run the full risk assessment pipeline over one optional event scope."""
@@ -68,7 +68,7 @@ async def assess_risk(
     post_semantics = assess_post_semantics(posts, prop_data) if posts else None
 
     report_event_id = event_id or platform or "all_platforms"
-    kt3_harmfulness = (
+    review_harmfulness = (
         assess_layered_harmfulness(
             post_semantics=post_semantics,
             account_profiles=acct_data,
@@ -80,59 +80,59 @@ async def assess_risk(
         if post_semantics
         else None
     )
-    if kt3_harmfulness is not None:
-        kt3_harmfulness["user_mil"] = score_user_mil(
+    if review_harmfulness is not None:
+        review_harmfulness["user_mil"] = score_user_mil(
             post_semantics=post_semantics,
             account_profiles=acct_data,
             coordination=coord_data,
             propagation=prop_data,
-            existing_user_level=kt3_harmfulness.get("user_level"),
+            existing_user_level=review_harmfulness.get("user_level"),
             event_id=report_event_id,
             platform=platform or "all",
         )
-        kt3_harmfulness["graph_export"] = export_kt3_heterogeneous_graph(
+        review_harmfulness["graph_export"] = export_review_heterogeneous_graph(
             post_semantics=post_semantics,
-            kt3_harmfulness=kt3_harmfulness,
+            review_harmfulness=review_harmfulness,
             coordination=coord_data,
             propagation=prop_data,
         )
-        kt3_harmfulness["review_queue"] = build_kt3_review_queue(
+        review_harmfulness["review_queue"] = build_review_queue(
             post_semantics=post_semantics,
-            kt3_harmfulness=kt3_harmfulness,
+            review_harmfulness=review_harmfulness,
         )
-        kt3_harmfulness["review_execution"] = execute_kt3_review_queue(
+        review_harmfulness["review_execution"] = execute_review_queue(
             post_semantics=post_semantics,
-            kt3_harmfulness=kt3_harmfulness,
-            review_queue=kt3_harmfulness["review_queue"],
+            review_harmfulness=review_harmfulness,
+            review_queue=review_harmfulness["review_queue"],
         )
-        kt3_harmfulness["agent_review_suggestions"] = apply_policy_to_agent_suggestions(
+        review_harmfulness["agent_review_suggestions"] = apply_policy_to_agent_suggestions(
             agent_review_suggestions(
                 {
                     "report_id": None,
                     "event_id": report_event_id,
                     "platform": platform or "all",
                     "post_semantics": post_semantics,
-                    "kt3_harmfulness": kt3_harmfulness,
+                    "review_harmfulness": review_harmfulness,
                 }
             ),
-            {"policy_id": "kt3-default-policy", "policy": DEFAULT_POLICY},
+            {"policy_id": "review-default-policy", "policy": DEFAULT_POLICY},
         )
         if run_legacy_multi_agent:
-            kt3_harmfulness["multi_agent_review"] = execute_kt3_multi_agent_review(
+            review_harmfulness["multi_agent_review"] = execute_multi_agent_review(
                 post_semantics=post_semantics,
-                kt3_harmfulness=kt3_harmfulness,
-                user_mil=kt3_harmfulness["user_mil"],
-                graph_export=kt3_harmfulness["graph_export"],
-                review_execution=kt3_harmfulness["review_execution"],
+                review_harmfulness=review_harmfulness,
+                user_mil=review_harmfulness["user_mil"],
+                graph_export=review_harmfulness["graph_export"],
+                review_execution=review_harmfulness["review_execution"],
             )
         else:
-            kt3_harmfulness["multi_agent_review"] = {
+            review_harmfulness["multi_agent_review"] = {
                 "capability_boundary": {
                     "status": "disabled_by_default",
                     "manual_llm_agent_review": True,
                     "legacy_deterministic_runtime_available": True,
                     "description": (
-                        "KT3 LLM agents are analyst-triggered. The legacy "
+                        "Review LLM agents are analyst-triggered. The legacy "
                         "deterministic multi-agent runtime is not executed by "
                         "default during risk assessment."
                     ),
@@ -140,10 +140,10 @@ async def assess_risk(
                 "summary": {"agents_executed": 0, "manual_trigger_required": True},
                 "agent_results": [],
             }
-        kt3_harmfulness["gate_suite"] = evaluate_kt3_gate_suite(
-            gate_dataset=kt3_gate_dataset,
-            kt3_harmfulness=kt3_harmfulness,
-            graph_export=kt3_harmfulness["graph_export"],
+        review_harmfulness["gate_suite"] = evaluate_gate_suite(
+            gate_dataset=gate_dataset,
+            review_harmfulness=review_harmfulness,
+            graph_export=review_harmfulness["graph_export"],
         )
     report = build_report(
         event_id=report_event_id,
@@ -153,7 +153,7 @@ async def assess_risk(
         fusion_result=fusion_result,
         disarm_result=disarm_result,
         post_semantics=post_semantics,
-        kt3_harmfulness=kt3_harmfulness,
+        review_harmfulness=review_harmfulness,
     )
 
     if db is not None:
@@ -184,7 +184,7 @@ async def assess_risk(
     return report
 
 
-async def run_kt3_agent_review(
+async def run_agent_review(
     *,
     report_id: str,
     agent_names: list[str],
@@ -211,15 +211,15 @@ async def run_kt3_agent_review(
     active_retriever=None,
     append_legacy_report_json: bool = True,
 ) -> dict:
-    """Run analyst-triggered KT3 LLM agent reports.
+    """Run analyst-triggered Review LLM agent reports.
 
     ``append_legacy_report_json`` keeps old frontend consumers working for the
     synchronous compatibility path. Background jobs persist normalized rows and
-    append a bounded legacy summary in ``kt3_system_service`` instead, so they
+    append a bounded legacy summary in ``review_system_service`` instead, so they
     pass ``False`` here to avoid duplicate legacy JSON entries.
     """
     if db is None:
-        raise ValueError("db is required for persisted KT3 agent reviews")
+        raise ValueError("db is required for persisted Review agent reviews")
     stmt = select(RiskAssessment).where(RiskAssessment.report_id == report_id)
     result = await db.execute(stmt)
     row = result.scalar_one_or_none()
@@ -231,17 +231,17 @@ async def run_kt3_agent_review(
     resolved_external_retrieval = (
         True if enable_external_retrieval is None and enable_active_retrieval else bool(enable_external_retrieval)
     )
-    selected_policy_id = active_policy_id or policy_id or _KT3_ACTIVE_POLICY_ID
-    policy = _KT3_POLICY_REGISTRY.get(selected_policy_id or "") if selected_policy_id else None
+    selected_policy_id = active_policy_id or policy_id or _Review_ACTIVE_POLICY_ID
+    policy = _Review_POLICY_REGISTRY.get(selected_policy_id or "") if selected_policy_id else None
     if policy is None and db is not None:
         if selected_policy_id:
-            policy = await kt3_system_service.get_policy_artifact_from_db(selected_policy_id, db)
+            policy = await review_system_service.get_policy_artifact_from_db(selected_policy_id, db)
         else:
-            policy = await kt3_system_service.get_active_policy_artifact(db)
+            policy = await review_system_service.get_active_policy_artifact(db)
     error_memory_summary = {}
     if isinstance(policy, dict):
         error_memory_summary = policy.get("error_memory_summary") or {}
-    review_result = await run_manual_kt3_agent_review(
+    review_result = await run_manual_agent_review(
         report=report,
         agent_names=agent_names,
         case_id=case_id,
@@ -279,7 +279,7 @@ async def run_kt3_agent_review(
             "review_result": review_result,
             "agent_reviews": review_result["agent_reports"],
             "summary": review_result["summary"],
-            "persistence": {"persisted": False, "target": "normalized_kt3_job_persistence"},
+            "persistence": {"persisted": False, "target": "normalized_review_job_persistence"},
         }
 
     existing_reviews = report.get("agent_reviews")
@@ -291,9 +291,9 @@ async def run_kt3_agent_review(
     if not isinstance(existing_runs, list):
         existing_runs = []
     report["agent_review_runs"] = [*existing_runs, review_result["audit"]]
-    kt3 = report.get("kt3_harmfulness")
-    if isinstance(kt3, dict):
-        kt3["agent_review_suggestions"] = apply_policy_to_agent_suggestions(
+    review = report.get("review_harmfulness")
+    if isinstance(review, dict):
+        review["agent_review_suggestions"] = apply_policy_to_agent_suggestions(
             agent_review_suggestions(report),
             policy,
         )
@@ -309,15 +309,15 @@ async def run_kt3_agent_review(
     }
 
 
-async def create_kt3_agent_review_job(
+async def create_agent_review_job(
     *,
     job_type: str,
     payload: dict,
     user_id: int,
     db: AsyncSession,
 ) -> dict:
-    """Create an async KT3 Agent review job for analyst-triggered review."""
-    return await kt3_system_service.create_kt3_job(
+    """Create an async Review Agent review job for analyst-triggered review."""
+    return await review_system_service.create_review_job(
         job_type=job_type,
         payload=payload,
         user_id=user_id,
@@ -325,14 +325,14 @@ async def create_kt3_agent_review_job(
     )
 
 
-def optimize_kt3_policy(dataset_manifest: dict) -> dict:
-    """Optimize and store an auditable KT3 Agent review policy."""
-    result = optimize_kt3_agent_policy(dataset_manifest)
-    _KT3_POLICY_REGISTRY[result["policy_id"]] = result
+def optimize_review_policy(dataset_manifest: dict) -> dict:
+    """Optimize and store an auditable Review Agent review policy."""
+    result = optimize_agent_policy(dataset_manifest)
+    _Review_POLICY_REGISTRY[result["policy_id"]] = result
     return result
 
 
-async def record_kt3_agent_feedback(
+async def record_review_agent_feedback(
     *,
     report_id: str,
     feedback: dict,
@@ -341,7 +341,7 @@ async def record_kt3_agent_feedback(
 ) -> dict:
     """Record human audit feedback in normalized storage and legacy report JSON."""
     if db is None:
-        raise ValueError("db is required for persisted KT3 agent feedback")
+        raise ValueError("db is required for persisted Review agent feedback")
     stmt = select(RiskAssessment).where(RiskAssessment.report_id == report_id)
     result = await db.execute(stmt)
     row = result.scalar_one_or_none()
@@ -351,7 +351,7 @@ async def record_kt3_agent_feedback(
     feedback_rows = report.get("agent_feedback")
     if not isinstance(feedback_rows, list):
         feedback_rows = []
-    record = await kt3_system_service.persist_feedback(
+    record = await review_system_service.persist_feedback(
         report_id=report_id,
         feedback=feedback,
         user_id=user_id,
@@ -377,12 +377,12 @@ async def record_kt3_agent_feedback(
         "summary": {"feedback_count": len(feedback_rows)},
         "persistence": {
             "persisted": True,
-            "target": "kt3_agent_feedback + risk_assessments.report_json.agent_feedback",
+            "target": "review_agent_feedback + risk_assessments.report_json.agent_feedback",
         },
     }
 
 
-async def refine_kt3_policy(
+async def refine_review_policy(
     *,
     dataset_manifest: dict,
     feedback_report_ids: list[str] | None = None,
@@ -397,12 +397,12 @@ async def refine_kt3_policy(
     feedback_memory = []
     if feedback_report_ids and db is not None:
         try:
-            feedback_memory = await kt3_system_service.feedback_memory_from_db(feedback_report_ids, db)
+            feedback_memory = await review_system_service.feedback_memory_from_db(feedback_report_ids, db)
         except Exception:
             feedback_memory = await _load_agent_feedback(feedback_report_ids, db)
-    baseline = _KT3_POLICY_REGISTRY.get(baseline_policy_id or "") if baseline_policy_id else None
+    baseline = _Review_POLICY_REGISTRY.get(baseline_policy_id or "") if baseline_policy_id else None
     baseline_policy = baseline.get("policy") if isinstance(baseline, dict) else None
-    result = refine_kt3_agent_policy_loop(
+    result = refine_agent_policy_loop(
         dataset_manifest,
         feedback_memory=feedback_memory,
         baseline_policy=baseline_policy,
@@ -411,25 +411,25 @@ async def refine_kt3_policy(
         rule_generator=rule_generator,
         held_out_required=held_out_required,
     )
-    _KT3_POLICY_REGISTRY[result["policy_id"]] = result
+    _Review_POLICY_REGISTRY[result["policy_id"]] = result
     return result
 
 
-def activate_kt3_policy(policy_id: str, *, user_id: int | str = 0) -> dict:
+def activate_review_policy(policy_id: str, *, user_id: int | str = 0) -> dict:
     """Explicitly activate a candidate policy for future manual Judge context."""
-    global _KT3_ACTIVE_POLICY_ID
-    policy = _KT3_POLICY_REGISTRY.get(policy_id)
+    global _Review_ACTIVE_POLICY_ID
+    policy = _Review_POLICY_REGISTRY.get(policy_id)
     if policy is None:
-        raise ValueError(f"KT3 policy not found: {policy_id}")
+        raise ValueError(f"Review policy not found: {policy_id}")
     if policy.get("can_activate") is False:
         reasons = ", ".join(policy.get("non_activatable_reasons") or ["unknown_reason"])
-        raise ValueError(f"KT3 policy cannot be activated: {reasons}")
+        raise ValueError(f"Review policy cannot be activated: {reasons}")
     activated = dict(policy)
     activated["activation_status"] = "active_human_approved"
     activated["activated_by"] = str(user_id)
     activated["activated_at"] = _utc_now()
-    _KT3_POLICY_REGISTRY[policy_id] = activated
-    _KT3_ACTIVE_POLICY_ID = policy_id
+    _Review_POLICY_REGISTRY[policy_id] = activated
+    _Review_ACTIVE_POLICY_ID = policy_id
     return {
         "policy_id": policy_id,
         "activation_status": activated["activation_status"],
@@ -444,14 +444,14 @@ def activate_kt3_policy(policy_id: str, *, user_id: int | str = 0) -> dict:
     }
 
 
-def get_kt3_policy(policy_id: str) -> dict | None:
-    """Return a stored in-process KT3 policy artifact."""
-    return _KT3_POLICY_REGISTRY.get(policy_id)
+def get_review_policy(policy_id: str) -> dict | None:
+    """Return a stored in-process Review policy artifact."""
+    return _Review_POLICY_REGISTRY.get(policy_id)
 
 
 async def _load_agent_feedback(report_ids: list[str], db: AsyncSession) -> list[dict]:
     try:
-        feedback_rows: list[dict] = await kt3_system_service.feedback_memory_from_db(report_ids, db)
+        feedback_rows: list[dict] = await review_system_service.feedback_memory_from_db(report_ids, db)
         if feedback_rows:
             return feedback_rows
     except Exception:

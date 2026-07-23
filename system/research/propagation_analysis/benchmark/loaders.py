@@ -1,4 +1,4 @@
-"""Public benchmark fixture loaders for KT2.
+"""Public benchmark fixture loaders for PropagationAnalysis.
 
 The loaders normalize small local fixtures and benchmark exports into a common
 cascade shape. They do not download datasets or fabricate labels.
@@ -41,7 +41,7 @@ def load_public_cascade_fixture(
             "dataset": dataset_name,
             "source": str(source),
             "cascades": [],
-            "note": f"KT2 public dataset fixture not found: {source}",
+            "note": f"PropagationAnalysis public dataset fixture not found: {source}",
         }
 
     records = _load_records(source)
@@ -55,7 +55,7 @@ def load_public_cascade_fixture(
         "record_count": len(records),
         "cascade_count": len(cascades),
         "cascades": cascades,
-        "schema": "cogguard.kt2.public_cascade_fixture.v1",
+        "schema": "cogguard.propagation_analysis.public_cascade_fixture.v1",
     }
 
 
@@ -79,7 +79,7 @@ def _load_records(path: Path) -> list[dict[str, Any]]:
     if suffix == ".csv":
         with path.open("r", encoding="utf-8", newline="") as handle:
             return [dict(row) for row in csv.DictReader(handle)]
-    raise ValueError(f"Unsupported KT2 fixture format: {path.suffix}")
+    raise ValueError(f"Unsupported PropagationAnalysis fixture format: {path.suffix}")
 
 
 def _records_to_cascades(records: Iterable[Mapping[str, Any]], *, dataset: str) -> list[dict[str, Any]]:

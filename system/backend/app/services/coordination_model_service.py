@@ -1,4 +1,4 @@
-"""KT1 coordination dataset registry and rerun service."""
+"""CoordinationDiscover coordination dataset registry and rerun service."""
 
 from __future__ import annotations
 
@@ -34,13 +34,13 @@ from app.core.coordination_baseline.pretrained_detect import (
 from app.db.mysql import async_session_factory
 from app.models.coordination_registry import CoordinationDataset, CoordinationRun
 
-KT1_EXPERIMENT_ROOT = PROJECT_ROOT / "backend" / "experiments" / "kt1_io_reproduction"
-ARCHIVE_ROOT = KT1_EXPERIMENT_ROOT / "archive_kt1_final_20260628"
+CoordinationDiscover_EXPERIMENT_ROOT = PROJECT_ROOT / "backend" / "experiments" / "coordination_discover_io_reproduction"
+ARCHIVE_ROOT = CoordinationDiscover_EXPERIMENT_ROOT / "archive_coordination_discover_final_20260628"
 ARCHIVE_MANIFEST_PATH = ARCHIVE_ROOT / "archive_manifest.json"
 ARCHIVE_DETECT_METRICS_PATH = ARCHIVE_ROOT / "detect" / "detect_metrics_mean_std.csv"
-ARCHIVE_FUSION_DETAIL_ROOT = KT1_EXPERIMENT_ROOT / "accept_detect_fusion_shards_6d_s5_ep20"
-ARCHIVE_DISCOVER_DETAIL_ROOT = KT1_EXPERIMENT_ROOT / "accept_discover_magnn_full_embeddings_6d_s5_ep20"
-ARCHIVE_EVENT_ROOT = KT1_EXPERIMENT_ROOT / "accept_detect_lm_gnn_6d_s5_ep20"
+ARCHIVE_FUSION_DETAIL_ROOT = CoordinationDiscover_EXPERIMENT_ROOT / "accept_detect_fusion_shards_6d_s5_ep20"
+ARCHIVE_DISCOVER_DETAIL_ROOT = CoordinationDiscover_EXPERIMENT_ROOT / "accept_discover_magnn_full_embeddings_6d_s5_ep20"
+ARCHIVE_EVENT_ROOT = CoordinationDiscover_EXPERIMENT_ROOT / "accept_detect_lm_gnn_6d_s5_ep20"
 
 DATASET_STORAGE_ROOT = PROJECT_ROOT / "output" / "coordination_datasets"
 RUN_STORAGE_ROOT = PROJECT_ROOT / "output" / "coordination_runs"
@@ -94,7 +94,7 @@ OBJECT_ID_RELATION_HINTS = {
 
 
 def _coordination_runtime_config(dataset: CoordinationDataset) -> dict[str, int | str]:
-    """Return a UI-friendly rerun profile for the fixed KT1 mainline.
+    """Return a UI-friendly rerun profile for the fixed CoordinationDiscover mainline.
 
     Historical archived experiments keep their original paper-facing settings.
     Uploaded real-world datasets, especially unlabeled ones, run on CPU in the
@@ -1939,7 +1939,7 @@ async def _execute_coordination_run(run_id: int) -> None:
         )
         if not str(lm_feature_source or "").startswith("sbert:"):
             raise RuntimeError(
-                "SBERT is required for KT1 reruns, but the runtime fell back to a non-SBERT LM feature source."
+                "SBERT is required for CoordinationDiscover reruns, but the runtime fell back to a non-SBERT LM feature source."
             )
         metrics_payload = detect.get("metrics", {})
         summary_payload = {

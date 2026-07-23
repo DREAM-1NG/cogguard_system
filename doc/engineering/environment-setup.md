@@ -302,3 +302,4 @@ docker compose down -v       # 停止并删除数据卷
 **Q: 前端无法连接后端？**
 - 确认后端已启动在 8000 端口
 - 检查 `vite.config.ts` 中的代理配置
+

@@ -1,4 +1,4 @@
-"""KT1 协同数据集与运行作业 ORM 模型。"""
+"""CoordinationDiscover 协同数据集与运行作业 ORM 模型。"""
 
 from datetime import datetime
 
@@ -37,7 +37,7 @@ class CoordinationDataset(Base):
 
 
 class CoordinationRun(Base):
-    """KT1 协同检测运行作业。"""
+    """CoordinationDiscover 协同检测运行作业。"""
 
     __tablename__ = "coordination_runs"
 

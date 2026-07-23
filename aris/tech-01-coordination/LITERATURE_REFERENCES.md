@@ -364,7 +364,7 @@
 - **Authors**: [待补充]
 - **Venue**: AAAI 2024 (CCF-A)
 - **Key Contribution**: 发现传播树实际上不深，提出自适应图对比学习方法
-- **Relevance**: Harmfulness 维度——协同群体传播的谣言检测，与 KT2 传播监控有交叉
+- **Relevance**: Harmfulness 维度——协同群体传播的谣言检测，与 Propagation Analysis 传播监控有交叉
 - **Link**: https://ojs.aaai.org/index.php/AAAI/article/view/27757
 
 #### 34. LLM-Enhanced Rumor and Stance Detection (arXiv 2025)

@@ -1,4 +1,4 @@
-# Data Sources for KT1 Evaluation
+# Data Sources for Coordination Discover Evaluation
 
 ## 1. Real-World Data Collection
 
@@ -48,7 +48,7 @@ MEDIACRAWLER_COOKIES=<platform_cookies>
 - ❌ 评论区采集 — **不支持**
 - ❌ 关键词搜索 — **需要上游支持**
 
-**Use Case for KT1**:
+**Use Case for Coordination Discover**:
 - 新闻评论区的协同行为检测 (需要扩展评论采集)
 - 跨站点内容复制检测 (URL/语义通道)
 

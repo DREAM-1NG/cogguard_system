@@ -83,7 +83,7 @@ Layer 3: Agent-based Feedback & Detection Extension
 
 ### 一、问题定义
 
-帖子级 KT3 子模块统一回答四个问题：
+帖子级 Risk Review 子模块统一回答四个问题：
 
 1. 单条内容是否 harmful。
 2. 属于哪类 harmful。
@@ -205,7 +205,7 @@ Agent 在帖子级的作用是**复核与解释**，不是替代底层学生模�
 
 #### 阶段 E：域内蒸馏
 
-- 用真实平台帖子 + KT2 claim 库
+- 用真实平台帖子 + Propagation Analysis claim 库
 - teacher 自动生成弱标注、rationale、claim 链接
 - student 蒸馏成运行时模型
 
@@ -239,7 +239,7 @@ Agent 在帖子级的作用是**复核与解释**，不是替代底层学生模�
 2. 完成 `claim linking + harmful + stance` 的统一帖子级输出。
 3. 只在低置信度样本上调用 Agent 复核。
 
-这样既符合 KT3 的学术定位，也最容易和当前 `system/` 主干对接。
+这样既符合 Risk Review 的学术定位，也最容易和当前 `system/` 主干对接。
 
 ## 退出标准
 
@@ -254,9 +254,9 @@ Agent 在帖子级的作用是**复核与解释**，不是替代底层学生模�
 
 ## 高水平文献支撑（帖子级优先）
 
-| 论文 | 年份/来源 | 核心贡献 | 与帖子级 KT3 的关系 |
+| 论文 | 年份/来源 | 核心贡献 | 与帖子级 Risk Review 的关系 |
 |------|----------|---------|-----------------------|
-| Mannocci et al. CIB Survey | 2024 / arXiv 2408.01257 | `Detect -> Characterize` 与 harmfulness 维度定义 | 给出 KT3 问题边界 |
+| Mannocci et al. CIB Survey | 2024 / arXiv 2408.01257 | `Detect -> Characterize` 与 harmfulness 维度定义 | 给出 Risk Review 问题边界 |
 | HateXplain | 2021 / AAAI | 可解释 harmful 文本检测 | 文本 harmful warm-start |
 | The Hateful Memes Challenge | 2020 / NeurIPS | 图文 harmful meme 检测 | 图文多模态 harmful 基准 |
 | RumourEval 2019 | 2019 / SemEval | claim-conditioned stance 标签 | stance 主基准 |

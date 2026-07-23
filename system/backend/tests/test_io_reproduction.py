@@ -20,7 +20,7 @@ from scripts.run_detect_encoder_batch import (
 from app.core.coordination_baseline.deep_graph import DeepGraphDiscoverConfig, run_deep_graph_discover
 from app.core.coordination_baseline.io_reproduction import (
     DEFAULT_RELATIONS,
-    build_kt1_comparison_report,
+    build_coordination_discover_comparison_report,
     build_dynamic_relation_graphs,
     build_iohunter_commands,
     build_iohunter_run_plan,
@@ -347,7 +347,7 @@ def test_dyna_colm_discover_han_outputs_deep_graph_fields_when_torch_is_availabl
     assert "text_similarity" not in result["relation_attention"]
 
 
-def test_dyna_colm_discover_defaults_to_magnn_when_torch_is_available():
+def test_dyna_colm_discover_defaults_to_stable_magnn_legacy_when_torch_is_available():
     if importlib.util.find_spec("torch") is None:
         pytest.skip("torch is not installed in this environment")
     result = run_dyna_colm_discover(
@@ -360,8 +360,9 @@ def test_dyna_colm_discover_defaults_to_magnn_when_torch_is_available():
         device="cpu",
     )
 
-    assert result["deep_graph_model"]["encoder"] == "magnn"
-    assert result["deep_graph_model"]["intra_metapath_attention_summary"]["attention_mechanism"] == "target_grouped_softmax"
+    assert result["deep_graph_model"]["encoder"] == "magnn_legacy"
+    assert result["deep_graph_model"]["intra_metapath_attention_summary"]["attention_mechanism"] == "sigmoid_gated_legacy"
+    assert result["model_governance"]["status"] == "stable_default"
 
 
 def test_dyna_colm_discover_magnn_and_amdn_hage_are_available_when_torch_is_available():
@@ -453,7 +454,7 @@ def test_zeyan_coexpression_and_discover_ablation_suite_are_discover_only():
     assert baseline["setting"] == "discover"
     assert baseline["method"] == "zeyan_coexpression_discover"
     assert baseline["deep_graph_model"]["edge_score_source"] == "static_coexpression_weight"
-    assert set(ablations) == {"raw_graph_community", "zeyan_coexpression", "magnn_legacy", "magnn_full", "han", "amdn_hage"}
+    assert set(ablations) == {"raw_graph_community", "zeyan_coexpression", "magnn_legacy", "han", "amdn_hage"}
     for summary in ablations.values():
         assert summary["setting"] == "discover"
         assert "label_auc" not in summary["metrics"]
@@ -481,6 +482,7 @@ def test_dyna_colm_detect_outputs_predictions_metrics_and_ablations(tmp_path: Pa
     assert result["task"] == "coordination_discrimination"
     assert result["detect_model"]["uses_discover_outputs"] is True
     assert result["detect_model"]["discover_encoder"] == "magnn"
+    assert result["detect_model"]["model_governance"]["status"] == "deprecated_non_claimable"
     assert result["detect_model"]["lm_backend"] == "tfidf"
     assert result["detect_model"]["lm_feature_source"] == "tfidf_object_bag_fallback"
     assert result["detect_model"]["gnn_backend"] == "relation_gnn"
@@ -1062,7 +1064,7 @@ def test_iohunter_lightweight_batch_runs_multiple_processed_datasets(tmp_path: P
     assert "text_similarity" not in russia_summary["unmasking"]["graph_summaries"]
 
 
-def test_kt1_comparison_report_merges_lightweight_and_official_metrics(tmp_path: Path):
+def test_coordination_discover_comparison_report_merges_lightweight_and_official_metrics(tmp_path: Path):
     lightweight_dir = tmp_path / "lightweight"
     lightweight_dir.mkdir()
     (lightweight_dir / "metrics.csv").write_text(
@@ -1083,7 +1085,7 @@ def test_kt1_comparison_report_merges_lightweight_and_official_metrics(tmp_path:
         encoding="utf-8",
     )
 
-    report = build_kt1_comparison_report(
+    report = build_coordination_discover_comparison_report(
         output_dir=tmp_path / "report",
         lightweight_dirs=(lightweight_dir,),
         iohunter_summary_dirs=(official_dir,),
@@ -1440,6 +1442,7 @@ def test_cli_parse_discover_detect_ablation_commands(monkeypatch):
     )
     args = parse_args()
     assert args.command == "detect"
+    assert args.discover_encoder == "magnn_legacy"
     assert args.gnn_backend == "gfm_lm_gnn"
     assert args.detect_epochs == 0
 
@@ -1508,14 +1511,14 @@ def test_cli_parse_discover_detect_ablation_commands(monkeypatch):
 
     args = parse_args()
     assert args.command == "discover"
-    assert args.encoder == "magnn"
+    assert args.encoder == "magnn_legacy"
     assert args.community_algorithm == "leiden"
     assert args.structure_filter == "node_pruning"
     assert args.structure_filter_metric == "pagerank"
     assert args.structure_filter_percentile == 85.0
     assert args.structure_filter_use_weights is True
     # The parser keeps deprecated flags for backward compatibility, but the
-    # Discover implementation ignores them and stays on the MAGNN full-graph path.
+    # Discover implementation ignores them and stays on the stable full-graph path.
 
     monkeypatch.setattr(
         "sys.argv",

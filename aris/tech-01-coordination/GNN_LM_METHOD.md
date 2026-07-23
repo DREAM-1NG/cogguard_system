@@ -2,7 +2,7 @@
 
 ## 1. 方法定位
 
-KT1 的第一版正式方法不应只是“网络科学社区发现”，而应定位为：
+Coordination Discover 的第一版正式方法不应只是“网络科学社区发现”，而应定位为：
 
 **LM-enhanced multi-relation GNN for coordinated community discovery and discrimination**。
 

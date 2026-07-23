@@ -21,7 +21,7 @@ DEFAULT_OVERLAP_RATIO = 0.5
 DEFAULT_MAX_SLICES_PER_SCALE = 12
 
 
-def build_kt1_evidence_edges(
+def build_coordination_discover_evidence_edges(
     snapshot: EventSnapshot,
     options: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
@@ -97,7 +97,7 @@ def build_kt1_evidence_edges(
     coverage = Counter(edge["evidence_kind"] for edge in evidence_edges)
     return {
         "status": "ok" if evidence_edges else "data_insufficient",
-        "technology": "kt1",
+        "technology": "coordination_discover",
         "snapshot_id": snapshot.snapshot_id,
         "event_id": snapshot.event_id,
         "evidence_edges": evidence_edges,
@@ -116,12 +116,12 @@ def build_kt1_evidence_edges(
     }
 
 
-def analyze_kt1_snapshot(
+def analyze_coordination_discover_snapshot(
     snapshot: EventSnapshot,
     options: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     options = dict(options or {})
-    edge_bundle = build_kt1_evidence_edges(snapshot, options)
+    edge_bundle = build_coordination_discover_evidence_edges(snapshot, options)
     rows = edge_bundle["evidence_rows"]
     time_window_seconds = int(options.get("time_window", 60) or 60)
     min_participation = int(options.get("min_participation", 2) or 2)
@@ -182,7 +182,7 @@ def analyze_kt1_snapshot(
 
     return {
         "status": global_result["status"],
-        "technology": "kt1",
+        "technology": "coordination_discover",
         "model_version": "coordination-evidence-runtime-v2",
         "snapshot_id": snapshot.snapshot_id,
         "summary": summary,
@@ -1036,27 +1036,7 @@ def _text(value: Any) -> str:
     return " ".join(str(value or "").split()).strip()
 
 
-def build_coordination_discover_evidence_edges(
-    snapshot: EventSnapshot,
-    options: dict[str, Any] | None = None,
-) -> dict[str, Any]:
-    """Build platform-generic Coordination Discover evidence edges."""
-
-    return build_kt1_evidence_edges(snapshot, options)
-
-
-def analyze_coordination_discover_snapshot(
-    snapshot: EventSnapshot,
-    options: dict[str, Any] | None = None,
-) -> dict[str, Any]:
-    """Run the Coordination Discover fallback over an EventSnapshot."""
-
-    return analyze_kt1_snapshot(snapshot, options)
-
-
 __all__ = [
     "analyze_coordination_discover_snapshot",
-    "analyze_kt1_snapshot",
     "build_coordination_discover_evidence_edges",
-    "build_kt1_evidence_edges",
 ]

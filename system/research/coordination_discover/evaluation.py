@@ -12,12 +12,26 @@ def run_detect_validation(
     del discovery
     labels_scores = _labels_and_scores(request)
     if labels_scores is None:
-        return DetectValidationResult(status="missing_labels", metrics={})
+        return DetectValidationResult(
+            status="missing_labels",
+            metrics={
+                "claim_boundary": "no_supervised_detect_claim_without_labels",
+                "required_protocol": _required_protocol(),
+            },
+        )
     labels, scores = labels_scores
     if not labels or len(set(labels)) < 2:
-        return DetectValidationResult(status="data_insufficient", metrics={"sample_count": len(labels)})
+        return DetectValidationResult(
+            status="data_insufficient",
+            metrics={
+                "sample_count": len(labels),
+                "claim_boundary": "needs_both_positive_and_negative_labeled_cases",
+                "required_protocol": _required_protocol(),
+            },
+        )
 
     ranked = sorted(zip(scores, labels), key=lambda item: item[0], reverse=True)
+    probability_scores = [_clip_probability(score) for score in scores]
     metrics = {
         "sample_count": len(labels),
         "positive_count": sum(labels),
@@ -31,7 +45,12 @@ def run_detect_validation(
             "5": round(_recall_at_k(ranked, 5), 6),
             "10": round(_recall_at_k(ranked, 10), 6),
         },
-        "ece": round(_expected_calibration_error(labels=labels, scores=scores), 6),
+        "ece": round(_expected_calibration_error(labels=labels, scores=probability_scores), 6),
+        "score_policy": {
+            "ranking": "raw_scores",
+            "calibration": "scores_clipped_to_probability_range",
+        },
+        "claim_readiness": _claim_readiness(request),
     }
     return DetectValidationResult(
         status="ok",
@@ -40,7 +59,7 @@ def run_detect_validation(
             {"name": "raw_evidence_graph", "role": "baseline"},
             {"name": "temporal_magnn_no_lm", "role": "ablation"},
             {"name": "temporal_magnn_no_time_encoding", "role": "ablation"},
-            {"name": "temporal_magnn_leiden", "role": "main_discover_representation"},
+            {"name": "temporal_magnn_leiden", "role": "deprecated_non_claimable_replay"},
             {"name": "detect_validation_with_discover_representation", "role": "validation_only"},
         ],
     )
@@ -59,6 +78,32 @@ def _labels_and_scores(request: DetectValidationRequest) -> tuple[list[int], lis
         except (TypeError, ValueError):
             scores.append(0.0)
     return labels, scores
+
+
+def _claim_readiness(request: DetectValidationRequest) -> dict[str, Any]:
+    missing_axes = []
+    for axis in ("split", "campaign", "platform", "seed"):
+        if not any(axis in row and row.get(axis) not in (None, "") for row in request.rows):
+            missing_axes.append(axis)
+    status = "claim_ready_protocol_metadata_present" if not missing_axes else "exploratory_metrics_only"
+    return {
+        "status": status,
+        "missing_axes": missing_axes,
+        "required_protocol": _required_protocol(),
+        "boundary": "public_labeled_holdout_required_for_detect_claims",
+    }
+
+
+def _required_protocol() -> dict[str, Any]:
+    return {
+        "holdout_axes": ["campaign", "platform", "time"],
+        "metrics": ["AUPRC", "MaxF1", "ECE", "abstain_rate", "5_seed_confidence_interval"],
+        "local_unlabeled_policy": "return_missing_labels",
+    }
+
+
+def _clip_probability(value: float) -> float:
+    return min(1.0, max(0.0, float(value)))
 
 
 def _average_precision(ranked: list[tuple[float, int]]) -> float:

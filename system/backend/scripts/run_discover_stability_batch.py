@@ -13,6 +13,7 @@ if str(BACKEND_ROOT) not in sys.path:
 
 from app.core.coordination_baseline.io_reproduction import (  # noqa: E402
     IOHUNTER_CANONICAL_RELATIONS,
+    STABLE_DISCOVER_ENCODER,
     iohunter_processed_to_event_table,
     load_iohunter_processed_dataset,
     run_discover_stability_analysis,
@@ -25,7 +26,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output-dir", required=True)
     parser.add_argument("--datasets", nargs="*", default=["UAE", "cuba", "russia", "venezuela", "iran", "china"])
     parser.add_argument("--relations", nargs="*", default=list(IOHUNTER_CANONICAL_RELATIONS))
-    parser.add_argument("--encoder", default="magnn", choices=("lightweight", "han_relation", "han", "magnn_legacy", "magnn", "amdn_hage"))
+    parser.add_argument("--encoder", default=STABLE_DISCOVER_ENCODER, choices=("lightweight", "han_relation", "han", "magnn_legacy", "magnn", "amdn_hage"))
     parser.add_argument("--community-algorithm", choices=("leiden", "louvain", "greedy"), default="leiden")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--max-edges-per-relation", type=int, default=5000)

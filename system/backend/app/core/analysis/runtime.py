@@ -1,4 +1,4 @@
-"""Internal analysis runtimes for the KT3 student/teacher seam."""
+"""Internal analysis runtimes for the Review student/teacher seam."""
 
 from __future__ import annotations
 
@@ -16,12 +16,12 @@ from uuid import uuid4
 from sqlalchemy import select
 
 from app.core.review.layered_harmfulness import assess_layered_harmfulness
-from app.core.review.kt3_multi_agent import execute_kt3_multi_agent_review
-from app.core.review.kt3_review_executor import execute_kt3_review_queue
-from app.core.review.kt3_reviewer import build_kt3_review_queue
-from app.core.review.kt3_trainable_post import build_agent_review
-from app.core.review.kt3_trainable_post import fuse_detector_outputs
-from app.core.review.kt3_trainable_post import standard_detector_output
+from app.core.review.multi_agent import execute_multi_agent_review
+from app.core.review.review_executor import execute_review_queue
+from app.core.review.review_queue import build_review_queue
+from app.core.review.trainable_post import build_agent_review
+from app.core.review.trainable_post import fuse_detector_outputs
+from app.core.review.trainable_post import standard_detector_output
 from app.core.review.post_semantics import assess_post_semantics
 from app.db.mysql import async_session_factory
 from app.models.analysis import ReviewVerdictVersion
@@ -225,19 +225,19 @@ def _legacy_build_teacher_advisory_verdict(
         event_id=normalized["event_id"],
         platform=normalized["platform"],
     )
-    review_queue = build_kt3_review_queue(
+    review_queue = build_review_queue(
         post_semantics=post_semantics,
-        kt3_harmfulness=layered,
+        review_harmfulness=layered,
         max_items=int(normalized["options"].get("teacher_max_review_items", 20) or 20),
     )
-    review_execution = execute_kt3_review_queue(
+    review_execution = execute_review_queue(
         post_semantics=post_semantics,
-        kt3_harmfulness=layered,
+        review_harmfulness=layered,
         review_queue=review_queue,
     )
-    multi_agent = execute_kt3_multi_agent_review(
+    multi_agent = execute_multi_agent_review(
         post_semantics=post_semantics,
-        kt3_harmfulness=layered,
+        review_harmfulness=layered,
         review_execution=review_execution,
     )
     final_decision = multi_agent["final_decision"]

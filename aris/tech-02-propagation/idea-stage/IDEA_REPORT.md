@@ -1,4 +1,4 @@
-# Idea Discovery Report: KT2 传播趋势预测（LLM+时序预测）
+# Idea Discovery Report: Propagation Analysis 传播趋势预测（LLM+时序预测）
 
 **Direction**: LLM + 时序预测 传播趋势预测
 **Date**: 2026-04-28
@@ -151,7 +151,7 @@
 | 开源/可发表 | ❌ 商业封闭 | ✅ |
 | LLM 增强 | ❌ | ✅ 事件提取 |
 
-### KT2 的差异化定位
+### Propagation Analysis 的差异化定位
 
 - **前瞻预测**（知微侧重事后分析）
 - **可学习 regime**（知微用经验阶段）

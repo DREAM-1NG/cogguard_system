@@ -4,7 +4,7 @@
 
 项目重新定位后，关键技术三从"Phase-Aware Hazard + DISARM + D-S Fusion（规则型）"转向 **Agent + RAG 攻击分析与报告生成**。
 
-旧有的报告生成和风险模块通常作为分类的可解释性支撑，但在本项目中，我们意图使用 Agent + RAG，显式利用协同发现（KT1）和传播监控（KT2）所生成的结果，进行深度攻击分析并生成结构化报告。
+旧有的报告生成和风险模块通常作为分类的可解释性支撑，但在本项目中，我们意图使用 Agent + RAG，显式利用协同发现（Coordination Discover）和传播监控（Propagation Analysis）所生成的结果，进行深度攻击分析并生成结构化报告。
 
 ## Background
 
@@ -12,7 +12,7 @@
 - 当前 `core/risk/` 已有规则型 MVP（1340 行：evidence_builder, phase_detector, ds_fusion, disarm_scorer, report_builder）
 - 规则型方案作为 v1 归档，v2 转向 Agent+RAG
 - DISARM 知识从独立规则引擎转为 RAG 知识库的一部分
-- 上游已有协同发现（KT1）和传播监控（KT2）两个可复用模块
+- 上游已有协同发现（Coordination Discover）和传播监控（Propagation Analysis）两个可复用模块
 
 ## Constraints
 
@@ -24,7 +24,7 @@
 
 ## What I'm Looking For
 
-- 设计 Agent 编排框架（消费 KT1+KT2 结构化输出）
+- 设计 Agent 编排框架（消费 Coordination Discover+Propagation Analysis 结构化输出）
 - 构建 RAG 知识库（DISARM 战术/技术 + 历史案例 + 外部证据）
 - 实现攻击分析推理链
 - 实现结构化报告生成
@@ -44,7 +44,7 @@
 
 - Agent 是核心编排层，不是附属桥接
 - RAG 提供领域知识增强（DISARM、历史案例）
-- 显式消费 KT1 和 KT2 的结构化输出是核心设计原则
+- 显式消费 Coordination Discover 和 Propagation Analysis 的结构化输出是核心设计原则
 - 报告必须可审计、可追溯
 
 ## Non-Goals
@@ -73,6 +73,6 @@
 
 2. **Agent / RAG 是编排基座与呈现层，不作为创新卖点**。针对评审"用 Agent 做报告研判创新性较弱"的意见：不要主打"多 Agent + RAG 生成报告"（红海，已被 arXiv 2505.17511、2508.10143、Agentic DISARM 2601.15109 占位）。`llm_bridge.py` 升级时严格限定输入为 Layer 1 已算出的结构化结果，LLM 只"翻译成人话"，严禁改分/下结论。
 
-3. **DISARM 下一步技术预测的范式源自网络安全 ATT&CK 域**（MITRE TIE、Markov attack-chain、arXiv 2508.18230），本贡献定位为"跨域迁移到 DISARM 信息操纵域 + 阶段条件化"，**不称首创**。与 Agentic DISARM (2601.15109) 的差异锚在：对方是 flat tagging（观测→标签），KT3 是 path reasoning（预测下一步 + 反制）。
+3. **DISARM 下一步技术预测的范式源自网络安全 ATT&CK 域**（MITRE TIE、Markov attack-chain、arXiv 2508.18230），本贡献定位为"跨域迁移到 DISARM 信息操纵域 + 阶段条件化"，**不称首创**。与 Agentic DISARM (2601.15109) 的差异锚在：对方是 flat tagging（观测→标签），Risk Review 是 path reasoning（预测下一步 + 反制）。
 
-4. **内容分析（立场/危害/有害言论）按闭环分工统一归 KT3 Characterization**；KT1 排除内容信号、KT2 只做传播动力学。
+4. **内容分析（立场/危害/有害言论）按闭环分工统一归 Risk Review Characterization**；Coordination Discover 排除内容信号、Propagation Analysis 只做传播动力学。

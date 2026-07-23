@@ -1,6 +1,6 @@
 # 传播监控核心功能研究与开发请求
 
-> 适用范围：KT2 / F-PROP 传播监控模块  
+> 适用范围：Propagation Analysis / F-PROP 传播监控模块  
 > 目标读者：负责下一轮传播监控代码开发、实验验证和文档同步的组员  
 > 当前阶段：前沿研究对齐、代表性方法复现、公开数据集验证  
 > 文档目的：将传播监控任务先定位为研究复现与实证验证问题，用研究问题、数据集、评价协议和文献簇约束开发方向，而不是替实现者规定具体模型、字段或代码结构。
@@ -19,7 +19,7 @@
 
 | 子问题 | 学术任务 | 时间属性 | 当前状态 | 目标定位 |
 |---|---|---|---|---|
-| 事件规模预测 | Macroscopic cascade / popularity prediction | 预测未来规模 | 部分落地：已有随机森林离线 baseline | KT2 核心研究功能，应对齐事件驱动、非平稳传播预测 |
+| 事件规模预测 | Macroscopic cascade / popularity prediction | 预测未来规模 | 部分落地：已有随机森林离线 baseline | Propagation Analysis 核心研究功能，应对齐事件驱动、非平稳传播预测 |
 | 下一节点 / 下一跳预测 | Microscopic diffusion prediction / temporal link prediction | 预测未来参与者或边 | 未完成产品级功能：已有离线候选边分类 baseline | 功能创新扩展，应建立无未来泄漏的前瞻预测协议 |
 | 协同用户角色判定与证据追溯 | Propagation role identification / provenance on observed cascades | 解释已发生传播 | 已落地：传播图中心性角色 + 证据链回溯 | 工程支撑功能，应固化并与协同检测结果联动 |
 
@@ -189,7 +189,7 @@ F_prov: (G_c, Q_c) -> provenance paths and supporting posts
 |---|---|---|
 | 角色稳定性 | 不同事件、不同子图采样下角色是否稳定 | 防止中心性结果对噪声过敏 |
 | 证据完整性 | 是否能从 claim 回溯到源头、中继和支撑帖 | 验证报告可用性 |
-| 协同联动 | 是否能按协同组过滤角色和路径 | 验证与 KT1 的闭环 |
+| 协同联动 | 是否能按协同组过滤角色和路径 | 验证与 Coordination Discover 的闭环 |
 | 可解释性 | 每个角色是否有图结构依据 | 避免黑盒标签 |
 
 最低对比要求：
@@ -345,8 +345,8 @@ F_prov: (G_c, Q_c) -> provenance paths and supporting posts
 后续修改代码时，需要同步更新：
 
 - `FEATURE_STATUS_MATRIX.md`：只记录真实落地状态，不把 baseline 写成主功能完成。
-- `KT2_COMPLETE_PLAN.md`：如继续保留 CascadeSwitch，应标注为规模预测候选方案之一，而不是整个传播监控模块的唯一技术路线。
-- `REFERENCE.md`：新增文献时补充“对 KT2 的价值”和“引用方式”。
+- `PROPAGATION_ANALYSIS_COMPLETE_PLAN.md`：如继续保留 CascadeSwitch，应标注为规模预测候选方案之一，而不是整个传播监控模块的唯一技术路线。
+- `REFERENCE.md`：新增文献时补充“对 Propagation Analysis 的价值”和“引用方式”。
 - 前端传播监控页：不要展示未完成的下一节点预测为已完成功能；已落地的角色判定和证据回溯可以展示，但需标注为已观测图分析。
 
 ---

@@ -1,0 +1,39 @@
+## Task Packet
+
+- Scope:
+  - 重写 `aris/tech-03-risk/REVIEW_LAYERED_REQUIREMENTS.md`
+  - 目标是形成研究导向、文献驱动、边界清晰的 Risk Review 分层需求文档
+- Files to read:
+  - `aris/tech-03-risk/REVIEW_LAYERED_REQUIREMENTS.md`
+  - `aris/tech-03-risk/METHOD_STANCE.md`
+  - `aris/tech-03-risk/EXPERIMENT_PLAN.md`
+  - `system/backend/app/core/risk/post_semantics.py`
+  - `system/backend/app/core/account_profiler.py`
+  - `system/backend/app/services/coordination_service.py`
+- Files allowed to edit:
+  - `aris/tech-03-risk/REVIEW_LAYERED_REQUIREMENTS.md`
+  - `plan/*`
+- Required skills:
+  - `paper-orchestration`
+  - `literature-review`
+  - `evidence-driven-writing`
+  - `writing-core`
+  - `verification`
+- Evidence/data inputs:
+  - Mannocci 等 2024 协同在线行为综述
+  - 帖子级、用户级、社区级相关高水平论文
+  - 当前主干代码能力边界
+- Required artifacts:
+  - 更新后的 `REVIEW_LAYERED_REQUIREMENTS.md`
+  - `plan/evidence-map.md`
+  - `plan/chapter-blueprints/review-layered-requirements-blueprint.md`
+  - `plan/review/evidence-coverage.md`
+- Rejection checks:
+  - 不得把帖子级/用户级/社区级写成手工特征清单
+  - 不得把未实现能力写成已实现
+  - 不得编造文献、数据集或结论
+  - 不得把 Agent 写成底层分类器的唯一核心
+- Validation commands:
+  - 读取最终文档
+  - 运行文档风格检查脚本
+  - `git diff -- aris/tech-03-risk/REVIEW_LAYERED_REQUIREMENTS.md`

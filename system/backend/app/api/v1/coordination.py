@@ -1,4 +1,4 @@
-"""Coordination detection and KT1 dataset model routes."""
+"""Coordination detection and CoordinationDiscover dataset model routes."""
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, Query, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession

@@ -1,4 +1,4 @@
-"""KT1 reproduction utilities for IO coordination experiments.
+"""CoordinationDiscover reproduction utilities for IO coordination experiments.
 
 The module is intentionally lightweight: it implements paper-faithful smoke
 versions of Unmasking/LLM baselines and a DynaCoLM-GNN prototype. Optional
@@ -35,8 +35,10 @@ from networkx.algorithms.community.quality import modularity
 
 from app.core.coordination_baseline.characterization import CharacterizationConfig, characterize_detect_output
 from app.core.coordination_baseline.deep_graph import (
+    DEPRECATED_DISCOVER_ENCODERS,
     DeepGraphDiscoverConfig,
     DeepGraphDiscoverResult,
+    STABLE_DISCOVER_ENCODER,
     run_deep_graph_discover,
 )
 
@@ -90,7 +92,7 @@ TEXT_COLUMNS = (
 )
 LABEL_COLUMNS = ("label", "is_io_driver", "io_driver", "target")
 # Kept for backward-compatible CLI parsing and historical ablation replay.
-# KT1 Discover mainline no longer activates Unmasking-style node pruning.
+# CoordinationDiscover Discover mainline no longer activates Unmasking-style node pruning.
 DISCOVER_STRUCTURE_FILTERS = ("none", "node_pruning")
 DISCOVER_STRUCTURE_FILTER_METRICS = ("degree", "pagerank", "eigenvector")
 _LM_FEATURE_CACHE: dict[tuple[str, int, int, int, tuple[str, ...]], tuple[np.ndarray, str]] = {}
@@ -1392,8 +1394,8 @@ def _apply_discover_structure_filter(
     min_selected_nodes: int = 2,
 ) -> tuple[nx.Graph, dict[str, object], set[str], dict[str, float]]:
     # Historical helper kept for compatibility with old experiment manifests.
-    # KT1 Discover now runs on the full MAGNN reweighted graph and does not
-    # perform Unmasking-style structural screening before community discovery.
+    # CoordinationDiscover Discover now runs on the stable full-graph encoder
+    # and does not perform Unmasking-style structural screening first.
     original_node_count = int(graph.number_of_nodes())
     original_edge_count = int(graph.number_of_edges())
     if mode == "none" or original_node_count == 0:
@@ -2289,11 +2291,11 @@ def _deep_discover_summary(
         weighted_fused = _graph_with_deep_edge_scores(fused, deep_result.edge_scores)
     node_score_map = {node: float(node_scores[index]) for index, node in enumerate(nodes)}
 
-    # Discover is fixed to the full-graph MAGNN-style mainline. We keep the
+    # Discover is fixed to the full-graph stable encoder path. We keep the
     # old structure-filter arguments only so older scripts do not break, but
     # the requested pruning mode is ignored because it changes the task from
     # label-free community discovery into a structural screening variant and
-    # empirically degraded community quality in our KT1 runs.
+    # empirically degraded community quality in our CoordinationDiscover runs.
     requested_structure_filter = {
         "mode": str(structure_filter),
         "metric": str(structure_filter_metric),
@@ -2319,7 +2321,7 @@ def _deep_discover_summary(
         "requested_use_weights": requested_structure_filter["use_weights"],
         "deprecated_ignored": requested_structure_filter["mode"] != "none",
         "disabled_reason": (
-            "KT1 Discover is fixed to the full MAGNN-style graph; "
+            "CoordinationDiscover Discover is fixed to the stable full-graph encoder; "
             "Unmasking-style structural screening is no longer applied."
         ),
     }
@@ -2385,6 +2387,7 @@ def _deep_discover_summary(
         "dynamic_edges": dynamic_edge_records,
         "communities": communities,
         "deep_graph_model": _deep_graph_model_summary(config, deep_result),
+        "model_governance": _discover_encoder_governance(config.encoder),
     }
     return result
 
@@ -2565,17 +2568,6 @@ def run_discover_ablation_suite(
             device=device,
             community_algorithm=community_algorithm,
         ),
-        "magnn_full": lambda: run_dyna_colm_discover(
-            events,
-            relations=relations,
-            seed=seed,
-            encoder="magnn",
-            epochs=epochs,
-            embedding_dim=embedding_dim,
-            hidden_dim=hidden_dim,
-            device=device,
-            community_algorithm=community_algorithm,
-        ),
         "han": lambda: run_dyna_colm_discover(
             events,
             relations=relations,
@@ -2620,6 +2612,24 @@ def _discover_attention_mode(encoder: str) -> str:
     if encoder == "amdn_hage":
         return "temporal_hidden_group_estimation"
     return encoder
+
+
+def _discover_encoder_governance(encoder: str) -> dict[str, object]:
+    if encoder in DEPRECATED_DISCOVER_ENCODERS:
+        return {
+            "encoder": encoder,
+            "status": "deprecated_non_claimable",
+            "reason": DEPRECATED_DISCOVER_ENCODERS[encoder],
+            "stable_default_encoder": STABLE_DISCOVER_ENCODER,
+            "activation_policy": "historical_replay_only",
+        }
+    return {
+        "encoder": encoder,
+        "status": "stable_default" if encoder == STABLE_DISCOVER_ENCODER else "experimental_comparison",
+        "reason": "iohunter_reconstruction_gate_passed_baseline" if encoder == STABLE_DISCOVER_ENCODER else "explicit_non_default_encoder",
+        "stable_default_encoder": STABLE_DISCOVER_ENCODER,
+        "activation_policy": "claimable_only_after_reconstruction_and_detect_gates",
+    }
 
 
 def _deep_graph_model_summary(
@@ -2904,7 +2914,7 @@ def run_dyna_colm_gnn_ablations(
     relations: Sequence[str] = DEFAULT_RELATIONS,
     seed: int = 42,
 ) -> dict[str, dict[str, object]]:
-    """Run the first-version DynaCoLM-GNN ablations used in KT1 comparison tables."""
+    """Run the first-version DynaCoLM-GNN ablations used in CoordinationDiscover comparison tables."""
     variants = {
         "full": {
             "use_lm_features": True,
@@ -3232,7 +3242,7 @@ def prepare_dyna_colm_detect_inputs(
     *,
     relations: Sequence[str] = DEFAULT_RELATIONS,
     seed: int = 42,
-    discover_encoder: str = "magnn",
+    discover_encoder: str = STABLE_DISCOVER_ENCODER,
     discover_epochs: int = 20,
     embedding_dim: int = 32,
     hidden_dim: int = 32,
@@ -4166,7 +4176,7 @@ def run_dyna_colm_discover(
     output_dir: Path | None = None,
     relations: Sequence[str] = DEFAULT_RELATIONS,
     seed: int = 42,
-    encoder: str = "magnn",
+    encoder: str = STABLE_DISCOVER_ENCODER,
     community_algorithm: str = "leiden",
     epochs: int = 80,
     embedding_dim: int = 64,
@@ -4179,8 +4189,8 @@ def run_dyna_colm_discover(
     structure_filter_percentile: float = 90.0,
     structure_filter_use_weights: bool = False,
 ) -> dict[str, object]:
-    # MAGNN is the KT1 default Discover encoder: explicit User-Object-User
-    # metapath instances keep the discovered communities tied to auditable evidence.
+    # The default stays on the stable legacy MAGNN path after the newer
+    # instance encoder regressed IOHunter reconstruction AUC/AP.
     if structure_filter not in DISCOVER_STRUCTURE_FILTERS:
         raise ValueError(
             f"Discover structure_filter must be one of: {', '.join(DISCOVER_STRUCTURE_FILTERS)}"
@@ -4259,6 +4269,7 @@ def run_dyna_colm_discover(
         "communities": sorted(communities, key=lambda item: (-float(item.get("community_score", 0.0)), item.get("cluster_id"))),
         "evidence_summary": _evidence_summary(result),
         "deep_graph_model": result.get("deep_graph_model", {}),
+        "model_governance": result.get("model_governance", _discover_encoder_governance(encoder)),
     }
     if output_dir is not None:
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -4275,7 +4286,7 @@ def run_discover_stability_analysis(
     output_dir: Path | None = None,
     relations: Sequence[str] = DEFAULT_RELATIONS,
     seed: int = 42,
-    encoder: str = "magnn",
+    encoder: str = STABLE_DISCOVER_ENCODER,
     community_algorithm: str = "leiden",
     epochs: int = 20,
     embedding_dim: int = 32,
@@ -4647,7 +4658,7 @@ def run_dyna_colm_detect(
     output_dir: Path | None = None,
     relations: Sequence[str] = DEFAULT_RELATIONS,
     seed: int = 42,
-    discover_encoder: str = "magnn",
+    discover_encoder: str = STABLE_DISCOVER_ENCODER,
     discover_epochs: int = 20,
     embedding_dim: int = 32,
     hidden_dim: int = 32,
@@ -4786,6 +4797,7 @@ def run_dyna_colm_detect(
         "detect_model": {
             "uses_discover_outputs": True,
             "discover_encoder": discover_encoder,
+            "model_governance": _discover_encoder_governance(discover_encoder),
             "discover_epochs": discover_epochs,
             "detect_epochs": detect_epochs if detect_epochs is not None else max(20, int(discover_epochs) * 5),
             "lm_backend": lm_backend,
@@ -4896,7 +4908,7 @@ def run_dyna_colm_detect_from_prepared(
     output_dir: Path | None = None,
     relations: Sequence[str] = DEFAULT_RELATIONS,
     seed: int = 42,
-    discover_encoder: str = "magnn",
+    discover_encoder: str = STABLE_DISCOVER_ENCODER,
     discover_epochs: int = 20,
     hidden_dim: int = 32,
     device: str = "auto",
@@ -5004,6 +5016,7 @@ def run_dyna_colm_detect_from_prepared(
         "detect_model": {
             "uses_discover_outputs": True,
             "discover_encoder": discover_encoder,
+            "model_governance": _discover_encoder_governance(discover_encoder),
             "discover_epochs": discover_epochs,
             "detect_epochs": detect_epochs if detect_epochs is not None else max(20, int(discover_epochs) * 5),
             "lm_backend": lm_backend,
@@ -5094,7 +5107,7 @@ def run_dyna_colm_detect_from_prepared(
             "communities": [],
             "summary": {
                 "community_count": 0,
-                "skip_reason": "KT1 Detect acceptance reports held-out detection metrics; KT2 handles heavy characterization.",
+                "skip_reason": "CoordinationDiscover Detect acceptance reports held-out detection metrics; PropagationAnalysis handles heavy characterization.",
             },
         }
     summary["comparison_rows"] = _comparison_rows_for_detect(summary)
@@ -6133,7 +6146,7 @@ def _load_iohunter_report_rows(directory: Path) -> list[dict[str, object]]:
 def _write_markdown_table(path: Path, rows: Sequence[Mapping[str, object]]) -> None:
     headers = ("source", "setting", "family", "method", "dataset", "macro_f1", "auc", "precision", "recall", "accuracy", "notes")
     lines = [
-        "# KT1 IO Coordination Comparison",
+        "# CoordinationDiscover IO Coordination Comparison",
         "",
         "| " + " | ".join(headers) + " |",
         "| " + " | ".join("---" for _ in headers) + " |",
@@ -6149,13 +6162,13 @@ def _write_markdown_table(path: Path, rows: Sequence[Mapping[str, object]]) -> N
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
-def build_kt1_comparison_report(
+def build_coordination_discover_comparison_report(
     *,
     output_dir: Path,
     lightweight_dirs: Sequence[Path] = (),
     iohunter_summary_dirs: Sequence[Path] = (),
 ) -> dict[str, object]:
-    """Merge KT1 lightweight and official IOHunter metrics into one report table."""
+    """Merge CoordinationDiscover lightweight and official IOHunter metrics into one report table."""
     rows: list[dict[str, object]] = []
     for directory in lightweight_dirs:
         rows.extend(_load_lightweight_report_rows(Path(directory)))
@@ -6172,9 +6185,9 @@ def build_kt1_comparison_report(
         ),
     )
     output_dir.mkdir(parents=True, exist_ok=True)
-    csv_path = output_dir / "kt1_comparison_report.csv"
-    json_path = output_dir / "kt1_comparison_report.json"
-    markdown_path = output_dir / "KT1_COMPARISON_REPORT.md"
+    csv_path = output_dir / "coordination_discover_comparison_report.csv"
+    json_path = output_dir / "coordination_discover_comparison_report.json"
+    markdown_path = output_dir / "CoordinationDiscover_COMPARISON_REPORT.md"
     fields = (
         "source",
         "setting",
@@ -6224,7 +6237,7 @@ def run_iohunter_lightweight_batch(
     embedding_dim: int = 32,
     continue_on_error: bool = False,
 ) -> dict[str, object]:
-    """Run lightweight KT1 baselines over multiple IOHunter processed datasets."""
+    """Run lightweight CoordinationDiscover baselines over multiple IOHunter processed datasets."""
     output_dir.mkdir(parents=True, exist_ok=True)
     dataset_results: dict[str, dict[str, object]] = {}
     failures: dict[str, str] = {}
@@ -6270,8 +6283,8 @@ def run_iohunter_lightweight_batch(
             failures[dataset_name] = str(exc)
             if not continue_on_error:
                 raise
-    report = build_kt1_comparison_report(
-        output_dir=output_dir / "kt1_report",
+    report = build_coordination_discover_comparison_report(
+        output_dir=output_dir / "coordination_discover_report",
         lightweight_dirs=tuple(Path(item["output_dir"]) for item in dataset_results.values()),
     )
     manifest = {
@@ -6435,7 +6448,7 @@ def run_reproduction_suite(
             "max_edges_per_node": max_edges_per_node,
             "embedding_dim": embedding_dim,
             "seed": seed,
-            "implementation": "kt1_io_reproduction_lightweight",
+            "implementation": "coordination_discover_io_reproduction_lightweight",
         },
         "unmasking": unmasking,
         "leveraging_llms": llm,

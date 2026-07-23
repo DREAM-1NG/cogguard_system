@@ -63,7 +63,7 @@ Layer 3: Agent-based Feedback & Detection Extension（待实现）
 
 ## 高水平文献支撑
 
-| 论文 | 来源 | 与 KT3 的关系 |
+| 论文 | 来源 | 与 Risk Review 的关系 |
 |------|------|--------------|
 | Multi-agent Systems for Misinformation Lifecycle | arXiv 2505.17511, 2025 | 最直接对标：多 Agent 全生命周期 |
 | MCP-Orchestrated Multi-Agent System for Disinformation Detection | arXiv 2508.10143, 2025 | Agent 编排检测先例 |

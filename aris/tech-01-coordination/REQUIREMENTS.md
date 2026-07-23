@@ -1,7 +1,7 @@
 # F-COORD（跨平台协同检测）代码开发需求文档
 
 > **所属功能**：跨平台协同检测（F-COORD）
-> **主要技术**：KT1 PSL（Pair Surprisal Layer）—— 即插即用的配对显著性评估层
+> **主要技术**：Coordination Discover PSL（Pair Surprisal Layer）—— 即插即用的配对显著性评估层
 > **文档类型**：功能级代码开发需求（research + engineering 拆分）
 > **最后更新**：2026-05-17
 > **配套文档**：[../tech-02-propagation/ZHIWEI_PRODUCT_ANALYSIS.md](../tech-02-propagation/ZHIWEI_PRODUCT_ANALYSIS.md)（产品对标参考风格）、[../../doc/engineering/research-engineering-split.md](../../doc/engineering/research-engineering-split.md)（系统级总览）
@@ -39,7 +39,7 @@ F-COORD 是 CogGuard 主链路 `事件 → 证据 → 协同 → 传播 → 风�
 
 ### 1.3 产品对标缺口
 
-KT2 有「知微传播」这种成熟商业对标，KT1 缺乏单一商业产品对标，主要参照学界。建议后续补充：
+Propagation Analysis 有「知微传播」这种成熟商业对标，Coordination Discover 缺乏单一商业产品对标，主要参照学界。建议后续补充：
 
 - 试用 Graphika / CrowdTangle 类产品，整理截图与功能清单
 - 关注 Pacheco / Sharma 在 2024-2025 的后续工作
@@ -47,7 +47,7 @@ KT2 有「知微传播」这种成熟商业对标，KT1 缺乏单一商业产品
 
 ---
 
-## 二、主要技术：KT1 PSL 的核心创新（research）
+## 二、主要技术：Coordination Discover PSL 的核心创新（research）
 
 ### 2.1 PSL 是什么
 
@@ -319,11 +319,11 @@ WP-6 (mock+测试) 贯穿全程
 
 ---
 
-## 八、对其他 KT / 全系统的接口契约
+## 八、对其他 analysis capability / 全系统的接口契约
 
-### 8.1 F-COORD → F-PROP（KT1 → KT2）
+### 8.1 F-COORD → F-PROP（Coordination Discover → Propagation Analysis）
 
-**契约文件**：`aris/shared/CROSS_KT_DEPS.md`
+**契约文件**：`aris/shared/CROSS_ANALYSIS_DEPS.md`
 
 ```python
 # F-COORD 输出
@@ -348,11 +348,11 @@ coordination_result = {
 
 **消费方**：F-PROP 的 `trend_predictor.py` 把 `coord_groups` 数量、`network_density` 作为特征输入。
 
-### 8.2 F-COORD → F-RISK（KT1 → KT3）
+### 8.2 F-COORD → F-RISK（Coordination Discover → Risk Review）
 
 **契约**：F-RISK 的 `evidence_builder.py` 消费同样的 `coordination_result`，提取 Gini / Shannon 等聚合统计。
 
-**当前状态**：KT3 已实现消费端，KT1 PSL 实现完成后即可联调。
+**当前状态**：Risk Review 已实现消费端，Coordination Discover PSL 实现完成后即可联调。
 
 ### 8.3 F-COORD ← 数据采集
 
@@ -412,7 +412,7 @@ POST /api/v1/coordination/detect
 | 验收标准 | [ACCEPTANCE.md](./ACCEPTANCE.md) | 功能 + 测试 + 非目标 |
 | 任务追踪 | [TASK_TRACKER.md](./TASK_TRACKER.md) | WP 进度 + 会话记录 |
 | 背景文档 | [../../doc/research/key-technology-background/coordination-detection.md](../../doc/research/key-technology-background/coordination-detection.md) | 问题定义 + 技术背景 + 验证方式 |
-| 状态记忆 | [../../memory/state_kt1.md](../../memory/state_kt1.md) | KT1 状态 + 阻塞点 |
+| 状态记忆 | [../../memory/state_coordination_discover.md](../../memory/state_coordination_discover.md) | Coordination Discover 状态 + 阻塞点 |
 | 系统总览 | [../../doc/engineering/research-engineering-split.md](../../doc/engineering/research-engineering-split.md) | 三大功能 research/engineering 总表 |
 
 ---

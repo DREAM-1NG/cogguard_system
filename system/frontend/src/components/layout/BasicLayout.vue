@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <a-layout class="app-layout">
     <a-layout-sider v-model:collapsed="collapsed" collapsible theme="dark">
       <div class="logo">
@@ -91,15 +91,15 @@ const authStore = useAuthStore()
 const collapsed = ref(false)
 
 const menuItems = [
-  { path: '/analysis', label: '统一分析', icon: FileSearchOutlined, desc: 'EventSnapshot 与 AnalysisRun：统一运行 KT1/KT2/Student/Teacher', disabled: false },
-  { path: '/', label: '首页', icon: HomeOutlined, desc: '系统首页：态势概览、任务摘要、风险报告与快捷入口', disabled: false },
-  { path: '/dashboard', label: '数据看板', icon: DashboardOutlined, desc: '数据看板：地图定位、平台分布、近期采集样本', disabled: false },
-  { path: '/crawl', label: '数据采集', icon: CloudDownloadOutlined, desc: '创建采集任务，管理多平台数据抓取', disabled: false },
-  { path: '/coordination', label: '协同检测', icon: ApartmentOutlined, desc: '检测时间窗口内的协调分享行为，构建协同网络', disabled: false },
-  { path: '/propagation', label: '传播监测', icon: ShareAltOutlined, desc: '查看趋势预测、证据链与关键传播角色', disabled: false },
-  { path: '/accounts', label: '用户画像', icon: UserOutlined, desc: '用户行为画像、作息节律、自动化倾向评估', disabled: false },
-  { path: '/risk', label: '风险研判', icon: AlertOutlined, desc: '阶段感知风险评估、D-S 证据融合、DISARM 路径分析', disabled: false },
-  { path: '/system', label: '系统管理', icon: SettingOutlined, desc: 'KT3 Provider、Gate Dataset、Policy、Jobs 与 Backfill', disabled: false, roles: ['admin'] },
+  { path: '/analysis', label: '统一分析', icon: FileSearchOutlined, desc: '基于事件快照执行协同行为发现、传播分析、学生模型分诊和教师复核', disabled: false },
+  { path: '/', label: '首页', icon: HomeOutlined, desc: '系统概览、任务摘要、风险报告和快捷入口', disabled: false },
+  { path: '/dashboard', label: '态势看板', icon: DashboardOutlined, desc: '平台分布、地域视图和近期采集样本', disabled: false },
+  { path: '/crawl', label: '数据采集', icon: CloudDownloadOutlined, desc: '创建采集请求并管理多平台数据获取', disabled: false },
+  { path: '/coordination', label: '协同发现', icon: ApartmentOutlined, desc: '发现协同行为并构建协同网络', disabled: false },
+  { path: '/propagation', label: '传播分析', icon: ShareAltOutlined, desc: '查看传播预测、证据链和传播角色', disabled: false },
+  { path: '/accounts', label: '账号画像', icon: UserOutlined, desc: '账号画像、活跃节律和自动化倾向', disabled: false },
+  { path: '/risk', label: '风险研判', icon: AlertOutlined, desc: '风险研判、证据融合和治理分析', disabled: false },
+  { path: '/system', label: '系统管理', icon: SettingOutlined, desc: '管理研判服务、评测数据集、策略、任务和回填', disabled: false, roles: ['admin'] },
 ]
 
 const visibleMenuItems = computed(() => {
@@ -288,3 +288,4 @@ onMounted(async () => {
   min-height: 360px;
 }
 </style>
+

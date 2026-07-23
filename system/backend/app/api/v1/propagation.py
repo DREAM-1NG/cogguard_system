@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Query
 
 from app.core.security import get_current_user_or_local_preview
 from app.models.user import User
-from app.services import kt2_prediction_service, propagation_service
+from app.services import propagation_prediction_service, propagation_service
 from app.utils.response import success
 
 router = APIRouter()
@@ -60,7 +60,7 @@ async def predict_macro_micro_model(
     _current_user: User | None = Depends(get_current_user_or_local_preview),
 ):
     """读取传播规模预测与下一跳预测的联合模型结果。"""
-    result = await kt2_prediction_service.predict_kt2_macro_micro(
+    result = await propagation_prediction_service.predict_propagation_analysis_macro_micro(
         dataset=dataset,
         seed=seed,
         run_live=run_live,
@@ -85,15 +85,15 @@ async def predict_macro_micro_model(
     return success(data=public_result)
 
 
-@router.post("/kt2-predict")
-async def predict_kt2_macro_micro(
-    dataset: str = Query("twitter", description="KT2 实验数据集：twitter / douban / memetracker"),
+@router.post("/propagation_analysis-predict")
+async def predict_propagation_analysis_macro_micro(
+    dataset: str = Query("twitter", description="PropagationAnalysis 实验数据集：twitter / douban / memetracker"),
     seed: int | None = Query(42, description="实验随机种子；为空时聚合该数据集全部可用种子"),
     run_live: bool = Query(False, description="是否触发本地 small-run；默认读取缓存实验结果"),
     _current_user: User | None = Depends(get_current_user_or_local_preview),
 ):
-    """读取 KT2 规模预测/下一跳预测联合模型实验结果。"""
-    result = await kt2_prediction_service.predict_kt2_macro_micro(
+    """读取 PropagationAnalysis 规模预测/下一跳预测联合模型实验结果。"""
+    result = await propagation_prediction_service.predict_propagation_analysis_macro_micro(
         dataset=dataset,
         seed=seed,
         run_live=run_live,

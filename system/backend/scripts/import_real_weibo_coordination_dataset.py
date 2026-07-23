@@ -1,11 +1,11 @@
-"""Import a real MediaCrawler Weibo run into the KT1 coordination registry.
+"""Import a real MediaCrawler Weibo run into the CoordinationDiscover coordination registry.
 
 This script converts raw Weibo JSONL crawl outputs into the standard
 coordination event-table schema used by the `/coordination` page:
 
     account_id, relation, object_id, timestamp, content, target_account_id
 
-The resulting dataset can then run the fixed KT1 mainline:
+The resulting dataset can then run the fixed CoordinationDiscover mainline:
     Discover = MAGNN + Leiden
     Detect   = SBERT + fusion_gnn (China pretrained inference for unlabeled data)
 """

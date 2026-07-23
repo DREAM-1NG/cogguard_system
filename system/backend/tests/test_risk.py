@@ -22,31 +22,31 @@ from app.core.review.evidence_builder import (
     _shannon_entropy,
     _burstiness,
 )
-from app.core.review.kt3_gate_suite import evaluate_kt3_gate_suite
-from app.core.review.kt3_gate_suite import evaluate_kt3_gate_suite_from_dataset
-from app.core.review.kt3_gate_dataset import get_kt3_gate_dataset_contract_spec
-from app.core.review.kt3_gate_dataset import build_kt3_gate_dataset_manifest
-from app.core.review.kt3_gate_dataset import gate_dataset_contract_view
-from app.core.review.kt3_gate_dataset import normalize_kt3_gate_dataset
-from app.core.review.kt3_gate_dataset import validate_kt3_gate_dataset_contract
-from app.core.review.kt3_graph_exporter import export_kt3_heterogeneous_graph
-from app.core.review.kt3_graph_exporter import read_kt3_graph_artifact
-from app.core.review.kt3_graph_exporter import write_kt3_graph_artifact
-from app.core.review.kt3_agent_review import run_manual_kt3_agent_review
-from app.core.review.kt3_agent_review import OpenAICompatibleAgentProvider
-from app.core.review.kt3_agent_review import OpenAICompatibleConfig
-from app.core.review.kt3_governance_reference import build_governance_reference_context
-from app.core.review.kt3_governance_reference import load_governance_reference_library
-from app.core.review.kt3_agent_policy import optimize_kt3_agent_policy
-from app.core.review.kt3_agent_policy import refine_kt3_agent_policy_loop
-from app.core.review.kt3_agent_policy import summarize_feedback_memory
-from app.core.review.kt3_multi_agent import execute_kt3_multi_agent_review
-from app.core.review.kt3_post_gate import evaluate_kt3_post_gate
-from app.core.review.kt3_community_gate import evaluate_kt3_community_gate
-from app.core.review.kt3_review_executor import execute_kt3_review_queue
-from app.core.review.kt3_reviewer import build_kt3_review_queue
-from app.core.review.kt3_user_gate import evaluate_kt3_user_gate
-from app.core.review.kt3_user_mil import score_user_mil
+from app.core.review.gate_suite import evaluate_gate_suite
+from app.core.review.gate_suite import evaluate_gate_suite_from_dataset
+from app.core.review.gate_dataset import get_gate_dataset_contract_spec
+from app.core.review.gate_dataset import build_gate_dataset_manifest
+from app.core.review.gate_dataset import gate_dataset_contract_view
+from app.core.review.gate_dataset import normalize_gate_dataset
+from app.core.review.gate_dataset import validate_gate_dataset_contract
+from app.core.review.graph_exporter import export_review_heterogeneous_graph
+from app.core.review.graph_exporter import read_review_graph_artifact
+from app.core.review.graph_exporter import write_review_graph_artifact
+from app.core.review.agent_review import run_manual_agent_review
+from app.core.review.agent_review import OpenAICompatibleAgentProvider
+from app.core.review.agent_review import OpenAICompatibleConfig
+from app.core.review.governance_reference import build_governance_reference_context
+from app.core.review.governance_reference import load_governance_reference_library
+from app.core.review.agent_policy import optimize_agent_policy
+from app.core.review.agent_policy import refine_agent_policy_loop
+from app.core.review.agent_policy import summarize_feedback_memory
+from app.core.review.multi_agent import execute_multi_agent_review
+from app.core.review.post_gate import evaluate_post_gate
+from app.core.review.community_gate import evaluate_community_gate
+from app.core.review.review_executor import execute_review_queue
+from app.core.review.review_queue import build_review_queue
+from app.core.review.user_gate import evaluate_user_gate
+from app.core.review.user_mil import score_user_mil
 from app.core.review.layered_harmfulness import assess_layered_harmfulness
 from app.core.review.phase_detector import (
     PhaseResult,
@@ -412,7 +412,7 @@ class TestReportBuilder:
             _mock_prop_data(),
             prefer_embeddings=False,
         )
-        kt3_harmfulness = assess_layered_harmfulness(
+        review_harmfulness = assess_layered_harmfulness(
             post_semantics=post_semantics,
             account_profiles=_mock_acct_data(),
             coordination=_mock_coord_data(),
@@ -429,7 +429,7 @@ class TestReportBuilder:
             fusion_result=fusion,
             disarm_result=disarm,
             post_semantics=post_semantics,
-            kt3_harmfulness=kt3_harmfulness,
+            review_harmfulness=review_harmfulness,
         )
 
         # 验证报告结构
@@ -460,9 +460,9 @@ class TestReportBuilder:
         # 验证建议
         assert isinstance(report["recommendations"], list)
         assert report["post_semantics"]["summary"]["available_claims"] >= 1
-        assert report["kt3_harmfulness"]["user_level"]["summary"]["account_count"] >= 1
-        assert report["kt3_harmfulness"]["community_level"]["summary"]["community_count"] >= 1
-        assert report["kt3_harmfulness"]["global_summary"]["kt3_harm_risk_level"] in {
+        assert report["review_harmfulness"]["user_level"]["summary"]["account_count"] >= 1
+        assert report["review_harmfulness"]["community_level"]["summary"]["community_count"] >= 1
+        assert report["review_harmfulness"]["global_summary"]["review_harm_risk_level"] in {
             "low",
             "medium",
             "high",
@@ -510,7 +510,7 @@ class TestPostSemantics:
         }
 
         view_detection = first_post["post_view_detection"]
-        assert view_detection["schema_version"] == "kt3-post-view-detection-v1"
+        assert view_detection["schema_version"] == "review-post-view-detection-v1"
         assert set(view_detection["view_results"]) == {"tweet", "meme", "img", "video"}
         assert view_detection["fusion"]["majority_vote"]["label"] in {
             "harmful",
@@ -661,9 +661,9 @@ class TestPostSemantics:
         assert all(item["view"] != "video" for item in weighted_contributors)
 
 
-class TestKT3PostValidationScripts:
+class TestReviewPostValidationScripts:
     def test_multiview_suite_reports_expected_view_coverage(self):
-        suite = _load_script_module("run_kt3_post_multiview_ablation")
+        suite = _load_script_module("run_review_post_multiview_ablation")
         multioff_report = {
             "dataset": "MultiOFF",
             "experiments": {
@@ -732,7 +732,7 @@ class TestKT3PostValidationScripts:
         assert fakesv_video_coverage["full_expected_view_coverage"] is True
 
     def test_claim_context_text_uses_claim_and_evidence_metadata(self):
-        suite = _load_script_module("run_kt3_post_multiview_ablation")
+        suite = _load_script_module("run_review_post_multiview_ablation")
         case = {
             "claim_context": {
                 "claim_text": "A claim about an event",
@@ -755,7 +755,7 @@ class TestKT3PostValidationScripts:
         assert "example.org" in text
 
     def test_full_validation_gate_requires_expected_view_coverage(self):
-        gate = _load_script_module("summarize_kt3_full_validation")
+        gate = _load_script_module("summarize_review_full_validation")
         ready_row = {
             "audit_status": "ready",
             "conversion_status": "converted",
@@ -781,8 +781,8 @@ class TestKT3PostValidationScripts:
         assert "image_or_meme_view_not_evaluated" in blocker["reasons"]
 
 
-class TestKT3PostGate:
-    def test_evaluate_kt3_post_gate_reports_metrics_and_boundaries(self):
+class TestReviewPostGate:
+    def test_evaluate_post_gate_reports_metrics_and_boundaries(self):
         cases = [
             {
                 "case_id": "post_gate_fixture",
@@ -807,7 +807,7 @@ class TestKT3PostGate:
             }
         ]
 
-        report = evaluate_kt3_post_gate(cases, prefer_embeddings=False)
+        report = evaluate_post_gate(cases, prefer_embeddings=False)
 
         assert report["capability_boundary"]["status"] == "implemented_post_gate_evaluation_harness"
         assert report["capability_boundary"]["evaluation_harness_only"] is True
@@ -838,7 +838,7 @@ class TestKT3PostGate:
         assert report["threshold_status"]["stance_accuracy"]["passed"] is False
         assert len(report["case_results"][0]["post_results"]) == 2
 
-    def test_evaluate_kt3_post_gate_routes_failures_to_planned_review_queue(self):
+    def test_evaluate_post_gate_routes_failures_to_planned_review_queue(self):
         cases = [
             {
                 "case_id": "post_gate_failures",
@@ -861,7 +861,7 @@ class TestKT3PostGate:
             }
         ]
 
-        report = evaluate_kt3_post_gate(cases, prefer_embeddings=False)
+        report = evaluate_post_gate(cases, prefer_embeddings=False)
         queue = report["review_queue"]
 
         assert report["summary"]["failed_posts"] >= 1
@@ -942,8 +942,8 @@ def _mock_user_gate_accounts():
     ]
 
 
-class TestKT3UserGate:
-    def test_evaluate_kt3_user_gate_reports_metrics_and_boundaries(self):
+class TestReviewUserGate:
+    def test_evaluate_user_gate_reports_metrics_and_boundaries(self):
         gold = {
             "u_harmful": {
                 "harmful": True,
@@ -960,7 +960,7 @@ class TestKT3UserGate:
             },
         }
 
-        report = evaluate_kt3_user_gate(accounts=_mock_user_gate_accounts(), gold=gold)
+        report = evaluate_user_gate(accounts=_mock_user_gate_accounts(), gold=gold)
 
         assert report["capability_boundary"]["status"] == "implemented_user_gate_evaluation_harness"
         assert report["capability_boundary"]["evaluation_harness_only"] is True
@@ -968,7 +968,7 @@ class TestKT3UserGate:
         assert report["capability_boundary"]["trained_mil_or_temporal_model"] is False
         assert report["capability_boundary"]["uses_gold_for_training"] is False
         assert report["capability_boundary"]["live_llm_or_rag"] is False
-        assert report["summary"]["evaluated_from"] == "kt3_harmfulness.user_level.accounts"
+        assert report["summary"]["evaluated_from"] == "review_harmfulness.user_level.accounts"
         assert report["summary"]["evaluated_accounts"] == 2
         assert report["metrics"]["harmful_flag_accuracy"] == 1.0
         assert report["metrics"]["persistence_label_accuracy"] == 1.0
@@ -978,7 +978,7 @@ class TestKT3UserGate:
         assert report["metrics"]["runtime_needs_review_rate"] == 0.5
         assert report["threshold_status"]["role_micro_f1"]["passed"] is True
 
-    def test_evaluate_kt3_user_gate_routes_failures_to_planned_review_queue(self):
+    def test_evaluate_user_gate_routes_failures_to_planned_review_queue(self):
         gold = {
             "u_harmful": {
                 "harmful": True,
@@ -994,7 +994,7 @@ class TestKT3UserGate:
             },
         }
 
-        report = evaluate_kt3_user_gate(accounts=_mock_user_gate_accounts(), gold=gold)
+        report = evaluate_user_gate(accounts=_mock_user_gate_accounts(), gold=gold)
         queue = report["review_queue"]
 
         assert report["summary"]["failed_accounts"] == 1
@@ -1157,8 +1157,8 @@ def _mock_community_gate_graph_export():
     }
 
 
-class TestKT3CommunityGate:
-    def test_evaluate_kt3_community_gate_reports_metrics_boundaries_and_graph_audit(self):
+class TestReviewCommunityGate:
+    def test_evaluate_community_gate_reports_metrics_boundaries_and_graph_audit(self):
         gold = {
             "c_harmful": {
                 "collective_harm": True,
@@ -1178,7 +1178,7 @@ class TestKT3CommunityGate:
             },
         }
 
-        report = evaluate_kt3_community_gate(
+        report = evaluate_community_gate(
             communities=_mock_community_gate_communities(),
             graph_export=_mock_community_gate_graph_export(),
             gold=gold,
@@ -1190,7 +1190,7 @@ class TestKT3CommunityGate:
         assert report["capability_boundary"]["trained_hgt_or_tgn"] is False
         assert report["capability_boundary"]["uses_gold_for_training"] is False
         assert report["capability_boundary"]["live_llm_or_rag"] is False
-        assert report["summary"]["evaluated_from"] == "kt3_harmfulness.community_level.communities"
+        assert report["summary"]["evaluated_from"] == "review_harmfulness.community_level.communities"
         assert report["summary"]["evaluated_communities"] == 2
         assert report["metrics"]["collective_harm_accuracy"] == 1.0
         assert report["metrics"]["amplification_label_accuracy"] == 1.0
@@ -1203,7 +1203,7 @@ class TestKT3CommunityGate:
         assert report["graph_audit"]["trained_graph_model"] is False
         assert report["threshold_status"]["role_micro_f1"]["passed"] is True
 
-    def test_evaluate_kt3_community_gate_routes_failures_to_planned_review_queue(self):
+    def test_evaluate_community_gate_routes_failures_to_planned_review_queue(self):
         gold = {
             "c_harmful": {
                 "collective_harm": True,
@@ -1223,7 +1223,7 @@ class TestKT3CommunityGate:
             },
         }
 
-        report = evaluate_kt3_community_gate(
+        report = evaluate_community_gate(
             communities=_mock_community_gate_communities(),
             gold=gold,
         )
@@ -1251,8 +1251,8 @@ class TestKT3CommunityGate:
         assert queue["agent_tasks"][0]["execution_status"] == "planned_only"
 
 
-class TestKT3GateSuite:
-    def test_evaluate_kt3_gate_suite_composes_layered_gates(self):
+class TestReviewGateSuite:
+    def test_evaluate_gate_suite_composes_layered_gates(self):
         post_cases = [
             {
                 "case_id": "suite_post_gate",
@@ -1276,7 +1276,7 @@ class TestKT3GateSuite:
                 },
             }
         ]
-        kt3_harmfulness = {
+        review_harmfulness = {
             "user_level": {"accounts": _mock_user_gate_accounts()},
             "community_level": {"communities": _mock_community_gate_communities()},
         }
@@ -1314,16 +1314,16 @@ class TestKT3GateSuite:
             },
         }
 
-        report = evaluate_kt3_gate_suite(
+        report = evaluate_gate_suite(
             post_cases=post_cases,
-            kt3_harmfulness=kt3_harmfulness,
+            review_harmfulness=review_harmfulness,
             user_gold=user_gold,
             community_gold=community_gold,
             graph_export=_mock_community_gate_graph_export(),
             prefer_embeddings=False,
         )
 
-        assert report["capability_boundary"]["status"] == "implemented_kt3_layered_gate_suite"
+        assert report["capability_boundary"]["status"] == "implemented_review_layered_gate_suite"
         assert report["capability_boundary"]["evaluation_harness_only"] is True
         assert report["capability_boundary"]["trained_post_model"] is False
         assert report["capability_boundary"]["trained_user_encoder"] is False
@@ -1340,10 +1340,10 @@ class TestKT3GateSuite:
         assert report["summary"]["gate_status"]["community_gate"]["overall_pass"] is True
         assert report["summary"]["review_items"] >= report["summary"]["failed_items"]
 
-    def test_evaluate_kt3_gate_suite_accepts_dataset_contract(self):
+    def test_evaluate_gate_suite_accepts_dataset_contract(self):
         dataset = {
             "metadata": {
-                "dataset_id": "kt3-fixed-smoke",
+                "dataset_id": "review-fixed-smoke",
                 "version": "v1",
                 "source": "unit_fixture",
                 "label_policy": "fixed labels are used only for offline evaluation",
@@ -1413,19 +1413,19 @@ class TestKT3GateSuite:
                 }
             },
         }
-        kt3_harmfulness = {
+        review_harmfulness = {
             "user_level": {"accounts": _mock_user_gate_accounts()},
             "community_level": {"communities": _mock_community_gate_communities()},
         }
 
-        report = evaluate_kt3_gate_suite_from_dataset(
+        report = evaluate_gate_suite_from_dataset(
             dataset=dataset,
-            kt3_harmfulness=kt3_harmfulness,
+            review_harmfulness=review_harmfulness,
             graph_export=_mock_community_gate_graph_export(),
         )
 
         assert report["dataset_contract"]["provided"] is True
-        assert report["dataset_contract"]["metadata"]["dataset_id"] == "kt3-fixed-smoke"
+        assert report["dataset_contract"]["metadata"]["dataset_id"] == "review-fixed-smoke"
         assert report["dataset_contract"]["validation"]["valid"] is True
         assert report["dataset_contract"]["counts"] == {
             "post_cases": 1,
@@ -1442,9 +1442,9 @@ class TestKT3GateSuite:
         assert report["gates"]["post_gate"]["thresholds"]["stance_accuracy"] == 0.0
         assert report["gates"]["post_gate"]["thresholds"]["harm_type_micro_f1"] == 0.0
 
-    def test_evaluate_kt3_gate_suite_marks_missing_gold_as_skipped(self):
-        report = evaluate_kt3_gate_suite(
-            kt3_harmfulness={
+    def test_evaluate_gate_suite_marks_missing_gold_as_skipped(self):
+        report = evaluate_gate_suite(
+            review_harmfulness={
                 "user_level": {"accounts": _mock_user_gate_accounts()},
                 "community_level": {"communities": _mock_community_gate_communities()},
             }
@@ -1461,13 +1461,13 @@ class TestKT3GateSuite:
         assert report["skipped_gates"]["community_gate"]["reason"] == "missing_community_gold"
 
 
-class TestKT3GateDataset:
-    def test_kt3_gate_dataset_contract_spec_is_machine_readable(self):
-        contract = get_kt3_gate_dataset_contract_spec()
+class TestReviewGateDataset:
+    def test_gate_dataset_contract_spec_is_machine_readable(self):
+        contract = get_gate_dataset_contract_spec()
 
-        assert contract["contract_version"] == "kt3-gate-dataset-v1"
-        assert contract["artifact_type"] == "kt3_gate_dataset_contract"
-        assert contract["entrypoints"]["evaluate"] == "POST /api/v1/risk/kt3/gate-suite"
+        assert contract["contract_version"] == "review-gate-dataset-v1"
+        assert contract["artifact_type"] == "gate_dataset_contract"
+        assert contract["entrypoints"]["evaluate"] == "POST /api/v1/risk/review/gate-suite"
         assert contract["usage_policy"]["uses_gold_for_training"] is False
         assert contract["usage_policy"]["runtime_gold_generation"] is False
         assert contract["usage_policy"]["default_persistence"] is False
@@ -1499,10 +1499,10 @@ class TestKT3GateDataset:
         assert "claim_link_accuracy" in contract["layer_contracts"]["post_gate"]["metrics"]
         assert "role_micro_f1" in contract["layer_contracts"]["user_gate"]["default_thresholds"]
         assert "claim_coverage_rate" in contract["layer_contracts"]["community_gate"]["metrics"]
-        assert contract["example_skeleton"]["contract_version"] == "kt3-gate-dataset-v1"
+        assert contract["example_skeleton"]["contract_version"] == "review-gate-dataset-v1"
 
-    def test_normalize_kt3_gate_dataset_reports_contract_and_counts(self):
-        normalized = normalize_kt3_gate_dataset(
+    def test_normalize_gate_dataset_reports_contract_and_counts(self):
+        normalized = normalize_gate_dataset(
             {
                 "metadata": {
                     "dataset_id": "dataset-contract-smoke",
@@ -1556,8 +1556,8 @@ class TestKT3GateDataset:
         assert view["usage_policy"]["uses_gold_for_training"] is False
         assert view["leakage_policy"]["no_runtime_derived_gold"] is True
 
-    def test_normalize_kt3_gate_dataset_warns_without_inventing_gold(self):
-        normalized = normalize_kt3_gate_dataset(
+    def test_normalize_gate_dataset_warns_without_inventing_gold(self):
+        normalized = normalize_gate_dataset(
             {
                 "metadata": "bad metadata",
                 "post_cases": "not a list",
@@ -1615,8 +1615,8 @@ class TestKT3GateDataset:
             "community_gold": 1,
         }
 
-    def test_validate_kt3_gate_dataset_contract_reports_missing_metadata_and_layer_coverage(self):
-        validation = validate_kt3_gate_dataset_contract(
+    def test_validate_gate_dataset_contract_reports_missing_metadata_and_layer_coverage(self):
+        validation = validate_gate_dataset_contract(
             {
                 "metadata": {
                     "dataset_id": "contract-validation-smoke",
@@ -1634,7 +1634,7 @@ class TestKT3GateDataset:
             }
         )
 
-        assert validation["contract_version"] == "kt3-gate-dataset-v1"
+        assert validation["contract_version"] == "review-gate-dataset-v1"
         assert validation["valid"] is False
         assert validation["layer_coverage"] == {
             "post_gate": True,
@@ -1670,8 +1670,8 @@ class TestKT3GateDataset:
         assert validation["manifest"]["counts"] == validation["counts"]
         assert len(validation["manifest"]["dataset_fingerprint"]) == 64
 
-    def test_validate_kt3_gate_dataset_contract_reports_formal_acceptance_readiness(self):
-        validation = validate_kt3_gate_dataset_contract(
+    def test_validate_gate_dataset_contract_reports_formal_acceptance_readiness(self):
+        validation = validate_gate_dataset_contract(
             {
                 "metadata": {
                     "dataset_id": "formal-acceptance-smoke",
@@ -1722,7 +1722,7 @@ class TestKT3GateDataset:
         assert validation["manifest"]["formal_acceptance_ready"] is True
         assert validation["manifest"]["evaluation_readiness"]["formal_acceptance_ready"] is True
 
-    def test_kt3_gate_dataset_manifest_is_stable_and_gold_safe(self):
+    def test_gate_dataset_manifest_is_stable_and_gold_safe(self):
         dataset = {
             "metadata": {
                 "dataset_id": "manifest-smoke",
@@ -1750,19 +1750,19 @@ class TestKT3GateDataset:
             "thresholds": {"post": {"stance_accuracy": 0.7}},
             "prefer_embeddings": False,
         }
-        normalized = normalize_kt3_gate_dataset(dataset)
-        manifest = build_kt3_gate_dataset_manifest(normalized)
-        repeated = build_kt3_gate_dataset_manifest(normalized)
-        modified = normalize_kt3_gate_dataset(
+        normalized = normalize_gate_dataset(dataset)
+        manifest = build_gate_dataset_manifest(normalized)
+        repeated = build_gate_dataset_manifest(normalized)
+        modified = normalize_gate_dataset(
             {
                 **dataset,
                 "user_gold": {"u1": {"harmful": False, "roles": ["participant"]}},
             }
         )
-        modified_manifest = build_kt3_gate_dataset_manifest(modified)
+        modified_manifest = build_gate_dataset_manifest(modified)
 
         assert manifest == repeated
-        assert manifest["artifact_type"] == "kt3_gate_dataset_manifest"
+        assert manifest["artifact_type"] == "gate_dataset_manifest"
         assert manifest["contains_gold_payload"] is False
         assert manifest["counts"] == {
             "post_cases": 1,
@@ -1806,7 +1806,7 @@ class TestLayeredHarmfulness:
         assert result["audit"]["semantic_posts_used"] == 2
 
 
-class TestKT3UserMIL:
+class TestReviewUserMIL:
     def test_score_user_mil_reports_attention_bags_and_boundaries(self):
         post_semantics = assess_post_semantics(
             _mock_posts_for_semantics(),
@@ -1846,8 +1846,8 @@ class TestKT3UserMIL:
         assert account_with_posts["attention_posts"][0]["evidence_modalities"]
 
 
-class TestKT3ReviewQueue:
-    def test_build_kt3_review_queue(self):
+class TestReviewQueue:
+    def test_build_review_queue(self):
         post_semantics = assess_post_semantics(
             _mock_posts_for_semantics(),
             _mock_prop_data(),
@@ -1862,9 +1862,9 @@ class TestKT3ReviewQueue:
             platform="mock_weibo",
         )
 
-        queue = build_kt3_review_queue(
+        queue = build_review_queue(
             post_semantics=post_semantics,
-            kt3_harmfulness=layered,
+            review_harmfulness=layered,
         )
 
         assert queue["capability_boundary"]["status"] == "implemented_review_queue_scaffold"
@@ -1881,8 +1881,8 @@ class TestKT3ReviewQueue:
         assert all(task["requires_external_execution"] is True for task in queue["agent_tasks"])
 
 
-class TestKT3ReviewExecution:
-    def test_execute_kt3_review_queue_locally(self):
+class TestReviewExecution:
+    def test_execute_review_queue_locally(self):
         post_semantics = assess_post_semantics(
             _mock_posts_for_semantics(),
             _mock_prop_data(),
@@ -1896,14 +1896,14 @@ class TestKT3ReviewExecution:
             event_id="test_event",
             platform="mock_weibo",
         )
-        queue = build_kt3_review_queue(
+        queue = build_review_queue(
             post_semantics=post_semantics,
-            kt3_harmfulness=layered,
+            review_harmfulness=layered,
         )
 
-        execution = execute_kt3_review_queue(
+        execution = execute_review_queue(
             post_semantics=post_semantics,
-            kt3_harmfulness=layered,
+            review_harmfulness=layered,
             review_queue=queue,
         )
 
@@ -1922,9 +1922,9 @@ class TestKT3ReviewExecution:
         assert all(result["execution_status"] == "executed_local" for result in execution["review_results"])
         assert all(result["execution_mode"].startswith("deterministic") for result in execution["review_results"])
 
-        second_execution = execute_kt3_review_queue(
+        second_execution = execute_review_queue(
             post_semantics=post_semantics,
-            kt3_harmfulness=layered,
+            review_harmfulness=layered,
             review_queue=queue,
         )
         assert execution["retrieval_results"] == second_execution["retrieval_results"]
@@ -1932,7 +1932,7 @@ class TestKT3ReviewExecution:
         assert execution["agent_results"] == second_execution["agent_results"]
         assert execution["counter_narrative_drafts"] == second_execution["counter_narrative_drafts"]
 
-    def test_execute_kt3_review_queue_accepts_offline_mock_providers(self):
+    def test_execute_review_queue_accepts_offline_mock_providers(self):
         post_semantics = assess_post_semantics(
             _mock_posts_for_semantics(),
             _mock_prop_data(),
@@ -1946,9 +1946,9 @@ class TestKT3ReviewExecution:
             event_id="test_event",
             platform="mock_weibo",
         )
-        queue = build_kt3_review_queue(
+        queue = build_review_queue(
             post_semantics=post_semantics,
-            kt3_harmfulness=layered,
+            review_harmfulness=layered,
         )
         retriever_calls = []
         review_calls = []
@@ -1984,9 +1984,9 @@ class TestKT3ReviewExecution:
                 "review_notes": ["offline mock provider result"],
             }
 
-        execution = execute_kt3_review_queue(
+        execution = execute_review_queue(
             post_semantics=post_semantics,
-            kt3_harmfulness=layered,
+            review_harmfulness=layered,
             review_queue=queue,
             evidence_retriever=mock_retriever,
             review_provider=mock_review_provider,
@@ -2005,7 +2005,7 @@ class TestKT3ReviewExecution:
         assert all(result["execution_mode"] == "mock_offline_review_provider" for result in execution["review_results"])
         assert all(result["local_outcome"] == "mock_provider_reviewed" for result in execution["review_results"])
 
-    def test_execute_kt3_review_queue_falls_back_when_provider_fails(self):
+    def test_execute_review_queue_falls_back_when_provider_fails(self):
         post_semantics = assess_post_semantics(
             _mock_posts_for_semantics(),
             _mock_prop_data(),
@@ -2019,9 +2019,9 @@ class TestKT3ReviewExecution:
             event_id="test_event",
             platform="mock_weibo",
         )
-        queue = build_kt3_review_queue(
+        queue = build_review_queue(
             post_semantics=post_semantics,
-            kt3_harmfulness=layered,
+            review_harmfulness=layered,
         )
 
         def failing_retriever(**_kwargs):
@@ -2030,9 +2030,9 @@ class TestKT3ReviewExecution:
         def failing_review_provider(**_kwargs):
             raise RuntimeError("review provider unavailable")
 
-        execution = execute_kt3_review_queue(
+        execution = execute_review_queue(
             post_semantics=post_semantics,
-            kt3_harmfulness=layered,
+            review_harmfulness=layered,
             review_queue=queue,
             evidence_retriever=failing_retriever,
             review_provider=failing_review_provider,
@@ -2052,8 +2052,8 @@ class TestKT3ReviewExecution:
         assert all(result["execution_mode"].startswith("deterministic") for result in execution["review_results"])
 
 
-class TestKT3MultiAgentRuntime:
-    def test_execute_kt3_multi_agent_review_runs_distinct_local_agents(self):
+class TestReviewMultiAgentRuntime:
+    def test_execute_multi_agent_review_runs_distinct_local_agents(self):
         post_semantics = assess_post_semantics(
             _mock_posts_for_semantics(),
             _mock_prop_data(),
@@ -2076,25 +2076,25 @@ class TestKT3MultiAgentRuntime:
             event_id="test_event",
             platform="mock_weibo",
         )
-        graph = export_kt3_heterogeneous_graph(
+        graph = export_review_heterogeneous_graph(
             post_semantics=post_semantics,
-            kt3_harmfulness=layered,
+            review_harmfulness=layered,
             coordination=_mock_coord_data(),
             propagation=_mock_prop_data(),
         )
-        queue = build_kt3_review_queue(
+        queue = build_review_queue(
             post_semantics=post_semantics,
-            kt3_harmfulness=layered,
+            review_harmfulness=layered,
         )
-        review_execution = execute_kt3_review_queue(
+        review_execution = execute_review_queue(
             post_semantics=post_semantics,
-            kt3_harmfulness=layered,
+            review_harmfulness=layered,
             review_queue=queue,
         )
 
-        multi_agent = execute_kt3_multi_agent_review(
+        multi_agent = execute_multi_agent_review(
             post_semantics=post_semantics,
-            kt3_harmfulness=layered,
+            review_harmfulness=layered,
             user_mil=user_mil,
             graph_export=graph,
             review_execution=review_execution,
@@ -2121,7 +2121,7 @@ class TestKT3MultiAgentRuntime:
         }
         assert multi_agent["final_decision"]["publish_counter_narrative_without_human_approval"] is False
 
-    def test_execute_kt3_multi_agent_review_accepts_offline_provider(self):
+    def test_execute_multi_agent_review_accepts_offline_provider(self):
         post_semantics = assess_post_semantics(
             _mock_posts_for_semantics(),
             _mock_prop_data(),
@@ -2149,9 +2149,9 @@ class TestKT3MultiAgentRuntime:
                 }
             return None
 
-        multi_agent = execute_kt3_multi_agent_review(
+        multi_agent = execute_multi_agent_review(
             post_semantics=post_semantics,
-            kt3_harmfulness=layered,
+            review_harmfulness=layered,
             user_mil={},
             graph_export={},
             review_execution={},
@@ -2169,7 +2169,7 @@ class TestKT3MultiAgentRuntime:
         assert evidence_agent["decision"] == "mock_provider_evidence_checked"
 
 
-class TestKT3ManualAgentReview:
+class TestReviewManualAgentReview:
     def _report(self):
         post_semantics = assess_post_semantics(
             _mock_posts_for_semantics(),
@@ -2184,7 +2184,7 @@ class TestKT3ManualAgentReview:
             event_id="test_event",
             platform="mock_weibo",
         )
-        review_queue = build_kt3_review_queue(post_semantics=post_semantics, kt3_harmfulness=layered)
+        review_queue = build_review_queue(post_semantics=post_semantics, review_harmfulness=layered)
         layered["review_queue"] = review_queue
         return {
             "report_id": "manual-agent-report",
@@ -2192,13 +2192,13 @@ class TestKT3ManualAgentReview:
             "platform": "mock_weibo",
             "scores": {"risk_level": "high"},
             "post_semantics": post_semantics,
-            "kt3_harmfulness": layered,
+            "review_harmfulness": layered,
             "disarm_analysis": {"countermeasures": [{"action": "fact-check"}]},
         }
 
     def test_governance_reference_loader_matches_platform_refs(self):
         library = load_governance_reference_library()
-        assert library["schema_version"] == "kt3-governance-reference-library-v1"
+        assert library["schema_version"] == "review-governance-reference-library-v1"
         ref_ids = {item["ref_id"] for item in library["platform_references"]}
         assert "meta-community-standards" in ref_ids
         assert "weibo-community-convention" in ref_ids
@@ -2230,7 +2230,7 @@ class TestKT3ManualAgentReview:
             return f"{agent_name} report"
 
         result = asyncio.run(
-            run_manual_kt3_agent_review(
+            run_manual_agent_review(
                 report=self._report(),
                 agent_names=[
                     "PostHarmAgent",
@@ -2249,7 +2249,7 @@ class TestKT3ManualAgentReview:
             )
         )
 
-        assert result["schema_version"] == "kt3-manual-agent-review-v1"
+        assert result["schema_version"] == "review-manual-agent-review-v1"
         assert result["audit"]["capability_boundary"]["manual_human_triggered"] is True
         assert result["audit"]["capability_boundary"]["fits_benchmark_labels"] is False
         assert result["audit"]["effective_runtime_mode"] == "complex"
@@ -2275,7 +2275,7 @@ class TestKT3ManualAgentReview:
             assert report["report_text"]
             assert "not_a_classifier_output" in report["safety_flags"]
             assert report["system_audit_sidecar"]["not_agent_primary_output"] is True
-            assert report["structured_sidecar"]["schema_version"] == "kt3-agent-sidecar-v1"
+            assert report["structured_sidecar"]["schema_version"] == "review-agent-sidecar-v1"
             assert report["structured_sidecar"]["platform_reference_refs"]
 
         judge_report = next(item for item in result["agent_reports"] if item.get("report_role") == "judge_final")
@@ -2312,7 +2312,7 @@ class TestKT3ManualAgentReview:
             ][:top_k]
 
         result = asyncio.run(
-            run_manual_kt3_agent_review(
+            run_manual_agent_review(
                 report=self._report(),
                 agent_names=["ClaimEvidenceAgent", "MultimodalConsistencyAgent", "HarmfulnessJudgeAgent"],
                 selected_post_ids=["p1"],
@@ -2344,7 +2344,7 @@ class TestKT3ManualAgentReview:
 
     def test_manual_agent_review_records_failure_without_synthetic_report(self):
         result = asyncio.run(
-            run_manual_kt3_agent_review(
+            run_manual_agent_review(
                 report=self._report(),
                 agent_names=["PostHarmAgent"],
                 selected_post_ids=["p1"],
@@ -2362,7 +2362,7 @@ class TestKT3ManualAgentReview:
         for report in result["agent_reports"]:
             assert report["status"] == "failed"
             assert report["report_text"] is None
-            assert report["structured_sidecar"]["schema_version"] == "kt3-agent-sidecar-v1"
+            assert report["structured_sidecar"]["schema_version"] == "review-agent-sidecar-v1"
             assert "no_synthetic_fallback" in report["safety_flags"]
 
     def test_manual_agent_review_requires_vision_for_multimodal_agent(self):
@@ -2373,7 +2373,7 @@ class TestKT3ManualAgentReview:
             return "should not be called"
 
         result = asyncio.run(
-            run_manual_kt3_agent_review(
+            run_manual_agent_review(
                 report=self._report(),
                 agent_names=["MultimodalConsistencyAgent"],
                 selected_post_ids=["p1"],
@@ -2425,7 +2425,7 @@ class TestKT3ManualAgentReview:
                 captured["payload"] = json
                 return FakeResponse()
 
-        monkeypatch.setattr("app.core.review.kt3_agent_review.httpx.AsyncClient", FakeAsyncClient)
+        monkeypatch.setattr("app.core.review.agent_review.httpx.AsyncClient", FakeAsyncClient)
         provider = OpenAICompatibleAgentProvider(
             OpenAICompatibleConfig(
                 api_key="sk-test-secret",
@@ -2551,7 +2551,7 @@ class TestKT3ManualAgentReview:
             return f"{agent_name} 自然语言报告：仅供人工复核。"
 
         result = asyncio.run(
-            risk_service.run_kt3_agent_review(
+            risk_service.run_agent_review(
                 report_id="manual-agent-report",
                 case_id="case-1",
                 agent_names=["PostHarmAgent"],
@@ -2574,11 +2574,11 @@ class TestKT3ManualAgentReview:
         assert persisted["agent_review_runs"][0]["case_id"] == "case-1"
         assert persisted["agent_review_runs"][0]["effective_runtime_mode"] == "simple"
         assert persisted["agent_review_runs"][0]["input_refs"]["post_ids"] == ["p1"]
-        assert persisted["kt3_harmfulness"]["agent_review_suggestions"]["manual_trigger_required"] is True
+        assert persisted["review_harmfulness"]["agent_review_suggestions"]["manual_trigger_required"] is True
 
-    def test_optimize_kt3_agent_policy_uses_validation_and_reports_held_out(self):
+    def test_optimize_agent_policy_uses_validation_and_reports_held_out(self):
         manifest = {
-            "dataset_id": "mock-kt3-policy",
+            "dataset_id": "mock-review-policy",
             "source": "unit-test",
             "splits": {
                 "validation": [
@@ -2593,10 +2593,10 @@ class TestKT3ManualAgentReview:
             },
         }
 
-        result = optimize_kt3_agent_policy(manifest)
+        result = optimize_agent_policy(manifest)
 
-        assert result["schema_version"] == "kt3-agent-policy-v1"
-        assert result["policy_id"].startswith("kt3-policy-")
+        assert result["schema_version"] == "review-agent-policy-v1"
+        assert result["policy_id"].startswith("review-policy-")
         assert result["optimization"]["validation_cases"] == 3
         assert result["optimization"]["held_out_cases"] == 2
         assert result["optimization"]["held_out_metrics"] is not None
@@ -2604,7 +2604,7 @@ class TestKT3ManualAgentReview:
 
     def test_refine_policy_loop_uses_feedback_and_rejects_invalid_llm_rules(self):
         manifest = {
-            "dataset_id": "mock-kt3-refine",
+            "dataset_id": "mock-review-refine",
             "source": "unit-test",
             "baseline_policy": {
                 "review_threshold": 0.6,
@@ -2663,7 +2663,7 @@ class TestKT3ManualAgentReview:
                 ]
             }
 
-        result = refine_kt3_agent_policy_loop(
+        result = refine_agent_policy_loop(
             manifest,
             feedback_memory=feedback,
             max_iterations=2,
@@ -2671,8 +2671,8 @@ class TestKT3ManualAgentReview:
             rule_generator=mock_rule_generator,
         )
 
-        assert result["schema_version"] == "kt3-agent-policy-refinement-v1"
-        assert result["policy_id"].startswith("kt3-refined-policy-")
+        assert result["schema_version"] == "review-agent-policy-refinement-v1"
+        assert result["policy_id"].startswith("review-refined-policy-")
         assert result["error_memory_summary"]["feedback_count"] == 1
         assert result["error_memory_summary"]["error_type_counts"]["false_negative"] == 1
         assert result["held_out_audit"] is not None
@@ -2690,14 +2690,14 @@ class TestKT3ManualAgentReview:
 
     def test_refine_policy_loop_requires_real_llm_generator_when_enabled(self):
         manifest = {
-            "dataset_id": "mock-kt3-refine",
+            "dataset_id": "mock-review-refine",
             "splits": {
                 "validation": [{"case_id": "v1", "gold_label": "harmful", "harm_score": 0.6}],
                 "held_out": [{"case_id": "h1", "gold_label": "harmful", "harm_score": 0.6}],
             },
         }
         with pytest.raises(ValueError):
-            refine_kt3_agent_policy_loop(
+            refine_agent_policy_loop(
                 manifest,
                 enable_llm_rule_generator=True,
                 rule_generator=None,
@@ -2729,7 +2729,7 @@ class TestKT3ManualAgentReview:
     def test_manual_agent_review_injects_active_policy_into_judge_context_and_sidecar(self):
         captured = {}
         policy = {
-            "policy_id": "kt3-refined-policy-test",
+            "policy_id": "review-refined-policy-test",
             "activation_status": "active_human_approved",
             "policy": {
                 "review_threshold": 0.54,
@@ -2757,7 +2757,7 @@ class TestKT3ManualAgentReview:
             return f"{agent_name} policy-aware report"
 
         result = asyncio.run(
-            run_manual_kt3_agent_review(
+            run_manual_agent_review(
                 report=self._report(),
                 agent_names=["HarmfulnessJudgeAgent"],
                 selected_post_ids=["p1"],
@@ -2771,10 +2771,10 @@ class TestKT3ManualAgentReview:
         judge_report = next(item for item in result["agent_reports"] if item.get("report_role") == "judge_final")
         prompt_payload = json.loads(captured["HarmfulnessJudgeAgent"]["user_prompt"])
         assert prompt_payload["policy_guidance"]["active_policy_present"] is True
-        assert prompt_payload["policy_guidance"]["policy_id"] == "kt3-refined-policy-test"
+        assert prompt_payload["policy_guidance"]["policy_id"] == "review-refined-policy-test"
         assert prompt_payload["policy_guidance"]["accepted_rule_refs"][0]["rule_id"] == "lower-review"
         assert "active_policy" in captured["HarmfulnessJudgeAgent"]["input_bundle"]
-        assert judge_report["structured_sidecar"]["active_policy_id"] == "kt3-refined-policy-test"
+        assert judge_report["structured_sidecar"]["active_policy_id"] == "review-refined-policy-test"
         assert judge_report["structured_sidecar"]["policy_rule_refs"][0]["rule_id"] == "lower-review"
 
     def test_manual_agent_review_runs_single_pass_judge_and_post_judge_countermeasure_by_default(self):
@@ -2782,7 +2782,7 @@ class TestKT3ManualAgentReview:
             return f"{agent_name} output"
 
         result = asyncio.run(
-            run_manual_kt3_agent_review(
+            run_manual_agent_review(
                 report=self._report(),
                 agent_names=["HarmfulnessJudgeAgent", "CountermeasureAgent"],
                 selected_post_ids=["p1"],
@@ -2802,7 +2802,7 @@ class TestKT3ManualAgentReview:
             return f"{agent_name} output"
 
         result = asyncio.run(
-            run_manual_kt3_agent_review(
+            run_manual_agent_review(
                 report=self._report(),
                 agent_names=["HarmfulnessJudgeAgent", "CountermeasureAgent"],
                 selected_post_ids=["p1"],
@@ -2825,7 +2825,7 @@ class TestKT3ManualAgentReview:
             return f"{agent_name} debate/report text"
 
         high_conflict = asyncio.run(
-            run_manual_kt3_agent_review(
+            run_manual_agent_review(
                 report=self._report(),
                 agent_names=["MultimodalConsistencyAgent", "HarmfulnessJudgeAgent"],
                 selected_post_ids=["p1"],
@@ -2838,7 +2838,7 @@ class TestKT3ManualAgentReview:
         )
 
         assert high_conflict["summary"]["full_debate_triggered"] is True
-        assert high_conflict["full_debate"]["schema_version"] == "kt3-full-debate-v1"
+        assert high_conflict["full_debate"]["schema_version"] == "review-full-debate-v1"
         stages = [turn["stage"] for turn in high_conflict["full_debate"]["turns"]]
         assert stages[:2] == ["opening", "rebuttal"]
         assert "judge_synthesis" in stages
@@ -2853,7 +2853,7 @@ class TestKT3ManualAgentReview:
             post["stance"] = {"label": "support", "abstain": False}
 
         low_conflict = asyncio.run(
-            run_manual_kt3_agent_review(
+            run_manual_agent_review(
                 report=low_report,
                 agent_names=["MultimodalConsistencyAgent", "HarmfulnessJudgeAgent"],
                 selected_post_ids=["p1"],
@@ -2873,7 +2873,7 @@ class TestKT3ManualAgentReview:
             return f"{agent_name} output"
 
         result = asyncio.run(
-            run_manual_kt3_agent_review(
+            run_manual_agent_review(
                 report=self._report(),
                 agent_names=["PostHarmAgent", "ClaimEvidenceAgent"],
                 selected_post_ids=["p1"],
@@ -2902,7 +2902,7 @@ class TestKT3ManualAgentReview:
             return f"{agent_name} output"
 
         result = asyncio.run(
-            run_manual_kt3_agent_review(
+            run_manual_agent_review(
                 report=self._report(),
                 agent_names=["PostHarmAgent"],
                 selected_post_ids=["p1"],
@@ -2944,7 +2944,7 @@ class TestKT3ManualAgentReview:
         db = FakeSession(row)
 
         feedback_result = asyncio.run(
-            risk_service.record_kt3_agent_feedback(
+            risk_service.record_review_agent_feedback(
                 report_id="manual-agent-report",
                 feedback={
                     "review_id": "review-1",
@@ -2977,7 +2977,7 @@ class TestKT3ManualAgentReview:
             },
         }
         refined = asyncio.run(
-            risk_service.refine_kt3_policy(
+            risk_service.refine_review_policy(
                 dataset_manifest=manifest,
                 feedback_report_ids=["manual-agent-report"],
                 max_iterations=1,
@@ -2987,13 +2987,13 @@ class TestKT3ManualAgentReview:
 
         assert refined["error_memory_summary"]["feedback_count"] == 1
         assert refined["activation_status"] == "candidate_pending_human_approval"
-        activated = risk_service.activate_kt3_policy(refined["policy_id"], user_id=42)
+        activated = risk_service.activate_review_policy(refined["policy_id"], user_id=42)
         assert activated["activation_status"] == "active_human_approved"
-        assert risk_service.get_kt3_policy(refined["policy_id"])["activation_status"] == "active_human_approved"
+        assert risk_service.get_review_policy(refined["policy_id"])["activation_status"] == "active_human_approved"
 
 
-class TestKT3GraphExport:
-    def test_export_kt3_heterogeneous_graph(self, tmp_path):
+class TestReviewGraphExport:
+    def test_export_review_heterogeneous_graph(self, tmp_path):
         post_semantics = assess_post_semantics(
             _mock_posts_for_semantics(),
             _mock_prop_data(),
@@ -3008,9 +3008,9 @@ class TestKT3GraphExport:
             platform="mock_weibo",
         )
 
-        graph = export_kt3_heterogeneous_graph(
+        graph = export_review_heterogeneous_graph(
             post_semantics=post_semantics,
-            kt3_harmfulness=layered,
+            review_harmfulness=layered,
             coordination=_mock_coord_data(),
             propagation=_mock_prop_data(),
         )
@@ -3045,7 +3045,7 @@ class TestKT3GraphExport:
             and edge["attrs"].get("object_id") == "https://cdn.example.com/image1.jpg"
             for edge in graph["edges"]
         )
-        manifest = write_kt3_graph_artifact(graph, tmp_path / "kt3-graph.json")
+        manifest = write_review_graph_artifact(graph, tmp_path / "review-graph.json")
         assert manifest["artifact_exported"] is True
         assert manifest["consumer_readable"] is True
         assert manifest["export_verified"] is True
@@ -3053,18 +3053,18 @@ class TestKT3GraphExport:
         assert manifest["node_count"] == graph["summary"]["node_count"]
         assert manifest["edge_count"] == graph["summary"]["edge_count"]
 
-        artifact = read_kt3_graph_artifact(manifest["artifact_path"])
+        artifact = read_review_graph_artifact(manifest["artifact_path"])
         assert artifact["schema_version"] == manifest["schema_version"]
         assert artifact["capability_boundary"]["trained_graph_model"] is False
         assert artifact["graph"]["summary"] == graph["summary"]
 
-    def test_read_kt3_graph_artifact_rejects_invalid_consumer_contract(self, tmp_path):
-        invalid_artifact = tmp_path / "invalid-kt3-graph.json"
+    def test_read_review_graph_artifact_rejects_invalid_consumer_contract(self, tmp_path):
+        invalid_artifact = tmp_path / "invalid-review-graph.json"
         invalid_artifact.write_text(
             """
             {
-              "schema_version": "kt3-graph-export-v1",
-              "artifact_type": "kt3_heterogeneous_graph",
+              "schema_version": "review-graph-export-v1",
+              "artifact_type": "review_heterogeneous_graph",
               "graph": {
                 "schema": {"node_types": ["account"], "edge_types": ["dangling"]},
                 "summary": {"node_count": 1, "edge_count": 1},
@@ -3077,11 +3077,11 @@ class TestKT3GraphExport:
         )
 
         with pytest.raises(ValueError, match="dangling edge"):
-            read_kt3_graph_artifact(invalid_artifact)
+            read_review_graph_artifact(invalid_artifact)
 
 
-class TestRiskServiceKT3Integration:
-    def test_assess_risk_includes_kt3_harmfulness(self, monkeypatch):
+class TestRiskServiceReviewIntegration:
+    def test_assess_risk_includes_review_harmfulness(self, monkeypatch):
         async def mock_coordination_detection(**_kwargs):
             return _mock_coord_data()
 
@@ -3121,37 +3121,37 @@ class TestRiskServiceKT3Integration:
 
         assert report["event_id"] == "test_event"
         assert report["post_semantics"]["analysis_scope"]["normalized_posts"] == 2
-        assert report["kt3_harmfulness"]["post_level"]["analysis_scope"]["normalized_posts"] == 2
-        assert report["kt3_harmfulness"]["user_level"]["summary"]["account_count"] >= 2
-        assert report["kt3_harmfulness"]["user_mil"]["capability_boundary"]["trained_mil_model"] is False
-        assert report["kt3_harmfulness"]["user_mil"]["analysis_scope"]["instances_evaluated"] == 2
-        assert report["kt3_harmfulness"]["community_level"]["summary"]["community_count"] >= 1
-        assert report["kt3_harmfulness"]["review_queue"]["capability_boundary"]["live_llm_or_rag"] is False
-        assert report["kt3_harmfulness"]["review_queue"]["summary"]["agent_tasks"] >= 1
-        assert report["kt3_harmfulness"]["review_execution"]["capability_boundary"]["live_llm_or_external_rag"] is False
-        assert report["kt3_harmfulness"]["review_execution"]["summary"]["review_items_executed"] >= 1
-        suggestions = report["kt3_harmfulness"]["agent_review_suggestions"]
+        assert report["review_harmfulness"]["post_level"]["analysis_scope"]["normalized_posts"] == 2
+        assert report["review_harmfulness"]["user_level"]["summary"]["account_count"] >= 2
+        assert report["review_harmfulness"]["user_mil"]["capability_boundary"]["trained_mil_model"] is False
+        assert report["review_harmfulness"]["user_mil"]["analysis_scope"]["instances_evaluated"] == 2
+        assert report["review_harmfulness"]["community_level"]["summary"]["community_count"] >= 1
+        assert report["review_harmfulness"]["review_queue"]["capability_boundary"]["live_llm_or_rag"] is False
+        assert report["review_harmfulness"]["review_queue"]["summary"]["agent_tasks"] >= 1
+        assert report["review_harmfulness"]["review_execution"]["capability_boundary"]["live_llm_or_external_rag"] is False
+        assert report["review_harmfulness"]["review_execution"]["summary"]["review_items_executed"] >= 1
+        suggestions = report["review_harmfulness"]["agent_review_suggestions"]
         assert suggestions["manual_trigger_required"] is True
         assert suggestions["capability_boundary"]["llm_called"] is False
         assert suggestions["suggested_agents"]
-        assert report["kt3_harmfulness"]["multi_agent_review"]["capability_boundary"]["status"] == "disabled_by_default"
-        assert report["kt3_harmfulness"]["multi_agent_review"]["summary"]["agents_executed"] == 0
-        assert report["kt3_harmfulness"]["multi_agent_review"]["agent_results"] == []
-        assert report["kt3_harmfulness"]["graph_export"]["capability_boundary"]["trained_graph_model"] is False
-        assert report["kt3_harmfulness"]["graph_export"]["summary"]["node_types"]["post"] == 2
-        assert report["kt3_harmfulness"]["gate_suite"]["capability_boundary"]["evaluation_harness_only"] is True
-        assert report["kt3_harmfulness"]["gate_suite"]["capability_boundary"]["trained_post_model"] is False
-        assert report["kt3_harmfulness"]["gate_suite"]["capability_boundary"]["trained_user_encoder"] is False
-        assert report["kt3_harmfulness"]["gate_suite"]["capability_boundary"]["trained_graph_model"] is False
-        assert report["kt3_harmfulness"]["gate_suite"]["summary"]["executed_gates"] == 0
-        assert report["kt3_harmfulness"]["gate_suite"]["summary"]["skipped_gates"] == 3
-        assert set(report["kt3_harmfulness"]["gate_suite"]["skipped_gates"]) == {
+        assert report["review_harmfulness"]["multi_agent_review"]["capability_boundary"]["status"] == "disabled_by_default"
+        assert report["review_harmfulness"]["multi_agent_review"]["summary"]["agents_executed"] == 0
+        assert report["review_harmfulness"]["multi_agent_review"]["agent_results"] == []
+        assert report["review_harmfulness"]["graph_export"]["capability_boundary"]["trained_graph_model"] is False
+        assert report["review_harmfulness"]["graph_export"]["summary"]["node_types"]["post"] == 2
+        assert report["review_harmfulness"]["gate_suite"]["capability_boundary"]["evaluation_harness_only"] is True
+        assert report["review_harmfulness"]["gate_suite"]["capability_boundary"]["trained_post_model"] is False
+        assert report["review_harmfulness"]["gate_suite"]["capability_boundary"]["trained_user_encoder"] is False
+        assert report["review_harmfulness"]["gate_suite"]["capability_boundary"]["trained_graph_model"] is False
+        assert report["review_harmfulness"]["gate_suite"]["summary"]["executed_gates"] == 0
+        assert report["review_harmfulness"]["gate_suite"]["summary"]["skipped_gates"] == 3
+        assert set(report["review_harmfulness"]["gate_suite"]["skipped_gates"]) == {
             "community_gate",
             "post_gate",
             "user_gate",
         }
 
-    def test_assess_risk_executes_kt3_gate_suite_when_gold_dataset_provided(self, monkeypatch):
+    def test_assess_risk_executes_gate_suite_when_gold_dataset_provided(self, monkeypatch):
         async def mock_coordination_detection(**_kwargs):
             return _mock_coord_data()
 
@@ -3183,7 +3183,7 @@ class TestRiskServiceKT3Integration:
 
         gate_dataset = {
             "metadata": {
-                "dataset_id": "service-kt3-smoke",
+                "dataset_id": "service-review-smoke",
                 "version": "v1",
                 "source": "risk_service_fixture",
                 "label_policy": "matches current deterministic scaffold outputs",
@@ -3269,13 +3269,13 @@ class TestRiskServiceKT3Integration:
                 platform="mock_weibo",
                 event_id="test_event",
                 db=None,
-                kt3_gate_dataset=gate_dataset,
+                gate_dataset=gate_dataset,
             )
         )
 
-        suite = report["kt3_harmfulness"]["gate_suite"]
+        suite = report["review_harmfulness"]["gate_suite"]
         assert suite["dataset_contract"]["provided"] is True
-        assert suite["dataset_contract"]["metadata"]["dataset_id"] == "service-kt3-smoke"
+        assert suite["dataset_contract"]["metadata"]["dataset_id"] == "service-review-smoke"
         assert suite["dataset_contract"]["counts"] == {
             "post_cases": 1,
             "user_gold": 2,
@@ -3293,17 +3293,17 @@ class TestRiskServiceKT3Integration:
         assert suite["gates"]["community_gate"]["summary"]["evaluated_communities"] == 1
 
 
-class TestRiskAPIKT3Integration:
-    def test_kt3_gate_dataset_contract_api_returns_machine_readable_spec(self):
+class TestRiskAPIReviewIntegration:
+    def test_gate_dataset_contract_api_returns_machine_readable_spec(self):
         response = asyncio.run(
-            risk_api.get_kt3_gate_dataset_contract(
+            risk_api.get_gate_dataset_contract(
                 _current_user=type("User", (), {"id": 42})(),
             )
         )
 
         contract = response["data"]
         assert response["code"] == 0
-        assert contract["contract_version"] == "kt3-gate-dataset-v1"
+        assert contract["contract_version"] == "review-gate-dataset-v1"
         assert contract["usage_policy"]["uses_gold_for_training"] is False
         assert contract["usage_policy"]["runtime_gold_generation"] is False
         assert contract["usage_policy"]["default_persistence"] is False
@@ -3311,11 +3311,11 @@ class TestRiskAPIKT3Integration:
         assert "metadata" in contract["top_level_fields"]
         assert set(contract["layer_contracts"]) == {"community_gate", "post_gate", "user_gate"}
 
-    def test_kt3_gate_dataset_validate_api_does_not_run_risk_or_persist(self):
+    def test_gate_dataset_validate_api_does_not_run_risk_or_persist(self):
         response = asyncio.run(
-            risk_api.validate_kt3_gate_dataset(
-                request=risk_api.KT3GateDatasetValidationRequest(
-                    kt3_gate_dataset={
+            risk_api.validate_gate_dataset(
+                request=risk_api.ReviewGateDatasetValidationRequest(
+                    gate_dataset={
                         "metadata": {
                             "dataset_id": "api-contract-validation",
                             "version": "v1",
@@ -3333,7 +3333,7 @@ class TestRiskAPIKT3Integration:
 
         data = response["data"]
         assert response["code"] == 0
-        assert data["contract_version"] == "kt3-gate-dataset-v1"
+        assert data["contract_version"] == "review-gate-dataset-v1"
         assert data["valid"] is True
         assert data["layer_coverage"] == {
             "post_gate": False,
@@ -3351,18 +3351,18 @@ class TestRiskAPIKT3Integration:
         assert data["usage_policy"]["uses_gold_for_training"] is False
         assert data["usage_policy"]["default_persistence"] is False
 
-    def test_assess_risk_api_returns_kt3_harmfulness(self, monkeypatch):
+    def test_assess_risk_api_returns_review_harmfulness(self, monkeypatch):
         calls = {}
         expected_report = {
             "report_id": "r1",
             "event_id": "event-api",
             "platform": "mock_weibo",
             "post_semantics": {"analysis_scope": {"normalized_posts": 2}},
-            "kt3_harmfulness": {
+            "review_harmfulness": {
                 "post_level": {"analysis_scope": {"normalized_posts": 2}},
                 "user_level": {"summary": {"account_count": 2}},
                 "community_level": {"summary": {"community_count": 1}},
-                "global_summary": {"kt3_harm_risk_level": "medium"},
+                "global_summary": {"review_harm_risk_level": "medium"},
                 "review_queue": {
                     "summary": {"review_items": 1, "agent_tasks": 1},
                     "capability_boundary": {"live_llm_or_rag": False},
@@ -3406,12 +3406,12 @@ class TestRiskAPIKT3Integration:
         )
 
         assert response["code"] == 0
-        assert response["data"]["kt3_harmfulness"]["global_summary"]["kt3_harm_risk_level"] == "medium"
-        assert response["data"]["kt3_harmfulness"]["review_queue"]["summary"]["review_items"] == 1
-        assert response["data"]["kt3_harmfulness"]["review_execution"]["summary"]["review_items_executed"] == 1
-        assert response["data"]["kt3_harmfulness"]["graph_export"]["summary"]["node_count"] == 4
-        assert response["data"]["kt3_harmfulness"]["gate_suite"]["summary"]["skipped_gates"] == 3
-        assert response["data"]["kt3_harmfulness"]["gate_suite"]["capability_boundary"]["evaluation_harness_only"] is True
+        assert response["data"]["review_harmfulness"]["global_summary"]["review_harm_risk_level"] == "medium"
+        assert response["data"]["review_harmfulness"]["review_queue"]["summary"]["review_items"] == 1
+        assert response["data"]["review_harmfulness"]["review_execution"]["summary"]["review_items_executed"] == 1
+        assert response["data"]["review_harmfulness"]["graph_export"]["summary"]["node_count"] == 4
+        assert response["data"]["review_harmfulness"]["gate_suite"]["summary"]["skipped_gates"] == 3
+        assert response["data"]["review_harmfulness"]["gate_suite"]["capability_boundary"]["evaluation_harness_only"] is True
         assert calls["platform"] == "mock_weibo"
         assert calls["event_id"] == "event-api"
         assert calls["time_window"] == 120
@@ -3420,30 +3420,30 @@ class TestRiskAPIKT3Integration:
         assert calls["user_id"] == 42
         assert calls["run_legacy_multi_agent"] is False
 
-    def test_run_kt3_agent_review_api_creates_async_job(self, monkeypatch):
+    def test_run_agent_review_api_creates_async_job(self, monkeypatch):
         calls = {}
 
-        async def mock_create_kt3_agent_review_job(**kwargs):
+        async def mock_create_agent_review_job(**kwargs):
             calls.update(kwargs)
             return {
                 "job_id": 777,
                 "job_type": "agent_review",
                 "status": "pending",
-                "poll_url": "/api/v1/risk/kt3/jobs/777",
+                "poll_url": "/api/v1/risk/review/jobs/777",
             }
 
-        monkeypatch.setattr(risk_api.risk_service, "create_kt3_agent_review_job", mock_create_kt3_agent_review_job)
+        monkeypatch.setattr(risk_api.risk_service, "create_agent_review_job", mock_create_agent_review_job)
 
         response = asyncio.run(
-            risk_api.run_kt3_agent_review(
-                request=risk_api.KT3AgentReviewRunRequest(
+            risk_api.run_agent_review(
+                request=risk_api.ReviewAgentReviewRunRequest(
                     report_id="r1",
                     selected_post_ids=["p1"],
                     selected_tree_ids=["tree-1"],
                     agent_names=["PostHarmAgent"],
                     enable_active_retrieval=True,
                     enable_light_debate=True,
-                    policy_id="kt3-policy-test",
+                    policy_id="review-policy-test",
                     retrieval_top_k=5,
                 ),
                 current_user=type("User", (), {"id": 42})(),
@@ -3454,7 +3454,7 @@ class TestRiskAPIKT3Integration:
         assert response["code"] == 0
         assert response["data"]["job_id"] == 777
         assert response["data"]["status"] == "pending"
-        assert response["data"]["poll_url"] == "/api/v1/risk/kt3/jobs/777"
+        assert response["data"]["poll_url"] == "/api/v1/risk/review/jobs/777"
         assert calls["job_type"] == "agent_review"
         assert calls["payload"]["report_id"] == "r1"
         assert calls["payload"]["agent_names"] == ["PostHarmAgent"]
@@ -3463,13 +3463,13 @@ class TestRiskAPIKT3Integration:
         assert calls["payload"]["enable_active_retrieval"] is True
         assert calls["payload"]["enable_external_retrieval"] is None
         assert calls["payload"]["enable_light_debate"] is True
-        assert calls["payload"]["policy_id"] == "kt3-policy-test"
+        assert calls["payload"]["policy_id"] == "review-policy-test"
         assert calls["payload"]["retrieval_top_k"] == 5
         assert calls["user_id"] == 42
 
-    def test_kt3_policy_optimize_and_get_api(self, monkeypatch):
+    def test_review_policy_optimize_and_get_api(self, monkeypatch):
         stored = {
-            "policy_id": "kt3-policy-api",
+            "policy_id": "review-policy-api",
             "policy": {"review_threshold": 0.52},
             "optimization": {"validation_cases": 1},
         }
@@ -3483,31 +3483,31 @@ class TestRiskAPIKT3Integration:
             calls["policy_id"] = policy_id
             return stored
 
-        monkeypatch.setattr(risk_api.risk_service, "optimize_kt3_policy", mock_optimize)
-        monkeypatch.setattr(risk_api.risk_service, "get_kt3_policy", mock_get)
+        monkeypatch.setattr(risk_api.risk_service, "optimize_review_policy", mock_optimize)
+        monkeypatch.setattr(risk_api.risk_service, "get_review_policy", mock_get)
 
         response = asyncio.run(
-            risk_api.optimize_kt3_policy(
-                request=risk_api.KT3PolicyOptimizeRequest(
+            risk_api.optimize_review_policy(
+                request=risk_api.ReviewPolicyOptimizeRequest(
                     dataset_manifest={"splits": {"validation": [{"case_id": "v1"}]}}
                 ),
                 _current_user=type("User", (), {"id": 42})(),
             )
         )
         detail = asyncio.run(
-            risk_api.get_kt3_policy(
-                policy_id="kt3-policy-api",
+            risk_api.get_review_policy(
+                policy_id="review-policy-api",
                 _current_user=type("User", (), {"id": 42})(),
             )
         )
 
         assert response["code"] == 0
-        assert response["data"]["policy_id"] == "kt3-policy-api"
+        assert response["data"]["policy_id"] == "review-policy-api"
         assert detail["data"]["optimization"]["validation_cases"] == 1
         assert calls["dataset_manifest"]["splits"]["validation"][0]["case_id"] == "v1"
-        assert calls["policy_id"] == "kt3-policy-api"
+        assert calls["policy_id"] == "review-policy-api"
 
-    def test_assess_kt3_gate_suite_api_accepts_dataset_body_without_persistence(self, monkeypatch):
+    def test_assess_gate_suite_api_accepts_dataset_body_without_persistence(self, monkeypatch):
         calls = {}
         gate_dataset = {
             "metadata": {
@@ -3528,8 +3528,8 @@ class TestRiskAPIKT3Integration:
             "assessed_at": "2026-06-28T00:00:00+00:00",
             "scores": {"risk_level": "medium"},
             "post_semantics": {"analysis_scope": {"normalized_posts": 2}},
-            "kt3_harmfulness": {
-                "global_summary": {"kt3_harm_risk_level": "medium"},
+            "review_harmfulness": {
+                "global_summary": {"review_harm_risk_level": "medium"},
                 "gate_suite": {
                     "dataset_contract": {
                         "provided": True,
@@ -3558,14 +3558,14 @@ class TestRiskAPIKT3Integration:
         monkeypatch.setattr(risk_api.risk_service, "assess_risk", mock_assess_risk)
 
         response = asyncio.run(
-            risk_api.assess_kt3_gate_suite(
-                request=risk_api.KT3GateSuiteRequest(
+            risk_api.assess_gate_suite(
+                request=risk_api.ReviewGateSuiteRequest(
                     platform="mock_weibo",
                     event_id="event-api",
                     time_window=120,
                     min_participation=3,
                     edge_weight=0.7,
-                    kt3_gate_dataset=gate_dataset,
+                    gate_dataset=gate_dataset,
                 ),
                 current_user=type("User", (), {"id": 42})(),
             )
@@ -3578,7 +3578,7 @@ class TestRiskAPIKT3Integration:
         assert response["data"]["gate_suite"]["dataset_contract"]["provided"] is True
         assert response["data"]["gate_suite"]["dataset_contract"]["metadata"]["dataset_id"] == "api-gate-suite-smoke"
         assert response["data"]["gate_suite"]["summary"]["executed_gates"] == 1
-        assert response["data"]["kt3_harmfulness"]["gate_suite"] == response["data"]["gate_suite"]
+        assert response["data"]["review_harmfulness"]["gate_suite"] == response["data"]["gate_suite"]
         assert calls["platform"] == "mock_weibo"
         assert calls["event_id"] == "event-api"
         assert calls["time_window"] == 120
@@ -3586,4 +3586,4 @@ class TestRiskAPIKT3Integration:
         assert calls["edge_weight"] == 0.7
         assert calls["user_id"] == 42
         assert calls["db"] is None
-        assert calls["kt3_gate_dataset"] == gate_dataset
+        assert calls["gate_dataset"] == gate_dataset

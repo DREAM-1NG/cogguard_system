@@ -14,25 +14,25 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from app.config import settings
 from app.db.mysql import Base
 from app.models.coordination_registry import CoordinationDataset, CoordinationRun  # noqa: F401
-from app.models.kt3_system import KT3AgentDebateTrace  # noqa: F401
-from app.models.kt3_system import KT3AgentFeedback  # noqa: F401
-from app.models.kt3_system import KT3AgentReport  # noqa: F401
-from app.models.kt3_system import KT3AgentReportAction  # noqa: F401
-from app.models.kt3_system import KT3AgentReportEvidenceRef  # noqa: F401
-from app.models.kt3_system import KT3AgentReportQuery  # noqa: F401
-from app.models.kt3_system import KT3AgentReportUncertainty  # noqa: F401
-from app.models.kt3_system import KT3AgentRun  # noqa: F401
-from app.models.kt3_system import KT3GateCase  # noqa: F401
-from app.models.kt3_system import KT3GateDataset  # noqa: F401
-from app.models.kt3_system import KT3GateLabel  # noqa: F401
-from app.models.kt3_system import KT3Job  # noqa: F401
-from app.models.kt3_system import KT3Policy  # noqa: F401
-from app.models.kt3_system import KT3PolicyAgentWeight  # noqa: F401
-from app.models.kt3_system import KT3PolicyMetric  # noqa: F401
-from app.models.kt3_system import KT3PolicyRefinementRound  # noqa: F401
-from app.models.kt3_system import KT3PolicyRule  # noqa: F401
-from app.models.kt3_system import KT3PolicyThreshold  # noqa: F401
-from app.models.kt3_system import KT3ProviderConfig  # noqa: F401
+from app.models.review_system import ReviewAgentDebateTrace  # noqa: F401
+from app.models.review_system import ReviewAgentFeedback  # noqa: F401
+from app.models.review_system import ReviewAgentReport  # noqa: F401
+from app.models.review_system import ReviewAgentReportAction  # noqa: F401
+from app.models.review_system import ReviewAgentReportEvidenceRef  # noqa: F401
+from app.models.review_system import ReviewAgentReportQuery  # noqa: F401
+from app.models.review_system import ReviewAgentReportUncertainty  # noqa: F401
+from app.models.review_system import ReviewAgentRun  # noqa: F401
+from app.models.review_system import ReviewGateCase  # noqa: F401
+from app.models.review_system import ReviewGateDataset  # noqa: F401
+from app.models.review_system import ReviewGateLabel  # noqa: F401
+from app.models.review_system import ReviewJob  # noqa: F401
+from app.models.review_system import ReviewPolicy  # noqa: F401
+from app.models.review_system import ReviewPolicyAgentWeight  # noqa: F401
+from app.models.review_system import ReviewPolicyMetric  # noqa: F401
+from app.models.review_system import ReviewPolicyRefinementRound  # noqa: F401
+from app.models.review_system import ReviewPolicyRule  # noqa: F401
+from app.models.review_system import ReviewPolicyThreshold  # noqa: F401
+from app.models.review_system import ReviewProviderConfig  # noqa: F401
 from app.models.risk_assessment import RiskAssessment  # noqa: F401
 from app.models.user import User  # noqa: F401
 from app.models.task import CrawlJob  # noqa: F401

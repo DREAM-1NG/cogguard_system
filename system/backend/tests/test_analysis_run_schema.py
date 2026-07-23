@@ -3,20 +3,20 @@ from pydantic import ValidationError
 from app.schemas.analysis import AnalysisRunCreateRequest
 
 
-def test_analysis_run_create_request_defaults_to_kt1_only():
+def test_analysis_run_create_request_defaults_to_coordination_discover_only():
     request = AnalysisRunCreateRequest(event_id="event-1", snapshot_id="snapshot-1")
 
-    assert request.requested_stages == ["kt1"]
+    assert request.requested_stages == ["coordination_discover"]
 
 
 def test_analysis_run_create_request_normalizes_legacy_stage_aliases():
     request = AnalysisRunCreateRequest(
         event_id="event-1",
         snapshot_id="snapshot-1",
-        requested_stages=["coordination", "propagation_engine", "kt3_student"],
+        requested_stages=["coordination", "propagation_engine", "review_student"],
     )
 
-    assert request.requested_stages == ["kt1", "kt2", "student"]
+    assert request.requested_stages == ["coordination_discover", "propagation_analysis", "student"]
 
 
 def test_analysis_run_create_request_rejects_unknown_stage():
@@ -24,7 +24,7 @@ def test_analysis_run_create_request_rejects_unknown_stage():
         AnalysisRunCreateRequest(
             event_id="event-1",
             snapshot_id="snapshot-1",
-            requested_stages=["kt1", "bogus"],
+            requested_stages=["coordination_discover", "bogus"],
         )
     except ValidationError as exc:
         assert "Unknown analysis stage" in str(exc)

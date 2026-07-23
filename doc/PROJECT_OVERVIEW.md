@@ -1,335 +1,249 @@
-# CogGuard 项目完整设计文档：功能设计与技术选型
+﻿# CogGuard 椤圭洰瀹屾暣璁捐鏂囨。锛氬姛鑳借璁′笌鎶€鏈€夊瀷
 
-> 版本：2026-06-03 ｜ 基线：`release-0.2` ｜ 产品代码根：`system/`
-> 用途：结题答辩 / 项目交付用的单文件总览，覆盖系统定位、闭环、三大关键技术的功能设计与技术选型、真实落地状态与差距。
-> 维护规则：本文区分**已落地（代码可运行）**、**设计稿（仅文档/方案）**、**缺口（无设计无代码）**三态，不把计划当完成。
-
+> 鐗堟湰锛?026-06-03 锝?鍩虹嚎锛歚release-0.2` 锝?浜у搧浠ｇ爜鏍癸細`system/`
+> 鐢ㄩ€旓細缁撻绛旇京 / 椤圭洰浜や粯鐢ㄧ殑鍗曟枃浠舵€昏锛岃鐩栫郴缁熷畾浣嶃€侀棴鐜€佷笁澶у叧閿妧鏈殑鍔熻兘璁捐涓庢妧鏈€夊瀷銆佺湡瀹炶惤鍦扮姸鎬佷笌宸窛銆?> 缁存姢瑙勫垯锛氭湰鏂囧尯鍒?*宸茶惤鍦帮紙浠ｇ爜鍙繍琛岋級**銆?*璁捐绋匡紙浠呮枃妗?鏂规锛?*銆?*缂哄彛锛堟棤璁捐鏃犱唬鐮侊級**涓夋€侊紝涓嶆妸璁″垝褰撳畬鎴愩€?
 ---
 
-## 0. 一页速览
+## 0. 涓€椤甸€熻
 
-| 维度 | 内容 |
+| 缁村害 | 鍐呭 |
 |------|------|
-| 项目定位 | 面向网络舆论对抗的**跨平台协同操纵分析**证据驱动原型系统 |
-| 核心闭环 | 事件 → 证据 → **协同发现(KT1)** → **传播监控(KT2)** → **报告研判(KT3)** → 处置 |
-| 验证范围 | `mock_weibo`、`weibo`、`news`（跨源，非跨平台身份解析） |
-| 后端 | Python 3.11 / FastAPI / SQLAlchemy(async) / Motor / Celery |
-| 前端 | Vue 3 / TypeScript / Vite 6 / Ant Design Vue 4 / ECharts 6 / Pinia |
-| 存储 | MySQL 8（结构化）/ MongoDB 7（原始数据）/ Redis 7（缓存+队列） |
-| 关键技术 | KT1 跨平台共同行为特征复用融合检测 ｜ KT2 LLM+时序的事件规模预测 ｜ KT3 Phase-Aware Hazard + DISARM 路径预判（多 Agent 编排） |
+| 椤圭洰瀹氫綅 | 闈㈠悜缃戠粶鑸嗚瀵规姉鐨?*璺ㄥ钩鍙板崗鍚屾搷绾靛垎鏋?*璇佹嵁椹卞姩鍘熷瀷绯荤粺 |
+| 鏍稿績闂幆 | 浜嬩欢 鈫?璇佹嵁 鈫?**鍗忓悓鍙戠幇(Coordination Discover)** 鈫?**浼犳挱鐩戞帶(Propagation Analysis)** 鈫?**鎶ュ憡鐮斿垽(Risk Review)** 鈫?澶勭疆 |
+| 楠岃瘉鑼冨洿 | `mock_weibo`銆乣weibo`銆乣news`锛堣法婧愶紝闈炶法骞冲彴韬唤瑙ｆ瀽锛?|
+| 鍚庣 | Python 3.11 / FastAPI / SQLAlchemy(async) / Motor / Celery |
+| 鍓嶇 | Vue 3 / TypeScript / Vite 6 / Ant Design Vue 4 / ECharts 6 / Pinia |
+| 瀛樺偍 | MySQL 8锛堢粨鏋勫寲锛? MongoDB 7锛堝師濮嬫暟鎹級/ Redis 7锛堢紦瀛?闃熷垪锛?|
+| 鍏抽敭鎶€鏈?| Coordination Discover 璺ㄥ钩鍙板叡鍚岃涓虹壒寰佸鐢ㄨ瀺鍚堟娴?锝?Propagation Analysis LLM+鏃跺簭鐨勪簨浠惰妯￠娴?锝?Risk Review Phase-Aware Hazard + DISARM 璺緞棰勫垽锛堝 Agent 缂栨帓锛?|
 
-**一句话现状**：数据采集、协同检测 MVP、传播趋势预测核心、报告研判白盒引擎均已落地可运行；三大关键技术各自的"创新增强层"（KT1 的 PSL、KT2 的真实 LLM 接入与路径预测、KT3 的 Agent/RAG 层）多为设计稿，且存在 LLM 客户端依赖缺失这一共性阻塞。
-
+**涓€鍙ヨ瘽鐜扮姸**锛氭暟鎹噰闆嗐€佸崗鍚屾娴?MVP銆佷紶鎾秼鍔块娴嬫牳蹇冦€佹姤鍛婄爺鍒ょ櫧鐩掑紩鎿庡潎宸茶惤鍦板彲杩愯锛涗笁澶у叧閿妧鏈悇鑷殑"鍒涙柊澧炲己灞?锛圞T1 鐨?PSL銆並T2 鐨勭湡瀹?LLM 鎺ュ叆涓庤矾寰勯娴嬨€並T3 鐨?Agent/RAG 灞傦級澶氫负璁捐绋匡紝涓斿瓨鍦?LLM 瀹㈡埛绔緷璧栫己澶辫繖涓€鍏辨€ч樆濉炪€?
 ---
 
-## 1. 系统定位与主线叙事
-
-CogGuard 围绕"跨平台协同攻击"建立一条**可解释、可复核**的分析链路：
+## 1. 绯荤粺瀹氫綅涓庝富绾垮彊浜?
+CogGuard 鍥寸粫"璺ㄥ钩鍙板崗鍚屾敾鍑?寤虹珛涓€鏉?*鍙В閲娿€佸彲澶嶆牳**鐨勫垎鏋愰摼璺細
 
 ```
-事件 ──→ 证据 ──→ 协同发现 ──→ 传播监控 ──→ 报告研判 ──→ 处置
-  │                                                          │
-  └──────────────────── 处置/回流 ────────────────────────────┘
-```
+浜嬩欢 鈹€鈹€鈫?璇佹嵁 鈹€鈹€鈫?鍗忓悓鍙戠幇 鈹€鈹€鈫?浼犳挱鐩戞帶 鈹€鈹€鈫?鎶ュ憡鐮斿垽 鈹€鈹€鈫?澶勭疆
+  鈹?                                                         鈹?  鈹斺攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€ 澶勭疆/鍥炴祦 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹?```
 
-- **功能一 · 协同发现（KT1，核心关键技术）**：用平台无关的共同行为特征发现协同群体
-- **功能二 · 传播监控（KT2）**：预测事件规模与传播态势
-- **功能三 · 报告研判（KT3）**：消费上游证据，做阶段预警 + 攻击路径预判 + 反制 + 结构化报告
-
-设计原则：规则/证据优先于黑盒 LLM 裁决；LLM/Agent 作增强与呈现，不作第一阶段最终裁决；内容分析单向下沉，绝不回流作为协同判据。
-
+- **鍔熻兘涓€ 路 鍗忓悓鍙戠幇锛圞T1锛屾牳蹇冨叧閿妧鏈級**锛氱敤骞冲彴鏃犲叧鐨勫叡鍚岃涓虹壒寰佸彂鐜板崗鍚岀兢浣?- **鍔熻兘浜?路 浼犳挱鐩戞帶锛圞T2锛?*锛氶娴嬩簨浠惰妯′笌浼犳挱鎬佸娍
+- **鍔熻兘涓?路 鎶ュ憡鐮斿垽锛圞T3锛?*锛氭秷璐逛笂娓歌瘉鎹紝鍋氶樁娈甸璀?+ 鏀诲嚮璺緞棰勫垽 + 鍙嶅埗 + 缁撴瀯鍖栨姤鍛?
+璁捐鍘熷垯锛氳鍒?璇佹嵁浼樺厛浜庨粦鐩?LLM 瑁佸喅锛汱LM/Agent 浣滃寮轰笌鍛堢幇锛屼笉浣滅涓€闃舵鏈€缁堣鍐筹紱鍐呭鍒嗘瀽鍗曞悜涓嬫矇锛岀粷涓嶅洖娴佷綔涓哄崗鍚屽垽鎹€?
 ---
 
-## 2. 总体架构与技术选型
+## 2. 鎬讳綋鏋舵瀯涓庢妧鏈€夊瀷
 
-### 2.1 分层架构
+### 2.1 鍒嗗眰鏋舵瀯
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│ 前端 (Vue 3 + TS + Ant Design Vue 4 + ECharts 6 + Pinia) │
-│  登录 / 监测看板 / 数据采集 / 协同检测 / 传播监控 /        │
-│  账户监测 / 报告研判                                       │
-├─────────────────────────────────────────────────────────┤
-│ 后端 API (FastAPI, /api/v1) — 7 路由组                    │
-│  auth / dashboard / crawl / coordination /                │
-│  accounts / propagation / risk                            │
-├─────────────────────────────────────────────────────────┤
-│ 服务层 services/ — 业务编排                                │
-├─────────────────────────────────────────────────────────┤
-│ 核心算法 core/ — coordination / propagation / risk /      │
-│  account_profiler / crawler                               │
-├─────────────────────────────────────────────────────────┤
-│ 数据层  MySQL(用户/任务/研判) MongoDB(帖子/评论/原始)      │
-│         Redis(缓存+Celery broker)  NetworkX(内存图)        │
-├─────────────────────────────────────────────────────────┤
-│ 采集层  MediaCrawler / NewsCrawler / MockCrawler          │
-└─────────────────────────────────────────────────────────┘
-```
+鈹屸攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹?鈹?鍓嶇 (Vue 3 + TS + Ant Design Vue 4 + ECharts 6 + Pinia) 鈹?鈹? 鐧诲綍 / 鐩戞祴鐪嬫澘 / 鏁版嵁閲囬泦 / 鍗忓悓妫€娴?/ 浼犳挱鐩戞帶 /        鈹?鈹? 璐︽埛鐩戞祴 / 鎶ュ憡鐮斿垽                                       鈹?鈹溾攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹?鈹?鍚庣 API (FastAPI, /api/v1) 鈥?7 璺敱缁?                   鈹?鈹? auth / dashboard / crawl / coordination /                鈹?鈹? accounts / propagation / risk                            鈹?鈹溾攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹?鈹?鏈嶅姟灞?services/ 鈥?涓氬姟缂栨帓                                鈹?鈹溾攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹?鈹?鏍稿績绠楁硶 core/ 鈥?coordination / propagation / risk /      鈹?鈹? account_profiler / crawler                               鈹?鈹溾攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹?鈹?鏁版嵁灞? MySQL(鐢ㄦ埛/浠诲姟/鐮斿垽) MongoDB(甯栧瓙/璇勮/鍘熷)      鈹?鈹?        Redis(缂撳瓨+Celery broker)  NetworkX(鍐呭瓨鍥?        鈹?鈹溾攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹?鈹?閲囬泦灞? MediaCrawler / NewsCrawler / MockCrawler          鈹?鈹斺攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹?```
 
-### 2.2 技术选型与理由
-
-| 层 | 选型 | 理由 |
+### 2.2 鎶€鏈€夊瀷涓庣悊鐢?
+| 灞?| 閫夊瀷 | 鐞嗙敱 |
 |----|------|------|
-| 后端框架 | FastAPI (Python 3.11+) | 异步高性能，与参考项目栈一致，自带 OpenAPI |
-| 前端框架 | Vue 3 + TS + Vite 6 | 生态成熟，与 NewsCrawler 前端一致 |
-| UI 组件 | Ant Design Vue 4 | 中后台数据分析场景组件丰富 |
-| 可视化 | ECharts 6 | 协同网络力导向、传播时间线、地图、趋势图 |
-| 结构化存储 | MySQL 8 | 用户、任务、研判报告等结构化数据 |
-| 非结构化存储 | MongoDB 7 (Motor 异步) | 帖子、评论、爬取原始 JSONL |
-| 缓存/队列 | Redis 7 | 缓存、会话、Celery broker |
-| 图分析 | NetworkX（内存） | 当前阶段轻量路线，预留 Neo4j |
-| 异步任务 | Celery + Redis | 采集、分析等耗时操作异步执行 |
-| 鉴权 | JWT (python-jose) + bcrypt (passlib) | 标准方案，角色 admin/analyst/viewer |
-| 包管理 | uv（后端）/ npm（前端） | 高效依赖管理 |
+| 鍚庣妗嗘灦 | FastAPI (Python 3.11+) | 寮傛楂樻€ц兘锛屼笌鍙傝€冮」鐩爤涓€鑷达紝鑷甫 OpenAPI |
+| 鍓嶇妗嗘灦 | Vue 3 + TS + Vite 6 | 鐢熸€佹垚鐔燂紝涓?NewsCrawler 鍓嶇涓€鑷?|
+| UI 缁勪欢 | Ant Design Vue 4 | 涓悗鍙版暟鎹垎鏋愬満鏅粍浠朵赴瀵?|
+| 鍙鍖?| ECharts 6 | 鍗忓悓缃戠粶鍔涘鍚戙€佷紶鎾椂闂寸嚎銆佸湴鍥俱€佽秼鍔垮浘 |
+| 缁撴瀯鍖栧瓨鍌?| MySQL 8 | 鐢ㄦ埛銆佷换鍔°€佺爺鍒ゆ姤鍛婄瓑缁撴瀯鍖栨暟鎹?|
+| 闈炵粨鏋勫寲瀛樺偍 | MongoDB 7 (Motor 寮傛) | 甯栧瓙銆佽瘎璁恒€佺埇鍙栧師濮?JSONL |
+| 缂撳瓨/闃熷垪 | Redis 7 | 缂撳瓨銆佷細璇濄€丆elery broker |
+| 鍥惧垎鏋?| NetworkX锛堝唴瀛橈級 | 褰撳墠闃舵杞婚噺璺嚎锛岄鐣?Neo4j |
+| 寮傛浠诲姟 | Celery + Redis | 閲囬泦銆佸垎鏋愮瓑鑰楁椂鎿嶄綔寮傛鎵ц |
+| 閴存潈 | JWT (python-jose) + bcrypt (passlib) | 鏍囧噯鏂规锛岃鑹?admin/analyst/viewer |
+| 鍖呯鐞?| uv锛堝悗绔級/ npm锛堝墠绔級 | 楂樻晥渚濊禆绠＄悊 |
 
-### 2.3 关键依赖现状（已核实 `pyproject.toml`）
-
-后端**实际仅含**：fastapi / uvicorn / sqlalchemy / aiomysql / motor / redis / celery / pydantic / python-jose / passlib / alembic / loguru / **httpx** / pandas / networkx / numpy。
-
-> ⚠️ **共性阻塞（影响三大关键技术的增强层）**：
-> - **无任何 LLM 客户端库**（无 openai / dashscope / deepseek SDK）——KT2 真实事件提取、KT3 Agent 全靠未来补依赖 + httpx 直连
-> - **无 scipy / statsmodels** —— KT1 的 PSL（超几何、BH-FDR）无法实现
-> - **无 sentence-transformers / text2vec** —— KT1 语义通道无支撑（但新方向已决定排除内容信号，影响弱化）
-> - **无 igraph / leidenalg** —— 若要 Leiden 社区发现需新增（当前用 NetworkX greedy modularity）
-
+### 2.3 鍏抽敭渚濊禆鐜扮姸锛堝凡鏍稿疄 `pyproject.toml`锛?
+鍚庣**瀹為檯浠呭惈**锛歠astapi / uvicorn / sqlalchemy / aiomysql / motor / redis / celery / pydantic / python-jose / passlib / alembic / loguru / **httpx** / pandas / networkx / numpy銆?
+> 鈿狅笍 **鍏辨€ч樆濉烇紙褰卞搷涓夊ぇ鍏抽敭鎶€鏈殑澧炲己灞傦級**锛?> - **鏃犱换浣?LLM 瀹㈡埛绔簱**锛堟棤 openai / dashscope / deepseek SDK锛夆€斺€擪T2 鐪熷疄浜嬩欢鎻愬彇銆並T3 Agent 鍏ㄩ潬鏈潵琛ヤ緷璧?+ httpx 鐩磋繛
+> - **鏃?scipy / statsmodels** 鈥斺€?Coordination Discover 鐨?PSL锛堣秴鍑犱綍銆丅H-FDR锛夋棤娉曞疄鐜?> - **鏃?sentence-transformers / text2vec** 鈥斺€?Coordination Discover 璇箟閫氶亾鏃犳敮鎾戯紙浣嗘柊鏂瑰悜宸插喅瀹氭帓闄ゅ唴瀹逛俊鍙凤紝褰卞搷寮卞寲锛?> - **鏃?igraph / leidenalg** 鈥斺€?鑻ヨ Leiden 绀惧尯鍙戠幇闇€鏂板锛堝綋鍓嶇敤 NetworkX greedy modularity锛?
 ---
 
-## 3. 数据采集（闭环输入）
+## 3. 鏁版嵁閲囬泦锛堥棴鐜緭鍏ワ級
 
-跨平台数据接入与标准化，是整条闭环的输入。
-
-| 子模块 | 文件 | 状态 | 说明 |
+璺ㄥ钩鍙版暟鎹帴鍏ヤ笌鏍囧噯鍖栵紝鏄暣鏉￠棴鐜殑杈撳叆銆?
+| 瀛愭ā鍧?| 鏂囦欢 | 鐘舵€?| 璇存槑 |
 |--------|------|------|------|
-| 爬虫抽象基类 | `core/crawler/base.py` | ✅ 已落地 | 统一接口 |
-| Mock 爬虫 | `core/crawler/mock.py` | ✅ 已落地 | 生成含协同模式的测试数据 |
-| MediaCrawler 直连 | `core/crawler/social.py` (883行) | ✅ 已落地 | 微博等社交，子进程执行 + JSONL 增量入库 |
-| News 提取 | `core/crawler/news.py` | ✅ 已落地 | HTTP 或本地 ExtractorService |
-| 跨平台标准化 | `core/crawler/normalizer.py` | ✅ 已落地 | media_urls/hashtags/external_links 统一 |
-| 异步采集任务 | `tasks/crawl_tasks.py` | ✅ 已落地 | Celery 执行 |
+| 鐖櫕鎶借薄鍩虹被 | `core/crawler/base.py` | 鉁?宸茶惤鍦?| 缁熶竴鎺ュ彛 |
+| Mock 鐖櫕 | `core/crawler/mock.py` | 鉁?宸茶惤鍦?| 鐢熸垚鍚崗鍚屾ā寮忕殑娴嬭瘯鏁版嵁 |
+| MediaCrawler 鐩磋繛 | `core/crawler/social.py` (883琛? | 鉁?宸茶惤鍦?| 寰崥绛夌ぞ浜わ紝瀛愯繘绋嬫墽琛?+ JSONL 澧為噺鍏ュ簱 |
+| News 鎻愬彇 | `core/crawler/news.py` | 鉁?宸茶惤鍦?| HTTP 鎴栨湰鍦?ExtractorService |
+| 璺ㄥ钩鍙版爣鍑嗗寲 | `core/crawler/normalizer.py` | 鉁?宸茶惤鍦?| media_urls/hashtags/external_links 缁熶竴 |
+| 寮傛閲囬泦浠诲姟 | `tasks/crawl_tasks.py` | 鉁?宸茶惤鍦?| Celery 鎵ц |
 
-API：`GET /crawl/platforms`、`POST /crawl/social`、`GET /crawl/jobs`、`GET /crawl/data`。
+API锛歚GET /crawl/platforms`銆乣POST /crawl/social`銆乣GET /crawl/jobs`銆乣GET /crawl/data`銆?
+---
+
+## 4. 鍔熻兘涓€ 路 鍗忓悓鍙戠幇锛圞T1锛夆€?鏍稿績鍏抽敭鎶€鏈?
+### 4.1 鍔熻兘璁捐
+
+鍦ㄤ簨浠剁獥鍙ｅ唴璇嗗埆"鍏卞悓鎺ㄥ姩鏌愬彊浜?鐨勫崗鍚岃处鍙风兢浣擄紝杈撳嚭鍗忓悓杈?+ 璇佹嵁 + 鍗忓悓缇ょ粍銆?*涓ら樁娈垫鏋?*锛圡annocci 2024 缁艰堪锛夛細
+
+- **Detection锛堝彂鐜?璋佸湪鍗忓悓"锛?* 鈥斺€?Coordination Discover 鏍稿績鍒涙柊鎵€鍦?- **Characterization锛堝埢鐢?鍗忓悓缇や綋鏄粈涔堟牱"锛?* 鈥斺€?鍥涚淮琛ㄥ緛锛欰uthenticity / Orchestration / Time-variance锛堣涓?缁撴瀯鍨嬶紝Coordination Discover锛? Harmfulness锛堝唴瀹瑰瀷锛屽綊 Risk Review锛?
+### 4.2 鍏抽敭鎶€鏈笌鍒涙柊瀹氫綅锛?026-06-02 鏈€鏂版柟鍚戯級
+
+**璺ㄥ钩鍙板崗鍚屽彂鐜帮細鍙敤骞冲彴鏃犲叧鐨?鍏卞悓琛屼负鐗瑰緛"鍋氬鐢ㄨ瀺鍚堟娴嬶紱鍐呭妫€娴嬩笉浣滀负鍗忓悓淇″彿銆?*
+
+- 绔嬭锛氱幇鏈?CIB 鏂囩尞渚濊禆骞冲彴鐗瑰畾淇″彿锛坈otweet/retweet/cofollow/time burst锛夛紝澶氬獟浣撳钩鍙板張鎻愪笓鐢ㄥ唴瀹逛俊鍙凤紙瑙嗛-璇箟 mismatch锛夆€斺€斿唴瀹逛俊鍙峰钩鍙扮壒瀹氥€佹槗琚?AI 鏀瑰啓銆佽縼绉绘垚鏈珮
+- 鍏卞悓琛屼负淇″彿锛氭椂闂村悓姝?鍏辩幇銆佸叡浜璞★紙URL/hashtag/濯掍綋鎸囩汗 id锛夈€佸叡杞彂涓庡洖澶嶇骇鑱斻€佽处鍙疯涓鸿妭寰?- 琛屼负 vs 鍐呭杈圭晫鍒ゆ嵁锛?*鏄惁闇€瑕?鐞嗚В鍐呭璇翠簡浠€涔?**銆傚叡浜悓涓€濯掍綋瀵硅薄锛堟寜 id/鎸囩汗锛? 琛屼负锛涘垎鏋愯棰戝唴瀹?瀛楀箷 mismatch/鏂囨湰绔嬪満/姣掓€?= 鍐呭锛堟帓闄わ級
+- 鏄捐憲鎬х瓫鏌ワ紙PSL锛夛細瀵圭О瓒呭嚑浣?+ Cauchy combination + pair-level BH-FDR锛屾姂鍒剁儹闂ㄨ瘽棰?鑷劧鍏辨尟"璇姤
+
+### 4.3 钀藉湴鐘舵€?
+| 閮ㄥ垎 | 鏂囦欢 | 鐘舵€?|
+|------|------|------|
+| 鍏变韩瀵硅薄+鏃堕棿绐楅厤瀵癸紙CooRTweet 閲嶅啓锛?| `core/coordination_baseline/detector.py` (184琛? | 鉁?宸茶惤鍦?|
+| 鍔犳潈鍥?+ 鐧惧垎浣嶉槇鍊?+ 绀惧尯鍙戠幇 | `core/coordination_baseline/network.py` (373琛? | 鉁?宸茶惤鍦?|
+| 璐︽埛/缇ょ粍缁熻 | `core/coordination_baseline/stats.py` (142琛? | 鉁?宸茶惤鍦?|
+| PSL 鏄捐憲鎬э紙瓒呭嚑浣?Cauchy+BH-FDR锛?| `significance.py` | 鉂?**璁捐绋匡紝0 琛?* |
+| 澶氳涓洪€氶亾鎶藉彇 | `channels.py` | 鉂?**璁捐绋匡紝0 琛?* |
+| 璇箟閫氶亾 | `semantic.py` | 鉂?璁捐绋匡紙涓旀柊鏂瑰悜鍊惧悜鎺掗櫎锛?|
+
+API锛歚POST /coordination/detect`銆?
+### 4.4 绛旇京椋庨櫓锛堥』鐭ワ級
+
+- 鍒涙柊涓诲紶"琛屼负浼樺厛/骞冲彴鏃犲叧"宸茶 Schneider/Rizoiu *Beyond Content*(arXiv 2602.02838)銆丩uceri *CIB on TikTok*(2505.10867) 鍋氬嚭 鈫?**涓嶈兘褰撳師鍒涢鍙?*锛屽敮涓€鍙京鎶?delta 鏄?PSL 缁熻妗嗘灦锛屼絾 0 琛屼唬鐮?- "璺ㄥ钩鍙?浠呴獙璇?mock_weibo/weibo/news锛堣法婧愰潪璺ㄥ钩鍙拌韩浠斤級锛岄』鏀瑰彛寰?- 鎺掗櫎鍐呭淇″彿鍦ㄥ崟骞冲彴涓婃槸 tradeoff锛堝彲鑳界暐鎹熷彫鍥烇級锛屼笉鏄函澧炵泭
 
 ---
 
-## 4. 功能一 · 协同发现（KT1）— 核心关键技术
+## 5. 鍔熻兘浜?路 浼犳挱鐩戞帶锛圞T2锛?
+### 5.1 鍔熻兘璁捐
 
-### 4.1 功能设计
+棰勬祴浜嬩欢瑙勬ā涓庝紶鎾€佸娍锛屽姛鑳藉眰鍊熼壌"鐭ュ井"(Zhiwei) 浼犳挱鍒嗘瀽浜у搧鐨?*鍛堢幇褰㈡€?*锛堝彲瑙嗗寲/鍔熻兘褰㈡€侊紝闈炲垱鏂版潵婧愶級銆?
+> **鑱岃矗杈圭晫锛?026-06-03 鍘樻竻锛?*锛欿T2 **鍙仛浼犳挱鍔ㄥ姏瀛?*锛堣妯?褰㈡€?璺緞棰勬祴锛夛紝**涓嶅仛鍐呭鍒嗘瀽**銆傜珛鍦烘娴嬨€佸嵄瀹虫€ц瘎浼扮瓑鍐呭鐞嗚В浠诲姟**宸插叏閮ㄧЩ浜?Risk Review 鐨?Characterization 灞?*锛孠T2 涓嶅啀鎵胯浇锛屼互娑堥櫎涓?Risk Review 鐨勮亴璐ｉ噸鍙犮€?
+瀛愬姛鑳斤細
 
-在事件窗口内识别"共同推动某叙事"的协同账号群体，输出协同边 + 证据 + 协同群组。**两阶段框架**（Mannocci 2024 综述）：
+- **鍒嗗眰浼犳挱棰勬祴**锛堝叧閿妧鏈級锛氬畯瑙傝妯?+ 涓璺緞褰㈡€?+ 寰涓嬩竴璺筹紝涓夊眰鍏辩敤鍚屼竴浜嬩欢/浣撳埗鍚庨獙
+- 浼犳挱鎬佸娍鍒荤敾锛氬瓙鍥俱€佹椂闂寸嚎銆佽捣鐖?妗ユ帴/鎵╂暎鍏抽敭瑙掕壊锛堝瓙鍔熻兘锛屽凡钀藉湴锛?- 婧愬ご杩芥函涓庤瘉鎹摼銆佸叧閿矾寰?*鍥炴函**锛堝瓙鍔熻兘锛屽凡钀藉湴锛涙敞鎰忔槸浜嬪悗鍥炴函锛岄潪棰勬祴锛?- ~~绔嬪満妫€娴?/ 鍗卞鎬ц瘎浼皛~ 鈫?**绉讳氦 Risk Review**锛堣 搂6.1锛?
+### 5.2 鍏抽敭鎶€鏈細浜嬩欢鏉′欢涓嬬殑鍒嗗眰浼犳挱棰勬祴妗嗘灦
 
-- **Detection（发现"谁在协同"）** —— KT1 核心创新所在
-- **Characterization（刻画"协同群体是什么样"）** —— 四维表征：Authenticity / Orchestration / Time-variance（行为/结构型，KT1）+ Harmfulness（内容型，归 KT3）
-
-### 4.2 关键技术与创新定位（2026-06-02 最新方向）
-
-**跨平台协同发现：只用平台无关的"共同行为特征"做复用融合检测；内容检测不作为协同信号。**
-
-- 立论：现有 CIB 文献依赖平台特定信号（cotweet/retweet/cofollow/time burst），多媒体平台又提专用内容信号（视频-语义 mismatch）——内容信号平台特定、易被 AI 改写、迁移成本高
-- 共同行为信号：时间同步/共现、共享对象（URL/hashtag/媒体指纹 id）、共转发与回复级联、账号行为节律
-- 行为 vs 内容边界判据：**是否需要"理解内容说了什么"**。共享同一媒体对象（按 id/指纹）= 行为；分析视频内容/字幕 mismatch/文本立场/毒性 = 内容（排除）
-- 显著性筛查（PSL）：对称超几何 + Cauchy combination + pair-level BH-FDR，抑制热门话题"自然共振"误报
-
-### 4.3 落地状态
-
-| 部分 | 文件 | 状态 |
-|------|------|------|
-| 共享对象+时间窗配对（CooRTweet 重写） | `core/coordination_baseline/detector.py` (184行) | ✅ 已落地 |
-| 加权图 + 百分位阈值 + 社区发现 | `core/coordination_baseline/network.py` (373行) | ✅ 已落地 |
-| 账户/群组统计 | `core/coordination_baseline/stats.py` (142行) | ✅ 已落地 |
-| PSL 显著性（超几何+Cauchy+BH-FDR） | `significance.py` | ❌ **设计稿，0 行** |
-| 多行为通道抽取 | `channels.py` | ❌ **设计稿，0 行** |
-| 语义通道 | `semantic.py` | ❌ 设计稿（且新方向倾向排除） |
-
-API：`POST /coordination/detect`。
-
-### 4.4 答辩风险（须知）
-
-- 创新主张"行为优先/平台无关"已被 Schneider/Rizoiu *Beyond Content*(arXiv 2602.02838)、Luceri *CIB on TikTok*(2505.10867) 做出 → **不能当原创首发**，唯一可辩护 delta 是 PSL 统计框架，但 0 行代码
-- "跨平台"仅验证 mock_weibo/weibo/news（跨源非跨平台身份），须改口径
-- 排除内容信号在单平台上是 tradeoff（可能略损召回），不是纯增益
-
----
-
-## 5. 功能二 · 传播监控（KT2）
-
-### 5.1 功能设计
-
-预测事件规模与传播态势，功能层借鉴"知微"(Zhiwei) 传播分析产品的**呈现形态**（可视化/功能形态，非创新来源）。
-
-> **职责边界（2026-06-03 厘清）**：KT2 **只做传播动力学**（规模/形态/路径预测），**不做内容分析**。立场检测、危害性评估等内容理解任务**已全部移交 KT3 的 Characterization 层**，KT2 不再承载，以消除与 KT3 的职责重叠。
-
-子功能：
-
-- **分层传播预测**（关键技术）：宏观规模 + 中观路径形态 + 微观下一跳，三层共用同一事件/体制后验
-- 传播态势刻画：子图、时间线、起爆/桥接/扩散关键角色（子功能，已落地）
-- 源头追溯与证据链、关键路径**回溯**（子功能，已落地；注意是事后回溯，非预测）
-- ~~立场检测 / 危害性评估~~ → **移交 KT3**（见 §6.1）
-
-### 5.2 关键技术：事件条件下的分层传播预测框架
-
-核心主线：用 LLM 把帖子内容抽成**外生事件**，驱动透明的**体制后验 p(z|events,history)**，并以该后验**同时条件化**三个尺度的传播预测。区别于知微（仅事后分析、无预测）与现有级联模型（仅用观测序列、无外生事件条件）。
-
+鏍稿績涓荤嚎锛氱敤 LLM 鎶婂笘瀛愬唴瀹规娊鎴?*澶栫敓浜嬩欢**锛岄┍鍔ㄩ€忔槑鐨?*浣撳埗鍚庨獙 p(z|events,history)**锛屽苟浠ヨ鍚庨獙**鍚屾椂鏉′欢鍖?*涓変釜灏哄害鐨勪紶鎾娴嬨€傚尯鍒簬鐭ュ井锛堜粎浜嬪悗鍒嗘瀽銆佹棤棰勬祴锛変笌鐜版湁绾ц仈妯″瀷锛堜粎鐢ㄨ娴嬪簭鍒椼€佹棤澶栫敓浜嬩欢鏉′欢锛夈€?
 ```
-LLM 事件抽取 ──→ 体制后验 p(z|events,history)   ← CascadeSwitch 核心，已落地
-                      │
-        ┌─────────────┼──────────────────────────┐
-        ▼             ▼                           ▼
-   Tier-0 宏观     Tier-1 中观                Tier-2 微观
-   规模预测 ŷ      路径形态预测               下一跳预测
-   (标量,已落地)   P(中心化/去中心化/          P(下一激活节点 v |
-                  跨群桥接 | z,events)          序列, 条件于 p(z))
-   零训练白盒      零训练白盒(新增)            训练式(新增)
+LLM 浜嬩欢鎶藉彇 鈹€鈹€鈫?浣撳埗鍚庨獙 p(z|events,history)   鈫?CascadeSwitch 鏍稿績锛屽凡钀藉湴
+                      鈹?        鈹屸攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹尖攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹?        鈻?            鈻?                          鈻?   Tier-0 瀹忚     Tier-1 涓                Tier-2 寰
+   瑙勬ā棰勬祴 欧      璺緞褰㈡€侀娴?              涓嬩竴璺抽娴?   (鏍囬噺,宸茶惤鍦?   P(涓績鍖?鍘讳腑蹇冨寲/          P(涓嬩竴婵€娲昏妭鐐?v |
+                  璺ㄧ兢妗ユ帴 | z,events)          搴忓垪, 鏉′欢浜?p(z))
+   闆惰缁冪櫧鐩?     闆惰缁冪櫧鐩?鏂板)            璁粌寮?鏂板)
 ```
 
-- **Tier-0 规模预测（CascadeSwitch，已落地）**：4 体制（seeding/amplification/peak/decay）softmax 后验混合预测，零训练、可解释、带置信区间
-- **Tier-1 路径形态预测（新增，零训练）**：每个体制配结构先验（seeding→去中心化散播 / amplification→中心化枢纽 / coordinated_burst→跨群桥接），复用 W 矩阵后验，与规模预测同源
-- **Tier-2 微观下一跳预测（新增，训练式）**：将体制后验 p(z) 作为条件输入喂给下一跳预测器 = **event/regime-conditioned next-node prediction**。真 delta：现有微观扩散模型（Topo-LSTM/NDM/FOREST）**均无外生事件条件**，本框架在体制转换点更准（用"有/无事件条件"消融证明）
-
-### 5.3 落地状态
-
-| 部分 | 文件 | 状态 |
+- **Tier-0 瑙勬ā棰勬祴锛圕ascadeSwitch锛屽凡钀藉湴锛?*锛? 浣撳埗锛坰eeding/amplification/peak/decay锛塻oftmax 鍚庨獙娣峰悎棰勬祴锛岄浂璁粌銆佸彲瑙ｉ噴銆佸甫缃俊鍖洪棿
+- **Tier-1 璺緞褰㈡€侀娴嬶紙鏂板锛岄浂璁粌锛?*锛氭瘡涓綋鍒堕厤缁撴瀯鍏堥獙锛坰eeding鈫掑幓涓績鍖栨暎鎾?/ amplification鈫掍腑蹇冨寲鏋㈢航 / coordinated_burst鈫掕法缇ゆˉ鎺ワ級锛屽鐢?W 鐭╅樀鍚庨獙锛屼笌瑙勬ā棰勬祴鍚屾簮
+- **Tier-2 寰涓嬩竴璺抽娴嬶紙鏂板锛岃缁冨紡锛?*锛氬皢浣撳埗鍚庨獙 p(z) 浣滀负鏉′欢杈撳叆鍠傜粰涓嬩竴璺抽娴嬪櫒 = **event/regime-conditioned next-node prediction**銆傜湡 delta锛氱幇鏈夊井瑙傛墿鏁ｆā鍨嬶紙Topo-LSTM/NDM/FOREST锛?*鍧囨棤澶栫敓浜嬩欢鏉′欢**锛屾湰妗嗘灦鍦ㄤ綋鍒惰浆鎹㈢偣鏇村噯锛堢敤"鏈?鏃犱簨浠舵潯浠?娑堣瀺璇佹槑锛?
+### 5.3 钀藉湴鐘舵€?
+| 閮ㄥ垎 | 鏂囦欢 | 鐘舵€?|
 |------|------|------|
-| 时序特征 (WP1) | `core/propagation/ts_features.py` (107) | ✅ 已落地 |
-| LLM 事件上下文 (WP2) | `core/propagation/llm_context.py` (162) | ✅ 已落地 |
-| Tier-0 体制模型+预测器 (WP3) | `regime_model.py`(224)+`trend_predictor.py`(180) | ✅ 已落地 |
-| 源头追溯/证据链/路径回溯 | `core/propagation_legacy.py` (585) | ✅ 已落地（子功能） |
-| Tier-1 路径形态预测 | `structure_predictor.py` | 🔲 新增（零训练，推荐先做） |
-| Tier-2 微观下一跳预测 | （待定） | 🔲 新增（训练式，需边级真值数据） |
-| ~~立场检测 / 危害性评估~~ | — | ➡️ **移交 KT3** |
+| 鏃跺簭鐗瑰緛 (WP1) | `core/propagation/ts_features.py` (107) | 鉁?宸茶惤鍦?|
+| LLM 浜嬩欢涓婁笅鏂?(WP2) | `core/propagation/llm_context.py` (162) | 鉁?宸茶惤鍦?|
+| Tier-0 浣撳埗妯″瀷+棰勬祴鍣?(WP3) | `regime_model.py`(224)+`trend_predictor.py`(180) | 鉁?宸茶惤鍦?|
+| 婧愬ご杩芥函/璇佹嵁閾?璺緞鍥炴函 | `core/propagation_legacy.py` (585) | 鉁?宸茶惤鍦帮紙瀛愬姛鑳斤級 |
+| Tier-1 璺緞褰㈡€侀娴?| `structure_predictor.py` | 馃敳 鏂板锛堥浂璁粌锛屾帹鑽愬厛鍋氾級 |
+| Tier-2 寰涓嬩竴璺抽娴?| 锛堝緟瀹氾級 | 馃敳 鏂板锛堣缁冨紡锛岄渶杈圭骇鐪熷€兼暟鎹級 |
+| ~~绔嬪満妫€娴?/ 鍗卞鎬ц瘎浼皛~ | 鈥?| 鉃★笍 **绉讳氦 Risk Review** |
 
-API：`GET /propagation/analyze`、`POST /propagation/predict-trend`。
-
-### 5.4 关键技术陈述（答辩口径）
-
-> KT2 提出**事件条件下的分层传播预测框架**：用 LLM 把帖子内容抽成外生事件，驱动透明的体制后验 p(z)，并以该后验同时条件化宏观规模、中观形态、微观下一跳预测。区别于商业产品（知微，仅事后分析无预测）与现有级联模型（仅用观测序列、无外生事件条件）。
-
-### 5.5 落地路径与风险（诚实）
-
-| 层 | 状态 | 需要做 | 数据 | 难度 |
+API锛歚GET /propagation/analyze`銆乣POST /propagation/predict-trend`銆?
+### 5.4 鍏抽敭鎶€鏈檲杩帮紙绛旇京鍙ｅ緞锛?
+> Propagation Analysis 鎻愬嚭**浜嬩欢鏉′欢涓嬬殑鍒嗗眰浼犳挱棰勬祴妗嗘灦**锛氱敤 LLM 鎶婂笘瀛愬唴瀹规娊鎴愬鐢熶簨浠讹紝椹卞姩閫忔槑鐨勪綋鍒跺悗楠?p(z)锛屽苟浠ヨ鍚庨獙鍚屾椂鏉′欢鍖栧畯瑙傝妯°€佷腑瑙傚舰鎬併€佸井瑙備笅涓€璺抽娴嬨€傚尯鍒簬鍟嗕笟浜у搧锛堢煡寰紝浠呬簨鍚庡垎鏋愭棤棰勬祴锛変笌鐜版湁绾ц仈妯″瀷锛堜粎鐢ㄨ娴嬪簭鍒椼€佹棤澶栫敓浜嬩欢鏉′欢锛夈€?
+### 5.5 钀藉湴璺緞涓庨闄╋紙璇氬疄锛?
+| 灞?| 鐘舵€?| 闇€瑕佸仛 | 鏁版嵁 | 闅惧害 |
 |----|------|--------|------|------|
-| Tier-0 规模 | ✅ 已落地 | 接通真实 LLM（关掉 mock_llm） | DeepHawkes/CasFlow | 低 |
-| Tier-1 形态 | 🔲 新增 | 体制→结构先验映射 + 形态分类 | 复用现有图特征 | 中，零训练，**推荐先做** |
-| Tier-2 微观 | 🔲 新增 | regime-conditioned 下一跳模型 + 训练 | Twitter15/16/FOREST 边级真值 | 高，需 GPU+消融 |
+| Tier-0 瑙勬ā | 鉁?宸茶惤鍦?| 鎺ラ€氱湡瀹?LLM锛堝叧鎺?mock_llm锛?| DeepHawkes/CasFlow | 浣?|
+| Tier-1 褰㈡€?| 馃敳 鏂板 | 浣撳埗鈫掔粨鏋勫厛楠屾槧灏?+ 褰㈡€佸垎绫?| 澶嶇敤鐜版湁鍥剧壒寰?| 涓紝闆惰缁冿紝**鎺ㄨ崘鍏堝仛** |
+| Tier-2 寰 | 馃敳 鏂板 | regime-conditioned 涓嬩竴璺虫ā鍨?+ 璁粌 | Twitter15/16/FOREST 杈圭骇鐪熷€?| 楂橈紝闇€ GPU+娑堣瀺 |
 
-- **前置阻塞**：`propagation_service.py` 现 `mock_llm=True`，需接通真实 LLM，否则"事件条件"在 demo 不生效；后端无 LLM 客户端依赖、Tier-2 还需深度学习框架，须先补 `pyproject.toml`
-- **Tier-2 最大不确定性**：依赖边级真值数据，真实采集为部分观测，数据条件可能不足；必须跑出"有/无事件条件"消融数字，否则沦为纸面创新
-- **推进顺序**：先补依赖+接通 LLM → 先落 Tier-1（低风险实物）→ 再上 Tier-2（留足消融实验时间）
+- **鍓嶇疆闃诲**锛歚propagation_service.py` 鐜?`mock_llm=True`锛岄渶鎺ラ€氱湡瀹?LLM锛屽惁鍒?浜嬩欢鏉′欢"鍦?demo 涓嶇敓鏁堬紱鍚庣鏃?LLM 瀹㈡埛绔緷璧栥€乀ier-2 杩橀渶娣卞害瀛︿範妗嗘灦锛岄』鍏堣ˉ `pyproject.toml`
+- **Tier-2 鏈€澶т笉纭畾鎬?*锛氫緷璧栬竟绾х湡鍊兼暟鎹紝鐪熷疄閲囬泦涓洪儴鍒嗚娴嬶紝鏁版嵁鏉′欢鍙兘涓嶈冻锛涘繀椤昏窇鍑?鏈?鏃犱簨浠舵潯浠?娑堣瀺鏁板瓧锛屽惁鍒欐拨涓虹焊闈㈠垱鏂?- **鎺ㄨ繘椤哄簭**锛氬厛琛ヤ緷璧?鎺ラ€?LLM 鈫?鍏堣惤 Tier-1锛堜綆椋庨櫓瀹炵墿锛夆啋 鍐嶄笂 Tier-2锛堢暀瓒虫秷铻嶅疄楠屾椂闂达級
 
 ---
 
-## 6. 功能三 · 报告研判（KT3）
+## 6. 鍔熻兘涓?路 鎶ュ憡鐮斿垽锛圞T3锛?
+### 6.1 鍔熻兘璁捐锛堜笁娈碉級
 
-### 6.1 功能设计（三段）
+閽堝"鐢?Agent 鍋氭姤鍛婄爺鍒ゅ垱鏂版€у急"鐨勮瘎瀹℃剰瑙侊紝鎶ュ憡鐮斿垽璁捐涓猴細
+**(a) 鍩轰簬 Agent 鐨勮瘉鎹紪鎺掞紙鐢ㄦ埛瑷€璁?琛屼负妫€娴嬶級鈫?(b) 鍩轰簬 RAG 鐨勬姤鍛婄敓鎴?鈫?(c) Agent 瑙ｉ噴鎬荤粨鍗忓悓鏀诲嚮**銆?
+鍥炵瓟涓変釜闂锛氬綋鍓嶉闄╁楂橈紙淇″康鍖洪棿锛? 鎺ヤ笅鏉ヤ細鍙戠敓浠€涔堬紙闃舵+涓嬩竴姝ユ妧鏈娴嬶級/ 搴旇濡備綍搴斿锛堝弽鍒跺缓璁級銆?
+### 6.2 鍏抽敭鎶€鏈細鐧界洅鍓嶇灮寮曟搸锛堝ご鍙峰垱鏂帮級+ 澶?Agent 缂栨帓锛堝憟鐜板眰锛?
+> **琛ㄨ堪绾緥**锛氬ご鍙峰垱鏂板繀椤绘槸宸茶惤鍦扮殑鐧界洅绠楁硶锛孉gent/RAG 浠呬綔缂栨帓鍩哄骇涓庡憟鐜板眰锛?*涓嶄綔鍒涙柊鍗栫偣**銆傛牳蹇冨彊浜嬶細浠?detection 鍗囩骇鍒?anticipation + countermeasure銆?
+- **Phase-Aware Hazard**锛? 鐘舵€佹垬褰圭敓鍛藉懆鏈?+ logistic hazard 棰勬祴闃舵杞崲/breakout 棰勮
+- **DISARM Attack-Path**锛氭妧鏈浆鎹㈠浘璺緞鎺ㄧ悊 + 棰勬祴涓嬩竴姝ユ妧鏈?+ 鍙嶅埗寤鸿锛堥潪 flat tagging锛?- **Contradiction-Aware D-S Fusion**锛氫俊蹇靛尯闂?+ 鍐茬獊妫€娴?+ 闃舵璋冨埗璐ㄩ噺
 
-针对"用 Agent 做报告研判创新性弱"的评审意见，报告研判设计为：
-**(a) 基于 Agent 的证据编排（用户言论/行为检测）→ (b) 基于 RAG 的报告生成 → (c) Agent 解释总结协同攻击**。
-
-回答三个问题：当前风险多高（信念区间）/ 接下来会发生什么（阶段+下一步技术预测）/ 应该如何应对（反制建议）。
-
-### 6.2 关键技术：白盒前瞻引擎（头号创新）+ 多 Agent 编排（呈现层）
-
-> **表述纪律**：头号创新必须是已落地的白盒算法，Agent/RAG 仅作编排基座与呈现层，**不作创新卖点**。核心叙事：从 detection 升级到 anticipation + countermeasure。
-
-- **Phase-Aware Hazard**：5 状态战役生命周期 + logistic hazard 预测阶段转换/breakout 预警
-- **DISARM Attack-Path**：技术转换图路径推理 + 预测下一步技术 + 反制建议（非 flat tagging）
-- **Contradiction-Aware D-S Fusion**：信念区间 + 冲突检测 + 阶段调制质量
-
-### 6.3 落地状态
-
-| 层 | 文件 | 状态 |
+### 6.3 钀藉湴鐘舵€?
+| 灞?| 鏂囦欢 | 鐘舵€?|
 |----|------|------|
-| Layer 1 证据构建 | `core/review/evidence_builder.py` (244) | ✅ 已落地 |
-| Layer 1 阶段检测 | `core/review/phase_detector.py` (169) | ✅ 已落地 |
-| Layer 1 D-S 融合 | `core/review/ds_fusion.py` (234) | ✅ 已落地 |
-| Layer 1 DISARM 路径 | `core/review/disarm_scorer.py` (381) | ✅ 已落地 |
-| Layer 1 报告生成 | `core/review/report_builder.py` (278) | ✅ 已落地 |
-| LLM 桥接 | `core/review/llm_bridge.py` (~30) | ⚠️ 占位，return None |
-| Layer 2 RAG 报告 | — | ❌ 设计稿 |
-| Layer 3 恶意言论/立场/反制叙事 Agent | — | ❌ 设计稿 |
+| Layer 1 璇佹嵁鏋勫缓 | `core/review/evidence_builder.py` (244) | 鉁?宸茶惤鍦?|
+| Layer 1 闃舵妫€娴?| `core/review/phase_detector.py` (169) | 鉁?宸茶惤鍦?|
+| Layer 1 D-S 铻嶅悎 | `core/review/ds_fusion.py` (234) | 鉁?宸茶惤鍦?|
+| Layer 1 DISARM 璺緞 | `core/review/disarm_scorer.py` (381) | 鉁?宸茶惤鍦?|
+| Layer 1 鎶ュ憡鐢熸垚 | `core/review/report_builder.py` (278) | 鉁?宸茶惤鍦?|
+| LLM 妗ユ帴 | `core/review/llm_bridge.py` (~30) | 鈿狅笍 鍗犱綅锛宺eturn None |
+| Layer 2 RAG 鎶ュ憡 | 鈥?| 鉂?璁捐绋?|
+| Layer 3 鎭舵剰瑷€璁?绔嬪満/鍙嶅埗鍙欎簨 Agent | 鈥?| 鉂?璁捐绋?|
 
-API：`POST /risk/assess`、`GET /risk/reports`、`GET /risk/reports/{report_id}`。
+API锛歚POST /risk/assess`銆乣GET /risk/reports`銆乣GET /risk/reports/{report_id}`銆?
+### 6.4 绛旇京椋庨櫓
 
-### 6.4 答辩风险
-
-- 把研判扩成"更多 Agent+RAG"**没解决反而加重**"Agent 创新性弱"批评，且撞 Agentic DISARM(arXiv 2601.15109)、Gautam 多 agent 生命周期(2505.17511)
-- 翻盘成本低（几乎只动表述）：主秀已落地的白盒引擎，Agent/RAG 降级
-- DISARM"预测下一步技术"范式源自 ATT&CK 域（MITRE TIE），delta 须收窄为"跨域迁移+阶段条件化"，不称首创
-
+- 鎶婄爺鍒ゆ墿鎴?鏇村 Agent+RAG"**娌¤В鍐冲弽鑰屽姞閲?*"Agent 鍒涙柊鎬у急"鎵硅瘎锛屼笖鎾?Agentic DISARM(arXiv 2601.15109)銆丟autam 澶?agent 鐢熷懡鍛ㄦ湡(2505.17511)
+- 缈荤洏鎴愭湰浣庯紙鍑犱箮鍙姩琛ㄨ堪锛夛細涓荤宸茶惤鍦扮殑鐧界洅寮曟搸锛孉gent/RAG 闄嶇骇
+- DISARM"棰勬祴涓嬩竴姝ユ妧鏈?鑼冨紡婧愯嚜 ATT&CK 鍩燂紙MITRE TIE锛夛紝delta 椤绘敹绐勪负"璺ㄥ煙杩佺Щ+闃舵鏉′欢鍖?锛屼笉绉伴鍒?
 ---
 
-## 7. 横向支撑模块
+## 7. 妯悜鏀拺妯″潡
 
-| 模块 | 文件 | 状态 | 说明 |
+| 妯″潡 | 鏂囦欢 | 鐘舵€?| 璇存槑 |
 |------|------|------|------|
-| 账户监测 | `core/account_profiler.py` (163) | ✅ 已落地 | 行为画像 + 自动化倾向评分（0-100），供 KT1/KT3 取证 |
-| 身份认证 | `core/security.py` + `services/auth_service.py` | ✅ 已落地 | JWT + bcrypt，角色 admin/analyst/viewer |
-| 监测看板 | `services/dashboard_service.py` + `api/v1/dashboard.py` | 🔧 开发中 | 聚合 MongoDB 事件数据 + ECharts 地图，热点排行/趋势图待补 |
-| 预警中心 | — | ❌ 未启动 | 规则配置、事件/群体/claim 级告警 |
-| 报告中心 | — | ❌ 未启动 | 报告列表/导出/案例归档 |
+| 璐︽埛鐩戞祴 | `core/account_profiler.py` (163) | 鉁?宸茶惤鍦?| 琛屼负鐢诲儚 + 鑷姩鍖栧€惧悜璇勫垎锛?-100锛夛紝渚?Coordination Discover/Risk Review 鍙栬瘉 |
+| 韬唤璁よ瘉 | `core/security.py` + `services/auth_service.py` | 鉁?宸茶惤鍦?| JWT + bcrypt锛岃鑹?admin/analyst/viewer |
+| 鐩戞祴鐪嬫澘 | `services/dashboard_service.py` + `api/v1/dashboard.py` | 馃敡 寮€鍙戜腑 | 鑱氬悎 MongoDB 浜嬩欢鏁版嵁 + ECharts 鍦板浘锛岀儹鐐规帓琛?瓒嬪娍鍥惧緟琛?|
+| 棰勮涓績 | 鈥?| 鉂?鏈惎鍔?| 瑙勫垯閰嶇疆銆佷簨浠?缇や綋/claim 绾у憡璀?|
+| 鎶ュ憡涓績 | 鈥?| 鉂?鏈惎鍔?| 鎶ュ憡鍒楄〃/瀵煎嚭/妗堜緥褰掓。 |
 
-API：`GET /accounts/profiles`、`GET /accounts/detail/{id}`、`GET /dashboard/overview`、`/auth/*`。
-
+API锛歚GET /accounts/profiles`銆乣GET /accounts/detail/{id}`銆乣GET /dashboard/overview`銆乣/auth/*`銆?
 ---
 
-## 8. API 总览（实际挂载的 7 路由组）
+## 8. API 鎬昏锛堝疄闄呮寕杞界殑 7 璺敱缁勶級
 
-| 路由组 | 端点 | 鉴权 |
+| 璺敱缁?| 绔偣 | 閴存潈 |
 |--------|------|------|
-| auth | `/auth/register` `/login` `/refresh` `/profile` | 部分 |
-| dashboard | `GET /dashboard/overview` | 是 |
-| crawl | `GET /crawl/platforms` `POST /crawl/social` `GET /crawl/jobs` `GET /crawl/data` | 部分 |
-| coordination | `POST /coordination/detect` | 是 |
-| accounts | `GET /accounts/profiles` `GET /accounts/detail/{id}` | 是 |
-| propagation | `GET /propagation/analyze` `POST /propagation/predict-trend` | 是 |
-| risk | `POST /risk/assess` `GET /risk/reports` `GET /risk/reports/{id}` | 是 |
-| system | `GET /health` | 否 |
+| auth | `/auth/register` `/login` `/refresh` `/profile` | 閮ㄥ垎 |
+| dashboard | `GET /dashboard/overview` | 鏄?|
+| crawl | `GET /crawl/platforms` `POST /crawl/social` `GET /crawl/jobs` `GET /crawl/data` | 閮ㄥ垎 |
+| coordination | `POST /coordination/detect` | 鏄?|
+| accounts | `GET /accounts/profiles` `GET /accounts/detail/{id}` | 鏄?|
+| propagation | `GET /propagation/analyze` `POST /propagation/predict-trend` | 鏄?|
+| risk | `POST /risk/assess` `GET /risk/reports` `GET /risk/reports/{id}` | 鏄?|
+| system | `GET /health` | 鍚?|
 
-> 注：路由 tag 显示名称（如"传播归因""风险研判"）为代码内字符串，文档命名已统一为"传播监控""报告研判"，代码 tag 同步属代码改动，未在文档统一范围内。
-
+> 娉細璺敱 tag 鏄剧ず鍚嶇О锛堝"浼犳挱褰掑洜""椋庨櫓鐮斿垽"锛変负浠ｇ爜鍐呭瓧绗︿覆锛屾枃妗ｅ懡鍚嶅凡缁熶竴涓?浼犳挱鐩戞帶""鎶ュ憡鐮斿垽"锛屼唬鐮?tag 鍚屾灞炰唬鐮佹敼鍔紝鏈湪鏂囨。缁熶竴鑼冨洿鍐呫€?
 ---
 
-## 9. 整体落地差距与跨模块分工
+## 9. 鏁翠綋钀藉湴宸窛涓庤法妯″潡鍒嗗伐
 
-### 9.1 三态总结
+### 9.1 涓夋€佹€荤粨
 
-**已落地可运行**：数据采集全链路、协同检测 MVP（CooRTweet 重写+图+社区发现）、传播趋势预测核心（CascadeSwitch WP1-3）、报告研判白盒引擎（Layer 1 约 1340 行）、账户画像、认证、看板雏形。
+**宸茶惤鍦板彲杩愯**锛氭暟鎹噰闆嗗叏閾捐矾銆佸崗鍚屾娴?MVP锛圕ooRTweet 閲嶅啓+鍥?绀惧尯鍙戠幇锛夈€佷紶鎾秼鍔块娴嬫牳蹇冿紙CascadeSwitch WP1-3锛夈€佹姤鍛婄爺鍒ょ櫧鐩掑紩鎿庯紙Layer 1 绾?1340 琛岋級銆佽处鎴风敾鍍忋€佽璇併€佺湅鏉块洀褰€?
+**璁捐绋匡紙鏈夋柟妗堟棤浠ｇ爜锛?*锛欿T1 鐨?PSL/澶氶€氶亾銆並T3 鐨?Agent 缂栨帓/RAG 鎶ュ憡/Layer 3 Agent銆並T2 鐨勭珛鍦?鍗卞瀛愬姛鑳姐€?
+**缂哄彛锛堟棤璁捐鏃犱唬鐮侊級**锛欿T2 浼犳挱璺緞棰勬祴锛堟湭鏉ョ粨鏋勶級銆侀璀︿腑蹇冦€佹姤鍛婁腑蹇冦€佽瘎浼拌剼鏈笌鍏紑鏁版嵁闆嗗熀鍑嗐€?
+### 9.2 涓夋潯鍏辨€ч樆濉?
+1. **LLM 瀹㈡埛绔緷璧栫己澶?* 鈥斺€?`pyproject.toml` 鏃犱换浣?LLM SDK銆傞樆濉?Propagation Analysis 鐪熷疄浜嬩欢鎻愬彇锛堢幇 `mock_llm=True`锛? Risk Review Agent 灞傘€傞渶鍏堝畾 DeepSeek 鎺ュ叆骞惰ˉ渚濊禆銆?2. **缁熻/绠楁硶渚濊禆缂哄け** 鈥斺€?鏃?scipy/statsmodels锛岄樆濉?Coordination Discover PSL 钀藉湴銆?3. **鏃犺瘎浼伴棴鐜?* 鈥斺€?涓夋ā鍧楀潎鏃犲熀鍑嗘暟鍊硷紝"瓒呰秺 SOTA"绫诲绉版殏鏃犲疄璇併€?
+### 9.3 璺ㄦā鍧楀垎宸ワ紙鍐呭鍒嗘瀽褰掑睘锛岄棴鐜渶澶ц缂濈殑缁熶竴鍙ｅ緞锛?
+> 绛旇京鏈€鑷村懡涓€棰樻槸"鍐呭鍒嗘瀽褰掕皝"銆傜粺涓€鍙ｅ緞濡備笅锛屼笁妯″潡琛ㄨ堪蹇呴』涓€鑷达細
 
-**设计稿（有方案无代码）**：KT1 的 PSL/多通道、KT3 的 Agent 编排/RAG 报告/Layer 3 Agent、KT2 的立场/危害子功能。
+- **鍐呭鍒嗘瀽锛堢珛鍦?鍗卞/鏈夊瑷€璁猴級鍞竴褰掑 = Risk Review 鐨?Characterization**
+- **Coordination Discover 绾涓?*锛氬埢鎰忕殑椴佹鎬ц璁★紝鎺掗櫎鍐呭淇″彿锛堟壙璁ゅ崟骞冲彴鍙兘鐣ユ崯鍙洖锛屾崲鍙栬法骞冲彴鍙縼绉讳笌鎶?AI 鏀瑰啓锛?- **Propagation Analysis 鍙仛浼犳挱鍔ㄥ姏瀛?*锛氳妯?浣撳埗棰勬祴锛屼笉纰板唴瀹瑰垎绫?- **鍐呭淇″彿鍗曞悜娴佸姩**锛氫粠涓嬫父娑堣垂锛岀粷涓嶅洖娴佷綔涓哄崗鍚屽垽瀹氫緷鎹?- 鍔犲垎椤癸細Propagation Analysis 棰勬祴"浼犳挱浼氭定澶氬ぇ"銆並T3 棰勬祴"鏀诲嚮鑰呬笅涓€姝ョ敤浠€涔堟墜娉?锛屼袱濂楅娴嬩簰琛ヤ笉鍐茬獊
 
-**缺口（无设计无代码）**：KT2 传播路径预测（未来结构）、预警中心、报告中心、评估脚本与公开数据集基准。
-
-### 9.2 三条共性阻塞
-
-1. **LLM 客户端依赖缺失** —— `pyproject.toml` 无任何 LLM SDK。阻塞 KT2 真实事件提取（现 `mock_llm=True`）+ KT3 Agent 层。需先定 DeepSeek 接入并补依赖。
-2. **统计/算法依赖缺失** —— 无 scipy/statsmodels，阻塞 KT1 PSL 落地。
-3. **无评估闭环** —— 三模块均无基准数值，"超越 SOTA"类宣称暂无实证。
-
-### 9.3 跨模块分工（内容分析归属，闭环最大裂缝的统一口径）
-
-> 答辩最致命一题是"内容分析归谁"。统一口径如下，三模块表述必须一致：
-
-- **内容分析（立场/危害/有害言论）唯一归宿 = KT3 的 Characterization**
-- **KT1 纯行为**：刻意的鲁棒性设计，排除内容信号（承认单平台可能略损召回，换取跨平台可迁移与抗 AI 改写）
-- **KT2 只做传播动力学**：规模/体制预测，不碰内容分类
-- **内容信号单向流动**：从下游消费，绝不回流作为协同判定依据
-- 加分项：KT2 预测"传播会涨多大"、KT3 预测"攻击者下一步用什么手法"，两套预测互补不冲突
-
-### 9.4 闭环数据流（服务层接缝）
+### 9.4 闂幆鏁版嵁娴侊紙鏈嶅姟灞傛帴缂濓級
 
 ```
-crawl → MongoDB(raw_posts/comments)
-  → coordination_service.detect ─┐
-  → propagation_service.analyze ─┼─→ risk_service.assess_risk
-  → account_service.profiles ────┘    (evidence_builder → phase_detector
-                                        → ds_fusion → disarm_scorer → report_builder)
+crawl 鈫?MongoDB(raw_posts/comments)
+  鈫?coordination_service.detect 鈹€鈹?  鈫?propagation_service.analyze 鈹€鈹尖攢鈫?risk_service.assess_risk
+  鈫?account_service.profiles 鈹€鈹€鈹€鈹€鈹?   (evidence_builder 鈫?phase_detector
+                                        鈫?ds_fusion 鈫?disarm_scorer 鈫?report_builder)
 ```
-真实接缝见 `services/risk_service.py` 的 `assess_risk()`：依次调协同/传播/账户三 service，汇聚证据包后串起阶段检测→融合→DISARM→报告。
-
+鐪熷疄鎺ョ紳瑙?`services/risk_service.py` 鐨?`assess_risk()`锛氫緷娆¤皟鍗忓悓/浼犳挱/璐︽埛涓?service锛屾眹鑱氳瘉鎹寘鍚庝覆璧烽樁娈垫娴嬧啋铻嶅悎鈫扗ISARM鈫掓姤鍛娿€?
 ---
 
-## 10. 参考与延伸
+## 10. 鍙傝€冧笌寤朵几
 
-- 各技术线方向背景：`doc/research/key-technology-background/{coordination-detection,propagation-analysis,risk-disarm,overview}.md`
-- 工程进度：`doc/engineering/development-roadmap.md`、`development-log.md`
-- 答辩风险与文献核验：`tmp/defense-review/{kt1,kt2,kt3}-findings.md`、`examiner-review.md`、`novelty-validation.md`
-- 关键撞车文献：Beyond Content(2602.02838)、CIB on TikTok(2505.10867)、CasFT(2409.16619)、AutoCas(2502.18040)、Agentic DISARM(2601.15109)、Multi-agent Misinformation Lifecycle(2505.17511)
+- 鍚勬妧鏈嚎鏂瑰悜鑳屾櫙锛歚doc/research/key-technology-background/{coordination-detection,propagation-analysis,risk-disarm,overview}.md`
+- 宸ョ▼杩涘害锛歚doc/engineering/development-roadmap.md`銆乣development-log.md`
+- 绛旇京椋庨櫓涓庢枃鐚牳楠岋細`tmp/defense-review/{coordination-discover,propagation-analysis,risk-review}-findings.md`銆乣examiner-review.md`銆乣novelty-validation.md`
+- 鍏抽敭鎾炶溅鏂囩尞锛欱eyond Content(2602.02838)銆丆IB on TikTok(2505.10867)銆丆asFT(2409.16619)銆丄utoCas(2502.18040)銆丄gentic DISARM(2601.15109)銆丮ulti-agent Misinformation Lifecycle(2505.17511)
+

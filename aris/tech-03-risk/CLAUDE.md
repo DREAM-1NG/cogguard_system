@@ -12,7 +12,7 @@
 
 ## 作用域
 
-- 当前目标：Agent+RAG 攻击分析与报告生成（消费 KT1+KT2 结果）
+- 当前目标：Agent+RAG 攻击分析与报告生成（消费 Coordination Discover+Propagation Analysis 结果）
 - 产品代码根：`../../new-system/`
 - 推荐分支：`aris/t3-*`
 

@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 from typing import Any, Callable, Mapping
 
 
-TEACHER_MODEL_VERSION = "kt3-teacher-dag-v2"
+TEACHER_MODEL_VERSION = "review-teacher-dag-v2"
 NODE_ORDER = (
     "claim_planning",
     "trusted_retrieval",
@@ -61,7 +61,7 @@ class TeacherDAG:
         final = _final_decision(node_results)
         return {
             "technology": "teacher",
-            "schema": "cogguard.kt3.teacher_dag.v2",
+            "schema": "cogguard.review.teacher_dag.v2",
             "status": "completed" if normalized["posts"] else "data_insufficient",
             "verdict_type": "teacher_advisory",
             "verdict_id": job_id or _verdict_id("teacher", normalized),
@@ -240,14 +240,14 @@ def _harm_stance_context(case: Mapping[str, Any]) -> dict[str, Any]:
         ):
             if term in lowered:
                 harm_terms[term] += 1
-    kt1 = dict(dict(case.get("options") or {}).get("kt1_context") or {})
-    kt2 = dict(dict(case.get("options") or {}).get("kt2_context") or {})
+    coordination_discover = dict(dict(case.get("options") or {}).get("coordination_discover_context") or {})
+    propagation_analysis = dict(dict(case.get("options") or {}).get("propagation_analysis_context") or {})
     return {
         "status": "ok",
         "harm_term_counts": dict(harm_terms),
         "platforms": list(case.get("platforms") or []),
-        "kt1_context": _compact_context(kt1),
-        "kt2_context": _compact_context(kt2),
+        "coordination_discover_context": _compact_context(coordination_discover),
+        "propagation_analysis_context": _compact_context(propagation_analysis),
     }
 
 

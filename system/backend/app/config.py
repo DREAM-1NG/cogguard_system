@@ -66,14 +66,14 @@ class Settings(BaseSettings):
     # Downloaded social media files are stored under project output by default.
     MEDIA_DOWNLOAD_ROOT: str = str(PROJECT_ROOT / "output" / "media_downloads")
 
-    # ----- KT1 research artifact runtime -----
-    KT1_MODE: str = "artifact_first"
-    KT1_ARTIFACT_ROOT: str = str(PROJECT_ROOT / "artifacts" / "kt1")
-    KT1_DEVICE: str = "cuda"
-    KT1_FALLBACK: str = "evidence_runtime_v2"
-    KT1_DETECT_ROLE: str = "validation_only"
-    KT1_MODALITY_POLICY: str = "platform_generic_only"
-    KT1_REQUIRE_LEIDEN: bool = True
+    # ----- Coordination Discover research artifact runtime -----
+    COORDINATION_DISCOVER_MODE: str = "artifact_first"
+    COORDINATION_DISCOVER_ARTIFACT_ROOT: str = str(PROJECT_ROOT / "artifacts" / "coordination_discover")
+    COORDINATION_DISCOVER_DEVICE: str = "cuda"
+    COORDINATION_DISCOVER_FALLBACK: str = "evidence_runtime_v2"
+    COORDINATION_DISCOVER_DETECT_ROLE: str = "validation_only"
+    COORDINATION_DISCOVER_MODALITY_POLICY: str = "platform_generic_only"
+    COORDINATION_DISCOVER_REQUIRE_LEIDEN: bool = True
 
     # ----- LLM API (趋势预测用) -----
     LLM_API_KEY: str = ""
@@ -83,16 +83,16 @@ class Settings(BaseSettings):
     LLM_TIMEOUT_SECONDS: float = 180.0
     LLM_INCLUDE_MEDIA_BASE64: bool = False
     LLM_REQUIRE_VISION: bool = False
-    KT3_EXTERNAL_RETRIEVAL_ENABLED: bool = False
-    KT3_RETRIEVAL_API_KEY: str = ""
-    KT3_RETRIEVAL_BASE_URL: str = ""
-    KT3_RETRIEVAL_SEARCH_PATH: str = "/search"
-    KT3_RETRIEVAL_PROVIDER_NAME: str = ""
-    KT3_RETRIEVAL_ADAPTER: str = ""
-    # Master key used to encrypt API keys stored in KT3 provider configs.
+    REVIEW_EXTERNAL_RETRIEVAL_ENABLED: bool = False
+    REVIEW_RETRIEVAL_API_KEY: str = ""
+    REVIEW_RETRIEVAL_BASE_URL: str = ""
+    REVIEW_RETRIEVAL_SEARCH_PATH: str = "/search"
+    REVIEW_RETRIEVAL_PROVIDER_NAME: str = ""
+    REVIEW_RETRIEVAL_ADAPTER: str = ""
+    # Master key used to encrypt API keys stored in Review provider configs.
     # Keep it independent from JWT_SECRET_KEY so provider credentials can be
     # rotated and audited separately from authentication tokens.
-    KT3_CONFIG_ENCRYPTION_KEY: str = ""
+    REVIEW_CONFIG_ENCRYPTION_KEY: str = ""
 
     @property
     def mysql_url(self) -> str:

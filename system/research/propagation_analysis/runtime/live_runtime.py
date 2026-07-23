@@ -1,4 +1,4 @@
-"""Internal KT2 live runtime for current-event inference.
+"""Internal PropagationAnalysis live runtime for current-event inference.
 
 The benchmark adapter in ``benchmark/adapters`` prepares the event bundle seam.
 This module turns that bundle plus the trend scaffold into a system-facing
@@ -29,7 +29,7 @@ def build_live_event_macro_micro(
         return _missing_result(
             bundle=bundle,
             trend=trend,
-            note="KT2 live runtime requires at least two temporally resolved posts.",
+            note="PropagationAnalysis live runtime requires at least two temporally resolved posts.",
             checkpoint_available=checkpoint_available,
         )
 
@@ -38,9 +38,9 @@ def build_live_event_macro_micro(
     regime_posterior = dict(trend.get("regime_posterior") or {})
 
     return {
-        "schema": "cogguard.kt2.system_macro_micro_prediction.v1",
+        "schema": "cogguard.propagation_analysis.system_macro_micro_prediction.v1",
         "status": "ok",
-        "model": "KT2LiveRuntime",
+        "model": "PropagationAnalysisLiveRuntime",
         "task": "multi_scale",
         "dataset": "current_event",
         "seed": None,
@@ -51,7 +51,7 @@ def build_live_event_macro_micro(
         "evidence_level": "internal_live_runtime",
         "full_validation_passed": False,
         "boundary": (
-            "Internal KT2 live runtime derived from the event bundle and "
+            "Internal PropagationAnalysis live runtime derived from the event bundle and "
             "trend scaffold. It is not a fitted benchmark checkpoint."
         ),
         "methodology": {
@@ -141,9 +141,9 @@ def _missing_result(
 ) -> dict[str, Any]:
     bundle_summary = dict(bundle.get("summary") or {})
     return {
-        "schema": "cogguard.kt2.system_macro_micro_prediction.v1",
+        "schema": "cogguard.propagation_analysis.system_macro_micro_prediction.v1",
         "status": "data_insufficient",
-        "model": "KT2LiveRuntime",
+        "model": "PropagationAnalysisLiveRuntime",
         "task": "multi_scale",
         "dataset": "current_event",
         "seed": None,
@@ -154,7 +154,7 @@ def _missing_result(
         "evidence_level": "internal_live_runtime",
         "note": note,
         "boundary": (
-            "Internal KT2 live runtime stays conservative when the event bundle "
+            "Internal PropagationAnalysis live runtime stays conservative when the event bundle "
             "does not contain enough temporally resolved posts."
         ),
         "macro": {

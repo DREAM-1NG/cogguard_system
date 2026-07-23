@@ -6,7 +6,7 @@ from httpx import AsyncClient
 
 from app.core.security import get_current_user_or_local_preview
 from app.main import app
-from app.services import account_service, coordination_service, kt2_prediction_service, propagation_service, risk_service
+from app.services import account_service, coordination_service, propagation_prediction_service, propagation_service, risk_service
 from app.api.v1 import coordination as coordination_api
 from app.api.v1 import propagation as propagation_api
 from app.api.v1 import risk as risk_api
@@ -659,21 +659,21 @@ def test_propagation_api_accepts_local_preview_dependency(monkeypatch):
     assert calls["predict"] == {"platform": "weibo", "event_id": "event-1"}
 
 
-def test_propagation_api_passes_kt2_prediction_params(monkeypatch):
+def test_propagation_api_passes_propagation_prediction_params(monkeypatch):
     calls = {}
 
-    async def fake_predict_kt2_macro_micro(**kwargs):
+    async def fake_predict_propagation_analysis_macro_micro(**kwargs):
         calls.update(kwargs)
-        return {"status": "ok", "model": "KT2SequenceJointModel"}
+        return {"status": "ok", "model": "PropagationAnalysisSequenceJointModel"}
 
     monkeypatch.setattr(
-        propagation_api.kt2_prediction_service,
-        "predict_kt2_macro_micro",
-        fake_predict_kt2_macro_micro,
+        propagation_api.propagation_prediction_service,
+        "predict_propagation_analysis_macro_micro",
+        fake_predict_propagation_analysis_macro_micro,
     )
 
     payload = asyncio.run(
-        propagation_api.predict_kt2_macro_micro(
+        propagation_api.predict_propagation_analysis_macro_micro(
             dataset="douban",
             seed=43,
             run_live=False,
@@ -682,20 +682,20 @@ def test_propagation_api_passes_kt2_prediction_params(monkeypatch):
     )
 
     assert calls == {"dataset": "douban", "seed": 43, "run_live": False}
-    assert payload["data"]["model"] == "KT2SequenceJointModel"
+    assert payload["data"]["model"] == "PropagationAnalysisSequenceJointModel"
 
 
-def test_propagation_api_exposes_model_prediction_without_frontend_kt2_label(monkeypatch):
+def test_propagation_api_exposes_model_prediction_without_frontend_propagation_analysis_label(monkeypatch):
     calls = {}
 
-    async def fake_predict_kt2_macro_micro(**kwargs):
+    async def fake_predict_propagation_analysis_macro_micro(**kwargs):
         calls.update(kwargs)
         return {"status": "ok", "dataset": kwargs["dataset"], "seed": kwargs["seed"]}
 
     monkeypatch.setattr(
-        propagation_api.kt2_prediction_service,
-        "predict_kt2_macro_micro",
-        fake_predict_kt2_macro_micro,
+        propagation_api.propagation_prediction_service,
+        "predict_propagation_analysis_macro_micro",
+        fake_predict_propagation_analysis_macro_micro,
     )
 
     payload = asyncio.run(
@@ -713,9 +713,9 @@ def test_propagation_api_exposes_model_prediction_without_frontend_kt2_label(mon
     assert "model" not in payload["data"]
 
 
-def test_kt2_prediction_service_loads_cached_macro_micro_result():
+def test_propagation_prediction_service_loads_cached_macro_micro_result():
     result = asyncio.run(
-        kt2_prediction_service.predict_kt2_macro_micro(
+        propagation_prediction_service.predict_propagation_analysis_macro_micro(
             dataset="twitter",
             seed=42,
             run_live=False,
@@ -723,7 +723,7 @@ def test_kt2_prediction_service_loads_cached_macro_micro_result():
     )
 
     assert result["status"] == "ok"
-    assert result["model"] == "KT2SequenceJointModel"
+    assert result["model"] == "PropagationAnalysisSequenceJointModel"
     assert result["label"] == "实验预测"
     assert result["is_experimental"] is True
     assert result["macro"]["metrics"]["msle"] is not None

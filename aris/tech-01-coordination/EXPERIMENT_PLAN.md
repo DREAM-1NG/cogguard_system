@@ -1,6 +1,6 @@
 # EXPERIMENT_PLAN
 
-> ⚠️ 方向对齐说明（2026-06-26，覆盖本文与之冲突处）：KT1 最新定位为 **GNN + LM 增强的协同社区构建与发现**。协同边证据仍以共同行为特征为核心，但不再把方法限制为纯网络科学社区发现。
+> ⚠️ 方向对齐说明（2026-06-26，覆盖本文与之冲突处）：Coordination Discover 最新定位为 **GNN + LM 增强的协同社区构建与发现**。协同边证据仍以共同行为特征为核心，但不再把方法限制为纯网络科学社区发现。
 > - LM 可用于共享对象归一、节点/社区表征、Node Selection 后的 LLM annotation 和解释；不能把立场、毒性、危害性等内容分类直接作为协同边证据。
 > - GNN 是主方法的学习组件，用于多关系、动态、有向协同图上的消息传递、关系 attention、边/节点/社区表示学习。
 > - PSL（对称超几何 + Cauchy + BH-FDR）作为行为通道的显著性筛查和可解释审计组件保留，不再是唯一核心方法。
@@ -11,7 +11,7 @@
 
 ## 正式实验定位：协同发现 -> 协同区分
 
-KT1 的正式实验按两类设置组织，避免把无标签协同发现和有标签分类混为一个任务。
+Coordination Discover 的正式实验按两类设置组织，避免把无标签协同发现和有标签分类混为一个任务。
 
 ### Setting A: discovery-only
 
@@ -38,13 +38,13 @@ KT1 的正式实验按两类设置组织，避免把无标签协同发现和有�
 - 调试诊断: F1@0.5（不进入论文主表）
 - 社区对齐: FM-score, NMI, ARI, Purity
 
-**辅助指标**: bot score、toxicity、stance、harmfulness 等内容或身份表征只用于 characterization，不回流为 KT1 的协同判据。
+**辅助指标**: bot score、toxicity、stance、harmfulness 等内容或身份表征只用于 characterization，不回流为 Coordination Discover 的协同判据。
 
 ## 技术路线
 
 ### 核心方法：LM-enhanced Multi-relation GNN
 
-KT1 主方法由四层组成：
+Coordination Discover 主方法由四层组成：
 
 1. **Behavior graph construction**：从 URL、hashtag、媒体指纹、转发/回复/引用/提及目标、cascade root、模板指纹中构建多关系动态有向图。
 2. **LM feature layer**：对共享对象、账号历史和高影响节点生成 embedding / annotation，用于 object canonicalization、节点/社区语义表征和解释。

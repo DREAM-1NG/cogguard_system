@@ -8,25 +8,25 @@ from app.models.analysis import AnalysisRunEvent
 from app.models.analysis import EventSnapshotRecord
 from app.models.analysis import ReviewFeedback
 from app.models.analysis import ReviewVerdictVersion
-from app.models.kt3_system import KT3AgentDebateTrace
-from app.models.kt3_system import KT3AgentFeedback
-from app.models.kt3_system import KT3AgentReport
-from app.models.kt3_system import KT3AgentReportAction
-from app.models.kt3_system import KT3AgentReportEvidenceRef
-from app.models.kt3_system import KT3AgentReportQuery
-from app.models.kt3_system import KT3AgentReportUncertainty
-from app.models.kt3_system import KT3AgentRun
-from app.models.kt3_system import KT3GateCase
-from app.models.kt3_system import KT3GateDataset
-from app.models.kt3_system import KT3GateLabel
-from app.models.kt3_system import KT3Job
-from app.models.kt3_system import KT3Policy
-from app.models.kt3_system import KT3PolicyAgentWeight
-from app.models.kt3_system import KT3PolicyMetric
-from app.models.kt3_system import KT3PolicyRefinementRound
-from app.models.kt3_system import KT3PolicyRule
-from app.models.kt3_system import KT3PolicyThreshold
-from app.models.kt3_system import KT3ProviderConfig
+from app.models.review_system import ReviewAgentDebateTrace
+from app.models.review_system import ReviewAgentFeedback
+from app.models.review_system import ReviewAgentReport
+from app.models.review_system import ReviewAgentReportAction
+from app.models.review_system import ReviewAgentReportEvidenceRef
+from app.models.review_system import ReviewAgentReportQuery
+from app.models.review_system import ReviewAgentReportUncertainty
+from app.models.review_system import ReviewAgentRun
+from app.models.review_system import ReviewGateCase
+from app.models.review_system import ReviewGateDataset
+from app.models.review_system import ReviewGateLabel
+from app.models.review_system import ReviewJob
+from app.models.review_system import ReviewPolicy
+from app.models.review_system import ReviewPolicyAgentWeight
+from app.models.review_system import ReviewPolicyMetric
+from app.models.review_system import ReviewPolicyRefinementRound
+from app.models.review_system import ReviewPolicyRule
+from app.models.review_system import ReviewPolicyThreshold
+from app.models.review_system import ReviewProviderConfig
 from app.models.task import CrawlJob
 from app.models.user import User
 
@@ -41,24 +41,24 @@ __all__ = [
     "EventSnapshotRecord",
     "ReviewFeedback",
     "ReviewVerdictVersion",
-    "KT3AgentDebateTrace",
-    "KT3AgentFeedback",
-    "KT3AgentReport",
-    "KT3AgentReportAction",
-    "KT3AgentReportEvidenceRef",
-    "KT3AgentReportQuery",
-    "KT3AgentReportUncertainty",
-    "KT3AgentRun",
-    "KT3GateCase",
-    "KT3GateDataset",
-    "KT3GateLabel",
-    "KT3Job",
-    "KT3Policy",
-    "KT3PolicyAgentWeight",
-    "KT3PolicyMetric",
-    "KT3PolicyRefinementRound",
-    "KT3PolicyRule",
-    "KT3PolicyThreshold",
-    "KT3ProviderConfig",
+    "ReviewAgentDebateTrace",
+    "ReviewAgentFeedback",
+    "ReviewAgentReport",
+    "ReviewAgentReportAction",
+    "ReviewAgentReportEvidenceRef",
+    "ReviewAgentReportQuery",
+    "ReviewAgentReportUncertainty",
+    "ReviewAgentRun",
+    "ReviewGateCase",
+    "ReviewGateDataset",
+    "ReviewGateLabel",
+    "ReviewJob",
+    "ReviewPolicy",
+    "ReviewPolicyAgentWeight",
+    "ReviewPolicyMetric",
+    "ReviewPolicyRefinementRound",
+    "ReviewPolicyRule",
+    "ReviewPolicyThreshold",
+    "ReviewProviderConfig",
     "User",
 ]

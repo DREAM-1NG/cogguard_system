@@ -1,12 +1,12 @@
-# METHOD_STANCE: KT3 方法论定位
+# METHOD_STANCE: Risk Review 方法论定位
 
 ## 核心主张
 
-**KT3 不是一个"更准确的风险评分系统"，而是一个"阶段感知的风险预测与 DISARM 路径驱动的反制推理框架"。**
+**Risk Review 不是一个"更准确的风险评分系统"，而是一个"阶段感知的风险预测与 DISARM 路径驱动的反制推理框架"。**
 
 ## 三个核心问题与回答
 
-| 问题 | 传统方法 | Agentic DISARM (2026) | KT3 |
+| 问题 | 传统方法 | Agentic DISARM (2026) | Risk Review |
 |------|---------|----------------------|-----|
 | **当前风险多高？** | 静态评分 | LLM 生成风险描述 | 信念区间 + 冲突检测 |
 | **接下来会发生什么？** | ❌ 不回答 | ❌ 不回答 | ✅ 阶段转换预测 + 下一步技术预测 |
@@ -16,7 +16,7 @@
 
 ### vs. 传统静态评分系统
 
-| 维度 | 传统静态评分 | KT3 |
+| 维度 | 传统静态评分 | Risk Review |
 |------|------------|-----|
 | 时序建模 | 单时间点快照 | 5 状态生命周期 + 滑动窗口 |
 | 输出类型 | 风险分数（0-100） | 阶段 + 转换风险 + 预测 + 反制 |
@@ -26,7 +26,7 @@
 
 ### vs. Agentic DISARM (2026)
 
-| 维度 | Agentic DISARM | KT3 |
+| 维度 | Agentic DISARM | Risk Review |
 |------|----------------|-----|
 | **核心方法** | LLM-driven | Rule-based + Graph reasoning |
 | **DISARM 使用** | Flat tagging（标签映射） | Path reasoning（路径推理结构） |
@@ -38,7 +38,7 @@
 | **决策支持** | "检测到 T0105 协同活动" | "检测到 T0105，预测下一步 T0049 信息洪流，建议部署洪流检测" |
 | **适用场景** | 需要 GPU、可接受黑盒 | 竞赛/实战、需要可审计、CPU-only |
 
-**关键差异**：Agentic DISARM 回答"观测到了什么"（detection），KT3 回答"下一步会发生什么 + 如何拦截"（anticipation + countermeasure）。
+**关键差异**：Agentic DISARM 回答"观测到了什么"（detection），Risk Review 回答"下一步会发生什么 + 如何拦截"（anticipation + countermeasure）。
 
 ## 贡献层级
 
@@ -71,20 +71,20 @@
 ### Non-Contribution（明确不作为主创新）
 
 - **三维评分本身**：authenticity / manipulation / impact 评分只是 supporting summary signal
-- **自动 DISARM 映射**：这是基础层，Agentic DISARM 已做，不是 KT3 的主要创新点
+- **自动 DISARM 映射**：这是基础层，Agentic DISARM 已做，不是 Risk Review 的主要创新点
 - **多源证据融合**：常见方法，只有 phase-conditioned adjustment 是新的
 
-## KT3 在 Characterization 中的职责边界
+## Risk Review 在 Characterization 中的职责边界
 
-按 Mannocci 等对 coordinated behavior 的 `Detect -> Characterize` 两阶段定义，`Harmfulness` 与 `Authenticity / Orchestration / Time-variance` 正交，且明确依赖观察者视角。对本项目而言，KT3 站在**网络舆论安全**视角负责 harmfulness 维度，至少覆盖三个层级：
+按 Mannocci 等对 coordinated behavior 的 `Detect -> Characterize` 两阶段定义，`Harmfulness` 与 `Authenticity / Orchestration / Time-variance` 正交，且明确依赖观察者视角。对本项目而言，Risk Review 站在**网络舆论安全**视角负责 harmfulness 维度，至少覆盖三个层级：
 
-| 层级 | 应回答的问题 | KT3 本轮落点 |
+| 层级 | 应回答的问题 | Risk Review 本轮落点 |
 |------|-------------|-------------|
 | 帖子级 | 这条内容是否 harmful、属于哪类 harmful、关联哪个 claim、对 claim 持何立场 | **本轮优先落地** |
 | 账户级 | 这个账户是否持续传播 harmful 内容、其 harm 模式是否稳定 | 由帖子级结果向上聚合 |
 | 社区级 | 这个协同群体整体体现为哪类 harmful（谣言、仇恨、骚扰、动员、放大） | 由账户级和传播结构继续聚合 |
 
-因此，KT3 的帖子级不是一个孤立的“文本分类器”，而是后续账户级、社区级 harmfulness 刻画的**最小语义单元**。
+因此，Risk Review 的帖子级不是一个孤立的“文本分类器”，而是后续账户级、社区级 harmfulness 刻画的**最小语义单元**。
 
 ## 帖子级任务定义（正式版）
 
@@ -152,7 +152,7 @@
 
 | 文献 | 来源 | 作用 |
 |------|------|------|
-| [Mannocci et al., 2024](https://arxiv.org/abs/2408.01257) | arXiv | 给出 `Detect -> Characterize` 与 harmfulness 正交维度框架，是 KT3 的问题边界来源 |
+| [Mannocci et al., 2024](https://arxiv.org/abs/2408.01257) | arXiv | 给出 `Detect -> Characterize` 与 harmfulness 正交维度框架，是 Risk Review 的问题边界来源 |
 | [HateXplain](https://ojs.aaai.org/index.php/AAAI/article/view/17745) | AAAI 2021 | 可解释有害文本检测，提供 harm label 与 rationale/span supervision |
 | [The Hateful Memes Challenge](https://proceedings.neurips.cc/paper/2020/hash/1b84c4cee2b8b3d823b30e2d604b1878-Abstract.html) | NeurIPS 2020 | 图文联合 harmful meme 检测的经典基准，支撑帖子级多模态 harmfulness |
 | [RumourEval 2019](https://aclanthology.org/S19-2147/) | SemEval 2019 | `support / deny / query / comment` 的 claim-conditioned stance 标注来源 |
@@ -163,7 +163,7 @@
 | [LLM-based Semantic Augmentation for Harmful Content Detection](https://arxiv.org/abs/2504.15548) | arXiv 2025 | 支撑 teacher 侧语义增强与弱监督扩标 |
 | [A Multi-Agent Framework with Automated Decision Rule Optimization (MARO)](https://aclanthology.org/2025.emnlp-main.291/) | EMNLP 2025 | 作为 Agent 编排与反思机制参考，不作为底层帖子分类器 |
 
-补充说明：KT3 不直接照搬 MARO 做底层分类，而是借鉴其 `agent orchestration / reflection` 思路，把 Agent 放在**解释、复核、报告**层，而把帖子级分类核心保留为可部署的多模态学生模型。
+补充说明：Risk Review 不直接照搬 MARO 做底层分类，而是借鉴其 `agent orchestration / reflection` 思路，把 Agent 放在**解释、复核、报告**层，而把帖子级分类核心保留为可部署的多模态学生模型。
 
 ## 帖子级数据集与用途
 
@@ -177,7 +177,7 @@
 | [FakeSV 数据仓库](https://github.com/ICTMCG/FakeSV) | 视频 + 文本 + 音频/社交上下文 | 视频帖子场景迁移，补齐 OCR/ASR/关键帧流程 |
 | [MultiOFF 论文](https://aclanthology.org/2020.trac-1.6/) | 图像 + 文本 | offensive meme 迁移数据，补充有害表达识别 |
 
-这些数据集在 KT3 中的分工不是“谁最好就全用谁”，而是形成互补：
+这些数据集在 Risk Review 中的分工不是“谁最好就全用谁”，而是形成互补：
 
 - `HateXplain + RumourEval` 负责把文本 harmful 与 claim-conditioned stance 学稳。
 - `Hateful Memes + MultiOFF + Fakeddit` 负责把图文 harmfulness 和 misinformation 表示学稳。
@@ -276,7 +276,7 @@
 
 ## 总结
 
-KT3 的核心价值不在于"评分更准"，而在于：
+Risk Review 的核心价值不在于"评分更准"，而在于：
 
 1. **从静态到动态**：阶段感知的风险演化建模
 2. **从检测到预判**：预测下一步会发生什么

@@ -1,6 +1,6 @@
 # 知微传播分析（WeiboReach）产品分析
 
-> **KT2 研究借鉴参考文档**
+> **Propagation Analysis 研究借鉴参考文档**
 > 输出类型：产品经理视角的功能分析
 > 日期：2026-04-28
 > 用途：指导 CascadeSwitch 研究的问题设定、功能落地与差异化定位
@@ -171,7 +171,7 @@
 4. **反复期** (Recurrence) ：衰退后被再次点燃
 5. **衰退期** (Decline) ：话题彻底冷却
 
-**对 KT2 的关键启示**：
+**对 Propagation Analysis 的关键启示**：
 > 这正是我们 CascadeSwitch 的 4 体制（seeding → amplification → peak → decay）的产业对应。
 > 产业界已验证阶段划分的必要性，我们的 regime 设定有产品对应。
 
@@ -267,11 +267,11 @@
 
 ---
 
-## 六、对 KT2 研究的借鉴要点
+## 六、对 Propagation Analysis 研究的借鉴要点
 
 ### 6.1 问题设定的启示
 
-| 知微产品 | KT2 研究 | 启示 |
+| 知微产品 | Propagation Analysis 研究 | 启示 |
 |---------|----------|------|
 | 传播力指数（0-100） | 趋势预测数值 | 除预测数值，还可提供"传播力等级"风险分类输出 |
 | 事件阶段划分 | CascadeSwitch 4 体制 | 产业界已验证阶段划分的必要性 |
@@ -305,9 +305,9 @@
 
 ### 6.4 应用场景借鉴
 
-知微的客户类型提示了 KT2 的落地方向：
+知微的客户类型提示了 Propagation Analysis 的落地方向：
 
-| 场景 | KT2 对应能力 |
+| 场景 | Propagation Analysis 对应能力 |
 |------|-------------|
 | 危机预警 | 预测负面事件的扩散规模与速度 |
 | 传播效果评估 | 对比预期与实际传播差距 |
@@ -316,7 +316,7 @@
 
 ---
 
-## 七、差异化定位：KT2 相对知微的优势
+## 七、差异化定位：Propagation Analysis 相对知微的优势
 
 ### 7.1 知微的产品局限
 
@@ -328,7 +328,7 @@
 
 ---
 
-### 7.2 KT2 的研究优势
+### 7.2 Propagation Analysis 的研究优势
 
 - **CascadeSwitch 提供可发表的方法论**：显式 regime-switching + LLM 事件条件
 - **跨平台泛化能力**：在 DeepHawkes Weibo + CasFlow Twitter 上验证
@@ -340,7 +340,7 @@
 
 ### 7.3 对比矩阵
 
-| 维度 | 知微产品 | KT2 研究 |
+| 维度 | 知微产品 | Propagation Analysis 研究 |
 |------|---------|----------|
 | 时间取向 | 事后分析为主 | 前瞻预测为主 |
 | 数据依赖 | 微博原生字段 | 仅用时序 + 图结构 |
@@ -366,14 +366,14 @@
 
 ## 八、可操作的研究动作
 
-基于知微分析，建议 KT2 在现有 CascadeSwitch 基础上补充：
+基于知微分析，建议 Propagation Analysis 在现有 CascadeSwitch 基础上补充：
 
 ### 8.1 特征扩展（低成本）
 
 在 `ts_features.py` 中新增：
 - `max_chain_depth`：最长转发链深度
 - `unique_reposter_count`：独立转发用户数
-- `kol_ratio`：转发中 KOL 占比（利用 KT1 coordination 信号）
+- `kol_ratio`：转发中 KOL 占比（利用 Coordination Discover coordination 信号）
 - `time_to_peak`：观测窗口内是否已达到峰值
 - `media_report_count`：媒体转载数（若数据可得）
 
@@ -485,7 +485,7 @@
 |------|---------|------|
 | ✅ 事实 | 直接陈述 | 公司成立于 2012 年；产品定位官方自述内容 |
 | ⚠️ 推测 | 标注"(推测)" | 关键节点算法；影响力指数权重公式 |
-| 💡 启示 | 标注"启示"/"借鉴" | 对 KT2 研究的建议 |
+| 💡 启示 | 标注"启示"/"借鉴" | 对 Propagation Analysis 研究的建议 |
 
 ### 10.2 未能验证的部分
 
@@ -512,7 +512,7 @@
 | 传播路径可视化 | ✅ 产品核心功能 | ✅ 支持 |
 | 关键节点识别 | ✅ 产品核心功能 | ✅ propagation_legacy.py key_roles |
 | 传播力指数 | ✅ 0-100 综合评分 | 🔲 待补充 influence_score |
-| 事件影响力排名 | ✅ 产品核心功能 | 🔲 超出 KT2 范围 |
+| 事件影响力排名 | ✅ 产品核心功能 | 🔲 超出 Propagation Analysis 范围 |
 | 事件阶段划分 | ✅ 5 阶段经验划分 | ✅ 4 体制可学习 regime |
 | 趋势预测 | ❌ 缺失 | ✅ CascadeSwitch 核心创新 |
 | 跨平台验证 | ❌ 仅微博 | ✅ 支持 Twitter 等 |

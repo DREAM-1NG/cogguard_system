@@ -10,7 +10,7 @@
 
 **系统功能层面**：CogGuard 需要同时覆盖 Detection（协同发现）和 Characterization（协同评估/类型分类）。
 
-**关键技术层面**：KT1 的核心创新聚焦于 Detection 内部的方法突破——如何在 Network Science 的 co-action 检测范式内，将 edge filtering 从启发式阈值升级为 pair-level 统计假设检验，并通过 dependence-robust p-value combination 实现多行为类型的理论化融合。
+**关键技术层面**：Coordination Discover 的核心创新聚焦于 Detection 内部的方法突破——如何在 Network Science 的 co-action 检测范式内，将 edge filtering 从启发式阈值升级为 pair-level 统计假设检验，并通过 dependence-robust p-value combination 实现多行为类型的理论化融合。
 
 ## 系统功能 vs 关键技术的区分
 
@@ -79,7 +79,7 @@ ML Methods
 ### Characterization 层（系统功能扩展）
 - 基于 Detection 输出的协同群体，沿综述四个**正交维度**进行表征
 - 概念锚点见 `SURVEY_DIMENSIONS.md`（Mannocci et al. 2024 原文摘录）
-- 为下游 KT2（传播监控）和 KT3（报告研判）提供结构化输入
+- 为下游 Propagation Analysis（传播监控）和 Risk Review（报告研判）提供结构化输入
 
 > **正交性原则（综述核心）**: Authenticity 与 Harmfulness 是两个独立维度，不能合并为单一"可疑度"。系统输出应支持 4 象限定位：
 > - authentic + harmless（良性社区协同，如应急互助）

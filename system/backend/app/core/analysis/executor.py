@@ -95,9 +95,9 @@ class AnalysisExecutor:
         snapshot: EventSnapshot,
         options: dict[str, Any],
     ) -> dict[str, Any]:
-        if stage == "kt1":
+        if stage in {"coordination_discover", "coordination_discover"}:
             return await self.engines.coordination.analyze(snapshot, options)
-        if stage == "kt2":
+        if stage in {"propagation_analysis", "propagation_analysis"}:
             return await self.engines.propagation.hindcast(snapshot, options)
         if stage == "student":
             return await self.engines.student.predict(_case_from_snapshot(snapshot, options=options))
@@ -117,21 +117,21 @@ class SnapshotCoordinationEngine:
 
         result = analyze_coordination_discover_snapshot(snapshot, options)
         result["fallback"] = True
-        result["fallback_reason"] = fallback_reason or "kt1_artifact_unavailable"
+        result["fallback_reason"] = fallback_reason or "coordination_discover_artifact_unavailable"
         result["fallback_policy"] = "evidence_runtime_v2"
         return result
 
 
-class KT2PropagationEngine:
+class PropagationAnalysisPropagationEngine:
     async def hindcast(self, snapshot: EventSnapshot, options: dict[str, Any]) -> dict[str, Any]:
-        from app.services.kt2_prediction_service import predict_event_macro_micro
+        from app.services.propagation_prediction_service import predict_event_macro_micro
 
         result = await predict_event_macro_micro(
             posts=snapshot.posts,
             comments=snapshot.comments,
             top_k=int(options.get("top_k", 10) or 10),
         )
-        return {"technology": "kt2", **result}
+        return {"technology": "propagation_analysis", **result}
 
 
 class UnavailableStudentRuntime:
@@ -164,7 +164,7 @@ class UnavailableTeacherJobPort:
 def default_analysis_engine_ports() -> AnalysisEnginePorts:
     return AnalysisEnginePorts(
         coordination=SnapshotCoordinationEngine(),
-        propagation=KT2PropagationEngine(),
+        propagation=PropagationAnalysisPropagationEngine(),
         student=InternalStudentRuntime(),
         teacher=InternalTeacherJobPort(),
     )

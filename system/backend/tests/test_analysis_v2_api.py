@@ -105,7 +105,7 @@ def test_v2_analysis_routes_create_runs_and_recover_events():
                 json={
                     "event_id": "trump_visit",
                     "snapshot_id": "snapshot_a",
-                    "requested_stages": ["kt1", "kt2", "student"],
+                    "requested_stages": ["coordination_discover", "propagation_analysis", "student"],
                     "options": {"priority": "demo"},
                 },
             )

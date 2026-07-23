@@ -13,12 +13,17 @@ import numpy as np
 
 DeepGraphEncoderName = Literal["han", "han_relation", "lightweight", "magnn_legacy", "magnn", "amdn_hage"]
 
+STABLE_DISCOVER_ENCODER: DeepGraphEncoderName = "magnn_legacy"
+DEPRECATED_DISCOVER_ENCODERS = {
+    "magnn": "deprecated_non_claimable_recon_regression",
+}
+
 
 @dataclass(frozen=True)
 class DeepGraphDiscoverConfig:
-    # KT1's main Discover path is MAGNN: it keeps explicit User-Object-User
-    # metapath instances, which makes discovered communities auditable by object.
-    encoder: DeepGraphEncoderName = "magnn"
+    # The newer MAGNN instance encoder is retained for historical replay only;
+    # IOHunter validation showed severe reconstruction AUC/AP regression.
+    encoder: DeepGraphEncoderName = STABLE_DISCOVER_ENCODER
     embedding_dim: int = 64
     hidden_dim: int = 64
     epochs: int = 80

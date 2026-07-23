@@ -99,7 +99,7 @@ def require_roles(*allowed_roles: str):
             expected = ", ".join(sorted(allowed))
             raise HTTPException(
                 status_code=403,
-                detail=f"KT3 operation requires role in [{expected}], current role: {role or 'unknown'}",
+                detail=f"Review operation requires role in [{expected}], current role: {role or 'unknown'}",
             )
         return current_user
 

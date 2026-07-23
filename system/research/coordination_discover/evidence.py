@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import hashlib
+import itertools
 import json
+import math
 import re
 from collections import Counter, defaultdict
 from datetime import datetime, timezone
@@ -11,6 +13,8 @@ from urllib.parse import urlparse
 from .contracts import (
     MODALITY_SPECIFIC_FIELD_MARKERS,
     PLATFORM_GENERIC_EVIDENCE_KINDS,
+    SEMANTIC_TEXT_EMBEDDING_FIELDS,
+    AccountMultigraphEdge,
     TOPOLOGY_AUDIT_FEATURE_NAMES,
     EvidenceEdge,
     EvidenceGraph,
@@ -37,6 +41,18 @@ MEDIA_EXTENSIONS = {
     ".aac",
     ".flac",
 }
+ACCOUNT_EDGE_MAX_DELTA_SECONDS = 24 * 3600
+ACCOUNT_EDGE_DECAY_HALFLIFE_SECONDS = 6 * 3600
+ACCOUNT_EDGE_FULL_PAIR_ACCOUNT_LIMIT = 64
+ACCOUNT_EDGE_NEIGHBOR_LIMIT = 16
+ACCOUNT_EDGE_MAX_PAIRS_PER_OBJECT = 4096
+NEAR_DUPLICATE_MIN_TOKENS = 6
+NEAR_DUPLICATE_SHINGLE_SIZE = 3
+NEAR_DUPLICATE_BAND_BITS = 16
+NEAR_DUPLICATE_MAX_HAMMING_DISTANCE = 24
+NEAR_DUPLICATE_MIN_JACCARD = 0.62
+NEAR_DUPLICATE_MIN_TOKEN_CONTAINMENT = 0.78
+NEAR_DUPLICATE_MAX_BUCKET_CANDIDATES = 256
 
 
 def build_evidence_graph(snapshot: Any) -> EvidenceGraph:
@@ -110,9 +126,16 @@ def build_evidence_graph(snapshot: Any) -> EvidenceGraph:
         )
 
     edges = _dedupe_edges(edges)
+    account_edges = _build_account_multigraph_edges(edges)
     accounts = sorted({edge.source_account_id for edge in edges if edge.source_account_id})
-    coverage = _coverage(edges=edges, content_count=len(content_index), object_count=len(objects))
+    coverage = _coverage(
+        edges=edges,
+        account_edges=account_edges,
+        content_count=len(content_index),
+        object_count=len(objects),
+    )
     audit_features = _topology_audit_features(accounts=accounts, edges=edges)
+    representation_inputs = _representation_inputs(content_index)
 
     return EvidenceGraph(
         snapshot_id=snapshot_id,
@@ -121,9 +144,11 @@ def build_evidence_graph(snapshot: Any) -> EvidenceGraph:
         accounts=accounts,
         objects=sorted(objects.values(), key=lambda item: item.object_id),
         edges=edges,
+        account_edges=account_edges,
         excluded_fields=excluded_fields,
         topology_audit_features=audit_features,
         coverage=coverage,
+        representation_inputs=representation_inputs,
     )
 
 
@@ -351,20 +376,157 @@ def _iter_native_relations(row: dict[str, Any]) -> list[tuple[str, str]]:
 
 
 def _near_duplicate_groups(content_index: dict[str, dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
-    groups: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    records = []
     for content in content_index.values():
-        signature = _near_duplicate_signature(content["text"])
-        if signature:
-            groups[signature].append(content)
-    return dict(groups)
+        profile = _near_duplicate_profile(content["text"])
+        if profile:
+            records.append({"content": content, **profile})
+    if len(records) < 2:
+        return {}
+
+    parent = list(range(len(records)))
+    buckets: dict[tuple[Any, ...], list[int]] = defaultdict(list)
+    for index, record in enumerate(records):
+        simhash = int(record["simhash"])
+        for band in range(0, 64, NEAR_DUPLICATE_BAND_BITS):
+            mask = (1 << NEAR_DUPLICATE_BAND_BITS) - 1
+            buckets[("simhash", band, (simhash >> band) & mask)].append(index)
+        for shingle in set(record["shingles"]):
+            buckets[("shingle", shingle)].append(index)
+
+    for bucket_indexes in buckets.values():
+        if len(bucket_indexes) < 2:
+            continue
+        if len(bucket_indexes) > NEAR_DUPLICATE_MAX_BUCKET_CANDIDATES:
+            bucket_indexes = _bounded_bucket_indexes(records, bucket_indexes)
+        for left_index, right_index in itertools.combinations(bucket_indexes, 2):
+            left = records[left_index]
+            right = records[right_index]
+            if _near_duplicate_match(left, right):
+                _union(parent, left_index, right_index)
+
+    grouped_indexes: dict[int, list[int]] = defaultdict(list)
+    for index in range(len(records)):
+        grouped_indexes[_find(parent, index)].append(index)
+
+    groups: dict[str, list[dict[str, Any]]] = {}
+    for indexes in grouped_indexes.values():
+        if len(indexes) < 2:
+            continue
+        members = [records[index]["content"] for index in indexes]
+        signature = _near_duplicate_group_signature([records[index] for index in indexes])
+        groups[signature] = sorted(members, key=lambda item: (item["observed_at"], item["content_id"]))
+    return groups
 
 
 def _near_duplicate_signature(text: str) -> str:
-    tokens = _tokens(text)
-    if len(tokens) < 6:
+    profile = _near_duplicate_profile(text)
+    if not profile:
         return ""
-    compact = " ".join(tokens[:12])
-    return hashlib.sha1(compact.encode("utf-8")).hexdigest()[:12]
+    return _near_duplicate_group_signature([profile])
+
+
+def _near_duplicate_profile(text: str) -> dict[str, Any] | None:
+    tokens = _tokens(text)
+    if len(tokens) < NEAR_DUPLICATE_MIN_TOKENS:
+        return None
+    shingles = _token_shingles(tokens, size=NEAR_DUPLICATE_SHINGLE_SIZE)
+    return {
+        "tokens": tokens,
+        "shingles": shingles,
+        "simhash": _simhash64(shingles or tokens),
+    }
+
+
+def _near_duplicate_match(left: dict[str, Any], right: dict[str, Any]) -> bool:
+    distance = _hamming_distance(int(left["simhash"]), int(right["simhash"]))
+    if distance > NEAR_DUPLICATE_MAX_HAMMING_DISTANCE:
+        return False
+    similarity = _jaccard_set(set(left["shingles"]), set(right["shingles"]))
+    containment = _containment(set(left["tokens"]), set(right["tokens"]))
+    return similarity >= NEAR_DUPLICATE_MIN_JACCARD or containment >= NEAR_DUPLICATE_MIN_TOKEN_CONTAINMENT
+
+
+def _bounded_bucket_indexes(records: list[dict[str, Any]], indexes: list[int]) -> list[int]:
+    ordered = sorted(
+        indexes,
+        key=lambda index: (
+            float(records[index]["content"].get("observed_at", 0.0)),
+            str(records[index]["content"].get("content_id", "")),
+        ),
+    )
+    if len(ordered) <= NEAR_DUPLICATE_MAX_BUCKET_CANDIDATES:
+        return ordered
+    stride = max(1, len(ordered) // NEAR_DUPLICATE_MAX_BUCKET_CANDIDATES)
+    sampled = ordered[::stride][:NEAR_DUPLICATE_MAX_BUCKET_CANDIDATES]
+    return sorted(set(sampled))
+
+
+def _near_duplicate_group_signature(records: list[dict[str, Any]]) -> str:
+    shingle_counts = Counter(
+        shingle
+        for record in records
+        for shingle in record.get("shingles", [])
+    )
+    if shingle_counts:
+        basis = "|".join(shingle for shingle, _ in shingle_counts.most_common(12))
+    else:
+        basis = "|".join(
+            token
+            for record in records
+            for token in record.get("tokens", [])[:12]
+        )
+    return hashlib.sha1(basis.encode("utf-8")).hexdigest()[:12]
+
+
+def _token_shingles(tokens: list[str], *, size: int) -> list[str]:
+    if len(tokens) < size:
+        return list(tokens)
+    return [" ".join(tokens[index : index + size]) for index in range(len(tokens) - size + 1)]
+
+
+def _simhash64(features: list[str]) -> int:
+    vector = [0] * 64
+    for feature in features:
+        digest = hashlib.blake2b(feature.encode("utf-8"), digest_size=8).digest()
+        value = int.from_bytes(digest, "big")
+        for bit in range(64):
+            vector[bit] += 1 if value & (1 << bit) else -1
+    result = 0
+    for bit, score in enumerate(vector):
+        if score >= 0:
+            result |= 1 << bit
+    return result
+
+
+def _hamming_distance(left: int, right: int) -> int:
+    return int((left ^ right).bit_count())
+
+
+def _jaccard_set(left: set[str], right: set[str]) -> float:
+    if not left or not right:
+        return 0.0
+    return len(left & right) / len(left | right)
+
+
+def _containment(left: set[str], right: set[str]) -> float:
+    if not left or not right:
+        return 0.0
+    return len(left & right) / max(1, min(len(left), len(right)))
+
+
+def _find(parent: list[int], index: int) -> int:
+    while parent[index] != index:
+        parent[index] = parent[parent[index]]
+        index = parent[index]
+    return index
+
+
+def _union(parent: list[int], left: int, right: int) -> None:
+    left_root = _find(parent, left)
+    right_root = _find(parent, right)
+    if left_root != right_root:
+        parent[right_root] = left_root
 
 
 def _topology_audit_features(*, accounts: list[str], edges: list[EvidenceEdge]) -> dict[str, Any]:
@@ -394,14 +556,304 @@ def _topology_audit_features(*, accounts: list[str], edges: list[EvidenceEdge]) 
     }
 
 
-def _coverage(*, edges: list[EvidenceEdge], content_count: int, object_count: int) -> dict[str, Any]:
+def _build_account_multigraph_edges(edges: list[EvidenceEdge]) -> list[AccountMultigraphEdge]:
+    """Project account-object evidence into a directed weighted multigraph."""
+
+    grouped: dict[tuple[str, str, str], list[EvidenceEdge]] = defaultdict(list)
+    for edge in edges:
+        grouped[(edge.platform, edge.evidence_object_id, edge.relation_type)].append(edge)
+
+    account_edges: list[AccountMultigraphEdge] = []
+    for (platform, object_id, relation_type), rows in grouped.items():
+        unique_accounts = {row.source_account_id for row in rows if row.source_account_id}
+        if len(unique_accounts) < 2:
+            continue
+        for left, right in _iter_account_edge_pair_candidates(rows):
+            if left.source_account_id == right.source_account_id:
+                continue
+            delta = abs(float(left.observed_at) - float(right.observed_at))
+            if delta > ACCOUNT_EDGE_MAX_DELTA_SECONDS:
+                continue
+            source, target, direction = _directed_pair(left, right)
+            weight = _account_edge_weight(left=left, right=right, delta_seconds=delta)
+            account_edges.append(
+                AccountMultigraphEdge(
+                    source_account_id=source.source_account_id,
+                    target_account_id=target.source_account_id,
+                    evidence_kind=source.evidence_kind,
+                    relation_type=relation_type,
+                    platform=platform,
+                    observed_at=max(float(left.observed_at), float(right.observed_at)),
+                    weight=weight,
+                    time_delta_seconds=round(delta, 6),
+                    source_content_id=source.content_id,
+                    target_content_id=target.content_id,
+                    evidence_objects=[object_id],
+                    evidence_refs=[left.evidence_ref, right.evidence_ref],
+                    direction=direction,
+                    layer="behavior",
+                    component_kinds=[source.evidence_kind],
+                )
+            )
+
+    account_edges.extend(_higher_order_edges(account_edges))
+    return _dedupe_account_edges(account_edges)
+
+
+def _iter_account_edge_pair_candidates(rows: list[EvidenceEdge]) -> Any:
+    ordered = sorted(rows, key=_edge_sort_key)
+    unique_accounts = {row.source_account_id for row in ordered if row.source_account_id}
+    if len(unique_accounts) <= ACCOUNT_EDGE_FULL_PAIR_ACCOUNT_LIMIT:
+        yield from itertools.combinations(ordered, 2)
+        return
+
+    emitted = 0
+    for index, left in enumerate(ordered):
+        neighbor_count = 0
+        for right in ordered[index + 1 :]:
+            delta = float(right.observed_at) - float(left.observed_at)
+            if delta > ACCOUNT_EDGE_MAX_DELTA_SECONDS:
+                break
+            if left.source_account_id == right.source_account_id:
+                continue
+            yield left, right
+            emitted += 1
+            neighbor_count += 1
+            if neighbor_count >= ACCOUNT_EDGE_NEIGHBOR_LIMIT:
+                break
+            if emitted >= ACCOUNT_EDGE_MAX_PAIRS_PER_OBJECT:
+                return
+
+
+def _higher_order_edges(edges: list[AccountMultigraphEdge]) -> list[AccountMultigraphEdge]:
+    grouped: dict[tuple[str, str, str], list[AccountMultigraphEdge]] = defaultdict(list)
+    for edge in edges:
+        pair = tuple(sorted((edge.source_account_id, edge.target_account_id)))
+        grouped[(edge.platform, pair[0], pair[1])].append(edge)
+
+    higher_order: list[AccountMultigraphEdge] = []
+    for (platform, left_account, right_account), rows in grouped.items():
+        kind_counts = Counter(row.evidence_kind for row in rows)
+        if len(kind_counts) < 2:
+            continue
+        rows = sorted(rows, key=lambda item: (item.observed_at, item.source_account_id, item.target_account_id))
+        first = rows[0]
+        last = rows[-1]
+        source_account, target_account = _higher_order_direction(left_account, right_account, rows)
+        weight = round(
+            (sum(float(row.weight) for row in rows) / max(len(rows), 1)) * (1.0 + 0.2 * (len(kind_counts) - 1)),
+            6,
+        )
+        evidence_objects = _bounded_unique(
+            object_id
+            for row in rows
+            for object_id in row.evidence_objects
+        )
+        evidence_refs = _bounded_unique(
+            reference
+            for row in rows
+            for reference in row.evidence_refs
+        )
+        component_kinds = sorted(kind_counts)
+        higher_order.append(
+            AccountMultigraphEdge(
+                source_account_id=source_account,
+                target_account_id=target_account,
+                evidence_kind="higher_order",
+                relation_type="co_evidence:" + "+".join(component_kinds[:5]),
+                platform=platform,
+                observed_at=float(last.observed_at),
+                weight=weight,
+                time_delta_seconds=round(float(last.observed_at) - float(first.observed_at), 6),
+                source_content_id=first.source_content_id,
+                target_content_id=last.target_content_id,
+                evidence_objects=evidence_objects,
+                evidence_refs=evidence_refs,
+                direction="aggregate",
+                layer="higher_order",
+                component_kinds=component_kinds,
+            )
+        )
+    return higher_order
+
+
+def _dedupe_account_edges(edges: list[AccountMultigraphEdge]) -> list[AccountMultigraphEdge]:
+    deduped: dict[tuple[Any, ...], AccountMultigraphEdge] = {}
+    for edge in edges:
+        key = (
+            edge.source_account_id,
+            edge.target_account_id,
+            edge.platform,
+            edge.evidence_kind,
+            edge.relation_type,
+            tuple(edge.evidence_objects),
+            edge.source_content_id,
+            edge.target_content_id,
+        )
+        existing = deduped.get(key)
+        if existing is None or edge.weight > existing.weight:
+            deduped[key] = edge
+    return sorted(
+        deduped.values(),
+        key=lambda item: (
+            item.observed_at,
+            item.source_account_id,
+            item.target_account_id,
+            item.evidence_kind,
+            item.relation_type,
+        ),
+    )
+
+
+def _directed_pair(left: EvidenceEdge, right: EvidenceEdge) -> tuple[EvidenceEdge, EvidenceEdge, str]:
+    if float(left.observed_at) < float(right.observed_at):
+        return left, right, "earlier_to_later"
+    if float(right.observed_at) < float(left.observed_at):
+        return right, left, "earlier_to_later"
+    if left.source_account_id <= right.source_account_id:
+        return left, right, "tie_break"
+    return right, left, "tie_break"
+
+
+def _higher_order_direction(
+    left_account: str,
+    right_account: str,
+    rows: list[AccountMultigraphEdge],
+) -> tuple[str, str]:
+    direction_scores = Counter()
+    for row in rows:
+        direction_scores[(row.source_account_id, row.target_account_id)] += float(row.weight)
+    if direction_scores:
+        (source, target), _ = direction_scores.most_common(1)[0]
+        return str(source), str(target)
+    return left_account, right_account
+
+
+def _account_edge_weight(*, left: EvidenceEdge, right: EvidenceEdge, delta_seconds: float) -> float:
+    base_weight = (float(left.weight) + float(right.weight)) / 2.0
+    decay = 0.5 ** (delta_seconds / ACCOUNT_EDGE_DECAY_HALFLIFE_SECONDS)
+    return round(base_weight * decay, 6)
+
+
+def _edge_sort_key(edge: EvidenceEdge) -> tuple[float, str, str, str]:
+    return (float(edge.observed_at), edge.source_account_id, edge.content_id, edge.evidence_object_id)
+
+
+def _bounded_unique(values: Any, *, limit: int = 25) -> list[str]:
+    rows: list[str] = []
+    seen: set[str] = set()
+    for value in values:
+        text = _text(value)
+        if not text or text in seen:
+            continue
+        seen.add(text)
+        rows.append(text)
+        if len(rows) >= limit:
+            break
+    return rows
+
+
+def _representation_inputs(content_index: dict[str, dict[str, Any]]) -> dict[str, Any]:
+    rows = []
+    by_content_id: dict[str, list[float]] = {}
+    for content in content_index.values():
+        field, vector = _semantic_text_embedding(content["row"])
+        if not vector:
+            continue
+        by_content_id[content["content_id"]] = vector
+        rows.append(
+            {
+                "content_id": content["content_id"],
+                "account_id": content["account_id"],
+                "field": field,
+                "dimension": len(vector),
+            }
+        )
+    return {
+        "text_embeddings": {
+            "status": "available" if rows else "missing",
+            "policy": "precomputed_only_no_synthetic_embeddings",
+            "field_candidates": list(SEMANTIC_TEXT_EMBEDDING_FIELDS),
+            "row_count": len(rows),
+            "rows": rows,
+            "by_content_id": by_content_id,
+        }
+    }
+
+
+def _semantic_text_embedding(row: dict[str, Any]) -> tuple[str, list[float]]:
+    for field in SEMANTIC_TEXT_EMBEDDING_FIELDS:
+        vector = _numeric_vector(row.get(field))
+        if vector:
+            return field, vector
+    raw_data = row.get("raw_data") if isinstance(row.get("raw_data"), dict) else {}
+    for field in SEMANTIC_TEXT_EMBEDDING_FIELDS:
+        vector = _numeric_vector(raw_data.get(field))
+        if vector:
+            return f"raw_data.{field}", vector
+    return "", []
+
+
+def _numeric_vector(value: Any) -> list[float]:
+    if not isinstance(value, (list, tuple)):
+        return []
+    vector: list[float] = []
+    for item in value:
+        if isinstance(item, bool):
+            return []
+        try:
+            number = float(item)
+        except (TypeError, ValueError):
+            return []
+        if math.isnan(number) or math.isinf(number):
+            return []
+        vector.append(number)
+    return vector
+
+
+def _coverage(
+    *,
+    edges: list[EvidenceEdge],
+    account_edges: list[AccountMultigraphEdge],
+    content_count: int,
+    object_count: int,
+) -> dict[str, Any]:
     kind_counts = Counter(edge.evidence_kind for edge in edges)
+    account_kind_counts = Counter(edge.evidence_kind for edge in account_edges)
+    layer_counts = Counter(edge.layer for edge in account_edges)
+    evidence_layer_matrix = Counter((edge.layer, kind) for edge in account_edges for kind in edge.component_kinds or [edge.evidence_kind])
     return {
         "kind_counts": {kind: int(kind_counts.get(kind, 0)) for kind in PLATFORM_GENERIC_EVIDENCE_KINDS},
         "edge_count": len(edges),
+        "account_edge_count": len(account_edges),
+        "account_edge_kind_counts": dict(sorted(account_kind_counts.items())),
+        "account_edge_layer_counts": dict(sorted(layer_counts.items())),
+        "evidence_layer_matrix": [
+            {"layer": layer, "evidence_kind": evidence_kind, "count": int(count)}
+            for (layer, evidence_kind), count in sorted(evidence_layer_matrix.items())
+        ],
+        "higher_order_edge_count": int(account_kind_counts.get("higher_order", 0)),
         "object_count": object_count,
         "content_count": content_count,
         "coverage_ratio": round(len(edges) / max(content_count, 1), 6) if content_count else 0.0,
+        "account_edge_projection_policy": {
+            "mode": "exhaustive_for_small_groups_temporal_neighbor_capped_for_large_groups",
+            "full_pair_account_limit": ACCOUNT_EDGE_FULL_PAIR_ACCOUNT_LIMIT,
+            "neighbor_limit": ACCOUNT_EDGE_NEIGHBOR_LIMIT,
+            "max_pairs_per_object": ACCOUNT_EDGE_MAX_PAIRS_PER_OBJECT,
+            "max_delta_seconds": ACCOUNT_EDGE_MAX_DELTA_SECONDS,
+        },
+        "near_duplicate_policy": {
+            "method": "simhash64_lsh_token_shingle_jaccard",
+            "min_tokens": NEAR_DUPLICATE_MIN_TOKENS,
+            "shingle_size": NEAR_DUPLICATE_SHINGLE_SIZE,
+            "band_bits": NEAR_DUPLICATE_BAND_BITS,
+            "max_hamming_distance": NEAR_DUPLICATE_MAX_HAMMING_DISTANCE,
+            "min_jaccard": NEAR_DUPLICATE_MIN_JACCARD,
+            "min_token_containment": NEAR_DUPLICATE_MIN_TOKEN_CONTAINMENT,
+            "max_bucket_candidates": NEAR_DUPLICATE_MAX_BUCKET_CANDIDATES,
+            "claim_role": "candidate_evidence_only",
+        },
     }
 
 
@@ -614,6 +1066,8 @@ def _timestamp_seconds(value: Any) -> float:
 
 def _is_modality_key(key: str) -> bool:
     lowered = str(key or "").lower()
+    if lowered in SEMANTIC_TEXT_EMBEDDING_FIELDS:
+        return False
     return any(marker in lowered for marker in MODALITY_SPECIFIC_FIELD_MARKERS)
 
 

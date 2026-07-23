@@ -1,7 +1,7 @@
-"""Post-level multimodal, claim-conditioned semantic assessment for KT3.
+"""Post-level multimodal, claim-conditioned semantic assessment for Review.
 
 This module implements a practical inference scaffold aligned with the
-literature direction already adopted in the KT3 documents:
+literature direction already adopted in the Review documents:
 
 - multimodal normalization over text, emoji, OCR, ASR, and media metadata
 - claim-conditioned stance inference inspired by rumor / claim verification work
@@ -311,7 +311,7 @@ def assess_post_semantics(
     prefer_embeddings: bool = True,
     max_output_posts: int = MAX_EVIDENCE_POSTS,
 ) -> dict[str, Any]:
-    """Run KT3 post-level multimodal, claim-conditioned assessment."""
+    """Run Review post-level multimodal, claim-conditioned assessment."""
     engine = SimilarityEngine(prefer_embeddings=prefer_embeddings)
     normalized_posts = [
         normalize_multimodal_post(post)
@@ -349,7 +349,7 @@ def assess_post_semantics(
             "multimodal_fusion": "modality-aware late fusion over normalized text/OCR/ASR/caption/media channels",
             "method_trace": MULTIMODAL_METHOD_TRACE,
             "design_note": (
-                "Representation-based KT3 scaffold aligned with multimodal harmfulness "
+                "Representation-based Review scaffold aligned with multimodal harmfulness "
                 "and claim-conditioned stance literature."
             ),
         },
@@ -622,7 +622,7 @@ def _infer_post_view_detection(
     review_reason = _post_view_review_reasons(view_results, majority_vote, weighted_fusion, conflict)
     final_label = final_decision["label"]
     return {
-        "schema_version": "kt3-post-view-detection-v1",
+        "schema_version": "review-post-view-detection-v1",
         "status": "executed",
         "view_order": list(POST_VIEW_ORDER),
         "view_results": view_results,

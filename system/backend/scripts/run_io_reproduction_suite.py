@@ -13,9 +13,10 @@ from app.core.coordination_baseline.io_reproduction import (
     DEFAULT_RELATIONS,
     DISCOVER_STRUCTURE_FILTERS,
     DISCOVER_STRUCTURE_FILTER_METRICS,
+    STABLE_DISCOVER_ENCODER,
     build_iohunter_commands,
     build_iohunter_run_plan,
-    build_kt1_comparison_report,
+    build_coordination_discover_comparison_report,
     ensure_iohunter_official_data_layout,
     inspect_iohunter_data,
     iohunter_workspace_status,
@@ -40,7 +41,7 @@ from app.core.coordination_baseline.io_reproduction import (
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Run KT1 IO reproduction baselines and DynaCoLM-GNN smoke experiments.",
+        description="Run CoordinationDiscover IO reproduction baselines and DynaCoLM-GNN smoke experiments.",
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
@@ -64,8 +65,8 @@ def parse_args() -> argparse.Namespace:
     discover_parser.add_argument(
         "--encoder",
         choices=("lightweight", "han_relation", "han", "magnn_legacy", "magnn", "amdn_hage"),
-        default="magnn",
-        help="Label-free Discover encoder; defaults to MAGNN for KT1 User-Object-User evidence modeling",
+        default=STABLE_DISCOVER_ENCODER,
+        help="Label-free Discover encoder; defaults to the stable legacy MAGNN baseline. Use magnn only for deprecated historical replay.",
     )
     discover_parser.add_argument("--epochs", type=int, default=80)
     discover_parser.add_argument("--embedding-dim", type=int, default=64)
@@ -78,24 +79,24 @@ def parse_args() -> argparse.Namespace:
         "--structure-filter",
         choices=DISCOVER_STRUCTURE_FILTERS,
         default="none",
-        help="Deprecated compatibility flag. KT1 Discover always runs the full MAGNN/mainline graph and ignores structural filtering requests.",
+        help="Deprecated compatibility flag. CoordinationDiscover Discover always runs the stable full-graph encoder and ignores structural filtering requests.",
     )
     discover_parser.add_argument(
         "--structure-filter-metric",
         choices=DISCOVER_STRUCTURE_FILTER_METRICS,
         default="eigenvector",
-        help="Deprecated compatibility flag retained for old manifests; ignored by KT1 Discover.",
+        help="Deprecated compatibility flag retained for old manifests; ignored by CoordinationDiscover Discover.",
     )
     discover_parser.add_argument(
         "--structure-filter-percentile",
         type=float,
         default=90.0,
-        help="Deprecated compatibility flag retained for old manifests; ignored by KT1 Discover.",
+        help="Deprecated compatibility flag retained for old manifests; ignored by CoordinationDiscover Discover.",
     )
     discover_parser.add_argument(
         "--structure-filter-use-weights",
         action="store_true",
-        help="Deprecated compatibility flag retained for old manifests; ignored by KT1 Discover.",
+        help="Deprecated compatibility flag retained for old manifests; ignored by CoordinationDiscover Discover.",
     )
 
     detect_parser = subparsers.add_parser("detect", help="Run DynaCoLM-Detect for labeled coordination discrimination")
@@ -106,7 +107,7 @@ def parse_args() -> argparse.Namespace:
     detect_parser.add_argument(
         "--discover-encoder",
         choices=("lightweight", "han_relation", "han", "magnn_legacy", "magnn", "amdn_hage"),
-        default="magnn",
+        default=STABLE_DISCOVER_ENCODER,
         help="Label-free Discover encoder whose outputs become Detect features",
     )
     detect_parser.add_argument("--discover-epochs", type=int, default=20)
@@ -213,7 +214,7 @@ def parse_args() -> argparse.Namespace:
     iohunter_summary_parser.add_argument("--run-output-dir", required=True, help="Directory containing iohunter_run_manifest.json")
     iohunter_summary_parser.add_argument("--output-dir", default="", help="Optional output directory for metric tables")
 
-    report_parser = subparsers.add_parser("kt1-report", help="Merge lightweight and IOHunter official metrics into one KT1 table")
+    report_parser = subparsers.add_parser("coordination_discover-report", help="Merge lightweight and IOHunter official metrics into one CoordinationDiscover table")
     report_parser.add_argument("--output-dir", required=True, help="Directory for unified CSV/JSON/Markdown report")
     report_parser.add_argument("--lightweight-dirs", nargs="*", default=[], help="Directories containing lightweight metrics.csv")
     report_parser.add_argument("--iohunter-summary-dirs", nargs="*", default=[], help="Directories containing iohunter_metric_summary.csv")
@@ -493,8 +494,8 @@ def main() -> None:
         print(json.dumps(summary, ensure_ascii=False, indent=2))
         return
 
-    if args.command == "kt1-report":
-        report = build_kt1_comparison_report(
+    if args.command == "coordination_discover-report":
+        report = build_coordination_discover_comparison_report(
             output_dir=Path(args.output_dir).resolve(),
             lightweight_dirs=tuple(Path(item).resolve() for item in args.lightweight_dirs),
             iohunter_summary_dirs=tuple(Path(item).resolve() for item in args.iohunter_summary_dirs),

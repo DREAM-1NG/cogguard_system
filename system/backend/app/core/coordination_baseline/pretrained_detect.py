@@ -14,6 +14,7 @@ import pandas as pd
 from app.config import PROJECT_ROOT
 from app.core.coordination_baseline.io_reproduction import (
     DEFAULT_RELATIONS,
+    STABLE_DISCOVER_ENCODER,
     _apply_discover_edge_scores_to_relation_graphs,
     _community_scores,
     _detect_discovery_snapshot,
@@ -27,14 +28,14 @@ from app.core.coordination_baseline.io_reproduction import (
     read_event_table,
 )
 
-KT1_EXPERIMENT_ROOT = PROJECT_ROOT / "backend" / "experiments" / "kt1_io_reproduction"
-CHINA_EVENTS_PATH = KT1_EXPERIMENT_ROOT / "accept_detect_lm_gnn_6d_s5_ep20" / "china" / "events.csv"
+CoordinationDiscover_EXPERIMENT_ROOT = PROJECT_ROOT / "backend" / "experiments" / "coordination_discover_io_reproduction"
+CHINA_EVENTS_PATH = CoordinationDiscover_EXPERIMENT_ROOT / "accept_detect_lm_gnn_6d_s5_ep20" / "china" / "events.csv"
 CHINA_DISCOVERY_PATH = (
-    KT1_EXPERIMENT_ROOT
-    / "accept_discover_magnn_full_embeddings_6d_s5_ep20"
+    CoordinationDiscover_EXPERIMENT_ROOT
+    / "accept_discover_magnn_legacy_vs_core_6d_s5_ep20"
     / "china"
     / "seed_42"
-    / "magnn"
+    / STABLE_DISCOVER_ENCODER
     / "discovery_summary.json"
 )
 PRETRAINED_ROOT = PROJECT_ROOT / "output" / "coordination_pretrained"
@@ -59,7 +60,7 @@ def _require_torch():
         import torch.nn as nn
         import torch.nn.functional as functional
     except ModuleNotFoundError as exc:  # pragma: no cover - depends on env
-        raise RuntimeError("KT1 Detect requires torch for fusion_gnn checkpoint inference") from exc
+        raise RuntimeError("CoordinationDiscover Detect requires torch for fusion_gnn checkpoint inference") from exc
     return torch, nn, functional
 
 
@@ -183,7 +184,7 @@ def _load_json(path: Path) -> dict[str, object]:
 def _ensure_strict_sbert(lm_feature_source: str) -> None:
     if not str(lm_feature_source).startswith("sbert:"):
         raise RuntimeError(
-            "SBERT is required for KT1 mainline runs, but the runtime fell back to a non-SBERT LM feature source."
+            "SBERT is required for CoordinationDiscover mainline runs, but the runtime fell back to a non-SBERT LM feature source."
         )
 
 
@@ -208,7 +209,7 @@ def ensure_china_pretrained_fusion_checkpoint(
         events,
         relations=tuple(discovery.get("relations", DEFAULT_RELATIONS)),
         seed=42,
-        discover_encoder="magnn",
+        discover_encoder=STABLE_DISCOVER_ENCODER,
         discover_epochs=20,
         embedding_dim=embedding_dim,
         hidden_dim=hidden_dim,

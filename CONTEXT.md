@@ -1,4 +1,4 @@
-# CogGuard System Context
+﻿# CogGuard System Context
 
 This context defines shared language for the current system refactor. It separates deployed system contracts from research claims so implementation, evaluation, and documentation do not drift.
 
@@ -28,13 +28,13 @@ _Avoid_: rule engine, final detector
 The synchronous deployable review runtime distilled from approved evidence and Teacher traces. It must be versioned, measured, and activated through explicit governance.
 _Avoid_: heuristic shortcut, unversioned classifier
 
-Current implementation status: Event Snapshot contracts, registry persistence, Analysis Run lifecycle, V2 REST routes, SSE recovery, and the Analysis Run executor port are implemented as the system entry layer. KT1 now runs `coordination-evidence-runtime-v2` from EventSnapshot records, including multi-kind evidence edges, overlapping windows, community lineage, null-model significance, perturbation robustness, evidence coverage, and domain-shift reporting. KT2 runs through the internal `system/research/propagation_analysis` boundary, including event bundle, public fixture loader, live fallback, hindcast protocol, split-conformal intervals, next-hop ranking, platform hindcasts, and baseline registry; fitted TGN/DyGFormer/CasFlow/CasFT checkpoints still need approval before research-grade activation. Student now runs through `system/runtimes/review_student` and returns a synchronous preliminary verdict with active-learning and distillation metadata; without an approved checkpoint it explicitly marks `shadow_untrained`. Teacher now runs through `system/research/review_teacher` as an asynchronous 5+1+1 advisory DAG. Only analyst-approved immutable verdicts can become canonical.
+Current implementation status: Event Snapshot contracts, registry persistence, Analysis Run lifecycle, V2 REST routes, SSE recovery, and the Analysis Run executor port are implemented as the system entry layer. Coordination Discover now runs `coordination-evidence-runtime-v2` from EventSnapshot records, including multi-kind evidence edges, overlapping windows, community lineage, null-model significance, perturbation robustness, evidence coverage, and domain-shift reporting. Propagation Analysis runs through the internal `system/research/propagation_analysis` boundary, including event bundle, public fixture loader, live fallback, hindcast protocol, split-conformal intervals, next-hop ranking, platform hindcasts, and baseline registry; fitted TGN/DyGFormer/CasFlow/CasFT checkpoints still need approval before research-grade activation. Student now runs through `system/runtimes/review_student` and returns a synchronous preliminary verdict with active-learning and distillation metadata; without an approved checkpoint it explicitly marks `shadow_untrained`. Teacher now runs through `system/research/review_teacher` as an asynchronous 5+1+1 advisory DAG. Only analyst-approved immutable verdicts can become canonical.
 
 ---
 
-# CogGuard KT3 Context
+# CogGuard Review Context
 
-This context defines the shared language for KT3 harmfulness assessment. It keeps research, implementation, and evaluation discussions aligned around the same post-level and group-level concepts.
+This context defines the shared language for Review harmfulness assessment. It keeps research, implementation, and evaluation discussions aligned around the same post-level and group-level concepts.
 
 ## Language
 
@@ -69,5 +69,6 @@ A post-level decision rule that combines standardized View Detector outputs into
 _Avoid_: feature concatenation, manual scoring
 
 **Harmfulness Judgment**:
-The final KT3 post-level conclusion: harmful, non-harmful, or uncertain, with harm type and evidence when available.
+The final Review post-level conclusion: harmful, non-harmful, or uncertain, with harm type and evidence when available.
 _Avoid_: toxicity score only, content score only
+

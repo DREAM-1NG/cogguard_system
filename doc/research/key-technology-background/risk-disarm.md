@@ -1,67 +1,43 @@
-# 关键技术三：协同攻击的报告研判（Phase-Aware Hazard + DISARM 路径预判 + 多 Agent 编排）
+﻿# 鍏抽敭鎶€鏈笁锛氬崗鍚屾敾鍑荤殑鎶ュ憡鐮斿垽锛圥hase-Aware Hazard + DISARM 璺緞棰勫垽 + 澶?Agent 缂栨帓锛?
+> **鐢ㄩ€?*锛氬畾涔?Review 鐨勭爺绌堕棶棰樸€佸綋鍓嶅伐绋嬭惤鐐广€佺爺绌剁洰鏍囥€佸疄鐜版柟鍚戝拰楠岃瘉鏂瑰紡銆? 
+> **鍙椾紬**锛歊eview 鐮旂┒瀹炵幇鑰呫€佹姤鍛婄爺鍒?DISARM 妯″潡缁存姢鑰呫€? 
+> **缁存姢瑙勫垯**锛氬彧鍐欏叧閿妧鏈儗鏅笌鐮旂┒鏂规锛涗骇鍝佹帴鍙ｅ拰浠诲姟鐘舵€佹斁鍏?`../../engineering/`銆?
+> 鏂瑰悜鏇存柊锛?026-06-02锛夛細Review 瀹氫綅涓洪棴鐜湯绔殑鈥滄姤鍛婄爺鍒も€濓紝鍒嗕笁娈碉細**(a) 鍩轰簬 Agent 鐨勮瘉鎹紪鎺掞紙鍚敤鎴疯█璁?琛屼负妫€娴嬶級鈫?(b) 鍩轰簬 RAG 鐨勬姤鍛婄敓鎴?鈫?(c) Agent 瀵瑰崗鍚屾敾鍑荤殑瑙ｉ噴鎬荤粨**銆?> 閲嶈琛ㄨ堪绾緥锛氶拡瀵硅瘎瀹♀€滅敤 Agent 鍋氭姤鍛婄爺鍒ゅ垱鏂版€ц緝寮扁€濈殑鎰忚锛?*澶村彿鍒涙柊蹇呴』鏄凡钀藉湴鐨勭櫧鐩掑墠鐬诲紩鎿?*锛圥hase-Aware Hazard 闃舵棰勮 + DISARM 鏀诲嚮璺緞棰勫垽涓庡弽鍒?+ 闃舵璋冨埗 D-S 铻嶅悎锛夛紝Agent / RAG 浠呬綔涓虹紪鎺掑熀搴т笌鍛堢幇灞傦紝**涓嶄綔涓哄垱鏂板崠鐐?*銆傛牳蹇冨彊浜嬶細浠?detection 鍗囩骇鍒?anticipation + countermeasure锛堥娴嬩笅涓€姝ユ敾鍑绘妧鏈?+ 缁欏嚭鍙嶅埗锛夈€?
+## 1. 闂瀹氫箟
 
-> **用途**：定义 KT3 的研究问题、当前工程落点、研究目标、实现方向和验证方式。  
-> **受众**：KT3 研究实现者、报告研判/DISARM 模块维护者。  
-> **维护规则**：只写关键技术背景与研究方案；产品接口和任务状态放入 `../../engineering/`。
+鎶ュ憡鐮斿垽鎶婁笂娓稿崗鍚屽彂鐜帮紙Coordination Discover锛変笌浼犳挱鐩戞帶锛圥ropagationAnalysis锛夌殑缁撴灉缁勭粐鎴愮粺涓€璇佹嵁閾撅紝瀵逛簨浠?/ claim / thread 灞傜骇杈撳嚭鍙璁＄殑鐮斿垽涓庡缃缓璁紝鍥炵瓟涓変釜闂锛?
+- **褰撳墠椋庨櫓澶氶珮**锛堜俊蹇靛尯闂?+ 鍐茬獊妫€娴嬶紝闈炵偣浼拌锛?- **鎺ヤ笅鏉ヤ細鍙戠敓浠€涔?*锛堥樁娈佃浆鎹?breakout 棰勬祴 + DISARM 涓嬩竴姝ユ妧鏈娴嬶級
+- **搴旇濡備綍搴斿**锛堝熀浜庨娴嬫敾鍑昏矾寰勭殑鍙嶅埗寤鸿锛?
+鍐呭灞傚垎鏋愶紙绔嬪満妫€娴嬨€佸嵄瀹?鏈夊瑷€璁鸿瘎浼帮級鎸夐棴鐜垎宸ョ粺涓€褰?Review 鐨?Characterization 灞傘€?
+## 2. 褰撳墠浠ｇ爜鍩虹嚎
 
-> 方向更新（2026-06-02）：KT3 定位为闭环末端的“报告研判”，分三段：**(a) 基于 Agent 的证据编排（含用户言论/行为检测）→ (b) 基于 RAG 的报告生成 → (c) Agent 对协同攻击的解释总结**。
-> 重要表述纪律：针对评审“用 Agent 做报告研判创新性较弱”的意见，**头号创新必须是已落地的白盒前瞻引擎**（Phase-Aware Hazard 阶段预警 + DISARM 攻击路径预判与反制 + 阶段调制 D-S 融合），Agent / RAG 仅作为编排基座与呈现层，**不作为创新卖点**。核心叙事：从 detection 升级到 anticipation + countermeasure（预测下一步攻击技术 + 给出反制）。
+`core/review/` 宸茶惤鍦帮紙绾?1340 琛岋紝CPU 鐧界洅锛屽凡鐢?`risk_service.py` 璺戦€氾級锛?
+- `system/backend/app/core/review/evidence_builder.py`锛氬婧愯瘉鎹寘鏋勫缓
+- `system/backend/app/core/review/phase_detector.py`锛? 鐘舵€佹垬褰圭敓鍛藉懆鏈?+ logistic hazard 闃舵杞崲/breakout 棰勬祴
+- `system/backend/app/core/review/disarm_scorer.py`锛欴ISARM 鎶€鏈浆鎹㈠浘 + 鏀诲嚮璺緞璇勫垎 + 涓嬩竴姝ユ妧鏈娴?+ 鍙嶅埗寤鸿
+- `system/backend/app/core/review/ds_fusion.py`锛欴empster-Shafer 铻嶅悎 + phase-conditioned 璐ㄩ噺璋冨埗 + 鍐茬獊妫€娴?- `system/backend/app/core/review/report_builder.py`锛氱粨鏋勫寲鎶ュ憡鐢熸垚
+- `system/backend/app/core/review/llm_bridge.py`锛?*浠呯害 30 琛屽崰浣?*锛堝緟鍗囩骇涓?DeepSeek Agent 缂栨帓鍣級
+- `system/backend/app/services/risk_service.py`銆乣api/v1/risk.py`銆佸墠绔?`views/risk/index.vue`
 
-## 1. 问题定义
+鏈惤鍦帮紙璁捐绋匡級锛歀ayer 2 RAG 鎶ュ憡鐢熸垚銆丩ayer 3 鎭舵剰瑷€璁?绔嬪満/鍙嶅埗鍙欎簨 Agent锛屼互鍙?Agent 缂栨帓鍣ㄦ湰浣擄紙`agent`/`rag`/`retriever` 绛夋枃浠朵笉瀛樺湪锛夈€?
+## 3. 涓夊眰鏋舵瀯锛圓gent 缂栨帓鐗堬級
 
-报告研判把上游协同发现（KT1）与传播监控（KT2）的结果组织成统一证据链，对事件 / claim / thread 层级输出可审计的研判与处置建议，回答三个问题：
+- **Layer 1 妫€娴嬬爺鍒わ紙宸茶惤鍦帮紝浣滀负 Agent 鐨?tools锛?*锛歅hase Agent锛坧hase_detector锛? Evidence Agent锛坉s_fusion锛? DISARM Agent锛坉isarm_scorer锛?- **Layer 2 RAG + Agent 鎶ュ憡鐢熸垚锛堣璁＄锛?*锛氭绱㈠巻鍙叉姤鍛婂簱 + DISARM 鐭ヨ瘑搴?+ 浜嬩欢璇佹嵁 鈫?DeepSeek 鐢熸垚缁撴瀯鍖栨姤鍛?- **Layer 3 鍙嶉涓庢墿灞曟娴嬶紙璁捐绋匡級**锛氭伓鎰忚█璁?/ 绔嬪満 / 鍙嶅埗鍙欎簨 Agent
+- LLM 鍚庣锛欴eepSeek API锛汚gent 涓嶅仛鏈€缁堣鍐筹紝鏍稿績妫€娴嬭蛋宸茶惤鍦扮殑缁熻/瑙勫垯/鍥捐矾绾?
+## 4. 杩欎竴鎶€鏈嚎瑕佽В鍐崇殑鏍稿績闂
 
-- **当前风险多高**（信念区间 + 冲突检测，非点估计）
-- **接下来会发生什么**（阶段转换/breakout 预测 + DISARM 下一步技术预测）
-- **应该如何应对**（基于预测攻击路径的反制建议）
+- 濡備綍鎶婂崗鍚屻€佷紶鎾€佽处鎴风粨鏋滄敹鏉熷埌缁熶竴璇佹嵁鍖呭苟鍋氶樁娈垫劅鐭ョ爺鍒?- 濡備綍鎶?DISARM 浠庘€滄爣绛炬槧灏勨€濇彁鍗囦负鈥滄敾鍑昏矾寰勬帹鐞?+ 涓嬩竴姝ラ娴?+ 鍙嶅埗鈥?- 濡備綍璁?LLM/Agent 鍙妸鐧界洅缁撴瀯鍖栫粨璁衡€滅炕璇戞垚浜鸿瘽鈥濓紝涓ョ鏀瑰垎/涓嬬粨璁猴紝淇濊瘉鍙璁?- 濡備綍杈撳嚭鑳借鐪嬫澘銆佹姤鍛娿€侀璀﹀鐢ㄧ殑 JSON 缁撴瀯
 
-内容层分析（立场检测、危害/有害言论评估）按闭环分工统一归 KT3 的 Characterization 层。
+## 5. 鎺ㄨ崘瀹炵幇鏂瑰悜涓庤〃杩扮邯寰?
+- 澶村彿鍒涙柊璁?Layer 1 宸茶惤鍦扮殑鐧界洅绠楁硶锛坔azard 棰勮 + DISARM 璺緞棰勫垽 + 鍙嶅埗 + 闃舵璋冨埗 D-S锛夛紝CPU-only銆佸彲瀹¤
+- DISARM鈥滈娴嬩笅涓€姝ユ妧鏈€濊寖寮忔簮鑷綉缁滃畨鍏?ATT&CK 鍩燂紙MITRE TIE 绛夛級锛屾湰璐＄尞瀹氫綅涓?*璺ㄥ煙杩佺Щ鍒?DISARM 淇℃伅鎿嶇旱鍩?+ 闃舵鏉′欢鍖?*锛屼笉瀹滅О棣栧垱
+- Agent / RAG 鏄紪鎺掍笌鍛堢幇灞傦紝閬垮厤涓绘墦鈥滃 Agent + RAG 鎶ュ憡鐢熸垚鈥濓紙绾㈡捣锛屽凡琚?arXiv 2505.17511銆?601.15109 绛夊崰浣嶏級
+- `llm_bridge.py` 鍗囩骇鏃朵弗鏍奸檺瀹氳緭鍏ヤ负 Layer 1 宸茬畻鍑虹殑缁撴瀯鍖栫粨鏋?
+## 6. 鎺ㄨ崘楠岃瘉鏂瑰紡
 
-## 2. 当前代码基线
+- 閽堝绾悗绔湇鍔¤ˉ鍗曞厓娴嬭瘯涓庡搷搴旂粨鏋勬祴璇?- 閫夊彇 `mock_weibo` / `weibo` / `news` 灏忔牱渚嬮獙璇?JSON 鎶ュ憡绋冲畾鎬?- 楠岃瘉閲嶇偣鏄€滈娴嬫湁鐢ㄦ€р€濓紙breakout 鍓嶈兘鍚﹂璀︺€佷笅涓€姝ユ妧鏈娴嬫槸鍚︿紭浜庡惎鍙戝紡銆佸弽鍒舵槸鍚﹀彲鎿嶄綔锛夛紝鑰岄潪鍒嗙被瀹岀編鎬?
+## 7. 鍙傝€冩枃鐚嚎绱?
+- `Phase-Aware / campaign lifecycle` 涓?early-warning锛坔azard / breakout 棰勬祴锛?- MITRE ATT&CK 鏀诲嚮閾?鎶€鏈浆鎹㈤娴嬶紙TIE銆丮arkov attack-chain锛岃縼绉绘潵婧愶級
+- Agentic DISARM for FIMI (arXiv 2601.15109, 2026) 鈥?flat tagging 瀵圭収锛孯eview 宸紓鍦?path reasoning + 棰勬祴 + 鍙嶅埗
+- Multi-agent Misinformation Lifecycle (arXiv 2505.17511, 2025) 鈥?澶?agent 鍏ㄧ敓鍛藉懆鏈熷鐓?- `DISARM Red Framework`
 
-`core/review/` 已落地（约 1340 行，CPU 白盒，已由 `risk_service.py` 跑通）：
-
-- `system/backend/app/core/review/evidence_builder.py`：多源证据包构建
-- `system/backend/app/core/review/phase_detector.py`：5 状态战役生命周期 + logistic hazard 阶段转换/breakout 预测
-- `system/backend/app/core/review/disarm_scorer.py`：DISARM 技术转换图 + 攻击路径评分 + 下一步技术预测 + 反制建议
-- `system/backend/app/core/review/ds_fusion.py`：Dempster-Shafer 融合 + phase-conditioned 质量调制 + 冲突检测
-- `system/backend/app/core/review/report_builder.py`：结构化报告生成
-- `system/backend/app/core/review/llm_bridge.py`：**仅约 30 行占位**（待升级为 DeepSeek Agent 编排器）
-- `system/backend/app/services/risk_service.py`、`api/v1/risk.py`、前端 `views/risk/index.vue`
-
-未落地（设计稿）：Layer 2 RAG 报告生成、Layer 3 恶意言论/立场/反制叙事 Agent，以及 Agent 编排器本体（`agent`/`rag`/`retriever` 等文件不存在）。
-
-## 3. 三层架构（Agent 编排版）
-
-- **Layer 1 检测研判（已落地，作为 Agent 的 tools）**：Phase Agent（phase_detector）+ Evidence Agent（ds_fusion）+ DISARM Agent（disarm_scorer）
-- **Layer 2 RAG + Agent 报告生成（设计稿）**：检索历史报告库 + DISARM 知识库 + 事件证据 → DeepSeek 生成结构化报告
-- **Layer 3 反馈与扩展检测（设计稿）**：恶意言论 / 立场 / 反制叙事 Agent
-- LLM 后端：DeepSeek API；Agent 不做最终裁决，核心检测走已落地的统计/规则/图路线
-
-## 4. 这一技术线要解决的核心问题
-
-- 如何把协同、传播、账户结果收束到统一证据包并做阶段感知研判
-- 如何把 DISARM 从“标签映射”提升为“攻击路径推理 + 下一步预测 + 反制”
-- 如何让 LLM/Agent 只把白盒结构化结论“翻译成人话”，严禁改分/下结论，保证可审计
-- 如何输出能被看板、报告、预警复用的 JSON 结构
-
-## 5. 推荐实现方向与表述纪律
-
-- 头号创新讲 Layer 1 已落地的白盒算法（hazard 预警 + DISARM 路径预判 + 反制 + 阶段调制 D-S），CPU-only、可审计
-- DISARM“预测下一步技术”范式源自网络安全 ATT&CK 域（MITRE TIE 等），本贡献定位为**跨域迁移到 DISARM 信息操纵域 + 阶段条件化**，不宜称首创
-- Agent / RAG 是编排与呈现层，避免主打“多 Agent + RAG 报告生成”（红海，已被 arXiv 2505.17511、2601.15109 等占位）
-- `llm_bridge.py` 升级时严格限定输入为 Layer 1 已算出的结构化结果
-
-## 6. 推荐验证方式
-
-- 针对纯后端服务补单元测试与响应结构测试
-- 选取 `mock_weibo` / `weibo` / `news` 小样例验证 JSON 报告稳定性
-- 验证重点是“预测有用性”（breakout 前能否预警、下一步技术预测是否优于启发式、反制是否可操作），而非分类完美性
-
-## 7. 参考文献线索
-
-- `Phase-Aware / campaign lifecycle` 与 early-warning（hazard / breakout 预测）
-- MITRE ATT&CK 攻击链/技术转换预测（TIE、Markov attack-chain，迁移来源）
-- Agentic DISARM for FIMI (arXiv 2601.15109, 2026) — flat tagging 对照，KT3 差异在 path reasoning + 预测 + 反制
-- Multi-agent Misinformation Lifecycle (arXiv 2505.17511, 2025) — 多 agent 全生命周期对照
-- `DISARM Red Framework`

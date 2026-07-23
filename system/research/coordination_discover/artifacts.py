@@ -9,10 +9,11 @@ from typing import Any
 
 from .contracts import (
     FALLBACK_POLICY,
-    KT1_MODEL_VERSION,
+    COORDINATION_DISCOVER_MODEL_VERSION,
+    DEPRECATED_COORDINATION_DISCOVER_MODEL_VERSIONS,
     MODALITY_POLICY,
     DiscoverResult,
-    KT1ArtifactManifest,
+    CoordinationDiscoverArtifactManifest,
 )
 
 MANIFEST_FILENAME = "manifest.json"
@@ -29,7 +30,7 @@ def config_hash(config: Any) -> str:
 def create_manifest(
     *,
     data_fingerprint: str,
-    model_version: str = KT1_MODEL_VERSION,
+    model_version: str = COORDINATION_DISCOVER_MODEL_VERSION,
     config: Any,
     artifact_dir: str | Path,
     source_dataset: str = "",
@@ -38,9 +39,9 @@ def create_manifest(
     fallback_policy: str = FALLBACK_POLICY,
     modality_policy: str = MODALITY_POLICY,
     partition_backend: str = "leiden",
-) -> KT1ArtifactManifest:
+) -> CoordinationDiscoverArtifactManifest:
     artifact_path = Path(artifact_dir)
-    return KT1ArtifactManifest(
+    return CoordinationDiscoverArtifactManifest(
         data_fingerprint=data_fingerprint,
         model_version=model_version,
         config_hash=config_hash(config),
@@ -62,7 +63,7 @@ def write_discover_artifact(
     *,
     artifact_dir: str | Path,
     coordination_result: dict[str, Any] | None = None,
-) -> KT1ArtifactManifest:
+) -> CoordinationDiscoverArtifactManifest:
     artifact_path = Path(artifact_dir)
     artifact_path.mkdir(parents=True, exist_ok=True)
 
@@ -79,8 +80,8 @@ def load_discover_artifact(artifact_dir: str | Path) -> dict[str, Any]:
     artifact_path = Path(artifact_dir)
     manifest_path = artifact_path / MANIFEST_FILENAME
     if not manifest_path.exists():
-        raise FileNotFoundError(f"KT1 manifest not found: {manifest_path}")
-    manifest = KT1ArtifactManifest.from_dict(_read_json(manifest_path))
+        raise FileNotFoundError(f"Coordination Discover manifest not found: {manifest_path}")
+    manifest = CoordinationDiscoverArtifactManifest.from_dict(_read_json(manifest_path))
     result_path = Path(manifest.result_path) if manifest.result_path else artifact_path / DISCOVER_RESULT_FILENAME
     if not result_path.exists():
         result_path = artifact_path / DISCOVER_RESULT_FILENAME
@@ -110,7 +111,7 @@ def find_snapshot_artifact(*, artifact_root: str | Path, snapshot_id: str, data_
         return None
     for manifest_path in root.glob("*/manifest.json"):
         try:
-            manifest = KT1ArtifactManifest.from_dict(_read_json(manifest_path))
+            manifest = CoordinationDiscoverArtifactManifest.from_dict(_read_json(manifest_path))
         except (OSError, ValueError, TypeError):
             continue
         if manifest.data_fingerprint == data_fingerprint:
@@ -121,6 +122,9 @@ def find_snapshot_artifact(*, artifact_root: str | Path, snapshot_id: str, data_
 def validate_manifest_for_snapshot(manifest: dict[str, Any], *, data_fingerprint: str) -> str | None:
     if str(manifest.get("data_fingerprint") or "") != data_fingerprint:
         return "artifact_fingerprint_mismatch"
+    model_version = str(manifest.get("model_version") or "")
+    if model_version in DEPRECATED_COORDINATION_DISCOVER_MODEL_VERSIONS:
+        return f"artifact_model_deprecated:{DEPRECATED_COORDINATION_DISCOVER_MODEL_VERSIONS[model_version]}"
     if str(manifest.get("modality_policy") or "") != MODALITY_POLICY:
         return "artifact_modality_policy_mismatch"
     if str(manifest.get("partition_backend") or "") != "leiden":

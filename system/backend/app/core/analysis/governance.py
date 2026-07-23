@@ -27,7 +27,7 @@ def approve_canonical_verdict(
         raise ValueError("Canonical verdict approval requires a positive analyst id.")
     approved_at = datetime.now(timezone.utc).isoformat()
     canonical = {
-        "technology": source_verdict.get("technology") or "kt3",
+        "technology": source_verdict.get("technology") or "review",
         "schema": "cogguard.analysis.canonical_verdict.v1",
         "status": "approved",
         "verdict_type": "canonical",

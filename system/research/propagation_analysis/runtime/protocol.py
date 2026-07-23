@@ -1,4 +1,4 @@
-"""KT2 hindcast protocol helpers.
+"""PropagationAnalysis hindcast protocol helpers.
 
 This module keeps research-grade propagation claims separate from the live
 fallback runtime. It can score observed event bundles today, while marking
@@ -29,7 +29,7 @@ def build_hindcast_protocol(
     coverage_levels: Iterable[float] = DEFAULT_COVERAGE_LEVELS,
     horizons: Iterable[str] = DEFAULT_HORIZONS,
 ) -> dict[str, Any]:
-    """Return the app-facing KT2 prediction protocol for one event snapshot."""
+    """Return the app-facing PropagationAnalysis prediction protocol for one event snapshot."""
 
     rows = _normalize_rows(posts, comments or [])
     candidate_meta = dict(bundle.get("candidate_meta") or {})
@@ -74,8 +74,8 @@ def build_hindcast_protocol(
         "calibration": calibration,
     }
     return {
-        "schema": "cogguard.kt2.hindcast_protocol.v1",
-        "model_version": "kt2-hindcast-protocol-v1",
+        "schema": "cogguard.propagation_analysis.hindcast_protocol.v1",
+        "model_version": "propagation_analysis-hindcast-protocol-v1",
         "scale_forecast": scale_forecast,
         "conformal_intervals": conformal_intervals,
         "next_hop_ranking": {
@@ -94,7 +94,7 @@ def build_hindcast_protocol(
             "prefixes": ["1h", "6h", "24h", "48h"],
             "public_benchmark_prefixes": [0.1, 0.3, 0.5],
             "activation_gate": (
-                "Deep KT2 models require stronger-than-persistence validation, "
+                "Deep PropagationAnalysis models require stronger-than-persistence validation, "
                 "nominal conformal coverage, and an approved checkpoint before activation."
             ),
             "claim_status": _claim_status(forecast, checkpoint_available=bool(bundle.get("checkpoint_available"))),
@@ -208,7 +208,7 @@ def build_baseline_suite(
             "status": "missing_checkpoint" if not checkpoint_available else "model_unavailable",
             "activation_allowed": False,
             "note": (
-                f"{name} is registered as a KT2 research baseline, but no approved "
+                f"{name} is registered as a PropagationAnalysis research baseline, but no approved "
                 "internal checkpoint/runtime is active for this event."
             ),
         }
@@ -377,7 +377,7 @@ def _horizon_projection(projected_size: int, horizon: str) -> int:
 def _claim_status(forecast: Mapping[str, Any], *, checkpoint_available: bool) -> str:
     if forecast.get("status") != "ok":
         return "abstain"
-    if checkpoint_available and forecast.get("model") != "KT2LiveRuntime":
+    if checkpoint_available and forecast.get("model") != "PropagationAnalysisLiveRuntime":
         return "checkpoint_candidate"
     return "fallback_only_not_research_claim"
 

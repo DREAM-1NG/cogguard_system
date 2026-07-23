@@ -1,13 +1,13 @@
-# Baseline Methods for KT1 Evaluation
+# Baseline Methods for Coordination Discover Evaluation
 
 ## Task Definition
 
-KT1 evaluates a two-stage task: **coordination discovery -> coordination discrimination**.
+Coordination Discover evaluates a two-stage task: **coordination discovery -> coordination discrimination**.
 
 - **Coordination discovery** builds a multi-relation coordination graph, enriches it with LM-based object/node/community representations, and uses GNN message passing to discover coordinated account communities, key account pairs, and shared objects. This is the primary task when using X/Twitter IO Archive style positive IO archives.
 - **Coordination discrimination** uses labeled IO/control or coordinated/organic data to test whether the discovered graph signals can distinguish coordinated attacks from spontaneous behavior. This is where supervised ranking/classification metrics are reported.
 
-Bot detection, troll identification, and misinformation classification are auxiliary related tasks. Their metrics can be reported as characterization signals, but they are not the primary KT1 objective.
+Bot detection, troll identification, and misinformation classification are auxiliary related tasks. Their metrics can be reported as characterization signals, but they are not the primary Coordination Discover objective.
 
 ## 1. Primary Baseline: CooRTweet Percentile Method
 
@@ -58,7 +58,7 @@ Bot detection, troll identification, and misinformation classification are auxil
 - Setting A 做自监督协同社区发现；Setting B 做有标签协同区分。
 
 **Role in evaluation**:
-- 这是 KT1 的主方法，不再只是 optional baseline。
+- 这是 Coordination Discover 的主方法，不再只是 optional baseline。
 - `learnable_relation_attention_v0` 是主方法的轻量前身。
 - CooRTweet、single-channel、static multi-relation、Leiden/static graph 是网络科学/统计基线。
 
@@ -71,7 +71,7 @@ Bot detection, troll identification, and misinformation classification are auxil
 **Source**: "Cross-Platform Coordinated Inauthentic Behavior" (Cinus et al., 2025)  
 **Status**: ❌ 不适用 (当前只做单平台)
 
-**Reason**: KT1 范围限定在单平台窗口内检测，跨平台属于未来工作
+**Reason**: Coordination Discover 范围限定在单平台窗口内检测，跨平台属于未来工作
 
 ---
 
@@ -82,9 +82,9 @@ Bot detection, troll identification, and misinformation classification are auxil
 | CooRTweet percentile | **P0** | 🟢 Low | M1 baseline，必须有 |
 | Single-channel ablations | **P1** | 🟡 Medium | C2 声明的核心对比 |
 | learnable_relation_attention_v0 | **P1** | 🟡 Medium | 从静态融合过渡到学习型融合 |
-| LM-enhanced multi-relation GNN | **P0/P1** | 🔴 High | KT1 主方法 |
+| LM-enhanced multi-relation GNN | **P0/P1** | 🔴 High | Coordination Discover 主方法 |
 | External GNN baselines | **P2** | 🔴 High | CARE-GNN / PC-GNN / HAN / MAGNN / HGT / R-GCN |
-| Cinus cross-platform | **P3** | N/A | 超出 KT1 范围 |
+| Cinus cross-platform | **P3** | N/A | 超出 Coordination Discover 范围 |
 
 ---
 
@@ -145,7 +145,7 @@ Bot detection, troll identification, and misinformation classification are auxil
 - False discovery control: observed FDP vs target α; hot-topic vs cold-topic comparison
 - Coverage: detected edge count; multi-channel vs single-channel edge ratio
 - Interpretability: evidence sample audit (Likert 1-5); edge type distribution
-- Characterization-only signals: bot score, toxicity, stance, harmfulness, sentiment; these do not feed back into KT1 coordination decisions
+- Characterization-only signals: bot score, toxicity, stance, harmfulness, sentiment; these do not feed back into Coordination Discover coordination decisions
 
 ---
 

@@ -15,6 +15,7 @@ if str(BACKEND_ROOT) not in sys.path:
 
 from app.core.coordination_baseline.io_reproduction import (  # noqa: E402
     IOHUNTER_CANONICAL_RELATIONS,
+    STABLE_DISCOVER_ENCODER,
     _amdn_hage_style_metrics,
     _cpu_light_gfm_lm_gnn_scores,
     _detection_metric_dict,
@@ -43,7 +44,7 @@ METRIC_FIELDS = (
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Fast KT1 Detect CPU-light LM+GNN batch runner.")
+    parser = argparse.ArgumentParser(description="Fast CoordinationDiscover Detect CPU-light LM+GNN batch runner.")
     parser.add_argument("--processed-root", required=True)
     parser.add_argument("--output-dir", required=True)
     parser.add_argument("--precomputed-discovery-root", required=True)
@@ -52,7 +53,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--seeds", nargs="*", type=int, default=[42, 43, 44, 45, 46])
     parser.add_argument("--split-modes", nargs="*", default=list(DEFAULT_SPLITS))
     parser.add_argument("--max-edges-per-relation", type=int, default=5000)
-    parser.add_argument("--discover-encoder", default="magnn")
+    parser.add_argument("--discover-encoder", default=STABLE_DISCOVER_ENCODER)
     parser.add_argument("--discover-epochs", type=int, default=20)
     parser.add_argument("--embedding-dim", type=int, default=32)
     parser.add_argument("--hidden-dim", type=int, default=32)

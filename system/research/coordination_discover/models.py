@@ -15,6 +15,10 @@ MODEL_INPUT_FEATURE_NAMES = (
     "relation_type",
     "time_bucket",
 )
+TEXT_EMBEDDING_FEATURE_NAME = "text_embedding"
+PAIR_EDGE_FULL_ACCOUNT_LIMIT = 64
+PAIR_EDGE_NEIGHBOR_LIMIT = 16
+PAIR_EDGE_MAX_PAIRS_PER_OBJECT = 4096
 
 
 @dataclass(slots=True)
@@ -27,6 +31,7 @@ class TemporalMAGNNTensors:
     edge_objects: Any
     edge_relations: Any
     edge_times: Any
+    edge_text_embeddings: Any | None = None
     feature_names: tuple[str, ...] = MODEL_INPUT_FEATURE_NAMES
 
 
@@ -46,11 +51,14 @@ def build_temporal_magnn_tensors(
     object_index = {value: index for index, value in enumerate(object_ids)}
     relation_index = {value: index for index, value in enumerate(relation_types)}
     bucket_index = {value: index for index, value in enumerate(bucket_values)}
+    text_embedding_lookup = _text_embedding_lookup(graph)
+    text_embedding_dim = _text_embedding_dim(text_embedding_lookup)
 
     edge_sources = []
     edge_objects = []
     edge_relations = []
     edge_times = []
+    edge_text_vectors = []
     for edge in graph.edges:
         if edge.source_account_id not in account_index or edge.evidence_object_id not in object_index:
             continue
@@ -58,6 +66,14 @@ def build_temporal_magnn_tensors(
         edge_objects.append(object_index[edge.evidence_object_id])
         edge_relations.append(relation_index[edge.relation_type or edge.evidence_kind])
         edge_times.append(bucket_index[_time_bucket(edge.observed_at, min_time=min_time, config=config)])
+        if text_embedding_dim:
+            edge_text_vectors.append(_padded_vector(text_embedding_lookup.get(edge.content_id), text_embedding_dim))
+
+    edge_text_embeddings = None
+    feature_names = MODEL_INPUT_FEATURE_NAMES
+    if text_embedding_dim:
+        edge_text_embeddings = torch.tensor(edge_text_vectors, dtype=torch.float32)
+        feature_names = (*MODEL_INPUT_FEATURE_NAMES, TEXT_EMBEDDING_FEATURE_NAME)
 
     return TemporalMAGNNTensors(
         account_ids=account_ids,
@@ -68,6 +84,8 @@ def build_temporal_magnn_tensors(
         edge_objects=torch.tensor(edge_objects, dtype=torch.long),
         edge_relations=torch.tensor(edge_relations, dtype=torch.long),
         edge_times=torch.tensor(edge_times, dtype=torch.long),
+        edge_text_embeddings=edge_text_embeddings,
+        feature_names=feature_names,
     )
 
 
@@ -87,12 +105,14 @@ def fit_temporal_magnn(
         return _empty_learned_result(status="data_insufficient")
 
     device = _resolve_device(torch, config.device)
+    text_embeddings = tensors.edge_text_embeddings.to(device) if tensors.edge_text_embeddings is not None else None
     model = cast(Any, _TemporalMAGNNScorer(
         account_count=max(1, len(tensors.account_ids)),
         object_count=max(1, len(tensors.object_ids)),
         relation_count=max(1, len(tensors.relation_types)),
         time_bucket_count=max(1, len(tensors.time_buckets)),
         embedding_dim=max(4, int(config.embedding_dim)),
+        text_embedding_dim=int(text_embeddings.shape[1]) if text_embeddings is not None else 0,
     ))
     model = model.to(device)
 
@@ -105,7 +125,7 @@ def fit_temporal_magnn(
 
     for _ in range(max(1, int(config.epochs))):
         optimizer.zero_grad()
-        positive_logits = model(source, obj, relation, time_bucket)
+        positive_logits = model(source, obj, relation, time_bucket, text_embeddings)
         negative_source, negative_object, negative_relation, negative_time = _negative_samples(
             torch=torch,
             source=source,
@@ -116,7 +136,12 @@ def fit_temporal_magnn(
             ratio=max(1, int(config.negative_ratio)),
             seed=config.seed + len(loss_history),
         )
-        negative_logits = model(negative_source, negative_object, negative_relation, negative_time)
+        negative_text = (
+            text_embeddings.repeat_interleave(max(1, int(config.negative_ratio)), dim=0)
+            if text_embeddings is not None
+            else None
+        )
+        negative_logits = model(negative_source, negative_object, negative_relation, negative_time, negative_text)
         logits = torch.cat([positive_logits, negative_logits])
         labels = torch.cat([torch.ones_like(positive_logits), torch.zeros_like(negative_logits)])
         loss = torch.nn.functional.binary_cross_entropy_with_logits(logits, labels)
@@ -125,7 +150,7 @@ def fit_temporal_magnn(
         loss_history.append(round(float(loss.detach().cpu().item()), 6))
 
     with torch.no_grad():
-        probabilities = torch.sigmoid(model(source, obj, relation, time_bucket)).detach().cpu().tolist()
+        probabilities = torch.sigmoid(model(source, obj, relation, time_bucket, text_embeddings)).detach().cpu().tolist()
         account_embeddings = model.account_embedding.weight.detach().cpu().tolist()
 
     account_object_edges = _account_object_scores(graph=graph, tensors=tensors, scores=probabilities)
@@ -149,6 +174,17 @@ def fit_temporal_magnn(
             "relation_count": len(tensors.relation_types),
             "time_bucket_count": len(tensors.time_buckets),
             "edge_count": int(tensors.edge_sources.numel()),
+            "text_embedding": {
+                "status": "used" if text_embeddings is not None else "missing",
+                "dimension": int(text_embeddings.shape[1]) if text_embeddings is not None else 0,
+                "policy": "precomputed_only_no_synthetic_embeddings",
+            },
+            "pair_projection_policy": {
+                "mode": "exhaustive_for_small_groups_temporal_neighbor_capped_for_large_groups",
+                "full_pair_account_limit": PAIR_EDGE_FULL_ACCOUNT_LIMIT,
+                "neighbor_limit": PAIR_EDGE_NEIGHBOR_LIMIT,
+                "max_pairs_per_object": PAIR_EDGE_MAX_PAIRS_PER_OBJECT,
+            },
         },
         "account_object_edges": account_object_edges,
         "pair_edges": pair_edges,
@@ -179,16 +215,16 @@ def build_account_pair_edges(
             account = str(edge["source_account_id"])
             if account not in account_best or float(edge["learned_score"]) > float(account_best[account]["learned_score"]):
                 account_best[account] = edge
-        for left, right in itertools.combinations(sorted(account_best), 2):
-            left_edge = account_best[left]
-            right_edge = account_best[right]
+        for left_edge, right_edge in _iter_account_pair_candidates(account_best):
+            left = str(left_edge["source_account_id"])
+            right = str(right_edge["source_account_id"])
             score = (float(left_edge["learned_score"]) + float(right_edge["learned_score"])) / 2.0
-            key = (left, right)
+            key = tuple(sorted((left, right)))
             row = pair_scores.setdefault(
                 key,
                 {
-                    "source": left,
-                    "target": right,
+                    "source": key[0],
+                    "target": key[1],
                     "learned_weight_sum": 0.0,
                     "support_count": 0,
                     "evidence_objects": [],
@@ -225,6 +261,34 @@ def build_account_pair_edges(
     return sorted(results, key=lambda item: (item["learned_score"], item["support_count"]), reverse=True)
 
 
+def _iter_account_pair_candidates(account_best: dict[str, dict[str, Any]]) -> Any:
+    rows = sorted(
+        account_best.values(),
+        key=lambda item: (
+            float(item.get("observed_at", 0.0)),
+            str(item.get("source_account_id") or ""),
+            str(item.get("content_id") or ""),
+        ),
+    )
+    if len(rows) <= PAIR_EDGE_FULL_ACCOUNT_LIMIT:
+        yield from itertools.combinations(rows, 2)
+        return
+
+    emitted = 0
+    for index, left in enumerate(rows):
+        neighbor_count = 0
+        for right in rows[index + 1 :]:
+            if str(left.get("source_account_id") or "") == str(right.get("source_account_id") or ""):
+                continue
+            yield left, right
+            emitted += 1
+            neighbor_count += 1
+            if neighbor_count >= PAIR_EDGE_NEIGHBOR_LIMIT:
+                break
+            if emitted >= PAIR_EDGE_MAX_PAIRS_PER_OBJECT:
+                return
+
+
 def partition_learned_graph(
     *,
     accounts: list[str],
@@ -246,7 +310,7 @@ def partition_learned_graph(
     if leiden_result is not None:
         return leiden_result
     if require_leiden:
-        raise RuntimeError("Strict KT1 discovery requires python-igraph and leidenalg for Leiden partitioning")
+        raise RuntimeError("Strict CoordinationDiscover discovery requires python-igraph and leidenalg for Leiden partitioning")
     return _networkx_partition(accounts=accounts, pair_edges=filtered_edges)
 
 
@@ -259,6 +323,7 @@ class _TemporalMAGNNScorer:
         relation_count: int,
         time_bucket_count: int,
         embedding_dim: int,
+        text_embedding_dim: int = 0,
     ):
         torch = _torch()
 
@@ -269,14 +334,28 @@ class _TemporalMAGNNScorer:
                 self.object_embedding = torch.nn.Embedding(object_count, embedding_dim)
                 self.relation_embedding = torch.nn.Embedding(relation_count, embedding_dim)
                 self.time_embedding = torch.nn.Embedding(time_bucket_count, embedding_dim)
+                self.text_projection = (
+                    torch.nn.Linear(text_embedding_dim, embedding_dim, bias=False)
+                    if text_embedding_dim > 0
+                    else None
+                )
                 self.bias = torch.nn.Parameter(torch.zeros(1))
 
-            def forward(self, source: Any, obj: Any, relation: Any, time_bucket: Any) -> Any:
+            def forward(
+                self,
+                source: Any,
+                obj: Any,
+                relation: Any,
+                time_bucket: Any,
+                text_embedding: Any | None = None,
+            ) -> Any:
                 account = self.account_embedding(source)
                 evidence_object = self.object_embedding(obj)
                 relation_vector = self.relation_embedding(relation)
                 time_vector = self.time_embedding(time_bucket)
                 context = account + relation_vector + time_vector
+                if self.text_projection is not None and text_embedding is not None:
+                    context = context + self.text_projection(text_embedding)
                 return (context * evidence_object).sum(dim=-1) / math.sqrt(embedding_dim) + self.bias
 
         return Module()
@@ -427,7 +506,7 @@ def _community_row(*, index: int, members: list[str], pair_edges: list[dict[str,
         kind_counts.update(edge.get("evidence_kind_counts", {}))
     learned_weight = sum(float(edge.get("learned_score", 0.0)) for edge in supporting_edges)
     return {
-        "community_id": f"kt1_c{index}",
+        "community_id": f"coordination_discover_c{index}",
         "members": sorted(members),
         "size": len(members),
         "learned_weight": round(learned_weight, 6),
@@ -443,6 +522,52 @@ def _time_bucket(timestamp: float, *, min_time: float, config: TemporalMAGNNConf
     return int((float(timestamp) - float(min_time)) // width)
 
 
+def _text_embedding_lookup(graph: EvidenceGraph) -> dict[str, list[float]]:
+    text_embeddings = dict(graph.representation_inputs.get("text_embeddings") or {})
+    by_content_id = text_embeddings.get("by_content_id")
+    if not isinstance(by_content_id, dict):
+        return {}
+    result: dict[str, list[float]] = {}
+    for content_id, vector in by_content_id.items():
+        if not isinstance(vector, list):
+            continue
+        numeric = _numeric_vector(vector)
+        if numeric:
+            result[str(content_id)] = numeric
+    return result
+
+
+def _text_embedding_dim(lookup: dict[str, list[float]]) -> int:
+    dims = Counter(len(vector) for vector in lookup.values() if vector)
+    if not dims:
+        return 0
+    return int(dims.most_common(1)[0][0])
+
+
+def _padded_vector(vector: list[float] | None, dimension: int) -> list[float]:
+    if not vector:
+        return [0.0] * dimension
+    selected = [float(value) for value in vector[:dimension]]
+    if len(selected) < dimension:
+        selected.extend([0.0] * (dimension - len(selected)))
+    return selected
+
+
+def _numeric_vector(value: Any) -> list[float]:
+    if not isinstance(value, list):
+        return []
+    vector: list[float] = []
+    for item in value:
+        try:
+            number = float(item)
+        except (TypeError, ValueError):
+            return []
+        if math.isnan(number) or math.isinf(number):
+            return []
+        vector.append(number)
+    return vector
+
+
 def _resolve_device(torch: Any, requested: str) -> str:
     requested = str(requested or "cpu").lower()
     if requested == "cuda" and torch.cuda.is_available():
@@ -454,7 +579,7 @@ def _torch() -> Any:
     try:
         import torch
     except ImportError as exc:
-        raise RuntimeError("PyTorch is required for KT1 Temporal MAGNN-style discovery") from exc
+        raise RuntimeError("PyTorch is required for CoordinationDiscover Temporal MAGNN-style discovery") from exc
     return torch
 
 
@@ -476,6 +601,9 @@ def _empty_learned_result(*, status: str) -> dict[str, Any]:
 
 __all__ = [
     "MODEL_INPUT_FEATURE_NAMES",
+    "PAIR_EDGE_FULL_ACCOUNT_LIMIT",
+    "PAIR_EDGE_MAX_PAIRS_PER_OBJECT",
+    "PAIR_EDGE_NEIGHBOR_LIMIT",
     "TemporalMAGNNTensors",
     "build_account_pair_edges",
     "build_temporal_magnn_tensors",

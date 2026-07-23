@@ -1,7 +1,7 @@
 # RESEARCH_BRIEF
 
 > 方向对齐说明（2026-06-23）：
-> - KT2 / F-PROP 的主功能收敛为 **规模预测 + 角色定位 + 下一跳预测**。
+> - Propagation Analysis / F-PROP 的主功能收敛为 **规模预测 + 角色定位 + 下一跳预测**。
 > - 传播时间线、证据链、范围估计、立场/危害/情感线索、影响力指数和前端可视化均作为 auxiliary，不作为主功能完成的前置条件。
 > - CascadeSwitch、HyperIDP、MINDS、FOREST、Topo-LSTM、TGN 等是方法候选或 baseline，不是唯一指定路线。
 > - 已观测图上的关键路径回溯是证据追溯，不等同于预测未来下一跳。
@@ -26,7 +26,7 @@
 
 ## Constraints
 
-- 默认不重写 KT1 协同检测、KT3 报告研判和账号画像模块。
+- 默认不重写 Coordination Discover 协同检测、Risk Review 报告研判和账号画像模块。
 - 不要求一次性实现完整动态图神经网络训练；可以从启发式、传统模型或开源 baseline 起步。
 - 不要求把 auxiliary 能力全部做完后才推进主功能。
 - 任一预测任务都必须说明观测窗口、预测窗口、候选集来源和是否存在未来泄漏。
@@ -36,11 +36,11 @@
 - 对规模预测、角色定位、下一跳预测分别给出最小可运行方案。
 - 建立三项主功能对应的 baseline 和评价指标。
 - 将已有传播图、时间线、证据链能力纳入角色定位和报告解释链路。
-- 为后续前端展示和 KT3 消费保留结构化输出，但不提前锁死 API 字段。
+- 为后续前端展示和 Risk Review 消费保留结构化输出，但不提前锁死 API 字段。
 
 ## Domain Knowledge
 
-- 上游输入来自 KT1 协同发现结果和采集数据。
+- 上游输入来自 Coordination Discover 协同发现结果和采集数据。
 - 规模预测对应 macroscopic cascade / popularity prediction。
 - 下一跳预测对应 microscopic diffusion prediction / temporal link prediction。
 - 角色定位对应 observed propagation graph 上的 role identification / provenance。
@@ -48,7 +48,7 @@
 
 ## Non-Goals
 
-- 不把立场检测、危害评估、情感分析作为 KT2 主功能。
+- 不把立场检测、危害评估、情感分析作为 Propagation Analysis 主功能。
 - 不把路径回溯冒充未来路径预测。
 - 不把某个论文模型指定为最终系统模型。
 - 不做通用 LLM 对话系统。

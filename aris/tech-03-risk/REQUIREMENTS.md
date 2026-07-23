@@ -1,7 +1,7 @@
 # F-RISK（报告研判与攻击路径）代码开发需求文档
 
 > **所属功能**：报告研判与攻击路径（F-RISK）
-> **主要技术**：KT3 Phase-Aware Hazard + DISARM 路径推理
+> **主要技术**：Risk Review Phase-Aware Hazard + DISARM 路径推理
 > **文档类型**：功能级代码开发需求（research + engineering 拆分）
 > **最后更新**：2026-05-17
 > **配套文档**：[../tech-02-propagation/ZHIWEI_PRODUCT_ANALYSIS.md](../tech-02-propagation/ZHIWEI_PRODUCT_ANALYSIS.md)（产品对标参考风格）、[../../doc/engineering/research-engineering-split.md](../../doc/engineering/research-engineering-split.md)（系统总览）
@@ -40,7 +40,7 @@ F-RISK 是 CogGuard 主链路 `事件 → 证据 → 协同 → 传播 → 风�
 
 ### 1.3 产品对标缺口
 
-KT2 有「知微」对标，KT1 缺乏单一商业对标，KT3 同样以学界 + 工业威胁情报平台为主：
+Propagation Analysis 有「知微」对标，Coordination Discover 缺乏单一商业对标，Risk Review 同样以学界 + 工业威胁情报平台为主：
 
 - 试用 Recorded Future / ThreatConnect 试用版，整理风险评分形态
 - 关注 Agentic DISARM 后续工作（2026 论文方向）
@@ -48,7 +48,7 @@ KT2 有「知微」对标，KT1 缺乏单一商业对标，KT3 同样以学界 +
 
 ---
 
-## 二、主要技术：KT3 Phase-Aware Hazard + DISARM 核心创新（research）
+## 二、主要技术：Risk Review Phase-Aware Hazard + DISARM 核心创新（research）
 
 ### 2.1 核心命题
 
@@ -228,7 +228,7 @@ completeness：路径覆盖的 DISARM 阶段数（reconnaissance / development /
 - **标签**：engineering（已实现）
 - **位置**：`new-system/backend/app/services/risk_service.py`（153 行）
 - **职责**：串联 evidence → phase → fusion → DISARM → report，并持久化到 MySQL
-- **当前状态**：核心流水线完成，但依赖 KT2 WP4-5 的"立场 / 危害"输入用占位数据
+- **当前状态**：核心流水线完成，但依赖 Propagation Analysis WP4-5 的"立场 / 危害"输入用占位数据
 
 ### 3.7 数据库持久化（⚠️ 阻塞）
 
@@ -275,13 +275,13 @@ completeness：路径覆盖的 DISARM 阶段数（reconnaissance / development /
 
 | 文件 | 行数 | 完整度 | 本期改动 |
 |---|---|---|---|
-| `core/risk/evidence_builder.py` | 244 | 100% | 等 KT2 WP4-5 完成后替换占位数据 |
+| `core/risk/evidence_builder.py` | 244 | 100% | 等 Propagation Analysis WP4-5 完成后替换占位数据 |
 | `core/risk/phase_detector.py` | 169 | 100% | 参数校准（research） |
 | `core/risk/ds_fusion.py` | 234 | 100% | 参数校准（research）+ 边界 case 测试 |
 | `core/risk/disarm_scorer.py` | 381 | 100% | 转换概率迭代（research）+ 反制库扩充 |
 | `core/risk/report_builder.py` | 278 | 100% | 无 |
 | `core/risk/llm_bridge.py` | 30 | ❌ stub | 替换为真实调用（复用 F-PROP 的 llm_client.py） |
-| `services/risk_service.py` | 153 | 80% | 等 KT2 WP4-5 完成后替换占位 |
+| `services/risk_service.py` | 153 | 80% | 等 Propagation Analysis WP4-5 完成后替换占位 |
 | `api/v1/risk.py` | 68 | 100% | 无 |
 | `models/risk_assessment.py` | 50 | 100% | 无（但需补 alembic 迁移） |
 | `frontend/views/risk/index.vue` | — | 60% | 补 DISARM 路径 + 信念区间 + 时间轴 |
@@ -331,7 +331,7 @@ completeness：路径覆盖的 DISARM 阶段数（reconnaissance / development /
 | P1 | E5 | 前端阶段时间轴 + hazard 曲线 | 2 h |
 | P1 | E6 | 反制建议模板库代码框架（YAML 配置 + 加载器） | 2 h |
 | P2 | E7 | 报告 PDF 导出（依赖报告中心 P2 任务） | 1 d |
-| P2 | E8 | 跨 KT 依赖替换（等 F-PROP WP4-5 完成后替换占位数据） | 1 d |
+| P2 | E8 | 跨 analysis capability 依赖替换（等 F-PROP WP4-5 完成后替换占位数据） | 1 d |
 
 ### 6.3 边界 case
 
@@ -364,8 +364,8 @@ completeness：路径覆盖的 DISARM 阶段数（reconnaissance / development /
    - 三元焦元 `{risk, safe, uncertain}` 比纯概率更适合表达"不确定"
    - 风险：参数空间大，需谨慎校准
 
-5. **跨 KT 占位数据策略**
-   - 当前：F-RISK 已用占位数据（KT2 WP4-5 未实现）
+5. **跨 analysis capability 占位数据策略**
+   - 当前：F-RISK 已用占位数据（Propagation Analysis WP4-5 未实现）
    - 解锁条件：F-PROP `stance_detector.py` / `harm_assessor.py` 完成
    - 影响：不阻塞 F-RISK MVP 演示，但报告中"立场/危害"字段不准确
 
@@ -397,9 +397,9 @@ completeness：路径覆盖的 DISARM 阶段数（reconnaissance / development /
 
 ---
 
-## 八、对其他 KT / 全系统的接口契约
+## 八、对其他 analysis capability / 全系统的接口契约
 
-### 8.1 F-COORD → F-RISK（消费 KT1 输出）
+### 8.1 F-COORD → F-RISK（消费 Coordination Discover 输出）
 
 ```python
 # F-RISK 期望的输入
@@ -416,7 +416,7 @@ coordination_input = {
 
 **消费位置**：`evidence_builder.py` 计算 Gini / Shannon 等聚合统计
 
-### 8.2 F-PROP → F-RISK（消费 KT2 输出）
+### 8.2 F-PROP → F-RISK（消费 Propagation Analysis 输出）
 
 ```python
 # F-RISK 期望的输入
@@ -431,7 +431,7 @@ monitoring_input = {
 
 **消费位置**：`ds_fusion.py` 的 mass assignment 用 `stance_extremity` / `harm_score`
 
-**当前阻塞**：KT2 WP4-5 未实现，F-RISK 用占位数据
+**当前阻塞**：Propagation Analysis WP4-5 未实现，F-RISK 用占位数据
 
 ### 8.3 F-RISK → 数据库
 
@@ -502,13 +502,13 @@ POST /api/v1/risk/assess
 | 类别 | 路径 | 用途 |
 |---|---|---|
 | 方法论定位 | [METHOD_STANCE.md](./METHOD_STANCE.md) | vs Agentic DISARM 2026 差异化定位 |
-| 研究简述 | [RESEARCH_BRIEF.md](./RESEARCH_BRIEF.md) | KT3 问题陈述 + 非目标 |
+| 研究简述 | [RESEARCH_BRIEF.md](./RESEARCH_BRIEF.md) | Risk Review 问题陈述 + 非目标 |
 | 实验计划 | [EXPERIMENT_PLAN.md](./EXPERIMENT_PLAN.md) | Phase-Aware Hazard + DISARM 实验设计 |
 | 验收标准 | [ACCEPTANCE.md](./ACCEPTANCE.md) | 功能 + API 字段 + 非目标 |
 | 任务追踪 | [TASK_TRACKER.md](./TASK_TRACKER.md) | WP 进度（WP1-6 100% / WP7 80%） |
-| 背景文档 | [../../doc/research/key-technology-background/risk-disarm.md](../../doc/research/key-technology-background/risk-disarm.md) | KT3 技术背景 |
-| 跨 KT 契约 | [../shared/CROSS_KT_DEPS.md](../shared/CROSS_KT_DEPS.md) | 三 KT 数据流契约 |
-| 状态记忆 | [../../memory/state_kt3.md](../../memory/state_kt3.md) | KT3 状态 + WP 进度 + 阻塞 |
+| 背景文档 | [../../doc/research/key-technology-background/risk-disarm.md](../../doc/research/key-technology-background/risk-disarm.md) | Risk Review 技术背景 |
+| 跨 analysis capability 契约 | [../shared/CROSS_ANALYSIS_DEPS.md](../shared/CROSS_ANALYSIS_DEPS.md) | 三 analysis capability 数据流契约 |
+| 状态记忆 | [../../memory/state_review.md](../../memory/state_review.md) | Risk Review 状态 + WP 进度 + 阻塞 |
 | 系统总览 | [../../doc/engineering/research-engineering-split.md](../../doc/engineering/research-engineering-split.md) | 三大功能 research/engineering 总表 |
 
 ---
@@ -533,8 +533,8 @@ POST /api/v1/risk/assess
 1. R3：DISARM 18 条转换概率实战 case 迭代 → 1 周（依赖案例库）
 2. R4：反制建议模板库构建（36-54 条模板） → 1 周
 
-**第四周（跨 KT 联调 + claim 验证）**：
+**第四周（跨 analysis capability 联调 + claim 验证）**：
 
-1. E8：替换 KT2 占位数据（依赖 F-PROP WP4-5 完成）
+1. E8：替换 Propagation Analysis 占位数据（依赖 F-PROP WP4-5 完成）
 2. R5：Claim 1 提前量验证
 3. R6：Claim 3 下一步预测验证

@@ -8,15 +8,19 @@ from pydantic import BaseModel, Field, model_validator
 
 
 ANALYSIS_STAGE_ALIASES: dict[str, str] = {
-    "coordination": "kt1",
-    "coordination_engine": "kt1",
-    "propagation": "kt2",
-    "propagation_engine": "kt2",
-    "kt3_student": "student",
-    "kt3_teacher": "teacher",
+    "coordination": "coordination_discover",
+    "coordination_engine": "coordination_discover",
+    "coordination_discover": "coordination_discover",
+    "propagation": "propagation_analysis",
+    "propagation_engine": "propagation_analysis",
+    "propagation_analysis": "propagation_analysis",
+    "review_student": "student",
+    "review_teacher": "teacher",
+    "review_student": "student",
+    "review_teacher": "teacher",
 }
-ANALYSIS_STAGE_ALLOWLIST = frozenset({"kt1", "kt2", "student", "teacher"})
-DEFAULT_ANALYSIS_STAGES = ("kt1",)
+ANALYSIS_STAGE_ALLOWLIST = frozenset({"coordination_discover", "propagation_analysis", "student", "teacher"})
+DEFAULT_ANALYSIS_STAGES = ("coordination_discover",)
 
 
 class TimeWindow(BaseModel):

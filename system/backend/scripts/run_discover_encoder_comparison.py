@@ -20,7 +20,7 @@ from app.core.coordination_baseline.io_reproduction import (  # noqa: E402
 )
 
 
-DEFAULT_ENCODERS = ("magnn_legacy", "magnn", "han", "amdn_hage", "zeyan_coexpression")
+DEFAULT_ENCODERS = ("magnn_legacy", "han", "amdn_hage", "zeyan_coexpression")
 DISCOVER_METRIC_FIELDS = (
     "dataset",
     "seed",

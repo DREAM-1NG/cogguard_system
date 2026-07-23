@@ -1,7 +1,7 @@
 # CogGuard 结题答辩 — 评委视角致命质疑与就绪度裁决
 
 > 角色：社交媒体操纵 / NLP / 网络科学领域评委（只读分析）。
-> 依据：kt1/kt2/kt3-findings.md 中已核实的真实代码状态（区分【已落地】vs【设计稿】vs【缺口】）。
+> 依据：coordination_discover/propagation_analysis/risk-review-findings.md 中已核实的真实代码状态（区分【已落地】vs【设计稿】vs【缺口】）。
 > 立场：严厉但公正。所有结论锚定代码事实，不被 PPT 措辞带跑。
 > 日期：2026-06-02。
 
@@ -11,23 +11,23 @@
 
 | 模块 | 答辩就绪度 | 一句话理由 |
 |------|-----------|-----------|
-| **KT1 协同检测（核心）** | **需重构表述方可辩护**（偏弱） | 真落地的只有 CooRTweet 重写 + 百分位阈值；核心卖点 PSL/语义/多通道 **0 行代码**；"跨平台"只验了跨源 mock_weibo/weibo/news。叙事不改口径必穿帮。 |
-| **KT2 传播监控** | **需重构表述方可辩护** | 规模预测（CascadeSwitch）真落地且自洽；但"传播路径预测"**无设计无代码**（纯缺口），LLM 卖点线上被 `mock_llm=True` 旁路，无任何评估数值。 |
-| **KT3 报告研判** | **需重构表述方可辩护**（叙事性命伤） | 硬创新（Phase Hazard + DISARM 路径 + D-S 融合）已落地 1340 行；但学生主推的"三段 Agent+RAG" 0% 落地，且正撞 arXiv:2601.15109。打法选错就从"可辩护"掉回"弱"。 |
+| **Coordination Discover 协同检测（核心）** | **需重构表述方可辩护**（偏弱） | 真落地的只有 CooRTweet 重写 + 百分位阈值；核心卖点 PSL/语义/多通道 **0 行代码**；"跨平台"只验了跨源 mock_weibo/weibo/news。叙事不改口径必穿帮。 |
+| **Propagation Analysis 传播监控** | **需重构表述方可辩护** | 规模预测（CascadeSwitch）真落地且自洽；但"传播路径预测"**无设计无代码**（纯缺口），LLM 卖点线上被 `mock_llm=True` 旁路，无任何评估数值。 |
+| **Risk Review 报告研判** | **需重构表述方可辩护**（叙事性命伤） | 硬创新（Phase Hazard + DISARM 路径 + D-S 融合）已落地 1340 行；但学生主推的"三段 Agent+RAG" 0% 落地，且正撞 arXiv:2601.15109。打法选错就从"可辩护"掉回"弱"。 |
 
-**三个模块没有一个能直接"强"上场。** 但三个模块的真问题不同：KT1 是**方法没落地 + 跨平台名不副实**，KT2 是**多宣称了一个不存在的关键技术**，KT3 是**把强牌当弱牌打**。全部可通过"口径校准 + 极少量补码"翻盘，但必须在答辩前动手。
+**三个模块没有一个能直接"强"上场。** 但三个模块的真问题不同：Coordination Discover 是**方法没落地 + 跨平台名不副实**，Propagation Analysis 是**多宣称了一个不存在的关键技术**，Risk Review 是**把强牌当弱牌打**。全部可通过"口径校准 + 极少量补码"翻盘，但必须在答辩前动手。
 
 ---
 
-## KT1 协同检测 — 致命质疑（按杀伤力排序）
+## Coordination Discover 协同检测 — 致命质疑（按杀伤力排序）
 
 ### Q1（最致命）：你的核心方法 PSL（对称超几何 + Cauchy + BH-FDR）+ 语义通道 + 多通道融合，代码在哪？
 - **真实状态**：`significance.py / semantic.py / channels.py` 三个文件**全仓不存在**（findings §1.2，`grep "significance|PairSurprisal|hypergeom|cauchy"` 在 `backend/app/` 零命中）。真实可运行的协同检测 = `detector.py` 的 CooRTweet 共享对象配对（`detector.py:113-145`）+ `network.py:137-147` 的**百分位阈值**——而百分位阈值正是 FINAL_PROPOSAL 声称要替换掉的"启发式阈值"。
 - **能否扛住**：**扛不住**，如果学生把 PSL 当"已实现关键技术"讲。评委一句"打开 significance.py"即击穿。
-- **唯一活路**：诚实分层——"已实现的是稳健工程基线（CooRTweet 重写 + 加权图 + 社区发现，有 API/前端）；PSL 是经多轮收敛的方法设计"。**强烈建议结题前落地 `significance.py` 的对称超几何 + BH-FDR（纯统计、不含语义、findings 自评 3-4 天）**，把核心卖点从"设计"变"已验证"，直接拆雷。这是 KT1 投入产出比最高的动作。
+- **唯一活路**：诚实分层——"已实现的是稳健工程基线（CooRTweet 重写 + 加权图 + 社区发现，有 API/前端）；PSL 是经多轮收敛的方法设计"。**强烈建议结题前落地 `significance.py` 的对称超几何 + BH-FDR（纯统计、不含语义、findings 自评 3-4 天）**，把核心卖点从"设计"变"已验证"，直接拆雷。这是 Coordination Discover 投入产出比最高的动作。
 
 ### Q2（很致命）：排除内容信号后，你在**单平台**上是不是比 CooRTweet/Sharma 更弱？
-- **要害**：KT1 主动放弃内容信号（语义/立场/毒性/图文一致），只留行为同步。评委会问：在单平台数据上，去掉内容召回来源，你的检出率怎么可能不降？凭什么说这是改进而非阉割？
+- **要害**：Coordination Discover 主动放弃内容信号（语义/立场/毒性/图文一致），只留行为同步。评委会问：在单平台数据上，去掉内容召回来源，你的检出率怎么可能不降？凭什么说这是改进而非阉割？
 - **能否扛住**：**勉强可辩，但需要实证而非嘴硬**。findings 给的辩护链（Luceri TikTok 2025：传统行为指标 generalize well，内容型信号最不可迁移；Schneider 2026：生成式 AI 使内容方法 brittle）是**迁移性/鲁棒性论点**，不是"单平台更准"论点。诚实表述应是："单平台准确率可能持平或略降，但换取了跨平台可迁移性与抗 AI 改写的鲁棒性"——这是 tradeoff，不是 free lunch。**不要假装没有代价。** 若有 IO Datasets（Seckin 2024, arXiv:2411.10609）上的对比数字最好，没有就老实承认是设计论证。
 
 ### Q3（致命，撞身份）：相比 CooRTweet、Sharma/AMDN-HAGE、Cinus 跨平台工作，你到底新在哪？
@@ -44,7 +44,7 @@
 
 ---
 
-## KT2 传播监控 — 致命质疑（按杀伤力排序）
+## Propagation Analysis 传播监控 — 致命质疑（按杀伤力排序）
 
 ### Q1（最致命，事实证伪）：你宣称的"传播路径预测"是什么？代码在哪？
 - **真实状态**：findings §0/§4 三重核实——"传播路径预测"**既无设计稿也无代码，是纯缺口**。ARIS 全目录 grep `路径预测/next-hop/下一跳` 零命中；代码里唯一沾"路径"的是 `propagation_legacy.py:388-504` 的 `nx.shortest_simple_paths`，那是在**已观测图上回溯取证（重建）**，不是预测未来下一跳。文献明确区分 macro（size，已做）vs micro（next-user/path，缺口）。
@@ -53,14 +53,14 @@
 
 ### Q2（很致命）：演示里 LLM 到底起了什么作用？看起来没调用。
 - **真实状态**：`propagation_service.py:73` **硬编码 `mock_llm=True`**，线上 LLM 分支被强制旁路。后果：`detected_events` 恒为空、`llm_available=False`，体制后验完全由纯速度/加速度规则（`regime_model.py:85-102`）驱动。**"LLM 事件条件"这个核心卖点在演示中根本不生效。**
-- **能否扛住**：**当前扛不住**。KT2 的可辩护创新一句话是"用 LLM 做事件抽取器驱动体制切换"，但演示里 LLM 没接通 = 卖点是纸面的。**答辩前必须接通真实 API**（`llm_context.py:122-140` 已具备 httpx 调用能力 + 三次多数投票），否则只能解释为"控成本走 mock，可现场切换"——这个解释评委大概率不买账，因为它正好落在卖点上。
+- **能否扛住**：**当前扛不住**。Propagation Analysis 的可辩护创新一句话是"用 LLM 做事件抽取器驱动体制切换"，但演示里 LLM 没接通 = 卖点是纸面的。**答辩前必须接通真实 API**（`llm_context.py:122-140` 已具备 httpx 调用能力 + 三次多数投票），否则只能解释为"控成本走 mock，可现场切换"——这个解释评委大概率不买账，因为它正好落在卖点上。
 
 ### Q3（致命）：这不就是知微产品化 + 已知的级联规模预测吗？
 - **要害**：知微（WeiboReach）已有分阶段、传播力指数、路径图；级联规模预测有 DeepCas/DeepHawkes/CasFlow 一整条线。学生做的像是"抄知微产品形态 + 复现已知任务"。
 - **能否扛住**：**可辩，前提是把贡献钉死在方法层**。可主张的真增量 = 把规模预测重构为"**事件条件下的体制切换**"：W 矩阵 softmax 可计算后验（`regime_model.py:43-82`）、零训练、带置信区间、自带中文解释。知微算法黑盒/不可发表/无预测能力（findings 自陈知微"缺乏预测能力，以事后分析为主"）；DeepCas 线是端到端训练黑盒。**差异化点真实存在且已落地**。但要注意：findings 标注 ZHIWEI 文档因网络限制部分功能为"推测"——别把对知微的对比建立在推测之上，会被懂行评委戳穿。
 
 ### Q4（致命，无实证）：你说超越 DeepCas/CasFlow，数据呢？
-- **真实状态**：`evaluate_cascade.py / cascade_loader.py` **均未落地**（KT2_COMPLETE_PLAN.md:159-161 待实现），DeepHawkes/CasFlow 基准实验"**一行评估代码都没有**"。
+- **真实状态**：`evaluate_cascade.py / cascade_loader.py` **均未落地**（PROPAGATION_ANALYSIS_COMPLETE_PLAN.md:159-161 待实现），DeepHawkes/CasFlow 基准实验"**一行评估代码都没有**"。
 - **能否扛住**：**扛不住"超越基线"的任何定量宣称**。当前只能展示方法 + 定性案例。"对比 SOTA"目前是承诺非事实。**这是结题硬伤**，要么补 `evaluate_cascade.py` 跑出 MSLE 数字，要么诚实降级为"方法对比 + 定性分析，定量评估为后续工作"。CasFT（arXiv:2409.16619）是最可能被点名的直接对手，必须能讲清差异（端到端训练 vs 零训练 + LLM 显式事件抽取）。
 
 ### Q5（中等）：4 体制的 W 矩阵是手工拍的，凭什么对？
@@ -69,7 +69,7 @@
 
 ---
 
-## KT3 报告研判 — 致命质疑（按杀伤力排序）
+## Risk Review 报告研判 — 致命质疑（按杀伤力排序）
 
 ### Q1（最致命，方向性命伤）：把研判扩成"更多 Agent + RAG"，是不是又掉回"Agent 创新性弱"同一个坑？
 - **判断**：**是，而且加重了。** 导师批评的根因是"创新落在 LLM 编排外壳上"。学生的回应是"加更多 Agent + 加 RAG"——用被批评的同一种东西回应批评，等于承认"研判 = LLM 写报告"这个弱框架，再叠三层 LLM 包装（Harmful / Stance / Counter-narrative，全是 DeepSeek zero/few-shot，无自有方法）。**外壳做得更厚 = 根因更突出。**
@@ -77,8 +77,8 @@
 - **能否扛住 / 活路**：**当前打法扛不住，但翻盘成本极低（几乎只动 PPT）**。必须重新分层：主秀 = 已落地的 Phase Hazard + DISARM 路径 + 反制 + D-S 融合（白盒、CPU-only、可审计）；Agent+RAG **明确降级为"呈现/人机接口层"，绝不作为创新点**。Demo 展示阶段时间线 + DISARM 攻击路径图（观测+预测+反制）+ 冲突标记，**不展示风险分数仪表盘**（仪表盘 = "又一个舆情产品"的观感）。
 
 ### Q2（最致命，撞车）：arXiv:2601.15109（Agentic DISARM）已经把 DISARM 做成 Agent 了，你这不是重复工作？
-- **真实状态**：findings §七核实——2601.15109（Tseng 等，2026-01，案例发现摩尔多瓦 2025 选举俄罗斯 bot）**是真实存在的最危险直接前作**。如果 KT3 主打"DISARM Agent 化"，正面撞车，且对方已有数据集和案例。
-- **能否扛住 / 活路**：**可辩，但必须把差异讲死**。2601.15109 是 **flat tagging**——把观测映射到 DISARM 标签，回答"观测到什么"。KT3 是 **path reasoning**——技术转换图（`disarm_scorer.py:48` TRANSITIONS + `:62` 转换概率）+ 预测下一步技术（`:373`）+ 据预测路径生成反制（`:84` COUNTERMEASURES）。**KT3 回答"下一步会发生什么 + 如何拦截"，且 CPU-only 白盒不依赖 LLM 黑盒。** 这个区分**真实成立且有代码支撑**，是 KT3 最硬的反击点。**但前提是别把 DISARM Agent 当卖点——卖点应是 path reasoning 这个方法，不是"Agent 化"这个外壳。** 一旦学生强调"我们也做了 DISARM Agent"，就主动撞进对方射程。
+- **真实状态**：findings §七核实——2601.15109（Tseng 等，2026-01，案例发现摩尔多瓦 2025 选举俄罗斯 bot）**是真实存在的最危险直接前作**。如果 Risk Review 主打"DISARM Agent 化"，正面撞车，且对方已有数据集和案例。
+- **能否扛住 / 活路**：**可辩，但必须把差异讲死**。2601.15109 是 **flat tagging**——把观测映射到 DISARM 标签，回答"观测到什么"。Risk Review 是 **path reasoning**——技术转换图（`disarm_scorer.py:48` TRANSITIONS + `:62` 转换概率）+ 预测下一步技术（`:373`）+ 据预测路径生成反制（`:84` COUNTERMEASURES）。**Risk Review 回答"下一步会发生什么 + 如何拦截"，且 CPU-only 白盒不依赖 LLM 黑盒。** 这个区分**真实成立且有代码支撑**，是 Risk Review 最硬的反击点。**但前提是别把 DISARM Agent 当卖点——卖点应是 path reasoning 这个方法，不是"Agent 化"这个外壳。** 一旦学生强调"我们也做了 DISARM Agent"，就主动撞进对方射程。
 
 ### Q3（致命，落地性）：你 PPT 讲的三个 Agent + RAG，代码在哪？
 - **真实状态**：`llm_bridge.py` 三个函数（`generate_summary/explain_evidence/assess_complex_scenario`）**全部 `return None` 占位 + `# TODO`**；`find *agent*/*rag*/*stance*/*harmful*` **0 文件**；`risk_service.py` grep `agent|rag|llm|stance` **0 匹配**。TASK_TRACKER WP-A1~A9 **全部未勾选**。实际编排链 `risk_service.py:40-45` 是**函数调用流水线，不是 Agent 编排**。
@@ -95,44 +95,44 @@
 
 ## 整体闭环自洽性评估
 
-闭环声称：事件→证据→协同发现(KT1)→传播监控(KT2)→报告研判(KT3)→处置。三模块本身的方法链各自可串起来，但**模块之间的职责边界存在一条贯穿全局的大裂缝 + 两处接缝**。
+闭环声称：事件→证据→协同发现(Coordination Discover)→传播监控(Propagation Analysis)→报告研判(Risk Review)→处置。三模块本身的方法链各自可串起来，但**模块之间的职责边界存在一条贯穿全局的大裂缝 + 两处接缝**。
 
 ### 最大裂缝：内容分析的归属权 三模块互相矛盾
 
 这是整个项目最严重的自洽性问题，评委一旦串起来问，三个模块的故事会互相打架：
 
-- **KT1 的立身之本是"协同判定绝不读内容"**（findings KT1 §2/§9：语义、立场、毒性、图文一致全部排除，单向下沉下游）。
-- **但 KT2 的设计稿里有 `stance_detector.py`（立场）+ `harm_assessor.py`（危害）**（findings KT2 §1.4，WP4-5，均未落地但写在文档里）。
-- **同时 KT3 的新三段设计里又有 Stance Detection Agent + Harmful Content Agent**（findings KT3 §二(c)）。
+- **Coordination Discover 的立身之本是"协同判定绝不读内容"**（findings Coordination Discover §2/§9：语义、立场、毒性、图文一致全部排除，单向下沉下游）。
+- **但 Propagation Analysis 的设计稿里有 `stance_detector.py`（立场）+ `harm_assessor.py`（危害）**（findings Propagation Analysis §1.4，WP4-5，均未落地但写在文档里）。
+- **同时 Risk Review 的新三段设计里又有 Stance Detection Agent + Harmful Content Agent**（findings Risk Review §二(c)）。
 
-**于是"立场检测"和"危害/有害内容评估"这两件内容分析的事，同时挂在 KT2 和 KT3 名下，而 KT1 又声称把内容分析全部"下沉到下游"。** 三个问题立刻暴露：
+**于是"立场检测"和"危害/有害内容评估"这两件内容分析的事，同时挂在 Propagation Analysis 和 Risk Review 名下，而 Coordination Discover 又声称把内容分析全部"下沉到下游"。** 三个问题立刻暴露：
 
-1. **职责重叠**：立场/危害到底归 KT2 还是 KT3？两个模块都声称要做，是各做一遍（重复劳动 + 结果可能冲突），还是其中一个是僵尸需求？findings 显示**两边都未落地**，所以现在是"两个模块都认领了一件谁都没做的事"——评委问"立场检测在哪个模块、哪个文件"时，两边都拿不出代码。
-2. **方向阀没说清**：KT1 说"内容只能单向从 Detection 流向 Characterization，绝不回流当协同判据"（findings KT1 §6 的"单向阀"），这条**逻辑上成立且漂亮**，但前提是要在闭环图里**画出这条单向箭头**，并明确"内容分析的统一归宿是哪个模块"。当前 KT2 和 KT3 各搞一套立场/危害，等于单向阀下游有两个并联的水池，没有统一出口。
-3. **KT1 的"排除内容"与 KT2/KT3 的"做内容"在闭环叙事里没有交代清楚**：评委会问"既然你们整个系统要做立场和危害分析（KT2/KT3），为什么协同检测(KT1)偏偏不用？这些内容信号在系统里已经算出来了，不用岂不浪费？"——这恰恰是 KT1 单向阀论点要正面回答的，但需要**在系统级（而非 KT1 模块内）**讲清楚，否则三个模块各说各话。
+1. **职责重叠**：立场/危害到底归 Propagation Analysis 还是 Risk Review？两个模块都声称要做，是各做一遍（重复劳动 + 结果可能冲突），还是其中一个是僵尸需求？findings 显示**两边都未落地**，所以现在是"两个模块都认领了一件谁都没做的事"——评委问"立场检测在哪个模块、哪个文件"时，两边都拿不出代码。
+2. **方向阀没说清**：Coordination Discover 说"内容只能单向从 Detection 流向 Characterization，绝不回流当协同判据"（findings Coordination Discover §6 的"单向阀"），这条**逻辑上成立且漂亮**，但前提是要在闭环图里**画出这条单向箭头**，并明确"内容分析的统一归宿是哪个模块"。当前 Propagation Analysis 和 Risk Review 各搞一套立场/危害，等于单向阀下游有两个并联的水池，没有统一出口。
+3. **Coordination Discover 的"排除内容"与 Propagation Analysis/Risk Review 的"做内容"在闭环叙事里没有交代清楚**：评委会问"既然你们整个系统要做立场和危害分析（Propagation Analysis/Risk Review），为什么协同检测(Coordination Discover)偏偏不用？这些内容信号在系统里已经算出来了，不用岂不浪费？"——这恰恰是 Coordination Discover 单向阀论点要正面回答的，但需要**在系统级（而非 Coordination Discover 模块内）**讲清楚，否则三个模块各说各话。
 
 **建议的干净划分（答辩必须统一口径）**：
-- 内容分析（立场/危害/有害言论）**统一归 KT3 的 Characterization 层**，作为"研判"的一部分。
-- **KT2 撤掉 `stance_detector/harm_assessor` 的"关键技术"宣称**，KT2 只做传播动力学（规模/体制预测），不碰内容分类——否则 KT2 既要做级联预测又要做立场危害，主线发散，且和 KT3 撞车。
-- 闭环图明确画出：KT1（纯行为，发现"谁在协同"）→ 把协同群体/证据交给 KT3 → KT3 用内容理解判断"协同得有多坏"（立场/危害）+ 做研判报告。**内容分析只有一个归宿（KT3），单向阀只有一个下游水池。**
+- 内容分析（立场/危害/有害言论）**统一归 Risk Review 的 Characterization 层**，作为"研判"的一部分。
+- **Propagation Analysis 撤掉 `stance_detector/harm_assessor` 的"关键技术"宣称**，Propagation Analysis 只做传播动力学（规模/体制预测），不碰内容分类——否则 Propagation Analysis 既要做级联预测又要做立场危害，主线发散，且和 Risk Review 撞车。
+- 闭环图明确画出：Coordination Discover（纯行为，发现"谁在协同"）→ 把协同群体/证据交给 Risk Review → Risk Review 用内容理解判断"协同得有多坏"（立场/危害）+ 做研判报告。**内容分析只有一个归宿（Risk Review），单向阀只有一个下游水池。**
 
-### 接缝 2：KT3 的"基于 Agent 的证据编排/言论检测" 与 KT2 的"立场/危害" 概念重叠
-KT3 新设计的 (a)"agent 化用户言论/行为检测" 和 (c)"Stance/Harmful Agent"，在功能描述上和 KT2 的 WP4-5 几乎同义。**"用户言论检测""行为检测"这些词太泛，横跨 KT1（行为）、KT2（立场/危害）、KT3（言论 Agent）三家**。必须给每个动词钉死归属，否则评委会觉得三个模块在抢同一块地，且都没真正种出庄稼。
+### 接缝 2：Risk Review 的"基于 Agent 的证据编排/言论检测" 与 Propagation Analysis 的"立场/危害" 概念重叠
+Risk Review 新设计的 (a)"agent 化用户言论/行为检测" 和 (c)"Stance/Harmful Agent"，在功能描述上和 Propagation Analysis 的 WP4-5 几乎同义。**"用户言论检测""行为检测"这些词太泛，横跨 Coordination Discover（行为）、Propagation Analysis（立场/危害）、Risk Review（言论 Agent）三家**。必须给每个动词钉死归属，否则评委会觉得三个模块在抢同一块地，且都没真正种出庄稼。
 
-### 接缝 3：闭环的"预测"在 KT2 和 KT3 各有一套，是否冲突？
-- KT2 做"事件规模/体制预测"（宏观传播量级前瞻）。
-- KT3 做"DISARM 攻击路径预判"（下一步攻击技术前瞻）。
-两者**预测对象不同（传播量级 vs 攻击技术），不冲突，反而互补**——这是闭环里少有的干净衔接，**应主动讲出来当亮点**："KT2 预测'传播会涨多大'，KT3 预测'攻击者下一步会用什么手法'，一个管态势一个管对手意图。" 这条是闭环自洽性的加分项，别浪费。
+### 接缝 3：闭环的"预测"在 Propagation Analysis 和 Risk Review 各有一套，是否冲突？
+- Propagation Analysis 做"事件规模/体制预测"（宏观传播量级前瞻）。
+- Risk Review 做"DISARM 攻击路径预判"（下一步攻击技术前瞻）。
+两者**预测对象不同（传播量级 vs 攻击技术），不冲突，反而互补**——这是闭环里少有的干净衔接，**应主动讲出来当亮点**："Propagation Analysis 预测'传播会涨多大'，Risk Review 预测'攻击者下一步会用什么手法'，一个管态势一个管对手意图。" 这条是闭环自洽性的加分项，别浪费。
 
 ### 闭环连贯性总评
-方法链在**模块内**各自自洽（尤其 KT3 的 phase→fusion→path→report、KT2 的同一后验派生多视图），但**模块间的内容分析归属是一团乱麻**：KT1 排除、KT2 认领、KT3 也认领，三方对同一件事的表述互相矛盾且都无代码。这是闭环最大的自洽性裂缝，比任何单模块的技术质疑都更伤——因为它暴露的是**三个模块的分工设计本身没对齐**，而不仅是某个功能没做完。
+方法链在**模块内**各自自洽（尤其 Risk Review 的 phase→fusion→path→report、Propagation Analysis 的同一后验派生多视图），但**模块间的内容分析归属是一团乱麻**：Coordination Discover 排除、Propagation Analysis 认领、Risk Review 也认领，三方对同一件事的表述互相矛盾且都无代码。这是闭环最大的自洽性裂缝，比任何单模块的技术质疑都更伤——因为它暴露的是**三个模块的分工设计本身没对齐**，而不仅是某个功能没做完。
 
 ---
 
 ## 评委会问的最致命一题
 
-> **"你们的协同检测(KT1)说原则上绝不读内容，可你们的传播监控(KT2)和报告研判(KT3)又都要做立场检测和危害评估——那么：(1) 立场和危害到底归哪个模块？给我看那个文件。(2) 既然系统里已经算出了内容信号，KT1 凭什么不用、用了不是召回更高吗？(3) 这三个模块对'内容分析'的说法互相矛盾，到底谁对？"**
+> **"你们的协同检测(Coordination Discover)说原则上绝不读内容，可你们的传播监控(Propagation Analysis)和报告研判(Risk Review)又都要做立场检测和危害评估——那么：(1) 立场和危害到底归哪个模块？给我看那个文件。(2) 既然系统里已经算出了内容信号，Coordination Discover 凭什么不用、用了不是召回更高吗？(3) 这三个模块对'内容分析'的说法互相矛盾，到底谁对？"**
 
-这一题的杀伤力在于：它同时戳穿了 (a) **代码缺口**（立场/危害在 KT2/KT3 都未落地，两边都拿不出文件）、(b) **KT1 的 tradeoff 软肋**（排除内容是有召回代价的设计选择，不是纯增益）、(c) **闭环分工的根本矛盾**（三模块对同一件事各执一词）。三刀合一，且无法靠单模块的话术化解，必须靠**统一的系统级口径**才能接住。
+这一题的杀伤力在于：它同时戳穿了 (a) **代码缺口**（立场/危害在 Propagation Analysis/Risk Review 都未落地，两边都拿不出文件）、(b) **Coordination Discover 的 tradeoff 软肋**（排除内容是有召回代价的设计选择，不是纯增益）、(c) **闭环分工的根本矛盾**（三模块对同一件事各执一词）。三刀合一，且无法靠单模块的话术化解，必须靠**统一的系统级口径**才能接住。
 
-**接招的唯一正确姿势**：答辩前三个模块对齐一句话——"内容分析（立场/危害）唯一归宿是 KT3 的 Characterization；KT1 纯行为是刻意的鲁棒性设计选择（引 Luceri 2025 / Schneider 2026，承认单平台可能略损召回、换取跨平台可迁移与抗 AI 改写）；KT2 只做传播动力学不碰内容；内容信号单向流动、绝不回流协同判定。" 这句话必须三个模块的人都会背，且闭环图上画得出来。背不齐 = 当场翻车。
+**接招的唯一正确姿势**：答辩前三个模块对齐一句话——"内容分析（立场/危害）唯一归宿是 Risk Review 的 Characterization；Coordination Discover 纯行为是刻意的鲁棒性设计选择（引 Luceri 2025 / Schneider 2026，承认单平台可能略损召回、换取跨平台可迁移与抗 AI 改写）；Propagation Analysis 只做传播动力学不碰内容；内容信号单向流动、绝不回流协同判定。" 这句话必须三个模块的人都会背，且闭环图上画得出来。背不齐 = 当场翻车。

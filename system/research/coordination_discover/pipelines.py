@@ -1,18 +1,19 @@
 from __future__ import annotations
 
-from collections import defaultdict
+from collections import Counter, defaultdict
 from datetime import datetime, timezone
 from typing import Any, Literal, cast
 
 from .artifacts import create_manifest, write_discover_artifact
 from .contracts import (
-    KT1_TECHNOLOGY,
+    COORDINATION_DISCOVER_TECHNOLOGY,
     DiscoverResult,
     DynamicDiscoverRequest,
 )
 from .evidence import build_evidence_graph
 from .evaluation import run_detect_validation as _run_detect_validation
 from .models import build_account_pair_edges, fit_temporal_magnn, partition_learned_graph
+from .process_experiments import build_process_causal_experiment_report
 
 
 def run_dynamic_discover(request: DynamicDiscoverRequest) -> DiscoverResult:
@@ -49,6 +50,14 @@ def run_dynamic_discover(request: DynamicDiscoverRequest) -> DiscoverResult:
         partition_backend=str(learned.get("partition_backend") or "none"),
     )
     learned_edge_graph = _learned_edge_graph(graph.accounts, learned)
+    dynamic_communities = _dynamic_community_report(
+        account_object_edges=list(learned.get("account_object_edges") or []),
+        accounts=graph.accounts,
+        window_hours=request.window_hours,
+        overlap_ratio=request.overlap_ratio,
+        min_score=float(request.model_config.min_learned_edge_score),
+    )
+    process_causal_experiment = build_process_causal_experiment_report(graph)
     normalized_status = cast(
         Literal["ok", "data_insufficient", "model_unavailable"],
         status if status in {"ok", "data_insufficient", "model_unavailable"} else "data_insufficient",
@@ -62,13 +71,7 @@ def run_dynamic_discover(request: DynamicDiscoverRequest) -> DiscoverResult:
         evidence_graph=graph.to_dict(),
         learned_edge_graph=learned_edge_graph,
         communities=list(learned.get("communities") or []),
-        lineage=_community_lineage(
-            account_object_edges=list(learned.get("account_object_edges") or []),
-            accounts=graph.accounts,
-            window_hours=request.window_hours,
-            overlap_ratio=request.overlap_ratio,
-            min_score=float(request.model_config.min_learned_edge_score),
-        ),
+        lineage=list(dynamic_communities.get("lineage") or []),
         attention=dict(learned.get("attention") or {}),
         audit_metrics={
             "evidence_coverage": graph.coverage,
@@ -80,9 +83,12 @@ def run_dynamic_discover(request: DynamicDiscoverRequest) -> DiscoverResult:
             "loss_history": list(learned.get("loss_history") or []),
             "partition_backend": learned.get("partition_backend"),
             "device": learned.get("device"),
+            "dynamic_community": dict(dynamic_communities.get("summary") or {}),
+            "process_causal_experiment": process_causal_experiment,
         },
         manifest=manifest,
         fallback_reason=learned.get("error"),
+        dynamic_communities=dynamic_communities,
     )
     if request.artifact_dir:
         write_discover_artifact(
@@ -113,7 +119,7 @@ def export_coordination_result(
 
     result = {
         "status": status,
-        "technology": KT1_TECHNOLOGY,
+        "technology": COORDINATION_DISCOVER_TECHNOLOGY,
         "model_version": str(payload.get("model_version") or manifest.get("model_version") or ""),
         "model_role": "dynamic_discover",
         "detect_role": "validation_only",
@@ -126,11 +132,15 @@ def export_coordination_result(
             "coordinated_edges": len(pair_edges),
             "cluster_count": len(communities),
             "evidence_edge_count": len(evidence_graph.get("edges") or []),
+            "account_multigraph_edge_count": len(evidence_graph.get("account_edges") or []),
             "evidence_object_count": len(evidence_graph.get("objects") or []),
             "excluded_modality_field_count": audit_metrics.get("excluded_modality_field_count", 0),
             "partition_backend": audit_metrics.get("partition_backend"),
+            "dynamic_window_graph_count": _dynamic_summary_value(payload, "window_graph_count"),
+            "membership_transition_count": _dynamic_summary_value(payload, "membership_transition_count"),
         },
         "community_lineage": list(payload.get("lineage") or _lineage_from_communities(communities)),
+        "dynamic_communities": dict(payload.get("dynamic_communities") or {}),
         "communities": communities,
         "account_risk_tiers": _account_risk_tiers(pair_edges),
         "evidence_edges": _export_evidence_edges(account_object_edges),
@@ -163,27 +173,42 @@ def _learned_edge_graph(accounts: list[str], learned: dict[str, Any]) -> dict[st
     }
 
 
-def _community_lineage(
+def _dynamic_community_report(
     *,
     account_object_edges: list[dict[str, Any]],
     accounts: list[str],
     window_hours: tuple[int, ...],
     overlap_ratio: float,
     min_score: float,
-) -> list[dict[str, Any]]:
+) -> dict[str, Any]:
     if not account_object_edges:
-        return []
+        return {
+            "summary": {
+                "window_graph_count": 0,
+                "lineage_count": 0,
+                "membership_transition_count": 0,
+                "time_model": "centered_overlapping_windows",
+            },
+            "window_graphs": [],
+            "lineage": [],
+            "membership_transitions": [],
+            "transition_matrix": [],
+            "stability_matrix": [],
+            "archetype_counts": {},
+        }
+
     timestamps = [float(edge.get("observed_at", 0.0)) for edge in account_object_edges]
     start = min(timestamps)
     end = max(timestamps)
     if start == end:
         end = start + 3600
 
+    window_graphs: list[dict[str, Any]] = []
     occurrences: list[dict[str, Any]] = []
     for hours in window_hours:
         width = max(1, int(hours)) * 3600
         step = max(1, int(width * max(0.05, 1.0 - float(overlap_ratio))))
-        slice_start = start
+        slice_start = start - width / 2
         slice_index = 0
         while slice_start <= end and slice_index < 24:
             slice_end = min(end + 1, slice_start + width)
@@ -194,21 +219,98 @@ def _community_lineage(
             ]
             if rows:
                 pair_edges = build_account_pair_edges(rows, min_score=min_score)
-                partition = partition_learned_graph(accounts=accounts, pair_edges=pair_edges, min_score=min_score)
-                for community in partition["communities"]:
-                    if int(community.get("size", 0)) < 2:
-                        continue
+                partition = partition_learned_graph(
+                    accounts=accounts,
+                    pair_edges=pair_edges,
+                    min_score=min_score,
+                )
+                communities = [
+                    community
+                    for community in partition["communities"]
+                    if int(community.get("size", 0)) >= 2
+                ]
+                graph = {
+                    "slice_id": f"{int(hours)}h:{slice_index}",
+                    "window_hours": int(hours),
+                    "slice_index": slice_index,
+                    "slice_start": _iso(slice_start),
+                    "slice_end": _iso(slice_end),
+                    "node_count": _coordinated_account_count(pair_edges),
+                    "edge_count": len(pair_edges),
+                    **_window_multiplex_summary(rows),
+                    "partition_backend": partition.get("partition_backend"),
+                    "communities": communities,
+                }
+                window_graphs.append(graph)
+                for community in communities:
                     occurrences.append(
                         {
-                            "window_hours": int(hours),
-                            "slice_index": slice_index,
-                            "slice_start": _iso(slice_start),
-                            "slice_end": _iso(slice_end),
+                            "slice_id": graph["slice_id"],
+                            "window_hours": graph["window_hours"],
+                            "slice_index": graph["slice_index"],
+                            "slice_start": graph["slice_start"],
+                            "slice_end": graph["slice_end"],
                             "community": community,
                         }
                     )
             slice_start += step
             slice_index += 1
+
+    lineage = _lineage_from_occurrences(occurrences)
+    transitions = _membership_transitions(window_graphs)
+    transition_matrix = _transition_matrix(transitions)
+    archetype_counts = Counter(str(row["transition"]) for row in transitions)
+    return {
+        "summary": {
+            "window_graph_count": len(window_graphs),
+            "lineage_count": len(lineage),
+            "membership_transition_count": len(transitions),
+            "transition_matrix_count": len(transition_matrix),
+            "time_model": "centered_overlapping_windows",
+        },
+        "window_graphs": window_graphs,
+        "lineage": lineage,
+        "membership_transitions": transitions,
+        "transition_matrix": transition_matrix,
+        "stability_matrix": _stability_matrix(lineage),
+        "archetype_counts": dict(sorted(archetype_counts.items())),
+    }
+
+
+def _window_multiplex_summary(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    evidence_kind_counts = Counter(str(row.get("evidence_kind") or "unknown") for row in rows)
+    relation_type_counts = Counter(str(row.get("relation_type") or "unknown") for row in rows)
+    return {
+        "layer_counts": {"account_object": len(rows)},
+        "evidence_kind_counts": dict(sorted(evidence_kind_counts.items())),
+        "relation_type_counts": dict(sorted(relation_type_counts.items())),
+        "multiplex_role": "window_context_for_dynamic_community_interpretation",
+    }
+
+
+def _community_lineage(
+    *,
+    account_object_edges: list[dict[str, Any]],
+    accounts: list[str],
+    window_hours: tuple[int, ...],
+    overlap_ratio: float,
+    min_score: float,
+) -> list[dict[str, Any]]:
+    return list(
+        _dynamic_community_report(
+            account_object_edges=account_object_edges,
+            accounts=accounts,
+            window_hours=window_hours,
+            overlap_ratio=overlap_ratio,
+            min_score=min_score,
+        ).get("lineage")
+        or []
+    )
+
+
+def _lineage_from_occurrences(occurrences: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    if not occurrences:
+        return []
 
     lineages: list[dict[str, Any]] = []
     for occurrence in occurrences:
@@ -232,6 +334,7 @@ def _community_lineage(
         community = occurrence["community"]
         best["occurrences"].append(
             {
+                "slice_id": occurrence["slice_id"],
                 "window_hours": occurrence["window_hours"],
                 "slice_index": occurrence["slice_index"],
                 "slice_start": occurrence["slice_start"],
@@ -263,6 +366,94 @@ def _community_lineage(
             }
         )
     return sorted(rows, key=lambda item: (item["support_count"], item["stability_score"]), reverse=True)
+
+
+def _membership_transitions(window_graphs: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    transitions: list[dict[str, Any]] = []
+    by_scale: dict[int, list[dict[str, Any]]] = defaultdict(list)
+    for graph in window_graphs:
+        by_scale[int(graph.get("window_hours") or 0)].append(graph)
+
+    for hours, graphs in sorted(by_scale.items()):
+        ordered = sorted(graphs, key=lambda item: int(item.get("slice_index") or 0))
+        for previous, current in zip(ordered, ordered[1:]):
+            previous_membership = _membership_by_account(previous)
+            current_membership = _membership_by_account(current)
+            for account in sorted(set(previous_membership) | set(current_membership)):
+                before = previous_membership.get(account)
+                after = current_membership.get(account)
+                if before == after:
+                    continue
+                if before is None:
+                    transition = "joined"
+                elif after is None:
+                    transition = "left"
+                else:
+                    transition = "moved"
+                transitions.append(
+                    {
+                        "account_id": account,
+                        "window_hours": hours,
+                        "from_slice_id": previous.get("slice_id"),
+                        "to_slice_id": current.get("slice_id"),
+                        "transition": transition,
+                        "from_community": before,
+                        "to_community": after,
+                    }
+                )
+    return transitions
+
+
+def _transition_matrix(transitions: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    counts = Counter(
+        (
+            int(row.get("window_hours") or 0),
+            str(row.get("from_community") or "none"),
+            str(row.get("to_community") or "none"),
+            str(row.get("transition") or "unknown"),
+        )
+        for row in transitions
+    )
+    return [
+        {
+            "window_hours": hours,
+            "from_community": source,
+            "to_community": target,
+            "transition": transition,
+            "count": int(count),
+        }
+        for (hours, source, target, transition), count in sorted(counts.items())
+    ]
+
+
+def _membership_by_account(window_graph: dict[str, Any]) -> dict[str, str]:
+    membership: dict[str, str] = {}
+    for community in window_graph.get("communities") or []:
+        community_id = str(community.get("community_id") or "")
+        for member in community.get("members") or []:
+            account_id = str(member)
+            if account_id:
+                membership[account_id] = community_id
+    return membership
+
+
+def _stability_matrix(lineage: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    rows = []
+    for item in lineage:
+        windows = list(item.get("windows") or [])
+        for left, right in zip(windows, windows[1:]):
+            rows.append(
+                {
+                    "lineage_id": item.get("lineage_id"),
+                    "from_slice_id": left.get("slice_id"),
+                    "to_slice_id": right.get("slice_id"),
+                    "jaccard": round(
+                        _jaccard(tuple(left.get("members") or []), tuple(right.get("members") or [])),
+                        6,
+                    ),
+                }
+            )
+    return rows
 
 
 def _lineage_from_communities(communities: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -360,6 +551,15 @@ def _coordinated_account_count(pair_edges: list[dict[str, Any]]) -> int:
     accounts.discard(None)
     accounts.discard("")
     return len(accounts)
+
+
+def _dynamic_summary_value(payload: dict[str, Any], key: str) -> int:
+    dynamic = dict(payload.get("dynamic_communities") or {})
+    summary = dict(dynamic.get("summary") or {})
+    try:
+        return int(summary.get(key) or 0)
+    except (TypeError, ValueError):
+        return 0
 
 
 def _jaccard(left: tuple[str, ...], right: tuple[str, ...]) -> float:

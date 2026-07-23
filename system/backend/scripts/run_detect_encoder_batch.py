@@ -16,6 +16,7 @@ if str(BACKEND_ROOT) not in sys.path:
 
 from app.core.coordination_baseline.io_reproduction import (  # noqa: E402
     IOHUNTER_CANONICAL_RELATIONS,
+    STABLE_DISCOVER_ENCODER,
     iohunter_processed_to_event_table,
     load_iohunter_processed_dataset,
     prepare_dyna_colm_detect_inputs,
@@ -26,7 +27,7 @@ from app.core.coordination_baseline.io_reproduction import (  # noqa: E402
 
 
 DEFAULT_DATASETS = ("UAE", "cuba", "russia", "venezuela", "iran", "china")
-DEFAULT_DISCOVER_ENCODERS = ("magnn", "magnn_legacy")
+DEFAULT_DISCOVER_ENCODERS = (STABLE_DISCOVER_ENCODER,)
 DEFAULT_GNN_BACKENDS = ("gfm_lm_gnn", "gfm_lm_gnn_cpu_light", "fusion_gnn", "relation_gnn", "classifier")
 DEFAULT_LM_BACKENDS = ("tfidf", "sbert")
 DEFAULT_SPLIT_MODES = ("supervised", "scarce_supervised", "cross_io")
@@ -75,7 +76,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--skip-characterization",
         action="store_true",
-        help="Skip heavy KT2-style characterization and write Detect-only summaries for batch metrics.",
+        help="Skip heavy PropagationAnalysis-style characterization and write Detect-only summaries for batch metrics.",
     )
     parser.add_argument(
         "--compact-summary",

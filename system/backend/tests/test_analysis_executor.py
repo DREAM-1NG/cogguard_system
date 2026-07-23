@@ -188,8 +188,8 @@ def test_executor_loads_snapshot_and_runs_requested_stage_ports():
                 "event_id": snapshot.event_id,
                 "snapshot_id": snapshot.snapshot_id,
                 "status": "queued",
-                "requested_stages": ["kt1", "kt2", "student", "teacher"],
-                "options": {"kt1": {"window_hours": 6}, "teacher": {"priority": "low"}},
+                "requested_stages": ["coordination_discover", "propagation_analysis", "student", "teacher"],
+                "options": {"coordination_discover": {"window_hours": 6}, "teacher": {"priority": "low"}},
                 "finished_at": None,
             },
         )
@@ -219,8 +219,8 @@ def test_executor_loads_snapshot_and_runs_requested_stage_ports():
         events = await registry.list_run_events("run_a")
 
         assert result["status"] == "awaiting_review"
-        assert result["results"]["kt1"]["community_count"] == 2
-        assert result["results"]["kt2"]["scale_interval"] == [1, 3]
+        assert result["results"]["coordination_discover"]["community_count"] == 2
+        assert result["results"]["propagation_analysis"]["scale_interval"] == [1, 3]
         assert result["results"]["student"]["verdict_type"] == "preliminary"
         assert result["results"]["teacher"]["job_id"] == "teacher_job_1"
         assert coordination.calls == [(snapshot.snapshot_id, {"window_hours": 6})]
@@ -243,7 +243,7 @@ def test_executor_loads_snapshot_and_runs_requested_stage_ports():
     asyncio.run(scenario())
 
 
-def test_default_ports_run_evidence_coordination_runtime_for_kt1_snapshot():
+def test_default_ports_run_evidence_coordination_runtime_for_coordination_discover_snapshot():
     async def scenario():
         snapshot = _coordination_snapshot()
         store = FakeAnalysisStore(
@@ -253,12 +253,12 @@ def test_default_ports_run_evidence_coordination_runtime_for_kt1_snapshot():
                 "mongo_key": snapshot.snapshot_id,
             },
             run={
-                "run_id": "run_kt1",
+                "run_id": "run_coordination_discover",
                 "event_id": snapshot.event_id,
                 "snapshot_id": snapshot.snapshot_id,
                 "status": "queued",
-                "requested_stages": ["kt1"],
-                "options": {"kt1": {"time_window": 60, "min_participation": 1}},
+                "requested_stages": ["coordination_discover"],
+                "options": {"coordination_discover": {"time_window": 60, "min_participation": 1}},
                 "finished_at": None,
             },
         )
@@ -272,16 +272,16 @@ def test_default_ports_run_evidence_coordination_runtime_for_kt1_snapshot():
         )
         executor = AnalysisExecutor(registry=registry, engines=default_analysis_engine_ports())
 
-        result = await executor.execute_run("run_kt1")
-        kt1 = result["results"]["kt1"]
+        result = await executor.execute_run("run_coordination_discover")
+        coordination_discover = result["results"]["coordination_discover"]
 
         assert result["status"] == "completed"
-        assert kt1["status"] == "ok"
-        assert kt1["technology"] == "kt1"
-        assert kt1["model_version"] == "coordination-evidence-runtime-v2"
-        assert kt1["summary"]["coordinated_edges"] == 1
-        assert kt1["evidence_edges"][0]["source"] in {"u1", "u2"}
-        assert kt1["account_risk_tiers"][0]["tier"] == "light_coordination"
+        assert coordination_discover["status"] == "ok"
+        assert coordination_discover["technology"] == "coordination_discover"
+        assert coordination_discover["model_version"] == "coordination-evidence-runtime-v2"
+        assert coordination_discover["summary"]["coordinated_edges"] == 1
+        assert coordination_discover["evidence_edges"][0]["source"] in {"u1", "u2"}
+        assert coordination_discover["account_risk_tiers"][0]["tier"] == "light_coordination"
 
     asyncio.run(scenario())
 
@@ -300,7 +300,7 @@ def test_executor_marks_missing_checkpoint_as_needs_evidence():
                 "event_id": snapshot.event_id,
                 "snapshot_id": snapshot.snapshot_id,
                 "status": "queued",
-                "requested_stages": ["kt2"],
+                "requested_stages": ["propagation_analysis"],
                 "options": {},
                 "finished_at": None,
             },
@@ -326,7 +326,7 @@ def test_executor_marks_missing_checkpoint_as_needs_evidence():
         result = await executor.execute_run("run_checkpoint")
 
         assert result["status"] == "needs_evidence"
-        assert result["results"]["kt2"]["status"] == "missing_checkpoint"
+        assert result["results"]["propagation_analysis"]["status"] == "missing_checkpoint"
 
     asyncio.run(scenario())
 
@@ -345,7 +345,7 @@ def test_executor_rejects_unknown_requested_stage_before_running():
                 "event_id": snapshot.event_id,
                 "snapshot_id": snapshot.snapshot_id,
                 "status": "queued",
-                "requested_stages": ["kt1", "bogus"],
+                "requested_stages": ["coordination_discover", "bogus"],
                 "options": {},
                 "finished_at": None,
             },

@@ -1,224 +1,93 @@
-# 开发变更日志
-
-> **用途**：按时间记录与本仓库相关的代码、配置、文档变更，便于追溯。  
-> **受众**：开发者、评审者、后续维护 agent。  
-> **维护规则**：每次完成一批可交付改动时追加条目；状态类变更同步 `development-roadmap.md`。
-
-**用途**：按时间记录与本仓库相关的变更（代码、配置、文档），便于追溯。  
-**写法**：每次合并或完成一批可交付改动时追加一条；只写**做了什么、动了哪些路径**，与 [development-roadmap.md](development-roadmap.md) 勾选同步。
-
-**条目格式**（复制使用）：
-
+﻿# 寮€鍙戝彉鏇存棩蹇?
+> **鐢ㄩ€?*锛氭寜鏃堕棿璁板綍涓庢湰浠撳簱鐩稿叧鐨勪唬鐮併€侀厤缃€佹枃妗ｅ彉鏇达紝渚夸簬杩芥函銆? 
+> **鍙椾紬**锛氬紑鍙戣€呫€佽瘎瀹¤€呫€佸悗缁淮鎶?agent銆? 
+> **缁存姢瑙勫垯**锛氭瘡娆″畬鎴愪竴鎵瑰彲浜や粯鏀瑰姩鏃惰拷鍔犳潯鐩紱鐘舵€佺被鍙樻洿鍚屾 `development-roadmap.md`銆?
+**鐢ㄩ€?*锛氭寜鏃堕棿璁板綍涓庢湰浠撳簱鐩稿叧鐨勫彉鏇达紙浠ｇ爜銆侀厤缃€佹枃妗ｏ級锛屼究浜庤拷婧€? 
+**鍐欐硶**锛氭瘡娆″悎骞舵垨瀹屾垚涓€鎵瑰彲浜や粯鏀瑰姩鏃惰拷鍔犱竴鏉★紱鍙啓**鍋氫簡浠€涔堛€佸姩浜嗗摢浜涜矾寰?*锛屼笌 [development-roadmap.md](development-roadmap.md) 鍕鹃€夊悓姝ャ€?
+**鏉＄洰鏍煎紡**锛堝鍒朵娇鐢級锛?
 ```text
 ## YYYY-MM-DD
 
-- 变更摘要（一句话）
-- `路径/文件`：具体改动说明
-```
+- 鍙樻洿鎽樿锛堜竴鍙ヨ瘽锛?- `璺緞/鏂囦欢`锛氬叿浣撴敼鍔ㄨ鏄?```
 
 ---
 
 ## 2026-07-19
 
-- 收敛当前入口文档与 V2 前端最小接线：把权威开发/启动文档从旧 `new-system/` 口径切回 `system/`，并新增统一分析运行面板暴露 `/api/v2/analysis/*`。
-- `CLAUDE.md`、`doc/engineering/environment-setup.md`、`doc/engineering/project-map.md`、`doc/PROJECT_OVERVIEW.md`、`system/README.md`：修正活动产品根、启动命令和 V2 分析面板说明。
-- `system/frontend/src/api/analysis.ts`、`system/frontend/src/views/analysis/index.vue`：新增 V2 Analysis API 客户端与最小运行面板，支持 EventSnapshot 创建、AnalysisRun 创建/执行、REST 事件恢复和携带 Bearer token 的 SSE backlog 读取。
-- `system/frontend/src/router/index.ts`、`system/frontend/src/components/layout/BasicLayout.vue`、`system/frontend/src/views/home/index.vue`：挂载 `/analysis` 路由、侧边栏入口和首页快捷入口。
-- 已知未完成：该页面不是完整 adjudication 工作流；KT2 live runner、StudentRuntime、TeacherJobPort、canonical verdict 审批和模型激活 UI 仍需后续接入。
-
+- 鏀舵暃褰撳墠鍏ュ彛鏂囨。涓?V2 鍓嶇鏈€灏忔帴绾匡細鎶婃潈濞佸紑鍙?鍚姩鏂囨。浠庢棫 `new-system/` 鍙ｅ緞鍒囧洖 `system/`锛屽苟鏂板缁熶竴鍒嗘瀽杩愯闈㈡澘鏆撮湶 `/api/v2/analysis/*`銆?- `CLAUDE.md`銆乣doc/engineering/environment-setup.md`銆乣doc/engineering/project-map.md`銆乣doc/PROJECT_OVERVIEW.md`銆乣system/README.md`锛氫慨姝ｆ椿鍔ㄤ骇鍝佹牴銆佸惎鍔ㄥ懡浠ゅ拰 V2 鍒嗘瀽闈㈡澘璇存槑銆?- `system/frontend/src/api/analysis.ts`銆乣system/frontend/src/views/analysis/index.vue`锛氭柊澧?V2 Analysis API 瀹㈡埛绔笌鏈€灏忚繍琛岄潰鏉匡紝鏀寔 EventSnapshot 鍒涘缓銆丄nalysisRun 鍒涘缓/鎵ц銆丷EST 浜嬩欢鎭㈠鍜屾惡甯?Bearer token 鐨?SSE backlog 璇诲彇銆?- `system/frontend/src/router/index.ts`銆乣system/frontend/src/components/layout/BasicLayout.vue`銆乣system/frontend/src/views/home/index.vue`锛氭寕杞?`/analysis` 璺敱銆佷晶杈规爮鍏ュ彛鍜岄椤靛揩鎹峰叆鍙ｃ€?- 宸茬煡鏈畬鎴愶細璇ラ〉闈笉鏄畬鏁?adjudication 宸ヤ綔娴侊紱Propagation Analysis live runner銆丼tudentRuntime銆乀eacherJobPort銆乧anonical verdict 瀹℃壒鍜屾ā鍨嬫縺娲?UI 浠嶉渶鍚庣画鎺ュ叆銆?
 ---
 
 ## 2026-07-13
 
-- 建立统一分析运行底座：新增 EventSnapshot registry、AnalysisRun 事件流、V2 分析 API 与 SSE `Last-Event-ID` 恢复路径，为 KT1/KT2/Student/Teacher 接入提供统一入口。
-- `system/backend/app/core/analysis/`：新增 `registry.py` 与 `sse.py`，快照从 MongoDB `raw_posts` / `raw_comments` 构建，快照文档以 `$setOnInsert` 幂等写入 `analysis_event_snapshots`，run 事件按自增 ID 作为恢复 cursor。
-- `system/backend/app/api/v2/`、`system/backend/app/schemas/analysis.py`、`system/backend/app/main.py`：新增 `/api/v2/analysis/*` 路由并挂载 V2，包括快照创建、run 创建/查询、REST 事件恢复和 SSE backlog 输出。
-- `system/backend/app/core/analysis/executor.py`、`system/backend/app/api/v2/analysis.py`：新增 `AnalysisExecutor` 与 `POST /api/v2/analysis/runs/{run_id}/execute`，统一以 `EventSnapshot` 调用 KT1、KT2、Student、Teacher 端口并追加 stage/run 事件。
-- 默认执行端口保持保守：KT1 已通过 `coordination-baseline-v1` 读取 `EventSnapshot` records 并运行现有 coordination baseline；KT2 仅通过内部 `kt2_prediction_service` 读取可用证据；Student、Teacher 在 canonical engine 未接入前返回明确 unavailable，不伪造完成状态。
-- `system/backend/app/services/coordination_service.py`：提取 `analyze_coordination_records()`，使 V1 Mongo 路由和 V2 EventSnapshot executor 共用同一 coordination baseline 实现。
-- `system/backend/app/models/analysis.py`、`system/backend/alembic/versions/9a2e4b7c1d55_add_analysis_persistence_tables.py`：修正 ReviewVerdictVersion 版本约束，`verdict_id` 改为普通索引，`(verdict_id, version)` 作为唯一约束。
-- `system/backend/tests/test_analysis_registry.py`、`system/backend/tests/test_analysis_v2_api.py`、`system/backend/tests/test_analysis_persistence_models.py`：新增/更新回归测试，覆盖 registry 幂等、run 状态转换、事件 cursor、SSE 格式和 V2 主应用挂载。
-- `system/backend/tests/test_analysis_executor.py`：新增执行器回归测试，覆盖 snapshot 加载、stage option 下发、KT1/KT2/Student/Teacher 端口调用、KT1 baseline 默认接入、teacher job 后进入 `awaiting_review`。
-- `system/research/propagation_analysis/benchmark/`、`system/backend/app/services/kt2_prediction_service.py`：迁入真实 KT2 缓存 benchmark artifact，默认预测读取系统内部 `system/research/propagation_analysis`；删除 `subsystems/cogguard_dev` 和 `sys.path.insert` 外部路径，未内置的 live runner / event checkpoint adapter 返回显式 unavailable。
-- `system/backend/tests/test_kt2_prediction_service.py`：新增回归测试，锁定 KT2 缓存结果来自内部 research artifact，且服务源码不再包含外部 research workspace 路径补丁。
-- 文档：`CONTEXT.md`、`doc/engineering/development-roadmap.md`、`system/README.md` 同步统一分析语言、接口状态和剩余接线任务。
-- 验证：`python -m pytest tests/test_analysis_executor.py -q`；`python -m pytest tests/test_analysis_v2_api.py -q`；`python -m pytest tests/test_analysis_contracts.py tests/test_analysis_persistence_models.py tests/test_analysis_registry.py tests/test_analysis_v2_api.py tests/test_propagation.py -q`；`python -m pytest tests/test_kt2_prediction_service.py tests/test_event_scoped_analysis.py::test_kt2_prediction_service_loads_cached_macro_micro_result -q`。
-- 已知未完成：KT1 baseline 已接到 V2 run 执行端口，但研究级 KT1 Detect、KT2 live runner/checkpoint、Student deployed runtime、Teacher Celery DAG 仍需接入；前端分析员工作流尚未迁移到 V2/SSE。
-
+- 寤虹珛缁熶竴鍒嗘瀽杩愯搴曞骇锛氭柊澧?EventSnapshot registry銆丄nalysisRun 浜嬩欢娴併€乂2 鍒嗘瀽 API 涓?SSE `Last-Event-ID` 鎭㈠璺緞锛屼负 Coordination Discover/Propagation Analysis/Student/Teacher 鎺ュ叆鎻愪緵缁熶竴鍏ュ彛銆?- `system/backend/app/core/analysis/`锛氭柊澧?`registry.py` 涓?`sse.py`锛屽揩鐓т粠 MongoDB `raw_posts` / `raw_comments` 鏋勫缓锛屽揩鐓ф枃妗ｄ互 `$setOnInsert` 骞傜瓑鍐欏叆 `analysis_event_snapshots`锛宺un 浜嬩欢鎸夎嚜澧?ID 浣滀负鎭㈠ cursor銆?- `system/backend/app/api/v2/`銆乣system/backend/app/schemas/analysis.py`銆乣system/backend/app/main.py`锛氭柊澧?`/api/v2/analysis/*` 璺敱骞舵寕杞?V2锛屽寘鎷揩鐓у垱寤恒€乺un 鍒涘缓/鏌ヨ銆丷EST 浜嬩欢鎭㈠鍜?SSE backlog 杈撳嚭銆?- `system/backend/app/core/analysis/executor.py`銆乣system/backend/app/api/v2/analysis.py`锛氭柊澧?`AnalysisExecutor` 涓?`POST /api/v2/analysis/runs/{run_id}/execute`锛岀粺涓€浠?`EventSnapshot` 璋冪敤 Coordination Discover銆丳ropagationAnalysis銆丼tudent銆乀eacher 绔彛骞惰拷鍔?stage/run 浜嬩欢銆?- 榛樿鎵ц绔彛淇濇寔淇濆畧锛欳oordinationDiscover 宸查€氳繃 `coordination-baseline-v1` 璇诲彇 `EventSnapshot` records 骞惰繍琛岀幇鏈?coordination baseline锛汸ropagationAnalysis 浠呴€氳繃鍐呴儴 `propagation_analysis_prediction_service` 璇诲彇鍙敤璇佹嵁锛汼tudent銆乀eacher 鍦?canonical engine 鏈帴鍏ュ墠杩斿洖鏄庣‘ unavailable锛屼笉浼€犲畬鎴愮姸鎬併€?- `system/backend/app/services/coordination_service.py`锛氭彁鍙?`analyze_coordination_records()`锛屼娇 V1 Mongo 璺敱鍜?V2 EventSnapshot executor 鍏辩敤鍚屼竴 coordination baseline 瀹炵幇銆?- `system/backend/app/models/analysis.py`銆乣system/backend/alembic/versions/9a2e4b7c1d55_add_analysis_persistence_tables.py`锛氫慨姝?ReviewVerdictVersion 鐗堟湰绾︽潫锛宍verdict_id` 鏀逛负鏅€氱储寮曪紝`(verdict_id, version)` 浣滀负鍞竴绾︽潫銆?- `system/backend/tests/test_analysis_registry.py`銆乣system/backend/tests/test_analysis_v2_api.py`銆乣system/backend/tests/test_analysis_persistence_models.py`锛氭柊澧?鏇存柊鍥炲綊娴嬭瘯锛岃鐩?registry 骞傜瓑銆乺un 鐘舵€佽浆鎹€佷簨浠?cursor銆丼SE 鏍煎紡鍜?V2 涓诲簲鐢ㄦ寕杞姐€?- `system/backend/tests/test_analysis_executor.py`锛氭柊澧炴墽琛屽櫒鍥炲綊娴嬭瘯锛岃鐩?snapshot 鍔犺浇銆乻tage option 涓嬪彂銆丆oordinationDiscover/Propagation Analysis/Student/Teacher 绔彛璋冪敤銆丆oordinationDiscover baseline 榛樿鎺ュ叆銆乼eacher job 鍚庤繘鍏?`awaiting_review`銆?- `system/research/propagation_analysis/benchmark/`銆乣system/backend/app/services/propagation_analysis_prediction_service.py`锛氳縼鍏ョ湡瀹?Propagation Analysis 缂撳瓨 benchmark artifact锛岄粯璁ら娴嬭鍙栫郴缁熷唴閮?`system/research/propagation_analysis`锛涘垹闄?`subsystems/cogguard_dev` 鍜?`sys.path.insert` 澶栭儴璺緞锛屾湭鍐呯疆鐨?live runner / event checkpoint adapter 杩斿洖鏄惧紡 unavailable銆?- `system/backend/tests/test_propagation_analysis_prediction_service.py`锛氭柊澧炲洖褰掓祴璇曪紝閿佸畾 Propagation Analysis 缂撳瓨缁撴灉鏉ヨ嚜鍐呴儴 research artifact锛屼笖鏈嶅姟婧愮爜涓嶅啀鍖呭惈澶栭儴 research workspace 璺緞琛ヤ竵銆?- 鏂囨。锛歚CONTEXT.md`銆乣doc/engineering/development-roadmap.md`銆乣system/README.md` 鍚屾缁熶竴鍒嗘瀽璇█銆佹帴鍙ｇ姸鎬佸拰鍓╀綑鎺ョ嚎浠诲姟銆?- 楠岃瘉锛歚python -m pytest tests/test_analysis_executor.py -q`锛沗python -m pytest tests/test_analysis_v2_api.py -q`锛沗python -m pytest tests/test_analysis_contracts.py tests/test_analysis_persistence_models.py tests/test_analysis_registry.py tests/test_analysis_v2_api.py tests/test_propagation.py -q`锛沗python -m pytest tests/test_propagation_analysis_prediction_service.py tests/test_event_scoped_analysis.py::test_propagation_analysis_prediction_service_loads_cached_macro_micro_result -q`銆?- 宸茬煡鏈畬鎴愶細Coordination Discover baseline 宸叉帴鍒?V2 run 鎵ц绔彛锛屼絾鐮旂┒绾?Coordination Discover Detect銆丳ropagationAnalysis live runner/checkpoint銆丼tudent deployed runtime銆乀eacher Celery DAG 浠嶉渶鎺ュ叆锛涘墠绔垎鏋愬憳宸ヤ綔娴佸皻鏈縼绉诲埌 V2/SSE銆?
 ---
 
 ## 2026-07-02
 
-- 接入 BotRHG 风格社交机器人检测后端能力，将 NLPCC 2026 投稿方法的“特征编码 → KNN 支持超边 → 可靠性路由 → 选择性残差修正”落为账号级 API 契约。
-- `system/backend/app/core/bot_detection.py`：新增确定性 BotRHG 系统适配器，输出 base/final bot 概率、local reliability、routed hyperedge、support evidence 与 model card。
-- `system/backend/app/services/bot_detection_service.py`、`system/backend/app/api/v1/accounts.py`：新增 `POST /api/v1/accounts/bot-detection`，支持 `event_id`、`platform`、`routing_budget`、`support_k`，复用现有 Mongo 事件过滤和预览 token 认证。
-- `system/backend/tests/test_botrhg_bot_detection.py`：新增回归测试，覆盖路由/残差修正、服务过滤、API 参数传递。
-- `system/frontend/src/api/accounts.ts`、`system/frontend/src/views/accounts/index.vue`：账户监测页新增轻量 BotRHG 触发入口和结果表。
-- `doc/engineering/botrhg-social-bot-detection-plan.md`、`README.md`、`system/README.md`、`doc/engineering/development-roadmap.md`、`AGENTS.md`：同步当前真实代码根 `system/`、新增 BotRHG API 与研究边界。
-- 验证：`python -m pytest tests/test_botrhg_bot_detection.py -q`、`uv run python -m pytest tests/test_botrhg_bot_detection.py -q`、`uv run python -m pytest tests/test_event_scoped_analysis.py tests/test_health.py tests/test_coordination_detector.py tests/test_coordination_network.py -q`、`npm.cmd run build`。
-
+- 鎺ュ叆 BotRHG 椋庢牸绀句氦鏈哄櫒浜烘娴嬪悗绔兘鍔涳紝灏?NLPCC 2026 鎶曠鏂规硶鐨勨€滅壒寰佺紪鐮?鈫?KNN 鏀寔瓒呰竟 鈫?鍙潬鎬ц矾鐢?鈫?閫夋嫨鎬ф畫宸慨姝ｂ€濊惤涓鸿处鍙风骇 API 濂戠害銆?- `system/backend/app/core/bot_detection.py`锛氭柊澧炵‘瀹氭€?BotRHG 绯荤粺閫傞厤鍣紝杈撳嚭 base/final bot 姒傜巼銆乴ocal reliability銆乺outed hyperedge銆乻upport evidence 涓?model card銆?- `system/backend/app/services/bot_detection_service.py`銆乣system/backend/app/api/v1/accounts.py`锛氭柊澧?`POST /api/v1/accounts/bot-detection`锛屾敮鎸?`event_id`銆乣platform`銆乣routing_budget`銆乣support_k`锛屽鐢ㄧ幇鏈?Mongo 浜嬩欢杩囨护鍜岄瑙?token 璁よ瘉銆?- `system/backend/tests/test_botrhg_bot_detection.py`锛氭柊澧炲洖褰掓祴璇曪紝瑕嗙洊璺敱/娈嬪樊淇銆佹湇鍔¤繃婊ゃ€丄PI 鍙傛暟浼犻€掋€?- `system/frontend/src/api/accounts.ts`銆乣system/frontend/src/views/accounts/index.vue`锛氳处鎴风洃娴嬮〉鏂板杞婚噺 BotRHG 瑙﹀彂鍏ュ彛鍜岀粨鏋滆〃銆?- `doc/engineering/botrhg-social-bot-detection-plan.md`銆乣README.md`銆乣system/README.md`銆乣doc/engineering/development-roadmap.md`銆乣AGENTS.md`锛氬悓姝ュ綋鍓嶇湡瀹炰唬鐮佹牴 `system/`銆佹柊澧?BotRHG API 涓庣爺绌惰竟鐣屻€?- 楠岃瘉锛歚python -m pytest tests/test_botrhg_bot_detection.py -q`銆乣uv run python -m pytest tests/test_botrhg_bot_detection.py -q`銆乣uv run python -m pytest tests/test_event_scoped_analysis.py tests/test_health.py tests/test_coordination_detector.py tests/test_coordination_network.py -q`銆乣npm.cmd run build`銆?
 ## 2026-05-21
 
-- 增强 MediaCrawler 微博搜索媒体保真：搜索结果不再只对长文本微博补抓详情，而是在 `ENABLE_WEIBO_FULL_TEXT=true` 时对每条微博详情补抓，并把 mblog 图片、视频、封面字段与 detail raw 写入输出。
-- `MediaCrawler-main/media_platform/weibo/core.py`：移除 `get_note_full_text()` 的 `isLongText` 限制，使搜索页每条微博都尝试请求 `get_note_info_by_id()`。
-- `MediaCrawler-main/store/weibo/__init__.py`：新增 `_extract_mblog_media_fields()`，保留 `pics`、`pic_ids`、`pic_infos`、`thumbnail_pic`、`bmiddle_pic`、`original_pic`、`page_info`、`mix_media_info`、`media_urls`、`post_details_raw`。
-- `new-system/backend/app/core/crawler/social.py`：微博标准化新增对顶层媒体字段和 `post_details_raw.raw` 的显式解析，将微博图片、视频、封面 URL 归一到 `StandardPost.media_urls`。
-- `MediaCrawler-main/tests/test_weibo_media_fields.py`、`new-system/backend/tests/test_social_crawler_normalization.py`：新增回归测试，覆盖微博 mblog 媒体字段保留、非长文本详情补抓、detail raw 媒体链接归一化。
-- `new-system/README.md`、`doc/engineering/environment-setup.md`：同步微博详情补抓与媒体字段保真说明。
-
+- 澧炲己 MediaCrawler 寰崥鎼滅储濯掍綋淇濈湡锛氭悳绱㈢粨鏋滀笉鍐嶅彧瀵归暱鏂囨湰寰崥琛ユ姄璇︽儏锛岃€屾槸鍦?`ENABLE_WEIBO_FULL_TEXT=true` 鏃跺姣忔潯寰崥璇︽儏琛ユ姄锛屽苟鎶?mblog 鍥剧墖銆佽棰戙€佸皝闈㈠瓧娈典笌 detail raw 鍐欏叆杈撳嚭銆?- `MediaCrawler-main/media_platform/weibo/core.py`锛氱Щ闄?`get_note_full_text()` 鐨?`isLongText` 闄愬埗锛屼娇鎼滅储椤垫瘡鏉″井鍗氶兘灏濊瘯璇锋眰 `get_note_info_by_id()`銆?- `MediaCrawler-main/store/weibo/__init__.py`锛氭柊澧?`_extract_mblog_media_fields()`锛屼繚鐣?`pics`銆乣pic_ids`銆乣pic_infos`銆乣thumbnail_pic`銆乣bmiddle_pic`銆乣original_pic`銆乣page_info`銆乣mix_media_info`銆乣media_urls`銆乣post_details_raw`銆?- `new-system/backend/app/core/crawler/social.py`锛氬井鍗氭爣鍑嗗寲鏂板瀵归《灞傚獟浣撳瓧娈靛拰 `post_details_raw.raw` 鐨勬樉寮忚В鏋愶紝灏嗗井鍗氬浘鐗囥€佽棰戙€佸皝闈?URL 褰掍竴鍒?`StandardPost.media_urls`銆?- `MediaCrawler-main/tests/test_weibo_media_fields.py`銆乣new-system/backend/tests/test_social_crawler_normalization.py`锛氭柊澧炲洖褰掓祴璇曪紝瑕嗙洊寰崥 mblog 濯掍綋瀛楁淇濈暀銆侀潪闀挎枃鏈鎯呰ˉ鎶撱€乨etail raw 濯掍綋閾炬帴褰掍竴鍖栥€?- `new-system/README.md`銆乣doc/engineering/environment-setup.md`锛氬悓姝ュ井鍗氳鎯呰ˉ鎶撲笌濯掍綋瀛楁淇濈湡璇存槑銆?
 ---
 
 ## 2026-05-19
 
-- 完成 MediaCrawler 宿主机环境对齐：后端配置改为同时读取 `new-system/.env` 与 `backend/.env`，并新增 Node.js 目录注入与环境验证脚本，方便在 Windows 本机自动启动 `weibo` / `xhs` / `douyin` 的采集链路。
-- `new-system/backend/app/config.py`：新增 `PROJECT_ROOT`，`SettingsConfigDict` 同时读取仓库根 `.env` 与后端局部 `.env`，并新增 `MEDIACRAWLER_NODE_DIR`。
-- `new-system/backend/app/core/crawler/mediacrawler_env.py`：新增 uv / python / node / PATH 解析与子进程环境构造。
-- `new-system/backend/app/core/crawler/social.py`：MediaCrawler 子进程调用改为复用环境构造逻辑，并显式指定 Python 解释器。
-- `new-system/backend/scripts/verify_mediacrawler_env.py`：新增环境烟雾测试脚本，检查 `MEDIACRAWLER_ROOT`、`uv`、`python`、`node`、`main.py`、Playwright Chromium 与平台路由说明。
-- `new-system/backend/tests/test_mediacrawler_env.py`：新增解析逻辑回归测试。
-- `new-system/.env`、`new-system/.env.example`：补充 `MEDIACRAWLER_PYTHON_BIN`、`MEDIACRAWLER_NODE_DIR` 与本机示例值。
-- `doc/engineering/environment-setup.md`、`new-system/README.md`、`doc/engineering/development-roadmap.md`：补充宿主机运行方式、验证命令与 `toutiao` 路由说明。
-
+- 瀹屾垚 MediaCrawler 瀹夸富鏈虹幆澧冨榻愶細鍚庣閰嶇疆鏀逛负鍚屾椂璇诲彇 `new-system/.env` 涓?`backend/.env`锛屽苟鏂板 Node.js 鐩綍娉ㄥ叆涓庣幆澧冮獙璇佽剼鏈紝鏂逛究鍦?Windows 鏈満鑷姩鍚姩 `weibo` / `xhs` / `douyin` 鐨勯噰闆嗛摼璺€?- `new-system/backend/app/config.py`锛氭柊澧?`PROJECT_ROOT`锛宍SettingsConfigDict` 鍚屾椂璇诲彇浠撳簱鏍?`.env` 涓庡悗绔眬閮?`.env`锛屽苟鏂板 `MEDIACRAWLER_NODE_DIR`銆?- `new-system/backend/app/core/crawler/mediacrawler_env.py`锛氭柊澧?uv / python / node / PATH 瑙ｆ瀽涓庡瓙杩涚▼鐜鏋勯€犮€?- `new-system/backend/app/core/crawler/social.py`锛歁ediaCrawler 瀛愯繘绋嬭皟鐢ㄦ敼涓哄鐢ㄧ幆澧冩瀯閫犻€昏緫锛屽苟鏄惧紡鎸囧畾 Python 瑙ｉ噴鍣ㄣ€?- `new-system/backend/scripts/verify_mediacrawler_env.py`锛氭柊澧炵幆澧冪儫闆炬祴璇曡剼鏈紝妫€鏌?`MEDIACRAWLER_ROOT`銆乣uv`銆乣python`銆乣node`銆乣main.py`銆丳laywright Chromium 涓庡钩鍙拌矾鐢辫鏄庛€?- `new-system/backend/tests/test_mediacrawler_env.py`锛氭柊澧炶В鏋愰€昏緫鍥炲綊娴嬭瘯銆?- `new-system/.env`銆乣new-system/.env.example`锛氳ˉ鍏?`MEDIACRAWLER_PYTHON_BIN`銆乣MEDIACRAWLER_NODE_DIR` 涓庢湰鏈虹ず渚嬪€笺€?- `doc/engineering/environment-setup.md`銆乣new-system/README.md`銆乣doc/engineering/development-roadmap.md`锛氳ˉ鍏呭涓绘満杩愯鏂瑰紡銆侀獙璇佸懡浠や笌 `toutiao` 璺敱璇存槑銆?
 ---
 
 ## 2026-05-17
 
-- 总指挥触发项目实施情况盘点（3 个 Explore 子代理并行调查代码 / 文档 / ARIS 工作空间），交叉核对后发现**代码进度大幅领先文档**，特别是 KT3 报告研判已默默实现而 README/roadmap 仍标"待开发"。本条目记录本次审计与首轮文档对齐动作。
-- 代码盘点（实际验证）：
-  - 后端约 5,664 行 Python，前端约 1,710 行 Vue/TS。
-  - KT1 协同检测（旧方向 CooRTweet）：`core/coordination_baseline/` 452 行 MVP；KT1 新方向 PSL 设计已在 `aris/tech-01-coordination/systemDesign.md` 落盘，但 `new-system/` 尚无对应实现。
-  - KT2 传播监控（Hybrid TS+LLM）：`core/propagation/` 含 4 个文件 ~673 行 → **WP1-3 完整完成**（`ts_features.py` 107 / `llm_context.py` 162 / `trend_predictor.py` 180 / `regime_model.py` 224）；**WP4 `stance_detector.py` 与 WP5 `harm_assessor.py` 完全未启动**；WP6-7 服务层与测试已存在但极薄。旧方向 `core/propagation_legacy.py` 仍在 import 路径并存。
-  - KT3 报告研判：`core/review/` 6 模块 1,340 行 + `services/risk_service.py` 153 行 + `api/v1/risk.py` 68 行 + `frontend/src/views/risk/index.vue` + `tests/test_risk.py` 348 行 — **MVP 已完成，端到端串通**，但 README/roadmap 此前仍标"待开发"。
-- 文档对齐：
-  - `README.md` 模块状态表：风险研判 `待开发 → MVP 已完成`；协同检测拆分新旧方向；传播监控按 WP1-3/WP4-5 分粒度；看板继续保留"待开发"（`dashboard/index.vue` 仍是占位）。
-  - `doc/engineering/development-roadmap.md`：头注释日期 `2026-04-08 → 2026-05-17`；总览模块表细化到 WP 粒度；第 3.1 节风险研判模块由"🔲"翻面为"✅ MVP 已完成"，并把 8 个已完成子项打勾；保留 2 个未完成子项（alembic 迁移、LLM 桥接）。
-  - ARIS 治理段：tech-03 落地条目勾选；tech-02 标 `[~]` 表示 WP1-3 已完、WP4-5 未启动。
-- 仓库治理风险（本次未处理，需后续单独提交）：
-  - `aris/`、`doc/engineering/`、`doc/research/`、`AGENTS.md`、`CLAUDE.md` 整体仍为 untracked，是项目最大单点风险。
-  - `cogguard_system/memory/` 目录此前不存在但 `CLAUDE.md` 启动顺序引用之，本次同步新增 `memory/PLAYBOOK.md` 与 `state_kt{1,2,3}.md` 修补死链。
-- 关联文件：本条目对应 `README.md`、`doc/engineering/development-roadmap.md`、`memory/PLAYBOOK.md`、`memory/state_kt{1,2,3}.md`、`aris/tech-02-propagation/TASK_TRACKER.md` 同步更新。
-
+- 鎬绘寚鎸ヨЕ鍙戦」鐩疄鏂芥儏鍐电洏鐐癸紙3 涓?Explore 瀛愪唬鐞嗗苟琛岃皟鏌ヤ唬鐮?/ 鏂囨。 / ARIS 宸ヤ綔绌洪棿锛夛紝浜ゅ弶鏍稿鍚庡彂鐜?*浠ｇ爜杩涘害澶у箙棰嗗厛鏂囨。**锛岀壒鍒槸 Review 鎶ュ憡鐮斿垽宸查粯榛樺疄鐜拌€?README/roadmap 浠嶆爣"寰呭紑鍙?銆傛湰鏉＄洰璁板綍鏈瀹¤涓庨杞枃妗ｅ榻愬姩浣溿€?- 浠ｇ爜鐩樼偣锛堝疄闄呴獙璇侊級锛?  - 鍚庣绾?5,664 琛?Python锛屽墠绔害 1,710 琛?Vue/TS銆?  - Coordination Discover 鍗忓悓妫€娴嬶紙鏃ф柟鍚?CooRTweet锛夛細`core/coordination_baseline/` 452 琛?MVP锛汣oordinationDiscover 鏂版柟鍚?PSL 璁捐宸插湪 `aris/tech-01-coordination/systemDesign.md` 钀界洏锛屼絾 `new-system/` 灏氭棤瀵瑰簲瀹炵幇銆?  - Propagation Analysis 浼犳挱鐩戞帶锛圚ybrid TS+LLM锛夛細`core/propagation/` 鍚?4 涓枃浠?~673 琛?鈫?**WP1-3 瀹屾暣瀹屾垚**锛坄ts_features.py` 107 / `llm_context.py` 162 / `trend_predictor.py` 180 / `regime_model.py` 224锛夛紱**WP4 `stance_detector.py` 涓?WP5 `harm_assessor.py` 瀹屽叏鏈惎鍔?*锛沇P6-7 鏈嶅姟灞備笌娴嬭瘯宸插瓨鍦ㄤ絾鏋佽杽銆傛棫鏂瑰悜 `core/propagation_legacy.py` 浠嶅湪 import 璺緞骞跺瓨銆?  - Review 鎶ュ憡鐮斿垽锛歚core/review/` 6 妯″潡 1,340 琛?+ `services/risk_service.py` 153 琛?+ `api/v1/risk.py` 68 琛?+ `frontend/src/views/risk/index.vue` + `tests/test_risk.py` 348 琛?鈥?**MVP 宸插畬鎴愶紝绔埌绔覆閫?*锛屼絾 README/roadmap 姝ゅ墠浠嶆爣"寰呭紑鍙?銆?- 鏂囨。瀵归綈锛?  - `README.md` 妯″潡鐘舵€佽〃锛氶闄╃爺鍒?`寰呭紑鍙?鈫?MVP 宸插畬鎴恅锛涘崗鍚屾娴嬫媶鍒嗘柊鏃ф柟鍚戯紱浼犳挱鐩戞帶鎸?WP1-3/WP4-5 鍒嗙矑搴︼紱鐪嬫澘缁х画淇濈暀"寰呭紑鍙?锛坄dashboard/index.vue` 浠嶆槸鍗犱綅锛夈€?  - `doc/engineering/development-roadmap.md`锛氬ご娉ㄩ噴鏃ユ湡 `2026-04-08 鈫?2026-05-17`锛涙€昏妯″潡琛ㄧ粏鍖栧埌 WP 绮掑害锛涚 3.1 鑺傞闄╃爺鍒ゆā鍧楃敱"馃敳"缈婚潰涓?鉁?MVP 宸插畬鎴?锛屽苟鎶?8 涓凡瀹屾垚瀛愰」鎵撳嬀锛涗繚鐣?2 涓湭瀹屾垚瀛愰」锛坅lembic 杩佺Щ銆丩LM 妗ユ帴锛夈€?  - ARIS 娌荤悊娈碉細tech-03 钀藉湴鏉＄洰鍕鹃€夛紱tech-02 鏍?`[~]` 琛ㄧず WP1-3 宸插畬銆乄P4-5 鏈惎鍔ㄣ€?- 浠撳簱娌荤悊椋庨櫓锛堟湰娆℃湭澶勭悊锛岄渶鍚庣画鍗曠嫭鎻愪氦锛夛細
+  - `aris/`銆乣doc/engineering/`銆乣doc/research/`銆乣AGENTS.md`銆乣CLAUDE.md` 鏁翠綋浠嶄负 untracked锛屾槸椤圭洰鏈€澶у崟鐐归闄┿€?  - `cogguard_system/memory/` 鐩綍姝ゅ墠涓嶅瓨鍦ㄤ絾 `CLAUDE.md` 鍚姩椤哄簭寮曠敤涔嬶紝鏈鍚屾鏂板 `memory/PLAYBOOK.md` 涓?`state_analysis_capability{1,2,3}.md` 淇ˉ姝婚摼銆?- 鍏宠仈鏂囦欢锛氭湰鏉＄洰瀵瑰簲 `README.md`銆乣doc/engineering/development-roadmap.md`銆乣memory/PLAYBOOK.md`銆乣memory/state_analysis_capability{1,2,3}.md`銆乣aris/tech-02-propagation/TASK_TRACKER.md` 鍚屾鏇存柊銆?
 ---
 
 ## 2026-05-23
 
-- 完成 F-ACCT（深度账号画像）的功能细化：从 5 个子功能扩展为 6 个，新增 **F-ACCT-6 单用户主页采集与内容巡检**。该子功能定位为"按主页链接/用户 ID 抓取主页元数据 + 全部发文 + 对全部内容做风险/立场/模板化检测"，不引入新算法，全部复用上游能力（KT2 WP4 立场 / KT2 WP5 危害 / F-COORD 通道模板）。
-- 关键设计决策：
-  - **复用 MediaCrawler creator 模式**，不新增爬虫。在 `core/crawler/social.py` 扩展 `mode=creator` 参数，`homepage_collector.py` 通过该入口调用。weibo / douyin / xhs 已支持。
-  - **三段流水线**：homepage_collector（主页采集）→ content_checker（按帖批处理调用上游）→ account_service（详情页响应组装）。
-  - **mock fallback 策略**：上游算法（KT2 WP4/5、F-COORD 通道）未完成时，content_checker 仅给规则化结果并标 `data_completeness="partial"`，前端用占位符渲染，确保 F-ACCT-6 可独立先行。
-- 文档同步：
-  - `doc/engineering/F-ACCT-account-profiling.md`：§ 3.5 新增 F-ACCT-6 完整技术方案（架构 + schema + 降级 + research/engineering 拆分）；§ 4.3 新增 `account_homepage` 表 SQL；§ 5.2 新增 `homepage_collector.py` / `content_checker.py` / `social.py mode=creator` 扩展 / `models/account_homepage.py` / 账户详情页等 7 项待新增；§ 6.2 新增 E11-E15 五项 P1 任务；§ 7.1 新增 2 条关键决策（决策 6 复用 MediaCrawler、决策 7 全部复用上游）；§ 8.5 新增 F-ACCT-6 → 上游算法的契约说明；§ 10 三周计划全部纳入 F-ACCT-6 工作量。
-  - `doc/engineering/research-engineering-split.md`：§ 5bis.2 新增 F-ACCT-6 两行（主页采集 + 内容巡检）+ 前端详情页一行；§ 八 engineering 任务清单新增 4 条；§ 九 跨功能契约新增 3 行（KT2 WP4/5 → F-ACCT-6 / F-COORD channels.py → F-ACCT-6 / MediaCrawler creator → F-ACCT-6）。
-- 跨功能影响：
-  - F-PROP WP4/WP5 接口要求更新——除原有的 `/propagation/stance/by-account` 端点外，需保证 `harm_assessor.score(text, metadata)` / `stance_detector.detect(text)` 可作为单帖纯函数被 F-ACCT-6 import 调用。
-  - F-COORD `channels.py` 需提供 `template_detector.check(post, account_corpus)` 子接口（单账号语料模板抽取，不同于群体协同模式），归入 F-ACCT-6 推进期内的小幅扩展。
-- 关联文件：本条目对应 `doc/engineering/F-ACCT-account-profiling.md`、`doc/engineering/research-engineering-split.md`、`doc/engineering/development-roadmap.md`（§ 2.3 已勾选 F-ACCT-6 两个待开发项）、`doc/engineering/product-requirements.md`（§ 主页采集功能描述已存在）同步更新。
-
+- 瀹屾垚 F-ACCT锛堟繁搴﹁处鍙风敾鍍忥級鐨勫姛鑳界粏鍖栵細浠?5 涓瓙鍔熻兘鎵╁睍涓?6 涓紝鏂板 **F-ACCT-6 鍗曠敤鎴蜂富椤甸噰闆嗕笌鍐呭宸℃**銆傝瀛愬姛鑳藉畾浣嶄负"鎸変富椤甸摼鎺?鐢ㄦ埛 ID 鎶撳彇涓婚〉鍏冩暟鎹?+ 鍏ㄩ儴鍙戞枃 + 瀵瑰叏閮ㄥ唴瀹瑰仛椋庨櫓/绔嬪満/妯℃澘鍖栨娴?锛屼笉寮曞叆鏂扮畻娉曪紝鍏ㄩ儴澶嶇敤涓婃父鑳藉姏锛圥ropagationAnalysis WP4 绔嬪満 / Propagation Analysis WP5 鍗卞 / F-COORD 閫氶亾妯℃澘锛夈€?- 鍏抽敭璁捐鍐崇瓥锛?  - **澶嶇敤 MediaCrawler creator 妯″紡**锛屼笉鏂板鐖櫕銆傚湪 `core/crawler/social.py` 鎵╁睍 `mode=creator` 鍙傛暟锛宍homepage_collector.py` 閫氳繃璇ュ叆鍙ｈ皟鐢ㄣ€倃eibo / douyin / xhs 宸叉敮鎸併€?  - **涓夋娴佹按绾?*锛歨omepage_collector锛堜富椤甸噰闆嗭級鈫?content_checker锛堟寜甯栨壒澶勭悊璋冪敤涓婃父锛夆啋 account_service锛堣鎯呴〉鍝嶅簲缁勮锛夈€?  - **mock fallback 绛栫暐**锛氫笂娓哥畻娉曪紙Propagation Analysis WP4/5銆丗-COORD 閫氶亾锛夋湭瀹屾垚鏃讹紝content_checker 浠呯粰瑙勫垯鍖栫粨鏋滃苟鏍?`data_completeness="partial"`锛屽墠绔敤鍗犱綅绗︽覆鏌擄紝纭繚 F-ACCT-6 鍙嫭绔嬪厛琛屻€?- 鏂囨。鍚屾锛?  - `doc/engineering/F-ACCT-account-profiling.md`锛毬?3.5 鏂板 F-ACCT-6 瀹屾暣鎶€鏈柟妗堬紙鏋舵瀯 + schema + 闄嶇骇 + research/engineering 鎷嗗垎锛夛紱搂 4.3 鏂板 `account_homepage` 琛?SQL锛浡?5.2 鏂板 `homepage_collector.py` / `content_checker.py` / `social.py mode=creator` 鎵╁睍 / `models/account_homepage.py` / 璐︽埛璇︽儏椤电瓑 7 椤瑰緟鏂板锛浡?6.2 鏂板 E11-E15 浜旈」 P1 浠诲姟锛浡?7.1 鏂板 2 鏉″叧閿喅绛栵紙鍐崇瓥 6 澶嶇敤 MediaCrawler銆佸喅绛?7 鍏ㄩ儴澶嶇敤涓婃父锛夛紱搂 8.5 鏂板 F-ACCT-6 鈫?涓婃父绠楁硶鐨勫绾﹁鏄庯紱搂 10 涓夊懆璁″垝鍏ㄩ儴绾冲叆 F-ACCT-6 宸ヤ綔閲忋€?  - `doc/engineering/research-engineering-split.md`锛毬?5bis.2 鏂板 F-ACCT-6 涓よ锛堜富椤甸噰闆?+ 鍐呭宸℃锛? 鍓嶇璇︽儏椤典竴琛岋紱搂 鍏?engineering 浠诲姟娓呭崟鏂板 4 鏉★紱搂 涔?璺ㄥ姛鑳藉绾︽柊澧?3 琛岋紙Propagation Analysis WP4/5 鈫?F-ACCT-6 / F-COORD channels.py 鈫?F-ACCT-6 / MediaCrawler creator 鈫?F-ACCT-6锛夈€?- 璺ㄥ姛鑳藉奖鍝嶏細
+  - F-PROP WP4/WP5 鎺ュ彛瑕佹眰鏇存柊鈥斺€旈櫎鍘熸湁鐨?`/propagation/stance/by-account` 绔偣澶栵紝闇€淇濊瘉 `harm_assessor.score(text, metadata)` / `stance_detector.detect(text)` 鍙綔涓哄崟甯栫函鍑芥暟琚?F-ACCT-6 import 璋冪敤銆?  - F-COORD `channels.py` 闇€鎻愪緵 `template_detector.check(post, account_corpus)` 瀛愭帴鍙ｏ紙鍗曡处鍙疯鏂欐ā鏉挎娊鍙栵紝涓嶅悓浜庣兢浣撳崗鍚屾ā寮忥級锛屽綊鍏?F-ACCT-6 鎺ㄨ繘鏈熷唴鐨勫皬骞呮墿灞曘€?- 鍏宠仈鏂囦欢锛氭湰鏉＄洰瀵瑰簲 `doc/engineering/F-ACCT-account-profiling.md`銆乣doc/engineering/research-engineering-split.md`銆乣doc/engineering/development-roadmap.md`锛埪?2.3 宸插嬀閫?F-ACCT-6 涓や釜寰呭紑鍙戦」锛夈€乣doc/engineering/product-requirements.md`锛埪?涓婚〉閲囬泦鍔熻兘鎻忚堪宸插瓨鍦級鍚屾鏇存柊銆?
 ---
 
 ## 2026-05-20
 
-- 将社交平台采集链路收敛为“直接执行 MediaCrawler -> 读取本次新增 JSONL 行 -> 直接入库”，避免同一天重复任务整份回读最新文件时把前一批关键词结果混入当前任务。
-- `new-system/backend/app/core/crawler/social.py`：新增 `MediaCrawlBatch`、按当天输出文件记录偏移量、只读取本次运行新增 JSONL 行并标准化；`search()` 改为复用新的直接批次执行路径。
-- `new-system/backend/app/tasks/crawl_tasks.py`：社交平台任务改为直接走 `MediaSocialCrawler.execute_search_batch()` 后入库；`mock/news` 仍保留原有分支。
-- `new-system/backend/tests/test_social_crawler_normalization.py`：新增增量 JSONL 读取回归测试，防止再次退回整份最新文件回读。
-- `new-system/README.md`、`doc/engineering/environment-setup.md`、`doc/engineering/development-roadmap.md`：同步更新“MediaCrawler 直连执行 + 增量入库”的运行口径。
-
-- 修复 MediaCrawler 抖音登录验证链路，补上“验证码中间页”轮询处理与持久化 session 识别，并完成一次真实抖音搜索抓取验证。
-- `MediaCrawler-main/media_platform/douyin/login.py`：新增更稳健的登录态识别逻辑，轮询时如果页面进入“验证码中间页”会继续触发滑块验证；登录成功判定不再只依赖 `HasUserLogin` / `LOGIN_STATUS`，也会识别持久化会话 cookie + token 信号。
-- `MediaCrawler-main/media_platform/douyin/client.py`：`pong()` 改为复用新的登录态判定逻辑，使已保存的抖音浏览器会话可直接复用。
-- `MediaCrawler-main/tests/test_douyin_login.py`：新增回归测试，覆盖持久化 session 判定、验证码中间页拒绝误判、验证码后重试成功、`DouYinClient.pong()` 复用登录态判定。
-- 真实验证：`python main.py --platform dy --lt qrcode --type search --keywords 热点事件 --get_comment yes --get_sub_comment yes --max_comments_count_singlenotes 10 --max_concurrency_num 1 --save_data_option jsonl` 已在本机跑通，输出 `14` 条帖子和 `1934` 条评论到 `MediaCrawler-main/data/douyin/jsonl/`。
-
-- 完成 CogGuard -> MediaCrawler 宿主机运行链路校准，确认 `weibo` / `xhs` / `douyin` 可在 Windows + Docker 混合环境下通过本地 `MediaCrawler-main` 运行；`toutiao` 继续明确走 `news` / NewsCrawler 链路。
-- 本机环境落定：
-  - `uv 0.11.13`
-  - `Python 3.11.15`（`C:/Users/p/AppData/Roaming/uv/python/cpython-3.11-windows-x86_64-none/python.exe`）
-  - `Node v24.15.0`（`D:/node/node.exe`）
-- `new-system/.env`、`new-system/.env.example`：MediaCrawler 配置切换到 Python 3.11，并补充 `MEDIACRAWLER_UV_CACHE_DIR`。
-- `new-system/backend/app/config.py`、`app/core/crawler/mediacrawler_env.py`：新增 `MEDIACRAWLER_UV_CACHE_DIR` 配置；子进程环境自动注入 Node 路径与 uv 缓存目录，并清理父级 `uv` 运行标记。
-- `new-system/backend/app/core/crawler/social.py`、`scripts/verify_mediacrawler_env.py`：运行时优先直接使用 `MediaCrawler-main/.venv` 的 Python 启动 `main.py` 和 Playwright，避免后端 `uv run` 再嵌套一层 `uv run` 导致的 Windows 缓存权限问题。
-- `new-system/backend/tests/test_mediacrawler_env.py`：补充 `UV_CACHE_DIR`、父级 uv 标记清理、MediaCrawler `.venv` 解释器解析的回归断言。
-- 运行验证：
-  - `MediaCrawler-main` 下 `uv sync --python <3.11>` 成功
-  - `playwright install chromium` 成功
-  - `new-system/backend/scripts/verify_mediacrawler_env.py` 返回 PASS，平台摘要为 `weibo: ready` / `xhs: ready` / `douyin: ready`
-- 未完成项：
-  - `tests/test_mediacrawler_env.py` 未通过 `uv run --with pytest ...` 补跑；当前环境对 PyPI 额外拉取 `pytest` 时触发 `os error 10013` 套接字访问限制，但不影响已完成的 MediaCrawler 宿主机验证。
-
-- 新增 MediaCrawler 话题采集对齐增强：把子评论抓取与单帖评论上限暴露为环境配置，并在标准化层保留帖子 / 评论原始载荷、媒体链接、用户画像与评论父子关系，便于按事件对齐 `weibo / xhs / douyin` 的两层评论树。
-- `new-system/backend/app/config.py`：新增 `MEDIACRAWLER_GET_SUB_COMMENTS`、`MEDIACRAWLER_MAX_COMMENTS_PER_POST`。
-- `new-system/backend/app/models/post.py`、`app/core/crawler/normalizer.py`：为帖子 / 评论模型补充 `author_profile`、评论 `raw_data`、`media_urls`、`sub_comment_count` 等字段。
-- `new-system/backend/app/core/crawler/social.py`：调用 MediaCrawler 时显式传入 `--get_sub_comment` 与 `--max_comments_count_singlenotes`，并增强对 `weibo / xhs / douyin` 的帖子 / 评论多模态、用户字段和评论树父子关系标准化。
-- `new-system/backend/tests/test_social_crawler_normalization.py`：新增回归测试，覆盖命令构造、帖子媒体抽取、评论树字段保留与原始载荷保真。
-- `new-system/.env`、`new-system/.env.example`、`new-system/README.md`、`doc/engineering/environment-setup.md`：同步补充二级评论开关、评论上限和“当前只支持两层评论树”的说明。
-- 继续补充可选采集参数：`recursive_comments`、`enrich_author_profiles`、`comment_sort`。当前 `comment_sort` 已在评论入库前按点赞数或被回复数倒序生效；递归完整评论树和作者主页级画像补全先作为请求元数据接入，并显式记录当前 MediaCrawler 后端的降级边界，后续可在此接口上串接平台特定递归抓取 / creator 模式。
-
+- 灏嗙ぞ浜ゅ钩鍙伴噰闆嗛摼璺敹鏁涗负鈥滅洿鎺ユ墽琛?MediaCrawler -> 璇诲彇鏈鏂板 JSONL 琛?-> 鐩存帴鍏ュ簱鈥濓紝閬垮厤鍚屼竴澶╅噸澶嶄换鍔℃暣浠藉洖璇绘渶鏂版枃浠舵椂鎶婂墠涓€鎵瑰叧閿瘝缁撴灉娣峰叆褰撳墠浠诲姟銆?- `new-system/backend/app/core/crawler/social.py`锛氭柊澧?`MediaCrawlBatch`銆佹寜褰撳ぉ杈撳嚭鏂囦欢璁板綍鍋忕Щ閲忋€佸彧璇诲彇鏈杩愯鏂板 JSONL 琛屽苟鏍囧噯鍖栵紱`search()` 鏀逛负澶嶇敤鏂扮殑鐩存帴鎵规鎵ц璺緞銆?- `new-system/backend/app/tasks/crawl_tasks.py`锛氱ぞ浜ゅ钩鍙颁换鍔℃敼涓虹洿鎺ヨ蛋 `MediaSocialCrawler.execute_search_batch()` 鍚庡叆搴擄紱`mock/news` 浠嶄繚鐣欏師鏈夊垎鏀€?- `new-system/backend/tests/test_social_crawler_normalization.py`锛氭柊澧炲閲?JSONL 璇诲彇鍥炲綊娴嬭瘯锛岄槻姝㈠啀娆￠€€鍥炴暣浠芥渶鏂版枃浠跺洖璇汇€?- `new-system/README.md`銆乣doc/engineering/environment-setup.md`銆乣doc/engineering/development-roadmap.md`锛氬悓姝ユ洿鏂扳€淢ediaCrawler 鐩磋繛鎵ц + 澧為噺鍏ュ簱鈥濈殑杩愯鍙ｅ緞銆?
+- 淇 MediaCrawler 鎶栭煶鐧诲綍楠岃瘉閾捐矾锛岃ˉ涓娾€滈獙璇佺爜涓棿椤碘€濊疆璇㈠鐞嗕笌鎸佷箙鍖?session 璇嗗埆锛屽苟瀹屾垚涓€娆＄湡瀹炴姈闊虫悳绱㈡姄鍙栭獙璇併€?- `MediaCrawler-main/media_platform/douyin/login.py`锛氭柊澧炴洿绋冲仴鐨勭櫥褰曟€佽瘑鍒€昏緫锛岃疆璇㈡椂濡傛灉椤甸潰杩涘叆鈥滈獙璇佺爜涓棿椤碘€濅細缁х画瑙﹀彂婊戝潡楠岃瘉锛涚櫥褰曟垚鍔熷垽瀹氫笉鍐嶅彧渚濊禆 `HasUserLogin` / `LOGIN_STATUS`锛屼篃浼氳瘑鍒寔涔呭寲浼氳瘽 cookie + token 淇″彿銆?- `MediaCrawler-main/media_platform/douyin/client.py`锛歚pong()` 鏀逛负澶嶇敤鏂扮殑鐧诲綍鎬佸垽瀹氶€昏緫锛屼娇宸蹭繚瀛樼殑鎶栭煶娴忚鍣ㄤ細璇濆彲鐩存帴澶嶇敤銆?- `MediaCrawler-main/tests/test_douyin_login.py`锛氭柊澧炲洖褰掓祴璇曪紝瑕嗙洊鎸佷箙鍖?session 鍒ゅ畾銆侀獙璇佺爜涓棿椤垫嫆缁濊鍒ゃ€侀獙璇佺爜鍚庨噸璇曟垚鍔熴€乣DouYinClient.pong()` 澶嶇敤鐧诲綍鎬佸垽瀹氥€?- 鐪熷疄楠岃瘉锛歚python main.py --platform dy --lt qrcode --type search --keywords 鐑偣浜嬩欢 --get_comment yes --get_sub_comment yes --max_comments_count_singlenotes 10 --max_concurrency_num 1 --save_data_option jsonl` 宸插湪鏈満璺戦€氾紝杈撳嚭 `14` 鏉″笘瀛愬拰 `1934` 鏉¤瘎璁哄埌 `MediaCrawler-main/data/douyin/jsonl/`銆?
+- 瀹屾垚 CogGuard -> MediaCrawler 瀹夸富鏈鸿繍琛岄摼璺牎鍑嗭紝纭 `weibo` / `xhs` / `douyin` 鍙湪 Windows + Docker 娣峰悎鐜涓嬮€氳繃鏈湴 `MediaCrawler-main` 杩愯锛沗toutiao` 缁х画鏄庣‘璧?`news` / NewsCrawler 閾捐矾銆?- 鏈満鐜钀藉畾锛?  - `uv 0.11.13`
+  - `Python 3.11.15`锛坄C:/Users/p/AppData/Roaming/uv/python/cpython-3.11-windows-x86_64-none/python.exe`锛?  - `Node v24.15.0`锛坄D:/node/node.exe`锛?- `new-system/.env`銆乣new-system/.env.example`锛歁ediaCrawler 閰嶇疆鍒囨崲鍒?Python 3.11锛屽苟琛ュ厖 `MEDIACRAWLER_UV_CACHE_DIR`銆?- `new-system/backend/app/config.py`銆乣app/core/crawler/mediacrawler_env.py`锛氭柊澧?`MEDIACRAWLER_UV_CACHE_DIR` 閰嶇疆锛涘瓙杩涚▼鐜鑷姩娉ㄥ叆 Node 璺緞涓?uv 缂撳瓨鐩綍锛屽苟娓呯悊鐖剁骇 `uv` 杩愯鏍囪銆?- `new-system/backend/app/core/crawler/social.py`銆乣scripts/verify_mediacrawler_env.py`锛氳繍琛屾椂浼樺厛鐩存帴浣跨敤 `MediaCrawler-main/.venv` 鐨?Python 鍚姩 `main.py` 鍜?Playwright锛岄伩鍏嶅悗绔?`uv run` 鍐嶅祵濂椾竴灞?`uv run` 瀵艰嚧鐨?Windows 缂撳瓨鏉冮檺闂銆?- `new-system/backend/tests/test_mediacrawler_env.py`锛氳ˉ鍏?`UV_CACHE_DIR`銆佺埗绾?uv 鏍囪娓呯悊銆丮ediaCrawler `.venv` 瑙ｉ噴鍣ㄨВ鏋愮殑鍥炲綊鏂█銆?- 杩愯楠岃瘉锛?  - `MediaCrawler-main` 涓?`uv sync --python <3.11>` 鎴愬姛
+  - `playwright install chromium` 鎴愬姛
+  - `new-system/backend/scripts/verify_mediacrawler_env.py` 杩斿洖 PASS锛屽钩鍙版憳瑕佷负 `weibo: ready` / `xhs: ready` / `douyin: ready`
+- 鏈畬鎴愰」锛?  - `tests/test_mediacrawler_env.py` 鏈€氳繃 `uv run --with pytest ...` 琛ヨ窇锛涘綋鍓嶇幆澧冨 PyPI 棰濆鎷夊彇 `pytest` 鏃惰Е鍙?`os error 10013` 濂楁帴瀛楄闂檺鍒讹紝浣嗕笉褰卞搷宸插畬鎴愮殑 MediaCrawler 瀹夸富鏈洪獙璇併€?
+- 鏂板 MediaCrawler 璇濋閲囬泦瀵归綈澧炲己锛氭妸瀛愯瘎璁烘姄鍙栦笌鍗曞笘璇勮涓婇檺鏆撮湶涓虹幆澧冮厤缃紝骞跺湪鏍囧噯鍖栧眰淇濈暀甯栧瓙 / 璇勮鍘熷杞借嵎銆佸獟浣撻摼鎺ャ€佺敤鎴风敾鍍忎笌璇勮鐖跺瓙鍏崇郴锛屼究浜庢寜浜嬩欢瀵归綈 `weibo / xhs / douyin` 鐨勪袱灞傝瘎璁烘爲銆?- `new-system/backend/app/config.py`锛氭柊澧?`MEDIACRAWLER_GET_SUB_COMMENTS`銆乣MEDIACRAWLER_MAX_COMMENTS_PER_POST`銆?- `new-system/backend/app/models/post.py`銆乣app/core/crawler/normalizer.py`锛氫负甯栧瓙 / 璇勮妯″瀷琛ュ厖 `author_profile`銆佽瘎璁?`raw_data`銆乣media_urls`銆乣sub_comment_count` 绛夊瓧娈点€?- `new-system/backend/app/core/crawler/social.py`锛氳皟鐢?MediaCrawler 鏃舵樉寮忎紶鍏?`--get_sub_comment` 涓?`--max_comments_count_singlenotes`锛屽苟澧炲己瀵?`weibo / xhs / douyin` 鐨勫笘瀛?/ 璇勮澶氭ā鎬併€佺敤鎴峰瓧娈靛拰璇勮鏍戠埗瀛愬叧绯绘爣鍑嗗寲銆?- `new-system/backend/tests/test_social_crawler_normalization.py`锛氭柊澧炲洖褰掓祴璇曪紝瑕嗙洊鍛戒护鏋勯€犮€佸笘瀛愬獟浣撴娊鍙栥€佽瘎璁烘爲瀛楁淇濈暀涓庡師濮嬭浇鑽蜂繚鐪熴€?- `new-system/.env`銆乣new-system/.env.example`銆乣new-system/README.md`銆乣doc/engineering/environment-setup.md`锛氬悓姝ヨˉ鍏呬簩绾ц瘎璁哄紑鍏炽€佽瘎璁轰笂闄愬拰鈥滃綋鍓嶅彧鏀寔涓ゅ眰璇勮鏍戔€濈殑璇存槑銆?- 缁х画琛ュ厖鍙€夐噰闆嗗弬鏁帮細`recursive_comments`銆乣enrich_author_profiles`銆乣comment_sort`銆傚綋鍓?`comment_sort` 宸插湪璇勮鍏ュ簱鍓嶆寜鐐硅禐鏁版垨琚洖澶嶆暟鍊掑簭鐢熸晥锛涢€掑綊瀹屾暣璇勮鏍戝拰浣滆€呬富椤电骇鐢诲儚琛ュ叏鍏堜綔涓鸿姹傚厓鏁版嵁鎺ュ叆锛屽苟鏄惧紡璁板綍褰撳墠 MediaCrawler 鍚庣鐨勯檷绾ц竟鐣岋紝鍚庣画鍙湪姝ゆ帴鍙ｄ笂涓叉帴骞冲彴鐗瑰畾閫掑綊鎶撳彇 / creator 妯″紡銆?
 ---
 
 ## 2026-05-10
 
-- KT1 系统设计与 CCF-B+ 多模态检测文献综述一体化落盘（deep-interview 合并草案 v0.1）。
-- `aris/tech-01-coordination/systemDesign.md`（新增）：单文件 12 节交付 —— 概述、问题陈述、系统功能 ↔ 关键技术错位矩阵（M1–M5）、系统架构、C2 搜索子系统（多模态展示承载）、C3 检测 MVP（PSL primary + ADR-001 fallback 文字契约）、跨 KT 输出契约、CCF-B+ 文献综述（24 条有效条目、9 字段强制）、工程时序原则 T1–T6、M0–M6 里程碑、验收对齐 ACCEPTANCE.md。
-- 记录错位追踪：M1 多模态展示由 C2 承担（不纳入检测创新）；M2 跨平台改表述为"跨源"；M3 协同类型分类放 roadmap；M4 `detect_groups` IO 扩展 `evidence_samples[]` + `channels[]` + `q_adjusted`；M5 搜索子系统为 MVP 核心缺口。
-- 关联文件：`aris/tech-01-coordination/{RESEARCH_BRIEF.md, LITERATURE_REFERENCES.md, refine-logs/FINAL_PROPOSAL.md, ACCEPTANCE.md, TASK_TRACKER.md}` 未改动，systemDesign.md 对其做引用聚合。
-
+- Coordination Discover 绯荤粺璁捐涓?CCF-B+ 澶氭ā鎬佹娴嬫枃鐚患杩颁竴浣撳寲钀界洏锛坉eep-interview 鍚堝苟鑽夋 v0.1锛夈€?- `aris/tech-01-coordination/systemDesign.md`锛堟柊澧烇級锛氬崟鏂囦欢 12 鑺備氦浠?鈥斺€?姒傝堪銆侀棶棰橀檲杩般€佺郴缁熷姛鑳?鈫?鍏抽敭鎶€鏈敊浣嶇煩闃碉紙M1鈥揗5锛夈€佺郴缁熸灦鏋勩€丆2 鎼滅储瀛愮郴缁燂紙澶氭ā鎬佸睍绀烘壙杞斤級銆丆3 妫€娴?MVP锛圥SL primary + ADR-001 fallback 鏂囧瓧濂戠害锛夈€佽法 analysis capability 杈撳嚭濂戠害銆丆CF-B+ 鏂囩尞缁艰堪锛?4 鏉℃湁鏁堟潯鐩€? 瀛楁寮哄埗锛夈€佸伐绋嬫椂搴忓師鍒?T1鈥揟6銆丮0鈥揗6 閲岀▼纰戙€侀獙鏀跺榻?ACCEPTANCE.md銆?- 璁板綍閿欎綅杩借釜锛歁1 澶氭ā鎬佸睍绀虹敱 C2 鎵挎媴锛堜笉绾冲叆妫€娴嬪垱鏂帮級锛汳2 璺ㄥ钩鍙版敼琛ㄨ堪涓?璺ㄦ簮"锛汳3 鍗忓悓绫诲瀷鍒嗙被鏀?roadmap锛汳4 `detect_groups` IO 鎵╁睍 `evidence_samples[]` + `channels[]` + `q_adjusted`锛汳5 鎼滅储瀛愮郴缁熶负 MVP 鏍稿績缂哄彛銆?- 鍏宠仈鏂囦欢锛歚aris/tech-01-coordination/{RESEARCH_BRIEF.md, LITERATURE_REFERENCES.md, refine-logs/FINAL_PROPOSAL.md, ACCEPTANCE.md, TASK_TRACKER.md}` 鏈敼鍔紝systemDesign.md 瀵瑰叾鍋氬紩鐢ㄨ仛鍚堛€?
 ---
 
 ## 2026-04-08
 
-- 完成仓库 ARIS 化重组，新增独立工作空间层与技术背景层，保证三条关键技术可分别驱动实现。
-- `CLAUDE.md`、`README.md`、`AGENTS.md`、`.cursor/rules/cogguard-project-context.mdc`：补齐仓库入口、执行约束与 ARIS 阅读顺序。
-- `aris/`：新增共享 runner 文档与 `tech-01-coordination`、`tech-02-propagation`、`tech-03-risk` 三个独立工作空间。
-- `doc/research/key-technology-background/`、`doc/engineering/environment-setup.md`、`doc/engineering/development-roadmap.md`：补充技术背景、ARIS 开发方式与后续跟踪项。
-- `.gitignore`：新增 ARIS 实验产物忽略规则。
-
+- 瀹屾垚浠撳簱 ARIS 鍖栭噸缁勶紝鏂板鐙珛宸ヤ綔绌洪棿灞備笌鎶€鏈儗鏅眰锛屼繚璇佷笁鏉″叧閿妧鏈彲鍒嗗埆椹卞姩瀹炵幇銆?- `CLAUDE.md`銆乣README.md`銆乣AGENTS.md`銆乣.cursor/rules/cogguard-project-context.mdc`锛氳ˉ榻愪粨搴撳叆鍙ｃ€佹墽琛岀害鏉熶笌 ARIS 闃呰椤哄簭銆?- `aris/`锛氭柊澧炲叡浜?runner 鏂囨。涓?`tech-01-coordination`銆乣tech-02-propagation`銆乣tech-03-risk` 涓変釜鐙珛宸ヤ綔绌洪棿銆?- `doc/research/key-technology-background/`銆乣doc/engineering/environment-setup.md`銆乣doc/engineering/development-roadmap.md`锛氳ˉ鍏呮妧鏈儗鏅€丄RIS 寮€鍙戞柟寮忎笌鍚庣画璺熻釜椤广€?- `.gitignore`锛氭柊澧?ARIS 瀹為獙浜х墿蹇界暐瑙勫垯銆?
 ---
 
 ## 2026-04-07
 
-- 补充面向后续会话与 GitHub 开源协作的仓库上下文说明，明确 `release-0.2` 为当前工程基线。
-- `AGENTS.md`：新增仓库级 agent context，约定必读文档、主线叙事、短期验证范围与协作约束。
-- `.cursor/rules/cogguard-project-context.mdc`：同步更新为 `release-0.2` 基线与文档对齐规则。
-
+- 琛ュ厖闈㈠悜鍚庣画浼氳瘽涓?GitHub 寮€婧愬崗浣滅殑浠撳簱涓婁笅鏂囪鏄庯紝鏄庣‘ `release-0.2` 涓哄綋鍓嶅伐绋嬪熀绾裤€?- `AGENTS.md`锛氭柊澧炰粨搴撶骇 agent context锛岀害瀹氬繀璇绘枃妗ｃ€佷富绾垮彊浜嬨€佺煭鏈熼獙璇佽寖鍥翠笌鍗忎綔绾︽潫銆?- `.cursor/rules/cogguard-project-context.mdc`锛氬悓姝ユ洿鏂颁负 `release-0.2` 鍩虹嚎涓庢枃妗ｅ榻愯鍒欍€?
 ---
 
-## 2026-04-03（续）
-
-- 规划发布分支 `release-0.2`；仓库内项目名称从 `new_workspace` 调整为 `cogguard_system`。
-- `README.md`：项目结构根目录名改为 `cogguard_system/`。
-
+## 2026-04-03锛堢画锛?
+- 瑙勫垝鍙戝竷鍒嗘敮 `release-0.2`锛涗粨搴撳唴椤圭洰鍚嶇О浠?`new_workspace` 璋冩暣涓?`cogguard_system`銆?- `README.md`锛氶」鐩粨鏋勬牴鐩綍鍚嶆敼涓?`cogguard_system/`銆?
 ---
 
-## 2026-04-03（续）
-
-- 新增 Cursor 项目规则，固化文档阅读顺序、变更同步要求与协作约束。
-- `.cursor/rules/cogguard-project-context.mdc`：项目上下文与必读文档规则。
-- `.cursor/rules/cogguard-change-sync.mdc`：代码变更后的文档同步规则。
-- `.cursor/rules/cogguard-collaboration.mdc`：中文回复、方案确认、验证表述等协作规则。
-
+## 2026-04-03锛堢画锛?
+- 鏂板 Cursor 椤圭洰瑙勫垯锛屽浐鍖栨枃妗ｉ槄璇婚『搴忋€佸彉鏇村悓姝ヨ姹備笌鍗忎綔绾︽潫銆?- `.cursor/rules/cogguard-project-context.mdc`锛氶」鐩笂涓嬫枃涓庡繀璇绘枃妗ｈ鍒欍€?- `.cursor/rules/cogguard-change-sync.mdc`锛氫唬鐮佸彉鏇村悗鐨勬枃妗ｅ悓姝ヨ鍒欍€?- `.cursor/rules/cogguard-collaboration.mdc`锛氫腑鏂囧洖澶嶃€佹柟妗堢‘璁ゃ€侀獙璇佽〃杩扮瓑鍗忎綔瑙勫垯銆?
 ---
 
-## 2026-04-03（续）
-
-- 接入真实爬虫：MediaCrawler 子进程 + News 提取 HTTP/本地 import；Celery 任务路由与失败落库；采集页支持文章链接。
-- `new-system/backend/app/core/crawler/social.py`、`news.py`、`factory.py`：新增。
-- `new-system/backend/app/tasks/crawl_tasks.py`、`app/config.py`、`app/services/crawl_service.py`、`app/api/v1/crawl.py`、`app/schemas/crawl.py`：路由与配置。
-- `new-system/backend/pyproject.toml`、`requirements.txt`：补充 pandas/networkx/numpy（协同模块已有引用）。
-- `new-system/backend/tests/test_crawler_real.py`、`test_auth.py`：新增/调整断言。
-- `new-system/.env.example`：爬虫相关环境变量模板。
-- `new-system/frontend/src/views/crawl/index.vue`：链接（post_ids）输入。
-- `doc/engineering/development-roadmap.md`：2.0 真实爬虫接入勾选。
-
+## 2026-04-03锛堢画锛?
+- 鎺ュ叆鐪熷疄鐖櫕锛歁ediaCrawler 瀛愯繘绋?+ News 鎻愬彇 HTTP/鏈湴 import锛汣elery 浠诲姟璺敱涓庡け璐ヨ惤搴擄紱閲囬泦椤垫敮鎸佹枃绔犻摼鎺ャ€?- `new-system/backend/app/core/crawler/social.py`銆乣news.py`銆乣factory.py`锛氭柊澧炪€?- `new-system/backend/app/tasks/crawl_tasks.py`銆乣app/config.py`銆乣app/services/crawl_service.py`銆乣app/api/v1/crawl.py`銆乣app/schemas/crawl.py`锛氳矾鐢变笌閰嶇疆銆?- `new-system/backend/pyproject.toml`銆乣requirements.txt`锛氳ˉ鍏?pandas/networkx/numpy锛堝崗鍚屾ā鍧楀凡鏈夊紩鐢級銆?- `new-system/backend/tests/test_crawler_real.py`銆乣test_auth.py`锛氭柊澧?璋冩暣鏂█銆?- `new-system/.env.example`锛氱埇铏浉鍏崇幆澧冨彉閲忔ā鏉裤€?- `new-system/frontend/src/views/crawl/index.vue`锛氶摼鎺ワ紙post_ids锛夎緭鍏ャ€?- `doc/engineering/development-roadmap.md`锛?.0 鐪熷疄鐖櫕鎺ュ叆鍕鹃€夈€?
 ---
 
 ## 2026-04-03
 
-- 建立开发变更日志机制；同步文档与 `new-system` 说明。
-- `doc/engineering/development-log.md`：新增本文件。
-- `doc/engineering/development-roadmap.md`：参考资料增加指向本文件的链接。
-- `doc/engineering/environment-setup.md`：常见问题章节增补条目。
-- `new-system/README.md`：目录树与模块说明与当前后端（coordination / propagation / accounts 等）及前端页面对齐。
-
+- 寤虹珛寮€鍙戝彉鏇存棩蹇楁満鍒讹紱鍚屾鏂囨。涓?`new-system` 璇存槑銆?- `doc/engineering/development-log.md`锛氭柊澧炴湰鏂囦欢銆?- `doc/engineering/development-roadmap.md`锛氬弬鑰冭祫鏂欏鍔犳寚鍚戞湰鏂囦欢鐨勯摼鎺ャ€?- `doc/engineering/environment-setup.md`锛氬父瑙侀棶棰樼珷鑺傚琛ユ潯鐩€?- `new-system/README.md`锛氱洰褰曟爲涓庢ā鍧楄鏄庝笌褰撳墠鍚庣锛坈oordination / propagation / accounts 绛夛級鍙婂墠绔〉闈㈠榻愩€?
 ---
+

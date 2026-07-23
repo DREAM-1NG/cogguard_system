@@ -2,7 +2,7 @@
 
 ## 覆盖结论
 
-- KT3 问题边界：由 EV-01 覆盖。
+- Risk Review 问题边界：由 EV-01 覆盖。
 - 帖子级 harmfulness / target / multimodality：由 EV-02 至 EV-06、EV-53、EV-62、EV-63 覆盖。
 - 帖子级 claim-conditioned stance：由 EV-07 至 EV-11 覆盖。
 - 帖子级 fact verification / evidence / uncertainty：由 EV-12 至 EV-24、EV-56、EV-57、EV-60、EV-61 覆盖。
@@ -26,6 +26,6 @@
 ## 主要风险
 
 - 2025-2026 前沿文献如 MARO、RAMA、MIND、ClaimCheck、3MFact、IOHunter、reply attacks、IO datasets、TikTok CIB 部分仍应以“前沿参考 / 方法迁移启发”表述，不应写成已在本项目完整复现。
-- 部分图方法文献是通用图表示学习，不是 harmfulness 专用方法；正文中应明确其作用是“社区图编码器候选”，而非直接证明 KT3 效果。
+- 部分图方法文献是通用图表示学习，不是 harmfulness 专用方法；正文中应明确其作用是“社区图编码器候选”，而非直接证明 Risk Review 效果。
 - 当前代码仍以语义脚手架和结构前置能力为主；需求文档中必须持续区分“目标设计”和“当前实现”。
 - 中文/国内舆情场景还需要后续补充 CNKI 或本地标注案例，目前文档主要使用英文高水平文献作为方法锚点。

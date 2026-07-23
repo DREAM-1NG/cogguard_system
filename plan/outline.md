@@ -1,9 +1,9 @@
 # 文档提纲
 
-## KT3_LAYERED_REQUIREMENTS.md 修订提纲
+## REVIEW_LAYERED_REQUIREMENTS.md 修订提纲
 
 1. 文档目标与适用范围
-2. KT3 在 `Detect -> Characterize` 中的定位
+2. Risk Review 在 `Detect -> Characterize` 中的定位
 3. 设计原则：为什么不能以特征工程为主线
 4. 分层方法总览
 5. 帖子级需求

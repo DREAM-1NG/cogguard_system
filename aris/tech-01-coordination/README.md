@@ -4,19 +4,19 @@
 
 把当前"共享对象协同检测"升级为事件窗口内的多关系协同图，并进一步发展为 **GNN + LM 增强的协同社区构建与发现方法**。
 
-> 方向更新（2026-06-02）：KT1 是核心关键技术，定位为 **跨平台协同发现——只用平台无关的"共同行为特征"做复用融合检测，内容检测不作为协同信号**。
+> 方向更新（2026-06-02）：Coordination Discover 是核心关键技术，定位为 **跨平台协同发现——只用平台无关的"共同行为特征"做复用融合检测，内容检测不作为协同信号**。
 > - 协同信号只取行为特征：时间同步/共现、共享对象（URL/hashtag/媒体指纹 id）、共转发与回复级联、账号行为节律等。
 > - **排除内容型判据**（立场、毒性、图文一致/视频-语义 mismatch）直接作为协同边证据；但允许 LM 用于共享对象归一、节点/社区表征、Node Selection 后的 LLM annotation 和解释。
 > - 方法升级：网络科学方法保留为 baseline 和解释审计；主方法应发展为 LM 表征 + 多关系 GNN 消息传递 + 社区发现/区分。
 
 ## 研究任务定位
 
-KT1 的正式研究任务定义为两阶段的 **协同发现 -> 协同区分**：
+Coordination Discover 的正式研究任务定义为两阶段的 **协同发现 -> 协同区分**：
 
 1. **协同发现（coordination discovery）**：使用平台无关的共同行为信号构建多关系协同图，并结合 LM 表征与 GNN 消息传递发现协同账号簇、关键账号对和关键共享对象。该阶段不要求负样本，不把任务强行转写为账号二分类，核心目标是形成可解释的协同网络和社区表示。
 2. **协同区分（coordination discrimination）**：在有 IO/control 或 coordinated/organic 标签的数据集上，检验第一阶段发现的协同图、边权、社区和结构表征是否能够区分自发行为与协同攻击。该阶段主表报告 AUPRC、Precision@K、Recall@K、MaxF1 等检测指标；固定阈值 F1@0.5 只保留为调试诊断，不进入论文主表。
 
-因此，KT1 的主任务不是 bot detection、troll classification 或 fake news classification；这些方向只作为辅助表征或下游对照。主领域是 coordinated online behavior / information operations detection。
+因此，Coordination Discover 的主任务不是 bot detection、troll classification 或 fake news classification；这些方向只作为辅助表征或下游对照。主领域是 coordinated online behavior / information operations detection。
 
 ## 必读文档
 

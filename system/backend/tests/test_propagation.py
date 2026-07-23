@@ -11,7 +11,7 @@ from datetime import datetime, timezone, timedelta
 import pytest
 
 from app.core.propagation import build_propagation_graph
-from app.services.kt2_prediction_service import build_event_inference_bundle, predict_event_with_checkpoint
+from app.services.propagation_prediction_service import build_event_inference_bundle, predict_event_with_checkpoint
 
 
 # ---------------------------------------------------------------------------
@@ -173,7 +173,7 @@ class TestUserQualityParsing:
         assert result["user_quality"]["verified_count"] == 1
 
 
-class TestKT2EventInferenceAdapter:
+class TestPropagationAnalysisEventInferenceAdapter:
     def test_event_bundle_maps_real_user_candidates(self):
         bundle = build_event_inference_bundle(
             _make_posts(),

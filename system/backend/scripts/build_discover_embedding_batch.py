@@ -22,13 +22,16 @@ from build_discover_embedding_figure import (
 )
 
 
+STABLE_DISCOVER_ENCODER = "magnn_legacy"
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Batch-build Discover embedding figures and evaluate reduction methods.")
     parser.add_argument("--root", required=True, help="Root directory containing dataset/seed_x/encoder/discovery_summary.json")
     parser.add_argument("--output-dir", required=True)
     parser.add_argument("--datasets", nargs="*", default=["UAE", "china", "cuba", "iran", "russia", "venezuela"])
     parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--encoder", default="magnn")
+    parser.add_argument("--encoder", default=STABLE_DISCOVER_ENCODER)
     parser.add_argument("--top-communities", type=int, default=8)
     parser.add_argument("--min-community-size", type=int, default=3)
     parser.add_argument("--perplexity", type=float, default=30.0)
@@ -312,7 +315,7 @@ def _plot_showcase_grid(
     for axis in axes[used:]:
         axis.axis("off")
 
-    fig.suptitle(f"KT1 Discover User Embeddings Across Datasets ({method.upper()})", fontsize=18, y=0.985)
+    fig.suptitle(f"CoordinationDiscover Discover User Embeddings Across Datasets ({method.upper()})", fontsize=18, y=0.985)
     fig.tight_layout(rect=[0, 0, 1, 0.965])
     fig.savefig(output_path, dpi=300)
     plt.close(fig)

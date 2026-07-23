@@ -20,36 +20,36 @@ class RiskAssessRequest(BaseModel):
     window_minutes: int = Field(30, ge=5, le=360, description="阶段检测滑动窗口（分钟）")
 
 
-class KT3GateSuiteRequest(BaseModel):
-    """KT3 三层 Gate Suite 离线评测请求体。"""
+class ReviewGateSuiteRequest(BaseModel):
+    """Review 三层 Gate Suite 离线评测请求体。"""
     platform: str | None = Field(None, description="限定平台（为空则全量）")
     event_id: str | None = Field(None, description="限定事件 ID")
     time_window: int = Field(60, ge=1, le=3600, description="协同检测时间窗口（秒）")
     min_participation: int = Field(2, ge=1, description="最低参与次数")
     edge_weight: float = Field(0.5, ge=0, le=1, description="边权百分位阈值")
-    kt3_gate_dataset: dict = Field(
+    gate_dataset: dict = Field(
         default_factory=dict,
         description=(
-            "显式 KT3 gold/control set 契约，包含 metadata、post_cases、"
+            "显式 Review gold/control set 契约，包含 metadata、post_cases、"
             "user_gold、community_gold、thresholds。该数据只用于离线评测。"
         ),
     )
 
 
-class KT3GateDatasetValidationRequest(BaseModel):
-    """KT3 Gate Dataset contract validation request."""
-    kt3_gate_dataset: dict = Field(
+class ReviewGateDatasetValidationRequest(BaseModel):
+    """Review Gate Dataset contract validation request."""
+    gate_dataset: dict = Field(
         default_factory=dict,
         description=(
-            "KT3 Gate Dataset JSON to validate. This endpoint checks contract "
+            "Review Gate Dataset JSON to validate. This endpoint checks contract "
             "shape only; it does not assess risk, persist results, or use gold "
             "labels for training/calibration."
         ),
     )
 
 
-class KT3AgentReviewRunRequest(BaseModel):
-    """Analyst-triggered KT3 MARO-style LLM agent review request."""
+class ReviewAgentReviewRunRequest(BaseModel):
+    """Analyst-triggered Review MARO-style LLM agent review request."""
     report_id: str = Field(..., description="Persisted risk report ID to review")
     case_id: str | None = Field(None, description="Optional case/thread identifier for analyst context")
     selected_post_ids: list[str] = Field(
@@ -101,16 +101,16 @@ class KT3AgentReviewRunRequest(BaseModel):
         False,
         description="Run Judge self-refinement (draft/critique/final) instead of the default single-pass judgement.",
     )
-    policy_id: str | None = Field(None, description="Optional optimized KT3 Agent policy ID")
+    policy_id: str | None = Field(None, description="Optional optimized Review Agent policy ID")
     active_policy_id: str | None = Field(
         None,
-        description="Optional activated KT3 policy ID to inject into Judge/Agent context",
+        description="Optional activated Review policy ID to inject into Judge/Agent context",
     )
     retrieval_top_k: int = Field(3, ge=1, le=10, description="Top-k evidence per active retrieval query")
 
 
-class KT3PolicyOptimizeRequest(BaseModel):
-    """Request body for MARO-style KT3 review policy optimization."""
+class ReviewPolicyOptimizeRequest(BaseModel):
+    """Request body for MARO-style Review review policy optimization."""
     dataset_manifest: dict = Field(
         default_factory=dict,
         description=(
@@ -120,8 +120,8 @@ class KT3PolicyOptimizeRequest(BaseModel):
     )
 
 
-class KT3PolicyRefineRequest(BaseModel):
-    """Request body for MARO-style self-iterative KT3 policy refinement."""
+class ReviewPolicyRefineRequest(BaseModel):
+    """Request body for MARO-style self-iterative Review policy refinement."""
     dataset_manifest: dict = Field(
         default_factory=dict,
         description="Explicit manifest with validation and held-out/gate splits",
@@ -142,8 +142,8 @@ class KT3PolicyRefineRequest(BaseModel):
     )
 
 
-class KT3ProviderConfigRequest(BaseModel):
-    """Create/update request for KT3 LLM or retrieval providers."""
+class ReviewProviderConfigRequest(BaseModel):
+    """Create/update request for Review LLM or retrieval providers."""
     name: str = Field(..., min_length=1, max_length=128)
     provider_type: str = Field(..., description="text_llm | vision_llm | retrieval")
     base_url: str = Field("", description="OpenAI-compatible base URL or retrieval endpoint")
@@ -154,8 +154,8 @@ class KT3ProviderConfigRequest(BaseModel):
     metadata: dict = Field(default_factory=dict)
 
 
-class KT3ProviderUpdateRequest(BaseModel):
-    """Partial update request for KT3 provider configs."""
+class ReviewProviderUpdateRequest(BaseModel):
+    """Partial update request for Review provider configs."""
     name: str | None = Field(None, min_length=1, max_length=128)
     provider_type: str | None = Field(None, description="text_llm | vision_llm | retrieval")
     base_url: str | None = Field(None, description="OpenAI-compatible base URL or retrieval endpoint")
@@ -166,23 +166,23 @@ class KT3ProviderUpdateRequest(BaseModel):
     metadata: dict | None = Field(None)
 
 
-class KT3ProviderActivateRequest(BaseModel):
+class ReviewProviderActivateRequest(BaseModel):
     """Activate/deactivate a provider for its capability bucket."""
     is_active: bool = Field(True)
 
 
-class KT3GateDatasetUploadRequest(BaseModel):
+class ReviewGateDatasetUploadRequest(BaseModel):
     """JSON-body alternative to multipart Gate Dataset upload."""
-    kt3_gate_dataset: dict = Field(default_factory=dict)
+    gate_dataset: dict = Field(default_factory=dict)
 
 
-class KT3BackfillRequest(BaseModel):
+class ReviewBackfillRequest(BaseModel):
     """Start idempotent backfill from legacy RiskAssessment.report_json."""
     report_ids: list[str] = Field(default_factory=list)
     limit: int = Field(500, ge=1, le=5000)
 
 
-class KT3AgentFeedbackRequest(BaseModel):
+class ReviewAgentFeedbackRequest(BaseModel):
     """Human audit feedback appended to RiskAssessment.report_json.agent_feedback."""
     report_id: str = Field(..., description="Persisted risk report ID")
     review_id: str | None = Field(None, description="Agent review ID being corrected")
@@ -306,7 +306,7 @@ class RiskReportResponse(BaseModel):
     evidence: dict
     claims: list[dict]
     post_semantics: dict | None = None
-    kt3_harmfulness: dict | None = None
+    review_harmfulness: dict | None = None
     disarm_analysis: DisarmAnalysisResponse
     risk_factors: dict[str, list[str]]
     recommendations: list[dict]

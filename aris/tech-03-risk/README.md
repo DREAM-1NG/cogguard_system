@@ -2,13 +2,13 @@
 
 ## 目标
 
-把上游协同发现（KT1）与传播监控（KT2）的结果组织成统一证据链，对事件 / claim / thread 输出可审计的研判报告与处置建议。
+把上游协同发现（Coordination Discover）与传播监控（Propagation Analysis）的结果组织成统一证据链，对事件 / claim / thread 输出可审计的研判报告与处置建议。
 
 > 方向更新（2026-06-02，以 `TASK_TRACKER.md` 2026-05-31 Agent 编排版为最终口径）：
 > - **头号创新 = 已落地的白盒前瞻引擎**：Phase-Aware Hazard（阶段预警）+ DISARM Attack-Path（攻击路径预判 + 反制）+ Contradiction-Aware D-S Fusion。约 1340 行已落地、CPU-only、可审计。
 > - 报告研判分三段：**(a) 基于 Agent 的证据编排（含用户言论/行为检测）→ (b) 基于 RAG 的报告生成 → (c) Agent 解释总结协同攻击**。
 > - **Agent / RAG 是编排基座与呈现层，不作为创新卖点**（避开"用 Agent 做报告研判创新性弱"的评审意见，详见 `RESEARCH_BRIEF.md` 表述纪律与 `METHOD_STANCE.md`）。
-> - 内容分析（立场/危害）按闭环分工统一归 KT3。
+> - 内容分析（立场/危害）按闭环分工统一归 Risk Review。
 
 ## 必读文档
 
@@ -17,11 +17,11 @@
 - [`../../doc/research/key-technology-background/risk-disarm.md`](../../doc/research/key-technology-background/risk-disarm.md)
 - [`../../new-system/README.md`](../../new-system/README.md)
 - [`ACCEPTANCE.md`](ACCEPTANCE.md)
-- [`KT3_LAYERED_REQUIREMENTS.md`](./KT3_LAYERED_REQUIREMENTS.md)
-- [`KT3_POST_VIEW_FORMALIZATION.md`](./KT3_POST_VIEW_FORMALIZATION.md)
-- [`KT3_AGENTIC_MARO_REFERENCE.md`](./KT3_AGENTIC_MARO_REFERENCE.md)
+- [`REVIEW_LAYERED_REQUIREMENTS.md`](./REVIEW_LAYERED_REQUIREMENTS.md)
+- [`REVIEW_POST_VIEW_FORMALIZATION.md`](./REVIEW_POST_VIEW_FORMALIZATION.md)
+- [`REVIEW_AGENTIC_MARO_REFERENCE.md`](./REVIEW_AGENTIC_MARO_REFERENCE.md)
 - [`Multiagents.md`](./Multiagents.md)
-- [`KT3_FULL_VALIDATION_DATA_ACQUISITION.md`](./KT3_FULL_VALIDATION_DATA_ACQUISITION.md)
+- [`REVIEW_FULL_VALIDATION_DATA_ACQUISITION.md`](./REVIEW_FULL_VALIDATION_DATA_ACQUISITION.md)
 
 ## 建议分支
 

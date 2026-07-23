@@ -1,8 +1,8 @@
-"""Layered KT3 harmfulness aggregation.
+"""Layered Review harmfulness aggregation.
 
 The post-level module judges individual items. This module lifts those
 judgements to account and community views so the final risk report exposes the
-three KT3 layers described in the requirements document.
+three Review layers described in the requirements document.
 """
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ def assess_layered_harmfulness(
     event_id: str | None = None,
     platform: str | None = None,
 ) -> dict[str, Any]:
-    """Aggregate KT3 post-level semantics into user and community layers."""
+    """Aggregate Review post-level semantics into user and community layers."""
     post_semantics = post_semantics or {}
     account_profiles = account_profiles or []
     coordination = coordination or {}
@@ -600,7 +600,7 @@ def _build_global_summary(
             key=lambda item: (item["harmful_posts"], item["linked_posts"]),
             reverse=True,
         )[:10],
-        "kt3_harm_risk_level": risk_level,
+        "review_harm_risk_level": risk_level,
     }
 
 

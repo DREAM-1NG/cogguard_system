@@ -2,7 +2,7 @@
   <div class="analysis-page">
     <PageHeader
       title="Unified Analysis"
-      description="Run KT1 coordination discovery, KT2 propagation hindcast, Student review, and asynchronous Teacher review from one EventSnapshot."
+      description="Run Coordination Discover, Propagation Analysis, Student review, and asynchronous Teacher review from one EventSnapshot."
     />
 
     <a-alert
@@ -96,13 +96,13 @@
         </a-card>
 
         <div class="result-grid">
-          <a-card title="KT1 communities" size="small" class="result-card">
+          <a-card title="Coordination Discover communities" size="small" class="result-card">
             <a-space wrap>
-              <a-tag :color="statusColor(kt1?.status)">{{ kt1?.status || 'not run' }}</a-tag>
-              <a-tag>{{ kt1?.model_version || '-' }}</a-tag>
+              <a-tag :color="statusColor(coordinationDiscover?.status)">{{ coordinationDiscover?.status || 'not run' }}</a-tag>
+              <a-tag>{{ coordinationDiscover?.model_version || '-' }}</a-tag>
             </a-space>
-            <a-statistic title="Evidence edges" :value="numberValue(kt1?.summary?.evidence_edge_count)" />
-            <a-statistic title="Lineages" :value="numberValue(kt1?.summary?.lineage_count)" />
+            <a-statistic title="Evidence edges" :value="numberValue(coordinationDiscover?.summary?.evidence_edge_count)" />
+            <a-statistic title="Lineages" :value="numberValue(coordinationDiscover?.summary?.lineage_count)" />
             <div class="mini-list">
               <div v-for="item in communityRows" :key="item.lineage_id" class="mini-row">
                 <strong>{{ item.lineage_id }}</strong>
@@ -111,15 +111,15 @@
             </div>
           </a-card>
 
-          <a-card title="KT2 hindcast" size="small" class="result-card">
+          <a-card title="Propagation Analysis hindcast" size="small" class="result-card">
             <a-space wrap>
-              <a-tag :color="statusColor(kt2?.status)">{{ kt2?.status || 'not run' }}</a-tag>
-              <a-tag>{{ kt2?.model_version || kt2?.model || '-' }}</a-tag>
+              <a-tag :color="statusColor(propagationAnalysis?.status)">{{ propagationAnalysis?.status || 'not run' }}</a-tag>
+              <a-tag>{{ propagationAnalysis?.model_version || propagationAnalysis?.model || '-' }}</a-tag>
             </a-space>
-            <a-statistic title="Active accounts forecast" :value="numberValue(kt2?.scale_forecast?.point)" />
+            <a-statistic title="Active accounts forecast" :value="numberValue(propagationAnalysis?.scale_forecast?.point)" />
             <div class="intervals">
-              <span>80% {{ intervalText(kt2?.conformal_intervals?.['80']) }}</span>
-              <span>95% {{ intervalText(kt2?.conformal_intervals?.['95']) }}</span>
+              <span>80% {{ intervalText(propagationAnalysis?.conformal_intervals?.['80']) }}</span>
+              <span>95% {{ intervalText(propagationAnalysis?.conformal_intervals?.['95']) }}</span>
             </div>
             <div class="mini-list">
               <div v-for="item in nextHopRows" :key="item.author_id" class="mini-row">
@@ -129,7 +129,7 @@
             </div>
           </a-card>
 
-          <a-card title="KT3 Student" size="small" class="result-card">
+          <a-card title="Student Review" size="small" class="result-card">
             <a-space wrap>
               <a-tag :color="statusColor(student?.status)">{{ student?.status || 'not run' }}</a-tag>
               <a-tag>{{ student?.model_status || '-' }}</a-tag>
@@ -140,7 +140,7 @@
             <p class="result-text">Active learning: {{ activeLearningReasons }}</p>
           </a-card>
 
-          <a-card title="KT3 Teacher" size="small" class="result-card">
+          <a-card title="Teacher Review" size="small" class="result-card">
             <a-space wrap>
               <a-tag :color="statusColor(teacher?.status)">{{ teacher?.status || 'not run' }}</a-tag>
               <a-tag>{{ teacher?.verdict_type || '-' }}</a-tag>
@@ -222,18 +222,18 @@ const snapshotForm = ref({
 const runForm = ref({
   event_id: defaultEventId,
   snapshot_id: '',
-  requested_stages: ['kt1', 'kt2', 'student', 'teacher'] as AnalysisStage[],
+  requested_stages: ['coordination_discover', 'propagation_analysis', 'student', 'teacher'] as AnalysisStage[],
   options_json: JSON.stringify({
-    kt1: { time_window: 3600, min_participation: 2, edge_weight: 0.5 },
-    kt2: { top_k: 10 },
+    coordination_discover: { time_window: 3600, min_participation: 2, edge_weight: 0.5 },
+    propagation_analysis: { top_k: 10 },
     student: {},
     teacher: { teacher_max_review_items: 20 },
   }, null, 2),
 })
 
 const stageOptions = [
-  { label: 'KT1 coordination', value: 'kt1' },
-  { label: 'KT2 propagation', value: 'kt2' },
+  { label: 'Coordination Discover', value: 'coordination_discover' },
+  { label: 'Propagation Analysis', value: 'propagation_analysis' },
   { label: 'Student review', value: 'student' },
   { label: 'Teacher review', value: 'teacher' },
 ]
@@ -254,12 +254,12 @@ const latestEventId = computed(() => events.value.reduce((max, item) => Math.max
 const runResults = computed<Record<string, any>>(() => {
   return runDetail.value?.results || runDetail.value?.result?.results || {}
 })
-const kt1 = computed(() => runResults.value.kt1 || null)
-const kt2 = computed(() => runResults.value.kt2 || null)
+const coordinationDiscover = computed(() => runResults.value.coordination_discover || null)
+const propagationAnalysis = computed(() => runResults.value.propagation_analysis || null)
 const student = computed(() => runResults.value.student || null)
 const teacher = computed(() => runResults.value.teacher || null)
-const communityRows = computed(() => (kt1.value?.community_lineage || []).slice(0, 5))
-const nextHopRows = computed(() => (kt2.value?.next_hop_ranking?.items || []).slice(0, 5))
+const communityRows = computed(() => (coordinationDiscover.value?.community_lineage || []).slice(0, 5))
+const nextHopRows = computed(() => (propagationAnalysis.value?.next_hop_ranking?.items || []).slice(0, 5))
 const teacherNodes = computed(() => teacher.value?.dag?.nodes || [])
 const activeLearningReasons = computed(() => {
   const reasons = student.value?.signals?.active_learning?.reasons || []
@@ -289,7 +289,7 @@ async function handleCreateRun() {
     return
   }
   if (!runForm.value.requested_stages.length) {
-    message.warning('Select at least one stage')
+    message.warning('请至少选择一个分析阶段')
     return
   }
   runLoading.value = true

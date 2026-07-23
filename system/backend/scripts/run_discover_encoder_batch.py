@@ -11,7 +11,7 @@ from pathlib import Path
 
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_ENCODERS = ("magnn_legacy", "magnn", "han", "amdn_hage", "zeyan_coexpression")
+DEFAULT_ENCODERS = ("magnn_legacy", "han", "amdn_hage", "zeyan_coexpression")
 NUMERIC_FIELDS = (
     "modularity",
     "density",

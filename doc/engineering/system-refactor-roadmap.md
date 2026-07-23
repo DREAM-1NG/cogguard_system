@@ -1,4 +1,4 @@
-# CogGuard System Refactor Roadmap
+﻿# CogGuard System Refactor Roadmap
 
 ## Goal
 
@@ -30,7 +30,7 @@ These were installed to support architecture scanning, incremental refactor plan
   - evidence-chain extraction
   - diffusion layout
   - user quality portrait
-- `system/backend/app/core/review/kt3_agent_review.py` mixes provider setup, prompt building, batching, retry policy, and result shaping in one implementation.
+- `system/backend/app/core/review/review_agent_review.py` mixes provider setup, prompt building, batching, retry policy, and result shaping in one implementation.
 - `system/backend/app/services/` contains several orchestration modules that still know too much about concrete data loading and output shaping.
 
 ### Frontend
@@ -63,11 +63,11 @@ Success criteria:
 - Existing propagation and event-scoped tests still pass.
 - Frontend still builds cleanly.
 
-### Phase 2: KT3 Review Module Deepening
+### Phase 2: Review Review Module Deepening
 
 Scope:
 
-- Separate provider adapters, prompt construction, execution planning, retry policy, and payload normalization in `app/core/review/kt3_agent_review.py`.
+- Separate provider adapters, prompt construction, execution planning, retry policy, and payload normalization in `app/core/review/review_agent_review.py`.
 - Reduce direct coupling between risk orchestration and concrete LLM/runtime decisions.
 
 ### Phase 3: Service-Layer Simplification
@@ -97,7 +97,7 @@ Scope:
 - Product behavior changes
 - Database schema changes
 - New dependencies
-- Full KT3 redesign in the same commit as propagation refactor
+- Full Review redesign in the same commit as propagation refactor
 
 ## Verification Standard
 
@@ -106,3 +106,4 @@ For each phase, run fresh verification before claiming completion:
 - Backend: targeted pytest first, then broader dependent tests when touched
 - Frontend: `npm run build`
 - If an extracted seam is not behavior-locked yet, add or extend regression coverage before larger movement
+

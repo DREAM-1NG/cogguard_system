@@ -157,7 +157,7 @@ def build_report(
     fusion_result: FusionResult,
     disarm_result: DisarmResult,
     post_semantics: dict | None = None,
-    kt3_harmfulness: dict | None = None,
+    review_harmfulness: dict | None = None,
 ) -> dict:
     """组装完整风险评估报告。"""
     cfg = _load_scoring_config()
@@ -241,7 +241,7 @@ def build_report(
         },
         "claims": evidence_pack.claims[:20],
         "post_semantics": post_semantics,
-        "kt3_harmfulness": kt3_harmfulness,
+        "review_harmfulness": review_harmfulness,
         "disarm_analysis": {
             "observed_techniques": [
                 {
