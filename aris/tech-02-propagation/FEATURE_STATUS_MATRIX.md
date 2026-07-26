@@ -8,9 +8,9 @@
 
 | 功能项 | 目标能力 | 当前完成度 | 已有能力 / 证据 | 待开发项 |
 |---|---|---|---|---|
-| 规模预测 | 基于早期观测窗口预测未来传播规模、方向和可选置信度 | 部分完成 | 已有随机森林离线 baseline；已有 `ts_features.py`、`trend_predictor.py`、`regime_model.py` 等规模/趋势预测基础 | 统一数据协议；公开数据集评估；与 naive / RF / 文献 baseline 对比；明确是否进入工程 API |
+| 规模预测 | 基于早期观测窗口预测未来传播规模、方向和可选置信度 | 已接入 / 待完整验证 | `KT2SequenceJointModel` 已通过系统接口输出 `predicted_size`、`trend_points`、`direction`；旧速度/加速度体制切换已从公开预测接口清理 | 补充全量实验审计；继续报告 MSLE、MAE、RMSE、MAPE/sMAPE、Direction Accuracy、趋势误差和跨平台泛化 |
 | 角色定位 | 识别协同用户和关键节点的起爆、桥接、扩散、放大等角色，并给出证据 | 已有基础 | `propagation_legacy.py` 可构建 MultiDiGraph，输出关键角色、证据链、关键路径 | 与 KT1 协同用户集合显式联动；角色证据结构化；前端筛选和解释增强 |
-| 下一跳预测 | 在不使用未来信息的前提下，预测下一批可能被激活的用户或传播边 | 待开发 / 实验中 | 已有离线候选边分类 baseline，但更接近 retrospective edge classification | 设计无未来泄漏候选集；实现 Top-K 排序；报告 Candidate Coverage、Hits@K、MRR/MAP；与 Topo-LSTM/TGN/FOREST 等对照 |
+| 下一跳预测 | 在不使用未来信息的前提下，预测下一批可能被激活的用户或传播边 | 已接入 / 待完整验证 | `KT2SequenceJointModel` 已通过当前事件候选集输出 Top-K 用户、候选来源和关联记录；旧 LR 候选边分类仅作历史 baseline | 持续审计候选集覆盖和排序质量；报告 Candidate Recall、Hits@K、MAP@K、MRR、NDCG@K；与 Topo-LSTM/TGN/FOREST/MINDS/DyGFormer 对照 |
 
 ## Auxiliary 能力矩阵
 

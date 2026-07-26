@@ -110,7 +110,6 @@ def test_governance_boundaries_have_unique_adrs_and_explicit_public_modules():
     assert "run_china_pretrained_detect" in coordination_detect.__all__
     assert "crawler" in core.__all__
     assert "propagation_analysis" in core.__all__
-    assert "predict_trend" in propagation_analysis.__all__
     assert "build_propagation_graph" in propagation_analysis.__all__
     assert "social" in crawler.__all__
     assert "news" in crawler.__all__
@@ -170,34 +169,24 @@ def test_current_coordination_service_uses_canonical_facades():
         assert "from app.core.coordination." not in text
 
 
-def test_propagation_analysis_facade_aliases_current_kt2_implementation():
+def test_propagation_analysis_facade_aliases_current_observed_implementation():
     current = importlib.import_module("app.core.propagation")
-    llm_context = importlib.import_module("app.core.propagation.llm_context")
-    regime_model = importlib.import_module("app.core.propagation.regime_model")
-    trend_predictor = importlib.import_module("app.core.propagation.trend_predictor")
-    ts_features = importlib.import_module("app.core.propagation.ts_features")
     facade = importlib.import_module("app.core.propagation_analysis")
 
     assert facade.build_propagation_graph is current.build_propagation_graph
-    assert facade.predict_trend is trend_predictor.predict_trend
-    assert facade.extract_ts_features is ts_features.extract_ts_features
-    assert facade.extract_events is llm_context.extract_events
-    assert facade.compute_regime_posterior is regime_model.compute_regime_posterior
-    assert facade.mixture_forecast is regime_model.mixture_forecast
     assert "app.core.propagation" in (facade.__doc__ or "")
     assert "app.core.propagation_legacy" in (facade.__doc__ or "")
-    assert "independent business logic" in (facade.__doc__ or "")
+    assert "legacy trend-prediction scaffolds" in (facade.__doc__ or "")
 
 
-def test_current_propagation_callers_use_canonical_facade():
+def test_current_propagation_observation_callers_use_canonical_facade():
     root = Path(__file__).resolve().parents[3]
     caller_paths = [
-        root / "system" / "backend" / "app" / "services" / "propagation_service.py",
+        root / "system" / "backend" / "app" / "services" / "propagation_observation_service.py",
         root / "system" / "backend" / "app" / "core" / "coordination" / "characterization.py",
     ]
     legacy_imports = (
         "from app.core.propagation import",
-        "from app.core.propagation.trend_predictor import",
         "from app.core.propagation_legacy import",
     )
 
@@ -211,16 +200,25 @@ def test_propagation_prediction_product_callers_use_method_names():
     root = Path(__file__).resolve().parents[3]
     api_path = root / "system" / "backend" / "app" / "api" / "v1" / "propagation.py"
     service_path = root / "system" / "backend" / "app" / "services" / "propagation_service.py"
+    observation_path = root / "system" / "backend" / "app" / "services" / "propagation_observation_service.py"
+    model_path = root / "system" / "backend" / "app" / "services" / "propagation_model_service.py"
     prediction_path = root / "system" / "backend" / "app" / "services" / "propagation_prediction_service.py"
     shorthand_pattern = re.compile("".join(["K", "T", "[123]"]) + "|" + "".join(["k", "t", "[123]"]))
 
     api_text = api_path.read_text(encoding="utf-8")
     service_text = service_path.read_text(encoding="utf-8")
+    observation_text = observation_path.read_text(encoding="utf-8")
+    model_text = model_path.read_text(encoding="utf-8")
     prediction_text = prediction_path.read_text(encoding="utf-8")
 
-    assert "propagation_prediction_service" in api_text
-    assert "from app.services.propagation_prediction_service import predict_event_macro_micro" in service_text
+    assert "propagation_observation_service" in api_text
+    assert "propagation_model_service" in api_text
+    assert "from app.core.propagation_analysis import build_propagation_graph" in observation_text
+    assert "propagation_prediction_service.predict_event_macro_micro" in model_text
+    assert "Backward-compatible" in service_text
     assert shorthand_pattern.search(api_text) is None
+    assert shorthand_pattern.search(observation_text) is None
+    assert shorthand_pattern.search(model_text) is None
     assert shorthand_pattern.search(prediction_text) is None
 
 

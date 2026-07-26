@@ -25,11 +25,11 @@
 
 ## 方法空间
 
-可选技术包括但不限于：
+当前正式预测路线收敛为 **Macro/Micro Sequence Propagation Prediction**：用同一传播序列状态同时支撑规模趋势预测和下一跳用户排序。方法论上以 MINDS 的多尺度共享表示为主干取向，吸收 FOREST 的宏微观软耦合思想，并用 CasFT 风格的连续趋势头输出未来累计趋势点。
 
-- 传统特征回归、统计时序、点过程、CascadeSwitch 等轻量规模预测方法。
-- HyperIDP、MINDS、FOREST 等多尺度扩散预测模型。
-- Topo-LSTM、TGN、TGAT、CAW、DyGFormer、TGSL 等下一跳或 temporal graph 方法。
+- 规模/趋势预测：以可训练 macro head + 连续趋势 decoder 为正式实现；传统特征回归、统计时序和速度/加速度体制切换仅保留为历史对照或 ablation，不再作为系统公开预测接口。
+- 多尺度扩散：MINDS、FOREST、HyperIDP 作为 macro/micro 统一建模参照。
+- 下一跳预测：当前使用 next-user sampled softmax 和当前事件候选排序；Topo-LSTM、TGN、TGAT、CAW、DyGFormer、TGSL 等作为后续可替换的 temporal graph 强基线。
 - 中心性、结构洞、社区桥接、传播路径证据等角色定位方法。
 
 选择具体方法时，应优先保证任务定义清楚、无未来泄漏、能和现有 baseline 对比，而不是追求一次性实现最复杂模型。
@@ -37,14 +37,16 @@
 ## 当前已有资产
 
 - `propagation_legacy.py`：传播图构建、关键角色、证据链、关键路径回溯。
-- `core/propagation/ts_features.py`、`regime_model.py`、`trend_predictor.py`：规模/趋势预测相关基础实现。
-- `propagation_service.py`、`api/v1/propagation.py`：服务层和接口雏形。
-- 前端传播监控页面：已可展示部分已落地分析结果。
+- `system/backend/app/services/propagation_prediction_service.py`：正式预测方法卡、当前事件 checkpoint 推理、缓存实验结果读取。
+- `subsystems/cogguard_dev/benchmark/adapters/kt2_sequence_joint_model.py`：Macro/Micro sequence joint model，包含 DynamicCasHGNN、RelationGNN、SharedLSTM、Euler trend decoder 和 next-user sampled softmax。
+- `core/propagation/ts_features.py`、`regime_model.py`、`trend_predictor.py`：历史速度/加速度体制切换脚手架，仅作内部对照，不再通过系统传播预测接口暴露。
+- `propagation_model_service.py`、`api/v1/propagation.py`：观测分析与预测模型接口已分离，公开预测入口为当前事件 macro/micro 预测。
+- 前端传播监测页面：已展示传播路径、传播对象、角色分析、时间线和趋势预测页签。
 
 ## 本轮预期交付
 
-- 三项主功能的任务定义、数据协议和 baseline 对齐。
-- 规模预测、角色定位、下一跳预测的最小可运行实验或工程闭环。
+- 三项主功能的任务定义、数据协议和方法边界保持一致。
+- 规模预测、角色定位、下一跳预测的最小工程闭环，以及 macro/micro 预测方法卡。
 - 当前实现与前沿方法的差距说明。
 - 可供前端和 KT3 消费的稳定结构化输出，但不要求一次性固定最终 API 形态。
 

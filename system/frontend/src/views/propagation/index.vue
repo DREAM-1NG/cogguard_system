@@ -5,7 +5,7 @@
   <div class="propagation-page">
     <PageHeader title="传播监测">
       <template #description>
-        展示传播路径、共享对象、关键角色、证据链与时间线预测。
+        展示传播路径、共享对象、角色分析、证据链与传播时间线。
       </template>
     </PageHeader>
 
@@ -17,7 +17,7 @@
           同步数据库传播结果
         </a-button>
         <a-button @click="handlePredict" :loading="predicting">
-          运行模型预测
+          运行趋势预测
         </a-button>
       </a-space>
       <span v-if="lastSyncedAt" class="sync-hint">最近同步：{{ lastSyncedAt }}</span>
@@ -177,7 +177,7 @@
         </a-card>
       </a-tab-pane>
 
-      <a-tab-pane key="model" tab="模型预测">
+      <a-tab-pane key="model" tab="趋势预测">
         <template v-if="modelPredictionReady">
           <a-row :gutter="12" style="margin-bottom: 16px">
             <a-col v-for="item in modelForecastCards" :key="item.key" :xs="24" :sm="8">
@@ -193,13 +193,9 @@
               <a-descriptions-item label="趋势方向">{{ modelDirectionLabel }}</a-descriptions-item>
               <a-descriptions-item label="预测置信度">{{ formatPercent(modelPrediction?.macro?.confidence_like_score) }}</a-descriptions-item>
               <a-descriptions-item label="模型名称">{{ modelPrediction?.model?.name || 'Ours' }}</a-descriptions-item>
-              <a-descriptions-item label="训练来源">{{ modelPrediction?.model?.dataset || 'twitter' }}</a-descriptions-item>
+              <a-descriptions-item label="参考数据">{{ modelPrediction?.model?.dataset || 'twitter' }}</a-descriptions-item>
             </a-descriptions>
-            <div class="trend-point-list">
-              <a-tag v-for="item in modelPrediction?.macro?.trend_points || []" :key="item.step" color="blue">
-                第 {{ item.step }} 步：{{ item.predicted_size }}
-              </a-tag>
-            </div>
+            <div ref="modelTrendChartRef" class="model-trend-chart" />
           </a-card>
           <a-card size="small" title="下一跳预测 Top-K" style="margin-bottom: 16px">
             <a-table
@@ -208,7 +204,28 @@
               :pagination="false"
               size="small"
               rowKey="author_id"
-            />
+              :customRow="nextHopRowProps"
+            >
+              <template #bodyCell="{ column, record }">
+                <template v-if="column.key === 'author'">
+                  <a-button type="link" class="table-link-button" @click.stop="openNextHopTrace(record as NextHopUser)">
+                    {{ (record as NextHopUser).author_name || (record as NextHopUser).author_id || '--' }}
+                  </a-button>
+                </template>
+                <template v-else-if="column.key === 'source'">
+                  <a-tag color="blue">{{ candidateSourceLabel((record as NextHopUser).candidate_source) }}</a-tag>
+                </template>
+                <template v-else-if="column.key === 'last_seen'">
+                  {{ formatTimestamp((record as NextHopUser).last_seen_at) }}
+                </template>
+                <template v-else-if="column.key === 'action'">
+                  <a-space>
+                    <a-button size="small" type="link" @click.stop="openNextHopTrace(record as NextHopUser)">查看依据</a-button>
+                    <a-button size="small" type="link" @click.stop="locateNextHopOnPath(record as NextHopUser)">回到路径</a-button>
+                  </a-space>
+                </template>
+              </template>
+            </a-table>
           </a-card>
         </template>
       </a-tab-pane>
@@ -342,6 +359,41 @@
         <a-empty v-else description="暂无关键路径证据" :image-style="{ height: '32px' }" />
       </template>
     </a-drawer>
+
+    <a-drawer v-model:open="nextHopDetailOpen" width="680" title="下一跳研判详情" placement="right">
+      <template v-if="selectedNextHopUser">
+        <a-descriptions size="small" :column="1" bordered style="margin-bottom: 16px">
+          <a-descriptions-item label="用户名">{{ selectedNextHopUser.author_name || selectedNextHopUser.author_id }}</a-descriptions-item>
+          <a-descriptions-item label="用户 ID">{{ selectedNextHopUser.author_id }}</a-descriptions-item>
+          <a-descriptions-item label="预测分数">{{ formatScore(selectedNextHopUser.score) }}</a-descriptions-item>
+          <a-descriptions-item label="候选来源">{{ candidateSourceLabel(selectedNextHopUser.candidate_source) }}</a-descriptions-item>
+          <a-descriptions-item label="当前事件出现次数">{{ selectedNextHopUser.event_count ?? 0 }}</a-descriptions-item>
+          <a-descriptions-item label="最近出现">{{ formatTimestamp(selectedNextHopUser.last_seen_at) }}</a-descriptions-item>
+        </a-descriptions>
+
+        <a-space style="margin-bottom: 16px">
+          <a-button type="primary" size="small" @click="locateNextHopOnPath(selectedNextHopUser)">回到传播路径</a-button>
+          <a-button size="small" @click="openNodeDetail(selectedNextHopUser.author_id)">查看节点详情</a-button>
+        </a-space>
+
+        <div class="section-title">关联记录</div>
+        <a-list v-if="selectedNextHopUser.evidence_refs?.length" :dataSource="selectedNextHopUser.evidence_refs" size="small">
+          <template #renderItem="{ item }">
+            <a-list-item>
+              <div>
+                <a-space wrap>
+                  <a-tag>{{ candidateSourceLabel(item.candidate_source) }}</a-tag>
+                  <span class="timeline-time">{{ formatTimestamp(item.timestamp) }}</span>
+                </a-space>
+                <p class="timeline-content">{{ item.content || '暂无文本摘要' }}</p>
+                <a v-if="item.url" :href="item.url" target="_blank" rel="noopener noreferrer">{{ item.url }}</a>
+              </div>
+            </a-list-item>
+          </template>
+        </a-list>
+        <a-empty v-else description="暂无关联记录" :image-style="{ height: '32px' }" />
+      </template>
+    </a-drawer>
   </div>
 </template>
 <script setup lang="ts">
@@ -350,7 +402,7 @@ import { useRoute } from 'vue-router'
 import { message } from 'ant-design-vue'
 import * as echarts from 'echarts'
 import type { EChartsOption } from 'echarts'
-import { analyzePropagation, predictPropagationEventModel } from '@/api/propagation'
+import { analyzeObservedPropagation, predictPropagationCurrentEvent } from '@/api/propagation'
 import PageHeader from '@/components/PageHeader.vue'
 
 const DEFAULT_EVENT_ID = 'trump_visit_2026_05_21'
@@ -551,12 +603,26 @@ type ModelTrendPoint = {
   predicted_size: number
 }
 
+type NextHopEvidenceRef = {
+  post_id?: string
+  timestamp?: string
+  content?: string
+  url?: string
+  candidate_source?: string
+}
+
 type NextHopUser = {
   rank: number
   author_id: string
   author_name?: string
   score?: number
   candidate_source?: string
+  event_count?: number
+  first_seen_at?: string
+  last_seen_at?: string
+  source_counts?: Record<string, number>
+  evidence_refs?: NextHopEvidenceRef[]
+  trace_available?: boolean
 }
 
 type EventModelPrediction = {
@@ -607,6 +673,8 @@ const selectedClaimPathDetail = ref<ClaimPathDetail | null>(null)
 const claimPathDetailOpen = ref(false)
 const selectedNodeDetail = ref<DiffusionNodeDetail | null>(null)
 const nodeDetailOpen = ref(false)
+const selectedNextHopUser = ref<NextHopUser | null>(null)
+const nextHopDetailOpen = ref(false)
 const lastSyncedAt = ref('')
 const eventId = ref(DEFAULT_EVENT_ID)
 const platform = ref('')
@@ -618,8 +686,10 @@ const diffusionFullViewRequested = ref(false)
 const route = useRoute()
 const layerChartRef = ref<HTMLDivElement | null>(null)
 const pathGraphRef = ref<HTMLDivElement | null>(null)
+const modelTrendChartRef = ref<HTMLDivElement | null>(null)
 let layerChart: echarts.ECharts | null = null
 let pathGraphChart: echarts.ECharts | null = null
+let modelTrendChart: echarts.ECharts | null = null
 
 const analysisReady = computed(() => !!analysisResult.value && !analysisResult.value.error)
 const keyRoles = computed(() => analysisResult.value?.key_roles ?? null)
@@ -746,7 +816,7 @@ const modelForecastCards = computed(() => {
       key: 'predicted',
       label: '预测最终规模',
       value: formatNumber(macro.predicted_size),
-      extra: `训练来源：${modelPrediction.value?.model?.dataset || 'twitter'}`,
+      extra: `参考数据：${modelPrediction.value?.model?.dataset || 'twitter'}`,
     },
     {
       key: 'candidate',
@@ -768,7 +838,7 @@ const nextHopColumns = computed(() => [
   {
     title: '用户名',
     dataIndex: 'author_name',
-    customRender: ({ record }: { record: NextHopUser }) => record.author_name || record.author_id || '--',
+    key: 'author',
   },
   {
     title: '用户 ID',
@@ -780,9 +850,24 @@ const nextHopColumns = computed(() => [
     customRender: ({ record }: { record: NextHopUser }) => formatScore(record.score),
   },
   {
+    title: '事件出现',
+    dataIndex: 'event_count',
+    customRender: ({ record }: { record: NextHopUser }) => formatNumber(record.event_count),
+  },
+  {
     title: '候选来源',
     dataIndex: 'candidate_source',
-    customRender: ({ record }: { record: NextHopUser }) => candidateSourceLabel(record.candidate_source),
+    key: 'source',
+  },
+  {
+    title: '最近出现',
+    dataIndex: 'last_seen_at',
+    key: 'last_seen',
+  },
+  {
+    title: '操作',
+    key: 'action',
+    width: 150,
   },
 ])
 
@@ -841,6 +926,35 @@ function candidateSourceLabel(value?: string) {
     shared_object: '同共享对象参与者',
   }
   return labels[value || ''] || value || '--'
+}
+
+function nextHopRowProps(record: NextHopUser) {
+  return {
+    class: 'clickable-table-row',
+    onClick: () => openNextHopTrace(record),
+  }
+}
+
+function openNextHopTrace(record: NextHopUser) {
+  selectedNextHopUser.value = record
+  nextHopDetailOpen.value = true
+}
+
+async function locateNextHopOnPath(record: NextHopUser) {
+  const nodeId = String(record?.author_id || '').trim()
+  if (!nodeId) return
+  nextHopDetailOpen.value = false
+  activeTab.value = 'path'
+  await nextTick()
+  await renderPathTabCharts()
+  openNodeDetail(nodeId)
+  const nodes = diffusionSummary.value?.visible_nodes ?? []
+  const dataIndex = nodes.findIndex((node) => String(node.id) === nodeId)
+  if (dataIndex >= 0 && pathGraphChart) {
+    pathGraphChart.dispatchAction({ type: 'downplay', seriesIndex: 0 })
+    pathGraphChart.dispatchAction({ type: 'highlight', seriesIndex: 0, dataIndex })
+    pathGraphChart.dispatchAction({ type: 'showTip', seriesIndex: 0, dataIndex })
+  }
 }
 
 function normalizeLayerRows(rows: LayerRow[]) {
@@ -916,6 +1030,79 @@ function buildLayerOption(rows: LayerRow[]): EChartsOption {
           color: '#d7e51f',
           borderRadius: [6, 6, 0, 0],
         },
+      },
+    ],
+  }
+}
+
+function buildModelTrendOption(): EChartsOption {
+  const macro = modelPrediction.value?.macro ?? {}
+  const observedSize = Number(macro.observed_size ?? 0)
+  const trendPoints = (macro.trend_points ?? []).map((item, index) => ({
+    label: `预测${item.step || index + 1}`,
+    value: Number(item.predicted_size ?? 0),
+  }))
+  if (!trendPoints.length && macro.predicted_size != null) {
+    trendPoints.push({ label: '预测最终', value: Number(macro.predicted_size) })
+  }
+  const labels = ['已观测', ...trendPoints.map((item) => item.label)]
+  const predictedData = [observedSize, ...trendPoints.map((item) => Math.max(observedSize, item.value))]
+  const observedData = [observedSize, ...trendPoints.map(() => null)]
+
+  return {
+    backgroundColor: 'transparent',
+    grid: {
+      left: 48,
+      right: 24,
+      top: 34,
+      bottom: 34,
+    },
+    tooltip: {
+      trigger: 'axis',
+      formatter: (params: any) => {
+        const rows = Array.isArray(params) ? params : []
+        return rows
+          .filter((item) => item.value != null)
+          .map((item) => `${item.marker}${item.seriesName}：${formatNumber(Number(item.value))}`)
+          .join('<br/>')
+      },
+    },
+    legend: {
+      top: 4,
+      right: 12,
+      data: ['已观测规模', '预测趋势'],
+    },
+    xAxis: {
+      type: 'category',
+      boundaryGap: false,
+      data: labels,
+      axisLabel: { color: '#64748b' },
+      axisLine: { lineStyle: { color: '#cbd5e1' } },
+    },
+    yAxis: {
+      type: 'value',
+      min: 0,
+      axisLabel: { color: '#64748b' },
+      splitLine: { lineStyle: { color: 'rgba(148, 163, 184, 0.25)' } },
+    },
+    series: [
+      {
+        name: '已观测规模',
+        type: 'line',
+        data: observedData,
+        symbolSize: 9,
+        lineStyle: { width: 0 },
+        itemStyle: { color: '#0891b2' },
+      },
+      {
+        name: '预测趋势',
+        type: 'line',
+        smooth: true,
+        data: predictedData,
+        symbolSize: 7,
+        lineStyle: { width: 3, color: '#2563eb' },
+        itemStyle: { color: '#2563eb' },
+        areaStyle: { color: 'rgba(37, 99, 235, 0.1)' },
       },
     ],
   }
@@ -1397,14 +1584,36 @@ async function renderPathGraph() {
   pathGraphChart.resize()
 }
 
+async function renderModelTrendChart() {
+  await nextTick()
+  if (activeTab.value !== 'model' || !modelPredictionReady.value) return
+  if (!modelTrendChartRef.value || modelTrendChartRef.value.offsetWidth === 0 || modelTrendChartRef.value.offsetHeight === 0) return
+  if (!modelTrendChart) {
+    modelTrendChart = echarts.init(modelTrendChartRef.value)
+  }
+  modelTrendChart.setOption(buildModelTrendOption(), true)
+  modelTrendChart.resize()
+}
+
 function resizeCharts() {
   layerChart?.resize()
   pathGraphChart?.resize()
+  modelTrendChart?.resize()
 }
 
 async function renderPathTabCharts() {
   if (activeTab.value !== 'path') return
   await Promise.all([renderLayerChart(), renderPathGraph()])
+}
+
+async function renderActiveTabCharts() {
+  if (activeTab.value === 'path') {
+    await renderPathTabCharts()
+    return
+  }
+  if (activeTab.value === 'model') {
+    await renderModelTrendChart()
+  }
 }
 
 function inferClaimType(value: string) {
@@ -1476,7 +1685,7 @@ function syncScopeFromRoute() {
 async function loadAnalysis(showToast = false) {
   analyzing.value = true
   try {
-    const res = (await analyzePropagation(requestParams.value)) as { data: AnalysisResult }
+    const res = (await analyzeObservedPropagation(requestParams.value)) as { data: AnalysisResult }
     analysisResult.value = res.data
 
     if (res.data.error) {
@@ -1528,11 +1737,12 @@ async function showFullDiffusionGraph() {
 async function handlePredict() {
   predicting.value = true
   try {
-    const res = (await predictPropagationEventModel({ ...requestParams.value, top_k: 10 })) as { data: EventModelPrediction }
+    const res = (await predictPropagationCurrentEvent({ ...requestParams.value, top_k: 10 })) as { data: EventModelPrediction }
     const result = res.data
     if (result?.status === 'ok' && result?.model_status === 'available') {
       modelPrediction.value = result
       activeTab.value = 'model'
+      await renderModelTrendChart()
     } else {
       modelPrediction.value = null
     }
@@ -1575,13 +1785,14 @@ watch(diffusionSummary, () => {
 })
 
 watch(activeTab, () => {
-  void renderPathTabCharts()
+  void renderActiveTabCharts()
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('resize', resizeCharts)
   layerChart?.dispose()
   pathGraphChart?.dispose()
+  modelTrendChart?.dispose()
 })
 </script>
 
@@ -1781,6 +1992,24 @@ onBeforeUnmount(() => {
   margin-top: 10px;
   color: #595959;
   font-size: 12px;
+}
+
+.model-trend-chart {
+  width: 100%;
+  height: 280px;
+  margin-top: 14px;
+}
+
+.table-link-button {
+  padding: 0;
+}
+
+:deep(.clickable-table-row) {
+  cursor: pointer;
+}
+
+:deep(.clickable-table-row:hover) {
+  background: #f0f9ff;
 }
 
 </style>

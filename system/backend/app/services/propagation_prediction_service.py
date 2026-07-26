@@ -10,6 +10,7 @@ not used by the frontend by default because it trains a model on request.
 from __future__ import annotations
 
 import asyncio
+import copy
 import importlib
 import json
 import sys
@@ -38,6 +39,114 @@ MINDS_MODEL_NAME = "MINDS"
 LEGACY_SEQUENCE_ADAPTER_NAME = "_".join(["k" + "t2", "sequence", "joint", "model"])
 SEQUENCE_ADAPTER_MODULE = ".".join(["benchmark", "adapters", LEGACY_SEQUENCE_ADAPTER_NAME])
 SEQUENCE_RUNNER_NAME = "run_" + LEGACY_SEQUENCE_ADAPTER_NAME
+
+PREDICTION_METHODOLOGY = {
+    "schema": "cogguard.propagation.methodology.macro_micro_sequence.v1",
+    "method_name": "Macro/Micro Sequence Propagation Prediction",
+    "task_definition": {
+        "macro": "Given an observed cascade prefix, predict future cumulative growth and final propagation size.",
+        "micro": "Given the same observed prefix and a legal candidate set, rank likely next-hop users.",
+        "scope": "current event observed data only; prediction results are estimates, not observed facts.",
+    },
+    "data_flow": [
+        "Load event-scoped posts and comments from raw_posts/raw_comments.",
+        "Sort observed user events by timestamp to form a cascade prefix sequence.",
+        "Hash real user ids into stable train-time user buckets while preserving author_id/author_name mappings for output.",
+        "Build relation-neighbor and dynamic-cascade hypergraph tensors from observed prefix users.",
+        "Run the sequence model once for macro trend/final-size outputs and micro next-hop logits.",
+        "Map bucket-level scores back to real current-event candidate users and attach trace records.",
+    ],
+    "model_components": {
+        "shared_backbone": [
+            "RelationGNN over train-time transition neighbors",
+            "DynamicCasHGNN over observed cascade hyperedges",
+            "SharedLSTM over timestamped observed user sequence",
+            "shared projection state split into macro-private and micro-private representations",
+        ],
+        "macro_branch": [
+            "final-size growth head predicts non-negative growth above observed size",
+            "Euler latent trend decoder predicts monotonic future cumulative checkpoints",
+        ],
+        "micro_branch": [
+            "next-user autoregressive sampled softmax during training",
+            "current-event candidate ranking during system inference",
+        ],
+        "coupling": [
+            "FOREST-style soft consistency between expected micro rollout growth and macro growth",
+            "adversarial stage objective and macro/micro representation orthogonality for task separation",
+        ],
+    },
+    "training_objectives": {
+        "final_size": "MSE on log final cascade size",
+        "trend": "MSE on log future cumulative trend checkpoints",
+        "next_user": "cross entropy over positive next user plus sampled negatives",
+        "soft_coupling": "MSE between log macro growth and expected micro rollout growth",
+        "regularization": "adversarial stage loss plus macro/micro orthogonality",
+        "normalization": "losses are averaged per cascade before batch aggregation to avoid candidate-token dominance",
+    },
+    "inference_outputs": {
+        "macro": ["observed_size", "predicted_size", "trend_points", "direction", "confidence_like_score"],
+        "micro": ["top_users", "candidate_count", "rollout_steps", "candidate_source", "evidence_refs"],
+    },
+    "leakage_boundary": {
+        "observed_input_only": True,
+        "candidate_features_used_as_model_input": False,
+        "future_nodes_injected": False,
+        "legacy_speed_acceleration_scaffold": "not used by public prediction endpoints",
+    },
+    "research_alignment": [
+        {
+            "name": "MINDS",
+            "venue": "AAAI 2024",
+            "paper_url": "https://ojs.aaai.org/index.php/AAAI/article/view/28701",
+            "code_url": "https://github.com/cspjiao/MINDS",
+            "transferred_pattern": "macro/micro multi-task prediction with dynamic cascade representation and task disentanglement",
+            "boundary": "the system model is a migration/simplification, not a line-by-line MINDS reproduction",
+        },
+        {
+            "name": "FOREST",
+            "venue": "IJCAI 2019",
+            "paper_url": "https://www.ijcai.org/proceedings/2019/0560.pdf",
+            "code_url": "https://github.com/yangchengbupt/FOREST",
+            "transferred_pattern": "macro/micro coupling where micro rollout provides auxiliary signal for macro growth",
+            "boundary": "the original reinforcement-learning reward is not reproduced in the system checkpoint",
+        },
+        {
+            "name": "CasFT",
+            "venue": "AAAI 2025",
+            "paper_url": "https://arxiv.org/abs/2409.16619",
+            "code_url": "https://github.com/UM-Data-Intelligence-Lab/CasFT",
+            "transferred_pattern": "future trend modeling with continuous latent dynamics and monotonic cumulative checkpoints",
+            "boundary": "the full diffusion future-trend generator is not reproduced in the system checkpoint",
+        },
+    ],
+    "legacy_cleanup": {
+        "removed_public_interfaces": ["POST /api/v1/propagation/predict-trend"],
+        "retained_internal_modules": [
+            "app.core.propagation.trend_predictor",
+            "app.core.propagation.ts_features",
+            "app.core.propagation.regime_model",
+        ],
+        "retention_reason": "historical tests and ablation/reference code only; not part of the public prediction path",
+    },
+}
+
+
+def prediction_methodology(
+    *,
+    source: str,
+    checkpoint: str | None = None,
+    protocol: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Return a structured method card for the active propagation predictor."""
+
+    methodology = copy.deepcopy(PREDICTION_METHODOLOGY)
+    methodology["runtime"] = {
+        "source": source,
+        "checkpoint": checkpoint,
+        "protocol": protocol or {},
+    }
+    return methodology
 
 
 async def predict_propagation_macro_micro(
@@ -121,6 +230,15 @@ def _predict_event_macro_micro_sync(
         "macro": result.get("macro") or {},
         "micro": result.get("micro") or {},
         "model": result.get("model") or {},
+        "methodology": prediction_methodology(
+            source="current_event_checkpoint",
+            checkpoint=str((result.get("model") or {}).get("checkpoint") or PROPAGATION_TWITTER_CHECKPOINT),
+            protocol={
+                "top_k": top_k,
+                "checkpoint_dataset": (result.get("model") or {}).get("dataset", "twitter"),
+                "adapter_methodology": (result.get("model") or {}).get("methodology"),
+            },
+        ),
     }
 
 
@@ -277,7 +395,13 @@ def _format_result(
         "full_validation_passed": full_validation_passed,
         "boundary": boundary
         or "Propagation prediction is displayed as experimental evidence and must not be treated as confirmed future fact.",
-        "methodology": primary.get("methodology"),
+        "methodology": prediction_methodology(
+            source=source,
+            protocol={
+                **protocol,
+                "cached_adapter_methodology": primary.get("methodology"),
+            },
+        ),
         "macro": {
             "target": protocol.get("macro_target", "final_size_plus_future_cumulative_trend"),
             "metrics": _aggregate_metrics(
@@ -362,6 +486,7 @@ def _missing_result(
         "label": "实验预测",
         "is_experimental": True,
         "note": note,
+        "methodology": prediction_methodology(source=source, checkpoint=artifact),
     }
     if raw_result is not None:
         result["raw_result"] = raw_result

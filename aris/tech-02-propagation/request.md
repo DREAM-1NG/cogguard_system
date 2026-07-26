@@ -19,8 +19,8 @@
 
 | 子问题 | 学术任务 | 时间属性 | 当前状态 | 目标定位 |
 |---|---|---|---|---|
-| 事件规模预测 | Macroscopic cascade / popularity prediction | 预测未来规模 | 部分落地：已有随机森林离线 baseline | KT2 核心研究功能，应对齐事件驱动、非平稳传播预测 |
-| 下一节点 / 下一跳预测 | Microscopic diffusion prediction / temporal link prediction | 预测未来参与者或边 | 未完成产品级功能：已有离线候选边分类 baseline | 功能创新扩展，应建立无未来泄漏的前瞻预测协议 |
+| 事件规模预测 | Macroscopic cascade / popularity prediction | 预测未来规模 | 已接入可训练 macro/micro sequence 模型；旧速度/加速度体制切换接口已从公开预测路径清理 | 核心研究功能，应对齐多尺度扩散预测和未来趋势建模 |
+| 下一节点 / 下一跳预测 | Microscopic diffusion prediction / temporal link prediction | 预测未来参与者或边 | 已接入当前事件 Top-K 用户排序；旧离线候选边分类仅作历史 baseline | 功能扩展，应持续保持无未来泄漏的前瞻预测协议 |
 | 协同用户角色判定与证据追溯 | Propagation role identification / provenance on observed cascades | 解释已发生传播 | 已落地：传播图中心性角色 + 证据链回溯 | 工程支撑功能，应固化并与协同检测结果联动 |
 
 本轮后续开发不应再把“已有 baseline 指标”直接表述为“核心功能已完成”。代码开发应首先修正任务定义与评价协议，再选择具体实现方案。
@@ -40,16 +40,17 @@
 
 现有实现：
 
-- `subsystems/cogguard_dev` 中已有离线规模预测 baseline。
-- 方法是基于早期观测子图的结构和时间特征训练 `RandomForestRegressor`，预测最终节点数。
-- 验证主要报告 `MAE / RMSE / MAPE / R2`，可作为传统监督学习 baseline。
+- `subsystems/cogguard_dev/benchmark/adapters/kt2_sequence_joint_model.py` 中已有可训练 Macro/Micro sequence joint model。
+- 系统公开预测入口加载本地 Twitter checkpoint，对当前事件观测级联输出 `observed_size`、`predicted_size`、`trend_points`、`direction` 和置信度近似分数。
+- 旧 `ts_features.py`、`regime_model.py`、`trend_predictor.py` 中的速度/加速度体制切换预测仅保留为内部历史脚手架，不再作为传播预测公开接口。
+- 随机森林、Temporal、速度/加速度规则等只作为 baseline/ablation，不作为正式系统预测能力。
 
 主要差距：
 
-- 该实现回答的是“早期结构特征能否回归最终规模”，但没有体现主设计文档中的 **CascadeSwitch / 事件条件体制切换** 思路。
-- 当前方法缺少对传播非平稳性的显式建模，也没有区分 `seeding / amplification / peak / decay` 等传播阶段。
-- LLM 或事件抽取尚未作为外生上下文进入预测过程。
-- 评价协议尚未充分对齐级联预测文献常用设定，例如不同 `t_obs`、不同 `t_pred`、MSLE、direction accuracy、跨平台泛化和消融实验。
+- 当前系统模型是对 MINDS / FOREST / CasFT 思想的工程化迁移，不等于这些论文的完整复现。
+- Macro 分支已有连续趋势点输出，但尚未实现 CasFT 原始 diffusion future trend generator。
+- 当前事件推理默认复用本地 Twitter checkpoint，跨平台泛化仍需要通过 Douban/Twitter/Memetracker 等实验结果审计。
+- 评价协议应持续报告不同 `t_obs`、MSLE、MAE、RMSE、MAPE/sMAPE、direction accuracy、趋势误差和 macro/micro consistency。
 
 目标问题：
 
@@ -57,24 +58,23 @@
 
 开发约束：
 
-- 不预设唯一模型；组员可以在 CascadeSwitch、HyperIDP、MINDS、FOREST、CasFT、ConCat、CasDO 等路线中选择或组合，但必须解释其如何服务规模预测。
-- LLM、事件抽取、图模型、点过程、Transformer、传统回归都可以作为实现选择；文档只约束任务定义、评估协议和 baseline 对照。
+- 正式实现应围绕 macro/micro sequence 方法卡推进；HyperIDP、MINDS、FOREST、CasFT、ConCat、CasDO 等路线作为复现或替换候选，但必须解释其如何服务规模预测。
+- LLM、事件抽取、图模型、点过程、Transformer、传统回归都可以作为对照或扩展选择；文档约束任务定义、评估协议、无泄漏边界和 baseline 对照。
 - 必须保留与简单统计、特征回归和当前随机森林 baseline 的对比，避免把复杂模型收益写成默认事实。
 
 ### 2.2 下一节点 / 下一跳预测
 
 现有实现：
 
-- `subsystems/cogguard_dev` 中已有路径预测实验。
-- 方法是：给定未来 child 和候选 parent，用 `LogisticRegression` 判断候选 parent-child 是否为真实边。
-- 输出主要是全局 `AUC / Average Precision`。
+- `subsystems/cogguard_dev/benchmark/adapters/kt2_sequence_joint_model.py` 中已有 next-user sampled softmax 微观分支。
+- 系统公开预测入口将当前事件帖子/评论构造成观测用户序列，对当前事件候选用户输出 Top-K 排序、预测分数、候选来源和关联记录。
+- 旧 `LogisticRegression` 候选边分类只保留为 retrospective baseline，不进入正式系统预测链路。
 
 主要差距：
 
-- 这更接近离线边分类评估，不等价于线上“下一节点 / 下一跳传播预测”。
-- 当前样本构造使用 future child，并在候选集中补入真实 parent，因此不满足严格前瞻预测协议。
-- 现有报告没有区分候选集生成质量和候选排序质量。
-- 现有功能没有事件级 Top-K 预测对象，因此不能直接被传播监控页面或报告研判消费。
+- 当前 micro 分支是用户级下一跳排序，不是 DyGFormer/TGN 级 temporal graph link prediction 完整复现。
+- 当前候选集主要来自当前事件观测用户及其可解释来源，候选覆盖和排序质量仍需在公开数据集上持续报告。
+- 系统页面已能消费事件级 Top-K 预测对象，但仍需继续强化候选来源解释、路径联动和无泄漏审计。
 
 目标问题：
 

@@ -6,7 +6,15 @@ from httpx import AsyncClient
 
 from app.core.security import get_current_user_or_local_preview
 from app.main import app
-from app.services import account_service, coordination_service, propagation_prediction_service, propagation_service, risk_service
+from app.services import (
+    account_service,
+    coordination_service,
+    propagation_model_service,
+    propagation_observation_service,
+    propagation_prediction_service,
+    propagation_service,
+    risk_service,
+)
 from app.api.v1 import coordination as coordination_api
 from app.api.v1 import propagation as propagation_api
 from app.api.v1 import risk as risk_api
@@ -429,9 +437,9 @@ def test_propagation_analysis_filters_posts_and_comments_by_event(monkeypatch):
     raw_posts = FakeCollection(posts)
     raw_comments = FakeCollection(comments)
     fake_db = FakeMongoDB(raw_posts=raw_posts, raw_comments=raw_comments)
-    monkeypatch.setattr(propagation_service, "get_mongo_db", lambda: fake_db)
+    monkeypatch.setattr(propagation_observation_service, "get_mongo_db", lambda: fake_db)
     monkeypatch.setattr(
-        propagation_service,
+        propagation_observation_service,
         "build_propagation_graph",
         lambda loaded_posts, loaded_comments: {
             "graph": {"node_count": len(loaded_posts), "edge_count": len(loaded_comments)},
@@ -441,7 +449,9 @@ def test_propagation_analysis_filters_posts_and_comments_by_event(monkeypatch):
         },
     )
 
-    result = asyncio.run(propagation_service.analyze_propagation(platform="douyin", event_id="event-1"))
+    result = asyncio.run(
+        propagation_observation_service.analyze_observed_propagation(platform="douyin", event_id="event-1")
+    )
 
     assert raw_posts.calls[0]["query"] == {"event_id": "event-1", "platform": "douyin"}
     assert raw_comments.calls[0]["query"] == {"event_id": "event-1", "platform": "douyin"}
@@ -532,25 +542,22 @@ def test_coordination_api_accepts_cluster_enriched_payload(monkeypatch):
     assert payload["data"]["network"]["clusters"][0]["cluster_id"] == 0
 
 
-def test_propagation_api_passes_event_id_to_services(monkeypatch):
+def test_propagation_api_passes_event_id_to_observed_analysis(monkeypatch):
     calls = {}
 
     async def fake_analyze_propagation(platform=None, event_id=None):
         calls["analyze"] = {"platform": platform, "event_id": event_id}
         return {}
 
-    async def fake_predict_propagation_trend(platform=None, event_id=None):
-        calls["predict"] = {"platform": platform, "event_id": event_id}
-        return {}
-
-    monkeypatch.setattr(propagation_api.propagation_service, "analyze_propagation", fake_analyze_propagation)
-    monkeypatch.setattr(propagation_api.propagation_service, "predict_propagation_trend", fake_predict_propagation_trend)
+    monkeypatch.setattr(
+        propagation_api.propagation_observation_service,
+        "analyze_observed_propagation",
+        fake_analyze_propagation,
+    )
 
     asyncio.run(propagation_api.analyze(platform="douyin", event_id="event-1", _current_user=object()))
-    asyncio.run(propagation_api.predict_trend(platform="douyin", event_id="event-1", _current_user=object()))
 
     assert calls["analyze"] == {"platform": "douyin", "event_id": "event-1"}
-    assert calls["predict"] == {"platform": "douyin", "event_id": "event-1"}
 
 
 def test_propagation_model_event_reads_current_event_data(monkeypatch):
@@ -565,7 +572,7 @@ def test_propagation_model_event_reads_current_event_data(monkeypatch):
     raw_posts = FakeCollection(posts)
     raw_comments = FakeCollection(comments)
     fake_db = FakeMongoDB(raw_posts=raw_posts, raw_comments=raw_comments)
-    monkeypatch.setattr(propagation_service, "get_mongo_db", lambda: fake_db)
+    monkeypatch.setattr(propagation_model_service, "get_mongo_db", lambda: fake_db)
 
     async def fake_predict_event_macro_micro(*, posts, comments=None, top_k=10):
         return {
@@ -576,10 +583,14 @@ def test_propagation_model_event_reads_current_event_data(monkeypatch):
             "model": {"name": "Ours"},
         }
 
-    monkeypatch.setattr(propagation_service, "predict_event_macro_micro", fake_predict_event_macro_micro)
+    monkeypatch.setattr(
+        propagation_model_service.propagation_prediction_service,
+        "predict_event_macro_micro",
+        fake_predict_event_macro_micro,
+    )
 
     result = asyncio.run(
-        propagation_service.predict_propagation_model_event(
+        propagation_model_service.predict_current_event_model(
             event_id="event-1",
             platform="weibo",
             top_k=5,
@@ -591,6 +602,7 @@ def test_propagation_model_event_reads_current_event_data(monkeypatch):
     assert result["status"] == "ok"
     assert result["data_scope"] == {"posts": 3, "comments": 1}
     assert result["micro"]["top_users"][0]["author_id"] == "u2"
+    assert result["methodology"]["schema"] == "cogguard.propagation.methodology.macro_micro_sequence.v1"
 
 
 def test_propagation_api_passes_event_model_prediction_params(monkeypatch):
@@ -598,11 +610,15 @@ def test_propagation_api_passes_event_model_prediction_params(monkeypatch):
 
     async def fake_predict_propagation_model_event(platform=None, event_id=None, top_k=10):
         calls.update({"platform": platform, "event_id": event_id, "top_k": top_k})
-        return {"status": "ok", "model_status": "available"}
+        return {
+            "status": "ok",
+            "model_status": "available",
+            "methodology": {"method_name": "Macro/Micro Sequence Propagation Prediction"},
+        }
 
     monkeypatch.setattr(
-        propagation_api.propagation_service,
-        "predict_propagation_model_event",
+        propagation_api.propagation_model_service,
+        "predict_current_event_model",
         fake_predict_propagation_model_event,
     )
 
@@ -617,6 +633,7 @@ def test_propagation_api_passes_event_model_prediction_params(monkeypatch):
 
     assert calls == {"platform": "weibo", "event_id": "event-1", "top_k": 7}
     assert payload["data"]["model_status"] == "available"
+    assert payload["data"].get("methodology", {}).get("method_name") == "Macro/Micro Sequence Propagation Prediction"
 
 
 def test_propagation_api_accepts_local_preview_dependency(monkeypatch):
@@ -629,12 +646,20 @@ def test_propagation_api_accepts_local_preview_dependency(monkeypatch):
         calls["analyze"] = {"platform": platform, "event_id": event_id}
         return {"event_id": event_id, "platform": platform}
 
-    async def fake_predict_propagation_trend(platform=None, event_id=None):
-        calls["predict"] = {"platform": platform, "event_id": event_id}
+    async def fake_predict_current_event_model(platform=None, event_id=None, top_k=10):
+        calls["predict"] = {"platform": platform, "event_id": event_id, "top_k": top_k}
         return {"event_id": event_id, "platform": platform}
 
-    monkeypatch.setattr(propagation_api.propagation_service, "analyze_propagation", fake_analyze_propagation)
-    monkeypatch.setattr(propagation_api.propagation_service, "predict_propagation_trend", fake_predict_propagation_trend)
+    monkeypatch.setattr(
+        propagation_api.propagation_observation_service,
+        "analyze_observed_propagation",
+        fake_analyze_propagation,
+    )
+    monkeypatch.setattr(
+        propagation_api.propagation_model_service,
+        "predict_current_event_model",
+        fake_predict_current_event_model,
+    )
     app.dependency_overrides[get_current_user_or_local_preview] = fake_preview_user
 
     async def run_requests():
@@ -643,33 +668,33 @@ def test_propagation_api_accepts_local_preview_dependency(monkeypatch):
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             analyze_resp = await client.get("/api/v1/propagation/analyze?event_id=event-1&platform=weibo")
-            trend_resp = await client.post("/api/v1/propagation/predict-trend?event_id=event-1&platform=weibo")
-        return analyze_resp, trend_resp
+            prediction_resp = await client.post("/api/v1/propagation/model-event-predict?event_id=event-1&platform=weibo")
+        return analyze_resp, prediction_resp
 
     try:
-        analyze_resp, trend_resp = asyncio.run(run_requests())
+        analyze_resp, prediction_resp = asyncio.run(run_requests())
     finally:
         app.dependency_overrides.pop(get_current_user_or_local_preview, None)
 
     assert analyze_resp.status_code == 200
-    assert trend_resp.status_code == 200
+    assert prediction_resp.status_code == 200
     assert analyze_resp.json()["data"] == {"event_id": "event-1", "platform": "weibo"}
-    assert trend_resp.json()["data"] == {"event_id": "event-1", "platform": "weibo"}
+    assert prediction_resp.json()["data"] == {"event_id": "event-1", "platform": "weibo"}
     assert calls["analyze"] == {"platform": "weibo", "event_id": "event-1"}
-    assert calls["predict"] == {"platform": "weibo", "event_id": "event-1"}
+    assert calls["predict"] == {"platform": "weibo", "event_id": "event-1", "top_k": 10}
 
 
 def test_propagation_api_passes_prediction_params(monkeypatch):
     calls = {}
 
-    async def fake_predict_propagation_macro_micro(**kwargs):
+    async def fake_predict_benchmark_model_evidence(**kwargs):
         calls.update(kwargs)
         return {"status": "ok", "model": "SequenceJointModel"}
 
     monkeypatch.setattr(
-        propagation_api.propagation_prediction_service,
-        "predict_propagation_macro_micro",
-        fake_predict_propagation_macro_micro,
+        propagation_api.propagation_model_service,
+        "predict_benchmark_model_evidence",
+        fake_predict_benchmark_model_evidence,
     )
 
     payload = asyncio.run(
@@ -688,14 +713,19 @@ def test_propagation_api_passes_prediction_params(monkeypatch):
 def test_propagation_api_exposes_model_prediction_without_frontend_method_label(monkeypatch):
     calls = {}
 
-    async def fake_predict_propagation_macro_micro(**kwargs):
+    async def fake_predict_benchmark_model_evidence(**kwargs):
         calls.update(kwargs)
-        return {"status": "ok", "dataset": kwargs["dataset"], "seed": kwargs["seed"]}
+        return {
+            "status": "ok",
+            "dataset": kwargs["dataset"],
+            "seed": kwargs["seed"],
+            "methodology": {"method_name": "Macro/Micro Sequence Propagation Prediction"},
+        }
 
     monkeypatch.setattr(
-        propagation_api.propagation_prediction_service,
-        "predict_propagation_macro_micro",
-        fake_predict_propagation_macro_micro,
+        propagation_api.propagation_model_service,
+        "predict_benchmark_model_evidence",
+        fake_predict_benchmark_model_evidence,
     )
 
     payload = asyncio.run(
@@ -729,6 +759,8 @@ def test_propagation_prediction_service_loads_cached_macro_micro_result():
     assert result["macro"]["metrics"]["msle"] is not None
     assert result["micro"]["metrics"]["hits@10"] is not None
     assert result["candidate_protocol_audit"]["leakage_check_passed"] is True
+    assert result["methodology"]["method_name"] == "Macro/Micro Sequence Propagation Prediction"
+    assert result["methodology"]["leakage_boundary"]["legacy_speed_acceleration_scaffold"] == "not used by public prediction endpoints"
 
 
 def test_risk_api_passes_event_id_to_assess_and_report_filters(monkeypatch):
