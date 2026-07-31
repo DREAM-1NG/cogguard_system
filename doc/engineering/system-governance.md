@@ -137,6 +137,37 @@ Use the glossary in `UBIQUITOUS_LANGUAGE.md` for domain terms. The system-level 
 - `system/research/*_legacy_alias` and `system/runtimes/*_legacy_alias` are import-only compatibility packages.
 - `system/research/coordination_discover`, `system/research/coordination_detect`, `system/research/propagation_analysis`, `system/research/review_teacher`, and `system/runtimes/review_student` are canonical semantic boundaries.
 
+### Security And Deployment Contract
+
+- `BACKEND_ENV=production` requires explicit `JWT_SECRET_KEY`,
+  `DEFAULT_ADMIN_PASSWORD`, `MYSQL_PASSWORD`, `MONGO_PASSWORD`, and
+  `REDIS_PASSWORD`; no public placeholder is accepted.
+- `PREVIEW_AUTH_ENABLED` defaults to `false`. A preview token is accepted only
+  when `BACKEND_ENV=local`, `BACKEND_DEBUG=true`, and
+  `PREVIEW_AUTH_TOKEN` is explicitly configured. Dashboard access uses the
+  shared security dependency and must not define a second token.
+- `ensure_default_admin` does not create an account when the seed password is
+  empty. Production bootstrap must provide the password intentionally.
+
+### Analysis Artifact Contract
+
+- Every executed `AnalysisRun` produces an `artifact_manifest` keyed by stage.
+  Each stage records technology, model version, artifact/checkpoint reference,
+  status, fallback reason, and claimability.
+- `claimable` is allowed only when the runtime explicitly reports that state,
+  provides an artifact or checkpoint reference, and is not a fallback or
+  missing-checkpoint path. Test doubles and generic `status=ok` responses are
+  non-claimable by default.
+- The manifest is persisted in `analysis_runs.artifact_manifest_json` when the
+  SQL store is active and is included in the terminal run payload for local
+  stores and API consumers.
+- Model activation is fail-closed: registered artifact hashes must be standard
+  SHA-256 values, local artifacts must match the digest, and remote URIs remain
+  non-activatable until a deployment-specific resolver verifies their bytes.
+- Feedback attached to a verdict must reference a verdict version belonging to
+  the same Analysis Run. Repeated verdict versions do not weaken this ownership
+  check.
+
 ### Terminology Gate
 
 - Do not introduce numbered capability labels in code, file names, API fields, tests, or current documentation.
@@ -162,6 +193,18 @@ When introducing a new module, package, or term:
 3. Export the new public surface with `__all__`.
 4. Add tests for the new public behavior.
 5. Keep compatibility layers thin and reversible.
+
+## Documentation Sync Contract
+
+Every completed code task must perform a documentation sync before final reply:
+
+1. If domain terms changed, update `UBIQUITOUS_LANGUAGE.md`.
+2. If package structure or ownership changed, update this file and `doc/engineering/project-map.md`.
+3. If the change affects status or priorities, update `doc/engineering/development-roadmap.md`.
+4. If the change is a completed deliverable, add an entry to `doc/engineering/development-log.md`.
+5. If the change records a lasting decision, add or update an ADR under `doc/adr/`.
+6. If APIs, setup, or runtime behavior changed, update `README.md` or `system/README.md`.
+7. If future agents need a new rule, update `AGENTS.md` and, when relevant, `CLAUDE.md`.
 
 ## Examples
 

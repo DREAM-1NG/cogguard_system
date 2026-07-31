@@ -15,8 +15,8 @@ BACKEND_ROOT = Path(__file__).resolve().parents[1]
 if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 
-EXPERIMENT_ROOT = BACKEND_ROOT / "experiments" / "coordination_discover_io_reproduction"
-DEFAULT_ARCHIVE_NAME = "archive_coordination_discover_final_20260628"
+EXPERIMENT_ROOT = BACKEND_ROOT / "experiments" / "coordination_io_reproduction"
+DEFAULT_ARCHIVE_NAME = "archive_coordination_final_20260628"
 
 CANONICAL_SOURCE_DIRS = {
     "discover_final": EXPERIMENT_ROOT / "accept_discover_magnn_legacy_vs_core_6d_s5_ep20",
@@ -50,7 +50,7 @@ DATASETS = ("UAE", "cuba", "russia", "venezuela", "iran", "china")
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Archive CoordinationDiscover Discover/Detect experiment outputs into a reusable bundle.")
+    parser = argparse.ArgumentParser(description="Archive coordination Discover/Detect experiment outputs into a reusable bundle.")
     parser.add_argument(
         "--archive-dir",
         default=str(EXPERIMENT_ROOT / DEFAULT_ARCHIVE_NAME),
@@ -191,7 +191,7 @@ def _dataset_event_scale(dataset_root: Path | None) -> list[dict[str, object]]:
     if dataset_root is None or not dataset_root.exists():
         return []
     try:
-from app.core.coordination_baseline.io_reproduction import iohunter_processed_to_event_table, load_iohunter_processed_dataset
+        from app.core.coordination_baseline.io_reproduction import iohunter_processed_to_event_table, load_iohunter_processed_dataset
     except Exception:
         return []
     rows: list[dict[str, object]] = []
@@ -251,7 +251,7 @@ def _write_markdown(
     lines = [
         f"# {archive_name}",
         "",
-        "This archive bundles the stable CoordinationDiscover Discover/Detect experiment outputs for later reuse.",
+        "This archive bundles the stable coordination Discover/Detect experiment outputs for later reuse.",
         "",
         "## Canonical Source Directories",
         "",

@@ -19,6 +19,7 @@ research notes. If this file conflicts with older documents, this file wins.
 | `system/research/propagation_analysis/` | Propagation Analysis loaders, hindcast protocol, conformal intervals, and baseline registry. | System-readable research; do not point product code at external research workspaces. |
 | `system/research/review_teacher/` | Multi-agent Teacher Review advisory DAG. | System-readable research; advisory only unless an analyst approves a canonical verdict. |
 | `doc/engineering/` | Long-lived engineering documentation. | Keep setup, governance, roadmap, project map, and development log aligned with code. |
+| `doc/adr/` | Accepted architecture decision records. | One numbered file per durable decision; never renumber an accepted record in place. |
 | `doc/research/` | Research positioning and literature notes. | Use for method positioning, references, and research context. |
 | `aris/` | Historical research workspace. | Read for provenance; do not copy numbered workspace labels into current product language. |
 | `research-wiki/` | Local research knowledge base and literature notes. | Local note workspace; do not commit generated local wiki output by default. |
@@ -27,6 +28,7 @@ research notes. If this file conflicts with older documents, this file wins.
 ## Governance Sources
 
 - [system-governance.md](system-governance.md) is the normative source for naming, package boundaries, and structure rules.
+- `doc/adr/` holds the accepted decision records behind those boundaries.
 - [UBIQUITOUS_LANGUAGE.md](../../UBIQUITOUS_LANGUAGE.md) is the canonical glossary for domain terms and aliases to avoid.
 - [system/README.md](../../system/README.md) is the runnable-system guide.
 

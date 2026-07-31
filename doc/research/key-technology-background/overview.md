@@ -1,73 +1,89 @@
-﻿# 鎶€鏈儗鏅€昏
+﻿# 技术背景总览
 
-> **鐢ㄩ€?*锛氭€昏涓夋潯鍏抽敭鎶€鏈殑鐮旂┒瀹氫綅銆佸綋鍓嶅伐绋嬪熀绾垮拰鎺ㄨ崘闃呰椤哄簭銆? 
-> **鍙椾紬**锛氱爺绌跺疄鐜拌€呫€佺郴缁熻璁＄淮鎶よ€呫€佸悗缁墽琛?ARIS 浠诲姟鐨?agent銆? 
-> **缁存姢瑙勫垯**锛氬彧鍐欑ǔ瀹氱爺绌惰儗鏅拰鎶€鏈嚎鍏ュ彛锛涘叿浣撳伐绋嬩换鍔＄姸鎬佹斁鍏?`../../engineering/development-roadmap.md`銆?
-## 1. 椤圭洰涓荤嚎
+> **用途**：总览三条关键技术的研究定位、当前工程基线和推荐阅读顺序。  
+> **受众**：研究实现者、系统设计维护者、后续执行 ARIS 任务的 agent。  
+> **维护规则**：只写稳定研究背景和技术线入口；具体工程任务状态放入 `../../engineering/development-roadmap.md`。
 
-鏈」鐩潰鍚戠綉缁滆垎璁哄鎶楀満鏅腑鐨勮法骞冲彴鍗忓悓鏀诲嚮銆?
-绯荤粺鍥寸粫涓夊ぇ涓昏鍔熻兘褰㈡垚闂幆锛屾瘡涓姛鑳戒笅鍖呭惈澶氫釜瀛愬姛鑳斤紝鎶€鏈寜閲嶈绋嬪害鍒嗕负鍏抽敭鎶€鏈拰鍏跺畠鎶€鏈細
+## 1. 项目主线
+
+本项目面向网络舆论对抗场景中的跨平台协同攻击。
+
+系统围绕三大主要功能形成闭环，每个功能下包含多个子功能，技术按重要程度分为关键技术和其它技术：
 
 ```
-鍔熻兘涓€: 鍗忓悓鍙戠幇 鈹€鈹€鈫?鍔熻兘浜? 浼犳挱鐩戞帶 鈹€鈹€鈫?鍔熻兘涓? 鎶ュ憡鐮斿垽
-                                                    鈹?        鈹斺攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹?```
+功能一: Coordination Discover ──→ 功能二: Propagation Analysis ──→ 功能三: Risk Review
+                                                    │
+        └────────────────────────────────────────────┘
+```
 
-| 鍔熻兘 | 鍏抽敭鎶€鏈?| 璇存槑 |
+| 功能 | 关键技术 | 说明 |
 |------|---------|------|
-| 鍗忓悓鍙戠幇 | 璺ㄥ钩鍙板叡鍚岃涓虹壒寰佸鐢ㄨ瀺鍚堟娴?| 鐢ㄥ钩鍙版棤鍏崇殑琛屼负淇″彿鍙戠幇鍗忓悓缇や綋锛涘唴瀹规娴嬩笉浣滃崗鍚屼俊鍙?|
-| 浼犳挱鐩戞帶 | LLM+鏃跺簭棰勬祴锛堜簨浠惰妯￠娴嬶級 | 浜嬩欢鏉′欢浣撳埗鍒囨崲鐨勭骇鑱旇妯″墠鐬婚娴嬶紱鍊熼壌鐭ュ井浜у搧褰㈡€?|
-| 鎶ュ憡鐮斿垽 | Phase-Aware Hazard + DISARM 璺緞棰勫垽锛堝 Agent 缂栨帓锛?| 闃舵棰勮 + 鏀诲嚮璺緞棰勫垽 + 鍙嶅埗锛汚gent/RAG 浣滅紪鎺掍笌鍛堢幇灞?|
+| Coordination Discover | 跨平台共同行为特征复用融合检测 | 用平台无关的行为信号发现协同群体；内容检测不作协同信号 |
+| Propagation Analysis | LLM+时序预测（事件规模预测） | 事件条件体制切换的级联规模前瞻预测；借鉴知微产品形态 |
+| Risk Review | Phase-Aware Hazard + DISARM 路径预判（多 Agent 编排） | 阶段预警 + 攻击路径预判 + 反制；Agent/RAG 作编排与呈现层 |
 
-鍏抽敭鎶€鏈槸浠庡姛鑳戒腑鎻愮偧鐨勬牳蹇冨垱鏂扮偣锛屼笉绛夊悓浜庡姛鑳芥湰韬€傚叾瀹冩妧鏈悗鏈熷姩鎬佽皟鏁淬€?鏂瑰悜鏇存柊瑙佸悇鎶€鏈嚎鑳屾櫙鏂囨。锛?026-06-02锛夈€?
-## 2. 褰撳墠宸ョ▼鍩虹嚎
+关键技术是从功能中提炼的核心创新点，不等同于功能本身。其它技术后期动态调整。
+方向更新见各技术线背景文档（2026-06-02）。
 
-- 宸ョ▼鍩虹嚎锛歚release-0.2`
-- 浜у搧浠ｇ爜鏍癸細`system/`
-- 鐭湡楠岃瘉鑼冨洿锛歚weibo`銆乣douyin`銆乣xhs`銆乣news`锛沗mock_weibo` 浠呯敤浜庢祴璇?- 鍙傝€冭竟鐣岋細`MediaCrawler-main/`銆乣NewsCrawler-main/`銆乣CooRTweet-master/`
+## 2. 当前工程基线
 
-浠撳簱鍒嗗眰濡備笅锛?
-- `doc/`锛氶暱鏈熸枃妗ｄ笌鎶€鏈儗鏅?- `aris/`锛氭寜鍏抽敭鎶€鏈媶鍒嗙殑鐙珛鎵ц宸ヤ綔绌洪棿
-- `system/`锛氬敮涓€浜у搧浠ｇ爜涓荤嚎
+- 工程基线：`release-0.2`
+- 产品代码根：`system/`
+- 短期验证范围：`mock_weibo`、`weibo`、`news`
+- 参考边界：`MediaCrawler-main/`、`NewsCrawler-main/`、`CooRTweet-master/`
 
-## 3. 褰撳墠瀹炵幇鐘舵€?
-鎸?`release-0.2` 褰撳墠浠ｇ爜鍜?`doc/engineering/development-roadmap.md` 鍙ｅ緞锛?
-- 鏁版嵁閲囬泦锛氬凡瀹屾垚鍐呯疆 social/news runtime cutover锛涚郴缁熻繍琛屼笉鍐嶄緷璧?`MediaCrawler-main`銆乣NewsCrawler-main` 鎴?`CooRTweet-master`
-- 缁熶竴鍒嗘瀽搴曞骇锛歚EventSnapshot` / `AnalysisRun` / V2 REST / SSE recovery / executor 宸茶疮閫氾紝Coordination Discover銆丳ropagationAnalysis銆丼tudent銆乀eacher 浣跨敤鍚屼竴 snapshot seam
-- 鍗忓悓鍙戠幇锛圕oordinationDiscover锛夛細宸蹭粠鍏变韩瀵硅薄 baseline 鍗囩骇涓?evidence-first runtime锛岃鐩?URL銆佸獟浣撱€佽瘽棰樸€佸疄浣撱€佺洰鏍囥€佸師鐢熷叧绯汇€佽繎閲嶅鍐呭锛屽苟杈撳嚭 1h/6h/24h 閲嶅彔绐楀彛銆佺ぞ鍖鸿氨绯汇€侀浂妯″瀷鏄捐憲鎬у拰鎵板姩椴佹鎬?- 浼犳挱鐩戞帶锛圥ropagationAnalysis锛夛細宸插唴缃?event bundle銆乸ublic fixture loader銆乴ive fallback銆乭indcast protocol銆?0/95 split-conformal interval銆乶ext-hop ranking銆乸latform hindcast 鍜?baseline registry锛涘彲閮ㄧ讲 TGN/DyGFormer/CasFlow/CasFT checkpoint 涓庡叕寮€ benchmark 姝ｅ紡璇勬祴浠嶅緟瀹屾垚
-- 鎶ュ憡鐮斿垽锛圧eview锛夛細宸叉帴閫氬悓姝?Student runtime銆佸紓姝?Teacher 5+1+1 advisory DAG銆乧anonical approval / active pointer / rollback / active learning governance helper锛涜捀棣忚缁冦€乤pproved checkpoint 鍜屽畬鏁?adjudication UI 浠嶅緟瀹屾垚
-- 鐪嬫澘/棰勮/鎶ュ憡锛歚/analysis` 宸ヤ綔鍙板凡灞曠ず鍏抽敭鎶€鏈粨鏋滐紝棰勮涓績銆佹姤鍛婁腑蹇冨拰妯″瀷娌荤悊 UI 鏀惧湪鍚庣画闃舵
+仓库分层如下：
 
-## 4. 宸ョ▼鍘熷垯
+- `doc/`：长期文档与技术背景
+- `aris/`：按关键技术拆分的独立执行工作空间
+- `system/`：唯一产品代码主线
 
-- 浼樺厛淇濇寔 `system/` 涓哄敮涓€浠ｇ爜涓荤嚎锛屼笉鎼姩浜у搧浠ｇ爜鏍?- 鍙傝€冨瓙浠撻粯璁ゅ彧璇伙紝涓嶅湪鏃犳槑纭换鍔℃椂淇敼
-- 瑙勫垯涓庤瘉鎹紭鍏堜簬榛戠洅 LLM 瑁佸喅
-- ARIS 鍙綔涓烘墽琛屽伐浣滅┖闂村拰鐮斿彂缂栨帓灞傦紝涓嶈繘鍏ヤ骇鍝佽繍琛屾椂
-- 姣忔潯鍏抽敭鎶€鏈崟鐙伐浣滅┖闂淬€佸崟鐙?brief銆佸崟鐙垎鏀?
-## 5. ARIS 浣跨敤鍘熷垯
+## 3. 当前实现状态
 
-鏈粨搴撲笉 vendoring 涓婃父 ARIS skill 浠ｇ爜锛屽彧淇濈暀鏈湴閫傞厤灞傦細
+按 `release-0.2` 当前代码和 `doc/engineering/development-roadmap.md` 口径：
 
-- `aris/shared/`锛氱粺涓€ runner銆丟PU 妯℃澘銆佷骇鐗╃瓥鐣ャ€佽瘎瀹℃竻鍗?- `aris/tech-01-coordination/`锛氬叧閿妧鏈竴鎵ц鍏ュ彛
-- `aris/tech-02-propagation/`锛氬叧閿妧鏈簩鎵ц鍏ュ彛
-- `aris/tech-03-risk/`锛氬叧閿妧鏈笁鎵ц鍏ュ彛
+- 数据采集：已完成 Mock 与真实爬虫封装接入
+- Coordination Discover：已完成共享对象协同检测 MVP（CooRTweet 重写 + 加权图 + 社区发现）；最新方向"跨平台共同行为特征复用 + 显著性筛查（PSL）"尚为设计稿、未落地
+- Propagation Analysis：已完成 CascadeSwitch 趋势预测核心（WP1-3：时序特征 + LLM 事件上下文 + 体制混合预测）+ legacy 源头追溯/证据链；立场/危害子功能未启动，"传播路径预测"无设计无代码
+- Risk Review：已完成 Layer 1 白盒核心（Phase-Aware Hazard + DISARM 路径 + D-S 融合，约 1340 行）；多 Agent 编排 + RAG 报告（Layer 2/3）为设计稿、未落地
+- 看板/预警/报告：轻于核心分析流水线，放在后续阶段
 
-鎵ц鏃朵笉瑕佸湪浠撳簱鏍瑰垱寤哄崟涓€ `RESEARCH_BRIEF.md`銆傛瘡娆￠兘浠庣洰鏍?`aris/tech-*` 宸ヤ綔绌洪棿杩涘叆銆?
-## 6. 鎺ㄨ崘闃呰椤哄簭
+## 4. 工程原则
+
+- 优先保持 `system/` 为唯一代码主线，不搬动产品代码根
+- 参考子仓默认只读，不在无明确任务时修改
+- 规则与证据优先于黑盒 LLM 裁决
+- ARIS 只作为执行工作空间和研发编排层，不进入产品运行时
+- 每条关键技术单独工作空间、单独 brief、单独分支
+
+## 5. ARIS 使用原则
+
+本仓库不 vendoring 上游 ARIS skill 代码，只保留本地适配层：
+
+- `aris/shared/`：统一 runner、GPU 模板、产物策略、评审清单
+- `aris/tech-01-coordination/`：关键技术一执行入口
+- `aris/tech-02-propagation/`：关键技术二执行入口
+- `aris/tech-03-risk/`：关键技术三执行入口
+
+执行时不要在仓库根创建单一 `RESEARCH_BRIEF.md`。每次都从目标 `aris/tech-*` 工作空间进入。
+
+## 6. 推荐阅读顺序
 
 1. `AGENTS.md`
 2. `doc/engineering/development-roadmap.md`
 3. `system/README.md`
 4. `aris/README.md`
-5. 鐩爣 `aris/tech-*/README.md`
-6. 鐩爣鎶€鏈殑鑳屾櫙鏂囨。
+5. 目标 `aris/tech-*/README.md`
+6. 目标技术的背景文档
 
-## 7. 鍏抽敭鍙傝€冩枃鐚叆鍙?
+## 7. 关键参考文献入口
+
 - [`../literature-references.md`](../literature-references.md)
-- [`../../../../materials/寮€棰樻姤鍛?doc`](../../../../materials/寮€棰樻姤鍛?doc)
+- [`../../../../materials/开题报告.doc`](../../../../materials/开题报告.doc)
 - [`../../engineering/development-roadmap.md`](../../engineering/development-roadmap.md)
 
-涓夋潯鎶€鏈嚎鐨勫叿浣撹儗鏅垎鍒锛?
+三条技术线的具体背景分别见：
+
 - [coordination-detection.md](coordination-detection.md)
 - [propagation-analysis.md](propagation-analysis.md)
 - [risk-disarm.md](risk-disarm.md)
-

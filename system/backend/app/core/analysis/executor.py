@@ -57,8 +57,18 @@ class AnalysisExecutor:
         )
 
         results: dict[str, Any] = {}
+        active_models = await self._active_models()
+        artifact_manifest: dict[str, Any] = {
+            "schema": "cogguard.analysis.artifact_manifest.v1",
+            "snapshot_id": snapshot.snapshot_id,
+            "data_fingerprint": snapshot.data_fingerprint,
+            "stages": {},
+        }
         for stage in stages:
             stage_options = _stage_options(options, stage)
+            active_model = active_models.get(_stage_technology(stage))
+            if active_model:
+                stage_options["active_model"] = active_model
             await self.registry.append_run_event(
                 run_id,
                 event_type="stage_started",
@@ -67,6 +77,8 @@ class AnalysisExecutor:
             )
             result = await self._execute_stage(stage, snapshot, stage_options)
             results[stage] = result
+            artifact_manifest["stages"][stage] = _stage_artifact_record(stage, result)
+            await self.registry.update_artifact_manifest(run_id, artifact_manifest)
             await self.registry.append_run_event(
                 run_id,
                 event_type=_stage_completed_event_type(stage, result),
@@ -84,10 +96,32 @@ class AnalysisExecutor:
             run_id,
             final_status,
             event_type=event_type,
-            payload={"snapshot_id": snapshot.snapshot_id, "results": results},
+            payload={
+                "snapshot_id": snapshot.snapshot_id,
+                "results": results,
+                "artifact_manifest": artifact_manifest,
+            },
         )
         updated["results"] = results
+        updated["artifact_manifest"] = artifact_manifest
         return updated
+
+    async def _active_models(self) -> dict[str, dict[str, Any]]:
+        """Read approved pointers when the persistence store exposes them.
+
+        Missing pointers are intentional: the existing artifact-first/fallback
+        policy remains the only source of runtime output in that case.
+        """
+
+        getter = getattr(self.registry, "get_active_model", None)
+        if getter is None:
+            return {}
+        models: dict[str, dict[str, Any]] = {}
+        for technology in ("coordination_discover", "propagation_analysis", "review_student", "review_teacher"):
+            model = await getter(technology)
+            if isinstance(model, dict) and model.get("status") == "active":
+                models[technology] = model
+        return models
 
     async def _execute_stage(
         self,
@@ -95,9 +129,9 @@ class AnalysisExecutor:
         snapshot: EventSnapshot,
         options: dict[str, Any],
     ) -> dict[str, Any]:
-        if stage in {"coordination_discover", "coordination_discover"}:
+        if stage == "coordination_discover":
             return await self.engines.coordination.analyze(snapshot, options)
-        if stage in {"propagation_analysis", "propagation_analysis"}:
+        if stage == "propagation_analysis":
             return await self.engines.propagation.hindcast(snapshot, options)
         if stage == "student":
             return await self.engines.student.predict(_case_from_snapshot(snapshot, options=options))
@@ -111,7 +145,11 @@ class SnapshotCoordinationEngine:
         from app.core.analysis.coordination_discover import analyze_coordination_discover_snapshot
         from app.core.analysis.coordination_discover_adapter import try_load_coordination_discover_result
 
-        research_result, fallback_reason = try_load_coordination_discover_result(snapshot, options)
+        research_options = dict(options)
+        active_model = research_options.get("active_model")
+        if isinstance(active_model, dict) and active_model.get("artifact_uri"):
+            research_options.setdefault("artifact_dir", active_model["artifact_uri"])
+        research_result, fallback_reason = try_load_coordination_discover_result(snapshot, research_options)
         if research_result is not None:
             return research_result
 
@@ -130,6 +168,7 @@ class PropagationAnalysisPropagationEngine:
             posts=snapshot.posts,
             comments=snapshot.comments,
             top_k=int(options.get("top_k", 10) or 10),
+            checkpoint_path=(options.get("active_model") or {}).get("artifact_uri"),
         )
         return {"technology": "propagation_analysis", **result}
 
@@ -237,6 +276,13 @@ def _stage_options(options: dict[str, Any], stage: str) -> dict[str, Any]:
     return dict(value) if isinstance(value, dict) else {}
 
 
+def _stage_technology(stage: str) -> str:
+    return {
+        "student": "review_student",
+        "teacher": "review_teacher",
+    }.get(stage, stage)
+
+
 def _normalize_stage(stage: Any) -> str:
     return normalize_analysis_stage(stage)
 
@@ -270,4 +316,34 @@ def _needs_evidence(result: Any) -> bool:
         "model_unavailable",
         "missing_checkpoint",
         "data_insufficient",
+    }
+
+
+def _stage_artifact_record(stage: str, result: Any) -> dict[str, Any]:
+    """Normalize runtime provenance so fallback output cannot look publishable."""
+    row = result if isinstance(result, dict) else {}
+    status = str(row.get("status") or "unknown")
+    fallback = bool(row.get("fallback"))
+    missing_checkpoint = status == "missing_checkpoint" or bool(row.get("missing_checkpoint"))
+    explicit_claimability = str(row.get("claimability") or "").strip().lower()
+    artifact_uri = row.get("artifact_dir") or row.get("artifact_uri")
+    checkpoint_uri = row.get("checkpoint_path") or row.get("checkpoint_uri")
+    claimable = (
+        explicit_claimability == "claimable"
+        and bool(artifact_uri or checkpoint_uri)
+        and not fallback
+        and not missing_checkpoint
+        and status in {"ok", "completed"}
+    )
+    claimability = "claimable" if claimable else "non_claimable"
+    return {
+        "stage": stage,
+        "technology": row.get("technology") or stage,
+        "model_version": row.get("model_version") or row.get("model") or "unversioned_runtime",
+        "artifact_uri": artifact_uri,
+        "checkpoint_uri": checkpoint_uri,
+        "status": status,
+        "fallback": fallback,
+        "fallback_reason": row.get("fallback_reason"),
+        "claimability": claimability,
     }

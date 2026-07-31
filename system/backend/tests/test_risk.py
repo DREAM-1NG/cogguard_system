@@ -2425,7 +2425,9 @@ class TestReviewManualAgentReview:
                 captured["payload"] = json
                 return FakeResponse()
 
-        monkeypatch.setattr("app.core.review.agent_review.httpx.AsyncClient", FakeAsyncClient)
+        # The OpenAI-compatible provider (and its httpx import) lives in
+        # ``agent_provider``; ``agent_review`` only re-exports it.
+        monkeypatch.setattr("app.core.review.agent_provider.httpx.AsyncClient", FakeAsyncClient)
         provider = OpenAICompatibleAgentProvider(
             OpenAICompatibleConfig(
                 api_key="sk-test-secret",

@@ -1,11 +1,31 @@
 import asyncio
 
+import pytest
 from httpx import ASGITransport, AsyncClient
 
 from app.api.v1 import accounts as accounts_api
+from app.config import settings
 from app.core.bot_detection import run_botrhg_detection
 from app.main import app
+from app.services import account_service
 from app.services import bot_detection_service
+
+PREVIEW_TOKEN = "cogguard-preview-token"
+
+
+@pytest.fixture
+def preview_auth_enabled(monkeypatch):
+    """Turn on the debug-only preview bypass for tests that exercise it.
+
+    The bypass ships disabled with an empty token so a deployment can never
+    accidentally accept a well-known bearer value.
+    """
+
+    monkeypatch.setattr(settings, "PREVIEW_AUTH_ENABLED", True)
+    monkeypatch.setattr(settings, "PREVIEW_AUTH_TOKEN", PREVIEW_TOKEN)
+    monkeypatch.setattr(settings, "BACKEND_DEBUG", True)
+    monkeypatch.setattr(settings, "BACKEND_ENV", "local")
+    return PREVIEW_TOKEN
 
 
 class FakeCursor:
@@ -106,7 +126,7 @@ def test_botrhg_service_filters_posts_by_event_and_platform(monkeypatch):
     assert result["summary"]["account_count"] == 1
 
 
-def test_botrhg_api_allows_preview_token_and_passes_parameters(monkeypatch):
+def test_botrhg_api_allows_preview_token_and_passes_parameters(monkeypatch, preview_auth_enabled):
     calls = {}
 
     async def fake_detect_social_bots(**kwargs):
@@ -123,7 +143,7 @@ def test_botrhg_api_allows_preview_token_and_passes_parameters(monkeypatch):
     async def _request():
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
-            client.headers["Authorization"] = "Bearer cogguard-preview-token"
+            client.headers["Authorization"] = f"Bearer {preview_auth_enabled}"
             return await client.post(
                 "/api/v1/accounts/bot-detection?event_id=event-1&platform=weibo&routing_budget=0.25&support_k=3"
             )
@@ -139,3 +159,28 @@ def test_botrhg_api_allows_preview_token_and_passes_parameters(monkeypatch):
         "routing_budget": 0.25,
         "support_k": 3,
     }
+
+
+def test_account_detail_includes_detection_result_and_recent_posts(monkeypatch, preview_auth_enabled):
+    posts = [
+        _post("u1", "2026-05-21T00:00:00+00:00", "hello"),
+        _post("u1", "2026-05-21T00:10:00+00:00", "reply"),
+    ]
+    raw_posts = FakeCollection(posts)
+    fake_db = FakeMongoDB(raw_posts=raw_posts)
+    monkeypatch.setattr(account_service, "get_mongo_db", lambda: fake_db)
+
+    async def _request():
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            client.headers["Authorization"] = f"Bearer {preview_auth_enabled}"
+            return await client.get("/api/v1/accounts/detail/u1?event_id=event-1&platform=weibo")
+
+    response = asyncio.run(_request())
+    payload = response.json()["data"]
+
+    assert response.status_code == 200
+    assert payload["account_id"] == "u1"
+    assert payload["detection_result"]["method"] == "BotRHG"
+    assert payload["detection_result"]["similar_users"] == payload["similar_users"]
+    assert len(payload["recent_posts"]) == 2

@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 
 from app.core.account_profiler import build_account_profiles
-from app.core.propagation_legacy import build_propagation_graph
+from app.core.propagation_analysis import build_propagation_graph
 from app.core.review.disarm_scorer import map_evidence_to_techniques, score_attack_path_full
 from app.core.review.ds_fusion import fuse_evidence
 from app.core.review.evidence_builder import build_evidence_pack

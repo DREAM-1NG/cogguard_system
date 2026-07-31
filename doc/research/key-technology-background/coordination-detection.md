@@ -1,70 +1,113 @@
-﻿# 鍏抽敭鎶€鏈竴锛氳法骞冲彴鍗忓悓鍙戠幇锛堝叡鍚岃涓虹壒寰佸鐢ㄨ瀺鍚堟娴嬶級
+# 关键技术一：跨平台协同发现（共同行为特征复用融合检测）
 
-> **鐢ㄩ€?*锛氬畾涔?Coordination Discover 鐨勭爺绌堕棶棰樸€佸綋鍓嶅伐绋嬭惤鐐广€佺爺绌剁洰鏍囥€佸疄鐜版柟鍚戝拰楠岃瘉鏂瑰紡銆? 
-> **鍙椾紬**锛欳oordinationDiscover 鐮旂┒瀹炵幇鑰呫€佸崗鍚屾娴嬫ā鍧楃淮鎶よ€呫€? 
-> **缁存姢瑙勫垯**锛氬彧鍐欏叧閿妧鏈儗鏅笌鐮旂┒鏂规锛涗骇鍝佹帴鍙ｅ拰浠诲姟鐘舵€佹斁鍏?`../../engineering/`銆?
-> 鏂瑰悜鏇存柊锛?026-06-02锛夛細Coordination Discover 鏄湰椤圭洰鏍稿績鍏抽敭鎶€鏈€傛渶鏂板畾浣嶄负 **璺ㄥ钩鍙板崗鍚屽彂鐜扳€斺€斿埄鐢ㄥ钩鍙版棤鍏崇殑鈥滃叡鍚岃涓虹壒寰佲€濆仛澶嶇敤铻嶅悎妫€娴嬶紱鍏蜂綋鐨勫唴瀹规娴嬩笉浣滀负鍗忓悓鍙戠幇鐨勪俊鍙?*銆?> 绔嬭锛氱幇鏈?CIB 妫€娴嬫枃鐚ぇ澶氫緷璧栫壒瀹氬崗鍚屼俊鍙凤紙cotweet/retweet/cofollow/time burst锛夛紱闈㈠悜鎶栭煶绛夊濯掍綋骞冲彴鍙堟彁鍑烘洿涓撶敤鐨勫唴瀹瑰瀷淇″彿锛堝瑙嗛-璇箟 mismatch锛夛紝杩欑被鍐呭淇″彿骞冲彴鐗瑰畾銆佹槗琚敓鎴愬紡 AI 鏀瑰啓銆佽法骞冲彴杩佺Щ鎴愭湰楂樸€侰oordinationDiscover 杞€屽彧鐢ㄥ悇骞冲彴鍏辨湁銆佸彲杩佺Щ鐨勮涓虹壒寰佷綔涓哄崗鍚屽垽鎹€?
-> 鏂瑰悜鏇存柊锛?026-06-26锛夛細Coordination Discover 涓嶅啀瀹氫綅涓虹函缃戠粶绉戝鏂规硶锛岃€屾槸 **GNN + LM 澧炲己鐨勫崗鍚岀ぞ鍖烘瀯寤轰笌鍙戠幇鏂规硶**銆傜綉缁滅瀛︽寚鏍囦粛鐢ㄤ簬鍙В閲婅瘎浼颁笌绀惧尯璐ㄩ噺瀹¤锛屼絾鏍稿績妯″瀷搴斾粠闈欐€佸姞鏉冨浘鍗囩骇涓猴細LM 鎻愪緵鍏变韩瀵硅薄/鑺傜偣/绀惧尯鐨勮涔夎〃寰佷笌楂樺奖鍝嶈妭鐐规爣娉紝GNN 鍦ㄥ鍏崇郴銆佸姩鎬併€佹湁鍚戝崗鍚屽浘涓婅繘琛屾秷鎭紶閫掋€佸叧绯昏瀺鍚堝拰绀惧尯琛ㄧず瀛︿範銆?
-## 1. 闂瀹氫箟
+> **用途**：定义 Coordination Discover / Detect 的研究问题、当前工程落点、研究目标、实现方向和验证方式。  
+> **受众**：Coordination Discover / Detect 研究实现者、协同检测模块维护者。  
+> **维护规则**：只写关键技术背景与研究方案；产品接口和任务状态放入 `../../engineering/`。
 
-鍦ㄤ簨浠剁獥鍙ｅ唴锛岃瘑鍒竴缁勫湪璇ョ獥鍙ｅ唴鍏卞悓鎺ㄥ姩鏌愬彊浜嬬殑璐﹀彿闆嗗悎锛堝崗鍚岀兢浣擄級锛屽苟杈撳嚭鍙В閲婄殑鍗忓悓杈逛笌璇佹嵁鏍锋湰銆傛牳蹇冨師鍒欙細**鍗忓悓鍒ゅ畾鍙湅鈥滆涓烘槸鍚﹀悓姝モ€濓紝涓嶇湅鈥滃唴瀹硅浜嗕粈涔堚€?*銆傚唴瀹圭悊瑙ｏ紙绔嬪満/鍗卞/鍥炬枃涓€鑷达級鍗曞悜涓嬫矇鍒颁笅娓?Propagation Analysis/Review锛岀粷涓嶅洖娴佷綔涓哄崗鍚屼俊鍙枫€?
-Coordination Discover 鐨勭爺绌朵换鍔￠噰鐢ㄤ袱闃舵瀹氫箟锛?
-1. **鍗忓悓鍙戠幇**锛氫粠骞冲彴鏃犲叧鐨勫叡鍚岃涓轰簨浠朵腑鏋勫缓澶氬叧绯诲崗鍚屽浘锛屽苟鐢?GNN + LM 瀛︿範鐢ㄦ埛銆佸叡浜璞″拰绀惧尯鐨勮〃绀猴紝鍙戠幇鍗忓悓璐﹀彿绨囥€佸叧閿处鍙峰鍜屽叡浜璞°€傝闃舵瀵瑰簲 coordinated online behavior / information operations detection 鏂囩尞涓殑 community 鎴?cluster 杈撳嚭銆?2. **鍗忓悓鍖哄垎**锛氬湪鏈?IO/control 鎴?coordinated/organic 鏍囩鐨勬暟鎹泦涓婏紝妫€楠岀涓€闃舵寰楀埌鐨勫崗鍚屽浘淇″彿鏄惁鑳藉鍖哄垎鑷彂琛屼负鍜屽崗鍚屾敾鍑汇€傝闃舵鎵嶈繘鍏ユ帓搴忔垨鍒嗙被璇勪及銆?
-鍥犳锛孋oordinationDiscover 涓嶆槸浠?bot detection銆乼roll identification 鎴?misinformation classification 涓轰富浠诲姟銆傜浉鍏抽鍩熺殑鎸囨爣鍙綔涓?auxiliary characterization锛岀敤浜庤В閲婂崗鍚岀兢浣撶殑鐪熷疄鎬с€佺粍缁囨€с€佸嵄瀹虫€ф垨鏃跺簭妯″紡銆?
-瑕佽ˉ榻愮殑鑳藉姏锛?
-- 澶氱鍏卞悓琛屼负淇″彿鐨勭粺涓€寤烘ā涓庤瀺鍚堬紙鏃堕棿鍚屾銆佸叡浜璞°€佸叡杞彂绾ц仈銆佽涓鸿妭寰嬬瓑锛?- LM 澧炲己鐨勫叡浜璞″綊涓€鍖栥€佽妭鐐?绀惧尯璇箟琛ㄥ緛鍜岄珮褰卞搷鍔涜妭鐐规爣娉?- GNN 鍦ㄥ鍏崇郴銆佸姩鎬併€佹湁鍚戝崗鍚屽浘涓婄殑娑堟伅浼犻€掋€佸叧绯?attention 涓庣ぞ鍖鸿〃绀哄涔?- 鑷劧鍏辨尟 vs 浜轰负鍗忓悓鐨勬樉钁楁€х瓫鏌ワ紙鎶戝埗鐑棬璇濋璇姤锛?- 鍙В閲婄殑杈圭被鍨嬩笌璇佹嵁鏍锋湰杈撳嚭
-- 璺ㄥ钩鍙?璺ㄦ簮鐨勪俊鍙峰彲澶嶇敤鎬?
+> 方向更新（2026-06-02）：Coordination Discover / Detect 是本项目核心关键技术。最新定位为 **跨平台协同发现——利用平台无关的“共同行为特征”做复用融合检测；具体的内容检测不作为协同发现的信号**。
+> 立论：现有 CIB 检测文献大多依赖特定协同信号（cotweet/retweet/cofollow/time burst）；面向抖音等多媒体平台又提出更专用的内容型信号（如视频-语义 mismatch），这类内容信号平台特定、易被生成式 AI 改写、跨平台迁移成本高。Coordination Discover / Detect 转而只用各平台共有、可迁移的行为特征作为协同判据。
 
-### 1.1 Discover / Detect 浠诲姟杈圭晫锛?026-06-28 鍥哄寲锛?
-Coordination Discover 姝ｅ紡閲囩敤 **Discover -> Detect** 涓ら樁娈靛彛寰勶紝浜岃€呬笉鑳芥贩鐢ㄨ瘎浠锋寚鏍囥€?
-| 闃舵 | 浠诲姟瀹氫箟 | 鏄惁浣跨敤鏍囩 | 涓昏杈撳嚭 | 涓昏瘎浠锋寚鏍?|
+> 方向更新（2026-06-26）：Coordination Discover / Detect 不再定位为纯网络科学方法，而是 **GNN + LM 增强的协同社区构建与发现方法**。网络科学指标仍用于可解释评估与社区质量审计，但核心模型应从静态加权图升级为：LM 提供共享对象/节点/社区的语义表征与高影响节点标注，GNN 在多关系、动态、有向协同图上进行消息传递、关系融合和社区表示学习。
+
+## 1. 问题定义
+
+在事件窗口内，识别一组在该窗口内共同推动某叙事的账号集合（协同群体），并输出可解释的协同边与证据样本。核心原则：**协同判定只看“行为是否同步”，不看“内容说了什么”**。内容理解（立场/危害/图文一致）单向下沉到下游 Propagation Analysis/Risk Review，绝不回流作为协同信号。
+
+Coordination Discover / Detect 的研究任务采用两阶段定义：
+
+1. **协同发现**：从平台无关的共同行为事件中构建多关系协同图，并用 GNN + LM 学习用户、共享对象和社区的表示，发现协同账号簇、关键账号对和共享对象。该阶段对应 coordinated online behavior / information operations detection 文献中的 community 或 cluster 输出。
+2. **协同区分**：在有 IO/control 或 coordinated/organic 标签的数据集上，检验第一阶段得到的协同图信号是否能够区分自发行为和协同攻击。该阶段才进入排序或分类评估。
+
+因此，Coordination Discover / Detect 不是以 bot detection、troll identification 或 misinformation classification 为主任务。相关领域的指标只作为 auxiliary characterization，用于解释协同群体的真实性、组织性、危害性或时序模式。
+
+要补齐的能力：
+
+- 多种共同行为信号的统一建模与融合（时间同步、共享对象、共转发级联、行为节律等）
+- LM 增强的共享对象归一化、节点/社区语义表征和高影响力节点标注
+- GNN 在多关系、动态、有向协同图上的消息传递、关系 attention 与社区表示学习
+- 自然共振 vs 人为协同的显著性筛查（抑制热门话题误报）
+- 可解释的边类型与证据样本输出
+- 跨平台/跨源的信号可复用性
+
+
+### 1.1 Discover / Detect 任务边界（2026-06-28 固化）
+
+Coordination Discover / Detect 正式采用 **Discover -> Detect** 两阶段口径，二者不能混用评价指标。
+
+| 阶段 | 任务定义 | 是否使用标签 | 主要输出 | 主评价指标 |
 |---|---|---:|---|---|
-| Discover | 鏃犳爣绛惧崗鍚岀ぞ鍖哄彂鐜帮細浠庡叡鍚岃涓轰簨浠朵腑鍙戠幇鍝簺璐﹀彿鍥寸粫鍝簺瀵硅薄銆侀€氳繃鍝簺鍏崇郴銆佸湪浠€涔堟椂闂寸獥鍙ｅ唴褰㈡垚鍙В閲婂崗鍚岀ぞ鍖?| 鍚?| `cluster_id`銆乣edge_score`銆乣community_score`銆乣top_objects`銆乣relation_breakdown`銆乣object_concentration`銆乣dynamic_edges`銆乣metapath_attention` | `modularity`銆乣conductance`銆乣density`銆乣object_concentration`銆乣relation_entropy`銆佹椂闂寸獥/澶氬昂搴?`NMI/ARI/Jaccard` |
-| Detect | 鏈夋爣绛惧崗鍚屽尯鍒嗭細鍒ゆ柇璐﹀彿鎴栫ぞ鍖烘槸鍚﹀睘浜?IO driver / coordinated attacker / organic user | 鏄?| `node_score`銆乣predicted_label`銆乣community_detection_score`銆佽处鍙?绀惧尯绾ф帓搴?| `AP/AUC/AUPRC`銆乣MaxF1`銆乣Precision@K`銆乣Recall@K` |
+| Discover | 无标签协同社区发现：从共同行为事件中发现哪些账号围绕哪些对象、通过哪些关系、在什么时间窗口内形成可解释协同社区 | 否 | `cluster_id`、`edge_score`、`community_score`、`top_objects`、`relation_breakdown`、`object_concentration`、`dynamic_edges`、`metapath_attention` | `modularity`、`conductance`、`density`、`object_concentration`、`relation_entropy`、时间窗/多尺度 `NMI/ARI/Jaccard` |
+| Detect | 有标签协同区分：判断账号或社区是否属于 IO driver / coordinated attacker / organic user | 是 | `node_score`、`predicted_label`、`community_detection_score`、账号/社区级排序 | `AP/AUC/AUPRC`、`MaxF1`、`Precision@K`、`Recall@K` |
 
-AMDN-HAGE 绛夋枃鐚眹鎶ョ殑 `AP / AUC / F1@0.5 / Precision@0.5 / Recall@0.5 / MaxF1` 鏄处鍙风骇妫€娴嬫寚鏍囷紝琛￠噺鈥滃崟涓处鍙锋槸鍚﹀崗璋?鍙枒鈥濈殑鍒ゆ柇鑳藉姏锛涜繖浜涙寚鏍囧睘浜?Detect锛屼笉鐢ㄤ簬璇佹槑 Discover 鐨勭ぞ鍖哄垝鍒嗚川閲忋€侰oordinationDiscover 姝ｅ紡 Detect 涓昏〃閲囩敤 `MaxF1` 浣滀负 F1 绫讳富鎸囨爣锛屽浐瀹氶槇鍊?`F1@0.5` 浠呬綔涓洪槇鍊兼牎鍑嗚瘖鏂紝涓嶇敤浜庢柟娉曟帓鍚嶃€?
-Discover 闃舵浣跨敤 Leiden 鐨勫師鍥犳槸锛歀eiden 鏄垚鐔熺殑鏃犵洃鐫?weighted graph 绀惧尯鍒掑垎鍚庣锛屾瘮 Louvain 鏇磋兘閬垮厤涓嶈繛閫氭垨浣庤川閲忕ぞ鍖猴紱瀹冧笉鏇夸唬 MAGNN锛岃€屾槸鍦?MAGNN 瀛﹀埌 `node embedding / edge_score / metapath_attention` 鍚庯紝灏嗛噸鍔犳潈鍗忓悓鍥惧垏鍒嗕负鍙璁＄ぞ鍖恒€侺eiden 鐨勭粨鏋滃簲浣滀负 Detect 鐨勭粨鏋勫寲杈撳叆鐗瑰緛锛屼緥濡?`cluster_id`銆乣community_size`銆乣community_score`銆乣density`銆乣object_concentration`銆乣relation_breakdown`銆乣edge_score`銆乣discover_embedding`锛屼絾涓嶈兘鐩存帴褰撲綔 Detect 鐨勭湡鍊兼爣绛俱€?
-楂樻按骞?IO/璐﹀彿妫€娴嬫枃鐚笉鏅亶浣跨敤 Leiden锛屼富瑕佹槸鍥犱负浠诲姟涓嶅悓锛欰MDN-HAGE銆乁nmasking銆両OHunter 绛夋牳蹇冪洰鏍囨槸璐﹀彿绾ф垨 driver 绾?detection锛屼富闂鏄垎绫汇€佹帓搴忔垨璺ㄨ鍔ㄦ硾鍖栵紱鑰屾垜浠殑 Discover 闃舵鐩爣鏄?label-free coordinated community discovery锛屽洜姝ら渶瑕佷竴涓槑纭€佺ǔ瀹氥€佸彲瑙ｉ噴鐨勭ぞ鍖哄垝鍒嗗悗绔€傛垜浠殑鍒涙柊鐐逛笉鍦ㄢ€滃彂鏄?Leiden鈥濓紝鑰屽湪鍔ㄦ€佸鍏崇郴 User-Object-User 鍥俱€丮AGNN 杈圭疆淇″害瀛︿範銆佸璞＄骇璇佹嵁杈撳嚭锛屼互鍙婂皢 Discover 绀惧尯缁撴瀯浼犻€掔粰 Detect銆?
-Detect 闃舵鐨勬寮忎富绾垮弬鑰?IOHunter / SocGFM锛岃€屼笉鏄户缁娇鐢?Leiden 鍋氬垎绫汇€傚綋鍓嶅疄鐜板皢 `gfm_lm_gnn` 瀹氫綅涓鸿鏂囦富妯″瀷锛氬厛澶嶇敤 Discover 鐨?MAGNN `discover_embedding`銆乣edge_score`銆乣cluster_id/community_score`銆佸叧绯讳笌鍏冭矾寰勭粺璁★紱鍐嶆嫾鎺?LM/SBERT 鎴?`tfidf_object_bag_fallback` 璇箟鐗瑰緛锛涙渶鍚庡湪 Discover 閲嶅姞鏉冪殑澶氬叧绯诲浘涓婅缁冪洃鐫ｅ紡 LM+GNN/GFM 妫€娴嬪櫒銆俙fusion_gnn`銆乣relation_gnn` 鍜?`classifier` 淇濈暀涓?Detect baseline銆傝嫢 IOHunter processed 鏁版嵁缂哄皯鐪熷疄鏂囨湰锛孡M 鍒嗘敮鍙兘澹版槑涓?metadata/object bag semantic feature锛屼笉鑳藉じ澶т负瀹屾暣 LLM 璐＄尞銆?
-## 2. 褰撳墠浠ｇ爜鍩虹嚎
+AMDN-HAGE 等文献汇报的 `AP / AUC / F1@0.5 / Precision@0.5 / Recall@0.5 / MaxF1` 是账号级检测指标，衡量“单个账号是否协调/可疑”的判断能力；这些指标属于 Detect，不用于证明 Discover 的社区划分质量。Coordination Discover / Detect 正式 Detect 主表采用 `MaxF1` 作为 F1 类主指标，固定阈值 `F1@0.5` 仅作为阈值校准诊断，不用于方法排名。
 
-褰撳墠浠ｇ爜钀界偣锛?
-- `system/backend/app/core/coordination_baseline/`锛坄detector.py` / `network.py` / `stats.py`锛?- `system/backend/app/services/coordination_service.py`
+Discover 阶段使用 Leiden 的原因是：Leiden 是成熟的无监督 weighted graph 社区划分后端，比 Louvain 更能避免不连通或低质量社区；它不替代 MAGNN，而是在 MAGNN 学到 `node embedding / edge_score / metapath_attention` 后，将重加权协同图切分为可审计社区。Leiden 的结果应作为 Detect 的结构化输入特征，例如 `cluster_id`、`community_size`、`community_score`、`density`、`object_concentration`、`relation_breakdown`、`edge_score`、`discover_embedding`，但不能直接当作 Detect 的真值标签。
+
+高水平 IO/账号检测文献不普遍使用 Leiden，主要是因为任务不同：AMDN-HAGE、Unmasking、IOHunter 等核心目标是账号级或 driver 级 detection，主问题是分类、排序或跨行动泛化；而我们的 Discover 阶段目标是 label-free coordinated community discovery，因此需要一个明确、稳定、可解释的社区划分后端。我们的创新点不在“发明 Leiden”，而在动态多关系 User-Object-User 图、MAGNN 边置信度学习、对象级证据输出，以及将 Discover 社区结构传递给 Detect。
+
+Detect 阶段的正式主线参考 IOHunter / SocGFM，而不是继续使用 Leiden 做分类。当前实现将 `gfm_lm_gnn` 定位为论文主模型：先复用 Discover 的 MAGNN `discover_embedding`、`edge_score`、`cluster_id/community_score`、关系与元路径统计；再拼接 LM/SBERT 或 `tfidf_object_bag_fallback` 语义特征；最后在 Discover 重加权的多关系图上训练监督式 LM+GNN/GFM 检测器。`fusion_gnn`、`relation_gnn` 和 `classifier` 保留为 Detect baseline。若 IOHunter processed 数据缺少真实文本，LM 分支只能声明为 metadata/object bag semantic feature，不能夸大为完整 LLM 贡献。
+
+## 2. 当前代码基线
+
+当前代码落点：
+
+- `system/backend/app/core/coordination/`（`detector.py` / `network.py` / `stats.py`）
+- `system/backend/app/services/coordination_service.py`
 - `system/backend/app/api/v1/coordination.py`
 
-褰撳墠宸插疄鐜帮紙鐪熷疄鍙繍琛岋級锛?
-- 鍏变韩瀵硅薄 + 鏃堕棿绐楅厤瀵癸紙CooRTweet 閲嶅啓锛宍detector.py`锛?- 鍔犳潈鏃犲悜鍥?+ 鐧惧垎浣嶉槇鍊硷紙`network.py`锛?- 璐︽埛绾?/ 缇や綋绾х粺璁°€佺ぞ鍖哄彂鐜般€佺綉缁滃簭鍒楀寲涓庡墠绔彲瑙嗗寲
+当前已实现（真实可运行）：
 
-褰撳墠鏈疄鐜版垨浠呭師鍨嬪疄鐜帮細
+- 共享对象 + 时间窗配对（CooRTweet 重写，`detector.py`）
+- 加权无向图 + 百分位阈值（`network.py`）
+- 账户级 / 群体级统计、社区发现、网络序列化与前端可视化
 
-- **PSL锛圥air Surprisal Layer锛夋樉钁楁€х瓫鏌?*锛氬绉拌秴鍑犱綍 + Cauchy combination + pair-level BH-FDR锛坄significance.py` 涓嶅瓨鍦級
-- 澶氳涓洪€氶亾鎶藉彇涓庤瀺鍚堬紙`channels.py` 涓嶅瓨鍦級
-- LM 琛ㄥ緛灞傦紙`semantic.py` 涓嶅瓨鍦級锛氱敤浜?object canonicalization銆佽妭鐐?绀惧尯琛ㄧず銆丯ode Selection 鍚庣殑 LLM annotation锛涗笉鑳芥妸鈥滄枃鏈珛鍦?鍗卞鍒嗙被鈥濈洿鎺ュ綋浣滃崗鍚岃竟璇佹嵁
-- GNN 鍗忓悓绀惧尯鍙戠幇灞傦細褰撳墠 `twitter_io_experiment.py` 浠呮湁杞婚噺 learnable relation attention 鍘熷瀷锛岃繕涓嶆槸瀹屾暣鐨勫鍏崇郴鍥炬秷鎭紶閫掓ā鍨?
-## 3. 杩欎竴鎶€鏈嚎瑕佽В鍐崇殑鏍稿績闂
+当前未实现或仅原型实现：
 
-- 鍝簺琛屼负鐗瑰緛鏄法骞冲彴鍙鐢ㄧ殑锛堜笉渚濊禆鍗曞钩鍙扮壒鏈夋満鍒躲€佷笉渚濊禆璇绘噦鍐呭锛?- 濡備綍鎶婁笉鍚岀被鍨嬬殑琛屼负鍗忓悓杈圭粺涓€鎶曞奖鍒拌处鍙峰崗璋冨浘锛屽苟閫氳繃 GNN 瀛︿範鍏崇郴鏉冮噸銆佽妭鐐硅〃绀哄拰绀惧尯杈圭晫
-- 濡備綍浣跨敤 LM 杩涜鍏变韩瀵硅薄褰掍竴鍖栥€佽涔変笂涓嬫枃鍘嬬缉鍜岄珮褰卞搷鍔涜妭鐐规爣娉紝鑰屼笉鎶婃櫘閫氬唴瀹瑰垎绫昏褰撴垚鍗忓悓璇佹嵁
-- 濡備綍鐢ㄦ樉钁楁€х瓫鏌ュ尯鍒嗚嚜鐒跺叡鎸笌浜轰负鍗忓悓
-- 濡備綍杈撳嚭鍙В閲婄殑杈圭被鍨嬭瘉鎹紝鑰屼笉鍙槸涓€涓粦鐩掑垎鏁?
-## 4. 鎺ㄨ崘瀹炵幇鏂瑰悜
+- **PSL（Pair Surprisal Layer）显著性筛查**：对称超几何 + Cauchy combination + pair-level BH-FDR（`significance.py` 不存在）
+- 多行为通道抽取与融合（`channels.py` 不存在）
+- LM 表征层（`semantic.py` 不存在）：用于 object canonicalization、节点/社区表示、Node Selection 后的 LLM annotation；不能把“文本立场/危害分类”直接当作协同边证据
+- GNN 协同社区发现层：当前 `twitter_io_experiment.py` 仅有轻量 learnable relation attention 原型，还不是完整的多关系图消息传递模型
 
-- 鍗忓悓淇″彿鍙彇鈥滃叡鍚岃涓虹壒寰佲€濓細鏃堕棿鍚屾/鍏辩幇銆佸叡浜璞★紙URL/hashtag/濯掍綋鎸囩汗 id锛夈€佸叡杞彂涓庡洖澶嶇骇鑱斻€佽处鍙疯涓鸿妭寰嬨€佸叡鍙備笌妯″紡绛?- 琛屼负 vs 鍐呭鐨勮竟鐣屽垽鎹細鍏变韩鍚屼竴濯掍綋瀵硅薄锛堟寜 id/鎸囩汗锛? 鍗忓悓璇佹嵁锛汱M 瀵瑰璞℃弿杩般€乁RL 鏍囬銆佹ā鏉挎枃鏈€佽妭鐐瑰巻鍙茶繘琛岃〃寰?= 琛ㄧず澧炲己锛涘垎鏋愯棰戝唴瀹?瀛楀箷 mismatch/鏂囨湰绔嬪満/姣掓€?= 涓嬫父 Characterization锛屼笉鐩存帴浣滀负鍗忓悓杈硅瘉鎹?- 绗竴鐗堝伐绋嬪彲浠ヤ繚鐣?pandas/numpy/networkx 杞婚噺閾捐矾浣滀负鍙В閲?baseline锛屽悓鏃舵妸 `twitter_io_experiment.py` 涓殑 learnable relation attention 鍙戝睍涓哄鍏崇郴 GNN encoder锛氳緭鍏?relation-specific edge features銆丩M node/object embeddings 鍜屾椂闂寸壒寰侊紝杈撳嚭 edge score銆乶ode embedding銆乧ommunity assignment
-- 浣跨敤 Node Selection + LLM annotation锛氬厛鎸夊嚭搴?鍏ュ害/鍔犳潈搴?PageRank/璺ㄧ皣妗ユ帴鎬ч€夐珮褰卞搷鑺傜偣锛屽啀璁?LLM 鏍囨敞鍏惰鑹层€佸叡浜璞′富棰樺拰鐤戜技缁勭粐鍔熻兘锛汱LM 鏍囨敞鐢ㄤ簬瑙ｉ噴鍜屽急鐩戠潱锛屼笉鏇夸唬琛屼负璇佹嵁
-- 鏄犲皠鍒?Mannocci 2024 缁艰堪鐨?Detection + Characterization 涓ら樁娈碉細琛屼负鍚屾 = Detection锛圕oordinationDiscover 鏍稿績锛夛紱鍐呭/姣掓€?绔嬪満 = Characterization 鎴栦笅娓?Propagation Analysis/Review
-- 琛ㄨ堪绾緥锛氣€滆法骞冲彴鈥濆綋鍓嶄粎楠岃瘉 mock_weibo/weibo/news锛堣法婧愶紝闈炶法骞冲彴韬唤瑙ｆ瀽锛夛紝瀵瑰搴旇〃杩颁负鈥滃钩鍙版棤鍏崇殑琛屼负淇″彿璁捐 + 璺ㄦ簮楠岃瘉鈥濓紝骞跺潶鐧藉崟骞冲彴涓婃帓闄ゅ唴瀹逛俊鍙锋槸椴佹鎬?tradeoff锛堝彲鑳界暐鎹熷彫鍥烇紝鎹㈠彇鍙縼绉绘€т笌鎶?AI 鏀瑰啓锛?
-## 5. 鎺ㄨ崘楠岃瘉鏂瑰紡
+## 3. 这一技术线要解决的核心问题
 
-姝ｅ紡瀹為獙鍒嗕负涓ょ被锛?
-- **Setting A: discovery-only**銆備娇鐢?X/Twitter Information Operations Archive锛岀洰鏍囨槸璇佹槑鏂规硶鑳戒粠姝ｆ牱鏈?IO 妗ｆ涓彂鐜扮粨鏋勬竻鏅般€佽瘉鎹彲瑙ｉ噴鐨勫崗鍚岀綉缁溿€備富鎸囨爣鍖呮嫭 modularity銆乧luster_count銆乴argest_cluster_size銆乨ensity/conductance銆乷bject concentration銆乺elation/channel breakdown銆乼op-K evidence audit 鍜岃法鏃堕棿/璇█/campaign 鍒囩墖鐨勭ǔ瀹氭€с€?- **Setting B: labeled detection**銆備娇鐢?Guo & Vosoughi 2022 state-backed IO dataset 鎴?Seckin et al. 2025 labeled IO datasets锛岀洰鏍囨槸璇佹槑鍗忓悓鍙戠幇闃舵寰楀埌鐨勮竟鏉冦€佺ぞ鍖哄拰缁撴瀯琛ㄥ緛鍙互鍖哄垎 coordinated attack 涓?organic/self-organized behavior銆備富鎸囨爣鍖呮嫭 AUPRC銆丳recision@K銆丷ecall@K銆丮axF1銆丄UROC锛涘浐瀹氶槇鍊?F1 鍙綔涓洪槇鍊艰瘖鏂紝涓嶈繘鍏ヤ富琛紱绀惧尯绾цˉ鍏?FM-score銆丯MI銆丄RI銆丳urity銆?
-杈呭姪瀹為獙鍙互鎶ュ憡 bot score銆乼oxicity銆乻tance銆乭armfulness銆乻entiment 绛夎〃寰侊紝浣嗚繖浜涗俊鍙峰彧鐢ㄤ簬 Characterization锛屼笉浣滀负鍗忓悓鍙戠幇鍒ゆ嵁銆?
-- `mock_weibo`锛氶獙璇佽涓鸿竟鎷兼帴銆佺粺璁￠€昏緫鍜屽洖褰掓祴璇?- `weibo`锛氶獙璇佺湡瀹為噰闆嗘牱渚嬩笂鐨勮鎶?婕忔姤妯″紡锛堢儹闂ㄨ瘽棰樺帇鍔涙祴璇曪級
-- `news`锛氶獙璇佽法婧愬満鏅笅鍏变韩閾炬帴涓庤祫婧愬鐢ㄤ俊鍙?
-寤鸿閲嶇偣琛ュ厖锛?
-- 鍏卞悓琛屼负杈规瀯寤虹殑鍗曞厓娴嬭瘯
-- 鏄捐憲鎬х瓫鏌ョ殑鍥炲綊娴嬭瘯
-- 鍝嶅簲缁撴瀯鍙樻洿鏃剁殑鏈€灏忓墠绔吋瀹规鏌?
-## 6. 鏂囩尞绾跨储锛堟敞鎰忔牳瀹烇紝鏃ц〃涓儴鍒嗘潯鐩?venue/鏂规硶鏈夎锛?
-- Mannocci et al. *Detection and Characterization of Coordinated Online Behavior: A Survey* (arXiv 2408.01257, 2024) 鈥?Detection/Characterization 妗嗘灦
-- Luceri et al. *CIB on TikTok* (arXiv 2505.10867, 2025) 鈥?琛屼负鍨嬩俊鍙峰彲杩佺Щ銆佸唴瀹瑰瀷涓嶅彲杩佺Щ鐨勫疄璇?- Schneider, Yuan, Rizoiu *Beyond Content* (arXiv 2602.02838, 2026) 鈥?platform-agnostic 琛屼负 policy锛屾渶鎺ヨ繎鐨勫厛鍓嶅伐浣滐紙Coordination Discover 椤绘槑纭樊寮傦紝鍕垮綋鍘熷垱棣栧彂锛?- CooRTweet锛堝叡浜璞￠厤瀵癸紝宸ョ▼鍩虹嚎鏉ユ簮锛?- Cinus/Minici/Luceri/Ferrara *Exposing Cross-Platform CIB* (arXiv 2410.22716, 2024)
+- 哪些行为特征是跨平台可复用的（不依赖单平台特有机制、不依赖读懂内容）
+- 如何把不同类型的行为协同边统一投影到账号协调图，并通过 GNN 学习关系权重、节点表示和社区边界
+- 如何使用 LM 进行共享对象归一化、语义上下文压缩和高影响力节点标注，而不把普通内容分类误当成协同证据
+- 如何用显著性筛查区分自然共振与人为协同
+- 如何输出可解释的边类型证据，而不只是一个黑盒分数
 
+## 4. 推荐实现方向
+
+- 协同信号只取“共同行为特征”：时间同步/共现、共享对象（URL/hashtag/媒体指纹 id）、共转发与回复级联、账号行为节律、共参与模式等
+- 行为 vs 内容的边界判据：共享同一媒体对象（按 id/指纹）= 协同证据；LM 对对象描述、URL 标题、模板文本、节点历史进行表征 = 表示增强；分析视频内容/字幕 mismatch/文本立场/毒性 = 下游 Characterization，不直接作为协同边证据
+- 第一版工程可以保留 pandas/numpy/networkx 轻量链路作为可解释 baseline，同时把 `twitter_io_experiment.py` 中的 learnable relation attention 发展为多关系 GNN encoder：输入 relation-specific edge features、LM node/object embeddings 和时间特征，输出 edge score、node embedding、community assignment
+- 使用 Node Selection + LLM annotation：先按出度/入度/加权度/PageRank/跨簇桥接性选高影响节点，再让 LLM 标注其角色、共享对象主题和疑似组织功能；LLM 标注用于解释和弱监督，不替代行为证据
+- 映射到 Mannocci 2024 综述的 Detection + Characterization 两阶段：行为同步 = Detection（Coordination Discover / Detect 核心）；内容/毒性/立场 = Characterization 或下游 Propagation Analysis/Risk Review
+- 表述纪律：“跨平台”当前仅验证 mock_weibo/weibo/news（跨源，非跨平台身份解析），对外应表述为“平台无关的行为信号设计 + 跨源验证”，并坦白单平台上排除内容信号是鲁棒性 tradeoff（可能略损召回，换取可迁移性与抗 AI 改写）
+
+## 5. 推荐验证方式
+
+正式实验分为两类：
+
+- **Setting A: discovery-only**。使用 X/Twitter Information Operations Archive，目标是证明方法能从正样本 IO 档案中发现结构清晰、证据可解释的协同网络。主指标包括 modularity、cluster_count、largest_cluster_size、density/conductance、object concentration、relation/channel breakdown、top-K evidence audit 和跨时间/语言/campaign 切片的稳定性。
+- **Setting B: labeled detection**。使用 Guo & Vosoughi 2022 state-backed IO dataset 或 Seckin et al. 2025 labeled IO datasets，目标是证明协同发现阶段得到的边权、社区和结构表征可以区分 coordinated attack 与 organic/self-organized behavior。主指标包括 AUPRC、Precision@K、Recall@K、MaxF1、AUROC；固定阈值 F1 只作为阈值诊断，不进入主表；社区级补充 FM-score、NMI、ARI、Purity。
+
+辅助实验可以报告 bot score、toxicity、stance、harmfulness、sentiment 等表征，但这些信号只用于 Characterization，不作为协同发现判据。
+
+- `mock_weibo`：验证行为边拼接、统计逻辑和回归测试
+- `weibo`：验证真实采集样例上的误报/漏报模式（热门话题压力测试）
+- `news`：验证跨源场景下共享链接与资源复用信号
+
+建议重点补充：
+
+- 共同行为边构建的单元测试
+- 显著性筛查的回归测试
+- 响应结构变更时的最小前端兼容检查
+
+## 6. 文献线索（注意核实，旧表中部分条目 venue/方法有误）
+
+- Mannocci et al. *Detection and Characterization of Coordinated Online Behavior: A Survey* (arXiv 2408.01257, 2024) — Detection/Characterization 框架
+- Luceri et al. *CIB on TikTok* (arXiv 2505.10867, 2025) — 行为型信号可迁移、内容型不可迁移的实证
+- Schneider, Yuan, Rizoiu *Beyond Content* (arXiv 2602.02838, 2026) — platform-agnostic 行为 policy，最接近的先前工作（Coordination Discover / Detect 须明确差异，勿当原创首发）
+- CooRTweet（共享对象配对，工程基线来源）
+- Cinus/Minici/Luceri/Ferrara *Exposing Cross-Platform CIB* (arXiv 2410.22716, 2024)

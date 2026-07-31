@@ -62,7 +62,7 @@ The current product entrypoint is `/api/v2/analysis/*`.
 - `POST /api/v2/analysis/snapshots` builds and registers an immutable `EventSnapshot` from MongoDB content.
 - `POST /api/v2/analysis/runs` creates an `AnalysisRun` for one snapshot and an ordered stage list.
 - `POST /api/v2/analysis/runs/{run_id}/execute` calls the configured analysis ports.
-- `GET /api/v2/analysis/runs/{run_id}` returns run state and stage outputs.
+  - `GET /api/v2/analysis/runs/{run_id}` returns run state, stage outputs, and an `artifact_manifest` with data fingerprint, model/checkpoint references, fallback reason, and claimability. Fallback, shadow, advisory-only, and missing-checkpoint stages are non-claimable.
 - `GET /api/v2/analysis/runs/{run_id}/events?after_id=<id>` is the REST recovery path.
 - `GET /api/v2/analysis/runs/{run_id}/events/stream` streams backlog events and supports `Last-Event-ID`.
 
@@ -146,3 +146,13 @@ python -m pytest tests/test_coordination_local_discover_detect_script.py -q
 - Update `../doc/engineering/system-governance.md` when package boundaries or public interfaces change.
 - Update `../doc/engineering/development-log.md` after meaningful code or documentation work.
 - Keep generated outputs out of commits unless an artifact is explicitly promoted with a manifest.
+
+Production deployments must set `BACKEND_ENV=production`, a random
+`JWT_SECRET_KEY`, `DEFAULT_ADMIN_PASSWORD`, and non-empty MySQL, MongoDB, and
+Redis credentials. Preview authentication is disabled by default and is only
+allowed for an explicitly configured local token.
+
+Model governance is fail-closed: a model version needs a valid SHA-256 digest
+and a locally readable artifact, or an explicitly implemented deployment
+resolver, before activation. Remote `http(s)`, `s3`, and `gs` URIs are recorded
+as candidates but are not treated as verified by the current backend.

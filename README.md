@@ -29,6 +29,7 @@ event -> evidence -> Coordination Discover -> Propagation Analysis -> Risk Revie
 | `system/runtimes/` | Vendored executable runtimes used by product code. |
 | `system/research/` | System-readable research packages consumed through explicit adapters. |
 | `doc/engineering/` | Long-lived engineering documentation, governance, maps, setup, roadmap, and log. |
+| `doc/adr/` | Accepted architecture decision records. One numbered file per durable decision. |
 | `doc/research/` | Research positioning and literature notes. |
 | `aris/` | Historical research workspace. Its physical names are not canonical product vocabulary. |
 | `MediaCrawler-main/`, `NewsCrawler-main/`, `CooRTweet-master/` | Reference boundaries only; product runtime code must not execute from these directories. |
@@ -38,6 +39,7 @@ event -> evidence -> Coordination Discover -> Propagation Analysis -> Risk Revie
 - `UBIQUITOUS_LANGUAGE.md` is the canonical glossary.
 - `doc/engineering/system-governance.md` is the normative naming and package-boundary policy.
 - `doc/engineering/project-map.md` describes repository boundaries and default edit ownership.
+- `doc/adr/` records the accepted decisions behind those boundaries.
 
 New code and current documentation must use formal capability names: `Coordination Discover`, `Coordination Detect`, `Propagation Analysis`, `Risk Review`, `Student Review`, `Teacher Review`, and `Crawler`.
 

@@ -53,7 +53,7 @@ F-PROP 是 CogGuard 主链路中的传播监控模块。它承接采集数据与
 - 明确 `t_obs`、预测 horizon 和目标标签。
 - 至少保留一个简单 baseline，例如 naive / EWMA / RandomForestRegressor。
 - 报告至少一种规模误差指标和一种方向指标。
-- 方法不限，可使用 CascadeSwitch、传统回归、点过程、图模型、多尺度扩散模型或组合方案。
+- 正式系统预测链路采用 macro/micro sequence 模型；传统回归、点过程、速度/加速度体制切换等只作为 baseline 或历史对照。
 
 ### 3.2 角色定位
 
@@ -75,7 +75,7 @@ F-PROP 是 CogGuard 主链路中的传播监控模块。它承接采集数据与
 - 明确候选用户或候选边如何在 `t_obs` 时刻获得。
 - 不使用 future child、真实 parent 或未来传播边构造输入。
 - 同时报告候选覆盖和排序质量，不能只报告全局 AUC。
-- 方法不限，可使用逻辑回归、学习排序、Topo-LSTM、TGN、FOREST、MINDS、HyperIDP、DyGLib 等。
+- 正式系统预测链路采用 next-user sampled softmax 与当前事件候选排序；逻辑回归、学习排序、Topo-LSTM、TGN、FOREST、MINDS、HyperIDP、DyGLib 等作为 baseline、复现候选或后续替换实现。
 
 ---
 
@@ -96,9 +96,10 @@ F-PROP 是 CogGuard 主链路中的传播监控模块。它承接采集数据与
 
 本文档不指定唯一模型。可选方法池包括：
 
-- 规模预测：DeepCas、DeepHawkes、CasFlow、CasDO、ConCat、CasFT、CasTemp、CascadeSwitch。
-- 多尺度扩散：FOREST、MINDS、HyperIDP。
-- 下一跳预测：Topo-LSTM、DeepInf、TGAT、TGN、CAW、DyGFormer、TGSL、TNCN、TAMI。
+- 正式系统预测：Macro/Micro Sequence Propagation Prediction，包含共享传播状态、macro 规模/趋势分支、micro 下一用户排序分支和宏微观软耦合。
+- 规模预测对齐：DeepCas、DeepHawkes、CasFlow、CasDO、ConCat、CasFT、CasTemp；速度/加速度体制切换仅作历史轻量对照。
+- 多尺度扩散对齐：FOREST、MINDS、HyperIDP。
+- 下一跳预测对齐：Topo-LSTM、DeepInf、TGAT、TGN、CAW、DyGFormer、TGSL、TNCN、TAMI。
 - 角色定位与证据：中心性、PageRank、结构洞、Provenance for Online Information Diffusion、Bi-GCN。
 
 选择方法时，应在提交说明中解释：

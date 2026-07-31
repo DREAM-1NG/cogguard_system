@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.core.account_detection import build_account_detection_detail
 from app.core.account_profiler import build_account_profiles
 from app.db.mongodb import get_mongo_db
 from app.services.event_data import build_event_filter, load_event_posts
@@ -33,6 +34,7 @@ async def get_account_detail(
 
     profiles = build_account_profiles(posts)
     profile = profiles[0] if profiles else {}
+    detection = build_account_detection_detail(posts, account_id)
 
     recent_posts = sorted(posts, key=lambda p: p.get("timestamp", ""), reverse=True)[:20]
     for post in recent_posts:
@@ -41,4 +43,10 @@ async def get_account_detail(
             if hasattr(value, "isoformat"):
                 post[key] = value.isoformat()
 
-    return {**profile, "recent_posts": recent_posts}
+    return {
+        **profile,
+        "detection": detection,
+        "detection_result": detection,
+        "similar_users": detection.get("similar_users", []) if detection else [],
+        "recent_posts": recent_posts,
+    }

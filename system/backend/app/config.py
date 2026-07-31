@@ -5,6 +5,7 @@ MySQL / MongoDB / Redis / JWT 等所有配置项，并暴露组装后的
 连接 URL 供各模块直接使用。
 """
 
+import secrets
 import warnings
 from pathlib import Path
 
@@ -14,9 +15,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 BASE_DIR = Path(__file__).resolve().parent.parent
 PROJECT_ROOT = BASE_DIR.parent
 
-# Secrets that must never sign tokens outside local development. They ship as
-# defaults so a fresh clone still boots, but production startup refuses them
-# instead of silently signing admin tokens with a publicly known key.
+# Secrets that must never sign tokens in a deployed environment.
 PLACEHOLDER_JWT_SECRETS = frozenset(
     {
         "",
@@ -34,7 +33,7 @@ class Settings(BaseSettings):
     MYSQL_HOST: str = "localhost"
     MYSQL_PORT: int = 3306
     MYSQL_USER: str = "cogguard"
-    MYSQL_PASSWORD: str = "cogguard123"
+    MYSQL_PASSWORD: str = ""
     MYSQL_DATABASE: str = "cogguard"
     MYSQL_DATABASE_TEST: str = "cogguard_test"
 
@@ -42,24 +41,25 @@ class Settings(BaseSettings):
     MONGO_HOST: str = "localhost"
     MONGO_PORT: int = 27017
     MONGO_USER: str = "cogguard"
-    MONGO_PASSWORD: str = "cogguard123"
+    MONGO_PASSWORD: str = ""
     MONGO_DATABASE: str = "cogguard"
     MONGO_DATABASE_TEST: str = "cogguard_test"
 
     # Redis
     REDIS_HOST: str = "localhost"
     REDIS_PORT: int = 6379
-    REDIS_PASSWORD: str = "cogguard123"
+    REDIS_PASSWORD: str = ""
     REDIS_DB: int = 0
 
     # JWT
-    JWT_SECRET_KEY: str = "change-me-to-a-random-secret-key-in-production"
+    JWT_SECRET_KEY: str = ""
     JWT_ALGORITHM: str = "HS256"
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
     # Backend
-    BACKEND_DEBUG: bool = True
+    BACKEND_ENV: str = "local"
+    BACKEND_DEBUG: bool = False
     BACKEND_CORS_ORIGINS: list[str] = [
         "http://localhost:3000",
         "http://localhost:5173",
@@ -68,12 +68,13 @@ class Settings(BaseSettings):
     # Seed administrator created on first startup when no `admin` row exists.
     # Existing accounts are never rewritten, so rotating this password in the
     # database survives restarts.
-    DEFAULT_ADMIN_PASSWORD: str = "123123"
+    DEFAULT_ADMIN_PASSWORD: str = ""
 
     # The static preview token bypasses authentication for frontend-only
     # walkthroughs. It is honoured only while BACKEND_DEBUG is true; setting
     # BACKEND_DEBUG=false (production) disables the bypass regardless.
-    PREVIEW_AUTH_ENABLED: bool = True
+    PREVIEW_AUTH_ENABLED: bool = False
+    PREVIEW_AUTH_TOKEN: str = ""
 
     # Server-side media fetching may only reach public addresses. Disable the
     # guard only for local fixtures that legitimately serve from 127.0.0.1.
@@ -154,7 +155,12 @@ class Settings(BaseSettings):
     @property
     def preview_auth_allowed(self) -> bool:
         """Preview bypass is only ever active in debug (non-production) mode."""
-        return bool(self.PREVIEW_AUTH_ENABLED and self.BACKEND_DEBUG)
+        return bool(
+            self.PREVIEW_AUTH_ENABLED
+            and self.BACKEND_DEBUG
+            and self.BACKEND_ENV.lower() == "local"
+            and self.PREVIEW_AUTH_TOKEN.strip()
+        )
 
     @model_validator(mode="after")
     def _reject_placeholder_secrets(self) -> "Settings":
@@ -163,15 +169,27 @@ class Settings(BaseSettings):
         In debug mode the placeholder only warns, so local development and the
         test suite keep working without a populated ``.env``.
         """
-        if self.JWT_SECRET_KEY.strip().lower() in PLACEHOLDER_JWT_SECRETS:
+        environment = self.BACKEND_ENV.strip().lower()
+        if not self.JWT_SECRET_KEY.strip():
+            if environment == "production":
+                raise ValueError("JWT_SECRET_KEY must be explicitly configured in production.")
+            self.JWT_SECRET_KEY = secrets.token_urlsafe(48)
+            warnings.warn(
+                "JWT_SECRET_KEY is unset; using an ephemeral local-development secret. "
+                "Configure JWT_SECRET_KEY for persistent sessions.",
+                stacklevel=2,
+            )
+        elif self.JWT_SECRET_KEY.strip().lower() in PLACEHOLDER_JWT_SECRETS:
             message = (
                 "JWT_SECRET_KEY is unset or still a well-known placeholder. "
                 "Anyone can forge admin tokens with it. Set JWT_SECRET_KEY to a "
                 "random secret in system/.env."
             )
-            if not self.BACKEND_DEBUG:
+            if environment == "production":
                 raise ValueError(message)
-            warnings.warn(f"{message} (allowed because BACKEND_DEBUG=true)", stacklevel=2)
+            warnings.warn(f"{message} (allowed only for local development)", stacklevel=2)
+        if environment == "production" and not self.DEFAULT_ADMIN_PASSWORD.strip():
+            raise ValueError("DEFAULT_ADMIN_PASSWORD must be explicitly configured in production.")
         return self
 
     model_config = SettingsConfigDict(

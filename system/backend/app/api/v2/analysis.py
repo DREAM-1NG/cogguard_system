@@ -10,7 +10,7 @@ from app.core.analysis import InvalidRunTransition, UnknownAnalysisStage
 from app.core.analysis.executor import AnalysisExecutor, default_analysis_engine_ports
 from app.core.analysis.registry import AnalysisRegistry, SqlAlchemyAnalysisStore
 from app.core.analysis.sse import iter_sse_events, parse_last_event_id
-from app.core.security import get_current_user_or_local_preview
+from app.core.security import get_current_user_or_local_preview, require_roles
 from app.db.mongodb import get_mongo_db
 from app.db.mysql import get_db
 from app.models.user import User
@@ -18,7 +18,13 @@ from app.schemas.analysis import (
     AnalysisRunCreateRequest,
     AnalysisRunStatusUpdateRequest,
     AnalysisSnapshotCreateRequest,
+    CanonicalVerdictApprovalRequest,
+    ModelActivationRequest,
+    ModelRollbackRequest,
+    ModelVersionCreateRequest,
+    ReviewFeedbackCreateRequest,
 )
+from app.services import analysis_governance_service
 from app.utils.response import success
 
 router = APIRouter()
@@ -147,6 +153,117 @@ async def stream_run_events(
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache"},
     )
+
+
+@router.post("/runs/{run_id}/verdicts/{verdict_id}/approve")
+async def approve_verdict(
+    run_id: str,
+    verdict_id: str,
+    body: CanonicalVerdictApprovalRequest,
+    current_user: User = Depends(require_roles("admin", "analyst")),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        result = await analysis_governance_service.approve_run_verdict(
+            run_id=run_id,
+            verdict_id=verdict_id,
+            approved_by=int(current_user.id),
+            approval_notes=body.approval_notes,
+            db=db,
+        )
+        await db.commit()
+    except ValueError as exc:
+        detail = str(exc)
+        raise HTTPException(status_code=404 if "not found" in detail else 400, detail=detail) from exc
+    return success(data=result)
+
+
+@router.post("/runs/{run_id}/feedback")
+async def record_feedback(
+    run_id: str,
+    body: ReviewFeedbackCreateRequest,
+    current_user: User = Depends(require_roles("admin", "analyst")),
+    db: AsyncSession = Depends(get_db),
+):
+    if body.run_id != run_id:
+        raise HTTPException(status_code=400, detail="Feedback run_id does not match the URL")
+    try:
+        result = await analysis_governance_service.create_feedback(
+            run_id=run_id,
+            snapshot_id=body.snapshot_id,
+            verdict_id=body.verdict_id,
+            feedback=body.feedback,
+            created_by=int(current_user.id),
+            db=db,
+        )
+        await db.commit()
+    except ValueError as exc:
+        detail = str(exc)
+        raise HTTPException(status_code=404 if "not found" in detail else 400, detail=detail) from exc
+    return success(data=result)
+
+
+@router.post("/models")
+async def register_model(
+    body: ModelVersionCreateRequest,
+    current_user: User = Depends(require_roles("admin")),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        result = await analysis_governance_service.register_model_version(
+            payload=body.model_dump(),
+            created_by=int(current_user.id),
+            db=db,
+        )
+        await db.commit()
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return success(data=result)
+
+
+@router.post("/models/{model_version_id}/activate")
+async def activate_model(
+    model_version_id: int,
+    body: ModelActivationRequest,
+    current_user: User = Depends(require_roles("admin")),
+    db: AsyncSession = Depends(get_db),
+):
+    approved_by = sorted(set(int(value) for value in body.approved_by if int(value) > 0))
+    if int(current_user.id) not in approved_by:
+        raise HTTPException(status_code=400, detail="The activating administrator must be one of the approvers")
+    try:
+        result = await analysis_governance_service.activate_model_version(
+            model_version_id=model_version_id,
+            approved_by=approved_by,
+            quality_gates=body.quality_gates,
+            db=db,
+        )
+        await db.commit()
+    except ValueError as exc:
+        detail = str(exc)
+        raise HTTPException(status_code=404 if "not found" in detail else 400, detail=detail) from exc
+    return success(data=result)
+
+
+@router.post("/models/{technology}/rollback")
+async def rollback_model(
+    technology: str,
+    body: ModelRollbackRequest,
+    current_user: User = Depends(require_roles("admin")),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        result = await analysis_governance_service.rollback_model_version(
+            technology=technology,
+            reason=body.reason,
+            requested_by=int(current_user.id),
+            db=db,
+        )
+        await db.commit()
+    except ValueError as exc:
+        detail = str(exc)
+        raise HTTPException(status_code=404 if "not found" in detail else 400, detail=detail) from exc
+    return success(data=result)
 
 
 def _jsonable(value: Any) -> Any:

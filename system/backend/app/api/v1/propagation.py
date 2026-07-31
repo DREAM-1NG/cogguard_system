@@ -1,50 +1,69 @@
-"""传播归因与趋势预测 API 路由。"""
+"""Propagation Analysis API routes.
+
+The route surface intentionally separates observed propagation analysis from
+predictive model calls. Observed analysis explains what has happened; the
+prediction endpoint estimates future trend and next-hop candidates.
+"""
+
+from inspect import Parameter, signature
 
 from fastapi import APIRouter, Depends, Query
 
 from app.core.security import get_current_user_or_local_preview
 from app.models.user import User
-from app.services import propagation_prediction_service, propagation_service
+from app.services import propagation_model_service, propagation_observation_service
 from app.utils.response import success
 
 router = APIRouter()
 
 
+async def _call_observed_analysis(*, platform: str | None, event_id: str | None, node_limit: int) -> dict:
+    analyze_fn = propagation_observation_service.analyze_observed_propagation
+    try:
+        parameters = signature(analyze_fn).parameters
+    except (TypeError, ValueError):
+        parameters = {}
+    supports_node_limit = "node_limit" in parameters or any(
+        param.kind == Parameter.VAR_KEYWORD for param in parameters.values()
+    )
+    if supports_node_limit:
+        return await analyze_fn(platform=platform, event_id=event_id, node_limit=node_limit)
+    return await analyze_fn(platform=platform, event_id=event_id)
+
+
 @router.get("/analyze")
 async def analyze(
-    platform: str | None = Query(None, description="限定平台"),
-    event_id: str | None = Query(None, description="限定事件 ID"),
-    node_limit: int = Query(300, ge=0, description="传播路径图节点数量；0 表示全量"),
+    platform: str | None = Query(None, description="Limit analysis to one platform."),
+    event_id: str | None = Query(None, description="Limit analysis to one event id."),
+    node_limit: int = Query(300, ge=0, description="Maximum propagation graph nodes; 0 means no limit."),
     _current_user: User | None = Depends(get_current_user_or_local_preview),
 ):
-    result = await propagation_service.analyze_propagation(
-        platform=platform,
-        event_id=event_id,
-        node_limit=node_limit,
-    )
+    """Analyze observed propagation paths, roles, objects, and evidence."""
+    result = await _call_observed_analysis(platform=platform, event_id=event_id, node_limit=node_limit)
     return success(data=result)
 
 
-@router.post("/predict-trend")
-async def predict_trend(
-    platform: str | None = Query(None, description="限定平台"),
-    event_id: str | None = Query(None, description="限定事件 ID"),
+@router.get("/observed-analysis")
+async def observed_analysis(
+    platform: str | None = Query(None, description="Limit analysis to one platform."),
+    event_id: str | None = Query(None, description="Limit analysis to one event id."),
+    node_limit: int = Query(300, ge=0, description="Maximum propagation graph nodes; 0 means no limit."),
     _current_user: User | None = Depends(get_current_user_or_local_preview),
 ):
-    """预测传播趋势（CascadeSwitch）。"""
-    result = await propagation_service.predict_propagation_trend(platform=platform, event_id=event_id)
+    """Canonical observed-only Propagation Analysis endpoint."""
+    result = await _call_observed_analysis(platform=platform, event_id=event_id, node_limit=node_limit)
     return success(data=result)
 
 
 @router.post("/model-event-predict")
 async def predict_model_event(
-    platform: str | None = Query(None, description="限定平台"),
-    event_id: str | None = Query(None, description="限定事件 ID"),
-    top_k: int = Query(10, ge=1, le=50, description="下一跳 Top-K 数量"),
+    platform: str | None = Query(None, description="Limit prediction to one platform."),
+    event_id: str | None = Query(None, description="Limit prediction to one event id."),
+    top_k: int = Query(10, ge=1, le=50, description="Number of next-hop candidates to return."),
     _current_user: User | None = Depends(get_current_user_or_local_preview),
 ):
-    """使用本地 Twitter checkpoint 对当前事件数据进行规模趋势与下一跳预测。"""
-    result = await propagation_service.predict_propagation_model_event(
+    """Run the prediction model for current-event propagation data."""
+    result = await propagation_model_service.predict_current_event_model(
         platform=platform,
         event_id=event_id,
         top_k=top_k,
@@ -54,13 +73,13 @@ async def predict_model_event(
 
 @router.post("/model-predict")
 async def predict_macro_micro_model(
-    dataset: str = Query("twitter", description="实验数据集：twitter / douban / memetracker"),
-    seed: int | None = Query(42, description="实验随机种子；为空时聚合该数据集全部可用种子"),
-    run_live: bool = Query(False, description="是否触发本地 small-run；默认读取缓存实验结果"),
+    dataset: str = Query("twitter", description="Experiment dataset: twitter, douban, or memetracker."),
+    seed: int | None = Query(42, description="Experiment seed; empty aggregates all available seeds."),
+    run_live: bool = Query(False, description="Run a local small-run instead of reading cached results."),
     _current_user: User | None = Depends(get_current_user_or_local_preview),
 ):
-    """读取传播规模预测与下一跳预测的联合模型结果。"""
-    result = await propagation_prediction_service.predict_propagation_analysis_macro_micro(
+    """Read macro-size and next-hop prediction-model experiment evidence."""
+    result = await propagation_model_service.predict_benchmark_model_evidence(
         dataset=dataset,
         seed=seed,
         run_live=run_live,
@@ -72,10 +91,11 @@ async def predict_macro_micro_model(
         "seed": result.get("seed", seed),
         "source": result.get("source"),
         "model_display_name": "Ours",
-        "label": "实验预测",
+        "label": "experimental_prediction",
         "is_experimental": bool(result.get("is_experimental", True)),
         "evidence_level": result.get("evidence_level"),
         "full_validation_passed": bool(result.get("full_validation_passed", False)),
+        "methodology": result.get("methodology") or {},
         "macro": result.get("macro") or {},
         "micro": result.get("micro") or {},
         "candidate_protocol_audit": result.get("candidate_protocol_audit") or {},
@@ -83,19 +103,3 @@ async def predict_macro_micro_model(
     if result.get("note"):
         public_result["note"] = result.get("note")
     return success(data=public_result)
-
-
-@router.post("/propagation_analysis-predict")
-async def predict_propagation_analysis_macro_micro(
-    dataset: str = Query("twitter", description="PropagationAnalysis 实验数据集：twitter / douban / memetracker"),
-    seed: int | None = Query(42, description="实验随机种子；为空时聚合该数据集全部可用种子"),
-    run_live: bool = Query(False, description="是否触发本地 small-run；默认读取缓存实验结果"),
-    _current_user: User | None = Depends(get_current_user_or_local_preview),
-):
-    """读取 PropagationAnalysis 规模预测/下一跳预测联合模型实验结果。"""
-    result = await propagation_prediction_service.predict_propagation_analysis_macro_micro(
-        dataset=dataset,
-        seed=seed,
-        run_live=run_live,
-    )
-    return success(data=result)

@@ -1,154 +1,233 @@
-﻿# CogGuard MediaCrawler 鏁版嵁濂戠害
+# CogGuard MediaCrawler 数据契约
 
-> 浜嬩欢鏍锋湰锛歚event_id=trump_visit_2026_05_21`  
-> 鏁版嵁搴擄細MongoDB `cogguard`  
-> 闆嗗悎锛歚raw_posts`銆乣raw_comments`  
-> 瑕嗙洊骞冲彴锛歚weibo`銆乣xhs`銆乣douyin`  
-> 鐢熸垚鏃ユ湡锛?026-05-21
+> 事件样本：`event_id=trump_visit_2026_05_21`  
+> 数据库：MongoDB `cogguard`  
+> 集合：`raw_posts`、`raw_comments`  
+> 覆盖平台：`weibo`、`xhs`、`douyin`  
+> 生成日期：2026-05-21
 
-鏈枃妗ｅ熀浜庡綋鍓?MongoDB 涓洰鏍囦簨浠剁殑鐪熷疄鍏ュ簱鏁版嵁锛屼互鍙婁唬鐮佷腑鐨勬爣鍑嗘ā鍨嬩笌 MediaCrawler 褰掍竴鍖栭€昏緫鏁寸悊銆傛爣鍑嗘ā鍨嬪畾涔夎 `new-system/backend/app/models/post.py`锛孧ediaCrawler 瀛楁鏄犲皠瑙?`new-system/backend/app/core/crawler/social.py`銆?
-## 1. 鏍囧噯鏁版嵁妯″瀷
+本文档基于当前 MongoDB 中目标事件的真实入库数据，以及代码中的标准模型与 MediaCrawler 归一化逻辑整理。标准模型定义见 `system/backend/app/models/post.py`，MediaCrawler 字段映射见 `system/backend/app/core/crawler/social.py`。
 
-### 1.1 StandardPost 瀛楁琛?
-| 瀛楁鍚?| 绫诲瀷 | 鍚箟 | 鏉ユ簮骞冲彴瀛楁 | 鏄惁蹇呭～ | 涓嬫父鐢ㄩ€?|
+## 1. 标准数据模型
+
+### 1.1 StandardPost 字段表
+
+| 字段名 | 类型 | 含义 | 来源平台字段 | 是否必填 | 下游用途 |
 |---|---|---|---|---|---|
-| `platform` | `str` | CogGuard 骞冲彴鏍囪瘑 | 閲囬泦浠诲姟骞冲彴鍙傛暟锛歚weibo` / `xhs` / `douyin` | 鏄?| 璺ㄥ钩鍙扮瓫閫夈€佷簨浠跺榻愩€佺湅鏉跨粺璁°€佸崗鍚屾娴嬪垎骞冲彴鍒嗘瀽 |
-| `post_id` | `str` | 骞冲彴鍐呭笘瀛?绗旇/瑙嗛 ID | weibo: `note_id`; xhs: `note_id`; douyin: `aweme_id`; 閫氱敤鍥為€€锛歚id` / `video_id` / `content_id` | 鏄?| 甯栧瓙璇︽儏銆佽瘎璁哄叧鑱斻€佸幓閲嶃€佷紶鎾浘鑺傜偣 |
-| `event_id` | `str \| None` | CogGuard 浜嬩欢 ID | 瀵煎叆/棰勫鐞嗛樁娈靛啓鍏?| 褰撳墠浜嬩欢蹇呭～ | 浜嬩欢绾ф祻瑙堛€佽法骞冲彴浜嬩欢鑱氬悎銆侀闄╂姤鍛婁富閿?|
-| `source_keyword` | `str \| None` | 瑙﹀彂閲囬泦鐨勫叧閿瘝 | MediaCrawler 琛屽唴 `source_keyword` 鎴栧鍏ラ樁娈佃ˉ鍏?| 寤鸿蹇呭～ | 浜嬩欢婧簮銆佸叧閿瘝杩囨护銆侀噰闆嗕换鍔¤В閲?|
-| `dedupe_key` | `str \| None` | 璺ㄩ泦鍚堢ǔ瀹氬幓閲嶉敭 | 棰勫鐞嗙敓鎴愶細`{event_id}:{platform}:post:{post_id}` | 寤鸿蹇呭～ | 骞傜瓑瀵煎叆銆佸閲忓悓姝ャ€侀噸澶嶆暟鎹不鐞?|
-| `content` | `str` | 甯栧瓙姝ｆ枃 | weibo: `content`; xhs: `title` + `desc`; douyin: `desc` / `title`; 閫氱敤锛歚content` / `desc` / `title` | 鏄?| 鎼滅储銆佽涔夌浉浼煎害銆佺珛鍦?鍗卞鍒嗘瀽銆佸崗鍚岃涔夎竟 |
-| `author_id` | `str` | 浣滆€呭钩鍙?ID | `user_id` / `uid` / `author_id` | 鏄?| 璐﹀彿鐢诲儚銆佸崗鍚岃处鍙疯妭鐐广€佷紶鎾鑹茶瘑鍒?|
-| `author_name` | `str` | 浣滆€呮樀绉?| `nickname` / `author_name` / `user_name` / `user_nickname` | 鏄?| 鍓嶇灞曠ず銆佽鎯呴〉銆佷汉宸ュ鏍?|
-| `timestamp` | `datetime` | 鍙戝竷鏃堕棿 | `create_time` / `create_ts` / `time` / `publish_time` / `pub_ts` | 鏄?| 鏃堕棿绾裤€佹椂闂村悓姝ュ崗鍚岃竟銆佽秼鍔块娴?|
-| `url` | `str` | 鍘熷笘 URL | weibo: `note_url`; xhs: `note_url`; douyin: `aweme_url`; 閫氱敤锛歚url` / `share_url` | 鍚?| 璺宠浆鍘熸枃銆佽瘉鎹摼銆佹姤鍛婂紩鐢?|
-| `likes` | `int` | 鐐硅禐鏁?| `liked_count` / `digg_count` / `like_count` | 鍚︼紝榛樿 0 | 鐑害鎺掑簭銆佷紶鎾奖鍝嶅姏銆侀闄╁洜瀛?|
-| `reposts` | `int` | 杞彂/鍒嗕韩鏁?| `shared_count` / `share_count` / `repost_count` | 鍚︼紝榛樿 0 | 浼犳挱鑼冨洿浼拌銆佹墿鏁ｅ己搴︺€侀闄╁洜瀛?|
-| `comments_count` | `int` | 璇勮鏁?| `comments_count` / `comment_count` / `video_comment` | 鍚︼紝榛樿 0 | 鐑害鎺掑簭銆佽瘎璁烘爲鍏ュ彛銆佷紶鎾椿璺冨害 |
-| `media_urls` | `list[str]` | 鍥剧墖銆佽棰戙€佸皝闈€侀煶棰戠瓑濯掍綋閾炬帴 | `media_urls` / `image_list` / `images` / `pictures` / `video_url` / `video_download_url` / `note_download_url` / `music_download_url` / `cover_url` / `video_cover_url` / `play_url` | 鍚︼紝榛樿绌哄垪琛?| 甯栧瓙璇︽儏銆佸叡濯掍綋鍗忓悓杈广€佸妯℃€佽瘉鎹?|
-| `hashtags` | `list[str]` | 鏍囩鍒楄〃 | `hashtags` / `tag_list` / `tags` | 鍚︼紝榛樿绌哄垪琛?| 鍏辨爣绛惧崗鍚岃竟銆佽瘽棰樿仛绫汇€佷簨浠舵祻瑙堢瓫閫?|
-| `author_profile` | `dict \| None` | 浣滆€呯敾鍍忓揩鐓?| `user_id`銆乣nickname`銆乣avatar`銆乣gender`銆乣profile_url`銆乣ip_location`銆乣sec_uid`銆乣user_signature`銆乣tag_list` 绛?| 寤鸿蹇呭～ | 璐﹀彿鐢诲儚銆佽鎯呴〉浣滆€呭崱鐗囥€佽嚜鍔ㄥ寲鍊惧悜璇勫垎 |
-| `crawl_job_id` | `int \| None` | 閲囬泦浠诲姟 ID | Celery 閲囬泦浠诲姟鍐欏叆 | 寤鸿蹇呭～ | 浠诲姟杩借釜銆佸垹闄や换鍔℃椂娓呯悊鍏宠仈鏁版嵁 |
-| `raw_data` | `dict \| None` | 鍘熷骞冲彴璁板綍淇濈湡鍓湰 | MediaCrawler JSONL 鍘熻 | 寤鸿蹇呭～ | 瀛楁杩芥函銆佸钩鍙板樊寮傝ˉ鍋裤€佸悗缁噸褰掍竴鍖?|
-| `created_at` | `datetime` | 鏍囧噯妯″瀷鍒涘缓鏃堕棿 | `StandardPost` 榛樿鐢熸垚 | 鏄?| 绯荤粺瀹¤銆佸鍏ユ椂闂磋拷韪?|
-| `imported_at` | `datetime` | 鏁版嵁瀵煎叆鏃堕棿 | 棰勫鐞?瀵煎叆闃舵鍐欏叆 | 褰撳墠浜嬩欢瀛樺湪 | 鏁版嵁娌荤悊銆佹壒娆″璁?|
+| `platform` | `str` | CogGuard 平台标识 | 采集任务平台参数：`weibo` / `xhs` / `douyin` | 是 | 跨平台筛选、事件对齐、看板统计、协同检测分平台分析 |
+| `post_id` | `str` | 平台内帖子/笔记/视频 ID | weibo: `note_id`; xhs: `note_id`; douyin: `aweme_id`; 通用回退：`id` / `video_id` / `content_id` | 是 | 帖子详情、评论关联、去重、传播图节点 |
+| `event_id` | `str \| None` | CogGuard 事件 ID | 导入/预处理阶段写入 | 当前事件必填 | 事件级浏览、跨平台事件聚合、风险报告主键 |
+| `source_keyword` | `str \| None` | 触发采集的关键词 | MediaCrawler 行内 `source_keyword` 或导入阶段补充 | 建议必填 | 事件溯源、关键词过滤、采集任务解释 |
+| `dedupe_key` | `str \| None` | 跨集合稳定去重键 | 预处理生成：`{event_id}:{platform}:post:{post_id}` | 建议必填 | 幂等导入、增量同步、重复数据治理 |
+| `content` | `str` | 帖子正文 | weibo: `content`; xhs: `title` + `desc`; douyin: `desc` / `title`; 通用：`content` / `desc` / `title` | 是 | 搜索、语义相似度、立场/危害分析、协同语义边 |
+| `author_id` | `str` | 作者平台 ID | `user_id` / `uid` / `author_id` | 是 | 账号画像、协同账号节点、传播角色识别 |
+| `author_name` | `str` | 作者昵称 | `nickname` / `author_name` / `user_name` / `user_nickname` | 是 | 前端展示、详情页、人工复核 |
+| `timestamp` | `datetime` | 发布时间 | `create_time` / `create_ts` / `time` / `publish_time` / `pub_ts` | 是 | 时间线、时间同步协同边、趋势预测 |
+| `url` | `str` | 原帖 URL | weibo: `note_url`; xhs: `note_url`; douyin: `aweme_url`; 通用：`url` / `share_url` | 否 | 跳转原文、证据链、报告引用 |
+| `likes` | `int` | 点赞数 | `liked_count` / `digg_count` / `like_count` | 否，默认 0 | 热度排序、传播影响力、风险因子 |
+| `reposts` | `int` | 转发/分享数 | `shared_count` / `share_count` / `repost_count` | 否，默认 0 | 传播范围估计、扩散强度、风险因子 |
+| `comments_count` | `int` | 评论数 | `comments_count` / `comment_count` / `video_comment` | 否，默认 0 | 热度排序、评论树入口、传播活跃度 |
+| `media_urls` | `list[str]` | 图片、视频、封面、音频等媒体链接 | `media_urls` / `image_list` / `images` / `pictures` / `video_url` / `video_download_url` / `note_download_url` / `music_download_url` / `cover_url` / `video_cover_url` / `play_url` | 否，默认空列表 | 帖子详情、共媒体协同边、多模态证据 |
+| `hashtags` | `list[str]` | 标签列表 | `hashtags` / `tag_list` / `tags` | 否，默认空列表 | 共标签协同边、话题聚类、事件浏览筛选 |
+| `author_profile` | `dict \| None` | 作者画像快照 | `user_id`、`nickname`、`avatar`、`gender`、`profile_url`、`ip_location`、`sec_uid`、`user_signature`、`tag_list` 等 | 建议必填 | 账号画像、详情页作者卡片、自动化倾向评分 |
+| `crawl_job_id` | `int \| None` | 采集任务 ID | Celery 采集任务写入 | 建议必填 | 任务追踪、删除任务时清理关联数据 |
+| `raw_data` | `dict \| None` | 原始平台记录保真副本 | MediaCrawler JSONL 原行 | 建议必填 | 字段追溯、平台差异补偿、后续重归一化 |
+| `created_at` | `datetime` | 标准模型创建时间 | `StandardPost` 默认生成 | 是 | 系统审计、导入时间追踪 |
+| `imported_at` | `datetime` | 数据导入时间 | 预处理/导入阶段写入 | 当前事件存在 | 数据治理、批次审计 |
 
-### 1.2 StandardComment 瀛楁琛?
-| 瀛楁鍚?| 绫诲瀷 | 鍚箟 | 鏉ユ簮骞冲彴瀛楁 | 鏄惁蹇呭～ | 涓嬫父鐢ㄩ€?|
+### 1.2 StandardComment 字段表
+
+| 字段名 | 类型 | 含义 | 来源平台字段 | 是否必填 | 下游用途 |
 |---|---|---|---|---|---|
-| `platform` | `str` | CogGuard 骞冲彴鏍囪瘑 | 閲囬泦浠诲姟骞冲彴鍙傛暟 | 鏄?| 璺ㄥ钩鍙扮瓫閫夈€佽瘎璁虹粺璁°€佷紶鎾垎鏋?|
-| `comment_id` | `str` | 骞冲彴鍐呰瘎璁?ID | weibo: `comment_id`; xhs: `comment_id`; douyin: `comment_id`; 閫氱敤鍥為€€锛歚cid` / `id` | 鏄?| 璇勮璇︽儏銆佽瘎璁烘爲鑺傜偣銆佸幓閲?|
-| `post_id` | `str` | 鎵€灞炲笘瀛?ID | weibo/xhs: `note_id`; douyin: `aweme_id`; 閫氱敤锛歚video_id` / `post_id` / `content_id` | 鏄?| 甯栧瓙-璇勮鍏宠仈銆佽瘎璁烘爲銆佷紶鎾浘杈?|
-| `event_id` | `str \| None` | CogGuard 浜嬩欢 ID | 瀵煎叆/棰勫鐞嗛樁娈靛啓鍏?| 褰撳墠浜嬩欢蹇呭～ | 浜嬩欢绾ц瘎璁烘煡璇€侀闄╄瘉鎹敹鏉?|
-| `source_keyword` | `str \| None` | 瑙﹀彂閲囬泦鐨勫叧閿瘝 | MediaCrawler 琛屽唴 `source_keyword` 鎴栧鍏ラ樁娈佃ˉ鍏?| 寤鸿蹇呭～ | 浜嬩欢婧簮銆佸叧閿瘝杩囨护 |
-| `dedupe_key` | `str \| None` | 绋冲畾鍘婚噸閿?| 棰勫鐞嗙敓鎴愶細`{event_id}:{platform}:comment:{comment_id}` | 寤鸿蹇呭～ | 骞傜瓑瀵煎叆銆侀噸澶嶈瘎璁烘不鐞?|
-| `content` | `str` | 璇勮姝ｆ枃 | `content` / `text` | 鏄?| 璇勮璇︽儏銆佺珛鍦烘娴嬨€佸嵄瀹虫€ц瘎浼般€佽涔夎瘉鎹?|
-| `author_id` | `str` | 璇勮浣滆€呭钩鍙?ID | `user_id` / `uid` / `author_id` | 鏄?| 璐﹀彿鐢诲儚銆佷簰鍔ㄧ綉缁溿€佸崗鍚屽弬涓庣粺璁?|
-| `author_name` | `str` | 璇勮浣滆€呮樀绉?| `nickname` / `author_name` / `user_name` / `user_nickname` | 鏄?| 鍓嶇灞曠ず銆佷汉宸ュ鏍?|
-| `timestamp` | `datetime` | 璇勮鍙戝竷鏃堕棿 | `create_time` / `time` / `publish_time` / `created_at` | 鏄?| 璇勮鏃堕棿绾裤€佷紶鎾€熷害銆佸洖澶嶉摼鎺掑簭 |
-| `reply_to` | `str \| None` | 鐖惰瘎璁?ID锛涗负绌鸿〃绀轰竴绾ц瘎璁烘垨骞冲彴鏈彁渚涚埗绾?| `parent_comment_id` / `reply_to`锛屼笖浼氳繃婊ょ┖鍊笺€乣0`銆佽嚜韬?ID | 鍚?| 璇勮鏍戝睍绀恒€佹樉寮忓洖澶嶈竟銆佷紶鎾垎鏋?|
-| `likes` | `int` | 璇勮鐐硅禐鏁?| `comment_like_count` / `like_count` / `liked_count` | 鍚︼紝榛樿 0 | 鐑瘎鎺掑簭銆佽鐐瑰奖鍝嶅姏 |
-| `media_urls` | `list[str]` | 璇勮鍥剧墖绛夊獟浣撻摼鎺?| `media_urls` / `pictures` / 鍏朵粬濯掍綋瀛楁 | 鍚︼紝榛樿绌哄垪琛?| 璇勮璇︽儏銆佸妯℃€佽瘉鎹?|
-| `sub_comment_count` | `int` | 瀛愯瘎璁烘暟閲?| `sub_comment_count` | 鍚︼紝榛樿 0 | 璇勮鏍戝姞杞芥彁绀恒€佷簰鍔ㄥ己搴?|
-| `author_profile` | `dict \| None` | 璇勮浣滆€呯敾鍍忓揩鐓?| 鍚?StandardPost 鐨勪綔鑰呯敾鍍忓瓧娈甸泦鍚?| 寤鸿蹇呭～ | 璐﹀彿鐢诲儚銆佽鎯呴〉浣滆€呭崱鐗囥€佸彲鐤戣处鍙疯瘑鍒?|
-| `crawl_job_id` | `int \| None` | 閲囬泦浠诲姟 ID | Celery 閲囬泦浠诲姟鍐欏叆 | 寤鸿蹇呭～ | 浠诲姟杩借釜銆佹暟鎹竻鐞?|
-| `raw_data` | `dict \| None` | 鍘熷骞冲彴璇勮璁板綍淇濈湡鍓湰 | MediaCrawler JSONL 鍘熻 | 寤鸿蹇呭～ | 瀛楁杩芥函銆佽瘎璁烘爲淇銆佸悗缁噸褰掍竴鍖?|
-| `created_at` | `datetime` | 鏍囧噯妯″瀷鍒涘缓鏃堕棿 | `StandardComment` 榛樿鐢熸垚 | 鏄?| 绯荤粺瀹¤ |
-| `imported_at` | `datetime` | 鏁版嵁瀵煎叆鏃堕棿 | 棰勫鐞?瀵煎叆闃舵鍐欏叆 | 褰撳墠浜嬩欢瀛樺湪 | 鏁版嵁娌荤悊銆佹壒娆″璁?|
+| `platform` | `str` | CogGuard 平台标识 | 采集任务平台参数 | 是 | 跨平台筛选、评论统计、传播分析 |
+| `comment_id` | `str` | 平台内评论 ID | weibo: `comment_id`; xhs: `comment_id`; douyin: `comment_id`; 通用回退：`cid` / `id` | 是 | 评论详情、评论树节点、去重 |
+| `post_id` | `str` | 所属帖子 ID | weibo/xhs: `note_id`; douyin: `aweme_id`; 通用：`video_id` / `post_id` / `content_id` | 是 | 帖子-评论关联、评论树、传播图边 |
+| `event_id` | `str \| None` | CogGuard 事件 ID | 导入/预处理阶段写入 | 当前事件必填 | 事件级评论查询、风险证据收束 |
+| `source_keyword` | `str \| None` | 触发采集的关键词 | MediaCrawler 行内 `source_keyword` 或导入阶段补充 | 建议必填 | 事件溯源、关键词过滤 |
+| `dedupe_key` | `str \| None` | 稳定去重键 | 预处理生成：`{event_id}:{platform}:comment:{comment_id}` | 建议必填 | 幂等导入、重复评论治理 |
+| `content` | `str` | 评论正文 | `content` / `text` | 是 | 评论详情、立场检测、危害性评估、语义证据 |
+| `author_id` | `str` | 评论作者平台 ID | `user_id` / `uid` / `author_id` | 是 | 账号画像、互动网络、协同参与统计 |
+| `author_name` | `str` | 评论作者昵称 | `nickname` / `author_name` / `user_name` / `user_nickname` | 是 | 前端展示、人工复核 |
+| `timestamp` | `datetime` | 评论发布时间 | `create_time` / `time` / `publish_time` / `created_at` | 是 | 评论时间线、传播速度、回复链排序 |
+| `reply_to` | `str \| None` | 父评论 ID；为空表示一级评论或平台未提供父级 | `parent_comment_id` / `reply_to`，且会过滤空值、`0`、自身 ID | 否 | 评论树展示、显式回复边、传播分析 |
+| `likes` | `int` | 评论点赞数 | `comment_like_count` / `like_count` / `liked_count` | 否，默认 0 | 热评排序、观点影响力 |
+| `media_urls` | `list[str]` | 评论图片等媒体链接 | `media_urls` / `pictures` / 其他媒体字段 | 否，默认空列表 | 评论详情、多模态证据 |
+| `sub_comment_count` | `int` | 子评论数量 | `sub_comment_count` | 否，默认 0 | 评论树加载提示、互动强度 |
+| `author_profile` | `dict \| None` | 评论作者画像快照 | 同 StandardPost 的作者画像字段集合 | 建议必填 | 账号画像、详情页作者卡片、可疑账号识别 |
+| `crawl_job_id` | `int \| None` | 采集任务 ID | Celery 采集任务写入 | 建议必填 | 任务追踪、数据清理 |
+| `raw_data` | `dict \| None` | 原始平台评论记录保真副本 | MediaCrawler JSONL 原行 | 建议必填 | 字段追溯、评论树修复、后续重归一化 |
+| `created_at` | `datetime` | 标准模型创建时间 | `StandardComment` 默认生成 | 是 | 系统审计 |
+| `imported_at` | `datetime` | 数据导入时间 | 预处理/导入阶段写入 | 当前事件存在 | 数据治理、批次审计 |
 
-## 2. 涓夊钩鍙板瓧娈佃鐩栨儏鍐?
-### 2.1 鐩爣浜嬩欢鎬讳綋瑙勬ā
+## 2. 三平台字段覆盖情况
 
-| 骞冲彴 | posts 鏁伴噺 | comments 鏁伴噺 | 鎬昏褰曟暟 |
+### 2.1 目标事件总体规模
+
+| 平台 | posts 数量 | comments 数量 | 总记录数 |
 |---|---:|---:|---:|
 | weibo | 165 | 2,680 | 2,845 |
 | xhs | 98 | 1,905 | 2,003 |
 | douyin | 31 | 10,137 | 10,168 |
-| 鍚堣 | 294 | 14,722 | 15,016 |
+| 合计 | 294 | 14,722 | 15,016 |
 
-### 2.2 瑕嗙洊鐜囩粺璁?
-| 骞冲彴 | posts 鏁伴噺 | comments 鏁伴噺 | post `media_urls` 瑕嗙洊鐜?| comment `media_urls` 瑕嗙洊鐜?| post `author_profile` 瑕嗙洊鐜?| comment `author_profile` 瑕嗙洊鐜?| comment `reply_to` 闈炵┖姣斾緥 | post `raw_data` 淇濈暀 | comment `raw_data` 淇濈暀 |
+### 2.2 覆盖率统计
+
+| 平台 | posts 数量 | comments 数量 | post `media_urls` 覆盖率 | comment `media_urls` 覆盖率 | post `author_profile` 覆盖率 | comment `author_profile` 覆盖率 | comment `reply_to` 非空比例 | post `raw_data` 保留 | comment `raw_data` 保留 |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | weibo | 165 | 2,680 | 0.00% | 0.00% | 100.00% | 100.00% | 12.28% | 100.00% | 100.00% |
 | xhs | 98 | 1,905 | 100.00% | 1.73% | 100.00% | 100.00% | 6.46% | 100.00% | 100.00% |
 | douyin | 31 | 10,137 | 100.00% | 0.00% | 100.00% | 100.00% | 41.19% | 100.00% | 100.00% |
 
-### 2.3 骞冲彴瀛楁瑕嗙洊瑙傚療
+### 2.3 平台字段覆盖观察
 
 #### weibo
 
-- 鍏ュ簱甯栧瓙鍘熷瀛楁涓昏鍖呮嫭锛歚note_id`銆乣content`銆乣create_time`銆乣create_date_time`銆乣liked_count`銆乣comments_count`銆乣shared_count`銆乣note_url`銆乣user_id`銆乣nickname`銆乣avatar`銆乣gender`銆乣profile_url`銆乣ip_location`銆乣post_details_raw`銆乣source_keyword`銆?- 鍏ュ簱璇勮鍘熷瀛楁涓昏鍖呮嫭锛歚comment_id`銆乣note_id`銆乣content`銆乣create_time`銆乣create_date_time`銆乣comment_like_count`銆乣sub_comment_count`銆乣parent_comment_id`銆乣user_id`銆乣nickname`銆乣avatar`銆乣gender`銆乣profile_url`銆乣ip_location`銆?- 褰撳墠鐩爣浜嬩欢涓?`media_urls` 瑕嗙洊鐜囦负 0锛屽師鍥犳槸寰崥鏍锋湰鐨勫獟浣撲俊鎭富瑕侀殣鍚湪姝ｆ枃鎴?`post_details_raw`锛屽綋鍓嶅綊涓€鍖栭€昏緫娌℃湁浠?`post_details_raw` 娣卞眰鎻愬彇瑙嗛/鍥剧墖閾炬帴銆?- `reply_to` 闈炵┖姣斾緥涓?12.28%锛岃鏄庡凡淇濈暀閮ㄥ垎浜岀骇璇勮鍏崇郴锛屽彲鏀拺鍒濈増璇勮鏍戯紝浣嗕笉鏄畬鏁存繁灞傞€掑綊璇勮鏍戙€?
+- 入库帖子原始字段主要包括：`note_id`、`content`、`create_time`、`create_date_time`、`liked_count`、`comments_count`、`shared_count`、`note_url`、`user_id`、`nickname`、`avatar`、`gender`、`profile_url`、`ip_location`、`post_details_raw`、`source_keyword`。
+- 入库评论原始字段主要包括：`comment_id`、`note_id`、`content`、`create_time`、`create_date_time`、`comment_like_count`、`sub_comment_count`、`parent_comment_id`、`user_id`、`nickname`、`avatar`、`gender`、`profile_url`、`ip_location`。
+- 当前目标事件中 `media_urls` 覆盖率为 0，原因是微博样本的媒体信息主要隐含在正文或 `post_details_raw`，当前归一化逻辑没有从 `post_details_raw` 深层提取视频/图片链接。
+- `reply_to` 非空比例为 12.28%，说明已保留部分二级评论关系，可支撑初版评论树，但不是完整深层递归评论树。
+
 #### xhs
 
-- 鍏ュ簱甯栧瓙鍘熷瀛楁涓昏鍖呮嫭锛歚note_id`銆乣type`銆乣title`銆乣desc`銆乣note_url`銆乣image_list`銆乣video_url`銆乣time`銆乣liked_count`銆乣comment_count`銆乣share_count`銆乣tag_list`銆乣xsec_token`銆乣user_id`銆乣nickname`銆乣avatar`銆乣ip_location`銆?- 鍏ュ簱璇勮鍘熷瀛楁涓昏鍖呮嫭锛歚comment_id`銆乣note_id`銆乣content`銆乣create_time`銆乣like_count`銆乣sub_comment_count`銆乣parent_comment_id`銆乣pictures`銆乣user_id`銆乣nickname`銆乣avatar`銆乣ip_location`銆?- 甯栧瓙 `media_urls` 瑕嗙洊鐜囦负 100%锛屽彲鐩存帴鏀寔甯栧瓙璇︽儏椤靛獟浣撻瑙堝拰鍏卞獟浣撳崗鍚岃竟銆?- 璇勮 `media_urls` 瑕嗙洊鐜囦负 1.73%锛岃鏄庡浘鐗囪瘎璁哄皯閲忓瓨鍦紝浣嗕笉搴斾綔涓烘牳蹇冨垎鏋愪緷璧栥€?- `tag_list` 宸茶浆涓?`hashtags`锛岄€傚悎鍋氳瘽棰樼瓫閫夊拰鍏辨爣绛惧崗鍚屻€?
+- 入库帖子原始字段主要包括：`note_id`、`type`、`title`、`desc`、`note_url`、`image_list`、`video_url`、`time`、`liked_count`、`comment_count`、`share_count`、`tag_list`、`xsec_token`、`user_id`、`nickname`、`avatar`、`ip_location`。
+- 入库评论原始字段主要包括：`comment_id`、`note_id`、`content`、`create_time`、`like_count`、`sub_comment_count`、`parent_comment_id`、`pictures`、`user_id`、`nickname`、`avatar`、`ip_location`。
+- 帖子 `media_urls` 覆盖率为 100%，可直接支持帖子详情页媒体预览和共媒体协同边。
+- 评论 `media_urls` 覆盖率为 1.73%，说明图片评论少量存在，但不应作为核心分析依赖。
+- `tag_list` 已转为 `hashtags`，适合做话题筛选和共标签协同。
+
 #### douyin
 
-- 鍏ュ簱甯栧瓙鍘熷瀛楁涓昏鍖呮嫭锛歚aweme_id`銆乣aweme_type`銆乣title`銆乣desc`銆乣aweme_url`銆乣cover_url`銆乣video_download_url`銆乣music_download_url`銆乣note_download_url`銆乣create_time`銆乣liked_count`銆乣comment_count`銆乣share_count`銆乣user_id`銆乣nickname`銆乣avatar`銆乣sec_uid`銆乣short_user_id`銆乣user_unique_id`銆乣user_signature`銆乣ip_location`銆?- 鍏ュ簱璇勮鍘熷瀛楁涓昏鍖呮嫭锛歚comment_id`銆乣aweme_id`銆乣content`銆乣create_time`銆乣like_count`銆乣sub_comment_count`銆乣parent_comment_id`銆乣pictures`銆乣user_id`銆乣nickname`銆乣avatar`銆乣sec_uid`銆乣short_user_id`銆乣user_unique_id`銆乣user_signature`銆乣ip_location`銆?- 甯栧瓙 `media_urls` 瑕嗙洊鐜囦负 100%锛屽彲鏀拺瑙嗛璇︽儏鍜屽獟浣撹瘉鎹睍绀恒€?- `reply_to` 闈炵┖姣斾緥涓?41.19%锛岃瘎璁烘爲灞曠ず浠峰€兼渶楂樸€?- 璇勮 `media_urls` 褰撳墠涓?0锛岃瘎璁哄垎鏋愬簲浼樺厛渚濊禆鏂囨湰銆佷綔鑰呫€佹椂闂淬€佺埗璇勮鍏崇郴鍜屼簰鍔ㄩ噺銆?
-## 3. 涓嬫父绯荤粺寮€鍙戝缓璁?
-### 3.1 浜嬩欢鏁版嵁娴忚椤?
-浼樺厛寤鸿浜嬩欢绾ф暟鎹祻瑙堥〉锛屼綔涓哄悗缁墍鏈夊垎鏋愭ā鍧楃殑鍏ュ彛銆傞〉闈㈠簲浠?`event_id` 涓轰富杩囨护鏉′欢锛屽睍绀轰笁骞冲彴甯栧瓙涓庤瘎璁烘€婚噺銆佸叧閿瘝鍒嗗竷銆佹椂闂磋寖鍥淬€佸钩鍙板垎甯冦€佸獟浣撹鐩栫巼銆佷綔鑰呯敾鍍忚鐩栫巼鍜屽師濮嬫暟鎹繚鐪熺姸鎬併€傚綋鍓嶇洰鏍囦簨浠跺凡鏈?15,016 鏉¤褰曪紝瓒充互鏀拺浜嬩欢绾у垎椤点€佺瓫閫夈€佹帓搴忓拰缁熻鍗＄墖銆?
-寤鸿棣栨壒鎺ュ彛锛?
+- 入库帖子原始字段主要包括：`aweme_id`、`aweme_type`、`title`、`desc`、`aweme_url`、`cover_url`、`video_download_url`、`music_download_url`、`note_download_url`、`create_time`、`liked_count`、`comment_count`、`share_count`、`user_id`、`nickname`、`avatar`、`sec_uid`、`short_user_id`、`user_unique_id`、`user_signature`、`ip_location`。
+- 入库评论原始字段主要包括：`comment_id`、`aweme_id`、`content`、`create_time`、`like_count`、`sub_comment_count`、`parent_comment_id`、`pictures`、`user_id`、`nickname`、`avatar`、`sec_uid`、`short_user_id`、`user_unique_id`、`user_signature`、`ip_location`。
+- 帖子 `media_urls` 覆盖率为 100%，可支撑视频详情和媒体证据展示。
+- `reply_to` 非空比例为 41.19%，评论树展示价值最高。
+- 评论 `media_urls` 当前为 0，评论分析应优先依赖文本、作者、时间、父评论关系和互动量。
+
+## 3. 下游系统开发建议
+
+### 3.1 事件数据浏览页
+
+优先建设事件级数据浏览页，作为后续所有分析模块的入口。页面应以 `event_id` 为主过滤条件，展示三平台帖子与评论总量、关键词分布、时间范围、平台分布、媒体覆盖率、作者画像覆盖率和原始数据保真状态。当前目标事件已有 15,016 条记录，足以支撑事件级分页、筛选、排序和统计卡片。
+
+建议首批接口：
+
 - `GET /api/v1/events/{event_id}/summary`
 - `GET /api/v1/events/{event_id}/posts`
 - `GET /api/v1/events/{event_id}/comments`
 
-### 3.2 甯栧瓙璇︽儏椤?
-甯栧瓙璇︽儏椤靛簲鍥寸粫 `platform + post_id` 鏌ヨ锛屽睍绀烘爣鍑嗗瓧娈点€佸師鏂囬摼鎺ャ€佹鏂囥€佸獟浣撻瑙堛€佷綔鑰呯敾鍍忋€佷簰鍔ㄦ寚鏍囥€佸叧鑱旇瘎璁恒€乣raw_data` 鎶樺彔璋冭瘯鍖恒€傚皬绾功鍜屾姈闊冲獟浣撹鐩栫巼涓?100%锛岄€傚悎浣滀负璇︽儏椤靛獟浣撻瑙堢殑棣栨壒楠岃瘉骞冲彴锛涘井鍗氳鎯呴〉闇€鍏佽濯掍綋涓虹┖銆?
-寤鸿棣栨壒鎺ュ彛锛?
+### 3.2 帖子详情页
+
+帖子详情页应围绕 `platform + post_id` 查询，展示标准字段、原文链接、正文、媒体预览、作者画像、互动指标、关联评论、`raw_data` 折叠调试区。小红书和抖音媒体覆盖率为 100%，适合作为详情页媒体预览的首批验证平台；微博详情页需允许媒体为空。
+
+建议首批接口：
+
 - `GET /api/v1/events/{event_id}/posts/{platform}/{post_id}`
 - `GET /api/v1/events/{event_id}/posts/{platform}/{post_id}/comments`
 
-### 3.3 璇勮鏍戝睍绀?
-璇勮鏍戝簲浣跨敤 `post_id` 鍏宠仈甯栧瓙锛屼娇鐢?`reply_to` 杩炴帴鐖惰瘎璁恒€傜敱浜?`reply_to` 鍙湪閮ㄥ垎璇勮涓潪绌猴紝鍓嶇闇€瑕佸悓鏃舵敮鎸佷袱绉嶅舰鎬侊細
+### 3.3 评论树展示
 
-- `reply_to is null`锛氫竴绾ц瘎璁哄垪琛ㄣ€?- `reply_to` 闈炵┖锛氭寕鍒扮埗璇勮涓嬶紱鎵句笉鍒扮埗璇勮鏃跺綊鍏モ€滃绔嬪洖澶?缂哄け鐖惰妭鐐光€濆垎缁勩€?
-鎶栭煶鐩爣浜嬩欢 `reply_to` 闈炵┖姣斾緥鏈€楂橈紙41.19%锛夛紝閫傚悎浣滀负璇勮鏍戦娴嬪钩鍙般€傚井鍗氬拰灏忕孩涔︿粛鑳藉睍绀轰竴绾ц瘎璁哄拰灏戦噺浜岀骇鍏崇郴銆?
-### 3.4 璺ㄥ钩鍙颁簨浠跺榻?
-褰撳墠浜嬩欢绾х粺涓€渚濊禆 `event_id`锛屽钩鍙板唴瀹炰綋渚濊禆 `post_id/comment_id`锛屽鍏ュ幓閲嶄緷璧?`dedupe_key`銆備笅涓€姝ラ渶瑕佽ˉ鍏呬簨浠跺榻愬眰锛?
-- 浠?`event_id` 姹囨€诲骞冲彴鏁版嵁銆?- 浠?`source_keyword` 瑙ｉ噴閲囬泦鏉ユ簮銆?- 浠ユ枃鏈浉浼煎害銆佹爣绛俱€佹椂闂寸獥鍙ｃ€乁RL/濯掍綋鐩镐技搴︽瀯寤鸿法骞冲彴 claim/thread銆?- 涓洪闄╀笌鎶ュ憡妯″潡鐢熸垚鍙紩鐢ㄧ殑 `claim_id` / `thread_id`銆?
-### 3.5 璐﹀彿鐢诲儚
+评论树应使用 `post_id` 关联帖子，使用 `reply_to` 连接父评论。由于 `reply_to` 只在部分评论中非空，前端需要同时支持两种形态：
 
-褰撳墠 `author_profile` 鍦ㄥ笘瀛愬拰璇勮涓鐩栫巼鍧囦负 100%锛屽彲绔嬪嵆鏀拺浣滆€呭崱鐗囧拰鍩虹璐﹀彿鐢诲儚銆傚缓璁厛鍋氳交閲忕敾鍍忚仛鍚堬細
+- `reply_to is null`：一级评论列表。
+- `reply_to` 非空：挂到父评论下；找不到父评论时归入“孤立回复/缺失父节点”分组。
 
-- 鎸?`platform + author_id` 鑱氬悎鍙戝笘鏁般€佽瘎璁烘暟銆佺偣璧炴€婚噺銆佹椿璺冩椂闂村垎甯冦€佸弬涓庡叧閿瘝銆?- 淇濈暀骞冲彴鐗规湁瀛楁锛氬井鍗?`gender/profile_url/ip_location`锛屽皬绾功 `tag_list/xsec_token/ip_location`锛屾姈闊?`sec_uid/user_unique_id/user_signature/ip_location`銆?- 璐﹀彿璇︽儏椤甸渶瑕佸睍绀衡€滃師濮嬬敾鍍忓瓧娈碘€濇姌鍙犲尯锛岄伩鍏嶈繃鏃╀涪澶卞钩鍙板樊寮傘€?
-### 3.6 鍗忓悓妫€娴?
-鐜版湁鏁版嵁宸插叿澶囧崗鍚屾娴嬫墍闇€鐨勬牳蹇冨瓧娈碉細`author_id`銆乣timestamp`銆乣content`銆乣hashtags`銆乣media_urls`銆乣post_id`銆乣platform`銆傚缓璁紑鍙戦『搴忥細
+抖音目标事件 `reply_to` 非空比例最高（41.19%），适合作为评论树首测平台。微博和小红书仍能展示一级评论和少量二级关系。
 
-1. 鍏堣鍗忓悓妫€娴?API 鏀寔 `event_id` 杩囨护锛岄伩鍏嶅叏搴撴壂鎻忔垨鍙寜骞冲彴鍒嗘瀽銆?2. 鍦ㄥ綋鍓嶅叡浜璞″崗鍚屽熀纭€涓婂鍔犲琛屼负璇佹嵁杈癸細鏃堕棿鍚屾銆佸叡鏍囩/鍏遍摼鎺ャ€佸叡濯掍綋銆佽涔夎繎浼笺€佷紶鎾簰鍔ㄣ€?3. 瀵瑰井鍗氬獟浣撶己澶卞仛闄嶇骇锛氬井鍗氬厛鐢ㄦ枃鏈?URL/璇濋鍜屾椂闂村悓姝ワ紝寰呮繁灞傚獟浣撴彁鍙栬ˉ榻愬悗鍐嶅姞鍏ュ叡濯掍綋杈广€?4. 杈撳嚭璇佹嵁鏍锋湰鏃跺紩鐢?`raw_data` 鍜屽師甯?URL锛屼繚璇佸彲澶嶆牳銆?
-### 3.7 浼犳挱鍒嗘瀽
+### 3.4 跨平台事件对齐
 
-浼犳挱鍒嗘瀽搴斾互 `event_id` 涓轰富鍏ュ彛锛岃瀺鍚堝笘瀛愭椂闂寸嚎涓庤瘎璁烘爲锛?
-- 鐢?`timestamp` 鏋勫缓璺ㄥ钩鍙板彂甯冩椂闂寸嚎銆?- 鐢?`post_id -> comments` 鍜?`reply_to` 鏋勫缓鏄惧紡浜掑姩杈广€?- 鐢?`likes/reposts/comments_count/sub_comment_count` 浼拌鎵╂暎寮哄害銆?- 鐢?`source_keyword`銆乣hashtags`銆佹枃鏈浉浼煎害鑱氬悎 claim/thread銆?- 浜у嚭鍏抽敭瑙掕壊锛氳捣鐖嗚妭鐐广€佹ˉ鎺ヨ妭鐐广€佹墿鏁ｈ妭鐐广€佽瘎璁哄満楂樺奖鍝嶈妭鐐广€?
-## 4. 涓庣郴缁熷姛鑳介棴鐜殑瀵归綈
+当前事件级统一依赖 `event_id`，平台内实体依赖 `post_id/comment_id`，导入去重依赖 `dedupe_key`。下一步需要补充事件对齐层：
 
-绯荤粺鏂囨。瀹氫箟鐨勪富绾挎槸锛?
+- 以 `event_id` 汇总多平台数据。
+- 以 `source_keyword` 解释采集来源。
+- 以文本相似度、标签、时间窗口、URL/媒体相似度构建跨平台 claim/thread。
+- 为风险与报告模块生成可引用的 `claim_id` / `thread_id`。
+
+### 3.5 账号画像
+
+当前 `author_profile` 在帖子和评论中覆盖率均为 100%，可立即支撑作者卡片和基础账号画像。建议先做轻量画像聚合：
+
+- 按 `platform + author_id` 聚合发帖数、评论数、点赞总量、活跃时间分布、参与关键词。
+- 保留平台特有字段：微博 `gender/profile_url/ip_location`，小红书 `tag_list/xsec_token/ip_location`，抖音 `sec_uid/user_unique_id/user_signature/ip_location`。
+- 账号详情页需要展示“原始画像字段”折叠区，避免过早丢失平台差异。
+
+### 3.6 协同检测
+
+现有数据已具备协同检测所需的核心字段：`author_id`、`timestamp`、`content`、`hashtags`、`media_urls`、`post_id`、`platform`。建议开发顺序：
+
+1. 先让协同检测 API 支持 `event_id` 过滤，避免全库扫描或只按平台分析。
+2. 在当前共享对象协同基础上增加多行为证据边：时间同步、共标签/共链接、共媒体、语义近似、传播互动。
+3. 对微博媒体缺失做降级：微博先用文本 URL/话题和时间同步，待深层媒体提取补齐后再加入共媒体边。
+4. 输出证据样本时引用 `raw_data` 和原帖 URL，保证可复核。
+
+### 3.7 传播分析
+
+传播分析应以 `event_id` 为主入口，融合帖子时间线与评论树：
+
+- 用 `timestamp` 构建跨平台发布时间线。
+- 用 `post_id -> comments` 和 `reply_to` 构建显式互动边。
+- 用 `likes/reposts/comments_count/sub_comment_count` 估计扩散强度。
+- 用 `source_keyword`、`hashtags`、文本相似度聚合 claim/thread。
+- 产出关键角色：起爆节点、桥接节点、扩散节点、评论场高影响节点。
+
+## 4. 与系统功能闭环的对齐
+
+系统文档定义的主线是：
+
 ```text
-浜嬩欢 -> 璇佹嵁 -> 鍗忓悓 -> 浼犳挱 -> 椋庨櫓 -> 澶勭疆
+事件 -> 证据 -> 协同 -> 传播 -> 风险 -> 处置
 ```
 
-PRD 涓笁澶у姛鑳介棴鐜负锛?
-1. 鍗忓悓鍙戠幇锛氬彂鐜拌法骞冲彴鍗忓悓琛屼负锛岃緭鍑哄崗鍚屽垽瀹氥€佸崗鍚岀被鍨嬨€佸崗鍚岀兢缁勫拰璇佹嵁杈广€?2. 浼犳挱鐩戞帶锛氳拷婧簮澶淬€佽寖鍥村拰瓒嬪娍锛岃緭鍑轰紶鎾浘銆佸叧閿鑹层€佹椂闂寸嚎鍜岃秼鍔块娴嬨€?3. 鎶ュ憡鐮斿垽锛氭秷璐瑰崗鍚屼笌浼犳挱缁撴灉锛岃緭鍑洪闄╄瘎鍒嗐€丏ISARM 鏄犲皠銆佹姤鍛婂拰澶勭疆寤鸿銆?
-褰撳墠 `trump_visit_2026_05_21` 鐨勫叆搴撴暟鎹凡缁忚兘鏀拺鈥滀簨浠?-> 璇佹嵁鈥濈殑绗竴娈甸棴鐜細涓夊钩鍙版暟鎹粺涓€鎸傚埌鍚屼竴 `event_id`锛屽笘瀛?璇勮鍧囦繚鐣欐爣鍑嗗瓧娈典笌 `raw_data`銆傛帴涓嬫潵鐨勫伐绋嬮噸鐐瑰簲浠庘€滈噰闆嗘槸鍚﹁兘璺戔€濊浆鍒扳€滀簨浠舵暟鎹浣曡娴忚銆佸鏍搞€佸垎鏋愬拰涓嬫父娑堣垂鈥濄€?
-## 5. 涓変釜鍏抽敭鎶€鏈ā鍧楃殑寮€鍙戞寚鍚?
-### 5.1 Coordination Discover锛氳法骞冲彴鍗忓悓妫€娴?
-鏂囨。瑕佹眰 Coordination Discover 浠庤涓哄闆嗗悎杈撳嚭鍗忓悓鍒ゅ畾銆佺被鍨嬫爣绛俱€佺兢缁勫拰璇佹嵁杈广€傝矾绾垮浘鏄剧ず鍏变韩瀵硅薄 CooRTweet MVP 宸插畬鎴愶紝浣嗗琛屼负杈规瀯寤哄拰鏄捐憲鎬х瓫鏌ヤ粛闇€鍔犲己銆?
-缁撳悎褰撳墠鏁版嵁锛孋oordinationDiscover 鐨勮繎鏈熺洰鏍囧簲鏄細
+PRD 中三大功能闭环为：
 
-- 璁╁崗鍚屾娴嬩互 `event_id` 涓鸿緭鍏ヨ竟鐣屻€?- 浣跨敤 `timestamp`銆乣author_id`銆乣content`銆乣hashtags`銆乣media_urls`銆乣reply_to` 鏋勫缓澶氳涓鸿瘉鎹€?- 杈撳嚭姣忔潯鍗忓悓杈圭殑涓昏璇佹嵁绫诲瀷鍜屽彲澶嶆牳鏍锋湰銆?- 澧炲姞鑷劧鍏辨尟涓庝汉涓哄崗鍚岀殑鏄捐憲鎬х瓫鏌ュ弬鏁般€?
-### 5.2 Propagation Analysis锛氫紶鎾洃鎺т笌瓒嬪娍棰勬祴
+1. 协同发现：发现跨平台协同行为，输出协同判定、协同类型、协同群组和证据边。
+2. 传播监控：追溯源头、范围和趋势，输出传播图、关键角色、时间线和趋势预测。
+3. 报告研判：消费协同与传播结果，输出风险评分、DISARM 映射、报告和处置建议。
 
-鏂囨。瑕佹眰 Propagation Analysis 鍦ㄤ紶鎾瓙鍥惧拰鍏抽敭瑙掕壊鍩虹涓婅緭鍑鸿秼鍔块娴嬶紝骞惰ˉ榻愮珛鍦烘娴嬨€佸嵄瀹虫€ц瘎浼扮瓑淇″彿渚?Review 娑堣垂銆傝矾绾垮浘鏄剧ず浼犳挱瀛愬浘銆佹椂闂寸嚎銆佸叧閿鑹插凡瀹屾垚锛學P4-5 绔嬪満/鍗卞灏氭湭鍚姩銆?
-缁撳悎褰撳墠鏁版嵁锛孭ropagationAnalysis 鐨勮繎鏈熺洰鏍囧簲鏄細
+当前 `trump_visit_2026_05_21` 的入库数据已经能支撑“事件 -> 证据”的第一段闭环：三平台数据统一挂到同一 `event_id`，帖子/评论均保留标准字段与 `raw_data`。接下来的工程重点应从“采集是否能跑”转到“事件数据如何被浏览、复核、分析和下游消费”。
 
-- 浠?`event_id` 鑱氬悎甯栧瓙鍜岃瘎璁烘椂闂寸嚎銆?- 浼樺厛鍒╃敤鎶栭煶杈冨畬鏁寸殑璇勮鍥炲鍏崇郴楠岃瘉璇勮鏍戝拰浜掑姩杈广€?- 灏?`likes/reposts/comments_count/sub_comment_count` 杞负浼犳挱寮哄害鐗瑰緛銆?- 浜у嚭 claim/thread 绾т紶鎾憳瑕侊紝涓烘姤鍛婄爺鍒ゆ彁渚涜緭鍏ャ€?
-### 5.3 Review锛氭姤鍛婄爺鍒や笌鎶ュ憡鐢熸垚
+## 5. 三个关键技术模块的开发指向
 
-鏂囨。瑕佹眰 Review 娑堣垂 Coordination Discover銆丳ropagationAnalysis 涓庣煡璇嗗簱锛岃緭鍑虹粨鏋勫寲鎶ュ憡銆丏ISARM 鏄犲皠鍜屽缃缓璁€傝矾绾垮浘鏄剧ず鎶ュ憡鐮斿垽 MVP 宸插畬鎴愶紝浣?LLM bridge銆丄gent+RAG 娣卞害鍒嗘瀽锛屼互鍙婇璀?鎶ュ憡涓績/澶勭疆璺熻釜浠嶅緟琛ラ綈銆?
-缁撳悎褰撳墠鏁版嵁锛孯eview 鐨勮繎鏈熺洰鏍囧簲鏄細
+### 5.1 Coordination Discover / Detect：跨平台协同检测
 
-- 鍏堝皢鎶ュ憡鐮斿垽杈撳叆浠庘€滃钩鍙扮瓫閫夆€濆崌绾т负鏄庣‘鐨?`event_id`銆?- 鎶婂崗鍚岃瘉鎹€佷紶鎾瘉鎹€佽处鍙风敾鍍忚瘉鎹粺涓€涓哄彲瀹¤ evidence pack銆?- 灏嗛闄╂姤鍛婃寔涔呭寲锛屽苟鎻愪緵鎶ュ憡璇︽儏涓庡鍑哄叆鍙ｃ€?- 鍦ㄨ鍒欒瘉鎹ǔ瀹氬悗锛屽啀鎺ュ叆 LLM bridge 鍋氳В閲婂寮猴紝鑰屼笉鏄綔涓虹涓€闃舵鏈€缁堣鍐炽€?
-## 6. 鎺ㄨ崘涓嬩竴闃舵寮€鍙戠洰鏍?
-鎺ㄨ崘涓嬩竴闃舵浠モ€滀簨浠舵暟鎹棴鐜?MVP鈥濅负绗竴寮€鍙戠洰鏍囷紝鑰屼笉鏄珛鍗虫繁鍏ュ崟涓畻娉曟ā鍧楋細
+文档要求 Coordination Discover / Detect 从行为对集合输出协同判定、类型标签、群组和证据边。路线图显示共享对象 CooRTweet MVP 已完成，但多行为边构建和显著性筛查仍需加强。
 
-1. 鏂板浜嬩欢鏁版嵁 API 涓庝簨浠舵暟鎹祻瑙堥〉锛岀‘璁?`event_id` 浣滀负绯荤粺涓诲叆鍙ｃ€?2. 鏂板甯栧瓙璇︽儏涓庤瘎璁烘爲灞曠ず锛岄獙璇佹爣鍑嗗瓧娈点€佸獟浣撱€佷綔鑰呯敾鍍忓拰 `raw_data` 鍙鏍搞€?3. 鏀归€犲崗鍚屾娴嬨€佷紶鎾垎鏋愩€佹姤鍛婄爺鍒ゅ叆鍙ｏ紝浣夸笁鑰呴兘鏀寔 `event_id=trump_visit_2026_05_21`銆?4. 鍦ㄨ浜嬩欢涓婅窇閫?`浜嬩欢 -> 璇佹嵁 -> 鍗忓悓 -> 浼犳挱 -> 椋庨櫓 -> 鎶ュ憡/澶勭疆寤鸿` 鐨勬渶灏忛棴鐜€?5. 闂幆璺戦€氬悗锛屽啀鍒嗘ā鍧楀寮?Coordination Discover 澶氳涓哄崗鍚屻€丳ropagationAnalysis 绔嬪満/鍗卞涓庤秼鍔块娴嬨€丷eview 鎶ュ憡涓績鍜岄璀﹀缃€?
-杩欐牱鍋氱殑鍘熷洜鏄細褰撳墠鐪熷疄鏁版嵁宸茬粡鍏ュ簱锛屼絾鐜版湁鍔熻兘鏂囨。鍜岄儴鍒?API 浠嶄互骞冲彴/鍏ㄥ簱涓轰富鍏ュ彛銆傚厛寤虹珛浜嬩欢绾ф祻瑙堝拰璇︽儏澶嶆牳鑳藉姏锛屽彲浠ヨ鍚庣画鍗忓悓銆佷紶鎾€侀闄╂ā鍧楁嫢鏈夊悓涓€浠藉彲楠岃瘉杈撳叆锛屽噺灏戠畻娉曞紑鍙戦樁娈电殑瀹氫綅鎴愭湰銆?
+结合当前数据，Coordination Discover / Detect 的近期目标应是：
+
+- 让协同检测以 `event_id` 为输入边界。
+- 使用 `timestamp`、`author_id`、`content`、`hashtags`、`media_urls`、`reply_to` 构建多行为证据。
+- 输出每条协同边的主要证据类型和可复核样本。
+- 增加自然共振与人为协同的显著性筛查参数。
+
+### 5.2 Propagation Analysis：传播监控与趋势预测
+
+文档要求 Propagation Analysis 在传播子图和关键角色基础上输出趋势预测，并补齐立场检测、危害性评估等信号供 Risk Review 消费。路线图显示传播子图、时间线、关键角色已完成，WP4-5 立场/危害尚未启动。
+
+结合当前数据，Propagation Analysis 的近期目标应是：
+
+- 以 `event_id` 聚合帖子和评论时间线。
+- 优先利用抖音较完整的评论回复关系验证评论树和互动边。
+- 将 `likes/reposts/comments_count/sub_comment_count` 转为传播强度特征。
+- 产出 claim/thread 级传播摘要，为报告研判提供输入。
+
+### 5.3 Risk Review：报告研判与报告生成
+
+文档要求 Risk Review 消费 Coordination Discover / Detect、Propagation Analysis 与知识库，输出结构化报告、DISARM 映射和处置建议。路线图显示报告研判 MVP 已完成，但 LLM bridge、Agent+RAG 深度分析，以及预警/报告中心/处置跟踪仍待补齐。
+
+结合当前数据，Risk Review 的近期目标应是：
+
+- 先将报告研判输入从“平台筛选”升级为明确的 `event_id`。
+- 把协同证据、传播证据、账号画像证据统一为可审计 evidence pack。
+- 将风险报告持久化，并提供报告详情与导出入口。
+- 在规则证据稳定后，再接入 LLM bridge 做解释增强，而不是作为第一阶段最终裁决。
+
+## 6. 推荐下一阶段开发目标
+
+推荐下一阶段以“事件数据闭环 MVP”为第一开发目标，而不是立即深入单个算法模块：
+
+1. 新增事件数据 API 与事件数据浏览页，确认 `event_id` 作为系统主入口。
+2. 新增帖子详情与评论树展示，验证标准字段、媒体、作者画像和 `raw_data` 可复核。
+3. 改造协同检测、传播分析、报告研判入口，使三者都支持 `event_id=trump_visit_2026_05_21`。
+4. 在该事件上跑通 `事件 -> 证据 -> 协同 -> 传播 -> 风险 -> 报告/处置建议` 的最小闭环。
+5. 闭环跑通后，再分模块增强 Coordination Discover / Detect 多行为协同、Propagation Analysis 立场/危害与趋势预测、Risk Review 报告中心和预警处置。
+
+这样做的原因是：当前真实数据已经入库，但现有功能文档和部分 API 仍以平台/全库为主入口。先建立事件级浏览和详情复核能力，可以让后续协同、传播、风险模块拥有同一份可验证输入，减少算法开发阶段的定位成本。

@@ -1,7 +1,9 @@
 """Compatibility package for `app.core.coordination_baseline`.
 
 The Coordination Baseline package is the canonical CooRTweet-style fallback
-boundary. This package is retained for one release window for legacy imports.
+boundary. This package is retained for one release window for legacy imports,
+while newer research adapters use the governed Coordination Discover / Detect
+method language.
 """
 
 from importlib import import_module as _import_module

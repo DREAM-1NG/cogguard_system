@@ -28,6 +28,8 @@ async def ensure_default_admin(db: AsyncSession) -> None:
     active flag on every startup would silently revert an operator's password
     rotation or account suspension back to the well-known seed credential.
     """
+    if not settings.DEFAULT_ADMIN_PASSWORD.strip():
+        return
     result = await db.execute(select(User).where(User.username == "admin"))
     user = result.scalar_one_or_none()
     if user is not None:

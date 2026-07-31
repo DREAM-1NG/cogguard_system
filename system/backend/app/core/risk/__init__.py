@@ -51,4 +51,8 @@ def __getattr__(name: str) -> _Any:
     raise AttributeError(name)
 
 
+def __dir__() -> list[str]:
+    return sorted(set(globals()) | set(_COMPAT_MODULES))
+
+
 __all__ = list(_COMPAT_MODULES)

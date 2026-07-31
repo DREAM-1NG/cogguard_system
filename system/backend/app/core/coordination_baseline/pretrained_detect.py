@@ -28,10 +28,29 @@ from app.core.coordination_baseline.io_reproduction import (
     read_event_table,
 )
 
-CoordinationDiscover_EXPERIMENT_ROOT = PROJECT_ROOT / "backend" / "experiments" / "coordination_discover_io_reproduction"
-CHINA_EVENTS_PATH = CoordinationDiscover_EXPERIMENT_ROOT / "accept_detect_lm_gnn_6d_s5_ep20" / "china" / "events.csv"
+def _resolve_coordination_experiment_root() -> Path:
+    """Locate the Coordination Discover reproduction root.
+
+    The canonical layout is preferred, but historical runs live under other
+    ``*_io_reproduction`` directories. Those archives are untracked local
+    assets, so fall back to any root that carries a finalized archive instead
+    of failing outright.
+    """
+
+    canonical = PROJECT_ROOT / "backend" / "experiments" / "coordination_discover_io_reproduction"
+    if canonical.exists():
+        return canonical
+    experiments_root = PROJECT_ROOT / "backend" / "experiments"
+    for candidate in sorted(experiments_root.glob("*_io_reproduction")):
+        if any(candidate.glob("archive_*_final_*")):
+            return candidate
+    return canonical
+
+
+COORDINATION_EXPERIMENT_ROOT = _resolve_coordination_experiment_root()
+CHINA_EVENTS_PATH = COORDINATION_EXPERIMENT_ROOT / "accept_detect_lm_gnn_6d_s5_ep20" / "china" / "events.csv"
 CHINA_DISCOVERY_PATH = (
-    CoordinationDiscover_EXPERIMENT_ROOT
+    COORDINATION_EXPERIMENT_ROOT
     / "accept_discover_magnn_legacy_vs_core_6d_s5_ep20"
     / "china"
     / "seed_42"
@@ -60,7 +79,7 @@ def _require_torch():
         import torch.nn as nn
         import torch.nn.functional as functional
     except ModuleNotFoundError as exc:  # pragma: no cover - depends on env
-        raise RuntimeError("CoordinationDiscover Detect requires torch for fusion_gnn checkpoint inference") from exc
+        raise RuntimeError("Coordination Detect requires torch for fusion_gnn checkpoint inference") from exc
     return torch, nn, functional
 
 
@@ -184,7 +203,7 @@ def _load_json(path: Path) -> dict[str, object]:
 def _ensure_strict_sbert(lm_feature_source: str) -> None:
     if not str(lm_feature_source).startswith("sbert:"):
         raise RuntimeError(
-            "SBERT is required for CoordinationDiscover mainline runs, but the runtime fell back to a non-SBERT LM feature source."
+            "SBERT is required for Coordination mainline runs, but the runtime fell back to a non-SBERT LM feature source."
         )
 
 

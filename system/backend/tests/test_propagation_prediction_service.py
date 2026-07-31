@@ -20,7 +20,7 @@ def _posts() -> list[dict]:
 
 def test_propagation_analysis_cached_prediction_uses_internal_research_artifact():
     result = asyncio.run(
-        propagation_prediction_service.predict_propagation_analysis_macro_micro(
+        propagation_prediction_service.predict_propagation_macro_micro(
             dataset="twitter",
             seed=42,
             run_live=False,

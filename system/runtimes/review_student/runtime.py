@@ -51,7 +51,12 @@ class StudentRuntime:
             return _insufficient_verdict(normalized, reason="No posts are available in the EventSnapshot.")
 
         options = dict(normalized.get("options") or {})
-        checkpoint = _checkpoint_status(options.get("student_checkpoint") or options.get("student_checkpoint_path"))
+        active_model = options.get("active_model") if isinstance(options.get("active_model"), Mapping) else {}
+        checkpoint = _checkpoint_status(
+            options.get("student_checkpoint")
+            or options.get("student_checkpoint_path")
+            or active_model.get("artifact_uri")
+        )
         post_scores = [_score_post(row) for row in normalized["posts"]]
         user_scores = _attention_mil_scores(post_scores)
         community_scores = _community_message_passing(normalized, user_scores)
@@ -64,7 +69,9 @@ class StudentRuntime:
             case=normalized,
             teacher_reference=options.get("teacher_reference"),
         )
-        model_status = "checkpoint_registered_shadow" if checkpoint["available"] else "shadow_untrained"
+        model_status = "checkpoint_active" if checkpoint["available"] and active_model else (
+            "checkpoint_registered_shadow" if checkpoint["available"] else "shadow_untrained"
+        )
         review_required = bool(model_status != "checkpoint_active" or active_learning["priority"] >= 0.35)
 
         return {

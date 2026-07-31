@@ -3,53 +3,37 @@
 from collections.abc import AsyncGenerator
 
 from fastapi import APIRouter, Depends, Query
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.security import decode_token
+from app.core.security import get_current_user_or_local_preview
 from app.db.mysql import async_session_factory
 from app.models.user import User
 from app.services import dashboard_service
-from app.utils.exceptions import AuthError
 from app.utils.response import success
 
 router = APIRouter()
-preview_security_scheme = HTTPBearer(auto_error=False)
-PREVIEW_ACCESS_TOKEN = "cogguard-preview-token"
-
-
 async def get_optional_db() -> AsyncGenerator[AsyncSession | None]:
     """Yield a MySQL session when available; keep dashboard Mongo data usable otherwise."""
+    session_factory = async_session_factory()
     try:
-        async with async_session_factory() as session:
-            yield session
+        session = await session_factory.__aenter__()
     except Exception:
         yield None
+        return
+    try:
+        yield session
+    except Exception as exc:
+        await session_factory.__aexit__(type(exc), exc, exc.__traceback__)
+        raise
+    else:
+        await session_factory.__aexit__(None, None, None)
 
 
 async def get_dashboard_viewer(
-    credentials: HTTPAuthorizationCredentials | None = Depends(preview_security_scheme),
+    viewer: User | None = Depends(get_current_user_or_local_preview),
 ) -> User | None:
-    """Allow the local preview token for the read-only dashboard overview."""
-    if credentials is None:
-        raise AuthError(msg="Authentication required")
-    if credentials.credentials == PREVIEW_ACCESS_TOKEN:
-        return None
-
-    payload = decode_token(credentials.credentials)
-    if payload.get("type") != "access":
-        raise AuthError(msg="Invalid token type")
-    user_id = payload.get("sub")
-    if user_id is None:
-        raise AuthError(msg="Invalid token payload")
-
-    async with async_session_factory() as session:
-        result = await session.execute(select(User).where(User.id == int(user_id)))
-        user = result.scalar_one_or_none()
-    if user is None or not user.is_active:
-        raise AuthError(msg="User not found or inactive")
-    return user
+    """Use the shared authentication boundary for dashboard access."""
+    return viewer
 
 
 @router.get("/overview")

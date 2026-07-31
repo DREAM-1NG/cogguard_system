@@ -4,11 +4,15 @@ export function analyzePropagation(params?: { platform?: string; event_id?: stri
   return request.get('/propagation/analyze', { params })
 }
 
-export function predictPropagationTrend(params?: { platform?: string; event_id?: string }) {
-  return request.post('/propagation/predict-trend', null, { params })
+export function analyzeObservedPropagation(params?: { platform?: string; event_id?: string; node_limit?: number }) {
+  return request.get('/propagation/observed-analysis', { params })
 }
 
 export function predictPropagationEventModel(params?: { platform?: string; event_id?: string; top_k?: number }) {
+  return request.post('/propagation/model-event-predict', null, { params })
+}
+
+export function predictPropagationCurrentEvent(params?: { platform?: string; event_id?: string; top_k?: number }) {
   return request.post('/propagation/model-event-predict', null, { params })
 }
 

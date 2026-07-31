@@ -48,7 +48,12 @@ async def test_download_one_skips_existing_file(tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_download_one_records_http_failure_without_raising(tmp_path):
+async def test_download_one_records_http_failure_without_raising(tmp_path, monkeypatch):
+    # This test covers HTTP error handling, not the SSRF host guard. The guard
+    # resolves every host for real, and `example.com` can resolve to a
+    # non-public address behind DNS interception, so stub it out here.
+    monkeypatch.setattr(service, "assert_public_media_url", lambda url: None)
+
     async def handler(_request: httpx.Request) -> httpx.Response:
         return httpx.Response(403, text="blocked")
 

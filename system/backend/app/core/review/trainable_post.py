@@ -50,6 +50,8 @@ HARM_TYPE_ORDER = (
     "manipulative_amplification",
 )
 STANCE_ORDER = ("support", "deny", "query", "neutral", "unlinked")
+STUDENT_AXIS_ORDER = (ATTACK_AXIS, MISINFO_AXIS)
+CLAIM_LINKED_DATASETS = {"PHEME", "mcfend", "FakeSV"}
 
 
 @dataclass(frozen=True)
@@ -425,13 +427,22 @@ def encode_text_features(
                 local_files_only=local_files_only,
                 use_fast=True,
             )
-            model = AutoModel.from_pretrained(
-                model_name,
-                revision=revision,
-                cache_dir=str(cache_dir) if cache_dir else None,
-                local_files_only=local_files_only,
-                use_safetensors=True,
-            )
+            try:
+                model = AutoModel.from_pretrained(
+                    model_name,
+                    revision=revision,
+                    cache_dir=str(cache_dir) if cache_dir else None,
+                    local_files_only=local_files_only,
+                    use_safetensors=True,
+                )
+            except OSError:
+                model = AutoModel.from_pretrained(
+                    model_name,
+                    revision=revision,
+                    cache_dir=str(cache_dir) if cache_dir else None,
+                    local_files_only=local_files_only,
+                    use_safetensors=False,
+                )
             device = resolve_torch_device()
             model.to(device)
             model.eval()
@@ -1096,3 +1107,45 @@ def write_jsonl(path: Path, rows: list[dict[str, Any]]) -> None:
     with path.open("w", encoding="utf-8", newline="\n") as handle:
         for row in rows:
             handle.write(json.dumps(row, ensure_ascii=False, separators=(",", ":")) + "\n")
+
+
+def __getattr__(name: str) -> Any:
+    if name in {
+        "build_teacher_silver_record",
+        "load_teacher_silver_index",
+    }:
+        from app.core.review.teacher_silver import build_teacher_silver_record, load_teacher_silver_index
+
+        return {
+            "build_teacher_silver_record": build_teacher_silver_record,
+            "load_teacher_silver_index": load_teacher_silver_index,
+        }[name]
+    if name in {
+        "SelectiveStudentEncoder",
+        "build_selective_student_prediction_rows",
+        "build_selective_student_targets",
+        "predict_selective_student_outputs",
+        "student_main_axis_metrics",
+        "student_overall_probability_for_case",
+        "train_selective_student_model",
+    }:
+        from app.core.review.selective_student import (
+            SelectiveStudentEncoder,
+            build_selective_student_prediction_rows,
+            build_selective_student_targets,
+            predict_selective_student_outputs,
+            student_main_axis_metrics,
+            student_overall_probability_for_case,
+            train_selective_student_model,
+        )
+
+        return {
+            "SelectiveStudentEncoder": SelectiveStudentEncoder,
+            "build_selective_student_prediction_rows": build_selective_student_prediction_rows,
+            "build_selective_student_targets": build_selective_student_targets,
+            "predict_selective_student_outputs": predict_selective_student_outputs,
+            "student_main_axis_metrics": student_main_axis_metrics,
+            "student_overall_probability_for_case": student_overall_probability_for_case,
+            "train_selective_student_model": train_selective_student_model,
+        }[name]
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

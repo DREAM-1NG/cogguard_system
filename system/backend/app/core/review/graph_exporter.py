@@ -14,8 +14,41 @@ from typing import Any
 from urllib.parse import quote
 from urllib.parse import urlparse
 
+from app.core.review.propagation_context import THREAD_CONTEXT_SCHEMA
+
 
 GRAPH_ARTIFACT_SCHEMA_VERSION = "review-graph-export-v1"
+
+POST_RELATION_EDGE_TYPES = {"replies_to", "reposts", "quotes"}
+
+POST_RELATION_FIELDS: dict[str, tuple[str, ...]] = {
+    "replies_to": (
+        "reply_to_post_id",
+        "in_reply_to_post_id",
+        "in_reply_to_status_id",
+        "in_reply_to_status_id_str",
+        "parent_post_id",
+        "parent_id",
+    ),
+    "reposts": (
+        "repost_of_post_id",
+        "retweet_of_post_id",
+        "retweeted_status_id",
+        "retweeted_status_id_str",
+        "shared_post_id",
+    ),
+    "quotes": (
+        "quote_of_post_id",
+        "quoted_post_id",
+        "quoted_status_id",
+        "quoted_status_id_str",
+    ),
+}
+
+POST_RELATION_NESTED_FIELDS: dict[str, tuple[str, ...]] = {
+    "reposts": ("retweeted_status", "repost_of", "retweet_of"),
+    "quotes": ("quoted_status", "quote_of"),
+}
 
 
 def export_review_heterogeneous_graph(
@@ -150,6 +183,8 @@ def export_review_heterogeneous_graph(
         _add_post_object_nodes(nodes, edges, post)
         _add_post_relation_edges(nodes, edges, post)
 
+    _add_post_relation_edges_from_posts(nodes, edges, posts)
+
     for claim in _as_list(post_semantics.get("claim_candidates")):
         claim_id = _text(claim.get("claim_id"))
         if claim_id:
@@ -212,6 +247,9 @@ def export_review_heterogeneous_graph(
                 "account_shares_object",
                 "co_shares_object",
                 "coordinated_with",
+                "replies_to",
+                "reposts",
+                "quotes",
                 "propagates_to",
             ],
         },
@@ -422,6 +460,258 @@ def _post_target_objects(post: dict[str, Any], evidence: dict[str, Any]) -> list
     return _dedupe_objects(objects, "target_id")
 
 
+def _add_post_relation_edges_from_posts(
+    nodes: dict[str, dict[str, Any]],
+    edges: dict[str, dict[str, Any]],
+    posts: list[dict[str, Any]],
+) -> None:
+    for post in posts:
+        post_id = _post_ref_id(post.get("post_id"))
+        if not post_id:
+            continue
+        for relation in _post_relation_targets(post):
+            _add_post_relation_edge(
+                nodes,
+                edges,
+                source_post_id=post_id,
+                target_post_id=relation["target_post_id"],
+                edge_type=relation["edge_type"],
+                evidence_source=relation["source"],
+            )
+
+
+def _post_relation_targets(post: dict[str, Any]) -> list[dict[str, str]]:
+    relations = []
+    seen: set[tuple[str, str, str]] = set()
+    raw_data = post.get("raw_data") if isinstance(post.get("raw_data"), dict) else {}
+    evidence = post.get("evidence") if isinstance(post.get("evidence"), dict) else {}
+    containers = (
+        ("post", post),
+        ("post.raw_data", raw_data),
+        ("post.evidence", evidence),
+    )
+    for edge_type, fields in POST_RELATION_FIELDS.items():
+        for container_name, container in containers:
+            for field in fields:
+                for value in _relation_values(container.get(field)):
+                    target_post_id = _post_ref_id(value)
+                    if not target_post_id:
+                        continue
+                    key = (edge_type, target_post_id, f"{container_name}.{field}")
+                    if key in seen:
+                        continue
+                    seen.add(key)
+                    relations.append({
+                        "edge_type": edge_type,
+                        "target_post_id": target_post_id,
+                        "source": f"{container_name}.{field}",
+                    })
+
+    for edge_type, fields in POST_RELATION_NESTED_FIELDS.items():
+        for container_name, container in (("post", post), ("post.raw_data", raw_data)):
+            for field in fields:
+                nested = container.get(field)
+                if not isinstance(nested, dict):
+                    continue
+                target_post_id = _post_ref_id(
+                    nested.get("post_id")
+                    or nested.get("id_str")
+                    or nested.get("id")
+                    or nested.get("status_id")
+                )
+                if not target_post_id:
+                    continue
+                key = (edge_type, target_post_id, f"{container_name}.{field}.id")
+                if key in seen:
+                    continue
+                seen.add(key)
+                relations.append({
+                    "edge_type": edge_type,
+                    "target_post_id": target_post_id,
+                    "source": f"{container_name}.{field}",
+                })
+    return relations
+
+
+def _add_thread_context_post_nodes(
+    nodes: dict[str, dict[str, Any]],
+    thread_context: dict[str, Any],
+) -> None:
+    for thread_node in _as_list(thread_context.get("nodes")):
+        if not isinstance(thread_node, dict):
+            continue
+        post_id = _thread_node_post_id(thread_node)
+        if not post_id:
+            continue
+        _add_node(
+            nodes,
+            node_id=f"post:{post_id}",
+            node_type="post",
+            attrs={
+                "post_id": post_id,
+                "thread_node_id": _text(thread_node.get("node_id")),
+                "author_id": _text(thread_node.get("author_id")),
+                "created_at": _text(thread_node.get("created_at")),
+                "excerpt": _text(thread_node.get("excerpt") or thread_node.get("text"))[:240],
+                "depth": _safe_int(thread_node.get("depth")),
+                "is_root": bool(thread_node.get("is_root")),
+                "stance_label": _text(thread_node.get("stance_label")),
+                "tree_id": _text(thread_context.get("tree_id")),
+                "relation_placeholder": False,
+                "source": "propagation.thread_context.nodes",
+            },
+        )
+
+
+def _add_thread_context_post_relation_edges(
+    nodes: dict[str, dict[str, Any]],
+    edges: dict[str, dict[str, Any]],
+    thread_context: dict[str, Any],
+) -> None:
+    thread_nodes = _thread_nodes_by_ref(thread_context)
+    for edge in _as_list(thread_context.get("edges")):
+        if not isinstance(edge, dict):
+            continue
+        edge_type = _normalize_post_relation_type(
+            edge.get("relation") or edge.get("type") or edge.get("edge_type")
+        )
+        if edge_type not in POST_RELATION_EDGE_TYPES:
+            continue
+        source_post_id = _post_ref_id(edge.get("source") or edge.get("from"))
+        target_post_id = _post_ref_id(edge.get("target") or edge.get("to"))
+        if not source_post_id or not target_post_id:
+            continue
+        source_post_id, target_post_id = _orient_thread_relation(
+            edge_type=edge_type,
+            source_post_id=source_post_id,
+            target_post_id=target_post_id,
+            thread_nodes=thread_nodes,
+        )
+        _add_post_relation_edge(
+            nodes,
+            edges,
+            source_post_id=source_post_id,
+            target_post_id=target_post_id,
+            edge_type=edge_type,
+            evidence_source="propagation.thread_context.edges",
+        )
+
+
+def _add_post_relation_edge(
+    nodes: dict[str, dict[str, Any]],
+    edges: dict[str, dict[str, Any]],
+    *,
+    source_post_id: str,
+    target_post_id: str,
+    edge_type: str,
+    evidence_source: str,
+) -> None:
+    source_post_id = _post_ref_id(source_post_id)
+    target_post_id = _post_ref_id(target_post_id)
+    if not source_post_id or not target_post_id or source_post_id == target_post_id:
+        return
+    if edge_type not in POST_RELATION_EDGE_TYPES:
+        return
+    _ensure_post_relation_node(nodes, source_post_id, evidence_source=evidence_source)
+    _ensure_post_relation_node(nodes, target_post_id, evidence_source=evidence_source)
+    _add_edge(
+        edges,
+        source=f"post:{source_post_id}",
+        target=f"post:{target_post_id}",
+        edge_type=edge_type,
+        attrs={
+            "relation": edge_type,
+            "source_post_id": source_post_id,
+            "target_post_id": target_post_id,
+            "source": evidence_source,
+        },
+    )
+
+
+def _ensure_post_relation_node(
+    nodes: dict[str, dict[str, Any]],
+    post_id: str,
+    *,
+    evidence_source: str,
+) -> None:
+    node_id = f"post:{post_id}"
+    if node_id in nodes:
+        return
+    _add_node(
+        nodes,
+        node_id=node_id,
+        node_type="post",
+        attrs={
+            "post_id": post_id,
+            "relation_placeholder": True,
+            "source": evidence_source,
+        },
+    )
+
+
+def _thread_nodes_by_ref(thread_context: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    refs = {}
+    for node in _as_list(thread_context.get("nodes")):
+        if not isinstance(node, dict):
+            continue
+        post_id = _thread_node_post_id(node)
+        node_id = _post_ref_id(node.get("node_id"))
+        if post_id:
+            refs[post_id] = node
+        if node_id:
+            refs[node_id] = node
+    return refs
+
+
+def _orient_thread_relation(
+    *,
+    edge_type: str,
+    source_post_id: str,
+    target_post_id: str,
+    thread_nodes: dict[str, dict[str, Any]],
+) -> tuple[str, str]:
+    if edge_type != "replies_to":
+        return source_post_id, target_post_id
+    target_node = thread_nodes.get(target_post_id) or {}
+    target_parent = _post_ref_id(target_node.get("parent_id"))
+    if target_parent and target_parent == source_post_id:
+        return target_post_id, source_post_id
+    return source_post_id, target_post_id
+
+
+def _thread_node_post_id(node: dict[str, Any]) -> str:
+    return _post_ref_id(node.get("post_id") or node.get("node_id"))
+
+
+def _relation_values(value: Any) -> list[Any]:
+    if isinstance(value, list):
+        return value
+    if value is None:
+        return []
+    return [value]
+
+
+def _post_ref_id(value: Any) -> str:
+    if isinstance(value, dict):
+        value = value.get("post_id") or value.get("id_str") or value.get("id") or value.get("status_id")
+    text = _text(value)
+    for prefix in ("post:", "tweet:", "status:"):
+        if text.startswith(prefix):
+            return text.removeprefix(prefix)
+    return text
+
+
+def _normalize_post_relation_type(value: Any) -> str:
+    relation = _text(value).lower().replace("-", "_").replace(" ", "_")
+    if relation in {"reply", "reply_to", "replies_to", "in_reply_to", "parent"}:
+        return "replies_to"
+    if relation in {"repost", "reposts", "retweet", "retweets", "retweeted", "retweet_of"}:
+        return "reposts"
+    if relation in {"quote", "quotes", "quoted", "quote_of", "quoted_status"}:
+        return "quotes"
+    return ""
+
+
 def _add_coordination_edges(
     nodes: dict[str, dict[str, Any]],
     edges: dict[str, dict[str, Any]],
@@ -519,11 +809,36 @@ def _add_propagation_edges(
     edges: dict[str, dict[str, Any]],
     propagation: dict[str, Any],
 ) -> None:
-    _add_thread_context_edges(nodes, edges, propagation.get("thread_context") or {})
+    thread_context = propagation.get("thread_context")
+    if not isinstance(thread_context, dict):
+        thread_context = {}
+    # Callers may hand the thread context bundle in directly instead of nesting it.
+    if not thread_context and propagation.get("schema_version") == THREAD_CONTEXT_SCHEMA:
+        thread_context = propagation
+    if thread_context:
+        _add_thread_context_post_nodes(nodes, thread_context)
+        _add_thread_context_post_relation_edges(nodes, edges, thread_context)
+
+
     for edge in _as_list(_get(propagation, "graph", "edges")):
+        if not isinstance(edge, dict):
+            continue
         source = _text(edge.get("source"))
         target = _text(edge.get("target"))
         if not source or not target:
+            continue
+        post_relation_type = _normalize_post_relation_type(
+            edge.get("relation") or edge.get("type") or edge.get("edge_type")
+        )
+        if post_relation_type:
+            _add_post_relation_edge(
+                nodes,
+                edges,
+                source_post_id=source,
+                target_post_id=target,
+                edge_type=post_relation_type,
+                evidence_source="propagation.graph",
+            )
             continue
         _add_edge(
             edges,
@@ -560,81 +875,6 @@ def _add_post_relation_edges(
             target=f"post:{target_post_id}",
             edge_type=relation_type,
             attrs={"source": source},
-        )
-
-
-def _post_relation_targets(post: dict[str, Any]) -> list[tuple[str, str, str]]:
-    raw = post.get("raw_data") if isinstance(post.get("raw_data"), dict) else {}
-    return [
-        (
-            "replies_to",
-            _first_text(post, ("in_reply_to_post_id", "parent_post_id", "reply_to"))
-            or _first_text(raw, ("in_reply_to_status_id_str", "parent_id", "parent_post_id")),
-            "post.reply_fields",
-        ),
-        (
-            "reposts",
-            _first_text(post, ("repost_id", "retweeted_post_id", "retweeted_status_id"))
-            or _first_text(raw, ("retweeted_status_id_str", "retweeted_status_id", "repost_id")),
-            "post.repost_fields",
-        ),
-        (
-            "quotes",
-            _first_text(post, ("quote_post_id", "quoted_post_id", "quoted_status_id"))
-            or _quoted_status_id(raw),
-            "post.quote_fields",
-        ),
-    ]
-
-
-def _add_thread_context_edges(
-    nodes: dict[str, dict[str, Any]],
-    edges: dict[str, dict[str, Any]],
-    thread_context: dict[str, Any],
-) -> None:
-    if not isinstance(thread_context, dict):
-        return
-    node_to_post: dict[str, str] = {}
-    for node in _as_list(thread_context.get("nodes")):
-        if not isinstance(node, dict):
-            continue
-        node_id = _text(node.get("node_id") or node.get("id"))
-        post_id = _text(node.get("post_id") or node_id)
-        if not node_id or not post_id:
-            continue
-        node_to_post[node_id] = post_id
-        _add_node(
-            nodes,
-            node_id=f"post:{post_id}",
-            node_type="post",
-            attrs={
-                "post_id": post_id,
-                "thread_node_id": node_id,
-                "tree_id": thread_context.get("tree_id"),
-                "depth": _safe_int(node.get("depth")),
-                "excerpt": _text(node.get("excerpt"))[:240],
-            },
-        )
-
-    for edge in _as_list(thread_context.get("edges")):
-        if not isinstance(edge, dict):
-            continue
-        relation = _normalize_post_relation_type(edge.get("relation"))
-        if relation not in {"replies_to", "reposts", "quotes"}:
-            continue
-        parent_post_id = node_to_post.get(_text(edge.get("source"))) or _text(edge.get("source"))
-        child_post_id = node_to_post.get(_text(edge.get("target"))) or _text(edge.get("target"))
-        if not parent_post_id or not child_post_id or parent_post_id == child_post_id:
-            continue
-        _add_edge(
-            edges,
-            source=f"post:{child_post_id}",
-            target=f"post:{parent_post_id}",
-            edge_type=relation,
-            attrs={
-                "source": "propagation.thread_context.edges",
-                "tree_id": thread_context.get("tree_id"),
-            },
         )
 
 
@@ -732,21 +972,6 @@ def _quoted_status_id(raw: dict[str, Any]) -> str:
         if text:
             return text
     return _first_text(raw, ("quoted_status_id_str", "quoted_status_id", "quote_post_id"))
-
-
-def _normalize_post_relation_type(value: Any) -> str:
-    text = _text(value).lower()
-    aliases = {
-        "reply": "replies_to",
-        "replies_to": "replies_to",
-        "parent": "replies_to",
-        "repost": "reposts",
-        "retweet": "reposts",
-        "reposts": "reposts",
-        "quote": "quotes",
-        "quotes": "quotes",
-    }
-    return aliases.get(text, text)
 
 
 def _first_text(row: dict[str, Any], keys: tuple[str, ...]) -> str:

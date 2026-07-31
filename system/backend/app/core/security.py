@@ -16,7 +16,7 @@ from app.utils.exceptions import AuthError
 
 security_scheme = HTTPBearer()
 optional_security_scheme = HTTPBearer(auto_error=False)
-PREVIEW_ACCESS_TOKEN = "cogguard-preview-token"
+PREVIEW_ACCESS_TOKEN = ""
 
 # bcrypt hash of an unguessable value, used to spend the same amount of time
 # hashing when a username does not exist so login cannot be timed to enumerate
@@ -136,7 +136,7 @@ async def get_current_user_or_preview(
     db: AsyncSession = Depends(get_db),
 ) -> User:
     token = credentials.credentials
-    if token == PREVIEW_ACCESS_TOKEN and preview_token_allowed():
+    if token and token == settings.PREVIEW_AUTH_TOKEN and preview_token_allowed():
         return await _get_preview_backing_user(db)
     return await _resolve_user_from_token(token, db)
 
@@ -149,7 +149,7 @@ async def get_current_user_or_local_preview(
         raise AuthError(msg="Authentication required")
 
     token = credentials.credentials
-    if token == PREVIEW_ACCESS_TOKEN and preview_token_allowed():
+    if token and token == settings.PREVIEW_AUTH_TOKEN and preview_token_allowed():
         return None
 
     async with async_session_factory() as session:

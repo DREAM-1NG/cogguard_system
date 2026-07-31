@@ -15,7 +15,7 @@ from app.core.analysis.contracts import (
     transition_run_status,
 )
 from app.core.analysis.snapshots import build_event_snapshot
-from app.models.analysis import AnalysisRun, AnalysisRunEvent, EventSnapshotRecord
+from app.models.analysis import AnalysisModelActivation, AnalysisModelVersion, AnalysisRun, AnalysisRunEvent, EventSnapshotRecord
 from app.services.event_data import load_event_comments, load_event_posts
 
 SNAPSHOT_COLLECTION = "analysis_event_snapshots"
@@ -65,6 +65,9 @@ class AnalysisStore(Protocol):
     ) -> Any:
         ...
 
+    async def update_artifact_manifest(self, *, run_id: str, manifest: dict[str, Any]) -> Any:
+        ...
+
     async def append_run_event(
         self,
         *,
@@ -82,6 +85,9 @@ class AnalysisStore(Protocol):
         after_id: int = 0,
         limit: int = 100,
     ) -> list[Any]:
+        ...
+
+    async def get_active_model(self, technology: str) -> Any | None:
         ...
 
 
@@ -191,6 +197,14 @@ class AnalysisRegistry:
         )
         return _mapping(updated)
 
+    async def update_artifact_manifest(self, run_id: str, manifest: dict[str, Any]) -> dict[str, Any] | None:
+        """Persist the reproducibility manifest without changing run state."""
+        updater = getattr(self.store, "update_artifact_manifest", None)
+        if updater is None:
+            return None
+        updated = await updater(run_id=run_id, manifest=dict(manifest))
+        return _mapping(updated) if updated is not None else None
+
     async def append_run_event(
         self,
         run_id: str,
@@ -216,6 +230,13 @@ class AnalysisRegistry:
     ) -> list[dict[str, Any]]:
         events = await self.store.list_run_events(run_id=run_id, after_id=after_id, limit=limit)
         return [_mapping(event) for event in events]
+
+    async def get_active_model(self, technology: str) -> dict[str, Any] | None:
+        getter = getattr(self.store, "get_active_model", None)
+        if getter is None:
+            return None
+        row = await getter(technology=technology)
+        return _mapping(row) if row is not None else None
 
     async def _persist_snapshot(self, snapshot: EventSnapshot, *, created_by: int) -> Any:
         collection = _get_collection(self.mongo_db, self.snapshot_collection)
@@ -328,6 +349,15 @@ class SqlAlchemyAnalysisStore:
         await self.session.flush()
         return run
 
+    async def update_artifact_manifest(self, *, run_id: str, manifest: dict[str, Any]) -> AnalysisRun:
+        run = await self.get_run(run_id)
+        if run is None:
+            raise KeyError(f"Analysis run not found: {run_id}")
+        run.artifact_manifest_json = _json_dumps(manifest)
+        run.updated_at = datetime.now(timezone.utc)
+        await self.session.flush()
+        return run
+
     async def append_run_event(
         self,
         *,
@@ -360,6 +390,27 @@ class SqlAlchemyAnalysisStore:
             .limit(limit)
         )
         return list(result.scalars().all())
+
+    async def get_active_model(self, *, technology: str) -> dict[str, Any] | None:
+        result = await self.session.execute(
+            select(AnalysisModelActivation, AnalysisModelVersion)
+            .join(AnalysisModelVersion, AnalysisModelVersion.id == AnalysisModelActivation.model_version_id)
+            .where(AnalysisModelActivation.technology == technology)
+        )
+        row = result.first()
+        if row is None:
+            return None
+        activation, version = row
+        return {
+            "technology": activation.technology,
+            "model_version_id": activation.model_version_id,
+            "version": version.version,
+            "model": version.model,
+            "artifact_uri": version.artifact_uri,
+            "artifact_hash": version.artifact_hash,
+            "status": version.status,
+            "provenance": _json_loads(activation.provenance_json, {}),
+        }
 
 
 def _get_collection(mongo_db: Any, name: str) -> Any:
@@ -409,6 +460,14 @@ def _mapping(value: Any) -> dict[str, Any]:
             "status": value.status,
             "payload": _json_loads(value.payload_json, {}),
             "created_at": _iso(value.created_at),
+        }
+    if isinstance(value, AnalysisModelActivation):
+        return {
+            "technology": value.technology,
+            "model_version_id": value.model_version_id,
+            "provenance": _json_loads(value.provenance_json, {}),
+            "activated_by": value.activated_by,
+            "activated_at": _iso(value.activated_at),
         }
     raise TypeError(f"Unsupported analysis registry value: {type(value).__name__}")
 

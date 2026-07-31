@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
 from app.api.v2.analysis import get_analysis_executor, get_analysis_registry, router
-from app.core.security import PREVIEW_ACCESS_TOKEN
+from app.core.security import get_current_user_or_local_preview
 from app.main import app as main_app
 
 
@@ -79,7 +79,10 @@ def test_v2_analysis_routes_create_runs_and_recover_events():
         app.include_router(router, prefix="/api/v2/analysis")
         app.dependency_overrides[get_analysis_registry] = lambda: fake_registry
         app.dependency_overrides[get_analysis_executor] = lambda: fake_executor
-        headers = {"Authorization": f"Bearer {PREVIEW_ACCESS_TOKEN}"}
+        # The preview bypass is disabled by default, so authenticate the route
+        # surface explicitly instead of relying on a static preview token.
+        app.dependency_overrides[get_current_user_or_local_preview] = lambda: None
+        headers: dict[str, str] = {}
         transport = ASGITransport(app=app)
 
         async with AsyncClient(transport=transport, base_url="http://test") as client:

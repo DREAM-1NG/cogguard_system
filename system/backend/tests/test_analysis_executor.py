@@ -223,6 +223,9 @@ def test_executor_loads_snapshot_and_runs_requested_stage_ports():
         assert result["results"]["propagation_analysis"]["scale_interval"] == [1, 3]
         assert result["results"]["student"]["verdict_type"] == "preliminary"
         assert result["results"]["teacher"]["job_id"] == "teacher_job_1"
+        assert result["artifact_manifest"]["schema"] == "cogguard.analysis.artifact_manifest.v1"
+        assert result["artifact_manifest"]["stages"]["coordination_discover"]["claimability"] == "non_claimable"
+        assert result["artifact_manifest"]["stages"]["propagation_analysis"]["claimability"] == "non_claimable"
         assert coordination.calls == [(snapshot.snapshot_id, {"window_hours": 6})]
         assert propagation.calls == [(snapshot.snapshot_id, {})]
         assert student.calls[0]["snapshot_id"] == snapshot.snapshot_id
