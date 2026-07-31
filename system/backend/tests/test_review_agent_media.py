@@ -2,13 +2,13 @@
 
 import base64
 
-from app.core.risk.agent_media import agent_requires_vision
-from app.core.risk.agent_media import build_media_inputs_for_post
-from app.core.risk.agent_media import build_provider_input_bundle_for_agent
-from app.core.risk.agent_media import build_vision_input_status
-from app.core.risk.agent_media import infer_media_type
-from app.core.risk.agent_media import maybe_data_url
-from app.core.risk.agent_media import provider_should_receive_media
+from app.core.review.agent_media import agent_requires_vision
+from app.core.review.agent_media import build_media_inputs_for_post
+from app.core.review.agent_media import build_provider_input_bundle_for_agent
+from app.core.review.agent_media import build_vision_input_status
+from app.core.review.agent_media import infer_media_type
+from app.core.review.agent_media import maybe_data_url
+from app.core.review.agent_media import provider_should_receive_media
 
 
 def test_build_media_inputs_preserves_platform_neutral_media_and_derived_text():

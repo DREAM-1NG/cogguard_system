@@ -28,6 +28,43 @@ from app.core.propagation.quality import build_user_quality_portrait
 from app.core.propagation.roles import identify_key_roles
 
 
+# ---------------------------------------------------------------------------
+# Row-value coercion
+#
+# Posts come straight from MongoDB, where documents are heterogeneous: a field
+# absent from one document becomes NaN once pandas aligns the frame. NaN is
+# truthy and ``str(nan) == "nan"``, so naive ``row.get(k, default)`` access
+# silently produces "nan" account nodes, a phantom shared object keyed on NaN,
+# and TypeErrors when iterating a NaN list field. Always coerce through these.
+# ---------------------------------------------------------------------------
+
+def _clean_str(value) -> str:
+    """Return a real string, mapping NaN/None/non-scalars to ""."""
+    if value is None:
+        return ""
+    if isinstance(value, float) and np.isnan(value):
+        return ""
+    if not isinstance(value, str):
+        try:
+            if pd.isna(value):
+                return ""
+        except (TypeError, ValueError):
+            pass
+        value = str(value)
+    text = value.strip()
+    if text.lower() in {"nan", "none", "nat"}:
+        return ""
+    return text
+
+
+def _clean_list(value) -> list:
+    """Return a real list; NaN/None/scalars become []."""
+    if isinstance(value, list):
+        return value
+    if isinstance(value, tuple):
+        return list(value)
+    return []
+
 
 # ---------------------------------------------------------------------------
 # Public entry
@@ -66,13 +103,13 @@ def build_propagation_graph(
 
     # 添加节点
     for _, row in df.iterrows():
-        node_id = str(row.get("author_id", ""))
+        node_id = _clean_str(row.get("author_id"))
         if not node_id:
             continue
         if node_id not in G:
             G.add_node(
                 node_id,
-                author_name=row.get("author_name", node_id),
+                author_name=_clean_str(row.get("author_name")) or node_id,
                 post_count=0,
                 first_ts=str(row["ts"]),
             )
@@ -82,17 +119,22 @@ def build_propagation_graph(
     shared_objects: dict[str, list] = {}
     for _, row in df.iterrows():
         objs: list[str] = []
-        for tag in row.get("hashtags", []) or []:
-            objs.append(tag)
-        url = row.get("url", "")
+        for tag in _clean_list(row.get("hashtags")):
+            tag_text = _clean_str(tag)
+            if tag_text:
+                objs.append(tag_text)
+        url = _clean_str(row.get("url"))
         if url:
             objs.append(url)
+        author_id = _clean_str(row.get("author_id"))
+        if not author_id:
+            continue
         for obj in objs:
             if obj not in shared_objects:
                 shared_objects[obj] = []
             shared_objects[obj].append({
-                "author_id": str(row.get("author_id", "")),
-                "post_id": str(row.get("post_id", "")),
+                "author_id": author_id,
+                "post_id": _clean_str(row.get("post_id")),
                 "ts": row["ts"],
             })
 
@@ -192,8 +234,8 @@ def _add_explicit_edges(
     # 构建 post_id → author_id 查找表
     post_author: dict[str, str] = {}
     for _, row in df.iterrows():
-        pid = str(row.get("post_id", ""))
-        aid = str(row.get("author_id", ""))
+        pid = _clean_str(row.get("post_id"))
+        aid = _clean_str(row.get("author_id"))
         if pid and aid:
             post_author[pid] = aid
 
@@ -201,17 +243,17 @@ def _add_explicit_edges(
     comment_author: dict[str, str] = {}
     comment_author_name: dict[str, str] = {}
     for c in comments:
-        cid = str(c.get("comment_id", ""))
-        aid = str(c.get("author_id", ""))
+        cid = _clean_str(c.get("comment_id"))
+        aid = _clean_str(c.get("author_id"))
         if cid and aid:
             comment_author[cid] = aid
-            comment_author_name[aid] = c.get("author_name", aid)
+            comment_author_name[aid] = _clean_str(c.get("author_name")) or aid
 
     for c in comments:
-        reply_to = str(c.get("reply_to", "") or "")
+        reply_to = _clean_str(c.get("reply_to"))
         if not reply_to:
             continue
-        commenter = str(c.get("author_id", ""))
+        commenter = _clean_str(c.get("author_id"))
         if not commenter:
             continue
 
@@ -229,14 +271,19 @@ def _add_explicit_edges(
                 first_ts="",
             )
         if commenter not in G:
-            G.add_node(commenter, author_name=c.get("author_name", commenter), post_count=0, first_ts="")
+            G.add_node(
+                commenter,
+                author_name=_clean_str(c.get("author_name")) or commenter,
+                post_count=0,
+                first_ts="",
+            )
 
         # 传播方向是“被回复内容的作者 -> 评论/回复者”，否则评论活跃用户会被误判成源头。
         G.add_edge(
             parent_author, commenter,
             type="explicit",
             weight=1,
-            comment_id=str(c.get("comment_id", "")),
+            comment_id=_clean_str(c.get("comment_id")),
         )
 
 
@@ -262,10 +309,16 @@ def _betweenness(G: nx.MultiDiGraph) -> dict[str, float]:
                 simple_G.add_edge(u, v, weight=weight)
 
         sample_size = min(APPROX_BETWEENNESS_SAMPLE_SIZE, simple_G.number_of_nodes())
+        # weight=None on purpose. Collapsing the multigraph sums interaction
+        # counts into `weight`, but betweenness_centrality treats `weight` as a
+        # *distance*, so passing it would rank the busiest propagation routes as
+        # the longest and drive their bridge nodes' centrality toward zero.
+        # Hop-count also matches the exact branch above, where every multi-edge
+        # has weight 1 and the shortest path is therefore hop-count anyway.
         return nx.betweenness_centrality(
             simple_G,
             k=sample_size,
-            weight="weight",
+            weight=None,
             seed=42,
         )
     except Exception:
@@ -1051,16 +1104,16 @@ def _diffusion_layer_rows(visible_nodes: list[dict], total_nodes: int) -> list[d
 def _build_post_index(df: pd.DataFrame) -> dict[str, list[dict]]:
     post_index: dict[str, list[dict]] = {}
     for _, row in df.iterrows():
-        author_id = str(row.get("author_id", ""))
+        author_id = _clean_str(row.get("author_id"))
         if not author_id:
             continue
         post_index.setdefault(author_id, []).append({
-            "post_id": str(row.get("post_id", "")),
+            "post_id": _clean_str(row.get("post_id")),
             "author_id": author_id,
-            "author_name": row.get("author_name", author_id),
+            "author_name": _clean_str(row.get("author_name")) or author_id,
             "timestamp": str(row.get("ts", "")),
-            "content": str(row.get("content", ""))[:180],
-            "url": str(row.get("url", "") or ""),
+            "content": _clean_str(row.get("content"))[:180],
+            "url": _clean_str(row.get("url")),
         })
     return post_index
 
@@ -1068,16 +1121,16 @@ def _build_post_index(df: pd.DataFrame) -> dict[str, list[dict]]:
 def _build_comment_index(comments: list[dict]) -> dict[str, list[dict]]:
     comment_index: dict[str, list[dict]] = {}
     for comment in comments:
-        author_id = str(comment.get("author_id", ""))
+        author_id = _clean_str(comment.get("author_id"))
         if not author_id:
             continue
         comment_index.setdefault(author_id, []).append({
-            "comment_id": str(comment.get("comment_id", "")),
-            "post_id": str(comment.get("post_id", "")),
+            "comment_id": _clean_str(comment.get("comment_id")),
+            "post_id": _clean_str(comment.get("post_id")),
             "author_id": author_id,
-            "author_name": comment.get("author_name", author_id),
+            "author_name": _clean_str(comment.get("author_name")) or author_id,
             "timestamp": str(comment.get("timestamp", "")),
-            "content": str(comment.get("content", ""))[:180],
+            "content": _clean_str(comment.get("content"))[:180],
         })
     return comment_index
 
@@ -1194,13 +1247,13 @@ def _extract_evidence_chains(
     # post_id → row 查找
     post_lookup: dict[str, dict] = {}
     for _, row in df.iterrows():
-        pid = str(row.get("post_id", ""))
+        pid = _clean_str(row.get("post_id"))
         if pid:
             post_lookup[pid] = {
                 "post_id": pid,
-                "author_id": str(row.get("author_id", "")),
+                "author_id": _clean_str(row.get("author_id")),
                 "timestamp": str(row["ts"]),
-                "content": str(row.get("content", ""))[:100],
+                "content": _clean_str(row.get("content"))[:100],
             }
 
     chains: list[dict] = []

@@ -13,6 +13,7 @@ from typing import Any, Mapping, Sequence
 import numpy as np
 import pandas as pd
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import PROJECT_ROOT
@@ -60,6 +61,12 @@ RUN_RELATIONS = (
     "tweet_similarity",
 )
 SYSTEM_DATASET_CREATED_BY = 0
+# The shared China pretrained checkpoint is cached on disk and reused by every
+# later unlabeled inference, so it is always built at archive quality rather than
+# with whatever lightweight budget the triggering rerun happened to request.
+# These mirror ensure_china_pretrained_fusion_checkpoint's own defaults.
+PRETRAINED_CHECKPOINT_HIDDEN_DIM = 32
+PRETRAINED_CHECKPOINT_DETECT_EPOCHS = 20
 SYSTEM_ARCHIVE_SEED = 42
 SYSTEM_ARCHIVE_SPLIT = "supervised"
 SYSTEM_ARCHIVE_DISCOVER_ENCODER = "magnn"
@@ -258,6 +265,20 @@ def _as_float(value: Any) -> float | None:
         return None
 
 
+def _str_column(frame: pd.DataFrame, name: str) -> pd.Series:
+    """Return ``frame[name]`` as a NaN-free string Series, even if absent.
+
+    ``frame.get(name, "")`` returns the plain ``str`` default when the column is
+    missing, so chaining ``.fillna()`` / ``.astype(str)`` onto it raises
+    AttributeError. Datasets uploaded with only the minimum columns
+    (account_id/relation/object_id/timestamp) legitimately have no content
+    column, so every access must go through this helper.
+    """
+    if name in frame.columns:
+        return frame[name].fillna("").astype(str)
+    return pd.Series("", index=frame.index, dtype="object")
+
+
 async def ensure_system_archive_datasets(db: AsyncSession) -> None:
     if not ARCHIVE_MANIFEST_PATH.exists():
         return
@@ -294,7 +315,14 @@ async def ensure_system_archive_datasets(db: AsyncSession) -> None:
         else:
             for key, value in values.items():
                 setattr(dataset, key, value)
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError:
+        # Two concurrent first-requests both see "no row" for an archive slug and
+        # both insert; the loser trips the unique slug index. The archive values
+        # are identical either way, so treat this as already-synced rather than
+        # surfacing a 500 from what is a read-path side effect.
+        await db.rollback()
 
 
 def _runnable_relations(raw_relations: Sequence[str]) -> tuple[str, ...]:
@@ -736,10 +764,10 @@ def _resolve_shared_object_text(
                 post_url_note_ids = rows["post_url"].map(_extract_note_id_from_post_url)
                 matched_rows = rows[post_url_note_ids == note_id].copy()
                 if not matched_rows.empty:
-                    matched_rows["relation_rank"] = matched_rows.get("relation", "").astype(str).str.lower().map(
+                    matched_rows["relation_rank"] = _str_column(matched_rows, "relation").str.lower().map(
                         {"profile": 0, "hashtag_share": 1, "reply_target": 2}
                     ).fillna(3)
-                    matched_rows["content_len"] = matched_rows.get("content", "").fillna("").astype(str).str.len()
+                    matched_rows["content_len"] = _str_column(matched_rows, "content").str.len()
                     matched_rows = matched_rows.sort_values(
                         by=["relation_rank", "content_len"],
                         ascending=[True, False],
@@ -762,7 +790,7 @@ def _resolve_shared_object_text(
                 xhs_note_ids = rows["post_url"].map(_extract_xhs_note_id_from_url)
                 matched_rows = rows[xhs_note_ids == note_id].copy()
                 if not matched_rows.empty:
-                    matched_rows["content_len"] = matched_rows.get("content", "").fillna("").astype(str).str.len()
+                    matched_rows["content_len"] = _str_column(matched_rows, "content").str.len()
                     matched_rows = matched_rows.sort_values(by=["content_len"], ascending=[False], kind="stable")
                     best = matched_rows.iloc[0]
                     resolved_text = _truncate_text(best.get("content"), limit=140)
@@ -781,7 +809,7 @@ def _resolve_shared_object_text(
                 aweme_ids = rows["post_url"].map(_extract_douyin_aweme_id_from_url)
                 matched_rows = rows[aweme_ids == aweme_id].copy()
                 if not matched_rows.empty:
-                    matched_rows["content_len"] = matched_rows.get("content", "").fillna("").astype(str).str.len()
+                    matched_rows["content_len"] = _str_column(matched_rows, "content").str.len()
                     matched_rows = matched_rows.sort_values(by=["content_len"], ascending=[False], kind="stable")
                     best = matched_rows.iloc[0]
                     resolved_text = _truncate_text(best.get("content"), limit=140)
@@ -815,14 +843,14 @@ def _resolve_shared_object_text(
             return {}
 
         matched_rows = pd.concat(matched_frames, ignore_index=True).drop_duplicates()
-        matched_rows["relation_rank"] = matched_rows.get("relation", "").astype(str).str.lower().map(
+        matched_rows["relation_rank"] = _str_column(matched_rows, "relation").str.lower().map(
             {
                 "profile": 0,
                 "hashtag_share": 1,
                 "reply_target": 2,
             }
         ).fillna(3)
-        matched_rows["content_len"] = matched_rows.get("content", "").fillna("").astype(str).str.len()
+        matched_rows["content_len"] = _str_column(matched_rows, "content").str.len()
         matched_rows = matched_rows.sort_values(
             by=["relation_rank", "content_len"],
             ascending=[True, False],
@@ -848,7 +876,7 @@ def _resolve_shared_object_text(
         matched_rows = dataset_events[dataset_events["comment_id"].astype(str) == comment_id].copy()
         if matched_rows.empty:
             return {}
-        matched_rows["content_len"] = matched_rows.get("content", "").fillna("").astype(str).str.len()
+        matched_rows["content_len"] = _str_column(matched_rows, "content").str.len()
         matched_rows = matched_rows.sort_values(by=["content_len"], ascending=[False], kind="stable")
         best = matched_rows.iloc[0]
         resolved_text = _truncate_text(best.get("content"), limit=140)
@@ -873,7 +901,7 @@ def _resolve_shared_object_text(
     if "object_id" in rows.columns:
         matched_rows = rows[rows["object_id"].astype(str) == object_text].copy()
         if not matched_rows.empty:
-            matched_rows["content_len"] = matched_rows.get("content", "").fillna("").astype(str).str.len()
+            matched_rows["content_len"] = _str_column(matched_rows, "content").str.len()
             matched_rows = matched_rows.sort_values(by=["content_len"], ascending=[False], kind="stable")
             best = matched_rows.iloc[0]
             resolved_text = _truncate_text(best.get("content"), limit=140)
@@ -1596,8 +1624,10 @@ async def upload_coordination_dataset(
     source_path = dataset_dir / stored_name
     source_path.write_bytes(content)
 
-    events = read_event_table(source_path)
-    summary = _summarize_event_table(events)
+    # Parsing plus similarity-graph summarization is CPU-bound (it enumerates
+    # account pairs per shared object), so keep it off the event loop.
+    events = await asyncio.to_thread(read_event_table, source_path)
+    summary = await asyncio.to_thread(_summarize_event_table, events)
     record = CoordinationDataset(
         slug=slug,
         display_name=dataset_name,
@@ -1950,11 +1980,18 @@ async def _execute_coordination_run(run_id: int) -> None:
             "metrics": metrics_payload,
         }
     else:
-        metadata = ensure_china_pretrained_fusion_checkpoint(
+        # The China checkpoint is a process-wide shared artifact cached on disk,
+        # so it must NOT be built with this rerun's interactive budget (which is
+        # deliberately tiny, e.g. 2 epochs / hidden 16) — that would permanently
+        # cache a near-untrained model for every later unlabeled inference.
+        # Build it at archive quality, off the event loop (SBERT encoding plus a
+        # torch training loop would otherwise block every concurrent request).
+        metadata = await asyncio.to_thread(
+            ensure_china_pretrained_fusion_checkpoint,
             device=str(runtime_config["device"]),
-            hidden_dim=int(runtime_config["detect_hidden_dim"]),
+            hidden_dim=PRETRAINED_CHECKPOINT_HIDDEN_DIM,
             embedding_dim=int(runtime_config["detect_embedding_dim"]),
-            detect_epochs=int(runtime_config["detect_epochs"]),
+            detect_epochs=PRETRAINED_CHECKPOINT_DETECT_EPOCHS,
         )
         detect = await asyncio.to_thread(
             run_china_pretrained_detect,

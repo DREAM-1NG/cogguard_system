@@ -97,6 +97,7 @@ class MockCrawler(BaseCrawler):
         return posts[:max_posts]
 
     async def fetch_comments(self, post_id: str, max_comments: int = 100) -> list[StandardComment]:
+        """Compatibility override for tests that still call the legacy wrapper."""
         comments: list[StandardComment] = []
         base_time = datetime.now(timezone.utc) - timedelta(hours=3)
         count = min(max_comments, random.randint(3, 20))

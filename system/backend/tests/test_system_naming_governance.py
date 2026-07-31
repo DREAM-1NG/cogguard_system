@@ -56,6 +56,13 @@ def test_legacy_risk_submodule_imports_resolve_to_review_boundary():
         assert legacy is canonical
 
 
+def test_review_boundary_is_the_canonical_import_surface():
+    review = importlib.import_module("app.core.review")
+    assert review.__all__
+    assert "agent_review" in review.__all__
+    assert "app.core.risk" in importlib.import_module("app.core.review").__doc__
+
+
 def test_research_runtime_semantic_packages_load():
     discover = _load_package(PROJECT_ROOT / "research" / "coordination_discover", "_test_coordination_discover")
     detect = _load_package(PROJECT_ROOT / "research" / "coordination_detect", "_test_coordination_detect")
@@ -86,6 +93,22 @@ def test_product_backend_does_not_import_reference_runtime_roots():
         text = path.read_text(encoding="utf-8")
         if any(marker in text for marker in path_markers):
             offenders.append(str(path.relative_to(app_root)))
+
+    assert offenders == []
+
+
+def test_backend_scripts_do_not_embed_reference_runtime_roots():
+    scripts_root = Path(__file__).resolve().parents[1] / "scripts"
+    path_markers = (
+        "MediaCrawler-main",
+        "NewsCrawler-main",
+        "CooRTweet-master",
+    )
+    offenders: list[str] = []
+    for path in scripts_root.rglob("*.py"):
+        text = path.read_text(encoding="utf-8")
+        if any(marker in text for marker in path_markers):
+            offenders.append(str(path.relative_to(scripts_root)))
 
     assert offenders == []
 
@@ -182,6 +205,24 @@ def test_governance_docs_describe_semantic_current_paths():
         assert "system/research/propagation_analysis/" in text
         assert "system/research/review_teacher/" in text
         assert "system/runtimes/review_student/" in text
+
+
+def test_current_guidance_documents_use_system_boundary():
+    repo_root = Path(__file__).resolve().parents[3]
+    paths = (
+        repo_root / "README.md",
+        repo_root / "system" / "README.md",
+        repo_root / "CLAUDE.md",
+        repo_root / ".cursor" / "rules" / "cogguard-project-context.mdc",
+        repo_root / ".cursor" / "rules" / "cogguard-change-sync.mdc",
+        repo_root / "doc" / "engineering" / "system-governance.md",
+        repo_root / "doc" / "engineering" / "project-map.md",
+    )
+
+    for path in paths:
+        text = path.read_text(encoding="utf-8")
+        assert "new-system/" not in text
+        assert "state_ktN" not in text
 
 
 def _load_package(path: Path, module_name: str):

@@ -10,6 +10,9 @@ This glossary is the canonical vocabulary for CogGuard. Use these names in code,
 | **Research Package** | System-readable algorithm code under `system/research/`. | Scratch code, notebook, external workspace |
 | **Vendored Runtime** | Executable runtime code under `system/runtimes/` used directly by the product. | Upstream repo, external dependency |
 | **Reference Boundary** | An upstream repository kept for provenance and diffing only. | Runtime dependency, execution root |
+| **Compatibility Alias** | A one-version import path that forwards to a canonical package without owning business logic. | Legacy implementation, second source |
+| **Offline Experiment Input** | Local JSONL or fixture data used by a research script and never resolved as a product runtime dependency. | Runtime data, production source |
+| **Vendored Data Root** | A data directory owned by a vendored runtime and safe for local system experiments. | Upstream data root, external input |
 | **Artifact Manifest** | A reproducibility record that binds a run or model artifact to data, config, and policy metadata. | Metadata, note |
 | **Strict Leiden Artifact** | A **Coordination Discover** artifact whose manifest records `partition_backend=leiden`. | NetworkX artifact, smoke artifact |
 
@@ -36,8 +39,8 @@ Current semantic package paths: `system/research/coordination_discover/`, `syste
 | **Crawl Batch** | The batch returned by a crawler after collect. | Dump, raw payload |
 | **Raw Post** | A source content item captured from a platform. | Article, feed item |
 | **Raw Comment** | A source reply or comment captured from a platform. | Remark, note |
-| **Social Runtime** | The vendored social crawler runtime used for `weibo`, `douyin`, and `xhs`. | MediaCrawler main, external crawler |
-| **News Runtime** | The vendored news extraction runtime used for `news` URLs. | NewsCrawler main, external extractor |
+| **Social Runtime** | The vendored social crawler runtime used for `weibo`, `douyin`, and `xhs`. | External crawler, reference repository |
+| **News Runtime** | The vendored news extraction runtime used for `news` URLs. | External extractor, reference repository |
 | **Mock Platform** | The test-only adapter used for synthetic crawl data. | Production platform |
 
 ## Coordination Discover And Detect
@@ -93,6 +96,8 @@ Current semantic package paths: `system/research/coordination_discover/`, `syste
 - **Risk Review** consumes content, coordination, and propagation evidence and produces a **Review Verdict**.
 - **Teacher Review** may create **Teacher Silver Records** for **Selective Student** distillation after governance approval.
 - An **Artifact Manifest** must match the snapshot fingerprint before an artifact-first result can serve a backend response.
+- A **Compatibility Alias** may forward to a canonical package, but it must not be imported by new product code.
+- An **Offline Experiment Input** may point to a **Vendored Data Root** or an explicit user path, but never to a reference boundary by default.
 
 ## Example Dialogue
 
@@ -116,4 +121,3 @@ Current semantic package paths: `system/research/coordination_discover/`, `syste
 - "feature" can mean a model input or a descriptive statistic; use **Coordination Signal** for evidence and **Topology Audit Feature** for audit statistics.
 - "community" is not automatically a campaign or botnet; use **Coordination Community** unless human review or external labels justify a stronger claim.
 - Numbered shorthand was previously used for the three research workstreams; current code and documentation must use **Coordination Discover/Detect**, **Propagation Analysis**, and **Risk Review** instead.
-

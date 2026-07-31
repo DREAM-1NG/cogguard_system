@@ -22,6 +22,11 @@ It does not apply to archive material except for read-only reference.
 | Documentation | `doc/engineering`, `doc/research` | Normative engineering docs and research notes. |
 | Reference boundaries | `MediaCrawler-main`, `NewsCrawler-main`, `CooRTweet-master` | Provenance only; never runtime dependencies. |
 
+Semantic research packages and deployable review runtimes are canonical
+product boundaries. Compatibility aliases are limited to legacy application
+paths such as `app.core.coordination` and `app.core.risk`, plus explicitly
+named `*_legacy_alias` packages.
+
 ## Code Structure
 
 ```text
@@ -50,12 +55,12 @@ system/
     coordination_detect/   public-label Coordination Detect validation boundary
     propagation_analysis/  Propagation Analysis hindcast research pipeline
     review_teacher/        multi-agent Teacher DAG
-    coordination_discover/, propagation_analysis/, review_teacher/ legacy compatibility aliases
+    *_legacy_alias/        one-version import-only compatibility packages
   runtimes/
     social_runtime/    vendored social crawler runtime
     news_runtime/      vendored news extractor runtime
     review_student/    deployable Student runtime
-    review_student/       legacy compatibility alias
+    review_student_legacy_alias/ one-version import-only compatibility package
   frontend/
     src/
       api/             HTTP client wrappers
@@ -128,7 +133,16 @@ Use the glossary in `UBIQUITOUS_LANGUAGE.md` for domain terms. The system-level 
 - `system/runtimes/*` are product code and may contain executable vendor logic, but not upstream docs, tests, or notebooks.
 - `system/research/*` may contain training, evaluation, and export code, but should remain system-readable and small enough to load through explicit adapters.
 - Legacy compatibility code must be thin mapping only; business logic lives in the current canonical module.
-- `app.core.risk`, `app.core.coordination`, `system/research/coordination_discover`, `system/research/propagation_analysis`, `system/research/review_teacher`, and `system/runtimes/review_student` are compatibility names only.
+- `app.core.risk` and `app.core.coordination` are legacy application aliases.
+- `system/research/*_legacy_alias` and `system/runtimes/*_legacy_alias` are import-only compatibility packages.
+- `system/research/coordination_discover`, `system/research/coordination_detect`, `system/research/propagation_analysis`, `system/research/review_teacher`, and `system/runtimes/review_student` are canonical semantic boundaries.
+
+### Terminology Gate
+
+- Do not introduce numbered capability labels in code, file names, API fields, tests, or current documentation.
+- Use `Coordination Discover`, `Coordination Detect`, `Propagation Analysis`, `Student Review`, and `Teacher Review`.
+- Use `Analysis Run`, `Teacher Job`, and `Celery Task` for distinct lifecycle concepts; do not use them interchangeably.
+- Use `Reference Boundary` for upstream source trees and `Vendored Runtime` for code executed from `system/runtimes/`.
 
 ## Structural Rules
 
@@ -155,4 +169,3 @@ When introducing a new module, package, or term:
 - `review_student/runtime.py` is a runtime, not a research package.
 - `analysis_runs` is a persisted record name, not a UI term.
 - `model_activation` is a governance decision, not a training loop.
-

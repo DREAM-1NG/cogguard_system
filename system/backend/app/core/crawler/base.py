@@ -3,6 +3,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 
 from app.core.crawler.types import CrawlBatch, CrawlRequestOptions
+from app.models.post import StandardComment, StandardPost
 
 
 class BaseCrawler(ABC):
@@ -19,7 +20,8 @@ class BaseCrawler(ABC):
     async def collect(self, request: CrawlRequestOptions) -> CrawlBatch:
         """Collect posts and optional comments through one seam."""
 
-    async def search(self, keywords: list[str], max_posts: int = 50):
+    async def search(self, keywords: list[str], max_posts: int = 50) -> list[StandardPost]:
+        """Compatibility wrapper around collect()."""
         batch = await self.collect(
             CrawlRequestOptions(
                 keywords=list(keywords),
@@ -30,7 +32,8 @@ class BaseCrawler(ABC):
         )
         return batch.posts
 
-    async def fetch_comments(self, post_id: str, max_comments: int = 100):
+    async def fetch_comments(self, post_id: str, max_comments: int = 100) -> list[StandardComment]:
+        """Compatibility wrapper around the most recent collected batch."""
         return [comment for comment in self._last_batch.comments if comment.post_id == post_id][:max_comments]
 
     def _remember_batch(self, batch: CrawlBatch) -> CrawlBatch:

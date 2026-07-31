@@ -1,6 +1,7 @@
 """Data collection service layer."""
 
 import json
+import re
 from datetime import datetime, timezone
 
 from sqlalchemy import func, select
@@ -123,7 +124,10 @@ async def query_posts(query: CrawlDataQuery) -> tuple[list[dict], int]:
     if query.platform:
         mongo_filter["platform"] = query.platform
     if query.keyword:
-        mongo_filter["content"] = {"$regex": query.keyword, "$options": "i"}
+        # Escape the user-supplied keyword: an unescaped $regex lets callers
+        # inject regex syntax (invalid patterns 500 the endpoint, and
+        # catastrophic-backtracking patterns pin mongod).
+        mongo_filter["content"] = {"$regex": re.escape(query.keyword), "$options": "i"}
     if query.event_id:
         mongo_filter["event_id"] = query.event_id
     if query.has_media is True:

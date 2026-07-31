@@ -5,12 +5,27 @@ MySQL / MongoDB / Redis / JWT 等所有配置项，并暴露组装后的
 连接 URL 供各模块直接使用。
 """
 
+import warnings
 from pathlib import Path
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 PROJECT_ROOT = BASE_DIR.parent
+
+# Secrets that must never sign tokens outside local development. They ship as
+# defaults so a fresh clone still boots, but production startup refuses them
+# instead of silently signing admin tokens with a publicly known key.
+PLACEHOLDER_JWT_SECRETS = frozenset(
+    {
+        "",
+        "change-me-to-a-random-secret-key-in-production",
+        "your-secret-key",
+        "changeme",
+        "secret",
+    }
+)
 
 
 class Settings(BaseSettings):
@@ -49,6 +64,20 @@ class Settings(BaseSettings):
         "http://localhost:3000",
         "http://localhost:5173",
     ]
+
+    # Seed administrator created on first startup when no `admin` row exists.
+    # Existing accounts are never rewritten, so rotating this password in the
+    # database survives restarts.
+    DEFAULT_ADMIN_PASSWORD: str = "123123"
+
+    # The static preview token bypasses authentication for frontend-only
+    # walkthroughs. It is honoured only while BACKEND_DEBUG is true; setting
+    # BACKEND_DEBUG=false (production) disables the bypass regardless.
+    PREVIEW_AUTH_ENABLED: bool = True
+
+    # Server-side media fetching may only reach public addresses. Disable the
+    # guard only for local fixtures that legitimately serve from 127.0.0.1.
+    MEDIA_DOWNLOAD_ALLOW_PRIVATE_HOSTS: bool = False
 
     # ----- Built-in crawler runtimes -----
     # 登录方式：qrcode | cookie | phone
@@ -121,6 +150,29 @@ class Settings(BaseSettings):
             f"redis://:{self.REDIS_PASSWORD}"
             f"@{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
         )
+
+    @property
+    def preview_auth_allowed(self) -> bool:
+        """Preview bypass is only ever active in debug (non-production) mode."""
+        return bool(self.PREVIEW_AUTH_ENABLED and self.BACKEND_DEBUG)
+
+    @model_validator(mode="after")
+    def _reject_placeholder_secrets(self) -> "Settings":
+        """Fail fast in production when auth secrets are still placeholders.
+
+        In debug mode the placeholder only warns, so local development and the
+        test suite keep working without a populated ``.env``.
+        """
+        if self.JWT_SECRET_KEY.strip().lower() in PLACEHOLDER_JWT_SECRETS:
+            message = (
+                "JWT_SECRET_KEY is unset or still a well-known placeholder. "
+                "Anyone can forge admin tokens with it. Set JWT_SECRET_KEY to a "
+                "random secret in system/.env."
+            )
+            if not self.BACKEND_DEBUG:
+                raise ValueError(message)
+            warnings.warn(f"{message} (allowed because BACKEND_DEBUG=true)", stacklevel=2)
+        return self
 
     model_config = SettingsConfigDict(
         env_file=(str(PROJECT_ROOT / ".env"), str(BASE_DIR / ".env")),

@@ -287,15 +287,25 @@ def _top_content_entries(
 
 
 def _normalize_timestamp(value: Any) -> float | None:
+    """Coerce a record timestamp to epoch seconds, or None if unparseable.
+
+    Every conversion stays inside the guard. A non-ISO string ("", "刚刚",
+    "3分钟前") — reachable for data imported outside the pydantic-validated
+    crawler path — would otherwise raise out of this helper and 500 the whole
+    /coordination/detect request instead of skipping that single row.
+    """
     if value is None:
         return None
-    if isinstance(value, str):
-        value = pd.Timestamp(value).timestamp()
-    elif hasattr(value, "timestamp"):
-        value = value.timestamp()
     try:
+        if isinstance(value, str):
+            parsed = pd.to_datetime(value, errors="coerce", utc=True)
+            if pd.isna(parsed):
+                return None
+            return float(parsed.timestamp())
+        if hasattr(value, "timestamp"):
+            return float(value.timestamp())
         return float(value)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         return None
 
 

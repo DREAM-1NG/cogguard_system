@@ -5,14 +5,14 @@ alwaysApply: true
 
 # CogGuard Project Context
 
-- Before substantial work, read `doc/engineering/development-roadmap.md`, `doc/engineering/environment-setup.md`, `doc/engineering/development-log.md`, and `new-system/README.md`.
-- If the task is ARIS-driven or belongs to the three key technologies, also read `aris/README.md`, the selected `aris/tech-*/README.md` and `ACCEPTANCE.md`, plus the matching `doc/research/key-technology-background/*.md`.
+- Before substantial work, read `AGENTS.md`, `doc/engineering/development-roadmap.md`, `doc/engineering/environment-setup.md`, `doc/engineering/development-log.md`, `system/README.md`, and `UBIQUITOUS_LANGUAGE.md`.
+- If the task is research-driven, read the selected semantic research package documentation under `system/research/` and the matching `doc/research/` notes. Physical `aris/tech-*` paths are historical workspace names, not product vocabulary.
 - Treat `release-0.2` as the active engineering baseline; do not assume `main` reflects the current implementation.
 - Treat `doc/engineering/development-roadmap.md` as the source of truth for current status, priority, and remaining work, but correct it whenever code reality diverges.
-- Treat `new-system/` as the active development system.
+- Treat `system/` as the active development system.
 - Treat `aris/` as the local execution workspace layer for ARIS/Claude/Codex, not as product runtime code.
 - Use `CooRTweet-master`, `MediaCrawler-main`, and `NewsCrawler-main` as reference implementations only unless the user explicitly asks to modify them.
 - If code and docs disagree, surface the mismatch and confirm direction before making major changes.
 - Prefer the current project narrative `事件 -> 证据 -> 协同 -> 传播 -> 风险 -> 处置`; avoid regressing to the older `bot detection + 意图识别` framing.
 - Short-term runnable validation scope is `mock_weibo`, `weibo`, and `news`; do not expand platform breadth unless the user explicitly prioritizes it.
-- For substantial changes, keep `README.md`, `new-system/README.md`, `doc/engineering/development-roadmap.md`, and `doc/engineering/development-log.md` aligned with implementation.
+- For substantial changes, keep `README.md`, `system/README.md`, `doc/engineering/development-roadmap.md`, and `doc/engineering/development-log.md` aligned with implementation.

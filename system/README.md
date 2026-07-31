@@ -1,487 +1,148 @@
-# CogGuard 系统开发文档
+# CogGuard System
 
-> 仓库定位：
-> - `system/` 是当前唯一产品代码根
-> - 长期文档位于 `../doc/`
-> - ARIS 工作空间位于 `../aris/`
-> - 当前状态与优先级以 `../doc/engineering/development-roadmap.md` 为准
-> - 命名与代码结构的正式规范以 `../doc/engineering/system-governance.md` 为准，术语以 `../UBIQUITOUS_LANGUAGE.md` 为准
+`system/` is the only active product system root. It contains the backend,
+frontend, vendored runtimes, system-readable research packages, deployment
+files, and tests.
 
-当前正式研究与运行时边界：`system/research/coordination_discover/`、`system/research/coordination_detect/`、`system/research/propagation_analysis/`、`system/research/review_teacher/`、`system/runtimes/review_student/`。
-当前正式能力命名：Coordination Discover / Coordination Detect、Propagation Analysis、Risk Review、Student Review、Teacher Review、Crawler。
+Canonical capabilities:
 
-## 实际目录结构
+- `Coordination Discover` and `Coordination Detect`
+- `Propagation Analysis`
+- `Risk Review`, including `Student Review` and `Teacher Review`
+- `Crawler`
 
-```
+## Directory Layout
+
+```text
 system/
-├── docker-compose.yml              # Docker 服务编排（MySQL + MongoDB + Redis）
-├── .env.example                    # 环境变量模板（复制为 .env 使用）
-├── .env                            # 实际环境变量（不提交到 Git）
-│
-├── backend/                        # 后端服务 (Python 3.11+ / FastAPI)
-│   ├── pyproject.toml              # 项目元数据与依赖管理 (uv)
-│   ├── requirements.txt            # pip 兼容依赖列表
-│   ├── scripts/
-│   │   └── verify_mediacrawler_env.py # 内置 social runtime 环境校验脚本
-│   ├── alembic.ini                 # 数据库迁移配置
-│   ├── alembic/                    # 迁移脚本目录
-│   │   ├── env.py                  # 迁移环境（异步引擎 + 自动导入模型）
-│   │   ├── script.py.mako          # 迁移脚本模板
-│   │   └── versions/               # 自动生成的迁移文件
-│   ├── app/
-│   │   ├── __init__.py             # 应用根包说明
-│   │   ├── main.py                 # FastAPI 入口（CORS、路由、生命周期）
-│   │   ├── config.py               # Pydantic Settings 配置管理
-│   │   ├── celery_app.py           # Celery 异步任务队列配置
-│   │   │
-│   │   ├── api/                    # API 路由层
-│   │   │   ├── v1/                 # 既有业务 API（保留一个发布周期）
-│   │   │   └── v2/                 # 统一分析 API（EventSnapshot / AnalysisRun / SSE）
-│   │   │
-│   │   ├── core/                   # 核心业务逻辑
-│   │   │   ├── security.py         # JWT 认证 + bcrypt 密码哈希
-│   │   │   ├── analysis/           # EventSnapshot、AnalysisRun、Coordination Discover、Propagation Analysis、Review ports、SSE 恢复
-│   │   │   ├── propagation.py      # 传播子图与时间线、关键角色
-│   │   │   ├── account_profiler.py # 账户行为画像与自动化倾向评分
-│   │   │   ├── bot_detection.py    # BotRHG 风格账号级社交机器人检测
-│   │   │   ├── coordination_baseline/ # CooRTweet 风格兼容 baseline（检测/网络/统计）
-│   │   │   ├── review/             # Review、Student、Teacher 与治理辅助
-│   │   │   └── crawler/            # 爬虫引擎
-│   │   │       ├── base.py         # 爬虫抽象基类（定义统一接口）
-│   │   │       ├── mediacrawler_env.py # MediaCrawler 的 uv / node / PATH 解析
-│   │   │       ├── mock.py         # 模拟数据爬虫（生成含协同模式的测试数据）
-│   │   │       ├── social/         # 社交采集深 module（normalizer / runtime / metadata）
-│   │   │       ├── news/           # 新闻提取深 module（normalizer / runtime）
-│   │   │       ├── factory.py      # 按平台构造爬虫
-│   │   │       └── types.py        # collect request / batch 类型
-│   │   │
-│   │   ├── models/                 # 数据库模型
-│   │   │   ├── analysis.py         # EventSnapshot manifest / AnalysisRun / verdict governance
-│   │   │   ├── user.py             # 用户表 (MySQL/SQLAlchemy)
-│   │   │   ├── task.py             # 采集任务表 (MySQL/SQLAlchemy)
-│   │   │   └── post.py             # 帖子/评论文档模型 (MongoDB/Pydantic)
-│   │   │
-│   │   ├── schemas/                # Pydantic 请求/响应模式
-│   │   │   ├── analysis.py         # V2 分析运行请求 schema
-│   │   │   ├── auth.py             # 认证相关（Login/Register/Token/UserInfo）
-│   │   │   └── crawl.py            # 采集相关（CrawlRequest/JobResponse/PostResponse）
-│   │   │
-│   │   ├── services/               # 业务服务层
-│   │   │   ├── auth_service.py     # 认证业务（注册/登录/刷新/用户信息）
-│   │   │   ├── crawl_service.py    # 采集业务（任务管理/数据查询）
-│   │   │   ├── coordination_service.py
-│   │   │   ├── propagation_service.py
-│   │   │   ├── account_service.py
-│   │   │   └── bot_detection_service.py
-│   │   │
-│   │   ├── tasks/                  # Celery 异步任务
-│   │   │   └── crawl_tasks.py      # 采集任务执行（统一 collect seam → MongoDB）
-│   │   │
-│   │   ├── db/                     # 数据库连接管理
-│   │   │   ├── mysql.py            # SQLAlchemy 异步引擎 + Session
-│   │   │   ├── mongodb.py          # Motor 异步客户端
-│   │   │   └── redis.py            # Redis 异步客户端
-│   │   │
-│   │   └── utils/                  # 通用工具
-│   │       ├── logger.py           # loguru 日志配置
-│   │       ├── exceptions.py       # 自定义异常 + 全局异常处理器
-│   │       └── response.py         # 统一 JSON 响应格式
-│   │
-│   └── tests/                      # 测试套件
-│       ├── conftest.py             # 测试 fixtures（DB/Client/Auth）
-│       ├── test_health.py          # 健康检查测试
-│       ├── test_auth.py            # 认证模块测试（需要 MySQL）
-│       ├── test_crawl.py           # 采集模块测试（含纯单元测试）
-│       ├── test_analysis_registry.py # 统一分析 registry / run 事件测试
-│       ├── test_analysis_executor.py # V2 AnalysisRun 执行端口测试
-│       ├── test_analysis_coordination_discover_runtime.py # Coordination Discover evidence runtime 测试
-│       ├── test_analysis_review_runtime.py # Review Student/Teacher/governance 测试
-│       ├── test_analysis_v2_api.py   # V2 分析 API / execute / SSE 恢复测试
-│       └── test_mediacrawler_env.py # MediaCrawler 环境解析测试
-│
-├── runtimes/                       # 内置 runtime
-│   ├── social_runtime/             # vendored MediaCrawler core（仅 weibo / douyin / xhs）
-│   ├── news_runtime/               # vendored NewsCrawler core（URL detector + adapters）
-│   └── review_student/             # synchronous deployable Student runtime
-├── research/                       # 系统可读取的研究制品边界
-│   ├── coordination_discover/      # Coordination Discover platform-generic Coordination Discover pipeline
-│   ├── coordination_detect/        # Coordination Discover public-label Coordination Detect validation boundary
-│   ├── propagation_analysis/       # Propagation Analysis benchmark loader / hindcast protocol / baseline registry
-│   └── review_teacher/             # Review 5+1+1 Teacher advisory DAG
-└── frontend/                       # 前端应用 (Vue 3 + TypeScript)
-    ├── package.json                # 依赖声明与脚本
-    ├── vite.config.ts              # Vite 配置（代理、别名）
-    ├── tsconfig.json               # TypeScript 配置
-    ├── index.html                  # HTML 入口
-    └── src/
-        ├── main.ts                 # Vue 应用入口（注册插件）
-        ├── App.vue                 # 根组件
-        ├── env.d.ts                # 类型声明
-        │
-        ├── api/                    # 后端 API 请求封装
-        │   ├── auth.ts             # 认证 API（登录/注册/刷新/用户信息）
-        │   ├── crawl.ts            # 采集 API（创建任务/任务列表/数据查询）
-        │   ├── coordination.ts     # 协同检测 API
-        │   ├── propagation.ts      # 传播归因 API
-        │   └── accounts.ts         # 账户监测 API
-        │
-        ├── views/                  # 页面视图
-        │   ├── login/index.vue     # 登录页面
-        │   ├── dashboard/index.vue # 监测看板（占位，见 ../doc/engineering/development-roadmap.md）
-        │   ├── crawl/index.vue     # 数据采集管理
-        │   ├── coordination/index.vue  # 协同网络可视化
-        │   ├── propagation/index.vue   # 传播时间线与关键角色
-        │   └── accounts/index.vue      # 账户画像列表
-        │
-        ├── components/
-        │   ├── layout/
-        │   │   └── BasicLayout.vue # 全局布局（侧边栏 + 顶栏 + 内容区）
-        │   ├── PageHeader.vue
-        │   └── TableSettings.vue   # 表格密度与分页条数
-        │
-        ├── stores/
-        │   └── auth.ts             # Pinia 认证状态（Token + 用户信息）
-        │
-        ├── router/
-        │   └── index.ts            # 路由配置 + 导航守卫
-        │
-        └── utils/
-            └── request.ts          # Axios 实例（Token 注入 + 401 拦截）
+  backend/
+    app/
+      api/v1/                  legacy thin API mappings
+      api/v2/                  current Analysis API surface
+      core/
+        analysis/              EventSnapshot, AnalysisRun, ports, SSE recovery
+        coordination_baseline/ reference-style fallback baseline
+        coordination/          legacy compatibility alias for coordination_baseline
+        crawler/               Crawler interface, social/news/mock adapters
+        propagation/           Propagation Analysis services and fallback logic
+        review/                Risk Review, Student Review, Teacher Review, governance
+        risk/                  legacy compatibility alias for review
+      models/                  SQLAlchemy and persisted domain records
+      schemas/                 Pydantic request and response schemas
+      services/                application services
+      tasks/                   Celery tasks
+      db/                      MySQL, MongoDB, and Redis clients
+      utils/                   shared helpers
+    scripts/                   explicit backend and research utility entrypoints
+    tests/                     backend unit, contract, integration, and governance tests
+  frontend/                    Vue 3 and TypeScript UI
+  research/
+    coordination_discover/     platform-generic discovery pipeline and artifacts
+    coordination_detect/       public-label validation boundary
+    propagation_analysis/      hindcast protocol, loaders, baselines, intervals
+    review_teacher/            asynchronous Teacher Review DAG
+  runtimes/
+    social_runtime/            vendored social crawler runtime
+    news_runtime/              vendored news extractor runtime
+    review_student/            deployable Student Review runtime
 ```
 
-## 环境要求
+Canonical semantic paths:
 
-| 依赖 | 版本 | 必需 | 说明 |
-|------|------|------|------|
-| Python | ≥3.11 | 是 | 后端运行时 |
-| Node.js | ≥18 | 是 | 前端构建 |
-| Docker + Docker Compose | 最新 | 是 | MySQL/MongoDB/Redis 服务 |
-| uv | 最新 | 推荐 | Python 包管理（可用 pip 替代） |
+- `system/research/coordination_discover/`
+- `system/research/coordination_detect/`
+- `system/research/propagation_analysis/`
+- `system/research/review_teacher/`
+- `system/runtimes/review_student/`
 
-> 详细安装步骤见 [doc/engineering/environment-setup.md](../doc/engineering/environment-setup.md)
+## Analysis API
 
-## 部署与启动
+The current product entrypoint is `/api/v2/analysis/*`.
 
-### 第一步：启动基础服务
+- `POST /api/v2/analysis/snapshots` builds and registers an immutable `EventSnapshot` from MongoDB content.
+- `POST /api/v2/analysis/runs` creates an `AnalysisRun` for one snapshot and an ordered stage list.
+- `POST /api/v2/analysis/runs/{run_id}/execute` calls the configured analysis ports.
+- `GET /api/v2/analysis/runs/{run_id}` returns run state and stage outputs.
+- `GET /api/v2/analysis/runs/{run_id}/events?after_id=<id>` is the REST recovery path.
+- `GET /api/v2/analysis/runs/{run_id}/events/stream` streams backlog events and supports `Last-Event-ID`.
 
-```bash
-cd system
-cp .env.example .env        # 首次需要，按需修改密码
-docker compose up -d         # 启动 MySQL + MongoDB + Redis
-docker compose ps            # 确认所有服务 healthy
-```
+The application-facing ports are:
 
-> `docker compose` 只负责 MySQL / MongoDB / Redis。社交与新闻采集运行时已 vendored 到仓库内部，后端会直接调用 `system/runtimes/*`。
+- `CoordinationEngine.analyze(snapshot, options)`
+- `PropagationEngine.hindcast(snapshot, options)`
+- `StudentRuntime.predict(case)`
+- `TeacherJobPort.submit(case)`
 
-### 统一分析 V2 入口
+## Runtime Boundary
 
-当前系统新增 `/api/v2/analysis/*` 作为 Coordination Discover、Propagation Analysis、Student、Teacher 的统一入口层：
+Product code executes crawler and review runtime code from `system/runtimes/`.
+Reference repositories may remain in the repository for provenance, license
+review, and diffing, but they are not runtime roots.
 
-- `POST /api/v2/analysis/snapshots`：从 MongoDB `raw_posts` / `raw_comments` 生成不可变 `EventSnapshot`，并注册 MySQL manifest。
-- `POST /api/v2/analysis/runs`：为一个 snapshot 创建 `AnalysisRun`，初始状态为 `queued`。默认 `requested_stages` 仅包含 `coordination_discover`；Propagation Analysis、Student、Teacher 需要显式请求。
-- `POST /api/v2/analysis/runs/{run_id}/execute`：通过统一 `AnalysisExecutor` 顺序调用 Coordination Discover、Propagation Analysis、Student、Teacher 端口，并追加 run event。
-- `GET /api/v2/analysis/runs/{run_id}`：查询 run 当前状态。
-- `GET /api/v2/analysis/runs/{run_id}/events?after_id=<id>`：REST 恢复路径，返回指定 cursor 之后的事件。
-- `GET /api/v2/analysis/runs/{run_id}/events/stream`：SSE backlog 输出，支持 `Last-Event-ID` 恢复。
+Supported production crawl platforms are `weibo`, `douyin`, `xhs`, and `news`.
+`mock_weibo` is test-only.
 
-前端 `/analysis` 工作台位于 `system/frontend/src/views/analysis/index.vue`，可创建 snapshot、创建/执行 run、REST 恢复事件，并通过 `fetch` 携带 Bearer token 读取 SSE backlog。页面会展示 Coordination Discover 社区谱系、Propagation Analysis hindcast 区间/下一跳、Student preliminary verdict 与 Teacher advisory DAG；完整 adjudication UI 和模型激活审批 UI 仍需后续补齐。
-
-当前 V2 已完成输入、持久化、状态机、恢复路径和执行端口。默认端口状态如下：
-
-- Coordination Discover：`CoordinationEngine.analyze(snapshot, options)` 运行 `coordination-evidence-runtime-v2`，输出多行为 evidence edge、1h/6h/24h 重叠窗口、社区谱系、零模型显著性、扰动鲁棒性、证据覆盖和域偏移。
-- Propagation Analysis：`PropagationEngine.hindcast(snapshot, options)` 运行内置 event bundle + live fallback，并附加 `propagation_analysis-hindcast-protocol-v1`：独立激活账号规模、80/95 split-conformal 区间、下一跳 ranking、平台 hindcast、EdgeBank/Hawkes/persistence/historical-mean baseline，以及 TGN/DyGFormer/CasFlow/CasFT checkpoint 缺失状态。
-- Student：`StudentRuntime.predict(case)` 调用 `system/runtimes/review_student`，同步返回 preliminary verdict、XLM-R/gating/MIL/GNN 架构契约、蒸馏计划和主动学习信号。没有 approved checkpoint 时显式标记 `shadow_untrained` 并强制 review。
-- Teacher：`TeacherJobPort.submit(case)` 通过 Celery 异步提交，最终运行 `system/research/review_teacher` 的 5+1+1 advisory DAG。Teacher 结果不能直接 canonical；只有分析员审批后的 immutable verdict 才能成为 canonical。
-
-Propagation Analysis 当前内置内容位于 `system/research/propagation_analysis/`：`benchmark/adapters/event_adapter.py` 负责事件 bundle 与 checkpoint seam，`benchmark/loaders.py` 负责公开 fixture/benchmark 归一化，`runtime/protocol.py` 负责 hindcast、split-conformal 和 baseline registry。不再从外部 research workspace 动态 import.
-
-### 第二步（可选）：配置并验证内置 social runtime
-
-如果要采集 `weibo` / `xhs` / `douyin`，请先在 `system/.env` 中配置：
+Useful crawler configuration:
 
 ```dotenv
 MEDIACRAWLER_LOGIN_TYPE=qrcode
 MEDIACRAWLER_COOKIES=
-MEDIACRAWLER_NODE_DIR=D:/node
 MEDIACRAWLER_PROXY=http://127.0.0.1:7897
+MEDIACRAWLER_NODE_DIR=D:/node
 MEDIACRAWLER_GET_SUB_COMMENTS=true
 MEDIACRAWLER_MAX_COMMENTS_PER_POST=200
+MEDIA_DOWNLOAD_ROOT=./media
 ```
 
-说明：
+External-root settings from earlier designs are not product runtime inputs.
 
-- `MEDIACRAWLER_NODE_DIR` 适用于 Node.js 已安装但没有加入系统 `PATH` 的机器；后端会在调用 MediaCrawler 时自动把该目录注入子进程 `PATH`。
-- `MEDIACRAWLER_PROXY` 适用于 Clash Verge TUN / 虚拟网卡 / fake-ip 模式下浏览器进程无法直连目标站点的情况；当前本机可用端口验证为 `http://127.0.0.1:7897`。配置后，后端会把代理注入 MediaCrawler 子进程，并让 CDP Chrome 通过 `--proxy-server` 显式走代理。
-- `MEDIACRAWLER_GET_SUB_COMMENTS=true` 会把内置 social runtime 的二级评论抓取打开；当前上游能力上限就是“一级评论 + 二级评论”，不是无限递归整棵评论树。
-- `MEDIACRAWLER_MAX_COMMENTS_PER_POST` 会把单帖评论抓取上限提升到你配置的值；`200` 适合事件级联调，热点事件可按机器性能继续上调。
-- `toutiao` 不属于社交 runtime 支持范围，在 CogGuard 中应走 `news` 采集链路。
-- 内置 social runtime 原始抓取结果写入 `system/runtimes/social_runtime/data/<platform>/jsonl/`。
-- 当前社交平台采集链路只读取本次 crawl 新增的 JSONL 行，不再整份回读当天文件。
-
-当前这条 `weibo / xhs / douyin` 采集链路，入库后的保真策略是：
-
-- 帖子保留标准字段，同时把原始 runtime JSONL 行完整落到 `raw_data`
-- 评论保留 `reply_to`、`sub_comment_count`、`author_id`，可还原两层评论树
-- 帖子和评论都会额外保留 `author_profile`
-- 帖子 / 评论里的图片、视频、封面、音频等可解析媒体链接会归一到 `media_urls`
-- 微博搜索结果会在内置 social runtime 侧对每条帖子补抓详情 raw，并把 `pics`、`thumbnail_pic`、`bmiddle_pic`、`original_pic`、`page_info`、`mix_media_info`、`media_urls`、`post_details_raw` 写入 JSONL；CogGuard 会从这些字段中提取微博图片、视频、封面链接。
-
-如果你需要“作者主页级”的完整粉丝数 / 关注数 / 简介等资料，上游要走 `creator` 模式；当前 CogGuard 这一版先保留搜索结果里已有的用户字段，并把两层评论链路对齐好。
-
-采集 API 还支持三个可选参数，用于把后续增强点纳入同一条任务链：
-
-```json
-{
-  "recursive_comments": true,
-  "enrich_author_profiles": true,
-  "comment_sort": "like_count_desc"
-}
-```
-
-- `recursive_comments=true` 表示请求完整递归评论树；当前内置 runtime 会降级到上游实际支持的两层评论，并在 `crawl_metadata.effective_comment_depth=2`、`recursive_comments_supported=false` 中显式记录。
-- `enrich_author_profiles=true` 表示请求作者主页级画像补全；当前搜索链路先记录请求并保留搜索结果已有的 `author_profile`，真正的主页级补全需要后续串接 runtime `creator` 模式。
-- `comment_sort` 支持 `none`、`like_count_desc`、`reply_count_desc`，分别表示不排序、按点赞数倒序、按被回复数倒序；排序发生在评论入库前。
-
-准备内置 runtime 依赖并执行校验：
-
-```bash
-cd runtimes/social_runtime
-uv sync
-uv run playwright install chromium
-
-cd ../news_runtime/news_extractor_core
-uv sync
-
-cd ../../backend
-uv run python scripts/verify_mediacrawler_env.py
-```
-
-### 第三步：启动后端
-
-```powershell
-cd backend
-$env:UV_CACHE_DIR='.\.uv-cache'
-uv sync
-uv run alembic upgrade head
-uv run uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
-```
-
-启动成功后：
-- API 文档：http://localhost:8000/docs（Swagger UI）
-- 健康检查：http://localhost:8000/api/v1/health
-
-### 第四步：启动前端
-
-```powershell
-cd frontend
-npm.cmd install
-npm.cmd run dev -- --host 127.0.0.1 --port 5173
-```
-
-启动成功后访问：http://localhost:5173
-
-#### 前端预览入口（免登录）
-
-如果只需要查看前端页面结构、导航和功能设计，而本机暂时没有启动 MySQL / MongoDB / Redis，可以使用预览入口绕过真实登录：
-
-```powershell
-cd backend
-$env:UV_CACHE_DIR='.\.uv-cache'
-.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
-
-cd ..\frontend
-npm.cmd run dev -- --host 127.0.0.1 --port 5173
-```
-
-然后访问：
-
-- 预览入口：http://127.0.0.1:5173/preview
-- 等价入口：http://127.0.0.1:5173/?preview=1
-
-预览入口会在浏览器本地写入临时 `Preview` 用户身份，跳过路由登录守卫并进入主界面。它只用于查看前端信息架构和页面设计；需要真实数据、注册登录、采集任务、协同/传播/账号/风险接口联调时，仍需按第一步启动 MySQL / MongoDB / Redis，并使用真实账号登录。
-
-注意：
-
-- 后端 `uvicorn` 和前端 `vite` 必须保持运行，关闭任一终端后预览都会中断。
-- 如果你只是要快速查看页面，可以直接执行项目根目录下的 `start-preview.ps1`：
+## Local Startup
 
 ```powershell
 cd system
-powershell.exe -ExecutionPolicy Bypass -File .\start-preview.ps1
-```
+copy .env.example .env
+docker compose up -d
 
-### 第五步（可选）：启动 Celery Worker
-
-采集任务的异步执行需要 Celery Worker：
-
-```bash
 cd backend
-celery -A app.celery_app worker --loglevel=info -Q crawl
+uv sync
+uv run alembic upgrade head
+uv run uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+
+cd ..\frontend
+npm install
+npm run dev -- --host 127.0.0.1 --port 5173
 ```
 
-> 如果不启动 Worker，采集任务会被提交但不会执行。
-> 测试阶段可直接调用 MockCrawler 的单元测试验证数据生成。
+Optional Celery worker for queued crawl and review jobs:
 
-## 测试
-
-### 运行测试
-
-```bash
-cd backend
-
-# 运行所有测试（MySQL 不可用的测试会自动跳过）
-uv run pytest -v
-
-# 仅运行不需要外部服务的单元测试
-uv run pytest tests/test_crawl.py tests/test_health.py -v
-
-# 仅验证 MediaCrawler 环境解析与脚本逻辑
-uv run pytest tests/test_mediacrawler_env.py -v
-
-# 运行认证测试（需要 MySQL 运行中）
-uv run pytest tests/test_auth.py -v
+```powershell
+cd system\backend
+celery -A app.celery_app worker --loglevel=info -Q crawl,analysis,review
 ```
 
-### 测试覆盖
+## Verification
 
-| 测试文件 | 内容 | 外部依赖 |
-|---------|------|---------|
-| `test_health.py` | 健康检查接口 | 无 |
-| `test_crawl.py` | MockCrawler 数据生成、Normalizer 字段映射、平台列表、鉴权校验 | 部分需 MySQL |
-| `test_mediacrawler_env.py` | 内置 social runtime 的 `uv` / `node` / 路径解析 | 无 |
-| `test_auth.py` | 注册、登录、密码错误、Token 鉴权、Token 刷新 | MySQL |
-| `test_analysis_coordination_discover_runtime.py` | Coordination Discover evidence edge、重叠窗口、社区谱系、零模型和扰动鲁棒性 | 无 |
-| `test_propagation_analysis_prediction_service.py` | Propagation Analysis 内置 event bundle、public loader、hindcast protocol、conformal 区间 | 无 |
-| `test_analysis_review_runtime.py` | Review Student runtime、Teacher DAG、canonical/activation/active-learning governance | 无 |
+```powershell
+cd system\backend
+python -m pytest tests -q
 
-### 预期测试结果
-
-```
-tests/test_health.py::test_health_check                    PASSED
-tests/test_crawl.py::test_mock_crawler_generates_posts     PASSED
-tests/test_crawl.py::test_mock_crawler_generates_comments  PASSED
-tests/test_crawl.py::test_mock_crawler_coordinated_pattern PASSED
-tests/test_crawl.py::test_normalizer_standardizes_weibo_post PASSED
-tests/test_crawl.py::test_normalizer_standardizes_comment  PASSED
-tests/test_crawl.py::test_list_platforms                   PASSED
-tests/test_crawl.py::test_create_crawl_job_requires_auth   SKIPPED (MySQL不可用时)
-tests/test_auth.py::test_register_success                  PASSED/SKIPPED
-tests/test_auth.py::test_login_success                     PASSED/SKIPPED
-...
+cd ..\frontend
+npm run type-check
+npm run build
 ```
 
-## 使用方式
+Useful targeted gates:
 
-### 1. 用户注册与登录
-
-1. 打开前端 http://localhost:5173，自动跳转到登录页
-2. 首次使用需要通过 API 注册：
-
-```bash
-# 注册用户
-curl -X POST http://localhost:8000/api/v1/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{"username": "admin", "email": "admin@cogguard.com", "password": "admin123"}'
-
-# 登录获取 Token
-curl -X POST http://localhost:8000/api/v1/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"username": "admin", "password": "admin123"}'
+```powershell
+cd system\backend
+python -m pytest tests/test_system_naming_governance.py -q
+python -m pytest tests/test_analysis_executor.py tests/test_analysis_registry.py -q
+python -m pytest tests/test_coordination_local_discover_detect_script.py -q
 ```
 
-3. 登录成功后系统自动保存 Token，跳转到监测看板
+## Documentation Contract
 
-### 2. 数据采集（Mock 模式）
-
-1. 进入"数据采集"页面
-2. 选择平台 → "模拟微博（测试）"
-3. 输入关键词（如"热点事件"），设置最大帖子数
-4. 点击"开始采集" → 任务进入队列
-5. 任务列表中查看状态（需要 Celery Worker 运行才能执行）
-6. 数据表格中查看采集到的帖子
-
-### 3. API 文档
-
-启动后端后访问 http://localhost:8000/docs，可查看和测试所有接口。
-
-## 当前限制与优化方向
-
-### 爬虫模块
-- **当前**：MockCrawler 与真实爬虫封装都已接入；真实平台仍以本地/联调验证为主
-- **后续**：补充更稳定的端到端验证、失败回放与更多场景样例
-
-### 协同检测
-- **当前**：已实现基于共享对象的协同检测、加权网络、账户/群组统计与前端可视化
-- **后续**：补充多行为边（时间同步、共链接、共媒体、语义近似、传播互动）与显著性筛查
-
-### 传播监控
-- **当前**：已实现传播子图、时间线、关键角色识别与高危实体排序
-- **后续**：补充证据链生成、关键路径展示与更强的隐式传播边建模
-
-### 账户监测
-- **当前**：已实现账户行为画像、自动化倾向评分，以及 `POST /api/v1/accounts/bot-detection` 的 BotRHG 风格账号级社交机器人检测。该接口从已采集帖子中构造 profile/text/activity 特征，生成 KNN 支持超边，按局部可靠性选择低可靠账号做残差修正，并返回 base/final bot 概率、路由状态、support evidence 与 model card。
-- **前端**：账户监测页已提供轻量 BotRHG 触发入口和结果表，展示账号数、路由数、bot 数、最终 bot 概率、局部可靠性与 support 节点。
-- **后续**：补充历史参与追踪、中文 NLP 特征、跨事件画像聚合，以及前端 BotRHG 证据详情深度展示。
-
-### 报告研判
-- **当前**：未实现
-- **后续**：在 `core/review/` 中实现三维评估（真实性/操纵性/危害性）、规则引擎、DISARM 映射与结构化报告生成
-- **LLM 接口**：后续仅作为桥接与解释增强，不作为第一阶段最终裁决来源
-
-### 图数据库
-- **当前**：使用 NetworkX 内存图分析
-- **后续**：可扩展到 Neo4j 做持久化图存储和复杂图查询
-
-### 前端可视化
-- **当前**：采集、协同检测、传播监控、账户监测页面已具备 MVP；看板/风险/报告页仍待完善
-- **后续**：补充监测看板、风险工作台、预警中心与报告中心
-
-### 部署
-- **当前**：本地开发部署（手动启动各服务）
-- **后续**：Dockerfile 化后端和前端，完整 Docker Compose 一键启动全栈
-
-## API 接口一览
-
-### 认证模块
-
-| 方法 | 路径 | 说明 | 鉴权 |
-|------|------|------|------|
-| POST | `/api/v1/auth/register` | 用户注册 | 否 |
-| POST | `/api/v1/auth/login` | 用户登录，返回 Token | 否 |
-| POST | `/api/v1/auth/refresh` | 刷新 Token | 否 |
-| GET  | `/api/v1/auth/profile` | 获取当前用户信息 | 是 |
-
-### 数据采集模块
-
-| 方法 | 路径 | 说明 | 鉴权 |
-|------|------|------|------|
-| GET  | `/api/v1/crawl/platforms` | 获取支持的平台列表 | 否 |
-| POST | `/api/v1/crawl/social` | 创建社交媒体采集任务 | 是 |
-| GET  | `/api/v1/crawl/jobs` | 获取采集任务列表 | 是 |
-| GET  | `/api/v1/crawl/data` | 查询已采集的帖子数据 | 是 |
-
-### 协同检测模块
-
-| 方法 | 路径 | 说明 | 鉴权 |
-|------|------|------|------|
-| POST | `/api/v1/coordination/detect` | 执行协同检测并返回网络/统计结果 | 是 |
-
-### 传播监控模块
-
-| 方法 | 路径 | 说明 | 鉴权 |
-|------|------|------|------|
-| GET  | `/api/v1/propagation/analyze` | 分析传播子图、时间线和关键角色 | 是 |
-
-### 账户监测模块
-
-| 方法 | 路径 | 说明 | 鉴权 |
-|------|------|------|------|
-| GET  | `/api/v1/accounts/profiles` | 获取账户画像列表 | 是 |
-| POST | `/api/v1/accounts/bot-detection` | 执行 BotRHG 风格社交机器人检测，支持 `event_id` / `platform` / `routing_budget` / `support_k` | 是 |
-| GET  | `/api/v1/accounts/detail/{id}` | 获取单账户详细画像 | 是 |
-
-### 系统
-
-| 方法 | 路径 | 说明 | 鉴权 |
-|------|------|------|------|
-| GET  | `/api/v1/health` | 健康检查 | 否 |
+- Update `../UBIQUITOUS_LANGUAGE.md` when domain terms change.
+- Update `../doc/engineering/system-governance.md` when package boundaries or public interfaces change.
+- Update `../doc/engineering/development-log.md` after meaningful code or documentation work.
+- Keep generated outputs out of commits unless an artifact is explicitly promoted with a manifest.

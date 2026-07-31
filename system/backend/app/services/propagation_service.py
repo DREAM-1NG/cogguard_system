@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+
 from app.core.propagation import build_propagation_graph
 from app.core.propagation.trend_predictor import predict_trend
 from app.db.mongodb import get_mongo_db
@@ -56,7 +58,12 @@ async def analyze_propagation(
         return _empty_result(event_id, platform)
 
     comments = await load_event_comments(mongo_db, event_id=event_id, platform=platform)
-    result = build_propagation_graph(posts, comments, diffusion_node_limit=node_limit)
+    # build_propagation_graph is CPU-bound (pandas iteration over up to 10k
+    # posts / 50k comments, betweenness centrality, repeated path search).
+    # Running it inline would block the event loop for the whole request.
+    result = await asyncio.to_thread(
+        build_propagation_graph, posts, comments, diffusion_node_limit=node_limit
+    )
 
     return _attach_scope(
         result,

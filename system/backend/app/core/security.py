@@ -18,13 +18,36 @@ security_scheme = HTTPBearer()
 optional_security_scheme = HTTPBearer(auto_error=False)
 PREVIEW_ACCESS_TOKEN = "cogguard-preview-token"
 
+# bcrypt hash of an unguessable value, used to spend the same amount of time
+# hashing when a username does not exist so login cannot be timed to enumerate
+# accounts. Generated once per process.
+_DUMMY_PASSWORD_HASH = bcrypt.hashpw(b"cogguard-nonexistent-account", bcrypt.gensalt()).decode("utf-8")
+
 
 def hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return bcrypt.checkpw(plain.encode("utf-8"), hashed.encode("utf-8"))
+    try:
+        return bcrypt.checkpw(plain.encode("utf-8"), hashed.encode("utf-8"))
+    except ValueError:
+        # Malformed/empty stored hash must not surface as a 500.
+        return False
+
+
+def spend_dummy_password_verify() -> None:
+    """Burn one bcrypt verification against a throwaway hash.
+
+    Called on the "user not found" branch so that a missing account costs the
+    same wall-clock time as a wrong password.
+    """
+    verify_password("cogguard-timing-equalizer", _DUMMY_PASSWORD_HASH)
+
+
+def preview_token_allowed() -> bool:
+    """Whether the static preview token may stand in for authentication."""
+    return settings.preview_auth_allowed
 
 
 def create_access_token(user_id: int, role: str) -> str:
@@ -63,6 +86,8 @@ async def _get_active_user_by_id(user_id: int, db: AsyncSession) -> User:
 
 
 async def _get_preview_backing_user(db: AsyncSession) -> User:
+    if not preview_token_allowed():
+        raise AuthError(msg="Preview access is disabled")
     result = await db.execute(
         select(User).where(User.is_active.is_(True)).order_by(User.id.asc()).limit(1)
     )
@@ -111,7 +136,7 @@ async def get_current_user_or_preview(
     db: AsyncSession = Depends(get_db),
 ) -> User:
     token = credentials.credentials
-    if token == PREVIEW_ACCESS_TOKEN:
+    if token == PREVIEW_ACCESS_TOKEN and preview_token_allowed():
         return await _get_preview_backing_user(db)
     return await _resolve_user_from_token(token, db)
 
@@ -124,7 +149,7 @@ async def get_current_user_or_local_preview(
         raise AuthError(msg="Authentication required")
 
     token = credentials.credentials
-    if token == PREVIEW_ACCESS_TOKEN:
+    if token == PREVIEW_ACCESS_TOKEN and preview_token_allowed():
         return None
 
     async with async_session_factory() as session:

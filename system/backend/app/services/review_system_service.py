@@ -18,6 +18,7 @@ from uuid import uuid4
 
 from cryptography.fernet import Fernet, InvalidToken
 from sqlalchemy import desc, select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
@@ -527,6 +528,22 @@ async def persist_gate_dataset_upload(
 ) -> dict[str, Any]:
     normalized = normalize_gate_dataset_upload(dataset, uploaded_by=uploaded_by)
     data = normalized["dataset"]
+
+    # `manifest_fingerprint` is unique. Re-uploading the identical dataset JSON
+    # (an operator retrying after a slow response) recomputes the same sha256, so
+    # detect it up front and report a caller error instead of letting the flush
+    # raise IntegrityError and surface as an opaque 500.
+    existing = await db.execute(
+        select(ReviewGateDataset).where(
+            ReviewGateDataset.manifest_fingerprint == data["manifest_fingerprint"]
+        )
+    )
+    if existing.scalar_one_or_none() is not None:
+        raise ValueError(
+            "duplicate gate dataset: a dataset with manifest fingerprint "
+            f"{data['manifest_fingerprint']} was already uploaded"
+        )
+
     row = ReviewGateDataset(
         dataset_id=data["dataset_id"],
         version=data["version"],
@@ -540,7 +557,15 @@ async def persist_gate_dataset_upload(
         uploaded_by=uploaded_by,
     )
     db.add(row)
-    await db.flush()
+    try:
+        await db.flush()
+    except IntegrityError as exc:
+        # Lost a race against a concurrent identical upload.
+        await db.rollback()
+        raise ValueError(
+            "duplicate gate dataset: a dataset with manifest fingerprint "
+            f"{data['manifest_fingerprint']} was already uploaded"
+        ) from exc
     case_db_ids: dict[str, int] = {}
     for case in normalized["cases"]:
         case_row = ReviewGateCase(

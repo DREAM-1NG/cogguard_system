@@ -8,6 +8,6 @@ alwaysApply: true
 - After a meaningful code or documentation change, append a concise trace entry to `doc/engineering/development-log.md`.
 - When a TODO item is completed, update the matching checkbox or module status in `doc/engineering/development-roadmap.md`.
 - If new follow-up work is discovered, add it to `doc/engineering/development-roadmap.md` instead of keeping it implicit.
-- If environment variables, startup commands, ports, or integration steps change, sync `doc/engineering/environment-setup.md` and `new-system/README.md`.
+- If environment variables, startup commands, ports, or integration steps change, sync `doc/engineering/environment-setup.md` and `system/README.md`.
 - Prefer runnable, testable code over broad speculative refactors.
 - Add or adjust focused tests when behavior changes in a way that could regress.

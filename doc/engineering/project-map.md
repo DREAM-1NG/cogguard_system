@@ -1,135 +1,92 @@
-﻿# CogGuard Project Map
+# CogGuard Project Map
 
-> **Purpose**: define project directory boundaries, default edit policies, and
-> the engineering/research documentation split.  
-> **Audience**: developers, research contributors, and future coding agents.  
-> **Maintenance rule**: update this file whenever top-level directories,
-> document locations, or default ownership boundaries change.
+This file defines repository boundaries, default edit ownership, and the split
+between product code, system-readable research, reference code, and local
+research notes. If this file conflicts with older documents, this file wins.
 
-This document records the current lightweight project boundaries after the
-workspace reorganization. The organizing rule is product-runnable first: code
-that is wired into the backend, frontend, tests, or demonstration flow stays in
-the product system; exploratory research and unproductized algorithm work stay
-in the research workspaces.
-
-## Top-Level Workspace
+## Main Boundaries
 
 | Path | Role | Default edit policy |
 | --- | --- | --- |
-| `materials/` | Competition-facing materials: PPT, application forms, proposal/opening-report files, packaged submission assets. | Edit when preparing competition or application deliverables. |
-| `.` | Current CogGuard engineering repository root. | Edit for product code, engineering docs, ARIS workspaces, and reference-boundary notes. |
-| `research-wiki/` | Research knowledge base: papers, ideas, claims, gap maps, novelty notes, and accumulated research status. | Edit for research notes and literature/claim tracking. |
-| `_archive/` | Historical snapshots and pre-reposition archive material. | Read-only by default. |
-| `.omx/`, `.omc/`, `.remember/`, `.claude/` | Agent/runtime/tooling state and local automation context. | Do not reorganize as part of project structure cleanup. |
-| `nul` | Existing local artifact. | Leave untouched unless a separate cleanup task explicitly handles it. |
-
-## Main Repository Boundaries
-
-| Path | Role | Boundary |
-| --- | --- | --- |
-| `system/` | Current product system root. Contains the runnable backend, frontend, deployment configuration, and tests. | Product code only: keep implementations here when they are reachable through API/UI/tests/demo flows. |
-| `aris/` | Research execution workspace for the three key technologies. | Use for technical exploration, experiment plans, acceptance criteria, reviews, and algorithm work before product integration. |
-| `doc/` | Long-lived engineering and project documentation. | Use for PRD, setup, development log, project map, technical background, and migrated baseline/reference documents. |
-| `system/runtimes/social_runtime/` | Vendored social crawler runtime used by the product. | Product runtime code; modify when crawler cutover or maintenance requires it. |
-| `system/runtimes/news_runtime/` | Vendored news extraction runtime used by the product. | Product runtime code; modify when extractor cutover or maintenance requires it. |
-| `system/runtimes/review_student/` | Deployable Review Student runtime used by `StudentRuntime.predict(case)`. | Product runtime code; keep synchronous, checkpoint-gated, and governance-aware. |
-| `system/research/coordination_discover/` | Coordination Discover platform-generic Coordination Discover pipeline and artifact export boundary. | System-readable research boundary; backend consumes it only through analysis adapters. |
-| `system/research/coordination_detect/` | Coordination Discover public-label Coordination Detect validation boundary. | System-readable research boundary; validation only unless an approved artifact is activated. |
-| `system/research/propagation_analysis/` | Propagation Analysis public loader, event bundle adapter, hindcast protocol, conformal intervals, and baseline registry. | System-readable research boundary; never point backend code at external research workspaces. |
-| `system/research/review_teacher/` | Risk Review multi-agent Teacher advisory DAG. | System-readable research runtime; advisory only, never canonical without analyst approval. |
-| `MediaCrawler-main/` | Upstream social-media crawler reference boundary. | Reference only by default; not part of runtime execution path. |
-| `NewsCrawler-main/` | Upstream news extraction reference boundary. | Reference only by default; not part of runtime execution path. |
-| `CooRTweet-master/` | Upstream coordination-detection method reference. | Reference only by default; not part of runtime execution path. |
-
-## Documentation Split
-
-| Path | Role | Typical contents |
-| --- | --- | --- |
-| `doc/engineering/` | Runnable-system and project-governance documentation. | Product requirements, environment setup, roadmap/status, development log, project map. |
-| `doc/research/` | Research positioning and technical exploration documentation. | Project positioning, literature references, key-technology background, algorithm notes. |
+| `system/` | Active product system: backend, frontend, deployment files, vendored runtimes, system-readable research packages, and tests. | Edit for runnable system work. |
+| `system/backend/` | FastAPI, Celery, MySQL/MongoDB/Redis access, services, tasks, schemas, and backend tests. | Edit for product backend behavior. |
+| `system/frontend/` | Vue 3 and TypeScript UI. | Edit for product UI work only; current governance cleanup does not change the display pages. |
+| `system/runtimes/social_runtime/` | Vendored social crawler runtime for `weibo`, `douyin`, and `xhs`. | Product runtime code; keep dependencies local to this runtime. |
+| `system/runtimes/news_runtime/` | Vendored news extraction runtime for `news`. | Product runtime code; keep dependencies local to this runtime. |
+| `system/runtimes/review_student/` | Deployable Student Review runtime used by `StudentRuntime.predict(case)`. | Product runtime code; keep synchronous, checkpoint-gated, and governance-aware. |
+| `system/research/coordination_discover/` | Platform-generic Coordination Discover pipeline and artifact export boundary. | System-readable research; backend consumes it through analysis adapters. |
+| `system/research/coordination_detect/` | Public-label Coordination Detect validation boundary. | Validation boundary; do not label unlabeled project events. |
+| `system/research/propagation_analysis/` | Propagation Analysis loaders, hindcast protocol, conformal intervals, and baseline registry. | System-readable research; do not point product code at external research workspaces. |
+| `system/research/review_teacher/` | Multi-agent Teacher Review advisory DAG. | System-readable research; advisory only unless an analyst approves a canonical verdict. |
+| `doc/engineering/` | Long-lived engineering documentation. | Keep setup, governance, roadmap, project map, and development log aligned with code. |
+| `doc/research/` | Research positioning and literature notes. | Use for method positioning, references, and research context. |
+| `aris/` | Historical research workspace. | Read for provenance; do not copy numbered workspace labels into current product language. |
+| `research-wiki/` | Local research knowledge base and literature notes. | Local note workspace; do not commit generated local wiki output by default. |
+| `MediaCrawler-main/`, `NewsCrawler-main/`, `CooRTweet-master/` | Reference boundaries. | Provenance, license review, and diffing only; never product runtime roots. |
 
 ## Governance Sources
 
-- [doc/engineering/system-governance.md](system-governance.md) is the normative source for repository naming, package boundaries, and code layout.
-- [UBIQUITOUS_LANGUAGE.md](../../UBIQUITOUS_LANGUAGE.md) is the canonical glossary for domain terms, aliases to avoid, and relationship definitions.
+- [system-governance.md](system-governance.md) is the normative source for naming, package boundaries, and structure rules.
+- [UBIQUITOUS_LANGUAGE.md](../../UBIQUITOUS_LANGUAGE.md) is the canonical glossary for domain terms and aliases to avoid.
+- [system/README.md](../../system/README.md) is the runnable-system guide.
 
-## Product vs Research Rule
+## Product Vs Research Rule
 
-Product system code belongs in `system/` only when it satisfies at least one
-of these conditions:
+Product code belongs in `system/` when it is called by a backend service, API
+route, Celery task, frontend page, product test, demo path, stable schema,
+model, configuration, or integration point.
 
-- It is called by a backend service, API route, Celery task, or frontend page.
-- It is covered by product-facing tests under `system/backend/tests/`.
-- It is part of the runnable demo path described by `system/README.md`.
-- It defines stable schemas, models, configuration, or integration points used by the product.
+System-readable research belongs in `system/research/` when product adapters
+need to import it or read its artifacts. Exploratory notes, literature maps,
+and unproductized ideas stay in `doc/research/`, `aris/`, or `research-wiki/`.
 
-Research work belongs in `aris/` or `research-wiki/` when it is:
-
-- An algorithm idea, experiment plan, evaluation protocol, or review artifact.
-- A technical proposal for Coordination Discover, Propagation Analysis, or Review before product integration.
-- Literature evidence, novelty analysis, claim tracking, or gap mapping.
-- Prototype code or scratch output not yet connected to product APIs, UI, tests, or demos.
+Offline experiment inputs should default to vendored runtime data roots or an
+explicit user-provided path. They must not default to a reference boundary.
 
 ## Current Functional Map
 
 ```text
-materials/
-  Competition PPT, application forms, opening/proposal materials
-
 CogGuard/
   system/
-    backend/     FastAPI, Celery, MySQL/MongoDB/Redis access, product tests
-    frontend/    Vue 3 + TypeScript management UI
-    docker-compose.yml
+    backend/
+      app/core/analysis/              Analysis lifecycle and ports
+      app/core/crawler/               Crawler adapters and collect seam
+      app/core/coordination_baseline/ Compatibility baseline
+      app/core/propagation/           Propagation Analysis app support
+      app/core/review/                Risk Review app support
+      scripts/                        Explicit local utility entrypoints
+      tests/                          Backend regression and governance tests
+    frontend/                         Vue 3 + TypeScript UI
     research/
-      coordination_discover/ Platform-generic Coordination Discover pipeline
-      coordination_detect/   Public-label Coordination Detect validation boundary
-      propagation_analysis/  Propagation hindcast protocol and benchmark adapters
-      review_teacher/        Multi-agent Teacher advisory DAG
+      coordination_discover/          Coordination Discover research pipeline
+      coordination_detect/            Coordination Detect validation boundary
+      propagation_analysis/           Propagation Analysis protocol and baselines
+      review_teacher/                 Teacher Review advisory DAG
     runtimes/
-      review_student/        Synchronous deployable Student runtime
-  aris/
-    tech-01-coordination/   Multi-behavior coordination and significance screening
-    tech-02-propagation/    Propagation evidence chains, paths, and trend prediction
-    tech-03-risk/           Risk Review, DISARM mapping, structured reports
+      social_runtime/                 Vendored social crawler runtime
+      news_runtime/                   Vendored news extractor runtime
+      review_student/                 Student Review runtime
   doc/
-    engineering/  PRD, setup, roadmap, development log, project map
-    research/     positioning, literature, key-technology background, notes
-  system/runtimes/
-    social_runtime/
-    news_runtime/
-    review_student/
-  MediaCrawler-main/
-  NewsCrawler-main/
-  CooRTweet-master/
-
-research-wiki/
-  Papers, ideas, claims, experiments, gap map, research status
+    engineering/                      Governance, setup, roadmap, log, maps
+    research/                         Positioning and literature notes
+  aris/                               Historical research workspace
+  MediaCrawler-main/                  Reference boundary
+  NewsCrawler-main/                   Reference boundary
+  CooRTweet-master/                   Reference boundary
 ```
 
 ## Runtime Boundary Policy
 
-Crawler runtime execution now happens inside `system/runtimes/`. The vendored
-runtime trees are part of the product surface and should carry only the
-minimum upstream core needed by the live system.
+Crawler execution happens inside `system/runtimes/`. The vendored runtime trees
+are product runtime code and should carry only the minimum upstream core needed
+by the live system.
 
-Propagation Analysis and Review research runtimes now have product-readable internal seams:
-`system/research/propagation_analysis/runtime/protocol.py` is the Propagation Analysis hindcast protocol module,
-and `system/research/review_teacher/dag.py` is the Review Teacher advisory module.
-The deployable Review Student lives in `system/runtimes/review_student/`.
-Backend code may call these internal seams through `EventSnapshot` / `AnalysisRun`
-ports, but must not treat missing checkpoints as successful research results.
+Propagation Analysis and Teacher Review have product-readable internal seams:
+`system/research/propagation_analysis/runtime/protocol.py` and
+`system/research/review_teacher/dag.py`. Backend code may call these through
+`EventSnapshot` and `AnalysisRun` ports, but missing checkpoints must be
+reported as unavailable rather than successful research results.
 
-The upstream repositories remain in place only for provenance, license review,
-and diffing against upstream behavior. Product execution, tests, docs, and
-configuration should not depend on `MediaCrawler-main/`, `NewsCrawler-main/`,
-or `CooRTweet-master/`.
-
-## Migrated Root Documents
-
-The following previously top-level markdown files now live in this directory and
-can be rewritten or split in later documentation-focused tasks:
-
-- `doc/research/project-positioning-baseline.md`
-- `doc/research/literature-references.md`
-- `doc/research/time-series-forecasting-notes.md`
+The upstream reference directories remain in place only for provenance, license
+review, and diffing. Product execution, tests, documentation, and configuration
+must not depend on them as runtime roots.

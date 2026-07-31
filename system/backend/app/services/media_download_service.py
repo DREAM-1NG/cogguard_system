@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import ipaddress
 import json
 import re
+import socket
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
@@ -16,7 +18,6 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
-from app.db.mongodb import get_mongo_db
 from app.models.task import CrawlJob
 
 SUPPORTED_MEDIA_PLATFORMS = {"xhs", "douyin"}
@@ -43,6 +44,80 @@ MEDIA_DOWNLOAD_JOB_TYPE = "media_download"
 MEDIA_DOWNLOAD_PLATFORM = "media_download"
 MEDIA_DOWNLOAD_TIMEOUT_SECONDS = 60.0
 MEDIA_DOWNLOAD_CONCURRENCY = 3
+# Cap redirect following so a hostile CDN cannot bounce us onto an internal
+# address after the initial host check.
+MEDIA_DOWNLOAD_MAX_REDIRECTS = 3
+
+
+class BlockedMediaHostError(Exception):
+    """Raised when a media URL resolves to a non-public address."""
+
+
+def _is_public_ip(candidate: str) -> bool:
+    try:
+        ip = ipaddress.ip_address(candidate)
+    except ValueError:
+        return False
+    return not (
+        ip.is_private
+        or ip.is_loopback
+        or ip.is_link_local
+        or ip.is_reserved
+        or ip.is_multicast
+        or ip.is_unspecified
+    )
+
+
+def assert_public_media_url(url: str) -> None:
+    """Reject URLs whose host resolves to a private/loopback/link-local address.
+
+    Media URLs come from crawled third-party content, so fetching them puts the
+    backend in an SSRF position (cloud metadata endpoints, internal services).
+    Every host is resolved and every resolved address must be public.
+    """
+    if settings.MEDIA_DOWNLOAD_ALLOW_PRIVATE_HOSTS:
+        return
+
+    parsed = urlparse(str(url or ""))
+    if parsed.scheme not in {"http", "https"}:
+        raise BlockedMediaHostError(f"unsupported scheme: {parsed.scheme or 'none'}")
+    host = parsed.hostname
+    if not host:
+        raise BlockedMediaHostError("missing host")
+
+    # Literal IP in the URL: check directly, no DNS needed.
+    try:
+        ipaddress.ip_address(host)
+    except ValueError:
+        pass
+    else:
+        if not _is_public_ip(host):
+            raise BlockedMediaHostError(f"non-public address: {host}")
+        return
+
+    try:
+        resolved = socket.getaddrinfo(host, parsed.port or (443 if parsed.scheme == "https" else 80))
+    except OSError as exc:
+        raise BlockedMediaHostError(f"cannot resolve host {host}: {exc}") from exc
+
+    addresses = {info[4][0] for info in resolved}
+    if not addresses:
+        raise BlockedMediaHostError(f"cannot resolve host {host}")
+    for address in addresses:
+        if not _is_public_ip(address):
+            raise BlockedMediaHostError(f"host {host} resolves to non-public address {address}")
+
+
+def _create_job_mongo_client():
+    """Create a Mongo client owned by the download job's own event loop.
+
+    The process-global Motor client is bound to whichever loop first used it, so
+    reusing it from this job's private loop raises "Future attached to a
+    different loop" (and poisons the global client once this loop closes).
+    """
+    from motor.motor_asyncio import AsyncIOMotorClient
+
+    return AsyncIOMotorClient(settings.mongo_url)
 
 
 def classify_media_url(url: str) -> str | None:
@@ -206,16 +281,24 @@ async def _run_media_download_job_async(job_id: int, params_json: str) -> dict[s
     save_dir = build_save_dir(params)
     save_dir.mkdir(parents=True, exist_ok=True)
 
-    mongo_db = get_mongo_db()
-    cursor = mongo_db["raw_posts"].find(build_post_filter(params), {"_id": 0}).sort("timestamp", -1)
-    posts = await cursor.to_list(length=None)
+    mongo_client = _create_job_mongo_client()
+    try:
+        mongo_db = mongo_client[settings.MONGO_DATABASE]
+        cursor = mongo_db["raw_posts"].find(build_post_filter(params), {"_id": 0}).sort("timestamp", -1)
+        posts = await cursor.to_list(length=None)
+    finally:
+        mongo_client.close()
+
     items = _build_download_items(posts, requested_types, save_dir)
 
-    await _update_job_async(
+    # Job status writes use the synchronous engine: the shared async engine's
+    # pool holds connections created on the main event loop, and checking one
+    # out from this job's private loop would cross event loops.
+    _update_job_sync(
         job_id,
-        "running",
-        0,
-        {
+        status="running",
+        progress=0,
+        result_summary={
             "save_root": str(save_dir),
             "manifest_path": str(save_dir / "manifest.json"),
             "total": len(items),
@@ -223,12 +306,14 @@ async def _run_media_download_job_async(job_id: int, params_json: str) -> dict[s
             "failed": 0,
             "skipped": 0,
         },
+        finished=False,
     )
 
     semaphore = asyncio.Semaphore(MEDIA_DOWNLOAD_CONCURRENCY)
     async with httpx.AsyncClient(
         timeout=MEDIA_DOWNLOAD_TIMEOUT_SECONDS,
         follow_redirects=True,
+        max_redirects=MEDIA_DOWNLOAD_MAX_REDIRECTS,
         headers=_download_headers(),
     ) as client:
         completed = 0
@@ -241,17 +326,21 @@ async def _run_media_download_job_async(job_id: int, params_json: str) -> dict[s
             )
             results.extend(batch_results)
             completed += len(batch_results)
-            await _update_job_async(job_id, "running", _progress(completed, len(items)))
+            _update_job_sync(
+                job_id,
+                status="running",
+                progress=_progress(completed, len(items)),
+                result_summary=None,
+                finished=False,
+            )
 
     summary = _summarize_results(results, save_dir)
-    manifest = {"summary": summary, "items": results}
     manifest_path = save_dir / "manifest.json"
-    manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
     summary["manifest_path"] = str(manifest_path)
-    manifest["summary"] = summary
+    manifest = {"summary": summary, "items": results}
     manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
 
-    await _update_job_async(job_id, "completed", 100, summary)
+    _update_job_sync(job_id, status="completed", progress=100, result_summary=summary)
     return summary
 
 
@@ -295,6 +384,10 @@ async def _download_one(client: httpx.AsyncClient, item: dict[str, Any], semapho
         target.parent.mkdir(parents=True, exist_ok=True)
         if target.exists() and target.stat().st_size > 0:
             return {**item, "status": "skipped", "bytes": target.stat().st_size, "reason": "file_exists"}
+        try:
+            assert_public_media_url(str(item["url"]))
+        except BlockedMediaHostError as exc:
+            return {**item, "status": "failed", "error": f"blocked_host: {exc}"}
         try:
             async with client.stream("GET", str(item["url"])) as response:
                 if response.status_code >= 400:
@@ -367,26 +460,10 @@ def _progress(done: int, total: int) -> int:
     return min(95, max(1, int(done / total * 95)))
 
 
-async def _update_job_async(
-    job_id: int,
-    status: str,
-    progress: int,
-    summary: dict[str, Any] | None = None,
-) -> None:
-    from app.db.mysql import async_session_factory
-
-    async with async_session_factory() as session:
-        result = await session.execute(select(CrawlJob).where(CrawlJob.id == job_id))
-        job = result.scalar_one_or_none()
-        if job is None:
-            return
-        job.status = status
-        job.progress = progress
-        if summary is not None:
-            job.result_summary = json.dumps(summary, ensure_ascii=False, default=str)
-        if status in {"completed", "failed"}:
-            job.finished_at = datetime.now(timezone.utc)
-        await session.commit()
+# NOTE: job status updates from the background download job deliberately go
+# through the synchronous `_update_job_sync` above. An async variant using the
+# shared engine existed here previously and crossed event loops; do not
+# reintroduce it without giving the job its own engine.
 
 
 def _update_job_sync(
@@ -394,24 +471,34 @@ def _update_job_sync(
     *,
     status: str,
     progress: int,
-    result_summary: dict[str, Any],
+    result_summary: dict[str, Any] | None,
+    finished: bool | None = None,
 ) -> None:
+    """Update job state over a short-lived synchronous connection.
+
+    Used from the background job's private event loop, where the shared async
+    engine's pool cannot be touched. ``finished`` defaults to True for terminal
+    statuses so in-progress updates do not stamp ``finished_at``.
+    """
     from sqlalchemy import create_engine, text
+
+    if finished is None:
+        finished = status in {"completed", "failed"}
+
+    assignments = ["status=:status", "progress=:progress"]
+    payload: dict[str, Any] = {"id": job_id, "status": status, "progress": progress}
+    if result_summary is not None:
+        assignments.append("result_summary=:summary")
+        payload["summary"] = json.dumps(result_summary, ensure_ascii=False, default=str)
+    if finished:
+        assignments.append("finished_at=NOW()")
 
     engine = create_engine(settings.mysql_url.replace("+aiomysql", "+pymysql"))
     try:
         with engine.connect() as conn:
             conn.execute(
-                text(
-                    "UPDATE crawl_jobs SET status=:status, progress=:progress, "
-                    "result_summary=:summary, finished_at=NOW() WHERE id=:id"
-                ),
-                {
-                    "id": job_id,
-                    "status": status,
-                    "progress": progress,
-                    "summary": json.dumps(result_summary, ensure_ascii=False, default=str),
-                },
+                text(f"UPDATE crawl_jobs SET {', '.join(assignments)} WHERE id=:id"),
+                payload,
             )
             conn.commit()
     finally:

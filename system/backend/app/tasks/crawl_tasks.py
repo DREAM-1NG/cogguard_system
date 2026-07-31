@@ -170,23 +170,52 @@ def execute_crawl_job(self, job_id: int, params_json: str):
     return run_crawl_job(job_id, params_json)
 
 
-def _update_job_in_db(job_id: int, status: str, progress: int, result_summary: str | None = None):
-    """Synchronously update job status in MySQL (from Celery worker context)."""
+#: Statuses a job may still be moved out of. A job the user already cancelled
+#: must not be flipped to completed/failed by a runner that could not be stopped
+#: (local-mode "tasks" have no revocable Celery id).
+_UPDATABLE_JOB_STATUSES = ("pending", "running")
+
+
+def _update_job_in_db(
+    job_id: int,
+    status: str,
+    progress: int,
+    result_summary: str | None = None,
+    *,
+    only_if_active: bool = True,
+):
+    """Synchronously update job status in MySQL (from Celery worker context).
+
+    ``only_if_active`` guards the terminal transition so a cancelled job stays
+    cancelled instead of being reported as completed after the fact.
+    """
     from sqlalchemy import create_engine, text
     from app.config import settings
 
+    assignments = ["status=:s", "progress=:p"]
+    payload: dict[str, object] = {"s": status, "p": progress, "id": job_id}
+    if result_summary:
+        assignments.append("result_summary=:r")
+        payload["r"] = result_summary
+        assignments.append("finished_at=NOW()")
+
+    where = "id=:id"
+    if only_if_active:
+        placeholders = []
+        for index, allowed in enumerate(_UPDATABLE_JOB_STATUSES):
+            key = f"st{index}"
+            payload[key] = allowed
+            placeholders.append(f":{key}")
+        where += f" AND status IN ({', '.join(placeholders)})"
+
     sync_url = settings.mysql_url.replace("+aiomysql", "+pymysql")
     engine = create_engine(sync_url)
-    with engine.connect() as conn:
-        if result_summary:
+    try:
+        with engine.connect() as conn:
             conn.execute(
-                text("UPDATE crawl_jobs SET status=:s, progress=:p, result_summary=:r, finished_at=NOW() WHERE id=:id"),
-                {"s": status, "p": progress, "r": result_summary, "id": job_id},
+                text(f"UPDATE crawl_jobs SET {', '.join(assignments)} WHERE {where}"),
+                payload,
             )
-        else:
-            conn.execute(
-                text("UPDATE crawl_jobs SET status=:s, progress=:p WHERE id=:id"),
-                {"s": status, "p": progress, "id": job_id},
-            )
-        conn.commit()
-    engine.dispose()
+            conn.commit()
+    finally:
+        engine.dispose()

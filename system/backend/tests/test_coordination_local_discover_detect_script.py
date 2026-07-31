@@ -140,3 +140,8 @@ def test_local_discover_detect_script_normalizes_jsonl_and_abstains_without_labe
     assert effectiveness["by_snapshot"][0]["process_exploratory_gate"] in {True, False}
     assert effectiveness["overall_conclusion"] in {"effective_for_discovery_case_study", "needs_followup"}
 
+
+def test_local_discover_detect_script_defaults_to_vendored_social_runtime_boundary():
+    script = _load_script()
+    assert script.DEFAULT_LOCAL_DATA_ROOT == script.SYSTEM_ROOT / "runtimes" / "social_runtime" / "data_runs"
+

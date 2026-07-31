@@ -18,6 +18,8 @@ SYSTEM_ROOT = BACKEND_ROOT.parent
 REPO_ROOT = SYSTEM_ROOT.parent
 CHINA_TZ = timezone(timedelta(hours=8))
 DEFAULT_EVENT_ID = "trump_visit_2026_05"
+DEFAULT_LOCAL_DATA_ROOT = SYSTEM_ROOT / "runtimes" / "social_runtime" / "data_runs"
+METHOD_ALIGNMENT_REFERENCE = SYSTEM_ROOT / "research" / "coordination_discover" / "DISCOVER_DETECT_FINAL_PLAN.md"
 DEFAULT_CORE_WINDOW = (
     datetime(2026, 5, 11, 0, 0, tzinfo=CHINA_TZ),
     datetime(2026, 5, 22, 0, 0, tzinfo=CHINA_TZ),
@@ -81,12 +83,15 @@ class LocalRows:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Run CoordinationDiscover Discover/Detect validation on local three-platform Trump-visit JSONL data."
+        description="Run Coordination Discover/Detect validation on local three-platform Trump-visit JSONL data."
     )
     parser.add_argument(
         "--data-root",
-        default=str(REPO_ROOT / "MediaCrawler-main" / "data_runs"),
-        help="Offline JSONL input root. This is an experiment input, not a runtime dependency.",
+        default=str(DEFAULT_LOCAL_DATA_ROOT),
+        help=(
+            "Offline JSONL input root. Defaults to the vendored social runtime boundary; "
+            "pass an explicit path for historical reference data."
+        ),
     )
     parser.add_argument(
         "--output-dir",
@@ -157,14 +162,7 @@ def main() -> None:
         "generated_at": _utc_now(),
         "runtime_seconds": round(time.time() - started, 3),
         "script": _safe_relative(Path(__file__).resolve(), REPO_ROOT),
-        "preflight": _safe_relative(
-            REPO_ROOT
-            / "research-wiki"
-            / "preflight_runs"
-            / "20260722T171047Z-align-coordination-discover-detect-with-high-level-literature"
-            / "preflight.json",
-            REPO_ROOT,
-        ),
+        "method_alignment_reference": _safe_relative(METHOD_ALIGNMENT_REFERENCE, REPO_ROOT),
         "event_id": args.event_id,
         "data_root": str(Path(args.data_root).resolve()),
         "claim_boundary": {
@@ -713,7 +711,7 @@ def _report_markdown(
     effectiveness: dict[str, Any],
 ) -> str:
     lines = [
-        "# CoordinationDiscover Local Discover/Detect Report",
+        "# Coordination Discover Local Discover/Detect Report",
         "",
         "## Boundary",
         "",

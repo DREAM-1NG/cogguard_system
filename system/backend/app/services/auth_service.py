@@ -7,11 +7,13 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.core.security import (
     create_access_token,
     create_refresh_token,
     decode_token,
     hash_password,
+    spend_dummy_password_verify,
     verify_password,
 )
 from app.models.user import User
@@ -20,24 +22,26 @@ from app.utils.exceptions import AuthError, ConflictError
 
 
 async def ensure_default_admin(db: AsyncSession) -> None:
-    """Ensure the local demo administrator account is available."""
+    """Seed the local administrator account when it does not exist yet.
+
+    An existing ``admin`` row is left untouched: rewriting its password, role and
+    active flag on every startup would silently revert an operator's password
+    rotation or account suspension back to the well-known seed credential.
+    """
     result = await db.execute(select(User).where(User.username == "admin"))
     user = result.scalar_one_or_none()
-    if user is None:
-        db.add(
-            User(
-                username="admin",
-                email="admin@cogguard.local",
-                hashed_password=hash_password("123123"),
-                role="admin",
-                is_active=True,
-            )
-        )
+    if user is not None:
         return
 
-    user.hashed_password = hash_password("123123")
-    user.role = "admin"
-    user.is_active = True
+    db.add(
+        User(
+            username="admin",
+            email="admin@cogguard.local",
+            hashed_password=hash_password(settings.DEFAULT_ADMIN_PASSWORD),
+            role="admin",
+            is_active=True,
+        )
+    )
 
 
 async def register(req: RegisterRequest, db: AsyncSession) -> UserInfo:
@@ -63,7 +67,12 @@ async def login(req: LoginRequest, db: AsyncSession) -> TokenResponse:
     """验证用户名密码，成功返回 access + refresh token 对。"""
     result = await db.execute(select(User).where(User.username == req.username))
     user = result.scalar_one_or_none()
-    if user is None or not verify_password(req.password, user.hashed_password):
+    if user is None:
+        # Hash anyway so a missing username costs the same time as a wrong
+        # password; otherwise response latency enumerates valid accounts.
+        spend_dummy_password_verify()
+        raise AuthError(msg="Invalid username or password")
+    if not verify_password(req.password, user.hashed_password):
         raise AuthError(msg="Invalid username or password")
     if not user.is_active:
         raise AuthError(msg="User is inactive")

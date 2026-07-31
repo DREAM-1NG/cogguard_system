@@ -1,5 +1,12 @@
-"""核心业务逻辑包。
+"""Core product domain packages for the CogGuard backend."""
 
-包含认证鉴权(security)、爬虫引擎(crawler)等核心能力，
-不依赖 FastAPI 路由层，可被 services 和 tasks 调用。
-"""
+__all__ = [
+    "analysis",
+    "coordination",
+    "coordination_baseline",
+    "crawler",
+    "propagation",
+    "review",
+    "risk",
+    "security",
+]

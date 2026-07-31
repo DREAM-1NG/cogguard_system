@@ -1,11 +1,11 @@
 ﻿from __future__ import annotations
 
-from app.core.risk.agent_runtime import build_candidate_rule_hints
-from app.core.risk.agent_runtime import build_execution_plan_for_runtime
-from app.core.risk.agent_runtime import build_failure_mode_tags
-from app.core.risk.agent_runtime import normalize_agent_names
-from app.core.risk.agent_runtime import recommend_runtime_mode
-from app.core.risk.agent_runtime import resolve_runtime_mode
+from app.core.review.agent_runtime import build_candidate_rule_hints
+from app.core.review.agent_runtime import build_execution_plan_for_runtime
+from app.core.review.agent_runtime import build_failure_mode_tags
+from app.core.review.agent_runtime import normalize_agent_names
+from app.core.review.agent_runtime import recommend_runtime_mode
+from app.core.review.agent_runtime import resolve_runtime_mode
 
 
 def test_agent_runtime_normalizes_and_plans_simple_mode():
