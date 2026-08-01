@@ -129,7 +129,7 @@ def run_botrhg_detection(
             "hypergraph_construction": "target_centered_knn_support_hyperedges",
             "routing": "local_reference_reliability_top_budget",
             "selective_rule": "preserve_base_unless_routed",
-            "research_source": "G:/Research/BotDetection/LLMbot",
+            "research_source": "internal_legacy_proxy",
             "system_adapter": "deterministic_inference_proxy",
         },
     }
@@ -152,7 +152,7 @@ def _empty_result(routing_budget: float, support_k: int) -> dict[str, Any]:
             "hypergraph_construction": "target_centered_knn_support_hyperedges",
             "routing": "local_reference_reliability_top_budget",
             "selective_rule": "preserve_base_unless_routed",
-            "research_source": "G:/Research/BotDetection/LLMbot",
+            "research_source": "internal_legacy_proxy",
             "system_adapter": "deterministic_inference_proxy",
         },
     }

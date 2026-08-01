@@ -41,6 +41,7 @@ system/
     coordination_detect/       public-label validation boundary
     propagation_analysis/      hindcast protocol, loaders, baselines, intervals
     review_teacher/            asynchronous Teacher Review DAG
+    social_bot_detection/       internal trainable BotRHG social-bot transfer
   runtimes/
     social_runtime/            vendored social crawler runtime
     news_runtime/              vendored news extractor runtime
@@ -53,7 +54,16 @@ Canonical semantic paths:
 - `system/research/coordination_detect/`
 - `system/research/propagation_analysis/`
 - `system/research/review_teacher/`
+- `system/research/social_bot_detection/`
 - `system/runtimes/review_student/`
+
+The social-bot research package supports independent account-level transfer
+runs on Botection, Cresci-2015, Cresci-2017, and Midterm-2018. It uses the
+repository-local RoBERTa-family checkpoint configured by the experiment and
+records source-label provenance, archive fingerprints, training configuration,
+checkpoint hashes, predictions, and reference metrics. The public corpus
+experiments are text-only transfer implementations; their outputs are not
+publication claims of superiority over strong text baselines.
 
 ## Analysis API
 
@@ -72,6 +82,23 @@ The application-facing ports are:
 - `PropagationEngine.hindcast(snapshot, options)`
 - `StudentRuntime.predict(case)`
 - `TeacherJobPort.submit(case)`
+
+When `requested_stages` is omitted, a prototype run executes
+`coordination_discover`, `propagation_analysis`, `student`, and `teacher` in
+that order. A narrower list remains available for focused diagnostics.
+
+## Prototype Acceptance
+
+From `system/backend/`, run:
+
+```powershell
+python scripts/prototype_acceptance.py
+```
+
+The command uses an isolated fixture and temporary artifact directory. It
+does not create labels, activate models, persist database rows, or modify the
+frontend. Expected output explicitly reports strict Leiden, propagation
+fallback/abstain, Student `shadow_untrained`, and Teacher advisory status.
 
 ## Runtime Boundary
 
@@ -127,9 +154,10 @@ cd system\backend
 python -m pytest tests -q
 
 cd ..\frontend
-npm run type-check
 npm run build
 ```
+
+`npm run build` runs `vue-tsc -b` before the Vite production build.
 
 Useful targeted gates:
 
@@ -156,3 +184,34 @@ Model governance is fail-closed: a model version needs a valid SHA-256 digest
 and a locally readable artifact, or an explicitly implemented deployment
 resolver, before activation. Remote `http(s)`, `s3`, and `gs` URIs are recorded
 as candidates but are not treated as verified by the current backend.
+
+## Weibo Bot Detection Transfer
+
+The NLPCC BotRHG transfer implementation is internalized under
+`system/research/social_bot_detection/`. The legacy transfer proxy remains
+available for Botection, and the strict NLPCC-aligned path can be selected
+for Cresci-2015, Cresci-2017, and Midterm-2018 with `--strict-method`. Both
+paths use a local Chinese Transformer, a trainable low-order detector,
+target-centered KNN support hyperedges, label-free reliability routing, and
+selective residual correction. The Botection corpus currently provides account
+labels and text only; property fields and an explicit social graph are
+recorded as unavailable, so this remains a text-only Weibo transfer path and
+not an exact reproduction of the paper benchmark.
+
+Train with the local model cache:
+
+```powershell
+cd system
+$env:PYTHONPATH='.'
+python -m research.social_bot_detection.cli `
+  --strict-method `
+  --dataset-name cresci_2015 `
+  --dataset-root G:\CISCN\_tmp\Botection `
+  --output-dir .\output\botrhg_strict `
+  --text-model-path G:\CISCN\hf_models\models--hfl--chinese-roberta-wwm-ext\snapshots\5c58d0b8ec1d9014354d691c538661bf00bfdb44 `
+  --device cpu --base-epochs 3 --correction-epochs 3
+```
+
+The backend only uses `checkpoint.pt` when it is present and its manifest
+fingerprint matches `BOTRHG_DATA_FINGERPRINT`; otherwise the account API
+returns the explicitly non-claimable deterministic fallback.

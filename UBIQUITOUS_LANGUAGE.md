@@ -16,7 +16,7 @@ This glossary is the canonical vocabulary for CogGuard. Use these names in code,
 | **Artifact Manifest** | A reproducibility record that binds a run or model artifact to data, config, and policy metadata. | Metadata, note |
 | **Strict Leiden Artifact** | A **Coordination Discover** artifact whose manifest records `partition_backend=leiden`. | NetworkX artifact, smoke artifact |
 
-Current semantic package paths: `system/research/coordination_discover/`, `system/research/coordination_detect/`, `system/research/propagation_analysis/`, `system/research/review_teacher/`, and `system/runtimes/review_student/`.
+Current semantic package paths: `system/research/coordination_discover/`, `system/research/coordination_detect/`, `system/research/propagation_analysis/`, `system/research/review_teacher/`, `system/research/social_bot_detection/`, and `system/runtimes/review_student/`.
 
 ## Analysis Lifecycle
 
@@ -83,6 +83,18 @@ Current semantic package paths: `system/research/coordination_discover/`, `syste
 | **Selective Student** | A student model that predicts main review axes and defers uncertain cases. | Gate model, shortcut classifier |
 | **Active Pointer** | The currently selected model-version reference for a review capability. | Default model, live model |
 
+## Account Detection
+
+| Term | Definition | Aliases to avoid |
+| --- | --- | --- |
+| **Social Bot Detection** | Account-level classification of social automation using learned account representations and approved evidence. | Automation score, activity rule |
+| **BotRHG Transfer** | The internal trainable transfer implementation of Reliability-Guided Hypergraph Learning for Social Bot Detection. | NLPCC proxy, graph detector shell |
+| **Low-Order Detector** | The first-stage trainable account classifier whose representation and posterior seed reliability routing. | Base rule, heuristic detector |
+| **Support Hyperedge** | A target-centered KNN reference set built from learned account representations, excluding the target itself. | Similar-user list, handcrafted neighborhood |
+| **Reliability Route** | The label-free top-budget selection of accounts eligible for second-stage correction. | Manual correction list, risk shortcut |
+| **Residual Correction** | The learned second-stage fusion of a routed account representation with its support hyperedge representation. | Fixed score adjustment, proxy correction |
+| **Text-Only Weibo Transfer** | The current adaptation boundary using labeled Weibo account text while property fields and explicit social graph coverage are unavailable. | Exact paper reproduction, cross-platform claim |
+
 ## Relationships
 
 - An **Event Snapshot** feeds one or more **Analysis Stage** executions.
@@ -96,6 +108,7 @@ Current semantic package paths: `system/research/coordination_discover/`, `syste
 - **Risk Review** consumes content, coordination, and propagation evidence and produces a **Review Verdict**.
 - **Teacher Review** may create **Teacher Silver Records** for **Selective Student** distillation after governance approval.
 - An **Artifact Manifest** must match the snapshot fingerprint before an artifact-first result can serve a backend response.
+- A **BotRHG Transfer** artifact must record the dataset fingerprint, checkpoint hash, text sampling policy, missing property/social graph coverage, and same-split reference baseline.
 - A **Compatibility Alias** may forward to a canonical package, but it must not be imported by new product code.
 - An **Offline Experiment Input** may point to a **Vendored Data Root** or an explicit user path, but never to a reference boundary by default.
 

@@ -105,26 +105,26 @@ CogGuard 面向网络舆论对抗场景，以 **跨平台协同攻击行为** �
 | **文档数据库** | MongoDB | 采集帖子、评论等非结构化数据 |
 | **缓存/消息** | Redis | 会话缓存、Celery Broker |
 | **任务队列** | Celery | 异步采集任务、后台分析任务 |
-| **图计算** | NetworkX | 协同网络构建、传播图分析、社区发现 |
+| **图计算** | NetworkX + strict Leiden runtime | Evidence Graph construction, propagation analysis, and community partitioning |
 | **构建工具** | Vite | 前端开发与构建 |
 | **HTTP 客户端** | Axios | 前端 API 调用 |
 
 <!-- 技术栈来源：代码基线 release-0.2 实际依赖 -->
 
-### 1.4 关键技术边界声明（ARIS 标注）
+### 1.4 Core capability boundaries
 
-> **ARIS**（Algorithm Research & Implementation Stub）：标记算法核心尚待研究实现的模块。PRD 仅定义其 I/O 接口规范，算法内部实现由研究阶段完成。
+> Research packages define implementation-specific details. This product document records the stable interfaces and claimability boundaries.
 
-本系统包含三项关键技术，每项对应一个功能的核心创新点。当前 PRD 版本（@version: v1）对这三项关键技术 **只定义输入/输出接口**，不规定算法内部实现：
+本系统包含三个核心能力，每项对应一个产品闭环。当前 PRD 只定义输入/输出接口和状态，不把未激活的研究制品描述为生产模型：
 
-| # | 关键技术 | 所属功能 | ARIS 状态 | I/O 接口定义 |
+| Capability | Product area | Current status | I/O interface |
 |---|----------|----------|-----------|-------------|
-| Coordination Discover / Detect | 基于多任务框架的跨平台协同检测 | 协同发现 | `@ARIS:pending` | 输入：行为对集合 → 输出：协同判定 + 类型标签 + 群组 + 证据边 |
-| Propagation Analysis | 基于 LLM 增强的传播趋势预测 | 传播监控 | `@ARIS:pending` | 输入：传播时序数据 + 事件上下文 → 输出：未来 N 小时趋势预测 |
-| Risk Review | 基于 Agent+RAG 的攻击分析与报告生成 | 报告研判 | `@ARIS:pending` | 输入：Coordination Discover / Detect 结果 + Propagation Analysis 结果 + 知识库 → 输出：结构化报告 + DISARM 映射 + 处置建议 |
+| Coordination Discover / Detect | 协同发现 | artifact-first + fallback | 输入：EventSnapshot / Evidence Graph → 输出：communities、learned/evidence edges、validation metadata |
+| Propagation Analysis | 传播分析 | hindcast + fallback | 输入：EventSnapshot → 输出：Propagation Forecast、Next-Hop Ranking、interval metadata |
+| Risk Review | 报告研判 | Student/Teacher + governance | 输入：内容、协同和传播证据 → 输出：Review Verdict；Canonical Verdict 需人工审批 |
 
 **边界原则**：
-- 关键技术是从功能中提炼出的核心创新点，不等同于功能本身
+- 核心能力是从功能中提炼出的稳定接口，不等同于已完成的研究主张
 - 其它支撑性技术（图分析、角色识别、立场分类等）后期根据实现需要动态调整
 - Agent 与 DISARM 是支撑层，不是三项关键技术本体
 
@@ -134,9 +134,9 @@ CogGuard 面向网络舆论对抗场景，以 **跨平台协同攻击行为** �
 
 | 术语 | 英文 | 定义 |
 |------|------|------|
-| 协同发现 | Coordination Discovery | 系统第一阶段功能，发现跨平台协同行为并进行分类，输出协同群组与证据边 |
-| 传播监控 | Propagation Monitoring | 系统第二阶段功能，对传播源头、范围和趋势进行监控与预测 |
-| 报告研判 | Risk Assessment | 系统第三阶段功能，针对攻击进行分析并生成可审计报告 |
+| 协同发现 | Coordination Discover | Platform-generic evidence graph discovery and coordination communities |
+| 传播监控 | Propagation Analysis | Source, reach, and trend analysis over event snapshots |
+| 报告研判 | Risk Review | Auditable review outputs and governance actions |
 | DISARM | DISARM Framework | 信息操纵对抗的标准化战术/技术框架，用于攻击行为的结构化表达与反制映射 |
 | D-S 融合 | Dempster-Shafer Fusion | 基于 Dempster-Shafer 证据理论的多维风险融合方法，输出信念区间与冲突度 |
 | CascadeSwitch | CascadeSwitch | 传播趋势预测模型名称，基于 LLM 增强的时序预测方法 |
@@ -181,7 +181,7 @@ CogGuard 面向网络舆论对抗场景，以 **跨平台协同攻击行为** �
 2. 在"创建采集任务"表单中选择目标平台（mock_weibo / weibo / douyin / xhs / news）
 3. 输入监测关键词（逗号分隔）；新闻平台可在"链接"字段填写文章 URL
 4. 设置最大帖子数（1-1000，默认 50）
-5. 展开「高级设置」，可直接配置 MediaCrawler 支持的采集能力（如登录方式、评论/二级评论开关、单帖评论上限、代理、时间/排序等平台支持参数）
+5. 展开「高级设置」，可直接配置 Social Runtime 支持的采集能力（如登录方式、评论/二级评论开关、单帖评论上限、代理、时间/排序等平台支持参数）
 6. 点击「开始采集」按钮，系统创建 Celery 异步任务
 7. 在"采集任务列表"中查看任务状态（pending → running → done/failed）
 8. 任务完成后，在"采集数据"表格中浏览已采集的帖子/评论数据
@@ -212,7 +212,7 @@ CogGuard 面向网络舆论对抗场景，以 **跨平台协同攻击行为** �
    - 边权百分位阈值（0-1，默认 0.5）：过滤偶然共振的边权分位数
    - 可选限定平台
 3. 点击「运行检测」，系统先清洗事件数据，按事件时间顺序进行分平台聚合，再进行跨平台聚合
-4. 系统基于 CooRTweet/后续 Coordination Discover / Detect 算法执行协同检测，并输出用户聚类结果
+4. 系统调用 Coordination Discover / Detect，输出 Coordination Community、证据边和可审计的模型状态
 5. 查看概览统计：分析帖子数、协调配对数、协调账户数、群体数量
 6. 在"协同网络"可视化区域查看协同网络图（Canvas 力导向布局）
 7. 在"协调账户排名"表格中查看各账户的连接数、平均边权、平均时间差、对称性等指标
@@ -251,7 +251,7 @@ CogGuard 面向网络舆论对抗场景，以 **跨平台协同攻击行为** �
 5. 检测相关发帖用户，识别高影响力节点、桥接节点和异常放大账号
 6. 在"高频共享对象"表格中查看传播最广的 URL/标签及其分享次数、涉及账户数
 7. 在"传播时间线"中按时间顺序查看帖子发布序列，协调账户以红色标记
-8. 【待开发 @ARIS:Propagation Analysis】点击「趋势预测」，调用 CascadeSwitch 模型预测未来 N 小时传播走势
+8. 【已接入，研究制品待激活】点击「趋势预测」，调用 Propagation Analysis 预测未来 N 小时传播走势
 
 **预期结果**：
 - 传播子图构建完成，关键角色识别准确
@@ -625,7 +625,7 @@ CogGuard 面向网络舆论对抗场景，以 **跨平台协同攻击行为** �
 |------|------|
 | 页面头部 | PageHeader：标题 "数据采集" + 功能描述 |
 | 创建采集任务 | 内联表单：平台选择、关键词输入、链接输入（textarea，宽度加大）、最大帖子数、开始采集按钮 |
-| 高级设置 | 折叠面板：MediaCrawler 登录方式、评论/二级评论开关、单帖评论上限、代理、排序/时间等平台支持参数 |
+| 高级设置 | 折叠面板：Social Runtime 登录方式、评论/二级评论开关、单帖评论上限、代理、排序/时间等平台支持参数 |
 | 采集任务列表 | 表格：ID、平台、状态（Tag 颜色编码）、进度、创建时间、操作（取消/删除） |
 | 采集数据 | 表格：平台、作者、内容（ellipsis）、发布时间，支持分页 |
 
@@ -668,7 +668,7 @@ CogGuard 面向网络舆论对抗场景，以 **跨平台协同攻击行为** �
 
 ### 功能概述
 
-基于 CooRTweet 算法检测协调行为。在同一共享对象（URL/标签）下，找出在时间窗口内发布的账户对，通过边权分位数阈值过滤偶然共振，保留异常高频协调对并构建网络图。
+Coordination Discover consumes a platform-generic Evidence Graph and learns temporal coordination structure. The coordination baseline remains an evidence-backed fallback and is not a learned research claim.
 
 ### 功能区域划分
 
@@ -684,7 +684,7 @@ CogGuard 面向网络舆论对抗场景，以 **跨平台协同攻击行为** �
 ### 交互流程
 
 1. 用户调整参数后点击「运行检测」
-2. 后端执行 CooRTweet 算法，返回概览统计、网络图数据、账户排名、共享对象统计
+2. 后端 executes the configured Coordination Discover port and returns summary statistics, evidence/learned graph data, account rankings, and shared-object evidence
 3. 前端渲染概览卡片、Canvas 网络图（力导向布局 50 次迭代）、两个数据表格
 4. 网络图使用简易力导向算法：节点间斥力 + 边弹簧力，50 次迭代后归一化坐标
 
@@ -1176,7 +1176,7 @@ CogGuard 系统围绕"数据采集 → 协同发现 → 传播监控 → 报告�
 
 ## 4.3 协同发现 — 子功能清单与优先级
 
-协同发现模块基于 CooRTweet 算法的 Python 重写，检测社交媒体上的协同行为（同一时间窗口内多账户分享相同对象）。核心实现位于 `app/core/coordination/`。
+Coordination Discover consumes a platform-generic Evidence Graph and learns temporal coordination structure. The fallback implementation lives under `app/core/coordination_baseline/`; the canonical research package is `system/research/coordination_discover/`.
 
 ### 子功能清单
 
@@ -1450,8 +1450,8 @@ P1 阶段聚焦三项竞赛关键技术的集成，以及 LLM 能力的启用。
 |--------|----------|------|------|
 | 趋势预测规则引擎 | 传播监控 | 已完成 | CascadeSwitch 模型已实现 |
 | 多任务框架协同检测 | 协同发现 | **待 ARIS 工作空间实现** | 关键技术 Coordination Discover / Detect |
-| LLM 增强趋势预测 | 传播监控 | **待 ARIS 工作空间实现** | 关键技术 Propagation Analysis（框架已就绪，需配置 API） |
-| Agent + RAG 攻击分析 | 报告研判 | **待 ARIS 工作空间实现** | 关键技术 Risk Review |
+| LLM 增强趋势预测 | 传播监控 | **已接入 fallback；研究模型待激活** | Propagation Analysis |
+| Agent + RAG 攻击分析 | 报告研判 | **Student/Teacher seam 已接入；治理激活待完成** | Risk Review |
 | LLM 桥接 | 报告研判 | 占位 | 接口已定义，待 LLM API 启用 |
 
 **P1 交付物**：三项关键技术的算法实现 + 集成验证，LLM 能力从 mock 切换为真实调用。
@@ -1494,7 +1494,7 @@ P2 阶段扩展系统的分析深度和自动化程度。
 | **传播监控** | 传播子图构建 | P0 | 已完成 | `core/propagation_legacy.py` | |
 | | 时间线与角色识别 | P0 | 已完成 | `core/propagation_legacy.py` | |
 | | 趋势预测规则引擎 | P1 | 已完成 | `core/propagation/trend_predictor.py` | |
-| | LLM 增强趋势预测 | P1 | 待 ARIS | `core/propagation/llm_context.py` | Propagation Analysis |
+| | LLM 增强趋势预测 | P1 | fallback 已接入，研究制品待激活 | `system/research/propagation_analysis/` | Propagation Analysis |
 | | 立场检测 | P2 | 待开发 | 待创建 | |
 | | 危害性评估 | P2 | 待开发 | 待创建 | |
 | | 源头追溯 | P2 | 待开发 | 待创建 | |
@@ -1504,7 +1504,7 @@ P2 阶段扩展系统的分析深度和自动化程度。
 | | DISARM 攻击路径评分 | P0 | 已完成 | `core/risk/disarm_scorer.py` | |
 | | 报告生成 | P0 | 已完成 | `core/risk/report_builder.py` | |
 | | LLM 桥接 | P1 | 占位 | `core/risk/llm_bridge.py` | |
-| | Agent + RAG 攻击分析 | P1 | 待 ARIS | 待创建 | Risk Review |
+| | Agent + RAG 攻击分析 | P1 | Student/Teacher 已接入，治理激活待完成 | `system/research/review_teacher/`, `system/runtimes/review_student/` | Risk Review |
 | | 预警系统 | P2 | 待开发 | 待创建 | |
 | | 案例入库与检索 | P3 | 待开发 | 待创建 | |
 
@@ -2790,7 +2790,7 @@ class AttackAnalysisOutput:
 | **服务层** | `services/dashboard_service.py` | 待开发 | 看板数据聚合 |
 | **服务层** | `services/alert_service.py` | 待开发 | 预警管理 |
 | **服务层** | `services/report_service.py` | 待开发 | 报告管理 |
-| **核心算法** | `core/coordination/detector.py` | 已实现 | 协同配对检测（CooRTweet） |
+| **核心算法** | `system/research/coordination_discover/` | artifact-first 已接入 | Coordination Discover；baseline 仅作 fallback |
 | **核心算法** | `core/coordination/network.py` | 已实现 | 协同网络构建 |
 | **核心算法** | `core/coordination/stats.py` | 已实现 | 协同统计 |
 | **核心算法** | `core/propagation/ts_features.py` | 已实现 | 时序特征提取 |

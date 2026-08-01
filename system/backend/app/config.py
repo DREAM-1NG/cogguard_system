@@ -96,6 +96,11 @@ class Settings(BaseSettings):
     # Downloaded social media files are stored under project output by default.
     MEDIA_DOWNLOAD_ROOT: str = str(PROJECT_ROOT / "output" / "media_downloads")
 
+    # ----- Internal trained BotRHG runtime -----
+    BOTRHG_CHECKPOINT_PATH: str = str(PROJECT_ROOT / "output" / "botrhg_weibo" / "checkpoint.pt")
+    BOTRHG_DATA_FINGERPRINT: str = "50327a90e7b9fa6cb65140af3e1573d139925033b184af2ed43aa938ab42c0ae"
+    BOTRHG_DEVICE: str = "cpu"
+
     # ----- Coordination Discover research artifact runtime -----
     COORDINATION_DISCOVER_MODE: str = "artifact_first"
     COORDINATION_DISCOVER_ARTIFACT_ROOT: str = str(PROJECT_ROOT / "artifacts" / "coordination_discover")
@@ -113,6 +118,14 @@ class Settings(BaseSettings):
     LLM_TIMEOUT_SECONDS: float = 180.0
     LLM_INCLUDE_MEDIA_BASE64: bool = False
     LLM_REQUIRE_VISION: bool = False
+
+    # ----- LLM response cache (demo stability) -----
+    # Recorded successful LLM responses can be replayed so a walkthrough does
+    # not depend on live network access. Only genuine responses are ever
+    # written: the cache is populated by real calls in RECORD mode, never by
+    # hand-authored text. Modes: "off" | "replay" | "record".
+    LLM_CACHE_MODE: str = "off"
+    LLM_CACHE_ROOT: str = str(PROJECT_ROOT / "output" / "llm_cache")
     REVIEW_EXTERNAL_RETRIEVAL_ENABLED: bool = False
     REVIEW_RETRIEVAL_API_KEY: str = ""
     REVIEW_RETRIEVAL_BASE_URL: str = ""

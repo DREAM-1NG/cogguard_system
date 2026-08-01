@@ -14,6 +14,8 @@ import random
 
 import httpx
 
+from app.core import llm_cache
+
 
 __all__ = [
     "OpenAICompatibleAgentProvider",
@@ -69,6 +71,17 @@ class OpenAICompatibleAgentProvider:
                 "messages": _openai_messages(system_prompt, user_prompt, input_bundle),
                 "temperature": 0.2,
             }
+        # Replay a previously recorded real response when one matches, so a
+        # walkthrough survives a slow or unreachable upstream.
+        cache_key = llm_cache.response_cache_key(
+            channel=f"review.agent.{agent_name}",
+            model=payload_model,
+            payload=payload,
+        )
+        cached = llm_cache.load_cached_response(cache_key)
+        if cached is not None:
+            return cached
+
         headers = {"Authorization": f"Bearer {self.config.api_key}"}
         data = None
         last_error: Exception | None = None
@@ -96,17 +109,27 @@ class OpenAICompatibleAgentProvider:
             detail = str(last_error) if last_error is not None else "unknown provider error"
             raise RuntimeError(f"{agent_name} provider request failed: {detail}")
         if wire_api == "responses":
-            return _extract_responses_text(data, agent_name)
-        choices = data.get("choices") or []
-        if not choices:
-            raise RuntimeError(f"{agent_name} returned no choices")
-        message = choices[0].get("message") or {}
-        content = message.get("content")
-        if isinstance(content, list):
-            return "\n".join(str(item.get("text") or item) for item in content)
-        if not isinstance(content, str) or not content.strip():
-            raise RuntimeError(f"{agent_name} returned an empty report")
-        return content.strip()
+            text = _extract_responses_text(data, agent_name)
+        else:
+            choices = data.get("choices") or []
+            if not choices:
+                raise RuntimeError(f"{agent_name} returned no choices")
+            message = choices[0].get("message") or {}
+            content = message.get("content")
+            if isinstance(content, list):
+                text = "\n".join(str(item.get("text") or item) for item in content)
+            elif isinstance(content, str) and content.strip():
+                text = content.strip()
+            else:
+                raise RuntimeError(f"{agent_name} returned an empty report")
+
+        llm_cache.record_response(
+            cache_key,
+            text,
+            channel=f"review.agent.{agent_name}",
+            model=payload_model,
+        )
+        return text
 
 
 def build_llm_provider_from_settings(settings: Any) -> OpenAICompatibleAgentProvider | None:

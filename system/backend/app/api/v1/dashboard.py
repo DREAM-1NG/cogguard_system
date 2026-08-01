@@ -5,6 +5,7 @@ from collections.abc import AsyncGenerator
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core import llm_cache
 from app.core.security import get_current_user_or_local_preview
 from app.db.mysql import async_session_factory
 from app.models.user import User
@@ -48,3 +49,15 @@ async def overview(
     """Return dashboard statistics and event map points."""
     data = await dashboard_service.get_dashboard_overview(event_id=event_id, db=db)
     return success(data=data)
+
+
+@router.get("/llm-cache-status")
+async def llm_cache_status(
+    _current_user: User | None = Depends(get_dashboard_viewer),
+):
+    """Report whether LLM responses are live or replayed from cache.
+
+    A walkthrough may run with replay enabled for stability, so the active mode
+    has to be inspectable rather than implied.
+    """
+    return success(data=llm_cache.cache_stats())

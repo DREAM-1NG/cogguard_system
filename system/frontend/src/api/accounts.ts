@@ -8,6 +8,7 @@ export function runSocialBotDetection(params?: {
   platform?: string
   event_id?: string
   routing_budget?: number
+  support_k?: number
 }) {
   return request.post('/accounts/bot-detection', null, { params })
 }

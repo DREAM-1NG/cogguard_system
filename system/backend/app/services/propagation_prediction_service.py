@@ -293,7 +293,10 @@ async def predict_event_macro_micro(
     """Run current-event PropagationAnalysis macro/micro inference using internal runtime seams."""
 
     comments = comments or []
-    trend_forecast = await predict_trend(posts, comments, mock_llm=True)
+    # Use the real LLM channel. ``predict_trend`` already degrades to a neutral
+    # result when no API key is configured, and the response cache covers a slow
+    # or unreachable provider, so no mock flag is needed here.
+    trend_forecast = await predict_trend(posts, comments)
     bundle = build_event_inference_bundle(posts, comments)
     selected_checkpoint = Path(checkpoint_path) if checkpoint_path else PROPAGATION_TWITTER_CHECKPOINT
     checkpoint_available = selected_checkpoint.exists()

@@ -20,7 +20,14 @@ ANALYSIS_STAGE_ALIASES: dict[str, str] = {
     "review_teacher": "teacher",
 }
 ANALYSIS_STAGE_ALLOWLIST = frozenset({"coordination_discover", "propagation_analysis", "student", "teacher"})
-DEFAULT_ANALYSIS_STAGES = ("coordination_discover",)
+# A prototype run should exercise the complete capability chain by default.
+# Callers may still request a narrower stage list for focused diagnostics.
+DEFAULT_ANALYSIS_STAGES = (
+    "coordination_discover",
+    "propagation_analysis",
+    "student",
+    "teacher",
+)
 
 
 class TimeWindow(BaseModel):

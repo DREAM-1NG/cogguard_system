@@ -69,10 +69,22 @@ def write_discover_artifact(
 
     result_payload = result.to_dict()
     _write_json(artifact_path / DISCOVER_RESULT_FILENAME, result_payload)
-    _write_json(artifact_path / MANIFEST_FILENAME, result.manifest.to_dict())
     _write_json(artifact_path / METRICS_FILENAME, result.audit_metrics)
     if coordination_result is not None:
         _write_json(artifact_path / COORDINATION_RESULT_FILENAME, coordination_result)
+
+    # Hash the files that are actually written. A manifest without byte-level
+    # integrity is only descriptive metadata and cannot support reproducibility.
+    result.manifest.artifact_hashes = {
+        name: _sha256_file(artifact_path / name)
+        for name in (
+            DISCOVER_RESULT_FILENAME,
+            METRICS_FILENAME,
+            COORDINATION_RESULT_FILENAME,
+        )
+        if (artifact_path / name).is_file()
+    }
+    _write_json(artifact_path / MANIFEST_FILENAME, result.manifest.to_dict())
     return result.manifest
 
 
@@ -82,6 +94,9 @@ def load_discover_artifact(artifact_dir: str | Path) -> dict[str, Any]:
     if not manifest_path.exists():
         raise FileNotFoundError(f"Coordination Discover manifest not found: {manifest_path}")
     manifest = CoordinationDiscoverArtifactManifest.from_dict(_read_json(manifest_path))
+    integrity_error = _validate_artifact_hashes(artifact_path, manifest.artifact_hashes)
+    if integrity_error:
+        raise ValueError(integrity_error)
     result_path = Path(manifest.result_path) if manifest.result_path else artifact_path / DISCOVER_RESULT_FILENAME
     if not result_path.exists():
         result_path = artifact_path / DISCOVER_RESULT_FILENAME
@@ -131,6 +146,9 @@ def validate_manifest_for_snapshot(manifest: dict[str, Any], *, data_fingerprint
         return "artifact_partition_backend_not_leiden"
     if str(manifest.get("status") or "ok") != "ok":
         return "artifact_status_not_ok"
+    claimability = str(manifest.get("claimability") or "non_claimable")
+    if claimability not in {"claimable", "non_claimable"}:
+        return "artifact_claimability_invalid"
     return None
 
 
@@ -140,6 +158,24 @@ def _write_json(path: Path, payload: Any) -> None:
 
 def _read_json(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _validate_artifact_hashes(artifact_path: Path, hashes: dict[str, str]) -> str | None:
+    for name, expected in hashes.items():
+        path = artifact_path / name
+        if not path.is_file():
+            return f"artifact_integrity_missing:{name}"
+        if _sha256_file(path) != str(expected).lower():
+            return f"artifact_integrity_mismatch:{name}"
+    return None
 
 
 def _json_dumps(value: Any) -> str:

@@ -18,6 +18,7 @@ research notes. If this file conflicts with older documents, this file wins.
 | `system/research/coordination_detect/` | Public-label Coordination Detect validation boundary. | Validation boundary; do not label unlabeled project events. |
 | `system/research/propagation_analysis/` | Propagation Analysis loaders, hindcast protocol, conformal intervals, and baseline registry. | System-readable research; do not point product code at external research workspaces. |
 | `system/research/review_teacher/` | Multi-agent Teacher Review advisory DAG. | System-readable research; advisory only unless an analyst approves a canonical verdict. |
+| `system/research/social_bot_detection/` | Internal trainable BotRHG transfer pipeline for labeled Weibo accounts. | System-readable research and checkpoint export; text-only transfer until property/social graph coverage is available. |
 | `doc/engineering/` | Long-lived engineering documentation. | Keep setup, governance, roadmap, project map, and development log aligned with code. |
 | `doc/adr/` | Accepted architecture decision records. | One numbered file per durable decision; never renumber an accepted record in place. |
 | `doc/research/` | Research positioning and literature notes. | Use for method positioning, references, and research context. |
@@ -64,6 +65,7 @@ CogGuard/
       coordination_detect/            Coordination Detect validation boundary
       propagation_analysis/           Propagation Analysis protocol and baselines
       review_teacher/                 Teacher Review advisory DAG
+      social_bot_detection/           trainable BotRHG Weibo transfer
     runtimes/
       social_runtime/                 Vendored social crawler runtime
       news_runtime/                   Vendored news extractor runtime

@@ -8,6 +8,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+import pytest
+
 from app.config import PROJECT_ROOT
 from app.core.analysis import TimeWindow, build_event_snapshot
 from app.core.analysis.executor import SnapshotCoordinationEngine
@@ -221,6 +223,26 @@ def test_dynamic_discover_smoke_writes_reproducible_artifact(tmp_path: Path):
     assert (tmp_path / "manifest.json").exists()
     assert (tmp_path / "discover_result.json").exists()
     assert (tmp_path / "coordination_result.json").exists()
+    manifest = json.loads((tmp_path / "manifest.json").read_text(encoding="utf-8"))
+    assert manifest["claimability"] == "non_claimable"
+    assert manifest["artifact_hashes"]["discover_result.json"]
+
+
+def test_research_artifact_integrity_failure_is_explicit(tmp_path: Path):
+    coordination_discover = _load_coordination_discover()
+    coordination_discover.run_dynamic_discover(
+        coordination_discover.DynamicDiscoverRequest(
+            snapshot=_snapshot(),
+            artifact_dir=str(tmp_path),
+            model_config=coordination_discover.TemporalMAGNNConfig(
+                embedding_dim=8, epochs=1, negative_ratio=1, device="cpu", min_learned_edge_score=0.0
+            ),
+        )
+    )
+    result_path = tmp_path / "discover_result.json"
+    result_path.write_text(result_path.read_text(encoding="utf-8") + "\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="artifact_integrity_mismatch:discover_result.json"):
+        coordination_discover.load_discover_artifact(tmp_path)
 
 
 def test_detect_validation_reports_metrics_only_when_labels_exist():

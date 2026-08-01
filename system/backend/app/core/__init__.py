@@ -9,6 +9,7 @@ __all__ = [
     "bot_training",
     "analysis",
     "bot_detection",
+    "trained_bot_detection",
     "coordination",
     "coordination_baseline",
     "coordination_detect",

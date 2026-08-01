@@ -181,6 +181,8 @@ class CoordinationDiscoverArtifactManifest:
     modality_policy: str = MODALITY_POLICY
     partition_backend: str = "leiden"
     status: str = "ok"
+    claimability: str = "non_claimable"
+    artifact_hashes: dict[str, str] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -201,6 +203,11 @@ class CoordinationDiscoverArtifactManifest:
             modality_policy=str(value.get("modality_policy") or MODALITY_POLICY),
             partition_backend=str(value.get("partition_backend") or "leiden"),
             status=str(value.get("status") or "ok"),
+            claimability=str(value.get("claimability") or "non_claimable"),
+            artifact_hashes={
+                str(key): str(item)
+                for key, item in dict(value.get("artifact_hashes") or {}).items()
+            },
         )
 
 

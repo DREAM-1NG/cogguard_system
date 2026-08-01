@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+import os
 
 import httpx
 from pymongo import MongoClient
@@ -35,7 +36,10 @@ def main() -> None:
 
     login = httpx.post(
         f"{BASE_URL}/auth/login",
-        json={"username": "admin", "password": "123123"},
+        json={
+            "username": os.environ.get("COGGUARD_SMOKE_USERNAME", "admin"),
+            "password": os.environ.get("COGGUARD_SMOKE_PASSWORD", ""),
+        },
         timeout=10,
     )
     token = login.json()["data"]["access_token"]

@@ -18,7 +18,7 @@ It does not apply to archive material except for read-only reference.
 | --- | --- | --- |
 | Product shell | `system/backend`, `system/frontend` | Code reachable from product APIs, UI, tasks, or demo flows. |
 | Product runtimes | `system/runtimes/social_runtime`, `system/runtimes/news_runtime`, `system/runtimes/review_student` | Vendored executable engines used by product code. |
-| System-readable research | `system/research/coordination_discover`, `system/research/coordination_detect`, `system/research/propagation_analysis`, `system/research/review_teacher` | Research code that is importable by product adapters but not a separate runtime dependency. |
+| System-readable research | `system/research/coordination_discover`, `system/research/coordination_detect`, `system/research/propagation_analysis`, `system/research/review_teacher`, `system/research/social_bot_detection` | Research code that is importable by product adapters but not a separate runtime dependency. |
 | Documentation | `doc/engineering`, `doc/research` | Normative engineering docs and research notes. |
 | Reference boundaries | `MediaCrawler-main`, `NewsCrawler-main`, `CooRTweet-master` | Provenance only; never runtime dependencies. |
 
@@ -55,6 +55,7 @@ system/
     coordination_detect/   public-label Coordination Detect validation boundary
     propagation_analysis/  Propagation Analysis hindcast research pipeline
     review_teacher/        multi-agent Teacher DAG
+    social_bot_detection/  trainable BotRHG Weibo transfer
     *_legacy_alias/        one-version import-only compatibility packages
   runtimes/
     social_runtime/    vendored social crawler runtime
@@ -136,6 +137,7 @@ Use the glossary in `UBIQUITOUS_LANGUAGE.md` for domain terms. The system-level 
 - `app.core.risk` and `app.core.coordination` are legacy application aliases.
 - `system/research/*_legacy_alias` and `system/runtimes/*_legacy_alias` are import-only compatibility packages.
 - `system/research/coordination_discover`, `system/research/coordination_detect`, `system/research/propagation_analysis`, `system/research/review_teacher`, and `system/runtimes/review_student` are canonical semantic boundaries.
+- `system/research/social_bot_detection` is the canonical internal boundary for trainable BotRHG transfer. It must record dataset fingerprint, model checkpoint hash, missing property/social graph coverage, and comparison against a shallow reference baseline.
 
 ### Security And Deployment Contract
 

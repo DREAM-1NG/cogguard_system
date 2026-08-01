@@ -83,6 +83,7 @@ temp/
 *.jsonl
 *.ndjson
 *.geojson
+!system/frontend/src/assets/world-countries.geojson
 *.parquet
 *.feather
 *.npy
@@ -196,3 +197,5 @@ aris/**/scratch/
 /memory/
 /.worktrees/
 /.agents/
+research-wiki/
+system/output/

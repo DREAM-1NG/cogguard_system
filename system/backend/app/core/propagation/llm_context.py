@@ -14,6 +14,7 @@ from typing import Any
 import httpx
 
 from app.config import settings
+from app.core import llm_cache
 
 logger = logging.getLogger(__name__)
 
@@ -120,24 +121,45 @@ async def extract_events(
 
 
 async def _call_llm(prompt: str) -> str:
-    """调用 OpenAI 兼容 API。"""
+    """调用 OpenAI 兼容 API。
+
+    命中回放缓存时直接返回此前真实调用记录到的响应；缓存中只会写入真实成功响应。
+    """
     api_key = getattr(settings, "LLM_API_KEY", "")
     api_base = getattr(settings, "LLM_API_BASE", "https://api.deepseek.com/v1")
     model = getattr(settings, "LLM_MODEL", "deepseek-chat")
+
+    payload = {
+        "model": model,
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0.3,
+        "response_format": {"type": "json_object"},
+    }
+    cache_key = llm_cache.response_cache_key(
+        channel="propagation.event_extraction",
+        model=model,
+        payload=payload,
+    )
+    cached = llm_cache.load_cached_response(cache_key)
+    if cached is not None:
+        return cached
 
     async with httpx.AsyncClient(timeout=30.0) as client:
         resp = await client.post(
             f"{api_base}/chat/completions",
             headers={"Authorization": f"Bearer {api_key}"},
-            json={
-                "model": model,
-                "messages": [{"role": "user", "content": prompt}],
-                "temperature": 0.3,
-                "response_format": {"type": "json_object"},
-            },
+            json=payload,
         )
         resp.raise_for_status()
-        return resp.json()["choices"][0]["message"]["content"]
+        content = resp.json()["choices"][0]["message"]["content"]
+
+    llm_cache.record_response(
+        cache_key,
+        content,
+        channel="propagation.event_extraction",
+        model=model,
+    )
+    return content
 
 
 def _parse_events(raw: str) -> list[dict]:

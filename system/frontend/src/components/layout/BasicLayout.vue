@@ -70,10 +70,8 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import {
-  HomeOutlined,
   DashboardOutlined,
   CloudDownloadOutlined,
-  FileSearchOutlined,
   ApartmentOutlined,
   ShareAltOutlined,
   UserOutlined,
@@ -91,9 +89,7 @@ const authStore = useAuthStore()
 const collapsed = ref(false)
 
 const menuItems = [
-  { path: '/analysis', label: '统一分析', icon: FileSearchOutlined, desc: '基于事件快照执行协同行为发现、传播分析、学生模型分诊和教师复核', disabled: false },
-  { path: '/', label: '首页', icon: HomeOutlined, desc: '系统概览、任务摘要、风险报告和快捷入口', disabled: false },
-  { path: '/dashboard', label: '态势看板', icon: DashboardOutlined, desc: '平台分布、地域视图和近期采集样本', disabled: false },
+  { path: '/dashboard', label: '数据大屏', icon: DashboardOutlined, desc: '系统首页的大屏总览，保留本地地图资产和平台分布可视化', disabled: false },
   { path: '/crawl', label: '数据采集', icon: CloudDownloadOutlined, desc: '创建采集请求并管理多平台数据获取', disabled: false },
   { path: '/coordination', label: '协同发现', icon: ApartmentOutlined, desc: '发现协同行为并构建协同网络', disabled: false },
   { path: '/propagation', label: '传播分析', icon: ShareAltOutlined, desc: '查看传播预测、证据链和传播角色', disabled: false },

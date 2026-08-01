@@ -20,6 +20,14 @@
 
 ## 2026-08-01
 
+- 完成本轮三项关键能力的原型交付收口：新增 `system/backend/scripts/prototype_acceptance.py`，用隔离 EventSnapshot 验证 Coordination Discover 严格 Leiden artifact、Propagation Analysis fallback/abstain、Student shadow 和 Teacher advisory 运行边界；不写数据库、不生成标签、不修改前端。
+- `system/backend/app/core/analysis/contracts.py`：默认 Analysis Run 现在执行完整的 Coordination Discover、Propagation Analysis、Student Review、Teacher Review 链路；窄阶段运行仍可显式指定。
+- `system/backend/app/core/analysis/executor.py`：artifact manifest 增加 `run_id`、prototype 标记、`execution_mode`、`prototype_status` 和 `research_claim`，防止 fallback/live runtime/shadow/advisory 输出被误认为研究结果。
+- `system/research/coordination_discover/{artifacts.py,contracts.py}`：研究 artifact 对已写入结果文件记录 SHA-256，加载时校验完整性；manifest 默认 non-claimable。
+- `system/backend/scripts/smoke_crawl_backend_api.py`：移除硬编码管理员密码，smoke 登录改由 `COGGUARD_SMOKE_USERNAME` / `COGGUARD_SMOKE_PASSWORD` 显式提供。
+- Re-search 预检 `research-wiki/preflight_runs/20260731T190240Z-evaluate-and-optimize-cogguard-s-three-core-capa/` 已完成 v2 校验，覆盖 MAGNN、Coordination Network Toolkit、TGN、TGB、CQR、DEFAME、ReConcile、MAGDi，并记录迁移边界和 omission handling。
+- 验证：targeted `22 passed`；后端全量 `441 passed, 18 skipped`；治理 targeted `28 passed, 2 warnings`；严格 Leiden import `igraph 0.11.9`；无产品后端外部 runtime 引用；Compose 在显式测试凭据下解析通过；前端 `npm run build`（包含 `vue-tsc -b`）通过。Docker 服务、GPU 长实验和真实 checkpoint 尚未验证。
+
 - 完成安全与治理链路的实际验证收口：后端编译、全量测试、Alembic 单一 head 和 Compose 必填凭据检查均通过；新增治理边界回归测试。
 - `system/backend/app/services/analysis_governance_service.py`：模型激活前严格校验本地 artifact 的 SHA-256；远程 URI 在接入可审计 resolver 前不视为已验证；反馈 verdict 必须属于同一 Analysis Run；禁止重复激活当前模型。
 - `system/backend/tests/test_analysis_governance.py`：覆盖本地制品哈希、不可信远程 URI、Canonical Verdict 审批和双人模型激活门禁。
@@ -239,3 +247,16 @@
 - `new-system/README.md`：目录树与模块说明与当前后端（coordination / propagation / accounts 等）及前端页面对齐。
 
 ---
+## 2026-08-01
+
+- Completed independent internal BotRHG transfer runs on the official local Cresci-2015, Cresci-2017, and Midterm-2018 Twitter corpora using the repository-local `FacebookAI/xlm-roberta-base` snapshot (`e73636d4f797dec63c3081bb6ed5c7b0bb3f2089`). Added `system/research/social_bot_detection/datasets.py` with streaming nested-archive adapters, official label provenance, source-subclass preservation, bounded account-text sampling, and archive fingerprints.
+- Added the generic `cogguard.botrhg.account.v2` checkpoint schema while retaining the Weibo schema loader for compatibility. Replaced the full NxN KNN allocation with chunked exact top-K retrieval so Midterm-2018 runs within an 8 GB GPU. Research package tests: `13 passed`.
+- Public training artifacts are under `system/output/botrhg_public/`: Cresci-2015 usable accounts `5,175`, corrected test macro-F1 `0.9360`; Cresci-2017 `13,949`, `0.6376`; Midterm-2018 `50,538`, `0.7042`. Same-split character TF-IDF remains stronger on all three datasets (`0.9804`, `0.9304`, `0.7852`), so the real training milestone is complete but method-superiority and publication claims remain blocked.
+- The Midterm-2018 archive contains account descriptions rather than a tweet corpus; this limitation is recorded in each manifest and the cross-dataset report. No external NLPCC directory is imported or executed.
+
+- 完成内部 BotRHG Weibo transfer 训练与系统接入，不再把外部 NLPCC 研究目录作为运行时来源。
+- 新增 `system/research/social_bot_detection/`：Botection 标签/文本加载、稳定 data fingerprint、中文 Transformer 的均匀多块账号表示、低阶分类器、target-centered KNN support hyperedge、相似度加权 reliability route、selective residual correction、checkpoint inference、评估和 artifact export。
+- 训练制品写入 `system/output/botrhg_weibo/`：`checkpoint.pt`（另有 `checkpoint.sha256`）、`config.json`、`data_manifest.json`、`metrics.json`、`predictions.jsonl`、`training_history.json`、`model_card.md`。数据为 979 个可用账号，636/146/197 split，fingerprint 为 `50327a90e7b9fa6cb65140af3e1573d139925033b184af2ed43aa938ab42c0ae`。
+- 同切分结果：BotRHG corrected test ROC-AUC `0.6473`、macro-F1 `0.4312`；字符 TF-IDF 参考 ROC-AUC `0.7843`、macro-F1 `0.7028`。因此真实训练链路和部署推理已验证，但研究有效性和论文主张仍 blocked。
+- backend 只在 checkpoint 存在且 fingerprint 门禁通过时使用 `trained_checkpoint`，否则返回明确 `proxy` fallback；本轮不修改前端展示页面。
+- 验证：研究包 `8 passed`，相关 backend tests `8 passed`，backend 全量 `443 passed, 18 skipped`。

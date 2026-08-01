@@ -334,6 +334,23 @@ def test_executor_marks_missing_checkpoint_as_needs_evidence():
     asyncio.run(scenario())
 
 
+def test_stage_manifest_marks_live_propagation_as_fallback_only():
+    from app.core.analysis.executor import _stage_artifact_record
+
+    record = _stage_artifact_record(
+        "propagation_analysis",
+        {
+            "status": "ok",
+            "model": "PropagationAnalysisLiveRuntime",
+            "protocol": {"claim_status": "fallback_only_not_research_claim"},
+        },
+    )
+
+    assert record["execution_mode"] == "fallback"
+    assert record["prototype_status"] == "prototype_only"
+    assert record["claimability"] == "non_claimable"
+
+
 def test_executor_rejects_unknown_requested_stage_before_running():
     async def scenario():
         snapshot = _snapshot()

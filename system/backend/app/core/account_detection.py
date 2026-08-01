@@ -2,33 +2,38 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
 
 from app.core.bot_detection import run_botrhg_detection
 from app.core.account_profiler import build_account_profiles
+from app.core.trained_bot_detection import get_trained_botrhg_inference
 
 __all__ = [
-    "NLPCC_CODE_ROOT",
     "build_account_detection_detail",
     "build_nlpcc_method_card",
 ]
 
-NLPCC_CODE_ROOT = Path(r"G:\Research\BotDetection\NLPCC\code")
-
-
 def build_nlpcc_method_card() -> dict[str, Any]:
     """Return the stable method metadata exposed by the account detector."""
 
+    trained = get_trained_botrhg_inference()
+    if trained is not None:
+        return {
+            "method": "BotRHG",
+            "runtime_mode": "trained_checkpoint",
+            "checkpoint_path": str(trained.checkpoint_path),
+            "text_encoder": "local_chinese_transformer",
+            "routing_strategy": "label_free_local_disagreement_top_budget",
+            "support_k": trained.support_k,
+            "note": "Internal trainable Weibo transfer checkpoint; not an exact reproduction of the original benchmark.",
+        }
     return {
-        "method": "NLPCC2026GraphDetector",
+        "method": "BotRHG",
         "runtime_mode": "proxy",
-        "source_code_root": str(NLPCC_CODE_ROOT),
-        "graph_backbone": "rgcn",
-        "text_encoder": "roberta-base",
-        "routing_strategy": "weighted_reference_tail",
+        "text_encoder": "none",
+        "routing_strategy": "legacy_activity_proxy",
         "support_k": 8,
-        "note": "The research code directory currently provides the contract shell only; the system uses a proxy runtime over the live social posts.",
+        "note": "No verified internal checkpoint is available; this is a non-claimable deterministic fallback.",
     }
 
 
@@ -44,7 +49,8 @@ def build_account_detection_detail(
     if not posts:
         return None
 
-    detection = run_botrhg_detection(posts, routing_budget=routing_budget, support_k=support_k)
+    trained = get_trained_botrhg_inference()
+    detection = trained.predict(posts) if trained is not None else run_botrhg_detection(posts, routing_budget=routing_budget, support_k=support_k)
     account_rows = {str(row["account_id"]): row for row in detection.get("accounts", [])}
     account_row = account_rows.get(str(account_id))
     if account_row is None:

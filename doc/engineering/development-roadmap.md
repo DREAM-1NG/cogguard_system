@@ -11,8 +11,10 @@
 - [x] 安全与部署阻塞收口：生产秘密强制配置、Preview 旁路默认关闭、Compose 凭据必填。
 - [x] Analysis Run、SSE `Last-Event-ID` 恢复、阶段 Artifact Manifest 和 active model pointer 已通过后端回归测试。
 - [x] Canonical Verdict、反馈持久化、双人模型激活、回滚决策和本地 SHA-256 artifact 校验已接通。
-- [ ] 研究级 Coordination Discover、Propagation Analysis 和 Student/Teacher checkpoint 尚未因缺少批准 artifact 而声明为可研究主张结果。
-- [ ] 真实 MySQL/Mongo/Redis/Celery 部署 smoke、GPU 长实验和前端构建仍需在具备对应环境时执行。
+- [x] 本地原型验收脚本已贯通 EventSnapshot、Coordination Discover、Propagation Analysis、Student Review 和 Teacher Review，并明确输出 fallback/shadow/advisory/non-claimable 状态。
+- [ ] 研究级 Coordination Discover、Propagation Analysis 和 Student/Teacher checkpoint 尚未因缺少批准 artifact 而声明为可研究主张结果；Social Bot Detection 的 BotRHG Weibo transfer 已有真实 checkpoint，但当前指标低于同切分 TF-IDF 参考，研究 claim 仍 blocked。
+- [x] 前端 `npm run build`（包含 `vue-tsc -b`）已通过；本轮不修改前端展示页面。
+- [ ] 真实 MySQL/Mongo/Redis/Celery 部署 smoke 和 GPU 长实验仍需在具备对应环境时执行。
 
 ## 技术决策记录
 
@@ -28,7 +30,7 @@
 | 缓存/队列 | Redis 7.0+ | 缓存、会话管理、Celery 消息队列 |
 | 图分析 | NetworkX + igraph (内存) | 当前阶段使用内存图分析，预留 Neo4j 扩展接口 |
 | CooRTweet 集成 | Python 重写核心算法 | 避免 R 依赖，使用 pandas + networkx 实现 |
-| BotRHG 社交机器人检测 | 轻量系统适配器 | 对接 NLPCC 2026 BotRHG 方法契约，输出可靠性路由、KNN 支持超边与选择性残差修正结果 |
+| BotRHG 社交机器人检测 | 内部 trainable transfer + 明确 fallback | 使用本地中文 Transformer、低阶检测器、支持超边、可靠性路由和选择性残差修正；缺少 checkpoint 时才使用 non-claimable proxy |
 | LLM 支持 | 暂不集成，预留接口 | 当前用规则引擎 + NLP 模型，后续可接入 LLM |
 | 任务队列 | Celery + Redis | 爬虫、分析等耗时操作异步执行 |
 | 包管理 | uv (后端) / npm (前端) | 高效依赖管理 |
@@ -61,9 +63,9 @@
 | 前端 - 布局与认证 | ✅ 已完成 | P0 | 后端认证模块 |
 | 前端 - 采集管理页 | ✅ 已完成 | P0 | 后端采集模块 |
 | 数据采集模块（内置 Social/News Runtime） | ✅ 已完成 | P1 | Mock 模块完成 |
-| Coordination Discover / Detect | 🔧 artifact-first + fallback | P1 | 数据采集、Artifact Manifest |
-| Propagation Analysis | 🔧 hindcast + fallback | P1 | 数据采集、模型治理 |
-| Risk Review | 🔧 Student/Teacher seam + governance | P1 | 协同、传播、人工审批 |
+| Coordination Discover / Detect | 🔧 可运行原型，研究 claim blocked | P1 | 标签数据、批准 checkpoint |
+| Propagation Analysis | 🔧 可运行 fallback，研究 claim blocked | P1 | 公开数据训练、批准 checkpoint、覆盖率验证 |
+| Risk Review | 🔧 Student/Teacher 原型，canonical 需审批 | P1 | 蒸馏 checkpoint、真实 provider、分析员工作流 |
 | 账户监测模块 | ✅ 已完成（含 BotRHG API） | P1 | 数据采集 |
 | 前端 - 协同检测页（网络可视化） | ✅ 已完成 | P1 | 后端协同检测 |
 | 前端 - 传播监控页（时间线+角色） | ✅ 已完成 | P1 | 后端传播监控 |
@@ -160,7 +162,7 @@
   - [x] 内容多样性（标签/URL 统计）
 - [x] 自动化倾向评估算法（0-100 分，多维度综合评分）
 - [x] 账户监测 API 接口（`GET /api/v1/accounts/profiles`、`GET /api/v1/accounts/detail/{id}`）
-- [x] BotRHG 风格社交机器人检测 API（`POST /api/v1/accounts/bot-detection`）：从已采集帖子构造 profile/text/activity 特征、KNN 支持超边和局部可靠性路由，对低可靠账号执行选择性残差修正并返回 base/final bot 概率与解释证据
+- [x] BotRHG 社交机器人检测 API（`POST /api/v1/accounts/bot-detection`）：优先加载内部 verified checkpoint，执行中文 Transformer 账号表示、低阶检测器、排除自身的 KNN 支持超边、可靠性路由和选择性残差修正；无 checkpoint 时显式回退 non-claimable proxy
 - [x] 前端账户画像列表页（评分排序、进度条着色）
 - [ ] 单个用户主页采集：支持主页链接/用户 ID，收集主页元数据与全部发文
 - [ ] 账户详情页：查看用户主页、全部内容、内容风险/立场/模板化检测结果

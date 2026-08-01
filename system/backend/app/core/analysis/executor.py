@@ -62,6 +62,8 @@ class AnalysisExecutor:
             "schema": "cogguard.analysis.artifact_manifest.v1",
             "snapshot_id": snapshot.snapshot_id,
             "data_fingerprint": snapshot.data_fingerprint,
+            "run_id": run_id,
+            "prototype": True,
             "stages": {},
         }
         for stage in stages:
@@ -336,6 +338,7 @@ def _stage_artifact_record(stage: str, result: Any) -> dict[str, Any]:
         and status in {"ok", "completed"}
     )
     claimability = "claimable" if claimable else "non_claimable"
+    execution_mode, prototype_status = _stage_execution_state(row, status=status, fallback=fallback)
     return {
         "stage": stage,
         "technology": row.get("technology") or stage,
@@ -346,4 +349,35 @@ def _stage_artifact_record(stage: str, result: Any) -> dict[str, Any]:
         "fallback": fallback,
         "fallback_reason": row.get("fallback_reason"),
         "claimability": claimability,
+        "execution_mode": execution_mode,
+        "prototype_status": prototype_status,
+        "research_claim": claimability == "claimable",
     }
+
+
+def _stage_execution_state(
+    result: dict[str, Any],
+    *,
+    status: str,
+    fallback: bool,
+) -> tuple[str, str]:
+    """Classify runtime evidence without upgrading a demo into a claim."""
+
+    if status in {"missing_data", "missing_checkpoint", "model_unavailable", "data_insufficient", "unavailable"}:
+        return "blocked", "needs_evidence"
+    model_name = str(result.get("model_version") or result.get("model") or "").lower()
+    protocol = result.get("protocol") if isinstance(result.get("protocol"), dict) else {}
+    if (
+        fallback
+        or model_name.endswith("live-runtime")
+        or "live_runtime" in model_name
+        or str(protocol.get("claim_status") or "") == "fallback_only_not_research_claim"
+    ):
+        return "fallback", "prototype_only"
+    if str(result.get("model_status") or "") in {"shadow_untrained", "checkpoint_registered_shadow"}:
+        return "shadow", "prototype_only"
+    if result.get("verdict_type") == "teacher_advisory" or result.get("canonical_allowed") is False:
+        return "advisory", "awaiting_analyst_approval"
+    if result.get("artifact_manifest") and not result.get("checkpoint_path"):
+        return "artifact", "artifact_backed_non_claimable"
+    return "runtime", "claimable" if str(result.get("claimability") or "").lower() == "claimable" else "prototype_only"

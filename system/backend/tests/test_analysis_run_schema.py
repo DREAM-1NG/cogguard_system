@@ -3,10 +3,15 @@ from pydantic import ValidationError
 from app.schemas.analysis import AnalysisRunCreateRequest
 
 
-def test_analysis_run_create_request_defaults_to_coordination_discover_only():
+def test_analysis_run_create_request_defaults_to_complete_prototype_chain():
     request = AnalysisRunCreateRequest(event_id="event-1", snapshot_id="snapshot-1")
 
-    assert request.requested_stages == ["coordination_discover"]
+    assert request.requested_stages == [
+        "coordination_discover",
+        "propagation_analysis",
+        "student",
+        "teacher",
+    ]
 
 
 def test_analysis_run_create_request_normalizes_legacy_stage_aliases():

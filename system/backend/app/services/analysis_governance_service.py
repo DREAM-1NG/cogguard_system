@@ -41,10 +41,13 @@ async def approve_run_verdict(
     source = _find_verdict(payload, verdict_id=verdict_id)
     if source is None:
         source_result = await db.execute(
-            select(ReviewVerdictVersion).where(
+            select(ReviewVerdictVersion)
+            .where(
                 ReviewVerdictVersion.verdict_id == verdict_id,
                 ReviewVerdictVersion.run_id == run_id,
             )
+            .order_by(ReviewVerdictVersion.version.desc())
+            .limit(1)
         )
         source_row = source_result.scalar_one_or_none()
         if source_row is not None and source_row.verdict_type != "canonical":

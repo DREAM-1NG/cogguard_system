@@ -16,20 +16,19 @@ const router = createRouter({
     },
     {
       path: '/',
+      redirect: '/dashboard',
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/',
       component: () => import('@/components/layout/BasicLayout.vue'),
       meta: { requiresAuth: true },
       children: [
         {
-          path: '',
-          name: 'Home',
-          component: () => import('@/views/home/index.vue'),
-          meta: { title: '首页' },
-        },
-        {
           path: 'dashboard',
           name: 'Dashboard',
           component: () => import('@/views/dashboard/index.vue'),
-          meta: { title: '数据看板' },
+          meta: { title: '数据大屏' },
         },
         {
           path: 'crawl',
@@ -38,28 +37,22 @@ const router = createRouter({
           meta: { title: '数据采集' },
         },
         {
-          path: 'analysis',
-          name: 'Analysis',
-          component: () => import('@/views/analysis/index.vue'),
-          meta: { title: '统一分析' },
-        },
-        {
           path: 'coordination',
           name: 'Coordination',
           component: () => import('@/views/coordination/index.vue'),
-          meta: { title: '协同检测' },
+          meta: { title: '协同发现' },
         },
         {
           path: 'propagation',
           name: 'Propagation',
           component: () => import('@/views/propagation/index.vue'),
-          meta: { title: '传播监测' },
+          meta: { title: '传播分析' },
         },
         {
           path: 'accounts',
           name: 'Accounts',
           component: () => import('@/views/accounts/index.vue'),
-          meta: { title: '用户画像' },
+          meta: { title: '账号画像' },
         },
         {
           path: 'system',
