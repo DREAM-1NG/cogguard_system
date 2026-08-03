@@ -1,11 +1,11 @@
 import asyncio
+from types import SimpleNamespace
 
 import pandas as pd
 import pytest
 from httpx import AsyncClient
 
-from app.config import settings
-from app.core.security import get_current_user_or_local_preview
+from app.core.security import get_current_user
 from app.main import app
 from app.services import (
     account_service,
@@ -390,7 +390,7 @@ def test_generate_network_handles_isolates_and_single_edges():
 
 
 @pytest.mark.asyncio
-async def test_coordination_api_allows_preview_token_without_db_user(client: AsyncClient, monkeypatch):
+async def test_coordination_api_uses_authenticated_user_dependency(client: AsyncClient, monkeypatch):
     calls = {}
 
     async def fake_run_coordination_detection(**kwargs):
@@ -418,16 +418,11 @@ async def test_coordination_api_allows_preview_token_without_db_user(client: Asy
         fake_run_coordination_detection,
     )
 
-    # The preview bypass ships disabled with an empty token, so enable it
-    # explicitly for the test that covers it.
-    preview_token = "cogguard-preview-token"
-    monkeypatch.setattr(settings, "PREVIEW_AUTH_ENABLED", True)
-    monkeypatch.setattr(settings, "PREVIEW_AUTH_TOKEN", preview_token)
-    monkeypatch.setattr(settings, "BACKEND_DEBUG", True)
-    monkeypatch.setattr(settings, "BACKEND_ENV", "local")
-
-    client.headers["Authorization"] = f"Bearer {preview_token}"
-    response = await client.post("/api/v1/coordination/detect?time_window=45&min_participation=1&edge_weight=0.4")
+    app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(id=1, role="analyst", is_active=True)
+    try:
+        response = await client.post("/api/v1/coordination/detect?time_window=45&min_participation=1&edge_weight=0.4")
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
 
     assert response.status_code == 200
     assert calls == {
@@ -645,11 +640,11 @@ def test_propagation_api_passes_event_model_prediction_params(monkeypatch):
     assert payload["data"].get("methodology", {}).get("method_name") == "Macro/Micro Sequence Propagation Prediction"
 
 
-def test_propagation_api_accepts_local_preview_dependency(monkeypatch):
+def test_propagation_api_accepts_authenticated_dependency_override(monkeypatch):
     calls = {}
 
-    async def fake_preview_user():
-        return None
+    async def fake_current_user():
+        return SimpleNamespace(id=1, role="analyst", is_active=True)
 
     async def fake_analyze_propagation(platform=None, event_id=None):
         calls["analyze"] = {"platform": platform, "event_id": event_id}
@@ -669,7 +664,7 @@ def test_propagation_api_accepts_local_preview_dependency(monkeypatch):
         "predict_current_event_model",
         fake_predict_current_event_model,
     )
-    app.dependency_overrides[get_current_user_or_local_preview] = fake_preview_user
+    app.dependency_overrides[get_current_user] = fake_current_user
 
     async def run_requests():
         from httpx import ASGITransport
@@ -683,7 +678,7 @@ def test_propagation_api_accepts_local_preview_dependency(monkeypatch):
     try:
         analyze_resp, prediction_resp = asyncio.run(run_requests())
     finally:
-        app.dependency_overrides.pop(get_current_user_or_local_preview, None)
+        app.dependency_overrides.pop(get_current_user, None)
 
     assert analyze_resp.status_code == 200
     assert prediction_resp.status_code == 200
@@ -778,26 +773,26 @@ def test_risk_api_passes_event_id_to_assess_and_report_filters(monkeypatch):
     class CurrentUser:
         id = 7
 
-    async def fake_assess_risk(**kwargs):
-        calls["assess"] = kwargs
-        return {}
+    class FakeRiskService:
+        async def legacy_assess_risk(self, **kwargs):
+            calls["assess"] = kwargs
+            return {}
 
-    async def fake_list_reports(**kwargs):
-        calls["list"] = kwargs
-        return [], 0
+        async def legacy_list_reports(self, **kwargs):
+            calls["list"] = kwargs
+            return [], 0
 
-    monkeypatch.setattr(risk_api.risk_service, "assess_risk", fake_assess_risk)
-    monkeypatch.setattr(risk_api.risk_service, "list_reports", fake_list_reports)
+    service = FakeRiskService()
 
     asyncio.run(
         risk_api.assess_risk(
             event_id="event-1",
             platform="xhs",
             current_user=CurrentUser(),
-            db=object(),
+            service=service,
         )
     )
-    asyncio.run(risk_api.list_reports(event_id="event-1", _current_user=object(), db=object()))
+    asyncio.run(risk_api.list_reports(event_id="event-1", _current_user=object(), service=service))
 
     assert calls["assess"]["event_id"] == "event-1"
     assert calls["assess"]["platform"] == "xhs"

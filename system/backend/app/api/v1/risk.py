@@ -1,4 +1,4 @@
-"""风险研判相关 API 路由。"""
+"""Deprecated V1 risk API routes."""
 
 import inspect
 import json
@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.security import get_current_user, require_roles
 from app.core.review.gate_dataset import get_gate_dataset_contract_spec
 from app.core.review.gate_dataset import validate_gate_dataset_contract
+from app.db.mongodb import get_mongo_db
 from app.db.mysql import get_db
 from app.models.user import User
 from app.schemas.risk import ReviewAgentReviewRunRequest
@@ -24,9 +25,17 @@ from app.schemas.risk import ReviewPolicyOptimizeRequest
 from app.schemas.risk import ReviewPolicyRefineRequest
 from app.services import review_system_service
 from app.services import risk_service
+from app.services.review_case_service import ReviewCaseService
 from app.utils.response import success
 
-router = APIRouter()
+router = APIRouter(deprecated=True)
+
+
+def get_legacy_review_case_service(
+    db: AsyncSession = Depends(get_db),
+    mongo_db=Depends(get_mongo_db),
+) -> ReviewCaseService:
+    return ReviewCaseService(db=db, mongo_db=mongo_db)
 
 
 async def _commit_if_supported(db: AsyncSession) -> None:
@@ -38,48 +47,44 @@ async def _commit_if_supported(db: AsyncSession) -> None:
         await result
 
 
-@router.post("/assess")
+@router.post("/assess", deprecated=True)
 async def assess_risk(
-    platform: str | None = Query(None, description="限定平台"),
-    event_id: str | None = Query(None, description="限定事件 ID"),
-    time_window: int = Query(60, ge=1, le=3600, description="协同检测时间窗口（秒）"),
-    min_participation: int = Query(2, ge=1, description="最低参与次数"),
-    edge_weight: float = Query(0.5, ge=0, le=1, description="边权百分位阈值"),
-    run_legacy_multi_agent: bool = Query(False, description="Run legacy deterministic Review multi-agent runtime"),
+    platform: str | None = Query(None, description="Deprecated platform filter"),
+    event_id: str | None = Query(None, description="Deprecated event id filter"),
+    time_window: int = Query(60, ge=1, le=3600, description="Deprecated; ignored by ReviewCaseService facade"),
+    min_participation: int = Query(2, ge=1, description="Deprecated; ignored by ReviewCaseService facade"),
+    edge_weight: float = Query(0.5, ge=0, le=1, description="Deprecated; ignored by ReviewCaseService facade"),
+    run_legacy_multi_agent: bool = Query(False, description="Deprecated; ignored by ReviewCaseService facade"),
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    service: ReviewCaseService = Depends(get_legacy_review_case_service),
 ):
-    """执行风险评估：阶段检测 + D-S 融合 + DISARM 攻击路径分析。"""
-    legacy_multi_agent = getattr(run_legacy_multi_agent, "default", run_legacy_multi_agent)
-    report = await risk_service.assess_risk(
-        platform=platform,
-        event_id=event_id,
-        time_window=time_window,
-        min_participation=min_participation,
-        edge_weight=edge_weight,
-        run_legacy_multi_agent=bool(legacy_multi_agent),
-        user_id=current_user.id,
-        db=db,
-    )
+    """Deprecated V1 facade for the latest Event Review Case projection."""
+    _ = (time_window, min_participation, edge_weight, run_legacy_multi_agent, current_user)
+    try:
+        report = await service.legacy_assess_risk(platform=platform, event_id=event_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
     return success(data=report)
 
 
-@router.post("/review/gate-suite")
+@router.post("/review/gate-suite", deprecated=True)
 async def assess_gate_suite(
     request: ReviewGateSuiteRequest,
     current_user: User = Depends(get_current_user),
+    service: ReviewCaseService = Depends(get_legacy_review_case_service),
 ):
-    """执行 Review 三层 Gate Suite 离线评测，不持久化 gold/control 评测报告。"""
-    report = await risk_service.assess_risk(
-        platform=request.platform,
-        event_id=request.event_id,
-        time_window=request.time_window,
-        min_participation=request.min_participation,
-        edge_weight=request.edge_weight,
-        user_id=current_user.id,
-        db=None,
-        gate_dataset=request.gate_dataset,
+    """Deprecated V1 facade; gate-suite execution moved behind internal review tooling."""
+    _ = (
+        request.time_window,
+        request.min_participation,
+        request.edge_weight,
+        request.gate_dataset,
+        current_user,
     )
+    try:
+        report = await service.legacy_assess_risk(platform=request.platform, event_id=request.event_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
     review_harmfulness = report.get("review_harmfulness") or {}
     return success(
         data={
@@ -95,7 +100,7 @@ async def assess_gate_suite(
             "gate_suite": review_harmfulness.get("gate_suite"),
             "persistence": {
                 "persisted": False,
-                "reason": "Review Gate Suite may contain gold labels and is returned for offline evaluation only.",
+                "reason": "Deprecated V1 risk no longer executes the legacy Gate Suite business implementation.",
             },
         }
     )
@@ -251,46 +256,50 @@ async def test_review_provider(
     return success(data=result)
 
 
-@router.post("/review/agent-reviews/run")
+@router.post("/review/agent-reviews/run", deprecated=True)
 async def run_agent_review(
     request: ReviewAgentReviewRunRequest,
     current_user: User = Depends(require_roles("admin", "analyst")),
-    db: AsyncSession = Depends(get_db),
+    service: ReviewCaseService = Depends(get_legacy_review_case_service),
 ):
-    """Create an analyst-triggered MARO-style Review LLM Agent review job."""
+    """Deprecated V1 facade; records a case review request, not an old job."""
     try:
-        result = await risk_service.create_agent_review_job(
-            job_type="agent_review",
-            payload=request.model_dump(),
-            user_id=current_user.id,
-            db=db,
+        result = await service.legacy_request_review(
+            report_id=request.case_id or request.report_id,
+            reason="Manual review requested from deprecated V1 risk endpoint.",
+            evidence_refs=[*request.selected_post_ids, *request.selected_tree_ids],
+            actor=current_user,
         )
-        await _commit_if_supported(db)
+        await _commit_if_supported(service.db)
     except ValueError as exc:
         detail = str(exc)
         status_code = 404 if "not found" in detail else 400
         raise HTTPException(status_code=status_code, detail=detail) from exc
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
     return success(data=result)
 
 
-@router.post("/review/agent-feedback/record")
+@router.post("/review/agent-feedback/record", deprecated=True)
 async def record_review_agent_feedback(
     request: ReviewAgentFeedbackRequest,
     current_user: User = Depends(require_roles("admin", "analyst")),
-    db: AsyncSession = Depends(get_db),
+    service: ReviewCaseService = Depends(get_legacy_review_case_service),
 ):
-    """Record human audit feedback for the next Review policy refinement loop."""
+    """Deprecated V1 facade; records case activity, never old-table feedback."""
     try:
-        result = await risk_service.record_review_agent_feedback(
+        result = await service.legacy_record_feedback(
             report_id=request.report_id,
             feedback=request.model_dump(),
-            user_id=current_user.id,
-            db=db,
+            actor=current_user,
         )
+        await _commit_if_supported(service.db)
     except ValueError as exc:
         detail = str(exc)
         status_code = 404 if "not found" in detail else 400
         raise HTTPException(status_code=status_code, detail=detail) from exc
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
     return success(data=result)
 
 
@@ -419,7 +428,7 @@ async def get_review_policy(
     return success(data=result)
 
 
-@router.get("/reports")
+@router.get("/reports", deprecated=True)
 async def list_reports(
     platform: str | None = Query(None),
     event_id: str | None = Query(None),
@@ -428,29 +437,29 @@ async def list_reports(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     _current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    service: ReviewCaseService = Depends(get_legacy_review_case_service),
 ):
-    """查询历史风险报告列表。"""
-    items, total = await risk_service.list_reports(
+    """Deprecated V1 facade for Event Review Case list projection."""
+    items, total = await service.legacy_list_reports(
         platform=platform,
         event_id=event_id,
         risk_level=risk_level,
         phase=phase,
         page=page,
         page_size=page_size,
-        db=db,
     )
     return success(data={"total": total, "items": items})
 
 
-@router.get("/reports/{report_id}")
+@router.get("/reports/{report_id}", deprecated=True)
 async def get_report_detail(
     report_id: str,
     _current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    service: ReviewCaseService = Depends(get_legacy_review_case_service),
 ):
-    """获取单个风险报告详情。"""
-    report = await risk_service.get_report_detail(report_id, db)
-    if report is None:
-        return success(data=None, msg="报告不存在")
+    """Deprecated V1 facade for Event Review Case detail projection."""
+    try:
+        report = await service.legacy_get_report_detail(report_id)
+    except KeyError:
+        return success(data=None, msg="report not found")
     return success(data=report)

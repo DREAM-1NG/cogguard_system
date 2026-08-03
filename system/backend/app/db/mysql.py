@@ -29,6 +29,16 @@ def async_session_factory():
     return _get_session_factory()()
 
 
+async def close_mysql() -> None:
+    """Dispose the cached async engine without creating one during shutdown."""
+    try:
+        if _get_engine.cache_info().currsize:
+            await _get_engine().dispose()
+    finally:
+        _get_session_factory.cache_clear()
+        _get_engine.cache_clear()
+
+
 class Base(DeclarativeBase):
     """所有 SQLAlchemy ORM 模型的声明基类。"""
 
@@ -41,3 +51,6 @@ async def get_db() -> AsyncGenerator[AsyncSession]:
         except Exception:
             await session.rollback()
             raise
+
+
+__all__ = ["Base", "async_session_factory", "close_mysql", "get_db"]

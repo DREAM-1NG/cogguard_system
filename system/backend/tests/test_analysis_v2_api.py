@@ -6,8 +6,8 @@ from typing import Any
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
-from app.api.v2.analysis import get_analysis_executor, get_analysis_registry, router
-from app.core.security import get_current_user_or_local_preview
+from app.api.v2.analysis import get_analysis_registry, router
+from app.core.security import get_current_user
 from app.main import app as main_app
 
 
@@ -58,36 +58,24 @@ class FakeAnalysisRegistry:
         return [event for event in self.events if event["run_id"] == run_id and event["id"] > after_id][:limit]
 
 
-class FakeAnalysisExecutor:
-    def __init__(self) -> None:
-        self.calls: list[str] = []
-
-    async def execute_run(self, run_id: str):
-        self.calls.append(run_id)
-        return {
-            "run_id": run_id,
-            "status": "awaiting_review",
-            "results": {"teacher": {"job_id": "teacher_job_1"}},
-        }
+class FakeUser:
+    def __init__(self, role: str) -> None:
+        self.role = role
 
 
-def test_v2_analysis_routes_create_runs_and_recover_events():
+def test_v2_governance_routes_are_read_only_and_recover_events():
     async def scenario():
         fake_registry = FakeAnalysisRegistry()
-        fake_executor = FakeAnalysisExecutor()
         app = FastAPI()
-        app.include_router(router, prefix="/api/v2/analysis")
+        app.include_router(router, prefix="/api/v2/governance")
         app.dependency_overrides[get_analysis_registry] = lambda: fake_registry
-        app.dependency_overrides[get_analysis_executor] = lambda: fake_executor
-        # The preview bypass is disabled by default, so authenticate the route
-        # surface explicitly instead of relying on a static preview token.
-        app.dependency_overrides[get_current_user_or_local_preview] = lambda: None
+        app.dependency_overrides[get_current_user] = lambda: FakeUser("admin")
         headers: dict[str, str] = {}
         transport = ASGITransport(app=app)
 
         async with AsyncClient(transport=transport, base_url="http://test") as client:
-            snapshot = await client.post(
-                "/api/v2/analysis/snapshots",
+            create_snapshot = await client.post(
+                "/api/v2/governance/snapshots",
                 headers=headers,
                 json={
                     "event_id": "trump_visit",
@@ -102,8 +90,8 @@ def test_v2_analysis_routes_create_runs_and_recover_events():
                     },
                 },
             )
-            run = await client.post(
-                "/api/v2/analysis/runs",
+            create_run = await client.post(
+                "/api/v2/governance/runs",
                 headers=headers,
                 json={
                     "event_id": "trump_visit",
@@ -112,28 +100,29 @@ def test_v2_analysis_routes_create_runs_and_recover_events():
                     "options": {"priority": "demo"},
                 },
             )
-            run_detail = await client.get("/api/v2/analysis/runs/run_a", headers=headers)
+            run_detail = await client.get("/api/v2/governance/runs/run_a", headers=headers)
             events = await client.get(
-                "/api/v2/analysis/runs/run_a/events",
+                "/api/v2/governance/runs/run_a/events",
                 headers=headers,
                 params={"after_id": 1},
             )
-            execute = await client.post("/api/v2/analysis/runs/run_a/execute", headers=headers)
+            execute = await client.post("/api/v2/governance/runs/run_a/execute", headers=headers)
+            status_update = await client.patch(
+                "/api/v2/governance/runs/run_a/status",
+                headers=headers,
+                json={"status": "running"},
+            )
             stream = await client.get(
-                "/api/v2/analysis/runs/run_a/events/stream",
+                "/api/v2/governance/runs/run_a/events/stream",
                 headers={**headers, "Last-Event-ID": "1"},
             )
 
-        assert snapshot.status_code == 200
-        assert snapshot.json()["data"]["snapshot_id"] == "snapshot_a"
-        assert fake_registry.created_snapshots[0]["platform"] == "weibo"
-        assert run.status_code == 200
-        assert run.json()["data"]["run_id"] == "run_a"
+        assert create_snapshot.status_code in {404, 405}
+        assert create_run.status_code in {404, 405}
         assert run_detail.json()["data"]["status"] == "queued"
         assert [event["id"] for event in events.json()["data"]["events"]] == [2]
-        assert execute.status_code == 200
-        assert execute.json()["data"]["status"] == "awaiting_review"
-        assert fake_executor.calls == ["run_a"]
+        assert execute.status_code in {404, 405}
+        assert status_update.status_code in {404, 405}
         assert stream.status_code == 200
         assert stream.headers["content-type"].startswith("text/event-stream")
         assert "id: 2" in stream.text
@@ -143,13 +132,35 @@ def test_v2_analysis_routes_create_runs_and_recover_events():
     asyncio.run(scenario())
 
 
+def test_v2_governance_diagnostics_require_admin_role():
+    async def scenario():
+        app = FastAPI()
+        app.include_router(router, prefix="/api/v2/governance")
+        app.dependency_overrides[get_analysis_registry] = lambda: FakeAnalysisRegistry()
+        app.dependency_overrides[get_current_user] = lambda: FakeUser("analyst")
+        transport = ASGITransport(app=app)
+
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            detail = await client.get("/api/v2/governance/runs/run_a")
+            events = await client.get("/api/v2/governance/runs/run_a/events")
+            stream = await client.get("/api/v2/governance/runs/run_a/events/stream")
+
+        assert detail.status_code == 403
+        assert events.status_code == 403
+        assert stream.status_code == 403
+
+    asyncio.run(scenario())
+
+
 def test_main_app_mounts_v2_router():
     async def scenario():
         transport = ASGITransport(app=main_app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.get("/api/v2/health")
+            removed_product_route = await client.get("/api/v2/analysis/runs/run_a")
 
         assert response.status_code == 200
         assert response.json() == {"status": "ok", "version": "v2"}
+        assert removed_product_route.status_code == 404
 
     asyncio.run(scenario())

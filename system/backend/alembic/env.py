@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from app.config import settings
 from app.db.mysql import Base
 from app.models.coordination_registry import CoordinationDataset, CoordinationRun  # noqa: F401
+from app.models.analysis import AnalysisModelActivationApproval  # noqa: F401
 from app.models.review_system import ReviewAgentDebateTrace  # noqa: F401
 from app.models.review_system import ReviewAgentFeedback  # noqa: F401
 from app.models.review_system import ReviewAgentReport  # noqa: F401

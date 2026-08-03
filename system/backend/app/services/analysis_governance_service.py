@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import hashlib
 import re
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -13,13 +14,12 @@ from uuid import uuid4
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.analysis.governance import (
-    approve_canonical_verdict,
-    build_model_activation_decision,
-    build_rollback_decision,
-)
+from app.core.analysis.governance import approve_canonical_verdict
+from app.config import settings
 from app.models.analysis import (
     AnalysisModelActivation,
+    AnalysisModelActivationApproval,
+    AnalysisModelGovernanceDecision,
     AnalysisModelVersion,
     AnalysisRun,
     ReviewFeedback,
@@ -161,59 +161,156 @@ async def register_model_version(
 async def activate_model_version(
     *,
     model_version_id: int,
-    approved_by: list[int],
-    quality_gates: dict[str, bool],
+    operator_id: int,
+    reason: str,
     db: AsyncSession,
+    artifact_root: str | Path | None = None,
 ) -> dict[str, Any]:
+    if int(operator_id) <= 0:
+        raise ValueError("Model activation requires an accountable operator")
     row = await _get_model(model_version_id, db)
-    if not _artifact_matches_hash(row.artifact_uri, row.artifact_hash):
-        raise ValueError("Model artifact URI is unreadable or its hash does not match the registered hash")
+    verified = verify_registered_artifact(
+        artifact_uri=row.artifact_uri,
+        expected_hash=row.artifact_hash,
+        technology=row.technology,
+        artifact_root=artifact_root or settings.MODEL_ARTIFACT_ROOT,
+    )
+    if not verified.quality_gates["activation_allowed"]:
+        failed = ", ".join(verified.quality_gates["failed_gates"])
+        raise ValueError(f"Model quality gates failed: {failed}")
+    if not settings.model_activation_requires_dual_approval:
+        await approve_model_candidate(
+            model_version_id=model_version_id,
+            approved_by=operator_id,
+            approval_notes="Local activation operator approval.",
+            db=db,
+            artifact_root=artifact_root,
+        )
+    active_admin_ids = await _active_administrator_ids(db)
+    recorded_approvers = await _active_model_approval_ids(
+        model_version_id=model_version_id,
+        db=db,
+    )
+    approvers = _resolve_activation_approvers(
+        operator_id=operator_id,
+        recorded_approvers=recorded_approvers,
+        active_admin_ids=active_admin_ids,
+    )
     current_result = await db.execute(
-        select(AnalysisModelActivation).where(AnalysisModelActivation.technology == row.technology)
+        select(AnalysisModelActivation)
+        .where(AnalysisModelActivation.technology == row.technology)
+        .with_for_update()
     )
     current = current_result.scalar_one_or_none()
     if current is not None and current.model_version_id == row.id:
         raise ValueError("Model version is already active for this technology")
-    approver_result = await db.execute(
-        select(User.id).where(
-            User.id.in_(approved_by),
-            User.role == "admin",
-            User.is_active.is_(True),
-        )
+    previous_id = int(current.model_version_id) if current is not None else None
+    decision = _governance_decision(
+        decision_type="activation",
+        technology=row.technology,
+        model_version_id=int(row.id),
+        previous_model_version_id=previous_id,
+        operator_id=operator_id,
+        approved_by=approvers,
+        reason=reason,
+        verified=verified,
     )
-    registered_approvers = {int(value) for value in approver_result.scalars().all()}
-    if len(registered_approvers) < 2 or not set(approved_by).issubset(registered_approvers):
-        raise ValueError("Model activation requires two distinct active administrator approvers")
-    previous = _activation_mapping(current) if current else None
-    decision = build_model_activation_decision(
-        {
-            "technology": row.technology,
-            "version": row.version,
-            "quality_gates": quality_gates,
-        },
-        approved_by=approved_by,
-        previous_activation=previous,
-    )
-    if not decision["activation_allowed"]:
-        raise ValueError("Model activation quality gates or dual approval are incomplete")
     row.status = "active"
     if current is None:
         current = AnalysisModelActivation(
             technology=row.technology,
             model_version_id=row.id,
             provenance_json=_json_dumps(decision),
-            activated_by=min(decision["approved_by"]),
+            activated_by=operator_id,
         )
         db.add(current)
     else:
         previous_model = await _get_model(current.model_version_id, db)
-        previous_model.status = "superseded"
+        previous_model.status = "approved"
         current.model_version_id = row.id
         current.provenance_json = _json_dumps(decision)
-        current.activated_by = min(decision["approved_by"])
+        current.activated_by = operator_id
         current.activated_at = datetime.now(timezone.utc)
+    history = AnalysisModelGovernanceDecision(
+        decision_id=str(decision["decision_id"]),
+        technology=row.technology,
+        model_version_id=row.id,
+        previous_model_version_id=previous_id,
+        decision_type="activation",
+        decision_json=_json_dumps(decision),
+        decided_by=operator_id,
+    )
+    db.add(history)
     await db.flush()
-    return {"decision": decision, "model_version": _model_mapping(row), "activation": _activation_mapping(current)}
+    # `activated_at` is server-generated on the first active pointer. Load it
+    # explicitly before building the async response mapping.
+    await db.refresh(current)
+    return {
+        "decision": decision,
+        "model_version": _model_mapping(row),
+        "activation": _activation_mapping(current),
+    }
+
+
+async def approve_model_candidate(
+    *,
+    model_version_id: int,
+    approved_by: int,
+    approval_notes: str,
+    db: AsyncSession,
+    artifact_root: str | Path | None = None,
+) -> dict[str, Any]:
+    """Record one authenticated administrator's approval of a candidate model."""
+
+    if int(approved_by) <= 0:
+        raise ValueError("Model candidate approval requires an accountable administrator")
+    row = await _get_model(model_version_id, db)
+    if row.status not in {"candidate", "approved"}:
+        raise ValueError("Only a candidate or approved model version can receive approvals")
+    verified = verify_registered_artifact(
+        artifact_uri=row.artifact_uri,
+        expected_hash=row.artifact_hash,
+        technology=row.technology,
+        artifact_root=artifact_root or settings.MODEL_ARTIFACT_ROOT,
+    )
+    if not verified.quality_gates["activation_allowed"]:
+        failed = ", ".join(verified.quality_gates["failed_gates"])
+        raise ValueError(f"Model quality gates failed: {failed}")
+    active_admin_ids = await _active_administrator_ids(db)
+    if int(approved_by) not in active_admin_ids:
+        raise ValueError("Model candidate approval requires an active administrator")
+    existing_result = await db.execute(
+        select(AnalysisModelActivationApproval).where(
+            AnalysisModelActivationApproval.model_version_id == row.id,
+            AnalysisModelActivationApproval.approver_id == int(approved_by),
+        )
+    )
+    approval = existing_result.scalar_one_or_none()
+    recorded = approval is not None
+    if approval is None:
+        approval = AnalysisModelActivationApproval(
+            approval_id=f"model_approval_{uuid4().hex}",
+            model_version_id=row.id,
+            approver_id=int(approved_by),
+            approval_notes=approval_notes,
+        )
+        db.add(approval)
+        await db.flush()
+        # `created_at` is a server default. Refresh it before serializing the
+        # record so async SQLAlchemy never attempts an implicit lazy load.
+        await db.refresh(approval)
+    approvers = await _active_model_approval_ids(model_version_id=row.id, db=db)
+    required_approvals = 2 if settings.model_activation_requires_dual_approval else 1
+    if len(approvers) >= required_approvals and row.status == "candidate":
+        row.status = "approved"
+    await db.flush()
+    return {
+        "approval": _model_approval_mapping(approval),
+        "approval_recorded": not recorded,
+        "active_approval_count": len(approvers),
+        "required_approval_count": required_approvals,
+        "ready_for_activation": len(approvers) >= required_approvals,
+    }
 
 
 async def rollback_model_version(
@@ -221,36 +318,110 @@ async def rollback_model_version(
     technology: str,
     reason: str,
     requested_by: int,
+    target_model_version_id: int | None = None,
     db: AsyncSession,
+    artifact_root: str | Path | None = None,
 ) -> dict[str, Any]:
+    if int(requested_by) <= 0:
+        raise ValueError("Model rollback requires an accountable administrator")
+    if int(requested_by) not in await _active_administrator_ids(db):
+        raise ValueError("Model rollback requires an active administrator")
     activation_result = await db.execute(
-        select(AnalysisModelActivation).where(AnalysisModelActivation.technology == technology)
+        select(AnalysisModelActivation)
+        .where(AnalysisModelActivation.technology == technology)
+        .with_for_update()
     )
     current = activation_result.scalar_one_or_none()
     if current is None:
         raise ValueError(f"No active model found for technology: {technology}")
-    history = _json_loads(current.provenance_json, {})
-    previous_id = history.get("rollback_pointer")
-    if not previous_id:
-        raise ValueError("No previous approved model pointer is available for rollback")
-    previous = await _get_model(int(previous_id), db)
-    if not _artifact_matches_hash(previous.artifact_uri, previous.artifact_hash):
-        raise ValueError("Rollback target artifact is unreadable or its hash does not match")
+    history_result = await db.execute(
+        select(AnalysisModelGovernanceDecision)
+        .where(AnalysisModelGovernanceDecision.technology == technology)
+        .order_by(AnalysisModelGovernanceDecision.id.desc())
+    )
+    history = list(history_result.scalars().all())
+    approved_ids = [
+        int(item.model_version_id)
+        for item in history
+        if item.decision_type in {"activation", "rollback"}
+    ]
+    if target_model_version_id is None:
+        target_model_version_id = next(
+            (value for value in approved_ids if value != int(current.model_version_id)),
+            None,
+        )
+    if target_model_version_id is None or int(target_model_version_id) not in set(approved_ids):
+        raise ValueError("Rollback target is not an approved historical model version")
+    if int(target_model_version_id) == int(current.model_version_id):
+        raise ValueError("Rollback target is already active")
+    previous = await _get_model(int(target_model_version_id), db)
+    if previous.technology != technology:
+        raise ValueError("Rollback target belongs to a different analysis capability")
+    verified = verify_registered_artifact(
+        artifact_uri=previous.artifact_uri,
+        expected_hash=previous.artifact_hash,
+        technology=technology,
+        artifact_root=artifact_root or settings.MODEL_ARTIFACT_ROOT,
+    )
+    if not verified.quality_gates["activation_allowed"]:
+        raise ValueError("Rollback target no longer satisfies its capability quality gates")
     active_model = await _get_model(current.model_version_id, db)
-    decision = build_rollback_decision(
-        _activation_mapping(current),
-        {"technology": technology, "model_version_id": previous.id},
+    decision = _governance_decision(
+        decision_type="rollback",
+        technology=technology,
+        model_version_id=int(previous.id),
+        previous_model_version_id=int(active_model.id),
+        operator_id=requested_by,
+        approved_by=(requested_by,),
         reason=reason,
-        requested_by=requested_by,
+        verified=verified,
     )
     current.model_version_id = previous.id
-    current.provenance_json = _json_dumps({**history, "rollback": decision, "rollback_pointer": None})
+    current.provenance_json = _json_dumps(decision)
     current.activated_by = requested_by
     current.activated_at = datetime.now(timezone.utc)
-    active_model.status = "rolled_back"
+    active_model.status = "approved"
     previous.status = "active"
+    db.add(
+        AnalysisModelGovernanceDecision(
+            decision_id=str(decision["decision_id"]),
+            technology=technology,
+            model_version_id=previous.id,
+            previous_model_version_id=active_model.id,
+            decision_type="rollback",
+            decision_json=_json_dumps(decision),
+            decided_by=requested_by,
+        )
+    )
     await db.flush()
     return {"decision": decision, "active_model": _model_mapping(previous)}
+
+
+async def list_model_governance_history(
+    *,
+    technology: str,
+    db: AsyncSession,
+    limit: int = 100,
+) -> list[dict[str, Any]]:
+    result = await db.execute(
+        select(AnalysisModelGovernanceDecision)
+        .where(AnalysisModelGovernanceDecision.technology == technology)
+        .order_by(AnalysisModelGovernanceDecision.id.desc())
+        .limit(limit)
+    )
+    return [
+        {
+            "decision_id": row.decision_id,
+            "technology": row.technology,
+            "model_version_id": row.model_version_id,
+            "previous_model_version_id": row.previous_model_version_id,
+            "decision_type": row.decision_type,
+            "decision": _json_loads(row.decision_json, {}),
+            "decided_by": row.decided_by,
+            "created_at": row.created_at.isoformat() if row.created_at else None,
+        }
+        for row in result.scalars().all()
+    ]
 
 
 async def _get_run(run_id: str, db: AsyncSession) -> AnalysisRun:
@@ -269,6 +440,51 @@ async def _get_model(model_version_id: int, db: AsyncSession) -> AnalysisModelVe
     return row
 
 
+async def _active_administrator_ids(db: AsyncSession) -> set[int]:
+    result = await db.execute(
+        select(User.id).where(
+            User.role == "admin",
+            User.is_active.is_(True),
+        )
+    )
+    return {int(value) for value in result.scalars().all()}
+
+
+async def _active_model_approval_ids(*, model_version_id: int, db: AsyncSession) -> set[int]:
+    result = await db.execute(
+        select(AnalysisModelActivationApproval.approver_id)
+        .join(User, User.id == AnalysisModelActivationApproval.approver_id)
+        .where(
+            AnalysisModelActivationApproval.model_version_id == int(model_version_id),
+            User.role == "admin",
+            User.is_active.is_(True),
+        )
+    )
+    return {int(value) for value in result.scalars().all()}
+
+
+def _resolve_activation_approvers(
+    *,
+    operator_id: int,
+    recorded_approvers: set[int],
+    active_admin_ids: set[int],
+) -> tuple[int, ...]:
+    """Validate persisted approvals without trusting caller-supplied identities."""
+
+    operator = int(operator_id)
+    if operator <= 0:
+        raise ValueError("Model activation requires an accountable operator")
+    if operator not in active_admin_ids:
+        raise ValueError("The activating operator must be an active administrator")
+    approved = set(recorded_approvers) & set(active_admin_ids)
+    if operator not in approved:
+        raise ValueError("The activating operator must approve the candidate before activation")
+    if settings.model_activation_requires_dual_approval and len(approved) < 2:
+        raise ValueError("Production model activation requires two distinct active administrator approvers")
+    required = 2 if settings.model_activation_requires_dual_approval else 1
+    return tuple(sorted(approved if required > 1 else {operator}))
+
+
 def _find_verdict(payload: dict[str, Any], *, verdict_id: str | None = None) -> dict[str, Any] | None:
     results = payload.get("results") if isinstance(payload, dict) else None
     if not isinstance(results, dict):
@@ -282,6 +498,185 @@ def _find_verdict(payload: dict[str, Any], *, verdict_id: str | None = None) -> 
         if verdict_id is None or str(candidate.get("verdict_id")) == str(verdict_id):
             return candidate
     return None
+
+
+@dataclass(frozen=True, slots=True)
+class VerifiedArtifact:
+    artifact_path: Path
+    checkpoint_path: Path
+    manifest_path: Path
+    manifest: dict[str, Any]
+    checkpoint_sha256: str
+    quality_gates: dict[str, Any]
+
+
+def verify_registered_artifact(
+    *,
+    artifact_uri: str,
+    expected_hash: str,
+    technology: str,
+    artifact_root: str | Path,
+) -> VerifiedArtifact:
+    root = Path(artifact_root).expanduser().resolve()
+    candidate = Path(str(artifact_uri or "").strip()).expanduser()
+    if not candidate.is_absolute():
+        candidate = root / candidate
+    try:
+        artifact_path = candidate.resolve(strict=True)
+    except OSError as exc:
+        raise ValueError("Model artifact path is unreadable") from exc
+    _require_within_root(artifact_path, root)
+
+    artifact_is_directory = artifact_path.is_dir()
+    if artifact_is_directory:
+        manifest_path = artifact_path / "manifest.json"
+    elif artifact_path.is_file():
+        manifest_path = artifact_path.parent / "manifest.json"
+    else:
+        raise ValueError("Model artifact path must be a file or directory")
+    try:
+        manifest_path = manifest_path.resolve(strict=True)
+    except OSError as exc:
+        raise ValueError("Model artifact manifest.json is required") from exc
+    _require_within_root(
+        manifest_path,
+        artifact_path if artifact_is_directory else root,
+        boundary_name="artifact directory" if artifact_is_directory else "artifact root",
+    )
+    if not manifest_path.is_file():
+        raise ValueError("Model artifact manifest.json is required")
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError("Model artifact manifest is unreadable or invalid JSON") from exc
+    if not isinstance(manifest, dict):
+        raise ValueError("Model artifact manifest must be a JSON object")
+    if str(manifest.get("technology") or "") != str(technology):
+        raise ValueError("Model artifact manifest capability does not match the registered model")
+
+    if not artifact_is_directory:
+        checkpoint_path = artifact_path
+    else:
+        relative_checkpoint = str(manifest.get("checkpoint_path") or "checkpoint.pt").strip()
+        checkpoint_path = (artifact_path / relative_checkpoint).resolve(strict=True)
+        _require_within_root(checkpoint_path, artifact_path, boundary_name="artifact directory")
+    _require_within_root(checkpoint_path, root)
+    if not checkpoint_path.is_file():
+        raise ValueError("Model checkpoint path is not a file")
+    expected = str(expected_hash or "").strip().lower()
+    if not _is_sha256_digest(expected):
+        raise ValueError("Registered model hash is not a SHA-256 digest")
+    actual = _sha256_file(checkpoint_path)
+    if actual != expected:
+        raise ValueError("Model checkpoint SHA-256 does not match the registered hash")
+    metrics = manifest.get("metrics")
+    if not isinstance(metrics, dict):
+        raise ValueError("Model artifact manifest metrics are required")
+    quality_gates = evaluate_quality_gates(technology, metrics)
+    return VerifiedArtifact(
+        artifact_path=artifact_path,
+        checkpoint_path=checkpoint_path,
+        manifest_path=manifest_path.resolve(),
+        manifest=manifest,
+        checkpoint_sha256=actual,
+        quality_gates=quality_gates,
+    )
+
+
+def evaluate_quality_gates(technology: str, metrics: dict[str, Any]) -> dict[str, Any]:
+    capability = str(technology or "").strip()
+    checks: dict[str, bool]
+    if capability == "coordination_discover":
+        checks = {
+            "strict_leiden": metrics.get("strict_leiden") is True,
+            "stability_passed": metrics.get("stability_passed") is True,
+            "evidence_coverage_passed": metrics.get("evidence_coverage_passed") is True,
+        }
+    elif capability == "propagation_analysis":
+        checks = {
+            "coverage_80": _metric_at_least(metrics, "coverage_80", 0.78),
+            "coverage_95": _metric_at_least(metrics, "coverage_95", 0.93),
+            "beats_strong_baseline": metrics.get("beats_strong_baseline") is True,
+        }
+    elif capability == "review_student":
+        checks = {
+            "teacher_macro_f1_gap": _metric_at_most(metrics, "teacher_macro_f1_gap", 0.03),
+            "ece": _metric_at_most(metrics, "ece", 0.08),
+            "p95_latency_seconds": _metric_at_most(metrics, "p95_latency_seconds", 2.0),
+        }
+    elif capability == "review_teacher":
+        checks = {
+            "beats_best_single_agent": metrics.get("beats_best_single_agent") is True,
+            "beats_majority_vote": metrics.get("beats_majority_vote") is True,
+        }
+    else:
+        checks = {"registered_capability_policy": False}
+    failed = [name for name, passed in checks.items() if not passed]
+    return {
+        "technology": capability,
+        "activation_allowed": not failed,
+        "checks": checks,
+        "failed_gates": failed,
+    }
+
+
+def _governance_decision(
+    *,
+    decision_type: str,
+    technology: str,
+    model_version_id: int,
+    previous_model_version_id: int | None,
+    operator_id: int,
+    approved_by: tuple[int, ...] = (),
+    reason: str,
+    verified: VerifiedArtifact,
+) -> dict[str, Any]:
+    decided_at = datetime.now(timezone.utc).isoformat()
+    identity = {
+        "decision_type": decision_type,
+        "technology": technology,
+        "model_version_id": model_version_id,
+        "previous_model_version_id": previous_model_version_id,
+        "operator_id": operator_id,
+        "approved_by": list(approved_by),
+        "approval_mode": "dual_operator" if len(approved_by) >= 2 else "single_operator",
+        "decided_at": decided_at,
+    }
+    return {
+        "schema": "cogguard.analysis.model_governance_decision.v2",
+        "decision_id": f"model_decision_{hashlib.sha256(_json_dumps(identity).encode('utf-8')).hexdigest()[:32]}",
+        **identity,
+        "reason": reason,
+        "artifact": {
+            "checkpoint_sha256": verified.checkpoint_sha256,
+            "checkpoint_path": str(verified.checkpoint_path),
+            "manifest_path": str(verified.manifest_path),
+        },
+        "quality_gates": verified.quality_gates,
+        "activation_allowed": verified.quality_gates["activation_allowed"],
+        "immutable_source": "analysis.governance.model_decision.v2",
+    }
+
+
+def _require_within_root(path: Path, root: Path, *, boundary_name: str = "artifact root") -> None:
+    try:
+        path.relative_to(root)
+    except ValueError as exc:
+        raise ValueError(f"Model artifact path resolves outside the configured {boundary_name}") from exc
+
+
+def _metric_at_least(metrics: dict[str, Any], name: str, threshold: float) -> bool:
+    try:
+        return float(metrics[name]) >= threshold
+    except (KeyError, TypeError, ValueError):
+        return False
+
+
+def _metric_at_most(metrics: dict[str, Any], name: str, threshold: float) -> bool:
+    try:
+        return float(metrics[name]) <= threshold
+    except (KeyError, TypeError, ValueError):
+        return False
 
 
 def _artifact_matches_hash(uri: str, expected_hash: str) -> bool:
@@ -366,6 +761,17 @@ def _model_mapping(row: AnalysisModelVersion) -> dict[str, Any]:
     }
 
 
+def _model_approval_mapping(row: AnalysisModelActivationApproval) -> dict[str, Any]:
+    return {
+        "approval_id": row.approval_id,
+        "model_version_id": row.model_version_id,
+        "approver_id": row.approver_id,
+        "approval_notes": row.approval_notes,
+        "immutable_source": row.immutable_source,
+        "created_at": row.created_at.isoformat() if row.created_at else None,
+    }
+
+
 def _activation_mapping(row: AnalysisModelActivation) -> dict[str, Any]:
     return {
         "technology": row.technology,
@@ -378,8 +784,12 @@ def _activation_mapping(row: AnalysisModelActivation) -> dict[str, Any]:
 
 __all__ = [
     "activate_model_version",
+    "approve_model_candidate",
     "approve_run_verdict",
     "create_feedback",
+    "evaluate_quality_gates",
+    "list_model_governance_history",
     "register_model_version",
     "rollback_model_version",
+    "verify_registered_artifact",
 ]

@@ -5,9 +5,9 @@ Future coding sessions should treat this file as the quick-start project context
 
 ## Baseline
 
-- Active engineering baseline: `release-0.2`
-- Do not use `main` as the source of truth for implementation status until it is explicitly synced.
-- Current active system lives in `system/`.
+- The active product source lives in `system/`.
+- Verify the current branch and worktree with Git before editing; do not infer implementation status from `main` or a historical release branch.
+- Treat code plus passing verification as the implementation source of truth, then synchronize documentation in the same change.
 
 ## Read Before Coding
 
@@ -20,7 +20,7 @@ Read these files before making substantial changes:
 5. `UBIQUITOUS_LANGUAGE.md`
 6. `doc/engineering/system-governance.md`
 7. `README.md`
-8. If the task is ARIS-driven or targets one of the three key technologies, also read:
+8. If the task is ARIS-driven or targets a research capability, also read:
    - `aris/README.md`
    - the selected `aris/tech-*/README.md`
    - the selected `aris/tech-*/ACCEPTANCE.md`
@@ -34,8 +34,11 @@ If code and docs disagree, trust code first, then update docs in the same change
 - Preferred system narrative: `事件 -> 证据 -> 协同 -> 传播 -> 风险 -> 处置`
 - Avoid reverting to the older headline of `bot detection + 意图识别`.
 - The formal method language is **Coordination Discover** + **Coordination Detect**.
-- Short-term validation scope: `mock_weibo`, `weibo`, `news`
-- Treat `MediaCrawler-main`, `NewsCrawler-main`, and `CooRTweet-master` as reference or dependency boundaries unless the user explicitly asks to modify them.
+- Production crawl platforms are `weibo`, `douyin`, `xhs`, and `news`; `mock_weibo` is test-only.
+- Treat `MediaCrawler-main`, `NewsCrawler-main`, and `CooRTweet-master` as reference boundaries, never product runtime roots.
+- The product boundary is the **Event Review Case**. `/dashboard` is the dashboard-first home and `/risk` is the single case workspace.
+- Keep Event Snapshot, Analysis Run, Student Review, Teacher Review, model versions, checkpoints, artifacts, and queue identifiers out of product copy and product API projections.
+- Do not add a model-governance UI or a second core page. Governance remains an authenticated backend concern for the LAN/competition prototype.
 
 ## Expected Engineering Behavior
 
@@ -50,7 +53,7 @@ If code and docs disagree, trust code first, then update docs in the same change
   - `README.md` or `system/README.md` when behavior or architecture changes
   - `docs/adr/` when the decision should remain durable
 - Prefer extending `system/backend/app/` and `system/frontend/src/` rather than adding duplicate entrypoints elsewhere.
-- Keep risk, coordination, and propagation outputs evidence-backed and explainable.
+- Keep Review, Coordination Discover, Coordination Detect, and Propagation Analysis outputs evidence-backed and explainable.
 - Do not vendor upstream ARIS skill code into this repository; keep only local workspace docs under `aris/`.
 
 ## ARIS Workspaces
@@ -59,17 +62,17 @@ If code and docs disagree, trust code first, then update docs in the same change
 - Do not create a repository-root `RESEARCH_BRIEF.md`; use the selected `aris/tech-*` workspace instead.
 - For ARIS-driven work, branch from `release-0.2` and keep one branch per technology line.
 
-## Current Gaps
+## Current Product Contract
 
-As of the `release-0.2` baseline:
-
-- Coordination exists, but multi-behavior evidence fusion and significance filtering still need strengthening.
-- Propagation exists, but evidence-chain extraction and key-path presentation are still evolving.
-- Risk analysis is MVP-stage and should stay rule/evidence-driven before deeper LLM integration.
-- Dashboard, alerts, reports, and end-to-end validation remain lighter than the core analysis pipeline.
+- A successful event-scoped crawl upserts one **Event Review Case** and appends an immutable snapshot revision when its data fingerprint changes.
+- New revisions run Coordination Discover, Propagation Analysis, and the synchronous preliminary review; an asynchronous review advisory is routed only by policy or analyst request.
+- Analysts may annotate evidence and autosave a decision draft. A **Confirmed Decision** is immutable and later data or advice creates a reconfirmation action instead of overwriting it.
+- Product responses and UI expose business conclusions, evidence sufficiency, urgency, disposition, summaries, evidence, and case activities. Internal runtime and governance details stay behind authenticated diagnostic boundaries.
+- The prototype targets authenticated local or LAN deployment. It does not claim public-production authorization or tenancy controls.
 
 ## Notes For Future Sessions
 
 - If a task touches algorithm behavior, prefer adding unit tests under `system/backend/tests/`.
 - If a task changes project status or roadmap interpretation, update the docs in the same turn.
-- If a future session needs a clean implementation starting point, branch from `release-0.2`, not `main`.
+- Before branch integration, run the full backend suite, frontend tests and production build, migration round-trip, and a real authenticated desktop workflow against the current approved branch.
+- Commits use the Lore commit protocol defined by the workspace orchestration contract.

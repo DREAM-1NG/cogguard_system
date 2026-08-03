@@ -70,12 +70,6 @@ class Settings(BaseSettings):
     # database survives restarts.
     DEFAULT_ADMIN_PASSWORD: str = ""
 
-    # The static preview token bypasses authentication for frontend-only
-    # walkthroughs. It is honoured only while BACKEND_DEBUG is true; setting
-    # BACKEND_DEBUG=false (production) disables the bypass regardless.
-    PREVIEW_AUTH_ENABLED: bool = False
-    PREVIEW_AUTH_TOKEN: str = ""
-
     # Server-side media fetching may only reach public addresses. Disable the
     # guard only for local fixtures that legitimately serve from 127.0.0.1.
     MEDIA_DOWNLOAD_ALLOW_PRIVATE_HOSTS: bool = False
@@ -109,6 +103,12 @@ class Settings(BaseSettings):
     COORDINATION_DISCOVER_DETECT_ROLE: str = "validation_only"
     COORDINATION_DISCOVER_MODALITY_POLICY: str = "platform_generic_only"
     COORDINATION_DISCOVER_REQUIRE_LEIDEN: bool = True
+    MODEL_ARTIFACT_ROOT: str = str(PROJECT_ROOT / "artifacts")
+
+    # Operational policies preserve the fast local prototype while making
+    # production queue and activation behavior explicit and auditable.
+    ANALYSIS_MODEL_ACTIVATION_APPROVAL_MODE: str = "auto"
+    ANALYSIS_TEACHER_DISPATCH_MODE: str = "auto"
 
     # ----- LLM API (趋势预测用) -----
     LLM_API_KEY: str = ""
@@ -166,14 +166,22 @@ class Settings(BaseSettings):
         )
 
     @property
-    def preview_auth_allowed(self) -> bool:
-        """Preview bypass is only ever active in debug (non-production) mode."""
-        return bool(
-            self.PREVIEW_AUTH_ENABLED
-            and self.BACKEND_DEBUG
-            and self.BACKEND_ENV.lower() == "local"
-            and self.PREVIEW_AUTH_TOKEN.strip()
-        )
+    def model_activation_requires_dual_approval(self) -> bool:
+        mode = self.ANALYSIS_MODEL_ACTIVATION_APPROVAL_MODE.strip().lower()
+        if mode == "single_operator":
+            return False
+        if mode == "dual_operator":
+            return True
+        return self.BACKEND_ENV.strip().lower() == "production"
+
+    @property
+    def teacher_inline_fallback_allowed(self) -> bool:
+        mode = self.ANALYSIS_TEACHER_DISPATCH_MODE.strip().lower()
+        if mode == "queue_required":
+            return False
+        if mode == "local_inline_fallback":
+            return True
+        return self.BACKEND_ENV.strip().lower() != "production"
 
     @model_validator(mode="after")
     def _reject_placeholder_secrets(self) -> "Settings":
@@ -183,6 +191,20 @@ class Settings(BaseSettings):
         test suite keep working without a populated ``.env``.
         """
         environment = self.BACKEND_ENV.strip().lower()
+        approval_mode = self.ANALYSIS_MODEL_ACTIVATION_APPROVAL_MODE.strip().lower()
+        dispatch_mode = self.ANALYSIS_TEACHER_DISPATCH_MODE.strip().lower()
+        if approval_mode not in {"auto", "single_operator", "dual_operator"}:
+            raise ValueError(
+                "ANALYSIS_MODEL_ACTIVATION_APPROVAL_MODE must be auto, single_operator, or dual_operator."
+            )
+        if dispatch_mode not in {"auto", "queue_required", "local_inline_fallback"}:
+            raise ValueError(
+                "ANALYSIS_TEACHER_DISPATCH_MODE must be auto, queue_required, or local_inline_fallback."
+            )
+        if environment == "production" and approval_mode == "single_operator":
+            raise ValueError("Production model activation requires dual_operator approval mode.")
+        if environment == "production" and dispatch_mode == "local_inline_fallback":
+            raise ValueError("Production Teacher review requires a durable queue.")
         if not self.JWT_SECRET_KEY.strip():
             if environment == "production":
                 raise ValueError("JWT_SECRET_KEY must be explicitly configured in production.")

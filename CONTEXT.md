@@ -1,74 +1,102 @@
-﻿# CogGuard System Context
+# CogGuard System Context
 
-This context defines shared language for the current system refactor. It separates deployed system contracts from research claims so implementation, evaluation, and documentation do not drift.
+This context defines the shared language for the current system refactor. It keeps the product-facing Event Review Case workspace separate from internal analysis and research boundaries so implementation, evaluation, and documentation do not drift.
 
-## Unified Analysis Language
+## Event Review Case
 
-**Event Snapshot**:
-An immutable, content-addressed analysis input built from MongoDB `raw_posts` and `raw_comments`. It contains event ID, platforms, core/context time windows, normalized content, observed relationships, quality report, provenance, and data fingerprint.
-_Avoid_: ad hoc event query, temporary dataframe, surface count
+**Event Review Case**:
+The product-facing case aggregate keyed to one event. It binds the event identity, the current evidence set, the preliminary finding, the review advisory history, the confirmed decision trail, and the case activity stream.
+_Avoid_: ticket, issue, review job
 
-**Analysis Run**:
-A MySQL-tracked execution request against one Event Snapshot. Its state is one of `queued`, `running`, `needs_evidence`, `awaiting_review`, `completed`, `failed`, or `cancelled`.
-_Avoid_: background task only, dashboard request, implicit pipeline state
+**Preliminary Finding**:
+The first structured case finding produced before analyst confirmation.
+_Avoid_: first guess, preliminary score
 
-**Analysis Run Event**:
-An append-only event stream item for one Analysis Run. The numeric event ID is the recovery cursor for REST polling and SSE `Last-Event-ID`.
-_Avoid_: log line, progress string
+**Review Advisory**:
+An internal or manually requested advisory verdict that can differ from the preliminary finding.
+_Avoid_: final verdict, automatic decision
 
-**Review Verdict**:
-A versioned review decision. `preliminary` and `teacher_advisory` are not canonical. Only an analyst-approved immutable version can become `canonical`.
-_Avoid_: latest label, model output, mutable review status
+**Confirmed Decision**:
+The immutable analyst-confirmed case decision.
+_Avoid_: mutable decision, draft approval
 
-**Teacher**:
-The asynchronous multi-agent research review runtime. It may advise, calibrate, and produce evidence, but does not become canonical without analyst approval.
-_Avoid_: rule engine, final detector
+**Evidence Sufficiency**:
+The assessment of whether the current evidence set is enough to support a case action.
+_Avoid_: completeness score, confidence score
 
-**Student**:
-The synchronous deployable review runtime distilled from approved evidence and Teacher traces. It must be versioned, measured, and activated through explicit governance.
-_Avoid_: heuristic shortcut, unversioned classifier
+**Evidence Annotation**:
+A note attached to a specific evidence item, including its assessment and supporting context.
+_Avoid_: comment, tag, annotation blob
 
-Current implementation status: Event Snapshot contracts, registry persistence, Analysis Run lifecycle, V2 REST routes, SSE recovery, and the Analysis Run executor port are implemented as the system entry layer. Coordination Discover now runs `coordination-evidence-runtime-v2` from EventSnapshot records, including multi-kind evidence edges, overlapping windows, community lineage, null-model significance, perturbation robustness, evidence coverage, and domain-shift reporting. Propagation Analysis runs through the internal `system/research/propagation_analysis` boundary, including event bundle, public fixture loader, live fallback, hindcast protocol, split-conformal intervals, next-hop ranking, platform hindcasts, and baseline registry; fitted TGN/DyGFormer/CasFlow/CasFT checkpoints still need approval before research-grade activation. Student now runs through `system/runtimes/review_student` and returns a synchronous preliminary verdict with active-learning and distillation metadata; without an approved checkpoint it explicitly marks `shadow_untrained`. Teacher now runs through `system/research/review_teacher` as an asynchronous 5+1+1 advisory DAG. Only analyst-approved immutable verdicts can become canonical.
+**Case Activity**:
+An append-only business activity record that explains what happened to a case and when.
+_Avoid_: audit spam, task log
+
+Current implementation status: the case service, snapshot revisions, evidence annotations, decision drafts, confirmed decisions, and activity stream are implemented in the current branch. Automatic routing after successful collection creates or revises a case and can request an internal review advisory when evidence sufficiency or urgency warrants it. This workspace is prototype code in the branch; it is not a claim of production rollout.
 
 ---
 
-# CogGuard Review Context
+## Internal Diagnostics
 
-This context defines the shared language for Review harmfulness assessment. It keeps research, implementation, and evaluation discussions aligned around the same post-level and group-level concepts.
+**Event Snapshot**:
+An immutable content-addressed analysis input built from MongoDB `raw_posts` and `raw_comments`. It contains event identity, platforms, core/context windows, normalized content, observed relationships, quality report, provenance, and data fingerprint.
+_Avoid_: ad hoc event query, temporary dataframe, surface count
 
-## Language
+**Coordination Discover**:
+The unsupervised coordination pipeline that learns temporal coordination structure from an evidence graph.
+_Avoid_: numbered stage label, classifier shortcut
 
-**Post View**:
-A modality-specific interpretation of one post, currently one of Tweet View, Meme View, Image View, or Video View.
-_Avoid_: raw feature, channel feature, modality flag
+**Coordination Detect**:
+The validation layer that tests whether Coordination Discover representations improve detection on labeled data.
+_Avoid_: detect shorthand, main detector, event labeler
 
-**View Detector**:
-A detector that judges one Post View and returns a standard label, score, confidence, evidence, and abstention decision.
-_Avoid_: keyword matcher, feature extractor
+**Propagation Analysis**:
+The propagation boundary that estimates spread size, next-hop behavior, and tree structure from a snapshot.
+_Avoid_: trend guess, prediction blob
 
-**View Abstention**:
-A detector outcome meaning the view lacks enough decodable evidence to make a confident judgment.
-_Avoid_: negative prediction, safe prediction
+**Review**:
+The internal review routing boundary that produces advisory input and confirmed-decision prompts behind the case workspace.
+_Avoid_: generic analysis, unbounded internal loop
 
-**Decodable Evidence**:
-Content that a View Detector can actually interpret, such as text, OCR, ASR, caption, alt text, or extracted frame/context text. A media URL alone is not Decodable Evidence.
-_Avoid_: media exists, URL evidence
+The product workspace stays behind login-gated routes and does not expose the internal diagnostic boundary as a first-class product surface.
 
-For `meme`, `img`, and `video` views, availability means view-specific decodable media evidence exists. Reusing tweet text because a media URL is present is not a valid media-view judgment.
+---
 
-**Effective View**:
-A Post View that is available and not abstained, therefore eligible for Majority Vote and View Fusion.
-_Avoid_: present modality, raw channel
+## Backend Governance Boundary
 
-**Majority Vote**:
-A post-level decision rule that counts only confident, non-abstained View Detector labels.
-_Avoid_: average score, rule score
+The backend control plane owns durable execution and model decisions while the
+dashboard-first frontend stays focused on the Event Review Case workflow.
 
-**View Fusion**:
-A post-level decision rule that combines standardized View Detector outputs into one final harmfulness judgment.
-_Avoid_: feature concatenation, manual scoring
+**Teacher Dispatch Policy**:
+`ANALYSIS_TEACHER_DISPATCH_MODE=auto` permits local inline execution only when
+`BACKEND_ENV=local`. Production resolves to `queue_required`; a broker or
+worker failure is persisted as a failed Teacher Advisory and is recoverable
+through the Analysis Run event stream.
 
-**Harmfulness Judgment**:
-The final Review post-level conclusion: harmful, non-harmful, or uncertain, with harm type and evidence when available.
-_Avoid_: toxicity score only, content score only
+**Model Candidate**:
+A registered versioned artifact that has not yet moved the active pointer.
+Artifact hash verification and capability quality gates run before approval.
 
+**Model Candidate Approval**:
+An authenticated administrator action that records review of one candidate.
+The request derives the administrator identity from the bearer session and
+cannot accept an approver ID supplied by the caller.
+
+**Model Activation Approval**:
+An immutable row in
+`analysis_model_activation_approvals`. Production activation requires two
+distinct active administrator rows, including the activating administrator;
+local activation records one accountable operator. The active pointer and
+append-only governance decision remain backend concerns.
+
+**Canonical Verdict** approval is separate from model activation. A Student
+preliminary result or Teacher Advisory never becomes canonical through queue
+completion, model approval, or model activation; only an analyst action can
+create the immutable Confirmed Decision source.
+
+Current implementation status: the dispatch policy and persisted approval
+service are implemented, with migration `a2d8e5c1b904` as the database head.
+Apply that migration in each deployed database before enabling production
+activation. The primary frontend remains unchanged and does not expose model
+versions, checkpoints, agent graphs, queue internals, active pointers, or
+rollback controls.

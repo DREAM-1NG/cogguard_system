@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import llm_cache
-from app.core.security import get_current_user_or_local_preview
+from app.core.security import get_current_user
 from app.db.mysql import async_session_factory
 from app.models.user import User
 from app.services import dashboard_service
@@ -31,8 +31,8 @@ async def get_optional_db() -> AsyncGenerator[AsyncSession | None]:
 
 
 async def get_dashboard_viewer(
-    viewer: User | None = Depends(get_current_user_or_local_preview),
-) -> User | None:
+    viewer: User = Depends(get_current_user),
+) -> User:
     """Use the shared authentication boundary for dashboard access."""
     return viewer
 

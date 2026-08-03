@@ -3353,7 +3353,7 @@ class TestRiskAPIReviewIntegration:
         assert data["usage_policy"]["uses_gold_for_training"] is False
         assert data["usage_policy"]["default_persistence"] is False
 
-    def test_assess_risk_api_returns_review_harmfulness(self, monkeypatch):
+    def test_assess_risk_api_returns_review_harmfulness(self):
         calls = {}
         expected_report = {
             "report_id": "r1",
@@ -3389,11 +3389,10 @@ class TestRiskAPIReviewIntegration:
             },
         }
 
-        async def mock_assess_risk(**kwargs):
-            calls.update(kwargs)
-            return expected_report
-
-        monkeypatch.setattr(risk_api.risk_service, "assess_risk", mock_assess_risk)
+        class FakeService:
+            async def legacy_assess_risk(self, **kwargs):
+                calls.update(kwargs)
+                return expected_report
 
         response = asyncio.run(
             risk_api.assess_risk(
@@ -3403,7 +3402,7 @@ class TestRiskAPIReviewIntegration:
                 min_participation=3,
                 edge_weight=0.7,
                 current_user=type("User", (), {"id": 42})(),
-                db=object(),
+                service=FakeService(),
             )
         )
 
@@ -3416,25 +3415,22 @@ class TestRiskAPIReviewIntegration:
         assert response["data"]["review_harmfulness"]["gate_suite"]["capability_boundary"]["evaluation_harness_only"] is True
         assert calls["platform"] == "mock_weibo"
         assert calls["event_id"] == "event-api"
-        assert calls["time_window"] == 120
-        assert calls["min_participation"] == 3
-        assert calls["edge_weight"] == 0.7
-        assert calls["user_id"] == 42
-        assert calls["run_legacy_multi_agent"] is False
+        assert set(calls) == {"platform", "event_id"}
 
-    def test_run_agent_review_api_creates_async_job(self, monkeypatch):
+    def test_run_agent_review_api_maps_to_case_review_request(self):
         calls = {}
+        committed = {"value": False}
 
-        async def mock_create_agent_review_job(**kwargs):
-            calls.update(kwargs)
-            return {
-                "job_id": 777,
-                "job_type": "agent_review",
-                "status": "pending",
-                "poll_url": "/api/v1/risk/review/jobs/777",
-            }
+        class FakeDB:
+            async def commit(self):
+                committed["value"] = True
 
-        monkeypatch.setattr(risk_api.risk_service, "create_agent_review_job", mock_create_agent_review_job)
+        class FakeService:
+            db = FakeDB()
+
+            async def legacy_request_review(self, **kwargs):
+                calls.update(kwargs)
+                return {"case_id": "case-r1", "action_required": "review_available"}
 
         response = asyncio.run(
             risk_api.run_agent_review(
@@ -3449,25 +3445,16 @@ class TestRiskAPIReviewIntegration:
                     retrieval_top_k=5,
                 ),
                 current_user=type("User", (), {"id": 42})(),
-                db=object(),
+                service=FakeService(),
             )
         )
 
         assert response["code"] == 0
-        assert response["data"]["job_id"] == 777
-        assert response["data"]["status"] == "pending"
-        assert response["data"]["poll_url"] == "/api/v1/risk/review/jobs/777"
-        assert calls["job_type"] == "agent_review"
-        assert calls["payload"]["report_id"] == "r1"
-        assert calls["payload"]["agent_names"] == ["PostHarmAgent"]
-        assert calls["payload"]["selected_post_ids"] == ["p1"]
-        assert calls["payload"]["selected_tree_ids"] == ["tree-1"]
-        assert calls["payload"]["enable_active_retrieval"] is True
-        assert calls["payload"]["enable_external_retrieval"] is None
-        assert calls["payload"]["enable_light_debate"] is True
-        assert calls["payload"]["policy_id"] == "review-policy-test"
-        assert calls["payload"]["retrieval_top_k"] == 5
-        assert calls["user_id"] == 42
+        assert response["data"] == {"case_id": "case-r1", "action_required": "review_available"}
+        assert calls["report_id"] == "r1"
+        assert calls["evidence_refs"] == ["p1", "tree-1"]
+        assert calls["actor"].id == 42
+        assert committed["value"] is True
 
     def test_review_policy_optimize_and_get_api(self, monkeypatch):
         stored = {
@@ -3509,7 +3496,7 @@ class TestRiskAPIReviewIntegration:
         assert calls["dataset_manifest"]["splits"]["validation"][0]["case_id"] == "v1"
         assert calls["policy_id"] == "review-policy-api"
 
-    def test_assess_gate_suite_api_accepts_dataset_body_without_persistence(self, monkeypatch):
+    def test_assess_gate_suite_api_accepts_dataset_body_without_persistence(self):
         calls = {}
         gate_dataset = {
             "metadata": {
@@ -3553,11 +3540,10 @@ class TestRiskAPIReviewIntegration:
             },
         }
 
-        async def mock_assess_risk(**kwargs):
-            calls.update(kwargs)
-            return expected_report
-
-        monkeypatch.setattr(risk_api.risk_service, "assess_risk", mock_assess_risk)
+        class FakeService:
+            async def legacy_assess_risk(self, **kwargs):
+                calls.update(kwargs)
+                return expected_report
 
         response = asyncio.run(
             risk_api.assess_gate_suite(
@@ -3570,6 +3556,7 @@ class TestRiskAPIReviewIntegration:
                     gate_dataset=gate_dataset,
                 ),
                 current_user=type("User", (), {"id": 42})(),
+                service=FakeService(),
             )
         )
 
@@ -3583,9 +3570,4 @@ class TestRiskAPIReviewIntegration:
         assert response["data"]["review_harmfulness"]["gate_suite"] == response["data"]["gate_suite"]
         assert calls["platform"] == "mock_weibo"
         assert calls["event_id"] == "event-api"
-        assert calls["time_window"] == 120
-        assert calls["min_participation"] == 3
-        assert calls["edge_weight"] == 0.7
-        assert calls["user_id"] == 42
-        assert calls["db"] is None
-        assert calls["gate_dataset"] == gate_dataset
+        assert set(calls) == {"platform", "event_id"}

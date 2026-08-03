@@ -6,8 +6,10 @@
 """
 
 from celery import Celery
+from celery.signals import worker_process_shutdown, worker_shutdown
 
 from app.config import settings
+from app.tasks.async_runtime import close_async_runtime
 
 celery_app = Celery(
     "cogguard",
@@ -29,6 +31,12 @@ celery_app.conf.update(
         "review.*": {"queue": "review"},
     },
 )
+
+
+@worker_process_shutdown.connect
+@worker_shutdown.connect
+def _close_worker_async_runtime(**_kwargs):
+    close_async_runtime()
 
 # Import side-effect registers the task on the app instance for workers and tests.
 from app.tasks import analysis_tasks  # noqa: E402,F401

@@ -5,15 +5,6 @@
       description="创建跨平台采集任务，并查看已经写入 MongoDB 的历史帖子与评论结果。"
     />
 
-    <a-alert
-      v-if="isPreviewMode"
-      type="info"
-      show-icon
-      style="margin-bottom: 16px"
-      message="预览态已接入真实历史采集数据与本地任务执行"
-      description="可以创建本地后台采集任务；取消和删除仍建议切换真实登录后操作。"
-    />
-
     <a-card title="创建采集任务" size="small" style="margin-bottom: 16px">
       <a-form layout="vertical" :model="crawlForm" @finish="handleCreateJob">
         <div class="crawl-form-grid">
@@ -144,7 +135,7 @@
           </template>
 
           <template v-else-if="column.key === 'action'">
-            <a-space v-if="!isPreviewMode">
+            <a-space>
               <a-button
                 v-if="record.job_type === 'media_download'"
                 size="small"
@@ -168,7 +159,6 @@
                 <a-button size="small" type="link" danger>删除</a-button>
               </a-popconfirm>
             </a-space>
-            <a-tag v-else color="blue">预览只读</a-tag>
           </template>
         </template>
       </a-table>
@@ -289,11 +279,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
+import { onMounted, onUnmounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import PageHeader from '@/components/PageHeader.vue'
 import TableSettings from '@/components/TableSettings.vue'
-import { useAuthStore } from '@/stores/auth'
 import {
   cancelCrawlJob,
   createCrawlJob,
@@ -362,9 +351,6 @@ interface DownloadDetail {
   summary?: DownloadSummary
   items: DownloadItem[]
 }
-
-const authStore = useAuthStore()
-const isPreviewMode = computed(() => authStore.isPreviewMode)
 
 const tableSize = ref<TableSize>('middle')
 const jobPageSize = ref(10)
@@ -509,20 +495,12 @@ async function handleCreateJob() {
 }
 
 async function handleCancel(jobId: number) {
-  if (isPreviewMode.value) {
-    message.info('预览态仅支持查看历史采集数据，请切换真实登录后管理任务')
-    return
-  }
   await cancelCrawlJob(jobId)
   message.success('任务已取消')
   await fetchJobs()
 }
 
 async function handleDelete(jobId: number) {
-  if (isPreviewMode.value) {
-    message.info('预览态仅支持查看历史采集数据，请切换真实登录后管理任务')
-    return
-  }
   await deleteCrawlJob(jobId)
   message.success('任务已删除')
   await fetchJobs()

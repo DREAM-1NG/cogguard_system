@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 from datetime import datetime, timezone
 from typing import Any, Protocol
 from uuid import uuid4
@@ -19,6 +20,12 @@ from app.models.analysis import AnalysisModelActivation, AnalysisModelVersion, A
 from app.services.event_data import load_event_comments, load_event_posts
 
 SNAPSHOT_COLLECTION = "analysis_event_snapshots"
+RUN_ARTIFACT_COLLECTION = "analysis_run_artifacts"
+SNAPSHOT_CHUNK_SCHEMA = "cogguard.analysis.event_snapshot.chunked.v1"
+RUN_ARTIFACT_CHUNK_SCHEMA = "cogguard.analysis.run_artifact.chunked.v1"
+# Keep chunks far below MongoDB's 16MB document limit; event snapshots can carry
+# tens of thousands of comments during real-system runs.
+SNAPSHOT_PAYLOAD_CHARS = 512_000
 TERMINAL_RUN_STATUSES = {
     AnalysisRunStatus.COMPLETED,
     AnalysisRunStatus.FAILED,
@@ -169,6 +176,13 @@ class AnalysisRegistry:
         document = await collection.find_one({"snapshot_id": str(manifest["mongo_key"])}, {"_id": 0})
         if document is None:
             raise KeyError(f"Event snapshot document not found: {snapshot_id}")
+        if document.get("schema") == SNAPSHOT_CHUNK_SCHEMA:
+            payload = await _load_snapshot_payload_chunks(
+                collection,
+                root_snapshot_id=str(document["snapshot_id"]),
+                expected_chunks=int(document.get("chunk_count", 0) or 0),
+            )
+            return EventSnapshot.model_validate(json.loads(payload))
         return EventSnapshot.model_validate(document)
 
     async def transition_run_status(
@@ -205,6 +219,73 @@ class AnalysisRegistry:
         updated = await updater(run_id=run_id, manifest=dict(manifest))
         return _mapping(updated) if updated is not None else None
 
+    async def save_run_artifact(
+        self,
+        *,
+        run_id: str,
+        artifact_key: str,
+        payload: Any,
+    ) -> dict[str, Any]:
+        """Persist a large run artifact outside MySQL result/event columns."""
+        artifact_id = f"{run_id}:{artifact_key}"
+        try:
+            collection = _get_collection(self.mongo_db, RUN_ARTIFACT_COLLECTION)
+        except (KeyError, TypeError):
+            return {
+                "stored": False,
+                "artifact_id": artifact_id,
+                "reason": f"Mongo collection unavailable: {RUN_ARTIFACT_COLLECTION}",
+            }
+        if not hasattr(collection, "update_one"):
+            return {
+                "stored": False,
+                "artifact_id": artifact_id,
+                "reason": "Mongo artifact collection does not support update_one",
+            }
+
+        payload_text = _json_dumps(payload)
+        chunks = _chunk_text(payload_text, SNAPSHOT_PAYLOAD_CHARS)
+        payload_hash = hashlib.sha256(payload_text.encode("utf-8")).hexdigest()
+        await collection.update_one(
+            {"artifact_id": artifact_id},
+            {
+                "$set": {
+                    "artifact_id": artifact_id,
+                    "schema": RUN_ARTIFACT_CHUNK_SCHEMA,
+                    "run_id": run_id,
+                    "artifact_key": artifact_key,
+                    "payload_sha256": payload_hash,
+                    "payload_size_chars": len(payload_text),
+                    "chunk_count": len(chunks),
+                    "chunk_size_chars": SNAPSHOT_PAYLOAD_CHARS,
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                }
+            },
+            upsert=True,
+        )
+        for index, chunk in enumerate(chunks):
+            await collection.update_one(
+                {"artifact_id": _artifact_chunk_id(artifact_id, index)},
+                {
+                    "$set": {
+                        "artifact_id": _artifact_chunk_id(artifact_id, index),
+                        "root_artifact_id": artifact_id,
+                        "chunk_index": index,
+                        "payload": chunk,
+                    }
+                },
+                upsert=True,
+            )
+        return {
+            "stored": True,
+            "collection": RUN_ARTIFACT_COLLECTION,
+            "artifact_id": artifact_id,
+            "artifact_key": artifact_key,
+            "payload_sha256": payload_hash,
+            "payload_size_chars": len(payload_text),
+            "chunk_count": len(chunks),
+        }
+
     async def append_run_event(
         self,
         run_id: str,
@@ -240,11 +321,38 @@ class AnalysisRegistry:
 
     async def _persist_snapshot(self, snapshot: EventSnapshot, *, created_by: int) -> Any:
         collection = _get_collection(self.mongo_db, self.snapshot_collection)
+        payload = _json_dumps(snapshot.model_dump(mode="json"))
+        chunks = _chunk_text(payload, SNAPSHOT_PAYLOAD_CHARS)
+        root_document = {
+            "snapshot_id": snapshot.snapshot_id,
+            "schema": SNAPSHOT_CHUNK_SCHEMA,
+            "payload_kind": "event_snapshot",
+            "data_fingerprint": snapshot.data_fingerprint,
+            "event_id": snapshot.event_id,
+            "platforms": list(snapshot.platforms),
+            "quality": snapshot.quality_report.model_dump(mode="json"),
+            "chunk_count": len(chunks),
+            "chunk_size_chars": SNAPSHOT_PAYLOAD_CHARS,
+            "created_at": snapshot.created_at.isoformat(),
+        }
         await collection.update_one(
             {"snapshot_id": snapshot.snapshot_id},
-            {"$setOnInsert": snapshot.model_dump(mode="json")},
+            {"$set": root_document},
             upsert=True,
         )
+        for index, chunk in enumerate(chunks):
+            await collection.update_one(
+                {"snapshot_id": _chunk_snapshot_id(snapshot.snapshot_id, index)},
+                {
+                    "$set": {
+                        "snapshot_id": _chunk_snapshot_id(snapshot.snapshot_id, index),
+                        "root_snapshot_id": snapshot.snapshot_id,
+                        "chunk_index": index,
+                        "payload": chunk,
+                    }
+                },
+                upsert=True,
+            )
         return await self.store.save_snapshot_manifest(
             snapshot=snapshot,
             mongo_collection=self.snapshot_collection,
@@ -293,6 +401,7 @@ class SqlAlchemyAnalysisStore:
         )
         self.session.add(record)
         await self.session.flush()
+        await self.session.refresh(record)
         return record
 
     async def create_run(
@@ -317,6 +426,7 @@ class SqlAlchemyAnalysisStore:
         )
         self.session.add(run)
         await self.session.flush()
+        await self.session.refresh(run)
         return run
 
     async def get_run(self, run_id: str) -> AnalysisRun | None:
@@ -374,6 +484,7 @@ class SqlAlchemyAnalysisStore:
         )
         self.session.add(event)
         await self.session.flush()
+        await self.session.refresh(event)
         return event
 
     async def list_run_events(
@@ -401,6 +512,8 @@ class SqlAlchemyAnalysisStore:
         if row is None:
             return None
         activation, version = row
+        provenance = _json_loads(activation.provenance_json, {})
+        artifact = provenance.get("artifact") if isinstance(provenance, dict) else None
         return {
             "technology": activation.technology,
             "model_version_id": activation.model_version_id,
@@ -408,8 +521,9 @@ class SqlAlchemyAnalysisStore:
             "model": version.model,
             "artifact_uri": version.artifact_uri,
             "artifact_hash": version.artifact_hash,
+            "checkpoint_path": artifact.get("checkpoint_path") if isinstance(artifact, dict) else None,
             "status": version.status,
-            "provenance": _json_loads(activation.provenance_json, {}),
+            "provenance": provenance,
         }
 
 
@@ -417,6 +531,38 @@ def _get_collection(mongo_db: Any, name: str) -> Any:
     if isinstance(mongo_db, dict):
         return mongo_db[name]
     return mongo_db[name]
+
+
+def _chunk_text(value: str, chunk_size: int) -> list[str]:
+    return [value[index : index + chunk_size] for index in range(0, len(value), chunk_size)] or [""]
+
+
+def _chunk_snapshot_id(snapshot_id: str, index: int) -> str:
+    return f"{snapshot_id}:chunk:{index:06d}"
+
+
+def _artifact_chunk_id(artifact_id: str, index: int) -> str:
+    return f"{artifact_id}:chunk:{index:06d}"
+
+
+async def _load_snapshot_payload_chunks(
+    collection: Any,
+    *,
+    root_snapshot_id: str,
+    expected_chunks: int,
+) -> str:
+    cursor = collection.find({"root_snapshot_id": root_snapshot_id}, {"_id": 0, "chunk_index": 1, "payload": 1})
+    sorter = getattr(cursor, "sort", None)
+    if sorter is not None:
+        cursor = sorter("chunk_index", 1)
+    rows = await cursor.to_list(length=expected_chunks or None)
+    chunks = sorted(rows, key=lambda row: int(row.get("chunk_index", 0) or 0))
+    if expected_chunks and len(chunks) != expected_chunks:
+        raise KeyError(
+            f"Event snapshot chunks incomplete: {root_snapshot_id} "
+            f"expected={expected_chunks} actual={len(chunks)}"
+        )
+    return "".join(str(row.get("payload") or "") for row in chunks)
 
 
 def _mapping(value: Any) -> dict[str, Any]:

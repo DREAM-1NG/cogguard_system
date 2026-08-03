@@ -18,6 +18,48 @@
 
 ---
 
+## 2026-08-03
+
+- Closed the durable review and model-governance boundary without changing the
+  dashboard-first frontend.
+- `system/backend/app/core/analysis/runtime.py` and
+  `system/backend/app/tasks/analysis_tasks.py`: production Teacher dispatch is
+  queue-required, while local inline fallback is explicit; broker and worker
+  failures remain durable and recoverable.
+- `system/backend/app/models/analysis.py`,
+  `system/backend/app/services/analysis_governance_service.py`, and
+  `system/backend/app/api/v2/analysis.py`: model candidate approvals now use
+  authenticated append-only records, distinct-admin activation policy, artifact
+  hash verification, quality gates, and audited rollback.
+- `system/backend/alembic/versions/a2d8e5c1b904_add_model_activation_approvals.py`:
+  added the approval persistence migration and applied it to the active local
+  MySQL database; real Celery smoke remains a deployment verification step.
+- `UBIQUITOUS_LANGUAGE.md`, `CONTEXT.md`, `doc/engineering/project-map.md`, and
+  `doc/engineering/development-roadmap.md`: synchronized formal governance
+  vocabulary, control-plane ownership, and current status.
+- Verification: targeted governance suite `26 passed`, including a real MySQL
+  persistence test; broader backend and frontend verification continues in
+  this worktree.
+- Runtime verification: the local `analysis` Celery worker connected to Redis
+  and returned `OK` to `inspect ping`; an authenticated Teacher Advisory API
+  smoke was intentionally not run because the active database has no known
+  administrator password in the environment.
+- Final quality gates for this pass: backend full suite `510 passed, 19 skipped`,
+  frontend component suite `13 passed`, `vue-tsc` plus production Vite build
+  passed, `compileall` passed, and `/api/v1/health` plus `/api/v2/health`
+  returned 200 after the backend restart.
+- Corrected the documented internal control-plane prefix to
+  `/api/v2/governance/*`, matching the V2 router; `/api/v2/analysis/*` is not
+  a public route.
+
+---
+
+## 2026-08-02
+
+- 完成 Event Review Case 文档同步：更新 `UBIQUITOUS_LANGUAGE.md`、`CONTEXT.md`、`README.md`、`system/README.md`、`doc/engineering/system-governance.md`、`doc/engineering/development-roadmap.md`、`doc/engineering/development-log.md`，并新增 `docs/adr/index.md`、`docs/adr/0007-event-review-case-product-boundary.md`、`docs/adr/0008-lan-prototype-governance-boundary.md`。
+- `docs/adr/index.md`：仅在索引中标注旧 ADR 的 superseded 状态，保留既有 accepted ADR 正文不变。
+- `docs/adr/0007-event-review-case-product-boundary.md`、`docs/adr/0008-lan-prototype-governance-boundary.md`：分别记录自动复核路由与 LAN prototype governance boundary。
+
 ## 2026-08-01
 
 - 完成本轮三项关键能力的原型交付收口：新增 `system/backend/scripts/prototype_acceptance.py`，用隔离 EventSnapshot 验证 Coordination Discover 严格 Leiden artifact、Propagation Analysis fallback/abstain、Student shadow 和 Teacher advisory 运行边界；不写数据库、不生成标签、不修改前端。

@@ -77,18 +77,41 @@ class AnalysisExecutor:
                 status=AnalysisRunStatus.RUNNING,
                 payload={"stage": stage, "options": stage_options},
             )
-            result = await self._execute_stage(stage, snapshot, stage_options)
+            result = await self._execute_stage(
+                stage,
+                snapshot,
+                stage_options,
+                run_id=run_id,
+            )
             results[stage] = result
-            artifact_manifest["stages"][stage] = _stage_artifact_record(stage, result)
+            artifact_ref = await self.registry.save_run_artifact(
+                run_id=run_id,
+                artifact_key=f"stage:{stage}:result",
+                payload=result,
+            )
+            result_summary = _stage_result_summary(stage, result)
+            artifact_manifest["stages"][stage] = {
+                **_stage_artifact_record(stage, result),
+                "result_artifact": _artifact_event_ref(artifact_ref),
+                "result_summary": result_summary,
+            }
             await self.registry.update_artifact_manifest(run_id, artifact_manifest)
             await self.registry.append_run_event(
                 run_id,
                 event_type=_stage_completed_event_type(stage, result),
                 status=AnalysisRunStatus.RUNNING,
-                payload={"stage": stage, "result": result},
+                payload={
+                    "stage": stage,
+                    "result_summary": result_summary,
+                    "result_artifact": _artifact_event_ref(artifact_ref),
+                },
             )
 
         final_status = _final_status(results)
+        result_summary = {
+            stage: _stage_result_summary(stage, result)
+            for stage, result in results.items()
+        }
         event_type = {
             AnalysisRunStatus.AWAITING_REVIEW: "run_awaiting_review",
             AnalysisRunStatus.NEEDS_EVIDENCE: "run_needs_evidence",
@@ -100,11 +123,12 @@ class AnalysisExecutor:
             event_type=event_type,
             payload={
                 "snapshot_id": snapshot.snapshot_id,
-                "results": results,
+                "results": result_summary,
                 "artifact_manifest": artifact_manifest,
             },
         )
         updated["results"] = results
+        updated["result_summary"] = result_summary
         updated["artifact_manifest"] = artifact_manifest
         return updated
 
@@ -130,15 +154,21 @@ class AnalysisExecutor:
         stage: str,
         snapshot: EventSnapshot,
         options: dict[str, Any],
+        *,
+        run_id: str | None = None,
     ) -> dict[str, Any]:
         if stage == "coordination_discover":
             return await self.engines.coordination.analyze(snapshot, options)
         if stage == "propagation_analysis":
             return await self.engines.propagation.hindcast(snapshot, options)
         if stage == "student":
-            return await self.engines.student.predict(_case_from_snapshot(snapshot, options=options))
+            return await self.engines.student.predict(
+                _case_from_snapshot(snapshot, options=options, run_id=run_id)
+            )
         if stage == "teacher":
-            return await self.engines.teacher.submit(_case_from_snapshot(snapshot, options=options))
+            return await self.engines.teacher.submit(
+                _case_from_snapshot(snapshot, options=options, run_id=run_id)
+            )
         raise UnknownAnalysisStage(f"Unknown analysis stage: {stage}")
 
 
@@ -170,7 +200,7 @@ class PropagationAnalysisPropagationEngine:
             posts=snapshot.posts,
             comments=snapshot.comments,
             top_k=int(options.get("top_k", 10) or 10),
-            checkpoint_path=(options.get("active_model") or {}).get("artifact_uri"),
+            checkpoint_path=(options.get("active_model") or {}).get("checkpoint_path"),
         )
         return {"technology": "propagation_analysis", **result}
 
@@ -211,8 +241,13 @@ def default_analysis_engine_ports() -> AnalysisEnginePorts:
     )
 
 
-def _case_from_snapshot(snapshot: EventSnapshot, *, options: dict[str, Any]) -> dict[str, Any]:
-    return {
+def _case_from_snapshot(
+    snapshot: EventSnapshot,
+    *,
+    options: dict[str, Any],
+    run_id: str | None = None,
+) -> dict[str, Any]:
+    case = {
         "snapshot_id": snapshot.snapshot_id,
         "event_id": snapshot.event_id,
         "platforms": list(snapshot.platforms),
@@ -223,6 +258,9 @@ def _case_from_snapshot(snapshot: EventSnapshot, *, options: dict[str, Any]) -> 
         "provenance": [record.model_dump(mode="json") for record in snapshot.provenance],
         "options": dict(options),
     }
+    if run_id:
+        case["run_id"] = run_id
+    return case
 
 
 def _single_platform(snapshot: EventSnapshot) -> str | None:
@@ -290,6 +328,8 @@ def _normalize_stage(stage: Any) -> str:
 
 
 def _final_status(results: dict[str, Any]) -> AnalysisRunStatus:
+    if _teacher_dispatch_failed(results.get("teacher")):
+        return AnalysisRunStatus.NEEDS_EVIDENCE
     if _teacher_job_id(results.get("teacher")):
         return AnalysisRunStatus.AWAITING_REVIEW
     if any(_needs_evidence(result) for result in results.values()):
@@ -304,6 +344,8 @@ def _teacher_job_id(result: Any) -> str:
 
 
 def _stage_completed_event_type(stage: str, result: Any) -> str:
+    if stage == "teacher" and _teacher_dispatch_failed(result):
+        return "teacher_job_failed"
     if stage == "teacher" and _teacher_job_id(result):
         return "teacher_job_submitted"
     return "stage_completed"
@@ -318,6 +360,19 @@ def _needs_evidence(result: Any) -> bool:
         "model_unavailable",
         "missing_checkpoint",
         "data_insufficient",
+        "failed",
+        "dispatch_failed",
+        "persistence_failed",
+    }
+
+
+def _teacher_dispatch_failed(result: Any) -> bool:
+    if not isinstance(result, dict):
+        return False
+    return str(result.get("status") or "").strip() in {
+        "failed",
+        "dispatch_failed",
+        "persistence_failed",
     }
 
 
@@ -355,6 +410,131 @@ def _stage_artifact_record(stage: str, result: Any) -> dict[str, Any]:
     }
 
 
+def _stage_result_summary(stage: str, result: Any) -> dict[str, Any]:
+    """Build a compact run/event payload while the full result lives as an artifact."""
+
+    if not isinstance(result, dict):
+        return {"stage": stage, "result_type": type(result).__name__}
+
+    summary: dict[str, Any] = {"stage": stage}
+    for key, value in result.items():
+        if key in {
+            "status",
+            "technology",
+            "model",
+            "model_version",
+            "verdict_type",
+            "verdict_id",
+            "job_id",
+            "task_id",
+            "dispatch_backend",
+            "label",
+            "risk_level",
+            "fallback",
+            "fallback_reason",
+            "fallback_policy",
+            "claimability",
+            "abstain",
+            "review_required",
+        }:
+            summary[key] = _compact_scalar(value)
+        elif key in {"score", "confidence"} and isinstance(value, (int, float)):
+            summary[key] = float(value)
+        elif key in {"scale_interval", "platforms", "review_reason"}:
+            compact_list = _compact_scalar_list(value)
+            if compact_list is not None:
+                summary[key] = compact_list
+        elif key in {"summary", "protocol", "advisory"} and isinstance(value, dict):
+            summary[key] = _compact_mapping(value, max_items=24)
+
+    for key in (
+        "evidence_edges",
+        "account_risk_tiers",
+        "community_lineage",
+        "windows",
+        "next_hop_ranking",
+        "posts",
+        "comments",
+        "evidence",
+        "signals",
+    ):
+        if key in result:
+            summary[f"{key}_summary"] = _shape_summary(result[key])
+
+    network = result.get("network")
+    if isinstance(network, dict):
+        summary["network_summary"] = _network_summary(network)
+    return summary
+
+
+def _artifact_event_ref(artifact_ref: dict[str, Any]) -> dict[str, Any]:
+    """Return only safe artifact locator fields for events and manifests."""
+
+    keys = (
+        "stored",
+        "collection",
+        "artifact_id",
+        "artifact_key",
+        "payload_sha256",
+        "payload_size_chars",
+        "chunk_count",
+        "reason",
+    )
+    return {key: artifact_ref[key] for key in keys if key in artifact_ref}
+
+
+def _compact_mapping(value: dict[str, Any], *, max_items: int) -> dict[str, Any]:
+    compact: dict[str, Any] = {}
+    for index, (key, item) in enumerate(value.items()):
+        if index >= max_items:
+            compact["truncated"] = True
+            break
+        if _is_scalar(item):
+            compact[str(key)] = _compact_scalar(item)
+            continue
+        scalar_list = _compact_scalar_list(item)
+        if scalar_list is not None:
+            compact[str(key)] = scalar_list
+        else:
+            compact[str(key)] = _shape_summary(item)
+    return compact
+
+
+def _compact_scalar_list(value: Any, *, max_items: int = 20) -> list[Any] | None:
+    if not isinstance(value, list) or len(value) > max_items:
+        return None
+    if not all(_is_scalar(item) for item in value):
+        return None
+    return [_compact_scalar(item) for item in value]
+
+
+def _compact_scalar(value: Any) -> Any:
+    if isinstance(value, str):
+        return value[:512]
+    return value
+
+
+def _shape_summary(value: Any) -> dict[str, Any]:
+    if isinstance(value, list):
+        return {"type": "list", "count": len(value)}
+    if isinstance(value, dict):
+        return {"type": "dict", "keys": sorted(str(key) for key in value.keys())[:20], "key_count": len(value)}
+    return {"type": type(value).__name__}
+
+
+def _network_summary(network: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "node_count": int(network.get("node_count") or len(network.get("nodes") or [])),
+        "edge_count": int(network.get("edge_count") or len(network.get("edges") or [])),
+        "cluster_count": int(network.get("cluster_count") or len(network.get("clusters") or [])),
+        "component_count": int(network.get("component_count") or 0),
+    }
+
+
+def _is_scalar(value: Any) -> bool:
+    return value is None or isinstance(value, (str, int, float, bool))
+
+
 def _stage_execution_state(
     result: dict[str, Any],
     *,
@@ -363,6 +543,8 @@ def _stage_execution_state(
 ) -> tuple[str, str]:
     """Classify runtime evidence without upgrading a demo into a claim."""
 
+    if status in {"failed", "dispatch_failed", "persistence_failed"}:
+        return "failed", "needs_evidence"
     if status in {"missing_data", "missing_checkpoint", "model_unavailable", "data_insufficient", "unavailable"}:
         return "blocked", "needs_evidence"
     model_name = str(result.get("model_version") or result.get("model") or "").lower()

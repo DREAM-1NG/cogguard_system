@@ -400,12 +400,26 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { message } from 'ant-design-vue'
-import * as echarts from 'echarts'
+import * as echarts from 'echarts/core'
+import { BarChart, GraphChart, LineChart } from 'echarts/charts'
+import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components'
+import { CanvasRenderer } from 'echarts/renderers'
+import type { ECharts } from 'echarts/core'
 import type { EChartsOption } from 'echarts'
 import { analyzeObservedPropagation, predictPropagationCurrentEvent } from '@/api/propagation'
 import PageHeader from '@/components/PageHeader.vue'
 
 const DEFAULT_EVENT_ID = 'trump_visit_2026_05_21'
+
+echarts.use([
+  BarChart,
+  LineChart,
+  GraphChart,
+  GridComponent,
+  LegendComponent,
+  TooltipComponent,
+  CanvasRenderer,
+])
 
 type KeyRoleItem = {
   account_id: string
@@ -663,6 +677,12 @@ const directionMap: Record<string, string> = {
   declining: '下降',
 }
 
+function alignSliderMax(rawMax: number, min: number, step: number) {
+  const safeStep = Math.max(1, Math.floor(Number(step) || 1))
+  const span = Math.max(0, Math.floor(rawMax) - Math.floor(min))
+  return Math.floor(min) + Math.ceil(span / safeStep) * safeStep
+}
+
 const analyzing = ref(false)
 const predicting = ref(false)
 const analysisResult = ref<AnalysisResult | null>(null)
@@ -687,9 +707,9 @@ const route = useRoute()
 const layerChartRef = ref<HTMLDivElement | null>(null)
 const pathGraphRef = ref<HTMLDivElement | null>(null)
 const modelTrendChartRef = ref<HTMLDivElement | null>(null)
-let layerChart: echarts.ECharts | null = null
-let pathGraphChart: echarts.ECharts | null = null
-let modelTrendChart: echarts.ECharts | null = null
+let layerChart: ECharts | null = null
+let pathGraphChart: ECharts | null = null
+let modelTrendChart: ECharts | null = null
 
 const analysisReady = computed(() => !!analysisResult.value && !analysisResult.value.error)
 const keyRoles = computed(() => analysisResult.value?.key_roles ?? null)
@@ -714,9 +734,16 @@ const diffusionVisibleCount = computed(() => {
   const count = Number(diffusionMeta.value.visible_node_count ?? diffusionSummary.value?.visible_nodes?.length ?? 0)
   return Number.isFinite(count) && count > 0 ? Math.floor(count) : 0
 })
+const diffusionSliderStep = computed(() => {
+  const rawMax = Math.max(diffusionTotalNodes.value, DEFAULT_DIFFUSION_NODE_LIMIT)
+  return rawMax > 1000 ? 50 : 10
+})
+const diffusionSliderMax = computed(() => {
+  const rawMax = Math.max(diffusionTotalNodes.value, DEFAULT_DIFFUSION_NODE_LIMIT)
+  const min = Math.min(DEFAULT_DIFFUSION_NODE_LIMIT, rawMax)
+  return alignSliderMax(rawMax, min, diffusionSliderStep.value)
+})
 const diffusionSliderMin = computed(() => Math.min(DEFAULT_DIFFUSION_NODE_LIMIT, diffusionSliderMax.value))
-const diffusionSliderMax = computed(() => Math.max(diffusionTotalNodes.value, DEFAULT_DIFFUSION_NODE_LIMIT))
-const diffusionSliderStep = computed(() => (diffusionSliderMax.value > 1000 ? 50 : 10))
 const layerRows = computed(() => diffusionSummary.value?.layers?.length ? diffusionSummary.value.layers : (pathAnalysis.value?.layer_distribution ?? []))
 const displayLayerRows = computed(() => normalizeLayerRows(layerRows.value))
 const userNameById = computed(() => {

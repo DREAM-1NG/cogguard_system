@@ -16,6 +16,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': resolve(__dirname, 'src'),
+      'three/webgpu': resolve(__dirname, 'src/runtime/webglOnlyRenderer.ts'),
     },
   },
   server: {
@@ -24,6 +25,47 @@ export default defineConfig({
       '/api': {
         target: 'http://localhost:8000',
         changeOrigin: true,
+      },
+    },
+  },
+  build: {
+    chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          const moduleId = id.replace(/\\/g, '/')
+          if (
+            moduleId.includes('/node_modules/ant-design-vue/')
+            || moduleId.includes('/node_modules/@ant-design/icons-vue/')
+          ) {
+            return 'ant-ui'
+          }
+          if (moduleId.includes('/node_modules/three/examples/jsm/')) return 'three-addons'
+          if (moduleId.includes('/node_modules/three/')) return 'three-renderer'
+          if (
+            moduleId.includes('/node_modules/3d-force-graph/')
+            || moduleId.includes('/node_modules/three-forcegraph/')
+            || moduleId.includes('/node_modules/three-render-objects/')
+            || moduleId.includes('/node_modules/three-spritetext/')
+          ) {
+            return 'graph3d-view'
+          }
+          if (
+            moduleId.includes('/node_modules/d3-')
+            || moduleId.includes('/node_modules/force-graph/')
+            || moduleId.includes('/node_modules/kapsule/')
+          ) {
+            return 'graph-layout'
+          }
+          if (
+            moduleId.includes('/node_modules/vue/')
+            || moduleId.includes('/node_modules/@vue/')
+            || moduleId.includes('/node_modules/vue-router/')
+            || moduleId.includes('/node_modules/pinia/')
+          ) {
+            return 'vue-runtime'
+          }
+        },
       },
     },
   },

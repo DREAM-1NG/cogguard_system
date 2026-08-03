@@ -1,5 +1,6 @@
 ﻿<template>
   <a-layout class="app-layout">
+    <a class="skip-link" href="#main-content">跳转到主内容</a>
     <a-layout-sider v-model:collapsed="collapsed" collapsible theme="dark">
       <div class="logo">
         <span v-if="!collapsed">CogGuard</span>
@@ -22,12 +23,12 @@
         </div>
         <div class="header-right">
           <a-dropdown>
-            <div class="user-badge">
+            <button type="button" class="user-badge" aria-label="打开用户菜单">
               <a-avatar size="small" style="background-color: #001529; font-size: 12px">
                 {{ (authStore.userInfo?.username || 'U').charAt(0).toUpperCase() }}
               </a-avatar>
               <span class="user-name">{{ authStore.userInfo?.username || '用户' }}</span>
-            </div>
+            </button>
             <template #overlay>
               <a-menu>
                 <a-menu-item disabled>
@@ -43,23 +44,26 @@
         </div>
       </a-layout-header>
 
-      <div class="tab-bar">
+      <nav class="tab-bar" aria-label="已打开页面">
         <div
           v-for="tab in openTabs"
           :key="tab.path"
           :class="['tab-item', { active: tab.path === route.path }]"
-          @click="router.push(tab.path)"
         >
-          <span>{{ tab.label }}</span>
-          <CloseOutlined
+          <router-link class="tab-link" :to="tab.path">{{ tab.label }}</router-link>
+          <button
             v-if="openTabs.length > 1"
+            type="button"
             class="tab-close"
-            @click.stop="closeTab(tab.path)"
-          />
+            :aria-label="`关闭${tab.label}`"
+            @click="closeTab(tab.path)"
+          >
+            <CloseOutlined aria-hidden="true" />
+          </button>
         </div>
-      </div>
+      </nav>
 
-      <a-layout-content class="app-content">
+      <a-layout-content id="main-content" class="app-content" tabindex="-1">
         <router-view />
       </a-layout-content>
     </a-layout>
@@ -94,8 +98,8 @@ const menuItems = [
   { path: '/coordination', label: '协同发现', icon: ApartmentOutlined, desc: '发现协同行为并构建协同网络', disabled: false },
   { path: '/propagation', label: '传播分析', icon: ShareAltOutlined, desc: '查看传播预测、证据链和传播角色', disabled: false },
   { path: '/accounts', label: '账号画像', icon: UserOutlined, desc: '账号画像、活跃节律和自动化倾向', disabled: false },
-  { path: '/risk', label: '风险研判', icon: AlertOutlined, desc: '风险研判、证据融合和治理分析', disabled: false },
-  { path: '/system', label: '系统管理', icon: SettingOutlined, desc: '管理研判服务、评测数据集、策略、任务和回填', disabled: false, roles: ['admin'] },
+  { path: '/risk', label: '事件研判', icon: AlertOutlined, desc: '查看证据、复核建议并确认处置结论', disabled: false },
+  { path: '/system', label: '系统运维', icon: SettingOutlined, desc: '配置服务并检查系统连通性与任务健康', disabled: false, roles: ['admin'] },
 ]
 
 const visibleMenuItems = computed(() => {
@@ -159,6 +163,25 @@ onMounted(async () => {
   min-height: 100vh;
 }
 
+.skip-link {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  z-index: 1000;
+  padding: 8px 12px;
+  color: #fff;
+  background: #0958d9;
+  border-radius: 4px;
+  transform: translateY(-160%);
+  transition: transform 0.15s ease;
+}
+
+.skip-link:focus-visible {
+  transform: translateY(0);
+  outline: 3px solid #91caff;
+  outline-offset: 2px;
+}
+
 .logo {
   height: 48px;
   display: flex;
@@ -167,7 +190,7 @@ onMounted(async () => {
   color: #fff;
   font-size: 18px;
   font-weight: 700;
-  letter-spacing: 2px;
+  letter-spacing: 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
@@ -191,7 +214,7 @@ onMounted(async () => {
   font-size: 15px;
   font-weight: 600;
   color: #1a1a2e;
-  letter-spacing: 0.5px;
+  letter-spacing: 0;
 }
 
 .header-right {
@@ -204,15 +227,21 @@ onMounted(async () => {
   align-items: center;
   gap: 8px;
   cursor: pointer;
+  font: inherit;
   padding: 4px 14px;
   border-radius: 20px;
   background: #f0f5ff;
   border: 1px solid #d6e4ff;
-  transition: all 0.2s;
+  transition: background-color 0.2s, border-color 0.2s, box-shadow 0.2s;
 
   &:hover {
     background: #e6f0ff;
     box-shadow: 0 2px 6px rgba(24, 144, 255, 0.15);
+  }
+
+  &:focus-visible {
+    outline: 3px solid #91caff;
+    outline-offset: 2px;
   }
 }
 
@@ -236,16 +265,15 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 14px;
+  padding: 0 8px 0 0;
   font-size: 13px;
   color: #666;
   background: #fff;
   border: 1px solid #e8e8e8;
   border-bottom: none;
   border-radius: 6px 6px 0 0;
-  cursor: pointer;
   white-space: nowrap;
-  transition: all 0.15s;
+  transition: color 0.15s, background-color 0.15s, border-color 0.15s;
   position: relative;
   top: 1px;
 
@@ -263,12 +291,31 @@ onMounted(async () => {
   }
 }
 
+.tab-link {
+  display: block;
+  padding: 6px 8px 6px 14px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.tab-link:focus-visible,
+.tab-close:focus-visible {
+  outline: 3px solid #91caff;
+  outline-offset: 1px;
+}
+
 .tab-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
   font-size: 10px;
   color: #bbb;
+  background: transparent;
   border-radius: 50%;
   padding: 2px;
-  transition: all 0.15s;
+  cursor: pointer;
+  transition: color 0.15s, background-color 0.15s;
 
   &:hover {
     color: #f5222d;
@@ -277,11 +324,25 @@ onMounted(async () => {
 }
 
 .app-content {
-  margin: 16px;
-  padding: 20px 24px;
+  margin: 12px;
+  padding: 16px 20px;
   background: #fff;
   border-radius: 6px;
   min-height: 360px;
+}
+
+.app-content:focus-visible {
+  outline: 3px solid #91caff;
+  outline-offset: -3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skip-link,
+  .user-badge,
+  .tab-item,
+  .tab-close {
+    transition: none;
+  }
 }
 </style>
 

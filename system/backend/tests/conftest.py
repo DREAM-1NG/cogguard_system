@@ -94,6 +94,16 @@ async def setup_database():
         await conn.run_sync(Base.metadata.drop_all)
 
 
+@pytest.fixture
+async def db_session(setup_database) -> AsyncGenerator[AsyncSession]:
+    """Provide a committed test MySQL session for persistence-backed tests."""
+    if test_session_factory is None:
+        pytest.skip("MySQL not available")
+    async with test_session_factory() as session:
+        yield session
+        await session.commit()
+
+
 async def override_get_db() -> AsyncGenerator[AsyncSession]:
     if test_session_factory is None:
         pytest.skip("MySQL not available")

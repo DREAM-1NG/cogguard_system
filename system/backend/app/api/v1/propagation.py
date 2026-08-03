@@ -9,7 +9,7 @@ from inspect import Parameter, signature
 
 from fastapi import APIRouter, Depends, Query
 
-from app.core.security import get_current_user_or_local_preview
+from app.core.security import get_current_user
 from app.models.user import User
 from app.services import propagation_model_service, propagation_observation_service
 from app.utils.response import success
@@ -36,7 +36,7 @@ async def analyze(
     platform: str | None = Query(None, description="Limit analysis to one platform."),
     event_id: str | None = Query(None, description="Limit analysis to one event id."),
     node_limit: int = Query(300, ge=0, description="Maximum propagation graph nodes; 0 means no limit."),
-    _current_user: User | None = Depends(get_current_user_or_local_preview),
+    _current_user: User = Depends(get_current_user),
 ):
     """Analyze observed propagation paths, roles, objects, and evidence."""
     result = await _call_observed_analysis(platform=platform, event_id=event_id, node_limit=node_limit)
@@ -48,7 +48,7 @@ async def observed_analysis(
     platform: str | None = Query(None, description="Limit analysis to one platform."),
     event_id: str | None = Query(None, description="Limit analysis to one event id."),
     node_limit: int = Query(300, ge=0, description="Maximum propagation graph nodes; 0 means no limit."),
-    _current_user: User | None = Depends(get_current_user_or_local_preview),
+    _current_user: User = Depends(get_current_user),
 ):
     """Canonical observed-only Propagation Analysis endpoint."""
     result = await _call_observed_analysis(platform=platform, event_id=event_id, node_limit=node_limit)
@@ -60,7 +60,7 @@ async def predict_model_event(
     platform: str | None = Query(None, description="Limit prediction to one platform."),
     event_id: str | None = Query(None, description="Limit prediction to one event id."),
     top_k: int = Query(10, ge=1, le=50, description="Number of next-hop candidates to return."),
-    _current_user: User | None = Depends(get_current_user_or_local_preview),
+    _current_user: User = Depends(get_current_user),
 ):
     """Run the prediction model for current-event propagation data."""
     result = await propagation_model_service.predict_current_event_model(
@@ -76,7 +76,7 @@ async def predict_macro_micro_model(
     dataset: str = Query("twitter", description="Experiment dataset: twitter, douban, or memetracker."),
     seed: int | None = Query(42, description="Experiment seed; empty aggregates all available seeds."),
     run_live: bool = Query(False, description="Run a local small-run instead of reading cached results."),
-    _current_user: User | None = Depends(get_current_user_or_local_preview),
+    _current_user: User = Depends(get_current_user),
 ):
     """Read macro-size and next-hop prediction-model experiment evidence."""
     result = await propagation_model_service.predict_benchmark_model_evidence(

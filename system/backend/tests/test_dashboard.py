@@ -78,6 +78,9 @@ def test_dashboard_overview_filters_event_and_uses_first_poster_location(monkeyp
     assert result["summary"]["posts"] == 3
     assert result["summary"]["comments"] == 2
     assert result["summary"]["platform_count"] == 2
+    assert result["meta"]["data_availability"] == "partial"
+    assert "mongo_filter" not in result["meta"]
+    assert "data_source_status" not in result["meta"]
     event_point = result["event_locations"][0]
     assert event_point["origin_author"] == "新华日报"
     assert event_point["origin_post_id"] == "p1"

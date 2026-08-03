@@ -14,10 +14,12 @@ from app.schemas.crawl import CrawlDataQuery, CrawlRequest
 
 async def create_crawl_job(req: CrawlRequest, user_id: int, db: AsyncSession) -> CrawlJob:
     job_type = "news" if req.platform == "news" else "social"
+    params = req.model_dump()
+    params["_created_by"] = int(user_id)
     job = CrawlJob(
         job_type=job_type,
         platform=req.platform,
-        params_json=json.dumps(req.model_dump(), ensure_ascii=False, default=str),
+        params_json=json.dumps(params, ensure_ascii=False, default=str),
         status="pending",
         created_by=user_id,
     )

@@ -86,6 +86,35 @@ class AnalysisModelVersion(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
 
+class AnalysisModelActivationApproval(Base):
+    """Immutable approval written by one authenticated model administrator."""
+
+    __tablename__ = "analysis_model_activation_approvals"
+    __table_args__ = (
+        UniqueConstraint(
+            "approval_id",
+            name="uq_analysis_model_activation_approvals_approval_id",
+        ),
+        UniqueConstraint(
+            "model_version_id",
+            "approver_id",
+            name="uq_analysis_model_activation_approvals_model_approver",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    approval_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    model_version_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    approver_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    approval_notes: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    immutable_source: Mapped[str] = mapped_column(
+        String(128),
+        nullable=False,
+        default="analysis.governance.model_approval.v1",
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
 class AnalysisModelActivation(Base):
     """One active model-version pointer per analysis technology."""
 
@@ -99,6 +128,28 @@ class AnalysisModelActivation(Base):
     activated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
 
+class AnalysisModelGovernanceDecision(Base):
+    """Append-only activation or rollback decision history."""
+
+    __tablename__ = "analysis_model_governance_decisions"
+    __table_args__ = (
+        UniqueConstraint(
+            "decision_id",
+            name="uq_analysis_model_governance_decisions_decision_id",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    decision_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    technology: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    model_version_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    previous_model_version_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    decision_type: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    decision_json: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
+    decided_by: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
 class ReviewVerdictVersion(Base):
     """Versioned review verdict with human approval and provenance fields."""
 
@@ -108,6 +159,10 @@ class ReviewVerdictVersion(Base):
             "verdict_id",
             "version",
             name="uq_analysis_review_verdict_versions_verdict_version",
+        ),
+        UniqueConstraint(
+            "canonical_source_id",
+            name="uq_analysis_review_verdict_versions_canonical_source",
         ),
     )
 

@@ -69,8 +69,7 @@ export interface DashboardOverview {
     event_id: string | null
     default_event_id: string
     generated_at: string
-    mongo_filter: Record<string, unknown>
-    data_source_status: Record<string, string>
+    data_availability: 'available' | 'partial'
   }
 }
 

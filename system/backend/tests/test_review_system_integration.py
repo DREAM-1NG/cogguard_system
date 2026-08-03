@@ -213,21 +213,22 @@ def test_backfill_report_json_is_idempotent():
     assert records["feedback"][0]["error_types"] == ["false_negative"]
 
 
-def test_run_agent_review_api_returns_async_job(monkeypatch):
+def test_run_agent_review_api_maps_to_case_review_request():
     from app.api.v1 import risk as risk_api
 
     calls = {}
     committed = {"value": False}
 
-    async def fake_create_job(**kwargs):
-        calls.update(kwargs)
-        return {"job_id": 123, "status": "pending", "poll_url": "/api/v1/risk/review/jobs/123"}
-
     class FakeDB:
         async def commit(self):
             committed["value"] = True
 
-    monkeypatch.setattr(risk_api.risk_service, "create_agent_review_job", fake_create_job)
+    class FakeService:
+        db = FakeDB()
+
+        async def legacy_request_review(self, **kwargs):
+            calls.update(kwargs)
+            return {"case_id": "case-risk-1", "action_required": "review_available"}
 
     response = __import__("asyncio").run(
         risk_api.run_agent_review(
@@ -238,16 +239,15 @@ def test_run_agent_review_api_returns_async_job(monkeypatch):
                 enable_active_retrieval=True,
             ),
             current_user=type("User", (), {"id": 42, "role": "analyst"})(),
-            db=FakeDB(),
+            service=FakeService(),
         )
     )
 
-    assert response["data"] == {"job_id": 123, "status": "pending", "poll_url": "/api/v1/risk/review/jobs/123"}
+    assert response["data"] == {"case_id": "case-risk-1", "action_required": "review_available"}
     assert committed["value"] is True
-    assert calls["job_type"] == "agent_review"
-    assert calls["payload"]["report_id"] == "risk-1"
-    assert calls["payload"]["selected_post_ids"] == ["p1"]
-    assert calls["user_id"] == 42
+    assert calls["report_id"] == "risk-1"
+    assert calls["evidence_refs"] == ["p1"]
+    assert calls["actor"].id == 42
 
 
 def test_exa_retrieval_adapter_maps_request_and_response(monkeypatch):
