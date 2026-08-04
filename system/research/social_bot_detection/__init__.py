@@ -20,14 +20,12 @@ from .active_learning import (
     AccountAcquisitionCandidate,
     AccountAcquisitionItem,
     AccountAcquisitionResult,
-    AccountAcquisitionWeights,
     AcquisitionInputError,
     badge_select,
     calibrated_uncertainty,
     compute_alps_embeddings,
     core_set_select,
     select_account_labeling_batch,
-    select_heuristic_labeling_batch,
 )
 from .chinese_corpus import ApprovedAccountLabel, ChineseAccountCorpusManifest, export_approved_account_corpus
 from .dataset import load_botection_dataset, load_social_dataset, split_samples
@@ -62,7 +60,6 @@ __all__ = [
     "AccountAcquisitionCandidate",
     "AccountAcquisitionItem",
     "AccountAcquisitionResult",
-    "AccountAcquisitionWeights",
     "AcquisitionInputError",
     "ActiveRoundEvaluationGate",
     "ApprovedAccountLabel",
@@ -100,7 +97,6 @@ __all__ = [
     "load_strict_social_corpus",
     "load_social_dataset",
     "select_account_labeling_batch",
-    "select_heuristic_labeling_batch",
     "select_routed_accounts",
     "split_samples",
     "train_strict_botrhg",

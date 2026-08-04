@@ -3,12 +3,10 @@ from __future__ import annotations
 from research.social_bot_detection.active_learning import (
     AccountAcquisitionCandidate,
     AcquisitionInputError,
-    AccountAcquisitionWeights,
     badge_select,
     calibrated_uncertainty,
     core_set_select,
     select_account_labeling_batch,
-    select_heuristic_labeling_batch,
 )
 from research.social_bot_detection.evaluate_active_round import evaluate_active_round_gates
 from research.social_bot_detection.evaluate_active_round import build_frozen_holdout_manifest
@@ -21,7 +19,6 @@ def _candidate(
     platform: str = "weibo",
     probability: float | None = None,
     calibrated: bool = False,
-    ood: float = 0.0,
     approved: bool = False,
     alps: list[float] | None = None,
     badge: list[float] | None = None,
@@ -38,7 +35,6 @@ def _candidate(
         model_is_calibrated=calibrated,
         calibrated_probability=probability if calibrated else None,
         calibration_source=calibration_source,
-        ood_score=ood,
         alps_embedding=alps,
         badge_embedding=badge,
         has_approved_label=approved,
@@ -59,7 +55,7 @@ def test_cold_start_uses_alps_embeddings_and_core_set_selection():
     assert selected.strategy == "cold_start_alps_core_set"
     assert [item.case_id for item in selected.items] == ["case-near-a", "case-far-c"]
     assert all(item.selection_bucket == "alps_core_set" for item in selected.items)
-    assert selected.manifest["non_claimable_fallback_used"] is False
+    assert "non_claimable_fallback_used" not in selected.manifest
 
 
 def test_cold_start_requires_real_alps_vectors():
@@ -143,22 +139,6 @@ def test_core_set_and_badge_helpers_are_deterministic():
     )
     assert selected == [0]
     assert calibrated_uncertainty(0.51, calibrated=True) > 0.9
-
-
-def test_heuristic_baseline_is_explicit_and_non_claimable():
-    selected = select_heuristic_labeling_batch(
-        [
-            _candidate("already-labeled", probability=0.5, approved=True),
-            _candidate("uncertain-a", probability=0.51),
-            _candidate("uncertain-b", probability=0.49),
-        ],
-        budget=2,
-        weights=AccountAcquisitionWeights(random_audit=0.0),
-    )
-
-    assert selected.strategy == "heuristic_baseline"
-    assert selected.manifest["non_claimable_fallback_used"] is True
-    assert "case-already-labeled" not in {item.case_id for item in selected.items}
 
 
 def test_platform_stratification_prevents_one_platform_from_owning_the_batch():

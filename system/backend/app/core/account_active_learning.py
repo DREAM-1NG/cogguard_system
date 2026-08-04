@@ -47,15 +47,6 @@ def select_account_detection_label_batch(
             post_ids=case.post_ids,
             model_probability=_probability_for(case, model_outputs),
             model_is_calibrated=_is_calibrated(_payload_for(case, model_outputs)),
-            disagreement_score=_score_for(case, model_outputs, "disagreement_score", "disagreement"),
-            ood_score=_score_for(case, model_outputs, "ood_score", "ood"),
-            graph_representativeness=_score_for(
-                case,
-                model_outputs,
-                "graph_representativeness",
-                "representativeness",
-            ),
-            embedding=_embedding_for(case, model_outputs),
             alps_embedding=alps_by_case.get(case.case_id) or _vector_for(
                 case,
                 model_outputs,
@@ -123,29 +114,6 @@ def _calibration_source(payload: dict[str, Any]) -> str:
 
 def _has_calibrated_model_output(model_outputs: dict[str, dict[str, Any]]) -> bool:
     return any(_is_calibrated(payload) and _calibration_source(payload) for payload in model_outputs.values())
-
-
-def _score_for(
-    case: AccountDetectionCase,
-    model_outputs: dict[str, dict[str, Any]],
-    *keys: str,
-) -> float:
-    payload = _payload_for(case, model_outputs)
-    for key in keys:
-        if key in payload and payload[key] is not None:
-            value = _safe_float(payload[key])
-            if value is None:
-                continue
-            return max(0.0, min(1.0, value))
-    return 0.0
-
-
-def _embedding_for(
-    case: AccountDetectionCase,
-    model_outputs: dict[str, dict[str, Any]],
-) -> list[float] | None:
-    payload = _payload_for(case, model_outputs)
-    return _parse_vector(payload.get("embedding") or payload.get("representation"))
 
 
 def _vector_for(

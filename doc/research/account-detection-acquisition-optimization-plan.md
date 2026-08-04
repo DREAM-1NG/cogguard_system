@@ -2,7 +2,7 @@
 
 Updated: 2026-08-04
 
-This plan upgrades the current **Chinese Account Detection Active Learning Loop** from a deterministic acquisition baseline to a research-grade acquisition stack. The current weighted selector stays only as an explicit `heuristic_baseline` comparison baseline.
+This plan upgrades the **Chinese Account Detection Active Learning Loop** from a deterministic acquisition baseline to a research-grade acquisition stack. The previous weighted selector has been removed from system code.
 
 ## Position
 
@@ -12,7 +12,7 @@ The deployed acquisition line is now strict:
 - Warm start uses calibrated BotRHG probabilities and BADGE classifier-gradient embeddings.
 - If the required local model path, calibration metadata, or BADGE vectors are missing, the system fails closed instead of producing a pseudo research batch.
 
-The older `cold_start_surprisal_diversity` and `uncertainty_disagreement_diversity` policies are not claimable acquisition methods. They are retained only through `heuristic_baseline` for ablation and regression comparison.
+The older weighted policies are not claimable acquisition methods and are no longer retained in the runtime selector. Baseline comparisons should be implemented in experiment scripts, not in the product acquisition path.
 
 The research upgrade should be staged:
 
@@ -40,15 +40,15 @@ The research upgrade should be staged:
 
 - Add `system/research/social_bot_detection/acquisition/representations.py`.
 - Export account embeddings, logits, calibrated probabilities, and optional gradients from the local Chinese RoBERTa/BotRHG model.
-- Remove hashed text embedding from research reports; keep it only as a runtime fallback marked `non_claimable`.
+- Remove hashed text embedding from acquisition code and research reports.
 - Add local Chinese MLM surprisal scoring for cold-start cases.
 
 ### Phase 2: Strong Baselines
 
 - Add `acquisition/cold_start.py` with ALPS-style surprisal and k-center core-set.
 - Add `acquisition/warm_start.py` with calibrated uncertainty and BADGE.
-- Keep current weighted selector as `heuristic_baseline`.
-- Add budgeted strategies: `random`, `uncertainty`, `core_set`, `alps_core_set`, `badge`, `heuristic_baseline`.
+- Keep only strict system strategies: `cold_start_alps_core_set` and `warm_start_calibrated_uncertainty_badge`.
+- Compare `random`, `uncertainty`, `core_set`, `alps_core_set`, and `badge` in offline experiment scripts.
 
 ### Phase 3: Candidate Extensions
 
@@ -68,7 +68,7 @@ The research upgrade should be staged:
 
 | Current module | Keep / change | Reason |
 | --- | --- | --- |
-| `social_bot_detection/active_learning.py` | Default strict selector plus explicit baseline | Default strategies are `cold_start_alps_core_set` and `warm_start_calibrated_uncertainty_badge`; `heuristic_baseline` is opt-in only. |
+| `social_bot_detection/active_learning.py` | Strict selector only | Runtime strategies are `cold_start_alps_core_set` and `warm_start_calibrated_uncertainty_badge`; no weighted selector remains. |
 | `account_active_learning.py` | Strict adapter | It computes ALPS embeddings from `ACCOUNT_ACQUISITION_TEXT_MODEL_PATH` in cold start and passes calibrated BotRHG BADGE payloads in warm start. |
 | `evaluate_active_round.py` | Extend | It already has holdout leakage and efficiency helpers; add full curve export. |
 | `datasets.py` | Keep | `approved_account_corpus` is the correct training source for Chinese active rounds. |

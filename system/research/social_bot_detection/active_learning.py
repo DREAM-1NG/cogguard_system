@@ -1,15 +1,14 @@
 """Research-grade acquisition for Chinese account detection.
 
-The default selector implements the deployed research line:
+Default acquisition is strict:
 
 * cold start: ALPS-style masked-language-model surprisal embeddings followed
-  by core-set farthest-first selection;
+  by Core-set farthest-first selection;
 * warm start: calibrated classifier uncertainty followed by BADGE gradient
   embedding selection.
 
-Heuristic weighted scoring remains available only as an explicit baseline for
-ablation. The default path never fabricates ALPS or BADGE vectors from hashed
-text features.
+The module fails closed when those true inputs are missing. It intentionally
+does not keep a weighted or hashed-text selector.
 """
 
 from __future__ import annotations
@@ -26,14 +25,12 @@ __all__ = [
     "AccountAcquisitionCandidate",
     "AccountAcquisitionItem",
     "AccountAcquisitionResult",
-    "AccountAcquisitionWeights",
     "AcquisitionInputError",
     "badge_select",
     "calibrated_uncertainty",
     "compute_alps_embeddings",
     "core_set_select",
     "select_account_labeling_batch",
-    "select_heuristic_labeling_batch",
 ]
 
 
@@ -53,28 +50,12 @@ class AccountAcquisitionCandidate:
     post_ids: list[str]
     model_probability: float | None = None
     model_is_calibrated: bool = False
-    disagreement_score: float = 0.0
-    ood_score: float = 0.0
-    graph_representativeness: float = 0.0
-    embedding: list[float] | None = None
     alps_embedding: list[float] | None = None
     badge_embedding: list[float] | None = None
     calibrated_probability: float | None = None
     calibration_source: str = ""
     has_approved_label: bool = False
     metadata: dict[str, Any] = field(default_factory=dict)
-
-
-@dataclass(frozen=True, slots=True)
-class AccountAcquisitionWeights:
-    """Weights for the explicit heuristic baseline only."""
-
-    uncertainty: float = 0.40
-    disagreement: float = 0.20
-    diversity: float = 0.20
-    ood: float = 0.10
-    representativeness: float = 0.10
-    random_audit: float = 0.05
 
 
 @dataclass(frozen=True, slots=True)
@@ -122,19 +103,12 @@ def select_account_labeling_batch(
     candidates: list[AccountAcquisitionCandidate],
     *,
     budget: int,
-    weights: AccountAcquisitionWeights | None = None,
     cold_start: bool = False,
-    surprisal_by_case: dict[str, float] | None = None,
     seed: int = 42,
+    **_unused_compat_kwargs: Any,
 ) -> AccountAcquisitionResult:
-    """Select a deterministic research-grade human-labeling batch.
+    """Select a deterministic research-grade human-labeling batch."""
 
-    ``weights`` and ``surprisal_by_case`` are accepted for API compatibility
-    but ignored by the research path. Use ``select_heuristic_labeling_batch``
-    for the legacy weighted baseline.
-    """
-
-    del weights, surprisal_by_case
     eligible, excluded_count = _eligible_candidates(candidates)
     has_calibrated_ranker = _has_calibrated_ranker(eligible)
     effective_cold_start = cold_start or not has_calibrated_ranker
@@ -183,12 +157,7 @@ def compute_alps_embeddings(
     batch_size: int = 4,
     device: str = "cpu",
 ) -> list[list[float]]:
-    """Compute ALPS-style token surprisal embeddings with a local MLM.
-
-    Each vector is the negative log probability assigned by the MLM to the
-    observed input tokens. This follows the ALPS cold-start idea while staying
-    independent from an external service.
-    """
+    """Compute ALPS-style token surprisal embeddings with a local MLM."""
 
     model_dir = Path(model_path).expanduser()
     if not model_dir.exists():
@@ -203,9 +172,8 @@ def compute_alps_embeddings(
     vectors: list[list[float]] = []
     with torch.no_grad():
         for start in range(0, len(texts), batch_size):
-            batch_texts = texts[start : start + batch_size]
             encoded = tokenizer(
-                batch_texts,
+                texts[start : start + batch_size],
                 padding=True,
                 truncation=True,
                 max_length=max_length,
@@ -216,8 +184,7 @@ def compute_alps_embeddings(
             log_probs = logits.log_softmax(dim=-1)
             token_log_probs = log_probs.gather(2, encoded["input_ids"].unsqueeze(-1)).squeeze(-1)
             surprisal = -token_log_probs * encoded["attention_mask"].to(token_log_probs.dtype)
-            for row in surprisal.detach().cpu().numpy():
-                vectors.append([float(value) for value in row.tolist()])
+            vectors.extend([[float(value) for value in row.tolist()] for row in surprisal.detach().cpu().numpy()])
     return vectors
 
 
@@ -244,8 +211,9 @@ def core_set_select(
                 return selected
     if not selected:
         norms = np.linalg.norm(matrix, axis=1)
-        selected.append(int(np.lexsort((np.arange(matrix.shape[0]), -norms))[0]))
-        selected_set.add(selected[0])
+        first = int(np.lexsort((np.arange(matrix.shape[0]), -norms))[0])
+        selected.append(first)
+        selected_set.add(first)
     while len(selected) < budget:
         distances = _distance_to_selected(matrix, selected)
         for index in selected_set:
@@ -278,108 +246,6 @@ def badge_select(
     vectors = [_required_vector(candidate.badge_embedding, candidate.case_id, "badge_embedding") for candidate in candidates]
     initial = _highest_uncertainty_indices(candidates)
     return core_set_select(vectors, budget=budget, seed=seed, initial_indices=initial[:1])
-
-
-def select_heuristic_labeling_batch(
-    candidates: list[AccountAcquisitionCandidate],
-    *,
-    budget: int,
-    weights: AccountAcquisitionWeights | None = None,
-    cold_start: bool = False,
-    surprisal_by_case: dict[str, float] | None = None,
-    seed: int = 42,
-) -> AccountAcquisitionResult:
-    """Legacy weighted acquisition baseline for ablation only."""
-
-    weights = weights or AccountAcquisitionWeights()
-    eligible, excluded_count = _eligible_candidates(candidates)
-    has_calibrated_ranker = _has_calibrated_ranker(eligible)
-    effective_cold_start = cold_start or not has_calibrated_ranker
-    has_surprisal = bool(surprisal_by_case)
-    strategy = "heuristic_baseline"
-    if budget <= 0 or not eligible:
-        return AccountAcquisitionResult(
-            strategy=strategy,
-            items=[],
-            manifest=_heuristic_manifest(
-                budget,
-                candidates,
-                eligible,
-                excluded_count,
-                weights,
-                effective_cold_start,
-                has_surprisal,
-                has_calibrated_ranker,
-            ),
-        )
-
-    scored = [
-        (
-            candidate,
-            _score_heuristic_candidate(
-                candidate,
-                weights=weights,
-                cold_start=effective_cold_start,
-                surprisal=float((surprisal_by_case or {}).get(candidate.case_id, 0.0)),
-            ),
-        )
-        for candidate in eligible
-    ]
-
-    selected: list[tuple[AccountAcquisitionCandidate, dict[str, float], str]] = []
-    selected_ids: set[str] = set()
-    audit_quota = min(
-        len(scored),
-        budget,
-        max(1, round(budget * weights.random_audit)) if weights.random_audit > 0 else 0,
-    )
-    for candidate, scores in sorted(scored, key=lambda row: _stable_random_key(row[0].case_id, seed))[:audit_quota]:
-        selected.append((candidate, scores, "random_audit"))
-        selected_ids.add(candidate.case_id)
-
-    while len(selected) < budget:
-        remaining = [(candidate, scores) for candidate, scores in scored if candidate.case_id not in selected_ids]
-        if not remaining:
-            break
-        candidate, scores = max(
-            remaining,
-            key=lambda row: (
-                _score_with_heuristic_diversity(row[0], row[1], selected),
-                row[0].platform,
-                row[0].case_id,
-            ),
-        )
-        selected.append((candidate, scores, "heuristic_acquisition"))
-        selected_ids.add(candidate.case_id)
-
-    items = [
-        AccountAcquisitionItem(
-            case_id=candidate.case_id,
-            account_id=candidate.account_id,
-            platform=candidate.platform,
-            event_id=candidate.event_id,
-            post_ids=list(candidate.post_ids),
-            priority_rank=rank,
-            selection_bucket=bucket_name,
-            scores=scores,
-            score=round(_score_with_heuristic_diversity(candidate, scores, selected[: rank - 1]), 6),
-        )
-        for rank, (candidate, scores, bucket_name) in enumerate(selected, start=1)
-    ]
-    return AccountAcquisitionResult(
-        strategy=strategy,
-        items=items,
-        manifest=_heuristic_manifest(
-            budget,
-            candidates,
-            eligible,
-            excluded_count,
-            weights,
-            effective_cold_start,
-            has_surprisal,
-            has_calibrated_ranker,
-        ),
-    )
 
 
 def _select_cold_start_alps_core_set(
@@ -480,12 +346,10 @@ def _select_with_platform_coverage(
             selected_ids.add(platform_rows[index].candidate.case_id)
     remaining = [row for row in rows if row.candidate.case_id not in selected_ids]
     if len(selected) < budget and remaining:
-        initial_indices = [_index_by_case_id(remaining, row.candidate.case_id) for row in selected if _index_by_case_id(remaining, row.candidate.case_id) >= 0]
         selected_indices = core_set_select(
             [row.vector.tolist() for row in remaining],
             budget=budget - len(selected),
             seed=seed,
-            initial_indices=initial_indices,
         )
         for index in selected_indices:
             row = remaining[index]
@@ -578,13 +442,6 @@ def _initial_index(rows: list[_ScoredCandidate], vector_mode: str) -> int:
     return int(np.lexsort((np.arange(len(rows)), -np.asarray(norms)))[0])
 
 
-def _index_by_case_id(rows: list[_ScoredCandidate], case_id: str) -> int:
-    for index, row in enumerate(rows):
-        if row.candidate.case_id == case_id:
-            return index
-    return -1
-
-
 def _highest_uncertainty_indices(candidates: list[AccountAcquisitionCandidate]) -> list[int]:
     rows = []
     for index, candidate in enumerate(candidates):
@@ -595,7 +452,7 @@ def _highest_uncertainty_indices(candidates: list[AccountAcquisitionCandidate]) 
             uncertainty = -1.0
         rows.append((index, uncertainty, candidate.case_id))
     rows.sort(key=lambda row: (row[1], row[2]), reverse=True)
-    return [index for index, _uncertainty_value, _case_id in rows if _uncertainty_value >= 0.0]
+    return [index for index, uncertainty_value, _case_id in rows if uncertainty_value >= 0.0]
 
 
 def _normalize_matrix(matrix: np.ndarray) -> np.ndarray:
@@ -622,83 +479,11 @@ def _stable_index_choice(indices: list[int], *, seed: int) -> int:
     return int(min(keyed)[1])
 
 
-def _score_heuristic_candidate(
-    candidate: AccountAcquisitionCandidate,
-    *,
-    weights: AccountAcquisitionWeights,
-    cold_start: bool,
-    surprisal: float,
-) -> dict[str, float]:
-    uncertainty = _uncertainty(candidate.model_probability if candidate.model_is_calibrated else None)
-    if cold_start:
-        uncertainty = 0.0
-    scores = {
-        "uncertainty": round(uncertainty, 6),
-        "disagreement": round(_clamp(candidate.disagreement_score), 6),
-        "ood": round(_clamp(candidate.ood_score), 6),
-        "representativeness": round(_clamp(candidate.graph_representativeness), 6),
-        "surprisal": round(_clamp(surprisal), 6),
-    }
-    if cold_start:
-        base_score = (0.70 * scores["surprisal"]) + (0.30 * scores["representativeness"])
-    else:
-        base_score = (
-            weights.uncertainty * scores["uncertainty"]
-            + weights.disagreement * scores["disagreement"]
-            + weights.ood * scores["ood"]
-            + weights.representativeness * scores["representativeness"]
-        )
-    scores["base_score"] = round(float(base_score), 6)
-    return scores
-
-
-def _score_with_heuristic_diversity(
-    candidate: AccountAcquisitionCandidate,
-    scores: dict[str, float],
-    selected: list[tuple[AccountAcquisitionCandidate, dict[str, float], str]],
-) -> float:
-    diversity = 1.0 if not selected else min(
-        _cosine_distance(_heuristic_embedding(candidate), _heuristic_embedding(existing))
-        for existing, _scores, _bucket in selected
-    )
-    return float(scores["base_score"] + (0.20 * diversity))
-
-
-def _uncertainty(probability: float | None) -> float:
-    if probability is None:
-        return 0.0
-    probability = _clamp(probability)
-    return 1.0 - abs(probability - 0.5) * 2.0
-
-
-def _heuristic_embedding(candidate: AccountAcquisitionCandidate) -> np.ndarray:
-    if candidate.embedding:
-        return np.asarray(candidate.embedding, dtype=np.float32)
-    return _hashed_shingle_embedding(candidate.text)
-
-
-def _hashed_shingle_embedding(text: str, dims: int = 64) -> np.ndarray:
-    vector = np.zeros(dims, dtype=np.float32)
-    normalized = " ".join(text.lower().split())
-    if not normalized:
-        return vector
-    shingles = [normalized[index : index + 4] for index in range(max(1, len(normalized) - 3))]
-    for shingle in shingles:
-        index = int(hashlib.sha256(shingle.encode("utf-8")).hexdigest()[:8], 16) % dims
-        vector[index] += 1.0
-    norm = float(np.linalg.norm(vector))
-    return vector / norm if norm else vector
-
-
 def _cosine_distance(left: np.ndarray, right: np.ndarray) -> float:
     denom = float(np.linalg.norm(left) * np.linalg.norm(right))
     if denom == 0.0:
         return 1.0
     return float(1.0 - ((left @ right) / denom))
-
-
-def _stable_random_key(case_id: str, seed: int) -> str:
-    return hashlib.sha256(f"{seed}:{case_id}".encode("utf-8")).hexdigest()
 
 
 def _research_manifest(
@@ -724,7 +509,6 @@ def _research_manifest(
         "selection_backend": "core_set_farthest_first",
         "alps_source": "local_chinese_masked_language_model_or_precomputed_alps_embedding",
         "badge_source": "internal_botrhg_classifier_gradient_embedding",
-        "non_claimable_fallback_used": False,
         "budget": int(budget),
         "selected_count": int(selected_count),
         "candidate_count": len(candidates),
@@ -733,35 +517,6 @@ def _research_manifest(
         "stratified_by": ["platform", "event_id"],
         "label_policy": "model_scores_rank_human_review_only",
         "seed": int(seed),
-    }
-
-
-def _heuristic_manifest(
-    budget: int,
-    candidates: list[AccountAcquisitionCandidate],
-    eligible: list[AccountAcquisitionCandidate],
-    excluded_count: int,
-    weights: AccountAcquisitionWeights,
-    cold_start: bool,
-    has_surprisal: bool,
-    has_calibrated_ranker: bool,
-) -> dict[str, Any]:
-    return {
-        "schema": "cogguard.account_detection.active_learning.heuristic_baseline.v1",
-        "algorithm_family": "heuristic_baseline",
-        "strategy": "heuristic_baseline",
-        "model_state": "cold_start_no_reliable_ranker" if cold_start else "warm_start_calibrated_model_ranker",
-        "ranker_status": "calibrated_model_available" if has_calibrated_ranker else "no_calibrated_model",
-        "surprisal_source": "provided_language_model" if has_surprisal else "unavailable",
-        "diversity_source": "candidate_embedding_or_deterministic_text_fallback",
-        "non_claimable_fallback_used": True,
-        "budget": budget,
-        "candidate_count": len(candidates),
-        "eligible_count": len(eligible),
-        "excluded_approved_label_count": excluded_count,
-        "stratified_by": ["platform", "event_id"],
-        "label_policy": "model_scores_rank_human_review_only",
-        "weights": asdict(weights),
     }
 
 
