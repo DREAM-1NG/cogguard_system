@@ -106,8 +106,6 @@ def test_botrhg_service_filters_posts_by_event_and_platform(monkeypatch):
         bot_detection_service.detect_social_bots(
             event_id="event-1",
             platform="weibo",
-            routing_budget=0.3,
-            support_k=1,
         )
     )
 
@@ -115,6 +113,22 @@ def test_botrhg_service_filters_posts_by_event_and_platform(monkeypatch):
     assert result["summary"]["event_id"] == "event-1"
     assert result["summary"]["platform"] == "weibo"
     assert result["summary"]["account_count"] == 1
+
+
+def test_botrhg_service_does_not_fall_back_to_rule_detection(monkeypatch):
+    posts = [_post("u1", "2026-05-21T00:00:00+00:00", "hello")]
+    raw_posts = FakeCollection(posts)
+    fake_db = FakeMongoDB(raw_posts=raw_posts)
+    monkeypatch.setattr(bot_detection_service, "get_mongo_db", lambda: fake_db)
+    monkeypatch.setattr(bot_detection_service, "run_trained_botrhg_detection", lambda _posts: None)
+
+    result = asyncio.run(
+        bot_detection_service.detect_social_bots(event_id="event-1", platform="weibo")
+    )
+
+    assert result["accounts"] == []
+    assert result["summary"]["account_count"] == 0
+    assert result["summary"]["post_count"] == 1
 
 
 def test_botrhg_api_requires_authenticated_user_and_passes_parameters(monkeypatch, authenticated_user_override):
@@ -135,7 +149,7 @@ def test_botrhg_api_requires_authenticated_user_and_passes_parameters(monkeypatc
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             return await client.post(
-                "/api/v1/accounts/bot-detection?event_id=event-1&platform=weibo&routing_budget=0.25&support_k=3"
+                "/api/v1/accounts/bot-detection?event_id=event-1&platform=weibo"
             )
 
     response = asyncio.run(_request())
@@ -146,8 +160,6 @@ def test_botrhg_api_requires_authenticated_user_and_passes_parameters(monkeypatc
     assert calls == {
         "event_id": "event-1",
         "platform": "weibo",
-        "routing_budget": 0.25,
-        "support_k": 3,
     }
 
 
@@ -159,6 +171,16 @@ def test_account_detail_includes_detection_result_and_recent_posts(monkeypatch, 
     raw_posts = FakeCollection(posts)
     fake_db = FakeMongoDB(raw_posts=raw_posts)
     monkeypatch.setattr(account_service, "get_mongo_db", lambda: fake_db)
+    account_service._ASSESSMENT_CACHE.clear()
+    monkeypatch.setattr(
+        account_service,
+        "run_trained_botrhg_detection",
+        lambda _posts: {
+            "accounts": [
+                {"account_id": "u1", "final_prediction": "bot"},
+            ]
+        },
+    )
 
     async def _request():
         transport = ASGITransport(app=app)
@@ -170,6 +192,45 @@ def test_account_detail_includes_detection_result_and_recent_posts(monkeypatch, 
 
     assert response.status_code == 200
     assert payload["account_id"] == "u1"
-    assert payload["detection_result"]["method"] == "BotRHG"
-    assert payload["detection_result"]["similar_users"] == payload["similar_users"]
+    assert payload["assessment"] == {"level": "attention", "label": "需关注"}
+    assert "automation_score" not in payload
+    assert "detection_result" not in payload
     assert len(payload["recent_posts"]) == 2
+
+
+def test_account_profiles_project_trained_detector_conclusions_without_rule_scores(
+    monkeypatch,
+    authenticated_user_override,
+):
+    posts = [
+        _post("u1", "2026-05-21T00:00:00+00:00", "hello", author_name="甲"),
+        _post("u2", "2026-05-21T00:05:00+00:00", "world", author_name="乙"),
+    ]
+    raw_posts = FakeCollection(posts)
+    fake_db = FakeMongoDB(raw_posts=raw_posts)
+    monkeypatch.setattr(account_service, "get_mongo_db", lambda: fake_db)
+    account_service._ASSESSMENT_CACHE.clear()
+    monkeypatch.setattr(
+        account_service,
+        "run_trained_botrhg_detection",
+        lambda _posts: {
+            "accounts": [
+                {"account_id": "u1", "final_prediction": "human"},
+                {"account_id": "u2", "final_prediction": "bot"},
+            ]
+        },
+    )
+
+    async def _request():
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            return await client.get("/api/v1/accounts/profiles?event_id=event-1&platform=weibo")
+
+    response = asyncio.run(_request())
+    rows = response.json()["data"]
+
+    assert response.status_code == 200
+    assert [row["author_name"] for row in rows] == ["乙", "甲"]
+    assert rows[0]["assessment"] == {"level": "attention", "label": "需关注"}
+    assert rows[1]["assessment"] == {"level": "normal", "label": "未见异常"}
+    assert all("automation_score" not in row for row in rows)

@@ -16,8 +16,27 @@ from .contracts import (
     ModelConfig,
     TrainingConfig,
 )
+from .active_learning import (
+    AccountAcquisitionCandidate,
+    AccountAcquisitionItem,
+    AccountAcquisitionResult,
+    AccountAcquisitionWeights,
+    select_account_labeling_batch,
+)
+from .chinese_corpus import ApprovedAccountLabel, ChineseAccountCorpusManifest, export_approved_account_corpus
 from .dataset import load_botection_dataset, load_social_dataset, split_samples
-from .datasets import load_cresci_2015_dataset, load_cresci_2017_dataset, load_midterm_2018_dataset
+from .datasets import (
+    load_approved_account_corpus,
+    load_cresci_2015_dataset,
+    load_cresci_2017_dataset,
+    load_midterm_2018_dataset,
+)
+from .evaluate_active_round import (
+    ActiveRoundEvaluationGate,
+    build_frozen_holdout_manifest,
+    compare_active_learning_efficiency,
+    evaluate_active_round_gates,
+)
 from .evaluation import evaluate_predictions
 from .hypergraph import build_reference_hyperedges, build_support_hyperedges
 from .inference import BotRHGInference
@@ -34,7 +53,14 @@ from .training import train_botrhg
 
 __all__ = [
     "AccountSample",
+    "AccountAcquisitionCandidate",
+    "AccountAcquisitionItem",
+    "AccountAcquisitionResult",
+    "AccountAcquisitionWeights",
+    "ActiveRoundEvaluationGate",
+    "ApprovedAccountLabel",
     "BotRHGInference",
+    "ChineseAccountCorpusManifest",
     "DatasetManifest",
     "EvaluationReport",
     "ModelConfig",
@@ -44,10 +70,15 @@ __all__ = [
     "StrictGraph",
     "StrictRelationEdge",
     "TrainingConfig",
+    "evaluate_active_round_gates",
     "build_support_hyperedges",
     "build_reference_hyperedges",
     "compute_correction_risk",
+    "build_frozen_holdout_manifest",
+    "compare_active_learning_efficiency",
     "evaluate_predictions",
+    "export_approved_account_corpus",
+    "load_approved_account_corpus",
     "load_botection_dataset",
     "load_cresci_2015_dataset",
     "load_cresci_2017_dataset",
@@ -57,6 +88,7 @@ __all__ = [
     "load_strict_midterm_2018_corpus",
     "load_strict_social_corpus",
     "load_social_dataset",
+    "select_account_labeling_batch",
     "select_routed_accounts",
     "split_samples",
     "train_strict_botrhg",

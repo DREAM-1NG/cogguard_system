@@ -235,6 +235,8 @@ Student 阶段：
 
 MARO 可以参考，但不能直接替代 Risk Review 的三层模型。原因是 MARO 解决的是跨域 misinformation detection 的多专家分析和决策规则优化，而 Risk Review 的任务是帖子、用户、社区三层 harmfulness characterization。
 
+当前交付线已经固定为两个子模块：`MultiAgents` 负责复杂样本、难例和高影响样本的 teacher/reviewer；`ReviewStudent` 负责 SFT + 蒸馏后的在线分诊。这个决策见 [ADR 0010](../../docs/adr/0010-review-teacher-student-delivery-lines.md)。
+
 合理迁移方式是：
 
 - Agent 做 teacher：离线生成弱标签、解释、低置信原因和可疑证据。
@@ -246,6 +248,14 @@ MARO 可以参考，但不能直接替代 Risk Review 的三层模型。原因�
 训练中可以把多智能体输出作为 `weak label / rationale candidate / disagreement signal / review priority`，但不能把 agent verdict 无审核地当作 gold。上线时默认仍应走本地 deterministic fallback，并保留 provider audit、failure fallback、human review 和 no-auto-publish 的安全边界。
 
 主要参考包括 [MARO, EMNLP 2025](https://aclanthology.org/2025.emnlp-main.291/)、[ReAct, ICLR 2023](https://openreview.net/forum?id=WE_vluYUL-X)、[RAG, NeurIPS 2020](https://arxiv.org/abs/2005.11401) 和多模态 fact-checking agent 工作。
+
+### 6.1 MultiAgents 与 ReviewStudent 的接口边界
+
+`MultiAgents` 的主产物是自然语言复核报告、结构化 sidecar、`review-teacher-silver-v1` 和 error memory。它面向 complex/hard-case，不追求覆盖所有在线样本，也不把每一次 Judge 建议当作可直接上线的 gold label。
+
+`ReviewStudent` 的主产物是低延迟结构化分诊结果。第一阶段任务保持为 `2+1`：`attack_hate_offense`、`misinfo_claim_risk` 和 claim-linked `stance` 辅助头；`defer/review_required` 是单独的选择性路由头。学生侧使用 dataset gold labels 做 SFT 主监督，并用 MultiAgents teacher silver 蒸馏 hard-case 的 confidence、review reason、evidence span、stance 和 defer 信号。
+
+因此，社交媒体治理场景中的在线链路应是：简单高置信样本由 ReviewStudent 给出初筛；低置信、跨视图冲突、主张证据不足、传播上下文复杂或高影响样本升级到 MultiAgents/人工复核；复核结果再回流为下一轮 teacher-silver 和 policy refinement 数据。
 
 ## 7. 数据集支撑矩阵
 

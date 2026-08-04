@@ -7,7 +7,12 @@ from types import SimpleNamespace
 from app.models.risk_assessment import RiskAssessment
 from app.models.review_system import ReviewAgentFeedback, ReviewAgentReport
 from app.models.review_case import ReviewDecisionDraft
-from app.services.review_case_service import ReviewCaseService, build_case_summary, build_evidence_item
+from app.services.review_case_service import (
+    ReviewCaseService,
+    _with_snapshot_account_names,
+    build_case_summary,
+    build_evidence_item,
+)
 
 
 def _case_row() -> SimpleNamespace:
@@ -44,12 +49,12 @@ def test_case_summary_is_a_business_whitelist_projection():
 
     assert result["preliminary_finding"]["conclusion"] == "harmful"
     assert result["coordination_summary"]["key_communities"] == ["Community 1"]
-    assert result["propagation_summary"]["forecast_range"] == "120-180 accounts"
+    assert result["propagation_summary"]["forecast_range"] == "120 至 180 个账号"
     for forbidden in ("artifact", "checkpoint", "model_version", "run_id"):
         assert forbidden not in serialized
 
 
-def test_case_summary_redacts_forbidden_product_terms_in_values():
+def test_case_summary_uses_business_text_for_system_generated_sections():
     row = _case_row()
     row.title = "Teacher Agent model checkpoint review"
     row.preliminary_finding_json = (
@@ -60,22 +65,14 @@ def test_case_summary_redacts_forbidden_product_terms_in_values():
         '"propagation":{"narrative":"Teacher task run state","trend":"Agent run"}}'
     )
 
-    serialized = str(build_case_summary(row).model_dump(mode="json")).lower()
+    result = build_case_summary(row).model_dump(mode="json")
 
-    for forbidden in (
-        "agent",
-        "student",
-        "teacher",
-        "model",
-        "checkpoint",
-        "artifact",
-        "raw confidence",
-        "runtime state",
-    ):
-        assert forbidden not in serialized
+    assert result["preliminary_finding"]["rationale"] == "现有材料显示该事件存在需要持续关注的风险线索。"
+    assert result["coordination_summary"]["narrative"] == "协同行为线索仍在核验中。"
+    assert result["propagation_summary"]["narrative"] == "传播情况已纳入事件分析结果。"
 
 
-def test_case_summary_redacts_snake_case_and_key_value_technical_terms():
+def test_case_summary_does_not_reuse_internal_source_text_for_system_generated_sections():
     row = _case_row()
     row.title = "Coordinated sharing remains under analyst review"
     row.preliminary_finding_json = (
@@ -93,33 +90,29 @@ def test_case_summary_redacts_snake_case_and_key_value_technical_terms():
     )
 
     result = build_case_summary(row).model_dump(mode="json")
-    serialized = str(result).lower()
-
     assert result["title"] == "Coordinated sharing remains under analyst review"
-    assert "Coordinated sharing remains active" in result["preliminary_finding"]["rationale"]
-    assert "Community reporting is consistent" in result["coordination_summary"]["narrative"]
-    assert "Spread remains active." == result["propagation_summary"]["narrative"]
-    for forbidden in (
-        "raw_confidence",
-        "runtime_status",
-        "runtime_state",
-        "model_version",
-        "run_id",
-        "job_id",
-        "task_id",
-        "student_agent",
-        "artifact_uri",
-        "artifact_hash",
-        "checkpoint_uri",
-        "checkpoint_path",
-        "teacher=",
-        "student=",
-        "agent=",
-        "s3://internal",
-        "file://internal",
-        "abc123",
-    ):
-        assert forbidden not in serialized
+    assert result["preliminary_finding"]["rationale"] == "现有材料显示该事件存在需要持续关注的风险线索。"
+    assert result["coordination_summary"]["narrative"] == "协同行为线索仍在核验中。"
+    assert result["propagation_summary"]["narrative"] == "传播情况已纳入事件分析结果。"
+
+
+def test_case_detail_projection_replaces_opaque_key_accounts_with_collected_names():
+    row = _case_row()
+    row.business_summary_json = (
+        '{"coordination":{"narrative":"Shared targets were observed.",'
+        '"key_communities":["Community 1"],"key_accounts":["123", "456"]}}'
+    )
+    summary = build_case_summary(row)
+
+    projected = _with_snapshot_account_names(
+        summary,
+        [
+            {"author_id": "123", "author_name": "观察员甲"},
+            {"author_id": "456", "author_name": "观察员乙"},
+        ],
+    )
+
+    assert projected.coordination_summary.key_accounts == ["观察员甲", "观察员乙"]
 
 
 def test_raw_snapshot_content_is_projected_to_immutable_evidence_fields():
@@ -202,6 +195,47 @@ def test_case_detail_restores_only_the_current_snapshot_draft():
         assert detail.decision_draft.rationale == "Current snapshot draft."
 
     asyncio.run(scenario())
+
+
+def test_case_detail_replaces_legacy_system_draft_rationale():
+    draft = SimpleNamespace(
+        case_id="case_trump_visit",
+        version=1,
+        conclusion="non_harmful",
+        urgency="routine",
+        disposition="gather_evidence",
+        rationale="Independent review completed.",
+        key_evidence_refs_json="[]",
+        unresolved_items_json='["Evidence resolving the preliminary uncertainty"]',
+        updated_at=datetime(2026, 8, 3, tzinfo=timezone.utc),
+    )
+
+    from app.services.review_case_product_projection import _draft_model
+
+    projected = _draft_model(draft)
+
+    assert projected.rationale == "现有材料未显示需要进一步处置的明确风险。"
+    assert projected.unresolved_items == ["补充能够支撑或反驳当前结论的独立来源材料"]
+
+
+def test_case_activity_localizes_legacy_system_actor():
+    from app.services.review_case_product_projection import _activity_model
+
+    activity = _activity_model(
+        SimpleNamespace(
+            id=1,
+            case_id="case_trump_visit",
+            activity_type="case_created",
+            action_required="none",
+            summary="Case created",
+            detail_lines_json="[]",
+            evidence_refs_json="[]",
+            actor_name="System",
+            created_at=datetime(2026, 8, 3, tzinfo=timezone.utc),
+        )
+    )
+
+    assert activity.actor_name == "系统"
 
 
 class ListResult:
@@ -301,9 +335,9 @@ def test_legacy_tables_are_projected_as_business_activities_without_writes():
             "review_advisory_available",
             "correction_recorded",
         ]
-        serialized = str([item.model_dump(mode="json") for item in activities]).lower()
-        for forbidden in ("agent", "teacher", "model", "checkpoint", "run_hidden", "raw confidence"):
-            assert forbidden not in serialized
+        assert activities[0].summary == "已更新事件材料"
+        assert activities[1].summary == "已收到复核建议"
+        assert activities[2].summary == "已记录分析员修正"
         assert db.added == []
 
     asyncio.run(scenario())

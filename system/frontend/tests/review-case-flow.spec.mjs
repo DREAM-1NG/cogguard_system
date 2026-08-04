@@ -7,6 +7,9 @@ import { fileURLToPath } from 'node:url'
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const frontendRoot = resolve(__dirname, '..')
 const riskView = readFileSync(resolve(frontendRoot, 'src/views/risk/index.vue'), 'utf8')
+const accountsView = readFileSync(resolve(frontendRoot, 'src/views/accounts/index.vue'), 'utf8')
+const loginView = readFileSync(resolve(frontendRoot, 'src/views/login/index.vue'), 'utf8')
+const basicLayout = readFileSync(resolve(frontendRoot, 'src/components/layout/BasicLayout.vue'), 'utf8')
 const reviewCaseApi = readFileSync(resolve(frontendRoot, 'src/api/reviewCases.ts'), 'utf8')
 
 function bodyOf(source, name) {
@@ -186,4 +189,41 @@ test('does not leak prototype or mock wording in visible review case copy', () =
     .replace(/<script setup[\s\S]*?<\/script>/, '')
     .replace(/<style scoped>[\s\S]*?<\/style>/, '')
   assert.doesNotMatch(visibleCopy, /mock|mock_weibo|TODO|测试数据|示例数据|占位|假数据/i)
+})
+
+test('keeps the review summary focused on Chinese business conclusions', () => {
+  const visibleCopy = riskView
+    .replace(/<script setup[\s\S]*?<\/script>/, '')
+    .replace(/<style scoped>[\s\S]*?<\/style>/, '')
+
+  assert.doesNotMatch(visibleCopy, /传播摘要|复核建议已可查看|liveMessage|propagation_summary/)
+  assert.doesNotMatch(visibleCopy, /preliminary_finding\.rationale|review_advisory\.rationale/)
+  assert.match(visibleCopy, /preliminaryNarrative/)
+  assert.match(visibleCopy, /visibleKeyAccounts/)
+  assert.match(riskView, /allKeyAccounts\.value\.slice\(0, 5\)/)
+  assert.doesNotMatch(riskView, /activity-detail/)
+})
+
+test('presents account findings without rule scores or detector internals', () => {
+  const visibleCopy = accountsView
+    .replace(/<script setup[\s\S]*?<\/script>/, '')
+    .replace(/<style scoped>[\s\S]*?<\/style>/, '')
+
+  assert.doesNotMatch(visibleCopy, /自动化评分|账号ID|运行检测|未运行|BotRHG|proxy|概率|运行模式/)
+  assert.match(visibleCopy, /研判结果/)
+  assert.match(accountsView, /getAccountProfiles\(\)/)
+  assert.doesNotMatch(accountsView, /runSocialBotDetection/)
+  assert.match(accountsView, /column\.key === 'platform'[\s\S]*platformLabel\(record\.platform\)/)
+})
+
+test('keeps the authentication entry point in Chinese', () => {
+  assert.doesNotMatch(loginView, /Welcome to CogGuard|Create CogGuard Account/)
+  assert.match(loginView, /登录系统/)
+  assert.match(loginView, /注册账户/)
+})
+
+test('renders the built-in administrator identity in Chinese', () => {
+  assert.match(basicLayout, /const userDisplayName = computed/)
+  assert.match(basicLayout, /username === 'admin' \? '管理员'/)
+  assert.match(basicLayout, /role === 'admin' \? '系统管理员'/)
 })

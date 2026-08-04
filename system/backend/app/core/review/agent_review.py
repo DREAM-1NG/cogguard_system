@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from hashlib import sha256
+from time import perf_counter
 from typing import Any, Protocol
 from uuid import uuid4
 import asyncio
@@ -25,6 +26,7 @@ from app.core.review.agent_contracts import AGENT_REPORT_SECTIONS
 from app.core.review.agent_contracts import build_agent_output_contract
 from app.core.review.agent_contracts import build_agent_system_prompt
 from app.core.review.agent_contracts import build_agent_user_prompt
+from app.core.review.agent_contracts import build_policy_decision_frame
 from app.core.review.agent_contracts import build_default_report_role
 from app.core.review.agent_contracts import build_reflection_response_prompt
 from app.core.review.agent_contracts import build_report_role_name
@@ -53,6 +55,7 @@ from app.core.review.agent_runtime import has_uncertain_stance_or_view
 from app.core.review.agent_runtime import normalize_agent_names
 from app.core.review.agent_runtime import recommend_runtime_mode
 from app.core.review.agent_runtime import resolve_runtime_mode
+from app.core.review.agent_runtime import select_reflection_response_agents
 from app.core.review.agent_runtime import should_postpone_countermeasure
 from app.core.review.governance_reference import build_governance_reference_context
 from app.core.review.governance_reference import build_governance_report_sidecar
@@ -139,6 +142,8 @@ async def run_manual_agent_review(
     require_vision: bool = False,
     runtime_mode: str = "auto",
     enable_deep_judge: bool = False,
+    reflection_target_agent_names: list[str] | None = None,
+    max_agent_calls_per_case: int = 12,
 ) -> dict[str, Any]:
     """Run analyst-triggered natural-language Review agent reports."""
     normalized_agents = _normalize_agent_names(agent_names)
@@ -237,6 +242,8 @@ async def run_manual_agent_review(
             "runtime_mode": runtime_mode,
             "effective_runtime_mode": effective_runtime_mode,
             "enable_deep_judge": enable_deep_judge,
+            "reflection_target_agent_names": reflection_target_agent_names or [],
+            "max_agent_calls_per_case": max_agent_calls_per_case,
             "debate_max_rounds": debate_max_rounds,
             "policy_id": (policy or {}).get("policy_id"),
             "context": context,
@@ -260,6 +267,8 @@ async def run_manual_agent_review(
         "runtime_reasons": runtime_decision["runtime_reasons"],
         "recommended_runtime_mode": runtime_decision["recommended_runtime_mode"],
         "runtime_upgraded_by_requested_features": runtime_decision["runtime_upgraded_by_requested_features"],
+        "max_agent_calls_per_case": max(1, int(max_agent_calls_per_case or 1)),
+        "call_audit": [],
     }
     reports_by_agent = {
         str(item.get("agent_name")): item
@@ -270,6 +279,12 @@ async def run_manual_agent_review(
     results: list[dict[str, Any]] = []
     expert_agents = execution_plan["expert_agents"]
     followup_agents = execution_plan["followup_agents"]
+    planned_llm_call_count = _planned_llm_call_count(
+        expert_agents=expert_agents,
+        execution_plan=execution_plan,
+        reflection_target_agent_names=reflection_target_agent_names,
+        countermeasure_requested="CountermeasureAgent" in normalized_agents,
+    )
 
     expert_results = await _run_agent_batch(
         expert_agents,
@@ -292,8 +307,13 @@ async def run_manual_agent_review(
         results.append(reflection_result)
         reports_by_agent.update(_completed_by_agent([reflection_result]))
         if execution_plan["run_reflection_responses"]:
+            response_agents = select_reflection_response_agents(
+                expert_agents=expert_agents,
+                reports_by_agent=reports_by_agent,
+                explicit_targets=reflection_target_agent_names,
+            )
             reflection_responses = await _run_reflection_response_batch(
-                expert_agents,
+                response_agents,
                 context=context,
                 reports_by_agent=reports_by_agent,
                 provider=provider,
@@ -303,6 +323,7 @@ async def run_manual_agent_review(
             reports_by_agent.update(_completed_by_agent(reflection_responses))
 
     if "HarmfulnessJudgeAgent" in followup_agents:
+        context["policy_decision_frame"] = build_policy_decision_frame(context, reports_by_agent)
         if execution_plan["deep_judge"]:
             judge_results = await _run_self_refined_agent(
                 agent_name="HarmfulnessJudgeAgent",
@@ -371,6 +392,10 @@ async def run_manual_agent_review(
             context=context,
             retrieval_bundle=retrieval_bundle,
         ),
+        "planned_llm_call_count": planned_llm_call_count,
+        "actual_llm_call_count": _actual_llm_call_count(state),
+        "llm_call_budget": state["max_agent_calls_per_case"],
+        "llm_call_audit": state["call_audit"],
         "capability_boundary": {
             "manual_human_triggered": True,
             "not_a_classifier": True,
@@ -397,6 +422,9 @@ async def run_manual_agent_review(
         "full_debate": debate_bundle if debate_bundle.get("schema_version") == "review-full-debate-v1" else None,
         "summary": {
             "requested_agents": len(normalized_agents),
+            "planned_llm_call_count": planned_llm_call_count,
+            "actual_llm_call_count": _actual_llm_call_count(state),
+            "llm_call_budget": state["max_agent_calls_per_case"],
             "completed": sum(1 for item in results if item.get("status") == "completed"),
             "failed": sum(1 for item in results if item.get("status") == "failed"),
             "active_retrieval_used": retrieval_bundle is not None,
@@ -708,12 +736,15 @@ async def _run_single_reflection_response(
             response_agent_name,
             context=context,
         )
-        report_text = await provider(
+        report_text, prompt_telemetry = await _invoke_provider(
+            provider=provider,
             agent_name=response_agent_name,
+            stage="reflection_response",
             system_prompt=system_prompt,
             user_prompt=user_prompt,
             input_bundle=provider_input_bundle,
             model=state["model"],
+            state=state,
         )
     except Exception as exc:  # pragma: no cover
         error_text = str(exc) or exc.__class__.__name__
@@ -737,6 +768,7 @@ async def _run_single_reflection_response(
             "report_text": None,
             "system_audit_sidecar": sidecar,
             "structured_sidecar": sidecar,
+            "prompt_telemetry": _failed_prompt_telemetry(state),
             "safety_flags": ["provider_failure", "no_synthetic_fallback"],
         }
     sidecar = build_sidecar_for_agent(
@@ -763,6 +795,7 @@ async def _run_single_reflection_response(
         "report_format": "maro_style_reflection_response_report",
         "system_audit_sidecar": sidecar,
         "structured_sidecar": sidecar,
+        "prompt_telemetry": prompt_telemetry,
         "safety_flags": ["human_confirmation_required", "not_a_classifier_output", "reflection_response"],
     }
 
@@ -806,12 +839,15 @@ async def _run_single_revision_step(
             f"{agent_name}:{revision_kind}",
             context=context,
         )
-        report_text = await provider(
+        report_text, prompt_telemetry = await _invoke_provider(
+            provider=provider,
             agent_name=f"{agent_name}:{revision_kind}",
+            stage=revision_kind,
             system_prompt=system_prompt,
             user_prompt=user_prompt,
             input_bundle=provider_input_bundle,
             model=state["model"],
+            state=state,
         )
     except Exception as exc:  # pragma: no cover
         error_text = str(exc) or exc.__class__.__name__
@@ -835,6 +871,7 @@ async def _run_single_revision_step(
             "report_text": None,
             "system_audit_sidecar": sidecar,
             "structured_sidecar": sidecar,
+            "prompt_telemetry": _failed_prompt_telemetry(state),
             "safety_flags": ["provider_failure", "no_synthetic_fallback"],
         }
     sidecar = build_sidecar_for_agent(
@@ -861,6 +898,7 @@ async def _run_single_revision_step(
         "report_format": "maro_style_natural_language_analysis_report",
         "system_audit_sidecar": sidecar,
         "structured_sidecar": sidecar,
+        "prompt_telemetry": prompt_telemetry,
         "sections_expected": AGENT_REPORT_SECTIONS[agent_name],
         "vision_required": _agent_requires_vision(agent_name, context=context, state=state),
         "vision_input_status": _vision_input_status(context),
@@ -912,6 +950,7 @@ async def _run_single_agent(
             "report_text": None,
             "system_audit_sidecar": sidecar,
             "structured_sidecar": sidecar,
+            "prompt_telemetry": _failed_prompt_telemetry(state),
             "safety_flags": ["no_synthetic_fallback"],
         }
     if _agent_requires_vision(agent_name, context=context, state=state):
@@ -937,6 +976,7 @@ async def _run_single_agent(
                 "report_text": None,
                 "system_audit_sidecar": sidecar,
                 "structured_sidecar": sidecar,
+                "prompt_telemetry": _failed_prompt_telemetry(state),
                 "vision_required": True,
                 "vision_input_status": media_status,
                 "safety_flags": ["vision_required", "missing_vision_input", "no_synthetic_fallback"],
@@ -949,12 +989,15 @@ async def _run_single_agent(
             agent_name,
             context=context,
         )
-        report_text = await provider(
+        report_text, prompt_telemetry = await _invoke_provider(
+            provider=provider,
             agent_name=agent_name,
+            stage=default_report_role,
             system_prompt=system_prompt,
             user_prompt=user_prompt,
             input_bundle=provider_input_bundle,
             model=state["model"],
+            state=state,
         )
     except Exception as exc:  # pragma: no cover - covered through API/core tests
         error_text = str(exc) or exc.__class__.__name__
@@ -978,6 +1021,7 @@ async def _run_single_agent(
             "report_text": None,
             "system_audit_sidecar": sidecar,
             "structured_sidecar": sidecar,
+            "prompt_telemetry": _failed_prompt_telemetry(state),
             "vision_required": _agent_requires_vision(agent_name, context=context, state=state),
             "vision_input_status": _vision_input_status(context),
             "safety_flags": ["provider_failure", "no_synthetic_fallback"],
@@ -1007,6 +1051,7 @@ async def _run_single_agent(
         "report_format": "maro_style_natural_language_analysis_report",
         "system_audit_sidecar": sidecar,
         "structured_sidecar": sidecar,
+        "prompt_telemetry": prompt_telemetry,
         "sections_expected": AGENT_REPORT_SECTIONS[agent_name],
         "vision_required": _agent_requires_vision(agent_name, context=context, state=state),
         "vision_input_status": _vision_input_status(context),
@@ -1063,11 +1108,106 @@ def _enrich_agent_sidecar(
         "usage_boundary": governance_reference.get("usage_boundary") or {},
     }
     if agent_name == "HarmfulnessJudgeAgent":
+        enriched["policy_decision_frame"] = context.get("policy_decision_frame") or build_policy_decision_frame(
+            context,
+            {},
+        )
         enriched["governance_report"] = build_governance_report_sidecar(
             context=context,
             report_text=report_text,
         )
     return enriched
+
+
+class _CallBudgetExceeded(RuntimeError):
+    pass
+
+
+async def _invoke_provider(
+    *,
+    provider: ReviewLLMAgentProvider,
+    agent_name: str,
+    stage: str,
+    system_prompt: str,
+    user_prompt: str,
+    input_bundle: dict[str, Any],
+    model: str,
+    state: dict[str, Any],
+) -> tuple[str, dict[str, Any]]:
+    started_at = _utc_now()
+    started = perf_counter()
+    telemetry = {
+        "system_prompt_chars": len(system_prompt),
+        "user_prompt_chars": len(user_prompt),
+        "input_bundle_chars": len(json.dumps(input_bundle, ensure_ascii=False, default=str)),
+        "provider_duration_ms": 0.0,
+    }
+    audit = {
+        "agent_name": agent_name,
+        "stage": stage,
+        "started_at": started_at,
+        **telemetry,
+    }
+    if _actual_llm_call_count(state) >= state["max_agent_calls_per_case"]:
+        audit.update({"completed_at": _utc_now(), "status": "skipped_budget", "reason": "max_agent_calls_per_case"})
+        state["call_audit"].append(audit)
+        raise _CallBudgetExceeded("LLM call skipped: max_agent_calls_per_case budget exhausted")
+    try:
+        report_text = await provider(
+            agent_name=agent_name,
+            system_prompt=system_prompt,
+            user_prompt=user_prompt,
+            input_bundle=input_bundle,
+            model=model,
+        )
+    except Exception as exc:
+        audit.update(
+            {
+                "completed_at": _utc_now(),
+                "duration_ms": round((perf_counter() - started) * 1000, 3),
+                "status": "failed",
+                "error": str(exc) or type(exc).__name__,
+            }
+        )
+        state["call_audit"].append(audit)
+        raise
+    duration_ms = round((perf_counter() - started) * 1000, 3)
+    telemetry["provider_duration_ms"] = duration_ms
+    audit.update({"completed_at": _utc_now(), "duration_ms": duration_ms, "provider_duration_ms": duration_ms, "status": "completed"})
+    state["call_audit"].append(audit)
+    return str(report_text), telemetry
+
+
+def _actual_llm_call_count(state: dict[str, Any]) -> int:
+    return sum(1 for item in state["call_audit"] if item.get("status") != "skipped_budget")
+
+
+def _failed_prompt_telemetry(state: dict[str, Any]) -> dict[str, Any]:
+    latest = state["call_audit"][-1] if state.get("call_audit") else {}
+    return {
+        "system_prompt_chars": latest.get("system_prompt_chars", 0),
+        "user_prompt_chars": latest.get("user_prompt_chars", 0),
+        "input_bundle_chars": latest.get("input_bundle_chars", 0),
+        "provider_duration_ms": latest.get("provider_duration_ms", latest.get("duration_ms", 0.0)),
+    }
+
+
+def _planned_llm_call_count(
+    *,
+    expert_agents: list[str],
+    execution_plan: dict[str, Any],
+    reflection_target_agent_names: list[str] | None,
+    countermeasure_requested: bool,
+) -> int:
+    count = len(expert_agents) + 1
+    if execution_plan["run_question_reflection"]:
+        count += 1
+        count += len(reflection_target_agent_names) if reflection_target_agent_names is not None else min(2, len(expert_agents))
+    if execution_plan["deep_judge"]:
+        count += 2
+    if execution_plan["run_countermeasure"] and countermeasure_requested:
+        count += 1
+    return count
 
 
 def _agent_system_prompt(agent_name: str) -> str:

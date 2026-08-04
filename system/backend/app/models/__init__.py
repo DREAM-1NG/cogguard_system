@@ -1,6 +1,13 @@
 """SQLAlchemy ORM model package exports."""
 
 from app.models.coordination_registry import CoordinationDataset, CoordinationRun
+from app.models.account_labeling import AccountBehaviorLabelRecord
+from app.models.account_labeling import AccountDetectionCaseRecord
+from app.models.account_labeling import AccountDetectionDatasetVersion
+from app.models.account_labeling import AccountDetectionModelActivation
+from app.models.account_labeling import AccountDetectionModelVersion
+from app.models.account_labeling import AccountLabelBatch
+from app.models.account_labeling import AccountLabelBatchItem
 from app.models.analysis import AnalysisModelActivation
 from app.models.analysis import AnalysisModelActivationApproval
 from app.models.analysis import AnalysisModelGovernanceDecision
@@ -41,6 +48,13 @@ from app.models.user import User
 __all__ = [
     "CoordinationDataset",
     "CoordinationRun",
+    "AccountBehaviorLabelRecord",
+    "AccountDetectionCaseRecord",
+    "AccountDetectionDatasetVersion",
+    "AccountDetectionModelActivation",
+    "AccountDetectionModelVersion",
+    "AccountLabelBatch",
+    "AccountLabelBatchItem",
     "CrawlJob",
     "AnalysisModelActivation",
     "AnalysisModelActivationApproval",

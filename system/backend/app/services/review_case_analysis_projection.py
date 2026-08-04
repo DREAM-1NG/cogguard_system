@@ -86,7 +86,7 @@ def project_analysis_results(
     business = {
         "sufficiency_reasons": _sufficiency_reasons(snapshot, student),
         "missing_evidence": missing,
-        "coordination": _coordination_summary(coordination),
+        "coordination": _coordination_summary(coordination, snapshot=snapshot),
         "propagation": _propagation_summary(propagation),
     }
     return AnalysisProjection(
@@ -140,16 +140,12 @@ def _teacher_business_advisory(
     disposition = _disposition(conclusion, urgency)
     differences = []
     if conclusion.value != str(preliminary):
-        differences.append("The review advisory differs from the preliminary finding.")
+        differences.append("复核结论与系统初判存在差异。")
     return {
         "conclusion": conclusion.value,
         "urgency": urgency.value,
         "disposition": disposition.value,
-        "rationale": str(
-            raw.get("rationale")
-            or verdict.get("reason")
-            or "Independent review completed."
-        )[:8000],
+        "rationale": _review_rationale(conclusion),
         "differences_from_preliminary": differences,
         "key_evidence_refs": _student_evidence_refs(verdict),
         "received_at": _now().isoformat(),
@@ -213,16 +209,10 @@ def _disposition(conclusion: ReviewConclusion, urgency: ReviewUrgency) -> Dispos
 
 
 def _student_rationale(student: dict[str, Any], conclusion: ReviewConclusion) -> str:
-    reason = student.get("reason")
-    if reason:
-        return str(reason)[:8000]
-    reasons = student.get("review_reason")
-    if isinstance(reasons, list) and reasons:
-        return "; ".join(str(item) for item in reasons)[:8000]
     return {
-        ReviewConclusion.HARMFUL: "Available evidence supports a harmfulness finding.",
-        ReviewConclusion.NON_HARMFUL: "Available evidence does not support a harmfulness finding.",
-        ReviewConclusion.INSUFFICIENT_EVIDENCE: "Available evidence is not yet conclusive.",
+        ReviewConclusion.HARMFUL: "现有材料显示该事件存在需要持续关注的风险线索。",
+        ReviewConclusion.NON_HARMFUL: "现有材料未显示需要进一步处置的明确风险。",
+        ReviewConclusion.INSUFFICIENT_EVIDENCE: "现有材料尚不足以形成明确结论，建议继续补充证据。",
     }[conclusion]
 
 
@@ -233,33 +223,52 @@ def _student_evidence_refs(result: dict[str, Any]) -> list[str]:
     return [str(item)[:512] for item in refs if str(item).strip()][:100]
 
 
-def _coordination_summary(result: dict[str, Any]) -> dict[str, Any]:
+def _coordination_summary(result: dict[str, Any], *, snapshot: EventSnapshot) -> dict[str, Any]:
     summary = dict(result.get("summary") or {})
     communities = result.get("community_lineage") or result.get("communities") or []
     accounts = result.get("account_risk_tiers") or []
-    community_names = [
-        str(row.get("community_id") or row.get("id"))
-        for row in communities
-        if isinstance(row, dict) and (row.get("community_id") or row.get("id"))
-    ][:100]
-    account_names = [
-        str(row.get("account_label") or row.get("account_id"))
-        for row in accounts
-        if isinstance(row, dict) and (row.get("account_label") or row.get("account_id"))
-    ][:100]
+    community_names = [f"协同群体 {index}" for index, _ in enumerate(communities[:100], start=1)]
+    display_names = _snapshot_account_names(snapshot)
+    account_names = []
+    for row in accounts:
+        if not isinstance(row, dict):
+            continue
+        account_id = str(row.get("account_id") or "").strip()
+        candidate = str(row.get("account_label") or "").strip()
+        label = display_names.get(account_id) or candidate
+        if not label or label == account_id or label.isdigit():
+            continue
+        if label not in account_names:
+            account_names.append(label)
+        if len(account_names) >= 100:
+            break
     count = int(summary.get("coordinated_accounts") or len(account_names) or 0)
     return {
-        "narrative": f"Observed coordination evidence involves {count} accounts.",
+        "narrative": (
+            f"已识别出涉及 {count} 个账号的协同行为线索。"
+            if count
+            else "当前未发现需要重点关注的协同行为线索。"
+        ),
         "key_communities": community_names,
         "key_accounts": account_names,
     }
+
+
+def _snapshot_account_names(snapshot: EventSnapshot) -> dict[str, str]:
+    names: dict[str, str] = {}
+    for row in snapshot.posts:
+        account_id = str(row.get("author_id") or "").strip()
+        author_name = str(row.get("author_name") or "").strip()
+        if account_id and author_name and author_name != account_id and not author_name.isdigit():
+            names.setdefault(account_id, author_name)
+    return names
 
 
 def _propagation_summary(result: dict[str, Any]) -> dict[str, Any]:
     interval = result.get("scale_interval")
     forecast_range = None
     if isinstance(interval, (list, tuple)) and len(interval) >= 2:
-        forecast_range = f"{interval[0]}-{interval[1]} accounts"
+        forecast_range = f"{interval[0]} 至 {interval[1]} 个账号"
     ranking = result.get("next_hop_ranking") or []
     targets = [
         str(row.get("node_id") or row.get("account_id") or row.get("id"))
@@ -267,9 +276,9 @@ def _propagation_summary(result: dict[str, Any]) -> dict[str, Any]:
         if isinstance(row, dict)
         and (row.get("node_id") or row.get("account_id") or row.get("id"))
     ][:100]
-    trend = str(result.get("trend") or result.get("trend_label") or "unknown")[:256]
+    trend = str(result.get("trend") or result.get("trend_label") or "暂无")[:256]
     return {
-        "narrative": "Propagation analysis summarizes the observed event trajectory.",
+        "narrative": "传播情况已纳入事件分析结果。",
         "trend": trend,
         "forecast_range": forecast_range,
         "likely_next_targets": targets,
@@ -277,22 +286,24 @@ def _propagation_summary(result: dict[str, Any]) -> dict[str, Any]:
 
 
 def _sufficiency_reasons(snapshot: EventSnapshot, student: dict[str, Any]) -> list[str]:
-    reasons = [str(item) for item in snapshot.quality_report.issues]
+    reasons: list[str] = []
+    if snapshot.quality_report.issues:
+        reasons.append("部分材料存在待补字段，需要结合后续证据继续核验。")
     if bool(student.get("abstain")):
-        reasons.append("The preliminary finding deferred because uncertainty remains.")
+        reasons.append("当前材料尚不足以形成明确结论。")
     return reasons[:100]
 
 
 def _missing_evidence(snapshot: EventSnapshot, student: dict[str, Any]) -> list[str]:
     missing: list[str] = []
     if snapshot.quality_report.missing_timestamps:
-        missing.append("Content timestamps")
+        missing.append("内容发布时间")
     if snapshot.quality_report.missing_authors:
-        missing.append("Account attribution")
+        missing.append("账号归属信息")
     if snapshot.quality_report.status != "pass":
-        missing.append("Additional independent event evidence")
+        missing.append("独立来源的事件材料")
     if bool(student.get("abstain")):
-        missing.append("Evidence resolving the preliminary uncertainty")
+        missing.append("能够支持明确结论的补充证据")
     return list(dict.fromkeys(missing))[:100]
 
 
@@ -301,17 +312,25 @@ def _empty_business_summary() -> dict[str, Any]:
         "sufficiency_reasons": [],
         "missing_evidence": [],
         "coordination": {
-            "narrative": "Coordination analysis is pending.",
+            "narrative": "协同行为分析尚未形成结果。",
             "key_communities": [],
             "key_accounts": [],
         },
         "propagation": {
-            "narrative": "Propagation analysis is pending.",
-            "trend": "unknown",
+            "narrative": "传播情况尚未形成结果。",
+            "trend": "暂无",
             "forecast_range": None,
             "likely_next_targets": [],
         },
     }
+
+
+def _review_rationale(conclusion: ReviewConclusion) -> str:
+    return {
+        ReviewConclusion.HARMFUL: "复核结果提示该事件存在需要进一步处置的风险线索。",
+        ReviewConclusion.NON_HARMFUL: "复核结果未发现需要进一步处置的明确风险。",
+        ReviewConclusion.INSUFFICIENT_EVIDENCE: "复核结果认为当前材料仍需结合更多证据进行判断。",
+    }[conclusion]
 
 
 def _window_bounds(values: list[datetime]) -> tuple[datetime, datetime]:

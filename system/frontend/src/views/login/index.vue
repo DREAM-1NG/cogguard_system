@@ -16,7 +16,7 @@
 
       <div class="login-card">
         <div class="login-header">
-          <h2>{{ isRegister ? 'Create CogGuard Account' : 'Welcome to CogGuard' }}</h2>
+          <h2>{{ isRegister ? '注册账户' : '登录系统' }}</h2>
           <p>{{ isRegister ? '填写以下信息完成注册' : '请输入账户信息进行登录' }}</p>
         </div>
 

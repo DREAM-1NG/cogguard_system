@@ -19,6 +19,7 @@ from app.core.review.trainable_post import (
     fuse_detector_outputs,
     hash_case_image_features,
     predict_probabilities,
+    resolve_local_hf_snapshot,
     standard_detector_output,
     train_binary_torch_model,
     train_cross_modal_torch_model,
@@ -105,6 +106,25 @@ def test_multitask_targets_and_clip_fallback_contract():
     assert image_bundle.backend == "hash-smoke-image"
     assert text_bundle.matrix.shape == (2, 16)
     assert image_bundle.matrix.shape == (2, 16)
+
+
+def test_resolve_local_hf_snapshot_prefers_complete_local_cache(tmp_path):
+    model_cache = tmp_path / "models--FacebookAI--xlm-roberta-base" / "snapshots"
+    incomplete = model_cache / "old"
+    complete = model_cache / "new"
+    incomplete.mkdir(parents=True)
+    complete.mkdir(parents=True)
+    (incomplete / "config.json").write_text("{}", encoding="utf-8")
+    (complete / "config.json").write_text("{}", encoding="utf-8")
+    (complete / "model.safetensors").write_bytes(b"weights")
+    (complete / "tokenizer.json").write_text("{}", encoding="utf-8")
+
+    resolved = resolve_local_hf_snapshot("FacebookAI/xlm-roberta-base", tmp_path, local_files_only=True)
+
+    assert resolved == str(complete)
+    assert resolve_local_hf_snapshot("FacebookAI/xlm-roberta-base", tmp_path, local_files_only=False) == (
+        "FacebookAI/xlm-roberta-base"
+    )
 
 
 def test_local_hash_rag_retrieval_and_context_augmentation(tmp_path):

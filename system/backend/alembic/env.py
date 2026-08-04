@@ -13,6 +13,13 @@ from sqlalchemy.ext.asyncio import create_async_engine
 
 from app.config import settings
 from app.db.mysql import Base
+from app.models.account_labeling import AccountBehaviorLabelRecord  # noqa: F401
+from app.models.account_labeling import AccountDetectionCaseRecord  # noqa: F401
+from app.models.account_labeling import AccountDetectionDatasetVersion  # noqa: F401
+from app.models.account_labeling import AccountDetectionModelActivation  # noqa: F401
+from app.models.account_labeling import AccountDetectionModelVersion  # noqa: F401
+from app.models.account_labeling import AccountLabelBatch  # noqa: F401
+from app.models.account_labeling import AccountLabelBatchItem  # noqa: F401
 from app.models.coordination_registry import CoordinationDataset, CoordinationRun  # noqa: F401
 from app.models.analysis import AnalysisModelActivationApproval  # noqa: F401
 from app.models.review_system import ReviewAgentDebateTrace  # noqa: F401

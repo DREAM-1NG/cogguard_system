@@ -9,11 +9,13 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from hashlib import sha256
 from typing import Any, Protocol
+import asyncio
 import re
 
 
 TOKEN_PATTERN = re.compile(r"[\u4e00-\u9fff]|[A-Za-z0-9_]+")
 DEFAULT_TOP_K = 3
+DEFAULT_EXTERNAL_CONCURRENCY = 4
 
 
 class ActiveEvidenceProvider(Protocol):
@@ -35,6 +37,7 @@ async def retrieve_active_evidence(
     top_k: int = DEFAULT_TOP_K,
     external_provider: ActiveEvidenceProvider | None = None,
     external_enabled: bool = False,
+    external_concurrency: int = DEFAULT_EXTERNAL_CONCURRENCY,
 ) -> dict[str, Any]:
     """Retrieve local evidence and optionally enrich it with external sources."""
     top_k = max(1, min(int(top_k or DEFAULT_TOP_K), 10))
@@ -50,18 +53,25 @@ async def retrieve_active_evidence(
     failures = []
 
     if external_enabled and external_provider is not None:
-        for query in queries:
+        semaphore = asyncio.Semaphore(max(1, int(external_concurrency or DEFAULT_EXTERNAL_CONCURRENCY)))
+
+        async def retrieve_external(query: str) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
             try:
-                rows = await external_provider(query=query, context=context, top_k=top_k)
-                external_results.append(_normalize_external_result(query, rows))
+                async with semaphore:
+                    rows = await external_provider(query=query, context=context, top_k=top_k)
+                return _normalize_external_result(query, rows), None
             except Exception as exc:  # pragma: no cover - exercised through tests
-                failures.append(
-                    {
-                        "query": query,
-                        "error_type": type(exc).__name__,
-                        "message": str(exc),
-                    }
-                )
+                return None, {
+                    "query": query,
+                    "error_type": type(exc).__name__,
+                    "message": str(exc),
+                }
+
+        for result, failure in await asyncio.gather(*(retrieve_external(query) for query in queries)):
+            if result is not None:
+                external_results.append(result)
+            if failure is not None:
+                failures.append(failure)
 
     conflict_queries = _build_conflict_requeries(context, local_results, external_results)
     conflict_requery_results = [

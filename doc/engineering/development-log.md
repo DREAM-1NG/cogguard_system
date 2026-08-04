@@ -18,7 +18,69 @@
 
 ---
 
+## 2026-08-04
+
+- Added non-business performance delivery and query-operation support without
+  modifying `system/frontend/src/` or `system/backend/app/`.
+- `system/deploy/frontend.Dockerfile` and
+  `system/deploy/nginx/default.conf.template`: add the opt-in
+  `production-ui` Compose profile, gzip static payloads, cache only
+  content-addressed frontend assets, preserve uncached HTML/API responses, and
+  disable proxy buffering for the Event Review Case stream.
+- `system/ops/mongo/apply_performance_indexes.js` and
+  `system/ops/Apply-MongoPerformanceIndexes.ps1`: add an explicit,
+  idempotent MongoDB index operation for current event/platform/time and
+  crawl-job access patterns. It creates missing named indexes, retains matching
+  indexes, and fails rather than replacing a conflicting same-name index.
+- `system/.dockerignore`, `system/docker-compose.yml`, and
+  `system/.env.example`: add the static build context, opt-in frontend service,
+  mounted maintenance script, and delivery configuration variables.
+- `doc/engineering/performance-operations.md`, `system/README.md`,
+  `doc/engineering/environment-setup.md`, `doc/engineering/project-map.md`,
+  `doc/engineering/system-governance.md`, `doc/engineering/development-roadmap.md`,
+  `docs/adr/0011-static-delivery-and-query-index-operations.md`, and
+  `docs/adr/index.md`: record cache policy, operations procedure, rollback
+  boundary, remaining source-level bottlenecks, and the durable deployment
+  decision.
+- Remaining product-code work is deliberately unchanged: page-instance
+  retention, evidence pagination and virtualization, full-corpus account
+  inference precomputation, analytical result caching, and deferred graph
+  initialization require separate implementation and before/after traces.
+
+---
+
+## 2026-08-04
+
+- 建立并补强 Chinese Account Detection Active Learning Loop：账号检测从一次性 checkpoint 推理扩展为“case registry -> label batch -> analyst label -> approved corpus -> shadow model -> governed activation”的闭环。
+- `system/research/social_bot_detection/active_learning.py`、`chinese_corpus.py`、`evaluate_active_round.py`：新增主动学习 acquisition、批准标签语料导出、frozen holdout leakage manifest、equal-budget active-learning efficiency comparison 和激活评估门禁。
+- `system/research/social_bot_detection/datasets.py`、`cli.py`：新增 `approved_account_corpus` loader 和训练 CLI 入口，支持从 `approved_account_labels.jsonl` 进入本地 BotRHG/RoBERTa 训练；`abstain` 只作为审查/拒判标签，不进入二分类监督训练。
+- `system/backend/app/core/account_labeling.py`、`account_active_learning.py`：新增账号检测 case 指纹、正式标签体系和后端到研究包的 acquisition adapter；malformed model scores 会被安全忽略而不是破坏选样。
+- `system/backend/app/models/account_labeling.py`、`services/account_active_learning_service.py`、`services/account_label_service.py`、`services/account_model_governance_service.py`、`schemas/account_labeling.py`、`api/v1/accounts.py`：新增标注批次、标签提交/裁决、训练候选、模型审批与激活治理 API；标签提交校验 case、batch、fingerprint、evidence ids。
+- `system/backend/app/services/account_dataset_service.py`、`system/backend/alembic/versions/b6c2e9d4a731_add_account_detection_active_learning_tables.py`、`system/backend/alembic/env.py`：新增批准标签语料导出、dataset manifest / dataset card、空语料拒绝、账号检测治理表迁移和 Alembic metadata 导入；语料导出只使用仍匹配当前 case fingerprint 的 approved/adjudicated labels。
+- `system/backend/app/services/account_model_governance_service.py`、`app/api/v1/accounts.py`：训练候选必须绑定已注册数据集并校验 checkpoint SHA-256；模型审批写入 immutable active-admin approval rows；模型激活只使用持久化指标和已记录审批，不再接受请求体伪造指标/审批身份。
+- `doc/research/account-detection-active-learning.md`、`doc/research/account-detection-reference-map.md`、`research-wiki/preflight_runs/20260804T005356Z-expand-and-verify-the-literature-chain-supportin/`、`research-wiki/account-active-learning/chinese-account-detection-active-learning-record.md`、`UBIQUITOUS_LANGUAGE.md`：扩展账号检测文献闭环，明确三类标签、cold-start / warm-start 分界、标注分歧、校准/OOD、leakage-safe evaluation、ML system governance 和未来升级边界；明确 DABot/TwiBot 不支撑 `insufficient_evidence`，该标签边界来自 selective classification / abstention。
+- `doc/research/account-detection-acquisition-optimization-plan.md`、`research-wiki/preflight_runs/20260804T152213Z-optimize-chinese-account-detection-active-learni/`：新增主动学习 acquisition 优化预检和计划，明确当前 selector 是 baseline/fallback，后续研究升级顺序为 Chinese MLM surprisal + core-set cold-start、BADGE warm-start、再评估 BatchBALD / contrastive / OOD / meta acquisition。
+- 验证：`pytest system/backend/tests/test_account_active_learning.py system/research/social_bot_detection/tests/test_active_learning.py system/research/social_bot_detection/tests/test_public_datasets.py system/backend/tests/test_system_naming_governance.py -q` 结果 `31 passed, 6 skipped, 2 warnings`；敏感标签与不正式简称扫描通过；`re-search` preflight validator 通过（`reference_count=12`，`verified_reference_count=8`，`omission_handling_count=3`）；Alembic head 为 `b6c2e9d4a731`。
+- 剩余风险：账号模型审批已具备不可变记录，但仍需后续统一到 shared analysis governance 以减少重复治理面；中文批准语料的真实 active-round RoBERTa/BotRHG retraining、time-forward/platform/community-disjoint/calibration/false-positive burden/efficiency 曲线仍需签名实验制品。
+
+---
+
 ## 2026-08-03
+
+- 收口分析员产品展示：`system/frontend/src/views/risk/index.vue` 删除瞬时
+  复核状态提示、原始内部理由与传播摘要，系统初判改为中文业务结论；重点账号
+  限量展示并使用采集到的昵称。
+- `system/backend/app/services/review_case_analysis_projection.py`、
+  `system/backend/app/services/review_case_service.py`：新分析结果使用中文
+  业务摘要，案件详情会以快照中的昵称替换不透明账号标识。
+- `system/backend/app/services/account_service.py`、
+  `system/frontend/src/views/accounts/index.vue`：账户列表和详情直接消费
+  训练模型的业务结论；移除规则型自动化评分、概率、方法与运行状态展示。首次
+  推理按数据指纹缓存，前端账户请求允许模型完成加载。
+- `system/frontend/tests/review-case-flow.spec.mjs`、
+  `system/backend/tests/test_botrhg_bot_detection.py`、
+  `system/backend/tests/test_review_case_service.py`：补充页面边界、模型
+  结论投影与昵称替换的回归覆盖。
 
 - Closed the durable review and model-governance boundary without changing the
   dashboard-first frontend.

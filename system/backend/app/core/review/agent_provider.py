@@ -40,8 +40,20 @@ class OpenAICompatibleConfig:
 class OpenAICompatibleAgentProvider:
     """Minimal OpenAI-compatible provider with chat and Responses support."""
 
-    def __init__(self, config: OpenAICompatibleConfig):
+    def __init__(
+        self,
+        config: OpenAICompatibleConfig,
+        *,
+        client: httpx.AsyncClient | None = None,
+    ):
         self.config = config
+        self._client = client
+        self._owns_client = client is None
+
+    async def aclose(self) -> None:
+        """Close the client only when this provider created it."""
+        if self._owns_client and self._client is not None:
+            await self._client.aclose()
 
     async def __call__(
         self,
@@ -88,11 +100,12 @@ class OpenAICompatibleAgentProvider:
         max_attempts = max(1, int(self.config.max_retries or 0) + 1)
         for attempt in range(1, max_attempts + 1):
             try:
-                async with httpx.AsyncClient(timeout=self.config.timeout_seconds) as client:
-                    response = await client.post(url, headers=headers, json=payload)
-                    response.raise_for_status()
-                    data = response.json()
-                    break
+                if self._client is None:
+                    self._client = httpx.AsyncClient(timeout=self.config.timeout_seconds)
+                response = await self._client.post(url, headers=headers, json=payload)
+                response.raise_for_status()
+                data = response.json()
+                break
             except httpx.HTTPStatusError as exc:
                 last_error = exc
                 status_code = exc.response.status_code if exc.response is not None else None
@@ -238,4 +251,3 @@ def _as_list(value: Any) -> list[Any]:
     if isinstance(value, list):
         return value
     return [value]
-

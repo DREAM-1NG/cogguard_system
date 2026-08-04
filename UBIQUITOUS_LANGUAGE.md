@@ -105,12 +105,25 @@ Current semantic package paths: `system/research/coordination_discover/`, `syste
 | Term | Definition | Aliases to avoid |
 | --- | --- | --- |
 | **Social Bot Detection** | Account-level classification of social automation using learned account representations and approved evidence. | Automation score, activity rule |
+| **Account Finding** | The concise analyst-facing conclusion projected from Social Bot Detection for an Account Profile. | Bot probability, automation rating, model result panel |
+| **Account Profile** | The business-facing view of a collected account, including nickname, platform, activity context, recent public posts, and an Account Finding. | User scorecard, detection dashboard |
 | **BotRHG Transfer** | The internal trainable transfer implementation of Reliability-Guided Hypergraph Learning for Social Bot Detection. | NLPCC proxy, graph detector shell |
 | **Low-Order Detector** | The first-stage trainable account classifier whose representation and posterior seed reliability routing. | Base rule, heuristic detector |
 | **Support Hyperedge** | A target-centered KNN reference set built from learned account representations, excluding the target itself. | Similar-user list, handcrafted neighborhood |
 | **Reliability Route** | The label-free top-budget selection of accounts eligible for second-stage correction. | Manual correction list, risk shortcut |
 | **Residual Correction** | The learned second-stage fusion of a routed account representation with its support hyperedge representation. | Fixed score adjustment, proxy correction |
 | **Text-Only Weibo Transfer** | The current adaptation boundary using labeled Weibo account text while property fields and explicit social graph coverage are unavailable. | Exact paper reproduction, cross-platform claim |
+| **Account Detection Case** | A platform-scoped account case built from collected posts with evidence post ids, provenance, and a stable fingerprint. | User row, profile card |
+| **Account Detection Label** | The minimal task label `human`, `bot`, or `insufficient_evidence`; richer signals remain evidence or reason tags. | Identity label, attribution label, invented behavior class |
+| **Account Label Batch** | A stratified active-learning batch selected for analyst labeling under a fixed budget. | Training batch, pseudo-label set |
+| **Approved Account Corpus** | A versioned training corpus exported only from approved or adjudicated account behavior labels. | Active-learning selected pool |
+| **Cold-Start Acquisition** | Label selection before a reliable account ranker exists; uses surprisal, diversity, coverage, and random audit rather than classifier uncertainty. | Uncalibrated uncertainty sampling |
+| **Warm-Start Acquisition** | Label selection after a versioned account ranker exists; uses uncertainty, disagreement, OOD, representativeness, and diversity only for review priority. | Model score as label |
+| **Random Audit Slice** | A small random portion of each label batch used to monitor selection bias and reviewer drift. | Noise, filler items |
+| **Frozen Holdout** | A manually approved evaluation split that is never selected by active learning and never used for training. | Validation set, sampled queue |
+| **Shadow Account Model** | A candidate account detector evaluated in parallel before it can become the active model. | Production model, default model |
+| **Approved Corpus Training** | Training that consumes a versioned **Approved Account Corpus** through the `approved_account_corpus` dataset adapter. | JSONL shortcut, pseudo-label training |
+| **Account Model Approval Evidence** | Immutable active-administrator approval rows required before a **Shadow Account Model** can become active. | Caller-supplied approval, analyst approval |
 
 ## Relationships
 
@@ -131,6 +144,9 @@ Current semantic package paths: `system/research/coordination_discover/`, `syste
 - Production **Model Activation** requires two distinct active administrator records, including the activating administrator; local activation requires one accountable operator.
 - A **Teacher Dispatch Policy** may allow local inline fallback only in local deployments. Production dispatch failure is a durable failed advisory, never an API-process success.
 - A **BotRHG Transfer** artifact must record the dataset fingerprint, checkpoint hash, text sampling policy, missing property/social graph coverage, and same-split reference baseline.
+- An **Account Label Batch** only selects review priorities; it is not an **Approved Account Corpus** until analysts approve or adjudicate labels.
+- **Approved Corpus Training** excludes `insufficient_evidence` / `abstain` rows from binary supervised BotRHG training.
+- A **Shadow Account Model** cannot become active unless the **Frozen Holdout**, leakage, calibration, checkpoint-hash, persisted-metrics, and **Account Model Approval Evidence** gates pass.
 - A **Compatibility Alias** may forward to a canonical package, but it must not be imported by new product code.
 - An **Offline Experiment Input** may point to a **Vendored Data Root** or an explicit user path, but never to a reference boundary by default.
 

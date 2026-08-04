@@ -12,6 +12,7 @@ import re
 import sqlite3
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 
 DEFAULT_CC_SWITCH_DB = Path.home() / ".cc-switch" / "cc-switch.db"
@@ -96,7 +97,7 @@ def load_current_codex_provider(db_path: Path, *, provider_name: str = "") -> di
         "id": str(row["id"]),
         "name": str(row["name"]),
         "api_key": api_key,
-        "base_url": _toml_value(config_text, "base_url") or "https://api.openai.com/v1",
+        "base_url": _normalize_openai_base_url(_toml_value(config_text, "base_url") or "https://api.openai.com/v1"),
         "model": _toml_value(config_text, "model") or "gpt-4o",
         "wire_api": _normalize_wire_api(_toml_value(config_text, "wire_api") or "chat_completions"),
     }
@@ -137,6 +138,17 @@ def _normalize_wire_api(value: str) -> str:
         return "chat_completions"
     # CC-switch Codex configs often use Responses even for custom providers.
     return normalized or "chat_completions"
+
+
+def _normalize_openai_base_url(value: str) -> str:
+    url = str(value or "").strip().rstrip("/")
+    if not url:
+        return "https://api.openai.com/v1"
+    parsed = urlparse(url)
+    path = (parsed.path or "").rstrip("/")
+    if path in {"", "/"}:
+        return f"{url}/v1"
+    return url
 
 
 if __name__ == "__main__":

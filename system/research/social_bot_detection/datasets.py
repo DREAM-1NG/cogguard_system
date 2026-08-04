@@ -22,6 +22,7 @@ from .contracts import AccountSample, DatasetManifest
 from .dataset import normalize_account_text
 
 __all__ = [
+    "load_approved_account_corpus",
     "load_cresci_2015_dataset",
     "load_cresci_2017_dataset",
     "load_midterm_2018_dataset",
@@ -42,6 +43,7 @@ def load_social_dataset(
         "cresci_2015": load_cresci_2015_dataset,
         "cresci_2017": load_cresci_2017_dataset,
         "midterm_2018": load_midterm_2018_dataset,
+        "approved_account_corpus": load_approved_account_corpus,
     }
     normalized = dataset_name.strip().lower().replace("-", "_")
     if normalized == "botection":
@@ -52,6 +54,90 @@ def load_social_dataset(
     if loader is None:
         raise ValueError(f"unsupported social-bot dataset: {dataset_name}")
     return loader(dataset_root, max_posts_per_account=max_posts_per_account)
+
+
+def load_approved_account_corpus(
+    dataset_root: str | Path,
+    *,
+    max_posts_per_account: int = 64,
+) -> tuple[list[AccountSample], DatasetManifest]:
+    """Load a CogGuard-approved Chinese account corpus export.
+
+    The supervised BotRHG transfer remains binary.  Approved labels with the
+    `abstain` training target are retained in the manifest counts and excluded
+    from the binary training samples.
+    """
+
+    del max_posts_per_account
+    root = Path(dataset_root)
+    label_path = root if root.is_file() else root / "approved_account_labels.jsonl"
+    if not label_path.is_file():
+        raise FileNotFoundError(f"approved account corpus JSONL not found: {label_path}")
+    manifest_path = label_path.parent / "dataset_manifest.json"
+    exported_manifest = _read_json_object(manifest_path) if manifest_path.is_file() else {}
+    samples: list[AccountSample] = []
+    source_labels: Counter[str] = Counter()
+    skipped_abstain = 0
+    skipped_empty = 0
+    fingerprint = hashlib.sha256()
+    with label_path.open("r", encoding="utf-8") as stream:
+        for line_number, line in enumerate(stream, start=1):
+            text = line.strip()
+            if not text:
+                continue
+            payload = json.loads(text)
+            fingerprint.update(json.dumps(payload, ensure_ascii=False, sort_keys=True).encode("utf-8"))
+            fingerprint.update(b"\n")
+            target = str(payload.get("training_target") or "").strip()
+            source_labels[target] += 1
+            if target == "abstain":
+                skipped_abstain += 1
+                continue
+            if target not in {"bot", "non_bot"}:
+                raise ValueError(f"invalid training_target at line {line_number}: {target!r}")
+            normalized = normalize_account_text(str(payload.get("text") or ""))
+            if not normalized:
+                skipped_empty += 1
+                continue
+            platform = str(payload.get("platform") or "unknown")
+            event_id = str(payload.get("event_id") or "unknown")
+            account_id = str(payload.get("account_id") or payload.get("case_id") or line_number)
+            samples.append(
+                _account_sample(
+                    dataset_name="approved_account_corpus",
+                    source_label=target,
+                    raw_account_id=account_id,
+                    label=1 if target == "bot" else 0,
+                    text=normalized,
+                    post_count=len(payload.get("evidence_post_ids") or []),
+                    metadata={
+                        "case_id": str(payload.get("case_id") or ""),
+                        "event_id": event_id,
+                        "platform": platform,
+                        "label_id": str(payload.get("label_id") or ""),
+                        "case_fingerprint": str(payload.get("case_fingerprint") or ""),
+                        "provenance": payload.get("provenance") or {},
+                    },
+                )
+            )
+    class_counts = Counter(str(sample.label) for sample in samples)
+    return samples, DatasetManifest(
+        source_root=str(label_path.parent.resolve()),
+        label_file=str(label_path.resolve()),
+        text_directory="approved_account_labels.jsonl text field",
+        data_fingerprint=str(exported_manifest.get("data_fingerprint") or fingerprint.hexdigest()),
+        labeled_account_count=sum(source_labels.values()),
+        usable_account_count=len(samples),
+        skipped_empty_text_count=skipped_empty + skipped_abstain,
+        missing_text_count=0,
+        class_counts=dict(sorted(class_counts.items())),
+        property_field_coverage={},
+        social_graph_coverage="not used by the text-only approved-corpus transfer",
+        dataset_name="approved_account_corpus",
+        label_provenance="CogGuard analyst-approved or adjudicated account labels; abstain rows excluded from binary supervised training",
+        text_provenance="approved_account_labels.jsonl text field from account cases",
+        source_archive_sha256=_sha256(label_path),
+    )
 
 
 def load_cresci_2015_dataset(
@@ -336,6 +422,11 @@ def _manifest(
         text_provenance=text_provenance,
         source_archive_sha256=_sha256(archive),
     )
+
+
+def _read_json_object(path: Path) -> dict[str, Any]:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    return payload if isinstance(payload, dict) else {}
 
 
 def _resolve_archive(root: str | Path, filename: str) -> Path:

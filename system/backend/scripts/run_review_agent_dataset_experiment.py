@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import inspect
 import json
 import os
 import sys
@@ -57,8 +58,14 @@ def main() -> int:
     parser.add_argument("--enable-external-retrieval", action="store_true")
     parser.add_argument("--enable-light-debate", action="store_true")
     parser.add_argument("--enable-full-debate", action="store_true")
+    parser.add_argument("--enable-deep-judge", action="store_true")
+    parser.add_argument("--runtime-mode", default="auto")
     parser.add_argument("--debate-max-rounds", type=int, default=3)
     parser.add_argument("--retrieval-top-k", type=int, default=3)
+    parser.add_argument("--dataset-concurrency", type=int, default=1)
+    parser.add_argument("--max-agent-calls-per-case", type=int, default=0)
+    parser.add_argument("--active-policy-path", default="")
+    parser.add_argument("--error-memory-path", default="")
     parser.add_argument("--api-key", default=(os.getenv("LLM_API_KEY") or settings.LLM_API_KEY or ""))
     parser.add_argument("--base-url", default=(os.getenv("LLM_API_BASE") or settings.LLM_API_BASE or "https://api.openai.com/v1"))
     parser.add_argument("--model", default=(os.getenv("LLM_MODEL") or settings.LLM_MODEL or "gpt-5.4"))
@@ -75,6 +82,12 @@ def main() -> int:
     case_dir = Path(args.case_dir)
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
+    if args.dataset_concurrency < 1:
+        raise SystemExit("--dataset-concurrency must be at least 1.")
+    if args.max_agent_calls_per_case < 0:
+        raise SystemExit("--max-agent-calls-per-case cannot be negative.")
+    active_policy = load_json_object(args.active_policy_path, "active policy")
+    error_memory_summary = load_json_object(args.error_memory_path, "error memory")
 
     provider = OpenAICompatibleAgentProvider(
         OpenAICompatibleConfig(
@@ -111,6 +124,12 @@ def main() -> int:
             "teacher_silver_schema": "review-teacher-silver-v1",
             "teacher_silver_mode": "structured_supervision_with_full_traces_for_hard_cases",
         },
+        "execution_budget": {
+            "provider_timeout_seconds": float(args.timeout_seconds),
+            "case_timeout_seconds": float(args.case_timeout_seconds),
+            "dataset_concurrency": int(args.dataset_concurrency),
+            "max_agent_calls_per_case": int(args.max_agent_calls_per_case),
+        },
         "datasets": {},
     }
 
@@ -131,12 +150,18 @@ def main() -> int:
                 enable_external_retrieval=bool(args.enable_external_retrieval),
                 enable_light_debate=bool(args.enable_light_debate),
                 enable_full_debate=bool(args.enable_full_debate),
+                enable_deep_judge=bool(args.enable_deep_judge),
+                runtime_mode=str(args.runtime_mode),
                 debate_max_rounds=int(args.debate_max_rounds),
                 retrieval_top_k=int(args.retrieval_top_k),
                 case_timeout_seconds=float(args.case_timeout_seconds),
+                dataset_concurrency=int(args.dataset_concurrency),
+                max_agent_calls_per_case=int(args.max_agent_calls_per_case),
                 flush_every_case=bool(args.flush_every_case),
                 verbose_progress=bool(args.verbose_progress),
                 active_retriever=active_retriever,
+                policy=active_policy,
+                error_memory_summary=error_memory_summary,
             )
         )
         report["datasets"][dataset] = dataset_result
@@ -165,12 +190,18 @@ async def evaluate_dataset(
     enable_external_retrieval: bool,
     enable_light_debate: bool,
     enable_full_debate: bool,
+    enable_deep_judge: bool,
+    runtime_mode: str,
     debate_max_rounds: int,
     retrieval_top_k: int,
     case_timeout_seconds: float,
+    dataset_concurrency: int,
     flush_every_case: bool,
     verbose_progress: bool,
     active_retriever,
+    policy: dict[str, Any] | None = None,
+    error_memory_summary: dict[str, Any] | None = None,
+    max_agent_calls_per_case: int = 0,
 ) -> dict[str, Any]:
     output_dir.mkdir(parents=True, exist_ok=True)
     case_path = case_dir / f"{safe_name(dataset)}.jsonl"
@@ -182,49 +213,62 @@ async def evaluate_dataset(
 
     prediction_path = output_dir / "agent_predictions.jsonl"
     teacher_silver_path = output_dir / "teacher_silver.jsonl"
-    rows = []
-    teacher_rows = []
     total = len(cases)
-    for index, case in enumerate(cases, start=1):
+    semaphore = asyncio.Semaphore(dataset_concurrency)
+
+    async def evaluate_bounded(index: int, case: dict[str, Any]) -> dict[str, Any]:
         case_id = str(case.get("case_id") or f"{dataset}:{index}")
         if verbose_progress:
             print(f"[dataset:{dataset}] case {index}/{total} start {case_id}", flush=True)
         started_at = time.time()
         try:
-            row = await asyncio.wait_for(
-                evaluate_case(
-                    case=case,
-                    provider=provider,
-                    model=model,
-                    agent_names=agent_names,
-                    prefer_embeddings=prefer_embeddings,
-                    include_media_base64=include_media_base64,
-                    require_vision=require_vision,
-                    enable_active_retrieval=enable_active_retrieval,
-                    enable_external_retrieval=enable_external_retrieval,
-                    enable_light_debate=enable_light_debate,
-                    enable_full_debate=enable_full_debate,
-                    debate_max_rounds=debate_max_rounds,
-                    retrieval_top_k=retrieval_top_k,
-                    active_retriever=active_retriever,
-                ),
-                timeout=case_timeout_seconds,
-            )
+            async with semaphore:
+                row = await asyncio.wait_for(
+                    evaluate_case(
+                        case=case,
+                        provider=provider,
+                        model=model,
+                        agent_names=agent_names,
+                        prefer_embeddings=prefer_embeddings,
+                        include_media_base64=include_media_base64,
+                        require_vision=require_vision,
+                        enable_active_retrieval=enable_active_retrieval,
+                        enable_external_retrieval=enable_external_retrieval,
+                        enable_light_debate=enable_light_debate,
+                        enable_full_debate=enable_full_debate,
+                        enable_deep_judge=enable_deep_judge,
+                        runtime_mode=runtime_mode,
+                        debate_max_rounds=debate_max_rounds,
+                        retrieval_top_k=retrieval_top_k,
+                        max_agent_calls_per_case=max_agent_calls_per_case,
+                        active_retriever=active_retriever,
+                        policy=policy,
+                        error_memory_summary=error_memory_summary,
+                    ),
+                    timeout=case_timeout_seconds,
+                )
         except asyncio.TimeoutError:
             row = timeout_row(case=case, dataset=dataset, timeout_seconds=case_timeout_seconds)
         elapsed_seconds = round(time.time() - started_at, 3)
         row["elapsed_seconds"] = elapsed_seconds
-        rows.append(row)
-        teacher_rows.append(row.get("teacher_silver") or {})
-        if flush_every_case:
-            write_jsonl(prediction_path, rows)
-            write_jsonl(teacher_silver_path, [item for item in teacher_rows if item])
         if verbose_progress:
             print(
                 f"[dataset:{dataset}] case {index}/{total} done {case_id} "
                 f"judge={row.get('judge_status')} elapsed={elapsed_seconds}s",
                 flush=True,
             )
+        return row
+
+    rows = []
+    teacher_rows = []
+    tasks = [asyncio.create_task(evaluate_bounded(index, case)) for index, case in enumerate(cases, start=1)]
+    for task in tasks:
+        row = await task
+        rows.append(row)
+        teacher_rows.append(row.get("teacher_silver") or {})
+        if flush_every_case:
+            write_jsonl(prediction_path, rows)
+            write_jsonl(teacher_silver_path, [item for item in teacher_rows if item])
 
     write_jsonl(prediction_path, rows)
     write_jsonl(teacher_silver_path, [item for item in teacher_rows if item])
@@ -252,36 +296,46 @@ async def evaluate_case(
     enable_external_retrieval: bool,
     enable_light_debate: bool,
     enable_full_debate: bool,
+    enable_deep_judge: bool,
+    runtime_mode: str,
     debate_max_rounds: int,
     retrieval_top_k: int,
+    max_agent_calls_per_case: int,
     active_retriever,
+    policy: dict[str, Any] | None = None,
+    error_memory_summary: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     report = build_minimal_report(case, prefer_embeddings=prefer_embeddings)
     selected_post_ids = [item.get("post_id") for item in (report.get("post_semantics") or {}).get("posts") or [] if item.get("post_id")]
     selected_tree_ids = tree_ids_of(case)
     effective_agent_names = agent_names_for_case(agent_names, has_tree=bool(selected_tree_ids))
-    agent_result = await run_manual_agent_review(
-        report=report,
-        agent_names=effective_agent_names,
-        case_id=str(case.get("case_id") or ""),
-        selected_post_ids=[str(item) for item in selected_post_ids[:1]],
-        selected_tree_ids=selected_tree_ids,
-        human_triggered_by="offline_dataset_experiment",
-        provider=provider,
-        model=model,
-        provider_name="offline_llm_experiment",
-        include_media_base64=include_media_base64,
-        require_vision=require_vision,
-        enable_active_retrieval=enable_active_retrieval,
-        enable_light_debate=enable_light_debate,
-        enable_full_debate=enable_full_debate,
-        debate_max_rounds=debate_max_rounds,
-        retrieval_top_k=retrieval_top_k,
-        active_retriever=active_retriever,
-        external_retrieval_enabled=enable_external_retrieval,
-        policy={},
-        error_memory_summary={},
-    )
+    review_kwargs: dict[str, Any] = {
+        "report": report,
+        "agent_names": effective_agent_names,
+        "case_id": str(case.get("case_id") or ""),
+        "selected_post_ids": [str(item) for item in selected_post_ids[:1]],
+        "selected_tree_ids": selected_tree_ids,
+        "human_triggered_by": "offline_dataset_experiment",
+        "provider": provider,
+        "model": model,
+        "provider_name": "offline_llm_experiment",
+        "include_media_base64": include_media_base64,
+        "require_vision": require_vision,
+        "enable_active_retrieval": enable_active_retrieval,
+        "enable_light_debate": enable_light_debate,
+        "enable_full_debate": enable_full_debate,
+        "enable_deep_judge": enable_deep_judge,
+        "runtime_mode": runtime_mode,
+        "debate_max_rounds": debate_max_rounds,
+        "retrieval_top_k": retrieval_top_k,
+        "active_retriever": active_retriever,
+        "external_retrieval_enabled": enable_external_retrieval,
+        "policy": policy or {},
+        "error_memory_summary": error_memory_summary or {},
+    }
+    if supports_max_agent_calls(run_manual_agent_review):
+        review_kwargs["max_agent_calls"] = max_agent_calls_per_case
+    agent_result = await run_manual_agent_review(**review_kwargs)
     judge_report = next(
         (item for item in agent_result["agent_reports"] if item.get("report_role") == "judge_final"),
         next((item for item in agent_result["agent_reports"] if item.get("agent_name") == "HarmfulnessJudgeAgent"), {}),
@@ -362,9 +416,8 @@ def build_minimal_report(case: dict[str, Any], *, prefer_embeddings: bool) -> di
         }
     }
     post_semantics = assess_post_semantics([post], prop_data, prefer_embeddings=prefer_embeddings, max_output_posts=1)
-    harmful_label = ((case.get("labels") or {}).get("harmfulness") or "unknown")
     propagation_context = build_propagation_context_for_case(
-        case,
+        {key: value for key, value in case.items() if key != "labels"},
         claim_rank=prop_data["global_summary"]["claim_rank"],
         graph_summary=(case.get("thread_context") or {}).get("summary") or {},
         post_semantics_summary=post_semantics.get("summary") or {},
@@ -374,11 +427,11 @@ def build_minimal_report(case: dict[str, Any], *, prefer_embeddings: bool) -> di
         "report_id": f"offline::{case.get('dataset')}::{case.get('case_id')}",
         "event_id": str(case.get("dataset") or ""),
         "platform": str((case.get("metadata") or {}).get("platform") or case.get("dataset") or ""),
-        "scores": {"risk_level": "high" if harmful_label == "harmful" else "low"},
+        "scores": {"risk_level": "unknown"},
         "post_semantics": post_semantics,
         "review_harmfulness": {
             "global_summary": {
-                "review_harm_risk_level": "high" if harmful_label == "harmful" else "low",
+                "review_harm_risk_level": "unknown",
                 "claim_rank": prop_data["global_summary"]["claim_rank"],
             },
             "review_queue": {
@@ -450,6 +503,30 @@ def load_cases(path: Path) -> list[dict[str, Any]]:
                 continue
             rows.append(json.loads(line))
     return rows
+
+
+def load_json_object(path_value: str, label: str) -> dict[str, Any]:
+    if not path_value:
+        return {}
+    path = Path(path_value)
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise SystemExit(f"Unable to load {label} JSON from {path}: {exc}") from exc
+    if not isinstance(payload, dict):
+        raise SystemExit(f"{label.capitalize()} JSON must contain an object: {path}")
+    return payload
+
+
+def supports_max_agent_calls(review_runner: Any) -> bool:
+    try:
+        parameters = inspect.signature(review_runner).parameters.values()
+    except (TypeError, ValueError):
+        return False
+    return any(
+        parameter.name == "max_agent_calls" or parameter.kind is inspect.Parameter.VAR_KEYWORD
+        for parameter in parameters
+    )
 
 
 def write_jsonl(path: Path, rows: list[dict[str, Any]]) -> None:

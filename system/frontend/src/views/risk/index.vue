@@ -2,15 +2,6 @@
   <div class="review-page">
     <PageHeader title="事件研判" />
 
-    <a-alert
-      v-if="liveMessage"
-      class="live-region"
-      type="info"
-      show-icon
-      :message="liveMessage"
-      aria-live="polite"
-    />
-
     <section class="selector-bar" aria-labelledby="case-selector-title">
       <div>
         <h3 id="case-selector-title" class="section-title">事件搜索与切换</h3>
@@ -45,24 +36,17 @@
             <div class="case-meta">
               <span>更新：{{ formatTime(currentCase.updated_at) }}</span>
             </div>
-            <a-space class="tag-row" :size="8" wrap>
-              <a-tag :color="conclusionColor(currentCase.preliminary_finding.conclusion)">
-                {{ conclusionLabel(currentCase.preliminary_finding.conclusion) }}
-              </a-tag>
-              <a-tag :color="sufficiencyColor(currentCase.evidence_sufficiency)">
-                证据充分度：{{ sufficiencyLabel(currentCase.evidence_sufficiency) }}
-              </a-tag>
-              <a-tag :color="urgencyColor(currentCase.urgency)">
-                {{ urgencyLabel(currentCase.urgency) }}
-              </a-tag>
-              <a-tag>{{ dispositionLabel(currentCase.disposition) }}</a-tag>
-            </a-space>
-            <p class="rationale">{{ currentCase.preliminary_finding.rationale }}</p>
-            <a-alert
-              :type="currentCase.action_required === 'none' ? 'success' : 'warning'"
-              show-icon
-              :message="actionRequiredLabel(currentCase.action_required)"
-            />
+            <div class="preliminary-status" :class="`is-${currentCase.preliminary_finding.conclusion}`">
+              <div class="preliminary-title">{{ conclusionLabel(currentCase.preliminary_finding.conclusion) }}</div>
+              <p>{{ preliminaryNarrative }}</p>
+            </div>
+            <div class="summary-meta">
+              证据充分度：{{ sufficiencyLabel(currentCase.evidence_sufficiency) }}
+              <span>·</span>
+              {{ urgencyLabel(currentCase.urgency) }}
+              <span>·</span>
+              {{ dispositionLabel(currentCase.disposition) }}
+            </div>
           </a-card>
 
           <a-card size="small" title="证据充分度" class="summary-card">
@@ -79,42 +63,18 @@
           </a-card>
 
           <a-card size="small" title="协调摘要" class="summary-card">
-            <p class="rationale">{{ currentCase.coordination_summary.narrative }}</p>
+            <p class="rationale">{{ coordinationNarrative }}</p>
             <div class="mini-list">
               <span class="mini-label">重点群体</span>
-              <a-tag v-for="item in currentCase.coordination_summary.key_communities" :key="item">
-                {{ item }}
-              </a-tag>
-              <span v-if="currentCase.coordination_summary.key_communities.length === 0" class="muted">暂无</span>
+              <span v-for="item in visibleKeyCommunities" :key="item" class="focus-label">{{ item }}</span>
+              <span v-if="visibleKeyCommunities.length === 0" class="muted">暂无</span>
             </div>
             <div class="mini-list">
               <span class="mini-label">重点账号</span>
-              <a-tag v-for="item in currentCase.coordination_summary.key_accounts" :key="item">
-                {{ item }}
-              </a-tag>
-              <span v-if="currentCase.coordination_summary.key_accounts.length === 0" class="muted">暂无</span>
+              <span v-for="item in visibleKeyAccounts" :key="item" class="focus-label">{{ item }}</span>
+              <span v-if="hiddenKeyAccountCount" class="muted">等 {{ hiddenKeyAccountCount }} 个账号</span>
+              <span v-if="visibleKeyAccounts.length === 0" class="muted">暂无</span>
             </div>
-          </a-card>
-
-          <a-card size="small" title="传播摘要" class="summary-card">
-            <p class="rationale">{{ currentCase.propagation_summary.narrative }}</p>
-            <a-descriptions size="small" :column="1" bordered>
-              <a-descriptions-item label="趋势">{{ currentCase.propagation_summary.trend }}</a-descriptions-item>
-              <a-descriptions-item label="预估范围">
-                {{ currentCase.propagation_summary.forecast_range || '暂无' }}
-              </a-descriptions-item>
-              <a-descriptions-item label="可能延伸">
-                <span v-if="currentCase.propagation_summary.likely_next_targets.length === 0">暂无</span>
-                <template v-else>
-                  <a-tag
-                    v-for="item in currentCase.propagation_summary.likely_next_targets"
-                    :key="item"
-                  >
-                    {{ item }}
-                  </a-tag>
-                </template>
-              </a-descriptions-item>
-            </a-descriptions>
           </a-card>
         </section>
 
@@ -216,7 +176,7 @@
                   </a-tag>
                   <a-tag>{{ dispositionLabel(currentCase.review_advisory.disposition) }}</a-tag>
                 </a-space>
-                <p class="rationale">{{ currentCase.review_advisory.rationale }}</p>
+                <p class="rationale">{{ advisoryNarrative(currentCase.review_advisory.conclusion) }}</p>
                 <a-divider orientation="left">差异摘要</a-divider>
                 <a-list size="small" :data-source="differenceLines">
                   <template #renderItem="{ item }">
@@ -339,9 +299,6 @@
                       <div class="case-meta">
                         {{ item.actor_name }} · {{ formatTime(item.occurred_at) }}
                       </div>
-                      <div v-if="item.detail_lines.length" class="activity-detail">
-                        {{ item.detail_lines.join('；') }}
-                      </div>
                     </div>
                   </a-list-item>
                 </template>
@@ -440,7 +397,6 @@ import {
   searchReviewCases,
 } from '@/api/reviewCases'
 import type {
-  ActionRequired,
   CaseActivity,
   CaseActivityType,
   DecisionDraft,
@@ -468,7 +424,6 @@ const selectedCaseId = ref<string | undefined>()
 const loading = ref(false)
 const searching = ref(false)
 const activityLoading = ref(false)
-const liveMessage = ref('')
 const activeEvidenceGroup = ref<EvidenceAssessment>('supports')
 const selectedEvidenceRefs = ref<string[]>([])
 const activities = ref<CaseActivity[]>([])
@@ -553,21 +508,13 @@ const assessmentLabels: Record<EvidenceAssessment, string> = {
   unresolved: '待判定',
 }
 
-const actionLabels: Record<ActionRequired, string> = {
-  none: '当前无需进一步动作',
-  add_evidence: '需要补充证据',
-  review_available: '复核建议已可查看',
-  confirm_decision: '需要确认结论',
-  reconfirm_decision: '新证据出现，需要重新确认',
-}
-
 const activityLabels: Record<CaseActivityType, string> = {
   case_created: '建立复核条目',
   snapshot_added: '更新事件材料',
   evidence_annotated: '证据标注',
   evidence_requested: '请求补充证据',
   review_requested: '申请复核',
-  review_advisory_available: '复核建议可用',
+  review_advisory_available: '收到复核建议',
   decision_draft_saved: '保存草稿',
   decision_confirmed: '确认结论',
   correction_recorded: '记录修正',
@@ -607,22 +554,53 @@ const evidenceRefOptions = computed<SelectOption[]>(() => {
 
 const sufficiencyLines = computed(() => {
   if (!currentCase.value) return []
-  return [
-    ...currentCase.value.sufficiency_reasons.map((item) => `理由：${item}`),
-    ...currentCase.value.missing_evidence.map((item) => `待补：${item}`),
-  ]
+  if (currentCase.value.evidence_sufficiency === 'sufficient') {
+    return ['现有材料覆盖多个来源，可支持当前研判结论。']
+  }
+  if (currentCase.value.evidence_sufficiency === 'limited') {
+    return ['现有材料可支持初步研判，仍建议结合后续材料持续核验。']
+  }
+  return ['现有材料尚不足以形成明确结论，建议补充相关证据。']
 })
 
 const differenceLines = computed(() => {
   const advisory = currentCase.value?.review_advisory
   if (!advisory) return []
-  if (advisory.differences_from_preliminary.length > 0) {
-    return advisory.differences_from_preliminary
-  }
   const preliminary = currentCase.value?.preliminary_finding.conclusion
   return preliminary && preliminary !== advisory.conclusion
-    ? [`复核建议为「${conclusionLabel(advisory.conclusion)}」，系统初判为「${conclusionLabel(preliminary)}」。`]
-    : ['复核建议与系统初判未见实质差异。']
+    ? ['复核结论与系统初判存在差异，请结合证据材料作出最终确认。']
+    : ['复核结论与系统初判一致。']
+})
+
+const preliminaryNarrative = computed(() => {
+  const conclusion = currentCase.value?.preliminary_finding.conclusion
+  return conclusionNarrative(conclusion)
+})
+
+const visibleKeyCommunities = computed(() => {
+  const communities = currentCase.value?.coordination_summary.key_communities || []
+  return communities.slice(0, 3).map((_, index) => `协同群体 ${index + 1}`)
+})
+
+const allKeyAccounts = computed(() => {
+  return (currentCase.value?.coordination_summary.key_accounts || []).filter((item) => {
+    const value = String(item).trim()
+    return Boolean(value) && !/^\d+$/.test(value)
+  })
+})
+
+const visibleKeyAccounts = computed(() => allKeyAccounts.value.slice(0, 5))
+
+const hiddenKeyAccountCount = computed(() => Math.max(0, allKeyAccounts.value.length - visibleKeyAccounts.value.length))
+
+const coordinationNarrative = computed(() => {
+  if (allKeyAccounts.value.length) {
+    return '已识别出需要持续关注的协同行为线索。'
+  }
+  if (visibleKeyCommunities.value.length) {
+    return '已识别出需要继续核验的协同群体。'
+  }
+  return '当前未发现需要重点关注的协同行为线索。'
 })
 
 const decisionLocked = computed(() => {
@@ -725,7 +703,7 @@ async function loadInitialCase() {
     }
     currentCase.value = null
     evidence.value = null
-    liveMessage.value = `未找到事件：${linkedEventId}`
+    message.warning('未找到对应事件')
     return
   }
   loading.value = true
@@ -760,7 +738,6 @@ async function applyCase(detail: ReviewCaseDetail, evidenceData?: ReviewCaseEvid
   evidence.value = evidenceData || null
   selectedEvidenceRefs.value = []
   hydrateDraft(detail)
-  liveMessage.value = `已打开事件：${detail.title}`
   void router.replace({
     query: {
       ...route.query,
@@ -797,14 +774,14 @@ function hydrateDraft(detail: ReviewCaseDetail) {
     draftForm.conclusion = detail.review_advisory.conclusion
     draftForm.urgency = detail.review_advisory.urgency
     draftForm.disposition = detail.review_advisory.disposition
-    draftForm.rationale = detail.review_advisory.rationale
+    draftForm.rationale = advisoryNarrative(detail.review_advisory.conclusion)
     keyEvidenceInput.value = detail.review_advisory.key_evidence_refs.join('\n')
     unresolvedInput.value = detail.missing_evidence.join('\n')
   } else {
     draftForm.conclusion = detail.preliminary_finding.conclusion
     draftForm.urgency = detail.urgency
     draftForm.disposition = detail.disposition
-    draftForm.rationale = detail.preliminary_finding.rationale
+    draftForm.rationale = conclusionNarrative(detail.preliminary_finding.conclusion)
     keyEvidenceInput.value = detail.preliminary_finding.key_evidence_refs.join('\n')
     unresolvedInput.value = detail.missing_evidence.join('\n')
   }
@@ -861,7 +838,6 @@ async function recoverCaseActivities(caseId: string) {
       } else {
         hydrateDraft(detail.data)
       }
-      liveMessage.value = events[events.length - 1]?.message || '案件活动已更新'
     }
 
     if (events.some((item) => ['snapshot_added', 'reconfirmation_required'].includes(item.activity_type))) {
@@ -870,7 +846,6 @@ async function recoverCaseActivities(caseId: string) {
     }
   } catch (error) {
     if ((error as { name?: string }).name !== 'AbortError') {
-      liveMessage.value = '活动记录将在下次连接时继续恢复'
     }
   } finally {
     if (activityRecoveryController === controller) activityRecoveryController = null
@@ -907,7 +882,7 @@ async function submitAnnotation() {
       source_url: annotationForm.source_url.trim() || null,
     })
     annotationOpen.value = false
-    liveMessage.value = '证据标注已保存'
+    message.success('证据标注已保存')
     await loadCase(currentCase.value.case_id)
   } finally {
     annotationSaving.value = false
@@ -928,12 +903,12 @@ async function submitReviewRequest() {
   if (!(await flushDraftBeforeCaseMutation())) return
   reviewRequestSaving.value = true
   try {
-    const res = await requestReviewAdvisory(currentCase.value.case_id, {
+    await requestReviewAdvisory(currentCase.value.case_id, {
       reason: reviewRequestReason.value.trim(),
       evidence_refs: selectedEvidenceRefs.value,
     })
     reviewRequestOpen.value = false
-    liveMessage.value = res.data.message || '复核申请已提交'
+    message.success('复核申请已提交')
     await loadCase(currentCase.value.case_id)
   } finally {
     reviewRequestSaving.value = false
@@ -985,7 +960,7 @@ async function saveDraftNow(options: { silent?: boolean } = {}): Promise<Decisio
     .catch((error: unknown) => {
       if (isConflictError(error)) {
         draftConflict.value = 'version_conflict'
-        liveMessage.value = '草稿已被其他分析员更新，请刷新案件后继续'
+        message.warning('草稿已被其他分析员更新，请刷新案件后继续')
       }
       return null
     })
@@ -1001,7 +976,6 @@ async function saveDraftNow(options: { silent?: boolean } = {}): Promise<Decisio
 function applyDraftReceipt(draft: DecisionDraft) {
   draftVersion.value = draft.draft_version
   draftSavedAt.value = draft.saved_at
-  liveMessage.value = '确认结论草稿已自动保存'
   if (currentCase.value) currentCase.value.decision_draft = draft
 }
 
@@ -1029,11 +1003,10 @@ async function submitDecisionConfirmation() {
       const saved = await saveDraftNow({ silent: true })
       if (!saved) return
     }
-    const res = await confirmDecision(currentCase.value.case_id, {
+    await confirmDecision(currentCase.value.case_id, {
       expected_draft_version: draftVersion.value,
       confirmation_note: '已完成业务复核并确认结论。',
     })
-    liveMessage.value = `确认结论已提交：${conclusionLabel(res.data.decision.conclusion)}`
     message.success('确认结论已提交')
     await loadCase(currentCase.value.case_id)
   } finally {
@@ -1060,6 +1033,18 @@ function conclusionLabel(value: ReviewConclusion) {
   return conclusionLabels[value]
 }
 
+function conclusionNarrative(value: ReviewConclusion | undefined) {
+  if (value === 'harmful') return '现有材料显示该事件存在需要持续关注的风险线索。'
+  if (value === 'non_harmful') return '现有材料未显示需要进一步处置的明确风险。'
+  return '现有材料尚不足以形成明确结论，建议继续补充相关证据。'
+}
+
+function advisoryNarrative(value: ReviewConclusion) {
+  if (value === 'harmful') return '复核结果提示该事件存在需要进一步处置的风险线索。'
+  if (value === 'non_harmful') return '复核结果未发现需要进一步处置的明确风险。'
+  return '复核结果认为当前材料仍需结合更多证据进行判断。'
+}
+
 function sufficiencyLabel(value: EvidenceSufficiency) {
   return sufficiencyLabels[value]
 }
@@ -1076,10 +1061,6 @@ function assessmentLabel(value: EvidenceAssessment) {
   return assessmentLabels[value]
 }
 
-function actionRequiredLabel(value: ActionRequired) {
-  return actionLabels[value]
-}
-
 function activityLabel(value: CaseActivityType) {
   return activityLabels[value]
 }
@@ -1090,10 +1071,6 @@ function evidenceTypeLabel(value: string) {
 
 function conclusionColor(value: ReviewConclusion) {
   return value === 'harmful' ? 'red' : value === 'non_harmful' ? 'green' : 'gold'
-}
-
-function sufficiencyColor(value: EvidenceSufficiency) {
-  return value === 'sufficient' ? 'green' : value === 'limited' ? 'gold' : 'red'
 }
 
 function urgencyColor(value: ReviewUrgency) {
@@ -1134,10 +1111,6 @@ onBeforeUnmount(() => {
 <style scoped>
 .review-page {
   color: #1f2329;
-}
-
-.live-region {
-  margin-bottom: 12px;
 }
 
 .selector-bar {
@@ -1181,7 +1154,7 @@ onBeforeUnmount(() => {
 .summary-grid {
   display: grid;
   gap: 12px;
-  grid-template-columns: minmax(320px, 1.2fr) repeat(3, minmax(220px, 1fr));
+  grid-template-columns: minmax(320px, 1.2fr) repeat(2, minmax(220px, 1fr));
   margin-bottom: 16px;
 }
 
@@ -1203,6 +1176,46 @@ onBeforeUnmount(() => {
   font-size: 12px;
   gap: 8px;
   line-height: 1.5;
+}
+
+.preliminary-status {
+  border-left: 3px solid #d9d9d9;
+  margin-top: 16px;
+  padding: 4px 0 4px 12px;
+}
+
+.preliminary-status.is-harmful {
+  border-left-color: #cf1322;
+}
+
+.preliminary-status.is-non_harmful {
+  border-left-color: #389e0d;
+}
+
+.preliminary-status.is-insufficient_evidence {
+  border-left-color: #d48806;
+}
+
+.preliminary-title {
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.preliminary-status p {
+  color: #4e5969;
+  line-height: 1.65;
+  margin: 4px 0 0;
+}
+
+.summary-meta {
+  color: #86909c;
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 12px;
+  gap: 6px;
+  line-height: 1.6;
+  margin-top: 16px;
 }
 
 .tag-row {
@@ -1227,6 +1240,12 @@ onBeforeUnmount(() => {
   color: #4e5969;
   font-size: 12px;
   font-weight: 600;
+}
+
+.focus-label {
+  color: #1d39c4;
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 .muted {
@@ -1324,12 +1343,6 @@ onBeforeUnmount(() => {
 .activity-summary {
   font-weight: 600;
   line-height: 1.5;
-}
-
-.activity-detail {
-  color: #4e5969;
-  line-height: 1.6;
-  margin-top: 4px;
 }
 
 @media (max-width: 1280px) {

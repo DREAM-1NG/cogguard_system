@@ -4,6 +4,7 @@ import tarfile
 import zipfile
 
 from research.social_bot_detection.datasets import (
+    load_approved_account_corpus,
     load_cresci_2015_dataset,
     load_cresci_2017_dataset,
     load_midterm_2018_dataset,
@@ -77,3 +78,58 @@ def test_midterm_2018_adapter_uses_tsv_labels_and_profile_text(tmp_path):
     assert {sample.label for sample in samples} == {0, 1}
     assert manifest.class_counts == {"0": 1, "1": 1}
     assert all(sample.post_count == 0 for sample in samples)
+
+
+def test_approved_account_corpus_loader_excludes_abstain_from_binary_training(tmp_path):
+    rows = [
+        {
+            "case_id": "case-1",
+            "account_id": "u1",
+            "platform": "weibo",
+            "event_id": "event-1",
+            "text": "可观察自动化行为文本",
+            "behavior_label": "bot",
+            "training_target": "bot",
+            "evidence_post_ids": ["p1"],
+            "case_fingerprint": "f1",
+            "label_id": "label-1",
+        },
+        {
+            "case_id": "case-2",
+            "account_id": "u2",
+            "platform": "weibo",
+            "event_id": "event-1",
+            "text": "普通账号公开发言",
+            "behavior_label": "human",
+            "training_target": "non_bot",
+            "evidence_post_ids": ["p2"],
+            "case_fingerprint": "f2",
+            "label_id": "label-2",
+        },
+        {
+            "case_id": "case-3",
+            "account_id": "u3",
+            "platform": "weibo",
+            "event_id": "event-1",
+            "text": "证据不足",
+            "behavior_label": "insufficient_evidence",
+            "training_target": "abstain",
+            "evidence_post_ids": ["p3"],
+            "case_fingerprint": "f3",
+            "label_id": "label-3",
+        },
+    ]
+    corpus = tmp_path / "approved_account_labels.jsonl"
+    corpus.write_text(
+        "\n".join(json.dumps(row, ensure_ascii=False) for row in rows) + "\n",
+        encoding="utf-8",
+    )
+
+    samples, manifest = load_approved_account_corpus(tmp_path)
+
+    assert [sample.label for sample in samples] == [1, 0]
+    assert manifest.dataset_name == "approved_account_corpus"
+    assert manifest.labeled_account_count == 3
+    assert manifest.usable_account_count == 2
+    assert manifest.skipped_empty_text_count == 1
+    assert "abstain rows excluded" in manifest.label_provenance

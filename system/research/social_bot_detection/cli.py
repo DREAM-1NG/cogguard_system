@@ -15,7 +15,11 @@ __all__ = ["main"]
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Train and evaluate internal BotRHG on a supported social-bot corpus.")
-    parser.add_argument("--dataset-name", default="botection", choices=["botection", "cresci_2015", "cresci_2017", "midterm_2018"])
+    parser.add_argument(
+        "--dataset-name",
+        default="botection",
+        choices=["botection", "cresci_2015", "cresci_2017", "midterm_2018", "approved_account_corpus"],
+    )
     parser.add_argument("--dataset-root", required=True)
     parser.add_argument("--output-dir", required=True)
     parser.add_argument("--text-model-path", required=True)

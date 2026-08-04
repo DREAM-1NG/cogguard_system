@@ -83,6 +83,26 @@ The application-facing ports are the `ReviewCaseService` methods that power thos
 - `confirm_decision(case_id, request, actor)`
 - `activities(case_id, after_id, limit)`
 
+## Account Profile
+
+`GET /api/v1/accounts/profiles` returns business-facing account profiles for
+the selected corpus. Each row contains a collected nickname, platform, activity
+context, and an **Account Finding** projected from the trained account detector.
+The profile endpoint does not expose legacy rule-derived scores, detector
+probabilities, runtime modes, or support-graph details. Results are cached by
+the selected corpus fingerprint so account details reuse the same finding.
+
+Account detection also has an analyst-in-the-loop active-learning control plane:
+
+- `POST /api/v1/accounts/active-learning/batches` creates a stratified label batch from collected account cases.
+- `GET /api/v1/accounts/label-queue` lists queued account cases for analyst review.
+- `POST /api/v1/accounts/labels` records observable behavior labels only.
+- `POST /api/v1/accounts/labels/{label_id}/adjudicate` promotes or rejects a submitted label.
+- `POST /api/v1/accounts/training/candidates` registers a shadow model candidate trained from approved labels.
+- `POST /api/v1/accounts/models/{model_version}/activate` applies frozen-holdout, leakage, calibration, shadow-run, and dual-approval gates before activation.
+
+The active-learning loop is a label-efficiency and governance pipeline. It never treats model output as a gold label, and it keeps frozen evaluation data outside the selected labeling pool.
+
 ## Internal Diagnostics
 
 The internal diagnostic boundary remains under `/api/v2/governance/*` for authenticated reads, approvals, feedback, and governance actions.
@@ -145,6 +165,33 @@ cd system\backend
 celery -A app.celery_app worker --loglevel=info -Q crawl,analysis,review
 ```
 
+## Delivery Performance Profile
+
+Use the Vite server above for frontend development. For a local or LAN delivery
+run, serve the same built frontend through the opt-in static profile instead:
+
+```powershell
+cd system
+docker compose --profile production-ui up -d --build frontend_static
+```
+
+The profile serves compressed, content-addressed assets with immutable caching,
+keeps HTML and `/api/*` uncached, and proxies API calls to the existing backend
+at `BACKEND_ORIGIN` (default: `http://host.docker.internal:8000`). Do not run
+Vite and `frontend_static` on port `5173` at the same time.
+
+For event and platform query performance, preview then apply the explicit
+MongoDB index operation after MongoDB is running:
+
+```powershell
+.\ops\Apply-MongoPerformanceIndexes.ps1 -DryRun
+.\ops\Apply-MongoPerformanceIndexes.ps1
+```
+
+The operation creates only missing, named indexes and never drops or rebuilds
+an existing index. See `../doc/engineering/performance-operations.md` for
+request cache policy, maintenance guidance, and remaining product-code work.
+
 ## Verification
 
 ```powershell
@@ -172,9 +219,13 @@ python -m pytest tests/test_coordination_local_discover_detect_script.py -q
 - Update `../doc/engineering/system-governance.md` when package boundaries or public interfaces change.
 - Update `../doc/engineering/development-log.md` after meaningful code or documentation work.
 - Keep generated outputs out of commits unless a specific output is explicitly promoted with a manifest.
+- Use `../doc/engineering/performance-operations.md` for static-delivery,
+  MongoDB index, and browser-trace operations; keep its baseline current when
+  changing route loading or data-volume behavior.
 
 Production deployments must set `BACKEND_ENV=production`, a random `JWT_SECRET_KEY`, `DEFAULT_ADMIN_PASSWORD`, and non-empty MySQL, MongoDB, and Redis credentials. The system has no preview authentication bypass; local and LAN deployments use the same login flow.
 
 ## Internal Transfer Boundary
 
 The internal social bot transfer boundary lives under `system/research/social_bot_detection/`. The local and strict paths stay text-only on the current corpora, and they remain transfer results rather than superiority claims.
+The same research package now also owns account active-learning acquisition, approved-label corpus export, and active-round evaluation gates for Chinese account detection.

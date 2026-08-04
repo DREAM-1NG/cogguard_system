@@ -598,6 +598,9 @@ class ReviewCaseService:
         if advisory is None:
             advisory = await self._legacy_review_advisory(row)
         revision = await self._latest_revision(row.case_id)
+        if revision is not None and hasattr(self, "registry"):
+            snapshot = await self.registry.load_event_snapshot(revision.snapshot_id)
+            summary = _with_snapshot_account_names(summary, snapshot.posts)
         draft_result = await self.db.execute(
             select(ReviewDecisionDraftRecord).where(
                 ReviewDecisionDraftRecord.case_id == row.case_id
@@ -747,7 +750,7 @@ class ReviewCaseService:
             conclusion=ReviewConclusion.INSUFFICIENT_EVIDENCE,
             urgency=ReviewUrgency.WATCH,
             disposition=Disposition.GATHER_EVIDENCE,
-            rationale=_product_text(row.analysis_text or "Review advisory is available.", limit=8000),
+            rationale="复核建议已纳入当前事件研判。",
             differences_from_preliminary=[],
             key_evidence_refs=[],
             received_at=row.created_at or _now(),
@@ -781,10 +784,9 @@ class ReviewCaseService:
                         case_id=case.case_id,
                         activity_type=CaseActivityType.SNAPSHOT_ADDED,
                         action_required=ActionRequired.NONE,
-                        summary="Legacy assessment projected.",
+                        summary="已更新事件材料",
                         detail_lines=[
-                            _product_text(f"Risk level: {row.risk_level}", limit=256),
-                            _product_text(f"Phase: {row.current_phase}", limit=256),
+                            "已同步事件研判结果。",
                         ],
                         evidence_refs=[],
                         actor_name="System",
@@ -808,12 +810,12 @@ class ReviewCaseService:
                         CaseActivity(
                             cursor=cursor,
                             case_id=case.case_id,
-                            activity_type=CaseActivityType.REVIEW_ADVISORY_AVAILABLE,
-                            action_required=ActionRequired.REVIEW_AVAILABLE,
-                            summary="Review advisory available.",
-                            detail_lines=[_product_text(row.analysis_text or "", limit=1000)],
-                            evidence_refs=[],
-                            actor_name="System",
+                        activity_type=CaseActivityType.REVIEW_ADVISORY_AVAILABLE,
+                        action_required=ActionRequired.REVIEW_AVAILABLE,
+                        summary="已收到复核建议",
+                        detail_lines=["复核建议已纳入当前事件研判。"],
+                        evidence_refs=[],
+                        actor_name="系统",
                             occurred_at=row.created_at or _now(),
                         )
                     )
@@ -838,20 +840,43 @@ class ReviewCaseService:
                         case_id=case.case_id,
                         activity_type=CaseActivityType.CORRECTION_RECORDED,
                         action_required=ActionRequired.CONFIRM_DECISION,
-                        summary="Analyst correction projected.",
-                        detail_lines=[
-                            _product_text(row.human_label or "", limit=256),
-                            _product_text(row.corrected_label or "", limit=256),
-                            _product_text(row.notes or "", limit=1000),
-                        ],
+                        summary="已记录分析员修正",
+                        detail_lines=["已更新研判结论和相关说明。"],
                         evidence_refs=_safe_string_list(_json_loads(row.evidence_refs_json, [])),
-                        actor_name="Analyst",
+                        actor_name="分析员",
                         occurred_at=row.created_at or _now(),
                     )
                 )
             return rows[:limit]
         except Exception:
             return []
+
+
+def _with_snapshot_account_names(
+    summary: ReviewCaseSummary,
+    posts: list[dict[str, Any]],
+) -> ReviewCaseSummary:
+    """Replace opaque account identifiers with collected display names."""
+
+    display_names: dict[str, str] = {}
+    for post in posts:
+        account_id = str(post.get("author_id") or "").strip()
+        name = str(post.get("author_name") or "").strip()
+        if account_id and name and name != account_id and not name.isdigit():
+            display_names.setdefault(account_id, name)
+
+    resolved = []
+    for value in summary.coordination_summary.key_accounts:
+        name = display_names.get(str(value)) or str(value).strip()
+        if not name or name.isdigit():
+            continue
+        if name not in resolved:
+            resolved.append(name)
+
+    coordination = summary.coordination_summary.model_copy(
+        update={"key_accounts": resolved[:100]}
+    )
+    return summary.model_copy(update={"coordination_summary": coordination})
 
 
 def _legacy_report_summary(summary: ReviewCaseSummary, *, platform: str | None = None) -> dict[str, Any]:

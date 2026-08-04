@@ -94,6 +94,38 @@ Use the real login flow, then open:
 
 There is no `/preview` route or static preview token. Local and LAN prototypes use the same authenticated application path.
 
+### Delivery Performance Profile
+
+Use Vite only while editing frontend source. For a delivery run with compressed
+and cacheable static assets, leave the backend on port `8000` and start the
+optional static frontend service instead:
+
+```powershell
+cd system
+docker compose --profile production-ui up -d --build frontend_static
+```
+
+It serves the frontend on `FRONTEND_PORT` (default `5173`) and proxies `/api/*`
+to `BACKEND_ORIGIN` (default `http://host.docker.internal:8000`). Do not run
+the Vite development server on the same port. HTML and APIs are never cached;
+only Vite content-hashed assets receive long-lived cache headers.
+
+### MongoDB Query Indexes
+
+After Docker starts MongoDB, preview the index operation and then apply it in a
+quiet maintenance window:
+
+```powershell
+cd system
+.\ops\Apply-MongoPerformanceIndexes.ps1 -DryRun
+.\ops\Apply-MongoPerformanceIndexes.ps1
+```
+
+The operation is idempotent and never drops an index. It covers the existing
+event/platform/time/crawl-job query shapes for `raw_posts` and `raw_comments`.
+See `performance-operations.md` for the complete index list and rollback
+boundary.
+
 ## One-Command Windows Startup
 
 After dependencies and `system/.env` are prepared:
@@ -168,4 +200,7 @@ Do not use `docker compose down -v` unless deleting all local MySQL, MongoDB, an
 - If MySQL is not ready, wait for `docker compose ps` to report `healthy` before running Alembic.
 - If PowerShell blocks `npm.ps1`, invoke `npm.cmd` directly.
 - If the frontend cannot reach the backend, verify port `8000` and the Vite `/api` proxy in `system/frontend/vite.config.ts`.
+- If the static delivery profile cannot reach the backend, verify
+  `BACKEND_ORIGIN` from inside `cogguard-frontend` and do not use a `localhost`
+  backend origin from inside the container.
 - If a social platform resolves to a Clash fake-IP address and Chromium reports network denial, set `MEDIACRAWLER_PROXY` to the local HTTP proxy.

@@ -1,9 +1,4 @@
-"""Review manual-agent report contracts and prompt builders.
-
-This module owns role names, report sections, safety flags, and prompt payloads
-for analyst-triggered Review agents. Runtime orchestration remains in
-``agent_review``; prompt contracts live here.
-"""
+"""Review manual-agent report contracts and compact prompt builders."""
 
 from __future__ import annotations
 
@@ -15,53 +10,16 @@ from app.core.review.propagation_agent import build_propagation_agent_output_con
 from app.core.review.propagation_agent import build_propagation_agent_prompt_note
 
 
+MAX_PROMPT_TEXT_CHARS = 2_000
+
 AGENT_REPORT_SECTIONS: dict[str, list[str]] = {
-    "PostHarmAgent": [
-        "帖子内容概览",
-        "检测结论复核",
-        "危害类型与目标对象分析",
-        "证据充分性",
-        "需要人工确认的问题",
-    ],
-    "MultimodalConsistencyAgent": [
-        "媒体输入状态",
-        "跨模态一致性",
-        "图文或音视冲突",
-        "语境错配风险",
-        "综合危害语义",
-        "需要补充的证据",
-    ],
-    "ClaimEvidenceAgent": [
-        "主张摘要",
-        "帖子态度",
-        "已有证据",
-        "证据缺口",
-        "危害性支撑",
-        "建议取证方向",
-    ],
+    "PostHarmAgent": ["帖子内容摘要", "检测结论复核", "危害类型与目标对象分析", "证据充分性", "需要人工确认的问题"],
+    "MultimodalConsistencyAgent": ["媒体输入状态", "跨模态一致性", "图文或音视频冲突", "语境错配风险", "综合危害语义", "需要补充的证据"],
+    "ClaimEvidenceAgent": ["主张摘要", "帖子立场", "已有证据", "证据缺口", "危害性支持", "建议取证方向"],
     "PropagationTreeAgent": PROPAGATION_AGENT_REPORT_SECTIONS,
-    "QuestionReflectionAgent": [
-        "已发现的矛盾",
-        "缺失证据",
-        "必须回答的问题",
-        "建议补充的检索或工具核验",
-        "证据不足时继续裁决的风险",
-    ],
-    "HarmfulnessJudgeAgent": [
-        "专家报告综合",
-        "证据强度",
-        "建议性危害判断",
-        "能力边界",
-        "人工确认项",
-        "治理建议准备度",
-    ],
-    "CountermeasureAgent": [
-        "可用证据",
-        "事实纠偏方向",
-        "降权或人工复核建议",
-        "反制文本边界",
-        "安全约束",
-    ],
+    "QuestionReflectionAgent": ["已发现的矛盾", "缺失证据", "必须回答的问题", "建议补充的检索或工具核验", "证据不足时继续裁决的风险"],
+    "HarmfulnessJudgeAgent": ["专家报告综合", "证据强度", "建议性危害判断", "能力边界", "人工确认项", "治理建议准备度"],
+    "CountermeasureAgent": ["可用证据", "事实纠偏方向", "降权或人工复核建议", "反制文本边界", "安全约束"],
 }
 
 __all__ = [
@@ -69,6 +27,7 @@ __all__ = [
     "build_agent_output_contract",
     "build_agent_system_prompt",
     "build_agent_user_prompt",
+    "build_policy_decision_frame",
     "build_default_report_role",
     "build_reflection_response_prompt",
     "build_report_role_name",
@@ -81,56 +40,33 @@ __all__ = [
 def build_agent_system_prompt(agent_name: str) -> str:
     sections = "\n".join(f"- {section}" for section in AGENT_REPORT_SECTIONS[agent_name])
     judge_policy_note = (
-        "\nFor HarmfulnessJudgeAgent: explicitly read selected_context.active_policy "
-        "when present. Explain which policy thresholds/rule explanations support "
-        "review, abstain, retrieval, or countermeasure recommendations, and state "
-        "that the policy is advisory until human approval. Produce a unified "
-        "Chinese governance review report for platform analysts, covering risk "
-        "type, evidence, disputes, recommended action, public platform reference "
-        "basis, and human confirmation items.\n"
+        "\nDETERMINISTIC POLICY DECISION FRAME: read policy_decision_frame before writing conclusions. "
+        "Cite active policy id, threshold comparisons, accepted rules, weighted expert evidence references, "
+        "and historical failure cautions. Do not invent a policy result.\n"
+        "For HarmfulnessJudgeAgent: use policy only as advisory provenance until human approval.\n"
         if agent_name == "HarmfulnessJudgeAgent"
         else ""
     )
     countermeasure_note = (
-        "\nFor CountermeasureAgent: output internal governance recommendations only. "
-        "Do not write public-facing propaganda or auto-publication copy. Recommend "
-        "actions such as evidence supplementation, human review, labeling, reduced "
-        "distribution, debunking recommendation, account review, victim protection, "
-        "or quality-content support only when evidence supports them. Read active policy, "
-        "accepted rule references, and error memory summary when present.\n"
+        "\nFor CountermeasureAgent: make internal, evidence-bound recommendations only; never draft public "
+        "propaganda or auto-publication copy.\n"
         if agent_name == "CountermeasureAgent"
         else ""
     )
     reflection_note = (
-        "\nFor QuestionReflectionAgent: read active policy, accepted rule refs, and "
-        "error memory summary. Ask questions that target repeated failure modes, "
-        "missing evidence, and cross-modal or claim conflicts.\n"
+        "\nFor QuestionReflectionAgent: ask questions about repeated failures, missing evidence, and conflicts. "
+        "Name relevant expert agents when a response is needed.\n"
         if agent_name == "QuestionReflectionAgent"
         else ""
     )
-    optimizer_note = (
-        "\nDecision rule optimization is not a selectable judgement role here. "
-        "If policy context is present, cite it as provenance rather than changing it.\n"
-    )
     return (
-        "You are a MARO-style social media governance review expert. "
-        "Write a role-specific natural-language analysis report in Chinese for "
-        "platform governance analysts. Use public platform community rules, "
-        "transparency report structure, and enforcement vocabulary only as "
-        "reference templates; never treat them as automatic legal or enforcement "
-        "authority. "
-        "Do not output JSON as the main report. Do not claim to be the final "
-        "automatic classifier. Separate evidence from uncertainty and make clear "
-        "what requires human confirmation. Cite the supplied governance_reference "
-        "categories or state that no direct platform template matches.\n\n"
-        f"Agent: {agent_name}\n"
-        "Required report sections:\n"
-        f"{sections}\n"
-        f"{judge_policy_note}"
-        f"{countermeasure_note}"
-        f"{reflection_note}"
-        f"{build_propagation_agent_prompt_note(agent_name)}"
-        f"{optimizer_note}"
+        "You are a MARO-style social media governance review expert. Write a role-specific natural-language "
+        "analysis report in Chinese for platform governance analysts. Treat public platform rules as reference "
+        "templates, never automatic legal authority. Do not output JSON as the main report or claim final "
+        "classifier authority. Separate evidence, uncertainty, and human confirmation.\n\n"
+        f"Agent: {agent_name}\nRequired report sections:\n{sections}\n{judge_policy_note}{countermeasure_note}"
+        f"{reflection_note}{build_propagation_agent_prompt_note(agent_name)}\n"
+        "Policy optimization is not a selectable judgement role; cite policy provenance without changing it.\n"
     )
 
 
@@ -145,22 +81,17 @@ def build_agent_user_prompt(
     *,
     policy_guidance: dict[str, Any],
 ) -> str:
-    prior_reports = {
-        name: {
-            "status": item.get("status"),
-            "report_text": item.get("report_text"),
-        }
-        for name, item in reports_by_agent.items()
-    }
     payload = {
         "agent_name": agent_name,
         "task_boundary": "这是分析员触发的复核任务。只生成自然语言分析报告，不发布内容，不覆盖系统判定。",
-        "policy_guidance": policy_guidance,
-        "error_memory_summary": context.get("error_memory_summary") or {},
+        "policy_guidance": _compact_prompt_value(policy_guidance),
+        "error_memory_summary": _compact_prompt_value(context.get("error_memory_summary") or {}),
         "output_contract": build_agent_output_contract(agent_name),
-        "selected_context": context,
-        "prior_agent_reports": prior_reports,
+        "selected_context": _compact_prompt_value(context),
+        "prior_agent_reports": _compact_prior_reports(reports_by_agent),
     }
+    if agent_name == "HarmfulnessJudgeAgent":
+        payload["policy_decision_frame"] = build_policy_decision_frame(context, reports_by_agent)
     return json.dumps(payload, ensure_ascii=False, default=str)
 
 
@@ -171,29 +102,19 @@ def build_reflection_response_prompt(
 ) -> str:
     expert_report = reports_by_agent.get(agent_name) or {}
     reflection_report = reports_by_agent.get("QuestionReflectionAgent") or {}
-    payload = {
-        "agent_name": agent_name,
-        "task_boundary": "这是问题追问后的专家补充步骤。只用自然语言修订或补充原分析。",
-        "original_expert_report": {
-            "status": expert_report.get("status"),
-            "analysis_report": expert_report.get("analysis_report"),
-            "report_text": expert_report.get("report_text"),
+    return json.dumps(
+        {
+            "agent_name": agent_name,
+            "task_boundary": "这是问题追问后的专家补充步骤。只用自然语言修订或补充原分析。",
+            "original_expert_report": _compact_prior_report(expert_report),
+            "question_reflection_report": _compact_prior_report(reflection_report),
+            "selected_context": _compact_prompt_value(context),
+            "error_memory_summary": _compact_prompt_value(context.get("error_memory_summary") or {}),
+            "expected_response": ["哪些追问影响原始分析", "仍缺少哪些证据", "哪些结论需要降低确定性", "裁决阶段应视为何种不确定性"],
         },
-        "question_reflection_report": {
-            "status": reflection_report.get("status"),
-            "analysis_report": reflection_report.get("analysis_report"),
-            "report_text": reflection_report.get("report_text"),
-        },
-        "selected_context": context,
-        "error_memory_summary": context.get("error_memory_summary") or {},
-        "expected_response": [
-            "哪些追问会影响原始分析",
-            "仍然缺少哪些证据",
-            "哪些原始结论需要降低确定性",
-            "裁决阶段应将哪些内容视为不确定",
-        ],
-    }
-    return json.dumps(payload, ensure_ascii=False, default=str)
+        ensure_ascii=False,
+        default=str,
+    )
 
 
 def build_safety_flags(agent_name: str) -> list[str]:
@@ -207,17 +128,9 @@ def build_safety_flags(agent_name: str) -> list[str]:
 
 def build_report_role_name(agent_name: str, stage: str) -> str:
     if agent_name == "HarmfulnessJudgeAgent":
-        return {
-            "draft": "judge_draft",
-            "critique": "judge_critique",
-            "final": "judge_final",
-        }.get(stage, "judge_final")
+        return {"draft": "judge_draft", "critique": "judge_critique", "final": "judge_final"}.get(stage, "judge_final")
     if agent_name == "CountermeasureAgent":
-        return {
-            "draft": "countermeasure_draft",
-            "critique": "countermeasure_critique",
-            "final": "countermeasure_final",
-        }.get(stage, "countermeasure_final")
+        return {"draft": "countermeasure_draft", "critique": "countermeasure_critique", "final": "countermeasure_final"}.get(stage, "countermeasure_final")
     return "expert_initial"
 
 
@@ -233,18 +146,8 @@ def build_default_report_role(agent_name: str) -> str:
 
 def build_revision_system_prompt(agent_name: str, revision_kind: str) -> str:
     if revision_kind == "critique":
-        return (
-            f"You are reviewing the draft report of {agent_name}. "
-            "Write a Chinese critique focused on missing evidence, unsupported inference, "
-            "policy misuse, uncertainty handling, and what should be revised. "
-            "Do not output JSON."
-        )
-    return (
-        f"You are revising the {agent_name} draft after critique. "
-        "Write a stronger Chinese final report that explicitly addresses the critique, "
-        "keeps evidence and uncertainty separate, follows active policy as advisory context, "
-        "and does not claim automatic classifier authority."
-    )
+        return f"Review the {agent_name} draft in Chinese for missing evidence, unsupported inference, policy misuse, and uncertainty. Do not output JSON."
+    return f"Revise the {agent_name} draft in Chinese after critique, preserving evidence/uncertainty separation and advisory policy limits."
 
 
 def build_revision_user_prompt(
@@ -257,28 +160,101 @@ def build_revision_user_prompt(
     policy_guidance: dict[str, Any],
     critique_report: dict[str, Any] | None = None,
 ) -> str:
-    payload = {
-        "agent_name": agent_name,
-        "revision_kind": revision_kind,
-        "selected_context": context,
-        "policy_guidance": policy_guidance,
-        "error_memory_summary": context.get("error_memory_summary") or {},
-        "source_report": {
-            "report_role": source_report.get("report_role"),
-            "status": source_report.get("status"),
-            "report_text": source_report.get("report_text"),
-            "analysis_report": source_report.get("analysis_report"),
+    return json.dumps(
+        {
+            "agent_name": agent_name,
+            "revision_kind": revision_kind,
+            "selected_context": _compact_prompt_value(context),
+            "policy_guidance": _compact_prompt_value(policy_guidance),
+            "error_memory_summary": _compact_prompt_value(context.get("error_memory_summary") or {}),
+            "source_report": _compact_prior_report(source_report),
+            "critique_report": _compact_prior_report(critique_report or {}) if critique_report else None,
+            "prior_agent_reports": _compact_prior_reports(reports_by_agent),
         },
-        "critique_report": {
-            "report_role": (critique_report or {}).get("report_role"),
-            "status": (critique_report or {}).get("status"),
-            "report_text": (critique_report or {}).get("report_text"),
-        }
-        if critique_report
-        else None,
-        "prior_agent_reports": {
-            name: {"status": item.get("status"), "report_text": item.get("report_text")}
-            for name, item in reports_by_agent.items()
-        },
+        ensure_ascii=False,
+        default=str,
+    )
+
+
+def build_policy_decision_frame(context: dict[str, Any], reports_by_agent: dict[str, dict[str, Any]]) -> dict[str, Any]:
+    envelope = context.get("active_policy") or context.get("policy") or {}
+    policy = envelope.get("policy") if isinstance(envelope, dict) and isinstance(envelope.get("policy"), dict) else envelope
+    policy = policy if isinstance(policy, dict) else {}
+    thresholds = {
+        "review": {"threshold": policy.get("review_threshold")},
+        "abstain": {"threshold": policy.get("abstain_threshold")},
+        "retrieval": {"threshold": policy.get("retrieval_threshold")},
+        "countermeasure": {"threshold": policy.get("countermeasure_threshold")},
     }
-    return json.dumps(payload, ensure_ascii=False, default=str)
+    accepted_rules = [
+        {"rule_id": rule.get("rule_id"), "explanation": rule.get("description")}
+        for rule in (envelope.get("candidate_rules") or [])
+        if isinstance(rule, dict) and rule.get("status") in {"accepted_for_round", "activated"}
+    ]
+    weights = policy.get("agent_weights") or {}
+    contributions = []
+    for agent_name, report in reports_by_agent.items():
+        if report.get("status") != "completed" or agent_name not in weights:
+            continue
+        contributions.append(
+            {
+                "agent_name": agent_name,
+                "weight": weights[agent_name],
+                "evidence_refs": (report.get("system_audit_sidecar") or {}).get("evidence_refs") or [],
+            }
+        )
+    memory = context.get("error_memory_summary") or {}
+    cautions = memory.get("historical_failure_cautions") or memory.get("cautions") or []
+    frame = {
+        "active_policy_id": envelope.get("policy_id") if isinstance(envelope, dict) else None,
+        "threshold_comparisons": thresholds,
+        "matched_accepted_rules": accepted_rules,
+        "weighted_expert_contribution_refs": contributions,
+        "historical_failure_memory_cautions": cautions,
+    }
+    case_score = context.get("case_score")
+    uncertainty = context.get("case_uncertainty")
+    if case_score is not None:
+        frame["case_score"] = case_score
+    if uncertainty is not None:
+        frame["case_uncertainty"] = uncertainty
+    return frame
+
+
+def _compact_prior_reports(reports_by_agent: dict[str, dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    return {name: _compact_prior_report(item) for name, item in reports_by_agent.items()}
+
+
+def _compact_prior_report(report: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "status": report.get("status"),
+        "report_text": _truncate_text(report.get("report_text")),
+        "evidence_refs": _compact_prompt_value((report.get("system_audit_sidecar") or {}).get("evidence_refs") or []),
+    }
+
+
+def _compact_prompt_value(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {
+            key: _compact_prompt_value(item)
+            for key, item in value.items()
+            if key not in {"data_url", "base64", "image_base64", "payload_base64"}
+        }
+    if isinstance(value, list):
+        return [_compact_prompt_value(item) for item in value]
+    if isinstance(value, tuple):
+        return [_compact_prompt_value(item) for item in value]
+    if isinstance(value, str):
+        if value.strip().lower().startswith("data:") or "base64," in value.lower():
+            return "[omitted binary payload]"
+        return _truncate_text(value)
+    return value
+
+
+def _truncate_text(value: Any) -> str | None:
+    if value is None:
+        return None
+    text = str(value)
+    if len(text) <= MAX_PROMPT_TEXT_CHARS:
+        return text
+    return f"{text[:MAX_PROMPT_TEXT_CHARS]}...[truncated]"

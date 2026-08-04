@@ -48,6 +48,7 @@ __all__ = [
     "normalize_agent_names",
     "recommend_runtime_mode",
     "resolve_runtime_mode",
+    "select_reflection_response_agents",
     "should_postpone_countermeasure",
 ]
 
@@ -183,6 +184,31 @@ def build_execution_plan_for_runtime(
         "claim_agent_enabled": "ClaimEvidenceAgent" in expert_agents,
         "multimodal_agent_enabled": "MultimodalConsistencyAgent" in expert_agents,
     }
+
+
+def select_reflection_response_agents(
+    *,
+    expert_agents: list[str],
+    reports_by_agent: dict[str, dict[str, Any]],
+    explicit_targets: list[str] | None = None,
+) -> list[str]:
+    """Choose completed experts for the bounded QuestionReflection response pass."""
+    completed = [
+        agent
+        for agent in expert_agents
+        if (reports_by_agent.get(agent) or {}).get("status") == "completed"
+    ]
+    if explicit_targets is not None:
+        requested = _dedupe_strs(explicit_targets)
+        return [agent for agent in requested if agent in completed]
+
+    reflection_text = " ".join(
+        str(value or "")
+        for value in (reports_by_agent.get("QuestionReflectionAgent") or {}).values()
+        if isinstance(value, (str, int, float))
+    ).lower()
+    mentioned = [agent for agent in completed if agent.lower() in reflection_text]
+    return (mentioned + [agent for agent in completed if agent not in mentioned])[:2]
 
 
 def should_postpone_countermeasure(*, report: dict[str, Any], reports_by_agent: dict[str, dict[str, Any]]) -> bool:

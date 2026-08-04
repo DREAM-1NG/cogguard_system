@@ -25,14 +25,14 @@
           <a-dropdown>
             <button type="button" class="user-badge" aria-label="打开用户菜单">
               <a-avatar size="small" style="background-color: #001529; font-size: 12px">
-                {{ (authStore.userInfo?.username || 'U').charAt(0).toUpperCase() }}
+                {{ userDisplayName.charAt(0).toUpperCase() }}
               </a-avatar>
-              <span class="user-name">{{ authStore.userInfo?.username || '用户' }}</span>
+              <span class="user-name">{{ userDisplayName }}</span>
             </button>
             <template #overlay>
               <a-menu>
                 <a-menu-item disabled>
-                  <UserOutlined /> 角色：{{ authStore.userInfo?.role || '-' }}
+                  <UserOutlined /> 角色：{{ userRoleLabel }}
                 </a-menu-item>
                 <a-menu-divider />
                 <a-menu-item @click="handleLogout" danger>
@@ -97,7 +97,7 @@ const menuItems = [
   { path: '/crawl', label: '数据采集', icon: CloudDownloadOutlined, desc: '创建采集请求并管理多平台数据获取', disabled: false },
   { path: '/coordination', label: '协同发现', icon: ApartmentOutlined, desc: '发现协同行为并构建协同网络', disabled: false },
   { path: '/propagation', label: '传播分析', icon: ShareAltOutlined, desc: '查看传播预测、证据链和传播角色', disabled: false },
-  { path: '/accounts', label: '账号画像', icon: UserOutlined, desc: '账号画像、活跃节律和自动化倾向', disabled: false },
+  { path: '/accounts', label: '账号画像', icon: UserOutlined, desc: '查看账号研判与活跃节律', disabled: false },
   { path: '/risk', label: '事件研判', icon: AlertOutlined, desc: '查看证据、复核建议并确认处置结论', disabled: false },
   { path: '/system', label: '系统运维', icon: SettingOutlined, desc: '配置服务并检查系统连通性与任务健康', disabled: false, roles: ['admin'] },
 ]
@@ -114,6 +114,14 @@ const selectedKeys = computed(() => {
   return [prefix?.path || route.path]
 })
 const currentMenu = computed(() => visibleMenuItems.value.find((item) => item.path === selectedKeys.value[0]))
+const userDisplayName = computed(() => {
+  const username = authStore.userInfo?.username || ''
+  return username === 'admin' ? '管理员' : username || '用户'
+})
+const userRoleLabel = computed(() => {
+  const role = authStore.userInfo?.role
+  return role === 'admin' ? '系统管理员' : role === 'analyst' ? '分析员' : '用户'
+})
 
 const openTabs = ref<Array<{ path: string; label: string }>>([])
 

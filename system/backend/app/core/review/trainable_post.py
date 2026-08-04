@@ -376,6 +376,40 @@ def load_local_clip_safetensors_snapshot(model_name: str, cache_dir: str | Path 
     raise FileNotFoundError(f"no local safetensors CLIP snapshot found for {model_name} in {model_cache}")
 
 
+def resolve_local_hf_snapshot(model_name: str, cache_dir: str | Path | None, *, local_files_only: bool = True) -> str:
+    """Resolve a HuggingFace cache snapshot path before transformers can go online."""
+    if not local_files_only:
+        return model_name
+    direct_path = Path(model_name)
+    if direct_path.exists():
+        return str(direct_path)
+    if cache_dir is None:
+        return model_name
+    model_cache = Path(cache_dir) / f"models--{model_name.replace('/', '--')}"
+    snapshots_dir = model_cache / "snapshots"
+    if not snapshots_dir.exists():
+        return model_name
+
+    weight_files = {"model.safetensors", "pytorch_model.bin", "tf_model.h5", "flax_model.msgpack"}
+    tokenizer_files = {
+        "tokenizer.json",
+        "vocab.txt",
+        "sentencepiece.bpe.model",
+        "spiece.model",
+        "merges.txt",
+    }
+    snapshots = sorted(
+        [snapshot for snapshot in snapshots_dir.iterdir() if snapshot.is_dir()],
+        key=lambda snapshot: snapshot.stat().st_mtime,
+        reverse=True,
+    )
+    for snapshot in snapshots:
+        names = {item.name for item in snapshot.iterdir() if item.is_file()}
+        if "config.json" in names and names.intersection(weight_files) and names.intersection(tokenizer_files):
+            return str(snapshot)
+    return model_name
+
+
 def encode_text_features(
     texts: list[str],
     *,
@@ -420,8 +454,9 @@ def encode_text_features(
             from transformers import AutoModel, AutoTokenizer
 
             require_torch()
+            pretrained_ref = resolve_local_hf_snapshot(model_name, cache_dir, local_files_only=local_files_only)
             tokenizer = AutoTokenizer.from_pretrained(
-                model_name,
+                pretrained_ref,
                 revision=revision,
                 cache_dir=str(cache_dir) if cache_dir else None,
                 local_files_only=local_files_only,
@@ -429,7 +464,7 @@ def encode_text_features(
             )
             try:
                 model = AutoModel.from_pretrained(
-                    model_name,
+                    pretrained_ref,
                     revision=revision,
                     cache_dir=str(cache_dir) if cache_dir else None,
                     local_files_only=local_files_only,
@@ -437,7 +472,7 @@ def encode_text_features(
                 )
             except OSError:
                 model = AutoModel.from_pretrained(
-                    model_name,
+                    pretrained_ref,
                     revision=revision,
                     cache_dir=str(cache_dir) if cache_dir else None,
                     local_files_only=local_files_only,
@@ -876,7 +911,8 @@ def binary_pr_auc(y_true: list[str] | np.ndarray, probabilities: np.ndarray) -> 
     recall = tp / max(int(labels.sum()), 1)
     precision = np.concatenate([np.asarray([1.0]), precision])
     recall = np.concatenate([np.asarray([0.0]), recall])
-    return round(float(np.trapz(precision, recall)), 6)
+    trapezoid = getattr(np, "trapezoid", None) or getattr(np, "trapz")
+    return round(float(trapezoid(precision, recall)), 6)
 
 
 def _as_binary_value(value: Any) -> int:

@@ -18,6 +18,7 @@ It does not apply to archive material except for read-only reference.
 | --- | --- | --- |
 | Product shell | `system/backend`, `system/frontend` | Code reachable from product APIs, UI, tasks, or demo flows. |
 | Product runtimes | `system/runtimes/social_runtime`, `system/runtimes/news_runtime`, `system/runtimes/review_student` | Vendored executable engines used by product code. |
+| Delivery and operations | `system/deploy`, `system/ops` | Non-business deployment and maintenance artifacts; they must not duplicate product logic. |
 | System-readable research | `system/research/coordination_discover`, `system/research/coordination_detect`, `system/research/propagation_analysis`, `system/research/review_teacher`, `system/research/social_bot_detection` | Research code that is importable by product adapters but not a separate runtime dependency. |
 | Documentation | `doc/engineering`, `doc/research` | Normative engineering docs and research notes. |
 | Reference boundaries | `MediaCrawler-main`, `NewsCrawler-main`, `CooRTweet-master` | Provenance only; never runtime dependencies. |
@@ -156,7 +157,8 @@ Use the glossary in `UBIQUITOUS_LANGUAGE.md` for domain terms. The system-level 
 
 ### Durable Review And Model Governance
 
-- The primary frontend is a business-facing Event Review Case workspace. It may show case state, Evidence Sufficiency, evidence references, the Preliminary Finding, Review Advisory differences, analyst activity, and the Confirmed Decision.
+- The primary frontend is a business-facing Event Review Case workspace. It may show concise Chinese business conclusions, Evidence Sufficiency, evidence references, Coordination Discover account display names, Review Advisory differences, analyst activity, and the Confirmed Decision. It must not render transient internal-status notices, raw runtime rationale, or a propagation summary in that workspace.
+- Account Profile is a business-facing companion view. It may show nickname, platform, activity context, recent public posts, and a concise account finding. Rule-derived scores, detector probabilities, method identifiers, runtime modes, and support-graph internals must remain outside product presentation.
 - Model versions, artifact paths and hashes, agent graphs, queue internals, active pointers, and rollback controls belong to the authenticated backend control plane. Do not add a technical governance page to the primary frontend.
 - `ANALYSIS_TEACHER_DISPATCH_MODE=auto` permits `local_inline_fallback` only for local deployments. Production resolves to `queue_required`; a broker failure is persisted as a retryable failed Teacher advisory and is never silently completed in API process memory.
 - `ANALYSIS_MODEL_ACTIVATION_APPROVAL_MODE=auto` permits one accountable operator locally. Production requires two distinct active administrator records in `analysis_model_activation_approvals`, created through authenticated approval actions; activation requests must not accept caller-supplied approver identities.
@@ -214,6 +216,9 @@ Use the glossary in `UBIQUITOUS_LANGUAGE.md` for domain terms. The system-level 
 - Keep analysis capability-specific research logic in semantic research packages: `coordination_discover`, `coordination_detect`, `propagation_analysis`, and `review_teacher`.
 - Keep Event Review Case orchestration, review advisory routing, and decision confirmation in `app/services/review_case_service.py` and `app/api/v2/review_cases.py`.
 - Keep deployable ML/runtime code in `system/runtimes/*`.
+- Keep static delivery configuration in `system/deploy/` and explicit,
+  idempotent maintenance operations in `system/ops/`. Neither location may
+  introduce a parallel API, page, or business implementation.
 
 ## Governance Change Checklist
 
@@ -236,6 +241,9 @@ Every completed code task must perform a documentation sync before final reply:
 5. If the change records a lasting decision, add or update an ADR under `docs/adr/`.
 6. If APIs, setup, or runtime behavior changed, update `README.md` or `system/README.md`.
 7. If future agents need a new rule, update `AGENTS.md` and, when relevant, `CLAUDE.md`.
+8. If a change affects route loading, query volume, or delivery policy, update
+   `doc/engineering/performance-operations.md` with its cache, measurement,
+   and rollback boundary.
 
 ## Examples
 

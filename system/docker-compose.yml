@@ -48,6 +48,7 @@ services:
       - "${MONGO_PORT:-27017}:27017"
     volumes:
       - mongo_data:/data/db
+      - ./ops/mongo:/opt/cogguard-ops:ro
     healthcheck:
       test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
       interval: 10s
@@ -68,6 +69,27 @@ services:
       - redis_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:?REDIS_PASSWORD must be set}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ---------- Production static frontend ----------
+  # Opt-in profile. The backend remains the existing host process by default.
+  frontend_static:
+    profiles: ["production-ui"]
+    build:
+      context: .
+      dockerfile: deploy/frontend.Dockerfile
+    container_name: cogguard-frontend
+    restart: unless-stopped
+    environment:
+      BACKEND_ORIGIN: ${BACKEND_ORIGIN:-http://host.docker.internal:8000}
+    ports:
+      - "${FRONTEND_PORT:-5173}:80"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost/healthz || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5

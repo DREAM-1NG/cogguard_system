@@ -13,6 +13,8 @@ research notes. If this file conflicts with older documents, this file wins.
 | `system/backend/app/services/analysis_governance_service.py` | Authenticated control plane for durable Teacher dispatch outcomes, model candidates, activation approvals, active pointers, and rollback decisions. | Keep separate from product-facing case schemas and frontend. |
 | `system/backend/alembic/versions/` | Versioned MySQL schema changes, including durable review and model approval tables. | Apply migrations before enabling the corresponding production endpoint. |
 | `system/frontend/` | Vue 3 and TypeScript UI. | Keep `/dashboard` as the homepage and `/risk` as the Event Review Case workspace. |
+| `system/deploy/` | Optional static frontend delivery profile and Nginx cache/proxy policy. | Do not add product behavior here; use it to serve built frontend assets and proxy existing APIs. |
+| `system/ops/` | Explicit maintenance operations, including MongoDB performance-index application. | Keep operations idempotent, observable, and free of destructive defaults. |
 | `system/runtimes/social_runtime/` | Vendored social crawler runtime for `weibo`, `douyin`, and `xhs`. | Product runtime code; keep dependencies local to this runtime. |
 | `system/runtimes/news_runtime/` | Vendored news extraction runtime for `news`. | Product runtime code; keep dependencies local to this runtime. |
 | `system/runtimes/review_student/` | Deployable Student Review runtime used by `StudentRuntime.predict(case)`. | Product runtime code; keep synchronous, checkpoint-gated, and governance-aware. |
@@ -66,6 +68,8 @@ CogGuard/
       scripts/                        Explicit local utility entrypoints
       tests/                          Backend regression and governance tests
     frontend/                         Dashboard and Event Review Case UI
+    deploy/                           Static frontend delivery and proxy policy
+    ops/                              Explicit database and runtime maintenance operations
     research/
       coordination_discover/          Coordination Discover research pipeline
       coordination_detect/            Coordination Detect validation boundary
@@ -107,3 +111,15 @@ immutable authenticated approval per candidate and administrator, and
 `analysis_model_activations` stores the active pointer. These records are
 control-plane data and must not be copied into the business-safe frontend
 contracts.
+
+## Performance Operations
+
+`system/deploy/frontend.Dockerfile` and
+`system/deploy/nginx/default.conf.template` provide an opt-in static frontend
+delivery profile. It caches only content-addressed assets, keeps HTML/API/SSE
+uncached, and does not alter product routes or contracts.
+
+`system/ops/Apply-MongoPerformanceIndexes.ps1` applies the explicit
+`raw_posts`/`raw_comments` index set through the running Compose MongoDB
+service. It does not run on backend startup and never removes indexes. The
+operational source of truth is [performance-operations.md](performance-operations.md).

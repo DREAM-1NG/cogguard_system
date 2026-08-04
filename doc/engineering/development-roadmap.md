@@ -4,7 +4,21 @@
 > **受众**：开发者、项目维护者、后续执行任务的 AI agent。  
 > **维护规则**：只维护可执行工程路线和状态；研究定位、文献依据和关键技术背景放入 `../research/`。
 
-> 最后更新：2026-08-03
+> 最后更新：2026-08-04
+
+## 2026-08-04 Performance Delivery And Operations
+
+- [x] Add an opt-in static frontend delivery profile with gzip, immutable
+  caching for Vite content-addressed assets, uncached HTML/API behavior, and
+  unbuffered review event streaming.
+- [x] Add an explicit, idempotent MongoDB index operation for the existing
+  event/platform/time/crawl-job query shapes.
+- [x] Record the measured route-cost map and operations runbook in
+  `performance-operations.md` without changing frontend or backend product
+  source.
+- [ ] Source-level performance work remains separately scoped: route instance
+  retention, evidence pagination/virtualization, account inference
+  precomputation, analytical result caching, and deferred graph initialization.
 
 ## 2026-08-03 Durable Review And Model Governance
 
@@ -32,6 +46,21 @@
 - [ ] Run an authenticated Teacher Advisory submission through the product API
   with a deliberately provisioned local administrator account; no known admin
   password is present in the current environment, so this smoke is not claimed.
+
+## 2026-08-03 Analyst-Facing Case And Account Views
+
+- [x] The Event Review Case workspace now presents a concise Chinese business
+  summary: it does not render transient review-status notices, internal
+  rationale text, or a propagation-summary card.
+- [x] Coordination summary account references are resolved against collected
+  display names and the workspace limits the visible account list.
+- [x] Account profiles now request the trained account detector as part of the
+  profile projection. The analyst view shows only a concise finding and does
+  not expose legacy rule scores, probabilities, runtime modes, or method
+  internals.
+- [x] The account profile client allows the first local detector inference to
+  complete, while the backend caches the result by input fingerprint for
+  subsequent profile and detail reads.
 
 ## 2026-08-02 文档同步
 

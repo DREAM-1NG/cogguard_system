@@ -79,6 +79,13 @@ def parse_args() -> argparse.Namespace:
         help="Synthetic crawl_job_id to stamp on imported documents. Defaults to 0.",
     )
     parser.add_argument(
+        "--event-id",
+        help=(
+            "Assign imported documents to one existing event. The event derived from the "
+            "original search keyword is retained as source_event_id for provenance."
+        ),
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Parse and normalize data without writing to MongoDB.",
@@ -134,6 +141,7 @@ def build_document(
     item_type: str,
     item_id: str,
     event_id: str,
+    source_event_id: str,
     source_keyword: str,
     job_id: int,
     crawl_metadata: dict[str, Any],
@@ -141,6 +149,7 @@ def build_document(
     document = dict(payload)
     document["crawl_job_id"] = job_id
     document["event_id"] = event_id
+    document["source_event_id"] = source_event_id
     document["source_keyword"] = source_keyword
     document["crawl_metadata"] = crawl_metadata
     if item_id:
@@ -177,23 +186,27 @@ def find_file_pairs(data_root: Path, platforms: list[str], dates: set[str] | Non
 
 
 async def import_pair(
-    mongo_db,
+    mongo_db: Any | None,
     *,
     platform: str,
     content_path: Path,
     comment_path: Path | None,
     job_id: int,
+    event_id_override: str | None,
     dry_run: bool,
 ) -> dict[str, Any]:
     config = PLATFORM_CONFIG[platform]
     date_part = infer_date_part(content_path)
     crawl_metadata = build_crawl_metadata(platform, content_path, comment_path, date_part)
+    if event_id_override:
+        crawl_metadata["event_id_override"] = event_id_override
 
     content_rows = iter_jsonl_rows(content_path)
     comment_rows = iter_jsonl_rows(comment_path) if comment_path else []
 
     post_keyword_map: dict[str, str] = {}
     post_event_map: dict[str, str] = {}
+    post_source_event_map: dict[str, str] = {}
     post_documents: list[dict[str, Any]] = []
     comment_documents: list[dict[str, Any]] = []
 
@@ -201,15 +214,18 @@ async def import_pair(
         post = config.post_loader(raw, platform)
         payload = post.model_dump(mode="json")
         source_keyword = str(raw.get("source_keyword") or "").strip()
-        event_id = event_id_from_keyword(source_keyword, date_part, platform)
+        source_event_id = event_id_from_keyword(source_keyword, date_part, platform)
+        event_id = event_id_override or source_event_id
         post_keyword_map[post.post_id] = source_keyword
         post_event_map[post.post_id] = event_id
+        post_source_event_map[post.post_id] = source_event_id
         post_documents.append(
             build_document(
                 payload,
                 item_type="post",
                 item_id=post.post_id,
                 event_id=event_id,
+                source_event_id=source_event_id,
                 source_keyword=source_keyword,
                 job_id=job_id,
                 crawl_metadata=crawl_metadata,
@@ -220,13 +236,18 @@ async def import_pair(
         comment = config.comment_loader(raw, platform)
         payload = comment.model_dump(mode="json")
         source_keyword = post_keyword_map.get(comment.post_id, "")
-        event_id = post_event_map.get(comment.post_id, event_id_from_keyword(source_keyword, date_part, platform))
+        source_event_id = post_source_event_map.get(
+            comment.post_id,
+            event_id_from_keyword(source_keyword, date_part, platform),
+        )
+        event_id = event_id_override or post_event_map.get(comment.post_id, source_event_id)
         comment_documents.append(
             build_document(
                 payload,
                 item_type="comment",
                 item_id=comment.comment_id,
                 event_id=event_id,
+                source_event_id=source_event_id,
                 source_keyword=source_keyword,
                 job_id=job_id,
                 crawl_metadata=crawl_metadata,
@@ -234,6 +255,8 @@ async def import_pair(
         )
 
     if not dry_run:
+        if mongo_db is None:
+            raise RuntimeError("MongoDB is required when importing documents.")
         await write_documents(mongo_db["raw_posts"], post_documents)
         await write_documents(mongo_db["raw_comments"], comment_documents)
 
@@ -245,6 +268,7 @@ async def import_pair(
         "posts": len(post_documents),
         "comments": len(comment_documents),
         "event_ids": sorted({document["event_id"] for document in post_documents})[:10],
+        "source_event_ids": sorted({document["source_event_id"] for document in post_documents})[:10],
     }
 
 
@@ -260,7 +284,8 @@ async def main() -> int:
     if not pairs:
         raise SystemExit("No matching MediaCrawler JSONL files were found for import.")
 
-    mongo_db = get_mongo_db()
+    event_id_override = str(args.event_id or "").strip() or None
+    mongo_db = get_mongo_db() if not args.dry_run else None
     summaries: list[dict[str, Any]] = []
     totals = defaultdict(int)
     try:
@@ -271,6 +296,7 @@ async def main() -> int:
                 content_path=content_path,
                 comment_path=comment_path,
                 job_id=args.job_id,
+                event_id_override=event_id_override,
                 dry_run=args.dry_run,
             )
             summaries.append(summary)
@@ -281,7 +307,8 @@ async def main() -> int:
         print(json.dumps({"totals": dict(totals), "dry_run": args.dry_run}, ensure_ascii=False))
         return 0
     finally:
-        await close_mongo()
+        if mongo_db is not None:
+            await close_mongo()
 
 
 if __name__ == "__main__":
