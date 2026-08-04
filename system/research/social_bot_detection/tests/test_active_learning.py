@@ -2,8 +2,13 @@ from __future__ import annotations
 
 from research.social_bot_detection.active_learning import (
     AccountAcquisitionCandidate,
+    AcquisitionInputError,
     AccountAcquisitionWeights,
+    badge_select,
+    calibrated_uncertainty,
+    core_set_select,
     select_account_labeling_batch,
+    select_heuristic_labeling_batch,
 )
 from research.social_bot_detection.evaluate_active_round import evaluate_active_round_gates
 from research.social_bot_detection.evaluate_active_round import build_frozen_holdout_manifest
@@ -18,6 +23,9 @@ def _candidate(
     calibrated: bool = False,
     ood: float = 0.0,
     approved: bool = False,
+    alps: list[float] | None = None,
+    badge: list[float] | None = None,
+    calibration_source: str = "",
 ) -> AccountAcquisitionCandidate:
     return AccountAcquisitionCandidate(
         case_id=f"case-{account_id}",
@@ -28,94 +36,144 @@ def _candidate(
         post_ids=[f"post-{account_id}"],
         model_probability=probability,
         model_is_calibrated=calibrated,
+        calibrated_probability=probability if calibrated else None,
+        calibration_source=calibration_source,
         ood_score=ood,
+        alps_embedding=alps,
+        badge_embedding=badge,
         has_approved_label=approved,
     )
 
 
-def test_selector_excludes_approved_labels_and_keeps_random_audit_quota():
+def test_cold_start_uses_alps_embeddings_and_core_set_selection():
     selected = select_account_labeling_batch(
+        [
+            _candidate("near-a", alps=[1.0, 0.0]),
+            _candidate("near-b", alps=[0.9, 0.1]),
+            _candidate("far-c", alps=[0.0, 1.0]),
+        ],
+        budget=2,
+        cold_start=True,
+    )
+
+    assert selected.strategy == "cold_start_alps_core_set"
+    assert [item.case_id for item in selected.items] == ["case-near-a", "case-far-c"]
+    assert all(item.selection_bucket == "alps_core_set" for item in selected.items)
+    assert selected.manifest["non_claimable_fallback_used"] is False
+
+
+def test_cold_start_requires_real_alps_vectors():
+    try:
+        select_account_labeling_batch(
+            [_candidate("missing-alps")],
+            budget=1,
+            cold_start=True,
+        )
+    except AcquisitionInputError as error:
+        assert "alps_embedding" in str(error)
+    else:
+        raise AssertionError("cold-start selector accepted a missing ALPS vector")
+
+
+def test_warm_start_uses_calibrated_uncertainty_and_badge_gradient_embeddings():
+    selected = select_account_labeling_batch(
+        [
+            _candidate(
+                "uncertain-a",
+                probability=0.51,
+                calibrated=True,
+                calibration_source="temperature_scaling",
+                badge=[1.0, 0.0, 0.0, 0.0],
+            ),
+            _candidate(
+                "uncertain-b",
+                probability=0.49,
+                calibrated=True,
+                calibration_source="temperature_scaling",
+                badge=[0.95, 0.05, 0.0, 0.0],
+            ),
+            _candidate(
+                "diverse-c",
+                probability=0.8,
+                calibrated=True,
+                calibration_source="temperature_scaling",
+                badge=[0.0, 1.0, 0.0, 0.0],
+            ),
+        ],
+        budget=2,
+    )
+
+    assert selected.strategy == "warm_start_calibrated_uncertainty_badge"
+    assert selected.items[0].case_id == "case-uncertain-a"
+    assert selected.items[1].case_id == "case-diverse-c"
+    assert "badge_vector_norm" in selected.items[0].scores
+    assert selected.items[0].scores["calibrated_uncertainty"] > 0.9
+
+
+def test_warm_start_rejects_uncalibrated_probabilities_and_missing_badge():
+    try:
+        select_account_labeling_batch(
+            [_candidate("missing-badge", probability=0.51, calibrated=True, calibration_source="temperature_scaling")],
+            budget=1,
+        )
+    except AcquisitionInputError as error:
+        assert "badge_embedding" in str(error)
+    else:
+        raise AssertionError("warm-start selector accepted a missing BADGE vector")
+
+    try:
+        select_account_labeling_batch(
+            [_candidate("uncalibrated", probability=0.51, calibrated=False, badge=[1.0, 0.0])],
+            budget=1,
+        )
+    except AcquisitionInputError as error:
+        assert "alps_embedding" in str(error)
+    else:
+        raise AssertionError("auto selector accepted uncalibrated output without ALPS cold-start input")
+
+
+def test_core_set_and_badge_helpers_are_deterministic():
+    assert core_set_select([[1.0, 0.0], [0.8, 0.2], [0.0, 1.0]], budget=2) == [0, 2]
+    selected = badge_select(
+        [
+            _candidate("a", probability=0.51, calibrated=True, calibration_source="temperature_scaling", badge=[1.0, 0.0]),
+            _candidate("b", probability=0.9, calibrated=True, calibration_source="temperature_scaling", badge=[0.0, 1.0]),
+        ],
+        budget=1,
+    )
+    assert selected == [0]
+    assert calibrated_uncertainty(0.51, calibrated=True) > 0.9
+
+
+def test_heuristic_baseline_is_explicit_and_non_claimable():
+    selected = select_heuristic_labeling_batch(
         [
             _candidate("already-labeled", probability=0.5, approved=True),
             _candidate("uncertain-a", probability=0.51),
             _candidate("uncertain-b", probability=0.49),
-            _candidate("stable-human", probability=0.05),
-            _candidate("stable-bot", probability=0.95),
-        ],
-        budget=3,
-        weights=AccountAcquisitionWeights(random_audit=0.34),
-    )
-
-    assert len(selected.items) == 3
-    assert "case-already-labeled" not in {item.case_id for item in selected.items}
-    assert any(item.selection_bucket == "random_audit" for item in selected.items)
-    assert selected.manifest["budget"] == 3
-    assert selected.manifest["excluded_approved_label_count"] == 1
-
-
-def test_cold_start_uses_surprisal_and_diversity_before_uncalibrated_uncertainty():
-    selected = select_account_labeling_batch(
-        [
-            _candidate("low-surprisal", probability=None),
-            _candidate("high-surprisal", probability=None),
-            _candidate("medium-surprisal", probability=None),
         ],
         budget=2,
-        cold_start=True,
-        surprisal_by_case={
-            "case-low-surprisal": 0.1,
-            "case-high-surprisal": 0.9,
-            "case-medium-surprisal": 0.5,
-        },
         weights=AccountAcquisitionWeights(random_audit=0.0),
     )
 
-    assert selected.strategy == "cold_start_surprisal_diversity"
-    assert selected.items[0].case_id == "case-high-surprisal"
-    assert all("surprisal" in item.scores for item in selected.items)
-    assert selected.manifest["model_state"] == "cold_start_no_reliable_ranker"
-
-
-def test_warm_start_manifest_requires_model_ranker_for_uncertainty():
-    selected = select_account_labeling_batch(
-        [_candidate("warm-a", probability=0.51, calibrated=True)],
-        budget=1,
-        weights=AccountAcquisitionWeights(random_audit=0.0),
-    )
-
-    assert selected.strategy == "uncertainty_disagreement_diversity"
-    assert selected.manifest["model_state"] == "warm_start_calibrated_model_ranker"
-    assert selected.items[0].scores["uncertainty"] > 0.9
-
-
-def test_uncalibrated_probabilities_do_not_trigger_warm_start_uncertainty():
-    selected = select_account_labeling_batch(
-        [
-            _candidate("uncalibrated-a", probability=0.51, calibrated=False),
-            _candidate("uncalibrated-b", probability=0.99, calibrated=False),
-        ],
-        budget=1,
-        weights=AccountAcquisitionWeights(random_audit=0.0),
-    )
-
-    assert selected.strategy == "cold_start_coverage_diversity"
-    assert selected.manifest["ranker_status"] == "no_calibrated_model"
-    assert selected.items[0].scores["uncertainty"] == 0.0
+    assert selected.strategy == "heuristic_baseline"
+    assert selected.manifest["non_claimable_fallback_used"] is True
+    assert "case-already-labeled" not in {item.case_id for item in selected.items}
 
 
 def test_platform_stratification_prevents_one_platform_from_owning_the_batch():
     candidates = [
-        _candidate(f"w{i}", platform="weibo", probability=0.5 + (i * 0.001))
+        _candidate(f"w{i}", platform="weibo", alps=[1.0, float(i)])
         for i in range(8)
     ] + [
-        _candidate("xhs-a", platform="xhs", probability=0.52),
-        _candidate("douyin-a", platform="douyin", probability=0.53),
+        _candidate("xhs-a", platform="xhs", alps=[0.0, 1.0]),
+        _candidate("douyin-a", platform="douyin", alps=[-1.0, 0.0]),
     ]
 
     selected = select_account_labeling_batch(
         candidates,
         budget=6,
-        weights=AccountAcquisitionWeights(random_audit=0.0),
+        cold_start=True,
     )
 
     platforms = {item.platform for item in selected.items}

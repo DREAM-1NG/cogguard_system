@@ -57,6 +57,7 @@ def prediction_rows(
     corrected_probabilities: np.ndarray,
     routed: np.ndarray,
     source_labels: list[str] | None = None,
+    split: str = "",
 ) -> list[dict[str, Any]]:
     """Build stable JSONL-friendly account predictions."""
 
@@ -67,6 +68,7 @@ def prediction_rows(
             "account_id": account_id,
             "label": int(label),
             "source_label": source_label,
+            "split": split,
             "base_bot_probability": round(float(base), 8),
             "corrected_bot_probability": round(float(corrected), 8),
             "base_prediction": int(base >= 0.5),

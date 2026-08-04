@@ -11,6 +11,7 @@ from fastapi.responses import JSONResponse
 class AppException(Exception):
     """业务异常基类，携带 HTTP 状态码和错误消息。"""
     def __init__(self, code: int = 400, msg: str = "Bad Request"):
+        super().__init__(msg)
         self.code = code
         self.msg = msg
 

@@ -73,7 +73,7 @@ def test_label_taxonomy_rejects_identity_or_attribution_labels():
         normalize_account_behavior_label("foreign_actor")
 
 
-def test_label_batch_excludes_approved_cases_and_marks_review_only_outputs():
+def test_label_batch_excludes_approved_cases_and_marks_review_only_outputs(monkeypatch):
     cases = build_account_detection_cases(
         [
             _post("u1", "短时间重复转发链接", post_id="p1"),
@@ -82,6 +82,15 @@ def test_label_batch_excludes_approved_cases_and_marks_review_only_outputs():
         ],
         event_id="event-1",
         platform=None,
+    )
+
+    monkeypatch.setattr("app.core.account_active_learning.settings.ACCOUNT_ACQUISITION_TEXT_MODEL_PATH", "local-mlm")
+    monkeypatch.setattr(
+        "app.core.account_active_learning._alps_embeddings_for_cases",
+        lambda _active_learning, rows: {
+            row.case_id: [1.0 if index == 0 else 0.0, float(index)]
+            for index, row in enumerate(rows)
+        },
     )
 
     batch = select_account_detection_label_batch(
@@ -98,7 +107,20 @@ def test_label_batch_excludes_approved_cases_and_marks_review_only_outputs():
     assert batch["policy"] == "human_review_required"
     assert len(batch["items"]) == 2
     assert cases[1].case_id not in {item["case_id"] for item in batch["items"]}
+    assert batch["strategy"] == "cold_start_alps_core_set"
     assert batch["manifest"]["excluded_approved_label_count"] == 1
+
+
+def test_label_batch_requires_configured_alps_model_for_cold_start(monkeypatch):
+    cases = build_account_detection_cases(
+        [_post("u1", "public weibo text", post_id="p1")],
+        event_id="event-1",
+        platform="weibo",
+    )
+
+    monkeypatch.setattr("app.core.account_active_learning.settings.ACCOUNT_ACQUISITION_TEXT_MODEL_PATH", "")
+    with pytest.raises(AppException, match="ACCOUNT_ACQUISITION_TEXT_MODEL_PATH"):
+        select_account_detection_label_batch(cases, budget=1, cold_start=True)
 
 
 def test_label_batch_uses_only_calibrated_model_uncertainty_and_passes_warm_start_signals():
@@ -115,34 +137,28 @@ def test_label_batch_uses_only_calibrated_model_uncertainty_and_passes_warm_star
         cases,
         model_outputs={
             "u1": {
-                "bot_probability": 0.51,
+                "calibrated_probability": 0.51,
                 "calibrated": True,
-                "disagreement_score": 0.7,
-                "ood_score": 0.3,
-                "graph_representativeness": 0.9,
-                "embedding": [1.0, 0.0],
+                "calibration_source": "temperature_scaling",
+                "badge_embedding": [1.0, 0.0, 0.0, 0.0],
             },
             "u2": {
-                "bot_probability": 0.99,
-                "calibrated": False,
-                "disagreement_score": 0.0,
-                "ood_score": 0.0,
-                "graph_representativeness": 0.1,
-                "embedding": [0.0, 1.0],
+                "calibrated_probability": 0.8,
+                "calibrated": True,
+                "calibration_source": "temperature_scaling",
+                "badge_embedding": [0.0, 1.0, 0.0, 0.0],
             },
         },
         budget=1,
     )
 
-    assert batch["strategy"] == "uncertainty_disagreement_diversity"
+    assert batch["strategy"] == "warm_start_calibrated_uncertainty_badge"
     assert batch["items"][0]["account_id"] == "u1"
-    assert batch["items"][0]["scores"]["uncertainty"] > 0.9
-    assert batch["items"][0]["scores"]["disagreement"] == 0.7
-    assert batch["items"][0]["scores"]["ood"] == 0.3
-    assert batch["items"][0]["scores"]["representativeness"] == 0.9
+    assert batch["items"][0]["scores"]["calibrated_uncertainty"] > 0.9
+    assert "badge_vector_norm" in batch["items"][0]["scores"]
 
 
-def test_label_batch_ignores_malformed_model_scores_instead_of_crashing():
+def test_label_batch_rejects_incomplete_warm_start_payload():
     cases = build_account_detection_cases(
         [
             _post("u1", "异常模型输出不应破坏选样", post_id="p1"),
@@ -152,17 +168,24 @@ def test_label_batch_ignores_malformed_model_scores_instead_of_crashing():
         platform="weibo",
     )
 
-    batch = select_account_detection_label_batch(
-        cases,
-        model_outputs={
-            "u1": {"bot_probability": "not-a-number", "calibrated": True, "embedding": ["bad"]},
-            "u2": {"bot_probability": 0.49, "calibrated": True, "embedding": [0.0, 1.0]},
-        },
-        budget=1,
-    )
-
-    assert batch["items"][0]["account_id"] == "u2"
-    assert batch["manifest"]["ranker_status"] == "calibrated_model_available"
+    with pytest.raises(AppException, match="badge_embedding"):
+        select_account_detection_label_batch(
+            cases,
+            model_outputs={
+                "u1": {
+                    "calibrated_probability": 0.51,
+                    "calibrated": True,
+                    "calibration_source": "temperature_scaling",
+                },
+                "u2": {
+                    "calibrated_probability": 0.49,
+                    "calibrated": True,
+                    "calibration_source": "temperature_scaling",
+                    "badge_embedding": [0.0, 1.0],
+                },
+            },
+            budget=1,
+        )
 
 
 def test_account_model_activation_requires_frozen_holdout_and_dual_approval():

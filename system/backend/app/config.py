@@ -94,6 +94,10 @@ class Settings(BaseSettings):
     BOTRHG_CHECKPOINT_PATH: str = str(PROJECT_ROOT / "output" / "botrhg_weibo" / "checkpoint.pt")
     BOTRHG_DATA_FINGERPRINT: str = "50327a90e7b9fa6cb65140af3e1573d139925033b184af2ed43aa938ab42c0ae"
     BOTRHG_DEVICE: str = "cpu"
+    ACCOUNT_ACQUISITION_TEXT_MODEL_PATH: str = ""
+    ACCOUNT_ACQUISITION_MAX_LENGTH: int = 128
+    ACCOUNT_ACQUISITION_BATCH_SIZE: int = 4
+    ACCOUNT_ACQUISITION_DEVICE: str = "cpu"
 
     # ----- Coordination Discover research artifact runtime -----
     COORDINATION_DISCOVER_MODE: str = "artifact_first"

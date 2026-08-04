@@ -36,7 +36,7 @@ This file is the citable reference map for the **Chinese Account Detection Activ
 | Lewis and Gale, **A Sequential Algorithm for Training Text Classifiers**, SIGIR 1994, DOI [`10.1007/978-1-4471-2099-5_1`](https://doi.org/10.1007/978-1-4471-2099-5_1) | Uncertainty sampling for text classifiers. | Use uncertainty only in warm-start with calibrated model output. |
 | Settles, **Active Learning Literature Survey**, 2009, [technical report](https://minds.wisconsin.edu/handle/1793/60660) | Taxonomy of uncertainty, query-by-committee, density, diversity, and stream sampling. | Defines acquisition vocabulary and baselines. |
 | Sener and Savarese, **Core-Set Active Learning**, ICLR 2018, [OpenReview](https://openreview.net/forum?id=H1aIuk-RW) | Coverage/diversity batch selection. | Justifies diversity and coverage fallback, especially in cold start. |
-| Yuan et al., **Cold-start Active Learning through Self-supervised Language Modeling**, EMNLP 2020, DOI [`10.18653/v1/2020.emnlp-main.637`](https://doi.org/10.18653/v1/2020.emnlp-main.637) | ALPS uses masked-LM surprisal before classifier uncertainty is reliable. | `cold_start_surprisal_diversity` and explicit no-surprisal fallback. |
+| Yuan et al., **Cold-start Active Learning through Self-supervised Language Modeling**, EMNLP 2020, DOI [`10.18653/v1/2020.emnlp-main.637`](https://doi.org/10.18653/v1/2020.emnlp-main.637) | ALPS uses masked-LM surprisal before classifier uncertainty is reliable. | `cold_start_alps_core_set`; missing local MLM input fails closed rather than falling back to classifier uncertainty. |
 | Ein-Dor et al., **Active Learning for BERT: An Empirical Study**, EMNLP 2020, DOI [`10.18653/v1/2020.emnlp-main.638`](https://doi.org/10.18653/v1/2020.emnlp-main.638) | Equal-budget transformer AL comparisons. | Report random and uncertainty baselines; do not report only final model accuracy. |
 | Ash et al., **BADGE**, ICLR 2020, [OpenReview](https://openreview.net/forum?id=ryghZJBKPS) | Gradient embeddings combine uncertainty and diversity. | Future warm-start gradient acquisition after the Chinese model exposes stable gradients. |
 | Kirsch et al., **BatchBALD**, NeurIPS 2019, [NeurIPS](https://proceedings.neurips.cc/paper/2019/hash/95323660ed2124450caaac2c46b5ed90-Abstract.html) | Joint batch information gain and redundancy reduction. | Optional expensive committee acquisition, not a current default. |
@@ -106,6 +106,8 @@ This file is the citable reference map for the **Chinese Account Detection Activ
 2. `reason_tags` are evidence descriptors, not supervised target classes.
 3. Cold-start cannot use uncalibrated classifier uncertainty.
 4. Warm-start uncertainty requires a calibrated model output and recorded calibration status.
-5. Active-learning efficiency must be evaluated against random and simple uncertainty baselines at equal budgets.
-6. Exported corpora need fingerprints, manifests, dataset cards, and a clear source policy.
-7. Candidate models need registered dataset fingerprints, verified checkpoint hashes, frozen holdout, time-forward/platform/community-disjoint metrics, calibration, false-positive burden review, shadow run, and active administrator approval evidence before activation.
+5. Cold-start default acquisition must use ALPS vectors from a local Chinese masked-language model plus Core-set selection; hashed text vectors are non-claimable baseline material only.
+6. Warm-start default acquisition must use BADGE classifier-gradient embeddings from the internal BotRHG runtime; plain representation vectors are not a BADGE substitute.
+7. Active-learning efficiency must be evaluated against random and simple uncertainty baselines at equal budgets.
+8. Exported corpora need fingerprints, manifests, dataset cards, and a clear source policy.
+9. Candidate models need registered dataset fingerprints, verified checkpoint hashes, frozen holdout, time-forward/platform/community-disjoint metrics, calibration, false-positive burden review, shadow run, and active administrator approval evidence before activation.

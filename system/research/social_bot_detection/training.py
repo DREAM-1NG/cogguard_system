@@ -112,6 +112,8 @@ def train_botrhg(
         device,
     )
     metrics["same_split_text_baseline"] = evaluate_text_baseline(splits["train"], splits["test"])
+    calibration = _fit_temperature_calibration(predictions)
+    metrics["calibration"] = calibration
     checkpoint = {
         "schema": "cogguard.botrhg.account.v2",
         "method": "BotRHG",
@@ -137,6 +139,7 @@ def train_botrhg(
         "training_config": asdict(config),
         "dataset_name": config.dataset_name,
         "data_fingerprint": manifest.data_fingerprint,
+        "calibration": calibration,
         "routing_budget": config.model.routing_budget,
         "support_k": config.model.support_k,
         "device": str(device),
@@ -310,6 +313,7 @@ def _evaluate_all_splits(
                     corrected_probabilities.cpu().numpy(),
                     np.isin(np.arange(len(samples)), routed.cpu().numpy()),
                     [item.source_label for item in samples],
+                    split=f"{split_name}_corrected",
                 )
             )
     return metrics, predictions
@@ -347,6 +351,55 @@ def _resolve_device(requested: str) -> torch.device:
     if requested.startswith("cuda") and not torch.cuda.is_available():
         return torch.device("cpu")
     return torch.device(requested)
+
+
+def _fit_temperature_calibration(predictions: list[dict[str, Any]]) -> dict[str, Any]:
+    validation_rows = [row for row in predictions if str(row.get("split") or "") == "validation_corrected"]
+    if not validation_rows:
+        return {"method": "temperature_scaling", "passed": False, "reason": "validation split unavailable"}
+    labels = np.asarray([int(row["label"]) for row in validation_rows], dtype=np.float64)
+    probabilities = np.asarray([float(row["corrected_bot_probability"]) for row in validation_rows], dtype=np.float64)
+    if len(np.unique(labels)) < 2:
+        return {"method": "temperature_scaling", "passed": False, "reason": "validation split has one class"}
+    best_temperature = 1.0
+    best_nll = float("inf")
+    for temperature in np.linspace(0.5, 5.0, 46):
+        calibrated = _apply_temperature(probabilities, float(temperature))
+        nll = -np.mean(
+            labels * np.log(np.clip(calibrated, 1e-8, 1.0))
+            + (1.0 - labels) * np.log(np.clip(1.0 - calibrated, 1e-8, 1.0))
+        )
+        if nll < best_nll:
+            best_nll = float(nll)
+            best_temperature = float(temperature)
+    calibrated_probabilities = _apply_temperature(probabilities, best_temperature)
+    ece = _expected_calibration_error(labels, calibrated_probabilities)
+    return {
+        "method": "temperature_scaling",
+        "passed": bool(ece <= 0.08),
+        "temperature": round(best_temperature, 6),
+        "ece": round(float(ece), 6),
+        "validation_count": int(len(validation_rows)),
+    }
+
+
+def _apply_temperature(probabilities: np.ndarray, temperature: float) -> np.ndarray:
+    logits = np.log(np.clip(probabilities, 1e-8, 1.0 - 1e-8) / np.clip(1.0 - probabilities, 1e-8, 1.0))
+    return 1.0 / (1.0 + np.exp(-(logits / temperature)))
+
+
+def _expected_calibration_error(labels: np.ndarray, probabilities: np.ndarray, bins: int = 10) -> float:
+    predictions = (probabilities >= 0.5).astype(np.float64)
+    confidences = np.maximum(probabilities, 1.0 - probabilities)
+    correct = (predictions == labels).astype(np.float64)
+    ece = 0.0
+    for start in np.linspace(0.0, 1.0, bins, endpoint=False):
+        end = start + (1.0 / bins)
+        mask = (confidences > start) & (confidences <= end)
+        if not np.any(mask):
+            continue
+        ece += float(mask.mean()) * abs(float(correct[mask].mean()) - float(confidences[mask].mean()))
+    return ece
 
 
 def _seed_everything(seed: int) -> None:

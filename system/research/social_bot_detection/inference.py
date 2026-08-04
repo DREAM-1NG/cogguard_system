@@ -27,6 +27,7 @@ class BotRHGInference:
         self.checkpoint_path = Path(checkpoint_path).resolve()
         self.payload = load_training_artifact(self.checkpoint_path, map_location="cpu")
         self.device = torch.device("cuda" if device.startswith("cuda") and torch.cuda.is_available() else "cpu")
+        self.calibration = self.payload.get("calibration") if isinstance(self.payload.get("calibration"), dict) else {}
         training_config = self.payload.get("training_config", {})
         model_config = training_config.get("model", {})
         self.routing_budget = float(self.payload["routing_budget"])
@@ -92,6 +93,15 @@ class BotRHGInference:
         routed_set = set(routed.cpu().tolist())
         accounts = []
         for index, account_id in enumerate(account_ids):
+            base_probability = float(base_probabilities[index, 1])
+            final_probability = float(corrected_probabilities[index])
+            calibrated_probability = _calibrated_probability(final_probability, self.calibration)
+            representation_row = representation[index].detach().cpu().tolist()
+            badge_embedding = _badge_gradient_embedding(
+                representation[index],
+                self.base_detector.classifier,
+                calibrated_probability if calibrated_probability is not None else final_probability,
+            )
             support_rows = [
                 {
                     "account_id": account_ids[int(neighbor)],
@@ -104,14 +114,25 @@ class BotRHGInference:
                 }
                 for neighbor in neighbors[index].cpu().tolist()
             ]
-            base_probability = float(base_probabilities[index, 1])
-            final_probability = float(corrected_probabilities[index])
             accounts.append(
                 {
                     "account_id": account_id,
                     "post_count": len(grouped[account_id]),
                     "base_bot_probability": round(base_probability, 6),
                     "final_bot_probability": round(final_probability, 6),
+                    "calibrated_bot_probability": round(float(calibrated_probability), 6)
+                    if calibrated_probability is not None
+                    else None,
+                    "calibrated_probability": round(float(calibrated_probability), 6)
+                    if calibrated_probability is not None
+                    else None,
+                    "calibrated": calibrated_probability is not None,
+                    "calibration_passed": calibrated_probability is not None,
+                    "calibration_source": str(self.calibration.get("method") or "")
+                    if calibrated_probability is not None
+                    else "",
+                    "representation": [round(float(value), 8) for value in representation_row],
+                    "badge_embedding": badge_embedding,
                     "base_prediction": "bot" if base_probability >= 0.5 else "human",
                     "final_prediction": "bot" if final_probability >= 0.5 else "human",
                     "confidence_deficit": round(float(1.0 - base_probabilities[index].max()), 6),
@@ -146,6 +167,7 @@ class BotRHGInference:
                 "selective_rule": "preserve_base_unless_routed",
                 "system_adapter": "internal_trained_checkpoint",
                 "transfer_status": "weibo_text_only_adaptation",
+                "calibration_status": "available" if self.calibration else "unavailable",
             },
         }
 
@@ -162,3 +184,43 @@ class BotRHGInference:
 
 def _cosine(left: torch.Tensor, right: torch.Tensor) -> float:
     return float(torch.nn.functional.cosine_similarity(left.unsqueeze(0), right.unsqueeze(0)).item())
+
+
+def _calibrated_probability(probability: float, calibration: dict[str, Any]) -> float | None:
+    """Apply checkpoint calibration only when the artifact records a passed gate."""
+
+    if not calibration or not bool(calibration.get("passed")):
+        return None
+    method = str(calibration.get("method") or "").strip().lower()
+    if method in {"temperature_scaling", "temperature"}:
+        temperature = float(calibration.get("temperature") or 1.0)
+        if temperature <= 0:
+            return None
+        logit = torch.logit(torch.tensor(probability).clamp(1e-6, 1 - 1e-6))
+        return float(torch.sigmoid(logit / temperature))
+    if method in {"identity", "already_calibrated"}:
+        return float(probability)
+    return None
+
+
+def _badge_gradient_embedding(
+    representation: torch.Tensor,
+    classifier: torch.nn.Linear,
+    probability: float,
+) -> list[float]:
+    """Return the BADGE gradient embedding for a binary classifier head."""
+
+    with torch.no_grad():
+        probabilities = torch.tensor(
+            [1.0 - probability, probability],
+            dtype=representation.dtype,
+            device=representation.device,
+        )
+        pseudo_label = int(torch.argmax(probabilities).item())
+        one_hot = torch.zeros_like(probabilities)
+        one_hot[pseudo_label] = 1.0
+        gradient_factor = probabilities - one_hot
+        weight_gradient = torch.outer(gradient_factor, representation)
+        bias_gradient = gradient_factor
+        vector = torch.cat([weight_gradient.flatten(), bias_gradient], dim=0)
+    return [round(float(value), 8) for value in vector.detach().cpu().tolist()]

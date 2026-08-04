@@ -2,16 +2,22 @@
 
 Updated: 2026-08-04
 
-This plan upgrades the current **Chinese Account Detection Active Learning Loop** from a deterministic acquisition baseline to a research-grade acquisition stack. The current weighted selector stays as a safe fallback and comparison baseline.
+This plan upgrades the current **Chinese Account Detection Active Learning Loop** from a deterministic acquisition baseline to a research-grade acquisition stack. The current weighted selector stays only as an explicit `heuristic_baseline` comparison baseline.
 
 ## Position
 
-The current `cold_start_surprisal_diversity` and `uncertainty_disagreement_diversity` policies are not a learned acquisition method. They are auditable baseline policies that prevent unsafe behavior: no pseudo-labels, no uncalibrated uncertainty, and a fixed random audit slice.
+The deployed acquisition line is now strict:
+
+- Cold start uses local Chinese masked-language-model ALPS embeddings and Core-set farthest-first selection.
+- Warm start uses calibrated BotRHG probabilities and BADGE classifier-gradient embeddings.
+- If the required local model path, calibration metadata, or BADGE vectors are missing, the system fails closed instead of producing a pseudo research batch.
+
+The older `cold_start_surprisal_diversity` and `uncertainty_disagreement_diversity` policies are not claimable acquisition methods. They are retained only through `heuristic_baseline` for ablation and regression comparison.
 
 The research upgrade should be staged:
 
-1. **Cold-Start Acquisition**: local Chinese MLM surprisal plus embedding core-set.
-2. **Warm-Start Acquisition**: calibrated uncertainty plus BADGE gradient embeddings.
+1. **Cold-Start Acquisition**: local Chinese MLM ALPS surprisal embeddings plus Core-set.
+2. **Warm-Start Acquisition**: calibrated uncertainty plus BADGE gradient embeddings from the internal BotRHG classifier.
 3. **Candidate Extensions**: committee disagreement, contrastive neighbor acquisition, energy OOD, and learned loss/meta acquisition.
 4. **Activation Evidence**: equal-budget label-efficiency curves and leakage-safe evaluation.
 
@@ -62,8 +68,8 @@ The research upgrade should be staged:
 
 | Current module | Keep / change | Reason |
 | --- | --- | --- |
-| `social_bot_detection/active_learning.py` | Keep as baseline/fallback | It is auditable and safe, but not research-grade acquisition. |
-| `account_active_learning.py` | Extend | It should pass embeddings/logits/gradients from active model artifacts. |
+| `social_bot_detection/active_learning.py` | Default strict selector plus explicit baseline | Default strategies are `cold_start_alps_core_set` and `warm_start_calibrated_uncertainty_badge`; `heuristic_baseline` is opt-in only. |
+| `account_active_learning.py` | Strict adapter | It computes ALPS embeddings from `ACCOUNT_ACQUISITION_TEXT_MODEL_PATH` in cold start and passes calibrated BotRHG BADGE payloads in warm start. |
 | `evaluate_active_round.py` | Extend | It already has holdout leakage and efficiency helpers; add full curve export. |
 | `datasets.py` | Keep | `approved_account_corpus` is the correct training source for Chinese active rounds. |
 | `account_model_governance_service.py` | Keep gates | Default acquisition changes still require persisted metrics and approval. |
