@@ -46,6 +46,9 @@ def _batch(stage1):
         sparsified_subgraph_ref="artifacts/cluster-2.npz",
         embedding_ref="artifacts/cluster-2.npy",
         artifact_hashes={"cluster-2.npz": "sha256:abc"},
+        relation_types=("shared_url", "shared_url"),
+        window_ids=("window-1",),
+        evidence_kind_counts={"shared_url": 2},
     )
     provenance = stage1.DiscoveryProvenance(
         snapshot_id="snapshot-1",
@@ -58,13 +61,18 @@ def _batch(stage1):
         created_at="2026-08-07T00:00:00Z",
         seed=42,
         split_policy="label_sealed_full_snapshot",
+        input_event_count=5,
+        input_account_count=2,
+        method_config_hash="sha256:method",
     )
     return stage1.DiscoveredClusterBatch(
         batch_id="disc-batch-1",
         timestamp="2026-08-07T00:01:00Z",
         candidate_clusters=(cluster,),
         provenance=provenance,
-        metadata={"platforms": ["weibo", "douyin", "xhs"]},
+        platforms=("weibo", "douyin", "xhs"),
+        quality_flags=("deduplicated",),
+        artifact_manifest_ref="artifacts/manifest.json",
     )
 
 
@@ -166,3 +174,100 @@ def test_provenance_rejects_non_label_free_policy():
             split_policy="label_sealed_full_snapshot",
             label_policy="supervised",
         )
+
+
+@pytest.mark.parametrize(
+    ("location", "field", "value"),
+    [
+        ("candidate_clusters", "metadata", {"label": "coordinated"}),
+        ("provenance", "method_metadata", {"verdict": "harmful"}),
+        ("batch", "metadata", {"risk": "high"}),
+    ],
+)
+def test_from_dict_rejects_label_bearing_unknown_fields(location: str, field: str, value: object):
+    stage1 = _load_stage1()
+    payload = _batch(stage1).to_dict()
+    target = payload if location == "batch" else payload[location]
+    if location == "candidate_clusters":
+        target = target[0]
+    target[field] = value
+
+    with pytest.raises(ValueError, match="unknown fields"):
+        stage1.DiscoveredClusterBatch.from_dict(payload)
+
+
+def test_metric_set_from_dict_requires_unsupervised_ranking_score_role():
+    stage1 = _load_stage1()
+    payload = _batch(stage1).candidate_clusters[0].coordination_metrics.to_dict()
+    payload["overall_coordination_score_role"] = "probability"
+
+    with pytest.raises(ValueError, match="overall_coordination_score_role"):
+        stage1.CoordinationMetricSet.from_dict(payload)
+
+
+@pytest.mark.parametrize(
+    ("parser", "payload"),
+    [
+        ("CoordinationMetricSet", {"unexpected": 1}),
+        ("DiscoveredCluster", {"unexpected": 1}),
+        ("DiscoveryProvenance", {"unexpected": 1}),
+        ("DiscoveredClusterBatch", {"unexpected": 1}),
+    ],
+)
+def test_from_dict_rejects_unknown_and_missing_schema_fields(parser: str, payload: dict[str, object]):
+    stage1 = _load_stage1()
+    target = getattr(stage1, parser)
+
+    with pytest.raises(ValueError, match="unknown fields"):
+        target.from_dict(payload)
+
+    with pytest.raises(ValueError, match="missing required fields"):
+        target.from_dict({})
+
+
+def test_mapping_fields_are_typed_and_deeply_immutable():
+    stage1 = _load_stage1()
+    artifact_hashes = {"cluster-2.npz": "sha256:abc"}
+    evidence_kind_counts = {"shared_url": 2}
+    cluster = stage1.DiscoveredCluster(
+        cluster_id="cluster-typed-mapping",
+        member_account_ids=("account-a",),
+        coordination_metrics=_batch(stage1).candidate_clusters[0].coordination_metrics,
+        artifact_hashes=artifact_hashes,
+        evidence_kind_counts=evidence_kind_counts,
+    )
+    artifact_hashes["injected"] = "sha256:def"
+    evidence_kind_counts["injected"] = 7
+
+    assert dict(cluster.artifact_hashes) == {"cluster-2.npz": "sha256:abc"}
+    assert dict(cluster.evidence_kind_counts) == {"shared_url": 2}
+    with pytest.raises(TypeError):
+        cluster.evidence_kind_counts["injected"] = 7
+    with pytest.raises(ValueError, match="evidence_kind_counts"):
+        stage1.DiscoveredCluster(
+            cluster_id="cluster-invalid-mapping",
+            member_account_ids=("account-a",),
+            coordination_metrics=_batch(stage1).candidate_clusters[0].coordination_metrics,
+            evidence_kind_counts={"shared_url": {"label": "coordinated"}},
+        )
+
+
+def test_contract_rejects_non_string_member_identifiers_and_fractional_size_and_seed():
+    stage1 = _load_stage1()
+
+    with pytest.raises(ValueError, match="member_account_ids"):
+        stage1.DiscoveredCluster(
+            cluster_id="cluster-integer-member",
+            member_account_ids=(123,),
+            coordination_metrics=_batch(stage1).candidate_clusters[0].coordination_metrics,
+        )
+
+    payload = _batch(stage1).to_dict()
+    payload["candidate_clusters"][0]["size"] = 2.5
+    with pytest.raises(ValueError, match="cluster size must be an integer"):
+        stage1.DiscoveredClusterBatch.from_dict(payload)
+
+    payload = _batch(stage1).to_dict()
+    payload["provenance"]["seed"] = 42.5
+    with pytest.raises(ValueError, match="seed must be an integer"):
+        stage1.DiscoveredClusterBatch.from_dict(payload)
