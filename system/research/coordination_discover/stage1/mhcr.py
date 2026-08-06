@@ -1,0 +1,510 @@
+from __future__ import annotations
+
+import hashlib
+import math
+from collections import defaultdict
+from collections.abc import Iterable
+from dataclasses import dataclass
+from datetime import timedelta
+
+import numpy as np
+import torch
+from torch import nn
+from torch.nn import functional as F
+
+from .contracts import STAGE1_LABEL_POLICY
+from .events import CoordinationEvent
+from .tsgs import TSGSResult
+
+
+MHCR_OBJECTIVE = "self_supervised_infonce"
+FEATURE_SOURCE = "events_only_structural_activity"
+FEATURE_NAMES = (
+    "event_count",
+    "weight_sum",
+    "relation_diversity",
+    "object_diversity",
+    "active_bucket_count",
+    "temporal_span",
+)
+AUGMENTATIONS = ("seeded_temporal_jitter", "seeded_hyperedge_drop")
+
+
+def _positive_int(value: object, field_name: str, *, minimum: int = 1) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or value < minimum:
+        raise ValueError(f"{field_name} must be an integer >= {minimum}")
+    return value
+
+
+def _finite_float(
+    value: object,
+    field_name: str,
+    *,
+    minimum: float,
+    maximum: float | None = None,
+) -> float:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ValueError(f"{field_name} must be numeric")
+    number = float(value)
+    if not math.isfinite(number) or number < minimum or (
+        maximum is not None and number > maximum
+    ):
+        raise ValueError(f"{field_name} is outside its supported finite range")
+    return number
+
+
+@dataclass(frozen=True, slots=True)
+class MHCRConfig:
+    time_bucket_seconds: int = 300
+    hidden_dimension: int = 16
+    epochs: int = 12
+    learning_rate: float = 0.02
+    temperature: float = 0.2
+    temporal_jitter_seconds: int = 30
+    hyperedge_drop_rate: float = 0.2
+    seed: int = 0
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "time_bucket_seconds",
+            _positive_int(self.time_bucket_seconds, "time_bucket_seconds"),
+        )
+        object.__setattr__(
+            self,
+            "hidden_dimension",
+            _positive_int(self.hidden_dimension, "hidden_dimension", minimum=2),
+        )
+        object.__setattr__(self, "epochs", _positive_int(self.epochs, "epochs"))
+        object.__setattr__(
+            self,
+            "learning_rate",
+            _finite_float(self.learning_rate, "learning_rate", minimum=np.finfo(float).tiny),
+        )
+        object.__setattr__(
+            self,
+            "temperature",
+            _finite_float(self.temperature, "temperature", minimum=np.finfo(float).tiny),
+        )
+        object.__setattr__(
+            self,
+            "temporal_jitter_seconds",
+            _positive_int(
+                self.temporal_jitter_seconds,
+                "temporal_jitter_seconds",
+                minimum=0,
+            ),
+        )
+        object.__setattr__(
+            self,
+            "hyperedge_drop_rate",
+            _finite_float(
+                self.hyperedge_drop_rate,
+                "hyperedge_drop_rate",
+                minimum=0.0,
+                maximum=1.0,
+            ),
+        )
+        if isinstance(self.seed, bool) or not isinstance(self.seed, int):
+            raise ValueError("seed must be an integer")
+
+
+@dataclass(frozen=True, slots=True, order=True)
+class HyperedgeIncidence:
+    account_id: str
+    weight: float
+
+
+@dataclass(frozen=True, slots=True)
+class HyperedgeAudit:
+    hyperedge_id: str
+    relation: str
+    object_id: str
+    time_bucket: int
+    incidence: tuple[HyperedgeIncidence, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class ViewDiagnostics:
+    name: str
+    seed: int
+    temporal_jitter_seconds: int
+    hyperedge_drop_rate: float
+    source_hyperedge_count: int
+    retained_hyperedge_count: int
+    dropped_hyperedge_count: int
+
+
+@dataclass(frozen=True, slots=True)
+class MHCRTrainingDiagnostics:
+    objective: str
+    augmentations: tuple[str, ...]
+    view_count: int
+    views: tuple[ViewDiagnostics, ...]
+    epoch_infonce_losses: tuple[float, ...]
+    final_infonce_loss: float
+    relation_transform_count: int
+    node_to_hyperedge_normalization: str
+    hyperedge_to_node_normalization: str
+    node_channel: str
+
+
+@dataclass(frozen=True, slots=True)
+class MHCRRepresentation:
+    account_ids: tuple[str, ...]
+    embeddings: tuple[tuple[float, ...], ...]
+    hyperedges: tuple[HyperedgeAudit, ...]
+    relation_names: tuple[str, ...]
+    training_diagnostics: MHCRTrainingDiagnostics
+    feature_names: tuple[str, ...] = FEATURE_NAMES
+    feature_source: str = FEATURE_SOURCE
+    objective: str = MHCR_OBJECTIVE
+    label_policy: str = STAGE1_LABEL_POLICY
+
+
+def _ordered_events(events: Iterable[CoordinationEvent]) -> tuple[CoordinationEvent, ...]:
+    materialized = tuple(events)
+    if not all(isinstance(event, CoordinationEvent) for event in materialized):
+        raise ValueError("events must contain CoordinationEvent values")
+    return tuple(
+        sorted(
+            materialized,
+            key=lambda event: (
+                event.account_id,
+                event.relation,
+                event.object_id,
+                event.observed_at,
+                event.evidence_ref,
+                event.weight,
+            ),
+        )
+    )
+
+
+def _hyperedge_id(relation: str, object_id: str, time_bucket: int) -> str:
+    payload = f"{relation}\0{object_id}\0{time_bucket}".encode("utf-8")
+    digest = hashlib.sha256(payload).hexdigest()[:20]
+    return f"hyperedge-{digest}"
+
+
+def _build_hyperedges(
+    events: tuple[CoordinationEvent, ...],
+    time_bucket_seconds: int,
+) -> tuple[HyperedgeAudit, ...]:
+    incidence: defaultdict[tuple[str, str, int], defaultdict[str, float]] = defaultdict(
+        lambda: defaultdict(float)
+    )
+    for event in events:
+        if event.weight <= 0.0:
+            continue
+        bucket = math.floor(event.observed_at.timestamp() / time_bucket_seconds)
+        incidence[(event.relation, event.object_id, bucket)][event.account_id] += event.weight
+
+    return tuple(
+        HyperedgeAudit(
+            hyperedge_id=_hyperedge_id(relation, object_id, bucket),
+            relation=relation,
+            object_id=object_id,
+            time_bucket=bucket,
+            incidence=tuple(
+                HyperedgeIncidence(account_id=account_id, weight=float(weight))
+                for account_id, weight in sorted(members.items())
+            ),
+        )
+        for (relation, object_id, bucket), members in sorted(incidence.items())
+        if members
+    )
+
+
+def _initial_features(
+    events: tuple[CoordinationEvent, ...],
+    account_ids: tuple[str, ...],
+    time_bucket_seconds: int,
+) -> torch.Tensor:
+    by_account: defaultdict[str, list[CoordinationEvent]] = defaultdict(list)
+    for event in events:
+        by_account[event.account_id].append(event)
+
+    rows = []
+    for account_id in account_ids:
+        account_events = by_account.get(account_id, [])
+        times = [event.observed_at.timestamp() for event in account_events]
+        buckets = {
+            math.floor(timestamp / time_bucket_seconds) for timestamp in times
+        }
+        rows.append(
+            (
+                float(len(account_events)),
+                math.fsum(event.weight for event in account_events),
+                float(len({event.relation for event in account_events})),
+                float(len({(event.relation, event.object_id) for event in account_events})),
+                float(len(buckets)),
+                float(max(times) - min(times)) if len(times) > 1 else 0.0,
+            )
+        )
+
+    if not rows:
+        return torch.empty((0, len(FEATURE_NAMES)), dtype=torch.float32)
+    values = np.asarray(rows, dtype=np.float32)
+    values[:, :5] = np.log1p(values[:, :5])
+    values[:, 5] = np.log1p(values[:, 5])
+    scale = np.max(values, axis=0)
+    scale[scale == 0.0] = 1.0
+    return torch.from_numpy(values / scale)
+
+
+def _jitter_events(
+    events: tuple[CoordinationEvent, ...],
+    jitter_seconds: int,
+    rng: np.random.Generator,
+) -> tuple[CoordinationEvent, ...]:
+    if jitter_seconds == 0:
+        return events
+    jittered = []
+    for event in events:
+        offset = int(rng.integers(-jitter_seconds, jitter_seconds + 1))
+        jittered.append(
+            CoordinationEvent(
+                account_id=event.account_id,
+                relation=event.relation,
+                object_id=event.object_id,
+                observed_at=event.observed_at + timedelta(seconds=offset),
+                weight=event.weight,
+                evidence_ref=event.evidence_ref,
+            )
+        )
+    return tuple(jittered)
+
+
+def _drop_hyperedges(
+    hyperedges: tuple[HyperedgeAudit, ...],
+    drop_rate: float,
+    rng: np.random.Generator,
+) -> tuple[HyperedgeAudit, ...]:
+    if not hyperedges or drop_rate == 0.0:
+        return hyperedges
+    drop_count = min(len(hyperedges) - 1, int(round(len(hyperedges) * drop_rate)))
+    if drop_count <= 0:
+        return hyperedges
+    ranks = rng.random(len(hyperedges))
+    dropped = set(np.argsort(ranks, kind="stable")[:drop_count].tolist())
+    return tuple(edge for index, edge in enumerate(hyperedges) if index not in dropped)
+
+
+def _build_view(
+    name: str,
+    seed: int,
+    events: tuple[CoordinationEvent, ...],
+    config: MHCRConfig,
+) -> tuple[tuple[HyperedgeAudit, ...], ViewDiagnostics]:
+    rng = np.random.default_rng(seed)
+    jittered = _jitter_events(events, config.temporal_jitter_seconds, rng)
+    source = _build_hyperedges(jittered, config.time_bucket_seconds)
+    retained = _drop_hyperedges(source, config.hyperedge_drop_rate, rng)
+    return retained, ViewDiagnostics(
+        name=name,
+        seed=seed,
+        temporal_jitter_seconds=config.temporal_jitter_seconds,
+        hyperedge_drop_rate=config.hyperedge_drop_rate,
+        source_hyperedge_count=len(source),
+        retained_hyperedge_count=len(retained),
+        dropped_hyperedge_count=len(source) - len(retained),
+    )
+
+
+def _candidate_adjacency(tsgs_result: TSGSResult) -> torch.Tensor:
+    count = len(tsgs_result.account_ids)
+    adjacency = torch.zeros((count, count), dtype=torch.float32)
+    node_index = {account_id: index for index, account_id in enumerate(tsgs_result.account_ids)}
+    for edge in tsgs_result.candidate_graph_edges:
+        left = node_index[edge.source_account_id]
+        right = node_index[edge.target_account_id]
+        adjacency[left, right] = float(edge.weight)
+        adjacency[right, left] = float(edge.weight)
+    degrees = adjacency.sum(dim=1, keepdim=True).clamp_min(1.0)
+    return adjacency / degrees
+
+
+class _RelationAwareHypergraphEncoder(nn.Module):
+    def __init__(
+        self,
+        input_dimension: int,
+        hidden_dimension: int,
+        relation_names: tuple[str, ...],
+    ) -> None:
+        super().__init__()
+        self.relation_index = {
+            relation: index for index, relation in enumerate(relation_names)
+        }
+        self.input_transform = nn.Linear(input_dimension, hidden_dimension, bias=False)
+        self.self_transform = nn.Linear(hidden_dimension, hidden_dimension, bias=False)
+        self.relation_transforms = nn.ModuleList(
+            nn.Linear(hidden_dimension, hidden_dimension, bias=False)
+            for _ in relation_names
+        )
+        self.graph_transform = nn.Linear(hidden_dimension, hidden_dimension, bias=False)
+
+    def forward(
+        self,
+        features: torch.Tensor,
+        hyperedges: tuple[HyperedgeAudit, ...],
+        account_ids: tuple[str, ...],
+        candidate_adjacency: torch.Tensor,
+    ) -> torch.Tensor:
+        state = self.input_transform(features)
+        if not account_ids:
+            return state
+        node_index = {account_id: index for index, account_id in enumerate(account_ids)}
+        hypergraph_message = torch.zeros_like(state)
+        node_incidence_degree = torch.zeros((len(account_ids), 1), dtype=state.dtype)
+
+        for edge in hyperedges:
+            incidence = torch.zeros((len(account_ids), 1), dtype=state.dtype)
+            for item in edge.incidence:
+                index = node_index.get(item.account_id)
+                if index is not None:
+                    incidence[index, 0] = float(item.weight)
+            hyperedge_degree = incidence.sum().clamp_min(1.0)
+            hyperedge_state = (incidence.transpose(0, 1) @ state) / hyperedge_degree
+            transformed = self.relation_transforms[
+                self.relation_index[edge.relation]
+            ](hyperedge_state)
+            hypergraph_message = hypergraph_message + incidence @ transformed
+            node_incidence_degree = node_incidence_degree + incidence
+
+        hypergraph_message = hypergraph_message / node_incidence_degree.clamp_min(1.0)
+        graph_message = self.graph_transform(candidate_adjacency @ state)
+        output = torch.tanh(self.self_transform(state) + hypergraph_message + graph_message)
+        return F.normalize(output, p=2, dim=1, eps=1e-12)
+
+
+def _symmetric_infonce(
+    first: torch.Tensor,
+    second: torch.Tensor,
+    temperature: float,
+) -> torch.Tensor:
+    if first.shape[0] == 0:
+        return first.sum() * 0.0
+    similarities = first @ second.transpose(0, 1) / temperature
+    matching_indices = torch.arange(first.shape[0], dtype=torch.long)
+    forward_loss = F.cross_entropy(similarities, matching_indices)
+    reverse_loss = F.cross_entropy(similarities.transpose(0, 1), matching_indices)
+    return (forward_loss + reverse_loss) * 0.5
+
+
+class MHCREncoder:
+    def __init__(self, config: MHCRConfig | None = None) -> None:
+        self.config = config or MHCRConfig()
+        if not isinstance(self.config, MHCRConfig):
+            raise ValueError("config must be an MHCRConfig")
+
+    def fit_transform(
+        self,
+        events: Iterable[CoordinationEvent],
+        tsgs_result: TSGSResult,
+    ) -> MHCRRepresentation:
+        if not isinstance(tsgs_result, TSGSResult):
+            raise ValueError("tsgs_result must be a TSGSResult")
+        ordered_events = _ordered_events(events)
+        observed_accounts = tuple(sorted({event.account_id for event in ordered_events}))
+        if observed_accounts != tsgs_result.account_ids:
+            raise ValueError("events and tsgs_result must contain the same sorted account IDs")
+
+        account_ids = tsgs_result.account_ids
+        canonical_hyperedges = _build_hyperedges(
+            ordered_events, self.config.time_bucket_seconds
+        )
+        relation_names = tuple(sorted({event.relation for event in ordered_events}))
+        features = _initial_features(
+            ordered_events, account_ids, self.config.time_bucket_seconds
+        )
+        candidate_adjacency = _candidate_adjacency(tsgs_result)
+        view_seeds = (
+            self.config.seed ^ 0x4D484352,
+            self.config.seed ^ 0x56494557,
+        )
+        first_view, first_diagnostics = _build_view(
+            "view_a", view_seeds[0], ordered_events, self.config
+        )
+        second_view, second_diagnostics = _build_view(
+            "view_b", view_seeds[1], ordered_events, self.config
+        )
+
+        losses: list[float] = []
+        previous_thread_count = torch.get_num_threads()
+        if previous_thread_count != 1:
+            torch.set_num_threads(1)
+        try:
+            if account_ids:
+                with torch.random.fork_rng(devices=[]):
+                    torch.manual_seed(self.config.seed)
+                    model = _RelationAwareHypergraphEncoder(
+                        len(FEATURE_NAMES), self.config.hidden_dimension, relation_names
+                    )
+                    optimizer = torch.optim.Adam(
+                        model.parameters(), lr=self.config.learning_rate
+                    )
+                    for _ in range(self.config.epochs):
+                        optimizer.zero_grad(set_to_none=True)
+                        first_embedding = model(
+                            features, first_view, account_ids, candidate_adjacency
+                        )
+                        second_embedding = model(
+                            features, second_view, account_ids, candidate_adjacency
+                        )
+                        loss = _symmetric_infonce(
+                            first_embedding, second_embedding, self.config.temperature
+                        )
+                        loss.backward()
+                        optimizer.step()
+                        losses.append(float(loss.detach().cpu()))
+                    with torch.no_grad():
+                        embedding_tensor = model(
+                            features,
+                            canonical_hyperedges,
+                            account_ids,
+                            candidate_adjacency,
+                        )
+            else:
+                losses = [0.0] * self.config.epochs
+                embedding_tensor = torch.empty(
+                    (0, self.config.hidden_dimension), dtype=torch.float32
+                )
+        finally:
+            if previous_thread_count != 1:
+                torch.set_num_threads(previous_thread_count)
+
+        embeddings = tuple(
+            tuple(float(value) for value in row)
+            for row in embedding_tensor.detach().cpu().tolist()
+        )
+        training_diagnostics = MHCRTrainingDiagnostics(
+            objective=MHCR_OBJECTIVE,
+            augmentations=AUGMENTATIONS,
+            view_count=2,
+            views=(first_diagnostics, second_diagnostics),
+            epoch_infonce_losses=tuple(losses),
+            final_infonce_loss=losses[-1],
+            relation_transform_count=len(relation_names),
+            node_to_hyperedge_normalization="hyperedge_degree",
+            hyperedge_to_node_normalization="node_incidence_degree",
+            node_channel="explicit_tsgs_candidate_graph",
+        )
+        return MHCRRepresentation(
+            account_ids=account_ids,
+            embeddings=embeddings,
+            hyperedges=canonical_hyperedges,
+            relation_names=relation_names,
+            training_diagnostics=training_diagnostics,
+        )
+
+
+__all__ = [
+    "HyperedgeAudit",
+    "HyperedgeIncidence",
+    "MHCRConfig",
+    "MHCREncoder",
+    "MHCRRepresentation",
+    "MHCRTrainingDiagnostics",
+    "ViewDiagnostics",
+]
