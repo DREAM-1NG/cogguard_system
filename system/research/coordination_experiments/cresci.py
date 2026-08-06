@@ -12,14 +12,31 @@ CRESCI_2017_AUTHORITATIVE_LABEL_SCOPE = "genuine, traditional spambots, and soci
 CRESCI_2017_LABEL_SEMANTICS = "social_bot_classification_only:genuine|traditional_spambot|social_spambot"
 
 
+def _file_identity(path: Path) -> tuple[int, int, int, int]:
+    stat = path.stat()
+    return stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns
+
+
 def _measure_file(path: Path) -> tuple[int, str]:
+    before = _file_identity(path)
     digest = hashlib.sha256()
     size = 0
     with path.open("rb") as handle:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             size += len(chunk)
             digest.update(chunk)
+    if _file_identity(path) != before:
+        raise ValueError("Cresci source changed during measurement")
     return size, f"sha256:{digest.hexdigest()}"
+
+
+def _read_measured_bytes(path: Path) -> tuple[bytes, str]:
+    before = _file_identity(path)
+    with path.open("rb") as handle:
+        data = handle.read()
+    if _file_identity(path) != before:
+        raise ValueError("Cresci source changed during measurement")
+    return data, f"sha256:{hashlib.sha256(data).hexdigest()}"
 
 
 def cresci_capability() -> DatasetCapability:
@@ -51,8 +68,9 @@ def build_cresci_manifest(
 ) -> ResearchDatasetManifest:
     archive = Path(archive_path).resolve()
     metadata = Path(metadata_path).resolve()
+    metadata_bytes, metadata_checksum = _read_measured_bytes(metadata)
     try:
-        document: Any = json.loads(metadata.read_text(encoding="utf-8"))
+        document: Any = json.loads(metadata_bytes)
     except json.JSONDecodeError as exc:
         raise ValueError("Cresci authoritative metadata is invalid JSON") from exc
     if not isinstance(document, dict) or document.get("schema") != "cogguard.social_bot_detection.dataset_manifest.v1":
@@ -86,7 +104,6 @@ def build_cresci_manifest(
         or label_scope.strip().casefold() != CRESCI_2017_AUTHORITATIVE_LABEL_SCOPE.casefold()
     ):
         raise ValueError("Cresci authoritative label scope must match the bot-only Cresci-2017 semantics")
-    _, metadata_checksum = _measure_file(metadata)
     archive_key, metadata_key = str(archive), str(metadata)
     return ResearchDatasetManifest(
         dataset_id="cresci-2017",

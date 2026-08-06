@@ -72,12 +72,6 @@ def _account_universe(payload: Mapping[str, Any]) -> tuple[int, ...]:
     source_nodes: set[int] = set()
     for layer in IOHUNTER_LAYER_RELATIONS:
         source_nodes.update(_node_index(node) for node in _source_graph(payload, layer).nodes)
-    fused = payload.get("graph")
-    if not isinstance(fused, nx.Graph):
-        raise ValueError("fused graph is required for account universe alignment")
-    fused_nodes = {_node_index(node) for node in fused.nodes}
-    if source_nodes != fused_nodes:
-        raise ValueError("source-layer and fused graph account universes must be equal")
     ordered = tuple(sorted(source_nodes))
     if not ordered or ordered != tuple(range(len(ordered))):
         raise ValueError("IOHunter account universe must use contiguous integer indices 0 through N-1")
@@ -220,8 +214,17 @@ class IOHunterLabelEvaluator:
         object.__setattr__(self, "source_sha256", self.source_sha256.lower())
         if not isinstance(self.account_labels, MappingABC):
             raise ValueError("account_labels must be a mapping")
-        labels = dict(sorted(self.account_labels.items()))
-        if not labels or any(value not in (0, 1) or isinstance(value, bool) for value in labels.values()):
+        labels: dict[str, int] = {}
+        for account_id, value in sorted(self.account_labels.items()):
+            if (
+                isinstance(value, bool)
+                or not isinstance(value, Real)
+                or not math.isfinite(float(value))
+                or float(value) not in (0.0, 1.0)
+            ):
+                raise ValueError("account labels must be non-empty and binary")
+            labels[account_id] = int(value)
+        if not labels:
             raise ValueError("account labels must be non-empty and binary")
         if any(not isinstance(key, str) or not key.startswith(f"iohunter:{self.campaign}:account:") for key in labels):
             raise ValueError("account labels must use campaign-prefixed opaque account IDs")
@@ -509,23 +512,16 @@ def build_iohunter_label_evaluator(
     )
 
 
-def _trusted_pickle(path: str | Path, *, trusted_local: bool) -> tuple[Path, Mapping[str, Any]]:
+def _trusted_pickle(path: str | Path, *, trusted_local: bool) -> tuple[Path, Mapping[str, Any], str]:
     if trusted_local is not True:
         raise ValueError("pickle deserialization requires explicit trusted_local=True")
     source = Path(path).resolve()
-    with source.open("rb") as handle:
-        payload = pickle.load(handle)
+    source_bytes = source.read_bytes()
+    source_sha256 = _sha256_bytes(source_bytes)
+    payload = pickle.loads(source_bytes)
     if not isinstance(payload, MappingABC):
         raise ValueError("IOHunter pickle payload must be a mapping")
-    return source, payload
-
-
-def _stream_sha256(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return f"sha256:{digest.hexdigest()}"
+    return source, payload, source_sha256
 
 
 def load_iohunter_discovery(
@@ -535,7 +531,7 @@ def load_iohunter_discovery(
     seed: int,
     trusted_local: bool = False,
 ) -> IOHunterDiscoveryPayload:
-    source, payload = _trusted_pickle(path, trusted_local=trusted_local)
+    source, payload, _ = _trusted_pickle(path, trusted_local=trusted_local)
     return adapt_iohunter_payload(
         payload,
         campaign=campaign,
@@ -550,12 +546,12 @@ def load_iohunter_label_evaluator(
     campaign: str,
     trusted_local: bool = False,
 ) -> IOHunterLabelEvaluator:
-    source, payload = _trusted_pickle(path, trusted_local=trusted_local)
+    source, payload, source_sha256 = _trusted_pickle(path, trusted_local=trusted_local)
     return _build_iohunter_label_evaluator(
         payload,
         campaign=campaign,
         source_path=str(source),
-        source_sha256=_stream_sha256(source),
+        source_sha256=source_sha256,
     )
 
 

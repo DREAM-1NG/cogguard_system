@@ -371,6 +371,27 @@ def test_iohunter_discovery_is_label_and_official_split_invariant():
     assert set(first.to_dict()) == {"events", "manifest"}
 
 
+def test_iohunter_discovery_never_requires_or_consumes_fused_graph():
+    module = _load_experiments()
+    source = _iohunter_payload()
+    without_fused_graph = _iohunter_payload()
+    del without_fused_graph["graph"]
+    replaced_fused_graph = _iohunter_payload()
+    replaced_fused_graph["graph"] = object()
+
+    first = module.adapt_iohunter_payload(source, campaign="russia", seed=31)
+    removed = module.adapt_iohunter_payload(
+        without_fused_graph, campaign="russia", seed=31
+    )
+    replaced = module.adapt_iohunter_payload(
+        replaced_fused_graph, campaign="russia", seed=31
+    )
+
+    assert removed.events == first.events == replaced.events
+    assert removed.manifest == first.manifest == replaced.manifest
+    assert removed.discovery_fingerprint == first.discovery_fingerprint == replaced.discovery_fingerprint
+
+
 def test_iohunter_emits_only_source_relations_bidirectionally_without_self_loops():
     module = _load_experiments()
     discovery = module.adapt_iohunter_payload(_iohunter_payload(), campaign="russia", seed=31)
@@ -405,15 +426,8 @@ def test_iohunter_emits_only_source_relations_bidirectionally_without_self_loops
     assert {event.account_id for event in discovery.events} == set(discovery.manifest.source_case_ids)
 
 
-def test_iohunter_requires_one_contiguous_account_universe_across_source_and_fused_graphs():
+def test_iohunter_requires_one_contiguous_account_universe_from_source_layers():
     module = _load_experiments()
-    mismatch = _iohunter_payload()
-    mismatch["graph"].add_node(4)
-    with pytest.raises(ValueError, match="account universe"):
-        module.adapt_iohunter_payload(mismatch, campaign="russia", seed=31)
-    with pytest.raises(ValueError, match="account universe"):
-        module.build_iohunter_label_evaluator(mismatch, campaign="russia")
-
     non_contiguous = _relabel_iohunter_universe(
         _iohunter_payload(), {0: 1, 1: 2, 2: 3, 3: 4}
     )
@@ -489,6 +503,41 @@ def test_iohunter_evaluator_accepts_binary_float_labels_and_numbered_fold_masks(
     assert tuple(fold.fold_id for fold in evaluator.official_folds) == ("fold-000", "fold-003")
     assert all(fold.to_dict()["validation_ids"] for fold in evaluator.official_folds)
     assert evaluator.account_labels["iohunter:russia:account:000001"] == 1
+
+
+def test_iohunter_evaluator_normalizes_equivalent_direct_float_labels_before_fingerprinting():
+    module = _load_experiments()
+    folds = module.build_iohunter_label_evaluator(
+        _iohunter_payload(), campaign="russia"
+    ).official_folds
+    common = {
+        "campaign": "russia",
+        "source_path": "memory://iohunter/russia/evaluator",
+        "source_sha256": "sha256:" + "a" * 64,
+        "official_folds": folds,
+    }
+    integer = module.IOHunterLabelEvaluator(
+        **common,
+        account_labels={
+            "iohunter:russia:account:000000": 0,
+            "iohunter:russia:account:000001": 1,
+            "iohunter:russia:account:000002": 0,
+            "iohunter:russia:account:000003": 1,
+        },
+    )
+    floating = module.IOHunterLabelEvaluator(
+        **common,
+        account_labels={
+            "iohunter:russia:account:000000": 0.0,
+            "iohunter:russia:account:000001": 1.0,
+            "iohunter:russia:account:000002": 0.0,
+            "iohunter:russia:account:000003": 1.0,
+        },
+    )
+
+    assert dict(floating.account_labels) == dict(integer.account_labels)
+    assert all(type(value) is int for value in floating.account_labels.values())
+    assert floating.evaluator_fingerprint == integer.evaluator_fingerprint
 
 
 @pytest.mark.parametrize(
@@ -618,6 +667,28 @@ def test_trusted_evaluator_owns_raw_source_provenance_without_discovery_leakage(
     assert evaluator.evaluator_fingerprint not in serialized_discovery
 
 
+def test_trusted_evaluator_hashes_the_same_bytes_it_unpickles(tmp_path, monkeypatch):
+    module = _load_experiments()
+    iohunter = sys.modules["research.coordination_experiments.iohunter"]
+    path = tmp_path / "0.7_datasets.pkl"
+    raw = pickle.dumps(_iohunter_payload())
+    path.write_bytes(raw)
+    original_loads = iohunter.pickle.loads
+    seen = []
+
+    def recording_loads(value, *args, **kwargs):
+        seen.append(value)
+        return original_loads(value, *args, **kwargs)
+
+    monkeypatch.setattr(iohunter.pickle, "loads", recording_loads)
+    evaluator = module.load_iohunter_label_evaluator(
+        path, campaign="russia", trusted_local=True
+    )
+
+    assert seen == [raw]
+    assert evaluator.source_sha256 == "sha256:" + hashlib.sha256(seen[0]).hexdigest()
+
+
 def test_iohunter_and_cresci_capabilities_block_unsupported_claims():
     module = _load_experiments()
     iohunter = module.iohunter_capability()
@@ -649,6 +720,51 @@ def test_cresci_manifest_measures_archive_integrity_and_emits_canonical_bot_sema
     assert manifest.claim_markers == ("not_harmful_cib_claim",)
     assert manifest.source_checksums[str(archive.resolve())] == "sha256:" + digest
     assert manifest.source_checksum_scope == "authoritative_archive_and_metadata"
+
+
+def test_cresci_parses_the_same_metadata_bytes_it_fingerprints(tmp_path, monkeypatch):
+    module = _load_experiments()
+    cresci = sys.modules["research.coordination_experiments.cresci"]
+    archive, metadata, _ = _write_cresci_fixture(tmp_path)
+    raw_metadata = metadata.read_bytes()
+    original_loads = cresci.json.loads
+    seen = []
+
+    def recording_loads(value, *args, **kwargs):
+        seen.append(value)
+        return original_loads(value, *args, **kwargs)
+
+    monkeypatch.setattr(cresci.json, "loads", recording_loads)
+    manifest = module.build_cresci_manifest(archive, metadata, seed=37)
+
+    assert seen == [raw_metadata]
+    assert manifest.source_checksums[str(metadata.resolve())] == "sha256:" + hashlib.sha256(raw_metadata).hexdigest()
+
+
+def test_cresci_measurement_fails_closed_when_source_changes_during_measurement(tmp_path):
+    module = _load_experiments()
+    cresci = sys.modules["research.coordination_experiments.cresci"]
+    archive, _, _ = _write_cresci_fixture(tmp_path)
+
+    class ChangingPath:
+        def __init__(self, path):
+            self.path = path
+            self.calls = 0
+
+        def open(self, *args, **kwargs):
+            return self.path.open(*args, **kwargs)
+
+        def stat(self):
+            self.calls += 1
+            return types.SimpleNamespace(
+                st_dev=1,
+                st_ino=1,
+                st_size=self.path.stat().st_size,
+                st_mtime_ns=self.calls,
+            )
+
+    with pytest.raises(ValueError, match="changed during measurement"):
+        cresci._measure_file(ChangingPath(archive))
 
 
 def test_cresci_manifest_rejects_same_size_tampered_archive(tmp_path):
