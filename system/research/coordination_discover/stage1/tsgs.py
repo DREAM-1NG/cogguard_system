@@ -17,8 +17,11 @@ Feature: TypeAlias = tuple[str, str, int]
 SparseActivityVector: TypeAlias = dict[Feature, float]
 AccountPair: TypeAlias = tuple[str, str]
 
-EXACT_RESISTANCE_BACKEND = "exact_laplacian_pseudoinverse"
+EXACT_RESISTANCE_BACKEND = "exact_component_grounded_laplacian_solve"
 APPROXIMATE_RESISTANCE_BACKEND = "diagonal_degree_resistance_approximation"
+NUMERICAL_FALLBACK_RESISTANCE_BACKEND = (
+    "numerical_fallback_diagonal_degree_resistance_approximation"
+)
 GUARANTEE_SCOPE = "candidate_graph_only"
 
 
@@ -46,6 +49,7 @@ class TSGSConfig:
     min_cosine_similarity: float = 0.0
     sampling_multiplier: float = 1.0
     exact_resistance_max_nodes: int = 256
+    exact_resistance_condition_limit: float = 1e12
     audit_vector_count: int = 64
     audit_tolerance: float = 0.35
     seed: int = 0
@@ -69,6 +73,15 @@ class TSGSConfig:
             self,
             "exact_resistance_max_nodes",
             _positive_int(self.exact_resistance_max_nodes, "exact_resistance_max_nodes"),
+        )
+        object.__setattr__(
+            self,
+            "exact_resistance_condition_limit",
+            _finite_float(
+                self.exact_resistance_condition_limit,
+                "exact_resistance_condition_limit",
+                minimum=1.0,
+            ),
         )
         object.__setattr__(self, "audit_vector_count", _positive_int(self.audit_vector_count, "audit_vector_count"))
         object.__setattr__(
@@ -117,12 +130,13 @@ class TSGSTimings:
 class SpectralAudit:
     empirical: bool
     reference_graph: str
+    status: str
     sample_count: int
     tolerance: float
-    observed_min_ratio: float
-    observed_max_ratio: float
-    observed_min_distortion: float
-    observed_max_distortion: float
+    observed_min_ratio: float | None
+    observed_max_ratio: float | None
+    observed_min_distortion: float | None
+    observed_max_distortion: float | None
     passed: bool
 
 
@@ -258,24 +272,94 @@ def _score_candidate_graph(
 
 
 def _exact_effective_resistances(
-    account_ids: tuple[str, ...], edges: tuple[WeightedEdge, ...]
-) -> tuple[float, ...]:
+    account_ids: tuple[str, ...],
+    edges: tuple[WeightedEdge, ...],
+    *,
+    condition_limit: float,
+) -> tuple[float, ...] | None:
+    if not edges:
+        return ()
+
     node_index = {account_id: index for index, account_id in enumerate(account_ids)}
-    laplacian = np.zeros((len(account_ids), len(account_ids)), dtype=float)
+    parent = list(range(len(account_ids)))
+
+    def find(node: int) -> int:
+        while parent[node] != node:
+            parent[node] = parent[parent[node]]
+            node = parent[node]
+        return node
+
+    def union(left: int, right: int) -> None:
+        left_root = find(left)
+        right_root = find(right)
+        if left_root != right_root:
+            parent[max(left_root, right_root)] = min(left_root, right_root)
+
     for edge in edges:
-        left = node_index[edge.source_account_id]
-        right = node_index[edge.target_account_id]
-        laplacian[left, left] += edge.weight
-        laplacian[right, right] += edge.weight
-        laplacian[left, right] -= edge.weight
-        laplacian[right, left] -= edge.weight
-    pseudoinverse = np.linalg.pinv(laplacian, hermitian=True)
-    resistances = []
-    for edge in edges:
-        left = node_index[edge.source_account_id]
-        right = node_index[edge.target_account_id]
-        resistance = pseudoinverse[left, left] + pseudoinverse[right, right] - 2.0 * pseudoinverse[left, right]
-        resistances.append(max(0.0, float(resistance)))
+        union(node_index[edge.source_account_id], node_index[edge.target_account_id])
+
+    component_edge_indices: defaultdict[int, list[int]] = defaultdict(list)
+    for edge_index, edge in enumerate(edges):
+        component_edge_indices[find(node_index[edge.source_account_id])].append(edge_index)
+
+    resistances = [0.0] * len(edges)
+    for edge_indices in component_edge_indices.values():
+        component_nodes = sorted(
+            {
+                node_index[account_id]
+                for edge_index in edge_indices
+                for account_id in (
+                    edges[edge_index].source_account_id,
+                    edges[edge_index].target_account_id,
+                )
+            }
+        )
+        local_index = {node: index for index, node in enumerate(component_nodes)}
+        laplacian = np.zeros((len(component_nodes), len(component_nodes)), dtype=float)
+        for edge_index in edge_indices:
+            edge = edges[edge_index]
+            left = local_index[node_index[edge.source_account_id]]
+            right = local_index[node_index[edge.target_account_id]]
+            laplacian[left, left] += edge.weight
+            laplacian[right, right] += edge.weight
+            laplacian[left, right] -= edge.weight
+            laplacian[right, left] -= edge.weight
+
+        grounded = laplacian[:-1, :-1]
+        try:
+            eigenvalues = np.linalg.eigvalsh(grounded)
+        except np.linalg.LinAlgError:
+            return None
+        largest_eigenvalue = float(eigenvalues[-1])
+        rank_tolerance = (
+            max(grounded.shape) * np.finfo(float).eps * largest_eigenvalue
+        )
+        numerical_rank = int(np.count_nonzero(eigenvalues > rank_tolerance))
+        if numerical_rank != grounded.shape[0]:
+            return None
+        condition_number = largest_eigenvalue / float(eigenvalues[0])
+        if not math.isfinite(condition_number) or condition_number > condition_limit:
+            return None
+
+        incidence = np.zeros((grounded.shape[0], len(edge_indices)), dtype=float)
+        for column, edge_index in enumerate(edge_indices):
+            edge = edges[edge_index]
+            left = local_index[node_index[edge.source_account_id]]
+            right = local_index[node_index[edge.target_account_id]]
+            if left < grounded.shape[0]:
+                incidence[left, column] = 1.0
+            if right < grounded.shape[0]:
+                incidence[right, column] = -1.0
+        try:
+            solutions = np.linalg.solve(grounded, incidence)
+        except np.linalg.LinAlgError:
+            return None
+        component_resistances = np.sum(incidence * solutions, axis=0)
+        if np.any(~np.isfinite(component_resistances)) or np.any(component_resistances <= 0.0):
+            return None
+        for edge_index, resistance in zip(edge_indices, component_resistances, strict=True):
+            resistances[edge_index] = float(resistance)
+
     return tuple(resistances)
 
 
@@ -296,8 +380,16 @@ def _sample_candidate_graph(
     account_ids: tuple[str, ...], edges: tuple[WeightedEdge, ...], config: TSGSConfig
 ) -> tuple[tuple[WeightedEdge, ...], str]:
     if len(account_ids) <= config.exact_resistance_max_nodes:
-        resistances = _exact_effective_resistances(account_ids, edges)
-        backend = EXACT_RESISTANCE_BACKEND
+        resistances = _exact_effective_resistances(
+            account_ids,
+            edges,
+            condition_limit=config.exact_resistance_condition_limit,
+        )
+        if resistances is None:
+            resistances = _diagonal_degree_resistance_approximation(account_ids, edges)
+            backend = NUMERICAL_FALLBACK_RESISTANCE_BACKEND
+        else:
+            backend = EXACT_RESISTANCE_BACKEND
     else:
         resistances = _diagonal_degree_resistance_approximation(account_ids, edges)
         backend = APPROXIMATE_RESISTANCE_BACKEND
@@ -314,10 +406,15 @@ def _sample_candidate_graph(
     return tuple(sampled_edges), backend
 
 
-def _quadratic_form(vector: np.ndarray, node_index: Mapping[str, int], edges: Iterable[WeightedEdge]) -> float:
-    return float(
-        sum(
-            edge.weight
+def _quadratic_form(
+    vector: np.ndarray,
+    node_index: Mapping[str, int],
+    edges: Iterable[WeightedEdge],
+    weight_scale: float = 1.0,
+) -> float:
+    return math.fsum(
+        (
+            (edge.weight / weight_scale)
             * (vector[node_index[edge.source_account_id]] - vector[node_index[edge.target_account_id]]) ** 2
             for edge in edges
         )
@@ -330,29 +427,55 @@ def _spectral_audit(
     sampled_edges: tuple[WeightedEdge, ...],
     config: TSGSConfig,
 ) -> SpectralAudit:
+    if not candidate_edges and not sampled_edges:
+        return SpectralAudit(
+            empirical=True,
+            reference_graph="candidate_graph",
+            status="trivial_empty_graph",
+            sample_count=0,
+            tolerance=config.audit_tolerance,
+            observed_min_ratio=None,
+            observed_max_ratio=None,
+            observed_min_distortion=None,
+            observed_max_distortion=None,
+            passed=True,
+        )
+
     node_index = {account_id: index for index, account_id in enumerate(account_ids)}
     rng = np.random.default_rng(config.seed ^ 0x41554449)
+    weight_scale = max((edge.weight for edge in candidate_edges), default=1.0)
     ratios = []
     for _ in range(config.audit_vector_count):
         vector = rng.standard_normal(len(account_ids))
-        candidate_energy = _quadratic_form(vector, node_index, candidate_edges)
-        if candidate_energy <= np.finfo(float).eps:
+        candidate_energy = _quadratic_form(vector, node_index, candidate_edges, weight_scale)
+        if candidate_energy == 0.0:
             continue
-        sampled_energy = _quadratic_form(vector, node_index, sampled_edges)
+        sampled_energy = _quadratic_form(vector, node_index, sampled_edges, weight_scale)
         ratios.append(sampled_energy / candidate_energy)
 
-    if ratios:
-        observed_min = min(ratios)
-        observed_max = max(ratios)
-        distortions = [abs(ratio - 1.0) for ratio in ratios]
-        min_distortion = min(distortions)
-        max_distortion = max(distortions)
-    else:
-        observed_min = observed_max = 1.0
-        min_distortion = max_distortion = 0.0
+    if not ratios:
+        return SpectralAudit(
+            empirical=True,
+            reference_graph="candidate_graph",
+            status="no_informative_probes",
+            sample_count=0,
+            tolerance=config.audit_tolerance,
+            observed_min_ratio=None,
+            observed_max_ratio=None,
+            observed_min_distortion=None,
+            observed_max_distortion=None,
+            passed=False,
+        )
+
+    observed_min = min(ratios)
+    observed_max = max(ratios)
+    distortions = [abs(ratio - 1.0) for ratio in ratios]
+    min_distortion = min(distortions)
+    max_distortion = max(distortions)
     return SpectralAudit(
         empirical=True,
         reference_graph="candidate_graph",
+        status="ok",
         sample_count=len(ratios),
         tolerance=config.audit_tolerance,
         observed_min_ratio=float(observed_min),

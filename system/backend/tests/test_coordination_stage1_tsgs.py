@@ -148,7 +148,7 @@ def test_seed_reproduces_candidates_sampled_edges_and_empirical_audit():
     assert all(math.isfinite(edge.weight) and edge.weight > 0.0 for edge in first.sampled_edges)
 
 
-def test_small_candidate_graph_passes_empirical_quadratic_form_audit():
+def test_p_one_identity_sample_passes_empirical_quadratic_form_audit():
     events_module, tsgs_module = _load_stage1_modules()
     result = tsgs_module.TemporalSketchGraphSparsifier(
         tsgs_module.TSGSConfig(
@@ -163,7 +163,7 @@ def test_small_candidate_graph_passes_empirical_quadratic_form_audit():
         )
     ).fit_transform(_coordinated_events(events_module, account_count=5))
 
-    assert result.resistance_backend == "exact_laplacian_pseudoinverse"
+    assert result.resistance_backend == "exact_component_grounded_laplacian_solve"
     assert result.guarantee_scope == "candidate_graph_only"
     assert result.audit.empirical is True
     assert result.audit.reference_graph == "candidate_graph"
@@ -214,10 +214,15 @@ def test_empty_snapshot_returns_an_auditable_empty_candidate_graph():
     assert result.account_ids == ()
     assert result.candidate_pair_count == result.full_pair_count == 0
     assert result.candidate_graph_edges == result.sampled_edges == ()
-    assert result.resistance_backend == "exact_laplacian_pseudoinverse"
+    assert result.resistance_backend == "exact_component_grounded_laplacian_solve"
     assert result.guarantee_scope == "candidate_graph_only"
     assert result.audit.sample_count == 0
+    assert result.audit.status == "trivial_empty_graph"
     assert result.audit.passed is True
+    assert result.audit.observed_min_ratio is None
+    assert result.audit.observed_max_ratio is None
+    assert result.audit.observed_min_distortion is None
+    assert result.audit.observed_max_distortion is None
 
 
 def test_zero_weight_event_preserves_its_account_row_and_full_pair_count():
@@ -233,3 +238,113 @@ def test_zero_weight_event_preserves_its_account_row_and_full_pair_count():
     assert result.account_ids == ("account-active", "account-zero")
     assert result.full_pair_count == 1
     assert result.candidate_graph_edges == ()
+
+
+def test_exact_resistance_solves_disconnected_components_without_pseudoinverse(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    _, tsgs_module = _load_stage1_modules()
+    edges = (
+        tsgs_module.WeightedEdge("account-a", "account-b", 2.0),
+        tsgs_module.WeightedEdge("account-c", "account-d", 0.5),
+    )
+
+    def fail_pseudoinverse(*_args, **_kwargs):
+        raise AssertionError("exact resistance used np.linalg.pinv")
+
+    monkeypatch.setattr(tsgs_module.np.linalg, "pinv", fail_pseudoinverse)
+
+    resistances = tsgs_module._exact_effective_resistances(
+        ("account-a", "account-b", "account-c", "account-d", "account-isolated"),
+        edges,
+        condition_limit=1e12,
+    )
+
+    assert resistances == pytest.approx((0.5, 2.0))
+
+
+def test_numerically_ill_conditioned_component_uses_named_fallback():
+    _, tsgs_module = _load_stage1_modules()
+    edges = (
+        tsgs_module.WeightedEdge("account-a", "account-b", 1.0),
+        tsgs_module.WeightedEdge("account-b", "account-c", 1e-15),
+    )
+    config = tsgs_module.TSGSConfig(
+        seed=23,
+        sampling_multiplier=0.5,
+        exact_resistance_max_nodes=3,
+        exact_resistance_condition_limit=1e8,
+    )
+
+    sampled, backend = tsgs_module._sample_candidate_graph(
+        ("account-a", "account-b", "account-c"), edges, config
+    )
+
+    assert backend == "numerical_fallback_diagonal_degree_resistance_approximation"
+    assert all(math.isfinite(edge.weight) and edge.weight > 0.0 for edge in sampled)
+
+
+def test_controlled_nontrivial_sampling_retains_strict_subset_with_inverse_probability_weights():
+    _, tsgs_module = _load_stage1_modules()
+    edges = (
+        tsgs_module.WeightedEdge("account-a", "account-b", 1.0),
+        tsgs_module.WeightedEdge("account-b", "account-c", 1.0),
+        tsgs_module.WeightedEdge("account-c", "account-d", 1.0),
+    )
+    config = tsgs_module.TSGSConfig(
+        seed=17,
+        sampling_multiplier=0.4,
+        exact_resistance_max_nodes=4,
+    )
+    probability = config.sampling_multiplier * math.log(4)
+    assert 0.0 < probability < 1.0
+
+    sampled, backend = tsgs_module._sample_candidate_graph(
+        ("account-a", "account-b", "account-c", "account-d"), edges, config
+    )
+
+    assert backend == "exact_component_grounded_laplacian_solve"
+    assert 0 < len(sampled) < len(edges)
+    assert all(edge.weight == pytest.approx(1.0 / probability) for edge in sampled)
+
+
+def test_tiny_positive_candidate_energy_is_audited_and_cannot_false_pass():
+    _, tsgs_module = _load_stage1_modules()
+    candidate_edges = (tsgs_module.WeightedEdge("account-a", "account-b", 1e-300),)
+
+    audit = tsgs_module._spectral_audit(
+        ("account-a", "account-b"),
+        candidate_edges,
+        (),
+        tsgs_module.TSGSConfig(seed=29, audit_vector_count=8, audit_tolerance=0.5),
+    )
+
+    assert audit.status == "ok"
+    assert audit.sample_count == 8
+    assert audit.observed_min_ratio == pytest.approx(0.0)
+    assert audit.observed_max_ratio == pytest.approx(0.0)
+    assert audit.observed_max_distortion == pytest.approx(1.0)
+    assert audit.passed is False
+
+
+def test_nonempty_graph_without_informative_probes_is_an_explicit_failure(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    _, tsgs_module = _load_stage1_modules()
+    edge = tsgs_module.WeightedEdge("account-a", "account-b", 1.0)
+    monkeypatch.setattr(tsgs_module, "_quadratic_form", lambda *_args, **_kwargs: 0.0)
+
+    audit = tsgs_module._spectral_audit(
+        ("account-a", "account-b"),
+        (edge,),
+        (edge,),
+        tsgs_module.TSGSConfig(seed=31, audit_vector_count=4),
+    )
+
+    assert audit.status == "no_informative_probes"
+    assert audit.sample_count == 0
+    assert audit.passed is False
+    assert audit.observed_min_ratio is None
+    assert audit.observed_max_ratio is None
+    assert audit.observed_min_distortion is None
+    assert audit.observed_max_distortion is None
