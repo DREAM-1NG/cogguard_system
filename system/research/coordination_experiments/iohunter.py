@@ -78,6 +78,22 @@ def _account_universe(payload: Mapping[str, Any]) -> tuple[int, ...]:
     return ordered
 
 
+def _evaluator_account_universe(
+    payload: Mapping[str, Any], labels: Sequence[Any]
+) -> tuple[int, ...]:
+    source_nodes = _account_universe(payload)
+    fused = payload.get("graph")
+    if not isinstance(fused, nx.Graph):
+        raise ValueError("fused graph is required for IOHunter evaluator alignment")
+    fused_nodes = tuple(sorted(_node_index(node) for node in fused.nodes))
+    label_nodes = tuple(range(len(labels)))
+    if fused_nodes != source_nodes or fused_nodes != label_nodes:
+        raise ValueError(
+            "fused graph account universe must equal aligned source-layer and label universes"
+        )
+    return fused_nodes
+
+
 def _edge_weight(data: Mapping[str, Any], layer: str) -> float:
     raw = data.get("weight", 1.0)
     if isinstance(raw, bool) or not isinstance(raw, (int, float)):
@@ -472,10 +488,8 @@ def _build_iohunter_label_evaluator(
     if not isinstance(payload, MappingABC):
         raise ValueError("IOHunter payload must be a mapping")
     campaign = _campaign(campaign)
-    nodes = _account_universe(payload)
     labels = _as_sequence(payload.get("labels"), "labels")
-    if nodes != tuple(range(len(labels))):
-        raise ValueError("labels must be aligned with contiguous graph account indices")
+    nodes = _evaluator_account_universe(payload, labels)
     normalized_labels: dict[str, int] = {}
     for node, value in zip(nodes, labels, strict=True):
         if isinstance(value, bool) or not isinstance(value, Real) or not math.isfinite(float(value)) or float(value) not in (0.0, 1.0):

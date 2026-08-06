@@ -482,6 +482,24 @@ def test_iohunter_evaluator_is_sealed_immutable_and_aligned():
         module.build_iohunter_label_evaluator(short_labels, campaign="russia")
 
 
+def test_iohunter_evaluator_requires_fused_graph():
+    module = _load_experiments()
+    payload = _iohunter_payload()
+    del payload["graph"]
+
+    with pytest.raises(ValueError, match="fused graph is required"):
+        module.build_iohunter_label_evaluator(payload, campaign="russia")
+
+
+def test_iohunter_evaluator_rejects_mismatched_fused_graph_universe():
+    module = _load_experiments()
+    payload = _iohunter_payload()
+    payload["graph"].add_node(4)
+
+    with pytest.raises(ValueError, match="fused graph account universe"):
+        module.build_iohunter_label_evaluator(payload, campaign="russia")
+
+
 def test_iohunter_evaluator_accepts_binary_float_labels_and_numbered_fold_masks():
     module = _load_experiments()
     payload = _iohunter_payload(labels=(0.0, 1.0, 0.0, 1.0))
