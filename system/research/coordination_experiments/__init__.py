@@ -1,10 +1,17 @@
-from .cresci import build_cresci_manifest, cresci_capability
+from .cresci import (
+    CRESCI_2017_AUTHORITATIVE_LABEL_SCOPE,
+    CRESCI_2017_LABEL_SEMANTICS,
+    build_cresci_manifest,
+    cresci_capability,
+)
 from .iohunter import (
     IOHUNTER_CAMPAIGNS,
     IOHUNTER_LAYER_RELATIONS,
     IOHUNTER_STATIC_PLACEHOLDER_TIMESTAMP,
+    IOHUNTER_LABEL_SEMANTICS,
     IOHunterDiscoveryPayload,
     IOHunterLabelEvaluator,
+    IOHunterOfficialFold,
     adapt_iohunter_payload,
     build_iohunter_label_evaluator,
     iohunter_capability,
@@ -22,11 +29,15 @@ from .protocol import (
 __all__ = [
     "DatasetCapability",
     "ExperimentSplit",
+    "CRESCI_2017_AUTHORITATIVE_LABEL_SCOPE",
+    "CRESCI_2017_LABEL_SEMANTICS",
     "IOHUNTER_CAMPAIGNS",
     "IOHUNTER_LAYER_RELATIONS",
     "IOHUNTER_STATIC_PLACEHOLDER_TIMESTAMP",
+    "IOHUNTER_LABEL_SEMANTICS",
     "IOHunterDiscoveryPayload",
     "IOHunterLabelEvaluator",
+    "IOHunterOfficialFold",
     "ResearchDatasetManifest",
     "adapt_iohunter_payload",
     "build_campaign_holdout",

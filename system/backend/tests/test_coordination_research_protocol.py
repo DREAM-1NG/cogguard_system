@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import dataclasses
+import hashlib
 import importlib.util
 import json
 import pickle
@@ -10,6 +11,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import networkx as nx
+import numpy as np
 import pytest
 
 from app.config import PROJECT_ROOT
@@ -101,6 +103,42 @@ def _iohunter_payload(*, labels=(0, 1, 0, 1), reverse_splits=False):
         "labels": tuple(labels),
         "splits": split_values,
     }
+
+
+def _relabel_iohunter_universe(payload, mapping):
+    for key in ("graph", "coRT", "coURL", "hashSeq", "fastRT", "tweetSim"):
+        payload[key] = nx.relabel_nodes(payload[key], mapping, copy=True)
+    return payload
+
+
+def _write_cresci_fixture(
+    tmp_path,
+    *,
+    archive_bytes=b"verified cresci fixture",
+    label_scope="genuine, traditional spambots, and social spambots",
+):
+    archive = tmp_path / "cresci-2017.csv.zip"
+    archive.write_bytes(archive_bytes)
+    digest = hashlib.sha256(archive_bytes).hexdigest()
+    metadata = tmp_path / "dataset_manifest.json"
+    metadata.write_text(
+        json.dumps(
+            {
+                "schema": "cogguard.social_bot_detection.dataset_manifest.v1",
+                "datasets": [
+                    {
+                        "id": "cresci-2017",
+                        "file": archive.name,
+                        "bytes": len(archive_bytes),
+                        "sha256": digest.upper(),
+                        "label_scope": label_scope,
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    return archive, metadata, digest
 
 
 def _forbidden_discovery_keys(value):
@@ -201,6 +239,51 @@ def test_campaign_holdout_is_group_disjoint_deterministic_and_seed_recorded():
     assert first.fingerprint != different_seed.fingerprint
     assert not (set(first.train_group_ids) & set(first.validation_group_ids))
     assert not (set(first.train_group_ids) & set(first.test_group_ids))
+    assert len(first.train_ids + first.validation_ids + first.test_ids) == len(samples)
+
+
+def test_campaign_holdout_rejects_normalized_id_group_and_argument_collisions():
+    module = _load_experiments()
+    with pytest.raises(ValueError, match="sample ID.*duplicate"):
+        module.build_campaign_holdout(
+            {"case": "china", " case ": "cuba", "v": "iran", "t": "russia"},
+            ("iran",),
+            ("russia",),
+            seed=3,
+        )
+    with pytest.raises(ValueError, match="campaign alias"):
+        module.build_campaign_holdout(
+            {"a": "china", "b": " china ", "v": "iran", "t": "russia"},
+            ("iran",),
+            ("russia",),
+            seed=3,
+        )
+    with pytest.raises(ValueError, match="validation campaigns.*duplicate"):
+        module.build_campaign_holdout(
+            {"a": "china", "v": "iran", "t": "russia"},
+            ("iran", " iran "),
+            ("russia",),
+            seed=3,
+        )
+
+
+def test_direct_split_values_reject_normalized_duplicate_ids_and_groups():
+    module = _load_experiments()
+    values = {
+        "policy": "campaign_holdout",
+        "seed": 3,
+        "train_ids": ("a",),
+        "validation_ids": ("b",),
+        "test_ids": ("c",),
+        "train_group_ids": ("china",),
+        "validation_group_ids": ("iran",),
+        "test_group_ids": ("russia",),
+        "transform_fit_ids": ("a",),
+    }
+    with pytest.raises(ValueError, match="train_ids.*duplicate"):
+        module.ExperimentSplit(**{**values, "train_ids": ("a", " a "), "transform_fit_ids": ("a", " a ")})
+    with pytest.raises(ValueError, match="train_group_ids.*duplicate"):
+        module.ExperimentSplit(**{**values, "train_group_ids": ("china", " china ")})
 
 
 @pytest.mark.parametrize(
@@ -240,6 +323,21 @@ def test_time_holdout_uses_strict_timezone_aware_chronological_boundaries():
     assert split.test_ids == ("test",)
     assert split.transform_fit_ids == split.train_ids
     assert split.policy == "observed_time_holdout"
+
+
+def test_time_holdout_rejects_normalized_sample_id_collisions():
+    module = _load_experiments()
+    with pytest.raises(ValueError, match="sample ID.*duplicate"):
+        module.build_time_holdout(
+            {
+                "case": datetime(2026, 1, 1, tzinfo=timezone.utc),
+                " case ": datetime(2026, 1, 2, tzinfo=timezone.utc),
+                "test": datetime(2026, 1, 3, tzinfo=timezone.utc),
+            },
+            datetime(2026, 1, 1, tzinfo=timezone.utc),
+            datetime(2026, 1, 2, tzinfo=timezone.utc),
+            seed=3,
+        )
 
 
 @pytest.mark.parametrize(
@@ -304,6 +402,25 @@ def test_iohunter_emits_only_source_relations_bidirectionally_without_self_loops
     assert discovery.manifest.time_axis == "static_placeholder_not_observed_time"
     assert discovery.manifest.source_checksum_scope == "canonical_discovery_graph_layers"
     assert discovery.manifest.quality_markers == ("timestamp_imputed",)
+    assert {event.account_id for event in discovery.events} == set(discovery.manifest.source_case_ids)
+
+
+def test_iohunter_requires_one_contiguous_account_universe_across_source_and_fused_graphs():
+    module = _load_experiments()
+    mismatch = _iohunter_payload()
+    mismatch["graph"].add_node(4)
+    with pytest.raises(ValueError, match="account universe"):
+        module.adapt_iohunter_payload(mismatch, campaign="russia", seed=31)
+    with pytest.raises(ValueError, match="account universe"):
+        module.build_iohunter_label_evaluator(mismatch, campaign="russia")
+
+    non_contiguous = _relabel_iohunter_universe(
+        _iohunter_payload(), {0: 1, 1: 2, 2: 3, 3: 4}
+    )
+    with pytest.raises(ValueError, match="contiguous"):
+        module.adapt_iohunter_payload(non_contiguous, campaign="russia", seed=31)
+    with pytest.raises(ValueError, match="contiguous"):
+        module.build_iohunter_label_evaluator(non_contiguous, campaign="russia")
 
 
 @pytest.mark.parametrize("weight", [0.0, -1.0, float("inf"), float("nan")])
@@ -326,7 +443,20 @@ def test_iohunter_evaluator_is_sealed_immutable_and_aligned():
         "iohunter:russia:account:000003": 1,
     }
     assert evaluator.label_semantics == "1=information-operation account; 0=non-IO account"
-    assert set(evaluator.official_folds) == {"test", "train", "validation"}
+    assert evaluator.source_path == "memory://iohunter/russia/evaluator"
+    assert evaluator.source_sha256.startswith("sha256:")
+    assert len(evaluator.official_folds) == 1
+    fold = evaluator.official_folds[0]
+    assert fold.fold_id == "fold-000"
+    assert fold.train_ids == (
+        "iohunter:russia:account:000000",
+        "iohunter:russia:account:000001",
+    )
+    assert fold.validation_ids == ("iohunter:russia:account:000002",)
+    assert fold.test_ids == ("iohunter:russia:account:000003",)
+    restored = module.IOHunterLabelEvaluator.from_dict(evaluator.to_dict())
+    assert restored == evaluator
+    assert restored.evaluator_fingerprint == evaluator.evaluator_fingerprint
     with pytest.raises(TypeError):
         evaluator.account_labels["injected"] = 1
 
@@ -343,28 +473,96 @@ def test_iohunter_evaluator_accepts_binary_float_labels_and_numbered_fold_masks(
     payload = _iohunter_payload(labels=(0.0, 1.0, 0.0, 1.0))
     payload["splits"] = {
         0: {
-            "train": (True, True, False, False),
-            "validation": (False, False, True, False),
-            "test": (False, False, False, True),
+            "train": np.array((True, True, False, False), dtype=bool),
+            "val": np.array((False, False, True, False), dtype=bool),
+            "test": np.array((False, False, False, True), dtype=bool),
         },
-        1: {
-            "train": (False, True, True, False),
-            "validation": (True, False, False, False),
-            "test": (False, False, False, True),
+        3: {
+            "train": np.array((False, True, True, False), dtype=bool),
+            "validation": np.array((True, False, False, False), dtype=bool),
+            "test": np.array((False, False, False, True), dtype=bool),
         },
     }
 
     evaluator = module.build_iohunter_label_evaluator(payload, campaign="russia")
 
-    assert tuple(evaluator.official_folds) == (
-        "fold-000-test",
-        "fold-000-train",
-        "fold-000-validation",
-        "fold-001-test",
-        "fold-001-train",
-        "fold-001-validation",
-    )
+    assert tuple(fold.fold_id for fold in evaluator.official_folds) == ("fold-000", "fold-003")
+    assert all(fold.to_dict()["validation_ids"] for fold in evaluator.official_folds)
     assert evaluator.account_labels["iohunter:russia:account:000001"] == 1
+
+
+@pytest.mark.parametrize(
+    ("partitions", "message"),
+    [
+        (
+            {"train": (1, 1, 0, 0), "validation": (0, 0, 1, 0), "test": (0, 0, 0, 1)},
+            "boolean",
+        ),
+        (
+            {"train": (True, True, False), "validation": (False, False, True), "test": (False, False, False)},
+            "exactly account_count",
+        ),
+        (
+            {"train": (True, True, False, False), "dev": (False, False, True, False), "test": (False, False, False, True)},
+            "partition names",
+        ),
+        (
+            {
+                "train": (True, True, False, False),
+                "val": (False, False, True, False),
+                "validation": (False, False, True, False),
+                "test": (False, False, False, True),
+            },
+            "duplicate validation alias",
+        ),
+        (
+            {"train": (True, True, False, False), "validation": (False, True, True, False), "test": (False, False, False, True)},
+            "disjoint",
+        ),
+        (
+            {"train": (True, False, False, False), "validation": (False, True, False, False), "test": (False, False, True, False)},
+            "coverage",
+        ),
+        (
+            {"train": (False, False, False, False), "validation": (True, True,True, False), "test": (False, False, False, True)},
+            "non-empty",
+        ),
+    ],
+)
+def test_iohunter_evaluator_rejects_malformed_official_folds(partitions, message):
+    module = _load_experiments()
+    payload = _iohunter_payload()
+    payload["splits"] = {0: partitions}
+    with pytest.raises(ValueError, match=message):
+        module.build_iohunter_label_evaluator(payload, campaign="russia")
+
+
+def test_iohunter_evaluator_fingerprint_covers_labels_folds_semantics_and_provenance():
+    module = _load_experiments()
+    first = module.build_iohunter_label_evaluator(_iohunter_payload(), campaign="russia")
+    changed_labels = module.build_iohunter_label_evaluator(
+        _iohunter_payload(labels=(1, 0, 0, 1)), campaign="russia"
+    )
+    changed_folds_payload = _iohunter_payload()
+    changed_folds_payload["splits"] = {
+        "train": (True, False, True, False),
+        "validation": (False, True, False, False),
+        "test": (False, False, False, True),
+    }
+    changed_folds = module.build_iohunter_label_evaluator(
+        changed_folds_payload, campaign="russia"
+    )
+
+    assert first.evaluator_fingerprint != changed_labels.evaluator_fingerprint
+    assert first.evaluator_fingerprint != changed_folds.evaluator_fingerprint
+    tampered = first.to_dict()
+    tampered["label_semantics"] = "1=harmful; 0=benign"
+    with pytest.raises(ValueError, match="label semantics"):
+        module.IOHunterLabelEvaluator.from_dict(tampered)
+    tampered = first.to_dict()
+    tampered["source_path"] = "memory://changed"
+    with pytest.raises(ValueError, match="fingerprint"):
+        module.IOHunterLabelEvaluator.from_dict(tampered)
 
 
 def test_iohunter_pickle_loading_requires_explicit_trusted_local_gate(tmp_path):
@@ -400,6 +598,26 @@ def test_loaded_discovery_manifest_cannot_fingerprint_sealed_pickle_fields(tmp_p
     assert first.manifest == second.manifest
 
 
+def test_trusted_evaluator_owns_raw_source_provenance_without_discovery_leakage(tmp_path):
+    module = _load_experiments()
+    path = tmp_path / "0.7_datasets.pkl"
+    raw = pickle.dumps(_iohunter_payload())
+    path.write_bytes(raw)
+
+    evaluator = module.load_iohunter_label_evaluator(
+        path, campaign="russia", trusted_local=True
+    )
+    discovery = module.load_iohunter_discovery(
+        path, campaign="russia", seed=31, trusted_local=True
+    )
+
+    assert evaluator.source_path == str(path.resolve())
+    assert evaluator.source_sha256 == "sha256:" + hashlib.sha256(raw).hexdigest()
+    serialized_discovery = json.dumps(discovery.to_dict(), sort_keys=True)
+    assert evaluator.source_sha256 not in serialized_discovery
+    assert evaluator.evaluator_fingerprint not in serialized_discovery
+
+
 def test_iohunter_and_cresci_capabilities_block_unsupported_claims():
     module = _load_experiments()
     iohunter = module.iohunter_capability()
@@ -418,35 +636,47 @@ def test_iohunter_and_cresci_capabilities_block_unsupported_claims():
     assert "not_harmful_cib_claim" in cresci.claim_markers
 
 
-def test_cresci_manifest_uses_authoritative_metadata_without_opening_archive(tmp_path):
+def test_cresci_manifest_measures_archive_integrity_and_emits_canonical_bot_semantics(tmp_path):
     module = _load_experiments()
-    archive = tmp_path / "cresci-2017.csv.zip"
-    archive.write_bytes(b"fixture archive is not opened")
-    metadata = tmp_path / "dataset_manifest.json"
-    metadata.write_text(
-        json.dumps(
-            {
-                "schema": "cogguard.social_bot_detection.dataset_manifest.v1",
-                "datasets": [
-                    {
-                        "id": "cresci-2017",
-                        "file": archive.name,
-                        "bytes": archive.stat().st_size,
-                        "sha256": "B" * 64,
-                        "label_scope": "genuine, traditional spambots, and social spambots",
-                    }
-                ],
-            }
-        ),
-        encoding="utf-8",
-    )
+    archive, metadata, digest = _write_cresci_fixture(tmp_path)
 
     manifest = module.build_cresci_manifest(archive, metadata, seed=37)
 
     assert manifest.seed == 37
     assert manifest.sample_count == 0
     assert manifest.platform_axis == ("twitter",)
-    assert manifest.label_semantics == "genuine, traditional spambots, and social spambots"
+    assert manifest.label_semantics == "social_bot_classification_only:genuine|traditional_spambot|social_spambot"
     assert manifest.claim_markers == ("not_harmful_cib_claim",)
-    assert manifest.source_checksums[str(archive.resolve())] == "sha256:" + "b" * 64
+    assert manifest.source_checksums[str(archive.resolve())] == "sha256:" + digest
     assert manifest.source_checksum_scope == "authoritative_archive_and_metadata"
+
+
+def test_cresci_manifest_rejects_same_size_tampered_archive(tmp_path):
+    module = _load_experiments()
+    archive, metadata, _ = _write_cresci_fixture(tmp_path, archive_bytes=b"original")
+    archive.write_bytes(b"tampered")
+
+    with pytest.raises(ValueError, match="SHA-256"):
+        module.build_cresci_manifest(archive, metadata, seed=37)
+
+
+@pytest.mark.parametrize(
+    "label_scope",
+    [None, "", "harmful-CIB accounts", "genuine and automated accounts"],
+)
+def test_cresci_manifest_rejects_missing_malformed_or_harmful_label_semantics(
+    tmp_path, label_scope
+):
+    module = _load_experiments()
+    archive, metadata, _ = _write_cresci_fixture(tmp_path, label_scope=label_scope)
+
+    with pytest.raises(ValueError, match="label scope"):
+        module.build_cresci_manifest(archive, metadata, seed=37)
+
+
+def test_task5_protocol_does_not_encode_heuristic_baseline_v1_constants():
+    source_root = PROJECT_ROOT / "research" / "coordination_experiments"
+    combined = "\n".join(path.read_text(encoding="utf-8") for path in source_root.glob("*.py"))
+
+    for token in ("0.25", "0.35", "0.15", "0.65", "0.85", "10.0", "heuristic_baseline_v1"):
+        assert token not in combined

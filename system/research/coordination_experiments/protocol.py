@@ -57,7 +57,15 @@ def _non_negative_int(value: Any, field_name: str) -> int:
 def _text_tuple(values: Any, field_name: str, *, allow_empty: bool = True) -> tuple[str, ...]:
     if isinstance(values, (str, bytes)) or not isinstance(values, Sequence):
         raise ValueError(f"{field_name} must be a sequence of strings")
-    result = tuple(sorted({_required_text(value, field_name) for value in values}))
+    normalized: list[str] = []
+    seen: set[str] = set()
+    for value in values:
+        text = _required_text(value, field_name)
+        if text in seen:
+            raise ValueError(f"{field_name} contains a duplicate normalized value: {text}")
+        seen.add(text)
+        normalized.append(text)
+    result = tuple(sorted(normalized))
     if not allow_empty and not result:
         raise ValueError(f"{field_name} must be non-empty")
     return result
@@ -66,10 +74,12 @@ def _text_tuple(values: Any, field_name: str, *, allow_empty: bool = True) -> tu
 def _text_mapping(value: Any, field_name: str) -> Mapping[str, str]:
     if not isinstance(value, MappingABC):
         raise ValueError(f"{field_name} must be a mapping")
-    normalized = {
-        _required_text(key, f"{field_name} key"): _required_text(item, f"{field_name} value")
-        for key, item in value.items()
-    }
+    normalized: dict[str, str] = {}
+    for key, item in value.items():
+        normalized_key = _required_text(key, f"{field_name} key")
+        if normalized_key in normalized:
+            raise ValueError(f"{field_name} contains a duplicate normalized key: {normalized_key}")
+        normalized[normalized_key] = _required_text(item, f"{field_name} value")
     return MappingProxyType(dict(sorted(normalized.items())))
 
 
@@ -373,15 +383,30 @@ def build_campaign_holdout(
 ) -> ExperimentSplit:
     if not isinstance(sample_campaigns, MappingABC) or not sample_campaigns:
         raise ValueError("sample_campaigns must be a non-empty mapping")
-    normalized = {
-        _required_text(sample_id, "sample ID"): _required_text(campaign, "campaign")
-        for sample_id, campaign in sample_campaigns.items()
-    }
-    validation = set(_text_tuple(validation_campaigns, "validation campaigns", allow_empty=False))
-    test = set(_text_tuple(test_campaigns, "test campaigns", allow_empty=False))
+    normalized: dict[str, str] = {}
+    campaign_forms: dict[str, str] = {}
+    for sample_id, campaign in sample_campaigns.items():
+        normalized_id = _required_text(sample_id, "sample ID")
+        if normalized_id in normalized:
+            raise ValueError(f"sample ID contains a duplicate normalized value: {normalized_id}")
+        normalized_campaign = _required_text(campaign, "campaign")
+        original_campaign = str(campaign)
+        previous_form = campaign_forms.get(normalized_campaign)
+        if previous_form is not None and previous_form != original_campaign:
+            raise ValueError(f"campaign alias collision for {normalized_campaign}")
+        campaign_forms[normalized_campaign] = original_campaign
+        normalized[normalized_id] = normalized_campaign
+    if len(normalized) != len(sample_campaigns):
+        raise ValueError("normalized sample ID cardinality does not match input")
+    validation_tuple = _text_tuple(validation_campaigns, "validation campaigns", allow_empty=False)
+    test_tuple = _text_tuple(test_campaigns, "test campaigns", allow_empty=False)
+    validation = set(validation_tuple)
+    test = set(test_tuple)
     if validation & test:
         raise ValueError("validation and test campaigns overlap")
-    available = set(normalized.values())
+    available: set[str] = set()
+    for campaign in normalized.values():
+        available.add(campaign)
     missing = (validation | test) - available
     if missing:
         raise ValueError(f"missing requested campaigns: {sorted(missing)}")
@@ -392,7 +417,7 @@ def build_campaign_holdout(
     def ids_for(groups: set[str]) -> tuple[str, ...]:
         return tuple(sorted(sample_id for sample_id, group in normalized.items() if group in groups))
 
-    return ExperimentSplit(
+    result = ExperimentSplit(
         policy="campaign_holdout",
         seed=_seed(seed),
         train_ids=ids_for(train),
@@ -403,6 +428,9 @@ def build_campaign_holdout(
         test_group_ids=tuple(test),
         transform_fit_ids=ids_for(train),
     )
+    if len(result.train_ids) + len(result.validation_ids) + len(result.test_ids) != len(sample_campaigns):
+        raise ValueError("campaign holdout omitted or duplicated samples")
+    return result
 
 
 def _aware_utc(value: Any, field_name: str) -> datetime:
@@ -425,10 +453,14 @@ def build_time_holdout(
     validation_boundary = _aware_utc(validation_end, "validation boundary")
     if train_boundary >= validation_boundary:
         raise ValueError("train boundary must precede validation boundary")
-    normalized = {
-        _required_text(sample_id, "sample ID"): _aware_utc(observed_at, "sample")
-        for sample_id, observed_at in sample_times.items()
-    }
+    normalized: dict[str, datetime] = {}
+    for sample_id, observed_at in sample_times.items():
+        normalized_id = _required_text(sample_id, "sample ID")
+        if normalized_id in normalized:
+            raise ValueError(f"sample ID contains a duplicate normalized value: {normalized_id}")
+        normalized[normalized_id] = _aware_utc(observed_at, "sample")
+    if len(normalized) != len(sample_times):
+        raise ValueError("normalized sample ID cardinality does not match input")
     train_ids = tuple(sorted(key for key, value in normalized.items() if value <= train_boundary))
     validation_ids = tuple(
         sorted(key for key, value in normalized.items() if train_boundary < value <= validation_boundary)
@@ -436,10 +468,13 @@ def build_time_holdout(
     test_ids = tuple(sorted(key for key, value in normalized.items() if value > validation_boundary))
 
     def groups(ids: tuple[str, ...]) -> tuple[str, ...]:
-        return tuple(sorted({normalized[sample_id].isoformat() for sample_id in ids}))
+        unique: dict[str, None] = {}
+        for sample_id in ids:
+            unique[normalized[sample_id].isoformat()] = None
+        return tuple(sorted(unique))
 
     try:
-        return ExperimentSplit(
+        result = ExperimentSplit(
             policy="observed_time_holdout",
             seed=_seed(seed),
             train_ids=train_ids,
@@ -450,6 +485,9 @@ def build_time_holdout(
             test_group_ids=groups(test_ids),
             transform_fit_ids=train_ids,
         )
+        if len(result.train_ids) + len(result.validation_ids) + len(result.test_ids) != len(sample_times):
+            raise ValueError("time holdout omitted or duplicated samples")
+        return result
     except ValueError as exc:
         raise ValueError(f"time holdout partition invalid: {exc}") from exc
 

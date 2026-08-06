@@ -8,12 +8,18 @@ from typing import Any
 from .protocol import DatasetCapability, ResearchDatasetManifest
 
 
-def _file_sha256(path: Path) -> str:
+CRESCI_2017_AUTHORITATIVE_LABEL_SCOPE = "genuine, traditional spambots, and social spambots"
+CRESCI_2017_LABEL_SEMANTICS = "social_bot_classification_only:genuine|traditional_spambot|social_spambot"
+
+
+def _measure_file(path: Path) -> tuple[int, str]:
     digest = hashlib.sha256()
+    size = 0
     with path.open("rb") as handle:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            size += len(chunk)
             digest.update(chunk)
-    return f"sha256:{digest.hexdigest()}"
+    return size, f"sha256:{digest.hexdigest()}"
 
 
 def cresci_capability() -> DatasetCapability:
@@ -62,25 +68,36 @@ def build_cresci_manifest(
         raise ValueError("Cresci archive filename does not match authoritative metadata")
     if isinstance(entry.get("bytes"), bool) or not isinstance(entry.get("bytes"), int):
         raise ValueError("Cresci authoritative byte count must be an integer")
-    if archive.stat().st_size != entry["bytes"]:
+    measured_size, measured_checksum = _measure_file(archive)
+    if measured_size != entry["bytes"]:
         raise ValueError("Cresci archive byte count does not match authoritative metadata")
     checksum = entry.get("sha256")
     if not isinstance(checksum, str) or len(checksum) != 64:
         raise ValueError("Cresci authoritative SHA-256 is invalid")
+    try:
+        int(checksum, 16)
+    except ValueError as exc:
+        raise ValueError("Cresci authoritative SHA-256 is invalid") from exc
+    if measured_checksum[7:].casefold() != checksum.casefold():
+        raise ValueError("Cresci archive SHA-256 does not match authoritative metadata")
     label_scope = entry.get("label_scope")
-    if not isinstance(label_scope, str) or not label_scope.strip():
-        raise ValueError("Cresci authoritative label scope is missing")
+    if (
+        not isinstance(label_scope, str)
+        or label_scope.strip().casefold() != CRESCI_2017_AUTHORITATIVE_LABEL_SCOPE.casefold()
+    ):
+        raise ValueError("Cresci authoritative label scope must match the bot-only Cresci-2017 semantics")
+    _, metadata_checksum = _measure_file(metadata)
     archive_key, metadata_key = str(archive), str(metadata)
     return ResearchDatasetManifest(
         dataset_id="cresci-2017",
         seed=seed,
         source_paths=(archive_key, metadata_key),
         source_checksums={
-            archive_key: f"sha256:{checksum.lower()}",
-            metadata_key: _file_sha256(metadata),
+            archive_key: measured_checksum,
+            metadata_key: metadata_checksum,
         },
         source_checksum_scope="authoritative_archive_and_metadata",
-        label_semantics=label_scope.strip(),
+        label_semantics=CRESCI_2017_LABEL_SEMANTICS,
         sample_count=0,
         source_case_ids=("cresci-2017",),
         campaign_axis=(),
@@ -91,4 +108,9 @@ def build_cresci_manifest(
     )
 
 
-__all__ = ["build_cresci_manifest", "cresci_capability"]
+__all__ = [
+    "CRESCI_2017_AUTHORITATIVE_LABEL_SCOPE",
+    "CRESCI_2017_LABEL_SEMANTICS",
+    "build_cresci_manifest",
+    "cresci_capability",
+]
