@@ -16,6 +16,15 @@ DISCOVERY_STAGE = "coordination_discovery"
 DISCOVERY_CLAIM_ROLE = "unsupervised_candidate_clusters"
 STAGE1_LABEL_POLICY = "stage1_label_free"
 _UNSUPERVISED_RANKING_SCORE_ROLE = "unsupervised_ranking_not_probability"
+_NEUTRAL_QUALITY_FLAGS = frozenset(
+    {
+        "partial_provenance",
+        "sparse_evidence",
+        "timestamp_imputed",
+        "platform_missing",
+        "sampling_applied",
+    }
+)
 
 
 def _required_text(value: Any, field_name: str) -> str:
@@ -81,6 +90,14 @@ def _sorted_unique_text(values: Any, field_name: str, *, allow_empty: bool = Tru
     if not allow_empty and not normalized:
         raise ValueError(f"{field_name} must contain at least one value")
     return normalized
+
+
+def _neutral_quality_flags(values: Any) -> tuple[str, ...]:
+    flags = _sorted_unique_text(values, "quality_flags")
+    unsupported = set(flags) - _NEUTRAL_QUALITY_FLAGS
+    if unsupported:
+        raise ValueError(f"quality_flags contains unsupported values: {sorted(unsupported)}")
+    return flags
 
 
 def _text_mapping(value: Any, field_name: str) -> Mapping[str, str]:
@@ -420,7 +437,7 @@ class DiscoveredClusterBatch:
             raise ValueError("provenance must be a DiscoveryProvenance")
         self.provenance.validate()
         object.__setattr__(self, "platforms", _sorted_unique_text(self.platforms, "platforms"))
-        object.__setattr__(self, "quality_flags", _sorted_unique_text(self.quality_flags, "quality_flags"))
+        object.__setattr__(self, "quality_flags", _neutral_quality_flags(self.quality_flags))
         object.__setattr__(self, "artifact_manifest_ref", _optional_text(self.artifact_manifest_ref, "artifact_manifest_ref"))
 
     @property

@@ -71,7 +71,7 @@ def _batch(stage1):
         candidate_clusters=(cluster,),
         provenance=provenance,
         platforms=("weibo", "douyin", "xhs"),
-        quality_flags=("deduplicated",),
+        quality_flags=("sampling_applied",),
         artifact_manifest_ref="artifacts/manifest.json",
     )
 
@@ -271,3 +271,50 @@ def test_contract_rejects_non_string_member_identifiers_and_fractional_size_and_
     payload["provenance"]["seed"] = 42.5
     with pytest.raises(ValueError, match="seed must be an integer"):
         stage1.DiscoveredClusterBatch.from_dict(payload)
+
+
+@pytest.mark.parametrize("quality_flag", ["bot_suspected", "high_risk"])
+def test_contract_rejects_label_bearing_quality_flags(quality_flag: str):
+    stage1 = _load_stage1()
+    batch = _batch(stage1)
+
+    with pytest.raises(ValueError, match="quality_flags"):
+        stage1.DiscoveredClusterBatch(
+            batch_id=batch.batch_id,
+            timestamp=batch.timestamp,
+            candidate_clusters=batch.candidate_clusters,
+            provenance=batch.provenance,
+            platforms=batch.platforms,
+            quality_flags=(quality_flag,),
+            artifact_manifest_ref=batch.artifact_manifest_ref,
+        )
+
+    payload = batch.to_dict()
+    payload["quality_flags"] = [quality_flag]
+    with pytest.raises(ValueError, match="quality_flags"):
+        stage1.DiscoveredClusterBatch.from_dict(payload)
+
+
+def test_contract_accepts_neutral_quality_flags():
+    stage1 = _load_stage1()
+    batch = _batch(stage1)
+    quality_flags = (
+        "partial_provenance",
+        "sparse_evidence",
+        "timestamp_imputed",
+        "platform_missing",
+        "sampling_applied",
+    )
+    accepted = stage1.DiscoveredClusterBatch(
+        batch_id=batch.batch_id,
+        timestamp=batch.timestamp,
+        candidate_clusters=batch.candidate_clusters,
+        provenance=batch.provenance,
+        platforms=batch.platforms,
+        quality_flags=quality_flags,
+        artifact_manifest_ref=batch.artifact_manifest_ref,
+    )
+
+    restored = stage1.DiscoveredClusterBatch.from_dict(accepted.to_dict())
+
+    assert restored.quality_flags == tuple(sorted(quality_flags))
