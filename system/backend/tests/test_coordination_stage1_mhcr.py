@@ -281,7 +281,7 @@ def test_symmetric_infonce_is_invoked_with_distinct_view_tensors(
 
 
 def test_relation_specific_transform_perturbation_changes_propagated_output():
-    events_module, _, mhcr_module = _load_stage1_modules()
+    events_module, tsgs_module, mhcr_module = _load_stage1_modules()
     events = _events(events_module)
     account_ids = tuple(sorted({event.account_id for event in events}))
     hyperedges = mhcr_module._build_hyperedges(events, 60)
@@ -289,15 +289,127 @@ def test_relation_specific_transform_perturbation_changes_propagated_output():
     torch.manual_seed(211)
     model = mhcr_module._RelationAwareHypergraphEncoder(6, 8, relation_names)
     features = torch.arange(24, dtype=torch.float32).reshape(4, 6) / 24.0
-    adjacency = torch.zeros((4, 4), dtype=torch.float32)
+    empty_tsgs = tsgs_module.TemporalSketchGraphSparsifier().fit_transform([])
+    sparse_channel = mhcr_module._candidate_channel(
+        dataclasses.replace(empty_tsgs, account_ids=account_ids)
+    )
 
-    before = model(features, hyperedges, account_ids, adjacency).detach().clone()
+    before = model(features, hyperedges, account_ids, sparse_channel).detach().clone()
     relation_index = model.relation_index["shared_url"]
     with torch.no_grad():
         model.relation_transforms[relation_index].weight.add_(0.5)
-    after = model(features, hyperedges, account_ids, adjacency).detach()
+    after = model(features, hyperedges, account_ids, sparse_channel).detach()
 
     assert not torch.allclose(before, after)
+
+
+def test_candidate_node_channel_is_sparse_linear_and_preserves_gradients(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    _, tsgs_module, mhcr_module = _load_stage1_modules()
+    account_count = 4096
+    account_ids = tuple(f"account-{index:05d}" for index in range(account_count))
+    empty_tsgs = tsgs_module.TemporalSketchGraphSparsifier().fit_transform([])
+    tsgs_result = dataclasses.replace(
+        empty_tsgs,
+        account_ids=account_ids,
+        full_pair_count=account_count * (account_count - 1) // 2,
+        candidate_graph_edges=(
+            tsgs_module.WeightedEdge(account_ids[0], account_ids[1], 2.0),
+            tsgs_module.WeightedEdge(account_ids[0], account_ids[2], 1.0),
+        ),
+    )
+    original_zeros = torch.zeros
+
+    def reject_square_node_allocation(size, *args, **kwargs):
+        if (
+            isinstance(size, (tuple, list))
+            and len(size) == 2
+            and size[0] == account_count
+            and size[1] == account_count
+        ):
+            raise AssertionError("allocated dense account-by-account candidate tensor")
+        return original_zeros(size, *args, **kwargs)
+
+    monkeypatch.setattr(torch, "zeros", reject_square_node_allocation)
+    channel = mhcr_module._candidate_channel(tsgs_result)
+
+    assert channel.account_count == account_count
+    assert channel.source_indices.shape == channel.target_indices.shape == (4,)
+    assert channel.normalized_weights.shape == (4,)
+    assert torch.isfinite(channel.normalized_weights).all()
+    target_weight_sums = original_zeros(account_count, dtype=torch.float32)
+    target_weight_sums.index_add_(
+        0, channel.target_indices, channel.normalized_weights
+    )
+    np.testing.assert_allclose(
+        target_weight_sums[:3].numpy(), np.ones(3, dtype=np.float32)
+    )
+
+    torch.manual_seed(307)
+    model = mhcr_module._RelationAwareHypergraphEncoder(6, 8, ())
+    features = torch.randn(account_count, 6, requires_grad=True)
+    output = model(features, (), account_ids, channel)
+    output.square().sum().backward()
+
+    assert output.shape == (account_count, 8)
+    assert features.grad is not None and torch.isfinite(features.grad).all()
+    assert model.graph_transform.weight.grad is not None
+    assert torch.isfinite(model.graph_transform.weight.grad).all()
+
+
+def test_single_hyperedge_drop_builds_distinct_reproducible_propagated_views():
+    events_module, tsgs_module, mhcr_module = _load_stage1_modules()
+    observed_at = datetime(2026, 8, 7, tzinfo=timezone.utc) + timedelta(seconds=20)
+    events = (
+        events_module.CoordinationEvent(
+            "account-a", "shared_url", "url-1", observed_at, 1.0, "evidence:1"
+        ),
+        events_module.CoordinationEvent(
+            "account-b",
+            "shared_url",
+            "url-1",
+            observed_at + timedelta(seconds=2),
+            1.0,
+            "evidence:2",
+        ),
+    )
+    config = mhcr_module.MHCRConfig(
+        seed=313,
+        time_bucket_seconds=60,
+        epochs=1,
+        temporal_jitter_seconds=0,
+        hyperedge_drop_rate=0.5,
+    )
+
+    first = mhcr_module._build_two_views(events, config)
+    repeated = mhcr_module._build_two_views(tuple(reversed(events)), config)
+
+    assert first == repeated
+    assert sorted((len(first[0]), len(first[1]))) == [0, 1]
+    assert first[2][0].content_signature != first[2][1].content_signature
+    assert sorted(view.dropped_hyperedge_count for view in first[2]) == [0, 1]
+
+    tsgs_result = tsgs_module.TemporalSketchGraphSparsifier(
+        tsgs_module.TSGSConfig(seed=313, time_bucket_seconds=60)
+    ).fit_transform(events)
+    channel = mhcr_module._candidate_channel(tsgs_result)
+    account_ids = tsgs_result.account_ids
+    features = mhcr_module._initial_features(events, account_ids, 60)
+    torch.manual_seed(313)
+    model = mhcr_module._RelationAwareHypergraphEncoder(6, 8, ("shared_url",))
+    first_tensor = model(features, first[0], account_ids, channel)
+    second_tensor = model(features, first[1], account_ids, channel)
+    assert not torch.equal(first_tensor, second_tensor)
+
+    disabled = mhcr_module._build_two_views(
+        events, dataclasses.replace(config, hyperedge_drop_rate=0.0)
+    )
+    assert disabled[0] == disabled[1]
+    assert disabled[2][0].content_signature == disabled[2][1].content_signature
+    empty = mhcr_module._build_two_views((), config)
+    assert empty[0] == empty[1] == ()
+    assert empty[2][0].content_signature == empty[2][1].content_signature
 
 
 def test_event_mapping_with_any_label_bearing_field_remains_rejected():

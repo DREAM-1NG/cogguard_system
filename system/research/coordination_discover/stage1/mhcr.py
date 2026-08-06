@@ -165,6 +165,14 @@ class MHCRRepresentation:
     label_policy: str = STAGE1_LABEL_POLICY
 
 
+@dataclass(frozen=True, slots=True)
+class SparseCandidateChannel:
+    account_count: int
+    source_indices: torch.Tensor
+    target_indices: torch.Tensor
+    normalized_weights: torch.Tensor
+
+
 def _ordered_events(events: Iterable[CoordinationEvent]) -> tuple[CoordinationEvent, ...]:
     materialized = tuple(events)
     if not all(isinstance(event, CoordinationEvent) for event in materialized):
@@ -404,6 +412,14 @@ def _build_two_views(
         dropped_views.append(dropped)
 
     if (
+        config.hyperedge_drop_rate > 0.0
+        and len(sources[0]) == 1
+        and len(sources[1]) == 1
+    ):
+        retained_views[0], dropped_views[0] = sources[0], ()
+        retained_views[1], dropped_views[1] = (), sources[1]
+
+    if (
         config.temporal_jitter_seconds > 0
         and config.hyperedge_drop_rate == 0.0
         and len(sources[0]) >= 2
@@ -465,17 +481,63 @@ def _build_two_views(
     return retained_views[0], retained_views[1], diagnostics
 
 
-def _candidate_adjacency(tsgs_result: TSGSResult) -> torch.Tensor:
-    count = len(tsgs_result.account_ids)
-    adjacency = torch.zeros((count, count), dtype=torch.float32)
-    node_index = {account_id: index for index, account_id in enumerate(tsgs_result.account_ids)}
+def _candidate_channel(tsgs_result: TSGSResult) -> SparseCandidateChannel:
+    account_count = len(tsgs_result.account_ids)
+    node_index = {
+        account_id: index for index, account_id in enumerate(tsgs_result.account_ids)
+    }
+    degrees: defaultdict[int, float] = defaultdict(float)
     for edge in tsgs_result.candidate_graph_edges:
         left = node_index[edge.source_account_id]
         right = node_index[edge.target_account_id]
-        adjacency[left, right] = float(edge.weight)
-        adjacency[right, left] = float(edge.weight)
-    degrees = adjacency.sum(dim=1, keepdim=True).clamp_min(1.0)
-    return adjacency / degrees
+        degrees[left] += edge.weight
+        degrees[right] += edge.weight
+
+    directed_edges = []
+    for edge in tsgs_result.candidate_graph_edges:
+        left = node_index[edge.source_account_id]
+        right = node_index[edge.target_account_id]
+        directed_edges.append((left, right, edge.weight / degrees[right]))
+        directed_edges.append((right, left, edge.weight / degrees[left]))
+    directed_edges.sort(key=lambda item: (item[1], item[0]))
+
+    if directed_edges:
+        source_indices = torch.tensor(
+            [source for source, _, _ in directed_edges], dtype=torch.long
+        )
+        target_indices = torch.tensor(
+            [target for _, target, _ in directed_edges], dtype=torch.long
+        )
+        normalized_weights = torch.tensor(
+            [weight for _, _, weight in directed_edges], dtype=torch.float32
+        )
+    else:
+        source_indices = torch.empty((0,), dtype=torch.long)
+        target_indices = torch.empty((0,), dtype=torch.long)
+        normalized_weights = torch.empty((0,), dtype=torch.float32)
+    return SparseCandidateChannel(
+        account_count=account_count,
+        source_indices=source_indices,
+        target_indices=target_indices,
+        normalized_weights=normalized_weights,
+    )
+
+
+def _aggregate_candidate_channel(
+    state: torch.Tensor,
+    channel: SparseCandidateChannel,
+) -> torch.Tensor:
+    if state.shape[0] != channel.account_count:
+        raise ValueError("candidate channel account count must match node state")
+    aggregated = torch.zeros_like(state)
+    if channel.source_indices.numel() == 0:
+        return aggregated
+    source_indices = channel.source_indices.to(device=state.device)
+    target_indices = channel.target_indices.to(device=state.device)
+    weights = channel.normalized_weights.to(device=state.device, dtype=state.dtype)
+    messages = state.index_select(0, source_indices) * weights.unsqueeze(1)
+    aggregated.index_add_(0, target_indices, messages)
+    return aggregated
 
 
 class _RelationAwareHypergraphEncoder(nn.Module):
@@ -502,7 +564,7 @@ class _RelationAwareHypergraphEncoder(nn.Module):
         features: torch.Tensor,
         hyperedges: tuple[HyperedgeAudit, ...],
         account_ids: tuple[str, ...],
-        candidate_adjacency: torch.Tensor,
+        candidate_channel: SparseCandidateChannel,
     ) -> torch.Tensor:
         state = self.input_transform(features)
         if not account_ids:
@@ -528,7 +590,9 @@ class _RelationAwareHypergraphEncoder(nn.Module):
             node_incidence_degree = node_incidence_degree + incidence
 
         hypergraph_message = hypergraph_message / node_incidence_degree.clamp_min(1.0)
-        graph_message = self.graph_transform(candidate_adjacency @ state)
+        graph_message = self.graph_transform(
+            _aggregate_candidate_channel(state, candidate_channel)
+        )
         output = torch.tanh(self.self_transform(state) + hypergraph_message + graph_message)
         return F.normalize(output, p=2, dim=1, eps=1e-12)
 
@@ -573,7 +637,7 @@ class MHCREncoder:
         features = _initial_features(
             ordered_events, account_ids, self.config.time_bucket_seconds
         )
-        candidate_adjacency = _candidate_adjacency(tsgs_result)
+        candidate_channel = _candidate_channel(tsgs_result)
         first_view, second_view, view_diagnostics = _build_two_views(
             ordered_events, self.config
         )
@@ -595,10 +659,10 @@ class MHCREncoder:
                     for _ in range(self.config.epochs):
                         optimizer.zero_grad(set_to_none=True)
                         first_embedding = model(
-                            features, first_view, account_ids, candidate_adjacency
+                            features, first_view, account_ids, candidate_channel
                         )
                         second_embedding = model(
-                            features, second_view, account_ids, candidate_adjacency
+                            features, second_view, account_ids, candidate_channel
                         )
                         loss = _symmetric_infonce(
                             first_embedding, second_embedding, self.config.temperature
@@ -611,7 +675,7 @@ class MHCREncoder:
                             features,
                             canonical_hyperedges,
                             account_ids,
-                            candidate_adjacency,
+                            candidate_channel,
                         )
             else:
                 losses = [0.0] * self.config.epochs
@@ -654,5 +718,6 @@ __all__ = [
     "MHCREncoder",
     "MHCRRepresentation",
     "MHCRTrainingDiagnostics",
+    "SparseCandidateChannel",
     "ViewDiagnostics",
 ]
