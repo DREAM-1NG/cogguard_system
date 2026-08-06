@@ -97,6 +97,54 @@ def case_id_fingerprint(case_ids: Iterable[str]) -> str:
     return _sha256({"case_ids": list(normalized)})
 
 
+def prediction_input_fingerprint(
+    *,
+    feature_schema_fingerprint: str,
+    ordered_cluster_ids: Iterable[str],
+    feature_matrix: Iterable[Iterable[float]],
+    ordered_case_ids: Iterable[str] | None = None,
+    stage1_batch_fingerprint: str | None = None,
+) -> str:
+    schema_fingerprint = _required_text(
+        feature_schema_fingerprint, "feature_schema_fingerprint"
+    )
+    cluster_ids = tuple(
+        _required_text(cluster_id, "cluster_id") for cluster_id in ordered_cluster_ids
+    )
+    if not cluster_ids or len(cluster_ids) != len(set(cluster_ids)):
+        raise ValueError("ordered_cluster_ids must be non-empty and unique")
+    rows = tuple(
+        tuple(_finite_float(value, "prediction feature") for value in row)
+        for row in feature_matrix
+    )
+    if len(rows) != len(cluster_ids) or not rows:
+        raise ValueError("feature_matrix rows must match ordered_cluster_ids")
+    width = len(rows[0])
+    if width == 0 or any(len(row) != width for row in rows):
+        raise ValueError("feature_matrix must be non-empty and rectangular")
+    case_ids = None
+    if ordered_case_ids is not None:
+        case_ids = tuple(
+            _required_text(case_id, "case_id") for case_id in ordered_case_ids
+        )
+        if len(case_ids) != len(cluster_ids) or len(case_ids) != len(set(case_ids)):
+            raise ValueError("ordered_case_ids must be unique and match ordered_cluster_ids")
+    stage1_fingerprint = None
+    if stage1_batch_fingerprint is not None:
+        stage1_fingerprint = _required_text(
+            stage1_batch_fingerprint, "stage1_batch_fingerprint"
+        )
+    return _sha256(
+        {
+            "feature_schema_fingerprint": schema_fingerprint,
+            "ordered_cluster_ids": list(cluster_ids),
+            "ordered_case_ids": None if case_ids is None else list(case_ids),
+            "feature_matrix": [list(row) for row in rows],
+            "stage1_batch_fingerprint": stage1_fingerprint,
+        }
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class DetectionFeatureSchema:
     version: str
@@ -353,6 +401,7 @@ class ClusterDetectionBatch:
     batch_id: str
     source_batch_id: str
     source_batch_fingerprint: str
+    prediction_input_fingerprint: str
     model_artifact_hash: str
     verdicts: tuple[ClusterDetectionVerdict, ...]
     schema_version: str = DETECTION_BATCH_SCHEMA_VERSION
@@ -363,7 +412,10 @@ class ClusterDetectionBatch:
             raise ValueError(f"unsupported schema_version: {self.schema_version}")
         if self.model_role != "primary_learned":
             raise ValueError("ClusterDetectionBatch is reserved for the primary learned model")
-        for field_name in ("batch_id", "source_batch_id", "source_batch_fingerprint", "model_artifact_hash"):
+        for field_name in (
+            "batch_id", "source_batch_id", "source_batch_fingerprint",
+            "prediction_input_fingerprint", "model_artifact_hash",
+        ):
             object.__setattr__(self, field_name, _required_text(getattr(self, field_name), field_name))
         if not isinstance(self.verdicts, (tuple, list)) or not all(
             isinstance(verdict, ClusterDetectionVerdict) for verdict in self.verdicts
@@ -380,4 +432,5 @@ __all__ = [
     "ClusterDetectionBatch", "ClusterDetectionVerdict", "DETECTION_ARTIFACT_SCHEMA_VERSION",
     "DETECTION_BATCH_SCHEMA_VERSION", "DetectionFeatureSchema", "DetectionModelArtifact",
     "DetectionTrainingCase", "LEARNED_MODEL_VERSION", "case_id_fingerprint",
+    "prediction_input_fingerprint",
 ]

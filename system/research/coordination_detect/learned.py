@@ -15,6 +15,7 @@ from .contracts import (
     DetectionModelArtifact,
     DetectionTrainingCase,
     case_id_fingerprint,
+    prediction_input_fingerprint,
 )
 from .features import build_detection_feature_rows
 
@@ -137,7 +138,14 @@ def _select_thresholds(probabilities: np.ndarray, labels: np.ndarray) -> tuple[f
             ) / 2.0
             coverage = float(np.mean(covered))
             score = macro_f1 * coverage
-            rank = (score, macro_f1, coverage, upper - lower, -lower, -upper)
+            rank = (
+                round(score, 15),
+                round(macro_f1, 15),
+                round(coverage, 15),
+                round(upper - lower, 15),
+                -lower,
+                -upper,
+            )
             ranked.append((rank, (lower, upper)))
     if not ranked:
         raise ValueError("validation rows cannot produce selective thresholds with both classes covered")
@@ -320,6 +328,8 @@ class LearnedCoordinationDetector:
         *,
         source_batch_id: str,
         source_batch_fingerprint: str,
+        case_ids: Sequence[str] | None = None,
+        stage1_batch_fingerprint: str | None = None,
     ) -> ClusterDetectionBatch:
         artifact = self._require_artifact()
         if feature_rows.shape != (len(cluster_ids), len(self.schema.names)):
@@ -372,17 +382,28 @@ class LearnedCoordinationDetector:
                     ood_features=ood_features,
                 )
             )
+        input_fingerprint = prediction_input_fingerprint(
+            feature_schema_fingerprint=self.schema.fingerprint,
+            ordered_cluster_ids=cluster_ids,
+            ordered_case_ids=case_ids,
+            feature_matrix=feature_rows,
+            stage1_batch_fingerprint=stage1_batch_fingerprint,
+        )
         digest = hashlib.sha256(
             json.dumps(
-                {"source": source_batch_fingerprint, "artifact": artifact.artifact_hash},
+                {
+                    "artifact_hash": artifact.artifact_hash,
+                    "prediction_input_fingerprint": input_fingerprint,
+                },
                 sort_keys=True,
                 separators=(",", ":"),
             ).encode("utf-8")
         ).hexdigest()
         return ClusterDetectionBatch(
-            batch_id=f"detection-{digest[:24]}",
+            batch_id=f"detection-sha256:{digest}",
             source_batch_id=source_batch_id,
             source_batch_fingerprint=source_batch_fingerprint,
+            prediction_input_fingerprint=input_fingerprint,
             model_artifact_hash=artifact.artifact_hash,
             verdicts=tuple(verdicts),
         )
@@ -404,6 +425,7 @@ class LearnedCoordinationDetector:
             np.asarray([case.feature_values for case in rows], dtype=np.float64),
             source_batch_id="feature-rows",
             source_batch_fingerprint=source_fingerprint,
+            case_ids=ids,
         )
 
     def predict(self, batch: Any, detection_features: dict[str, dict[str, float]]) -> ClusterDetectionBatch:
@@ -414,6 +436,7 @@ class LearnedCoordinationDetector:
             np.asarray([rows[cluster_id] for cluster_id in cluster_ids], dtype=np.float64),
             source_batch_id=batch.batch_id,
             source_batch_fingerprint=batch.batch_fingerprint,
+            stage1_batch_fingerprint=batch.batch_fingerprint,
         )
 
 

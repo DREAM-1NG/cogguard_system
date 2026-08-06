@@ -6,7 +6,7 @@ import json
 import math
 import sys
 import types
-from dataclasses import FrozenInstanceError
+from dataclasses import FrozenInstanceError, replace
 from pathlib import Path
 
 import numpy as np
@@ -100,7 +100,7 @@ def _fit_fixture(stage2, schema, *, permute_train_labels=False):
     return detector, detector.fit(train, validation), train, validation
 
 
-def _stage1_batch():
+def _stage1_batch(*, cluster_count=1):
     stage1 = _load_stage1()
     contracts = sys.modules[f"{stage1.__name__}.contracts"]
     metrics = stage1.CoordinationMetricSet(
@@ -111,15 +111,24 @@ def _stage1_batch():
         evidence_coverage=0.9,
         relation_diversity=0.6,
     )
-    cluster = stage1.DiscoveredCluster(
+    first_cluster = stage1.DiscoveredCluster(
         cluster_id="candidate-1",
         member_account_ids=("a", "b", "c"),
         coordination_metrics=metrics,
     )
+    clusters = (first_cluster,)
+    if cluster_count == 2:
+        clusters += (
+            stage1.DiscoveredCluster(
+                cluster_id="candidate-2",
+                member_account_ids=("d", "e"),
+                coordination_metrics=metrics,
+            ),
+        )
     return stage1.DiscoveredClusterBatch(
         batch_id="batch-1",
         timestamp="2026-08-07T00:00:00Z",
-        candidate_clusters=(cluster,),
+        candidate_clusters=clusters,
         provenance=stage1.DiscoveryProvenance(
             snapshot_id="snapshot-1",
             data_fingerprint="sha256:data",
@@ -139,6 +148,27 @@ def _stage1_batch():
             total_seconds=0.3,
         ),
     )
+
+
+def _fit_single_feature_fixture(stage2):
+    schema = stage2.contracts.DetectionFeatureSchema(
+        version="single-feature/v1",
+        names=("caller_signal",),
+    )
+    train = [
+        _case(stage2, schema, "single-t1", "train", 0, (-3.0,)),
+        _case(stage2, schema, "single-t2", "train", 0, (-1.0,)),
+        _case(stage2, schema, "single-t3", "train", 1, (1.0,)),
+        _case(stage2, schema, "single-t4", "train", 1, (3.0,)),
+    ]
+    validation = [
+        _case(stage2, schema, "single-v1", "validation", 0, (-2.0,)),
+        _case(stage2, schema, "single-v2", "validation", 0, (-0.5,)),
+        _case(stage2, schema, "single-v3", "validation", 1, (0.5,)),
+        _case(stage2, schema, "single-v4", "validation", 1, (2.0,)),
+    ]
+    detector = stage2.learned.LearnedCoordinationDetector(schema=schema)
+    return detector, detector.fit(train, validation), schema
 
 
 def test_learned_coefficients_and_predictions_change_when_train_labels_are_permuted(stage2, schema):
@@ -297,6 +327,155 @@ def test_artifact_serialization_hashing_and_contracts_are_stable_and_immutable(
         restored.optimizer_config["seed"] = 99
 
 
+def test_restored_artifact_reproduces_predictions_and_prediction_identity(
+    stage2, schema, tmp_path: Path
+):
+    detector, artifact, _, _ = _fit_fixture(stage2, schema)
+    artifact_path = tmp_path / "artifact.json"
+    artifact.to_json(artifact_path)
+    restored = stage2.contracts.DetectionModelArtifact.from_json(artifact_path)
+    fresh_detector = stage2.learned.LearnedCoordinationDetector(
+        schema=restored.feature_schema,
+        artifact=restored,
+    )
+    rows = (
+        _case(stage2, schema, "reload-1", "validation", 0, (-0.5, 0.5)),
+        _case(stage2, schema, "reload-2", "validation", 1, (0.5, -0.5)),
+    )
+
+    original_prediction = detector.predict_feature_rows(rows)
+    restored_prediction = fresh_detector.predict_feature_rows(rows)
+
+    assert restored_prediction == original_prediction
+    assert restored_prediction.prediction_input_fingerprint == original_prediction.prediction_input_fingerprint
+    assert restored_prediction.batch_id == original_prediction.batch_id
+
+
+def test_row_prediction_identity_binds_ordered_ids_schema_and_exact_features(stage2, schema):
+    detector, _, _, _ = _fit_fixture(stage2, schema)
+    original = _case(stage2, schema, "identity-row", "validation", 0, (0.0, 0.0))
+    changed = _case(stage2, schema, "identity-row", "validation", 0, (0.1, 0.0))
+
+    first = detector.predict_feature_rows((original,))
+    second = detector.predict_feature_rows((changed,))
+
+    assert first.source_batch_fingerprint == second.source_batch_fingerprint
+    assert first.prediction_input_fingerprint != second.prediction_input_fingerprint
+    assert first.batch_id != second.batch_id
+
+
+def test_stage1_prediction_identity_binds_caller_features_and_canonicalizes_mapping_order(stage2):
+    detector, _, _ = _fit_single_feature_fixture(stage2)
+    batch = _stage1_batch(cluster_count=2)
+    ordered = {
+        "candidate-1": {"caller_signal": 0.2},
+        "candidate-2": {"caller_signal": 0.4},
+    }
+    reordered = {
+        "candidate-2": {"caller_signal": 0.4},
+        "candidate-1": {"caller_signal": 0.2},
+    }
+
+    first = detector.predict(batch, ordered)
+    same_rows = detector.predict(batch, reordered)
+    changed_feature = detector.predict(
+        batch,
+        {
+            "candidate-1": {"caller_signal": 0.3},
+            "candidate-2": {"caller_signal": 0.4},
+        },
+    )
+    changed_stage1 = detector.predict(replace(batch, batch_id="batch-2"), ordered)
+
+    assert first == same_rows
+    assert first.source_batch_fingerprint == changed_feature.source_batch_fingerprint
+    assert first.prediction_input_fingerprint != changed_feature.prediction_input_fingerprint
+    assert first.batch_id != changed_feature.batch_id
+    assert first.prediction_input_fingerprint != changed_stage1.prediction_input_fingerprint
+    assert first.batch_id != changed_stage1.batch_id
+
+
+def test_inverse_frequency_class_weights_are_train_label_derived(stage2):
+    schema = stage2.contracts.DetectionFeatureSchema(
+        version="imbalanced/v1", names=("signal",)
+    )
+    labels = (0, 0, 0, 0, 1, 1)
+    train = [
+        _case(stage2, schema, f"imbalanced-t{index}", "train", label, (float(index),))
+        for index, label in enumerate(labels)
+    ]
+    validation_values = (-1.0, 1.0, 2.0, 4.0)
+    first_validation = [
+        _case(stage2, schema, f"imbalanced-v{index}", "validation", label, (value,))
+        for index, (label, value) in enumerate(zip((0, 1, 0, 1), validation_values, strict=True))
+    ]
+    second_validation = [
+        _case(stage2, schema, f"imbalanced-x{index}", "validation", label, (value,))
+        for index, (label, value) in enumerate(zip((1, 0, 1, 0), validation_values, strict=True))
+    ]
+
+    first = stage2.learned.LearnedCoordinationDetector(schema=schema).fit(
+        train, first_validation
+    )
+    second = stage2.learned.LearnedCoordinationDetector(schema=schema).fit(
+        train, second_validation
+    )
+
+    expected_zero = len(labels) / (2 * labels.count(0))
+    expected_one = len(labels) / (2 * labels.count(1))
+    assert first.optimizer_config["class_weight_0"] == pytest.approx(expected_zero)
+    assert first.optimizer_config["class_weight_1"] == pytest.approx(expected_one)
+    assert second.optimizer_config["class_weight_0"] == first.optimizer_config["class_weight_0"]
+    assert second.optimizer_config["class_weight_1"] == first.optimizer_config["class_weight_1"]
+
+
+def test_threshold_ties_use_wider_interval_then_lexicographic_order(stage2):
+    probabilities = np.asarray((0.1, 0.2, 0.3, 0.4), dtype=np.float64)
+    labels = np.asarray((0, 1, 0, 1), dtype=np.int64)
+
+    # Both candidate pairs cover every row with macro-F1 11/15 and width 0.1.
+    assert stage2.learned._select_thresholds(probabilities, labels) == (0.1, 0.2)
+
+
+def test_constant_validation_logits_calibrate_finitely_and_deterministically(stage2, schema):
+    _, _, train, _ = _fit_fixture(stage2, schema)
+    validation = [
+        _case(stage2, schema, f"constant-v{index}", "validation", label, (0.0, 0.0))
+        for index, label in enumerate((0, 1, 0, 1))
+    ]
+
+    first = stage2.learned.LearnedCoordinationDetector(schema=schema).fit(train, validation)
+    second = stage2.learned.LearnedCoordinationDetector(schema=schema).fit(train, validation)
+
+    assert math.isfinite(first.calibrator_slope)
+    assert math.isfinite(first.calibrator_intercept)
+    assert first == second
+
+
+def test_zero_width_validation_ood_accepts_exact_value_and_abstains_on_change(stage2, schema):
+    _, _, train, _ = _fit_fixture(stage2, schema)
+    validation = [
+        _case(stage2, schema, f"zero-width-v{index}", "validation", label, (0.0, 0.0))
+        for index, label in enumerate((0, 1, 0, 1))
+    ]
+    detector = stage2.learned.LearnedCoordinationDetector(schema=schema)
+    artifact = detector.fit(train, validation)
+    exact = _case(stage2, schema, "zero-width-exact", "validation", 0, (0.0, 0.0))
+    changed = _case(stage2, schema, "zero-width-changed", "validation", 0, (0.001, 0.0))
+
+    verdicts = {
+        verdict.cluster_id: verdict
+        for verdict in detector.predict_feature_rows((exact, changed)).verdicts
+    }
+
+    assert artifact.validation_ood_min == (0.0, 0.0)
+    assert artifact.validation_ood_max == (0.0, 0.0)
+    assert verdicts[exact.cluster_id].abstain_reason != "out_of_distribution"
+    assert verdicts[changed.cluster_id].decision == "abstain"
+    assert verdicts[changed.cluster_id].abstain_reason == "out_of_distribution"
+    assert verdicts[changed.cluster_id].ood_features == ("signal",)
+
+
 def test_stage1_features_are_explicit_ordered_and_extra_features_fail_closed(stage2):
     batch = _stage1_batch()
     schema = stage2.contracts.DetectionFeatureSchema(
@@ -361,6 +540,10 @@ def test_heuristic_baseline_is_isolated_warns_and_has_no_fit_or_activation_path(
     assert first == second
     assert first.model_version == "heuristic_baseline_v1"
     assert first.model_role == "heuristic_baseline"
+    expected_score = 0.25 * 0.8 + 0.35 * 0.7 + 0.25 * 0.9 + 0.15 * 0.6
+    expected_probability = 1.0 / (1.0 + math.exp(-10.0 * (expected_score - 0.5)))
+    assert first.harmful_probability == pytest.approx(expected_probability)
+    assert first.decision == "harmful_coordination"
     assert first.warning
     assert not hasattr(baseline, "fit")
     assert not hasattr(baseline, "activate")
@@ -372,7 +555,7 @@ def test_learned_source_has_no_baseline_import_or_fixed_baseline_constants(stage
     source = inspect.getsource(stage2.learned)
 
     assert "heuristic_baseline" not in source
-    for fixed in ("0.25", "0.35", "0.15", "0.65", "0.85"):
+    for fixed in ("0.25", "0.35", "0.15", "0.65", "0.85", "10.0"):
         assert fixed not in source
 
 
