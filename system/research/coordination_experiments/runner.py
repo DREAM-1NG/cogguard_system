@@ -7,7 +7,7 @@ import math
 import time
 import tracemalloc
 from collections import defaultdict
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from types import MappingProxyType
@@ -15,13 +15,61 @@ from typing import Any
 
 import numpy as np
 
-from .baselines import BaselineRegistry, HEURISTIC_BASELINE_ID, HEURISTIC_BASELINE_WARNING
-from .metrics import bootstrap_confidence_interval, metric_direction
+from research.coordination_detect.contracts import (
+    DetectionModelArtifact,
+    DetectionTrainingCase,
+    case_id_fingerprint,
+)
+
+from .baselines import (
+    BaselineRegistry,
+    DiscoveryImplementation,
+    HEURISTIC_BASELINE_ID,
+    HEURISTIC_BASELINE_WARNING,
+    HeuristicDetectionImplementation,
+    LearnedDetectionImplementation,
+)
+from .iohunter import IOHUNTER_CAMPAIGNS
+from .metrics import (
+    bootstrap_confidence_interval,
+    cross_seed_stability,
+    detection_metrics,
+    discovery_metrics,
+    metric_direction,
+)
 from .protocol import DatasetCapability, ExperimentSplit, ResearchDatasetManifest
 
 
 _STATUSES = {"success", "failed", "blocked"}
 _GATE_STATUSES = {"supported", "not_supported", "blocked"}
+_CLAIM_SCOPES = {"general", "harmful_cib", "observed_time", "auxiliary"}
+_DISCOVERY_METRICS = frozenset(
+    {
+        "candidate_recall",
+        "spectral_distortion",
+        "edge_auprc",
+        "b_cubed_precision",
+        "b_cubed_recall",
+        "b_cubed_f1",
+        "nmi",
+        "ari",
+        "cross_seed_stability",
+    }
+)
+_DETECTION_METRICS = frozenset(
+    {
+        "auprc",
+        "macro_f1",
+        "roc_auc",
+        "ece",
+        "selective_coverage",
+        "selective_risk",
+        "abstain_rate",
+    }
+)
+_LABEL_FIELDS = frozenset(
+    {"label", "labels", "class", "target", "harmful", "verdict", "bot_label", "account_risk"}
+)
 
 
 def _text(value: Any, field_name: str) -> str:
@@ -76,62 +124,41 @@ def _text_tuple(values: Sequence[str], field_name: str) -> tuple[str, ...]:
     return result
 
 
-@dataclass(frozen=True, slots=True)
-class FitAudit:
-    transform_fit_ids: tuple[str, ...] = ()
-    model_fit_ids: tuple[str, ...] = ()
-    calibration_fit_ids: tuple[str, ...] = ()
-    threshold_fit_ids: tuple[str, ...] = ()
-    ood_fit_ids: tuple[str, ...] = ()
-    prediction_ids: tuple[str, ...] = ()
-
-    def __post_init__(self) -> None:
-        for field_name in (
-            "transform_fit_ids", "model_fit_ids", "calibration_fit_ids",
-            "threshold_fit_ids", "ood_fit_ids", "prediction_ids",
-        ):
-            object.__setattr__(self, field_name, _text_tuple(getattr(self, field_name), field_name))
-
-    def to_dict(self) -> dict[str, list[str]]:
-        return {
-            field_name: list(getattr(self, field_name))
-            for field_name in (
-                "transform_fit_ids", "model_fit_ids", "calibration_fit_ids",
-                "threshold_fit_ids", "ood_fit_ids", "prediction_ids",
-            )
-        }
+def _immutable_audit(value: Mapping[str, Any]) -> Mapping[str, Any]:
+    if not isinstance(value, Mapping) or not value:
+        raise ValueError("every result row requires a non-empty verified audit")
+    normalized: dict[str, Any] = {}
+    for key, item in value.items():
+        name = _text(key, "audit field")
+        if item is None or isinstance(item, (str, bool, int)):
+            normalized[name] = item
+        elif isinstance(item, float) and math.isfinite(item):
+            normalized[name] = item
+        else:
+            raise ValueError("audit values must be finite JSON scalars")
+    return MappingProxyType(dict(sorted(normalized.items())))
 
 
-def validate_fit_isolation(split: ExperimentSplit, audit: FitAudit, *, model_role: str) -> None:
-    if not isinstance(split, ExperimentSplit) or not isinstance(audit, FitAudit):
-        raise ValueError("split and audit must use the experiment contracts")
-    role = _text(model_role, "model_role")
-    fit_fields = (
-        "transform_fit_ids", "model_fit_ids", "calibration_fit_ids", "threshold_fit_ids", "ood_fit_ids"
-    )
-    if role == "heuristic_baseline":
-        if any(getattr(audit, field_name) for field_name in fit_fields):
-            raise ValueError("heuristic_baseline must not fit transforms, parameters, thresholds, or bounds")
-        if audit.prediction_ids != split.test_ids:
-            raise ValueError("heuristic_baseline prediction_ids must equal test IDs exactly")
+def validate_dataset_identity(
+    manifest: ResearchDatasetManifest, capability: DatasetCapability
+) -> None:
+    if not isinstance(manifest, ResearchDatasetManifest) or not isinstance(
+        capability, DatasetCapability
+    ):
+        raise ValueError("manifest and capability must use Task 5 contracts")
+    if capability.dataset_id == "iohunter":
+        if len(manifest.campaign_axis) != 1:
+            raise ValueError("canonical IOHunter manifests require exactly one campaign")
+        campaign = manifest.campaign_axis[0]
+        if campaign not in IOHUNTER_CAMPAIGNS:
+            raise ValueError("canonical IOHunter manifest campaign is invalid")
+        if manifest.dataset_id != f"iohunter-{campaign}":
+            raise ValueError("canonical IOHunter manifest dataset identity does not match campaign")
         return
-    expected = {
-        "transform_fit_ids": split.train_ids,
-        "model_fit_ids": split.train_ids,
-        "calibration_fit_ids": split.validation_ids,
-        "threshold_fit_ids": split.validation_ids,
-        "ood_fit_ids": split.validation_ids,
-        "prediction_ids": split.test_ids,
-    }
-    for field_name, expected_ids in expected.items():
-        if getattr(audit, field_name) != expected_ids:
-            raise ValueError(f"{field_name} must equal its isolated split IDs exactly")
-
-
-@dataclass(frozen=True, slots=True)
-class RunObservation:
-    metrics: Mapping[str, float]
-    fit_audit: FitAudit | None = None
+    if capability.dataset_id.startswith("iohunter"):
+        raise ValueError("canonical IOHunter capability identity must be exactly ioHunter family 'iohunter'")
+    if manifest.dataset_id != capability.dataset_id:
+        raise ValueError("manifest and capability dataset identities must match exactly")
 
 
 @dataclass(frozen=True, slots=True)
@@ -152,22 +179,42 @@ class ResultRow:
     reason: str | None = None
     warning: str | None = None
     claim_markers: tuple[str, ...] = ()
+    task: str = "detection"
+    selection_eligible: bool = False
+    ablation_id: str | None = None
+    audit: Mapping[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         for field_name in (
-            "dataset_id", "dataset_manifest_fingerprint", "evaluator_fingerprint",
-            "split_policy", "split_fingerprint", "method_id", "method_version", "model_role",
+            "dataset_id",
+            "dataset_manifest_fingerprint",
+            "evaluator_fingerprint",
+            "split_policy",
+            "split_fingerprint",
+            "method_id",
+            "method_version",
+            "model_role",
         ):
             object.__setattr__(self, field_name, _text(getattr(self, field_name), field_name))
+        if self.task not in {"discovery", "detection"}:
+            raise ValueError("task must be discovery or detection")
         if isinstance(self.seed, bool) or not isinstance(self.seed, int) or self.seed < 0:
             raise ValueError("seed must be a non-negative integer")
-        object.__setattr__(self, "runtime_seconds", _non_negative_number(self.runtime_seconds, "runtime_seconds"))
+        object.__setattr__(
+            self,
+            "runtime_seconds",
+            _non_negative_number(self.runtime_seconds, "runtime_seconds"),
+        )
         memory = _non_negative_number(self.peak_memory_bytes, "peak_memory_bytes")
         if not memory.is_integer():
             raise ValueError("peak_memory_bytes must be an integer")
         object.__setattr__(self, "peak_memory_bytes", int(memory))
         if self.status not in _STATUSES:
             raise ValueError("status must be success, failed, or blocked")
+        if not isinstance(self.selection_eligible, bool):
+            raise ValueError("selection_eligible must be boolean")
+        if self.ablation_id is not None:
+            object.__setattr__(self, "ablation_id", _text(self.ablation_id, "ablation_id"))
         if not isinstance(self.metrics, Mapping):
             raise ValueError("metrics must be a mapping")
         normalized_metrics: dict[str, float] = {}
@@ -175,22 +222,57 @@ class ResultRow:
             metric_name = _text(name, "metric name")
             metric_direction(metric_name)
             normalized_metrics[metric_name] = _metric_number(value, metric_name)
-        object.__setattr__(self, "metrics", MappingProxyType(dict(sorted(normalized_metrics.items()))))
+        object.__setattr__(
+            self, "metrics", MappingProxyType(dict(sorted(normalized_metrics.items())))
+        )
         object.__setattr__(self, "reason", _optional_text(self.reason, "reason"))
         object.__setattr__(self, "warning", _optional_text(self.warning, "warning"))
-        object.__setattr__(self, "claim_markers", tuple(sorted(_text_tuple(self.claim_markers, "claim_markers"))))
+        object.__setattr__(
+            self,
+            "claim_markers",
+            tuple(sorted(_text_tuple(self.claim_markers, "claim_markers"))),
+        )
+        object.__setattr__(self, "audit", _immutable_audit(self.audit))
         if self.status == "success":
-            if not self.metrics or self.reason is not None:
-                raise ValueError("successful rows require metrics and cannot have a reason")
+            if self.reason is not None:
+                raise ValueError("successful rows cannot have a reason")
+            required = _DISCOVERY_METRICS if self.task == "discovery" else _DETECTION_METRICS
+            missing = required - set(self.metrics)
+            if missing:
+                raise ValueError(
+                    f"successful rows require the complete {self.task} metric suite; missing {sorted(missing)}"
+                )
         elif self.metrics or self.reason is None:
             raise ValueError("failed and blocked rows require a reason and cannot contain metrics")
-        if self.model_role == "heuristic_baseline":
-            if (
-                self.method_id != HEURISTIC_BASELINE_ID
-                or self.method_version != HEURISTIC_BASELINE_ID
-                or self.warning != HEURISTIC_BASELINE_WARNING
-            ):
-                raise ValueError("heuristic baseline rows require fixed identity and warning")
+        heuristic_signal = (
+            self.method_id == HEURISTIC_BASELINE_ID
+            or self.method_version == HEURISTIC_BASELINE_ID
+            or self.model_role == "heuristic_baseline"
+        )
+        heuristic_identity = (
+            self.method_id == HEURISTIC_BASELINE_ID
+            and self.method_version == HEURISTIC_BASELINE_ID
+            and self.model_role == "heuristic_baseline"
+        )
+        if heuristic_signal and not heuristic_identity:
+            raise ValueError("heuristic baseline identity fields must agree")
+        if heuristic_identity and (
+            self.warning != HEURISTIC_BASELINE_WARNING or self.selection_eligible
+        ):
+            raise ValueError(
+                "heuristic baseline identity requires its warning and is never selection eligible"
+            )
+        if heuristic_identity:
+            fit_source = self.audit.get("fit_provenance_source")
+            source_claims_learned_fit = isinstance(fit_source, str) and (
+                "artifact" in fit_source.lower() or "learned" in fit_source.lower()
+            )
+            contains_fit_fields = any(
+                key.startswith(("train_", "validation_", "model_artifact"))
+                for key in self.audit
+            )
+            if source_claims_learned_fit or contains_fit_fields:
+                raise ValueError("heuristic baseline cannot contain a learned fit audit")
 
     def _identity_payload(self) -> dict[str, Any]:
         return {
@@ -210,11 +292,26 @@ class ResultRow:
             "reason": self.reason,
             "warning": self.warning,
             "claim_markers": list(self.claim_markers),
+            "task": self.task,
+            "selection_eligible": self.selection_eligible,
+            "ablation_id": self.ablation_id,
+            "audit": dict(self.audit),
         }
 
     @property
     def artifact_identity(self) -> str:
         return _fingerprint(self._identity_payload())
+
+    @property
+    def series_identity(self) -> tuple[str, ...]:
+        return (
+            self.task,
+            self.dataset_id,
+            self.split_policy,
+            self.method_id,
+            self.method_version,
+            self.ablation_id or "none",
+        )
 
     def to_dict(self) -> dict[str, Any]:
         payload = self._identity_payload()
@@ -224,11 +321,13 @@ class ResultRow:
 
 @dataclass(frozen=True, slots=True)
 class AggregateResult:
+    task: str
     dataset_id: str
     split_policy: str
     method_id: str
     method_version: str
     model_role: str
+    ablation_id: str | None
     metric_name: str
     direction: str
     successful_seed_count: int
@@ -244,11 +343,13 @@ class AggregateResult:
 
     def to_dict(self) -> dict[str, Any]:
         return {
+            "task": self.task,
             "dataset_id": self.dataset_id,
             "split_policy": self.split_policy,
             "method_id": self.method_id,
             "method_version": self.method_version,
             "model_role": self.model_role,
+            "ablation_id": self.ablation_id,
             "metric_name": self.metric_name,
             "direction": self.direction,
             "successful_seed_count": self.successful_seed_count,
@@ -264,22 +365,39 @@ class AggregateResult:
         }
 
 
+def _reject_duplicate_successful_seeds(rows: Sequence[ResultRow]) -> None:
+    seen: set[tuple[tuple[str, ...], int]] = set()
+    for row in rows:
+        if row.status != "success":
+            continue
+        identity = (row.series_identity, row.seed)
+        if identity in seen:
+            raise ValueError(
+                f"duplicate successful seed {row.seed} for result series {row.series_identity}"
+            )
+        seen.add(identity)
+
+
 def aggregate_result_rows(
-    rows: Sequence[ResultRow], *, bootstrap_seed: int = 0, bootstrap_resamples: int = 2_000
+    rows: Sequence[ResultRow],
+    *,
+    bootstrap_seed: int = 0,
+    bootstrap_resamples: int = 2_000,
 ) -> tuple[AggregateResult, ...]:
     if not isinstance(rows, Sequence) or not all(isinstance(row, ResultRow) for row in rows):
         raise ValueError("rows must contain ResultRow values")
+    _reject_duplicate_successful_seeds(rows)
     groups: dict[tuple[str, ...], list[tuple[ResultRow, float]]] = defaultdict(list)
     for row in rows:
         if row.status != "success":
             continue
-        values = {**row.metrics, "runtime_seconds": row.runtime_seconds, "peak_memory_bytes": float(row.peak_memory_bytes)}
+        values = {
+            **row.metrics,
+            "runtime_seconds": row.runtime_seconds,
+            "peak_memory_bytes": float(row.peak_memory_bytes),
+        }
         for metric_name, value in values.items():
-            key = (
-                row.dataset_id, row.split_policy, row.method_id, row.method_version,
-                row.model_role, metric_name,
-            )
-            groups[key].append((row, value))
+            groups[(*row.series_identity, row.model_role, metric_name)].append((row, value))
     aggregates: list[AggregateResult] = []
     for key, observations in sorted(groups.items()):
         observations.sort(key=lambda item: (item[0].seed, item[0].artifact_identity))
@@ -289,16 +407,33 @@ def aggregate_result_rows(
         )
         aggregates.append(
             AggregateResult(
-                dataset_id=key[0], split_policy=key[1], method_id=key[2],
-                method_version=key[3], model_role=key[4], metric_name=key[5],
-                direction=metric_direction(key[5]), successful_seed_count=len(observations),
+                task=key[0],
+                dataset_id=key[1],
+                split_policy=key[2],
+                method_id=key[3],
+                method_version=key[4],
+                ablation_id=None if key[5] == "none" else key[5],
+                model_role=key[6],
+                metric_name=key[7],
+                direction=metric_direction(key[7]),
+                successful_seed_count=len(observations),
                 seeds=tuple(row.seed for row, _ in observations),
-                mean=float(np.mean(values)), std=float(np.std(values, ddof=0)),
-                ci_low=low, ci_high=high,
-                dataset_manifest_fingerprints=tuple(sorted({row.dataset_manifest_fingerprint for row, _ in observations})),
-                evaluator_fingerprints=tuple(sorted({row.evaluator_fingerprint for row, _ in observations})),
-                split_fingerprints=tuple(sorted({row.split_fingerprint for row, _ in observations})),
-                observed_artifact_identities=tuple(row.artifact_identity for row, _ in observations),
+                mean=float(np.mean(values)),
+                std=float(np.std(values, ddof=0)),
+                ci_low=low,
+                ci_high=high,
+                dataset_manifest_fingerprints=tuple(
+                    sorted({row.dataset_manifest_fingerprint for row, _ in observations})
+                ),
+                evaluator_fingerprints=tuple(
+                    sorted({row.evaluator_fingerprint for row, _ in observations})
+                ),
+                split_fingerprints=tuple(
+                    sorted({row.split_fingerprint for row, _ in observations})
+                ),
+                observed_artifact_identities=tuple(
+                    row.artifact_identity for row, _ in observations
+                ),
             )
         )
     return tuple(aggregates)
@@ -310,6 +445,7 @@ class ClaimGate:
     metric_name: str
     direction: str
     threshold: float
+    claim_scope: str
     minimum_successful_seeds: int = 1
     dataset_id: str | None = None
     method_id: str | None = None
@@ -323,6 +459,8 @@ class ClaimGate:
         if self.direction != expected:
             raise ValueError(f"claim gate direction for {self.metric_name} must be {expected}")
         object.__setattr__(self, "threshold", _non_negative_number(self.threshold, "threshold"))
+        if self.claim_scope not in _CLAIM_SCOPES:
+            raise ValueError(f"claim_scope must be one of {sorted(_CLAIM_SCOPES)}")
         if (
             isinstance(self.minimum_successful_seeds, bool)
             or not isinstance(self.minimum_successful_seeds, int)
@@ -330,10 +468,15 @@ class ClaimGate:
         ):
             raise ValueError("minimum_successful_seeds must be a positive integer")
         for field_name in ("dataset_id", "method_id", "required_split_policy"):
-            object.__setattr__(self, field_name, _optional_text(getattr(self, field_name), field_name))
+            object.__setattr__(
+                self, field_name, _optional_text(getattr(self, field_name), field_name)
+            )
         object.__setattr__(
-            self, "forbidden_claim_markers",
-            tuple(sorted(_text_tuple(self.forbidden_claim_markers, "forbidden_claim_markers"))),
+            self,
+            "forbidden_claim_markers",
+            tuple(
+                sorted(_text_tuple(self.forbidden_claim_markers, "forbidden_claim_markers"))
+            ),
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -342,6 +485,7 @@ class ClaimGate:
             "metric_name": self.metric_name,
             "direction": self.direction,
             "threshold": self.threshold,
+            "claim_scope": self.claim_scope,
             "minimum_successful_seeds": self.minimum_successful_seeds,
             "dataset_id": self.dataset_id,
             "method_id": self.method_id,
@@ -360,14 +504,12 @@ class ClaimGateResult:
     observed_value: float | None
     observed_seed_count: int
     observed_artifact_identities: tuple[str, ...]
-    reason: str | None = None
-    gate_definition: Mapping[str, Any] = field(default_factory=dict)
+    reason: str | None
+    gate_definition: Mapping[str, Any]
 
     def __post_init__(self) -> None:
         if self.status not in _GATE_STATUSES:
             raise ValueError("claim gate result status is invalid")
-        if not isinstance(self.gate_definition, Mapping) or not self.gate_definition:
-            raise ValueError("claim gate result requires its serialized gate definition")
         object.__setattr__(self, "gate_definition", MappingProxyType(dict(self.gate_definition)))
 
     def to_dict(self) -> dict[str, Any]:
@@ -385,34 +527,100 @@ class ClaimGateResult:
         }
 
 
+def _gate_result(
+    gate: ClaimGate,
+    status: str,
+    rows: Sequence[ResultRow],
+    *,
+    value: float | None = None,
+    reason: str | None = None,
+) -> ClaimGateResult:
+    return ClaimGateResult(
+        gate_id=gate.gate_id,
+        metric_name=gate.metric_name,
+        direction=gate.direction,
+        threshold=gate.threshold,
+        status=status,
+        observed_value=value,
+        observed_seed_count=len({row.seed for row in rows}),
+        observed_artifact_identities=tuple(sorted(row.artifact_identity for row in rows)),
+        reason=reason,
+        gate_definition=gate.to_dict(),
+    )
+
+
 def evaluate_claim_gate(gate: ClaimGate, rows: Sequence[ResultRow]) -> ClaimGateResult:
     if not isinstance(gate, ClaimGate) or not all(isinstance(row, ResultRow) for row in rows):
         raise ValueError("gate and rows must use Task 6 contracts")
     scoped = [
-        row for row in rows
+        row
+        for row in rows
         if (gate.dataset_id is None or row.dataset_id == gate.dataset_id)
         and (gate.method_id is None or row.method_id == gate.method_id)
     ]
-    forbidden = sorted({marker for row in scoped for marker in row.claim_markers if marker in gate.forbidden_claim_markers})
+    if gate.claim_scope == "harmful_cib":
+        restricted = [
+            row
+            for row in scoped
+            if "not_harmful_cib_claim" in row.claim_markers
+            or row.dataset_id == "cresci-2017"
+        ]
+        if restricted:
+            return _gate_result(
+                gate,
+                "blocked",
+                (),
+                reason="intrinsic not_harmful_cib_claim restriction blocks harmful-CIB claims",
+            )
+    if gate.claim_scope == "observed_time":
+        restricted = [
+            row
+            for row in scoped
+            if "static_placeholder_not_observed_time" in row.claim_markers
+        ]
+        if restricted:
+            return _gate_result(
+                gate,
+                "blocked",
+                (),
+                reason=(
+                    "intrinsic static_placeholder_not_observed_time restriction blocks "
+                    "observed-time claims"
+                ),
+            )
+    forbidden = sorted(
+        {
+            marker
+            for row in scoped
+            for marker in row.claim_markers
+            if marker in gate.forbidden_claim_markers
+        }
+    )
     if forbidden:
-        return ClaimGateResult(
-            gate.gate_id, gate.metric_name, gate.direction, gate.threshold, "blocked", None, 0, (),
-            f"forbidden claim markers observed: {', '.join(forbidden)}",
-            gate.to_dict(),
+        return _gate_result(
+            gate,
+            "blocked",
+            (),
+            reason=f"forbidden claim markers observed: {', '.join(forbidden)}",
         )
     if gate.required_split_policy is not None:
-        matching_policy = [row for row in scoped if row.split_policy == gate.required_split_policy]
-        if not matching_policy:
-            return ClaimGateResult(
-                gate.gate_id, gate.metric_name, gate.direction, gate.threshold, "blocked", None, 0, (),
-                f"required split policy {gate.required_split_policy} has no observed rows",
-                gate.to_dict(),
+        matching = [row for row in scoped if row.split_policy == gate.required_split_policy]
+        if not matching:
+            return _gate_result(
+                gate,
+                "blocked",
+                (),
+                reason=f"required split policy {gate.required_split_policy} has no observed rows",
             )
-        scoped = matching_policy
-    def has_metric(row: ResultRow) -> bool:
-        return gate.metric_name in row.metrics or gate.metric_name in {"runtime_seconds", "peak_memory_bytes"}
+        scoped = matching
 
-    def observed_value(row: ResultRow) -> float:
+    def has_metric(row: ResultRow) -> bool:
+        return gate.metric_name in row.metrics or gate.metric_name in {
+            "runtime_seconds",
+            "peak_memory_bytes",
+        }
+
+    def value_for(row: ResultRow) -> float:
         if gate.metric_name == "runtime_seconds":
             return row.runtime_seconds
         if gate.metric_name == "peak_memory_bytes":
@@ -423,104 +631,645 @@ def evaluate_claim_gate(gate: ClaimGate, rows: Sequence[ResultRow]) -> ClaimGate
         (row for row in scoped if row.status == "success" and has_metric(row)),
         key=lambda row: (row.seed, row.artifact_identity),
     )
-    if len(observed) < gate.minimum_successful_seeds:
-        return ClaimGateResult(
-            gate.gate_id, gate.metric_name, gate.direction, gate.threshold, "blocked", None,
-            len(observed), tuple(row.artifact_identity for row in observed),
-            f"requires {gate.minimum_successful_seeds} successful observed seeds; found {len(observed)}",
-            gate.to_dict(),
+    series = {row.series_identity for row in observed}
+    if len(series) > 1:
+        return _gate_result(
+            gate,
+            "blocked",
+            observed,
+            reason="claim gate observations span multiple dataset/method/split/ablation series",
         )
-    value = float(np.mean([observed_value(row) for row in observed]))
+    seed_counts: dict[int, int] = defaultdict(int)
+    for row in observed:
+        seed_counts[row.seed] += 1
+    duplicates = sorted(seed for seed, count in seed_counts.items() if count > 1)
+    if duplicates:
+        return _gate_result(
+            gate,
+            "blocked",
+            observed,
+            reason=f"duplicate successful seed observations are not allowed: {duplicates}",
+        )
+    if len(seed_counts) < gate.minimum_successful_seeds:
+        return _gate_result(
+            gate,
+            "blocked",
+            observed,
+            reason=(
+                f"requires {gate.minimum_successful_seeds} distinct successful observed seeds; "
+                f"found {len(seed_counts)}"
+            ),
+        )
+    value = float(np.mean([value_for(row) for row in observed]))
     supported = value >= gate.threshold if gate.direction == "maximize" else value <= gate.threshold
-    return ClaimGateResult(
-        gate.gate_id, gate.metric_name, gate.direction, gate.threshold,
-        "supported" if supported else "not_supported", value, len(observed),
-        tuple(sorted(row.artifact_identity for row in observed)), None,
-        gate.to_dict(),
+    return _gate_result(
+        gate, "supported" if supported else "not_supported", observed, value=value
     )
 
 
+def _event_identity(event: Any) -> Any:
+    if isinstance(event, (str, int, float, bool)) or event is None:
+        return event
+    fields = ("account_id", "relation", "object_id", "observed_at", "weight", "evidence_ref")
+    if all(hasattr(event, name) for name in fields):
+        observed = event.observed_at
+        return {
+            "account_id": event.account_id,
+            "relation": event.relation,
+            "object_id": event.object_id,
+            "observed_at": observed.isoformat() if hasattr(observed, "isoformat") else str(observed),
+            "weight": event.weight,
+            "evidence_ref": event.evidence_ref,
+        }
+    raise ValueError("discovery events must use the label-free CoordinationEvent contract")
+
+
 @dataclass(frozen=True, slots=True)
-class RunContext:
+class DiscoveryExecutionInput:
     manifest: ResearchDatasetManifest
-    evaluator_fingerprint: str
-    split: ExperimentSplit
-    capability: DatasetCapability
+    events: tuple[Any, ...]
 
     def __post_init__(self) -> None:
         if not isinstance(self.manifest, ResearchDatasetManifest):
             raise ValueError("manifest must be a ResearchDatasetManifest")
-        if not isinstance(self.split, ExperimentSplit) or not isinstance(self.capability, DatasetCapability):
-            raise ValueError("split and capability must use Task 5 contracts")
-        object.__setattr__(self, "evaluator_fingerprint", _text(self.evaluator_fingerprint, "evaluator_fingerprint"))
-        if self.manifest.dataset_id != self.capability.dataset_id:
-            raise ValueError("manifest and capability dataset IDs must match")
-        if self.manifest.seed != self.split.seed:
-            raise ValueError("manifest and split seeds must match")
+        if isinstance(self.events, (str, bytes)) or not isinstance(self.events, Sequence) or not self.events:
+            raise ValueError("events must be a non-empty label-free sequence")
+        events = tuple(self.events)
+        for event in events:
+            if isinstance(event, Mapping) and set(event) & _LABEL_FIELDS:
+                raise ValueError("Discovery execution events cannot contain labels")
+            if any(hasattr(event, field_name) for field_name in _LABEL_FIELDS):
+                raise ValueError("Discovery execution events cannot expose label fields")
+            _event_identity(event)
+        object.__setattr__(self, "events", events)
+
+    @property
+    def fingerprint(self) -> str:
+        return _fingerprint(
+            {
+                "manifest_fingerprint": self.manifest.fingerprint,
+                "events": [_event_identity(event) for event in self.events],
+            }
+        )
 
 
-def run_registered_method(
+@dataclass(frozen=True, slots=True)
+class DiscoveryPrediction:
+    candidate_edges: tuple[tuple[str, str], ...]
+    approximate_quadratic_forms: tuple[float, ...]
+    edge_score_edges: tuple[tuple[str, str], ...]
+    edge_scores: tuple[float, ...]
+    predicted_clusters: Mapping[str, str]
+    artifact_identity: str
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "candidate_edges", tuple(tuple(edge) for edge in self.candidate_edges))
+        object.__setattr__(self, "edge_score_edges", tuple(tuple(edge) for edge in self.edge_score_edges))
+        object.__setattr__(self, "approximate_quadratic_forms", tuple(self.approximate_quadratic_forms))
+        object.__setattr__(self, "edge_scores", tuple(self.edge_scores))
+        if len(self.edge_score_edges) != len(self.edge_scores):
+            raise ValueError("edge_score_edges and edge_scores must align")
+        if not isinstance(self.predicted_clusters, Mapping) or not self.predicted_clusters:
+            raise ValueError("predicted_clusters must be a non-empty mapping")
+        object.__setattr__(
+            self, "predicted_clusters", MappingProxyType(dict(sorted(self.predicted_clusters.items())))
+        )
+        object.__setattr__(self, "artifact_identity", _text(self.artifact_identity, "artifact_identity"))
+
+
+@dataclass(frozen=True, slots=True)
+class DiscoveryEvaluationInput:
+    evaluator_fingerprint: str
+    split: ExperimentSplit
+    reference_edges: tuple[tuple[str, str], ...]
+    reference_quadratic_forms: tuple[float, ...]
+    edge_score_edges: tuple[tuple[str, str], ...]
+    edge_labels: tuple[int, ...]
+    true_clusters: Mapping[str, str]
+    peer_cluster_assignments: tuple[Mapping[str, str], ...]
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self, "evaluator_fingerprint", _text(self.evaluator_fingerprint, "evaluator_fingerprint")
+        )
+        if not isinstance(self.split, ExperimentSplit):
+            raise ValueError("split must be an ExperimentSplit")
+        for field_name in (
+            "reference_edges",
+            "reference_quadratic_forms",
+            "edge_score_edges",
+            "edge_labels",
+            "peer_cluster_assignments",
+        ):
+            value = getattr(self, field_name)
+            if isinstance(value, (str, bytes)) or not isinstance(value, Sequence) or not value:
+                raise ValueError(f"{field_name} must be a non-empty sealed evaluation sequence")
+            object.__setattr__(self, field_name, tuple(value))
+        if len(self.edge_score_edges) != len(self.edge_labels):
+            raise ValueError("sealed edge labels must align with edge_score_edges")
+        if not isinstance(self.true_clusters, Mapping) or not self.true_clusters:
+            raise ValueError("true_clusters must be a non-empty sealed mapping")
+        object.__setattr__(
+            self, "true_clusters", MappingProxyType(dict(sorted(self.true_clusters.items())))
+        )
+
+    @property
+    def fingerprint(self) -> str:
+        return _fingerprint(
+            {
+                "evaluator_fingerprint": self.evaluator_fingerprint,
+                "split_fingerprint": self.split.fingerprint,
+                "reference_edges": self.reference_edges,
+                "reference_quadratic_forms": self.reference_quadratic_forms,
+                "edge_score_edges": self.edge_score_edges,
+                "edge_labels": self.edge_labels,
+                "true_clusters": dict(self.true_clusters),
+                "peer_cluster_assignments": [dict(value) for value in self.peer_cluster_assignments],
+            }
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class DiscoveryExecutionOutcome:
+    manifest: ResearchDatasetManifest
+    method_id: str
+    method_version: str
+    model_role: str
+    implementation_id: str
+    selection_eligible: bool
+    ablation_id: str | None
+    claim_markers: tuple[str, ...]
+    runtime_seconds: float
+    peak_memory_bytes: int
+    status: str
+    prediction: DiscoveryPrediction | None
+    reason: str | None
+    execution_input_fingerprint: str
+
+
+def execute_discovery_method(
     registry: BaselineRegistry,
     method_id: str,
-    context: RunContext,
-    execute: Callable[[RunContext], RunObservation | Mapping[str, float]],
-) -> ResultRow:
-    if not isinstance(registry, BaselineRegistry) or not isinstance(context, RunContext):
-        raise ValueError("registry and context must use Task 6 contracts")
-    resolution = registry.resolve(method_id, capability=context.capability)
-    spec = resolution.spec
+    execution_input: DiscoveryExecutionInput,
+    capability: DatasetCapability,
+) -> DiscoveryExecutionOutcome:
+    if not isinstance(registry, BaselineRegistry) or not isinstance(
+        execution_input, DiscoveryExecutionInput
+    ):
+        raise ValueError("registry and execution_input must use Task 6 contracts")
+    validate_dataset_identity(execution_input.manifest, capability)
+    spec = registry.get(method_id)
+    if spec.stage != "discovery":
+        raise ValueError("method is not registered for Discovery execution")
+    markers = tuple(
+        sorted(
+            set(execution_input.manifest.claim_markers)
+            | set(capability.claim_markers)
+            | ({execution_input.manifest.time_axis} if execution_input.manifest.time_axis == "static_placeholder_not_observed_time" else set())
+        )
+    )
+    resolution = registry.resolve(method_id, capability=capability)
     common = {
-        "dataset_id": context.manifest.dataset_id,
-        "dataset_manifest_fingerprint": context.manifest.fingerprint,
-        "evaluator_fingerprint": context.evaluator_fingerprint,
-        "split_policy": context.split.policy,
-        "split_fingerprint": context.split.fingerprint,
+        "manifest": execution_input.manifest,
         "method_id": spec.method_id,
         "method_version": spec.method_version,
         "model_role": spec.model_role,
-        "seed": context.split.seed,
-        "warning": spec.warning,
-        "claim_markers": tuple(sorted(set(context.manifest.claim_markers) | set(context.capability.claim_markers))),
+        "implementation_id": spec.implementation_id,
+        "selection_eligible": spec.selection_eligible,
+        "ablation_id": spec.ablation_id,
+        "claim_markers": markers,
+        "execution_input_fingerprint": execution_input.fingerprint,
     }
     if resolution.status == "blocked":
-        return ResultRow(**common, runtime_seconds=0.0, peak_memory_bytes=0, status="blocked", reason=resolution.reason)
+        return DiscoveryExecutionOutcome(
+            **common,
+            runtime_seconds=0.0,
+            peak_memory_bytes=0,
+            status="blocked",
+            prediction=None,
+            reason=resolution.reason,
+        )
+    implementation = registry.implementation(method_id)
+    if not isinstance(implementation, DiscoveryImplementation):
+        raise ValueError("registered Discovery implementation type is invalid")
     tracemalloc.start()
     started = time.perf_counter()
     try:
-        produced = execute(context)
-        observation = produced if isinstance(produced, RunObservation) else RunObservation(metrics=produced)
-        if spec.stage == "detection":
-            if observation.fit_audit is None:
-                raise ValueError("detection methods require an explicit FitAudit")
-            validate_fit_isolation(context.split, observation.fit_audit, model_role=spec.model_role)
+        prediction = implementation.execute(execution_input)
+        if not isinstance(prediction, DiscoveryPrediction):
+            raise ValueError("Discovery implementation must return DiscoveryPrediction")
         runtime = time.perf_counter() - started
         _, peak = tracemalloc.get_traced_memory()
-        return ResultRow(
-            **common, runtime_seconds=runtime, peak_memory_bytes=peak,
-            status="success", metrics=observation.metrics,
+        return DiscoveryExecutionOutcome(
+            **common,
+            runtime_seconds=runtime,
+            peak_memory_bytes=peak,
+            status="success",
+            prediction=prediction,
+            reason=None,
         )
-    except Exception as exc:  # Experiment failures are data, not missing artifact rows.
+    except Exception as exc:
         runtime = time.perf_counter() - started
         _, peak = tracemalloc.get_traced_memory()
-        return ResultRow(
-            **common, runtime_seconds=runtime, peak_memory_bytes=peak,
-            status="failed", reason=f"{type(exc).__name__}: {exc}",
+        return DiscoveryExecutionOutcome(
+            **common,
+            runtime_seconds=runtime,
+            peak_memory_bytes=peak,
+            status="failed",
+            prediction=None,
+            reason=f"{type(exc).__name__}: {exc}",
         )
     finally:
         tracemalloc.stop()
 
 
-def select_learned_artifact(rows: Sequence[ResultRow]) -> ResultRow:
-    candidates = sorted(
-        (
-            row for row in rows
-            if row.status == "success" and row.model_role == "primary_learned"
-            and row.method_id != HEURISTIC_BASELINE_ID
-        ),
-        key=lambda row: (row.method_id, row.method_version, row.seed, row.artifact_identity),
-    )
+def evaluate_discovery_execution(
+    execution: DiscoveryExecutionOutcome, evaluation: DiscoveryEvaluationInput
+) -> ResultRow:
+    if not isinstance(execution, DiscoveryExecutionOutcome) or not isinstance(
+        evaluation, DiscoveryEvaluationInput
+    ):
+        raise ValueError("execution and evaluation must use Discovery port contracts")
+    if execution.manifest.seed != evaluation.split.seed:
+        raise ValueError("Discovery manifest and evaluation split seeds must match")
+    audit = {
+        "audit_version": "coordination-execution-audit/v2",
+        "stage": "discovery",
+        "implementation_id": execution.implementation_id,
+        "execution_input_fingerprint": execution.execution_input_fingerprint,
+        "evaluation_input_fingerprint": evaluation.fingerprint,
+        "label_free_execution": True,
+        "evaluation_after_execution": execution.status == "success",
+        "fit_provenance_source": "not_applicable_label_free_discovery",
+    }
+    common = {
+        "dataset_id": execution.manifest.dataset_id,
+        "dataset_manifest_fingerprint": execution.manifest.fingerprint,
+        "evaluator_fingerprint": evaluation.evaluator_fingerprint,
+        "split_policy": evaluation.split.policy,
+        "split_fingerprint": evaluation.split.fingerprint,
+        "method_id": execution.method_id,
+        "method_version": execution.method_version,
+        "model_role": execution.model_role,
+        "seed": evaluation.split.seed,
+        "runtime_seconds": execution.runtime_seconds,
+        "peak_memory_bytes": execution.peak_memory_bytes,
+        "claim_markers": execution.claim_markers,
+        "task": "discovery",
+        "selection_eligible": execution.selection_eligible,
+        "ablation_id": execution.ablation_id,
+        "audit": audit,
+    }
+    if execution.status != "success":
+        return ResultRow(
+            **common, status=execution.status, reason=execution.reason, metrics={}
+        )
+    prediction = execution.prediction
+    assert prediction is not None
+    try:
+        if prediction.edge_score_edges != evaluation.edge_score_edges:
+            raise ValueError("Discovery prediction edge-score universe does not match evaluator")
+        metrics = discovery_metrics(
+            candidate_edges=prediction.candidate_edges,
+            reference_edges=evaluation.reference_edges,
+            reference_quadratic_forms=evaluation.reference_quadratic_forms,
+            approximate_quadratic_forms=prediction.approximate_quadratic_forms,
+            edge_labels=evaluation.edge_labels,
+            edge_scores=prediction.edge_scores,
+            true_clusters=evaluation.true_clusters,
+            predicted_clusters=prediction.predicted_clusters,
+        )
+        metrics["cross_seed_stability"] = cross_seed_stability(
+            (prediction.predicted_clusters, *evaluation.peer_cluster_assignments)
+        )
+        audit["prediction_artifact_identity"] = prediction.artifact_identity
+        return ResultRow(**common, status="success", metrics=metrics)
+    except Exception as exc:
+        return ResultRow(
+            **common,
+            status="failed",
+            reason=f"{type(exc).__name__}: {exc}",
+            metrics={},
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class DetectionPartitions:
+    train_cases: tuple[DetectionTrainingCase, ...]
+    validation_cases: tuple[DetectionTrainingCase, ...]
+    test_cases: tuple[DetectionTrainingCase, ...]
+
+    def __post_init__(self) -> None:
+        for field_name, split_name in (
+            ("train_cases", "train"),
+            ("validation_cases", "validation"),
+            ("test_cases", "test"),
+        ):
+            values = getattr(self, field_name)
+            if isinstance(values, (str, bytes)) or not isinstance(values, Sequence) or not values:
+                raise ValueError(f"{field_name} must be a non-empty DetectionTrainingCase sequence")
+            cases = tuple(values)
+            if not all(isinstance(case, DetectionTrainingCase) for case in cases):
+                raise ValueError(f"{field_name} must contain DetectionTrainingCase values")
+            if any(case.split != split_name for case in cases):
+                raise ValueError(f"{field_name} contains a case from another split")
+            ids = [case.case_id for case in cases]
+            if len(ids) != len(set(ids)):
+                raise ValueError(f"{field_name} contains duplicate case IDs")
+            object.__setattr__(self, field_name, cases)
+        partitions = [
+            {case.case_id for case in self.train_cases},
+            {case.case_id for case in self.validation_cases},
+            {case.case_id for case in self.test_cases},
+        ]
+        if any(
+            left & right
+            for index, left in enumerate(partitions)
+            for right in partitions[index + 1 :]
+        ):
+            raise ValueError("Detection partition case IDs must be pairwise disjoint")
+
+    @property
+    def train_fingerprint(self) -> str:
+        return case_id_fingerprint(case.case_id for case in self.train_cases)
+
+    @property
+    def validation_fingerprint(self) -> str:
+        return case_id_fingerprint(case.case_id for case in self.validation_cases)
+
+    @property
+    def test_fingerprint(self) -> str:
+        return case_id_fingerprint(case.case_id for case in self.test_cases)
+
+
+@dataclass(frozen=True, slots=True)
+class DetectionTestInput:
+    test_cases: tuple[DetectionTrainingCase, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class DetectionPrediction:
+    case_id: str
+    harmful_probability: float
+    decision: str
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "case_id", _text(self.case_id, "case_id"))
+        probability = _non_negative_number(self.harmful_probability, "harmful_probability")
+        if probability > 1.0:
+            raise ValueError("harmful_probability must be within [0, 1]")
+        object.__setattr__(self, "harmful_probability", probability)
+        if self.decision not in {"benign_coordination", "harmful_coordination", "abstain"}:
+            raise ValueError("Detection prediction decision is invalid")
+
+
+@dataclass(frozen=True, slots=True)
+class DetectionExecutionOutput:
+    model_artifact: DetectionModelArtifact | None
+    predictions: tuple[DetectionPrediction, ...]
+
+    def __post_init__(self) -> None:
+        if self.model_artifact is not None and not isinstance(
+            self.model_artifact, DetectionModelArtifact
+        ):
+            raise ValueError("model_artifact must use the Stage 2 artifact contract")
+        if isinstance(self.predictions, (str, bytes)) or not isinstance(
+            self.predictions, Sequence
+        ) or not self.predictions:
+            raise ValueError("predictions must be a non-empty sequence")
+        predictions = tuple(self.predictions)
+        if not all(isinstance(value, DetectionPrediction) for value in predictions):
+            raise ValueError("predictions must contain DetectionPrediction values")
+        ids = [value.case_id for value in predictions]
+        if len(ids) != len(set(ids)):
+            raise ValueError("predictions contain duplicate case IDs")
+        object.__setattr__(self, "predictions", predictions)
+
+
+def _validate_detection_split(partitions: DetectionPartitions, split: ExperimentSplit) -> None:
+    expected = {
+        "train": set(split.train_ids),
+        "validation": set(split.validation_ids),
+        "test": set(split.test_ids),
+    }
+    actual = {
+        "train": {case.case_id for case in partitions.train_cases},
+        "validation": {case.case_id for case in partitions.validation_cases},
+        "test": {case.case_id for case in partitions.test_cases},
+    }
+    for name in expected:
+        if actual[name] != expected[name]:
+            raise ValueError(f"Detection {name} partition does not match ExperimentSplit")
+
+
+def _detection_row_common(
+    spec: Any,
+    manifest: ResearchDatasetManifest,
+    capability: DatasetCapability,
+    evaluator_fingerprint: str,
+    split: ExperimentSplit,
+    runtime: float,
+    peak: int,
+    audit: Mapping[str, Any],
+) -> dict[str, Any]:
+    markers = set(manifest.claim_markers) | set(capability.claim_markers)
+    if manifest.time_axis == "static_placeholder_not_observed_time":
+        markers.add(manifest.time_axis)
+    return {
+        "dataset_id": manifest.dataset_id,
+        "dataset_manifest_fingerprint": manifest.fingerprint,
+        "evaluator_fingerprint": evaluator_fingerprint,
+        "split_policy": split.policy,
+        "split_fingerprint": split.fingerprint,
+        "method_id": spec.method_id,
+        "method_version": spec.method_version,
+        "model_role": spec.model_role,
+        "seed": split.seed,
+        "runtime_seconds": runtime,
+        "peak_memory_bytes": peak,
+        "warning": spec.warning,
+        "claim_markers": tuple(sorted(markers)),
+        "task": "detection",
+        "selection_eligible": spec.selection_eligible,
+        "ablation_id": spec.ablation_id,
+        "audit": audit,
+    }
+
+
+def run_detection_method(
+    registry: BaselineRegistry,
+    method_id: str,
+    *,
+    manifest: ResearchDatasetManifest,
+    capability: DatasetCapability,
+    evaluator_fingerprint: str,
+    split: ExperimentSplit,
+    partitions: DetectionPartitions,
+) -> ResultRow:
+    if not isinstance(registry, BaselineRegistry) or not isinstance(
+        partitions, DetectionPartitions
+    ):
+        raise ValueError("registry and partitions must use Task 6 contracts")
+    validate_dataset_identity(manifest, capability)
+    if manifest.seed != split.seed:
+        raise ValueError("Detection manifest and split seeds must match")
+    _validate_detection_split(partitions, split)
+    evaluator_fingerprint = _text(evaluator_fingerprint, "evaluator_fingerprint")
+    spec = registry.get(method_id)
+    if spec.stage != "detection":
+        raise ValueError("method is not registered for Detection execution")
+    execution_audit = {
+        "audit_version": "coordination-execution-audit/v2",
+        "stage": "detection",
+        "implementation_id": spec.implementation_id,
+        "test_partition_fingerprint": partitions.test_fingerprint,
+        "evaluation_after_execution": False,
+        "test_evaluation_only": True,
+    }
+    if spec.model_role != "heuristic_baseline":
+        execution_audit.update(
+            {
+                "train_partition_fingerprint": partitions.train_fingerprint,
+                "validation_partition_fingerprint": partitions.validation_fingerprint,
+            }
+        )
+    resolution = registry.resolve(method_id, capability=capability)
+    if resolution.status == "blocked":
+        audit = {**execution_audit, "fit_provenance_source": "not_executed_blocked"}
+        return ResultRow(
+            **_detection_row_common(
+                spec, manifest, capability, evaluator_fingerprint, split, 0.0, 0, audit
+            ),
+            status="blocked",
+            reason=resolution.reason,
+            metrics={},
+        )
+    implementation = registry.implementation(method_id)
+    tracemalloc.start()
+    started = time.perf_counter()
+    try:
+        if spec.model_role == "heuristic_baseline":
+            if not isinstance(implementation, HeuristicDetectionImplementation):
+                raise ValueError("registered heuristic implementation type is invalid")
+            output = implementation.execute(DetectionTestInput(partitions.test_cases))
+        else:
+            if not isinstance(implementation, LearnedDetectionImplementation):
+                raise ValueError("registered learned implementation type is invalid")
+            output = implementation.execute(partitions)
+        if not isinstance(output, DetectionExecutionOutput):
+            raise ValueError("Detection implementation must return DetectionExecutionOutput")
+        if spec.model_role == "heuristic_baseline":
+            if output.model_artifact is not None:
+                raise ValueError("heuristic execution has no model fit path or learned artifact")
+            audit = {
+                **execution_audit,
+                "fit_provenance_source": "none_heuristic_test_only",
+            }
+        else:
+            artifact = output.model_artifact
+            if artifact is None:
+                raise ValueError("learned Detection execution requires a Stage 2 model artifact")
+            expected_artifact_fingerprints = {
+                "train_fit_case_ids_fingerprint": partitions.train_fingerprint,
+                "validation_calibration_case_ids_fingerprint": partitions.validation_fingerprint,
+                "validation_threshold_case_ids_fingerprint": partitions.validation_fingerprint,
+                "validation_ood_case_ids_fingerprint": partitions.validation_fingerprint,
+            }
+            for field_name, expected in expected_artifact_fingerprints.items():
+                if getattr(artifact, field_name) != expected:
+                    raise ValueError(
+                        f"Stage 2 artifact {field_name} does not match supplied partitions"
+                    )
+            audit = {
+                **execution_audit,
+                "fit_provenance_source": "stage2_model_artifact",
+                "model_artifact_hash": artifact.artifact_hash,
+                "model_artifact_version": artifact.model_version,
+            }
+        expected_test_ids = {case.case_id for case in partitions.test_cases}
+        prediction_ids = {prediction.case_id for prediction in output.predictions}
+        if prediction_ids != expected_test_ids:
+            raise ValueError("Detection predictions must cover exactly the test partition")
+        test_by_id = {case.case_id: case for case in partitions.test_cases}
+        ordered = tuple(sorted(output.predictions, key=lambda value: value.case_id))
+        metrics = detection_metrics(
+            labels=tuple(test_by_id[value.case_id].label for value in ordered),
+            probabilities=tuple(value.harmful_probability for value in ordered),
+            decisions=tuple(value.decision for value in ordered),
+        )
+        runtime = time.perf_counter() - started
+        _, peak = tracemalloc.get_traced_memory()
+        audit["evaluation_after_execution"] = True
+        audit["prediction_fingerprint"] = _fingerprint(
+            [
+                {
+                    "case_id": value.case_id,
+                    "harmful_probability": value.harmful_probability,
+                    "decision": value.decision,
+                }
+                for value in ordered
+            ]
+        )
+        return ResultRow(
+            **_detection_row_common(
+                spec,
+                manifest,
+                capability,
+                evaluator_fingerprint,
+                split,
+                runtime,
+                peak,
+                audit,
+            ),
+            status="success",
+            metrics=metrics,
+        )
+    except Exception as exc:
+        runtime = time.perf_counter() - started
+        _, peak = tracemalloc.get_traced_memory()
+        audit = {
+            **execution_audit,
+            "fit_provenance_source": "verification_failed",
+            "verification_error_type": type(exc).__name__,
+        }
+        return ResultRow(
+            **_detection_row_common(
+                spec,
+                manifest,
+                capability,
+                evaluator_fingerprint,
+                split,
+                runtime,
+                peak,
+                audit,
+            ),
+            status="failed",
+            reason=f"{type(exc).__name__}: {exc}",
+            metrics={},
+        )
+    finally:
+        tracemalloc.stop()
+
+
+def select_learned_artifact(
+    rows: Sequence[ResultRow], registry: BaselineRegistry
+) -> ResultRow:
+    if not isinstance(registry, BaselineRegistry):
+        raise ValueError("selection requires the registry that owns method eligibility")
+    candidates: list[ResultRow] = []
+    for row in rows:
+        spec = registry.get(row.method_id)
+        if (
+            row.method_version != spec.method_version
+            or row.model_role != spec.model_role
+            or row.selection_eligible != spec.selection_eligible
+            or row.ablation_id != spec.ablation_id
+        ):
+            raise ValueError("result row identity does not match its registered method spec")
+        if row.status == "success" and spec.selection_eligible:
+            candidates.append(row)
     if len(candidates) != 1:
-        raise ValueError("learned artifact selection requires exactly one successful learned candidate")
+        raise ValueError("learned artifact selection requires exactly one eligible fused result")
     return candidates[0]
 
 
@@ -546,11 +1295,19 @@ def _write_csv(path: Path, rows: Sequence[Mapping[str, Any]], fieldnames: Sequen
         writer = csv.DictWriter(handle, fieldnames=fieldnames, lineterminator="\n")
         writer.writeheader()
         for row in rows:
-            writer.writerow({
-                name: json.dumps(row[name], ensure_ascii=False, sort_keys=True, separators=(",", ":"))
-                if isinstance(row.get(name), (dict, list)) else row.get(name)
-                for name in fieldnames
-            })
+            writer.writerow(
+                {
+                    name: json.dumps(
+                        row[name],
+                        ensure_ascii=False,
+                        sort_keys=True,
+                        separators=(",", ":"),
+                    )
+                    if isinstance(row.get(name), (dict, list))
+                    else row.get(name)
+                    for name in fieldnames
+                }
+            )
 
 
 def write_reproduction_artifacts(
@@ -561,28 +1318,48 @@ def write_reproduction_artifacts(
     bootstrap_seed: int = 0,
     bootstrap_resamples: int = 2_000,
 ) -> ArtifactPaths:
-    normalized_rows = tuple(sorted(rows, key=lambda row: (
-        row.dataset_id, row.method_id, row.method_version, row.seed, row.artifact_identity
-    )))
+    normalized_rows = tuple(
+        sorted(
+            rows,
+            key=lambda row: (
+                row.dataset_id,
+                row.method_id,
+                row.method_version,
+                row.seed,
+                row.artifact_identity,
+            ),
+        )
+    )
     if not normalized_rows:
         raise ValueError("at least one result row is required")
     if len({row.artifact_identity for row in normalized_rows}) != len(normalized_rows):
         raise ValueError("result rows contain duplicate artifact identities")
     aggregates = aggregate_result_rows(
-        normalized_rows, bootstrap_seed=bootstrap_seed, bootstrap_resamples=bootstrap_resamples
+        normalized_rows,
+        bootstrap_seed=bootstrap_seed,
+        bootstrap_resamples=bootstrap_resamples,
     )
     gate_results = tuple(evaluate_claim_gate(gate, normalized_rows) for gate in claim_gates)
-    rows_payload = {"schema_version": "cogguard.coordination-reproduction-rows/v1", "rows": [row.to_dict() for row in normalized_rows]}
+    rows_payload = {
+        "schema_version": "cogguard.coordination-reproduction-rows/v2",
+        "rows": [row.to_dict() for row in normalized_rows],
+    }
     aggregates_payload = {
-        "schema_version": "cogguard.coordination-reproduction-aggregates/v1",
-        "bootstrap": {"seed": bootstrap_seed, "resamples": bootstrap_resamples, "confidence": 0.95},
+        "schema_version": "cogguard.coordination-reproduction-aggregates/v2",
+        "bootstrap": {
+            "seed": bootstrap_seed,
+            "resamples": bootstrap_resamples,
+            "confidence": 0.95,
+        },
         "aggregates": [aggregate.to_dict() for aggregate in aggregates],
     }
     gates_payload = {
-        "schema_version": "cogguard.coordination-reproduction-claim-gates/v1",
+        "schema_version": "cogguard.coordination-reproduction-claim-gates/v2",
         "claim_gates": [result.to_dict() for result in gate_results],
     }
-    identity = _fingerprint({"rows": rows_payload, "aggregates": aggregates_payload, "claim_gates": gates_payload})
+    identity = _fingerprint(
+        {"rows": rows_payload, "aggregates": aggregates_payload, "claim_gates": gates_payload}
+    )
     destination = Path(output_dir)
     destination.mkdir(parents=True, exist_ok=True)
     per_seed_json = destination / "per_seed_rows.json"
@@ -597,20 +1374,57 @@ def write_reproduction_artifacts(
     _write_csv(per_seed_csv, row_dicts, tuple(row_dicts[0]))
     aggregate_dicts = [aggregate.to_dict() for aggregate in aggregates]
     aggregate_fields = tuple(aggregate_dicts[0]) if aggregate_dicts else (
-        "dataset_id", "split_policy", "method_id", "method_version", "model_role",
-        "metric_name", "direction", "successful_seed_count", "seeds", "mean", "std",
-        "ci_low", "ci_high", "dataset_manifest_fingerprints", "evaluator_fingerprints",
-        "split_fingerprints", "observed_artifact_identities",
+        "task",
+        "dataset_id",
+        "split_policy",
+        "method_id",
+        "method_version",
+        "model_role",
+        "ablation_id",
+        "metric_name",
+        "direction",
+        "successful_seed_count",
+        "seeds",
+        "mean",
+        "std",
+        "ci_low",
+        "ci_high",
+        "dataset_manifest_fingerprints",
+        "evaluator_fingerprints",
+        "split_fingerprints",
+        "observed_artifact_identities",
     )
     _write_csv(aggregates_csv, aggregate_dicts, aggregate_fields)
     return ArtifactPaths(
-        per_seed_json, per_seed_csv, aggregates_json, aggregates_csv, claim_gates_json, identity
+        per_seed_json,
+        per_seed_csv,
+        aggregates_json,
+        aggregates_csv,
+        claim_gates_json,
+        identity,
     )
 
 
 __all__ = [
-    "AggregateResult", "ArtifactPaths", "ClaimGate", "ClaimGateResult", "FitAudit",
-    "ResultRow", "RunContext", "RunObservation", "aggregate_result_rows",
-    "evaluate_claim_gate", "run_registered_method", "select_learned_artifact",
-    "validate_fit_isolation", "write_reproduction_artifacts",
+    "AggregateResult",
+    "ArtifactPaths",
+    "ClaimGate",
+    "ClaimGateResult",
+    "DetectionExecutionOutput",
+    "DetectionPartitions",
+    "DetectionPrediction",
+    "DetectionTestInput",
+    "DiscoveryEvaluationInput",
+    "DiscoveryExecutionInput",
+    "DiscoveryExecutionOutcome",
+    "DiscoveryPrediction",
+    "ResultRow",
+    "aggregate_result_rows",
+    "evaluate_claim_gate",
+    "evaluate_discovery_execution",
+    "execute_discovery_method",
+    "run_detection_method",
+    "select_learned_artifact",
+    "validate_dataset_identity",
+    "write_reproduction_artifacts",
 ]

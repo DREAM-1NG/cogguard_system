@@ -72,8 +72,25 @@ def _smoke_rows() -> tuple[ResultRow, ...]:
                 runtime_seconds=0.01,
                 peak_memory_bytes=1024,
                 status="success",
-                metrics={"auprc": score},
+                metrics={
+                    "auprc": score,
+                    "macro_f1": 0.75,
+                    "roc_auc": 0.85,
+                    "ece": 0.1,
+                    "selective_coverage": 0.75,
+                    "selective_risk": 0.1,
+                    "abstain_rate": 0.25,
+                },
                 claim_markers=manifest.claim_markers,
+                selection_eligible=True,
+                audit={
+                    "audit_version": "coordination-execution-audit/v2",
+                    "stage": "detection",
+                    "implementation_id": "embedded-smoke-fixture",
+                    "fit_provenance_source": "embedded_fixture_contract",
+                    "evaluation_after_execution": True,
+                    "test_evaluation_only": True,
+                },
             )
         )
     return tuple(rows)
@@ -96,6 +113,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         claim_gates=(
             ClaimGate(
                 "smoke-auprc", "auprc", "maximize", 0.70,
+                claim_scope="auxiliary",
                 minimum_successful_seeds=2,
             ),
         ),
