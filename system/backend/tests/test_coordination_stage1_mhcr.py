@@ -337,7 +337,12 @@ def test_candidate_node_channel_is_sparse_linear_and_preserves_gradients(
     assert channel.account_count == account_count
     assert channel.source_indices.shape == channel.target_indices.shape == (4,)
     assert channel.normalized_weights.shape == (4,)
+    assert channel.source_indices.tolist() == [0, 1, 0, 2]
+    assert channel.target_indices.tolist() == [1, 0, 2, 0]
     assert torch.isfinite(channel.normalized_weights).all()
+    channel_source = inspect.getsource(mhcr_module._candidate_channel)
+    assert ".sort(" not in channel_source
+    assert "sorted(" not in channel_source
     target_weight_sums = original_zeros(account_count, dtype=torch.float32)
     target_weight_sums.index_add_(
         0, channel.target_indices, channel.normalized_weights

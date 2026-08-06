@@ -499,7 +499,6 @@ def _candidate_channel(tsgs_result: TSGSResult) -> SparseCandidateChannel:
         right = node_index[edge.target_account_id]
         directed_edges.append((left, right, edge.weight / degrees[right]))
         directed_edges.append((right, left, edge.weight / degrees[left]))
-    directed_edges.sort(key=lambda item: (item[1], item[0]))
 
     if directed_edges:
         source_indices = torch.tensor(
