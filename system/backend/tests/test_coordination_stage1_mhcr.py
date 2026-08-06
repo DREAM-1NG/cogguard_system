@@ -10,6 +10,7 @@ from datetime import datetime, timedelta, timezone
 
 import numpy as np
 import pytest
+import torch
 
 from app.config import PROJECT_ROOT
 
@@ -151,6 +152,9 @@ def test_mhcr_builds_two_seeded_views_and_fits_only_symmetric_infonce():
     assert all(view.temporal_jitter_seconds == 12 for view in diagnostics.views)
     assert all(view.hyperedge_drop_rate == pytest.approx(0.25) for view in diagnostics.views)
     assert all(view.retained_hyperedge_count > 0 for view in diagnostics.views)
+    assert all(view.dropped_hyperedge_ids for view in diagnostics.views)
+    assert diagnostics.views[0].dropped_hyperedge_ids != diagnostics.views[1].dropped_hyperedge_ids
+    assert diagnostics.views[0].content_signature != diagnostics.views[1].content_signature
     assert len(diagnostics.epoch_infonce_losses) == 5
     assert diagnostics.final_infonce_loss == diagnostics.epoch_infonce_losses[-1]
     assert math.isfinite(diagnostics.final_infonce_loss)
@@ -167,9 +171,7 @@ def test_mhcr_builds_two_seeded_views_and_fits_only_symmetric_infonce():
         assert prohibited not in source
 
 
-def test_seeded_cpu_fit_is_deterministic_and_external_label_maps_are_inert(
-    monkeypatch: pytest.MonkeyPatch,
-):
+def test_seeded_cpu_fit_is_deterministic_for_reordered_events():
     events_module, tsgs_module, mhcr_module = _load_stage1_modules()
     events = _events(events_module)
     tsgs_result = tsgs_module.TemporalSketchGraphSparsifier(
@@ -184,19 +186,7 @@ def test_seeded_cpu_fit_is_deterministic_and_external_label_maps_are_inert(
         hyperedge_drop_rate=0.3,
     )
 
-    monkeypatch.setattr(
-        mhcr_module,
-        "EXTERNAL_LABEL_MAP",
-        {account_id: index % 2 for index, account_id in enumerate(tsgs_result.account_ids)},
-        raising=False,
-    )
     first = mhcr_module.MHCREncoder(config).fit_transform(events, tsgs_result)
-    monkeypatch.setattr(
-        mhcr_module,
-        "EXTERNAL_LABEL_MAP",
-        {account_id: (index + 1) % 2 for index, account_id in enumerate(tsgs_result.account_ids)},
-        raising=False,
-    )
     second = mhcr_module.MHCREncoder(config).fit_transform(reversed(events), tsgs_result)
 
     np.testing.assert_array_equal(np.asarray(first.embeddings), np.asarray(second.embeddings))
@@ -207,6 +197,107 @@ def test_seeded_cpu_fit_is_deterministic_and_external_label_maps_are_inert(
         "events",
         "tsgs_result",
     ]
+
+
+def test_temporal_jitter_changes_propagated_view_content_without_bucket_crossing():
+    events_module, _, mhcr_module = _load_stage1_modules()
+    start = datetime(2026, 8, 7, tzinfo=timezone.utc) + timedelta(seconds=20)
+    events = tuple(
+        events_module.CoordinationEvent(
+            account_id=account_id,
+            relation=relation,
+            object_id=object_id,
+            observed_at=start + timedelta(seconds=offset),
+            weight=1.0,
+            evidence_ref=f"evidence:{index}",
+        )
+        for index, (account_id, relation, object_id, offset) in enumerate(
+            (
+                ("account-a", "shared_url", "url-1", 0),
+                ("account-b", "shared_url", "url-1", 2),
+                ("account-a", "shared_hashtag", "topic-1", 8),
+                ("account-b", "shared_hashtag", "topic-1", 10),
+            )
+        )
+    )
+    config = mhcr_module.MHCRConfig(
+        seed=101,
+        time_bucket_seconds=60,
+        epochs=1,
+        temporal_jitter_seconds=1,
+        hyperedge_drop_rate=0.0,
+    )
+
+    first, second, diagnostics = mhcr_module._build_two_views(events, config)
+
+    assert {edge.time_bucket for edge in first} == {29767680}
+    assert {edge.time_bucket for edge in second} == {29767680}
+    assert diagnostics[0].content_signature != diagnostics[1].content_signature
+    first_temporal_values = tuple(
+        item.temporal_position for edge in first for item in edge.incidence
+    )
+    second_temporal_values = tuple(
+        item.temporal_position for edge in second for item in edge.incidence
+    )
+    assert first_temporal_values != second_temporal_values
+
+
+def test_small_enabled_drop_rate_keeps_two_deterministic_masks_distinct():
+    events_module, _, mhcr_module = _load_stage1_modules()
+    events = _events(events_module)[:5]
+    config = mhcr_module.MHCRConfig(
+        seed=103,
+        time_bucket_seconds=60,
+        epochs=1,
+        temporal_jitter_seconds=1,
+        hyperedge_drop_rate=0.01,
+    )
+
+    first = mhcr_module._build_two_views(events, config)
+    second = mhcr_module._build_two_views(tuple(reversed(events)), config)
+
+    assert first == second
+    assert all(view.dropped_hyperedge_count >= 1 for view in first[2])
+    assert first[2][0].dropped_hyperedge_ids != first[2][1].dropped_hyperedge_ids
+
+
+def test_symmetric_infonce_is_invoked_with_distinct_view_tensors(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    events_module, tsgs_module, mhcr_module = _load_stage1_modules()
+    original = mhcr_module._symmetric_infonce
+    observed_distinct = []
+
+    def recording_infonce(first, second, temperature):
+        observed_distinct.append(not torch.equal(first.detach(), second.detach()))
+        return original(first, second, temperature)
+
+    monkeypatch.setattr(mhcr_module, "_symmetric_infonce", recording_infonce)
+    _, _, representation = _fit(events_module, tsgs_module, mhcr_module)
+
+    assert observed_distinct == [True] * len(
+        representation.training_diagnostics.epoch_infonce_losses
+    )
+
+
+def test_relation_specific_transform_perturbation_changes_propagated_output():
+    events_module, _, mhcr_module = _load_stage1_modules()
+    events = _events(events_module)
+    account_ids = tuple(sorted({event.account_id for event in events}))
+    hyperedges = mhcr_module._build_hyperedges(events, 60)
+    relation_names = tuple(sorted({event.relation for event in events}))
+    torch.manual_seed(211)
+    model = mhcr_module._RelationAwareHypergraphEncoder(6, 8, relation_names)
+    features = torch.arange(24, dtype=torch.float32).reshape(4, 6) / 24.0
+    adjacency = torch.zeros((4, 4), dtype=torch.float32)
+
+    before = model(features, hyperedges, account_ids, adjacency).detach().clone()
+    relation_index = model.relation_index["shared_url"]
+    with torch.no_grad():
+        model.relation_transforms[relation_index].weight.add_(0.5)
+    after = model(features, hyperedges, account_ids, adjacency).detach()
+
+    assert not torch.allclose(before, after)
 
 
 def test_event_mapping_with_any_label_bearing_field_remains_rejected():
@@ -223,6 +314,20 @@ def test_event_mapping_with_any_label_bearing_field_remains_rejected():
     for field in ("label", "risk", "verdict", "class", "bot", "harmful"):
         with pytest.raises(ValueError, match="forbidden label-bearing fields"):
             events_module.CoordinationEvent.from_mapping({**valid, field: "opposite"})
+
+
+def test_mhcr_revalidates_relation_semantics_before_fitting():
+    events_module, tsgs_module, mhcr_module = _load_stage1_modules()
+    events = list(_events(events_module))
+    tsgs_result = tsgs_module.TemporalSketchGraphSparsifier(
+        tsgs_module.TSGSConfig(seed=7, time_bucket_seconds=60)
+    ).fit_transform(events)
+    object.__setattr__(events[0], "relation", "harmful")
+
+    with pytest.raises(ValueError, match="canonical label-free relation"):
+        mhcr_module.MHCREncoder(
+            mhcr_module.MHCRConfig(seed=7, time_bucket_seconds=60, epochs=1)
+        ).fit_transform(events, tsgs_result)
 
 
 def test_mhcr_representation_is_a_frozen_auditable_value():

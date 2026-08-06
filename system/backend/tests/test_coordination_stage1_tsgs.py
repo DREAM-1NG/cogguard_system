@@ -80,6 +80,56 @@ def test_coordination_event_has_exact_label_free_schema_and_rejects_label_keys()
             events_module.CoordinationEvent.from_mapping({**valid, forbidden: "positive"})
 
 
+def test_coordination_event_accepts_only_typed_canonical_relations():
+    events_module, _ = _load_stage1_modules()
+    permitted = {
+        "shared_url",
+        "shared_domain",
+        "shared_hashtag",
+        "shared_keyword",
+        "shared_entity",
+        "shared_target",
+        "discussion_target",
+        "repost_target",
+        "reply_target",
+        "mention_target",
+        "near_duplicate",
+        "native_relation",
+        "higher_order",
+    }
+    assert events_module.CANONICAL_COORDINATION_RELATIONS == frozenset(permitted)
+    observed_at = datetime(2026, 8, 7, tzinfo=timezone.utc)
+    for relation in sorted(permitted):
+        event = events_module.CoordinationEvent(
+            "account-a", relation, "object-a", observed_at, 1.0, "evidence:1"
+        )
+        assert event.relation == relation
+
+    base = {
+        "account_id": "account-a",
+        "object_id": "object-a",
+        "observed_at": "2026-08-07T00:00:00Z",
+        "weight": 1.0,
+        "evidence_ref": "evidence:1",
+    }
+    for relation in (
+        "harmful",
+        "bot",
+        "faction",
+        "risk",
+        "stance",
+        "intent",
+        "class",
+        "arbitrary_relation",
+    ):
+        with pytest.raises(ValueError, match="canonical label-free relation"):
+            events_module.CoordinationEvent(
+                "account-a", relation, "object-a", observed_at, 1.0, "evidence:1"
+            )
+        with pytest.raises(ValueError, match="canonical label-free relation"):
+            events_module.CoordinationEvent.from_mapping({**base, "relation": relation})
+
+
 def test_runtime_lsh_caps_buckets_and_never_calls_dense_reference(monkeypatch: pytest.MonkeyPatch):
     events_module, tsgs_module = _load_stage1_modules()
     events = _coordinated_events(events_module, account_count=12)
@@ -229,8 +279,8 @@ def test_zero_weight_event_preserves_its_account_row_and_full_pair_count():
     events_module, tsgs_module = _load_stage1_modules()
     observed_at = datetime(2026, 8, 7, tzinfo=timezone.utc)
     events = [
-        events_module.CoordinationEvent("account-active", "shared", "object-a", observed_at, 1.0, "e:1"),
-        events_module.CoordinationEvent("account-zero", "shared", "object-b", observed_at, 0.0, "e:2"),
+        events_module.CoordinationEvent("account-active", "shared_keyword", "object-a", observed_at, 1.0, "e:1"),
+        events_module.CoordinationEvent("account-zero", "shared_keyword", "object-b", observed_at, 0.0, "e:2"),
     ]
 
     result = tsgs_module.TemporalSketchGraphSparsifier().fit_transform(events)

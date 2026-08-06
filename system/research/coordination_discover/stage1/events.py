@@ -4,13 +4,53 @@ import math
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any, ClassVar
+from typing import Any, ClassVar, Literal, TypeAlias, cast
+
+
+CoordinationRelationKind: TypeAlias = Literal[
+    "shared_url",
+    "shared_domain",
+    "shared_hashtag",
+    "shared_keyword",
+    "shared_entity",
+    "shared_target",
+    "discussion_target",
+    "repost_target",
+    "reply_target",
+    "mention_target",
+    "near_duplicate",
+    "native_relation",
+    "higher_order",
+]
+CANONICAL_COORDINATION_RELATIONS: frozenset[str] = frozenset(
+    {
+        "shared_url",
+        "shared_domain",
+        "shared_hashtag",
+        "shared_keyword",
+        "shared_entity",
+        "shared_target",
+        "discussion_target",
+        "repost_target",
+        "reply_target",
+        "mention_target",
+        "near_duplicate",
+        "native_relation",
+        "higher_order",
+    }
+)
+
+
+def validate_coordination_relation(value: object) -> CoordinationRelationKind:
+    if not isinstance(value, str) or value.strip() not in CANONICAL_COORDINATION_RELATIONS:
+        raise ValueError("relation must be a canonical label-free relation")
+    return cast(CoordinationRelationKind, value.strip())
 
 
 @dataclass(frozen=True, slots=True)
 class CoordinationEvent:
     account_id: str
-    relation: str
+    relation: CoordinationRelationKind
     object_id: str
     observed_at: datetime
     weight: float
@@ -29,6 +69,7 @@ class CoordinationEvent:
             if not isinstance(value, str) or not value.strip():
                 raise ValueError(f"{field_name} must be a non-empty string")
             object.__setattr__(self, field_name, value.strip())
+        object.__setattr__(self, "relation", validate_coordination_relation(self.relation))
 
         if not isinstance(self.observed_at, datetime):
             raise ValueError("observed_at must be a timezone-aware datetime")
@@ -76,4 +117,9 @@ class CoordinationEvent:
         )
 
 
-__all__ = ["CoordinationEvent"]
+__all__ = [
+    "CANONICAL_COORDINATION_RELATIONS",
+    "CoordinationEvent",
+    "CoordinationRelationKind",
+    "validate_coordination_relation",
+]

@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import time
 from collections import Counter
 from collections.abc import Iterable, Mapping
 from dataclasses import asdict, dataclass
@@ -15,8 +16,9 @@ from .contracts import (
     DiscoveredCluster,
     DiscoveredClusterBatch,
     DiscoveryProvenance,
+    DiscoveryRuntimeDiagnostics,
 )
-from .events import CoordinationEvent
+from .events import CoordinationEvent, validate_coordination_relation
 from .mhcr import MHCRConfig, MHCREncoder, MHCRRepresentation
 from .tsgs import TSGSConfig, TSGSResult, TemporalSketchGraphSparsifier
 
@@ -57,6 +59,8 @@ def _ordered_events(events: Iterable[CoordinationEvent]) -> tuple[CoordinationEv
     materialized = tuple(events)
     if not all(isinstance(event, CoordinationEvent) for event in materialized):
         raise ValueError("events must contain CoordinationEvent values")
+    for event in materialized:
+        validate_coordination_relation(event.relation)
     return tuple(
         sorted(
             materialized,
@@ -213,16 +217,26 @@ class CoordinationDiscoveryEngine:
     ) -> DiscoveredClusterBatch:
         if not isinstance(provenance, DiscoveryProvenance):
             raise ValueError("provenance must be a DiscoveryProvenance")
+        total_started = time.perf_counter()
         ordered_events = _ordered_events(events)
+
+        phase_started = time.perf_counter()
         tsgs_result = TemporalSketchGraphSparsifier(self.config.tsgs).fit_transform(
             ordered_events
         )
+        tsgs_seconds = time.perf_counter() - phase_started
+
+        phase_started = time.perf_counter()
         representation = MHCREncoder(self.config.mhcr).fit_transform(
             ordered_events, tsgs_result
         )
+        mhcr_seconds = time.perf_counter() - phase_started
+
+        phase_started = time.perf_counter()
         partition = LeidenPartitioner(self.config.clustering).partition(
             tsgs_result, representation
         )
+        leiden_seconds = time.perf_counter() - phase_started
         graph_hash = _graph_hash(tsgs_result)
         embedding_hash = _embedding_hash(representation)
         global_relations = frozenset(event.relation for event in ordered_events)
@@ -252,11 +266,18 @@ class CoordinationDiscoveryEngine:
         quality_flags = ["platform_missing"]
         if not ordered_events or partition.no_edge:
             quality_flags.append("sparse_evidence")
+        total_seconds = time.perf_counter() - total_started
         return DiscoveredClusterBatch(
             batch_id=f"discovery-{batch_identity}",
             timestamp=provenance.created_at,
             candidate_clusters=clusters,
             provenance=provenance,
+            runtime_diagnostics=DiscoveryRuntimeDiagnostics(
+                tsgs_seconds=tsgs_seconds,
+                mhcr_seconds=mhcr_seconds,
+                leiden_seconds=leiden_seconds,
+                total_seconds=total_seconds,
+            ),
             platforms=(),
             quality_flags=tuple(quality_flags),
             artifact_manifest_ref=f"stage1://manifest/{batch_identity}",

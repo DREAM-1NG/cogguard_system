@@ -30,6 +30,7 @@ def _load_stage1():
 
 
 def _batch(stage1):
+    contracts_module = sys.modules[f"{stage1.__name__}.contracts"]
     metrics = stage1.CoordinationMetricSet(
         tsgs_spectral_density=0.73,
         mhcr_hyperedge_coherence=0.81,
@@ -70,6 +71,12 @@ def _batch(stage1):
         timestamp="2026-08-07T00:01:00Z",
         candidate_clusters=(cluster,),
         provenance=provenance,
+        runtime_diagnostics=contracts_module.DiscoveryRuntimeDiagnostics(
+            tsgs_seconds=0.11,
+            mhcr_seconds=0.22,
+            leiden_seconds=0.03,
+            total_seconds=0.40,
+        ),
         platforms=("weibo", "douyin", "xhs"),
         quality_flags=("sampling_applied",),
         artifact_manifest_ref="artifacts/manifest.json",
@@ -96,6 +103,12 @@ def test_discovered_cluster_batch_json_round_trip_is_deterministic(tmp_path: Pat
     assert payload["candidate_clusters"][0]["member_account_ids"] == ["account-a", "account-b"]
     assert payload["candidate_clusters"][0]["evidence_refs"] == ["evidence:1", "evidence:2"]
     assert payload["provenance"]["label_policy"] == "stage1_label_free"
+    assert payload["runtime_diagnostics"] == {
+        "tsgs_seconds": 0.11,
+        "mhcr_seconds": 0.22,
+        "leiden_seconds": 0.03,
+        "total_seconds": 0.4,
+    }
     assert payload["batch_fingerprint"].startswith("sha256:")
 
 
@@ -109,6 +122,7 @@ def test_contract_rejects_duplicate_cluster_ids():
             timestamp=batch.timestamp,
             candidate_clusters=(batch.candidate_clusters[0], batch.candidate_clusters[0]),
             provenance=batch.provenance,
+            runtime_diagnostics=batch.runtime_diagnostics,
         )
 
 
@@ -284,6 +298,7 @@ def test_contract_rejects_label_bearing_quality_flags(quality_flag: str):
             timestamp=batch.timestamp,
             candidate_clusters=batch.candidate_clusters,
             provenance=batch.provenance,
+            runtime_diagnostics=batch.runtime_diagnostics,
             platforms=batch.platforms,
             quality_flags=(quality_flag,),
             artifact_manifest_ref=batch.artifact_manifest_ref,
@@ -310,6 +325,7 @@ def test_contract_accepts_neutral_quality_flags():
         timestamp=batch.timestamp,
         candidate_clusters=batch.candidate_clusters,
         provenance=batch.provenance,
+        runtime_diagnostics=batch.runtime_diagnostics,
         platforms=batch.platforms,
         quality_flags=quality_flags,
         artifact_manifest_ref=batch.artifact_manifest_ref,
@@ -318,3 +334,53 @@ def test_contract_accepts_neutral_quality_flags():
     restored = stage1.DiscoveredClusterBatch.from_dict(accepted.to_dict())
 
     assert restored.quality_flags == tuple(sorted(quality_flags))
+
+
+def test_runtime_diagnostics_are_immutable_round_trip_values_excluded_from_identity():
+    stage1 = _load_stage1()
+    contracts_module = sys.modules[f"{stage1.__name__}.contracts"]
+    batch = _batch(stage1)
+    original_fingerprint = batch.batch_fingerprint
+    payload = batch.to_dict()
+
+    payload["runtime_diagnostics"] = {
+        "tsgs_seconds": 1.0,
+        "mhcr_seconds": 2.0,
+        "leiden_seconds": 3.0,
+        "total_seconds": 6.5,
+    }
+    restored = stage1.DiscoveredClusterBatch.from_dict(payload)
+
+    assert restored.runtime_diagnostics == contracts_module.DiscoveryRuntimeDiagnostics(
+        tsgs_seconds=1.0,
+        mhcr_seconds=2.0,
+        leiden_seconds=3.0,
+        total_seconds=6.5,
+    )
+    assert restored.batch_fingerprint == original_fingerprint
+    with pytest.raises(Exception) as frozen_error:
+        restored.runtime_diagnostics.total_seconds = 7.0
+    assert type(frozen_error.value).__name__ == "FrozenInstanceError"
+
+
+@pytest.mark.parametrize("value", [-1.0, math.nan, math.inf, True, "slow"])
+def test_runtime_diagnostics_reject_invalid_or_non_finite_seconds(value: object):
+    stage1 = _load_stage1()
+    payload = _batch(stage1).to_dict()
+    payload["runtime_diagnostics"]["mhcr_seconds"] = value
+
+    with pytest.raises(ValueError, match="mhcr_seconds"):
+        stage1.DiscoveredClusterBatch.from_dict(payload)
+
+
+def test_runtime_diagnostics_reject_missing_and_unknown_timing_fields():
+    stage1 = _load_stage1()
+    payload = _batch(stage1).to_dict()
+    del payload["runtime_diagnostics"]["leiden_seconds"]
+    with pytest.raises(ValueError, match="missing required fields"):
+        stage1.DiscoveredClusterBatch.from_dict(payload)
+
+    payload = _batch(stage1).to_dict()
+    payload["runtime_diagnostics"]["gpu_seconds"] = 1.0
+    with pytest.raises(ValueError, match="unknown fields"):
+        stage1.DiscoveredClusterBatch.from_dict(payload)

@@ -385,11 +385,53 @@ class DiscoveryProvenance:
 
 
 @dataclass(frozen=True, slots=True)
+class DiscoveryRuntimeDiagnostics:
+    tsgs_seconds: float
+    mhcr_seconds: float
+    leiden_seconds: float
+    total_seconds: float
+
+    _SCHEMA_FIELDS = frozenset(
+        {"tsgs_seconds", "mhcr_seconds", "leiden_seconds", "total_seconds"}
+    )
+
+    def __post_init__(self) -> None:
+        for field_name in self._SCHEMA_FIELDS:
+            object.__setattr__(
+                self,
+                field_name,
+                _non_negative(getattr(self, field_name), field_name),
+            )
+
+    def validate(self) -> None:
+        self.__post_init__()
+
+    def to_dict(self) -> dict[str, float]:
+        return {
+            "tsgs_seconds": self.tsgs_seconds,
+            "mhcr_seconds": self.mhcr_seconds,
+            "leiden_seconds": self.leiden_seconds,
+            "total_seconds": self.total_seconds,
+        }
+
+    @classmethod
+    def from_dict(cls, value: Mapping[str, Any]) -> "DiscoveryRuntimeDiagnostics":
+        value = _require_schema(value, "runtime_diagnostics", cls._SCHEMA_FIELDS)
+        return cls(
+            tsgs_seconds=value["tsgs_seconds"],
+            mhcr_seconds=value["mhcr_seconds"],
+            leiden_seconds=value["leiden_seconds"],
+            total_seconds=value["total_seconds"],
+        )
+
+
+@dataclass(frozen=True, slots=True)
 class DiscoveredClusterBatch:
     batch_id: str
     timestamp: str
     candidate_clusters: tuple[DiscoveredCluster, ...]
     provenance: DiscoveryProvenance
+    runtime_diagnostics: DiscoveryRuntimeDiagnostics
     platforms: tuple[str, ...] = ()
     quality_flags: tuple[str, ...] = ()
     artifact_manifest_ref: str | None = None
@@ -406,6 +448,7 @@ class DiscoveredClusterBatch:
             "timestamp",
             "candidate_clusters",
             "provenance",
+            "runtime_diagnostics",
             "platforms",
             "quality_flags",
             "artifact_manifest_ref",
@@ -436,18 +479,21 @@ class DiscoveredClusterBatch:
         if not isinstance(self.provenance, DiscoveryProvenance):
             raise ValueError("provenance must be a DiscoveryProvenance")
         self.provenance.validate()
+        if not isinstance(self.runtime_diagnostics, DiscoveryRuntimeDiagnostics):
+            raise ValueError("runtime_diagnostics must be a DiscoveryRuntimeDiagnostics")
+        self.runtime_diagnostics.validate()
         object.__setattr__(self, "platforms", _sorted_unique_text(self.platforms, "platforms"))
         object.__setattr__(self, "quality_flags", _neutral_quality_flags(self.quality_flags))
         object.__setattr__(self, "artifact_manifest_ref", _optional_text(self.artifact_manifest_ref, "artifact_manifest_ref"))
 
     @property
     def batch_fingerprint(self) -> str:
-        return f"sha256:{hashlib.sha256(_canonical_json(self._payload_without_fingerprint())).hexdigest()}"
+        return f"sha256:{hashlib.sha256(_canonical_json(self._identity_payload())).hexdigest()}"
 
     def validate(self) -> None:
         self.__post_init__()
 
-    def _payload_without_fingerprint(self) -> dict[str, Any]:
+    def _identity_payload(self) -> dict[str, Any]:
         return {
             "schema_version": self.schema_version,
             "stage": self.stage,
@@ -462,7 +508,8 @@ class DiscoveredClusterBatch:
         }
 
     def to_dict(self) -> dict[str, Any]:
-        payload = self._payload_without_fingerprint()
+        payload = self._identity_payload()
+        payload["runtime_diagnostics"] = self.runtime_diagnostics.to_dict()
         payload["batch_fingerprint"] = self.batch_fingerprint
         return payload
 
@@ -484,6 +531,7 @@ class DiscoveredClusterBatch:
             timestamp=value["timestamp"],
             candidate_clusters=tuple(DiscoveredCluster.from_dict(item) for item in value["candidate_clusters"]),
             provenance=DiscoveryProvenance.from_dict(value["provenance"]),
+            runtime_diagnostics=DiscoveryRuntimeDiagnostics.from_dict(value["runtime_diagnostics"]),
             platforms=value["platforms"],
             quality_flags=value["quality_flags"],
             artifact_manifest_ref=value["artifact_manifest_ref"],
@@ -513,5 +561,6 @@ __all__ = [
     "DiscoveredCluster",
     "DiscoveredClusterBatch",
     "DiscoveryProvenance",
+    "DiscoveryRuntimeDiagnostics",
     "STAGE1_LABEL_POLICY",
 ]

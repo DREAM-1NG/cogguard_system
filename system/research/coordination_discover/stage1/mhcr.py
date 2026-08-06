@@ -13,7 +13,7 @@ from torch import nn
 from torch.nn import functional as F
 
 from .contracts import STAGE1_LABEL_POLICY
-from .events import CoordinationEvent
+from .events import CoordinationEvent, validate_coordination_relation
 from .tsgs import TSGSResult
 
 
@@ -113,6 +113,7 @@ class MHCRConfig:
 class HyperedgeIncidence:
     account_id: str
     weight: float
+    temporal_position: float
 
 
 @dataclass(frozen=True, slots=True)
@@ -133,6 +134,8 @@ class ViewDiagnostics:
     source_hyperedge_count: int
     retained_hyperedge_count: int
     dropped_hyperedge_count: int
+    dropped_hyperedge_ids: tuple[str, ...]
+    content_signature: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -166,6 +169,8 @@ def _ordered_events(events: Iterable[CoordinationEvent]) -> tuple[CoordinationEv
     materialized = tuple(events)
     if not all(isinstance(event, CoordinationEvent) for event in materialized):
         raise ValueError("events must contain CoordinationEvent values")
+    for event in materialized:
+        validate_coordination_relation(event.relation)
     return tuple(
         sorted(
             materialized,
@@ -191,14 +196,20 @@ def _build_hyperedges(
     events: tuple[CoordinationEvent, ...],
     time_bucket_seconds: int,
 ) -> tuple[HyperedgeAudit, ...]:
-    incidence: defaultdict[tuple[str, str, int], defaultdict[str, float]] = defaultdict(
-        lambda: defaultdict(float)
+    incidence: defaultdict[
+        tuple[str, str, int], defaultdict[str, list[float]]
+    ] = defaultdict(
+        lambda: defaultdict(lambda: [0.0, 0.0])
     )
     for event in events:
         if event.weight <= 0.0:
             continue
-        bucket = math.floor(event.observed_at.timestamp() / time_bucket_seconds)
-        incidence[(event.relation, event.object_id, bucket)][event.account_id] += event.weight
+        timestamp = event.observed_at.timestamp()
+        bucket = math.floor(timestamp / time_bucket_seconds)
+        temporal_position = (timestamp - bucket * time_bucket_seconds) / time_bucket_seconds
+        account_values = incidence[(event.relation, event.object_id, bucket)][event.account_id]
+        account_values[0] += event.weight
+        account_values[1] += event.weight * temporal_position
 
     return tuple(
         HyperedgeAudit(
@@ -207,8 +218,12 @@ def _build_hyperedges(
             object_id=object_id,
             time_bucket=bucket,
             incidence=tuple(
-                HyperedgeIncidence(account_id=account_id, weight=float(weight))
-                for account_id, weight in sorted(members.items())
+                HyperedgeIncidence(
+                    account_id=account_id,
+                    weight=float(values[0]),
+                    temporal_position=float(values[1] / values[0]),
+                )
+                for account_id, values in sorted(members.items())
             ),
         )
         for (relation, object_id, bucket), members in sorted(incidence.items())
@@ -280,36 +295,174 @@ def _drop_hyperedges(
     hyperedges: tuple[HyperedgeAudit, ...],
     drop_rate: float,
     rng: np.random.Generator,
-) -> tuple[HyperedgeAudit, ...]:
+) -> tuple[tuple[HyperedgeAudit, ...], tuple[HyperedgeAudit, ...]]:
     if not hyperedges or drop_rate == 0.0:
-        return hyperedges
-    drop_count = min(len(hyperedges) - 1, int(round(len(hyperedges) * drop_rate)))
-    if drop_count <= 0:
-        return hyperedges
+        return hyperedges, ()
+    drop_count = min(
+        len(hyperedges) - 1,
+        max(1, math.ceil(len(hyperedges) * drop_rate)),
+    )
     ranks = rng.random(len(hyperedges))
     dropped = set(np.argsort(ranks, kind="stable")[:drop_count].tolist())
-    return tuple(edge for index, edge in enumerate(hyperedges) if index not in dropped)
+    return (
+        tuple(edge for index, edge in enumerate(hyperedges) if index not in dropped),
+        tuple(edge for index, edge in enumerate(hyperedges) if index in dropped),
+    )
 
 
-def _build_view(
+def _force_distinct_drop_mask(
+    hyperedges: tuple[HyperedgeAudit, ...],
+    retained: tuple[HyperedgeAudit, ...],
+    dropped: tuple[HyperedgeAudit, ...],
+    other_dropped_indices: tuple[int, ...],
+) -> tuple[tuple[HyperedgeAudit, ...], tuple[HyperedgeAudit, ...]]:
+    dropped_set = set(dropped)
+    dropped_indices = tuple(
+        index for index, edge in enumerate(hyperedges) if edge in dropped_set
+    )
+    if dropped_indices != other_dropped_indices:
+        return retained, dropped
+    for shift in range(1, len(hyperedges)):
+        shifted = tuple(
+            sorted((index + shift) % len(hyperedges) for index in dropped_indices)
+        )
+        if shifted != other_dropped_indices:
+            shifted_set = set(shifted)
+            return (
+                tuple(edge for index, edge in enumerate(hyperedges) if index not in shifted_set),
+                tuple(edge for index, edge in enumerate(hyperedges) if index in shifted_set),
+            )
+    return retained, dropped
+
+
+def _view_signature(hyperedges: tuple[HyperedgeAudit, ...]) -> str:
+    payload = "\n".join(
+        "|".join(
+            (
+                edge.hyperedge_id,
+                edge.relation,
+                edge.object_id,
+                str(edge.time_bucket),
+                ";".join(
+                    f"{item.account_id}:{item.weight:.17g}:{item.temporal_position:.17g}"
+                    for item in edge.incidence
+                ),
+            )
+        )
+        for edge in hyperedges
+    ).encode("utf-8")
+    return f"sha256:{hashlib.sha256(payload).hexdigest()}"
+
+
+def _view_diagnostics(
     name: str,
     seed: int,
-    events: tuple[CoordinationEvent, ...],
     config: MHCRConfig,
-) -> tuple[tuple[HyperedgeAudit, ...], ViewDiagnostics]:
-    rng = np.random.default_rng(seed)
-    jittered = _jitter_events(events, config.temporal_jitter_seconds, rng)
-    source = _build_hyperedges(jittered, config.time_bucket_seconds)
-    retained = _drop_hyperedges(source, config.hyperedge_drop_rate, rng)
-    return retained, ViewDiagnostics(
+    source: tuple[HyperedgeAudit, ...],
+    retained: tuple[HyperedgeAudit, ...],
+    dropped: tuple[HyperedgeAudit, ...],
+) -> ViewDiagnostics:
+    return ViewDiagnostics(
         name=name,
         seed=seed,
         temporal_jitter_seconds=config.temporal_jitter_seconds,
         hyperedge_drop_rate=config.hyperedge_drop_rate,
         source_hyperedge_count=len(source),
         retained_hyperedge_count=len(retained),
-        dropped_hyperedge_count=len(source) - len(retained),
+        dropped_hyperedge_count=len(dropped),
+        dropped_hyperedge_ids=tuple(sorted(edge.hyperedge_id for edge in dropped)),
+        content_signature=_view_signature(retained),
     )
+
+
+def _build_two_views(
+    events: Iterable[CoordinationEvent],
+    config: MHCRConfig,
+) -> tuple[
+    tuple[HyperedgeAudit, ...],
+    tuple[HyperedgeAudit, ...],
+    tuple[ViewDiagnostics, ViewDiagnostics],
+]:
+    ordered_events = _ordered_events(events)
+    seeds = (config.seed ^ 0x4D484352, config.seed ^ 0x56494557)
+    sources = []
+    retained_views = []
+    dropped_views = []
+    for seed in seeds:
+        jitter_rng = np.random.default_rng(seed)
+        jittered = _jitter_events(
+            ordered_events, config.temporal_jitter_seconds, jitter_rng
+        )
+        source = _build_hyperedges(jittered, config.time_bucket_seconds)
+        retained, dropped = _drop_hyperedges(
+            source,
+            config.hyperedge_drop_rate,
+            np.random.default_rng(seed ^ 0x44524F50),
+        )
+        sources.append(source)
+        retained_views.append(retained)
+        dropped_views.append(dropped)
+
+    if (
+        config.temporal_jitter_seconds > 0
+        and config.hyperedge_drop_rate == 0.0
+        and len(sources[0]) >= 2
+        and len(sources[1]) >= 2
+        and _view_signature(retained_views[0]) == _view_signature(retained_views[1])
+    ):
+        for direction in (1, -1):
+            forced_events = tuple(
+                CoordinationEvent(
+                    account_id=event.account_id,
+                    relation=event.relation,
+                    object_id=event.object_id,
+                    observed_at=event.observed_at
+                    + timedelta(
+                        seconds=(
+                            direction * config.temporal_jitter_seconds
+                            if index % 2 == 0
+                            else -direction * config.temporal_jitter_seconds
+                        )
+                    ),
+                    weight=event.weight,
+                    evidence_ref=event.evidence_ref,
+                )
+                for index, event in enumerate(ordered_events)
+            )
+            forced_source = _build_hyperedges(
+                forced_events, config.time_bucket_seconds
+            )
+            if _view_signature(forced_source) != _view_signature(retained_views[0]):
+                sources[1] = forced_source
+                retained_views[1] = forced_source
+                dropped_views[1] = ()
+                break
+
+    if (
+        config.hyperedge_drop_rate > 0.0
+        and len(sources[0]) >= 2
+        and len(sources[1]) >= 2
+        and len(sources[0]) == len(sources[1])
+    ):
+        first_dropped_set = set(dropped_views[0])
+        first_indices = tuple(
+            index
+            for index, edge in enumerate(sources[0])
+            if edge in first_dropped_set
+        )
+        retained_views[1], dropped_views[1] = _force_distinct_drop_mask(
+            sources[1], retained_views[1], dropped_views[1], first_indices
+        )
+
+    diagnostics = (
+        _view_diagnostics(
+            "view_a", seeds[0], config, sources[0], retained_views[0], dropped_views[0]
+        ),
+        _view_diagnostics(
+            "view_b", seeds[1], config, sources[1], retained_views[1], dropped_views[1]
+        ),
+    )
+    return retained_views[0], retained_views[1], diagnostics
 
 
 def _candidate_adjacency(tsgs_result: TSGSResult) -> torch.Tensor:
@@ -363,7 +516,9 @@ class _RelationAwareHypergraphEncoder(nn.Module):
             for item in edge.incidence:
                 index = node_index.get(item.account_id)
                 if index is not None:
-                    incidence[index, 0] = float(item.weight)
+                    incidence[index, 0] = float(
+                        item.weight * (1.0 + item.temporal_position)
+                    )
             hyperedge_degree = incidence.sum().clamp_min(1.0)
             hyperedge_state = (incidence.transpose(0, 1) @ state) / hyperedge_degree
             transformed = self.relation_transforms[
@@ -419,15 +574,8 @@ class MHCREncoder:
             ordered_events, account_ids, self.config.time_bucket_seconds
         )
         candidate_adjacency = _candidate_adjacency(tsgs_result)
-        view_seeds = (
-            self.config.seed ^ 0x4D484352,
-            self.config.seed ^ 0x56494557,
-        )
-        first_view, first_diagnostics = _build_view(
-            "view_a", view_seeds[0], ordered_events, self.config
-        )
-        second_view, second_diagnostics = _build_view(
-            "view_b", view_seeds[1], ordered_events, self.config
+        first_view, second_view, view_diagnostics = _build_two_views(
+            ordered_events, self.config
         )
 
         losses: list[float] = []
@@ -482,7 +630,7 @@ class MHCREncoder:
             objective=MHCR_OBJECTIVE,
             augmentations=AUGMENTATIONS,
             view_count=2,
-            views=(first_diagnostics, second_diagnostics),
+            views=view_diagnostics,
             epoch_infonce_losses=tuple(losses),
             final_infonce_loss=losses[-1],
             relation_transform_count=len(relation_names),

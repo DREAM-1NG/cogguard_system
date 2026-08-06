@@ -3,6 +3,7 @@ from __future__ import annotations
 import dataclasses
 import importlib.util
 import json
+import math
 import sys
 import types
 from datetime import datetime, timedelta, timezone
@@ -239,10 +240,31 @@ def test_discovery_engine_returns_stable_evidence_backed_batch_without_verdict_f
     second = engine.discover(reversed(events), _provenance(contracts_module))
 
     assert isinstance(first, contracts_module.DiscoveredClusterBatch)
-    assert first.to_dict() == second.to_dict()
+    assert first.batch_id == second.batch_id
+    assert first.batch_fingerprint == second.batch_fingerprint
+    assert first.candidate_clusters == second.candidate_clusters
+    assert first.provenance == second.provenance
+    assert first.platforms == second.platforms
+    assert first.quality_flags == second.quality_flags
+    assert first.artifact_manifest_ref == second.artifact_manifest_ref
     assert first.batch_id.startswith("discovery-")
     assert first.timestamp == "2026-08-07T00:10:00Z"
     assert first.provenance.label_policy == "stage1_label_free"
+    assert set(first.runtime_diagnostics.to_dict()) == {
+        "tsgs_seconds",
+        "mhcr_seconds",
+        "leiden_seconds",
+        "total_seconds",
+    }
+    assert all(
+        math.isfinite(value) and value >= 0.0
+        for value in first.runtime_diagnostics.to_dict().values()
+    )
+    assert first.runtime_diagnostics.total_seconds >= max(
+        first.runtime_diagnostics.tsgs_seconds,
+        first.runtime_diagnostics.mhcr_seconds,
+        first.runtime_diagnostics.leiden_seconds,
+    )
     assert first.candidate_clusters
     assert all(cluster.cluster_id.startswith("cluster-") for cluster in first.candidate_clusters)
     assert all(cluster.evidence_refs for cluster in first.candidate_clusters)
@@ -265,34 +287,18 @@ def test_discovery_engine_returns_stable_evidence_backed_batch_without_verdict_f
     assert json.loads(output.read_text(encoding="utf-8")) == payload
 
 
-def test_external_label_maps_with_opposite_values_cannot_change_discovery(
-    monkeypatch: pytest.MonkeyPatch,
-):
+def test_engine_revalidates_relation_semantics_before_discovery():
     contracts_module, events_module, tsgs_module, mhcr_module, clustering_module, engine_module = (
         _load_stage1_modules()
     )
     events = _events(events_module)
     config = _config(tsgs_module, mhcr_module, clustering_module, engine_module)
-    labels = {f"account-{letter}": index % 2 for index, letter in enumerate("abcdef")}
+    object.__setattr__(events[0], "relation", "stance")
 
-    monkeypatch.setattr(engine_module, "EXTERNAL_LABEL_MAP", labels, raising=False)
-    first = engine_module.CoordinationDiscoveryEngine(config).discover(
-        events, _provenance(contracts_module)
-    )
-    monkeypatch.setattr(
-        engine_module,
-        "EXTERNAL_LABEL_MAP",
-        {account_id: 1 - value for account_id, value in labels.items()},
-        raising=False,
-    )
-    second = engine_module.CoordinationDiscoveryEngine(config).discover(
-        events, _provenance(contracts_module)
-    )
-
-    assert first.to_dict() == second.to_dict()
-    assert list(inspect_parameter for inspect_parameter in __import__("inspect").signature(
-        engine_module.CoordinationDiscoveryEngine.discover
-    ).parameters) == ["self", "events", "provenance"]
+    with pytest.raises(ValueError, match="canonical label-free relation"):
+        engine_module.CoordinationDiscoveryEngine(config).discover(
+            events, _provenance(contracts_module)
+        )
 
 
 def test_engine_empty_snapshot_returns_stable_empty_batch():
