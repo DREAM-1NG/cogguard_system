@@ -235,7 +235,6 @@ def test_time_methods_are_blocked_while_compact_static_discovery_methods_are_rea
         ready = [row for row in matrix.rows if row.status == "ready"]
         assert ready
         assert {row.method_id for row in ready} == {
-            module.HEURISTIC_BASELINE_ID,
             "tsgs_mhcr_compact",
             "edgebank",
             "dense_cosine_leiden",
@@ -244,6 +243,13 @@ def test_time_methods_are_blocked_while_compact_static_discovery_methods_are_rea
             "no_relation_specific",
         }
         assert {row.split_policy for row in ready} == {"official_fold"}
+        detection_rows = [row for row in matrix.rows if row.stage == "detection"]
+        assert detection_rows and all(row.status == "blocked" for row in detection_rows)
+        official_detection_rows = [
+            row for row in detection_rows if row.split_policy == "official_fold"
+        ]
+        assert official_detection_rows
+        assert all("harmful_cib_detection" in row.reason for row in official_detection_rows)
     finally:
         shutil.rmtree(output, ignore_errors=True)
 

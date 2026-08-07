@@ -10,7 +10,7 @@ from types import MappingProxyType
 from typing import Any, Mapping
 
 from .baselines import default_baseline_registry
-from .compact_discovery_methods import default_compact_discovery_registry
+from .iohunter import iohunter_capability
 from .iohunter_compact import (
     CompactIOHunterMemoryBudgetExceeded,
     compact_fold_fingerprint,
@@ -415,7 +415,7 @@ def _build_campaign_rows(
         )
 
     registry = default_baseline_registry()
-    compact_registry = default_compact_discovery_registry()
+    capability = iohunter_capability()
     rows: list[IOHunterPreflightRow] = []
     for seed, fold in zip(IOHUNTER_OFFICIAL_SEEDS, compact.evaluator.official_folds, strict=True):
         fingerprints = {
@@ -424,10 +424,8 @@ def _build_campaign_rows(
             "fold": compact_fold_fingerprint(fold),
         }
         for spec in registry.specs():
-            if spec.method_id in compact_registry.method_ids():
-                unavailable = compact_registry.implementation(spec.method_id).unavailable_reason
-            else:
-                unavailable = registry.implementation(spec.method_id).unavailable_reason
+            resolution = registry.resolve(spec.method_id, capability=capability)
+            unavailable = resolution.reason if resolution.status == "blocked" else None
             for split_policy in ("official_fold", "observed_time_holdout"):
                 reason = _blocked_reason(spec.method_id, split_policy, unavailable)
                 status = "blocked" if reason else "ready"

@@ -428,6 +428,50 @@ class LearnedCoordinationDetector:
             case_ids=ids,
         )
 
+    def predict_inference_cases(self, cases: Sequence[Any]) -> ClusterDetectionBatch:
+        """Predict unlabeled inference cases without constructing training rows."""
+        rows = tuple(cases)
+        if not rows:
+            raise ValueError("label-free inference cases must not be empty")
+        case_ids: list[str] = []
+        cluster_ids: list[str] = []
+        feature_values: list[tuple[float, ...]] = []
+        for case in rows:
+            if isinstance(case, DetectionTrainingCase) or hasattr(case, "label"):
+                raise ValueError("label-free inference cases must not expose a label")
+            try:
+                case_id = case.case_id
+                cluster_id = case.cluster_id
+                schema_version = case.feature_schema_version
+                schema_fingerprint = case.feature_schema_fingerprint
+                feature_names = case.feature_names
+                values = tuple(float(value) for value in case.feature_values)
+            except (AttributeError, TypeError, ValueError) as exc:
+                raise ValueError("label-free inference case is malformed") from exc
+            if schema_version != self.schema.version or schema_fingerprint != self.schema.fingerprint:
+                raise ValueError("inference case feature schema does not match detector schema")
+            if tuple(feature_names) != self.schema.names:
+                raise ValueError("inference case features do not match detector schema order")
+            if len(values) != len(self.schema.names) or not np.all(np.isfinite(values)):
+                raise ValueError("label-free inference features must be finite and match schema")
+            case_ids.append(case_id)
+            cluster_ids.append(cluster_id)
+            feature_values.append(values)
+        if len(case_ids) != len(set(case_ids)):
+            raise ValueError("label-free inference case IDs must be unique")
+        if len(cluster_ids) != len(set(cluster_ids)):
+            raise ValueError("label-free inference cluster IDs must be unique")
+        matrix = np.asarray(feature_values, dtype=np.float64)
+        if matrix.ndim != 2:
+            raise ValueError("label-free inference features must form a rectangular matrix")
+        return self._predict_vectors(
+            cluster_ids,
+            matrix,
+            source_batch_id="label-free-inference",
+            source_batch_fingerprint=case_id_fingerprint(case_ids),
+            case_ids=case_ids,
+        )
+
     def predict(self, batch: Any, detection_features: dict[str, dict[str, float]]) -> ClusterDetectionBatch:
         rows = build_detection_feature_rows(batch, self.schema, detection_features)
         cluster_ids = [cluster.cluster_id for cluster in batch.candidate_clusters]

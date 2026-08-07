@@ -242,6 +242,143 @@ def _detection_fixture(package):
     return train, validation, test, artifact
 
 
+def _learned_adapter_fixture(package):
+    contracts = importlib.import_module("research.coordination_detect.contracts")
+    features = importlib.import_module("research.coordination_detect.features")
+    schema = contracts.DetectionFeatureSchema(
+        version="learned-adapter-fixture/v1",
+        names=features.STAGE1_FEATURE_NAMES + ("detection_signal", "detection_context"),
+    )
+
+    def case(case_id, split, label, signal):
+        values = (float(signal),) * len(schema.names)
+        return contracts.DetectionTrainingCase(
+            case_id=case_id,
+            cluster_id=f"cluster-{case_id}",
+            split=split,
+            label=label,
+            feature_schema_version=schema.version,
+            feature_schema_fingerprint=schema.fingerprint,
+            feature_names=schema.names,
+            feature_values=values,
+        )
+
+    train = tuple(case(f"train-{i}", "train", int(i >= 2), -2.0 + i * 1.5) for i in range(4))
+    validation = tuple(
+        case(f"val-{i}", "validation", int(i >= 2), -1.5 + i * 1.0) for i in range(4)
+    )
+    test = tuple(case(f"test-{i}", "test", int(i == 1), -0.5 + i) for i in range(2))
+    return train, validation, test, schema
+
+
+def test_learned_stage2_adapters_fit_projected_artifacts_and_cover_only_unlabeled_test_cases():
+    package, _, baselines, runner = _modules()
+    train, validation, test, schema = _learned_adapter_fixture(package)
+    inference = tuple(runner.DetectionInferenceCase.from_training_case(case) for case in test)
+    partitions = runner.DetectionPartitions(train, validation, inference)
+    registry = baselines.default_baseline_registry()
+    expected_names = {
+        "coordination_only_logistic": tuple(
+            importlib.import_module("research.coordination_detect.features").STAGE1_FEATURE_NAMES
+        ),
+        "detection_features_only_classifier": ("detection_signal", "detection_context"),
+        "learned_fused_detector": schema.names,
+    }
+
+    for method_id, feature_names in expected_names.items():
+        assert registry.resolve(method_id, capability=_capability(package)).status == "ready"
+        output = registry.implementation(method_id).execute(partitions)
+        assert output.model_artifact is not None
+        assert output.model_artifact.feature_schema.names == feature_names
+        assert {prediction.case_id for prediction in output.predictions} == {
+            case.case_id for case in inference
+        }
+        assert all(not hasattr(case, "label") for case in inference)
+        assert "test_labels" not in output.model_artifact.to_dict()
+
+
+def test_learned_stage2_adapter_fails_closed_when_required_feature_group_is_empty():
+    package, _, baselines, _ = _modules()
+    contracts = importlib.import_module("research.coordination_detect.contracts")
+    runner = importlib.import_module("research.coordination_experiments.runner")
+
+    def partitions_for(schema):
+        cases = tuple(
+            contracts.DetectionTrainingCase(
+                case_id=f"{split}-{i}",
+                cluster_id=f"cluster-{split}-{i}",
+                split=split,
+                label=i % 2,
+                feature_schema_version=schema.version,
+                feature_schema_fingerprint=schema.fingerprint,
+                feature_names=schema.names,
+                feature_values=(float(i),) * len(schema.names),
+            )
+            for split in ("train", "validation", "test")
+            for i in range(2)
+        )
+        return runner.DetectionPartitions(
+            cases[:2], cases[2:4],
+            tuple(runner.DetectionInferenceCase.from_training_case(case) for case in cases[4:]),
+        )
+
+    no_coordination = partitions_for(
+        contracts.DetectionFeatureSchema(version="detection-only/v1", names=("score",))
+    )
+    stage1_names = importlib.import_module("research.coordination_detect.features").STAGE1_FEATURE_NAMES
+    no_detection = partitions_for(
+        contracts.DetectionFeatureSchema(version="stage1-only/v1", names=stage1_names)
+    )
+    with pytest.raises(ValueError, match="Stage 1 feature group"):
+        baselines.default_baseline_registry().implementation("coordination_only_logistic").execute(
+            no_coordination
+        )
+    with pytest.raises(ValueError, match="detection feature group"):
+        baselines.default_baseline_registry().implementation("detection_features_only_classifier").execute(
+            no_detection
+        )
+
+
+def test_coordination_only_adapter_accepts_an_explicit_partial_stage1_schema():
+    package, _, baselines, runner = _modules()
+    contracts = importlib.import_module("research.coordination_detect.contracts")
+    schema = contracts.DetectionFeatureSchema(
+        version="partial-stage1/v1",
+        names=("tsgs_density", "mhcr_coherence", "detection_signal"),
+    )
+
+    def case(case_id, split, label, value):
+        return contracts.DetectionTrainingCase(
+            case_id=case_id,
+            cluster_id=f"cluster-{case_id}",
+            split=split,
+            label=label,
+            feature_schema_version=schema.version,
+            feature_schema_fingerprint=schema.fingerprint,
+            feature_names=schema.names,
+            feature_values=(value, value / 2.0, value * 2.0),
+        )
+
+    train = tuple(case(f"train-{i}", "train", int(i >= 2), float(i - 2)) for i in range(4))
+    validation = tuple(
+        case(f"validation-{i}", "validation", int(i >= 2), float(i - 2))
+        for i in range(4)
+    )
+    test = tuple(case(f"test-{i}", "test", int(i == 1), float(i - 1)) for i in range(2))
+    partitions = runner.DetectionPartitions(
+        train,
+        validation,
+        tuple(runner.DetectionInferenceCase.from_training_case(row) for row in test),
+    )
+
+    output = baselines.default_baseline_registry().implementation(
+        "coordination_only_logistic"
+    ).execute(partitions)
+
+    assert output.model_artifact is not None
+    assert output.model_artifact.feature_schema.names == ("tsgs_density", "mhcr_coherence")
+
+
 def test_metric_suite_covers_discovery_detection_and_cross_seed_stability():
     _, metrics, _, _ = _modules()
 

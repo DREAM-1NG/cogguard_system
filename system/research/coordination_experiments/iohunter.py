@@ -310,13 +310,16 @@ def iohunter_capability() -> DatasetCapability:
         supports_campaign_holdout=True,
         supports_time_holdout=False,
         supports_social_bot_classification=False,
-        supports_harmful_cib_detection=True,
+        supports_harmful_cib_detection=False,
         supports_campaign_io_evaluation=True,
         blocked_reasons={
             "observed_time_holdout": "processed graphs lack observed event timestamps",
             "social_bot_classification": "IOHunter labels information-operation accounts, not social bots",
+            "harmful_cib_detection": (
+                "IOHunter account-recovery labels do not establish harmful coordinated behavior"
+            ),
         },
-        claim_markers=("offline_research_input",),
+        claim_markers=("not_harmful_cib_claim", "offline_research_input"),
     )
 
 

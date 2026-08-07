@@ -437,12 +437,23 @@ def default_baseline_registry() -> BaselineRegistry:
     from .compact_discovery_methods import default_compact_discovery_registry
 
     compact_registry = default_compact_discovery_registry()
+    from .detection_methods import LearnedDetectionImplementation as ConcreteLearnedDetection
+
     entries = []
     for spec in specs:
         if spec.method_id in compact_registry.method_ids():
             implementation = compact_registry.implementation(spec.method_id)
         elif spec.method_id == HEURISTIC_BASELINE_ID:
             implementation = HeuristicDetectionImplementation()
+        elif spec.method_id in {
+            "coordination_only_logistic",
+            "detection_features_only_classifier",
+            "learned_fused_detector",
+        }:
+            implementation = ConcreteLearnedDetection(
+                method_id=spec.method_id,
+                implementation_id=spec.implementation_id,
+            )
         elif spec.stage == "discovery":
             implementation = _UnavailableDiscoveryImplementation(
                 spec.method_id,

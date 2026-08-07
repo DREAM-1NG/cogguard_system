@@ -364,6 +364,33 @@ def test_row_prediction_identity_binds_ordered_ids_schema_and_exact_features(sta
     assert first.batch_id != second.batch_id
 
 
+def test_label_free_inference_validates_identity_and_binds_ordered_case_ids(stage2, schema):
+    detector, _, _, _ = _fit_fixture(stage2, schema)
+    inference = types.SimpleNamespace(
+        case_id="inference-1",
+        cluster_id="cluster-inference-1",
+        feature_schema_version=schema.version,
+        feature_schema_fingerprint=schema.fingerprint,
+        feature_names=schema.names,
+        feature_values=(0.0, 0.5),
+    )
+
+    first = detector.predict_inference_cases((inference,))
+    changed = types.SimpleNamespace(
+        case_id=inference.case_id,
+        cluster_id=inference.cluster_id,
+        feature_schema_version=inference.feature_schema_version,
+        feature_schema_fingerprint=inference.feature_schema_fingerprint,
+        feature_names=inference.feature_names,
+        feature_values=(0.25, 0.5),
+    )
+    second = detector.predict_inference_cases((changed,))
+
+    assert first.prediction_input_fingerprint != second.prediction_input_fingerprint
+    with pytest.raises(ValueError, match="label-free inference"):
+        detector.predict_inference_cases((_case(stage2, schema, "labeled", "validation", 0, (0.0, 0.5)),))
+
+
 def test_stage1_prediction_identity_binds_caller_features_and_canonicalizes_mapping_order(stage2):
     detector, _, _ = _fit_single_feature_fixture(stage2)
     batch = _stage1_batch(cluster_count=2)
