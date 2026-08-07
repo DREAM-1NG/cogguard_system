@@ -167,12 +167,12 @@ def _prediction(package, assignments=(0, 0, 1, 1, 2, 2), scores=(0.1, 0.8, 0.9, 
     )
 
 
-def _execution_input(package, *, view=None):
+def _execution_input(package, *, view=None, method_config=None):
     return package.CompactDiscoveryExecutionInput(
         discovery_view=view or _discovery_view(package),
         seed=42,
         method_config_version="fixture-compact-v1",
-        method_config={"alpha": 0.25, "layers": ["coRT"]},
+        method_config=method_config or {"alpha": 0.25, "layers": ["coRT"]},
     )
 
 
@@ -200,6 +200,20 @@ def test_execution_input_fingerprint_excludes_evaluator_labels_folds_fused_and_r
     assert first.fingerprint == second.fingerprint
     assert not hasattr(first, "evaluator")
     assert not hasattr(first, "events")
+
+
+@pytest.mark.parametrize(
+    "method_config",
+    (
+        {"raw_path": "G:\\data\\iohunter.pkl"},
+        {"sha256": _sha("a")},
+        {"nested": {"source_checksum": _sha("b")}},
+    ),
+)
+def test_execution_input_rejects_raw_provenance_aliases(method_config):
+    package = _load_experiments()
+    with pytest.raises(ValueError, match="evaluator-only key"):
+        _execution_input(package, method_config=method_config)
 
 
 def test_execution_resolves_compact_implementation_without_evaluator_or_coordination_events():
@@ -257,7 +271,7 @@ def test_execution_rejects_prediction_from_a_different_discovery_campaign():
     assert "campaign" in outcome.reason
 
 
-def test_evaluator_access_occurs_only_after_implementation_returns():
+def test_evaluator_access_occurs_only_after_implementation_returns(monkeypatch):
     package = _load_experiments()
     log = []
     evaluator = _evaluator(package)
@@ -265,6 +279,17 @@ def test_evaluator_access_occurs_only_after_implementation_returns():
         evaluator=evaluator,
         fold=evaluator.official_folds[0],
         evaluation_config={"threshold_objective": "macro_f1"},
+    )
+    original_labels = package.CompactIOHunterEvaluator.account_labels
+
+    def observed_labels(instance):
+        log.append("labels")
+        return original_labels.__get__(instance, type(instance))
+
+    monkeypatch.setattr(
+        package.CompactIOHunterEvaluator,
+        "account_labels",
+        property(observed_labels),
     )
     log.clear()
 
@@ -286,7 +311,7 @@ def test_evaluator_access_occurs_only_after_implementation_returns():
     log.append("before-evaluation")
     result = package.evaluate_iohunter_external_account_recovery(outcome.prediction, evaluation)
 
-    assert log == ["implementation", "before-evaluation"]
+    assert log == ["implementation", "before-evaluation", "labels"]
     assert result.status == "success"
     assert result.audit["evaluation_after_execution"] is True
 
@@ -316,6 +341,27 @@ def test_prediction_arrays_are_immutable_sorted_finite_bounded_and_cluster_compl
             method_version="fixture-compact-v1",
             implementation_id="fixture-implementation-v1",
         )
+
+
+def test_prediction_detaches_from_caller_owned_array_storage():
+    package = _load_experiments()
+    endpoints = _ro([(0, 1)], np.dtype("<u2"))
+    prediction = package.CompactDiscoveryPrediction(
+        account_count=6,
+        candidate_endpoints=endpoints,
+        edge_scores=_ro([0.5], np.dtype("<f4")),
+        account_scores=_ro([0.1] * 6, np.dtype("<f4")),
+        cluster_assignments=_ro([0, 0, 1, 1, 2, 2], np.dtype("<i4")),
+        discovered_cluster_batch=_batch(package),
+        method_id="fixture_compact",
+        method_version="fixture-compact-v1",
+        implementation_id="fixture-implementation-v1",
+    )
+    endpoints.setflags(write=True)
+    endpoints[0, 0] = 4
+    assert prediction.candidate_endpoints.tolist() == [[0, 1]]
+    with pytest.raises(ValueError):
+        prediction.candidate_endpoints.setflags(write=True)
     with pytest.raises(ValueError, match="cover every account"):
         _prediction(package, assignments=(0, 0, 1, 1, 2))
     with pytest.raises(ValueError, match="batch member universe"):
@@ -360,6 +406,10 @@ def test_external_evaluation_validates_campaign_and_uses_validation_threshold_on
     assert "iohunter_no_ground_truth_communities" in result.claim_markers
     assert "iohunter_no_causal_campaign_labels" in result.claim_markers
     assert all(name.startswith(("external_account_", "topology_proxy_")) for name in result.metrics)
+    assert result.execution_artifact_identity == prediction.artifact_identity
+    assert result.fold_fingerprint == package.compact_fold_fingerprint(evaluator.official_folds[0])
+    assert result.to_dict()["execution_artifact_identity"] == prediction.artifact_identity
+    assert result.to_dict()["fold_fingerprint"] == result.fold_fingerprint
     banned = ("edge_auprc", "true_community", "harmful_cib", "causal_coordination")
     assert not any(token in json.dumps(result.to_dict(), sort_keys=True).lower() for token in banned)
 
@@ -375,8 +425,9 @@ def test_external_evaluation_validates_campaign_and_uses_validation_threshold_on
 def test_external_evaluation_blocks_one_class_validation_or_test_partitions():
     package = _load_experiments()
     one_class_validation = _evaluator(package, labels=(0, 0, 0, 1, 0, 1))
+    validation_prediction = _prediction(package)
     validation_result = package.evaluate_iohunter_external_account_recovery(
-        _prediction(package),
+        validation_prediction,
         package.IOHunterExternalEvaluationInput(
             evaluator=one_class_validation,
             fold=one_class_validation.official_folds[0],
@@ -385,11 +436,16 @@ def test_external_evaluation_blocks_one_class_validation_or_test_partitions():
     )
     assert validation_result.status == "blocked"
     assert "validation partition has one class" in validation_result.reason
+    assert validation_result.execution_artifact_identity == validation_prediction.artifact_identity
+    assert validation_result.fold_fingerprint == package.compact_fold_fingerprint(
+        one_class_validation.official_folds[0]
+    )
 
     fold = _fold(package, validation=(0, 1), test=(2, 4))
     one_class_test = _evaluator(package, labels=(0, 1, 1, 0, 1, 0), fold=fold)
+    test_prediction = _prediction(package)
     test_result = package.evaluate_iohunter_external_account_recovery(
-        _prediction(package),
+        test_prediction,
         package.IOHunterExternalEvaluationInput(
             evaluator=one_class_test,
             fold=one_class_test.official_folds[0],
@@ -398,6 +454,8 @@ def test_external_evaluation_blocks_one_class_validation_or_test_partitions():
     )
     assert test_result.status == "blocked"
     assert "test partition has one class" in test_result.reason
+    assert test_result.execution_artifact_identity == test_prediction.artifact_identity
+    assert test_result.fold_fingerprint == package.compact_fold_fingerprint(one_class_test.official_folds[0])
 
 
 def test_external_evaluation_requires_the_exact_owned_fold_partitions():

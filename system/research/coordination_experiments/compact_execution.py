@@ -17,6 +17,7 @@ from .iohunter_compact import (
     CompactIOHunterDiscoveryView,
     CompactIOHunterEvaluator,
     CompactIOHunterFold,
+    compact_fold_fingerprint,
 )
 from .metrics import average_precision, roc_auc
 
@@ -32,6 +33,10 @@ _FORBIDDEN_TOKENS = (
     "harmful",
     "verdict",
     "account_risk",
+    "raw",
+    "path",
+    "sha",
+    "checksum",
 )
 _ACCOUNT_PREFIX = "account-"
 _EVALUATION_SCOPE = "external_account_recovery_not_coordination_ground_truth"
@@ -58,11 +63,20 @@ def _fingerprint(value: Any) -> str:
     return "sha256:" + hashlib.sha256(_canonical_json(value)).hexdigest()
 
 
-def _read_only_array(value: Any, *, dtype: np.dtype, shape: tuple[int, ...], field_name: str) -> np.ndarray:
+def _detached_read_only_array(
+    value: Any,
+    *,
+    dtype: np.dtype,
+    shape: tuple[int, ...],
+    field_name: str,
+) -> np.ndarray:
     array = np.asarray(value)
     if array.dtype != dtype or array.shape != shape or array.flags.writeable:
         raise ValueError(f"{field_name} must be a read-only {dtype} array with shape {shape}")
-    return array
+    detached = np.frombuffer(array.tobytes(order="C"), dtype=dtype).reshape(shape)
+    if detached.flags.writeable:
+        raise RuntimeError(f"{field_name} immutable backing was not established")
+    return detached
 
 
 def _immutable_mapping(value: Mapping[str, Any], field_name: str) -> Mapping[str, Any]:
@@ -182,10 +196,11 @@ class CompactDiscoveryPrediction:
     def __post_init__(self) -> None:
         if isinstance(self.account_count, bool) or not isinstance(self.account_count, int) or self.account_count <= 0:
             raise ValueError("account_count must be a positive integer")
-        endpoints = _read_only_array(
+        raw_endpoints = np.asarray(self.candidate_endpoints)
+        endpoints = _detached_read_only_array(
             self.candidate_endpoints,
-            dtype=self.candidate_endpoints.dtype,
-            shape=(self.candidate_endpoints.shape[0], 2),
+            dtype=raw_endpoints.dtype,
+            shape=(raw_endpoints.shape[0], 2),
             field_name="candidate_endpoints",
         )
         if endpoints.dtype not in {np.dtype("<u2"), np.dtype("<u4")}:
@@ -203,17 +218,19 @@ class CompactDiscoveryPrediction:
                 )
                 if not bool(np.all(ordered)):
                     raise ValueError("candidate endpoints must be sorted without duplicate pairs")
-        scores = _read_only_array(
+        raw_scores = np.asarray(self.edge_scores)
+        scores = _detached_read_only_array(
             self.edge_scores,
-            dtype=self.edge_scores.dtype,
+            dtype=raw_scores.dtype,
             shape=(len(endpoints),),
             field_name="edge_scores",
         )
         if scores.dtype != np.dtype("<f4") or not bool(np.all(np.isfinite(scores))) or bool(np.any(scores < 0.0)):
             raise ValueError("edge_scores must be finite non-negative compact float32 values")
-        account_scores = _read_only_array(
+        raw_account_scores = np.asarray(self.account_scores)
+        account_scores = _detached_read_only_array(
             self.account_scores,
-            dtype=self.account_scores.dtype,
+            dtype=raw_account_scores.dtype,
             shape=(self.account_count,),
             field_name="account_scores",
         )
@@ -222,9 +239,9 @@ class CompactDiscoveryPrediction:
         raw_assignments = np.asarray(self.cluster_assignments)
         if raw_assignments.shape != (self.account_count,):
             raise ValueError("cluster_assignments must cover every account exactly once")
-        assignments = _read_only_array(
+        assignments = _detached_read_only_array(
             self.cluster_assignments,
-            dtype=self.cluster_assignments.dtype,
+            dtype=raw_assignments.dtype,
             shape=(self.account_count,),
             field_name="cluster_assignments",
         )
@@ -252,6 +269,10 @@ class CompactDiscoveryPrediction:
             raise ValueError("cluster assignments do not agree with the batch member universe")
         for field_name in ("method_id", "method_version", "implementation_id"):
             object.__setattr__(self, field_name, _text(getattr(self, field_name), field_name))
+        object.__setattr__(self, "candidate_endpoints", endpoints)
+        object.__setattr__(self, "edge_scores", scores)
+        object.__setattr__(self, "account_scores", account_scores)
+        object.__setattr__(self, "cluster_assignments", assignments)
         object.__setattr__(self, "diagnostics", _immutable_mapping(self.diagnostics or {}, "diagnostics"))
         markers = tuple(sorted({_text(value, "claim_marker") for value in self.claim_markers}))
         object.__setattr__(self, "claim_markers", markers)
@@ -432,8 +453,10 @@ class IOHunterExternalEvaluationResult:
     label_semantics: str
     claim_markers: tuple[str, ...]
     audit: Mapping[str, Any]
+    execution_artifact_identity: str
     evaluator_fingerprint: str
     fold_id: str
+    fold_fingerprint: str
     reason: str | None = None
 
     def __post_init__(self) -> None:
@@ -441,6 +464,14 @@ class IOHunterExternalEvaluationResult:
             raise ValueError("status must be success, blocked, or failed")
         object.__setattr__(self, "metrics", _immutable_mapping(self.metrics, "metrics"))
         object.__setattr__(self, "audit", _immutable_mapping(self.audit, "audit"))
+        object.__setattr__(
+            self,
+            "execution_artifact_identity",
+            _text(self.execution_artifact_identity, "execution_artifact_identity"),
+        )
+        object.__setattr__(self, "evaluator_fingerprint", _text(self.evaluator_fingerprint, "evaluator_fingerprint"))
+        object.__setattr__(self, "fold_id", _text(self.fold_id, "fold_id"))
+        object.__setattr__(self, "fold_fingerprint", _text(self.fold_fingerprint, "fold_fingerprint"))
         object.__setattr__(
             self,
             "claim_markers",
@@ -457,8 +488,10 @@ class IOHunterExternalEvaluationResult:
             "label_semantics": self.label_semantics,
             "claim_markers": list(self.claim_markers),
             "audit": _plain_value(self.audit),
+            "execution_artifact_identity": self.execution_artifact_identity,
             "evaluator_fingerprint": self.evaluator_fingerprint,
             "fold_id": self.fold_id,
+            "fold_fingerprint": self.fold_fingerprint,
             "reason": self.reason,
         }
 
@@ -487,7 +520,12 @@ def _validation_threshold(labels: np.ndarray, scores: np.ndarray) -> float:
     return best[1]
 
 
-def _blocked_result(evaluation: IOHunterExternalEvaluationInput, reason: str) -> IOHunterExternalEvaluationResult:
+def _blocked_result(
+    prediction: CompactDiscoveryPrediction,
+    evaluation: IOHunterExternalEvaluationInput,
+    reason: str,
+) -> IOHunterExternalEvaluationResult:
+    fold_fingerprint = compact_fold_fingerprint(evaluation.fold)
     return IOHunterExternalEvaluationResult(
         status="blocked",
         threshold=None,
@@ -496,9 +534,16 @@ def _blocked_result(evaluation: IOHunterExternalEvaluationInput, reason: str) ->
         evaluation_scope=_EVALUATION_SCOPE,
         label_semantics=IOHUNTER_LABEL_SEMANTICS,
         claim_markers=_CLAIM_MARKERS,
-        audit={"evaluation_after_execution": True, "fit_provenance": "validation_only"},
+        audit={
+            "evaluation_after_execution": True,
+            "fit_provenance": "validation_only",
+            "execution_artifact_identity": prediction.artifact_identity,
+            "fold_fingerprint": fold_fingerprint,
+        },
+        execution_artifact_identity=prediction.artifact_identity,
         evaluator_fingerprint=evaluation.evaluator.content_fingerprint,
         fold_id=evaluation.fold.fold_id,
+        fold_fingerprint=fold_fingerprint,
         reason=reason,
     )
 
@@ -514,17 +559,17 @@ def evaluate_iohunter_external_account_recovery(
     expected_dataset = f"iohunter-{evaluation.evaluator.campaign}"
     if prediction.discovered_cluster_batch.provenance.source_dataset != expected_dataset:
         raise ValueError("prediction and evaluator campaign do not match")
-    if prediction.account_count != evaluation.evaluator.account_labels.size:
-        raise ValueError("prediction and evaluator account universe do not match")
     labels = evaluation.evaluator.account_labels
+    if prediction.account_count != labels.size:
+        raise ValueError("prediction and evaluator account universe do not match")
     validation = evaluation.fold.validation_indices
     test = evaluation.fold.test_indices
     validation_labels = labels[validation]
     test_labels = labels[test]
     if len(np.unique(validation_labels)) != 2:
-        return _blocked_result(evaluation, "validation partition has one class")
+        return _blocked_result(prediction, evaluation, "validation partition has one class")
     if len(np.unique(test_labels)) != 2:
-        return _blocked_result(evaluation, "test partition has one class")
+        return _blocked_result(prediction, evaluation, "test partition has one class")
     threshold = _validation_threshold(validation_labels, prediction.account_scores[validation])
     test_scores = prediction.account_scores[test].astype(np.float64)
     decisions = (test_scores >= threshold).astype(np.int64)
@@ -539,6 +584,7 @@ def evaluate_iohunter_external_account_recovery(
         "external_account_recall_at_k": recall_at_k,
         "external_account_evaluated_count": float(len(test)),
     }
+    fold_fingerprint = compact_fold_fingerprint(evaluation.fold)
     return IOHunterExternalEvaluationResult(
         status="success",
         threshold=threshold,
@@ -552,9 +598,12 @@ def evaluate_iohunter_external_account_recovery(
             "fit_provenance": "validation_only",
             "test_label_access": "metrics_only",
             "execution_artifact_identity": prediction.artifact_identity,
+            "fold_fingerprint": fold_fingerprint,
         },
+        execution_artifact_identity=prediction.artifact_identity,
         evaluator_fingerprint=evaluation.evaluator.content_fingerprint,
         fold_id=evaluation.fold.fold_id,
+        fold_fingerprint=fold_fingerprint,
     )
 
 
