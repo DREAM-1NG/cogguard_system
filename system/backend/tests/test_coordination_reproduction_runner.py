@@ -642,7 +642,10 @@ def test_final_review_inference_cases_discard_or_reject_training_provenance():
             )
 
 
-def test_final_review_heuristic_adapter_ignores_class_level_rebinding(monkeypatch):
+@pytest.mark.parametrize("dispatch_attribute", ("baseline_type", "_baseline_type"))
+def test_final_review_heuristic_adapter_ignores_class_level_rebinding(
+    monkeypatch, dispatch_attribute
+):
     _, _, baselines, runner = _modules()
     implementation = baselines.default_baseline_registry().implementation("heuristic_baseline_v1")
     inference = runner.DetectionInferenceCase(
@@ -666,7 +669,10 @@ def test_final_review_heuristic_adapter_ignores_class_level_rebinding(monkeypatc
             raise AssertionError("class-level heuristic rebinding must not dispatch")
 
     monkeypatch.setattr(
-        baselines.HeuristicDetectionImplementation, "baseline_type", LookalikeBaseline
+        baselines.HeuristicDetectionImplementation,
+        dispatch_attribute,
+        LookalikeBaseline,
+        raising=False,
     )
     with pytest.warns(UserWarning, match="heuristic baseline"):
         actual = implementation.execute(runner.DetectionTestInput((inference,)))
@@ -1180,7 +1186,10 @@ def test_second_review_registry_is_immutable_and_heuristic_is_concrete_stage2_ad
         "research.coordination_detect.heuristic_baseline"
     ).HeuristicBayesianBaseline
     assert type(implementation) is baselines.HeuristicDetectionImplementation
-    assert implementation.baseline_type is heuristic_type
+    assert implementation.implementation_id == registry.get(
+        "heuristic_baseline_v1"
+    ).implementation_id
+    assert not hasattr(implementation, "__dict__")
 
     inference = runner.DetectionInferenceCase(
         case_id="test-heuristic",
