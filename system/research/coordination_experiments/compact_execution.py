@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import time
 import tracemalloc
 from collections.abc import Mapping as MappingABC
@@ -35,7 +36,6 @@ _FORBIDDEN_TOKENS = (
     "account_risk",
     "raw",
     "path",
-    "sha",
     "checksum",
 )
 _ACCOUNT_PREFIX = "account-"
@@ -114,11 +114,20 @@ def _plain_value(value: Any) -> Any:
     return value
 
 
+def _is_forbidden_config_key(key: Any) -> bool:
+    key_text = str(key)
+    tokens = [
+        token.lower()
+        for token in re.split(r"(?<!^)(?=[A-Z])|[^A-Za-z0-9]+", key_text)
+        if token
+    ]
+    return any(token in _FORBIDDEN_TOKENS or re.fullmatch(r"sha\d+", token) for token in tokens)
+
+
 def _assert_label_free(value: Any, path: str = "method_config") -> None:
     if isinstance(value, MappingABC):
         for key, item in value.items():
-            key_text = str(key).lower()
-            if any(token in key_text for token in _FORBIDDEN_TOKENS):
+            if _is_forbidden_config_key(key):
                 raise ValueError(f"{path} contains evaluator-only key {key!r}")
             _assert_label_free(item, f"{path}.{key}")
     elif isinstance(value, (tuple, list)):

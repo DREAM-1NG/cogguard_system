@@ -216,6 +216,16 @@ def test_execution_input_rejects_raw_provenance_aliases(method_config):
         _execution_input(package, method_config=method_config)
 
 
+def test_execution_input_allows_non_provenance_hyperparameter_names():
+    package = _load_experiments()
+    execution_input = _execution_input(
+        package,
+        method_config={"shared_dimension": 32, "relation_weight": 0.25},
+    )
+
+    assert execution_input.method_config["shared_dimension"] == 32
+
+
 def test_execution_resolves_compact_implementation_without_evaluator_or_coordination_events():
     package = _load_experiments()
     compact_module = importlib.import_module("research.coordination_experiments.compact_execution")
