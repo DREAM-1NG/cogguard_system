@@ -5,7 +5,7 @@ import importlib.util
 import math
 import time
 from collections.abc import Mapping as MappingABC
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from types import MappingProxyType
 from typing import Any, Mapping
 
@@ -42,6 +42,20 @@ _COMPACT_METHOD_VARIANTS = frozenset(
         "no_tsgs",
         "no_mhcr",
         "no_relation_specific",
+    }
+)
+_EXECUTION_CONFIG_OVERRIDES = frozenset(
+    {
+        "seed",
+        "max_candidate_edges",
+        "hidden_dimension",
+        "epochs",
+        "batch_size",
+        "edge_dropout_rate",
+        "feature_mask_rate",
+        "temperature",
+        "exact_pseudoinverse_node_limit",
+        "dense_feasible_account_limit",
     }
 )
 
@@ -698,6 +712,19 @@ class GraphNativeDiscoveryImplementation(DiscoveryImplementation):
         if not self.method_version or not self.implementation_id:
             raise ValueError("compact implementation requires stable method and implementation versions")
 
+    def _execution_config(
+        self, execution_input: CompactDiscoveryExecutionInput
+    ) -> CompactDiscoveryMethodConfig:
+        unknown = set(execution_input.method_config) - _EXECUTION_CONFIG_OVERRIDES
+        if unknown:
+            raise ValueError(f"method_config contains unsupported compact fields: {sorted(unknown)}")
+        overrides = {
+            key: execution_input.method_config[key]
+            for key in _EXECUTION_CONFIG_OVERRIDES
+            if key in execution_input.method_config
+        }
+        return replace(self.config, **overrides)
+
     def execute(self, execution_input: CompactDiscoveryExecutionInput) -> CompactDiscoveryPrediction:
         if not isinstance(execution_input, CompactDiscoveryExecutionInput):
             raise ValueError("compact graph-native Discovery requires CompactDiscoveryExecutionInput")
@@ -705,17 +732,18 @@ class GraphNativeDiscoveryImplementation(DiscoveryImplementation):
             raise CompactDiscoveryMethodBlocked(self.unavailable_reason)
         if execution_input.discovery_view.time_semantics != IOHUNTER_STATIC_TIME_SEMANTICS:
             raise ValueError("compact IOHunter methods require explicit static time semantics")
+        config = self._execution_config(execution_input)
         started = time.perf_counter()
-        effective_seed = self.config.seed ^ execution_input.seed
+        effective_seed = config.seed ^ execution_input.seed
         fused = _fuse_relation_layers(execution_input)
         tsgs_started = time.perf_counter()
-        if self.config.method_variant == "dense_cosine_leiden":
+        if config.method_variant == "dense_cosine_leiden":
             input_features = _relation_features(
                 execution_input.discovery_view.account_count,
                 fused.endpoints,
                 fused.relation_weights,
             )
-            endpoints, candidate_weights, relation_weights = _dense_cosine_edges(input_features, self.config)
+            endpoints, candidate_weights, relation_weights = _dense_cosine_edges(input_features, config)
             tsgs_diagnostics: Mapping[str, Any] = MappingProxyType(
                 {
                     "resistance_backend": "dense_all_pairs_cosine_reference",
@@ -730,11 +758,11 @@ class GraphNativeDiscoveryImplementation(DiscoveryImplementation):
             endpoints, candidate_weights, relation_weights, tsgs_diagnostics = _edge_selection(
                 fused,
                 execution_input.discovery_view.account_count,
-                self.config,
+                config,
                 effective_seed,
-                use_tsgs=self.config.method_variant not in {"no_tsgs", "edgebank"},
+                use_tsgs=config.method_variant not in {"no_tsgs", "edgebank"},
             )
-            if self.config.method_variant == "edgebank":
+            if config.method_variant == "edgebank":
                 tsgs_diagnostics = MappingProxyType(
                     {
                         **tsgs_diagnostics,
@@ -745,22 +773,22 @@ class GraphNativeDiscoveryImplementation(DiscoveryImplementation):
         tsgs_seconds = time.perf_counter() - tsgs_started
         mhcr_started = time.perf_counter()
         features = _relation_features(execution_input.discovery_view.account_count, endpoints, relation_weights)
-        if self.config.method_variant in {"edgebank", "no_mhcr", "dense_cosine_leiden"}:
+        if config.method_variant in {"edgebank", "no_mhcr", "dense_cosine_leiden"}:
             embeddings, mhcr_diagnostics = _input_embeddings(features)
         else:
             embeddings, mhcr_diagnostics = _mhcr_embeddings(
                 features,
                 _relation_edge_arrays(endpoints, relation_weights),
-                self.config,
+                config,
                 effective_seed,
-                relation_specific=self.config.method_variant != "no_relation_specific",
+                relation_specific=config.method_variant != "no_relation_specific",
             )
         mhcr_seconds = time.perf_counter() - mhcr_started
         affinity = _edge_affinity(embeddings, endpoints)
         normalized_weight = _normalized(candidate_weights)
         edge_scores = (
             normalized_weight
-            if self.config.method_variant in {"edgebank", "dense_cosine_leiden"}
+            if config.method_variant in {"edgebank", "dense_cosine_leiden"}
             else normalized_weight * affinity
         ).astype(np.float32)
         leiden_started = time.perf_counter()
@@ -793,7 +821,7 @@ class GraphNativeDiscoveryImplementation(DiscoveryImplementation):
         diagnostics = {
             "method_role": (
                 "static_edge_memory_baseline"
-                if self.config.method_variant == "edgebank"
+                if config.method_variant == "edgebank"
                 else "research_only_graph_native_discovery"
             ),
             "time_semantics": IOHUNTER_STATIC_TIME_SEMANTICS,
@@ -804,12 +832,12 @@ class GraphNativeDiscoveryImplementation(DiscoveryImplementation):
             "mhcr": dict(mhcr_diagnostics),
             "clustering": {
                 "backend": "leiden_interpretation_partition",
-                "candidate_edge_budget": self.config.max_candidate_edges,
+                "candidate_edge_budget": config.max_candidate_edges,
             },
             "account_score_role": "unsupervised_ranking_not_probability",
             "edge_score_formula": (
                 "static_normalized_edge_weight"
-                if self.config.method_variant in {"edgebank", "dense_cosine_leiden"}
+                if config.method_variant in {"edgebank", "dense_cosine_leiden"}
                 else "normalized_tsgs_evidence_weight_times_mhcr_affinity"
             ),
             "account_score_formula": "mean(normalized_weighted_degree,candidate_incident_strength,cluster_coherence)",

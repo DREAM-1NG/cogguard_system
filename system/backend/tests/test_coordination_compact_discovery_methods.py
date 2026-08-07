@@ -159,6 +159,20 @@ def test_edgebank_is_available_on_static_data_and_carries_static_claim_marker():
     assert outcome.prediction.diagnostics["tsgs"]["resistance_backend"] == "not_run_static_edgebank"
 
 
+def test_execution_method_config_overrides_are_applied_without_evaluator_fields():
+    package = _load_experiments()
+    implementation = package.default_compact_discovery_registry().implementation("edgebank")
+    outcome = package.execute_compact_discovery_method(
+        {"edgebank": implementation},
+        "edgebank",
+        _input(package, config={"max_candidate_edges": 1}),
+    )
+
+    assert outcome.status == "success"
+    assert outcome.prediction is not None
+    assert len(outcome.prediction.candidate_endpoints) <= 1
+
+
 def test_tsgs_reports_exact_and_approximate_backend_without_overclaiming():
     package = _load_experiments()
     registry = package.default_compact_discovery_registry()
