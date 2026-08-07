@@ -64,7 +64,9 @@ The current product workspace is `/api/v2/review-cases/*`.
 
 - `GET /api/v2/review-cases/latest` returns the latest case.
 - `GET /api/v2/review-cases/{case_id}` returns case detail.
-- `GET /api/v2/review-cases/{case_id}/evidence` returns grouped evidence and annotations.
+- `GET /api/v2/review-cases/{case_id}/evidence` returns assessment-group counts and one
+  cursor-paginated evidence group. It accepts `assessment`, `cursor`, and `limit`; the
+  default is the first 40 unresolved items.
 - `POST /api/v2/review-cases/{case_id}/review-requests` requests an internal review advisory.
 - `PUT /api/v2/review-cases/{case_id}/decision-draft` saves a draft decision.
 - `POST /api/v2/review-cases/{case_id}/decisions/confirm` confirms an immutable decision.
@@ -76,7 +78,7 @@ The application-facing ports are the `ReviewCaseService` methods that power thos
 - `latest()`
 - `search()`
 - `detail(case_id)`
-- `evidence(case_id)`
+- `evidence(case_id, assessment, cursor, limit)`
 - `request_review(case_id, request, actor)`
 - `add_annotation(case_id, request, actor)`
 - `save_draft(case_id, request, actor)`
@@ -90,7 +92,8 @@ the selected corpus. Each row contains a collected nickname, platform, activity
 context, and an **Account Finding** projected from the trained account detector.
 The profile endpoint does not expose legacy rule-derived scores, detector
 probabilities, runtime modes, or support-graph details. Results are cached by
-the selected corpus fingerprint so account details reuse the same finding.
+the selected corpus fingerprint and active account-model identity, so account
+details reuse the same finding until either the source corpus or model changes.
 
 Account detection also has an analyst-in-the-loop active-learning control plane:
 
@@ -102,6 +105,15 @@ Account detection also has an analyst-in-the-loop active-learning control plane:
 - `POST /api/v1/accounts/models/{model_version}/activate` applies frozen-holdout, leakage, calibration, shadow-run, and dual-approval gates before activation.
 
 The active-learning loop is a label-efficiency and governance pipeline. It never treats model output as a gold label, and it keeps frozen evaluation data outside the selected labeling pool.
+
+Evaluator writeback must carry an `ACCOUNT_MODEL_EVALUATION_HMAC_SECRET` HMAC manifest bound to the candidate version, artifact SHA-256, evaluation run, protocol fingerprint, and raw audit fingerprint. Calibration is derived only from those labeled evaluator audits; candidate-provided `ece` or `calibration` fields are discarded. Production must set `ACCOUNT_MODEL_BOOTSTRAP_MODE=disabled`, configure a distinct evaluator secret of at least 32 characters, and create a governed MySQL Active Pointer before serving detection. A non-production local setup may set `ACCOUNT_MODEL_BOOTSTRAP_MODE=local_legacy` to create a persisted `local_bootstrap_unreviewed` pointer from the legacy checkpoint; no request path infers a checkpoint directly when the pointer is absent.
+
+Governed bundles use the canonical research-package verifier. Activation and
+rollback require `deployment={"eligible": true, "status": "eligible"}`; the
+runtime takes source schema from the verified manifest and checks the bundle's
+encoder, feature schema, and calibration against the detector checkpoint before
+loading. Checkpoint deserialization uses PyTorch's weights-only boundary, and
+the process keeps at most the current Active Pointer runtime in memory.
 
 ## Internal Diagnostics
 
@@ -143,32 +155,92 @@ External-root settings from earlier designs are not product runtime inputs.
 
 ## Local Startup
 
+The default Windows startup path is the optimized delivery path. It applies
+the idempotent MongoDB indexes, starts the backend without the development
+reloader, waits for API readiness, builds the frontend, and serves it through
+the static `production-ui` profile:
+
 ```powershell
 cd system
-copy .env.example .env
-docker compose up -d
+Copy-Item .env.example .env
+powershell.exe -ExecutionPolicy Bypass -File .\start-system.ps1
+```
+
+It opens the same authenticated product on `http://127.0.0.1:5173`. The
+default build command is `npm run build`; it typechecks, emits a Vite manifest,
+generates the delivery preload plan, and verifies both budgets and preload
+policy. After login, the delivery plan immediately prepares the dashboard shell
+and map asset. Other route modules load when the operator hovers or
+focuses their navigation item. This intentionally avoids preloading the
+coordination graph, propagation analysis, or case evidence payload before an
+operator requests them.
+
+When the local demo credentials are configured, the default startup preloads
+authenticated business data after the backend is ready and before the frontend
+is exposed:
+
+```powershell
+$env:COGGUARD_DEMO_USERNAME = 'demo_analyst'
+$env:COGGUARD_DEMO_PASSWORD = '<local-demo-password>'
+powershell.exe -ExecutionPolicy Bypass -File .\start-system.ps1
+```
+
+The warmup uses real APIs and writes only redacted timings to
+`system/output/demo-warmup/`. It activates automatically when both
+`COGGUARD_DEMO_USERNAME` and `COGGUARD_DEMO_PASSWORD` are configured. Add
+`-DemoWarmupStrict` to fail startup on an optional warmup route, or
+`-SkipDemoWarmup` to bypass the demo precompute. The first run materializes versioned server-side
+analysis projections in the process cache and Redis; repeated page requests
+reuse them without rerunning graph construction, account detector inference, or
+the requested evidence-page projection. It warms the default review page rather
+than every evidence page. See
+`../doc/engineering/performance-operations.md` for cache identity, the measured
+baseline, and the remaining optimization gates.
+
+Use the development frontend only while changing frontend source:
+
+```powershell
+cd system
+powershell.exe -ExecutionPolicy Bypass -File .\start-system.ps1 -DevelopmentFrontend
+```
+
+For manual component-level development, the equivalent commands remain:
+
+```powershell
+cd system
+docker compose up -d mysql mongodb redis
 
 cd backend
 uv sync
 uv run alembic upgrade head
-uv run uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+uv run uvicorn app.main:app --host 0.0.0.0 --port 8000
 
 cd ..\frontend
 npm install
 npm run dev -- --host 127.0.0.1 --port 5173
 ```
 
-Optional Celery worker for queued crawl and review jobs:
+`start-system.ps1` starts a dedicated hidden `account_training` Celery worker
+with `--concurrency 1 --pool solo`. Its stdout and stderr are recorded under
+`system/logs/account-training-worker-*.out.log` and `.err.log`. This worker is
+required for governed DAPT and detector retraining; it is intentionally
+separate from the crawl, analysis, and review workers so GPU training cannot
+consume their worker slots.
+
+Separately operated workers:
 
 ```powershell
 cd system\backend
 celery -A app.celery_app worker --loglevel=info -Q crawl,analysis,review
+celery -A app.celery_app worker --loglevel=info -Q account_training --concurrency 1 --pool solo --hostname account-training@%h
 ```
 
 ## Delivery Performance Profile
 
-Use the Vite server above for frontend development. For a local or LAN delivery
-run, serve the same built frontend through the opt-in static profile instead:
+`start-system.ps1` is the canonical default for local and LAN delivery. It
+starts the static frontend profile after the backend health endpoint is ready.
+Use the explicit Compose command below only when operating the frontend
+separately from the helper:
 
 ```powershell
 cd system
@@ -180,8 +252,9 @@ keeps HTML and `/api/*` uncached, and proxies API calls to the existing backend
 at `BACKEND_ORIGIN` (default: `http://host.docker.internal:8000`). Do not run
 Vite and `frontend_static` on port `5173` at the same time.
 
-For event and platform query performance, preview then apply the explicit
-MongoDB index operation after MongoDB is running:
+The startup helper applies the named MongoDB query indexes by default after
+MongoDB is reachable. For a separate maintenance run, preview then apply the
+operation manually:
 
 ```powershell
 .\ops\Apply-MongoPerformanceIndexes.ps1 -DryRun
@@ -189,8 +262,13 @@ MongoDB index operation after MongoDB is running:
 ```
 
 The operation creates only missing, named indexes and never drops or rebuilds
-an existing index. See `../doc/engineering/performance-operations.md` for
+an existing index. Server-side analysis projections are versioned below the
+HTTP layer and are configured with `ANALYSIS_RESULT_CACHE_*`; they never cache
+credentials or tokens. See `../doc/engineering/performance-operations.md` for
 request cache policy, maintenance guidance, and remaining product-code work.
+The current index definition contains 11 indexes, including event-scoped
+crawl_job_id markers used to invalidate dashboard and other ingestion-aware
+projections without reading the full corpus on every repeat request.
 
 ## Verification
 
@@ -202,7 +280,8 @@ cd ..\frontend
 npm run build
 ```
 
-`npm run build` runs `vue-tsc -b` before the Vite production build.
+`npm run build` runs `vue-tsc -b`, the Vite production build, delivery preload
+manifest generation, and static delivery verification.
 
 Useful targeted gates:
 

@@ -4,14 +4,22 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 __all__ = [
     "AccountLabelAdjudicationRequest",
+    "AccountLabelReviewAssignmentRequest",
     "AccountLabelRequest",
     "AccountModelActivationRequest",
     "AccountModelApprovalRequest",
+    "AccountModelEvaluationWritebackRequest",
+    "AccountModelEvaluationJobRequest",
     "AccountTrainingCandidateRequest",
+    "AccountTrainingRunRequest",
+    "AccountTrainingResumeRequest",
+    "CreateAccountCorpusRequest",
+    "FreezeAccountHoldoutRequest",
+    "AccountModelRollbackRequest",
     "ExportAccountDatasetRequest",
     "CreateAccountLabelBatchRequest",
 ]
@@ -43,8 +51,15 @@ class AccountLabelAdjudicationRequest(BaseModel):
     """Decision that promotes or rejects a submitted account label."""
 
     approved: bool
+    assignment_id: str | None = Field(default=None, min_length=1)
     behavior_label: str | None = None
     notes: str = ""
+
+
+class AccountLabelReviewAssignmentRequest(BaseModel):
+    """Assign an independent analyst for a required second review."""
+
+    reviewer_id: int = Field(gt=0)
 
 
 class AccountTrainingCandidateRequest(BaseModel):
@@ -55,6 +70,64 @@ class AccountTrainingCandidateRequest(BaseModel):
     artifact_uri: str = ""
     artifact_hash: str = ""
     metrics: dict[str, Any] = Field(default_factory=dict)
+
+
+class AccountModelEvaluationWritebackRequest(BaseModel):
+    """Evaluator-owned prediction evidence for a shadow candidate."""
+
+    artifact_hash: str = Field(min_length=64, max_length=128)
+    evaluation_run_id: str = Field(min_length=1, max_length=128)
+    prediction_audits: list[dict[str, Any]] = Field(default_factory=list, max_length=100_000)
+    evaluation_protocol: dict[str, Any] | None = None
+    evaluation_manifest: dict[str, Any]
+
+
+class AccountModelEvaluationJobRequest(BaseModel):
+    """Create a system-owned frozen-holdout evaluation job without evidence input."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    corpus_version_id: str = Field(min_length=1, max_length=128)
+    evaluator_config: dict[str, Any] = Field(default_factory=dict)
+
+
+class AccountTrainingRunRequest(BaseModel):
+    """Create a governed encoder or detector training run."""
+
+    family: str
+    corpus_version_id: str = Field(min_length=1)
+    input_fingerprint: str = Field(min_length=1)
+    config: dict[str, Any] = Field(default_factory=dict)
+    manual: bool = False
+
+
+class AccountTrainingResumeRequest(BaseModel):
+    """Resume an interrupted training run."""
+
+    force: bool = False
+
+
+class CreateAccountCorpusRequest(BaseModel):
+    """Create an immutable Chinese post/comment corpus from Mongo."""
+
+    event_id: str | None = None
+    platform: str | None = None
+    corpus_version_id: str | None = None
+    output_dir: str | None = None
+    require_chinese: bool = True
+
+
+class FreezeAccountHoldoutRequest(BaseModel):
+    """Freeze approved account labels before dataset export."""
+
+    fraction: float = Field(default=0.2, gt=0.0, lt=1.0)
+    seed: int = 17
+
+
+class AccountModelRollbackRequest(BaseModel):
+    """Roll back to a previously approved account-model version."""
+
+    reason: str = Field(min_length=1, max_length=2000)
 
 
 class AccountModelApprovalRequest(BaseModel):

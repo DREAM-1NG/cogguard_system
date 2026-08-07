@@ -16,6 +16,10 @@ from uuid import uuid4
 from sqlalchemy import select
 
 from app.core.review.layered_harmfulness import assess_layered_harmfulness
+from app.core.review.agent_provider import OpenAICompatibleAgentProvider
+from app.core.review.agent_provider import OpenAICompatibleConfig
+from app.core.review.agent_provider import build_llm_provider_from_settings
+from app.core.review.agent_review import run_manual_agent_review
 from app.core.review.multi_agent import execute_multi_agent_review
 from app.core.review.review_executor import execute_review_queue
 from app.core.review.review_queue import build_review_queue
@@ -59,7 +63,89 @@ def build_teacher_advisory_verdict(
     job_id: str | None = None,
 ) -> dict[str, Any]:
     student = build_student_verdict(case)
-    return _load_review_teacher_dag().run_teacher_dag(case, student=student, job_id=job_id)
+    verdict = _load_review_teacher_dag().run_teacher_dag(case, student=student, job_id=job_id)
+    return _mark_teacher_dag_fallback(
+        verdict,
+        fallback_reason="synchronous_teacher_runtime_uses_deterministic_dag",
+    )
+
+
+async def build_teacher_advisory_verdict_async(
+    case: dict[str, Any],
+    *,
+    job_id: str | None = None,
+) -> dict[str, Any]:
+    """Build a non-canonical Teacher advisory through MARO when an LLM is available."""
+    normalized = _normalize_case(case)
+    student = build_student_verdict(case)
+    if student.get("status") == "data_insufficient" or not normalized["posts"]:
+        return _teacher_dag_fallback(
+            case,
+            student=student,
+            job_id=job_id,
+            fallback_reason="insufficient_case_evidence",
+        )
+
+    maro_context = await _resolve_teacher_maro_context(normalized)
+    provider = maro_context["provider"]
+    if provider is None:
+        return _teacher_dag_fallback(
+            case,
+            student=student,
+            job_id=job_id,
+            fallback_reason=maro_context.get("fallback_reason") or "text_llm_provider_unavailable",
+        )
+
+    try:
+        maro_result = await run_manual_agent_review(
+            report=_teacher_maro_report(normalized, student=student, job_id=job_id),
+            agent_names=[
+                "PostHarmAgent",
+                "MultimodalConsistencyAgent",
+                "ClaimEvidenceAgent",
+                "PropagationTreeAgent",
+                "QuestionReflectionAgent",
+                "HarmfulnessJudgeAgent",
+            ],
+            case_id=job_id or _verdict_id("teacher", normalized),
+            selected_post_ids=[str(row.get("post_id") or row.get("id") or "") for row in normalized["posts"]],
+            human_triggered_by=normalized["created_by"],
+            provider=provider,
+            model=maro_context["model"],
+            provider_name=maro_context["provider_name"],
+            include_media_base64=maro_context["include_media_base64"],
+            require_vision=maro_context["require_vision"],
+            runtime_mode="complex",
+            policy=maro_context["policy"],
+            error_memory_summary=maro_context["error_memory_summary"],
+        )
+    except Exception as exc:
+        return _teacher_dag_fallback(
+            case,
+            student=student,
+            job_id=job_id,
+            fallback_reason=f"maro_runtime_error:{type(exc).__name__}",
+        )
+    finally:
+        close_provider = getattr(provider, "aclose", None)
+        if callable(close_provider):
+            await close_provider()
+
+    if not _teacher_maro_chain_completed(maro_result):
+        return _teacher_dag_fallback(
+            case,
+            student=student,
+            job_id=job_id,
+            fallback_reason="maro_chain_incomplete",
+        )
+    return _teacher_maro_advisory(
+        normalized,
+        student=student,
+        job_id=job_id,
+        maro_result=maro_result,
+        provider_name=maro_context["provider_name"],
+        model=maro_context["model"],
+    )
 
 
 def _load_review_student_runtime():
@@ -312,7 +398,7 @@ async def submit_teacher_review_job(case: dict[str, Any]) -> dict[str, Any]:
 
 
 async def finalize_teacher_review_job(job_id: str, case: dict[str, Any]) -> dict[str, Any]:
-    verdict = build_teacher_advisory_verdict(case, job_id=job_id)
+    verdict = await build_teacher_advisory_verdict_async(case, job_id=job_id)
     TEACHER_JOB_CACHE[job_id] = verdict
     persisted = await _persist_teacher_review_row(
         job_id=job_id,
@@ -323,6 +409,243 @@ async def finalize_teacher_review_job(job_id: str, case: dict[str, Any]) -> dict
     if not persisted:
         raise RuntimeError(f"Teacher advisory was not persisted: {job_id}")
     return verdict
+
+
+async def _resolve_teacher_maro_context(case: dict[str, Any]) -> dict[str, Any]:
+    """Resolve MARO dependencies without importing analysis from Review modules."""
+    fallback = {
+        "provider": None,
+        "provider_name": "not_configured",
+        "model": "",
+        "include_media_base64": False,
+        "require_vision": False,
+        "policy": None,
+        "error_memory_summary": {},
+        "fallback_reason": "text_llm_provider_unavailable",
+    }
+    policy = None
+    feedback_memory: list[dict[str, Any]] = []
+    try:
+        from app.models.review_system import ReviewProviderConfig
+        from app.services import review_system_service
+
+        async with async_session_factory() as db:
+            result = await db.execute(
+                select(ReviewProviderConfig)
+                .where(ReviewProviderConfig.provider_type == "text_llm")
+                .where(ReviewProviderConfig.is_active.is_(True))
+                .order_by(ReviewProviderConfig.id.desc())
+                .limit(1)
+            )
+            row = result.scalar_one_or_none()
+            policy = await review_system_service.get_active_policy_artifact(db)
+            feedback_memory = await review_system_service.feedback_memory_from_db([], db)
+        if row is not None and row.encrypted_api_key:
+            api_key = review_system_service.decrypt_provider_api_key(row.encrypted_api_key)
+            if api_key and row.base_url and row.model:
+                return {
+                    "provider": OpenAICompatibleAgentProvider(
+                        OpenAICompatibleConfig(
+                            api_key=api_key,
+                            base_url=row.base_url,
+                            model=row.model,
+                            wire_api=row.wire_api,
+                            timeout_seconds=float(settings.LLM_TIMEOUT_SECONDS),
+                            include_media_base64=bool(row.supports_vision),
+                            require_vision=False,
+                        )
+                    ),
+                    "provider_name": "database",
+                    "model": row.model,
+                    "include_media_base64": bool(row.supports_vision),
+                    "require_vision": False,
+                    "policy": policy,
+                    "error_memory_summary": _teacher_feedback_memory(policy, feedback_memory),
+                    "fallback_reason": None,
+                }
+    except Exception as exc:
+        logger.warning("Teacher MARO database context unavailable: {}", type(exc).__name__)
+
+    provider = build_llm_provider_from_settings(settings)
+    if provider is None:
+        return fallback
+    return {
+        "provider": provider,
+        "provider_name": "env_fallback",
+        "model": str(settings.LLM_MODEL),
+        "include_media_base64": bool(settings.LLM_INCLUDE_MEDIA_BASE64),
+        "require_vision": False,
+        "policy": policy,
+        "error_memory_summary": _teacher_feedback_memory(policy, feedback_memory),
+        "fallback_reason": None,
+    }
+
+
+def _teacher_feedback_memory(policy: dict[str, Any] | None, feedback_memory: list[dict[str, Any]]) -> dict[str, Any]:
+    policy_memory = dict((policy or {}).get("error_memory_summary") or {})
+    if feedback_memory:
+        policy_memory["memory_records"] = feedback_memory
+        policy_memory["feedback_count"] = len(feedback_memory)
+    return policy_memory
+
+
+def _teacher_maro_report(
+    case: dict[str, Any],
+    *,
+    student: dict[str, Any],
+    job_id: str | None,
+) -> dict[str, Any]:
+    posts = []
+    for row in case["posts"]:
+        post_id = str(row.get("post_id") or row.get("id") or "")
+        posts.append(
+            {
+                **row,
+                "post_id": post_id,
+                "harmfulness": {"score": student.get("score"), "abstain": student.get("abstain")},
+                "post_view_detection": {
+                    "review_reason": student.get("review_reason") or [],
+                    "final_harmfulness": student.get("label"),
+                },
+            }
+        )
+    return {
+        "report_id": job_id or _verdict_id("teacher", case),
+        "event_id": case["event_id"],
+        "platform": case["platform"],
+        "post_semantics": {"posts": posts},
+        "review_harmfulness": {
+            "review_queue": {
+                "review_items": [{"post_id": row["post_id"]} for row in posts],
+                "retrieval_tasks": [{"post_id": row["post_id"]} for row in posts if row.get("content")],
+            },
+            "propagation_context": {"has_thread_context": bool(case["relationships"])},
+        },
+    }
+
+
+def _teacher_maro_advisory(
+    case: dict[str, Any],
+    *,
+    student: dict[str, Any],
+    job_id: str | None,
+    maro_result: dict[str, Any],
+    provider_name: str,
+    model: str,
+) -> dict[str, Any]:
+    reports = [item for item in maro_result.get("agent_reports") or [] if isinstance(item, dict)]
+    completed = [item for item in reports if item.get("status") == "completed"]
+    judge = next((item for item in reversed(completed) if item.get("agent_name") == "HarmfulnessJudgeAgent"), None)
+    return {
+        "technology": "teacher",
+        "schema": "cogguard.review.teacher_dag.v2",
+        "status": "completed",
+        "verdict_type": "teacher_advisory",
+        "verdict_id": job_id or _verdict_id("teacher", case),
+        "snapshot_id": case["snapshot_id"],
+        "event_id": case["event_id"],
+        "platforms": case["platforms"],
+        "model_version": ANALYSIS_TEACHER_MODEL_VERSION,
+        "execution_mode": "maro_llm",
+        "fallback_reason": None,
+        "non_claimable": True,
+        "canonical_allowed": False,
+        "reasoning_trace_saved": False,
+        "review_required": True,
+        "dag": _teacher_maro_dag(reports),
+        "advisory": {
+            "decision": "needs_human_review",
+            "recommended_actions": {"human_review": 1},
+            "avg_agent_confidence": 0.0,
+            "external_followup_required": True,
+        },
+        "summary": {**dict(maro_result.get("summary") or {}), "completed_agent_reports": len(completed)},
+        "signals": {
+            "student_reference": {"verdict_id": student.get("verdict_id"), "label": student.get("label"), "score": student.get("score")},
+            "maro": {"provider_name": provider_name, "model": model, "audit": maro_result.get("audit") or {}, "judge_report": judge},
+        },
+        "evidence": {"agent_reports": completed},
+        "capability_boundary": _teacher_capability_boundary("maro_llm"),
+    }
+
+
+def _teacher_maro_chain_completed(maro_result: dict[str, Any]) -> bool:
+    reports = [item for item in maro_result.get("agent_reports") or [] if isinstance(item, dict)]
+    completed_names = {str(item.get("agent_name")) for item in reports if item.get("status") == "completed"}
+    has_reflection_response = any(
+        item.get("status") == "completed" and item.get("report_role") == "reflection_response"
+        for item in reports
+    )
+    return {
+        "PostHarmAgent",
+        "QuestionReflectionAgent",
+        "HarmfulnessJudgeAgent",
+    }.issubset(completed_names) and has_reflection_response
+
+
+def _teacher_maro_dag(reports: list[dict[str, Any]]) -> dict[str, Any]:
+    report_by_name = {str(item.get("agent_name")): item for item in reports}
+    nodes = []
+    for agent_name in (
+        "PostHarmAgent",
+        "MultimodalConsistencyAgent",
+        "ClaimEvidenceAgent",
+        "PropagationTreeAgent",
+        "QuestionReflectionAgent",
+        "HarmfulnessJudgeAgent",
+    ):
+        report = report_by_name.get(agent_name) or {}
+        nodes.append(
+            {
+                "node": agent_name,
+                "status": report.get("status", "skipped"),
+                "summary": str(report.get("report_text") or report.get("error") or "")[:240],
+            }
+        )
+    nodes.extend(
+        {
+            "node": str(item.get("agent_name")),
+            "status": item.get("status", "unknown"),
+            "summary": str(item.get("report_text") or item.get("error") or "")[:240],
+        }
+        for item in reports
+        if item.get("report_role") == "reflection_response"
+    )
+    return {"version": "maro-expert-question-reflection-judge", "nodes": nodes}
+
+
+def _teacher_dag_fallback(
+    case: dict[str, Any],
+    *,
+    student: dict[str, Any],
+    job_id: str | None,
+    fallback_reason: str,
+) -> dict[str, Any]:
+    return _mark_teacher_dag_fallback(
+        _load_review_teacher_dag().run_teacher_dag(case, student=student, job_id=job_id),
+        fallback_reason=fallback_reason,
+    )
+
+
+def _mark_teacher_dag_fallback(verdict: dict[str, Any], *, fallback_reason: str) -> dict[str, Any]:
+    return {
+        **verdict,
+        "execution_mode": "deterministic_dag_fallback",
+        "fallback_reason": fallback_reason,
+        "non_claimable": True,
+        "canonical_allowed": False,
+        "capability_boundary": _teacher_capability_boundary("deterministic_dag_fallback"),
+    }
+
+
+def _teacher_capability_boundary(execution_mode: str) -> dict[str, Any]:
+    return {
+        **_capability_boundary("teacher"),
+        "execution_mode": execution_mode,
+        "non_claimable": True,
+        "analyst_approval_required": True,
+        "detector_outputs_unchanged": True,
+    }
 
 
 async def _queue_teacher_review_job(job_id: str, case: dict[str, Any]) -> dict[str, Any]:

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import io
 import json
 from dataclasses import asdict
 from pathlib import Path
@@ -12,7 +13,7 @@ import torch
 
 from .contracts import DatasetManifest, TrainingConfig, ensure_output_path
 
-__all__ = ["write_training_artifacts", "load_training_artifact"]
+__all__ = ["write_training_artifacts", "load_training_artifact", "load_training_artifact_bytes"]
 
 
 def write_training_artifacts(
@@ -54,12 +55,32 @@ def write_training_artifacts(
 def load_training_artifact(checkpoint_path: str | Path, *, map_location: str = "cpu") -> dict[str, Any]:
     """Load a trusted local checkpoint produced by this package."""
 
-    payload = torch.load(Path(checkpoint_path), map_location=map_location, weights_only=False)
+    payload = torch.load(Path(checkpoint_path), map_location=map_location, weights_only=True)
+    return _validate_training_artifact(payload, source=str(checkpoint_path))
+
+
+def load_training_artifact_bytes(
+    checkpoint_bytes: bytes,
+    *,
+    map_location: str = "cpu",
+    source: str = "<verified-bytes>",
+) -> dict[str, Any]:
+    """Load a checkpoint from bytes already bound to an integrity decision."""
+
+    if not isinstance(checkpoint_bytes, bytes) or not checkpoint_bytes:
+        raise ValueError("BotRHG checkpoint bytes are required")
+    payload = torch.load(io.BytesIO(checkpoint_bytes), map_location=map_location, weights_only=True)
+    return _validate_training_artifact(payload, source=source)
+
+
+def _validate_training_artifact(payload: Any, *, source: str) -> dict[str, Any]:
     if not isinstance(payload, dict) or payload.get("schema") not in {
         "cogguard.botrhg.account.v2",
         "cogguard.botrhg.weibo.v1",
+        "cogguard.botrhg.strict.v1",
+        "cogguard.botrhg.account.v3",
     }:
-        raise ValueError(f"unsupported BotRHG checkpoint: {checkpoint_path}")
+        raise ValueError(f"unsupported BotRHG checkpoint: {source}")
     return payload
 
 

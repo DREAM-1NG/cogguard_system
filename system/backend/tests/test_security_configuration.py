@@ -5,6 +5,9 @@ import pytest
 from app.config import Settings
 
 
+_EVALUATION_HMAC_SECRET = "test-evaluator-hmac-secret-at-least-32-characters"
+
+
 def test_local_settings_use_ephemeral_jwt_and_disable_preview_by_default():
     settings = Settings(_env_file=None)
 
@@ -17,7 +20,12 @@ def test_local_settings_use_ephemeral_jwt_and_disable_preview_by_default():
 
 def test_production_rejects_missing_jwt_and_admin_seed():
     with pytest.raises(ValueError, match="JWT_SECRET_KEY"):
-        Settings(_env_file=None, BACKEND_ENV="production", JWT_SECRET_KEY="")
+        Settings(
+            _env_file=None,
+            BACKEND_ENV="production",
+            JWT_SECRET_KEY="",
+            ACCOUNT_MODEL_EVALUATION_HMAC_SECRET=_EVALUATION_HMAC_SECRET,
+        )
 
     with pytest.raises(ValueError, match="DEFAULT_ADMIN_PASSWORD"):
         Settings(
@@ -25,6 +33,7 @@ def test_production_rejects_missing_jwt_and_admin_seed():
             BACKEND_ENV="production",
             JWT_SECRET_KEY="production-random-secret",
             DEFAULT_ADMIN_PASSWORD="",
+            ACCOUNT_MODEL_EVALUATION_HMAC_SECRET=_EVALUATION_HMAC_SECRET,
         )
 
 
@@ -35,6 +44,7 @@ def test_production_uses_jwt_and_admin_seed_without_debug_bypass():
         BACKEND_DEBUG=True,
         JWT_SECRET_KEY="production-random-secret",
         DEFAULT_ADMIN_PASSWORD="configured-admin-password",
+        ACCOUNT_MODEL_EVALUATION_HMAC_SECRET=_EVALUATION_HMAC_SECRET,
     )
 
     assert settings.BACKEND_ENV == "production"

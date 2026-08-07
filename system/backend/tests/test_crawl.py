@@ -2,11 +2,13 @@
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy import select
 
 from app.api.v1 import crawl as crawl_api
 from app.core.crawler.mock import MockCrawler
 from app.core.crawler.social import generic_jsonl_to_comment, generic_jsonl_to_post
 from app.models.task import CrawlJob
+from app.models.user import User
 from app.services import crawl_service
 from tests.conftest import needs_db, test_session_factory
 
@@ -106,6 +108,9 @@ async def test_list_jobs_includes_system_owned_records_for_user(
     setup_database, auth_client: AsyncClient
 ):
     async with test_session_factory() as session:
+        current_user_id = (
+            await session.execute(select(User.id).where(User.username == "testuser"))
+        ).scalar_one()
         session.add(
             CrawlJob(
                 job_type="social",
@@ -123,7 +128,7 @@ async def test_list_jobs_includes_system_owned_records_for_user(
                 params_json="{}",
                 status="completed",
                 progress=100,
-                created_by=1,
+                created_by=current_user_id,
             )
         )
         await session.commit()

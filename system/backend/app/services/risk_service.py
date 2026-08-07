@@ -238,6 +238,14 @@ async def run_agent_review(
             policy = await review_system_service.get_policy_artifact_from_db(selected_policy_id, db)
         else:
             policy = await review_system_service.get_active_policy_artifact(db)
+    policy_provenance = None
+    if isinstance(policy, dict) and policy.get("activation_status") != "active_human_approved":
+        policy_provenance = {
+            "status": "ignored_not_human_approved",
+            "policy_id": selected_policy_id or policy.get("policy_id"),
+            "activation_status": policy.get("activation_status"),
+        }
+        policy = None
     error_memory_summary = {}
     if isinstance(policy, dict):
         error_memory_summary = policy.get("error_memory_summary") or {}
@@ -273,6 +281,8 @@ async def run_agent_review(
         policy=policy,
         error_memory_summary=error_memory_summary,
     )
+    if policy_provenance is not None:
+        review_result.setdefault("audit", {})["policy_provenance"] = policy_provenance
     if not append_legacy_report_json:
         return {
             "report_id": report_id,

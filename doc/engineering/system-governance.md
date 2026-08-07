@@ -219,6 +219,14 @@ Use the glossary in `UBIQUITOUS_LANGUAGE.md` for domain terms. The system-level 
 - Keep static delivery configuration in `system/deploy/` and explicit,
   idempotent maintenance operations in `system/ops/`. Neither location may
   introduce a parallel API, page, or business implementation.
+- Treat `system/frontend/package.json` `npm run build` as the canonical
+  delivery build. It must typecheck, generate content-addressed assets and a
+  `Delivery Preload Plan`, then enforce the static delivery budgets.
+- A `Delivery Preload Plan` may prepare only built static assets. It prepares
+  the authenticated layout and dashboard during idle time, prepares other
+  route assets on navigation interaction, and must exclude graph-rendering
+  chunks from idle preparation. It must not fetch product data, invoke an API,
+  run a route, or execute analysis or model inference.
 
 ## Governance Change Checklist
 

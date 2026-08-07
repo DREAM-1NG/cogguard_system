@@ -56,7 +56,8 @@ test('resets selected evidence when switching events', () => {
 
   assert.match(applyCase, /selectedEvidenceRefs\.value = \[\]/)
   assert.match(applyCase, /hydrateDraft\(detail\)/)
-  assert.match(applyCase, /await loadActivities\(detail\.case_id\)/)
+  assert.match(applyCase, /pendingLoads\.push\(loadActivities\(detail\.case_id\)\)/)
+  assert.match(applyCase, /await Promise\.all\(pendingLoads\)/)
 })
 
 test('groups evidence by assessment and binds annotations to the selected evidence ref', () => {
@@ -171,6 +172,15 @@ test('sends Last-Event-ID only when recovering after a known activity cursor', (
   assert.match(readCaseEventStream, /Accept: 'text\/event-stream'/)
   assert.match(readCaseEventStream, /lastEventId > 0 \? \{ 'Last-Event-ID': String\(lastEventId\) \} : \{\}/)
   assert.match(readCaseEventStream, /parseCaseEventStream\(await response\.text\(\)\)/)
+})
+
+test('stops review activity recovery when the event stream reports an expired session', () => {
+  const readCaseEventStream = bodyOf(reviewCaseApi, 'readCaseEventStream')
+  const recoverCaseActivities = bodyOf(riskView, 'recoverCaseActivities')
+
+  assert.match(readCaseEventStream, /if \(response\.status === 401\) \{\s*handleUnauthorizedResponse\(\)\s*\}/)
+  assert.match(readCaseEventStream, /throw new CaseEventStreamError\(response\.status\)/)
+  assert.match(recoverCaseActivities, /if \(isUnauthorizedCaseEventStreamError\(error\)\) \{\s*stopActivityRecovery\(\)\s*return\s*\}/)
 })
 
 test('parses event-stream blocks into ordered case activity events', () => {

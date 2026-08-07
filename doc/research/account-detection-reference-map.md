@@ -1,25 +1,42 @@
 # Account Detection Reference Map
 
-Updated: 2026-08-04
+Updated: 2026-08-05
 
 This file is the citable reference map for the **Chinese Account Detection Active Learning Loop**. It records what each reference supports, what transfers to CogGuard, and what must not be overclaimed.
+
+## Bibliographic Status Policy
+
+- **Published and verified** means the title and locator were checked against a
+  publisher, Crossref, ACL Anthology, PMLR, OpenReview, or the conference
+  proceedings during this maintenance pass.
+- **Published, locator retained** means the source is a stable official
+  proceedings/project page but its DOI was not independently resolved in this
+  pass. It may support background only until the bibliography is rechecked.
+- **Preprint / implementation reference** is useful for engineering context,
+  but does not establish peer-reviewed method priority.
+- **Internal method** is not a literature citation. `BotRHG` is in this
+  category until its NLPCC submission has a public archival record.
+
+The map intentionally does not assign a DOI where Crossref resolves that DOI
+to a different paper. Correctness is preferred over a superficially complete
+bibliography.
 
 ## Social Bot Detection And Chinese Transfer
 
 | Reference | What it supports | Transfer to CogGuard |
 | --- | --- | --- |
 | Ferrara et al., **The Rise of Social Bots**, CACM 2016, DOI [`10.1145/2818717`](https://doi.org/10.1145/2818717) | Foundational social-bot threat model and automation framing. | Account detection is observable behavior classification, not identity or nationality attribution. |
-| Davis et al., **BotOrNot: A System to Evaluate Social Bots**, WWW Companion 2016, DOI [`10.1145/2872518.2889403`](https://doi.org/10.1145/2872518.2889403) | Analyst-facing bot assessment with multiple evidence families. | Preserve evidence and model card fields instead of exposing only a scalar. |
+| Davis et al., **BotOrNot: A System to Evaluate Social Bots**, WWW Companion 2016, [archival preprint](https://arxiv.org/abs/1602.00975) | Analyst-facing bot assessment with multiple evidence families. The previously recorded DOI resolves to an unrelated paper and is deliberately removed. | Preserve evidence and model card fields instead of exposing only a scalar. |
 | Chavoshi et al., **DeBot: Twitter Bot Detection via Warped Correlation**, ICDM 2016, DOI [`10.1109/ICDM.2016.0096`](https://doi.org/10.1109/ICDM.2016.0096) | Temporal correlation for automated or coordinated behavior discovery. | Temporal correlation is a reason tag or acquisition signal, not a target class. |
 | Varol et al., **Online Human-Bot Interactions**, ICWSM 2017, DOI [`10.1609/icwsm.v11i1.14871`](https://doi.org/10.1609/icwsm.v11i1.14871) | Human/bot task framing, characterization, and evaluation. | Keep target labels minimal: `human`, `bot`, `insufficient_evidence`. |
-| Cresci et al., **Social Fingerprinting**, IEEE TDSC 2017, DOI [`10.1109/TDSC.2017.2709181`](https://doi.org/10.1109/TDSC.2017.2709181) | Group-level behavioral similarity and spambot discovery. | Similarity/group evidence supports acquisition and review, not new supervised labels. |
+| Cresci et al., **Social Fingerprinting: Detection of Spambot Groups Through DNA-Inspired Behavioral Modeling**, IEEE TDSC 2017, DOI [`10.1109/TDSC.2017.2681672`](https://doi.org/10.1109/TDSC.2017.2681672) | Group-level behavioral similarity and spambot discovery. | Similarity/group evidence supports acquisition and review, not new supervised labels. |
 | Wu et al., **A Novel Framework for Detecting Social Bots with Deep Neural Networks and Active Learning**, Knowledge-Based Systems 2021, DOI [`10.1016/j.knosys.2020.106525`](https://doi.org/10.1016/j.knosys.2020.106525) | Closest Sina Weibo-specific active-learning bot detection precedent. | Transfer the collection-labeling-active-learning loop; do not copy its hand-feature stack as the primary learning claim. |
-| Feng et al., **TwiBot-20**, CIKM 2020, DOI [`10.1145/3340531.3412705`](https://doi.org/10.1145/3340531.3412705) | Benchmark construction and account-level evaluation. | Use provenance, splits, and benchmark-style reporting. |
+| Feng et al., **TwiBot-20: A Comprehensive Twitter Bot Detection Benchmark**, CIKM 2021, DOI [`10.1145/3459637.3482019`](https://doi.org/10.1145/3459637.3482019) | Benchmark construction and account-level evaluation. | Use provenance, splits, and benchmark-style reporting. |
 | Feng et al., **TwiBot-22**, NeurIPS Datasets and Benchmarks 2022, [project page](https://twibot22.github.io/) | Large graph benchmark with entities, relations, and annotation-quality discussion. | Use as graph/evaluation reference only; Chinese platform claims require Chinese labels. |
 | Cai et al., **Detecting Social Bots by Jointly Modeling Deep Behavior and Content Information**, CIKM 2017, DOI [`10.1145/3132847.3133050`](https://doi.org/10.1145/3132847.3133050) | Joint behavior and content modeling. | Supports learned text plus account context, with leakage controls. |
 | Kudugunta and Ferrara, **Deep Neural Networks for Bot Detection**, Information Sciences 2018, DOI [`10.1016/j.ins.2018.08.019`](https://doi.org/10.1016/j.ins.2018.08.019) | Neural account/text bot detection baseline. | Use learned baselines before claiming hypergraph correction gains. |
-| Feng et al., **BotRGCN: Twitter Bot Detection with Relational Graph Convolutional Networks**, 2021/2022, [arXiv](https://arxiv.org/abs/2106.13092) | Relational graph neural social-bot detection. | Supports graph/account representation baselines; not a Chinese-data validation source. |
-| Feng et al., **SATAR: A Self-supervised Approach to Twitter Account Representation Learning and its Application in Bot Detection**, CIKM 2021, DOI [`10.1145/3459637.3482129`](https://doi.org/10.1145/3459637.3482129) | Self-supervised account representation for bot detection. | Supports learned account representations before hand-rule expansion; transfer requires Chinese evaluation. |
+| Feng et al., **BotRGCN: Twitter Bot Detection with Relational Graph Convolutional Networks**, [arXiv](https://arxiv.org/abs/2106.13092) | Preprint locator retained; no published venue is asserted here. | Supports graph/account representation baselines; not a Chinese-data validation source. |
+| **SATAR: A Self-supervised Approach to Twitter Account Representation Learning and its Application in Bot Detection** | The earlier DOI resolves to *Label-informed Graph Structure Learning for Node Classification*, not SATAR. Venue/archival locator remains unverified in this map. | Do not cite this entry for a formal claim until a primary source is verified; BotRGCN and published self-supervised baselines remain usable alternatives. |
 
 ## Chinese Representation And Domain Adaptation
 
@@ -43,7 +60,7 @@ This file is the citable reference map for the **Chinese Account Detection Activ
 | Margatina et al., **Active Learning by Acquiring Contrastive Examples**, EMNLP 2021, DOI [`10.18653/v1/2021.emnlp-main.51`](https://doi.org/10.18653/v1/2021.emnlp-main.51) | Near-neighbor contrastive examples. | Future similar-account acquisition using hypergraph neighbors. |
 | Schroeder et al., **Revisiting Uncertainty-based Query Strategies for Active Learning with Transformers**, Findings ACL 2022, DOI [`10.18653/v1/2022.findings-acl.172`](https://doi.org/10.18653/v1/2022.findings-acl.172) | Practical uncertainty strategy comparison for transformers. | Expensive AL methods must beat simple baselines before activation. |
 | Zhou et al., **Camouflaged Chinese Spam Content Detection with Semi-supervised Generative Active Learning**, ACL 2020, DOI [`10.18653/v1/2020.acl-main.279`](https://aclanthology.org/2020.acl-main.279/) | Chinese social text, active learning, and semi-supervised augmentation. | Useful Chinese active-learning analogue; task is spam/content detection, so it supports acquisition design rather than bot-label claims. |
-| Lowell et al., **Practical Obstacles to Deploying Active Learning**, EMNLP-IJCNLP 2019, DOI [`10.18653/v1/D19-1104`](https://aclanthology.org/D19-1104/) | Deployment failures and evaluation traps in practical active learning. | Keep equal-budget random/simple baselines and do not claim production gain from one selected pool. |
+| Lowell et al., **Practical Obstacles to Deploying Active Learning**, EMNLP-IJCNLP 2019, DOI [`10.18653/v1/d19-1003`](https://aclanthology.org/D19-1003/) | Deployment failures and evaluation traps in practical active learning. | Keep equal-budget random/simple baselines and do not claim production gain from one selected pool. |
 | Beck et al., **On Dataset Transferability in Active Learning for Transformers**, Findings ACL 2023, [ACL Anthology](https://aclanthology.org/2023.findings-acl.144/) | Active-learning strategies can fail to transfer across datasets/models. | Require per-dataset Chinese validation instead of reusing one acquisition policy as universal. |
 | Karamcheti et al., **On the Fragility of Active Learners for Text Classification**, EMNLP 2024, [ACL Anthology](https://aclanthology.org/2024.emnlp-main.1240/) | Text AL can be brittle under initialization, noise, and budget choices. | Keep random audit and simple baselines as regression defenses. |
 
@@ -66,7 +83,7 @@ This file is the citable reference map for the **Chinese Account Detection Activ
 | --- | --- | --- |
 | Artstein and Poesio, **Inter-Coder Agreement for Computational Linguistics**, Computational Linguistics 2008, DOI [`10.1162/coli.2008.34.4.555`](https://doi.org/10.1162/coli.2008.34.4.555) | Agreement metrics and limits of single labels. | Store reviewer identity and prepare double-review/adjudication reports. |
 | Passonneau and Carpenter, **The Benefits of a Model of Annotation**, TACL 2014, DOI [`10.1162/tacl_a_00183`](https://doi.org/10.1162/tacl_a_00183) | Annotator variation and adjudication. | Preserve raw labels, confidence, evidence ids, and adjudicator metadata. |
-| Plank, **The Problem of Human Label Variation**, COLING 2022, DOI [`10.18653/v1/2022.coling-1.387`](https://doi.org/10.18653/v1/2022.coling-1.387) | Human label variation is signal, not just noise. | Do not silently collapse disagreement into a fake gold label. |
+| Plank, **The “Problem” of Human Label Variation: On Ground Truth in Data, Modeling and Evaluation**, EMNLP 2022, DOI [`10.18653/v1/2022.emnlp-main.731`](https://aclanthology.org/2022.emnlp-main.731/) | Human label variation is signal, not just noise. | Do not silently collapse disagreement into a fake gold label. |
 | Wang and Plank, **ACTOR**, EMNLP 2023, [ACL Anthology](https://aclanthology.org/2023.emnlp-main.126/) | Active learning with annotator-specific variation. | Future reviewer-routing; current system records analyst id and confidence. |
 | van der Meer et al., **ACAL**, EMNLP 2024, [ACL Anthology](https://aclanthology.org/2024.emnlp-main.1031/) | Joint active sample and annotator selection. | Future annotator assignment policy. |
 | Suresh and Guttag, **Sources of Harm throughout the ML Life Cycle**, FAccT 2021, DOI [`10.1145/3461702.3461721`](https://doi.org/10.1145/3461702.3461721) | Bias sources across collection, labeling, modeling, and deployment. | Keep random audit, holdout isolation, and false-positive burden gates. |

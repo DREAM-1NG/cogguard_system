@@ -1,4 +1,4 @@
-import { createApiClient } from '@/utils/request'
+import { createApiClient, handleUnauthorizedResponse } from '@/utils/request'
 import type {
   CaseActivityList,
   CaseEvent,
@@ -8,6 +8,7 @@ import type {
   DecisionDraftUpsert,
   EvidenceAnnotation,
   EvidenceAnnotationCreate,
+  EvidenceAssessment,
   ReviewCaseDetail,
   ReviewCaseEvidence,
   ReviewCaseList,
@@ -23,6 +24,17 @@ interface ApiEnvelope<T> {
 
 const reviewCaseRequest = createApiClient('/api/v2/review-cases', 120000)
 
+export class CaseEventStreamError extends Error {
+  constructor(readonly status: number) {
+    super(`Event stream request failed (${status})`)
+    this.name = 'CaseEventStreamError'
+  }
+}
+
+export function isUnauthorizedCaseEventStreamError(error: unknown): boolean {
+  return error instanceof CaseEventStreamError && error.status === 401
+}
+
 export function getLatestReviewCase() {
   return reviewCaseRequest.get<unknown, ApiEnvelope<ReviewCaseDetail>>('/latest')
 }
@@ -35,8 +47,14 @@ export function getReviewCase(caseId: string) {
   return reviewCaseRequest.get<unknown, ApiEnvelope<ReviewCaseDetail>>(`/${encodeURIComponent(caseId)}`)
 }
 
-export function getReviewCaseEvidence(caseId: string) {
-  return reviewCaseRequest.get<unknown, ApiEnvelope<ReviewCaseEvidence>>(`/${encodeURIComponent(caseId)}/evidence`)
+export function getReviewCaseEvidence(
+  caseId: string,
+  params: { assessment?: EvidenceAssessment; cursor?: number; limit?: number } = {},
+) {
+  return reviewCaseRequest.get<unknown, ApiEnvelope<ReviewCaseEvidence>>(
+    `/${encodeURIComponent(caseId)}/evidence`,
+    { params },
+  )
 }
 
 export function annotateReviewCaseEvidence(caseId: string, body: EvidenceAnnotationCreate) {
@@ -92,7 +110,10 @@ export async function readCaseEventStream(
     },
   )
   if (!response.ok) {
-    throw new Error(`Event stream request failed (${response.status})`)
+    if (response.status === 401) {
+      handleUnauthorizedResponse()
+    }
+    throw new CaseEventStreamError(response.status)
   }
   return parseCaseEventStream(await response.text())
 }

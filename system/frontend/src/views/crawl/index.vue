@@ -279,7 +279,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted, reactive, ref } from 'vue'
+import { onActivated, onBeforeUnmount, onDeactivated, onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import PageHeader from '@/components/PageHeader.vue'
 import TableSettings from '@/components/TableSettings.vue'
@@ -382,7 +382,12 @@ const creatingDownload = ref(false)
 const downloadDrawerOpen = ref(false)
 const loadingDownloadDetail = ref(false)
 const downloadDetail = ref<DownloadDetail | null>(null)
+const pageActive = ref(false)
 let refreshTimer: number | undefined
+let postCreateRefreshTimer: number | undefined
+let initialCrawlLoad: Promise<void> | null = null
+let jobsRequestGeneration = 0
+let dataRequestGeneration = 0
 
 const dataFilters = reactive({
   platform: undefined as string | undefined,
@@ -485,10 +490,7 @@ async function handleCreateJob() {
 
     message.success(crawlForm.execution_mode === 'local' ? '采集任务已在本地后台启动' : '采集任务已投递队列')
     await fetchJobs()
-    window.setTimeout(() => {
-      void fetchJobs()
-      void fetchData()
-    }, 1500)
+    schedulePostCreateRefresh()
   } finally {
     creating.value = false
   }
@@ -548,18 +550,25 @@ function handleDataFilterChange() {
 }
 
 async function fetchJobs() {
+  if (!pageActive.value) return
+  const requestGeneration = ++jobsRequestGeneration
   loadingJobs.value = true
   try {
     const response = (await listCrawlJobs({ page: 1, page_size: 50 })) as {
       data: { items: CrawlJobItem[] }
     }
+    if (!pageActive.value || requestGeneration !== jobsRequestGeneration) return
     jobs.value = response.data.items
   } finally {
-    loadingJobs.value = false
+    if (requestGeneration === jobsRequestGeneration) {
+      loadingJobs.value = false
+    }
   }
 }
 
 async function fetchData(page = 1) {
+  if (!pageActive.value) return
+  const requestGeneration = ++dataRequestGeneration
   loadingData.value = true
   try {
     const response = (await queryCrawlData({
@@ -572,10 +581,13 @@ async function fetchData(page = 1) {
     })) as {
       data: { items: PostItem[]; total: number }
     }
+    if (!pageActive.value || requestGeneration !== dataRequestGeneration) return
     postData.value = response.data.items
     postTotal.value = response.data.total
   } finally {
-    loadingData.value = false
+    if (requestGeneration === dataRequestGeneration) {
+      loadingData.value = false
+    }
   }
 }
 
@@ -583,23 +595,97 @@ function handlePageChange(page: number) {
   void fetchData(page)
 }
 
-onMounted(async () => {
-  const response = (await getPlatforms()) as { data: PlatformOption[] }
-  platforms.value = response.data
-  void fetchJobs()
-  void fetchData()
+function hasActiveJobs() {
+  return jobs.value.some((job) => job.status === 'pending' || job.status === 'running')
+}
+
+function startRefreshTimer() {
+  if (!pageActive.value || refreshTimer !== undefined) return
   refreshTimer = window.setInterval(() => {
-    if (jobs.value.some((job) => job.status === 'pending' || job.status === 'running')) {
+    if (pageActive.value && hasActiveJobs()) {
       void fetchJobs()
       void fetchData()
     }
   }, 5000)
-})
+}
 
-onUnmounted(() => {
+function stopRefreshTimers() {
   if (refreshTimer !== undefined) {
     window.clearInterval(refreshTimer)
+    refreshTimer = undefined
   }
+  if (postCreateRefreshTimer !== undefined) {
+    window.clearTimeout(postCreateRefreshTimer)
+    postCreateRefreshTimer = undefined
+  }
+}
+
+function schedulePostCreateRefresh() {
+  if (postCreateRefreshTimer !== undefined) {
+    window.clearTimeout(postCreateRefreshTimer)
+  }
+  postCreateRefreshTimer = window.setTimeout(() => {
+    postCreateRefreshTimer = undefined
+    if (!pageActive.value) return
+    void fetchJobs()
+    void fetchData()
+  }, 1500)
+}
+
+async function initializeCrawlPage() {
+  if (initialCrawlLoad) return initialCrawlLoad
+  const load = (async () => {
+    const response = (await getPlatforms()) as { data: PlatformOption[] }
+    if (!pageActive.value) return
+    platforms.value = response.data
+    await Promise.all([fetchJobs(), fetchData()])
+  })()
+  initialCrawlLoad = load
+  try {
+    await load
+  } finally {
+    if (initialCrawlLoad === load) {
+      initialCrawlLoad = null
+    }
+  }
+}
+
+function activateCrawlPage() {
+  pageActive.value = true
+  startRefreshTimer()
+  if (!platforms.value.length) {
+    void initializeCrawlPage()
+    return
+  }
+  if (hasActiveJobs()) {
+    void fetchJobs()
+    void fetchData()
+  }
+}
+
+function deactivateCrawlPage() {
+  pageActive.value = false
+  jobsRequestGeneration += 1
+  dataRequestGeneration += 1
+  loadingJobs.value = false
+  loadingData.value = false
+  stopRefreshTimers()
+}
+
+onMounted(() => {
+  activateCrawlPage()
+})
+
+onActivated(() => {
+  activateCrawlPage()
+})
+
+onDeactivated(() => {
+  deactivateCrawlPage()
+})
+
+onBeforeUnmount(() => {
+  deactivateCrawlPage()
 })
 </script>
 

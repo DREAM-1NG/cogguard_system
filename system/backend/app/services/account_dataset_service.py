@@ -3,24 +3,31 @@
 from __future__ import annotations
 
 import importlib.util
+import hashlib
 import json
 import sys
 import uuid
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import exists, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import PROJECT_ROOT, settings
+from app.config import PROJECT_ROOT, resolve_project_path, settings
 from app.models.account_labeling import (
     AccountBehaviorLabelRecord,
     AccountDetectionCaseRecord,
     AccountDetectionDatasetVersion,
+    AccountFrozenHoldoutMembership,
+    AccountTrainingExportMembership,
 )
 from app.utils.exceptions import AppException
 
-__all__ = ["export_approved_account_dataset", "list_account_detection_datasets"]
+__all__ = [
+    "export_approved_account_dataset",
+    "list_account_detection_datasets",
+    "record_account_training_export_memberships",
+]
 
 _PACKAGE_NAME = "_cogguard_social_bot_detection_chinese_corpus"
 
@@ -34,15 +41,15 @@ async def export_approved_account_dataset(
 ) -> dict[str, Any]:
     """Export approved labels into a versioned corpus and register its manifest."""
 
+    version_id = dataset_version_id or f"account-dataset-{uuid.uuid4().hex[:12]}"
+    target_dir = _resolve_account_dataset_output_dir(output_dir, version_id)
     chinese_corpus = _load_chinese_corpus_module()
-    rows = await _approved_label_rows(session)
+    rows = await _approved_label_rows(session, corpus_version_id=version_id)
     if not rows:
         raise AppException(
             code=400,
             msg="No approved or adjudicated account labels are available for export.",
         )
-    version_id = dataset_version_id or f"account-dataset-{uuid.uuid4().hex[:12]}"
-    target_dir = Path(output_dir) if output_dir else Path(settings.MODEL_ARTIFACT_ROOT) / "account_detection" / version_id
     output_path = target_dir / "approved_account_labels.jsonl"
     records = [
         chinese_corpus.ApprovedAccountLabel(
@@ -72,6 +79,12 @@ async def export_approved_account_dataset(
         dataset_version_id=version_id,
     )
     manifest_payload = manifest.to_dict()
+    await record_account_training_export_memberships(
+        session,
+        dataset_version_id=version_id,
+        dataset_fingerprint=manifest.data_fingerprint,
+        rows=rows,
+    )
     manifest_path = target_dir / "dataset_manifest.json"
     dataset_card_path = target_dir / "dataset_card.md"
     manifest_path.write_text(json.dumps(manifest_payload, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -88,6 +101,7 @@ async def export_approved_account_dataset(
                 "manifest_path": str(manifest_path),
                 "dataset_card_path": str(dataset_card_path),
                 "dataset_card_policy": "generated_datasheet_draft_requires_review_before_public_claims",
+                "frozen_holdout_policy": "cases in account_frozen_holdout_memberships are excluded from training export",
             },
             ensure_ascii=False,
         ),
@@ -97,6 +111,39 @@ async def export_approved_account_dataset(
     session.add(record)
     await session.flush()
     return _dataset_projection(record)
+
+
+async def record_account_training_export_memberships(
+    session: AsyncSession,
+    *,
+    dataset_version_id: str,
+    dataset_fingerprint: str,
+    rows: list[tuple[AccountBehaviorLabelRecord, AccountDetectionCaseRecord, dict[str, Any]]],
+) -> None:
+    """Persist label-level training lineage with the same export transaction."""
+
+    for label, case, _payload in rows:
+        case_fingerprint = str(label.case_fingerprint or case.case_fingerprint)
+        membership_fingerprint = _canonical_digest(
+            {
+                "dataset_version_id": str(dataset_version_id),
+                "dataset_fingerprint": str(dataset_fingerprint),
+                "case_id": str(case.case_id),
+                "label_id": str(label.label_id),
+                "case_fingerprint": case_fingerprint,
+            }
+        )
+        session.add(
+            AccountTrainingExportMembership(
+                export_membership_id="account-training-export-" + membership_fingerprint[:32],
+                dataset_version_id=str(dataset_version_id),
+                case_id=str(case.case_id),
+                label_id=str(label.label_id),
+                case_fingerprint=case_fingerprint,
+                export_fingerprint=membership_fingerprint,
+            )
+        )
+    await session.flush()
 
 
 async def list_account_detection_datasets(session: AsyncSession) -> list[dict[str, Any]]:
@@ -114,6 +161,8 @@ async def list_account_detection_datasets(session: AsyncSession) -> list[dict[st
 
 async def _approved_label_rows(
     session: AsyncSession,
+    *,
+    corpus_version_id: str = "",
 ) -> list[tuple[AccountBehaviorLabelRecord, AccountDetectionCaseRecord, dict[str, Any]]]:
     result = await session.execute(
         select(AccountBehaviorLabelRecord, AccountDetectionCaseRecord)
@@ -122,14 +171,32 @@ async def _approved_label_rows(
             AccountDetectionCaseRecord.case_id == AccountBehaviorLabelRecord.case_id,
         )
         .where(AccountBehaviorLabelRecord.label_status.in_(("approved", "adjudicated")))
-        .where(AccountBehaviorLabelRecord.training_target.in_(("bot", "non_bot", "abstain")))
+        .where(AccountBehaviorLabelRecord.behavior_label.in_(("bot", "human")))
+        .where(AccountBehaviorLabelRecord.training_target.in_(("bot", "non_bot")))
         .where(AccountBehaviorLabelRecord.case_fingerprint == AccountDetectionCaseRecord.case_fingerprint)
+        .where(
+            True
+            if not corpus_version_id
+            else ~exists(
+                select(1).where(
+                    AccountFrozenHoldoutMembership.corpus_version_id == corpus_version_id,
+                    (
+                        (AccountFrozenHoldoutMembership.account_id == AccountDetectionCaseRecord.account_id)
+                        | (
+                            AccountFrozenHoldoutMembership.account_id.is_(None)
+                            & (AccountFrozenHoldoutMembership.case_id == AccountBehaviorLabelRecord.case_id)
+                        )
+                    ),
+                )
+            )
+        )
         .order_by(
             AccountDetectionCaseRecord.platform.asc(),
             AccountDetectionCaseRecord.event_id.asc(),
             AccountDetectionCaseRecord.account_id.asc(),
             AccountBehaviorLabelRecord.label_id.asc(),
         )
+        .with_for_update()
     )
     rows = []
     for label, case in result.all():
@@ -153,6 +220,45 @@ def _loads(payload: str, fallback: Any) -> Any:
         return json.loads(payload)
     except json.JSONDecodeError:
         return fallback
+
+
+def _canonical_digest(value: Any) -> str:
+    return hashlib.sha256(
+        json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"), default=str).encode("utf-8")
+    ).hexdigest()
+
+
+def _resolve_account_dataset_output_dir(
+    output_dir: str | Path | None,
+    dataset_version_id: str,
+) -> Path:
+    """Resolve an export directory without letting caller input escape artifacts."""
+
+    artifact_root = resolve_project_path(settings.MODEL_ARTIFACT_ROOT)
+    requested = (
+        Path("account_detection") / dataset_version_id
+        if output_dir is None or not str(output_dir).strip()
+        else Path(output_dir)
+    )
+    raw_requested = str(requested)
+    windows_path = PureWindowsPath(raw_requested)
+    posix_path = PurePosixPath(raw_requested)
+    if (
+        requested.is_absolute()
+        or windows_path.is_absolute()
+        or posix_path.is_absolute()
+        or windows_path.drive
+    ):
+        raise AppException(code=400, msg="Account dataset output_dir must be relative to MODEL_ARTIFACT_ROOT.")
+    if ".." in requested.parts or ".." in windows_path.parts or ".." in posix_path.parts:
+        raise AppException(code=400, msg="Account dataset output_dir must not escape or resolve outside MODEL_ARTIFACT_ROOT.")
+
+    target_dir = (artifact_root / requested).resolve()
+    try:
+        target_dir.relative_to(artifact_root)
+    except ValueError as exc:
+        raise AppException(code=400, msg="Account dataset output_dir must remain inside MODEL_ARTIFACT_ROOT.") from exc
+    return target_dir
 
 
 def _dataset_card(manifest: dict[str, Any]) -> str:

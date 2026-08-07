@@ -5,7 +5,8 @@ from __future__ import annotations
 import random
 from dataclasses import asdict
 from pathlib import Path
-from typing import Any
+from tempfile import TemporaryDirectory
+from typing import Any, Mapping
 
 import numpy as np
 import torch
@@ -16,7 +17,9 @@ from .artifacts import write_training_artifacts
 from .baseline import evaluate_text_baseline
 from .contracts import TrainingConfig
 from .evaluation import evaluate_predictions, prediction_rows
+from .evaluation_protocol import EvaluationProtocolError, evaluate_account_protocol, is_verified_protocol_report
 from .hypergraph import build_reference_hyperedges, build_support_hyperedges, neighbor_similarities, propagate_support
+from .model_bundle import write_account_model_bundle
 from .reliability import compute_correction_risk, select_routed_accounts
 from .strict_contracts import StrictAccountRecord, StrictCorpus
 from .strict_datasets import load_strict_social_corpus
@@ -33,9 +36,14 @@ def train_strict_botrhg(
     *,
     dataset_name: str,
     config: TrainingConfig,
+    frozen_holdout_manifest: Mapping[str, Any] | None = None,
+    deployment_schema: str = "cogguard.botrhg.strict.v1",
+    encoder_binding_payload_path: str | Path | None = None,
 ) -> dict[str, Any]:
     """Train the paper-aligned BotRHG stack on one supported corpus."""
 
+    if deployment_schema not in {"cogguard.botrhg.strict.v1", "cogguard.botrhg.account.v3"}:
+        raise ValueError(f"unsupported strict BotRHG deployment schema: {deployment_schema}")
     _seed_everything(config.seed)
     device = _resolve_device(config.device)
     corpus = load_strict_social_corpus(
@@ -136,16 +144,32 @@ def train_strict_botrhg(
     metrics["same_split_text_baseline"] = evaluate_text_baseline(splits["train"], splits["test"])
     calibration = _fit_temperature_calibration(predictions)
     metrics["calibration"] = calibration
+    metrics["evaluation_protocol"] = _evaluate_protocol_or_fail_closed(splits, frozen_holdout_manifest)
     model.eval()
     text_encoder.eval()
+    protocol_report = (
+        metrics["evaluation_protocol"]
+        if is_verified_protocol_report(metrics["evaluation_protocol"])
+        else None
+    )
+    text_runtime_assets = (
+        _export_text_runtime_assets(text_encoder)
+        if deployment_schema == "cogguard.botrhg.account.v3"
+        else {}
+    )
     checkpoint = {
-        "schema": "cogguard.botrhg.strict.v1",
+        "schema": deployment_schema,
+        "deployment": {
+            "eligible": bool(protocol_report),
+            "status": "candidate" if protocol_report else "evaluation_unverified",
+        },
         "method": "BotRHG",
         "paper_method": "reliability_guided_hypergraph_learning",
         "strict_method": True,
         "dataset_name": corpus.manifest.dataset_name,
         "data_fingerprint": corpus.manifest.data_fingerprint,
         "text_model_path": str(Path(config.model.text_model_path).resolve()),
+        "text_runtime_assets": text_runtime_assets,
         "text_sampling_strategy": "unified_profile_description_tweets",
         "max_chunks_per_account": config.model.max_chunks_per_account,
         "text_hidden_size": text_encoder.hidden_size,
@@ -187,6 +211,45 @@ def train_strict_botrhg(
         history=base_history + correction_history,
         model_card=model_card,
     )
+    output = Path(artifact_paths["output_dir"])
+    # Governed runs copy the immutable DAPT encoder payload into the bundle.
+    encoder_artifact = Path(encoder_binding_payload_path) if encoder_binding_payload_path is not None else output / "strict_text_encoder.pt"
+    detector_artifact = output / "strict_detector.pt"
+    if encoder_binding_payload_path is None:
+        torch.save(
+            {
+                "schema": deployment_schema,
+                "component": "encoder",
+                "state_dict": text_encoder.encoder.state_dict(),
+            },
+            encoder_artifact,
+        )
+    torch.save(
+        {
+            "schema": deployment_schema,
+            "component": "detector",
+            "property_state_dict": model.property_encoder.state_dict(),
+            "graph_state_dict": model.graph_encoder.state_dict(),
+            "base_state_dict": model.base_detector.state_dict(),
+            "correction_state_dict": model.correction.state_dict(),
+        },
+        detector_artifact,
+    )
+    bundle_manifest_path = write_account_model_bundle(
+        output / "account_model_bundle",
+        encoder=encoder_artifact,
+        # The complete checkpoint is the deployable detector component.  The
+        # split detector state remains beside it for research inspection, while
+        # runtime loading can reconstruct the exact BotRHG graph and calibrator.
+        detector=output / "checkpoint.pt",
+        feature_schema=schema.to_dict(),
+        calibration=calibration,
+        metrics=metrics,
+        data_fingerprints={corpus.manifest.dataset_name: corpus.manifest.data_fingerprint},
+        source_schema=deployment_schema,
+        protocol_report=protocol_report,
+    )
+    artifact_paths["model_bundle_manifest_path"] = str(bundle_manifest_path.resolve())
     return {
         "method": "BotRHG",
         "dataset": corpus.manifest.to_dict(),
@@ -194,6 +257,21 @@ def train_strict_botrhg(
         "routed_count": int(routed.numel()),
         "artifact_paths": artifact_paths,
     }
+
+
+def _export_text_runtime_assets(text_encoder: TextEncoder) -> dict[str, bytes]:
+    """Serialize tokenizer and model config without duplicating encoder weights."""
+
+    with TemporaryDirectory(prefix="cogguard-text-assets-") as directory:
+        root = Path(directory)
+        text_encoder.tokenizer.save_pretrained(root)
+        text_encoder.encoder.config.save_pretrained(root)
+        excluded = {"model.safetensors", "pytorch_model.bin"}
+        return {
+            path.relative_to(root).as_posix(): path.read_bytes()
+            for path in sorted(root.rglob("*"))
+            if path.is_file() and path.name not in excluded
+        }
 
 
 def _train_base_stage(
@@ -405,6 +483,28 @@ def _resolve_device(requested: str) -> torch.device:
     if requested.startswith("cuda") and not torch.cuda.is_available():
         return torch.device("cpu")
     return torch.device(requested)
+
+
+def _evaluate_protocol_or_fail_closed(
+    splits: dict[str, list[StrictAccountRecord]],
+    frozen_holdout_manifest: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    """Record a real protocol result without converting missing evidence into a pass."""
+
+    if frozen_holdout_manifest is None:
+        return {
+            "schema": "cogguard.account-evaluation-protocol.v1",
+            "activation_allowed": False,
+            "error": "a pre-created frozen holdout manifest is required",
+        }
+    try:
+        return evaluate_account_protocol(splits, frozen_holdout_manifest=frozen_holdout_manifest)
+    except EvaluationProtocolError as error:
+        return {
+            "schema": "cogguard.account-evaluation-protocol.v1",
+            "activation_allowed": False,
+            "error": str(error),
+        }
 
 
 def _fit_temperature_calibration(predictions: list[dict[str, Any]]) -> dict[str, Any]:

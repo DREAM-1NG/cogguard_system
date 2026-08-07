@@ -19,6 +19,18 @@ const definitions = [
   },
   {
     collection: "raw_posts",
+    name: "ix_raw_posts_event_crawl_job_id",
+    key: { event_id: 1, crawl_job_id: -1, _id: -1 },
+    purpose: "event-scoped ingestion generation markers for cached projections",
+  },
+  {
+    collection: "raw_posts",
+    name: "ix_raw_posts_event_author_id",
+    key: { event_id: 1, author_id: 1 },
+    purpose: "event-scoped key-account display-name projection",
+  },
+  {
+    collection: "raw_posts",
     name: "ix_raw_posts_platform_timestamp",
     key: { platform: 1, timestamp: -1 },
     purpose: "platform-scoped acquisition ordering",
@@ -40,6 +52,12 @@ const definitions = [
     name: "ix_raw_comments_event_platform_timestamp",
     key: { event_id: 1, platform: 1, timestamp: -1 },
     purpose: "event and platform scoped comment loading",
+  },
+  {
+    collection: "raw_comments",
+    name: "ix_raw_comments_event_crawl_job_id",
+    key: { event_id: 1, crawl_job_id: -1, _id: -1 },
+    purpose: "event-scoped ingestion generation markers for cached projections",
   },
   {
     collection: "raw_comments",

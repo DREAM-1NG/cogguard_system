@@ -8,11 +8,7 @@ from app.core.review.trainable_post import (
     ATTACK_AXIS,
     MISINFO_AXIS,
     TEACHER_SILVER_SCHEMA,
-    axis_supports_case,
     claim_context_text,
-    stance_proxy_of,
-    teacher_axis_confidence,
-    teacher_axis_label,
 )
 
 __all__ = [
@@ -51,45 +47,33 @@ def build_teacher_silver_record(
     summary = review_result.get("summary") or {}
     audit = review_result.get("audit") or {}
     agent_reports = [item for item in review_result.get("agent_reports") or [] if isinstance(item, dict)]
+    judge_reports = [item for item in agent_reports if item.get("agent_name") == "HarmfulnessJudgeAgent"]
     judge_report = next(
-        (item for item in agent_reports if item.get("agent_name") == "HarmfulnessJudgeAgent"),
-        {},
+        (
+            item
+            for item in reversed(judge_reports)
+            if item.get("status") == "completed" and item.get("report_role") == "judge_final"
+        ),
+        next((item for item in reversed(judge_reports) if item.get("status") == "completed"), {}),
     )
     judge_sidecar = judge_report.get("structured_sidecar") or {}
     selected_posts = _as_list((review_result.get("input_bundle") or {}).get("selected_posts"))
-    teacher_confidence = judge_sidecar.get("confidence")
-    axis_confidence = teacher_axis_confidence(case, ATTACK_AXIS, teacher_confidence=teacher_confidence)
-    misinfo_confidence = teacher_axis_confidence(case, MISINFO_AXIS, teacher_confidence=teacher_confidence)
-    main_axes = {
-        ATTACK_AXIS: {
-            "available": axis_supports_case(case, ATTACK_AXIS),
-            "label": "harmful"
-            if teacher_axis_label(case, ATTACK_AXIS) == 1
-            else "non_harmful"
-            if axis_supports_case(case, ATTACK_AXIS)
-            else "unavailable",
-            "confidence": axis_confidence,
-            "source": "teacher_silver" if axis_supports_case(case, ATTACK_AXIS) else "masked",
-        },
-        MISINFO_AXIS: {
-            "available": axis_supports_case(case, MISINFO_AXIS),
-            "label": "harmful"
-            if teacher_axis_label(case, MISINFO_AXIS) == 1
-            else "non_harmful"
-            if axis_supports_case(case, MISINFO_AXIS)
-            else "unavailable",
-            "confidence": misinfo_confidence,
-            "source": "teacher_silver" if axis_supports_case(case, MISINFO_AXIS) else "masked",
-        },
-    }
+    teacher_prediction = judge_sidecar.get("teacher_prediction") or {}
+    prediction_axes = teacher_prediction.get("main_axes") if isinstance(teacher_prediction, dict) else {}
+    main_axes = {}
+    for axis_name in (ATTACK_AXIS, MISINFO_AXIS):
+        prediction_axis = prediction_axes.get(axis_name) if isinstance(prediction_axes, dict) else None
+        available = bool(isinstance(prediction_axis, dict) and prediction_axis.get("available"))
+        main_axes[axis_name] = {
+            "available": available,
+            "label": str(prediction_axis.get("label") or "unavailable") if isinstance(prediction_axis, dict) else "unavailable",
+            "confidence": float(prediction_axis.get("confidence") or 0.0) if isinstance(prediction_axis, dict) else 0.0,
+            "source": "judge_teacher_prediction" if available else "masked",
+        }
     fine_labels = _dedupe_strings(
-        [
-            *(str(item) for item in (case.get("labels") or {}).get("harm_type") or []),
-            str((case.get("labels") or {}).get("raw_label") or ""),
-            str((case.get("labels") or {}).get("veracity") or ""),
-            str((case.get("labels") or {}).get("rumour_label") or ""),
-            *(str(item) for item in (case.get("labels") or {}).get("target_groups") or []),
-        ]
+        [str(item) for item in teacher_prediction.get("fine_labels") or []]
+        if isinstance(teacher_prediction, dict)
+        else []
     )
     evidence_spans: list[str] = []
     for post in selected_posts[:3]:
@@ -122,13 +106,17 @@ def build_teacher_silver_record(
         or summary.get("completed", 0) < summary.get("requested_agents", 0)
         or summary.get("reflection_response_reports", 0)
     ) else "summary_only"
-    confidence_sources = [
-        float(judge_sidecar.get("confidence")) if judge_sidecar.get("confidence") is not None else None,
-        float(summary.get("completed", 0)) / float(summary.get("requested_agents", 1) or 1),
-        0.9 if sample_mode == "hard_case" else 0.65,
+    available_axis_confidences = [
+        float(axis["confidence"])
+        for axis in main_axes.values()
+        if axis.get("available")
     ]
-    confidence_values = [value for value in confidence_sources if value is not None]
-    confidence = round(float(sum(confidence_values) / len(confidence_values)) if confidence_values else 0.5, 6)
+    confidence = round(
+        max(0.0, min(1.0, float(sum(available_axis_confidences) / len(available_axis_confidences))))
+        if available_axis_confidences
+        else 0.0,
+        6,
+    )
     review_reason = _dedupe_strings(
         [
             *(str(item) for item in summary.get("runtime_reasons") or []),
@@ -139,7 +127,13 @@ def build_teacher_silver_record(
             "hard_case" if sample_mode == "hard_case" else "summary_only",
         ]
     )
-    stance_label = stance_proxy_of(case)
+    stance_prediction = teacher_prediction.get("stance") if isinstance(teacher_prediction, dict) else {}
+    stance_prediction = stance_prediction if isinstance(stance_prediction, dict) else {}
+    distillation_eligible = bool(
+        judge_report.get("status") == "completed"
+        and judge_sidecar.get("teacher_prediction_valid") is True
+        and any(axis.get("available") and axis.get("label") in {"harmful", "non_harmful"} for axis in main_axes.values())
+    )
     return {
         "schema_version": TEACHER_SILVER_SCHEMA,
         "case_id": case.get("case_id"),
@@ -147,9 +141,9 @@ def build_teacher_silver_record(
         "split": case.get("split"),
         "main_axes": main_axes,
         "stance": {
-            "available": bool(claim_context_text(case)),
-            "label": stance_label,
-            "confidence": 0.8 if claim_context_text(case) and stance_label != "unlinked" else 0.0,
+            "available": bool(stance_prediction.get("available")),
+            "label": str(stance_prediction.get("label") or "unlinked"),
+            "confidence": float(stance_prediction.get("confidence") or 0.0),
         },
         "fine_labels": fine_labels,
         "confidence": confidence,
@@ -157,14 +151,32 @@ def build_teacher_silver_record(
         "evidence_spans": _dedupe_strings(evidence_spans),
         "trace_refs": _dedupe_strings(trace_refs),
         "sample_mode": sample_mode,
+        "review_required": bool(teacher_prediction.get("review_required")) if isinstance(teacher_prediction, dict) else False,
+        "distillation_eligible": distillation_eligible,
+        "distillation_blocker": None if distillation_eligible else (
+            judge_sidecar.get("teacher_prediction_error") or "missing_valid_judge_teacher_prediction"
+        ),
     }
 
 
 def load_teacher_silver_index(rows: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
     index: dict[str, dict[str, Any]] = {}
+    duplicate_case_ids: set[str] = set()
     for row in rows:
         case_id = str(row.get("case_id") or "").strip()
-        if case_id and case_id not in index:
-            index[case_id] = row
+        if (
+            not case_id
+            or row.get("schema_version") != TEACHER_SILVER_SCHEMA
+            or row.get("distillation_eligible") is not True
+            or not str(row.get("dataset") or "").strip()
+            or not str(row.get("split") or "").strip()
+        ):
+            continue
+        if case_id in index:
+            duplicate_case_ids.add(case_id)
+            continue
+        index[case_id] = row
+    for case_id in duplicate_case_ids:
+        index.pop(case_id, None)
     return index
 

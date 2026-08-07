@@ -15,7 +15,13 @@ celery_app = Celery(
     "cogguard",
     broker=settings.redis_url,
     backend=settings.redis_url,
-    include=["app.tasks.analysis_tasks", "app.tasks.crawl_tasks", "app.tasks.review_tasks"],
+    include=[
+        "app.tasks.analysis_tasks",
+        "app.tasks.crawl_tasks",
+        "app.tasks.review_tasks",
+        "app.tasks.account_training_tasks",
+        "app.tasks.account_evaluation_tasks",
+    ],
 )
 
 celery_app.conf.update(
@@ -25,10 +31,32 @@ celery_app.conf.update(
     timezone="Asia/Shanghai",
     enable_utc=True,
     task_track_started=True,
+    task_publish_retry=False,
+    broker_connection_timeout=float(settings.ACCOUNT_TRAINING_OUTBOX_PUBLISH_TIMEOUT_SECONDS),
+    broker_transport_options={
+        "socket_connect_timeout": float(settings.ACCOUNT_TRAINING_OUTBOX_PUBLISH_TIMEOUT_SECONDS),
+        "socket_timeout": float(settings.ACCOUNT_TRAINING_OUTBOX_PUBLISH_TIMEOUT_SECONDS),
+        "retry_on_timeout": False,
+    },
     task_routes={
         "crawl.*": {"queue": "crawl"},
         "analysis.*": {"queue": "analysis"},
         "review.*": {"queue": "review"},
+        "account_training.*": {"queue": "account_training"},
+        "account_evaluation.*": {"queue": "account_evaluation"},
+    },
+    beat_schedule={
+        "account-training-heartbeat-reconciliation": {
+            "task": "account_training.reconcile_heartbeats",
+            "schedule": max(30.0, float(settings.ACCOUNT_TRAINING_HEARTBEAT_TIMEOUT_SECONDS) / 2.0),
+            "options": {"queue": "account_training"},
+        },
+        "account-model-monitoring-snapshot": {
+            "task": "account_training.monitor_active_model",
+            "schedule": 300.0,
+            "kwargs": {"window_seconds": 300},
+            "options": {"queue": "account_training"},
+        },
     },
 )
 

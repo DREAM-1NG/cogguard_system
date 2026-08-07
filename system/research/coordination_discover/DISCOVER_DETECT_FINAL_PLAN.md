@@ -1,5 +1,19 @@
 # Coordination Discover Discover + Detect Final Plan
 
+## Mainline Freeze And Research Reset
+
+The backend evidence-constrained dynamic Coordination Discover path is frozen as
+the system mainline. The `TemporalMAGNN + Leiden` research branch is
+deprecated/non-claimable after its IOHunter reconstruction regression and remains
+available only for replay, comparison, and negative-result analysis.
+
+The replacement research line is a goal-aligned continuous-time heterogeneous
+evidence model. It must first repair evaluation integrity, then implement a
+lightweight account-pair temporal edge model, and only then consider
+HGT/TGN-level message passing. A research model can enter the system only after
+it beats the frozen engineering implementation and `magnn_legacy` under the
+accepted validation gates.
+
 ## Accepted Priority Order
 
 1. Recommendation 1: upgrade the evidence graph into a directed weighted multigraph.
@@ -24,7 +38,7 @@ Reference boundary is captured in `research-wiki/preflight_runs/20260722T171047Z
 
 - `contracts.py` now exposes `AccountMultigraphEdge`, `EvidenceGraph.account_edges`, `EvidenceGraph.representation_inputs`, and `DiscoverResult.dynamic_communities`.
 - `evidence.py` builds platform-generic account-object evidence, directed weighted account multigraph edges, higher-order co-evidence edges, precomputed text embedding registries, and SimHash/LSH plus token-shingle near-duplicate candidate evidence.
-- `models.py` keeps topology features out of the model input, consumes only precomputed text embeddings, and uses bounded temporal pair projection for large shared objects.
+- `models.py` keeps topology features out of the model input, consumes only precomputed text embeddings, and uses bounded temporal pair projection for large shared objects. The current `TemporalMAGNN-style` scorer is retained only as a deprecated comparison artifact.
 - `pipelines.py` exports centered overlapping window graphs, layer/relation counts per window, lineage, membership transitions, transition matrix, stability rows, archetype counts, and a process-motif branch marked `exploratory_non_claimable`.
 - `evaluation.py` returns Detect metrics only with labels and records `claim_readiness`; missing split/campaign/platform/seed metadata keeps metrics in `exploratory_metrics_only` status.
 - `process_experiments.py` extracts ordered evidence-kind motifs but returns `causal_tests.status=not_run`.
@@ -103,8 +117,13 @@ Stage 2: Coordination Detect.
 
 ## Next Optimization Work
 
-1. Add public labeled IOHunter-style Detect experiments with campaign/platform/time holdout, 5 seeds, AUPRC, MaxF1, ECE, and abstain gates.
-2. Add precomputed text embeddings through an explicit offline embedding batch, then run `without_lm` and `with_lm` ablations.
-3. Replace the current scorer with a real heterogenous temporal GNN only after the evidence and data protocols are stable.
-4. Add combined-event long-run jobs with signed manifests, size budgets, and artifact compression.
-5. Add analyst review fixtures for community evidence support/contradiction/unknown without turning them into training labels prematurely.
+1. **P0: repair evaluation integrity.** Use campaign/platform/time holdouts, fit TF-IDF/SVD/scalers and text representations on training data only, use matched hard negatives, run 5 seeds, and add no-edge/no-text/no-higher-order/no-Leiden ablations.
+2. **P1: build a lightweight temporal edge model.** Keep the evidence graph, train directly on account-pair coordination targets, and use continuous time deltas, learnable temporal decay, relation attention, text evidence inputs, and learned edge weights.
+3. **P2: evaluate a real hetero-temporal GNN only after P1 passes.** Add account/content/object/platform node types, relation-specific message passing, event-level temporal memory, and a dynamic-community consistency head only when the lighter model improves reconstruction and Detect transfer.
+4. Keep public labeled IOHunter-style Detect experiments with campaign/platform/time holdout, AUPRC, MaxF1, ECE, abstain, and confidence-interval gates.
+5. Add combined-event long-run jobs with signed manifests, size budgets, and artifact compression.
+6. Add analyst review fixtures for community evidence support/contradiction/unknown without turning them into training labels prematurely.
+
+The activation gate is strict: no candidate research model becomes the system
+model unless it beats the frozen engineering path and `magnn_legacy`; a
+modularity increase alone is insufficient.

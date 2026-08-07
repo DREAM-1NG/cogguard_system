@@ -33,9 +33,28 @@ REDIS_PASSWORD=<database password>
 
 Do not commit `system/.env`, crawler cookies, API keys, or provider credentials.
 
+## Default Startup
+
+The normal local or LAN launch uses the production-like static delivery path.
+It starts infrastructure, applies idempotent MongoDB indexes, migrates MySQL,
+starts the backend without a reload watcher, waits for `/api/v2/health`, builds
+the frontend, and starts the `production-ui` static profile:
+
+```powershell
+cd system
+powershell.exe -ExecutionPolicy Bypass -File .\start-system.ps1
+```
+
+Open `http://127.0.0.1:5173/login` after the command reports readiness.
+Use `-SkipIndexPreparation` only for a known maintenance conflict. Use
+`-DevelopmentFrontend` only while editing frontend source; it starts Vite in
+place of the static profile.
+
 ## Infrastructure
 
-Docker Compose runs MySQL, MongoDB, and Redis. Backend, Celery, and frontend processes run from the checked-out source tree.
+Docker Compose runs MySQL, MongoDB, and Redis. The default helper runs the
+backend from the checked-out source tree and serves the built frontend from the
+Compose static-delivery profile.
 
 ```powershell
 cd system
@@ -96,9 +115,10 @@ There is no `/preview` route or static preview token. Local and LAN prototypes u
 
 ### Delivery Performance Profile
 
-Use Vite only while editing frontend source. For a delivery run with compressed
-and cacheable static assets, leave the backend on port `8000` and start the
-optional static frontend service instead:
+`start-system.ps1` uses this profile by default. Use Vite only while editing
+frontend source. For a separately operated delivery run with compressed and
+cacheable static assets, leave the backend on port `8000` and start the static
+frontend service instead:
 
 ```powershell
 cd system
@@ -112,8 +132,9 @@ only Vite content-hashed assets receive long-lived cache headers.
 
 ### MongoDB Query Indexes
 
-After Docker starts MongoDB, preview the index operation and then apply it in a
-quiet maintenance window:
+The default helper applies this idempotent operation before the backend starts.
+For a separate maintenance run, preview the index operation and then apply it
+in a quiet maintenance window:
 
 ```powershell
 cd system
@@ -126,16 +147,24 @@ event/platform/time/crawl-job query shapes for `raw_posts` and `raw_comments`.
 See `performance-operations.md` for the complete index list and rollback
 boundary.
 
-## One-Command Windows Startup
+### Demo Data Warmup
 
-After dependencies and `system/.env` are prepared:
+The optimized static build only preloads browser assets. To make a video
+walkthrough start with real analytical pages already warmed, set temporary
+demo credentials and run:
 
 ```powershell
-cd system
-powershell.exe -ExecutionPolicy Bypass -File .\start-system.ps1
+$env:COGGUARD_DEMO_USERNAME = 'demo_analyst'
+$env:COGGUARD_DEMO_PASSWORD = '<local-demo-password>'
+powershell.exe -ExecutionPolicy Bypass -File .\start-system.ps1 -DemoWarmup -DemoWarmupStrict
 ```
 
-Use `-SyncHistoricalData` only when local runtime JSONL needs to be imported into MongoDB. The import is idempotent.
+Use `-SkipDocker` when the infrastructure is already owned by another Compose
+project. Do not put the password in a committed script or command history.
+The warmup report is redacted and stored under `system/output/demo-warmup/`.
+
+Use `-SyncHistoricalData` with the default startup command only when local
+runtime JSONL needs to be imported into MongoDB. The import is idempotent.
 
 ## Built-In Crawler Runtimes
 
@@ -165,6 +194,28 @@ cd system
 
 New successful collection jobs carrying an `event_id` automatically create or revise an Event Review Case and run the internal analysis pipeline. Re-importing an unchanged data fingerprint does not create a duplicate revision.
 
+## Chinese Account Training Runtime
+
+The control plane can run on CPU, but DAPT and deployment latency acceptance
+require a CUDA-enabled PyTorch environment. Verify the exact interpreter used
+by the dedicated worker:
+
+```powershell
+cd system\backend
+.\.venv\Scripts\python.exe -c "import torch; print(torch.__version__, torch.cuda.is_available(), torch.version.cuda)"
+nvidia-smi
+```
+
+Do not treat the presence of an NVIDIA driver as proof that training uses the
+GPU. As measured on 2026-08-07, the host RTX 4060 was visible while the backend
+venv reported `torch 2.12.1+cpu`, `cuda.is_available() == False`. The first DAPT
+run also remains quantity-blocked until the registered Chinese corpus reaches
+500,000 qualified tokens; the current measured corpus contains 415,686.
+
+An empty Active Pointer is a valid fail-closed state. `/api/v1/accounts/bot-detection`
+must return `unavailable_without_active_pointer` instead of using a legacy or
+heuristic detector.
+
 ## Verification
 
 Backend:
@@ -183,7 +234,10 @@ npm test
 npm run build
 ```
 
-The frontend build enforces a local map payload below 2 MB and every generated JavaScript chunk below 1 MB.
+The frontend build enforces a local map payload below 2 MB, every generated
+JavaScript chunk below 1 MB, and the generated delivery preload policy. It
+prepares only the authenticated layout and dashboard shell after login;
+other routes are prepared on navigation interaction.
 
 ## Stopping Services
 

@@ -1,7 +1,8 @@
 [CmdletBinding()]
 param(
     [string]$Database,
-    [switch]$DryRun
+    [switch]$DryRun,
+    [string]$DockerExecutable
 )
 
 Set-StrictMode -Version Latest
@@ -30,8 +31,16 @@ function Get-DotEnvValue {
     return $DefaultValue
 }
 
-$docker = Get-Command docker.exe -ErrorAction SilentlyContinue
-if (-not $docker) {
+$dockerPath = if ($DockerExecutable) {
+    $DockerExecutable
+} elseif (Get-Command docker.exe -ErrorAction SilentlyContinue) {
+    (Get-Command docker.exe -ErrorAction SilentlyContinue).Source
+} elseif (Test-Path 'C:\Program Files\Docker\Docker\resources\bin\docker.exe') {
+    'C:\Program Files\Docker\Docker\resources\bin\docker.exe'
+} else {
+    $null
+}
+if (-not $dockerPath) {
     throw 'docker.exe is required to apply MongoDB performance indexes.'
 }
 
@@ -61,7 +70,7 @@ $arguments += @(
     '--file', '/opt/cogguard-ops/apply_performance_indexes.js'
 )
 
-& $docker.Source @arguments
+& $dockerPath @arguments
 if ($LASTEXITCODE -ne 0) {
     throw "MongoDB performance-index operation failed with exit code $LASTEXITCODE."
 }

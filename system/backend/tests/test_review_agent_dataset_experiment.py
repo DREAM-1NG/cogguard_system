@@ -55,6 +55,31 @@ def test_minimal_report_excludes_gold_harmfulness_from_detector_risk_fields():
     )
 
 
+def test_minimal_report_only_builds_claim_retrieval_context_for_claim_datasets():
+    runner = load_runner_module()
+    attack_case = offline_case(case_id="attack-1")
+    attack_case["dataset"] = "HateXplain"
+    attack_report = runner.build_minimal_report(attack_case, prefer_embeddings=False)
+    assert attack_report["review_harmfulness"]["review_queue"]["retrieval_tasks"] == []
+    assert attack_report["review_harmfulness"]["global_summary"]["claim_rank"] == []
+
+    claim_case = offline_case(case_id="claim-1")
+    claim_case["dataset"] = "PHEME"
+    claim_report = runner.build_minimal_report(claim_case, prefer_embeddings=False)
+    assert claim_report["review_harmfulness"]["review_queue"]["retrieval_tasks"]
+    assert claim_report["review_harmfulness"]["global_summary"]["claim_rank"]
+
+
+def test_env_retriever_reads_uppercase_settings_and_exa_adapter(monkeypatch):
+    runner = load_runner_module()
+    monkeypatch.setenv("Review_RETRIEVAL_API_KEY", "exa-test-key")
+    monkeypatch.setenv("Review_RETRIEVAL_BASE_URL", "https://api.exa.ai")
+    monkeypatch.setenv("Review_RETRIEVAL_SEARCH_PATH", "/search")
+    monkeypatch.setenv("Review_RETRIEVAL_ADAPTER", "exa")
+    retriever = runner.build_env_retriever()
+    assert callable(retriever)
+
+
 def test_cli_loads_explicit_policy_and_error_memory_paths_for_agent_runtime(monkeypatch, tmp_path):
     runner = load_runner_module()
     case_dir = tmp_path / "cases"
@@ -195,3 +220,119 @@ def test_experiment_report_records_latency_and_call_budget_configuration(monkeyp
         "dataset_concurrency": 3,
         "max_agent_calls_per_case": 7,
     }
+
+
+def test_runner_detects_and_passes_core_call_budget_parameter():
+    runner = load_runner_module()
+
+    async def review_runner(*, max_agent_calls_per_case=12):
+        return max_agent_calls_per_case
+
+    assert runner.supports_max_agent_calls(review_runner) is True
+
+
+def test_case_manifest_selects_student_test_cases_in_manifest_order(tmp_path):
+    runner = load_runner_module()
+    cases = [
+        offline_case(case_id="case-1"),
+        offline_case(case_id="case-2"),
+        offline_case(case_id="case-3"),
+    ]
+    manifest_path = tmp_path / "student_predictions.jsonl"
+    manifest_path.write_text(
+        "".join(
+            json.dumps(row) + "\n"
+            for row in [
+                {"case_id": "case-3", "dataset": "fixture", "split": "test"},
+                {"case_id": "case-1", "dataset": "fixture", "split": "test"},
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    manifest = runner.load_case_manifest(manifest_path)
+    selected, audit = runner.select_manifest_cases(cases, "fixture", manifest)
+
+    assert [case["case_id"] for case in selected] == ["case-3", "case-1"]
+    assert audit == {
+        "manifest_enabled": True,
+        "requested_case_count": 2,
+        "selected_case_count": 2,
+        "missing_case_ids": [],
+    }
+
+
+def test_case_manifest_does_not_fall_back_to_unrequested_cases(tmp_path):
+    runner = load_runner_module()
+    manifest_path = tmp_path / "student_predictions.jsonl"
+    manifest_path.write_text(
+        json.dumps({"case_id": "other-1", "dataset": "other", "split": "test"}) + "\n",
+        encoding="utf-8",
+    )
+
+    manifest = runner.load_case_manifest(manifest_path)
+    selected, audit = runner.select_manifest_cases([offline_case()], "fixture", manifest)
+
+    assert selected == []
+    assert audit["manifest_enabled"] is True
+    assert audit["requested_case_count"] == 0
+
+
+def test_teacher_experiment_rejects_test_manifest_in_distillation_mode(tmp_path):
+    runner = load_runner_module()
+    manifest_path = tmp_path / "teacher.jsonl"
+    manifest_path.write_text(
+        json.dumps(
+            {
+                "case_id": "case-1",
+                "dataset": "fixture",
+                "split": "ottawashooting",
+                "protocol_split": "test",
+            }
+        ) + "\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(SystemExit, match="cannot contain test cases"):
+        runner.load_case_manifest(manifest_path, population_role="teacher_silver")
+
+
+def test_evaluation_manifest_rejects_non_test_protocol_population(tmp_path):
+    runner = load_runner_module()
+    manifest_path = tmp_path / "evaluation.jsonl"
+    manifest_path.write_text(
+        json.dumps(
+            {
+                "case_id": "case-1",
+                "dataset": "fixture",
+                "split": "train",
+                "protocol_split": "train",
+            }
+        ) + "\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(SystemExit, match="evaluation population must declare protocol_split=test"):
+        runner.load_case_manifest(manifest_path, population_role="evaluation")
+
+
+def test_default_agents_include_propagation_analysis():
+    runner = load_runner_module()
+
+    assert "PropagationTreeAgent" in runner.DEFAULT_AGENTS
+
+
+def test_agent_prediction_rows_do_not_export_dataset_gold():
+    runner = load_runner_module()
+    row = runner.timeout_row(
+        case={
+            "case_id": "fixture-1",
+            "dataset": "fixture",
+            "split": "test",
+            "labels": {"harmfulness": "harmful"},
+        },
+        dataset="fixture",
+        timeout_seconds=1,
+    )
+
+    assert "gold_harmfulness" not in row

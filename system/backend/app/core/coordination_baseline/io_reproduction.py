@@ -18,6 +18,7 @@ import re
 import shlex
 import shutil
 import subprocess
+import sys
 import time
 import urllib.request
 import zipfile
@@ -33,6 +34,7 @@ import pandas as pd
 from networkx.algorithms.community import greedy_modularity_communities, louvain_communities
 from networkx.algorithms.community.quality import modularity
 
+from app.config import PROJECT_ROOT
 from app.core.coordination_baseline.characterization import CharacterizationConfig, characterize_detect_output
 from app.core.coordination_baseline.deep_graph import (
     DEPRECATED_DISCOVER_ENCODERS,
@@ -240,6 +242,12 @@ def normalize_event_table(frame: pd.DataFrame) -> pd.DataFrame:
         if column in normalized:
             normalized[column] = normalized[column].fillna(0).astype(int)
             break
+    if {"source_graph", "edge_weight"}.issubset(normalized.columns):
+        source_graphs = set(normalized["source_graph"].astype(str))
+        if source_graphs - {"", "labels"}:
+            normalized.attrs["timestamp_policy"] = "processed_graph_edge_order_proxy"
+            normalized.attrs["timestamp_unit"] = "edge_order_hours"
+            normalized.attrs["platform_policy"] = "not_available_in_processed_iohunter_graph"
     return normalized
 
 
@@ -343,7 +351,11 @@ def iohunter_processed_to_event_table(
                         "target_account_id": str(peer_id),
                     }
                 )
-    return normalize_event_table(pd.DataFrame(rows))
+    events = normalize_event_table(pd.DataFrame(rows))
+    events.attrs["timestamp_policy"] = "processed_graph_edge_order_proxy"
+    events.attrs["timestamp_unit"] = "edge_order_hours"
+    events.attrs["platform_policy"] = "not_available_in_processed_iohunter_graph"
+    return events
 
 
 def write_iohunter_event_table(
@@ -384,6 +396,9 @@ def write_iohunter_event_table(
         "account_count": int(events["account_id"].nunique()),
         "relation_counts": events["relation"].value_counts().sort_index().to_dict(),
         "positive_label_count": int(events.groupby("account_id")["label"].max().sum()),
+        "timestamp_policy": events.attrs.get("timestamp_policy"),
+        "timestamp_unit": events.attrs.get("timestamp_unit"),
+        "platform_policy": events.attrs.get("platform_policy"),
     }
 
 
@@ -6048,6 +6063,21 @@ def _float_or_none(value: object) -> float | None:
         return None
 
 
+def _bool_or_none(value: object) -> bool | None:
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return value
+    text = str(value).strip().lower()
+    if not text:
+        return None
+    if text in {"true", "1", "yes", "y"}:
+        return True
+    if text in {"false", "0", "no", "n"}:
+        return False
+    return None
+
+
 def _load_lightweight_report_rows(directory: Path) -> list[dict[str, object]]:
     metrics_path = directory / "metrics.csv"
     rows = []
@@ -6075,10 +6105,30 @@ def _load_lightweight_report_rows(directory: Path) -> list[dict[str, object]]:
                 "run_count": 1,
                 "macro_f1": f1,
                 "auc": auc,
+                "auprc": None,
                 "precision": precision,
                 "recall": recall,
                 "accuracy": None,
+                "ece": None,
+                "edge_max_f1": None,
+                "edge_roc_auc": None,
+                "edge_auprc": None,
+                "edge_ece": None,
+                "system_baseline_edge_auprc": None,
+                "observed_edge_upper_bound_auprc": None,
+                "degree_time_prior_edge_auprc": None,
+                "candidate_beats_system_baseline": None,
+                "candidate_beats_degree_time_prior": None,
+                "claim_blocked_reason": None,
                 "primary_metric": f1,
+                "primary_metric_name": "macro_f1",
+                "status": None,
+                "candidate_role": None,
+                "objective": None,
+                "model_backend": None,
+                "evaluation_type": None,
+                "label_provenance": None,
+                "time_provenance": None,
                 "notes": row.get("notes", ""),
             }
         )
@@ -6114,10 +6164,30 @@ def _load_iohunter_report_rows(directory: Path) -> list[dict[str, object]]:
                 "run_count": int(float(str(row.get("run_count") or 0))),
                 "macro_f1": None,
                 "auc": None,
+                "auprc": None,
                 "precision": None,
                 "recall": None,
                 "accuracy": None,
+                "ece": None,
+                "edge_max_f1": None,
+                "edge_roc_auc": None,
+                "edge_auprc": None,
+                "edge_ece": None,
+                "system_baseline_edge_auprc": None,
+                "observed_edge_upper_bound_auprc": None,
+                "degree_time_prior_edge_auprc": None,
+                "candidate_beats_system_baseline": None,
+                "candidate_beats_degree_time_prior": None,
+                "claim_blocked_reason": None,
                 "primary_metric": None,
+                "primary_metric_name": None,
+                "status": None,
+                "candidate_role": None,
+                "objective": None,
+                "model_backend": None,
+                "evaluation_type": None,
+                "label_provenance": None,
+                "time_provenance": None,
                 "notes": "",
             },
         )
@@ -6143,8 +6213,229 @@ def _load_iohunter_report_rows(directory: Path) -> list[dict[str, object]]:
     return list(grouped.values())
 
 
+def _load_research_candidate_report_rows(directory: Path) -> list[dict[str, object]]:
+    metrics_path = directory / "temporal_edge_candidate_metrics.csv"
+    summary_path = directory / "temporal_edge_candidate_summary.json"
+    rows: list[dict[str, object]] = []
+
+    if metrics_path.exists():
+        for row in _read_csv_dicts(metrics_path):
+            edge_max_f1 = _float_or_none(row.get("edge_max_f1") or row.get("macro_f1"))
+            edge_roc_auc = _float_or_none(row.get("edge_roc_auc") or row.get("auc"))
+            edge_auprc = _float_or_none(row.get("edge_auprc") or row.get("auprc"))
+            edge_ece = _float_or_none(row.get("edge_ece") or row.get("ece"))
+            rows.append(
+                {
+                    "source": row.get("source") or "research_candidate_offline_iohunter",
+                    "setting": row.get("setting") or "discover_candidate_eval",
+                    "family": row.get("family") or "research",
+                    "method": row.get("method") or "temporal_history_edge_mlp_v2",
+                    "dataset": row.get("dataset") or directory.name,
+                    "scope": row.get("scope") or "account_pair",
+                    "split": row.get("split") or "TEST",
+                    "run_count": int(float(str(row.get("run_count") or 1))),
+                    "macro_f1": None,
+                    "auc": None,
+                    "auprc": None,
+                    "precision": _float_or_none(row.get("precision")),
+                    "recall": _float_or_none(row.get("recall")),
+                    "accuracy": _float_or_none(row.get("accuracy")),
+                    "ece": None,
+                    "edge_max_f1": edge_max_f1,
+                    "edge_roc_auc": edge_roc_auc,
+                    "edge_auprc": edge_auprc,
+                    "edge_ece": edge_ece,
+                    "system_baseline_edge_auprc": _float_or_none(row.get("system_baseline_edge_auprc")),
+                    "observed_edge_upper_bound_auprc": _float_or_none(row.get("observed_edge_upper_bound_auprc")),
+                    "degree_time_prior_edge_auprc": _float_or_none(row.get("degree_time_prior_edge_auprc")),
+                    "edgebank_repeat_edge_auprc": _float_or_none(row.get("edgebank_repeat_edge_auprc")),
+                    "tgn_style_memory_prior_edge_auprc": _float_or_none(row.get("tgn_style_memory_prior_edge_auprc")),
+                    "strongest_fair_baseline_edge_auprc": _float_or_none(row.get("strongest_fair_baseline_edge_auprc")),
+                    "strongest_fair_baseline": row.get("strongest_fair_baseline"),
+                    "candidate_beats_system_baseline": _bool_or_none(row.get("candidate_beats_system_baseline")),
+                    "candidate_beats_degree_time_prior": _bool_or_none(row.get("candidate_beats_degree_time_prior")),
+                    "candidate_beats_strongest_fair_baseline": _bool_or_none(row.get("candidate_beats_strongest_fair_baseline")),
+                    "candidate_win_rate_vs_system_baseline": _float_or_none(row.get("candidate_win_rate_vs_system_baseline")),
+                    "candidate_win_rate_vs_strongest_fair_baseline": _float_or_none(row.get("candidate_win_rate_vs_strongest_fair_baseline")),
+                    "candidate_win_rate_vs_degree_time_prior": _float_or_none(row.get("candidate_win_rate_vs_degree_time_prior")),
+                    "claim_blocked_reason": row.get("claim_blocked_reason"),
+                    "primary_metric": None,
+                    "primary_metric_name": row.get("primary_metric_name") or "edge_auprc",
+                    "status": row.get("status"),
+                    "candidate_role": row.get("candidate_role"),
+                    "objective": row.get("objective"),
+                    "model_backend": row.get("model_backend"),
+                    "evaluation_type": row.get("evaluation_type") or "self_supervised_proxy",
+                    "evaluation_mode": row.get("evaluation_mode") or "single_seed",
+                    "label_provenance": row.get("label_provenance") or "observed_edges_plus_matched_negatives",
+                    "time_provenance": row.get("time_provenance") or "unspecified",
+                    "notes": row.get("notes", ""),
+                }
+            )
+        return rows
+
+    if summary_path.exists():
+        summary = json.loads(summary_path.read_text(encoding="utf-8"))
+        report_row = summary.get("report_row")
+        if isinstance(report_row, Mapping):
+            edge_max_f1 = _float_or_none(report_row.get("edge_max_f1") or report_row.get("macro_f1"))
+            edge_roc_auc = _float_or_none(report_row.get("edge_roc_auc") or report_row.get("auc"))
+            edge_auprc = _float_or_none(report_row.get("edge_auprc") or report_row.get("auprc"))
+            edge_ece = _float_or_none(report_row.get("edge_ece") or report_row.get("ece"))
+            rows.append(
+                {
+                    "source": report_row.get("source") or "research_candidate_offline_iohunter",
+                    "setting": report_row.get("setting") or "discover_candidate_eval",
+                    "family": report_row.get("family") or "research",
+                    "method": report_row.get("method") or "temporal_edge_mlp_v1",
+                    "dataset": report_row.get("dataset") or directory.name,
+                    "scope": report_row.get("scope") or "account_pair",
+                    "split": report_row.get("split") or "TEST",
+                    "run_count": int(float(str(report_row.get("run_count") or 1))),
+                    "macro_f1": None,
+                    "auc": None,
+                    "auprc": None,
+                    "precision": _float_or_none(report_row.get("precision")),
+                    "recall": _float_or_none(report_row.get("recall")),
+                    "accuracy": _float_or_none(report_row.get("accuracy")),
+                    "ece": None,
+                    "edge_max_f1": edge_max_f1,
+                    "edge_roc_auc": edge_roc_auc,
+                    "edge_auprc": edge_auprc,
+                    "edge_ece": edge_ece,
+                    "system_baseline_edge_auprc": _float_or_none(report_row.get("system_baseline_edge_auprc")),
+                    "observed_edge_upper_bound_auprc": _float_or_none(report_row.get("observed_edge_upper_bound_auprc")),
+                    "degree_time_prior_edge_auprc": _float_or_none(report_row.get("degree_time_prior_edge_auprc")),
+                    "edgebank_repeat_edge_auprc": _float_or_none(report_row.get("edgebank_repeat_edge_auprc")),
+                    "tgn_style_memory_prior_edge_auprc": _float_or_none(report_row.get("tgn_style_memory_prior_edge_auprc")),
+                    "strongest_fair_baseline_edge_auprc": _float_or_none(report_row.get("strongest_fair_baseline_edge_auprc")),
+                    "strongest_fair_baseline": report_row.get("strongest_fair_baseline"),
+                    "candidate_beats_system_baseline": _bool_or_none(report_row.get("candidate_beats_system_baseline")),
+                    "candidate_beats_degree_time_prior": _bool_or_none(report_row.get("candidate_beats_degree_time_prior")),
+                    "candidate_beats_strongest_fair_baseline": _bool_or_none(report_row.get("candidate_beats_strongest_fair_baseline")),
+                    "candidate_win_rate_vs_system_baseline": _float_or_none(report_row.get("candidate_win_rate_vs_system_baseline")),
+                    "candidate_win_rate_vs_strongest_fair_baseline": _float_or_none(report_row.get("candidate_win_rate_vs_strongest_fair_baseline")),
+                    "candidate_win_rate_vs_degree_time_prior": _float_or_none(report_row.get("candidate_win_rate_vs_degree_time_prior")),
+                    "claim_blocked_reason": report_row.get("claim_blocked_reason"),
+                    "primary_metric": None,
+                    "primary_metric_name": report_row.get("primary_metric_name") or "edge_auprc",
+                    "status": report_row.get("status"),
+                    "candidate_role": report_row.get("candidate_role"),
+                    "objective": report_row.get("objective"),
+                    "model_backend": report_row.get("model_backend"),
+                    "evaluation_type": report_row.get("evaluation_type") or "self_supervised_proxy",
+                    "evaluation_mode": report_row.get("evaluation_mode") or "single_seed",
+                    "label_provenance": report_row.get("label_provenance") or "observed_edges_plus_matched_negatives",
+                    "time_provenance": report_row.get("time_provenance") or "unspecified",
+                    "notes": report_row.get("notes", ""),
+                }
+            )
+            return rows
+        candidate = summary.get("candidate")
+        if isinstance(candidate, Mapping):
+            metrics = candidate.get("metrics") if isinstance(candidate.get("metrics"), Mapping) else {}
+            test_metrics = metrics.get("test") if isinstance(metrics.get("test"), Mapping) else {}
+            claim_gate = candidate.get("claim_gate") if isinstance(candidate.get("claim_gate"), Mapping) else {}
+            rows.append(
+                {
+                    "source": summary.get("source") or "research_candidate_offline_iohunter",
+                    "setting": "discover_candidate_eval",
+                    "family": "research",
+                    "method": candidate.get("model_backend") or "temporal_history_edge_mlp_v2",
+                    "dataset": summary.get("dataset") or directory.name,
+                    "scope": "account_pair",
+                    "split": "TEST",
+                    "run_count": 1,
+                    "macro_f1": None,
+                    "auc": None,
+                    "auprc": None,
+                    "precision": None,
+                    "recall": None,
+                    "accuracy": None,
+                    "ece": None,
+                    "edge_max_f1": _float_or_none(test_metrics.get("max_f1")),
+                    "edge_roc_auc": _float_or_none(test_metrics.get("roc_auc")),
+                    "edge_auprc": _float_or_none(test_metrics.get("auprc")),
+                    "edge_ece": _float_or_none(test_metrics.get("ece")),
+                    "system_baseline_edge_auprc": _float_or_none(claim_gate.get("system_baseline_test_edge_auprc")),
+                    "observed_edge_upper_bound_auprc": _float_or_none(claim_gate.get("observed_edge_upper_bound_test_edge_auprc")),
+                    "degree_time_prior_edge_auprc": _float_or_none(claim_gate.get("degree_time_prior_test_edge_auprc")),
+                    "edgebank_repeat_edge_auprc": None,
+                    "tgn_style_memory_prior_edge_auprc": None,
+                    "strongest_fair_baseline_edge_auprc": _float_or_none(claim_gate.get("strongest_fair_baseline_test_edge_auprc")),
+                    "strongest_fair_baseline": claim_gate.get("strongest_fair_baseline"),
+                    "candidate_beats_system_baseline": _bool_or_none(claim_gate.get("candidate_beats_system_baseline")),
+                    "candidate_beats_degree_time_prior": _bool_or_none(claim_gate.get("candidate_beats_degree_time_prior")),
+                    "candidate_beats_strongest_fair_baseline": _bool_or_none(claim_gate.get("candidate_beats_strongest_fair_baseline")),
+                    "candidate_win_rate_vs_system_baseline": None,
+                    "candidate_win_rate_vs_strongest_fair_baseline": None,
+                    "candidate_win_rate_vs_degree_time_prior": None,
+                    "claim_blocked_reason": claim_gate.get("blocked_reason"),
+                    "primary_metric": None,
+                    "primary_metric_name": "edge_auprc",
+                    "status": candidate.get("status"),
+                    "candidate_role": candidate.get("candidate_role"),
+                    "objective": candidate.get("objective"),
+                    "model_backend": candidate.get("model_backend"),
+                    "evaluation_type": "self_supervised_proxy",
+                    "evaluation_mode": candidate.get("evaluation_mode") or "single_seed",
+                    "label_provenance": "observed_edges_plus_matched_negatives",
+                    "time_provenance": str(
+                        (summary.get("evaluation") or {}).get("time_provenance")
+                        if isinstance(summary.get("evaluation"), Mapping)
+                        else "unspecified"
+                    ),
+                    "notes": str(candidate.get("status") or "") or "research_candidate_non_claimable",
+                }
+            )
+    return rows
+
+
+def _load_coordination_discover_research_package():
+    module_name = "_cogguard_coordination_discover_research_package"
+    cached = sys.modules.get(module_name)
+    if cached is not None:
+        return cached
+    package_dir = PROJECT_ROOT / "research" / "coordination_discover"
+    spec = importlib.util.spec_from_file_location(
+        module_name,
+        package_dir / "__init__.py",
+        submodule_search_locations=[str(package_dir)],
+    )
+    if spec is None or spec.loader is None:
+        raise ImportError(f"Unable to load research package from {package_dir}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
 def _write_markdown_table(path: Path, rows: Sequence[Mapping[str, object]]) -> None:
-    headers = ("source", "setting", "family", "method", "dataset", "macro_f1", "auc", "precision", "recall", "accuracy", "notes")
+    headers = (
+        "source",
+        "setting",
+        "family",
+        "method",
+        "dataset",
+        "scope",
+        "split",
+        "macro_f1",
+        "auc",
+        "edge_max_f1",
+        "edge_roc_auc",
+        "edge_auprc",
+        "edge_ece",
+        "system_baseline_edge_auprc",
+        "observed_edge_upper_bound_auprc",
+        "degree_time_prior_edge_auprc",
+        "candidate_beats_system_baseline",
+        "claim_blocked_reason",
+        "precision",
+        "recall",
+        "accuracy",
+        "evaluation_type",
+        "notes",
+    )
     lines = [
         "# CoordinationDiscover IO Coordination Comparison",
         "",
@@ -6167,6 +6458,7 @@ def build_coordination_discover_comparison_report(
     output_dir: Path,
     lightweight_dirs: Sequence[Path] = (),
     iohunter_summary_dirs: Sequence[Path] = (),
+    research_candidate_dirs: Sequence[Path] = (),
 ) -> dict[str, object]:
     """Merge CoordinationDiscover lightweight and official IOHunter metrics into one report table."""
     rows: list[dict[str, object]] = []
@@ -6174,6 +6466,8 @@ def build_coordination_discover_comparison_report(
         rows.extend(_load_lightweight_report_rows(Path(directory)))
     for directory in iohunter_summary_dirs:
         rows.extend(_load_iohunter_report_rows(Path(directory)))
+    for directory in research_candidate_dirs:
+        rows.extend(_load_research_candidate_report_rows(Path(directory)))
     rows = sorted(
         rows,
         key=lambda row: (
@@ -6199,10 +6493,39 @@ def build_coordination_discover_comparison_report(
         "run_count",
         "macro_f1",
         "auc",
+        "auprc",
         "precision",
         "recall",
         "accuracy",
+        "ece",
+        "edge_max_f1",
+        "edge_roc_auc",
+        "edge_auprc",
+        "edge_ece",
+        "system_baseline_edge_auprc",
+        "observed_edge_upper_bound_auprc",
+        "degree_time_prior_edge_auprc",
+        "edgebank_repeat_edge_auprc",
+        "tgn_style_memory_prior_edge_auprc",
+        "strongest_fair_baseline_edge_auprc",
+        "strongest_fair_baseline",
+        "candidate_beats_system_baseline",
+        "candidate_beats_degree_time_prior",
+        "candidate_beats_strongest_fair_baseline",
+        "candidate_win_rate_vs_system_baseline",
+        "candidate_win_rate_vs_strongest_fair_baseline",
+        "candidate_win_rate_vs_degree_time_prior",
+        "claim_blocked_reason",
         "primary_metric",
+        "primary_metric_name",
+        "status",
+        "candidate_role",
+        "objective",
+        "model_backend",
+        "evaluation_type",
+        "evaluation_mode",
+        "label_provenance",
+        "time_provenance",
         "notes",
     )
     with csv_path.open("w", encoding="utf-8", newline="") as file_handle:
@@ -6235,12 +6558,32 @@ def run_iohunter_lightweight_batch(
     include_text_similarity: bool = False,
     max_edges_per_node: int | None = 50,
     embedding_dim: int = 32,
+    include_temporal_edge_candidate: bool = False,
+    research_candidate_only: bool = False,
+    candidate_epochs: int = 8,
+    candidate_embedding_dim: int = 16,
+    candidate_hidden_dim: int = 32,
+    candidate_lr: float = 0.01,
+    candidate_negative_ratio: int = 2,
+    candidate_device: str = "cpu",
+    candidate_early_stop_patience: int = 3,
+    candidate_seeds: Sequence[int] | None = None,
+    include_temporal_edge_ablations: bool = False,
+    candidate_ablation_seeds: Sequence[int] | None = None,
     continue_on_error: bool = False,
 ) -> dict[str, object]:
     """Run lightweight CoordinationDiscover baselines over multiple IOHunter processed datasets."""
+    if research_candidate_only and not include_temporal_edge_candidate:
+        raise ValueError("research_candidate_only requires include_temporal_edge_candidate=True")
     output_dir.mkdir(parents=True, exist_ok=True)
     dataset_results: dict[str, dict[str, object]] = {}
     failures: dict[str, str] = {}
+    candidate_failures: dict[str, str] = {}
+    research_candidate_dirs: list[Path] = []
+    candidate_seed_values = tuple(int(item) for item in (candidate_seeds or (seed,)))
+    candidate_ablation_seed_values = tuple(
+        int(item) for item in (candidate_ablation_seeds or candidate_seed_values)
+    )
     for dataset_name in datasets:
         dataset_dir = processed_root / dataset_name
         dataset_output_dir = output_dir / dataset_name
@@ -6256,36 +6599,96 @@ def run_iohunter_lightweight_batch(
                 max_edges_per_relation=max_edges_per_relation,
             )
             events = read_event_table(events_path)
-            summary = run_reproduction_suite(
-                events,
-                output_dir=dataset_output_dir,
-                relations=relations,
-                include_text_similarity=include_text_similarity,
-                max_edges_per_node=max_edges_per_node,
-                embedding_dim=embedding_dim,
-                seed=seed,
-            )
-            summary["iohunter_conversion"] = conversion
-            (dataset_output_dir / "summary.json").write_text(
-                json.dumps(summary, ensure_ascii=False, indent=2),
-                encoding="utf-8",
-            )
             dataset_results[dataset_name] = {
                 "dataset_dir": str(dataset_dir),
                 "output_dir": str(dataset_output_dir),
-                "metrics_csv": str(dataset_output_dir / "metrics.csv"),
-                "summary_json": str(dataset_output_dir / "summary.json"),
                 "row_count": conversion["row_count"],
                 "account_count": conversion["account_count"],
                 "positive_label_count": conversion["positive_label_count"],
             }
+            if not research_candidate_only:
+                summary = run_reproduction_suite(
+                    events,
+                    output_dir=dataset_output_dir,
+                    relations=relations,
+                    include_text_similarity=include_text_similarity,
+                    max_edges_per_node=max_edges_per_node,
+                    embedding_dim=embedding_dim,
+                    seed=seed,
+                )
+                summary["iohunter_conversion"] = conversion
+                (dataset_output_dir / "summary.json").write_text(
+                    json.dumps(summary, ensure_ascii=False, indent=2),
+                    encoding="utf-8",
+                )
+                dataset_results[dataset_name].update(
+                    {
+                        "metrics_csv": str(dataset_output_dir / "metrics.csv"),
+                        "summary_json": str(dataset_output_dir / "summary.json"),
+                    }
+                )
+            if include_temporal_edge_candidate:
+                research = _load_coordination_discover_research_package()
+                candidate_output_dir = dataset_output_dir / "temporal_edge_candidate"
+                try:
+                    candidate_summary = research.run_iohunter_temporal_edge_candidate(
+                        events,
+                        dataset_name=dataset_name,
+                        output_dir=candidate_output_dir,
+                        config=research.TemporalEdgeModelConfig(
+                            seed=seed,
+                            epochs=candidate_epochs,
+                            embedding_dim=candidate_embedding_dim,
+                            hidden_dim=candidate_hidden_dim,
+                            learning_rate=candidate_lr,
+                            negative_ratio=candidate_negative_ratio,
+                            device=candidate_device,
+                            early_stop_patience=candidate_early_stop_patience,
+                        ),
+                        seeds=candidate_seed_values,
+                        include_ablations=bool(include_temporal_edge_ablations),
+                        ablation_seeds=candidate_ablation_seed_values,
+                    )
+                    research_candidate_dirs.append(candidate_output_dir)
+                    candidate_payload = candidate_summary.get("candidate")
+                    ablation_payload = candidate_summary.get("ablations")
+                    dataset_results[dataset_name]["research_candidate"] = {
+                        "output_dir": str(candidate_output_dir),
+                        "summary_json": candidate_summary.get("summary_json"),
+                        "metrics_csv": candidate_summary.get("metrics_csv"),
+                        "ablation_metrics_csv": candidate_summary.get("ablation_metrics_csv"),
+                        "status": candidate_summary.get("candidate", {}).get("status")
+                        if isinstance(candidate_summary.get("candidate"), dict)
+                        else None,
+                        "evaluation_mode": candidate_payload.get("evaluation_mode")
+                        if isinstance(candidate_payload, dict)
+                        else "single_seed",
+                        "seed_count": candidate_payload.get("seed_count")
+                        if isinstance(candidate_payload, dict)
+                        else 1,
+                        "ablation_status": ablation_payload.get("status")
+                        if isinstance(ablation_payload, dict)
+                        else None,
+                    }
+                    if research_candidate_only:
+                        dataset_results[dataset_name]["summary_json"] = candidate_summary.get("summary_json")
+                        dataset_results[dataset_name]["metrics_csv"] = candidate_summary.get("metrics_csv")
+                except Exception as exc:
+                    candidate_failures[dataset_name] = str(exc)
+                    if not continue_on_error:
+                        raise
         except Exception as exc:
             failures[dataset_name] = str(exc)
             if not continue_on_error:
                 raise
     report = build_coordination_discover_comparison_report(
         output_dir=output_dir / "coordination_discover_report",
-        lightweight_dirs=tuple(Path(item["output_dir"]) for item in dataset_results.values()),
+        lightweight_dirs=tuple(
+            Path(item["output_dir"])
+            for item in dataset_results.values()
+            if (Path(item["output_dir"]) / "metrics.csv").exists()
+        ),
+        research_candidate_dirs=tuple(research_candidate_dirs),
     )
     manifest = {
         "created_at": datetime.now(timezone.utc).isoformat(),
@@ -6293,11 +6696,27 @@ def run_iohunter_lightweight_batch(
         "output_dir": str(output_dir),
         "dataset_count": len(dataset_results),
         "failed": len(failures),
+        "research_candidate_failed": len(candidate_failures),
         "datasets": dataset_results,
         "failures": failures,
+        "research_candidate_failures": candidate_failures,
         "include_text_similarity": include_text_similarity,
         "max_edges_per_node": max_edges_per_node,
         "embedding_dim": embedding_dim,
+        "include_temporal_edge_candidate": include_temporal_edge_candidate,
+        "research_candidate_only": research_candidate_only,
+        "candidate_config": {
+            "epochs": candidate_epochs,
+            "embedding_dim": candidate_embedding_dim,
+            "hidden_dim": candidate_hidden_dim,
+            "learning_rate": candidate_lr,
+            "negative_ratio": candidate_negative_ratio,
+            "device": candidate_device,
+            "early_stop_patience": candidate_early_stop_patience,
+            "seeds": list(candidate_seed_values),
+            "include_temporal_edge_ablations": bool(include_temporal_edge_ablations),
+            "ablation_seeds": list(candidate_ablation_seed_values),
+        },
         "report": {
             key: value
             for key, value in report.items()

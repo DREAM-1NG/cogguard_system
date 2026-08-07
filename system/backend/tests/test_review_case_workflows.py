@@ -11,10 +11,9 @@ from app.schemas.review_case import (
     DecisionConfirmRequest,
     EvidenceAnnotationCreate,
     EvidenceAssessment,
-    ReviewCaseEvidence,
     ReviewRequestCreate,
 )
-from app.services.review_case_service import ReviewCaseService, build_evidence_item
+from app.services.review_case_service import ReviewCaseService
 
 
 NOW = datetime(2026, 8, 3, tzinfo=timezone.utc)
@@ -100,13 +99,7 @@ def test_evidence_annotation_does_not_create_decision_or_feedback_records():
     async def scenario():
         db = FakeSession()
         service = make_service(db)
-        item = build_evidence_item(
-            {"platform": "weibo", "post_id": "p1", "content": "Observed evidence"},
-            evidence_kind="post",
-        )
-        service.evidence = AsyncMock(
-            return_value=ReviewCaseEvidence(case_id="case_1", unresolved=[item])
-        )
+        service._evidence_ref_exists = AsyncMock(return_value=True)
 
         result = await service.add_annotation(
             "case_1",
@@ -119,6 +112,7 @@ def test_evidence_annotation_does_not_create_decision_or_feedback_records():
         )
 
         assert result.assessment == EvidenceAssessment.SUPPORTS
+        service._evidence_ref_exists.assert_awaited_once_with("snapshot_1", "weibo:post:p1")
         assert [type(row) for row in db.added] == [EvidenceAnnotation]
         activity = service.append_activity.await_args.kwargs
         assert activity["source_ref"] == result.annotation_id

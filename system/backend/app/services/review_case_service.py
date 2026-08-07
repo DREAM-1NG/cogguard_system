@@ -12,6 +12,10 @@ from sqlalchemy import desc, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.analysis.registry import AnalysisRegistry, SqlAlchemyAnalysisStore
+from app.core.analysis.query_result_cache import (
+    build_query_cache_key,
+    get_or_build_query_result,
+)
 from app.models.risk_assessment import RiskAssessment
 from app.models.review_system import ReviewAgentFeedback, ReviewAgentReport
 from app.models.review_case import (
@@ -38,6 +42,7 @@ from app.schemas.review_case import (
     EvidenceAnnotation,
     EvidenceAnnotationCreate,
     EvidenceAssessment,
+    EvidencePage,
     ReviewAdvisory,
     ReviewCaseDetail,
     ReviewCaseEvidence,
@@ -68,6 +73,7 @@ from app.services.review_case_product_projection import (
     build_case_summary,
     build_evidence_item,
 )
+from app.services.event_data import load_event_account_names
 
 
 class ReviewCaseConflict(ValueError):
@@ -112,38 +118,133 @@ class ReviewCaseService:
     async def detail(self, case_id: str) -> ReviewCaseDetail:
         return await self._detail_from_row(await self._get_case(case_id))
 
-    async def evidence(self, case_id: str) -> ReviewCaseEvidence:
+    async def evidence(
+        self,
+        case_id: str,
+        *,
+        assessment: EvidenceAssessment = EvidenceAssessment.UNRESOLVED,
+        cursor: int = 0,
+        limit: int = 40,
+    ) -> ReviewCaseEvidence:
+        """Return a bounded evidence page and counts for every evidence group.
+
+        The snapshot remains the immutable source of truth, but the product
+        projection must not serialize the complete post/comment corpus for one
+        screen. A cache entry materializes the current page for all groups so
+        switching tabs does not reload or rebuild the snapshot.
+        """
+
         await self._get_case(case_id)
         revision = await self._latest_revision(case_id)
+        normalized_cursor = max(0, int(cursor))
+        normalized_limit = min(100, max(1, int(limit)))
         if revision is None:
-            return ReviewCaseEvidence(case_id=case_id)
+            return ReviewCaseEvidence(
+                case_id=case_id,
+                group_counts={item: 0 for item in EvidenceAssessment},
+                page=EvidencePage(
+                    assessment=assessment,
+                    cursor=normalized_cursor,
+                    limit=normalized_limit,
+                ),
+            )
 
         annotations = await self._annotations(case_id, revision.snapshot_revision_id)
         annotations_by_ref: dict[str, list[EvidenceAnnotation]] = {}
         for annotation in annotations:
             annotations_by_ref.setdefault(annotation.evidence_ref, []).append(annotation)
 
-        snapshot = await self.registry.load_event_snapshot(revision.snapshot_id)
-        items = [
-            build_evidence_item(
-                row,
-                evidence_kind=kind,
-                annotations=annotations_by_ref.get(_evidence_ref(row, kind), []),
-            )
-            for kind, rows in (("post", snapshot.posts), ("comment", snapshot.comments))
-            for row in rows
-        ]
-        groups: dict[EvidenceAssessment, list[EvidenceItem]] = {
-            assessment: [] for assessment in EvidenceAssessment
-        }
-        for item in items:
-            groups[item.assessment].append(item)
-        return ReviewCaseEvidence(
-            case_id=case_id,
-            supports=groups[EvidenceAssessment.SUPPORTS],
-            contradicts=groups[EvidenceAssessment.CONTRADICTS],
-            irrelevant=groups[EvidenceAssessment.IRRELEVANT],
-            unresolved=groups[EvidenceAssessment.UNRESOLVED],
+        annotation_version = json.dumps(
+            [
+                {
+                    "annotation_id": annotation.annotation_id,
+                    "assessment": annotation.assessment.value,
+                    "note": annotation.note,
+                }
+                for annotation in annotations
+            ],
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+        cache_key = build_query_cache_key(
+            "review-evidence-pages-v3",
+            case_id,
+            revision.snapshot_revision_id,
+            annotation_version,
+            normalized_cursor,
+            normalized_limit,
+        )
+
+        async def build_evidence_pages() -> dict[str, Any]:
+            snapshot = await self.registry.load_event_snapshot(revision.snapshot_id)
+            totals: dict[EvidenceAssessment, int] = {
+                item: 0 for item in EvidenceAssessment
+            }
+            page_items: dict[EvidenceAssessment, list[EvidenceItem]] = {
+                item: [] for item in EvidenceAssessment
+            }
+
+            # Classify every row, but construct full product objects only for
+            # the bounded page of each group. This keeps the cold request
+            # proportional to the snapshot scan rather than response size.
+            for kind, rows in (("post", snapshot.posts), ("comment", snapshot.comments)):
+                for row in rows:
+                    evidence_ref = _evidence_ref(row, kind)
+                    row_annotations = annotations_by_ref.get(evidence_ref, [])
+                    row_assessment = (
+                        row_annotations[-1].assessment
+                        if row_annotations
+                        else EvidenceAssessment.UNRESOLVED
+                    )
+                    group_index = totals[row_assessment]
+                    totals[row_assessment] = group_index + 1
+                    if normalized_cursor <= group_index < normalized_cursor + normalized_limit:
+                        page_items[row_assessment].append(
+                            build_evidence_item(
+                                row,
+                                evidence_kind=kind,
+                                annotations=row_annotations,
+                            )
+                        )
+
+            pages: dict[str, dict[str, Any]] = {}
+            for group in EvidenceAssessment:
+                next_cursor = (
+                    normalized_cursor + normalized_limit
+                    if normalized_cursor + normalized_limit < totals[group]
+                    else None
+                )
+                pages[group.value] = {
+                    "items": [item.model_dump(mode="json") for item in page_items[group]],
+                    "next_cursor": next_cursor,
+                    "total": totals[group],
+                }
+            return {
+                "case_id": case_id,
+                "group_counts": {group.value: totals[group] for group in EvidenceAssessment},
+                "pages": pages,
+            }
+
+        payload = await get_or_build_query_result(cache_key, build_evidence_pages)
+        selected_page = payload.get("pages", {}).get(assessment.value, {})
+        page_items = selected_page.get("items", [])
+        return ReviewCaseEvidence.model_validate(
+            {
+                "case_id": case_id,
+                "supports": page_items if assessment == EvidenceAssessment.SUPPORTS else [],
+                "contradicts": page_items if assessment == EvidenceAssessment.CONTRADICTS else [],
+                "irrelevant": page_items if assessment == EvidenceAssessment.IRRELEVANT else [],
+                "unresolved": page_items if assessment == EvidenceAssessment.UNRESOLVED else [],
+                "group_counts": payload.get("group_counts", {}),
+                "page": {
+                    "assessment": assessment.value,
+                    "cursor": normalized_cursor,
+                    "limit": normalized_limit,
+                    "total": int(selected_page.get("total", 0)),
+                    "next_cursor": selected_page.get("next_cursor"),
+                },
+            }
         )
 
     async def request_review(
@@ -192,13 +293,7 @@ class ReviewCaseService:
     ) -> EvidenceAnnotation:
         await self._get_case(case_id)
         revision = await self._require_latest_revision(case_id)
-        available = await self.evidence(case_id)
-        evidence_refs = {
-            item.evidence_ref
-            for group in (available.supports, available.contradicts, available.irrelevant, available.unresolved)
-            for item in group
-        }
-        if request.evidence_ref not in evidence_refs:
+        if not await self._evidence_ref_exists(revision.snapshot_id, request.evidence_ref):
             raise ValueError("Evidence reference does not belong to the current case snapshot")
 
         row = EvidenceAnnotationRecord(
@@ -598,9 +693,13 @@ class ReviewCaseService:
         if advisory is None:
             advisory = await self._legacy_review_advisory(row)
         revision = await self._latest_revision(row.case_id)
-        if revision is not None and hasattr(self, "registry"):
-            snapshot = await self.registry.load_event_snapshot(revision.snapshot_id)
-            summary = _with_snapshot_account_names(summary, snapshot.posts)
+        if summary.coordination_summary.key_accounts and hasattr(self, "registry"):
+            display_names = await load_event_account_names(
+                self.registry.mongo_db,
+                event_id=row.event_id,
+                account_ids=summary.coordination_summary.key_accounts,
+            )
+            summary = _with_account_names(summary, display_names)
         draft_result = await self.db.execute(
             select(ReviewDecisionDraftRecord).where(
                 ReviewDecisionDraftRecord.case_id == row.case_id
@@ -657,6 +756,16 @@ class ReviewCaseService:
         if row is None:
             raise ValueError("Event review case has no snapshot revision")
         return row
+
+    async def _evidence_ref_exists(self, snapshot_id: str, evidence_ref: str) -> bool:
+        """Validate a reference without constructing or serializing evidence items."""
+
+        snapshot = await self.registry.load_event_snapshot(snapshot_id)
+        return any(
+            _evidence_ref(row, kind) == evidence_ref
+            for kind, rows in (("post", snapshot.posts), ("comment", snapshot.comments))
+            for row in rows
+        )
 
     async def _annotations(self, case_id: str, snapshot_revision_id: str) -> list[EvidenceAnnotation]:
         result = await self.db.execute(
@@ -852,19 +961,10 @@ class ReviewCaseService:
             return []
 
 
-def _with_snapshot_account_names(
+def _with_account_names(
     summary: ReviewCaseSummary,
-    posts: list[dict[str, Any]],
+    display_names: dict[str, str],
 ) -> ReviewCaseSummary:
-    """Replace opaque account identifiers with collected display names."""
-
-    display_names: dict[str, str] = {}
-    for post in posts:
-        account_id = str(post.get("author_id") or "").strip()
-        name = str(post.get("author_name") or "").strip()
-        if account_id and name and name != account_id and not name.isdigit():
-            display_names.setdefault(account_id, name)
-
     resolved = []
     for value in summary.coordination_summary.key_accounts:
         name = display_names.get(str(value)) or str(value).strip()
@@ -877,6 +977,21 @@ def _with_snapshot_account_names(
         update={"key_accounts": resolved[:100]}
     )
     return summary.model_copy(update={"coordination_summary": coordination})
+
+
+def _with_snapshot_account_names(
+    summary: ReviewCaseSummary,
+    posts: list[dict[str, Any]],
+) -> ReviewCaseSummary:
+    """Replace opaque account identifiers with collected display names."""
+
+    display_names: dict[str, str] = {}
+    for post in posts:
+        account_id = str(post.get("author_id") or "").strip()
+        name = str(post.get("author_name") or "").strip()
+        if account_id and name and name != account_id and not name.isdigit():
+            display_names.setdefault(account_id, name)
+    return _with_account_names(summary, display_names)
 
 
 def _legacy_report_summary(summary: ReviewCaseSummary, *, platform: str | None = None) -> dict[str, Any]:

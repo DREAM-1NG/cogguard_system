@@ -4,16 +4,20 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
-from collections import OrderedDict
 from typing import Any
 
+from app.core.analysis.query_result_cache import (
+    build_query_cache_key,
+    get_or_build_query_result,
+)
 from app.core.account_profiler import build_account_profiles
 from app.core.trained_bot_detection import run_trained_botrhg_detection
+from app.config import settings
 from app.db.mongodb import get_mongo_db
 from app.services.event_data import load_event_posts
+from app.services.account_model_runtime_service import get_active_account_model
 
-_ASSESSMENT_CACHE: OrderedDict[str, dict[str, dict[str, str]]] = OrderedDict()
-_ASSESSMENT_CACHE_LIMIT = 4
+_ASSESSMENT_CACHE_NAMESPACE = "account-assessment-v2"
 
 
 async def get_account_profiles(platform: str | None = None, event_id: str | None = None) -> list[dict]:
@@ -65,12 +69,27 @@ async def _model_assessments(posts: list[dict[str, Any]]) -> dict[str, dict[str,
 
     if not posts:
         return {}
-    fingerprint = _assessment_fingerprint(posts)
-    cached = _ASSESSMENT_CACHE.get(fingerprint)
-    if cached is not None:
-        _ASSESSMENT_CACHE.move_to_end(fingerprint)
-        return cached
-    result = await asyncio.to_thread(run_trained_botrhg_detection, posts)
+    active_model = await get_active_account_model()
+    fingerprint = _assessment_fingerprint(posts, active_model)
+    cache_key = build_query_cache_key(_ASSESSMENT_CACHE_NAMESPACE, fingerprint)
+    return await get_or_build_query_result(
+        cache_key,
+        lambda: _build_model_assessments(posts, active_model),
+    )
+
+
+async def _build_model_assessments(
+    posts: list[dict[str, Any]],
+    active_model: Any | None,
+) -> dict[str, dict[str, str]]:
+    """Run the detector only after the versioned projection cache misses."""
+
+    if active_model is None:
+        if not settings.account_model_local_bootstrap_allowed:
+            return {}
+        result = await asyncio.to_thread(run_trained_botrhg_detection, posts)
+    else:
+        result = await asyncio.to_thread(run_trained_botrhg_detection, posts, active_model, allow_legacy_fallback=False)
     if result is None:
         return {}
     assessments = {
@@ -78,15 +97,18 @@ async def _model_assessments(posts: list[dict[str, Any]]) -> dict[str, dict[str,
         for row in result.get("accounts", [])
         if str(row.get("account_id") or "")
     }
-    _ASSESSMENT_CACHE[fingerprint] = assessments
-    _ASSESSMENT_CACHE.move_to_end(fingerprint)
-    while len(_ASSESSMENT_CACHE) > _ASSESSMENT_CACHE_LIMIT:
-        _ASSESSMENT_CACHE.popitem(last=False)
     return assessments
 
 
-def _assessment_fingerprint(posts: list[dict[str, Any]]) -> str:
+def _assessment_fingerprint(posts: list[dict[str, Any]], model_source: Any | None = None) -> str:
     digest = hashlib.sha256()
+    for value in (
+        getattr(model_source, "model_version", "local_fallback"),
+        getattr(model_source, "artifact_hash", ""),
+        getattr(model_source, "pointer_revision", 0),
+    ):
+        digest.update(str(value).encode("utf-8"))
+        digest.update(b"\0")
     for post in sorted(
         posts,
         key=lambda row: (

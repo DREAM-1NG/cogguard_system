@@ -100,13 +100,87 @@ def test_teacher_runtime_runs_5_plus_1_plus_1_dag_without_canonicalizing():
     assert teacher["signals"]["student_reference"]["verdict_id"] == student["verdict_id"]
 
 
+def test_teacher_job_uses_maro_chain_when_text_provider_is_available(monkeypatch):
+    captured: dict = {}
+
+    async def provider_context(_case):
+        return {
+            "provider": object(),
+            "provider_name": "database",
+            "model": "review-model",
+            "include_media_base64": False,
+            "require_vision": False,
+            "policy": {"policy_id": "policy-active", "policy": {"review_threshold": 0.6}},
+            "error_memory_summary": {"feedback_count": 2},
+        }
+
+    async def maro_review(**kwargs):
+        captured.update(kwargs)
+        return {
+            "summary": {"completed": 6, "failed": 0},
+            "audit": {"execution_plan": {"executed_agents": ["PostHarmAgent", "QuestionReflectionAgent", "HarmfulnessJudgeAgent"]}},
+            "agent_reports": [
+                {"agent_name": "PostHarmAgent", "status": "completed", "report_text": "Expert assessment."},
+                {"agent_name": "QuestionReflectionAgent", "status": "completed", "report_text": "Ask for evidence."},
+                {"agent_name": "PostHarmAgentReflectionResponse", "status": "completed", "report_role": "reflection_response", "report_text": "Expert response."},
+                {"agent_name": "HarmfulnessJudgeAgent", "status": "completed", "report_text": "Needs human review."},
+            ],
+        }
+
+    monkeypatch.setattr(runtime, "_resolve_teacher_maro_context", provider_context)
+    monkeypatch.setattr(runtime, "run_manual_agent_review", maro_review)
+
+    verdict = asyncio.run(runtime.build_teacher_advisory_verdict_async(_case(), job_id="teacher_maro"))
+
+    assert verdict["execution_mode"] == "maro_llm"
+    assert verdict["fallback_reason"] is None
+    assert verdict["non_claimable"] is True
+    assert verdict["canonical_allowed"] is False
+    assert verdict["dag"]["version"] == "maro-expert-question-reflection-judge"
+    assert captured["agent_names"] == [
+        "PostHarmAgent",
+        "MultimodalConsistencyAgent",
+        "ClaimEvidenceAgent",
+        "PropagationTreeAgent",
+        "QuestionReflectionAgent",
+        "HarmfulnessJudgeAgent",
+    ]
+    assert captured["policy"]["policy_id"] == "policy-active"
+    assert captured["error_memory_summary"] == {"feedback_count": 2}
+
+
+def test_teacher_job_marks_dag_fallback_as_non_claimable_when_provider_is_unavailable(monkeypatch):
+    async def no_provider(_case):
+        return {
+            "provider": None,
+            "provider_name": "not_configured",
+            "model": "",
+            "include_media_base64": False,
+            "require_vision": False,
+            "policy": None,
+            "error_memory_summary": {},
+        }
+
+    monkeypatch.setattr(runtime, "_resolve_teacher_maro_context", no_provider)
+
+    verdict = asyncio.run(runtime.build_teacher_advisory_verdict_async(_case(), job_id="teacher_fallback"))
+
+    assert verdict["execution_mode"] == "deterministic_dag_fallback"
+    assert verdict["fallback_reason"] == "text_llm_provider_unavailable"
+    assert verdict["non_claimable"] is True
+    assert verdict["canonical_allowed"] is False
+
+
 def test_completed_teacher_job_fails_when_advisory_is_not_persisted(monkeypatch):
     verdict = {"verdict_id": "teacher_job_test", "status": "completed"}
+
+    async def build_verdict(*_args, **_kwargs):
+        return verdict
 
     async def persistence_failed(**_kwargs):
         return False
 
-    monkeypatch.setattr(runtime, "build_teacher_advisory_verdict", lambda *_args, **_kwargs: verdict)
+    monkeypatch.setattr(runtime, "build_teacher_advisory_verdict_async", build_verdict)
     monkeypatch.setattr(runtime, "_persist_teacher_review_row", persistence_failed)
 
     with pytest.raises(RuntimeError, match="was not persisted"):
@@ -118,11 +192,14 @@ def test_completed_teacher_job_preserves_analysis_run_lineage(monkeypatch):
     verdict = {"verdict_id": "teacher_job_test", "status": "completed"}
     case = {**_case(), "run_id": "run_teacher_1"}
 
+    async def build_verdict(*_args, **_kwargs):
+        return verdict
+
     async def persisted(**kwargs):
         captured.update(kwargs)
         return True
 
-    monkeypatch.setattr(runtime, "build_teacher_advisory_verdict", lambda *_args, **_kwargs: verdict)
+    monkeypatch.setattr(runtime, "build_teacher_advisory_verdict_async", build_verdict)
     monkeypatch.setattr(runtime, "_persist_teacher_review_row", persisted)
 
     asyncio.run(runtime.finalize_teacher_review_job("teacher_job_test", case))

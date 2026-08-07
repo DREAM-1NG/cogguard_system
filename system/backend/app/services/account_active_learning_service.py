@@ -15,6 +15,7 @@ from app.core.account_labeling import AccountDetectionCase, build_account_detect
 from app.core.trained_bot_detection import run_trained_botrhg_detection
 from app.db.mongodb import get_mongo_db
 from app.models.account_labeling import AccountDetectionCaseRecord, AccountLabelBatch, AccountLabelBatchItem
+from app.services.account_model_runtime_service import get_active_account_model
 from app.services.event_data import load_event_posts
 
 __all__ = [
@@ -127,7 +128,15 @@ async def list_account_label_queue(
 async def _model_outputs(posts: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
     if not posts:
         return {}
-    result = await asyncio.to_thread(run_trained_botrhg_detection, posts)
+    active_model = await get_active_account_model()
+    if active_model is None:
+        return {}
+    result = await asyncio.to_thread(
+        run_trained_botrhg_detection,
+        posts,
+        active_model,
+        allow_legacy_fallback=False,
+    )
     if not result:
         return {}
     return {

@@ -9,6 +9,7 @@ from httpx import ASGITransport, AsyncClient
 import pytest
 
 from app.api.v1 import accounts as accounts_api
+from app.config import settings
 from app.core.account_active_learning import select_account_detection_label_batch
 from app.core.account_labeling import (
     AccountBehaviorLabel,
@@ -24,16 +25,35 @@ from app.models.account_labeling import (
     AccountDetectionDatasetVersion,
     AccountDetectionModelVersion,
     AccountLabelBatchItem,
+    AccountLabelReviewAssignment,
 )
 from app.models.user import User
 from app.services.account_dataset_service import export_approved_account_dataset
 from app.services.account_label_service import adjudicate_account_label
 from app.services.account_label_service import submit_account_label as submit_account_label_service
+from app.services import account_model_governance_service as account_model_governance
+from app.services import account_active_learning_service
 from app.services.account_model_governance_service import activate_account_detection_model
 from app.services.account_model_governance_service import approve_account_detection_model
 from app.services.account_model_governance_service import evaluate_account_model_activation_gates
 from app.services.account_model_governance_service import register_account_training_candidate
+from app.services.account_model_governance_service import rollback_account_detection_model
+from app.services.account_model_governance_service import write_account_model_evaluation
 from app.utils.exceptions import AppException
+
+
+def test_active_learning_model_outputs_require_an_active_pointer(monkeypatch):
+    async def no_active_model():
+        return None
+
+    monkeypatch.setattr(account_active_learning_service, "get_active_account_model", no_active_model, raising=False)
+    monkeypatch.setattr(
+        account_active_learning_service,
+        "run_trained_botrhg_detection",
+        lambda *_args, **_kwargs: pytest.fail("active learning must not open a legacy checkpoint"),
+    )
+
+    assert asyncio.run(account_active_learning_service._model_outputs([_post("account-1", "text")])) == {}
 
 
 def _post(account_id: str, content: str, *, platform: str = "weibo", post_id: str | None = None) -> dict:
@@ -191,10 +211,7 @@ def test_label_batch_rejects_incomplete_warm_start_payload():
 def test_account_model_activation_requires_frozen_holdout_and_dual_approval():
     failed = evaluate_account_model_activation_gates(
         {
-            "frozen_holdout_passed": True,
-            "time_forward_passed": True,
-            "platform_stratified_passed": True,
-            "community_disjoint_passed": False,
+            "evaluation_protocol": _persisted_protocol_payload(community_disjoint=False),
             "ece": 0.05,
             "false_positive_burden_passed": True,
             "shadow_run_passed": True,
@@ -206,12 +223,13 @@ def test_account_model_activation_requires_frozen_holdout_and_dual_approval():
     assert failed["gates"]["dual_approval"] is False
     assert failed["gates"]["community_disjoint"] is False
 
-    passed = evaluate_account_model_activation_gates(
+    caller_asserted = evaluate_account_model_activation_gates(
         {
-            "frozen_holdout_passed": True,
-            "time_forward_passed": True,
-            "platform_stratified_passed": True,
-            "community_disjoint_passed": True,
+            "frozen_holdout_passed": False,
+            "time_forward_passed": False,
+            "platform_stratified_passed": False,
+            "community_disjoint_passed": False,
+            "evaluation_protocol": _persisted_protocol_payload(),
             "ece": 0.05,
             "false_positive_burden_passed": True,
             "shadow_run_passed": True,
@@ -219,7 +237,61 @@ def test_account_model_activation_requires_frozen_holdout_and_dual_approval():
         approver_ids=[7, 9],
     )
 
-    assert passed["activation_allowed"] is True
+    assert caller_asserted["activation_allowed"] is False
+    assert caller_asserted["gates"]["shadow_run"] is False
+    assert caller_asserted["gates"]["false_positive_burden"] is False
+
+    caller_ece = evaluate_account_model_activation_gates(
+        {
+            "evaluation_protocol": _persisted_protocol_payload(),
+            "ece": 0.05,
+            "shadow_evaluation": {
+                "evaluation_run_id": "shadow-run-1",
+                "audit_fingerprint": "a" * 64,
+                "evaluation_fingerprint": "b" * 64,
+                "monitor_snapshot_id": "account-shadow-monitor-1",
+                "summary": {
+                    "prediction_count": 1,
+                    "estimated_daily_false_positives": 0,
+                    "status": "healthy",
+                    "thresholds": {"daily_review_capacity": 100},
+                },
+            },
+        },
+        approver_ids=[7, 9],
+    )
+
+    assert caller_ece["activation_allowed"] is False
+    assert caller_ece["gates"]["calibration"] is False
+
+
+def _persisted_protocol_payload(*, community_disjoint: bool = True) -> dict:
+    gates = {
+        "account_disjoint": True,
+        "event_disjoint": True,
+        "community_disjoint": community_disjoint,
+        "time_forward": True,
+        "platform_stratified": True,
+        "frozen_holdout": True,
+    }
+    body = {
+        "schema": "cogguard.account-evaluation-protocol.v1",
+        "activation_allowed": all(gates.values()),
+        "gates": gates,
+        "audit": {
+            "splits": {
+                name: {"record_count": 1, "record_fingerprints_sha256": "a" * 64}
+                for name in ("train", "validation", "test")
+            },
+            "time_forward": {"passed": True},
+            "platform_stratification": {"passed": True},
+        },
+        "frozen_holdout": {"verified": True},
+    }
+    digest = hashlib.sha256(
+        json.dumps(body, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode("utf-8")
+    ).hexdigest()
+    return {**body, "report_sha256": digest}
 
 
 def test_account_active_learning_api_routes_to_service(monkeypatch):
@@ -277,6 +349,7 @@ def test_account_label_api_rejects_non_observable_labels(monkeypatch):
                     "case_id": "case-1",
                     "behavior_label": "foreign_actor",
                     "confidence": 0.7,
+                    "case_fingerprint": "a" * 64,
                 },
             )
 
@@ -292,7 +365,8 @@ def test_account_label_api_rejects_non_observable_labels(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_approved_account_dataset_export_registers_manifest(db_session, tmp_path):
+async def test_approved_account_dataset_export_registers_manifest(db_session, tmp_path, monkeypatch):
+    monkeypatch.setattr(settings, "MODEL_ARTIFACT_ROOT", str(tmp_path))
     case = AccountDetectionCaseRecord(
         case_id="case-1",
         account_id="account-1",
@@ -335,7 +409,7 @@ async def test_approved_account_dataset_export_registers_manifest(db_session, tm
     dataset = await export_approved_account_dataset(
         db_session,
         dataset_version_id="account-dataset-test",
-        output_dir=tmp_path / "account-dataset-test",
+        output_dir="account-dataset-test",
         operator_id=7,
     )
 
@@ -351,12 +425,13 @@ async def test_approved_account_dataset_export_registers_manifest(db_session, tm
 
 
 @pytest.mark.asyncio
-async def test_approved_account_dataset_export_rejects_empty_corpus(db_session, tmp_path):
+async def test_approved_account_dataset_export_rejects_empty_corpus(db_session, tmp_path, monkeypatch):
+    monkeypatch.setattr(settings, "MODEL_ARTIFACT_ROOT", str(tmp_path))
     with pytest.raises(AppException, match="No approved or adjudicated account labels"):
         await export_approved_account_dataset(
             db_session,
             dataset_version_id="empty-dataset",
-            output_dir=tmp_path / "empty-dataset",
+            output_dir="empty-dataset",
             operator_id=7,
         )
 
@@ -377,7 +452,13 @@ async def test_adjudication_status_is_recorded_when_label_changes(db_session):
         notes="submitted with thin evidence",
         case_fingerprint="",
     )
-    db_session.add(label)
+    assignment = AccountLabelReviewAssignment(
+        assignment_id="assignment-change-1",
+        label_id="label-change-1",
+        reviewer_id=9,
+        review_status="assigned",
+    )
+    db_session.add_all([label, assignment])
     await db_session.flush()
 
     result = await adjudicate_account_label(
@@ -390,9 +471,58 @@ async def test_adjudication_status_is_recorded_when_label_changes(db_session):
     )
 
     assert result is not None
+    assert result["label_id"] != "label-change-1"
     assert result["behavior_label"] == "human"
     assert result["training_target"] == "non_bot"
     assert result["label_status"] == "adjudicated"
+    assert result["supersedes_id"] == "label-change-1"
+    await db_session.refresh(label)
+    assert label.behavior_label == "insufficient_evidence"
+    assert label.training_target == "abstain"
+    assert label.label_status == "submitted"
+    assert assignment.review_status == "completed"
+
+
+@pytest.mark.asyncio
+async def test_adjudication_requires_assigned_independent_reviewer(db_session):
+    label = AccountBehaviorLabelRecord(
+        label_id="label-assignment-1",
+        case_id="case-assignment-1",
+        batch_id=None,
+        behavior_label="bot",
+        training_target="bot",
+        label_status="submitted",
+        analyst_id=7,
+        confidence=0.8,
+        evidence_post_ids_json="[]",
+        reason_tags_json="[]",
+        notes="submitted label",
+        case_fingerprint="",
+    )
+    assignment = AccountLabelReviewAssignment(
+        assignment_id="assignment-other-reviewer",
+        label_id="label-assignment-1",
+        reviewer_id=9,
+        review_status="assigned",
+    )
+    db_session.add_all([label, assignment])
+    await db_session.flush()
+
+    with pytest.raises(AppException, match="active review assignment"):
+        await adjudicate_account_label(
+            db_session,
+            label_id="label-assignment-1",
+            approved=True,
+            adjudicator_id=10,
+        )
+
+    with pytest.raises(AppException, match="own label"):
+        await adjudicate_account_label(
+            db_session,
+            label_id="label-assignment-1",
+            approved=True,
+            adjudicator_id=7,
+        )
 
 
 @pytest.mark.asyncio
@@ -469,6 +599,77 @@ async def test_account_label_submission_validates_case_batch_fingerprint_and_evi
 
 
 @pytest.mark.asyncio
+async def test_ordinary_account_label_is_approved_by_single_analyst(db_session):
+    case = AccountDetectionCaseRecord(
+        case_id="case-ordinary-approval",
+        account_id="account-ordinary",
+        platform="weibo",
+        event_id="event-ordinary",
+        author_name="account-ordinary",
+        case_fingerprint="f" * 64,
+        post_ids_json=json.dumps(["post-ordinary"]),
+        evidence_post_ids_json=json.dumps(["post-ordinary"]),
+        payload_json="{}",
+        model_output_json="{}",
+    )
+    db_session.add(case)
+    await db_session.flush()
+
+    result = await submit_account_label_service(
+        db_session,
+        case_id=case.case_id,
+        batch_id=None,
+        behavior_label="human",
+        confidence=0.9,
+        evidence_post_ids=["post-ordinary"],
+        reason_tags=["observed_behavior"],
+        notes="ordinary observable behavior",
+        case_fingerprint=case.case_fingerprint,
+        analyst_id=7,
+    )
+
+    assert result["label_status"] == "approved"
+    assert result["review_required"] is False
+    assert result["second_review_status"] == "not_required"
+
+
+@pytest.mark.asyncio
+async def test_random_audit_account_label_waits_for_independent_review(db_session, monkeypatch):
+    case = AccountDetectionCaseRecord(
+        case_id="case-random-audit",
+        account_id="account-random-audit",
+        platform="weibo",
+        event_id="event-random-audit",
+        author_name="account-random-audit",
+        case_fingerprint="e" * 64,
+        post_ids_json=json.dumps(["post-random-audit"]),
+        evidence_post_ids_json=json.dumps(["post-random-audit"]),
+        payload_json="{}",
+        model_output_json="{}",
+    )
+    db_session.add(case)
+    await db_session.flush()
+    monkeypatch.setattr("app.services.account_label_service._deterministic_audit_bucket", lambda _: 3)
+
+    result = await submit_account_label_service(
+        db_session,
+        case_id=case.case_id,
+        batch_id=None,
+        behavior_label="bot",
+        confidence=0.8,
+        evidence_post_ids=["post-random-audit"],
+        reason_tags=["observed_behavior"],
+        notes="selected for independent audit",
+        case_fingerprint=case.case_fingerprint,
+        analyst_id=7,
+    )
+
+    assert result["label_status"] == "submitted"
+    assert result["review_required"] is True
+    assert result["second_review_status"] == "pending"
+
+
+@pytest.mark.asyncio
 async def test_training_candidate_requires_registered_dataset_and_matching_artifact_hash(db_session, tmp_path):
     artifact = tmp_path / "checkpoint.pt"
     artifact.write_bytes(b"checkpoint")
@@ -524,7 +725,7 @@ async def test_training_candidate_requires_registered_dataset_and_matching_artif
 
 
 @pytest.mark.asyncio
-async def test_account_model_activation_uses_immutable_admin_approval_records(db_session):
+async def test_account_model_activation_uses_immutable_admin_approval_records(db_session, tmp_path, monkeypatch):
     admin_1 = User(
         username="admin-a",
         email="admin-a@example.com",
@@ -541,11 +742,16 @@ async def test_account_model_activation_uses_immutable_admin_approval_records(db
     )
     db_session.add_all([admin_1, admin_2])
     await db_session.flush()
+    artifact = tmp_path / "checkpoint.pt"
+    artifact.write_bytes(b"ready-checkpoint")
+    artifact_hash = hashlib.sha256(b"ready-checkpoint").hexdigest()
+    monkeypatch.setattr(
+        account_model_governance,
+        "_verify_artifact_hash",
+        lambda *_args, **_kwargs: artifact_hash,
+    )
     metrics = {
-        "frozen_holdout_passed": True,
-        "time_forward_passed": True,
-        "platform_stratified_passed": True,
-        "community_disjoint_passed": True,
+        "evaluation_protocol": _persisted_protocol_payload(),
         "ece": 0.04,
         "false_positive_burden_passed": True,
         "shadow_run_passed": True,
@@ -554,8 +760,20 @@ async def test_account_model_activation_uses_immutable_admin_approval_records(db
         AccountDetectionModelVersion(
             model_version="account-model-ready",
             dataset_version_id="dataset-ready-1",
-            artifact_uri="artifact",
-            artifact_hash="h",
+            artifact_uri=str(artifact),
+            artifact_hash=artifact_hash,
+            metrics_json=json.dumps(metrics),
+            gates_json="{}",
+            status="shadow",
+            created_by=int(admin_1.id),
+        )
+    )
+    db_session.add(
+        AccountDetectionModelVersion(
+            model_version="account-model-prior",
+            dataset_version_id="dataset-ready-1",
+            artifact_uri=str(artifact),
+            artifact_hash=artifact_hash,
             metrics_json=json.dumps(metrics),
             gates_json="{}",
             status="shadow",
@@ -563,6 +781,83 @@ async def test_account_model_activation_uses_immutable_admin_approval_records(db
         )
     )
     await db_session.flush()
+
+    evaluator_secret = "test-account-model-evaluator-secret-with-at-least-32-bytes"
+    monkeypatch.setattr(settings, "ACCOUNT_MODEL_EVALUATION_HMAC_SECRET", evaluator_secret, raising=False)
+    evaluation_protocol = _persisted_protocol_payload()
+    prediction_audits = [
+        {
+            "account_id": "account-shadow-1",
+            "platform": "weibo",
+            "input_fingerprint": "e" * 64,
+            "probability": 1.0,
+            "target": 1,
+            "latency_ms": 10.0,
+        }
+    ]
+    evaluation_manifest = account_model_governance.sign_account_model_evaluation_manifest(
+        model_version="account-model-ready",
+        artifact_hash=artifact_hash,
+        evaluation_run_id="account-model-ready-shadow-1",
+        prediction_audits=prediction_audits,
+        evaluation_protocol=evaluation_protocol,
+        secret=evaluator_secret,
+    )
+    await write_account_model_evaluation(
+        db_session,
+        model_version="account-model-ready",
+        artifact_hash=artifact_hash,
+        evaluation_run_id="account-model-ready-shadow-1",
+        prediction_audits=prediction_audits,
+        evaluation_protocol=evaluation_protocol,
+        evaluation_manifest=evaluation_manifest,
+    )
+    prior_prediction_audits = [
+        {
+            "account_id": "account-prior-1",
+            "platform": "weibo",
+            "input_fingerprint": "f" * 64,
+            "probability": 1.0,
+            "target": 1,
+            "latency_ms": 10.0,
+        }
+    ]
+    prior_manifest = account_model_governance.sign_account_model_evaluation_manifest(
+        model_version="account-model-prior",
+        artifact_hash=hashlib.sha256(b"ready-checkpoint").hexdigest(),
+        evaluation_run_id="account-model-prior-shadow-1",
+        prediction_audits=prior_prediction_audits,
+        evaluation_protocol=evaluation_protocol,
+        secret=evaluator_secret,
+    )
+    await write_account_model_evaluation(
+        db_session,
+        model_version="account-model-prior",
+        artifact_hash=hashlib.sha256(b"ready-checkpoint").hexdigest(),
+        evaluation_run_id="account-model-prior-shadow-1",
+        prediction_audits=prior_prediction_audits,
+        evaluation_protocol=evaluation_protocol,
+        evaluation_manifest=prior_manifest,
+    )
+
+    await approve_account_detection_model(
+        db_session,
+        model_version="account-model-prior",
+        approver_id=int(admin_1.id),
+        approval_notes="prior first admin approval",
+    )
+    await approve_account_detection_model(
+        db_session,
+        model_version="account-model-prior",
+        approver_id=int(admin_2.id),
+        approval_notes="prior second admin approval",
+    )
+    prior_activation = await activate_account_detection_model(
+        db_session,
+        model_version="account-model-prior",
+        operator_id=int(admin_1.id),
+    )
+    assert prior_activation is not None and prior_activation["status"] == "active"
 
     with pytest.raises(AppException, match="approval records"):
         await activate_account_detection_model(
@@ -595,3 +890,15 @@ async def test_account_model_activation_uses_immutable_admin_approval_records(db
     assert result is not None
     assert result["status"] == "active"
     assert result["activation_decision"]["activation_allowed"] is True
+
+    rolled_back = await rollback_account_detection_model(
+        db_session,
+        model_version="account-model-prior",
+        operator_id=int(admin_2.id),
+        reason="validated rollback",
+    )
+
+    assert rolled_back is not None
+    assert rolled_back["status"] == "active"
+    assert rolled_back["pointer_revision"] == 3
+    assert rolled_back["previous_model_version"] == "account-model-ready"

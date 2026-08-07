@@ -4,6 +4,7 @@ import asyncio
 from datetime import datetime, timezone
 from types import SimpleNamespace
 
+import app.services.review_case_service as review_case_service
 from app.models.risk_assessment import RiskAssessment
 from app.models.review_system import ReviewAgentFeedback, ReviewAgentReport
 from app.models.review_case import ReviewDecisionDraft
@@ -113,6 +114,65 @@ def test_case_detail_projection_replaces_opaque_key_accounts_with_collected_name
     )
 
     assert projected.coordination_summary.key_accounts == ["观察员甲", "观察员乙"]
+
+
+def test_case_detail_resolves_key_accounts_without_rehydrating_the_full_snapshot(monkeypatch):
+    class Result:
+        def __init__(self, value):
+            self.value = value
+
+        def scalar_one_or_none(self):
+            return self.value
+
+    class Session:
+        def __init__(self):
+            self.results = [
+                Result(
+                    SimpleNamespace(
+                        snapshot_revision_id="revision_1",
+                        snapshot_id="snapshot_1",
+                    )
+                ),
+                Result(None),
+                Result(None),
+            ]
+
+        async def execute(self, _statement):
+            return self.results.pop(0)
+
+    class Registry:
+        mongo_db = object()
+
+        async def load_event_snapshot(self, _snapshot_id):
+            raise AssertionError("Case detail must not load the complete event snapshot for account names")
+
+    calls = []
+
+    async def resolve_names(mongo_db, *, event_id, account_ids):
+        calls.append((mongo_db, event_id, list(account_ids)))
+        return {"123": "Observer A", "456": "Observer B"}
+
+    async def scenario():
+        row = _case_row()
+        row.business_summary_json = (
+            '{"review_advisory":{"conclusion":"insufficient_evidence",'
+            '"urgency":"watch","disposition":"gather_evidence",'
+            '"rationale":"Review remains open.",'
+            '"received_at":"2026-08-03T00:00:00Z"},'
+            '"coordination":{"narrative":"Shared targets were observed.",'
+            '"key_accounts":["123","456"]}}'
+        )
+        service = ReviewCaseService.__new__(ReviewCaseService)
+        service.db = Session()
+        service.registry = Registry()
+        monkeypatch.setattr(review_case_service, "load_event_account_names", resolve_names, raising=False)
+
+        detail = await service._detail_from_row(row)
+
+        assert detail.coordination_summary.key_accounts == ["Observer A", "Observer B"]
+        assert calls == [(service.registry.mongo_db, row.event_id, ["123", "456"])]
+
+    asyncio.run(scenario())
 
 
 def test_raw_snapshot_content_is_projected_to_immutable_evidence_fields():

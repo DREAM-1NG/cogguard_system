@@ -91,11 +91,15 @@
               </a-button>
             </template>
 
-            <a-tabs v-model:activeKey="activeEvidenceGroup" size="small">
+            <a-tabs
+              v-model:activeKey="activeEvidenceGroup"
+              size="small"
+              @change="handleEvidenceGroupChange"
+            >
               <a-tab-pane
                 v-for="group in evidenceGroups"
                 :key="group.key"
-                :tab="`${group.label} (${group.items.length})`"
+                :tab="`${group.label} (${evidence?.group_counts?.[group.key] ?? group.items.length})`"
               >
                 <div class="evidence-list" role="list" :aria-label="`${group.label}证据`">
                   <article
@@ -159,6 +163,15 @@
                     description="该分组暂无证据"
                     :image-style="{ height: '42px' }"
                   />
+                  <div v-if="evidenceGroupNextCursors[group.key] !== null" class="evidence-more">
+                    <a-button
+                      size="small"
+                      :loading="loadingEvidenceGroup === group.key"
+                      @click="loadMoreEvidence(group.key)"
+                    >
+                      {{ '\u52a0\u8f7d\u66f4\u591a' }}
+                    </a-button>
+                  </div>
                 </div>
               </a-tab-pane>
             </a-tabs>
@@ -380,7 +393,16 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import {
+  computed,
+  onActivated,
+  onBeforeUnmount,
+  onDeactivated,
+  onMounted,
+  reactive,
+  ref,
+  watch,
+} from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Modal, message } from 'ant-design-vue'
 import PageHeader from '@/components/PageHeader.vue'
@@ -390,6 +412,7 @@ import {
   getLatestReviewCase,
   getReviewCase,
   getReviewCaseEvidence,
+  isUnauthorizedCaseEventStreamError,
   listCaseActivities,
   readCaseEventStream,
   requestReviewAdvisory,
@@ -412,7 +435,11 @@ import type {
 } from '@/types/reviewCase'
 
 type SelectOption = { label: string; value: string }
-type EvidenceGroup = { key: EvidenceAssessment; label: string; items: EvidenceItem[] }
+type EvidenceGroup = {
+  key: EvidenceAssessment
+  label: string
+  items: EvidenceItem[]
+}
 
 const route = useRoute()
 const router = useRouter()
@@ -424,10 +451,24 @@ const selectedCaseId = ref<string | undefined>()
 const loading = ref(false)
 const searching = ref(false)
 const activityLoading = ref(false)
-const activeEvidenceGroup = ref<EvidenceAssessment>('supports')
+const activeEvidenceGroup = ref<EvidenceAssessment>('unresolved')
 const selectedEvidenceRefs = ref<string[]>([])
 const activities = ref<CaseActivity[]>([])
 const activityCursor = ref(0)
+const loadingEvidenceGroup = ref<EvidenceAssessment | null>(null)
+const evidenceGroupLoaded = reactive<Record<EvidenceAssessment, boolean>>({
+  supports: false,
+  contradicts: false,
+  irrelevant: false,
+  unresolved: false,
+})
+const evidenceGroupNextCursors = reactive<Record<EvidenceAssessment, number | null>>({
+  supports: null,
+  contradicts: null,
+  irrelevant: null,
+  unresolved: null,
+})
+const pageActive = ref(false)
 
 const annotationOpen = ref(false)
 const annotationSaving = ref(false)
@@ -708,9 +749,9 @@ async function loadInitialCase() {
   }
   loading.value = true
   try {
-    const res = await getLatestReviewCase()
-    await applyCase(res.data)
-    await loadCaseOptions('')
+    const latest = await getLatestReviewCase()
+    await applyCase(latest.data)
+    void loadCaseOptions('')
   } catch {
     currentCase.value = null
     evidence.value = null
@@ -721,21 +762,32 @@ async function loadInitialCase() {
 
 async function loadCase(caseId: string) {
   loading.value = true
+  stopActivityRecovery()
+  resetEvidencePaging()
   try {
-    const [detailRes, evidenceRes] = await Promise.all([
+    const [detailRes, evidenceRes, activityRes] = await Promise.all([
       getReviewCase(caseId),
-      getReviewCaseEvidence(caseId),
+      getReviewCaseEvidence(caseId, {
+        assessment: activeEvidenceGroup.value,
+        cursor: 0,
+        limit: 40,
+      }),
+      listCaseActivities(caseId, { limit: 100 }),
     ])
-    await applyCase(detailRes.data, evidenceRes.data)
+    await applyCase(detailRes.data, evidenceRes.data, activityRes.data)
   } finally {
     loading.value = false
   }
 }
 
-async function applyCase(detail: ReviewCaseDetail, evidenceData?: ReviewCaseEvidence) {
+async function applyCase(
+  detail: ReviewCaseDetail,
+  evidenceData?: ReviewCaseEvidence,
+  activityData?: { items: CaseActivity[]; next_cursor: number | null },
+) {
   currentCase.value = detail
   selectedCaseId.value = detail.case_id
-  evidence.value = evidenceData || null
+  evidence.value = null
   selectedEvidenceRefs.value = []
   hydrateDraft(detail)
   void router.replace({
@@ -745,12 +797,84 @@ async function applyCase(detail: ReviewCaseDetail, evidenceData?: ReviewCaseEvid
       event_id: detail.event_id,
     },
   })
-  if (!evidenceData) {
-    const res = await getReviewCaseEvidence(detail.case_id)
-    evidence.value = res.data
+  const pendingLoads: Promise<void>[] = []
+  if (evidenceData) {
+    applyEvidencePage(evidenceData, false)
+  } else {
+    pendingLoads.push(loadEvidenceGroup(activeEvidenceGroup.value))
   }
-  await loadActivities(detail.case_id)
+  if (activityData) {
+    activities.value = activityData.items
+    activityCursor.value = activityData.next_cursor || 0
+  } else {
+    pendingLoads.push(loadActivities(detail.case_id))
+  }
+  await Promise.all(pendingLoads)
   startActivityRecovery(detail.case_id)
+}
+
+function resetEvidencePaging() {
+  evidence.value = null
+  for (const group of ['supports', 'contradicts', 'irrelevant', 'unresolved'] as EvidenceAssessment[]) {
+    evidenceGroupLoaded[group] = false
+    evidenceGroupNextCursors[group] = null
+  }
+}
+
+function applyEvidencePage(data: ReviewCaseEvidence, append: boolean) {
+  const group = data.page?.assessment || activeEvidenceGroup.value
+  const pageItems = data[group] || []
+  const existing = append ? evidence.value?.[group] || [] : []
+  const current = evidence.value || {
+    case_id: data.case_id,
+    supports: [],
+    contradicts: [],
+    irrelevant: [],
+    unresolved: [],
+    group_counts: {},
+    page: null,
+  }
+  evidence.value = {
+    ...current,
+    group_counts: data.group_counts || current.group_counts,
+    page: data.page,
+    [group]: append ? [...existing, ...pageItems] : pageItems,
+  }
+  evidenceGroupLoaded[group] = true
+  evidenceGroupNextCursors[group] = data.page?.next_cursor ?? null
+}
+
+async function loadEvidenceGroup(
+  group: EvidenceAssessment,
+  cursor = 0,
+  append = false,
+) {
+  if (!currentCase.value || loadingEvidenceGroup.value) return
+  loadingEvidenceGroup.value = group
+  try {
+    const res = await getReviewCaseEvidence(currentCase.value.case_id, {
+      assessment: group,
+      cursor,
+      limit: 40,
+    })
+    applyEvidencePage(res.data, append)
+  } finally {
+    loadingEvidenceGroup.value = null
+  }
+}
+
+function handleEvidenceGroupChange(value: string | number) {
+  const group = String(value) as EvidenceAssessment
+  activeEvidenceGroup.value = group
+  if (!evidenceGroupLoaded[group]) {
+    void loadEvidenceGroup(group)
+  }
+}
+
+function loadMoreEvidence(group: EvidenceAssessment) {
+  const cursor = evidenceGroupNextCursors[group]
+  if (cursor === null) return
+  void loadEvidenceGroup(group, cursor, true)
 }
 
 function hydrateDraft(detail: ReviewCaseDetail) {
@@ -807,15 +931,23 @@ async function loadActivities(caseId: string) {
 }
 
 function startActivityRecovery(caseId: string) {
-  if (activityRecoveryTimer) window.clearInterval(activityRecoveryTimer)
-  activityRecoveryController?.abort()
+  stopActivityRecovery()
   activityRecoveryTimer = window.setInterval(() => {
     void recoverCaseActivities(caseId)
   }, 10000)
 }
 
+function stopActivityRecovery() {
+  if (activityRecoveryTimer) {
+    window.clearInterval(activityRecoveryTimer)
+    activityRecoveryTimer = undefined
+  }
+  activityRecoveryController?.abort()
+  activityRecoveryController = null
+}
+
 async function recoverCaseActivities(caseId: string) {
-  if (currentCase.value?.case_id !== caseId || activityRecoveryController) return
+  if (!pageActive.value || currentCase.value?.case_id !== caseId || activityRecoveryController) return
   const controller = new AbortController()
   activityRecoveryController = controller
   try {
@@ -841,10 +973,19 @@ async function recoverCaseActivities(caseId: string) {
     }
 
     if (events.some((item) => ['snapshot_added', 'reconfirmation_required'].includes(item.activity_type))) {
-      const evidenceResponse = await getReviewCaseEvidence(caseId)
-      evidence.value = evidenceResponse.data
+      resetEvidencePaging()
+      if (activeEvidenceGroup.value === 'unresolved') {
+        const evidenceResponse = await getReviewCaseEvidence(caseId)
+        applyEvidencePage(evidenceResponse.data, false)
+      } else {
+        await loadEvidenceGroup(activeEvidenceGroup.value)
+      }
     }
   } catch (error) {
+    if (isUnauthorizedCaseEventStreamError(error)) {
+      stopActivityRecovery()
+      return
+    }
     if ((error as { name?: string }).name !== 'AbortError') {
     }
   } finally {
@@ -1095,7 +1236,18 @@ function formatTime(value?: string | null) {
 }
 
 onMounted(() => {
+  pageActive.value = true
   void loadInitialCase()
+})
+
+onActivated(() => {
+  pageActive.value = true
+  if (currentCase.value) startActivityRecovery(currentCase.value.case_id)
+})
+
+onDeactivated(() => {
+  pageActive.value = false
+  stopActivityRecovery()
 })
 
 onBeforeUnmount(() => {
@@ -1103,8 +1255,7 @@ onBeforeUnmount(() => {
     window.clearTimeout(draftSaveTimer.value)
   }
   if (caseSearchTimer) window.clearTimeout(caseSearchTimer)
-  if (activityRecoveryTimer) window.clearInterval(activityRecoveryTimer)
-  activityRecoveryController?.abort()
+  stopActivityRecovery()
 })
 </script>
 
@@ -1276,6 +1427,12 @@ onBeforeUnmount(() => {
   flex-direction: column;
   gap: 10px;
   padding-right: 4px;
+}
+
+.evidence-more {
+  display: flex;
+  justify-content: center;
+  padding: 4px 0 8px;
 }
 
 .evidence-item {

@@ -6,6 +6,8 @@ import json
 
 from app.core.review.agent_contracts import build_agent_system_prompt
 from app.core.review.agent_contracts import build_agent_user_prompt
+from app.core.review.agent_contracts import validate_judge_decision_against_policy
+from app.core.review.agent_review import _build_agent_context
 from app.core.review.agent_review import run_manual_agent_review
 
 
@@ -31,6 +33,7 @@ class RecordingAsyncProvider:
                 "model": model,
             }
         )
+        await asyncio.sleep(0.01)
         return f"completed: {agent_name}"
 
 
@@ -52,7 +55,7 @@ def _report() -> dict[str, object]:
 def _active_policy() -> dict[str, object]:
     return {
         "policy_id": "review-policy-2026-08",
-        "activation_status": "activated",
+        "activation_status": "active_human_approved",
         "policy": {
             "review_threshold": 0.52,
             "abstain_threshold": 0.45,
@@ -78,15 +81,43 @@ def test_manual_review_exposes_explicit_reflection_targets_api():
     assert "reflection_target_agent_names" in parameters
 
 
+def test_agent_context_uses_review_harmfulness_queue_and_execution():
+    report = _report()
+    report["review_harmfulness"] = {
+        "review_queue": {"retrieval_tasks": [{"query": "authoritative query"}]},
+        "review_execution": {"local_results": [{"doc_id": "evidence-1"}]},
+    }
+
+    context = _build_agent_context(
+        report,
+        case_id="case-1",
+        selected_post_ids=["post-1"],
+        selected_tree_ids=[],
+        include_media_base64=False,
+        max_keyframes=1,
+    )
+
+    assert context["review_queue"] == report["review_harmfulness"]["review_queue"]
+    assert context["review_execution"] == report["review_harmfulness"]["review_execution"]
+
+
 def test_question_reflection_responds_only_to_explicit_completed_targets():
     parameters = inspect.signature(run_manual_agent_review).parameters
 
     assert "reflection_target_agent_names" in parameters
 
     provider = RecordingAsyncProvider()
+    report = _report()
+    report["review_harmfulness"] = {
+        "review_queue": {"retrieval_tasks": [{"claim_id": "claim-1"}]},
+        "propagation_context": {
+            "has_thread_context": True,
+            "tree_metrics": {"node_count": 2, "edge_count": 1},
+        },
+    }
     result = asyncio.run(
         run_manual_agent_review(
-            report=_report(),
+            report=report,
             agent_names=["PostHarmAgent", "ClaimEvidenceAgent", "PropagationTreeAgent"],
             reflection_target_agent_names=["ClaimEvidenceAgent"],
             provider=provider,
@@ -105,10 +136,18 @@ def test_question_reflection_responds_only_to_explicit_completed_targets():
 
 def test_question_reflection_fallback_requests_at_most_two_completed_experts():
     provider = RecordingAsyncProvider()
+    report = _report()
+    report["review_harmfulness"] = {
+        "review_queue": {"retrieval_tasks": [{"claim_id": "claim-1"}]},
+        "propagation_context": {
+            "has_thread_context": True,
+            "tree_metrics": {"node_count": 2, "edge_count": 1},
+        },
+    }
 
     result = asyncio.run(
         run_manual_agent_review(
-            report=_report(),
+            report=report,
             agent_names=["PostHarmAgent", "ClaimEvidenceAgent", "PropagationTreeAgent"],
             provider=provider,
             runtime_mode="complex",
@@ -134,6 +173,8 @@ def test_judge_prompt_contains_deterministic_policy_decision_frame():
             "HarmfulnessJudgeAgent",
             {
                 "input_refs": {"post_ids": ["post-1"]},
+                "case_score": 0.55,
+                "case_uncertainty": 0.1,
                 "active_policy": _active_policy(),
                 "error_memory_summary": {
                     "historical_failure_cautions": ["Do not overrule missing primary evidence."],
@@ -151,24 +192,57 @@ def test_judge_prompt_contains_deterministic_policy_decision_frame():
     )
 
     assert "DETERMINISTIC POLICY DECISION FRAME" in prompt
-    assert payload["policy_decision_frame"] == {
-        "active_policy_id": "review-policy-2026-08",
-        "threshold_comparisons": {
-            "review": {"threshold": 0.52},
-            "abstain": {"threshold": 0.45},
-            "retrieval": {"threshold": 0.58},
-            "countermeasure": {"threshold": 0.72},
+    frame = payload["policy_decision_frame"]
+    assert frame["active_policy_id"] == "review-policy-2026-08"
+    assert frame["policy_binding"] is True
+    assert frame["advisory_only"] is True
+    assert frame["threshold_comparisons"]["review"]["threshold"] == 0.52
+    assert frame["policy_recommendation"] == {
+        "review_required": True,
+        "retrieval_required": False,
+        "abstain": False,
+        "countermeasure_recommended": False,
+    }
+    assert frame["matched_accepted_rules"][0]["rule_id"] == "accepted-multimodal-conflict"
+    assert frame["matched_accepted_rules"][0]["source"] == "validation_metric"
+    assert frame["weighted_expert_contribution_refs"] == [
+        {
+            "agent_name": "PostHarmAgent",
+            "weight": 1.0,
+            "evidence_refs": [{"doc_id": "post:post-1"}],
+        }
+    ]
+    assert frame["historical_failure_memory_cautions"] == [
+        "Do not overrule missing primary evidence."
+    ]
+
+
+def test_policy_conflict_forces_human_review_without_overwriting_detector():
+    result = validate_judge_decision_against_policy(
+        {
+            "main_axes": {
+                "attack_hate_offense": {
+                    "available": True,
+                    "label": "non_harmful",
+                }
+            },
+            "review_required": False,
         },
-        "matched_accepted_rules": [
-            {
-                "rule_id": "accepted-multimodal-conflict",
-                "explanation": "Escalate when image and text conflict.",
-            }
-        ],
-        "weighted_expert_contribution_refs": [
-            {"agent_name": "PostHarmAgent", "weight": 0.4, "evidence_refs": [{"doc_id": "post:post-1"}]}
-        ],
-        "historical_failure_memory_cautions": ["Do not overrule missing primary evidence."],
+        {
+            "advisory_only": True,
+            "policy_recommendation": {
+                "review_required": True,
+                "abstain": True,
+            },
+        },
+    )
+
+    assert result["conflict_detected"] is True
+    assert result["effective_review_required"] is True
+    assert result["detector_outputs_modified"] is False
+    assert set(result["conflict_reasons"]) == {
+        "judge_rejected_required_review",
+        "judge_rejected_required_abstention",
     }
 
 
@@ -201,6 +275,27 @@ def test_role_prompt_compacts_heavy_context_and_preserves_evidence_refs():
     assert payload["prior_agent_reports"]["PostHarmAgent"]["evidence_refs"] == [{"doc_id": "post:post-1"}]
 
 
+def test_initial_expert_prompt_excludes_failure_memory_but_judge_keeps_matched_memory():
+    context = {
+        "input_refs": {"post_ids": ["post-1"]},
+        "error_memory_summary": {
+            "matched_records": [{"memory_id": "memory-1", "caution": "verify the source"}],
+            "match_reasons": [{"memory_id": "memory-1", "matched_tags": ["claim_linked"]}],
+            "ignored_count": 3,
+        },
+    }
+
+    expert_payload = json.loads(
+        build_agent_user_prompt("PostHarmAgent", context, {}, policy_guidance={})
+    )
+    judge_payload = json.loads(
+        build_agent_user_prompt("HarmfulnessJudgeAgent", context, {}, policy_guidance={})
+    )
+
+    assert "error_memory_summary" not in expert_payload
+    assert judge_payload["error_memory_summary"]["matched_records"][0]["memory_id"] == "memory-1"
+
+
 def test_run_summary_and_audit_report_llm_call_and_prompt_telemetry():
     provider = RecordingAsyncProvider()
 
@@ -224,3 +319,92 @@ def test_run_summary_and_audit_report_llm_call_and_prompt_telemetry():
         assert telemetry["user_prompt_chars"] > 0
         assert telemetry["input_bundle_chars"] > 0
         assert telemetry["provider_duration_ms"] >= 0
+
+
+def test_complex_text_case_filters_inapplicable_experts_before_provider_calls():
+    provider = RecordingAsyncProvider()
+
+    result = asyncio.run(
+        run_manual_agent_review(
+            report=_report(),
+            agent_names=[
+                "PostHarmAgent",
+                "MultimodalConsistencyAgent",
+                "ClaimEvidenceAgent",
+                "PropagationTreeAgent",
+            ],
+            provider=provider,
+            runtime_mode="complex",
+        )
+    )
+
+    assert result["summary"]["planned_llm_call_count"] == 4
+    assert result["summary"]["actual_llm_call_count"] == 4
+    assert [call["agent_name"] for call in provider.calls] == [
+        "PostHarmAgent",
+        "QuestionReflectionAgent",
+        "PostHarmAgentReflectionResponse",
+        "HarmfulnessJudgeAgent",
+    ]
+    assert result["audit"]["execution_plan"]["eligible_agents"] == ["PostHarmAgent"]
+    assert result["audit"]["execution_plan"]["skipped_agents"] == [
+        {
+            "agent_name": "MultimodalConsistencyAgent",
+            "reason": "missing_usable_media_or_cross_view_conflict",
+        },
+        {
+            "agent_name": "ClaimEvidenceAgent",
+            "reason": "missing_claim_context",
+        },
+        {
+            "agent_name": "PropagationTreeAgent",
+            "reason": "missing_propagation_tree_or_post_post_edges",
+        },
+    ]
+
+
+def test_parallel_experts_cannot_exceed_atomic_llm_call_budget():
+    provider = RecordingAsyncProvider()
+
+    result = asyncio.run(
+        run_manual_agent_review(
+            report=_report(),
+            agent_names=[
+                "PostHarmAgent",
+                "MultimodalConsistencyAgent",
+                "ClaimEvidenceAgent",
+                "PropagationTreeAgent",
+            ],
+            provider=provider,
+            runtime_mode="complex",
+            max_agent_calls_per_case=1,
+        )
+    )
+
+    assert len(provider.calls) == 1
+    assert result["summary"]["actual_llm_call_count"] == 1
+    assert any(item["status"] == "skipped_budget" for item in result["audit"]["llm_call_audit"])
+
+
+def test_full_debate_calls_share_the_agent_call_budget():
+    provider = RecordingAsyncProvider()
+    report = _report()
+    report["post_semantics"]["posts"][0]["post_view_detection"] = {
+        "conflict": {"score": 0.8},
+        "review_reason": ["media context unclosed"],
+    }
+
+    result = asyncio.run(
+        run_manual_agent_review(
+            report=report,
+            agent_names=["MultimodalConsistencyAgent"],
+            provider=provider,
+            runtime_mode="complex",
+            enable_full_debate=True,
+            max_agent_calls_per_case=1,
+        )
+    )
+
+    assert len(provider.calls) == 1
+    assert result["summary"]["actual_llm_call_count"] == 1
+    assert result["summary"]["full_debate_triggered"] is True

@@ -172,12 +172,24 @@ class EvidenceItem(ProductContract):
     annotations: list[EvidenceAnnotation] = Field(default_factory=list)
 
 
+class EvidencePage(ProductContract):
+    """Cursor metadata for the evidence group returned by the current request."""
+
+    assessment: EvidenceAssessment
+    cursor: int = Field(default=0, ge=0)
+    limit: int = Field(default=40, ge=1, le=100)
+    total: int = Field(default=0, ge=0)
+    next_cursor: int | None = Field(default=None, ge=0)
+
+
 class ReviewCaseEvidence(ProductContract):
     case_id: str = Field(..., min_length=1, max_length=128)
     supports: list[EvidenceItem] = Field(default_factory=list)
     contradicts: list[EvidenceItem] = Field(default_factory=list)
     irrelevant: list[EvidenceItem] = Field(default_factory=list)
     unresolved: list[EvidenceItem] = Field(default_factory=list)
+    group_counts: dict[EvidenceAssessment, int] = Field(default_factory=dict)
+    page: EvidencePage | None = None
 
 
 class ReviewRequestCreate(ProductContract):
@@ -272,6 +284,7 @@ __all__ = [
     "EvidenceAnnotationCreate",
     "EvidenceAssessment",
     "EvidenceItem",
+    "EvidencePage",
     "EvidenceSufficiency",
     "PreliminaryFinding",
     "PropagationBusinessSummary",

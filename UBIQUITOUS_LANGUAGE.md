@@ -15,6 +15,8 @@ Use `Coordination Discover`, `Coordination Detect`, `Propagation Analysis`, and 
 | **Compatibility Alias** | A one-version import path that forwards to a canonical package without owning business logic. | Legacy implementation, second source |
 | **Offline Experiment Input** | Local JSONL or fixture data used by a research script and never resolved as a product runtime dependency. | Runtime data, production source |
 | **Vendored Data Root** | A data directory owned by a vendored runtime and safe for local system experiments. | Upstream data root, external input |
+| **Static Delivery Build** | The canonical frontend build that typechecks, emits content-addressed assets, creates a **Delivery Preload Plan**, and verifies delivery budgets. | Dev build, preview build |
+| **Delivery Preload Plan** | Build-time metadata that prepares only static route assets after authentication or navigation interaction; it never requests case data, runs analysis, or warms a model. | Data warmup, analysis warmup |
 
 Current semantic package paths: `system/research/coordination_discover/`, `system/research/coordination_detect/`, `system/research/propagation_analysis/`, `system/research/review_teacher/`, `system/research/social_bot_detection/`, and `system/runtimes/review_student/`. These are runtime/research-only boundaries; do not use them in product copy.
 

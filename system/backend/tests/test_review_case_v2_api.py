@@ -85,8 +85,8 @@ class FakeReviewCaseService:
         self.calls.append(("detail", case_id))
         return ReviewCaseDetail(**_summary().model_dump())
 
-    async def evidence(self, case_id: str):
-        self.calls.append(("evidence", case_id))
+    async def evidence(self, case_id: str, **kwargs):
+        self.calls.append(("evidence", (case_id, kwargs)))
         return ReviewCaseEvidence(case_id=case_id)
 
     async def request_review(self, case_id: str, request, *, actor):
@@ -235,6 +235,40 @@ def test_review_case_routes_are_product_facing_and_resumable():
         assert "id: 2" in stream.text
         assert "event: review_requested" in stream.text
         assert "id: 1" not in stream.text
+
+    asyncio.run(scenario())
+
+
+def test_review_evidence_route_forwards_cursor_pagination():
+    async def scenario():
+        fake = FakeReviewCaseService()
+        user = SimpleNamespace(id=7, username="analyst", role="analyst")
+        app = FastAPI()
+        app.include_router(router, prefix="/api/v2/review-cases")
+        app.dependency_overrides[get_review_case_service] = lambda: fake
+        app.dependency_overrides[require_case_reader] = lambda: user
+        transport = ASGITransport(app=app)
+
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.get(
+                "/api/v2/review-cases/case_1/evidence",
+                params={"assessment": "supports", "cursor": 40, "limit": 20},
+            )
+
+        assert response.status_code == 200
+        assert fake.calls == [
+            (
+                "evidence",
+                (
+                    "case_1",
+                    {
+                        "assessment": EvidenceAssessment.SUPPORTS,
+                        "cursor": 40,
+                        "limit": 20,
+                    },
+                ),
+            )
+        ]
 
     asyncio.run(scenario())
 

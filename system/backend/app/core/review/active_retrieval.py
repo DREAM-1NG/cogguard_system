@@ -455,7 +455,16 @@ def _build_conflict_requeries(
         queries.extend(f"{_text(query)} corroborating source" for query in missing_queries[:3] if _text(query))
     for post in context.get("selected_posts") or []:
         view = post.get("post_view_detection") or {}
-        if view.get("conflict") or _as_float(_get(view, "conflict", "score")) >= 0.35:
+        conflict = view.get("conflict")
+        confirmed_conflict = (
+            conflict is True
+            or (isinstance(conflict, dict) and (
+                conflict.get("has_conflict") is True
+                or conflict.get("label_conflict") is True
+            ))
+            or _as_float(_get(view, "conflict", "score")) >= 0.35
+        )
+        if confirmed_conflict:
             query = " ".join(
                 _text(value)
                 for value in [

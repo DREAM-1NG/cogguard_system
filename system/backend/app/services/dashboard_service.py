@@ -9,9 +9,18 @@ from typing import Any
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.analysis.query_result_cache import (
+    build_query_cache_key,
+    get_or_build_query_result,
+)
 from app.db.mongodb import get_mongo_db
 from app.models.risk_assessment import RiskAssessment
-from app.services.event_data import build_event_filter, load_event_comments, load_event_posts
+from app.services.event_data import (
+    build_event_filter,
+    event_data_fingerprint,
+    load_event_comments,
+    load_event_posts,
+)
 
 DEFAULT_EVENT_ID = "trump_visit_2026_05_21"
 
@@ -280,27 +289,52 @@ async def get_dashboard_overview(
     """Build dashboard cards, platform distribution, and map event points."""
     mongo_db = get_mongo_db()
     effective_event_id = event_id or None
-    posts = await load_event_posts(mongo_db, event_id=effective_event_id)
-    comments = await load_event_comments(mongo_db, event_id=effective_event_id)
+    fingerprint = await event_data_fingerprint(mongo_db, event_id=effective_event_id)
+
+    async def build_mongo_projection() -> dict[str, Any]:
+        posts = await load_event_posts(mongo_db, event_id=effective_event_id)
+        comments = await load_event_comments(mongo_db, event_id=effective_event_id)
+        platforms = _platform_distribution(posts, comments)
+        event_locations = _event_locations(effective_event_id, posts, comments)
+        return {
+            "summary": {
+                "event_count": (
+                    1
+                    if effective_event_id and posts
+                    else len({post.get("event_id") for post in posts if post.get("event_id")})
+                ),
+                "posts": len(posts),
+                "comments": len(comments),
+                "collected_items": len(posts) + len(comments),
+                "coordination_groups": 0,
+                "platform_count": len(platforms),
+            },
+            "platforms": platforms,
+            "event_locations": event_locations,
+            "unresolved_locations": [item for item in event_locations if not item.get("resolved")],
+            "recent_posts": _recent_posts(posts),
+        }
+
+    if fingerprint is None:
+        projection = await build_mongo_projection()
+    else:
+        cache_key = build_query_cache_key(
+            "dashboard-overview-v1",
+            effective_event_id or "*",
+            fingerprint,
+        )
+        projection = await get_or_build_query_result(cache_key, build_mongo_projection)
+
     risk_report_count, mysql_status = await _count_risk_reports(db, effective_event_id)
-    platforms = _platform_distribution(posts, comments)
-    event_locations = _event_locations(effective_event_id, posts, comments)
-    unresolved_locations = [item for item in event_locations if not item.get("resolved")]
+    summary = dict(projection["summary"])
+    summary["risk_reports"] = risk_report_count
 
     return {
-        "summary": {
-            "event_count": 1 if effective_event_id and posts else len({post.get("event_id") for post in posts if post.get("event_id")}),
-            "posts": len(posts),
-            "comments": len(comments),
-            "collected_items": len(posts) + len(comments),
-            "risk_reports": risk_report_count,
-            "coordination_groups": 0,
-            "platform_count": len(platforms),
-        },
-        "platforms": platforms,
-        "event_locations": event_locations,
-        "unresolved_locations": unresolved_locations,
-        "recent_posts": _recent_posts(posts),
+        "summary": summary,
+        "platforms": projection["platforms"],
+        "event_locations": projection["event_locations"],
+        "unresolved_locations": projection["unresolved_locations"],
+        "recent_posts": projection["recent_posts"],
         "meta": {
             "event_id": effective_event_id,
             "default_event_id": DEFAULT_EVENT_ID,

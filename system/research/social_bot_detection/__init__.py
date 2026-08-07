@@ -42,8 +42,15 @@ from .evaluate_active_round import (
     evaluate_active_round_gates,
 )
 from .evaluation import evaluate_predictions
+from .evaluation_protocol import (
+    create_frozen_holdout_manifest,
+    evaluate_account_protocol,
+    is_protocol_report_payload,
+    verify_frozen_holdout_manifest,
+)
 from .hypergraph import build_reference_hyperedges, build_support_hyperedges
-from .inference import BotRHGInference
+from .inference import BotRHGInference, StrictBotRHGInference, create_botrhg_inference
+from .model_bundle import load_account_model_bundle, verify_account_model_bundle, write_account_model_bundle
 from .reliability import compute_correction_risk, select_routed_accounts
 from .strict_contracts import StrictAccountRecord, StrictCorpus, StrictFeatureSchema, StrictGraph, StrictRelationEdge
 from .strict_datasets import (
@@ -64,6 +71,7 @@ __all__ = [
     "ActiveRoundEvaluationGate",
     "ApprovedAccountLabel",
     "BotRHGInference",
+    "StrictBotRHGInference",
     "ChineseAccountCorpusManifest",
     "DatasetManifest",
     "EvaluationReport",
@@ -83,11 +91,16 @@ __all__ = [
     "badge_select",
     "calibrated_uncertainty",
     "compute_alps_embeddings",
+    "create_botrhg_inference",
     "core_set_select",
     "evaluate_predictions",
+    "evaluate_account_protocol",
+    "is_protocol_report_payload",
+    "create_frozen_holdout_manifest",
     "export_approved_account_corpus",
     "load_approved_account_corpus",
     "load_botection_dataset",
+    "load_account_model_bundle",
     "load_cresci_2015_dataset",
     "load_cresci_2017_dataset",
     "load_midterm_2018_dataset",
@@ -101,4 +114,7 @@ __all__ = [
     "split_samples",
     "train_strict_botrhg",
     "train_botrhg",
+    "verify_account_model_bundle",
+    "verify_frozen_holdout_manifest",
+    "write_account_model_bundle",
 ]

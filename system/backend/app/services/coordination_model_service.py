@@ -17,6 +17,10 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import PROJECT_ROOT
+from app.core.analysis.query_result_cache import (
+    build_query_cache_key,
+    get_or_build_query_result,
+)
 from app.core.coordination_detect import (
     PRETRAINED_CHECKPOINT_PATH,
     ensure_china_pretrained_fusion_checkpoint,
@@ -255,6 +259,17 @@ def _system_dataset_paths(dataset_name: str) -> dict[str, str]:
     }
 
 
+def _archive_dataset_paths_are_complete(paths: Mapping[str, Any]) -> bool:
+    """Return whether an archive record can serve every registered result."""
+
+    required_paths = (
+        paths.get("events_path"),
+        paths.get("discover_path"),
+        paths.get("detect_path"),
+    )
+    return all(path_value and Path(str(path_value)).is_file() for path_value in required_paths)
+
+
 def _archive_detect_summary_map() -> dict[str, dict[str, Any]]:
     if not ARCHIVE_DETECT_METRICS_PATH.exists():
         return {}
@@ -317,11 +332,14 @@ async def ensure_system_archive_datasets(db: AsyncSession) -> None:
         dataset_name = str(row.get("dataset") or "").strip()
         if not dataset_name:
             continue
+        archive_paths = _system_dataset_paths(dataset_name)
+        if not _archive_dataset_paths_are_complete(archive_paths):
+            continue
         existing = await db.execute(select(CoordinationDataset).where(CoordinationDataset.slug == dataset_name.lower()))
         dataset = existing.scalar_one_or_none()
         metadata = {
             "archive_name": manifest.get("archive_name"),
-            "archive_paths": _system_dataset_paths(dataset_name),
+            "archive_paths": archive_paths,
             "archive_latest_summary": archive_summaries.get(dataset_name, {}),
         }
         values = {
@@ -329,7 +347,7 @@ async def ensure_system_archive_datasets(db: AsyncSession) -> None:
             "display_name": dataset_name,
             "source_type": "system_archive",
             "source_format": "csv",
-            "source_path": _system_dataset_paths(dataset_name)["events_path"],
+            "source_path": archive_paths["events_path"],
             "metadata_json": _json_dump(metadata),
             "has_labels": True,
             "event_rows": int(row.get("event_rows", 0) or 0),
@@ -1734,18 +1752,11 @@ async def _load_latest_result_context(
     *,
     allow_empty_uploaded: bool = False,
 ) -> tuple[CoordinationDataset, dict[str, Any], dict[str, Any], str, CoordinationRun | None]:
-    await ensure_system_archive_datasets(db)
-    result = await db.execute(select(CoordinationDataset).where(CoordinationDataset.id == dataset_id))
-    dataset = result.scalar_one_or_none()
-    if dataset is None:
-        raise ValueError(f"Dataset {dataset_id} not found")
+    dataset, run = await _load_dataset_and_latest_run(db, dataset_id)
 
-    if dataset.latest_run_id:
-        run_result = await db.execute(select(CoordinationRun).where(CoordinationRun.id == dataset.latest_run_id))
-        run = run_result.scalar_one_or_none()
-        if run is not None and run.status == "completed":
-            discovery, detect = _load_run_result_pair(run)
-            return dataset, discovery, detect, "rerun", run
+    if run is not None and run.status == "completed":
+        discovery, detect = _load_run_result_pair(run)
+        return dataset, discovery, detect, "rerun", run
 
     if dataset.source_type == "system_archive":
         discovery, detect = _load_archive_result_pair(dataset)
@@ -1757,33 +1768,93 @@ async def _load_latest_result_context(
     raise ValueError(f"Dataset {dataset_id} has no completed coordination result")
 
 
-async def get_coordination_dataset_latest_result(db: AsyncSession, dataset_id: int) -> dict[str, Any]:
+async def _load_dataset_and_latest_run(
+    db: AsyncSession,
+    dataset_id: int,
+) -> tuple[CoordinationDataset, CoordinationRun | None]:
+    """Load only registry metadata before consulting a result projection."""
+
     await ensure_system_archive_datasets(db)
     result = await db.execute(select(CoordinationDataset).where(CoordinationDataset.id == dataset_id))
     dataset = result.scalar_one_or_none()
     if dataset is None:
         raise ValueError(f"Dataset {dataset_id} not found")
-    if dataset.latest_run_id:
-        run_result = await db.execute(select(CoordinationRun).where(CoordinationRun.id == dataset.latest_run_id))
-        run = run_result.scalar_one_or_none()
-        if run is not None and run.status == "completed":
+    if not dataset.latest_run_id:
+        return dataset, None
+    run_result = await db.execute(select(CoordinationRun).where(CoordinationRun.id == dataset.latest_run_id))
+    return dataset, run_result.scalar_one_or_none()
+
+
+def _coordination_result_identity(
+    dataset: CoordinationDataset,
+    *,
+    result_source: str,
+    run: CoordinationRun | None,
+) -> tuple[str, ...]:
+    """Return a version identity without reading the result JSON files."""
+
+    if run is not None:
+        return (
+            str(dataset.id),
+            result_source,
+            str(run.id),
+            str(run.finished_at or run.created_at or ""),
+        )
+
+    paths = _dataset_paths_from_record(dataset).get("archive_paths", {})
+    markers = []
+    for name in ("discover_path", "detect_path"):
+        path = Path(str(paths.get(name, "")))
+        try:
+            stat = path.stat()
+            markers.append(f"{name}:{stat.st_size}:{stat.st_mtime_ns}")
+        except OSError:
+            markers.append(f"{name}:missing")
+    return (
+        str(dataset.id),
+        result_source,
+        str(dataset.updated_at or dataset.created_at or ""),
+        *markers,
+    )
+
+
+async def get_coordination_dataset_latest_result(db: AsyncSession, dataset_id: int) -> dict[str, Any]:
+    dataset, run = await _load_dataset_and_latest_run(db, dataset_id)
+    if run is not None and run.status == "completed":
+        cache_key = build_query_cache_key(
+            "coordination-latest-result-v2",
+            *_coordination_result_identity(dataset, result_source="rerun", run=run),
+        )
+
+        async def build_result() -> Mapping[str, Any]:
             discovery, detect = _load_run_result_pair(run)
             return _build_result_snapshot(dataset, discovery, detect, result_source="rerun", run=run)
-        if run is not None:
-            if dataset.source_type == "system_archive":
-                discovery, detect = _load_archive_result_pair(dataset)
-                snapshot = _build_result_snapshot(dataset, discovery, detect, result_source="archive", run=None)
-                snapshot["current_run"] = _run_record(run)
-                snapshot["status"] = "archive_with_active_rerun"
-                return snapshot
-            return {
-                "dataset_summary": _dataset_record(dataset, latest_run=run),
-                "run_summary": _run_record(run),
-                "status": "pending_result",
-            }
+
+        return await get_or_build_query_result(cache_key, build_result)
+
+    if run is not None:
+        if dataset.source_type == "system_archive":
+            discovery, detect = _load_archive_result_pair(dataset)
+            snapshot = _build_result_snapshot(dataset, discovery, detect, result_source="archive", run=None)
+            snapshot["current_run"] = _run_record(run)
+            snapshot["status"] = "archive_with_active_rerun"
+            return snapshot
+        return {
+            "dataset_summary": _dataset_record(dataset, latest_run=run),
+            "run_summary": _run_record(run),
+            "status": "pending_result",
+        }
     if dataset.source_type == "system_archive":
-        discovery, detect = _load_archive_result_pair(dataset)
-        return _build_result_snapshot(dataset, discovery, detect, result_source="archive", run=None)
+        cache_key = build_query_cache_key(
+            "coordination-latest-result-v2",
+            *_coordination_result_identity(dataset, result_source="archive", run=None),
+        )
+
+        async def build_archive_result() -> Mapping[str, Any]:
+            discovery, detect = _load_archive_result_pair(dataset)
+            return _build_result_snapshot(dataset, discovery, detect, result_source="archive", run=None)
+
+        return await get_or_build_query_result(cache_key, build_archive_result)
     return {
         "dataset_summary": _dataset_record(dataset),
         "run_summary": None,
@@ -1798,24 +1869,57 @@ async def get_coordination_dataset_graph(
     node_limit: int = 200,
     min_node_score: float = 0.0,
 ) -> dict[str, Any]:
-    dataset, discovery, detect, result_source, run = await _load_latest_result_context(
-        db,
-        dataset_id,
-        allow_empty_uploaded=True,
+    dataset, run = await _load_dataset_and_latest_run(db, dataset_id)
+    result_source = "rerun" if run is not None and run.status == "completed" else (
+        "archive" if dataset.source_type == "system_archive" else "none"
     )
-    payload = _build_coordination_graph_payload(
-        dataset,
-        discovery,
-        detect,
-        node_limit=node_limit,
-        min_node_score=min_node_score,
+    if result_source == "none":
+        dataset, discovery, detect, result_source, run = await _load_latest_result_context(
+            db,
+            dataset_id,
+            allow_empty_uploaded=True,
+        )
+        payload = _build_coordination_graph_payload(
+            dataset,
+            discovery,
+            detect,
+            node_limit=node_limit,
+            min_node_score=min_node_score,
+        )
+        payload["run_summary"] = {
+            "result_source": result_source,
+            "run_id": run.id if run is not None else None,
+            "status": "no_result",
+        }
+        return payload
+
+    cache_key = build_query_cache_key(
+        "coordination-graph-v2",
+        *_coordination_result_identity(dataset, result_source=result_source, run=run if result_source == "rerun" else None),
+        node_limit,
+        min_node_score,
     )
-    payload["run_summary"] = {
-        "result_source": result_source,
-        "run_id": run.id if run is not None else None,
-        "status": run.status if run is not None else ("no_result" if result_source == "none" else "archived"),
-    }
-    return payload
+
+    async def build_graph() -> Mapping[str, Any]:
+        if result_source == "rerun":
+            discovery, detect = _load_run_result_pair(run)
+        else:
+            discovery, detect = _load_archive_result_pair(dataset)
+        payload = _build_coordination_graph_payload(
+            dataset,
+            discovery,
+            detect,
+            node_limit=node_limit,
+            min_node_score=min_node_score,
+        )
+        payload["run_summary"] = {
+            "result_source": result_source,
+            "run_id": run.id if result_source == "rerun" and run is not None else None,
+            "status": run.status if result_source == "rerun" and run is not None else "archived",
+        }
+        return payload
+
+    return await get_or_build_query_result(cache_key, build_graph)
 
 
 async def get_coordination_community_detail(
@@ -1825,20 +1929,53 @@ async def get_coordination_community_detail(
     *,
     member_limit: int = 500,
 ) -> dict[str, Any]:
-    dataset, discovery, detect, result_source, run = await _load_latest_result_context(db, dataset_id)
-    payload = _build_coordination_community_payload(
-        dataset,
-        discovery,
-        detect,
-        cluster_id=cluster_id,
-        member_limit=member_limit,
+    dataset, run = await _load_dataset_and_latest_run(db, dataset_id)
+    result_source = "rerun" if run is not None and run.status == "completed" else (
+        "archive" if dataset.source_type == "system_archive" else "none"
     )
-    payload["run_summary"] = {
-        "result_source": result_source,
-        "run_id": run.id if run is not None else None,
-        "status": run.status if run is not None else "archived",
-    }
-    return payload
+    if result_source == "none":
+        dataset, discovery, detect, result_source, run = await _load_latest_result_context(db, dataset_id)
+        payload = _build_coordination_community_payload(
+            dataset,
+            discovery,
+            detect,
+            cluster_id=cluster_id,
+            member_limit=member_limit,
+        )
+        payload["run_summary"] = {
+            "result_source": result_source,
+            "run_id": run.id if run is not None else None,
+            "status": "archived",
+        }
+        return payload
+
+    cache_key = build_query_cache_key(
+        "coordination-community-v2",
+        *_coordination_result_identity(dataset, result_source=result_source, run=run if result_source == "rerun" else None),
+        cluster_id,
+        member_limit,
+    )
+
+    async def build_community() -> Mapping[str, Any]:
+        if result_source == "rerun":
+            discovery, detect = _load_run_result_pair(run)
+        else:
+            discovery, detect = _load_archive_result_pair(dataset)
+        payload = _build_coordination_community_payload(
+            dataset,
+            discovery,
+            detect,
+            cluster_id=cluster_id,
+            member_limit=member_limit,
+        )
+        payload["run_summary"] = {
+            "result_source": result_source,
+            "run_id": run.id if result_source == "rerun" and run is not None else None,
+            "status": run.status if result_source == "rerun" and run is not None else "archived",
+        }
+        return payload
+
+    return await get_or_build_query_result(cache_key, build_community)
 
 
 def _run_record(run: CoordinationRun) -> dict[str, Any]:

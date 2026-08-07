@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import dataclasses
+from datetime import datetime, timezone
 import importlib
 import importlib.util
 import json
@@ -940,4 +941,281 @@ def test_heuristic_identity_invariants_are_bidirectional(
             model_role=model_role,
             warning=warning,
             metrics=_complete_detection_metrics(),
+        )
+
+
+def test_second_review_detection_executors_never_receive_test_labels():
+    package, _, baselines, runner = _modules()
+    train, validation, labeled_test, artifact = _detection_fixture(package)
+    seen = []
+
+    class FixtureLearnedImplementation(baselines.LearnedDetectionImplementation):
+        method_id = "learned_fused_detector"
+        implementation_id = "fixture-learned-fused-implementation-v1"
+
+        def execute(self, partitions):
+            seen.append(partitions)
+            assert all(hasattr(case, "label") for case in partitions.train_cases)
+            assert all(hasattr(case, "label") for case in partitions.validation_cases)
+            assert all(not hasattr(case, "label") for case in partitions.test_cases)
+            return runner.DetectionExecutionOutput(
+                model_artifact=artifact,
+                predictions=(
+                    runner.DetectionPrediction("test-0", 0.1, "benign_coordination"),
+                    runner.DetectionPrediction("test-1", 0.9, "harmful_coordination"),
+                ),
+            )
+
+    default = baselines.default_baseline_registry()
+    registry = baselines.BaselineRegistry(
+        ((default.get("learned_fused_detector"), FixtureLearnedImplementation()),)
+    )
+    inference_cases = tuple(
+        runner.DetectionInferenceCase.from_training_case(case) for case in labeled_test
+    )
+    evaluation = runner.DetectionEvaluationInput(
+        evaluator_fingerprint="sha256:" + "b" * 64,
+        test_labels={case.case_id: case.label for case in labeled_test},
+    )
+    row = runner.run_detection_method(
+        registry,
+        "learned_fused_detector",
+        manifest=_manifest(package),
+        capability=_capability(package),
+        split=_split(package),
+        partitions=runner.DetectionPartitions(train, validation, inference_cases),
+        evaluation=evaluation,
+    )
+    assert row.status == "success"
+    assert len(seen) == 1
+    assert row.evaluator_fingerprint == evaluation.fingerprint
+
+
+def test_second_review_registry_is_immutable_and_heuristic_is_concrete_stage2_adapter():
+    _, _, baselines, runner = _modules()
+    registry = baselines.default_baseline_registry()
+    assert not hasattr(registry, "bind")
+    implementation = registry.implementation("heuristic_baseline_v1")
+    heuristic_type = importlib.import_module(
+        "research.coordination_detect.heuristic_baseline"
+    ).HeuristicBayesianBaseline
+    assert type(implementation) is baselines.HeuristicDetectionImplementation
+    assert implementation.baseline_type is heuristic_type
+
+    inference = runner.DetectionInferenceCase(
+        case_id="test-heuristic",
+        cluster_id="cluster-test-heuristic",
+        feature_schema_version="fixture/v1",
+        feature_schema_fingerprint="sha256:" + "c" * 64,
+        feature_names=(
+            "tsgs_density",
+            "mhcr_coherence",
+            "temporal_sync_score",
+            "unsupervised_ranking",
+        ),
+        feature_values=(0.8, 0.7, 0.9, 0.6),
+        provenance={},
+    )
+    with pytest.warns(UserWarning, match="heuristic baseline"):
+        output = implementation.execute(runner.DetectionTestInput((inference,)))
+    with pytest.warns(UserWarning, match="heuristic baseline"):
+        expected = heuristic_type().predict(
+            cluster_id=inference.cluster_id,
+            tsgs_density=0.8,
+            mhcr_coherence=0.7,
+            temporal_sync_score=0.9,
+            unsupervised_ranking=0.6,
+        )
+    assert output.predictions[0].harmful_probability == expected.harmful_probability
+    assert output.predictions[0].decision == expected.decision
+
+    class RelabeledImplementation(baselines.DiscoveryImplementation):
+        method_id = "dense_cosine_leiden"
+        implementation_id = "relabeled-implementation-v1"
+
+        def execute(self, execution_input):
+            raise AssertionError("must not execute")
+
+    edgebank = registry.get("edgebank")
+    with pytest.raises(ValueError, match="implementation method identity"):
+        baselines.BaselineRegistry(((edgebank, RelabeledImplementation()),))
+    with pytest.raises(ValueError, match="duplicate registered method"):
+        baselines.BaselineRegistry(
+            (
+                (edgebank, registry.implementation("edgebank")),
+                (edgebank, registry.implementation("edgebank")),
+            )
+        )
+
+
+def test_second_review_discovery_requires_exact_copied_coordination_events():
+    package, _, _, runner = _modules()
+    event_type = importlib.import_module(
+        "research.coordination_discover.stage1.events"
+    ).CoordinationEvent
+    event = event_type(
+        account_id="account-a",
+        relation="shared_url",
+        object_id="https://example.test/a",
+        observed_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        weight=1.0,
+        evidence_ref="fixture:event:a",
+    )
+
+    class DuckEvent:
+        account_id = event.account_id
+        relation = event.relation
+        object_id = event.object_id
+        observed_at = event.observed_at
+        weight = event.weight
+        evidence_ref = event.evidence_ref
+
+    with pytest.raises(ValueError, match="exact canonical CoordinationEvent"):
+        runner.DiscoveryExecutionInput(_manifest(package), (DuckEvent(),))
+    with pytest.raises(ValueError, match="exact canonical CoordinationEvent"):
+        runner.DiscoveryExecutionInput(_manifest(package), ("label-free-event",))
+
+    sealed = runner.DiscoveryExecutionInput(_manifest(package), (event,))
+    assert type(sealed.events[0]) is event_type
+    assert sealed.events[0] == event
+    assert sealed.events[0] is not event
+
+
+def test_second_review_iohunter_observed_time_is_intrinsic_without_markers():
+    package, _, _, runner = _modules()
+    manifest = dataclasses.replace(
+        _manifest(package, claim_markers=(), time_axis="static_placeholder_not_observed_time"),
+        dataset_id="iohunter-russia",
+        campaign_axis=("russia",),
+    )
+    with pytest.raises(ValueError, match="IOHunter.*observed_time_holdout"):
+        runner.ResultRow(
+            dataset_id=manifest.dataset_id,
+            dataset_manifest_fingerprint=manifest.fingerprint,
+            evaluator_fingerprint="sha256:" + "b" * 64,
+            split_policy="observed_time_holdout",
+            split_fingerprint=_split(package, policy="observed_time_holdout").fingerprint,
+            method_id="edgebank",
+            method_version="edgebank-v1",
+            model_role="temporal_baseline",
+            seed=42,
+            runtime_seconds=1.0,
+            peak_memory_bytes=1024,
+            status="success",
+            metrics=_complete_discovery_metrics(),
+            claim_markers=(),
+            task="discovery",
+            audit={"audit_version": "fixture/v1", "label_free_execution": True},
+        )
+
+    static_row = runner.ResultRow(
+        dataset_id=manifest.dataset_id,
+        dataset_manifest_fingerprint=manifest.fingerprint,
+        evaluator_fingerprint="sha256:" + "b" * 64,
+        split_policy="official_static_fold",
+        split_fingerprint=_split(package).fingerprint,
+        method_id="edgebank",
+        method_version="edgebank-v1",
+        model_role="temporal_baseline",
+        seed=42,
+        runtime_seconds=1.0,
+        peak_memory_bytes=1024,
+        status="success",
+        metrics=_complete_discovery_metrics(),
+        claim_markers=(),
+        task="discovery",
+        audit={"audit_version": "fixture/v1", "label_free_execution": True},
+    )
+    blocked = runner.evaluate_claim_gate(
+        runner.ClaimGate(
+            "observed-time", "edge_auprc", "maximize", 0.5,
+            claim_scope="observed_time",
+        ),
+        (static_row,),
+    )
+    assert blocked.status == "blocked"
+    assert "static_placeholder_not_observed_time" in blocked.reason
+
+
+def test_second_review_learned_rows_reject_arbitrary_audits_and_rehydrate_artifacts():
+    package, _, _, runner = _modules()
+    with pytest.raises(ValueError, match="serialized Stage 2 model artifact"):
+        _row(
+            package,
+            runner,
+            metrics=_complete_detection_metrics(),
+            audit={"audit_version": "fixture/v1", "verified": True},
+        )
+
+    assert hasattr(runner.ResultRow, "from_dict")
+
+
+def test_second_review_stability_peers_require_seed_and_artifact_provenance():
+    package, _, _, runner = _modules()
+    assert hasattr(runner, "DiscoveryStabilityPeer")
+    prediction = runner.DiscoveryPrediction(
+        candidate_edges=(("a", "b"),),
+        approximate_quadratic_forms=(1.0,),
+        edge_score_edges=(("a", "b"), ("a", "c")),
+        edge_scores=(0.9, 0.1),
+        predicted_clusters={"a": "x", "b": "x", "c": "y"},
+        artifact_identity="sha256:" + "d" * 64,
+    )
+    execution = runner.DiscoveryExecutionOutcome(
+        manifest=_manifest(package),
+        method_id="edgebank",
+        method_version="edgebank-v1",
+        model_role="temporal_baseline",
+        implementation_id="fixture-edgebank-implementation-v1",
+        selection_eligible=False,
+        ablation_id=None,
+        claim_markers=("research_only",),
+        runtime_seconds=0.1,
+        peak_memory_bytes=1024,
+        status="success",
+        prediction=prediction,
+        reason=None,
+        execution_input_fingerprint="sha256:" + "a" * 64,
+    )
+    with pytest.raises(ValueError, match="peer seed must differ"):
+        runner.DiscoveryStabilityPeer(
+            seed=42,
+            prediction_artifact_identity="sha256:" + "e" * 64,
+            predicted_clusters={"a": "one", "b": "one", "c": "two"},
+            current_seed=42,
+        )
+
+    peer = runner.DiscoveryStabilityPeer(
+        seed=43,
+        prediction_artifact_identity="sha256:" + "e" * 64,
+        predicted_clusters={"a": "one", "b": "one", "c": "two"},
+        current_seed=42,
+    )
+    evaluation = runner.DiscoveryEvaluationInput(
+        evaluator_fingerprint="sha256:" + "b" * 64,
+        split=_split(package),
+        reference_edges=(("a", "b"),),
+        reference_quadratic_forms=(1.0,),
+        edge_score_edges=(("a", "b"), ("a", "c")),
+        edge_labels=(1, 0),
+        true_clusters={"a": "x", "b": "x", "c": "y"},
+        stability_peers=(peer,),
+    )
+    row = runner.evaluate_discovery_execution(execution, evaluation)
+    assert row.status == "success"
+    assert row.audit["stability_peer_provenance"] == (
+        {
+            "seed": 43,
+            "prediction_artifact_identity": "sha256:" + "e" * 64,
+        },
+    )
+
+    duplicate_current = dataclasses.replace(
+        peer,
+        prediction_artifact_identity="sha256:" + "f" * 64,
+        predicted_clusters=prediction.predicted_clusters,
+    )
+    with pytest.raises(ValueError, match="duplicate current assignments"):
+        runner.evaluate_discovery_execution(
+            execution, dataclasses.replace(evaluation, stability_peers=(duplicate_current,))
         )

@@ -4,7 +4,42 @@
 > **受众**：开发者、项目维护者、后续执行任务的 AI agent。  
 > **维护规则**：只维护可执行工程路线和状态；研究定位、文献依据和关键技术背景放入 `../research/`。
 
-> 最后更新：2026-08-04
+> 最后更新：2026-08-05
+
+## 2026-08-05 Review Teacher-Student Integrity
+
+- [x] MultiAgents complex path keeps expert analysis, Questioning, targeted
+  responses, and Judge synthesis while bounding calls and compacting prompts.
+- [x] Only human-approved active policy reaches the Judge; candidate policy is
+  ignored with audit provenance.
+- [x] Teacher silver no longer backfills Agent predictions from dataset gold;
+  only validated structured Judge predictions are distillation-eligible.
+- [x] Frozen XLM-R feature evaluation writes reloadable selective-head
+  checkpoints plus encoder snapshot fingerprints.
+- [x] Event Review Case asynchronous Teacher execution now prefers the shared
+  MARO runtime with active provider, approved policy, and feedback memory;
+  deterministic fallback is explicitly non-claimable.
+- [x] Capability routing reduces the measured fake-provider call plan to `2`
+  calls for simple text, `6` for a standard two-expert complex case, and `8`
+  for the four-expert complex path.
+- [x] The governance-after-change five-dataset frozen-XLM-R baseline completed
+  with a passed strict artifact gate and `9,699` test predictions.
+- [ ] End-to-end XLM-R SFT, valid teacher-probability distillation, and
+  cross-domain/coverage-risk evaluation remain research delivery gates.
+- [ ] The deployable Student gate remains blocked: HateXplain, MultiOFF, and
+  FakeSV abstain on every test case, and four datasets have zero high-risk
+  recall under the current unsupervised defer fallback.
+- [ ] RL is deferred until SFT/distillation and analyst-preference datasets are
+  mature; it is not part of the current deployable classifier claim.
+- [x] Freeze the first MARO-aligned experiment populations: `500` balanced test
+  cases, `1,000` train-only Teacher Silver candidates, and `1,000` validation
+  tasks, with zero case-id overlap and gold-free manifests.
+- [x] Add probability-target distillation for valid Teacher Silver confidence,
+  plus train/test population guards in the Student and MultiAgent runners.
+- [ ] Generate current-footer Teacher outputs for the `1,000` train candidates,
+  then run the paired no-teacher versus Teacher-KD learning comparison. The
+  current machine has CPU-only PyTorch, so end-to-end XLM-R SFT remains a GPU
+  experiment rather than a completed local run.
 
 ## 2026-08-04 Performance Delivery And Operations
 
@@ -16,6 +51,14 @@
 - [x] Record the measured route-cost map and operations runbook in
   `performance-operations.md` without changing frontend or backend product
   source.
+- [x] Make the optimized static delivery path the default Windows startup:
+  MongoDB index preparation, migration, health-gated single-process backend,
+  optimized frontend build, and static frontend readiness are ordered by
+  `system/start-system.ps1`.
+- [x] Generate a Vite-manifest-driven delivery preload plan. Idle preparation
+  is limited to the authenticated layout and dashboard shell; other routes are
+  prepared only on navigation interaction, and graph chunks are excluded from
+  the idle set.
 - [ ] Source-level performance work remains separately scoped: route instance
   retention, evidence pagination/virtualization, account inference
   precomputation, analytical result caching, and deferred graph initialization.
@@ -80,7 +123,8 @@
 - [x] 本地原型验收脚本已贯通 EventSnapshot、Coordination Discover、Propagation Analysis、Student Review 和 Teacher Review，并明确输出 fallback/shadow/advisory/non-claimable 状态。
 - [ ] 研究级 Coordination Discover、Propagation Analysis 和 Student/Teacher checkpoint 尚未因缺少批准 artifact 而声明为可研究主张结果；Social Bot Detection 的 BotRHG Weibo transfer 已有真实 checkpoint，但当前指标低于同切分 TF-IDF 参考，研究 claim 仍 blocked。
 - [x] 前端 `npm run build`（包含 `vue-tsc -b`）已通过；本轮不修改前端展示页面。
-- [ ] 真实 MySQL/Mongo/Redis/Celery 部署 smoke 和 GPU 长实验仍需在具备对应环境时执行。
+- [x] 账号训练控制面已完成真实 MySQL/Mongo/Redis/Celery smoke：迁移回环、transactional outbox、worker receipt、重复投递门禁和无 Active Pointer 拒绝路径均有实测证据。
+- [ ] GPU 长实验仍未完成：当前中文语料为 415,686 tokens，低于 500,000-token DAPT 门禁；backend venv 为 CPU-only PyTorch，尚未完成 DAPT、监督重训、签名 shadow、激活和回滚全周期。
 
 ## 技术决策记录
 

@@ -314,6 +314,8 @@ def _numeric_features(
 
 
 def _categorical_features(profile: dict[str, Any], source_label: str) -> dict[str, str]:
+    # Dataset partition labels are provenance, never model features.
+    del source_label
     return {
         "verified": _coerce_bool(profile.get("verified")),
         "protected": _coerce_bool(profile.get("protected")),
@@ -323,7 +325,6 @@ def _categorical_features(profile: dict[str, Any], source_label: str) -> dict[st
         "profile_use_background_image": _coerce_bool(profile.get("profile_use_background_image")),
         "lang": str(profile.get("lang") or "").strip().lower(),
         "time_zone": str(profile.get("time_zone") or "").strip(),
-        "source_label": source_label,
     }
 
 

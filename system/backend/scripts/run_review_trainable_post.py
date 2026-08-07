@@ -16,12 +16,15 @@ Use ``--max-cases-per-split 0`` for full available local data.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import io
 import json
 import math
 import sys
 import zipfile
+from datetime import datetime, timezone
 from pathlib import Path
+from time import perf_counter
 from typing import Any
 
 import numpy as np
@@ -57,6 +60,8 @@ from app.core.review.trainable_post import (  # noqa: E402
     hash_case_image_features,
     label_of,
     predict_probabilities,
+    require_torch,
+    resolve_local_hf_snapshot,
     standard_detector_output,
     stance_proxy_of,
     text_of,
@@ -70,6 +75,7 @@ from app.core.review.selective_student import (  # noqa: E402
     ATTACK_AXIS,
     MISINFO_AXIS,
     SelectiveStudentEncoder,
+    apply_defer_strategy,
     build_selective_student_prediction_rows,
     build_selective_student_targets,
     load_teacher_silver_index,
@@ -88,6 +94,7 @@ STUDENT_BACKBONE_MODELS = {
     "xlm-r-base": "FacebookAI/xlm-roberta-base",
     "chinese-roberta-wwm-ext": "hfl/chinese-roberta-wwm-ext",
 }
+STUDENT_ENCODER_POOLING = "cls"
 
 
 def resolve_student_model_name(backbone: str) -> str:
@@ -96,7 +103,138 @@ def resolve_student_model_name(backbone: str) -> str:
     return STUDENT_BACKBONE_MODELS["xlm-r-base"]
 
 
+def save_student_checkpoint(
+    path: Path,
+    model: Any,
+    *,
+    model_config: dict[str, Any],
+    metadata: dict[str, Any],
+) -> None:
+    """Persist a portable CPU checkpoint with enough data to reconstruct it."""
+    require_torch()
+    import torch
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    torch.save(
+        {
+            "schema": "review-student-checkpoint-v1",
+            "model": {"class": "SelectiveStudentEncoder", "config": model_config},
+            "state_dict": {name: tensor.detach().cpu() for name, tensor in model.state_dict().items()},
+            "metadata": metadata,
+        },
+        path,
+    )
+
+
+def reload_student_checkpoint(path: Path) -> tuple[SelectiveStudentEncoder, dict[str, Any]]:
+    """Load a checkpoint saved by :func:`save_student_checkpoint` on CPU."""
+    require_torch()
+    import torch
+
+    payload = torch.load(path, map_location="cpu", weights_only=False)
+    model_record = payload.get("model") or {}
+    config = model_record.get("config") or {}
+    if payload.get("schema") != "review-student-checkpoint-v1" or model_record.get("class") != "SelectiveStudentEncoder":
+        raise ValueError(f"unsupported student checkpoint: {path}")
+    model = SelectiveStudentEncoder(**config)
+    model.load_state_dict(payload["state_dict"])
+    return model, dict(payload.get("metadata") or {})
+
+
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def sha256_json(value: Any) -> str:
+    encoded = json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def build_frozen_encoder_provenance(model_name: str, cache_dir: str | Path, *, pooling: str) -> dict[str, Any]:
+    """Describe the local frozen encoder required to reproduce head predictions."""
+    snapshot_path = Path(resolve_local_hf_snapshot(model_name, cache_dir, local_files_only=True))
+    if not snapshot_path.is_dir():
+        raise FileNotFoundError(f"complete local HuggingFace snapshot unavailable for {model_name}")
+    model_paths = [snapshot_path / name for name in ("model.safetensors", "pytorch_model.bin")]
+    tokenizer_paths = [
+        snapshot_path / name
+        for name in ("tokenizer.json", "sentencepiece.bpe.model", "spiece.model", "vocab.txt", "merges.txt")
+    ]
+    model_path = next((path for path in model_paths if path.is_file()), None)
+    tokenizer_path = next((path for path in tokenizer_paths if path.is_file()), None)
+    config_path = snapshot_path / "config.json"
+    if not config_path.is_file() or model_path is None or tokenizer_path is None:
+        raise FileNotFoundError(f"incomplete local HuggingFace snapshot: {snapshot_path}")
+    return {
+        "encoder_frozen": True,
+        "pooling": pooling,
+        "model_name": model_name,
+        "resolved_local_snapshot_path": str(snapshot_path),
+        "snapshot_files": {
+            "config": {"path": str(config_path), "sha256": sha256_file(config_path)},
+            "model": {"path": str(model_path), "sha256": sha256_file(model_path)},
+            "tokenizer": {"path": str(tokenizer_path), "sha256": sha256_file(tokenizer_path)},
+        },
+        "checkpoint_reload_requirement": (
+            "The selective-head checkpoint requires this frozen encoder and the recorded pooling "
+            "configuration to recreate its input features."
+        ),
+    }
+
+
+def strict_full_run_preflight(args: argparse.Namespace, case_dir: Path, output_dir: Path) -> list[str]:
+    """Return blockers for frozen XLM-R feature plus selective-head full evaluation."""
+    errors: list[str] = []
+    if args.max_cases_per_split != 0:
+        errors.append("--strict-full-run requires --max-cases-per-split 0")
+    if list(args.datasets) != DEFAULT_DATASETS:
+        errors.append(f"--strict-full-run requires exactly the five datasets: {', '.join(DEFAULT_DATASETS)}")
+    if args.student_encoder_backend != "hf-transformer" or args.allow_model_download:
+        errors.append("--strict-full-run requires local-only --student-encoder-backend hf-transformer")
+    if args.epochs < 1 or args.batch_size < 1 or args.hidden_dim < 1:
+        errors.append("epochs, batch-size, and hidden-dim must be positive")
+    if not case_dir.is_dir():
+        errors.append(f"case directory missing: {case_dir}")
+    else:
+        for dataset in DEFAULT_DATASETS:
+            case_path = case_dir / f"{dataset}.jsonl"
+            try:
+                cases = load_cases(case_path)
+                if not cases:
+                    errors.append(f"case jsonl missing or empty: {case_path}")
+                    continue
+                split_cases, _ = build_splits(dataset, cases, args.random_state)
+                split_error = validate_splits(split_cases)
+                if split_error:
+                    errors.append(f"{dataset}: {split_error}")
+            except Exception as error:
+                errors.append(f"{dataset}: invalid case jsonl: {error}")
+    if args.student_encoder_backend == "hf-transformer" and not args.allow_model_download:
+        model_name = resolve_student_model_name(args.student_backbone)
+        snapshot = resolve_local_hf_snapshot(model_name, args.hf_cache_dir, local_files_only=True)
+        if not Path(snapshot).is_dir():
+            errors.append(f"complete local HuggingFace snapshot unavailable for {model_name}")
+    try:
+        output_dir.mkdir(parents=True, exist_ok=True)
+        probe = output_dir / ".strict-full-run-write-probe"
+        probe.write_text("ok", encoding="utf-8")
+        probe.unlink()
+    except OSError as error:
+        errors.append(f"output directory is not writable: {output_dir}: {error}")
+    try:
+        require_torch()
+    except Exception as error:
+        errors.append(f"torch prerequisite unavailable: {error}")
+    return errors
+
+
 def main() -> int:
+    run_started = perf_counter()
+    started_at = datetime.now(timezone.utc).isoformat()
     parser = argparse.ArgumentParser(description="Run Review trainable post-level v1 on prepared local cases.")
     parser.add_argument("--case-dir", default=r"G:\CISCN\.tmp\review_post_cases_full")
     parser.add_argument("--output-dir", default=r"G:\CISCN\.tmp\trainable_post_v1")
@@ -112,6 +250,30 @@ def main() -> int:
         default="hf-transformer",
     )
     parser.add_argument("--teacher-silver-dir", default="")
+    parser.add_argument(
+        "--teacher-silver-manifest",
+        default="",
+        help="Gold-free manifest restricting Teacher Silver to the derived training population.",
+    )
+    parser.add_argument(
+        "--evaluation-manifest",
+        default="",
+        help="Gold-free manifest restricting exported test predictions for paired MultiAgent comparison.",
+    )
+    parser.add_argument(
+        "--distillation-alpha",
+        type=float,
+        default=0.5,
+        help="Teacher soft-target weight in [0,1]; dataset supervision receives 1-alpha.",
+    )
+    parser.add_argument(
+        "--strict-full-run",
+        action="store_true",
+        help=(
+            "Run frozen XLM-R feature plus selective-head full evaluation: require all five case files, "
+            "class-bearing splits, local XLM-R, writable output, and complete artifacts."
+        ),
+    )
     parser.add_argument("--legacy-view-experiments", action="store_true")
     parser.add_argument(
         "--text-backend",
@@ -174,16 +336,47 @@ def main() -> int:
     parser.add_argument("--rag-top-k", type=int, default=3)
     args = parser.parse_args()
 
+    if not 0.0 <= args.distillation_alpha <= 1.0:
+        raise SystemExit("--distillation-alpha must be between 0 and 1")
+    args.teacher_silver_population = (
+        load_population_manifest(Path(args.teacher_silver_manifest))
+        if str(args.teacher_silver_manifest).strip()
+        else None
+    )
+    args.evaluation_population = (
+        load_population_manifest(Path(args.evaluation_manifest))
+        if str(args.evaluation_manifest).strip()
+        else None
+    )
+
     case_dir = Path(args.case_dir)
     output_dir = Path(args.output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
+    strict_preflight_errors = strict_full_run_preflight(args, case_dir, output_dir) if args.strict_full_run else []
+    if not strict_preflight_errors:
+        output_dir.mkdir(parents=True, exist_ok=True)
 
     report: dict[str, Any] = {
         "schema": "review-trainable-post-v1",
+        "started_at": started_at,
         "case_dir": str(case_dir),
         "output_dir": str(output_dir),
         "datasets_requested": args.datasets,
+        "run_parameters": {
+            "random_state": args.random_state,
+            "epochs": args.epochs,
+            "batch_size": args.batch_size,
+            "hidden_dim": args.hidden_dim,
+            "student_backbone": args.student_backbone,
+            "student_encoder_backend": args.student_encoder_backend,
+            "max_cases_per_split": args.max_cases_per_split,
+            "strict_full_run": bool(args.strict_full_run),
+            "allow_model_download": bool(args.allow_model_download),
+            "teacher_silver_manifest": str(args.teacher_silver_manifest or ""),
+            "evaluation_manifest": str(args.evaluation_manifest or ""),
+            "distillation_alpha": float(args.distillation_alpha),
+        },
         "method": {
+            "full_evaluation_protocol": "frozen XLM-R feature plus selective-head full evaluation",
             "student_mainline": {
                 "schema": "review-student-2plus1-v1",
                 "task_protocol": ["attack_hate_offense", "misinfo_claim_risk", "stance_aux", "defer_route"],
@@ -192,6 +385,14 @@ def main() -> int:
                 "teacher_silver_dir": str(args.teacher_silver_dir or ""),
                 "teacher_silver": bool(args.teacher_silver_dir.strip()),
                 "teacher_silver_schema": "review-teacher-silver-v1",
+                "teacher_silver_manifest": str(args.teacher_silver_manifest or ""),
+                "evaluation_manifest": str(args.evaluation_manifest or ""),
+                "supervision": (
+                    "frozen_encoder_head_sft_plus_teacher_probability_distillation"
+                    if args.teacher_silver_dir.strip()
+                    else "frozen_encoder_head_sft_no_teacher"
+                ),
+                "distillation_alpha": float(args.distillation_alpha),
             },
             "legacy_view_experiments": bool(args.legacy_view_experiments),
             "legacy_view_modules": {
@@ -203,7 +404,7 @@ def main() -> int:
             },
         },
         "capability_boundary": {
-            "full_validation_gate": "not modified; strict P0 full-validation remains separate",
+            "full_validation_gate": "experimental" if args.strict_full_run else "not_claimed",
             "new_datasets_acquired": False,
             "raw_video_encoder": False,
             "external_rag": False,
@@ -212,28 +413,56 @@ def main() -> int:
             "teacher_silver_structured_json": True,
             "student_encoder_mainline": True,
             "teacher_silver_available": bool(args.teacher_silver_dir.strip()),
+            "strict_full_run": bool(args.strict_full_run),
+            "strict_full_run_protocol": "frozen XLM-R feature plus selective-head full evaluation",
+            "strict_preflight": {"passed": not strict_preflight_errors, "errors": strict_preflight_errors},
         },
         "datasets": {},
     }
 
+    exit_code = 1 if strict_preflight_errors else 0
     try:
-        for dataset in args.datasets:
-            report["datasets"][dataset] = evaluate_student_dataset(
-                dataset,
-                case_dir=case_dir,
-                output_dir=output_dir / safe_name(dataset),
-                args=args,
-            )
+        if strict_preflight_errors:
+            report["preflight_error"] = "; ".join(strict_preflight_errors)
+        else:
+            for dataset in args.datasets:
+                try:
+                    report["datasets"][dataset] = evaluate_student_dataset(
+                        dataset,
+                        case_dir=case_dir,
+                        output_dir=output_dir / safe_name(dataset),
+                        args=args,
+                    )
+                except Exception as error:
+                    report["datasets"][dataset] = {"dataset": dataset, "status": "failed", "error": str(error)}
+                    if args.strict_full_run:
+                        exit_code = 1
     finally:
+        report["completed_at"] = datetime.now(timezone.utc).isoformat()
+        report["duration_seconds"] = round(perf_counter() - run_started, 3)
         report["summary"] = summarize_report(report["datasets"])
-        combined_prediction_path = output_dir / "trainable_post_predictions.jsonl"
-        report["combined_prediction_count"] = write_combined_predictions(report["datasets"], combined_prediction_path)
-        report["combined_prediction_path"] = str(combined_prediction_path)
-        report_path = output_dir / "report.json"
-        report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
-        print(json.dumps(report["summary"], ensure_ascii=False, indent=2))
-        print(f"wrote {report_path}")
-    return 0
+        if any(result.get("status") != "evaluated" for result in report["datasets"].values()):
+            exit_code = 1
+        if args.strict_full_run:
+            datasets_complete = len(report["datasets"]) == len(args.datasets) and all(
+                result.get("status") == "evaluated" and result.get("checkpoint_reload_verified")
+                for result in report["datasets"].values()
+            )
+            report["capability_boundary"]["full_validation_gate"] = (
+                "passed" if not strict_preflight_errors and datasets_complete else "experimental"
+            )
+            report["summary"]["full_validation_gate"] = report["capability_boundary"]["full_validation_gate"]
+            if not datasets_complete:
+                exit_code = 1
+        if output_dir.exists():
+            combined_prediction_path = output_dir / "trainable_post_predictions.jsonl"
+            report["combined_prediction_count"] = write_combined_predictions(report["datasets"], combined_prediction_path)
+            report["combined_prediction_path"] = str(combined_prediction_path)
+            report_path = output_dir / "report.json"
+            report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+            print(json.dumps(report["summary"], ensure_ascii=False, indent=2))
+            print(f"wrote {report_path}")
+    return exit_code
 
 
 def evaluate_dataset(dataset: str, *, case_dir: Path, output_dir: Path, args: argparse.Namespace) -> dict[str, Any]:
@@ -387,6 +616,103 @@ def load_teacher_silver_for_dataset(teacher_silver_root: Path | None, dataset: s
     return {}
 
 
+def load_population_manifest(path: Path) -> dict[str, list[dict[str, str]]]:
+    if not path.is_file():
+        raise ValueError(f"population manifest missing: {path}")
+    population: dict[str, list[dict[str, str]]] = {}
+    seen: set[tuple[str, str]] = set()
+    for row in load_cases(path):
+        case_id = str(row.get("case_id") or "").strip()
+        dataset = str(row.get("dataset") or "").strip()
+        split = str(row.get("split") or "").strip()
+        protocol_split = str(row.get("protocol_split") or "").strip()
+        if not case_id or not dataset or not split:
+            raise ValueError(f"population manifest row requires case_id/dataset/split: {row}")
+        identity = (dataset.lower(), case_id)
+        if identity in seen:
+            raise ValueError(f"duplicate population manifest identity: {dataset}/{case_id}")
+        seen.add(identity)
+        population.setdefault(dataset.lower(), []).append(
+            {
+                "case_id": case_id,
+                "dataset": dataset,
+                "split": split,
+                "protocol_split": protocol_split,
+            }
+        )
+    return population
+
+
+def validate_teacher_silver_population(
+    dataset: str,
+    train_cases: list[dict[str, Any]],
+    population: dict[str, list[dict[str, str]]] | None,
+) -> dict[str, Any]:
+    if population is None:
+        return {"enabled": False, "requested_count": 0, "matched_count": 0, "missing_case_ids": []}
+    requested = population.get(dataset.lower(), [])
+    invalid_roles = [row["case_id"] for row in requested if row.get("protocol_split") != "train"]
+    if invalid_roles:
+        raise ValueError(
+            f"Teacher Silver manifest must declare protocol_split=train for {dataset}: "
+            + ", ".join(invalid_roles[:10])
+        )
+    train_ids = {str(case.get("case_id") or "") for case in train_cases}
+    outside_train = [row["case_id"] for row in requested if row["case_id"] not in train_ids]
+    if outside_train:
+        raise ValueError(
+            f"Teacher Silver manifest contains cases outside derived train split for {dataset}: "
+            + ", ".join(outside_train[:10])
+        )
+    return {
+        "enabled": True,
+        "requested_count": len(requested),
+        "matched_count": len(requested),
+        "missing_case_ids": [],
+    }
+
+
+def select_evaluation_population(
+    dataset: str,
+    test_cases: list[dict[str, Any]],
+    population: dict[str, list[dict[str, str]]] | None,
+) -> tuple[list[int], dict[str, Any]]:
+    if population is None:
+        return list(range(len(test_cases))), {
+            "enabled": False,
+            "requested_count": len(test_cases),
+            "selected_count": len(test_cases),
+            "missing_case_ids": [],
+        }
+    requested = population.get(dataset.lower(), [])
+    invalid_roles = [row["case_id"] for row in requested if row.get("protocol_split") not in {"", "test"}]
+    if invalid_roles:
+        raise ValueError(
+            f"evaluation manifest must declare protocol_split=test for {dataset}: "
+            + ", ".join(invalid_roles[:10])
+        )
+    test_index = {str(case.get("case_id") or ""): index for index, case in enumerate(test_cases)}
+    indices: list[int] = []
+    missing: list[str] = []
+    for row in requested:
+        index = test_index.get(row["case_id"])
+        if index is None or str(test_cases[index].get("split") or "") != row["split"]:
+            missing.append(row["case_id"])
+        else:
+            indices.append(index)
+    if missing:
+        raise ValueError(
+            f"evaluation manifest contains cases outside derived test split for {dataset}: "
+            + ", ".join(missing[:10])
+        )
+    return indices, {
+        "enabled": True,
+        "requested_count": len(requested),
+        "selected_count": len(indices),
+        "missing_case_ids": [],
+    }
+
+
 def evaluate_student_dataset(dataset: str, *, case_dir: Path, output_dir: Path, args: argparse.Namespace) -> dict[str, Any]:
     output_dir.mkdir(parents=True, exist_ok=True)
     case_path = case_dir / f"{dataset}.jsonl"
@@ -395,7 +721,16 @@ def evaluate_student_dataset(dataset: str, *, case_dir: Path, output_dir: Path, 
         return {"dataset": dataset, "status": "skipped", "skip_reason": f"case jsonl missing or empty: {case_path}"}
 
     split_cases, split_policy = build_splits(dataset, cases, args.random_state)
-    split_cases = cap_splits(split_cases, args.max_cases_per_split)
+    required_train_case_ids = {
+        row["case_id"]
+        for row in (args.teacher_silver_population or {}).get(dataset.lower(), [])
+    }
+    split_cases = cap_student_splits(
+        split_cases,
+        args.max_cases_per_split,
+        required_train_case_ids=required_train_case_ids,
+        preserve_test=args.evaluation_population is not None,
+    )
     split_status = validate_splits(split_cases)
     if split_status:
         return {"dataset": dataset, "status": "skipped", "skip_reason": split_status, "split_policy": split_policy}
@@ -418,6 +753,21 @@ def evaluate_student_dataset(dataset: str, *, case_dir: Path, output_dir: Path, 
     train = split_cases["train"]
     validation = split_cases["validation"]
     test = split_cases["test"]
+    teacher_population_audit = validate_teacher_silver_population(
+        dataset,
+        train,
+        args.teacher_silver_population,
+    )
+    if args.teacher_silver_population is not None:
+        allowed_teacher_ids = {
+            row["case_id"]
+            for row in args.teacher_silver_population.get(dataset.lower(), [])
+        }
+        teacher_silver_index = {
+            case_id: row
+            for case_id, row in teacher_silver_index.items()
+            if case_id in allowed_teacher_ids
+        }
     all_cases = train + validation + test
 
     post_bundle = encode_text_features(
@@ -429,6 +779,7 @@ def evaluate_student_dataset(dataset: str, *, case_dir: Path, output_dir: Path, 
         dim=args.hash_dim,
         batch_size=args.batch_size,
         local_files_only=not args.allow_model_download,
+        pooling=STUDENT_ENCODER_POOLING,
     )
     claim_bundle = encode_text_features(
         [claim_context_text(case) for case in all_cases],
@@ -439,10 +790,15 @@ def evaluate_student_dataset(dataset: str, *, case_dir: Path, output_dir: Path, 
         dim=args.hash_dim,
         batch_size=args.batch_size,
         local_files_only=not args.allow_model_download,
+        pooling=STUDENT_ENCODER_POOLING,
     )
     student_matrix = np.concatenate([post_bundle.matrix, claim_bundle.matrix], axis=-1)
     train_x, validation_x, test_x = split_feature_matrix(student_matrix, train, validation, test)
-    targets = build_selective_student_targets(all_cases, teacher_silver_index)
+    targets = build_selective_student_targets(
+        all_cases,
+        teacher_silver_index,
+        distillation_alpha=float(args.distillation_alpha),
+    )
     train_target_count = len(train)
     train_targets = {key: value[:train_target_count] for key, value in targets.items()}
 
@@ -454,14 +810,101 @@ def evaluate_student_dataset(dataset: str, *, case_dir: Path, output_dir: Path, 
         epochs=args.epochs,
         batch_size=args.batch_size,
     )
-    validation_predictions = predict_selective_student_outputs(model, validation_x)
-    test_predictions = predict_selective_student_outputs(model, test_x)
+    defer_head_supervised = bool(train_info.get("defer_head_supervised"))
+    validation_predictions = apply_defer_strategy(
+        validation,
+        predict_selective_student_outputs(model, validation_x),
+        defer_head_supervised=defer_head_supervised,
+    )
+    test_predictions = apply_defer_strategy(
+        test,
+        predict_selective_student_outputs(model, test_x),
+        defer_head_supervised=defer_head_supervised,
+    )
     validation_metrics = student_main_axis_metrics(validation, validation_predictions, teacher_silver_index=teacher_silver_index)
     test_metrics = student_main_axis_metrics(test, test_predictions, teacher_silver_index=teacher_silver_index)
 
-    prediction_rows = build_selective_student_prediction_rows(test, test_predictions, teacher_silver_index=teacher_silver_index)
+    evaluation_indices, evaluation_population_audit = select_evaluation_population(
+        dataset,
+        test,
+        args.evaluation_population,
+    )
+    evaluation_cases = [test[index] for index in evaluation_indices]
+    evaluation_predictions = {
+        name: values[evaluation_indices]
+        for name, values in test_predictions.items()
+    }
+    prediction_rows = build_selective_student_prediction_rows(
+        evaluation_cases,
+        evaluation_predictions,
+        teacher_silver_index=teacher_silver_index,
+    )
     prediction_path = output_dir / "trainable_post_predictions.jsonl"
     write_jsonl(prediction_path, prediction_rows)
+
+    checkpoint_path = output_dir / "student_checkpoint.pt"
+    model_config = {
+        "input_dim": int(train_x.shape[1]),
+        "hidden_dim": int(args.hidden_dim),
+        "stance_count": len(STANCE_ORDER),
+    }
+    checkpoint_metadata = {
+        "dataset": dataset,
+        "model_name": student_model_name,
+        "model_backend": student_backend,
+        "split_fingerprints": {split: sha256_json(rows) for split, rows in split_cases.items()},
+    }
+    if student_backend == "hf-transformer" and not args.allow_model_download:
+        checkpoint_metadata["frozen_encoder"] = build_frozen_encoder_provenance(
+            student_model_name,
+            args.hf_cache_dir,
+            pooling=STUDENT_ENCODER_POOLING,
+        )
+    else:
+        checkpoint_metadata["frozen_encoder"] = {
+            "encoder_frozen": student_backend == "hf-transformer",
+            "pooling": STUDENT_ENCODER_POOLING,
+            "model_name": student_model_name,
+            "resolved_local_snapshot_path": "",
+            "snapshot_files": {},
+            "checkpoint_reload_requirement": (
+                "The selective-head checkpoint requires the same frozen feature encoder and pooling "
+                "configuration to recreate its input features."
+            ),
+        }
+    save_student_checkpoint(checkpoint_path, model, model_config=model_config, metadata=checkpoint_metadata)
+    restored_model, restored_metadata = reload_student_checkpoint(checkpoint_path)
+    restored_test_predictions = apply_defer_strategy(
+        test,
+        predict_selective_student_outputs(restored_model, test_x),
+        defer_head_supervised=defer_head_supervised,
+    )
+    checkpoint_reload_verified = all(
+        np.allclose(restored_test_predictions[key], test_predictions[key], rtol=1e-6, atol=1e-6)
+        for key in test_predictions
+    ) and restored_metadata == checkpoint_metadata
+    if not checkpoint_reload_verified:
+        raise RuntimeError(f"checkpoint reload predictions differ for {dataset}")
+    manifest_path = output_dir / "student_artifact_manifest.json"
+    manifest = {
+        "schema": "review-student-artifact-manifest-v1",
+        "dataset": dataset,
+        "case_path": str(case_path),
+        "case_sha256": sha256_file(case_path),
+        "split_fingerprints": checkpoint_metadata["split_fingerprints"],
+        "split_counts": {split: len(rows) for split, rows in split_cases.items()},
+        "frozen_encoder": checkpoint_metadata["frozen_encoder"],
+        "checkpoint": {"path": str(checkpoint_path), "sha256": sha256_file(checkpoint_path), "model": model_config},
+        "predictions": {"path": str(prediction_path), "sha256": sha256_file(prediction_path)},
+        "metrics": {"validation": validation_metrics, "test": test_metrics},
+        "experiment_population": {
+            "teacher_silver": teacher_population_audit,
+            "evaluation": evaluation_population_audit,
+            "distillation_alpha": float(args.distillation_alpha),
+        },
+        "checkpoint_reload_verified": checkpoint_reload_verified,
+    }
+    manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
 
     student_experiment = {
         "status": "evaluated",
@@ -472,6 +915,15 @@ def evaluate_student_dataset(dataset: str, *, case_dir: Path, output_dir: Path, 
         "teacher_silver_root": str(teacher_silver_root or ""),
         "teacher_silver_used": bool(teacher_silver_index),
         "teacher_silver_count": len(teacher_silver_index),
+        "teacher_supervision_count": int(targets["teacher_supervision_mask"][:train_target_count].sum()),
+        "teacher_silver_population": teacher_population_audit,
+        "evaluation_population": evaluation_population_audit,
+        "distillation_alpha": float(args.distillation_alpha),
+        "training_regime": (
+            "frozen_encoder_head_sft_plus_teacher_probability_distillation"
+            if teacher_silver_index
+            else "frozen_encoder_head_sft_no_teacher"
+        ),
         "train_count": len(train),
         "validation_count": len(validation),
         "test_count": len(test),
@@ -479,11 +931,16 @@ def evaluate_student_dataset(dataset: str, *, case_dir: Path, output_dir: Path, 
         "test_metrics": test_metrics,
         "train_info": train_info,
         "prediction_path": str(prediction_path),
+        "checkpoint_path": str(checkpoint_path),
+        "checkpoint_sha256": manifest["checkpoint"]["sha256"],
+        "checkpoint_reload_verified": checkpoint_reload_verified,
+        "artifact_manifest_path": str(manifest_path),
         "capability_boundary": {
             "teacher_silver_structured_json": True,
             "rationale_summary_not_a_student_target": True,
             "claim_context_required_for_stance": True,
             "selective_routing_head": True,
+            "defer_strategy": "learned_head" if defer_head_supervised else "semantic_uncertainty_fallback",
         },
     }
     if validation_predictions:
@@ -515,6 +972,9 @@ def evaluate_student_dataset(dataset: str, *, case_dir: Path, output_dir: Path, 
 
     result["experiments"]["student_2p1"] = compact_experiment(student_experiment)
     result["prediction_path"] = str(prediction_path)
+    result["checkpoint_path"] = str(checkpoint_path)
+    result["checkpoint_reload_verified"] = checkpoint_reload_verified
+    result["artifact_manifest_path"] = str(manifest_path)
     result["summary"] = summarize_dataset(result["experiments"])
     result["calibration"] = {
         "ece": test_metrics["overall"]["ece"],
@@ -996,7 +1456,7 @@ def summarize_report(datasets: dict[str, dict[str, Any]]) -> dict[str, Any]:
         "dataset_count": len(datasets),
         "evaluated_datasets": sorted(evaluated),
         "skipped_datasets": {
-            name: result.get("skip_reason", "")
+            name: result.get("skip_reason") or result.get("error") or "unknown failure"
             for name, result in datasets.items()
             if result.get("status") != "evaluated"
         },
@@ -1024,6 +1484,31 @@ def cap_splits(split_cases: dict[str, list[dict[str, Any]]], max_cases: int) -> 
         each = max(1, max_cases // 2)
         selected = positives[:each] + negatives[:each]
         capped[split] = selected[:max_cases]
+    return capped
+
+
+def cap_student_splits(
+    split_cases: dict[str, list[dict[str, Any]]],
+    max_cases: int,
+    *,
+    required_train_case_ids: set[str] | None = None,
+    preserve_test: bool = False,
+) -> dict[str, list[dict[str, Any]]]:
+    if max_cases <= 0:
+        return split_cases
+    capped = cap_splits(split_cases, max_cases)
+    if preserve_test:
+        capped["test"] = list(split_cases.get("test", []))
+    required_train_case_ids = required_train_case_ids or set()
+    if required_train_case_ids:
+        selected_ids = {str(case.get("case_id") or "") for case in capped.get("train", [])}
+        required_rows = [
+            case
+            for case in split_cases.get("train", [])
+            if str(case.get("case_id") or "") in required_train_case_ids
+            and str(case.get("case_id") or "") not in selected_ids
+        ]
+        capped["train"] = [*capped.get("train", []), *required_rows]
     return capped
 
 

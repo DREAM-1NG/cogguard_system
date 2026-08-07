@@ -397,7 +397,16 @@
   </div>
 </template>
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import {
+  computed,
+  nextTick,
+  onActivated,
+  onBeforeUnmount,
+  onDeactivated,
+  onMounted,
+  ref,
+  watch,
+} from 'vue'
 import { useRoute } from 'vue-router'
 import { message } from 'ant-design-vue'
 import * as echarts from 'echarts/core'
@@ -704,12 +713,21 @@ const diffusionNodeLimit = ref(DEFAULT_DIFFUSION_NODE_LIMIT)
 const diffusionPendingNodeLimit = ref(DEFAULT_DIFFUSION_NODE_LIMIT)
 const diffusionFullViewRequested = ref(false)
 const route = useRoute()
+const pageActive = ref(false)
 const layerChartRef = ref<HTMLDivElement | null>(null)
 const pathGraphRef = ref<HTMLDivElement | null>(null)
 const modelTrendChartRef = ref<HTMLDivElement | null>(null)
 let layerChart: ECharts | null = null
 let pathGraphChart: ECharts | null = null
 let modelTrendChart: ECharts | null = null
+let activeAnalysisKey: string | null = null
+let activeAnalysisPromise: Promise<void> | null = null
+let completedAnalysisKey = ''
+let completedAnalysisScopeKey = ''
+let activeRouteScopeKey = ''
+let analysisRequestGeneration = 0
+let predictionRequestGeneration = 0
+let resizeListenerBound = false
 
 const analysisReady = computed(() => !!analysisResult.value && !analysisResult.value.error)
 const keyRoles = computed(() => analysisResult.value?.key_roles ?? null)
@@ -820,6 +838,46 @@ const requestParams = computed(() => {
   params.node_limit = diffusionFullViewRequested.value ? 0 : diffusionNodeLimit.value
   return params
 })
+
+function analysisRequestKey() {
+  const params = requestParams.value
+  return [
+    params.event_id || DEFAULT_EVENT_ID,
+    params.platform || '',
+    params.node_limit ?? DEFAULT_DIFFUSION_NODE_LIMIT,
+  ].join('|')
+}
+
+function analysisScopeKey() {
+  return [eventId.value.trim() || DEFAULT_EVENT_ID, platform.value.trim()].join('|')
+}
+
+function routeScopeKey() {
+  return [
+    firstQueryValue(route.query.event_id) || DEFAULT_EVENT_ID,
+    firstQueryValue(route.query.platform),
+  ].join('|')
+}
+
+function hasCompletedAnalysisForCurrentScope() {
+  return Boolean(analysisResult.value && completedAnalysisScopeKey === analysisScopeKey())
+}
+
+function hasRouteScopeChanged() {
+  return routeScopeKey() !== activeRouteScopeKey
+}
+
+function bindResizeListener() {
+  if (resizeListenerBound) return
+  window.addEventListener('resize', resizeCharts)
+  resizeListenerBound = true
+}
+
+function unbindResizeListener() {
+  if (!resizeListenerBound) return
+  window.removeEventListener('resize', resizeCharts)
+  resizeListenerBound = false
+}
 
 const modelPredictionReady = computed(() => {
   const result = modelPrediction.value
@@ -1583,7 +1641,7 @@ function buildPathGraphOption(summary?: DiffusionSummary | null): EChartsOption 
 
 async function renderLayerChart() {
   await nextTick()
-  if (!layerChartRef.value || layerChartRef.value.offsetWidth === 0 || layerChartRef.value.offsetHeight === 0) return
+  if (!pageActive.value || !layerChartRef.value || layerChartRef.value.offsetWidth === 0 || layerChartRef.value.offsetHeight === 0) return
   if (!layerChart) {
     layerChart = echarts.init(layerChartRef.value)
   }
@@ -1593,7 +1651,7 @@ async function renderLayerChart() {
 
 async function renderPathGraph() {
   await nextTick()
-  if (!pathGraphRef.value || pathGraphRef.value.offsetWidth === 0 || pathGraphRef.value.offsetHeight === 0) return
+  if (!pageActive.value || !pathGraphRef.value || pathGraphRef.value.offsetWidth === 0 || pathGraphRef.value.offsetHeight === 0) return
   if (!pathGraphChart) {
     pathGraphChart = echarts.init(pathGraphRef.value)
   }
@@ -1613,7 +1671,7 @@ async function renderPathGraph() {
 
 async function renderModelTrendChart() {
   await nextTick()
-  if (activeTab.value !== 'model' || !modelPredictionReady.value) return
+  if (!pageActive.value || activeTab.value !== 'model' || !modelPredictionReady.value) return
   if (!modelTrendChartRef.value || modelTrendChartRef.value.offsetWidth === 0 || modelTrendChartRef.value.offsetHeight === 0) return
   if (!modelTrendChart) {
     modelTrendChart = echarts.init(modelTrendChartRef.value)
@@ -1623,17 +1681,19 @@ async function renderModelTrendChart() {
 }
 
 function resizeCharts() {
+  if (!pageActive.value) return
   layerChart?.resize()
   pathGraphChart?.resize()
   modelTrendChart?.resize()
 }
 
 async function renderPathTabCharts() {
-  if (activeTab.value !== 'path') return
+  if (!pageActive.value || activeTab.value !== 'path') return
   await Promise.all([renderLayerChart(), renderPathGraph()])
 }
 
 async function renderActiveTabCharts() {
+  if (!pageActive.value) return
   if (activeTab.value === 'path') {
     await renderPathTabCharts()
     return
@@ -1709,34 +1769,65 @@ function syncScopeFromRoute() {
   platform.value = firstQueryValue(route.query.platform)
 }
 
-async function loadAnalysis(showToast = false) {
-  analyzing.value = true
-  try {
-    const res = (await analyzeObservedPropagation(requestParams.value)) as { data: AnalysisResult }
-    analysisResult.value = res.data
+async function loadAnalysis(showToast = false, force = false) {
+  if (!pageActive.value) return
 
-    if (res.data.error) {
-      if (showToast) {
-        message.warning(res.data.error)
-      }
-      return
-    }
-
-    modelPrediction.value = null
-    updateSyncTime()
-    await renderPathTabCharts()
-  } catch {
-    /* handled in interceptor */
-  } finally {
-    analyzing.value = false
+  const requestKey = analysisRequestKey()
+  const requestScopeKey = analysisScopeKey()
+  if (activeAnalysisKey === requestKey && activeAnalysisPromise) {
+    return activeAnalysisPromise
   }
+  if (!force && completedAnalysisKey === requestKey && analysisResult.value) {
+    await renderActiveTabCharts()
+    return
+  }
+
+  const requestGeneration = ++analysisRequestGeneration
+  const request = (async () => {
+    analyzing.value = true
+    try {
+      const res = (await analyzeObservedPropagation(requestParams.value)) as { data: AnalysisResult }
+      if (
+        !pageActive.value
+        || activeAnalysisKey !== requestKey
+        || requestGeneration !== analysisRequestGeneration
+        || requestScopeKey !== analysisScopeKey()
+      ) return
+
+      analysisResult.value = res.data
+      completedAnalysisKey = requestKey
+      completedAnalysisScopeKey = requestScopeKey
+      if (res.data.error) {
+        if (showToast) {
+          message.warning(res.data.error)
+        }
+        return
+      }
+
+      modelPrediction.value = null
+      updateSyncTime()
+      await renderPathTabCharts()
+    } catch {
+      /* handled in interceptor */
+    } finally {
+      if (activeAnalysisKey === requestKey && requestGeneration === analysisRequestGeneration) {
+        activeAnalysisKey = null
+        activeAnalysisPromise = null
+        analyzing.value = false
+      }
+    }
+  })()
+
+  activeAnalysisKey = requestKey
+  activeAnalysisPromise = request
+  return request
 }
 
 async function handleAnalyze() {
   diffusionFullViewRequested.value = false
   diffusionNodeLimit.value = Math.min(DEFAULT_DIFFUSION_NODE_LIMIT, diffusionSliderMax.value)
   diffusionPendingNodeLimit.value = diffusionNodeLimit.value
-  await loadAnalysis(true)
+  await loadAnalysis(true, true)
 }
 
 function handleDiffusionLimitChange(value: number) {
@@ -1762,9 +1853,12 @@ async function showFullDiffusionGraph() {
 }
 
 async function handlePredict() {
+  if (!pageActive.value) return
+  const requestGeneration = ++predictionRequestGeneration
   predicting.value = true
   try {
     const res = (await predictPropagationCurrentEvent({ ...requestParams.value, top_k: 10 })) as { data: EventModelPrediction }
+    if (!pageActive.value || requestGeneration !== predictionRequestGeneration) return
     const result = res.data
     if (result?.status === 'ok' && result?.model_status === 'available') {
       modelPrediction.value = result
@@ -1777,20 +1871,54 @@ async function handlePredict() {
     modelPrediction.value = null
     /* handled in interceptor */
   } finally {
-    predicting.value = false
+    if (requestGeneration === predictionRequestGeneration) {
+      predicting.value = false
+    }
   }
 }
 
-onMounted(() => {
+async function activatePropagationPage() {
+  pageActive.value = true
+  bindResizeListener()
   syncScopeFromRoute()
-  void loadAnalysis(false)
-  window.addEventListener('resize', resizeCharts)
+  activeRouteScopeKey = analysisScopeKey()
+  if (hasCompletedAnalysisForCurrentScope()) {
+    await renderActiveTabCharts()
+    return
+  }
+  await loadAnalysis(false)
+}
+
+function deactivatePropagationPage() {
+  pageActive.value = false
+  analysisRequestGeneration += 1
+  predictionRequestGeneration += 1
+  activeAnalysisKey = null
+  activeAnalysisPromise = null
+  analyzing.value = false
+  predicting.value = false
+  unbindResizeListener()
+}
+
+onMounted(() => {
+  void activatePropagationPage()
+})
+
+onActivated(() => {
+  void activatePropagationPage()
+})
+
+onDeactivated(() => {
+  deactivatePropagationPage()
 })
 
 watch(
-  () => [route.query.event_id, route.query.platform],
+  () => [route.name, route.query.event_id, route.query.platform],
   () => {
+    if (!pageActive.value || route.name !== 'Propagation') return
+    if (!hasRouteScopeChanged()) return
     syncScopeFromRoute()
+    activeRouteScopeKey = analysisScopeKey()
     diffusionFullViewRequested.value = false
     diffusionNodeLimit.value = DEFAULT_DIFFUSION_NODE_LIMIT
     diffusionPendingNodeLimit.value = DEFAULT_DIFFUSION_NODE_LIMIT
@@ -1799,7 +1927,7 @@ watch(
 )
 
 watch(displayLayerRows, () => {
-  void renderPathTabCharts()
+  if (pageActive.value) void renderPathTabCharts()
 })
 
 watch(diffusionSummary, () => {
@@ -1808,15 +1936,15 @@ watch(diffusionSummary, () => {
     diffusionNodeLimit.value = maxLimit
   }
   diffusionPendingNodeLimit.value = diffusionNodeLimit.value
-  void renderPathTabCharts()
+  if (pageActive.value) void renderPathTabCharts()
 })
 
 watch(activeTab, () => {
-  void renderActiveTabCharts()
+  if (pageActive.value) void renderActiveTabCharts()
 })
 
 onBeforeUnmount(() => {
-  window.removeEventListener('resize', resizeCharts)
+  deactivatePropagationPage()
   layerChart?.dispose()
   pathGraphChart?.dispose()
   modelTrendChart?.dispose()

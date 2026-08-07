@@ -83,6 +83,54 @@ def test_openai_provider_does_not_close_injected_client(monkeypatch):
     asyncio.run(client.aclose())
 
 
+def test_openai_provider_cache_off_records_usage_and_never_reads_cache(monkeypatch):
+    requests: list[httpx.Request] = []
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(
+            200,
+            json={
+                "choices": [{"message": {"content": "live response"}}],
+                "usage": {"prompt_tokens": 11, "completion_tokens": 7, "total_tokens": 18},
+            },
+        )
+
+    async def exercise() -> dict[str, object]:
+        client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        config = OpenAICompatibleConfig(
+            api_key="test-key",
+            base_url="https://provider.example/v1",
+            model="test-model",
+            cache_enabled=False,
+        )
+        provider = OpenAICompatibleAgentProvider(config, client=client)
+        monkeypatch.setattr(
+            agent_provider.llm_cache,
+            "load_cached_response",
+            lambda key: (_ for _ in ()).throw(AssertionError("cache should be bypassed")),
+        )
+        assert await provider(
+            agent_name="ClaimEvidenceAgent",
+            system_prompt="system",
+            user_prompt="user",
+            input_bundle={},
+            model="",
+        ) == "live response"
+        telemetry = dict(provider.last_call_telemetry)
+        await client.aclose()
+        return telemetry
+
+    telemetry = asyncio.run(exercise())
+    assert len(requests) == 1
+    assert telemetry["cache_status"] == "disabled"
+    assert telemetry["cache_hit"] is False
+    assert telemetry["retry_count"] == 0
+    assert telemetry["http_status"] == 200
+    assert telemetry["usage_available"] is True
+    assert telemetry["total_tokens"] == 18
+
+
 def test_active_retrieval_bounds_concurrency_preserves_order_and_isolates_failures():
     active_calls = 0
     maximum_active_calls = 0
@@ -118,7 +166,7 @@ def test_active_retrieval_bounds_concurrency_preserves_order_and_isolates_failur
         "query-3",
         "query-4",
     ]
-    assert result["audit"]["external_failures"] == [
+    assert result["audit"]["failures"] == [
         {
             "query": "query-2",
             "error_type": "RuntimeError",

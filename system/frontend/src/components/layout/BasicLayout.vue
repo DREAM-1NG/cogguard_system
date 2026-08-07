@@ -64,7 +64,11 @@
       </nav>
 
       <a-layout-content id="main-content" class="app-content" tabindex="-1">
-        <router-view />
+        <router-view v-slot="{ Component }">
+          <KeepAlive :max="7">
+            <component :is="Component" :key="String(route.name || route.path)" />
+          </KeepAlive>
+        </router-view>
       </a-layout-content>
     </a-layout>
   </a-layout>
@@ -353,4 +357,3 @@ onMounted(async () => {
   }
 }
 </style>
-

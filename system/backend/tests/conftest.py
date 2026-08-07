@@ -11,10 +11,13 @@
 import asyncio
 import os
 import sys
+import tempfile
 import warnings
 from collections.abc import AsyncGenerator
+from pathlib import Path
 
 import pytest
+from filelock import FileLock
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.pool import NullPool
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -28,6 +31,14 @@ if sys.platform.startswith("win"):
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 _DB_AVAILABLE = None
+_DB_SCHEMA_INITIALIZED = False
+TEST_DATABASE_LOCK_TIMEOUT_SECONDS = 600
+
+
+def _test_database_lock_path() -> Path:
+    """Use one host-level lock because all pytest processes share cogguard_test."""
+
+    return Path(tempfile.gettempdir()) / "cogguard-test-schema.lock"
 
 
 def _check_db_available() -> bool:
@@ -55,6 +66,21 @@ needs_db = pytest.mark.skipif(
 
 test_engine = create_async_engine(settings.mysql_url_test, echo=False, poolclass=NullPool) if _check_db_available() else None
 test_session_factory = async_sessionmaker(test_engine, expire_on_commit=False) if test_engine else None
+
+
+@pytest.fixture(scope="session", autouse=True)
+def serialize_test_database_session():
+    """Prevent concurrent pytest processes from rebuilding the shared schema."""
+
+    if not _check_db_available():
+        yield
+        return
+    lock = FileLock(_test_database_lock_path())
+    lock.acquire(timeout=TEST_DATABASE_LOCK_TIMEOUT_SECONDS)
+    try:
+        yield
+    finally:
+        lock.release()
 
 
 @pytest.fixture(scope="session")
@@ -85,13 +111,32 @@ def ensure_default_event_loop():
 @pytest.fixture
 async def setup_database():
     """Create and tear down all tables. Only used by tests that request it."""
+    global _DB_SCHEMA_INITIALIZED
     if test_engine is None:
         pytest.skip("MySQL not available")
-    async with test_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    if not _DB_SCHEMA_INITIALIZED:
+        async with test_engine.begin() as conn:
+            await conn.run_sync(Base.metadata.drop_all)
+            await conn.run_sync(Base.metadata.create_all)
+        _DB_SCHEMA_INITIALIZED = True
+    else:
+        await _clear_test_database()
     yield
+    await _clear_test_database()
+
+
+async def _clear_test_database() -> None:
+    """Clear rows between tests without rebuilding the full MySQL schema."""
+
+    if test_engine is None:
+        return
     async with test_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
+        await conn.exec_driver_sql("SET FOREIGN_KEY_CHECKS=0")
+        try:
+            for table in reversed(Base.metadata.sorted_tables):
+                await conn.execute(table.delete())
+        finally:
+            await conn.exec_driver_sql("SET FOREIGN_KEY_CHECKS=1")
 
 
 @pytest.fixture
@@ -117,6 +162,17 @@ async def override_get_db() -> AsyncGenerator[AsyncSession]:
 
 
 app.dependency_overrides[get_db] = override_get_db
+
+
+@pytest.fixture(autouse=True)
+def isolate_dependency_overrides():
+    """Restore FastAPI dependency overrides after every test."""
+
+    baseline = dict(app.dependency_overrides)
+    baseline[get_db] = override_get_db
+    yield
+    app.dependency_overrides.clear()
+    app.dependency_overrides.update(baseline)
 
 
 @pytest.fixture

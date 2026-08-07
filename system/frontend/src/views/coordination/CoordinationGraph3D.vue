@@ -31,6 +31,7 @@ const props = defineProps<{
   links: CoordinationGraphLink[]
   showLabels: boolean
   loading: boolean
+  active: boolean
 }>()
 
 const emit = defineEmits<{
@@ -136,14 +137,24 @@ function initGraph() {
 }
 
 function updateDimensions() {
-  if (!graph || !containerRef.value) return
+  if (!props.active || !graph || !containerRef.value) return
   const { clientWidth, clientHeight } = containerRef.value
   graph.width(clientWidth || 960)
   graph.height(clientHeight || 620)
 }
 
-function updateGraphData() {
+function syncAnimationState() {
   if (!graph) return
+  if (props.active) {
+    graph.resumeAnimation?.()
+    updateDimensions()
+    return
+  }
+  graph.pauseAnimation?.()
+}
+
+function updateGraphData() {
+  if (!props.active || !graph) return
   graph.graphData(buildGraphData())
   graph.nodeThreeObject((node: GraphNode) => {
     if (!props.showLabels) {
@@ -166,6 +177,7 @@ function updateGraphData() {
 
 async function ensureGraph() {
   await nextTick()
+  if (!props.active && !graph) return
   initGraph()
   updateGraphData()
   updateDimensions()
@@ -173,6 +185,7 @@ async function ensureGraph() {
     resizeObserver = new ResizeObserver(updateDimensions)
     resizeObserver.observe(containerRef.value)
   }
+  syncAnimationState()
 }
 
 function resetCamera() {
@@ -190,7 +203,18 @@ watch(
 watch(
   () => props.showLabels,
   () => {
-    updateGraphData()
+    if (props.active) updateGraphData()
+  },
+)
+
+watch(
+  () => props.active,
+  () => {
+    if (props.active) {
+      void ensureGraph()
+      return
+    }
+    syncAnimationState()
   },
 )
 

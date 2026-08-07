@@ -8,9 +8,15 @@ import json
 from app.core.review.propagation_agent import PROPAGATION_AGENT_REPORT_SECTIONS
 from app.core.review.propagation_agent import build_propagation_agent_output_contract
 from app.core.review.propagation_agent import build_propagation_agent_prompt_note
+from app.core.review.agent_policy import adjudicate_policy
+from app.core.review.agent_policy import normalize_rule_provenance
 
 
 MAX_PROMPT_TEXT_CHARS = 2_000
+JUDGE_DECISION_BEGIN = "<REVIEW_JUDGE_DECISION>"
+JUDGE_DECISION_END = "</REVIEW_JUDGE_DECISION>"
+JUDGE_AXIS_LABELS = {"harmful", "non_harmful", "uncertain", "unavailable"}
+JUDGE_STANCE_LABELS = {"support", "deny", "query", "neutral", "unlinked", "uncertain"}
 
 AGENT_REPORT_SECTIONS: dict[str, list[str]] = {
     "PostHarmAgent": ["帖子内容摘要", "检测结论复核", "危害类型与目标对象分析", "证据充分性", "需要人工确认的问题"],
@@ -34,6 +40,8 @@ __all__ = [
     "build_revision_system_prompt",
     "build_revision_user_prompt",
     "build_safety_flags",
+    "parse_judge_decision_footer",
+    "validate_judge_decision_against_policy",
 ]
 
 
@@ -43,7 +51,12 @@ def build_agent_system_prompt(agent_name: str) -> str:
         "\nDETERMINISTIC POLICY DECISION FRAME: read policy_decision_frame before writing conclusions. "
         "Cite active policy id, threshold comparisons, accepted rules, weighted expert evidence references, "
         "and historical failure cautions. Do not invent a policy result.\n"
-        "For HarmfulnessJudgeAgent: use policy only as advisory provenance until human approval.\n"
+        "For HarmfulnessJudgeAgent: use policy only as advisory provenance until human approval. "
+        "After the Chinese report, append exactly one machine-readable decision footer between "
+        f"{JUDGE_DECISION_BEGIN} and {JUDGE_DECISION_END}. The footer must be strict JSON with "
+        "main_axes.attack_hate_offense, main_axes.misinfo_claim_risk, stance, review_required, "
+        "review_reason, and fine_labels. Each axis contains available, label, and confidence. "
+        "Use label harmful, non_harmful, uncertain, or unavailable; never infer unavailable axes.\n"
         if agent_name == "HarmfulnessJudgeAgent"
         else ""
     )
@@ -71,7 +84,147 @@ def build_agent_system_prompt(agent_name: str) -> str:
 
 
 def build_agent_output_contract(agent_name: str) -> dict[str, Any]:
+    if agent_name == "HarmfulnessJudgeAgent":
+        return {
+            "main_output": "natural_language_chinese_report",
+            "machine_footer": {
+                "begin": JUDGE_DECISION_BEGIN,
+                "end": JUDGE_DECISION_END,
+                "schema": {
+                    "main_axes": {
+                        "attack_hate_offense": {"available": "bool", "label": "enum", "confidence": "0..1"},
+                        "misinfo_claim_risk": {"available": "bool", "label": "enum", "confidence": "0..1"},
+                    },
+                    "stance": {"available": "bool", "label": "enum", "confidence": "0..1"},
+                    "review_required": "bool",
+                    "review_reason": "list[str]",
+                    "fine_labels": "list[str]",
+                },
+            },
+        }
     return build_propagation_agent_output_contract(agent_name)
+
+
+def parse_judge_decision_footer(report_text: str) -> tuple[str, dict[str, Any] | None, str | None]:
+    """Separate and validate the Judge's distillation-only decision footer."""
+    text = str(report_text or "").strip()
+    begin = text.rfind(JUDGE_DECISION_BEGIN)
+    end = text.rfind(JUDGE_DECISION_END)
+    if begin < 0 or end < begin:
+        return text, None, "missing_judge_decision_footer"
+    footer_text = text[begin + len(JUDGE_DECISION_BEGIN) : end].strip()
+    clean_text = (text[:begin] + text[end + len(JUDGE_DECISION_END) :]).strip()
+    try:
+        raw = json.loads(footer_text)
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return clean_text, None, "invalid_judge_decision_json"
+    if not isinstance(raw, dict):
+        return clean_text, None, "invalid_judge_decision_schema"
+
+    axes = raw.get("main_axes")
+    if not isinstance(axes, dict):
+        return clean_text, None, "invalid_judge_decision_axes"
+    normalized_axes: dict[str, dict[str, Any]] = {}
+    for axis_name in ("attack_hate_offense", "misinfo_claim_risk"):
+        axis = axes.get(axis_name)
+        if not isinstance(axis, dict):
+            return clean_text, None, f"missing_judge_axis:{axis_name}"
+        available = _strict_bool(axis.get("available"))
+        if available is None:
+            return clean_text, None, f"invalid_judge_axis_available:{axis_name}"
+        label = str(axis.get("label") or "unavailable").strip().lower()
+        if label not in JUDGE_AXIS_LABELS or (not available and label != "unavailable"):
+            return clean_text, None, f"invalid_judge_axis_label:{axis_name}"
+        confidence = _bounded_confidence(axis.get("confidence"))
+        if confidence is None:
+            return clean_text, None, f"invalid_judge_axis_confidence:{axis_name}"
+        normalized_axes[axis_name] = {
+            "available": available,
+            "label": label,
+            "confidence": confidence,
+        }
+
+    stance = raw.get("stance")
+    if not isinstance(stance, dict):
+        return clean_text, None, "invalid_judge_stance"
+    stance_available = _strict_bool(stance.get("available"))
+    if stance_available is None:
+        return clean_text, None, "invalid_judge_stance_available"
+    stance_label = str(stance.get("label") or "unlinked").strip().lower()
+    if stance_label not in JUDGE_STANCE_LABELS:
+        return clean_text, None, "invalid_judge_stance_label"
+    stance_confidence = _bounded_confidence(stance.get("confidence"))
+    if stance_confidence is None:
+        return clean_text, None, "invalid_judge_stance_confidence"
+
+    review_required = _strict_bool(raw.get("review_required"))
+    if review_required is None:
+        return clean_text, None, "invalid_judge_review_required"
+
+    return clean_text, {
+        "schema_version": "review-judge-teacher-prediction-v1",
+        "main_axes": normalized_axes,
+        "stance": {
+            "available": stance_available,
+            "label": stance_label,
+            "confidence": stance_confidence,
+        },
+        "review_required": review_required,
+        "review_reason": _string_list(raw.get("review_reason")),
+        "fine_labels": _string_list(raw.get("fine_labels")),
+    }, None
+
+
+def validate_judge_decision_against_policy(
+    teacher_prediction: dict[str, Any] | None,
+    policy_decision_frame: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """Audit an LLM Judge footer against deterministic advisory policy gates."""
+    prediction = teacher_prediction if isinstance(teacher_prediction, dict) else {}
+    frame = policy_decision_frame if isinstance(policy_decision_frame, dict) else {}
+    recommendation = frame.get("policy_recommendation") or {}
+    recommendation = recommendation if isinstance(recommendation, dict) else {}
+    judge_review_required = bool(prediction.get("review_required"))
+    policy_review_required = bool(recommendation.get("review_required"))
+    policy_abstain = bool(recommendation.get("abstain"))
+    conflict_reasons: list[str] = []
+    if policy_review_required and not judge_review_required:
+        conflict_reasons.append("judge_rejected_required_review")
+    if policy_abstain and not judge_review_required:
+        conflict_reasons.append("judge_rejected_required_abstention")
+    return {
+        "schema_version": "review-policy-judge-alignment-v1",
+        "advisory_only": bool(frame.get("advisory_only", True)),
+        "conflict_detected": bool(conflict_reasons),
+        "conflict_reasons": conflict_reasons,
+        "judge_review_required": judge_review_required,
+        "policy_review_required": policy_review_required,
+        "policy_abstain": policy_abstain,
+        "effective_review_required": bool(
+            judge_review_required or policy_review_required or policy_abstain
+        ),
+        "detector_outputs_modified": False,
+    }
+
+
+def _bounded_confidence(value: Any) -> float | None:
+    try:
+        confidence = float(value)
+    except (TypeError, ValueError):
+        return None
+    if not 0.0 <= confidence <= 1.0:
+        return None
+    return round(confidence, 6)
+
+
+def _strict_bool(value: Any) -> bool | None:
+    return value if type(value) is bool else None
+
+
+def _string_list(value: Any) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    return [str(item).strip() for item in value if str(item).strip()]
 
 
 def build_agent_user_prompt(
@@ -81,15 +234,20 @@ def build_agent_user_prompt(
     *,
     policy_guidance: dict[str, Any],
 ) -> str:
+    memory_enabled = agent_name in {"QuestionReflectionAgent", "HarmfulnessJudgeAgent", "CountermeasureAgent"}
+    selected_context = context if memory_enabled else {
+        key: value for key, value in context.items() if key != "error_memory_summary"
+    }
     payload = {
         "agent_name": agent_name,
         "task_boundary": "这是分析员触发的复核任务。只生成自然语言分析报告，不发布内容，不覆盖系统判定。",
         "policy_guidance": _compact_prompt_value(policy_guidance),
-        "error_memory_summary": _compact_prompt_value(context.get("error_memory_summary") or {}),
         "output_contract": build_agent_output_contract(agent_name),
-        "selected_context": _compact_prompt_value(context),
+        "selected_context": _compact_prompt_value(selected_context),
         "prior_agent_reports": _compact_prior_reports(reports_by_agent),
     }
+    if memory_enabled:
+        payload["error_memory_summary"] = _compact_prompt_value(context.get("error_memory_summary") or {})
     if agent_name == "HarmfulnessJudgeAgent":
         payload["policy_decision_frame"] = build_policy_decision_frame(context, reports_by_agent)
     return json.dumps(payload, ensure_ascii=False, default=str)
@@ -147,7 +305,15 @@ def build_default_report_role(agent_name: str) -> str:
 def build_revision_system_prompt(agent_name: str, revision_kind: str) -> str:
     if revision_kind == "critique":
         return f"Review the {agent_name} draft in Chinese for missing evidence, unsupported inference, policy misuse, and uncertainty. Do not output JSON."
-    return f"Revise the {agent_name} draft in Chinese after critique, preserving evidence/uncertainty separation and advisory policy limits."
+    footer_note = (
+        f" Append the strict JSON decision footer between {JUDGE_DECISION_BEGIN} and {JUDGE_DECISION_END}."
+        if agent_name == "HarmfulnessJudgeAgent"
+        else ""
+    )
+    return (
+        f"Revise the {agent_name} draft in Chinese after critique, preserving evidence/uncertainty separation "
+        f"and advisory policy limits.{footer_note}"
+    )
 
 
 def build_revision_user_prompt(
@@ -178,20 +344,34 @@ def build_revision_user_prompt(
 
 def build_policy_decision_frame(context: dict[str, Any], reports_by_agent: dict[str, dict[str, Any]]) -> dict[str, Any]:
     envelope = context.get("active_policy") or context.get("policy") or {}
-    policy = envelope.get("policy") if isinstance(envelope, dict) and isinstance(envelope.get("policy"), dict) else envelope
-    policy = policy if isinstance(policy, dict) else {}
-    thresholds = {
-        "review": {"threshold": policy.get("review_threshold")},
-        "abstain": {"threshold": policy.get("abstain_threshold")},
-        "retrieval": {"threshold": policy.get("retrieval_threshold")},
-        "countermeasure": {"threshold": policy.get("countermeasure_threshold")},
-    }
-    accepted_rules = [
-        {"rule_id": rule.get("rule_id"), "explanation": rule.get("description")}
-        for rule in (envelope.get("candidate_rules") or [])
-        if isinstance(rule, dict) and rule.get("status") in {"accepted_for_round", "activated"}
+    envelope = envelope if isinstance(envelope, dict) else {}
+    completed_experts = [
+        agent_name
+        for agent_name, report in reports_by_agent.items()
+        if report.get("status") == "completed"
     ]
-    weights = policy.get("agent_weights") or {}
+    adjudication = adjudicate_policy(
+        envelope,
+        case_score=context.get("case_score"),
+        uncertainty=context.get("case_uncertainty"),
+        trigger_facts=context.get("policy_trigger_facts") or {},
+        completed_experts=completed_experts,
+    )
+    policy_binding = bool(adjudication.get("policy_binding"))
+    accepted_rules = []
+    if policy_binding:
+        for rule in envelope.get("candidate_rules") or []:
+            if not isinstance(rule, dict) or rule.get("status") not in {"accepted_for_round", "activated"}:
+                continue
+            provenance = normalize_rule_provenance(rule)
+            accepted_rules.append(
+                {
+                    **provenance,
+                    "explanation": str(rule.get("description") or rule.get("rationale") or ""),
+                    "status": rule.get("status"),
+                }
+            )
+    weights = (adjudication.get("expert_coverage") or {}).get("applicable_weights") or {}
     contributions = []
     for agent_name, report in reports_by_agent.items():
         if report.get("status") != "completed" or agent_name not in weights:
@@ -205,19 +385,37 @@ def build_policy_decision_frame(context: dict[str, Any], reports_by_agent: dict[
         )
     memory = context.get("error_memory_summary") or {}
     cautions = memory.get("historical_failure_cautions") or memory.get("cautions") or []
+    recommendations = adjudication.get("recommendations") or {}
     frame = {
-        "active_policy_id": envelope.get("policy_id") if isinstance(envelope, dict) else None,
-        "threshold_comparisons": thresholds,
+        "schema_version": "review-policy-adjudication-frame-v1",
+        "active_policy_id": envelope.get("policy_id"),
+        "activation_status": envelope.get("activation_status"),
+        "policy_binding": policy_binding,
+        "advisory_only": True,
+        "observed_case": {
+            "score": context.get("case_score"),
+            "uncertainty": context.get("case_uncertainty"),
+            "trigger_facts": context.get("policy_trigger_facts") or {},
+        },
+        "threshold_comparisons": adjudication.get("threshold_comparisons") or {},
+        "matched_trigger_conditions": adjudication.get("trigger_matches") or {},
         "matched_accepted_rules": accepted_rules,
+        "expert_weight_coverage": adjudication.get("expert_coverage") or {},
         "weighted_expert_contribution_refs": contributions,
         "historical_failure_memory_cautions": cautions,
+        "matched_failure_memory": memory.get("matched_records") or [],
+        "failure_memory_match_reasons": memory.get("match_reasons") or [],
+        "ignored_failure_memory_count": int(memory.get("ignored_count") or 0),
+        "policy_recommendation": {
+            "review_required": bool(recommendations.get("review")),
+            "retrieval_required": bool(recommendations.get("retrieval")),
+            "abstain": bool(recommendations.get("abstain")),
+            "countermeasure_recommended": bool(recommendations.get("countermeasure")),
+        },
+        "policy_evidence_conflict": adjudication.get("conflict") or {},
+        "policy_provenance": adjudication.get("policy_provenance") or {},
+        "detector_outputs_modified": False,
     }
-    case_score = context.get("case_score")
-    uncertainty = context.get("case_uncertainty")
-    if case_score is not None:
-        frame["case_score"] = case_score
-    if uncertainty is not None:
-        frame["case_uncertainty"] = uncertainty
     return frame
 
 
@@ -257,4 +455,5 @@ def _truncate_text(value: Any) -> str | None:
     text = str(value)
     if len(text) <= MAX_PROMPT_TEXT_CHARS:
         return text
-    return f"{text[:MAX_PROMPT_TEXT_CHARS]}...[truncated]"
+    suffix = "...[truncated]"
+    return f"{text[: MAX_PROMPT_TEXT_CHARS - len(suffix)]}{suffix}"

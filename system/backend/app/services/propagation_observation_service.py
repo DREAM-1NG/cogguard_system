@@ -8,11 +8,21 @@ It must not call future-prediction model code.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from inspect import Parameter, signature
 
+from app.core.analysis.query_result_cache import (
+    build_query_cache_key,
+    get_or_build_query_result,
+)
 from app.core.propagation_analysis import build_propagation_graph
 from app.db.mongodb import get_mongo_db
-from app.services.event_data import analysis_scope_metadata, load_event_comments, load_event_posts
+from app.services.event_data import (
+    analysis_scope_metadata,
+    event_data_fingerprint,
+    load_event_comments,
+    load_event_posts,
+)
 
 
 OBSERVED_ANALYSIS_CAPABILITY = {
@@ -61,6 +71,7 @@ def attach_observed_scope(
 
 def build_observed_propagation_graph(posts: list[dict], comments: list[dict], *, node_limit: int) -> dict:
     """Build the observed propagation graph while preserving legacy signatures."""
+    parameters: Mapping[str, Parameter]
     try:
         parameters = signature(build_propagation_graph).parameters
     except (TypeError, ValueError):
@@ -81,6 +92,46 @@ async def analyze_observed_propagation(
 ) -> dict:
     """Analyze only observed propagation facts for an optional event/platform scope."""
     mongo_db = get_mongo_db()
+
+    source_fingerprint = await event_data_fingerprint(
+        mongo_db,
+        event_id=event_id,
+        platform=platform,
+    )
+    if source_fingerprint:
+        cache_key = build_query_cache_key(
+            "propagation-observed-v2",
+            event_id or "*",
+            platform or "*",
+            source_fingerprint,
+            node_limit,
+        )
+        return await get_or_build_query_result(
+            cache_key,
+            lambda: _build_observed_propagation_result(
+                mongo_db,
+                event_id=event_id,
+                platform=platform,
+                node_limit=node_limit,
+            ),
+        )
+
+    return await _build_observed_propagation_result(
+        mongo_db,
+        event_id=event_id,
+        platform=platform,
+        node_limit=node_limit,
+    )
+
+
+async def _build_observed_propagation_result(
+    mongo_db,
+    *,
+    event_id: str | None,
+    platform: str | None,
+    node_limit: int,
+) -> dict:
+    """Build a projection after the versioned cache has been checked."""
 
     posts = await load_event_posts(mongo_db, event_id=event_id, platform=platform)
     if not posts:

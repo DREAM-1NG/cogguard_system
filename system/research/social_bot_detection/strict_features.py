@@ -54,7 +54,6 @@ STRICT_CATEGORICAL_FIELDS: tuple[str, ...] = (
     "profile_use_background_image",
     "lang",
     "time_zone",
-    "source_label",
 )
 
 
@@ -141,8 +140,11 @@ def assemble_property_tensor(
     numeric_rows: list[list[float]] = []
     cat_rows: list[list[float]] = []
     cat_offsets: dict[str, int] = {}
+    categorical_fields = tuple(
+        field for field in schema.categorical_fields if field in STRICT_CATEGORICAL_FIELDS
+    )
     offset = 0
-    for field in schema.categorical_fields:
+    for field in categorical_fields:
         vocab = schema.categorical_vocab.get(field, ())
         cat_offsets[field] = offset
         offset += len(vocab) + 1
@@ -154,7 +156,7 @@ def assemble_property_tensor(
             raw_value = float(record.numeric_features.get(field, 0.0))
             numeric_row.append((raw_value - mean) / std)
         cat_row = [0.0] * offset
-        for field in schema.categorical_fields:
+        for field in categorical_fields:
             value = str(record.categorical_features.get(field, "")).strip()
             vocab = schema.categorical_vocab.get(field, ())
             if not vocab:
@@ -265,6 +267,13 @@ def parse_timestamp(value: Any) -> datetime | None:
     text = str(value).strip()
     if not text:
         return None
+    try:
+        parsed = datetime.fromisoformat(text.removesuffix("Z") + ("+00:00" if text.endswith("Z") else ""))
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        return parsed
+    except ValueError:
+        pass
     candidates = (
         "%Y-%m-%d %H:%M:%S",
         "%Y-%m-%dT%H:%M:%S",
@@ -280,4 +289,3 @@ def parse_timestamp(value: Any) -> datetime | None:
         except ValueError:
             continue
     return None
-

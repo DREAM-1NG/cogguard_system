@@ -255,6 +255,49 @@ MARO 可以参考，但不能直接替代 Risk Review 的三层模型。原因�
 
 `ReviewStudent` 的主产物是低延迟结构化分诊结果。第一阶段任务保持为 `2+1`：`attack_hate_offense`、`misinfo_claim_risk` 和 claim-linked `stance` 辅助头；`defer/review_required` 是单独的选择性路由头。学生侧使用 dataset gold labels 做 SFT 主监督，并用 MultiAgents teacher silver 蒸馏 hard-case 的 confidence、review reason、evidence span、stance 和 defer 信号。
 
+### 6.2 2026-08-05 实现审计与训练边界
+
+- 已实现的学生基线是 `frozen XLM-R CLS features -> selective multi-task head`，只训练任务头，不是端到端 XLM-R SFT。
+- 已实现的 Teacher 输出包括自然语言报告、证据 sidecar、调用审计和结构化 Judge decision footer；只有 footer 通过 schema 校验的记录才允许标记 `distillation_eligible=true`。
+- 历史 15 条 hard-case smoke 证明 MultiAgents 链路可运行，但其旧 silver 曾从数据集标签回填主轴，因此不得用于蒸馏收益声明。
+- 第一阶段 SFT 应端到端微调 XLM-R 的 `2+1 + defer` 头；第二阶段蒸馏只消费无 gold 泄漏的 Teacher 预测概率、stance、review-required 和置信度，不蒸馏自由文本报告。
+- RL 不作为当前 encoder 分类器的首选训练阶段。只有在已有稳定 SFT/蒸馏模型、人工偏好数据和离线安全评估后，才考虑优化路由或策略选择；不得用 RL 直接优化平台处置动作。
+- 治理后严格基线 `G:\CISCN\.tmp\review_student_xlmr_full_v3_20260805`
+  已覆盖五个数据集并通过 checkpoint/artifact 门禁，共生成 `9,699` 条测试预测；
+  但 HateXplain、MultiOFF、FakeSV 的拒判率均为 `1.0`，除 mcfend 外高风险召回均为
+  `0`，因此只证明离线训练闭环，不满足在线 Student 验收。
+- 当前 stance 标签主要由 evidence link 的 `for/against` 和 veracity 映射得到，属于
+  claim-linked 弱监督 proxy。第一阶段只能作为 masked auxiliary task，不能单独形成
+  “真实立场识别效果”主张；Teacher stance 也需要人工抽样校验后才能用于蒸馏。
+- 正式 Student 应训练一个跨数据集共享的端到端 XLM-R，而不是为五个数据集分别训练
+  独立冻结特征头；评测应保留 per-domain 指标，并增加 leave-one-domain-out / held-out
+  domain 测试来检验与 MARO cross-domain 目标的一致性。
+
+### 6.3 MARO-style MultiAgent/Student 横向协议
+
+MultiAgent 与 ReviewStudent 使用同一套 `2+1` 标签协议进行横向实验，但必须先固定
+同一批 `case_id + dataset + split`。共享映射为：HateXplain、MultiOFF 对应
+`attack_hate_offense`；PHEME、mcfend、FakeSV 对应 `misinfo_claim_risk`；
+claim-linked stance 只作为辅助任务，不并入主风险轴 Macro-F1。
+
+比较器位于 `system/backend/app/core/review/maro_comparison.py`，执行入口为
+`system/backend/scripts/compare_review_maro_systems.py`。协议固定以下约束：
+
+- gold 只从原始 case 的 `labels.harmfulness` 读取，预测文件中的 `y_true` 不参与评测。
+- MultiAgent 只有携带当前结构化 Judge footer 且
+  `teacher_silver.distillation_eligible=true` 的结果才进入性能主表；旧版或非法 footer
+  只进入覆盖审计。
+- 两个系统使用同一原始样本计算 Accuracy、Macro-F1、per-class Precision/Recall、
+  PR-AUC 和 ECE，并同时报告 per-axis、per-dataset 与 strictly-paired 结果。
+- `review_required` 与 Student 的 `defer/abstain` 属于路由结果，分别报告
+  `decision_coverage` 和 `escalation_rate`，不混入 harmful/non-harmful 标签。
+
+共享样本由 `build_review_maro_case_manifest.py` 生成。manifest 按数据集和正负类
+分层、固定随机种子，只包含 `case_id/dataset/split`，不向 Agent 暴露 gold。
+Agent runner 通过 `--case-manifest` 精确选择样本。该设计迁移了 MARO 的最终 Judge
+判别、跨域对照、QuestionReflection 消融和规则优化消融思路；自然语言报告质量、
+证据充分性、人工一致性和成本仍作为独立系统指标保留。
+
 因此，社交媒体治理场景中的在线链路应是：简单高置信样本由 ReviewStudent 给出初筛；低置信、跨视图冲突、主张证据不足、传播上下文复杂或高影响样本升级到 MultiAgents/人工复核；复核结果再回流为下一轮 teacher-silver 和 policy refinement 数据。
 
 ## 7. 数据集支撑矩阵

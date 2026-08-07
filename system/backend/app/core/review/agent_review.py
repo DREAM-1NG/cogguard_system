@@ -33,6 +33,8 @@ from app.core.review.agent_contracts import build_report_role_name
 from app.core.review.agent_contracts import build_revision_system_prompt
 from app.core.review.agent_contracts import build_revision_user_prompt
 from app.core.review.agent_contracts import build_safety_flags
+from app.core.review.agent_contracts import parse_judge_decision_footer
+from app.core.review.agent_contracts import validate_judge_decision_against_policy
 from app.core.review.agent_media import agent_requires_vision
 from app.core.review.agent_media import build_media_inputs_for_post
 from app.core.review.agent_media import build_provider_input_bundle_for_agent
@@ -40,6 +42,7 @@ from app.core.review.agent_media import build_vision_input_status
 from app.core.review.agent_media import infer_media_type
 from app.core.review.agent_media import maybe_data_url
 from app.core.review.agent_media import provider_should_receive_media
+from app.core.review.agent_policy import match_feedback_memory
 from app.core.review.agent_provider import OpenAICompatibleAgentProvider
 from app.core.review.agent_provider import OpenAICompatibleConfig
 from app.core.review.agent_provider import build_llm_provider_from_settings
@@ -142,6 +145,7 @@ async def run_manual_agent_review(
     require_vision: bool = False,
     runtime_mode: str = "auto",
     enable_deep_judge: bool = False,
+    enable_countermeasure: bool = True,
     reflection_target_agent_names: list[str] | None = None,
     max_agent_calls_per_case: int = 12,
 ) -> dict[str, Any]:
@@ -158,7 +162,12 @@ async def run_manual_agent_review(
     )
     context["policy"] = policy or {}
     context["active_policy"] = policy or {}
-    context["error_memory_summary"] = error_memory_summary or {}
+    case_signals = _derive_policy_case_signals(report=report, context=context)
+    context.update(case_signals)
+    context["error_memory_summary"] = _matched_error_memory(
+        error_memory_summary or {},
+        case_tags=case_signals["case_tags"],
+    )
     runtime_decision = _resolve_runtime_mode(
         report=report,
         context=context,
@@ -168,13 +177,23 @@ async def run_manual_agent_review(
         enable_light_debate=enable_light_debate,
         enable_full_debate=enable_full_debate,
         enable_deep_judge=enable_deep_judge,
+        enable_countermeasure=enable_countermeasure,
     )
     effective_runtime_mode = runtime_decision["effective_runtime_mode"]
     execution_plan = _execution_plan_for_runtime(
         requested_agents=normalized_agents,
         runtime_mode=effective_runtime_mode,
         enable_deep_judge=enable_deep_judge,
+        enable_countermeasure=enable_countermeasure,
+        report=report,
+        context=context,
     )
+    context["execution_plan"] = execution_plan
+    state: dict[str, Any] = {
+        "max_agent_calls_per_case": max(1, int(max_agent_calls_per_case or 1)),
+        "reserved_llm_call_count": 0,
+        "call_audit": [],
+    }
     retrieval_requested = bool(enable_active_retrieval and effective_runtime_mode == "complex")
     retrieval_enabled = bool(
         retrieval_requested
@@ -203,11 +222,24 @@ async def run_manual_agent_review(
         retrieval_bundle=retrieval_bundle,
     )
     if enable_full_debate and debate_requested and debate_triggered:
+        async def budgeted_debate_provider(**kwargs: Any) -> str:
+            content, _ = await _invoke_provider(
+                provider=provider,
+                agent_name=str(kwargs["agent_name"]),
+                stage="full_debate",
+                system_prompt=str(kwargs["system_prompt"]),
+                user_prompt=str(kwargs["user_prompt"]),
+                input_bundle=kwargs["input_bundle"],
+                model=str(kwargs["model"]),
+                state=state,
+            )
+            return content
+
         debate_bundle = await build_full_debate_trace(
             context=context,
             retrieval_bundle=retrieval_bundle,
             reasons=debate_reasons,
-            provider=provider,
+            provider=budgeted_debate_provider if provider is not None else None,
             model=model,
             max_rounds=debate_max_rounds,
         )
@@ -242,6 +274,7 @@ async def run_manual_agent_review(
             "runtime_mode": runtime_mode,
             "effective_runtime_mode": effective_runtime_mode,
             "enable_deep_judge": enable_deep_judge,
+            "enable_countermeasure": enable_countermeasure,
             "reflection_target_agent_names": reflection_target_agent_names or [],
             "max_agent_calls_per_case": max_agent_calls_per_case,
             "debate_max_rounds": debate_max_rounds,
@@ -250,7 +283,7 @@ async def run_manual_agent_review(
         }
     )
 
-    state = {
+    state.update({
         "run_id": run_id,
         "created_at": created_at,
         "provider_name": provider_name,
@@ -264,12 +297,11 @@ async def run_manual_agent_review(
         "runtime_mode": effective_runtime_mode,
         "requested_runtime_mode": runtime_mode,
         "enable_deep_judge": enable_deep_judge,
+        "enable_countermeasure": enable_countermeasure,
         "runtime_reasons": runtime_decision["runtime_reasons"],
         "recommended_runtime_mode": runtime_decision["recommended_runtime_mode"],
         "runtime_upgraded_by_requested_features": runtime_decision["runtime_upgraded_by_requested_features"],
-        "max_agent_calls_per_case": max(1, int(max_agent_calls_per_case or 1)),
-        "call_audit": [],
-    }
+    })
     reports_by_agent = {
         str(item.get("agent_name")): item
         for item in existing_reviews
@@ -381,6 +413,7 @@ async def run_manual_agent_review(
         "effective_runtime_mode": effective_runtime_mode,
         "runtime_reasons": runtime_decision["runtime_reasons"],
         "runtime_upgraded_by_requested_features": runtime_decision["runtime_upgraded_by_requested_features"],
+        "execution_plan": execution_plan,
         "candidate_rule_hints": _candidate_rule_hints(
             report=report,
             context=context,
@@ -409,7 +442,8 @@ async def run_manual_agent_review(
             "full_debate_high_conflict_only": True,
             "maro_question_reflection_loop": "expert_reports_then_reflection_then_expert_response",
             "runtime_mode_enabled": True,
-            "countermeasure_post_judge_only": True,
+        "countermeasure_post_judge_only": True,
+        "countermeasure_enabled": enable_countermeasure,
         },
     }
     return {
@@ -422,6 +456,9 @@ async def run_manual_agent_review(
         "full_debate": debate_bundle if debate_bundle.get("schema_version") == "review-full-debate-v1" else None,
         "summary": {
             "requested_agents": len(normalized_agents),
+            "eligible_expert_agents": len(execution_plan["eligible_agents"]),
+            "executed_expert_agents": len(execution_plan["expert_agents"]),
+            "skipped_expert_agents": len(execution_plan["skipped_agents"]),
             "planned_llm_call_count": planned_llm_call_count,
             "actual_llm_call_count": _actual_llm_call_count(state),
             "llm_call_budget": state["max_agent_calls_per_case"],
@@ -441,6 +478,7 @@ async def run_manual_agent_review(
             "runtime_reasons": runtime_decision["runtime_reasons"],
             "runtime_upgraded_by_requested_features": runtime_decision["runtime_upgraded_by_requested_features"],
             "candidate_rule_hints": audit["candidate_rule_hints"],
+            "countermeasure_enabled": enable_countermeasure,
         },
     }
 
@@ -551,6 +589,7 @@ def _resolve_runtime_mode(
     enable_light_debate: bool,
     enable_full_debate: bool,
     enable_deep_judge: bool,
+    enable_countermeasure: bool = True,
 ) -> dict[str, Any]:
     return resolve_runtime_mode(
         report=report,
@@ -561,6 +600,7 @@ def _resolve_runtime_mode(
         enable_light_debate=enable_light_debate,
         enable_full_debate=enable_full_debate,
         enable_deep_judge=enable_deep_judge,
+        enable_countermeasure=enable_countermeasure,
     )
 
 
@@ -573,11 +613,19 @@ def _execution_plan_for_runtime(
     requested_agents: list[str],
     runtime_mode: str,
     enable_deep_judge: bool,
+    enable_countermeasure: bool = True,
+    report: dict[str, Any] | None = None,
+    context: dict[str, Any] | None = None,
+    forced_agent_names: list[str] | None = None,
 ) -> dict[str, Any]:
     return build_execution_plan_for_runtime(
         requested_agents=requested_agents,
         runtime_mode=runtime_mode,
         enable_deep_judge=enable_deep_judge,
+        enable_countermeasure=enable_countermeasure,
+        report=report,
+        context=context,
+        forced_agent_names=forced_agent_names,
     )
 
 
@@ -746,6 +794,13 @@ async def _run_single_reflection_response(
             model=state["model"],
             state=state,
         )
+    except _CallBudgetExceeded as exc:
+        return _budget_skipped_report(
+            base=base,
+            agent_name=response_agent_name,
+            state=state,
+            error=str(exc),
+        )
     except Exception as exc:  # pragma: no cover
         error_text = str(exc) or exc.__class__.__name__
         sidecar = build_sidecar_for_agent(
@@ -849,6 +904,13 @@ async def _run_single_revision_step(
             model=state["model"],
             state=state,
         )
+    except _CallBudgetExceeded as exc:
+        return _budget_skipped_report(
+            base=base,
+            agent_name=agent_name,
+            state=state,
+            error=str(exc),
+        )
     except Exception as exc:  # pragma: no cover
         error_text = str(exc) or exc.__class__.__name__
         sidecar = build_sidecar_for_agent(
@@ -874,6 +936,10 @@ async def _run_single_revision_step(
             "prompt_telemetry": _failed_prompt_telemetry(state),
             "safety_flags": ["provider_failure", "no_synthetic_fallback"],
         }
+    clean_report_text, teacher_prediction, teacher_prediction_error = _prepare_agent_report_text(
+        agent_name,
+        str(report_text).strip(),
+    )
     sidecar = build_sidecar_for_agent(
         agent_name=agent_name,
         context=context,
@@ -884,17 +950,19 @@ async def _run_single_revision_step(
         sidecar,
         agent_name=agent_name,
         context=context,
-        report_text=str(report_text).strip(),
+        report_text=clean_report_text,
+        teacher_prediction=teacher_prediction,
+        teacher_prediction_error=teacher_prediction_error,
     )
     return {
         **base,
         "status": "completed",
         "analysis_report": _analysis_report_payload(
             agent_name=agent_name,
-            report_text=str(report_text).strip(),
+            report_text=clean_report_text,
             status="completed",
         ),
-        "report_text": str(report_text).strip(),
+        "report_text": clean_report_text,
         "report_format": "maro_style_natural_language_analysis_report",
         "system_audit_sidecar": sidecar,
         "structured_sidecar": sidecar,
@@ -999,6 +1067,13 @@ async def _run_single_agent(
             model=state["model"],
             state=state,
         )
+    except _CallBudgetExceeded as exc:
+        return _budget_skipped_report(
+            base=base,
+            agent_name=agent_name,
+            state=state,
+            error=str(exc),
+        )
     except Exception as exc:  # pragma: no cover - covered through API/core tests
         error_text = str(exc) or exc.__class__.__name__
         sidecar = build_sidecar_for_agent(
@@ -1026,6 +1101,10 @@ async def _run_single_agent(
             "vision_input_status": _vision_input_status(context),
             "safety_flags": ["provider_failure", "no_synthetic_fallback"],
         }
+    clean_report_text, teacher_prediction, teacher_prediction_error = _prepare_agent_report_text(
+        agent_name,
+        str(report_text).strip(),
+    )
     sidecar = build_sidecar_for_agent(
         agent_name=agent_name,
         context=context,
@@ -1036,18 +1115,20 @@ async def _run_single_agent(
         sidecar,
         agent_name=agent_name,
         context=context,
-        report_text=str(report_text).strip(),
+        report_text=clean_report_text,
+        teacher_prediction=teacher_prediction,
+        teacher_prediction_error=teacher_prediction_error,
     )
     analysis_report = _analysis_report_payload(
         agent_name=agent_name,
-        report_text=str(report_text).strip(),
+        report_text=clean_report_text,
         status="completed",
     )
     return {
         **base,
         "status": "completed",
         "analysis_report": analysis_report,
-        "report_text": str(report_text).strip(),
+        "report_text": clean_report_text,
         "report_format": "maro_style_natural_language_analysis_report",
         "system_audit_sidecar": sidecar,
         "structured_sidecar": sidecar,
@@ -1098,6 +1179,8 @@ def _enrich_agent_sidecar(
     agent_name: str,
     context: dict[str, Any],
     report_text: str | None = None,
+    teacher_prediction: dict[str, Any] | None = None,
+    teacher_prediction_error: str | None = None,
 ) -> dict[str, Any]:
     enriched = dict(sidecar)
     governance_reference = context.get("governance_reference") or build_governance_reference_context(context)
@@ -1108,15 +1191,34 @@ def _enrich_agent_sidecar(
         "usage_boundary": governance_reference.get("usage_boundary") or {},
     }
     if agent_name == "HarmfulnessJudgeAgent":
-        enriched["policy_decision_frame"] = context.get("policy_decision_frame") or build_policy_decision_frame(
+        policy_decision_frame = context.get("policy_decision_frame") or build_policy_decision_frame(
             context,
             {},
         )
+        policy_alignment = validate_judge_decision_against_policy(
+            teacher_prediction,
+            policy_decision_frame,
+        )
+        enriched["teacher_prediction"] = teacher_prediction
+        enriched["teacher_prediction_valid"] = teacher_prediction is not None
+        enriched["teacher_prediction_error"] = teacher_prediction_error
+        enriched["policy_decision_frame"] = policy_decision_frame
+        enriched["policy_alignment"] = policy_alignment
+        enriched["review_required"] = policy_alignment["effective_review_required"]
         enriched["governance_report"] = build_governance_report_sidecar(
             context=context,
             report_text=report_text,
         )
     return enriched
+
+
+def _prepare_agent_report_text(
+    agent_name: str,
+    report_text: str,
+) -> tuple[str, dict[str, Any] | None, str | None]:
+    if agent_name != "HarmfulnessJudgeAgent":
+        return report_text, None, None
+    return parse_judge_decision_footer(report_text)
 
 
 class _CallBudgetExceeded(RuntimeError):
@@ -1141,6 +1243,16 @@ async def _invoke_provider(
         "user_prompt_chars": len(user_prompt),
         "input_bundle_chars": len(json.dumps(input_bundle, ensure_ascii=False, default=str)),
         "provider_duration_ms": 0.0,
+        "cache_hit": False,
+        "cache_status": "unavailable",
+        "attempt_count": 1,
+        "retry_count": 0,
+        "http_status": None,
+        "error_class": None,
+        "usage_available": False,
+        "input_tokens": None,
+        "output_tokens": None,
+        "total_tokens": None,
     }
     audit = {
         "agent_name": agent_name,
@@ -1148,10 +1260,11 @@ async def _invoke_provider(
         "started_at": started_at,
         **telemetry,
     }
-    if _actual_llm_call_count(state) >= state["max_agent_calls_per_case"]:
+    if state["reserved_llm_call_count"] >= state["max_agent_calls_per_case"]:
         audit.update({"completed_at": _utc_now(), "status": "skipped_budget", "reason": "max_agent_calls_per_case"})
         state["call_audit"].append(audit)
         raise _CallBudgetExceeded("LLM call skipped: max_agent_calls_per_case budget exhausted")
+    state["reserved_llm_call_count"] += 1
     try:
         report_text = await provider(
             agent_name=agent_name,
@@ -1161,19 +1274,34 @@ async def _invoke_provider(
             model=model,
         )
     except Exception as exc:
+        provider_telemetry = getattr(provider, "last_call_telemetry", {})
+        if isinstance(provider_telemetry, dict):
+            telemetry.update(provider_telemetry)
         audit.update(
             {
                 "completed_at": _utc_now(),
                 "duration_ms": round((perf_counter() - started) * 1000, 3),
                 "status": "failed",
                 "error": str(exc) or type(exc).__name__,
+                **{key: value for key, value in telemetry.items() if key not in {"system_prompt_chars", "user_prompt_chars", "input_bundle_chars"}},
             }
         )
         state["call_audit"].append(audit)
         raise
     duration_ms = round((perf_counter() - started) * 1000, 3)
     telemetry["provider_duration_ms"] = duration_ms
-    audit.update({"completed_at": _utc_now(), "duration_ms": duration_ms, "provider_duration_ms": duration_ms, "status": "completed"})
+    provider_telemetry = getattr(provider, "last_call_telemetry", {})
+    if isinstance(provider_telemetry, dict):
+        telemetry.update(provider_telemetry)
+    audit.update(
+        {
+            "completed_at": _utc_now(),
+            "duration_ms": duration_ms,
+            "provider_duration_ms": duration_ms,
+            "status": "completed",
+            **{key: value for key, value in telemetry.items() if key not in {"system_prompt_chars", "user_prompt_chars", "input_bundle_chars"}},
+        }
+    )
     state["call_audit"].append(audit)
     return str(report_text), telemetry
 
@@ -1189,6 +1317,29 @@ def _failed_prompt_telemetry(state: dict[str, Any]) -> dict[str, Any]:
         "user_prompt_chars": latest.get("user_prompt_chars", 0),
         "input_bundle_chars": latest.get("input_bundle_chars", 0),
         "provider_duration_ms": latest.get("provider_duration_ms", latest.get("duration_ms", 0.0)),
+    }
+
+
+def _budget_skipped_report(
+    *,
+    base: dict[str, Any],
+    agent_name: str,
+    state: dict[str, Any],
+    error: str,
+) -> dict[str, Any]:
+    return {
+        **base,
+        "status": "skipped_budget",
+        "error": error,
+        "analysis_report": _analysis_report_payload(
+            agent_name=agent_name,
+            report_text=None,
+            status="skipped_budget",
+            error=error,
+        ),
+        "report_text": None,
+        "prompt_telemetry": _failed_prompt_telemetry(state),
+        "safety_flags": ["llm_call_budget_exhausted", "no_synthetic_fallback"],
     }
 
 
@@ -1311,8 +1462,8 @@ def _build_agent_context(
         "selected_posts": posts,
         "media_inputs": media_inputs,
         "propagation_context": propagation_context,
-        "review_queue": _get(report, "harmfulness", "review_queue") or {},
-        "review_execution": _get(report, "harmfulness", "review_execution") or {},
+        "review_queue": _get(report, "review_harmfulness", "review_queue") or {},
+        "review_execution": _get(report, "review_harmfulness", "review_execution") or {},
         "disarm_analysis": report.get("disarm_analysis") or {},
         "capability_boundary": {
             "media_policy": "file_reference_with_optional_base64",
@@ -1323,6 +1474,120 @@ def _build_agent_context(
     }
     context["governance_reference"] = build_governance_reference_context(context)
     return context
+
+
+def _derive_policy_case_signals(
+    *,
+    report: dict[str, Any],
+    context: dict[str, Any],
+) -> dict[str, Any]:
+    posts = [post for post in _as_list(context.get("selected_posts")) if isinstance(post, dict)]
+    score_values: list[float] = []
+    uncertainty_reasons: list[str] = []
+    conflict_scores: list[float] = []
+    case_tags = [
+        f"platform:{_text(report.get('platform')).lower()}" if _text(report.get("platform")) else "",
+    ]
+    for post in posts:
+        harmfulness = post.get("harmfulness") or {}
+        post_view = post.get("post_view_detection") or {}
+        weighted = post_view.get("weighted_fusion") or {}
+        conflict = post_view.get("conflict") or {}
+        for value in (
+            harmfulness.get("score"),
+            post_view.get("score"),
+            weighted.get("harm_score"),
+        ):
+            numeric = _optional_probability(value)
+            if numeric is not None:
+                score_values.append(numeric)
+        conflict_score = _optional_probability(conflict.get("score") if isinstance(conflict, dict) else conflict)
+        if conflict_score is not None:
+            conflict_scores.append(conflict_score)
+        uncertainty_reasons.extend(_dedupe_strs(_as_list(post_view.get("review_reason"))))
+        stance = post.get("stance") or {}
+        if stance.get("abstain") or _text(stance.get("label")).lower() in {"uncertain", "query", "unlinked"}:
+            uncertainty_reasons.append("stance_uncertain")
+        if harmfulness.get("abstain") or _text(post_view.get("final_harmfulness")).lower() == "uncertain":
+            uncertainty_reasons.append("post_view_uncertain")
+        if post.get("primary_claim") or post.get("claims") or stance.get("claim_id"):
+            case_tags.append("claim_linked")
+        if post.get("media_urls") or (post.get("evidence") or {}).get("media_urls"):
+            case_tags.append("multimodal")
+        language = _text(post.get("language") or post.get("lang")).lower()
+        if language:
+            case_tags.append(f"language:{language}")
+
+    cross_view_conflict = any(has_multimodal_conflict(post) for post in posts)
+    if cross_view_conflict:
+        case_tags.append("multimodal_conflict")
+    propagation_context = context.get("propagation_context") or {}
+    if propagation_context.get("has_thread_context") or int((propagation_context.get("tree_metrics") or {}).get("edge_count") or 0) > 0:
+        case_tags.append("propagation_context")
+    review_queue = context.get("review_queue") or {}
+    claim_uncertainty = bool(review_queue.get("retrieval_tasks")) or "stance_uncertain" in uncertainty_reasons
+    if claim_uncertainty:
+        case_tags.append("claim_uncertainty")
+    if uncertainty_reasons:
+        case_tags.append("uncertain")
+    uncertainty = max(
+        min(1.0, 0.1 * len(_dedupe_strs(uncertainty_reasons))),
+        max(conflict_scores, default=0.0),
+    )
+    case_score = round(sum(score_values) / len(score_values), 6) if score_values else 0.5
+    return {
+        "case_score": case_score,
+        "case_score_source": "detector_outputs" if score_values else "neutral_default_no_detector_score",
+        "case_uncertainty": round(uncertainty, 6),
+        "case_uncertainty_reasons": _dedupe_strs(uncertainty_reasons),
+        "case_tags": _dedupe_strs(case_tags),
+        "policy_trigger_facts": {
+            "claim_uncertainty": claim_uncertainty,
+            "cross_view_conflict": cross_view_conflict,
+            "human_review_completed": False,
+            "conflict_score": max(conflict_scores, default=0.0),
+            "conflicting_experts": [],
+        },
+    }
+
+
+def _matched_error_memory(
+    error_memory_summary: dict[str, Any],
+    *,
+    case_tags: list[str],
+) -> dict[str, Any]:
+    if not isinstance(error_memory_summary, dict) or not error_memory_summary:
+        return {}
+    if error_memory_summary.get("memory_records"):
+        matched = match_feedback_memory(error_memory_summary, case_tags, top_k=3)
+        cautions = [
+            str(record.get("caution") or "").strip()
+            for record in matched["matched_records"]
+            if str(record.get("caution") or "").strip()
+        ]
+        return {
+            **matched,
+            "historical_failure_cautions": cautions,
+            "case_tags": case_tags,
+            "source_feedback_count": int(error_memory_summary.get("feedback_count") or 0),
+        }
+    cautions = error_memory_summary.get("historical_failure_cautions") or error_memory_summary.get("cautions") or []
+    return {
+        "matched_records": [],
+        "match_reasons": [],
+        "ignored_count": int(error_memory_summary.get("feedback_count") or 0),
+        "historical_failure_cautions": _dedupe_strs(_as_list(cautions))[:3],
+        "case_tags": case_tags,
+        "legacy_summary_only": True,
+    }
+
+
+def _optional_probability(value: Any) -> float | None:
+    try:
+        numeric = float(value)
+    except (TypeError, ValueError):
+        return None
+    return max(0.0, min(1.0, numeric))
 
 
 def _select_posts(post_semantics: dict[str, Any], selected_post_ids: list[str]) -> list[dict[str, Any]]:

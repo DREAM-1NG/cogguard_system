@@ -48,6 +48,34 @@ from app.models.risk_assessment import RiskAssessment
 
 PROVIDER_TYPES = {"text_llm", "vision_llm", "retrieval"}
 JOB_TYPES = {"agent_review", "policy_refine", "gate_dataset_ingest", "backfill"}
+_ERROR_TYPE_CASE_TAGS = {
+    "claim_unlinked": {"claim_uncertainty"},
+    "evidence_gap": {"claim_uncertainty"},
+    "fact_check": {"claim_linked", "claim_uncertainty"},
+    "source_verification": {"claim_linked", "claim_uncertainty"},
+    "image": {"multimodal"},
+    "video": {"multimodal"},
+    "audio": {"multimodal"},
+    "ocr": {"multimodal"},
+    "asr": {"multimodal"},
+    "media": {"multimodal"},
+    "multimodal": {"multimodal"},
+    "cross_view_conflict": {"multimodal_conflict"},
+    "media_mismatch": {"multimodal_conflict"},
+    "propagation": {"propagation_context"},
+    "repost": {"propagation_context"},
+    "reply": {"propagation_context"},
+    "quote": {"propagation_context"},
+    "thread": {"propagation_context"},
+    "tree": {"propagation_context"},
+}
+_REVIEW_CASE_TAG_KEYWORDS = {
+    "claim_uncertainty": ("claim uncertainty", "uncertain claim"),
+    "multimodal": ("multimodal evidence", "multimodal review"),
+    "multimodal_conflict": ("multimodal conflict", "cross-view conflict", "cross view conflict"),
+    "propagation_context": ("propagation", "thread context", "conversation thread"),
+    "uncertain": ("review uncertainty", "human verification required"),
+}
 
 
 def encrypted_provider_payload(payload: dict[str, Any]) -> dict[str, Any]:
@@ -836,8 +864,11 @@ async def feedback_memory_from_db(report_ids: list[str], db: AsyncSession) -> li
     result = await db.execute(stmt)
     rows = []
     for row in result.scalars().all():
+        error_types = _json_loads(row.error_types_json, [])
+        evidence_refs = _json_loads(row.evidence_refs_json, [])
         rows.append(
             {
+                "memory_id": row.feedback_id,
                 "feedback_id": row.feedback_id,
                 "report_id": row.report_id,
                 "review_id": row.review_id,
@@ -846,9 +877,16 @@ async def feedback_memory_from_db(report_ids: list[str], db: AsyncSession) -> li
                 "human_label": row.human_label,
                 "corrected_label": row.corrected_label,
                 "corrected_harmfulness": row.corrected_label,
-                "error_types": _json_loads(row.error_types_json, []),
+                "error_types": error_types,
                 "notes": row.notes,
-                "evidence_refs": _json_loads(row.evidence_refs_json, []),
+                "evidence_refs": evidence_refs,
+                "case_tags": _feedback_case_tags(
+                    error_types=error_types,
+                    notes=row.notes,
+                    evidence_refs=evidence_refs,
+                    human_label=row.human_label,
+                    corrected_label=row.corrected_label,
+                ),
                 "reviewer_confidence": row.reviewer_confidence,
             }
         )
@@ -1176,6 +1214,54 @@ def _feedback_row(*, report_id: str, feedback: dict[str, Any], feedback_id: str,
         "reviewer_confidence": _safe_float(feedback.get("reviewer_confidence"), 0.5) or 0.5,
         "created_by": created_by,
     }
+
+
+def _feedback_case_tags(
+    *,
+    error_types: Any,
+    notes: Any,
+    evidence_refs: Any,
+    human_label: Any,
+    corrected_label: Any,
+) -> list[str]:
+    tags = set()
+    normalized_errors = _stable_feedback_values(error_types)
+    for error_type in normalized_errors:
+        tags.add(f"error:{error_type}")
+        tags.update(_ERROR_TYPE_CASE_TAGS.get(error_type, set()))
+
+    human = _stable_feedback_value(human_label)
+    corrected = _stable_feedback_value(corrected_label)
+    if human:
+        tags.add(f"label:{human}")
+    if corrected:
+        tags.add(f"label:{corrected}")
+    if human and corrected and human != corrected:
+        tags.add(f"label_transition:{human}_to_{corrected}")
+
+    evidence_text = []
+    for evidence in _as_list(evidence_refs):
+        if isinstance(evidence, dict):
+            source = _stable_feedback_value(evidence.get("source") or evidence.get("type") or evidence.get("kind"))
+            if source:
+                tags.add(f"evidence_source:{source}")
+                evidence_text.append(source)
+            evidence_text.extend(str(value) for value in evidence.values() if value is not None)
+        else:
+            evidence_text.append(str(evidence))
+    tag_text = " ".join([str(notes or ""), *evidence_text]).lower()
+    for tag, keywords in _REVIEW_CASE_TAG_KEYWORDS.items():
+        if any(keyword in tag_text for keyword in keywords):
+            tags.add(tag)
+    return sorted(tags)
+
+
+def _stable_feedback_values(value: Any) -> list[str]:
+    return sorted({_stable_feedback_value(item) for item in _as_list(value)} - {""})
+
+
+def _stable_feedback_value(value: Any) -> str:
+    return "_".join(str(value or "").strip().lower().replace("-", " ").split())
 
 
 def _flatten_metrics(metrics: dict[str, Any], prefix: str = "") -> dict[str, Any]:

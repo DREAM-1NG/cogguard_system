@@ -2,12 +2,25 @@
 
 from app.models.coordination_registry import CoordinationDataset, CoordinationRun
 from app.models.account_labeling import AccountBehaviorLabelRecord
+from app.models.account_labeling import AccountCorpusVersion
+from app.models.account_labeling import ChineseSocialEncoderVersion
 from app.models.account_labeling import AccountDetectionCaseRecord
 from app.models.account_labeling import AccountDetectionDatasetVersion
 from app.models.account_labeling import AccountDetectionModelActivation
 from app.models.account_labeling import AccountDetectionModelVersion
+from app.models.account_labeling import AccountFrozenHoldoutMembership
 from app.models.account_labeling import AccountLabelBatch
 from app.models.account_labeling import AccountLabelBatchItem
+from app.models.account_labeling import AccountLabelReviewAssignment
+from app.models.account_labeling import AccountModelGovernanceDecision
+from app.models.account_labeling import AccountModelEvaluationJob
+from app.models.account_labeling import AccountModelTrainingDispatchOutbox
+from app.models.account_labeling import AccountModelEvaluationRun
+from app.models.account_labeling import AccountModelTrainingEvent
+from app.models.account_labeling import AccountModelTrainingRun
+from app.models.account_labeling import AccountTrainingExportMembership
+from app.models.account_labeling import AccountMonitorSnapshot
+from app.models.account_labeling import AccountPredictionAudit
 from app.models.analysis import AnalysisModelActivation
 from app.models.analysis import AnalysisModelActivationApproval
 from app.models.analysis import AnalysisModelGovernanceDecision
@@ -49,12 +62,25 @@ __all__ = [
     "CoordinationDataset",
     "CoordinationRun",
     "AccountBehaviorLabelRecord",
+    "AccountCorpusVersion",
+    "ChineseSocialEncoderVersion",
     "AccountDetectionCaseRecord",
     "AccountDetectionDatasetVersion",
     "AccountDetectionModelActivation",
     "AccountDetectionModelVersion",
+    "AccountFrozenHoldoutMembership",
     "AccountLabelBatch",
     "AccountLabelBatchItem",
+    "AccountLabelReviewAssignment",
+    "AccountModelGovernanceDecision",
+    "AccountModelEvaluationJob",
+    "AccountModelTrainingDispatchOutbox",
+    "AccountModelEvaluationRun",
+    "AccountModelTrainingEvent",
+    "AccountModelTrainingRun",
+    "AccountTrainingExportMembership",
+    "AccountMonitorSnapshot",
+    "AccountPredictionAudit",
     "CrawlJob",
     "AnalysisModelActivation",
     "AnalysisModelActivationApproval",

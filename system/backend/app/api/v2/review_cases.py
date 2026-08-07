@@ -21,6 +21,7 @@ from app.schemas.review_case import (
     DecisionConfirmRequest,
     DecisionDraftUpsert,
     EvidenceAnnotationCreate,
+    EvidenceAssessment,
     ReviewRequestCreate,
 )
 from app.services.review_case_service import ReviewCaseConflict, ReviewCaseService
@@ -73,10 +74,22 @@ async def get_case(
 @router.get("/{case_id}/evidence")
 async def get_case_evidence(
     case_id: str,
+    assessment: EvidenceAssessment = Query(EvidenceAssessment.UNRESOLVED),
+    cursor: int = Query(0, ge=0),
+    limit: int = Query(40, ge=1, le=100),
     service: ReviewCaseService = Depends(get_review_case_service),
     _current_user: User = Depends(require_case_reader),
 ):
-    return await _read_response(lambda: service.evidence(case_id))
+    if assessment == EvidenceAssessment.UNRESOLVED and cursor == 0 and limit == 40:
+        operation = lambda: service.evidence(case_id)
+    else:
+        operation = lambda: service.evidence(
+            case_id,
+            assessment=assessment,
+            cursor=cursor,
+            limit=limit,
+        )
+    return await _read_response(operation)
 
 
 @router.post("/{case_id}/review-requests")

@@ -85,6 +85,7 @@
             :links="graphPayload?.links || []"
             :show-labels="showNodeLabels"
             :loading="loadingGraph"
+            :active="pageActive"
             @node-click="handleNodeClick"
           />
         </a-card>
@@ -336,7 +337,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref } from 'vue'
+import { computed, onActivated, onBeforeUnmount, onDeactivated, onMounted, ref } from 'vue'
 import { message } from 'ant-design-vue'
 
 import PageHeader from '@/components/PageHeader.vue'
@@ -389,8 +390,11 @@ const communityDrawerOpen = ref(false)
 const selectedNode = ref<CoordinationGraphNode | null>(null)
 const communityDetail = ref<CoordinationCommunityDetail | null>(null)
 const drawerMode = ref<'account' | 'community'>('account')
+const pageActive = ref(false)
 let pollTimer: number | null = null
 let graphReloadTimer: number | null = null
+let initialDatasetLoad: Promise<void> | null = null
+let graphRequestGeneration = 0
 
 const selectedDataset = computed(() =>
   datasets.value.find((item) => item.dataset_id === selectedDatasetId.value) || null,
@@ -514,20 +518,25 @@ async function loadLatestResult(datasetId: number) {
 }
 
 async function loadGraph() {
-  if (!selectedDatasetId.value) return
+  if (!pageActive.value || !selectedDatasetId.value) return
+  const requestGeneration = ++graphRequestGeneration
   loadingGraph.value = true
   try {
     const resp = await getCoordinationGraph(selectedDatasetId.value, {
       node_limit: nodeLimit.value,
       min_node_score: minNodeScore.value,
     })
+    if (!pageActive.value || requestGeneration !== graphRequestGeneration) return
     graphPayload.value = resp.data
   } finally {
-    loadingGraph.value = false
+    if (requestGeneration === graphRequestGeneration) {
+      loadingGraph.value = false
+    }
   }
 }
 
 function scheduleGraphReload() {
+  if (!pageActive.value) return
   if (graphReloadTimer !== null) {
     window.clearTimeout(graphReloadTimer)
   }
@@ -652,8 +661,10 @@ async function handleRerun() {
 function startPolling(runId: number) {
   stopPolling()
   const loop = async () => {
+    if (!pageActive.value) return
     try {
       const resp = await getCoordinationRun(runId)
+      if (!pageActive.value) return
       const run = resp.data
       if (datasetDetail.value?.runs?.length) {
         datasetDetail.value.runs = [run, ...datasetDetail.value.runs.filter((item: any) => item.run_id !== run.run_id)].slice(0, 10)
@@ -661,6 +672,7 @@ function startPolling(runId: number) {
       if (run.status === 'completed') {
         stopPolling()
         running.value = false
+        pollingRunId.value = null
         if (selectedDatasetId.value) {
           await Promise.all([loadDatasets(), loadDatasetDetail(selectedDatasetId.value), loadLatestResult(selectedDatasetId.value), loadGraph()])
         }
@@ -670,6 +682,7 @@ function startPolling(runId: number) {
       if (run.status === 'failed') {
         stopPolling()
         running.value = false
+        pollingRunId.value = null
         await loadDatasetDetail(selectedDatasetId.value as number)
         message.error(run.error || '协同检测模型运行失败')
         return
@@ -682,6 +695,47 @@ function startPolling(runId: number) {
     pollTimer = window.setTimeout(loop, 3000)
   }
   loop()
+}
+
+async function initializeCoordinationPage() {
+  if (initialDatasetLoad) return initialDatasetLoad
+  if (selectedDatasetId.value && datasets.value.length) return
+
+  const load = (async () => {
+    await loadDatasets()
+    if (selectedDatasetId.value) {
+      await selectDataset(selectedDatasetId.value)
+    }
+  })()
+  initialDatasetLoad = load
+  try {
+    await load
+  } finally {
+    if (initialDatasetLoad === load) {
+      initialDatasetLoad = null
+    }
+  }
+}
+
+function activateCoordinationPage() {
+  pageActive.value = true
+  if (!selectedDatasetId.value || !datasets.value.length) {
+    void initializeCoordinationPage()
+    return
+  }
+  if (running.value && pollingRunId.value !== null) {
+    startPolling(pollingRunId.value)
+  }
+}
+
+function deactivateCoordinationPage() {
+  pageActive.value = false
+  graphRequestGeneration += 1
+  stopPolling()
+  if (graphReloadTimer !== null) {
+    window.clearTimeout(graphReloadTimer)
+    graphReloadTimer = null
+  }
 }
 
 function stopPolling() {
@@ -797,17 +851,19 @@ function getPreviewExamples(examples: any[] | undefined) {
 }
 
 onBeforeUnmount(() => {
-  stopPolling()
-  if (graphReloadTimer !== null) {
-    window.clearTimeout(graphReloadTimer)
-    graphReloadTimer = null
-  }
+  deactivateCoordinationPage()
 })
 
-loadDatasets().then(async () => {
-  if (selectedDatasetId.value) {
-    await selectDataset(selectedDatasetId.value)
-  }
+onMounted(() => {
+  activateCoordinationPage()
+})
+
+onActivated(() => {
+  activateCoordinationPage()
+})
+
+onDeactivated(() => {
+  deactivateCoordinationPage()
 })
 </script>
 

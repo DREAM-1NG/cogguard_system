@@ -3,6 +3,15 @@ import type { AxiosInstance } from 'axios'
 import { message } from 'ant-design-vue'
 import router from '@/router'
 
+export function handleUnauthorizedResponse(isLoginRequest = false) {
+  localStorage.removeItem('access_token')
+  localStorage.removeItem('refresh_token')
+  if (!isLoginRequest) {
+    void router.push('/login')
+    message.error('登录已过期，请重新登录')
+  }
+}
+
 export function createApiClient(baseURL: string, timeout = 30000): AxiosInstance {
   const client = axios.create({ baseURL, timeout })
 
@@ -29,12 +38,7 @@ export function createApiClient(baseURL: string, timeout = 30000): AxiosInstance
       const requestUrl = String(error.config?.url || '')
       const isLoginRequest = requestUrl.includes('/auth/login')
       if (error.response?.status === 401) {
-        localStorage.removeItem('access_token')
-        localStorage.removeItem('refresh_token')
-        if (!isLoginRequest) {
-          router.push('/login')
-          message.error('登录已过期，请重新登录')
-        }
+        handleUnauthorizedResponse(isLoginRequest)
       } else if (!isLoginRequest) {
         const fallback = error.response?.status >= 500 ? '服务暂不可用，请稍后重试' : '网络错误'
         message.error(error.response?.data?.detail || error.response?.data?.msg || error.message || fallback)

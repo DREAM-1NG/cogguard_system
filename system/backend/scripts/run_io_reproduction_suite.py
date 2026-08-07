@@ -173,6 +173,26 @@ def parse_args() -> argparse.Namespace:
     iohunter_batch_parser.add_argument("--include-text-similarity", action="store_true", help="Enable text-similarity graph construction; off by default for processed IOHunter data")
     iohunter_batch_parser.add_argument("--max-edges-per-node", type=int, default=50, help="Per-node cap for similarity graph edges")
     iohunter_batch_parser.add_argument("--embedding-dim", type=int, default=32)
+    iohunter_batch_parser.add_argument("--include-temporal-edge-candidate", action="store_true", help="Also run the temporal-edge research candidate as a sidecar evaluation")
+    iohunter_batch_parser.add_argument(
+        "--research-candidate-only",
+        action="store_true",
+        help="Skip historical lightweight baselines and run only the non-claimable research candidate",
+    )
+    iohunter_batch_parser.add_argument("--candidate-epochs", type=int, default=8)
+    iohunter_batch_parser.add_argument("--candidate-embedding-dim", type=int, default=16)
+    iohunter_batch_parser.add_argument("--candidate-hidden-dim", type=int, default=32)
+    iohunter_batch_parser.add_argument("--candidate-lr", type=float, default=0.01)
+    iohunter_batch_parser.add_argument("--candidate-negative-ratio", type=int, default=2)
+    iohunter_batch_parser.add_argument("--candidate-device", default="cpu")
+    iohunter_batch_parser.add_argument("--candidate-early-stop-patience", type=int, default=3)
+    iohunter_batch_parser.add_argument("--candidate-seeds", nargs="*", type=int, default=[])
+    iohunter_batch_parser.add_argument(
+        "--include-temporal-edge-ablations",
+        action="store_true",
+        help="Run research-only temporal edge ablations alongside the multi-seed candidate",
+    )
+    iohunter_batch_parser.add_argument("--candidate-ablation-seeds", nargs="*", type=int, default=[])
     iohunter_batch_parser.add_argument("--seed", type=int, default=42)
     iohunter_batch_parser.add_argument("--relations", nargs="*", default=list(IOHUNTER_CANONICAL_RELATIONS))
     iohunter_batch_parser.add_argument("--continue-on-error", action="store_true")
@@ -218,6 +238,12 @@ def parse_args() -> argparse.Namespace:
     report_parser.add_argument("--output-dir", required=True, help="Directory for unified CSV/JSON/Markdown report")
     report_parser.add_argument("--lightweight-dirs", nargs="*", default=[], help="Directories containing lightweight metrics.csv")
     report_parser.add_argument("--iohunter-summary-dirs", nargs="*", default=[], help="Directories containing iohunter_metric_summary.csv")
+    report_parser.add_argument(
+        "--research-candidate-dirs",
+        nargs="*",
+        default=[],
+        help="Directories containing research candidate metrics, kept separate from user-level Detect metrics",
+    )
     return parser.parse_args()
 
 
@@ -371,6 +397,18 @@ def main() -> None:
             include_text_similarity=args.include_text_similarity,
             max_edges_per_node=args.max_edges_per_node or None,
             embedding_dim=args.embedding_dim,
+            include_temporal_edge_candidate=args.include_temporal_edge_candidate,
+            research_candidate_only=args.research_candidate_only,
+            candidate_epochs=args.candidate_epochs,
+            candidate_embedding_dim=args.candidate_embedding_dim,
+            candidate_hidden_dim=args.candidate_hidden_dim,
+            candidate_lr=args.candidate_lr,
+            candidate_negative_ratio=args.candidate_negative_ratio,
+            candidate_device=args.candidate_device,
+            candidate_early_stop_patience=args.candidate_early_stop_patience,
+            candidate_seeds=tuple(args.candidate_seeds) or None,
+            include_temporal_edge_ablations=args.include_temporal_edge_ablations,
+            candidate_ablation_seeds=tuple(args.candidate_ablation_seeds) or None,
             continue_on_error=args.continue_on_error,
         )
         print(json.dumps(result, ensure_ascii=False, indent=2))
@@ -499,6 +537,7 @@ def main() -> None:
             output_dir=Path(args.output_dir).resolve(),
             lightweight_dirs=tuple(Path(item).resolve() for item in args.lightweight_dirs),
             iohunter_summary_dirs=tuple(Path(item).resolve() for item in args.iohunter_summary_dirs),
+            research_candidate_dirs=tuple(Path(item).resolve() for item in args.research_candidate_dirs),
         )
         print(json.dumps(report, ensure_ascii=False, indent=2))
         return

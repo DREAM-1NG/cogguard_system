@@ -5,6 +5,8 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 from app.api.v1 import accounts as accounts_api
+from app.config import settings
+from app.core.analysis.query_result_cache import clear_local_query_result_cache
 from app.core.security import get_current_user
 from app.core.bot_detection import run_botrhg_detection
 from app.main import app
@@ -39,6 +41,34 @@ class FakeCollection:
 
 class FakeMongoDB(dict):
     pass
+
+
+async def no_active_account_model():
+    return None
+
+
+async def missing_active_account_model_resolution():
+    return SimpleNamespace(
+        status="missing",
+        model=None,
+        model_version="",
+        artifact_hash="",
+        pointer_revision=0,
+        reason="",
+        detail="",
+    )
+
+
+def available_active_account_model_resolution(model):
+    return SimpleNamespace(
+        status="available",
+        model=model,
+        model_version=model.model_version,
+        artifact_hash=model.artifact_hash,
+        pointer_revision=model.pointer_revision,
+        reason="",
+        detail="",
+    )
 
 
 def _post(account_id, timestamp, content, *, author_name=None, profile=None, likes=0, reposts=0):
@@ -102,6 +132,37 @@ def test_botrhg_service_filters_posts_by_event_and_platform(monkeypatch):
     fake_db = FakeMongoDB(raw_posts=raw_posts)
     monkeypatch.setattr(bot_detection_service, "get_mongo_db", lambda: fake_db)
 
+    async def active_model():
+        model = SimpleNamespace(model_version="governed-model", artifact_hash="a" * 64, pointer_revision=1)
+        return available_active_account_model_resolution(model)
+
+    monkeypatch.setattr(bot_detection_service, "get_active_account_model_resolution", active_model)
+    monkeypatch.setattr(
+        bot_detection_service,
+        "run_trained_botrhg_detection",
+        lambda _posts, _model, *, allow_legacy_fallback: {
+            "method": "BotRHG",
+            "accounts": [{"account_id": "u1"}],
+            "summary": {"account_count": 1, "bot_count": 0},
+        },
+    )
+
+    class AuditSession:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *_args):
+            return None
+
+        async def commit(self):
+            return None
+
+    async def record_audits(*_args, **_kwargs):
+        return 0
+
+    monkeypatch.setattr(bot_detection_service, "async_session_factory", AuditSession)
+    monkeypatch.setattr(bot_detection_service, "record_account_prediction_audits", record_audits)
+
     result = asyncio.run(
         bot_detection_service.detect_social_bots(
             event_id="event-1",
@@ -129,6 +190,133 @@ def test_botrhg_service_does_not_fall_back_to_rule_detection(monkeypatch):
     assert result["accounts"] == []
     assert result["summary"]["account_count"] == 0
     assert result["summary"]["post_count"] == 1
+
+
+def test_botrhg_service_returns_unavailable_without_a_governed_pointer(monkeypatch):
+    posts = [_post("u1", "2026-05-21T00:00:00+00:00", "hello")]
+    raw_posts = FakeCollection(posts)
+    monkeypatch.setattr(bot_detection_service, "get_mongo_db", lambda: FakeMongoDB(raw_posts=raw_posts))
+    monkeypatch.setattr(
+        bot_detection_service,
+        "get_active_account_model_resolution",
+        missing_active_account_model_resolution,
+    )
+    monkeypatch.setattr(
+        bot_detection_service,
+        "run_trained_botrhg_detection",
+        lambda *_args, **_kwargs: pytest.fail("legacy inference must not run without an active pointer"),
+    )
+
+    result = asyncio.run(bot_detection_service.detect_social_bots(event_id="event-1", platform="weibo"))
+
+    assert result["accounts"] == []
+    assert result["audit_status"] == "unavailable_without_active_pointer"
+    assert result["summary"]["account_count"] == 0
+
+
+def test_botrhg_service_records_runtime_failure_as_a_hard_error(monkeypatch):
+    posts = [_post("u1", "2026-05-21T00:00:00+00:00", "hello")]
+    model = SimpleNamespace(
+        model_version="governed-model",
+        artifact_hash="a" * 64,
+        pointer_revision=2,
+    )
+
+    async def active_model():
+        return available_active_account_model_resolution(model)
+
+    class AuditSession:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *_args):
+            return None
+
+        async def commit(self):
+            return None
+
+    observed = {}
+
+    async def record_error(_session, **kwargs):
+        observed.update(kwargs)
+        return 1
+
+    monkeypatch.setattr(bot_detection_service, "get_mongo_db", lambda: FakeMongoDB(raw_posts=FakeCollection(posts)))
+    monkeypatch.setattr(bot_detection_service, "get_active_account_model_resolution", active_model)
+    monkeypatch.setattr(bot_detection_service, "run_trained_botrhg_detection", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(bot_detection_service, "async_session_factory", AuditSession)
+    monkeypatch.setattr(bot_detection_service, "record_account_runtime_error", record_error, raising=False)
+    monkeypatch.setattr(
+        bot_detection_service,
+        "record_account_prediction_audits",
+        lambda *_args, **_kwargs: pytest.fail("runtime failures are not successful prediction audits"),
+    )
+
+    result = asyncio.run(bot_detection_service.detect_social_bots(event_id="event-1", platform="weibo"))
+
+    assert result["status"] == "unavailable"
+    assert result["reason"] == "account_model_runtime_unavailable"
+    assert result["audit_status"] == "runtime_hard_error"
+    assert result["audit_persisted_count"] == 1
+    assert observed["model"] is model
+    assert observed["reason"] == "account_model_runtime_load_failure"
+
+
+def test_botrhg_service_audits_an_invalid_active_pointer(monkeypatch):
+    posts = [_post("u1", "2026-05-21T00:00:00+00:00", "hello")]
+    resolution = SimpleNamespace(
+        status="invalid",
+        model=None,
+        model_version="model-invalid",
+        artifact_hash="b" * 64,
+        pointer_revision=5,
+        reason="active_model_bundle_invalid",
+        detail="bundle manifest SHA-256 mismatch",
+    )
+
+    async def invalid_resolution():
+        return resolution
+
+    class AuditSession:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *_args):
+            return None
+
+        async def commit(self):
+            return None
+
+    observed = {}
+
+    async def record_error(_session, **kwargs):
+        observed.update(kwargs)
+        return 1
+
+    monkeypatch.setattr(bot_detection_service, "get_mongo_db", lambda: FakeMongoDB(raw_posts=FakeCollection(posts)))
+    monkeypatch.setattr(
+        bot_detection_service,
+        "get_active_account_model_resolution",
+        invalid_resolution,
+        raising=False,
+    )
+    monkeypatch.setattr(
+        bot_detection_service,
+        "run_trained_botrhg_detection",
+        lambda *_args, **_kwargs: pytest.fail("invalid pointers must not reach inference"),
+    )
+    monkeypatch.setattr(bot_detection_service, "async_session_factory", AuditSession)
+    monkeypatch.setattr(bot_detection_service, "record_account_runtime_error", record_error)
+
+    result = asyncio.run(bot_detection_service.detect_social_bots(event_id="event-1", platform="weibo"))
+
+    assert result["status"] == "unavailable"
+    assert result["reason"] == "account_model_pointer_invalid"
+    assert result["pointer_failure_reason"] == "active_model_bundle_invalid"
+    assert result["audit_status"] == "runtime_hard_error"
+    assert result["audit_persisted_count"] == 1
+    assert observed["model"] is resolution
+    assert observed["reason"] == "active_model_bundle_invalid"
 
 
 def test_botrhg_api_requires_authenticated_user_and_passes_parameters(monkeypatch, authenticated_user_override):
@@ -171,7 +359,10 @@ def test_account_detail_includes_detection_result_and_recent_posts(monkeypatch, 
     raw_posts = FakeCollection(posts)
     fake_db = FakeMongoDB(raw_posts=raw_posts)
     monkeypatch.setattr(account_service, "get_mongo_db", lambda: fake_db)
-    account_service._ASSESSMENT_CACHE.clear()
+    monkeypatch.setattr(account_service, "get_active_account_model", no_active_account_model)
+    monkeypatch.setattr(settings, "ACCOUNT_MODEL_BOOTSTRAP_MODE", "local_legacy", raising=False)
+    monkeypatch.setattr(settings, "ANALYSIS_RESULT_CACHE_REDIS_ENABLED", False)
+    clear_local_query_result_cache()
     monkeypatch.setattr(
         account_service,
         "run_trained_botrhg_detection",
@@ -209,7 +400,10 @@ def test_account_profiles_project_trained_detector_conclusions_without_rule_scor
     raw_posts = FakeCollection(posts)
     fake_db = FakeMongoDB(raw_posts=raw_posts)
     monkeypatch.setattr(account_service, "get_mongo_db", lambda: fake_db)
-    account_service._ASSESSMENT_CACHE.clear()
+    monkeypatch.setattr(account_service, "get_active_account_model", no_active_account_model)
+    monkeypatch.setattr(settings, "ACCOUNT_MODEL_BOOTSTRAP_MODE", "local_legacy", raising=False)
+    monkeypatch.setattr(settings, "ANALYSIS_RESULT_CACHE_REDIS_ENABLED", False)
+    clear_local_query_result_cache()
     monkeypatch.setattr(
         account_service,
         "run_trained_botrhg_detection",
@@ -234,3 +428,43 @@ def test_account_profiles_project_trained_detector_conclusions_without_rule_scor
     assert rows[0]["assessment"] == {"level": "attention", "label": "需关注"}
     assert rows[1]["assessment"] == {"level": "normal", "label": "未见异常"}
     assert all("automation_score" not in row for row in rows)
+
+
+def test_account_profiles_reuse_versioned_detector_projection(monkeypatch):
+    posts = [_post("u1", "2026-05-21T00:00:00+00:00", "hello")]
+    raw_posts = FakeCollection(posts)
+    fake_db = FakeMongoDB(raw_posts=raw_posts)
+    detector_calls = 0
+
+    def detect_once(_posts):
+        nonlocal detector_calls
+        detector_calls += 1
+        return {"accounts": [{"account_id": "u1", "final_prediction": "human"}]}
+
+    monkeypatch.setattr(settings, "ANALYSIS_RESULT_CACHE_REDIS_ENABLED", False)
+    monkeypatch.setattr(account_service, "get_mongo_db", lambda: fake_db)
+    monkeypatch.setattr(account_service, "get_active_account_model", no_active_account_model)
+    monkeypatch.setattr(settings, "ACCOUNT_MODEL_BOOTSTRAP_MODE", "local_legacy", raising=False)
+    monkeypatch.setattr(account_service, "run_trained_botrhg_detection", detect_once)
+    clear_local_query_result_cache()
+
+    first = asyncio.run(account_service.get_account_profiles(event_id="event-1", platform="weibo"))
+    second = asyncio.run(account_service.get_account_profiles(event_id="event-1", platform="weibo"))
+
+    assert first == second
+    assert detector_calls == 1
+
+
+def test_account_profiles_do_not_use_legacy_checkpoint_when_bootstrap_is_disabled(monkeypatch):
+    async def no_active_model():
+        return None
+
+    monkeypatch.setattr(account_service, "get_active_account_model", no_active_model)
+    monkeypatch.setattr(settings, "ACCOUNT_MODEL_BOOTSTRAP_MODE", "disabled", raising=False)
+    monkeypatch.setattr(
+        account_service,
+        "run_trained_botrhg_detection",
+        lambda *_args, **_kwargs: pytest.fail("disabled bootstrap must not run legacy inference"),
+    )
+
+    assert asyncio.run(account_service._build_model_assessments([_post("u1", "2026", "text")], None)) == {}

@@ -18,6 +18,149 @@
 
 ---
 
+## 2026-08-07 Review Stream Recovery Completion
+
+- `system/frontend/src/utils/request.ts` centralizes expired-session cleanup so
+  Axios requests and the review event stream use the same login recovery path.
+- `system/frontend/src/api/reviewCases.ts` reports typed stream failures and
+  routes an HTTP 401 through that shared session handler.
+- `system/frontend/src/views/risk/index.vue` stops its activity recovery timer
+  after the typed unauthorized stream failure, preventing repeated requests
+  from an expired tab without changing the review presentation.
+- `system/frontend/tests/review-case-flow.spec.mjs` adds the regression
+  contract. It was observed failing before the implementation and passes after
+  the change. Full verification completed with backend `898 passed`, frontend
+  `27 passed`, and the optimized production build.
+- A real browser session against the static Docker delivery verified one 401,
+  login redirection, and no repeat stream request after another polling
+  interval. `performance-operations.md` records the redacted runtime results.
+
+---
+
+## 2026-08-07 Performance Projection Follow-up
+
+- system/backend/app/services/dashboard_service.py caches the immutable
+  event-scoped Mongo dashboard projection by ingestion fingerprint while
+  retaining the MySQL risk-report count and response timestamp as live values.
+- system/ops/mongo/apply_performance_indexes.js adds
+  event_id, crawl_job_id, _id indexes for posts and comments so fingerprint
+  lookups use covered event-scoped scans.
+- system/start-system.ps1 binds the host backend on 0.0.0.0 and discovers
+  wildcard listeners, allowing the static frontend container to proxy to the
+  default backend origin instead of returning a gateway error.
+- system/backend/tests/test_dashboard.py,
+  system/backend/tests/test_mongo_performance_indexes.py, and
+  system/backend/tests/test_trained_bot_detection.py add regression coverage
+  for dashboard cache invalidation, operational index definitions, and
+  disabled legacy model bootstrap.
+- Real 2026-08-07 measurements against the Trump-event corpus: dashboard
+  1.04 s cold / 30 ms warm; propagation 488 ms warm; review evidence
+  20 ms warm. The operational procedure and cold-path limitation are
+  documented in performance-operations.md.
+
+---
+
+## 2026-08-06 Versioned Analysis Result Projections
+
+- Added `system/backend/app/core/analysis/query_result_cache.py`, a process-local
+  LRU plus optional Redis cache with single-flight construction and versioned
+  keys; it never stores credentials or tokens.
+- `propagation_observation_service.py` now keys observed graph results by event
+  ingestion generation; `coordination_model_service.py` keys result, graph, and
+  community projections by completed run/archive version; `review_case_service.py`
+  keys evidence by immutable snapshot revision and annotation version.
+- `event_data.py` adds a cheap Mongo ingestion-generation fingerprint. If a
+  collection cannot provide a trustworthy marker, the service bypasses the
+  cache and preserves the original behavior.
+- Added cache and fingerprint regression tests. The first demo warmup still
+  performs the real computation; repeated warmups can reuse the projection.
+- `system/start-system.ps1` now enables warmup automatically when local demo
+  credentials are configured, with `-SkipDemoWarmup` as the explicit bypass;
+  no credential is written to the timing report.
+- Added ADR 0013 and synchronized `system/README.md` and
+  `performance-operations.md` with the new result lifecycle.
+
+## 2026-08-06 Warmup Cache Completion And Startup Repair
+
+- `system/backend/app/services/account_service.py`: moved account detector
+  conclusions from a process-only LRU into the versioned query projection
+  cache. The identity combines the normalized post corpus and active model
+  version/hash/pointer revision, so a data or model change creates a new entry.
+- `system/start-system.ps1`: fixed warmup child-script invocation by using
+  named-parameter hash splatting, and limited stale training-worker cleanup to
+  the exact backend virtualenv Celery process instead of broad command-line
+  text matching.
+- `system/frontend/tests/delivery-startup.spec.mjs` and
+  `system/backend/tests/test_botrhg_bot_detection.py`: added regression
+  coverage for named warmup dispatch, safe worker identity matching, and
+  one-build account detector reuse.
+- Real default startup was verified through an independent PowerShell process:
+  all 14 authenticated warmup requests completed with zero failures in 7.89 s
+  after Redis reuse. The report is
+  `system/output/demo-warmup/demo-warmup-20260806-184057.json`; it contains
+  timings and statuses only.
+
+---
+
+## 2026-08-05 MARO-Aligned Review Experiment Protocol
+
+- Added a deterministic, gold-free experiment protocol builder for three
+  disjoint populations: `500` paired test cases, `1,000` train-only Teacher
+  Silver candidates, and `1,000` validation tasks split equally by the two
+  semantic risk axes.
+- Added explicit population roles to the offline MultiAgent runner and
+  train/test leakage guards to the Student runner.
+- Added confidence-derived Teacher soft targets with configurable
+  `distillation_alpha`; the current local regime remains frozen-XLM-R feature
+  extraction plus multi-task head training, not end-to-end SFT.
+- Materialized the protocol at
+  `G:\CISCN\.tmp\review_maro_protocol_20260805`. The existing no-teacher
+  Student baseline on its `500` balanced test cases reached Macro-F1 `0.522933`,
+  PR-AUC `0.631870`, ECE `0.124526`, and escalation rate `0.84`; current-footer
+  MultiAgent predictions are still required for a paired result.
+- Revised protocol artifacts with `protocol_split` at
+  `G:\CISCN\.tmp\review_maro_protocol_v2_20260805`: test `500`, train-only
+  Teacher Silver candidates `1,000`, validation rule tasks `1,000`, zero
+  pairwise overlap.
+- Real `LabDaily` API test smoke completed `5/5` Judges across all five
+  datasets at `G:\CISCN\.tmp\review_maro_agent_smoke_v2_20260805`; 33 Agent
+  reports completed, 6 failed, and Judge completion was `1.0`. The run was
+  gold-free after the subsequent export fix and is a runtime smoke, not a
+  classification benchmark.
+- Real train-only Teacher smoke completed `5/5` at
+  `G:\CISCN\.tmp\review_maro_teacher_train_smoke_20260805`; `4/5` rows passed
+  `distillation_eligible` and one MultiOFF row was correctly blocked for an
+  invalid Judge stance footer. Student KD plumbing then completed `500` test
+  predictions at `G:\CISCN\.tmp\review_student_teacher_kd_smoke_20260805`,
+  with `distillation_alpha=0.75` and four datasets receiving Teacher
+  supervision in this five-case smoke.
+
+## 2026-08-04
+
+- Made the optimized delivery path the default without changing product
+  analysis or presentation behavior.
+- `system/frontend/package.json`, `vite.config.ts`,
+  `scripts/generate-delivery-preload.mjs`, and `scripts/verify-build.mjs`:
+  `npm run build` now emits the Vite manifest, generates a content-addressed
+  route preload plan, injects its delivery module into the built HTML, and
+  verifies that Three.js/graph chunks are absent from idle preload.
+- `system/start-system.ps1`: the default startup sequence is now infrastructure
+  readiness, idempotent MongoDB indexes, migrations, a non-reload backend
+  health check, and the static `production-ui` frontend. `-DevelopmentFrontend`
+  is the explicit Vite exception for source editing.
+- `system/ops/Apply-MongoPerformanceIndexes.ps1`: accepts the resolved Docker
+  executable from the startup helper so the same Docker lookup path works for
+  both operations.
+- `system/frontend/tests/delivery-preload.spec.mjs` and
+  `system/frontend/tests/delivery-startup.spec.mjs`: add regression coverage
+  for preload policy and static-first startup behavior.
+- `system/README.md`, `doc/engineering/environment-setup.md`,
+  `doc/engineering/performance-operations.md`, and
+  `doc/engineering/development-roadmap.md`: document the default command,
+  preload boundary, operational sequence, and development fallback.
+
+---
+
 ## 2026-08-04
 
 - Added non-business performance delivery and query-operation support without
@@ -364,3 +507,136 @@
 - 同切分结果：BotRHG corrected test ROC-AUC `0.6473`、macro-F1 `0.4312`；字符 TF-IDF 参考 ROC-AUC `0.7843`、macro-F1 `0.7028`。因此真实训练链路和部署推理已验证，但研究有效性和论文主张仍 blocked。
 - backend 只在 checkpoint 存在且 fingerprint 门禁通过时使用 `trained_checkpoint`，否则返回明确 `proxy` fallback；本轮不修改前端展示页面。
 - 验证：研究包 `8 passed`，相关 backend tests `8 passed`，backend 全量 `443 passed, 18 skipped`。
+## 2026-08-05
+
+- Kept the MARO-style complex review order while making Questioning responses
+  targeted, bounding per-case LLM calls, compacting prompt state, and recording
+  per-stage prompt/latency telemetry.
+- Reused provider HTTP clients and bounded external retrieval concurrency.
+- Added a deterministic active-policy frame and rejected non-human-approved
+  policies before Judge execution.
+- Removed the Teacher Silver gold-label leakage path. The Judge now emits a
+  validated machine footer that is stripped from the analyst report and stored
+  in the audit sidecar; invalid/missing predictions cannot enter distillation.
+- Added strict frozen-XLM-R full-evaluation preflight, reloadable selective-head
+  checkpoints, encoder provenance hashes, and artifact manifests. This remains
+  a frozen-feature baseline rather than end-to-end SFT.
+- Completed the strict five-dataset frozen-XLM-R baseline at
+  `G:\CISCN\.tmp\review_student_xlmr_full_v2_20260805`: test Macro-F1 is
+  `0.397016 / 0.379167 / 0.464349 / 0.424922 / 0.400998` for
+  HateXplain / MultiOFF / PHEME / mcfend / FakeSV. All checkpoint, prediction,
+  case, and encoder hashes match and checkpoint reload is verified. The result
+  proves the training-artifact loop only: defer is unsupervised, three datasets
+  abstain on every test case, and the model is not approved for deployment.
+- Restored the Chinese `反制` Judge recommendation trigger and added bilingual
+  regression coverage so post-Judge Countermeasure planning is not silently
+  skipped by mojibake.
+- Hardened the Agent/Student boundary after an independent code audit: all
+  expert and full-debate provider calls now share an atomic per-case budget,
+  Judge footer booleans require strict JSON types, Teacher Silver confidence is
+  derived only from bounded available-axis confidence, Review retrieval reads
+  the canonical `review_harmfulness` context, and the offline runner passes the
+  actual `max_agent_calls_per_case` parameter.
+- Full Review regression: 106 passed. Literature workflow completed with
+  MARO, RouteLLM, and Cascade Routing as the main verified transfer sources.
+- Unified the Event Review Case asynchronous Teacher with the shared MARO
+  runtime. An active LLM provider now runs expert analysis, QuestionReflection,
+  targeted expert response, and policy-aware Judge; provider absence, runtime
+  failure, or an incomplete chain falls back to the deterministic DAG with
+  `execution_mode`, `fallback_reason`, and `non_claimable=true`.
+- Added capability-aware execution planning. The reproducible fake-provider
+  benchmark records `2` LLM calls for simple text, `6` for claim, multimodal,
+  or propagation two-expert complex cases, and `8` for the four-expert complex
+  case, instead of the old unbounded full-chain shape.
+- Persisted feedback memory now has stable feedback IDs and conservative claim,
+  multimodal, conflict, and propagation aliases. Rule generation can no longer
+  observe held-out labels; held-out data is evaluated only after a candidate is
+  fixed and cannot affect accepted-rule selection.
+- Completed the governance-after-change strict baseline at
+  `G:\CISCN\.tmp\review_student_xlmr_full_v3_20260805` in `5,513.587` seconds.
+  It evaluated all five datasets, wrote `9,699` test predictions, passed the
+  full artifact gate, and reloaded every selective-head checkpoint. Test
+  Macro-F1 is `0.560184 / 0.379167 / 0.464349 / 0.424922 / 0.400998` for
+  HateXplain / MultiOFF / PHEME / mcfend / FakeSV.
+- The v3 result is still not deployable: Teacher Silver was not used,
+  HateXplain / MultiOFF / FakeSV have `abstain_rate=1.0`, and high-risk recall
+  is zero except for mcfend (`0.353937`). This remains a frozen-feature baseline,
+  not end-to-end SFT, knowledge distillation, or RL.
+- Verification after integration: all `test_review*.py` tests passed (`127`),
+  and the Risk/Analysis/Review Case integration selection passed (`115`).
+- Added the MARO-compatible horizontal comparison path for MultiAgents and
+  ReviewStudent. It fixes the shared `2+1` mapping, reads gold only from source
+  cases, rejects legacy or invalid Teacher Silver predictions, separates
+  classification from routing coverage, and reports strict paired metrics.
+  The Agent dataset runner now accepts a gold-free `--case-manifest`; a
+  deterministic stratified manifest builder and standalone comparison CLI were
+  added. The existing 15-case Agent smoke overlaps only three of the 9,699
+  Student test cases and is not a valid horizontal performance result.
+
+## 2026-08-05: Real Delivery Performance Verification
+
+- Started the refactor-system delivery against the already healthy local
+  MySQL, MongoDB, and Redis containers, ran migrations, and built the optimized
+  static frontend.
+- Verified the real Trump event corpus (467 posts and 25,812 comments), login,
+  backend/frontend health endpoints, static cache headers, gzip delivery, and
+  the eight MongoDB performance indexes.
+- Browser and direct API measurements are recorded in
+  `doc/engineering/performance-operations.md`. The remaining bottlenecks are
+  full evidence serialization, observed propagation graph construction, and
+  on-demand account/dashboard corpus scans; no product source was changed in
+  this measurement pass.
+
+## 2026-08-05: Authenticated Demo Warmup
+
+- Added `system/ops/Invoke-DemoWarmup.ps1`, which logs in with credentials
+  supplied through the current environment or local `.env`, discovers the
+  selected coordination dataset and review case, and consumes the same real
+  endpoints used by the dashboard, coordination, account, propagation, and
+  review pages.
+- Added `-DemoWarmup`, `-DemoWarmupStrict`, `-DemoEventId`,
+  `-DemoCaseId`, and `-DemoCoordinationDatasetId` to `system/start-system.ps1`.
+  Warmup runs after backend health and before static frontend delivery; it is
+  intentionally opt-in so normal development startup does not incur the
+  analytical cost.
+- A real-data strict run completed 14/14 requests with no failures for
+  `trump_visit_2026_05_21`, selecting coordination dataset `6` and review case
+  `case_999ca7131fca02459fc1665c`. The cold preparation took about 73 seconds;
+  the report contains only timings and statuses under
+  `system/output/demo-warmup/`.
+- An immediate repeat still took about 69.5 seconds, with coordination result
+  reads around 18.3 seconds, graph materialization around 16.2 seconds,
+  propagation around 15.3 seconds, and evidence around 4.6 seconds. The
+  comparison confirms that warmup improves readiness but does not replace
+  durable analytical result caching or payload reduction.
+- This operation warms process, MongoDB, and operating-system state only. It
+  does not constitute durable result caching, pagination, or an algorithmic
+  performance improvement. Product optimization remains ordered by evidence
+  payload reduction, propagation result caching, bounded dashboard queries,
+  background account materialization, and expired-stream handling.
+
+## 2026-08-07: Chinese Account Detection Deployment Integrity
+
+- Added per-test FastAPI dependency-override isolation. The ordered regression
+  that previously removed the shared test database override now passes, and
+  production security tests explicitly preserve the evaluator HMAC gate.
+- Completed the account-training outbox migration round trip at
+  `c3a7e5d8f914`; MySQL reports `created_at` and `updated_at` as `NOT NULL`.
+- Reused the research package's canonical account-model bundle verifier in the
+  backend. Activation and rollback now reject non-deployable bundles, source
+  schema comes from the verified manifest, and runtime encoder, feature schema,
+  and calibration must match the detector checkpoint.
+- Changed model deserialization to `weights_only=True`, added a locked one-model
+  inference cache, and rechecks the detector hash immediately before runtime
+  construction.
+- Verified `156` account-detection backend tests and `57` standalone research
+  package tests. The complete backend run is `805 passed, 6 failed`; the six
+  remaining failures are in legacy Coordination dataset fixtures, crawl job
+  visibility, and a Review test double, not the account-detection module.
+- Restarted the refactor backend on port `8001` and the dedicated
+  `account_training` worker. A real Trump/Weibo request with no Active Pointer
+  returned `unavailable_without_active_pointer` and did not invoke a fallback
+  detector.
+- Deployment acceptance remains incomplete: the registered corpus has 415,686
+  qualified tokens, no 200-label approved detector corpus exists, and the
+  backend venv is CPU-only despite the available RTX 4060 8 GB GPU.

@@ -1,5 +1,7 @@
 import asyncio
 
+from app.config import settings
+from app.core.analysis.query_result_cache import clear_local_query_result_cache
 from app.api.v1 import dashboard as dashboard_api
 from app.services import dashboard_service
 
@@ -24,6 +26,23 @@ class FakeCollection:
 
 class FakeMongoDB(dict):
     pass
+
+
+class VersionedFakeCollection(FakeCollection):
+    def __init__(self, rows, *, crawl_job_id: int):
+        super().__init__(rows)
+        self.crawl_job_id = crawl_job_id
+
+    async def count_documents(self, query):
+        return len(self.rows)
+
+    async def find_one(self, query, projection, sort=None):
+        if not self.rows:
+            return None
+        return {
+            "_id": self.rows[-1].get("post_id") or self.rows[-1].get("comment_id"),
+            "crawl_job_id": self.crawl_job_id,
+        }
 
 
 def _post(event_id, platform, post_id, author_name, timestamp, ip_location=None):
@@ -107,6 +126,44 @@ def test_dashboard_overview_falls_back_to_first_geolocated_post(monkeypatch):
     assert event_point["location_source_author"] == "次帖账号"
     assert event_point["ip_location"] == "广东"
     assert event_point["resolved"] is True
+
+
+def test_dashboard_overview_reuses_mongo_projection_until_ingestion_changes(monkeypatch):
+    posts = [_post("event-1", "weibo", "p1", "首帖账号", "2026-05-21T00:00:00+00:00", "北京")]
+    comments = [{"event_id": "event-1", "platform": "weibo", "comment_id": "c1"}]
+    raw_posts = VersionedFakeCollection(posts, crawl_job_id=10)
+    raw_comments = VersionedFakeCollection(comments, crawl_job_id=10)
+    fake_db = FakeMongoDB(raw_posts=raw_posts, raw_comments=raw_comments)
+    post_loads = 0
+    comment_loads = 0
+
+    async def load_posts(*args, **kwargs):
+        nonlocal post_loads
+        post_loads += 1
+        return posts
+
+    async def load_comments(*args, **kwargs):
+        nonlocal comment_loads
+        comment_loads += 1
+        return comments
+
+    monkeypatch.setattr(settings, "ANALYSIS_RESULT_CACHE_REDIS_ENABLED", False)
+    clear_local_query_result_cache()
+    monkeypatch.setattr(dashboard_service, "get_mongo_db", lambda: fake_db)
+    monkeypatch.setattr(dashboard_service, "load_event_posts", load_posts)
+    monkeypatch.setattr(dashboard_service, "load_event_comments", load_comments)
+
+    asyncio.run(dashboard_service.get_dashboard_overview(event_id="event-1", db=None))
+    asyncio.run(dashboard_service.get_dashboard_overview(event_id="event-1", db=None))
+
+    assert post_loads == 1
+    assert comment_loads == 1
+
+    raw_posts.crawl_job_id = 11
+    asyncio.run(dashboard_service.get_dashboard_overview(event_id="event-1", db=None))
+
+    assert post_loads == 2
+    assert comment_loads == 2
 
 
 def test_dashboard_api_passes_event_id_to_service(monkeypatch):

@@ -1064,6 +1064,90 @@ def test_iohunter_lightweight_batch_runs_multiple_processed_datasets(tmp_path: P
     assert "text_similarity" not in russia_summary["unmasking"]["graph_summaries"]
 
 
+def test_iohunter_lightweight_batch_can_include_temporal_edge_candidate(tmp_path: Path):
+    processed_root = tmp_path / "processed"
+    dataset_dir = processed_root / "russia"
+    dataset_dir.mkdir(parents=True)
+    co_url = nx.Graph()
+    co_url.add_edge(0, 1, weight=1.0)
+    co_rt = nx.Graph()
+    co_rt.add_edge(1, 2, weight=0.8)
+    dataset = {
+        "graph": nx.compose(co_url, co_rt),
+        "coURL": co_url,
+        "coRT": co_rt,
+        "hashSeq": nx.Graph(),
+        "fastRT": nx.Graph(),
+        "tweetSim": nx.Graph(),
+        "labels": np.array([1, 0, 1]),
+        "splits": {},
+    }
+    with (dataset_dir / "0.7_datasets.pkl").open("wb") as file_handle:
+        pickle.dump(dataset, file_handle)
+
+    result = run_iohunter_lightweight_batch(
+        processed_root,
+        output_dir=tmp_path / "batch",
+        datasets=("russia",),
+        max_edges_per_relation=5,
+        seed=7,
+        include_temporal_edge_candidate=True,
+        candidate_epochs=1,
+        candidate_seeds=(7,),
+        include_temporal_edge_ablations=True,
+        candidate_ablation_seeds=(7,),
+    )
+
+    dataset_result = result["datasets"]["russia"]
+    candidate_result = dataset_result["research_candidate"]
+
+    assert result["failed"] == 0
+    assert Path(candidate_result["summary_json"]).exists()
+    assert Path(candidate_result["metrics_csv"]).exists()
+    assert candidate_result["evaluation_mode"] == "multi_seed"
+    assert candidate_result["ablation_status"] == "ok"
+    assert any(
+        row["source"] == "research_candidate_offline_iohunter" and row["dataset"] == "russia"
+        for row in result["report"]["rows"]
+    )
+
+
+def test_iohunter_batch_can_run_research_candidate_only(tmp_path: Path):
+    processed_root = tmp_path / "processed"
+    dataset_dir = processed_root / "russia"
+    dataset_dir.mkdir(parents=True)
+    graph = nx.Graph()
+    graph.add_edges_from([(0, 1), (1, 2), (2, 3), (3, 0)])
+    dataset = {
+        "graph": graph,
+        "coURL": graph,
+        "coRT": nx.Graph(),
+        "hashSeq": nx.Graph(),
+        "fastRT": nx.Graph(),
+        "tweetSim": nx.Graph(),
+        "labels": np.array([1, 0, 1, 0]),
+        "splits": {},
+    }
+    with (dataset_dir / "0.7_datasets.pkl").open("wb") as file_handle:
+        pickle.dump(dataset, file_handle)
+
+    result = run_iohunter_lightweight_batch(
+        processed_root,
+        output_dir=tmp_path / "batch",
+        datasets=("russia",),
+        seed=7,
+        include_temporal_edge_candidate=True,
+        research_candidate_only=True,
+    )
+
+    dataset_result = result["datasets"]["russia"]
+    assert result["research_candidate_only"] is True
+    assert result["failed"] == 0
+    assert not (Path(dataset_result["output_dir"]) / "metrics.csv").exists()
+    assert Path(dataset_result["research_candidate"]["metrics_csv"]).exists()
+    assert all(row["source"] == "research_candidate_offline_iohunter" for row in result["report"]["rows"])
+
+
 def test_coordination_discover_comparison_report_merges_lightweight_and_official_metrics(tmp_path: Path):
     lightweight_dir = tmp_path / "lightweight"
     lightweight_dir.mkdir()
@@ -1097,6 +1181,57 @@ def test_coordination_discover_comparison_report_merges_lightweight_and_official
     assert Path(report["markdown"]).exists()
     assert any(row["method"] == "dyna_colm_gnn_prototype:full" and row["primary_metric"] == 0.746667 for row in report["rows"])
     assert any(row["method"] == "MultiModalGNN_CrossAttention" and row["macro_f1"] == 0.61 for row in report["rows"])
+
+
+def test_coordination_discover_comparison_report_merges_research_candidate_metrics(tmp_path: Path):
+    lightweight_dir = tmp_path / "lightweight"
+    lightweight_dir.mkdir()
+    (lightweight_dir / "metrics.csv").write_text(
+        "setting,family,method,scope,precision,recall,f1,auc,support,positive_count,notes\n"
+        "detect,ours,dyna_colm_gnn_prototype:full,user,0.8,0.7,0.746667,0.9,10,4,numpy\n",
+        encoding="utf-8",
+    )
+    (lightweight_dir / "summary.json").write_text(
+        '{"iohunter_conversion":{"dataset":"russia","row_count":20,"account_count":10}}',
+        encoding="utf-8",
+    )
+    official_dir = tmp_path / "official"
+    official_dir.mkdir()
+    (official_dir / "iohunter_metric_summary.csv").write_text(
+        "family,method,setting,dataset,gnn,undersampling,split,metric,run_count,mean,std\n"
+        "iohunter,MultiModalGNN_CrossAttention,supervised,russia,sage,,TEST,f1_macro,2,0.61,0.02\n"
+        "iohunter,MultiModalGNN_CrossAttention,supervised,russia,sage,,TEST,accuracy,2,0.72,0.03\n",
+        encoding="utf-8",
+    )
+    candidate_dir = tmp_path / "candidate"
+    candidate_dir.mkdir()
+    (candidate_dir / "temporal_edge_candidate_metrics.csv").write_text(
+        "source,setting,family,method,dataset,scope,split,run_count,edge_max_f1,edge_roc_auc,edge_auprc,edge_ece,system_baseline_edge_auprc,observed_edge_upper_bound_auprc,degree_time_prior_edge_auprc,candidate_beats_system_baseline,claim_blocked_reason,primary_metric_name,evaluation_type,label_provenance,time_provenance,notes\n"
+        "research_candidate_offline_iohunter,discover_candidate_eval,research,temporal_history_edge_mlp_v2,russia,account_pair,TEST,1,0.640000,0.730000,0.710000,0.120000,0.330000,1.000000,0.280000,true,,edge_auprc,self_supervised_proxy,observed_edges_plus_matched_negatives,processed_graph_edge_order_proxy,research_candidate_non_claimable;objective=direct_account_pair_coordination\n",
+        encoding="utf-8",
+    )
+
+    report = build_coordination_discover_comparison_report(
+        output_dir=tmp_path / "report",
+        lightweight_dirs=(lightweight_dir,),
+        iohunter_summary_dirs=(official_dir,),
+        research_candidate_dirs=(candidate_dir,),
+    )
+
+    assert report["row_count"] == 3
+    candidate_row = next(row for row in report["rows"] if row["source"] == "research_candidate_offline_iohunter")
+    assert candidate_row["macro_f1"] is None
+    assert candidate_row["auc"] is None
+    assert candidate_row["edge_max_f1"] == 0.64
+    assert candidate_row["edge_roc_auc"] == 0.73
+    assert candidate_row["edge_auprc"] == 0.71
+    assert candidate_row["edge_ece"] == 0.12
+    assert candidate_row["system_baseline_edge_auprc"] == 0.33
+    assert candidate_row["observed_edge_upper_bound_auprc"] == 1.0
+    assert candidate_row["degree_time_prior_edge_auprc"] == 0.28
+    assert candidate_row["candidate_beats_system_baseline"] is True
+    assert candidate_row["claim_blocked_reason"] == ""
+    assert candidate_row["evaluation_type"] == "self_supervised_proxy"
 
 
 def test_write_iohunter_event_table_from_pickle(tmp_path: Path):
@@ -1519,6 +1654,47 @@ def test_cli_parse_discover_detect_ablation_commands(monkeypatch):
     assert args.structure_filter_use_weights is True
     # The parser keeps deprecated flags for backward compatibility, but the
     # Discover implementation ignores them and stays on the stable full-graph path.
+
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "run_io_reproduction_suite.py",
+            "iohunter-lightweight-batch",
+            "--processed-root",
+            "processed",
+            "--output-dir",
+            "out",
+            "--include-temporal-edge-candidate",
+            "--candidate-epochs",
+            "40",
+            "--candidate-embedding-dim",
+            "32",
+            "--candidate-hidden-dim",
+            "64",
+            "--candidate-lr",
+            "0.005",
+            "--candidate-negative-ratio",
+            "2",
+            "--candidate-seeds",
+            "42",
+            "43",
+            "--include-temporal-edge-ablations",
+            "--candidate-ablation-seeds",
+            "42",
+        ],
+    )
+
+    args = parse_args()
+    assert args.command == "iohunter-lightweight-batch"
+    assert args.include_temporal_edge_candidate is True
+    assert args.candidate_epochs == 40
+    assert args.candidate_embedding_dim == 32
+    assert args.candidate_hidden_dim == 64
+    assert args.candidate_lr == 0.005
+    assert args.candidate_negative_ratio == 2
+    assert tuple(args.candidate_seeds) == (42, 43)
+    assert args.include_temporal_edge_ablations is True
+    assert tuple(args.candidate_ablation_seeds) == (42,)
 
     monkeypatch.setattr(
         "sys.argv",

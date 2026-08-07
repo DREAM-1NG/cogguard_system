@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from typing import Any
 import asyncio
 import random
+import re
 
 import httpx
 
@@ -35,6 +36,9 @@ class OpenAICompatibleConfig:
     require_vision: bool = False
     max_retries: int = 2
     retry_backoff_seconds: float = 2.0
+    # ``None`` preserves the application-level LLM_CACHE_MODE. Performance
+    # experiments pass ``False`` so a replayed response cannot hide latency.
+    cache_enabled: bool | None = None
 
 
 class OpenAICompatibleAgentProvider:
@@ -49,6 +53,7 @@ class OpenAICompatibleAgentProvider:
         self.config = config
         self._client = client
         self._owns_client = client is None
+        self.last_call_telemetry: dict[str, Any] = {}
 
     async def aclose(self) -> None:
         """Close the client only when this provider created it."""
@@ -83,43 +88,90 @@ class OpenAICompatibleAgentProvider:
                 "messages": _openai_messages(system_prompt, user_prompt, input_bundle),
                 "temperature": 0.2,
             }
-        # Replay a previously recorded real response when one matches, so a
-        # walkthrough survives a slow or unreachable upstream.
-        cache_key = llm_cache.response_cache_key(
-            channel=f"review.agent.{agent_name}",
-            model=payload_model,
-            payload=payload,
-        )
-        cached = llm_cache.load_cached_response(cache_key)
-        if cached is not None:
-            return cached
+        use_cache = self.config.cache_enabled
+        if use_cache is None:
+            use_cache = llm_cache.cache_mode() != "off"
+        cache_key = None
+        cache_status = "disabled"
+        if use_cache:
+            cache_key = llm_cache.response_cache_key(
+                channel=f"review.agent.{agent_name}",
+                model=payload_model,
+                payload=payload,
+            )
+            cached = llm_cache.load_cached_response(cache_key)
+            if cached is not None:
+                self.last_call_telemetry = {
+                    "cache_hit": True,
+                    "cache_status": "hit",
+                    "attempt_count": 0,
+                    "retry_count": 0,
+                    "http_status": None,
+                    "error_class": None,
+                    "usage_available": False,
+                    "input_tokens": None,
+                    "output_tokens": None,
+                    "total_tokens": None,
+                }
+                return cached
+            cache_status = "miss"
 
         headers = {"Authorization": f"Bearer {self.config.api_key}"}
         data = None
         last_error: Exception | None = None
+        http_status: int | None = None
+        error_class: str | None = None
         max_attempts = max(1, int(self.config.max_retries or 0) + 1)
         for attempt in range(1, max_attempts + 1):
             try:
                 if self._client is None:
                     self._client = httpx.AsyncClient(timeout=self.config.timeout_seconds)
                 response = await self._client.post(url, headers=headers, json=payload)
+                http_status = response.status_code
                 response.raise_for_status()
                 data = response.json()
                 break
             except httpx.HTTPStatusError as exc:
                 last_error = exc
                 status_code = exc.response.status_code if exc.response is not None else None
+                http_status = status_code
+                error_class = type(exc).__name__
                 if attempt >= max_attempts or not _should_retry_status(status_code):
-                    body = exc.response.text[:1000] if exc.response is not None else ""
+                    body = _redact_provider_detail(
+                        exc.response.text[:1000] if exc.response is not None else "",
+                        self.config.api_key,
+                    )
+                    self.last_call_telemetry = _provider_error_telemetry(
+                        attempt=attempt,
+                        http_status=http_status,
+                        error_class=error_class,
+                        cache_hit=False,
+                        cache_status=cache_status,
+                    )
                     raise RuntimeError(f"{agent_name} provider HTTP {status_code if status_code else 'error'}: {body}") from exc
             except Exception as exc:
                 last_error = exc
+                error_class = type(exc).__name__
                 if attempt >= max_attempts or not _should_retry_exception(exc):
-                    detail = str(exc) or exc.__class__.__name__
+                    detail = _redact_provider_detail(str(exc) or exc.__class__.__name__, self.config.api_key)
+                    self.last_call_telemetry = _provider_error_telemetry(
+                        attempt=attempt,
+                        http_status=http_status,
+                        error_class=error_class,
+                        cache_hit=False,
+                        cache_status=cache_status,
+                    )
                     raise RuntimeError(f"{agent_name} provider request failed: {detail}") from exc
             await asyncio.sleep(_retry_delay_seconds(self.config.retry_backoff_seconds, attempt))
         if data is None:
             detail = str(last_error) if last_error is not None else "unknown provider error"
+            self.last_call_telemetry = _provider_error_telemetry(
+                attempt=max_attempts,
+                http_status=http_status,
+                error_class=error_class or "UnknownProviderError",
+                cache_hit=False,
+                cache_status=cache_status,
+            )
             raise RuntimeError(f"{agent_name} provider request failed: {detail}")
         if wire_api == "responses":
             text = _extract_responses_text(data, agent_name)
@@ -136,12 +188,23 @@ class OpenAICompatibleAgentProvider:
             else:
                 raise RuntimeError(f"{agent_name} returned an empty report")
 
-        llm_cache.record_response(
-            cache_key,
-            text,
-            channel=f"review.agent.{agent_name}",
-            model=payload_model,
-        )
+        usage = _usage_telemetry(data)
+        self.last_call_telemetry = {
+            "cache_hit": False,
+            "cache_status": cache_status,
+            "attempt_count": attempt,
+            "retry_count": max(0, attempt - 1),
+            "http_status": http_status,
+            "error_class": None,
+            **usage,
+        }
+        if use_cache and cache_key is not None:
+            llm_cache.record_response(
+                cache_key,
+                text,
+                channel=f"review.agent.{agent_name}",
+                model=payload_model,
+            )
         return text
 
 
@@ -231,6 +294,14 @@ def _normalize_wire_api(value: str) -> str:
     raise RuntimeError(f"Unsupported LLM_API_WIRE: {value}")
 
 
+def _redact_provider_detail(detail: str, api_key: str | None = None) -> str:
+    text = str(detail or "")
+    if api_key:
+        text = text.replace(api_key, "[REDACTED_API_KEY]")
+    # Some gateways echo a masked key, so redact credential-shaped fragments too.
+    return re.sub(r"(?i)sk-[A-Za-z0-9_.*-]{6,}", "sk-[REDACTED]", text)
+
+
 def _should_retry_status(status_code: int | None) -> bool:
     return status_code in {408, 409, 429, 500, 502, 503, 504}
 
@@ -243,6 +314,53 @@ def _retry_delay_seconds(base_delay: float, attempt: int) -> float:
     base = max(0.25, float(base_delay or 0.0))
     jitter = random.uniform(0.0, 0.35)
     return min(8.0, base * attempt) + jitter
+
+
+def _usage_telemetry(data: dict[str, Any]) -> dict[str, Any]:
+    usage = data.get("usage") if isinstance(data, dict) else None
+    if not isinstance(usage, dict):
+        return {
+            "usage_available": False,
+            "input_tokens": None,
+            "output_tokens": None,
+            "total_tokens": None,
+        }
+    input_tokens = usage.get("input_tokens", usage.get("prompt_tokens"))
+    output_tokens = usage.get("output_tokens", usage.get("completion_tokens"))
+    total_tokens = usage.get("total_tokens")
+    if total_tokens is None and input_tokens is not None and output_tokens is not None:
+        try:
+            total_tokens = int(input_tokens) + int(output_tokens)
+        except (TypeError, ValueError):
+            total_tokens = None
+    return {
+        "usage_available": any(value is not None for value in (input_tokens, output_tokens, total_tokens)),
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "total_tokens": total_tokens,
+    }
+
+
+def _provider_error_telemetry(
+    *,
+    attempt: int,
+    http_status: int | None,
+    error_class: str | None,
+    cache_hit: bool,
+    cache_status: str,
+) -> dict[str, Any]:
+    return {
+        "cache_hit": cache_hit,
+        "cache_status": cache_status,
+        "attempt_count": attempt,
+        "retry_count": max(0, attempt - 1),
+        "http_status": http_status,
+        "error_class": error_class,
+        "usage_available": False,
+        "input_tokens": None,
+        "output_tokens": None,
+        "total_tokens": None,
+    }
 
 
 def _as_list(value: Any) -> list[Any]:

@@ -12,6 +12,7 @@ from research.social_bot_detection.contracts import DatasetManifest, ModelConfig
 from research.social_bot_detection.correction import ResidualCorrection
 from research.social_bot_detection.strict_contracts import StrictAccountRecord, StrictCorpus, StrictFeatureSchema, StrictGraph, StrictRelationEdge
 from research.social_bot_detection.strict_model import PropertyEncoder
+from research.social_bot_detection.model_bundle import load_account_model_bundle
 
 
 class DummyTextEncoder(nn.Module):
@@ -131,6 +132,9 @@ def test_strict_training_runs_with_dataset_specific_corpus(monkeypatch, tmp_path
     assert payload["text_encoder_finetuned"] is False
     assert payload["graph_available"] is True
     assert payload["base_config"]["input_dim"] > payload["text_hidden_size"]
+    bundle_manifest = load_account_model_bundle(report["artifact_paths"]["model_bundle_manifest_path"])
+    assert bundle_manifest["source_schema"] == "cogguard.botrhg.strict.v1"
+    assert bundle_manifest["deployment"] == {"eligible": False, "status": "legacy_non_deployable"}
 
 
 def _make_corpus() -> StrictCorpus:

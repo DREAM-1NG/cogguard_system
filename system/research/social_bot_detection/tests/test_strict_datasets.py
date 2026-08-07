@@ -32,3 +32,14 @@ def test_strict_social_loader_dispatches_supported_dataset_names(monkeypatch, tm
 def test_strict_social_loader_rejects_unknown_dataset(tmp_path):
     with pytest.raises(ValueError, match="unsupported strict social-bot dataset"):
         strict_datasets.load_strict_social_corpus("unknown", tmp_path)
+
+
+def test_dataset_categorical_features_never_include_source_or_dataset_labels():
+    features = strict_datasets._categorical_features(
+        {"verified": True, "lang": "en"},
+        "social_spambots_1",
+    )
+
+    assert features["verified"] == "true"
+    assert "source_label" not in features
+    assert all("label" not in name for name in features)

@@ -18,6 +18,7 @@ class TextEncoderConfig:
     batch_size: int = 8
     max_chunks_per_account: int = 8
     trainable: bool = False
+    initialize_from_config: bool = False
 
 
 class TextEncoder(nn.Module):
@@ -35,11 +36,15 @@ class TextEncoder(nn.Module):
         model_path = Path(config.model_path)
         if not model_path.exists():
             raise FileNotFoundError(f"local text model does not exist: {model_path}")
-        from transformers import AutoModel, AutoTokenizer
+        from transformers import AutoConfig, AutoModel, AutoTokenizer
 
         self.config = config
         self.tokenizer = AutoTokenizer.from_pretrained(model_path, local_files_only=True)
-        self.encoder = AutoModel.from_pretrained(model_path, local_files_only=True)
+        if config.initialize_from_config:
+            model_config = AutoConfig.from_pretrained(model_path, local_files_only=True)
+            self.encoder = AutoModel.from_config(model_config)
+        else:
+            self.encoder = AutoModel.from_pretrained(model_path, local_files_only=True)
         self.hidden_size = int(self.encoder.config.hidden_size)
         if not config.trainable:
             for parameter in self.encoder.parameters():

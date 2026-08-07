@@ -1,85 +1,115 @@
 # Chinese Account Detection Active Learning Loop
 
-Updated: 2026-08-04
+Updated: 2026-08-05
 
-## Positioning
+## Scope And Claim Boundary
 
-CogGuard's Chinese account detection is an analyst-in-the-loop active-learning system for collected Chinese social-media accounts. The model ranks account cases for review; analysts provide observable behavior labels; only approved or adjudicated labels enter a versioned corpus; candidate models activate only after leakage-safe evaluation and governance approval.
+CogGuard's Chinese account detection is an analyst-governed learning loop for
+collected Chinese social-media accounts. It is not an automatic identity,
+nationality, intent, or attribution system, and it does not turn model output
+into a gold label.
 
-The official method name is **Chinese Account Detection Active Learning Loop**. Do not describe it as an automatic bot label generator, a pseudo-label pipeline, or a universal Chinese social bot detector.
+The current supervised target is binary account automation detection:
 
-## Why The Label Set Is Small
+- `human` is exported as `non_bot` for supervised training.
+- `bot` is exported as `bot` for supervised training.
+- `insufficient_evidence` is a review abstention outcome. It is excluded from
+  the binary training loss and routed to additional evidence collection.
 
-The supervised target is account-level social-bot detection with abstention:
+Coordination, spam, template reuse, OOD, temporal bursts, and disagreement are
+evidence or acquisition signals. They are not extra target labels.
 
-- `human` maps to training target `non_bot`.
-- `bot` maps to training target `bot`.
-- `insufficient_evidence` maps to training target `abstain`.
+## Implemented Contract
 
-The `human`/`bot` boundary follows the account-level bot detection framing in Ferrara et al. 2016, Varol et al. 2017, Cresci et al. 2017, DABot 2021, and TwiBot benchmark practice. The `insufficient_evidence` option is grounded in selective classification and abstention literature, not in DABot or TwiBot. Coordination, spam behavior, repeated templates, institution/media context, temporal bursts, OOD, and disagreement are evidence or acquisition signals. They are not supervised labels unless a separate annotation guide, agreement study, and dataset support that new task.
+The repository now contains the following capability boundaries. Their
+existence does not mean that a production model has passed deployment
+acceptance.
 
-The system explicitly rejects identity, nationality, ideology, intent, and attribution labels.
+| Stage | Implemented boundary | Current status |
+| --- | --- | --- |
+| Case and labels | Account case fingerprints, label batches, evidence-bound labels, approval records, corpus-version records, and frozen-holdout records. | Code and schema migration exist. The label-service conversion to a fully append-only `supersedes_id` chain is still incomplete. |
+| Cold-start acquisition | Local Chinese MLM ALPS surprisal vectors followed by Core-set k-center selection. | Implemented and fail-closed. A missing `ACCOUNT_ACQUISITION_TEXT_MODEL_PATH` prevents batch creation. |
+| Warm-start acquisition | Calibrated uncertainty with BotRHG classifier-gradient BADGE embeddings. | Implemented and fail-closed. Uncalibrated probability or missing BADGE payload prevents batch creation. |
+| DAPT | Chinese-text filtering, exact deduplication, 20% historical replay, local-only MLM training, and resumable checkpoints. | Implemented as a research runtime. It is not yet connected to a real Mongo corpus or a completed 500,000-token run. |
+| Detector evaluation | Account/event/community-disjoint, time-forward, platform-stratified, and frozen-holdout protocol reports. | Implemented as a record-derived gate. No signed real-data report is available yet. |
+| Model artifact | `cogguard.account-model-bundle.v1` with encoder, detector, feature schema, calibration, metrics, data fingerprints, and per-file SHA-256 checks. | Implemented and tested for local integrity checks. No accepted deployable bundle has been produced. |
+| Training and activation | Persistent training-run records, Celery `account_training` entry points, candidate registration, Active Pointer lookup, and audited rollback boundary. | Initial implementation exists. Real migration, worker-loss recovery, shadow execution, activation, and rollback rehearsal remain open. |
+| Monitoring | Latency, calibration, coverage, abstention, false-positive load, PSI drift, and hard-error calculations. | Pure computation layer exists; persistence and monitoring-summary API are not complete. |
 
 ## Closed Loop
 
-1. **Account Detection Case** builds one platform-scoped case from collected posts, evidence ids, provenance, and a stable fingerprint.
-2. **Account Label Batch** selects unlabeled cases with a fixed annotation budget and a random audit slice.
-3. **Account Detection Label** records analyst-provided `human`, `bot`, or `insufficient_evidence` plus evidence post ids, reason tags, confidence, and case fingerprint.
-4. **Approved Account Corpus** exports only approved or adjudicated labels into JSONL with a manifest, data fingerprint, and dataset card.
-5. **Shadow Account Model** trains from a versioned approved corpus through `approved_account_corpus` and never from model predictions.
-6. **Model Activation** requires persisted metrics, a registered dataset fingerprint, verified checkpoint bytes, frozen holdout, time-forward evaluation, platform stratification, community-disjoint checks, calibration, false-positive burden review, shadow run, and active administrator approval.
+1. **Account Detection Case** records collected posts, provenance, evidence
+   identifiers, and a stable case fingerprint.
+2. **Account Label Batch** selects unlabeled cases under a fixed budget. Cold
+   start uses ALPS plus Core-set; warm start uses calibrated uncertainty plus
+   BADGE. Neither path silently substitutes weighted scores or hashed text
+   vectors.
+3. **Account Detection Label** records an analyst decision, the fingerprint
+   observed by the analyst, evidence identifiers, confidence, and reason tags.
+4. **Approved Account Corpus** exports only eligible approved/adjudicated
+   `human` and `bot` records with a dataset manifest and data fingerprint.
+5. **Chinese Social Encoder** performs domain-adaptive masked-language-model
+   training (DAPT) on a versioned Chinese corpus. The default design is 15%
+   masking, sequence length 128, micro-batch 2, accumulation 32, mixed
+   precision, gradient checkpointing, and 20% historical replay.
+6. **Shadow Account Model** trains a BotRHG detector bound to one encoder
+   version and an explicit feature allowlist. `source_label` and other label
+   proxies are excluded from the strict feature path.
+7. **Evaluation And Bundle** computes the leakage-safe split report, writes a
+   verified model bundle, and records calibration and deployment eligibility.
+   The evaluator HMAC manifest binds the candidate version, artifact hash,
+   evaluation run ID, protocol fingerprint, and raw audit fingerprint;
+   candidate-provided ECE or calibration fields are not operational evidence.
+8. **Activation Or Rollback** must reverify the artifact, persisted evaluator
+   manifest HMAC, audit/identity fingerprints, current gates, and relevant
+   approvals under a row lock before atomically moving the MySQL Active Pointer.
+   Rollback can restore only a previously governed active or retired model with
+   persisted activation history, never an arbitrary approved candidate.
 
-## Cold Start And Warm Start
+## Method Rationale
 
-**Cold start** means no reliable calibrated Chinese account ranker exists. The selector must not use classifier uncertainty because there is no trustworthy posterior. If language-model surprisal is available, the selector uses surprisal plus diversity. If not, it records a coverage/diversity/random-audit fallback. This is the ALPS-style initialization regime.
-
-**Warm start** means a versioned and calibrated account model exists. Only then may the selector use uncertainty, model disagreement, OOD score, graph representativeness, and representation diversity. These scores rank human review priority only; they never create labels.
-
-Every batch manifest records `model_state`, `ranker_status`, `surprisal_source`, `diversity_source`, and `acquisition_policy` so experiments can separate cold-start and warm-start regimes.
-
-## Literature-Supported Decisions
-
-| Decision | Primary support | Implementation consequence |
+| Decision | Evidence | System consequence |
 | --- | --- | --- |
-| Use bot/human with abstention, not invented behavior classes. | Ferrara et al. 2016; Varol et al. 2017; Cresci et al. 2017; Geifman and El-Yaniv 2017. | `AccountBehaviorLabel` allows only `human`, `bot`, `insufficient_evidence`; reason tags carry richer evidence. |
-| Keep Weibo active learning but avoid DABot-style hand-feature claims as the main model claim. | Wu et al. 2021 DABot. | The system transfers the human-labeling loop and governance, not a large manual feature stack as a novelty claim. |
-| Use surprisal/diversity before model uncertainty is calibrated. | Yuan et al. 2020 ALPS; Sener and Savarese 2018. | `cold_start_surprisal_diversity` or `cold_start_coverage_diversity` is selected when no calibrated ranker exists. |
-| Compare warm-start acquisition to simple baselines before adding expensive methods. | Ein-Dor et al. 2020; BADGE 2020; BatchBALD 2019; Contrastive Active Learning 2021; Schroeder et al. 2022; active-learning transferability and fragility studies. | Warm-start consumes calibrated uncertainty plus optional disagreement/OOD/representativeness/embedding signals; gradient and committee acquisition remain future extensions. |
-| Keep active-learning deployment claims conservative. | Lowell et al. 2019 Practical Obstacles; active-learning transferability and fragility studies. | Equal-budget efficiency reports against random and simple baselines are required before claiming acquisition superiority. |
-| Treat analyst labels as review records, not automatic truth. | Artstein and Poesio 2008; Passonneau and Carpenter 2014; ACTOR 2023; ACAL 2024. | Labels store analyst id, confidence, evidence ids, adjudicator id, and status. |
-| Require calibration, abstention, and OOD boundaries before activation. | Guo et al. 2017; Hendrycks and Gimpel 2017; Ovadia et al. 2019; selective classification. | Uncalibrated probabilities cannot trigger warm-start uncertainty; candidate models need ECE and deployment gates. |
-| Avoid graph and temporal leakage in account-level evaluation. | OGB; TGB; Pitfalls of GNN Evaluation; link-prediction leakage studies. | Frozen holdout and active-pool leakage manifests are required; community-disjoint checks remain an activation gate. |
-| Maintain dataset/model documentation. | Datasheets for Datasets; Data Statements for NLP; Model Cards; Human-in-the-loop ML survey; Croissant metadata as a future target. | Approved corpus export writes JSONL, manifest, dataset card, fingerprint, and registered dataset version. |
+| Human/bot with explicit abstention | Ferrara et al. 2016; Varol et al. 2017; Geifman and El-Yaniv 2017. | Labels remain minimal and `insufficient_evidence` stays outside binary loss. |
+| DAPT before Chinese detector retraining | Cui et al. 2021; Gururangan et al. 2020. | A detector candidate declares and binds its encoder version; generic multilingual checkpoints are not the default Chinese claim. |
+| Cold-start ALPS plus Core-set | Yuan et al. 2020; Sener and Savarese 2018. | No classifier uncertainty is used before a trustworthy calibrated ranker exists. |
+| Warm-start calibrated uncertainty plus BADGE | Guo et al. 2017; Ash et al. 2020. | The product accepts only recorded calibration provenance and classifier-gradient embeddings. |
+| Equal-budget active-learning evaluation | Ein-Dor et al. 2020; Lowell et al. 2019; Karamcheti et al. 2024. | Random, uncertainty, Core-set, ALPS/Core-set, and BADGE require the same label budget. |
+| Leakage-safe graph/account evaluation | OGB; TGB; Shchur et al. 2018; Kapoor and Narayanan 2023. | Account, event, community, temporal, platform, and frozen-holdout checks are computed from records, not trusted caller flags. |
+| Analyst-governed deployment | Artstein and Poesio 2008; Mitchell et al. 2019; Breck et al. 2017. | Artifact hashes, audit records, approvals, and rollback are prerequisites rather than UI options. |
 
-## Implemented Seams
+See [account-detection-reference-map.md](account-detection-reference-map.md)
+for publication status and verified locators. `BotRHG` is an internal NLPCC
+submission method in this repository, not a peer-reviewed citation.
 
-- `system/research/social_bot_detection/active_learning.py` implements deterministic account acquisition with cold-start and warm-start manifests.
-- `system/research/social_bot_detection/chinese_corpus.py` exports approved labels as reproducible JSONL and a manifest.
-- `system/research/social_bot_detection/datasets.py` loads `approved_account_corpus` exports for local BotRHG training and excludes `abstain` rows from binary supervised training.
-- `system/research/social_bot_detection/cli.py` accepts `--dataset-name approved_account_corpus` so approved Chinese labels can feed the existing local RoBERTa/BotRHG training path.
-- `system/research/social_bot_detection/evaluate_active_round.py` evaluates frozen holdout, time-forward, platform, community-disjoint, calibration, false-positive burden gates, holdout leakage manifests, and equal-budget active-learning efficiency rows.
-- `system/backend/app/core/account_labeling.py` defines canonical labels and case fingerprints.
-- `system/backend/app/core/account_active_learning.py` adapts backend cases into research acquisition candidates, safely parses calibrated model signals, and ignores malformed probability/embedding payloads.
-- `system/backend/app/services/account_active_learning_service.py` persists label batches from Mongo posts and model outputs.
-- `system/backend/app/services/account_label_service.py` stores submitted, approved, rejected, and adjudicated labels only after validating case existence, queued batch membership when supplied, case fingerprint, and evidence post ids.
-- `system/backend/app/services/account_dataset_service.py` exports approved corpora and registers dataset versions only when label and current case fingerprints still match.
-- `system/backend/app/services/account_model_governance_service.py` registers shadow candidates only when the dataset exists, labels are present, checkpoint bytes match the supplied SHA-256, records immutable active-administrator approval rows, and activates only from persisted metrics plus recorded approvals.
-- `system/backend/alembic/versions/b6c2e9d4a731_add_account_detection_active_learning_tables.py` adds the account detection governance tables.
-- `doc/research/account-detection-acquisition-optimization-plan.md` records the literature-grounded upgrade path from heuristic baseline to ALPS/core-set cold-start and BADGE warm-start acquisition.
+## Deployment Acceptance Is Still Blocked
 
-## Current Limits
+The system must not claim a complete deployable Chinese bot-detection loop
+until all of the following evidence exists:
 
-- The current active-learning selector is a deterministic baseline/fallback. It can consume learned embeddings, but the deterministic hashed text fallback and weighted score are not research claims.
-- The account-model governance path now has immutable per-administrator approval rows; it still should be unified with the shared analysis governance service to avoid long-term duplicate governance surfaces.
-- Chinese RoBERTa/BotRHG training can now consume approved corpus exports, but a full active-round retraining run on accumulated Chinese labels is not yet completed in this pass.
-- Frozen holdout leakage checks and active-learning efficiency report utilities exist, but real time-forward/platform/community-disjoint reports and signed experiment artifacts are still required before publication claims.
-- SelectiveNet-style learned rejection, energy-based OOD, BADGE gradient acquisition, Croissant metadata, and automatic card generation are documented future upgrade paths, not current implemented capabilities.
+- Alembic upgrade/downgrade/upgrade succeeds against the target MySQL
+  deployment, including the account-training governance migration.
+- A real 500,000-token Chinese DAPT run completes and resumes correctly after
+  interruption; new-domain MLM loss improves by at least 2% while historical
+  anchor loss worsens by no more than 1%.
+- A supervised BotRHG retraining run produces a verified bundle and real
+  frozen-holdout, time-forward, platform-stratified, and community-disjoint
+  reports.
+- Candidate macro-F1 and AUPRC confidence-interval lower bounds are not more
+  than one percentage point below the active model; no platform loses more
+  than two points; ECE is at most 0.05; and projected false-positive load is
+  within the configured analyst capacity.
+- Shadow inference, two-person production approval, atomic activation, worker
+  interruption recovery, artifact tampering rejection, and rollback are
+  exercised against MySQL, MongoDB, Redis, Celery, and the target GPU.
 
-## Verification
+Until then, existing Weibo and public-benchmark checkpoints remain transfer
+artifacts. They are not evidence of Chinese cross-platform superiority or a
+production-ready retraining loop.
 
-```powershell
-$env:PYTHONPATH='G:\CISCN\CogGuard\.worktrees\refactor-system\system;G:\CISCN\CogGuard\.worktrees\refactor-system\system\backend'
-.\system\backend\.venv\Scripts\python.exe -m pytest system\backend\tests\test_account_active_learning.py system\research\social_bot_detection\tests\test_active_learning.py -q
-```
+## Verification Scope
 
-Latest targeted result: `20 passed, 6 skipped, 2 warnings`.
+Research-unit coverage currently includes DAPT, evaluation protocol, model
+bundle, strict feature, and acquisition contracts. Full backend, live service,
+database migration, Celery, GPU, and browser acceptance are separate gates and
+have not been claimed by this document.

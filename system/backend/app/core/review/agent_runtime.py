@@ -85,6 +85,7 @@ def resolve_runtime_mode(
     enable_light_debate: bool,
     enable_full_debate: bool,
     enable_deep_judge: bool,
+    enable_countermeasure: bool = True,
 ) -> dict[str, Any]:
     recommended, reasons = recommend_runtime_mode(report=report, context=context)
     requested = str(requested_runtime_mode or "auto").strip().lower()
@@ -99,7 +100,7 @@ def resolve_runtime_mode(
         forced_complex_reasons.append("enabled_debate")
     if enable_deep_judge:
         forced_complex_reasons.append("enabled_deep_judge")
-    if "CountermeasureAgent" in normalized_agents:
+    if enable_countermeasure and "CountermeasureAgent" in normalized_agents:
         forced_complex_reasons.append("countermeasure_selected")
 
     if requested == "auto":
@@ -131,12 +132,16 @@ def recommend_runtime_mode(*, report: dict[str, Any], context: dict[str, Any]) -
     if len(selected_posts) > 1:
         reasons.append("multiple_selected_posts")
     if any(has_multimodal_conflict(post) for post in selected_posts):
-        reasons.append("multimodal_conflict_or_media_gap")
-    if review_queue.get("retrieval_tasks"):
+        reasons.append("multimodal_conflict_confirmed")
+    if _has_valid_claim_context(report=report, context=context) and review_queue.get("retrieval_tasks"):
         reasons.append("claim_retrieval_tasks_present")
     if has_propagation_tree_context(report):
         reasons.append("propagation_context_present")
-    if any(has_uncertain_stance_or_view(post) for post in selected_posts):
+    claim_context_valid = _has_valid_claim_context(report=report, context=context)
+    if any(
+        has_uncertain_stance_or_view(post, claim_context_valid=claim_context_valid)
+        for post in selected_posts
+    ):
         reasons.append("stance_or_post_view_uncertain")
     return ("complex", reasons) if reasons else ("simple", ["single_post_low_conflict"])
 
@@ -146,19 +151,56 @@ def build_execution_plan_for_runtime(
     requested_agents: list[str],
     runtime_mode: str,
     enable_deep_judge: bool,
+    enable_countermeasure: bool = True,
+    report: dict[str, Any] | None = None,
+    context: dict[str, Any] | None = None,
+    forced_agent_names: list[str] | None = None,
 ) -> dict[str, Any]:
     requested = [agent for agent in requested_agents if agent in AGENT_ORDER]
+    capabilities = _derive_review_capabilities(report=report, context=context)
+    capability_filtering_enabled = (report is not None or context is not None)
+    forced = _ordered_agents(forced_agent_names or [])
+    requested_experts = [agent for agent in requested if agent in EXPERT_AGENTS]
+    eligible_agents = [
+        agent
+        for agent in requested_experts
+        if not capability_filtering_enabled or _agent_missing_capabilities(agent, capabilities) == []
+    ]
+    skipped_agents = [
+        {
+            "agent_name": agent,
+            "reason": _agent_skip_reason(agent, capabilities),
+        }
+        for agent in requested_experts
+        if capability_filtering_enabled and _agent_missing_capabilities(agent, capabilities)
+        and agent not in forced
+    ]
+    overrides = [
+        {
+            "agent_name": agent,
+            "reason": "analyst_forced_selection",
+            "missing_capabilities": _agent_missing_capabilities(agent, capabilities),
+        }
+        for agent in requested_experts
+        if capability_filtering_enabled
+        and agent in forced
+        and _agent_missing_capabilities(agent, capabilities)
+    ]
+    expert_agents = _ordered_agents([*eligible_agents, *[item["agent_name"] for item in overrides]])
+    if not expert_agents:
+        expert_agents = ["PostHarmAgent"]
     if runtime_mode == "simple":
-        expert_agents = [
-            agent
-            for agent in requested
-            if agent in {"PostHarmAgent", "ClaimEvidenceAgent", "PropagationTreeAgent", "MultimodalConsistencyAgent"}
-        ]
         if "HarmfulnessJudgeAgent" not in requested:
             requested = [*requested, "HarmfulnessJudgeAgent"]
         return {
             "expert_agents": expert_agents,
             "followup_agents": ["HarmfulnessJudgeAgent"],
+            "requested_agents": requested,
+            "eligible_agents": eligible_agents,
+            "executed_agents": [*expert_agents, "HarmfulnessJudgeAgent"],
+            "skipped_agents": skipped_agents,
+            "overrides": overrides,
+            "capabilities": capabilities,
             "run_question_reflection": False,
             "run_reflection_responses": False,
             "deep_judge": False,
@@ -166,24 +208,116 @@ def build_execution_plan_for_runtime(
             "claim_agent_enabled": "ClaimEvidenceAgent" in expert_agents,
             "multimodal_agent_enabled": "MultimodalConsistencyAgent" in expert_agents,
         }
-    expert_agents = [agent for agent in requested if agent in EXPERT_AGENTS]
     run_question_reflection = bool(expert_agents)
     followup_agents: list[str] = []
     if run_question_reflection:
         followup_agents.append("QuestionReflectionAgent")
     followup_agents.append("HarmfulnessJudgeAgent")
-    if "CountermeasureAgent" in requested:
+    if enable_countermeasure and "CountermeasureAgent" in requested:
         followup_agents.append("CountermeasureAgent")
+    followup_agents = _dedupe_strs(followup_agents)
     return {
         "expert_agents": expert_agents,
-        "followup_agents": _dedupe_strs(followup_agents),
+        "followup_agents": followup_agents,
+        "requested_agents": requested,
+        "eligible_agents": eligible_agents,
+        "executed_agents": [*expert_agents, *followup_agents],
+        "skipped_agents": skipped_agents,
+        "overrides": overrides,
+        "capabilities": capabilities,
         "run_question_reflection": run_question_reflection,
         "run_reflection_responses": run_question_reflection,
         "deep_judge": bool(enable_deep_judge),
-        "run_countermeasure": True,
+        "run_countermeasure": bool(enable_countermeasure),
         "claim_agent_enabled": "ClaimEvidenceAgent" in expert_agents,
         "multimodal_agent_enabled": "MultimodalConsistencyAgent" in expert_agents,
     }
+
+
+def _derive_review_capabilities(
+    *,
+    report: dict[str, Any] | None,
+    context: dict[str, Any] | None,
+) -> dict[str, bool]:
+    report = report or {}
+    context = context or {}
+    selected_posts = [post for post in _as_list(context.get("selected_posts")) if isinstance(post, dict)]
+    review = report.get("review_harmfulness") or {}
+    review_queue = review.get("review_queue") or context.get("review_queue") or {}
+    claim_context = bool(
+        review_queue.get("retrieval_tasks")
+        or _get(review, "global_summary", "claim_rank")
+        or context.get("claim_rank")
+        or any(post.get("claims") or _get(post, "post_view_detection", "claims") for post in selected_posts)
+    )
+    usable_media = bool(
+        any(_has_usable_media_input(item) for item in _as_list(context.get("media_inputs")))
+        or any(_post_has_usable_media(post) for post in selected_posts)
+    )
+    cross_view_conflict = any(has_multimodal_conflict(post) for post in selected_posts)
+    return {
+        "claim_context": claim_context,
+        "usable_media": usable_media,
+        "cross_view_conflict": cross_view_conflict,
+        "propagation_tree_or_post_post_edges": _has_propagation_tree_or_post_post_edges(report, context),
+    }
+
+
+def _agent_missing_capabilities(agent_name: str, capabilities: dict[str, bool]) -> list[str]:
+    requirements = {
+        "PostHarmAgent": [],
+        "ClaimEvidenceAgent": ["claim_context"],
+        "MultimodalConsistencyAgent": ["usable_media_or_cross_view_conflict"],
+        "PropagationTreeAgent": ["propagation_tree_or_post_post_edges"],
+    }.get(agent_name, [])
+    return [
+        requirement
+        for requirement in requirements
+        if not (
+            requirement == "usable_media_or_cross_view_conflict"
+            and (capabilities["usable_media"] or capabilities["cross_view_conflict"])
+        )
+        and not capabilities.get(requirement, False)
+    ]
+
+
+def _agent_skip_reason(agent_name: str, capabilities: dict[str, bool]) -> str:
+    missing = _agent_missing_capabilities(agent_name, capabilities)
+    return f"missing_{missing[0]}" if missing else "not_applicable"
+
+
+def _has_usable_media_input(item: Any) -> bool:
+    if not isinstance(item, dict):
+        return False
+    return bool(item.get("data_url") or item.get("uri")) and str(item.get("media_type") or "") != "derived_text_only"
+
+
+def _post_has_usable_media(post: dict[str, Any]) -> bool:
+    evidence = post.get("evidence") or {}
+    return bool(post.get("media_urls") or evidence.get("media_urls"))
+
+
+def _has_propagation_tree_or_post_post_edges(report: dict[str, Any], context: dict[str, Any]) -> bool:
+    review = report.get("review_harmfulness") or {}
+    propagation_context = context.get("propagation_context") or review.get("propagation_context") or {}
+    tree_metrics = propagation_context.get("tree_metrics") if isinstance(propagation_context, dict) else {}
+    tree_metrics = tree_metrics if isinstance(tree_metrics, dict) else {}
+    if isinstance(propagation_context, dict) and (
+        propagation_context.get("has_thread_context")
+        or int(tree_metrics.get("edge_count") or 0) > 0
+        or int(tree_metrics.get("node_count") or 0) > 1
+    ):
+        return True
+    graph_summary = _get(review, "graph_export", "summary") or _get(context, "propagation_context", "graph_summary") or {}
+    edge_types = _as_list(graph_summary.get("edge_types")) if isinstance(graph_summary, dict) else []
+    return any(
+        str(edge_type).lower().replace("-", "_") in {"post_post", "repost", "quote", "reply"}
+        for edge_type in edge_types
+    )
+
+
+def _ordered_agents(agent_names: list[str]) -> list[str]:
+    return sorted(_dedupe_strs([agent for agent in agent_names if agent in AGENT_ORDER]), key=AGENT_ORDER.index)
 
 
 def select_reflection_response_agents(
@@ -216,7 +350,7 @@ def should_postpone_countermeasure(*, report: dict[str, Any], reports_by_agent: 
         return True
     judge_report = reports_by_agent.get("HarmfulnessJudgeAgent") or {}
     judge_text = str(judge_report.get("report_text") or "").lower()
-    return "鍙嶅埗" in str(judge_report.get("report_text") or "") or "countermeasure" in judge_text
+    return "反制" in str(judge_report.get("report_text") or "") or "countermeasure" in judge_text
 
 
 def build_candidate_rule_hints(
@@ -280,19 +414,76 @@ def build_failure_mode_tags(
 
 def has_multimodal_conflict(post: dict[str, Any]) -> bool:
     view = post.get("post_view_detection") or {}
-    if view.get("conflict"):
+    conflict = view.get("conflict")
+    if isinstance(conflict, dict):
+        if conflict.get("has_conflict") is True or conflict.get("label_conflict") is True:
+            return True
+        try:
+            if float(conflict.get("score") or 0.0) >= 0.7:
+                return True
+        except (TypeError, ValueError):
+            pass
+    elif conflict is True:
         return True
-    return any("conflict" in str(reason) or "media" in str(reason) for reason in _as_list(view.get("review_reason")))
+    return any(_is_confirmed_conflict_reason(reason) for reason in _as_list(view.get("review_reason")))
 
 
-def has_uncertain_stance_or_view(post: dict[str, Any]) -> bool:
+def has_uncertain_stance_or_view(
+    post: dict[str, Any],
+    *,
+    claim_context_valid: bool | None = None,
+) -> bool:
     stance = post.get("stance") or {}
     post_view = post.get("post_view_detection") or {}
-    if stance.get("abstain") or str(stance.get("label") or "").lower() in {"uncertain", "query", "unlinked"}:
+    stance_label = str(stance.get("label") or "").lower()
+    if (
+        (stance.get("abstain") and claim_context_valid is not False)
+        or stance_label in {"uncertain", "query"}
+    ):
         return True
-    if str(post_view.get("final_harmfulness") or "").lower() == "uncertain":
+    if stance_label == "unlinked" and claim_context_valid is not False:
         return True
-    return any("uncertain" in str(reason).lower() for reason in _as_list(post_view.get("review_reason")))
+    reasons = _as_list(post_view.get("review_reason"))
+    if str(post_view.get("final_harmfulness") or "").lower() == "uncertain" and not _media_only_uncertainty(reasons):
+        return True
+    return any(
+        "uncertain" in str(reason).lower() and not _media_only_reason(reason)
+        for reason in reasons
+    )
+
+
+def _has_valid_claim_context(*, report: dict[str, Any], context: dict[str, Any]) -> bool:
+    review = report.get("review_harmfulness") or {}
+    review_queue = review.get("review_queue") or context.get("review_queue") or {}
+    if review_queue.get("retrieval_tasks"):
+        return True
+    if _get(review, "global_summary", "claim_rank") or context.get("claim_rank"):
+        return True
+    selected_posts = [post for post in _as_list(context.get("selected_posts")) if isinstance(post, dict)]
+    return any(
+        post.get("claims")
+        or post.get("primary_claim")
+        or _get(post, "post_view_detection", "claims")
+        or _get(post, "stance", "claim_id")
+        for post in selected_posts
+    )
+
+
+def _is_confirmed_conflict_reason(reason: Any) -> bool:
+    lowered = str(reason or "").lower()
+    return "conflict" in lowered and not any(
+        marker in lowered for marker in ("unavailable", "missing", "decode", "not available")
+    )
+
+
+def _media_only_reason(reason: Any) -> bool:
+    lowered = str(reason or "").lower()
+    return any(marker in lowered for marker in ("media", "image", "video", "meme", "vision", "unavailable", "missing", "decode"))
+
+
+def _media_only_uncertainty(reasons: list[Any]) -> bool:
+    meaningful = [reason for reason in reasons if str(reason or "").strip()]
+    return bool(meaningful) and all(_media_only_reason(reason) for reason in meaningful)
 
 
 def has_countermeasure_context(report: dict[str, Any]) -> bool:
@@ -334,4 +525,3 @@ def _text(value: Any) -> str:
     if value is None:
         return ""
     return str(value).strip()
-

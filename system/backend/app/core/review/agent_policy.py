@@ -41,6 +41,8 @@ DEFAULT_POLICY = {
     },
 }
 
+RULE_EVALUATOR_VERSION = "review-agent-policy-deterministic-v1"
+
 
 def optimize_agent_policy(dataset_manifest: dict[str, Any]) -> dict[str, Any]:
     """Optimize a review policy from explicit validation cases."""
@@ -121,6 +123,11 @@ def refine_agent_policy_loop(
     )
     max_iterations = max(1, min(int(max_iterations or 1), 8))
     feedback_summary = summarize_feedback_memory(feedback_memory or [])
+    rule_provenance_context = _rule_provenance_context(
+        validation_cases,
+        held_out_cases,
+        feedback_summary,
+    )
     candidate_rules: list[dict[str, Any]] = []
     refinement_trace: list[dict[str, Any]] = []
     metrics_by_round: list[dict[str, Any]] = []
@@ -155,7 +162,6 @@ def refine_agent_policy_loop(
                                 error_summary=round_errors,
                                 feedback_summary=feedback_summary,
                                 validation_metrics=round_start["metrics"],
-                                held_out_audit=_score_policy(current_policy, held_out_cases)["metrics"] if held_out_cases else None,
                                 historical_rules=[
                                     {
                                         "rule_id": item.get("rule_id"),
@@ -189,7 +195,12 @@ def refine_agent_policy_loop(
         best_round_policy = current_policy
 
         for index, raw_rule in enumerate(proposals):
-            rule_record = _prepare_rule_record(raw_rule, iteration=iteration, index=index)
+            rule_record = _prepare_rule_record(
+                raw_rule,
+                iteration=iteration,
+                index=index,
+                provenance_context=rule_provenance_context,
+            )
             validation = _validate_rule_candidate(rule_record, current_policy)
             if not validation["valid"]:
                 rule_record.update(
@@ -204,11 +215,13 @@ def refine_agent_policy_loop(
 
             candidate_policy = validation["policy"]
             scored = _score_policy(candidate_policy, validation_cases)
+            held_out_score = _score_policy(candidate_policy, held_out_cases) if held_out_cases else None
             rule_record.update(
                 {
                     "status": "evaluated",
                     "candidate_policy": candidate_policy,
                     "validation_metrics": scored["metrics"],
+                    "held_out_metrics": held_out_score["metrics"] if held_out_score else None,
                     "objective_score": scored["objective_score"],
                     "objective_delta": round(scored["objective_score"] - round_start["objective_score"], 6),
                 }
@@ -312,6 +325,7 @@ def summarize_feedback_memory(feedback_memory: list[dict[str, Any]]) -> dict[str
     linked_reviews = set()
     evidence_refs = 0
     valid_feedback = 0
+    memory_records = []
     for item in feedback_memory:
         if not isinstance(item, dict):
             continue
@@ -327,6 +341,7 @@ def summarize_feedback_memory(feedback_memory: list[dict[str, Any]]) -> dict[str
         if review_ref:
             linked_reviews.add(str(review_ref))
         evidence_refs += len(_as_list(item.get("evidence_refs")))
+        memory_records.append(_normalize_feedback_memory_record(item))
     return {
         "feedback_count": valid_feedback,
         "error_type_counts": error_type_counts,
@@ -337,6 +352,175 @@ def summarize_feedback_memory(feedback_memory: list[dict[str, Any]]) -> dict[str
             {"error_type": key, "count": value}
             for key, value in sorted(error_type_counts.items(), key=lambda row: row[1], reverse=True)[:8]
         ],
+        "memory_records": memory_records,
+    }
+
+
+def match_feedback_memory(
+    summary: dict[str, Any] | None,
+    case_tags: list[Any] | tuple[Any, ...] | set[Any] | None,
+    top_k: int = 3,
+) -> dict[str, Any]:
+    """Match tagged feedback memory records without changing review outputs."""
+    normalized_case_tags = _normalized_strings(case_tags)
+    matched = []
+    ignored = []
+    records = (summary or {}).get("memory_records") or []
+    for raw_record in records:
+        if not isinstance(raw_record, dict):
+            continue
+        record = _normalize_feedback_memory_record(raw_record)
+        record_tags = record["case_tags"]
+        if not record_tags:
+            ignored.append(_feedback_memory_ignore_record(record, "missing_case_tags"))
+            continue
+        matched_tags = sorted(set(record_tags) & set(normalized_case_tags))
+        if not matched_tags:
+            ignored.append(_feedback_memory_ignore_record(record, "no_case_tag_overlap"))
+            continue
+        matched.append((record, matched_tags))
+
+    matched.sort(
+        key=lambda item: (
+            -len(item[1]),
+            str(item[0].get("memory_id") or ""),
+            str(item[0].get("review_id") or ""),
+        )
+    )
+    limit = max(0, int(top_k or 0))
+    selected = matched[:limit]
+    return {
+        "matched_records": [record for record, _matched_tags in selected],
+        "match_reasons": [
+            {
+                "memory_id": record.get("memory_id"),
+                "review_id": record.get("review_id"),
+                "matched_tags": matched_tags,
+                "match_count": len(matched_tags),
+            }
+            for record, matched_tags in selected
+        ],
+        "ignored_count": len(ignored),
+        "ignored_records": ignored,
+    }
+
+
+def adjudicate_policy(
+    active_policy: dict[str, Any] | None,
+    *,
+    case_score: Any,
+    uncertainty: Any,
+    trigger_facts: dict[str, Any] | None,
+    completed_experts: list[Any] | tuple[Any, ...] | set[Any] | None,
+) -> dict[str, Any]:
+    """Produce deterministic, advisory-only policy adjudication metadata."""
+    envelope = active_policy if isinstance(active_policy, dict) else {}
+    policy_binding = envelope.get("activation_status") == "active_human_approved"
+    policy_id = envelope.get("policy_id")
+    activation_status = envelope.get("activation_status")
+    if not policy_binding:
+        return {
+            "policy_binding": False,
+            "advisory_only": True,
+            "policy_provenance": {
+                "status": "ignored_not_human_approved",
+                "policy_id": policy_id,
+                "activation_status": activation_status,
+            },
+            "threshold_comparisons": {},
+            "trigger_matches": {},
+            "expert_coverage": _empty_expert_coverage(completed_experts),
+            "recommendations": {
+                "review": False,
+                "retrieval": False,
+                "abstain": False,
+                "countermeasure": False,
+            },
+            "conflict": _policy_conflict(trigger_facts),
+        }
+
+    policy = _normalize_policy(envelope.get("policy") or envelope)
+    score = _clamp(_safe_float(case_score, 0.0))
+    uncertainty_value = _clamp(_safe_float(uncertainty, 0.0))
+    comparisons = {
+        "review": {"score": score, "threshold": policy["review_threshold"], "met": score >= policy["review_threshold"]},
+        "abstain": {
+            "score": score,
+            "threshold": policy["abstain_threshold"],
+            "score_below": score < policy["abstain_threshold"],
+            "uncertainty": uncertainty_value,
+            "uncertainty_threshold": 0.55,
+            "met": score < policy["abstain_threshold"] or uncertainty_value >= 0.55,
+        },
+        "retrieval": {"score": score, "threshold": policy["retrieval_threshold"], "met": score >= policy["retrieval_threshold"]},
+        "countermeasure": {"score": score, "threshold": policy["countermeasure_threshold"], "met": score >= policy["countermeasure_threshold"]},
+    }
+    facts = trigger_facts if isinstance(trigger_facts, dict) else {}
+    triggers = {
+        "retrieval_on_claim_uncertainty": bool(policy["trigger_conditions"].get("retrieval_on_claim_uncertainty")) and bool(facts.get("claim_uncertainty")),
+        "review_on_cross_view_conflict": bool(policy["trigger_conditions"].get("review_on_cross_view_conflict")) and bool(facts.get("cross_view_conflict")),
+        "countermeasure_requires_human_review": bool(policy["trigger_conditions"].get("countermeasure_requires_human_review")) and bool(facts.get("human_review_completed")),
+    }
+    abstain = comparisons["abstain"]["met"]
+    return {
+        "policy_binding": True,
+        "advisory_only": True,
+        "policy_provenance": {
+            "status": "active_human_approved",
+            "policy_id": policy_id,
+            "activation_status": activation_status,
+        },
+        "threshold_comparisons": comparisons,
+        "trigger_matches": triggers,
+        "expert_coverage": _expert_coverage(envelope.get("policy") or envelope, completed_experts),
+        "recommendations": {
+            "review": abstain or comparisons["review"]["met"] or uncertainty_value >= 0.35,
+            "retrieval": comparisons["retrieval"]["met"] or triggers["retrieval_on_claim_uncertainty"],
+            "abstain": abstain,
+            "countermeasure": not abstain and comparisons["countermeasure"]["met"] and (
+                not bool(policy["trigger_conditions"].get("countermeasure_requires_human_review"))
+                or triggers["countermeasure_requires_human_review"]
+            ),
+        },
+        "conflict": _policy_conflict(facts),
+    }
+
+
+def normalize_rule_provenance(rule: dict[str, Any] | None) -> dict[str, Any]:
+    """Return stable rule provenance fields for current and legacy artifacts."""
+    raw = rule if isinstance(rule, dict) else {}
+    nested = raw.get("raw_rule") if isinstance(raw.get("raw_rule"), dict) else {}
+    source_value = raw.get("source") or nested.get("source")
+    validation_round = _safe_int(raw.get("validation_round", raw.get("round", nested.get("round"))), None)
+    return {
+        "rule_id": str(raw.get("rule_id") or nested.get("rule_id") or ""),
+        "source": _normalize_rule_source(source_value),
+        "source_detail": str(raw.get("source_detail") or nested.get("source_detail") or source_value or _normalize_rule_source(source_value)),
+        "validation_round": validation_round,
+        "validation_metrics": raw.get("validation_metrics", nested.get("validation_metrics")),
+        "held_out_metrics": raw.get("held_out_metrics", nested.get("held_out_metrics")),
+        "split_fingerprint": raw.get("split_fingerprint", nested.get("split_fingerprint")),
+        "case_fingerprint": raw.get("case_fingerprint", nested.get("case_fingerprint")),
+        "validation_split_fingerprint": raw.get(
+            "validation_split_fingerprint",
+            nested.get("validation_split_fingerprint"),
+        ),
+        "held_out_split_fingerprint": raw.get(
+            "held_out_split_fingerprint",
+            nested.get("held_out_split_fingerprint"),
+        ),
+        "validation_case_fingerprint": raw.get(
+            "validation_case_fingerprint",
+            nested.get("validation_case_fingerprint"),
+        ),
+        "held_out_case_fingerprint": raw.get(
+            "held_out_case_fingerprint",
+            nested.get("held_out_case_fingerprint"),
+        ),
+        "evaluator_version": raw.get("evaluator_version", nested.get("evaluator_version")),
+        "approval_ref": raw.get("approval_ref", nested.get("approval_ref")),
+        "evidence_refs": _as_list(raw.get("evidence_refs", nested.get("evidence_refs"))),
+        "feedback_refs": _as_list(raw.get("feedback_refs", nested.get("feedback_refs"))),
     }
 
 
@@ -528,10 +712,16 @@ def _normalize_rule_generator_output(raw: Any) -> list[dict[str, Any]]:
     return []
 
 
-def _prepare_rule_record(raw_rule: dict[str, Any], *, iteration: int, index: int) -> dict[str, Any]:
+def _prepare_rule_record(
+    raw_rule: dict[str, Any],
+    *,
+    iteration: int,
+    index: int,
+    provenance_context: dict[str, Any],
+) -> dict[str, Any]:
     rule_id = str(raw_rule.get("rule_id") or f"rule-r{iteration}-{index}")
     source = _normalize_rule_source(raw_rule.get("source"))
-    return {
+    record = {
         "rule_id": rule_id,
         "round": iteration,
         "source": source,
@@ -540,6 +730,80 @@ def _prepare_rule_record(raw_rule: dict[str, Any], *, iteration: int, index: int
         "policy_patch": raw_rule.get("policy_patch") or raw_rule.get("patch") or {},
         "raw_rule": raw_rule,
     }
+    provenance = normalize_rule_provenance({**raw_rule, **record, "validation_round": iteration})
+    provenance.update(
+        {
+            **provenance_context,
+            "evidence_refs": _merge_provenance_refs(
+                provenance["evidence_refs"],
+                provenance_context["evidence_refs"],
+            ),
+            "feedback_refs": _merge_provenance_refs(
+                provenance["feedback_refs"],
+                provenance_context["feedback_refs"],
+            ),
+        }
+    )
+    record.update(provenance)
+    return record
+
+
+def _rule_provenance_context(
+    validation_cases: list[dict[str, Any]],
+    held_out_cases: list[dict[str, Any]],
+    feedback_summary: dict[str, Any],
+) -> dict[str, Any]:
+    feedback_records = feedback_summary.get("memory_records") or []
+    return {
+        "split_fingerprint": _provenance_fingerprint(
+            {"validation": validation_cases, "held_out": held_out_cases}
+        ),
+        "case_fingerprint": _provenance_fingerprint(
+            [*validation_cases, *held_out_cases]
+        ),
+        "validation_split_fingerprint": _provenance_fingerprint(
+            {"validation": validation_cases}
+        ),
+        "held_out_split_fingerprint": _provenance_fingerprint(
+            {"held_out": held_out_cases}
+        ),
+        "validation_case_fingerprint": _provenance_fingerprint(validation_cases),
+        "held_out_case_fingerprint": _provenance_fingerprint(held_out_cases),
+        "evaluator_version": RULE_EVALUATOR_VERSION,
+        "approval_state": "candidate_pending_human_approval",
+        "approval_ref": None,
+        "evidence_refs": _merge_provenance_refs(
+            *[
+                record.get("evidence_refs")
+                for record in feedback_records
+                if isinstance(record, dict)
+            ]
+        ),
+        "feedback_refs": _merge_provenance_refs(
+            *[
+                record.get("memory_id") or record.get("review_id")
+                for record in feedback_records
+                if isinstance(record, dict)
+            ]
+        ),
+    }
+
+
+def _provenance_fingerprint(value: Any) -> str:
+    serialized = json.dumps(value, ensure_ascii=False, sort_keys=True, default=str)
+    return f"sha256:{sha256(serialized.encode('utf-8')).hexdigest()}"
+
+
+def _merge_provenance_refs(*values: Any) -> list[Any]:
+    merged = []
+    seen = set()
+    for value in values:
+        for reference in _as_list(value):
+            fingerprint = json.dumps(reference, ensure_ascii=False, sort_keys=True, default=str)
+            if fingerprint not in seen:
+                seen.add(fingerprint)
+                merged.append(reference)
+    return merged
 
 
 def _validate_rule_candidate(rule: dict[str, Any], current_policy: dict[str, Any]) -> dict[str, Any]:
@@ -842,6 +1106,83 @@ def _normalize_policy(policy: dict[str, Any]) -> dict[str, Any]:
     return normalized
 
 
+def _normalize_feedback_memory_record(record: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "memory_id": _optional_string(record.get("memory_id")),
+        "review_id": _optional_string(record.get("review_id") or record.get("run_id")),
+        "case_tags": _normalized_strings(record.get("case_tags")),
+        "error_types": _normalized_strings(record.get("error_types")),
+        "corrected_label": _optional_string(record.get("corrected_label") or record.get("corrected_harmfulness")),
+        "evidence_refs": _as_list(record.get("evidence_refs")),
+        "caution": _optional_string(record.get("caution")),
+    }
+
+
+def _feedback_memory_ignore_record(record: dict[str, Any], reason: str) -> dict[str, Any]:
+    return {
+        "memory_id": record.get("memory_id"),
+        "review_id": record.get("review_id"),
+        "reason": reason,
+    }
+
+
+def _normalized_strings(value: Any) -> list[str]:
+    return sorted({str(item).strip() for item in _as_list(value) if str(item).strip()})
+
+
+def _optional_string(value: Any) -> str | None:
+    text = str(value).strip() if value is not None else ""
+    return text or None
+
+
+def _empty_expert_coverage(completed_experts: Any) -> dict[str, Any]:
+    return {
+        "completed_experts": [],
+        "unknown_completed_experts": _normalized_strings(completed_experts),
+        "covered_weight": 0.0,
+        "missing_weight": 0.0,
+        "applicable_weights": {},
+    }
+
+
+def _expert_coverage(policy: dict[str, Any], completed_experts: Any) -> dict[str, Any]:
+    raw_weights = policy.get("agent_weights") if isinstance(policy, dict) else None
+    weights = raw_weights if isinstance(raw_weights, dict) and raw_weights else DEFAULT_POLICY["agent_weights"]
+    total_weight = sum(max(0.0, _safe_float(weight)) for weight in weights.values()) or 1.0
+    weights = {
+        str(agent): round(max(0.0, _safe_float(weight)) / total_weight, 6)
+        for agent, weight in weights.items()
+    }
+    completed = _normalized_strings(completed_experts)
+    applicable = {agent: weight for agent, weight in weights.items() if agent in completed}
+    applicable_sum = sum(applicable.values())
+    normalized_applicable = {
+        agent: round(weight / applicable_sum, 6)
+        for agent, weight in sorted(applicable.items())
+    } if applicable_sum else {}
+    known_completed = sorted(agent for agent in completed if agent in weights)
+    unknown_completed = sorted(agent for agent in completed if agent not in weights)
+    covered_weight = round(sum(weights[agent] for agent in known_completed), 6)
+    return {
+        "completed_experts": known_completed,
+        "unknown_completed_experts": unknown_completed,
+        "covered_weight": covered_weight,
+        "missing_weight": round(max(0.0, 1.0 - covered_weight), 6),
+        "applicable_weights": normalized_applicable,
+    }
+
+
+def _policy_conflict(trigger_facts: dict[str, Any] | None) -> dict[str, Any]:
+    facts = trigger_facts if isinstance(trigger_facts, dict) else {}
+    experts = _normalized_strings(facts.get("conflicting_experts"))
+    score = _clamp(_safe_float(facts.get("conflict_score"), 0.0))
+    return {
+        "present": bool(facts.get("cross_view_conflict")) or bool(experts) or score > 0,
+        "score": score,
+        "experts": experts,
+    }
+
+
 def _nearby(current: float, values: list[float]) -> list[float]:
     rows = sorted(set([round(current, 2), *values]))
     return [value for value in rows if 0.0 < value < 1.0]
@@ -904,6 +1245,13 @@ def _as_list(value: Any) -> list[Any]:
 def _safe_float(value: Any, default: float = 0.0) -> float:
     try:
         return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _safe_int(value: Any, default: int | None = 0) -> int | None:
+    try:
+        return int(value)
     except (TypeError, ValueError):
         return default
 

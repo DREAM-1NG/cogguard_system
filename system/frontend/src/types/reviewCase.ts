@@ -120,12 +120,22 @@ export interface EvidenceItem {
   annotations: EvidenceAnnotation[]
 }
 
+export interface EvidencePage {
+  assessment: EvidenceAssessment
+  cursor: number
+  limit: number
+  total: number
+  next_cursor: number | null
+}
+
 export interface ReviewCaseEvidence {
   case_id: string
   supports: EvidenceItem[]
   contradicts: EvidenceItem[]
   irrelevant: EvidenceItem[]
   unresolved: EvidenceItem[]
+  group_counts: Partial<Record<EvidenceAssessment, number>>
+  page: EvidencePage | null
 }
 
 export interface ReviewRequestCreate {

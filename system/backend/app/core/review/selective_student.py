@@ -32,6 +32,7 @@ from app.core.review.teacher_silver import load_teacher_silver_index
 
 __all__ = [
     "SelectiveStudentEncoder",
+    "apply_defer_strategy",
     "build_selective_student_prediction_rows",
     "build_selective_student_targets",
     "load_teacher_silver_index",
@@ -45,7 +46,11 @@ __all__ = [
 def build_selective_student_targets(
     cases: list[dict[str, Any]],
     teacher_silver_by_case: dict[str, dict[str, Any]] | None = None,
+    *,
+    distillation_alpha: float = 0.5,
 ) -> dict[str, np.ndarray]:
+    if not 0.0 <= distillation_alpha <= 1.0:
+        raise ValueError("distillation_alpha must be between 0 and 1")
     teacher_silver_by_case = teacher_silver_by_case or {}
     n = len(cases)
     attack = np.zeros(n, dtype="float32")
@@ -55,40 +60,63 @@ def build_selective_student_targets(
     stance = np.full(n, STANCE_ORDER.index("unlinked"), dtype="int64")
     stance_mask = np.zeros(n, dtype="float32")
     defer = np.zeros(n, dtype="float32")
-    defer_mask = np.ones(n, dtype="float32")
+    defer_mask = np.zeros(n, dtype="float32")
     sample_weight = np.ones(n, dtype="float32")
+    teacher_supervision_mask = np.zeros(n, dtype="float32")
     for index, case in enumerate(cases):
         case_id = str(case.get("case_id") or "")
         teacher = teacher_silver_by_case.get(case_id) or {}
+        if teacher and (
+            str(teacher.get("dataset") or "") != str(case.get("dataset") or "")
+            or str(teacher.get("split") or "") != str(case.get("split") or "")
+        ):
+            teacher = {}
+        if axis_supports_case(case, ATTACK_AXIS):
+            attack_mask[index] = 1.0
+            attack[index] = float(binary_label(case))
+        if axis_supports_case(case, MISINFO_AXIS):
+            misinfo_mask[index] = 1.0
+            misinfo[index] = float(binary_label(case))
+        stance_label = stance_proxy_of(case)
+        if claim_context_text(case) and stance_label in STANCE_ORDER:
+            stance_mask[index] = 1.0
+            stance[index] = STANCE_ORDER.index(stance_label)
         if teacher:
             sample_weight[index] = float(max(0.25, min(1.0, 0.5 + 0.5 * float(teacher.get("confidence", 0.5)))))
-            defer[index] = 1.0 if str(teacher.get("sample_mode") or "") == "hard_case" else 0.0
+            defer[index] = 1.0 if bool(teacher.get("review_required")) else 0.0
+            defer_mask[index] = 1.0
             main_axes = teacher.get("main_axes") or {}
             attack_axis = main_axes.get(ATTACK_AXIS) or {}
-            if bool(attack_axis.get("available")):
+            if bool(attack_axis.get("available")) and str(attack_axis.get("label")) in {"harmful", "non_harmful"}:
+                teacher_probability = float(attack_axis.get("confidence") or 0.0)
+                if str(attack_axis.get("label")) == "non_harmful":
+                    teacher_probability = 1.0 - teacher_probability
                 attack_mask[index] = 1.0
-                attack[index] = 1.0 if str(attack_axis.get("label")) == "harmful" else 0.0
+                attack[index] = (
+                    (1.0 - distillation_alpha) * attack[index]
+                    + distillation_alpha * max(0.0, min(1.0, teacher_probability))
+                )
+                teacher_supervision_mask[index] = 1.0
+            elif ATTACK_AXIS in main_axes:
+                attack_mask[index] = 0.0
             misinfo_axis = main_axes.get(MISINFO_AXIS) or {}
-            if bool(misinfo_axis.get("available")):
+            if bool(misinfo_axis.get("available")) and str(misinfo_axis.get("label")) in {"harmful", "non_harmful"}:
+                teacher_probability = float(misinfo_axis.get("confidence") or 0.0)
+                if str(misinfo_axis.get("label")) == "non_harmful":
+                    teacher_probability = 1.0 - teacher_probability
                 misinfo_mask[index] = 1.0
-                misinfo[index] = 1.0 if str(misinfo_axis.get("label")) == "harmful" else 0.0
+                misinfo[index] = (
+                    (1.0 - distillation_alpha) * misinfo[index]
+                    + distillation_alpha * max(0.0, min(1.0, teacher_probability))
+                )
+                teacher_supervision_mask[index] = 1.0
+            elif MISINFO_AXIS in main_axes:
+                misinfo_mask[index] = 0.0
             stance_record = teacher.get("stance") or {}
             stance_label = str(stance_record.get("label") or stance_proxy_of(case))
             if bool(stance_record.get("available")) and stance_label in STANCE_ORDER:
                 stance_mask[index] = 1.0
                 stance[index] = STANCE_ORDER.index(stance_label)
-        else:
-            if axis_supports_case(case, ATTACK_AXIS):
-                attack_mask[index] = 1.0
-                attack[index] = float(binary_label(case))
-            if axis_supports_case(case, MISINFO_AXIS):
-                misinfo_mask[index] = 1.0
-                misinfo[index] = float(binary_label(case))
-            stance_label = stance_proxy_of(case)
-            if claim_context_text(case) and stance_label in STANCE_ORDER:
-                stance_mask[index] = 1.0
-                stance[index] = STANCE_ORDER.index(stance_label)
-            defer[index] = 0.0
     return {
         "attack": attack,
         "attack_mask": attack_mask,
@@ -99,6 +127,7 @@ def build_selective_student_targets(
         "defer": defer,
         "defer_mask": defer_mask,
         "sample_weight": sample_weight,
+        "teacher_supervision_mask": teacher_supervision_mask,
     }
 
 
@@ -158,7 +187,10 @@ def train_selective_student_model(
     y_stance = torch.as_tensor(targets["stance"].astype("int64"), device=device)
     y_stance_mask = torch.as_tensor(targets["stance_mask"].astype("float32"), device=device)
     y_defer = torch.as_tensor(targets["defer"].astype("float32"), device=device)
-    y_defer_mask = torch.as_tensor(targets["defer_mask"].astype("float32"), device=device)
+    defer_labels = targets["defer"][targets["defer_mask"] > 0.5]
+    defer_head_supervised = bool(defer_labels.size and np.unique(defer_labels).size >= 2)
+    effective_defer_mask = targets["defer_mask"] if defer_head_supervised else np.zeros_like(targets["defer_mask"])
+    y_defer_mask = torch.as_tensor(effective_defer_mask.astype("float32"), device=device)
     sample_weight = torch.as_tensor(targets["sample_weight"].astype("float32"), device=device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
     bce = nn.BCEWithLogitsLoss(reduction="none")
@@ -197,6 +229,9 @@ def train_selective_student_model(
         "epochs": len(history),
         "history": history,
         "device": device,
+        "defer_head_supervised": defer_head_supervised,
+        "defer_supervision_count": int(defer_labels.size),
+        "defer_supervision_positive_count": int((defer_labels >= 0.5).sum()),
         "losses": {
             ATTACK_AXIS: "masked BCEWithLogitsLoss",
             MISINFO_AXIS: "masked BCEWithLogitsLoss",
@@ -204,6 +239,28 @@ def train_selective_student_model(
             "defer": f"{defer_weight} * masked BCEWithLogitsLoss",
         },
     }
+
+
+def apply_defer_strategy(
+    cases: list[dict[str, Any]],
+    predictions: dict[str, np.ndarray],
+    *,
+    defer_head_supervised: bool,
+) -> dict[str, np.ndarray]:
+    """Use the route head only when valid teacher data supplies both classes."""
+    resolved = {name: np.asarray(values).copy() for name, values in predictions.items()}
+    if defer_head_supervised:
+        return resolved
+    uncertainty_scores = []
+    for index, case in enumerate(cases):
+        overall_probability = student_overall_probability_for_case(
+            case,
+            float(resolved[ATTACK_AXIS][index]),
+            float(resolved[MISINFO_AXIS][index]),
+        )
+        uncertainty_scores.append(1.0 - abs(2.0 * overall_probability - 1.0))
+    resolved["defer"] = np.asarray(uncertainty_scores, dtype="float32")
+    return resolved
 
 
 def predict_selective_student_outputs(

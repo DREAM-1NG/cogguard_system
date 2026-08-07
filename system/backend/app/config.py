@@ -98,6 +98,25 @@ class Settings(BaseSettings):
     ACCOUNT_ACQUISITION_MAX_LENGTH: int = 128
     ACCOUNT_ACQUISITION_BATCH_SIZE: int = 4
     ACCOUNT_ACQUISITION_DEVICE: str = "cpu"
+    # ----- Governed account-model training -----
+    # These are operational policy values, rather than request parameters, so
+    # a recorded run can be reproduced and an operator cannot bypass gates.
+    ACCOUNT_TRAINING_DAPT_TOKEN_THRESHOLD: int = 500_000
+    ACCOUNT_TRAINING_SUPERVISED_LABEL_THRESHOLD: int = 200
+    ACCOUNT_TRAINING_COOLDOWN_DAYS: int = 7
+    ACCOUNT_TRAINING_HEARTBEAT_TIMEOUT_SECONDS: int = 300
+    ACCOUNT_TRAINING_MAX_RESUMES: int = 3
+    # A committed training dispatch is published by FastAPI's durable outbox
+    # poller. This interval also spaces retries after broker failures.
+    ACCOUNT_TRAINING_OUTBOX_POLL_INTERVAL_SECONDS: float = 5.0
+    ACCOUNT_TRAINING_OUTBOX_CLAIM_LEASE_SECONDS: float = 30.0
+    ACCOUNT_TRAINING_OUTBOX_PUBLISH_TIMEOUT_SECONDS: float = 5.0
+    # Shared only with the internal evaluator. It signs evidence submitted to
+    # the governance API and must remain independent from authentication keys.
+    ACCOUNT_MODEL_EVALUATION_HMAC_SECRET: str = ""
+    # Legacy checkpoint bootstrapping is opt-in and local-only. Governed
+    # production runtimes require an already persisted activation pointer.
+    ACCOUNT_MODEL_BOOTSTRAP_MODE: str = "disabled"
 
     # ----- Coordination Discover research artifact runtime -----
     COORDINATION_DISCOVER_MODE: str = "artifact_first"
@@ -113,6 +132,15 @@ class Settings(BaseSettings):
     # production queue and activation behavior explicit and auditable.
     ANALYSIS_MODEL_ACTIVATION_APPROVAL_MODE: str = "auto"
     ANALYSIS_TEACHER_DISPATCH_MODE: str = "auto"
+
+    # Immutable analysis projections are cached by source/run identity. Redis
+    # shares warm results across backend processes; the local LRU remains the
+    # fast path and the cache never becomes a source of truth.
+    ANALYSIS_RESULT_CACHE_ENABLED: bool = True
+    ANALYSIS_RESULT_CACHE_REDIS_ENABLED: bool = True
+    ANALYSIS_RESULT_CACHE_MAX_ENTRIES: int = 16
+    ANALYSIS_RESULT_CACHE_TTL_SECONDS: int = 604800
+    ANALYSIS_RESULT_CACHE_NAMESPACE: str = "cogguard:analysis-result"
 
     # ----- LLM API (趋势预测用) -----
     LLM_API_KEY: str = ""
@@ -187,6 +215,13 @@ class Settings(BaseSettings):
             return True
         return self.BACKEND_ENV.strip().lower() != "production"
 
+    @property
+    def account_model_local_bootstrap_allowed(self) -> bool:
+        return (
+            self.BACKEND_ENV.strip().lower() != "production"
+            and self.ACCOUNT_MODEL_BOOTSTRAP_MODE.strip().lower() == "local_legacy"
+        )
+
     @model_validator(mode="after")
     def _reject_placeholder_secrets(self) -> "Settings":
         """Fail fast in production when auth secrets are still placeholders.
@@ -197,6 +232,7 @@ class Settings(BaseSettings):
         environment = self.BACKEND_ENV.strip().lower()
         approval_mode = self.ANALYSIS_MODEL_ACTIVATION_APPROVAL_MODE.strip().lower()
         dispatch_mode = self.ANALYSIS_TEACHER_DISPATCH_MODE.strip().lower()
+        account_bootstrap_mode = self.ACCOUNT_MODEL_BOOTSTRAP_MODE.strip().lower()
         if approval_mode not in {"auto", "single_operator", "dual_operator"}:
             raise ValueError(
                 "ANALYSIS_MODEL_ACTIVATION_APPROVAL_MODE must be auto, single_operator, or dual_operator."
@@ -205,10 +241,19 @@ class Settings(BaseSettings):
             raise ValueError(
                 "ANALYSIS_TEACHER_DISPATCH_MODE must be auto, queue_required, or local_inline_fallback."
             )
+        if account_bootstrap_mode not in {"disabled", "local_legacy"}:
+            raise ValueError("ACCOUNT_MODEL_BOOTSTRAP_MODE must be disabled or local_legacy.")
         if environment == "production" and approval_mode == "single_operator":
             raise ValueError("Production model activation requires dual_operator approval mode.")
         if environment == "production" and dispatch_mode == "local_inline_fallback":
             raise ValueError("Production Teacher review requires a durable queue.")
+        if environment == "production" and account_bootstrap_mode != "disabled":
+            raise ValueError("ACCOUNT_MODEL_BOOTSTRAP_MODE must be disabled in production.")
+        if environment == "production" and len(self.ACCOUNT_MODEL_EVALUATION_HMAC_SECRET.strip()) < 32:
+            raise ValueError(
+                "ACCOUNT_MODEL_EVALUATION_HMAC_SECRET must be explicitly configured with at least 32 characters "
+                "in production."
+            )
         if not self.JWT_SECRET_KEY.strip():
             if environment == "production":
                 raise ValueError("JWT_SECRET_KEY must be explicitly configured in production.")
@@ -229,6 +274,24 @@ class Settings(BaseSettings):
             warnings.warn(f"{message} (allowed only for local development)", stacklevel=2)
         if environment == "production" and not self.DEFAULT_ADMIN_PASSWORD.strip():
             raise ValueError("DEFAULT_ADMIN_PASSWORD must be explicitly configured in production.")
+        for field_name in (
+            "ACCOUNT_TRAINING_DAPT_TOKEN_THRESHOLD",
+            "ACCOUNT_TRAINING_SUPERVISED_LABEL_THRESHOLD",
+            "ACCOUNT_TRAINING_COOLDOWN_DAYS",
+            "ACCOUNT_TRAINING_HEARTBEAT_TIMEOUT_SECONDS",
+        ):
+            if getattr(self, field_name) <= 0:
+                raise ValueError(f"{field_name} must be positive.")
+        if self.ACCOUNT_TRAINING_MAX_RESUMES < 0:
+            raise ValueError("ACCOUNT_TRAINING_MAX_RESUMES cannot be negative.")
+        if self.ACCOUNT_TRAINING_OUTBOX_POLL_INTERVAL_SECONDS <= 0:
+            raise ValueError("ACCOUNT_TRAINING_OUTBOX_POLL_INTERVAL_SECONDS must be positive.")
+        for field_name in (
+            "ACCOUNT_TRAINING_OUTBOX_CLAIM_LEASE_SECONDS",
+            "ACCOUNT_TRAINING_OUTBOX_PUBLISH_TIMEOUT_SECONDS",
+        ):
+            if getattr(self, field_name) <= 0:
+                raise ValueError(f"{field_name} must be positive.")
         return self
 
     model_config = SettingsConfigDict(
@@ -238,3 +301,13 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+
+def resolve_project_path(value: str | Path) -> Path:
+    """Resolve relative operational paths from the repository system root."""
+
+    path = Path(value).expanduser()
+    return path.resolve() if path.is_absolute() else (PROJECT_ROOT / path).resolve()
+
+
+__all__ = ["BASE_DIR", "PROJECT_ROOT", "Settings", "resolve_project_path", "settings"]

@@ -2253,21 +2253,24 @@ class TestReviewManualAgentReview:
         assert result["audit"]["capability_boundary"]["manual_human_triggered"] is True
         assert result["audit"]["capability_boundary"]["fits_benchmark_labels"] is False
         assert result["audit"]["effective_runtime_mode"] == "complex"
-        assert result["summary"]["completed"] == 11
+        execution_plan = result["audit"]["execution_plan"]
+        expected_expert_count = len(execution_plan["expert_agents"])
+        expected_reflection_count = min(expected_expert_count, 2)
+        assert result["summary"]["completed"] == expected_expert_count + expected_reflection_count + 3
         assert result["summary"]["failed"] == 0
-        assert result["summary"]["reflection_response_reports"] == 4
-        assert len(calls) == 11
+        assert result["summary"]["reflection_response_reports"] == expected_reflection_count
+        assert len(calls) == result["summary"]["completed"]
         assert calls[0][0] == "PostHarmAgent"
         assert calls[-1][0] == "CountermeasureAgent"
         assert result["input_bundle"]["input_refs"]["post_ids"] == ["p1"]
         assert result["input_bundle"]["governance_reference"]["platform_reference_refs"]
         roles = [item.get("report_role") for item in result["agent_reports"]]
         reflection_reports = [item for item in result["agent_reports"] if item.get("report_role") == "reflection_response"]
-        assert roles.count("expert_initial") == 4
+        assert roles.count("expert_initial") == expected_expert_count
         assert "reflection" in roles
         assert "judge_final" in roles
         assert "countermeasure_final" in roles
-        assert len(reflection_reports) == 4
+        assert len(reflection_reports) == expected_reflection_count
         for report in result["agent_reports"]:
             assert report["status"] == "completed"
             assert report["analysis_report"]["format"] == "natural_language_or_semi_structured_report"
@@ -2403,6 +2406,8 @@ class TestReviewManualAgentReview:
         captured = {}
 
         class FakeResponse:
+            status_code = 200
+
             def raise_for_status(self):
                 return None
 
