@@ -297,6 +297,35 @@ def test_learned_stage2_adapters_fit_projected_artifacts_and_cover_only_unlabele
         assert "test_labels" not in output.model_artifact.to_dict()
 
 
+def test_learned_stage2_adapter_associates_verdicts_with_cases_by_cluster_id():
+    package, _, baselines, runner = _modules()
+    train, validation, test, _ = _learned_adapter_fixture(package)
+    inference = tuple(runner.DetectionInferenceCase.from_training_case(case) for case in test)
+    non_lexical = (
+        dataclasses.replace(inference[0], cluster_id="cluster-z"),
+        dataclasses.replace(inference[1], cluster_id="cluster-a"),
+    )
+    registry = baselines.default_baseline_registry()
+    implementation = registry.implementation("learned_fused_detector")
+
+    lexical_output = implementation.execute(
+        runner.DetectionPartitions(train, validation, (non_lexical[1], non_lexical[0]))
+    )
+    non_lexical_output = implementation.execute(
+        runner.DetectionPartitions(train, validation, non_lexical)
+    )
+
+    expected = {
+        prediction.case_id: (prediction.harmful_probability, prediction.decision)
+        for prediction in lexical_output.predictions
+    }
+    actual = {
+        prediction.case_id: (prediction.harmful_probability, prediction.decision)
+        for prediction in non_lexical_output.predictions
+    }
+    assert actual == expected
+
+
 def test_learned_stage2_adapter_fails_closed_when_required_feature_group_is_empty():
     package, _, baselines, _ = _modules()
     contracts = importlib.import_module("research.coordination_detect.contracts")

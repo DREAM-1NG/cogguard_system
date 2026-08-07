@@ -135,13 +135,19 @@ class LearnedDetectionImplementation(_LearnedDetectionImplementation):
         detector = LearnedCoordinationDetector(schema=projected_schema)
         artifact = detector.fit(train, validation)
         prediction_batch = detector.predict_inference_cases(test)
+        verdicts_by_cluster_id = {
+            verdict.cluster_id: verdict for verdict in prediction_batch.verdicts
+        }
+        test_cluster_ids = {case.cluster_id for case in test}
+        if set(verdicts_by_cluster_id) != test_cluster_ids:
+            raise ValueError("prediction verdicts must cover exactly the test cluster IDs")
         predictions = tuple(
             DetectionPrediction(
                 case_id=case.case_id,
-                harmful_probability=verdict.harmful_probability,
-                decision=verdict.decision,
+                harmful_probability=verdicts_by_cluster_id[case.cluster_id].harmful_probability,
+                decision=verdicts_by_cluster_id[case.cluster_id].decision,
             )
-            for case, verdict in zip(test, prediction_batch.verdicts, strict=True)
+            for case in test
         )
         return DetectionExecutionOutput(model_artifact=artifact, predictions=predictions)
 
