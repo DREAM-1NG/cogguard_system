@@ -408,11 +408,16 @@ def execute_compact_discovery_method(
         )
     except Exception as exc:
         _, peak = tracemalloc.get_traced_memory()
+        try:
+            from .compact_discovery_methods import CompactDiscoveryMethodBlocked
+        except ImportError:
+            CompactDiscoveryMethodBlocked = ()
+        blocked = isinstance(exc, CompactDiscoveryMethodBlocked)
         return CompactDiscoveryExecutionOutcome(
             **common,
             runtime_seconds=time.perf_counter() - started,
             peak_memory_bytes=max(0, int(peak - baseline_memory)),
-            status="failed",
+            status="blocked" if blocked else "failed",
             prediction=None,
             reason=f"{type(exc).__name__}: {exc}",
         )

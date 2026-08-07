@@ -335,7 +335,12 @@ class BaselineRegistry:
 def default_baseline_registry() -> BaselineRegistry:
     specs = [
         BaselineSpec(
-            "dense_cosine_leiden", "dense-cosine-leiden-v1", "discovery", "discovery_baseline",
+            "tsgs_mhcr_compact", "tsgs-mhcr-compact-v1", "discovery", "research_candidate",
+            "tsgs_mhcr_compact-compact-implementation-v1",
+            ("coordination_discovery",), ("igraph", "leidenalg", "torch"),
+        ),
+        BaselineSpec(
+            "dense_cosine_leiden", "dense-cosine-leiden-compact-v1", "discovery", "discovery_baseline",
             "dense-cosine-leiden-implementation-v1",
             ("coordination_discovery",), ("igraph", "leidenalg"),
         ),
@@ -346,9 +351,9 @@ def default_baseline_registry() -> BaselineRegistry:
             warning="Frozen production evidence prior; research harness cannot modify or activate it.",
         ),
         BaselineSpec(
-            "edgebank", "edgebank-v1", "discovery", "temporal_baseline",
-            "edgebank-implementation-v1",
-            ("coordination_discovery",),
+            "edgebank", "edgebank-static-compact-v1", "discovery", "static_baseline",
+            "edgebank-compact-implementation-v1",
+            ("coordination_discovery",), ("igraph", "leidenalg"),
         ),
         BaselineSpec(
             "tgn_style_memory_prior", "tgn-style-memory-prior-v1", "discovery", "temporal_baseline",
@@ -377,16 +382,24 @@ def default_baseline_registry() -> BaselineRegistry:
             warning=HEURISTIC_BASELINE_WARNING, claimable=False,
         ),
         BaselineSpec(
-            "no_tsgs", "coordination-discovery-no-tsgs-v1", "discovery", "ablation",
-            "no-tsgs-implementation-v1", ("coordination_discovery",), ablation_id="no_tsgs",
+            "no_tsgs", "tsgs-mhcr-compact-no-tsgs-v1", "discovery", "ablation",
+            "no_tsgs-compact-implementation-v1",
+            ("coordination_discovery",),
+            ("igraph", "leidenalg", "torch"),
+            ablation_id="no_tsgs",
         ),
         BaselineSpec(
-            "no_mhcr", "coordination-discovery-no-mhcr-v1", "discovery", "ablation",
-            "no-mhcr-implementation-v1", ("coordination_discovery",), ablation_id="no_mhcr",
+            "no_mhcr", "tsgs-mhcr-compact-no-mhcr-v1", "discovery", "ablation",
+            "no_mhcr-compact-implementation-v1",
+            ("coordination_discovery",),
+            ("igraph", "leidenalg"),
+            ablation_id="no_mhcr",
         ),
         BaselineSpec(
-            "no_relation_specific", "coordination-discovery-shared-relation-v1", "discovery", "ablation",
-            "no-relation-specific-implementation-v1", ("coordination_discovery",),
+            "no_relation_specific", "tsgs-mhcr-compact-shared-relation-v1", "discovery", "ablation",
+            "no_relation_specific-compact-implementation-v1",
+            ("coordination_discovery",),
+            ("igraph", "leidenalg", "torch"),
             ablation_id="no_relation_specific",
         ),
         BaselineSpec(
@@ -421,9 +434,14 @@ def default_baseline_registry() -> BaselineRegistry:
                 claimable=False,
             )
         )
+    from .compact_discovery_methods import default_compact_discovery_registry
+
+    compact_registry = default_compact_discovery_registry()
     entries = []
     for spec in specs:
-        if spec.method_id == HEURISTIC_BASELINE_ID:
+        if spec.method_id in compact_registry.method_ids():
+            implementation = compact_registry.implementation(spec.method_id)
+        elif spec.method_id == HEURISTIC_BASELINE_ID:
             implementation = HeuristicDetectionImplementation()
         elif spec.stage == "discovery":
             implementation = _UnavailableDiscoveryImplementation(

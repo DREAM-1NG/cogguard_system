@@ -9,7 +9,8 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Any, Mapping
 
-from .baselines import HEURISTIC_BASELINE_ID, default_baseline_registry
+from .baselines import default_baseline_registry
+from .compact_discovery_methods import default_compact_discovery_registry
 from .iohunter_compact import (
     CompactIOHunterMemoryBudgetExceeded,
     compact_fold_fingerprint,
@@ -414,6 +415,7 @@ def _build_campaign_rows(
         )
 
     registry = default_baseline_registry()
+    compact_registry = default_compact_discovery_registry()
     rows: list[IOHunterPreflightRow] = []
     for seed, fold in zip(IOHUNTER_OFFICIAL_SEEDS, compact.evaluator.official_folds, strict=True):
         fingerprints = {
@@ -422,13 +424,13 @@ def _build_campaign_rows(
             "fold": compact_fold_fingerprint(fold),
         }
         for spec in registry.specs():
-            unavailable = registry.implementation(spec.method_id).unavailable_reason
+            if spec.method_id in compact_registry.method_ids():
+                unavailable = compact_registry.implementation(spec.method_id).unavailable_reason
+            else:
+                unavailable = registry.implementation(spec.method_id).unavailable_reason
             for split_policy in ("official_fold", "observed_time_holdout"):
                 reason = _blocked_reason(spec.method_id, split_policy, unavailable)
                 status = "blocked" if reason else "ready"
-                if spec.method_id != HEURISTIC_BASELINE_ID and status == "ready":
-                    status = "blocked"
-                    reason = "blocked: default method adapter is unavailable until Task 7B"
                 rows.append(
                     _row(
                         output_dir=output_dir,

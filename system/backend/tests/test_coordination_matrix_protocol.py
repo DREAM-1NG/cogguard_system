@@ -212,7 +212,7 @@ def test_discovery_execution_identity_is_independent_of_evaluator_labels_folds_a
         shutil.rmtree(second_output, ignore_errors=True)
 
 
-def test_time_methods_time_holdouts_and_default_unavailable_adapters_are_blocked(tmp_path):
+def test_time_methods_are_blocked_while_compact_static_discovery_methods_are_ready(tmp_path):
     module = _load_experiments()
     dataset_root = _dataset_root(tmp_path, module)
     output = _output_dir(module, "blocked")
@@ -234,7 +234,15 @@ def test_time_methods_time_holdouts_and_default_unavailable_adapters_are_blocked
         assert all(row.status == "blocked" for row in matrix.rows if row.method_id in unavailable)
         ready = [row for row in matrix.rows if row.status == "ready"]
         assert ready
-        assert {row.method_id for row in ready} == {module.HEURISTIC_BASELINE_ID}
+        assert {row.method_id for row in ready} == {
+            module.HEURISTIC_BASELINE_ID,
+            "tsgs_mhcr_compact",
+            "edgebank",
+            "dense_cosine_leiden",
+            "no_tsgs",
+            "no_mhcr",
+            "no_relation_specific",
+        }
         assert {row.split_policy for row in ready} == {"official_fold"}
     finally:
         shutil.rmtree(output, ignore_errors=True)

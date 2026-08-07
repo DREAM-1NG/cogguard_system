@@ -58,6 +58,13 @@ from .compact_execution import (
     evaluate_iohunter_external_account_recovery,
     execute_compact_discovery_method,
 )
+from .compact_discovery_methods import (
+    CompactDiscoveryMethodBlocked,
+    CompactDiscoveryMethodConfig,
+    CompactDiscoveryRegistry,
+    GraphNativeDiscoveryImplementation,
+    default_compact_discovery_registry,
+)
 from .protocol import (
     DatasetCapability,
     ExperimentSplit,
@@ -171,6 +178,11 @@ __all__ = [
     "IOHunterExternalEvaluationResult",
     "evaluate_iohunter_external_account_recovery",
     "execute_compact_discovery_method",
+    "CompactDiscoveryMethodBlocked",
+    "CompactDiscoveryMethodConfig",
+    "CompactDiscoveryRegistry",
+    "GraphNativeDiscoveryImplementation",
+    "default_compact_discovery_registry",
     "LearnedDetectionImplementation",
     "REQUIRED_ABLATIONS",
     "ResearchDatasetManifest",
