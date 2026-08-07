@@ -48,6 +48,16 @@ from .matrix_protocol import (
     preflight_iohunter_matrix,
     validate_iohunter_preflight_output_dir,
 )
+from .compact_execution import (
+    CompactDiscoveryExecutionInput,
+    CompactDiscoveryExecutionOutcome,
+    CompactDiscoveryImplementation,
+    CompactDiscoveryPrediction,
+    IOHunterExternalEvaluationInput,
+    IOHunterExternalEvaluationResult,
+    evaluate_iohunter_external_account_recovery,
+    execute_compact_discovery_method,
+)
 from .protocol import (
     DatasetCapability,
     ExperimentSplit,
@@ -153,6 +163,14 @@ __all__ = [
     "CompactIOHunterMemoryBudgetExceeded",
     "CompactIOHunterMemoryProfile",
     "CompactRelationEdges",
+    "CompactDiscoveryExecutionInput",
+    "CompactDiscoveryExecutionOutcome",
+    "CompactDiscoveryImplementation",
+    "CompactDiscoveryPrediction",
+    "IOHunterExternalEvaluationInput",
+    "IOHunterExternalEvaluationResult",
+    "evaluate_iohunter_external_account_recovery",
+    "execute_compact_discovery_method",
     "LearnedDetectionImplementation",
     "REQUIRED_ABLATIONS",
     "ResearchDatasetManifest",
