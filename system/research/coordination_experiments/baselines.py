@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import importlib.util
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from types import MappingProxyType
-from typing import Any, Callable, Mapping
+from typing import Any, Mapping
+
+from research.coordination_detect.heuristic_baseline import HeuristicBayesianBaseline
 
 from .protocol import DatasetCapability
 
@@ -112,37 +114,95 @@ class BaselineSpec:
         }
 
 
-@dataclass(frozen=True, slots=True)
 class DiscoveryImplementation:
-    implementation_id: str
-    execute: Callable[[Any], Any]
+    __slots__ = ()
+    method_id = ""
+    implementation_id = ""
+    unavailable_reason: str | None = None
 
-    def __post_init__(self) -> None:
-        object.__setattr__(self, "implementation_id", _text(self.implementation_id, "implementation_id"))
-        if not callable(self.execute):
-            raise ValueError("execute must be callable")
+    def execute(self, execution_input: Any) -> Any:
+        raise NotImplementedError
 
 
-@dataclass(frozen=True, slots=True)
 class LearnedDetectionImplementation:
-    implementation_id: str
-    execute: Callable[[Any], Any]
+    __slots__ = ()
+    method_id = ""
+    implementation_id = ""
+    unavailable_reason: str | None = None
 
-    def __post_init__(self) -> None:
-        object.__setattr__(self, "implementation_id", _text(self.implementation_id, "implementation_id"))
-        if not callable(self.execute):
-            raise ValueError("execute must be callable")
+    def execute(self, partitions: Any) -> Any:
+        raise NotImplementedError
+
+
+class HeuristicDetectionImplementation:
+    __slots__ = ()
+    method_id = HEURISTIC_BASELINE_ID
+    implementation_id = "heuristic-baseline-implementation-v1"
+    unavailable_reason: str | None = None
+    baseline_type = HeuristicBayesianBaseline
+
+    def execute(self, test_input: Any) -> Any:
+        from .runner import DetectionExecutionOutput, DetectionPrediction, DetectionTestInput
+
+        if not isinstance(test_input, DetectionTestInput):
+            raise ValueError("heuristic execution requires an unlabeled DetectionTestInput")
+        baseline = self.baseline_type()
+        predictions: list[DetectionPrediction] = []
+        for case in test_input.test_cases:
+            features = dict(zip(case.feature_names, case.feature_values, strict=True))
+            required = (
+                "tsgs_density",
+                "mhcr_coherence",
+                "temporal_sync_score",
+                "unsupervised_ranking",
+            )
+            missing = [name for name in required if name not in features]
+            if missing:
+                raise ValueError(f"heuristic baseline input is missing features: {missing}")
+            verdict = baseline.predict(
+                cluster_id=case.cluster_id,
+                **{name: features[name] for name in required},
+            )
+            predictions.append(
+                DetectionPrediction(
+                    case_id=case.case_id,
+                    harmful_probability=verdict.harmful_probability,
+                    decision=verdict.decision,
+                )
+            )
+        return DetectionExecutionOutput(model_artifact=None, predictions=tuple(predictions))
 
 
 @dataclass(frozen=True, slots=True)
-class HeuristicDetectionImplementation:
+class _UnavailableDiscoveryImplementation(DiscoveryImplementation):
+    method_id: str
     implementation_id: str
-    execute: Callable[[Any], Any]
+    unavailable_reason: str
 
     def __post_init__(self) -> None:
-        object.__setattr__(self, "implementation_id", _text(self.implementation_id, "implementation_id"))
-        if not callable(self.execute):
-            raise ValueError("execute must be callable")
+        object.__setattr__(self, "method_id", _text(self.method_id, "method_id"))
+        object.__setattr__(
+            self, "implementation_id", _text(self.implementation_id, "implementation_id")
+        )
+        object.__setattr__(
+            self, "unavailable_reason", _text(self.unavailable_reason, "unavailable_reason")
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class _UnavailableLearnedDetectionImplementation(LearnedDetectionImplementation):
+    method_id: str
+    implementation_id: str
+    unavailable_reason: str
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "method_id", _text(self.method_id, "method_id"))
+        object.__setattr__(
+            self, "implementation_id", _text(self.implementation_id, "implementation_id")
+        )
+        object.__setattr__(
+            self, "unavailable_reason", _text(self.unavailable_reason, "unavailable_reason")
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -159,14 +219,69 @@ class BaselineResolution:
 
 
 class BaselineRegistry:
-    def __init__(self, specs: tuple[BaselineSpec, ...]) -> None:
-        indexed = {spec.method_id: spec for spec in specs}
-        if len(indexed) != len(specs):
-            raise ValueError("baseline method IDs must be unique")
-        self._specs: Mapping[str, BaselineSpec] = MappingProxyType(dict(sorted(indexed.items())))
-        self._implementations: dict[
-            str, DiscoveryImplementation | LearnedDetectionImplementation | HeuristicDetectionImplementation
+    __slots__ = ("_specs", "_implementations", "_sealed")
+
+    def __init__(
+        self,
+        entries: tuple[
+            tuple[
+                BaselineSpec,
+                DiscoveryImplementation
+                | LearnedDetectionImplementation
+                | HeuristicDetectionImplementation,
+            ],
+            ...,
+        ],
+    ) -> None:
+        specs: dict[str, BaselineSpec] = {}
+        implementations: dict[
+            str,
+            DiscoveryImplementation
+            | LearnedDetectionImplementation
+            | HeuristicDetectionImplementation,
         ] = {}
+        for entry in entries:
+            if not isinstance(entry, tuple) or len(entry) != 2:
+                raise ValueError("registry entries must be (BaselineSpec, implementation) pairs")
+            spec, implementation = entry
+            if not isinstance(spec, BaselineSpec):
+                raise ValueError("registry entries require BaselineSpec values")
+            if spec.method_id in specs:
+                raise ValueError(f"duplicate registered method: {spec.method_id}")
+            if getattr(implementation, "method_id", None) != spec.method_id:
+                raise ValueError("implementation method identity does not match registered spec")
+            implementation_id = _text(
+                getattr(implementation, "implementation_id", None), "implementation_id"
+            )
+            if spec.stage == "discovery" and not isinstance(
+                implementation, DiscoveryImplementation
+            ):
+                raise ValueError("discovery methods require a DiscoveryImplementation")
+            if spec.model_role == "heuristic_baseline":
+                if type(implementation) is not HeuristicDetectionImplementation:
+                    raise ValueError("heuristic method requires the concrete Stage 2 adapter")
+            elif spec.stage == "detection" and not isinstance(
+                implementation, LearnedDetectionImplementation
+            ):
+                raise ValueError("learned detection methods require a LearnedDetectionImplementation")
+            specs[spec.method_id] = replace(spec, implementation_id=implementation_id)
+            implementations[spec.method_id] = implementation
+        object.__setattr__(self, "_specs", MappingProxyType(dict(sorted(specs.items()))))
+        object.__setattr__(self, "_implementations", MappingProxyType(dict(sorted(implementations.items()))))
+        object.__setattr__(self, "_sealed", True)
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        if getattr(self, "_sealed", False):
+            raise AttributeError("BaselineRegistry is immutable")
+        object.__setattr__(self, name, value)
+
+    _specs: Mapping[str, BaselineSpec]
+    _implementations: Mapping[
+            str,
+            DiscoveryImplementation
+            | LearnedDetectionImplementation
+            | HeuristicDetectionImplementation,
+        ]
 
     def method_ids(self) -> tuple[str, ...]:
         return tuple(self._specs)
@@ -179,23 +294,6 @@ class BaselineRegistry:
 
     def specs(self) -> tuple[BaselineSpec, ...]:
         return tuple(self._specs.values())
-
-    def bind(
-        self,
-        method_id: str,
-        implementation: DiscoveryImplementation | LearnedDetectionImplementation | HeuristicDetectionImplementation,
-    ) -> None:
-        spec = self.get(method_id)
-        if implementation.implementation_id != spec.implementation_id:
-            raise ValueError("implementation identity does not match the registered method spec")
-        if spec.stage == "discovery" and not isinstance(implementation, DiscoveryImplementation):
-            raise ValueError("discovery methods require a DiscoveryImplementation")
-        if spec.model_role == "heuristic_baseline":
-            if not isinstance(implementation, HeuristicDetectionImplementation):
-                raise ValueError("heuristic methods require a HeuristicDetectionImplementation")
-        elif spec.stage == "detection" and not isinstance(implementation, LearnedDetectionImplementation):
-            raise ValueError("learned detection methods require a LearnedDetectionImplementation")
-        self._implementations[method_id] = implementation
 
     def implementation(
         self, method_id: str
@@ -221,8 +319,9 @@ class BaselineRegistry:
                 available = False
             if not available:
                 blocked.append(f"optional_dependency: {dependency} is unavailable")
-        if method_id not in self._implementations:
-            blocked.append(f"implementation: {spec.implementation_id} is not bound")
+        unavailable_reason = self.implementation(method_id).unavailable_reason
+        if unavailable_reason is not None:
+            blocked.append(f"implementation: {unavailable_reason}")
         if blocked:
             return BaselineResolution(spec=spec, status="blocked", reason="; ".join(blocked))
         return BaselineResolution(spec=spec, status="ready")
@@ -317,7 +416,24 @@ def default_baseline_registry() -> BaselineRegistry:
                 claimable=False,
             )
         )
-    return BaselineRegistry(tuple(specs))
+    entries = []
+    for spec in specs:
+        if spec.method_id == HEURISTIC_BASELINE_ID:
+            implementation = HeuristicDetectionImplementation()
+        elif spec.stage == "discovery":
+            implementation = _UnavailableDiscoveryImplementation(
+                spec.method_id,
+                spec.implementation_id,
+                "explicit research adapter is unavailable in the default registry",
+            )
+        else:
+            implementation = _UnavailableLearnedDetectionImplementation(
+                spec.method_id,
+                spec.implementation_id,
+                "explicit learned research adapter is unavailable in the default registry",
+            )
+        entries.append((spec, implementation))
+    return BaselineRegistry(tuple(entries))
 
 
 __all__ = [

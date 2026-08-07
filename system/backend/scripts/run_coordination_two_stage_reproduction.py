@@ -13,6 +13,18 @@ from research.coordination_experiments import (
     default_baseline_registry,
     write_reproduction_artifacts,
 )
+from research.coordination_detect.contracts import (
+    DetectionFeatureSchema,
+    DetectionModelArtifact,
+    case_id_fingerprint,
+)
+
+
+DEFAULT_OUTPUT = (
+    Path(__file__).resolve().parents[2]
+    / "output"
+    / "coordination_two_stage_reproduction"
+)
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -25,8 +37,38 @@ def _parser() -> argparse.ArgumentParser:
         "--smoke-fixture", action="store_true",
         help="write a deterministic fixture artifact without loading IOHunter",
     )
-    parser.add_argument("--output", type=Path, help="artifact directory for --smoke-fixture")
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=DEFAULT_OUTPUT,
+        help="artifact directory for --smoke-fixture",
+    )
     return parser
+
+
+def _smoke_model_artifact(split: ExperimentSplit) -> DetectionModelArtifact:
+    feature_schema = DetectionFeatureSchema(version="task6-smoke/v1", names=("score",))
+    validation_fingerprint = case_id_fingerprint(split.validation_ids)
+    return DetectionModelArtifact(
+        feature_schema=feature_schema,
+        scaler_mean=(0.5,),
+        scaler_scale=(0.25,),
+        coefficients=(1.0,),
+        intercept=0.0,
+        calibrator_slope=1.0,
+        calibrator_intercept=0.0,
+        lower_decision_threshold=0.3,
+        upper_decision_threshold=0.7,
+        validation_ood_min=(0.0,),
+        validation_ood_max=(1.0,),
+        optimizer_config={"algorithm": "embedded_fixture"},
+        calibrator_config={"algorithm": "embedded_fixture"},
+        threshold_objective="embedded_fixture",
+        train_fit_case_ids_fingerprint=case_id_fingerprint(split.train_ids),
+        validation_calibration_case_ids_fingerprint=validation_fingerprint,
+        validation_threshold_case_ids_fingerprint=validation_fingerprint,
+        validation_ood_case_ids_fingerprint=validation_fingerprint,
+    )
 
 
 def _smoke_rows() -> tuple[ResultRow, ...]:
@@ -58,6 +100,7 @@ def _smoke_rows() -> tuple[ResultRow, ...]:
             test_group_ids=("test",),
             transform_fit_ids=("train-0", "train-1"),
         )
+        model_artifact = _smoke_model_artifact(split)
         rows.append(
             ResultRow(
                 dataset_id=manifest.dataset_id,
@@ -87,10 +130,13 @@ def _smoke_rows() -> tuple[ResultRow, ...]:
                     "audit_version": "coordination-execution-audit/v2",
                     "stage": "detection",
                     "implementation_id": "embedded-smoke-fixture",
-                    "fit_provenance_source": "embedded_fixture_contract",
                     "evaluation_after_execution": True,
                     "test_evaluation_only": True,
                 },
+                model_artifact=model_artifact.to_dict(),
+                train_partition_fingerprint=case_id_fingerprint(split.train_ids),
+                validation_partition_fingerprint=case_id_fingerprint(split.validation_ids),
+                test_partition_fingerprint=case_id_fingerprint(split.test_ids),
             )
         )
     return tuple(rows)
@@ -105,8 +151,6 @@ def main(argv: Sequence[str] | None = None) -> int:
             ensure_ascii=False, sort_keys=True, indent=2,
         ))
         return 0
-    if args.output is None:
-        parser.error("--output is required with --smoke-fixture")
     artifacts = write_reproduction_artifacts(
         _smoke_rows(),
         args.output,

@@ -98,6 +98,27 @@ def _row(
         "coordination_only", "detection_features_only",
     }:
         ablation_id = method_id
+    row_fields = {}
+    if (
+        status == "success"
+        and task == "detection"
+        and model_role in {"primary_learned", "learned_comparison"}
+        and audit is None
+    ):
+        train, validation, test, artifact = _detection_fixture(package)
+        contracts = importlib.import_module("research.coordination_detect.contracts")
+        row_fields = {
+            "model_artifact": artifact.to_dict(),
+            "train_partition_fingerprint": contracts.case_id_fingerprint(
+                case.case_id for case in train
+            ),
+            "validation_partition_fingerprint": contracts.case_id_fingerprint(
+                case.case_id for case in validation
+            ),
+            "test_partition_fingerprint": contracts.case_id_fingerprint(
+                case.case_id for case in test
+            ),
+        }
     return runner.ResultRow(
         dataset_id="fixture",
         dataset_manifest_fingerprint=_manifest(package, seed=seed, claim_markers=claim_markers).fingerprint,
@@ -118,7 +139,8 @@ def _row(
         task=task,
         selection_eligible=selection_eligible,
         ablation_id=ablation_id,
-        audit={"audit_version": "fixture/v1", "verified": True} if audit is None else audit,
+        audit={"audit_version": "fixture/v2"} if audit is None else audit,
+        **row_fields,
     )
 
 
@@ -160,6 +182,20 @@ def _capability(package, *, dataset_id="fixture"):
         supports_campaign_io_evaluation=True,
         blocked_reasons={"social_bot_classification": "not a bot dataset"},
         claim_markers=("research_only",),
+    )
+
+
+def _coordination_event(*, account_id="account-a", object_id="object-a"):
+    event_type = importlib.import_module(
+        "research.coordination_discover.stage1.events"
+    ).CoordinationEvent
+    return event_type(
+        account_id=account_id,
+        relation="shared_url",
+        object_id=object_id,
+        observed_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        weight=1.0,
+        evidence_ref=f"fixture:{account_id}:{object_id}",
     )
 
 
@@ -432,21 +468,21 @@ def test_time_holdout_claim_blocks_static_placeholder_rows():
         evaluator_fingerprint="sha256:" + "b" * 64,
         split_policy="official_static_fold",
         split_fingerprint=_split(package).fingerprint,
-        method_id="learned_fused_detector",
-        method_version="learned-coordination-logistic-v1",
-        model_role="primary_learned",
+        method_id="edgebank",
+        method_version="edgebank-v1",
+        model_role="temporal_baseline",
         seed=42,
         runtime_seconds=1.0,
         peak_memory_bytes=1024,
         status="success",
-        metrics={**_complete_detection_metrics(), "auprc": 1.0},
+        metrics={**_complete_discovery_metrics(), "edge_auprc": 1.0},
         claim_markers=("static_placeholder_not_observed_time",),
-        selection_eligible=True,
-        audit={"audit_version": "fixture/v1", "verified": True},
+        task="discovery",
+        audit={"audit_version": "fixture/v2", "label_free_execution": True},
     )
     result = runner.evaluate_claim_gate(
         runner.ClaimGate(
-            "time-holdout", "auprc", "maximize", 0.5,
+            "time-holdout", "edge_auprc", "maximize", 0.5,
             claim_scope="observed_time",
             required_split_policy="observed_time_holdout",
         ),
@@ -519,9 +555,26 @@ def test_typed_discovery_runner_retains_blocked_and_failed_outcomes():
         },
         claim_markers=("research_only",),
     )
-    registry = baselines.default_baseline_registry()
+    default = baselines.default_baseline_registry()
+
+    class FailingEdgeBank(baselines.DiscoveryImplementation):
+        method_id = "edgebank"
+        implementation_id = "edgebank-implementation-v1"
+
+        def execute(self, execution_input):
+            raise RuntimeError("fixture exploded")
+
+    registry = baselines.BaselineRegistry(
+        (
+            (
+                default.get("tgn_style_memory_prior"),
+                default.implementation("tgn_style_memory_prior"),
+            ),
+            (default.get("edgebank"), FailingEdgeBank()),
+        )
+    )
     execution_input = runner.DiscoveryExecutionInput(
-        manifest=_manifest(package), events=("label-free-event",)
+        manifest=_manifest(package), events=(_coordination_event(),)
     )
     blocked = runner.execute_discovery_method(
         registry, "tgn_style_memory_prior", execution_input, capability
@@ -529,13 +582,6 @@ def test_typed_discovery_runner_retains_blocked_and_failed_outcomes():
     assert blocked.status == "blocked"
     assert "observed_time_holdout" in blocked.reason
 
-    registry.bind(
-        "edgebank",
-        baselines.DiscoveryImplementation(
-            "edgebank-implementation-v1",
-            lambda _: (_ for _ in ()).throw(RuntimeError("fixture exploded")),
-        ),
-    )
     failed = runner.execute_discovery_method(
         registry, "edgebank", execution_input, dataclasses.replace(capability, supports_time_holdout=True, blocked_reasons={"social_bot_classification": "not a bot dataset"})
     )
@@ -549,6 +595,21 @@ def test_cli_script_has_no_production_activation_imports():
     assert "coordination_model_service" not in source
     assert "coordination-evidence-runtime-v2" not in source
     assert "sys.path.insert" not in source
+
+
+def test_cli_default_output_stays_under_g_drive_repository_root():
+    _modules()
+    script = PROJECT_ROOT / "backend" / "scripts" / "run_coordination_two_stage_reproduction.py"
+    spec = importlib.util.spec_from_file_location(
+        "task6_coordination_reproduction_cli", script
+    )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    expected = PROJECT_ROOT / "output" / "coordination_two_stage_reproduction"
+    assert module.DEFAULT_OUTPUT == expected
+    assert module._parser().parse_args(["--smoke-fixture"]).output == expected
+    assert module.DEFAULT_OUTPUT.drive.upper() == "G:"
 
 
 def test_iohunter_family_identity_accepts_only_canonical_campaign_manifests():
@@ -607,25 +668,25 @@ def test_claim_restrictions_are_intrinsic_and_cannot_be_bypassed_by_gate_options
         dataset_id="iohunter-russia",
         dataset_manifest_fingerprint=_manifest(package).fingerprint,
         evaluator_fingerprint="sha256:" + "b" * 64,
-        split_policy="observed_time_holdout",
+        split_policy="official_static_fold",
         split_fingerprint=_split(package).fingerprint,
-        method_id="learned_fused_detector",
-        method_version="learned-coordination-logistic-v1",
-        model_role="primary_learned",
+        method_id="edgebank",
+        method_version="edgebank-v1",
+        model_role="temporal_baseline",
         seed=42,
         runtime_seconds=1.0,
         peak_memory_bytes=1024,
         status="success",
-        metrics=_complete_detection_metrics(),
+        metrics=_complete_discovery_metrics(),
         claim_markers=("static_placeholder_not_observed_time",),
-        selection_eligible=True,
-        audit={"audit_version": "fixture/v1", "verified": True},
+        task="discovery",
+        audit={"audit_version": "fixture/v2", "label_free_execution": True},
     )
     observed_time = runner.evaluate_claim_gate(
         runner.ClaimGate(
-            "observed-time", "auprc", "maximize", 0.5,
+            "observed-time", "edge_auprc", "maximize", 0.5,
             claim_scope="observed_time",
-            required_split_policy="observed_time_holdout",
+            required_split_policy="official_static_fold",
         ),
         (static,),
     )
@@ -655,31 +716,34 @@ def test_duplicate_successful_seed_retries_fail_closed_for_aggregation_and_gates
 
 def test_discovery_execution_is_label_free_and_evaluated_only_after_prediction():
     package, _, baselines, runner = _modules()
-    registry = baselines.default_baseline_registry()
+    default = baselines.default_baseline_registry()
     seen = []
 
-    def execute(execution_input):
-        seen.append(execution_input)
-        assert not hasattr(execution_input, "labels")
-        assert not hasattr(execution_input, "evaluator")
-        return runner.DiscoveryPrediction(
-            candidate_edges=(("a", "b"), ("b", "c")),
-            approximate_quadratic_forms=(2.0, 4.0),
-            edge_score_edges=(("a", "b"), ("b", "c"), ("c", "d"), ("a", "d")),
-            edge_scores=(0.9, 0.8, 0.2, 0.1),
-            predicted_clusters={"a": "x", "b": "x", "c": "y", "d": "y"},
-            artifact_identity="sha256:" + "d" * 64,
-        )
+    class FixtureEdgeBank(baselines.DiscoveryImplementation):
+        method_id = "edgebank"
+        implementation_id = "edgebank-implementation-v1"
 
-    registry.bind(
-        "edgebank",
-        baselines.DiscoveryImplementation("edgebank-implementation-v1", execute),
+        def execute(self, execution_input):
+            seen.append(execution_input)
+            assert not hasattr(execution_input, "labels")
+            assert not hasattr(execution_input, "evaluator")
+            return runner.DiscoveryPrediction(
+                candidate_edges=(("a", "b"), ("b", "c")),
+                approximate_quadratic_forms=(2.0, 4.0),
+                edge_score_edges=(("a", "b"), ("b", "c"), ("c", "d"), ("a", "d")),
+                edge_scores=(0.9, 0.8, 0.2, 0.1),
+                predicted_clusters={"a": "x", "b": "x", "c": "y", "d": "y"},
+                artifact_identity="sha256:" + "d" * 64,
+            )
+
+    registry = baselines.BaselineRegistry(
+        ((default.get("edgebank"), FixtureEdgeBank()),)
     )
     manifest = _manifest(package)
     execution = runner.execute_discovery_method(
         registry,
         "edgebank",
-        runner.DiscoveryExecutionInput(manifest=manifest, events=("label-free-event",)),
+        runner.DiscoveryExecutionInput(manifest=manifest, events=(_coordination_event(),)),
         _capability(package),
     )
     assert execution.status == "success"
@@ -696,7 +760,14 @@ def test_discovery_execution_is_label_free_and_evaluated_only_after_prediction()
             edge_score_edges=(("a", "b"), ("b", "c"), ("c", "d"), ("a", "d")),
             edge_labels=(1, 1, 0, 0),
             true_clusters={"a": "x", "b": "x", "c": "y", "d": "y"},
-            peer_cluster_assignments=({"a": "one", "b": "one", "c": "two", "d": "two"},),
+            stability_peers=(
+                runner.DiscoveryStabilityPeer(
+                    seed=43,
+                    current_seed=42,
+                    prediction_artifact_identity="sha256:" + "e" * 64,
+                    predicted_clusters={"a": "one", "b": "one", "c": "two", "d": "two"},
+                ),
+            ),
         ),
     )
     assert row.status == "success"
@@ -708,32 +779,39 @@ def test_discovery_execution_is_label_free_and_evaluated_only_after_prediction()
 def test_detection_fit_audit_is_derived_from_stage2_artifact_and_partitions():
     package, _, baselines, runner = _modules()
     train, validation, test, artifact = _detection_fixture(package)
-    registry = baselines.default_baseline_registry()
+    default = baselines.default_baseline_registry()
+    inference = tuple(runner.DetectionInferenceCase.from_training_case(case) for case in test)
 
-    def execute(partitions):
-        assert partitions.train_cases == train
-        assert partitions.validation_cases == validation
-        assert partitions.test_cases == test
-        return runner.DetectionExecutionOutput(
-            model_artifact=artifact,
-            predictions=(
-                runner.DetectionPrediction("test-0", 0.1, "benign_coordination"),
-                runner.DetectionPrediction("test-1", 0.9, "harmful_coordination"),
-            ),
-        )
+    class FixtureLearned(baselines.LearnedDetectionImplementation):
+        method_id = "learned_fused_detector"
+        implementation_id = "learned-fused-implementation-v1"
 
-    registry.bind(
-        "learned_fused_detector",
-        baselines.LearnedDetectionImplementation("learned-fused-implementation-v1", execute),
+        def execute(self, partitions):
+            assert partitions.train_cases == train
+            assert partitions.validation_cases == validation
+            assert partitions.test_cases == inference
+            return runner.DetectionExecutionOutput(
+                model_artifact=artifact,
+                predictions=(
+                    runner.DetectionPrediction("test-0", 0.1, "benign_coordination"),
+                    runner.DetectionPrediction("test-1", 0.9, "harmful_coordination"),
+                ),
+            )
+
+    registry = baselines.BaselineRegistry(
+        ((default.get("learned_fused_detector"), FixtureLearned()),)
     )
     row = runner.run_detection_method(
         registry,
         "learned_fused_detector",
         manifest=_manifest(package),
         capability=_capability(package),
-        evaluator_fingerprint="sha256:" + "b" * 64,
         split=_split(package),
-        partitions=runner.DetectionPartitions(train, validation, test),
+        partitions=runner.DetectionPartitions(train, validation, inference),
+        evaluation=runner.DetectionEvaluationInput(
+            evaluator_fingerprint="sha256:" + "b" * 64,
+            test_labels={case.case_id: case.label for case in test},
+        ),
     )
     assert row.status == "success"
     assert row.audit["fit_provenance_source"] == "stage2_model_artifact"
@@ -746,27 +824,33 @@ def test_detection_fit_audit_is_derived_from_stage2_artifact_and_partitions():
             "research.coordination_detect.contracts"
         ).case_id_fingerprint(item.case_id for item in test),
     )
-    registry.bind(
-        "learned_fused_detector",
-        baselines.LearnedDetectionImplementation(
-            "learned-fused-implementation-v1",
-            lambda _: runner.DetectionExecutionOutput(
+    class LeakedLearned(baselines.LearnedDetectionImplementation):
+        method_id = "learned_fused_detector"
+        implementation_id = "learned-fused-implementation-v1"
+
+        def execute(self, partitions):
+            return runner.DetectionExecutionOutput(
                 model_artifact=leaked,
                 predictions=(
                     runner.DetectionPrediction("test-0", 0.1, "benign_coordination"),
                     runner.DetectionPrediction("test-1", 0.9, "harmful_coordination"),
                 ),
-            ),
-        ),
+            )
+
+    registry = baselines.BaselineRegistry(
+        ((default.get("learned_fused_detector"), LeakedLearned()),)
     )
     rejected = runner.run_detection_method(
         registry,
         "learned_fused_detector",
         manifest=_manifest(package),
         capability=_capability(package),
-        evaluator_fingerprint="sha256:" + "b" * 64,
         split=_split(package),
-        partitions=runner.DetectionPartitions(train, validation, test),
+        partitions=runner.DetectionPartitions(train, validation, inference),
+        evaluation=runner.DetectionEvaluationInput(
+            evaluator_fingerprint="sha256:" + "b" * 64,
+            test_labels={case.case_id: case.label for case in test},
+        ),
     )
     assert rejected.status == "failed"
     assert "train_fit_case_ids_fingerprint" in rejected.reason
@@ -775,14 +859,13 @@ def test_detection_fit_audit_is_derived_from_stage2_artifact_and_partitions():
 def test_registered_implementation_binding_prevents_method_relabeling():
     _, _, baselines, runner = _modules()
     registry = baselines.default_baseline_registry()
-    with pytest.raises(ValueError, match="implementation identity"):
-        registry.bind(
-            "edgebank",
-            baselines.DiscoveryImplementation(
-                "dense-cosine-leiden-implementation-v1",
-                lambda _: None,
-            ),
-        )
+
+    class RelabeledEdgeBank(baselines.DiscoveryImplementation):
+        method_id = "dense_cosine_leiden"
+        implementation_id = "dense-cosine-leiden-implementation-v1"
+
+    with pytest.raises(ValueError, match="implementation method identity"):
+        baselines.BaselineRegistry(((registry.get("edgebank"), RelabeledEdgeBank()),))
     assert not hasattr(runner, "run_registered_method")
 
 
@@ -790,38 +873,38 @@ def test_heuristic_implementation_receives_test_only_and_cannot_persist_fit_audi
     package, _, baselines, runner = _modules()
     train, validation, test, _ = _detection_fixture(package)
     registry = baselines.default_baseline_registry()
-    seen = []
-
-    def execute(test_input):
-        seen.append(test_input)
-        assert isinstance(test_input, runner.DetectionTestInput)
-        assert not hasattr(test_input, "train_cases")
-        assert not hasattr(test_input, "validation_cases")
-        return runner.DetectionExecutionOutput(
-            model_artifact=None,
-            predictions=(
-                runner.DetectionPrediction("test-0", 0.1, "benign_coordination"),
-                runner.DetectionPrediction("test-1", 0.9, "harmful_coordination"),
+    inference = tuple(
+        runner.DetectionInferenceCase(
+            case_id=case.case_id,
+            cluster_id=case.cluster_id,
+            feature_schema_version="fixture-heuristic/v1",
+            feature_schema_fingerprint="sha256:" + "c" * 64,
+            feature_names=(
+                "tsgs_density",
+                "mhcr_coherence",
+                "temporal_sync_score",
+                "unsupervised_ranking",
+            ),
+            feature_values=(0.8, 0.7, 0.9, 0.6),
+            provenance={},
+        )
+        for case in test
+    )
+    with pytest.warns(UserWarning, match="heuristic baseline"):
+        row = runner.run_detection_method(
+            registry,
+            "heuristic_baseline_v1",
+            manifest=_manifest(package),
+            capability=_capability(package),
+            split=_split(package),
+            partitions=runner.DetectionPartitions(train, validation, inference),
+            evaluation=runner.DetectionEvaluationInput(
+                evaluator_fingerprint="sha256:" + "b" * 64,
+                test_labels={case.case_id: case.label for case in test},
             ),
         )
-
-    registry.bind(
-        "heuristic_baseline_v1",
-        baselines.HeuristicDetectionImplementation(
-            "heuristic-baseline-implementation-v1", execute
-        ),
-    )
-    row = runner.run_detection_method(
-        registry,
-        "heuristic_baseline_v1",
-        manifest=_manifest(package),
-        capability=_capability(package),
-        evaluator_fingerprint="sha256:" + "b" * 64,
-        split=_split(package),
-        partitions=runner.DetectionPartitions(train, validation, test),
-    )
     assert row.status == "success"
-    assert len(seen) == 1
+    assert all(not hasattr(case, "label") for case in inference)
     assert row.audit["fit_provenance_source"] == "none_heuristic_test_only"
     assert "train_partition_fingerprint" not in row.audit
     assert "validation_partition_fingerprint" not in row.audit
