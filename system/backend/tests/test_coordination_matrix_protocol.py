@@ -69,9 +69,15 @@ def _payload():
     }
 
 
-def _dataset_root(tmp_path: Path, module) -> Path:
-    root = tmp_path / "processed"
-    raw = pickle.dumps(_payload(), protocol=pickle.HIGHEST_PROTOCOL)
+def _dataset_root(
+    tmp_path: Path,
+    module,
+    *,
+    payload=None,
+    directory_name: str = "processed",
+) -> Path:
+    root = tmp_path / directory_name
+    raw = pickle.dumps(payload or _payload(), protocol=pickle.HIGHEST_PROTOCOL)
     for campaign in module.IOHUNTER_PREFLIGHT_CAMPAIGNS:
         path = root / campaign / "0.7_datasets.pkl"
         path.parent.mkdir(parents=True)
@@ -102,6 +108,7 @@ def test_matrix_enumerates_campaign_seed_fold_method_and_time_rows_deterministic
         assert first.matrix_fingerprint == second.matrix_fingerprint
         assert [row.run_id for row in first.rows] == [row.run_id for row in second.rows]
         assert len({row.run_id for row in first.rows}) == len(first.rows)
+        assert {row.resume_action for row in second.rows} == {"skip_preflight"}
         assert {(row.seed, row.fold_id) for row in first.rows} == {
             (42, "fold-000"),
             (43, "fold-001"),
@@ -123,7 +130,14 @@ def test_matrix_rows_record_dependencies_capabilities_fingerprints_and_descendan
             spec = module.default_baseline_registry().get(row.method_id)
             assert row.dependencies == spec.optional_dependencies
             assert row.required_capabilities == spec.required_capabilities
-            assert set(row.input_fingerprints) == {"discovery", "evaluator", "fold"}
+            expected_execution_inputs = (
+                {"discovery"}
+                if spec.stage == "discovery"
+                else {"discovery", "evaluator", "fold"}
+            )
+            assert set(row.input_fingerprints) == expected_execution_inputs
+            assert set(row.evaluation_fingerprints) == {"evaluator", "fold"}
+            assert row.execution_id.startswith("iohunter-execution-")
             expected = Path(row.expected_output_path).resolve()
             expected.relative_to(output.resolve())
             assert expected.suffix == ".json"
@@ -131,6 +145,71 @@ def test_matrix_rows_record_dependencies_capabilities_fingerprints_and_descendan
             assert (row.status == "blocked") == bool(row.reason)
     finally:
         shutil.rmtree(output, ignore_errors=True)
+
+
+def test_discovery_execution_identity_is_independent_of_evaluator_labels_folds_and_fused_graph(tmp_path):
+    module = _load_experiments()
+    original = _payload()
+    changed = _payload()
+    changed["labels"] = 1.0 - changed["labels"]
+    changed_graph = nx.Graph()
+    changed_graph.add_nodes_from(range(6))
+    changed_graph.add_edges_from(((0, 5), (2, 4)))
+    changed["graph"] = changed_graph
+    changed["splits"][0], changed["splits"][1] = (
+        changed["splits"][1],
+        changed["splits"][0],
+    )
+    first_root = _dataset_root(
+        tmp_path,
+        module,
+        payload=original,
+        directory_name="first-processed",
+    )
+    second_root = _dataset_root(
+        tmp_path,
+        module,
+        payload=changed,
+        directory_name="second-processed",
+    )
+    first_output = _output_dir(module, "label-free-first")
+    second_output = _output_dir(module, "label-free-second")
+    try:
+        first = module.preflight_iohunter_matrix(
+            first_root,
+            first_output,
+            memory_budget_bytes=256 * 1024 * 1024,
+        )
+        second = module.preflight_iohunter_matrix(
+            second_root,
+            second_output,
+            memory_budget_bytes=256 * 1024 * 1024,
+        )
+
+        def row(matrix, method_id):
+            return next(
+                item
+                for item in matrix.rows
+                if item.campaign == "russia"
+                and item.seed == 42
+                and item.split_policy == "official_fold"
+                and item.method_id == method_id
+            )
+
+        first_discovery = row(first, "dense_cosine_leiden")
+        second_discovery = row(second, "dense_cosine_leiden")
+        assert first_discovery.input_fingerprints == second_discovery.input_fingerprints
+        assert first_discovery.execution_id == second_discovery.execution_id
+        assert first_discovery.evaluation_fingerprints != second_discovery.evaluation_fingerprints
+        assert first_discovery.run_id != second_discovery.run_id
+
+        first_detection = row(first, module.HEURISTIC_BASELINE_ID)
+        second_detection = row(second, module.HEURISTIC_BASELINE_ID)
+        assert first_detection.input_fingerprints != second_detection.input_fingerprints
+        assert first_detection.execution_id != second_detection.execution_id
+    finally:
+        shutil.rmtree(first_output, ignore_errors=True)
+        shutil.rmtree(second_output, ignore_errors=True)
 
 
 def test_time_methods_time_holdouts_and_default_unavailable_adapters_are_blocked(tmp_path):

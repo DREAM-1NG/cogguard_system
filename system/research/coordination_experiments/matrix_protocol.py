@@ -88,6 +88,8 @@ def validate_iohunter_preflight_output_dir(output_dir: str | Path) -> Path:
 @dataclass(frozen=True, slots=True)
 class IOHunterPreflightRow:
     run_id: str
+    execution_id: str
+    stage: str
     campaign: str
     seed: int
     fold_id: str
@@ -99,6 +101,7 @@ class IOHunterPreflightRow:
     dependencies: tuple[str, ...]
     required_capabilities: tuple[str, ...]
     input_fingerprints: Mapping[str, str]
+    evaluation_fingerprints: Mapping[str, str]
     expected_output_path: str
     run_manifest_path: str
     status: str
@@ -109,6 +112,7 @@ class IOHunterPreflightRow:
     def __post_init__(self) -> None:
         for field_name in (
             "run_id",
+            "execution_id",
             "campaign",
             "fold_id",
             "split_policy",
@@ -121,6 +125,8 @@ class IOHunterPreflightRow:
             "resume_action",
         ):
             object.__setattr__(self, field_name, _text(getattr(self, field_name), field_name))
+        if self.stage not in {"discovery", "detection"}:
+            raise ValueError("stage must be discovery or detection")
         if isinstance(self.seed, bool) or not isinstance(self.seed, int):
             raise ValueError("seed must be an integer")
         if self.status not in {"ready", "blocked"}:
@@ -133,8 +139,15 @@ class IOHunterPreflightRow:
             "required_capabilities",
             tuple(_text(value, "required_capability") for value in self.required_capabilities),
         )
-        if set(self.input_fingerprints) != {"discovery", "evaluator", "fold"}:
-            raise ValueError("input_fingerprints must contain discovery, evaluator, and fold")
+        expected_inputs = (
+            {"discovery"}
+            if self.stage == "discovery"
+            else {"discovery", "evaluator", "fold"}
+        )
+        if set(self.input_fingerprints) != expected_inputs:
+            raise ValueError(
+                f"{self.stage} input_fingerprints must contain {sorted(expected_inputs)}"
+            )
         object.__setattr__(
             self,
             "input_fingerprints",
@@ -142,6 +155,20 @@ class IOHunterPreflightRow:
                 {
                     key: _sha(value, f"input_fingerprints[{key}]")
                     for key, value in sorted(self.input_fingerprints.items())
+                }
+            ),
+        )
+        if set(self.evaluation_fingerprints) != {"evaluator", "fold"}:
+            raise ValueError(
+                "evaluation_fingerprints must contain evaluator and fold"
+            )
+        object.__setattr__(
+            self,
+            "evaluation_fingerprints",
+            MappingProxyType(
+                {
+                    key: _sha(value, f"evaluation_fingerprints[{key}]")
+                    for key, value in sorted(self.evaluation_fingerprints.items())
                 }
             ),
         )
@@ -157,6 +184,8 @@ class IOHunterPreflightRow:
     def _identity_payload(self, *, include_resume: bool) -> dict[str, Any]:
         payload = {
             "run_id": self.run_id,
+            "execution_id": self.execution_id,
+            "stage": self.stage,
             "campaign": self.campaign,
             "seed": self.seed,
             "fold_id": self.fold_id,
@@ -168,6 +197,7 @@ class IOHunterPreflightRow:
             "dependencies": list(self.dependencies),
             "required_capabilities": list(self.required_capabilities),
             "input_fingerprints": dict(self.input_fingerprints),
+            "evaluation_fingerprints": dict(self.evaluation_fingerprints),
             "expected_output_path": self.expected_output_path,
             "run_manifest_path": self.run_manifest_path,
             "status": self.status,
@@ -218,6 +248,13 @@ def _run_id(payload: Mapping[str, Any]) -> str:
     return "iohunter-" + hashlib.sha256(_canonical_json(payload).encode("utf-8")).hexdigest()[:24]
 
 
+def _execution_id(payload: Mapping[str, Any]) -> str:
+    return (
+        "iohunter-execution-"
+        + hashlib.sha256(_canonical_json(payload).encode("utf-8")).hexdigest()[:24]
+    )
+
+
 def _run_paths(output_dir: Path, row_key: Mapping[str, Any], run_id: str) -> tuple[Path, Path]:
     method_id = str(row_key["method_id"])
     filename = f"{method_id}-{run_id}.json"
@@ -249,20 +286,46 @@ def _row(
     reason: str | None,
     memory_profile: Mapping[str, Any] | None,
 ) -> IOHunterPreflightRow:
+    execution_inputs = (
+        {"discovery": fingerprints["discovery"]}
+        if spec.stage == "discovery"
+        else dict(fingerprints)
+    )
+    evaluation_fingerprints = {
+        "evaluator": fingerprints["evaluator"],
+        "fold": fingerprints["fold"],
+    }
+    execution_id = _execution_id(
+        {
+            "campaign": campaign,
+            "seed": seed,
+            "split_policy": split_policy,
+            "method_id": spec.method_id,
+            "method_version": spec.method_version,
+            "implementation_id": spec.implementation_id,
+            "input_fingerprints": execution_inputs,
+        }
+    )
+    evaluation_key = {
+        "execution_id": execution_id,
+        "fold_id": fold_id,
+        "evaluation_fingerprints": evaluation_fingerprints,
+    }
+    run_id = _run_id(evaluation_key)
     key = {
         "campaign": campaign,
         "seed": seed,
         "fold_id": fold_id,
         "split_policy": split_policy,
         "method_id": spec.method_id,
-        "input_fingerprints": dict(sorted(fingerprints.items())),
     }
-    run_id = _run_id(key)
     expected, manifest = _run_paths(output_dir, key, run_id)
     expected.relative_to(output_dir)
     manifest.relative_to(output_dir)
     return IOHunterPreflightRow(
         run_id=run_id,
+        execution_id=execution_id,
+        stage=spec.stage,
         campaign=campaign,
         seed=seed,
         fold_id=fold_id,
@@ -273,7 +336,8 @@ def _row(
         implementation_id=spec.implementation_id,
         dependencies=spec.optional_dependencies,
         required_capabilities=spec.required_capabilities,
-        input_fingerprints=fingerprints,
+        input_fingerprints=execution_inputs,
+        evaluation_fingerprints=evaluation_fingerprints,
         expected_output_path=str(expected),
         run_manifest_path=str(manifest),
         status=status,
@@ -393,9 +457,11 @@ def _resume_action(path: Path, row: IOHunterPreflightRow) -> str:
         existing.get("schema_version") == IOHUNTER_PREFLIGHT_RUN_SCHEMA_VERSION
         and existing.get("run_id") == row.run_id
         and existing.get("row_fingerprint") == row.row_fingerprint
-        and existing.get("execution_status") == "complete"
     ):
-        return "skip_complete"
+        if existing.get("execution_status") == "complete":
+            return "skip_complete"
+        if existing.get("execution_status") == "not_started_preflight_only":
+            return "skip_preflight"
     return "rewrite_preflight_manifest"
 
 
@@ -409,7 +475,7 @@ def _write_run_manifest(row: IOHunterPreflightRow) -> IOHunterPreflightRow:
             "resume_action": action,
         }
     )
-    if action == "skip_complete":
+    if action in {"skip_complete", "skip_preflight"}:
         return row
     _atomic_write_json(
         path,
