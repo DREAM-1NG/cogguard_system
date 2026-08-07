@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from types import MappingProxyType
 from typing import Any, Mapping
 
@@ -134,19 +134,28 @@ class LearnedDetectionImplementation:
         raise NotImplementedError
 
 
+@dataclass(frozen=True, slots=True)
 class HeuristicDetectionImplementation:
-    __slots__ = ()
+    _baseline_type: type[HeuristicBayesianBaseline] = field(
+        default=HeuristicBayesianBaseline,
+        init=False,
+        repr=False,
+        compare=False,
+    )
     method_id = HEURISTIC_BASELINE_ID
     implementation_id = "heuristic-baseline-implementation-v1"
     unavailable_reason: str | None = None
-    baseline_type = HeuristicBayesianBaseline
+
+    @property
+    def baseline_type(self) -> type[HeuristicBayesianBaseline]:
+        return self._baseline_type
 
     def execute(self, test_input: Any) -> Any:
         from .runner import DetectionExecutionOutput, DetectionPrediction, DetectionTestInput
 
         if not isinstance(test_input, DetectionTestInput):
             raise ValueError("heuristic execution requires an unlabeled DetectionTestInput")
-        baseline = self.baseline_type()
+        baseline = self._baseline_type()
         predictions: list[DetectionPrediction] = []
         for case in test_input.test_cases:
             features = dict(zip(case.feature_names, case.feature_values, strict=True))

@@ -491,7 +491,7 @@ def test_time_holdout_claim_blocks_static_placeholder_rows():
     assert result.status == "blocked"
 
 
-def test_artifact_writer_emits_deterministic_json_csv_aggregates_and_claim_gates(tmp_path):
+def test_artifact_writer_emits_deterministic_json_csv_aggregates_and_claim_gates():
     package, _, _, runner = _modules()
     rows = (
         _row(package, runner, seed=43, metrics={**_complete_detection_metrics(), "auprc": 0.9}),
@@ -499,8 +499,13 @@ def test_artifact_writer_emits_deterministic_json_csv_aggregates_and_claim_gates
         _row(package, runner, seed=44, status="blocked", reason="fixture blocked"),
     )
     gates = (runner.ClaimGate("quality", "auprc", "maximize", 0.75, claim_scope="general", minimum_successful_seeds=2),)
-    first = runner.write_reproduction_artifacts(rows, tmp_path / "first", claim_gates=gates, bootstrap_resamples=200)
-    second = runner.write_reproduction_artifacts(rows, tmp_path / "second", claim_gates=gates, bootstrap_resamples=200)
+    output_root = runner.CANONICAL_REPRODUCTION_OUTPUT_ROOT / "pytest-artifact-writer"
+    first = runner.write_reproduction_artifacts(
+        rows, output_root / "first", claim_gates=gates, bootstrap_resamples=200
+    )
+    second = runner.write_reproduction_artifacts(
+        rows, output_root / "second", claim_gates=gates, bootstrap_resamples=200
+    )
 
     assert first.artifact_identity == second.artifact_identity
     assert first.per_seed_json.read_bytes() == second.per_seed_json.read_bytes()
@@ -610,6 +615,98 @@ def test_cli_default_output_stays_under_g_drive_repository_root():
     assert module.DEFAULT_OUTPUT == expected
     assert module._parser().parse_args(["--smoke-fixture"]).output == expected
     assert module.DEFAULT_OUTPUT.drive.upper() == "G:"
+
+
+def test_final_review_inference_cases_discard_or_reject_training_provenance():
+    package, _, _, runner = _modules()
+    _, _, labeled_test, _ = _detection_fixture(package)
+    training_case = dataclasses.replace(labeled_test[0], provenance={"label": 1})
+    inference_case = runner.DetectionInferenceCase.from_training_case(training_case)
+    assert dict(inference_case.provenance) == {}
+
+    provenance_cases = (
+        {"label": 1},
+        {"metadata": {"label": 1}},
+        {"aliases": {"target": 1}},
+    )
+    for provenance in provenance_cases:
+        with pytest.raises(ValueError, match="provenance must be empty"):
+            runner.DetectionInferenceCase(
+                case_id=training_case.case_id,
+                cluster_id=training_case.cluster_id,
+                feature_schema_version=training_case.feature_schema_version,
+                feature_schema_fingerprint=training_case.feature_schema_fingerprint,
+                feature_names=training_case.feature_names,
+                feature_values=training_case.feature_values,
+                provenance=provenance,
+            )
+
+
+def test_final_review_heuristic_adapter_ignores_class_level_rebinding(monkeypatch):
+    _, _, baselines, runner = _modules()
+    implementation = baselines.default_baseline_registry().implementation("heuristic_baseline_v1")
+    inference = runner.DetectionInferenceCase(
+        case_id="test-heuristic-rebinding",
+        cluster_id="cluster-test-heuristic-rebinding",
+        feature_schema_version="fixture/v1",
+        feature_schema_fingerprint="sha256:" + "c" * 64,
+        feature_names=(
+            "tsgs_density",
+            "mhcr_coherence",
+            "temporal_sync_score",
+            "unsupervised_ranking",
+        ),
+        feature_values=(0.8, 0.7, 0.9, 0.6),
+    )
+    with pytest.warns(UserWarning, match="heuristic baseline"):
+        expected = implementation.execute(runner.DetectionTestInput((inference,)))
+
+    class LookalikeBaseline:
+        def predict(self, **_kwargs):
+            raise AssertionError("class-level heuristic rebinding must not dispatch")
+
+    monkeypatch.setattr(
+        baselines.HeuristicDetectionImplementation, "baseline_type", LookalikeBaseline
+    )
+    with pytest.warns(UserWarning, match="heuristic baseline"):
+        actual = implementation.execute(runner.DetectionTestInput((inference,)))
+    assert actual == expected
+
+
+def test_final_review_artifact_output_is_confined_to_canonical_root():
+    package, _, _, runner = _modules()
+    root = runner.CANONICAL_REPRODUCTION_OUTPUT_ROOT
+    accepted = root / "pytest-output-root" / "accepted"
+    assert runner.validate_reproduction_output_dir(accepted) == accepted.resolve()
+
+    rows = (_row(package, runner, metrics=_complete_detection_metrics()),)
+    artifacts = runner.write_reproduction_artifacts(rows, accepted, bootstrap_resamples=10)
+    assert artifacts.per_seed_json.parent == accepted.resolve()
+
+    rejected = (
+        Path("C:/tmp/cogguard-task6-output"),
+        Path("D:/cogguard-task6-output"),
+        root / ".." / "coordination_two_stage_reproduction_sibling",
+        root.parent / "coordination_two_stage_reproduction_sibling",
+    )
+    for path in rejected:
+        with pytest.raises(ValueError, match="canonical reproduction output root"):
+            runner.validate_reproduction_output_dir(path)
+        with pytest.raises(ValueError, match="canonical reproduction output root"):
+            runner.write_reproduction_artifacts(rows, path, bootstrap_resamples=10)
+
+    script = PROJECT_ROOT / "backend" / "scripts" / "run_coordination_two_stage_reproduction.py"
+    spec = importlib.util.spec_from_file_location("task6_output_validation_cli", script)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    assert module._parser().parse_args(
+        ["--smoke-fixture", "--output", str(accepted)]
+    ).output == accepted.resolve()
+    with pytest.raises(SystemExit):
+        module._parser().parse_args(
+            ["--smoke-fixture", "--output", "C:/tmp/cogguard-task6-output"]
+        )
 
 
 def test_iohunter_family_identity_accepts_only_canonical_campaign_manifests():

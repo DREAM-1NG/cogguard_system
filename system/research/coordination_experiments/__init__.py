@@ -40,6 +40,7 @@ from .baselines import (
 from .runner import (
     AggregateResult,
     ArtifactPaths,
+    CANONICAL_REPRODUCTION_OUTPUT_ROOT,
     ClaimGate,
     ClaimGateResult,
     DetectionEvaluationInput,
@@ -61,12 +62,14 @@ from .runner import (
     run_detection_method,
     select_learned_artifact,
     validate_dataset_identity,
+    validate_reproduction_output_dir,
     write_reproduction_artifacts,
 )
 
 __all__ = [
     "AggregateResult",
     "ArtifactPaths",
+    "CANONICAL_REPRODUCTION_OUTPUT_ROOT",
     "BaselineRegistry",
     "BaselineResolution",
     "BaselineSpec",
@@ -119,5 +122,6 @@ __all__ = [
     "run_detection_method",
     "select_learned_artifact",
     "validate_dataset_identity",
+    "validate_reproduction_output_dir",
     "write_reproduction_artifacts",
 ]

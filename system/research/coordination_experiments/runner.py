@@ -68,6 +68,31 @@ _DETECTION_METRICS = frozenset(
         "abstain_rate",
     }
 )
+
+CANONICAL_REPRODUCTION_OUTPUT_ROOT = (
+    Path(__file__).resolve().parents[2]
+    / "output"
+    / "coordination_two_stage_reproduction"
+).resolve()
+
+
+def validate_reproduction_output_dir(output_dir: str | Path) -> Path:
+    """Return a resolved output directory only when it is below the repository root."""
+    if not isinstance(output_dir, (str, Path)):
+        raise ValueError("output_dir must be a filesystem path")
+    candidate = Path(output_dir)
+    if not candidate.is_absolute():
+        raise ValueError("output_dir must be absolute under the canonical reproduction output root")
+    try:
+        resolved = candidate.resolve(strict=False)
+        resolved.relative_to(CANONICAL_REPRODUCTION_OUTPUT_ROOT)
+    except (OSError, ValueError) as exc:
+        raise ValueError(
+            "output_dir must resolve under the canonical reproduction output root"
+        ) from exc
+    return resolved
+
+
 def _text(value: Any, field_name: str) -> str:
     if not isinstance(value, str) or not value.strip() or value != value.strip():
         raise ValueError(f"{field_name} must be non-empty canonical text")
@@ -1209,7 +1234,9 @@ class DetectionInferenceCase:
         object.__setattr__(self, "feature_values", values)
         if not isinstance(self.provenance, Mapping):
             raise ValueError("provenance must be a mapping")
-        object.__setattr__(self, "provenance", _freeze_json(self.provenance, "provenance"))
+        if self.provenance:
+            raise ValueError("provenance must be empty for unlabeled inference cases")
+        object.__setattr__(self, "provenance", MappingProxyType({}))
 
     @classmethod
     def from_training_case(cls, case: DetectionTrainingCase) -> "DetectionInferenceCase":
@@ -1222,7 +1249,6 @@ class DetectionInferenceCase:
             feature_schema_fingerprint=case.feature_schema_fingerprint,
             feature_names=case.feature_names,
             feature_values=case.feature_values,
-            provenance=_json_value(case.provenance),
         )
 
 
@@ -1657,6 +1683,7 @@ def write_reproduction_artifacts(
     bootstrap_seed: int = 0,
     bootstrap_resamples: int = 2_000,
 ) -> ArtifactPaths:
+    destination = validate_reproduction_output_dir(output_dir)
     normalized_rows = tuple(
         sorted(
             rows,
@@ -1699,7 +1726,6 @@ def write_reproduction_artifacts(
     identity = _fingerprint(
         {"rows": rows_payload, "aggregates": aggregates_payload, "claim_gates": gates_payload}
     )
-    destination = Path(output_dir)
     destination.mkdir(parents=True, exist_ok=True)
     per_seed_json = destination / "per_seed_rows.json"
     per_seed_csv = destination / "per_seed_rows.csv"
@@ -1747,6 +1773,7 @@ def write_reproduction_artifacts(
 __all__ = [
     "AggregateResult",
     "ArtifactPaths",
+    "CANONICAL_REPRODUCTION_OUTPUT_ROOT",
     "ClaimGate",
     "ClaimGateResult",
     "DetectionEvaluationInput",
@@ -1768,5 +1795,6 @@ __all__ = [
     "run_detection_method",
     "select_learned_artifact",
     "validate_dataset_identity",
+    "validate_reproduction_output_dir",
     "write_reproduction_artifacts",
 ]

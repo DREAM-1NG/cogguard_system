@@ -2,15 +2,16 @@ from __future__ import annotations
 
 import argparse
 import json
-from pathlib import Path
 from typing import Sequence
 
 from research.coordination_experiments import (
     ClaimGate,
+    CANONICAL_REPRODUCTION_OUTPUT_ROOT,
     ExperimentSplit,
     ResearchDatasetManifest,
     ResultRow,
     default_baseline_registry,
+    validate_reproduction_output_dir,
     write_reproduction_artifacts,
 )
 from research.coordination_detect.contracts import (
@@ -20,11 +21,7 @@ from research.coordination_detect.contracts import (
 )
 
 
-DEFAULT_OUTPUT = (
-    Path(__file__).resolve().parents[2]
-    / "output"
-    / "coordination_two_stage_reproduction"
-)
+DEFAULT_OUTPUT = CANONICAL_REPRODUCTION_OUTPUT_ROOT
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -39,7 +36,7 @@ def _parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--output",
-        type=Path,
+        type=validate_reproduction_output_dir,
         default=DEFAULT_OUTPUT,
         help="artifact directory for --smoke-fixture",
     )
@@ -145,6 +142,7 @@ def _smoke_rows() -> tuple[ResultRow, ...]:
 def main(argv: Sequence[str] | None = None) -> int:
     parser = _parser()
     args = parser.parse_args(argv)
+    output_dir = validate_reproduction_output_dir(args.output)
     if args.list_methods:
         print(json.dumps(
             [spec.to_dict() for spec in default_baseline_registry().specs()],
@@ -153,7 +151,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
     artifacts = write_reproduction_artifacts(
         _smoke_rows(),
-        args.output,
+        output_dir,
         claim_gates=(
             ClaimGate(
                 "smoke-auprc", "auprc", "maximize", 0.70,
@@ -166,7 +164,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     print(json.dumps({
         "artifact_identity": artifacts.artifact_identity,
-        "output": str(args.output),
+        "output": str(output_dir),
         "status": "smoke_fixture_only",
     }, sort_keys=True))
     return 0
