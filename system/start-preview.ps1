@@ -54,12 +54,22 @@ function Stop-StaleLocalPortOwner {
 Stop-StaleLocalPortOwner -Port 8000 -Name 'backend' -ExpectedPattern 'uvicorn\s+app\.main:app'
 Stop-StaleLocalPortOwner -Port 5173 -Name 'frontend' -ExpectedPattern 'vite(\.js)?|npm.*run\s+dev'
 
-$backendCommand = "cd /d `"$backendDir`" && `"$backendPython`" -m uvicorn app.main:app --host 127.0.0.1 --port 8000"
+$backendCommand = @"
+`$env:BACKEND_ENV='local'
+`$env:BACKEND_DEBUG='true'
+`$env:PREVIEW_AUTH_ENABLED='true'
+`$env:PREVIEW_AUTH_TOKEN='cogguard-preview-token'
+Set-Location -LiteralPath '$backendDir'
+& '$backendPython' -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+"@
 
 $frontendCommand = "cd /d `"$frontendDir`" && `"$frontendNpm`" run dev -- --host 127.0.0.1 --port 5173"
 
-Start-Process cmd.exe -ArgumentList @(
-    '/k',
+Start-Process powershell.exe -ArgumentList @(
+    '-NoExit',
+    '-ExecutionPolicy',
+    'Bypass',
+    '-Command',
     $backendCommand
 )
 

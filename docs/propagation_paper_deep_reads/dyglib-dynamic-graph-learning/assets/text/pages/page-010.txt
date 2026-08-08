@@ -1,0 +1,63 @@
+longer histories (see Figure 2 and Table 9 in Section B.5), DyGFormer is significantly better than
+baselines on these two datasets. When CNRs of TP and TN are less distinguishable in the datasets,
+DyGFormer may perform worse (only 2 out of 13 datasets show this property). For US Legis., the
+CNRs between TP and TN are close (i.e., 75.18% vs. 53.98%), making DyGFormer worse than
+memory-based baselines (i.e., JODIE, DyRep, and TGN). For UN Vote, its CNR of TP is even lower
+than that of TN (i.e., 56.24% vs. 76.02%), which is opposite to our motivation, leading to poor results
+of DyGFormer than a few baselines. Since these two datasets cannot obviously gain from longer
+sequences either (see Table 9 in Section B.5), DyGFormer obtains worse results on them. Thus, we
+conclude that for datasets with much higher CNR of TP than CNR of TN or datasets that can benefit
+from longer histories, DyGFormer is a good choice. Otherwise, we may need to try other methods.
+
+
+5.7 Why do DyGFormer’s Performance Vary across Different Negative Sampling Strategies?
+
+Compared with the random (rnd) strategy, historical (hist) and inductive (ind) strategies will sample
+previous links as negative ones. This makes previous positive links negative, which may hurt the
+performance DyGFormer since the motivation of our neighbor co-occurrence encoding scheme is
+violated. As positive links are identical among rnd, hist, and ind, we compute LR and the average
+CNR of links in FP and show results in Table 5.
+
+We find when hist or ind causes several magnitudes higher CNR of FP than rnd in the datasets,
+DyGFormer drops sharply. For Wikipedia, UCI, and Flights, the CNRs of FP with hist/ind are much
+higher than rnd (e.g., 14.00%/11.66% vs. 0.02% on Wikipedia). This misleads DyGFormer to predict
+negative links as positive and causes drops (e.g., 89.28%/94.53% of negative links are incorrectly
+predicted with hist/ind on Wikipedia, while only 2.81% are wrong with rnd). We also note the
+drops in UCI are milder since the changes in CNR caused by hist or ind vs. rnd are less obvious
+than changes in Wikipedia and Flights. When changes in CNR of FP caused by hist or ind are not
+obvious in the datasets, DyGFormer is less affected. Since hist/ind makes little changes in CNRs
+of FP on US Legis., we find it ranks second with hist/ind, which may indicate DyGFormer is less
+influenced by the neighbor co-occurrence encoding scheme and generalizes well to various negative
+sampling strategies. For UN Vote, although its CNRs of FP are not affected by hist and ind either,
+DyGFormer still performs worse due to its inferior performance with rnd. Hence, we deduce that our
+neighbor co-occurrence encoding may be sometimes fragile to various negative sampling strategies if
+its motivation is violated, leading to the varying performance of DyGFormer.
+
+
+5.8  Ablation Study
+
+Finally, we validate the effectiveness of the neighbor co-occurrence encoding, time encoding, and
+mixing of the sequence of source node and destination node in DyGFormer. From Figure 4 in Section
+C.6, we observe that DyGFormer obtains the best performance when using all the components, and
+the results would be worse when any component is removed. This illustrates the necessity of each
+design in DyGFormer. Please refer to Section C.6 for detailed implementations and discussions.
+
+6  Conclusion
+
+In this paper, we proposed a new Transformer-based architecture (DyGFormer) and a unified library
+(DyGLib) to foster the development of dynamic graph learning. DyGFormer differs from previous
+methods in (i) a neighbor co-occurrence encoding scheme to exploit the correlations of nodes in each
+interaction; and (ii) a patching technique to help the model capture long-term temporal dependencies.
+DyGLib served as a toolkit for reproducible, scalable, and credible continuous-time dynamic graph
+learning with standard training pipelines, extensible coding interfaces, and comprehensive evaluating
+protocols. We hope our work can provide new perspectives on designing new dynamic graph learning
+frameworks and encourage more researchers to dive into this field. In the future, we will continue to
+enrich DyGLib by incorporating the recently released datasets and state-of-the-art models.
+
+Acknowledgments and Disclosure of Funding
+
+This work was supported by the National Natural Science Foundation of China (No. 62272023 and
+51991395) and the Fundamental Research Funds for the Central Universities (No. YWF-23-L-1203).
+
+
+                                       10

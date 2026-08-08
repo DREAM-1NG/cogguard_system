@@ -1,0 +1,86 @@
+The Thirty-Eighth AAAI Conference on Artiﬁcial Intelligence (AAAI-24)
+
+
+
+
+  Enhancing Multi-Scale Diffusion Prediction via Sequential Hypergraphs and
+                            Adversarial Learning
+
+           Pengfei Jiao1, 4, Hongqian Chen1, Qing Bao1, Wang Zhang2, Huaming Wu3*
+                             1School of Cyberspace, Hangzhou Dianzi University, China
+                           2College of Intelligence and Computing, Tianjin University, China
+                              3Center for Applied Mathematics, Tianjin University, China
+          4Data Security Governance Zhejiang Engineering Research Center, Hangzhou Dianzi University, China
+                            {pjiao, hqchen, qbao}@hdu.edu.cn, {wangzhang, whming}@tju.edu.cn
+
+                                                                        Macroscopic                   Microscopic                      Abstract
+                                                                               Observed influenced users                 Observed influenced users
+   Information diffusion prediction plays a crucial role in under-                                                      ?   standing the propagation of information in social networks,
+  encompassing both macroscopic and microscopic prediction                              ……                                               ……        ?                                        ?   tasks. Macroscopic prediction estimates the overall impact of                                                                    t1   t2       t10                     t1     t2          t10   ?
+   information diffusion, while microscopic prediction focuses
+                                                               How many influenced users             Who is the next influenced
+  on identifying the next user to be influenced. While prior                         at last ?             t∞                  user ?               t11
+   research often concentrates on one of these aspects, a few
+   tackle both concurrently. These two tasks provide comple-         Figure 1: Illustrations depicting macroscopic cascade size
+  mentary insights into the diffusion process at different lev-                                                                  prediction (left) and microscopic next influenced user pre-
+   els, revealing common traits and unique attributes. The ex-
+                                                                   diction (right).
+   ploration of leveraging common features across these tasks
+   to enhance information prediction remains an underexplored
+   avenue. In this paper, we propose an intuitive and effective
+  model that addresses both macroscopic and microscopic pre-        Chen, and Li 2018), predicting the subsequent user to be in-
+   diction tasks. Our approach considers the interactions and dy-         fluenced within the cascade.
+  namics among cascades at the macro level and incorporates        On the one hand, macro-prediction concentrates on over-
+   the social homophily of users in social networks at the mi-         arching patterns and trends, employing network topology
+   cro level. Additionally, we introduce adversarial training and        and dissemination models to forecast information propaga-
+   orthogonality constraints to ensure the integrity of shared fea-                                                                          tion. On the other hand, micro-prediction delves into the
+   tures. Experimental results on four datasets demonstrate that
+                                                                     particulars of individual users’ behaviors and attributes, uti-
+   our model significantly outperforms state-of-the-art methods.
+                                                                      lizing analyses of user and content characteristics to antici-
+                                                                pate the impact of information diffusion. Macro-prediction
+                Introduction                        and micro-prediction collectively provide a comprehensive
+                                                             understanding of information dissemination across various
+Online social platforms have become an essential part of our
+                                                                      levels and can mutually reinforce and enhance each other.
+daily lives, enriching instant communication among indi-
+                                                            Since both tasks require learning propagation features from
+viduals and expediting the swift dissemination of informa-
+                                                           observed cascades, they inherently share commonalities.
+tion. The activity patterns of users in social networks play
+                                                         Hence, the imperative to enhance prediction accuracy by
+a pivotal role in the spread of information, leading to the
+                                                                   extracting common features between these tasks assumes
+emergence of information cascades. Gaining a deeper un-
+                                                        paramount importance.
+derstanding of the underlying mechanisms of information
+                                                          However, the extraction of such common features is con-
+diffusion carries significant economic and social advantages,
+                                                                 fronted with challenges. Firstly, information dissemination
+with applications in various fields, including fake news de-
+                                                                involves complex interactions not only within a given cas-
+tection (Zhang et al. 2023), viral marketing (Miller and Lam-
+                                                          cade but also between different cascades. Moreover, the evo-
+mas 2010), and recommender system (Ko et al. 2022).
+                                                                     lution of cascades over time demands an approach capa-
+  As shown in Fig. 1, current researches on modeling in-
+                                                                 ble of encapsulating both global interactions and dynamic
+formation cascades primarily focus on two key aspects: 1)
+                                                             changes. Secondly, ensuring the purity of public features in
+Macroscopic prediction, such as DeepCas (Li et al. 2016)
+                                                                 the presence of potential contamination by private features
+and CasCN (Chen et al. 2019b), estimating the incremen-
+                                                            poses a significant challenge.
+tal or total size of a cascade; 2) Microscopic prediction,
+                                                      To the best of our knowledge, only a limited number of
+such as TopoLSTM (Wang et al. 2017) and SNIDSA (Wang,
+                                                                   studies have introduced a unified model catering to both
+   *Corresponding author                                  macro and micro scales. The most representative works are
+Copyright © 2024, Association for the Advancement of Artificial    FOREST (Yang et al. 2019) and DMT-LIC (Chen et al.
+Intelligence (www.aaai.org). All rights reserved.                     2019a). Nevertheless, FOREST (Yang et al. 2019) primarily
+
+
+
+
+
+                                                   8571

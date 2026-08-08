@@ -15,7 +15,14 @@ class FakeCursor:
     def __init__(self, rows: list[dict[str, Any]]) -> None:
         self.rows = rows
 
-    async def to_list(self, length: int) -> list[dict[str, Any]]:
+    def sort(self, key: str, direction: int):
+        reverse = direction < 0
+        self.rows = sorted(self.rows, key=lambda row: row.get(key, 0), reverse=reverse)
+        return self
+
+    async def to_list(self, length: int | None) -> list[dict[str, Any]]:
+        if length is None:
+            return list(self.rows)
         return self.rows[:length]
 
 
@@ -28,9 +35,10 @@ class FakeCollection:
 
     def find(self, query: dict[str, Any], projection: dict[str, int] | None = None) -> FakeCursor:
         self.find_calls.append({"query": query, "projection": projection})
+        source_rows = [*self.rows, *self.documents.values()]
         filtered = [
             row
-            for row in self.rows
+            for row in source_rows
             if all(row.get(key) == value for key, value in query.items())
         ]
         return FakeCursor(filtered)
@@ -43,9 +51,18 @@ class FakeCollection:
         upsert: bool = False,
     ) -> None:
         self.update_calls.append({"query": query, "update": update, "upsert": upsert})
-        snapshot_id = str(query["snapshot_id"])
-        if snapshot_id not in self.documents and upsert:
-            self.documents[snapshot_id] = dict(update["$setOnInsert"])
+        document_id = str(query.get("snapshot_id") or query.get("artifact_id"))
+        if "$set" in update:
+            self.documents[document_id] = {**self.documents.get(document_id, {}), **dict(update["$set"])}
+        elif "$setOnInsert" in update and document_id not in self.documents and upsert:
+            self.documents[document_id] = dict(update["$setOnInsert"])
+
+    async def find_one(self, query: dict[str, Any], projection: dict[str, int] | None = None):
+        snapshot_id = query.get("snapshot_id")
+        if snapshot_id is None:
+            return None
+        document = self.documents.get(str(snapshot_id))
+        return dict(document) if document is not None else None
 
 
 class FakeAnalysisStore:
@@ -153,9 +170,17 @@ class FakeAnalysisStore:
 class FakeSession:
     def __init__(self) -> None:
         self.flush_count = 0
+        self.refresh_count = 0
+        self.added: list[Any] = []
+
+    def add(self, value) -> None:
+        self.added.append(value)
 
     async def flush(self) -> None:
         self.flush_count += 1
+
+    async def refresh(self, _value) -> None:
+        self.refresh_count += 1
 
 
 def _dt(day: int, hour: int = 0) -> datetime:
@@ -221,13 +246,64 @@ def test_registry_builds_immutable_snapshot_from_mongo_and_manifest_store():
         assert snapshot.snapshot_id == second.snapshot_id
         assert snapshot.quality_report.status == "pass"
         assert snapshot.quality_report.context_posts == 1
-        assert len(snapshot_collection.documents) == 1
+        root_documents = [
+            document
+            for document in snapshot_collection.documents.values()
+            if document.get("payload_kind") == "event_snapshot"
+        ]
+        assert len(root_documents) == 1
         assert len(store.snapshots) == 1
         manifest = store.snapshots[snapshot.snapshot_id]
         assert manifest["mongo_collection"] == "analysis_event_snapshots"
         assert manifest["mongo_key"] == snapshot.snapshot_id
         assert manifest["created_by"] == 7
         assert mongo["raw_posts"].find_calls[-1]["query"] == {"event_id": "trump_visit"}
+
+    asyncio.run(scenario())
+
+
+def test_registry_persists_large_event_snapshots_as_chunks_and_restores_them():
+    async def scenario():
+        posts = [
+            {
+                "event_id": "trump_visit",
+                "platform": "weibo",
+                "post_id": f"p{index}",
+                "author_id": f"u{index}",
+                "timestamp": _dt(12),
+                "content": "event claim " + ("x" * 80_000),
+            }
+            for index in range(8)
+        ]
+        mongo = {
+            "raw_posts": FakeCollection(posts),
+            "raw_comments": FakeCollection([]),
+            "analysis_event_snapshots": FakeCollection(),
+        }
+        store = FakeAnalysisStore()
+        registry = AnalysisRegistry(mongo_db=mongo, store=store)
+
+        snapshot = await registry.create_event_snapshot(
+            event_id="trump_visit",
+            core_window=TimeWindow(start=_dt(11), end=_dt(22)),
+            context_window=TimeWindow(start=_dt(1), end=_dt(31)),
+            created_by=7,
+        )
+        restored = await registry.load_event_snapshot(snapshot.snapshot_id)
+        snapshot_collection = mongo["analysis_event_snapshots"]
+        root_document = snapshot_collection.documents[snapshot.snapshot_id]
+        chunk_documents = [
+            document
+            for document in snapshot_collection.documents.values()
+            if document.get("root_snapshot_id") == snapshot.snapshot_id
+        ]
+
+        assert root_document["schema"] == "cogguard.analysis.event_snapshot.chunked.v1"
+        assert root_document["chunk_count"] == len(chunk_documents)
+        assert len(chunk_documents) > 1
+        assert restored.snapshot_id == snapshot.snapshot_id
+        assert restored.data_fingerprint == snapshot.data_fingerprint
+        assert restored.posts == snapshot.posts
 
     asyncio.run(scenario())
 
@@ -298,5 +374,33 @@ def test_sqlalchemy_store_persists_results_for_needs_evidence_runs():
 
         assert updated.result_json == '{"results": {"coordination_discover": {"status": "unavailable"}}}'
         assert session.flush_count == 1
+
+    asyncio.run(scenario())
+
+
+def test_sqlalchemy_store_refreshes_new_runs_and_events_after_flush():
+    async def scenario():
+        session = FakeSession()
+        store = SqlAlchemyAnalysisStore(session)  # type: ignore[arg-type]
+
+        run = await store.create_run(
+            run_id="run_refresh",
+            event_id="trump_visit",
+            snapshot_id="snapshot_a",
+            requested_stages=["coordination_discover"],
+            options={},
+            created_by=1,
+        )
+        event = await store.append_run_event(
+            run_id="run_refresh",
+            event_type="run_queued",
+            status=AnalysisRunStatus.QUEUED,
+            payload={},
+        )
+
+        assert run.run_id == "run_refresh"
+        assert event.run_id == "run_refresh"
+        assert session.flush_count == 2
+        assert session.refresh_count == 2
 
     asyncio.run(scenario())

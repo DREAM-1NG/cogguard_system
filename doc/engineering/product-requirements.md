@@ -120,7 +120,7 @@ CogGuard 面向网络舆论对抗场景，以 **跨平台协同攻击行为** �
 | Capability | Product area | Current status | I/O interface |
 |---|----------|----------|-----------|-------------|
 | Coordination Discover / Detect | 协同发现 | artifact-first + fallback | 输入：EventSnapshot / Evidence Graph → 输出：communities、learned/evidence edges、validation metadata |
-| Propagation Analysis | 传播分析 | hindcast + fallback | 输入：EventSnapshot → 输出：Propagation Forecast、Next-Hop Ranking、interval metadata |
+| Propagation Analysis | 传播分析与预测 | observed analysis + checkpoint inference + abstain | 输入：EventSnapshot → 输出：传播证据、规模趋势、实名下一跳排序和覆盖审计 |
 | Risk Review | 报告研判 | Student/Teacher + governance | 输入：内容、协同和传播证据 → 输出：Review Verdict；Canonical Verdict 需人工审批 |
 
 **边界原则**：
@@ -139,7 +139,7 @@ CogGuard 面向网络舆论对抗场景，以 **跨平台协同攻击行为** �
 | 报告研判 | Risk Review | Auditable review outputs and governance actions |
 | DISARM | DISARM Framework | 信息操纵对抗的标准化战术/技术框架，用于攻击行为的结构化表达与反制映射 |
 | D-S 融合 | Dempster-Shafer Fusion | 基于 Dempster-Shafer 证据理论的多维风险融合方法，输出信念区间与冲突度 |
-| CascadeSwitch | CascadeSwitch | 传播趋势预测模型名称，基于 LLM 增强的时序预测方法 |
+| CascadeSwitch | Legacy propagation scaffold | 历史速度/加速度体制切换脚手架；不得作为当前公开事件预测模型 |
 | 协同边 | Coordination Edge | 两个账号之间的协同行为证据，包含五类：时间同步、共链接、共媒体、语义近似、传播互动 |
 | 协同群组 | Coordination Group | 通过社区发现算法识别的协同行为账号集合 |
 | ARIS | Algorithm Research & Implementation Stub | 标记算法核心待研究实现的模块，PRD 仅定义 I/O 接口 |
@@ -251,16 +251,16 @@ CogGuard 面向网络舆论对抗场景，以 **跨平台协同攻击行为** �
 5. 检测相关发帖用户，识别高影响力节点、桥接节点和异常放大账号
 6. 在"高频共享对象"表格中查看传播最广的 URL/标签及其分享次数、涉及账户数
 7. 在"传播时间线"中按时间顺序查看帖子发布序列，协调账户以红色标记
-8. 【已接入，研究制品待激活】点击「趋势预测」，调用 Propagation Analysis 预测未来 N 小时传播走势
+8. 在“模型预测”页签设置带时区的观测截止时间和预测范围，运行 Twitter 序列联合模型，查看未来累计规模趋势和可追溯的下一跳再激活用户
 
 **预期结果**：
 - 传播子图构建完成，关键角色识别准确
 - 能识别相关发帖用户和高影响力传播节点
 - 时间线清晰展示传播序列与协调账户标记
-- 【待开发】趋势预测输出未来传播量/范围/速度的预测曲线
+- 模型可用时输出观测规模、预测规模、单调趋势曲线和实名 Top-K；模型或数据不可用时 abstain，不生成规则替代结果
 
 **涉及页面**：传播监控（`/propagation`）
-**涉及 API**：`GET /api/v1/propagation/analyze`、`POST /api/v1/propagation/predict-trend`
+**涉及 API**：`GET /api/v1/propagation/analyze`、`POST /api/v1/propagation/model-event-predict`
 
 ### 2.5 场景 S4：风险评估与攻击分析报告
 
@@ -700,21 +700,22 @@ Coordination Discover consumes a platform-generic Evidence Graph and learns temp
 
 ---
 
-## 3.6 传播监控（/propagation）— 已完成，命名调整中
+## 3.6 传播监测（/propagation）— 观测分析与模型预测已分离
 
 ### 功能概述
 
-基于共享对象的时序关系构建传播子图，识别信息传播链中的三类关键角色：起爆节点（最早发布者）、桥接节点（连接不同群体，介数中心性高）、扩散节点（被大量跟随传播）。页面命名从“传播归因”调整为“传播监控”，新增相关发帖用户检测和高影响力节点识别要求。
+页面将已发生的传播分析与未来预测分开。观测分析基于显式回复、父级 ID 重建和共享对象时间邻近关系构建可追溯传播投影；模型预测在严格观测截止时间后输出规模趋势和下一跳再激活排序。推断关系不等于平台确认转发，预测不可用时不回退到速度或加速度规则。
 
 ### 功能区域划分
 
 | 区域 | 说明 |
 |------|------|
-| 页面头部 | PageHeader：标题 "传播监控" + 三类角色说明 |
-| 操作栏 | 「运行传播分析」按钮（loading 状态） |
-| 关键角色卡片 | 3 列等宽布局：起爆节点（出度 Tag 红色）、桥接节点（介数 Tag 橙色）、扩散节点（入度 Tag 蓝色），每列为 List 组件 |
-| 高频共享对象 | 表格：共享对象 ID、分享次数（可排序）、涉及账户数、首次分享时间 |
-| 传播时间线 | Ant Design Timeline 组件（左侧模式），最多展示 30 条，协调账户红色标记，普通账户蓝色标记 |
+| 页面头部 | 当前事件、平台、观测截止时间和预测范围 |
+| 传播路径 | 分层簇状摘要、证据类型连线、层级统计和节点详情联动 |
+| 传播对象 | URL/标签等共享对象、关联帖子及关键传播路径 |
+| 角色分析 | 起爆与扩散角色、结构指标、证据引用和稳定性摘要 |
+| 时间线 | 当前事件观测时间线，响应包含完整数量与截断元数据 |
+| 模型预测 | 规模趋势曲线、实名下一跳再激活研判和证据回跳 |
 
 ### 交互流程
 
@@ -727,8 +728,8 @@ Coordination Discover consumes a platform-generic Evidence Graph and learns temp
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| GET | `/api/v1/propagation/analyze` | 运行传播监控分析，可选参数：platform、event_id；返回关键角色、相关发帖用户和高影响力节点 |
-| POST | `/api/v1/propagation/predict-trend` | 预测传播趋势（CascadeSwitch），可选参数：platform、event_id |
+| GET | `/api/v1/propagation/analyze` | 观测传播分析；可选 `platform`、`event_id`、扩散摘要 `node_limit` |
+| POST | `/api/v1/propagation/model-event-predict` | 当前事件规模趋势与下一跳预测；支持 `observed_until`、`prediction_horizon`、`top_k` |
 
 > **源文件**：
 > - 前端：`G:\CISCN\cogguard_system\new-system\frontend\src\views\propagation\index.vue`
@@ -1155,7 +1156,7 @@ CogGuard 系统围绕"数据采集 → 协同发现 → 传播监控 → 报告�
 | 数据采集 | 手动触发 | 用户通过 API 提交 `CrawlRequest` | 创建 CrawlJob → Celery 异步执行 |
 | 协同发现 | 手动触发 | 用户调用协同检测 API，需 MongoDB 中存在 `raw_posts` | 参数：`time_window`, `min_participation`, `edge_weight`, `platform` |
 | 传播监控 | 手动触发 | 用户调用传播分析 API，需 MongoDB 中存在 `raw_posts` | 可选传入 `platform` 过滤 |
-| 趋势预测 | 手动触发 | 用户调用趋势预测 API，需 MongoDB 中存在 `raw_posts` | CascadeSwitch 流水线，`mock_llm` 控制是否调用 LLM |
+| 传播预测 | 手动触发 | 用户调用当前事件模型 API，需 MongoDB 中存在至少 3 条带时间戳观测记录 | 带时区 `observed_until` 截断，模型不可用时 abstain |
 | 报告研判 | 手动触发 | 用户调用风险评估 API | 自动编排上游三个服务，无需手动前置调用 |
 | 报告研判（自动） | P2 待开发 | 预警系统触发 | 基于阈值或定时任务自动执行 |
 
@@ -1245,7 +1246,7 @@ Coordination Discover consumes a platform-generic Evidence Graph and learns temp
 
 ## 4.4 传播监控 — 子功能清单与优先级
 
-传播监控模块负责构建信息传播子图、识别关键角色、追踪传播时间线，并通过 CascadeSwitch 模型预测传播趋势。核心实现位于 `app/core/propagation/` 和 `app/core/propagation_legacy.py`。
+传播模块由观测传播分析与传播预测组成。本节为当前规范，覆盖本文档后续仍可能出现的 `CascadeSwitch`、`predict-trend`、速度/加速度 fallback 历史描述。观测核心位于 `app/core/propagation_legacy.py`；当前事件预测由 `app/services/propagation_model_service.py` 和 `system/research/propagation_analysis/` 内化模型负责。
 
 ### 子功能清单
 
@@ -1269,15 +1270,15 @@ Coordination Discover consumes a platform-generic Evidence Graph and learns temp
 | **描述** | 基于图拓扑分析识别三类关键角色：起爆节点（originators，最早发布且有出边）、桥接节点（bridges，介数中心性 top-N）、扩散节点（amplifiers，入度 top-N）。时间线按小时聚合帖子数量，标注关键事件节点。 |
 | **依赖** | 传播子图构建 |
 
-#### 4.4.3 趋势预测规则引擎（CascadeSwitch）
+#### 4.4.3 规模趋势与下一跳联合预测
 
 | 属性 | 值 |
 |------|-----|
 | **优先级** | P1 |
 | **状态** | 已完成 |
-| **实现文件** | `core/propagation/trend_predictor.py`, `regime_model.py`, `ts_features.py` |
-| **描述** | CascadeSwitch 体制切换级联预测模型。流水线：时序特征提取（小时级 volumes, velocity, acceleration, burst_zscore）→ LLM 事件提取（可 mock）→ 体制后验计算（4 体制 softmax：seeding/amplification/peak/decay）→ 混合参数化预测（1h/6h/24h 量级预测 + 置信区间）。体制评分矩阵 W(4x6) 编码 6 种外生事件对 4 种体制的影响权重。 |
-| **依赖** | 数据采集、LLM 事件提取（可降级为 mock） |
+| **实现文件** | `services/propagation_model_service.py`, `research/propagation_analysis/benchmark/adapters/event_adapter.py` |
+| **描述** | 系统加载 Twitter `PropagationSequenceJointModel` checkpoint。用户序列经 RelationGNN、DynamicCasHGNN 和 SharedLSTM 形成共享状态；Macro 分支预测非负最终规模并用 Euler 连续动力学生成单调趋势；Micro 分支在合法 bucket 上打分，仅返回能够映射真实身份的当前事件再激活用户。输入严格截止于带时区的 `observed_until`。 |
+| **依赖** | MongoDB 当前事件快照、系统内 checkpoint、PyTorch |
 
 #### 4.4.4 LLM 增强趋势预测（关键技术）
 
@@ -1448,9 +1449,9 @@ P1 阶段聚焦三项竞赛关键技术的集成，以及 LLM 能力的启用。
 
 | 子功能 | 所属模块 | 状态 | 备注 |
 |--------|----------|------|------|
-| 趋势预测规则引擎 | 传播监控 | 已完成 | CascadeSwitch 模型已实现 |
+| 历史趋势规则脚手架 | 传播监测 | 兼容保留，非公开主路径 | 不得作为模型预测 fallback |
 | 多任务框架协同检测 | 协同发现 | **待 ARIS 工作空间实现** | 关键技术 Coordination Discover / Detect |
-| LLM 增强趋势预测 | 传播监控 | **已接入 fallback；研究模型待激活** | Propagation Analysis |
+| 规模趋势与下一跳联合预测 | 传播监测 | **系统推理已部署；正式研究验证未完成** | Propagation Analysis |
 | Agent + RAG 攻击分析 | 报告研判 | **Student/Teacher seam 已接入；治理激活待完成** | Risk Review |
 | LLM 桥接 | 报告研判 | 占位 | 接口已定义，待 LLM API 启用 |
 
@@ -1493,8 +1494,7 @@ P2 阶段扩展系统的分析深度和自动化程度。
 | | 显著性筛查 | P2 | 待开发 | 待创建 | |
 | **传播监控** | 传播子图构建 | P0 | 已完成 | `core/propagation_legacy.py` | |
 | | 时间线与角色识别 | P0 | 已完成 | `core/propagation_legacy.py` | |
-| | 趋势预测规则引擎 | P1 | 已完成 | `core/propagation/trend_predictor.py` | |
-| | LLM 增强趋势预测 | P1 | fallback 已接入，研究制品待激活 | `system/research/propagation_analysis/` | Propagation Analysis |
+| | 规模趋势与下一跳联合预测 | P1 | 系统推理已部署，正式研究验证未完成 | `system/research/propagation_analysis/` | 严格时间切分、多 seed、概率校准 |
 | | 立场检测 | P2 | 待开发 | 待创建 | |
 | | 危害性评估 | P2 | 待开发 | 待创建 | |
 | | 源头追溯 | P2 | 待开发 | 待创建 | |
@@ -1594,7 +1594,7 @@ P2 阶段扩展系统的分析深度和自动化程度。
 | `/api/v1/crawl/data` | GET | Y | Y | Y | 查询采集数据 |
 | `/api/v1/coordination/detect` | POST | Y | Y | - | 执行协同检测 |
 | `/api/v1/propagation/analyze` | GET | Y | Y | Y | 传播监控分析 |
-| `/api/v1/propagation/predict-trend` | POST | Y | Y | - | 趋势预测 |
+| `/api/v1/propagation/model-event-predict` | POST | Y | Y | - | 当前事件规模趋势与下一跳预测 |
 | `/api/v1/accounts/profiles` | GET | Y | Y | Y | 账户画像列表 |
 | `/api/v1/accounts/detail/{id}` | GET | Y | Y | Y | 账户详情 |
 | `/api/v1/risk/assess` | POST | Y | Y | - | 执行风险评估 |
@@ -1700,37 +1700,37 @@ P2 阶段扩展系统的分析深度和自动化程度。
 
 ## 5.5 传播监控与趋势预测模块 API（/api/v1/propagation/*）
 
-> 代码引用：`app/api/v1/propagation.py`、`app/services/propagation_service.py`
+> 代码引用：`app/api/v1/propagation.py`、`app/services/propagation_observation_service.py`、`app/services/propagation_model_service.py`
 
 | 端点 | 方法 | 认证 | 说明 |
 |------|------|------|------|
-| `/api/v1/propagation/analyze` | GET | 是 | 分析已采集数据的传播路径与归因 |
-| `/api/v1/propagation/predict-trend` | POST | 是 | 预测传播趋势（CascadeSwitch 模型） |
+| `/api/v1/propagation/analyze` | GET | 是 | 分析已观测传播路径、对象、角色、证据和稳定性 |
+| `/api/v1/propagation/model-event-predict` | POST | 是 | 严格时间截断后的规模趋势与下一跳再激活预测 |
 
-请求参数（Query）：`platform?`（可选，限定平台）
+请求参数（Query）：`platform?`、`event_id?`；预测端另支持 `top_k`、带时区的 `observed_until` 和小时级 `prediction_horizon`。
 
 **analyze** 响应 `data`：传播图结构（节点角色分类、边权重、桥接节点、叙事聚类等）
 
-**predict-trend** 响应 `data` 结构：
+**model-event-predict** 的核心响应 `data` 结构：
 
 ```json
 {
-  "volume_forecast": {"1h": 120, "6h": 450, "24h": 800},
-  "confidence_interval": {"1h": [80, 160], "6h": [300, 600], "24h": [500, 1100]},
-  "direction": "rising | stable | declining",
-  "speed": {"acceleration": 2.5, "phase": "amplification"},
-  "regime_posterior": {"seeding": 0.1, "amplification": 0.6, "peak": 0.2, "decay": 0.1},
-  "detected_events": [{"type": "kol_amplification", "evidence": "...", "confidence": 0.8}],
-  "confidence": 0.75,
-  "explanation": "当前处于扩散阶段(概率60%)，检测到事件：KOL放大，预计趋势上升。",
-  "llm_available": true,
-  "ts_features": {
-    "current_volume": 50,
-    "velocity": 12.0,
-    "acceleration": 2.5,
-    "burst_zscore": 1.8,
-    "hours_since_start": 6.5
-  }
+  "status": "ok",
+  "model_status": "available",
+  "macro": {
+    "observed_size": 120,
+    "predicted_size": 185,
+    "trend_points": [{"step": 1, "at": "2026-08-05T06:00:00+00:00", "predicted_size": 138}],
+    "intervals": null,
+    "calibration_status": "unavailable"
+  },
+  "micro": {
+    "top_users": [{"rank": 1, "author_id": "u1", "author_name": "用户一", "activation_type": "reactivation", "evidence_refs": []}],
+    "candidate_count": 42,
+    "candidate_bucket_count": 3471,
+    "coverage": {"mapped_probability_mass": 0.31, "new_activation_status": "abstain_no_identity_mapping"}
+  },
+  "data_scope": {"observed_until": "2026-08-05T00:00:00+00:00", "prediction_horizon_hours": 24}
 }
 ```
 
@@ -2531,7 +2531,7 @@ P2 阶段扩展系统的分析深度和自动化程度。
 
 1. **风险评估全链路**：`risk_service.assess_risk()` → 并行调用 `coordination_service` + `propagation_service` + `account_service` → `evidence_builder` → `phase_detector` → `ds_fusion` → `disarm_scorer` → `report_builder` → 持久化 MySQL
 2. **数据采集链路**：`crawl_service.create_crawl_job()` → Celery `execute_crawl_job` → `CrawlerFactory` → 写入 MongoDB
-3. **趋势预测链路**：`propagation_service.predict_propagation_trend()` → `ts_features` → `llm_context` → `regime_model` → `trend_predictor`
+3. **传播预测链路**：`propagation_model_service.predict_current_event_model()` → 时间截断 → `PropagationSequenceJointModel` → Macro 趋势与实名 Micro 排序
 
 ---
 
@@ -2539,7 +2539,7 @@ P2 阶段扩展系统的分析深度和自动化程度。
 
 本节定义三个 ARIS（Algorithm-Runtime Interface Specification）关键技术接口，作为算法核心模块与业务服务层的契约边界。所有接口使用 Python `dataclass` 格式定义，确保类型安全和可序列化。
 
-> 代码引用：`app/core/coordination/detector.py`、`app/core/propagation/trend_predictor.py`、`app/core/risk/disarm_scorer.py`
+> 代码引用：`app/core/coordination/detector.py`、`app/services/propagation_model_service.py`、`system/research/propagation_analysis/benchmark/adapters/event_adapter.py`、`app/core/risk/disarm_scorer.py`
 
 ### 5.15.1 协同检测接口（@version: v1）
 
@@ -2605,7 +2605,7 @@ class TrendPredictionInput:
     """趋势预测输入。@version: v1
 
     由 propagation_service 从 MongoDB 原始数据构建，
-    传入 core/propagation/trend_predictor 模块。
+    传入当前事件传播序列模型。以下 v1 结构为历史兼容契约，不是公开模型接口。
     """
     # 帖子列表（必须包含 timestamp 字段）
     posts: list[dict] = field(default_factory=list)
@@ -2628,7 +2628,7 @@ class TrendPredictionInput:
 class TrendPredictionOutput:
     """趋势预测输出。@version: v1
 
-    由 core/propagation/trend_predictor 产出，
+    历史兼容结构；当前公开模型输出以 5.5 节的 macro/micro 契约为准，
     供前端看板和风险评估消费。
     """
     # 传播量预测
@@ -2796,7 +2796,7 @@ class AttackAnalysisOutput:
 | **核心算法** | `core/propagation/ts_features.py` | 已实现 | 时序特征提取 |
 | **核心算法** | `core/propagation/llm_context.py` | 已实现 | LLM 事件提取 |
 | **核心算法** | `core/propagation/regime_model.py` | 已实现 | 体制切换模型 |
-| **核心算法** | `core/propagation/trend_predictor.py` | 已实现 | 趋势预测编排 |
+| **历史兼容** | `core/propagation/trend_predictor.py` | 保留 | 非公开速度/加速度脚手架，不得作为 fallback |
 | **核心算法** | `core/risk/evidence_builder.py` | 已实现 | 证据构建器 |
 | **核心算法** | `core/risk/phase_detector.py` | 已实现 | 阶段检测器 |
 | **核心算法** | `core/risk/ds_fusion.py` | 已实现 | D-S 证据融合 |

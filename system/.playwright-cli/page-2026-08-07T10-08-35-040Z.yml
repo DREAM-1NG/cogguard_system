@@ -1,0 +1,23 @@
+- generic [ref=f3e4]:
+  - generic [ref=f3e6]:
+    - generic [ref=f3e7]: CogGuard
+    - heading "面向跨域认知操纵的智能联合防御系统" [level=1] [ref=f3e8]
+  - generic [ref=f3e9]:
+    - generic [ref=f3e10]:
+      - heading "登录系统" [level=2] [ref=f3e11]
+      - paragraph [ref=f3e12]: 请输入账户信息进行登录
+    - generic [ref=f3e13]:
+      - generic [ref=f3e15]:
+        - generic "用户名" [ref=f3e17]: "* 用户名"
+        - textbox "* 用户名" [ref=f3e21]:
+          - /placeholder: 请输入用户名…
+      - generic [ref=f3e23]:
+        - generic "密码" [ref=f3e25]: "* 密码"
+        - generic [ref=f3e29]:
+          - textbox "* 密码" [ref=f3e30]:
+            - /placeholder: 请输入密码…
+          - img "eye-invisible" [ref=f3e32] [cursor=pointer]
+      - button "登 录" [ref=f3e41] [cursor=pointer]
+      - generic [ref=f3e43]:
+        - text: 还没有账号？
+        - button "立即注册" [ref=f3e44] [cursor=pointer]

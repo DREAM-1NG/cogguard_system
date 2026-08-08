@@ -1,0 +1,53 @@
+2  Preliminaries
+We denote a static graph G as a tuple (V, E, X, E), where V = {1, 2, . . . , n} denotes the set of
+nodes and E ✓V ⇥V the set of edges. Each node u 2 V has a feature vector xu 2 X and each
+edge (u, v) 2 E has a feature vector euv 2 E, where X and E are countable sets of features.
+Dynamic graphs can be roughly split according to their discrete- or continuous-time nature [14].
+A discrete-time dynamic graph (DTDG) is of a sequence of graph snapshots (G1, G2, . . . ) usually
+sampled at regular intervals, each snapshot being a static graph Gt = (Vt, Et, Xt, Et).
+A continuous-time dynamic graph (CTDG) evolves with node- and edge-level events, such as addition
+and deletion. We represent a CTDG as a sequence of time-stamped multi-graphs (G(t0), G(t1), . . . )
+such that tk < tk+1, and G(tk+1) results from updating G(tk) with all events at time tk+1. We assume
+no event occurs between tk and tk+1. We denote an interaction (i.e., edge addition event) between
+nodes u and v at time t as a tuple (u, v, t) associated with a feature vector euv(t). Unless otherwise
+stated, interactions correspond to undirected edges, i.e., (u, v, t) is a shorthand for ({u, v}, t).
+Noting that CTDGs allow for ﬁner (irregular) temporal resolution, we now formalize the intuition that
+DTDGs can be reduced to and thus analyzed as CTDGs, but the converse may need extra assumptions.
+Proposition 1 (Relationship between DTDG and CTDG). For any DTDG we can build a CTDG with
+the same sets of node and edge features that contains the same information, i.e., we can reconstruct
+the original DTDG from the converted CTDG. The converse holds if the CTDG timestamps form a
+subset of a uniformly spaced countable set.
+Following the usual practice [16, 38, 42], we focus on CTDGs with edge addition events (see
+Appendix E for a discussion on deletion). Thus, we can represent temporal graphs as sets G(t) =
+{(uk, vk, tk) | tk < t}. We also assume each distinct node v in G(t) has an initial feature vector xv.
+Message-passing temporal graph nets (MP-TGNs). Rossi et al. [27] introduced MP-TGN as a
+general representation learning framework for temporal graphs. The goal is to encode the graph
+dynamics into node embeddings, capturing information that is relevant for the task at hand. To
+achieve this, MP-TGNs rely on three main ingredients: memory, aggregation, and update. Memory
+comprises a set of vectors that summarizes the history of each node, and is updated using a recurrent
+model whenever an event occurs. The aggregation and update components resemble those in message-
+passing GNNs, where the embedding of each node is reﬁned using messages from its neighbors.
+We deﬁne the temporal neighbohood of node v at time t as N(v, t) = {(u, euv(t0), t0) | 9(u, v, t0) 2
+G(t)}, i.e., the set of neighbor/feature/timestamp triplets from all interactions of node v prior to t.
+MP-TGNs compute the temporal representation h(`)v  (t) of v at layer ` by recursively applying
+                       ˜h(`)v  (t) = AGG(`)({{(h(`−1)⇣                                  u    (t), t −t0, e) ⌘| (u, e, t0) 2 N(v, t)}})               (1)
+                  h(`)v  (t) = UPDATE(`)  h(`−1)v     (t), ˜h(`)v  (t)   ,                                     (2)
+
+                                v  (t) = sv(t) is the state of v at time t, and AGG(`) and UPDATE(`)where {{·}} denotes multisets, h(0)are arbitrary parameterized functions. The memory block updates the states as events occur. Let
+J (v, t) be the set of events involving v at time t. The state of v is updated due to J (v, t) as
+           mv(t) = MEMAGG({{[sv(t), su(t), t −tv, evu(t)] | (v, u, t) 2 J (v, t)}})          (3)
+           sv(t+) = MEMUPDATE(sv(t), mv(t)),                                              (4)
+
+where sv(0) = xv (initial node features), sv(t+) denotes the updated state of v due to events at time
+t, and tv denotes the time of the last update to v. MEMAGG combines information from simultaneous
+events involving node v and MEMUPDATE usually implements a gated recurrent unit (GRU) [5].
+Notably, some MP-TGNs do not use memory, or equivalently, they employ identity memory, i.e.,
+sv(t) = xv for all t. We refer to Appendix A for further details.
+Causal Anonymous Walks (CAWs). Wang et al. [38] proposed CAW as an approach for link
+prediction on temporal graphs. To predict if an event (u, v, t) occurs, CAW ﬁrst obtains sets Su and Sv
+of temporal walks starting at nodes u and v at time t. An (L −1)-length temporal walk is represented
+as W = ((w1, t1), (w2, t2), . . . , (wL, tL)), with t1 > t2 >  · · · > tL and (wi−1, wi, ti) 2 G(t)
+8i > 1. Note that when predicting (u, v, t), we have walks starting at time t1 = t. Then, CAW
+anonymizes walks replacing each node w with a set ICAW(w; Su, Sv) = {g(w; Su), g(w; Sv)} of two
+
+                                       3

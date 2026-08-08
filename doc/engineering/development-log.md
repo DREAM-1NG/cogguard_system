@@ -18,6 +18,17 @@
 
 ---
 
+## 2026-08-05
+
+- 将传播能力拆分为观测传播分析与传播预测两个独立运行边界：观测接口不调用预测代码，预测接口只消费截止时间前的事件快照。
+- `system/backend/app/core/propagation_legacy.py`：新增用户、帖子、评论、共享对象和事件 provenance 图；传播边区分 `explicit`、`reconstructed`、`inferred`，布局关系不再混入事实边；补源头、路径、角色及时间前缀稳定性，并移除 `user_quality` 返回。
+- `system/research/propagation_analysis/benchmark/adapters/event_adapter.py`：系统内化 `PropagationSequenceJointModel`，真实加载 Twitter checkpoint，输出单调趋势和实名下一跳再激活排序；匿名 bucket 仅进入覆盖审计。
+- `system/backend/app/services/propagation_model_service.py`、`app/api/v1/propagation.py`、`app/schemas/propagation.py`：严格校验带时区的 `observed_until`，统一成功/abstain 响应，删除公开事件预测路径中的速度、加速度和活动度替代预测。
+- `system/frontend/src/views/propagation/index.vue`：消费真实趋势时间点、预测范围、证据类型和实名下一跳结果；本地时间转 UTC 后提交，不可用时保持预测区为空。
+- 验证：后端全量 `458 passed, 18 skipped`；前端 `vue-tsc` 与生产构建通过；Twitter checkpoint CPU smoke 输出四个趋势点和实名 Top-K。当前样本实验仍为 `full_validation_passed=false`，不构成模型优越性结论。
+
+---
+
 ## 2026-08-01
 
 - 完成本轮三项关键能力的原型交付收口：新增 `system/backend/scripts/prototype_acceptance.py`，用隔离 EventSnapshot 验证 Coordination Discover 严格 Leiden artifact、Propagation Analysis fallback/abstain、Student shadow 和 Teacher advisory 运行边界；不写数据库、不生成标签、不修改前端。

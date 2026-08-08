@@ -1,0 +1,73 @@
+2                        3
+
+                               1                                                                              loss
+
+
+
+                                                                            Edge
+                                         Node Embeddings
+          1         2                                                                          Probabilities
+
+          2         3
+
+                            4
+               Batch
+                                                       5                           6
+
+
+
+
+
+                                                               Aggregated                   (Updated)
+                                  Messages
+                                                          Messages                 Memory
+
+Figure 1: Computations performed by TGN on a batch of time-stamped interactions. Top: embeddings
+are produced by the embedding module using the temporal graph and the node’s memory (1). The
+embeddings are then used to predict the batch interactions and compute the loss (2, 3). Bottom: these
+same interactions are used to update the memory (4, 5, 6). This is a simpliﬁed ﬂow of operations
+which would prevent the training of all the modules in the bottom as they would not receiving a
+gradient. Section 3.2 explains how to change the ﬂow of operations to solve this problem and ﬁgure 2
+shows the complete diagram.
+
+
+Thanks to this speciﬁc module, TGNs have the capability to memorize long term dependencies for
+each node in the graph. When a new node is encountered, its memory is initialized as the zero vector,
+and it is then updated for each event involving the node, even after the model has ﬁnished training.
+While a global (graph-wise) memory can also be added to the model to track the evolution of the
+entire network, we leave this as future work.
+
+Message Function.  For each event involving node i, a message is computed to update i’s memory.
+In the case of an interaction event eij(t) between source node i and target node j at time t, two
+messages can be computed:
+ mi(t) = msgs  si(t−), sj(t−), ∆t, eij(t)  ,    mj(t) = msgd  sj(t−), si(t−), ∆t, eij(t)    (1)
+
+Similarly, in case of a node-wise event vi(t), a single message can be computed for the node involved
+in the event:
+                         mi(t) = msgn  si(t−), t, vi(t)  .                                 (2)
+
+Here, si(t−) is the memory of node i just before time t (i.e., from the time of the previous inter-
+action involving i) and msgs, msgd and msgn are learnable message functions, e.g. MLPs. In all
+experiments, we choose the message function as identity (id), which is simply the concatenation of
+the inputs, for the sake of simplicity. Deletion events are also supported by the framework and are
+presented in Appendix A.1. A more complex message function that involves additional aggregation
+from the neighbours of nodes i and j is also possible and is left for future study.
+
+Message Aggregator.  Resorting to batch processing for efﬁciency reasons may lead to multiple
+events involving the same node i in the same batch. As each event generates a message in our
+formulation, we use a mechanism to aggregate messages mi(t1), . . . , mi(tb) for t1, . . . , tb ≤t,
+
+                             ¯mi(t) = agg (mi(t1), . . . , mi(tb)) .                                (3)
+
+Here, agg is an aggregation function. While multiple choices can be considered for implementing
+this module (e.g. RNNs or attention w.r.t. the node memory), for the sake of simplicity we considered
+two efﬁcient non-learnable solutions in our experiments: most recent message (keep only most recent
+message for a given node) and mean message (average all messages for a given node). We leave
+learnable aggregation as a future research direction.
+
+Memory Updater.  As previously mentioned, the memory of a node is updated upon each event
+involving the node itself:
+                                 si(t) = mem  ¯mi(t), si(t−)  .                                   (4)
+
+
+                                       3

@@ -1,0 +1,870 @@
+{
+  "schema_version": 2,
+  "generated_at": "2026-08-08T05:54:27.234453+00:00",
+  "source_pdf": "H:\\Zotero\\attenger\\Projects\\CISCN\\Propagation\\Souza 等 - 2022 - Provably expressive temporal graph networks.pdf",
+  "source_sha256": "3e871a55d26092719e7733d6a272b49a9334c184854b988475ed6af500978cf5",
+  "page_count": 13,
+  "render_dpi": 180,
+  "selected_pages": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13
+  ],
+  "analysis_mode": "text-only",
+  "text_layer_available": true,
+  "text_layer_characters": 58892,
+  "automatic_crops_are_unverified": true,
+  "pages": [
+    {
+      "page": 1,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-001.txt",
+      "text_characters": 3930,
+      "caption_count": 0
+    },
+    {
+      "page": 2,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-002.txt",
+      "text_characters": 4689,
+      "caption_count": 1
+    },
+    {
+      "page": 3,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-003.txt",
+      "text_characters": 4822,
+      "caption_count": 0
+    },
+    {
+      "page": 4,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-004.txt",
+      "text_characters": 4600,
+      "caption_count": 0
+    },
+    {
+      "page": 5,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-005.txt",
+      "text_characters": 4398,
+      "caption_count": 1
+    },
+    {
+      "page": 6,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-006.txt",
+      "text_characters": 5784,
+      "caption_count": 2
+    },
+    {
+      "page": 7,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-007.txt",
+      "text_characters": 4268,
+      "caption_count": 2
+    },
+    {
+      "page": 8,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-008.txt",
+      "text_characters": 5163,
+      "caption_count": 1
+    },
+    {
+      "page": 9,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-009.txt",
+      "text_characters": 7001,
+      "caption_count": 2
+    },
+    {
+      "page": 10,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-010.txt",
+      "text_characters": 4947,
+      "caption_count": 2
+    },
+    {
+      "page": 11,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-011.txt",
+      "text_characters": 4193,
+      "caption_count": 0
+    },
+    {
+      "page": 12,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-012.txt",
+      "text_characters": 4486,
+      "caption_count": 0
+    },
+    {
+      "page": 13,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-013.txt",
+      "text_characters": 611,
+      "caption_count": 0
+    }
+  ],
+  "visuals": [
+    {
+      "id": "figure-1-p002",
+      "label": "Figure 1",
+      "kind": "figure",
+      "number": "1",
+      "page": 2,
+      "caption": "Schematic diagram and summary of our contributions.",
+      "raw_text": "Figure 1: Schematic diagram and summary of our contributions.",
+      "caption_bbox_points": [
+        177.821,
+        224.799,
+        434.179,
+        236.804
+      ],
+      "caption_bbox_pixels": [
+        445,
+        562,
+        1085,
+        592
+      ],
+      "suggested_crop_bbox_points": [
+        108.571,
+        61.998,
+        513.707,
+        246.804
+      ],
+      "suggested_crop_bbox_pixels": [
+        271,
+        155,
+        1284,
+        617
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-002.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": false,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\figure-1-p002.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "complete",
+        "sources": [
+          "caption",
+          "pdf-text-layer",
+          "body-references",
+          "text/visuals/figure-1-p002.md"
+        ],
+        "notes": "已核对图表编号、页码、标题、正文引用和可恢复文字；未将像素级视觉观察写入报告。",
+        "limitations": "本轮为 text-only 精读，未直接核验像素、坐标轴、颜色、曲线形状、面板布局、裁剪完整性或视觉显著性。"
+      }
+    },
+    {
+      "id": "figure-2-p005",
+      "label": "Figure 2",
+      "kind": "figure",
+      "number": "2",
+      "page": 5,
+      "caption": "Limitations of TGNs. [Left] Temporal graph with nodes u, v that TGN-Att/TGAT cannot distinguish. Colors are node features, edge features are identical, and t3 > t2 > t1. [Center] TCTs of u and v are non-isomorphic. However, the attention layers of TGAT/TGN-Att compute weighted averages over a same multiset of values, returning identical messages for u and v. [Right] MP-TGNs fail to distinguish the events (u, v, t3) and (v, z, t3) as TCTs of z and u are isomorphic. Meanwhile, CAW cannot separate (u, z, t3) and (u0, z, t3): the 3-depth TCTs of u and u0 are not isomorphic, but the temporal walks from u and u0 have length 1, keeping CAW from capturing structural differences.",
+      "raw_text": "Figure 2: Limitations of TGNs. [Left] Temporal graph with nodes u, v that TGN-Att/TGAT cannot distinguish. Colors are node features, edge features are identical, and t3 > t2 > t1. [Center] TCTs of u and v are non-isomorphic. However, the attention layers of TGAT/TGN-Att compute weighted averages over a same multiset of values, returning identical messages for u and v. [Right] MP-TGNs fail to distinguish the events (u, v, t3) and (v, z, t3) as TCTs of z and u are isomorphic. Meanwhile, CAW cannot separate (u, z, t3) and (u0, z, t3): the 3-depth TCTs of u and u0 are not isomorphic, but the temporal walks from u and u0 have length 1, keeping CAW from capturing structural differences.",
+      "caption_bbox_points": [
+        108.0,
+        127.095,
+        505.243,
+        205.13
+      ],
+      "caption_bbox_pixels": [
+        270,
+        318,
+        1263,
+        513
+      ],
+      "suggested_crop_bbox_points": [
+        97.512,
+        62.647,
+        515.243,
+        215.13
+      ],
+      "suggested_crop_bbox_pixels": [
+        244,
+        157,
+        1288,
+        538
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-005.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": true,
+      "claim_ids": [
+        "C1"
+      ],
+      "text_asset": "text\\visuals\\figure-2-p005.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "complete",
+        "sources": [
+          "caption",
+          "pdf-text-layer",
+          "body-references",
+          "text/visuals/figure-2-p005.md"
+        ],
+        "notes": "已核对图表编号、页码、标题、正文引用和可恢复文字；未将像素级视觉观察写入报告。",
+        "limitations": "本轮为 text-only 精读，未直接核验像素、坐标轴、颜色、曲线形状、面板布局、裁剪完整性或视觉显著性。"
+      }
+    },
+    {
+      "id": "figure-3-p006",
+      "label": "Figure 3",
+      "kind": "figure",
+      "number": "3",
+      "page": 6,
+      "caption": "Examples of temporal graphs for which MP-TGNs cannot distinguish the diameter, girth, and number of cycles.",
+      "raw_text": "Figure 3: Examples of temporal graphs for which MP-TGNs cannot distinguish the diameter, girth, and number of cycles.",
+      "caption_bbox_points": [
+        325.801,
+        365.613,
+        505.121,
+        396.343
+      ],
+      "caption_bbox_pixels": [
+        815,
+        914,
+        1263,
+        991
+      ],
+      "suggested_crop_bbox_points": [
+        315.801,
+        305.977,
+        515.121,
+        406.343
+      ],
+      "suggested_crop_bbox_pixels": [
+        790,
+        765,
+        1288,
+        1016
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-006.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": true,
+      "claim_ids": [
+        "C1"
+      ],
+      "text_asset": "text\\visuals\\figure-3-p006.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "complete",
+        "sources": [
+          "caption",
+          "pdf-text-layer",
+          "body-references",
+          "text/visuals/figure-3-p006.md"
+        ],
+        "notes": "已核对图表编号、页码、标题、正文引用和可恢复文字；未将像素级视觉观察写入报告。",
+        "limitations": "本轮为 text-only 精读，未直接核验像素、坐标轴、颜色、曲线形状、面板布局、裁剪完整性或视觉显著性。"
+      }
+    },
+    {
+      "id": "figure-3-p006",
+      "label": "Figure 3",
+      "kind": "figure",
+      "number": "3",
+      "page": 6,
+      "caption": "provides a construction for Proposition 7. The temporal graphs G(t) and G0(t) differ in diameter (1 vs. 3), girth (3 vs. 6), and number of cycles (2 vs. 1). By inspecting the TCTs, one can observe that, for any node in G(t), there is a corresponding one in G0(t) whose TCTs are isomorphic, e.g., Tu1(t) ⇠= Tu0",
+      "raw_text": "Figure 3 provides a construction for Proposition 7. The temporal graphs G(t) and G0(t) differ in diameter (1 vs. 3), girth (3 vs. 6), and number of cycles (2 vs. 1). By inspecting the TCTs, one can observe that, for any node in G(t), there is a corresponding one in G0(t) whose TCTs are isomorphic, e.g., Tu1(t) ⇠= Tu0",
+      "caption_bbox_points": [
+        107.671,
+        310.242,
+        317.578,
+        388.939
+      ],
+      "caption_bbox_pixels": [
+        269,
+        776,
+        794,
+        972
+      ],
+      "suggested_crop_bbox_points": [
+        21.42,
+        0.0,
+        590.58,
+        398.939
+      ],
+      "suggested_crop_bbox_pixels": [
+        54,
+        0,
+        1476,
+        997
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-006.txt",
+      "crop_confidence": "low",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": true,
+      "claim_ids": [
+        "C1"
+      ],
+      "text_asset": "text\\visuals\\figure-3-p006.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "complete",
+        "sources": [
+          "caption",
+          "pdf-text-layer",
+          "body-references",
+          "text/visuals/figure-3-p006.md"
+        ],
+        "notes": "已核对图表编号、页码、标题、正文引用和可恢复文字；未将像素级视觉观察写入报告。",
+        "limitations": "本轮为 text-only 精读，未直接核验像素、坐标轴、颜色、曲线形状、面板布局、裁剪完整性或视觉显著性。"
+      }
+    },
+    {
+      "id": "figure-5-p007",
+      "label": "Figure 5",
+      "kind": "figure",
+      "number": "5",
+      "page": 7,
+      "caption": "PINT. Following the MP-TGN protocol, PINT updates memory states as events unroll. Meanwhile, we use Eqs. (7-11) to update positional features. To extract the embedding for node v, we build its TCT, annotate nodes with memory + positional features, and run (injective) MP.",
+      "raw_text": "Figure 5: PINT. Following the MP-TGN protocol, PINT updates memory states as events unroll. Meanwhile, we use Eqs. (7-11) to update positional features. To extract the embedding for node v, we build its TCT, annotate nodes with memory + positional features, and run (injective) MP.",
+      "caption_bbox_points": [
+        107.641,
+        201.681,
+        505.743,
+        235.862
+      ],
+      "caption_bbox_pixels": [
+        269,
+        504,
+        1264,
+        590
+      ],
+      "suggested_crop_bbox_points": [
+        97.641,
+        64.012,
+        515.743,
+        245.862
+      ],
+      "suggested_crop_bbox_pixels": [
+        244,
+        160,
+        1289,
+        615
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-007.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": true,
+      "claim_ids": [
+        "C2"
+      ],
+      "text_asset": "text\\visuals\\figure-5-p007.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "complete",
+        "sources": [
+          "caption",
+          "pdf-text-layer",
+          "body-references",
+          "text/visuals/figure-5-p007.md"
+        ],
+        "notes": "已核对图表编号、页码、标题、正文引用和可恢复文字；未将像素级视觉观察写入报告。",
+        "limitations": "本轮为 text-only 精读，未直接核验像素、坐标轴、颜色、曲线形状、面板布局、裁剪完整性或视觉显著性。"
+      }
+    },
+    {
+      "id": "figure-4-p007",
+      "label": "Figure 4",
+      "kind": "figure",
+      "number": "4",
+      "page": 7,
+      "caption": "The effect of (u, v, t) on the monotone TCT of v. Also, note how the positional features of a node i, relative to v, can be incrementally updated.",
+      "raw_text": "Figure 4: The effect of (u, v, t) on the monotone TCT of v. Also, note how the positional features of a node i, relative to v, can be incrementally updated.",
+      "caption_bbox_points": [
+        365.398,
+        588.514,
+        504.003,
+        629.206
+      ],
+      "caption_bbox_pixels": [
+        913,
+        1471,
+        1260,
+        1573
+      ],
+      "suggested_crop_bbox_points": [
+        303.085,
+        236.862,
+        514.003,
+        639.206
+      ],
+      "suggested_crop_bbox_pixels": [
+        758,
+        592,
+        1285,
+        1598
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-007.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": false,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\figure-4-p007.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "complete",
+        "sources": [
+          "caption",
+          "pdf-text-layer",
+          "body-references",
+          "text/visuals/figure-4-p007.md"
+        ],
+        "notes": "已核对图表编号、页码、标题、正文引用和可恢复文字；未将像素级视觉观察写入报告。",
+        "limitations": "本轮为 text-only 精读，未直接核验像素、坐标轴、颜色、曲线形状、面板布局、裁剪完整性或视觉显著性。"
+      }
+    },
+    {
+      "id": "figure-6-p008",
+      "label": "Figure 6",
+      "kind": "figure",
+      "number": "6",
+      "page": 8,
+      "caption": "PINT cannot distinguish the events (u, v, t3) and (v, z, t3).",
+      "raw_text": "Figure 6: PINT cannot distinguish the events (u, v, t3) and (v, z, t3).",
+      "caption_bbox_points": [
+        415.801,
+        251.537,
+        504.002,
+        282.268
+      ],
+      "caption_bbox_pixels": [
+        1040,
+        629,
+        1260,
+        706
+      ],
+      "suggested_crop_bbox_points": [
+        405.801,
+        187.257,
+        514.002,
+        292.268
+      ],
+      "suggested_crop_bbox_pixels": [
+        1015,
+        468,
+        1285,
+        731
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-008.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": false,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\figure-6-p008.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "complete",
+        "sources": [
+          "caption",
+          "pdf-text-layer",
+          "body-references",
+          "text/visuals/figure-6-p008.md"
+        ],
+        "notes": "已核对图表编号、页码、标题、正文引用和可恢复文字；未将像素级视觉观察写入报告。",
+        "limitations": "本轮为 text-only 精读，未直接核验像素、坐标轴、颜色、曲线形状、面板布局、裁剪完整性或视觉显著性。"
+      }
+    },
+    {
+      "id": "table-1-p009",
+      "label": "Table 1",
+      "kind": "table",
+      "number": "1",
+      "page": 9,
+      "caption": "Average Precision (AP) results for link prediction. We denote the best-performing model (highest mean AP) in blue. In 5 out of 6 datasets, PINT achieves the highest AP in the transductive setting. For the inductive case, PINT outperforms previous MP-TGNs and competes with CAW. We also evaluate PINT w/ and w/o relative positional features. Adopting positional features leads to signiﬁcant performance gains.",
+      "raw_text": "Table 1: Average Precision (AP) results for link prediction. We denote the best-performing model (highest mean AP) in blue. In 5 out of 6 datasets, PINT achieves the highest AP in the transductive setting. For the inductive case, PINT outperforms previous MP-TGNs and competes with CAW. We also evaluate PINT w/ and w/o relative positional features. Adopting positional features leads to signiﬁcant performance gains.",
+      "caption_bbox_points": [
+        107.677,
+        77.405,
+        504.001,
+        119.018
+      ],
+      "caption_bbox_pixels": [
+        269,
+        194,
+        1260,
+        298
+      ],
+      "suggested_crop_bbox_points": [
+        97.532,
+        67.405,
+        514.173,
+        556.861
+      ],
+      "suggested_crop_bbox_pixels": [
+        244,
+        169,
+        1285,
+        1392
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-009.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": true,
+      "claim_ids": [
+        "C3"
+      ],
+      "text_asset": "text\\visuals\\table-1-p009.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "complete",
+        "sources": [
+          "caption",
+          "pdf-text-layer",
+          "body-references",
+          "text/visuals/table-1-p009.md"
+        ],
+        "notes": "已核对图表编号、页码、标题、正文引用和可恢复文字；未将像素级视觉观察写入报告。",
+        "limitations": "本轮为 text-only 精读，未直接核验像素、坐标轴、颜色、曲线形状、面板布局、裁剪完整性或视觉显著性。"
+      }
+    },
+    {
+      "id": "figure-7-p009",
+      "label": "Figure 7",
+      "kind": "figure",
+      "number": "7",
+      "page": 9,
+      "caption": "Time comparison: PINT versus TGNs (in log- scale). The cost of pre-computing positional features is quickly diluted as the number of epochs increases.",
+      "raw_text": "Figure 7: Time comparison: PINT versus TGNs (in log- scale). The cost of pre-computing positional features is quickly diluted as the number of epochs increases.",
+      "caption_bbox_points": [
+        290.163,
+        675.637,
+        505.49,
+        706.367
+      ],
+      "caption_bbox_pixels": [
+        725,
+        1689,
+        1264,
+        1766
+      ],
+      "suggested_crop_bbox_points": [
+        280.163,
+        552.988,
+        515.49,
+        716.367
+      ],
+      "suggested_crop_bbox_pixels": [
+        700,
+        1382,
+        1289,
+        1791
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-009.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": true,
+      "claim_ids": [
+        "C3"
+      ],
+      "text_asset": "text\\visuals\\figure-7-p009.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "complete",
+        "sources": [
+          "caption",
+          "pdf-text-layer",
+          "body-references",
+          "text/visuals/figure-7-p009.md"
+        ],
+        "notes": "已核对图表编号、页码、标题、正文引用和可恢复文字；未将像素级视觉观察写入报告。",
+        "limitations": "本轮为 text-only 精读，未直接核验像素、坐标轴、颜色、曲线形状、面板布局、裁剪完整性或视觉显著性。"
+      }
+    },
+    {
+      "id": "table-2-p010",
+      "label": "Table 2",
+      "kind": "table",
+      "number": "2",
+      "page": 10,
+      "caption": "Average precision results for TGN-Att + relative positional features.",
+      "raw_text": "Table 2: Average precision results for TGN-Att + relative positional features.",
+      "caption_bbox_points": [
+        152.298,
+        77.405,
+        459.395,
+        89.409
+      ],
+      "caption_bbox_pixels": [
+        381,
+        194,
+        1148,
+        224
+      ],
+      "suggested_crop_bbox_points": [
+        97.253,
+        67.405,
+        515.741,
+        408.267
+      ],
+      "suggested_crop_bbox_pixels": [
+        243,
+        169,
+        1289,
+        1021
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-010.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": true,
+      "claim_ids": [
+        "C3"
+      ],
+      "text_asset": "text\\visuals\\table-2-p010.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "complete",
+        "sources": [
+          "caption",
+          "pdf-text-layer",
+          "body-references",
+          "text/visuals/table-2-p010.md"
+        ],
+        "notes": "已核对图表编号、页码、标题、正文引用和可恢复文字；未将像素级视觉观察写入报告。",
+        "limitations": "本轮为 text-only 精读，未直接核验像素、坐标轴、颜色、曲线形状、面板布局、裁剪完整性或视觉显著性。"
+      }
+    },
+    {
+      "id": "figure-8-p010",
+      "label": "Figure 8",
+      "kind": "figure",
+      "number": "8",
+      "page": 10,
+      "caption": "PINT: AP (mean and std) as a function of the dimensionality of the positional features.",
+      "raw_text": "Figure 8: PINT: AP (mean and std) as a function of the dimensionality of the positional features.",
+      "caption_bbox_points": [
+        306.0,
+        327.754,
+        504.005,
+        348.521
+      ],
+      "caption_bbox_pixels": [
+        765,
+        819,
+        1260,
+        871
+      ],
+      "suggested_crop_bbox_points": [
+        296.0,
+        228.616,
+        514.005,
+        358.521
+      ],
+      "suggested_crop_bbox_pixels": [
+        740,
+        572,
+        1285,
+        896
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-010.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": true,
+      "claim_ids": [
+        "C3"
+      ],
+      "text_asset": "text\\visuals\\figure-8-p010.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "complete",
+        "sources": [
+          "caption",
+          "pdf-text-layer",
+          "body-references",
+          "text/visuals/figure-8-p010.md"
+        ],
+        "notes": "已核对图表编号、页码、标题、正文引用和可恢复文字；未将像素级视觉观察写入报告。",
+        "limitations": "本轮为 text-only 精读，未直接核验像素、坐标轴、颜色、曲线形状、面板布局、裁剪完整性或视觉显著性。"
+      }
+    }
+  ]
+}

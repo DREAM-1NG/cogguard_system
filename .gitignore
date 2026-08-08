@@ -142,6 +142,9 @@ artifacts/
 **/artifacts/
 checkpoints/
 **/checkpoints/
+!system/research/propagation_analysis/benchmark/checkpoints/
+system/research/propagation_analysis/benchmark/checkpoints/*
+!system/research/propagation_analysis/benchmark/checkpoints/propagation_analysis_sequence_twitter_system.pt
 wandb/
 **/wandb/
 mlruns/

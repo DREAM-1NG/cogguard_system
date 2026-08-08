@@ -24,7 +24,7 @@ system/
         coordination_baseline/ reference-style fallback baseline
         coordination/          legacy compatibility alias for coordination_baseline
         crawler/               Crawler interface, social/news/mock adapters
-        propagation/           Propagation Analysis services and fallback logic
+        propagation/           observed propagation projection and compatibility helpers
         review/                Risk Review, Student Review, Teacher Review, governance
         risk/                  legacy compatibility alias for review
       models/                  SQLAlchemy and persisted domain records
@@ -39,7 +39,7 @@ system/
   research/
     coordination_discover/     platform-generic discovery pipeline and artifacts
     coordination_detect/       public-label validation boundary
-    propagation_analysis/      hindcast protocol, loaders, baselines, intervals
+    propagation_analysis/      deployed sequence model, checkpoint, loaders, benchmarks
     review_teacher/            asynchronous Teacher Review DAG
     social_bot_detection/       internal trainable BotRHG social-bot transfer
   runtimes/
@@ -64,6 +64,16 @@ records source-label provenance, archive fingerprints, training configuration,
 checkpoint hashes, predictions, and reference metrics. The public corpus
 experiments are text-only transfer implementations; their outputs are not
 publication claims of superiority over strong text baselines.
+
+Propagation is split into two product boundaries. `GET /api/v1/propagation/analyze`
+performs observed-only path, object, role, timeline, provenance, and stability
+analysis. `POST /api/v1/propagation/model-event-predict` applies a strict
+timezone-aware observation cutoff and runs the system-owned Twitter
+`PropagationSequenceJointModel` checkpoint for monotonic size/trend prediction
+and identity-mapped next-hop reactivation ranking. Missing model/data states
+abstain; the public event endpoint does not use the legacy speed/acceleration
+runtime. Deployment is verified, while formal multi-seed performance validation
+remains a separate research requirement.
 
 ## Analysis API
 

@@ -1,0 +1,275 @@
+- generic [ref=f3e3]:
+  - complementary [ref=f3e4]:
+    - generic [ref=f3e5]:
+      - generic [ref=f3e6]: CogGuard
+      - menu [ref=f3e8]:
+        - menuitem [ref=f3e9] [cursor=pointer]:
+          - generic [ref=f3e11]:
+            - img "dashboard" [ref=f3e12]
+            - text: 数据大屏
+        - menuitem [ref=f3e15] [cursor=pointer]:
+          - generic [ref=f3e17]:
+            - img "cloud-download" [ref=f3e18]
+            - text: 数据采集
+        - menuitem [ref=f3e22] [cursor=pointer]:
+          - generic [ref=f3e24]:
+            - img "apartment" [ref=f3e25]
+            - text: 协同发现
+        - menuitem [ref=f3e28] [cursor=pointer]:
+          - generic [ref=f3e30]:
+            - img "share-alt" [ref=f3e31]
+            - text: 传播分析
+        - menuitem [ref=f3e34] [cursor=pointer]:
+          - generic [ref=f3e36]:
+            - img "user" [ref=f3e37]
+            - text: 账号画像
+        - menuitem [ref=f3e40] [cursor=pointer]:
+          - generic [ref=f3e42]:
+            - img "alert" [ref=f3e43]
+            - text: 风险研判
+    - img "left" [ref=f3e47] [cursor=pointer]
+  - generic [ref=f3e50]:
+    - generic [ref=f3e51]:
+      - generic [ref=f3e52]: 传播分析
+      - generic [ref=f3e55] [cursor=pointer]:
+        - generic [ref=f3e56]: P
+        - generic [ref=f3e58]: Preview
+    - generic [ref=f3e59]: 传播分析
+    - main [ref=f3e62]:
+      - generic [ref=f3e63]:
+        - generic [ref=f3e64]:
+          - heading "传播监测" [level=2] [ref=f3e65]
+          - img "question-circle" [ref=f3e66]
+        - generic [ref=f3e70]:
+          - generic [ref=f3e71]:
+            - generic [ref=f3e73]:
+              - textbox "事件 ID" [ref=f3e74]: trump_visit_2026_05_21
+              - button [ref=f3e76] [cursor=pointer]:
+                - img "close-circle" [ref=f3e77]
+            - textbox "平台，可选" [ref=f3e82]
+            - generic [ref=f3e86]:
+              - textbox "观测截止时间" [ref=f3e87]
+              - generic:
+                - img "calendar"
+            - generic [ref=f3e90] [cursor=pointer]:
+              - combobox [ref=f3e92]
+              - generic [ref=f3e93]: 预测范围：24 小时
+            - button "同步数据库传播结果" [ref=f3e95] [cursor=pointer]
+            - button "运行趋势预测" [ref=f3e98] [cursor=pointer]
+          - generic [ref=f3e100]: 最近同步：2026/8/7 18:27:02
+        - generic [ref=f3e101]:
+          - tablist [ref=f3e102]:
+            - generic [ref=f3e104]:
+              - tab "传播路径" [ref=f3e106] [cursor=pointer]
+              - tab "传播对象" [ref=f3e108] [cursor=pointer]
+              - tab "角色分析" [ref=f3e110] [cursor=pointer]
+              - tab "时间线" [ref=f3e112] [cursor=pointer]
+              - tab "趋势预测" [active] [selected] [ref=f3e114] [cursor=pointer]
+          - tabpanel "趋势预测" [ref=f3e182]:
+            - generic [ref=f3e184]:
+              - generic [ref=f3e185]:
+                - generic [ref=f3e188]:
+                  - generic [ref=f3e189]: 已观测规模
+                  - generic [ref=f3e190]: 19,142
+                  - generic [ref=f3e191]: 当前事件传播前缀
+                - generic [ref=f3e194]:
+                  - generic [ref=f3e195]: 预测最终规模
+                  - generic [ref=f3e196]: 37,086
+                  - generic [ref=f3e197]: 参考数据：twitter
+                - generic [ref=f3e200]:
+                  - generic [ref=f3e201]: 下一跳候选
+                  - generic [ref=f3e202]: 17,522
+                  - generic [ref=f3e203]: Top-K：10 个用户
+              - generic [ref=f3e204]:
+                - generic [ref=f3e205]: 传播趋势预测
+                - table [ref=f3e211]:
+                  - rowgroup [ref=f3e212]:
+                    - row [ref=f3e213]:
+                      - rowheader "趋势方向" [ref=f3e214]
+                      - cell "上升" [ref=f3e215]
+                      - rowheader "观测截止" [ref=f3e217]
+                      - cell "2026-05-21 09:39:39+00:00" [ref=f3e218]
+                    - row [ref=f3e220]:
+                      - rowheader "预测范围" [ref=f3e221]
+                      - cell "24 小时" [ref=f3e222]
+                      - rowheader "模型名称" [ref=f3e224]
+                      - cell "PropagationSequenceJointModel" [ref=f3e225]
+                    - row [ref=f3e227]:
+                      - rowheader "参考数据" [ref=f3e228]
+                      - cell "twitter" [ref=f3e229]
+              - generic [ref=f3e234]:
+                - generic [ref=f3e235]: 下一跳预测 Top-K
+                - table [ref=f3e245]:
+                  - rowgroup [ref=f3e257]:
+                    - row [ref=f3e258]:
+                      - columnheader "排名" [ref=f3e259]
+                      - columnheader "用户名" [ref=f3e260]
+                      - columnheader "用户 ID" [ref=f3e261]
+                      - columnheader "预测分数" [ref=f3e262]
+                      - columnheader "研判类型" [ref=f3e263]
+                      - columnheader "事件出现" [ref=f3e264]
+                      - columnheader "候选来源" [ref=f3e265]
+                      - columnheader "证据" [ref=f3e266]
+                      - columnheader "最近出现" [ref=f3e267]
+                      - columnheader "操作" [ref=f3e268]
+                  - rowgroup [ref=f3e269]:
+                    - row [ref=f3e270] [cursor=pointer]:
+                      - cell "1" [ref=f3e271]
+                      - cell [ref=f3e272]:
+                        - button "金龙" [ref=f3e273]
+                      - cell "2458098110572891" [ref=f3e275]
+                      - cell "0.0008" [ref=f3e276]
+                      - cell "再激活" [ref=f3e277]
+                      - cell "--" [ref=f3e279]
+                      - cell "observed_user" [ref=f3e280]
+                      - cell [ref=f3e282]:
+                        - button "1 条" [ref=f3e283]
+                      - cell "2026-05-14 10:44:39+00:00" [ref=f3e285]
+                      - cell [ref=f3e286]:
+                        - generic [ref=f3e287]:
+                          - button "查看依据" [ref=f3e289]
+                          - button "回到路径" [ref=f3e292]
+                    - row [ref=f3e294] [cursor=pointer]:
+                      - cell "2" [ref=f3e295]
+                      - cell [ref=f3e296]:
+                        - button "起个拉风的微博名字" [ref=f3e297]
+                      - cell "6031049313" [ref=f3e299]
+                      - cell "0.0008" [ref=f3e300]
+                      - cell "再激活" [ref=f3e301]
+                      - cell "--" [ref=f3e303]
+                      - cell "observed_user" [ref=f3e304]
+                      - cell [ref=f3e306]:
+                        - button "1 条" [ref=f3e307]
+                      - cell "2026-05-20 15:58:31+00:00" [ref=f3e309]
+                      - cell [ref=f3e310]:
+                        - generic [ref=f3e311]:
+                          - button "查看依据" [ref=f3e313]
+                          - button "回到路径" [ref=f3e316]
+                    - row [ref=f3e318] [cursor=pointer]:
+                      - cell "3" [ref=f3e319]
+                      - cell [ref=f3e320]:
+                        - button "Stephanie_in_KM" [ref=f3e321]
+                      - cell "1662158192" [ref=f3e323]
+                      - cell "0.0006" [ref=f3e324]
+                      - cell "再激活" [ref=f3e325]
+                      - cell "--" [ref=f3e327]
+                      - cell "observed_user" [ref=f3e328]
+                      - cell [ref=f3e330]:
+                        - button "1 条" [ref=f3e331]
+                      - cell "2026-05-20 18:49:28+00:00" [ref=f3e333]
+                      - cell [ref=f3e334]:
+                        - generic [ref=f3e335]:
+                          - button "查看依据" [ref=f3e337]
+                          - button "回到路径" [ref=f3e340]
+                    - row [ref=f3e342] [cursor=pointer]:
+                      - cell "4" [ref=f3e343]
+                      - cell [ref=f3e344]:
+                        - button "刘东风" [ref=f3e345]
+                      - cell "4152213900631639" [ref=f3e347]
+                      - cell "0.0005" [ref=f3e348]
+                      - cell "再激活" [ref=f3e349]
+                      - cell "--" [ref=f3e351]
+                      - cell "observed_user" [ref=f3e352]
+                      - cell [ref=f3e354]:
+                        - button "1 条" [ref=f3e355]
+                      - cell "2026-05-15 19:58:17+00:00" [ref=f3e357]
+                      - cell [ref=f3e358]:
+                        - generic [ref=f3e359]:
+                          - button "查看依据" [ref=f3e361]
+                          - button "回到路径" [ref=f3e364]
+                    - row [ref=f3e366] [cursor=pointer]:
+                      - cell "5" [ref=f3e367]
+                      - cell [ref=f3e368]:
+                        - button "blackman_007" [ref=f3e369]
+                      - cell "1926061951" [ref=f3e371]
+                      - cell "0.0005" [ref=f3e372]
+                      - cell "再激活" [ref=f3e373]
+                      - cell "--" [ref=f3e375]
+                      - cell "observed_user" [ref=f3e376]
+                      - cell [ref=f3e378]:
+                        - button "1 条" [ref=f3e379]
+                      - cell "2026-05-17 07:17:57+00:00" [ref=f3e381]
+                      - cell [ref=f3e382]:
+                        - generic [ref=f3e383]:
+                          - button "查看依据" [ref=f3e385]
+                          - button "回到路径" [ref=f3e388]
+                    - row [ref=f3e390] [cursor=pointer]:
+                      - cell "6" [ref=f3e391]
+                      - cell [ref=f3e392]:
+                        - button "最爱陈师姐" [ref=f3e393]
+                      - cell "2124671180092798" [ref=f3e395]
+                      - cell "0.0005" [ref=f3e396]
+                      - cell "再激活" [ref=f3e397]
+                      - cell "--" [ref=f3e399]
+                      - cell "observed_user" [ref=f3e400]
+                      - cell [ref=f3e402]:
+                        - button "1 条" [ref=f3e403]
+                      - cell "2026-05-14 13:27:26+00:00" [ref=f3e405]
+                      - cell [ref=f3e406]:
+                        - generic [ref=f3e407]:
+                          - button "查看依据" [ref=f3e409]
+                          - button "回到路径" [ref=f3e412]
+                    - row [ref=f3e414] [cursor=pointer]:
+                      - cell "7" [ref=f3e415]
+                      - cell [ref=f3e416]:
+                        - button "春兰" [ref=f3e417]
+                      - cell "1748683918945690" [ref=f3e419]
+                      - cell "0.0005" [ref=f3e420]
+                      - cell "再激活" [ref=f3e421]
+                      - cell "--" [ref=f3e423]
+                      - cell "observed_user" [ref=f3e424]
+                      - cell [ref=f3e426]:
+                        - button "1 条" [ref=f3e427]
+                      - cell "2026-05-14 10:18:00+00:00" [ref=f3e429]
+                      - cell [ref=f3e430]:
+                        - generic [ref=f3e431]:
+                          - button "查看依据" [ref=f3e433]
+                          - button "回到路径" [ref=f3e436]
+                    - row [ref=f3e438] [cursor=pointer]:
+                      - cell "8" [ref=f3e439]
+                      - cell [ref=f3e440]:
+                        - button "Scabatcho" [ref=f3e441]
+                      - cell "7484117480" [ref=f3e443]
+                      - cell "0.0005" [ref=f3e444]
+                      - cell "再激活" [ref=f3e445]
+                      - cell "--" [ref=f3e447]
+                      - cell "observed_user" [ref=f3e448]
+                      - cell [ref=f3e450]:
+                        - button "1 条" [ref=f3e451]
+                      - cell "2026-05-20 05:04:29+00:00" [ref=f3e453]
+                      - cell [ref=f3e454]:
+                        - generic [ref=f3e455]:
+                          - button "查看依据" [ref=f3e457]
+                          - button "回到路径" [ref=f3e460]
+                    - row [ref=f3e462] [cursor=pointer]:
+                      - cell "9" [ref=f3e463]
+                      - cell [ref=f3e464]:
+                        - button "吹梦到西洲1717" [ref=f3e465]
+                      - cell "6436492254" [ref=f3e467]
+                      - cell "0.0005" [ref=f3e468]
+                      - cell "再激活" [ref=f3e469]
+                      - cell "--" [ref=f3e471]
+                      - cell "observed_user" [ref=f3e472]
+                      - cell [ref=f3e474]:
+                        - button "1 条" [ref=f3e475]
+                      - cell "2026-05-14 14:09:12+00:00" [ref=f3e477]
+                      - cell [ref=f3e478]:
+                        - generic [ref=f3e479]:
+                          - button "查看依据" [ref=f3e481]
+                          - button "回到路径" [ref=f3e484]
+                    - row [ref=f3e486] [cursor=pointer]:
+                      - cell "10" [ref=f3e487]
+                      - cell [ref=f3e488]:
+                        - button "妍菠萝寿司卷" [ref=f3e489]
+                      - cell "7624100573" [ref=f3e491]
+                      - cell "0.0005" [ref=f3e492]
+                      - cell "再激活" [ref=f3e493]
+                      - cell "--" [ref=f3e495]
+                      - cell "observed_user" [ref=f3e496]
+                      - cell [ref=f3e498]:
+                        - button "1 条" [ref=f3e499]
+                      - cell "2026-05-20 16:22:29+00:00" [ref=f3e501]
+                      - cell [ref=f3e502]:
+                        - generic [ref=f3e503]:
+                          - button "查看依据" [ref=f3e505]
+                          - button "回到路径" [ref=f3e508]

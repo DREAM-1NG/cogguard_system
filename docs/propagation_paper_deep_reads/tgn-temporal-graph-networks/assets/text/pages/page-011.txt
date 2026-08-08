@@ -1,0 +1,67 @@
+Seyed Mehran Kazemi, Rishab Goel, Kshitij Jain, Ivan Kobyzev, Akshay Sethi, Peter Forsyth, and
+  Pascal Poupart. Representation learning for dynamic graphs: A survey. Journal of Machine
+  Learning Research, 21(70):1–73, 2020. URL http://jmlr.org/papers/v21/19-447.
+  html.
+
+Min-Soo Kim and Jiawei Han. A particle-and-density based evolutionary clustering method for
+  dynamic networks. VLDB, 2(1):622–633, 2009.
+
+Thomas N Kipf and Max Welling. Variational graph auto-encoders. NIPS Workshop on Bayesian
+  Deep Learning, 2016.
+
+Thomas N. Kipf and Max Welling.  Semi-Supervised Classiﬁcation with Graph Convolutional
+  Networks. In ICLR, 2017. URL https://openreview.net/forum?id=SJU4ayYgl.
+
+Srijan Kumar, Xikun Zhang, and Jure Leskovec.  Predicting dynamic embedding trajectory in
+  temporal interaction networks. In KDD ’19, pp. 1269–1278, 2019. ISBN 9781450362016. doi:
+  10.1145/3292500.3330895. URL https://doi.org/10.1145/3292500.3330895.
+
+Yaguang Li, Rose Yu, Cyrus Shahabi, and Yan Liu. Diffusion convolutional recurrent neural network:
+  Data-driven trafﬁc forecasting. In International Conference on Learning Representations, 2018.
+  URL https://openreview.net/forum?id=SJiHXGWAZ.
+
+David Liben-Nowell and Jon Kleinberg. The link-prediction problem for social networks. J. Am. Soc.
+   Inf. Sci. Technol., 58(7):1019–1031, May 2007. ISSN 1532-2882.
+
+Yao Ma, Ziyi Guo, Zhaochun Ren, Eric Zhao, Jiliang Tang, and Dawei Yin. Streaming graph neural
+  networks. arXiv:1810.10627, 2018.
+
+Yunpu Ma, Volker Tresp, and Erik A Daxberger. Embedding models for episodic knowledge graphs.
+  Journal of Web Semantics, 59:100490, 2019.
+
+Sedigheh Mahdavi, Shima Khoshraftar, and Aijun An. dynnode2vec: Scalable dynamic network
+  embedding. In 2018 IEEE International Conference on Big Data, pp. 3762–3765. IEEE, 2018.
+
+Franco Manessi, Alessandro Rozza, and Mario Manzo. Dynamic graph convolutional networks.
+  Pattern Recognition, 97:107000, 2020.
+
+Federico Monti, Davide Boscaini, Jonathan Masci, Emanuele Rodolà, Jan Svoboda, and Michael M.
+  Bronstein. Geometric deep learning on graphs and manifolds using mixture model cnns. In CVPR,
+  2016.
+
+Federico Monti, Fabrizio Frasca, Davide Eynard, Damon Mannion, and Michael M. Bronstein. Fake
+  news detection on social media using geometric deep learning. arXiv:1902.06673, 2019. URL
+  http://arxiv.org/abs/1902.06673.
+
+Behnaz Moradabadi and Mohammad Reza Meybodi. A novel time series link prediction method:
+  Learning automata approach. Physica A: Statistical Mechanics and its Applications, 482:422–432,
+  2017.
+
+Apurva Narayan and Peter HO’N Roe.  Learning graph dynamics using deep neural networks.
+  IFAC-PapersOnLine, 51(2):433–438, 2018.
+
+G. H. Nguyen, J. Boaz Lee, R. A. Rossi, N. K. Ahmed, E. Koh, and S. Kim. Dynamic network em-
+  beddings: From random walks to temporal random walks. In 2018 IEEE International Conference
+  on Big Data, pp. 1085–1092, 2018.
+
+Giang Hoang Nguyen, John Boaz Lee, Ryan A. Rossi, Nesreen K. Ahmed, Eunyee Koh, and
+  Sungchul Kim. Continuous-time dynamic network embeddings. In WWW ’18, pp. 969–976, 2018.
+  ISBN 9781450356404. doi: 10.1145/3184558.3191526. URL https://doi.org/10.1145/
+  3184558.3191526.
+
+Aldo Pareja, Giacomo Domeniconi, Jie Chen, Tengfei Ma, Toyotaro Suzumura, Hiroki Kanezashi,
+  Tim Kaler, and Charles E Leisersen. Evolvegcn: Evolving graph convolutional networks for
+  dynamic graphs. arXiv:1902.10191, 2019.
+
+
+                                       11

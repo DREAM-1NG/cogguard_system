@@ -7,14 +7,19 @@ prediction endpoint estimates future trend and next-hop candidates.
 
 from inspect import Parameter, signature
 
-from fastapi import APIRouter, Depends, Query
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.core.security import get_current_user_or_local_preview
 from app.models.user import User
+from app.schemas.propagation import PropagationPredictionResponse
 from app.services import propagation_model_service, propagation_observation_service
 from app.utils.response import success
 
 router = APIRouter()
+
+SUPPORTED_OBSERVATION_RATIOS = frozenset({0.1, 0.3, 0.5})
 
 
 async def _call_observed_analysis(*, platform: str | None, event_id: str | None, node_limit: int) -> dict:
@@ -35,7 +40,7 @@ async def _call_observed_analysis(*, platform: str | None, event_id: str | None,
 async def analyze(
     platform: str | None = Query(None, description="Limit analysis to one platform."),
     event_id: str | None = Query(None, description="Limit analysis to one event id."),
-    node_limit: int = Query(300, ge=0, description="Maximum propagation graph nodes; 0 means no limit."),
+    node_limit: int = Query(300, ge=0, description="Maximum diffusion-summary nodes; 0 means all summary nodes."),
     _current_user: User | None = Depends(get_current_user_or_local_preview),
 ):
     """Analyze observed propagation paths, roles, objects, and evidence."""
@@ -47,7 +52,7 @@ async def analyze(
 async def observed_analysis(
     platform: str | None = Query(None, description="Limit analysis to one platform."),
     event_id: str | None = Query(None, description="Limit analysis to one event id."),
-    node_limit: int = Query(300, ge=0, description="Maximum propagation graph nodes; 0 means no limit."),
+    node_limit: int = Query(300, ge=0, description="Maximum diffusion-summary nodes; 0 means all summary nodes."),
     _current_user: User | None = Depends(get_current_user_or_local_preview),
 ):
     """Canonical observed-only Propagation Analysis endpoint."""
@@ -55,23 +60,72 @@ async def observed_analysis(
     return success(data=result)
 
 
-@router.post("/model-event-predict")
+@router.post("/model-event-predict", response_model=PropagationPredictionResponse)
 async def predict_model_event(
-    platform: str | None = Query(None, description="Limit prediction to one platform."),
-    event_id: str | None = Query(None, description="Limit prediction to one event id."),
-    top_k: int = Query(10, ge=1, le=50, description="Number of next-hop candidates to return."),
+    event_id: Annotated[str, Query(min_length=1, description="Event id required for event-scoped prediction.")],
+    platform: Annotated[str | None, Query(description="Limit prediction to one platform.")] = None,
+    top_k: Annotated[int, Query(ge=1, le=50, description="Number of next-hop candidates to return.")] = 10,
+    observed_until: Annotated[
+        str | None,
+        Query(description="Inclusive timezone-aware ISO-8601 observation cutoff. Later rows are excluded."),
+    ] = None,
+    t_obs: Annotated[
+        str | None,
+        Query(description="Compatibility alias for observed_until; must include a timezone."),
+    ] = None,
+    prediction_horizon: Annotated[
+        int | None,
+        Query(
+            ge=1,
+            le=24 * 30,
+            include_in_schema=False,
+            description="Deprecated wall-clock horizon; the deployed checkpoint emits normalized steps.",
+        ),
+    ] = None,
+    observation_ratio: Annotated[
+        float,
+        Query(ge=0.1, le=0.5, description="Supported observed-prefix ratio used by the deployed checkpoint."),
+    ] = 0.5,
     _current_user: User | None = Depends(get_current_user_or_local_preview),
 ):
     """Run the prediction model for current-event propagation data."""
+    try:
+        observed_cutoff = propagation_model_service.validate_observed_until(observed_until)
+        t_obs_cutoff = propagation_model_service.validate_observed_until(t_obs)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    if observed_cutoff is not None and t_obs_cutoff is not None and observed_cutoff != t_obs_cutoff:
+        raise HTTPException(
+            status_code=422,
+            detail="observed_until and t_obs must identify the same instant.",
+        )
+    effective_observed_until = observed_until or t_obs
+    if round(float(observation_ratio), 4) not in SUPPORTED_OBSERVATION_RATIOS:
+        raise HTTPException(
+            status_code=422,
+            detail="observation_ratio must be one of 0.1, 0.3, or 0.5.",
+        )
+    if prediction_horizon is not None:
+        raise HTTPException(
+            status_code=422,
+            detail="The deployed checkpoint exposes normalized trajectory steps; wall-clock prediction_horizon is unsupported.",
+        )
     result = await propagation_model_service.predict_current_event_model(
         platform=platform,
         event_id=event_id,
         top_k=top_k,
+        observed_until=effective_observed_until,
+        observation_ratio=observation_ratio,
+    )
+    result = propagation_model_service.enforce_prediction_contract(
+        result,
+        event_id=event_id,
+        platform=platform,
     )
     return success(data=result)
 
 
-@router.post("/model-predict")
+@router.post("/research/model-predict", include_in_schema=False)
 async def predict_macro_micro_model(
     dataset: str = Query("twitter", description="Experiment dataset: twitter, douban, or memetracker."),
     seed: int | None = Query(42, description="Experiment seed; empty aggregates all available seeds."),

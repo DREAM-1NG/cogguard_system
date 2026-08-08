@@ -1,0 +1,65 @@
+# Text evidence: Table 5
+
+> This file contains extracted text, not a visual interpretation. The image pixels, layout, axes, colors, and panels were not verified.
+
+- **PDF page:** 17
+- **Text extraction status:** partial
+- **Available sources:** caption, suggested-region-text, body-references
+- **Suggested region:** [97.691, 219.26, 515.243, 670.36]
+
+## Caption
+
+Table 5: Additional dataset properties. Dataset names are colored based on their scale as small, medium, and large. ⋆: denotes the average number of edges per timestamp.
+
+## Text from suggested visual region
+
+~~~text
+Table 5: Additional dataset properties. Dataset names are colored based on their scale as small,
+medium, and large. ⋆: denotes the average number of edges per timestamp.
+
+                    inductive node ratio # inductive nodes    total # nodes
+   Dataset                                                                  |Et|⋆      Reoccurrence                     Val.      Test        Val.     Test     Val.     Test
+
+   tgbl-wiki     0.257    0.308      836    1,099   3,256   3,564  1.031      0.015
+   tgbl-review  0.024    0.027      5,728   6,336  242,820 234,641 709.911   0.0002
+   tgbl-coin     0.112    0.174     37,689  336,161  55,781 321,008 17.604    0.025 Link
+   tgbl-comment 0.474    0.562    137,424 177,558 289,713 315,662 1.430      0.006
+   tgbl-flight  0.031    0.045      474    689    15,170  15,347  48497.884 0.009
+
+   tgbn-trade   0.009    0.009       2      2      216    228   15104.677 0.052
+   tgbn-genre   0.056    0.097      70     129    1,260   1,328  4.265      0.003 Node   tgbn-reddit  0.031    0.035      349    390    11,191  11,099  1.241      0.009
+   tgbn-token   0.086    0.076      4,013   3,178   46,541  42,023  35.81      0.002
+
+
+F GPU Usage Comparison
+
+In Figure 7, we report the average GPU usage of TG methods on the tgbl-wiki dataset across 5
+trials. Note that EdgeBank is a heuristic and only requires CPU thus no GPU usage is reported. Some
+methods such as GraphMixer has significantly higher GPU usage when compared to others while
+most methods have similar GPU usage.
+
+G  Additional Dataset Statistics
+
+In addition to the main dataset statistics presented in Table 1, it is insightful to examine some other
+dataset characteristics as indicated in Table 5. The reoccurrence index (i.e., |Etrain∩Etest| ) denotes the                                                                                                                         |Etrain|
+ratio of training edges that reoccur during the test phase as well. If the edges appearance follows
+a consistent pattern, a high reoccurrence index can be correlated with the high performance of a
+memorization-based approach such as EdgeBank [33]. The average number of edges per timestamps
+provides information about the evolution of the datasets, and the ratio of the new nodes in validation
+or test set provides insights about the portion of unseen nodes introduced during inference. It should
+be noted that although we mainly focus on transductive dynamic link property prediction task in
+our evaluation, the ratio of new nodes in validation or test set (fourth and fifth column in Table 5)
+show that there are indeed new nodes during the validation and test phase. Correctly predicting the
+properties of edges for the new nodes might be more challenging for the models, since no historical
+information about these nodes are available. Lastly, we observe that TGB datasets are also diverse in
+all of the above properties.
+~~~
+
+## Body references
+
+- [PDF p.17] In addition to the main dataset statistics presented in Table 1, it is insightful to examine some other dataset characteristics as indicated in Table 5. The reoccurrence index (i.e., |Etrain∩Etest|
+- [PDF p.17] |Etrain| ) denotes the ratio of training edges that reoccur during the test phase as well. If the edges appearance follows a consistent pattern, a high reoccurrence index can be correlated with the high performance of a memorization-based approach such as EdgeBank [33]. The average number of edges per timestamps provides information about the evolution of the datasets, and the ratio of the new nodes in validation or test set provides insights about the portion of unseen nodes introduced during inference. It should be noted that although we mainly focus on transductive dynamic link property prediction task in our evaluation, the ratio of new nodes in validation or test set (fourth and fifth column in Table 5) show that there are indeed new nodes during the validation and test phase. Correctly predicting the properties of edges for the new nodes might be more challenging for the models, since no historical information about these nodes are available. Lastly, we observe that TGB datasets are also diverse in all of the above properties.
+
+## Mandatory limitation
+
+A text-only model must not claim direct observation of visual trends, layout, axes, colors, panels, qualitative examples, or crop completeness.

@@ -24,7 +24,6 @@ from app.core.propagation.constants import (
     DIFFUSION_VISIBLE_NODE_LIMIT,
     EXACT_BETWEENNESS_NODE_LIMIT,
 )
-from app.core.propagation.quality import build_user_quality_portrait
 from app.core.propagation.roles import identify_key_roles
 
 
@@ -64,6 +63,61 @@ def _clean_list(value) -> list:
     if isinstance(value, tuple):
         return list(value)
     return []
+
+
+def _entity_id(entity_type: str, raw_id: str) -> str:
+    return f"{entity_type}:{_clean_str(raw_id)}"
+
+
+def _edge_id(source: str, target: str, key: object) -> str:
+    return f"edge:{source}:{target}:{key}"
+
+
+def _inferred_edge_confidence(time_delta: float) -> float:
+    """Time proximity supports, but never confirms, a reconstructed relation."""
+    return max(0.1, min(0.7, 0.7 / (1.0 + max(float(time_delta), 0.0) / 3600.0)))
+
+
+def _explicit_time_delta(comment: dict, df: pd.DataFrame, reply_to: str) -> float | None:
+    comment_ts = pd.to_datetime(comment.get("timestamp"), errors="coerce", utc=True)
+    if pd.isna(comment_ts):
+        return None
+    parent = df[df.get("post_id", pd.Series(dtype=str)).astype(str) == str(reply_to)]
+    if parent.empty:
+        return None
+    parent_ts = parent.iloc[0].get("ts")
+    if pd.isna(parent_ts):
+        return None
+    return round(float((comment_ts - parent_ts).total_seconds()), 1)
+
+
+def _dynamic_budget(total: int, *, base: int, maximum: int, scale: int) -> int:
+    if total <= 0:
+        return 0
+    return min(total, min(maximum, max(base, int(np.ceil(np.sqrt(total) * scale)))))
+
+
+def _response_meta(total: int, budget: int) -> dict:
+    returned = min(total, budget)
+    return {"total": int(total), "returned": int(returned), "truncated": returned < total}
+
+
+def _extract_coordination_users(posts: list[dict], comments: list[dict]) -> set[str]:
+    coordinated: set[str] = set()
+    for item in [*posts, *comments]:
+        author_id = _clean_str(item.get("author_id") or item.get("user_id"))
+        nested = item.get("coordination") if isinstance(item.get("coordination"), dict) else {}
+        group_id = _clean_str(
+            item.get("coordination_group_id")
+            or item.get("group_id")
+            or item.get("cluster_id")
+            or nested.get("group_id")
+            or nested.get("cluster_id")
+        )
+        flagged = item.get("is_coordinated") is True or nested.get("is_coordinated") is True
+        if author_id and (group_id or flagged):
+            coordinated.add(author_id)
+    return coordinated
 
 
 # ---------------------------------------------------------------------------
@@ -159,10 +213,17 @@ def build_propagation_graph(
             time_delta = (follower["ts"] - predecessor["ts"]).total_seconds()
             G.add_edge(
                 src, dst,
+                edge_id=_edge_id(src, dst, f"inferred:{obj_id}:{i}"),
                 type="implicit",
+                evidence_type="inferred",
+                relation_type="shared_object_temporal_proximity",
                 weight=1,
                 object_id=obj_id,
                 time_delta=round(time_delta, 1),
+                source_content_ref=f"post:{predecessor['post_id']}" if predecessor.get("post_id") else "",
+                target_content_ref=f"post:{follower['post_id']}" if follower.get("post_id") else "",
+                confidence=round(_inferred_edge_confidence(time_delta), 4),
+                is_observed=False,
             )
 
     # --- 显式边：评论回复关系 ---
@@ -170,13 +231,15 @@ def build_propagation_graph(
 
     # --- 分析 ---
     bc = _betweenness(G)
-    key_roles = identify_key_roles(G, bc)
+    coordination_users = _extract_coordination_users(posts, comments or [])
+    key_roles = identify_key_roles(G, bc, coordination_users)
 
-    claims = build_claims(shared_objects)
-    timeline = build_timeline(df)
+    claims_all = build_claims(shared_objects)
+    timeline_all = build_timeline(df)
 
-    evidence_chains = _extract_evidence_chains(G, shared_objects, key_roles, bc, df)
-    path_analysis = _build_path_analysis(G, evidence_chains)
+    evidence_all = _extract_evidence_chains(G, shared_objects, key_roles, bc, df)
+    evidence_budget = _dynamic_budget(len(evidence_all), base=20, maximum=80, scale=4)
+    evidence_chains = evidence_all[:evidence_budget]
     diffusion_summary = _build_diffusion_summary(
         G,
         evidence_chains,
@@ -185,7 +248,21 @@ def build_propagation_graph(
         comments or [],
         node_limit=diffusion_node_limit,
     )
-    user_quality = build_user_quality_portrait(posts, comments or [])
+    path_analysis = _build_path_analysis(
+        G,
+        evidence_chains,
+        diffusion_summary.get("all_node_layers", {}),
+    )
+    _enrich_role_evidence_and_stability(key_roles, G, evidence_chains, diffusion_summary.get("all_node_layers", {}))
+    stability = _build_stability_summary(
+        G,
+        diffusion_summary.get("all_node_layers", {}),
+        key_roles,
+        (diffusion_summary.get("root_node") or {}).get("id", ""),
+    )
+    timeline_budget = _dynamic_budget(len(timeline_all), base=100, maximum=300, scale=20)
+    claims_budget = _dynamic_budget(len(claims_all), base=20, maximum=100, scale=8)
+    provenance_graph = _build_provenance_graph(posts, comments or [], shared_objects, G)
 
     # --- 序列化 ---
     nodes = []
@@ -193,12 +270,21 @@ def build_propagation_graph(
         nodes.append({"id": n, **{k: v for k, v in attrs.items()}})
 
     edges = []
-    for u, v, _key, d in G.edges(data=True, keys=True):
+    for u, v, key, d in G.edges(data=True, keys=True):
         edges.append({
             "source": u,
             "target": v,
             "weight": d.get("weight", 1),
             "type": d.get("type", "implicit"),
+            "edge_id": d.get("edge_id") or _edge_id(u, v, key),
+            "evidence_type": d.get("evidence_type", "inferred"),
+            "relation_type": d.get("relation_type", "shared_object_temporal_proximity"),
+            "source_content_ref": d.get("source_content_ref", ""),
+            "target_content_ref": d.get("target_content_ref", ""),
+            "object_id": d.get("object_id", ""),
+            "time_delta": d.get("time_delta"),
+            "confidence": d.get("confidence", 0.0),
+            "is_observed": bool(d.get("is_observed", False)),
         })
 
     return {
@@ -209,12 +295,19 @@ def build_propagation_graph(
             "edge_count": G.number_of_edges(),
         },
         "key_roles": key_roles,
-        "claims": claims,
-        "timeline": timeline,
+        "claims": claims_all[:claims_budget],
+        "timeline": timeline_all[:timeline_budget],
         "evidence_chains": evidence_chains,
         "path_analysis": path_analysis,
         "diffusion_summary": diffusion_summary,
-        "user_quality": user_quality,
+        "provenance_graph": provenance_graph,
+        "stability": stability,
+        "response_meta": {
+            "claims": _response_meta(len(claims_all), claims_budget),
+            "objects": _response_meta(len(claims_all), claims_budget),
+            "timeline": _response_meta(len(timeline_all), timeline_budget),
+            "evidence_chains": _response_meta(len(evidence_all), evidence_budget),
+        },
     }
 
 
@@ -250,7 +343,8 @@ def _add_explicit_edges(
             comment_author_name[aid] = _clean_str(c.get("author_name")) or aid
 
     for c in comments:
-        reply_to = _clean_str(c.get("reply_to"))
+        explicit_reply_to = _clean_str(c.get("reply_to"))
+        reply_to = explicit_reply_to or _clean_str(c.get("parent_id")) or _clean_str(c.get("parent_comment_id"))
         if not reply_to:
             continue
         commenter = _clean_str(c.get("author_id"))
@@ -279,11 +373,23 @@ def _add_explicit_edges(
             )
 
         # 传播方向是“被回复内容的作者 -> 评论/回复者”，否则评论活跃用户会被误判成源头。
+        evidence_type = "explicit" if explicit_reply_to else "reconstructed"
         G.add_edge(
             parent_author, commenter,
-            type="explicit",
+            edge_id=_edge_id(parent_author, commenter, f"{evidence_type}:{_clean_str(c.get('comment_id'))}"),
+            type=evidence_type,
+            evidence_type=evidence_type,
+            relation_type="replies_to",
             weight=1,
             comment_id=_clean_str(c.get("comment_id")),
+            source_content_ref=(
+                f"post:{reply_to}" if reply_to in post_author else f"comment:{reply_to}"
+            ),
+            target_content_ref=f"comment:{_clean_str(c.get('comment_id'))}",
+            object_id="",
+            time_delta=_explicit_time_delta(c, df, reply_to),
+            confidence=1.0 if evidence_type == "explicit" else 0.85,
+            is_observed=evidence_type == "explicit",
         )
 
 
@@ -329,12 +435,16 @@ def _betweenness(G: nx.MultiDiGraph) -> dict[str, float]:
 # Zhiview-style observed propagation summaries
 # ---------------------------------------------------------------------------
 
-def _build_path_analysis(G: nx.MultiDiGraph, evidence_chains: list[dict]) -> dict:
+def _build_path_analysis(
+    G: nx.MultiDiGraph,
+    evidence_chains: list[dict],
+    node_layers: dict[str, int] | None = None,
+) -> dict:
     """Summarize observed propagation paths and hierarchy from the graph."""
     edge_type_counts = Counter(
         d.get("type", "implicit") for _u, _v, _k, d in G.edges(data=True, keys=True)
     )
-    layer_distribution = _build_layer_distribution(G)
+    layer_distribution = _build_layer_distribution(G, node_layers)
     max_depth = max((row["level"] for row in layer_distribution if row["level"] >= 0), default=0)
 
     key_paths: list[dict] = []
@@ -363,9 +473,15 @@ def _build_path_analysis(G: nx.MultiDiGraph, evidence_chains: list[dict]) -> dic
     }
 
 
-def _build_layer_distribution(G: nx.MultiDiGraph) -> list[dict]:
+def _build_layer_distribution(
+    G: nx.MultiDiGraph,
+    node_layers: dict[str, int] | None = None,
+) -> list[dict]:
     if G.number_of_nodes() == 0:
         return []
+
+    if node_layers is not None:
+        return _layer_rows_from_mapping(node_layers, G.number_of_nodes())
 
     simple_G = nx.DiGraph()
     simple_G.add_nodes_from(G.nodes())
@@ -461,15 +577,8 @@ def _build_diffusion_summary(
     add_node(root_id, 0)
     queue: list[tuple[str, int]] = [(root_id, 0)] if root_id else []
     for parallel_root in parallel_roots:
-        if add_node(parallel_root, 1) and root_id:
-            tree_edges[(root_id, parallel_root)] = {
-                "source": root_id,
-                "target": parallel_root,
-                "weight": simple_G[root_id][parallel_root]["weight"] if simple_G.has_edge(root_id, parallel_root) else 1,
-                "type": "parallel_root",
-                "is_parallel_root": True,
-            }
-            queue.append((parallel_root, 1))
+        if add_node(parallel_root, 0):
+            queue.append((parallel_root, 0))
 
     visited_for_expansion = {root_id} if root_id else set()
     while queue:
@@ -578,7 +687,19 @@ def _build_diffusion_summary(
         simple_G,
     )
 
-    layers = _diffusion_layer_rows(visible_node_rows, simple_G.number_of_nodes())
+    all_node_layers = _diffusion_all_node_layers(simple_G, root_id)
+    for parallel_root in parallel_roots:
+        if parallel_root in all_node_layers:
+            all_node_layers[parallel_root] = 0
+    if is_full_view:
+        visible_node_rows = [
+            _diffusion_node_row(G, simple_G, node_id, all_node_layers.get(node_id, -1), key_node_set, root_id)
+            for node_id in sorted(visible_nodes, key=lambda item: (all_node_layers.get(item, 999), str(item)))
+        ]
+        visible_node_rows = _apply_clustered_diffusion_layout(
+            visible_node_rows, tree_edge_rows, shared_objects, root_id, simple_G
+        )
+    layers = _layer_rows_from_mapping(all_node_layers, simple_G.number_of_nodes())
     detail_index = _build_diffusion_detail_index(
         visible_node_ids,
         shared_objects,
@@ -601,6 +722,12 @@ def _build_diffusion_summary(
         "highlight_edges": highlight_edges,
         "layers": layers,
         "detail_index": detail_index,
+        "layout_relations": [
+            {"source": root_id, "target": node_id, "relation_type": "parallel_root_layout"}
+            for node_id in parallel_roots
+            if node_id != root_id
+        ],
+        "all_node_layers": all_node_layers,
         "meta": {
             "mode": "layered_summary",
             "layout": "clustered_similarity",
@@ -642,6 +769,8 @@ def _empty_diffusion_summary(
         "highlight_edges": [],
         "layers": [],
         "detail_index": {"nodes": {}, "objects": {}},
+        "layout_relations": [],
+        "all_node_layers": {},
         "meta": {
             "mode": "layered_summary",
             "layout": "radial",
@@ -669,10 +798,23 @@ def _to_weighted_digraph(G: nx.MultiDiGraph) -> nx.DiGraph:
             simple_G[u][v]["weight"] += weight
             if edge_type == "explicit":
                 simple_G[u][v]["type"] = "explicit"
+                simple_G[u][v]["evidence_type"] = data.get("evidence_type", "explicit")
+                simple_G[u][v]["relation_type"] = data.get("relation_type", "replies_to")
+                simple_G[u][v]["confidence"] = data.get("confidence", 1.0)
+                simple_G[u][v]["edge_id"] = data.get("edge_id", "")
             if not simple_G[u][v].get("object_id") and object_id:
                 simple_G[u][v]["object_id"] = object_id
         else:
-            simple_G.add_edge(u, v, weight=weight, type=edge_type, object_id=object_id)
+            simple_G.add_edge(
+                u, v,
+                weight=weight,
+                type=edge_type,
+                object_id=object_id,
+                evidence_type=data.get("evidence_type", "inferred"),
+                relation_type=data.get("relation_type", "shared_object_temporal_proximity"),
+                confidence=data.get("confidence", 0.0),
+                edge_id=data.get("edge_id", ""),
+            )
     return simple_G
 
 
@@ -778,7 +920,7 @@ def _diffusion_all_node_layers(simple_G: nx.DiGraph, root_id: str) -> dict[str, 
         if node != root_id and simple_G.in_degree(node) == 0 and simple_G.out_degree(node) > 0
     ]
     for root in roots:
-        root_layer = 1 if root_id else 0
+        root_layer = 0
         layers[root] = min(root_layer, layers.get(root, root_layer))
         for node, layer in nx.single_source_shortest_path_length(simple_G, root).items():
             candidate_layer = min(root_layer + int(layer), DIFFUSION_MAX_DEPTH)
@@ -1082,8 +1224,15 @@ def _stable_fraction(value: str) -> float:
 
 
 def _diffusion_layer_rows(visible_nodes: list[dict], total_nodes: int) -> list[dict]:
+    return _layer_rows_from_mapping(
+        {str(node.get("id", "")): int(node.get("layer", -1) or -1) for node in visible_nodes},
+        total_nodes,
+    )
+
+
+def _layer_rows_from_mapping(node_layers: dict[str, int], total_nodes: int) -> list[dict]:
     total = max(total_nodes, 1)
-    counts = Counter(node.get("layer", -1) for node in visible_nodes)
+    counts = Counter(node_layers.values())
     rows = []
     for layer, count in sorted(counts.items(), key=lambda item: item[0]):
         if layer < 0:
@@ -1099,6 +1248,206 @@ def _diffusion_layer_rows(visible_nodes: list[dict], total_nodes: int) -> list[d
             "ratio": round(count / total, 4),
         })
     return rows
+
+
+def _build_provenance_graph(
+    posts: list[dict],
+    comments: list[dict],
+    shared_objects: dict[str, list],
+    G: nx.MultiDiGraph,
+) -> dict:
+    """Build an auditable entity graph; the user graph remains a projection."""
+    event_value = next(
+        (_clean_str(item.get("event_id")) for item in [*posts, *comments] if _clean_str(item.get("event_id"))),
+        "current_event",
+    )
+    event_id = _entity_id("event", event_value)
+    nodes: dict[str, dict] = {event_id: {"entity_id": event_id, "entity_type": "event", "raw_id": event_value}}
+    relations: list[dict] = []
+
+    def add_node(entity_type: str, raw_id: str, **attrs) -> str:
+        if not raw_id:
+            return ""
+        entity_id = _entity_id(entity_type, raw_id)
+        nodes.setdefault(entity_id, {"entity_id": entity_id, "entity_type": entity_type, "raw_id": raw_id, **attrs})
+        return entity_id
+
+    def add_relation(source: str, target: str, relation_type: str, **attrs) -> None:
+        if not source or not target or source not in nodes or target not in nodes:
+            return
+        relation_id = f"relation:{len(relations)}:{relation_type}"
+        relations.append({"relation_id": relation_id, "source": source, "target": target, "relation_type": relation_type, **attrs})
+
+    for post in posts:
+        author_id = _clean_str(post.get("author_id"))
+        post_id = _clean_str(post.get("post_id"))
+        user_entity = add_node("user", author_id, author_name=_clean_str(post.get("author_name")) or author_id)
+        post_entity = add_node("post", post_id)
+        add_relation(event_id, post_entity, "contains")
+        add_relation(user_entity, post_entity, "authored")
+        objects = [_clean_str(post.get("url")), *[_clean_str(tag) for tag in _clean_list(post.get("hashtags"))]]
+        for object_id in filter(None, objects):
+            object_entity = add_node("object", object_id)
+            add_relation(post_entity, object_entity, "references")
+
+    for comment in comments:
+        author_id = _clean_str(comment.get("author_id"))
+        comment_id = _clean_str(comment.get("comment_id"))
+        reply_to = (
+            _clean_str(comment.get("reply_to"))
+            or _clean_str(comment.get("parent_id"))
+            or _clean_str(comment.get("parent_comment_id"))
+        )
+        user_entity = add_node("user", author_id, author_name=_clean_str(comment.get("author_name")) or author_id)
+        comment_entity = add_node("comment", comment_id)
+        add_relation(event_id, comment_entity, "contains")
+        add_relation(user_entity, comment_entity, "authored")
+        if reply_to:
+            target_type = "post" if _entity_id("post", reply_to) in nodes else "comment"
+            target_entity = add_node(target_type, reply_to, referenced_only=True)
+            add_relation(comment_entity, target_entity, "replies_to")
+
+    for source, target, key, data in G.edges(data=True, keys=True):
+        source_entity = add_node("user", _clean_str(source), author_name=G.nodes[source].get("author_name", source))
+        target_entity = add_node("user", _clean_str(target), author_name=G.nodes[target].get("author_name", target))
+        add_relation(
+            source_entity,
+            target_entity,
+            data.get("relation_type", "propagation_relation"),
+            edge_id=data.get("edge_id") or _edge_id(source, target, key),
+            evidence_type=data.get("evidence_type", "inferred"),
+            is_observed=bool(data.get("is_observed", False)),
+        )
+    return {"nodes": list(nodes.values()), "relations": relations}
+
+
+def _build_stability_summary(
+    G: nx.MultiDiGraph,
+    node_layers: dict[str, int],
+    key_roles: dict,
+    root_id: str,
+) -> dict:
+    total_edges = max(G.number_of_edges(), 1)
+    confident_edges = sum(
+        1 for _u, _v, _k, data in G.edges(data=True, keys=True)
+        if float(data.get("confidence", 0.0) or 0.0) >= 0.5
+    )
+    ranked = [
+        row["account_id"]
+        for rows in key_roles.values()
+        for row in rows
+    ]
+    unique_ranked = sorted(set(ranked))
+    max_degree = max((G.degree(node) for node in G.nodes()), default=0)
+    baseline_reachable = _reachable_count(G, root_id, min_confidence=0.0)
+    retained_reachable = _reachable_count(G, root_id, min_confidence=0.5)
+    sensitivity_rows = []
+    for node_id in unique_ranked[:10]:
+        without_node = G.copy()
+        without_node.remove_node(node_id)
+        removed_root = node_id == root_id
+        evaluation_root = root_id
+        if removed_root:
+            evaluation_root = _select_diffusion_root(_to_weighted_digraph(without_node), without_node)
+        reachable = _reachable_count(without_node, evaluation_root, min_confidence=0.0)
+        sensitivity_rows.append({
+            "account_id": node_id,
+            "reachable_delta": baseline_reachable - reachable,
+            "removed_root": removed_root,
+            "evaluation_root_id": evaluation_root,
+        })
+    return {
+        "edge_confidence_threshold": {
+            "threshold": 0.5,
+            "retained_edge_ratio": round(confident_edges / total_edges, 4),
+            "retained_edges": confident_edges,
+            "reachable_delta": baseline_reachable - retained_reachable,
+        },
+        "remove_node_sensitivity": {
+            "evaluated_nodes": unique_ranked[:10],
+            "max_degree": int(max_degree),
+            "ranking_scope": "current_role_leaderboards",
+            "effects": sensitivity_rows,
+        },
+        "prefix_window": {
+            "window_fractions": [0.5, 0.75, 1.0],
+            "final_layer_count": len(set(node_layers.values())),
+            "method": "timestamped_node_induced_prefix",
+            "root_id": root_id,
+            "windows": _prefix_stability_windows(G, root_id, (0.5, 0.75, 1.0)),
+        },
+    }
+
+
+def _reachable_count(G: nx.MultiDiGraph, root_id: str, min_confidence: float) -> int:
+    if not root_id or not G.has_node(root_id):
+        return 0
+    graph = nx.DiGraph()
+    graph.add_nodes_from(G.nodes())
+    for source, target, _key, data in G.edges(data=True, keys=True):
+        if float(data.get("confidence", 0.0) or 0.0) >= min_confidence:
+            graph.add_edge(source, target)
+    return len(nx.descendants(graph, root_id)) + 1
+
+
+def _prefix_stability_windows(
+    G: nx.MultiDiGraph,
+    root_id: str,
+    fractions: tuple[float, ...],
+) -> list[dict]:
+    timestamped_nodes = []
+    for node_id, attrs in G.nodes(data=True):
+        timestamp = pd.to_datetime(attrs.get("first_ts"), errors="coerce", utc=True)
+        if not pd.isna(timestamp):
+            timestamped_nodes.append((node_id, timestamp))
+    timestamped_nodes.sort(key=lambda item: (item[1], str(item[0])))
+    if not timestamped_nodes:
+        return []
+
+    windows = []
+    for fraction in fractions:
+        count = min(len(timestamped_nodes), max(1, int(np.ceil(len(timestamped_nodes) * fraction))))
+        included = {node_id for node_id, _timestamp in timestamped_nodes[:count]}
+        prefix_graph = G.subgraph(included).copy()
+        evaluation_root = root_id if root_id in included else ""
+        if not evaluation_root:
+            evaluation_root = _select_diffusion_root(_to_weighted_digraph(prefix_graph), prefix_graph)
+        windows.append({
+            "fraction": float(fraction),
+            "node_count": prefix_graph.number_of_nodes(),
+            "edge_count": prefix_graph.number_of_edges(),
+            "root_present": bool(root_id and root_id in included),
+            "evaluation_root_id": evaluation_root,
+            "reachable_count": _reachable_count(prefix_graph, evaluation_root, min_confidence=0.0),
+        })
+    return windows
+
+
+def _enrich_role_evidence_and_stability(
+    key_roles: dict,
+    G: nx.MultiDiGraph,
+    evidence_chains: list[dict],
+    node_layers: dict[str, int],
+) -> None:
+    for role_rows in key_roles.values():
+        for row in role_rows:
+            account_id = row.get("account_id", "")
+            refs = []
+            for chain in evidence_chains:
+                for post in chain.get("supporting_posts", []):
+                    if post.get("author_id") == account_id:
+                        refs.append({"post_id": post.get("post_id", ""), "object_id": chain.get("claim_id", "")})
+            row["evidence_refs"] = refs[:8]
+            row["stability"] = {
+                "layer": node_layers.get(account_id, -1),
+                "edge_confidence_ratio": round(
+                    sum(
+                        float(data.get("confidence", 0.0) or 0.0)
+                        for _source, _target, _key, data in G.in_edges(account_id, data=True, keys=True)
+                    ) / max(G.in_degree(account_id), 1),
+                    4,
+                ),
+            }
 
 
 def _build_post_index(df: pd.DataFrame) -> dict[str, list[dict]]:
@@ -1237,7 +1586,7 @@ def _extract_evidence_chains(
     """为 Top 10 claims 生成证据链。"""
     top_claims = sorted(
         shared_objects.items(), key=lambda x: len(x[1]), reverse=True
-    )[:10]
+    )
 
     # 构建角色查找集合
     originator_set = {r["account_id"] for r in key_roles.get("originators", [])}
@@ -1502,6 +1851,17 @@ def _empty_result():
         "claims": [],
         "timeline": [],
         "evidence_chains": [],
+        "provenance_graph": {"nodes": [], "relations": []},
+        "stability": {
+            "edge_confidence_threshold": {"threshold": 0.5, "retained_edge_ratio": 0.0, "retained_edges": 0},
+            "remove_node_sensitivity": {"evaluated_nodes": [], "max_degree": 0, "ranking_scope": "current_role_leaderboards", "effects": []},
+            "prefix_window": {"window_fractions": [0.5, 0.75, 1.0], "final_layer_count": 0, "method": "deterministic_observed_prefix_summary", "root_id": ""},
+        },
+        "response_meta": {
+            "claims": _response_meta(0, 0),
+            "timeline": _response_meta(0, 0),
+            "evidence_chains": _response_meta(0, 0),
+        },
         "path_analysis": {
             "node_count": 0,
             "edge_count": 0,
@@ -1512,13 +1872,4 @@ def _empty_result():
             "key_paths": [],
         },
         "diffusion_summary": _empty_diffusion_summary(),
-        "user_quality": {
-            "total_users": 0,
-            "metrics_available": 0,
-            "verified_count": 0,
-            "verified_rate": 0,
-            "avg_followers": None,
-            "buckets": [],
-            "top_accounts": [],
-        },
     }

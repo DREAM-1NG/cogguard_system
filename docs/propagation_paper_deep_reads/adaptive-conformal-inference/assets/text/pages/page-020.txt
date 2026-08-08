@@ -1,0 +1,69 @@
+(resp. non-decreasing for λ < 0) and f is non-decreasing (resp. non-increasing for λ < 0). So, by
+Lemma A.1 we have that
+     "t−1                                                   #
+   E Y exp(λ(errs −E[errs|As]))E  exp(λ(errt −E[errt|At])) err1, . . . , errt−1
+       s=1
+        "t−1                   #
+  ≤E Y exp(λ(errs −E[errs|As])) E E  exp(λ(errt −E[errt|At])) err1, . . . , errt−1
+          s=1
+        "t−1                   #
+   = E Y exp(λ(errs −E[errs|As]))  E[exp(λ(errt −E[errt|At]))]
+          s=1
+        "t−1                   #
+  ≤E Y exp(λ(errs −E[errs|As]))  exp(λ2/2),
+          s=1
+where the last inequality follows by Hoeffding’s lemma (see Lemma A.5).            □
+
+The ﬁnal result we will need in order to prove Theorem 4.1 is a large deviation bound for Markov
+chains.
+
+Deﬁnition A.1 Let {Xi}i∈N ⊆X be a Markov chain with transition kernel P and stationary
+distribution π. Deﬁne the inner product space
+
+                                  Z
+                      L2(X, π) =  h :    h(x)2π(dx) < ∞
+                                  X
+with inner product
+                                Z
+                              ⟨h1, h2⟩π =    h1(x)h2(x)π(dx).
+                                X
+For any h ∈L2(X, π), let
+                                     Z
+                        L2(X, π) ∋Ph :=   h(y)P(·, dy).
+
+Then, we say that {Xi}i∈N has non-zero absolute spectral gap 1 −η if
+
+                                         Z
+             η := sup p ⟨Ph, Ph⟩π : ⟨h, h⟩π = 1,    h(x)π(dx) = 0 < 1.
+                                         X
+
+Theorem A.1 (Theorem 1 in [19]) Let {Xi}i∈N ⊆X be a stationary Markov chain with invariant
+distribution π and non-zero absolute spectral gap 1 −η > 0. Let fi : X →[−C, C] be a sequence
+of functions with π(fi) = 0 and deﬁne σ2 := Pni=1 π(fi2 )/n. Then, for ∀ϵ > 0,
+                        n      !                     1                          n(1 −η)ϵ2/2
+                Pπ X fi(Xi) ≥ϵ  ≤exp −                             .
+                  n                           (1 + η)σ2 + 5Cϵ
+                           i=1
+
+Finally, we are ready to prove Theorem 4.1.
+
+Proof:  [Proof of Theorem 4.1.] Write
+
+               T        !            1
+      P  X errt −α > ϵ                                                                (9)
+          T
+                t=1
+                  T             !          T            !               1                                1
+     ≤P  X errt −E[errt|At] > ϵ/2 + P  X E[errt|At] −α > ϵ/2       (10)
+            T                           T
+                   t=1                                   t=1
+By applying lemma A.2 inductively we have that for all λ > 0,
+
+           T             !              " T                   #        1
+   P X errt −E[errt|At] > ϵ/2  ≤exp(−Tλϵ/2)E Y exp(λ(errt −E[errt|At]))
+       T
+           t=1                                           t=1
+                              ≤exp(−Tλϵ/2) exp(Tλ2/2),
+
+
+                                       20

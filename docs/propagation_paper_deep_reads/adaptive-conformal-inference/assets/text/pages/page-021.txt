@@ -1,0 +1,61 @@
+with an identical bound on the left tail. Choosing λ = ϵ/2 gives the bound
+
+                         T             !                     1
+              P  X errt −E[errt|At] > ϵ/2 ≤2 exp(−Tϵ2/8).
+                  T
+                          t=1
+On the other hand, the second term in (10) can be bounded directly using Theorem A.1.     □
+
+A.8  Approximate marginal coverage
+
+In this section we prove Theorem 4.2.
+
+Proof:  [Proof of Theorem 4.2] Our proof follows similar steps to those presented in previous works
+on stochastic gradient descent under distribution shift [9, 35]. First, note that
+          (αt+1 −α∗At)2 = (αt −α∗At)2 + 2γ(α −errt)(αt −α∗At) + γ2(α −errt)2.
+Now recalling that M(α∗At|At) = α, we ﬁnd that
+          −E[(α −errt)(αt −α∗At)] = E[E[(errt −α)(αt −α∗At)|At, αt]]
+                     = E[(M(αt|At) −M(α∗At|At))(αt −α∗At)]
+                   ≥1         −M(α∗At|At))2]                                 LE[(M(αt|At)
+                                   1
+                     = LE[(M(αt|At) −α)2].
+Thus it follows that
+
+           T                       T
+   2γL−1 X E[(M(αt|At) −α)2] ≤ X E[(αt −α∗At)2 −(αt+1 −α∗At)2 + γ2(α −errt)2]
+           t=1                       t=1
+
+       T
+   ≤ X E[(αt+1 −α∗At+1)2 −(αt+1 −α∗At)2] + E[(α1 −α∗A1)2] + γ2T
+       t=1
+
+       T
+   ≤ X E[2αt+1(α∗At −α∗At+1)] + (α∗AT +1)2 + E[(α1 −α∗A1)2] + γ2T
+       t=1
+
+       T
+   ≤ X 2(1 + γ)E[|α∗At+1 −α∗At|] + (α∗AT +1)2 + E[(α1 −α∗A1)2] + γ2T,
+       t=1
+where the last inequality follows from Lemma 4.1. So, re-arranging we get the inequality
+
+          T
+       1
+   X E[(M(αt|At) −α)2]
+      T
+          t=1
+                 T                                  !        L
+    ≤  X 2(1 + γ)E[|α∗At+1 −α∗At|] + (α∗AT +1)2 + E[(α1 −α∗A1)2] + γ2T    .        2Tγ
+                 t=1
+Finally, since {(At, αt)}t∈N is stationary we may let T →∞to get that
+                E[(M(αt|At) −α)2] ≤L(1 + γ) E[|α∗At+1 −α∗At|] + Lγ                                      γ                     2
+as claimed.                                            □
+
+A.9  Bounds on B and σ2σ2σ2BBB
+In this section we bound the constants B and σ2B appearing in the statement of Theorem 4.1. Let
+                        ϵ1 =    sup   sup E[|α∗AT −k −α∗AT −k−1||AT = a]
+                                   k∈{0,1,2,... } a∈A
+                and ϵ2 =    sup   sup E[(α∗AT −k −α∗AT −k−1)2|AT = a].
+                                   k∈{0,1,2,... } a∈A
+
+
+                                       21

@@ -64,7 +64,7 @@
 | 前端 - 采集管理页 | ✅ 已完成 | P0 | 后端采集模块 |
 | 数据采集模块（内置 Social/News Runtime） | ✅ 已完成 | P1 | Mock 模块完成 |
 | Coordination Discover / Detect | 🔧 可运行原型，研究 claim blocked | P1 | 标签数据、批准 checkpoint |
-| Propagation Analysis | 🔧 可运行 fallback，研究 claim blocked | P1 | 公开数据训练、批准 checkpoint、覆盖率验证 |
+| Propagation Analysis | ✅ 观测分析与 Twitter checkpoint 推理已部署；研究 claim blocked | P1 | 严格时间切分、多 seed、覆盖率与校准验证 |
 | Risk Review | 🔧 Student/Teacher 原型，canonical 需审批 | P1 | 蒸馏 checkpoint、真实 provider、分析员工作流 |
 | 账户监测模块 | ✅ 已完成（含 BotRHG API） | P1 | 数据采集 |
 | 前端 - 协同检测页（网络可视化） | ✅ 已完成 | P1 | 后端协同检测 |
@@ -150,9 +150,13 @@
 - [x] 高危 claim/thread 定位与排序
 - [x] 传播监控 API 接口（`GET /api/v1/propagation/analyze`）
 - [x] 前端传播时间线 + 关键角色卡片 + Claim 表格
-- [ ] 页面命名由“传播归因”调整为“传播监控”
-- [ ] 相关发帖用户检测与高影响力节点识别
-- [ ] 归因证据链生成
+- [x] 页面统一命名为“传播监测”，并拆分传播路径、对象、角色、时间线和模型预测页签
+- [x] 显式、重建、推断传播证据分类及异构 provenance 图
+- [x] 源头、关键路径、角色证据与时间/删边/删节点稳定性摘要
+- [x] Twitter `PropagationSequenceJointModel` checkpoint 当前事件推理
+- [x] 严格 `observed_until` 截断、实名再激活 Top-K 和不可用时 abstain
+- [ ] 独立校准集上的规模区间与下一跳概率校准
+- [ ] 严格时间切分、多 seed、完整 MINDS/FOREST/动态图基线对比
 
 #### 2.3 账户监测模块 ✅
 

@@ -13,10 +13,24 @@
       <a-space wrap>
         <a-input v-model:value="eventId" size="small" placeholder="事件 ID" style="width: 220px" allow-clear />
         <a-input v-model:value="platform" size="small" placeholder="平台，可选" style="width: 140px" allow-clear />
+        <a-date-picker
+          v-model:value="observedUntil"
+          size="small"
+          show-time
+          value-format="YYYY-MM-DDTHH:mm:ss"
+          placeholder="观测截止时间"
+          style="width: 208px"
+          allow-clear
+        />
+        <a-select v-model:value="observationRatio" size="small" style="width: 136px">
+          <a-select-option :value="0.1">观测阶段：10%</a-select-option>
+          <a-select-option :value="0.3">观测阶段：30%</a-select-option>
+          <a-select-option :value="0.5">观测阶段：50%</a-select-option>
+        </a-select>
         <a-button type="primary" @click="handleAnalyze" :loading="analyzing">
           同步数据库传播结果
         </a-button>
-        <a-button @click="handlePredict" :loading="predicting">
+        <a-button @click="handlePredict" :loading="predicting" :disabled="!eventId.trim()">
           运行趋势预测
         </a-button>
       </a-space>
@@ -45,6 +59,10 @@
                     {{ diffusionVisibleCount }} / {{ diffusionTotalNodes }}
                   </span>
                   <a-button size="small" type="link" @click="showFullDiffusionGraph">全量</a-button>
+                </div>
+                <div class="path-relation-legend">
+                  <span><i class="relation-swatch confirmed" />确认关系：回复、转发、引用等可追溯关系</span>
+                  <span><i class="relation-swatch inferred" />推断关系：共享对象与时间邻近推断</span>
                 </div>
                 <div class="path-graph-shell">
                   <div ref="pathGraphRef" class="path-graph" />
@@ -110,7 +128,7 @@
               <a-list v-if="keyRoles?.originators?.length" :dataSource="keyRoles.originators" size="small">
                 <template #renderItem="{ item }">
                   <a-list-item>
-                    <span>{{ item.author_name || item.account_id }}</span>
+                    <a-button type="link" class="role-link-button" @click="locateUserOnPath(item.account_id)">{{ item.author_name || item.account_id }}</a-button>
                     <template #actions><a-tag color="red">出度 {{ item.out_degree }}</a-tag></template>
                   </a-list-item>
                 </template>
@@ -123,7 +141,7 @@
               <a-list v-if="keyRoles?.amplifiers?.length" :dataSource="keyRoles.amplifiers" size="small">
                 <template #renderItem="{ item }">
                   <a-list-item>
-                    <span>{{ item.author_name || item.account_id }}</span>
+                    <a-button type="link" class="role-link-button" @click="locateUserOnPath(item.account_id)">{{ item.author_name || item.account_id }}</a-button>
                     <template #actions><a-tag color="blue">入度 {{ item.in_degree }}</a-tag></template>
                   </a-list-item>
                 </template>
@@ -165,8 +183,8 @@
                 :key="`${item.post_id}-${index}`"
                 :color="item.author_id.includes('coord') ? 'red' : 'blue'"
               >
-                <p class="timeline-head">
-                  <strong>{{ item.author_name || item.author_id }}</strong>
+                <p :class="['timeline-head', { 'timeline-entry-focused': timelineFocusPostId === item.post_id }]">
+                  <a-button type="link" class="timeline-user-link" @click="locateEvidenceReference(item)">{{ item.author_name || item.author_id }}</a-button>
                   <span class="timeline-time">{{ formatTimestamp(item.timestamp) }}</span>
                 </p>
                 <p class="timeline-content">{{ item.content }}</p>
@@ -178,6 +196,7 @@
       </a-tab-pane>
 
       <a-tab-pane key="model" tab="趋势预测">
+        <a-spin :spinning="predicting">
         <template v-if="modelPredictionReady">
           <a-row :gutter="12" style="margin-bottom: 16px">
             <a-col v-for="item in modelForecastCards" :key="item.key" :xs="24" :sm="8">
@@ -191,9 +210,13 @@
           <a-card size="small" title="传播趋势预测" style="margin-bottom: 16px">
             <a-descriptions size="small" :column="2" bordered>
               <a-descriptions-item label="趋势方向">{{ modelDirectionLabel }}</a-descriptions-item>
-              <a-descriptions-item label="预测置信度">{{ formatPercent(modelPrediction?.macro?.confidence_like_score) }}</a-descriptions-item>
+              <a-descriptions-item label="观测截止">{{ formatTimestamp(modelPrediction?.data_scope?.observed_until as string || observedUntil) }}</a-descriptions-item>
+              <a-descriptions-item label="实际观测比例">{{ formatRatio(modelPrediction?.data_scope?.actual_observation_ratio ?? modelPrediction?.data_scope?.observation_ratio) }}</a-descriptions-item>
+              <a-descriptions-item label="模型条件比例">{{ formatRatio(modelPrediction?.data_scope?.checkpoint_conditioning_ratio ?? observationRatio) }}</a-descriptions-item>
               <a-descriptions-item label="模型名称">{{ modelPrediction?.model?.name || 'Ours' }}</a-descriptions-item>
               <a-descriptions-item label="参考数据">{{ modelPrediction?.model?.dataset || 'twitter' }}</a-descriptions-item>
+              <a-descriptions-item label="模型范围">{{ modelScopeLabel(modelPrediction?.model?.scope) }}</a-descriptions-item>
+              <a-descriptions-item label="身份映射">{{ identityMappingLabel(modelPrediction?.micro?.coverage?.identity_mapping_status) }}</a-descriptions-item>
             </a-descriptions>
             <div ref="modelTrendChartRef" class="model-trend-chart" />
           </a-card>
@@ -215,6 +238,14 @@
                 <template v-else-if="column.key === 'source'">
                   <a-tag color="blue">{{ candidateSourceLabel((record as NextHopUser).candidate_source) }}</a-tag>
                 </template>
+                <template v-else-if="column.key === 'assessment'">
+                  <a-tag :color="nextHopAssessmentColor(record as NextHopUser)">{{ nextHopAssessmentLabel(record as NextHopUser) }}</a-tag>
+                </template>
+                <template v-else-if="column.key === 'evidence'">
+                  <a-button size="small" type="link" @click.stop="openNextHopTrace(record as NextHopUser)">
+                    {{ (record as NextHopUser).evidence_refs?.length || 0 }} 条
+                  </a-button>
+                </template>
                 <template v-else-if="column.key === 'last_seen'">
                   {{ formatTimestamp((record as NextHopUser).last_seen_at) }}
                 </template>
@@ -228,6 +259,8 @@
             </a-table>
           </a-card>
         </template>
+        <a-empty v-else :description="predictionEmptyDescription" :image-style="{ height: '48px' }" />
+        </a-spin>
       </a-tab-pane>
     </a-tabs>
 
@@ -239,12 +272,13 @@
           <a-descriptions-item label="分享次数">{{ selectedClaim.share_count }}</a-descriptions-item>
           <a-descriptions-item label="涉及账户">{{ selectedClaim.account_count }}</a-descriptions-item>
         </a-descriptions>
+        <a-button size="small" type="link" @click="focusObjectOnPath(selectedClaim.object_id)">在传播路径中查看关联关系</a-button>
         <div class="section-title">匹配时间线</div>
         <a-list v-if="claimTimelineMatches.length" :dataSource="claimTimelineMatches" size="small">
           <template #renderItem="{ item }">
             <a-list-item>
               <div>
-                <strong>{{ item.author_name || item.author_id }}</strong>
+                <a-button type="link" class="timeline-user-link" @click="locateEvidenceReference(item)">{{ item.author_name || item.author_id }}</a-button>
                 <span class="timeline-time">{{ formatTimestamp(item.timestamp) }}</span>
                 <p class="timeline-content">{{ item.content }}</p>
               </div>
@@ -365,8 +399,11 @@
         <a-descriptions size="small" :column="1" bordered style="margin-bottom: 16px">
           <a-descriptions-item label="用户名">{{ selectedNextHopUser.author_name || selectedNextHopUser.author_id }}</a-descriptions-item>
           <a-descriptions-item label="用户 ID">{{ selectedNextHopUser.author_id }}</a-descriptions-item>
-          <a-descriptions-item label="预测分数">{{ formatScore(selectedNextHopUser.score) }}</a-descriptions-item>
+          <a-descriptions-item label="研判类型">{{ nextHopAssessmentLabel(selectedNextHopUser) }}</a-descriptions-item>
+          <a-descriptions-item label="候选分数">{{ formatScore(selectedNextHopUser.score) }}</a-descriptions-item>
           <a-descriptions-item label="候选来源">{{ candidateSourceLabel(selectedNextHopUser.candidate_source) }}</a-descriptions-item>
+          <a-descriptions-item label="身份映射">{{ identityResolutionLabel(selectedNextHopUser.identity_resolution) }}</a-descriptions-item>
+          <a-descriptions-item label="同桶候选数">{{ selectedNextHopUser.bucket_collision_size ?? 1 }}</a-descriptions-item>
           <a-descriptions-item label="当前事件出现次数">{{ selectedNextHopUser.event_count ?? 0 }}</a-descriptions-item>
           <a-descriptions-item label="最近出现">{{ formatTimestamp(selectedNextHopUser.last_seen_at) }}</a-descriptions-item>
         </a-descriptions>
@@ -385,6 +422,7 @@
                   <a-tag>{{ candidateSourceLabel(item.candidate_source) }}</a-tag>
                   <span class="timeline-time">{{ formatTimestamp(item.timestamp) }}</span>
                 </a-space>
+                <a-button type="link" class="evidence-reference-link" @click="locateEvidenceReference(item)">{{ item.post_id || '关联记录' }}</a-button>
                 <p class="timeline-content">{{ item.content || '暂无文本摘要' }}</p>
                 <a v-if="item.url" :href="item.url" target="_blank" rel="noopener noreferrer">{{ item.url }}</a>
               </div>
@@ -500,6 +538,14 @@ type GraphEdge = {
   target: string
   weight?: number
   type?: string
+  edge_id?: string
+  evidence_type?: string
+  relation_type?: string
+  object_id?: string
+  post_id?: string
+  source_post_id?: string
+  target_post_id?: string
+  is_synthetic?: boolean
 }
 
 type DiffusionNode = {
@@ -525,7 +571,13 @@ type DiffusionEdge = {
   target: string
   weight?: number
   type?: string
+  edge_id?: string
+  evidence_type?: string
+  relation_type?: string
   object_id?: string
+  post_id?: string
+  source_post_id?: string
+  target_post_id?: string
   is_key_path?: boolean
   is_parallel_root?: boolean
   is_synthetic?: boolean
@@ -570,6 +622,7 @@ type DiffusionSummary = {
   visible_nodes?: DiffusionNode[]
   tree_edges?: DiffusionEdge[]
   highlight_edges?: DiffusionEdge[]
+  layout_relations?: DiffusionEdge[]
   layers?: LayerRow[]
   detail_index?: {
     nodes?: Record<string, DiffusionNodeDetail>
@@ -601,10 +654,25 @@ type AnalysisResult = {
 type ModelTrendPoint = {
   step: number | string
   predicted_size: number
+  at?: string
+  timestamp?: string
+}
+
+type ModelTrendInterval = {
+  step?: number | string
+  timestamp?: string
+  lower?: number
+  upper?: number
+  lower_bound?: number
+  upper_bound?: number
+  min?: number
+  max?: number
 }
 
 type NextHopEvidenceRef = {
   post_id?: string
+  author_id?: string
+  author_name?: string
   timestamp?: string
   content?: string
   url?: string
@@ -623,32 +691,286 @@ type NextHopUser = {
   source_counts?: Record<string, number>
   evidence_refs?: NextHopEvidenceRef[]
   trace_available?: boolean
+  assessment_type?: string
+  activation_type?: string
+  identity_resolution?: string
+  score_semantics?: string
+  bucket_collision_size?: number
+}
+
+type PredictionCoverage = {
+  mapped_candidate_buckets?: number
+  unmapped_candidate_buckets?: number
+  legal_candidate_buckets?: number
+  mapped_probability_mass?: number
+  new_activation_status?: string
+  identity_mapping_status?: string
+  ambiguous_mapped_buckets?: number
+  excluded_ambiguous_users?: number
+  unique_identity_probability_mass?: number
+}
+
+type PredictionDataScope = {
+  event_id?: string
+  platform?: string
+  observed_until?: string
+  observation_ratio?: number
+  actual_observation_ratio?: number
+  checkpoint_conditioning_ratio?: number
+  trajectory_time_basis?: string
+  observed_post_count?: number
+  observed_comment_count?: number
+  loaded_event_count?: number
+  model_input_event_count?: number
+  model_observed_event_count?: number
+  prefix_selection?: string
 }
 
 type EventModelPrediction = {
   status?: string
   model_status?: string
+  note?: string
   macro?: {
     observed_size?: number
     predicted_size?: number
     trend_points?: ModelTrendPoint[]
+    intervals?: ModelTrendInterval[]
+    observed_points?: ModelTrendPoint[]
     direction?: string
-    confidence_like_score?: number
+    score_concentration?: number
+    calibration_status?: 'available' | 'unavailable'
   }
   micro?: {
     top_users?: NextHopUser[]
     rollout_steps?: number
     candidate_count?: number
+    candidate_bucket_count?: number
+    coverage?: PredictionCoverage
   }
   model?: {
     name?: string
     dataset?: string
     checkpoint?: string
     methodology?: string
+    scope?: string
   }
   event_id?: string
   platform?: string
-  data_scope?: Record<string, unknown>
+  data_scope?: PredictionDataScope
+}
+
+type UnknownRecord = Record<string, unknown>
+
+function isRecord(value: unknown): value is UnknownRecord {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function firstFiniteNumber(...values: unknown[]) {
+  for (const value of values) {
+    const number = Number(value)
+    if (value !== null && value !== undefined && value !== '' && Number.isFinite(number)) {
+      return number
+    }
+  }
+  return undefined
+}
+
+function asObjectArray(value: unknown): UnknownRecord[] {
+  if (Array.isArray(value)) {
+    return value.filter(isRecord)
+  }
+  if (isRecord(value)) {
+    return Object.values(value).filter(isRecord)
+  }
+  return []
+}
+
+function unwrapPredictionPayload(value: unknown): UnknownRecord | null {
+  let current: unknown = value
+  for (let depth = 0; depth < 3; depth += 1) {
+    if (!isRecord(current)) return null
+    if (isRecord(current.data) && !current.macro && !current.micro) {
+      current = current.data
+      continue
+    }
+    if (isRecord(current.result) && !current.macro && !current.micro) {
+      current = current.result
+      continue
+    }
+    if (isRecord(current.prediction) && !current.macro && !current.micro) {
+      current = current.prediction
+      continue
+    }
+    return current
+  }
+  return isRecord(current) ? current : null
+}
+
+function normalizeTrendPoints(value: unknown): ModelTrendPoint[] {
+  if (isRecord(value) && Array.isArray(value.points)) {
+    return normalizeTrendPoints(value.points)
+  }
+  return asObjectArray(value).flatMap((item, index) => {
+    const predictedSize = firstFiniteNumber(
+      item.predicted_size,
+      item.predicted,
+      item.prediction,
+      item.size,
+      item.value,
+      item.y,
+    )
+    if (predictedSize === undefined) return []
+    return [{
+      step: (item.step ?? item.index ?? index + 1) as number | string,
+      predicted_size: predictedSize,
+      at: typeof item.at === 'string' ? item.at : typeof item.time === 'string' ? item.time : undefined,
+      timestamp: typeof item.timestamp === 'string' ? item.timestamp : typeof item.date === 'string' ? item.date : undefined,
+    }]
+  })
+}
+
+function normalizeIntervals(value: unknown): ModelTrendInterval[] {
+  if (isRecord(value) && Array.isArray(value.points)) {
+    return normalizeIntervals(value.points)
+  }
+  return asObjectArray(value).flatMap((item, index) => {
+    const lower = firstFiniteNumber(item.lower, item.lower_bound, item.min)
+    const upper = firstFiniteNumber(item.upper, item.upper_bound, item.max)
+    if (lower === undefined && upper === undefined) return []
+    return [{
+      step: (item.step ?? item.index ?? index + 1) as number | string,
+      timestamp: typeof item.timestamp === 'string' ? item.timestamp : typeof item.at === 'string' ? item.at : undefined,
+      lower,
+      upper,
+      lower_bound: lower,
+      upper_bound: upper,
+    }]
+  })
+}
+
+function normalizePredictionResponse(value: unknown): EventModelPrediction | null {
+  const raw = unwrapPredictionPayload(value)
+  if (!raw) return null
+
+  const rawMacro = isRecord(raw.macro)
+    ? raw.macro
+    : isRecord(raw.forecast) ? raw.forecast : raw
+  const rawTrend = rawMacro.trend_points ?? rawMacro.trend ?? rawMacro.points
+  const rawObserved = rawMacro.observed_points ?? rawMacro.observed_trend ?? raw.observed_points
+  const trendPoints = normalizeTrendPoints(rawTrend)
+  const observedPoints = normalizeTrendPoints(rawObserved)
+  const rawMicro = isRecord(raw.micro)
+    ? raw.micro
+    : isRecord(raw.next_hop) ? raw.next_hop : {}
+  const rawUsers = rawMicro.top_users ?? rawMicro.topUsers ?? rawMicro.users ?? rawMicro.top_k
+  const topUsers = asObjectArray(rawUsers).flatMap((item, index) => {
+    const authorId = String(item.author_id ?? item.user_id ?? item.id ?? '').trim()
+    if (!authorId) return []
+    return [{
+      rank: Number(item.rank ?? index + 1),
+      author_id: authorId,
+      author_name: String(item.author_name ?? item.username ?? item.name ?? authorId),
+      score: firstFiniteNumber(item.score, item.probability, item.value),
+      candidate_source: typeof item.candidate_source === 'string' ? item.candidate_source : undefined,
+      event_count: firstFiniteNumber(item.event_count, item.count),
+      first_seen_at: typeof item.first_seen_at === 'string' ? item.first_seen_at : undefined,
+      last_seen_at: typeof item.last_seen_at === 'string' ? item.last_seen_at : undefined,
+      source_counts: isRecord(item.source_counts) ? item.source_counts as Record<string, number> : undefined,
+      evidence_refs: Array.isArray(item.evidence_refs) ? item.evidence_refs as NextHopEvidenceRef[] : [],
+      trace_available: item.trace_available !== false,
+      assessment_type: typeof item.assessment_type === 'string' ? item.assessment_type : undefined,
+      activation_type: typeof item.activation_type === 'string' ? item.activation_type : undefined,
+      identity_resolution: typeof item.identity_resolution === 'string' ? item.identity_resolution : undefined,
+      score_semantics: typeof item.score_semantics === 'string' ? item.score_semantics : undefined,
+      bucket_collision_size: firstFiniteNumber(item.bucket_collision_size),
+    }]
+  })
+
+  const rawModel = isRecord(raw.model) ? raw.model : {}
+  const rawScope = isRecord(raw.data_scope) ? raw.data_scope : {}
+  const rawCoverage = isRecord(rawMicro.coverage) ? rawMicro.coverage : {}
+  const lastTrendPoint = trendPoints.length ? trendPoints[trendPoints.length - 1] : undefined
+  const macro: EventModelPrediction['macro'] = {
+    observed_size: firstFiniteNumber(rawMacro.observed_size, rawMacro.observed, rawScope.observed_size),
+    predicted_size: firstFiniteNumber(rawMacro.predicted_size, rawMacro.final_size, rawMacro.predicted, lastTrendPoint?.predicted_size),
+    trend_points: trendPoints,
+    intervals: normalizeIntervals(rawMacro.intervals ?? rawMacro.interval ?? rawMacro.prediction_interval),
+    observed_points: observedPoints,
+    direction: typeof rawMacro.direction === 'string' ? rawMacro.direction : undefined,
+    score_concentration: firstFiniteNumber(rawMacro.score_concentration, rawMacro.confidence_like_score),
+    calibration_status: rawMacro.calibration_status === 'available' ? 'available' : 'unavailable',
+  }
+
+  return {
+    status: typeof raw.status === 'string' ? raw.status : undefined,
+    model_status: typeof raw.model_status === 'string' ? raw.model_status : undefined,
+    macro,
+    micro: {
+      top_users: topUsers,
+      rollout_steps: firstFiniteNumber(rawMicro.rollout_steps, rawMicro.steps),
+      candidate_count: firstFiniteNumber(rawMicro.candidate_count, rawMicro.candidates),
+      candidate_bucket_count: firstFiniteNumber(rawMicro.candidate_bucket_count),
+      coverage: {
+        mapped_candidate_buckets: firstFiniteNumber(rawCoverage.mapped_candidate_buckets),
+        unmapped_candidate_buckets: firstFiniteNumber(rawCoverage.unmapped_candidate_buckets),
+        legal_candidate_buckets: firstFiniteNumber(rawCoverage.legal_candidate_buckets),
+        mapped_probability_mass: firstFiniteNumber(rawCoverage.mapped_probability_mass),
+        new_activation_status: typeof rawCoverage.new_activation_status === 'string' ? rawCoverage.new_activation_status : undefined,
+        identity_mapping_status: typeof rawCoverage.identity_mapping_status === 'string' ? rawCoverage.identity_mapping_status : undefined,
+        ambiguous_mapped_buckets: firstFiniteNumber(rawCoverage.ambiguous_mapped_buckets),
+        excluded_ambiguous_users: firstFiniteNumber(rawCoverage.excluded_ambiguous_users),
+        unique_identity_probability_mass: firstFiniteNumber(rawCoverage.unique_identity_probability_mass),
+      },
+    },
+    model: {
+      name: typeof rawModel.name === 'string' ? rawModel.name : typeof raw.model_name === 'string' ? raw.model_name : undefined,
+      dataset: typeof rawModel.dataset === 'string' ? rawModel.dataset : typeof raw.dataset === 'string' ? raw.dataset : undefined,
+      checkpoint: typeof rawModel.checkpoint === 'string' ? rawModel.checkpoint : undefined,
+      methodology: typeof rawModel.methodology === 'string' ? rawModel.methodology : undefined,
+      scope: typeof rawModel.scope === 'string' ? rawModel.scope : undefined,
+    },
+    event_id: typeof raw.event_id === 'string' ? raw.event_id : undefined,
+    platform: typeof raw.platform === 'string' ? raw.platform : undefined,
+    data_scope: rawScope as PredictionDataScope,
+    note: typeof raw.note === 'string' ? raw.note : undefined,
+  }
+}
+
+function hasPredictionOutput(result: EventModelPrediction | null) {
+  if (!result) return false
+  if (result.model?.scope && result.model.scope !== 'current_event') return false
+  const status = `${String(result.status || '')} ${String(result.model_status || '')}`.toLowerCase()
+  if (/(error|failed|unavailable|missing|insufficient|abstain)/.test(status)) return false
+  const macro = result.macro
+  const micro = result.micro
+  return Boolean(
+    macro?.trend_points?.length ||
+    macro?.predicted_size != null ||
+    micro?.top_users?.length,
+  )
+}
+
+function matchesCurrentPredictionScope(
+  result: EventModelPrediction | null,
+  requestedEventId: string,
+  requestedPlatform: string,
+) {
+  if (!result) return false
+  const resultEventId = String(result.data_scope?.event_id ?? result.event_id ?? '').trim()
+  if (resultEventId && resultEventId !== requestedEventId) return false
+  const expectedPlatform = requestedPlatform.trim().toLowerCase()
+  const resultPlatform = String(result.data_scope?.platform ?? result.platform ?? '').trim().toLowerCase()
+  if (expectedPlatform && resultPlatform && resultPlatform !== expectedPlatform) return false
+  return result.model?.scope ? result.model.scope === 'current_event' : true
+}
+
+function hasCalibratedPredictionIntervals(macro: EventModelPrediction['macro']) {
+  if (macro?.calibration_status !== 'available') return false
+  return (macro.intervals ?? []).some((interval) => {
+    const lower = firstFiniteNumber(interval.lower, interval.lower_bound, interval.min)
+    const upper = firstFiniteNumber(interval.upper, interval.upper_bound, interval.max)
+    return lower !== undefined && upper !== undefined && upper >= lower
+  })
 }
 
 type ClaimPathDetail = {
@@ -661,6 +983,12 @@ const directionMap: Record<string, string> = {
   rising: '上升',
   stable: '稳定',
   declining: '下降',
+}
+
+function alignSliderMax(rawMax: number, min: number, step: number) {
+  const safeStep = Math.max(1, Math.floor(Number(step) || 1))
+  const span = Math.max(0, Math.floor(rawMax) - Math.floor(min))
+  return Math.floor(min) + Math.ceil(span / safeStep) * safeStep
 }
 
 const analyzing = ref(false)
@@ -678,7 +1006,11 @@ const nextHopDetailOpen = ref(false)
 const lastSyncedAt = ref('')
 const eventId = ref(DEFAULT_EVENT_ID)
 const platform = ref('')
+const observedUntil = ref<string | undefined>()
+const observationRatio = ref(0.5)
 const activeTab = ref('path')
+const selectedObjectId = ref('')
+const timelineFocusPostId = ref('')
 const DEFAULT_DIFFUSION_NODE_LIMIT = 300
 const diffusionNodeLimit = ref(DEFAULT_DIFFUSION_NODE_LIMIT)
 const diffusionPendingNodeLimit = ref(DEFAULT_DIFFUSION_NODE_LIMIT)
@@ -690,6 +1022,8 @@ const modelTrendChartRef = ref<HTMLDivElement | null>(null)
 let layerChart: echarts.ECharts | null = null
 let pathGraphChart: echarts.ECharts | null = null
 let modelTrendChart: echarts.ECharts | null = null
+let modelTrendResizeObserver: ResizeObserver | null = null
+let predictionRequestGeneration = 0
 
 const analysisReady = computed(() => !!analysisResult.value && !analysisResult.value.error)
 const keyRoles = computed(() => analysisResult.value?.key_roles ?? null)
@@ -699,10 +1033,7 @@ const evidenceChains = computed(() => analysisResult.value?.evidence_chains ?? [
 const pathAnalysis = computed(() => analysisResult.value?.path_analysis ?? null)
 const diffusionSummary = computed(() => {
   const serverSummary = analysisResult.value?.diffusion_summary
-  if (serverSummary?.visible_nodes?.length) {
-    return serverSummary
-  }
-  return buildClientDiffusionSummary(analysisResult.value)
+  return serverSummary?.visible_nodes?.length ? serverSummary : null
 })
 const diffusionReady = computed(() => (diffusionSummary.value?.visible_nodes?.length ?? 0) > 0)
 const diffusionMeta = computed(() => diffusionSummary.value?.meta ?? {})
@@ -714,9 +1045,16 @@ const diffusionVisibleCount = computed(() => {
   const count = Number(diffusionMeta.value.visible_node_count ?? diffusionSummary.value?.visible_nodes?.length ?? 0)
   return Number.isFinite(count) && count > 0 ? Math.floor(count) : 0
 })
+const diffusionSliderStep = computed(() => {
+  const rawMax = Math.max(diffusionTotalNodes.value, DEFAULT_DIFFUSION_NODE_LIMIT)
+  return rawMax > 1000 ? 50 : 10
+})
+const diffusionSliderMax = computed(() => {
+  const rawMax = Math.max(diffusionTotalNodes.value, DEFAULT_DIFFUSION_NODE_LIMIT)
+  const min = Math.min(DEFAULT_DIFFUSION_NODE_LIMIT, rawMax)
+  return alignSliderMax(rawMax, min, diffusionSliderStep.value)
+})
 const diffusionSliderMin = computed(() => Math.min(DEFAULT_DIFFUSION_NODE_LIMIT, diffusionSliderMax.value))
-const diffusionSliderMax = computed(() => Math.max(diffusionTotalNodes.value, DEFAULT_DIFFUSION_NODE_LIMIT))
-const diffusionSliderStep = computed(() => (diffusionSliderMax.value > 1000 ? 50 : 10))
 const layerRows = computed(() => diffusionSummary.value?.layers?.length ? diffusionSummary.value.layers : (pathAnalysis.value?.layer_distribution ?? []))
 const displayLayerRows = computed(() => normalizeLayerRows(layerRows.value))
 const userNameById = computed(() => {
@@ -794,9 +1132,39 @@ const requestParams = computed(() => {
   return params
 })
 
+const predictionRequestParams = computed(() => {
+  const params: {
+    event_id?: string
+    platform?: string
+    top_k: number
+    observed_until?: string
+    observation_ratio: number
+  } = {
+    top_k: 10,
+    observation_ratio: observationRatio.value,
+  }
+  const event = eventId.value.trim()
+  const currentPlatform = platform.value.trim()
+  if (event) params.event_id = event
+  if (currentPlatform) params.platform = currentPlatform
+  if (observedUntil.value) {
+    const parsed = new Date(observedUntil.value)
+    if (!Number.isNaN(parsed.getTime())) params.observed_until = parsed.toISOString()
+  }
+  return params
+})
+
 const modelPredictionReady = computed(() => {
-  const result = modelPrediction.value
-  return result?.status === 'ok' && result?.model_status === 'available'
+  return hasPredictionOutput(modelPrediction.value)
+})
+
+const predictionEmptyDescription = computed(() => {
+  const status = `${String(modelPrediction.value?.status || '')} ${String(modelPrediction.value?.model_status || '')}`.toLowerCase()
+  if (/(abstain|insufficient)/.test(status)) return '当前事件数据不足，暂无法生成趋势预测'
+  if (/(unavailable|missing)/.test(status)) return '预测模型暂不可用'
+  if (/(error|failed)/.test(status)) return '模型推理失败，请稍后重试'
+  if (modelPrediction.value?.note) return modelPrediction.value.note
+  return predicting.value ? '正在生成趋势预测' : '暂无趋势预测结果'
 })
 
 const modelForecastCards = computed(() => {
@@ -845,9 +1213,14 @@ const nextHopColumns = computed(() => [
     dataIndex: 'author_id',
   },
   {
-    title: '预测分数',
+    title: '候选分数',
     dataIndex: 'score',
     customRender: ({ record }: { record: NextHopUser }) => formatScore(record.score),
+  },
+  {
+    title: '研判类型',
+    key: 'assessment',
+    width: 94,
   },
   {
     title: '事件出现',
@@ -860,6 +1233,11 @@ const nextHopColumns = computed(() => [
     key: 'source',
   },
   {
+    title: '证据',
+    key: 'evidence',
+    width: 72,
+  },
+  {
     title: '最近出现',
     dataIndex: 'last_seen_at',
     key: 'last_seen',
@@ -870,13 +1248,6 @@ const nextHopColumns = computed(() => [
     width: 150,
   },
 ])
-
-function formatPercent(value?: number) {
-  if (value == null || Number.isNaN(value)) {
-    return '--'
-  }
-  return `${Math.round(value * 100)}%`
-}
 
 function formatRatio(value?: number | null) {
   if (value == null || Number.isNaN(value)) {
@@ -919,6 +1290,7 @@ function formatScore(value?: number | null) {
 
 function candidateSourceLabel(value?: string) {
   const labels: Record<string, string> = {
+    observed_user_hash_bucket_proxy: '当前事件哈希桶候选',
     observed_event: '当前事件用户',
     observed_post: '当前事件帖子用户',
     observed_comment: '当前事件评论用户',
@@ -926,6 +1298,56 @@ function candidateSourceLabel(value?: string) {
     shared_object: '同共享对象参与者',
   }
   return labels[value || ''] || value || '--'
+}
+
+function modelScopeLabel(value?: string) {
+  if (value === 'current_event') return '当前事件'
+  if (value === 'research_benchmark') return '研究基准'
+  return value || '--'
+}
+
+function identityMappingLabel(value?: string) {
+  if (value === 'unique_current_event_bucket_proxy_only') return '仅保留单一桶候选'
+  if (value === 'hash_bucket_proxy_not_exact_identity') return '哈希桶代理映射'
+  return value || '--'
+}
+
+function identityResolutionLabel(value?: string) {
+  if (value === 'unique_current_event_bucket_proxy') return '当前事件单一桶候选'
+  if (value === 'ambiguous_current_event_bucket_proxy') return '当前事件同桶多候选'
+  return value || '--'
+}
+
+function relationTypeLabel(edge?: DiffusionEdge) {
+  const value = String(edge?.relation_type || edge?.type || '').toLowerCase()
+  if (value.includes('reply')) return '回复关系'
+  if (value.includes('repost')) return '转发关系'
+  if (value.includes('quote')) return '引用关系'
+  if (value.includes('parent')) return '父子关系'
+  if (value.includes('shared') || value.includes('implicit') || value.includes('inferred')) return '共享对象推断'
+  return '传播关系'
+}
+
+function evidenceTypeLabel(edge?: DiffusionEdge) {
+  const value = String(edge?.evidence_type || edge?.relation_type || edge?.type || '').toLowerCase()
+  if (value.includes('layout') || value.includes('synthetic') || edge?.is_synthetic || edge?.is_parallel_root) return '布局关系'
+  if (value.includes('reply') || value.includes('repost') || value.includes('quote') || value.includes('parent') || value.includes('explicit')) return '确认关系'
+  return '推断关系'
+}
+
+function isPropagationEdge(edge: DiffusionEdge) {
+  return evidenceTypeLabel(edge) !== '布局关系'
+}
+
+function nextHopAssessmentLabel(record: NextHopUser) {
+  const value = String(record.assessment_type || record.activation_type || '').toLowerCase()
+  if (value.includes('new') || value.includes('first')) return '新激活'
+  if (value.includes('reactiv') || value.includes('observed') || value.includes('repeat')) return '再激活'
+  return record.event_count && record.event_count > 0 ? '再激活' : '新激活'
+}
+
+function nextHopAssessmentColor(record: NextHopUser) {
+  return nextHopAssessmentLabel(record) === '新激活' ? 'green' : 'cyan'
 }
 
 function nextHopRowProps(record: NextHopUser) {
@@ -943,18 +1365,58 @@ function openNextHopTrace(record: NextHopUser) {
 async function locateNextHopOnPath(record: NextHopUser) {
   const nodeId = String(record?.author_id || '').trim()
   if (!nodeId) return
+  const nodes = diffusionSummary.value?.visible_nodes ?? []
+  const dataIndex = nodes.findIndex((node) => String(node.id) === nodeId)
+  if (dataIndex < 0) {
+    if (!diffusionFullViewRequested.value && diffusionTotalNodes.value > nodes.length) {
+      diffusionPendingNodeLimit.value = diffusionSliderMax.value
+      diffusionNodeLimit.value = diffusionSliderMax.value
+      diffusionFullViewRequested.value = true
+      await loadAnalysis(false, true)
+      await locateNextHopOnPath(record)
+      return
+    }
+    nextHopDetailOpen.value = false
+    activeTab.value = 'path'
+    await nextTick()
+    await renderPathTabCharts()
+    message.info('该用户尚未出现在当前观测传播路径中，无法定位。')
+    return
+  }
   nextHopDetailOpen.value = false
   activeTab.value = 'path'
   await nextTick()
   await renderPathTabCharts()
   openNodeDetail(nodeId)
-  const nodes = diffusionSummary.value?.visible_nodes ?? []
-  const dataIndex = nodes.findIndex((node) => String(node.id) === nodeId)
-  if (dataIndex >= 0 && pathGraphChart) {
+  if (pathGraphChart) {
     pathGraphChart.dispatchAction({ type: 'downplay', seriesIndex: 0 })
     pathGraphChart.dispatchAction({ type: 'highlight', seriesIndex: 0, dataIndex })
     pathGraphChart.dispatchAction({ type: 'showTip', seriesIndex: 0, dataIndex })
   }
+}
+
+async function locateUserOnPath(userId: string) {
+  const record: NextHopUser = { rank: 0, author_id: String(userId || '') }
+  await locateNextHopOnPath(record)
+}
+
+async function locateEvidenceReference(reference: { post_id?: string; author_id?: string }) {
+  timelineFocusPostId.value = String(reference.post_id || '')
+  const nodeId = String(reference.author_id || '').trim()
+  const nodeExists = (diffusionSummary.value?.visible_nodes ?? []).some((node) => String(node.id) === nodeId)
+  if (nodeExists) {
+    await locateUserOnPath(String(reference.author_id))
+    return
+  }
+  activeTab.value = 'timeline'
+  await nextTick()
+}
+
+async function focusObjectOnPath(objectId: string) {
+  selectedObjectId.value = String(objectId || '')
+  activeTab.value = 'path'
+  await nextTick()
+  await renderPathTabCharts()
 }
 
 function normalizeLayerRows(rows: LayerRow[]) {
@@ -1038,16 +1500,79 @@ function buildLayerOption(rows: LayerRow[]): EChartsOption {
 function buildModelTrendOption(): EChartsOption {
   const macro = modelPrediction.value?.macro ?? {}
   const observedSize = Number(macro.observed_size ?? 0)
-  const trendPoints = (macro.trend_points ?? []).map((item, index) => ({
-    label: `预测${item.step || index + 1}`,
+  const observedPoints = Array.isArray(macro.observed_points) && macro.observed_points.length
+    ? macro.observed_points
+    : [{ step: '观测截止', predicted_size: observedSize }]
+  const trendPoints = (Array.isArray(macro.trend_points) ? macro.trend_points : []).map((item, index) => ({
+    label: (item.at || item.timestamp) ? formatTimestamp(item.at || item.timestamp) : `预测 ${item.step || index + 1}`,
     value: Number(item.predicted_size ?? 0),
   }))
   if (!trendPoints.length && macro.predicted_size != null) {
     trendPoints.push({ label: '预测最终', value: Number(macro.predicted_size) })
   }
-  const labels = ['已观测', ...trendPoints.map((item) => item.label)]
-  const predictedData = [observedSize, ...trendPoints.map((item) => Math.max(observedSize, item.value))]
-  const observedData = [observedSize, ...trendPoints.map(() => null)]
+  const observedLabels = observedPoints.map((item, index) => {
+    const timestamp = item.at || item.timestamp
+    return timestamp ? formatTimestamp(timestamp) : `观测 ${item.step || index + 1}`
+  })
+  const labels = [...observedLabels, ...trendPoints.map((item) => item.label)]
+  const observedData = observedPoints.map((item) => Number(item.predicted_size ?? observedSize))
+  const predictedData = [...observedData.map(() => null), ...trendPoints.map((item) => Math.max(observedSize, item.value))]
+  if (observedData.length && trendPoints.length) {
+    predictedData[observedData.length - 1] = observedData[observedData.length - 1]
+  }
+  const intervals = Array.isArray(macro.intervals) ? macro.intervals : []
+  const showPredictionInterval = hasCalibratedPredictionIntervals(macro)
+  const intervalByStep = new Map(intervals.map((item, index) => [String(item.step ?? item.timestamp ?? index + 1), item]))
+  const intervalLower = showPredictionInterval ? [...observedData.map(() => null), ...trendPoints.map((_, index) => {
+    const interval = intervalByStep.get(String((macro.trend_points ?? [])[index]?.step ?? index + 1))
+    return interval?.lower ?? interval?.lower_bound ?? interval?.min ?? null
+  })] : []
+  const intervalUpper = showPredictionInterval ? [...observedData.map(() => null), ...trendPoints.map((_, index) => {
+    const interval = intervalByStep.get(String((macro.trend_points ?? [])[index]?.step ?? index + 1))
+    return interval?.upper ?? interval?.upper_bound ?? interval?.max ?? null
+  })] : []
+  const series: EChartsOption['series'] = [
+    {
+      name: '已观测规模',
+      type: 'line',
+      data: observedData,
+      symbolSize: 9,
+      lineStyle: { width: 0 },
+      itemStyle: { color: '#0891b2' },
+    },
+    {
+      name: '预测趋势',
+      type: 'line',
+      smooth: true,
+      data: predictedData,
+      symbolSize: 7,
+      lineStyle: { width: 3, color: '#2563eb' },
+      itemStyle: { color: '#2563eb' },
+      areaStyle: { color: 'rgba(37, 99, 235, 0.1)' },
+    },
+  ]
+  if (showPredictionInterval) {
+    series.push(
+      {
+        name: '预测区间下界',
+        type: 'line',
+        data: intervalLower,
+        symbol: 'none',
+        lineStyle: { width: 0, opacity: 0 },
+        stack: 'prediction_interval',
+        tooltip: { show: false },
+      },
+      {
+        name: '预测区间',
+        type: 'line',
+        data: intervalUpper.map((upper, index) => upper == null || intervalLower[index] == null ? null : Number(upper) - Number(intervalLower[index])),
+        symbol: 'none',
+        lineStyle: { width: 0, opacity: 0 },
+        areaStyle: { color: 'rgba(59, 130, 246, 0.16)' },
+        stack: 'prediction_interval',
+      },
+    )
+  }
 
   return {
     backgroundColor: 'transparent',
@@ -1070,7 +1595,7 @@ function buildModelTrendOption(): EChartsOption {
     legend: {
       top: 4,
       right: 12,
-      data: ['已观测规模', '预测趋势'],
+      data: showPredictionInterval ? ['已观测规模', '预测趋势', '预测区间'] : ['已观测规模', '预测趋势'],
     },
     xAxis: {
       type: 'category',
@@ -1085,26 +1610,7 @@ function buildModelTrendOption(): EChartsOption {
       axisLabel: { color: '#64748b' },
       splitLine: { lineStyle: { color: 'rgba(148, 163, 184, 0.25)' } },
     },
-    series: [
-      {
-        name: '已观测规模',
-        type: 'line',
-        data: observedData,
-        symbolSize: 9,
-        lineStyle: { width: 0 },
-        itemStyle: { color: '#0891b2' },
-      },
-      {
-        name: '预测趋势',
-        type: 'line',
-        smooth: true,
-        data: predictedData,
-        symbolSize: 7,
-        lineStyle: { width: 3, color: '#2563eb' },
-        itemStyle: { color: '#2563eb' },
-        areaStyle: { color: 'rgba(37, 99, 235, 0.1)' },
-      },
-    ],
+    series,
   }
 }
 
@@ -1157,205 +1663,6 @@ function displayUserName(userId: string) {
 function formatNodePath(nodes?: string[]) {
   if (!nodes?.length) return '--'
   return nodes.map((node) => displayUserName(node)).join(' → ')
-}
-
-function buildClientDiffusionSummary(result?: AnalysisResult | null): DiffusionSummary | null {
-  const graphNodes = result?.graph?.nodes ?? []
-  const graphEdges = result?.graph?.edges ?? []
-  if (!graphNodes.length && !graphEdges.length) return null
-
-  const nodeIds = new Set<string>()
-  const nodeMeta = new Map<string, GraphNode>()
-  for (const node of graphNodes) {
-    const id = String(node.id || '').trim()
-    if (!id) continue
-    nodeIds.add(id)
-    nodeMeta.set(id, node)
-  }
-
-  const outDegree = new Map<string, number>()
-  const inDegree = new Map<string, number>()
-  const children = new Map<string, string[]>()
-  const edgeWeight = new Map<string, number>()
-  for (const edge of graphEdges) {
-    const source = String(edge.source || '').trim()
-    const target = String(edge.target || '').trim()
-    if (!source || !target || source === target) continue
-    nodeIds.add(source)
-    nodeIds.add(target)
-    outDegree.set(source, (outDegree.get(source) || 0) + 1)
-    inDegree.set(target, (inDegree.get(target) || 0) + 1)
-    if (!children.has(source)) children.set(source, [])
-    children.get(source)?.push(target)
-    const key = `${source}->${target}`
-    edgeWeight.set(key, (edgeWeight.get(key) || 0) + Number(edge.weight ?? 1))
-  }
-
-  if (!nodeIds.size) return null
-
-  const keyNodeSet = new Set<string>()
-  const keyEdgeSet = new Set<string>()
-  for (const path of result?.path_analysis?.key_paths ?? []) {
-    const nodes = path.nodes ?? []
-    nodes.forEach((node) => keyNodeSet.add(String(node)))
-    for (let index = 0; index < nodes.length - 1; index += 1) {
-      keyEdgeSet.add(`${nodes[index]}->${nodes[index + 1]}`)
-    }
-  }
-
-  const hasObservedPost = (id: string) => {
-    const meta = nodeMeta.get(id)
-    if (!meta) return false
-    return Number(meta.post_count ?? 0) > 0 || timeline.value.some((item) => item.author_id === id)
-  }
-
-  const scoreNode = (id: string) => {
-    const postCount = Number(nodeMeta.get(id)?.post_count ?? 0)
-    return (outDegree.get(id) || 0) * 8 - (inDegree.get(id) || 0) * 2 + Math.log1p(postCount) * 4 + (keyNodeSet.has(id) ? 200 : 0)
-  }
-
-  const rootCandidates = Array.from(nodeIds).filter((id) => (inDegree.get(id) || 0) === 0 && (outDegree.get(id) || 0) > 0)
-  const observedRootCandidates = rootCandidates.filter(hasObservedPost)
-  const observedCandidates = Array.from(nodeIds).filter(hasObservedPost)
-  const rootId = (observedRootCandidates.length ? observedRootCandidates : observedCandidates.length ? observedCandidates : rootCandidates.length ? rootCandidates : Array.from(nodeIds))
-    .sort((left, right) => scoreNode(right) - scoreNode(left))[0]
-
-  const visible = new Set<string>()
-  const layers = new Map<string, number>()
-  const treeEdges: DiffusionEdge[] = []
-  const maxVisible = 300
-  const budgets = [48, 28, 18, 10, 6, 4]
-  const keepNode = (id: string, layer: number) => {
-    if (!id || visible.has(id)) return true
-    if (visible.size >= maxVisible && !keyNodeSet.has(id) && id !== rootId) return false
-    visible.add(id)
-    layers.set(id, Math.min(layer, layers.get(id) ?? layer))
-    return true
-  }
-
-  keepNode(rootId, 0)
-  const queue: Array<{ id: string; layer: number }> = [{ id: rootId, layer: 0 }]
-  while (queue.length) {
-    const current = queue.shift()
-    if (!current || current.layer >= 6) continue
-    const nextNodes = Array.from(new Set(children.get(current.id) ?? []))
-      .filter((id) => !visible.has(id))
-      .sort((left, right) => scoreNode(right) - scoreNode(left))
-      .slice(0, budgets[current.layer] ?? 2)
-    for (const child of nextNodes) {
-      const nextLayer = current.layer + 1
-      if (!keepNode(child, nextLayer)) continue
-      treeEdges.push({
-        source: current.id,
-        target: child,
-        weight: edgeWeight.get(`${current.id}->${child}`) || 1,
-        type: 'summary',
-      })
-      queue.push({ id: child, layer: nextLayer })
-    }
-  }
-
-  for (const path of result?.path_analysis?.key_paths?.slice(0, 4) ?? []) {
-    const nodes = path.nodes ?? []
-    nodes.forEach((node, index) => {
-      const id = String(node)
-      if (!visible.has(id) && visible.size < maxVisible) {
-        keepNode(id, id === rootId ? 0 : Math.min(index + 1, 6))
-      }
-      const next = nodes[index + 1]
-      if (next && visible.has(id) && visible.has(String(next))) {
-        const key = `${id}->${next}`
-        if (!treeEdges.some((edge) => `${edge.source}->${edge.target}` === key)) {
-          treeEdges.push({
-            source: id,
-            target: String(next),
-            weight: edgeWeight.get(key) || 1,
-            type: 'key_path',
-          })
-        }
-      }
-    })
-  }
-
-  const visibleNodes: DiffusionNode[] = Array.from(visible)
-    .sort((left, right) => (layers.get(left) ?? 99) - (layers.get(right) ?? 99) || scoreNode(right) - scoreNode(left))
-    .map((id) => ({
-      id,
-      author_name: nodeMeta.get(id)?.author_name || displayUserName(id),
-      layer: layers.get(id) ?? 0,
-      post_count: Number(nodeMeta.get(id)?.post_count ?? 1),
-      out_degree: outDegree.get(id) || 0,
-      in_degree: inDegree.get(id) || 0,
-      is_root: id === rootId,
-      is_key: keyNodeSet.has(id),
-    }))
-
-  const layerCounts = new Map<number, number>()
-  visibleNodes.forEach((node) => layerCounts.set(node.layer, (layerCounts.get(node.layer) || 0) + 1))
-  const layerRows = Array.from(layerCounts.entries())
-    .sort(([left], [right]) => left - right)
-    .map(([level, count]) => ({
-      level,
-      label: level === 0 ? '源头层' : `第${level}层`,
-      node_count: count,
-      ratio: count / Math.max(nodeIds.size, 1),
-    }))
-
-  const highlightEdges: DiffusionEdge[] = Array.from(keyEdgeSet)
-    .map((key) => {
-      const [source, target] = key.split('->')
-      return { source, target, weight: edgeWeight.get(key) || 1, type: 'key_path', is_key_path: true }
-    })
-    .filter((edge) => visible.has(edge.source) && visible.has(edge.target))
-
-  const detailNodes: Record<string, DiffusionNodeDetail> = {}
-  for (const node of visibleNodes) {
-    detailNodes[node.id] = {
-      id: node.id,
-      author_name: node.author_name,
-      post_count: node.post_count,
-      out_degree: node.out_degree,
-      in_degree: node.in_degree,
-      upstream: graphEdges
-        .filter((edge) => String(edge.target) === node.id)
-        .slice(0, 12)
-        .map((edge) => ({ id: String(edge.source), author_name: displayUserName(String(edge.source)) })),
-      downstream: (children.get(node.id) ?? [])
-        .slice(0, 12)
-        .map((id) => ({ id, author_name: displayUserName(id) })),
-      posts: timeline.value
-        .filter((item) => item.author_id === node.id)
-        .slice(0, 20)
-        .map((item) => ({ ...item })),
-      key_paths: (result?.path_analysis?.key_paths ?? [])
-        .filter((path) => path.nodes?.includes(node.id))
-        .map((path) => ({
-          claim_id: path.claim_id,
-          nodes: path.nodes,
-          score: path.score,
-          explanation: path.explanation,
-        })),
-    }
-  }
-
-  return {
-    root_node: visibleNodes.find((node) => node.id === rootId) ?? null,
-    parallel_roots: [],
-    visible_nodes: visibleNodes,
-    tree_edges: treeEdges.filter((edge) => visible.has(edge.source) && visible.has(edge.target)),
-    highlight_edges: highlightEdges,
-    layers: layerRows,
-    detail_index: {
-      nodes: detailNodes,
-      objects: {},
-    },
-    meta: {
-      mode: 'client_fallback_layered_summary',
-      source: 'graph_edges',
-      total_nodes: nodeIds.size,
-      visible_node_count: visibleNodes.length,
-    },
-  }
 }
 
 function buildPathGraphOption(summary?: DiffusionSummary | null): EChartsOption {
@@ -1419,6 +1726,7 @@ function buildPathGraphOption(summary?: DiffusionSummary | null): EChartsOption 
     const position = positions.get(id) || { x: 0, y: 0, layer: Number(node.layer ?? 0) }
     const isRoot = id === rootId || Boolean(node.is_root)
     const isKey = Boolean(node.is_key)
+    const objectFocused = Boolean(selectedObjectId.value) && (node.shared_object_ids ?? []).includes(selectedObjectId.value)
     const value = Math.max(1, Number(node.post_count ?? 1))
     return {
       id,
@@ -1434,14 +1742,16 @@ function buildPathGraphOption(summary?: DiffusionSummary | null): EChartsOption 
         formatter: shortNodeLabel(node.author_name || displayUserName(id)),
       },
       itemStyle: {
-        opacity: isRoot || isKey ? 1 : 0.72,
+        opacity: objectFocused || isRoot || isKey ? 1 : 0.42,
+        borderColor: objectFocused ? '#facc15' : undefined,
+        borderWidth: objectFocused ? 2 : 0,
       },
     }
   })
 
   const mergedEdges = new Map<string, DiffusionEdge>()
   for (const edge of treeEdges) {
-    mergedEdges.set(`${edge.source}->${edge.target}`, edge)
+    if (isPropagationEdge(edge)) mergedEdges.set(`${edge.source}->${edge.target}`, edge)
   }
   for (const edge of highlightEdges) {
     const key = `${edge.source}->${edge.target}`
@@ -1455,7 +1765,7 @@ function buildPathGraphOption(summary?: DiffusionSummary | null): EChartsOption 
     .filter((edge) => {
       const source = String(edge.source)
       const target = String(edge.target)
-      if (!source || !target || source === target || !nodeById.has(source) || !nodeById.has(target)) return false
+      if (!isPropagationEdge(edge) || !source || !target || source === target || !nodeById.has(source) || !nodeById.has(target)) return false
       const sourceLayer = Number(nodeById.get(source)?.layer ?? -1)
       const targetLayer = Number(nodeById.get(target)?.layer ?? -1)
       return sourceLayer !== targetLayer
@@ -1464,6 +1774,8 @@ function buildPathGraphOption(summary?: DiffusionSummary | null): EChartsOption 
       const source = String(edge.source)
       const target = String(edge.target)
       const highlighted = Boolean(edge.is_key_path) || keyEdgeKeys.has(`${source}->${target}`)
+      const confirmed = evidenceTypeLabel(edge) === '确认关系'
+      const objectFocused = Boolean(selectedObjectId.value) && String(edge.object_id || '') === selectedObjectId.value
       const sourceLayer = Number(nodeById.get(source)?.layer ?? 0)
       const targetLayer = Number(nodeById.get(target)?.layer ?? sourceLayer + 1)
       return {
@@ -1471,11 +1783,15 @@ function buildPathGraphOption(summary?: DiffusionSummary | null): EChartsOption 
         target,
         value: Number(edge.weight ?? 1) || 1,
         lineStyle: {
-          color: highlighted ? 'rgba(56, 189, 248, 0.72)' : 'rgba(96, 165, 250, 0.3)',
-          width: highlighted ? 1.35 : 0.72,
+          color: objectFocused ? 'rgba(250, 204, 21, 0.92)' : highlighted ? 'rgba(56, 189, 248, 0.72)' : confirmed ? 'rgba(45, 212, 191, 0.52)' : 'rgba(148, 163, 184, 0.3)',
+          width: objectFocused ? 2.2 : highlighted ? 1.35 : confirmed ? 1 : 0.72,
           curveness: layeredEdgeCurveness(source, target, sourceLayer, targetLayer),
-          opacity: highlighted ? 0.62 : 0.28,
+          opacity: objectFocused ? 0.94 : highlighted ? 0.62 : confirmed ? 0.48 : 0.28,
         },
+        relationLabel: relationTypeLabel(edge),
+        evidenceLabel: evidenceTypeLabel(edge),
+        objectId: edge.object_id,
+        postId: edge.post_id || edge.target_post_id || edge.source_post_id,
       }
     })
 
@@ -1496,7 +1812,7 @@ function buildPathGraphOption(summary?: DiffusionSummary | null): EChartsOption 
       trigger: 'item',
       formatter: (params: any) => {
         if (params.dataType === 'edge') {
-          return `${displayUserName(params.data.source)}<br/>→ ${displayUserName(params.data.target)}`
+          return `${displayUserName(params.data.source)}<br/>→ ${displayUserName(params.data.target)}<br/>${params.data.relationLabel || '传播关系'}：${params.data.evidenceLabel || '推断关系'}${params.data.objectId ? `<br/>共享对象：${params.data.objectId}` : ''}`
         }
         const node = nodeById.get(String(params.data.userId))
         const degreeText = `出度：${node?.out_degree ?? 0} / 入度：${node?.in_degree ?? 0}`
@@ -1584,12 +1900,40 @@ async function renderPathGraph() {
   pathGraphChart.resize()
 }
 
+function observeModelTrendContainer(container: HTMLDivElement) {
+  if (typeof ResizeObserver === 'undefined') return
+  if (!modelTrendResizeObserver) {
+    modelTrendResizeObserver = new ResizeObserver((entries) => {
+      const visible = entries.some((entry) => entry.contentRect.width > 0 && entry.contentRect.height > 0)
+      if (visible && activeTab.value === 'model' && modelPredictionReady.value) {
+        void renderModelTrendChart()
+      }
+    })
+  }
+  modelTrendResizeObserver.observe(container)
+}
+
+function disposeModelTrendChart() {
+  modelTrendChart?.dispose()
+  modelTrendChart = null
+  modelTrendResizeObserver?.disconnect()
+  modelTrendResizeObserver = null
+}
+
 async function renderModelTrendChart() {
   await nextTick()
   if (activeTab.value !== 'model' || !modelPredictionReady.value) return
-  if (!modelTrendChartRef.value || modelTrendChartRef.value.offsetWidth === 0 || modelTrendChartRef.value.offsetHeight === 0) return
+  const container = modelTrendChartRef.value
+  if (!container) return
+  if (container.offsetWidth === 0 || container.offsetHeight === 0) {
+    return
+  }
+  if (modelTrendChart && modelTrendChart.getDom() !== container) {
+    disposeModelTrendChart()
+  }
+  observeModelTrendContainer(container)
   if (!modelTrendChart) {
-    modelTrendChart = echarts.init(modelTrendChartRef.value)
+    modelTrendChart = echarts.init(container)
   }
   modelTrendChart.setOption(buildModelTrendOption(), true)
   modelTrendChart.resize()
@@ -1651,7 +1995,11 @@ function claimHref(value: string) {
 
 function openClaimDetail(item: ClaimGroupItem) {
   selectedClaim.value = item
+  selectedObjectId.value = item.object_id
   claimDetailOpen.value = true
+  if (activeTab.value === 'path') {
+    void renderPathTabCharts()
+  }
 }
 
 function openClaimPathDetail(chain: EvidenceChain, path: EvidencePath, index: number) {
@@ -1678,11 +2026,17 @@ function firstQueryValue(value: unknown) {
 }
 
 function syncScopeFromRoute() {
+  predictionRequestGeneration += 1
+  predicting.value = false
   eventId.value = firstQueryValue(route.query.event_id) || DEFAULT_EVENT_ID
   platform.value = firstQueryValue(route.query.platform)
+  observedUntil.value = firstQueryValue(route.query.observed_until) || undefined
 }
 
-async function loadAnalysis(showToast = false) {
+async function loadAnalysis(showToast = false, preservePrediction = false) {
+  if (!preservePrediction) {
+    predictionRequestGeneration += 1
+  }
   analyzing.value = true
   try {
     const res = (await analyzeObservedPropagation(requestParams.value)) as { data: AnalysisResult }
@@ -1695,7 +2049,12 @@ async function loadAnalysis(showToast = false) {
       return
     }
 
-    modelPrediction.value = null
+    if (!preservePrediction) {
+      modelPrediction.value = null
+      disposeModelTrendChart()
+    }
+    selectedObjectId.value = ''
+    timelineFocusPostId.value = ''
     updateSyncTime()
     await renderPathTabCharts()
   } catch {
@@ -1723,7 +2082,7 @@ async function handleDiffusionLimitCommit(value: number) {
   if (nextLimit === diffusionNodeLimit.value && shouldRequestFull === diffusionFullViewRequested.value) return
   diffusionNodeLimit.value = nextLimit
   diffusionFullViewRequested.value = shouldRequestFull
-  await loadAnalysis(false)
+  await loadAnalysis(false, true)
 }
 
 async function showFullDiffusionGraph() {
@@ -1731,26 +2090,54 @@ async function showFullDiffusionGraph() {
   diffusionPendingNodeLimit.value = fullLimit
   diffusionNodeLimit.value = fullLimit
   diffusionFullViewRequested.value = true
-  await loadAnalysis(false)
+  await loadAnalysis(false, true)
 }
 
 async function handlePredict() {
+  const requestedEventId = eventId.value.trim()
+  if (!requestedEventId) return
+  const requestGeneration = ++predictionRequestGeneration
+  const requestedPlatform = platform.value.trim()
   predicting.value = true
   try {
-    const res = (await predictPropagationCurrentEvent({ ...requestParams.value, top_k: 10 })) as { data: EventModelPrediction }
-    const result = res.data
-    if (result?.status === 'ok' && result?.model_status === 'available') {
+    const response = await predictPropagationCurrentEvent(predictionRequestParams.value)
+    if (
+      requestGeneration !== predictionRequestGeneration
+      || requestedEventId !== eventId.value.trim()
+      || requestedPlatform !== platform.value.trim()
+    ) {
+      return
+    }
+    const result = normalizePredictionResponse(response)
+    if (!matchesCurrentPredictionScope(result, requestedEventId, requestedPlatform)) {
+      modelPrediction.value = null
+      disposeModelTrendChart()
+      activeTab.value = 'model'
+      return
+    }
+    if (hasPredictionOutput(result)) {
       modelPrediction.value = result
       activeTab.value = 'model'
-      await renderModelTrendChart()
+      void renderModelTrendChart()
     } else {
-      modelPrediction.value = null
+      modelPrediction.value = result
+      disposeModelTrendChart()
+      activeTab.value = 'model'
     }
   } catch {
-    modelPrediction.value = null
+    if (requestGeneration !== predictionRequestGeneration) return
+    modelPrediction.value = {
+      status: 'model_error',
+      model_status: 'unavailable',
+      note: '模型推理请求失败。',
+    }
+    disposeModelTrendChart()
+    activeTab.value = 'model'
     /* handled in interceptor */
   } finally {
-    predicting.value = false
+    if (requestGeneration === predictionRequestGeneration) {
+      predicting.value = false
+    }
   }
 }
 
@@ -1784,7 +2171,11 @@ watch(diffusionSummary, () => {
   void renderPathTabCharts()
 })
 
-watch(activeTab, () => {
+watch(activeTab, (tab) => {
+  if (tab === 'model' && eventId.value.trim() && !modelPredictionReady.value && !predicting.value) {
+    void handlePredict()
+    return
+  }
   void renderActiveTabCharts()
 })
 
@@ -1792,7 +2183,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('resize', resizeCharts)
   layerChart?.dispose()
   pathGraphChart?.dispose()
-  modelTrendChart?.dispose()
+  disposeModelTrendChart()
 })
 </script>
 
@@ -1856,6 +2247,31 @@ onBeforeUnmount(() => {
 
 .path-node-slider {
   min-width: 0;
+}
+
+.path-relation-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding: 0 4px 9px;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.relation-swatch {
+  display: inline-block;
+  width: 18px;
+  height: 2px;
+  margin-right: 5px;
+  vertical-align: middle;
+}
+
+.relation-swatch.confirmed {
+  background: #2dd4bf;
+}
+
+.relation-swatch.inferred {
+  background: #94a3b8;
 }
 
 .path-graph-shell {
@@ -1927,6 +2343,18 @@ onBeforeUnmount(() => {
 
 .timeline-head {
   margin-bottom: 2px;
+}
+
+.timeline-entry-focused {
+  border-radius: 6px;
+  background: rgba(250, 204, 21, 0.16);
+}
+
+.timeline-user-link,
+.role-link-button,
+.evidence-reference-link {
+  height: auto;
+  padding: 0;
 }
 
 .timeline-time {

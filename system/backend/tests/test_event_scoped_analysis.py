@@ -571,26 +571,51 @@ def test_propagation_api_passes_event_id_to_observed_analysis(monkeypatch):
 
 def test_propagation_model_event_reads_current_event_data(monkeypatch):
     posts = [
-        _post("event-1", "weibo", "p1", "u1", "2024-01-01T00:00:00Z"),
-        _post("event-1", "weibo", "p2", "u2", "2024-01-01T00:01:00Z"),
-        _post("event-1", "weibo", "p3", "u3", "2024-01-01T00:02:00Z"),
+        _post("event-1", "twitter", "p1", "u1", "2024-01-01T00:00:00Z"),
+        _post("event-1", "twitter", "p2", "u2", "2024-01-01T00:01:00Z"),
+        _post("event-1", "twitter", "p3", "u3", "2024-01-01T00:02:00Z"),
     ]
     comments = [
-        _comment("event-1", "weibo", "c1", "p1", "u2", "2024-01-01T00:03:00Z"),
+        _comment("event-1", "twitter", "c1", "p1", "u2", "2024-01-01T00:03:00Z"),
     ]
     raw_posts = FakeCollection(posts)
     raw_comments = FakeCollection(comments)
     fake_db = FakeMongoDB(raw_posts=raw_posts, raw_comments=raw_comments)
     monkeypatch.setattr(propagation_model_service, "get_mongo_db", lambda: fake_db)
 
-    async def fake_predict_event_macro_micro(*, posts, comments=None, top_k=10):
-        return {
-            "status": "ok",
-            "model_status": "available",
-            "macro": {"predicted_size": 5},
-            "micro": {"top_users": [{"author_id": "u2", "author_name": "u2", "score": 0.5}]},
-            "model": {"name": "Ours"},
-        }
+    async def fake_predict_event_macro_micro(
+        *,
+        posts,
+        comments=None,
+        top_k=10,
+        observation_ratio=0.5,
+    ):
+            return {
+                "status": "ok",
+                "model_status": "available",
+                "macro": {"observed_size": 2, "predicted_size": 5},
+            "micro": {
+                "top_users": [
+                    {
+                        "rank": 1,
+                        "author_id": "u2",
+                        "author_name": "u2",
+                        "score": 0.5,
+                        "candidate_source": "observed_user",
+                        "activation_type": "reactivation",
+                    }
+                ]
+                },
+                "model": {"name": "Ours"},
+                "inference_scope": {
+                    "loaded_event_count": 4,
+                    "observed_event_count": 2,
+                    "observed_until": "2024-01-01T00:01:00+00:00",
+                    "actual_observation_ratio": 0.5,
+                    "checkpoint_conditioning_ratio": 0.5,
+                    "prefix_is_preselected": False,
+                },
+            }
 
     monkeypatch.setattr(
         propagation_model_service.propagation_prediction_service,
@@ -601,15 +626,19 @@ def test_propagation_model_event_reads_current_event_data(monkeypatch):
     result = asyncio.run(
         propagation_model_service.predict_current_event_model(
             event_id="event-1",
-            platform="weibo",
+            platform="twitter",
             top_k=5,
         )
     )
 
-    assert raw_posts.calls[0]["query"] == {"event_id": "event-1", "platform": "weibo"}
-    assert raw_comments.calls[0]["query"] == {"event_id": "event-1", "platform": "weibo"}
+    assert raw_posts.calls[0]["query"] == {"event_id": "event-1", "platform": "twitter"}
+    assert raw_comments.calls[0]["query"] == {"event_id": "event-1", "platform": "twitter"}
     assert result["status"] == "ok"
-    assert result["data_scope"] == {"posts": 3, "comments": 1}
+    assert result["data_scope"]["posts"] == 3
+    assert result["data_scope"]["comments"] == 1
+    assert result["data_scope"]["prediction_horizon_hours"] is None
+    assert result["data_scope"]["observation_ratio"] == 0.5
+    assert result["data_scope"]["trajectory_time_basis"] == "normalized_model_steps"
     assert result["micro"]["top_users"][0]["author_id"] == "u2"
     assert result["methodology"]["schema"] == "cogguard.propagation.methodology.macro_micro_sequence.v1"
 
@@ -617,12 +646,27 @@ def test_propagation_model_event_reads_current_event_data(monkeypatch):
 def test_propagation_api_passes_event_model_prediction_params(monkeypatch):
     calls = {}
 
-    async def fake_predict_propagation_model_event(platform=None, event_id=None, top_k=10):
-        calls.update({"platform": platform, "event_id": event_id, "top_k": top_k})
+    async def fake_predict_propagation_model_event(
+        platform=None,
+        event_id=None,
+        top_k=10,
+        observed_until=None,
+        observation_ratio=0.5,
+    ):
+        calls.update({
+            "platform": platform,
+            "event_id": event_id,
+            "top_k": top_k,
+            "observed_until": observed_until,
+            "observation_ratio": observation_ratio,
+        })
         return {
             "status": "ok",
             "model_status": "available",
             "methodology": {"method_name": "Macro/Micro Sequence Propagation Prediction"},
+            "macro": {},
+            "micro": {},
+            "data_scope": {},
         }
 
     monkeypatch.setattr(
@@ -640,7 +684,13 @@ def test_propagation_api_passes_event_model_prediction_params(monkeypatch):
         )
     )
 
-    assert calls == {"platform": "weibo", "event_id": "event-1", "top_k": 7}
+    assert calls == {
+        "platform": "weibo",
+        "event_id": "event-1",
+        "top_k": 7,
+        "observed_until": None,
+        "observation_ratio": 0.5,
+    }
     assert payload["data"]["model_status"] == "available"
     assert payload["data"].get("methodology", {}).get("method_name") == "Macro/Micro Sequence Propagation Prediction"
 
@@ -655,9 +705,23 @@ def test_propagation_api_accepts_local_preview_dependency(monkeypatch):
         calls["analyze"] = {"platform": platform, "event_id": event_id}
         return {"event_id": event_id, "platform": platform}
 
-    async def fake_predict_current_event_model(platform=None, event_id=None, top_k=10):
+    async def fake_predict_current_event_model(
+        platform=None,
+        event_id=None,
+        top_k=10,
+        observed_until=None,
+        observation_ratio=0.5,
+    ):
         calls["predict"] = {"platform": platform, "event_id": event_id, "top_k": top_k}
-        return {"event_id": event_id, "platform": platform}
+        return {
+            "status": "data_insufficient",
+            "model_status": "unavailable",
+            "event_id": event_id,
+            "platform": platform,
+            "macro": {},
+            "micro": {},
+            "data_scope": {},
+        }
 
     monkeypatch.setattr(
         propagation_api.propagation_observation_service,
@@ -688,9 +752,43 @@ def test_propagation_api_accepts_local_preview_dependency(monkeypatch):
     assert analyze_resp.status_code == 200
     assert prediction_resp.status_code == 200
     assert analyze_resp.json()["data"] == {"event_id": "event-1", "platform": "weibo"}
-    assert prediction_resp.json()["data"] == {"event_id": "event-1", "platform": "weibo"}
+    prediction_data = prediction_resp.json()["data"]
+    assert prediction_data["event_id"] == "event-1"
+    assert prediction_data["platform"] == "weibo"
+    assert prediction_data["status"] == "data_insufficient"
+    assert prediction_data["model_status"] == "unavailable"
+    assert prediction_data["macro"]["trend_points"] == []
+    assert prediction_data["micro"]["top_users"] == []
     assert calls["analyze"] == {"platform": "weibo", "event_id": "event-1"}
     assert calls["predict"] == {"platform": "weibo", "event_id": "event-1", "top_k": 10}
+
+
+def test_propagation_prediction_api_rejects_invalid_or_timezone_free_cutoff():
+    async def fake_preview_user():
+        return None
+
+    app.dependency_overrides[get_current_user_or_local_preview] = fake_preview_user
+
+    async def run_requests():
+        from httpx import ASGITransport
+
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            malformed = await client.post(
+                "/api/v1/propagation/model-event-predict?observed_until=not-a-time"
+            )
+            timezone_free = await client.post(
+                "/api/v1/propagation/model-event-predict?observed_until=2026-05-11T00:02:00"
+            )
+        return malformed, timezone_free
+
+    try:
+        malformed, timezone_free = asyncio.run(run_requests())
+    finally:
+        app.dependency_overrides.pop(get_current_user_or_local_preview, None)
+
+    assert malformed.status_code == 422
+    assert timezone_free.status_code == 422
 
 
 def test_propagation_api_passes_prediction_params(monkeypatch):

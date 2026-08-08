@@ -23,12 +23,29 @@ class FakeSnapshotCollection:
         return self.documents.get(str(query["snapshot_id"]))
 
 
+class FakeArtifactCollection:
+    def __init__(self) -> None:
+        self.documents: dict[str, dict[str, Any]] = {}
+
+    async def update_one(
+        self,
+        query: dict[str, Any],
+        update: dict[str, Any],
+        *,
+        upsert: bool = False,
+    ) -> None:
+        artifact_id = str(query["artifact_id"])
+        if "$set" in update:
+            self.documents[artifact_id] = {**self.documents.get(artifact_id, {}), **dict(update["$set"])}
+
+
 class FakeAnalysisStore:
     def __init__(self, snapshot_record: dict[str, Any], run: dict[str, Any]) -> None:
         self.snapshot_record = snapshot_record
         self.runs = {run["run_id"]: dict(run)}
         self.events: list[dict[str, Any]] = []
         self.next_event_id = 1
+        self.artifact_manifests: list[dict[str, Any]] = []
 
     async def get_snapshot_record(self, snapshot_id: str) -> dict[str, Any] | None:
         if self.snapshot_record["snapshot_id"] == snapshot_id:
@@ -52,6 +69,12 @@ class FakeAnalysisStore:
         run["result"] = payload
         if finished:
             run["finished_at"] = "finished"
+        return dict(run)
+
+    async def update_artifact_manifest(self, *, run_id: str, manifest: dict[str, Any]) -> dict[str, Any]:
+        run = self.runs[run_id]
+        run["artifact_manifest"] = manifest
+        self.artifact_manifests.append(manifest)
         return dict(run)
 
     async def append_run_event(
@@ -102,6 +125,24 @@ class RecordingPropagationEngine:
 class MissingCheckpointPropagationEngine:
     async def hindcast(self, snapshot, options):
         return {"status": "missing_checkpoint"}
+
+
+class LargeCoordinationEngine:
+    async def analyze(self, snapshot, options):
+        return {
+            "status": "ok",
+            "technology": "coordination_discover",
+            "summary": {"coordinated_edges": 1, "coordinated_accounts": 2},
+            "evidence_edges": [
+                {"source": "u1", "target": "u2", "evidence": "x" * 1000}
+                for _index in range(50)
+            ],
+            "network": {
+                "nodes": [{"id": "u1"}, {"id": "u2"}],
+                "edges": [{"source": "u1", "target": "u2"}],
+                "clusters": [{"cluster_id": "c1", "members": ["u1", "u2"]}],
+            },
+        }
 
 
 class RecordingStudentRuntime:
@@ -242,6 +283,68 @@ def test_executor_loads_snapshot_and_runs_requested_stage_ports():
             "teacher_job_submitted",
             "run_awaiting_review",
         ]
+
+    asyncio.run(scenario())
+
+
+def test_executor_stores_full_stage_results_as_artifacts_and_emits_compact_events():
+    async def scenario():
+        snapshot = _snapshot()
+        artifact_collection = FakeArtifactCollection()
+        store = FakeAnalysisStore(
+            snapshot_record={
+                "snapshot_id": snapshot.snapshot_id,
+                "mongo_collection": "analysis_event_snapshots",
+                "mongo_key": snapshot.snapshot_id,
+            },
+            run={
+                "run_id": "run_large",
+                "event_id": snapshot.event_id,
+                "snapshot_id": snapshot.snapshot_id,
+                "status": "queued",
+                "requested_stages": ["coordination_discover"],
+                "options": {},
+                "finished_at": None,
+            },
+        )
+        registry = AnalysisRegistry(
+            mongo_db={
+                "analysis_event_snapshots": FakeSnapshotCollection(
+                    {snapshot.snapshot_id: snapshot.model_dump(mode="json")}
+                ),
+                "analysis_run_artifacts": artifact_collection,
+            },
+            store=store,
+        )
+        executor = AnalysisExecutor(
+            registry=registry,
+            engines=AnalysisEnginePorts(
+                coordination=LargeCoordinationEngine(),
+                propagation=RecordingPropagationEngine(),
+                student=RecordingStudentRuntime(),
+                teacher=UnavailableTeacherJobPort(),
+            ),
+        )
+
+        result = await executor.execute_run("run_large")
+        events = await registry.list_run_events("run_large")
+        completed_event = next(event for event in events if event["event_type"] == "stage_completed")
+        final_payload = store.runs["run_large"]["result"]
+        root_artifact = artifact_collection.documents["run_large:stage:coordination_discover:result"]
+
+        assert result["results"]["coordination_discover"]["evidence_edges"][0]["evidence"] == "x" * 1000
+        assert completed_event["payload"]["result_artifact"]["stored"] is True
+        assert completed_event["payload"]["result_summary"]["evidence_edges_summary"] == {
+            "type": "list",
+            "count": 50,
+        }
+        assert "result" not in completed_event["payload"]
+        assert "evidence_edges" not in completed_event["payload"]["result_summary"]
+        assert "results" in final_payload
+        assert "evidence_edges" not in final_payload["results"]["coordination_discover"]
+        assert root_artifact["schema"] == "cogguard.analysis.run_artifact.chunked.v1"
+        assert root_artifact["chunk_count"] >= 1
+        assert store.artifact_manifests[-1]["stages"]["coordination_discover"]["result_artifact"]["stored"] is True
 
     asyncio.run(scenario())
 

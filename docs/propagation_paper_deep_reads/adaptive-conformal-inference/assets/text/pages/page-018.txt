@@ -1,0 +1,62 @@
+A.5  Existence of a stationary distribution for (αt,(αt,(αt, At)At)At)
+
+In this section we give one simple example in which the Markov chain {(αt, At)}t∈N will have a
+unique stationary distribution. The setting considered here is the same as the one described in Section
+4.2.
+Let αt be initialized with α1 ∈{α + kγα : k ∈Z}. Assume that A is ﬁnite. Let P be the transition
+matrix of {At}t∈N and assume that for all a1, a2 ∈A, Pa1,a2 = P(At+1 = a2|At = a1) > 0.
+Assume that α satisﬁes α−1(1 −α) ∈N. This will hold for common choices of α such as α = 0.1
+and α = 0.05. Finally, assume that for all a ∈A and all p ∈(0, 1), P(S(Xt, Yt) ≤ˆQ(p)|A = a) ∈
+(0, 1). This will occur for example when S(Xt, Yt)|At = a is supported on R and ˆQ(·) is ﬁnite
+valued for all p ∈(0, 1).
+
+We claim that in this case {(αt, At)}t∈N has a unique stationary distribution. To prove this it is
+sufﬁcient to show that this chain is irreducible and has a ﬁnite state space. To check that it has a ﬁnite
+state space it is sufﬁcient to show that αt has a ﬁnite state space. We claim that with probability one
+we have that for all t ∈N, αt ∈{α + kγα : k ∈Z}. To prove this we proceed by induction. The
+base case is given by our choice of α1. For the inductive step note that
+αt ∈{α + kγα : k ∈Z}
+
+                                αt + γα, if errt = 0, =⇒αt+1 = αt + γ(α −errt) =                        ∈{α + kγα : k ∈Z}.
+                                αt −γα(α−1(1 −α)), if errt = 1,
+
+Since αt is also bounded (see Lemma 4.1) this implies that αt has a ﬁnite state space.
+Finally, the fact that {(αt, At)}t∈N is irreducible follows easily from our assumptions on {At}t∈N,
+ˆQ(·), and P(S(Xt, Yt) ≤ˆQ(p)|A = a).
+
+A.6  Additional information for Section 6
+
+A.6.1  Dataset description
+
+The county-level demographic characteristics used for prediction were the proportion of the total
+population that fell into each of the following race categories (either alone or in combination):
+black or African American, American Indian or Alaska Native, Asian, Native Hawaiian or other
+Paciﬁc islander. In addition to this, we also used the proportion of the total population that was
+male, of Hispanic origin, and that fell within each of the age ranges 20-29, 30-44, 45-64, and 65+.
+Demographic information was obtained from 2019 estimates published by the United States Census
+Bureau and available at [5]. To supplement these demographic features we also used the median
+household income and the percentage of individuals with a bachelors degree or higher as covariates.
+Data on county-level median household incomes was based on 2019 estimates obtained from [7]. The
+percentage of individuals with a bachelors degree or higher was computed based on data collected
+during the years 2015-2019 and published at [6]. As an aside, we remark that we used 2019 estimates
+because this was the most recent year for which data was available.
+
+Vote counts for the 2016 election were obtained from [14], while 2020 election data was taken from
+[25]. In total, matching covariate and election vote count data were obtained for 3111 counties.
+
+A.6.2  Detailed prediction algorithm
+
+Algorithm 1 below outlines the core conformal inference method used to predict election results. An
+R implementation of this algorithm as well as the core method outlined in Section 2.2 can be found at
+https://github.com/isgibbs/AdaptiveConformal.
+
+A.7  Large deviation bounds for the error sequence
+
+In this section we prove Theorem 4.1. So, throughout we deﬁne the sequences {αt}t∈N, {errt}t∈N,
+and {At}t∈N as in Section 4.2 and we assume that {(αt, At)}t∈N is a stationary Markov chain from
+which it follows immediately that {(αt, At, errt)}t∈N is also stationary. Additionally, we assume that
+ˆQ(·) and S(·) are ﬁxed functions such that ˆQ(·) is non-decreasing with ˆQ(x) = −∞for all x < 0
+and ˆQ(x) = ∞for all x > 1. The proof of Theorem 4.1 will rely on the following lemmas.
+
+
+                                       18

@@ -1,0 +1,66 @@
+References
+
+ [1] A.-L. Barabási. Network science. Philosophical Transactions of the Royal Society A: Mathe-
+     matical, Physical and Engineering Sciences, 371(1987):20120375, 2013.
+
+ [2] T. Bertin-Mahieux, D. P. Ellis, B. Whitman, and P. Lamere. The million song dataset. 2011.
+
+ [3]  I. I. Bogoch, A. Watts, A. Thomas-Bachli, C. Huber, M. U. Kraemer, and K. Khan. Potential
+      for global spread of a novel coronavirus from china. Journal of travel medicine, 27(2):taaa011,
+     2020.
+
+ [4] A. D. Broido and A. Clauset. Scale-free networks are rare. Nature communications, 10(1):1017,
+     2019.
+
+ [5] B. P. Chamberlain, S. Shirobokov, E. Rossi, F. Frasca, T. Markovich, N. Y. Hammerla, M. M.
+     Bronstein, and M. Hansmire. Graph neural networks for link prediction with subgraph sketching.
+     In The Eleventh International Conference on Learning Representations, 2022.
+
+ [6] S. Chanpuriya, R. A. Rossi, S. Kim, T. Yu, J. Hoffswell, N. Lipka, S. Guo, and C. Musco.
+     Direct embedding of temporal network edges via time-decayed line graphs. arXiv preprint
+     arXiv:2210.00032, 2022.
+
+ [7] Z. Chen, S. Villar, L. Chen, and J. Bruna. On the equivalence between graph isomorphism
+      testing and function approximation with gnns. Advances in neural information processing
+     systems, 32, 2019.
+
+ [8] A. Cini, I. Marisca, F. M. Bianchi, and C. Alippi. Scalable spatiotemporal graph neural networks.
+     In Proceedings of the AAAI conference on artificial intelligence, volume 37, pages 7218–7226,
+     2023.
+
+ [9] W. Cong, S. Zhang, J. Kang, B. Yuan, H. Wu, X. Zhou, H. Tong, and M. Mahdavi. Do we really
+     need complicated model architectures for temporal networks? In The Eleventh International
+     Conference on Learning Representations.
+
+[10]  J. Deng, W. Dong, R. Socher, L.-J. Li, K. Li, and L. Fei-Fei. Imagenet: A large-scale hierarchical
+    image database. In 2009 IEEE conference on computer vision and pattern recognition, pages
+     248–255. Ieee, 2009.
+
+[11] X. Ding, S. Huang, A. Leung, and R. Rabbany. Incorporating dynamic flight network in seir to
+    model mobility between populations. Applied Network Science, 6(1):1–24, 2021.
+
+[12] V. P. Dwivedi and X. Bresson. A generalization of transformer networks to graphs. arXiv
+     preprint arXiv:2012.09699, 2020.
+
+[13]  J. Gao and B. Ribeiro. On the equivalence between temporal and static equivariant graph
+      representations. In International Conference on Machine Learning, pages 7052–7076. PMLR,
+     2022.
+
+[14] E. Hajiramezanali, A. Hasanzadeh, K. Narayanan, N. Duffield, M. Zhou, and X. Qian. Varia-
+      tional graph recurrent neural networks. Advances in neural information processing systems, 32,
+     2019.
+
+[15] B. Hidasi and D. Tikk. Fast als-based tensor factorization for context-aware recommendation
+    from implicit feedback. In Machine Learning and Knowledge Discovery in Databases: Euro-
+    pean Conference, ECML PKDD 2012, Bristol, UK, September 24-28, 2012. Proceedings, Part
+      II 23, pages 67–82. Springer, 2012.
+
+[16] W. Hu, M. Fey, H. Ren, M. Nakata, Y. Dong, and J. Leskovec. Ogb-lsc: A large-scale challenge
+      for machine learning on graphs. arXiv preprint arXiv:2103.09430, 2021.
+
+[17] W. Hu, M. Fey, M. Zitnik, Y. Dong, H. Ren, B. Liu, M. Catasta, and J. Leskovec. Open
+     graph benchmark: Datasets for machine learning on graphs. Advances in neural information
+     processing systems, 33:22118–22133, 2020.
+
+
+                                       11

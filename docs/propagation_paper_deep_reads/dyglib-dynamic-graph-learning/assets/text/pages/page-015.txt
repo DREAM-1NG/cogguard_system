@@ -1,0 +1,66 @@
+[59] Xuhong Wang, Ding Lyu, Mengjian Li, Yang Xia, Qi Yang, Xinwen Wang, Xinguang Wang,
+     Ping Cui, Yupu Yang, Bowen Sun, and Zhenyu Guo. APAN: asynchronous propagation attention
+     network for real-time temporal graph embedding. In International Conference on Management
+      of Data, pages 2628–2638. ACM, 2021.
+
+[60] Yanbang Wang, Yen-Yu Chang, Yunyu Liu, Jure Leskovec, and Pan Li. Inductive representation
+     learning in temporal networks via causal anonymous walks. In 9th International Conference on
+     Learning Representations. OpenReview.net, 2021.
+
+[61] Jason Weston, Sumit Chopra, and Antoine Bordes. Memory networks. In 3rd International
+     Conference on Learning Representations, 2015.
+
+[62] Haixu Wu, Jiehui Xu, Jianmin Wang, and Mingsheng Long. Autoformer: Decomposition
+     transformers with auto-correlation for long-term series forecasting. In Advances in Neural
+     Information Processing Systems 34, pages 22419–22430, 2021.
+
+[63] Zonghan Wu, Shirui Pan, Guodong Long, Jing Jiang, and Chengqi Zhang. Graph wavenet for
+     deep spatial-temporal graph modeling. In Proceedings of the Twenty-Eighth International Joint
+     Conference on Artificial Intelligence, pages 1907–1913. ijcai.org, 2019.
+
+[64] Da Xu, Chuanwei Ruan, Evren Körpeoglu, Sushant Kumar, and Kannan Achan. Inductive
+     representation learning on temporal graphs.  In 8th International Conference on Learning
+     Representations. OpenReview.net, 2020.
+
+[65] Guotong Xue, Ming Zhong, Jianxin Li, Jia Chen, Chengshuai Zhai, and Ruochen Kong.
+    Dynamic network embedding survey. Neurocomputing, 472:212–223, 2022.
+
+[66] Jiaxuan You, Tianyu Du, and Jure Leskovec. ROLAND: graph learning framework for dynamic
+     graphs. In The 28th ACM SIGKDD Conference on Knowledge Discovery and Data Mining,
+     pages 2358–2366. ACM, 2022.
+
+[67] Bing Yu, Haoteng Yin, and Zhanxing Zhu. Spatio-temporal graph convolutional networks:
+   A deep learning framework for traffic forecasting.  In Proceedings of the Twenty-Seventh
+     International Joint Conference on Artificial Intelligence, pages 3634–3640. ijcai.org, 2018.
+
+[68] Le Yu. An empirical evaluation of temporal graph benchmark. arXiv preprint arXiv:2307.12510,
+     2023.
+
+[69] Le Yu, Bowen Du, Xiao Hu, Leilei Sun, Liangzhe Han, and Weifeng Lv. Deep spatio-temporal
+     graph convolutional network for traffic accident prediction. Neurocomputing, 423:135–147,
+     2021.
+
+[70] Le Yu, Zihang Liu, Leilei Sun, Bowen Du, Chuanren Liu, and Weifeng Lv. Continuous-time
+     user preference modelling for temporal sets prediction. IEEE Transactions on Knowledge and
+    Data Engineering, 2023.
+
+[71] Le Yu, Guanghui Wu, Leilei Sun, Bowen Du, and Weifeng Lv. Element-guided temporal graph
+     representation learning for temporal sets prediction. In The ACM Web Conference 2022, pages
+    1902–1913. ACM, 2022.
+
+[72] Mengqi Zhang, Shu Wu, Xueli Yu, Qiang Liu, and Liang Wang. Dynamic graph neural networks
+      for sequential recommendation. IEEE Transactions on Knowledge and Data Engineering, 2022.
+
+[73] Haoyi Zhou, Shanghang Zhang, Jieqi Peng, Shuai Zhang, Jianxin Li, Hui Xiong, and Wancai
+     Zhang. Informer: Beyond efficient transformer for long sequence time-series forecasting. In
+      Thirty-Fifth AAAI Conference on Artificial Intelligence, pages 11106–11115. AAAI Press, 2021.
+
+[74] Hongkuan Zhou, Da Zheng, Israt Nisa, Vasileios Ioannidis, Xiang Song, and George Karypis.
+     Tgl: a general framework for temporal gnn training on billion-scale graphs. Proceedings of the
+   VLDB Endowment, 15(8):1572–1580, 2022.
+
+
+
+
+
+                                       15

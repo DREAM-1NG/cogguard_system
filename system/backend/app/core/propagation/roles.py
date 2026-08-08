@@ -3,12 +3,21 @@ from __future__ import annotations
 from app.core.propagation.types import BetweennessScores, PropagationGraph
 
 
-def identify_key_roles(G: PropagationGraph, bc: BetweennessScores) -> dict:
+def identify_key_roles(
+    G: PropagationGraph,
+    bc: BetweennessScores,
+    coordination_users: set[str] | None = None,
+) -> dict:
     if G.number_of_nodes() == 0:
         return {"originators": [], "bridges": [], "amplifiers": []}
 
+    ranked_nodes = [
+        node_id for node_id in G.nodes()
+        if not coordination_users or node_id in coordination_users
+    ]
+
     originators = []
-    for node_id in G.nodes():
+    for node_id in ranked_nodes:
         out_degree = G.out_degree(node_id)
         in_degree = G.in_degree(node_id)
         if out_degree > 0 and out_degree >= in_degree:
@@ -24,6 +33,8 @@ def identify_key_roles(G: PropagationGraph, bc: BetweennessScores) -> dict:
 
     bridges = []
     for node_id, score in sorted(bc.items(), key=lambda item: item[1], reverse=True):
+        if coordination_users and node_id not in coordination_users:
+            continue
         in_degree = G.in_degree(node_id)
         out_degree = G.out_degree(node_id)
         if score > 0:
@@ -42,7 +53,7 @@ def identify_key_roles(G: PropagationGraph, bc: BetweennessScores) -> dict:
 
     if not bridges:
         relay_candidates = []
-        for node_id in G.nodes():
+        for node_id in ranked_nodes:
             in_degree = G.in_degree(node_id)
             out_degree = G.out_degree(node_id)
             if in_degree > 0 and out_degree > 0:
@@ -67,7 +78,7 @@ def identify_key_roles(G: PropagationGraph, bc: BetweennessScores) -> dict:
         bridges = relay_candidates[:10]
 
     amplifiers = []
-    for node_id in G.nodes():
+    for node_id in ranked_nodes:
         in_degree = G.in_degree(node_id)
         if in_degree > 0:
             amplifiers.append(

@@ -1,0 +1,132 @@
+- generic [ref=f4e1]:
+  - generic [ref=f4e3]:
+    - complementary [ref=f4e4]:
+      - generic [ref=f4e5]:
+        - generic [ref=f4e6]: CogGuard
+        - menu [ref=f4e8]:
+          - menuitem [ref=f4e9] [cursor=pointer]:
+            - generic [ref=f4e11]:
+              - img "dashboard" [ref=f4e12]
+              - text: 数据大屏
+          - menuitem [ref=f4e15] [cursor=pointer]:
+            - generic [ref=f4e17]:
+              - img "cloud-download" [ref=f4e18]
+              - text: 数据采集
+          - menuitem [ref=f4e22] [cursor=pointer]:
+            - generic [ref=f4e24]:
+              - img "apartment" [ref=f4e25]
+              - text: 协同发现
+          - menuitem [ref=f4e28] [cursor=pointer]:
+            - generic [ref=f4e30]:
+              - img "share-alt" [ref=f4e31]
+              - text: 传播分析
+          - menuitem [ref=f4e34] [cursor=pointer]:
+            - generic [ref=f4e36]:
+              - img "user" [ref=f4e37]
+              - text: 账号画像
+          - menuitem [ref=f4e40] [cursor=pointer]:
+            - generic [ref=f4e42]:
+              - img "alert" [ref=f4e43]
+              - text: 风险研判
+      - img "left" [ref=f4e47] [cursor=pointer]
+    - generic [ref=f4e50]:
+      - generic [ref=f4e51]:
+        - generic [ref=f4e52]: 传播分析
+        - generic [ref=f4e55] [cursor=pointer]:
+          - generic [ref=f4e56]: P
+          - generic [ref=f4e58]: Preview
+      - generic [ref=f4e59]: 传播分析
+      - main [ref=f4e62]:
+        - generic [ref=f4e63]:
+          - generic [ref=f4e64]:
+            - heading "传播监测" [level=2] [ref=f4e65]
+            - img "question-circle" [ref=f4e66]
+          - generic [ref=f4e70]:
+            - generic [ref=f4e71]:
+              - generic [ref=f4e73]:
+                - textbox "事件 ID" [ref=f4e74]: trump_visit_2026_05_21
+                - button [ref=f4e76] [cursor=pointer]:
+                  - img "close-circle" [ref=f4e77]
+              - textbox "平台，可选" [ref=f4e82]
+              - generic [ref=f4e86]:
+                - textbox "观测截止时间" [ref=f4e87]
+                - generic:
+                  - img "calendar"
+              - generic [ref=f4e90] [cursor=pointer]:
+                - combobox [ref=f4e92]
+                - generic [ref=f4e93]: 预测范围：24 小时
+              - button "同步数据库传播结果" [ref=f4e95] [cursor=pointer]
+              - button "运行趋势预测" [ref=f4e98] [cursor=pointer]
+            - generic [ref=f4e100]: 最近同步：2026/8/7 18:34:05
+          - generic [ref=f4e101]:
+            - tablist [ref=f4e102]:
+              - generic [ref=f4e104]:
+                - tab "传播路径" [selected] [ref=f4e106] [cursor=pointer]
+                - tab "传播对象" [ref=f4e108] [cursor=pointer]
+                - tab "角色分析" [ref=f4e110] [cursor=pointer]
+                - tab "时间线" [ref=f4e112] [cursor=pointer]
+                - tab "趋势预测" [ref=f4e114] [cursor=pointer]
+            - tabpanel "传播路径" [ref=f4e117]:
+              - generic [ref=f4e118]:
+                - generic [ref=f4e120]:
+                  - generic [ref=f4e121]: 传播路径
+                  - generic [ref=f4e125]:
+                    - generic [ref=f4e126]:
+                      - generic [ref=f4e127]: 显示节点
+                      - slider [ref=f4e130] [cursor=pointer]
+                      - generic [ref=f4e131]: 300 / 6070
+                      - button "全量" [ref=f4e132] [cursor=pointer]
+                    - generic [ref=f4e134]:
+                      - generic [ref=f4e135]: 确认关系：回复、转发、引用等可追溯关系
+                      - generic [ref=f4e137]: 推断关系：共享对象与时间邻近推断
+                    - generic [ref=f4e139]: 金龙用户ID：2458098110572891出度：0 / 入度：1
+                - generic [ref=f4e144]:
+                  - generic [ref=f4e145]: 层级分析
+                  - generic [ref=f4e149]:
+                    - generic [ref=f4e150]:
+                      - generic [ref=f4e151]: 源头层
+                      - strong [ref=f4e152]: 22%
+                    - generic [ref=f4e155]:
+                      - generic [ref=f4e156]: 第1层
+                      - strong [ref=f4e157]: 75%
+                    - generic [ref=f4e160]:
+                      - generic [ref=f4e161]: 第2层
+                      - strong [ref=f4e162]: 1%
+                    - generic [ref=f4e165]:
+                      - generic [ref=f4e166]: 第3层
+                      - strong [ref=f4e167]: 0%
+                    - generic [ref=f4e170]:
+                      - generic [ref=f4e171]: 第4层
+                      - strong [ref=f4e172]: 0%
+                    - generic [ref=f4e174]:
+                      - generic [ref=f4e175]: 其它
+                      - strong [ref=f4e176]: 3%
+  - generic [ref=f4e576]:
+    - generic [ref=f4e578]:
+      - button "Close" [ref=f4e579] [cursor=pointer]:
+        - img "close" [ref=f4e580]
+      - generic [ref=f4e583]: 传播节点详情
+    - generic [ref=f4e584]:
+      - table [ref=f4e587]:
+        - rowgroup [ref=f4e588]:
+          - row [ref=f4e589]:
+            - rowheader "真实用户名" [ref=f4e590]
+            - cell "金龙" [ref=f4e591]
+          - row [ref=f4e593]:
+            - rowheader "用户 ID" [ref=f4e594]
+            - cell "2458098110572891" [ref=f4e595]
+          - row [ref=f4e597]:
+            - rowheader "发帖数量" [ref=f4e598]
+            - cell "0" [ref=f4e599]
+          - row [ref=f4e601]:
+            - rowheader "上下游关系" [ref=f4e602]
+            - cell "入度 1 / 出度 0" [ref=f4e603]
+          - row [ref=f4e605]:
+            - rowheader "首次出现" [ref=f4e606]
+            - cell "--" [ref=f4e607]
+      - generic [ref=f4e609]: 下游扩散节点
+      - paragraph [ref=f4e624]: 暂无下游节点
+      - generic [ref=f4e625]: 关联帖子
+      - paragraph [ref=f4e640]: 暂无关联帖子
+      - generic [ref=f4e641]: 关键路径证据
+      - paragraph [ref=f4e656]: 暂无关键路径证据

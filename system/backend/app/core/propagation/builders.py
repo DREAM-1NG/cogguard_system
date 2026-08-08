@@ -7,7 +7,7 @@ def build_claims(shared_objects: SharedObjects) -> list[dict]:
     claims = []
     for obj_id, shares in sorted(
         shared_objects.items(), key=lambda item: len(item[1]), reverse=True
-    )[:20]:
+    ):
         accounts = list({share["author_id"] for share in shares})
         claims.append(
             {
@@ -22,7 +22,7 @@ def build_claims(shared_objects: SharedObjects) -> list[dict]:
 
 def build_timeline(df: PropagationFrame) -> list[dict]:
     timeline = []
-    for _, row in df.head(100).iterrows():
+    for _, row in df.iterrows():
         timeline.append(
             {
                 "post_id": str(row.get("post_id", "")),

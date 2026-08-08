@@ -1,0 +1,19 @@
+[32] Glenn Shafer and Vladimir Vovk. A tutorial on conformal prediction. Journal of Machine
+     Learning Research, 9(12):371–421, 2008. URL http://jmlr.org/papers/v9/shafer08a.
+     html.
+[33] Ryan J Tibshirani, Rina Foygel Barber, Emmanuel Candes, and Aaditya Ramdas. Conformal
+     prediction under covariate shift. In H. Wallach, H. Larochelle, A. Beygelzimer, F. d'Alché-Buc,
+     E. Fox, and R. Garnett, editors, Advances in Neural Information Processing Systems, volume 32.
+     Curran Associates, Inc., 2019. URL https://proceedings.neurips.cc/paper/2019/
+    file/8fb21ee7a2207526da55a679f0332de2-Paper.pdf.
+[34] Vladimir Vovk, Alex Gammerman, and Glenn Shafer. Algorithmic Learning in a Random
+     World. Springer-Verlag, Berlin, Heidelberg, 2005. ISBN 0387001522.
+[35] Jingyi Zhu and James Spall. Tracking capability of stochastic gradient algorithm with constant
+     gain. In 2016 IEEE 55th Conference on Decision and Control (CDC), pages 4522–4527, 12
+     2016. doi: 10.1109/CDC.2016.7798957.
+
+
+
+
+
+                                       13

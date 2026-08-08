@@ -74,7 +74,9 @@ class TestBackwardCompatibility:
         assert "evidence_chains" in result  # 新增字段
         assert "path_analysis" in result
         assert "diffusion_summary" in result
-        assert "user_quality" in result
+        assert "provenance_graph" in result
+        assert "stability" in result
+        assert "user_quality" not in result
 
     def test_graph_structure(self):
         result = build_propagation_graph(_make_posts())
@@ -138,8 +140,8 @@ class TestBackwardCompatibility:
         assert isinstance(result["evidence_chains"], list)
 
 
-class TestUserQualityParsing:
-    def test_parses_chinese_follower_units_and_verified_values(self):
+class TestRemovedUserQualityPortrait:
+    def test_user_quality_is_not_computed_or_returned(self):
         posts = [
             {
                 "post_id": "p1",
@@ -164,13 +166,7 @@ class TestUserQualityParsing:
         ]
 
         result = build_propagation_graph(posts)
-        accounts = {row["account_id"]: row for row in result["user_quality"]["top_accounts"]}
-
-        assert accounts["u1"]["followers"] == 12000
-        assert accounts["u1"]["verified"] is True
-        assert accounts["u2"]["followers"] == 200000000
-        assert accounts["u2"]["verified"] is False
-        assert result["user_quality"]["verified_count"] == 1
+        assert "user_quality" not in result
 
 
 class TestPropagationAnalysisEventInferenceAdapter:
@@ -203,6 +199,7 @@ class TestPropagationAnalysisEventInferenceAdapter:
             relation_neighbor_count=4,
             hyperedge_count=4,
             relation_neighbors={},
+            prefix_is_preselected=True,
         )
 
         assert bundle["status"] == "ok"
@@ -265,9 +262,7 @@ class TestPropagationAnalysisEventInferenceAdapter:
 
         assert result["path_analysis"]["edge_count"] > 0
         assert result["path_analysis"]["layer_distribution"]
-        assert result["user_quality"]["total_users"] == 3
-        assert result["user_quality"]["verified_count"] == 1
-        assert any(row["quality"] == "高" and row["count"] == 1 for row in result["user_quality"]["buckets"])
+        assert "user_quality" not in result
 
     def test_diffusion_summary_uses_observed_root_and_readable_backbone(self):
         posts = [
@@ -380,6 +375,26 @@ class TestPropagationAnalysisEventInferenceAdapter:
         for edge in summary["tree_edges"] + summary["highlight_edges"]:
             assert layer_by_node[edge["source"]] != layer_by_node[edge["target"]]
 
+    def test_parallel_roots_are_layout_metadata_not_propagation_edges(self):
+        posts = [
+            {"post_id": "p1", "author_id": "root", "author_name": "Root", "timestamp": _ts(0), "url": "https://example.com/a", "hashtags": [], "content": "root"},
+            {"post_id": "p2", "author_id": "child", "author_name": "Child", "timestamp": _ts(1), "url": "https://example.com/a", "hashtags": [], "content": "child"},
+            {"post_id": "p3", "author_id": "parallel", "author_name": "Parallel", "timestamp": _ts(2), "url": "https://example.com/b", "hashtags": [], "content": "parallel"},
+            {"post_id": "p4", "author_id": "parallel_child", "author_name": "ParallelChild", "timestamp": _ts(3), "url": "https://example.com/b", "hashtags": [], "content": "parallel child"},
+        ]
+        summary = build_propagation_graph(posts)["diffusion_summary"]
+
+        assert "parallel" in {node["id"] for node in summary["parallel_roots"]}
+        assert all(edge["type"] != "parallel_root" for edge in summary["tree_edges"])
+        assert all(not edge.get("is_parallel_root") for edge in summary["tree_edges"])
+
+    def test_path_analysis_and_diffusion_summary_share_layers(self):
+        result = build_propagation_graph(_make_posts(), _make_comments(), diffusion_node_limit=0)
+        path_layers = {row["level"]: row["node_count"] for row in result["path_analysis"]["layer_distribution"]}
+        summary_layers = {row["level"]: row["node_count"] for row in result["diffusion_summary"]["layers"]}
+
+        assert path_layers == summary_layers
+
 
 # ---------------------------------------------------------------------------
 # 边类型测试
@@ -392,6 +407,57 @@ class TestEdgeTypes:
         result = build_propagation_graph(_make_posts())
         implicit = [e for e in result["graph"]["edges"] if e["type"] == "implicit"]
         assert len(implicit) > 0
+
+    def test_projection_edges_include_typed_evidence_and_observation_boundary(self):
+        result = build_propagation_graph(_make_posts(), _make_comments())
+        inferred = [edge for edge in result["graph"]["edges"] if edge["evidence_type"] == "inferred"]
+        explicit = [edge for edge in result["graph"]["edges"] if edge["evidence_type"] == "explicit"]
+
+        assert inferred and explicit
+        for edge in result["graph"]["edges"]:
+            assert edge["edge_id"]
+            assert edge["relation_type"]
+            assert "source_content_ref" in edge
+            assert "target_content_ref" in edge
+            assert "object_id" in edge
+            assert "time_delta" in edge
+            assert "confidence" in edge
+            assert "is_observed" in edge
+        assert all(edge["is_observed"] is False for edge in inferred)
+        assert all(edge["is_observed"] is True for edge in explicit)
+
+    def test_provenance_graph_has_typed_entities_and_relations(self):
+        result = build_propagation_graph(_make_posts(), _make_comments())
+        provenance = result["provenance_graph"]
+        node_types = {node["entity_type"] for node in provenance["nodes"]}
+
+        assert {"user", "post", "comment", "object", "event"}.issubset(node_types)
+        assert all(node["entity_id"] and ":" in node["entity_id"] for node in provenance["nodes"])
+        assert all(relation["relation_id"] and relation["relation_type"] for relation in provenance["relations"])
+        entity_ids = {node["entity_id"] for node in provenance["nodes"]}
+        assert all(relation["source"] in entity_ids and relation["target"] in entity_ids for relation in provenance["relations"])
+        assert any(relation["relation_type"] == "replies_to" for relation in provenance["relations"])
+
+    def test_provenance_skips_empty_entities_and_classifies_reconstructed_parent_edges(self):
+        posts = _make_posts() + [{"post_id": "", "author_id": "", "timestamp": _ts(9)}]
+        comments = _make_comments() + [
+            {
+                "comment_id": "c-reconstructed",
+                "post_id": "p1",
+                "parent_id": "p1",
+                "author_id": "u4",
+                "timestamp": _ts(10),
+            }
+        ]
+
+        result = build_propagation_graph(posts, comments)
+        provenance = result["provenance_graph"]
+        entity_ids = {node["entity_id"] for node in provenance["nodes"]}
+
+        assert "user:" not in entity_ids
+        assert "post:" not in entity_ids
+        assert all(relation["source"] in entity_ids and relation["target"] in entity_ids for relation in provenance["relations"])
+        assert any(edge["evidence_type"] == "reconstructed" for edge in result["graph"]["edges"])
 
     def test_explicit_edges_added(self):
         result = build_propagation_graph(_make_posts(), _make_comments())
@@ -490,7 +556,49 @@ class TestEvidenceChains:
                     "content": f"Post {i}-{j}",
                 })
         result = build_propagation_graph(posts)
-        assert len(result["evidence_chains"]) <= 10
+        meta = result["response_meta"]["evidence_chains"]
+        assert meta["total"] == 25
+        assert meta["returned"] == len(result["evidence_chains"])
+        assert meta["truncated"] is True
+        assert len(result["evidence_chains"]) > 10
+
+
+class TestObservationStabilityAndCoordination:
+    def test_stability_outputs_are_deterministic_and_role_rows_are_evidenced(self):
+        first = build_propagation_graph(_make_posts(), _make_comments())
+        second = build_propagation_graph(_make_posts(), _make_comments())
+
+        assert first["stability"] == second["stability"]
+        assert {"edge_confidence_threshold", "remove_node_sensitivity", "prefix_window"}.issubset(first["stability"])
+        for role_rows in first["key_roles"].values():
+            for row in role_rows:
+                assert "evidence_refs" in row
+                assert "stability" in row
+
+        effects = first["stability"]["remove_node_sensitivity"]["effects"]
+        root_effect = next(
+            (row for row in effects if row["account_id"] == first["diffusion_summary"]["root_node"]["id"]),
+            None,
+        )
+        if root_effect:
+            assert root_effect["removed_root"] is True
+            assert root_effect["evaluation_root_id"] != root_effect["account_id"]
+        assert first["stability"]["prefix_window"]["windows"]
+
+    def test_coordination_users_filter_role_leaderboards_but_keep_graph_context(self):
+        posts = _make_posts()
+        posts[0]["coordination_group_id"] = "g1"
+        posts[1]["coordination_group_id"] = "g1"
+
+        result = build_propagation_graph(posts, _make_comments())
+        ranked_ids = {
+            row["account_id"]
+            for role_rows in result["key_roles"].values()
+            for row in role_rows
+        }
+
+        assert ranked_ids <= {"u1", "u2"}
+        assert {node["id"] for node in result["graph"]["nodes"]} >= {"u1", "u2", "u3", "u4"}
 
 
 # ---------------------------------------------------------------------------

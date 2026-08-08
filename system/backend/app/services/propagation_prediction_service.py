@@ -1,9 +1,8 @@
 """Propagation Analysis macro/micro prediction bridge.
 
-The system-facing path reads vetted artifacts under
-``system/research/propagation_analysis``. Live training and event checkpoint
-inference stay unavailable until their runners are internalized under the same
-boundary.
+The system-facing path reads vetted artifacts and runs deployed checkpoint inference
+for current events under ``system/research/propagation_analysis``. Cached benchmark
+ evidence remains a research-only interface and is not current-event inference.
 """
 
 from __future__ import annotations
@@ -17,15 +16,11 @@ from pathlib import Path
 from statistics import mean
 from typing import Any
 
-from app.core.propagation.trend_predictor import predict_trend
-
-
 SYSTEM_ROOT = Path(__file__).resolve().parents[3]
 PROPAGATION_ANALYSIS_ROOT = SYSTEM_ROOT / "research" / "propagation_analysis"
 PROPAGATION_BENCHMARK_ROOT = PROPAGATION_ANALYSIS_ROOT / "benchmark"
 PROPAGATION_EVENT_ADAPTER_PATH = PROPAGATION_BENCHMARK_ROOT / "adapters" / "event_adapter.py"
-PROPAGATION_LIVE_RUNTIME_PATH = PROPAGATION_ANALYSIS_ROOT / "runtime" / "live_runtime.py"
-PROPAGATION_PROTOCOL_PATH = PROPAGATION_ANALYSIS_ROOT / "runtime" / "protocol.py"
+PROPAGATION_CHECKPOINT_RUNTIME_PATH = PROPAGATION_BENCHMARK_ROOT / "adapters" / "checkpoint_runtime.py"
 PROPAGATION_PUBLIC_LOADER_PATH = PROPAGATION_BENCHMARK_ROOT / "loaders.py"
 PROPAGATION_SAMPLE_ARTIFACT = PROPAGATION_BENCHMARK_ROOT / "sequence_vs_minds_sample_300c_5ep_3seed.json"
 FOREST_DATA_ROOT = PROPAGATION_ANALYSIS_ROOT / "datasets" / "forest-data"
@@ -79,7 +74,7 @@ PREDICTION_METHODOLOGY = {
         "normalization": "losses are averaged per cascade before batch aggregation to avoid candidate-token dominance",
     },
     "inference_outputs": {
-        "macro": ["observed_size", "predicted_size", "trend_points", "direction", "confidence_like_score"],
+        "macro": ["observed_size", "predicted_size", "trend_points", "intervals", "direction", "score_concentration"],
         "micro": ["top_users", "candidate_count", "rollout_steps", "candidate_source", "evidence_refs"],
     },
     "leakage_boundary": {
@@ -120,8 +115,16 @@ PREDICTION_METHODOLOGY = {
             "app.core.propagation.trend_predictor",
             "app.core.propagation.ts_features",
             "app.core.propagation.regime_model",
+            "system.research.propagation_analysis.runtime.protocol",
+            "system.research.propagation_analysis.runtime.live_runtime",
         ],
-        "retention_reason": "historical tests and ablation/reference code only; not part of the public prediction path",
+        "retention_reason": "historical tests, hindcast protocol notes, and ablation/reference code only; not part of the public current-event prediction path",
+        "runtime_boundary": {
+            "event_adapter": "observed prefix, candidate buckets, and trace metadata",
+            "sequence_model": "checkpoint-compatible neural architecture",
+            "checkpoint_runtime": "checkpoint loading and forward inference",
+            "prediction_contract": "unavailable/abstain and score-shaping helpers",
+        },
     },
 }
 
@@ -153,20 +156,11 @@ def _load_propagation_analysis_event_adapter():
 
 
 @lru_cache(maxsize=1)
-def _load_propagation_analysis_live_runtime():
+def _load_propagation_analysis_checkpoint_runtime():
     return _load_internal_module(
-        path=PROPAGATION_LIVE_RUNTIME_PATH,
-        module_name="cogguard_propagation_analysis_live_runtime",
-        label="PropagationAnalysis live runtime",
-    )
-
-
-@lru_cache(maxsize=1)
-def _load_propagation_analysis_protocol():
-    return _load_internal_module(
-        path=PROPAGATION_PROTOCOL_PATH,
-        module_name="cogguard_propagation_analysis_protocol",
-        label="PropagationAnalysis hindcast protocol",
+        path=PROPAGATION_CHECKPOINT_RUNTIME_PATH,
+        module_name="cogguard_propagation_analysis_checkpoint_runtime",
+        label="PropagationAnalysis checkpoint runtime",
     )
 
 
@@ -203,6 +197,8 @@ def build_event_inference_bundle(
     relation_neighbor_count: int = 4,
     hyperedge_count: int = 4,
     relation_neighbors: dict[int, list[int]] | None = None,
+    observation_ratio: float = 0.5,
+    prefix_is_preselected: bool = False,
 ) -> dict[str, Any]:
     adapter = _load_propagation_analysis_event_adapter()
     return adapter.build_event_inference_bundle(
@@ -213,6 +209,8 @@ def build_event_inference_bundle(
         relation_neighbor_count=relation_neighbor_count,
         hyperedge_count=hyperedge_count,
         relation_neighbors=relation_neighbors,
+        observation_ratio=observation_ratio,
+        prefix_is_preselected=prefix_is_preselected,
     )
 
 
@@ -222,23 +220,17 @@ def predict_event_with_checkpoint(
     comments: list[dict[str, Any]] | None = None,
     *,
     top_k: int = 10,
-    max_sequence_len: int = 64,
-    user_hash_buckets: int = 4096,
-    relation_neighbor_count: int = 4,
-    hyperedge_count: int = 4,
-    relation_neighbors: dict[int, list[int]] | None = None,
+    observation_ratio: float = 0.5,
+    prefix_is_preselected: bool = False,
 ) -> dict[str, Any]:
-    adapter = _load_propagation_analysis_event_adapter()
-    return adapter.predict_event_with_checkpoint(
+    runtime = _load_propagation_analysis_checkpoint_runtime()
+    return runtime.predict_event_with_checkpoint(
         checkpoint_path,
         posts,
         comments,
         top_k=top_k,
-        max_sequence_len=max_sequence_len,
-        user_hash_buckets=user_hash_buckets,
-        relation_neighbor_count=relation_neighbor_count,
-        hyperedge_count=hyperedge_count,
-        relation_neighbors=relation_neighbors,
+        observation_ratio=observation_ratio,
+        prefix_is_preselected=prefix_is_preselected,
     )
 
 
@@ -289,69 +281,23 @@ async def predict_event_macro_micro(
     comments: list[dict[str, Any]] | None = None,
     top_k: int = 10,
     checkpoint_path: str | None = None,
+    observation_ratio: float = 0.5,
+    prefix_is_preselected: bool = False,
 ) -> dict[str, Any]:
-    """Run current-event PropagationAnalysis macro/micro inference using internal runtime seams."""
+    """Run deployed checkpoint inference without a heuristic fallback."""
 
     comments = comments or []
-    # Use the real LLM channel. ``predict_trend`` already degrades to a neutral
-    # result when no API key is configured, and the response cache covers a slow
-    # or unreachable provider, so no mock flag is needed here.
-    trend_forecast = await predict_trend(posts, comments)
-    bundle = build_event_inference_bundle(posts, comments)
     selected_checkpoint = Path(checkpoint_path) if checkpoint_path else PROPAGATION_TWITTER_CHECKPOINT
-    checkpoint_available = selected_checkpoint.exists()
-    bundle["checkpoint_path"] = str(selected_checkpoint)
-    bundle["checkpoint_available"] = checkpoint_available
-    if checkpoint_available:
-        checkpoint_result = predict_event_with_checkpoint(
-            selected_checkpoint,
-            posts,
-            comments,
-            top_k=top_k,
-        )
-        if checkpoint_result.get("status") == "ok":
-            return _with_hindcast_protocol(
-                {"technology": "propagation_analysis", **checkpoint_result},
-                bundle=bundle,
-                posts=posts,
-                comments=comments,
-                top_k=top_k,
-            )
-
-    live_runtime = _load_propagation_analysis_live_runtime()
-    result = live_runtime.build_live_event_macro_micro(
-        bundle=bundle,
-        trend=trend_forecast,
+    result = predict_event_with_checkpoint(
+        selected_checkpoint,
+        posts,
+        comments,
         top_k=top_k,
-        checkpoint_available=checkpoint_available,
+        observation_ratio=observation_ratio,
+        prefix_is_preselected=prefix_is_preselected,
     )
-    return _with_hindcast_protocol(
-        {"technology": "propagation_analysis", **result},
-        bundle=bundle,
-        posts=posts,
-        comments=comments,
-        top_k=top_k,
-    )
-
-
-def _with_hindcast_protocol(
-    result: dict[str, Any],
-    *,
-    bundle: dict[str, Any],
-    posts: list[dict[str, Any]],
-    comments: list[dict[str, Any]],
-    top_k: int,
-) -> dict[str, Any]:
-    protocol = _load_propagation_analysis_protocol().build_hindcast_protocol(
-        bundle=bundle,
-        forecast=result,
-        posts=posts,
-        comments=comments,
-        top_k=top_k,
-    )
-    merged = dict(result)
-    merged.update(protocol)
-    return merged
+    result["technology"] = "propagation_analysis"
+    return result
 
 
 def _load_cached_result(*, dataset: str, seed: int | None) -> dict[str, Any]:

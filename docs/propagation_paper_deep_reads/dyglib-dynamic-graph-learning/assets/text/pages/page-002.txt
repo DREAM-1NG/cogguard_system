@@ -1,0 +1,66 @@
+due to the usage of recurrent neural networks [40, 57]. Therefore, we conclude that previous methods
+lack the ability to capture either nodes’ correlations or long-term temporal dependencies.
+
+Secondly, the training pipelines of different methods are inconsistent and often lead to poor re-
+producibility. Also, existing methods are implemented by diverse frameworks (e.g., Pytorch [41],
+Tensorflow [1], DGL [58], PyG [16], C++), making it time-consuming and difficult for researchers to
+quickly understand the algorithms and further dive into the core of dynamic graph learning. Although
+there exist some libraries for dynamic graph learning [18, 46, 74], they mainly focus on dynamic net-
+work embedding methods [18], discrete-time graph learning methods [46], or engineering techniques
+for training on large-scale dynamic graphs [74] (elaborated in Section 2). Currently, we find that
+there are still no standard tools for continuous-time dynamic graph learning.
+
+In this paper, we aim to address the above drawbacks with two key technical contributions.
+
+We propose a new Transformer-based dynamic graph learning architecture (DyGFormer).
+DyGFormer is conceptually simple by solely learning from the sequences of nodes’ historical first-
+hop interactions. To be specific, DyGFormer is designed with a neighbor co-occurrence encoding
+scheme, which encodes the appearing frequencies of each neighbor in the sequences of the source
+and destination nodes to explicitly explore their correlations. In order to capture long-term temporal
+dependencies, DyGFormer splits each node’s sequence into multiple patches and feeds them to
+Transformer [56]. This patching technique not only makes the model effectively benefit from longer
+histories via preserving local temporal proximities, but also efficiently reduces the computational
+complexity to a constant level that is irrelevant to the input sequence length.
+
+We present a unified continuous-time dynamic graph learning library (DyGLib). DyGLib is an
+open-source toolkit with standard training pipelines, extensible coding interfaces, and comprehensive
+evaluating strategies, aiming to foster standard, scalable, and reproducible dynamic graph learning
+research. DyGLib has integrated a variety of continuous-time dynamic graph learning methods as
+well as benchmark datasets from various domains. It trains all the methods via the same pipeline to
+eliminate the influence of different implementations and adopts a modularized design for developers to
+conveniently incorporate new datasets and algorithms based on their specific requirements. Moreover,
+DyGLib supports both dynamic link prediction and dynamic node classification tasks with exhaustive
+evaluating strategies to provide comprehensive comparisons of existing methods.
+
+To evaluate the model performance, we conduct extensive experiments based on DyGLib, including
+dynamic link prediction under transductive and inductive settings with three negative sampling
+strategies as well as dynamic node classification. From the results, we observe that: (i) DyGFormer
+outperforms existing methods on most datasets, demonstrating its superiority in capturing nodes’
+correlations and long-term temporal dependencies; (ii) some findings of baselines are not in line
+with previous reports because of their varied pipelines and problematic implementations, which
+illustrates the necessity of introducing DyGLib. We also provide an in-depth analysis of the neighbor
+co-occurrence encoding and patching technique for a better understanding of DyGFormer.
+
+
+2  Related Work
+
+
+Dynamic Graph Learning. Representation learning on dynamic graphs has been widely studied in
+recent years [26, 49, 65]. Discrete-time methods manually divide the dynamic graph into a sequence
+of snapshots and apply static graph learning methods on each snapshot, which ignore the temporal
+order of nodes in each snapshot [39, 17, 48, 11, 66]. In contrast, continuous-time methods directly
+learn on the whole dynamic graph with temporal graph neural networks [55, 64, 45, 36, 9, 59],
+memory networks [28, 55, 45, 36, 59, 35], temporal random walks [60, 25] or sequential models
+[57, 12]. Although insightful, most existing dynamic graph learning methods neglect the correlations
+between two nodes in an interaction. They also fail to handle nodes with longer interactions due
+to unaffordable computational costs of complex modules or issues in optimizing models (e.g., the
+vanishing/exploding gradients). In this paper, we propose a new Transformer-based architecture to
+show the necessity of capturing nodes’ correlations and long-term temporal dependencies, which is
+achieved by two designs: a neighbor co-occurrence encoding scheme and a patching technique.
+
+Transformer-based Applications in Various Fields. Transformer [56] is an innovative model that
+employs the self-attention mechanism to handle sequential data, which has been successfully applied
+in a variety of domains, such as natural language processing [13, 33, 6], computer vision [7, 14, 34]
+
+
+                                       2

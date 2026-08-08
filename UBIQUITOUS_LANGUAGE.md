@@ -62,9 +62,17 @@ Current semantic package paths: `system/research/coordination_discover/`, `syste
 
 | Term | Definition | Aliases to avoid |
 | --- | --- | --- |
+| **Propagation Monitoring** | The product capability that combines observed propagation analysis and gated propagation prediction for one event snapshot. | Propagation page, KT2, propagation monitor |
 | **Propagation Forecast** | The output that estimates spread size and next-hop behavior from a snapshot. | Trend guess, prediction blob |
+| **Observed Propagation Analysis** | A non-predictive reconstruction of paths, objects, roles, provenance, timelines, and stability from the event snapshot. | Forecast, causal proof |
+| **Propagation Evidence Type** | `explicit`, `reconstructed`, or `inferred`; respectively platform-observed, parent-ID-rebuilt, or shared-object temporal-proximity evidence. | All edges are reposts |
+| **Observation Cutoff** | A timezone-aware inclusive `observed_until` boundary applied before any prediction input or candidate construction. | Optional display time |
 | **Hindcast** | A retrospective propagation forecast over an observed event window. | Backtest, replay |
-| **Next-Hop Ranking** | The ordered list of accounts or nodes predicted to be reached next. | Candidate list, neighbor list |
+| **Next-Hop Ranking** | The ordered identity-mapped accounts predicted for reactivation after the observation cutoff; anonymous buckets are coverage only. | Candidate list, new-user identity prediction |
+| **Candidate Coverage** | The share and count of legal model candidate buckets that can be mapped back to displayable event identities. | Recall proof, complete user universe |
+| **Identity Mapping** | The mapping from model bucket or candidate representation back to a real `author_id` and `author_name`. | User recovery, identity proof |
+| **Calibration Status** | The explicit state of whether prediction intervals or probabilities have validation-backed calibration evidence. | Confidence, certainty |
+| **Abstain** | A structured non-prediction response used when model artifacts, data, identity mapping, or calibration are insufficient. | Fallback prediction, guessed result |
 | **Propagation Tree** | A source post and its reply, repost, quote, or reaction descendants. | Thread blob, cascade dump |
 | **Split-Conformal Interval** | A calibrated prediction interval derived from a held-out calibration split. | Confidence band, heuristic range |
 
@@ -104,6 +112,11 @@ Current semantic package paths: `system/research/coordination_discover/`, `syste
 - **Coordination Discover** consumes an **Evidence Graph** and produces **Learned Edge Scores**.
 - **Coordination Communities** are partitioned from learned weighted edges, not from fixed topology scores.
 - **Coordination Detect** can consume **Coordination Discover** representations, but it does not label unlabeled project events.
+- **Propagation Monitoring** consumes one **Event Snapshot** and separates **Observed Propagation Analysis** from **Propagation Forecast**.
+- **Observed Propagation Analysis** never calls prediction code and must preserve **Propagation Evidence Type** provenance.
+- **Propagation Forecast** must apply an **Observation Cutoff** before candidate construction and may return **Abstain** instead of a fallback prediction.
+- A **Next-Hop Ranking** is displayable only when **Identity Mapping** resolves the candidate to a real event identity.
+- **Candidate Coverage** and **Calibration Status** qualify a **Propagation Forecast**; they are not evidence that a future outcome is certain.
 - **Propagation Analysis** consumes an **Event Snapshot** and may emit a **Propagation Forecast**, **Next-Hop Ranking**, and **Propagation Tree** evidence.
 - **Risk Review** consumes content, coordination, and propagation evidence and produces a **Review Verdict**.
 - **Teacher Review** may create **Teacher Silver Records** for **Selective Student** distillation after governance approval.

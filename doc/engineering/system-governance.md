@@ -40,7 +40,7 @@ system/
         coordination_baseline/ CooRTweet-style fallback baseline implementation
         coordination/   legacy compatibility aliases for coordination_baseline
         crawler/        social/news/mock acquisition adapters
-        propagation/    propagation heuristics and services
+        propagation/    observed propagation projection and compatibility helpers
         review/         Review, Teacher, Student, and governance helpers
         risk/           legacy compatibility aliases for review
         security.py     auth and crypto utilities
@@ -53,7 +53,7 @@ system/
   research/
     coordination_discover/ platform-generic Coordination Discover pipeline
     coordination_detect/   public-label Coordination Detect validation boundary
-    propagation_analysis/  Propagation Analysis hindcast research pipeline
+    propagation_analysis/  deployed sequence inference, checkpoint, and benchmark boundary
     review_teacher/        multi-agent Teacher DAG
     social_bot_detection/  trainable BotRHG Weibo transfer
     *_legacy_alias/        one-version import-only compatibility packages
@@ -138,6 +138,7 @@ Use the glossary in `UBIQUITOUS_LANGUAGE.md` for domain terms. The system-level 
 - `system/research/*_legacy_alias` and `system/runtimes/*_legacy_alias` are import-only compatibility packages.
 - `system/research/coordination_discover`, `system/research/coordination_detect`, `system/research/propagation_analysis`, `system/research/review_teacher`, and `system/runtimes/review_student` are canonical semantic boundaries.
 - `system/research/social_bot_detection` is the canonical internal boundary for trainable BotRHG transfer. It must record dataset fingerprint, model checkpoint hash, missing property/social graph coverage, and comparison against a shallow reference baseline.
+- `system/research/propagation_analysis` owns the deployed propagation sequence model and checkpoint. Public event prediction must use a timezone-aware observation cutoff, must not import `subsystems/`, and must abstain rather than invoke the legacy speed/acceleration runtime when the model is unavailable.
 
 ### Security And Deployment Contract
 
