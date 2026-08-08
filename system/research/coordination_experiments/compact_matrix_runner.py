@@ -239,6 +239,53 @@ def _row_checksum(row: Mapping[str, Any]) -> str:
     return _fingerprint({key: value for key, value in row.items() if key != "row_checksum"})
 
 
+def _row_identity_checksum(row: Mapping[str, Any]) -> str:
+    dynamic_fields = {
+        "row_checksum",
+        "row_path",
+        "runtime_seconds",
+        "peak_memory_bytes",
+        "diagnostics_summary",
+        "memory_profile",
+    }
+    return _fingerprint(
+        {key: value for key, value in row.items() if key not in dynamic_fields}
+    )
+
+
+def _manifest_identity(manifest: Mapping[str, Any]) -> dict[str, Any]:
+    sources = manifest.get("campaign_source_fingerprints", {})
+    stable_sources = {
+        campaign: {
+            key: value
+            for key, value in source.items()
+            if key != "memory_profile"
+        }
+        for campaign, source in sources.items()
+    }
+    stable_rows = [
+        {
+            "run_identity": row["run_identity"],
+            "row_path": row["row_path"],
+            "row_identity_checksum": row["row_identity_checksum"],
+            "status": row["status"],
+        }
+        for row in manifest.get("rows", ())
+    ]
+    return {
+        key: value
+        for key, value in manifest.items()
+        if key not in {"manifest_fingerprint", "campaign_source_fingerprints", "rows", "derived_artifacts"}
+    } | {
+        "campaign_source_fingerprints": stable_sources,
+        "rows": stable_rows,
+        "derived_artifacts": {
+            key: {"path": value["path"]}
+            for key, value in manifest.get("derived_artifacts", {}).items()
+        },
+    }
+
+
 def _prior_row_checksums(output_dir: Path) -> dict[str, str]:
     path = output_dir / "matrix_manifest.json"
     try:
@@ -889,6 +936,7 @@ def run_compact_iohunter_matrix(
                 "run_identity": row["run_identity"],
                 "row_path": row["row_path"],
                 "row_payload_checksum": row["row_checksum"],
+                "row_identity_checksum": _row_identity_checksum(row),
                 "file_checksum": _file_checksum(Path(row["row_path"])),
                 "status": row["status"],
             }
@@ -900,7 +948,7 @@ def run_compact_iohunter_matrix(
             "claim_decisions": {"path": str(claims_path), "checksum": _file_checksum(claims_path)},
         },
     }
-    manifest["manifest_fingerprint"] = _fingerprint(manifest)
+    manifest["manifest_fingerprint"] = _fingerprint(_manifest_identity(manifest))
     _atomic_write_json(output / "matrix_manifest.json", manifest)
     return CompactIOHunterMatrixResult(
         output_dir=str(output),

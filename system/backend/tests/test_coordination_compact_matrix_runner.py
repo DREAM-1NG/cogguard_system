@@ -218,6 +218,7 @@ def test_complete_checksum_valid_row_resumes_without_recomputation(tmp_path, mon
         first = _run_one(package, dataset_root, output)
         row_path = Path(first.rows[0]["row_path"])
         before = row_path.read_bytes()
+        first_manifest = json.loads((output / "matrix_manifest.json").read_text(encoding="utf-8"))
 
         def forbidden_execute(*args, **kwargs):
             raise AssertionError("completed run was recomputed")
@@ -228,6 +229,9 @@ def test_complete_checksum_valid_row_resumes_without_recomputation(tmp_path, mon
         assert second.status_counts == {"success": 1}
         assert second.resume_counts == {"resumed": 1}
         assert row_path.read_bytes() == before
+        second_manifest = json.loads((output / "matrix_manifest.json").read_text(encoding="utf-8"))
+        assert first.manifest_fingerprint == second.manifest_fingerprint
+        assert first_manifest["manifest_fingerprint"] == second_manifest["manifest_fingerprint"]
     finally:
         shutil.rmtree(output, ignore_errors=True)
 
