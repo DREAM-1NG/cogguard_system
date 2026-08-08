@@ -6,13 +6,35 @@ Coordination Discover is the platform-generic Coordination Discover research pip
 
 The backend evidence-constrained dynamic Discover path is frozen as the system mainline. This research runtime is deprecated for system activation and claim-making. IOHunter validation showed the TemporalMAGNN-style/Leiden version improves some modularity-style community separation while severely reducing reconstruction quality against the stable `magnn_legacy` baseline: complete 5-dataset/3-seed deltas were Recon AUC `-0.086226` and Recon AP `-0.064126`. Keep artifacts only for historical replay and negative-result analysis; backend artifact-first loading rejects this model version and falls back to `coordination-evidence-runtime-v2`. See `DEPRECATION_NOTICE.md` and ADR-0012.
 
-## Public API
+The current two-stage research implementation is separate from that deprecated
+TemporalMAGNN-style branch. Its Stage 1 modules are label-free TSGS/MHCR
+Discovery and export `cogguard.discovered-cluster-batch/v1`
+`DiscoveredClusterBatch` artifacts. Stage 2 lives in
+`system/research/coordination_detect`, reads only that batch plus
+detection-only features, and fits its classifier/calibration on labeled
+train/validation cases. The fixed Bayesian rule is retained only as
+`heuristic_baseline_v1`.
 
-- `build_evidence_graph(snapshot) -> EvidenceGraph`
-- `run_dynamic_discover(request) -> DiscoverResult`
-- `run_detect_validation(request, discovery) -> DetectValidationResult`
-- `export_coordination_result(discovery, detect=None) -> dict`
-- `build_process_causal_experiment_report(graph) -> dict`
+The two-stage implementation is supported as research code and contract
+coverage, not as a product cutover. The current IOHunter smoke covers only one
+Russia campaign/seed external-account proxy. Its G-drive artifact and blocked
+claim decisions are under
+`system/output/coordination_two_stage_reproduction/iohunter-matrix-artifact-smoke-v2-20260808`.
+It does not support harmful-CIB, true coordination recovery, causal, observed-
+time, or production-activation claims. ADR-0014 is the normative boundary.
+
+## Research Interfaces
+
+The current Stage 1 interface is
+`CoordinationDiscoveryEngine.discover(events, provenance) -> DiscoveredClusterBatch`.
+The serialized batch is the only interface into the learned Stage 2 package.
+
+`build_evidence_graph`, `run_dynamic_discover`, `run_detect_validation`, and
+`export_coordination_result` belong to the deprecated TemporalMAGNN-style
+research branch. They remain for historical replay and regression coverage;
+`run_detect_validation(request, discovery)` is not the Stage 2 seam and cannot
+support a harmful-CIB claim. `build_process_causal_experiment_report` is an
+exploratory, non-claimable analysis helper.
 
 ## Optimization Priority
 
@@ -70,11 +92,10 @@ by majority seed win rate. It beats the frozen system prior on four of six datas
 the strongest fair baseline. This is not evidence that the candidate is ready to
 replace the frozen Discovery path.
 
-Result artifact:
-`C:\Users\p\AppData\Local\Temp\cogguard-iohunter-strict-discovery-3000-20260806-213538`.
-Each dataset contains `temporal_edge_candidate_metrics.csv`,
-`temporal_edge_candidate_summary.json`, and
-`temporal_edge_candidate_ablation_metrics.csv`.
+The strict candidate summary above is retained as a non-claimable historical
+comparison. New reproducible research outputs must use the explicit G-drive
+Coordination reproduction root. C-drive temporary paths are not valid artifact
+locations for future runs.
 
 Directional one-seed ablation macro AUPRC:
 

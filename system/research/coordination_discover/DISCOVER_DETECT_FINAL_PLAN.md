@@ -1,4 +1,4 @@
-# Coordination Discover Discover + Detect Final Plan
+# Coordination Discovery + Harmful Detection Final Plan
 
 ## Mainline Freeze And Research Reset
 
@@ -6,6 +6,13 @@ The backend evidence-constrained dynamic Coordination Discover path is frozen as
 the system mainline. The `TemporalMAGNN + Leiden` research branch is
 deprecated/non-claimable after its IOHunter reconstruction regression and remains
 available only for replay, comparison, and negative-result analysis.
+
+The current research architecture is explicitly two-stage: label-free TSGS/MHCR
+Discovery emits a versioned `DiscoveredClusterBatch`; learned harmful-CIB
+Detection consumes only that batch and detection-only features. This is not the
+multi-agent review pipeline and does not change the frozen product runtime.
+`heuristic_baseline_v1` remains a comparison baseline, not the learned
+detector. ADR-0014 defines the binding input, output, and activation rules.
 
 The replacement research line is a goal-aligned continuous-time heterogeneous
 evidence model. It must first repair evaluation integrity, then implement a
@@ -28,7 +35,7 @@ This order is intentional. Evidence semantics and temporal locality determine wh
 - Survey boundary: `Detection and Characterization of Coordinated Online Behavior: A Survey` frames coordination work as detection plus characterization and motivates strict claim boundaries.
 - Evidence graph baseline: `Coordination Network Toolkit` motivates multi-behavior, weighted, directed coordination networks instead of a single flattened co-object graph.
 - Temporal baseline: `Temporal Dynamics of Coordinated Online Behavior` motivates window-level graphs, community lineage, membership transitions, stability, archetypes, and influence-oriented analysis.
-- Detect baseline: `IOHunter` sets the public labeled Detect protocol target: supervised, scarce-label, and cross-IO splits with LM plus GNN ablations.
+- External-account proxy baseline: `IOHunter` supports supervised scarce-label and cross-IO account-recovery comparisons. It does not provide harmful-CIB Gold, true coordination communities, or observed-time evidence, so it is not the Stage 2 Detect protocol.
 - Representation target: `SoMeR` motivates future multi-view user representation with temporal activity, text, profile, and network views.
 - Process branch: `Discovering Coordinated Processes From Social Online Networks` motivates ordered behavior motifs, but the current system keeps them descriptive and non-claimable.
 
@@ -62,8 +69,8 @@ Experiment matrix:
 | run | scope | cap | output | conclusion |
 |---|---|---:|---|---|
 | smoke | per-platform | 1500 comments/platform | `system/output/coordination_discover_detect_local/20260722T182955Z` | all platforms `ok`; Detect `missing_labels`; fast regression gate |
-| budgeted matrix | per-platform | 3000 comments/platform | `system/output/coordination_discover_detect_local/20260722T185519Z` | all effectiveness gates passed; budgeted regression evidence |
-| full local matrix | per-platform | uncapped | `system/output/coordination_discover_detect_local/20260723T015347Z` | all local posts/comments loaded; all effectiveness gates passed |
+| budgeted matrix | per-platform | 3000 comments/platform | `system/output/coordination_discover_detect_local/20260722T185519Z` | execution and contract gates passed; Detect remained `missing_labels` |
+| full local matrix | per-platform | uncapped | `system/output/coordination_discover_detect_local/20260723T015347Z` | all local posts/comments loaded; execution gates passed; no effectiveness claim |
 | bounded fusion | combined | 1500 comments/platform | `system/output/coordination_discover_detect_local/20260722T185931Z` | cross-platform snapshot gates passed; no identity or causal claim |
 | long-run attempt | combined / uncapped | uncapped comments | timed out at short interactive budgets | requires explicit long-job budget and artifact strategy |
 
@@ -81,13 +88,13 @@ Bounded combined validation:
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---|
 | combined | 283 | 4297 | 74623 | 6075 | 65 | 321 | 12254 | 25 | missing_labels |
 
-Effectiveness conclusion:
+Local demonstration conclusion:
 
-- Evidence multigraph gate passed: every validated snapshot has directed weighted account multigraph edges and higher-order co-evidence.
-- Dynamic community gate passed: every validated snapshot exports centered window graphs, lineage, and membership transitions.
+- Evidence multigraph implementation gate passed: every validated snapshot has directed weighted account multigraph edges and higher-order co-evidence.
+- Dynamic community implementation gate passed: every validated snapshot exports centered window graphs, lineage, and membership transitions.
 - Detect boundary gate passed: every local run returns `missing_labels` instead of fabricating supervised accuracy.
 - Process motif boundary gate passed: motifs are exported only as `exploratory_non_claimable`, with causal tests not run.
-- The optimization is effective for the local Discovery case study and system demonstration under the budgeted matrix. It is not evidence of supervised Detect performance.
+- The local paths demonstrate that evidence construction and dynamic-community exports run on the case study. They are not an effectiveness comparison or evidence of supervised Detect performance.
 
 ## Claim Boundary
 
@@ -110,7 +117,7 @@ Stage 1: Coordination Discover.
 Stage 2: Coordination Detect.
 
 - Local Trump data path: Detect runs only as a boundary check and returns `missing_labels`.
-- Public labeled path: Detect consumes Discovery representations and must report AUPRC, MaxF1, ECE/calibration, abstain rate, 5-seed confidence intervals, and campaign/platform/time holdout results.
+- Target-task labeled path: Detect consumes serialized `DiscoveredClusterBatch` artifacts plus detection-only features from an approved harmful-CIB corpus, and must report AUPRC, MaxF1, ECE/calibration, abstain rate, 5-seed confidence intervals, and campaign/platform/time holdout results.
 - Metadata rule: Detect metrics without split/campaign/platform/seed metadata are explicitly `exploratory_metrics_only`.
 - Activation rule: no Detect performance claim or production activation without public labeled validation and cross-event checks.
 - Representation rule: text LM features are consumed only as precomputed embeddings; no generated semantic shortcuts are allowed from mojibake or damaged text.
@@ -120,7 +127,7 @@ Stage 2: Coordination Detect.
 1. **P0: repair evaluation integrity.** Use campaign/platform/time holdouts, fit TF-IDF/SVD/scalers and text representations on training data only, use matched hard negatives, run 5 seeds, and add no-edge/no-text/no-higher-order/no-Leiden ablations.
 2. **P1: build a lightweight temporal edge model.** Keep the evidence graph, train directly on account-pair coordination targets, and use continuous time deltas, learnable temporal decay, relation attention, text evidence inputs, and learned edge weights.
 3. **P2: evaluate a real hetero-temporal GNN only after P1 passes.** Add account/content/object/platform node types, relation-specific message passing, event-level temporal memory, and a dynamic-community consistency head only when the lighter model improves reconstruction and Detect transfer.
-4. Keep public labeled IOHunter-style Detect experiments with campaign/platform/time holdout, AUPRC, MaxF1, ECE, abstain, and confidence-interval gates.
+4. Run Stage 2 Detect experiments only on an approved harmful-CIB corpus with campaign/platform/time holdout, AUPRC, MaxF1, ECE, abstain, and confidence-interval gates. Keep IOHunter separate as an external-account proxy benchmark.
 5. Add combined-event long-run jobs with signed manifests, size budgets, and artifact compression.
 6. Add analyst review fixtures for community evidence support/contradiction/unknown without turning them into training labels prematurely.
 

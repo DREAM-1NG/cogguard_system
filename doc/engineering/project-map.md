@@ -18,8 +18,8 @@ research notes. If this file conflicts with older documents, this file wins.
 | `system/runtimes/social_runtime/` | Vendored social crawler runtime for `weibo`, `douyin`, and `xhs`. | Product runtime code; keep dependencies local to this runtime. |
 | `system/runtimes/news_runtime/` | Vendored news extraction runtime for `news`. | Product runtime code; keep dependencies local to this runtime. |
 | `system/runtimes/review_student/` | Deployable Student Review runtime used by `StudentRuntime.predict(case)`. | Product runtime code; keep synchronous, checkpoint-gated, and governance-aware. |
-| `system/research/coordination_discover/` | Platform-generic Coordination Discover pipeline and artifact export boundary. | System-readable research; backend consumes it through analysis adapters. |
-| `system/research/coordination_detect/` | Public-label Coordination Detect validation boundary. | Validation boundary; do not label unlabeled project events. |
+| `system/research/coordination_discover/` | Label-free Coordination Discovery research pipeline, including TSGS/MHCR and the `DiscoveredClusterBatch` seam. | System-readable research; keep product activation frozen until ADR-0014 gates pass. |
+| `system/research/coordination_detect/` | Learned harmful-CIB Detection validation boundary consuming only `DiscoveredClusterBatch` plus detection-only features. | Train/calibrate on approved labeled data only; the fixed Bayesian rule is heuristic baseline only. |
 | `system/research/propagation_analysis/` | Propagation Analysis loaders, hindcast protocol, conformal intervals, and baseline registry. | System-readable research; do not point product code at external research workspaces. |
 | `system/research/review_teacher/` | Multi-agent Teacher Review advisory DAG. | System-readable research; advisory only unless an analyst approves a canonical verdict. |
 | `system/research/social_bot_detection/` | Internal trainable BotRHG transfer pipeline for labeled Weibo accounts. | System-readable research and checkpoint export; text-only transfer until property/social graph coverage is available. |
@@ -71,8 +71,8 @@ CogGuard/
     deploy/                           Static frontend delivery and proxy policy
     ops/                              Explicit database and runtime maintenance operations
     research/
-      coordination_discover/          Coordination Discover research pipeline
-      coordination_detect/            Coordination Detect validation boundary
+      coordination_discover/          Label-free Discovery and DiscoveredClusterBatch seam
+      coordination_detect/            Learned harmful-CIB Detection validation boundary
       propagation_analysis/           Propagation Analysis protocol and baselines
       review_teacher/                 Teacher Review advisory DAG
       social_bot_detection/           trainable BotRHG Weibo transfer
@@ -111,6 +111,15 @@ immutable authenticated approval per candidate and administrator, and
 `analysis_model_activations` stores the active pointer. These records are
 control-plane data and must not be copied into the business-safe frontend
 contracts.
+
+Coordination research is not a product activation shortcut. Stage 1 Discovery
+may consume only observed coordination evidence and must stay label-free; Stage
+2 harmful-CIB Detection may consume only the serialized `DiscoveredClusterBatch`
+plus detection-only features and approved labels. IOHunter external-account
+metrics are proxy-only. The frozen `coordination-evidence-runtime-v2` remains
+the production mainline until the ADR-0014 activation gate passes. New research
+artifacts, reports, caches, and temporary outputs must use explicit G-drive
+paths.
 
 ## Performance Operations
 
