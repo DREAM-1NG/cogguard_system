@@ -8,6 +8,7 @@ import json
 import pickle
 import shutil
 import sys
+import tracemalloc
 import types
 import uuid
 import weakref
@@ -236,7 +237,318 @@ def test_complete_checksum_valid_row_resumes_without_recomputation(tmp_path, mon
         shutil.rmtree(output, ignore_errors=True)
 
 
-def test_resume_rejects_self_checksummed_row_with_stale_run_identity(tmp_path, monkeypatch):
+def test_predictions_are_spooled_and_released_before_evaluator_loading(tmp_path, monkeypatch):
+    package = _load_experiments()
+    matrix_module = importlib.import_module("research.coordination_experiments.compact_matrix_runner")
+    dataset_root = _dataset_root(tmp_path)
+    output = _output_dir(package, "prediction-spool-release")
+    original_execute = matrix_module.execute_compact_discovery_method
+    original_evaluator_load = matrix_module.load_compact_iohunter_evaluator_result
+    prediction_arrays = []
+
+    def observed_execute(*args, **kwargs):
+        outcome = original_execute(*args, **kwargs)
+        if outcome.prediction is not None:
+            prediction_arrays.append(weakref.ref(outcome.prediction.account_scores))
+        return outcome
+
+    def observed_evaluator_load(*args, **kwargs):
+        gc.collect()
+        assert prediction_arrays
+        assert all(reference() is None for reference in prediction_arrays)
+        artifacts = tuple((output / "p").rglob("*.json"))
+        arrays = tuple((output / "p").rglob("*.bin"))
+        assert len(artifacts) == 2
+        assert len(arrays) == 2
+        return original_evaluator_load(*args, **kwargs)
+
+    monkeypatch.setattr(matrix_module, "execute_compact_discovery_method", observed_execute)
+    monkeypatch.setattr(matrix_module, "load_compact_iohunter_evaluator_result", observed_evaluator_load)
+    try:
+        result = package.run_compact_iohunter_matrix(
+            dataset_root,
+            output,
+            campaigns=("russia",),
+            seeds=(42,),
+            methods=("edgebank", "no_mhcr"),
+            memory_budget_bytes=256 * 1024 * 1024,
+            bootstrap_resamples=20,
+        )
+
+        assert result.status_counts == {"success": 2}
+        for row in result.rows:
+            descriptor = row["prediction_artifact"]
+            assert descriptor["schema_version"] == "cogguard.compact-discovery-prediction-artifact/v1"
+            assert Path(descriptor["metadata_path"]).drive.upper() == "G:"
+            assert Path(descriptor["arrays_path"]).drive.upper() == "G:"
+            assert descriptor["metadata_checksum"].startswith("sha256:")
+            assert descriptor["arrays_checksum"].startswith("sha256:")
+    finally:
+        shutil.rmtree(output, ignore_errors=True)
+
+
+def test_valid_prediction_artifact_recovers_without_discovery_recomputation(tmp_path, monkeypatch):
+    package = _load_experiments()
+    matrix_module = importlib.import_module("research.coordination_experiments.compact_matrix_runner")
+    dataset_root = _dataset_root(tmp_path)
+    output = _output_dir(package, "prediction-artifact-resume")
+    original_evaluator_load = matrix_module.load_compact_iohunter_evaluator_result
+
+    def unavailable_evaluator(*args, **kwargs):
+        raise RuntimeError("simulated interruption before evaluation")
+
+    monkeypatch.setattr(matrix_module, "load_compact_iohunter_evaluator_result", unavailable_evaluator)
+    try:
+        first = _run_one(package, dataset_root, output)
+        assert first.status_counts == {"failed": 1}
+        descriptor = first.rows[0]["prediction_artifact"]
+        assert Path(descriptor["metadata_path"]).is_file()
+        assert Path(descriptor["arrays_path"]).is_file()
+
+        monkeypatch.setattr(matrix_module, "load_compact_iohunter_evaluator_result", original_evaluator_load)
+
+        def forbidden_execute(*args, **kwargs):
+            raise AssertionError("valid prediction artifact was recomputed")
+
+        monkeypatch.setattr(matrix_module, "execute_compact_discovery_method", forbidden_execute)
+        second = _run_one(package, dataset_root, output)
+
+        assert second.status_counts == {"success": 1}
+        assert second.resume_counts == {"rewritten": 1}
+        assert second.rows[0]["prediction_artifact_identity"] == descriptor["artifact_identity"]
+    finally:
+        shutil.rmtree(output, ignore_errors=True)
+
+
+def test_corrupt_prediction_artifact_invalidates_completed_row_and_is_rewritten(tmp_path, monkeypatch):
+    package = _load_experiments()
+    matrix_module = importlib.import_module("research.coordination_experiments.compact_matrix_runner")
+    dataset_root = _dataset_root(tmp_path)
+    output = _output_dir(package, "prediction-artifact-corrupt")
+    try:
+        first = _run_one(package, dataset_root, output)
+        descriptor = first.rows[0]["prediction_artifact"]
+        arrays_path = Path(descriptor["arrays_path"])
+        arrays_path.write_bytes(b"corrupt")
+        calls = 0
+        original_execute = matrix_module.execute_compact_discovery_method
+
+        def counted_execute(*args, **kwargs):
+            nonlocal calls
+            calls += 1
+            return original_execute(*args, **kwargs)
+
+        monkeypatch.setattr(matrix_module, "execute_compact_discovery_method", counted_execute)
+        second = _run_one(package, dataset_root, output)
+
+        assert calls == 1
+        assert second.resume_counts == {"rewritten": 1}
+        rewritten = second.rows[0]["prediction_artifact"]
+        assert matrix_module._file_checksum(Path(rewritten["arrays_path"])) == rewritten["arrays_checksum"]
+    finally:
+        shutil.rmtree(output, ignore_errors=True)
+
+
+@pytest.mark.parametrize("metadata_payload", ["[]", "null"])
+def test_non_object_prediction_metadata_is_recomputed_instead_of_aborting(
+    tmp_path, monkeypatch, metadata_payload
+):
+    package = _load_experiments()
+    matrix_module = importlib.import_module("research.coordination_experiments.compact_matrix_runner")
+    dataset_root = _dataset_root(tmp_path)
+    output = _output_dir(package, "prediction-metadata-not-object")
+    try:
+        first = _run_one(package, dataset_root, output)
+        metadata_path = Path(first.rows[0]["prediction_artifact"]["metadata_path"])
+        metadata_path.write_text(metadata_payload, encoding="utf-8")
+        calls = 0
+        original_execute = matrix_module.execute_compact_discovery_method
+
+        def counted_execute(*args, **kwargs):
+            nonlocal calls
+            calls += 1
+            return original_execute(*args, **kwargs)
+
+        monkeypatch.setattr(matrix_module, "execute_compact_discovery_method", counted_execute)
+        second = _run_one(package, dataset_root, output)
+
+        assert calls == 1
+        assert second.status_counts == {"success": 1}
+        assert second.resume_counts == {"rewritten": 1}
+    finally:
+        shutil.rmtree(output, ignore_errors=True)
+
+
+def test_non_finite_prediction_runtime_is_recomputed_instead_of_aborting(tmp_path, monkeypatch):
+    package = _load_experiments()
+    matrix_module = importlib.import_module("research.coordination_experiments.compact_matrix_runner")
+    dataset_root = _dataset_root(tmp_path)
+    output = _output_dir(package, "prediction-runtime-non-finite")
+    try:
+        first = _run_one(package, dataset_root, output)
+        metadata_path = Path(first.rows[0]["prediction_artifact"]["metadata_path"])
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        metadata["runtime_seconds"] = "__NON_FINITE_RUNTIME__"
+        metadata_payload = json.dumps(metadata, ensure_ascii=False, sort_keys=True, indent=2)
+        metadata_path.write_text(
+            metadata_payload.replace('"__NON_FINITE_RUNTIME__"', "1e309") + "\n",
+            encoding="utf-8",
+        )
+        calls = 0
+        original_execute = matrix_module.execute_compact_discovery_method
+
+        def counted_execute(*args, **kwargs):
+            nonlocal calls
+            calls += 1
+            return original_execute(*args, **kwargs)
+
+        monkeypatch.setattr(matrix_module, "execute_compact_discovery_method", counted_execute)
+        second = _run_one(package, dataset_root, output)
+
+        assert calls == 1
+        assert second.status_counts == {"success": 1}
+        assert second.resume_counts == {"rewritten": 1}
+    finally:
+        shutil.rmtree(output, ignore_errors=True)
+
+
+def test_self_checksummed_structural_artifact_damage_is_recomputed(tmp_path, monkeypatch):
+    package = _load_experiments()
+    matrix_module = importlib.import_module("research.coordination_experiments.compact_matrix_runner")
+    dataset_root = _dataset_root(tmp_path)
+    output = _output_dir(package, "prediction-artifact-structural-damage")
+    try:
+        first = _run_one(package, dataset_root, output)
+        metadata_path = Path(first.rows[0]["prediction_artifact"]["metadata_path"])
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        metadata["array_layout"].pop("account_scores")
+        metadata_path.write_text(
+            json.dumps(metadata, ensure_ascii=False, sort_keys=True, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        calls = 0
+        original_execute = matrix_module.execute_compact_discovery_method
+
+        def counted_execute(*args, **kwargs):
+            nonlocal calls
+            calls += 1
+            return original_execute(*args, **kwargs)
+
+        monkeypatch.setattr(matrix_module, "execute_compact_discovery_method", counted_execute)
+        second = _run_one(package, dataset_root, output)
+
+        assert calls == 1
+        assert second.status_counts == {"success": 1}
+    finally:
+        shutil.rmtree(output, ignore_errors=True)
+
+
+@pytest.mark.parametrize(
+    ("provenance_field", "stale_value"),
+    (
+        ("source_dataset", "iohunter-china"),
+        ("data_fingerprint", "sha256:" + ("0" * 64)),
+    ),
+)
+def test_stale_prediction_provenance_is_recomputed_before_evaluation(
+    tmp_path, monkeypatch, provenance_field, stale_value
+):
+    package = _load_experiments()
+    matrix_module = importlib.import_module("research.coordination_experiments.compact_matrix_runner")
+    dataset_root = _dataset_root(tmp_path)
+    output = _output_dir(package, f"stale-prediction-{provenance_field}")
+    try:
+        first = _run_one(package, dataset_root, output)
+        descriptor = first.rows[0]["prediction_artifact"]
+        metadata_path = Path(descriptor["metadata_path"])
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        original_identity = metadata["artifact_identity"]
+        metadata["discovered_cluster_batch"]["provenance"][provenance_field] = stale_value
+        metadata_path.write_text(
+            json.dumps(metadata, ensure_ascii=False, sort_keys=True, indent=2) + "\n",
+            encoding="utf-8",
+        )
+
+        executions = 0
+        evaluated_provenance = []
+        original_execute = matrix_module.execute_compact_discovery_method
+        original_evaluate = matrix_module.evaluate_iohunter_external_account_recovery
+
+        def counted_execute(*args, **kwargs):
+            nonlocal executions
+            executions += 1
+            return original_execute(*args, **kwargs)
+
+        def observed_evaluate(prediction, *args, **kwargs):
+            provenance = prediction.discovered_cluster_batch.provenance
+            evaluated_provenance.append((provenance.source_dataset, provenance.data_fingerprint))
+            return original_evaluate(prediction, *args, **kwargs)
+
+        monkeypatch.setattr(matrix_module, "execute_compact_discovery_method", counted_execute)
+        monkeypatch.setattr(matrix_module, "evaluate_iohunter_external_account_recovery", observed_evaluate)
+        second = _run_one(package, dataset_root, output)
+
+        assert metadata["artifact_identity"] == original_identity
+        assert executions == 1
+        assert evaluated_provenance == [
+            (
+                "iohunter-russia",
+                second.rows[0]["source_layer_fingerprint"],
+            )
+        ]
+        assert second.status_counts == {"success": 1}
+        assert second.resume_counts == {"rewritten": 1}
+    finally:
+        shutil.rmtree(output, ignore_errors=True)
+
+
+def test_prediction_bundle_loads_read_only_memory_maps_without_array_copies(tmp_path):
+    package = _load_experiments()
+    matrix_module = importlib.import_module("research.coordination_experiments.compact_matrix_runner")
+    dataset_root = _dataset_root(tmp_path)
+    output = _output_dir(package, "prediction-artifact-memmap")
+    try:
+        first = _run_one(package, dataset_root, output)
+        descriptor = first.rows[0]["prediction_artifact"]
+        metadata = json.loads(Path(descriptor["metadata_path"]).read_text(encoding="utf-8"))
+        prediction = matrix_module._load_prediction_artifact(
+            output,
+            package.CompactMatrixCoordinate("russia", 42, "fold-000", "edgebank"),
+            metadata,
+        )
+
+        assert metadata["storage_format"] == "raw_array_bundle_v1"
+        assert all(
+            isinstance(getattr(prediction, field_name), np.memmap)
+            and not getattr(prediction, field_name).flags.writeable
+            for field_name in (
+                "candidate_endpoints",
+                "edge_scores",
+                "account_scores",
+                "cluster_assignments",
+            )
+        )
+    finally:
+        shutil.rmtree(output, ignore_errors=True)
+
+
+def test_compact_array_identity_hashes_in_bounded_chunks():
+    _load_experiments()
+    execution_module = importlib.import_module("research.coordination_experiments.compact_execution")
+    array = np.zeros(24 * 1024 * 1024, dtype=np.uint8)
+    tracemalloc.start()
+    try:
+        tracemalloc.reset_peak()
+        digest = execution_module._array_digest(array)
+        _current, peak = tracemalloc.get_traced_memory()
+    finally:
+        tracemalloc.stop()
+
+    assert digest.startswith("sha256:")
+    assert peak < 2 * 1024 * 1024
+
+
+def test_stale_row_identity_is_rewritten_from_valid_prediction_artifact(tmp_path, monkeypatch):
     package = _load_experiments()
     matrix_module = importlib.import_module("research.coordination_experiments.compact_matrix_runner")
     dataset_root = _dataset_root(tmp_path)
@@ -264,14 +576,16 @@ def test_resume_rejects_self_checksummed_row_with_stale_run_identity(tmp_path, m
         monkeypatch.setattr(matrix_module, "execute_compact_discovery_method", counted_execute)
         second = _run_one(package, dataset_root, output)
 
-        assert calls == 1
+        assert calls == 0
         assert second.resume_counts == {"rewritten": 1}
     finally:
         shutil.rmtree(output, ignore_errors=True)
 
 
 @pytest.mark.parametrize("damage", ["corrupt", "stale"])
-def test_corrupt_or_stale_complete_rows_are_rewritten(tmp_path, monkeypatch, damage):
+def test_corrupt_or_stale_rows_are_rewritten_from_valid_prediction_artifacts(
+    tmp_path, monkeypatch, damage
+):
     package = _load_experiments()
     matrix_module = importlib.import_module("research.coordination_experiments.compact_matrix_runner")
     dataset_root = _dataset_root(tmp_path)
@@ -297,7 +611,7 @@ def test_corrupt_or_stale_complete_rows_are_rewritten(tmp_path, monkeypatch, dam
         second = _run_one(package, dataset_root, output)
         rewritten = json.loads(row_path.read_text(encoding="utf-8"))
 
-        assert calls == 1
+        assert calls == 0
         assert second.resume_counts == {"rewritten": 1}
         assert rewritten["schema_version"] == package.IOHUNTER_COMPACT_ROW_SCHEMA_VERSION
     finally:

@@ -6,7 +6,7 @@ import re
 import time
 import tracemalloc
 from collections.abc import Mapping as MappingABC
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from types import MappingProxyType
 from typing import Any, Mapping, Protocol
 
@@ -63,6 +63,27 @@ def _fingerprint(value: Any) -> str:
     return "sha256:" + hashlib.sha256(_canonical_json(value)).hexdigest()
 
 
+def _array_digest(value: np.ndarray) -> str:
+    array = np.asarray(value)
+    if not array.flags.c_contiguous:
+        raise ValueError("fingerprinted arrays must be C-contiguous")
+    digest = hashlib.sha256()
+    digest.update(
+        _canonical_json(
+            {
+                "dtype": array.dtype.str,
+                "shape": list(array.shape),
+                "version": "compact-array-sha256/v1",
+            }
+        )
+    )
+    if array.nbytes:
+        raw = memoryview(array).cast("B")
+        for start in range(0, len(raw), 8 * 1024 * 1024):
+            digest.update(raw[start : start + 8 * 1024 * 1024])
+    return "sha256:" + digest.hexdigest()
+
+
 def _detached_read_only_array(
     value: Any,
     *,
@@ -70,6 +91,14 @@ def _detached_read_only_array(
     shape: tuple[int, ...],
     field_name: str,
 ) -> np.ndarray:
+    if (
+        isinstance(value, np.memmap)
+        and value.mode == "r"
+        and value.dtype == dtype
+        and value.shape == shape
+        and not value.flags.writeable
+    ):
+        return value
     array = np.asarray(value)
     if array.dtype != dtype or array.shape != shape or array.flags.writeable:
         raise ValueError(f"{field_name} must be a read-only {dtype} array with shape {shape}")
@@ -149,12 +178,41 @@ def _cluster_members(batch: DiscoveredClusterBatch) -> set[str]:
     return members
 
 
+def validate_compact_discovery_prediction(
+    prediction: "CompactDiscoveryPrediction",
+    *,
+    campaign: str,
+    source_layer_fingerprint: str,
+    account_count: int,
+    method_id: str,
+    method_version: str,
+    implementation_id: str,
+) -> None:
+    """Apply the same input/implementation contract to fresh and restored predictions."""
+    provenance = prediction.discovered_cluster_batch.provenance
+    if provenance.source_dataset != f"iohunter-{campaign}":
+        raise ValueError("compact Discovery prediction campaign does not match execution input")
+    if provenance.data_fingerprint != source_layer_fingerprint:
+        raise ValueError("compact Discovery prediction data fingerprint does not match execution input")
+    if prediction.account_count != account_count:
+        raise ValueError("compact Discovery prediction account universe does not match execution input")
+    expected = {
+        "method_id": method_id,
+        "method_version": method_version,
+        "implementation_id": implementation_id,
+    }
+    for field_name, expected_value in expected.items():
+        if getattr(prediction, field_name) != expected_value:
+            raise ValueError(f"compact Discovery prediction {field_name} does not match implementation")
+
+
 @dataclass(frozen=True, slots=True)
 class CompactDiscoveryExecutionInput:
     discovery_view: CompactIOHunterDiscoveryView
     seed: int
     method_config_version: str
     method_config: Mapping[str, Any]
+    _fingerprint_cache: str | None = field(default=None, init=False, repr=False, compare=False)
 
     def __post_init__(self) -> None:
         if not isinstance(self.discovery_view, CompactIOHunterDiscoveryView):
@@ -167,14 +225,16 @@ class CompactDiscoveryExecutionInput:
 
     @property
     def fingerprint(self) -> str:
+        if self._fingerprint_cache is not None:
+            return self._fingerprint_cache
         relation_payload = {}
         for layer, edges in self.discovery_view.relation_edges.items():
             relation_payload[layer] = {
                 "relation": edges.relation,
-                "endpoints": edges.endpoints.tobytes().hex(),
-                "weights": edges.weights.tobytes().hex(),
+                "endpoints_digest": _array_digest(edges.endpoints),
+                "weights_digest": _array_digest(edges.weights),
             }
-        return _fingerprint(
+        fingerprint = _fingerprint(
             {
                 "campaign": self.discovery_view.campaign,
                 "account_count": self.discovery_view.account_count,
@@ -184,8 +244,11 @@ class CompactDiscoveryExecutionInput:
                 "seed": self.seed,
                 "method_config_version": self.method_config_version,
                 "method_config": _plain_value(self.method_config),
+                "array_identity_version": "compact-array-sha256/v1",
             }
         )
+        object.__setattr__(self, "_fingerprint_cache", fingerprint)
+        return fingerprint
 
 
 @dataclass(frozen=True, slots=True)
@@ -262,14 +325,10 @@ class CompactDiscoveryPrediction:
             raise ValueError("discovered batch member universe must cover every account exactly once")
         if self.discovered_cluster_batch.provenance.input_account_count != self.account_count:
             raise ValueError("batch member universe account count mismatch")
-        assignment_partition = {
-            frozenset(
-                _account_id(index)
-                for index, value in enumerate(assignments.tolist())
-                if value == cluster_id
-            )
-            for cluster_id in set(assignments.tolist())
-        }
+        assignment_members: dict[int, set[str]] = {}
+        for index, value in enumerate(assignments):
+            assignment_members.setdefault(int(value), set()).add(_account_id(index))
+        assignment_partition = {frozenset(members) for members in assignment_members.values()}
         batch_partition = {
             frozenset(cluster.member_account_ids)
             for cluster in self.discovered_cluster_batch.candidate_clusters
@@ -290,14 +349,15 @@ class CompactDiscoveryPrediction:
     def artifact_identity(self) -> str:
         return _fingerprint(
             {
+                "array_identity_version": "compact-array-sha256/v1",
                 "method_id": self.method_id,
                 "method_version": self.method_version,
                 "implementation_id": self.implementation_id,
                 "account_count": self.account_count,
-                "candidate_endpoints": self.candidate_endpoints.tobytes().hex(),
-                "edge_scores": self.edge_scores.tobytes().hex(),
-                "account_scores": self.account_scores.tobytes().hex(),
-                "cluster_assignments": self.cluster_assignments.tobytes().hex(),
+                "candidate_endpoints": _array_digest(self.candidate_endpoints),
+                "edge_scores": _array_digest(self.edge_scores),
+                "account_scores": _array_digest(self.account_scores),
+                "cluster_assignments": _array_digest(self.cluster_assignments),
             }
         )
 
@@ -386,17 +446,15 @@ def execute_compact_discovery_method(
         prediction = implementation.execute(execution_input)
         if not isinstance(prediction, CompactDiscoveryPrediction):
             raise ValueError("compact Discovery implementation returned an invalid prediction")
-        expected_dataset = f"iohunter-{execution_input.discovery_view.campaign}"
-        provenance = prediction.discovered_cluster_batch.provenance
-        if provenance.source_dataset != expected_dataset:
-            raise ValueError("compact Discovery prediction campaign does not match execution input")
-        if provenance.data_fingerprint != execution_input.discovery_view.source_layer_fingerprint:
-            raise ValueError("compact Discovery prediction data fingerprint does not match execution input")
-        if prediction.account_count != execution_input.discovery_view.account_count:
-            raise ValueError("compact Discovery prediction account universe does not match execution input")
-        for field_name in ("method_id", "method_version", "implementation_id"):
-            if getattr(prediction, field_name) != common[field_name]:
-                raise ValueError(f"compact Discovery prediction {field_name} does not match implementation")
+        validate_compact_discovery_prediction(
+            prediction,
+            campaign=execution_input.discovery_view.campaign,
+            source_layer_fingerprint=execution_input.discovery_view.source_layer_fingerprint,
+            account_count=execution_input.discovery_view.account_count,
+            method_id=common["method_id"],
+            method_version=common["method_version"],
+            implementation_id=common["implementation_id"],
+        )
         _, peak = tracemalloc.get_traced_memory()
         return CompactDiscoveryExecutionOutcome(
             **common,
@@ -630,4 +688,5 @@ __all__ = [
     "IOHunterExternalEvaluationResult",
     "evaluate_iohunter_external_account_recovery",
     "execute_compact_discovery_method",
+    "validate_compact_discovery_prediction",
 ]

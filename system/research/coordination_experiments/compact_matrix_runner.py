@@ -7,8 +7,10 @@ import hashlib
 import importlib.metadata
 import io
 import json
+import math
 import os
 import platform
+import secrets
 import sys
 from collections import Counter, defaultdict
 from collections.abc import Mapping as MappingABC, Sequence
@@ -25,10 +27,13 @@ from .compact_discovery_methods import (
 )
 from .compact_execution import (
     CompactDiscoveryExecutionInput,
+    CompactDiscoveryPrediction,
     IOHunterExternalEvaluationInput,
     evaluate_iohunter_external_account_recovery,
     execute_compact_discovery_method,
+    validate_compact_discovery_prediction,
 )
+from ..coordination_discover.stage1.contracts import DiscoveredClusterBatch
 from .iohunter_compact import (
     compact_fold_fingerprint,
     load_compact_iohunter_discovery,
@@ -53,8 +58,9 @@ IOHUNTER_COMPACT_MATRIX_SCHEMA_VERSION = "cogguard.iohunter-compact-matrix/v1"
 IOHUNTER_COMPACT_ROW_SCHEMA_VERSION = "cogguard.iohunter-compact-matrix-row/v1"
 IOHUNTER_COMPACT_AGGREGATE_SCHEMA_VERSION = "cogguard.iohunter-compact-aggregates/v1"
 IOHUNTER_COMPACT_CLAIM_SCHEMA_VERSION = "cogguard.iohunter-compact-claims/v1"
-IOHUNTER_COMPACT_IMPLEMENTATION_VERSION = "task-7c-compact-matrix-v1"
+IOHUNTER_COMPACT_IMPLEMENTATION_VERSION = "task-7c-compact-matrix-v2"
 IOHUNTER_COMPACT_METHOD_CONFIG_VERSION = "compact-discovery-method-config/v1"
+COMPACT_PREDICTION_ARTIFACT_SCHEMA_VERSION = "cogguard.compact-discovery-prediction-artifact/v1"
 IOHUNTER_EXTERNAL_EVALUATION_SCOPE = "external_account_recovery_not_coordination_ground_truth"
 _EVALUATION_CONFIG = {"threshold_objective": "macro_f1"}
 _CLAIMABLE_PROXY_METRICS = frozenset(
@@ -69,6 +75,12 @@ _REQUIRED_PROXY_PAIRS = frozenset(
     (campaign, seed)
     for campaign in IOHUNTER_COMPACT_CAMPAIGNS
     for seed in IOHUNTER_COMPACT_SEEDS
+)
+_PREDICTION_ARRAY_FIELDS = (
+    "candidate_endpoints",
+    "edge_scores",
+    "account_scores",
+    "cluster_assignments",
 )
 
 
@@ -90,9 +102,12 @@ def _file_checksum(path: Path) -> str:
 
 def _atomic_write_text(path: Path, text: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_name(path.name + ".tmp")
-    temporary.write_text(text, encoding="utf-8", newline="")
-    os.replace(temporary, path)
+    temporary = path.with_name(f".{path.name}.{os.getpid()}.{secrets.token_hex(8)}.tmp")
+    try:
+        temporary.write_text(text, encoding="utf-8", newline="")
+        os.replace(temporary, path)
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 def _atomic_write_json(path: Path, value: Any) -> None:
@@ -147,6 +162,20 @@ class CompactIOHunterMatrixResult:
             "row_count": len(self.rows),
             "status_counts": dict(self.status_counts),
         }
+
+
+@dataclass(frozen=True, slots=True)
+class _SpooledExecution:
+    coordinate: CompactMatrixCoordinate
+    method_version: str
+    implementation_id: str
+    execution_input_fingerprint: str
+    runtime_seconds: float
+    peak_memory_bytes: int
+    status: str
+    reason: str | None
+    prediction_artifact: Mapping[str, Any] | None
+    prediction_array_bytes: int
 
 
 def _canonical_subset(values: Sequence[Any] | None, canonical: tuple[Any, ...], field_name: str) -> tuple[Any, ...]:
@@ -217,6 +246,334 @@ def _row_path(output_dir: Path, coordinate: CompactMatrixCoordinate) -> Path:
     ).resolve(strict=False)
     path.relative_to(output_dir)
     return path
+
+
+def _prediction_artifact_paths(
+    output_dir: Path,
+    coordinate: CompactMatrixCoordinate,
+) -> tuple[Path, Path]:
+    directory = (
+        output_dir
+        / "p"
+        / coordinate.campaign
+        / str(coordinate.seed)
+    ).resolve(strict=False)
+    directory.relative_to(output_dir)
+    return (
+        directory / f"{coordinate.method_id}.json",
+        directory / f"{coordinate.method_id}.bin",
+    )
+
+
+def _atomic_write_prediction_arrays(
+    path: Path,
+    prediction: CompactDiscoveryPrediction,
+) -> dict[str, dict[str, Any]]:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(f".{path.name}.{os.getpid()}.{secrets.token_hex(8)}.tmp")
+    layout: dict[str, dict[str, Any]] = {}
+    offset = 0
+    try:
+        with temporary.open("wb") as stream:
+            for field_name in _PREDICTION_ARRAY_FIELDS:
+                array = np.asarray(getattr(prediction, field_name))
+                if not array.flags.c_contiguous:
+                    raise ValueError(f"{field_name} must be C-contiguous for artifact storage")
+                raw = memoryview(array).cast("B")
+                layout[field_name] = {
+                    "dtype": array.dtype.str,
+                    "shape": list(array.shape),
+                    "offset": offset,
+                    "nbytes": len(raw),
+                }
+                for start in range(0, len(raw), 8 * 1024 * 1024):
+                    stream.write(raw[start : start + 8 * 1024 * 1024])
+                offset += len(raw)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, path)
+    finally:
+        temporary.unlink(missing_ok=True)
+    return layout
+
+
+def _prediction_artifact_descriptor(metadata_path: Path, metadata: Mapping[str, Any]) -> dict[str, Any]:
+    arrays_path = Path(str(metadata["arrays_path"])).resolve(strict=False)
+    return {
+        "schema_version": COMPACT_PREDICTION_ARTIFACT_SCHEMA_VERSION,
+        "metadata_path": str(metadata_path.resolve(strict=False)),
+        "arrays_path": str(arrays_path),
+        "metadata_checksum": _file_checksum(metadata_path),
+        "arrays_checksum": str(metadata["arrays_checksum"]),
+        "artifact_identity": str(metadata["artifact_identity"]),
+        "array_bytes": int(metadata["array_bytes"]),
+    }
+
+
+def _write_prediction_artifact(
+    output_dir: Path,
+    coordinate: CompactMatrixCoordinate,
+    prediction: CompactDiscoveryPrediction,
+    *,
+    source_layer_fingerprint: str,
+    source_sha256: str,
+    method_config: Mapping[str, Any],
+    execution_input_fingerprint: str,
+    runtime_seconds: float,
+    peak_memory_bytes: int,
+    execution_status: str,
+    execution_reason: str | None,
+) -> dict[str, Any]:
+    metadata_path, arrays_path = _prediction_artifact_paths(output_dir, coordinate)
+    array_layout = _atomic_write_prediction_arrays(arrays_path, prediction)
+    metadata = {
+        "schema_version": COMPACT_PREDICTION_ARTIFACT_SCHEMA_VERSION,
+        "coordinate": dataclasses.asdict(coordinate),
+        "source_layer_fingerprint": source_layer_fingerprint,
+        "source_sha256": source_sha256,
+        "method_config_version": IOHUNTER_COMPACT_METHOD_CONFIG_VERSION,
+        "method_config": dict(method_config),
+        "method_version": prediction.method_version,
+        "implementation_id": prediction.implementation_id,
+        "execution_input_fingerprint": execution_input_fingerprint,
+        "runtime_seconds": float(runtime_seconds),
+        "peak_memory_bytes": int(peak_memory_bytes),
+        "execution_status": execution_status,
+        "execution_reason": execution_reason,
+        "artifact_identity": prediction.artifact_identity,
+        "array_bytes": _prediction_compact_array_bytes(prediction),
+        "storage_format": "raw_array_bundle_v1",
+        "array_layout": array_layout,
+        "arrays_path": str(arrays_path),
+        "arrays_checksum": _file_checksum(arrays_path),
+        "discovered_cluster_batch": prediction.discovered_cluster_batch.to_dict(),
+        "diagnostics": _plain_compact(prediction.diagnostics),
+        "claim_markers": list(prediction.claim_markers),
+    }
+    _atomic_write_json(metadata_path, metadata)
+    return _prediction_artifact_descriptor(metadata_path, metadata)
+
+
+def _validate_prediction_artifact(
+    output_dir: Path,
+    coordinate: CompactMatrixCoordinate,
+    *,
+    implementation: Any,
+    source_layer_fingerprint: str,
+    account_count: int,
+    source_sha256: str,
+    method_config: Mapping[str, Any],
+    execution_input_fingerprint: str,
+    descriptor: Mapping[str, Any] | None = None,
+) -> tuple[dict[str, Any], dict[str, Any]] | None:
+    expected_metadata_path, expected_arrays_path = _prediction_artifact_paths(output_dir, coordinate)
+    if descriptor is not None:
+        if not isinstance(descriptor, MappingABC):
+            return None
+        if descriptor.get("schema_version") != COMPACT_PREDICTION_ARTIFACT_SCHEMA_VERSION:
+            return None
+        try:
+            declared_metadata_path = Path(str(descriptor["metadata_path"])).resolve(strict=False)
+            declared_arrays_path = Path(str(descriptor["arrays_path"])).resolve(strict=False)
+        except (KeyError, OSError, ValueError):
+            return None
+        if declared_metadata_path != expected_metadata_path or declared_arrays_path != expected_arrays_path:
+            return None
+    if not expected_metadata_path.is_file() or not expected_arrays_path.is_file():
+        return None
+    try:
+        metadata_checksum = _file_checksum(expected_metadata_path)
+        arrays_checksum = _file_checksum(expected_arrays_path)
+        metadata = json.loads(expected_metadata_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    if not isinstance(metadata, MappingABC):
+        return None
+    if descriptor is not None and (
+        descriptor.get("metadata_checksum") != metadata_checksum
+        or descriptor.get("arrays_checksum") != arrays_checksum
+    ):
+        return None
+    expected = {
+        "schema_version": COMPACT_PREDICTION_ARTIFACT_SCHEMA_VERSION,
+        "coordinate": dataclasses.asdict(coordinate),
+        "source_layer_fingerprint": source_layer_fingerprint,
+        "source_sha256": source_sha256,
+        "method_config_version": IOHUNTER_COMPACT_METHOD_CONFIG_VERSION,
+        "method_config": dict(method_config),
+        "method_version": implementation.method_version,
+        "implementation_id": implementation.implementation_id,
+        "execution_input_fingerprint": execution_input_fingerprint,
+        "storage_format": "raw_array_bundle_v1",
+        "arrays_path": str(expected_arrays_path),
+        "arrays_checksum": arrays_checksum,
+    }
+    if any(metadata.get(key) != value for key, value in expected.items()):
+        return None
+    if not isinstance(metadata.get("array_bytes"), int) or metadata["array_bytes"] < 0:
+        return None
+    runtime_seconds = metadata.get("runtime_seconds")
+    if (
+        isinstance(runtime_seconds, bool)
+        or not isinstance(runtime_seconds, (int, float))
+        or not math.isfinite(runtime_seconds)
+        or runtime_seconds < 0
+        or not isinstance(metadata.get("peak_memory_bytes"), int)
+        or metadata["peak_memory_bytes"] < 0
+        or metadata.get("execution_status") != "success"
+    ):
+        return None
+    if descriptor is not None and (
+        descriptor.get("artifact_identity") != metadata.get("artifact_identity")
+        or descriptor.get("array_bytes") != metadata.get("array_bytes")
+    ):
+        return None
+    try:
+        prediction = _load_prediction_artifact(output_dir, coordinate, metadata)
+        validate_compact_discovery_prediction(
+            prediction,
+            campaign=coordinate.campaign,
+            source_layer_fingerprint=source_layer_fingerprint,
+            account_count=account_count,
+            method_id=implementation.method_id,
+            method_version=implementation.method_version,
+            implementation_id=implementation.implementation_id,
+        )
+        if prediction.artifact_identity != metadata.get("artifact_identity"):
+            return None
+    except (KeyError, OSError, TypeError, ValueError):
+        return None
+    finally:
+        if "prediction" in locals():
+            del prediction
+        gc.collect()
+    return metadata, _prediction_artifact_descriptor(expected_metadata_path, metadata)
+
+
+def _prediction_memmap(
+    path: Path,
+    layout: Mapping[str, Any],
+    field_name: str,
+    *,
+    dtype: np.dtype | tuple[np.dtype, ...],
+    shape: tuple[int, ...],
+) -> np.ndarray:
+    entry = layout.get(field_name)
+    if not isinstance(entry, MappingABC):
+        raise ValueError(f"prediction artifact is missing {field_name} layout")
+    declared_dtype = np.dtype(entry.get("dtype"))
+    allowed_dtypes = dtype if isinstance(dtype, tuple) else (dtype,)
+    if declared_dtype not in allowed_dtypes:
+        raise ValueError(f"prediction artifact {field_name} dtype is invalid")
+    if entry.get("shape") != list(shape):
+        raise ValueError(f"prediction artifact {field_name} shape is invalid")
+    offset = entry.get("offset")
+    nbytes = entry.get("nbytes")
+    expected_nbytes = int(np.prod(shape, dtype=np.int64)) * declared_dtype.itemsize
+    if (
+        isinstance(offset, bool)
+        or not isinstance(offset, int)
+        or offset < 0
+        or isinstance(nbytes, bool)
+        or not isinstance(nbytes, int)
+        or nbytes != expected_nbytes
+    ):
+        raise ValueError(f"prediction artifact {field_name} byte layout is invalid")
+    if nbytes == 0:
+        empty = np.empty(shape, dtype=declared_dtype)
+        empty.setflags(write=False)
+        return empty
+    return np.memmap(path, dtype=declared_dtype, mode="r", offset=offset, shape=shape, order="C")
+
+
+def _load_prediction_artifact(
+    output_dir: Path,
+    coordinate: CompactMatrixCoordinate,
+    metadata: Mapping[str, Any],
+) -> CompactDiscoveryPrediction:
+    _metadata_path, arrays_path = _prediction_artifact_paths(output_dir, coordinate)
+    if not isinstance(metadata, MappingABC):
+        raise ValueError("prediction artifact metadata must be an object")
+    if metadata.get("storage_format") != "raw_array_bundle_v1":
+        raise ValueError("prediction artifact storage format is invalid")
+    if _file_checksum(arrays_path) != metadata.get("arrays_checksum"):
+        raise ValueError("prediction artifact array checksum does not match payload")
+    layout = metadata.get("array_layout")
+    if not isinstance(layout, MappingABC) or set(layout) != set(_PREDICTION_ARRAY_FIELDS):
+        raise ValueError("prediction artifact array layout is incomplete")
+    expected_offset = 0
+    for field_name in _PREDICTION_ARRAY_FIELDS:
+        entry = layout[field_name]
+        if (
+            not isinstance(entry, MappingABC)
+            or entry.get("offset") != expected_offset
+            or isinstance(entry.get("nbytes"), bool)
+            or not isinstance(entry.get("nbytes"), int)
+            or entry["nbytes"] < 0
+        ):
+            raise ValueError("prediction artifact array layout is not contiguous")
+        expected_offset += entry["nbytes"]
+    if (
+        expected_offset != arrays_path.stat().st_size
+        or metadata.get("array_bytes") != expected_offset
+    ):
+        raise ValueError("prediction artifact array byte total is invalid")
+    batch = DiscoveredClusterBatch.from_dict(metadata["discovered_cluster_batch"])
+    account_count = batch.provenance.input_account_count
+    endpoint_layout = layout["candidate_endpoints"]
+    if not isinstance(endpoint_layout, MappingABC):
+        raise ValueError("prediction artifact endpoint layout is invalid")
+    endpoint_shape = endpoint_layout.get("shape")
+    if (
+        not isinstance(endpoint_shape, list)
+        or len(endpoint_shape) != 2
+        or endpoint_shape[1] != 2
+        or isinstance(endpoint_shape[0], bool)
+        or not isinstance(endpoint_shape[0], int)
+        or endpoint_shape[0] < 0
+    ):
+        raise ValueError("prediction artifact endpoint shape is invalid")
+    edge_count = endpoint_shape[0]
+    prediction = CompactDiscoveryPrediction(
+        account_count=account_count,
+        candidate_endpoints=_prediction_memmap(
+            arrays_path,
+            layout,
+            "candidate_endpoints",
+            dtype=(np.dtype("<u2"), np.dtype("<u4")),
+            shape=(edge_count, 2),
+        ),
+        edge_scores=_prediction_memmap(
+            arrays_path,
+            layout,
+            "edge_scores",
+            dtype=np.dtype("<f4"),
+            shape=(edge_count,),
+        ),
+        account_scores=_prediction_memmap(
+            arrays_path,
+            layout,
+            "account_scores",
+            dtype=np.dtype("<f4"),
+            shape=(account_count,),
+        ),
+        cluster_assignments=_prediction_memmap(
+            arrays_path,
+            layout,
+            "cluster_assignments",
+            dtype=np.dtype("<i4"),
+            shape=(account_count,),
+        ),
+        discovered_cluster_batch=batch,
+        method_id=str(metadata["coordinate"]["method_id"]),
+        method_version=str(metadata["method_version"]),
+        implementation_id=str(metadata["implementation_id"]),
+        diagnostics=metadata.get("diagnostics") or {},
+        claim_markers=tuple(metadata.get("claim_markers") or ()),
+    )
+    if prediction.artifact_identity != metadata.get("artifact_identity"):
+        raise ValueError("prediction artifact identity does not match payload")
+    return prediction
 
 
 def _plain_compact(value: Any, *, depth: int = 0) -> Any:
@@ -304,10 +661,12 @@ def _prior_row_checksums(output_dir: Path) -> dict[str, str]:
 def _resume_candidate(
     path: Path,
     *,
+    output_dir: Path,
     prior_file_checksum: str | None,
     coordinate: CompactMatrixCoordinate,
     implementation: Any,
     source_layer_fingerprint: str,
+    account_count: int,
     source_sha256: str,
     execution_input_fingerprint: str,
     method_config: Mapping[str, Any],
@@ -353,6 +712,25 @@ def _resume_candidate(
         execution_input_fingerprint=execution_input_fingerprint,
     )
     if row.get("run_identity") != expected_identity:
+        return None
+    artifact_identity = row.get("prediction_artifact_identity")
+    if artifact_identity is not None:
+        validated = _validate_prediction_artifact(
+            output_dir,
+            coordinate,
+            implementation=implementation,
+            source_layer_fingerprint=source_layer_fingerprint,
+            account_count=account_count,
+            source_sha256=source_sha256,
+            method_config=method_config,
+            execution_input_fingerprint=execution_input_fingerprint,
+            descriptor=row.get("prediction_artifact"),
+        )
+        if validated is None or validated[0].get("artifact_identity") != artifact_identity:
+            return None
+    elif row.get("prediction_artifact") is not None:
+        return None
+    if row.get("status") == "failed":
         return None
     return row
 
@@ -419,6 +797,7 @@ def _blocked_load_row(
         "fold_fingerprint": None,
         "execution_input_fingerprint": None,
         "prediction_artifact_identity": None,
+        "prediction_artifact": None,
         "runtime_seconds": 0.0,
         "peak_memory_bytes": 0,
         "status": "blocked",
@@ -502,7 +881,7 @@ def _run_campaign(
 
     rows: list[dict[str, Any]] = []
     actions: Counter[str] = Counter()
-    pending_executions = []
+    pending_executions: list[_SpooledExecution] = []
     view = discovery_load.discovery_view
     for coordinate in coordinates:
         path = _row_path(output_dir, coordinate)
@@ -518,10 +897,12 @@ def _run_campaign(
         )
         resumed = _resume_candidate(
             path,
+            output_dir=output_dir,
             prior_file_checksum=prior_checksums.get(str(path)),
             coordinate=coordinate,
             implementation=implementation,
             source_layer_fingerprint=view.source_layer_fingerprint,
+            account_count=view.account_count,
             source_sha256=discovery_load.source_sha256,
             execution_input_fingerprint=execution_input.fingerprint,
             method_config=exact_config,
@@ -531,14 +912,74 @@ def _run_campaign(
             actions["resumed"] += 1
             continue
 
+        recovered = _validate_prediction_artifact(
+            output_dir,
+            coordinate,
+            implementation=implementation,
+            source_layer_fingerprint=view.source_layer_fingerprint,
+            account_count=view.account_count,
+            source_sha256=discovery_load.source_sha256,
+            method_config=exact_config,
+            execution_input_fingerprint=execution_input.fingerprint,
+        )
+        if recovered is not None:
+            metadata, descriptor = recovered
+            pending_executions.append(
+                _SpooledExecution(
+                    coordinate=coordinate,
+                    method_version=str(metadata["method_version"]),
+                    implementation_id=str(metadata["implementation_id"]),
+                    execution_input_fingerprint=str(metadata["execution_input_fingerprint"]),
+                    runtime_seconds=float(metadata["runtime_seconds"]),
+                    peak_memory_bytes=int(metadata["peak_memory_bytes"]),
+                    status=str(metadata["execution_status"]),
+                    reason=metadata.get("execution_reason"),
+                    prediction_artifact=descriptor,
+                    prediction_array_bytes=int(metadata["array_bytes"]),
+                )
+            )
+            actions["rewritten" if existed_before else "executed"] += 1
+            continue
+
         outcome = execute_compact_discovery_method(
             {coordinate.method_id: implementation},
             coordinate.method_id,
             execution_input,
         )
+        descriptor = None
+        prediction_array_bytes = 0
+        if outcome.prediction is not None:
+            descriptor = _write_prediction_artifact(
+                output_dir,
+                coordinate,
+                outcome.prediction,
+                source_layer_fingerprint=view.source_layer_fingerprint,
+                source_sha256=discovery_load.source_sha256,
+                method_config=exact_config,
+                execution_input_fingerprint=outcome.execution_input_fingerprint,
+                runtime_seconds=outcome.runtime_seconds,
+                peak_memory_bytes=outcome.peak_memory_bytes,
+                execution_status=outcome.status,
+                execution_reason=outcome.reason,
+            )
+            prediction_array_bytes = int(descriptor["array_bytes"])
         pending_executions.append(
-            (coordinate, path, existed_before, implementation, exact_config, execution_input, outcome)
+            _SpooledExecution(
+                coordinate=coordinate,
+                method_version=outcome.method_version,
+                implementation_id=outcome.implementation_id,
+                execution_input_fingerprint=outcome.execution_input_fingerprint,
+                runtime_seconds=outcome.runtime_seconds,
+                peak_memory_bytes=outcome.peak_memory_bytes,
+                status=outcome.status,
+                reason=outcome.reason,
+                prediction_artifact=descriptor,
+                prediction_array_bytes=prediction_array_bytes,
+            )
         )
+        actions["rewritten" if existed_before else "executed"] += 1
+        del outcome
+        gc.collect()
 
     evaluator = None
     evaluator_memory_profile = discovery_load.memory_profile
@@ -546,9 +987,9 @@ def _run_campaign(
     if pending_executions:
         try:
             retained_compact_array_bytes = int(discovery_load.memory_profile.compact_array_bytes)
-            retained_compact_array_bytes += sum(
-                _prediction_compact_array_bytes(outcome.prediction)
-                for *_, outcome in pending_executions
+            retained_compact_array_bytes += max(
+                (execution.prediction_array_bytes for execution in pending_executions),
+                default=0,
             )
             evaluator_load = load_compact_iohunter_evaluator_result(
                 source,
@@ -578,12 +1019,24 @@ def _run_campaign(
             else:
                 evaluator_load_error = exc
 
-    for coordinate, path, existed_before, implementation, exact_config, execution_input, outcome in pending_executions:
-        prediction = outcome.prediction
+    for execution in pending_executions:
+        coordinate = execution.coordinate
+        path = _row_path(output_dir, coordinate)
+        implementation = registry.implementation(coordinate.method_id)
+        exact_config = method_configs[coordinate.method_id]
+        prediction = None
+        prediction_load_error: Exception | None = None
+        if execution.prediction_artifact is not None:
+            try:
+                metadata_path = Path(str(execution.prediction_artifact["metadata_path"]))
+                metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+                prediction = _load_prediction_artifact(output_dir, coordinate, metadata)
+            except Exception as exc:
+                prediction_load_error = exc
         metrics: Mapping[str, float] = {}
         claim_markers = set(prediction.claim_markers if prediction is not None else ())
-        status = outcome.status
-        reason = outcome.reason
+        status = execution.status
+        reason = execution.reason
         source_sha256 = discovery_load.source_sha256
         evaluator_fingerprint = None
         fold_fingerprint = None
@@ -591,10 +1044,16 @@ def _run_campaign(
             {
                 "coordinate": dataclasses.asdict(coordinate),
                 "evaluator_load_failure": type(evaluator_load_error).__name__ if evaluator_load_error else None,
-                "execution_input_fingerprint": execution_input.fingerprint,
+                "execution_input_fingerprint": execution.execution_input_fingerprint,
             }
         )
-        if evaluator_load_error is not None:
+        if prediction_load_error is not None:
+            status = "failed"
+            reason = (
+                "prediction artifact load failed: "
+                f"{type(prediction_load_error).__name__}: {prediction_load_error}"
+            )
+        elif evaluator_load_error is not None:
             status = "failed"
             reason = (
                 "external account-recovery evaluator load failed: "
@@ -612,9 +1071,9 @@ def _run_campaign(
                 source_sha256=evaluator.source_sha256,
                 evaluator_fingerprint=evaluator.content_fingerprint,
                 fold_fingerprint=fold_fingerprint,
-                execution_input_fingerprint=execution_input.fingerprint,
+                execution_input_fingerprint=execution.execution_input_fingerprint,
             )
-            if outcome.status == "success" and prediction is not None:
+            if execution.status == "success" and prediction is not None:
                 try:
                     evaluation_input = IOHunterExternalEvaluationInput(
                         evaluator=evaluator,
@@ -638,8 +1097,8 @@ def _run_campaign(
             "seed": coordinate.seed,
             "fold_id": coordinate.fold_id,
             "method_id": coordinate.method_id,
-            "method_version": outcome.method_version,
-            "implementation_id": outcome.implementation_id,
+            "method_version": execution.method_version,
+            "implementation_id": execution.implementation_id,
             "implementation_version": IOHUNTER_COMPACT_IMPLEMENTATION_VERSION,
             "method_config_version": IOHUNTER_COMPACT_METHOD_CONFIG_VERSION,
             "method_config": dict(exact_config),
@@ -647,11 +1106,12 @@ def _run_campaign(
             "source_sha256": source_sha256,
             "evaluator_fingerprint": evaluator_fingerprint,
             "fold_fingerprint": fold_fingerprint,
-            "execution_input_fingerprint": outcome.execution_input_fingerprint,
+            "execution_input_fingerprint": execution.execution_input_fingerprint,
             "prediction_artifact_identity": prediction.artifact_identity if prediction is not None else None,
-            "runtime_seconds": outcome.runtime_seconds,
+            "prediction_artifact": dict(execution.prediction_artifact) if execution.prediction_artifact else None,
+            "runtime_seconds": execution.runtime_seconds,
             "peak_memory_bytes": max(
-                int(outcome.peak_memory_bytes),
+                int(execution.peak_memory_bytes),
                 int(evaluator_memory_profile.estimated_peak_bytes),
             ),
             "status": status,
@@ -666,7 +1126,8 @@ def _run_campaign(
             "row_path": str(path),
         }
         rows.append(_write_completed_row(path, row))
-        actions["rewritten" if existed_before else "executed"] += 1
+        del prediction
+        gc.collect()
 
     campaign_identity = {
         "load_status": "success",

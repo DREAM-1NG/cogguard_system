@@ -202,6 +202,29 @@ def test_execution_input_fingerprint_excludes_evaluator_labels_folds_fused_and_r
     assert not hasattr(first, "events")
 
 
+def test_execution_input_fingerprint_is_cached_after_first_access(monkeypatch):
+    package = _load_experiments()
+    module = importlib.import_module("research.coordination_experiments.compact_execution")
+    original_digest = module._array_digest
+    calls = 0
+
+    def counted_digest(value):
+        nonlocal calls
+        calls += 1
+        return original_digest(value)
+
+    monkeypatch.setattr(module, "_array_digest", counted_digest)
+    execution_input = _execution_input(package)
+
+    first = execution_input.fingerprint
+    calls_after_first = calls
+    second = execution_input.fingerprint
+
+    assert first == second
+    assert calls_after_first > 0
+    assert calls == calls_after_first
+
+
 @pytest.mark.parametrize(
     "method_config",
     (
@@ -351,6 +374,39 @@ def test_prediction_arrays_are_immutable_sorted_finite_bounded_and_cluster_compl
             method_version="fixture-compact-v1",
             implementation_id="fixture-implementation-v1",
         )
+
+
+def test_prediction_partition_validation_scans_assignments_once_without_tolist(monkeypatch):
+    package = _load_experiments()
+    execution_module = importlib.import_module("research.coordination_experiments.compact_execution")
+    original_detach = execution_module._detached_read_only_array
+
+    class SinglePassAssignments(np.ndarray):
+        scan_count = 0
+
+        def tolist(self):
+            raise AssertionError("cluster assignment validation must not materialize a Python list")
+
+        def __iter__(self):
+            type(self).scan_count += 1
+            if type(self).scan_count > 1:
+                raise AssertionError("cluster assignment validation scanned assignments more than once")
+            return super().__iter__()
+
+    def instrumented_detach(value, *, dtype, shape, field_name):
+        array = original_detach(value, dtype=dtype, shape=shape, field_name=field_name)
+        if field_name != "cluster_assignments":
+            return array
+        tracked = array.view(SinglePassAssignments)
+        tracked.setflags(write=False)
+        return tracked
+
+    monkeypatch.setattr(execution_module, "_detached_read_only_array", instrumented_detach)
+
+    prediction = _prediction(package)
+
+    assert np.array(prediction.cluster_assignments).tolist() == [0, 0, 1, 1, 2, 2]
+    assert SinglePassAssignments.scan_count == 1
 
 
 def test_prediction_detaches_from_caller_owned_array_storage():
