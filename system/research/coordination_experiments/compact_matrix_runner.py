@@ -29,7 +29,12 @@ from .compact_execution import (
     evaluate_iohunter_external_account_recovery,
     execute_compact_discovery_method,
 )
-from .iohunter_compact import compact_fold_fingerprint, load_compact_iohunter
+from .iohunter_compact import (
+    compact_fold_fingerprint,
+    load_compact_iohunter,
+    load_compact_iohunter_discovery,
+    load_compact_iohunter_evaluator,
+)
 from .matrix_protocol import CANONICAL_IOHUNTER_PROCESSED_ROOT
 from .metrics import bootstrap_confidence_interval
 from .runner import CANONICAL_REPRODUCTION_OUTPUT_ROOT
@@ -255,7 +260,9 @@ def _resume_candidate(
     *,
     prior_file_checksum: str | None,
     coordinate: CompactMatrixCoordinate,
+    implementation: Any,
     source_layer_fingerprint: str,
+    source_sha256: str,
     execution_input_fingerprint: str,
     method_config: Mapping[str, Any],
 ) -> dict[str, Any] | None:
@@ -273,6 +280,10 @@ def _resume_candidate(
         or row.get("completion_status") != "complete"
         or row.get("coordinate") != expected_coordinate
         or row.get("source_layer_fingerprint") != source_layer_fingerprint
+        or row.get("source_sha256") != source_sha256
+        or row.get("method_version") != implementation.method_version
+        or row.get("implementation_id") != implementation.implementation_id
+        or row.get("implementation_version") != IOHUNTER_COMPACT_IMPLEMENTATION_VERSION
         or row.get("execution_input_fingerprint") != execution_input_fingerprint
         or row.get("method_config") != dict(method_config)
         or row.get("row_checksum") != _row_checksum(row)
@@ -372,7 +383,7 @@ def _run_campaign(
 ) -> tuple[list[dict[str, Any]], Counter[str], dict[str, Any]]:
     source = dataset_root / campaign / "0.7_datasets.pkl"
     try:
-        compact = load_compact_iohunter(
+        discovery_load = load_compact_iohunter_discovery(
             source,
             campaign=campaign,
             trusted_local=True,
@@ -381,7 +392,7 @@ def _run_campaign(
     except Exception as exc:
         profile = getattr(exc, "memory_profile", None)
         profile_dict = profile.to_dict() if profile is not None else None
-        reason = f"blocked: compact IOHunter load failed: {type(exc).__name__}: {exc}"
+        reason = f"blocked: compact IOHunter discovery load failed: {type(exc).__name__}: {exc}"
         existed_before = {
             coordinate: _row_path(output_dir, coordinate).exists()
             for coordinate in coordinates
@@ -412,7 +423,8 @@ def _run_campaign(
 
     rows: list[dict[str, Any]] = []
     actions: Counter[str] = Counter()
-    view = compact.discovery_view
+    pending_executions = []
+    view = discovery_load.discovery_view
     for coordinate in coordinates:
         path = _row_path(output_dir, coordinate)
         existed_before = path.exists()
@@ -429,12 +441,64 @@ def _run_campaign(
             path,
             prior_file_checksum=prior_checksums.get(str(path)),
             coordinate=coordinate,
+            implementation=implementation,
             source_layer_fingerprint=view.source_layer_fingerprint,
+            source_sha256=discovery_load.source_sha256,
             execution_input_fingerprint=execution_input.fingerprint,
             method_config=exact_config,
         )
         if resumed is not None:
-            evaluator = compact.evaluator
+            rows.append(resumed)
+            actions["resumed"] += 1
+            continue
+
+        outcome = execute_compact_discovery_method(
+            {coordinate.method_id: implementation},
+            coordinate.method_id,
+            execution_input,
+        )
+        pending_executions.append(
+            (coordinate, path, existed_before, implementation, exact_config, execution_input, outcome)
+        )
+
+    evaluator = None
+    evaluator_load_error: Exception | None = None
+    if pending_executions:
+        try:
+            evaluator = load_compact_iohunter_evaluator(
+                source,
+                campaign=campaign,
+                trusted_local=True,
+                memory_budget_bytes=memory_budget_bytes,
+            )
+        except Exception as exc:
+            evaluator_load_error = exc
+
+    for coordinate, path, existed_before, implementation, exact_config, execution_input, outcome in pending_executions:
+        prediction = outcome.prediction
+        metrics: Mapping[str, float] = {}
+        claim_markers = set(prediction.claim_markers if prediction is not None else ())
+        status = outcome.status
+        reason = outcome.reason
+        source_sha256 = discovery_load.source_sha256
+        evaluator_fingerprint = None
+        fold_fingerprint = None
+        identity = _fingerprint(
+            {
+                "coordinate": dataclasses.asdict(coordinate),
+                "evaluator_load_failure": type(evaluator_load_error).__name__ if evaluator_load_error else None,
+                "execution_input_fingerprint": execution_input.fingerprint,
+            }
+        )
+        if evaluator_load_error is not None:
+            status = "failed"
+            reason = (
+                "external account-recovery evaluator load failed: "
+                f"{type(evaluator_load_error).__name__}: {evaluator_load_error}"
+            )
+        elif evaluator is not None:
+            source_sha256 = evaluator.source_sha256
+            evaluator_fingerprint = evaluator.content_fingerprint
             fold = evaluator.official_folds[IOHUNTER_COMPACT_SEEDS.index(coordinate.seed)]
             fold_fingerprint = compact_fold_fingerprint(fold)
             identity = _run_identity(
@@ -447,49 +511,21 @@ def _run_campaign(
                 fold_fingerprint=fold_fingerprint,
                 execution_input_fingerprint=execution_input.fingerprint,
             )
-            if resumed.get("run_identity") == identity:
-                rows.append(resumed)
-                actions["resumed"] += 1
-                continue
-
-        outcome = execute_compact_discovery_method(
-            {coordinate.method_id: implementation},
-            coordinate.method_id,
-            execution_input,
-        )
-        evaluator = compact.evaluator
-        fold = evaluator.official_folds[IOHUNTER_COMPACT_SEEDS.index(coordinate.seed)]
-        fold_fingerprint = compact_fold_fingerprint(fold)
-        identity = _run_identity(
-            coordinate,
-            implementation=implementation,
-            method_config=exact_config,
-            source_layer_fingerprint=view.source_layer_fingerprint,
-            source_sha256=evaluator.source_sha256,
-            evaluator_fingerprint=evaluator.content_fingerprint,
-            fold_fingerprint=fold_fingerprint,
-            execution_input_fingerprint=execution_input.fingerprint,
-        )
-        prediction = outcome.prediction
-        metrics: Mapping[str, float] = {}
-        claim_markers = set(prediction.claim_markers if prediction is not None else ())
-        status = outcome.status
-        reason = outcome.reason
-        if outcome.status == "success" and prediction is not None:
-            try:
-                evaluation_input = IOHunterExternalEvaluationInput(
-                    evaluator=evaluator,
-                    fold=fold,
-                    evaluation_config=_EVALUATION_CONFIG,
-                )
-                evaluation = evaluate_iohunter_external_account_recovery(prediction, evaluation_input)
-                status = evaluation.status
-                reason = evaluation.reason
-                metrics = evaluation.metrics
-                claim_markers.update(evaluation.claim_markers)
-            except Exception as exc:
-                status = "failed"
-                reason = f"external account-recovery evaluation failed: {type(exc).__name__}: {exc}"
+            if outcome.status == "success" and prediction is not None:
+                try:
+                    evaluation_input = IOHunterExternalEvaluationInput(
+                        evaluator=evaluator,
+                        fold=fold,
+                        evaluation_config=_EVALUATION_CONFIG,
+                    )
+                    evaluation = evaluate_iohunter_external_account_recovery(prediction, evaluation_input)
+                    status = evaluation.status
+                    reason = evaluation.reason
+                    metrics = evaluation.metrics
+                    claim_markers.update(evaluation.claim_markers)
+                except Exception as exc:
+                    status = "failed"
+                    reason = f"external account-recovery evaluation failed: {type(exc).__name__}: {exc}"
         row = {
             "schema_version": IOHUNTER_COMPACT_ROW_SCHEMA_VERSION,
             "completion_status": "complete",
@@ -505,8 +541,8 @@ def _run_campaign(
             "method_config_version": IOHUNTER_COMPACT_METHOD_CONFIG_VERSION,
             "method_config": dict(exact_config),
             "source_layer_fingerprint": view.source_layer_fingerprint,
-            "source_sha256": evaluator.source_sha256,
-            "evaluator_fingerprint": evaluator.content_fingerprint,
+            "source_sha256": source_sha256,
+            "evaluator_fingerprint": evaluator_fingerprint,
             "fold_fingerprint": fold_fingerprint,
             "execution_input_fingerprint": outcome.execution_input_fingerprint,
             "prediction_artifact_identity": prediction.artifact_identity if prediction is not None else None,
@@ -520,7 +556,7 @@ def _run_campaign(
             "claim_markers": sorted(claim_markers),
             "account_count": view.account_count,
             "candidate_edge_count": int(len(prediction.candidate_endpoints)) if prediction is not None else None,
-            "memory_profile": compact.memory_profile.to_dict(),
+            "memory_profile": discovery_load.memory_profile.to_dict(),
             "row_path": str(path),
         }
         rows.append(_write_completed_row(path, row))
@@ -529,11 +565,17 @@ def _run_campaign(
     campaign_identity = {
         "load_status": "success",
         "source_layer_fingerprint": view.source_layer_fingerprint,
-        "source_sha256": compact.evaluator.source_sha256,
-        "evaluator_fingerprint": compact.evaluator.content_fingerprint,
+        "source_sha256": discovery_load.source_sha256,
+        "evaluator_fingerprint": evaluator.content_fingerprint if evaluator is not None else None,
         "account_count": view.account_count,
-        "memory_profile": compact.memory_profile.to_dict(),
+        "memory_profile": discovery_load.memory_profile.to_dict(),
     }
+    if campaign_identity["evaluator_fingerprint"] is None:
+        resumed_fingerprint = next(
+            (row.get("evaluator_fingerprint") for row in rows if row.get("evaluator_fingerprint")),
+            None,
+        )
+        campaign_identity["evaluator_fingerprint"] = resumed_fingerprint
     return rows, actions, campaign_identity
 
 
@@ -603,21 +645,29 @@ def build_compact_claim_decisions(
             difference = float(candidate["proxy_metrics"][metric_name]) - float(baseline["proxy_metrics"][metric_name])
             paired_values[metric_name].append((campaign, seed, difference))
     paired = []
-    for metric_name, observations in sorted(paired_values.items()):
+    for metric_name in sorted(_CLAIMABLE_PROXY_METRICS):
+        observations = paired_values.get(metric_name, [])
         differences = tuple(item[2] for item in observations)
-        low, high = bootstrap_confidence_interval(
-            differences, seed=bootstrap_seed, resamples=bootstrap_resamples
-        )
-        mean = float(np.mean(differences))
         observed_pairs = {(campaign, seed) for campaign, seed, _ in observations}
         missing_pairs = _REQUIRED_PROXY_PAIRS - observed_pairs
+        if differences:
+            low, high = bootstrap_confidence_interval(
+                differences, seed=bootstrap_seed, resamples=bootstrap_resamples
+            )
+            mean = float(np.mean(differences))
+            sample_std = float(np.std(differences, ddof=1)) if len(differences) > 1 else 0.0
+        else:
+            low = None
+            high = None
+            mean = None
+            sample_std = None
         if missing_pairs:
             decision = "blocked_incomplete_matrix"
             decision_reason = (
                 "proxy comparison requires all 30 canonical campaign-seed pairs; "
                 f"observed {len(observed_pairs)}"
             )
-        elif low > 0.0:
+        elif low is not None and low > 0.0:
             decision = "supported_external_account_proxy_only"
             decision_reason = "paired 95% bootstrap confidence interval is strictly positive"
         else:
@@ -630,7 +680,7 @@ def build_compact_claim_decisions(
                 "required_pair_count": len(_REQUIRED_PROXY_PAIRS),
                 "missing_pair_count": len(missing_pairs),
                 "mean_candidate_minus_edgebank": mean,
-                "sample_std": float(np.std(differences, ddof=1)) if len(differences) > 1 else 0.0,
+                "sample_std": sample_std,
                 "ci_95_low": low,
                 "ci_95_high": high,
                 "paired_campaign_seeds": [

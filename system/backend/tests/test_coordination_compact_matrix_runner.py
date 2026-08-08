@@ -131,32 +131,62 @@ def test_compact_matrix_api_and_exact_canonical_identity():
     }
 
 
-def test_execution_precedes_external_evaluator_construction_and_artifacts_are_compact(tmp_path, monkeypatch):
+def test_execution_precedes_label_fold_and_evaluator_construction_for_mixed_resume_runs(
+    tmp_path, monkeypatch
+):
     package = _load_experiments()
     matrix_module = importlib.import_module("research.coordination_experiments.compact_matrix_runner")
+    compact_module = importlib.import_module("research.coordination_experiments.iohunter_compact")
     dataset_root = _dataset_root(tmp_path)
     output = _output_dir(package, "ordering")
+    first = _run_one(package, dataset_root, output)
+    assert first.resume_counts == {"executed": 1}
     events = []
     original_execute = matrix_module.execute_compact_discovery_method
-    original_evaluation_input = matrix_module.IOHunterExternalEvaluationInput
+    original_labels = compact_module._labels
+    original_folds = compact_module._folds
+    original_post_init = compact_module.CompactIOHunterEvaluator.__post_init__
 
     def observed_execute(*args, **kwargs):
         events.append("execute")
         return original_execute(*args, **kwargs)
 
-    def observed_evaluation_input(*args, **kwargs):
-        events.append("evaluation_input")
-        return original_evaluation_input(*args, **kwargs)
+    def observed_labels(*args, **kwargs):
+        events.append("labels")
+        return original_labels(*args, **kwargs)
+
+    def observed_folds(*args, **kwargs):
+        events.append("folds")
+        return original_folds(*args, **kwargs)
+
+    def observed_post_init(self):
+        events.append("evaluator")
+        return original_post_init(self)
 
     monkeypatch.setattr(matrix_module, "execute_compact_discovery_method", observed_execute)
-    monkeypatch.setattr(matrix_module, "IOHunterExternalEvaluationInput", observed_evaluation_input)
+    monkeypatch.setattr(compact_module, "_labels", observed_labels)
+    monkeypatch.setattr(compact_module, "_folds", observed_folds)
+    monkeypatch.setattr(compact_module.CompactIOHunterEvaluator, "__post_init__", observed_post_init)
     try:
-        result = _run_one(package, dataset_root, output)
+        result = package.run_compact_iohunter_matrix(
+            dataset_root,
+            output,
+            campaigns=("russia",),
+            seeds=(42,),
+            methods=("edgebank", "tsgs_mhcr_compact"),
+            memory_budget_bytes=256 * 1024 * 1024,
+            bootstrap_resamples=100,
+        )
         row_path = Path(result.rows[0]["row_path"])
         persisted = json.loads(row_path.read_text(encoding="utf-8"))
         serialized = json.dumps(persisted, sort_keys=True).lower()
 
-        assert events == ["execute", "evaluation_input"]
+        assert events[0] == "execute"
+        assert "labels" in events
+        assert "folds" in events
+        assert "evaluator" in events
+        assert events.index("execute") < events.index("labels") < events.index("folds") < events.index("evaluator")
+        assert result.resume_counts == {"executed": 1, "resumed": 1}
         assert persisted["status"] == "success"
         assert persisted["evaluation_scope"] == "external_account_recovery_not_coordination_ground_truth"
         assert persisted["prediction_artifact_identity"].startswith("sha256:")
@@ -356,14 +386,80 @@ def test_aggregates_are_deterministic_use_sample_std_and_pair_campaign_seed_rows
     assert paired["claim_scope"] == "external_account_recovery_not_coordination_ground_truth"
 
 
+@pytest.mark.parametrize(
+    "rows_factory",
+    [
+        lambda package: (),
+        lambda package: [
+            {
+                "campaign": "russia",
+                "seed": 42,
+                "fold_id": "fold-000",
+                "method_id": "tsgs_mhcr_compact",
+                "status": "success",
+                "proxy_metrics": {
+                    "external_account_auprc": 0.7,
+                    "external_account_macro_f1": 0.8,
+                    "external_account_recall_at_k": 0.6,
+                    "external_account_roc_auc": 0.65,
+                    "external_account_evaluated_count": 100.0,
+                },
+            }
+        ],
+        lambda package: [
+            {
+                "campaign": "russia",
+                "seed": 42,
+                "fold_id": "fold-000",
+                "method_id": "edgebank",
+                "status": "success",
+                "proxy_metrics": {
+                    "external_account_auprc": 0.5,
+                    "external_account_macro_f1": 0.4,
+                    "external_account_recall_at_k": 0.45,
+                    "external_account_roc_auc": 0.42,
+                    "external_account_evaluated_count": 100.0,
+                },
+            }
+        ],
+    ],
+)
+def test_proxy_claims_are_explicitly_blocked_for_empty_and_one_sided_subsets(rows_factory):
+    package = _load_experiments()
+    rows = rows_factory(package)
+    decisions = package.build_compact_claim_decisions(rows, bootstrap_seed=11, bootstrap_resamples=50)
+    paired = {row["metric_name"]: row for row in decisions["paired_external_account_proxy"]}
+
+    assert set(paired) == {
+        "external_account_auprc",
+        "external_account_macro_f1",
+        "external_account_recall_at_k",
+        "external_account_roc_auc",
+    }
+    assert all(row["decision"] == "blocked_incomplete_matrix" for row in paired.values())
+    assert all(row["required_pair_count"] == 30 for row in paired.values())
+    assert all(row["missing_pair_count"] == 30 for row in paired.values())
+    assert "external_account_evaluated_count" not in paired
+
+
 def test_proxy_claim_requires_complete_matrix_and_positive_paired_confidence_interval():
     package = _load_experiments()
     rows = []
     for campaign in package.IOHUNTER_COMPACT_CAMPAIGNS:
         for seed in package.IOHUNTER_COMPACT_SEEDS:
-            for method_id, score in (
-                ("tsgs_mhcr_compact", 0.7),
-                ("edgebank", 0.4),
+            for method_id, scores in (
+                ("tsgs_mhcr_compact", {
+                    "external_account_auprc": 0.7,
+                    "external_account_macro_f1": 0.8,
+                    "external_account_recall_at_k": 0.6,
+                    "external_account_roc_auc": 0.65,
+                }),
+                ("edgebank", {
+                    "external_account_auprc": 0.4,
+                    "external_account_macro_f1": 0.4,
+                    "external_account_recall_at_k": 0.3,
+                    "external_account_roc_auc": 0.35,
+                }),
             ):
                 rows.append(
                     {
@@ -372,10 +468,7 @@ def test_proxy_claim_requires_complete_matrix_and_positive_paired_confidence_int
                         "fold_id": f"fold-{package.IOHUNTER_COMPACT_SEEDS.index(seed):03d}",
                         "method_id": method_id,
                         "status": "success",
-                        "proxy_metrics": {
-                            "external_account_macro_f1": score,
-                            "external_account_evaluated_count": 100.0,
-                        },
+                        "proxy_metrics": {**scores, "external_account_evaluated_count": 100.0},
                     }
                 )
 
@@ -384,11 +477,16 @@ def test_proxy_claim_requires_complete_matrix_and_positive_paired_confidence_int
     )
     paired = decisions["paired_external_account_proxy"]
 
-    assert [row["metric_name"] for row in paired] == ["external_account_macro_f1"]
-    assert paired[0]["pair_count"] == 30
-    assert paired[0]["missing_pair_count"] == 0
-    assert paired[0]["ci_95_low"] > 0.0
-    assert paired[0]["decision"] == "supported_external_account_proxy_only"
+    assert [row["metric_name"] for row in paired] == [
+        "external_account_auprc",
+        "external_account_macro_f1",
+        "external_account_recall_at_k",
+        "external_account_roc_auc",
+    ]
+    assert all(row["pair_count"] == 30 for row in paired)
+    assert all(row["missing_pair_count"] == 0 for row in paired)
+    assert all(row["ci_95_low"] > 0.0 for row in paired)
+    assert all(row["decision"] == "supported_external_account_proxy_only" for row in paired)
 
 
 def test_claim_decisions_fix_unsupported_research_scopes():

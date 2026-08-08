@@ -25,6 +25,7 @@ from .iohunter_compact import (
     DEFAULT_COMPACT_MEMORY_BUDGET_BYTES,
     IOHUNTER_STATIC_TIME_SEMANTICS,
     CompactEdgeArray,
+    CompactIOHunterDiscoveryLoadResult,
     CompactIOHunterDiscoveryView,
     CompactIOHunterEvaluator,
     CompactIOHunterFold,
@@ -35,6 +36,8 @@ from .iohunter_compact import (
     CompactRelationEdges,
     compact_fold_fingerprint,
     load_compact_iohunter,
+    load_compact_iohunter_discovery,
+    load_compact_iohunter_evaluator,
 )
 from .matrix_protocol import (
     CANONICAL_IOHUNTER_PROCESSED_ROOT,
@@ -180,6 +183,7 @@ __all__ = [
     "DEFAULT_COMPACT_MEMORY_BUDGET_BYTES",
     "IOHUNTER_STATIC_TIME_SEMANTICS",
     "CompactEdgeArray",
+    "CompactIOHunterDiscoveryLoadResult",
     "CompactIOHunterDiscoveryView",
     "CompactIOHunterEvaluator",
     "CompactIOHunterFold",
@@ -237,6 +241,8 @@ __all__ = [
     "load_iohunter_discovery",
     "load_iohunter_label_evaluator",
     "load_compact_iohunter",
+    "load_compact_iohunter_discovery",
+    "load_compact_iohunter_evaluator",
     "preflight_iohunter_matrix",
     "run_detection_method",
     "select_learned_artifact",

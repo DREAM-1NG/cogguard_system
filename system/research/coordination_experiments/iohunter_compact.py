@@ -300,6 +300,14 @@ class CompactIOHunterLoadResult:
 
 
 @dataclass(frozen=True, slots=True)
+class CompactIOHunterDiscoveryLoadResult:
+    discovery_view: CompactIOHunterDiscoveryView
+    source_path: str
+    source_sha256: str
+    memory_profile: CompactIOHunterMemoryProfile
+
+
+@dataclass(frozen=True, slots=True)
 class _SourceSnapshot:
     size: int
     mtime_ns: int
@@ -436,6 +444,17 @@ def _source_relations(payload: Mapping[str, Any], account_count: int) -> Mapping
             "source-layer node-universe union must equal the canonical contiguous account universe"
         )
     return MappingProxyType(result)
+
+
+def _source_account_count(payload: Mapping[str, Any]) -> int:
+    source_nodes: set[int] = set()
+    for layer in sorted(IOHUNTER_LAYER_RELATIONS):
+        graph = _graph(payload[layer], layer)
+        source_nodes.update(_node(value, layer) for value in graph.nodes)
+    ordered = tuple(sorted(source_nodes))
+    if not ordered or ordered != tuple(range(len(ordered))):
+        raise ValueError("source-layer node-universe union must equal the canonical contiguous account universe")
+    return len(ordered)
 
 
 def _labels(value: Any) -> np.ndarray:
@@ -604,13 +623,13 @@ def _profile(
     )
 
 
-def load_compact_iohunter(
+def _trusted_compact_payload(
     path: str | Path,
     *,
     campaign: str,
-    trusted_local: bool = False,
+    trusted_local: bool,
     memory_budget_bytes: int = DEFAULT_COMPACT_MEMORY_BUDGET_BYTES,
-) -> CompactIOHunterLoadResult:
+) -> tuple[Path, _SourceSnapshot, str, Mapping[str, Any], _MemoryProbe]:
     if trusted_local is not True:
         raise ValueError("pickle deserialization requires explicit trusted_local=True")
     campaign = _validate_campaign(campaign)
@@ -641,33 +660,32 @@ def load_compact_iohunter(
             raise RuntimeError("mapped IOHunter source identity changed during loading")
         if not isinstance(payload, MappingABC) or set(payload) != _EXPECTED_KEYS:
             raise ValueError("IOHunter pickle payload must contain exactly the compact-v1 source fields")
-        labels = _labels(payload["labels"])
-        account_count = int(labels.size)
-        fused_graph = _graph(payload["graph"], "fused graph")
-        fused_nodes = {_node(value, "fused graph") for value in fused_graph.nodes}
-        if fused_nodes != set(range(account_count)):
-            raise ValueError("fused graph node universe must equal labels and contiguous account IDs")
+        return source, initial, source_sha256, payload, probe
+    except Exception:
+        probe.close()
+        raise
+
+
+def load_compact_iohunter_discovery(
+    path: str | Path,
+    *,
+    campaign: str,
+    trusted_local: bool = False,
+    memory_budget_bytes: int = DEFAULT_COMPACT_MEMORY_BUDGET_BYTES,
+) -> CompactIOHunterDiscoveryLoadResult:
+    source, initial, source_sha256, payload, probe = _trusted_compact_payload(
+        path,
+        campaign=campaign,
+        trusted_local=trusted_local,
+        memory_budget_bytes=memory_budget_bytes,
+    )
+    try:
+        account_count = _source_account_count(payload)
         relation_edges = _source_relations(payload, account_count)
-        folds = _folds(payload["splits"], account_count)
-        fused_edges = _edge_records(fused_graph, "fused graph", account_count)
         source_fingerprint = _source_layer_fingerprint(campaign, account_count, relation_edges)
-        semantic_evaluator, content_evaluator = _evaluator_fingerprints(
-            campaign,
-            labels,
-            folds,
-            fused_edges,
-            str(source),
-            source_sha256,
-        )
         if _SourceSnapshot.from_stat(source.stat()) != initial:
             raise RuntimeError("mapped IOHunter source identity changed during loading")
-
         compact_array_bytes = sum(edges.nbytes for edges in relation_edges.values())
-        compact_array_bytes += labels.nbytes + fused_edges.nbytes
-        compact_array_bytes += sum(
-            fold.train_indices.nbytes + fold.validation_indices.nbytes + fold.test_indices.nbytes
-            for fold in folds
-        )
         memory_profile = _profile(
             source_bytes=initial.size,
             compact_array_bytes=int(compact_array_bytes),
@@ -689,7 +707,65 @@ def load_compact_iohunter(
             source_layer_fingerprint=source_fingerprint,
             manifest=manifest,
         )
-        evaluator = CompactIOHunterEvaluator(
+        return CompactIOHunterDiscoveryLoadResult(
+            discovery_view=discovery,
+            source_path=str(source),
+            source_sha256=source_sha256,
+            memory_profile=memory_profile,
+        )
+    finally:
+        probe.close()
+
+
+def load_compact_iohunter_evaluator(
+    path: str | Path,
+    *,
+    campaign: str,
+    trusted_local: bool = False,
+    memory_budget_bytes: int = DEFAULT_COMPACT_MEMORY_BUDGET_BYTES,
+) -> CompactIOHunterEvaluator:
+    source, initial, source_sha256, payload, probe = _trusted_compact_payload(
+        path,
+        campaign=campaign,
+        trusted_local=trusted_local,
+        memory_budget_bytes=memory_budget_bytes,
+    )
+    try:
+        labels = _labels(payload["labels"])
+        account_count = int(labels.size)
+        fused_graph = _graph(payload["graph"], "fused graph")
+        fused_nodes = {_node(value, "fused graph") for value in fused_graph.nodes}
+        if fused_nodes != set(range(account_count)):
+            raise ValueError("fused graph node universe must equal labels and contiguous account IDs")
+        if _source_account_count(payload) != account_count:
+            raise ValueError("source-layer node universe must equal labels and contiguous account IDs")
+        folds = _folds(payload["splits"], account_count)
+        fused_edges = _edge_records(fused_graph, "fused graph", account_count)
+        semantic_evaluator, content_evaluator = _evaluator_fingerprints(
+            campaign,
+            labels,
+            folds,
+            fused_edges,
+            str(source),
+            source_sha256,
+        )
+        if _SourceSnapshot.from_stat(source.stat()) != initial:
+            raise RuntimeError("mapped IOHunter source identity changed during loading")
+
+        compact_array_bytes = labels.nbytes + fused_edges.nbytes
+        compact_array_bytes += sum(
+            fold.train_indices.nbytes + fold.validation_indices.nbytes + fold.test_indices.nbytes
+            for fold in folds
+        )
+        memory_profile = _profile(
+            source_bytes=initial.size,
+            compact_array_bytes=int(compact_array_bytes),
+            measured_peak_bytes=probe.peak_bytes(),
+            memory_budget_bytes=memory_budget_bytes,
+        )
+        if not memory_profile.within_budget:
+            raise CompactIOHunterMemoryBudgetExceeded(memory_profile)
+        return CompactIOHunterEvaluator(
             campaign=campaign,
             account_labels=labels,
             official_folds=folds,
@@ -699,13 +775,48 @@ def load_compact_iohunter(
             semantic_content_fingerprint=semantic_evaluator,
             content_fingerprint=content_evaluator,
         )
-        return CompactIOHunterLoadResult(
-            discovery_view=discovery,
-            evaluator=evaluator,
-            memory_profile=memory_profile,
-        )
     finally:
         probe.close()
+
+
+def load_compact_iohunter(
+    path: str | Path,
+    *,
+    campaign: str,
+    trusted_local: bool = False,
+    memory_budget_bytes: int = DEFAULT_COMPACT_MEMORY_BUDGET_BYTES,
+) -> CompactIOHunterLoadResult:
+    discovery = load_compact_iohunter_discovery(
+        path,
+        campaign=campaign,
+        trusted_local=trusted_local,
+        memory_budget_bytes=memory_budget_bytes,
+    )
+    evaluator = load_compact_iohunter_evaluator(
+        path,
+        campaign=campaign,
+        trusted_local=trusted_local,
+        memory_budget_bytes=memory_budget_bytes,
+    )
+    compact_array_bytes = int(discovery.memory_profile.compact_array_bytes)
+    compact_array_bytes += evaluator.account_labels.nbytes + evaluator.fused_edges.nbytes
+    compact_array_bytes += sum(
+        fold.train_indices.nbytes + fold.validation_indices.nbytes + fold.test_indices.nbytes
+        for fold in evaluator.official_folds
+    )
+    memory_profile = _profile(
+        source_bytes=discovery.memory_profile.source_bytes,
+        compact_array_bytes=compact_array_bytes,
+        measured_peak_bytes=discovery.memory_profile.measured_peak_bytes,
+        memory_budget_bytes=memory_budget_bytes,
+    )
+    if not memory_profile.within_budget:
+        raise CompactIOHunterMemoryBudgetExceeded(memory_profile)
+    return CompactIOHunterLoadResult(
+        discovery_view=discovery.discovery_view,
+        evaluator=evaluator,
+        memory_profile=memory_profile,
+    )
 
 
 __all__ = [
@@ -715,6 +826,7 @@ __all__ = [
     "DEFAULT_COMPACT_MEMORY_BUDGET_BYTES",
     "IOHUNTER_STATIC_TIME_SEMANTICS",
     "CompactEdgeArray",
+    "CompactIOHunterDiscoveryLoadResult",
     "CompactIOHunterDiscoveryView",
     "CompactIOHunterEvaluator",
     "CompactIOHunterFold",
@@ -725,4 +837,6 @@ __all__ = [
     "CompactRelationEdges",
     "compact_fold_fingerprint",
     "load_compact_iohunter",
+    "load_compact_iohunter_discovery",
+    "load_compact_iohunter_evaluator",
 ]
