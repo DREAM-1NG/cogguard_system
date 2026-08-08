@@ -232,6 +232,40 @@ def test_complete_checksum_valid_row_resumes_without_recomputation(tmp_path, mon
         shutil.rmtree(output, ignore_errors=True)
 
 
+def test_resume_rejects_self_checksummed_row_with_stale_run_identity(tmp_path, monkeypatch):
+    package = _load_experiments()
+    matrix_module = importlib.import_module("research.coordination_experiments.compact_matrix_runner")
+    dataset_root = _dataset_root(tmp_path)
+    output = _output_dir(package, "stale-run-identity")
+    try:
+        first = _run_one(package, dataset_root, output)
+        row_path = Path(first.rows[0]["row_path"])
+        row = json.loads(row_path.read_text(encoding="utf-8"))
+        row["run_identity"] = "sha256:" + ("0" * 64)
+        row["row_checksum"] = matrix_module._row_checksum(row)
+        row_path.write_text(json.dumps(row, ensure_ascii=False, sort_keys=True, indent=2) + "\n", encoding="utf-8")
+        manifest_path = output / "matrix_manifest.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest["rows"][0]["row_payload_checksum"] = row["row_checksum"]
+        manifest["rows"][0]["file_checksum"] = "sha256:" + hashlib.sha256(row_path.read_bytes()).hexdigest()
+        manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, sort_keys=True, indent=2) + "\n", encoding="utf-8")
+        calls = 0
+        original_execute = matrix_module.execute_compact_discovery_method
+
+        def counted_execute(*args, **kwargs):
+            nonlocal calls
+            calls += 1
+            return original_execute(*args, **kwargs)
+
+        monkeypatch.setattr(matrix_module, "execute_compact_discovery_method", counted_execute)
+        second = _run_one(package, dataset_root, output)
+
+        assert calls == 1
+        assert second.resume_counts == {"rewritten": 1}
+    finally:
+        shutil.rmtree(output, ignore_errors=True)
+
+
 @pytest.mark.parametrize("damage", ["corrupt", "stale"])
 def test_corrupt_or_stale_complete_rows_are_rewritten(tmp_path, monkeypatch, damage):
     package = _load_experiments()
@@ -266,6 +300,38 @@ def test_corrupt_or_stale_complete_rows_are_rewritten(tmp_path, monkeypatch, dam
         shutil.rmtree(output, ignore_errors=True)
 
 
+def test_source_change_between_discovery_execution_and_evaluator_load_fails_coherently(tmp_path, monkeypatch):
+    package = _load_experiments()
+    matrix_module = importlib.import_module("research.coordination_experiments.compact_matrix_runner")
+    dataset_root = _dataset_root(tmp_path)
+    source = dataset_root / "russia" / "0.7_datasets.pkl"
+    output = _output_dir(package, "source-swap")
+    original_execute = matrix_module.execute_compact_discovery_method
+    mutated = False
+
+    def mutate_after_execution(*args, **kwargs):
+        nonlocal mutated
+        outcome = original_execute(*args, **kwargs)
+        if not mutated:
+            source.write_bytes(pickle.dumps(_payload(labels=(1, 0, 1, 0, 1, 0)), protocol=pickle.HIGHEST_PROTOCOL))
+            mutated = True
+        return outcome
+
+    monkeypatch.setattr(matrix_module, "execute_compact_discovery_method", mutate_after_execution)
+    try:
+        result = _run_one(package, dataset_root, output)
+        row = result.rows[0]
+
+        assert mutated is True
+        assert row["status"] == "failed"
+        assert "source changed between Discovery and evaluator phases" in row["reason"]
+        assert row["source_sha256"] == result.rows[0]["source_sha256"]
+        assert row["evaluator_fingerprint"] is None
+        assert row["proxy_metrics"] == {}
+    finally:
+        shutil.rmtree(output, ignore_errors=True)
+
+
 def test_dense_limit_blocks_without_subsampling_or_evaluator_access(tmp_path, monkeypatch):
     package = _load_experiments()
     matrix_module = importlib.import_module("research.coordination_experiments.compact_matrix_runner")
@@ -292,6 +358,46 @@ def test_dense_limit_blocks_without_subsampling_or_evaluator_access(tmp_path, mo
         assert "feasibility limit 4" in result.rows[0]["reason"]
         assert result.rows[0]["account_count"] == 6
         assert result.rows[0]["prediction_artifact_identity"] is None
+    finally:
+        shutil.rmtree(output, ignore_errors=True)
+
+
+def test_combined_discovery_prediction_and_evaluator_memory_blocks_before_evaluation(tmp_path):
+    package = _load_experiments()
+    dataset_root = _dataset_root(tmp_path)
+    source = dataset_root / "russia" / "0.7_datasets.pkl"
+    high_budget = 256 * 1024 * 1024
+    discovery = package.load_compact_iohunter_discovery(
+        source,
+        campaign="russia",
+        trusted_local=True,
+        memory_budget_bytes=high_budget,
+    )
+    combined = package.load_compact_iohunter(
+        source,
+        campaign="russia",
+        trusted_local=True,
+        memory_budget_bytes=high_budget,
+    )
+    budget = combined.memory_profile.estimated_peak_bytes - 1
+    assert budget >= discovery.memory_profile.estimated_peak_bytes
+    output = _output_dir(package, "combined-memory")
+    try:
+        result = package.run_compact_iohunter_matrix(
+            dataset_root,
+            output,
+            campaigns=("russia",),
+            seeds=(42,),
+            methods=("edgebank",),
+            memory_budget_bytes=budget,
+            bootstrap_resamples=100,
+        )
+        row = result.rows[0]
+
+        assert row["status"] == "failed"
+        assert "combined compact IOHunter evaluator memory" in row["reason"]
+        assert row["memory_profile"]["estimated_peak_bytes"] > budget
+        assert row["peak_memory_bytes"] >= row["memory_profile"]["estimated_peak_bytes"]
     finally:
         shutil.rmtree(output, ignore_errors=True)
 
@@ -510,18 +616,45 @@ def test_campaign_loads_are_released_before_the_next_campaign(tmp_path, monkeypa
     matrix_module = importlib.import_module("research.coordination_experiments.compact_matrix_runner")
     dataset_root = _dataset_root(tmp_path, campaigns=("china", "russia"))
     output = _output_dir(package, "release")
-    original_load = matrix_module.load_compact_iohunter
-    previous = None
+    original_discovery_load = matrix_module.load_compact_iohunter_discovery
+    original_evaluator_load = matrix_module.load_compact_iohunter_evaluator_result
+    previous_discovery = None
+    previous_evaluator = None
+    discovery_calls = 0
+    evaluator_calls = 0
 
-    def observed_load(*args, **kwargs):
-        nonlocal previous
+    class DiscoveryBox:
+        def __init__(self, loaded):
+            self.discovery_view = loaded.discovery_view
+            self.source_path = loaded.source_path
+            self.source_sha256 = loaded.source_sha256
+            self.memory_profile = loaded.memory_profile
+
+    class EvaluatorBox:
+        def __init__(self, loaded):
+            self.evaluator = loaded.evaluator
+            self.memory_profile = loaded.memory_profile
+
+    def observed_discovery_load(*args, **kwargs):
+        nonlocal previous_discovery, discovery_calls
         gc.collect()
-        assert previous is None or previous() is None
-        loaded = original_load(*args, **kwargs)
-        previous = weakref.ref(loaded)
+        assert previous_discovery is None or previous_discovery() is None
+        loaded = DiscoveryBox(original_discovery_load(*args, **kwargs))
+        previous_discovery = weakref.ref(loaded)
+        discovery_calls += 1
         return loaded
 
-    monkeypatch.setattr(matrix_module, "load_compact_iohunter", observed_load)
+    def observed_evaluator_load(*args, **kwargs):
+        nonlocal previous_evaluator, evaluator_calls
+        gc.collect()
+        assert previous_evaluator is None or previous_evaluator() is None
+        loaded = EvaluatorBox(original_evaluator_load(*args, **kwargs))
+        previous_evaluator = weakref.ref(loaded)
+        evaluator_calls += 1
+        return loaded
+
+    monkeypatch.setattr(matrix_module, "load_compact_iohunter_discovery", observed_discovery_load)
+    monkeypatch.setattr(matrix_module, "load_compact_iohunter_evaluator_result", observed_evaluator_load)
     try:
         result = package.run_compact_iohunter_matrix(
             dataset_root,
@@ -533,6 +666,8 @@ def test_campaign_loads_are_released_before_the_next_campaign(tmp_path, monkeypa
             bootstrap_resamples=20,
         )
         assert len(result.rows) == 2
+        assert discovery_calls == 2
+        assert evaluator_calls == 2
     finally:
         shutil.rmtree(output, ignore_errors=True)
 

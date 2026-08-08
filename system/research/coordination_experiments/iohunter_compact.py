@@ -308,6 +308,12 @@ class CompactIOHunterDiscoveryLoadResult:
 
 
 @dataclass(frozen=True, slots=True)
+class CompactIOHunterEvaluatorLoadResult:
+    evaluator: CompactIOHunterEvaluator
+    memory_profile: CompactIOHunterMemoryProfile
+
+
+@dataclass(frozen=True, slots=True)
 class _SourceSnapshot:
     size: int
     mtime_ns: int
@@ -629,12 +635,19 @@ def _trusted_compact_payload(
     campaign: str,
     trusted_local: bool,
     memory_budget_bytes: int = DEFAULT_COMPACT_MEMORY_BUDGET_BYTES,
+    retained_compact_array_bytes: int = 0,
 ) -> tuple[Path, _SourceSnapshot, str, Mapping[str, Any], _MemoryProbe]:
     if trusted_local is not True:
         raise ValueError("pickle deserialization requires explicit trusted_local=True")
     campaign = _validate_campaign(campaign)
     if isinstance(memory_budget_bytes, bool) or not isinstance(memory_budget_bytes, int) or memory_budget_bytes <= 0:
         raise ValueError("memory_budget_bytes must be a positive integer")
+    if (
+        isinstance(retained_compact_array_bytes, bool)
+        or not isinstance(retained_compact_array_bytes, int)
+        or retained_compact_array_bytes < 0
+    ):
+        raise ValueError("retained_compact_array_bytes must be a non-negative integer")
     source = Path(path).resolve(strict=True)
     probe = _MemoryProbe()
     try:
@@ -644,7 +657,7 @@ def _trusted_compact_payload(
                 raise RuntimeError("mapped IOHunter source identity changed before loading")
             early = _profile(
                 source_bytes=initial.size,
-                compact_array_bytes=0,
+                compact_array_bytes=retained_compact_array_bytes,
                 measured_peak_bytes=probe.peak_bytes(),
                 memory_budget_bytes=memory_budget_bytes,
             )
@@ -717,18 +730,20 @@ def load_compact_iohunter_discovery(
         probe.close()
 
 
-def load_compact_iohunter_evaluator(
+def load_compact_iohunter_evaluator_result(
     path: str | Path,
     *,
     campaign: str,
     trusted_local: bool = False,
     memory_budget_bytes: int = DEFAULT_COMPACT_MEMORY_BUDGET_BYTES,
-) -> CompactIOHunterEvaluator:
+    retained_compact_array_bytes: int = 0,
+) -> CompactIOHunterEvaluatorLoadResult:
     source, initial, source_sha256, payload, probe = _trusted_compact_payload(
         path,
         campaign=campaign,
         trusted_local=trusted_local,
         memory_budget_bytes=memory_budget_bytes,
+        retained_compact_array_bytes=retained_compact_array_bytes,
     )
     try:
         labels = _labels(payload["labels"])
@@ -752,20 +767,20 @@ def load_compact_iohunter_evaluator(
         if _SourceSnapshot.from_stat(source.stat()) != initial:
             raise RuntimeError("mapped IOHunter source identity changed during loading")
 
-        compact_array_bytes = labels.nbytes + fused_edges.nbytes
-        compact_array_bytes += sum(
+        evaluator_array_bytes = labels.nbytes + fused_edges.nbytes
+        evaluator_array_bytes += sum(
             fold.train_indices.nbytes + fold.validation_indices.nbytes + fold.test_indices.nbytes
             for fold in folds
         )
         memory_profile = _profile(
             source_bytes=initial.size,
-            compact_array_bytes=int(compact_array_bytes),
+            compact_array_bytes=int(retained_compact_array_bytes + evaluator_array_bytes),
             measured_peak_bytes=probe.peak_bytes(),
             memory_budget_bytes=memory_budget_bytes,
         )
         if not memory_profile.within_budget:
             raise CompactIOHunterMemoryBudgetExceeded(memory_profile)
-        return CompactIOHunterEvaluator(
+        evaluator = CompactIOHunterEvaluator(
             campaign=campaign,
             account_labels=labels,
             official_folds=folds,
@@ -775,8 +790,24 @@ def load_compact_iohunter_evaluator(
             semantic_content_fingerprint=semantic_evaluator,
             content_fingerprint=content_evaluator,
         )
+        return CompactIOHunterEvaluatorLoadResult(evaluator=evaluator, memory_profile=memory_profile)
     finally:
         probe.close()
+
+
+def load_compact_iohunter_evaluator(
+    path: str | Path,
+    *,
+    campaign: str,
+    trusted_local: bool = False,
+    memory_budget_bytes: int = DEFAULT_COMPACT_MEMORY_BUDGET_BYTES,
+) -> CompactIOHunterEvaluator:
+    return load_compact_iohunter_evaluator_result(
+        path,
+        campaign=campaign,
+        trusted_local=trusted_local,
+        memory_budget_bytes=memory_budget_bytes,
+    ).evaluator
 
 
 def load_compact_iohunter(
@@ -792,29 +823,19 @@ def load_compact_iohunter(
         trusted_local=trusted_local,
         memory_budget_bytes=memory_budget_bytes,
     )
-    evaluator = load_compact_iohunter_evaluator(
+    evaluator_load = load_compact_iohunter_evaluator_result(
         path,
         campaign=campaign,
         trusted_local=trusted_local,
         memory_budget_bytes=memory_budget_bytes,
+        retained_compact_array_bytes=discovery.memory_profile.compact_array_bytes,
     )
-    compact_array_bytes = int(discovery.memory_profile.compact_array_bytes)
-    compact_array_bytes += evaluator.account_labels.nbytes + evaluator.fused_edges.nbytes
-    compact_array_bytes += sum(
-        fold.train_indices.nbytes + fold.validation_indices.nbytes + fold.test_indices.nbytes
-        for fold in evaluator.official_folds
-    )
-    memory_profile = _profile(
-        source_bytes=discovery.memory_profile.source_bytes,
-        compact_array_bytes=compact_array_bytes,
-        measured_peak_bytes=discovery.memory_profile.measured_peak_bytes,
-        memory_budget_bytes=memory_budget_bytes,
-    )
+    memory_profile = evaluator_load.memory_profile
     if not memory_profile.within_budget:
         raise CompactIOHunterMemoryBudgetExceeded(memory_profile)
     return CompactIOHunterLoadResult(
         discovery_view=discovery.discovery_view,
-        evaluator=evaluator,
+        evaluator=evaluator_load.evaluator,
         memory_profile=memory_profile,
     )
 
@@ -829,6 +850,7 @@ __all__ = [
     "CompactIOHunterDiscoveryLoadResult",
     "CompactIOHunterDiscoveryView",
     "CompactIOHunterEvaluator",
+    "CompactIOHunterEvaluatorLoadResult",
     "CompactIOHunterFold",
     "CompactIOHunterLoadResult",
     "CompactIOHunterManifest",
@@ -839,4 +861,5 @@ __all__ = [
     "load_compact_iohunter",
     "load_compact_iohunter_discovery",
     "load_compact_iohunter_evaluator",
+    "load_compact_iohunter_evaluator_result",
 ]

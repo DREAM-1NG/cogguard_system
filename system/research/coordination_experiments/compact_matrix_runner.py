@@ -31,9 +31,8 @@ from .compact_execution import (
 )
 from .iohunter_compact import (
     compact_fold_fingerprint,
-    load_compact_iohunter,
     load_compact_iohunter_discovery,
-    load_compact_iohunter_evaluator,
+    load_compact_iohunter_evaluator_result,
 )
 from .matrix_protocol import CANONICAL_IOHUNTER_PROCESSED_ROOT
 from .metrics import bootstrap_confidence_interval
@@ -289,6 +288,25 @@ def _resume_candidate(
         or row.get("row_checksum") != _row_checksum(row)
     ):
         return None
+    evaluator_fingerprint = row.get("evaluator_fingerprint")
+    fold_fingerprint = row.get("fold_fingerprint")
+    if not all(
+        isinstance(value, str) and value.startswith("sha256:") and len(value) == 71
+        for value in (evaluator_fingerprint, fold_fingerprint)
+    ):
+        return None
+    expected_identity = _run_identity(
+        coordinate,
+        implementation=implementation,
+        method_config=method_config,
+        source_layer_fingerprint=source_layer_fingerprint,
+        source_sha256=source_sha256,
+        evaluator_fingerprint=evaluator_fingerprint,
+        fold_fingerprint=fold_fingerprint,
+        execution_input_fingerprint=execution_input_fingerprint,
+    )
+    if row.get("run_identity") != expected_identity:
+        return None
     return row
 
 
@@ -368,6 +386,20 @@ def _blocked_load_row(
         "row_path": str(path),
     }
     return _write_completed_row(path, row)
+
+
+def _prediction_compact_array_bytes(prediction: Any) -> int:
+    if prediction is None:
+        return 0
+    return sum(
+        int(np.asarray(getattr(prediction, field_name)).nbytes)
+        for field_name in (
+            "candidate_endpoints",
+            "edge_scores",
+            "account_scores",
+            "cluster_assignments",
+        )
+    )
 
 
 def _run_campaign(
@@ -462,17 +494,42 @@ def _run_campaign(
         )
 
     evaluator = None
+    evaluator_memory_profile = discovery_load.memory_profile
     evaluator_load_error: Exception | None = None
     if pending_executions:
         try:
-            evaluator = load_compact_iohunter_evaluator(
+            retained_compact_array_bytes = int(discovery_load.memory_profile.compact_array_bytes)
+            retained_compact_array_bytes += sum(
+                _prediction_compact_array_bytes(outcome.prediction)
+                for *_, outcome in pending_executions
+            )
+            evaluator_load = load_compact_iohunter_evaluator_result(
                 source,
                 campaign=campaign,
                 trusted_local=True,
                 memory_budget_bytes=memory_budget_bytes,
+                retained_compact_array_bytes=retained_compact_array_bytes,
             )
+            evaluator = evaluator_load.evaluator
+            evaluator_memory_profile = evaluator_load.memory_profile
+            if evaluator.source_sha256 != discovery_load.source_sha256:
+                evaluator = None
+                evaluator_load_error = RuntimeError(
+                    "source changed between Discovery and evaluator phases"
+                )
         except Exception as exc:
-            evaluator_load_error = exc
+            memory_profile = getattr(exc, "memory_profile", None)
+            if memory_profile is not None:
+                evaluator_memory_profile = memory_profile
+            if memory_profile is not None and (
+                int(memory_profile.compact_array_bytes)
+                > int(discovery_load.memory_profile.compact_array_bytes)
+            ):
+                evaluator_load_error = RuntimeError(
+                    "combined compact IOHunter evaluator memory budget exceeded"
+                )
+            else:
+                evaluator_load_error = exc
 
     for coordinate, path, existed_before, implementation, exact_config, execution_input, outcome in pending_executions:
         prediction = outcome.prediction
@@ -497,7 +554,6 @@ def _run_campaign(
                 f"{type(evaluator_load_error).__name__}: {evaluator_load_error}"
             )
         elif evaluator is not None:
-            source_sha256 = evaluator.source_sha256
             evaluator_fingerprint = evaluator.content_fingerprint
             fold = evaluator.official_folds[IOHUNTER_COMPACT_SEEDS.index(coordinate.seed)]
             fold_fingerprint = compact_fold_fingerprint(fold)
@@ -547,7 +603,10 @@ def _run_campaign(
             "execution_input_fingerprint": outcome.execution_input_fingerprint,
             "prediction_artifact_identity": prediction.artifact_identity if prediction is not None else None,
             "runtime_seconds": outcome.runtime_seconds,
-            "peak_memory_bytes": outcome.peak_memory_bytes,
+            "peak_memory_bytes": max(
+                int(outcome.peak_memory_bytes),
+                int(evaluator_memory_profile.estimated_peak_bytes),
+            ),
             "status": status,
             "reason": reason,
             "diagnostics_summary": _plain_compact(prediction.diagnostics if prediction is not None else {}),
@@ -556,7 +615,7 @@ def _run_campaign(
             "claim_markers": sorted(claim_markers),
             "account_count": view.account_count,
             "candidate_edge_count": int(len(prediction.candidate_endpoints)) if prediction is not None else None,
-            "memory_profile": discovery_load.memory_profile.to_dict(),
+            "memory_profile": evaluator_memory_profile.to_dict(),
             "row_path": str(path),
         }
         rows.append(_write_completed_row(path, row))
@@ -568,7 +627,7 @@ def _run_campaign(
         "source_sha256": discovery_load.source_sha256,
         "evaluator_fingerprint": evaluator.content_fingerprint if evaluator is not None else None,
         "account_count": view.account_count,
-        "memory_profile": discovery_load.memory_profile.to_dict(),
+        "memory_profile": evaluator_memory_profile.to_dict(),
     }
     if campaign_identity["evaluator_fingerprint"] is None:
         resumed_fingerprint = next(

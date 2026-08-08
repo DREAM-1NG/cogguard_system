@@ -28,6 +28,7 @@ from .iohunter_compact import (
     CompactIOHunterDiscoveryLoadResult,
     CompactIOHunterDiscoveryView,
     CompactIOHunterEvaluator,
+    CompactIOHunterEvaluatorLoadResult,
     CompactIOHunterFold,
     CompactIOHunterLoadResult,
     CompactIOHunterManifest,
@@ -38,6 +39,7 @@ from .iohunter_compact import (
     load_compact_iohunter,
     load_compact_iohunter_discovery,
     load_compact_iohunter_evaluator,
+    load_compact_iohunter_evaluator_result,
 )
 from .matrix_protocol import (
     CANONICAL_IOHUNTER_PROCESSED_ROOT,
@@ -186,6 +188,7 @@ __all__ = [
     "CompactIOHunterDiscoveryLoadResult",
     "CompactIOHunterDiscoveryView",
     "CompactIOHunterEvaluator",
+    "CompactIOHunterEvaluatorLoadResult",
     "CompactIOHunterFold",
     "CompactIOHunterLoadResult",
     "CompactIOHunterManifest",
@@ -243,6 +246,7 @@ __all__ = [
     "load_compact_iohunter",
     "load_compact_iohunter_discovery",
     "load_compact_iohunter_evaluator",
+    "load_compact_iohunter_evaluator_result",
     "preflight_iohunter_matrix",
     "run_detection_method",
     "select_learned_artifact",
