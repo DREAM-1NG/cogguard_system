@@ -1,0 +1,470 @@
+from __future__ import annotations
+
+import gc
+import hashlib
+import importlib
+import importlib.util
+import json
+import pickle
+import shutil
+import sys
+import types
+import uuid
+import weakref
+from pathlib import Path
+
+import networkx as nx
+import numpy as np
+import pytest
+
+from app.config import PROJECT_ROOT
+
+
+def _load_experiments():
+    research_dir = PROJECT_ROOT / "research"
+    if "research" not in sys.modules:
+        package = types.ModuleType("research")
+        package.__path__ = [str(research_dir)]
+        sys.modules["research"] = package
+    package_name = "research.coordination_experiments"
+    cached = sys.modules.get(package_name)
+    if cached is not None:
+        return cached
+    package_dir = research_dir / "coordination_experiments"
+    spec = importlib.util.spec_from_file_location(
+        package_name,
+        package_dir / "__init__.py",
+        submodule_search_locations=[str(package_dir)],
+    )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[package_name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def _payload(*, labels=(0, 1, 0, 1, 0, 1)):
+    node_count = len(labels)
+
+    def graph(edges=()):
+        value = nx.Graph()
+        value.add_nodes_from(range(node_count))
+        value.add_edges_from(edges)
+        return value
+
+    partitions = (
+        ((0, 1), (2, 3), (4, 5)),
+        ((2, 3), (4, 5), (0, 1)),
+        ((4, 5), (0, 1), (2, 3)),
+        ((0, 3), (1, 4), (2, 5)),
+        ((1, 2), (3, 4), (0, 5)),
+    )
+    splits = {
+        fold_id: {
+            name: np.asarray([index in members for index in range(node_count)], dtype=np.bool_)
+            for name, members in (("train", train), ("val", validation), ("test", test))
+        }
+        for fold_id, (train, validation, test) in enumerate(partitions)
+    }
+    return {
+        "graph": graph([(0, 1), (1, 2), (3, 4)]),
+        "coRT": graph([(0, 1, {"weight": 2.0}), (1, 2, {"weight": 1.0})]),
+        "coURL": graph([(1, 2, {"weight": 3.0})]),
+        "hashSeq": graph([(2, 3, {"weight": 4.0})]),
+        "fastRT": graph([(3, 4, {"weight": 5.0})]),
+        "tweetSim": graph([(4, 5, {"weight": 0.75})]),
+        "labels": np.asarray(labels, dtype=np.float64),
+        "splits": splits,
+    }
+
+
+def _dataset_root(tmp_path: Path, campaigns=("russia",), *, labels=None) -> Path:
+    root = tmp_path / "processed"
+    raw = pickle.dumps(_payload(labels=labels) if labels is not None else _payload())
+    for campaign in campaigns:
+        source = root / campaign / "0.7_datasets.pkl"
+        source.parent.mkdir(parents=True)
+        source.write_bytes(raw)
+    return root
+
+
+def _output_dir(package, name: str) -> Path:
+    return package.CANONICAL_REPRODUCTION_OUTPUT_ROOT / f"pytest-task7c-{name}-{uuid.uuid4().hex}"
+
+
+def _run_one(package, dataset_root: Path, output: Path, **kwargs):
+    return package.run_compact_iohunter_matrix(
+        dataset_root,
+        output,
+        campaigns=("russia",),
+        seeds=(42,),
+        methods=("edgebank",),
+        memory_budget_bytes=256 * 1024 * 1024,
+        bootstrap_resamples=100,
+        **kwargs,
+    )
+
+
+def test_compact_matrix_api_and_exact_canonical_identity():
+    package = _load_experiments()
+
+    coordinates = package.compact_iohunter_matrix_coordinates()
+
+    assert package.IOHUNTER_COMPACT_CAMPAIGNS == ("china", "cuba", "iran", "russia", "UAE", "venezuela")
+    assert package.IOHUNTER_COMPACT_SEEDS == (42, 43, 44, 45, 46)
+    assert package.IOHUNTER_COMPACT_METHODS == (
+        "tsgs_mhcr_compact",
+        "edgebank",
+        "dense_cosine_leiden",
+        "no_tsgs",
+        "no_mhcr",
+        "no_relation_specific",
+    )
+    assert len(coordinates) == 6 * 5 * 6
+    assert len(set(coordinates)) == len(coordinates)
+    assert {(row.seed, row.fold_id) for row in coordinates} == {
+        (42, "fold-000"),
+        (43, "fold-001"),
+        (44, "fold-002"),
+        (45, "fold-003"),
+        (46, "fold-004"),
+    }
+
+
+def test_execution_precedes_external_evaluator_construction_and_artifacts_are_compact(tmp_path, monkeypatch):
+    package = _load_experiments()
+    matrix_module = importlib.import_module("research.coordination_experiments.compact_matrix_runner")
+    dataset_root = _dataset_root(tmp_path)
+    output = _output_dir(package, "ordering")
+    events = []
+    original_execute = matrix_module.execute_compact_discovery_method
+    original_evaluation_input = matrix_module.IOHunterExternalEvaluationInput
+
+    def observed_execute(*args, **kwargs):
+        events.append("execute")
+        return original_execute(*args, **kwargs)
+
+    def observed_evaluation_input(*args, **kwargs):
+        events.append("evaluation_input")
+        return original_evaluation_input(*args, **kwargs)
+
+    monkeypatch.setattr(matrix_module, "execute_compact_discovery_method", observed_execute)
+    monkeypatch.setattr(matrix_module, "IOHunterExternalEvaluationInput", observed_evaluation_input)
+    try:
+        result = _run_one(package, dataset_root, output)
+        row_path = Path(result.rows[0]["row_path"])
+        persisted = json.loads(row_path.read_text(encoding="utf-8"))
+        serialized = json.dumps(persisted, sort_keys=True).lower()
+
+        assert events == ["execute", "evaluation_input"]
+        assert persisted["status"] == "success"
+        assert persisted["evaluation_scope"] == "external_account_recovery_not_coordination_ground_truth"
+        assert persisted["prediction_artifact_identity"].startswith("sha256:")
+        assert persisted["execution_input_fingerprint"].startswith("sha256:")
+        assert persisted["row_checksum"].startswith("sha256:")
+        assert "candidate_endpoints" not in serialized
+        assert "cluster_assignments" not in serialized
+        assert "account_labels" not in serialized
+        assert "train_indices" not in serialized
+        assert not tuple(output.rglob("*.tmp"))
+        assert (output / "matrix_manifest.json").is_file()
+        assert (output / "aggregate_table.json").is_file()
+        assert (output / "aggregate_table.csv").is_file()
+        assert (output / "claim_decisions.json").is_file()
+        manifest = json.loads((output / "matrix_manifest.json").read_text(encoding="utf-8"))
+        assert manifest["rows"][0]["file_checksum"] == (
+            "sha256:" + hashlib.sha256(row_path.read_bytes()).hexdigest()
+        )
+    finally:
+        shutil.rmtree(output, ignore_errors=True)
+
+
+def test_complete_checksum_valid_row_resumes_without_recomputation(tmp_path, monkeypatch):
+    package = _load_experiments()
+    matrix_module = importlib.import_module("research.coordination_experiments.compact_matrix_runner")
+    dataset_root = _dataset_root(tmp_path)
+    output = _output_dir(package, "resume")
+    try:
+        first = _run_one(package, dataset_root, output)
+        row_path = Path(first.rows[0]["row_path"])
+        before = row_path.read_bytes()
+
+        def forbidden_execute(*args, **kwargs):
+            raise AssertionError("completed run was recomputed")
+
+        monkeypatch.setattr(matrix_module, "execute_compact_discovery_method", forbidden_execute)
+        second = _run_one(package, dataset_root, output)
+
+        assert second.status_counts == {"success": 1}
+        assert second.resume_counts == {"resumed": 1}
+        assert row_path.read_bytes() == before
+    finally:
+        shutil.rmtree(output, ignore_errors=True)
+
+
+@pytest.mark.parametrize("damage", ["corrupt", "stale"])
+def test_corrupt_or_stale_complete_rows_are_rewritten(tmp_path, monkeypatch, damage):
+    package = _load_experiments()
+    matrix_module = importlib.import_module("research.coordination_experiments.compact_matrix_runner")
+    dataset_root = _dataset_root(tmp_path)
+    output = _output_dir(package, f"rewrite-{damage}")
+    try:
+        first = _run_one(package, dataset_root, output)
+        row_path = Path(first.rows[0]["row_path"])
+        if damage == "corrupt":
+            row_path.write_text("{broken", encoding="utf-8")
+        else:
+            payload = json.loads(row_path.read_text(encoding="utf-8"))
+            payload["schema_version"] = "stale-schema"
+            row_path.write_text(json.dumps(payload, sort_keys=True), encoding="utf-8")
+        calls = 0
+        original_execute = matrix_module.execute_compact_discovery_method
+
+        def counted_execute(*args, **kwargs):
+            nonlocal calls
+            calls += 1
+            return original_execute(*args, **kwargs)
+
+        monkeypatch.setattr(matrix_module, "execute_compact_discovery_method", counted_execute)
+        second = _run_one(package, dataset_root, output)
+        rewritten = json.loads(row_path.read_text(encoding="utf-8"))
+
+        assert calls == 1
+        assert second.resume_counts == {"rewritten": 1}
+        assert rewritten["schema_version"] == package.IOHUNTER_COMPACT_ROW_SCHEMA_VERSION
+    finally:
+        shutil.rmtree(output, ignore_errors=True)
+
+
+def test_dense_limit_blocks_without_subsampling_or_evaluator_access(tmp_path, monkeypatch):
+    package = _load_experiments()
+    matrix_module = importlib.import_module("research.coordination_experiments.compact_matrix_runner")
+    dataset_root = _dataset_root(tmp_path)
+    output = _output_dir(package, "dense-block")
+
+    def forbidden_evaluator(*args, **kwargs):
+        raise AssertionError("blocked execution accessed evaluator")
+
+    monkeypatch.setattr(matrix_module, "IOHunterExternalEvaluationInput", forbidden_evaluator)
+    try:
+        result = package.run_compact_iohunter_matrix(
+            dataset_root,
+            output,
+            campaigns=("russia",),
+            seeds=(42,),
+            methods=("dense_cosine_leiden",),
+            method_config_overrides={"dense_cosine_leiden": {"dense_feasible_account_limit": 4}},
+            memory_budget_bytes=256 * 1024 * 1024,
+            bootstrap_resamples=50,
+        )
+
+        assert result.status_counts == {"blocked": 1}
+        assert "feasibility limit 4" in result.rows[0]["reason"]
+        assert result.rows[0]["account_count"] == 6
+        assert result.rows[0]["prediction_artifact_identity"] is None
+    finally:
+        shutil.rmtree(output, ignore_errors=True)
+
+
+def test_load_budget_blocks_every_coordinate_and_counts_actions(tmp_path):
+    package = _load_experiments()
+    dataset_root = _dataset_root(tmp_path)
+    output = _output_dir(package, "load-budget")
+    try:
+        result = package.run_compact_iohunter_matrix(
+            dataset_root,
+            output,
+            campaigns=("russia",),
+            seeds=(42,),
+            methods=("tsgs_mhcr_compact", "edgebank"),
+            memory_budget_bytes=1,
+            bootstrap_resamples=10,
+        )
+
+        assert len(result.rows) == 2
+        assert result.status_counts == {"blocked": 2}
+        assert result.resume_counts == {"executed": 2}
+        assert all("before model execution" in row["reason"] for row in result.rows)
+    finally:
+        shutil.rmtree(output, ignore_errors=True)
+
+
+def test_selected_rows_preserve_canonical_campaign_order(tmp_path):
+    package = _load_experiments()
+    dataset_root = _dataset_root(tmp_path, campaigns=package.IOHUNTER_COMPACT_CAMPAIGNS)
+    output = _output_dir(package, "canonical-order")
+    try:
+        result = package.run_compact_iohunter_matrix(
+            dataset_root,
+            output,
+            seeds=(42,),
+            methods=("edgebank",),
+            memory_budget_bytes=256 * 1024 * 1024,
+            bootstrap_resamples=10,
+        )
+
+        assert tuple(row["campaign"] for row in result.rows) == package.IOHUNTER_COMPACT_CAMPAIGNS
+    finally:
+        shutil.rmtree(output, ignore_errors=True)
+
+
+@pytest.mark.parametrize(
+    "candidate",
+    [
+        r"C:\\tmp\\matrix",
+        r"G:\\CISCN\\CogGuard\\.worktrees\\refactor-system\\system\\output\\sibling",
+        r"G:\\CISCN\\CogGuard\\.worktrees\\refactor-system\\system\\output\\coordination_two_stage_reproduction\\..\\escape",
+        "relative-matrix",
+    ],
+)
+def test_matrix_rejects_c_relative_sibling_and_traversal_outputs(candidate):
+    package = _load_experiments()
+    with pytest.raises(ValueError, match="canonical G-drive reproduction output root"):
+        package.validate_compact_matrix_output_dir(candidate)
+
+
+def test_aggregates_are_deterministic_use_sample_std_and_pair_campaign_seed_rows():
+    package = _load_experiments()
+    rows = []
+    for campaign, candidate, baseline in (("china", (0.8, 0.6), (0.3, 0.4)), ("russia", (0.7, 0.5), (0.2, 0.2))):
+        for offset, seed in enumerate((42, 43)):
+            for method, values in (("tsgs_mhcr_compact", candidate), ("edgebank", baseline)):
+                rows.append({
+                    "campaign": campaign,
+                    "seed": seed,
+                    "fold_id": f"fold-{offset:03d}",
+                    "method_id": method,
+                    "status": "success",
+                    "proxy_metrics": {"external_account_macro_f1": values[offset]},
+                })
+
+    first = package.aggregate_compact_matrix_rows(rows, bootstrap_seed=11, bootstrap_resamples=200)
+    second = package.aggregate_compact_matrix_rows(rows, bootstrap_seed=11, bootstrap_resamples=200)
+    decisions = package.build_compact_claim_decisions(rows, bootstrap_seed=11, bootstrap_resamples=200)
+    china = next(row for row in first if row["scope"] == "campaign" and row["campaign"] == "china" and row["method_id"] == "tsgs_mhcr_compact")
+    overall = next(row for row in first if row["scope"] == "matrix" and row["method_id"] == "tsgs_mhcr_compact")
+    paired = next(row for row in decisions["paired_external_account_proxy"] if row["metric_name"] == "external_account_macro_f1")
+
+    assert first == second
+    assert china["count"] == 2
+    assert china["sample_std"] == pytest.approx(np.std([0.8, 0.6], ddof=1))
+    assert overall["count"] == 4
+    assert paired["pair_count"] == 4
+    assert paired["decision"] == "blocked_incomplete_matrix"
+    assert paired["required_pair_count"] == 30
+    assert paired["missing_pair_count"] == 26
+    assert paired["claim_scope"] == "external_account_recovery_not_coordination_ground_truth"
+
+
+def test_proxy_claim_requires_complete_matrix_and_positive_paired_confidence_interval():
+    package = _load_experiments()
+    rows = []
+    for campaign in package.IOHUNTER_COMPACT_CAMPAIGNS:
+        for seed in package.IOHUNTER_COMPACT_SEEDS:
+            for method_id, score in (
+                ("tsgs_mhcr_compact", 0.7),
+                ("edgebank", 0.4),
+            ):
+                rows.append(
+                    {
+                        "campaign": campaign,
+                        "seed": seed,
+                        "fold_id": f"fold-{package.IOHUNTER_COMPACT_SEEDS.index(seed):03d}",
+                        "method_id": method_id,
+                        "status": "success",
+                        "proxy_metrics": {
+                            "external_account_macro_f1": score,
+                            "external_account_evaluated_count": 100.0,
+                        },
+                    }
+                )
+
+    decisions = package.build_compact_claim_decisions(
+        rows, bootstrap_seed=11, bootstrap_resamples=200
+    )
+    paired = decisions["paired_external_account_proxy"]
+
+    assert [row["metric_name"] for row in paired] == ["external_account_macro_f1"]
+    assert paired[0]["pair_count"] == 30
+    assert paired[0]["missing_pair_count"] == 0
+    assert paired[0]["ci_95_low"] > 0.0
+    assert paired[0]["decision"] == "supported_external_account_proxy_only"
+
+
+def test_claim_decisions_fix_unsupported_research_scopes():
+    package = _load_experiments()
+    decisions = package.build_compact_claim_decisions((), bootstrap_resamples=10)
+    blocked = {row["claim_id"]: row for row in decisions["fixed_blocked_claims"]}
+
+    assert set(blocked) == {
+        "harmful_cib_detection",
+        "true_coordination_edge_community_recovery",
+        "causal_campaign_claims",
+        "observed_time_claims",
+        "production_activation",
+    }
+    assert all(row["decision"] == "blocked" and row["missing_capability"] for row in blocked.values())
+    assert decisions["numerical_document_targets"] == []
+
+
+def test_campaign_loads_are_released_before_the_next_campaign(tmp_path, monkeypatch):
+    package = _load_experiments()
+    matrix_module = importlib.import_module("research.coordination_experiments.compact_matrix_runner")
+    dataset_root = _dataset_root(tmp_path, campaigns=("china", "russia"))
+    output = _output_dir(package, "release")
+    original_load = matrix_module.load_compact_iohunter
+    previous = None
+
+    def observed_load(*args, **kwargs):
+        nonlocal previous
+        gc.collect()
+        assert previous is None or previous() is None
+        loaded = original_load(*args, **kwargs)
+        previous = weakref.ref(loaded)
+        return loaded
+
+    monkeypatch.setattr(matrix_module, "load_compact_iohunter", observed_load)
+    try:
+        result = package.run_compact_iohunter_matrix(
+            dataset_root,
+            output,
+            campaigns=("china", "russia"),
+            seeds=(42,),
+            methods=("edgebank",),
+            memory_budget_bytes=256 * 1024 * 1024,
+            bootstrap_resamples=20,
+        )
+        assert len(result.rows) == 2
+    finally:
+        shutil.rmtree(output, ignore_errors=True)
+
+
+def test_cli_requires_g_output_and_prints_only_compact_json(tmp_path, capsys):
+    package = _load_experiments()
+    dataset_root = _dataset_root(tmp_path)
+    output = _output_dir(package, "cli")
+    script_path = PROJECT_ROOT / "backend" / "scripts" / "run_coordination_iohunter_matrix.py"
+    spec = importlib.util.spec_from_file_location("task7c_matrix_cli", script_path)
+    assert spec is not None and spec.loader is not None
+    script = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(script)
+    try:
+        exit_code = script.main([
+            "--dataset-root", str(dataset_root),
+            "--output", str(output),
+            "--campaign", "russia",
+            "--seed", "42",
+            "--method", "edgebank",
+            "--memory-budget-bytes", str(256 * 1024 * 1024),
+            "--bootstrap-resamples", "20",
+            "--method-config-override", "edgebank.max_candidate_edges=3",
+        ])
+        summary = json.loads(capsys.readouterr().out)
+
+        assert exit_code == 0
+        assert summary["row_count"] == 1
+        assert summary["status_counts"] == {"success": 1}
+        assert Path(summary["output"]).resolve() == output.resolve()
+        assert set(summary) == {"manifest_fingerprint", "output", "resume_counts", "row_count", "status_counts"}
+    finally:
+        shutil.rmtree(output, ignore_errors=True)
