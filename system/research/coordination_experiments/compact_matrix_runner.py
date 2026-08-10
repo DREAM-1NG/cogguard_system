@@ -48,6 +48,7 @@ IOHUNTER_COMPACT_CAMPAIGNS = ("china", "cuba", "iran", "russia", "UAE", "venezue
 IOHUNTER_COMPACT_SEEDS = (42, 43, 44, 45, 46)
 IOHUNTER_COMPACT_METHODS = (
     "tsgs_mhcr_compact",
+    "frozen_system_evidence_prior",
     "edgebank",
     "dense_cosine_leiden",
     "no_tsgs",
@@ -57,8 +58,8 @@ IOHUNTER_COMPACT_METHODS = (
 IOHUNTER_COMPACT_MATRIX_SCHEMA_VERSION = "cogguard.iohunter-compact-matrix/v1"
 IOHUNTER_COMPACT_ROW_SCHEMA_VERSION = "cogguard.iohunter-compact-matrix-row/v1"
 IOHUNTER_COMPACT_AGGREGATE_SCHEMA_VERSION = "cogguard.iohunter-compact-aggregates/v1"
-IOHUNTER_COMPACT_CLAIM_SCHEMA_VERSION = "cogguard.iohunter-compact-claims/v1"
-IOHUNTER_COMPACT_IMPLEMENTATION_VERSION = "task-7c-compact-matrix-v2"
+IOHUNTER_COMPACT_CLAIM_SCHEMA_VERSION = "cogguard.iohunter-compact-claims/v2"
+IOHUNTER_COMPACT_IMPLEMENTATION_VERSION = "task-7c-compact-matrix-v4"
 IOHUNTER_COMPACT_METHOD_CONFIG_VERSION = "compact-discovery-method-config/v1"
 COMPACT_PREDICTION_ARTIFACT_SCHEMA_VERSION = "cogguard.compact-discovery-prediction-artifact/v1"
 IOHUNTER_EXTERNAL_EVALUATION_SCOPE = "external_account_recovery_not_coordination_ground_truth"
@@ -75,6 +76,14 @@ _REQUIRED_PROXY_PAIRS = frozenset(
     (campaign, seed)
     for campaign in IOHUNTER_COMPACT_CAMPAIGNS
     for seed in IOHUNTER_COMPACT_SEEDS
+)
+_PAIR_PROVENANCE_FIELDS = (
+    "fold_id",
+    "source_layer_fingerprint",
+    "source_sha256",
+    "evaluator_fingerprint",
+    "fold_fingerprint",
+    "evaluation_scope",
 )
 _PREDICTION_ARRAY_FIELDS = (
     "candidate_endpoints",
@@ -1185,89 +1194,291 @@ def aggregate_compact_matrix_rows(
     return tuple(aggregates)
 
 
-def build_compact_claim_decisions(
-    rows: Sequence[Mapping[str, Any]],
+def _matching_provenance(left: Mapping[str, Any], right: Mapping[str, Any]) -> bool:
+    return all(
+        field in left and field in right and left[field] == right[field]
+        for field in _PAIR_PROVENANCE_FIELDS
+    )
+
+
+def _campaign_level_summary(
+    observations: Sequence[tuple[str, int, float]],
     *,
-    bootstrap_seed: int = 0,
-    bootstrap_resamples: int = 2_000,
+    bootstrap_seed: int,
+    bootstrap_resamples: int,
 ) -> dict[str, Any]:
-    paired_values: dict[str, list[tuple[str, int, float]]] = defaultdict(list)
-    successful = {
-        (str(row["campaign"]), int(row["seed"]), str(row["method_id"])): row
-        for row in rows
-        if row.get("status") == "success"
+    by_campaign: dict[str, list[float]] = defaultdict(list)
+    for campaign, _seed, difference in observations:
+        by_campaign[campaign].append(float(difference))
+    campaign_differences = tuple(
+        float(np.mean(by_campaign[campaign])) for campaign in sorted(by_campaign)
+    )
+    if campaign_differences:
+        low, high = bootstrap_confidence_interval(
+            campaign_differences,
+            seed=bootstrap_seed,
+            resamples=bootstrap_resamples,
+        )
+        mean = float(np.mean(campaign_differences))
+        sample_std = (
+            float(np.std(campaign_differences, ddof=1))
+            if len(campaign_differences) > 1
+            else 0.0
+        )
+    else:
+        low = None
+        high = None
+        mean = None
+        sample_std = None
+    return {
+        "mean": mean,
+        "sample_std": sample_std,
+        "ci_95_low": low,
+        "ci_95_high": high,
+        "campaign_count": len(campaign_differences),
+        "required_campaign_count": len(IOHUNTER_COMPACT_CAMPAIGNS),
+        "missing_campaign_count": len(set(IOHUNTER_COMPACT_CAMPAIGNS) - set(by_campaign)),
+        "inference_unit": "campaign_mean_over_seed_fold_pairs",
+        "seed_fold_policy": "coupled_seed_to_official_fold_not_crossed",
     }
-    pair_keys = sorted({(campaign, seed) for campaign, seed, _ in successful})
-    for campaign, seed in pair_keys:
+
+
+def _paired_method_rows(
+    successful: Mapping[tuple[str, int, str], Mapping[str, Any]],
+    baseline_method_id: str,
+) -> tuple[
+    tuple[tuple[str, int, Mapping[str, Any], Mapping[str, Any]], ...],
+    tuple[tuple[str, int], ...],
+]:
+    pairs = []
+    provenance_mismatches = []
+    for campaign, seed in sorted(_REQUIRED_PROXY_PAIRS):
         candidate = successful.get((campaign, seed, "tsgs_mhcr_compact"))
-        baseline = successful.get((campaign, seed, "edgebank"))
+        baseline = successful.get((campaign, seed, baseline_method_id))
         if candidate is None or baseline is None:
             continue
+        if not _matching_provenance(candidate, baseline):
+            provenance_mismatches.append((campaign, seed))
+            continue
+        pairs.append((campaign, seed, candidate, baseline))
+    return tuple(pairs), tuple(provenance_mismatches)
+
+
+def _proxy_comparison_rows(
+    pairs: Sequence[tuple[str, int, Mapping[str, Any], Mapping[str, Any]]],
+    provenance_mismatches: Sequence[tuple[str, int]],
+    *,
+    baseline_method_id: str,
+    mean_field: str,
+    supported_decision: str,
+    bootstrap_seed: int,
+    bootstrap_resamples: int,
+) -> list[dict[str, Any]]:
+    values: dict[str, list[tuple[str, int, float]]] = defaultdict(list)
+    for campaign, seed, candidate, baseline in pairs:
         shared_metrics = (
             set(candidate.get("proxy_metrics", {}))
             & set(baseline.get("proxy_metrics", {}))
             & _CLAIMABLE_PROXY_METRICS
         )
         for metric_name in sorted(shared_metrics):
-            difference = float(candidate["proxy_metrics"][metric_name]) - float(baseline["proxy_metrics"][metric_name])
-            paired_values[metric_name].append((campaign, seed, difference))
-    paired = []
-    for metric_name in sorted(_CLAIMABLE_PROXY_METRICS):
-        observations = paired_values.get(metric_name, [])
-        differences = tuple(item[2] for item in observations)
-        observed_pairs = {(campaign, seed) for campaign, seed, _ in observations}
-        missing_pairs = _REQUIRED_PROXY_PAIRS - observed_pairs
-        if differences:
-            low, high = bootstrap_confidence_interval(
-                differences, seed=bootstrap_seed, resamples=bootstrap_resamples
+            values[metric_name].append(
+                (
+                    campaign,
+                    seed,
+                    float(candidate["proxy_metrics"][metric_name])
+                    - float(baseline["proxy_metrics"][metric_name]),
+                )
             )
-            mean = float(np.mean(differences))
-            sample_std = float(np.std(differences, ddof=1)) if len(differences) > 1 else 0.0
-        else:
-            low = None
-            high = None
-            mean = None
-            sample_std = None
-        if missing_pairs:
+
+    comparisons = []
+    for metric_name in sorted(_CLAIMABLE_PROXY_METRICS):
+        observations = values.get(metric_name, [])
+        observed_pairs = {(campaign, seed) for campaign, seed, _ in observations}
+        missing_pairs = _REQUIRED_PROXY_PAIRS - observed_pairs - set(provenance_mismatches)
+        summary = _campaign_level_summary(
+            observations,
+            bootstrap_seed=bootstrap_seed,
+            bootstrap_resamples=bootstrap_resamples,
+        )
+        if provenance_mismatches:
+            decision = "blocked_provenance_mismatch"
+            decision_reason = "paired rows do not share the same source and evaluator provenance"
+        elif missing_pairs:
             decision = "blocked_incomplete_matrix"
             decision_reason = (
                 "proxy comparison requires all 30 canonical campaign-seed pairs; "
                 f"observed {len(observed_pairs)}"
             )
-        elif low is not None and low > 0.0:
-            decision = "supported_external_account_proxy_only"
-            decision_reason = "paired 95% bootstrap confidence interval is strictly positive"
+        elif summary["ci_95_low"] is not None and summary["ci_95_low"] > 0.0:
+            decision = supported_decision
+            decision_reason = (
+                "campaign-level paired 95% bootstrap confidence interval is strictly positive"
+            )
         else:
             decision = "not_supported"
-            decision_reason = "paired 95% bootstrap confidence interval is not strictly positive"
-        paired.append(
+            decision_reason = (
+                "campaign-level paired 95% bootstrap confidence interval does not show superiority"
+            )
+        comparisons.append(
             {
+                "candidate_method_id": "tsgs_mhcr_compact",
+                "baseline_method_id": baseline_method_id,
                 "metric_name": metric_name,
-                "pair_count": len(differences),
+                "pair_count": len(observations),
                 "required_pair_count": len(_REQUIRED_PROXY_PAIRS),
                 "missing_pair_count": len(missing_pairs),
-                "mean_candidate_minus_edgebank": mean,
-                "sample_std": sample_std,
-                "ci_95_low": low,
-                "ci_95_high": high,
+                "provenance_mismatch_count": len(provenance_mismatches),
+                "provenance_mismatch_campaign_seeds": [
+                    {"campaign": campaign, "seed": seed}
+                    for campaign, seed in provenance_mismatches
+                ],
+                mean_field: summary.pop("mean"),
+                **summary,
                 "paired_campaign_seeds": [
-                    {"campaign": campaign, "seed": seed} for campaign, seed, _ in observations
+                    {"campaign": campaign, "seed": seed}
+                    for campaign, seed, _ in observations
                 ],
                 "decision": decision,
                 "decision_reason": decision_reason,
                 "claim_scope": IOHUNTER_EXTERNAL_EVALUATION_SCOPE,
             }
         )
+    return comparisons
+
+
+def _runtime_comparison(
+    pairs: Sequence[tuple[str, int, Mapping[str, Any], Mapping[str, Any]]],
+    provenance_mismatches: Sequence[tuple[str, int]],
+    *,
+    bootstrap_seed: int,
+    bootstrap_resamples: int,
+) -> dict[str, Any]:
+    observations = []
+    ratios = []
+    for campaign, seed, candidate, baseline in pairs:
+        candidate_seconds = candidate.get("runtime_seconds")
+        baseline_seconds = baseline.get("diagnostics_summary", {}).get(
+            "cold_projection_seconds",
+            baseline.get("runtime_seconds"),
+        )
+        if not isinstance(candidate_seconds, (int, float)) or not isinstance(
+            baseline_seconds, (int, float)
+        ):
+            continue
+        candidate_seconds = float(candidate_seconds)
+        baseline_seconds = float(baseline_seconds)
+        if not math.isfinite(candidate_seconds) or not math.isfinite(baseline_seconds):
+            continue
+        observations.append((campaign, seed, candidate_seconds - baseline_seconds))
+        if baseline_seconds > 0.0:
+            ratios.append(candidate_seconds / baseline_seconds)
+    observed_pairs = {(campaign, seed) for campaign, seed, _ in observations}
+    missing_pairs = _REQUIRED_PROXY_PAIRS - observed_pairs - set(provenance_mismatches)
+    summary = _campaign_level_summary(
+        observations,
+        bootstrap_seed=bootstrap_seed,
+        bootstrap_resamples=bootstrap_resamples,
+    )
+    if provenance_mismatches:
+        decision = "blocked_provenance_mismatch"
+        reason = "paired runtime rows do not share source and evaluator provenance"
+    elif missing_pairs:
+        decision = "blocked_incomplete_matrix"
+        reason = "runtime comparison requires all 30 canonical campaign-seed pairs"
+    else:
+        decision = "blocked_noncomparable_measurement_boundary"
+        reason = (
+            "candidate wall-clock execution and production cold-projection timers "
+            "do not cover identical boundaries"
+        )
+    return {
+        "candidate_method_id": "tsgs_mhcr_compact",
+        "baseline_method_id": "frozen_system_evidence_prior",
+        "pair_count": len(observations),
+        "required_pair_count": len(_REQUIRED_PROXY_PAIRS),
+        "missing_pair_count": len(missing_pairs),
+        "provenance_mismatch_count": len(provenance_mismatches),
+        "mean_candidate_minus_baseline_seconds": summary.pop("mean"),
+        "mean_candidate_over_baseline_ratio": float(np.mean(ratios)) if ratios else None,
+        **summary,
+        "decision": decision,
+        "decision_reason": reason,
+        "measurement_scope": "method_execution_only_excludes_shared_loader_and_evaluator",
+        "measurement_boundary_comparable": False,
+        "compute_budget_comparable": False,
+        "adapter_scope": "post_evidence_projection_static_graph_only",
+    }
+
+
+def build_compact_claim_decisions(
+    rows: Sequence[Mapping[str, Any]],
+    *,
+    bootstrap_seed: int = 0,
+    bootstrap_resamples: int = 2_000,
+) -> dict[str, Any]:
+    successful = {
+        (str(row["campaign"]), int(row["seed"]), str(row["method_id"])): row
+        for row in rows
+        if row.get("status") == "success"
+    }
+    edgebank_pairs, edgebank_mismatches = _paired_method_rows(successful, "edgebank")
+    system_pairs, system_mismatches = _paired_method_rows(
+        successful, "frozen_system_evidence_prior"
+    )
+    paired = _proxy_comparison_rows(
+        edgebank_pairs,
+        edgebank_mismatches,
+        baseline_method_id="edgebank",
+        mean_field="mean_candidate_minus_edgebank",
+        supported_decision="supported_external_account_proxy_only",
+        bootstrap_seed=bootstrap_seed,
+        bootstrap_resamples=bootstrap_resamples,
+    )
+    system_paired = _proxy_comparison_rows(
+        system_pairs,
+        system_mismatches,
+        baseline_method_id="frozen_system_evidence_prior",
+        mean_field="mean_candidate_minus_baseline",
+        supported_decision="supported_candidate_over_frozen_system_proxy_only",
+        bootstrap_seed=bootstrap_seed,
+        bootstrap_resamples=bootstrap_resamples,
+    )
+    for comparison in system_paired:
+        comparison["adapter_scope"] = "post_evidence_projection_static_graph_only"
     fixed = (
         ("harmful_cib_detection", "IOHunter lacks harmful-CIB Gold labels and Stage 2 Detection was not executed"),
         ("true_coordination_edge_community_recovery", "IOHunter lacks true coordination-edge and community labels"),
         ("causal_campaign_claims", "IOHunter lacks causal campaign annotations"),
         ("observed_time_claims", "IOHunter processed graphs lack observed timestamps"),
         ("production_activation", "this matrix is research-only and the production Discovery runtime is frozen"),
+        (
+            "end_to_end_production_model_superiority",
+            "the frozen adapter starts after evidence projection and omits production windows, null models, domain shift, and abstention",
+        ),
+        (
+            "method_peak_memory_superiority",
+            "tracemalloc and shared evaluator estimates are not comparable method-level peak-memory measurements",
+        ),
+        (
+            "equal_compute_budget",
+            "the research candidate caps selected edges while the frozen production graph core consumes the full projected graph",
+        ),
+        (
+            "pure_cross_seed_stability",
+            "model seed and official evaluation fold are coupled rather than fully crossed",
+        ),
     )
     return {
         "schema_version": IOHUNTER_COMPACT_CLAIM_SCHEMA_VERSION,
         "paired_external_account_proxy": paired,
+        "paired_frozen_system_proxy": system_paired,
+        "paired_frozen_system_runtime": _runtime_comparison(
+            system_pairs,
+            system_mismatches,
+            bootstrap_seed=bootstrap_seed,
+            bootstrap_resamples=bootstrap_resamples,
+        ),
         "fixed_blocked_claims": [
             {"claim_id": claim_id, "decision": "blocked", "missing_capability": reason}
             for claim_id, reason in fixed

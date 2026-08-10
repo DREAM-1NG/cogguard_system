@@ -10,6 +10,7 @@ from types import MappingProxyType
 from typing import Any, Mapping
 
 import numpy as np
+import pandas as pd
 
 from research.coordination_discover.stage1.contracts import (
     CoordinationMetricSet,
@@ -34,14 +35,18 @@ _STATIC_CLAIM_MARKER = "static_placeholder_not_observed_time"
 _EXPLICIT_UNION_GUARANTEE_SCOPE = "explicit_compact_source_union"
 _EXACT_BACKEND = "exact_laplacian_pseudoinverse"
 _APPROXIMATE_BACKEND = "degree_leverage_approximation"
+_PRODUCTION_STATIC_PROXY_MAX_OCCURRENCES = 100_000
 _COMPACT_METHOD_VARIANTS = frozenset(
     {
         "tsgs_mhcr_compact",
+        "frozen_system_evidence_prior",
         "edgebank",
         "dense_cosine_leiden",
         "no_tsgs",
         "no_mhcr",
         "no_relation_specific",
+        "no_temporal_augmentation",
+        "tgn_style_memory_prior",
     }
 )
 _EXECUTION_CONFIG_OVERRIDES = frozenset(
@@ -869,12 +874,265 @@ class GraphNativeDiscoveryImplementation(DiscoveryImplementation):
         )
 
 
+def _production_pair_frame(graph: _FusedCompactGraph) -> pd.DataFrame:
+    pair_indices, relation_indices = np.nonzero(graph.relation_weights > 0.0)
+    if pair_indices.size == 0:
+        return pd.DataFrame(
+            columns=(
+                "account_id",
+                "account_id_y",
+                "content_id",
+                "content_id_y",
+                "time_delta",
+            )
+        )
+    endpoints = graph.endpoints[pair_indices]
+    occurrence_ids = np.arange(pair_indices.size, dtype=np.int64)
+    return pd.DataFrame(
+        {
+            "account_id": [f"account-{int(index):06d}" for index in endpoints[:, 0]],
+            "account_id_y": [f"account-{int(index):06d}" for index in endpoints[:, 1]],
+            "content_id": occurrence_ids * 2,
+            "content_id_y": occurrence_ids * 2 + 1,
+            "time_delta": np.zeros(pair_indices.size, dtype=np.float64),
+            "relation_index": relation_indices.astype(np.uint8, copy=False),
+        }
+    )
+
+
+def _production_assignments(account_count: int, graph: Any) -> np.ndarray:
+    assignments = np.full(account_count, -1, dtype=np.int32)
+    for account_index in range(account_count):
+        account_id = f"account-{account_index:06d}"
+        if account_id in graph:
+            assignments[account_index] = int(graph.nodes[account_id]["cluster_id"])
+    next_cluster = int(np.max(assignments)) + 1 if np.any(assignments >= 0) else 0
+    for account_index in np.flatnonzero(assignments < 0):
+        assignments[account_index] = next_cluster
+        next_cluster += 1
+    return assignments
+
+
+def _production_account_scores(account_count: int, graph: Any) -> np.ndarray:
+    weighted_degree = np.zeros(account_count, dtype=np.float32)
+    for account_index in range(account_count):
+        account_id = f"account-{account_index:06d}"
+        if account_id in graph:
+            weighted_degree[account_index] = float(
+                graph.nodes[account_id].get("weighted_degree", 0.0)
+            )
+    return _normalized(weighted_degree)
+
+
+@dataclass(frozen=True, slots=True)
+class _FrozenSystemProjection:
+    fused: _FusedCompactGraph
+    candidate_weights: np.ndarray
+    edge_scores: np.ndarray
+    assignments: np.ndarray
+    account_scores: np.ndarray
+    account_stat_count: int
+    source_occurrence_upper_bound: int
+    occurrence_count: int
+    graph_seconds: float
+    cold_projection_seconds: float
+
+
+@dataclass(frozen=True, slots=True)
+class FrozenSystemEvidencePriorImplementation(DiscoveryImplementation):
+    method_id: str = "frozen_system_evidence_prior"
+    method_version: str = "coordination-evidence-runtime-v2"
+    implementation_id: str = "frozen-system-evidence-compact-adapter-v4"
+    config: CompactDiscoveryMethodConfig = field(
+        default_factory=lambda: CompactDiscoveryMethodConfig(
+            method_variant="frozen_system_evidence_prior",
+            epochs=1,
+        )
+    )
+    unavailable_reason: str | None = None
+    _projection_cache: dict[str, _FrozenSystemProjection] = field(
+        default_factory=dict,
+        init=False,
+        repr=False,
+        compare=False,
+    )
+
+    def execute(
+        self, execution_input: CompactDiscoveryExecutionInput
+    ) -> CompactDiscoveryPrediction:
+        if not isinstance(execution_input, CompactDiscoveryExecutionInput):
+            raise ValueError("frozen system baseline requires CompactDiscoveryExecutionInput")
+        if self.unavailable_reason is not None:
+            raise CompactDiscoveryMethodBlocked(self.unavailable_reason)
+        if execution_input.discovery_view.time_semantics != IOHUNTER_STATIC_TIME_SEMANTICS:
+            raise ValueError("frozen system compact comparison requires explicit static time semantics")
+
+        try:
+            from app.core.coordination_baseline import (
+                account_stats as production_account_stats,
+                generate_coordinated_network,
+            )
+        except ImportError as exc:
+            raise CompactDiscoveryMethodBlocked(
+                "backend production coordination core is unavailable"
+            ) from exc
+
+        cache_key = execution_input.discovery_view.source_layer_fingerprint
+        if self._projection_cache and cache_key not in self._projection_cache:
+            self._projection_cache.clear()
+        source_occurrence_upper_bound = sum(
+            int(layer.endpoints.shape[0])
+            for layer in execution_input.discovery_view.relation_edges.values()
+        )
+        if source_occurrence_upper_bound > _PRODUCTION_STATIC_PROXY_MAX_OCCURRENCES:
+            raise CompactDiscoveryMethodBlocked(
+                "frozen production static proxy exceeds the "
+                f"{_PRODUCTION_STATIC_PROXY_MAX_OCCURRENCES}-occurrence runtime budget; "
+                "the adapter blocks before fusion and does not truncate or replace the production graph core"
+            )
+        projection = self._projection_cache.get(cache_key)
+        cache_hit = projection is not None
+        if projection is None:
+            projection_started = time.perf_counter()
+            fused = _fuse_relation_layers(execution_input)
+            occurrence_count = int(np.count_nonzero(fused.relation_weights))
+            if occurrence_count > _PRODUCTION_STATIC_PROXY_MAX_OCCURRENCES:
+                raise CompactDiscoveryMethodBlocked(
+                    "frozen production static proxy exceeds the "
+                    f"{_PRODUCTION_STATIC_PROXY_MAX_OCCURRENCES}-occurrence runtime budget; "
+                    "the adapter blocks and does not truncate or replace the production graph core"
+                )
+            pair_frame = _production_pair_frame(fused)
+            graph_started = time.perf_counter()
+            graph = generate_coordinated_network(pair_frame, edge_weight=0.5)
+            account_rows = production_account_stats(graph, pair_frame)
+            graph_seconds = time.perf_counter() - graph_started
+            candidate_weights = np.count_nonzero(
+                fused.relation_weights, axis=1
+            ).astype(np.float32)
+            projection = _FrozenSystemProjection(
+                fused=fused,
+                candidate_weights=candidate_weights,
+                edge_scores=_normalized(candidate_weights),
+                assignments=_production_assignments(
+                    execution_input.discovery_view.account_count, graph
+                ),
+                account_scores=_production_account_scores(
+                    execution_input.discovery_view.account_count, graph
+                ),
+                account_stat_count=int(len(account_rows)),
+                source_occurrence_upper_bound=source_occurrence_upper_bound,
+                occurrence_count=occurrence_count,
+                graph_seconds=graph_seconds,
+                cold_projection_seconds=time.perf_counter() - projection_started,
+            )
+            self._projection_cache.clear()
+            self._projection_cache[cache_key] = projection
+
+        fused = projection.fused
+        candidate_weights = projection.candidate_weights
+        edge_scores = projection.edge_scores
+        assignments = projection.assignments
+        account_scores = projection.account_scores
+        timings = {
+            "tsgs_seconds": 0.0,
+            "mhcr_seconds": 0.0,
+            "leiden_seconds": 0.0,
+            "total_seconds": projection.cold_projection_seconds,
+        }
+        batch, _ = _cluster_batch(
+            execution_input=execution_input,
+            method_id=self.method_id,
+            method_version=self.method_version,
+            assignments=assignments,
+            endpoints=fused.endpoints,
+            edge_scores=edge_scores,
+            relation_weights=fused.relation_weights,
+            candidate_weights=candidate_weights,
+            tsgs_diagnostics={
+                "resistance_backend": "not_run_frozen_production_core",
+                "guarantee_scope": "not_applicable_production_baseline",
+            },
+            mhcr_diagnostics={
+                "objective": "not_run_frozen_production_core",
+            },
+            timings=timings,
+        )
+        diagnostics = {
+            "method_role": "frozen_production_evidence_baseline",
+            "system_model_version": self.method_version,
+            "evaluation_adapter_scope": "post_evidence_projection_static_graph_only",
+            "time_semantics": IOHUNTER_STATIC_TIME_SEMANTICS,
+            "source_layer_counts": dict(fused.source_layer_counts),
+            "duplicate_relation_edges_collapsed": fused.duplicate_relation_edges_collapsed,
+            "source_weight_policy": "ignored_by_production_pair_count_core",
+            "production_account_stat_count": projection.account_stat_count,
+            "projection_cache_hit": cache_hit,
+            "source_occurrence_upper_bound": projection.source_occurrence_upper_bound,
+            "projected_relation_occurrence_count": projection.occurrence_count,
+            "runtime_budget_occurrence_limit": _PRODUCTION_STATIC_PROXY_MAX_OCCURRENCES,
+            "cold_projection_seconds": projection.cold_projection_seconds,
+            "clustering": {
+                "backend": "networkx_greedy_modularity",
+                "runtime_seconds": projection.graph_seconds,
+            },
+            "edge_score_formula": "normalized_production_shared_relation_count",
+            "account_score_formula": "normalized_production_weighted_degree",
+            "account_score_role": "production_evidence_prior_not_probability",
+            "seed_policy": "deterministic_seed_ignored",
+            "evaluator_labels_absent": True,
+        }
+        index_dtype = (
+            np.dtype("<u2")
+            if execution_input.discovery_view.account_count <= np.iinfo(np.uint16).max + 1
+            else np.dtype("<u4")
+        )
+        return CompactDiscoveryPrediction(
+            account_count=execution_input.discovery_view.account_count,
+            candidate_endpoints=_readonly(
+                fused.endpoints, index_dtype, (fused.endpoints.shape[0], 2)
+            ),
+            edge_scores=_readonly(
+                edge_scores, np.dtype("<f4"), (edge_scores.shape[0],)
+            ),
+            account_scores=_readonly(
+                account_scores, np.dtype("<f4"), (account_scores.shape[0],)
+            ),
+            cluster_assignments=_readonly(
+                assignments, np.dtype("<i4"), (assignments.shape[0],)
+            ),
+            discovered_cluster_batch=batch,
+            method_id=self.method_id,
+            method_version=self.method_version,
+            implementation_id=self.implementation_id,
+            diagnostics=diagnostics,
+            claim_markers=(
+                _STATIC_CLAIM_MARKER,
+                "production_graph_core_only_no_event_snapshot_evidence_extraction",
+                "production_dynamic_windows_not_evaluated",
+                "production_account_score_is_adapter_projection",
+                "production_runtime_budget_guard_active",
+                "iohunter_no_ground_truth_coordination_edges",
+                "iohunter_no_ground_truth_communities",
+                "iohunter_no_causal_campaign_labels",
+            ),
+        )
+
+
 @dataclass(frozen=True, slots=True)
 class _BlockedCompactDiscoveryImplementation(DiscoveryImplementation):
     method_id: str = ""
     method_version: str = ""
     implementation_id: str = ""
     unavailable_reason: str = ""
+    config: CompactDiscoveryMethodConfig = field(init=False)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "config",
+            CompactDiscoveryMethodConfig(method_variant=self.method_id, epochs=1),
+        )
 
     def execute(self, execution_input: CompactDiscoveryExecutionInput) -> CompactDiscoveryPrediction:
         raise CompactDiscoveryMethodBlocked(self.unavailable_reason)
@@ -942,6 +1200,7 @@ def default_compact_discovery_registry() -> CompactDiscoveryRegistry:
             "tsgs_mhcr_compact": implementation(
                 "tsgs_mhcr_compact", "tsgs-mhcr-compact-v1", unavailable_reason=mhcr_reason
             ),
+            "frozen_system_evidence_prior": FrozenSystemEvidencePriorImplementation(),
             "edgebank": implementation(
                 "edgebank", "edgebank-static-compact-v1", unavailable_reason=leiden_reason, epochs=1
             ),
@@ -958,12 +1217,6 @@ def default_compact_discovery_registry() -> CompactDiscoveryRegistry:
                 "no_relation_specific",
                 "tsgs-mhcr-compact-shared-relation-v1",
                 unavailable_reason=mhcr_reason,
-            ),
-            "frozen_system_evidence_prior": _BlockedCompactDiscoveryImplementation(
-                "frozen_system_evidence_prior",
-                "coordination-evidence-runtime-v2",
-                "frozen-system-evidence-compact-adapter-v1",
-                "frozen production evidence weights are not exported as an immutable compact contract",
             ),
             "no_temporal_augmentation": _BlockedCompactDiscoveryImplementation(
                 "no_temporal_augmentation",
@@ -985,6 +1238,7 @@ __all__ = [
     "CompactDiscoveryMethodBlocked",
     "CompactDiscoveryMethodConfig",
     "CompactDiscoveryRegistry",
+    "FrozenSystemEvidencePriorImplementation",
     "GraphNativeDiscoveryImplementation",
     "default_compact_discovery_registry",
 ]

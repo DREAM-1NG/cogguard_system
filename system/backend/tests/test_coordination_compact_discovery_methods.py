@@ -93,6 +93,10 @@ def _input(package, *, account_count: int = 6, config=None):
     )
 
 
+def _input_with_seed(package, seed: int):
+    return dataclasses.replace(_input(package), seed=seed)
+
+
 def test_compact_registry_exposes_candidate_fair_baseline_and_explicit_blocks():
     package = _load_experiments()
     registry = package.default_compact_discovery_registry()
@@ -110,7 +114,89 @@ def test_compact_registry_exposes_candidate_fair_baseline_and_explicit_blocks():
     } <= set(registry.method_ids())
     assert registry.implementation("tgn_style_memory_prior").unavailable_reason
     assert registry.implementation("no_temporal_augmentation").unavailable_reason
-    assert registry.implementation("frozen_system_evidence_prior").unavailable_reason
+    assert registry.implementation("frozen_system_evidence_prior").unavailable_reason is None
+
+
+def test_frozen_system_baseline_executes_canonical_static_graph_core_without_seed_variance():
+    package = _load_experiments()
+    implementation = package.default_compact_discovery_registry().implementation(
+        "frozen_system_evidence_prior"
+    )
+
+    first = package.execute_compact_discovery_method(
+        {"frozen_system_evidence_prior": implementation},
+        "frozen_system_evidence_prior",
+        _input_with_seed(package, 42),
+    )
+    second = package.execute_compact_discovery_method(
+        {"frozen_system_evidence_prior": implementation},
+        "frozen_system_evidence_prior",
+        _input_with_seed(package, 46),
+    )
+
+    assert first.status == second.status == "success"
+    assert first.prediction is not None and second.prediction is not None
+    assert np.array_equal(first.prediction.candidate_endpoints, second.prediction.candidate_endpoints)
+    assert np.array_equal(first.prediction.edge_scores, second.prediction.edge_scores)
+    assert np.array_equal(first.prediction.account_scores, second.prediction.account_scores)
+    assert first.prediction.diagnostics["method_role"] == "frozen_production_evidence_baseline"
+    assert first.prediction.diagnostics["clustering"]["backend"] == "networkx_greedy_modularity"
+    assert first.prediction.diagnostics["account_score_formula"] == (
+        "normalized_production_weighted_degree"
+    )
+    assert first.prediction.diagnostics["projection_cache_hit"] is False
+    assert second.prediction.diagnostics["projection_cache_hit"] is True
+    assert first.prediction.diagnostics["runtime_budget_occurrence_limit"] == 100_000
+    assert "production_graph_core_only_no_event_snapshot_evidence_extraction" in (
+        first.prediction.claim_markers
+    )
+    assert "production_dynamic_windows_not_evaluated" in first.prediction.claim_markers
+
+
+def test_frozen_system_baseline_blocks_instead_of_truncating_over_runtime_budget(monkeypatch):
+    package = _load_experiments()
+    compact = importlib.import_module("research.coordination_experiments.compact_discovery_methods")
+    monkeypatch.setattr(compact, "_PRODUCTION_STATIC_PROXY_MAX_OCCURRENCES", 1)
+    implementation = package.default_compact_discovery_registry().implementation(
+        "frozen_system_evidence_prior"
+    )
+
+    outcome = package.execute_compact_discovery_method(
+        {"frozen_system_evidence_prior": implementation},
+        "frozen_system_evidence_prior",
+        _input_with_seed(package, 42),
+    )
+
+    assert outcome.status == "blocked"
+    assert "runtime budget" in str(outcome.reason)
+    assert "does not truncate" in str(outcome.reason)
+
+
+def test_frozen_system_baseline_releases_cached_campaign_before_a_blocked_campaign(monkeypatch):
+    package = _load_experiments()
+    compact = importlib.import_module("research.coordination_experiments.compact_discovery_methods")
+    implementation = package.default_compact_discovery_registry().implementation(
+        "frozen_system_evidence_prior"
+    )
+    first = package.execute_compact_discovery_method(
+        {"frozen_system_evidence_prior": implementation},
+        "frozen_system_evidence_prior",
+        _input_with_seed(package, 42),
+    )
+    assert first.status == "success"
+    assert implementation._projection_cache
+
+    monkeypatch.setattr(compact, "_PRODUCTION_STATIC_PROXY_MAX_OCCURRENCES", 1)
+    next_view = dataclasses.replace(_view(package), source_layer_fingerprint=_sha("b"))
+    blocked_input = dataclasses.replace(_input(package), discovery_view=next_view)
+    blocked = package.execute_compact_discovery_method(
+        {"frozen_system_evidence_prior": implementation},
+        "frozen_system_evidence_prior",
+        blocked_input,
+    )
+
+    assert blocked.status == "blocked"
+    assert implementation._projection_cache == {}
 
 
 def test_candidate_is_label_free_deterministic_and_graph_native():

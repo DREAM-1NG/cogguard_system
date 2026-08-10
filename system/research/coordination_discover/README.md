@@ -143,3 +143,18 @@ Near-duplicate candidate buckets are also bounded. Very common phrases can gener
 The backend is artifact-first. It validates `manifest.json` against the `EventSnapshot.data_fingerprint` and `modality_policy=platform_generic_only`; incompatible or missing artifacts fall back to `coordination-evidence-runtime-v2`.
 
 Coordination Detect lives in `system/research/coordination_detect` and uses these representations only for public labeled validation.
+
+## Frozen Production Proxy Comparison
+
+The 2026-08-10 IOHunter comparison includes `coordination-evidence-runtime-v2`
+through the research-only `frozen_system_evidence_prior` adapter. This adapter
+starts after static relation projection and is not the complete production
+Discovery pipeline. Same-protocol pairs require matching source, evaluator,
+and fold fingerprints; confidence intervals use campaign means rather than 30
+IID seed-fold rows.
+
+Only Russia and Venezuela completed both methods. Production wins all four
+external-account proxy metrics on Russia, while `tsgs_mhcr_compact` wins all
+four on Venezuela. The cross-campaign result is unstable and the matrix is
+incomplete, so the research candidate remains non-claimable and offline-only.
+See `doc/research/coordination-production-comparison-20260810.md` and ADR 0015.

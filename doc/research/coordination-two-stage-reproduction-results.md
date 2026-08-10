@@ -1,11 +1,27 @@
 # Coordination Two-Stage Reproduction Status
 
-Date: 2026-08-08
+Date: 2026-08-10
 
 This report records current evidence for the offline research implementation.
 It is not a production activation record. The complete IOHunter matrix has not
 finished, so no proxy comparison is promoted to a supported effectiveness
 claim.
+
+## Frozen Production Comparison Update
+
+The final same-protocol static proxy comparison is documented in
+`coordination-production-comparison-20260810.md`. Its final checksummed v2 matrix contains
+50 rows across five campaigns (`35 success`, `15 blocked`). Only Russia and
+Venezuela completed both `tsgs_mhcr_compact` and the frozen production prior.
+The candidate loses all four external-account proxy metrics on Russia and wins
+all four on Venezuela; the four campaign-mean deltas are negative overall and
+their intervals cross zero. Candidate activation remains blocked.
+
+This comparison starts after evidence projection. It does not evaluate the
+complete production evidence, temporal-window, null-model, domain-shift,
+abstention, or risk-tier path. Cuba remains a dataset-load `MemoryError`, while
+China, Iran, and UAE explicitly block the production proxy above the declared
+100,000-occurrence offline runtime budget.
 
 ## Architecture Status
 

@@ -93,6 +93,17 @@ def _output_dir(package, name: str) -> Path:
     return package.CANONICAL_REPRODUCTION_OUTPUT_ROOT / f"pytest-task7c-{name}-{uuid.uuid4().hex}"
 
 
+def _claim_provenance(package, seed: int) -> dict[str, object]:
+    fold_index = package.IOHUNTER_COMPACT_SEEDS.index(seed)
+    return {
+        "source_layer_fingerprint": "sha256:" + "a" * 64,
+        "source_sha256": "sha256:" + "b" * 64,
+        "evaluator_fingerprint": "sha256:" + "c" * 64,
+        "fold_fingerprint": "sha256:" + str(fold_index + 1) * 64,
+        "evaluation_scope": "external_account_recovery_not_coordination_ground_truth",
+    }
+
+
 def _run_one(package, dataset_root: Path, output: Path, **kwargs):
     return package.run_compact_iohunter_matrix(
         dataset_root,
@@ -113,15 +124,19 @@ def test_compact_matrix_api_and_exact_canonical_identity():
 
     assert package.IOHUNTER_COMPACT_CAMPAIGNS == ("china", "cuba", "iran", "russia", "UAE", "venezuela")
     assert package.IOHUNTER_COMPACT_SEEDS == (42, 43, 44, 45, 46)
+    assert package.IOHUNTER_COMPACT_CLAIM_SCHEMA_VERSION == (
+        "cogguard.iohunter-compact-claims/v2"
+    )
     assert package.IOHUNTER_COMPACT_METHODS == (
         "tsgs_mhcr_compact",
+        "frozen_system_evidence_prior",
         "edgebank",
         "dense_cosine_leiden",
         "no_tsgs",
         "no_mhcr",
         "no_relation_specific",
     )
-    assert len(coordinates) == 6 * 5 * 6
+    assert len(coordinates) == 6 * 5 * 7
     assert len(set(coordinates)) == len(coordinates)
     assert {(row.seed, row.fold_id) for row in coordinates} == {
         (42, "fold-000"),
@@ -790,6 +805,7 @@ def test_aggregates_are_deterministic_use_sample_std_and_pair_campaign_seed_rows
                     "method_id": method,
                     "status": "success",
                     "proxy_metrics": {"external_account_macro_f1": values[offset]},
+                    **_claim_provenance(package, seed),
                 })
 
     first = package.aggregate_compact_matrix_rows(rows, bootstrap_seed=11, bootstrap_resamples=200)
@@ -807,7 +823,89 @@ def test_aggregates_are_deterministic_use_sample_std_and_pair_campaign_seed_rows
     assert paired["decision"] == "blocked_incomplete_matrix"
     assert paired["required_pair_count"] == 30
     assert paired["missing_pair_count"] == 26
+    assert paired["inference_unit"] == "campaign_mean_over_seed_fold_pairs"
+    assert paired["campaign_count"] == 2
     assert paired["claim_scope"] == "external_account_recovery_not_coordination_ground_truth"
+
+
+def test_claim_decisions_compare_candidate_with_frozen_system_separately_from_edgebank():
+    package = _load_experiments()
+    rows = []
+    for campaign in package.IOHUNTER_COMPACT_CAMPAIGNS:
+        for seed in package.IOHUNTER_COMPACT_SEEDS:
+            for method_id, score in (
+                ("tsgs_mhcr_compact", 0.65),
+                ("edgebank", 0.50),
+                ("frozen_system_evidence_prior", 0.70),
+            ):
+                rows.append(
+                    {
+                        "campaign": campaign,
+                        "seed": seed,
+                        "fold_id": f"fold-{package.IOHUNTER_COMPACT_SEEDS.index(seed):03d}",
+                        "method_id": method_id,
+                        "status": "success",
+                        "proxy_metrics": {"external_account_auprc": score},
+                        "runtime_seconds": 2.0 if method_id == "tsgs_mhcr_compact" else 1.0,
+                        **_claim_provenance(package, seed),
+                    }
+                )
+
+    decisions = package.build_compact_claim_decisions(
+        rows, bootstrap_seed=11, bootstrap_resamples=200
+    )
+    system = {
+        row["metric_name"]: row
+        for row in decisions["paired_frozen_system_proxy"]
+    }["external_account_auprc"]
+
+    assert system["candidate_method_id"] == "tsgs_mhcr_compact"
+    assert system["baseline_method_id"] == "frozen_system_evidence_prior"
+    assert system["pair_count"] == 30
+    assert system["campaign_count"] == 6
+    assert system["inference_unit"] == "campaign_mean_over_seed_fold_pairs"
+    assert system["provenance_mismatch_count"] == 0
+    assert system["mean_candidate_minus_baseline"] == pytest.approx(-0.05)
+    assert system["decision"] == "not_supported"
+    runtime = decisions["paired_frozen_system_runtime"]
+    assert runtime["mean_candidate_minus_baseline_seconds"] == pytest.approx(1.0)
+    assert runtime["decision"] == "blocked_noncomparable_measurement_boundary"
+    assert runtime["measurement_boundary_comparable"] is False
+
+
+def test_frozen_system_claim_blocks_mismatched_pair_provenance():
+    package = _load_experiments()
+    rows = []
+    for campaign in package.IOHUNTER_COMPACT_CAMPAIGNS:
+        for seed in package.IOHUNTER_COMPACT_SEEDS:
+            provenance = _claim_provenance(package, seed)
+            for method_id in ("tsgs_mhcr_compact", "frozen_system_evidence_prior"):
+                row_provenance = dict(provenance)
+                if campaign == "china" and seed == 42 and method_id == "frozen_system_evidence_prior":
+                    row_provenance["fold_fingerprint"] = "sha256:" + "f" * 64
+                rows.append(
+                    {
+                        "campaign": campaign,
+                        "seed": seed,
+                        "fold_id": f"fold-{package.IOHUNTER_COMPACT_SEEDS.index(seed):03d}",
+                        "method_id": method_id,
+                        "status": "success",
+                        "proxy_metrics": {"external_account_auprc": 0.7},
+                        "runtime_seconds": 1.0,
+                        **row_provenance,
+                    }
+                )
+
+    decisions = package.build_compact_claim_decisions(rows, bootstrap_resamples=50)
+    comparison = next(
+        row
+        for row in decisions["paired_frozen_system_proxy"]
+        if row["metric_name"] == "external_account_auprc"
+    )
+
+    assert comparison["decision"] == "blocked_provenance_mismatch"
+    assert comparison["provenance_mismatch_count"] == 1
+    assert comparison["pair_count"] == 29
 
 
 @pytest.mark.parametrize(
@@ -893,6 +991,7 @@ def test_proxy_claim_requires_complete_matrix_and_positive_paired_confidence_int
                         "method_id": method_id,
                         "status": "success",
                         "proxy_metrics": {**scores, "external_account_evaluated_count": 100.0},
+                        **_claim_provenance(package, seed),
                     }
                 )
 
@@ -909,6 +1008,8 @@ def test_proxy_claim_requires_complete_matrix_and_positive_paired_confidence_int
     ]
     assert all(row["pair_count"] == 30 for row in paired)
     assert all(row["missing_pair_count"] == 0 for row in paired)
+    assert all(row["campaign_count"] == 6 for row in paired)
+    assert all(row["inference_unit"] == "campaign_mean_over_seed_fold_pairs" for row in paired)
     assert all(row["ci_95_low"] > 0.0 for row in paired)
     assert all(row["decision"] == "supported_external_account_proxy_only" for row in paired)
 
@@ -924,6 +1025,10 @@ def test_claim_decisions_fix_unsupported_research_scopes():
         "causal_campaign_claims",
         "observed_time_claims",
         "production_activation",
+        "end_to_end_production_model_superiority",
+        "method_peak_memory_superiority",
+        "equal_compute_budget",
+        "pure_cross_seed_stability",
     }
     assert all(row["decision"] == "blocked" and row["missing_capability"] for row in blocked.values())
     assert decisions["numerical_document_targets"] == []

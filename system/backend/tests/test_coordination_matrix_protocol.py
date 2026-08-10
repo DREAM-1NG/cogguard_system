@@ -236,6 +236,7 @@ def test_time_methods_are_blocked_while_compact_static_discovery_methods_are_rea
         assert ready
         assert {row.method_id for row in ready} == {
             "tsgs_mhcr_compact",
+            "frozen_system_evidence_prior",
             "edgebank",
             "dense_cosine_leiden",
             "no_tsgs",
