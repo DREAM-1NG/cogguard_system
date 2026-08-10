@@ -22,19 +22,20 @@ Baseline/rollback: `425a8f2 Preserve the current refactor system before case wor
 
 | Task | Status | Evidence |
 | --- | --- | --- |
-| 01A: design and contract resolution | amended; fresh re-review required | Separates the three organizational AuthorityTier values from AuthorityReviewStatus and ClaimRole; adds immutable CaseVerdictVersion proposal/approval/supersession/pointer/audit/closure behavior; records the dynamic migration-head boundary. |
-| 01B: executable TDD plan | amended; fresh re-review required | Tasks now cover taxonomy independence, execution-time one-head Alembic preflight with `<generated_revision>`, CaseVerdictVersion persistence/backfill, service/API flows, report provenance, and no legacy dual writes. |
+| 01A: design and contract resolution | amended; fresh re-review required | Separates the three organizational AuthorityTier values from AuthorityReviewStatus and ClaimRole; adds immutable CaseVerdictVersion proposal/approval/supersession/pointer/audit/closure behavior; records the dynamic migration-head boundary; defines CaseClosureReview plus its canonical hash and the one-transaction public close path as the only closure-report creator. |
+| 01B: executable TDD plan | amended; fresh re-review required | Tasks now cover taxonomy independence, execution-time one-head Alembic preflight with `<generated_revision>`, CaseVerdictVersion persistence/backfill, service/API flows, ordinary-versus-closure report ownership, public close response identity/version, close rollback injection, UI close readiness, report provenance, and no legacy dual writes. |
 | 01C: research/source provenance | amended; fresh re-review required | Removes uncaptured vendor capability assertions, marks five vendor rows as non-evidentiary hypotheses, preserves source statuses, and converts retained-source metadata paths to repository-relative values. |
-| 01D: task report/branch hygiene | amended; ready for fresh re-review | The review identified 5 Important and 1 Minor findings. Validation passed for JSON, hashes, taxonomy/vendor scans, links, one live Alembic head, whitespace, and exact 11-path staged scope; the ignored `progress.md` pointer is force-added and protected dirty paths remain excluded. |
+| 01D: task report/branch hygiene | amended; ready for fresh re-review | The review identified 5 Important and 1 Minor findings. The closure-report sequencing correction records a new CaseClosureReview/closure-report transaction, uses only the public close path in acceptance, and passed terminology, JSON, retained-source hash, one-head Alembic, and scoped whitespace checks; protected dirty paths remain excluded. |
 
 ## Verification And Review Placeholders
 
 - Independent review: `case-workbench-task-01-review.md` found 5 Important and 1 Minor issue in `425a8f2..cc4dde6`; implementation must not start until a fresh review accepts the correction.
 - Amendment evidence: authority class/review state/claim role are independent; Task 2 plans a dynamic one-head migration; CaseVerdictVersion is immutable and case-owned; vendor rows are unverified hypotheses; conversion paths are repository-relative; the ignored progress index is included.
 - Amendment validation: commands/results will be appended to `case-workbench-task-01-report.md` before the Lore fix commit.
+- Second re-review closure-fix evidence: ordinary `/reports` rejects server-owned closure fields; `close_case`/`POST /close` alone creates and returns one closure report with immutable CaseClosureReview provenance; note/render/hash/audit failures roll back all effects; Task 11 has no retired combined-close helper. Exact commands/results are appended to `case-workbench-task-01-report.md` and the agent handoff is `case-workbench-task-01-fix2-agent-report.md`.
 - Fresh task reviewer: required after this correction commit.
 - Branch-wide reviewer: not applicable until implementation tasks begin.
 
 ## Handoff
 
-Do not begin Task 1 until a fresh documentation reviewer accepts this amendment. The next implementation owner must keep the legacy default stage chain unchanged, use the Task 2 execution-time Alembic one-head preflight rather than a fixed parent revision, and use a new Task ledger/reviewer gate per plan task; this Task 01 ledger is not a substitute for implementation reviews.
+Do not begin Task 1 until a fresh documentation reviewer accepts this amendment. The next implementation owner must keep the legacy default stage chain unchanged, use the Task 2 execution-time Alembic one-head preflight rather than a fixed parent revision, use ordinary `/reports` only for ordinary frozen versions, and let `close_case`/`POST /close` own the full closure-review/report/lifecycle/audit transaction; this Task 01 ledger is not a substitute for implementation reviews.

@@ -25,7 +25,7 @@ The primary user is an authenticated analyst who needs to answer: what was colle
 - `semantic_enrichment` is an explicitly requested Case stage. Existing default callers retain the current four-stage chain unchanged.
 - Semantic outputs are auxiliary. They cannot change Coordination, Propagation, Review, preliminary finding, canonical verdict, or risk scores.
 - The case page is a new parallel route. `/risk`, coordination, propagation, and account pages stay present and keep their current responsibility.
-- Reports are versioned, frozen artifacts. Generating a report never changes claims, verdicts, actions, feedback, or an EventSnapshot.
+- Reports are versioned, frozen artifacts. `POST /api/v2/cases/{case_id}/reports` creates ordinary report versions only; it never changes claims, verdicts, actions, feedback, lifecycle, or an EventSnapshot and cannot set closure-owned fields. `POST /api/v2/cases/{case_id}/close` is the sole operation that creates a closure report, coupled to the closure review, lifecycle advance, and audit chain.
 
 ### Non-goals
 
@@ -66,8 +66,9 @@ The future glossary belongs in this design until implementation lands. `UBIQUITO
 | **SemanticArtifact** | An auxiliary semantic output with explicit scope, model identity, payload hash, and validation state. | Risk score, final interpretation |
 | **SemanticCorrection** | An analyst correction that retains the original semantic prediction. | In-place label edit |
 | **CaseAction** | A required or optional operational item with append-only state operations. | Verdict, workflow task |
+| **CaseClosureReview** | An immutable case-owned record created only by a successful close transaction. It preserves the sanitized closure note and note hash, final canonical verdict identity/hash, action-state summary/hash, canonical `closure_review_sha256`, intended final lifecycle, actor, and timestamp. | Activity comment, mutable note, report request field |
 | **CaseReportVersion** | An immutable frozen web/print/PDF report manifest. | Live export |
-| **Closure review note** | The analyst-submitted note that satisfies the final closure gate. | Activity comment |
+| **Closure review note** | The non-empty analyst input to `close`; it becomes a CaseClosureReview only if the entire close transaction succeeds. | Activity comment, pre-created closure report |
 
 ## Lifecycle And Gates
 
@@ -88,8 +89,8 @@ draft -> collecting -> evidence_ready -> analyzing -> awaiting_review
 | `analyzing` | At least one CaseAnalysisLink is running. | Requested runs are terminal or have recorded non-fatal stage blockers. |
 | `awaiting_review` | Analysis results and required evidence are ready for human review. | Analyst appends and approves a CaseVerdictVersion, or appends an approved successor that supersedes the current canonical version; action planning may then begin. |
 | `actioning` | CaseRecord points to an approved canonical CaseVerdictVersion and actions are being resolved. | Every required action is complete or waived with an accountable reason. |
-| `ready_to_close` | The current canonical CaseVerdictVersion is approved and required actions are complete/waived. | Analyst submits closure review note. |
-| `closed` | All closure gates pass and a frozen closure report exists. | Only a new snapshot revision can reopen it. |
+| `ready_to_close` | The current canonical CaseVerdictVersion is approved and required actions are complete/waived. | The public `close` operation receives a non-empty note, appends CaseClosureReview, freezes exactly one closure report, advances lifecycle, and appends audit atomically. |
+| `closed` | A single successful close transaction committed an immutable CaseClosureReview, exactly one new closure report, the final lifecycle, and its audit-chain events. | Only a new snapshot revision can reopen it. |
 
 ### Blockers
 
@@ -99,10 +100,10 @@ Blockers are a set of typed records, never an overloaded lifecycle value. Each h
 - `blocked_partial_collection`: records coverage limits such as one incomplete platform; it is visible to review but is not automatically fatal.
 - `blocked_analysis_failure`: identifies the exact stage/run and allows unaffected stages to remain usable.
 - `blocked_required_action`: prevents `ready_to_close` while a required action is neither complete nor formally waived.
-- `blocked_missing_closure_review_note`: prevents `closed` after all other closure gates pass.
-- `blocked_report_generation`: prevents closure only when the closure report could not be frozen.
+- `blocked_missing_closure_review_note`: rejects a close request with an empty or whitespace-only note after the other readiness gates pass; it never creates a partial closure review.
+- `blocked_report_generation`: represents a rendering/freezing/hash/audit failure during `close`. The close transaction rolls back rather than persisting a partial closure review, closure report, lifecycle change, blocker, or audit event from that attempt; the failure is returned as a structured close error rather than recorded as a partial closure effect.
 
-The closure gate is deterministic: a CaseRecord pointer to an approved canonical CaseVerdictVersion, all required actions complete or waived, a non-empty submitted closure review note, and a successfully frozen closure report. The same analyst may perform all of these actions. Every verdict proposal, approval, supersession, waive, close, reopen, and report generation is appended to the audit stream.
+The closure gate is deterministic and is executed only by `close_case`/`POST /api/v2/cases/{case_id}/close`: lock the CaseRecord; validate its approved current CaseVerdictVersion and every required action; validate and sanitize the non-empty close-request note; append and canonically hash CaseClosureReview as `closure_review_sha256`; render and freeze exactly one CaseReportVersion marked as the closure report; set its immutable `closure_review_id`/`closure_review_sha256` and target lifecycle `closed`; advance lifecycle; then append the audit-chain events. These writes share one database transaction. Failure while persisting the note, rendering/freezing, creating a content/hash value, or appending audit aborts the transaction, leaving no lifecycle, closure-review, closure-report, blocker, or audit mutation from that attempt. `POST /reports` can never create or mark a closure report. Earlier ordinary reports and earlier completed closure cycles remain immutable and distinct; a failed close does not turn either into a closure artifact.
 
 ## Aggregate And Data Model
 
@@ -118,11 +119,12 @@ The implementation creates focused SQLAlchemy model modules and one migration. J
 | `SemanticArtifact` (`semantic_artifacts`) | `semantic_artifact_id`, `case_analysis_link_id`, artifact type, scope JSON/hash, model identifier/revision, input/output hashes, validation status, payload reference, timestamps. |
 | `SemanticCorrection` (`semantic_corrections`) | `correction_id`, artifact ID, original prediction JSON/hash, corrected value, rationale, analyst, timestamp. Original prediction remains queryable forever. |
 | `CaseAction` and `CaseActionOperation` (`case_actions`, `case_action_operations`) | Action creation is immutable; each state change (`assigned`, `in_progress`, `completed`, `waived`) is a new operation. Waive requires an accountable reason. The current state is a derived projection. |
+| `CaseClosureReview` (`case_closure_reviews`) | `closure_review_id`, `case_id`, sanitized immutable note, note SHA-256, canonical `closure_review_sha256`, final canonical CaseVerdictVersion ID and payload SHA-256, canonical action-state summary JSON/SHA-256, intended final lifecycle (`closed`), actor, and timestamp. It is appended only inside a successful locked CaseRecord close transaction; no update/delete path exists. |
 | `CaseFeedback` (`case_feedback`) | Feedback links a case, snapshot revision, run, optional CaseVerdictVersion, optional artifact/correction, and structured feedback. It never updates an original prediction. |
-| `CaseReportVersion` (`case_report_versions`) | `report_id`, case, monotonic version, frozen report manifest/content hashes, web/print/PDF references, generation actor/time, and closure flag. No update or delete after creation. |
+| `CaseReportVersion` (`case_report_versions`) | `report_id`, case, monotonic version, frozen report manifest/content hashes, web/print/PDF references, generation actor/time, and server-owned `is_closure`. Ordinary reports have `is_closure = false` and null closure fields. A closure report is appended only by `close_case`, has `is_closure = true`, immutable `closure_review_id`/`closure_review_sha256`, target lifecycle `closed`, and closure provenance in its frozen manifest. No update or delete after creation. |
 | `CaseAuditEvent` (`case_audit_events`) | Append-only event ID, case, aggregate type/ID, actor, event type, canonical JSON payload, `previous_event_hash`, event hash, idempotency key, timestamp. The hash chain detects application-level alteration; it is not a claim of protection from a privileged database administrator. |
 
-`ReviewCaseSnapshotRevision`, `ReviewDecision`, `ReviewVerdictVersion`, and `ReviewFeedback` remain historical inputs during migration. An explicit migration/backfill maps each existing `ReviewCase.event_id` to one CaseRecord, links existing snapshot revisions/runs, creates provenance-marked immutable CaseVerdictVersions from confirmed decisions/verdict versions, and emits backfill audit events. New Case Workbench verdict writes must not dual-write into `review_cases`, `ReviewDecision`, or `ReviewVerdictVersion`.
+`ReviewCaseSnapshotRevision`, `ReviewDecision`, `ReviewVerdictVersion`, and `ReviewFeedback` remain historical inputs during migration. An explicit migration/backfill maps each existing `ReviewCase.event_id` to one CaseRecord, links existing snapshot revisions/runs, creates provenance-marked immutable CaseVerdictVersions from confirmed decisions/verdict versions, and emits backfill audit events. It must never synthesize a CaseClosureReview, mark a legacy/imported report as a closure report, or place a backfilled CaseRecord in `closed` without the public close transaction and its complete provenance; imported reports remain ordinary historical versions with null closure fields. New Case Workbench verdict writes must not dual-write into `review_cases`, `ReviewDecision`, or `ReviewVerdictVersion`.
 
 ## Authority, Claim, And Evidence Policy
 
@@ -228,9 +230,9 @@ All endpoints are under shared JWT authentication. Product-safe legacy projectio
 | `POST /api/v2/cases/{case_id}/actions` | Create | Creates required/optional action. |
 | `POST /api/v2/cases/{case_id}/actions/{action_id}/operations` | Operate | Appends state operation; waiver requires rationale. |
 | `POST /api/v2/cases/{case_id}/feedback` | Add feedback | Appends feedback bound to the proper case/snapshot/run/verdict/artifact IDs. |
-| `POST /api/v2/cases/{case_id}/reports` | Freeze | Generates a new frozen report version. |
+| `POST /api/v2/cases/{case_id}/reports` | Freeze ordinary report | Generates a new frozen ordinary report version only. Its `extra="forbid"` request contract accepts no `closure_flag`, `is_closure`, lifecycle, closure note, `closure_review_id`, `closure_review_sha256`, target lifecycle, or other server-owned closure field; the service always persists `is_closure = false` and null closure provenance. |
 | `GET /api/v2/cases/{case_id}/reports` and `/{report_id}` | Read | Retrieves report manifest and authenticated web/print/PDF references. |
-| `POST /api/v2/cases/{case_id}/close` | Close | Validates all closure gates and requires a closure review note. |
+| `POST /api/v2/cases/{case_id}/close` | Close | The only operation permitted to create a closure report. In one locked CaseRecord transaction it validates the approved current CaseVerdictVersion, all required actions, and a non-empty request note; appends/hashes CaseClosureReview; freezes exactly one `is_closure = true` report with `closure_review_id`/`closure_review_sha256` and target lifecycle provenance; advances lifecycle to `closed`; and appends audit. The response returns the closed case, closure-review ID/hash, and the server-created closure-report ID/version. Any note/render/freeze/hash/audit failure rolls back every effect of this attempt. |
 
 Error responses use stable `code`, `message`, `details`, and request ID. Important codes are `case_event_conflict`, `primary_claim_invalid`, `blocked_missing_primary_claim`, `immutable_record`, `verdict_approval_conflict`, `close_gate_unmet`, `action_operation_conflict`, `source_pending_review`, and `idempotency_conflict`.
 
@@ -252,14 +254,14 @@ Persistent header on every tab:
 | `概览` | Lifecycle timeline, data coverage, snapshot/run linkage, canonical verdict/review differences, primary claim, blocker details, recent append-only audit activity. |
 | `证据矩阵` | Exact claims, AuthoritySource organizational tier/review status, independent claim role, evidence rows, quote spans, source hashes, supporting/contradictory relationship, and primary selection. |
 | `图谱` | Read-only Coordination and Propagation references plus separately marked semantic communities/entities; filters always show time/platform/community/path and post/comment split. |
-| `处置` | Canonical verdict, action list, append-only operations, waiver reasons, feedback form, closure review note, and a closure readiness checklist. |
-| `报告` | Version list, frozen web/print/PDF report access, included snapshot/run/model/hash manifest, report-content checksum, and regeneration command only for authorized users. |
+| `处置` | Canonical verdict, action list, append-only operations, waiver reasons, feedback form, closure-review-note input, and a readiness checklist. The close command is enabled only for API-provided ready gates plus a non-empty note; it calls `POST /close` and presents the returned immutable closure-report ID/version. It never pre-creates a report or exposes a closure flag. |
+| `报告` | Version list, frozen web/print/PDF report access, included snapshot/run/model/hash manifest, report-content checksum, ordinary-report regeneration command only for authorized users, and a distinct immutable closure-report label/provenance when present. |
 
 No semantic artifact is displayed as a risk score. The UI labels all candidate semantic values as `候选，待本地评估` until their evaluation record changes the status. Long exact quotes wrap without truncating the source link or overlapping lifecycle controls.
 
 ## Frozen Report Contract
 
-A report version includes only data frozen at its creation timestamp:
+A report version includes only data frozen at its creation timestamp. `POST /reports` creates ordinary versions with `is_closure = false`; it has no caller-controlled closure fields. Only the successful close transaction creates a closure version with `is_closure = true`.
 
 - CaseRecord identity, lifecycle, primary claim selection, blockers, current canonical CaseVerdictVersion ID/version/supersession lineage, and its immutable payload hash;
 - all linked EventSnapshot revisions with data fingerprints, windows, quality, and content/source hashes;
@@ -267,7 +269,15 @@ A report version includes only data frozen at its creation timestamp:
 - exact claim text/spans/source identities and action/feedback/audit references;
 - report HTML checksum, print stylesheet checksum, PDF file checksum, generator version, and report version number.
 
-Web view is sanitized static HTML. Print view is a deterministic stylesheet over the same frozen payload. PDF is produced from the frozen print payload and has a content SHA-256. Later collection, analysis, action, or correction creates a later report version; it cannot revise a prior version.
+A frozen closure report additionally includes, without a mutable live lookup:
+
+- CaseClosureReview ID, canonical `closure_review_sha256`, sanitized closure note (or an immutable content reference), and note SHA-256;
+- final canonical CaseVerdictVersion ID/version and immutable payload hash;
+- canonical action-state summary and its hash;
+- snapshot, run, model, and content hashes used at close; and
+- target final lifecycle `closed` plus the close/audit provenance that binds the report to that transaction.
+
+Web view is sanitized static HTML. Print view is a deterministic stylesheet over the same frozen payload. PDF is produced from the frozen print payload and has a content SHA-256. Later collection, analysis, action, or correction creates a later report version; it cannot revise a prior version. A reopened and subsequently re-closed case creates a new CaseClosureReview and exactly one new closure report for that later close transaction; it never rewrites earlier ordinary or closure reports.
 
 ## Data Seed And Collection Boundary
 
@@ -289,7 +299,7 @@ The separate Twitter benchmark is not case evidence and must never be folded int
 - Use existing JWT authentication and least-privilege roles. Analysts can create claims, verdict proposals/approvals, actions, feedback, and close; administrators manage AuthoritySource organizational tiers, review/allowlist status, and retention configuration.
 - Validate all external URLs server-side; no browser-controlled fetches, no internal-address fetches, and no arbitrary report embeds.
 - Redact access tokens, credentials, cookies, and unapproved raw source bodies from API responses, audit payloads, browser logs, and reports.
-- All mutation commands require idempotency keys and append an audit event in the same database transaction. Report/PDF data references are immutable after the write commits.
+- All mutation commands require idempotency keys and append an audit event in the same database transaction. The close path locks CaseRecord and commits its closure review, rendered/frozen closure report, lifecycle transition, hashes, and audit-chain append as one transaction; a failure at any step rolls all of those effects back. Report/PDF data references are immutable after the write commits.
 - Preserve audit events and report manifests according to deployment retention policy; redaction uses a new audited event describing the withdrawn view, never an unrecorded deletion.
 - Audit verification checks event ordering, hash-chain linkage, payload hashes, foreign-key ownership, action-operation derivation, and report-manifest checksums.
 
@@ -301,5 +311,8 @@ The separate Twitter benchmark is not case evidence and must never be folded int
 4. Existing four-stage default analysis calls and `/api/v2/review-cases` contract tests continue unchanged.
 5. Semantic artifacts remain candidate/unvalidated until local evaluation and cannot alter Coordination/Propagation/Review scores.
 6. `/case-workbench` is usable alongside `/risk` and specialist pages, with the specified five tabs and persistent lifecycle/claim/blocker context.
-7. Closure fails until an approved current CaseVerdictVersion, required actions, closure review note, and frozen report exist; verdict proposal, approval, supersession, pointer advance, and all other operations remain auditable and append-only.
-8. A frozen report exposes case/snapshot/run/model/content-hash provenance and keeps previous versions immutable.
+7. `POST /reports` creates ordinary frozen reports only and rejects caller-controlled `closure_flag`, `is_closure`, lifecycle, closure-note, closure-review, target-lifecycle, and other server-owned closure fields.
+8. A ready-to-close case can reach `closed` through the public service/API close operation without a pre-created report: the one transaction locks CaseRecord, validates the approved current CaseVerdictVersion/actions/non-empty note, appends and hashes immutable CaseClosureReview, freezes exactly one linked closure report, advances lifecycle, appends the audit chain, and returns the server-created closure-report ID/version.
+9. A note-persistence, rendering/freezing, hash-creation, or audit-append failure rolls back the attempted closure review, closure report, lifecycle transition, and audit effects; earlier ordinary reports and failed attempts remain distinct.
+10. A frozen closure report contains the sanitized note or immutable note reference plus hash, final canonical verdict identity/hash, action-state summary, snapshot/run/model/content hashes, and target final lifecycle. Previous report versions remain immutable.
+11. Verdict proposal, approval, supersession, pointer advance, and all other operations remain auditable and append-only.

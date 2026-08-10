@@ -65,3 +65,34 @@ Ready for fresh independent re-review: the independent review of `425a8f2..cc4dd
 
 - Commit: this report is included in the Task 01 Lore correction commit; the controller records its SHA in the handoff.
 - Push: not performed and not authorized.
+
+## Second Re-Review Closure Fix
+
+### Status
+
+The closure-report sequencing finding is corrected in the Task 01 design and implementation plan and is ready for a fresh independent documentation re-review. This remains documentation-only: no production code, migration, API route, frontend component, or research artifact was changed. The separate two-commit history finding remains controller-owned for the planned final squash and is intentionally not rewritten here.
+
+### Finding Disposition
+
+- Ordinary `POST /api/v2/cases/{case_id}/reports` is now explicitly an ordinary-report-only operation. Its `extra="forbid"` contract and service path reject or ignore no caller-controlled closure field; it always writes `is_closure = false` with null closure provenance.
+- `close_case`/`POST /api/v2/cases/{case_id}/close` is the sole closure-report creator. It locks the case, validates the approved current CaseVerdictVersion, required actions, and a non-empty sanitized note; persists and hashes CaseClosureReview; freezes exactly one linked closure report; advances lifecycle; and appends audit in one transaction.
+- The immutable review owns `closure_review_sha256`, and the closure report stores the review ID/hash, final lifecycle, frozen note/verdict/action/provenance data, and returns its server-created identity/version through `CaseCloseResult` and the API response.
+- Any note-persistence, render/freeze, hash, or audit failure rolls back the attempted review, closure report, lifecycle/blocker effects, and audit effects. The Task 6 plan includes a direct report-freeze rollback test and equivalent injected failure coverage for note, hash, and audit writes.
+- Task 7 now proves both the ordinary-report request rejection and the public close response with exactly one server-created closure report. Task 10 binds `submitClose` to `closeCase`, and Task 11 uses an explicit public API close sequence with no pre-created report.
+
+### Closure-Fix Validation Record
+
+| Command | Result |
+| --- | --- |
+| PowerShell terminology/ownership scan over the Case Workbench design and plan | Passed: CaseClosureReview, its canonical hash, ordinary-report-only ownership, sole close ownership, atomic rollback, closure report ID/version response, and absence of the retired helper identifier all passed. |
+| PowerShell JSON parse over Task 01 source metadata, Twitter metadata manifest, and two retained conversion metadata files | Passed: 4 JSON files parsed. |
+| `Get-FileHash -Algorithm SHA256` over retained BERTopic and KeyBERT originals | Passed: BERTopic `75B3C2CE622C33054678D099613A6AB63D1626F72F62AC6EB5208467A1E1E6B1`; KeyBERT `6EC3F46944A991695F8669F9BF7DB9F40C0F41FCFF4575E8B49E93708A3A2D25`. |
+| `cd system/backend; python -m alembic heads` | Passed: exactly one live head, `e5c1b7d9a204 (head)`. |
+| `git diff --check -- docs/superpowers/specs/2026-08-10-case-workbench-design.md docs/superpowers/plans/2026-08-10-case-workbench.md` | Passed with no output. |
+| Scoped `git diff --name-only` plus `git status --short` inspection | Passed for this fix: the edited paths were only the Case Workbench design and plan; all pre-existing production/research dirty paths remained untouched and unstaged. |
+
+### Commit And Concerns
+
+- Lore fix commit subject: `Make Case Workbench closure a single atomic transaction`. This report is included in that commit, so its final SHA is recorded in the agent/controller handoff rather than self-referenced here.
+- Push: not performed and not authorized.
+- Remaining concern: the planned Task 6/7/10/11 tests are documentation contracts only until implementation begins; a fresh independent re-review remains required before implementation. The controller still owns the history-only squash finding.
