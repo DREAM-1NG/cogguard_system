@@ -1,0 +1,26 @@
+{
+  "manifest_version": 1,
+  "purpose": "Separate benchmark metadata only; this is not Case Workbench evidence and the source CSV is intentionally not committed.",
+  "source_path": "C:\\Users\\p\\AppData\\Local\\Temp\\cogguard-032020-twitter-io-full.csv",
+  "source_format": "csv",
+  "source_content_retained_in_repository": false,
+  "full_markdown_conversion_retained_in_repository": false,
+  "verification": {
+    "verified_at_utc": "2026-08-10T11:06:40.4493923Z",
+    "sha256": "E4D12CC8F56D09FCFBEAC3B09C5D45537B8E390536E3860AFD768DDC651FB8B4",
+    "row_count": 39964,
+    "unique_user_count": 60,
+    "retweet_row_count": 16310,
+    "reply_row_count": 8697,
+    "quote_row_count": 4814,
+    "unique_tweet_id_count": 39964
+  },
+  "count_definitions": {
+    "retweet_row_count": "Rows where is_retweet equals True.",
+    "reply_row_count": "Rows with a non-empty in_reply_to_tweetid.",
+    "quote_row_count": "Rows with a non-empty quoted_tweet_tweetid.",
+    "unique_user_count": "Distinct non-empty userid values.",
+    "unique_tweet_id_count": "Distinct tweetid values."
+  },
+  "boundary": "Do not merge this benchmark into trump_visit_2026_05_21, CaseRecord evidence, AuthoritySource, or semantic local-evaluation claims without a separately approved protocol."
+}

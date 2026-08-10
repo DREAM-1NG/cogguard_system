@@ -1,0 +1,294 @@
+# CogGuard Case Workbench Design
+
+> Status: approved design baseline for Task 01 only. This document specifies future implementation; it does not claim that the described API, schema, route, models, or reports exist on `refactor-system` today.
+>
+> Scope: a durable, evidence-first Case Workbench for one `event_id`, with an auditable closed loop from collection through closure. Existing specialist pages remain available.
+
+## Goal
+
+Provide one formal **CaseRecord** aggregate per `event_id` that ties immutable event evidence to reproducible analysis, analyst review, actions, feedback, and frozen reports. The workbench must make the operative chain visible without turning a prediction into a fact:
+
+```text
+事件 -> 证据 -> Coordination -> Propagation -> Review -> 处置 -> 反馈
+```
+
+The primary user is an authenticated analyst who needs to answer: what was collected, which claim is primary, what is blocked, what analysis is reproducible, what action remains, and what was frozen at closure.
+
+## Decisions And Non-Goals
+
+### Decisions
+
+- One `CaseRecord` is unique per `event_id`. A new data fingerprint creates an immutable EventSnapshot revision and a new `CaseAnalysisLink`; it does not overwrite prior evidence or decisions.
+- Case lifecycle and blockers are different dimensions. Lifecycle is progress; blockers are independently recomputed gate reasons.
+- A claim is evidence, not generated prose. The system stores exact quotation text and a source span; it must not create a paraphrased claim summary.
+- There is exactly one current primary claim pointer per case. Supporting claims may be many; an immutable claim can only be replaced by a later claim and an append-only audit event.
+- `semantic_enrichment` is an explicitly requested Case stage. Existing default callers retain the current four-stage chain unchanged.
+- Semantic outputs are auxiliary. They cannot change Coordination, Propagation, Review, preliminary finding, canonical verdict, or risk scores.
+- The case page is a new parallel route. `/risk`, coordination, propagation, and account pages stay present and keep their current responsibility.
+- Reports are versioned, frozen artifacts. Generating a report never changes claims, verdicts, actions, feedback, or an EventSnapshot.
+
+### Non-goals
+
+- No Task 01 production migration, endpoint, crawler run, model download, UI route, or model performance claim.
+- No new dependency other than a later, separately reviewed lightweight Chinese tokenizer if local evaluation proves it necessary.
+- No cross-event aggregate, public API, automatic response action, automated closure, or replacement of the existing specialist tools.
+- No claim that vendor product pages validate Chinese-domain quality, and no claim that model cards establish local performance.
+
+## Compatibility With The Existing Event Review Case Contract
+
+The existing contract is implemented as `ReviewCase`, `/api/v2/review-cases`, and `/risk`; it already has one event per case, immutable snapshot revisions, analyst decision drafts, confirmed decisions, activities, and an SSE stream. The following resolution is intentional rather than an accidental rename.
+
+| Existing contract | Case Workbench decision | Compatibility rule |
+| --- | --- | --- |
+| `ReviewCase` is the current product aggregate. | `CaseRecord` becomes the canonical future aggregate and retains one `event_id` per case. | Migrate data into `case_records`; keep a read-compatible `review-cases` facade until its documented retirement release. |
+| `/api/v2/review-cases` suppresses runtime/model fields from product projections. | `/api/v2/cases` is an authenticated analyst and reproducibility API with claim/run/artifact/report links. | Dashboard and `/risk` remain business-safe; technical metadata is not added to their existing summaries. |
+| `/risk` is the single Event Review Case workspace. | `/case-workbench` is an additional dense case-closure page. | Do not redirect or remove `/risk`; link between the pages by case/event identity only. |
+| Default analysis stages are `coordination_discover`, `propagation_analysis`, `student`, `teacher`. | Cases explicitly request `semantic_enrichment` plus the existing stages when appropriate. | `DEFAULT_ANALYSIS_STAGES` and legacy aliases remain byte-for-byte behaviorally compatible. |
+| A Confirmed Decision is immutable and a later snapshot requires reconfirmation. | A canonical verdict remains immutable; action operations, feedback, reports, closure, and reopening are append-only. | Existing decisions are represented as historical canonical-verdict sources rather than mutated. |
+| Governance details are not a main-product UI. | Frozen reports include reproducibility metadata required for audit. | Model/version/hash detail remains authenticated, report-scoped, and absent from ordinary dashboard copy. |
+
+The future glossary belongs in this design until implementation lands. `UBIQUITOUS_LANGUAGE.md` stays a record of the currently shipped Event Review Case terms; changing it now would falsely assert that the Case Workbench has shipped.
+
+## Ubiquitous Language
+
+| Term | Definition | Avoid |
+| --- | --- | --- |
+| **CaseRecord** | The durable aggregate for exactly one event and its evidence-to-closure history. | Ticket, task, generic case row |
+| **Case lifecycle** | The ordered progress state of a CaseRecord. | Blocked state, run state |
+| **Blocker** | A separately evaluated reason that prevents a specific transition or result. | Lifecycle, error bucket |
+| **AuthoritySource** | A versioned record that identifies the authority and trust tier of a quoted source. | URL string, source blob |
+| **CaseClaim** | An immutable exact quotation anchored to an AuthoritySource and a source span. | Generated summary, paraphrase |
+| **Primary claim** | The one CaseClaim currently selected as the case's main stance evidence. | Best quote, default claim |
+| **CaseAnalysisLink** | The immutable relationship between a case, snapshot revision, and analysis run. | Current run field |
+| **SemanticArtifact** | An auxiliary semantic output with explicit scope, model identity, payload hash, and validation state. | Risk score, final interpretation |
+| **SemanticCorrection** | An analyst correction that retains the original semantic prediction. | In-place label edit |
+| **CaseAction** | A required or optional operational item with append-only state operations. | Verdict, workflow task |
+| **CaseReportVersion** | An immutable frozen web/print/PDF report manifest. | Live export |
+| **Closure review note** | The analyst-submitted note that satisfies the final closure gate. | Activity comment |
+
+## Lifecycle And Gates
+
+### Lifecycle
+
+```text
+draft -> collecting -> evidence_ready -> analyzing -> awaiting_review
+      -> actioning -> ready_to_close -> closed
+```
+
+`closed -> collecting` is allowed only when a new EventSnapshot revision is linked after closure. It writes `case_reopened_for_snapshot` to the audit trail, preserves every prior report/version/verdict, and requires closure again. No lifecycle transition silently changes a historical report or canonical verdict.
+
+| State | Entry condition | Exit condition |
+| --- | --- | --- |
+| `draft` | Case identity reserved; no collection manifest accepted. | Analyst/system starts collection. |
+| `collecting` | Collection manifests or snapshot candidates are being added. | At least one valid EventSnapshot revision is linked. |
+| `evidence_ready` | Snapshot evidence exists with declared quality and collection coverage. | Case requests analysis. A missing primary claim is allowed here. |
+| `analyzing` | At least one CaseAnalysisLink is running. | Requested runs are terminal or have recorded non-fatal stage blockers. |
+| `awaiting_review` | Analysis results and required evidence are ready for human review. | Analyst approves/replaces canonical verdict or assigns action plan. |
+| `actioning` | Canonical verdict exists and actions are being resolved. | Every required action is complete or waived with an accountable reason. |
+| `ready_to_close` | Canonical verdict is approved and required actions are complete/waived. | Analyst submits closure review note. |
+| `closed` | All closure gates pass and a frozen closure report exists. | Only a new snapshot revision can reopen it. |
+
+### Blockers
+
+Blockers are a set of typed records, never an overloaded lifecycle value. Each has `code`, `scope`, `opened_at`, `resolved_at`, `evidence_refs`, and `details`. Baseline codes are:
+
+- `blocked_missing_primary_claim`: blocks stance-specific enrichment and a stance-dependent canonical verdict; does **not** block Coordination, Propagation, other semantic work, or data collection.
+- `blocked_partial_collection`: records coverage limits such as one incomplete platform; it is visible to review but is not automatically fatal.
+- `blocked_analysis_failure`: identifies the exact stage/run and allows unaffected stages to remain usable.
+- `blocked_required_action`: prevents `ready_to_close` while a required action is neither complete nor formally waived.
+- `blocked_missing_closure_review_note`: prevents `closed` after all other closure gates pass.
+- `blocked_report_generation`: prevents closure only when the closure report could not be frozen.
+
+The closure gate is deterministic: an approved canonical verdict, all required actions complete or waived, a non-empty submitted closure review note, and a successfully frozen closure report. The same analyst may perform all of these actions. Every decision, waive, close, reopen, and report generation is appended to the audit stream.
+
+## Aggregate And Data Model
+
+The implementation creates focused SQLAlchemy model modules and one migration. JSON payloads are canonicalized before hashing; immutable references use stable IDs, not mutable display text.
+
+| Record | Required fields and invariants |
+| --- | --- |
+| `CaseRecord` (`case_records`) | `case_id`, unique `event_id`, title, `lifecycle`, `current_snapshot_revision_id`, `primary_claim_id`, `canonical_verdict_id`, `lifecycle_version`, timestamps/actors. The primary pointer is nullable until selected and is the only current-primary invariant. |
+| `AuthoritySource` (`authority_sources`) | `authority_source_id`, canonical URL/root domain, publisher/account, `tier`, allowlist status, content hash, retrieval time, published time, source metadata, timestamps. The source record is versioned or superseded, never rewritten. |
+| `CaseClaim` (`case_claims`) | `claim_id`, `case_id`, `authority_source_id`, exact quote, `span_start`, `span_end`, original URL, account, `published_at`, tier snapshot, content SHA-256, `claim_role`, `supersedes_claim_id`. Quote span indexes Unicode code points in the exact captured source content. |
+| `CaseAnalysisLink` (`case_analysis_links`) | `case_analysis_link_id`, case, EventSnapshot revision ID, `run_id`, requested stage list, scope hash, link status, timestamps. A link is unique for `(case_id, snapshot_revision_id, run_id)`. |
+| `SemanticArtifact` (`semantic_artifacts`) | `semantic_artifact_id`, `case_analysis_link_id`, artifact type, scope JSON/hash, model identifier/revision, input/output hashes, validation status, payload reference, timestamps. |
+| `SemanticCorrection` (`semantic_corrections`) | `correction_id`, artifact ID, original prediction JSON/hash, corrected value, rationale, analyst, timestamp. Original prediction remains queryable forever. |
+| `CaseAction` and `CaseActionOperation` (`case_actions`, `case_action_operations`) | Action creation is immutable; each state change (`assigned`, `in_progress`, `completed`, `waived`) is a new operation. Waive requires an accountable reason. The current state is a derived projection. |
+| `CaseFeedback` (`case_feedback`) | Feedback links a case, snapshot revision, run, optional canonical verdict, optional artifact/correction, and structured feedback. It never updates an original prediction. |
+| `CaseReportVersion` (`case_report_versions`) | `report_id`, case, monotonic version, frozen report manifest/content hashes, web/print/PDF references, generation actor/time, and closure flag. No update or delete after creation. |
+| `CaseAuditEvent` (`case_audit_events`) | Append-only event ID, case, aggregate type/ID, actor, event type, canonical JSON payload, `previous_event_hash`, event hash, idempotency key, timestamp. The hash chain detects application-level alteration; it is not a claim of protection from a privileged database administrator. |
+
+`ReviewCaseSnapshotRevision`, `ReviewDecision`, `ReviewVerdictVersion`, and `ReviewFeedback` remain historical inputs during migration. An explicit migration/backfill maps each existing `ReviewCase.event_id` to one CaseRecord, links existing snapshot revisions/runs, maps confirmed decisions to canonical-verdict provenance, and emits backfill audit events. New Case Workbench writes must not dual-write mutable business summaries into `review_cases`.
+
+## Authority, Claim, And Evidence Policy
+
+### Authority tiers
+
+| Tier | Value | Eligibility |
+| --- | --- | --- |
+| 1 | `primary_authority` | Allowlisted direct authority, eligible for the one primary claim. |
+| 2 | `authoritative_support` | Allowlisted corroborating authority, eligible for supporting claims only. |
+| 3 | `reference_pending` | Non-whitelisted or unverified URL; visible as pending and ineligible for primary/canonical stance evidence. |
+
+Any URL outside an allowlist is saved as `reference_pending`; the service does not silently elevate it. The allowlist is exact-domain plus HTTPS policy, is server-managed, and is audited when changed.
+
+For the seed case, the initial intended claims are stored exactly, with source URL/account/published time populated only after an analyst selects the authoritative source page:
+
+| Role | Source tier | Exact quote |
+| --- | --- | --- |
+| Primary | `primary_authority` (CCTV authority source) | `我们应当共同扛起这个历史重任，推动中美关系这艘巨轮沿着正确航道平稳前行。` |
+| Supporting | `authoritative_support` (Xinhua authority source) | `一次历史性标志性访问。` |
+
+The quote fields must remain byte-for-byte/user-visible text. A claim cannot be saved until its URL, account, published timestamp, tier, content hash, and span are present; no inferred source summary fills a missing field.
+
+### Evidence integrity
+
+- Canonicalize URLs, reject non-HTTPS, IP-literal, localhost, private, link-local, and redirect-to-private targets before any server fetch.
+- Fetch source content through a bounded server-side retriever with content-type/size/time limits; do not render arbitrary remote HTML in the UI.
+- Store source content hashes with claims and snapshot provenance; hash mismatch produces a new source/case-claim revision rather than changing an old one.
+- Raw primary/source content is access-controlled, escaped on rendering, and never interpolated into report HTML without sanitization.
+- Primary claim selection and canonical verdict approval require an authenticated analyst; allowlist administration is an authenticated administrator operation.
+
+## Analysis And Semantic Enrichment
+
+### Requested stages
+
+Existing callers keep:
+
+```python
+DEFAULT_ANALYSIS_STAGES = (
+    "coordination_discover",
+    "propagation_analysis",
+    "student",
+    "teacher",
+)
+```
+
+Case orchestration explicitly creates a run with:
+
+```python
+CASE_WORKBENCH_STAGES = (
+    "semantic_enrichment",
+    "coordination_discover",
+    "propagation_analysis",
+    "student",
+    "teacher",
+)
+```
+
+The case stage list is persisted in `CaseAnalysisLink`; a legacy `/api/v2/analysis` caller that omits `semantic_enrichment` sees the old behavior. `semantic_enrichment` is allowed as an independently terminal stage and must report `blocked_missing_primary_claim` for stance only, rather than failing the entire run.
+
+### Semantic contract
+
+1. Materialize separate post and comment collections before embedding, extraction, clustering, sentiment, stance, or entity recognition.
+2. Apply explicit `SemanticScope` filters: source time window, `platforms`, selected Coordination communities, optional propagation path IDs, content types, and deterministic ordering. Store scope JSON and its SHA-256.
+3. Sequentially load models on CPU by default. On load/inference failure, emit a typed artifact status and continue unaffected stages; do not use an unpinned network fallback.
+4. Write each output as a `SemanticArtifact` with `candidate_unvalidated` until a local evaluation is recorded. A correction is a `SemanticCorrection`, never an overwritten label.
+5. Project only descriptive semantic artifacts into the Case Workbench. The coordination/propagation/review executors and their risk scores must receive no semantic artifact field or correction.
+
+Pinned initial candidates:
+
+| Capability | Candidate model | Use |
+| --- | --- | --- |
+| Shared embedding | `BAAI/bge-small-zh-v1.5@7999e1d` | One embedding cache for MMR, clustering, and similarity. |
+| Sentiment | `lxyuan/distilbert-base-multilingual-cased-sentiments-student@cf99110` | Auxiliary sentiment distribution. |
+| Stance | `MoritzLaurer/multilingual-MiniLMv2-L6-mnli-xnli@0a71e92` | Primary-claim-relative stance only; blocked without a primary claim. |
+| NER | `shibing624/bert4ner-base-chinese@5d660ed` | Candidate Chinese entity extraction. |
+
+Keyword extraction is KeyBERT-style Maximal Marginal Relevance over shared embeddings. Topic discovery is BERTopic-style clustering plus c-TF-IDF using packages already present in the repository. A lightweight Chinese tokenizer is the only possible later dependency, and only after a local evaluation documents the need. No model card or upstream readme is evidence of Chinese-domain performance.
+
+## API Contract
+
+All endpoints are under shared JWT authentication. Product-safe legacy projections remain at `/api/v2/review-cases`; the following endpoints are explicit Case Workbench contracts.
+
+| Endpoint | Operation | Contract |
+| --- | --- | --- |
+| `GET /api/v2/cases` | List | Filter by lifecycle, blocker, event ID, and updated time; returns only analyst-authorized case fields. |
+| `POST /api/v2/cases` | Create/upsert | Creates the one case for an event or returns it idempotently; no duplicate event case. |
+| `GET /api/v2/cases/{case_id}` | Detail | Returns lifecycle, blockers, primary claim pointer, current snapshot/run links, verdict/action/report summaries. |
+| `POST /api/v2/authority-sources` | Register | Adds source with tier validation; non-allowlisted domain becomes pending. |
+| `GET /api/v2/authority-sources` and `/{id}` | Read | Lists authoritative sources and immutable version metadata. |
+| `POST /api/v2/cases/{case_id}/claims` | Add claim | Requires exact quote, span, URL, account, published time, tier, content hash, and role. |
+| `POST /api/v2/cases/{case_id}/claims/{claim_id}/select-primary` | Select | Atomically changes only the CaseRecord primary pointer and writes audit. |
+| `POST /api/v2/cases/{case_id}/runs` | Request | Creates a CaseAnalysisLink and explicitly requests `semantic_enrichment` plus selected standard stages. |
+| `GET /api/v2/cases/{case_id}/runs` | Read | Reads immutable links and stage statuses. |
+| `GET /api/v2/cases/{case_id}/artifacts` | Read | Reads scoped semantic artifacts without merging them into risk scores. |
+| `POST /api/v2/cases/{case_id}/artifacts/{artifact_id}/corrections` | Correct | Appends SemanticCorrection with original prediction preserved. |
+| `POST /api/v2/cases/{case_id}/actions` | Create | Creates required/optional action. |
+| `POST /api/v2/cases/{case_id}/actions/{action_id}/operations` | Operate | Appends state operation; waiver requires rationale. |
+| `POST /api/v2/cases/{case_id}/feedback` | Add feedback | Appends feedback bound to the proper case/snapshot/run/verdict/artifact IDs. |
+| `POST /api/v2/cases/{case_id}/reports` | Freeze | Generates a new frozen report version. |
+| `GET /api/v2/cases/{case_id}/reports` and `/{report_id}` | Read | Retrieves report manifest and authenticated web/print/PDF references. |
+| `POST /api/v2/cases/{case_id}/close` | Close | Validates all closure gates and requires a closure review note. |
+
+Error responses use stable `code`, `message`, `details`, and request ID. Important codes are `case_event_conflict`, `primary_claim_invalid`, `blocked_missing_primary_claim`, `immutable_record`, `close_gate_unmet`, `action_operation_conflict`, `source_pending_validation`, and `idempotency_conflict`.
+
+## Case Workbench UI
+
+The new authenticated route is `/case-workbench` with route name `CaseWorkbench`. It presents dense operational information, not a marketing landing page. `/risk` and all specialist pages continue unchanged.
+
+Persistent header on every tab:
+
+- event title and `event_id`;
+- current lifecycle state;
+- primary claim exact quote/source link (or an explicit primary-claim blocker);
+- visible blocker chips with scoped explanation;
+- canonical verdict state and required-action count;
+- closed-loop progress strip: `事件 -> 证据 -> Coordination -> Propagation -> Review -> 处置 -> 反馈`.
+
+| Tab | Contents and commands |
+| --- | --- |
+| `概览` | Lifecycle timeline, data coverage, snapshot/run linkage, canonical verdict/review differences, primary claim, blocker details, recent append-only audit activity. |
+| `证据矩阵` | Exact claims, AuthoritySource tier/verification, evidence rows, quote spans, source hashes, supporting/contradictory relationship, and primary selection. |
+| `图谱` | Read-only Coordination and Propagation references plus separately marked semantic communities/entities; filters always show time/platform/community/path and post/comment split. |
+| `处置` | Canonical verdict, action list, append-only operations, waiver reasons, feedback form, closure review note, and a closure readiness checklist. |
+| `报告` | Version list, frozen web/print/PDF report access, included snapshot/run/model/hash manifest, report-content checksum, and regeneration command only for authorized users. |
+
+No semantic artifact is displayed as a risk score. The UI labels all candidate semantic values as `候选，待本地评估` until their evaluation record changes the status. Long exact quotes wrap without truncating the source link or overlapping lifecycle controls.
+
+## Frozen Report Contract
+
+A report version includes only data frozen at its creation timestamp:
+
+- CaseRecord identity, lifecycle, primary claim selection, blockers, and canonical verdict version;
+- all linked EventSnapshot revisions with data fingerprints, windows, quality, and content/source hashes;
+- CaseAnalysisLinks with requested stages, run IDs/statuses, artifact manifests, model identifiers/revisions, and their hashes;
+- exact claim text/spans/source identities and action/feedback/audit references;
+- report HTML checksum, print stylesheet checksum, PDF file checksum, generator version, and report version number.
+
+Web view is sanitized static HTML. Print view is a deterministic stylesheet over the same frozen payload. PDF is produced from the frozen print payload and has a content SHA-256. Later collection, analysis, action, or correction creates a later report version; it cannot revise a prior version.
+
+## Data Seed And Collection Boundary
+
+The first case seed is `trump_visit_2026_05_21`.
+
+| Item | Baseline |
+| --- | --- |
+| Core window | 2026-05-14 through 2026-05-17, Beijing time, stored as a half-open UTC-normalized interval. |
+| Context window | 2026-05-08 through 2026-05-20, Beijing time, stored as a half-open UTC-normalized interval. |
+| Existing Weibo main posts | 74 unique posts from 57 authors. |
+| Existing Weibo comments | 5,048 unique comments from 4,492 comment users. |
+| Additional platform | One same-event Douyin collection is required before the seed may be marked complete; Task 01 does not invent counts or claim it has been collected. |
+| Coverage status | `partial_collection` until the additional platform is collected and recorded. |
+
+The separate Twitter benchmark is not case evidence and must never be folded into `trump_visit_2026_05_21`. Its manifest holds only verified metadata/statistics/hash; the CSV and any full conversion remain outside the repository.
+
+## Security, Retention, And Audit
+
+- Use existing JWT authentication and least-privilege roles. Analysts can create claims/actions/feedback and close; administrators manage authority allowlists and retention configuration.
+- Validate all external URLs server-side; no browser-controlled fetches, no internal-address fetches, and no arbitrary report embeds.
+- Redact access tokens, credentials, cookies, and unapproved raw source bodies from API responses, audit payloads, browser logs, and reports.
+- All mutation commands require idempotency keys and append an audit event in the same database transaction. Report/PDF data references are immutable after the write commits.
+- Preserve audit events and report manifests according to deployment retention policy; redaction uses a new audited event describing the withdrawn view, never an unrecorded deletion.
+- Audit verification checks event ordering, hash-chain linkage, payload hashes, foreign-key ownership, action-operation derivation, and report-manifest checksums.
+
+## Acceptance Criteria
+
+1. A case for one event can retain multiple immutable snapshot revisions, runs, reports, and decisions without replacing history.
+2. The seed CCTV primary quote and Xinhua supporting quote can be represented exactly with all required provenance fields; an unwhitelisted URL remains pending.
+3. Missing primary claim yields `blocked_missing_primary_claim` for stance only, while Coordination/Propagation and other permitted semantic outputs proceed.
+4. Existing four-stage default analysis calls and `/api/v2/review-cases` contract tests continue unchanged.
+5. Semantic artifacts remain candidate/unvalidated until local evaluation and cannot alter Coordination/Propagation/Review scores.
+6. `/case-workbench` is usable alongside `/risk` and specialist pages, with the specified five tabs and persistent lifecycle/claim/blocker context.
+7. Closure fails until canonical verdict, required actions, closure review note, and frozen report exist; all operations remain auditable and append-only.
+8. A frozen report exposes case/snapshot/run/model/content-hash provenance and keeps previous versions immutable.

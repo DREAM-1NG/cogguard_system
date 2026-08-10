@@ -1,0 +1,2 @@
+# Retain downloaded source HTML byte-for-byte so the recorded SHA-256 remains valid.
+*.html -whitespace
