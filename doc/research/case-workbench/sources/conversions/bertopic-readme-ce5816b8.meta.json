@@ -1,0 +1,28 @@
+{
+  "status": "converted",
+  "source_url": "https://github.com/MaartenGr/BERTopic",
+  "retrieval_url": "https://api.github.com/repos/MaartenGr/BERTopic/readme",
+  "retrieval_time": {
+    "captured": false,
+    "completed_before_utc": "2026-08-10T11:05:22.063912+00:00",
+    "note": "The source fetch completed before this MarkItDown conversion timestamp; the wrapper does not separately log fetch time."
+  },
+  "content_type": "application/vnd.github.html+json; charset=utf-8",
+  "source_license": "MIT (repository metadata queried through GitHub API)",
+  "source_path": "doc/research/case-workbench/sources/originals/bertopic-readme.html",
+  "source_name": "bertopic-readme.html",
+  "source_extension": ".html",
+  "source_size_bytes": 53116,
+  "source_sha256": "75b3c2ce622c33054678d099613a6ab63d1626f72f62ac6eb5208467a1e1e6b1",
+  "output_markdown": "doc/research/case-workbench/sources/conversions/bertopic-readme-ce5816b8.md",
+  "output_meta": "doc/research/case-workbench/sources/conversions/bertopic-readme-ce5816b8.meta.json",
+  "title": null,
+  "characters": 21848,
+  "converted_at": "2026-08-10T11:05:22.063912+00:00",
+  "conversion_command": "python C:\\Users\\p\\.codex\\skills\\markitdown\\scripts\\convert_literature.py doc\\research\\case-workbench\\sources\\originals\\bertopic-readme.html --out-dir doc\\research\\case-workbench\\sources\\conversions --overwrite",
+  "conversion_status": "converted",
+  "converter": {
+    "name": "markitdown",
+    "version": "0.1.5"
+  }
+}

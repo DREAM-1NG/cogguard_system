@@ -1,0 +1,331 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><p dir="auto"><a href="https://pepy.tech/projects/keybert" rel="nofollow"><img src="https://camo.githubusercontent.com/716301542c54a74d7667b0092b65444f29534d1b5c503f528c61d6a529336e05/68747470733a2f2f7374617469632e706570792e746563682f62616467652f6b657962657274" alt="PyPI Downloads" data-canonical-src="https://static.pepy.tech/badge/keybert" style="max-width: 100%;"></a>
+<a href="https://pypi.org/project/keybert/" rel="nofollow"><img src="https://camo.githubusercontent.com/93a33cfc2339ec3fa9be792576576fbaafc42b0c7031285662b02f3aca1e1c59/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f707974686f6e2d332e31302b2d626c75652e737667" alt="PyPI - Python" data-canonical-src="https://img.shields.io/badge/python-3.10+-blue.svg" style="max-width: 100%;"></a>
+<a href="https://github.com/MaartenGr/keybert/blob/master/LICENSE"><img src="https://camo.githubusercontent.com/8bb50fd2278f18fc326bf71f6e88ca8f884f72f179d3e555e20ed30157190d0d/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f6c6963656e73652d4d49542d677265656e2e737667" alt="PyPI - License" data-canonical-src="https://img.shields.io/badge/license-MIT-green.svg" style="max-width: 100%;"></a>
+<a href="https://pypi.org/project/keybert/" rel="nofollow"><img src="https://camo.githubusercontent.com/3a6d4724f7d00bb69d3a8a98cf2525bf4c8aa1bce39cc1f5c237dcd89adf9a94/68747470733a2f2f696d672e736869656c64732e696f2f707970692f762f6b657942455254" alt="PyPI - PyPi" data-canonical-src="https://img.shields.io/pypi/v/keyBERT" style="max-width: 100%;"></a>
+<a href="https://pypi.org/keybert/" rel="nofollow"><img src="https://camo.githubusercontent.com/a7232c67cd9a65c699c0ba5d254abcb57e6ce7b8502969bf9b9cdce39f42e4f5/68747470733a2f2f696d672e736869656c64732e696f2f6769746875622f616374696f6e732f776f726b666c6f772f7374617475732f4d61617274656e47722f6b6579424552542f74657374696e672e796d6c3f6272616e63683d6d6173746572" alt="Build" data-canonical-src="https://img.shields.io/github/actions/workflow/status/MaartenGr/keyBERT/testing.yml?branch=master" style="max-width: 100%;"></a>
+<a href="https://colab.research.google.com/drive/1OxpgwKqSzODtO3vS7Xe1nEmZMCAIMckX?usp=sharing" rel="nofollow"><img src="https://camo.githubusercontent.com/eff96fda6b2e0fff8cdf2978f89d61aa434bb98c00453ae23dd0aab8d1451633/68747470733a2f2f636f6c61622e72657365617263682e676f6f676c652e636f6d2f6173736574732f636f6c61622d62616467652e737667" alt="Open In Colab" data-canonical-src="https://colab.research.google.com/assets/colab-badge.svg" style="max-width: 100%;"></a></p>
+<p dir="auto"><a target="_blank" rel="noopener noreferrer" href="images/logo.png"><img src="images/logo.png" width="35%" align="right" style="max-width: 100%;"></a></p>
+<div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">KeyBERT</h1><a id="user-content-keybert" class="anchor" aria-label="Permalink: KeyBERT" href="#keybert"><svg data-component="Octicon" class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">KeyBERT is a minimal and easy-to-use keyword extraction technique that leverages BERT embeddings to
+create keywords and keyphrases that are most similar to a document.</p>
+<p dir="auto">Corresponding medium post can be found <a href="https://towardsdatascience.com/keyword-extraction-with-bert-724efca412ea" rel="nofollow">here</a>.</p>
+<p dir="auto"><a name="user-content-toc"></a></p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Table of Contents</h2><a id="user-content-table-of-contents" class="anchor" aria-label="Permalink: Table of Contents" href="#table-of-contents"><svg data-component="Octicon" class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+
+<ol dir="auto">
+<li><a href="#about">About the Project</a></li>
+<li><a href="#gettingstarted">Getting Started</a>
+2.1. <a href="#installation">Installation</a>
+2.2. <a href="#usage">Basic Usage</a>
+2.3. <a href="#maxsum">Max Sum Distance</a>
+2.4. <a href="#maximal">Maximal Marginal Relevance</a>
+2.5. <a href="#embeddings">Embedding Models</a></li>
+<li><a href="#llms">Large Language Models</a></li>
+</ol>
+
+<p dir="auto"><a name="user-content-about"></a></p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">1. About the Project</h2><a id="user-content-1-about-the-project" class="anchor" aria-label="Permalink: 1. About the Project" href="#1-about-the-project"><svg data-component="Octicon" class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto"><a href="#toc">Back to ToC</a></p>
+<p dir="auto">Although there are already many methods available for keyword generation
+(e.g.,
+<a href="https://github.com/aneesha/RAKE">Rake</a>,
+<a href="https://github.com/LIAAD/yake">YAKE!</a>, TF-IDF, etc.)
+I wanted to create a very basic, but powerful method for extracting keywords and keyphrases.
+This is where <strong>KeyBERT</strong> comes in! Which uses BERT-embeddings and simple cosine similarity
+to find the sub-phrases in a document that are the most similar to the document itself.</p>
+<p dir="auto">First, document embeddings are extracted with BERT to get a document-level representation.
+Then, word embeddings are extracted for N-gram words/phrases. Finally, we use cosine similarity
+to find the words/phrases that are the most similar to the document. The most similar words could
+then be identified as the words that best describe the entire document.</p>
+<p dir="auto">KeyBERT is by no means unique and is created as a quick and easy method
+for creating keywords and keyphrases. Although there are many great
+papers and solutions out there that use BERT-embeddings
+(e.g.,
+<a href="https://github.com/pranav-ust/BERT-keyphrase-extraction">1</a>,
+<a href="https://github.com/ibatra/BERT-Keyword-Extractor">2</a>,
+<a href="https://www.preprints.org/manuscript/201908.0073/download/final_file" rel="nofollow">3</a>,
+), I could not find a BERT-based solution that did not have to be trained from scratch and
+could be used for beginners (<strong>correct me if I'm wrong!</strong>).
+Thus, the goal was a <code>pip install keybert</code> and at most 3 lines of code in usage.</p>
+<p dir="auto"><a name="user-content-gettingstarted"></a></p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">2. Getting Started</h2><a id="user-content-2-getting-started" class="anchor" aria-label="Permalink: 2. Getting Started" href="#2-getting-started"><svg data-component="Octicon" class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto"><a href="#toc">Back to ToC</a></p>
+<p dir="auto"><a name="user-content-installation"></a></p>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">2.1. Installation</h3><a id="user-content-21-installation" class="anchor" aria-label="Permalink: 2.1. Installation" href="#21-installation"><svg data-component="Octicon" class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">Installation can be done using <a href="https://pypi.org/project/keybert/" rel="nofollow">pypi</a>:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="pip install keybert"><pre class="notranslate"><code>pip install keybert
+</code></pre></div>
+<p dir="auto">You may want to install more depending on the transformers and language backends that you will be using. The possible installations are:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="pip install keybert[flair]
+pip install keybert[gensim]
+pip install keybert[spacy]
+pip install keybert[use]"><pre class="notranslate"><code>pip install keybert[flair]
+pip install keybert[gensim]
+pip install keybert[spacy]
+pip install keybert[use]
+</code></pre></div>
+<p dir="auto">For a light-weight installation without PyTorch, run the following to make use of <a href="https://github.com/MinishLab/model2vec">Model2Vec</a> instead:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="pip install keybert --no-deps scikit-learn model2vec"><pre class="notranslate"><code>pip install keybert --no-deps scikit-learn model2vec
+</code></pre></div>
+<p dir="auto"><a name="user-content-usage"></a></p>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">2.2. Usage</h3><a id="user-content-22-usage" class="anchor" aria-label="Permalink: 2.2. Usage" href="#22-usage"><svg data-component="Octicon" class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">The most minimal example can be seen below for the extraction of keywords:</p>
+<div class="highlight highlight-source-python notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="from keybert import KeyBERT
+
+doc = &quot;&quot;&quot;
+         Supervised learning is the machine learning task of learning a function that
+         maps an input to an output based on example input-output pairs. It infers a
+         function from labeled training data consisting of a set of training examples.
+         In supervised learning, each example is a pair consisting of an input object
+         (typically a vector) and a desired output value (also called the supervisory signal).
+         A supervised learning algorithm analyzes the training data and produces an inferred function,
+         which can be used for mapping new examples. An optimal scenario will allow for the
+         algorithm to correctly determine the class labels for unseen instances. This requires
+         the learning algorithm to generalize from the training data to unseen situations in a
+         'reasonable' way (see inductive bias).
+      &quot;&quot;&quot;
+kw_model = KeyBERT()
+keywords = kw_model.extract_keywords(doc)"><pre><span class="pl-k">from</span> <span class="pl-s1">keybert</span> <span class="pl-k">import</span> <span class="pl-v">KeyBERT</span>
+
+<span class="pl-s1">doc</span> <span class="pl-c1">=</span> <span class="pl-s">"""</span>
+<span class="pl-s">         Supervised learning is the machine learning task of learning a function that</span>
+<span class="pl-s">         maps an input to an output based on example input-output pairs. It infers a</span>
+<span class="pl-s">         function from labeled training data consisting of a set of training examples.</span>
+<span class="pl-s">         In supervised learning, each example is a pair consisting of an input object</span>
+<span class="pl-s">         (typically a vector) and a desired output value (also called the supervisory signal).</span>
+<span class="pl-s">         A supervised learning algorithm analyzes the training data and produces an inferred function,</span>
+<span class="pl-s">         which can be used for mapping new examples. An optimal scenario will allow for the</span>
+<span class="pl-s">         algorithm to correctly determine the class labels for unseen instances. This requires</span>
+<span class="pl-s">         the learning algorithm to generalize from the training data to unseen situations in a</span>
+<span class="pl-s">         'reasonable' way (see inductive bias).</span>
+<span class="pl-s">      """</span>
+<span class="pl-s1">kw_model</span> <span class="pl-c1">=</span> <span class="pl-en">KeyBERT</span>()
+<span class="pl-s1">keywords</span> <span class="pl-c1">=</span> <span class="pl-s1">kw_model</span>.<span class="pl-c1">extract_keywords</span>(<span class="pl-s1">doc</span>)</pre></div>
+<p dir="auto">You can set <code>keyphrase_ngram_range</code> to set the length of the resulting keywords/keyphrases:</p>
+<div class="highlight highlight-source-python notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="&gt;&gt;&gt; kw_model.extract_keywords(doc, keyphrase_ngram_range=(1, 1), stop_words=None)
+[('learning', 0.4604),
+ ('algorithm', 0.4556),
+ ('training', 0.4487),
+ ('class', 0.4086),
+ ('mapping', 0.3700)]"><pre><span class="pl-c1">&gt;</span><span class="pl-c1">&gt;&gt;</span> <span class="pl-s1">kw_model</span>.<span class="pl-c1">extract_keywords</span>(<span class="pl-s1">doc</span>, <span class="pl-s1">keyphrase_ngram_range</span><span class="pl-c1">=</span>(<span class="pl-c1">1</span>, <span class="pl-c1">1</span>), <span class="pl-s1">stop_words</span><span class="pl-c1">=</span><span class="pl-c1">None</span>)
+[(<span class="pl-s">'learning'</span>, <span class="pl-c1">0.4604</span>),
+ (<span class="pl-s">'algorithm'</span>, <span class="pl-c1">0.4556</span>),
+ (<span class="pl-s">'training'</span>, <span class="pl-c1">0.4487</span>),
+ (<span class="pl-s">'class'</span>, <span class="pl-c1">0.4086</span>),
+ (<span class="pl-s">'mapping'</span>, <span class="pl-c1">0.3700</span>)]</pre></div>
+<p dir="auto">To extract keyphrases, simply set <code>keyphrase_ngram_range</code> to (1, 2) or higher depending on the number
+of words you would like in the resulting keyphrases:</p>
+<div class="highlight highlight-source-python notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="&gt;&gt;&gt; kw_model.extract_keywords(doc, keyphrase_ngram_range=(1, 2), stop_words=None)
+[('learning algorithm', 0.6978),
+ ('machine learning', 0.6305),
+ ('supervised learning', 0.5985),
+ ('algorithm analyzes', 0.5860),
+ ('learning function', 0.5850)]"><pre><span class="pl-c1">&gt;</span><span class="pl-c1">&gt;&gt;</span> <span class="pl-s1">kw_model</span>.<span class="pl-c1">extract_keywords</span>(<span class="pl-s1">doc</span>, <span class="pl-s1">keyphrase_ngram_range</span><span class="pl-c1">=</span>(<span class="pl-c1">1</span>, <span class="pl-c1">2</span>), <span class="pl-s1">stop_words</span><span class="pl-c1">=</span><span class="pl-c1">None</span>)
+[(<span class="pl-s">'learning algorithm'</span>, <span class="pl-c1">0.6978</span>),
+ (<span class="pl-s">'machine learning'</span>, <span class="pl-c1">0.6305</span>),
+ (<span class="pl-s">'supervised learning'</span>, <span class="pl-c1">0.5985</span>),
+ (<span class="pl-s">'algorithm analyzes'</span>, <span class="pl-c1">0.5860</span>),
+ (<span class="pl-s">'learning function'</span>, <span class="pl-c1">0.5850</span>)]</pre></div>
+<p dir="auto">We can highlight the keywords in the document by simply setting <code>highlight</code>:</p>
+<div class="highlight highlight-source-python notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="keywords = kw_model.extract_keywords(doc, highlight=True)"><pre><span class="pl-s1">keywords</span> <span class="pl-c1">=</span> <span class="pl-s1">kw_model</span>.<span class="pl-c1">extract_keywords</span>(<span class="pl-s1">doc</span>, <span class="pl-s1">highlight</span><span class="pl-c1">=</span><span class="pl-c1">True</span>)</pre></div>
+<p dir="auto"><a target="_blank" rel="noopener noreferrer" href="images/highlight.png"><img src="images/highlight.png" width="75%" style="max-width: 100%;"></a></p>
+<p dir="auto"><strong>NOTE</strong>: For a full overview of all possible transformer models see <a href="https://www.sbert.net/docs/pretrained_models.html" rel="nofollow">sentence-transformer</a>.
+I would advise either <code>"all-MiniLM-L6-v2"</code> for English documents or <code>"paraphrase-multilingual-MiniLM-L12-v2"</code>
+for multi-lingual documents or any other language.</p>
+<p dir="auto"><a name="user-content-maxsum"></a></p>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">2.3. Max Sum Distance</h3><a id="user-content-23-max-sum-distance" class="anchor" aria-label="Permalink: 2.3. Max Sum Distance" href="#23-max-sum-distance"><svg data-component="Octicon" class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">To diversify the results, we take the 2 x top_n words/phrases most similar to the document.
+Among these words, we evaluate all possible <code>top_n</code>-combinations and select one combination
+where words are least similar to each other by cosine similarity.</p>
+<p dir="auto">This has super-exponential time complexity and therefore not advised if you use a large <code>top_n</code>.</p>
+<div class="highlight highlight-source-python notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="&gt;&gt;&gt; kw_model.extract_keywords(doc, keyphrase_ngram_range=(3, 3), stop_words='english',
+                              use_maxsum=True, nr_candidates=20, top_n=5)
+[('set training examples', 0.7504),
+ ('generalize training data', 0.7727),
+ ('requires learning algorithm', 0.5050),
+ ('supervised learning algorithm', 0.3779),
+ ('learning machine learning', 0.2891)]"><pre><span class="pl-c1">&gt;</span><span class="pl-c1">&gt;&gt;</span> <span class="pl-s1">kw_model</span>.<span class="pl-c1">extract_keywords</span>(<span class="pl-s1">doc</span>, <span class="pl-s1">keyphrase_ngram_range</span><span class="pl-c1">=</span>(<span class="pl-c1">3</span>, <span class="pl-c1">3</span>), <span class="pl-s1">stop_words</span><span class="pl-c1">=</span><span class="pl-s">'english'</span>,
+                              <span class="pl-s1">use_maxsum</span><span class="pl-c1">=</span><span class="pl-c1">True</span>, <span class="pl-s1">nr_candidates</span><span class="pl-c1">=</span><span class="pl-c1">20</span>, <span class="pl-s1">top_n</span><span class="pl-c1">=</span><span class="pl-c1">5</span>)
+[(<span class="pl-s">'set training examples'</span>, <span class="pl-c1">0.7504</span>),
+ (<span class="pl-s">'generalize training data'</span>, <span class="pl-c1">0.7727</span>),
+ (<span class="pl-s">'requires learning algorithm'</span>, <span class="pl-c1">0.5050</span>),
+ (<span class="pl-s">'supervised learning algorithm'</span>, <span class="pl-c1">0.3779</span>),
+ (<span class="pl-s">'learning machine learning'</span>, <span class="pl-c1">0.2891</span>)]</pre></div>
+<p dir="auto"><a name="user-content-maximal"></a></p>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">2.4. Maximal Marginal Relevance</h3><a id="user-content-24-maximal-marginal-relevance" class="anchor" aria-label="Permalink: 2.4. Maximal Marginal Relevance" href="#24-maximal-marginal-relevance"><svg data-component="Octicon" class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">To diversify the results, we can use Maximal Margin Relevance (MMR) to create
+keywords / keyphrases which is also based on cosine similarity. The results
+with <strong>high diversity</strong>:</p>
+<div class="highlight highlight-source-python notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="&gt;&gt;&gt; kw_model.extract_keywords(doc, keyphrase_ngram_range=(3, 3), stop_words='english',
+                              use_mmr=True, diversity=0.7)
+[('algorithm generalize training', 0.7727),
+ ('labels unseen instances', 0.1649),
+ ('new examples optimal', 0.4185),
+ ('determine class labels', 0.4774),
+ ('supervised learning algorithm', 0.7502)]"><pre><span class="pl-c1">&gt;</span><span class="pl-c1">&gt;&gt;</span> <span class="pl-s1">kw_model</span>.<span class="pl-c1">extract_keywords</span>(<span class="pl-s1">doc</span>, <span class="pl-s1">keyphrase_ngram_range</span><span class="pl-c1">=</span>(<span class="pl-c1">3</span>, <span class="pl-c1">3</span>), <span class="pl-s1">stop_words</span><span class="pl-c1">=</span><span class="pl-s">'english'</span>,
+                              <span class="pl-s1">use_mmr</span><span class="pl-c1">=</span><span class="pl-c1">True</span>, <span class="pl-s1">diversity</span><span class="pl-c1">=</span><span class="pl-c1">0.7</span>)
+[(<span class="pl-s">'algorithm generalize training'</span>, <span class="pl-c1">0.7727</span>),
+ (<span class="pl-s">'labels unseen instances'</span>, <span class="pl-c1">0.1649</span>),
+ (<span class="pl-s">'new examples optimal'</span>, <span class="pl-c1">0.4185</span>),
+ (<span class="pl-s">'determine class labels'</span>, <span class="pl-c1">0.4774</span>),
+ (<span class="pl-s">'supervised learning algorithm'</span>, <span class="pl-c1">0.7502</span>)]</pre></div>
+<p dir="auto">The results with <strong>low diversity</strong>:</p>
+<div class="highlight highlight-source-python notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="&gt;&gt;&gt; kw_model.extract_keywords(doc, keyphrase_ngram_range=(3, 3), stop_words='english',
+                              use_mmr=True, diversity=0.2)
+[('algorithm generalize training', 0.7727),
+ ('supervised learning algorithm', 0.7502),
+ ('learning machine learning', 0.7577),
+ ('learning algorithm analyzes', 0.7587),
+ ('learning algorithm generalize', 0.7514)]"><pre><span class="pl-c1">&gt;</span><span class="pl-c1">&gt;&gt;</span> <span class="pl-s1">kw_model</span>.<span class="pl-c1">extract_keywords</span>(<span class="pl-s1">doc</span>, <span class="pl-s1">keyphrase_ngram_range</span><span class="pl-c1">=</span>(<span class="pl-c1">3</span>, <span class="pl-c1">3</span>), <span class="pl-s1">stop_words</span><span class="pl-c1">=</span><span class="pl-s">'english'</span>,
+                              <span class="pl-s1">use_mmr</span><span class="pl-c1">=</span><span class="pl-c1">True</span>, <span class="pl-s1">diversity</span><span class="pl-c1">=</span><span class="pl-c1">0.2</span>)
+[(<span class="pl-s">'algorithm generalize training'</span>, <span class="pl-c1">0.7727</span>),
+ (<span class="pl-s">'supervised learning algorithm'</span>, <span class="pl-c1">0.7502</span>),
+ (<span class="pl-s">'learning machine learning'</span>, <span class="pl-c1">0.7577</span>),
+ (<span class="pl-s">'learning algorithm analyzes'</span>, <span class="pl-c1">0.7587</span>),
+ (<span class="pl-s">'learning algorithm generalize'</span>, <span class="pl-c1">0.7514</span>)]</pre></div>
+<p dir="auto"><a name="user-content-embeddings"></a></p>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">2.5. Embedding Models</h3><a id="user-content-25-embedding-models" class="anchor" aria-label="Permalink: 2.5. Embedding Models" href="#25-embedding-models"><svg data-component="Octicon" class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">KeyBERT supports many embedding models that can be used to embed the documents and words:</p>
+<ul dir="auto">
+<li>Sentence-Transformers</li>
+<li>Flair</li>
+<li>Spacy</li>
+<li>Gensim</li>
+<li>USE</li>
+</ul>
+<p dir="auto">Click <a href="https://maartengr.github.io/KeyBERT/guides/embeddings.html" rel="nofollow">here</a> for a full overview of all supported embedding models.</p>
+<p dir="auto"><strong>Sentence-Transformers</strong>
+You can select any model from <code>sentence-transformers</code> <a href="https://www.sbert.net/docs/pretrained_models.html" rel="nofollow">here</a>
+and pass it through KeyBERT with <code>model</code>:</p>
+<div class="highlight highlight-source-python notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="from keybert import KeyBERT
+kw_model = KeyBERT(model='all-MiniLM-L6-v2')"><pre><span class="pl-k">from</span> <span class="pl-s1">keybert</span> <span class="pl-k">import</span> <span class="pl-v">KeyBERT</span>
+<span class="pl-s1">kw_model</span> <span class="pl-c1">=</span> <span class="pl-en">KeyBERT</span>(<span class="pl-s1">model</span><span class="pl-c1">=</span><span class="pl-s">'all-MiniLM-L6-v2'</span>)</pre></div>
+<p dir="auto">Or select a SentenceTransformer model with your own parameters:</p>
+<div class="highlight highlight-source-python notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="from keybert import KeyBERT
+from sentence_transformers import SentenceTransformer
+
+sentence_model = SentenceTransformer(&quot;all-MiniLM-L6-v2&quot;)
+kw_model = KeyBERT(model=sentence_model)"><pre><span class="pl-k">from</span> <span class="pl-s1">keybert</span> <span class="pl-k">import</span> <span class="pl-v">KeyBERT</span>
+<span class="pl-k">from</span> <span class="pl-s1">sentence_transformers</span> <span class="pl-k">import</span> <span class="pl-v">SentenceTransformer</span>
+
+<span class="pl-s1">sentence_model</span> <span class="pl-c1">=</span> <span class="pl-en">SentenceTransformer</span>(<span class="pl-s">"all-MiniLM-L6-v2"</span>)
+<span class="pl-s1">kw_model</span> <span class="pl-c1">=</span> <span class="pl-en">KeyBERT</span>(<span class="pl-s1">model</span><span class="pl-c1">=</span><span class="pl-s1">sentence_model</span>)</pre></div>
+<p dir="auto"><strong>Flair</strong>
+<a href="https://github.com/flairNLP/flair">Flair</a> allows you to choose almost any embedding model that
+is publicly available. Flair can be used as follows:</p>
+<div class="highlight highlight-source-python notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="from keybert import KeyBERT
+from flair.embeddings import TransformerDocumentEmbeddings
+
+roberta = TransformerDocumentEmbeddings('roberta-base')
+kw_model = KeyBERT(model=roberta)"><pre><span class="pl-k">from</span> <span class="pl-s1">keybert</span> <span class="pl-k">import</span> <span class="pl-v">KeyBERT</span>
+<span class="pl-k">from</span> <span class="pl-s1">flair</span>.<span class="pl-s1">embeddings</span> <span class="pl-k">import</span> <span class="pl-v">TransformerDocumentEmbeddings</span>
+
+<span class="pl-s1">roberta</span> <span class="pl-c1">=</span> <span class="pl-en">TransformerDocumentEmbeddings</span>(<span class="pl-s">'roberta-base'</span>)
+<span class="pl-s1">kw_model</span> <span class="pl-c1">=</span> <span class="pl-en">KeyBERT</span>(<span class="pl-s1">model</span><span class="pl-c1">=</span><span class="pl-s1">roberta</span>)</pre></div>
+<p dir="auto">You can select any 🤗 transformers model <a href="https://huggingface.co/models" rel="nofollow">here</a>.</p>
+<p dir="auto"><a name="user-content-llms"></a></p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">3. Large Language Models</h2><a id="user-content-3-large-language-models" class="anchor" aria-label="Permalink: 3. Large Language Models" href="#3-large-language-models"><svg data-component="Octicon" class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto"><a href="#toc">Back to ToC</a></p>
+<p dir="auto">With <code>KeyLLM</code> you can new perform keyword extraction with Large Language Models (LLM). You can find the full documentation <a href="https://maartengr.github.io/KeyBERT/guides/keyllm.html" rel="nofollow">here</a> but there are two examples that are common with this new method. Make sure to install the OpenAI package through <code>pip install openai</code> before you start.</p>
+<p dir="auto">First, we can ask OpenAI directly to extract keywords:</p>
+<div class="highlight highlight-source-python notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="import openai
+from keybert.llm import OpenAI
+from keybert import KeyLLM
+
+# Create your LLM
+client = openai.OpenAI(api_key=MY_API_KEY)
+llm = OpenAI(client)
+
+# Load it in KeyLLM
+kw_model = KeyLLM(llm)"><pre><span class="pl-k">import</span> <span class="pl-s1">openai</span>
+<span class="pl-k">from</span> <span class="pl-s1">keybert</span>.<span class="pl-s1">llm</span> <span class="pl-k">import</span> <span class="pl-v">OpenAI</span>
+<span class="pl-k">from</span> <span class="pl-s1">keybert</span> <span class="pl-k">import</span> <span class="pl-v">KeyLLM</span>
+
+<span class="pl-c"># Create your LLM</span>
+<span class="pl-s1">client</span> <span class="pl-c1">=</span> <span class="pl-s1">openai</span>.<span class="pl-c1">OpenAI</span>(<span class="pl-s1">api_key</span><span class="pl-c1">=</span><span class="pl-c1">MY_API_KEY</span>)
+<span class="pl-s1">llm</span> <span class="pl-c1">=</span> <span class="pl-en">OpenAI</span>(<span class="pl-s1">client</span>)
+
+<span class="pl-c"># Load it in KeyLLM</span>
+<span class="pl-s1">kw_model</span> <span class="pl-c1">=</span> <span class="pl-en">KeyLLM</span>(<span class="pl-s1">llm</span>)</pre></div>
+<p dir="auto">This will query any ChatGPT model and ask it to extract keywords from text.</p>
+<p dir="auto">Second, we can find documents that are likely to have the same keywords and only extract keywords for those.
+This is much more efficient then asking the keywords for every single documents. There are likely documents that
+have the exact same keywords. Doing so is straightforward:</p>
+<div class="highlight highlight-source-python notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="import openai
+from keybert.llm import OpenAI
+from keybert import KeyLLM
+from sentence_transformers import SentenceTransformer
+
+# Extract embeddings
+model = SentenceTransformer('all-MiniLM-L6-v2')
+embeddings = model.encode(MY_DOCUMENTS, convert_to_tensor=True)
+
+# Create your LLM
+client = openai.OpenAI(api_key=MY_API_KEY)
+llm = OpenAI(client)
+
+# Load it in KeyLLM
+kw_model = KeyLLM(llm)
+
+# Extract keywords
+keywords = kw_model.extract_keywords(MY_DOCUMENTS, embeddings=embeddings, threshold=.75)"><pre><span class="pl-k">import</span> <span class="pl-s1">openai</span>
+<span class="pl-k">from</span> <span class="pl-s1">keybert</span>.<span class="pl-s1">llm</span> <span class="pl-k">import</span> <span class="pl-v">OpenAI</span>
+<span class="pl-k">from</span> <span class="pl-s1">keybert</span> <span class="pl-k">import</span> <span class="pl-v">KeyLLM</span>
+<span class="pl-k">from</span> <span class="pl-s1">sentence_transformers</span> <span class="pl-k">import</span> <span class="pl-v">SentenceTransformer</span>
+
+<span class="pl-c"># Extract embeddings</span>
+<span class="pl-s1">model</span> <span class="pl-c1">=</span> <span class="pl-en">SentenceTransformer</span>(<span class="pl-s">'all-MiniLM-L6-v2'</span>)
+<span class="pl-s1">embeddings</span> <span class="pl-c1">=</span> <span class="pl-s1">model</span>.<span class="pl-c1">encode</span>(<span class="pl-c1">MY_DOCUMENTS</span>, <span class="pl-s1">convert_to_tensor</span><span class="pl-c1">=</span><span class="pl-c1">True</span>)
+
+<span class="pl-c"># Create your LLM</span>
+<span class="pl-s1">client</span> <span class="pl-c1">=</span> <span class="pl-s1">openai</span>.<span class="pl-c1">OpenAI</span>(<span class="pl-s1">api_key</span><span class="pl-c1">=</span><span class="pl-c1">MY_API_KEY</span>)
+<span class="pl-s1">llm</span> <span class="pl-c1">=</span> <span class="pl-en">OpenAI</span>(<span class="pl-s1">client</span>)
+
+<span class="pl-c"># Load it in KeyLLM</span>
+<span class="pl-s1">kw_model</span> <span class="pl-c1">=</span> <span class="pl-en">KeyLLM</span>(<span class="pl-s1">llm</span>)
+
+<span class="pl-c"># Extract keywords</span>
+<span class="pl-s1">keywords</span> <span class="pl-c1">=</span> <span class="pl-s1">kw_model</span>.<span class="pl-c1">extract_keywords</span>(<span class="pl-c1">MY_DOCUMENTS</span>, <span class="pl-s1">embeddings</span><span class="pl-c1">=</span><span class="pl-s1">embeddings</span>, <span class="pl-s1">threshold</span><span class="pl-c1">=</span><span class="pl-c1">.75</span>)</pre></div>
+<p dir="auto">You can use the <code>threshold</code> parameter to decide how similar documents need to be in order to receive the same keywords.</p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Citation</h2><a id="user-content-citation" class="anchor" aria-label="Permalink: Citation" href="#citation"><svg data-component="Octicon" class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">To cite KeyBERT in your work, please use the following bibtex reference:</p>
+<div class="highlight highlight-text-bibtex notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="@misc{grootendorst2020keybert,
+  author       = {Maarten Grootendorst},
+  title        = {KeyBERT: Minimal keyword extraction with BERT.},
+  year         = 2020,
+  publisher    = {Zenodo},
+  version      = {v0.3.0},
+  doi          = {10.5281/zenodo.4461265},
+  url          = {https://doi.org/10.5281/zenodo.4461265}
+}"><pre><span class="pl-k">@misc</span>{<span class="pl-en">grootendorst2020keybert</span>,
+  <span class="pl-s">author</span>       = <span class="pl-s"><span class="pl-pds">{</span>Maarten Grootendorst<span class="pl-pds">}</span></span>,
+  <span class="pl-s">title</span>        = <span class="pl-s"><span class="pl-pds">{</span>KeyBERT: Minimal keyword extraction with BERT.<span class="pl-pds">}</span></span>,
+  <span class="pl-s">year</span>         = <span class="pl-c1">2020</span>,
+  <span class="pl-s">publisher</span>    = <span class="pl-s"><span class="pl-pds">{</span>Zenodo<span class="pl-pds">}</span></span>,
+  <span class="pl-s">version</span>      = <span class="pl-s"><span class="pl-pds">{</span>v0.3.0<span class="pl-pds">}</span></span>,
+  <span class="pl-s">doi</span>          = <span class="pl-s"><span class="pl-pds">{</span>10.5281/zenodo.4461265<span class="pl-pds">}</span></span>,
+  <span class="pl-s">url</span>          = <span class="pl-s"><span class="pl-pds">{</span>https://doi.org/10.5281/zenodo.4461265<span class="pl-pds">}</span></span>
+}</pre></div>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">References</h2><a id="user-content-references" class="anchor" aria-label="Permalink: References" href="#references"><svg data-component="Octicon" class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">Below, you can find several resources that were used for the creation of KeyBERT
+but most importantly, these are amazing resources for creating impressive keyword extraction models:</p>
+<p dir="auto"><strong>Papers</strong>:</p>
+<ul dir="auto">
+<li>Sharma, P., &amp; Li, Y. (2019). <a href="https://www.preprints.org/manuscript/201908.0073/download/final_file" rel="nofollow">Self-Supervised Contextual Keyword and Keyphrase Retrieval with Self-Labelling.</a></li>
+</ul>
+<p dir="auto"><strong>Github Repos</strong>:</p>
+<ul dir="auto">
+<li><a href="https://github.com/thunlp/BERT-KPE">https://github.com/thunlp/BERT-KPE</a></li>
+<li><a href="https://github.com/ibatra/BERT-Keyword-Extractor">https://github.com/ibatra/BERT-Keyword-Extractor</a></li>
+<li><a href="https://github.com/pranav-ust/BERT-keyphrase-extraction">https://github.com/pranav-ust/BERT-keyphrase-extraction</a></li>
+<li><a href="https://github.com/swisscom/ai-research-keyphrase-extraction">https://github.com/swisscom/ai-research-keyphrase-extraction</a></li>
+</ul>
+<p dir="auto"><strong>MMR</strong>:
+The selection of keywords/keyphrases was modeled after:</p>
+<ul dir="auto">
+<li><a href="https://github.com/swisscom/ai-research-keyphrase-extraction">https://github.com/swisscom/ai-research-keyphrase-extraction</a></li>
+</ul>
+<p dir="auto"><strong>NOTE</strong>: If you find a paper or github repo that has an easy-to-use implementation
+of BERT-embeddings for keyword/keyphrase extraction, let me know! I'll make sure to
+add a reference to this repo.</p>
+</article></div>

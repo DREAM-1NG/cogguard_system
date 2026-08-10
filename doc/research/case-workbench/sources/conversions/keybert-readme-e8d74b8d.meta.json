@@ -1,0 +1,28 @@
+{
+  "status": "converted",
+  "source_url": "https://github.com/MaartenGr/KeyBERT",
+  "retrieval_url": "https://api.github.com/repos/MaartenGr/KeyBERT/readme",
+  "retrieval_time": {
+    "captured": false,
+    "completed_before_utc": "2026-08-10T11:03:18.349588+00:00",
+    "note": "The source fetch completed before this MarkItDown conversion timestamp; the wrapper does not separately log fetch time."
+  },
+  "content_type": "application/vnd.github.html+json; charset=utf-8",
+  "source_license": "MIT (repository metadata queried through GitHub API)",
+  "source_path": "doc/research/case-workbench/sources/originals/keybert-readme.html",
+  "source_name": "keybert-readme.html",
+  "source_extension": ".html",
+  "source_size_bytes": 42368,
+  "source_sha256": "6ec3f46944a991695f8669f9bf7db9f40c0f41fcff4575e8b49e93708a3a2d25",
+  "output_markdown": "doc/research/case-workbench/sources/conversions/keybert-readme-e8d74b8d.md",
+  "output_meta": "doc/research/case-workbench/sources/conversions/keybert-readme-e8d74b8d.meta.json",
+  "title": null,
+  "characters": 12707,
+  "converted_at": "2026-08-10T11:03:18.349588+00:00",
+  "conversion_command": "python C:\\Users\\p\\.codex\\skills\\markitdown\\scripts\\convert_literature.py doc\\research\\case-workbench\\sources\\originals\\keybert-readme.html --out-dir doc\\research\\case-workbench\\sources\\conversions --overwrite",
+  "conversion_status": "converted",
+  "converter": {
+    "name": "markitdown",
+    "version": "0.1.5"
+  }
+}

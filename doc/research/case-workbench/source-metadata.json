@@ -1,0 +1,232 @@
+{
+  "metadata_version": 1,
+  "created_at_utc": "2026-08-10T11:09:00Z",
+  "scope": "Task 01 bounded research provenance for the Case Workbench design. A source status documents what was actually captured; it does not imply runtime adoption or effectiveness.",
+  "retention_policy": {
+    "rule": "Retain an original plus MarkItDown conversion only when the source is small and its redistribution or retention basis is clear for this repository context.",
+    "excluded_material": "Do not retain benchmark CSV/full conversion, large binaries, or source content whose license or retention basis was not clear in this bounded capture."
+  },
+  "sources": [
+    {
+      "id": "bertopic-readme",
+      "kind": "technical_documentation",
+      "canonical_url": "https://github.com/MaartenGr/BERTopic",
+      "retrieval_url": "https://api.github.com/repos/MaartenGr/BERTopic/readme",
+      "retrieval_status": "retrieved_and_retained",
+      "retrieval_time": {
+        "captured": false,
+        "completed_before_utc": "2026-08-10T11:05:22.063912+00:00",
+        "note": "The source fetch completed before the recorded MarkItDown conversion. The wrapper records conversion time, not a separate fetch timestamp."
+      },
+      "content_type": "application/vnd.github.html+json; charset=utf-8",
+      "license": "MIT (repository metadata queried through GitHub API)",
+      "source_path": "sources/originals/bertopic-readme.html",
+      "source_size_bytes": 53116,
+      "source_sha256": "75B3C2CE622C33054678D099613A6AB63D1626F72F62AC6EB5208467A1E1E6B1",
+      "conversion": {
+        "tool": "Microsoft MarkItDown 0.1.5",
+        "command": "python C:\\Users\\p\\.codex\\skills\\markitdown\\scripts\\convert_literature.py doc\\research\\case-workbench\\sources\\originals\\bertopic-readme.html --out-dir doc\\research\\case-workbench\\sources\\conversions --overwrite",
+        "status": "converted",
+        "output_path": "sources/conversions/bertopic-readme-ce5816b8.md",
+        "output_meta_path": "sources/conversions/bertopic-readme-ce5816b8.meta.json",
+        "converted_at_utc": "2026-08-10T11:05:22.063912+00:00"
+      },
+      "use_limit": "Supports only method-level statements about embedding-driven clustering and c-TF-IDF; it does not establish Chinese-domain performance."
+    },
+    {
+      "id": "keybert-readme",
+      "kind": "technical_documentation",
+      "canonical_url": "https://github.com/MaartenGr/KeyBERT",
+      "retrieval_url": "https://api.github.com/repos/MaartenGr/KeyBERT/readme",
+      "retrieval_status": "retrieved_and_retained",
+      "retrieval_time": {
+        "captured": false,
+        "completed_before_utc": "2026-08-10T11:03:18.349588+00:00",
+        "note": "The source fetch completed before the recorded MarkItDown conversion. The wrapper records conversion time, not a separate fetch timestamp."
+      },
+      "content_type": "application/vnd.github.html+json; charset=utf-8",
+      "license": "MIT (repository metadata queried through GitHub API)",
+      "source_path": "sources/originals/keybert-readme.html",
+      "source_size_bytes": 42368,
+      "source_sha256": "6EC3F46944A991695F8669F9BF7DB9F40C0F41FCFF4575E8B49E93708A3A2D25",
+      "conversion": {
+        "tool": "Microsoft MarkItDown 0.1.5",
+        "command": "python C:\\Users\\p\\.codex\\skills\\markitdown\\scripts\\convert_literature.py doc\\research\\case-workbench\\sources\\originals\\keybert-readme.html --out-dir doc\\research\\case-workbench\\sources\\conversions --overwrite",
+        "status": "converted",
+        "output_path": "sources/conversions/keybert-readme-e8d74b8d.md",
+        "output_meta_path": "sources/conversions/keybert-readme-e8d74b8d.meta.json",
+        "converted_at_utc": "2026-08-10T11:03:18.349588+00:00"
+      },
+      "use_limit": "Supports only method-level statements about embedding similarity and MMR; it does not validate Chinese keyword quality."
+    },
+    {
+      "id": "bertopic-paper",
+      "kind": "academic_preprint",
+      "canonical_url": "https://arxiv.org/abs/2203.05794",
+      "retrieval_url": "https://arxiv.org/pdf/2203.05794.pdf",
+      "retrieval_status": "retrieved_not_retained",
+      "content_type": "application/pdf",
+      "source_size_bytes": 496447,
+      "source_sha256": "3D7EA2FBE10A306BC687C4AA8D07780476EBC9E33A4919CA92EE2F02423C89C4",
+      "conversion": {
+        "tool": "Microsoft MarkItDown 0.1.5",
+        "status": "converted_then_excluded",
+        "converted_at_utc": "2026-08-10T11:03:17.683886+00:00",
+        "exclusion_reason": "No arXiv license element was present in the queried API response; the minimal retained source set uses the MIT repository README instead."
+      },
+      "use_limit": "Abstract/method reference only; no performance transfer claim."
+    },
+    {
+      "id": "coortweet-readme",
+      "kind": "technical_documentation",
+      "canonical_url": "https://github.com/nicolarighetti/CooRTweet",
+      "retrieval_url": "https://api.github.com/repos/nicolarighetti/CooRTweet/readme",
+      "retrieval_status": "retrieved_not_retained",
+      "content_type": "application/vnd.github.html+json; charset=utf-8",
+      "source_size_bytes": 11855,
+      "source_sha256": "7A0FB1747890C18B6978EE02064CB1BB6A21485149AAEA6662E0649CB01E7177",
+      "license": "NOASSERTION (repository metadata queried through GitHub API)",
+      "conversion": {
+        "tool": "Microsoft MarkItDown 0.1.5",
+        "status": "converted_then_excluded",
+        "converted_at_utc": "2026-08-10T11:03:17.732138+00:00",
+        "exclusion_reason": "No declared repository license was available in the bounded capture."
+      },
+      "use_limit": "Conceptual reference for coordinated-action networks and provenance; never a product runtime dependency."
+    },
+    {
+      "id": "hoaxy-backend-readme",
+      "kind": "technical_documentation",
+      "canonical_url": "https://github.com/osome-iu/hoaxy-backend",
+      "retrieval_url": "https://api.github.com/repos/osome-iu/hoaxy-backend/readme",
+      "retrieval_status": "retrieved_not_retained",
+      "content_type": "application/vnd.github.html+json; charset=utf-8",
+      "source_size_bytes": 52793,
+      "source_sha256": "D99138500C950393CD3A8BB8FFEB644EB317FBC601B57CF616646939FE1A0F80",
+      "license": "GPL-3.0 (repository metadata queried through GitHub API)",
+      "conversion": {
+        "tool": "Microsoft MarkItDown 0.1.5",
+        "status": "converted_then_excluded",
+        "converted_at_utc": "2026-08-10T11:03:17.945455+00:00",
+        "exclusion_reason": "The source README reports that the software is archived; it is a historical reference, not an implementation input."
+      },
+      "use_limit": "Historical claim/propagation visualization reference only; not an active dependency."
+    },
+    {
+      "id": "disarm-foundation-profile",
+      "kind": "framework_documentation",
+      "canonical_url": "https://github.com/DISARMFoundation/.github/blob/main/profile/README.md",
+      "retrieval_url": "https://github.com/DISARMFoundation/.github/blob/main/profile/README.md",
+      "retrieval_status": "retrieved_not_retained",
+      "content_type": "text/html",
+      "source_size_bytes": 257768,
+      "source_sha256": "BBCD9D51DA8755795F3B02393AD727C8996FAF38D3B2C74431E9C8E037C79AD3",
+      "license": "No repository license reported by the GitHub API in the bounded capture.",
+      "conversion": {
+        "tool": "Microsoft MarkItDown 0.1.5",
+        "status": "converted_then_excluded",
+        "converted_at_utc": "2026-08-10T11:03:17.874314+00:00",
+        "exclusion_reason": "No clear repository license or retention basis in the bounded capture."
+      },
+      "use_limit": "Framework vocabulary reference only; no automatic taxonomy mapping is proposed."
+    },
+    {
+      "id": "brandwatch-consumer-research",
+      "kind": "vendor_product_page",
+      "canonical_url": "https://www.brandwatch.com/products/consumer-research/",
+      "retrieval_status": "reader_blocked",
+      "attempted_reader": "https://r.jina.ai/https://www.brandwatch.com/products/consumer-research/",
+      "failure": "Jina Reader returned HTTP 401 AuthenticationRequiredError for anonymous queries on this network.",
+      "comparison_status": "unverified_hypothesis_not_design_evidence",
+      "use_limit": "Unverified vendor reference; no capability statement was captured, retained, or used for design decisions."
+    },
+    {
+      "id": "talkwalker-consumer-intelligence",
+      "kind": "vendor_product_page",
+      "canonical_url": "https://www.talkwalker.com/consumer-intelligence-platform",
+      "retrieval_status": "indexed_not_retrieved",
+      "comparison_status": "unverified_hypothesis_not_design_evidence",
+      "use_limit": "Unverified vendor reference; no capability statement was captured, retained, or used for design decisions."
+    },
+    {
+      "id": "pulsar-trac",
+      "kind": "vendor_product_page",
+      "canonical_url": "https://www.pulsarplatform.com/trac/",
+      "retrieval_status": "reader_blocked",
+      "attempted_reader": "https://r.jina.ai/https://www.pulsarplatform.com/trac/",
+      "failure": "Jina Reader returned HTTP 401 AuthenticationRequiredError for anonymous queries on this network.",
+      "comparison_status": "unverified_hypothesis_not_design_evidence",
+      "use_limit": "Unverified vendor reference; no capability statement was captured, retained, or used for design decisions."
+    },
+    {
+      "id": "newswhip-spike",
+      "kind": "vendor_product_page",
+      "canonical_url": "https://www.newswhip.com/products/spike/",
+      "retrieval_status": "indexed_not_retrieved",
+      "comparison_status": "unverified_hypothesis_not_design_evidence",
+      "use_limit": "Unverified vendor reference; no capability statement was captured, retained, or used for design decisions."
+    },
+    {
+      "id": "blackbird-ai-platform",
+      "kind": "vendor_product_page",
+      "canonical_url": "https://www.blackbird.ai/platform/",
+      "retrieval_status": "indexed_not_retrieved",
+      "comparison_status": "unverified_hypothesis_not_design_evidence",
+      "use_limit": "Unverified vendor reference; no capability statement was captured, retained, or used for design decisions."
+    },
+    {
+      "id": "bge-small-zh-model-card",
+      "kind": "model_card",
+      "canonical_url": "https://huggingface.co/BAAI/bge-small-zh-v1.5/tree/7999e1d",
+      "retrieval_status": "pinned_not_fetched",
+      "pin": "BAAI/bge-small-zh-v1.5@7999e1d",
+      "use_limit": "Model card/revision identifies a candidate; it does not prove Chinese-domain quality in CogGuard."
+    },
+    {
+      "id": "multilingual-sentiment-model-card",
+      "kind": "model_card",
+      "canonical_url": "https://huggingface.co/lxyuan/distilbert-base-multilingual-cased-sentiments-student/tree/cf99110",
+      "retrieval_status": "pinned_not_fetched",
+      "pin": "lxyuan/distilbert-base-multilingual-cased-sentiments-student@cf99110",
+      "use_limit": "Model card/revision identifies a candidate; it does not prove Chinese-domain quality in CogGuard."
+    },
+    {
+      "id": "multilingual-stance-model-card",
+      "kind": "model_card",
+      "canonical_url": "https://huggingface.co/MoritzLaurer/multilingual-MiniLMv2-L6-mnli-xnli/tree/0a71e92",
+      "retrieval_status": "pinned_not_fetched",
+      "pin": "MoritzLaurer/multilingual-MiniLMv2-L6-mnli-xnli@0a71e92",
+      "use_limit": "Model card/revision identifies a candidate; it does not prove Chinese-domain stance quality or calibration."
+    },
+    {
+      "id": "bert4ner-chinese-model-card",
+      "kind": "model_card",
+      "canonical_url": "https://huggingface.co/shibing624/bert4ner-base-chinese/tree/5d660ed",
+      "retrieval_status": "pinned_not_fetched",
+      "pin": "shibing624/bert4ner-base-chinese@5d660ed",
+      "use_limit": "Model card/revision identifies a candidate; it does not prove entity quality for the seed event."
+    },
+    {
+      "id": "cctv-primary-claim-seed",
+      "kind": "authority_claim_seed",
+      "canonical_url": "https://news.cctv.com/",
+      "retrieval_status": "supplied_quote_requires_source_capture",
+      "exact_quote": "\u6211\u4EEC\u5E94\u5F53\u5171\u540C\u625B\u8D77\u8FD9\u4E2A\u5386\u53F2\u91CD\u4EFB\uFF0C\u63A8\u52A8\u4E2D\u7F8E\u5173\u7CFB\u8FD9\u8258\u5DE8\u8F6E\u6CBF\u7740\u6B63\u786E\u822A\u9053\u5E73\u7A33\u524D\u884C\u3002",
+      "expected_authority_tier_after_allowlisting": "central_mainstream_media",
+      "intended_claim_role": "primary",
+      "required_before_case_claim_save": ["article_url", "account", "published_at", "authority_tier", "review_status", "captured_content_sha256", "unicode_span", "claim_role"],
+      "use_limit": "The quote is a user-approved seed, not an independently captured page in Task 01. Its source remains authority_tier=null and review_status=pending_review until article capture and administrator allowlisting."
+    },
+    {
+      "id": "xinhua-supporting-claim-seed",
+      "kind": "authority_claim_seed",
+      "canonical_url": "https://www.news.cn/",
+      "retrieval_status": "supplied_quote_requires_source_capture",
+      "exact_quote": "\u4E00\u6B21\u5386\u53F2\u6027\u6807\u5FD7\u6027\u8BBF\u95EE\u3002",
+      "expected_authority_tier_after_allowlisting": "central_mainstream_media",
+      "intended_claim_role": "supporting",
+      "required_before_case_claim_save": ["article_url", "account", "published_at", "authority_tier", "review_status", "captured_content_sha256", "unicode_span", "claim_role"],
+      "use_limit": "The quote is a user-approved seed, not an independently captured page in Task 01. Its source remains authority_tier=null and review_status=pending_review until article capture and administrator allowlisting."
+    }
+  ]
+}

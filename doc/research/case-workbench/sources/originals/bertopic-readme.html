@@ -1,0 +1,525 @@
+<div id="readme" class="md" data-path="README.md"><article class="markdown-body entry-content container-lg" itemprop="text"><p dir="auto"><a href="https://pepy.tech/projects/bertopic" rel="nofollow"><img src="https://camo.githubusercontent.com/6dca34a51cc951a5e4f047c2e3a1d6d027651411aa9a8f1327a0b1b3ef76176b/68747470733a2f2f7374617469632e706570792e746563682f62616467652f626572746f706963" alt="PyPI Downloads" data-canonical-src="https://static.pepy.tech/badge/bertopic" style="max-width: 100%;"></a>
+<a href="https://pypi.org/project/bertopic/" rel="nofollow"><img src="https://camo.githubusercontent.com/a78f0f48ae0745304c623bf01c5b6167334222a4b57f1e2f8aa17c5358c22935/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f707974686f6e2d76332e31302b2d626c75652e737667" alt="PyPI - Python" data-canonical-src="https://img.shields.io/badge/python-v3.10+-blue.svg" style="max-width: 100%;"></a>
+<a href="https://github.com/MaartenGr/BERTopic/actions"><img src="https://camo.githubusercontent.com/74930980acc54401e54efd48057bac77b94f0ce6859a29e597e15d32198e5cef/68747470733a2f2f696d672e736869656c64732e696f2f6769746875622f616374696f6e732f776f726b666c6f772f7374617475732f4d61617274656e47722f424552546f7069632f74657374696e672e796d6c3f6272616e63683d6d6173746572" alt="Build" data-canonical-src="https://img.shields.io/github/actions/workflow/status/MaartenGr/BERTopic/testing.yml?branch=master" style="max-width: 100%;"></a>
+<a href="https://maartengr.github.io/BERTopic/" rel="nofollow"><img src="https://camo.githubusercontent.com/ab79123d57527a46120ff30f5be3c05cb691e4066c1701d641b6a1e29fef1d73/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f646f63732d50617373696e672d677265656e2e737667" alt="docs" data-canonical-src="https://img.shields.io/badge/docs-Passing-green.svg" style="max-width: 100%;"></a>
+<a href="https://pypi.org/project/bertopic/" rel="nofollow"><img src="https://camo.githubusercontent.com/8f25864d8f7838fcdd3cdec445c7a73fa03f9b2d332d9da34a4b2e04f13322b1/68747470733a2f2f696d672e736869656c64732e696f2f707970692f762f424552546f706963" alt="PyPI - PyPi" data-canonical-src="https://img.shields.io/pypi/v/BERTopic" style="max-width: 100%;"></a>
+<a href="https://github.com/MaartenGr/VLAC/blob/master/LICENSE"><img src="https://camo.githubusercontent.com/8bb50fd2278f18fc326bf71f6e88ca8f884f72f179d3e555e20ed30157190d0d/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f6c6963656e73652d4d49542d677265656e2e737667" alt="PyPI - License" data-canonical-src="https://img.shields.io/badge/license-MIT-green.svg" style="max-width: 100%;"></a>
+<a href="https://arxiv.org/abs/2203.05794" rel="nofollow"><img src="https://camo.githubusercontent.com/ca89a7c5c5ee8fb6d257bbbd94aba6c126379702d22a3f5567d6f83a59f60e21/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f61725869762d323230332e30353739342d253343434f4c4f522533452e737667" alt="arXiv" data-canonical-src="https://img.shields.io/badge/arXiv-2203.05794-%3CCOLOR%3E.svg" style="max-width: 100%;"></a></p>
+<div class="markdown-heading" dir="auto"><h1 class="heading-element" dir="auto">BERTopic</h1><a id="user-content-bertopic" class="anchor" aria-label="Permalink: BERTopic" href="#bertopic"><svg data-component="Octicon" class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto"><a target="_blank" rel="noopener noreferrer" href="images/logo.png"><img src="images/logo.png" width="35%" align="right" style="max-width: 100%;"></a></p> 
+<p dir="auto">BERTopic is a topic modeling technique that leverages 🤗 transformers and c-TF-IDF to create dense clusters
+allowing for easily interpretable topics whilst keeping important words in the topic descriptions.</p>
+<p dir="auto">BERTopic supports all kinds of topic modeling techniques:</p>
+<markdown-accessiblity-table><table>
+  <tbody><tr>
+    <td><a href="https://maartengr.github.io/BERTopic/getting_started/guided/guided.html" rel="nofollow">Guided</a></td>
+    <td><a href="https://maartengr.github.io/BERTopic/getting_started/supervised/supervised.html" rel="nofollow">Supervised</a></td>
+    <td><a href="https://maartengr.github.io/BERTopic/getting_started/semisupervised/semisupervised.html" rel="nofollow">Semi-supervised</a></td>
+ </tr>
+   <tr>
+    <td><a href="https://maartengr.github.io/BERTopic/getting_started/manual/manual.html" rel="nofollow">Manual</a></td>
+    <td><a href="https://maartengr.github.io/BERTopic/getting_started/distribution/distribution.html" rel="nofollow">Multi-topic distributions</a></td>
+    <td><a href="https://maartengr.github.io/BERTopic/getting_started/hierarchicaltopics/hierarchicaltopics.html" rel="nofollow">Hierarchical</a></td>
+ </tr>
+ <tr>
+    <td><a href="https://maartengr.github.io/BERTopic/getting_started/topicsperclass/topicsperclass.html" rel="nofollow">Class-based</a></td>
+    <td><a href="https://maartengr.github.io/BERTopic/getting_started/topicsovertime/topicsovertime.html" rel="nofollow">Dynamic</a></td>
+    <td><a href="https://maartengr.github.io/BERTopic/getting_started/online/online.html" rel="nofollow">Online/Incremental</a></td>
+ </tr>
+ <tr>
+    <td><a href="https://maartengr.github.io/BERTopic/getting_started/multimodal/multimodal.html" rel="nofollow">Multimodal</a></td>
+    <td><a href="https://maartengr.github.io/BERTopic/getting_started/multiaspect/multiaspect.html" rel="nofollow">Multi-aspect</a></td>
+    <td><a href="https://maartengr.github.io/BERTopic/getting_started/representation/llm.html" rel="nofollow">Text Generation/LLM</a></td>
+ </tr>
+ <tr>
+    <td><a href="https://maartengr.github.io/BERTopic/getting_started/zeroshot/zeroshot.html" rel="nofollow">Zero-shot <b>(new!)</b></a></td>
+    <td><a href="https://maartengr.github.io/BERTopic/getting_started/merge/merge.html" rel="nofollow">Merge Models <b>(new!)</b></a></td>
+    <td><a href="https://maartengr.github.io/BERTopic/getting_started/seed_words/seed_words.html" rel="nofollow">Seed Words <b>(new!)</b></a></td>
+ </tr>
+</tbody></table></markdown-accessiblity-table>
+<p dir="auto">Corresponding medium posts can be found <a href="https://medium.com/data-science/topic-modeling-with-bert-779f7db187e6?sk=0b5a470c006d1842ad4c8a3057063a99" rel="nofollow">here</a>, <a href="https://medium.com/data-science/using-whisper-and-bertopic-to-model-kurzgesagts-videos-7d8a63139bdf?sk=b1e0fd46f70cb15e8422b4794a81161d" rel="nofollow">here</a> and <a href="https://medium.com/data-science/interactive-topic-modeling-with-bertopic-1ea55e7d73d8?sk=03c2168e9e74b6bda2a1f3ed953427e4" rel="nofollow">here</a>. For a more detailed overview, you can read the <a href="https://arxiv.org/abs/2203.05794" rel="nofollow">paper</a> or see a <a href="https://maartengr.github.io/BERTopic/algorithm/algorithm.html" rel="nofollow">brief overview</a>.</p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Installation</h2><a id="user-content-installation" class="anchor" aria-label="Permalink: Installation" href="#installation"><svg data-component="Octicon" class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">Installation, with sentence-transformers, can be done using <a href="https://docs.astral.sh/uv/" rel="nofollow">uv</a>:</p>
+<div class="highlight highlight-source-shell notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="uv add bertopic"><pre>uv add bertopic</pre></div>
+<p dir="auto">or with <a href="https://github.com/pypa/pip">pip</a>:</p>
+<div class="highlight highlight-source-shell notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="pip install bertopic"><pre>pip install bertopic</pre></div>
+<p dir="auto">If you want to install BERTopic with other embedding models, you can choose one of the following:</p>
+<div class="highlight highlight-source-shell notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="# Choose an embedding backend
+pip install bertopic[flair,gensim,spacy,use]
+
+# Topic modeling with images
+pip install bertopic[vision]"><pre><span class="pl-c"><span class="pl-c">#</span> Choose an embedding backend</span>
+pip install bertopic[flair,gensim,spacy,use]
+
+<span class="pl-c"><span class="pl-c">#</span> Topic modeling with images</span>
+pip install bertopic[vision]</pre></div>
+<p dir="auto">For a <em>light-weight installation</em> without transformers, UMAP and/or HDBSCAN (for training with Model2Vec or inference), see <a href="https://maartengr.github.io/BERTopic/getting_started/tips_and_tricks/tips_and_tricks.html#lightweight-installation" rel="nofollow">this tutorial</a>.</p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Getting Started</h2><a id="user-content-getting-started" class="anchor" aria-label="Permalink: Getting Started" href="#getting-started"><svg data-component="Octicon" class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">For an in-depth overview of the features of BERTopic
+you can check the <a href="https://maartengr.github.io/BERTopic/" rel="nofollow"><strong>full documentation</strong></a> or you can follow along
+with one of the examples below:</p>
+<markdown-accessiblity-table><table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Link</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Start Here - <strong>Best Practices in BERTopic</strong></td>
+<td><a href="https://colab.research.google.com/drive/1BoQ_vakEVtojsd2x_U6-_x52OOuqruj2?usp=sharing" rel="nofollow"><img src="https://camo.githubusercontent.com/eff96fda6b2e0fff8cdf2978f89d61aa434bb98c00453ae23dd0aab8d1451633/68747470733a2f2f636f6c61622e72657365617263682e676f6f676c652e636f6d2f6173736574732f636f6c61622d62616467652e737667" alt="Open In Colab" data-canonical-src="https://colab.research.google.com/assets/colab-badge.svg" style="max-width: 100%;"></a></td>
+</tr>
+<tr>
+<td><strong>🆕 New!</strong> - Topic Modeling on Large Data (GPU Acceleration)</td>
+<td><a href="https://colab.research.google.com/drive/1W7aEdDPxC29jP99GGZphUlqjMFFVKtBC?usp=sharing" rel="nofollow"><img src="https://camo.githubusercontent.com/eff96fda6b2e0fff8cdf2978f89d61aa434bb98c00453ae23dd0aab8d1451633/68747470733a2f2f636f6c61622e72657365617263682e676f6f676c652e636f6d2f6173736574732f636f6c61622d62616467652e737667" alt="Open In Colab" data-canonical-src="https://colab.research.google.com/assets/colab-badge.svg" style="max-width: 100%;"></a></td>
+</tr>
+<tr>
+<td><strong>🆕 New!</strong> - Topic Modeling with Llama 2 🦙</td>
+<td><a href="https://colab.research.google.com/drive/1QCERSMUjqGetGGujdrvv_6_EeoIcd_9M?usp=sharing" rel="nofollow"><img src="https://camo.githubusercontent.com/eff96fda6b2e0fff8cdf2978f89d61aa434bb98c00453ae23dd0aab8d1451633/68747470733a2f2f636f6c61622e72657365617263682e676f6f676c652e636f6d2f6173736574732f636f6c61622d62616467652e737667" alt="Open In Colab" data-canonical-src="https://colab.research.google.com/assets/colab-badge.svg" style="max-width: 100%;"></a></td>
+</tr>
+<tr>
+<td><strong>🆕 New!</strong> - Topic Modeling with Quantized LLMs</td>
+<td><a href="https://colab.research.google.com/drive/1DdSHvVPJA3rmNfBWjCo2P1E9686xfxFx?usp=sharing" rel="nofollow"><img src="https://camo.githubusercontent.com/eff96fda6b2e0fff8cdf2978f89d61aa434bb98c00453ae23dd0aab8d1451633/68747470733a2f2f636f6c61622e72657365617263682e676f6f676c652e636f6d2f6173736574732f636f6c61622d62616467652e737667" alt="Open In Colab" data-canonical-src="https://colab.research.google.com/assets/colab-badge.svg" style="max-width: 100%;"></a></td>
+</tr>
+<tr>
+<td>Topic Modeling with BERTopic</td>
+<td><a href="https://colab.research.google.com/drive/1FieRA9fLdkQEGDIMYl0I3MCjSUKVF8C-?usp=sharing" rel="nofollow"><img src="https://camo.githubusercontent.com/eff96fda6b2e0fff8cdf2978f89d61aa434bb98c00453ae23dd0aab8d1451633/68747470733a2f2f636f6c61622e72657365617263682e676f6f676c652e636f6d2f6173736574732f636f6c61622d62616467652e737667" alt="Open In Colab" data-canonical-src="https://colab.research.google.com/assets/colab-badge.svg" style="max-width: 100%;"></a></td>
+</tr>
+<tr>
+<td>(Custom) Embedding Models in BERTopic</td>
+<td><a href="https://colab.research.google.com/drive/18arPPe50szvcCp_Y6xS56H2tY0m-RLqv?usp=sharing" rel="nofollow"><img src="https://camo.githubusercontent.com/eff96fda6b2e0fff8cdf2978f89d61aa434bb98c00453ae23dd0aab8d1451633/68747470733a2f2f636f6c61622e72657365617263682e676f6f676c652e636f6d2f6173736574732f636f6c61622d62616467652e737667" alt="Open In Colab" data-canonical-src="https://colab.research.google.com/assets/colab-badge.svg" style="max-width: 100%;"></a></td>
+</tr>
+<tr>
+<td>Advanced Customization in BERTopic</td>
+<td><a href="https://colab.research.google.com/drive/1ClTYut039t-LDtlcd-oQAdXWgcsSGTw9?usp=sharing" rel="nofollow"><img src="https://camo.githubusercontent.com/eff96fda6b2e0fff8cdf2978f89d61aa434bb98c00453ae23dd0aab8d1451633/68747470733a2f2f636f6c61622e72657365617263682e676f6f676c652e636f6d2f6173736574732f636f6c61622d62616467652e737667" alt="Open In Colab" data-canonical-src="https://colab.research.google.com/assets/colab-badge.svg" style="max-width: 100%;"></a></td>
+</tr>
+<tr>
+<td>(semi-)Supervised Topic Modeling with BERTopic</td>
+<td><a href="https://colab.research.google.com/drive/1bxizKzv5vfxJEB29sntU__ZC7PBSIPaQ?usp=sharing" rel="nofollow"><img src="https://camo.githubusercontent.com/eff96fda6b2e0fff8cdf2978f89d61aa434bb98c00453ae23dd0aab8d1451633/68747470733a2f2f636f6c61622e72657365617263682e676f6f676c652e636f6d2f6173736574732f636f6c61622d62616467652e737667" alt="Open In Colab" data-canonical-src="https://colab.research.google.com/assets/colab-badge.svg" style="max-width: 100%;"></a></td>
+</tr>
+<tr>
+<td>Dynamic Topic Modeling with Trump's Tweets</td>
+<td><a href="https://colab.research.google.com/drive/1un8ooI-7ZNlRoK0maVkYhmNRl0XGK88f?usp=sharing" rel="nofollow"><img src="https://camo.githubusercontent.com/eff96fda6b2e0fff8cdf2978f89d61aa434bb98c00453ae23dd0aab8d1451633/68747470733a2f2f636f6c61622e72657365617263682e676f6f676c652e636f6d2f6173736574732f636f6c61622d62616467652e737667" alt="Open In Colab" data-canonical-src="https://colab.research.google.com/assets/colab-badge.svg" style="max-width: 100%;"></a></td>
+</tr>
+<tr>
+<td>Topic Modeling arXiv Abstracts</td>
+<td><a href="https://www.kaggle.com/maartengr/topic-modeling-arxiv-abstract-with-bertopic" rel="nofollow"><img src="https://camo.githubusercontent.com/87790dda10fe6ef1f7bc992c108bbc7746eb9d9941364b63f19855f926be0e68/68747470733a2f2f696d672e736869656c64732e696f2f7374617469632f76313f7374796c653d666f722d7468652d6261646765266d6573736167653d4b6167676c6526636f6c6f723d323232323232266c6f676f3d4b6167676c65266c6f676f436f6c6f723d323042454646266c6162656c3d" alt="Kaggle" data-canonical-src="https://img.shields.io/static/v1?style=for-the-badge&amp;message=Kaggle&amp;color=222222&amp;logo=Kaggle&amp;logoColor=20BEFF&amp;label=" style="max-width: 100%;"></a></td>
+</tr>
+</tbody>
+</table></markdown-accessiblity-table>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Quick Start</h2><a id="user-content-quick-start" class="anchor" aria-label="Permalink: Quick Start" href="#quick-start"><svg data-component="Octicon" class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">We start by extracting topics from the well-known 20 newsgroups dataset containing English documents:</p>
+<div class="highlight highlight-source-python notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="from bertopic import BERTopic
+from sklearn.datasets import fetch_20newsgroups
+ 
+docs = fetch_20newsgroups(subset='all',  remove=('headers', 'footers', 'quotes'))['data']
+
+topic_model = BERTopic()
+topics, probs = topic_model.fit_transform(docs)"><pre><span class="pl-k">from</span> <span class="pl-s1">bertopic</span> <span class="pl-k">import</span> <span class="pl-v">BERTopic</span>
+<span class="pl-k">from</span> <span class="pl-s1">sklearn</span>.<span class="pl-s1">datasets</span> <span class="pl-k">import</span> <span class="pl-s1">fetch_20newsgroups</span>
+ 
+<span class="pl-s1">docs</span> <span class="pl-c1">=</span> <span class="pl-en">fetch_20newsgroups</span>(<span class="pl-s1">subset</span><span class="pl-c1">=</span><span class="pl-s">'all'</span>,  <span class="pl-s1">remove</span><span class="pl-c1">=</span>(<span class="pl-s">'headers'</span>, <span class="pl-s">'footers'</span>, <span class="pl-s">'quotes'</span>))[<span class="pl-s">'data'</span>]
+
+<span class="pl-s1">topic_model</span> <span class="pl-c1">=</span> <span class="pl-en">BERTopic</span>()
+<span class="pl-s1">topics</span>, <span class="pl-s1">probs</span> <span class="pl-c1">=</span> <span class="pl-s1">topic_model</span>.<span class="pl-c1">fit_transform</span>(<span class="pl-s1">docs</span>)</pre></div>
+<p dir="auto">After generating topics and their probabilities, we can access all of the topics together with their topic representations:</p>
+<div class="highlight highlight-source-python notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="&gt;&gt;&gt; topic_model.get_topic_info()
+
+Topic	Count	Name
+-1	4630	-1_can_your_will_any
+0	693	49_windows_drive_dos_file
+1	466	32_jesus_bible_christian_faith
+2	441	2_space_launch_orbit_lunar
+3	381	22_key_encryption_keys_encrypted
+..."><pre><span class="pl-c1">&gt;</span><span class="pl-c1">&gt;&gt;</span> <span class="pl-s1">topic_model</span>.<span class="pl-c1">get_topic_info</span>()
+
+<span class="pl-v">Topic</span>	<span class="pl-v">Count</span>	<span class="pl-v">Name</span>
+<span class="pl-c1">-</span><span class="pl-c1">1</span>	<span class="pl-c1">4630</span>	<span class="pl-c1">-</span><span class="pl-c1">1_</span><span class="pl-s1">can_your_will_any</span>
+<span class="pl-c1">0</span>	<span class="pl-c1">693</span>	<span class="pl-c1">49_</span><span class="pl-s1">windows_drive_dos_file</span>
+<span class="pl-c1">1</span>	<span class="pl-c1">466</span>	<span class="pl-c1">32_j</span><span class="pl-s1">esus_bible_christian_faith</span>
+<span class="pl-c1">2</span>	<span class="pl-c1">441</span>	<span class="pl-c1">2_</span><span class="pl-s1">space_launch_orbit_lunar</span>
+<span class="pl-c1">3</span>	<span class="pl-c1">381</span>	<span class="pl-c1">22_</span><span class="pl-s1">key_encryption_keys_encrypted</span>
+...</pre></div>
+<p dir="auto">The <code>-1</code> topic refers to all outlier documents and are typically ignored. Each word in a topic describes the underlying theme of that topic and can be used
+for interpreting that topic. Next, let's take a look at the most frequent topic that was generated:</p>
+<div class="highlight highlight-source-python notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="&gt;&gt;&gt; topic_model.get_topic(0)
+
+[('windows', 0.006152228076250982),
+ ('drive', 0.004982897610645755),
+ ('dos', 0.004845038866360651),
+ ('file', 0.004140142872194834),
+ ('disk', 0.004131678774810884),
+ ('mac', 0.003624848635985097),
+ ('memory', 0.0034840976976789903),
+ ('software', 0.0034415334250699077),
+ ('email', 0.0034239554442333257),
+ ('pc', 0.003047105930670237)]"><pre><span class="pl-c1">&gt;</span><span class="pl-c1">&gt;&gt;</span> <span class="pl-s1">topic_model</span>.<span class="pl-c1">get_topic</span>(<span class="pl-c1">0</span>)
+
+[(<span class="pl-s">'windows'</span>, <span class="pl-c1">0.006152228076250982</span>),
+ (<span class="pl-s">'drive'</span>, <span class="pl-c1">0.004982897610645755</span>),
+ (<span class="pl-s">'dos'</span>, <span class="pl-c1">0.004845038866360651</span>),
+ (<span class="pl-s">'file'</span>, <span class="pl-c1">0.004140142872194834</span>),
+ (<span class="pl-s">'disk'</span>, <span class="pl-c1">0.004131678774810884</span>),
+ (<span class="pl-s">'mac'</span>, <span class="pl-c1">0.003624848635985097</span>),
+ (<span class="pl-s">'memory'</span>, <span class="pl-c1">0.0034840976976789903</span>),
+ (<span class="pl-s">'software'</span>, <span class="pl-c1">0.0034415334250699077</span>),
+ (<span class="pl-s">'email'</span>, <span class="pl-c1">0.0034239554442333257</span>),
+ (<span class="pl-s">'pc'</span>, <span class="pl-c1">0.003047105930670237</span>)]</pre></div>
+<p dir="auto">Using <code>.get_document_info</code>, we can also extract information on a document level, such as their corresponding topics, probabilities, whether they are representative documents for a topic, etc.:</p>
+<div class="highlight highlight-source-python notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="&gt;&gt;&gt; topic_model.get_document_info(docs)
+
+Document                               Topic	Name	                        Top_n_words                     Probability    ...
+I am sure some bashers of Pens...	0	0_game_team_games_season	game - team - games...	        0.200010       ...
+My brother is in the market for...      -1     -1_can_your_will_any	        can - your - will...	        0.420668       ...
+Finally you said what you dream...	-1     -1_can_your_will_any	        can - your - will...            0.807259       ...
+Think! It's the SCSI card doing...	49     49_windows_drive_dos_file	windows - drive - docs...	0.071746       ...
+1) I have an old Jasmine drive...	49     49_windows_drive_dos_file	windows - drive - docs...	0.038983       ..."><pre><span class="pl-c1">&gt;</span><span class="pl-c1">&gt;&gt;</span> <span class="pl-s1">topic_model</span>.<span class="pl-c1">get_document_info</span>(<span class="pl-s1">docs</span>)
+
+<span class="pl-v">Document</span>                               <span class="pl-v">Topic</span>	<span class="pl-v">Name</span>	                        <span class="pl-v">Top_n_words</span>                     <span class="pl-v">Probability</span>    ...
+<span class="pl-c1">I</span> <span class="pl-s1">am</span> <span class="pl-s1">sure</span> <span class="pl-s1">some</span> <span class="pl-s1">bashers</span> <span class="pl-s1">of</span> <span class="pl-v">Pens</span>...	<span class="pl-c1">0</span>	<span class="pl-c1">0_</span><span class="pl-s1">game_team_games_season</span>	<span class="pl-s1">game</span> <span class="pl-c1">-</span> <span class="pl-s1">team</span> <span class="pl-c1">-</span> <span class="pl-s1">games</span>...	        <span class="pl-c1">0.200010</span>       ...
+<span class="pl-v">My</span> <span class="pl-s1">brother</span> <span class="pl-c1">is</span> <span class="pl-s1">in</span> <span class="pl-s1">the</span> <span class="pl-s1">market</span> <span class="pl-s1">for</span>...      <span class="pl-c1">-</span><span class="pl-c1">1</span>     <span class="pl-c1">-</span><span class="pl-c1">1_</span><span class="pl-s1">can_your_will_any</span>	        <span class="pl-s1">can</span> <span class="pl-c1">-</span> <span class="pl-s1">your</span> <span class="pl-c1">-</span> <span class="pl-s1">will</span>...	        <span class="pl-c1">0.420668</span>       ...
+<span class="pl-v">Finally</span> <span class="pl-s1">you</span> <span class="pl-s1">said</span> <span class="pl-s1">what</span> <span class="pl-s1">you</span> <span class="pl-s1">dream</span>...	<span class="pl-c1">-</span><span class="pl-c1">1</span>     <span class="pl-c1">-</span><span class="pl-c1">1_</span><span class="pl-s1">can_your_will_any</span>	        <span class="pl-s1">can</span> <span class="pl-c1">-</span> <span class="pl-s1">your</span> <span class="pl-c1">-</span> <span class="pl-s1">will</span>...            <span class="pl-c1">0.807259</span>       ...
+<span class="pl-v">Think</span>! <span class="pl-v">It</span>'<span class="pl-s1">s</span> <span class="pl-s1">the</span> <span class="pl-c1">SCSI</span> <span class="pl-s1">card</span> <span class="pl-s1">doing</span>...	<span class="pl-c1">49</span>     <span class="pl-c1">49_</span><span class="pl-s1">windows_drive_dos_file</span>	<span class="pl-s1">windows</span> <span class="pl-c1">-</span> <span class="pl-s1">drive</span> <span class="pl-c1">-</span> <span class="pl-s1">docs</span>...	<span class="pl-c1">0.071746</span>       ...
+<span class="pl-c1">1</span>) <span class="pl-c1">I</span> <span class="pl-s1">have</span> <span class="pl-s1">an</span> <span class="pl-s1">old</span> <span class="pl-v">Jasmine</span> <span class="pl-s1">drive</span>...	<span class="pl-c1">49</span>     <span class="pl-c1">49_</span><span class="pl-s1">windows_drive_dos_file</span>	<span class="pl-s1">windows</span> <span class="pl-c1">-</span> <span class="pl-s1">drive</span> <span class="pl-c1">-</span> <span class="pl-s1">docs</span>...	<span class="pl-c1">0.038983</span>       ...</pre></div>
+<p dir="auto"><strong><code>🔥 Tip</code></strong>: Use <code>BERTopic(language="multilingual")</code> to select a model that supports 50+ languages.</p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Fine-tune Topic Representations</h2><a id="user-content-fine-tune-topic-representations" class="anchor" aria-label="Permalink: Fine-tune Topic Representations" href="#fine-tune-topic-representations"><svg data-component="Octicon" class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">In BERTopic, there are a number of different <a href="https://maartengr.github.io/BERTopic/getting_started/representation/representation.html" rel="nofollow">topic representations</a> that we can choose from. They are all quite different from one another and give interesting perspectives and variations of topic representations. A great start is <code>KeyBERTInspired</code>, which for many users increases the coherence and reduces stopwords from the resulting topic representations:</p>
+<div class="highlight highlight-source-python notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="from bertopic.representation import KeyBERTInspired
+
+# Fine-tune your topic representations
+representation_model = KeyBERTInspired()
+topic_model = BERTopic(representation_model=representation_model)"><pre><span class="pl-k">from</span> <span class="pl-s1">bertopic</span>.<span class="pl-s1">representation</span> <span class="pl-k">import</span> <span class="pl-v">KeyBERTInspired</span>
+
+<span class="pl-c"># Fine-tune your topic representations</span>
+<span class="pl-s1">representation_model</span> <span class="pl-c1">=</span> <span class="pl-en">KeyBERTInspired</span>()
+<span class="pl-s1">topic_model</span> <span class="pl-c1">=</span> <span class="pl-en">BERTopic</span>(<span class="pl-s1">representation_model</span><span class="pl-c1">=</span><span class="pl-s1">representation_model</span>)</pre></div>
+<p dir="auto">However, you might want to use something more powerful to describe your clusters. You can even use ChatGPT or other models from OpenAI to generate labels, summaries, phrases, keywords, and more:</p>
+<div class="highlight highlight-source-python notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="import openai
+from bertopic.representation import OpenAI
+
+# Fine-tune topic representations with GPT
+client = openai.OpenAI(api_key=&quot;sk-...&quot;)
+representation_model = OpenAI(client, model=&quot;gpt-4o-mini&quot;, chat=True)
+topic_model = BERTopic(representation_model=representation_model)"><pre><span class="pl-k">import</span> <span class="pl-s1">openai</span>
+<span class="pl-k">from</span> <span class="pl-s1">bertopic</span>.<span class="pl-s1">representation</span> <span class="pl-k">import</span> <span class="pl-v">OpenAI</span>
+
+<span class="pl-c"># Fine-tune topic representations with GPT</span>
+<span class="pl-s1">client</span> <span class="pl-c1">=</span> <span class="pl-s1">openai</span>.<span class="pl-c1">OpenAI</span>(<span class="pl-s1">api_key</span><span class="pl-c1">=</span><span class="pl-s">"sk-..."</span>)
+<span class="pl-s1">representation_model</span> <span class="pl-c1">=</span> <span class="pl-en">OpenAI</span>(<span class="pl-s1">client</span>, <span class="pl-s1">model</span><span class="pl-c1">=</span><span class="pl-s">"gpt-4o-mini"</span>, <span class="pl-s1">chat</span><span class="pl-c1">=</span><span class="pl-c1">True</span>)
+<span class="pl-s1">topic_model</span> <span class="pl-c1">=</span> <span class="pl-en">BERTopic</span>(<span class="pl-s1">representation_model</span><span class="pl-c1">=</span><span class="pl-s1">representation_model</span>)</pre></div>
+<p dir="auto"><strong><code>🔥 Tip</code></strong>: Instead of iterating over all of these different topic representations, you can model them simultaneously with <a href="https://maartengr.github.io/BERTopic/getting_started/multiaspect/multiaspect.html" rel="nofollow">multi-aspect topic representations</a> in BERTopic.</p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Visualizations</h2><a id="user-content-visualizations" class="anchor" aria-label="Permalink: Visualizations" href="#visualizations"><svg data-component="Octicon" class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">After having trained our BERTopic model, we can iteratively go through hundreds of topics to get a good
+understanding of the topics that were extracted. However, that takes quite some time and lacks a global representation. Instead, we can use one of the <a href="https://maartengr.github.io/BERTopic/getting_started/visualization/visualization.html" rel="nofollow">many visualization options</a> in BERTopic.
+For example, we can visualize the topics that were generated in a way very similar to
+<a href="https://github.com/cpsievert/LDAvis">LDAvis</a>:</p>
+<div class="highlight highlight-source-python notranslate position-relative overflow-auto" dir="auto" data-snippet-clipboard-copy-content="topic_model.visualize_topics()"><pre><span class="pl-s1">topic_model</span>.<span class="pl-c1">visualize_topics</span>()</pre></div>
+<p dir="auto"><a target="_blank" rel="noopener noreferrer" href="images/topic_visualization.gif"><img src="images/topic_visualization.gif" width="80%" align="center" data-animated-image="" style="max-width: 100%;"></a></p>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Modularity</h2><a id="user-content-modularity" class="anchor" aria-label="Permalink: Modularity" href="#modularity"><svg data-component="Octicon" class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">By default, the <a href="https://maartengr.github.io/BERTopic/algorithm/algorithm.html" rel="nofollow">main steps</a> for topic modeling with BERTopic are sentence-transformers, UMAP, HDBSCAN, and c-TF-IDF run in sequence. However, it assumes some independence between these steps which makes BERTopic quite modular. In other words, BERTopic not only allows you to build your own topic model but to explore several topic modeling techniques on top of your customized topic model:</p>
+<details open="" class="details-reset border rounded-2">
+  <summary class="tmp-px-3 py-2">
+    <svg aria-hidden="true" data-component="Octicon" height="16" viewBox="0 0 16 16" version="1.1" width="16" data-view-component="true" class="octicon octicon-device-camera-video">
+    <path d="M16 3.75v8.5a.75.75 0 0 1-1.136.643L11 10.575v.675A1.75 1.75 0 0 1 9.25 13h-7.5A1.75 1.75 0 0 1 0 11.25v-6.5C0 3.784.784 3 1.75 3h7.5c.966 0 1.75.784 1.75 1.75v.675l3.864-2.318A.75.75 0 0 1 16 3.75Zm-6.5 1a.25.25 0 0 0-.25-.25h-7.5a.25.25 0 0 0-.25.25v6.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-6.5ZM11 8.825l3.5 2.1v-5.85l-3.5 2.1Z"></path>
+</svg>
+    <span class="m-1">BERTopicOverview.mp4</span>
+    <span class="dropdown-caret"></span>
+  </summary>
+
+  <video src="https://private-user-images.githubusercontent.com/25746895/218420473-4b2bb539-9dbe-407a-9674-a8317c7fb3bf.mp4?jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3ODYzNjAxOTgsIm5iZiI6MTc4NjM1OTg5OCwicGF0aCI6Ii8yNTc0Njg5NS8yMTg0MjA0NzMtNGIyYmI1MzktOWRiZS00MDdhLTk2NzQtYTgzMTdjN2ZiM2JmLm1wND9YLUFtei1BbGdvcml0aG09QVdTNC1ITUFDLVNIQTI1NiZYLUFtei1DcmVkZW50aWFsPUFLSUFWQ09EWUxTQTUzUFFLNFpBJTJGMjAyNjA4MTAlMkZ1cy1lYXN0LTElMkZzMyUyRmF3czRfcmVxdWVzdCZYLUFtei1EYXRlPTIwMjYwODEwVDExMDQ1OFomWC1BbXotRXhwaXJlcz0zMDAmWC1BbXotU2lnbmF0dXJlPWM2YjJmZGE1YmVhNDMyZTIxMzY2MTFjYWM2YzYyZjM3NDEzMzE0Y2E4NTgyNDc5MjM5MjAwODU2MmUyMzVkNjUmWC1BbXotU2lnbmVkSGVhZGVycz1ob3N0JnJlc3BvbnNlLWNvbnRlbnQtdHlwZT12aWRlbyUyRm1wNCJ9.AeXbxIaxu_J8MOf-UqHXcabjz2vZ0sm5OWffMInnWKI" data-canonical-src="https://private-user-images.githubusercontent.com/25746895/218420473-4b2bb539-9dbe-407a-9674-a8317c7fb3bf.mp4?jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3ODYzNjAxOTgsIm5iZiI6MTc4NjM1OTg5OCwicGF0aCI6Ii8yNTc0Njg5NS8yMTg0MjA0NzMtNGIyYmI1MzktOWRiZS00MDdhLTk2NzQtYTgzMTdjN2ZiM2JmLm1wND9YLUFtei1BbGdvcml0aG09QVdTNC1ITUFDLVNIQTI1NiZYLUFtei1DcmVkZW50aWFsPUFLSUFWQ09EWUxTQTUzUFFLNFpBJTJGMjAyNjA4MTAlMkZ1cy1lYXN0LTElMkZzMyUyRmF3czRfcmVxdWVzdCZYLUFtei1EYXRlPTIwMjYwODEwVDExMDQ1OFomWC1BbXotRXhwaXJlcz0zMDAmWC1BbXotU2lnbmF0dXJlPWM2YjJmZGE1YmVhNDMyZTIxMzY2MTFjYWM2YzYyZjM3NDEzMzE0Y2E4NTgyNDc5MjM5MjAwODU2MmUyMzVkNjUmWC1BbXotU2lnbmVkSGVhZGVycz1ob3N0JnJlc3BvbnNlLWNvbnRlbnQtdHlwZT12aWRlbyUyRm1wNCJ9.AeXbxIaxu_J8MOf-UqHXcabjz2vZ0sm5OWffMInnWKI" controls="controls" muted="muted" class="d-block rounded-bottom-2 border-top width-fit" style="max-height:640px; min-height: 200px">
+
+  </video>
+</details>
+
+<p dir="auto">You can swap out any of these models or even remove them entirely. The following steps are completely modular:</p>
+<ol dir="auto">
+<li><a href="https://maartengr.github.io/BERTopic/getting_started/embeddings/embeddings.html" rel="nofollow">Embedding</a> documents</li>
+<li><a href="https://maartengr.github.io/BERTopic/getting_started/dim_reduction/dim_reduction.html" rel="nofollow">Reducing dimensionality</a> of embeddings</li>
+<li><a href="https://maartengr.github.io/BERTopic/getting_started/clustering/clustering.html" rel="nofollow">Clustering</a> reduced embeddings into topics</li>
+<li><a href="https://maartengr.github.io/BERTopic/getting_started/vectorizers/vectorizers.html" rel="nofollow">Tokenization</a> of topics</li>
+<li><a href="https://maartengr.github.io/BERTopic/getting_started/ctfidf/ctfidf.html" rel="nofollow">Weight</a> tokens</li>
+<li><a href="https://maartengr.github.io/BERTopic/getting_started/representation/representation.html" rel="nofollow">Represent topics</a> with one or <a href="https://maartengr.github.io/BERTopic/getting_started/multiaspect/multiaspect.html" rel="nofollow">multiple</a> representations</li>
+</ol>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Functionality</h2><a id="user-content-functionality" class="anchor" aria-label="Permalink: Functionality" href="#functionality"><svg data-component="Octicon" class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">BERTopic has many functions that quickly can become overwhelming. To alleviate this issue, you will find an overview
+of all methods and a short description of its purpose.</p>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">Common</h3><a id="user-content-common" class="anchor" aria-label="Permalink: Common" href="#common"><svg data-component="Octicon" class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">Below, you will find an overview of common functions in BERTopic.</p>
+<markdown-accessiblity-table><table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Code</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Fit the model</td>
+<td><code>.fit(docs)</code></td>
+</tr>
+<tr>
+<td>Fit the model and predict documents</td>
+<td><code>.fit_transform(docs)</code></td>
+</tr>
+<tr>
+<td>Predict new documents</td>
+<td><code>.transform([new_doc])</code></td>
+</tr>
+<tr>
+<td>Access single topic</td>
+<td><code>.get_topic(topic=12)</code></td>
+</tr>
+<tr>
+<td>Access all topics</td>
+<td><code>.get_topics()</code></td>
+</tr>
+<tr>
+<td>Get topic freq</td>
+<td><code>.get_topic_freq()</code></td>
+</tr>
+<tr>
+<td>Get all topic information</td>
+<td><code>.get_topic_info()</code></td>
+</tr>
+<tr>
+<td>Get all document information</td>
+<td><code>.get_document_info(docs)</code></td>
+</tr>
+<tr>
+<td>Get representative docs per topic</td>
+<td><code>.get_representative_docs()</code></td>
+</tr>
+<tr>
+<td>Update topic representation</td>
+<td><code>.update_topics(docs, n_gram_range=(1, 3))</code></td>
+</tr>
+<tr>
+<td>Generate topic labels</td>
+<td><code>.generate_topic_labels()</code></td>
+</tr>
+<tr>
+<td>Set topic labels</td>
+<td><code>.set_topic_labels(my_custom_labels)</code></td>
+</tr>
+<tr>
+<td>Merge topics</td>
+<td><code>.merge_topics(docs, topics_to_merge)</code></td>
+</tr>
+<tr>
+<td>Reduce nr of topics</td>
+<td><code>.reduce_topics(docs, nr_topics=30)</code></td>
+</tr>
+<tr>
+<td>Reduce outliers</td>
+<td><code>.reduce_outliers(docs, topics)</code></td>
+</tr>
+<tr>
+<td>Find topics</td>
+<td><code>.find_topics("vehicle")</code></td>
+</tr>
+<tr>
+<td>Save model</td>
+<td><code>.save("my_model", serialization="safetensors")</code></td>
+</tr>
+<tr>
+<td>Load model</td>
+<td><code>BERTopic.load("my_model")</code></td>
+</tr>
+<tr>
+<td>Get parameters</td>
+<td><code>.get_params()</code></td>
+</tr>
+</tbody>
+</table></markdown-accessiblity-table>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">Attributes</h3><a id="user-content-attributes" class="anchor" aria-label="Permalink: Attributes" href="#attributes"><svg data-component="Octicon" class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">After having trained your BERTopic model, several attributes are saved within your model. These attributes, in part,
+refer to how model information is stored on an estimator during fitting. The attributes that you see below all end in <code>_</code> and are
+public attributes that can be used to access model information.</p>
+<markdown-accessiblity-table><table>
+<thead>
+<tr>
+<th>Attribute</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>.topics_</code></td>
+<td>The topics that are generated for each document after training or updating the topic model.</td>
+</tr>
+<tr>
+<td><code>.probabilities_</code></td>
+<td>The probabilities that are generated for each document if HDBSCAN is used.</td>
+</tr>
+<tr>
+<td><code>.topic_sizes_</code></td>
+<td>The size of each topic</td>
+</tr>
+<tr>
+<td><code>.topic_mapper_</code></td>
+<td>A class for tracking topics and their mappings anytime they are merged/reduced.</td>
+</tr>
+<tr>
+<td><code>.topic_representations_</code></td>
+<td>The top <em>n</em> terms per topic and their respective c-TF-IDF values.</td>
+</tr>
+<tr>
+<td><code>.c_tf_idf_</code></td>
+<td>The topic-term matrix as calculated through c-TF-IDF.</td>
+</tr>
+<tr>
+<td><code>.topic_aspects_</code></td>
+<td>The different aspects, or representations, of each topic.</td>
+</tr>
+<tr>
+<td><code>.topic_labels_</code></td>
+<td>The default labels for each topic.</td>
+</tr>
+<tr>
+<td><code>.custom_labels_</code></td>
+<td>Custom labels for each topic as generated through <code>.set_topic_labels</code>.</td>
+</tr>
+<tr>
+<td><code>.topic_embeddings_</code></td>
+<td>The embeddings for each topic if <code>embedding_model</code> was used.</td>
+</tr>
+<tr>
+<td><code>.representative_docs_</code></td>
+<td>The representative documents for each topic if HDBSCAN is used.</td>
+</tr>
+</tbody>
+</table></markdown-accessiblity-table>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">Variations</h3><a id="user-content-variations" class="anchor" aria-label="Permalink: Variations" href="#variations"><svg data-component="Octicon" class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">There are many different use cases in which topic modeling can be used. As such, several variations of BERTopic have been developed such that one package can be used across many use cases.</p>
+<markdown-accessiblity-table><table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Code</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="https://maartengr.github.io/BERTopic/getting_started/distribution/distribution.html" rel="nofollow">Topic Distribution Approximation</a></td>
+<td><code>.approximate_distribution(docs)</code></td>
+</tr>
+<tr>
+<td><a href="https://maartengr.github.io/BERTopic/getting_started/online/online.html" rel="nofollow">Online Topic Modeling</a></td>
+<td><code>.partial_fit(doc)</code></td>
+</tr>
+<tr>
+<td><a href="https://maartengr.github.io/BERTopic/getting_started/semisupervised/semisupervised.html" rel="nofollow">Semi-supervised Topic Modeling</a></td>
+<td><code>.fit(docs, y=y)</code></td>
+</tr>
+<tr>
+<td><a href="https://maartengr.github.io/BERTopic/getting_started/supervised/supervised.html" rel="nofollow">Supervised Topic Modeling</a></td>
+<td><code>.fit(docs, y=y)</code></td>
+</tr>
+<tr>
+<td><a href="https://maartengr.github.io/BERTopic/getting_started/manual/manual.html" rel="nofollow">Manual Topic Modeling</a></td>
+<td><code>.fit(docs, y=y)</code></td>
+</tr>
+<tr>
+<td><a href="https://maartengr.github.io/BERTopic/getting_started/multimodal/multimodal.html" rel="nofollow">Multimodal Topic Modeling</a></td>
+<td><code>.fit(docs, images=images)</code></td>
+</tr>
+<tr>
+<td><a href="https://maartengr.github.io/BERTopic/getting_started/topicsperclass/topicsperclass.html" rel="nofollow">Topic Modeling per Class</a></td>
+<td><code>.topics_per_class(docs, classes)</code></td>
+</tr>
+<tr>
+<td><a href="https://maartengr.github.io/BERTopic/getting_started/topicsovertime/topicsovertime.html" rel="nofollow">Dynamic Topic Modeling</a></td>
+<td><code>.topics_over_time(docs, timestamps)</code></td>
+</tr>
+<tr>
+<td><a href="https://maartengr.github.io/BERTopic/getting_started/hierarchicaltopics/hierarchicaltopics.html" rel="nofollow">Hierarchical Topic Modeling</a></td>
+<td><code>.hierarchical_topics(docs)</code></td>
+</tr>
+<tr>
+<td><a href="https://maartengr.github.io/BERTopic/getting_started/guided/guided.html" rel="nofollow">Guided Topic Modeling</a></td>
+<td><code>BERTopic(seed_topic_list=seed_topic_list)</code></td>
+</tr>
+<tr>
+<td><a href="https://maartengr.github.io/BERTopic/getting_started/zeroshot/zeroshot.html" rel="nofollow">Zero-shot Topic Modeling</a></td>
+<td><code>BERTopic(zeroshot_topic_list=zeroshot_topic_list)</code></td>
+</tr>
+<tr>
+<td><a href="https://maartengr.github.io/BERTopic/getting_started/merge/merge.html" rel="nofollow">Merge Multiple Models</a></td>
+<td><code>BERTopic.merge_models([topic_model_1, topic_model_2])</code></td>
+</tr>
+</tbody>
+</table></markdown-accessiblity-table>
+<div class="markdown-heading" dir="auto"><h3 class="heading-element" dir="auto">Visualizations</h3><a id="user-content-visualizations-1" class="anchor" aria-label="Permalink: Visualizations" href="#visualizations-1"><svg data-component="Octicon" class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">Evaluating topic models can be rather difficult due to the somewhat subjective nature of evaluation.
+Visualizing different aspects of the topic model helps in understanding the model and makes it easier
+to tweak the model to your liking.</p>
+<markdown-accessiblity-table><table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Code</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Visualize Topics</td>
+<td><code>.visualize_topics()</code></td>
+</tr>
+<tr>
+<td>Visualize Documents</td>
+<td><code>.visualize_documents()</code></td>
+</tr>
+<tr>
+<td>Visualize Document Hierarchy</td>
+<td><code>.visualize_hierarchical_documents()</code></td>
+</tr>
+<tr>
+<td>Visualize Topic Hierarchy</td>
+<td><code>.visualize_hierarchy()</code></td>
+</tr>
+<tr>
+<td>Visualize Topic Tree</td>
+<td><code>.get_topic_tree(hierarchical_topics)</code></td>
+</tr>
+<tr>
+<td>Visualize Topic Terms</td>
+<td><code>.visualize_barchart()</code></td>
+</tr>
+<tr>
+<td>Visualize Topic Similarity</td>
+<td><code>.visualize_heatmap()</code></td>
+</tr>
+<tr>
+<td>Visualize Term Score Decline</td>
+<td><code>.visualize_term_rank()</code></td>
+</tr>
+<tr>
+<td>Visualize Topic Probability Distribution</td>
+<td><code>.visualize_distribution(probs[0])</code></td>
+</tr>
+<tr>
+<td>Visualize Topics over Time</td>
+<td><code>.visualize_topics_over_time(topics_over_time)</code></td>
+</tr>
+<tr>
+<td>Visualize Topics per Class</td>
+<td><code>.visualize_topics_per_class(topics_per_class)</code></td>
+</tr>
+</tbody>
+</table></markdown-accessiblity-table>
+<div class="markdown-heading" dir="auto"><h2 class="heading-element" dir="auto">Citation</h2><a id="user-content-citation" class="anchor" aria-label="Permalink: Citation" href="#citation"><svg data-component="Octicon" class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto">To cite the <a href="https://arxiv.org/abs/2203.05794" rel="nofollow">BERTopic paper</a>, please use the following bibtex reference:</p>
+<div class="snippet-clipboard-content notranslate position-relative overflow-auto" data-snippet-clipboard-copy-content="@article{grootendorst2022bertopic,
+  title={BERTopic: Neural topic modeling with a class-based TF-IDF procedure},
+  author={Grootendorst, Maarten},
+  journal={arXiv preprint arXiv:2203.05794},
+  year={2022}
+}"><pre lang="bibtext" class="notranslate"><code>@article{grootendorst2022bertopic,
+  title={BERTopic: Neural topic modeling with a class-based TF-IDF procedure},
+  author={Grootendorst, Maarten},
+  journal={arXiv preprint arXiv:2203.05794},
+  year={2022}
+}
+</code></pre></div>
+</article></div>
