@@ -31,6 +31,28 @@ Current semantic package paths: `system/research/coordination_discover/`, `syste
 | **Model Activation** | The governed decision that selects the active model version pointer. | Deploy, publish |
 | **Rollback Decision** | The governed decision to move the active pointer back to a prior version. | Undo, reset |
 
+## Case Investigation
+
+| Term | Definition | Aliases to avoid |
+| --- | --- | --- |
+| **Case** | A long-lived investigative aggregate that preserves immutable evidence, analysis, claims, decisions, actions, feedback, reports, semantic records, and audit history for one bounded inquiry. | Event, project, report |
+| **Case Workbench** | The dense case-level page that keeps lifecycle status, the **Primary Claim**, and active **Case Blockers** visible across investigation tabs. | Dashboard, specialist page, report page |
+| **Case State** | One lifecycle value from `draft`, `collecting`, `evidence_ready`, `analyzing`, `awaiting_review`, `actioning`, `ready_to_close`, or `closed`. | Analysis status, blocker, phase |
+| **Case Blocker** | A separately persisted condition that prevents a named case operation without impersonating a **Case State**. | Blocked state, warning, error state |
+| **Authority Source** | An administered registry record for a source account or publisher eligible to support authoritative claims. | Trusted URL, verified post, allowlisted article |
+| **Source Tier** | The administered classification of an **Authority Source** as government or official institution, central mainstream media original, or provincial official media. | Credibility score, source rank, confidence |
+| **Case Claim** | An authoritative-source evidence record containing a verbatim excerpt, exact source span, URL, account, publication time, **Source Tier**, and content hash. | Topic, generated summary, analyst paraphrase |
+| **Primary Claim** | The single approved **Case Claim** that anchors stance and **Risk Review** for a **Case**. | Main topic, inferred claim, headline |
+| **Supplementary Claim** | An approved or pending **Case Claim** that adds authoritative context without replacing the **Primary Claim**. | Secondary verdict, supporting summary |
+| **Semantic Artifact** | An immutable, provenance-bound output of the explicit `semantic_enrichment` **Analysis Stage**. | Tag cache, model guess, score input |
+| **Semantic Correction** | An append-only human correction that references a **Semantic Artifact** and preserves both the original output and the correction rationale. | Artifact edit, overwrite, relabel in place |
+| **Case Action** | A required, completed, or explicitly waived disposition record attached to a **Case**. | Task, note, recommendation |
+| **Closeout Review** | The recorded human check that closure gates are satisfied and that unresolved limitations remain visible. | Canonical Verdict, approval click, final report |
+| **Case Report Version** | A frozen, versioned HTML report with print-friendly PDF output bound to exact case, snapshot, run, model, and content hashes. | Live report, export view, mutable dashboard |
+| **Audit Event** | An append-only record of an actor, action, target, timestamp, request identity, and before/after references for a case mutation. | Log line, history overwrite, activity note |
+| **Partial Collection Acknowledgement** | An explicit analyst record accepting known collection incompleteness for a named scope without claiming that evidence is complete. | Ignore warning, complete collection, waiver |
+| **Platform Gap** | A **Case Blocker** recording that a required same-event platform source lacks a verifiable archived source. | Empty dataset, fabricated source, unrelated substitute |
+
 ## Acquisition And Ingestion
 
 | Term | Definition | Aliases to avoid |
@@ -62,7 +84,7 @@ Current semantic package paths: `system/research/coordination_discover/`, `syste
 
 | Term | Definition | Aliases to avoid |
 | --- | --- | --- |
-| **Propagation Monitoring** | The product capability that combines observed propagation analysis and gated propagation prediction for one event snapshot. | Propagation page, KT2, propagation monitor |
+| **Propagation Monitoring** | The product capability that combines observed propagation analysis and gated propagation prediction for one event snapshot. | Propagation page, numbered shorthand, propagation monitor |
 | **Propagation Forecast** | The output that estimates spread size and next-hop behavior from a snapshot. | Trend guess, prediction blob |
 | **Observed Propagation Analysis** | A non-predictive reconstruction of paths, objects, roles, provenance, timelines, and stability from the event snapshot. | Forecast, causal proof |
 | **Propagation Evidence Type** | `explicit`, `reconstructed`, or `inferred`; respectively platform-observed, parent-ID-rebuilt, or shared-object temporal-proximity evidence. | All edges are reposts |
@@ -105,6 +127,16 @@ Current semantic package paths: `system/research/coordination_discover/`, `syste
 
 ## Relationships
 
+- A **Case** references one or more immutable **Event Snapshots**; a snapshot is analysis input, while the case is the durable investigation that outlives any one snapshot or run.
+- A **Case** owns zero or more **Analysis Runs**, while an **Analysis Run** executes stages and never represents a **Case State**.
+- A **Case State** records lifecycle progress; a **Case Blocker** records an independently resolvable impediment and never adds a synthetic lifecycle value.
+- A **Case** may have many **Case Claims** and **Supplementary Claims**, but it must have exactly one approved **Primary Claim** before stance or **Risk Review** can complete.
+- A **Case Claim** is a verbatim, source-spanned authority record; a topic, generated summary, or analyst paraphrase is semantic or narrative material and cannot substitute for it.
+- **Student Review** and **Teacher Review** produce advisory **Review Verdicts**; analyst approval creates an immutable **Canonical Verdict**, and a later **Closeout Review** verifies closure gates rather than changing that verdict.
+- A **Case** can close only after it has an approved **Canonical Verdict**, every required **Case Action** is completed or explicitly waived, and a **Closeout Review** is recorded.
+- A **Semantic Correction** points to one **Semantic Artifact** and never overwrites its model output or provenance.
+- Each **Case Report Version** freezes the case, snapshot, run, model-version, and content-hash references used to render it.
+- Every case mutation emits an **Audit Event**; repeated idempotent requests reuse the prior result without erasing history.
 - An **Event Snapshot** feeds one or more **Analysis Stage** executions.
 - A **Crawl Request** yields a **Crawl Batch**.
 - A **Coordination Signal** creates one or more **Evidence Objects**.
@@ -127,17 +159,13 @@ Current semantic package paths: `system/research/coordination_discover/`, `syste
 
 ## Example Dialogue
 
-> **Dev:** "Should `media_urls` become a **Coordination Signal**?"
+> **Dev:** "Can an **Event Snapshot** become the investigation record after analysis finishes?"
 >
-> **Domain expert:** "Not in this phase. The **Platform-Generic Policy** excludes media-specific objects; shared URLs, domains, targets, entities, topics, and near-duplicate templates are in scope."
+> **Domain expert:** "No. The immutable snapshot remains analysis input; the **Case** keeps every snapshot, run, claim, decision, action, report, and audit record over time."
 >
-> **Dev:** "Can I call the review path by the old numbered shorthand in a file name?"
+> **Dev:** "If a source is missing, should I move the case into a blocked state and use a generated summary as the claim?"
 >
-> **Domain expert:** "No. Use **Risk Review**, **Student Review**, or **Teacher Review** depending on the boundary. Numbered shorthand is not part of the system language."
->
-> **Dev:** "If there is no compatible coordination artifact, what should the backend return?"
->
-> **Domain expert:** "Use **Evidence Runtime Fallback** and record the fallback reason explicitly."
+> **Domain expert:** "No. Keep the current **Case State**, add a **Case Blocker**, and wait for a source-spanned **Case Claim**; semantic output cannot become a **Primary Claim**."
 
 ## Flagged Ambiguities
 
@@ -146,4 +174,8 @@ Current semantic package paths: `system/research/coordination_discover/`, `syste
 - "model" can mean an ML artifact or a database model; use **ML model** or **DB model** when the distinction matters.
 - "feature" can mean a model input or a descriptive statistic; use **Coordination Signal** for evidence and **Topology Audit Feature** for audit statistics.
 - "community" is not automatically a campaign or botnet; use **Coordination Community** unless human review or external labels justify a stronger claim.
+- "case" and "event" are not synonyms; an event is captured in an immutable **Event Snapshot**, while a **Case** is the durable investigation aggregate.
+- "claim" is overloaded; use **Case Claim** only for verbatim authority evidence and use topic, generated summary, or analyst paraphrase for derived language.
+- "review" can mean advisory model output, approval, or closure checking; use **Review Verdict**, **Canonical Verdict**, or **Closeout Review** respectively.
+- "status" can mean execution or lifecycle progress; use **Analysis Run** status for execution and **Case State** for the investigation lifecycle.
 - Numbered shorthand was previously used for the three research workstreams; current code and documentation must use **Coordination Discover/Detect**, **Propagation Analysis**, and **Risk Review** instead.
