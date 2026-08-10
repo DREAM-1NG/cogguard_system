@@ -14,6 +14,7 @@ Baseline/rollback: `425a8f2 Preserve the current refactor system before case wor
 - Preserve and do not stage or edit these user-owned dirty files:
   - `system/doc/research/propagation_paper_deep_reads/README.md`
   - `system/doc/research/propagation_paper_deep_reads/propagation_sota_stable_matrix_report_20260810.md`
+  - `system/doc/research/propagation_paper_deep_reads/propagation_fair_learned_matrix_20260810.md`
 - Never commit the Twitter benchmark CSV or a full Markdown conversion of it.
 - No push is authorized for Task 01.
 
@@ -21,21 +22,19 @@ Baseline/rollback: `425a8f2 Preserve the current refactor system before case wor
 
 | Task | Status | Evidence |
 | --- | --- | --- |
-| 01A: design and contract resolution | complete | Design specifies CaseRecord, lifecycle/blocker separation, authority/claim policy, semantic isolation, report, security, audit, and old-contract compatibility. |
-| 01B: executable TDD plan | complete | Sequential fresh-implementer/reviewer tasks name exact files, failing tests, commands, rollback boundaries, and final gate. |
-| 01C: research/source provenance | complete | Bounded MIT source originals/MarkItDown conversions; comparison/governance/report manifests; source exclusions are transparent. |
-| 01D: task report/branch hygiene | complete pending independent review | Content validation and the staged-diff guard passed; the controller records the Lore commit after this ledger update. |
+| 01A: design and contract resolution | amended; fresh re-review required | Separates the three organizational AuthorityTier values from AuthorityReviewStatus and ClaimRole; adds immutable CaseVerdictVersion proposal/approval/supersession/pointer/audit/closure behavior; records the dynamic migration-head boundary. |
+| 01B: executable TDD plan | amended; fresh re-review required | Tasks now cover taxonomy independence, execution-time one-head Alembic preflight with `<generated_revision>`, CaseVerdictVersion persistence/backfill, service/API flows, report provenance, and no legacy dual writes. |
+| 01C: research/source provenance | amended; fresh re-review required | Removes uncaptured vendor capability assertions, marks five vendor rows as non-evidentiary hypotheses, preserves source statuses, and converts retained-source metadata paths to repository-relative values. |
+| 01D: task report/branch hygiene | amended; ready for fresh re-review | The review identified 5 Important and 1 Minor findings. Validation passed for JSON, hashes, taxonomy/vendor scans, links, one live Alembic head, whitespace, and exact 11-path staged scope; the ignored `progress.md` pointer is force-added and protected dirty paths remain excluded. |
 
 ## Verification And Review Placeholders
 
-- Documentation validation: required contract text and no-placeholder scan passed.
-- JSON parse validation: source metadata, Twitter manifest, and both conversion metadata files passed.
-- SHA-256 validation: two retained original-source hashes and both conversion metadata source hashes passed.
-- Markdown/link validation: eight Task 01 authored Markdown files passed; generated conversion image references are intentionally upstream-only and excluded from local-link checks.
-- Git diff/restricted-file validation: `git diff --cached --check` passed; protected dirty paths are absent from the staged set.
-- Fresh task reviewer: pending controller assignment.
+- Independent review: `case-workbench-task-01-review.md` found 5 Important and 1 Minor issue in `425a8f2..cc4dde6`; implementation must not start until a fresh review accepts the correction.
+- Amendment evidence: authority class/review state/claim role are independent; Task 2 plans a dynamic one-head migration; CaseVerdictVersion is immutable and case-owned; vendor rows are unverified hypotheses; conversion paths are repository-relative; the ignored progress index is included.
+- Amendment validation: commands/results will be appended to `case-workbench-task-01-report.md` before the Lore fix commit.
+- Fresh task reviewer: required after this correction commit.
 - Branch-wide reviewer: not applicable until implementation tasks begin.
 
 ## Handoff
 
-The next implementation owner starts at Task 1 in the plan. They must keep the legacy default stage chain unchanged and use a new Task ledger/reviewer gate per plan task; this Task 01 ledger is not a substitute for implementation reviews.
+Do not begin Task 1 until a fresh documentation reviewer accepts this amendment. The next implementation owner must keep the legacy default stage chain unchanged, use the Task 2 execution-time Alembic one-head preflight rather than a fixed parent revision, and use a new Task ledger/reviewer gate per plan task; this Task 01 ledger is not a substitute for implementation reviews.

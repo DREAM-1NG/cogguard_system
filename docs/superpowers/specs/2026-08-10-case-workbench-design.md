@@ -44,7 +44,7 @@ The existing contract is implemented as `ReviewCase`, `/api/v2/review-cases`, an
 | `/api/v2/review-cases` suppresses runtime/model fields from product projections. | `/api/v2/cases` is an authenticated analyst and reproducibility API with claim/run/artifact/report links. | Dashboard and `/risk` remain business-safe; technical metadata is not added to their existing summaries. |
 | `/risk` is the single Event Review Case workspace. | `/case-workbench` is an additional dense case-closure page. | Do not redirect or remove `/risk`; link between the pages by case/event identity only. |
 | Default analysis stages are `coordination_discover`, `propagation_analysis`, `student`, `teacher`. | Cases explicitly request `semantic_enrichment` plus the existing stages when appropriate. | `DEFAULT_ANALYSIS_STAGES` and legacy aliases remain byte-for-byte behaviorally compatible. |
-| A Confirmed Decision is immutable and a later snapshot requires reconfirmation. | A canonical verdict remains immutable; action operations, feedback, reports, closure, and reopening are append-only. | Existing decisions are represented as historical canonical-verdict sources rather than mutated. |
+| A Confirmed Decision is immutable and a later snapshot requires reconfirmation. | Every `CaseVerdictVersion` is immutable; the CaseRecord canonical-verdict pointer may advance only through an append-only approval or supersession transaction. | Existing decisions are represented as historical canonical-verdict sources rather than mutated or dual-written. |
 | Governance details are not a main-product UI. | Frozen reports include reproducibility metadata required for audit. | Model/version/hash detail remains authenticated, report-scoped, and absent from ordinary dashboard copy. |
 
 The future glossary belongs in this design until implementation lands. `UBIQUITOUS_LANGUAGE.md` stays a record of the currently shipped Event Review Case terms; changing it now would falsely assert that the Case Workbench has shipped.
@@ -56,9 +56,12 @@ The future glossary belongs in this design until implementation lands. `UBIQUITO
 | **CaseRecord** | The durable aggregate for exactly one event and its evidence-to-closure history. | Ticket, task, generic case row |
 | **Case lifecycle** | The ordered progress state of a CaseRecord. | Blocked state, run state |
 | **Blocker** | A separately evaluated reason that prevents a specific transition or result. | Lifecycle, error bucket |
-| **AuthoritySource** | A versioned record that identifies the authority and trust tier of a quoted source. | URL string, source blob |
-| **CaseClaim** | An immutable exact quotation anchored to an AuthoritySource and a source span. | Generated summary, paraphrase |
+| **AuthoritySource** | A versioned quoted-source record with an administrator-maintained `AuthorityTier` (or `null`) and independent review status. | URL string, source blob, claim role |
+| **AuthorityTier** | One organizational class: `government_official`, `central_mainstream_media`, or `provincial_official_media`. | Claim role, pending state |
+| **AuthorityReviewStatus** | Source review/allowlist state: `pending_review`, `allowlisted`, or `rejected`. | Authority tier, claim role |
+| **CaseClaim** | An immutable exact quotation anchored to an AuthoritySource, source span, and independent `ClaimRole` (`primary` or `supporting`). | Generated summary, paraphrase, source tier |
 | **Primary claim** | The one CaseClaim currently selected as the case's main stance evidence. | Best quote, default claim |
+| **CaseVerdictVersion** | An immutable case-owned proposed or approved verdict payload/version; an approved version may supersede a prior canonical version without mutating it. | Mutable verdict row, legacy ReviewDecision write |
 | **CaseAnalysisLink** | The immutable relationship between a case, snapshot revision, and analysis run. | Current run field |
 | **SemanticArtifact** | An auxiliary semantic output with explicit scope, model identity, payload hash, and validation state. | Risk score, final interpretation |
 | **SemanticCorrection** | An analyst correction that retains the original semantic prediction. | In-place label edit |
@@ -75,7 +78,7 @@ draft -> collecting -> evidence_ready -> analyzing -> awaiting_review
       -> actioning -> ready_to_close -> closed
 ```
 
-`closed -> collecting` is allowed only when a new EventSnapshot revision is linked after closure. It writes `case_reopened_for_snapshot` to the audit trail, preserves every prior report/version/verdict, and requires closure again. No lifecycle transition silently changes a historical report or canonical verdict.
+`closed -> collecting` is allowed only when a new EventSnapshot revision is linked after closure. It writes `case_reopened_for_snapshot` to the audit trail, preserves every prior report/version/verdict, and requires closure again. No lifecycle transition silently changes a historical report or CaseVerdictVersion.
 
 | State | Entry condition | Exit condition |
 | --- | --- | --- |
@@ -83,9 +86,9 @@ draft -> collecting -> evidence_ready -> analyzing -> awaiting_review
 | `collecting` | Collection manifests or snapshot candidates are being added. | At least one valid EventSnapshot revision is linked. |
 | `evidence_ready` | Snapshot evidence exists with declared quality and collection coverage. | Case requests analysis. A missing primary claim is allowed here. |
 | `analyzing` | At least one CaseAnalysisLink is running. | Requested runs are terminal or have recorded non-fatal stage blockers. |
-| `awaiting_review` | Analysis results and required evidence are ready for human review. | Analyst approves/replaces canonical verdict or assigns action plan. |
-| `actioning` | Canonical verdict exists and actions are being resolved. | Every required action is complete or waived with an accountable reason. |
-| `ready_to_close` | Canonical verdict is approved and required actions are complete/waived. | Analyst submits closure review note. |
+| `awaiting_review` | Analysis results and required evidence are ready for human review. | Analyst appends and approves a CaseVerdictVersion, or appends an approved successor that supersedes the current canonical version; action planning may then begin. |
+| `actioning` | CaseRecord points to an approved canonical CaseVerdictVersion and actions are being resolved. | Every required action is complete or waived with an accountable reason. |
+| `ready_to_close` | The current canonical CaseVerdictVersion is approved and required actions are complete/waived. | Analyst submits closure review note. |
 | `closed` | All closure gates pass and a frozen closure report exists. | Only a new snapshot revision can reopen it. |
 
 ### Blockers
@@ -99,7 +102,7 @@ Blockers are a set of typed records, never an overloaded lifecycle value. Each h
 - `blocked_missing_closure_review_note`: prevents `closed` after all other closure gates pass.
 - `blocked_report_generation`: prevents closure only when the closure report could not be frozen.
 
-The closure gate is deterministic: an approved canonical verdict, all required actions complete or waived, a non-empty submitted closure review note, and a successfully frozen closure report. The same analyst may perform all of these actions. Every decision, waive, close, reopen, and report generation is appended to the audit stream.
+The closure gate is deterministic: a CaseRecord pointer to an approved canonical CaseVerdictVersion, all required actions complete or waived, a non-empty submitted closure review note, and a successfully frozen closure report. The same analyst may perform all of these actions. Every verdict proposal, approval, supersession, waive, close, reopen, and report generation is appended to the audit stream.
 
 ## Aggregate And Data Model
 
@@ -107,39 +110,42 @@ The implementation creates focused SQLAlchemy model modules and one migration. J
 
 | Record | Required fields and invariants |
 | --- | --- |
-| `CaseRecord` (`case_records`) | `case_id`, unique `event_id`, title, `lifecycle`, `current_snapshot_revision_id`, `primary_claim_id`, `canonical_verdict_id`, `lifecycle_version`, timestamps/actors. The primary pointer is nullable until selected and is the only current-primary invariant. |
-| `AuthoritySource` (`authority_sources`) | `authority_source_id`, canonical URL/root domain, publisher/account, `tier`, allowlist status, content hash, retrieval time, published time, source metadata, timestamps. The source record is versioned or superseded, never rewritten. |
-| `CaseClaim` (`case_claims`) | `claim_id`, `case_id`, `authority_source_id`, exact quote, `span_start`, `span_end`, original URL, account, `published_at`, tier snapshot, content SHA-256, `claim_role`, `supersedes_claim_id`. Quote span indexes Unicode code points in the exact captured source content. |
+| `CaseRecord` (`case_records`) | `case_id`, unique `event_id`, title, `lifecycle`, `current_snapshot_revision_id`, `primary_claim_id`, mutable `canonical_verdict_id` pointer to an immutable `CaseVerdictVersion`, `lifecycle_version`, timestamps/actors. The primary pointer is nullable until selected and is the only current-primary invariant. |
+| `AuthoritySource` (`authority_sources`) | `authority_source_id`, canonical URL/root domain, publisher/account, nullable `authority_tier`, independent `review_status`, content hash, retrieval time, published time, source metadata, timestamps. `authority_tier` is exactly one of `government_official`, `central_mainstream_media`, or `provincial_official_media` when `review_status` is `allowlisted`; a non-allowlisted URL has `authority_tier = null` and `review_status = pending_review`. The source record is versioned or superseded, never rewritten. |
+| `CaseClaim` (`case_claims`) | `claim_id`, `case_id`, `authority_source_id`, exact quote, `span_start`, `span_end`, original URL, account, `published_at`, `authority_tier_snapshot`, `authority_review_status_snapshot`, content SHA-256, independent `claim_role` (`primary` or `supporting`), `supersedes_claim_id`. Quote span indexes Unicode code points in the exact captured source content. |
+| `CaseVerdictVersion` (`case_verdict_versions`) | `case_verdict_version_id`, case, monotonic case version, immutable verdict payload/hash, source snapshot/run/primary-claim references, proposed/approved state, proposal-origin reference when approved from a proposal, optional `supersedes_verdict_id`, actor/timestamps, and provenance. No row is updated or deleted. A locked CaseRecord transaction may append an approved version, advance only `canonical_verdict_id`, transition lifecycle as appropriate, and append the matching audit event. |
 | `CaseAnalysisLink` (`case_analysis_links`) | `case_analysis_link_id`, case, EventSnapshot revision ID, `run_id`, requested stage list, scope hash, link status, timestamps. A link is unique for `(case_id, snapshot_revision_id, run_id)`. |
 | `SemanticArtifact` (`semantic_artifacts`) | `semantic_artifact_id`, `case_analysis_link_id`, artifact type, scope JSON/hash, model identifier/revision, input/output hashes, validation status, payload reference, timestamps. |
 | `SemanticCorrection` (`semantic_corrections`) | `correction_id`, artifact ID, original prediction JSON/hash, corrected value, rationale, analyst, timestamp. Original prediction remains queryable forever. |
 | `CaseAction` and `CaseActionOperation` (`case_actions`, `case_action_operations`) | Action creation is immutable; each state change (`assigned`, `in_progress`, `completed`, `waived`) is a new operation. Waive requires an accountable reason. The current state is a derived projection. |
-| `CaseFeedback` (`case_feedback`) | Feedback links a case, snapshot revision, run, optional canonical verdict, optional artifact/correction, and structured feedback. It never updates an original prediction. |
+| `CaseFeedback` (`case_feedback`) | Feedback links a case, snapshot revision, run, optional CaseVerdictVersion, optional artifact/correction, and structured feedback. It never updates an original prediction. |
 | `CaseReportVersion` (`case_report_versions`) | `report_id`, case, monotonic version, frozen report manifest/content hashes, web/print/PDF references, generation actor/time, and closure flag. No update or delete after creation. |
 | `CaseAuditEvent` (`case_audit_events`) | Append-only event ID, case, aggregate type/ID, actor, event type, canonical JSON payload, `previous_event_hash`, event hash, idempotency key, timestamp. The hash chain detects application-level alteration; it is not a claim of protection from a privileged database administrator. |
 
-`ReviewCaseSnapshotRevision`, `ReviewDecision`, `ReviewVerdictVersion`, and `ReviewFeedback` remain historical inputs during migration. An explicit migration/backfill maps each existing `ReviewCase.event_id` to one CaseRecord, links existing snapshot revisions/runs, maps confirmed decisions to canonical-verdict provenance, and emits backfill audit events. New Case Workbench writes must not dual-write mutable business summaries into `review_cases`.
+`ReviewCaseSnapshotRevision`, `ReviewDecision`, `ReviewVerdictVersion`, and `ReviewFeedback` remain historical inputs during migration. An explicit migration/backfill maps each existing `ReviewCase.event_id` to one CaseRecord, links existing snapshot revisions/runs, creates provenance-marked immutable CaseVerdictVersions from confirmed decisions/verdict versions, and emits backfill audit events. New Case Workbench verdict writes must not dual-write into `review_cases`, `ReviewDecision`, or `ReviewVerdictVersion`.
 
 ## Authority, Claim, And Evidence Policy
 
-### Authority tiers
+### Authority class, source review, and claim role
 
-| Tier | Value | Eligibility |
+`AuthorityTier`, `AuthorityReviewStatus`, and `ClaimRole` are deliberately separate. Authority classification is organizational; source review records allowlist state; claim role is an analyst-selected property of an immutable claim. No organizational tier implies either claim role.
+
+| Concept | Allowed values | Invariant |
 | --- | --- | --- |
-| 1 | `primary_authority` | Allowlisted direct authority, eligible for the one primary claim. |
-| 2 | `authoritative_support` | Allowlisted corroborating authority, eligible for supporting claims only. |
-| 3 | `reference_pending` | Non-whitelisted or unverified URL; visible as pending and ineligible for primary/canonical stance evidence. |
+| `AuthorityTier` | `government_official`, `central_mainstream_media`, `provincial_official_media` | The administrator-managed organizational class for an allowlisted source. It never encodes primary/supporting claim role. |
+| `AuthorityReviewStatus` | `pending_review`, `allowlisted`, `rejected` | The server-managed source review/allowlist state. A non-allowlisted URL is stored as `authority_tier = null`, `review_status = pending_review`; a rejected source also has no usable authority tier. |
+| `ClaimRole` | `primary`, `supporting` | The independent role of a CaseClaim. A source in any allowlisted organizational tier may anchor either role when the analyst selects it. |
 
-Any URL outside an allowlist is saved as `reference_pending`; the service does not silently elevate it. The allowlist is exact-domain plus HTTPS policy, is server-managed, and is audited when changed.
+The allowlist is exact-domain plus HTTPS policy, is server-managed, and is audited when changed. Registering a source never silently elevates it. An administrator review may move a source to `allowlisted` with one organizational tier or to `rejected` with no tier. Claim creation and primary selection require an `allowlisted` AuthoritySource with a non-null tier, but selection also requires the claim's independent `claim_role = primary`.
 
 For the seed case, the initial intended claims are stored exactly, with source URL/account/published time populated only after an analyst selects the authoritative source page:
 
-| Role | Source tier | Exact quote |
-| --- | --- | --- |
-| Primary | `primary_authority` (CCTV authority source) | `我们应当共同扛起这个历史重任，推动中美关系这艘巨轮沿着正确航道平稳前行。` |
-| Supporting | `authoritative_support` (Xinhua authority source) | `一次历史性标志性访问。` |
+| ClaimRole | Expected organizational source tier after administrator allowlisting | Required source review state before save/selection | Exact quote |
+| --- | --- | --- | --- |
+| `primary` | `central_mainstream_media` (CCTV) | `allowlisted` | `我们应当共同扛起这个历史重任，推动中美关系这艘巨轮沿着正确航道平稳前行。` |
+| `supporting` | `central_mainstream_media` (Xinhua) | `allowlisted` | `一次历史性标志性访问。` |
 
-The quote fields must remain byte-for-byte/user-visible text. A claim cannot be saved until its URL, account, published timestamp, tier, content hash, and span are present; no inferred source summary fills a missing field.
+The seed table expresses intended classification only. Before an administrator allowlists the selected article URL, its AuthoritySource remains `authority_tier = null` and `review_status = pending_review`. The quote fields must remain byte-for-byte/user-visible text. A claim cannot be saved until its URL, account, published timestamp, AuthoritySource review/classification snapshot, content hash, span, and independent claim role are present; no inferred source summary fills a missing field.
 
 ### Evidence integrity
 
@@ -147,7 +153,7 @@ The quote fields must remain byte-for-byte/user-visible text. A claim cannot be 
 - Fetch source content through a bounded server-side retriever with content-type/size/time limits; do not render arbitrary remote HTML in the UI.
 - Store source content hashes with claims and snapshot provenance; hash mismatch produces a new source/case-claim revision rather than changing an old one.
 - Raw primary/source content is access-controlled, escaped on rendering, and never interpolated into report HTML without sanitization.
-- Primary claim selection and canonical verdict approval require an authenticated analyst; allowlist administration is an authenticated administrator operation.
+- Primary claim selection and CaseVerdictVersion approval/supersession require an authenticated analyst; authority-source review and allowlist administration are authenticated administrator operations.
 
 ## Analysis And Semantic Enrichment
 
@@ -206,10 +212,15 @@ All endpoints are under shared JWT authentication. Product-safe legacy projectio
 | `GET /api/v2/cases` | List | Filter by lifecycle, blocker, event ID, and updated time; returns only analyst-authorized case fields. |
 | `POST /api/v2/cases` | Create/upsert | Creates the one case for an event or returns it idempotently; no duplicate event case. |
 | `GET /api/v2/cases/{case_id}` | Detail | Returns lifecycle, blockers, primary claim pointer, current snapshot/run links, verdict/action/report summaries. |
-| `POST /api/v2/authority-sources` | Register | Adds source with tier validation; non-allowlisted domain becomes pending. |
+| `POST /api/v2/authority-sources` | Register | Adds source without caller-controlled classification; the service resolves `authority_tier` and `review_status`, and a non-allowlisted domain becomes `authority_tier = null`, `pending_review`. |
+| `POST /api/v2/authority-sources/{id}/review` | Review | Administrator-only append/version action that allowlists one organizational tier or rejects the source; it cannot choose a claim role. |
 | `GET /api/v2/authority-sources` and `/{id}` | Read | Lists authoritative sources and immutable version metadata. |
-| `POST /api/v2/cases/{case_id}/claims` | Add claim | Requires exact quote, span, URL, account, published time, tier, content hash, and role. |
+| `POST /api/v2/cases/{case_id}/claims` | Add claim | Requires an allowlisted AuthoritySource, exact quote, span, URL/account/published-time consistency, content hash, and independent `claim_role`; service snapshots source class/review state rather than accepting caller-controlled tier. |
 | `POST /api/v2/cases/{case_id}/claims/{claim_id}/select-primary` | Select | Atomically changes only the CaseRecord primary pointer and writes audit. |
+| `POST /api/v2/cases/{case_id}/verdicts` | Create | Appends an immutable proposed CaseVerdictVersion with snapshot/run/claim references and a payload hash; it does not change the canonical pointer. |
+| `POST /api/v2/cases/{case_id}/verdicts/{verdict_id}/approve` | Approve | Appends an approved CaseVerdictVersion derived from the proposal, locks the CaseRecord, advances only its canonical pointer, transitions lifecycle, and writes audit. |
+| `POST /api/v2/cases/{case_id}/verdicts/{verdict_id}/supersede` | Supersede | Appends an approved successor with `supersedes_verdict_id`; it never updates/deletes the prior verdict row and advances the mutable pointer atomically. |
+| `GET /api/v2/cases/{case_id}/verdicts` and `/{verdict_id}` | Read | Reads immutable verdict versions, provenance, supersession relationships, and the current-pointer projection. |
 | `POST /api/v2/cases/{case_id}/runs` | Request | Creates a CaseAnalysisLink and explicitly requests `semantic_enrichment` plus selected standard stages. |
 | `GET /api/v2/cases/{case_id}/runs` | Read | Reads immutable links and stage statuses. |
 | `GET /api/v2/cases/{case_id}/artifacts` | Read | Reads scoped semantic artifacts without merging them into risk scores. |
@@ -221,7 +232,7 @@ All endpoints are under shared JWT authentication. Product-safe legacy projectio
 | `GET /api/v2/cases/{case_id}/reports` and `/{report_id}` | Read | Retrieves report manifest and authenticated web/print/PDF references. |
 | `POST /api/v2/cases/{case_id}/close` | Close | Validates all closure gates and requires a closure review note. |
 
-Error responses use stable `code`, `message`, `details`, and request ID. Important codes are `case_event_conflict`, `primary_claim_invalid`, `blocked_missing_primary_claim`, `immutable_record`, `close_gate_unmet`, `action_operation_conflict`, `source_pending_validation`, and `idempotency_conflict`.
+Error responses use stable `code`, `message`, `details`, and request ID. Important codes are `case_event_conflict`, `primary_claim_invalid`, `blocked_missing_primary_claim`, `immutable_record`, `verdict_approval_conflict`, `close_gate_unmet`, `action_operation_conflict`, `source_pending_review`, and `idempotency_conflict`.
 
 ## Case Workbench UI
 
@@ -239,7 +250,7 @@ Persistent header on every tab:
 | Tab | Contents and commands |
 | --- | --- |
 | `概览` | Lifecycle timeline, data coverage, snapshot/run linkage, canonical verdict/review differences, primary claim, blocker details, recent append-only audit activity. |
-| `证据矩阵` | Exact claims, AuthoritySource tier/verification, evidence rows, quote spans, source hashes, supporting/contradictory relationship, and primary selection. |
+| `证据矩阵` | Exact claims, AuthoritySource organizational tier/review status, independent claim role, evidence rows, quote spans, source hashes, supporting/contradictory relationship, and primary selection. |
 | `图谱` | Read-only Coordination and Propagation references plus separately marked semantic communities/entities; filters always show time/platform/community/path and post/comment split. |
 | `处置` | Canonical verdict, action list, append-only operations, waiver reasons, feedback form, closure review note, and a closure readiness checklist. |
 | `报告` | Version list, frozen web/print/PDF report access, included snapshot/run/model/hash manifest, report-content checksum, and regeneration command only for authorized users. |
@@ -250,7 +261,7 @@ No semantic artifact is displayed as a risk score. The UI labels all candidate s
 
 A report version includes only data frozen at its creation timestamp:
 
-- CaseRecord identity, lifecycle, primary claim selection, blockers, and canonical verdict version;
+- CaseRecord identity, lifecycle, primary claim selection, blockers, current canonical CaseVerdictVersion ID/version/supersession lineage, and its immutable payload hash;
 - all linked EventSnapshot revisions with data fingerprints, windows, quality, and content/source hashes;
 - CaseAnalysisLinks with requested stages, run IDs/statuses, artifact manifests, model identifiers/revisions, and their hashes;
 - exact claim text/spans/source identities and action/feedback/audit references;
@@ -275,7 +286,7 @@ The separate Twitter benchmark is not case evidence and must never be folded int
 
 ## Security, Retention, And Audit
 
-- Use existing JWT authentication and least-privilege roles. Analysts can create claims/actions/feedback and close; administrators manage authority allowlists and retention configuration.
+- Use existing JWT authentication and least-privilege roles. Analysts can create claims, verdict proposals/approvals, actions, feedback, and close; administrators manage AuthoritySource organizational tiers, review/allowlist status, and retention configuration.
 - Validate all external URLs server-side; no browser-controlled fetches, no internal-address fetches, and no arbitrary report embeds.
 - Redact access tokens, credentials, cookies, and unapproved raw source bodies from API responses, audit payloads, browser logs, and reports.
 - All mutation commands require idempotency keys and append an audit event in the same database transaction. Report/PDF data references are immutable after the write commits.
@@ -285,10 +296,10 @@ The separate Twitter benchmark is not case evidence and must never be folded int
 ## Acceptance Criteria
 
 1. A case for one event can retain multiple immutable snapshot revisions, runs, reports, and decisions without replacing history.
-2. The seed CCTV primary quote and Xinhua supporting quote can be represented exactly with all required provenance fields; an unwhitelisted URL remains pending.
+2. The seed CCTV primary quote and Xinhua supporting quote can be represented exactly with all required provenance fields. Both use `central_mainstream_media` after allowlisting while their independent ClaimRoles remain `primary` and `supporting`; an unwhitelisted URL has `authority_tier = null` and `review_status = pending_review`.
 3. Missing primary claim yields `blocked_missing_primary_claim` for stance only, while Coordination/Propagation and other permitted semantic outputs proceed.
 4. Existing four-stage default analysis calls and `/api/v2/review-cases` contract tests continue unchanged.
 5. Semantic artifacts remain candidate/unvalidated until local evaluation and cannot alter Coordination/Propagation/Review scores.
 6. `/case-workbench` is usable alongside `/risk` and specialist pages, with the specified five tabs and persistent lifecycle/claim/blocker context.
-7. Closure fails until canonical verdict, required actions, closure review note, and frozen report exist; all operations remain auditable and append-only.
+7. Closure fails until an approved current CaseVerdictVersion, required actions, closure review note, and frozen report exist; verdict proposal, approval, supersession, pointer advance, and all other operations remain auditable and append-only.
 8. A frozen report exposes case/snapshot/run/model/content-hash provenance and keeps previous versions immutable.

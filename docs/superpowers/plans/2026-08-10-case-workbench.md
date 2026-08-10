@@ -18,10 +18,10 @@
 - Candidate semantic outputs are `candidate_unvalidated` until a local evaluation record says otherwise; a correction retains the original prediction.
 - Do not add dependencies. A later separately approved change may add only a lightweight Chinese tokenizer after local evaluation proves the need.
 - One `CaseRecord` is unique per `event_id`; snapshots, analysis links, verdicts, actions, feedback, reports, and audit history are immutable or append-only.
-- Claims save the exact quote, Unicode code-point span, URL, account, `published_at`, tier, and content SHA-256. There is one selected primary claim and zero or more supporting claims. No generated summary substitutes for a quote.
-- Authority tiers are `primary_authority`, `authoritative_support`, and `reference_pending`; non-whitelisted URLs remain pending.
+- Claims save the exact quote, Unicode code-point span, URL, account, `published_at`, AuthoritySource class/review snapshots, independent `claim_role`, and content SHA-256. There is one selected primary claim and zero or more supporting claims. No generated summary substitutes for a quote.
+- `AuthorityTier` has exactly three organizational values: `government_official`, `central_mainstream_media`, and `provincial_official_media`. `AuthorityReviewStatus` is separate: `pending_review`, `allowlisted`, or `rejected`. A non-whitelisted URL has `authority_tier = null` and `review_status = pending_review`; `ClaimRole` is independently `primary` or `supporting`.
 - Missing primary claim produces `blocked_missing_primary_claim` for stance only. It does not block other analysis or collection.
-- Closure requires approved canonical verdict, all required actions completed or waived, submitted closure review note, and a frozen closure report. The same analyst is allowed; every operation is append-only.
+- Closure requires an approved current immutable CaseVerdictVersion, all required actions completed or waived, submitted closure review note, and a frozen closure report. The mutable CaseRecord pointer may advance only through append-only approval/supersession transactions; every operation is audited.
 - `/api/v2/review-cases`, `/risk`, coordination, propagation, account, and dashboard behavior stay compatible while `/api/v2/cases`, `/api/v2/authority-sources`, and `/case-workbench` are introduced.
 - Product summaries remain business-safe. Detailed model/run/hash data is authenticated and report-scoped; it must not leak into the existing dashboard or `/risk` projections.
 - All new requests use shared JWT auth, `extra="forbid"`, server-side URL validation, idempotency keys, and stable structured error codes.
@@ -33,8 +33,8 @@
 
 | Path | Responsibility |
 | --- | --- |
-| `system/backend/app/models/case_workbench.py` | Focused persistence records for the new aggregate, claims, links, semantic artifacts/corrections, actions, feedback, reports, and audit. |
-| `system/backend/app/schemas/case_workbench.py` | Pydantic request/response contracts and lifecycle/authority/error enums. |
+| `system/backend/app/models/case_workbench.py` | Focused persistence records for the new aggregate, claims, immutable CaseVerdictVersions, links, semantic artifacts/corrections, actions, feedback, reports, and audit. |
+| `system/backend/app/schemas/case_workbench.py` | Pydantic request/response contracts and lifecycle/authority/review-status/verdict/error enums. |
 | `system/backend/app/services/case_workbench_service.py` | Transactional aggregate behavior, gate evaluation, immutable/append-only writes, and response projection. |
 | `system/backend/app/services/case_workbench_repository.py` | Persistence-specific locking, idempotency, audit append, and historical backfill helpers. |
 | `system/backend/app/services/case_workbench_orchestrator.py` | Snapshot-to-case linkage and explicit semantic-enrichment requests. |
@@ -43,7 +43,7 @@
 | `system/backend/app/api/v2/cases.py` | Authenticated Case Workbench endpoints. |
 | `system/backend/app/api/v2/authority_sources.py` | Authenticated authority-source endpoints. |
 | `system/backend/app/api/v2/router.py` | Mount new routers while retaining `review_cases.router`. |
-| `system/backend/alembic/versions/c7e3b1f4a902_add_case_workbench.py` | One reversible schema/backfill migration from current head `f7b1e4a8c329`. |
+| `system/backend/alembic/versions/<generated_revision>_add_case_workbench.py` | One reversible schema/backfill migration generated at Task 2 execution from the then-current single Alembic head. Task 01 verified the current unique head as `e5c1b7d9a204`; this is evidence, not a future `down_revision` constant. |
 | `system/backend/tests/test_case_workbench_*.py` | Small contract, persistence, service, orchestration, API, report, and migration tests. |
 | `system/frontend/src/types/caseWorkbench.ts` | Narrow Case Workbench TypeScript contracts. |
 | `system/frontend/src/api/caseWorkbench.ts` | Typed API client and safe endpoint encoders. |
@@ -64,8 +64,8 @@
 
 **Interfaces:**
 
-- Produces `CaseLifecycle`, `AuthorityTier`, `ClaimRole`, `SemanticValidationStatus`, `CaseActionOperationType`, `CaseCloseRequest`, `CaseClaimCreate`, and `CaseDetail`.
-- `CaseClaimCreate` requires `exact_quote`, `span_start`, `span_end`, `source_url`, `account`, `published_at`, `tier`, and a 64-character SHA-256 content hash.
+- Produces `CaseLifecycle`, `AuthorityTier`, `AuthorityReviewStatus`, `ClaimRole`, `SemanticValidationStatus`, `CaseActionOperationType`, `CaseCloseRequest`, `AuthoritySourceCreate`, `AuthoritySourceReview`, `CaseClaimCreate`, `CaseVerdictCreate`, `CaseVerdictApprove`, `CaseVerdictSupersede`, and `CaseDetail`.
+- `AuthoritySourceCreate` registers source identity/provenance but cannot let an analyst choose a tier or review state. `AuthoritySourceReview` is administrator-only and sets one organizational tier with `allowlisted`, or no tier with `rejected`. `CaseClaimCreate` requires an `authority_source_id`, `exact_quote`, `span_start`, `span_end`, `account`, `published_at`, independent `claim_role`, and a 64-character SHA-256 content hash; the service snapshots source class/review state instead of accepting caller-controlled authority fields.
 
 - [ ] **Step 1: Write failing schema tests.**
 
@@ -83,6 +83,21 @@ def test_case_claim_rejects_missing_source_provenance():
 def test_lifecycle_does_not_use_blocked_as_a_state():
     assert "blocked" not in {item.value for item in CaseLifecycle}
     assert CaseLifecycle.CLOSED.value == "closed"
+
+
+def test_authority_tier_review_status_and_claim_role_are_independent():
+    assert {item.value for item in AuthorityTier} == {
+        "government_official", "central_mainstream_media", "provincial_official_media"
+    }
+    assert {item.value for item in AuthorityReviewStatus} == {
+        "pending_review", "allowlisted", "rejected"
+    }
+    claim = CaseClaimCreate.model_validate({
+        **VALID_CLAIM,
+        "authority_source_id": "source_1",
+        "claim_role": "supporting",
+    })
+    assert claim.claim_role is ClaimRole.SUPPORTING
 ```
 
 - [ ] **Step 2: Run the tests and verify RED.**
@@ -105,19 +120,31 @@ class CaseLifecycle(StrEnum):
     CLOSED = "closed"
 
 
+class AuthorityTier(StrEnum):
+    GOVERNMENT_OFFICIAL = "government_official"
+    CENTRAL_MAINSTREAM_MEDIA = "central_mainstream_media"
+    PROVINCIAL_OFFICIAL_MEDIA = "provincial_official_media"
+
+
+class AuthorityReviewStatus(StrEnum):
+    PENDING_REVIEW = "pending_review"
+    ALLOWLISTED = "allowlisted"
+    REJECTED = "rejected"
+
+
 class CaseClaimCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
+    authority_source_id: str = Field(min_length=1)
     exact_quote: str = Field(min_length=1, max_length=16000)
     span_start: int = Field(ge=0)
     span_end: int = Field(gt=0)
-    source_url: AnyHttpUrl
     account: str = Field(min_length=1, max_length=512)
     published_at: datetime
-    tier: AuthorityTier
+    claim_role: ClaimRole
     content_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
 ```
 
-Validate `span_end > span_start`, lowercase hash normalization, and all enums from the approved design. Do not create persistence or API code in this task.
+Validate `span_end > span_start`, lowercase hash normalization, all enums from the approved design, and the administrator-only authority-review state transition. `CaseClaimCreate` must reject authority-tier or review-status extras. Do not create persistence or API code in this task.
 
 - [ ] **Step 4: Run GREEN and existing schema regression.**
 
@@ -137,14 +164,14 @@ Commit only these paths with a Lore message explaining that the contract fixes t
 
 - Create: `system/backend/app/models/case_workbench.py`
 - Modify: `system/backend/app/models/__init__.py`
-- Create: `system/backend/alembic/versions/c7e3b1f4a902_add_case_workbench.py`
+- Create: `system/backend/alembic/versions/<generated_revision>_add_case_workbench.py`
 - Create: `system/backend/tests/test_case_workbench_persistence.py`
 - Create: `system/backend/tests/test_case_workbench_migration_contract.py`
 
 **Interfaces:**
 
-- Produces `CaseRecord`, `AuthoritySource`, `CaseClaim`, `CaseAnalysisLink`, `SemanticArtifact`, `SemanticCorrection`, `CaseAction`, `CaseActionOperation`, `CaseFeedback`, `CaseReportVersion`, and `CaseAuditEvent`.
-- `CaseRecord.event_id` is unique; `CaseRecord.primary_claim_id` is nullable and is the only mutable primary pointer.
+- Produces `CaseRecord`, `AuthoritySource`, `CaseClaim`, `CaseVerdictVersion`, `CaseAnalysisLink`, `SemanticArtifact`, `SemanticCorrection`, `CaseAction`, `CaseActionOperation`, `CaseFeedback`, `CaseReportVersion`, and `CaseAuditEvent`.
+- `CaseRecord.event_id` is unique; `CaseRecord.primary_claim_id` is nullable and is the only mutable primary pointer. `CaseRecord.canonical_verdict_id` is the only mutable pointer to an immutable CaseVerdictVersion.
 
 - [ ] **Step 1: Write persistence/migration RED tests.**
 
@@ -158,6 +185,14 @@ def test_case_record_has_one_event_unique_constraint_and_primary_pointer():
 def test_case_audit_event_has_hash_chain_and_idempotency_fields():
     columns = CaseAuditEvent.__table__.c
     assert {"previous_event_hash", "event_hash", "idempotency_key"} <= set(columns)
+
+
+def test_case_verdict_versions_are_append_only_and_case_versioned():
+    columns = CaseVerdictVersion.__table__.c
+    assert {"case_id", "version", "payload_sha256", "supersedes_verdict_id"} <= set(columns)
+    assert "uq_case_verdict_versions_case_version" in {
+        constraint.name for constraint in CaseVerdictVersion.__table__.constraints
+    }
 ```
 
 - [ ] **Step 2: Verify RED.**
@@ -166,9 +201,11 @@ Run: `cd system/backend; python -m pytest tests/test_case_workbench_persistence.
 
 Expected: import failure because `case_workbench.py` and migration do not exist.
 
-- [ ] **Step 3: Create focused models and one Alembic revision.**
+- [ ] **Step 3: Preflight, then create focused models and one Alembic revision.**
 
-Use explicit foreign keys and named indexes/constraints. Add `case_actions` plus `case_action_operations` so state changes are append-only. Keep JSON as canonical-text payloads with a payload SHA-256. In `upgrade`, create tables and backfill a CaseRecord per existing `review_cases.event_id`; in `downgrade`, drop only the new tables and never delete historical `review_cases` data.
+At Task 2 execution, run `cd system/backend; python -m alembic heads` before generating any migration and require exactly one head. Task 01's correction verification observed the unique head `e5c1b7d9a204`, but implementers must not reuse it as a fixed parent: record the then-current output, run `python -m alembic revision -m "add case workbench"`, use the generated `<generated_revision>_add_case_workbench.py` path, and verify its `down_revision` equals that observed head. Re-run `python -m alembic heads` after creation and require one head.
+
+Use explicit foreign keys and named indexes/constraints. Add `case_actions` plus `case_action_operations` so state changes are append-only. Add `case_verdict_versions` with a per-case monotonic version, immutable payload/hash, source snapshot/run/claim references, proposal-origin reference, optional `supersedes_verdict_id`, and actor/timestamps; no update/delete path exists. Keep JSON as canonical-text payloads with a payload SHA-256. In `upgrade`, create tables and backfill a CaseRecord per existing `review_cases.event_id` plus provenance-marked CaseVerdictVersions for existing confirmed decisions/verdict versions; in `downgrade`, drop only the new tables and never delete or write historical `review_cases` data.
 
 - [ ] **Step 4: Verify GREEN and migration round trip.**
 
@@ -194,16 +231,26 @@ Rollback boundary: downgrade removes only new Case Workbench tables; no current 
 **Interfaces:**
 
 - Consumes Task 1 schema types and Task 2 models.
-- Produces `register_authority_source`, `add_case_claim`, `select_primary_claim`, and `evaluate_case_blockers`.
+- Produces `register_authority_source`, `review_authority_source`, `add_case_claim`, `select_primary_claim`, and `evaluate_case_blockers`.
 
 - [ ] **Step 1: Write RED behavior tests.**
 
 ```python
-def test_non_whitelisted_url_is_saved_as_reference_pending(service, actor):
+def test_non_whitelisted_url_has_no_tier_and_is_pending_review(service, actor):
     source = run(service.register_authority_source(
         AuthoritySourceCreate(canonical_url="https://example.invalid/source"), actor=actor
     ))
-    assert source.tier == "reference_pending"
+    assert source.authority_tier is None
+    assert source.review_status == "pending_review"
+
+
+def test_same_allowlisted_tier_can_anchor_primary_or_supporting_claims(service, case, actor):
+    cctv = allowlist_source(service, "https://news.cctv.com/article", "central_mainstream_media")
+    xinhua = allowlist_source(service, "https://www.news.cn/article", "central_mainstream_media")
+    primary = run(service.add_case_claim(case.case_id, source_id=cctv.id, claim_role="primary", actor=actor))
+    supporting = run(service.add_case_claim(case.case_id, source_id=xinhua.id, claim_role="supporting", actor=actor))
+    assert primary.authority_tier_snapshot == supporting.authority_tier_snapshot
+    assert {primary.claim_role, supporting.claim_role} == {"primary", "supporting"}
 
 
 def test_missing_primary_claim_blocks_stance_only(service, case, run):
@@ -220,13 +267,13 @@ Expected: missing service functions.
 
 - [ ] **Step 3: Implement transactional source/claim behavior.**
 
-Canonicalize/validate URLs server-side; do not fetch private hosts. Save an exact quote, code-point span, account, publication timestamp, tier snapshot, and 64-character source hash. Require a Tier 1 allowlisted source before primary selection; attach Tier 2 as supporting only; do not accept Tier 3 as primary. Lock the CaseRecord while changing its primary pointer and append one audit event for every mutation.
+Canonicalize/validate URLs server-side; do not fetch private hosts. Source registration resolves a server-managed allowlist: a non-whitelisted URL is persisted as `authority_tier = null`, `review_status = pending_review`; administrator review can allowlist exactly one organizational tier or reject it. Save an exact quote, code-point span, account, publication timestamp, `authority_tier_snapshot`, `authority_review_status_snapshot`, independent `claim_role`, and 64-character source hash. Claim creation and primary selection require an allowlisted source with a non-null tier, while `select_primary_claim` additionally requires `claim_role = primary`; no organizational tier implies primary or supporting eligibility. Lock the CaseRecord while changing its primary pointer and append one audit event for every mutation.
 
 - [ ] **Step 4: Verify GREEN plus legacy case regressions.**
 
 Run: `cd system/backend; python -m pytest tests/test_case_workbench_claims.py tests/test_case_workbench_blockers.py tests/test_review_case_service.py tests/test_review_case_workflows.py -q`
 
-Expected: exact-quote, source tier, blocker scope, and legacy review workflow tests all pass.
+Expected: exact-quote, source class/review status, independent claim-role, blocker scope, and legacy review workflow tests all pass.
 
 - [ ] **Step 5: Review and commit.**
 
@@ -339,11 +386,12 @@ Rollback boundary: the isolated engine is reachable only through the explicit ca
 - Modify: `system/backend/app/services/case_workbench_repository.py`
 - Create: `system/backend/tests/test_case_workbench_artifacts.py`
 - Create: `system/backend/tests/test_case_workbench_actions.py`
+- Create: `system/backend/tests/test_case_workbench_verdicts.py`
 - Create: `system/backend/tests/test_case_workbench_reports.py`
 
 **Interfaces:**
 
-- Produces `append_semantic_correction`, `append_action_operation`, `append_feedback`, `freeze_report_version`, and `close_case`.
+- Produces `append_semantic_correction`, `append_action_operation`, `append_feedback`, `create_case_verdict`, `approve_case_verdict`, `supersede_case_verdict`, `freeze_report_version`, and `close_case`.
 
 - [ ] **Step 1: Write RED tests.**
 
@@ -357,23 +405,33 @@ def test_correction_keeps_original_prediction(service):
 def test_close_rejects_missing_required_action_and_review_note(service):
     with pytest.raises(CaseGateError, match="close_gate_unmet"):
         run(service.close_case("case_1", CaseCloseRequest(closure_review_note=""), actor=ACTOR))
+
+
+def test_approval_and_supersession_append_immutable_case_verdict_versions(service, case, actor):
+    proposal = run(service.create_case_verdict(case.case_id, VALID_VERDICT, actor=actor))
+    approved = run(service.approve_case_verdict(case.case_id, proposal.id, actor=actor))
+    successor = run(service.supersede_case_verdict(case.case_id, approved.id, REPLACEMENT_VERDICT, actor=actor))
+    assert approved.payload_json == proposal.payload_json
+    assert successor.supersedes_verdict_id == approved.id
+    assert read_case(case.case_id).canonical_verdict_id == successor.id
+    assert read_verdict(approved.id).payload_json == proposal.payload_json
 ```
 
 - [ ] **Step 2: Verify RED.**
 
-Run: `cd system/backend; python -m pytest tests/test_case_workbench_artifacts.py tests/test_case_workbench_actions.py tests/test_case_workbench_reports.py -q`
+Run: `cd system/backend; python -m pytest tests/test_case_workbench_artifacts.py tests/test_case_workbench_actions.py tests/test_case_workbench_verdicts.py tests/test_case_workbench_reports.py -q`
 
 Expected: methods/exceptions absent.
 
 - [ ] **Step 3: Implement append-only operations and frozen report manifest.**
 
-Derive action state from operations. Require waiver rationale. Bind feedback to case/snapshot/run/verdict/artifact ownership. Freeze a report payload containing case/snapshot/run/model/content-hash provenance, sanitized web/print content hashes, and PDF hash. `close_case` checks canonical verdict, required action state, non-empty note, and successful report freeze in one transaction.
+Derive action state from operations. Require waiver rationale. Bind feedback to case/snapshot/run/CaseVerdictVersion/artifact ownership. `create_case_verdict` appends an immutable proposed row. `approve_case_verdict` locks CaseRecord, appends a separate immutable approved row derived from the proposal, advances only `canonical_verdict_id`, performs the lifecycle transition, and appends audit. `supersede_case_verdict` appends an approved successor with `supersedes_verdict_id`, advances the pointer in the same transaction, and never updates/deletes a prior verdict row or writes to a legacy review aggregate. Freeze a report payload containing current CaseVerdictVersion ID/version/supersession/payload hash plus case/snapshot/run/model/content-hash provenance, sanitized web/print content hashes, and PDF hash. `close_case` queries the new current approved CaseVerdictVersion rather than `ReviewDecision`/`ReviewVerdictVersion`, then checks required action state, non-empty note, and successful report freeze in one transaction.
 
 - [ ] **Step 4: Verify GREEN.**
 
-Run: `cd system/backend; python -m pytest tests/test_case_workbench_artifacts.py tests/test_case_workbench_actions.py tests/test_case_workbench_reports.py tests/test_review_case_feedback.py -q`
+Run: `cd system/backend; python -m pytest tests/test_case_workbench_artifacts.py tests/test_case_workbench_actions.py tests/test_case_workbench_verdicts.py tests/test_case_workbench_reports.py tests/test_review_case_feedback.py -q`
 
-Expected: correction immutability, action derivation, report version immutability, closure gates, and existing review feedback behavior pass.
+Expected: correction and CaseVerdictVersion immutability, pointer-only verdict progression, action derivation, report version immutability, closure gates, and existing review feedback behavior pass.
 
 - [ ] **Step 5: Review and commit.**
 
@@ -391,7 +449,7 @@ Rollback boundary: report/action/feedback rows are append-only. Revert applicati
 
 **Interfaces:**
 
-- Implements the endpoint matrix in the approved design, including `/api/v2/cases/{case_id}/claims`, `/runs`, `/artifacts`, `/actions`, `/feedback`, `/reports`, and `/close`.
+- Implements the endpoint matrix in the approved design, including authority-source review and `/api/v2/cases/{case_id}/claims`, `/verdicts`, `/runs`, `/artifacts`, `/actions`, `/feedback`, `/reports`, and `/close`.
 
 - [ ] **Step 1: Write RED API tests.**
 
@@ -409,6 +467,14 @@ def test_close_returns_structured_gate_details(client, token):
     response = client.post("/api/v2/cases/case_1/close", headers=AUTH, json={"closure_review_note": "checked"})
     assert response.status_code == 409
     assert response.json()["code"] == "close_gate_unmet"
+
+
+def test_verdict_approval_and_supersession_are_append_only_case_operations(client, token):
+    proposal = client.post("/api/v2/cases/case_1/verdicts", headers=AUTH, json=VALID_VERDICT)
+    approved = client.post(f"/api/v2/cases/case_1/verdicts/{proposal.json()['id']}/approve", headers=AUTH)
+    successor = client.post(f"/api/v2/cases/case_1/verdicts/{approved.json()['id']}/supersede", headers=AUTH, json=REPLACEMENT_VERDICT)
+    assert successor.status_code == 201
+    assert successor.json()["supersedes_verdict_id"] == approved.json()["id"]
 ```
 
 - [ ] **Step 2: Verify RED.**
@@ -419,7 +485,7 @@ Expected: 404 routes or missing imports.
 
 - [ ] **Step 3: Implement thin auth-bound routers.**
 
-Use shared `get_current_user`, construct one service per request, return existing API envelope shape, and forbid unknown request fields. Map domain errors to stable 409/422 responses. Mount both routers in `api_router` without changing the `review-cases` prefix or tag.
+Use shared `get_current_user`, construct one service per request, return existing API envelope shape, and forbid unknown request fields. Authority-source registration must not accept caller-controlled organizational tier/review state; an administrator-only review endpoint sets `allowlisted` plus one tier or `rejected` plus no tier. Expose create, approve, supersede, and read-only CaseVerdictVersion endpoints that only append new rows and move the CaseRecord pointer transactionally. Map domain errors to stable 409/422 responses. Mount both routers in `api_router` without changing the `review-cases` prefix or tag.
 
 - [ ] **Step 4: Verify GREEN and compatibility.**
 
@@ -443,6 +509,7 @@ Rollback boundary: router registrations are additive. Remove the two mounts to d
 **Interfaces:**
 
 - Seed fixture has no invented Douyin metrics and explicitly contains `collection_status: "partial_collection"`.
+- Seed claim templates preserve the exact quotes, separate intended organizational class from independent claim role, and remain `pending_review` with no saved AuthoritySource tier until article capture and administrator review.
 - Twitter manifest remains metadata/stats/hash only.
 
 - [ ] **Step 1: Write RED fixture tests.**
@@ -454,6 +521,13 @@ def test_seed_manifest_preserves_known_weibo_counts_and_partial_douyin_status():
     assert manifest["weibo"]["unique_main_posts"] == 74
     assert manifest["douyin"]["collection_status"] == "partial_collection"
     assert "unique_main_posts" not in manifest["douyin"]
+
+
+def test_seed_claim_templates_keep_authority_class_distinct_from_claim_role():
+    templates = manifest["claim_templates"]
+    assert {item["expected_authority_tier"] for item in templates} == {"central_mainstream_media"}
+    assert {item["claim_role"] for item in templates} == {"primary", "supporting"}
+    assert {item["review_status"] for item in templates} == {"pending_review"}
 ```
 
 - [ ] **Step 2: Verify RED.**
@@ -464,7 +538,7 @@ Expected: fixture is missing.
 
 - [ ] **Step 3: Add minimal fixture and metadata-only benchmark references.**
 
-Use half-open Beijing-derived windows and exact primary/supporting quote text but leave canonical source URL/account/published-at unset until authoritative capture. Do not copy the Twitter CSV, its rows, or converted text into any repository file.
+Use half-open Beijing-derived windows and exact primary/supporting quote text but leave canonical source URL/account/published-at unset until authoritative capture. Represent CCTV and Xinhua as `expected_authority_tier: "central_mainstream_media"` with independent `claim_role` values `primary` and `supporting`; the actual AuthoritySource remains `authority_tier = null`, `review_status = pending_review` until administrator allowlisting. Do not copy the Twitter CSV, its rows, or converted text into any repository file.
 
 - [ ] **Step 4: Verify GREEN.**
 
@@ -593,6 +667,12 @@ def test_case_workbench_end_to_end_preserves_legacy_default_and_closure_history(
     case = create_seed_case(client, actor)
     assert request_legacy_default_run(client, actor).requested_stages == LEGACY_FOUR
     assert request_case_run(client, case, actor).requested_stages[0] == "semantic_enrichment"
+    proposal = create_case_verdict(client, case, actor)
+    approved = approve_case_verdict(client, case, proposal, actor)
+    successor = supersede_case_verdict(client, case, approved, actor)
+    assert get_case(client, case).canonical_verdict_id == successor.id
+    assert read_case_verdict(client, approved.id).payload_hash == approved.payload_hash
+    assert no_legacy_review_case_verdict_write_occurred(case)
     assert close_after_required_actions(client, case, actor).lifecycle == "closed"
     assert list_reports(client, case)[0].version == 1
 ```
@@ -631,6 +711,8 @@ Rollback boundary: retain frozen reports/audit/history; rollback through the doc
 - Confirm `git diff --check` passes and `git diff --name-only` has no Twitter CSV/full Markdown conversion.
 - Confirm the analysis default test still expects exactly four legacy stages and case orchestration explicitly requests the fifth semantic stage.
 - Confirm a missing primary claim blocks stance only, semantic corrections preserve originals, and core risk values do not change when semantic artifacts/corrections are present.
-- Confirm authority source tier/URL rules, exact-quote fields, closure gate, append-only audit, and report hash/version tests pass.
+- Confirm the AuthorityTier enum has exactly the three organizational values, non-whitelisted sources persist as `authority_tier = null` plus `pending_review`, ClaimRole remains independent, exact-quote fields are present, and the source review endpoint is administrator-only.
+- Confirm CaseVerdictVersion proposal/approval/supersession rows are append-only, only the CaseRecord pointer advances, no legacy review aggregate is dual-written, closure queries the approved current version, and frozen reports retain verdict version/hash/provenance.
+- Confirm Task 2's execution-time Alembic preflight sees exactly one head before generating `<generated_revision>` and again after generation; do not reuse Task 01's observed head as a fixed parent.
 - Run the focused tests above, then full backend suite, frontend test suite, frontend production build, and migration round trip before merge.
 - Use a fresh reviewer for each task and one branch-wide reviewer after Task 11. Treat any Critical or Important finding as a required fix/re-review cycle.

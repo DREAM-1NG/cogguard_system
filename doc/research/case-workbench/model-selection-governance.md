@@ -93,7 +93,7 @@ The evaluation result may permit a display-status change, but it cannot make a s
 ## Epistemic Limits
 
 - Hugging Face model cards and upstream GitHub readmes identify source version and documented intended use. They do not prove Chinese-event effectiveness, cross-platform transfer, safety, bias behavior, or operational latency in CogGuard.
-- Vendor pages are self-description and are not comparative benchmarks.
+- The uncaptured vendor URLs are unverified discovery references and supply no comparative fact or design evidence.
 - A semantic artifact may describe a document, but it does not prove coordination, intent, authenticity, causality, or harm.
 - The current benchmark CSV is separate Twitter data and cannot establish the proposed models' performance on the case seed.
 

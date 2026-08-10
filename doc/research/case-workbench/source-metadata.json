@@ -137,14 +137,16 @@
       "retrieval_status": "reader_blocked",
       "attempted_reader": "https://r.jina.ai/https://www.brandwatch.com/products/consumer-research/",
       "failure": "Jina Reader returned HTTP 401 AuthenticationRequiredError for anonymous queries on this network.",
-      "use_limit": "Vendor self-description only."
+      "comparison_status": "unverified_hypothesis_not_design_evidence",
+      "use_limit": "Unverified vendor reference; no capability statement was captured, retained, or used for design decisions."
     },
     {
       "id": "talkwalker-consumer-intelligence",
       "kind": "vendor_product_page",
       "canonical_url": "https://www.talkwalker.com/consumer-intelligence-platform",
       "retrieval_status": "indexed_not_retrieved",
-      "use_limit": "Vendor self-description only; no empirical comparison is made."
+      "comparison_status": "unverified_hypothesis_not_design_evidence",
+      "use_limit": "Unverified vendor reference; no capability statement was captured, retained, or used for design decisions."
     },
     {
       "id": "pulsar-trac",
@@ -153,21 +155,24 @@
       "retrieval_status": "reader_blocked",
       "attempted_reader": "https://r.jina.ai/https://www.pulsarplatform.com/trac/",
       "failure": "Jina Reader returned HTTP 401 AuthenticationRequiredError for anonymous queries on this network.",
-      "use_limit": "Vendor self-description only."
+      "comparison_status": "unverified_hypothesis_not_design_evidence",
+      "use_limit": "Unverified vendor reference; no capability statement was captured, retained, or used for design decisions."
     },
     {
       "id": "newswhip-spike",
       "kind": "vendor_product_page",
       "canonical_url": "https://www.newswhip.com/products/spike/",
       "retrieval_status": "indexed_not_retrieved",
-      "use_limit": "Vendor self-description only; no empirical comparison is made."
+      "comparison_status": "unverified_hypothesis_not_design_evidence",
+      "use_limit": "Unverified vendor reference; no capability statement was captured, retained, or used for design decisions."
     },
     {
       "id": "blackbird-ai-platform",
       "kind": "vendor_product_page",
       "canonical_url": "https://www.blackbird.ai/platform/",
       "retrieval_status": "indexed_not_retrieved",
-      "use_limit": "Vendor self-description only; no empirical comparison is made."
+      "comparison_status": "unverified_hypothesis_not_design_evidence",
+      "use_limit": "Unverified vendor reference; no capability statement was captured, retained, or used for design decisions."
     },
     {
       "id": "bge-small-zh-model-card",
@@ -207,8 +212,10 @@
       "canonical_url": "https://news.cctv.com/",
       "retrieval_status": "supplied_quote_requires_source_capture",
       "exact_quote": "\u6211\u4EEC\u5E94\u5F53\u5171\u540C\u625B\u8D77\u8FD9\u4E2A\u5386\u53F2\u91CD\u4EFB\uFF0C\u63A8\u52A8\u4E2D\u7F8E\u5173\u7CFB\u8FD9\u8258\u5DE8\u8F6E\u6CBF\u7740\u6B63\u786E\u822A\u9053\u5E73\u7A33\u524D\u884C\u3002",
-      "required_before_case_claim_save": ["article_url", "account", "published_at", "tier", "captured_content_sha256", "unicode_span"],
-      "use_limit": "The quote is a user-approved seed, not an independently captured page in Task 01."
+      "expected_authority_tier_after_allowlisting": "central_mainstream_media",
+      "intended_claim_role": "primary",
+      "required_before_case_claim_save": ["article_url", "account", "published_at", "authority_tier", "review_status", "captured_content_sha256", "unicode_span", "claim_role"],
+      "use_limit": "The quote is a user-approved seed, not an independently captured page in Task 01. Its source remains authority_tier=null and review_status=pending_review until article capture and administrator allowlisting."
     },
     {
       "id": "xinhua-supporting-claim-seed",
@@ -216,8 +223,10 @@
       "canonical_url": "https://www.news.cn/",
       "retrieval_status": "supplied_quote_requires_source_capture",
       "exact_quote": "\u4E00\u6B21\u5386\u53F2\u6027\u6807\u5FD7\u6027\u8BBF\u95EE\u3002",
-      "required_before_case_claim_save": ["article_url", "account", "published_at", "tier", "captured_content_sha256", "unicode_span"],
-      "use_limit": "The quote is a user-approved seed, not an independently captured page in Task 01."
+      "expected_authority_tier_after_allowlisting": "central_mainstream_media",
+      "intended_claim_role": "supporting",
+      "required_before_case_claim_save": ["article_url", "account", "published_at", "authority_tier", "review_status", "captured_content_sha256", "unicode_span", "claim_role"],
+      "use_limit": "The quote is a user-approved seed, not an independently captured page in Task 01. Its source remains authority_tier=null and review_status=pending_review until article capture and administrator allowlisting."
     }
   ]
 }

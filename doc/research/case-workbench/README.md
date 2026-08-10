@@ -16,9 +16,9 @@ This directory is the Task 01 research and provenance foundation for the propose
 ## Evidence Scope
 
 - `trump_visit_2026_05_21` is the Case Workbench seed event, not a completed cross-platform dataset. Current known coverage is Weibo only: 74 unique main posts from 57 authors and 5,048 unique comments from 4,492 comment users. The core window is 2026-05-14..17 Beijing time and the context window is 2026-05-08..20. A same-event Douyin collection is planned and coverage remains `partial_collection` until it is captured.
-- The supplied CCTV and Xinhua quotes are claim seeds, not independently retrieved source pages. The implementation must add their exact URLs, accounts, publication times, authority tier, captured content hashes, and Unicode spans before they can be saved as CaseClaims.
+- The supplied CCTV and Xinhua quotes are claim seeds, not independently retrieved source pages. Both are expected to be `central_mainstream_media` after administrator allowlisting, while their independent ClaimRoles are `primary` and `supporting`. Before article capture/review, an AuthoritySource has `authority_tier = null` and `review_status = pending_review`; implementation must add exact URLs, accounts, publication times, captured content hashes, and Unicode spans before a CaseClaim can be saved.
 - The Twitter benchmark manifest is deliberately separate from case evidence. The repository contains neither the CSV nor a full CSV-to-Markdown conversion.
-- Vendor pages are self-description. They are useful for capability vocabulary and competitive positioning, not empirical proof.
+- Vendor URLs are unverified discovery references. No capability statement was captured, retained, or used as a design input.
 - Model cards/readmes establish identifiers and upstream behavior, not Chinese-domain performance, calibration, safety, or suitability for CogGuard. All semantic outputs remain `candidate_unvalidated` pending local evaluation.
 
 ## MarkItDown Record
