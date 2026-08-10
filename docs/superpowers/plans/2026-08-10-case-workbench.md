@@ -18,7 +18,7 @@
 - Authority Source tiers are exactly `government_official`, `central_mainstream_original`, and `provincial_official_media`; unregistered URLs remain `pending_review`.
 - Preserve verbatim claim excerpt, character span, URL, account, publication time, tier, source content hash, and excerpt hash.
 - Each Case has at most one approved Primary Claim pointer and zero or more approved Supplementary Claims.
-- Missing Primary Claim permits Coordination Discover, Propagation Analysis, sentiment, topics, keywords, entities, and near-duplicate analysis; stance returns exact code `blocked_missing_primary_claim`.
+- Missing Primary Claim permits Coordination Discover, Propagation Analysis, sentiment, topics, keywords, entities, near-duplicate analysis, and Risk Review; only stance is blocked and returns exact code `blocked_missing_primary_claim`. Primary Claim approval later triggers incremental stance plus Risk Review.
 - Closure requires an approved Canonical Verdict, all required Case Actions completed or explicitly waived, and a submitted Closeout Review.
 - Student Review and Teacher Review remain advisory. One analyst may perform all roles in the first release, but accepted operations are append-only.
 - Keep `DEFAULT_ANALYSIS_STAGES` exactly `("coordination_discover", "propagation_analysis", "student", "teacher")`; only Case orchestration adds `semantic_enrichment` by default.
@@ -29,7 +29,7 @@
 - Analyze posts and comments separately, then cross-analyze by time, platform, Coordination Community, and Propagation Tree/path.
 - Use local KeyBERT-style Maximal Marginal Relevance, BERTopic-style clustering, and class-based TF-IDF; add no dependency other than `jieba>=0.42.1,<0.43.0`.
 - A successful report version is a frozen HTML/PDF pair containing Case, snapshot, run, model-version, and content-hash provenance.
-- Main Case id is `trump_visit_2026_05_21`; never fabricate a Douyin/XHS source or combine unrelated evidence.
+- Main Event ID is `trump_visit_2026_05_21` and Main Case ID is `case_trump_visit_2026_05_21`; never fabricate a Douyin/XHS source or combine unrelated evidence.
 - Keep the Twitter CSV separate and commit only its schema, statistics, byte size, and SHA-256 manifest, never its full Markdown conversion.
 - Python modules are shallow, one concept per file, use absolute imports, and define explicit `__all__` for public surfaces.
 - Every task follows RED, GREEN, self-review, Documentation Sync where applicable, and one independently reviewable Lore commit.
@@ -240,13 +240,20 @@ git commit -m "Preserve source research before Case evidence is approved" -m "Pe
 - Create: `system/backend/app/models/case_claim.py`
 - Create: `system/backend/app/models/case_action.py`
 - Create: `system/backend/app/models/case_report.py`
+- Create: `system/backend/app/models/case_blocker.py`
 - Create: `system/backend/app/models/case_audit.py`
 - Create: `system/backend/app/models/case_idempotency.py`
 - Modify: `system/backend/app/models/__init__.py`
 - Create: `system/backend/app/schemas/case.py`
+- Create: `system/backend/app/schemas/case_claim.py`
+- Create: `system/backend/app/schemas/case_action.py`
 - Create: `system/backend/app/schemas/authority_source.py`
 - Modify: `system/backend/app/schemas/__init__.py`
 - Create: `system/backend/app/services/case_repository.py`
+- Create: `system/backend/app/services/case_claim_repository.py`
+- Create: `system/backend/app/services/case_action_repository.py`
+- Create: `system/backend/app/services/case_blocker_repository.py`
+- Create: `system/backend/app/services/case_report_repository.py`
 - Create: `system/backend/app/services/authority_source_repository.py`
 - Modify: `system/backend/app/services/__init__.py`
 - Create: `system/backend/alembic/versions/4c6a9d2e7f10_add_case_workbench_core.py`
@@ -273,30 +280,268 @@ class CaseState(StrEnum):
 class CaseCreate(BaseModel):
     event_id: str
     title: str
-    snapshot_id: str
+    description: str | None = None
+    core_window_start: datetime
+    core_window_end: datetime
+    context_window_start: datetime
+    context_window_end: datetime
+    expected_platforms: list[Literal["mock_weibo", "weibo", "news", "douyin", "xhs"]]
+    snapshot_id: str | None = None
     owner_id: int | None = None
 
+class CaseDraftUpdate(BaseModel):
+    title: str | None = None
+    description: str | None = None
+    owner_id: int | None = None
+    core_window_start: datetime | None = None
+    core_window_end: datetime | None = None
+    context_window_start: datetime | None = None
+    context_window_end: datetime | None = None
+    expected_platforms: list[Literal["mock_weibo", "weibo", "news", "douyin", "xhs"]] | None = None
+    expected_version: int
+
+class CaseBlockerResolutionCreate(BaseModel):
+    resolution_code: Literal["condition_cleared", "policy_acknowledged", "superseded"]
+    reason: str
+    evidence_refs: list[str] = []
+    expected_case_version: int
+
+class CaseBlockerResolutionView(BaseModel):
+    resolution_id: str
+    blocker_id: str
+    resolution_code: str
+    reason: str
+    evidence_refs: list[str]
+    actor_id: int
+    created_at: datetime
+    payload_hash: str
+
 class CaseBlockerView(BaseModel):
+    blocker_id: str
+    case_id: str
+    identity_key: str
     code: str
+    scope: str
     operation: str
+    severity: Literal["advisory", "blocking", "critical"]
     message: str
     evidence_refs: list[str]
-    acknowledged_by: int | None = None
-    acknowledged_at: datetime | None = None
+    created_by: int
+    created_at: datetime
+    payload_hash: str
+    active: bool
+    resolutions: list[CaseBlockerResolutionView]
 
 class CaseView(BaseModel):
     case_id: str
     event_id: str
     title: str
+    description: str | None
     state: CaseState
     version: int
-    current_snapshot_id: str
+    owner_id: int | None
+    core_window_start: datetime
+    core_window_end: datetime
+    context_window_start: datetime
+    context_window_end: datetime
+    expected_platforms: list[str]
+    current_snapshot_id: str | None
     primary_claim_id: str | None
+    canonical_verdict_id: str | None
     blockers: list[CaseBlockerView]
+    created_at: datetime
+    updated_at: datetime
+
+class CasePage(BaseModel):
+    items: list[CaseView]
+    total: int
+    offset: int
+    limit: int
 ```
 
-- Produces in `app.schemas.authority_source`: `SourceTier`, `AuthoritySourceStatus`, `AuthoritySourceCreate`, `AuthoritySourceDecision`, `AuthoritySourceView`, and `AuthorityMatchView`, using the exact tier and pending-review values in Global Constraints.
-- Produces model classes: `CaseRecord`, `CaseSnapshotLink`, `CaseRunLink`, `AuthoritySourceVersion`, `CaseClaimRecord`, `CaseActionVersion`, `CaseReportVersionRecord`, `CaseAuditEventRecord`, and `CaseIdempotencyRecord`.
+- Produces in `app.schemas.case_claim`:
+
+```python
+class CaseClaimCreate(BaseModel):
+    authority_source_id: str
+    authority_source_version: int
+    archive_id: str
+    verbatim_excerpt: str
+    span_start: int
+    span_end: int
+    canonical_url: AnyHttpUrl
+    resolved_url: AnyHttpUrl | None = None
+    publishing_account: str
+    published_at: datetime
+    captured_at: datetime
+    source_content_hash: str
+    excerpt_hash: str
+    proposed_role: Literal["primary", "supplementary"]
+    expected_case_version: int
+
+class ClaimApprovalRequest(BaseModel):
+    expected_case_version: int
+    reason: str
+
+class ClaimRejectionRequest(BaseModel):
+    expected_case_version: int
+    reason: str
+
+class ClaimDecisionView(BaseModel):
+    version: int
+    decision: Literal["pending", "approved_primary", "approved_supplementary", "rejected", "superseded"]
+    supersedes_id: str | None
+    reason: str | None
+    actor_id: int
+    created_at: datetime
+    payload_hash: str
+
+class CaseClaimView(BaseModel):
+    claim_id: str
+    case_id: str
+    version: int
+    authority_source_id: str
+    authority_source_version: int
+    source_tier: SourceTier | None
+    archive_id: str
+    verbatim_excerpt: str
+    span_start: int
+    span_end: int
+    canonical_url: AnyHttpUrl
+    resolved_url: AnyHttpUrl | None
+    publishing_account: str
+    published_at: datetime
+    captured_at: datetime
+    source_content_hash: str
+    excerpt_hash: str
+    proposed_role: Literal["primary", "supplementary"]
+    decision: Literal["pending", "approved_primary", "approved_supplementary", "rejected", "superseded"]
+    supersedes_id: str | None
+    decision_reason: str | None
+    created_by: int
+    created_at: datetime
+    decided_by: int | None
+    decided_at: datetime | None
+    payload_hash: str
+    history: list[ClaimDecisionView]
+
+class CaseClaimPage(BaseModel):
+    items: list[CaseClaimView]
+    total: int
+    offset: int
+    limit: int
+```
+
+- Produces in `app.schemas.case_action`:
+
+```python
+class CaseActionCreateRequest(BaseModel):
+    title: str
+    description: str
+    required: bool
+    owner_id: int | None = None
+    due_at: datetime | None = None
+    canonical_verdict_id: str
+    expected_case_version: int
+
+class CaseActionTransitionRequest(BaseModel):
+    target_status: Literal["completed", "waived"]
+    expected_case_version: int
+    expected_action_version: int
+    reason: str
+
+class CaseActionHistoryEntry(BaseModel):
+    version: int
+    status: Literal["required", "completed", "waived"]
+    transition_reason: str | None
+    supersedes_id: str | None
+    actor_id: int
+    created_at: datetime
+    payload_hash: str
+
+class CaseActionView(BaseModel):
+    action_id: str
+    case_id: str
+    version: int
+    title: str
+    description: str
+    required: bool
+    status: Literal["required", "completed", "waived"]
+    owner_id: int | None
+    due_at: datetime | None
+    canonical_verdict_id: str
+    transition_reason: str | None
+    supersedes_id: str | None
+    created_by: int
+    created_at: datetime
+    payload_hash: str
+    history: list[CaseActionHistoryEntry]
+```
+
+- Produces in `app.schemas.authority_source`:
+
+```python
+class SourceTier(StrEnum):
+    GOVERNMENT_OFFICIAL = "government_official"
+    CENTRAL_MAINSTREAM_ORIGINAL = "central_mainstream_original"
+    PROVINCIAL_OFFICIAL_MEDIA = "provincial_official_media"
+
+class AuthoritySourceStatus(StrEnum):
+    PENDING_REVIEW = "pending_review"
+    APPROVED = "approved"
+    REVOKED = "revoked"
+
+class AuthoritySourceCreate(BaseModel):
+    publisher_name: str
+    canonical_accounts: list[str]
+    canonical_domains: list[str]
+    platform: str
+    proposed_tier: SourceTier
+    effective_from: datetime
+    effective_to: datetime | None = None
+    classification_evidence: list[str]
+
+class AuthoritySourceDecision(BaseModel):
+    expected_source_version: int
+    tier: SourceTier | None = None
+    reason: str
+    classification_evidence: list[str] = []
+
+class AuthoritySourceView(BaseModel):
+    source_id: str
+    version: int
+    publisher_name: str
+    canonical_accounts: list[str]
+    canonical_domains: list[str]
+    platform: str
+    proposed_tier: SourceTier
+    tier: SourceTier | None
+    status: AuthoritySourceStatus
+    effective_from: datetime
+    effective_to: datetime | None
+    classification_evidence: list[str]
+    supersedes_id: str | None
+    decided_by: int | None
+    created_at: datetime
+    version_hash: str
+
+class AuthorityMatchView(BaseModel):
+    status: AuthoritySourceStatus
+    normalized_url: AnyHttpUrl
+    source_id: str | None
+    source_version: int | None
+    tier: SourceTier | None
+    match_basis: Literal["domain", "account", "none"]
+    reason: str
+
+class AuthoritySourcePage(BaseModel):
+    items: list[AuthoritySourceView]
+    total: int
+    offset: int
+    limit: int
+```
+
+- Produces model classes: `CaseRecord`, `CaseSnapshotLink`, `CaseRunLink`, `AuthoritySourceVersion`, `CaseClaimRecord`, `CaseActionVersion`, `CaseReportVersionRecord`, `CaseBlockerRecord`, `CaseBlockerResolutionRecord`, `CaseAuditEventRecord`, and `CaseIdempotencyRecord`. Claim, action, source, and report rows persist every scalar version field in their public views plus version/supersession hashes; `history` and `resolutions` are projections assembled from immutable rows, not mutable JSON snapshots. Blocker and resolution rows persist identity, scope, severity, evidence, and resolution metadata exactly as exposed above.
 - Produces repository interfaces:
 
 ```python
@@ -304,7 +549,8 @@ class CaseRepository:
     def __init__(self, session: AsyncSession) -> None: ...
     async def create_case(self, payload: CaseCreate, *, actor_id: int, case_id: str | None = None) -> CaseRecord: ...
     async def get_case(self, case_id: str, *, for_update: bool = False) -> CaseRecord | None: ...
-    async def list_cases(self, *, state: CaseState | None, offset: int, limit: int) -> tuple[list[CaseRecord], int]: ...
+    async def list_cases(self, *, state: CaseState | None, owner_id: int | None, blocker_code: str | None, event_id: str | None, offset: int, limit: int) -> tuple[list[CaseRecord], int]: ...
+    async def update_draft_metadata(self, *, case_id: str, payload: CaseDraftUpdate, actor_id: int) -> CaseRecord: ...
     async def append_snapshot_link(self, *, case_id: str, snapshot_id: str, actor_id: int) -> CaseSnapshotLink: ...
     async def append_run_link(self, *, case_id: str, run_id: str, run_kind: str, actor_id: int) -> CaseRunLink: ...
     async def append_audit_event(self, *, case_id: str, event_type: str, actor_id: int, payload: dict[str, Any]) -> CaseAuditEventRecord: ...
@@ -315,11 +561,36 @@ class AuthoritySourceRepository:
     async def append_version(self, payload: AuthoritySourceCreate | AuthoritySourceDecision, *, actor_id: int) -> AuthoritySourceVersion: ...
     async def get_latest(self, source_id: str, *, for_update: bool = False) -> AuthoritySourceVersion | None: ...
     async def list_latest(self, *, status: AuthoritySourceStatus | None, offset: int, limit: int) -> tuple[list[AuthoritySourceVersion], int]: ...
+
+class CaseClaimRepository:
+    async def append_version(self, payload: CaseClaimCreate | CaseClaimRecord, *, actor_id: int) -> CaseClaimRecord: ...
+    async def get_latest(self, *, case_id: str, claim_id: str, for_update: bool = False) -> CaseClaimRecord | None: ...
+    async def list_latest(self, *, case_id: str, offset: int, limit: int) -> tuple[list[CaseClaimRecord], int]: ...
+    async def list_versions(self, *, case_id: str, claim_id: str) -> tuple[CaseClaimRecord, ...]: ...
+
+class CaseActionRepository:
+    async def append_version(self, payload: CaseActionCreateRequest | CaseActionVersion, *, actor_id: int) -> CaseActionVersion: ...
+    async def get_latest(self, *, case_id: str, action_id: str, for_update: bool = False) -> CaseActionVersion | None: ...
+    async def list_latest(self, *, case_id: str, required: bool | None = None) -> tuple[CaseActionVersion, ...]: ...
+    async def list_versions(self, *, case_id: str, action_id: str) -> tuple[CaseActionVersion, ...]: ...
+
+class CaseBlockerRepository:
+    async def append_blocker(self, *, case_id: str, identity_key: str, code: str, scope: str, operation: str, severity: str, message: str, evidence_refs: list[str], actor_id: int) -> CaseBlockerRecord: ...
+    async def get_blocker(self, *, case_id: str, blocker_id: str, for_update: bool = False) -> CaseBlockerRecord | None: ...
+    async def list_blockers(self, *, case_id: str, operation: str | None = None, include_resolved: bool = True) -> tuple[CaseBlockerRecord, ...]: ...
+    async def append_resolution(self, *, blocker_id: str, payload: CaseBlockerResolutionCreate, actor_id: int) -> CaseBlockerResolutionRecord: ...
+    async def list_resolutions(self, *, blocker_id: str) -> tuple[CaseBlockerResolutionRecord, ...]: ...
+
+class CaseReportRepository:
+    async def next_version(self, *, case_id: str, for_update: bool = True) -> int: ...
+    async def append_success(self, record: CaseReportVersionRecord) -> CaseReportVersionRecord: ...
+    async def get_version(self, *, case_id: str, version: int) -> CaseReportVersionRecord | None: ...
+    async def list_versions(self, *, case_id: str) -> tuple[CaseReportVersionRecord, ...]: ...
 ```
 
 - [ ] **Step 1: Write metadata, schema, repository, and migration tests**
 
-Test exact table names, indexes, unique version constraints, append-only revision fields, string lengths, JSON/Text columns, enum validation, repository locking, monotonic link versions, audit cursor ordering, and Alembic parent `d2f7a8b9c0e1`. Assert no Case state accepts blocker codes.
+Test exact table names, indexes, unique version constraints, append-only revision fields, string lengths, JSON/Text columns, enum validation, repository locking, monotonic link versions, audit cursor ordering, and Alembic parent `d2f7a8b9c0e1`. Cover draft metadata optimistic updates; complete claim/action/source/report record round trips; action create/complete/waive version history; stable blocker identity; append-only blocker resolutions retaining scope/severity/evidence; and report `append_success` only. Assert no Case state accepts blocker codes.
 
 ```python
 def test_case_state_is_exact_and_excludes_blockers():
@@ -344,13 +615,13 @@ Expected: collection fails on missing Case model, schema, and repository modules
 
 - [ ] **Step 3: Implement focused records and explicit exports**
 
-Use one model concept per file. Store logical ids as `String(128)`, status/state as `String(32)`, JSON payloads as non-null `Text`, and audit ids as auto-increment integer cursors. Use unique constraints on `(case_id, version)` snapshot links, `(case_id, run_id)` run links, `(source_id, version)` source versions, `(claim_id, version)` claim records, `(action_id, version)` action versions, `(case_id, report_version)` reports, and the idempotency scope.
+Use one model concept per file. Store logical ids as `String(128)`, status/state as `String(32)`, JSON payloads as non-null `Text`, and audit ids as auto-increment integer cursors. Use unique constraints on `(case_id, version)` snapshot links, `(case_id, run_id)` run links, `(source_id, version)` source versions, `(claim_id, version)` claim records, `(action_id, version)` action versions, `(case_id, report_version)` reports, `(case_id, identity_key)` blockers, `(blocker_id, resolution_id)` blocker resolutions, and the idempotency scope. A blocker row and every resolution row are immutable; the active projection is derived without updating either record.
 
 Keep `CaseRecord.state`, `version`, `current_snapshot_id`, and nullable `primary_claim_id` as read projections. Do not add a default `semantic_enrichment` stage to `AnalysisRun`. Export public models, schemas, and repositories through explicit `__all__` with absolute imports.
 
 - [ ] **Step 4: Implement migration `4c6a9d2e7f10`**
 
-Create the nine Case core tables and indexes matching SQLAlchemy metadata. Use `down_revision = "d2f7a8b9c0e1"`, reversible downgrade order, foreign keys only where the referenced MySQL table is guaranteed to exist, and explicit logical-id indexes for external snapshot/run/verdict references.
+Create the eleven Case core tables and indexes matching SQLAlchemy metadata: the original nine aggregate/source/claim/action/report/audit/idempotency tables plus blocker and blocker-resolution tables. Use `down_revision = "d2f7a8b9c0e1"`, reversible downgrade order, foreign keys only where the referenced MySQL table is guaranteed to exist, and explicit logical-id indexes for external snapshot/run/verdict references.
 
 - [ ] **Step 5: Run GREEN and migration checks**
 
@@ -387,7 +658,7 @@ git commit -m "Give investigations a durable aggregate and audit cursor" -m "Per
 - Create: `system/backend/tests/test_case_claim_service.py`
 
 **Interfaces:**
-- Consumes: `AuthoritySourceRepository`, `CaseRepository`, research archive entries from Task 2, and core records from Task 3.
+- Consumes: `AuthoritySourceRepository`, `CaseClaimRepository`, `CaseRepository`, the exact authority/claim DTOs from Task 3, research archive entries from Task 2, and core records from Task 3.
 - Produces:
 
 ```python
@@ -418,12 +689,15 @@ class AuthoritySourceService:
     async def create_candidate(self, payload: AuthoritySourceCreate, *, admin_id: int) -> AuthoritySourceView: ...
     async def approve(self, source_id: str, decision: AuthoritySourceDecision, *, admin_id: int) -> AuthoritySourceView: ...
     async def revoke(self, source_id: str, decision: AuthoritySourceDecision, *, admin_id: int) -> AuthoritySourceView: ...
+    async def list_sources(self, *, status: AuthoritySourceStatus | None, offset: int, limit: int) -> AuthoritySourcePage: ...
 
 class CaseClaimService:
     async def register_candidates(self, *, case_id: str, source: ArchivedSourceText, anchors: tuple[str, ...], actor_id: int) -> tuple[CaseClaimRecord, ...]: ...
-    async def approve_primary(self, *, case_id: str, claim_id: str, expected_case_version: int, actor_id: int) -> CaseView: ...
-    async def approve_supplementary(self, *, case_id: str, claim_id: str, actor_id: int) -> CaseClaimRecord: ...
-    async def reject(self, *, case_id: str, claim_id: str, reason: str, actor_id: int) -> CaseClaimRecord: ...
+    async def create_candidate(self, *, case_id: str, payload: CaseClaimCreate, actor_id: int) -> CaseClaimView: ...
+    async def list_claims(self, *, case_id: str, offset: int, limit: int) -> CaseClaimPage: ...
+    async def approve_primary(self, *, case_id: str, claim_id: str, payload: ClaimApprovalRequest, actor_id: int) -> CaseClaimView: ...
+    async def approve_supplementary(self, *, case_id: str, claim_id: str, payload: ClaimApprovalRequest, actor_id: int) -> CaseClaimView: ...
+    async def reject(self, *, case_id: str, claim_id: str, payload: ClaimRejectionRequest, actor_id: int) -> CaseClaimView: ...
 ```
 
 - [ ] **Step 1: Write matching and claim invariant tests**
@@ -536,6 +810,70 @@ class SemanticEnrichmentOptions(BaseModel):
     device_preference: Literal["auto", "cpu", "cuda"] = "auto"
     time_bucket_minutes: int = 60
 
+class ModelLoadRecord(BaseModel):
+    capability: Literal["embedding", "sentiment", "stance", "ner"]
+    model_identity: str
+    repository: str
+    revision: str
+    local_artifact_digest: str
+    tokenizer_config_digest: str
+    runtime_version: str
+    device: str
+    status: Literal["loaded", "degraded_cpu", "unavailable", "digest_mismatch"]
+    degradation_reason: str | None
+
+class SemanticArtifactView(BaseModel):
+    artifact_id: str
+    version: int
+    kind: SemanticArtifactKind
+    case_id: str
+    snapshot_id: str
+    run_id: str
+    scope: Literal["main_posts", "comments"]
+    included_content_ids: list[str]
+    model_identity: str
+    model_hash: str
+    preprocessing_version: str
+    options_hash: str
+    input_content_hash: str
+    shared_embedding_artifact_id: str | None
+    output_hash: str
+    status: Literal["complete", "degraded", "blocked", "abstained"]
+    code: str | None
+    validation_status: Literal["candidate_unvalidated", "validated"]
+    coverage_count: int
+    excluded_count: int
+    degradation_reasons: list[str]
+    created_at: datetime
+
+class SemanticCorrectionCreate(BaseModel):
+    artifact_id: str
+    artifact_version: int
+    target_type: Literal["content", "cluster"]
+    affected_content_ids: list[str]
+    cluster_id: str | None = None
+    corrected_value: dict[str, Any]
+    reason: str
+    supporting_claim_id: str | None = None
+    expected_case_version: int
+
+class SemanticCorrectionView(BaseModel):
+    correction_id: str
+    version: int
+    case_id: str
+    artifact_id: str
+    artifact_version: int
+    target_type: Literal["content", "cluster"]
+    affected_content_ids: list[str]
+    cluster_id: str | None
+    corrected_value: dict[str, Any]
+    reason: str
+    supporting_claim_id: str | None
+    supersedes_id: str | None
+    actor_id: int
+    created_at: datetime
+    payload_hash: str
+
 class SemanticEnrichmentResult(BaseModel):
     technology: Literal["semantic_enrichment"]
     snapshot_id: str
@@ -553,13 +891,24 @@ class SemanticModelManager:
 def maximal_marginal_relevance(document_embedding: NDArray, candidate_embeddings: NDArray, *, top_n: int, diversity: float) -> tuple[int, ...]: ...
 def cluster_documents(embeddings: NDArray, *, min_cluster_size: int) -> NDArray: ...
 def class_tfidf(tokenized_documents: Sequence[Sequence[str]], labels: Sequence[int]) -> dict[int, list[tuple[str, float]]]: ...
+
+class SemanticArtifactRepository:
+    async def append_artifact(self, record: SemanticArtifactRecord) -> SemanticArtifactRecord: ...
+    async def get_artifact(self, *, case_id: str, artifact_id: str, version: int | None = None) -> SemanticArtifactRecord | None: ...
+    async def list_artifacts(self, *, case_id: str, kind: SemanticArtifactKind | None, scope: str | None) -> tuple[SemanticArtifactRecord, ...]: ...
+    async def append_correction(self, *, case_id: str, payload: SemanticCorrectionCreate, actor_id: int) -> SemanticCorrectionRecord: ...
+    async def list_corrections(self, *, case_id: str, artifact_id: str | None = None) -> tuple[SemanticCorrectionRecord, ...]: ...
+
+class SemanticCorrectionService:
+    async def append(self, *, case_id: str, payload: SemanticCorrectionCreate, actor_id: int) -> SemanticCorrectionView: ...
+    async def list(self, *, case_id: str, artifact_id: str | None = None) -> tuple[SemanticCorrectionView, ...]: ...
 ```
 
-- Produces `SemanticArtifactRecord`, `SemanticCorrectionRecord`, and `EmbeddingCacheRecord`, plus repositories that append artifact/correction versions and get-or-create cache rows by `(model_identity, model_hash, content_hash, preprocessing_version)`.
+- Produces `SemanticArtifactRecord`, `SemanticCorrectionRecord`, and `EmbeddingCacheRecord`. `SemanticArtifactRepository` owns append/read operations for artifact and correction history; `EmbeddingCacheRepository` owns get-or-create rows keyed by `(model_identity, model_hash, content_hash, preprocessing_version)`. `SemanticCorrectionService` validates Case/artifact/version and optional supporting-claim ownership before appending; it never updates an artifact row.
 
 - [ ] **Step 1: Write compatibility, algorithm, persistence, degradation, and correction tests**
 
-Assert the default stage tuple is byte-for-byte unchanged, explicit `semantic_enrichment` normalizes successfully, ordinary Analysis Run requests still default to four stages, and the executor calls semantics only when requested. Test deterministic MMR, local clustering/class-based TF-IDF, separate post/comment subjects, cross-slice keys, shared cache reuse, exact model identities, aggregate hash recording, sequential model acquisition, GPU-to-CPU retry, missing-primary stance blocking, and append-only corrections.
+Assert the default stage tuple is byte-for-byte unchanged, explicit `semantic_enrichment` normalizes successfully, ordinary Analysis Run requests still default to four stages, and the executor calls semantics only when requested. Test deterministic MMR, local clustering/class-based TF-IDF, separate post/comment subjects, cross-slice keys, shared cache reuse, exact model identities, aggregate hash recording, sequential model acquisition, GPU-to-CPU retry, missing-primary stance blocking, correction DTO round trips, Case/artifact/version ownership, list ordering, and append-only corrections.
 
 ```python
 def test_default_analysis_stages_remain_compatible():
@@ -631,22 +980,28 @@ git commit -m "Enrich Case evidence without changing core analysis scores" -m "A
 - Create: `system/backend/app/core/analysis/case_review_context.py`
 - Modify: `system/backend/app/core/analysis/__init__.py`
 - Create: `system/backend/app/services/case_blocker_service.py`
+- Create: `system/backend/app/services/case_draft_service.py`
+- Create: `system/backend/app/services/case_action_service.py`
 - Create: `system/backend/app/services/case_lifecycle_service.py`
 - Create: `system/backend/app/services/case_orchestration_service.py`
+- Create: `system/backend/app/services/case_query_service.py`
 - Create: `system/backend/app/services/case_feedback_service.py`
 - Create: `system/backend/app/services/case_report_service.py`
 - Create: `system/backend/app/services/chromium_pdf_renderer.py`
 - Modify: `system/backend/app/services/__init__.py`
 - Create: `system/backend/alembic/versions/6e8c1f4a9b32_add_case_workflow_records.py`
 - Create: `system/backend/tests/test_case_blockers.py`
+- Create: `system/backend/tests/test_case_draft.py`
+- Create: `system/backend/tests/test_case_actions.py`
 - Create: `system/backend/tests/test_case_lifecycle.py`
 - Create: `system/backend/tests/test_case_orchestration.py`
+- Create: `system/backend/tests/test_case_queries.py`
 - Create: `system/backend/tests/test_case_feedback.py`
 - Create: `system/backend/tests/test_case_reports.py`
 
 **Interfaces:**
-- Consumes: `CaseRepository`, `AnalysisRegistry`, `AnalysisExecutor`, claim services, semantic artifacts, review verdict versions, report storage root, and a PDF renderer port.
-- Produces `CaseFeedbackRecord`, `CloseoutReviewRecord`, and `PartialCollectionAcknowledgementRecord` as immutable append-only rows.
+- Consumes: `CaseRepository`, `CaseActionRepository`, `CaseBlockerRepository`, `CaseReportRepository`, `AnalysisRegistry`, `AnalysisExecutor`, claim services, semantic artifacts, review verdict versions, report storage root, and a PDF renderer port.
+- Produces `CaseFeedbackRecord`, `CloseoutReviewRecord`, and `PartialCollectionAcknowledgementRecord` as immutable append-only rows. `CloseoutReviewRecord` contains `review_id`, `case_id`, `canonical_verdict_id`, `rationale`, `residual_risks`, `submitted_by`, `submitted_at`, `case_version`, and `payload_hash`; it has no approval, acceptance, or fourth-gate status field.
 - Produces:
 
 ```python
@@ -668,43 +1023,195 @@ class CaseTransitionRequest(BaseModel):
     expected_version: int
     reason: str
 
+class CaseCloseRequest(BaseModel):
+    expected_version: int
+
+class CaseSnapshotLinkCreate(BaseModel):
+    snapshot_id: str
+    snapshot_content_hash: str
+    expected_case_version: int
+
+class CaseSnapshotLinkView(BaseModel):
+    case_id: str
+    snapshot_id: str
+    snapshot_content_hash: str
+    version: int
+    linked_by: int
+    linked_at: datetime
+
+class CaseRunRequest(BaseModel):
+    run_kind: CaseRunKind
+    expected_case_version: int
+    reuse_policy: Literal["compatible_only", "force_rerun"] = "compatible_only"
+
+class CaseRunView(BaseModel):
+    case_id: str
+    run_id: str
+    snapshot_id: str
+    run_kind: CaseRunKind
+    requested_stages: list[str]
+    reused_artifact_ids: list[str]
+    blocked_stages: dict[str, str]
+    created_at: datetime
+
 class PartialCollectionAcknowledgementCreate(BaseModel):
     missing_platforms: list[Literal["douyin", "xhs"]]
     searched_archive_ids: list[str]
     rationale: str
+    expected_case_version: int
+
+class PartialCollectionAcknowledgementView(BaseModel):
+    acknowledgement_id: str
+    case_id: str
+    missing_platforms: list[Literal["douyin", "xhs"]]
+    searched_archive_ids: list[str]
+    rationale: str
+    submitted_by: int
+    submitted_at: datetime
+    payload_hash: str
+
+class CaseFeedbackCreateRequest(BaseModel):
+    run_id: str | None = None
+    verdict_id: str | None = None
+    category: Literal["evidence_quality", "analysis_quality", "governance_outcome", "other"]
+    value: dict[str, Any]
+    rationale: str
+    expected_case_version: int
+
+class CaseFeedbackView(BaseModel):
+    feedback_id: str
+    case_id: str
+    run_id: str | None
+    verdict_id: str | None
+    category: str
+    value: dict[str, Any]
+    rationale: str
+    actor_id: int
+    created_at: datetime
+    payload_hash: str
+
+class EvidenceMatrixRow(BaseModel):
+    evidence_id: str
+    content_type: Literal["main_post", "comment", "claim", "semantic_artifact"]
+    content_id: str
+    platform: str
+    published_at: datetime | None
+    source_id: str | None
+    claim_ids: list[str]
+    semantic_artifact_ids: list[str]
+    coordination_community_id: str | None
+    propagation_tree_id: str | None
+    propagation_path_id: str | None
+    content_hash: str
+
+class EvidenceMatrixPage(BaseModel):
+    items: list[EvidenceMatrixRow]
+    total: int
+    offset: int
+    limit: int
+
+class CaseAuditEventView(BaseModel):
+    id: int
+    case_id: str
+    event_type: str
+    status: str
+    payload: dict[str, Any]
+    created_at: datetime
 
 class CloseoutReviewCreate(BaseModel):
     canonical_verdict_id: str
     rationale: str
     residual_risks: list[str]
+    expected_case_version: int
+
+class CloseoutReviewView(BaseModel):
+    review_id: str
+    case_id: str
+    canonical_verdict_id: str
+    rationale: str
+    residual_risks: list[str]
+    submitted_by: int
+    submitted_at: datetime
+    case_version: int
+    payload_hash: str
+
+class CaseReportFreezeRequest(BaseModel):
+    expected_case_version: int
+
+class CaseReportVersionView(BaseModel):
+    report_id: str
+    case_id: str
+    version: int
+    case_version: int
+    state: Literal["frozen"]
+    snapshot_refs: list[dict[str, str]]
+    run_refs: list[dict[str, str]]
+    claim_refs: list[dict[str, str]]
+    canonical_verdict_id: str
+    action_version_refs: list[dict[str, str | int]]
+    semantic_artifact_refs: list[dict[str, str | int]]
+    semantic_correction_refs: list[dict[str, str | int]]
+    blocker_refs: list[dict[str, str]]
+    closeout_review_id: str | None
+    model_versions: dict[str, str]
+    content_hashes: dict[str, str]
+    template_hash: str
+    renderer_version: str
+    html_sha256: str
+    pdf_sha256: str
+    created_by: int
+    created_at: datetime
+
+class FrozenReportFile(BaseModel):
+    path: Path
+    media_type: Literal["text/html; charset=utf-8", "application/pdf"]
+    sha256: str
+    size_bytes: int
+
+class CaseDraftService:
+    async def create(self, *, payload: CaseCreate, actor_id: int, case_id: str | None = None) -> CaseView: ...
+    async def update(self, *, case_id: str, payload: CaseDraftUpdate, actor_id: int) -> CaseView: ...
+
+class CaseActionService:
+    async def create(self, *, case_id: str, payload: CaseActionCreateRequest, actor_id: int) -> CaseActionView: ...
+    async def complete(self, *, case_id: str, action_id: str, payload: CaseActionTransitionRequest, actor_id: int) -> CaseActionView: ...
+    async def waive(self, *, case_id: str, action_id: str, payload: CaseActionTransitionRequest, actor_id: int) -> CaseActionView: ...
+    async def list_actions(self, *, case_id: str) -> tuple[CaseActionView, ...]: ...
 
 class CaseBlockerService:
-    async def list_blockers(self, case_id: str, *, operation: str | None = None) -> tuple[CaseBlockerView, ...]: ...
+    async def list_blockers(self, case_id: str, *, operation: str | None = None, include_resolved: bool = True) -> tuple[CaseBlockerView, ...]: ...
+    async def ensure_active(self, *, case_id: str, identity_key: str, code: str, scope: str, operation: str, severity: str, message: str, evidence_refs: list[str], actor_id: int) -> CaseBlockerView: ...
+    async def resolve(self, *, case_id: str, blocker_id: str, payload: CaseBlockerResolutionCreate, actor_id: int) -> CaseBlockerView: ...
 
 class CaseLifecycleService:
     async def transition(self, *, case_id: str, request: CaseTransitionRequest, actor_id: int) -> CaseView: ...
-    async def acknowledge_partial_collection(self, *, case_id: str, payload: PartialCollectionAcknowledgementCreate, actor_id: int) -> CaseView: ...
-    async def submit_closeout_review(self, *, case_id: str, payload: CloseoutReviewCreate, actor_id: int) -> CloseoutReviewRecord: ...
-    async def close(self, *, case_id: str, expected_version: int, actor_id: int) -> CaseView: ...
+    async def bind_snapshot(self, *, case_id: str, payload: CaseSnapshotLinkCreate, actor_id: int) -> CaseSnapshotLinkView: ...
+    async def acknowledge_partial_collection(self, *, case_id: str, payload: PartialCollectionAcknowledgementCreate, actor_id: int) -> PartialCollectionAcknowledgementView: ...
+    async def submit_closeout_review(self, *, case_id: str, payload: CloseoutReviewCreate, actor_id: int) -> CloseoutReviewView: ...
+    async def close(self, *, case_id: str, payload: CaseCloseRequest, actor_id: int) -> CaseView: ...
 
 class CaseOrchestrationService:
-    async def request_run(self, *, case_id: str, run_kind: CaseRunKind, actor_id: int) -> dict[str, Any]: ...
+    async def request_run(self, *, case_id: str, payload: CaseRunRequest, actor_id: int) -> CaseRunView: ...
+
+class CaseQueryService:
+    async def evidence_matrix(self, *, case_id: str, offset: int, limit: int) -> EvidenceMatrixPage: ...
 
 class CaseFeedbackService:
-    async def append_feedback(self, *, case_id: str, run_id: str | None, verdict_id: str | None, payload: dict[str, Any], actor_id: int) -> CaseFeedbackRecord: ...
+    async def append_feedback(self, *, case_id: str, payload: CaseFeedbackCreateRequest, actor_id: int) -> CaseFeedbackView: ...
 
 class PdfRendererPort(Protocol):
     async def render(self, *, html_path: Path, pdf_path: Path) -> None: ...
 
 class CaseReportService:
-    async def freeze(self, *, case_id: str, actor_id: int) -> CaseReportVersionRecord: ...
+    async def freeze(self, *, case_id: str, payload: CaseReportFreezeRequest, actor_id: int) -> CaseReportVersionView: ...
+    async def list_versions(self, *, case_id: str) -> tuple[CaseReportVersionView, ...]: ...
     async def resolve_html(self, *, case_id: str, version: int) -> FrozenReportFile: ...
     async def resolve_pdf(self, *, case_id: str, version: int) -> FrozenReportFile: ...
 ```
 
 - [ ] **Step 1: Write lifecycle, orchestration, feedback, and report tests**
 
-Test every forward state transition, permitted re-analysis transitions, optimistic version conflict, closed immutability, scoped blocker computation, acknowledgement behavior, exact closure gates, action waiver rationale, Case/run/snapshot ownership, full and incremental stage lists, Risk Review evidence references, feedback ownership, deterministic report manifests, atomic HTML/PDF promotion, hashes, and PDF-render failure rollback.
+Test every forward state transition, permitted re-analysis transitions, optimistic version conflict, closed immutability, draft-only metadata updates, scoped blocker persistence, stable identity deduplication, append-only resolutions, acknowledgement behavior, action create/complete/waive versions, exact closure gates, mandatory waiver rationale, Case/run/snapshot ownership, full and incremental stage lists, initial Risk Review without a Primary Claim, later incremental stance plus Risk Review, feedback ownership, complete report-record fields, deterministic report manifests, atomic HTML/PDF promotion, hashes, and PDF-render failure rollback with no report row.
 
 ```python
 def test_case_full_run_is_only_default_that_requests_semantics():
@@ -722,24 +1229,24 @@ Run:
 
 ```powershell
 cd system\backend
-uv run pytest tests/test_case_blockers.py tests/test_case_lifecycle.py tests/test_case_orchestration.py tests/test_case_feedback.py tests/test_case_reports.py -q
+uv run pytest tests/test_case_blockers.py tests/test_case_draft.py tests/test_case_actions.py tests/test_case_lifecycle.py tests/test_case_orchestration.py tests/test_case_queries.py tests/test_case_feedback.py tests/test_case_reports.py -q
 ```
 
 Expected: collection fails because lifecycle, orchestration, feedback, and report modules do not exist.
 
 - [ ] **Step 3: Implement blocker and lifecycle services**
 
-Compute blockers from stored facts without mutating Case State. Missing primary returns `blocked_missing_primary_claim` scoped to `stance`; a Platform Gap blocks collection advancement until acknowledged. Transition inside one transaction: lock Case, compare `expected_version`, validate allowed edge and scoped blockers, update projection, append one Audit Event, then commit. Closure checks only approved Canonical Verdict ownership, latest required action versions, and submitted Closeout Review.
+Reconcile stored facts into append-only blocker records without mutating Case State. `ensure_active` reuses `(case_id, identity_key)` so repeated evaluation cannot duplicate an unresolved condition; it never updates scope, severity, evidence, or creation metadata. Resolution appends `CaseBlockerResolutionRecord`, and later recurrence uses a new identity key linked through evidence rather than reopening the old record. Missing primary creates `blocked_missing_primary_claim` scoped only to `stance`; Risk Review remains runnable and records that stance was unavailable. A Platform Gap blocks collection advancement until acknowledged. Transition inside one transaction: lock Case, compare `expected_version`, validate allowed edge and scoped active blockers, update projection, append one Audit Event, then commit. Closure checks exactly three gates: approved Canonical Verdict ownership, latest required action versions all completed or waived, and existence of a submitted Closeout Review. It must not check or store Closeout Review acceptance.
 
 - [ ] **Step 4: Implement full and incremental orchestration**
 
-For `full`, create the Analysis Run with `CASE_ANALYSIS_STAGES`, options containing `case_id`, approved primary claim or null, and evidence references. For `incremental_primary_claim`, require an approved primary and create a run with `INCREMENTAL_PRIMARY_CLAIM_STAGES`; semantic options contain `artifact_kinds=["stance"]`, while review options receive the approved claim and prior core artifact references. Never pass semantic payloads or scores into coordination, propagation, Student Review, or Teacher Review option maps.
+For `full`, create the Analysis Run with `CASE_ANALYSIS_STAGES`, options containing `case_id`, approved primary claim or null, and evidence references. Without a Primary Claim, only stance is blocked; Student Review and Teacher Review/Risk Review still execute with a machine-readable missing-stance limitation. For `incremental_primary_claim`, require an approved primary and create a run with `INCREMENTAL_PRIMARY_CLAIM_STAGES`; semantic options contain `artifact_kinds=["stance"]`, while review options receive the approved claim, new stance artifact reference, and prior core artifact references. Never pass semantic payloads or scores into coordination or propagation. Student Review and Teacher Review may cite the stance artifact as explainable evidence, but neither its value nor any other semantic output enters or changes Risk Review scoring.
 
 Append the run link, transition to `analyzing`, and add an Audit Event in the same transaction. Mirror completion by reference, not by copying or mutating Analysis Run events.
 
 - [ ] **Step 5: Implement append-only feedback, closeout, and report freezing**
 
-Validate that feedback run/verdict belongs to the Case, then append. Render deterministic HTML with escaped source text and `@media print` rules. Write HTML to a temporary version directory, call `ChromiumPdfRenderer` using configured `CASE_REPORT_CHROMIUM_PATH --headless --disable-gpu --print-to-pdf=<path> <file-uri>`, compute both hashes, and atomically rename the directory before appending `CaseReportVersionRecord` and an Audit Event. A renderer error removes only temporary files and creates no version row.
+Validate that feedback run/verdict belongs to the Case, then append. Render deterministic HTML with escaped source text and `@media print` rules. Lock report allocation while collecting the complete `CaseReportVersionView` manifest, write HTML to a temporary directory without reserving a persisted version, call `ChromiumPdfRenderer` using configured `CASE_REPORT_CHROMIUM_PATH --headless --disable-gpu --print-to-pdf=<path> <file-uri>`, compute both hashes, atomically promote the directory, then append one `CaseReportVersionRecord` and Audit Event. A renderer error removes only temporary files, emits diagnostic operational/audit evidence, and creates no version row; tests assert that `CaseReportRepository.list_versions` is unchanged.
 
 - [ ] **Step 6: Add migration `6e8c1f4a9b32` and run GREEN**
 
@@ -747,7 +1254,7 @@ Use `down_revision = "5d7b0e3f8a21"`. Then run:
 
 ```powershell
 cd system\backend
-uv run pytest tests/test_case_blockers.py tests/test_case_lifecycle.py tests/test_case_orchestration.py tests/test_case_feedback.py tests/test_case_reports.py tests/test_analysis_executor.py tests/test_analysis_governance.py -q
+uv run pytest tests/test_case_blockers.py tests/test_case_draft.py tests/test_case_actions.py tests/test_case_lifecycle.py tests/test_case_orchestration.py tests/test_case_queries.py tests/test_case_feedback.py tests/test_case_reports.py tests/test_analysis_executor.py tests/test_analysis_governance.py -q
 uv run alembic heads
 uv run python -m compileall app
 ```
@@ -757,7 +1264,7 @@ Expected: all selected tests pass, Alembic prints only `6e8c1f4a9b32 (head)`, co
 - [ ] **Step 7: Commit the workflow boundary**
 
 ```powershell
-git add -- system/backend/app/models system/backend/app/schemas system/backend/app/core/analysis system/backend/app/services system/backend/alembic/versions/6e8c1f4a9b32_add_case_workflow_records.py system/backend/tests/test_case_blockers.py system/backend/tests/test_case_lifecycle.py system/backend/tests/test_case_orchestration.py system/backend/tests/test_case_feedback.py system/backend/tests/test_case_reports.py
+git add -- system/backend/app/models system/backend/app/schemas system/backend/app/core/analysis system/backend/app/services system/backend/alembic/versions/6e8c1f4a9b32_add_case_workflow_records.py system/backend/tests/test_case_blockers.py system/backend/tests/test_case_draft.py system/backend/tests/test_case_actions.py system/backend/tests/test_case_lifecycle.py system/backend/tests/test_case_orchestration.py system/backend/tests/test_case_queries.py system/backend/tests/test_case_feedback.py system/backend/tests/test_case_reports.py
 git commit -m "Make Case decisions replayable from evidence through closeout" -m "Coordinate explicit full and incremental runs, scoped blockers, append-only operations, strict closure, and atomic report versions around the durable Case aggregate." -m "Constraint: Semantic artifacts remain auxiliary and closure has exactly three domain gates" -m "Rejected: Encode blockers as Case states | conflates lifecycle with operation readiness" -m "Confidence: high" -m "Scope-risk: broad" -m "Tested: Blocker, lifecycle, orchestration, feedback, report, analysis governance, migration, and compile checks" -m "Not-tested: Chromium rendering across non-Windows deployment images"
 ```
 
@@ -899,9 +1406,13 @@ Expected: staged paths contain no `.csv` and no full benchmark Markdown file.
 @dataclass(slots=True)
 class CaseServiceBundle:
     repository: CaseRepository
+    drafts: CaseDraftService
     lifecycle: CaseLifecycleService
     orchestration: CaseOrchestrationService
+    queries: CaseQueryService
     claims: CaseClaimService
+    actions: CaseActionService
+    corrections: SemanticCorrectionService
     feedback: CaseFeedbackService
     reports: CaseReportService
     blockers: CaseBlockerService
@@ -916,9 +1427,50 @@ class IdempotencyService:
 
 - Produces all routes in the design API table, mounted as `cases.router` at `/api/v2/cases` and `authority_sources.router` at `/api/v2/authority-sources`.
 
+The mutation and downstream read contracts are exact; handlers do not construct records or bypass these owners:
+
+| Route | Request DTO | Response DTO | Owning method |
+| --- | --- | --- | --- |
+| `POST /api/v2/cases` | `CaseCreate` | `CaseView` | `bundle.drafts.create` |
+| `GET /api/v2/cases` | query `state`, `owner_id`, `blocker_code`, `event_id`, `offset`, `limit` | `CasePage` | `bundle.repository.list_cases` plus blocker projection |
+| `GET /api/v2/cases/{case_id}` | none | `CaseView` | `bundle.repository.get_case` plus blocker projection |
+| `PATCH /api/v2/cases/{case_id}` | `CaseDraftUpdate` | `CaseView` | `bundle.drafts.update` |
+| `GET /api/v2/cases/{case_id}/blockers` | query `operation`, `include_resolved` | `list[CaseBlockerView]` | `bundle.blockers.list_blockers` |
+| `POST /api/v2/cases/{case_id}/blockers/{blocker_id}/resolutions` | `CaseBlockerResolutionCreate` | `CaseBlockerView` | `bundle.blockers.resolve` |
+| `POST /api/v2/cases/{case_id}/transitions` | `CaseTransitionRequest` | `CaseView` | `bundle.lifecycle.transition` |
+| `POST /api/v2/cases/{case_id}/snapshots` | `CaseSnapshotLinkCreate` | `CaseSnapshotLinkView` | `bundle.lifecycle.bind_snapshot` |
+| `POST /api/v2/cases/{case_id}/analysis-runs` | `CaseRunRequest` | `CaseRunView` | `bundle.orchestration.request_run` |
+| `GET /api/v2/cases/{case_id}/matrix` | query `offset`, `limit` | `EvidenceMatrixPage` | `bundle.queries.evidence_matrix` |
+| `POST /api/v2/cases/{case_id}/claims` | `CaseClaimCreate` | `CaseClaimView` | `bundle.claims.create_candidate` |
+| `GET /api/v2/cases/{case_id}/claims` | query `offset`, `limit` | `CaseClaimPage` | `bundle.claims.list_claims` |
+| `POST /api/v2/cases/{case_id}/claims/{claim_id}/approve-primary` | `ClaimApprovalRequest` | `CaseClaimView` | `bundle.claims.approve_primary` |
+| `POST /api/v2/cases/{case_id}/claims/{claim_id}/approve-supplementary` | `ClaimApprovalRequest` | `CaseClaimView` | `bundle.claims.approve_supplementary` |
+| `POST /api/v2/cases/{case_id}/semantic-corrections` | `SemanticCorrectionCreate` | `SemanticCorrectionView` | `bundle.corrections.append` |
+| `GET /api/v2/cases/{case_id}/semantic-corrections` | query `artifact_id` | `list[SemanticCorrectionView]` | `bundle.corrections.list` |
+| `POST /api/v2/cases/{case_id}/actions` | `CaseActionCreateRequest` | `CaseActionView` | `bundle.actions.create` |
+| `GET /api/v2/cases/{case_id}/actions` | none | `list[CaseActionView]` | `bundle.actions.list_actions` |
+| `POST /api/v2/cases/{case_id}/actions/{action_id}/transitions` with `target_status=completed` | `CaseActionTransitionRequest` | `CaseActionView` | `bundle.actions.complete` |
+| `POST /api/v2/cases/{case_id}/actions/{action_id}/transitions` with `target_status=waived` | `CaseActionTransitionRequest` | `CaseActionView` | `bundle.actions.waive` |
+| `POST /api/v2/cases/{case_id}/collection-acknowledgements` | `PartialCollectionAcknowledgementCreate` | `PartialCollectionAcknowledgementView` | `bundle.lifecycle.acknowledge_partial_collection` |
+| `POST /api/v2/cases/{case_id}/feedback` | `CaseFeedbackCreateRequest` | `CaseFeedbackView` | `bundle.feedback.append_feedback` |
+| `POST /api/v2/cases/{case_id}/closeout-reviews` | `CloseoutReviewCreate` | `CloseoutReviewView` | `bundle.lifecycle.submit_closeout_review` |
+| `POST /api/v2/cases/{case_id}/close` | `CaseCloseRequest` | `CaseView` | `bundle.lifecycle.close` |
+| `POST /api/v2/cases/{case_id}/reports` | `CaseReportFreezeRequest` | `CaseReportVersionView` | `bundle.reports.freeze` |
+| `GET /api/v2/cases/{case_id}/reports` | none | `list[CaseReportVersionView]` | `bundle.reports.list_versions` |
+| `GET /api/v2/cases/{case_id}/reports/{version}/html` | none | immutable HTML bytes | `bundle.reports.resolve_html` |
+| `GET /api/v2/cases/{case_id}/reports/{version}/pdf` | none | immutable PDF bytes | `bundle.reports.resolve_pdf` |
+| `GET /api/v2/cases/{case_id}/events` | query `after_id`, `limit` | `list[CaseAuditEventView]` | `bundle.repository.list_audit_events` |
+| `GET /api/v2/cases/{case_id}/events/stream` | query/header cursor | SSE of `CaseAuditEventView` | `bundle.repository.list_audit_events` plus existing SSE helpers |
+| `GET /api/v2/authority-sources` | query `status`, `offset`, `limit` | `AuthoritySourcePage` | `get_authority_source_service().list_sources` |
+| `POST /api/v2/authority-sources` | `AuthoritySourceCreate` | `AuthoritySourceView` | `get_authority_source_service().create_candidate` |
+| `POST /api/v2/authority-sources/{source_id}/approve` | `AuthoritySourceDecision` | `AuthoritySourceView` | `get_authority_source_service().approve` |
+| `POST /api/v2/authority-sources/{source_id}/revoke` | `AuthoritySourceDecision` | `AuthoritySourceView` | `get_authority_source_service().revoke` |
+
+Every JSON response is wrapped by the existing `success` envelope; HTML/PDF file responses and SSE are the only exceptions. List endpoints return the named page/list shape rather than an untyped dictionary.
+
 - [ ] **Step 1: Write API contract, authorization, retry, stream, and file-response tests**
 
-Use a FastAPI test app with dependency overrides, ASGI transport, real Pydantic bodies, and fake service bundles. Cover list/create/detail/state/snapshot/claim/run/action/acknowledgement/feedback/closeout/close/report/event routes, all Authority Source routes, viewer/analyst/admin boundaries, missing idempotency key, identical retry replay, conflicting retry `409`, expected-version `409`, `after_id`, `Last-Event-ID`, HTML/PDF content types, ETag, and not-found behavior.
+Use a FastAPI test app with dependency overrides, ASGI transport, real Pydantic bodies, and fake service bundles. Contract-test every field in the table above plus list/create/detail/state/snapshot/run/acknowledgement/feedback/close/event routes. Cover draft-only update rejection, separate action complete/waive dispatch, waiver rationale, correction artifact ownership, blocker resolution history, no Closeout Review acceptance field, no failed report record, all Authority Source routes, viewer/analyst/admin boundaries, missing idempotency key, identical retry replay, conflicting retry `409`, expected-version `409`, `after_id`, `Last-Event-ID`, HTML/PDF content types, ETag, and not-found behavior.
 
 ```python
 def test_mutation_replays_same_response_and_rejects_changed_body():
@@ -942,7 +1494,7 @@ Expected: collection fails because the Case and Authority Source v2 routers and 
 
 - [ ] **Step 3: Implement the dependency bundle and idempotent mutation wrapper**
 
-Construct focused repositories/services from one request-scoped `AsyncSession`. Require a non-empty `Idempotency-Key` on every mutation. Canonicalize JSON request bytes before hashing, lock the persisted key scope, return the stored status/body for an exact retry, and return `409` for a hash mismatch. Persist the response and domain operation in one transaction.
+Construct every `CaseServiceBundle` field from the focused Task 3/5/6 repositories and services using one request-scoped `AsyncSession`; no route calls repository mutation methods directly. Require a non-empty `Idempotency-Key` on every mutation. Canonicalize JSON request bytes before hashing, lock the persisted key scope, return the stored status/body for an exact retry, and return `409` for a hash mismatch. Persist each accepted response and domain operation in one transaction.
 
 - [ ] **Step 4: Implement all Case and Authority Source routes**
 
@@ -997,21 +1549,42 @@ git commit -m "Expose governed Case operations through a recoverable API" -m "Ad
 
 **Interfaces:**
 - Consumes: Task 8 JSON envelopes, report bytes, Case event stream URL, current auth store, existing specialist routes, Ant Design Vue, and icon components from `@ant-design/icons-vue`.
-- Produces in `types/case.ts`: `CaseState`, `CaseBlocker`, `CaseSummary`, `CaseDetail`, `AuthoritySource`, `CaseClaim`, `SemanticArtifact`, `CaseAction`, `CaseReportVersion`, `CaseAuditEvent`, and request body types matching backend field names exactly.
+- Produces in `types/case.ts`: TypeScript mirrors of every field in `CaseView`, `CaseBlockerView`, `CaseBlockerResolutionView`, `AuthoritySourceView`, `AuthorityMatchView`, `CaseClaimView`, `SemanticArtifactView`, `SemanticCorrectionView`, `CaseActionView`, `CaseSnapshotLinkView`, `CaseRunView`, `EvidenceMatrixPage`, `PartialCollectionAcknowledgementView`, `CaseFeedbackView`, `CloseoutReviewView`, `CaseReportVersionView`, and `CaseAuditEventView`, plus request types matching the corresponding backend DTO field names, nullability, literals, and ISO-8601 datetime encoding exactly. `CaseSummary` may select a subset for list rendering, but `CaseDetail` is the complete `CaseView` contract and may not rename identifiers.
 - Produces in `api/cases.ts`:
 
 ```typescript
 export function listCases(params: CaseListParams): Promise<ApiEnvelope<CasePage>>
 export function createCase(body: CaseCreateRequest, idempotencyKey: string): Promise<ApiEnvelope<CaseDetail>>
 export function getCase(caseId: string): Promise<ApiEnvelope<CaseDetail>>
+export function updateDraftCase(caseId: string, body: CaseDraftUpdate, idempotencyKey: string): Promise<ApiEnvelope<CaseDetail>>
 export function transitionCase(caseId: string, body: CaseTransitionRequest, idempotencyKey: string): Promise<ApiEnvelope<CaseDetail>>
-export function approvePrimaryClaim(caseId: string, claimId: string, body: ClaimApprovalRequest, idempotencyKey: string): Promise<ApiEnvelope<CaseDetail>>
-export function requestCaseRun(caseId: string, body: CaseRunRequest, idempotencyKey: string): Promise<ApiEnvelope<AnalysisRunSummary>>
-export function appendCaseAction(caseId: string, body: CaseActionCreateRequest, idempotencyKey: string): Promise<ApiEnvelope<CaseAction>>
+export function listCaseBlockers(caseId: string, includeResolved: boolean): Promise<ApiEnvelope<CaseBlocker[]>>
+export function resolveCaseBlocker(caseId: string, blockerId: string, body: CaseBlockerResolutionCreate, idempotencyKey: string): Promise<ApiEnvelope<CaseBlocker>>
+export function createCaseClaim(caseId: string, body: CaseClaimCreate, idempotencyKey: string): Promise<ApiEnvelope<CaseClaim>>
+export function listCaseClaims(caseId: string, params: PageParams): Promise<ApiEnvelope<CaseClaimPage>>
+export function approvePrimaryClaim(caseId: string, claimId: string, body: ClaimApprovalRequest, idempotencyKey: string): Promise<ApiEnvelope<CaseClaim>>
+export function requestCaseRun(caseId: string, body: CaseRunRequest, idempotencyKey: string): Promise<ApiEnvelope<CaseRun>>
+export function getEvidenceMatrix(caseId: string, params: PageParams): Promise<ApiEnvelope<EvidenceMatrixPage>>
+export function appendSemanticCorrection(caseId: string, body: SemanticCorrectionCreate, idempotencyKey: string): Promise<ApiEnvelope<SemanticCorrection>>
+export function listSemanticCorrections(caseId: string, artifactId?: string): Promise<ApiEnvelope<SemanticCorrection[]>>
+export function createCaseAction(caseId: string, body: CaseActionCreateRequest, idempotencyKey: string): Promise<ApiEnvelope<CaseAction>>
+export function listCaseActions(caseId: string): Promise<ApiEnvelope<CaseAction[]>>
+export function transitionCaseAction(caseId: string, actionId: string, body: CaseActionTransitionRequest, idempotencyKey: string): Promise<ApiEnvelope<CaseAction>>
 export function appendCaseFeedback(caseId: string, body: CaseFeedbackCreateRequest, idempotencyKey: string): Promise<ApiEnvelope<CaseFeedback>>
-export function freezeCaseReport(caseId: string, idempotencyKey: string): Promise<ApiEnvelope<CaseReportVersion>>
+export function submitCloseoutReview(caseId: string, body: CloseoutReviewCreate, idempotencyKey: string): Promise<ApiEnvelope<CloseoutReview>>
+export function listCaseReports(caseId: string): Promise<ApiEnvelope<CaseReportVersion[]>>
+export function freezeCaseReport(caseId: string, body: CaseReportFreezeRequest, idempotencyKey: string): Promise<ApiEnvelope<CaseReportVersion>>
 export function caseEventStreamUrl(caseId: string, afterId: number): string
 export function caseReportUrl(caseId: string, version: number, format: 'html' | 'pdf'): string
+```
+
+- Produces in `api/authority-sources.ts`:
+
+```typescript
+export function listAuthoritySources(params: AuthoritySourceListParams): Promise<ApiEnvelope<AuthoritySourcePage>>
+export function createAuthoritySource(body: AuthoritySourceCreate, idempotencyKey: string): Promise<ApiEnvelope<AuthoritySource>>
+export function approveAuthoritySource(sourceId: string, body: AuthoritySourceDecision, idempotencyKey: string): Promise<ApiEnvelope<AuthoritySource>>
+export function revokeAuthoritySource(sourceId: string, body: AuthoritySourceDecision, idempotencyKey: string): Promise<ApiEnvelope<AuthoritySource>>
 ```
 
 - Produces routes `/cases`, `/cases/new`, and `/cases/:caseId`; a Case menu item with a familiar folder/search icon; and five tab keys `overview`, `evidence`, `graph`, `actions`, and `reports` labeled exactly `概览`, `证据矩阵`, `图谱`, `处置`, and `报告`.
@@ -1176,18 +1749,20 @@ Expected: review reports no open Critical or Important findings, all fixes have 
 | --- | --- | --- |
 | `StructuredSearchHit`, `StructuredSearchRecord`, `ResearchArchiveEntry` | 2 | `app/schemas/case_research.py` |
 | `load_structured_search_records`, `load_research_archive_manifest`, `verify_research_archive` | 2 | `app/services/case_research_archive.py` |
-| `CaseState`, `CaseCreate`, `CaseBlockerView`, `CaseView` | 3 | `app/schemas/case.py` |
-| `SourceTier`, `AuthoritySourceStatus`, source request/view contracts | 3 | `app/schemas/authority_source.py` |
-| Case, snapshot, run, claim, action, report, audit, idempotency records | 3 | Focused files under `app/models/` |
-| `CaseRepository`, `AuthoritySourceRepository` | 3 | `app/services/case_repository.py`, `app/services/authority_source_repository.py` |
+| `CaseState`, `CaseCreate`, `CaseDraftUpdate`, blocker/resolution DTOs, `CaseView`, `CasePage` | 3 | `app/schemas/case.py` |
+| Claim create/approval/rejection/view DTOs | 3 | `app/schemas/case_claim.py` |
+| Action create/transition/view DTOs | 3 | `app/schemas/case_action.py` |
+| `SourceTier`, `AuthoritySourceStatus`, exact source create/decision/view/match DTOs | 3 | `app/schemas/authority_source.py` |
+| Case, snapshot, run, claim, action, report, blocker, blocker-resolution, audit, idempotency records | 3 | Focused files under `app/models/` |
+| `CaseRepository`, `AuthoritySourceRepository`, `CaseClaimRepository`, `CaseActionRepository`, `CaseBlockerRepository`, `CaseReportRepository` | 3 | Focused repository files under `app/services/` |
 | `ArchivedSourceText`, `ClaimCandidate`, URL/hash/span functions | 4 | `app/core/analysis/source_matching.py`, `app/core/analysis/claim_extraction.py` |
 | `AuthoritySourceService`, `CaseClaimService` | 4 | Focused files under `app/services/` |
-| Semantic enums/options/results/model records | 5 | `app/core/analysis/semantic_contracts.py`, `app/schemas/semantic_artifact.py` |
+| Semantic enums/options/results/model records and correction create/view DTOs | 5 | `app/core/analysis/semantic_contracts.py`, `app/schemas/semantic_artifact.py` |
 | `SemanticModelManager`, `SemanticEnrichmentEngine` | 5 | `app/core/analysis/semantic_models.py`, `app/core/analysis/semantic_enrichment.py` |
 | MMR, clustering, class-based TF-IDF | 5 | `semantic_keywords.py`, `semantic_topics.py` |
-| Semantic artifact/correction/cache records and repositories | 5 | Focused model/service files from Task 5 |
-| `CaseRunKind`, `CaseTransitionRequest`, acknowledgement and closeout bodies | 6 | `app/schemas/case_lifecycle.py` |
-| `CaseBlockerService`, `CaseLifecycleService`, `CaseOrchestrationService` | 6 | Focused files under `app/services/` |
+| Semantic artifact/correction/cache records, repositories, and `SemanticCorrectionService` | 5 | Focused model/service files from Task 5 |
+| Run/snapshot/transition/acknowledgement/feedback/matrix/audit/submitted-closeout/report DTOs | 6 | `app/schemas/case_lifecycle.py`, `app/schemas/case_report.py` |
+| `CaseDraftService`, `CaseActionService`, `CaseBlockerService`, `CaseLifecycleService`, `CaseOrchestrationService`, `CaseQueryService` | 6 | Focused files under `app/services/` |
 | `CaseFeedbackService`, `CaseReportService`, `PdfRendererPort` | 6 | Focused files under `app/services/` |
 | `MainCaseFixture`, `TwitterBenchmarkManifest`, `CaseFixtureImporter` | 7 | Fixture JSON plus `app/services/case_fixture_importer.py` |
 | `scan_twitter_benchmark`, `verify_twitter_benchmark` | 7 | `scripts/verify_twitter_benchmark.py` |

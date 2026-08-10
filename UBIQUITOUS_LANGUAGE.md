@@ -38,16 +38,16 @@ Current semantic package paths: `system/research/coordination_discover/`, `syste
 | **Case** | A long-lived investigative aggregate that preserves immutable evidence, analysis, claims, decisions, actions, feedback, reports, semantic records, and audit history for one bounded inquiry. | Event, project, report |
 | **Case Workbench** | The dense case-level page that keeps lifecycle status, the **Primary Claim**, and active **Case Blockers** visible across investigation tabs. | Dashboard, specialist page, report page |
 | **Case State** | One lifecycle value from `draft`, `collecting`, `evidence_ready`, `analyzing`, `awaiting_review`, `actioning`, `ready_to_close`, or `closed`. | Analysis status, blocker, phase |
-| **Case Blocker** | A separately persisted condition that prevents a named case operation without impersonating a **Case State**. | Blocked state, warning, error state |
+| **Case Blocker** | An append-only, stably identified condition that prevents a named case operation, with explicit scope, severity, evidence, and separate append-only resolution records; it never impersonates a **Case State**. | Blocked state, warning, error state |
 | **Authority Source** | An administered registry record for a source account or publisher eligible to support authoritative claims. | Trusted URL, verified post, allowlisted article |
 | **Source Tier** | The administered classification of an **Authority Source** as government or official institution, central mainstream media original, or provincial official media. | Credibility score, source rank, confidence |
 | **Case Claim** | An authoritative-source evidence record containing a verbatim excerpt, exact source span, URL, account, publication time, **Source Tier**, and content hash. | Topic, generated summary, analyst paraphrase |
-| **Primary Claim** | The single approved **Case Claim** that anchors stance and **Risk Review** for a **Case**. | Main topic, inferred claim, headline |
+| **Primary Claim** | The single approved **Case Claim** required by stance; approval triggers incremental stance plus **Risk Review**, while absence does not block other permitted stages or Risk Review. | Main topic, inferred claim, headline |
 | **Supplementary Claim** | An approved or pending **Case Claim** that adds authoritative context without replacing the **Primary Claim**. | Secondary verdict, supporting summary |
 | **Semantic Artifact** | An immutable, provenance-bound output of the explicit `semantic_enrichment` **Analysis Stage**. | Tag cache, model guess, score input |
 | **Semantic Correction** | An append-only human correction that references a **Semantic Artifact** and preserves both the original output and the correction rationale. | Artifact edit, overwrite, relabel in place |
 | **Case Action** | A required, completed, or explicitly waived disposition record attached to a **Case**. | Task, note, recommendation |
-| **Closeout Review** | The recorded human check that closure gates are satisfied and that unresolved limitations remain visible. | Canonical Verdict, approval click, final report |
+| **Closeout Review** | The submitted human rationale that closure gates are satisfied and unresolved limitations remain visible; submission is the gate and has no separate acceptance status. | Canonical Verdict, approval click, final report |
 | **Case Report Version** | A frozen, versioned HTML report with print-friendly PDF output bound to exact case, snapshot, run, model, and content hashes. | Live report, export view, mutable dashboard |
 | **Audit Event** | An append-only record of an actor, action, target, timestamp, request identity, and before/after references for a case mutation. | Log line, history overwrite, activity note |
 | **Partial Collection Acknowledgement** | An explicit analyst record accepting known collection incompleteness for a named scope without claiming that evidence is complete. | Ignore warning, complete collection, waiver |
@@ -130,10 +130,10 @@ Current semantic package paths: `system/research/coordination_discover/`, `syste
 - A **Case** references one or more immutable **Event Snapshots**; a snapshot is analysis input, while the case is the durable investigation that outlives any one snapshot or run.
 - A **Case** owns zero or more **Analysis Runs**, while an **Analysis Run** executes stages and never represents a **Case State**.
 - A **Case State** records lifecycle progress; a **Case Blocker** records an independently resolvable impediment and never adds a synthetic lifecycle value.
-- A **Case** may have many **Case Claims** and **Supplementary Claims**, but it must have exactly one approved **Primary Claim** before stance or **Risk Review** can complete.
+- A **Case** may have many **Case Claims** and **Supplementary Claims**, but it must have exactly one approved **Primary Claim** before stance can complete; Risk Review may run without stance and is rerun incrementally with stance after approval.
 - A **Case Claim** is a verbatim, source-spanned authority record; a topic, generated summary, or analyst paraphrase is semantic or narrative material and cannot substitute for it.
 - **Student Review** and **Teacher Review** produce advisory **Review Verdicts**; analyst approval creates an immutable **Canonical Verdict**, and a later **Closeout Review** verifies closure gates rather than changing that verdict.
-- A **Case** can close only after it has an approved **Canonical Verdict**, every required **Case Action** is completed or explicitly waived, and a **Closeout Review** is recorded.
+- A **Case** can close only after it has an approved **Canonical Verdict**, every required **Case Action** is completed or explicitly waived, and a **Closeout Review** is submitted; no additional Closeout Review acceptance gate exists.
 - A **Semantic Correction** points to one **Semantic Artifact** and never overwrites its model output or provenance.
 - Each **Case Report Version** freezes the case, snapshot, run, model-version, and content-hash references used to render it.
 - Every case mutation emits an **Audit Event**; repeated idempotent requests reuse the prior result without erasing history.

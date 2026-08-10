@@ -56,7 +56,7 @@ The design is governed by these invariants:
 | Persona | Responsibilities | First-release boundary |
 | --- | --- | --- |
 | Analyst | Creates Cases, binds snapshots, reviews collection quality, proposes claims, runs analysis, records corrections, and drafts actions. | One analyst may perform all responsibilities, but each action remains separately attributed. |
-| Approver | Approves the Primary Claim, Canonical Verdict, action waivers, and Closeout Review. | May be the same authenticated analyst; self-approval is visible in Audit Events. |
+| Approver | Approves the Primary Claim, Canonical Verdict, and action waivers; submits the Closeout Review rationale. | May be the same authenticated analyst; self-approval and closeout submission are visible in Audit Events. |
 | Source administrator | Maintains Authority Sources and Source Tiers. | Requires administrative permission; URL discovery alone does not grant authority status. |
 | Viewer | Reads Cases, evidence, analysis, actions, and frozen reports. | Cannot mutate case data or generate a new authoritative version. |
 | System operator | Manages model candidates, execution health, retention, and failed jobs. | Cannot silently convert model output into an analyst decision. |
@@ -87,7 +87,7 @@ The design is governed by these invariants:
 | Analysis Run reference | `0..n` | Versioned execution owned by the existing analysis boundary. |
 | Authority Source | `0..n` through claims | Administered registry record, versioned when tier or account metadata changes. |
 | Case Claim | `0..n` | Immutable excerpt and provenance; approval or retirement is a separate record. |
-| Approved Primary Claim | `0..1` before approval, exactly `1` before stance/Risk Review completion | One active approved version; replacement preserves the prior approval and triggers incremental reruns. |
+| Approved Primary Claim | `0..1` before approval, exactly `1` before stance completion | One active approved version; Risk Review may run without it, while approval/replacement triggers incremental stance plus Risk Review. |
 | Supplementary Claim | `0..n` | Contextual claim versions that cannot implicitly replace the Primary Claim. |
 | Review Verdict | `0..n` | Advisory Student or Teacher output associated with one run. |
 | Canonical Verdict | `0..n` versions, exactly `1` active approved version before closure | Human-approved and immutable; supersession points to the prior version. |
@@ -98,7 +98,7 @@ The design is governed by these invariants:
 | Case Report Version | `0..n` | Frozen rendered version with immutable inputs and hashes. |
 | Case Blocker | `0..n` active or resolved | Separately resolved condition; not a lifecycle value. |
 | Partial Collection Acknowledgement | `0..n` | Signed acknowledgement bound to collection scope and snapshot set. |
-| Closeout Review | `0..n`, exactly `1` accepted for closure | Human gate record referencing the closing state of verdicts, actions, blockers, and reports. |
+| Closeout Review | `0..n`, exactly `1` submitted for closure | Human rationale record referencing the closing state of verdicts, actions, blockers, and reports; submission is the gate and no separate acceptance status exists. |
 | Audit Event | `1..n` | Append-only mutation ledger owned by the Case boundary. |
 
 ### 4.2 Required Identifiers And Version Links
@@ -138,26 +138,26 @@ No failure, pause, or blocker value may be added to this set.
 | `awaiting_review` | `actioning` | An approved Canonical Verdict exists and required Case Actions are declared. | Verdict and action-set version. |
 | `actioning` | `ready_to_close` | Every required Case Action is completed or explicitly waived. | Completion/waiver record IDs. |
 | `ready_to_close` | `actioning` | A closure gate regresses because an action or decision is superseded before closure. | Regression reason and affected records. |
-| `ready_to_close` | `closed` | Approved Canonical Verdict, all actions completed/waived, and accepted Closeout Review. | Closeout Review ID and final aggregate hash. |
+| `ready_to_close` | `closed` | Approved Canonical Verdict, all actions completed/waived, and submitted Closeout Review. | Closeout Review ID and final aggregate hash. |
 
 `closed` is terminal in the first release. Material new evidence creates a linked follow-up Case so the original closeout remains reproducible.
 
 ### 5.3 Case Blockers
 
-A blocker has `blocker_id`, `code`, `scope`, `operation`, severity, evidence references, creation actor/time, resolution actor/time, and resolution reason. The UI and API derive `is_blocked_for(operation)` from active blockers; they do not derive a synthetic state.
+A blocker is an append-only `CaseBlockerRecord` with stable `blocker_id`, `case_id`, `identity_key`, `code`, `scope`, `operation`, `severity`, evidence references, creation actor/time, and payload hash. Each resolution is a separate append-only `CaseBlockerResolutionRecord` with `resolution_id`, `blocker_id`, `resolution_code`, reason, evidence references, actor/time, and payload hash. The original blocker is never updated or deleted. The UI and API project `active` and derive `is_blocked_for(operation)` from the latest blocker plus resolution history; they do not derive a synthetic state.
 
 Minimum blocker cases include:
 
 | Condition | Blocked operation | Required behavior |
 | --- | --- | --- |
-| Missing approved Primary Claim | Stance and Risk Review completion | Stance returns exactly `blocked_missing_primary_claim`; unrelated permitted stages continue. |
+| Missing approved Primary Claim | Stance only | Stance returns exactly `blocked_missing_primary_claim`; Risk Review and every other permitted stage may complete with the missing-stance limitation recorded. |
 | Non-registry authority URL | Claim approval | Keep the source and claim pending until source administration resolves it. |
 | Platform Gap | Collection completeness or a policy-selected closure gate | Display the absent platform and archive search evidence; never substitute unrelated content. |
 | Unacknowledged partial collection | Transition to `evidence_ready` | Require more collection or a Partial Collection Acknowledgement. |
 | Snapshot/hash mismatch | Artifact reuse and report freezing | Fail closed and require reconstruction from verified inputs. |
 | Missing approved Canonical Verdict | Transition to `actioning` or `closed` | Keep review/action gates visible. |
 | Incomplete required action | Transition to `ready_to_close` or `closed` | Complete or explicitly waive the action. |
-| Missing Closeout Review | Transition to `closed` | Require an accepted review record. |
+| Missing Closeout Review | Transition to `closed` | Require a submitted review record; do not introduce an approval or acceptance decision. |
 
 Blocker resolution appends a resolution record. It never deletes the blocker or its original evidence.
 
@@ -192,7 +192,7 @@ Hash verification is required before approval and report freezing. If live conte
 
 ### 6.3 Primary And Supplementary Claims
 
-A Case may contain many claim candidates and multiple Supplementary Claims. It may have at most one active approved Primary Claim, and it must have exactly one before stance or Risk Review can complete. Replacing the Primary Claim creates a new approval version, supersedes the prior active link, and triggers incremental stance and Risk Review; it does not rewrite earlier results.
+A Case may contain many claim candidates and multiple Supplementary Claims. It may have at most one active approved Primary Claim, and it must have exactly one before stance can complete. Risk Review may complete before that approval with the missing-stance limitation explicit. Approving or replacing the Primary Claim creates a new approval version, supersedes the prior active link, and triggers incremental stance plus Risk Review so the later review can consume the stance result; it does not rewrite earlier results.
 
 Topics, keywords, model-generated summaries, analyst paraphrases, and inferred narratives are not Case Claims. They may link to claims as aids, but cannot satisfy a Primary Claim gate.
 
@@ -268,7 +268,7 @@ Permitted work before Primary Claim approval:
 - entities;
 - near-duplicate analysis.
 
-Stance returns `blocked_missing_primary_claim`, and Risk Review cannot complete. The Case remains in its actual Case State with an active blocker record.
+Stance returns `blocked_missing_primary_claim`. Risk Review may complete without stance when that limitation is explicit, and Primary Claim approval later triggers incremental stance plus Risk Review. The Case remains in its actual Case State with an active stance-scoped blocker record.
 
 ### 8.2 Invalidation Matrix
 
@@ -299,26 +299,35 @@ The proposed API is additive under `/api/v2`; existing `/api/v2/analysis/*` rout
 | `GET /api/v2/cases` | Filter and paginate Cases by state, owner, blocker, time, and event ID. |
 | `GET /api/v2/cases/{case_id}` | Return the aggregate summary, active versions, lifecycle, and blocker projection. |
 | `PATCH /api/v2/cases/{case_id}` | Update mutable draft metadata using an expected aggregate version. |
+| `GET /api/v2/cases/{case_id}/blockers` | List stable blocker identities with scope, severity, evidence, active status, and append-only resolution history. |
+| `POST /api/v2/cases/{case_id}/blockers/{blocker_id}/resolutions` | Append a governed blocker resolution without changing or deleting the blocker. |
 | `POST /api/v2/cases/{case_id}/transitions` | Request a governed Case State transition and return unmet gates. |
 | `POST /api/v2/cases/{case_id}/snapshots` | Bind an existing immutable Event Snapshot by ID and hash. |
 | `POST /api/v2/cases/{case_id}/analysis-runs` | Create a Case-orchestrated Analysis Run with explicit stages and reuse policy. |
 | `GET /api/v2/cases/{case_id}/matrix` | Return paginated evidence, claim, artifact, community, and propagation cross-links. |
 | `POST /api/v2/cases/{case_id}/claims` | Record a verbatim Case Claim candidate. |
+| `GET /api/v2/cases/{case_id}/claims` | List immutable claim versions and current role/decision projections. |
 | `POST /api/v2/cases/{case_id}/claims/{claim_id}/approve-primary` | Approve or supersede the single active Primary Claim. |
 | `POST /api/v2/cases/{case_id}/claims/{claim_id}/approve-supplementary` | Approve a Supplementary Claim. |
 | `POST /api/v2/cases/{case_id}/semantic-corrections` | Append a correction to a Semantic Artifact. |
+| `GET /api/v2/cases/{case_id}/semantic-corrections` | List correction overlays with artifact/version ownership and provenance. |
 | `POST /api/v2/cases/{case_id}/actions` | Create a required Case Action. |
+| `GET /api/v2/cases/{case_id}/actions` | List latest action versions plus immutable transition history. |
 | `POST /api/v2/cases/{case_id}/actions/{action_id}/transitions` | Complete or explicitly waive an action. |
 | `POST /api/v2/cases/{case_id}/collection-acknowledgements` | Record a Partial Collection Acknowledgement. |
 | `POST /api/v2/cases/{case_id}/feedback` | Append Case-, run-, or verdict-scoped analyst feedback. |
 | `POST /api/v2/cases/{case_id}/closeout-reviews` | Evaluate and record closure gates. |
 | `POST /api/v2/cases/{case_id}/close` | Close a Case after all three closure gates pass. |
 | `POST /api/v2/cases/{case_id}/reports` | Freeze a new Case Report Version from exact active inputs. |
+| `GET /api/v2/cases/{case_id}/reports` | List successfully frozen report records and their provenance manifests. |
 | `GET /api/v2/cases/{case_id}/reports/{version}/html` | Retrieve immutable frozen HTML with its stored digest as the ETag. |
 | `GET /api/v2/cases/{case_id}/reports/{version}/pdf` | Retrieve the print-friendly PDF rendered from that frozen HTML. |
 | `GET /api/v2/cases/{case_id}/events` | Page append-only Case Audit Events strictly after `after_id`. |
 | `GET /api/v2/cases/{case_id}/events/stream` | Stream Case Audit Events with `Last-Event-ID` recovery. |
-| `GET/POST/PATCH /api/v2/authority-sources` | Read and administer versioned Authority Sources. |
+| `GET /api/v2/authority-sources` | Filter and paginate latest Authority Source versions. |
+| `POST /api/v2/authority-sources` | Create a pending Authority Source candidate. |
+| `POST /api/v2/authority-sources/{source_id}/approve` | Append an approved registry version with tier and classification evidence. |
+| `POST /api/v2/authority-sources/{source_id}/revoke` | Append a revoked registry version with a reason. |
 
 Mutation endpoints require `Idempotency-Key`, actor identity, and expected aggregate version where state can conflict. A repeated key with the same actor, endpoint, and canonical request hash returns the original status and body. Reuse with a different request hash returns `409 idempotency_conflict`.
 
@@ -370,7 +379,7 @@ A Case Report Version is rendered from a manifest that freezes:
 - active and resolved blockers plus Closeout Review where present;
 - renderer version, template hash, generated-at time, actor, and report content hash.
 
-The canonical stored render is versioned HTML with local, content-addressed assets. PDF is a print-friendly rendering of that frozen HTML, not a second independently assembled report. A render failure leaves the requested version in a failed state with diagnostics and does not publish partial output. Regeneration after a renderer change creates a new report version.
+The canonical stored render is versioned HTML with local, content-addressed assets. PDF is a print-friendly rendering of that frozen HTML, not a second independently assembled report. A report version number and `CaseReportVersionRecord` are allocated only after both renders and hashes succeed. A render failure removes temporary files, writes diagnostic operational/audit evidence, and creates no report-version row or published output. Retrying after renderer correction therefore attempts the next successful immutable version rather than preserving a failed version.
 
 ## 12. Permissions, Audit, And Idempotency
 
@@ -381,7 +390,7 @@ The canonical stored render is versioned HTML with local, content-addressed asse
 | Read Cases and frozen reports | Yes | Yes | Yes |
 | Create/update draft Case and run analysis | No | Yes | Yes |
 | Propose claims/corrections/actions | No | Yes | Yes |
-| Approve Primary Claim, Canonical Verdict, waivers, Closeout Review | No | Yes in first release | Yes |
+| Approve Primary Claim, Canonical Verdict, waivers; submit Closeout Review | No | Yes in first release | Yes |
 | Administer Authority Sources and Source Tiers | No | No | Yes |
 | Register/activate model candidates | No | No | Yes under existing model governance |
 
@@ -407,6 +416,7 @@ Deletion of an authoritative record is represented by a tombstone or retirement 
 
 The demonstration Case uses:
 
+- Case ID: `case_trump_visit_2026_05_21`;
 - Event ID: `trump_visit_2026_05_21`;
 - core window: 2026-05-14 through 2026-05-17, Beijing time;
 - context window: 2026-05-08 through 2026-05-20, Beijing time;
@@ -436,7 +446,7 @@ Only schema, statistics, provenance, and digest metadata may be committed. Full 
 | Failure | Surface | Recovery |
 | --- | --- | --- |
 | Source not in Authority Source registry | Claim remains `pending_source_review`; blocker on approval. | Administrator versions the registry or rejects the candidate. |
-| Primary Claim absent | Stance result `blocked_missing_primary_claim`; Risk Review incomplete. | Approve a source-verified Primary Claim, then trigger incremental stages. |
+| Primary Claim absent | Stance result `blocked_missing_primary_claim`; Risk Review may complete with the missing-stance limitation. | Approve a source-verified Primary Claim, then trigger incremental stance plus Risk Review. |
 | Collection partial | Coverage and blocker shown without implying absence of activity. | Collect more or record a bounded Partial Collection Acknowledgement. |
 | Platform archive unavailable | Platform Gap remains active. | Attach verifiable archive evidence later or retain the documented gap. |
 | Model bytes missing or digest mismatch | Semantic task fails closed or degrades; no unpinned substitute. | Restore verified pinned bytes and rerun a new artifact. |
@@ -445,7 +455,7 @@ Only schema, statistics, provenance, and digest metadata may be committed. Full 
 | Snapshot or content hash mismatch | Reuse/report freeze rejected. | Rebuild references from verified immutable content. |
 | Stale late worker result | Result retained but not promoted to active projection. | Run against current dependencies or explicitly inspect the historical result. |
 | Concurrent Case mutation | `409` with current aggregate version. | Reload and submit a new intent with a new request hash. |
-| Report render failure | Failed report request visible; no frozen version published. | Retry idempotently or create a new version after correcting renderer inputs. |
+| Report render failure | Diagnostic audit/operational evidence is visible; temporary files are removed and no report-version row is created. | Retry idempotently after correcting renderer inputs; allocate a version only after HTML/PDF success. |
 | PDF render differs from frozen HTML | Integrity check fails and PDF is unavailable. | Re-render from the exact stored HTML/assets and renderer version. |
 | Audit persistence unavailable | Authoritative mutation fails atomically. | Retry after audit/outbox recovery; never accept an unaudited mutation. |
 
@@ -520,14 +530,14 @@ Boundary rules:
 - Reject a Case Claim without verbatim excerpt, exact source span, publication metadata, registry version, or matching content hash.
 - Verify non-registry URLs remain pending and tier changes are versioned.
 - Prove Event Snapshots, claims, verdicts, corrections, reports, actions, and Audit Events are append-only.
-- Enforce closure only with an approved Canonical Verdict, all required actions completed/waived, and an accepted Closeout Review.
+- Enforce closure only with an approved Canonical Verdict, all required actions completed/waived, and a submitted Closeout Review; assert that no fourth acceptance status is defined.
 - Exercise transaction rollback when Audit Event/outbox persistence fails.
 
 ### 16.2 Orchestration And Semantic Tests
 
 - Preserve the existing four default Analysis Stages when `requested_stages` is omitted.
 - Require explicit `semantic_enrichment` from Case orchestration.
-- Without Primary Claim, allow Coordination Discover, Propagation Analysis, sentiment, topics, keywords, entities, and near duplicates; assert exact stance blocker code `blocked_missing_primary_claim`.
+- Without Primary Claim, allow Coordination Discover, Propagation Analysis, sentiment, topics, keywords, entities, near duplicates, and Risk Review; assert exact stance blocker code `blocked_missing_primary_claim` and no Risk Review blocker.
 - On Primary Claim approval, assert only stance and Risk Review dependencies rerun when snapshot/model hashes are unchanged.
 - Prove shared embeddings are computed once per dependency key and reused by keyword MMR, topic clustering plus c-TF-IDF, near duplicates, and community comparison.
 - Prove main posts and comments remain separate scopes through artifacts and aggregates.
