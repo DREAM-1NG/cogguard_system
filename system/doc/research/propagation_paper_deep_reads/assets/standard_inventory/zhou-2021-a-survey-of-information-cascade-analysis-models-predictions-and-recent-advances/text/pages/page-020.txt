@@ -1,0 +1,55 @@
+27:20                                                                                            F. Zhou et al.
+
+
+compute. However, structural features, especially for those large-scale graphs, e.g., global graph
+and r-reachable graphs, which often contain thousands or even millions of nodes and edges, re-
+quire extensive computational resources. Content features of texts, images, audio, and videos, de-
+pending on specific problem formulations, data scales, and modeling algorithms, have different
+time/space complexities.
+  In this spirit, given an exhaustive set of features, how to select a relatively small portion of
+representative features to maximize the marginal benefits of prediction between effectiveness and
+efficiency, becomes a critical consideration for designing practical prediction models [60, 230, 246].
+Also, existing models require more features like history view counts and diffusion paths, which in
+most cases are unavailable and, most importantly, are not generalizable to different scenarios.
+  We reviewed four categories of features and corresponding prediction models. However, it is
+impossible to mention all features and models, or to evaluate their performance in all feature com-
+binations. A comprehensive study on evaluating different features in different conditions would
+be beneficial in standardizing the feature engineering and feature selection/combination.
+
+4  GENERATIVE MODELS
+Many real-world phenomena—e.g., information retweeting, hospital admissions, and citations of
+scientific papers,—can be formulated as event sequences in the continuous temporal domain. Mod-
+eling the arrival/occurrence of event sequences or the participation time series is a fundamental
+step towards understanding the underlying dynamics of the information diffusion. The spreading
+of information items is therefore widely characterized by probabilistic statistical generative ap-
+proaches such as epidemic models, survival analysis, and various stochastic point processes. In
+this section, we review these generative models for popularity prediction.
+
+4.1  Poisson Processes
+Models based on point processes distinguish themselves from feature-based models because of
+their statistical, probabilistic, and generative forms. Point processes are often used when modeling
+time series, e.g., the arrival rate of customers, phone calls, and mechanical failures, in queuing
+theory and operational research.
+ A generative probabilistic model using reinforced Poisson process (RPP) was proposed in Ref-
+erence [197] (followed by Reference [174]) to predict items’ popularity (in their case the scientific
+impact of papers) using three key ingredients: (i) fitness or attractiveness of an item; (ii) tempo-
+ral decay function; and (iii) reinforcement mechanism (e.g., rich-get-richer). Specifically, the rate
+function of inhomogeneous Poisson process for information item Ii is defined as
+
+                                          λi (t) = αiϕi (t)Pi (t),                                         (1)
+
+where αi is the attractiveness of item Ii represented as a single value evaluated by maximum
+likelihood estimation [197], or follows posterior distribution from a conjugate prior [174]; ϕi (t) is
+the relaxation function or decay function to characterize the aging effect; Pi (t) is the total number
+of popularity Ii received at time t. With the above defined rate function, given (j −1)th participant
+arrives at tj−1, the probability of jth participant arrives at tj is given by
+                                              −   tj  αiϕi (tj )Pi (tj )dt
+                             Pr(tj |tj−1) = αiϕi (tj)Pi (tj)e    tj−1                      .                          (2)
+
+  Based on RPP model, Reference [62] proposed an extended model PETM. Unlike RPP, which
+is designed to quantify the long-term scientific impact, PETM is more applicable to the sce-
+nario of microblogging platforms. Specifically, PETM uses a power-law time decay function
+                                                                                                                                                   )2                                                                                                     t−μi                                                                                         1   exp  −(ln                                                                                                in                                                                                                                                               2ϕi (t) = t−γi (γi > 0) to substitute the log-normal distribution ϕi (t) = √                                                                                              2σ                                                                                2πσit                                                                                                                                                                                           i
+
+
+ACM Computing Surveys, Vol. 54, No. 2, Article 27. Publication date: March 2021.

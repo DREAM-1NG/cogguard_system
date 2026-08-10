@@ -55,12 +55,7 @@ async def detect_social_bots(
             },
         }
     else:
-        result = await asyncio.to_thread(
-            run_trained_botrhg_detection,
-            posts,
-            active_model,
-            allow_legacy_fallback=False,
-        )
+        result = await _run_platform_scoped_detection(posts, active_model)
     runtime_failed = active_model is not None and result is None
     if runtime_failed:
         result = {
@@ -120,3 +115,54 @@ async def detect_social_bots(
     result["summary"]["platform"] = platform
     result["summary"]["post_count"] = len(posts)
     return result
+
+
+async def _run_platform_scoped_detection(posts: list[dict], active_model) -> dict | None:
+    """Keep account identities and support hypergraphs inside one platform."""
+
+    grouped: dict[str, list[dict]] = {}
+    for post in posts:
+        platform = str(post.get("platform") or "unknown").strip().lower()
+        grouped.setdefault(platform, []).append(post)
+
+    platform_results: list[tuple[str, dict]] = []
+    for platform, scoped_posts in grouped.items():
+        result = await asyncio.to_thread(
+            run_trained_botrhg_detection,
+            scoped_posts,
+            active_model,
+            allow_legacy_fallback=False,
+        )
+        if result is None:
+            return None
+        platform_results.append((platform, result))
+
+    if not platform_results:
+        return {
+            "method": "BotRHG",
+            "accounts": [],
+            "summary": {"account_count": 0, "bot_count": 0, "post_count": 0},
+        }
+
+    accounts = [
+        {**row, "platform": platform}
+        for platform, platform_result in platform_results
+        for row in platform_result.get("accounts", [])
+    ]
+    first_result = platform_results[0][1]
+    summary = dict(first_result.get("summary") or {})
+    summary.update(
+        {
+            "account_count": len(accounts),
+            "bot_count": sum(row.get("final_prediction") == "bot" for row in accounts),
+            "routed_count": sum(bool(row.get("routed")) for row in accounts),
+            "post_count": len(posts),
+            "platform_count": len(platform_results),
+        }
+    )
+    merged = {
+        key: first_result[key]
+        for key in ("method", "runtime_mode", "model_card")
+        if key in first_result
+    }
+    return {**merged, "accounts": accounts, "summary": summary}

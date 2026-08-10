@@ -1,0 +1,60 @@
+A Survey of Datasets and Tasks for Information Diffusion                                                                   Conference’17, July 2017, Washington, DC, USA
+
+   "tweets," allowing for the sharing of news, personal insights,      a post 𝑝𝑖∈𝑃and its repost/comment 𝑟𝑖𝑗. In graph-based fake news
+  and various types of content, while also facilitating interaction       detection, diffusion network 𝐺𝐷𝑖 = {𝑉𝑖, 𝐸𝐷3𝑖  } for each news com-
+  through following other users, replying, retweeting, and liking.                                                                         prises 𝑉𝑖= {𝑝𝑖,𝑟𝑖1,𝑟𝑖2, . . . } including news 𝑝𝑖and its engagement• According to different input, each kind of social bot detection                                                               elements 𝑟𝑖𝑗∈{𝑢𝑖𝑗, 𝑝𝑖𝑗, (𝑢𝑖𝑗, 𝑝𝑖𝑗)} (user, repost/comment, or both),
+  dataset captures different aspects of user information, propaga-
+                                                                varying across datasets. Particularly, either user engagements set
+  tion content, user behavior, and relations on Twitter.
+                                            𝑀or diffusion network 𝐺𝐷𝑖for each news can generate the news
+                                                               engagement graph representing connections between news via over-4.3  Methodology.
+                                                                   lapping engaged users. User engagement sets in user information
+Similarly, we present a representative method for each subtask   𝑀= {𝑚∈(𝑢, 𝑝,𝑘)|𝑢∈𝑈, 𝑝∈𝑃} indicates that user 𝑢has 𝑘en-
+of social bot detection, respectively. They briefly introduce their      gagements with news 𝑝through reposts/comments [80]. Therefore,
+landmark algorithms and current performance in this task.             in light of the symbol definitions provided, rumor detection and
+• User-based and content-based bot detection: [19] introduces a Con-      fake news detection can be defined as follows.
+  textual LSTM network for detecting social bots using user and     • Rumor detection: Given the labeled post set 𝑃with post con-
+  content data. The model converts tweet text into GloVe vectors         tent and several aspects of social context (the user set 𝑈with
+  and combines them with user metadata. It employs synthetic        user information, the social network 𝐺𝑆= {𝑉𝑈, 𝐸𝑆}, the re-
+  minority oversampling and interprets LSTM hidden layers to dif-       post/comment content and the diffusion network𝐺𝐷𝑖= {𝑉𝑃𝑖, 𝐸𝐷2𝑖  }
+   ferentiate tweets generated from human or bot. Table 8 compares         of each post), rumor detection aims to learn a classifier 𝑓   :
+  the performance of the Contextual LSTM and baseline models on       𝑓(𝑝𝑖,𝑈,𝐺𝑆,𝐺𝐷𝑖) →𝑦𝑃that can automatically detect the veracity
+  account-level (user) and tweet-level bot detection tasks using the                                                                               label 𝑦𝑃of a post 𝑝.
+  Cresci-2017 dataset [66], measured by precision, recall, F1-score,                                                           • Fake news detection: Given the labeled news set 𝑃with the news
+  accuracy, and AUC.                                                                        content, the user set 𝑈with the user information and several
+• Graph-based bot detection: [20] presents an adversarial attack                                                                         aspects of social context (the social network 𝐺𝑆= {𝑉𝑈, 𝐸𝑆}, the
+  method to bypass bot detection systems by placing a new bot                                                                repost/comment content, the diffusion network 𝐺𝐷𝑖= {𝑉𝑖, 𝐸𝐷3𝑖  }
+  near an existing one in the social graph. Utilizing a Relational                                                                            of each news and the user engagements set 𝑀), fake news detec-
+  Graph Convolutional Network (R-GCN), the method generates                                                                         tion aims to learn a classifier 𝑓: 𝑓(𝑃,𝑈,𝐺𝑆,𝐺𝐷𝑖, 𝑀) →𝑦𝑃that
+  the new bot’s embedding and connects it to the target bot as                                                                can automatically detect the veracity label 𝑦𝑃of a news 𝑝.
+  second-order neighbors. An attribute recovery module conceals
+  the new bot’s text attributes, achieving high attack success while
+  differentiating the bot from human users. Table 9 shows per-
+  formance results on two datasets (Cresci-2015 [71] and TwiBot-     5.2  Datasets analysis.
+  22 [17]), measured by attack success rate and new nodes detected
+                                                           • In Table 2, several datasets are processed from the same source  as bots.
+                                                                     data to enrich the data quality. Based on PHEME-v1, PHEME-
+5  Misinformation detection                             v2 extends more events and PHEME-v3 offers the social net-
+                                                                  work. Twitter15/16-RDMSC extra crawl the user information and
+For the content during the information diffusion process, the decen-                                                                        friendships based on Twitter15/16. Compare to the FakeNews-
+tralization of discourse has led to an increase in false or misleading                                                                          Net, Fake-NewsNet-DECOR only utilizes news content and extra
+information (i.e., misinformation), which not only misguides the                                                                      provides the raw user-news engagement records. FakeNewsNet-
+public but also threatens cyberspace security, making misinfor-                                                    UPFD enhances data quality by incorporating news propagation
+mation detection essential [100, 101]. Misinformation primarily                                                                 networks and news retweet graphs and crawling near 20 million
+includes rumors and fake news [102]. Rumors are unverified, un-                                                                                historical tweets of users.
+intentionally spread on social media, while fake news consists of                                                           • Regarding attributes, most rumor detection datasets include con-
+deliberately false articles spread by official accounts or websites [13].                                                                                  tent. Three PHEME, Twitter15-RDMSC and Twitter16-RDMSC
+Therefore, misinformation detection is divided into rumor and fake                                                                           also contain user property. Datasets from FakeNewsNet to MC-
+news detection.                                                               Fake in the table have user engagement sets 𝑀or the diffusion
+  Current methods rely on a single information source [103] by                                                              network 𝐺𝐷𝑖for graph-based detection.
+incorporating post content and contextual information. Specifically,                                                           • Multimodal datasets for rumor detection are limited such as
+social context includes repost/comment content, user context (i.e.,                                                          MR2. In contrast, fake news detection datasets are more diverse:
+user information), and network context (i.e., user social network,                                                           FakeSV includes texts and videos, while MCFEND, Weibo21,
+diffusion network, and user engagement set) [13, 44, 81, 88, 104].                                                                        Image-verification-corpus, Evons, FauxBuster, MM-Covid, and
+Based on these, rumor detection determines the veracity label of                                                MuMIN combine texts and images, enhancing understanding and
+a post 𝑦𝑃∈{0, 1}, indicating a non-rumor (0) or a rumor (1). Fake                                                                        detection accuracy.
+news detection classifies news as real (0) or fake (1) [80].                                                           • Datasets use various labeling systems. Twitter15,Twitter16,Twitt-
+                                                        er15-RDMSC and Twitter16-RDMSC apply a four-class system:
+5.1  Definition.                                    𝑦𝑃∈{𝑁,𝑇, 𝐹,𝑈} (non-rumor, true rumor, false rumor, unveri-
+Regarding rumor detection, the diffusion network 𝐺𝐷𝑖= {𝑉𝑃𝑖, 𝐸𝐷2𝑖  }         fied rumor). MR2, Breaking!, and MuMIN use three categories:
+of each post comprises 𝑉𝑃𝑖 = {𝑝𝑖,𝑟𝑖1,𝑟𝑖2, . . . } representing the set of      𝑦𝑃∈{0, 1, 2} (non-rumor, rumor, unverified rumor). FineFake

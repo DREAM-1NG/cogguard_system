@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import importlib.util
+import hashlib
 import json
 import os
+import sys
 from concurrent.futures import Future
 from contextlib import contextmanager
 from dataclasses import asdict
@@ -14,20 +16,55 @@ from uuid import uuid4
 
 from app.config import PROJECT_ROOT, resolve_project_path, settings
 from app.core.account_training import AccountTrainingFamily
+from app.core.account_model_artifact import load_verified_chinese_social_encoder_artifact
 from app.utils.exceptions import AppException
 
 __all__ = [
+    "AccountModelGpuOwnershipBusyError",
+    "AccountModelRuntimeOwnership",
     "AccountTrainingOwnership",
     "AccountTrainingOwnershipBusyError",
+    "account_model_gpu_ownership_path",
     "account_training_ownership_path",
     "account_training_run_is_live",
+    "acquire_account_model_gpu_ownership",
     "acquire_account_training_ownership",
     "execute_account_training_artifact",
+    "preflight_account_training_artifact",
 ]
+
+_MLM_COMPATIBLE_MODEL_TYPES = frozenset(
+    {
+        "albert",
+        "bert",
+        "big_bird",
+        "camembert",
+        "deberta",
+        "deberta-v2",
+        "distilbert",
+        "electra",
+        "flaubert",
+        "funnel",
+        "longformer",
+        "mobilebert",
+        "modernbert",
+        "roberta",
+        "roformer",
+        "xlm",
+        "xlm-roberta",
+    }
+)
+_MODEL_WEIGHT_FILENAMES = ("model.safetensors", "pytorch_model.bin")
+_MODEL_WEIGHT_INDEX_FILENAMES = ("model.safetensors.index.json", "pytorch_model.bin.index.json")
+_PRODUCTION_DATASET_NAME = "approved_account_corpus"
 
 
 class AccountTrainingOwnershipBusyError(RuntimeError):
     """A live local runtime still owns the durable run fence."""
+
+
+class AccountModelGpuOwnershipBusyError(AccountTrainingOwnershipBusyError):
+    """Another live account-model operation owns the single-node GPU fence."""
 
 
 class AccountTrainingOwnership:
@@ -64,6 +101,34 @@ class AccountTrainingOwnership:
         self._released = True
 
 
+class AccountModelRuntimeOwnership:
+    """Release a GPU fence and operation fence as one runtime ownership unit."""
+
+    def __init__(self, *owners: AccountTrainingOwnership):
+        if not owners:
+            raise ValueError("Account model runtime ownership requires at least one fence.")
+        self._owners = owners
+
+    @property
+    def release_deferred(self) -> bool:
+        return any(owner.release_deferred for owner in self._owners)
+
+    def release_when_finished(self, execution: Future[Any]) -> None:
+        for owner in self._owners:
+            owner.release_when_finished(execution)
+
+    def release(self) -> None:
+        for owner in reversed(self._owners):
+            owner.release()
+
+
+def account_model_gpu_ownership_path() -> Path:
+    """Return the single-node fence shared by account training and evaluation."""
+
+    root = resolve_project_path(settings.MODEL_ARTIFACT_ROOT)
+    return root / "account_model" / "locks" / "gpu.lock"
+
+
 def account_training_ownership_path(run_id: str) -> Path:
     """Return the run-local ownership record below MODEL_ARTIFACT_ROOT."""
 
@@ -88,21 +153,53 @@ def account_training_run_is_live(run_id: str) -> bool:
 def acquire_account_training_ownership(run_id: str, attempt: int) -> AccountTrainingOwnership:
     """Create an exclusive run fence, reclaiming only records for dead owners."""
 
+    return _acquire_ownership(
+        path=account_training_ownership_path(run_id),
+        attempt=attempt,
+        metadata={"run_id": run_id},
+        busy_error=AccountTrainingOwnershipBusyError,
+        busy_message=f"Account training run {run_id}",
+    )
+
+
+def acquire_account_model_gpu_ownership(operation_id: str) -> AccountTrainingOwnership:
+    """Acquire the process-bound GPU fence for one training or evaluation operation."""
+
+    normalized_operation_id = str(operation_id or "").strip()
+    if not normalized_operation_id or len(normalized_operation_id) > 256:
+        raise ValueError("Account model GPU operation_id is invalid.")
+    return _acquire_ownership(
+        path=account_model_gpu_ownership_path(),
+        attempt=1,
+        metadata={"operation_id": normalized_operation_id},
+        busy_error=AccountModelGpuOwnershipBusyError,
+        busy_message="Account model GPU",
+    )
+
+
+def _acquire_ownership(
+    *,
+    path: Path,
+    attempt: int,
+    metadata: dict[str, Any],
+    busy_error: type[AccountTrainingOwnershipBusyError],
+    busy_message: str,
+) -> AccountTrainingOwnership:
     normalized_attempt = int(attempt)
     if normalized_attempt < 1:
         raise ValueError("Account training attempt must be positive.")
-    path = account_training_ownership_path(run_id)
     path.parent.mkdir(parents=True, exist_ok=True)
     token = uuid4().hex
     process_identity = _process_identity(os.getpid())
     if not process_identity:
-        raise RuntimeError("Cannot establish a stable process identity for account training ownership.")
+        raise RuntimeError("Cannot establish a stable process identity for account model runtime ownership.")
     payload = json.dumps(
         {
             "attempt": normalized_attempt,
             "pid": os.getpid(),
             "process_identity": process_identity,
             "token": token,
+            **metadata,
         },
         ensure_ascii=True,
         sort_keys=True,
@@ -115,13 +212,9 @@ def acquire_account_training_ownership(run_id: str, attempt: int) -> AccountTrai
             if owner is None:
                 if not path.exists():
                     continue
-                raise AccountTrainingOwnershipBusyError(
-                    f"Account training run {run_id} has an unrecognized ownership fence."
-                )
+                raise busy_error(f"{busy_message} has an unrecognized ownership fence.")
             if _owner_is_live(owner):
-                raise AccountTrainingOwnershipBusyError(
-                    f"Account training run {run_id} is still owned by live process {owner['pid']}."
-                )
+                raise busy_error(f"{busy_message} is still owned by live process {owner['pid']}.")
             _reclaim_stale_owner(path, owner)
             continue
         try:
@@ -324,14 +417,101 @@ def execute_account_training_artifact(
     error instead of producing a heuristic candidate.
     """
 
+    training_family = preflight_account_training_artifact(family=family, config=config)["training_family"]
     output = _resolve_output_dir(output_dir)
+    if training_family == AccountTrainingFamily.CHINESE_SOCIAL_ENCODER:
+        return _execute_dapt(config, output)
+    return _execute_detector(config, output)
+
+
+def preflight_account_training_artifact(*, family: str, config: dict[str, Any]) -> dict[str, Any]:
+    """Validate immutable local inputs before a training run is queued or executed.
+
+    This deliberately performs only filesystem and JSON-structure checks. It
+    does not create artifact directories, acquire runtime ownership, initialize
+    CUDA, instantiate Transformers objects, or access the network. The worker
+    still performs the final local Transformers load immediately before DAPT.
+    """
+
     try:
         training_family = AccountTrainingFamily(family)
     except ValueError as error:
         raise AppException(code=400, msg=f"Unsupported account training family: {family}") from error
     if training_family == AccountTrainingFamily.CHINESE_SOCIAL_ENCODER:
-        return _execute_dapt(config, output)
-    return _execute_detector(config, output)
+        return _preflight_chinese_social_encoder(config, training_family)
+    return _preflight_chinese_account_detector(config, training_family)
+
+
+def _preflight_chinese_social_encoder(
+    config: dict[str, Any],
+    training_family: AccountTrainingFamily,
+) -> dict[str, Any]:
+    corpus_path = _required_file_path(config.get("corpus_documents_path"), "corpus_documents_path")
+    documents = _read_text_jsonl(corpus_path)
+    if not documents:
+        raise AppException(code=409, msg="Chinese encoder training corpus must contain at least one trainable text.")
+    historical_count = 0
+    if config.get("historical_documents_path"):
+        historical_path = _required_file_path(config.get("historical_documents_path"), "historical_documents_path")
+        historical_count = len(_read_text_jsonl(historical_path))
+        if not historical_count:
+            raise AppException(code=409, msg="Chinese encoder historical corpus must contain at least one trainable text.")
+    model_path = str(config.get("model_name_or_path") or settings.ACCOUNT_ACQUISITION_TEXT_MODEL_PATH).strip()
+    if not model_path:
+        raise AppException(code=409, msg="Chinese encoder training requires a local model_name_or_path.")
+    _validate_local_transformers_mlm(Path(model_path).expanduser().resolve())
+    return {
+        "family": training_family.value,
+        "training_family": training_family,
+        "document_count": len(documents),
+        "historical_document_count": historical_count,
+    }
+
+
+def _preflight_chinese_account_detector(
+    config: dict[str, Any],
+    training_family: AccountTrainingFamily,
+) -> dict[str, Any]:
+    if config.get("strict_protocol", True) is not True:
+        raise AppException(code=409, msg="Account detector training requires strict_protocol=true.")
+    dataset_name = str(config.get("dataset_name") or _PRODUCTION_DATASET_NAME)
+    if dataset_name != _PRODUCTION_DATASET_NAME:
+        raise AppException(code=409, msg="Account detector training only accepts dataset_name=approved_account_corpus.")
+    dataset_root = _required_path(config.get("dataset_root"), "dataset_root")
+    if not dataset_root.is_dir():
+        raise AppException(code=409, msg="Account detector training dataset_root must be a directory.")
+    dataset_manifest = _validate_detector_dataset_root(dataset_root)
+    expected_fingerprint = str(config.get("input_fingerprint") or "").lower()
+    if not _is_sha256(expected_fingerprint) or dataset_manifest["data_fingerprint"] != expected_fingerprint:
+        raise AppException(code=409, msg="Account detector dataset fingerprint does not match input_fingerprint.")
+    encoder_version = str(config.get("encoder_version") or "").strip()
+    encoder_artifact_hash = str(config.get("encoder_artifact_hash") or "").strip().lower()
+    model_path = str(config.get("text_model_path") or "").strip()
+    binding_payload_path = str(config.get("encoder_binding_payload_path") or "").strip()
+    if not encoder_version or not model_path or not binding_payload_path or len(encoder_artifact_hash) != 64:
+        raise AppException(code=409, msg="Account detector training requires a registered encoder version.")
+    try:
+        verified_manifest = load_verified_chinese_social_encoder_artifact(
+            model_path,
+            expected_hash=encoder_artifact_hash,
+        )
+    except AppException:
+        raise
+    except (OSError, TypeError, ValueError) as error:
+        raise AppException(code=409, msg="Account detector training encoder artifact verification failed.") from error
+    if str(verified_manifest.get("artifact_hash") or "").lower() != encoder_artifact_hash:
+        raise AppException(code=409, msg="Account detector training encoder artifact hash is invalid.")
+    encoder_payload = verified_manifest.get("encoder_payload")
+    if not isinstance(encoder_payload, dict) or not isinstance(encoder_payload.get("path"), str):
+        raise AppException(code=409, msg="Account detector training encoder payload is invalid.")
+    expected_payload_path = Path(model_path).resolve() / encoder_payload["path"]
+    if Path(binding_payload_path).resolve() != expected_payload_path or not expected_payload_path.is_file():
+        raise AppException(code=409, msg="Account detector training encoder binding payload is invalid.")
+    return {
+        "family": training_family.value,
+        "training_family": training_family,
+        "dataset_root": dataset_root,
+    }
 
 
 def _execute_dapt(config: dict[str, Any], output: Path) -> dict[str, Any]:
@@ -380,8 +560,6 @@ def _execute_detector(config: dict[str, Any], output: Path) -> dict[str, Any]:
     binding_payload_path = str(config.get("encoder_binding_payload_path") or "").strip()
     if not encoder_version or not model_path or not binding_payload_path or len(encoder_artifact_hash) != 64:
         raise AppException(code=409, msg="Account detector training requires a registered encoder version.")
-    from app.core.account_model_artifact import load_verified_chinese_social_encoder_artifact
-
     verified_manifest = load_verified_chinese_social_encoder_artifact(
         model_path,
         expected_hash=encoder_artifact_hash,
@@ -415,16 +593,10 @@ def _execute_detector(config: dict[str, Any], output: Path) -> dict[str, Any]:
     # is intentionally not a system worker default.
     if not bool(config.get("strict_protocol", True)):
         raise AppException(code=409, msg="Account detector workers require strict_protocol=true.")
-    holdout_path = _required_path(config.get("frozen_holdout_manifest_path"), "frozen_holdout_manifest_path")
-    try:
-        frozen_holdout_manifest = json.loads(holdout_path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as error:
-        raise AppException(code=409, msg="Account detector frozen holdout manifest is unreadable.") from error
     result = package.train_strict_botrhg(
         dataset_root,
         output,
         config=training_config,
-        frozen_holdout_manifest=frozen_holdout_manifest,
         deployment_schema="cogguard.botrhg.account.v3",
         encoder_binding_payload_path=expected_payload_path,
     )
@@ -454,11 +626,20 @@ def _load_research_package() -> Any:
 
 def _load_dapt_module() -> Any:
     path = PROJECT_ROOT / "research" / "social_bot_detection" / "dapt.py"
-    spec = importlib.util.spec_from_file_location("_cogguard_account_dapt", path)
+    name = "_cogguard_account_dapt"
+    existing = sys.modules.get(name)
+    if existing is not None:
+        return existing
+    spec = importlib.util.spec_from_file_location(name, path)
     if spec is None or spec.loader is None:
         raise AppException(code=500, msg="Internal DAPT runtime is unavailable.")
     module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    sys.modules[name] = module
+    try:
+        spec.loader.exec_module(module)
+    except BaseException:
+        sys.modules.pop(name, None)
+        raise
     return module
 
 
@@ -469,6 +650,160 @@ def _required_path(value: Any, name: str) -> Path:
     if not path.exists():
         raise AppException(code=404, msg=f"Account training input {name} was not found: {path}")
     return path
+
+
+def _required_file_path(value: Any, name: str) -> Path:
+    path = _required_path(value, name)
+    if not path.is_file():
+        raise AppException(code=409, msg=f"Account training input {name} must be a file.")
+    return path
+
+
+def _validate_detector_dataset_root(dataset_root: Path) -> dict[str, Any]:
+    labels_path = dataset_root / "approved_account_labels.jsonl"
+    manifest_path = dataset_root / "dataset_manifest.json"
+    _required_file_path(labels_path, "dataset_root/approved_account_labels.jsonl")
+    manifest = _read_json_object(manifest_path, "Account detector dataset_manifest.json")
+    _validate_detector_dataset_manifest(manifest)
+    try:
+        lines = labels_path.read_text(encoding="utf-8").splitlines()
+    except (OSError, UnicodeDecodeError) as error:
+        raise AppException(code=409, msg="Account detector approved_account_labels.jsonl is unreadable.") from error
+    observed_class_counts: dict[str, int] = {}
+    fingerprint = hashlib.sha256()
+    record_count = 0
+    for line_number, line in enumerate(lines, start=1):
+        if not line.strip():
+            continue
+        try:
+            record = json.loads(line)
+        except json.JSONDecodeError:
+            raise AppException(code=409, msg=f"Account detector dataset has invalid record at line {line_number}.") from None
+        if not isinstance(record, dict):
+            raise AppException(code=409, msg=f"Account detector dataset has invalid record at line {line_number}.")
+        target = str(record.get("training_target") or "").strip()
+        text = str(record.get("text") or "").strip()
+        identity = str(record.get("account_id") or record.get("case_id") or "").strip()
+        if target not in {"bot", "non_bot", "abstain"} or not text or not identity:
+            raise AppException(code=409, msg=f"Account detector dataset has invalid record at line {line_number}.")
+        fingerprint.update(json.dumps(record, ensure_ascii=False, sort_keys=True).encode("utf-8"))
+        fingerprint.update(b"\n")
+        observed_class_counts[target] = observed_class_counts.get(target, 0) + 1
+        record_count += 1
+    if not record_count:
+        raise AppException(code=409, msg="Account detector approved_account_labels.jsonl must contain trainable records.")
+    if record_count != manifest["record_count"]:
+        raise AppException(code=409, msg="Account detector dataset_manifest.json record_count does not match records.")
+    if observed_class_counts != manifest["class_counts"]:
+        raise AppException(code=409, msg="Account detector dataset_manifest.json class_counts do not match records.")
+    if fingerprint.hexdigest() != manifest["data_fingerprint"]:
+        raise AppException(code=409, msg="Account detector dataset_manifest.json data_fingerprint does not match records.")
+    if observed_class_counts.get("bot", 0) < 1 or observed_class_counts.get("non_bot", 0) < 1:
+        raise AppException(code=409, msg="Account detector dataset requires at least one bot and one non_bot record.")
+    return manifest
+
+
+def _validate_detector_dataset_manifest(manifest: dict[str, Any]) -> None:
+    data_fingerprint = str(manifest.get("data_fingerprint") or "").lower()
+    record_count = manifest.get("record_count")
+    class_counts = manifest.get("class_counts")
+    if (
+        not _is_sha256(data_fingerprint)
+        or not isinstance(record_count, int)
+        or isinstance(record_count, bool)
+        or record_count <= 0
+        or not isinstance(class_counts, dict)
+        or not class_counts
+        or not all(
+            isinstance(target, str)
+            and target in {"bot", "non_bot", "abstain"}
+            and isinstance(count, int)
+            and not isinstance(count, bool)
+            and count >= 0
+            for target, count in class_counts.items()
+        )
+        or sum(class_counts.values()) != record_count
+    ):
+        raise AppException(code=409, msg="Account detector dataset_manifest.json structure is invalid.")
+    manifest["data_fingerprint"] = data_fingerprint
+
+
+def _canonical_sha256(value: Any) -> str:
+    return hashlib.sha256(
+        json.dumps(value, ensure_ascii=True, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+
+
+def _is_sha256(value: str) -> bool:
+    return len(value) == 64 and all(character in "0123456789abcdef" for character in value.lower())
+
+
+def _validate_local_transformers_mlm(model_path: Path) -> None:
+    """Cheap offline validation for a local MLM directory before queuing work."""
+
+    if not model_path.is_dir():
+        raise AppException(code=404, msg=f"Chinese encoder local model directory was not found: {model_path}")
+    config = _read_json_object(model_path / "config.json", "Chinese encoder local model config")
+    architectures = config.get("architectures")
+    model_type = str(config.get("model_type") or "").strip().lower()
+    has_mlm_architecture = isinstance(architectures, list) and any(
+        isinstance(item, str) and item.endswith("ForMaskedLM") for item in architectures
+    )
+    if not has_mlm_architecture and model_type not in _MLM_COMPATIBLE_MODEL_TYPES:
+        raise AppException(code=409, msg="Chinese encoder local model config is not MLM compatible.")
+    tokenizer_json = model_path / "tokenizer.json"
+    if tokenizer_json.is_file():
+        _read_json_object(tokenizer_json, "Chinese encoder tokenizer.json")
+    else:
+        tokenizer_config = model_path / "tokenizer_config.json"
+        vocab_files = (model_path / "vocab.txt", model_path / "vocab.json", model_path / "spiece.model")
+        if not tokenizer_config.is_file() or not any(path.is_file() and path.stat().st_size > 0 for path in vocab_files):
+            raise AppException(
+                code=409,
+                msg="Chinese encoder local model requires readable tokenizer.json or tokenizer_config.json with vocabulary.",
+            )
+        _read_json_object(tokenizer_config, "Chinese encoder tokenizer config")
+    if any((model_path / filename).is_file() and (model_path / filename).stat().st_size > 0 for filename in _MODEL_WEIGHT_FILENAMES):
+        return
+    for index_name in _MODEL_WEIGHT_INDEX_FILENAMES:
+        index_path = model_path / index_name
+        if not index_path.is_file():
+            continue
+        index = _read_json_object(index_path, "Chinese encoder model shard index")
+        weight_map = index.get("weight_map")
+        if not isinstance(weight_map, dict) or not weight_map:
+            raise AppException(code=409, msg="Chinese encoder local model shard index has no weights.")
+        raw_shard_names = list(weight_map.values())
+        if not all(isinstance(value, str) and value.strip() for value in raw_shard_names):
+            raise AppException(code=409, msg="Chinese encoder local model shard index contains an invalid weight path.")
+        shard_names = {value for value in raw_shard_names}
+        if any(
+            not _safe_model_file(model_path, shard_name).is_file()
+            or _safe_model_file(model_path, shard_name).stat().st_size <= 0
+            for shard_name in shard_names
+        ):
+            raise AppException(code=409, msg="Chinese encoder local model shard index references missing weights.")
+        return
+    raise AppException(code=409, msg="Chinese encoder local model weights are missing or empty.")
+
+
+def _read_json_object(path: Path, description: str) -> dict[str, Any]:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise AppException(code=409, msg=f"{description} is unreadable.") from error
+    if not isinstance(payload, dict):
+        raise AppException(code=409, msg=f"{description} must be a JSON object.")
+    return payload
+
+
+def _safe_model_file(model_path: Path, relative: str) -> Path:
+    candidate = (model_path / relative).resolve()
+    try:
+        candidate.relative_to(model_path)
+    except ValueError as error:
+        raise AppException(code=409, msg="Chinese encoder local model shard index contains an unsafe path.") from error
+    return candidate
 
 
 def _resolve_output_dir(value: str | Path) -> Path:

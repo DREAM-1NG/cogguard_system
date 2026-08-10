@@ -107,6 +107,7 @@ Current semantic package paths: `system/research/coordination_discover/`, `syste
 | Term | Definition | Aliases to avoid |
 | --- | --- | --- |
 | **Social Bot Detection** | Account-level classification of social automation using learned account representations and approved evidence. | Automation score, activity rule |
+| **Fixed-Graph Research Runtime** | A hash-verified runtime that replays or queries predictions for a fixed benchmark graph and is not an online model activation source. | Online detector, active model |
 | **Account Finding** | The concise analyst-facing conclusion projected from Social Bot Detection for an Account Profile. | Bot probability, automation rating, model result panel |
 | **Account Profile** | The business-facing view of a collected account, including nickname, platform, activity context, recent public posts, and an Account Finding. | User scorecard, detection dashboard |
 | **BotRHG Transfer** | The internal trainable transfer implementation of Reliability-Guided Hypergraph Learning for Social Bot Detection. | NLPCC proxy, graph detector shell |
@@ -146,6 +147,7 @@ Current semantic package paths: `system/research/coordination_discover/`, `syste
 - Production **Model Activation** requires two distinct active administrator records, including the activating administrator; local activation requires one accountable operator.
 - A **Teacher Dispatch Policy** may allow local inline fallback only in local deployments. Production dispatch failure is a durable failed advisory, never an API-process success.
 - A **BotRHG Transfer** artifact must record the dataset fingerprint, checkpoint hash, text sampling policy, missing property/social graph coverage, and same-split reference baseline.
+- A **Fixed-Graph Research Runtime** must record its node mapping, split provenance, checkpoint hash, and deployment scope; it must never become the Chinese account-model **Active Pointer**.
 - An **Account Label Batch** only selects review priorities; it is not an **Approved Account Corpus** until analysts approve or adjudicate labels.
 - **Approved Corpus Training** excludes `insufficient_evidence` / `abstain` rows from binary supervised BotRHG training.
 - A **Shadow Account Model** cannot become active unless the **Frozen Holdout**, leakage, calibration, checkpoint-hash, persisted-metrics, and **Account Model Approval Evidence** gates pass.

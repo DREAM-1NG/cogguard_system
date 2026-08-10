@@ -1,0 +1,124 @@
+Appendix
+Related Work
+Macroscopic Diffusion Prediction
+Previous studies can
+be categorized into three main approaches: feature-based,
+generative process-based, and deep learning-based methods.
+Feature-based (Kong et al. 2014) approaches focus on ex-
+tracting handcrafted features from the input data, which are
+then used in machine learning algorithms for regression or
+classification tasks. However, these methods heavily rely on
+domain knowledge and lack generalizability.
+Generative process-based approaches (Zhao et al. 2015)
+model the arrival of infected users as a point process. While
+these methods enhance interpretability, they may overlook
+implicit information within the cascade dynamics.
+Recently, deep learning-based approaches have shown
+their effectiveness. For example, DeepCas (Li et al. 2016)
+utilizes RNN to encode sampled sequences from social
+graphs and cascades. DeepHawkes (Cao et al. 2017) incor-
+porates the Hawkes process within an RNN architecture.
+CoupledGNN (Cao et al. 2019) and CasCN (Chen et al.
+2019b) utilize GNNs to capture diffusion patterns across the
+underlying social network. VaCas (Zhou et al. 2020) com-
+bines graph wavelets, hierarchical variational autoencoders,
+and Bi-GRUs to learn the structures of cascade graphs.
+Microscopic Diffusion Prediction
+Conventional methods
+for microscopic diffusion prediction can be categorized into
+three groups: independent cascade (IC)-model-based ap-
+proaches, embedding-based approaches, and deep learning-
+based approaches.
+IC-model-based approaches (Wang et al. 2014) assume
+independent diffusion probabilities for user pairs and em-
+ploy Monte Carlo simulations to predict microscopic diffu-
+sion.
+Embedding-based approaches (Feng et al. 2018a) ex-
+tend the IC model by representing each user as a parame-
+terized vector. They model diffusion probabilities between
+users based on their embeddings, considering factors such
+as global user similarity. However, these methods overlook
+infection history.
+Deep
+learning
+techniques
+have
+shown
+promise
+in
+modeling information diffusion. Approaches like TopoL-
+STM (Wang et al. 2017) structure hidden states as di-
+rected acyclic graphs, while DeepDiffuse (Islam et al. 2018)
+and HiDAN (Wang and Li 2019) incorporate attention
+mechanisms to leverage infection timestamp information.
+NDM (Yang et al. 2021) combines self-attention and CNNs,
+while Inf-VAE (Sankar et al. 2020) integrates a VAE frame-
+work to capture social homophily and temporal influence.
+SNIDSA (Wang, Chen, and Li 2018) and DyHGCN (Yuan
+et al. 2020) utilize diffusion paths, social networks, and tem-
+poral information for prediction. Furthermore, methods like
+MS-HGAT (Sun et al. 2022) and HyperINF (Jin et al. 2022)
+leverage hypergraphs to learn global user dependencies.
+Hypergraph Neural Network
+Hypergraph offers a nat-
+ural way to represent group relations by connecting enti-
+ties through hyperedges. Recently, several approaches have
+emerged to leverage hypergraphs for learning latent node
+representations and capturing high-order structural informa-
+tion.
+HGNN (Feng et al. 2018b) stands as the pioneering spa-
+tial approach that uncovers latent node representations by
+exploring high-order structural information within hyper-
+graphs. Hyper-Atten (Bai, Zhang, and Torr 2019) intro-
+duced an attention mechanism to hypergraphs, enhancing
+their learning capabilities. UniGNN (Huang and Yang 2021)
+and HyperSAGE (Arya et al. 2020) take a direct message-
+passing approach on hypergraphs to learn representations.
+AllSet (Chien et al. 2021) has presented a powerful frame-
+work that unifies existing hypergraph learning methods.
+In various fields like social networks (Sun et al. 2023),
+recommendation (Ding et al. 2023), and natural language
+processing (Xu et al. 2023a), hypergraphs have demon-
+strated their efficacy in tackling complex problems.
+Datasets
+We used four datasets, i.e. Christianity, Android, Douban
+and Memetracker, to conduct experiments.
+Christianity (Sankar et al. 2020) consists of the user
+friendship network and cascading interactions related to
+Christian themes on Stack-Exchanges.
+Android (Sankar et al. 2020) is collected from StackEx-
+changes, which is a community Q&A website. It includes
+users’ interactions across different channels, which form
+their friendship relations.
+Douban (Zhong et al. 2012) is a Chinese social website
+where users can update their book reading statuses and fol-
+low the statuses of other users.
+Memetracker (Leskovec, Backstrom, and Kleinberg
+2009) collects a million news stories and blog posts from
+online websites, tracking the most frequent memes to ana-
+lyze their migration among people. Each meme is consid-
+ered an informational entity, while individual website URLs
+are treated as representations of users in the analysis.
+Baselines
+We compare thirteen representative baseline models with
+our models.
+Macroscopic prediction models:
+DeepCas (Li et al. 2016) transforms the cascade graph
+into node sequences through random walks and learns rep-
+resentations for each cascade using a deep learning frame-
+work.
+DeepHawkes (Cao et al. 2017) integrates an end-to-end
+deep learning technique into the Hawkes process for cascade
+prediction.
+CasCN (Chen et al. 2019b) applies GCN to capture the
+structures of information diffusion and uses LSTM to learn
+inherent dependencies between users’ retweeting behaviors
+in sequential cascade information.
+CasFlow (Xu et al. 2023b) leverages normalizing flows
+to learn node-level and cascade-level latent factors, enabling
+hierarchical pattern learning of information diffusion.
+TCSE-net (Wu et al. 2022) preserves distinguishable
+structure patterns and eliminates potential noise by aligning
+and fusing temporal popularity and cascade information.
+The Thirty-Eighth AAAI Conference on Artiﬁcial Intelligence (AAAI-24)
+8578

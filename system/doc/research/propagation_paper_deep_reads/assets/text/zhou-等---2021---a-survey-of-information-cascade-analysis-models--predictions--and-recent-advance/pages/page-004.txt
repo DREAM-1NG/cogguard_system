@@ -1,0 +1,40 @@
+27:4
+F. Zhou et al.
+Fig. 2. Taxonomy of the information diffusion models.
+prediction and users’ joint behavior prediction perform the classification tasks, while predicting
+the exact volume of items/cascades at a specific future time requires regression learning. Second,
+prediction can be made before or after the publication of the information. According to the pre-
+diction time, existing methods can be categorized as ex-ante prediction or prediction after peeking
+into the early stage of information cascades. Third, information prediction works can be further
+classified as micro-level, macro-level, and meso-level predictions by the granularity of the tasks.
+Methodologically, existing works are grouped into three categories based on the methods model-
+ing information cascades, including feature-based methods, generative models and deep learning
+approaches.
+The rest of this survey is structured according to the hierarchies of the method taxonomy. In
+Section 2, we introduce the basic formulations, problem definitions, and the commonly used eval-
+uation protocols and benchmark datasets. In Section 3, we illustrate basic characteristics of infor-
+mation cascades and review corresponding feature-based models. In Section 4, we review another
+major group of models relying on time series of cascades and stochastic processes. Section 5 sum-
+marizes recent advances in modeling information cascades with deep learning-based techniques.
+We discuss the open challenges and opportunities and conclude this survey in Section 6.
+2
+PROBLEM DEFINITION, EVALUATION, DATASETS, AND TAXONOMY
+Modeling information items/cascades has long been an active field in both academia and indus-
+try [162, 185]. Due to the natural diversity and broad scope of information, existing works vary
+in their item/cascade definitions. In this section, we first review the frequently studied informa-
+tion items and cascades—examples ranging from traditional news articles and academic papers
+to newly emerged microblogs and online photos/videos. Then, we group the problems into three
+categories: (i) predictions via classification or regression, (ii) predictions before or after publica-
+tion, and (iii) the level/scope of the prediction. Along with introducing problem formulations, we
+present the necessary preliminaries associated with information items/cascades.
+2.1
+Types of Information Items/Cascades
+In this survey, we consider information items as any measurable entities in terms of their popular-
+ity, whereas an information cascade is constituted by a propagation sequence of information items.
+The best-known and most heavily studied information items are user-generated content (UGC),
+made possible by the prevailing Web 2.0 services and mobile devices. UGC is no longer produced
+by editors or publishers only, as traditional audiences have become the consumers and creators of
+content, such as posts in social networking platforms, threads in discussion forums, and photos
+and videos on content sharing websites. Such content has thoroughly changed the way users in-
+teract with information and other users and how information is created, presented, disseminated,
+ACM Computing Surveys, Vol. 54, No. 2, Article 27. Publication date: March 2021.

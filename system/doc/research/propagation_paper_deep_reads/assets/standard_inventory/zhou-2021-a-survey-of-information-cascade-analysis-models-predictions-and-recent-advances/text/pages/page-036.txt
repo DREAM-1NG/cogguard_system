@@ -1,0 +1,64 @@
+27:36                                                                                            F. Zhou et al.
+
+
+[224] Jaewon Yang and Jure Leskovec. 2011. Patterns of temporal variation in online media. In WSDM. 177–186.
+[225]  Lei Yang, Tao Sun, Ming Zhang, and Qiaozhu Mei. 2012. We know what@ you# tag: Does the dual role affect hashtag
+      adoption? In WWW. 261–270.
+[226] Yu Yang and Jian Pei. 2019. Influence analysis in evolving networks: A survey. TKDE (2019), 1–19.
+[227]  Zi Yang, Jingyi Guo, Keke Cai, Jie Tang, Juanzi Li, Li Zhang, and Zhong Su. 2010. Understanding retweeting behaviors
+       in social networks. In CIKM. 1633–1636.
+[228]  Zichao Yang, Diyi Yang, Chris Dyer, Xiaodong He, Alex Smola, and Eduard Hovy. 2016. Hierarchical attention
+      networks for document classification. In NAACL-HLT. 1480–1489.
+[229] Tae Yano and Noah A. Smith. 2010. What’s worthy of comment? Content and comment volume in political blogs.
+       In ICWSM.
+[230] Chengqi Yi, Yuanyuan Bao, and Yibo Xue. 2016. Mining the key predictors for event outbreaks in social networks.
+       Phys. A: Stat. Mech. Appl. 447 (2016), 247–260.
+[231] Eunae Yoo, Bin Gu, and Elliot Rabinovich. 2019. Competition and coopetition among social media content. In HICSS.
+[232] Honglin Yu, Lexing Xie, and Scott Sanner. 2014. Twitter-driven youtube views: Beyond individual influencers. In
+     MM. 869–872.
+[233] Honglin Yu, Lexing Xie, and Scott Sanner. 2015. The lifecyle of a Youtube video: Phases, content and popularity. In
+     ICWSM. 533–542.
+[234] Linyun Yu, Peng Cui, Fei Wang, Chaoming Song, and Shiqiang Yang. 2015. From micro to macro: Uncovering and
+       predicting information cascading process with behavioral dynamics. In ICDM. 559–568.
+[235] Linyun Yu, Peng Cui, Fei Wang, Chaoming Song, and Shiqiang Yang. 2017. Uncovering and predicting the dynamic
+      process of information cascades with survival model. Knowl. Info. Syst. 50, 2 (2017), 633–659.
+[236]  Nicholas Jing Yuan, Yuan Zhong, Fuzheng Zhang, Xing Xie, Chin-Yew Lin, and Yong Rui. 2016. Who will reply
+       to/retweet this tweet?: The dynamics of intimacy from online social interactions. In WSDM. 3–12.
+[237] Amir Hassan Zadeh and Ramesh Sharda. 2014. Modeling brand post popularity dynamics in online social networks.
+       Decis. Supp. Syst. 65 (2014), 59–68.
+[238] Tauhid R. Zaman, Emily B. Fox, Eric T. Bradlow, et al. 2014. A bayesian approach for predicting the popularity of
+       tweets. Ann. Appl. Stat. 8, 3 (2014), 1583–1611.
+[239] Tauhid R Zaman, Ralf Herbrich, Jurgen Van Gael, and David Stern. 2010. Predicting information spreading in twitter.
+       In NIPS. 17599–17601.
+[240]  Ali Zarezade, Ali Khodadadi, Mehrdad Farajtabar, Hamid R. Rabiee, and Hongyuan Zha. 2017. Correlated cascades:
+     Compete or cooperate. In AAAI. 238–244.
+[241]  Bolei Zhang, Zhuzhong Qian, and Sanglu Lu. 2016. Structure pattern analysis and cascade prediction in social net-
+      works. In ECML PKDD. 524–539.
+[242]  Si Zhang, Hanghang Tong, Jiejun Xu, and Ross Maciejewski. 2019. Graph convolutional networks: A comprehensive
+       review. Comput. Soc. Netw. 6, 1 (2019), 11.
+[243] Wei Zhang, Wen Wang, Jun Wang, and Hongyuan Zha. 2018. User-guided hierarchical attention network for multi-
+      modal social image popularity prediction. In WWW. 1277–1286.
+[244]  Zi-Ke Zhang, Chuang Liu, Xiu-Xiu Zhan, Xin Lu, Chu-Xu Zhang, and Yi-Cheng Zhang. 2016. Dynamics of informa-
+       tion diffusion and its applications on complex networks. Phys. Rep. 651 (2016), 1–34.
+[245]  Liang Zhao, Jiangzhuo Chen, Feng Chen, Fang Jin, Wei Wang, Chang-Tien Lu, and Naren Ramakrishnan. 2020.
+      Online flu epidemiological deep modeling on disease contact network. GeoInformatica 24 (2020), 443–475. DOI:
+       https://doi.org/10.1007/s10707-019-00376-9
+[246] Qingyuan Zhao, Murat A. Erdogdu, Hera Y. He, Anand Rajaraman, and Jure Leskovec. 2015. SEISMIC: A self-exciting
+       point process model for predicting tweet popularity. In KDD. 1513–1522.
+[247] Wayne Xin Zhao, Hongjian Dou, Yuanpei Zhao, Daxiang Dong, and Ji-Rong Wen. 2019. Neural network based
+       popularity prediction by linking online content with knowledge bases. In PAKDD. Springer, 16–28.
+[248] Yunwei Zhao, Can Wang, Chi-Hung Chi, Kwok-Yan Lam, and Sen Wang. 2018. A comparative study of transactional
+      and semantic approaches for predicting cascades on twitter. In IJCAI. 1212–1218.
+[249] Fan Zhou, Xovee Xu, Goce Trajcevski, and Kunpeng Zhang. 2020. A survey of information cascade analysis: Models,
+       predictions, and recent advances. Retrieved from https://arXiv:2005.11041.
+[250] Fan Zhou, Xovee Xu, Kunpeng Zhang, Goce Trajcevski, and Ting Zhong. 2020. Variational information diffusion for
+       probabilistic cascades prediction. In INFOCOM. 1618–1627.
+[251]  Jie Zhou, Ganqu Cui, Zhengyan Zhang, Cheng Yang, Zhiyuan Liu, Lifeng Wang, Changcheng Li, and Maosong Sun.
+       2018. Graph neural networks: A review of methods and applications. Retrieved from https://arXiv:1812.08434.
+
+Received May 2020; revised October 2020; accepted October 2020
+
+
+
+
+ACM Computing Surveys, Vol. 54, No. 2, Article 27. Publication date: March 2021.

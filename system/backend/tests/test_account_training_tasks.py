@@ -163,6 +163,99 @@ async def test_worker_records_all_durable_training_stages(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_detector_worker_uses_service_bound_config_without_resolving_again(monkeypatch, tmp_path):
+    encoder_dir = tmp_path / "encoder-v1"
+    config = {
+        "strict_protocol": True,
+        "encoder_version": "encoder-v1",
+        "encoder_artifact_hash": "a" * 64,
+        "text_model_path": str(encoder_dir),
+        "encoder_binding_payload_path": str(encoder_dir / "payload"),
+        "frozen_holdout_manifest_path": "caller-controlled",
+        "frozen_holdout_manifest_sha256": "b" * 64,
+    }
+    run = AccountModelTrainingRun(
+        run_id="run-bound-detector",
+        family="chinese_account_detector",
+        status="queued",
+        stage="queued",
+        input_fingerprint="a" * 64,
+        config_hash="b" * 64,
+        config_json=json.dumps(config),
+        attempt=1,
+        max_attempts=3,
+        created_by=1,
+    )
+    session = _Session(run)
+    monkeypatch.setattr(account_training_tasks, "async_session_factory", lambda: _SessionContext(session))
+    monkeypatch.setattr(
+        account_training_tasks,
+        "_resolve_governed_detector_config",
+        lambda *_args: pytest.fail("service-bound detector config must not be resolved again"),
+    )
+    monkeypatch.setattr(
+        account_training_tasks,
+        "execute_account_training_artifact",
+        lambda **kwargs: {"bundle_manifest_path": "manifest.json", "observed_config": kwargs["config"]},
+    )
+
+    async def register_detector(_session, _run, result):
+        return result
+
+    monkeypatch.setattr(account_training_tasks, "_register_detector_candidate", register_detector)
+    result = await account_training_tasks._execute_account_training_run(run.run_id, expected_attempt=1)
+
+    assert result["status"] == "completed"
+    assert "frozen_holdout_manifest_path" not in result["result"]["observed_config"]
+    assert "frozen_holdout_manifest_sha256" not in result["result"]["observed_config"]
+
+
+@pytest.mark.asyncio
+async def test_detector_worker_resolves_legacy_unbound_config(monkeypatch, tmp_path):
+    encoder_dir = tmp_path / "encoder-v1"
+    run = AccountModelTrainingRun(
+        run_id="run-legacy-detector",
+        family="chinese_account_detector",
+        status="queued",
+        stage="queued",
+        input_fingerprint="a" * 64,
+        config_hash="b" * 64,
+        config_json=json.dumps({"encoder_version": "encoder-v1"}),
+        attempt=1,
+        max_attempts=3,
+        created_by=1,
+    )
+    session = _Session(run)
+    resolved = {
+        "strict_protocol": True,
+        "encoder_version": "encoder-v1",
+        "encoder_artifact_hash": "a" * 64,
+        "text_model_path": str(encoder_dir),
+        "encoder_binding_payload_path": str(encoder_dir / "payload"),
+    }
+    monkeypatch.setattr(account_training_tasks, "async_session_factory", lambda: _SessionContext(session))
+
+    async def resolve(_session, config):
+        assert config == {"encoder_version": "encoder-v1"}
+        return resolved
+
+    monkeypatch.setattr(account_training_tasks, "_resolve_governed_detector_config", resolve)
+    monkeypatch.setattr(
+        account_training_tasks,
+        "execute_account_training_artifact",
+        lambda **kwargs: {"bundle_manifest_path": "manifest.json", "observed_config": kwargs["config"]},
+    )
+
+    async def register_detector(_session, _run, result):
+        return result
+
+    monkeypatch.setattr(account_training_tasks, "_register_detector_candidate", register_detector)
+    result = await account_training_tasks._execute_account_training_run(run.run_id, expected_attempt=1)
+
+    assert result["status"] == "completed"
+
+
+@pytest.mark.asyncio
 async def test_duplicate_worker_delivery_never_restarts_active_training(monkeypatch):
     run = AccountModelTrainingRun(
         run_id="run-active",
@@ -183,6 +276,47 @@ async def test_duplicate_worker_delivery_never_restarts_active_training(monkeypa
 
     assert result == {"run_id": "run-active", "status": "already_running"}
     assert not session.added
+
+
+@pytest.mark.asyncio
+async def test_gpu_fence_is_released_when_run_fence_acquisition_raises(monkeypatch):
+    run = AccountModelTrainingRun(
+        run_id="run-lock-error",
+        family="chinese_social_encoder",
+        status="queued",
+        stage="queued",
+        input_fingerprint="a" * 64,
+        config_hash="b" * 64,
+        config_json="{}",
+        attempt=1,
+        max_attempts=3,
+        created_by=1,
+    )
+    session = _Session(run)
+
+    class _GpuOwnership:
+        released = False
+
+        def release(self):
+            self.released = True
+
+    gpu_ownership = _GpuOwnership()
+    monkeypatch.setattr(account_training_tasks, "async_session_factory", lambda: _SessionContext(session))
+    monkeypatch.setattr(
+        account_training_tasks,
+        "acquire_account_model_gpu_ownership",
+        lambda _operation_id: gpu_ownership,
+    )
+    monkeypatch.setattr(
+        account_training_tasks,
+        "acquire_account_training_ownership",
+        lambda *_args: (_ for _ in ()).throw(OSError("run fence unavailable")),
+    )
+
+    with pytest.raises(OSError, match="run fence unavailable"):
+        await account_training_tasks._execute_account_training_run(run.run_id, expected_attempt=1)
+
+    assert gpu_ownership.released is True
 
 
 @pytest.mark.asyncio
@@ -275,6 +409,28 @@ def test_enqueue_carries_attempt_and_disables_celery_publish_retry(monkeypatch):
         "task_id": "task-attempt-3",
         "retry": False,
     }
+
+
+def test_training_task_retries_while_the_shared_gpu_is_owned(monkeypatch):
+    retry_calls = []
+
+    async def gpu_busy(_run_id, *, expected_attempt):
+        assert expected_attempt == 2
+        return {"run_id": "run-gpu-busy", "status": "gpu_busy"}
+
+    monkeypatch.setattr(account_training_tasks, "_execute_account_training_run", gpu_busy)
+    monkeypatch.setattr(account_training_tasks, "run_async", lambda coroutine: asyncio.run(coroutine))
+    monkeypatch.setattr(
+        account_training_tasks.execute_account_training_run,
+        "retry",
+        lambda **kwargs: retry_calls.append(kwargs) or "gpu-wait",
+    )
+
+    result = account_training_tasks.execute_account_training_run.run("run-gpu-busy", 2)
+
+    assert result == "gpu-wait"
+    assert retry_calls == [{"countdown": 30}]
+    assert account_training_tasks.execute_account_training_run.max_retries is None
 
 
 def test_training_timestamps_use_aware_utc_before_database_normalization(monkeypatch):
@@ -543,6 +699,36 @@ def test_runtime_ownership_fence_binds_pid_to_a_stable_process_identity(monkeypa
         assert not lock_path.read_text(encoding="utf-8").startswith('{"pid": 999999')
     finally:
         recovered.release()
+
+
+def test_shared_account_model_gpu_fence_serializes_training_and_evaluation(monkeypatch, tmp_path):
+    from app.config import settings
+    from app.core import account_training_runtime
+
+    monkeypatch.setattr(settings, "MODEL_ARTIFACT_ROOT", str(tmp_path))
+    monkeypatch.setattr(account_training_runtime, "_process_identity", lambda pid: f"identity-{pid}")
+
+    training = account_training_runtime.acquire_account_model_gpu_ownership("training:run-1")
+    try:
+        with pytest.raises(account_training_runtime.AccountModelGpuOwnershipBusyError):
+            account_training_runtime.acquire_account_model_gpu_ownership("evaluation:job-1")
+    finally:
+        training.release()
+
+    evaluation = account_training_runtime.acquire_account_model_gpu_ownership("evaluation:job-1")
+    evaluation.release()
+
+
+def test_internal_dapt_loader_registers_the_module_before_dataclass_execution(monkeypatch):
+    from app.core import account_training_runtime
+
+    name = "_cogguard_account_dapt"
+    monkeypatch.delitem(sys.modules, name, raising=False)
+
+    module = account_training_runtime._load_dapt_module()
+
+    assert sys.modules[name] is module
+    assert module.DAPTConfig.__module__ == name
 
 
 def test_legacy_or_malformed_ownership_fence_is_never_reclaimed(monkeypatch, tmp_path):

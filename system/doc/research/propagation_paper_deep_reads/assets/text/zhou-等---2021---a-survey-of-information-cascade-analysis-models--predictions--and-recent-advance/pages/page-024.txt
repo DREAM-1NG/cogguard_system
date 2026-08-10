@@ -1,0 +1,51 @@
+27:24
+F. Zhou et al.
+5
+DEEP LEARNING MODELS
+The renaissance of neural networks in recent years has spurred a number of deep learning-based
+prediction models. Deep neural networks are often shown to be more effective than linear mod-
+els [183]. For example, models based on RNNs do not rely on explicit assumptions of the diffusion
+of cascades and are more flexible to capture the temporal dependencies in cascades [204]. Mod-
+els based on graph representation learning do not require laborious hand-crafted features from
+the underlying graphs of cascades, e.g., the specific designs of node influence and community
+detection.
+Existing deep learning models can be categorized as three types: (i) models based on content of
+the users/items, e.g., texts, images, and videos, and these models usually adopt techniques from
+computer vision and NLP to learn expressive representations of users/items; (ii) models based
+on temporal sequences, e.g., the cascading behavior in social and academic networks, and these
+models rely on RNN or pooling mechanisms; (iii) models based on graphs, e.g., the cascade graphs
+and global graph, and these models often deal with graph neural networks or graph representation
+learning, aiming to learn effective embeddings of nodes/edges/graphs for graph-structured data.
+Other techniques, such as attention mechanism, variational inference, reinforcement learning, and
+so on, are often employed in deep learning models. In many cases, multi-modalities [171], multi-
+scale [221], and multi-task learning [37] are considered to improve the prediction ability.
+One of the early approaches using representation learning and deep learning techniques is [91],
+focusing on predicting the number of views of Flickr images. On the one hand, several hand-crafted
+low- and high-level social and visual features were designed (e.g., past success, number of contacts,
+colors, and textures). On the other hand, convolutional neural networks were utilized to learn the
+representations of images with the last hidden layer of the model.
+DeepCas [120] is the first graph representation learning-based method for modeling and pre-
+dicting the popularity of information cascades. It borrows the idea of DeepWalk [154] to sample
+the cascade graphs with random walks. The sampled node sequences are then fed into a bidi-
+rectional gated recurrent units (Bi-GRU) [42], along with attention mechanism [10], to obtain the
+node embeddings. The prediction was made in an end-to-end manner. Subsequently, DeepCas was
+extended to DCGT [119] by incorporating the contents associated with the nodes in the cascade.
+DeepHawkes [29] attempts to unify the advantages of generative models and deep learning tech-
+niques. In particular, three crucial concepts of Hawkes process—user influence, self-exciting mech-
+anism, and time decay effect—are analogously transformed into the DeepHawkes model. Similar
+to DeepCas, user representations are learned in an end-to-end way. However, rather than directly
+modeling the structural patterns of cascade graphs, given a piece of information and its diffusion
+trajectories, DeepHawkes uses GRU, sum pooling, and non-parametric time kernel to aggregate
+the contributions of early adopters.
+ANPP [34] utilizes GloVe [153] to embed the words of tweets, and leverages node2vec [69] to
+encode user graph. GRU with attention mechanism is used to aggregate the learned embeddings,
+as well as the time series feature vectors. Deep temporal context networks (DTCN) [209] predict
+the popularity of Flickr images by jointly learning the user/photo embeddings, temporal context of
+resharing sequences, and multiple time-scale attention mechanism. Specifically, ResNet [76] and
+LSTM [79] are utilized to model the visual dependencies and temporal dependencies, respectively.
+User-guided hierarchical attention network (UHAN) [243] considered both visual and textual
+modalities of Flickr images by characterizing three different representations, i.e., visual represen-
+tation pre-trained from VGGNet [176], textual representation encoded by LSTM, and user rep-
+resentation learned under supervision. Then user-guided intra- and inter-attention mechanisms
+were used to jointly learn the importance over the aforementioned two modalities.
+ACM Computing Surveys, Vol. 54, No. 2, Article 27. Publication date: March 2021.

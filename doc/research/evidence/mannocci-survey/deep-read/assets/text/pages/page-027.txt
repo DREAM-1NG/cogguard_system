@@ -1,0 +1,82 @@
+Detection and Characterization of Coordinated Online Behavior: A Survey                                   27
+
+
+inauthentic but that do not make use of automation (e.g., trolls, dissidents). Therefore, using bot scores as indicators of
+
+inauthenticity can cause both false positive and false negative errors. In addition to bot scores, some also used username
+
+similarity [95] and bursts of account creations [13, 61, 84, 115] as proxies for inauthenticity. Table 9 also shows that the
+
+few existing indicators of inauthenticity are all based on user information. While this is expected since authenticity
+
+is a property of the actors rather than their actions, we also note that extremely short time intervals between user
+
+actions [5, 14, 17, 55, 61, 102, 150] could be used as a red flag of automation and, by extension, also of inauthenticity.
+
+
+5.2  Harmfulness
+
+Harmfulness measures the extent to which the actions of the coordinated actors can potentially cause negative
+
+consequences. Hence, the analysis of the actions can provide valuable information about the intent, or potential, for
+
+harm of the coordinated actors. The production or re-sharing of content (e.g., text, images, links) is the most information-
+
+rich type of action and, in fact, nearly all indicators of harmfulness in Table 9 are derived from the analysis of content.
+
+Traditional NLP methods are used to analyze attitudes, concerns, emotions, stances, topics, hashtags, and words, as
+
+these provide useful insights into the intent and aims of coordinated actors [12, 13, 15, 20, 25, 26, 29, 58, 80, 90, 91, 95, 97,
+
+100, 113, 118, 122, 136, 140, 142, 145, 146, 149, 155, 155]. For instance, certain words, negative emotions, and stances can
+
+amplify social discord and polarize public opinion. The prevalence of these indicators is largely due to the abundance of
+
+readily available tools and their ease of application. However, these indicators are often quite generic and consequently
+
+lack substantial power and informativeness. Text similarity scores were also used to identify harmful campaigns that aim
+
+to create false consensus through repeated sharing of similar posts [55, 91, 145, 146]. Other straightforward indicators
+
+of harmfulness are those based on the presence of toxic (i.e., hateful or offensive) [66, 113] or propagandistic [51, 84]
+
+content. A different line of work measured harmfulness in terms of the unreliability of the news shared by coordinated
+actors, which was measured via NewsGuard’s7 reliability ratings and Media Bias/Fact Check8 factual reporting and
+
+credibility ratings [11, 12, 20, 110, 122, 128, 150]. Others measured unreliability in terms of suspended and blacklisted
+
+URLs [12, 20, 43, 142]. The fraction of coordinated users that were suspended or banned by a social platform has been
+
+extensively used as an indicator of harmfulness [28, 49, 51, 64, 65, 90, 95, 100, 115, 118, 128, 152, 155]. Finally, the use
+
+of AI generated content may be a signal of potentially harmful activity [20]. This stands out as the only indicator of
+
+harmfulness based on user, rather than content, information. However, we note that harmfulness indicators based on
+
+content moderation lack predictive capabilities and can only be used retrospectively, since moderation actions typically
+
+occur some time after the account have engaged in the harmful activities.
+
+
+5.3  Orchestration
+
+Orchestration expresses the extent to which the coordination is well-organized, rather than spontaneous and emer-
+
+gent. Since orchestration reflects the level of organization among coordinated actors, its indicators are derived
+
+from coordination networks (Table 9) and typically computed after network-based detection. High coordination
+
+scores are used as proxies for orchestration, under the assumption that tightly synchronized groups are more orga-
+
+nized [17, 18, 51, 62, 66, 84, 90, 91, 94, 95, 100, 128]. Centrality scores measure node importance within a network or
+
+community. Highly central nodes have a greater influence on the dissemination of information, and their presence in
+
+coordinated communities may indicate a structured hierarchy [19, 28, 30, 44, 48, 60, 62, 90, 91, 96, 102, 140]. Conversely,
+
+assortativity is a measure of homophily in a network. Measuring assortativity can help determine whether coordinated
+
+7https://www.newsguardtech.com/ (accessed: 31/07/2024)
+8https://mediabiasfactcheck.com/ (accessed: 31/07/2024)
+
+                                                                                                         Manuscript submitted to ACM

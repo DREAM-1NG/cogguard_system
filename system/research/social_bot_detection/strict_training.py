@@ -6,7 +6,7 @@ import random
 from dataclasses import asdict
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Any, Mapping
+from typing import Any
 
 import numpy as np
 import torch
@@ -17,7 +17,7 @@ from .artifacts import write_training_artifacts
 from .baseline import evaluate_text_baseline
 from .contracts import TrainingConfig
 from .evaluation import evaluate_predictions, prediction_rows
-from .evaluation_protocol import EvaluationProtocolError, evaluate_account_protocol, is_verified_protocol_report
+from .evaluation_protocol import is_verified_protocol_report
 from .hypergraph import build_reference_hyperedges, build_support_hyperedges, neighbor_similarities, propagate_support
 from .model_bundle import write_account_model_bundle
 from .reliability import compute_correction_risk, select_routed_accounts
@@ -36,7 +36,6 @@ def train_strict_botrhg(
     *,
     dataset_name: str,
     config: TrainingConfig,
-    frozen_holdout_manifest: Mapping[str, Any] | None = None,
     deployment_schema: str = "cogguard.botrhg.strict.v1",
     encoder_binding_payload_path: str | Path | None = None,
 ) -> dict[str, Any]:
@@ -144,7 +143,13 @@ def train_strict_botrhg(
     metrics["same_split_text_baseline"] = evaluate_text_baseline(splits["train"], splits["test"])
     calibration = _fit_temperature_calibration(predictions)
     metrics["calibration"] = calibration
-    metrics["evaluation_protocol"] = _evaluate_protocol_or_fail_closed(splits, frozen_holdout_manifest)
+    # The final holdout is owned by the database-backed evaluation job. The
+    # training artifact must not manufacture activation evidence from it.
+    metrics["evaluation_protocol"] = {
+        "schema": "cogguard.account-evaluation-protocol.v1",
+        "activation_allowed": False,
+        "error": "final holdout evaluation is owned by the account evaluation job",
+    }
     model.eval()
     text_encoder.eval()
     protocol_report = (
@@ -483,28 +488,6 @@ def _resolve_device(requested: str) -> torch.device:
     if requested.startswith("cuda") and not torch.cuda.is_available():
         return torch.device("cpu")
     return torch.device(requested)
-
-
-def _evaluate_protocol_or_fail_closed(
-    splits: dict[str, list[StrictAccountRecord]],
-    frozen_holdout_manifest: Mapping[str, Any] | None,
-) -> dict[str, Any]:
-    """Record a real protocol result without converting missing evidence into a pass."""
-
-    if frozen_holdout_manifest is None:
-        return {
-            "schema": "cogguard.account-evaluation-protocol.v1",
-            "activation_allowed": False,
-            "error": "a pre-created frozen holdout manifest is required",
-        }
-    try:
-        return evaluate_account_protocol(splits, frozen_holdout_manifest=frozen_holdout_manifest)
-    except EvaluationProtocolError as error:
-        return {
-            "schema": "cogguard.account-evaluation-protocol.v1",
-            "activation_allowed": False,
-            "error": str(error),
-        }
 
 
 def _fit_temperature_calibration(predictions: list[dict[str, Any]]) -> dict[str, Any]:

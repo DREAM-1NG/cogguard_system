@@ -1,0 +1,39 @@
+27:8
+F. Zhou et al.
+Fig. 4. Popularity distributions of Twitter (left), Weibo (middle), and APS (right) in log-log scales. By fitting
+the tails of power-law distribution, the exponents α are 1.916, 2.044, and 2.788, with minimum popularity
+Pmin greater than or equal to 34, 45, and 58, for Twitter, Weibo, and APS datasets, respectively.
+all cascades; References [98, 158] filter out a majority of cascades to obtain a balanced dataset (un-
+dersampling). Most of the peeking strategy models requiring a sufficient number of early adopters,
+implicitly ignore those small samples, consequently yielding balanced classes.
+As for the regression task, mean-square error (MSE) and its variants are the most popular met-
+rics. Popularity is often shown in logarithmic scale, e.g., MSLE or RMSLE, to prevent the loss
+functions or metrics being affected by extreme values and assure numerical stability [29, 38]. Co-
+efficient of determination/correlation and their variants, rankings [184], k-top coverage [150, 246],
+are also frequently used metrics in some specific scenarios.
+The choice of a metric is often subjective, even under a well-defined problem formulation. Pre-
+vious works found that a model might perform well in one metric but significantly drop in an-
+other [72], making it difficult to do a fair comparison between various approaches. We summarize
+frequently used metrics as well as their adopters in Table 1.
+In Table 2, we list widely used and publicly available datasets. The scope of information items
+ranges broadly, from news articles, academic papers, posted images, music and videos, and these
+diverse scenarios of popularity prediction cause difficulties in the design of prediction models.
+Whether for feature extractions, problem formulations, evaluation selections, devising of genera-
+tive processes, or deep learning architecture designs, it is difficult and sometimes even impossible
+to fully generalize one model from one specific platform to another. The datasets used throughout
+this survey contain two microblog datasets, Twitter1 hashtags [207] and Weibo2 tweets [29], and
+one scientific dataset APS3 papers [174]. The basic statistics of the three datasets are shown in
+Table 3.
+3
+CHARACTERISTICS OF CASCADES AND FEATURE ENGINEERING APPROACHES
+Feature extraction plays a crucial role in predicting the popularity of items/cascades, whether for-
+mulated as classification or regression, prior or posterior, micro- or macro-level. Various features
+and machine learning techniques have been used in a variety of subjects, e.g., illustrating diffusion
+patterns in network, analyzing time-series evolution trends, and building prediction models.
+We now discuss the characteristics of information items/cascades, categorized into five groups:
+temporal, cascade structure, global graph, user/item attributes, and content features. Tables 4 and 5
+summarize the strategies, formulations, and feature frequency of feature-based models in the last
+1https://carl.cs.indiana.edu/data/#virality2013.
+2https://github.com/CaoQi92/DeepHawkes or https://bit.ly/weibodataset.
+3https://journals.aps.org/datasets.
+ACM Computing Surveys, Vol. 54, No. 2, Article 27. Publication date: March 2021.

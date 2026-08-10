@@ -1,0 +1,121 @@
+References
+Bao, P.; Shen, H.-W.; Jin, X.; and Cheng, X.-Q. 2015. Mod-
+eling and predicting popularity dynamics of microblogs us-
+ing self-excited hawkes processes. In WWW, 9–10.
+Cao, Q.; Shen, H.; Cen, K.; Ouyang, W.; and Cheng, X.
+2017. Deephawkes: Bridging the gap between prediction
+and understanding of information cascades. In CIKM, 1149–
+1158.
+Chen, R. T.; Rubanova, Y.; Bettencourt, J.; and Duvenaud,
+D. K. 2018.
+Neural ordinary differential equations.
+Ad-
+vances in neural information processing systems, 31.
+Chen, X.; Zhou, F.; Zhang, K.; Trajcevski, G.; Zhong, T.;
+and Zhang, F. 2019. Information Diffusion Prediction via
+Recurrent Cascades Convolution. In ICDE, 770–781. IEEE.
+Cheng, J.; Adamic, L.; Dow, P. A.; Kleinberg, J. M.; and
+Leskovec, J. 2014.
+Can cascades be predicted?
+In Pro-
+ceedings of the 23rd international conference on World wide
+web, 925–936.
+Donnat, C.; Zitnik, M.; Hallac, D.; and Leskovec, J. 2018.
+Learning structural node embeddings via diffusion wavelets.
+In Proceedings of the 24th ACM SIGKDD international con-
+ference on knowledge discovery & data mining, 1320–1329.
+Gao, S.; Ma, J.; and Chen, Z. 2014. Effective and effortless
+features for popularity prediction in microblogging network.
+In WWW, 269–270.
+Ho, J.; Jain, A.; and Abbeel, P. 2020. Denoising diffusion
+probabilistic models. Advances in neural information pro-
+cessing systems, 33: 6840–6851.
+Lazer, D. M.; Baum, M. A.; Benkler, Y.; Berinsky, A. J.;
+Greenhill, K. M.; Menczer, F.; Metzger, M. J.; Nyhan, B.;
+Pennycook, G.; Rothschild, D.; et al. 2018. The science of
+fake news. Science, 359(6380): 1094–1096.
+Lee, J. G.; Moon, S.; and Salamatian, K. 2012.
+Model-
+ing and predicting the popularity of online contents with
+Cox proportional hazard regression model. Neurocomput-
+ing, 76(1): 134–145.
+Li, C.; Ma, J.; Guo, X.; and Mei, Q. 2017. Deepcas: An end-
+to-end predictor of information cascades. In WWW, 577–
+586.
+Li, G.; Chen, S.; Feng, J.; Tan, K.-l.; and Li, W.-s. 2014. Ef-
+ficient location-aware influence maximization. In Proceed-
+ings of the 2014 ACM SIGMOD international conference on
+Management of data, 87–98.
+Lu, X.; Ji, S.; Yu, L.; Sun, L.; Du, B.; and Zhu, T. 2023.
+Continuous-Time Graph Learning for Cascade Popularity
+Prediction. arXiv preprint arXiv:2306.03756.
+Ma, Z.; Sun, A.; and Cong, G. 2013. On predicting the pop-
+ularity of newly emerging hashtags in t witter. Journal of the
+American Society for Information Science and Technology,
+64(7): 1399–1410.
+Martin, T.; Hofman, J. M.; Sharma, A.; Anderson, A.; and
+Watts, D. J. 2016. Exploring limits to prediction in complex
+social systems. In WWW, 683–694.
+Matsubara, Y.; Sakurai, Y.; Prakash, B. A.; Li, L.; and
+Faloutsos, C. 2012. Rise and fall patterns of information
+diffusion: model and implications.
+In Proceedings of the
+18th ACM SIGKDD international conference on Knowledge
+discovery and data mining, 6–14.
+Petrovic, S.; Osborne, M.; and Lavrenko, V. 2011. Rt to win!
+predicting message propagation in twitter. In Proceedings of
+the international AAAI conference on web and social media,
+volume 5, 586–589.
+Qiu, J.; Dong, Y.; Ma, H.; Li, J.; Wang, C.; Wang, K.; and
+Tang, J. 2019. Netsmf: Large-scale network embedding as
+sparse matrix factorization. In The World Wide Web Confer-
+ence, 1509–1520.
+Shen, H.; Wang, D.; Song, C.; and Barab´asi, A.-L. 2014.
+Modeling and predicting popularity dynamics via reinforced
+poisson processes. In Proceedings of the AAAI conference
+on artificial intelligence, volume 28.
+Song, J.; Meng, C.; and Ermon, S. 2020. Denoising diffusion
+implicit models. arXiv preprint arXiv:2010.02502.
+Vaswani, A.; Shazeer, N.; Parmar, N.; Uszkoreit, J.; Jones,
+L.; Gomez, A. N.; Kaiser, Ł.; and Polosukhin, I. 2017. At-
+tention is all you need. Advances in neural information pro-
+cessing systems, 30.
+Wang, R.; Huang, Z.; Liu, S.; Shao, H.; Liu, D.; Li, J.; Wang,
+T.; Sun, D.; Yao, S.; and Abdelzaher, T. 2021. Dydiff-vae:
+A dynamic variational framework for information diffusion
+prediction. In Proceedings of the 44th International ACM
+SIGIR Conference on Research and Development in Infor-
+mation Retrieval, 163–172.
+Wang, S.; Yan, Z.; Hu, X.; Yu, P. S.; Li, Z.; and Wang, B.
+2016. CPB: a classification-based approach for burst time
+prediction in cascades.
+Knowledge and Information Sys-
+tems, 49: 243–271.
+Wang, Y.; Wang, X.; Ran, Y.; Michalski, R.; and Jia, T.
+2022. CasSeqGCN: Combining network structure and tem-
+poral sequence to predict information cascades. Expert Sys-
+tems with Applications, 206: 117693.
+Wu, B.; Mei, T.; Cheng, W.-H.; and Zhang, Y. 2016. Un-
+folding temporal dynamics: Predicting social media popu-
+larity using multi-scale temporal decomposition.
+In Pro-
+ceedings of the AAAI Conference on Artificial Intelligence,
+volume 30.
+Xu, X.; Zhou, F.; Zhang, K.; Liu, S.; and Trajcevski, G.
+2021. Casflow: Exploring hierarchical structures and prop-
+agation uncertainty for cascade prediction. IEEE Transac-
+tions on Knowledge and Data Engineering.
+Yang, J.; and Leskovec, J. 2011. Patterns of temporal vari-
+ation in online media. In Proceedings of the fourth ACM
+international conference on Web search and data mining,
+177–186.
+Yu, L.; Xu, X.; Trajcevski, G.; and Zhou, F. 2022.
+Transformer-enhanced Hawkes process with decoupling
+training for information cascade prediction.
+Knowledge-
+Based Systems, 255: 109740.
+Yu, Z.; Zhang, D.; Yu, Z.; and Yang, D. 2015. Participant se-
+lection for offline event marketing leveraging location-based
+social networks. IEEE Transactions on Systems, Man, and
+Cybernetics: Systems, 45(6): 853–864.
+11913

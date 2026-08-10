@@ -17,7 +17,10 @@ from app.config import settings
 from app.core.account_training import AccountTrainingState, require_training_transition
 from app.core.trained_bot_detection import invalidate_trained_botrhg_runtime_cache
 from app.core.account_training_runtime import (
+    AccountModelGpuOwnershipBusyError,
+    AccountModelRuntimeOwnership,
     AccountTrainingOwnershipBusyError,
+    acquire_account_model_gpu_ownership,
     acquire_account_training_ownership,
     execute_account_training_artifact,
 )
@@ -63,11 +66,13 @@ def enqueue_account_training_reconciliation(*, timeout_seconds: int | None = Non
     bind=True,
     acks_late=True,
     reject_on_worker_lost=True,
-    max_retries=0,
+    max_retries=None,
 )
 def execute_account_training_run(self, run_id: str, expected_attempt: int):
-    del self
-    return run_async(_execute_account_training_run(str(run_id), expected_attempt=int(expected_attempt)))
+    result = run_async(_execute_account_training_run(str(run_id), expected_attempt=int(expected_attempt)))
+    if result.get("status") == "gpu_busy":
+        return self.retry(countdown=30)
+    return result
 
 
 @celery_app.task(name="account_training.reconcile_heartbeats", bind=True, acks_late=True, max_retries=0)
@@ -104,15 +109,27 @@ async def _execute_account_training_run(run_id: str, *, expected_attempt: int) -
             return {"run_id": run_id, "status": f"already_{run.status}"}
 
         try:
-            ownership = acquire_account_training_ownership(run.run_id, run.attempt)
+            gpu_ownership = acquire_account_model_gpu_ownership(f"training:{run.run_id}:attempt:{run.attempt}")
+        except AccountModelGpuOwnershipBusyError:
+            return {"run_id": run_id, "status": "gpu_busy"}
+        try:
+            run_ownership = acquire_account_training_ownership(run.run_id, run.attempt)
         except AccountTrainingOwnershipBusyError:
+            gpu_ownership.release()
             return {"run_id": run_id, "status": "runtime_still_owned"}
+        except BaseException:
+            gpu_ownership.release()
+            raise
+        ownership = AccountModelRuntimeOwnership(gpu_ownership, run_ownership)
         await _advance(session, run, AccountTrainingState.PREPARING, "preparing", "worker_claimed")
         await session.commit()
         try:
             config = _loads(run.config_json)
-            if run.family == "chinese_account_detector":
+            if run.family == "chinese_account_detector" and not _has_governed_detector_binding(config):
                 config = await _resolve_governed_detector_config(session, config)
+            if run.family == "chinese_account_detector":
+                config.pop("frozen_holdout_manifest_path", None)
+                config.pop("frozen_holdout_manifest_sha256", None)
             await _advance(session, run, AccountTrainingState.RUNNING, "training", "training_started")
             run.started_at = run.started_at or _utc_now()
             await session.commit()
@@ -413,6 +430,20 @@ async def _resolve_governed_detector_config(session, config: dict[str, Any]) -> 
     from app.services.account_model_governance_service import resolve_governed_chinese_social_encoder
 
     return await resolve_governed_chinese_social_encoder(session, config=config)
+
+
+def _has_governed_detector_binding(config: dict[str, Any]) -> bool:
+    """Recognize immutable detector configs created by the service preflight."""
+
+    return all(
+        str(config.get(key) or "").strip()
+        for key in (
+            "encoder_version",
+            "encoder_artifact_hash",
+            "text_model_path",
+            "encoder_binding_payload_path",
+        )
+    )
 
 
 def _utc_now() -> datetime:

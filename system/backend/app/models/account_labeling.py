@@ -311,6 +311,7 @@ class AccountFrozenHoldoutMembership(Base):
     membership_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
     corpus_version_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
     account_id: Mapped[str | None] = mapped_column(String(192), nullable=True, index=True)
+    platform: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
     case_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
     label_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
     stratum_json: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
@@ -471,8 +472,25 @@ class AccountModelEvaluationJob(Base):
             "status IN ('queued', 'running', 'completed', 'failed', 'cancelled')",
             name="ck_account_model_evaluation_jobs_status",
         ),
+        CheckConstraint(
+            "dispatch_status IN ('pending', 'publishing', 'published', 'superseded')",
+            name="ck_account_model_evaluation_jobs_dispatch_status",
+        ),
         Index("ix_account_model_evaluation_jobs_status_created", "status", "created_at"),
         Index("ix_account_model_evaluation_jobs_candidate", "model_version", "artifact_hash"),
+        Index(
+            "ix_account_model_evaluation_jobs_dispatch",
+            "dispatch_status",
+            "dispatch_available_at",
+            "dispatch_lease_expires_at",
+        ),
+        Index(
+            "ix_account_model_evaluation_jobs_delivery_ack",
+            "dispatch_status",
+            "status",
+            "dispatch_published_at",
+            "dispatch_acknowledged_at",
+        ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -485,6 +503,14 @@ class AccountModelEvaluationJob(Base):
     evaluator_config_json: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="queued", index=True)
     task_id: Mapped[str] = mapped_column(String(192), nullable=False, index=True)
+    dispatch_status: Mapped[str] = mapped_column(String(32), nullable=False, default="pending", index=True)
+    dispatch_claim_token: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    dispatch_lease_expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
+    dispatch_publish_attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    dispatch_available_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
+    dispatch_published_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    dispatch_acknowledged_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    dispatch_last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
     operator_id: Mapped[int] = mapped_column(Integer, nullable=False, default=0, index=True)
     completed_evaluation_run_id: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)

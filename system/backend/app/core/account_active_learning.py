@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from app.config import PROJECT_ROOT, settings
-from app.core.account_labeling import AccountDetectionCase
+from app.core.account_labeling import AccountDetectionCase, account_scope_key
 from app.utils.exceptions import AppException
 
 __all__ = ["select_account_detection_label_batch"]
@@ -101,7 +101,12 @@ def _probability_for(
 
 
 def _payload_for(case: AccountDetectionCase, model_outputs: dict[str, dict[str, Any]]) -> dict[str, Any]:
-    return model_outputs.get(case.case_id) or model_outputs.get(case.account_id) or {}
+    return (
+        model_outputs.get(case.case_id)
+        or model_outputs.get(account_scope_key(case.platform, case.account_id))
+        or model_outputs.get(case.account_id)
+        or {}
+    )
 
 
 def _is_calibrated(payload: dict[str, Any]) -> bool:

@@ -1,0 +1,59 @@
+27:32
+F. Zhou et al.
+[102] Lars Kotthoff, Chris Thornton, Holger H. Hoos, Frank Hutter, and Kevin Leyton-Brown. 2017. Auto-WEKA 2.0:
+Automatic model selection and hyperparameter optimization in WEKA. JMLR 18, 1 (2017), 826–830.
+[103] Siddharth Krishnan, Patrick Butler, Ravi Tandon, Jure Leskovec, and Naren Ramakrishnan. 2016. Seeing the forest
+for the trees: New approaches to forecasting cascades. In WebSci. 249–258.
+[104] Alex Krizhevsky, Ilya Sutskever, and Geoffrey E. Hinton. 2012. Imagenet classification with deep convolutional
+neural networks. In NIPS. 1097–1105.
+[105] Andrey Kupavskii, Liudmila Ostroumova, Alexey Umnov, Svyatoslav Usachev, Pavel Serdyukov, Gleb Gusev, and
+Andrey Kustarev. 2012. Prediction of retweet cascade size over time. In CIKM. 2335–2338.
+[106] Andrey Kupavskii, Alexey Umnov, Gleb Gusev, and Pavel Serdyukov. 2013. Predicting the audience size of a tweet.
+In ICWSM.
+[107] Haewoon Kwak, Changhyun Lee, Hosung Park, and Sue Moon. 2010. What is twitter, a social network or a news
+media? In WWW. 591–600.
+[108] Himabindu Lakkaraju and Jitendra Ajmera. 2011. Attention prediction on social media brand pages. In CIKM.
+[109] Himabindu Lakkaraju, Julian McAuley, and Jure Leskovec. 2013. What’s in a name? Understanding the interplay
+between titles, content, and communities in social media. In ICWSM.
+[110] Yann LeCun, Yoshua Bengio, et al. 1995. Convolutional networks for images, speech, and time series. Handbook
+Brain Theory Neural Netw. 3361, 10 (1995).
+[111] Yann LeCun, Yoshua Bengio, and Geoffrey Hinton. 2015. Deep learning. Nature 521, 7553 (2015), 436–444.
+[112] Jong Gun Lee, Sue Moon, and Kave Salamatian. 2010. An approach to model and predict the popularity of online
+contents with explanatory factors. In WI-IAT. 623–630.
+[113] Jong Gun Lee, Sue Moon, and Kavé Salamatian. 2012. Modeling and predicting the popularity of online contents
+with cox proportional hazard regression model. Neurocomputing 76, 1 (2012), 134–145.
+[114] Kristina Lerman and Tad Hogg. 2010. Using a model of social dynamics to predict popularity of news. In WWW.
+[115] Jure Leskovec, Lada Adamic, and Bernardo A. Huberman. 2007. The dynamics of viral marketing. TWEB 1, 1 (2007),
+5.
+[116] Jure Leskovec, Lars Backstrom, and Jon Kleinberg. 2009. Meme-tracking and the dynamics of the news cycle. In
+KDD.
+[117] Jure Leskovec, Kevin J. Lang, and Michael Mahoney. 2010. Empirical comparison of algorithms for network com-
+munity detection. In WWW. 631–640.
+[118] Jure Leskovec, Mary McGlohon, Christos Faloutsos, Natalie Glance, and Matthew Hurst. 2007. Cascading behavior
+in large blog graphs: Patterns and a model. In SDM. 551–556.
+[119] Cheng Li, Xiaoxiao Guo, and Qiaozhu Mei. 2018. Joint modeling of text and networks for cascade prediction. In
+ICWSM. 640–643.
+[120] Cheng Li, Jiaqi Ma, Xiaoxiao Guo, and Qiaozhu Mei. 2017. Deepcas: An end-to-end predictor of information cascades.
+In WWW. 577–586.
+[121] Cheng-Te Li, Yu-Jen Lin, and Mi-Yen Yeh. 2015. The roles of network communities in social information diffusion.
+In IEEE BigData. 391–400.
+[122] Dong Li, Shengping Zhang, Xin Sun, Huiyu Zhou, Sheng Li, and Xuelong Li. 2017. Modeling information diffusion
+over social networks for temporal dynamic prediction. TKDE 29, 9 (2017), 1985–1997.
+[123] Haitao Li, Xiaoqiang Ma, Feng Wang, Jiangchuan Liu, and Ke Xu. 2013. On popularity prediction of videos shared
+in online social networks. In CIKM. 169–178.
+[124] Dongliang Liao, Jin Xu, Gongfu Li, Weijie Huang, Weiqing Liu, and Jing Li. 2019. Popularity prediction on online
+articles with deep fusion of temporal process and content features. In AAAI. 200–207.
+[125] Shuyang Lin, Xiangnan Kong, and Philip S. Yu. 2013. Predicting trends in social networks via dynamic activeness
+model. In CIKM. 1661–1666.
+[126] Weiwei Liu, Zhi-Hong Deng, Xiuwen Gong, Frank Jiang, and Ivor W. Tsang. 2015. Effectively predicting whether
+and when a topic will become prevalent in a social network. In AAAI. 210–216.
+[127] David G. Lowe. 2004. Distinctive image features from scale-invariant keypoints. IJCV 60, 2 (2004), 91–110.
+[128] Xiaoyan Lu and Boleslaw Szymanski. 2017. Predicting viral news events in online media. In IPDPSW. 1447–1456.
+[129] Xinjiang Lu, Zhiwen Yu, Bin Guo, and Xingshe Zhou. 2014. Predicting the content dissemination trends by repost
+behavior modeling in mobile social networks. J. Netw. Comput. Appl. 42 (2014), 197–207.
+[130] Yunfei Lu, Linyun Yu, Tianyang Zhang, Chengxi Zang, Peng Cui, Chaoming Song, and Wenwu Zhu. 2018. Collective
+human behavior in cascading system: Discovery, modeling and applications. In ICDM. 297–306.
+[131] Zhunchen Luo and Xiao Liu. 2018. Real-time scholarly retweeting prediction system. In COLING. 25–29.
+[132] Jinna Lv, Wu Liu, Meng Zhang, He Gong, Bin Wu, and Huadong Ma. 2017. Multi-feature fusion for predicting social
+media popularity. In MM. 1883–1888.
+ACM Computing Surveys, Vol. 54, No. 2, Article 27. Publication date: March 2021.

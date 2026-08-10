@@ -1,0 +1,43 @@
+Published as a conference paper at ICLR 2021
+Figure 5: Hyperparameter sensitivity in CAW sampling. AUC on all inductive test links are reported.
+Figure 6: Complexity evaluation: The accumulated runtime of (a) temporal random walk extraction (Alg.1) and
+(b) the entire CAW-N training, timed over one epoch on Wikipedia (using different |E| for training).
+set the rest two to an optimal value found by grid search, and report the mean AUC performance on
+all inductive test links (i.e. old vs. new, new vs. new) and their 95% conﬁdence intervals.
+The results are summarized in Fig.5. From (a), we observe that only a small number of sampled CAWs
+are needed to achieve a competitive performance. Meanwhile, the performance gain is saturated as
+the sampling number increases. We analyze the temporal decay α in (b): α usually has an optimal
+interval, whose values and length also vary with different datasets to capture the different levels of
+temporal dynamics; a small α suggests an almost uniform sampling of interaction history, which
+hurts the performance; an overly large α also damages the model, since it makes the model only
+sample the most recent few interactions for computation and blind to the rest. Based on our efﬁcient
+sampling strategy (Sec.4.4), we may combine the optimal α with the average link intensity τ (Tab.1),
+and concludes that CAW-N only needs to online record and sample from about a constant times
+about 5 (≈τ
+α) most recent links for each node. Plot (c) suggests that the performance may peak at a
+certain CAW length, while the exact value may vary with datasets. Longer CAWs indicate that the
+corresponding networks evolve according to more complicated laws encoded in higher-order motifs.
+5.4
+COMPLEXITY EVALUATION
+We examine how the runtime of CAW-N depends on the number of edges |E| used for training. We
+record the runtimes of CAW-N for training one epoch on the Wikipedia datasets using M = 32, m = 2
+with batch-size=32. Speciﬁcs of the computing infrastructure are given in Appendix C.5. Fig. 6
+(a) shows the accumulated runtime of executing the random walk extraction i.e. Alg.1 only. It well
+aligns with our theoretical analysis (Thm. A.2) that each step of the random walk extraction has
+constant complexity (i.e. accumulated runtime linear with |E|). Plot (b) shows the entire runtime for
+one-epoch training, which is also linear with |E|. Note that O(|E|) is the time complexity that one at
+least needs to pay. The study demonstrates our method is scalable to long edge streams.
+6
+CONCLUSION
+We proposed CAW-N to inductively represent the dynamics of temporal networks. CAW-N uses
+CAWs to implicitly extract network motifs via temporal random walks and adopts novel set-based
+anonymization to establish the correlation between network motifs. The success of CAW-N points
+out many promising future research directions on temporal networks: Pairing CAW-N with neural
+network interpretation techniques (Montavon et al., 2018) may give a chance to automatically discover
+larger and meaningful motifs/patterns of temporal networks; CAW-N may also be generalized to
+predict high-order structures (e.g., triangles) that correspond to some function units of temporal
+networks from different domains (Benson et al., 2016; 2018; Zitnik et al., 2019).
+ACKNOWLEDGMENTS
+We thank Jiaxuan You and Rex Ying for their helpful discussion on the idea of Causal Anonymous
+Walks. We also thank Rok Sosiˇc, Camilo Andres Ruiz and Maria Brbi´c for providing insightful
+9

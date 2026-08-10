@@ -1,0 +1,49 @@
+A Survey of Information Cascade Analysis: Models, Predictions, and Recent Advances      27:11
+
+
+
+
+
+Fig. 5. Left: Histogram of arrival time t1 of the first retweet in Weibo cascades. Inset: CCDF of time t1. Right:
+Mean reaction time M−11   Mj=2(tj −tj−1). Inset: CCDF of mean reaction time.
+
+in practice. Calculation of time series often needs transformations in advance [224], e.g., divid-
+ing the time span in evenly distributed intervals and then calculating the cumulative/incremental
+popularity, or only observing a fixed number of early participants [39].
+  To predict the popularity Pi (tp) at prediction time tp based on the information observed at
+time to, [181] analyzed the relationships between (log-transformed) popularity Pi (tp) and Pi (to).
+They found a high correlation between early stage and future popularity and used a simple linear
+prediction model taking the early observed popularity as input to speculate the future popularity.
+
+   3.1.2  Publication Time. Another important temporal feature is the publication time t0. As re-
+ported in previous works [109, 137, 181, 186, 190], the popularity of a certain item is strongly
+related to its publication time, e.g., items published at midnight are less likely to be viewed while
+items published during daytime are generally more popular (though they have more competition)
+[13, 62, 210, 219]. To mitigate the effect of user activity periodicity, several solutions have been
+proposed. [155] designed 24 local models, each of which is trained with the samples published in
+a specific hour during the day. The tweet time was used in Reference [61] to eliminate the imbal-
+anced diurnal effect of user activities, while other temporal factors such as digg time [181], source
+time [190], and user activeness variability [210] have been employed to improve model robust-
+ness. More simply, some works only explore the items published in daytime to train their models
+[29, 38].
+
+   3.1.3   First Participation Time. The time t1 when the first participant arrives is also considered
+as an important temporal feature. As shown in the left graph of Figure 5, most tweets with at least
+10 retweets in 24 h received the first retweet no later than 1 h after publication. Similarly, more
+sophisticated temporal features have been considered in the literature, including mean arrival time
+ 1  M
+M     j=1 tj, mean reaction time M1  Mj=1(tj −tj−1) (right of Figure 5), change rate, dormant period,
+peek fraction, and so on. For instance, it has been demonstrated that the human reaction time
+often follows log-normal distribution, e.g., people’s reactions on calls, mails, and social networks
+[17, 238].
+
+   3.1.4  Evolving Trends. Characterizing the evolving trends of information cascades has been
+shown to yield informative signals for popularity prediction [8, 74, 116, 224]. Such temporal pat-
+terns of time series can be categorized into several types, e.g., smoothly increasing or suddenly
+bursting/decaying, dependent on different clustering algorithms. In Figure 6, we show 10 evolving
+trends of APS paper citations spanning 20 years by applying an agglomerative hierarchical clus-
+tering algorithm [75]. We can see that most of the clusters follow the trend that paper receives
+most of its citations in the first few years and then quickly diminishes in the following years.
+
+
+                       ACM Computing Surveys, Vol. 54, No. 2, Article 27. Publication date: March 2021.

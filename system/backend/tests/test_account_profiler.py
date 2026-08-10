@@ -40,3 +40,17 @@ def test_account_profile_builds_non_weibo_user_urls_when_missing():
 
     assert xhs_profile["user_url"] == "https://www.xiaohongshu.com/user/profile/xhs-user"
     assert douyin_profile["user_url"] == "https://www.douyin.com/user/douyin-user"
+
+
+def test_account_profiles_do_not_merge_equal_ids_across_platforms():
+    profiles = build_account_profiles(
+        [
+            _post("same-id", platform="weibo"),
+            _post("same-id", platform="douyin"),
+        ]
+    )
+
+    assert {(profile["platform"], profile["account_id"]) for profile in profiles} == {
+        ("weibo", "same-id"),
+        ("douyin", "same-id"),
+    }

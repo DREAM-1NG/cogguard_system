@@ -1,0 +1,571 @@
+Conference’17, July 2017, Washington, DC, USA
+Guo et al.
+Table 2: Datasets comparison for each subtask: user information, social network, bot label, propagation
+content, diffusion network and veracity label.
+Task
+Dataset
+Sources
+User
+info.
+Social
+network
+Bot
+label
+Prop.
+content
+Diff.
+network
+Veracity
+label
+Macroscopic information
+diffusion prediction
+Cascade size
+prediction
+Twitter-casflow [26]
+Twitter
+—
+—
+—
+—
+✓
+—
+APS [26]
+APS
+—
+—
+—
+—
+✓
+—
+Sina Weibo [55]
+Sina Weibo
+—
+—
+—
+—
+✓
+—
+HEP-PH [56]
+arXiv
+—
+—
+—
+—
+✓
+—
+Twitter-FOREST [25]
+Twitter
+—
+✓
+—
+—
+✓
+—
+Douban-FOREST [25]
+Douban
+—
+✓
+—
+—
+✓
+—
+Memetracker [25]
+Google News
+—
+—
+—
+—
+✓
+—
+Popularity
+prediction
+SMPD [32]
+Flicker
+✓
+—
+—
+✓
+—
+—
+Yelp [57]
+Yelp
+✓
+✓
+—
+✓
+—
+—
+MovieLens [58]
+IMDB
+✓
+—
+—
+✓
+—
+—
+Micro-Videos [34]
+Vine
+✓
+✓
+—
+✓
+—
+—
+MicroLens [59]
+A microvideo platform
+—
+—
+—
+✓
+✓
+—
+ICIP [60]
+Flicker
+✓
+—
+—
+✓
+—
+—
+UAP1
+COVID-19-rumor [61]
+Twitter, news websites
+—
+—
+—
+✓
+—
+✓
+Microscopic information
+diffusion prediction
+Next user
+prediction
+Twitter-FOREST [25]
+Twitter
+—
+✓
+—
+—
+✓
+—
+Douban-FOREST [25]
+Douban
+—
+✓
+—
+—
+✓
+—
+Memetracker [25]
+Google News
+—
+—
+—
+—
+✓
+—
+Android [62]
+Stack-Exchange
+—
+✓
+—
+—
+✓
+—
+Christianity [62]
+Stack-Exchange
+—
+✓
+—
+—
+✓
+—
+Twitter-MSHGAT [62]
+Twitter
+—
+✓
+—
+—
+✓
+—
+Douban-MSHGAT [62]
+Douban
+—
+✓
+—
+—
+✓
+—
+Douban-ComSoc [63]
+Douban
+—
+✓
+—
+—
+✓
+—
+Social influence
+prediction
+OAG-DeepInf [29]
+MAG, AMiner
+—
+✓
+—
+✓
+✓
+—
+Digg-DeepInf [29]
+Digg
+—
+✓
+—
+—
+✓
+—
+Twitter-DeepInf [29]
+Twitter
+—
+✓
+—
+—
+✓
+—
+Higgs Twitter [64]
+Twitter
+—
+✓
+—
+—
+✓
+—
+Weibo-DeepInf [29]
+Sina Weibo
+—
+✓
+—
+—
+✓
+—
+Weibo-influencelocality [65]
+Sina Weibo
+✓
+✓
+—
+✓
+✓
+—
+Social bot detection
+User-
+based
+Cresci-2017 [66]
+Twitter
+✓
+—
+✓
+✓
+—
+—
+gilani-2017 [67]
+Twitter
+✓
+—
+✓
+—
+—
+—
+botometer-feedback-2019 [68]
+Twitter
+✓
+—
+✓
+—
+—
+—
+Content-
+based
+PAN-AP-2019 [69]
+Twitter
+—
+—
+✓
+✓
+—
+—
+caverlee-2011 [70]
+Twitter
+✓
+—
+✓
+✓
+—
+—
+Graph-
+based
+Cresci-2015 [71]
+Twitter
+✓
+✓
+✓
+—
+—
+—
+TwiBot-20 [72]
+Twitter
+✓
+✓
+✓
+—
+—
+—
+TwiBot-22 [17]
+Twitter
+✓
+✓
+✓
+—
+—
+—
+Misinformation detection
+Rumor detection
+PHEME-v1 [73]
+Twitter
+✓
+—
+—
+✓
+✓
+✓
+PHEME-v2 [74]
+Twitter
+✓
+—
+—
+✓
+✓
+✓
+PHEME-v3 [75]
+Twitter
+✓
+✓
+—
+✓
+✓
+✓
+Weibo-BiGCN [76]
+Sina Weibo
+—
+—
+—
+—
+✓
+✓
+Ma-Weibo [77]
+Sina Weibo
+✓
+—
+—
+✓
+✓
+✓
+Twitter15 [78]
+Twitter
+—
+—
+—
+✓
+✓
+✓
+Twitter16 [78]
+Twitter
+—
+—
+—
+✓
+✓
+✓
+Twitter15-RDMSC [75]
+Twitter
+✓
+✓
+—
+✓
+✓
+✓
+Twitter16-RDMSC [75]
+Twitter
+✓
+✓
+—
+✓
+✓
+✓
+MR2 [79]
+Social media platforms
+—
+—
+—
+✓
+—
+✓
+Fake news detection
+FakeNewsNet [47]
+Politifact, Gossipcop
+✓
+✓
+—
+✓
+✓
+✓
+FakeNewsNet-DECOR [80]
+Politifact, Gossipcop
+✓
+—
+—
+—
+—
+✓
+FakeNewsNet-UPFD [81]
+Politifact, Gossipcop
+✓
+—
+—
+✓
+✓
+✓
+TruthSeeker2023 [82]
+PolitiFact
+✓
+—
+✓
+—
+—
+✓
+MC-Fake [44]
+Twitter
+✓
+✓
+—
+—
+✓
+✓
+FineFake [83]
+Snopes
+✓
+—
+—
+✓
+✓
+✓
+FauxBuster [84]
+Twitter, Reddit
+—
+—
+—
+✓
+✓
+✓
+MM-Covid [85]
+PolitiFact, FullFact
+✓
+—
+—
+✓
+✓
+✓
+MuMIN [86]
+Twitter
+—
+—
+—
+✓
+✓
+✓
+CHECKED [87]
+Sina Weibo
+—
+—
+—
+✓
+—
+✓
+FakeSV [88]
+Douyin, Kuaishou
+✓
+—
+—
+✓
+—
+✓
+FTT [89]
+Fake news detection system
+—
+—
+—
+✓
+—
+✓
+MCFEND [90]
+Fact-checking agencies
+✓
+—
+—
+✓
+—
+✓
+Weibo21 [91]
+Sina Weibo
+—
+—
+—
+✓
+—
+✓
+Image-verification-corpus [92]
+Twitter
+✓
+—
+—
+✓
+—
+✓
+Breaking! [93]
+BS Detector
+—
+—
+—
+✓
+—
+✓
+LIAR [94]
+Politifact
+—
+—
+—
+✓
+—
+✓
+Evons [95]
+Media-source
+—
+—
+—
+✓
+—
+✓
+WeChat [96]
+WeChat’s Official Accounts
+—
+—
+—
+✓
+—
+✓
+Fakeddit [97]
+Reddit
+—
+—
+—
+✓
+—
+✓
+1 UAP: User attitudes prediction

@@ -49,7 +49,15 @@ def _check_db_available() -> bool:
     try:
         from sqlalchemy import create_engine, text
         sync_url = settings.mysql_url_test.replace("+aiomysql", "+pymysql")
-        eng = create_engine(sync_url, pool_pre_ping=True)
+        eng = create_engine(
+            sync_url,
+            pool_pre_ping=True,
+            connect_args={
+                "connect_timeout": 2,
+                "read_timeout": 2,
+                "write_timeout": 2,
+            },
+        )
         with eng.connect() as conn:
             conn.execute(text("SELECT 1"))
         eng.dispose()

@@ -24,6 +24,7 @@ from app.models.account_labeling import (
     AccountTrainingExportMembership,
 )
 from app.core.account_model_artifact import load_deployable_bundle_manifest
+from app.core.account_labeling import account_scope_key
 from app.core.trained_bot_detection import get_trained_botrhg_inference
 from app.services.account_model_governance_service import (
     sign_account_model_evaluation_manifest,
@@ -247,6 +248,9 @@ async def create_account_model_evaluation_job(
         evaluator_config_json=_canonical_json(config),
         status="queued",
         task_id=f"account-evaluation-task-{uuid4().hex}",
+        dispatch_status="pending",
+        dispatch_publish_attempts=0,
+        dispatch_available_at=_utc_now(),
         operator_id=int(operator_id),
     )
     session.add(job)
@@ -555,10 +559,12 @@ def _holdout_inference_posts(holdout_cases: list[FrozenHoldoutCase]) -> list[dic
         text = str(payload.get("text") or payload.get("content") or "").strip()
         if not text:
             raise AppException(code=409, msg="Frozen holdout case has no persisted inference text.")
+        scoped_account_id = account_scope_key(row.platform, row.account_id)
         posts.append(
             {
-                "author_id": row.account_id,
-                "user_id": row.account_id,
+                "author_id": scoped_account_id,
+                "user_id": scoped_account_id,
+                "source_account_id": row.account_id,
                 "post_id": row.case_id,
                 "platform": row.platform,
                 "event_id": row.event_id,
@@ -585,7 +591,8 @@ def _candidate_bound_audits(
     }
     audits: list[dict[str, Any]] = []
     for row in holdout_cases:
-        prediction = predictions.get(row.account_id)
+        scoped_account_id = account_scope_key(row.platform, row.account_id)
+        prediction = predictions.get(scoped_account_id)
         if prediction is None:
             raise AppException(code=409, msg="Candidate BotRHG runtime omitted a frozen holdout prediction.")
         probability = prediction.get("calibrated_probability")
@@ -604,7 +611,8 @@ def _candidate_bound_audits(
             raise AppException(code=409, msg="Candidate BotRHG runtime returned an invalid frozen holdout prediction.")
         audits.append(
             {
-                "account_id": row.account_id,
+                "account_id": scoped_account_id,
+                "source_account_id": row.account_id,
                 "platform": row.platform,
                 "input_fingerprint": _canonical_digest(
                     {

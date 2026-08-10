@@ -1,0 +1,1411 @@
+{
+  "schema_version": 2,
+  "generated_at": "2026-08-10T06:27:37.850729+00:00",
+  "source_pdf": "H:\\Zotero\\attenger\\Projects\\CISCN\\Propagation\\Wang 等 - 2022 - Inductive representation learning in temporal networks via causal anonymous walks.pdf",
+  "source_sha256": "c7b0edd30e02df31c3729c9df762d3bfd92f9f016862a11cde618fb03eea735b",
+  "page_count": 22,
+  "render_dpi": 180,
+  "selected_pages": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22
+  ],
+  "analysis_mode": "text-only",
+  "text_layer_available": true,
+  "text_layer_characters": 95251,
+  "automatic_crops_are_unverified": true,
+  "pages": [
+    {
+      "page": 1,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-001.txt",
+      "text_characters": 5385,
+      "caption_count": 0
+    },
+    {
+      "page": 2,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-002.txt",
+      "text_characters": 8831,
+      "caption_count": 2
+    },
+    {
+      "page": 3,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-003.txt",
+      "text_characters": 5567,
+      "caption_count": 1
+    },
+    {
+      "page": 4,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-004.txt",
+      "text_characters": 5357,
+      "caption_count": 2
+    },
+    {
+      "page": 5,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-005.txt",
+      "text_characters": 4651,
+      "caption_count": 0
+    },
+    {
+      "page": 6,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-006.txt",
+      "text_characters": 4555,
+      "caption_count": 1
+    },
+    {
+      "page": 7,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-007.txt",
+      "text_characters": 5036,
+      "caption_count": 0
+    },
+    {
+      "page": 8,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-008.txt",
+      "text_characters": 6617,
+      "caption_count": 1
+    },
+    {
+      "page": 9,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-009.txt",
+      "text_characters": 3548,
+      "caption_count": 2
+    },
+    {
+      "page": 10,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-010.txt",
+      "text_characters": 3457,
+      "caption_count": 0
+    },
+    {
+      "page": 11,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-011.txt",
+      "text_characters": 3500,
+      "caption_count": 0
+    },
+    {
+      "page": 12,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-012.txt",
+      "text_characters": 3562,
+      "caption_count": 0
+    },
+    {
+      "page": 13,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-013.txt",
+      "text_characters": 475,
+      "caption_count": 0
+    },
+    {
+      "page": 14,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-014.txt",
+      "text_characters": 2901,
+      "caption_count": 2
+    },
+    {
+      "page": 15,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-015.txt",
+      "text_characters": 4002,
+      "caption_count": 0
+    },
+    {
+      "page": 16,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-016.txt",
+      "text_characters": 3416,
+      "caption_count": 1
+    },
+    {
+      "page": 17,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-017.txt",
+      "text_characters": 3862,
+      "caption_count": 1
+    },
+    {
+      "page": 18,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-018.txt",
+      "text_characters": 4570,
+      "caption_count": 1
+    },
+    {
+      "page": 19,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-019.txt",
+      "text_characters": 5444,
+      "caption_count": 1
+    },
+    {
+      "page": 20,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-020.txt",
+      "text_characters": 3656,
+      "caption_count": 2
+    },
+    {
+      "page": 21,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-021.txt",
+      "text_characters": 3750,
+      "caption_count": 2
+    },
+    {
+      "page": 22,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-022.txt",
+      "text_characters": 3109,
+      "caption_count": 1
+    }
+  ],
+  "visuals": [
+    {
+      "id": "figure-1-p002",
+      "label": "Figure 1",
+      "kind": "figure",
+      "number": "1",
+      "page": 2,
+      "caption": "Triadic closure and feed-forward loops: Causal anonymous walks (CAW) capture the laws.",
+      "raw_text": "Figure 1: Triadic closure and feed-forward loops: Causal anonymous walks (CAW) capture the laws.",
+      "caption_bbox_points": [
+        108.0,
+        154.371,
+        503.999,
+        164.249
+      ],
+      "caption_bbox_pixels": [
+        270,
+        386,
+        1260,
+        411
+      ],
+      "suggested_crop_bbox_points": [
+        98.0,
+        144.371,
+        513.999,
+        345.195
+      ],
+      "suggested_crop_bbox_pixels": [
+        245,
+        361,
+        1285,
+        863
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-002.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\figure-1-p002.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "figure-2-p002",
+      "label": "Figure 2",
+      "kind": "figure",
+      "number": "2",
+      "page": 2,
+      "caption": "Causal anonymous walks (CAW): causality extraction and set-based anonymization.",
+      "raw_text": "Figure 2: Causal anonymous walks (CAW): causality extraction and set-based anonymization.",
+      "caption_bbox_points": [
+        118.405,
+        348.999,
+        493.596,
+        358.962
+      ],
+      "caption_bbox_pixels": [
+        296,
+        872,
+        1234,
+        897
+      ],
+      "suggested_crop_bbox_points": [
+        94.375,
+        165.249,
+        518.419,
+        368.962
+      ],
+      "suggested_crop_bbox_pixels": [
+        236,
+        413,
+        1296,
+        922
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-002.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\figure-2-p002.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "figure-3-p003",
+      "label": "Figure 3",
+      "kind": "figure",
+      "number": "3",
+      "page": 3,
+      "caption": "Ambiguity due to removing node identi- ties in TGAT (Xu et al., 2020) (t1 < t2 < t3).",
+      "raw_text": "Figure 3: Ambiguity due to removing node identi- ties in TGAT (Xu et al., 2020) (t1 < t2 < t3).",
+      "caption_bbox_points": [
+        306.0,
+        571.388,
+        505.654,
+        593.555
+      ],
+      "caption_bbox_pixels": [
+        765,
+        1428,
+        1264,
+        1484
+      ],
+      "suggested_crop_bbox_points": [
+        296.0,
+        516.355,
+        515.654,
+        603.555
+      ],
+      "suggested_crop_bbox_pixels": [
+        740,
+        1291,
+        1289,
+        1509
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-003.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\figure-3-p003.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "algorithm-1-p004",
+      "label": "Algorithm 1",
+      "kind": "algorithm",
+      "number": "1",
+      "page": 4,
+      "caption": "Temporal Walk Extraction (E, α, M, m, w0, t0)",
+      "raw_text": "Algorithm 1: Temporal Walk Extraction (E, α, M, m, w0, t0)",
+      "caption_bbox_points": [
+        107.641,
+        92.615,
+        356.257,
+        103.549
+      ],
+      "caption_bbox_pixels": [
+        269,
+        232,
+        891,
+        259
+      ],
+      "suggested_crop_bbox_points": [
+        21.42,
+        29.255,
+        590.58,
+        341.149
+      ],
+      "suggested_crop_bbox_pixels": [
+        54,
+        73,
+        1476,
+        853
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-004.txt",
+      "crop_confidence": "low",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\algorithm-1-p004.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "figure-4-p004",
+      "label": "Figure 4",
+      "kind": "figure",
+      "number": "4",
+      "page": 4,
+      "caption": "The correlation be- tween walks needs to be captured to learn this law.",
+      "raw_text": "Figure 4: The correlation be- tween walks needs to be captured to learn this law.",
+      "caption_bbox_points": [
+        382.708,
+        174.689,
+        502.996,
+        204.411
+      ],
+      "caption_bbox_pixels": [
+        957,
+        437,
+        1257,
+        511
+      ],
+      "suggested_crop_bbox_points": [
+        372.708,
+        110.933,
+        512.996,
+        214.411
+      ],
+      "suggested_crop_bbox_pixels": [
+        932,
+        277,
+        1282,
+        536
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-004.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\figure-4-p004.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "table-1-p006",
+      "label": "Table 1",
+      "kind": "table",
+      "number": "1",
+      "page": 6,
+      "caption": "Summary of dataset statistics. Average link stream intensity is calculated by 2|E|/(|V |T), where T is the total time range of all edges in unit of seconds, |V | and |E| are number of nodes and temporal links.",
+      "raw_text": "Table 1: Summary of dataset statistics. Average link stream intensity is calculated by 2|E|/(|V |T), where T is the total time range of all edges in unit of seconds, |V | and |E| are number of nodes and temporal links.",
+      "caption_bbox_points": [
+        107.691,
+        116.89,
+        504.0,
+        136.505
+      ],
+      "caption_bbox_pixels": [
+        269,
+        292,
+        1260,
+        341
+      ],
+      "suggested_crop_bbox_points": [
+        97.691,
+        17.813,
+        514.0,
+        146.505
+      ],
+      "suggested_crop_bbox_pixels": [
+        244,
+        45,
+        1285,
+        366
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-006.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\table-1-p006.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "table-2-p008",
+      "label": "Table 2",
+      "kind": "table",
+      "number": "2",
+      "page": 8,
+      "caption": "Performance in AUC (mean in percentage ± 95% conﬁdence level.) † highlights the best baselines. ∗, bold font, bold font∗respectively highlights the case where our models’ performance exceeds the best baseline on average, by 70% conﬁdence, by 95% conﬁdence.",
+      "raw_text": "Table 2: Performance in AUC (mean in percentage ± 95% conﬁdence level.) † highlights the best baselines. ∗, bold font, bold font∗respectively highlights the case where our models’ performance exceeds the best baseline on average, by 70% conﬁdence, by 95% conﬁdence.",
+      "caption_bbox_points": [
+        107.691,
+        300.429,
+        504.001,
+        332.669
+      ],
+      "caption_bbox_pixels": [
+        269,
+        751,
+        1260,
+        832
+      ],
+      "suggested_crop_bbox_points": [
+        97.691,
+        17.813,
+        514.001,
+        342.669
+      ],
+      "suggested_crop_bbox_pixels": [
+        244,
+        45,
+        1285,
+        857
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-008.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\table-2-p008.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "figure-5-p009",
+      "label": "Figure 5",
+      "kind": "figure",
+      "number": "5",
+      "page": 9,
+      "caption": "Hyperparameter sensitivity in CAW sampling. AUC on all inductive test links are reported.",
+      "raw_text": "Figure 5: Hyperparameter sensitivity in CAW sampling. AUC on all inductive test links are reported.",
+      "caption_bbox_points": [
+        122.708,
+        164.392,
+        489.293,
+        174.355
+      ],
+      "caption_bbox_pixels": [
+        307,
+        411,
+        1223,
+        436
+      ],
+      "suggested_crop_bbox_points": [
+        112.708,
+        60.525,
+        499.293,
+        184.355
+      ],
+      "suggested_crop_bbox_pixels": [
+        282,
+        151,
+        1248,
+        461
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-009.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\figure-5-p009.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "figure-6-p009",
+      "label": "Figure 6",
+      "kind": "figure",
+      "number": "6",
+      "page": 9,
+      "caption": "Complexity evaluation: The accumulated runtime of (a) temporal random walk extraction (Alg.1) and (b) the entire CAW-N training, timed over one epoch on Wikipedia (using different |E| for training).",
+      "raw_text": "Figure 6: Complexity evaluation: The accumulated runtime of (a) temporal random walk extraction (Alg.1) and (b) the entire CAW-N training, timed over one epoch on Wikipedia (using different |E| for training).",
+      "caption_bbox_points": [
+        107.704,
+        269.579,
+        503.996,
+        289.187
+      ],
+      "caption_bbox_pixels": [
+        269,
+        674,
+        1260,
+        723
+      ],
+      "suggested_crop_bbox_points": [
+        97.704,
+        175.355,
+        513.996,
+        299.187
+      ],
+      "suggested_crop_bbox_pixels": [
+        244,
+        438,
+        1285,
+        748
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-009.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\figure-6-p009.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "algorithm-2-p014",
+      "label": "Algorithm 2",
+      "kind": "algorithm",
+      "number": "2",
+      "page": 14,
+      "caption": "Online probability computation (G, α)",
+      "raw_text": "Algorithm 2: Online probability computation (G, α)",
+      "caption_bbox_points": [
+        107.641,
+        206.497,
+        319.183,
+        216.69
+      ],
+      "caption_bbox_pixels": [
+        269,
+        516,
+        798,
+        542
+      ],
+      "suggested_crop_bbox_points": [
+        21.42,
+        143.137,
+        590.58,
+        454.29
+      ],
+      "suggested_crop_bbox_pixels": [
+        54,
+        358,
+        1476,
+        1136
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-014.txt",
+      "crop_confidence": "low",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\algorithm-2-p014.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "algorithm-3-p014",
+      "label": "Algorithm 3",
+      "kind": "algorithm",
+      "number": "3",
+      "page": 14,
+      "caption": "Iterative Sampling (E, α, wp, tp)",
+      "raw_text": "Algorithm 3: Iterative Sampling (E, α, wp, tp)",
+      "caption_bbox_points": [
+        107.641,
+        438.115,
+        293.461,
+        449.21
+      ],
+      "caption_bbox_pixels": [
+        269,
+        1095,
+        734,
+        1123
+      ],
+      "suggested_crop_bbox_points": [
+        21.42,
+        374.755,
+        590.58,
+        686.81
+      ],
+      "suggested_crop_bbox_pixels": [
+        54,
+        937,
+        1476,
+        1717
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-014.txt",
+      "crop_confidence": "low",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\algorithm-3-p014.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "figure-7-p016",
+      "label": "Figure 7",
+      "kind": "figure",
+      "number": "7",
+      "page": 16,
+      "caption": "Effect of sampling of different tree structures on inductive performance. We conduct more experiment to investigate this topic with Wikipedia and UCI datasets. The setup is as follows: ﬁrst, we ﬁx CAW sampling number M = 64 = 26 and length m = 2, so that we always have k1k2 = M = 26; next, we assign different values to k1, so that the shape of the tree changes accordingly; controlling other hyperparameters to be the optimal combination found by grid search, we plot the corresponding inductive AUC scores of CAW-N-mean on all testing edges in Fig. 7. It is observed that while tree-structured sampling may affect the performance to some extent, its negative impact is less prominent when the ﬁrst-step sampling number k1 is relatively large, and our model still achieves state-of-the-art performance compared to our baselines. That makes the tree-structured sampling a reasonable strategy that can further reduce time complexity.",
+      "raw_text": "Figure 7: Effect of sampling of different tree structures on inductive performance. We conduct more experiment to investigate this topic with Wikipedia and UCI datasets. The setup is as follows: ﬁrst, we ﬁx CAW sampling number M = 64 = 26 and length m = 2, so that we always have k1k2 = M = 26; next, we assign different values to k1, so that the shape of the tree changes accordingly; controlling other hyperparameters to be the optimal combination found by grid search, we plot the corresponding inductive AUC scores of CAW-N-mean on all testing edges in Fig. 7. It is observed that while tree-structured sampling may affect the performance to some extent, its negative impact is less prominent when the ﬁrst-step sampling number k1 is relatively large, and our model still achieves state-of-the-art performance compared to our baselines. That makes the tree-structured sampling a reasonable strategy that can further reduce time complexity.",
+      "caption_bbox_points": [
+        107.532,
+        299.961,
+        505.247,
+        411.479
+      ],
+      "caption_bbox_pixels": [
+        269,
+        750,
+        1263,
+        1029
+      ],
+      "suggested_crop_bbox_points": [
+        97.532,
+        200.667,
+        515.247,
+        421.479
+      ],
+      "suggested_crop_bbox_pixels": [
+        244,
+        502,
+        1288,
+        1054
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-016.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\figure-7-p016.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "table-4-p017",
+      "label": "Table 4",
+      "kind": "table",
+      "number": "4",
+      "page": 17,
+      "caption": "Hyperparameter search range of CAW sampling.",
+      "raw_text": "Table 4: Hyperparameter search range of CAW sampling.",
+      "caption_bbox_points": [
+        191.027,
+        335.317,
+        420.665,
+        345.28
+      ],
+      "caption_bbox_pixels": [
+        478,
+        838,
+        1052,
+        863
+      ],
+      "suggested_crop_bbox_points": [
+        97.502,
+        17.813,
+        514.351,
+        355.28
+      ],
+      "suggested_crop_bbox_pixels": [
+        244,
+        45,
+        1286,
+        888
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-017.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\table-4-p017.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "table-5-p018",
+      "label": "Table 5",
+      "kind": "table",
+      "number": "5",
+      "page": 18,
+      "caption": "Snapshot split for evaluating snapshot-based baselines.",
+      "raw_text": "Table 5: Snapshot split for evaluating snapshot-based baselines.",
+      "caption_bbox_points": [
+        178.908,
+        534.052,
+        432.785,
+        544.015
+      ],
+      "caption_bbox_pixels": [
+        447,
+        1335,
+        1082,
+        1360
+      ],
+      "suggested_crop_bbox_points": [
+        97.532,
+        524.052,
+        515.242,
+        772.157
+      ],
+      "suggested_crop_bbox_pixels": [
+        244,
+        1310,
+        1288,
+        1930
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-018.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\table-5-p018.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "table-6-p019",
+      "label": "Table 6",
+      "kind": "table",
+      "number": "6",
+      "page": 19,
+      "caption": "Performance in Average Precision (AP) (mean in percentage ± 95% conﬁdence level.) † highlights the best baselines. ∗, bold font, bold font∗respectively highlights the case where our models’ performance exceeds the best baseline on average, by 70% conﬁdence, by 95% conﬁdence.",
+      "raw_text": "Table 6: Performance in Average Precision (AP) (mean in percentage ± 95% conﬁdence level.) † highlights the best baselines. ∗, bold font, bold font∗respectively highlights the case where our models’ performance exceeds the best baseline on average, by 70% conﬁdence, by 95% conﬁdence.",
+      "caption_bbox_points": [
+        107.691,
+        529.441,
+        504.168,
+        561.674
+      ],
+      "caption_bbox_pixels": [
+        269,
+        1324,
+        1260,
+        1404
+      ],
+      "suggested_crop_bbox_points": [
+        97.641,
+        188.96,
+        514.168,
+        571.674
+      ],
+      "suggested_crop_bbox_pixels": [
+        244,
+        472,
+        1285,
+        1429
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-019.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\table-6-p019.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "figure-8-p020",
+      "label": "Figure 8",
+      "kind": "figure",
+      "number": "8",
+      "page": 20,
+      "caption": "Visualizing most discriminatory CAWs, and their occurrence ratios with positive / negative samples.",
+      "raw_text": "Figure 8: Visualizing most discriminatory CAWs, and their occurrence ratios with positive / negative samples.",
+      "caption_bbox_points": [
+        108.0,
+        234.221,
+        504.002,
+        244.149
+      ],
+      "caption_bbox_pixels": [
+        270,
+        586,
+        1260,
+        610
+      ],
+      "suggested_crop_bbox_points": [
+        98.0,
+        71.861,
+        514.002,
+        254.149
+      ],
+      "suggested_crop_bbox_pixels": [
+        245,
+        180,
+        1285,
+        635
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-020.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\figure-8-p020.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "figure-8-p020",
+      "label": "Figure 8",
+      "kind": "figure",
+      "number": "8",
+      "page": 20,
+      "caption": "lists the 3 highest-scored and the 3 lowest-scored shapes of CAW, which are extracted from the Wikipedia dataset with M = 32 and m = 3. A law of general motif closure can be observed from the highest-scored CAWs: two nodes that commonly appear in some types of motif are more inclined to have a link in between. For example, the highest-scored shape of CAW, (0, ∞) →(1, 2) →(2, 3) →(1, 2), implies that the nodes except the ﬁrst in this CAW appear in the sampled common 3-hop neighborhood around the two nodes between which the link is to be",
+      "raw_text": "Fig. 8 lists the 3 highest-scored and the 3 lowest-scored shapes of CAW, which are extracted from the Wikipedia dataset with M = 32 and m = 3. A law of general motif closure can be observed from the highest-scored CAWs: two nodes that commonly appear in some types of motif are more inclined to have a link in between. For example, the highest-scored shape of CAW, (0, ∞) →(1, 2) →(2, 3) →(1, 2), implies that the nodes except the ﬁrst in this CAW appear in the sampled common 3-hop neighborhood around the two nodes between which the link is to be",
+      "caption_bbox_points": [
+        106.834,
+        667.436,
+        505.247,
+        732.293
+      ],
+      "caption_bbox_pixels": [
+        267,
+        1669,
+        1263,
+        1831
+      ],
+      "suggested_crop_bbox_points": [
+        21.42,
+        334.796,
+        590.58,
+        742.293
+      ],
+      "suggested_crop_bbox_pixels": [
+        54,
+        837,
+        1476,
+        1856
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-020.txt",
+      "crop_confidence": "low",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\figure-8-p020.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "figure-9-p021",
+      "label": "Figure 9",
+      "kind": "figure",
+      "number": "9",
+      "page": 21,
+      "caption": "Visualizing all AWs, and their occurrence ratios with positive / negative samples.",
+      "raw_text": "Figure 9: Visualizing all AWs, and their occurrence ratios with positive / negative samples.",
+      "caption_bbox_points": [
+        140.892,
+        203.539,
+        471.111,
+        213.502
+      ],
+      "caption_bbox_pixels": [
+        352,
+        509,
+        1178,
+        534
+      ],
+      "suggested_crop_bbox_points": [
+        130.892,
+        71.861,
+        481.111,
+        223.502
+      ],
+      "suggested_crop_bbox_pixels": [
+        327,
+        180,
+        1203,
+        559
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-021.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\figure-9-p021.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "table-7-p021",
+      "label": "Table 7",
+      "kind": "table",
+      "number": "7",
+      "page": 21,
+      "caption": "TGN performance in AUC (mean in percentage ± 95% conﬁdence level). Bond font highlights the case when TGN out performs CAW-N. TGN generally outperforms other baselines.",
+      "raw_text": "Table 7: TGN performance in AUC (mean in percentage ± 95% conﬁdence level). Bond font highlights the case when TGN out performs CAW-N. TGN generally outperforms other baselines.",
+      "caption_bbox_points": [
+        107.691,
+        275.346,
+        504.004,
+        296.627
+      ],
+      "caption_bbox_pixels": [
+        269,
+        688,
+        1260,
+        742
+      ],
+      "suggested_crop_bbox_points": [
+        97.691,
+        216.685,
+        514.004,
+        306.627
+      ],
+      "suggested_crop_bbox_pixels": [
+        244,
+        542,
+        1285,
+        767
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-021.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\table-7-p021.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "table-8-p022",
+      "label": "Table 8",
+      "kind": "table",
+      "number": "8",
+      "page": 22,
+      "caption": "TGN performance in AP (mean in percentage ± 95% conﬁdence level). Bond font highlights the case when TGN out performs CAW-N. TGN generally outperforms other baselines.",
+      "raw_text": "Table 8: TGN performance in AP (mean in percentage ± 95% conﬁdence level). Bond font highlights the case when TGN out performs CAW-N. TGN generally outperforms other baselines.",
+      "caption_bbox_points": [
+        107.691,
+        130.678,
+        504.0,
+        151.959
+      ],
+      "caption_bbox_pixels": [
+        269,
+        327,
+        1260,
+        380
+      ],
+      "suggested_crop_bbox_points": [
+        97.691,
+        17.813,
+        514.0,
+        161.959
+      ],
+      "suggested_crop_bbox_pixels": [
+        244,
+        45,
+        1285,
+        405
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-022.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\table-8-p022.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    }
+  ]
+}

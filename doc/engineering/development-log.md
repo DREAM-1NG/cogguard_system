@@ -1,5 +1,31 @@
 ﻿# 开发变更日志
 
+## 2026-08-08: TwiBot-20 Research Deployment And Dataset Identity
+
+- Added an internal `TwiBot20ResearchRuntime` and CLI. It verifies a compact,
+  hash-managed bundle containing the NLPCC checkpoint, fixed node mapping,
+  predictions, source manifest, and selection metrics before serving a lookup.
+- Selected seed 3 according to the source experiment's validation-accuracy
+  rule (`0.908828` validation accuracy, `0.904926` validation macro-F1). The
+  five-seed test comparison remains non-significant and is not a superiority
+  claim.
+- Built and smoke-tested `system/artifacts/social_bot_detection/nlpcc_twibot20_seed3`.
+  The bundle has 11,826 fixed nodes and is explicitly forbidden from the
+  Chinese `cogguard.botrhg.account.v3` Active Pointer.
+- Corrected approved-corpus identity and provenance: exported IDs are
+  platform-scoped, raw IDs are retained as `source_account_id`, timestamps
+  require explicit timezone information, and community fields are copied only
+  from persisted payload values.
+- Strict approved-corpus loading now recomputes JSONL fingerprint, record
+  count, and class counts and rejects a mismatching manifest. Frozen-holdout
+  inference and audits use the same platform-scoped identity.
+- Verification: TwiBot-20 runtime `4 passed`; social-bot research suite
+  `74 passed`; frozen-holdout evaluation suite `20 passed`; real MySQL export
+  identity/metadata tests `2 passed`. Frontend was not changed.
+- `luna max` was attempted three times for Task 2 and the local provider
+  returned HTTP 503 each time; Task 2 was completed on the main execution
+  path and independently verified.
+
 > **用途**：按时间记录与本仓库相关的代码、配置、文档变更，便于追溯。  
 > **受众**：开发者、评审者、后续维护 agent。  
 > **维护规则**：每次完成一批可交付改动时追加条目；状态类变更同步 `development-roadmap.md`。
@@ -15,6 +41,29 @@
 - 变更摘要（一句话）
 - `路径/文件`：具体改动说明
 ```
+
+---
+
+## 2026-08-07 Account Detection Module Review And Deployment Closure
+
+- `system/backend/app/services/account_service.py`: account detail now rejects
+  an omitted platform when the same account id exists on multiple platforms;
+  detector cache fingerprints now include the complete Mongo post projection,
+  including nested profile, interaction, relation, and order inputs used by
+  strict BotRHG inference.
+- `system/backend/tests/test_botrhg_bot_detection.py`: added regression tests
+  for cross-platform detail ambiguity and model-input-sensitive cache keys.
+- `system/backend/alembic/versions/a4d8c2b1f305_add_risk_assessments_table.py`
+  and `a1e9c7d4b605_make_account_evaluation_run_ids_global.py`: preserved
+  online data checks while making offline SQL generation deterministic; the
+  risk-table migration now rejects incompatible same-name indexes.
+- Verification: focused account regression `20 passed`; account governance
+  and runtime regression `82 passed`; social-bot research package `66 passed`;
+  Alembic offline upgrade SQL generates successfully through
+  `e5c1b7d9a204`.
+- Deployment status remains bounded: no verified Chinese detector bundle is
+  active, and the Docker CLI did not return from `docker info`; live database
+  migration round-trip and real bundle activation remain unverified.
 
 ---
 
@@ -637,6 +686,138 @@
   `account_training` worker. A real Trump/Weibo request with no Active Pointer
   returned `unavailable_without_active_pointer` and did not invoke a fallback
   detector.
-- Deployment acceptance remains incomplete: the registered corpus has 415,686
-  qualified tokens, no 200-label approved detector corpus exists, and the
-  backend venv is CPU-only despite the available RTX 4060 8 GB GPU.
+- Deployment acceptance remained incomplete at this checkpoint: the registered
+  corpus had 415,686 qualified tokens, no 200-label approved detector corpus
+  existed, and the backend venv was still CPU-only. The CUDA runtime update is
+  recorded in the lifecycle closure below.
+
+## 2026-08-07: Account Model Lifecycle Closure
+
+- Added immutable `ChineseSocialEncoderVersion` records. DAPT now exports a
+  portable encoder/tokenizer plus a Torch-loadable frozen state, and every
+  deployable detector binds both the encoder version and artifact hash.
+- Added append-only `AccountTrainingExportMembership` lineage so the evaluator
+  can prove which account cases and labels entered each detector training
+  export.
+- Added durable, system-owned `AccountModelEvaluationJob` execution. The worker
+  binds a candidate to a Frozen Holdout fingerprint, rejects exact training
+  overlap, releases database locks during inference, revalidates the data and
+  candidate before finalization, and writes the existing HMAC-signed immutable
+  evaluation record.
+- Active Pointer resolution now distinguishes `available`, `missing`, and
+  `invalid`. Corrupt or hash-mismatched active bundles produce a hard detection
+  error with the bound model version and pointer revision instead of appearing
+  as an absent pointer.
+- Added bounded automatic rollback from persisted monitor snapshots. Immediate
+  rollback is limited to bundle corruption and runtime load failure; other hard
+  errors require two adjacent snapshots. The only target is the current
+  pointer revision's previous model after hash, signed-evaluation, approval,
+  and activation-history checks.
+- Updated `start-system.ps1` so one `solo`, concurrency-one worker consumes both
+  `account_training` and `account_evaluation`; Celery Beat retains heartbeat
+  reconciliation and active-model monitoring cadence. Replaced naive queued-job
+  replay with a transactional evaluation dispatch outbox using claim leases and
+  token-fenced finalization. Training and evaluation now share a process-bound
+  single-node GPU ownership fence, and stale consumers of either queue are
+  removed by the standard startup path.
+- Connected the existing account-profile APIs and page projection to the
+  governed detector output without exposing embeddings or raw model features.
+  The list/detail views show probability, prediction, model version, routing
+  path, and support-hypergraph neighbor summaries; a missing or invalid Active
+  Pointer is rendered as `暂无研判` rather than invoking a legacy or heuristic
+  detector.
+- Replaced the backend CPU-only PyTorch build with `torch 2.11.0+cu128` and
+  verified the RTX 4060 runtime. DAPT now resolves BF16 on supported CUDA GPUs,
+  records the resolved precision in the encoder artifact, and does not advance
+  the scheduler or global step when an FP16 GradScaler update is skipped. A
+  real local Chinese RoBERTa smoke completed two BF16 optimizer updates and
+  peaked at 1,972.8 MiB.
+- Exercised the backend `execute_account_training_artifact` adapter against the
+  same local model and CUDA device. This uncovered and fixed Python 3.12 dynamic
+  dataclass loading by registering the internal DAPT module in `sys.modules`
+  before execution; the adapter smoke now returns `global_step=2`,
+  `runtime_precision=bfloat16`, and a 64-character artifact hash.
+- Verified the account backend suite (`235 passed`), social-bot research suite
+  (`65 passed`), and backend regression with the known native-crash fixture
+  isolated (`1092 passed, 1 deselected`). MySQL Alembic downgrade/upgrade to
+  `c4f7a9d2e618` and real MySQL/MongoDB/Redis connectivity also passed. The one
+  deselected legacy Coordination SentenceTransformer fixture remains an
+  unrelated Windows native-crash risk.
+- Remaining deployment evidence is model/data work: reach the 500,000-token
+  DAPT gate, obtain 200 approved binary account labels, run the full CUDA DAPT
+  and detector retraining, then complete a real signed shadow evaluation,
+  activation, latency/VRAM measurement, and rollback exercise.
+
+## 2026-08-07: Account Module Boundary Review
+
+- Reviewed the account-detection module as a deployable subsystem. Account
+  profiles, platform-scoped BotRHG inference, analyst labeling, ALPS/Core-set,
+  calibrated uncertainty/BADGE, corpus export, training runs, evaluation jobs,
+  Active Pointer resolution, monitoring, and rollback boundaries are present.
+- Fixed Frozen Holdout membership creation so `platform` is persisted and
+  account disjointness uses `(platform, account_id)`. Corpus manifest platform
+  and event scopes are now applied when selecting holdout candidates; legacy
+  memberships can still recover platform from `stratum_json`.
+- The active-model endpoint now exposes `missing`/`invalid` pointer state and a
+  diagnostic reason. Account profiles keep their existing `pending` projection
+  when no model is available, avoiding a second pointer query on every profile
+  request and never fabricating a detector conclusion.
+- The module is not yet deployment-complete: the current database still has
+  no approved binary labels or accepted governed bundle. Required evidence is
+  a real 500,000-token DAPT run, 200 approved labels, detector retraining,
+  leakage-safe evaluation, shadow execution, activation, and rollback rehearsal.
+
+## 2026-08-08: Refactor-System Prototype Deployment
+
+- Deployed the current `refactor-system` backend, account-model worker, Celery
+  Beat, and optimized static frontend at `http://127.0.0.1:5173`; frontend and
+  backend health checks and the authenticated account-profile API pass.
+- Preserved the historical MySQL, MongoDB, and Redis data volumes. The startup
+  helper now reuses a complete, image-compatible named infrastructure set and
+  rejects partial or mismatched sets instead of attempting conflicting
+  containers.
+- Mapped this workstation's MongoDB host port to `37017` because Windows
+  reserves `27006-27105`; this is an ignored local `.env` override, not a new
+  repository default.
+- Fixed account-monitor snapshot creation to materialize `created_at` before
+  projection. The real scheduled task now completes without SQLAlchemy
+  `MissingGreenlet` failures.
+- Account profiles return 262 current accounts, but online bot detection remains
+  intentionally unavailable. The Botection bootstrap checkpoint underperforms
+  its same-split TF-IDF baseline, and the TwiBot-20 runtime is fixed-graph only;
+  neither is activated as the Chinese online detector.
+- Deferred by operator decision: Chinese DAPT, approved-label detector
+  retraining, shadow evaluation, approval/activation, and rollback rehearsal.
+
+## 2026-08-08: Social-Bot Benchmark Boundary
+
+- Removed Botection from the public social-bot dataset dispatcher, training CLI
+  choices, default training configuration, and default local runtime settings.
+  Its files and explicit legacy loader remain only for historical provenance.
+- Registered TwiBot-20 as the primary graph benchmark through the existing
+  hash-verified fixed-graph runtime. Cresci-2015, Cresci-2017, and Midterm-2018
+  remain independently evaluated public adaptation corpora; their local source
+  archives are preserved under `G:/CISCN/dataset/social_bot_detection`.
+- Added the formal benchmark protocol. No result from Botection may select a
+  detector, establish a comparative claim, or justify Chinese online inference.
+
+## 2026-08-10: Coordination Candidate vs Frozen Production Prior
+
+- Added the executable `frozen_system_evidence_prior` IOHunter adapter around
+  the canonical production graph and account-stat core. The adapter is limited
+  to `post_evidence_projection_static_graph_only` and cannot stand for the
+  complete EventSnapshot, temporal-window, null-model, OOD, or abstention path.
+- Hardened claim generation with source/evaluator/fold provenance matching and
+  campaign-level bootstrap inference. Model seed and official fold remain
+  coupled and are now reported as a protocol limitation.
+- Added a non-substituting 100,000 source-occurrence safety gate and per-campaign
+  deterministic projection cache. Over-budget production rows block before
+  fusion; successful runtime reporting uses the cold projection duration.
+- Completed the final checksummed G-drive v2 run with 50 rows (`35 success`, `15 blocked`).
+  Russia favors production on all four external-account proxy metrics;
+  Venezuela favors the candidate on all four. Only 10/30 pairs are comparable,
+  so production replacement remains blocked.
+- Verified 49 targeted tests and 95 extended compact loader, execution, matrix
+  protocol, production network, and adapter tests. The independent experiment
+  audit returned `WARN` for incomplete proxy scope, with no fake-ground-truth,
+  score-normalization, phantom-result, or checksum finding.

@@ -1,0 +1,83 @@
+- generic [ref=f8e3]:
+  - link "跳转到主内容" [ref=f8e4] [cursor=pointer]:
+    - /url: "#main-content"
+  - complementary [ref=f8e5]:
+    - generic [ref=f8e6]:
+      - generic [ref=f8e7]: CogGuard
+      - menu [ref=f8e9]:
+        - menuitem [ref=f8e10] [cursor=pointer]:
+          - generic [ref=f8e12]:
+            - img "dashboard" [ref=f8e13]
+            - text: 数据大屏
+        - menuitem [ref=f8e16] [cursor=pointer]:
+          - generic [ref=f8e18]:
+            - img "cloud-download" [ref=f8e19]
+            - text: 数据采集
+        - menuitem [ref=f8e23] [cursor=pointer]:
+          - generic [ref=f8e25]:
+            - img "apartment" [ref=f8e26]
+            - text: 协同发现
+        - menuitem [ref=f8e29] [cursor=pointer]:
+          - generic [ref=f8e31]:
+            - img "share-alt" [ref=f8e32]
+            - text: 传播监测
+        - menuitem [ref=f8e35] [cursor=pointer]:
+          - generic [ref=f8e37]:
+            - img "user" [ref=f8e38]
+            - text: 账号画像
+        - menuitem [ref=f8e41] [cursor=pointer]:
+          - generic [ref=f8e43]:
+            - img "alert" [ref=f8e44]
+            - text: 事件研判
+    - img "left" [ref=f8e48] [cursor=pointer]
+  - generic [ref=f8e51]:
+    - generic [ref=f8e52]:
+      - generic [ref=f8e53]: 传播监测
+      - button "打开用户菜单" [ref=f8e56] [cursor=pointer]:
+        - generic [ref=f8e57]: P
+        - generic [ref=f8e59]: perf_analyst_20260805
+    - navigation "已打开页面" [ref=f8e60]:
+      - link "传播监测" [ref=f8e62] [cursor=pointer]:
+        - /url: /propagation
+    - main [ref=f8e63]:
+      - generic [ref=f8e64]:
+        - generic [ref=f8e65]:
+          - heading "传播监测" [level=2] [ref=f8e66]
+          - button "查看页面说明" [ref=f8e67]
+        - generic [ref=f8e73]:
+          - generic [ref=f8e75]:
+            - textbox "事件 ID" [ref=f8e76]: trump_visit_2026_05_21
+            - button [ref=f8e78] [cursor=pointer]:
+              - img "close-circle" [ref=f8e79]
+          - textbox "平台，可选" [ref=f8e84]
+          - generic [ref=f8e88] [cursor=pointer]:
+            - combobox [ref=f8e90]
+            - generic [ref=f8e91]: 观测阶段：50%
+          - button "loading 同步数据库传播结果" [ref=f8e93]:
+            - img "loading" [ref=f8e95]
+            - generic [ref=f8e98]: 同步数据库传播结果
+          - button "运行趋势预测" [ref=f8e100] [cursor=pointer]
+        - generic [ref=f8e102]:
+          - tablist [ref=f8e103]:
+            - generic [ref=f8e105]:
+              - tab "传播路径" [selected] [ref=f8e107] [cursor=pointer]
+              - tab "传播对象" [ref=f8e109] [cursor=pointer]
+              - tab "角色分析" [ref=f8e111] [cursor=pointer]
+              - tab "时间线" [ref=f8e113] [cursor=pointer]
+              - tab "趋势预测" [ref=f8e115] [cursor=pointer]
+          - tabpanel "传播路径" [ref=f8e118]:
+            - generic [ref=f8e119]:
+              - generic [ref=f8e121]:
+                - generic [ref=f8e122]: 传播路径
+                - list [ref=f8e128]:
+                  - listitem [ref=f8e129]
+                  - listitem [ref=f8e130]
+                  - listitem [ref=f8e131]
+                  - listitem [ref=f8e132]
+              - generic [ref=f8e134]:
+                - generic [ref=f8e135]: 层级分析
+                - list [ref=f8e141]:
+                  - listitem [ref=f8e142]
+                  - listitem [ref=f8e143]
+                  - listitem [ref=f8e144]
+                  - listitem [ref=f8e145]

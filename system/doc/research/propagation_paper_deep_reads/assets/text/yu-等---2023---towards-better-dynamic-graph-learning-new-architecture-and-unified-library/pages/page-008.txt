@@ -1,0 +1,93 @@
+Table 2: AP for TCL with NCoE.
+Datasets
+TCL w/ NCoE Improv.
+Wikipedia 96.47
+99.09
+2.72%
+Reddit
+97.53
+99.04
+1.55%
+MOOC
+82.38
+86.92
+5.51%
+LastFM
+67.27
+84.02
+24.90%
+Enron
+79.70
+90.18
+13.15%
+Social Evo. 93.13
+94.06
+1.00%
+UCI
+89.57
+94.69
+5.72%
+Flights
+91.23
+97.71
+7.10%
+Can. Parl. 68.67
+69.34
+0.98%
+US Legis. 69.59
+69.47
+-0.17%
+UN Trade 62.21
+63.46
+2.01%
+UN Vote
+51.90
+51.52
+-0.73%
+Contact
+92.44
+97.98
+5.99%
+Figure 2: Performance of different methods on LastFM and
+Can. Parl. with varying input lengths.
+TCL and GraphMixer and show their performance in Table 2 and Table 16 in Section C.4. We find
+TCL and GraphMixer usually yield better results with NCoE, achieving an average improvement
+of 5.36% and 1.86% over all datasets. This verifies the effectiveness and versatility of the neighbor
+co-occurrence encoding, and highlights the importance of capturing correlations between nodes. Also,
+as TCL and DyGFormer are built upon Transformer, TCL w/ NCoE can achieve similar results with
+DyGFormer on datasets that enjoy shorter input sequences (in which cases the patching technique in
+DyGFormer contributes little). However, when datasets exhibit more obvious long-term temporal
+dependencies (e.g., LastFM, Can. Parl.), the performance gaps become more significant.
+5.4
+Advantages of Patching Technique
+We validate the advantages of our patching technique in preserving the local temporal proximities
+and reducing the computational complexity, which helps DyGFormer effectively and efficiently
+utilize longer histories. We conduct experiments on LastFM and Can. Parl. since they can benefit
+from longer historical records. For baselines, we sample more neighbors or perform more causal
+anonymous walks (starting from 32) to make them access longer histories. The results are depicted
+in Figure 2, where the x-axis is represented by a logarithmic scale with base 2. We also plot the
+performance of baselines with the optimal length by unconnected points based on Table 9 in Section
+B.5. Note that the results of some baselines are incomplete since they raise the out-of-memory error
+when the lengths are longer. For example, TGAT is only computationally feasible when extending
+the input length to 32, resulting in two discrete points with lengths 20 (the optimal length) and 32.
+From Figure 2, we conclude that: (i) most of the baselines perform worse when the input lengths
+become longer, indicating they lack the ability to capture long-term temporal dependencies; (ii)
+the baselines usually encounter expensive computational costs when computing on longer histories.
+Although memory network-based methods (i.e., DyRep and TGN) can handle longer histories with
+affordable computational costs, they cannot benefit from longer histories due to the potential issues of
+vanishing or exploding gradients; (iii) DyGFormer consistently achieves gains from longer sequences,
+demonstrating the advantages of the patching technique in leveraging longer histories.
+We also compare the running time and memory usage of DyGFormer with and without the patching
+technique during the training process. The results are shown in Table 17 in Section C.5. We could
+observe that the patching technique efficiently reduces model training costs in both time and space,
+allowing DyGFormer to access longer histories. As the input sequence length increases, the reductions
+become more significant. Moreover, with the patching technique, we find that DyGFormer achieves
+an average improvement of 0.31% and 0.74% in performance on LastFM and Can. Parl. than
+DyGFormer without patching. This observation further demonstrates the advantage of our patching
+technique in leveraging the local temporal proximities for better results.
+5.5
+Verification of the Motivation of Neighbor Co-occurrence Encoding Scheme
+To verify the motivation of NCoE (i.e., nodes with more common historical neighbors tend to interact
+in the future), we compare the performance of DyGFormer and DyGFormer without NCoE. We
+choose 0.5 as the threshold and use TP, TN, FN, and FP to denote True/False Positive/Negative.
+8

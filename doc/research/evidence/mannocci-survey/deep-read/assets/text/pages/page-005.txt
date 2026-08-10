@@ -1,0 +1,76 @@
+Detection and Characterization of Coordinated Online Behavior: A Survey                                    5
+
+
+when modeling the activities that allow actors to coordinate. Each actor typically performs multiple activities during
+
+any given time frame, and each of these activities might contribute differently to the overall coordination. Therefore,
+
+the choice of activities to model during an analysis directly impacts the resulting observed coordination [77]. Finally,
+
+the analyst is often interested in knowing the goal that the actors pursue when performing the activities. However, the
+
+actors may not all have the same goal, or even have any explicit goal at all [76]. These reflections on the components of
+
+coordination surface some of the challenges that early scholars faced since the 80s when studying offline coordination.
+
+Interestingly, many of these challenges carry over to the study of online coordination, informing the development of a
+
+new comprehensive definition and conceptual framework.
+
+
+
+2.2  Concepts and definitions by online platforms
+
+Beginning around 2016, mounting societal pressure impelled major social media platforms to confront pervasive
+
+challenges such as the organized dissemination of mis- and disinformation [143]. In consequence of this pressure,
+
+each platform adopted disclosure practices to communicate their results at exposing orchestrated deceptive activities
+
+perpetrated by organized actors. Given the importance of coordination for the success of large-scale disinformation
+
+campaigns [100, 103], within these public disclosure initiatives each platform addressed some instances of malicious
+
+online coordination. This section explores the concepts and definitions introduced by major social media platforms that
+
+are related to online coordination, discussing both their merits and limitations.
+
+
+2.2.1  Meta (Facebook, Instagram, Threads). After the public disclosure that the Internet Research Agency (IRA) had
+strategically exploited the platform to influence the 2016 US presidential election [118, 146, 155], Facebook began
+
+publishing reports detailing how their services were abused and the actions taken in response. In unveiling further
+actions against the IRA, in July 2018 Facebook introduced the concept of coordinated inauthentic behavior (CIB) [35].
+A few months later, they supplied it with a first definition, and in October 2019 with a second one. These definitions,
+
+originally introduced by Facebook, also applied to Instagram due to their shared ownership. Then they have been
+
+extended across Meta’s platforms, including Facebook, Instagram, and Threads.
+
+  Definition 2.3. Coordinated inauthentic behavior (2018):  Groups of pages or people working together to mislead others on
+
+  who they are or what they are doing [35].
+
+   Definition 2.4. Coordinated inauthentic behavior (2019):  The use of multiple Facebook or Instagram assets (accounts, pages,
+
+   groups, or events), working in concert to engage in inauthentic behavior, i.e., to mislead people or Facebook, where the use of fake
+
+   accounts is central to the operation [37].
+
+Definition 2.3 underscores the collaborative nature of disinformation campaigns [125], emphasizing the objective
+
+of misleading others about the purported identity of the involved actors. To this end, it introduces the concept of
+inauthenticity of the actors, which is ever since often used in conjunction with the notion of coordination. Definition 2.4
+explicitly articulates the concept of inauthenticity and elucidates that the act of deceiving others involves the extensive
+
+use of fake accounts [36]. A widespread critique of these initial definitions is that they exclusively address CIB,
+
+overlooking other types of malicious and possibly harmful coordination, let alone the neutral or benign ones [19, 44, 49,
+
+100]. In September 2021, Facebook provided additional definitions focusing on harmfulness rather than inauthenticity.
+
+   Definition 2.5. Coordinated social harm (2021):  Networks of primarily authentic users who organize to systematically violate
+
+   policies to cause harm on or offthe platform [39].
+
+                                                                                                         Manuscript submitted to ACM

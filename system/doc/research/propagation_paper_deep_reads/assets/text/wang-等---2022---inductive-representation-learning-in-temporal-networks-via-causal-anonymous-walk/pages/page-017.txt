@@ -1,0 +1,73 @@
+Published as a conference paper at ICLR 2021
+C.2
+BASELINES, IMPLEMENTATION AND TRAINING DETAILS
+C.2.1
+CAW-N-MEAN AND CAW-N-ATTN
+We ﬁrst report the general training hyperparameters of our models in addition to those mentioned in
+the main text: on all datasets, we train both variants with mini-batch size 32 and set learning rate =
+1.0 × 10−4; the maximum training epoch number is 50 though in practice we observe that with early
+stopping we usually ﬁnd the optimal epoch in fewer than 10 epochs; our early stopping strategy is
+that if the validation performance does not increase for more than 3 epoch then we stop and use the
+third previous epoch for testing; dropout layers with dropout probability = 0.1 are added to the RNN
+module, the MLP modules, and the self-attention pooling layer. Please refer to our code for more
+details.
+In terms of the three hyperparameters controlling CAW sampling, we discussed them in Sec 5.3. For
+all datasets, they are systematically tuned with grid search, whose ranges are reported in Tab.4.
+Dataset
+Sampling number M
+Time decay α
+Walk length m
+Reddit
+32, 64, 128
+{0.25, 0.5, 1.0, 2.0, 4.0}×10−5
+1, 2, 3, 4
+Wikipedia
+32, 64, 128
+{0.25, 0.5, 1.0, 2.0, 4.0}×10−6
+2, 3, 4
+MOOC
+32, 64, 128
+{0.25, 0.5, 1.0, 2.0, 4.0}×10−6
+2, 3, 4, 5
+Social Evo.
+32, 64, 128
+{0.25, 0.5, 1.0, 2.0, 4.0, 8.0}×10−6
+1, 2, 3
+Enron
+32, 64, 128
+{0.25, 0.5, 1.0, 2.0, 4.0}×10−7
+1, 2, 3, 4
+UCI
+32, 64, 128
+{0.6, 0.8, 1.0, 1.2, 1.4}×10−5
+1, 2, 3
+Table 4: Hyperparameter search range of CAW sampling.
+Apart from the hyperparameters controlling CAW sampling, hidden dimensions of CAW-N mentioned
+in Sec.4.3, including that of the various encodings, MLPs, RNN, and attention projection matrices,
+are relatively less tuned. We select them based on two principles: 1) when node & link attributes are
+available, dimension of all these modules are set to have the same dimensions as baselines; 2) when
+node & link attributes are unavailable, the dimensions are picked from 32, 64, 128, whichever leads
+to a better performance.
+C.2.2
+BASELINES
+We list the introduction of the six baselines as follows:
+• DynAERNN (Goyal et al., 2020) uses a fully connected encoder to acquire network repre-
+sentations, passes them into LSTM and uses a fully connected network to decode the future
+network structures.
+• JODIE (Kumar et al., 2019) applies RNNs to estimate the future embedding of nodes. The
+model was proposed for bipartite graphs while we properly modify it for standard graphs if
+the input graphs are non-bipartite.
+• DyRep (Trivedi et al., 2019) also uses RNNs to learn node embedding while its loss function
+is built upon temporal point process.
+• VGRNN (Hajiramezanali et al., 2019) generalizes the variational GAE (Kipf & Welling
+(2016)) to temporal graphs, which makes the prior depend on the historical dynamics and
+captures those dynamics with RNNs.
+• EvolveGCN (Pareja et al., 2020) uses a RNN to estimate the GCN parameters for the future
+snapshots.
+• TGAT (Xu et al., 2020) leverages GAT to extract node representations where the nodes’
+neighbors are sampled from the history and encodes temporal information via Eq.7.
+We introduce how we tune these baselines as follows.
+DynAERNN. The model with code provided here is adapted into our evaluation pipeline. We follow
+most of the settings in the code. We tune the embedding size in {32, 64} and lookback in {2, 3, 5} to
+report the best performance.
+17

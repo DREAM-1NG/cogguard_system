@@ -1,0 +1,61 @@
+38                                                                                 Mannocci et al.
+
+
+[127] Gianluca Stringhini and Jeremy Blackburn. 2024. Understanding the phases and themes of coordinated online aggression attacks. In Social Processes
+       of Online Hate. 250–272.
+[128] Serena Tardelli, Leonardo Nizzoli, Marco Avvenuti, Stefano Cresci, and Maurizio Tesconi. 2024. Multifaceted online coordinated behavior in the
+      2020 US presidential election. EPJ Data Science 13, 1 (2024), 1–27.
+[129] Serena Tardelli, Leonardo Nizzoli, Maurizio Tesconi, Mauro Conti, Preslav Nakov, Giovanni Da San Martino, and Stefano Cresci. 2024. Temporal
+     dynamics of coordinated online behavior: Stability, archetypes, and influence. Proceedings of the National Academy of Sciences (2024).
+[130] Daniel Thiele, Miriam Milzner, Annett Heft, Baoning Gong, and Barbara Pfetsch. 2025. Attributing coordinated social media manipulation: A
+       theoretical model and typology. New Media & Society (2025), 14614448251350100.
+[131] TikTok. 2025. Integrity and Authenticity. https://www.tiktok.com/community-guidelines/en/integrity-authenticity. (accessed: 17/03/2026).
+[132] Rebekah Tromble. 2021. Where have all the data gone? A critical reflection on academic digital research in the post-API age. Social Media + Society
+        7, 1 (2021).
+[133] Michael T. Turvey. 1990. Coordination. American Psychologist 45, 8 (1990), 938.
+[134] Twitter. 2018. Enabling further research of information operations on Twitter. https://blog.twitter.com/en_us/topics/company/2018/enabling-
+      further-research-of-information-operations-on-twitter. (accessed: 31/07/2024).
+[135] Twitter. 2021. Coordinated harmful activity. https://help.twitter.com/en/rules-and-policies/coordinated-harmful-activity. (accessed: 31/07/2024).
+[136] Joshua Uyheng, Iain J Cruickshank, and Kathleen Carley. 2022. Mapping state-sponsored information operations with multi-view modularity
+       clustering. EPJ Data Science 11, 1 (2022), 25.
+[137] Martijn Van Zomeren, Tom Postmes, and Russell Spears. 2008. Toward an integrative social identity model of collective action: A quantitative
+      research synthesis of three socio-psychological perspectives. Psychological bulletin 134, 4 (2008), 504.
+[138] Luis Vargas, Patrick Emami, and Patrick Traynor. 2020. On the detection of disinformation campaign activity with network analysis. In ACM
+     CCSW. 133–146.
+[139] Vítor V. Vasconcelos, Sara M. Constantino, Astrid Dannenberg, Marcel Lumkowsky, Elke Weber, and Simon Levin. 2021. Segregation and clustering
+       of preferences erode socially beneficial coordination. Proceedings of the National Academy of Sciences 118, 50 (2021).
+[140] Otavio R. Venâncio, Carlos H. G. Ferreira, Jussara M. Almeida, and Ana P. C. da Silva. 2024. Unraveling user coordination on Telegram: A
+      comprehensive analysis of political mobilization during the 2022 Brazilian Presidential election. In AAAI ICWSM, Vol. 18. 1545–1556.
+[141] Padinjaredath Suresh Vishnuprasad, Gianluca Nogara, Felipe Cardoso, Stefano Cresci, Silvia Giordano, and Luca Luceri. 2024. Tracking fringe and
+      coordinated activity on Twitter leading up to the US Capitol attack. In AAAI ICWSM, Vol. 18. 1557–1570.
+[142] Xinyu Wang, Jiayi Li, Eesha Srivatsavaya, and Sarah Rajtmajer. 2023. Evidence of inter-state coordination amongst state-backed information
+      operations. Scientific Reports 13, 1 (2023), 7716.
+[143] Claire Wardle and Hossein Derakhshan. 2017. Information Disorder: Toward an Interdisciplinary Framework for Research and Policymaking. Council
+       of Europe report DGI (2017)09. Council of Europe.
+[144] Derek Weber and Lucia Falzon. 2021. Temporal nuances of coordination networks. arXiv:2107.02588
+[145] Derek Weber and Frank Neumann. 2020. Who’s in the gang? Revealing coordinating communities in social media. In IEEE/ACM ASONAM. 89–93.
+[146] Derek Weber and Frank Neumann. 2021. Amplifying influence through coordinated behaviour in social networks. Social Network Analysis and
+      Mining 11, 1 (2021), 111.
+[147] Tom Wilson and Kate Starbird. 2020. Cross-platform disinformation campaigns: Lessons learned and next steps. HKS Misinformation Review (2020).
+[148] Inga K Wohlert, Davide Vega, Matteo Magnani, and Alexandra Sergerberg. 2025. Detecting Coordination on Short-Video Platforms: The Challenge
+       of Multimodality and Complex Similarity on TikTok. arXiv:2506.05868
+[149] Yanhong Wu and Jianqiang Yu. 2025. Unmasking Coordination: How Inauthentic Behavior Emerged and Diffusion During the Russia–Ukraine War
+     on Twitter. Social Science Computer Review (2025).
+[150] Yunkang Yang, Ramesh Paudel, Jordan McShan, Matthew Hindman, H Howie Huang, and David Broniatowski. 2025. Coordinated link sharing on
+      Facebook. Scientific Reports 15, 1 (2025), 15684.
+[151] Changseung Yoo, Eunae Yoo, Lu Yan, and Alfonso Pedraza-Martinez. 2024. Speak with one voice? Examining content coordination and social
+     media engagement during disasters. Information Systems Research 35, 2 (2024), 551–569.
+[152] William E. S. Yu. 2022. A framework for studying coordinated behaviour applied to the 2019 Philippine midterm elections. In ICICT. 721–731.
+[153] Savvas Zannettou, Tristan Caulfield, William Setzer, Michael Sirivianos, Gianluca Stringhini, and eremy Blackburn. 2019. Who let the trolls out?:
+     Towards understanding state-sponsored trolls. In ACM WebSci. 353–362.
+[154] Ahmad Zareie, Mehmet E Bakir, Mark A Greenwood, Kalina Bontcheva, and Carolina Scarton. 2025. Identifying coordination in online social
+      networks through anomalous sharing behaviour. Online Social Networks and Media 50 (2025), 100341.
+[155] Yizhou Zhang, Karishma Sharma, and Yan Liu. 2021. VigDet: Knowledge informed neural temporal point process for coordination detection on
+       social media. In NeurIPS. 3218–3231.
+[156] Yizhou Zhang, Karishma Sharma, and Yan Liu. 2023. Capturing cross-platform interaction for identifying coordinated accounts of misinformation
+      campaigns. In ECIR. 694–702.
+[157] Andy Zhao and Haohan Hu. 2025. Unveiling Strategic Governance and User Dynamics in Weibo’s Community-driven Content Moderation System.
+      Journal of Quantitative Description: Digital Media 5 (2025).
+
+
+Manuscript submitted to ACM

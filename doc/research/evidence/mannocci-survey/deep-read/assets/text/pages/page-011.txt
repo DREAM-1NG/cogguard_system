@@ -1,0 +1,73 @@
+Detection and Characterization of Coordinated Online Behavior: A Survey                                   11
+
+
+activities [12]. These actors are employed for specific tasks and then discarded or deactivated once their purpose is
+
+fulfilled or they are detected. As a result, these ephemeral instances of coordination are rapid, intense, and short-lived.
+
+
+2.6  Taxonomy and final remarks
+
+Our conceptual framework of coordinated online behavior encompasses the three fundamental components pre-
+
+sented in Section 2.4 and the four defining dimensions discussed in Section 2.5, providing a general and flexible
+
+scheme for studying, categorizing, and comprehensively mapping the multiple instances of online coordination.
+
+                                                          2.6.1  Taxonomy. Figure 5 demonstrates the generality of the concep-
+            HARMFUL      AUTHENTIC                tual framework by presenting a taxonomy of coordinated online be-
+
+                                               havior based on the dimensions of authenticity and harmfulness. This
+           Malicious                            Activists
+           Social Bots     Conspiracists                     analysis takes inspiration from the well-known conceptual frame-
+                                  Fandoms
+         State-backed                                      work of information disorder that categorizes instances of mis-, mal-,                            Extremists      Grassroots                Trolls
+                                               Social          and disinformation based on the falseness and harmfulness of the in-
+                                  Movements
+                                              formation [143]. As shown in Figure 5, the dimensions of authenticity
+
+                                         and harmfulness allow distinguishing between different types of coor-
+     Protesters              Hacktivists            Dissidents
+                                               dinated online behavior, ranging from potentially nefarious to neutral
+
+Fig. 5. Taxonomy of coordinated online behavior ob-  and beneficial ones. Among the most problematic instances of online
+tained by considering the dimensions of harmfulness                                               coordination are harmful and inauthentic phenomena such as infor-
+and authenticity of our conceptual framework. The
+framework conveniently allows the mapping of dis-  mation operations and disinformation campaigns, which are often ini-
+parate instances of online coordination.               tiated by malicious social bots and state-sponsored trolls [3, 18, 138].
+
+Other problematic phenomena are those featuring harmful yet authentic behaviors, such as the activity of conspiracy
+
+theorists and hateful extremists [83, 95, 97]. Conversely, the activity of coordinated crisis communication by democratic
+
+institutions during emergencies [151], grassroots social movements, fandoms, and other activists represent instances
+
+of harmless and authentic coordination [126]. Finally, harmless yet inauthentic behaviors lay outside of the partially
+
+overlapping sets, and are exemplified by hacktivists, dissidents, and other anonymous protesters [126]. Alternative
+
+taxonomies can be obtained by leveraging the dimensions of orchestration and time-variance, which would highlight
+
+additional phenomena to those shown in Figure 5.
+
+2.6.2   Final remarks. The previous instantiation of our conceptual framework in a taxonomy based on the dimensions of
+harmfulness and authenticity concludes the theoretical part of the survey. The following section bridges the theoretical
+
+and methodological parts by presenting the problem definition. Subsequently, we systematically review the proposed
+
+methodologies for detecting and characterizing coordinated online behavior, showing how these tasks stem from the
+
+conceptual modeling of the phenomenon presented in this section.
+
+
+3 PROBLEM DEFINITION
+
+The problem of identifying and investigating different types of coordinated online behavior involves defining two
+functions 𝑓(·) and 𝑔(·) that respectively implement the tasks of coordinated behavior detection and characterization, as
+outlined in Figure 6. Given a set of users and their actions on one or more online platforms, 𝑓(·) identifies possible
+coordinated groups of users. Instead, 𝑔(·) extracts additional information for each detected group, thus contributing to
+determining the nature, intent, and the overall characteristics of the involved actors (e.g., whether they are inauthentic,
+
+harmful, etc.). The detection and characterization tasks are related to the Definition 2.11 of coordinated online behavior
+
+                                                                                                         Manuscript submitted to ACM

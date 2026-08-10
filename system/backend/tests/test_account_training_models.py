@@ -221,6 +221,31 @@ def test_training_dispatch_outbox_has_one_intent_and_task_id_per_run_attempt():
     assert not _column(table, "updated_at").nullable
 
 
+def test_evaluation_job_contains_a_lease_aware_transactional_dispatch_intent():
+    from app.models.account_labeling import AccountModelEvaluationJob
+
+    table = AccountModelEvaluationJob.__table__
+
+    for name in [
+        "dispatch_status",
+        "dispatch_claim_token",
+        "dispatch_lease_expires_at",
+        "dispatch_publish_attempts",
+        "dispatch_available_at",
+        "dispatch_published_at",
+        "dispatch_last_error",
+    ]:
+        assert name in table.c
+    assert "ix_account_model_evaluation_jobs_dispatch" in {index.name for index in table.indexes}
+    assert any(
+        "dispatch_status" in sql and "publishing" in sql and "superseded" in sql
+        for sql in _check_sql(table)
+    )
+    assert not _column(table, "dispatch_status").nullable
+    assert not _column(table, "dispatch_publish_attempts").nullable
+    assert not _column(table, "dispatch_available_at").nullable
+
+
 def test_prediction_audits_and_monitor_snapshots_capture_model_pointer_revision():
     from app.models.account_labeling import (
         AccountMonitorSnapshot,

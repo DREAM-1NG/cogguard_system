@@ -1,0 +1,27 @@
+0.03
+0.06
+0.09
+500
+1000
+1500
+2000
+Time
+αt
+Figure 7: Realized trajectory of αt for election night forecasting as outlined in Section 6 using update
+(2).
+0.03
+0.06
+0.09
+500
+1000
+1500
+2000
+Time
+αt
+Figure 8: Realized trajectory of αt for election night forecasting as outlined in Section 6 using update
+(3) with ws ∝0.95t−s.
+A.4
+Coverage for additional stocks
+Figure 9 shows the local coverage level of adaptive and non-adaptive conformal inference for the
+prediction of market volatility (see Section 2.2) for 8 additional stocks/indices.
+16

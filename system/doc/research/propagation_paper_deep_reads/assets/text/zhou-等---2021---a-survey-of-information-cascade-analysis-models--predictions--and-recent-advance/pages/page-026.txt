@@ -1,0 +1,118 @@
+27:26
+F. Zhou et al.
+Table 7. Deep Learning Models
+Reference
+Venue
+Model
+Building blocks
+Li et al. [120]
+WWW’17
+DeepCas
+Random Walks, GRU, Attention
+Sanjo et al. [171]
+CIKM’17
+—
+AlexNet, word2vec, Deep Averaging Network
+Chen et al. [34]
+ISI’17
+ANPP
+node2vec, GloVe, GRU, Attention
+Wu et al. [209]
+IJCAI’17
+DTCN
+ResNet, LSTM, Attention
+Cao et al. [29]
+CIKM’17
+DeepHawkes
+GRU, Pooling, Non-Parametric Time Kernel
+Zhang et al. [243]
+WWW’18
+UHAN
+VGGNet, LSTM, Hierarchical Attention
+Wang et al. [201]
+DASFAA’18
+MOOD
+Memory Network, Attention, Tensor Factorization
+Wang et al. [202]
+IJCAI’18
+UMAN
+Convolution, LSTM, Attention, User Memory
+Guo et al. [68]
+KAIS’18
+LSTMIC
+LSTM, Pooling Mechanisms
+Kefato et al. [88]
+SNAMS’18
+CAS2VEC
+CNN, Max Pooling, Network-Agnostic
+Bielksi et al. [20]
+ACCESS’18
+—
+ResNet, Self-Attention, Pooling, GloVe, LSTM
+Liao et al. [124]
+AAAI’19
+DFTC
+LSTM, 1-D CNN, Attention, HAN
+Chen et al. [38]
+ICDE’19
+CasCN
+GCN, LSTM, Time Decay, Sum Pooling
+Zhao et al. [247]
+PAKDD’19
+KB-PPN
+Knowledge Base, LSTM, Gate/Attention Mechanisms
+Yang et al. [220]
+TKDE’19
+NDM
+User Embedding, Attention, Convolution
+Ding et al. [47]
+MM’19
+—
+ResNet, NIMA, I2PA, BERT, User/Item Features
+Chen et al. [37]
+SIGIR’19
+DMT-LIC
+Multi-Task Learning, GCN, LSTM, Shared Gate
+Yang et al. [221]
+IJCAI’19
+FOREST
+Reinforcement Learning, GRU, DeepWalk
+Chen et al. [35]
+Neurocom’19
+NPP
+GRU, Text/User/Time-Series Encoders, Attention
+Cao et al. [30]
+WSDM’20
+Coupled-GNN
+GNNs, Influence/State Gate Mechanisms, DeepWalk
+Xie et al. [216]
+WWW’20
+MMVED
+Multimodal, Variational Inference, LSTM
+Zhou et al. [250]
+INFOCOM’20
+VaCas
+Spectral Graph Wavelets, Hierarchical VAEs, GRU
+6.1
+Predictability and Interpretability
+The prediction of popularity from information cascades—no matter how the problem is reformu-
+lated, which datasets are used for evaluation, and even what metrics are selected as evaluation
+protocols—is largely subjective to researchers’ design (a.k.a. researcher degrees of freedom [80]).
+Despite the many publications and significant progress in this field, some fundamental questions
+have yet to be answered. For example, can we really predict the popularity of cascades? If the an-
+swer is yes, then to what extent can a particular cascade be predicted? Or, what is the glass-ceiling
+performance a model can achieve? To effortlessly adapt to new emerging information (e.g., online
+fake news and rumors) and new information propagation platforms, we may want to exploit exist-
+ing knowledge and methods. Then, what conclusions drawn from previous works are applicable
+to another dataset/scenario? Can we build general cascade datasets that can be used for learning
+basic knowledge/features regarding various types of information items, such as the ImageNet and
+Wikipedia in computer vision and natural language processing? Answering these questions is a
+non-trivial task and requires more research as well as more standardized open datasets—the latter,
+however, need to obey the privacy issues of many online social networks.
+Reviewing different groups of prediction models helped identify the advantages and limitations
+of existing methods for predicting popularity—e.g., design and selection of features vary greatly
+for different cascade formulations and information items, while their effectivenesses and univer-
+salities are not generalizable from one to another. Furthermore, the assumptions of diffusion mech-
+anisms made by generative models are subject to specific scenarios, while the prediction of “black
+box” end-to-end deep learning models cannot be properly explained. To better understand the
+ACM Computing Surveys, Vol. 54, No. 2, Article 27. Publication date: March 2021.

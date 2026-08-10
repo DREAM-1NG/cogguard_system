@@ -3,11 +3,14 @@ import json
 import tarfile
 import zipfile
 
+import pytest
+
 from research.social_bot_detection.datasets import (
     load_approved_account_corpus,
     load_cresci_2015_dataset,
     load_cresci_2017_dataset,
     load_midterm_2018_dataset,
+    load_social_dataset,
 )
 
 
@@ -133,3 +136,8 @@ def test_approved_account_corpus_loader_excludes_abstain_from_binary_training(tm
     assert manifest.usable_account_count == 2
     assert manifest.skipped_empty_text_count == 1
     assert "abstain rows excluded" in manifest.label_provenance
+
+
+def test_public_benchmark_dispatch_rejects_legacy_botection(tmp_path):
+    with pytest.raises(ValueError, match="Botection is legacy-only"):
+        load_social_dataset("botection", tmp_path)

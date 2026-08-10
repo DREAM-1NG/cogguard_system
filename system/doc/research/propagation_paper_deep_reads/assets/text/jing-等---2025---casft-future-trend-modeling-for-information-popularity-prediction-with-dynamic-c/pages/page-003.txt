@@ -1,0 +1,139 @@
+Cascade Graph: Given a tweet I and an observation time
+to, the cascade graph can be defined as G(to) = (Vc, Ec),
+where Vc represents the set of users involved in C(to), and
+Ec represents the set of edges, each denoting a retweet rela-
+tionship between two users (nodes).
+Cascade Sequence: Different from the cascade graph, the
+cascade sequence S(to) for cascade C(to) is a collection of
+users, each arranged in chronological order based on their
+timestamps, i.e., S(to) = {u0, u1, . . . , uN}.
+Global Graph: Given all the retweet cascades under the
+observation time to, we define the global graph as G =
+{GI(to)|I ∈I}, where the edge in Eg represents the node
+relationship from cascading, such as the follower/followee
+relationship in the social network.
+Cascade Popularity Prediction: Given a cascade C(to) and
+a duration to, we predict its incremental popularity P over
+the time interval from to to tp , where tp ≫to, and tp is the
+prediction time. P represents the number of triplets occur-
+ring during the time period (to, tp).
+Neural Ordinary Differential Equations
+A neural Ordinary Differential Equation (ODE) (Chen et al.
+2018) describes the continuous-time evolution of variables.
+It represents a transformation of variables over time, where
+the initial state at time t0, denoted as h(t0), is integrated
+forward using an ODE to determine the transformed state at
+any subsequent time ti.
+dh(t)
+dt
+= f(h(t), t; θ)
+where
+h(0) = h0
+(1)
+h(ti) = h(t0) +
+Z ti
+t0
+dh(t)
+dt
+dt,
+(2)
+where f denotes a neural network, such as a feed-forward or
+convolutional network.
+Diffusion Models
+Diffusion models (Ho, Jain, and Abbeel 2020) are used to
+generate high-quality samples from complex data distribu-
+tions through a bi-directional process.
+The forward process of diffusion model is a Markov
+Chain that gradually adds Gaussian noise to x0:
+q(x1:T |x0) =
+T
+Y
+t=1
+q(xt|xt−1),
+(3)
+q(xt|xt−1) = N(xt;
+p
+1 −βtxt−1, βtI),
+(4)
+where T is the timesteps of adding noise and βt ∈(0, 1) is
+the variance schedule.
+For the denoising process, the goal is to learn a condi-
+tional probability distribution pθ(xt−1|xt) that reverses the
+diffusion process:
+pθ(xt−1|xt) = N(xt−1; µθ(xt, t), σθ(xt, t)I),
+(5)
+where the parameter θ can be optimized by minimizing
+the negative log-likelihood via an Evidence Lower Bound
+(ELBO):
+min
+θ
+Eq(x0) ≤min
+θ
+Eq(x0:K)L
+(6)
+L = −log p(xK) −
+K
+X
+k=1
+log pθ(xk−1|xk)
+q(xk|xk−1)
+(7)
+Our Method: CasFT
+Our proposed CasFT can be summarized as a three-step
+model: the first step involves extracting spatiotemporal pat-
+terns from the observed cascade, the second step simulates
+the future trends of popularity increment, and the third step
+makes the final prediction. The overall framework is shown
+in Fig. 2. We discuss the key components below.
+Historical Spatiotemporal Modeling
+Given an observed cascade C(t0), CasFT first extracts the
+spatiotemporal features from it. Specifically, this step in-
+volves two components: (1) spatial structural pattern extrac-
+tion from the observed cascade graph G(t0) and the global
+graph G, and (2) temporal pattern extraction based on the
+cascade sequence. The details are outlined as follows.
+Spatial Structural Pattern Extraction:
+In light of the
+distinct characteristics between the cascade and global
+graphs, we employ two different graph embedding methods
+to extract unique structural patterns from each, respectively.
+For the cascade graph, we use GraphWave (Donnat et al.
+2018) to capture local structural information, as referenced
+in previous studies (Zhou et al. 2020b; Xu et al. 2021). For
+the large-scale global graph, we employ NetSMF (Qiu et al.
+2019), which is designed for large-scale networks and can
+quickly learn interactions between all users, efficiently em-
+bedding these global structural patterns into node embed-
+dings. Specifically, given the observed cascade graph G(to)
+and the global graph G, we calculate the local-view and
+global-view representations of users as follows:
+Ec = GraphWave(G(to)),
+(8)
+Eg = NetSMF(G),
+(9)
+where Ec and Eg represent local-view and global-view rep-
+resentations for users in G(to) and G, respectively. For a spe-
+cific user ui, we retrieve its representations from these two
+views according to its index, denoted as Ec(ui) and Eg(ui).
+Temporal Pattern Extraction:
+In this phase, we split
+the cascade sequence S(to) into multiple sub-sequences
+in chronological order, represented as S = {Sj}j∈N =
+{(u0), (u0, u1), . . . , (u0, u1, ..., uN)}, and employ the self-
+attention mechanism (Vaswani et al. 2017) to each sub-
+sequence to capture its internal interdependencies, thereby
+accounting for the long-term history information. Firstly, for
+each timestamp ti, we define a temporal encoding procedure
+by trigonometric functions:
+[z(ti)]j =
+(
+cos(ti/10000
+j−1
+B ), if j is odd,
+sin(ti/10000
+j
+B ), if j is even.
+(10)
+We deterministically compute z(ti) ∈RB, where B is the
+dimension of encoding and get Zt which is the set of z(ti).
+11908

@@ -1,0 +1,67 @@
+events. Alternatively, the distribution of (Xt, Yt) may change as we deploy our prediction model in
+new environments. This paper develops adaptive conformal inference (ACI), a method for forming
+prediction sets that are robust to changes in the marginal distribution of the data. Our approach is both
+simple, in that it requires only the tracking of a single parameter that models the shift, and general as
+it can be combined with any modern machine learning algorithm that produces point predictions or
+estimated quantiles for the response. We show that over long time intervals ACI achieves the target
+coverage frequency without any assumptions on the data-generating distribution. Moreover, when the
+distribution shift is small and the prediction algorithm takes a certain simple form we show that ACI
+will additionally obtain approximate marginal coverage at most time steps.
+1.1
+Conformal inference
+Suppose we are given a ﬁtted regression model for predicting the value of Y from X. Let y be a
+candidate value for Yt. To determine if y is a reasonable estimate of Yt, we deﬁne a conformity score
+S(X, Y ) that measures how well the value y conforms with the predictions of our ﬁtted model. For
+example, if our regression model produces point predictions ˆµ(X) then we could use a conformity
+score that measures the distance between ˆµ(Xt) and y. One such example is
+S(Xt, y) = |ˆµ(Xt) −y|.
+Alternatively, suppose our regression model outputs estimates ˆq(X; p) of the pth quantile of the
+distribution of Y |X. Then, we could use the method of conformal quantile regression (CQR) [28],
+which examines the signed distance between y and ﬁtted upper and lower quantiles through the score
+S(Xt, y) = max{ˆq(Xt; α/2) −y, y −ˆq(Xt; 1 −α/2)}.
+Regardless of what conformity score is chosen the key issue is to determine how small S(Xt, y)
+should be in order to accept y as a reasonable prediction for Yt. Assume we have a calibration set
+Dcal ⊆{(Xr, Yr)}1≤r≤t−1 that is different from the data that was used to ﬁt the regression model.
+Using this calibration set we deﬁne the ﬁtted quantiles of the conformity scores to be
+ˆQ(p) := inf
+
+
+s :
+
+
+1
+|Dcal|
+X
+(Xr,Yr)∈Dcal
+1{S(Xr,Yr)≤s}
+
+≥p
+
+
+,
+(1)
+and say that y is a reasonable prediction for Yt if S(Xt, y) ≤ˆQ(1 −α).
+The crucial observation is that if the data Dcal ∪{(Xt, Yt)} are exchangeable and we break ties
+uniformly at random then the rank of S(Xt, Yt) amongst the points {S(Xr, Yr)}(Xr,Yr)∈Dcal ∪
+{S(Xt, Yt)} will be uniform. Therefore,
+P(S(Xt, Yt) ≤ˆQ(1 −α)) = ⌈|Dcal|(1 −α)⌉
+|Dcal| + 1
+.
+Thus, deﬁning our prediction set to be ˆCt := {y : S(Xt, y) ≤ˆQ(1−α)} gives the marginal coverage
+guarantee
+P(Yt ∈ˆCt) = P(S(Xt, Yt) ≤ˆQ(1 −α)) = ⌈|Dcal|(1 −α)⌉
+|Dcal| + 1
+.
+By introducing additional randomization this generic procedure can be altered slightly to produce
+a set ˆCt that satisﬁes the exact marginal coverage guarantee P(Yt ∈ˆCt) = 1 −α [34]. For the
+purposes of this paper this adjustment is not critical and so we omit the details here. Additionally, we
+remark that the method outlined above is often referred to as split or inductive conformal inference
+[27, 34, 26]. This refers to the fact that we have split the observed data between a training set used to
+ﬁt the regression model and a withheld calibration set. The adaptive conformal inference method
+developed in this article can also be easily adjusted to work with full conformal inference in which
+data splitting is avoided at the cost of greater computational resources [34].
+2
+Adapting conformal inference to distribution shifts
+Up until this point we have been working with a single score function S(·) and quantile function ˆQ(·).
+In the general case where the distribution of the data is shifting over time both these functions should
+2

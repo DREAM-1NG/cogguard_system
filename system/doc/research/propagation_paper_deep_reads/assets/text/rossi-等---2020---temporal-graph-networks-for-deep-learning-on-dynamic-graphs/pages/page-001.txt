@@ -1,0 +1,56 @@
+TEMPORAL GRAPH NETWORKS FOR DEEP LEARNING
+ON DYNAMIC GRAPHS
+Emanuele Rossi∗
+Twitter
+Ben Chamberlain
+Twitter
+Fabrizio Frasca
+Twitter
+Davide Eynard
+Twitter
+Federico Monti
+Twitter
+Michael Bronstein
+Twitter
+ABSTRACT
+Graph Neural Networks (GNNs) have recently become increasingly popular due to
+their ability to learn complex systems of relations or interactions. These arise in a
+broad spectrum of problems ranging from biology and particle physics to social
+networks and recommendation systems. Despite the plethora of different models
+for deep learning on graphs, few approaches have been proposed for dealing with
+graphs that are dynamic in nature (e.g. evolving features or connectivity over time).
+We present Temporal Graph Networks (TGNs), a generic, efﬁcient framework for
+deep learning on dynamic graphs represented as sequences of timed events. Thanks
+to a novel combination of memory modules and graph-based operators, TGNs
+signiﬁcantly outperform previous approaches while being more computationally
+efﬁcient. We furthermore show that several previous models for learning on
+dynamic graphs can be cast as speciﬁc instances of our framework. We perform a
+detailed ablation study of different components of our framework and devise the
+best conﬁguration that achieves state-of-the-art performance on several transductive
+and inductive prediction tasks for dynamic graphs.
+1
+INTRODUCTION
+In the past few years, graph representation learning (Bronstein et al., 2017; Hamilton et al., 2017b;
+Battaglia et al., 2018) has produced a sequence of successes, gaining increasing popularity in machine
+learning. Graphs are ubiquitously used as models for systems of relations and interactions in many
+ﬁelds (Battaglia et al., 2016; Qi et al., 2018; Monti et al., 2016; Choma et al., 2018; Duvenaud et al.,
+2015; Gilmer et al., 2017; Parisot et al., 2018; Rossi et al., 2019), in particular, social sciences (Ying
+et al., 2018; Monti et al., 2019; Rossi et al., 2020) and biology (Zitnik et al., 2018; Veselkov et al.,
+2019; Gainza et al., 2019). Learning on such data is possible using graph neural networks (GNNs)
+(Hamilton et al., 2017a) that typically operate by a message passing mechanism (Battaglia et al.,
+2018) aggregating information in a neighborhood of a node and create node embeddings that are then
+used for node classiﬁcation (Monti et al., 2016; Velickovic et al., 2018; Kipf & Welling, 2017), graph
+classiﬁcation (Gilmer et al., 2017), or edge prediction (Zhang & Chen, 2018) tasks.
+The majority of methods for deep learning on graphs assume that the underlying graph is static.
+However, most real-life systems of interactions such as social networks or biological interactomes
+are dynamic. While it is often possible to apply static graph deep learning models (Liben-Nowell
+& Kleinberg, 2007) to dynamic graphs by ignoring the temporal evolution, this has been shown to
+be sub-optimal (Xu et al., 2020), and in some cases, it is the dynamic structure that contains crucial
+insights about the system. Learning on dynamic graphs is relatively recent, and most works are
+limited to the setting of discrete-time dynamic graphs represented as a sequence of snapshots of the
+graph (Liben-Nowell & Kleinberg, 2007; Dunlavy et al., 2011; Yu et al., 2019; Sankar et al., 2020;
+Pareja et al., 2019; Yu et al., 2018). Such approaches are unsuitable for interesting real world settings
+such as social networks, where dynamic graphs are continuous (i.e. edges can appear at any time)
+∗erossi@twitter.com
+1
+arXiv:2006.10637v3  [cs.LG]  9 Oct 2020

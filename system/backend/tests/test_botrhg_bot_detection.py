@@ -1,4 +1,5 @@
 import asyncio
+from datetime import datetime, timezone
 from types import SimpleNamespace
 
 import pytest
@@ -7,11 +8,13 @@ from httpx import ASGITransport, AsyncClient
 from app.api.v1 import accounts as accounts_api
 from app.config import settings
 from app.core.analysis.query_result_cache import clear_local_query_result_cache
+from app.core.account_labeling import account_scope_key
 from app.core.security import get_current_user
 from app.core.bot_detection import run_botrhg_detection
 from app.main import app
 from app.services import account_service
 from app.services import bot_detection_service
+from app.utils.exceptions import AppException
 
 
 @pytest.fixture
@@ -176,11 +179,79 @@ def test_botrhg_service_filters_posts_by_event_and_platform(monkeypatch):
     assert result["summary"]["account_count"] == 1
 
 
+def test_botrhg_service_partitions_multi_platform_inference(monkeypatch):
+    posts = [
+        _post("same-id", "2026-05-21T00:00:00+00:00", "weibo text"),
+        {
+            **_post("same-id", "2026-05-21T00:05:00+00:00", "douyin text"),
+            "platform": "douyin",
+        },
+    ]
+    model = SimpleNamespace(model_version="governed-model", artifact_hash="a" * 64, pointer_revision=1)
+
+    async def active_model():
+        return available_active_account_model_resolution(model)
+
+    def detect(scoped_posts, _model, *, allow_legacy_fallback):
+        platform = scoped_posts[0]["platform"]
+        assert {post["platform"] for post in scoped_posts} == {platform}
+        return {
+            "method": "BotRHG",
+            "runtime_mode": "strict_trained_checkpoint",
+            "accounts": [
+                {
+                    "account_id": "same-id",
+                    "final_prediction": "bot" if platform == "weibo" else "human",
+                    "routed": False,
+                }
+            ],
+            "summary": {"routing_budget": 0.2},
+        }
+
+    class AuditSession:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *_args):
+            return None
+
+        async def commit(self):
+            return None
+
+    observed = {}
+
+    async def record_audits(_session, **kwargs):
+        observed.update(kwargs)
+        return len(kwargs["result"]["accounts"])
+
+    monkeypatch.setattr(bot_detection_service, "get_mongo_db", lambda: FakeMongoDB(raw_posts=FakeCollection(posts)))
+    monkeypatch.setattr(bot_detection_service, "get_active_account_model_resolution", active_model)
+    monkeypatch.setattr(bot_detection_service, "run_trained_botrhg_detection", detect)
+    monkeypatch.setattr(bot_detection_service, "async_session_factory", AuditSession)
+    monkeypatch.setattr(bot_detection_service, "record_account_prediction_audits", record_audits)
+
+    result = asyncio.run(bot_detection_service.detect_social_bots())
+
+    assert {(row["platform"], row["account_id"]) for row in result["accounts"]} == {
+        ("weibo", "same-id"),
+        ("douyin", "same-id"),
+    }
+    assert result["summary"]["account_count"] == 2
+    assert result["summary"]["bot_count"] == 1
+    assert result["summary"]["platform_count"] == 2
+    assert observed["result"] is result
+
+
 def test_botrhg_service_does_not_fall_back_to_rule_detection(monkeypatch):
     posts = [_post("u1", "2026-05-21T00:00:00+00:00", "hello")]
     raw_posts = FakeCollection(posts)
     fake_db = FakeMongoDB(raw_posts=raw_posts)
     monkeypatch.setattr(bot_detection_service, "get_mongo_db", lambda: fake_db)
+    monkeypatch.setattr(
+        bot_detection_service,
+        "get_active_account_model_resolution",
+        missing_active_account_model_resolution,
+    )
     monkeypatch.setattr(bot_detection_service, "run_trained_botrhg_detection", lambda _posts: None)
 
     result = asyncio.run(
@@ -368,7 +439,22 @@ def test_account_detail_includes_detection_result_and_recent_posts(monkeypatch, 
         "run_trained_botrhg_detection",
         lambda _posts: {
             "accounts": [
-                {"account_id": "u1", "final_prediction": "bot"},
+                {
+                    "account_id": "u1",
+                    "final_prediction": "bot",
+                    "final_bot_probability": 0.84,
+                    "calibrated_bot_probability": 0.81,
+                    "calibrated": True,
+                    "routed": True,
+                    "support_evidence": [
+                        {
+                            "account_id": "u2",
+                            "similarity": 0.92,
+                            "final_bot_probability": 0.27,
+                            "routed": False,
+                        }
+                    ],
+                },
             ]
         },
     )
@@ -383,10 +469,77 @@ def test_account_detail_includes_detection_result_and_recent_posts(monkeypatch, 
 
     assert response.status_code == 200
     assert payload["account_id"] == "u1"
-    assert payload["assessment"] == {"level": "attention", "label": "需关注"}
+    assert payload["assessment"] == {
+        "level": "attention",
+        "label": "需关注",
+        "prediction": "bot",
+        "bot_probability": 0.81,
+        "calibrated": True,
+        "routed": True,
+        "model_version": "",
+        "pointer_revision": 0,
+        "similar_accounts": [
+            {
+                "account_id": "u2",
+                "similarity": 0.92,
+                "bot_probability": 0.27,
+                "routed": False,
+            }
+        ],
+    }
     assert "automation_score" not in payload
     assert "detection_result" not in payload
     assert len(payload["recent_posts"]) == 2
+
+
+def test_account_detail_sorts_mixed_mongo_timestamp_types(monkeypatch):
+    posts = [
+        _post("u1", "2026-05-21T00:00:00+00:00", "older"),
+        {
+            **_post("u1", "2026-05-21T00:00:00+00:00", "newer"),
+            "timestamp": datetime(2026, 5, 22, tzinfo=timezone.utc),
+        },
+    ]
+    monkeypatch.setattr(account_service, "get_mongo_db", lambda: FakeMongoDB(raw_posts=FakeCollection(posts)))
+    monkeypatch.setattr(account_service, "_model_assessments", lambda _posts: _async_value({}))
+
+    detail = asyncio.run(account_service.get_account_detail("u1", platform="weibo"))
+
+    assert [row["content"] for row in detail["recent_posts"]] == ["newer", "older"]
+
+
+def test_account_detail_rejects_ambiguous_cross_platform_account_id(monkeypatch):
+    posts = [
+        _post("same-id", "2026-05-21T00:00:00+00:00", "weibo text"),
+        {
+            **_post("same-id", "2026-05-21T00:05:00+00:00", "douyin text"),
+            "platform": "douyin",
+        },
+    ]
+    monkeypatch.setattr(account_service, "get_mongo_db", lambda: FakeMongoDB(raw_posts=FakeCollection(posts)))
+
+    with pytest.raises(AppException, match="platform is required"):
+        asyncio.run(account_service.get_account_detail("same-id"))
+
+
+def test_account_assessment_fingerprint_changes_when_model_input_changes():
+    post = _post("u1", "2026-05-21T00:00:00+00:00", "same text", profile={"followers_count": 10})
+    changed_profile = {
+        **post,
+        "author_profile": {"followers_count": 1000},
+    }
+    second_post = _post("u1", "2026-05-21T00:01:00+00:00", "second text")
+
+    assert account_service._assessment_fingerprint([post]) != account_service._assessment_fingerprint(
+        [changed_profile]
+    )
+    assert account_service._assessment_fingerprint([post, second_post]) != account_service._assessment_fingerprint(
+        [second_post, post]
+    )
+
+
+async def _async_value(value):
+    return value
 
 
 def test_account_profiles_project_trained_detector_conclusions_without_rule_scores(
@@ -409,8 +562,8 @@ def test_account_profiles_project_trained_detector_conclusions_without_rule_scor
         "run_trained_botrhg_detection",
         lambda _posts: {
             "accounts": [
-                {"account_id": "u1", "final_prediction": "human"},
-                {"account_id": "u2", "final_prediction": "bot"},
+                {"account_id": "u1", "final_prediction": "human", "final_bot_probability": 0.12},
+                {"account_id": "u2", "final_prediction": "bot", "final_bot_probability": 0.87},
             ]
         },
     )
@@ -425,8 +578,12 @@ def test_account_profiles_project_trained_detector_conclusions_without_rule_scor
 
     assert response.status_code == 200
     assert [row["author_name"] for row in rows] == ["乙", "甲"]
-    assert rows[0]["assessment"] == {"level": "attention", "label": "需关注"}
-    assert rows[1]["assessment"] == {"level": "normal", "label": "未见异常"}
+    assert rows[0]["assessment"]["level"] == "attention"
+    assert rows[0]["assessment"]["prediction"] == "bot"
+    assert rows[0]["assessment"]["bot_probability"] == 0.87
+    assert rows[1]["assessment"]["level"] == "normal"
+    assert rows[1]["assessment"]["prediction"] == "human"
+    assert rows[1]["assessment"]["bot_probability"] == 0.12
     assert all("automation_score" not in row for row in rows)
 
 
@@ -453,6 +610,101 @@ def test_account_profiles_reuse_versioned_detector_projection(monkeypatch):
 
     assert first == second
     assert detector_calls == 1
+
+
+def test_account_profiles_prefer_persisted_prediction_audits_over_synchronous_inference(monkeypatch):
+    posts = [
+        _post("u1", "2026-05-21T00:00:00+00:00", "hello", author_name="甲"),
+        _post("u2", "2026-05-21T00:05:00+00:00", "world", author_name="乙"),
+    ]
+    model = SimpleNamespace(model_version="governed-model", artifact_hash="a" * 64, pointer_revision=3)
+
+    async def active_model():
+        return model
+
+    async def stored_assessments(_posts, _model):
+        return {
+            account_scope_key("weibo", "u1"): {
+                "level": "normal",
+                "label": "未见异常",
+                "prediction": "human",
+                "bot_probability": 0.11,
+                "calibrated": False,
+                "routed": False,
+                "model_version": "governed-model",
+                "pointer_revision": 3,
+                "similar_accounts": [],
+            },
+            account_scope_key("weibo", "u2"): {
+                "level": "attention",
+                "label": "需关注",
+                "prediction": "bot",
+                "bot_probability": 0.91,
+                "calibrated": False,
+                "routed": False,
+                "model_version": "governed-model",
+                "pointer_revision": 3,
+                "similar_accounts": [],
+            },
+        }
+
+    monkeypatch.setattr(account_service, "get_mongo_db", lambda: FakeMongoDB(raw_posts=FakeCollection(posts)))
+    monkeypatch.setattr(account_service, "get_active_account_model", active_model)
+    monkeypatch.setattr(account_service, "_stored_model_assessments", stored_assessments)
+    monkeypatch.setattr(
+        account_service,
+        "run_trained_botrhg_detection",
+        lambda *_args, **_kwargs: pytest.fail("profile list must not run slow synchronous inference when audits exist"),
+    )
+
+    profiles = asyncio.run(account_service.get_account_profiles(event_id="event-1", platform="weibo"))
+
+    assert [row["author_name"] for row in profiles] == ["乙", "甲"]
+    assert profiles[0]["assessment"]["prediction"] == "bot"
+    assert profiles[0]["assessment"]["bot_probability"] == 0.91
+    assert profiles[1]["assessment"]["prediction"] == "human"
+
+
+def test_account_profiles_keep_detection_results_platform_scoped(monkeypatch):
+    posts = [
+        _post("same-id", "2026-05-21T00:00:00+00:00", "weibo text"),
+        {
+            **_post("same-id", "2026-05-21T00:05:00+00:00", "douyin text"),
+            "platform": "douyin",
+        },
+    ]
+    model = SimpleNamespace(model_version="governed-model", artifact_hash="a" * 64, pointer_revision=3)
+    observed_platforms = []
+
+    async def active_model():
+        return model
+
+    def detect(scoped_posts, _model, *, allow_legacy_fallback):
+        platform = scoped_posts[0]["platform"]
+        observed_platforms.append(platform)
+        assert {post["platform"] for post in scoped_posts} == {platform}
+        return {
+            "accounts": [
+                {
+                    "account_id": "same-id",
+                    "final_prediction": "bot" if platform == "weibo" else "human",
+                    "calibrated_bot_probability": 0.9 if platform == "weibo" else 0.1,
+                }
+            ]
+        }
+
+    monkeypatch.setattr(account_service, "get_mongo_db", lambda: FakeMongoDB(raw_posts=FakeCollection(posts)))
+    monkeypatch.setattr(account_service, "get_active_account_model", active_model)
+    monkeypatch.setattr(account_service, "run_trained_botrhg_detection", detect)
+    monkeypatch.setattr(settings, "ANALYSIS_RESULT_CACHE_REDIS_ENABLED", False)
+    clear_local_query_result_cache()
+
+    profiles = asyncio.run(account_service.get_account_profiles())
+    by_platform = {profile["platform"]: profile for profile in profiles}
+
+    assert set(observed_platforms) == {"weibo", "douyin"}
+    assert by_platform["weibo"]["assessment"]["prediction"] == "bot"
+    assert by_platform["douyin"]["assessment"]["prediction"] == "human"
 
 
 def test_account_profiles_do_not_use_legacy_checkpoint_when_bootstrap_is_disabled(monkeypatch):

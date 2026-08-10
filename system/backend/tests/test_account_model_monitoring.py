@@ -48,6 +48,7 @@ class _MonitoringSession:
         self.snapshots = list(snapshots)
         self.added = []
         self.audit_queries = 0
+        self.snapshot_missing_created_at_on_flush = False
 
     async def execute(self, statement):
         entity = statement.column_descriptions[0].get("entity")
@@ -69,6 +70,7 @@ class _MonitoringSession:
     async def flush(self):
         for value in self.added:
             if isinstance(value, AccountMonitorSnapshot) and value.created_at is None:
+                self.snapshot_missing_created_at_on_flush = True
                 value.created_at = datetime(2026, 8, 5, 12, 0, 0)
 
 
@@ -217,6 +219,8 @@ def test_snapshot_persists_model_identity_from_the_active_pointer():
     assert isinstance(persisted, AccountMonitorSnapshot)
     assert persisted.model_version == "detector-20260805"
     assert persisted.pointer_revision == 7
+    assert session.snapshot_missing_created_at_on_flush is False
+    assert snapshot["created_at"] is not None
     assert snapshot["artifact_hash"] == artifact_hash
     assert snapshot["metrics"]["model_identity"] == {
         "family": "chinese_account_detection",

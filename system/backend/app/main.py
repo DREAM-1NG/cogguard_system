@@ -18,6 +18,7 @@ from app.db.mysql import async_session_factory, close_mysql
 from app.db.redis import close_redis
 from app.services.auth_service import ensure_default_admin
 from app.services.account_training_dispatch_outbox import run_account_training_dispatch_outbox_publisher
+from app.services.account_evaluation_dispatch import run_account_model_evaluation_dispatch_outbox_publisher
 from app.utils.exceptions import AppException, app_exception_handler, generic_exception_handler
 from app.utils.logger import logger
 
@@ -29,21 +30,27 @@ async def lifespan(app: FastAPI):
         await ensure_default_admin(session)
         await session.commit()
     stop_event = asyncio.Event()
-    publisher_task = asyncio.create_task(
+    training_publisher_task = asyncio.create_task(
         run_account_training_dispatch_outbox_publisher(stop_event),
         name="account-training-outbox-publisher",
     )
-    app.state.account_training_outbox_publisher_task = publisher_task
+    evaluation_publisher_task = asyncio.create_task(
+        run_account_model_evaluation_dispatch_outbox_publisher(stop_event),
+        name="account-evaluation-outbox-publisher",
+    )
+    app.state.account_training_outbox_publisher_task = training_publisher_task
+    app.state.account_evaluation_outbox_publisher_task = evaluation_publisher_task
     try:
         yield
     finally:
         logger.info("CogGuard backend shutting down...")
         stop_event.set()
         await asyncio.sleep(0)
-        if not publisher_task.done():
-            publisher_task.cancel()
-        with suppress(asyncio.CancelledError):
-            await publisher_task
+        for publisher_task in (training_publisher_task, evaluation_publisher_task):
+            if not publisher_task.done():
+                publisher_task.cancel()
+            with suppress(asyncio.CancelledError):
+                await publisher_task
         await close_mongo()
         await close_redis()
         await close_mysql()

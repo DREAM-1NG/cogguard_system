@@ -1,0 +1,8 @@
+Published as a conference paper at ICLR 2021
+Le-kui Zhou, Yang Yang, Xiang Ren, Fei Wu, and Yueting Zhuang. Dynamic network embedding by
+modeling triadic closure process. In AAAI Conference on Artiﬁcial Intelligence, 2018.
+Marinka Zitnik, Marcus W Feldman, Jure Leskovec, et al.
+Evolution of resilience in protein
+interactomes across the tree of life. Proceedings of the National Academy of Sciences, 116(10),
+2019.
+13

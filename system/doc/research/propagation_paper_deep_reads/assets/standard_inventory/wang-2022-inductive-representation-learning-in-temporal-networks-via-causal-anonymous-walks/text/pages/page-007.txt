@@ -1,0 +1,70 @@
+Published as a conference paper at ICLR 2021
+
+
+
+
+5  EXPERIMENTS
+
+5.1  EXPERIMENTAL SETUP
+
+CAW-N Variants. We test CAW-N-mean and CAW-N-attn which uses mean and attention pooling
+respectively to encode Su ∪Sv (Sec. 4.3). Their code is provided in the supplement.
+Baselines. Our method is compared with six previous state-of-the-art baselines on representation
+learning of temporal networks. They can be grouped into two categories based on their input data
+structure: (1) Snapshot-based methods, including DynAERNN (Goyal et al., 2020), VGRNN (Haji-
+ramezanali et al., 2019) and EvolveGCN (Pareja et al., 2020); (2) Stream-based methods, including
+TGAT (Xu et al., 2020), JODIE (Kumar et al., 2019) and DyRep (Trivedi et al., 2019). We give
+their detailed introduction in Appendix C.2.2. For the snapshot-based methods, we view the link
+aggregation as a way to preprocess historical links. We adopt the aggregation ways suggested in their
+papers. These models are trained and evaluated over the same link sets as the stream-based methods.
+Dataset. We use six real-world public datasets: Wikipedia is a network between wiki pages and
+human editors. Reddit is a network between posts and users on subreddits. MOOC is a network
+of students and online course content units. Social Evolution is a network recording the physical
+proximity between students. Enron is a email communication network. UCI is a network between
+online posts made by students. We summarize their statistics in Tab.1 and give their detailed
+description and access in Appendix C.1.
+
+Evaluation Tasks. Two types of tasks are for evaluation: transductive and inductive link prediction.
+Transductive link prediction task allows temporal links between all nodes to be observed up to a
+time point during the training phase, and uses all the remaining links after that time point for testing.
+In our implementation, we split the total time range [0, T] into three intervals: [0, Ttrain), [Ttrain,
+Tval), [Tval, T]. links occurring within each interval are dedicated to training, validation, and testing
+set, respectively. For all datasets, we ﬁx Ttrain/T=0.7, and Tval/T=0.85 .
+
+Inductive link prediction task predicts links associated with nodes that are not observed in the training
+set. There are two types of such links:  1) "old vs. new" links, which are links between an observed
+node and an unobserved node; 2) "new vs. new" links, which are links between two unobserved
+nodes. Since these two types of links suggest different types of inductiveness, we distinguish them by
+reporting their performance metrics separately. In practice, we follow two steps to split the data: 1)
+we use the same setting of the transductive task to ﬁrst split the links chronologically into training /
+validation / testing sets; 2) we randomly select 10% nodes, remove any links associated with them
+from the training set, and remove any links not associated with them in the validation and testing sets.
+
+Following most baselines, we randomly sample an equal amount of negative links and consider
+link prediction as a binary classiﬁcation problem. For fair comparison, we use the same evaluation
+procedures for all baselines, including the snapshot-based methods.
+Training conﬁguration. We use binary cross entropy loss and Adam optimizer to train all the
+models, and early stopping strategy to select the best epoch to stop training. For hyperparameters, we
+primarily tune those that control the CAW sampling scheme including the number M, the length m
+of CAWs and the time decay α. We will investigate their sensitivity in Sec.5.3. For all baselines, we
+adapt their implemented models into our evaluation pipeline and extensively tune them. Detailed
+description of all models’ tuning can be found in Appendix C. Finally, we adopt two metrics to
+evaluate the models’ performance: Area Under the ROC curve (AUC) and Average Precision (AP).
+
+5.2  RESULTS AND DISCUSSION
+
+We report AUC scores in Tab.2, and report AP scores in Tab.6 of Appendix D.1. In the inductive
+setting and especially with "new vs new" links, our models signiﬁcantly outperform all baselines
+on all datasets. Even in transductive setting where the baselines claim their primary contribution,
+our approaches still signiﬁcantly outperform them on four out of six datasets. Note that our models
+achieve almost perfect scores (i.e. > 0.98) on Reddit and Wikpedia when the baselines are far from
+perfect. Meanwhile, the strongest baseline on these two attributed datasets, TGAT (Xu et al., 2020),
+suffers a lot on all the other datasets where informative node / link attributes become unavailable.
+
+Comparing the two training settings, we observe that the performance of four baselines (JODIE,
+VGRNN, DynAERNN,DyRep) drop signiﬁcantly when transiting from the transductive setting to the
+inductive one, as they mostly record node identities either explicitly (JODIE, VGRNN, DynAERNN)
+or implicitly (DyRep). TGAT and EvolveGCN do not use node identities and thus their performance
+
+
+                                       7

@@ -1,0 +1,160 @@
+Conference’17, July 2017, Washington, DC, USA
+Guo et al.
+Conference on Multimedia. ACM, Amsterdam The Netherlands, 898–907. doi:10.
+1145/2964284.2964314
+[35] Zhangtao Cheng, Jienan Zhang, Xovee Xu, Goce Trajcevski, Ting Zhong, and
+Fan Zhou. 2024. Retrieval-Augmented Hypergraph for Multimodal Social Media
+Popularity Prediction. In Proceedings of the 30th ACM SIGKDD Conference on
+Knowledge Discovery and Data Mining (Barcelona, Spain) (KDD ’24). Association
+for Computing Machinery, New York, NY, USA, 445–455. doi:10.1145/3637528.
+3672041
+[36] Meng Cai, Han Luo, Xiao Meng, Ying Cui, and Wei Wang. 2023. Network
+distribution and sentiment interaction: Information diffusion mechanisms be-
+tween social bots and human users on social media. Information Processing &
+Management 60, 2 (2023), 103197. doi:10.1016/j.ipm.2022.103197
+[37] Björn Ross, Laura Pilz, Benjamin Cabrera, Florian Brachten, German Neubaum,
+and Stefan Stieglitz. 2019. Are social bots a real threat? An agent-based model
+of the spiral of silence to analyse the impact of manipulative actors in social
+networks. European Journal of Information Systems 28, 4 (2019), 394–412. doi:10.
+1080/0960085X.2018.1560920 arXiv:10.1080/0960085X.2018.1560920
+[38] Nicolas Guenon des Mesnards, David Scott Hunter, Zakaria el Hjouji, and
+Tauhid Zaman. 2022. Detecting Bots and Assessing Their Impact in Social
+Networks. Operations Research 70, 1 (2022), 1–22. doi:10.1287/opre.2021.2118
+arXiv:10.1287/opre.2021.2118
+[39] Aldo Averza, Khaled Slhoub, and Siddhartha Bhattacharyya. 2022. Evaluating
+the Influence of Twitter Bots via Agent-Based Social Simulation. IEEE Access 10
+(2022), 129394–129407. doi:10.1109/ACCESS.2022.3228258
+[40] Kelvin K King and Bin Wang. 2023. Diffusion of real versus misinformation
+during a crisis event: A big data-driven approach. International Journal of
+Information Management 71 (2023), 102390.
+[41] Lorenzo Prandi and Giuseppe Primiero. 2020. Effects of misinformation diffusion
+during a pandemic. Applied Network Science 5 (2020), 1–20. doi:10.1007/s41109-
+020-00327-6
+[42] Ceren Budak, Divyakant Agrawal, and Amr El Abbadi. 2011. Limiting the spread
+of misinformation in social networks. In Proceedings of the 20th International
+Conference on World Wide Web (Hyderabad, India) (WWW ’11). Association
+for Computing Machinery, New York, NY, USA, 665–674. doi:10.1145/1963405.
+1963499
+[43] Karishma Sharma, Xinran He, Sungyong Seo, and Yan Liu. 2021. Network Infer-
+ence from a Mixture of Diffusion Models for Fake News Mitigation. Proceedings
+of the International AAAI Conference on Web and Social Media 15, 1 (May 2021),
+668–679. doi:10.1609/icwsm.v15i1.18093
+[44] Erxue Min, Yu Rong, Yatao Bian, Tingyang Xu, Peilin Zhao, Junzhou Huang, and
+Sophia Ananiadou. 2022. Divide-and-Conquer: Post-User Interaction Network
+for Fake News Detection on Social Media. In Proceedings of the ACM Web
+Conference 2022. ACM, Virtual Event, Lyon France, 1148–1158. doi:10.1145/
+3485447.3512163
+[45] Enyan Dai, Yiwei Sun, and Suhang Wang. 2020. Ginger Cannot Cure Cancer:
+Battling Fake Health News with a Comprehensive Data Repository. Proceedings
+of the International AAAI Conference on Web and Social Media 14, 1 (May 2020),
+853–862. doi:10.1609/icwsm.v14i1.7350
+[46] Chengcheng Shao, Giovanni Luca Ciampaglia, Onur Varol, Kai-Cheng Yang,
+Alessandro Flammini, and Filippo Menczer. 2018. The Spread of Low-Credibility
+Content by Social Bots. Nature Communications 9, 1 (Nov. 2018), 4787. doi:10.
+1038/s41467-018-06930-7
+[47] Kai Shu, Deepak Mahudeswaran, Suhang Wang, Dongwon Lee, and Huan Liu.
+2020. FakeNewsNet: A Data Repository with News Content, Social Context,
+and Spatiotemporal Information for Studying Fake News on Social Media. Big
+Data 8, 3 (2020), 171–188. doi:10.1089/big.2020.0062 arXiv:10.1089/big.2020.0062
+PMID: 32491943.
+[48] Limeng Cui, Haeseung Seo, Maryam Tabar, Fenglong Ma, Suhang Wang, and
+Dongwon Lee. 2020. DETERRENT: Knowledge Guided Graph Attention Net-
+work for Detecting Healthcare Misinformation. In Proceedings of the 26th ACM
+SIGKDD International Conference on Knowledge Discovery & Data Mining (Vir-
+tual Event, CA, USA) (KDD ’20). Association for Computing Machinery, New
+York, NY, USA, 492–502. doi:10.1145/3394486.3403092
+[49] Youze Wang, Shengsheng Qian, Jun Hu, Quan Fang, and Changsheng Xu. 2020.
+Fake News Detection via Knowledge-driven Multimodal Graph Convolutional
+Networks. In Proceedings of the 2020 International Conference on Multimedia
+Retrieval (Dublin, Ireland) (ICMR ’20). Association for Computing Machinery,
+New York, NY, USA, 540–547. doi:10.1145/3372278.3390713
+[50] Yi Ju Lu and Cheng Te Li. 2020. GCAN: Graph-aware co-attention networks
+for explainable fake news detection on social media. In ACL 2020 - 58th Annual
+Meeting of the Association for Computational Linguistics, Proceedings of the Con-
+ference (Proceedings of the Annual Meeting of the Association for Computational
+Linguistics). Association for Computational Linguistics (ACL), 505–514.
+[51] Zhen Huang, Zhilong Lv, Xiaoyun Han, Binyang Li, Menglong Lu, and Dong-
+sheng Li. 2022. Social Bot-Aware Graph Neural Network for Early Rumor Detec-
+tion. In Proceedings of the 29th International Conference on Computational Linguis-
+tics, Nicoletta Calzolari, Chu-Ren Huang, Hansaem Kim, James Pustejovsky, Leo
+Wanner, Key-Sun Choi, Pum-Mo Ryu, Hsin-Hsi Chen, Lucia Donatelli, Heng
+Ji, Sadao Kurohashi, Patrizia Paggio, Nianwen Xue, Seokhwan Kim, Young-
+gyun Hahm, Zhong He, Tony Kyungil Lee, Enrico Santus, Francis Bond, and
+Seung-Hoon Na (Eds.). International Committee on Computational Linguistics,
+Gyeongju, Republic of Korea, 6680–6690. https://aclanthology.org/2022.coling-
+1.580
+[52] Haoran Wang, Yingtong Dou, Canyu Chen, Lichao Sun, Philip S. Yu, and
+Kai Shu. 2023. Attacking Fake News Detectors via Manipulating News So-
+cial Engagement. In Proceedings of the ACM Web Conference 2023 (<conf-loc>,
+<city>Austin</city>, <state>TX</state>, <country>USA</country>, </conf-
+loc>) (WWW ’23). Association for Computing Machinery, New York, NY, USA,
+3978–3986. doi:10.1145/3543507.3583868
+[53] Guangmo Amo Tong, Weili Wu, and Ding-Zhu Du. 2018.
+On mis-
+information containment in online social networks. In Proceedings of
+the 32nd International Conference on Neural Information Processing Sys-
+tems (Montréal, Canada) (NIPS’18). Curran Associates Inc., Red Hook, NY,
+USA, 339–349.
+https://proceedings.neurips.cc/paper_files/paper/2018/file/
+9b04d152845ec0a378394003c96da594-Paper.pdf
+[54] David M. J. Lazer, Matthew A. Baum, Yochai Benkler, Adam J. Berinsky, Kelly M.
+Greenhill, Filippo Menczer, Miriam J. Metzger, Brendan Nyhan, Gordon Penny-
+cook, David Rothschild, Michael Schudson, Steven A. Sloman, Cass R. Sunstein,
+Emily A. Thorson, Duncan J. Watts, and Jonathan L. Zittrain. 2018. The science
+of fake news. Science 359, 6380 (2018), 1094–1096. doi:10.1126/science.aao2998
+arXiv:https://www.science.org/doi/pdf/10.1126/science.aao2998
+[55] Qi Cao, Huawei Shen, Keting Cen, Wentao Ouyang, and Xueqi Cheng. 2017.
+DeepHawkes: Bridging the Gap between Prediction and Understanding of In-
+formation Cascades. In Proceedings of the 2017 ACM on Conference on Infor-
+mation and Knowledge Management. ACM, Singapore Singapore, 1149–1158.
+doi:10.1145/3132847.3132973
+[56] Jure Leskovec, Jon Kleinberg, and Christos Faloutsos. 2005. Graphs over time:
+densification laws, shrinking diameters and possible explanations. In Proceedings
+of the Eleventh ACM SIGKDD International Conference on Knowledge Discovery
+in Data Mining (Chicago, Illinois, USA) (KDD ’05). Association for Computing
+Machinery, New York, NY, USA, 177–187. doi:10.1145/1081870.1081893
+[57] Allen Lin, Jianling Wang, Ziwei Zhu, and James Caverlee. 2022. Quantifying
+and Mitigating Popularity Bias in Conversational Recommender Systems. In
+Proceedings of the 31st ACM International Conference on Information & Knowledge
+Management. ACM, Atlanta GA USA, 1238–1247. doi:10.1145/3511808.3557423
+[58] Navneet Garg, Mathini Sellathurai, Vimal Bhatia, B. N. Bharath, and Tharma-
+lingam Ratnarajah. 2020. Online Content Popularity Prediction and Learning in
+Wireless Edge Caching. IEEE Transactions on Communications 68, 2 (Feb. 2020),
+1087–1100. doi:10.1109/TCOMM.2019.2956041
+[59] Yongxin Ni, Yu Cheng, Xiangyan Liu, Junchen Fu, Youhua Li, Xiangnan He,
+Yongfeng Zhang, and Fajie Yuan. 2023. A Content-Driven Micro-Video Recom-
+mendation Dataset at Scale. doi:10.48550/arXiv.2309.15379 arXiv:2309.15379 [cs]
+[60] Alessandro Ortis, Giovanni Maria Farinella, and Sebastiano Battiato. 2019. Pre-
+diction of Social Image Popularity Dynamics. In Image Analysis and Processing
+– ICIAP 2019, Elisa Ricci, Samuel Rota Bulò, Cees Snoek, Oswald Lanz, Ste-
+fano Messelodi, and Nicu Sebe (Eds.). Springer International Publishing, Cham,
+572–582. doi:10.1007/978-3-030-30645-8_52
+[61] Mingxi Cheng, Songli Wang, Xiaofeng Yan, Tianqi Yang, Wenshuo Wang, Zehao
+Huang, Xiongye Xiao, Shahin Nazarian, and Paul Bogdan. 2021. A COVID-19
+Rumor Dataset. Frontiers in Psychology 12 (May 2021), 644801. doi:10.3389/
+fpsyg.2021.644801
+[62] Ling Sun, Yuan Rao, Xiangbo Zhang, Yuqian Lan, and Shuanghe Yu. 2022. MS-
+HGAT: Memory-Enhanced Sequential Hypergraph Attention Network for In-
+formation Diffusion Prediction. Proceedings of the AAAI Conference on Artificial
+Intelligence 36, 4 (June 2022), 4156–4164. doi:10.1609/aaai.v36i4.20334
+[63] Erheng Zhong, Wei Fan, Junwei Wang, Lei Xiao, and Yong Li. 2012. ComSoc:
+adaptive transfer of user behaviors over composite social network. In Proceedings
+of the 18th ACM SIGKDD International Conference on Knowledge Discovery and
+Data Mining (Beijing, China) (KDD ’12). Association for Computing Machinery,
+New York, NY, USA, 696–704. doi:10.1145/2339530.2339641
+[64] Manlio De Domenico, Antonio Lima, Paul Mougel, and Mirco Musolesi. 2013.
+The anatomy of a scientific rumor. Scientific reports 3, 1 (2013), 2980. doi:10.
+1038/srep02980
+[65] Jing Zhang, Biao Liu, Jie Tang, Ting Chen, and Juanzi Li. 2013. Social influence
+locality for modeling retweeting behaviors. In Proceedings of the Twenty-Third
+International Joint Conference on Artificial Intelligence (Beijing, China) (IJCAI
+’13). AAAI Press, 2761–2767.
+[66] Stefano Cresci, Roberto Di Pietro, Marinella Petrocchi, Angelo Spognardi, and
+Maurizio Tesconi. 2017. The Paradigm-Shift of Social Spambots: Evidence,
+Theories, and Tools for the Arms Race. In Proceedings of the 26th International
+Conference on World Wide Web Companion (Perth, Australia) (WWW ’17 Compan-
+ion). International World Wide Web Conferences Steering Committee, Republic
+and Canton of Geneva, CHE, 963–972. doi:10.1145/3041021.3055135
+[67] Zafar Gilani, Reza Farahbakhsh, Gareth Tyson, Liang Wang, and Jon Crowcroft.
+2017. Of Bots and Humans (on Twitter). In Proceedings of the 2017 IEEE/ACM
+International Conference on Advances in Social Networks Analysis and Mining

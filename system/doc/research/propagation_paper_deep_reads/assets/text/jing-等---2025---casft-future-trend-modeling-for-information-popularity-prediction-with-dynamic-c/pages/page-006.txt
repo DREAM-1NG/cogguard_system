@@ -1,0 +1,307 @@
+Method
+Twitter
+APS
+Weibo
+1 day
+2 days
+3 years
+5 years
+0.5 hours
+1 hour
+MSLE
+MAPE
+MSLE
+MAPE
+MSLE
+MAPE
+MSLE
+MAPE
+MSLE
+MAPE
+MSLE
+MAPE
+Feature-based
+7.8268
+0.7073
+6.5154
+0.6514
+1.9881
+0.3085
+1.9696
+0.3193
+4.0788
+0.4094
+3.6380
+0.4268
+SEISMIC
+10.687
+0.9689
+8.1851
+0.8147
+2.0583
+0.3013
+2.3013
+0.4320
+5.0300
+0.4819
+4.0594
+0.5003
+DeepCas
+6.3297
+0.6566
+5.7146
+0.6671
+2.1051
+0.2869
+1.9260
+0.3458
+4.6460
+0.3258
+3.5532
+0.3532
+DeepHawkes
+5.9341
+0.5017
+4.8489
+0.5189
+1.9142
+0.2823
+1.8145
+0.3368
+2.8741
+0.3041
+2.7434
+0.3346
+CasCN
+5.8742
+0.4894
+4.7154
+0.4974
+1.8930
+0.2763
+1.7494
+0.3208
+2.7931
+0.2940
+2.6831
+0.3255
+VaCas
+5.5124
+0.4796
+4.2147
+0.4871
+1.7764
+0.2697
+1.6945
+0.3012
+2.5246
+0.2847
+2.3451
+0.2997
+CasFlow
+4.7799
+0.4150
+3.6888
+0.4222
+1.4370
+0.2401
+1.3346
+0.2624
+2.3370
+0.2665
+2.2232
+0.2949
+CTCP
+5.3991
+0.3757
+3.6016
+0.3773
+1.7676
+0.3054
+1.3751
+0.2908
+2.5572
+0.3056
+2.2968
+0.3010
+CasFT
+3.8546
+0.3674
+3.4496
+0.3605
+1.2468
+0.2282
+1.1748
+0.2561
+2.1728
+0.2448
+2.0655
+0.2695
+(Improve)
+19.36%↑2.21%↑
+4.22%↑
+4.45%↑
+13.24%↑4.96%↑
+11.97%↑2.40%↑
+7.02%↑
+8.14%↑
+10.07%↑8.61%↑
+Table 2: Performance comparison between baselines and CasFT on three datasets across different observation times measured
+by MSLE, MAPE (lower is better).
+Method
+Twitter
+APS
+Weibo
+1 day
+2 days
+3 years
+5 years
+0.5 hours
+1 hour
+MSLE
+MAPE
+MSLE
+MAPE
+MSLE
+MAPE
+MSLE
+MAPE
+MSLE
+MAPE
+MSLE
+MAPE
+CasFT-w/o FT
+4.8641
+0.3964
+4.1154
+0.4531
+1.4147
+0.2504
+1.3544
+0.2805
+2.3964
+0.2745
+2.3412
+0.2933
+CasFT-w/o ODE
+4.3115
+0.3902
+3.7468
+0.4174
+1.3241
+0.2473
+1.2366
+0.2778
+2.3054
+0.2601
+2.2247
+0.2794
+CasFT-w/o Diffusion
+4.2645
+0.3887
+3.6618
+0.4037
+1.3258
+0.2466
+1.2364
+0.2776
+2.3312
+0.2631
+2.2644
+0.2819
+CasFT-FM
+4.5334
+0.3875
+4.0047
+0.4329
+1.3847
+0.2495
+1.3017
+0.2798
+2.3645
+0.2681
+2.3015
+0.2884
+CasFT
+3.8546
+0.3674
+3.4496
+0.3605
+1.2468
+0.2282
+1.1748
+0.2561
+2.1728
+0.2448
+2.0655
+0.2695
+Table 3: Performance comparison between CasFT and CasFT-variants on three datasets under two observation times measured
+by MSLE, MAPE (lower is better).
+• Sina Weibo: Weibo is the largest Chinese microblogging
+platform, where each original microblog post and subse-
+quent reposts can form a repost cascade.
+Following previous works (Xu et al. 2021; Lu et al. 2023),
+we set observation time as 1 day and 2 days for the Twitter
+dataset, and 3 years and 5 years for the APS dataset, for
+Weibo, the observation times are set to 0.5 hours and 1 hour.
+Furthermore, prediction time is set to 15 days for Twitter, 20
+years for APS, and 24 hours for Weibo. In addition, we filter
+out cascades with fewer than 10 participants during the ob-
+servation periods. For all datasets, 70% of the data is used for
+training, 15 % for validation, and 15% for testing. Detailed
+information about the three datasets is provided in Table 1.
+Baselines
+We compare CasFT against a sizeable collection of state-of-
+the-art baselines: Feature-based methods extract key fea-
+tures (cascade size, temporal intervals, etc.) and use an
+MLP model for prediction. SEISMIC (Zhao et al. 2015) de-
+signs a statistical model based on the theory of self-excited
+point processes. DeepCas (Li et al. 2017) represents cas-
+cades as random walk paths and uses a bi-directional GRU
+with attention for effective modeling and prediction. Deep-
+Hawkes (Cao et al. 2017) integrates the Hawkes process
+and deep learning, focusing on user impact, self-excitation,
+and time decay for cascade modeling. CasCN (Chen et al.
+2019) adopts a novel multi-directional/dynamic GNN. Va-
+cas (Zhou et al. 2020b) devises a hierarchical graph learning
+method and leverages a variational autoencoder for model-
+ing the uncertainty. CasFlow (Xu et al. 2021) mainly consid-
+ers the effects of local and global graphs to represent user be-
+havior for predicting popularity. CTCP (Lu et al. 2023) pro-
+poses an evolution learning module that updates the states of
+users and cascades in real time as diffusion behaviors occur.
+Evaluation Metrics
+Two commonly used metrics, mean squared logarithmic er-
+ror (MSLE) and mean absolute percentage error (MAPE),
+are employed to evaluate the performance of models:
+MSLE = 1
+M
+M
+X
+k=1
+(log2 (P + 1) −(log2 ( ˆP + 1))2, (26)
+MAPE = 1
+M
+M
+X
+k=1
+log2 (P + 2) −log2 ( ˆP + 2)
+
+log2 (P + 2)
+,
+(27)
+where P represents the true popularity, ˆP denotes the pre-
+dicted popularity, and M represents the number of cascades.
+The operations ’+ 1’ and ’+ 2’ are used for scaling to avoid
+potential zero values in the denominator or logarithmic op-
+erations.
+Performance Comparison (RQ1)
+Table 2 shows the overall performance of the three datasets.
+We observe that our method CasFT significantly outper-
+forms all baselines on MSLE and MAPE. For example, com-
+pared to the best-performing baselines, our CasFT achieves
+a 4.2%-19.3% improvement of MSLE, and a 2.2%-8.6% im-
+provement of MAPE, on the three datasets with two different
+observation times. We see that CasFT demonstrates notable
+enhancement, especially on the Twitter dataset. This can be
+11911

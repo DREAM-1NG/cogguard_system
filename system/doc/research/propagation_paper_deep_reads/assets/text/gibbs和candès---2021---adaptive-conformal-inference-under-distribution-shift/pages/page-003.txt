@@ -1,0 +1,66 @@
+be regularly re-estimated to align with the most recent observations. Therefore, we assume that at
+each time t we are given a ﬁtted score function St(·) and corresponding quantile function ˆQt(·). We
+deﬁne the realized miscoverage rate of the prediction set ˆCt(α) := {y : St(Xt, y) ≤ˆQt(1 −α)} as
+Mt(α) := P(St(Xt, Yt) > ˆQt(1 −α)),
+where the probability is over the test point (Xt, Yt) as well as the data used to ﬁt St(·) and ˆQt(·).
+Now, since the distribution generating the data is non-stationary we do not expect Mt(α) to be equal,
+or even close to, α. Even so, we can still postulate that if the conformity scores used to ﬁt ˆQt(·) cover
+the bulk of the distribution of St(Xt, Yt) then there may be an alternative value α∗
+t ∈[0, 1] such that
+Mt(α∗
+t ) ∼= α. More rigorously, assume that with probability one, ˆQt(·) is continuous, non-decreasing
+and such that ˆQt(0) = −∞and ˆQt(1) = ∞. This does not hold for the split conformal quantile
+functions deﬁned in (1), but in the case where there are no ties amongst the conformity scores we
+can adjust our deﬁnition to guarantee this by smoothing over the jump discontinuities in ˆQ(·). Then,
+Mt(·) will be non-decreasing on [0, 1] with Mt(0) = 0 and Mt(1) = 1 and so we may deﬁne
+α∗
+t := sup{β ∈[0, 1] : Mt(β) ≤α}.
+Moreover, if we additionally assume that
+P(St(Xt, Yt) = ˆQt(1 −α∗
+t )) = 0,
+then we will have that Mt(α∗
+t ) = α. So, in particular we ﬁnd that by correctly calibrating the
+argument to ˆQt(·) we can achieve either approximate or exact marginal coverage.
+To perform this calibration we will use a simple online update. This update proceeds by examining the
+empirical miscoverage frequency of the previous prediction sets and then decreasing (resp. increasing)
+our estimate of α∗
+t if the prediction sets were historically under-covering (resp. over-covering) Yt. In
+particular, let α1 denote our initial estimate (in our experiments we will choose α1 = α). Recursively
+deﬁne the sequence of miscoverage events
+errt :=
+1, if Yt /∈ˆCt(αt),
+0, otherwise,
+where ˆCt(αt) := {y : St(Xt, y) ≤ˆQt(1 −αt)}.
+Then, ﬁxing a step size parameter γ > 0 we consider the simple online update
+αt+1 := αt + γ(α −errt).
+(2)
+We refer to this algorithm as adaptive conformal inference. Here, errt plays the role of our estimate
+of the historical miscoverage frequency. A natural alternative to this is the update
+αt+1 = αt + γ
+ 
+α −
+t
+X
+s=1
+wserrs
+!
+,
+(3)
+where {ws}1≤s≤t ⊆[0, 1] is a sequence of increasing weights with Pt
+s=1 ws = 1. This update has
+the appeal of more directly evaluating the recent empirical miscoverage frequency when deciding
+whether or not to lower or raise αt. In practice, we ﬁnd that (2) and (3) produce almost identical
+results. For example, in Section A.3 in the Appendix we show some sample trajectories for αt
+obtained using the update (3) with
+ws :=
+0.95t−s
+Pt
+s′=1 0.95t−s′ .
+We ﬁnd that these trajectories are very similar to those produced by (2). The main difference is that
+the trajectories obtained with (3) are smoother with less local variation in αt. In the remainder of this
+article we will focus on (2) for simplicity.
+2.1
+Choosing the step size
+The choice of γ gives a tradeoff between adaptability and stability. While raising the value of γ will
+make the method more adaptive to observed distribution shifts, it will also induce greater volatility in
+3

@@ -1,0 +1,157 @@
+Published as a conference paper at ICLR 2021
+which is exactly the probability that we need.
+We have the following Thm.A.2 with a weak assumption that evaluates the complexity of Alg.3. We
+assume that links come in by following a Poisson point process with intensity τ, which is a frequently
+used assumption to model communication networks (Lavenberg, 1983). This result indicates that
+if α > 0, for each node, we only need to record the most recent O( τ
+α) links to sample. This result
+is important as it means our method can do online training and inference with time and memory
+complexity that are not related to the total number of links.
+Theorem A.2. If the links that are connected to wp appear by following a Poisson point process with
+intensity τ. Then, the expected number of iterations of Alg.3 is bounded by min{ 2τ
+α + 1, |Ewp,tp|}.
+Proof. The number of iterations of Alg.3 is always bounded by |Ewp,tp|. So we only need to prove
+that the expected number of interactions of Alg.3 is bounded by 2τ
+α + 1.
+To show this, we order the timestamps of links in Ewp,tp between [0, tp) as 0 = t0 < t1 < t2 <
+· · · < tk < tp where there exists an link (e, ti) ∈Ewp,tp for ti. Further deﬁne we deﬁne Zi =
+exp(α(ti −ti−1)) for i ∈[1, k].
+Due to the deﬁnition of Poisson process, we know that each time difference in {ti −ti−1}1≤i≤k
+follows i.i.d. exponential distribution with parameter τ. Therefore, {Zi}1≤i≤k are also i.i.d.. Let
+ψ = E(Z−1
+i
+) =
+τ
+α+τ .
+The probability that Alg.3 runs j iterations is equal to the probability that the link with timestamp
+tk+1−j) gets sampled. That is
+P(iter = j) =
+Qk+1−j
+i=1
+Zi
+Pk
+h=1
+Qk+1−h
+i=1
+Zi
+.
+Therefore, the expected number of iterations is
+E(iter) = E
+"Pk
+j=1 j Qk+1−j
+i=1
+Zi
+Pk
+h=1
+Qk+1−h
+i=1
+Zi
+#
+=
+k
+X
+j=1
+jE
+"
+Qj−1
+i=1 Z′
+i
+Pk
+h=1
+Qh−1
+i=1 Z′
+i
+#
+.
+(10)
+where Z′
+i = Z−1
+k+1−i and Q0
+i=1 Z′
+i = 1. Next we will prove that each item in right-hand-side of Eq.10
+satisﬁes
+jE
+"
+Qj−1
+i=1 Z′
+i
+Pk
+h=1
+Qh−1
+i=1 Z′
+i
+#
+≤[1 + (j −1)(1 −ψ)]ψj−1.
+(11)
+If this is true, then
+E(iter) ≤
+k
+X
+j=1
+[1 + (j −1)(1 −ψ)]ψj−1 =
+k
+X
+j=1
+ψj−1 +
+k
+X
+j=1
+(j −1)(1 −ψ)ψj−1
+≤
+1
+1 −ψ +
+ψ
+1 −ψ = 2τ
+α + 1.
+Now, let us prove Eq.11. For j = 1, Eq.11 is trivial. For j > 1,
+E
+"
+Qj−1
+i=1 Z′
+i
+Pk
+h=1
+Qh−1
+i=1 Z′
+i
+#
+≤E
+"
+Qj−1
+i=1 Z′
+i
+1 + Pj
+h=2
+Qh−1
+i=1 Z′
+i
+#
+≤
+Qj−1
+i=1 E(Z′
+i)
+1 + Pj
+h=2
+Qh−1
+i=1 E(Z′
+i)
+=
+ψj−1
+Pj−1
+i=0 ψi ,
+(12)
+where the second inequality is due to the Jensen’s inequality and the fact that for any positive c1, c2,
+x
+c1+c2x is concave with respect to x. Moreover, we also have
+[1 + (j −1)(1 −ψ)]
+j−1
+X
+i=0
+ψi = j +
+j−1
+X
+i=1
+ψi −(j −1)ψj ≥j.
+(13)
+Combining Eq.12 and Eq.13, we prove Eq.11, which concludes the proof.
+15

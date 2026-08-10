@@ -1,0 +1,54 @@
+27:2                                                                                             F. Zhou et al.
+
+
+about the population size that information can affect are challenging but critical necessities in
+many real-world application domains, e.g., viral marketing [115], advertising [89], scientific im-
+pact quantification [197], recommendation [211], campaign strategy [22], and epidemic preven-
+tion [245].
+  The trajectories and structures of information diffusion, as well as the adopters/participants in
+information spreading, form the so-called information cascades. Many researches and enterprises
+have put significant efforts into modeling and learning information diffusion in cellular networks,
+online social networks, paper citation networks, and content sharing networks, among many oth-
+ers [2, 8, 195, 199, 244], demonstrating that the ability to predict information items or cascades
+is of interest from both academic and business perspectives. The word prediction may have dif-
+ferent meanings in different applications. For example, it could refer to predicting the popularity
+of tweets/hashtags in microblogs [95, 142, 246], the number of “likes” for a photo/video in Face-
+book [39], views of videos in YouTube [40, 74, 213], ratings of movies in IMDB [151], citations of
+academic papers [197], votes on stories in Digg [114], comments on news articles [184], or social
+influence [158] (but few examples).
+  We provide a comprehensive review of existing information cascade prediction methods, which
+is a challenging task both because of the huge amount of publications in this field as well as the
+lack of uniform standards to classify the existing works. To begin with, the specification of the
+prediction problem itself varies in different works. According to the problem formulation in dif-
+ferent applications, prediction may refer to either binary/multi-class classification or regression.
+For example, it could be predicting the exact size of a cascade at a future moment [3, 11, 106, 181]
+or just estimating whether a cascade would grow beyond a threshold [39, 46]. Moreover, strategi-
+cally, based on the range of observed information, the prediction can be made prior to the publica-
+tion [136] or by peeking into the early cascade evolution [175]. From the perspective of analytical
+levels, popularity prediction can be made by focusing on different diffusion levels. For example,
+macro-level models [120] learn the collective behavior of cascades, while micro-level models [158,
+220] focus more on individual user actions/responses to specific information items.
+  From the perspective of methodology, there are plentiful choices of algorithmic approaches for
+modeling and predicting information cascades as well as data types associated with the cascades.
+Traditionally, various features (e.g., temporal and structural) associated with information items can
+be extracted with feature engineering—while typical machine learning models (e.g., linear/logistic
+regressions, naïve Bayes, SVM, and decision trees) or stochastic process models (e.g., Poisson and
+Hawkes point processes) are readily applicable for modeling and predicting information popular-
+ity. With the recent advances in deep neural networks, especially the techniques for learning graph
+representation (e.g., DeepWalk [154], node2vec [69], and graph convolutional network (GCN) [93,
+242]) and sequential data (e.g., recurrent neural network (RNN) and its many variants [42, 79]),
+various deep learning-based information diffusion models have emerged [39, 120, 246].
+  Several works have reviewed the information diffusion models in recent years [63, 70, 144,
+185]. Earlier works [70, 185] mainly focus on various feature engineering approaches and clas-
+sical machine learning methods for modeling and predicting the popularity of information items.
+More recent surveys [63, 144] concentrate on web content and/or microblog information diffu-
+sion, while emphasizing different aspects of information cascade modeling. For example, Reference
+[144] focuses on web content popularity prediction and reviews a priori and a posteriori predic-
+tion approaches, as well as evaluation protocols and classification/regression methods. However,
+the authors also give an overview of feature-based approaches and time series modeling methods.
+Similarly, Reference [63] focuses on microblogs—more specifically, Twitter and Weibo informa-
+tion popularity prediction—while prioritizing generative models that rely on modeling time series
+events with stochastic processes.
+
+
+ACM Computing Surveys, Vol. 54, No. 2, Article 27. Publication date: March 2021.

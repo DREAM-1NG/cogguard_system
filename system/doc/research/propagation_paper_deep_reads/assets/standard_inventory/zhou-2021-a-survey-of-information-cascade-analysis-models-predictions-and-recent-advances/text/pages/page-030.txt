@@ -1,0 +1,64 @@
+27:30                                                                                            F. Zhou et al.
+
+
+ [38] Xueqin Chen, Fan Zhou, Kunpeng Zhang, Goce Trajcevski, Ting Zhong, and Fengli Zhang. 2019. Information diffu-
+       sion prediction via recurrent cascades convolution. In ICDE. 770–781.
+ [39]  Justin Cheng, Lada Adamic, P. Alex Dow, Jon Michael Kleinberg, and Jure Leskovec. 2014. Can cascades be predicted?
+       In WWW. 925–936.
+ [40] Xu Cheng, Jiangchuan Liu, and Cameron Dale. 2013. Understanding the characteristics of internet short video shar-
+       ing: A YouTube-based measurement study. TMM 15, 5 (2013), 1184–1194.
+ [41] Quanquan Chu, Zhenhao Cao, Xiaofeng Gao, Peng He, Qianni Deng, and Guihai Chen. 2018. Cease with Bass: A
+      framework for real-time topic detection and popularity prediction based on long-text contents. In CSoNet. 25–29.
+ [42] Junyoung Chung, Caglar Gulcehre, Kyung Hyun Cho, and Yoshua Bengio. 2014. Empirical evaluation of gated re-
+       current neural networks on sequence modeling. Retrieved from https://arXiv:1412.3555.
+ [43]  Michele Coscia. 2014. Average is boring: How similarity kills a meme’s success. Sci. Rep. 4 (2014), 6477.
+ [44] David R. Cox. 1972. Regression models and life-tables. J. Roy. Stat. Soc.: Ser. B (Methodol.) 34, 2 (1972), 187–202.
+ [45]  Riley Crane and Didier Sornette. 2008. Robust dynamic classes revealed by measuring the response function of a
+       social system. PNAS 105, 41 (2008), 15649–15653.
+ [46] Peng Cui, Shifei Jin, Linyun Yu, Fei Wang, Wenwu Zhu, and Shiqiang Yang. 2013. Cascading outbreak prediction in
+      networks: A data-driven approach. In KDD. 901–909.
+ [47] Keyan Ding, Ronggang Wang, and Shiqi Wang. 2019. Social media popularity prediction: A multiple feature fusion
+      approach with deep neural networks. In MM. 2682–2686.
+ [48] Wanying Ding, Yue Shang, Lifan Guo, Xiaohua Hu, Rui Yan, and Tingting He. 2015. Video popularity prediction by
+      sentiment propagation via implicit network. In CIKM. 1621–1630.
+ [49]  Yuxiao Dong, Reid A. Johnson, and Nitesh V. Chawla. 2015. Will this paper increase your h-index?: Scientific impact
+       prediction. In WSDM. 149–158.
+ [50]  Yuxiao Dong, Reid A. Johnson, and Nitesh V. Chawla. 2016. Can scientific impact be predicted? IEEE Transactions
+      on Big Data 2, 1 (2016), 18–30.
+ [51]  P. Alex Dow, Lada A. Adamic, and Adrien Friggeri. 2013. The anatomy of large facebook cascades. In ICWSM. 145–
+       154.
+ [52] Nan Du, Hanjun Dai, Rakshit Trivedi, Utkarsh Upadhyay, Manuel Gomez-Rodriguez, and Le Song. 2016. Recurrent
+     marked temporal point processes: Embedding event history to vector. In KDD. 1555–1564.
+ [53]  Milad Eftekhar, Yashar Ganjali, and Nick Koudas. 2013. Information cascade at group scale. In KDD. 401–409.
+ [54]  Flavio Figueiredo. 2013. On the prediction of popularity of trends and hits for user generated videos. In WSDM.
+ [55]  Flavio Figueiredo, Jussara M. Almeida, Fabrício Benevenuto, and Krishna P. Gummadi. 2014. Does content determine
+      information popularity in social media?: A case study of YouTube videos’ content and their popularity. In CHI.
+ [56]  Flavio Figueiredo, Jussara M. Almeida, Marcos André Gonçalves, and Fabrício Benevenuto. 2014. On the dynamics
+       of social media popularity: A YouTube case study. TOIT 14, 4 (2014), 24.
+ [57]  Flavio Figueiredo, Fabrício Benevenuto, and Jussara M. Almeida. 2011. The tube over time: Characterizing popularity
+      growth of youtube videos. In WSDM. 745–754.
+ [58]  Wojciech Galuba, Karl Aberer, Dipanjan Chakraborty, Zoran Despotovic, and Wolfgang Kellerer. 2010. Outtweeting
+       the twitterers-predicting information cascades in microblogs. Workshop Online Soc. Netw. 10 (2010), 3–11.
+ [59]  Jinhua Gao, Huawei Shen, Shenghua Liu, and Xueqi Cheng. 2016. Modeling and predicting retweeting dynamics via
+      a mixture process. In WWW. 33–34.
+ [60]  Shuai Gao, Jun Ma, and Zhumin Chen. 2014. Effective and effortless features for popularity prediction in microblog-
+      ging network. In WWW. 269–270.
+ [61]  Shuai Gao, Jun Ma, and Zhumin Chen. 2014. Popularity prediction in microblogging network. In APWeb. 379–390.
+ [62]  Shuai Gao, Jun Ma, and Zhumin Chen. 2015. Modeling and predicting retweeting dynamics on microblogging plat-
+       forms. In WSDM. 107–116.
+ [63]  Xiaofeng Gao, Zhenhao Cao, Sha Li, Bin Yao, Guihai Chen, and Shaojie Tang. 2019. Taxonomy and evaluation for
+      microblog popularity prediction. TKDD 13, 2 (2019), 15.
+ [64]  Francesco Gelli, Tiberio Uricchio, Marco Bertini, Alberto Del Bimbo, and Shih-Fu Chang. 2015. Image popularity
+       prediction in social media using sentiment and context features. In MM. 907–910.
+ [65]  Eric Gilbert. 2013. Widespread underprovision on reddit. In CSCW. 803–808.
+ [66]  Phillipa Gill, Martin Arlitt, Zongpeng Li, and Anirban Mahanti. 2007. Youtube traffic characterization: A view from
+       the edge. In ACM SIGCOMM Internet Measurement Conference. 15–28.
+ [67]  Sharad Goel, Ashton Anderson, Jake Hofman, and Duncan J. Watts. 2015. The structural virality of online diffusion.
+     Management Science 62, 1 (2015), 180–196.
+ [68] Chengcheng Gou, Huawei Shen, Pan Du, Dayong Wu, Yue Liu, and Xueqi Cheng. 2018. Learning sequential features
+       for cascade outbreak prediction. Knowledge and Information Systems 57, 3 (2018), 721–739.
+ [69]  Aditya Grover and Jure Leskovec. 2016. node2vec: Scalable feature learning for networks. In KDD. 855–864.
+
+
+
+ACM Computing Surveys, Vol. 54, No. 2, Article 27. Publication date: March 2021.

@@ -1,0 +1,49 @@
+Nvidia
+0.05
+0.10
+0.15
+αt
+AMD
+BlackBerry
+0.05
+0.10
+0.15
+2005
+2010
+2015
+2020
+αt
+Fannie Mae
+2000
+2005
+2010
+2015
+2020
+Time
+Figure 5: Realized trajectories of αt for predicting stock market volatility as outlined in Section 2.2
+using update (2).
+Nvidia
+0.05
+0.10
+0.15
+αt
+AMD
+BlackBerry
+0.05
+0.10
+0.15
+2005
+2010
+2015
+2020
+αt
+Fannie Mae
+2000
+2005
+2010
+2015
+2020
+Time
+Figure 6: Realized trajectories of αt for predicting stock market volatility as outlined in Section 2.2
+using update (3) with ws ∝0.95t−s.
+15

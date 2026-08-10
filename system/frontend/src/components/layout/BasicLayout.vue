@@ -100,7 +100,7 @@ const menuItems = [
   { path: '/dashboard', label: '数据大屏', icon: DashboardOutlined, desc: '系统首页的大屏总览，保留本地地图资产和平台分布可视化', disabled: false },
   { path: '/crawl', label: '数据采集', icon: CloudDownloadOutlined, desc: '创建采集请求并管理多平台数据获取', disabled: false },
   { path: '/coordination', label: '协同发现', icon: ApartmentOutlined, desc: '发现协同行为并构建协同网络', disabled: false },
-  { path: '/propagation', label: '传播分析', icon: ShareAltOutlined, desc: '查看传播预测、证据链和传播角色', disabled: false },
+  { path: '/propagation', label: '传播监测', icon: ShareAltOutlined, desc: '查看传播路径、证据链和传播角色', disabled: false },
   { path: '/accounts', label: '账号画像', icon: UserOutlined, desc: '查看账号研判与活跃节律', disabled: false },
   { path: '/risk', label: '事件研判', icon: AlertOutlined, desc: '查看证据、复核建议并确认处置结论', disabled: false },
   { path: '/system', label: '系统运维', icon: SettingOutlined, desc: '配置服务并检查系统连通性与任务健康', disabled: false, roles: ['admin'] },

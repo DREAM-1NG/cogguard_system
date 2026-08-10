@@ -1,0 +1,39 @@
+27:12
+F. Zhou et al.
+Fig. 6. Ten evolving patterns characterizing the citation cascades in the APS dataset. We use hierarchical
+clustering implemented by sicpy package in Python to cluster the APS papers. For each cluster, we show
+20 years of evolving trends of citations, by use of mean values and ± standard deviations.
+3.1.5
+Discussion. Despite their importance of temporal features, recent studies also suggested
+that they may not work in certain scenarios—i.e., their advantages diminish over time [215], and
+their effect is not always comparable to other features [208]. Note that many works try to model
+and analyze the temporal evolution trends of cascades, e.g., based on time series patterns [223, 224],
+survival analysis [112, 113], and point processes [174, 246]. A special class of works, generative
+models, will be systematically reviewed in Section 4.
+3.2
+Structural Features
+Cascade structure, sometimes also referred to as information diffusion, has been studied exten-
+sively [14, 39, 58, 60, 238, 241], and works can be categorized according to their way of modeling
+cascades: (i) participants only, i.e., only cascade graphs are involved; (ii) global graph, i.e., both
+participants and non-participants are considered; and (iii) r-reachable graph, i.e., a compromise,
+extending the cascade graph within the scope of global graph.
+3.2.1
+Cascade Graph. A cascade graph is constructed based on its participants and their
+interactions:
+Definition 3.1 (Cascade Graph). Given an information item Ii and the corresponding cascadeCi, a
+cascade graph is defined as Gc = {Vc, Ec}, where nodes Vc = {u0,u1, . . . ,uN } are all participants
+of cascade Ci, and matrix Ec ⊆Vc × Vc contains a set of edges representing all the immediate
+relationships between Vc in a cascade (e.g., retweeting or citing relationship).
+Cascade graph Gc characterizes the process of information diffusion of an item Ii such as the
+spreading directions and graph topology. One pioneering study employed structural features into
+popularity prediction to predict which Twitter users are likely to mention a specific URL [58]. The
+correlation between cascade popularity and two structural features (edge density and depth) of
+microblogging network among early participants was analyzed in Reference [14]. It found that
+with lower value of edge density and higher value of depth—implying a diverse group of early
+participants—the popularity of cascades is more likely to be large.
+The topological structure (shape) of different cascade graphs may vary significantly from each
+other, even if the number of nodes is the same [230]. As shown in Figure 7, two cascade graphs
+from APS have distinct shapes. Although both cascades have ≈200 nodes, eventually, the structure,
+depth, and structural virality (quantified by Wiener index [67]) of the two cascades are totally dif-
+ferent. This means that simple structure measurements, such as node degree, depth, PageRank, and
+ACM Computing Surveys, Vol. 54, No. 2, Article 27. Publication date: March 2021.

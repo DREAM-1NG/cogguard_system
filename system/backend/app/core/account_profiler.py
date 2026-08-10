@@ -32,8 +32,12 @@ def build_account_profiles(posts: list[dict]) -> list[dict]:
     if df.empty:
         return []
 
+    # Account identifiers are only unique within a platform. Keeping the
+    # platform in the grouping key prevents cross-platform profile leakage.
+    if "platform" not in df.columns:
+        df["platform"] = ""
     profiles = []
-    for author_id, group in df.groupby("author_id"):
+    for (_platform, author_id), group in df.groupby(["platform", "author_id"], dropna=False):
         profile = _analyze_account(str(author_id), group)
         profiles.append(profile)
 

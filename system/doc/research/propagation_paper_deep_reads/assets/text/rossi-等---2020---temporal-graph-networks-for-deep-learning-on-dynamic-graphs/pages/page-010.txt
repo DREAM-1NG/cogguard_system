@@ -1,0 +1,52 @@
+David K Duvenaud, Dougal Maclaurin, Jorge Iparraguirre, Rafael Bombarelli, Timothy Hirzel, Alan
+Aspuru-Guzik, and Ryan P Adams. Convolutional networks on graphs for learning molecular
+ﬁngerprints. In NIPS. 2015.
+Amin Milani Fard, Ebrahim Bagheri, and Ke Wang. Relationship prediction in dynamic heterogeneous
+information networks. In European Conference on Information Retrieval, pp. 19–34. Springer,
+2019.
+Pablo Gainza et al. Deciphering interaction ﬁngerprints from protein molecular surfaces using
+geometric deep learning. Nature Methods, 17:184–192, 2019.
+Alberto García-Durán, Sebastijan Dumanˇci´c, and Mathias Niepert. Learning sequence encoders
+for temporal knowledge graph completion. In EMNLP, pp. 4816–4821, 2018. doi: 10.18653/v1/
+D18-1516.
+Justin Gilmer, Samuel S. Schoenholz, Patrick F. Riley, Oriol Vinyals, and George E. Dahl. Neural
+message passing for quantum chemistry. In ICML, 2017.
+Rishab Goel, Seyed Mehran Kazemi, Marcus Brubaker, and Pascal Poupart. Diachronic embedding
+for temporal knowledge graph completion. arXiv:1907.03143, 2019.
+Palash Goyal, Nitin Kamra, Xinran He, and Yan Liu. Dyngem: Deep embedding method for dynamic
+graphs. arXiv:1805.11273, abs/1805.11273, 2018. URL http://dblp.uni-trier.de/
+db/journals/corr/corr1805.html#abs-1805-11273.
+Aditya Grover and Jure Leskovec. Node2vec: Scalable feature learning for networks. In KDD
+’16, KDD ’16, pp. 855–864, New York, NY, USA, 2016. Association for Computing Machinery.
+ISBN 9781450342322. doi: 10.1145/2939672.2939754. URL https://doi.org/10.1145/
+2939672.2939754.
+˙Ismail Güne¸s, ¸Sule Gündüz-Ö˘güdücü, and Zehra Çataltepe. Link prediction using time series
+of neighborhood-based node similarity scores. Data Mining and Knowledge Discovery, 30(1):
+147–180, 2016.
+Manish Gupta, Charu C Aggarwal, Jiawei Han, and Yizhou Sun. Evolutionary clustering and analysis
+of bibliographic networks. In ASONAM, pp. 63–70. IEEE, 2011.
+William L. Hamilton, Rex Ying, and Jure Leskovec. Inductive representation learning on large graphs.
+In NIPS, 2017a.
+William L Hamilton, Rex Ying, and Jure Leskovec. Representation learning on graphs: Methods and
+applications. arXiv:1709.05584, 2017b.
+Ryohei Hisano. Semi-supervised graph embedding approach to dynamic link prediction. Springer Pro-
+ceedings in Complexity, pp. 109–121, 2018. ISSN 2213-8692. doi: 10.1007/978-3-319-73198-8_
+10. URL http://dx.doi.org/10.1007/978-3-319-73198-8_10.
+Sepp Hochreiter and Jürgen Schmidhuber.
+Long short-term memory.
+Neural Comput., 9(8):
+1735–1780, November 1997.
+ISSN 0899-7667.
+doi: 10.1162/neco.1997.9.8.1735.
+URL
+https://doi.org/10.1162/neco.1997.9.8.1735.
+Zan Huang and Dennis KJ Lin.
+The time-series link prediction problem with applications in
+communication surveillance. INFORMS Journal on Computing, 21(2):286–303, 2009.
+Nahla Mohamed Ahmed Ibrahim and Ling Chen. Link prediction in dynamic social networks by
+integrating different types of information. Applied Intelligence, 42(4):738–750, 2015.
+Seyed Mehran Kazemi, Rishab Goel, Sepehr Eghbali, Janahan Ramanan, Jaspreet Sahota, Sanjay
+Thakur, Stella Wu, Cathal Smyth, Pascal Poupart, and Marcus Brubaker. Time2vec: Learning a
+vector representation of time. CoRR, abs/1907.05321, 2019. URL http://arxiv.org/abs/
+1907.05321.
+10

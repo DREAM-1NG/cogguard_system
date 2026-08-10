@@ -1,0 +1,64 @@
+A Survey of Information Cascade Analysis: Models, Predictions, and Recent Advances      27:33
+
+
+[133]  Ilias N. Lymperopoulos. 2016. Predicting the popularity growth of online content: Model and algorithm. Information
+       Sciences 369 (2016), 585–613.
+[134] Zongyang Ma, Aixin Sun, and Gao Cong. 2012. Will this# hashtag be popular tomorrow? In SIGIR. 1173–1174.
+[135] Zongyang Ma, Aixin Sun, and Gao Cong. 2013. On predicting the popularity of newly emerging hashtags in twitter.
+      JASIST 64, 7 (2013), 1399–1410.
+[136]  Travis Martin, Jake M. Hofman, Amit Sharma, Ashton Anderson, and Duncan J. Watts. 2016. Exploring limits to
+       prediction in complex social systems. In WWW. 683–694.
+[137] Yasuko Matsubara, Yasushi Sakurai, B. Aditya Prakash, Lei Li, and Christos Faloutsos. 2012. Rise and fall patterns of
+      information diffusion: Model and implications. In KDD. 6–14.
+[138]  Philip J. McParlane, Yashar Moshfeghi, and Joemon M. Jose. 2014. Nobody comes here anymore, it’s too crowded;
+       predicting image popularity on flickr. In ICMR. 385.
+[139]  Miller McPherson, Lynn Smith-Lovin, and James M. Cook. 2001. Birds of a feather: Homophily in social networks.
+      Ann. Rev. Sociol. 27, 1 (2001), 415–444.
+[140] Matúš Medo, Manuel S. Mariani, An Zeng, and Yi-Cheng Zhang. 2016. Identification and impact of discoverers in
+       online social systems. Sci. Rep. 6 (2016), 34218.
+[141]  Rupert G. Miller Jr. 2011. Survival Analysis. Vol. 66. John Wiley & Sons.
+[142]  Swapnil Mishra, Marian-Andrei Rizoiu, and Lexing Xie. 2016. Feature driven and point process approaches for pop-
+       ularity prediction. In CIKM. 1069–1078.
+[143]  Swapnil Mishra, Marian-Andrei Rizoiu, and Lexing Xie. 2018. Modeling popularity in asynchronous social media
+      streams with recurrent neural networks. In ICWSM. 201–210.
+[144] Nuno Moniz and Luís Torgo. 2019. A review on web content popularity prediction: Issues and open challenges.
+      Online Social Networks and Media 12 (2019), 1–20.
+[145] Lev Muchnik, Sinan Aral, and Sean J. Taylor. 2013. Social influence bias: A randomized experiment. Science 341, 6146
+       (2013), 647–651.
+[146]  Seth A. Myers and Jure Leskovec. 2012. Clash of the contagions: Cooperation and competition in information diffu-
+       sion. In ICDM. 539–548.
+[147]  Seth A. Myers and Jure Leskovec. 2014. The bursty dynamics of the twitter information network. In WWW. 913–924.
+[148]  Seth A. Myers, Chenguang Zhu, and Jure Leskovec. 2012. Information diffusion and external influence in networks.
+       In KDD. 33–41.
+[149]  Nasir Naveed, Thomas Gottron, Jérôme Kunegis, and Arifah Che Alhadi. 2011. Bad news travel fast: A content-based
+       analysis of interestingness on twitter. In WebSci. 1–7.
+[150] Amandianeze O. Nwana, Salman Avestimehr, and Tsuhan Chen. 2013. A latent social approach to YouTube popu-
+        larity prediction. In GLOBECOM. 3138–3144.
+[151]  Andrei Oghina, Mathias Breuss, Manos Tsagkias, and Maarten De Rijke. 2012. Predicting imdb movie ratings using
+       social media. In ECIR. 503–507.
+[152] Timo Ojala, Matti Pietikäinen, and Topi Mäenpää. 2002. Multiresolution gray-scale and rotation invariant texture
+       classification with local binary patterns. TPAMI7 (2002), 971–987.
+[153]  Jeffrey Pennington, Richard Socher, and Christopher D. Manning. 2014. GloVe: Global vectors for word representa-
+        tion. In EMNLP. 1532–1543.
+[154] Bryan Perozzi, Rami Al-Rfou, and Steven Skiena. 2014. DeepWalk: Online learning of social representations. In KDD.
+[155]  Sasa Petrovic, Miles Osborne, and Victor Lavrenko. 2011. Rt to win! predicting message propagation in Twitter. In
+     ICWSM.
+[156] Henrique Pinto, Jussara M. Almeida, and Marcos A. Gonçalves. 2013. Using early view patterns to predict the pop-
+       ularity of youtube videos. In WSDM. 365–374.
+[157]  Jiezhong Qiu, Yixuan Li, Jie Tang, Zheng Lu, Hao Ye, Bo Chen, Qiang Yang, and John E. Hopcroft. 2016. The lifecycle
+      and cascade of wechat social messaging groups. In WWW. 311–320.
+[158]  Jiezhong Qiu, Jian Tang, Hao Ma, Yuxiao Dong, Kuansan Wang, and Jie Tang. 2018. Deepinf: Social influence pre-
+       diction with deep learning. In KDD. 2110–2119.
+[159]  Marian-Andrei Rizoiu, Swapnil Mishra, Quyu Kong, Mark Carman, and Lexing Xie. 2018. SIR-hawkes: Linking epi-
+      demic models and hawkes processes to model diffusions in finite populations. In WWW. 419–428.
+[160]  Marian-Andrei Rizoiu, Lexing Xie, Scott Sanner, Manuel Cebrian, Honglin Yu, and Pascal Van Hentenryck. 2017.
+      Expecting to be hip: Hawkes intensity processes for social media popularity. In WWW. 735–744.
+[161]  Georgios Rizos, Symeon Papadopoulos, and Yiannis Kompatsiaris. 2016. Predicting news popularity by mining on-
+       line discussions. In WWW Companion. 737–742.
+[162]  Everett M. Rogers. 2010. Diffusion of Innovations. Simon and Schuster.
+[163]  Daniel M. Romero, Wojciech Galuba, Sitaram Asur, and Bernardo A. Huberman. 2011. Influence and passivity in
+       social media. In ECML PKDD. 18–33.
+
+
+
+                       ACM Computing Surveys, Vol. 54, No. 2, Article 27. Publication date: March 2021.

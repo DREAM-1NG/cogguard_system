@@ -1,0 +1,46 @@
+[36] S. Salcedo-Sanz, D. Casillas-Pérez, J. Del Ser, C. Casanova-Mateo, L. Cuadra, M. Piles, and
+G. Camps-Valls. Persistence in complex systems. Physics Reports, 957:1–73, 2022.
+[37] K. Shamsi, Y. R. Gel, M. Kantarcioglu, and C. G. Akcora. Chartalist: Labeled graph datasets for
+utxo and account-based blockchains. In Advances in Neural Information Processing Systems 36:
+Annual Conference on Neural Information Processing Systems 2022, NeurIPS 2022, November
+29-December 1, 2022, New Orleans, LA, USA, pages 1–14, 2022.
+[38] K. Shamsi, F. Victor, M. Kantarcioglu, Y. Gel, and C. G. Akcora. Chartalist: Labeled graph
+datasets for utxo and account-based blockchains. Advances in Neural Information Processing
+Systems, 35:34926–34939, 2022.
+[39] J. Skarding, M. Hellmich, B. Gabrys, and K. Musial. A robust comparative analysis of graph
+neural networks on dynamic link prediction. IEEE Access, 10:64146–64160, 2022.
+[40] A. Souza, D. Mesquita, S. Kaski, and V. Garg. Provably expressive temporal graph networks.
+Advances in Neural Information Processing Systems, 35:32257–32269, 2022.
+[41] M. Strohmeier, X. Olive, J. Lübbe, M. Schäfer, and V. Lenders. Crowdsourced air traffic data
+from the opensky network 2019–2020. Earth System Science Data, 13(2):357–366, 2021.
+[42] R. Trivedi, M. Farajtabar, P. Biswal, and H. Zha. Dyrep: Learning representations over dynamic
+graphs. In International conference on learning representations, 2019.
+[43] P. Veliˇckovi´c, G. Cucurull, A. Casanova, A. Romero, P. Lio, and Y. Bengio. Graph attention
+networks. arXiv preprint arXiv:1710.10903, 2017.
+[44] B. Wang, Q. Meng, Z. Wang, H. Zhao, D. Wu, W. Che, S. Wang, Z. Chen, and C. Liu. Interht:
+Knowledge graph embeddings by interaction between head and tail entities. arXiv preprint
+arXiv:2202.04897, 2022.
+[45] L. Wang, X. Chang, S. Li, Y. Chu, H. Li, W. Zhang, X. He, L. Song, J. Zhou, and H. Yang.
+Tcl: Transformer-based dynamic graph modelling via contrastive learning. arXiv preprint
+arXiv:2105.07944, 2021.
+[46] Y. Wang, Y.-Y. Chang, Y. Liu, J. Leskovec, and P. Li. Inductive representation learning in
+temporal networks via causal anonymous walks. In International Conference on Learning
+Representations.
+[47] S. Wu, F. Sun, W. Zhang, X. Xie, and B. Cui. Graph neural networks in recommender systems:
+a survey. ACM Computing Surveys, 55(5):1–37, 2022.
+[48] D. Xu, C. Ruan, E. Korpeoglu, S. Kumar, and K. Achan. Inductive representation learning on
+temporal graphs. In International Conference on Learning Representations, 2020.
+[49] M. Yang, M. Zhou, M. Kalander, Z. Huang, and I. King. Discrete-time temporal network
+embedding via implicit hierarchical learning in hyperbolic space. In Proceedings of the 27th
+ACM SIGKDD Conference on Knowledge Discovery & Data Mining, pages 1975–1985, 2021.
+[50] H. Yin, M. Zhang, Y. Wang, J. Wang, and P. Li. Algorithm and system co-design for effi-
+cient subgraph-based graph representation learning. Proceedings of the VLDB Endowment,
+15(11):2788–2796, 2022.
+[51] J. You, T. Du, and J. Leskovec. Roland: graph learning framework for dynamic graphs. In
+Proceedings of the 28th ACM SIGKDD Conference on Knowledge Discovery and Data Mining,
+pages 2358–2366, 2022.
+[52] L. Yu, L. Sun, B. Du, and W. Lv. Towards better dynamic graph learning: New architecture and
+unified library. arXiv preprint arXiv:2303.13047, 2023.
+[53] H. Zhou, D. Zheng, I. Nisa, V. Ioannidis, X. Song, and G. Karypis. Tgl: A general framework
+for temporal gnn training on billion-scale graphs. arXiv preprint arXiv:2203.14883, 2022.
+13

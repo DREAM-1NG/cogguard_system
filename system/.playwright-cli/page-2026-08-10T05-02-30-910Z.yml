@@ -1,0 +1,94 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e46]:
+    - link "跳转到主内容" [ref=e47] [cursor=pointer]:
+      - /url: "#main-content"
+    - complementary [ref=e48]:
+      - generic [ref=e49]:
+        - generic [ref=e50]: CogGuard
+        - menu [ref=e52]:
+          - menuitem [ref=e53] [cursor=pointer]:
+            - generic [ref=e55]:
+              - img "dashboard" [ref=e56]
+              - text: 数据大屏
+          - menuitem [ref=e59] [cursor=pointer]:
+            - generic [ref=e61]:
+              - img "cloud-download" [ref=e62]
+              - text: 数据采集
+          - menuitem [ref=e66] [cursor=pointer]:
+            - generic [ref=e68]:
+              - img "apartment" [ref=e69]
+              - text: 协同发现
+          - menuitem [ref=e72] [cursor=pointer]:
+            - generic [ref=e74]:
+              - img "share-alt" [ref=e75]
+              - text: 传播分析
+          - menuitem [ref=e78] [cursor=pointer]:
+            - generic [ref=e80]:
+              - img "user" [ref=e81]
+              - text: 账号画像
+          - menuitem [ref=e84] [cursor=pointer]:
+            - generic [ref=e86]:
+              - img "alert" [ref=e87]
+              - text: 事件研判
+      - img "left" [ref=e91] [cursor=pointer]
+    - generic [ref=e94]:
+      - generic [ref=e95]:
+        - generic [ref=e96]: 数据大屏
+        - button "打开用户菜单" [ref=e99] [cursor=pointer]:
+          - generic [ref=e100]: 用
+          - generic [ref=e102]: 用户
+      - navigation "已打开页面" [ref=e103]:
+        - link "数据大屏" [ref=e105] [cursor=pointer]:
+          - /url: /dashboard
+      - main [ref=e106]:
+        - generic [ref=e107]:
+          - generic [ref=e108]:
+            - heading "数据大屏" [level=2] [ref=e109]
+            - button "查看页面说明" [ref=e110]
+          - generic [ref=e115]:
+            - generic "搜索事件" [ref=e116] [cursor=pointer]:
+              - generic [ref=e117]:
+                - combobox [ref=e119]
+                - generic "当前事件" [ref=e120]
+            - button "刷新数据大屏" [ref=e124]:
+              - img "loading" [ref=e126]
+              - generic [ref=e132]: 刷新
+            - button "进入研判" [ref=e133] [cursor=pointer]
+          - generic [ref=e138]:
+            - generic [ref=e140]:
+              - generic [ref=e141]: 事件位置地图
+              - generic [ref=e145]:
+                - paragraph [ref=e147]: 当前事件没有可解析的地理位置；完整事件数据见下方定位明细。
+                - generic [ref=e148]:
+                  - generic [ref=e149]: 事件热力
+                  - generic [ref=e151]:
+                    - generic [ref=e152]: 低
+                    - generic [ref=e153]: "0"
+                  - generic [ref=e154]: 帖子 + 评论
+            - generic [ref=e155]:
+              - generic [ref=e156]:
+                - generic [ref=e157]: 平台数据分布
+                - list [ref=e163]:
+                  - listitem [ref=e164]
+                  - listitem [ref=e165]
+                  - listitem [ref=e166]
+                  - listitem [ref=e167]
+              - generic [ref=e168]:
+                - generic [ref=e169]: 最早发帖样本
+                - paragraph [ref=e187]: 暂无发帖样本
+          - generic [ref=e190]:
+            - generic [ref=e191]: 事件定位明细
+            - table [ref=e201]:
+              - rowgroup [ref=e203]:
+                - row [ref=e204]:
+                  - columnheader "事件" [ref=e205]
+                  - columnheader "第一发帖者" [ref=e206]
+                  - columnheader "地图位置" [ref=e207]
+                  - columnheader "规模" [ref=e208]
+              - rowgroup [ref=e209]:
+                - row [ref=e210]:
+                  - cell [ref=e211]:
+                    - paragraph [ref=e220]: No data
+  - generic [ref=e222]:
+    - img "check-circle" [ref=e223]
+    - text: 登录成功

@@ -1,0 +1,95 @@
+Algorithm 1: CQR method for election night prediction
+Data: Observed sequence of county-level votes counts and covariates {(Xt, Yt)}1≤t≤T and vote
+counts for the democratic candidate in the previous election {Y prev
+t
+}1≤t≤T .
+for t = 1, 2, . . . , T do
+Compute the residual rt = (Yt −Y prev
+t
+)/Y prev
+t
+for t = 501, 502, . . . , T do
+// We start making predictions once 500 counties have been observed.
+Randomly split the data {(Xl, rl)}1≤l≤t−1 into a training set Dtrain and a calibration set Dcal
+with |Dtrain| = ⌊(t −1) · 0.75⌋;
+Fit a linear quantile regression model ˆq(x; p) on Dtrain;
+for (Xl, rl) ∈Dcal do
+Compute the conformity score Sl = max{ˆq(Xl; α/2) −rl, rl −ˆq(Xl; 1 −α/2)};
+Deﬁne the quantile function ˆQt(p) = inf
+n
+x :
+
+1
+|Dcal|
+P
+(Xl,rl)∈Dcal 1Sl≤x
+
+≥p
+o
+;
+Return the prediction set
+ˆCt(α) := {y : max{ˆq(Xt; α/2) −y−Y prev
+t
+Y prev
+t
+, y−Y prev
+t
+Y prev
+t
+−ˆq(Xt; 1 −α/2)} ≤ˆQt(1 −α)};
+Lemma A.1 Let f : R →R and g : R →R be bounded functions such that either
+1. f is non-increasing and g is non-decreasing,
+2. or f is non-decreasing and g is non-increasing.
+Then, for any random variable Y
+E[f(Y )g(Y )] ≤E[f(Y )]E[g(Y )].
+The proof of this result is straightforward and can be found in Section A.10.
+Lemma A.2 For any λ ∈R and t ∈N we have that
+E
+" tY
+s=1
+exp(λ(errs −E[errs|As]))
+#
+≤exp(λ2/2)E
+"t−1
+Y
+s=1
+exp(λ(errs −E[errs|As]))
+#
+.
+(8)
+Proof:
+By conditioning on α1 and A1, . . . , At on both the left and right-hand side of (8) we may
+view these quantities as ﬁxed. Thus, while for readability we do not denote this conditioning explicitly,
+the following calculations should be read as conditional on α1 and A1, . . . , At. Then,
+E
+" tY
+s=1
+exp(λ(errs −E[errs|As]))
+#
+= E
+"t−1
+Y
+s=1
+exp(λ(errs −E[errs|As]))E
+
+exp(λ(errt −E[errt|At]))
+err1, . . . , errt−1
+#
+.
+Recall that αt = α1 + γ Pt−1
+s=1(α −errs) is a deterministic function of α1 and Pt−1
+s=1 errs. So, we
+may deﬁne the functions f(Pt−1
+s=1 errs) = Qt−1
+s=1 exp(λ(errs −E[errs|As])) and
+g(
+t−1
+X
+s=1
+errs) := E [exp(λ(errt −E[errt|At]))|err1, . . . , errt−1]
+= PAt(S(Xt, Yt) ≤ˆQ(1 −αt)) exp(−λE[errt|At])
++ (1 −PAt(S(Xt, Yt) ≤ˆQ(1 −αt))) exp(λ(1 −E[errt|At])),
+where we emphasize that on the last line At and αt should be viewed as ﬁxed quantities. Now, since
+αt is monotonically decreasing in Pt−1
+s=1 errs it should be clear that if λ ≥0 then g is non-increasing
+19

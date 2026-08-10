@@ -484,12 +484,16 @@ def _build_diffusion_summary(
             child for child in simple_G.successors(parent)
             if child != parent and child not in visible_nodes
         ]
-        children.sort(
-            key=lambda child: _diffusion_child_score(simple_G, G, child, subtree_sizes, key_node_set, key_edge_set, parent),
-            reverse=True,
-        )
-        budget = _diffusion_child_budget(depth)
-        for child in children[:budget]:
+        for child in _select_diffusion_children(
+            simple_G,
+            G,
+            parent,
+            children,
+            subtree_sizes,
+            key_node_set,
+            key_edge_set,
+            depth,
+        ):
             next_depth = depth + 1
             if not add_node(child, next_depth):
                 continue
@@ -549,6 +553,8 @@ def _build_diffusion_summary(
                 "object_id": edge_data.get("object_id"),
                 "is_parallel_root": False,
             })
+
+    _backfill_visible_predecessor_edges(simple_G, visible_nodes, node_layers, tree_edges, root_id)
 
     visible_node_rows = [
         _diffusion_node_row(G, simple_G, node_id, node_layers.get(node_id, -1), key_node_set, root_id)
@@ -665,15 +671,37 @@ def _to_weighted_digraph(G: nx.MultiDiGraph) -> nx.DiGraph:
         weight = float(data.get("weight", 1) or 1)
         edge_type = data.get("type", "implicit")
         object_id = data.get("object_id")
+        confirmed_weight = weight if _edge_data_is_confirmed(data) else 0.0
+        inferred_weight = 0.0 if confirmed_weight else weight
         if simple_G.has_edge(u, v):
             simple_G[u][v]["weight"] += weight
+            simple_G[u][v]["confirmed_weight"] += confirmed_weight
+            simple_G[u][v]["inferred_weight"] += inferred_weight
             if edge_type == "explicit":
                 simple_G[u][v]["type"] = "explicit"
             if not simple_G[u][v].get("object_id") and object_id:
                 simple_G[u][v]["object_id"] = object_id
         else:
-            simple_G.add_edge(u, v, weight=weight, type=edge_type, object_id=object_id)
+            simple_G.add_edge(
+                u,
+                v,
+                weight=weight,
+                type=edge_type,
+                object_id=object_id,
+                confirmed_weight=confirmed_weight,
+                inferred_weight=inferred_weight,
+            )
     return simple_G
+
+
+def _edge_data_is_confirmed(edge_data: dict | None) -> bool:
+    if not edge_data:
+        return False
+    text = " ".join(
+        str(edge_data.get(key, ""))
+        for key in ("evidence_type", "relation_type", "type")
+    ).lower()
+    return any(token in text for token in ("explicit", "reply", "repost", "quote", "parent", "confirmed"))
 
 
 def _flatten_key_paths(evidence_chains: list[dict]) -> list[dict]:
@@ -810,9 +838,59 @@ def _diffusion_child_score(
     )
 
 
+def _select_diffusion_children(
+    simple_G: nx.DiGraph,
+    G: nx.MultiDiGraph,
+    parent: str,
+    children: list[str],
+    subtree_sizes: dict[str, int],
+    key_node_set: set[str],
+    key_edge_set: set[tuple[str, str]],
+    depth: int,
+) -> list[str]:
+    """Choose visible children with confirmed relations first, inferred relations as supplement."""
+
+    def score(child: str) -> float:
+        return _diffusion_child_score(
+            simple_G,
+            G,
+            child,
+            subtree_sizes,
+            key_node_set,
+            key_edge_set,
+            parent,
+        )
+
+    confirmed_children = [
+        child for child in children
+        if _edge_data_is_confirmed(simple_G.get_edge_data(parent, child, default={}))
+    ]
+    confirmed_set = set(confirmed_children)
+    inferred_children = [
+        child for child in children
+        if child not in confirmed_set
+    ]
+    confirmed_children.sort(key=score, reverse=True)
+    inferred_children.sort(key=score, reverse=True)
+
+    budget = _diffusion_child_budget(depth)
+    selected = confirmed_children[:budget]
+    remaining = budget - len(selected)
+    if remaining <= 0:
+        return selected
+
+    inferred_budget = min(remaining, _diffusion_inferred_child_budget(depth))
+    return selected + inferred_children[:inferred_budget]
+
+
 def _diffusion_child_budget(depth: int) -> int:
     budgets = [34, 16, 9, 6, 4, 3]
     return budgets[depth] if depth < len(budgets) else 2
+
+
+def _diffusion_inferred_child_budget(depth: int) -> int:
+    budgets = [12, 5, 3, 2, 1, 1]
+    return budgets[depth] if depth < len(budgets) else 1
 
 
 def _diffusion_node_row(
@@ -849,6 +927,66 @@ def _diffusion_highlight_edge(simple_G: nx.DiGraph, source: str, target: str) ->
     }
 
 
+def _diffusion_tree_edge(simple_G: nx.DiGraph, source: str, target: str, *, default_type: str = "implicit") -> dict:
+    edge_data = simple_G.get_edge_data(source, target, default={})
+    return {
+        "source": source,
+        "target": target,
+        "weight": edge_data.get("weight", 1),
+        "type": edge_data.get("type", default_type),
+        "object_id": edge_data.get("object_id"),
+        "is_parallel_root": False,
+    }
+
+
+def _backfill_visible_predecessor_edges(
+    simple_G: nx.DiGraph,
+    visible_nodes: set[str],
+    node_layers: dict[str, int],
+    tree_edges: dict[tuple[str, str], dict],
+    root_id: str,
+) -> None:
+    """Connect visible inferred nodes to their visible predecessor when possible."""
+
+    def has_visible_incoming_edge(node_id: str) -> bool:
+        for (source, target), edge in tree_edges.items():
+            if target != node_id or source not in visible_nodes:
+                continue
+            if edge.get("is_parallel_root") or edge.get("is_synthetic"):
+                continue
+            if node_layers.get(source) == node_layers.get(target):
+                continue
+            return True
+        return False
+
+    def predecessor_score(source: str, target: str) -> tuple[float, float, int, str]:
+        edge_data = simple_G.get_edge_data(source, target, default={})
+        confirmed = 1.0 if _edge_data_is_confirmed(edge_data) else 0.0
+        weight = float(edge_data.get("weight", 1) or 1)
+        source_layer = int(node_layers.get(source, DIFFUSION_MAX_DEPTH))
+        target_layer = int(node_layers.get(target, DIFFUSION_MAX_DEPTH))
+        layer_fit = -abs((target_layer - source_layer) - 1)
+        return (confirmed, weight, layer_fit, str(source))
+
+    for node_id in sorted(visible_nodes, key=lambda item: (node_layers.get(item, 999), str(item))):
+        if not node_id or node_id == root_id or has_visible_incoming_edge(node_id):
+            continue
+        predecessors = [
+            predecessor for predecessor in simple_G.predecessors(node_id)
+            if predecessor in visible_nodes
+            and predecessor != node_id
+            and node_layers.get(predecessor) != node_layers.get(node_id)
+        ]
+        if not predecessors:
+            continue
+        predecessors.sort(key=lambda predecessor: predecessor_score(predecessor, node_id), reverse=True)
+        predecessor = predecessors[0]
+        tree_edges.setdefault(
+            (predecessor, node_id),
+            _diffusion_tree_edge(simple_G, predecessor, node_id),
+        )
+
+
 def _apply_clustered_diffusion_layout(
     visible_nodes: list[dict],
     tree_edges: list[dict],
@@ -876,11 +1014,44 @@ def _apply_clustered_diffusion_layout(
     for child, parent in parent_by_child.items():
         children_by_parent.setdefault(parent, []).append(child)
 
+    def is_layout_only_edge(edge: dict) -> bool:
+        edge_type = str(edge.get("type") or edge.get("relation_type") or edge.get("evidence_type") or "").lower()
+        return bool(edge.get("is_parallel_root") or edge.get("is_synthetic") or "layout" in edge_type or "synthetic" in edge_type)
+
+    root_connected_node_ids = {
+        str(edge.get("target") if str(edge.get("source")) == root_id else edge.get("source"))
+        for edge in tree_edges
+        if root_id
+        and not is_layout_only_edge(edge)
+        and (str(edge.get("source")) == root_id or str(edge.get("target")) == root_id)
+    }
     node_by_id = {str(node["id"]): node for node in visible_nodes}
     first_layer_nodes = [
         node for node in visible_nodes
         if int(node.get("layer", 0) or 0) == 1
     ]
+    detached_first_layer_ids = {
+        str(node.get("id", ""))
+        for node in first_layer_nodes
+        if str(node.get("id", "")) and str(node.get("id", "")) != root_id
+        and str(node.get("id", "")) not in root_connected_node_ids
+    }
+    detached_depth_by_node: dict[str, int] = {}
+    for detached_root in sorted(detached_first_layer_ids):
+        queue: list[tuple[str, int]] = [(detached_root, 0)]
+        while queue:
+            node_id, depth = queue.pop(0)
+            if not node_id or node_id == root_id:
+                continue
+            if node_id in root_connected_node_ids and node_id != detached_root:
+                continue
+            existing_depth = detached_depth_by_node.get(node_id)
+            if existing_depth is not None and existing_depth <= depth:
+                continue
+            detached_depth_by_node[node_id] = depth
+            for child_id in children_by_parent.get(node_id, []):
+                queue.append((child_id, depth + 1))
+
     first_layer_nodes.sort(
         key=lambda node: (
             -int(node.get("out_degree", 0) or 0),
@@ -928,6 +1099,9 @@ def _apply_clustered_diffusion_layout(
     for node in visible_nodes:
         node_id = str(node.get("id", ""))
         layer = max(int(node.get("layer", 0) or 0), 0)
+        # Detached key-path anchors should not sit in the root-near ring:
+        # visually close nodes imply a source relation that the graph does not have.
+        layout_layer = max(layer, 3 + detached_depth_by_node[node_id]) if node_id in detached_depth_by_node else layer
         node_objects = node_object_map.get(node_id, {})
         similarity_to_root = _weighted_jaccard(node_objects, root_objects, object_weights)
         shared_object_ids = sorted(
@@ -946,9 +1120,9 @@ def _apply_clustered_diffusion_layout(
             cluster_index = max(0, _node_index_in_cluster(cluster_nodes, node_id))
             cluster_size = max(len(cluster_nodes), 1)
             base_angle = cluster_angles.get(cluster_id, _stable_angle(cluster_id))
-            angle_spread = 0.92 if layer <= 1 else 0.68 if layer <= 3 else 0.44
+            angle_spread = 0.92 if layout_layer <= 1 else 0.68 if layout_layer <= 3 else 0.44
             angle = base_angle + _cluster_offset(cluster_index, cluster_size, angle_spread) + _stable_jitter(node_id, 0.035)
-            layout_radius = _cluster_layout_radius(layer, similarity_to_root, cluster_index, cluster_size)
+            layout_radius = _cluster_layout_radius(layout_layer, similarity_to_root, cluster_index, cluster_size)
             layout_x = float(np.cos(angle) * layout_radius)
             layout_y = float(np.sin(angle) * layout_radius)
 
@@ -960,6 +1134,7 @@ def _apply_clustered_diffusion_layout(
             "layout_radius": round(layout_radius, 3),
             "similarity_to_root": round(float(similarity_to_root), 4),
             "shared_object_ids": shared_object_ids,
+            "layout_effective_layer": int(layout_layer),
         })
         laid_out.append(enriched)
 

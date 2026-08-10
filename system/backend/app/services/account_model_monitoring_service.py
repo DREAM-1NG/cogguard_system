@@ -16,6 +16,7 @@ from app.core.account_model_monitoring import (
     normalize_account_model_hard_error_reason,
     summarize_account_predictions,
 )
+from app.core.account_labeling import account_scope_key
 from app.models.account_labeling import (
     AccountDetectionModelActivation,
     AccountDetectionModelVersion,
@@ -25,6 +26,7 @@ from app.models.account_labeling import (
 from app.utils.exceptions import AppException
 
 __all__ = [
+    "account_prediction_input_fingerprint",
     "create_account_monitor_snapshot",
     "list_account_monitor_snapshots",
     "record_account_prediction_audits",
@@ -52,15 +54,18 @@ async def record_account_prediction_audits(
     for post in posts:
         account_id = str(post.get("author_id") or post.get("user_id") or "").strip()
         if account_id:
-            grouped.setdefault(account_id, []).append(post)
+            post_platform = str(post.get("platform") or platform or "unknown")
+            grouped.setdefault(account_scope_key(post_platform, account_id), []).append(post)
     created = 0
     for row in result.get("accounts") or []:
         account_id = str(row.get("account_id") or "").strip()
         if not account_id:
             continue
-        input_fingerprint = _prediction_input_fingerprint(grouped.get(account_id, []))
+        row_platform = str(row.get("platform") or platform or "unknown")
+        scoped_posts = grouped.get(account_scope_key(row_platform, account_id), [])
+        input_fingerprint = account_prediction_input_fingerprint(scoped_posts)
         audit_id = "account-prediction-" + _canonical_digest(
-            (account_id, input_fingerprint, model.model_version, model.pointer_revision)
+            (row_platform, account_id, input_fingerprint, model.model_version, model.pointer_revision)
         )[:32]
         exists_row = (
             await session.execute(
@@ -71,7 +76,7 @@ async def record_account_prediction_audits(
             continue
         payload = {
             "event_id": event_id,
-            "platform": platform or _first_platform(grouped.get(account_id, [])),
+            "platform": row_platform or _first_platform(scoped_posts),
             "artifact_hash": str(model.artifact_hash),
             "base_probability": row.get("base_bot_probability"),
             "final_probability": row.get("final_bot_probability"),
@@ -79,6 +84,8 @@ async def record_account_prediction_audits(
             "calibrated": bool(row.get("calibrated")),
             "calibration_source": row.get("calibration_source") or "",
             "prediction": row.get("final_prediction"),
+            "routed": bool(row.get("routed", False)),
+            "support_evidence": _support_evidence_projection(row.get("support_evidence")),
             "abstained": bool(row.get("abstained", False)),
             "latency_ms": float(latency_ms),
             "hard_error": False,
@@ -86,7 +93,7 @@ async def record_account_prediction_audits(
         session.add(
             AccountPredictionAudit(
                 audit_id=audit_id,
-                case_id=_case_id(account_id, event_id, platform),
+                case_id=_case_id(account_id, event_id, row_platform),
                 account_id=account_id,
                 platform=str(payload["platform"] or "unknown"),
                 family=_MODEL_FAMILY,
@@ -116,7 +123,7 @@ async def record_account_runtime_error(
 
     if model is None:
         return 0
-    input_fingerprint = _prediction_input_fingerprint(posts)
+    input_fingerprint = account_prediction_input_fingerprint(posts)
     audit_id = f"account-runtime-error-{uuid4().hex[:24]}"
     payload = {
         "event_id": event_id,
@@ -211,6 +218,9 @@ async def create_account_monitor_snapshot(
         window_finished_at=finished_at,
         status=str(summary["status"]),
         metrics_json=json.dumps(metrics, ensure_ascii=False, sort_keys=True),
+        # MySQL does not always return a server default during flush.  Set this
+        # explicitly because the task returns a projection before committing.
+        created_at=_database_time(datetime.now(timezone.utc)),
     )
     session.add(snapshot)
     await session.flush()
@@ -359,7 +369,9 @@ def _loads(payload: str) -> dict[str, Any]:
     return value if isinstance(value, dict) else {}
 
 
-def _prediction_input_fingerprint(posts: Iterable[dict[str, Any]]) -> str:
+def account_prediction_input_fingerprint(posts: Iterable[dict[str, Any]]) -> str:
+    """Return the stable model-input fingerprint used by prediction audits."""
+
     rows = sorted(
         (
             str(post.get("post_id") or post.get("id") or ""),
@@ -369,6 +381,30 @@ def _prediction_input_fingerprint(posts: Iterable[dict[str, Any]]) -> str:
         for post in posts
     )
     return _canonical_digest(rows)
+
+
+def _support_evidence_projection(value: Any) -> list[dict[str, Any]]:
+    """Persist bounded non-text neighbor evidence for account-profile display."""
+
+    if not isinstance(value, list):
+        return []
+    projected: list[dict[str, Any]] = []
+    for row in value[:10]:
+        if not isinstance(row, dict):
+            continue
+        account_id = str(row.get("account_id") or "").strip()
+        if not account_id:
+            continue
+        projected.append(
+            {
+                "account_id": account_id,
+                "similarity": row.get("similarity"),
+                "final_bot_probability": row.get("final_bot_probability"),
+                "final_prediction": row.get("final_prediction"),
+                "routed": bool(row.get("routed", False)),
+            }
+        )
+    return projected
 
 
 def _canonical_digest(value: Any) -> str:

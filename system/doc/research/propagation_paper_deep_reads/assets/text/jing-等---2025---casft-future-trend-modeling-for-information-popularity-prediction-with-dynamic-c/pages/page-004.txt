@@ -1,0 +1,228 @@
+Global Graph
+{
+{
+{
+{
+P1
+P1
+P2
+P2
+P3
+P3
+PlPl
+Time
+ Incremental Popularity
+Observed Cascade Graph
+u0
+u0 
+u1
+u1 
+u2
+u2 
+u3
+u3
+u4
+u4
+tsts
+t1t1  t2t2 
+t3t3 
+t4t4 
+= 0
+= 0
+toto
+tptp
+{
+{
+{
+……
+Y = (P1, P2, . . . , Pl)
+Y = (P1, P2, . . . , Pl)
+P = ∫
+tp
+to
+λ*(τ)dτ =
+l
+∑
+i
+Pi
+P = ∫
+tp
+to
+λ*(τ)dτ =
+l
+∑
+i
+Pi
+Ec
+Ec
+Historical Spatiotemporal Modeling
+NetSMF
+Time-Encoder
+GraphWave
+Eg
+Eg
+Zt
+Zt
+add
+Sub-sequence
+Attention
+Attention
+s0s0
+s1s1
+s2s2
+s3s3
+s4s4
+ODE-GRU
+ht3
+ht3
+ht4
+ht4
+Interpretation of Future Trends
+s0s0
+s1s1
+s2s2
+s3s3
+s4s4
+ODE
+ht1
+ht1
+ht2
+ht2
+hts
+hts
+λ*
+λ*
+Parameterize
+Time
+htht
+Λts1
+Λts1
+Λts2
+Λts2
+……
+ht0
+ht0
+Λts1
+Λts1 Λts2
+Λts2 … Λtsl
+Λtsl
+c
+q(Yk|Yk−1)
+q(Yk|Yk−1)
+Y0
+Y0
+Yk
+Yk
+…
+Yk−1
+Yk−1
+pθ(Yk−1|Yk, c)
+pθ(Yk−1|Yk, c)
+̂P̂P
+Prediction
+MLP
+ht0
+ht0
+Y0
+Y0
+Figure 2: An overview of our proposed model CasFT.
+The initial embedding of each sub-sequence Sj is specified
+by:
+x(i) = z(ti) + Ec(ui),
+(11)
+Ej
+c = {x(0), x(1), ..., x(i)},
+(12)
+Ej
+g = { Eg(u0), Eg(u1), ..., Eg(ui)},
+(13)
+where ui ∈Sj, and ti is its associated time stamp. We then
+encode Ej
+c and Ej
+g via two independent self-attention layers.
+Specifically, the scaled dot-product attention (Vaswani et al.
+2017) is defined as:
+s = Attention(Q, K, V ) = Softmax(QKT
+√
+d
+)V,
+(14)
+where Q, K, V represent queries, keys, and values. In our
+case, the self-attention operation takes Ej
+c or Ej
+g as input
+and converts them into different groups of Q, K, and V
+through separate linear transformations. By applying the
+above self-attention operation to all sub-sequences, we ob-
+tain sets of hidden representations sc = {s0
+c, s1
+c, . . . , sN
+c }
+and sg = {s0
+g, s1
+g, . . . , sN
+g } for the local-view and global-
+view, respectively. Finally, we concatenate these two views
+of hidden representations at the sub-sequence level to form
+the final historical spatiotemporal features of S, denoted by
+{s0, s1, . . . , sN}.
+Interpretation of Future Trends
+As we discussed in the Introduction section, the real dynam-
+ics of cascade evolution between the observation and pre-
+diction periods are invisible and difficult to depict due to
+their fluctuations. To address this challenge, we designed
+a dynamic cues-driven diffusion model to simulate future
+trends based solely on the observed cascades. Specifically,
+this model consists of two components: (1) a dynamic cues
+learning module and (2) a diffusion model-based future
+trends simulation module. To acquire the dynamic cues, we
+are inspired by ODEs, which are used to model quantity
+changes over time in dynamic systems. We introduce a neu-
+ral ODEs to model the continuous-time growth rate during
+the observation period, capturing its evolving tendency. Af-
+terward, the future growth rate between the observation and
+prediction periods can be autoregressively predicted using
+this neural ODEs. Finally, the dynamic cues of popularity in-
+crement are derived through an integration operation based
+on these predicted growth rates. However, one limitation of
+ODEs is that they are constrained by the initial state of the
+dynamic system, leading to popularity predictions based on
+the estimated growth rate that are biased and lack realistic
+variability. Accordingly, we further divide the estimated pe-
+riod into several time spans and employ diffusion models
+to generate incremental popularity in each time span, condi-
+tioned on the growth rate.
+Dynamic Cues Learning with Neural ODEs:
+We lever-
+age neural ODEs to model the continuous-time growth rate
+dynamics with a vector representation hti at every times-
+tamp ti. Here we parameterize the growth rate using hidden
+state dynamics:
+λ∗(t) = f1(ht),
+(15)
+where f is a linear neural network with the softplus function
+to ensure the output is positive. As for the continuous-time
+hidden state hti, we use a multi-layer fully connected neural
+network f2 to model the continuous change in the form of
+an ODE. When a new retweeting action occurs at time ti,
+we use a GRU function g to model instantaneous changes
+triggered by a newly observed event:
+dhti
+dt
+= f2(t, hti−1),
+(16)
+h
+′
+ti = ODESolve(f2, hti−1, (ti−1, ti)),
+(17)
+hti = g(h
+′
+ti, si),
+(18)
+and the popularity at time ti can be calculated as:
+Pti =
+Z ti
+0
+λ∗(τ)dτ = Λti.
+(19)
+11909

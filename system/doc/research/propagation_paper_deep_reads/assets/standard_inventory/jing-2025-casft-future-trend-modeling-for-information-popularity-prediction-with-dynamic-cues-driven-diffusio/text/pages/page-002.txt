@@ -1,0 +1,62 @@
+variation in growth rates fluctuates significantly across both       tion about the content, such as tags (Ma, Sun, and Cong
+two datasets, highlighting different cascade incremental pat-      2013), topic features (Martin et al. 2016), and graph struc-
+terns, which contributes to the uncertainty in depicting fu-       tures (Gao, Ma, and Chen 2014; Wang et al. 2016), tempo-
+ture diffusion trends. Subsequently, achieving robust pop-        ral features such as publication time (Petrovic, Osborne, and
+ularity prediction necessitates accommodating such uncer-      Lavrenko 2011; Wu et al. 2016), observation time (Cheng
+tainties by accounting for cascade evolution patterns after        et al. 2014; Yang and Leskovec 2011), first participation
+the observation period. Nevertheless, the actual dynamic      time (Zaman, Fox, and Bradlow 2014), etc. However, these
+changes in cascades during this period are invisible when      works heavily rely on the quality of hand-crafted features
+performing real-time popularity prediction.                   and thus have limited generalizability.
+  Against this background, we resort to generative models      Generative-based approaches: These methods use proba-
+to simulate the cascade evolving patterns between the ob-        bilistic models to describe the propagation, including epi-
+servation and prediction times for boosting popularity pre-      demic models (Matsubara  et  al. 2012), survival analy-
+diction performance. However, there exist two difficulties in        sis (Lee, Moon, and Salamatian 2012), and various stochas-
+characterizing the unique features in the patterns: 1) the in-        tic point processes, e.g., Poisson process (Bao et al. 2015),
+cremental popularity equals the integral of the growth rate,     Hawkes process (Zhao et al. 2015), (Zhang, Aravamudan,
+which is highly fluctuated as evidenced by Figure 1; and 2)      and Anagnostopoulos 2022). However, the selection of un-
+information diffusion is a complex propagation process that       derlying probabilistic models can lead to significant differ-
+is susceptible to external factors, resulting in varying pat-      ences in performance.
+terns of uncertainties that need to accommodate.                Deep-learning-based approaches: The recent rapid devel-
+  To address these challenges, we propose CasFT, a novel     opment of deep learning has also spurred the emergence
+information popularity prediction technique that aims to       of numerous information cascade models based on deep
+capture  the evolving  patterns  of  information Cascades       neural networks. DeepHawkes (Cao et al. 2017) constructs
+over time,  in  particular, the Future propagation Trend.      an end-to-end network by Hawkes processes. DeepCas (Li
+CasFT leverages neural Ordinary Differential Equations        et al. 2017) is the first cascade graph representation learning
+(ODEs) (Chen et al. 2018) to model the growth rate based      method, capturing both structural and temporal information.
+on corresponding graph structure and sequential event infor-     VaCas (Zhou et al. 2020a) and CasFlow (Xu et al. 2021)
+mation under observation, propagate the growth rate from      propose a hierarchical graph learning method using varia-
+the observation time to the prediction time, and calculates       tional autoencoders or normalizing flows to model uncer-
+the cumulative popularity during several periods by the inte-       tainty in cascade graphs, and a bidirectional GRU to capture
+gration of the growth rate. We take the historical information      temporal dynamics. CasSeqGCN (Wang et al. 2022) aggre-
+diffusion representation and the future dynamic cumulative       gates cascade node representations using a dynamic routing
+popularity as conditions, adopt diffusion models to generate      mechanism. CTCP (Lu et al. 2023)integrates multiple cas-
+the future trend of information popularity, and fuse the cas-      cades into a diffusion graph to further capture the correla-
+cade representation with the generated cues for prediction.       tion between cascades and users. However, existing methods
+In summary, our contributions are as follows:                   only consider modeling cascades within observation. We ar-
+                                                       gue that CasFT incorporates the future trends of popularity,• We  revisit the  existing cascade popularity  prediction
+                                                              thereby improving the prediction performance.  methods and identify the importance of modeling future
+  trends of popularity after observation which contributes to
+  the final prediction.                                                  Preliminaries
+• We propose CasFT, which  is designed to capture the       In this section, we present the definitions of key concepts
+  evolving dynamic patterns of both the information cas-       in our work and give a brief introduction to the concepts of
+  cades and growth rate with neural ODEs. We leverage dif-       neural ODEs and diffusion models.
+  fusion models to generate future trends of popularity and
+  concatenate them with dynamic cascade representations     Problem Definition
+  together for prediction.
+                                                       Suppose that a Twitter user u0 posts a tweet I at time ts = 0
+• We conduct extensive experiments to evaluate CasFT on                                                     (we set the start time to 0) and other users can interact with
+  several real-world information cascade datasets. Results                                                              tweet I through various actions such as liking, retweeting,
+  show that CasFT achieves superior performance compared                                                       and commenting. Here we focus on the “retweet” behav-
+  to a sizeable collection of state-of-the-art baselines on                                                                                 ior, while our work can also be generalized to other actions.
+  the information popularity prediction task, yielding 2.2%-                                                                       Specifically, when a user u1 retweets I posted by user u0
+  19.3% improvement over the best-performing baselines                                                                          at time t1, we can define a triplet (u0, u1, t1) to present the
+  across different datasets.                                                                   diffusion of information I from user u0 to user u1. Subse-
+                                                                   quently, a series of such triplets constitutes a retweet cas-
+               Related Work                        cade C. Specifically, within a given observation time to, the
+In the current literature, cascade popularity prediction tech-      retweet cascade C(to) can be defined as the set of all rele-
+niques can be roughly classified into three categories.            vant triplets, i.e., C(to) = {(ui1, ui2, ti)}i∈N, where N rep-
+Feature-based approaches: Feature-based approaches ex-       resents the total number of triplets involved in the retweet
+tract observed features manually which include informa-      process during the observation period and ti ≤to.
+
+
+                                                  11907

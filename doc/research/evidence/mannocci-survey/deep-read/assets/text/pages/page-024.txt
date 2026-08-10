@@ -1,0 +1,76 @@
+24                                                                                 Mannocci et al.
+
+
+Reddit and 4chan communities, identifying the community responsible for each attack based on linguistic patterns and
+
+similarities. In [84], a graph neural network model is exploited to recognize normal and abnormal communities.
+
+   Network. A simpler approach is proposed in [40], where a small expert-labeled ground truth of organic and inorganic
+campaigns is used to characterize campaigns along network, temporal, and semantic dimensions. Unknown campaigns
+
+are then labeled as coordinated if their indicators fall within the 95% confidence interval of inorganic campaigns and
+
+outside that of organic ones. In [4] a graph classification method based on random weighted walks leverages the density
+
+of local network structures to distinguish coordinated from non-coordinated networks. Kanakaris et al. [57] model
+
+retweet networks as propagation trees, encode them into text via graph prompting, and combine them with content and
+
+similarity-based examples in a RAG framework, enabling an LLM to classify coordinated disinformation campaigns.
+
+   Target. In [83], authors propose a system to predict YouTube videos likely to be targeted by coordinated hate attacks,
+using features from metadata, transcripts, and thumbnails, and an ensemble classifier trained on previously raided
+videos. As previously discussed, the approach in [108] operates at both the user and target levels.
+
+
+4.3  Discussion
+
+4.3.1  Modeling complex coordination. In Section 2 we highlighted that coordinated online behavior is complex and
+multifaceted, often involving various actions across multiple platforms. Consequently, methods that analyze only a
+
+single type of action—particularly single-layer network approaches—risk missing significant coordination activities. To
+address this limitation, using multiplex networks and compound actions can offer more comprehensive insights. The
+network science framework presented in Section 4.1 supports both single- and multi-layer (i.e., multiplex) networks.
+
+However, few studies considered multiple co-actions and built multiplex networks, as summarized in Table 5. Moreover,
+
+to fully leverage the benefits of multiplex networks, these should not be flattened before running the community
+
+detection algorithm, which must be specifically designed for multiplex networks so as to utilize the multiple layers
+
+effectively [74]. Unfortunately, only a few studies possess these characteristics [29, 32, 70, 72, 94], making the analysis
+
+of coordinated behavior across multiple actions a largely unexplored area of research. Compound co-actions, combining
+
+simpler actions (e.g., a post with both a hashtag and user mention), can enhance detection confidence because they are
+
+less likely to occur by chance [73]. However, this approach is also almost completely unexplored. In conclusion, too
+
+little research has been conducted so far on using multiple co-actions for detecting coordinated online behavior, leaving
+
+the actual advantages of these methods over single-action analysis unclear. Moreover, any potential benefits must be
+
+weighed against the increased complexity and computational costs that they introduce.
+
+4.3.2  Network science vs. machine learning. Most methods for detecting coordinated behavior rely on network science,
+offering greater generality and expressiveness than machine learning approaches. They effectively model complex
+
+interactions and relationships, capturing varying degrees of coordination [100], tracking temporal changes [129], and
+
+providing detailed characterizations of coordinated groups [128]. The disadvantage is the computational cost of analyzing
+
+large networks and the requirement for human analysts to interpret results, making them less suitable for being directly
+
+used in automatic decision making systems. A further drawback is their sensitivity to specific parameters, such as those
+
+defining the way in which the timings of user actions are modeled [144], which can significantly impact the obtained
+
+results and for which few guidelines currently exist [95, 129]. Instead, data mining and machine learning methods
+
+often rely on oversimplified assumptions, such as the existence of a sharp binary distinction between coordinated
+
+and non-coordinated actors, which overlooks the nuanced nature of online coordination. This binary approach can
+
+undermine the theoretical and practical reliability of results. Furthermore, these methods face limitations due to the
+
+Manuscript submitted to ACM

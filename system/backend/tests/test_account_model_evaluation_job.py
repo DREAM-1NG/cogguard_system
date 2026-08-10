@@ -12,6 +12,7 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.exc import OperationalError
 
 from app.api.v1 import accounts as accounts_api
+from app.core.account_labeling import account_scope_key
 from app.core.security import get_current_user
 from app.models.account_labeling import (
     AccountDetectionModelVersion,
@@ -23,6 +24,7 @@ from app.main import app
 from app.services.account_dataset_service import record_account_training_export_memberships
 from app.services import account_model_evaluation_service as evaluation_service
 from app.services.account_model_evaluation_service import (
+    FrozenHoldoutCase,
     compute_holdout_fingerprint,
     create_account_model_evaluation_job,
     prepare_frozen_holdout_cases,
@@ -236,6 +238,8 @@ def test_job_creation_is_idempotent_for_the_same_immutable_candidate_and_config(
     assert first["holdout_fingerprint"] == repeated["holdout_fingerprint"]
     assert changed_candidate["job_id"] != first["job_id"]
     assert len(session.jobs) == 2
+    assert all(job.dispatch_status == "pending" for job in session.jobs)
+    assert all(job.dispatch_publish_attempts == 0 for job in session.jobs)
 
 
 def test_worker_uses_the_exact_candidate_bundle_and_signs_server_owned_evidence(monkeypatch):
@@ -272,7 +276,7 @@ def test_worker_uses_the_exact_candidate_bundle_and_signs_server_owned_evidence(
             return {
                 "accounts": [
                     {
-                        "account_id": "account-1",
+                        "account_id": account_scope_key("weibo", "account-1"),
                         "calibrated_probability": 0.8,
                         "final_prediction": "bot",
                         "calibrated": True,
@@ -307,10 +311,57 @@ def test_worker_uses_the_exact_candidate_bundle_and_signs_server_owned_evidence(
     assert captured["source"].model_version == candidate.model_version
     assert captured["source"].artifact_hash == candidate.artifact_hash
     assert captured["allow_legacy_fallback"] is False
-    assert captured["posts"][0]["author_id"] == "account-1"
+    assert captured["posts"][0]["author_id"] == account_scope_key("weibo", "account-1")
     assert "target" not in captured["posts"][0]
     assert captured["writeback"]["evaluation_manifest"]["signature_sha256"]
     assert captured["writeback"]["prediction_audits"][0]["target"] == 1
+
+
+def test_holdout_inference_and_audit_lookup_are_platform_scoped():
+    cases = [
+        FrozenHoldoutCase(
+            membership_id=f"membership-{platform}",
+            corpus_version_id="corpus-1",
+            case_id=f"case-{platform}",
+            label_id=f"label-{platform}",
+            account_id="same-id",
+            platform=platform,
+            event_id="event-1",
+            community=f"community-{platform}",
+            target=target,
+            case_fingerprint=("a" if platform == "weibo" else "b") * 64,
+            source_payload_fingerprint=("c" if platform == "weibo" else "d") * 64,
+            payload={"text": f"{platform} text"},
+        )
+        for platform, target in (("weibo", "bot"), ("douyin", "non_bot"))
+    ]
+    posts = evaluation_service._holdout_inference_posts(cases)
+    result = {
+        "accounts": [
+            {
+                "account_id": account_scope_key(case.platform, case.account_id),
+                "calibrated_probability": 0.8 if case.target == "bot" else 0.2,
+                "final_prediction": "bot" if case.target == "bot" else "human",
+                "calibrated": True,
+            }
+            for case in cases
+        ]
+    }
+
+    audits = evaluation_service._candidate_bound_audits(
+        result,
+        holdout_cases=cases,
+        total_latency_ms=2.0,
+    )
+
+    assert {post["author_id"] for post in posts} == {
+        account_scope_key("weibo", "same-id"),
+        account_scope_key("douyin", "same-id"),
+    }
+    assert {audit["account_id"] for audit in audits} == {
+        account_scope_key("weibo", "same-id"),
+        account_scope_key("douyin", "same-id"),
+    }
 
 
 def test_prepare_fails_closed_when_the_persisted_holdout_fingerprint_changes(monkeypatch):
@@ -382,13 +433,9 @@ def test_evaluation_job_create_and_query_api_are_admin_only_and_accept_no_client
     async def fake_get(_session, job_id):
         return {"job_id": job_id, "status": "completed", "completed_evaluation_run_id": "evaluation-run-1"}
 
-    def fake_enqueue(job_id, *, task_id):
-        calls.append({"enqueued": (job_id, task_id)})
-
     app.dependency_overrides[accounts_api.get_db] = override_db
     monkeypatch.setattr(accounts_api.account_model_evaluation_service, "create_account_model_evaluation_job", fake_create)
     monkeypatch.setattr(accounts_api.account_model_evaluation_service, "get_account_model_evaluation_job", fake_get)
-    monkeypatch.setattr(accounts_api, "enqueue_account_model_evaluation_job", fake_enqueue)
 
     async def request_as(role, method, path, payload=None):
         app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(id=7, role=role, is_active=True)
@@ -434,7 +481,7 @@ def test_evaluation_job_create_and_query_api_are_admin_only_and_accept_no_client
     assert query.status_code == 200
     assert client_evidence.status_code == 422
     assert calls[0]["operator_id"] == 7
-    assert calls[1] == {"enqueued": ("job-api-1", "task-api-1")}
+    assert len(calls) == 1
 
 
 def test_account_evaluation_task_uses_the_dedicated_queue_and_late_acknowledgement(monkeypatch):
@@ -457,6 +504,22 @@ def test_account_evaluation_task_uses_the_dedicated_queue_and_late_acknowledgeme
         "retry": False,
     }
     assert execute_account_model_evaluation_job.acks_late is True
+    assert execute_account_model_evaluation_job.max_retries is None
+
+
+def test_evaluation_reconciliation_drains_the_persisted_dispatch_outbox(monkeypatch):
+    from app.tasks import account_evaluation_tasks
+
+    async def drain(*, limit):
+        assert limit == 25
+        return {"published": 2, "failed": 0}
+
+    monkeypatch.setattr(account_evaluation_tasks, "drain_account_model_evaluation_dispatch_outbox", drain)
+    monkeypatch.setattr(account_evaluation_tasks, "run_async", lambda coroutine: asyncio.run(coroutine))
+
+    result = account_evaluation_tasks.reconcile_account_model_evaluation_dispatches.run(25)
+
+    assert result == {"published": 2, "failed": 0}
 
 
 def test_manual_writeback_is_exposed_only_as_an_explicit_compatibility_path():
@@ -547,7 +610,7 @@ def test_prepare_and_finalize_recheck_after_inference_without_writing_evidence(m
             return {
                 "accounts": [
                     {
-                        "account_id": "account-1",
+                            "account_id": account_scope_key("weibo", "account-1"),
                         "calibrated_probability": 0.8,
                         "final_prediction": "bot",
                         "calibrated": True,
@@ -594,11 +657,15 @@ def test_evaluation_task_retries_operational_errors_without_terminal_failure(mon
 
     retry_calls = []
 
+    async def acknowledge(**_kwargs):
+        return True
+
     def retry(**kwargs):
         retry_calls.append(kwargs)
         return "retrying"
 
     monkeypatch.setattr(account_evaluation_tasks, "_execute_account_model_evaluation_job", failing_execution)
+    monkeypatch.setattr(account_evaluation_tasks, "acknowledge_account_model_evaluation_dispatch", acknowledge)
     monkeypatch.setattr(account_evaluation_tasks, "run_async", run)
     monkeypatch.setattr(account_evaluation_tasks.execute_account_model_evaluation_job, "retry", retry)
     monkeypatch.setattr(account_evaluation_tasks, "_record_failed_job_transaction", pytest.fail)
@@ -607,6 +674,108 @@ def test_evaluation_task_retries_operational_errors_without_terminal_failure(mon
 
     assert result == "retrying"
     assert retry_calls == [{"exc": ANY, "countdown": 1}]
+
+
+def test_evaluation_task_acknowledges_the_persisted_task_before_inference(monkeypatch):
+    from app.tasks import account_evaluation_tasks
+
+    events = []
+
+    class _Ownership:
+        def release(self):
+            events.append("release")
+
+    async def acknowledge(**kwargs):
+        events.append(("acknowledge", kwargs["job_id"], kwargs["task_id"]))
+        return True
+
+    async def execute(job_id):
+        events.append(("execute", job_id))
+        return {"job_id": job_id, "status": "completed"}
+
+    monkeypatch.setattr(account_evaluation_tasks, "acquire_account_model_gpu_ownership", lambda _id: _Ownership())
+    monkeypatch.setattr(account_evaluation_tasks, "acknowledge_account_model_evaluation_dispatch", acknowledge)
+    monkeypatch.setattr(account_evaluation_tasks, "_execute_account_model_evaluation_job", execute)
+    monkeypatch.setattr(account_evaluation_tasks, "run_async", lambda coroutine: asyncio.run(coroutine))
+
+    result = account_evaluation_tasks.execute_account_model_evaluation_job.run("job-ack")
+
+    assert result == {"job_id": "job-ack", "status": "completed"}
+    assert events == [
+        ("acknowledge", "job-ack", None),
+        ("execute", "job-ack"),
+        "release",
+    ]
+
+
+def test_evaluation_task_retries_transient_acknowledgement_failure(monkeypatch):
+    from app.tasks import account_evaluation_tasks
+
+    async def unavailable_acknowledgement(**_kwargs):
+        raise OperationalError("UPDATE account_model_evaluation_jobs", {}, RuntimeError("deadlock"))
+
+    retry_calls = []
+    monkeypatch.setattr(
+        account_evaluation_tasks,
+        "acknowledge_account_model_evaluation_dispatch",
+        unavailable_acknowledgement,
+    )
+    monkeypatch.setattr(account_evaluation_tasks, "run_async", lambda coroutine: asyncio.run(coroutine))
+    monkeypatch.setattr(account_evaluation_tasks, "acquire_account_model_gpu_ownership", pytest.fail)
+    monkeypatch.setattr(
+        account_evaluation_tasks.execute_account_model_evaluation_job,
+        "retry",
+        lambda **kwargs: retry_calls.append(kwargs) or "ack-retry",
+    )
+
+    result = account_evaluation_tasks.execute_account_model_evaluation_job.run("job-ack-transient")
+
+    assert result == "ack-retry"
+    assert retry_calls == [{"exc": ANY, "countdown": 1}]
+
+
+def test_terminal_evaluation_failure_requeues_when_failure_writeback_is_unavailable(monkeypatch):
+    from celery.exceptions import Reject
+    from app.tasks import account_evaluation_tasks
+
+    async def failing_writeback(_job_id, _error):
+        raise OperationalError("UPDATE account_model_evaluation_jobs", {}, RuntimeError("database offline"))
+
+    monkeypatch.setattr(account_evaluation_tasks, "_record_failed_job_transaction", failing_writeback)
+    monkeypatch.setattr(account_evaluation_tasks, "run_async", lambda coroutine: asyncio.run(coroutine))
+
+    with pytest.raises(Reject, match="Could not persist account-evaluation failure"):
+        account_evaluation_tasks._record_failed_evaluation_or_requeue(
+            "job-writeback-failure",
+            RuntimeError("acknowledgement retries exhausted"),
+        )
+
+
+def test_evaluation_task_retries_without_inference_when_gpu_is_owned(monkeypatch):
+    from app.core.account_training_runtime import AccountModelGpuOwnershipBusyError
+    from app.tasks import account_evaluation_tasks
+
+    retry_calls = []
+    async def acknowledge(**_kwargs):
+        return True
+
+    monkeypatch.setattr(account_evaluation_tasks, "acknowledge_account_model_evaluation_dispatch", acknowledge)
+    monkeypatch.setattr(account_evaluation_tasks, "run_async", lambda coroutine: asyncio.run(coroutine))
+    monkeypatch.setattr(
+        account_evaluation_tasks,
+        "acquire_account_model_gpu_ownership",
+        lambda _operation_id: (_ for _ in ()).throw(AccountModelGpuOwnershipBusyError("busy")),
+    )
+    monkeypatch.setattr(
+        account_evaluation_tasks.execute_account_model_evaluation_job,
+        "retry",
+        lambda **kwargs: retry_calls.append(kwargs) or "gpu-wait",
+    )
+
+    result = account_evaluation_tasks.execute_account_model_evaluation_job.run("job-gpu-busy")
+
+    assert result == "gpu-wait"
+    assert retry_calls == [{"exc": ANY, "countdown": 30}]
 
 
 def test_evaluation_task_commits_prepare_before_runtime_and_uses_a_new_finalize_session(monkeypatch):

@@ -1,0 +1,57 @@
+A Survey of Datasets and Tasks for Information Diffusion
+
+                   Fuxia Guo, Xiaowen Wang, Yanwei Xie, Jingqiu Li, Zehao Wang, Lanjun Wang∗
+                                                             Tianjin University
+                                                                   Tianjin, China
+                                                     wanglanjun@tju.edu.cn
+
+        Abstract                                                 and monitoring social networks [4]. Moreover, it can shape indi-
+           Information diffusion across various new media platforms grad-      vidual perceptions, influence public opinion, and potentially lead
+            ually influences the perceptions, decisions, and social behaviors       to economic losses [5].
+            of individual users. In information communication studies, the fa-        Previous surveys [6–10] on information diffusion primarily fo-
+         mous Five W’s of Communication model (5W Model) has displayed      cus on mechanisms, models, and influencing factors. For instance,
+           the process of information diffusion clearly. At present, although       [6] categorizes diffusion models into explanatory and predictive
+           plenty of studies and corresponding datasets have emerged on in-      types, highlighting their complementarity, while [7] introduces a
+          formation diffusion, a systematic categorization of multiple tasks     taxonomy for classifying models across disciplines. Additionally,2025    and integration of datasets are still lacking. To address this gap, we       [8] discusses vulnerabilities in diffusion models and their impact
+          survey a systematic taxonomy of information diffusion tasks and     on social networks, and [9] provides an overview of theoretical and
+            datasets based on the "5W Model" framework. We first categorize      empirical studies, identifying challenges and future directions. AJun    the information diffusion tasks into ten subtasks with definitions,     more recent work [10] offers a comprehensive analysis, combining
+           dataset analyses, and representative methodologies, from three     model categorization with an evaluation of diffusion prediction
+                                                                                      datasets. Surveys on specific aspects include [11], which investi-13    main tasks of information diffusion prediction, social bot detection,
+         and misinformation detection. We also collect the dataset repos-      gates retweet behavior, and [12], which categorizes methods for
+            itory of information diffusion tasks with the available links and       predicting information popularity. In the domain of misinformation,
+         compare them based on six attributes associated with users and       [13] reviews techniques for detecting fake news and rumors, while
+           content: user information, social network, bot label, propagation      [14] proposes a taxonomy for fake news detection.
+            content, diffusion network, and veracity label. In addition, we dis-        Despite these contributions, the current review primarily focus[cs.SI]    cuss the limitations and future directions of current datasets and     on information diffusion mechanisms from a computer science
+           research topics to advance the future development of information      perspective, failing to consider the practical diffusion situation
+            diffusion. The dataset repository can be accessed on our website      facing communication studies, diminishing its real-world signifi-
+           https://github.com/fuxiaG/Information-Diffusion-Datasets.             cance. Moreover, current studies just discuss single research task.
+                                                                     However, many tasks in the information diffusion field are seen
+       Keywords                                                        as scattered, but actually these issues share similar scenario and
+                                                                                   are associated with inter-relations. The similar scenario is reflected
+            Dataset, Information diffusion, Social bot detection, Misinformation
+                                                                                     in the real-world data as a virtual public opinion scenario, but few
+            detection, Review
+                                                                                    studies integrate these datasets, not to mention those for multiple
+       ACM Reference Format:                                                     tasks. Therefore, there is still a lack of integrated consideration from
+            Fuxia Guo, Xiaowen Wang, Yanwei Xie, Jingqiu Li, Zehao Wang, Lanjun      the perspective of communication studies in categorizing multiple
+          Wang. 2025. A Survey of Datasets and Tasks for Information Diffusion. In . ,      information diffusion tasks and comparing corresponding datasets
+            15 pages. https://doi.org/XXXXXXX.XXXXXXX                              in different tasks.
+                                                                      To address this problem, this survey develops a systematic taxon-
+        1  Introduction                                   omy for information diffusion tasks utilizing the "5W Model" frame-
+          Online information can be extensively diffused across cyberspace     work and compiles a set of publicly accessible datasets adapted to
+                                                                          each task. Firstly, the Five W’s of Communication[15], as a classicalarXiv:2407.05161v2    as new media enable users to voice opinions, gather public insights,
+          and share engaging content, promoting information diffusion [1–3].     communication pattern, elucidates the framework of the informa-
+           Information diffusion is critical for facilitating online interactions      tion diffusion process. Within this model, we categorize informa-
+                                                                                      tion diffusion tasks into social bot detection (users), misinformation
+             ∗Corresponding author: wanglanjun@tju.edu.cn.                                 detection (content), and information diffusion prediction (paths,
+                                                                                        receivers, and effects), aligning with the five "W"s. These primary
+             Permission to make digital or hard copies of all or part of this work for personal or      tasks interact with each other and are further subdivided into ten
+              classroom use is granted without fee provided that copies are not made or distributed      subtasks as shown in Figure1. Secondly, from two entities of user
+                for profit or commercial advantage and that copies bear this notice and the full citation     and content in the five "W"s, six common attributes are identified            on the first page. Copyrights for components of this work owned by others than the
+               author(s) must be honored. Abstracting with credit is permitted. To copy otherwise, or      in information diffusion data, presented in Table 1: user informa-
+                republish, to post on servers or to redistribute to lists, requires prior specific permission       tion, bot label, and social network for the user, and propagation
+             and/or a fee. Request permissions from permissions@acm.org.
+               Conference’17, Washington, DC, USA                                           content, veracity label, and diffusion network for content. Their
+         © 2025 Copyright held by the owner/author(s). Publication rights licensed to ACM.       presence across renowned datasets is compared in Table 2. Thirdly,
+         ACM ISBN 978-1-4503-XXXX-X/2018/06                            we elaborate on each renowned subtask shown in Figure 1, define
+            https://doi.org/XXXXXXX.XXXXXXX

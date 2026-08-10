@@ -1,0 +1,49 @@
+[44] Farimah Poursafaei, Andy Huang, Kellin Pelrine, and Reihaneh Rabbany. Towards better
+evaluation for dynamic link prediction. In Thirty-sixth Conference on Neural Information
+Processing Systems Datasets and Benchmarks Track, 2022.
+[45] Emanuele Rossi, Ben Chamberlain, Fabrizio Frasca, Davide Eynard, Federico Monti, and
+Michael Bronstein. Temporal graph networks for deep learning on dynamic graphs. In ICML
+2020 Workshop on Graph Representation Learning, 2020.
+[46] Benedek Rozemberczki, Paul Scherer, Yixuan He, George Panagopoulos, Alexander Riedel,
+Maria Sinziana Astefanoaei, Oliver Kiss, Ferenc Béres, Guzmán López, Nicolas Collignon, and
+Rik Sarkar. Pytorch geometric temporal: Spatiotemporal signal processing with neural machine
+learning models. In The 30th ACM International Conference on Information and Knowledge
+Management, pages 4564–4573. ACM, 2021.
+[47] Alvaro Sanchez-Gonzalez, Jonathan Godwin, Tobias Pfaff, Rex Ying, Jure Leskovec, and
+Peter W. Battaglia. Learning to simulate complex physics with graph networks. In Proceedings
+of the 37th International Conference on Machine Learning, volume 119 of Proceedings of
+Machine Learning Research, pages 8459–8468. PMLR, 2020.
+[48] Aravind Sankar, Yanhong Wu, Liang Gou, Wei Zhang, and Hao Yang. Dysat: Deep neural
+representation learning on dynamic graphs via self-attention networks. In The Thirteenth ACM
+International Conference on Web Search and Data Mining, pages 519–527. ACM, 2020.
+[49] Joakim Skarding, Bogdan Gabrys, and Katarzyna Musial. Foundations and modeling of dynamic
+networks using dynamic graph neural networks: A survey. IEEE Access, 9:79143–79168, 2021.
+[50] Weiping Song, Zhiping Xiao, Yifan Wang, Laurent Charlin, Ming Zhang, and Jian Tang.
+Session-based social recommendation via dynamic graph attention networks. In Proceedings of
+the Twelfth ACM International Conference on Web Search and Data Mining, pages 555–563.
+ACM, 2019.
+[51] Amauri H. Souza, Diego Mesquita, Samuel Kaski, and Vikas Garg. Provably expressive
+temporal graph networks. In NeurIPS, 2022.
+[52] Nitish Srivastava, Geoffrey E. Hinton, Alex Krizhevsky, Ilya Sutskever, and Ruslan Salakhutdi-
+nov. Dropout: a simple way to prevent neural networks from overfitting. J. Mach. Learn. Res.,
+15(1):1929–1958, 2014.
+[53] Sainbayar Sukhbaatar, Arthur Szlam, Jason Weston, and Rob Fergus. End-to-end memory
+networks. In Advances in Neural Information Processing Systems 28, pages 2440–2448, 2015.
+[54] Ilya O. Tolstikhin, Neil Houlsby, Alexander Kolesnikov, Lucas Beyer, Xiaohua Zhai, Thomas
+Unterthiner, Jessica Yung, Andreas Steiner, Daniel Keysers, Jakob Uszkoreit, Mario Lucic, and
+Alexey Dosovitskiy. Mlp-mixer: An all-mlp architecture for vision. In Advances in Neural
+Information Processing Systems 34, pages 24261–24272, 2021.
+[55] Rakshit Trivedi, Mehrdad Farajtabar, Prasenjeet Biswal, and Hongyuan Zha. Dyrep: Learning
+representations over dynamic graphs. In 7th International Conference on Learning Representa-
+tions. OpenReview.net, 2019.
+[56] Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N. Gomez,
+Lukasz Kaiser, and Illia Polosukhin. Attention is all you need. In Advances in Neural Informa-
+tion Processing Systems, pages 5998–6008, 2017.
+[57] Lu Wang, Xiaofu Chang, Shuang Li, Yunfei Chu, Hui Li, Wei Zhang, Xiaofeng He, Le Song,
+Jingren Zhou, and Hongxia Yang. TCL: transformer-based dynamic graph modelling via
+contrastive learning. CoRR, abs/2105.07944, 2021.
+[58] Minjie Wang, Lingfan Yu, Da Zheng, Quan Gan, Yu Gai, Zihao Ye, Mufei Li, Jinjing Zhou,
+Qi Huang, Chao Ma, Ziyue Huang, Qipeng Guo, Hao Zhang, Haibin Lin, Junbo Zhao, Jinyang
+Li, Alexander J. Smola, and Zheng Zhang. Deep graph library: Towards efficient and scalable
+deep learning on graphs. CoRR, abs/1909.01315, 2019.
+14

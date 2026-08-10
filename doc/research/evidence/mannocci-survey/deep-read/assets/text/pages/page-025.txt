@@ -1,0 +1,79 @@
+Detection and Characterization of Coordinated Online Behavior: A Survey                                   25
+
+
+lack of comprehensive labeled datasets needed for training effective models. Despite these challenges, machine learning
+
+methods excel in encoding diverse actions and characteristics of users, and offer outputs that are directly applicable
+
+for automatic decision-making systems, unlike the more complex network science methods. In conclusion, network
+
+science methods are particularly suitable when the goal is an in depth understanding of the studied phenomenon, while
+
+machine learning methods can be used—with due caution—for quick decisions and when scalability is a concern.
+
+
+4.4  Validation
+
+The scarcity of labeled data limits the development of coordinated behavior detection methods. This constraint hampers
+
+the adoption of supervised approaches, contributing to the predominance of unsupervised techniques, and complicates
+
+both model tuning and evaluation. As a result, many methods are still assessed through post-hoc analyses rather than
+
+standardized quantitative benchmarks. To address this challenge, existing works adopt three main validation strategies.
+
+   Characterization-based validation. A common approach consists in validating methods through qualitative or descrip-
+tive analyses of the detected behaviors. In this setting, outputs are assessed a posteriori by examining account activity,
+
+temporal patterns, content and socio-linguistic signals, and network structure, to verify their consistency with known
+
+characteristics of coordinated behavior. While this strategy enables exploratory insights, it lacks objective ground truth
+
+and limits reproducibility and comparability across methods. Section 5 is dedicated to the task of characterization.
+
+   Public ground-truth datasets. Publicly available datasets can act as ground truth proxies, with some studies constructing
+balanced datasets from authoritative repositories6 enabling both training [70] and evaluation [18, 52, 56, 67, 79–
+
+81, 88, 91, 99, 104, 108, 118, 120, 138, 154, 155] of detection methods. However, these datasets are often limited to specific
+
+platforms and coordination types, restricting model generalization.
+
+   Simulation-based validation. An alternative strategy consists in evaluating detection methods in controlled simulated
+environments, where coordinated behaviors can be explicitly modeled. Early approaches rely on agent-based models
+
+grounded in empirical observations. For instance, Mehta et al. [86] develop a multi-agent simulation of Reddit to
+
+analyze the impact of coordinated activity on recommendation systems, while Jahn et al. [54] design an agent-based
+
+model with heterogeneous agents (e.g., authentic users and coordinated boosters) to generate synthetic data. Other
+
+approaches generate synthetic datasets by injecting controlled anomalous patterns to enable systematic evaluation
+
+across coordination scenarios [107, 158]. Recent work explores large language models (LLMs) to simulate more realistic
+
+and adaptive behaviors. For instance, in [101] LLM-driven agents are used to mimic both organic users and coordinated
+
+actors under different regimes, from implicit alignment to explicit collaboration. Overall, simulation-based validation
+
+offers a flexible framework, though current efforts remain limited in scale and standardization.
+
+
+5  CHARACTERIZATION OF COORDINATED BEHAVIOR
+
+When the coordination detection method is not integrated into an automated decision-making system, its output may
+
+initiate the characterization task. The aim of this task is to describe each coordinated user, group, or community along
+
+one or more of the defining dimensions outlined in Section 2.5. Characterizing the detected instances of coordination
+
+can also provide valuable information for validating detection results, especially in the absence of ground truth data.
+
+Characterizing coordinated online behavior is a semi-automatic task, as it involves some degree of manual analyses
+
+and observations by human analysts supported by automatically computed indicators that provide information on
+
+the coordinated actors. Table 9 summarizes the main indicators used for characterizing coordinated actors, whose
+
+6https://transparency.x.com/en/reports/moderation-research.html (accessed: 31/07/2024)
+
+                                                                                                         Manuscript submitted to ACM

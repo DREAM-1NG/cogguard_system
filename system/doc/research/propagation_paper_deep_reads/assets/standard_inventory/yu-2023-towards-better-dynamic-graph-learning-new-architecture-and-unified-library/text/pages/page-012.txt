@@ -1,0 +1,66 @@
+[13] Jacob Devlin, Ming-Wei Chang, Kenton Lee, and Kristina Toutanova. BERT: pre-training
+     of deep bidirectional transformers for language understanding. In Proceedings of the 2019
+     Conference of the North American Chapter of the Association for Computational Linguistics:
+    Human Language Technologies, pages 4171–4186. Association for Computational Linguistics,
+     2019.
+
+[14] Alexey Dosovitskiy, Lucas Beyer, Alexander Kolesnikov, Dirk Weissenborn, Xiaohua Zhai,
+    Thomas Unterthiner, Mostafa Dehghani, Matthias Minderer, Georg Heigold, Sylvain Gelly,
+     Jakob Uszkoreit, and Neil Houlsby. An image is worth 16x16 words: Transformers for
+    image recognition at scale.  In 9th International Conference on Learning Representations.
+     OpenReview.net, 2021.
+
+[15] Ziwei Fan, Zhiwei Liu, Jiawei Zhang, Yun Xiong, Lei Zheng, and Philip S. Yu. Continuous-time
+     sequential recommendation with temporal graph collaborative transformer. In The 30th ACM
+     International Conference on Information and Knowledge Management, pages 433–442. ACM,
+     2021.
+
+[16] Matthias Fey and Jan Eric Lenssen. Fast graph representation learning with pytorch geometric.
+    CoRR, abs/1903.02428, 2019.
+
+[17] Palash Goyal, Sujit Rokka Chhetri, and Arquimedes Canedo. dyngraph2vec: Capturing network
+     dynamics using dynamic graph representation learning. Knowl. Based Syst., 187, 2020.
+
+[18] Palash Goyal, Sujit Rokka Chhetri, Ninareh Mehrabi, Emilio Ferrara, and Arquimedes Canedo.
+    Dynamicgem: A library for dynamic graph embedding methods. CoRR, abs/1811.10734, 2018.
+
+[19] Shengnan Guo, Youfang Lin, Ning Feng, Chao Song, and Huaiyu Wan. Attention based spatial-
+     temporal graph convolutional networks for traffic flow forecasting. In The Thirty-Third AAAI
+     Conference on Artificial Intelligence, pages 922–929. AAAI Press, 2019.
+
+[20] Kaiming He, Xiangyu Zhang, Shaoqing Ren, and Jian Sun. Deep residual learning for image
+     recognition. In 2016 IEEE Conference on Computer Vision and Pattern Recognition, pages
+     770–778. IEEE Computer Society, 2016.
+
+[21] Dan Hendrycks and Kevin Gimpel.  Gaussian error linear units (gelus).  arXiv preprint
+     arXiv:1606.08415, 2016.
+
+[22] Weihua Hu, Matthias Fey, Marinka Zitnik, Yuxiao Dong, Hongyu Ren, Bowen Liu, Michele
+     Catasta, and Jure Leskovec. Open graph benchmark: Datasets for machine learning on graphs.
+     In Advances in Neural Information Processing Systems 33, 2020.
+
+[23] Shenyang Huang, Farimah Poursafaei, Jacob Danovitch, Matthias Fey, Weihua Hu, Emanuele
+     Rossi, Jure Leskovec, Michael Bronstein, Guillaume Rabusseau, and Reihaneh Rabbany. Tempo-
+      ral graph benchmark for machine learning on temporal graphs. arXiv preprint arXiv:2307.01026,
+     2023.
+
+[24] Zijie Huang, Yizhou Sun, and Wei Wang.  Learning continuous system dynamics from
+     irregularly-sampled partial observations. In Advances in Neural Information Processing Systems
+     33, 2020.
+
+[25] Ming Jin, Yuan-Fang Li, and Shirui Pan. Neural temporal walks: Motif-aware representation
+     learning on continuous-time dynamic graphs. In NeurIPS, 2022.
+
+[26] Seyed Mehran Kazemi, Rishab Goel, Kshitij Jain, Ivan Kobyzev, Akshay Sethi, Peter Forsyth,
+    and Pascal Poupart. Representation learning for dynamic graphs: A survey. J. Mach. Learn.
+     Res., 21:70:1–70:73, 2020.
+
+[27] Diederik P. Kingma and Jimmy Ba. Adam: A method for stochastic optimization. In 3rd
+     International Conference on Learning Representations, 2015.
+
+[28] Srijan Kumar, Xikun Zhang, and Jure Leskovec. Predicting dynamic embedding trajectory
+     in temporal interaction networks. In Proceedings of the 25th ACM SIGKDD International
+     Conference on Knowledge Discovery & Data Mining, pages 1269–1278. ACM, 2019.
+
+
+                                       12

@@ -1,0 +1,118 @@
+in part by the Zhejiang Laboratory Open Research Project
+under Grant K2022QA0AB01.
+References
+Arya, D.; Gupta, D. K.; Rudinac, S.; and Worring, M. 2020.
+HyperSAGE: Generalizing Inductive Representation Learn-
+ing on Hypergraphs. arXiv:2010.04558.
+Bai, S.; Zhang, F.; and Torr, P. H. S. 2019. Hypergraph Con-
+volution and Hypergraph Attention. arXiv:1901.08150.
+Cao, Q.; Shen, H.; Cen, K.; Ouyang, W. R.; and Cheng, X.
+2017. DeepHawkes: Bridging the Gap between Prediction
+and Understanding of Information Cascades. Proceedings
+of the 2017 ACM on Conference on Information and Knowl-
+edge Management.
+Cao, Q.; Shen, H.; Gao, J.; Wei, B.; and Cheng, X. 2019.
+Popularity Prediction on Social Platforms with Coupled
+Graph Neural Networks. Proceedings of the 13th Interna-
+tional Conference on Web Search and Data Mining.
+Chen, X.; Zhang, K.; Zhou, F.; Trajcevski, G.; Zhong, T.;
+and Zhang, F. 2019a. Information Cascades Modeling via
+Deep Multi-Task Learning. Proceedings of the 42nd Inter-
+national ACM SIGIR Conference on Research and Develop-
+ment in Information Retrieval.
+Chen, X.; Zhou, F.; Zhang, K.; Trajcevski, G.; Zhong, T.;
+and Zhang, F. 2019b. Information Diffusion Prediction via
+Recurrent Cascades Convolution. 2019 IEEE 35th Interna-
+tional Conference on Data Engineering (ICDE), 770–781.
+Chien, E.; Pan, C.; Peng, J.; and Milenkovic, O. 2021. You
+are AllSet: A Multiset Function Framework for Hypergraph
+Neural Networks. arXiv:2106.13264.
+Ding, C.; Zhao, Z.; Li, C.; Yu, Y.; and Zeng, Q. 2023.
+Session-based recommendation with hypergraph convolu-
+tional networks and sequential information embeddings. Ex-
+pert Systems with Applications, 223: 119875.
+Feng, S.; Cong, G.; Khan, A.; Li, X.; Liu, Y.; and Chee,
+Y. M. 2018a. Inf2vec: Latent Representation Model for So-
+cial Influence Embedding. 2018 IEEE 34th International
+Conference on Data Engineering (ICDE), 941–952.
+Feng, Y.; You, H.; Zhang, Z.; Ji, R.; and Gao, Y. 2018b. Hy-
+pergraph Neural Networks. In AAAI Conference on Artificial
+Intelligence.
+Huang, J.; and Yang, J. 2021.
+UniGNN: a Unified
+Framework for Graph and Hypergraph Neural Networks.
+arXiv:2105.00956.
+Islam, M. R.; Muthiah, S.; Adhikari, B.; Prakash, B. A.; and
+Ramakrishnan, N. 2018. DeepDiffuse: Predicting the ’Who’
+and ’When’ in Cascades. 2018 IEEE International Confer-
+ence on Data Mining (ICDM), 1055–1060.
+Jin, H.; Wu, Y.; Huang, H.; Song, Y.; Wei, H.; and Shi, X.
+2022. Modeling Information Diffusion With Sequential In-
+teractive Hypergraphs. IEEE Transactions on Sustainable
+Computing, 7: 644–655.
+Ko, H.; Lee, S.; Park, Y.; and Choi, A. 2022.
+A survey
+of recommendation systems: recommendation models, tech-
+niques, and application fields. Electronics, 11(1): 141.
+Kong, S.; Mei, Q.; Feng, L.; Ye, F.; and Zhao, Z. 2014. Pre-
+dicting bursts and popularity of hashtags in real-time. Pro-
+ceedings of the 37th international ACM SIGIR conference
+on Research & development in information retrieval.
+Leskovec, J.; Backstrom, L.; and Kleinberg, J. M. 2009.
+Meme-tracking and the dynamics of the news cycle.
+In
+Knowledge Discovery and Data Mining.
+Li, C.; Ma, J.; Guo, X.; and Mei, Q. 2016. DeepCas: An
+End-to-end Predictor of Information Cascades. Proceedings
+of the 26th International Conference on World Wide Web.
+Liu, B.; Yang, D.; Wang, Y.; and Shi, Y. 2022.
+Improv-
+ing Information Cascade Modeling by Social Topology and
+Dual Role User Dependency. In International Conference
+on Database Systems for Advanced Applications.
+Liu, P.; Qiu, X.; and Huang, X. 2017. Adversarial Multi-task
+Learning for Text Classification. In Annual Meeting of the
+Association for Computational Linguistics.
+Miller, R.; and Lammas, N. 2010. Social media and its im-
+plications for viral marketing. Asia Pacific Public Relations
+Journal, 11(1): 1–9.
+Sankar, A.; Zhang, X.; Krishnan, A.; and Han, J. 2020. Inf-
+VAE: A Variational Autoencoder Framework to Integrate
+Homophily and Influence in Diffusion Prediction. Proceed-
+ings of the 13th International Conference on Web Search and
+Data Mining.
+Sun, L.; Rao, Y.; Zhang, X.; Lan, Y.; and Yu, S. 2022. MS-
+HGAT: Memory-Enhanced Sequential Hypergraph Atten-
+tion Network for Information Diffusion Prediction. In AAAI
+Conference on Artificial Intelligence.
+Sun, X.; Cheng, H.; Liu, B.; Li, J.; Chen, H.; Xu, G.; and
+Yin, H. 2023.
+Self-supervised hypergraph representation
+learning for sociological analysis.
+IEEE Transactions on
+Knowledge and Data Engineering.
+Wang, J.; Zheng, V. W.; Liu, Z.; and Chang, K. C.-C. 2017.
+Topological Recurrent Neural Network for Diffusion Predic-
+tion. 2017 IEEE International Conference on Data Mining
+(ICDM), 475–484.
+Wang, S.; Hu, X.; Yu, P. S.; and Li, Z. 2014. MMRate: infer-
+ring multi-aspect diffusion networks with multi-pattern cas-
+cades. Proceedings of the 20th ACM SIGKDD international
+conference on Knowledge discovery and data mining.
+Wang, Z.; Chen, C.; and Li, W. 2018. A Sequential Neu-
+ral Information Diffusion Model with Structure Attention.
+Proceedings of the 27th ACM International Conference on
+Information and Knowledge Management.
+Wang, Z.; and Li, W. 2019. Hierarchical Diffusion Attention
+Network. In International Joint Conference on Artificial In-
+telligence.
+Wu, D.; Tan, Z.; Xia, Z.; and Ning, J. 2022. TCSE: Trend
+and cascade based spatiotemporal evolution network to pre-
+dict online content popularity. Multimedia Tools and Appli-
+cations, 82: 1459–1475.
+Xu, H.; Zheng, C.; Zhao, Z.; and Sun, X. 2023a.
+Multi-
+Hypergraph Neural Networks for Emotion Recognition in
+Multi-Party Conversations. Applied Sciences, 13(3): 1660.
+The Thirty-Eighth AAAI Conference on Artiﬁcial Intelligence (AAAI-24)
+8580

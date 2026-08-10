@@ -1,0 +1,71 @@
+6                                                                                  Mannocci et al.
+
+
+  Definition 2.6. Coordinated mass harassment (2021):  Coordinated efforts of mass harassment that target individuals at
+
+   heightened risk of offline harm [38].
+
+Definitions 2.5 and 2.6 adopt the concept of harmfulness in place of inauthenticity, thereby broadening the scope to also
+
+encompass authentic yet coordinated actors. These, in fact, hold the potential to cause negative consequences both on
+
+and offthe platforms, as underscored in Definition 2.5.
+
+2.2.2   Twitter/X. In October 2018, the platform released a public archive containing data about identified information
+operations (IOs) [117]. Although not explicitly stated in Twitter’s definition at the time, a certain degree of coordination
+is necessary for the success of an IO [18, 138]. However, it was not until January 2021 that Twitter adopted a similar
+
+approach to Facebook and released a definition that explicitly addresses instances where coordination is leveraged to
+
+cause harm both online and offline.
+
+  Definition 2.7. Information operation (2018):  People directly involved in manipulation that can be reliably attributed to a
+
+  government or state-linked actor [134].
+
+  Definition 2.8. Coordinated harmful activity (2021):  Groups, movements, or campaigns that are engaged in coordinated
+
+   activity resulting in harm on and offof Twitter [135].
+
+2.2.3  YouTube/Google. In its reports, primarily concerning abuses that occurred on YouTube, Google makes reference
+to coordinated influence operations (CIO) [46]. Even though Google did not provide a definition for CIOs, they nonetheless
+highlighted the importance of coordination in these online manipulations.
+
+2.2.4   Reddit. In contrast to other platforms, Reddit embraced the broad concept of content manipulation to characterize
+the campaigns that violate its rules [109]. The platform shared only a small number of such campaigns, leaving it
+
+unclear whether these represent the entirety of the identified cases, or only a selection of them. Despite the absence of
+
+an explicit reference to coordination, large-scale content manipulations gain advantage from coordinated activities,
+
+similarly to what we discussed earlier about IOs.
+
+  Definition 2.9. Content manipulation (2022):  Things like spam, community interference, vote manipulation, and other attempts
+
+   to artificially promote content [109].
+
+2.2.5   Tiktok. In 2023, TikTok revisited Facebook’s definition of CIB, explicitly linking coordination with inauthenticity.
+In doing so, it emphasizes coordinated activity aimed at misleading users or influencing public discourse. Among the
+
+cited examples, TikTok highlights coordination in the context of information operations, such as accounts covertly
+
+promoting political candidates or issues, or posting content on behalf of foreign entities without proper disclosure.
+
+  Definition 2.10. Covert Influence Operations (2023):  Coordinated, inauthentic behaviors where networks of accounts work
+
+   together to mislead people or our systems and try to strategically influence public discussion. This may include attempting to
+
+  undermine the results of an election, influencing parts of an armed conflict, or shaping public discussion of social issues. [131].
+
+2.2.6  Ambiguities and limitations. This brief survey of the main concepts and definitions proposed by social media
+shows that online platforms are at the forefront in the analysis of coordinated online behavior. However, their con-
+
+ceptualizations are driven primarily by pressing practical regulation needs and by immediate contingencies, rather
+
+than by methodological rigor and theoretical soundness [35]. Faced with specific instances of malicious coordination,
+
+online platforms adopt different and at times contrasting definitions, adding confusion and ambiguity to the already
+
+challenging task of defining an inherently nuanced and complex phenomenon [89].
+
+Manuscript submitted to ACM

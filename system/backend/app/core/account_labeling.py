@@ -12,6 +12,7 @@ __all__ = [
     "AccountBehaviorLabel",
     "AccountDetectionCase",
     "NormalizedAccountBehaviorLabel",
+    "account_scope_key",
     "build_account_detection_cases",
     "normalize_account_behavior_label",
 ]
@@ -65,6 +66,14 @@ _TRAINING_TARGETS = {
     AccountBehaviorLabel.BOT.value: "bot",
     AccountBehaviorLabel.INSUFFICIENT_EVIDENCE.value: "abstain",
 }
+
+
+def account_scope_key(platform: str, account_id: str) -> str:
+    """Return the stable runtime key for a platform-scoped account."""
+
+    normalized_platform = str(platform or "unknown").strip().lower() or "unknown"
+    normalized_account_id = str(account_id or "").strip()
+    return f"{normalized_platform}\x1f{normalized_account_id}"
 
 
 def normalize_account_behavior_label(label: str | AccountBehaviorLabel) -> NormalizedAccountBehaviorLabel:

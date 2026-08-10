@@ -214,15 +214,25 @@ test('keeps the review summary focused on Chinese business conclusions', () => {
   assert.doesNotMatch(riskView, /activity-detail/)
 })
 
-test('presents account findings without rule scores or detector internals', () => {
+test('presents account findings with governed detector output', () => {
   const visibleCopy = accountsView
     .replace(/<script setup[\s\S]*?<\/script>/, '')
     .replace(/<style scoped>[\s\S]*?<\/style>/, '')
 
-  assert.doesNotMatch(visibleCopy, /自动化评分|账号ID|运行检测|未运行|BotRHG|proxy|概率|运行模式/)
+  assert.doesNotMatch(visibleCopy, /自动化评分|proxy|运行模式/)
   assert.match(visibleCopy, /研判结果/)
-  assert.match(accountsView, /getAccountProfiles\(\)/)
-  assert.doesNotMatch(accountsView, /runSocialBotDetection/)
+  assert.doesNotMatch(visibleCopy, /模型状态/)
+  assert.doesNotMatch(visibleCopy, /指针修订/)
+  assert.match(visibleCopy, /运行检测/)
+  assert.match(visibleCopy, /BotRHG/)
+  assert.match(visibleCopy, /机器人概率/)
+  assert.match(visibleCopy, /超图相近账号/)
+  assert.match(visibleCopy, /近期发言/)
+  assert.match(accountsView, /getAccountProfiles\(queryParams\(\)\)/)
+  assert.match(accountsView, /getActiveAccountModel\(\)/)
+  assert.match(accountsView, /runSocialBotDetection\(/)
+  assert.doesNotMatch(accountsView, /modelStatus(Label|Color)\(/)
+  assert.match(accountsView, /\.overview-grid\s*\{[\s\S]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/)
   assert.match(accountsView, /column\.key === 'platform'[\s\S]*platformLabel\(record\.platform\)/)
 })
 

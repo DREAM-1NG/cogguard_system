@@ -1,0 +1,61 @@
+A Survey of Information Cascade Analysis: Models, Predictions, and Recent Advances
+27:29
+[8] Sitaram Asur, Bernardo A. Huberman, Gabor Szabo, and Chunyan Wang. 2011. Trends in social media: Persistence
+and decay. In ICWSM. 1–12.
+[9] Lars Backstrom, Dan Huttenlocher, Jon Kleinberg, and Xiangyang Lan. 2006. Group formation in large social net-
+works: Membership, growth, and evolution. In KDD. 44–54.
+[10] Dzmitry Bahdanau, Kyunghyun Cho, and Yoshua Bengio. 2015. Neural machine translation by jointly learning to
+align and translate. In ICLR. 1–15.
+[11] Eytan Bakshy, Jake M. Hofman, Winter A. Mason, and Duncan J. Watts. 2011. Everyone’s an influencer: Quantifying
+influence on twitter. In WSDM. 65–74.
+[12] Roja Bandari, Sitaram Asur, and Bernardo A. Huberman. 2012. The pulse of news in social media: Forecasting
+popularity. In ICWSM. 1–8.
+[13] Peng Bao, Hua-Wei Shen, Wei Chen, and Xue-Qi Cheng. 2013. Cumulative effect in information diffusion: Empirical
+study on a microblogging network. PloS One 8, 10 (2013), e76027.
+[14] Peng Bao, Hua-Wei Shen, Junming Huang, and Xue-Qi Cheng. 2013. Popularity prediction in microblogging net-
+work: A case study on sina weibo. In WWW. 177–178.
+[15] Peng Bao, Hua-Wei Shen, Xiaolong Jin, and Xue-Qi Cheng. 2015. Modeling and predicting popularity dynamics of
+microblogs using self-excited hawkes processes. In WWW. 9–10.
+[16] Peng Bao and Xiaoxia Zhang. 2017. Uncovering and predicting the dynamic process of collective attention with
+survival theory. Sci. Rep. 7, 1 (2017), 1–8.
+[17] Albert-Laszlo Barabasi. 2005. The origin of bursts and heavy tails in human dynamics. Nature 435, 7039 (2005), 207.
+[18] Frank M. Bass. 1969. A new product growth for model consumer durables. Management science 15, 5 (1969), 215–227.
+[19] Jingwen Bian, Yang Yang, and Tat-Seng Chua. 2014. Predicting trending messages and diffusion participants in
+microblogging network. In SIGIR. 537–546.
+[20] Adam Bielski and Tomasz Trzciński. 2018. Understanding multimodal popularity prediction of social media videos
+with self-attention. IEEE Access 6 (2018), 74277–74287.
+[21] David M. Blei, Andrew Y. Ng, and Michael I. Jordan. 2003. Latent dirichlet allocation. JMLR 3(Jan. 2003), 993–1022.
+[22] Robert M. Bond, Christopher J. Fariss, Jason J. Jones, Adam D. I. Kramer, Cameron Marlow, Jaime E. Settle, and
+James H. Fowler. 2012. A 61-million-person experiment in social influence and political mobilization. Nature 489,
+7415 (2012).
+[23] Siddharth Bora, Harvineet Singh, Anirban Sen, Amitabha Bagchi, and Parag Singla. 2015. On the role of conductance,
+geography and topology in predicting hashtag virality. Soc. Netw. Anal. Min. 5, 1 (2015), 57.
+[24] Youmna Borghol, Sebastien Ardon, Niklas Carlsson, Derek Eager, and Anirban Mahanti. 2012. The untold story of
+the clones: Content-agnostic factors that impact youtube video popularity. In KDD. 1186–1194.
+[25] Damian Borth, Rongrong Ji, Tao Chen, Thomas Breuel, and Shih-Fu Chang. 2013. Large-scale visual sentiment on-
+tology and detectors using adjective noun pairs. In MM. 223–232.
+[26] Tom Broxton, Yannet Interian, Jon Vaver, and Mirjam Wattenhofer. 2013. Catching a viral video. J. Intell. Info. Syst.
+40, 2 (2013), 241–259.
+[27] Hongyun Cai, Vincent W. Zheng, and Kevin Chen-Chuan Chang. 2018. A comprehensive survey of graph embed-
+ding: Problems, techniques, and applications. TKDE 30, 9 (2018), 1616–1637.
+[28] Oana-Maria Camburu. 2020. Explaining Deep Neural Networks. Ph.D. Dissertation. Oxford, UK. Retrieved from https:
+//arXiv:2010.01496.
+[29] Qi Cao, Huawei Shen, Keting Cen, Wentao Ouyang, and Xueqi Cheng. 2017. DeepHawkes: Bridging the gap between
+prediction and understanding of information cascades. In CIKM. 1149–1158.
+[30] Qi Cao, Huawei Shen, Jinhua Gao, Bingzheng Wei, and Xueqi Cheng. 2020. Popularity prediction on social platforms
+with coupled graph neural networks. In WSDM. 70–78.
+[31] Carlos Castillo, Mohammed El-Haddad, Jürgen Pfeffer, and Matt Stempeck. 2014. Characterizing the life cycle of
+online news stories using social media reactions. In CSCW. 211–223.
+[32] Damon Centola and Michael Macy. 2007. Complex contagions and the weakness of long ties. Amer. J. Sociol. 113, 3
+(2007), 702–734.
+[33] Meeyoung Cha, Haewoon Kwak, Pablo Rodriguez, Yong-Yeol Ahn, and Sue Moon. 2009. Analyzing the video popu-
+larity characteristics of large-scale user generated content systems. TON 17, 5 (2009), 1357–1370.
+[34] Guandan Chen, Qingchao Kong, and Wenji Mao. 2017. An attention-based neural popularity prediction model for
+social media events. In IEEE-ISI. 161–163.
+[35] Guandan Chen, Qingchao Kong, Nan Xu, and Wenji Mao. 2019. NPP: A neural popularity prediction model for social
+media content. Neurocomputing 333 (2019), 221–230.
+[36] Jingyuan Chen, Xuemeng Song, Liqiang Nie, Xiang Wang, Hanwang Zhang, and Tat-Seng Chua. 2016. Micro tells
+macro: Predicting the popularity of micro-videos via a transductive model. In MM. 898–907.
+[37] Xueqin Chen, Kunpeng Zhang, Fan Zhou, Goce Trajcevski, Ting Zhong, and Fengli Zhang. 2019. Information cas-
+cades modeling via deep multi-task learning. In SIGIR. 885–888.
+ACM Computing Surveys, Vol. 54, No. 2, Article 27. Publication date: March 2021.

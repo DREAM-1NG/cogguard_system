@@ -1,0 +1,57 @@
+27:28                                                                                            F. Zhou et al.
+
+
+many external sources are contributing to the popularity of cascades, which continuously existed
+and have already been diminished or even vanished.
+
+6.3  Cooperation and Competition
+Information cascades are not isolated but affect each other and are often interwoven via inter-
+actions, cooperation and competition, when spreading among users. Cooperation means that the
+diffusion of an information item is accelerated by other item(s), e.g., if one thing was reported
+by many sources many times, then this information is more credible and has a higher probability
+of adoption [146]. In contrast, due to the limited attention span of users [206], information items
+(especially those with very similar content) could restrict each other’s diffusion [43]. Thus, if coop-
+eration happens, then the expectation of an information item’s future popularity should be larger
+than normal cases. Also in the case of competition, items with similar contents would inevitably
+face the problem of low popularity or at least reduced popularity as their competitors increase.
+  Existing works on this topic mainly focus on discovering cooperation/competition during dif-
+fusion, but rarely on analyzing reciprocity and its effect on popularity prediction. For example,
+interaction matrix between items to facilitate the prediction of tweets/hashtags was used in Ref-
+erence [97]. Hawkes processes were adopted to model cooperation and competition between cas-
+cades in social networks in References [231, 240]. Modeling the interactions between information
+items/cascades, especially the cooperation and competition among them, can benefit popularity
+prediction and deepen our understanding of information diffusion in various social scenarios, e.g.,
+figuring out when and how cooperation/competition happens and identifying the best timing and
+content of items to enable distributors to avoid competitions and meet more cooperation.
+
+7 CONCLUSION
+We provided a broad overview of the field of information diffusion modeling and popularity pre-
+diction and proposed a taxonomy to categorize related literature, highlighting a number of influ-
+ential papers/approaches in each category. We also discussed the advantages and disadvantages of
+different types of methods over time and outlined some challenges and open research problems.
+There exists a vast literature and growing research on this topic, and we systematically covered,
+in certain detail, selected representative works, with a hope that this knowledge can be used as a
+stepping-stone for future work and/or evaluations in this field.
+
+A  SUPPLEMENTARY MATERIAL
+
+Due to the space limitation, we provide more detailed review of features and feature-based model
+in online supplementary material [249].
+
+REFERENCES
+  [1] Adiya Abisheva, Venkata Rama Kiran Garimella, David Garcia, and Ingmar Weber. 2014. Who watches (and shares)
+     what on youtube? And when?: Using twitter to understand youtube viewership. In WSDM. 593–602.
+  [2] Lada A. Adamic, Thomas M. Lento, Eytan Adar, and Pauline C. Ng. 2016. Information evolution in social networks.
+       In WSDM. 473–482.
+  [3] Mohamed Ahmed, Stella Spagna, Felipe Huici, and Saverio Niccolini. 2013. A peek into the future: Predicting the
+       evolution of popularity in user generated content. In WSDM. 607–616.
+  [4]  Sultan Alzahrani, Saud Alashri, Anvesh Reddy Koppela, Hasan Davulcu, and Ismail Toroslu. 2015. A network-based
+      model for predicting hashtag breakouts in twitter. In SBP. 3–12.
+  [5]  Aris Anagnostopoulos, Ravi Kumar, and Mohammad Mahdian. 2008. Influence and correlation in social networks.
+       In KDD. 7–15.
+  [6] Ashton Anderson, Daniel Huttenlocher, Jon Kleinberg, Jure Leskovec, and Mitul Tiwari. 2015. Global diffusion via
+      cascading invitations: Structure, growth, and homophily. In WWW. 66–76.
+  [7] Yoav Artzi, Patrick Pantel, and Michael Gamon. 2012. Predicting responses to microblog posts. In NAACL-HLT.
+
+
+ACM Computing Surveys, Vol. 54, No. 2, Article 27. Publication date: March 2021.

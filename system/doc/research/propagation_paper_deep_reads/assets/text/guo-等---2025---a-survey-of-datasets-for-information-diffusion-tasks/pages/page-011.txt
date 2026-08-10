@@ -1,0 +1,161 @@
+A Survey of Datasets and Tasks for Information Diffusion
+Conference’17, July 2017, Washington, DC, USA
+2017 (Sydney, Australia) (ASONAM ’17). Association for Computing Machinery,
+New York, NY, USA, 349–354. doi:10.1145/3110025.3110090
+[68] Kai-Cheng Yang, Onur Varol, Clayton A. Davis, Emilio Ferrara, Alessandro Flam-
+mini, and Filippo Menczer. 2019. Arming the Public with Artificial Intelligence
+to Counter Social Bots. Human Behavior and Emerging Technologies 1, 1 (Jan.
+2019), 48–61. doi:10.1002/hbe2.115
+[69] Francisco Rangel and Paolo Rosso. 2019. Overview of the 7th author profiling
+task at PAN 2019: bots and gender profiling in twitter. Working notes papers of
+the CLEF 2019 evaluation labs 2380 (2019), 1–7.
+[70] Kyumin Lee, Brian Eoff, and James Caverlee. 2021. Seven Months with the
+Devils: A Long-Term Study of Content Polluters on Twitter. Proceedings of the
+International AAAI Conference on Web and Social Media 5, 1 (Aug. 2021), 185–192.
+doi:10.1609/icwsm.v5i1.14106
+[71] Stefano Cresci, Roberto Di Pietro, Marinella Petrocchi, Angelo Spognardi, and
+Maurizio Tesconi. 2015. Fame for sale: Efficient detection of fake Twitter fol-
+lowers. Decision Support Systems 80 (2015), 56–71. doi:10.1016/j.dss.2015.09.003
+[72] Shangbin Feng, Herun Wan, Ningnan Wang, Jundong Li, and Minnan Luo.
+2021.
+TwiBot-20: A Comprehensive Twitter Bot Detection Benchmark. In
+Proceedings of the 30th ACM International Conference on Information & Knowledge
+Management (Virtual Event, Queensland, Australia) (CIKM ’21). Association for
+Computing Machinery, New York, NY, USA, 4485–4494. doi:10.1145/3459637.
+3482019
+[73] Arkaitz Zubiaga, Maria Liakata, and Rob Procter. 2016. Learning Reporting
+Dynamics during Breaking News for Rumour Detection in Social Media. doi:10.
+48550/arXiv.1610.07363 arXiv:1610.07363 [cs]
+[74] Elena Kochkina, Maria Liakata, and Arkaitz Zubiaga. 2018.
+All-in-One:
+Multi-task Learning for Rumour Verification. doi:10.48550/arXiv.1806.03713
+arXiv:1806.03713 [cs]
+[75] Peng Zheng, Zhen Huang, Yong Dou, and Yeqing Yan. 2023. Rumor detec-
+tion on social media through mining the social circles with high homogeneity.
+Information Sciences 642 (2023), 119083. doi:10.1016/j.ins.2023.119083
+[76] Tian Bian, Xi Xiao, Tingyang Xu, Peilin Zhao, Wenbing Huang, Yu Rong, and
+Junzhou Huang. 2020. Rumor Detection on Social Media with Bi-Directional
+Graph Convolutional Networks. Proceedings of the AAAI Conference on Artificial
+Intelligence 34, 01 (Apr. 2020), 549–556. doi:10.1609/aaai.v34i01.5393
+[77] Jing Ma, Wei Gao, Prasenjit Mitra, Sejeong Kwon, Bernard J. Jansen, Kam-Fai
+Wong, and Meeyoung Cha. 2016. Detecting rumors from microblogs with
+recurrent neural networks. In Proceedings of the Twenty-Fifth International Joint
+Conference on Artificial Intelligence (New York, New York, USA) (IJCAI’16). AAAI
+Press, 3818–3824. doi:doi/10.5555/3061053.3061153
+[78] Jing Ma, Wei Gao, and Kam-Fai Wong. 2017. Detect Rumors in Microblog Posts
+Using Propagation Structure via Kernel Learning. In Proceedings of the 55th
+Annual Meeting of the Association for Computational Linguistics (Volume 1: Long
+Papers), Regina Barzilay and Min-Yen Kan (Eds.). Association for Computational
+Linguistics, 708–717. doi:10.18653/v1/P17-1066
+[79] Xuming Hu, Zhijiang Guo, Junzhe Chen, Lijie Wen, and Philip S. Yu. 2023.
+MR2: A Benchmark for Multimodal Retrieval-Augmented Rumor Detection in
+Social Media. In Proceedings of the 46th International ACM SIGIR Conference on
+Research and Development in Information Retrieval (, Taipei, Taiwan,) (SIGIR
+’23). Association for Computing Machinery, New York, NY, USA, 2901–2912.
+doi:10.1145/3539618.3591896
+[80] Jiaying Wu and Bryan Hooi. 2023. DECOR: Degree-Corrected Social Graph
+Refinement for Fake News Detection. In Proceedings of the 29th ACM SIGKDD
+Conference on Knowledge Discovery and Data Mining (<conf-loc>, <city>Long
+Beach</city>, <state>CA</state>, <country>USA</country>, </conf-loc>)
+(KDD ’23). Association for Computing Machinery, New York, NY, USA,
+2582–2593. doi:10.1145/3580305.3599298
+[81] Yingtong Dou, Kai Shu, Congying Xia, Philip S. Yu, and Lichao Sun. 2021. User
+Preference-aware Fake News Detection. In Proceedings of the 44th International
+ACM SIGIR Conference on Research and Development in Information Retrieval
+(<conf-loc>, <city>Virtual Event</city>, <country>Canada</country>, </conf-
+loc>) (SIGIR ’21). Association for Computing Machinery, New York, NY, USA,
+2051–2055. doi:10.1145/3404835.3462990
+[82] Sajjad Dadkhah, Xichen Zhang, Alexander Gerald Weismann, Amir Firouzi,
+and Ali A. Ghorbani. 2023. The Largest Social Media Ground-Truth Dataset
+for Real/Fake Content: TruthSeeker. IEEE Transactions on Computational Social
+Systems (2023), 1–15. doi:10.1109/TCSS.2023.3322303
+[83] Ziyi Zhou, Xiaoming Zhang, Litian Zhang, Jiacheng Liu, Xi Zhang, and
+Chaozhuo Li. 2024. FineFake: A Knowledge-Enriched Dataset for Fine-Grained
+Multi-Domain Fake News Detecction. arXiv preprint arXiv:2404.01336 (2024).
+doi:10.48550/arXiv.2404.01336
+[84] Daniel Yue Zhang, Lanyu Shang, Biao Geng, Shuyue Lai, Ke Li, Hongmin Zhu,
+Md Tanvir Amin, and Dong Wang. 2018. FauxBuster: A Content-free Faux-
+tography Detector Using Social Media Comments. In 2018 IEEE International
+Conference on Big Data (Big Data). 891–900. doi:10.1109/BigData.2018.8622344
+[85] Yichuan Li, Bohan Jiang, Kai Shu, and Huan Liu. 2020. MM-COVID: A Multilin-
+gual and Multimodal Data Repository for Combating COVID-19 Disinformation.
+doi:10.48550/arXiv.2011.04088 arXiv:2011.04088 [cs.SI]
+[86] Dan S. Nielsen and Ryan McConville. 2022. MuMiN: A Large-Scale Multilingual
+Multimodal Fact-Checked Misinformation Social Network Dataset. In Proceed-
+ings of the 45th International ACM SIGIR Conference on Research and Development
+in Information Retrieval (Madrid, Spain) (SIGIR ’22). Association for Computing
+Machinery, New York, NY, USA, 3141–3153. doi:10.1145/3477495.3531744
+[87] Chen Yang, Xinyi Zhou, and Reza Zafarani. 2021. CHECKED: Chinese COVID-
+19 fake news dataset. Social Network Analysis and Mining 11, 1 (2021), 58.
+doi:10.1007/s13278-021-00766-8
+[88] Peng Qi, Yuyan Bu, Juan Cao, Wei Ji, Ruihao Shui, Junbin Xiao, Danding Wang,
+and Tat-Seng Chua. 2023. FakeSV: A Multimodal Benchmark with Rich Social
+Context for Fake News Detection on Short Video Platforms. Proceedings of
+the AAAI Conference on Artificial Intelligence 37, 12 (June 2023), 14444–14452.
+doi:10.1609/aaai.v37i12.26689
+[89] Beizhe Hu, Qiang Sheng, Juan Cao, Yongchun Zhu, Danding Wang, Zhengjia
+Wang, and Zhiwei Jin. 2023. Learn over Past, Evolve for Future: Forecasting
+Temporal Trends for Fake News Detection. In Proceedings of the 61st Annual
+Meeting of the Association for Computational Linguistics (Volume 5: Industry
+Track). Association for Computational Linguistics, Toronto, Canada, 116–125.
+doi:10.18653/v1/2023.acl-industry.13
+[90] Yupeng Li, Haorui He, Jin Bai, and Dacheng Wen. 2024. MCFEND: A Multi-
+source Benchmark Dataset for Chinese Fake News Detection. doi:10.1145/
+3589334.3645385 arXiv:2403.09092 [cs]
+[91] Qiong Nan, Juan Cao, Yongchun Zhu, Yanyan Wang, and Jintao Li. 2021. MD-
+FEND: Multi-domain Fake News Detection. In Proceedings of the 30th ACM
+International Conference on Information & Knowledge Management (CIKM
+’21). Association for Computing Machinery, New York, NY, USA, 3343–3347.
+doi:10.1145/3459637.3482139
+[92] Christina Boididou, Symeon Papadopoulos, Markos Zampoglou, Lazaros Apos-
+tolidis, Olga Papadopoulou, and Yiannis Kompatsiaris. 2018. Detection and
+visualization of misleading content on Twitter. International Journal of Multi-
+media Information Retrieval 7, 1 (2018), 71–86. doi:10.1007/s13735-017-0143-x
+[93] Archita Pathak and Rohini Srihari. 2019. BREAKING! Presenting Fake News
+Corpus for Automated Fact Checking. In Proceedings of the 57th Annual Meeting
+of the Association for Computational Linguistics: Student Research Workshop,
+Fernando Alva-Manchego, Eunsol Choi, and Daniel Khashabi (Eds.). Association
+for Computational Linguistics, Florence, Italy, 357–362. doi:10.18653/v1/P19-
+2050
+[94] William Yang Wang. 2017. “Liar, Liar Pants on Fire”: A New Benchmark Dataset
+for Fake News Detection. In Proceedings of the 55th Annual Meeting of the Asso-
+ciation for Computational Linguistics (Volume 2: Short Papers), Regina Barzilay
+and Min-Yen Kan (Eds.). Association for Computational Linguistics, Vancouver,
+Canada, 422–426. doi:10.18653/v1/P17-2067
+[95] Kriste Krstovski, Angela Ryu, and Bruce Kogut. 2022. Evons: A Dataset for Fake
+and Real News Virality Analysis and Prediction. In The 29th International Con-
+ference on Computational Linguistics (COLING 2022). doi:10.2139/ssrn.4221440
+[96] Yaqing Wang, Weifeng Yang, Fenglong Ma, Jin Xu, Bin Zhong, Qiang Deng, and
+Jing Gao. 2020. Weak Supervision for Fake News Detection via Reinforcement
+Learning. Proceedings of the AAAI Conference on Artificial Intelligence 34, 01
+(Apr. 2020), 516–523. doi:10.1609/aaai.v34i01.5389
+[97] Kai Nakamura, Sharon Levy, and William Yang Wang. 2020.
+Fakeddit: A
+New Multimodal Benchmark Dataset for Fine-grained Fake News Detection.
+In Proceedings of the Twelfth Language Resources and Evaluation Conference,
+Nicoletta Calzolari, Frédéric Béchet, Philippe Blache, Khalid Choukri, Christo-
+pher Cieri, Thierry Declerck, Sara Goggi, Hitoshi Isahara, Bente Maegaard,
+Joseph Mariani, Hélène Mazo, Asuncion Moreno, Jan Odijk, and Stelios Piperidis
+(Eds.). European Language Resources Association, Marseille, France, 6149–6157.
+https://aclanthology.org/2020.lrec-1.755
+[98] Claudio Castellano, Santo Fortunato, and Vittorio Loreto. 2009. Statistical
+physics of social dynamics. Rev. Mod. Phys. 81 (May 2009), 591–646. Issue 2.
+doi:10.1103/RevModPhys.81.591
+[99] Xiaowen Wang, Lanjun Wang, Yuting Su, Yongdong Zhang, and An-An Liu.
+2024. MCDAN: A Multi-Scale Context-Enhanced Dynamic Attention Network
+for Diffusion Prediction. IEEE Transactions on Multimedia 26 (2024), 7850–7862.
+doi:10.1109/TMM.2024.3372371
+[100] Zhiguo Qu, Yunyi Meng, Ghulam Muhammad, and Prayag Tiwari. 2024. QMFND:
+A quantum multimodal fusion-based fake news detection model for social media.
+Information Fusion 104 (2024), 102172. doi:10.1016/j.inffus.2023.102172
+[101] Bing Wang, Ximing Li, Changchun Li, Shengsheng Wang, and Wanfu Gao. 2024.
+Escaping the neutralization effect of modality features fusion in multimodal
+Fake News Detection. Information Fusion 111 (2024), 102500. doi:10.1016/j.inffus.
+2024.102500
+[102] Deepika Varshney and Dinesh Kumar Vishwakarma. 2021. A review on rumour
+prediction and veracity assessment in online social network. Expert Systems
+with Applications 168 (2021), 114208. doi:10.1016/j.eswa.2020.114208
+[103] Natali Ruchansky, Sungyong Seo, and Yan Liu. 2017. CSI: A Hybrid Deep Model
+for Fake News Detection. In Proceedings of the 2017 ACM on Conference on
+Information and Knowledge Management (Singapore, Singapore) (CIKM ’17).
+Association for Computing Machinery, New York, NY, USA, 797–806. doi:10.

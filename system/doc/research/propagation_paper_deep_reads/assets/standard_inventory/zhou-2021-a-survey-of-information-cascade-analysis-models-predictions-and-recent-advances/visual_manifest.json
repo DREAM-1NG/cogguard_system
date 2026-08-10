@@ -1,0 +1,1417 @@
+{
+  "schema_version": 2,
+  "generated_at": "2026-08-10T06:27:47.793872+00:00",
+  "source_pdf": "H:\\Zotero\\attenger\\Projects\\CISCN\\Propagation\\Zhou 等 - 2021 - A survey of information cascade analysis models, predictions, and recent advances.pdf",
+  "source_sha256": "0240cac714b9858e03efc351d945f476ecb718e119803f1c68c144b286279798",
+  "page_count": 36,
+  "render_dpi": 180,
+  "selected_pages": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36
+  ],
+  "analysis_mode": "text-only",
+  "text_layer_available": true,
+  "text_layer_characters": 156131,
+  "automatic_crops_are_unverified": true,
+  "pages": [
+    {
+      "page": 1,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 486.0,
+      "height_points": 720.0,
+      "image": null,
+      "text": "text\\pages\\page-001.txt",
+      "text_characters": 3793,
+      "caption_count": 0
+    },
+    {
+      "page": 2,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 486.0,
+      "height_points": 720.0,
+      "image": null,
+      "text": "text\\pages\\page-002.txt",
+      "text_characters": 4644,
+      "caption_count": 0
+    },
+    {
+      "page": 3,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 486.0,
+      "height_points": 720.0,
+      "image": null,
+      "text": "text\\pages\\page-003.txt",
+      "text_characters": 3312,
+      "caption_count": 2
+    },
+    {
+      "page": 4,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 486.0,
+      "height_points": 720.0,
+      "image": null,
+      "text": "text\\pages\\page-004.txt",
+      "text_characters": 3376,
+      "caption_count": 1
+    },
+    {
+      "page": 5,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 486.0,
+      "height_points": 720.0,
+      "image": null,
+      "text": "text\\pages\\page-005.txt",
+      "text_characters": 4410,
+      "caption_count": 0
+    },
+    {
+      "page": 6,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 486.0,
+      "height_points": 720.0,
+      "image": null,
+      "text": "text\\pages\\page-006.txt",
+      "text_characters": 3712,
+      "caption_count": 1
+    },
+    {
+      "page": 7,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 486.0,
+      "height_points": 720.0,
+      "image": null,
+      "text": "text\\pages\\page-007.txt",
+      "text_characters": 4417,
+      "caption_count": 0
+    },
+    {
+      "page": 8,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 486.0,
+      "height_points": 720.0,
+      "image": null,
+      "text": "text\\pages\\page-008.txt",
+      "text_characters": 3319,
+      "caption_count": 1
+    },
+    {
+      "page": 9,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 486.0,
+      "height_points": 720.0,
+      "image": null,
+      "text": "text\\pages\\page-009.txt",
+      "text_characters": 4651,
+      "caption_count": 2
+    },
+    {
+      "page": 10,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 486.0,
+      "height_points": 720.0,
+      "image": null,
+      "text": "text\\pages\\page-010.txt",
+      "text_characters": 3557,
+      "caption_count": 3
+    },
+    {
+      "page": 11,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 486.0,
+      "height_points": 720.0,
+      "image": null,
+      "text": "text\\pages\\page-011.txt",
+      "text_characters": 3446,
+      "caption_count": 1
+    },
+    {
+      "page": 12,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 486.0,
+      "height_points": 720.0,
+      "image": null,
+      "text": "text\\pages\\page-012.txt",
+      "text_characters": 3149,
+      "caption_count": 1
+    },
+    {
+      "page": 13,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 486.0,
+      "height_points": 720.0,
+      "image": null,
+      "text": "text\\pages\\page-013.txt",
+      "text_characters": 2892,
+      "caption_count": 2
+    },
+    {
+      "page": 14,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 486.0,
+      "height_points": 720.0,
+      "image": null,
+      "text": "text\\pages\\page-014.txt",
+      "text_characters": 4400,
+      "caption_count": 0
+    },
+    {
+      "page": 15,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 486.0,
+      "height_points": 720.0,
+      "image": null,
+      "text": "text\\pages\\page-015.txt",
+      "text_characters": 3215,
+      "caption_count": 1
+    },
+    {
+      "page": 16,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 486.0,
+      "height_points": 720.0,
+      "image": null,
+      "text": "text\\pages\\page-016.txt",
+      "text_characters": 4280,
+      "caption_count": 0
+    },
+    {
+      "page": 17,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 486.0,
+      "height_points": 720.0,
+      "image": null,
+      "text": "text\\pages\\page-017.txt",
+      "text_characters": 4429,
+      "caption_count": 0
+    },
+    {
+      "page": 18,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 486.0,
+      "height_points": 720.0,
+      "image": null,
+      "text": "text\\pages\\page-018.txt",
+      "text_characters": 4676,
+      "caption_count": 0
+    },
+    {
+      "page": 19,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 486.0,
+      "height_points": 720.0,
+      "image": null,
+      "text": "text\\pages\\page-019.txt",
+      "text_characters": 4270,
+      "caption_count": 1
+    },
+    {
+      "page": 20,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 486.0,
+      "height_points": 720.0,
+      "image": null,
+      "text": "text\\pages\\page-020.txt",
+      "text_characters": 5091,
+      "caption_count": 0
+    },
+    {
+      "page": 21,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 486.0,
+      "height_points": 720.0,
+      "image": null,
+      "text": "text\\pages\\page-021.txt",
+      "text_characters": 4647,
+      "caption_count": 0
+    },
+    {
+      "page": 22,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 486.0,
+      "height_points": 720.0,
+      "image": null,
+      "text": "text\\pages\\page-022.txt",
+      "text_characters": 4338,
+      "caption_count": 0
+    },
+    {
+      "page": 23,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 486.0,
+      "height_points": 720.0,
+      "image": null,
+      "text": "text\\pages\\page-023.txt",
+      "text_characters": 4166,
+      "caption_count": 0
+    },
+    {
+      "page": 24,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 486.0,
+      "height_points": 720.0,
+      "image": null,
+      "text": "text\\pages\\page-024.txt",
+      "text_characters": 4446,
+      "caption_count": 0
+    },
+    {
+      "page": 25,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 486.0,
+      "height_points": 720.0,
+      "image": null,
+      "text": "text\\pages\\page-025.txt",
+      "text_characters": 4329,
+      "caption_count": 0
+    },
+    {
+      "page": 26,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 486.0,
+      "height_points": 720.0,
+      "image": null,
+      "text": "text\\pages\\page-026.txt",
+      "text_characters": 4180,
+      "caption_count": 1
+    },
+    {
+      "page": 27,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 486.0,
+      "height_points": 720.0,
+      "image": null,
+      "text": "text\\pages\\page-027.txt",
+      "text_characters": 4383,
+      "caption_count": 0
+    },
+    {
+      "page": 28,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 486.0,
+      "height_points": 720.0,
+      "image": null,
+      "text": "text\\pages\\page-028.txt",
+      "text_characters": 4140,
+      "caption_count": 0
+    },
+    {
+      "page": 29,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 486.0,
+      "height_points": 720.0,
+      "image": null,
+      "text": "text\\pages\\page-029.txt",
+      "text_characters": 5448,
+      "caption_count": 0
+    },
+    {
+      "page": 30,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 486.0,
+      "height_points": 720.0,
+      "image": null,
+      "text": "text\\pages\\page-030.txt",
+      "text_characters": 5579,
+      "caption_count": 0
+    },
+    {
+      "page": 31,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 486.0,
+      "height_points": 720.0,
+      "image": null,
+      "text": "text\\pages\\page-031.txt",
+      "text_characters": 5290,
+      "caption_count": 0
+    },
+    {
+      "page": 32,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 486.0,
+      "height_points": 720.0,
+      "image": null,
+      "text": "text\\pages\\page-032.txt",
+      "text_characters": 5221,
+      "caption_count": 0
+    },
+    {
+      "page": 33,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 486.0,
+      "height_points": 720.0,
+      "image": null,
+      "text": "text\\pages\\page-033.txt",
+      "text_characters": 5147,
+      "caption_count": 0
+    },
+    {
+      "page": 34,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 486.0,
+      "height_points": 720.0,
+      "image": null,
+      "text": "text\\pages\\page-034.txt",
+      "text_characters": 5232,
+      "caption_count": 0
+    },
+    {
+      "page": 35,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 486.0,
+      "height_points": 720.0,
+      "image": null,
+      "text": "text\\pages\\page-035.txt",
+      "text_characters": 5362,
+      "caption_count": 0
+    },
+    {
+      "page": 36,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 486.0,
+      "height_points": 720.0,
+      "image": null,
+      "text": "text\\pages\\page-036.txt",
+      "text_characters": 5184,
+      "caption_count": 0
+    }
+  ],
+  "visuals": [
+    {
+      "id": "figure-1-p003",
+      "label": "Figure 1",
+      "kind": "figure",
+      "number": "1",
+      "page": 3,
+      "caption": "Left: Number of publications over the last decade. Right: Distribution of venues of publications.",
+      "raw_text": "Fig. 1. Left: Number of publications over the last decade. Right: Distribution of venues of publications.",
+      "caption_bbox_points": [
+        54.225,
+        214.973,
+        431.676,
+        223.939
+      ],
+      "caption_bbox_pixels": [
+        136,
+        537,
+        1079,
+        560
+      ],
+      "suggested_crop_bbox_points": [
+        44.225,
+        76.878,
+        441.676,
+        233.939
+      ],
+      "suggested_crop_bbox_pixels": [
+        111,
+        192,
+        1104,
+        585
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-003.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\figure-1-p003.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "figure-1-p003",
+      "label": "Figure 1",
+      "kind": "figure",
+      "number": "1",
+      "page": 3,
+      "caption": "provides a summary statistics of the papers included in this survey. As shown, infor- mation cascade modeling and prediction have consistently spurred great interest in recent years, although the methodologies employed varied over time—e.g., most recently, deep learning-based methods have emerged as the more popular techniques. Research works that we reviewed were published in high-ranking conferences/journals related to data mining, social networks and infor- mation management, such as WWW, ICWSM, KDD, CIKM, WSDM, SIGIR, MM, TKDE, TKDD, ICDM, AAAI, and IJCAI. We note, though, that more than 40% of papers come from a variety of conferences/journals outside of the typical venues, further attesting that this is an interdisci- plinary topic spanning computer science, artificial intelligence, sociology, economics, marketing, statistics, and so on.",
+      "raw_text": "Figure 1 provides a summary statistics of the papers included in this survey. As shown, infor- mation cascade modeling and prediction have consistently spurred great interest in recent years, although the methodologies employed varied over time—e.g., most recently, deep learning-based methods have emerged as the more popular techniques. Research works that we reviewed were published in high-ranking conferences/journals related to data mining, social networks and infor- mation management, such as WWW, ICWSM, KDD, CIKM, WSDM, SIGIR, MM, TKDE, TKDD, ICDM, AAAI, and IJCAI. We note, though, that more than 40% of papers come from a variety of conferences/journals outside of the typical venues, further attesting that this is an interdisci- plinary topic spanning computer science, artificial intelligence, sociology, economics, marketing, statistics, and so on.",
+      "caption_bbox_points": [
+        45.684,
+        500.818,
+        440.227,
+        618.385
+      ],
+      "caption_bbox_pixels": [
+        114,
+        1252,
+        1101,
+        1546
+      ],
+      "suggested_crop_bbox_points": [
+        35.684,
+        224.939,
+        450.227,
+        628.385
+      ],
+      "suggested_crop_bbox_pixels": [
+        89,
+        562,
+        1126,
+        1571
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-003.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\figure-1-p003.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "figure-2-p004",
+      "label": "Figure 2",
+      "kind": "figure",
+      "number": "2",
+      "page": 4,
+      "caption": "Taxonomy of the information diffusion models.",
+      "raw_text": "Fig. 2. Taxonomy of the information diffusion models.",
+      "caption_bbox_points": [
+        142.65,
+        205.181,
+        342.883,
+        214.147
+      ],
+      "caption_bbox_pixels": [
+        357,
+        513,
+        857,
+        535
+      ],
+      "suggested_crop_bbox_points": [
+        44.765,
+        74.384,
+        439.765,
+        224.147
+      ],
+      "suggested_crop_bbox_pixels": [
+        112,
+        186,
+        1099,
+        560
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-004.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\figure-2-p004.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "figure-3-p006",
+      "label": "Figure 3",
+      "kind": "figure",
+      "number": "3",
+      "page": 6,
+      "caption": "Left axis: growth trends of cascades over time, the points are means and the bars on each point are variances. Right axis: Pearson correlation coefficients between observed popularity and ground truth popularity over time. Plots are based on three datasets: Twitter hashtags (left), Weibo tweets (middle), and APS papers (right), each have 1.3M, 119K, and 452K information cascades, respectively.",
+      "raw_text": "Fig. 3. Left axis: growth trends of cascades over time, the points are means and the bars on each point are variances. Right axis: Pearson correlation coefficients between observed popularity and ground truth popularity over time. Plots are based on three datasets: Twitter hashtags (left), Weibo tweets (middle), and APS papers (right), each have 1.3M, 119K, and 452K information cascades, respectively.",
+      "caption_bbox_points": [
+        45.504,
+        204.974,
+        440.047,
+        246.818
+      ],
+      "caption_bbox_pixels": [
+        114,
+        512,
+        1100,
+        617
+      ],
+      "suggested_crop_bbox_points": [
+        35.504,
+        74.083,
+        450.047,
+        256.818
+      ],
+      "suggested_crop_bbox_pixels": [
+        89,
+        185,
+        1125,
+        642
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-006.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\figure-3-p006.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "figure-4-p008",
+      "label": "Figure 4",
+      "kind": "figure",
+      "number": "4",
+      "page": 8,
+      "caption": "Popularity distributions of Twitter (left), Weibo (middle), and APS (right) in log-log scales. By fitting the tails of power-law distribution, the exponents α are 1.916, 2.044, and 2.788, with minimum popularity Pmin greater than or equal to 34, 45, and 58, for Twitter, Weibo, and APS datasets, respectively.",
+      "raw_text": "Fig. 4. Popularity distributions of Twitter (left), Weibo (middle), and APS (right) in log-log scales. By fitting the tails of power-law distribution, the exponents α are 1.916, 2.044, and 2.788, with minimum popularity Pmin greater than or equal to 34, 45, and 58, for Twitter, Weibo, and APS datasets, respectively.",
+      "caption_bbox_points": [
+        45.369,
+        183.185,
+        440.028,
+        215.677
+      ],
+      "caption_bbox_pixels": [
+        113,
+        458,
+        1100,
+        539
+      ],
+      "suggested_crop_bbox_points": [
+        35.369,
+        77.436,
+        450.028,
+        225.677
+      ],
+      "suggested_crop_bbox_pixels": [
+        88,
+        194,
+        1125,
+        564
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-008.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\figure-4-p008.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "table-1-p009",
+      "label": "Table 1",
+      "kind": "table",
+      "number": "1",
+      "page": 9,
+      "caption": "A Review of Frequently Used Model Evaluation Metrics",
+      "raw_text": "Table 1. A Review of Frequently Used Model Evaluation Metrics",
+      "caption_bbox_points": [
+        124.245,
+        90.791,
+        361.65,
+        99.757
+      ],
+      "caption_bbox_pixels": [
+        311,
+        227,
+        904,
+        249
+      ],
+      "suggested_crop_bbox_points": [
+        35.945,
+        80.791,
+        449.906,
+        450.722
+      ],
+      "suggested_crop_bbox_pixels": [
+        90,
+        202,
+        1125,
+        1127
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-009.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\table-1-p009.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "table-2-p009",
+      "label": "Table 2",
+      "kind": "table",
+      "number": "2",
+      "page": 9,
+      "caption": "Frequently Used Scenarios in Popularity Prediction Literature",
+      "raw_text": "Table 2. Frequently Used Scenarios in Popularity Prediction Literature",
+      "caption_bbox_points": [
+        112.725,
+        455.381,
+        373.179,
+        464.347
+      ],
+      "caption_bbox_pixels": [
+        282,
+        1138,
+        933,
+        1161
+      ],
+      "suggested_crop_bbox_points": [
+        35.945,
+        100.238,
+        449.906,
+        474.347
+      ],
+      "suggested_crop_bbox_pixels": [
+        90,
+        251,
+        1125,
+        1186
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-009.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\table-2-p009.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "table-3-p010",
+      "label": "Table 3",
+      "kind": "table",
+      "number": "3",
+      "page": 10,
+      "caption": "Basic Statistics of Three Benchmark Datasets Used in This Survey",
+      "raw_text": "Table 3. Basic Statistics of Three Benchmark Datasets Used in This Survey",
+      "caption_bbox_points": [
+        104.751,
+        82.007,
+        380.767,
+        90.973
+      ],
+      "caption_bbox_pixels": [
+        262,
+        205,
+        952,
+        227
+      ],
+      "suggested_crop_bbox_points": [
+        45.043,
+        72.007,
+        440.487,
+        157.286
+      ],
+      "suggested_crop_bbox_pixels": [
+        113,
+        180,
+        1101,
+        393
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-010.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\table-3-p010.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "table-4-p010",
+      "label": "Table 4",
+      "kind": "table",
+      "number": "4",
+      "page": 10,
+      "caption": "Frequency of Five Feature Groups Used by Feature-based Models",
+      "raw_text": "Table 4. Frequency of Five Feature Groups Used by Feature-based Models",
+      "caption_bbox_points": [
+        105.939,
+        172.349,
+        379.583,
+        181.315
+      ],
+      "caption_bbox_pixels": [
+        265,
+        431,
+        949,
+        453
+      ],
+      "suggested_crop_bbox_points": [
+        45.043,
+        91.454,
+        440.487,
+        191.315
+      ],
+      "suggested_crop_bbox_pixels": [
+        113,
+        229,
+        1101,
+        478
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-010.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\table-4-p010.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "table-5-p010",
+      "label": "Table 5",
+      "kind": "table",
+      "number": "5",
+      "page": 10,
+      "caption": "Strategies and Formulations of Feature-based Models",
+      "raw_text": "Table 5. Strategies and Formulations of Feature-based Models",
+      "caption_bbox_points": [
+        127.629,
+        298.556,
+        357.922,
+        307.522
+      ],
+      "caption_bbox_pixels": [
+        319,
+        746,
+        895,
+        769
+      ],
+      "suggested_crop_bbox_points": [
+        35.557,
+        181.796,
+        449.958,
+        317.522
+      ],
+      "suggested_crop_bbox_pixels": [
+        89,
+        454,
+        1125,
+        794
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-010.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\table-5-p010.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "figure-5-p011",
+      "label": "Figure 5",
+      "kind": "figure",
+      "number": "5",
+      "page": 11,
+      "caption": "Left: Histogram of arrival time t1 of the first retweet in Weibo cascades. Inset: CCDF of time t1. Right: Mean reaction time 1 M−1",
+      "raw_text": "Fig. 5. Left: Histogram of arrival time t1 of the first retweet in Weibo cascades. Inset: CCDF of time t1. Right: Mean reaction time 1 M−1",
+      "caption_bbox_points": [
+        45.682,
+        208.97,
+        440.211,
+        231.868
+      ],
+      "caption_bbox_pixels": [
+        114,
+        522,
+        1101,
+        580
+      ],
+      "suggested_crop_bbox_points": [
+        35.682,
+        74.118,
+        450.211,
+        241.868
+      ],
+      "suggested_crop_bbox_pixels": [
+        89,
+        185,
+        1126,
+        605
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-011.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\figure-5-p011.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "figure-6-p012",
+      "label": "Figure 6",
+      "kind": "figure",
+      "number": "6",
+      "page": 12,
+      "caption": "Ten evolving patterns characterizing the citation cascades in the APS dataset. We use hierarchical clustering implemented by sicpy package in Python to cluster the APS papers. For each cluster, we show 20 years of evolving trends of citations, by use of mean values and ± standard deviations.",
+      "raw_text": "Fig. 6. Ten evolving patterns characterizing the citation cascades in the APS dataset. We use hierarchical clustering implemented by sicpy package in Python to cluster the APS papers. For each cluster, we show 20 years of evolving trends of citations, by use of mean values and ± standard deviations.",
+      "caption_bbox_points": [
+        45.504,
+        227.978,
+        440.034,
+        258.86
+      ],
+      "caption_bbox_pixels": [
+        114,
+        570,
+        1100,
+        647
+      ],
+      "suggested_crop_bbox_points": [
+        35.504,
+        74.959,
+        450.034,
+        268.86
+      ],
+      "suggested_crop_bbox_pixels": [
+        89,
+        187,
+        1125,
+        672
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-012.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\figure-6-p012.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "figure-7-p013",
+      "label": "Figure 7",
+      "kind": "figure",
+      "number": "7",
+      "page": 13,
+      "caption": "Two cascade graphs retrieved from APS dataset with popularity Pi ≈200. All the nodes of left cascade graph are directly connected to the root node (Wiener index is 1.994). In contrast, the structure of the right cascade is more viral, i.e., a large amount of nodes are connected to the root node indirectly (index is 2.605).",
+      "raw_text": "Fig. 7. Two cascade graphs retrieved from APS dataset with popularity Pi ≈200. All the nodes of left cascade graph are directly connected to the root node (Wiener index is 1.994). In contrast, the structure of the right cascade is more viral, i.e., a large amount of nodes are connected to the root node indirectly (index is 2.605).",
+      "caption_bbox_points": [
+        45.685,
+        186.497,
+        440.2,
+        217.858
+      ],
+      "caption_bbox_pixels": [
+        114,
+        466,
+        1101,
+        545
+      ],
+      "suggested_crop_bbox_points": [
+        35.685,
+        80.353,
+        450.2,
+        227.858
+      ],
+      "suggested_crop_bbox_pixels": [
+        89,
+        201,
+        1126,
+        570
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-013.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\figure-7-p013.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "figure-8-p013",
+      "label": "Figure 8",
+      "kind": "figure",
+      "number": "8",
+      "page": 13,
+      "caption": "Box plot of structural virality (Wiener index) by cascade popularity for Weibo (left) and APS (right). The lines in boxes are median value, whereas boxes are quartile values of structural virality from lower to upper. The relationship between cascade popularity and structural virality for Weibo tweets is neutral; on the contrary, for APS papers, the correlation is quite positive.",
+      "raw_text": "Fig. 8. Box plot of structural virality (Wiener index) by cascade popularity for Weibo (left) and APS (right). The lines in boxes are median value, whereas boxes are quartile values of structural virality from lower to upper. The relationship between cascade popularity and structural virality for Weibo tweets is neutral; on the contrary, for APS papers, the correlation is quite positive.",
+      "caption_bbox_points": [
+        45.685,
+        348.698,
+        440.219,
+        390.542
+      ],
+      "caption_bbox_pixels": [
+        114,
+        872,
+        1101,
+        976
+      ],
+      "suggested_crop_bbox_points": [
+        35.685,
+        218.858,
+        450.219,
+        400.542
+      ],
+      "suggested_crop_bbox_pixels": [
+        89,
+        547,
+        1126,
+        1001
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-013.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\figure-8-p013.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "figure-9-p015",
+      "label": "Figure 9",
+      "kind": "figure",
+      "number": "9",
+      "page": 15,
+      "caption": "Left: a global graph retrieved from the five largest cascades in Weibo dataset. It contains 262,458 nodes and 324,540 edges. Edges from different cascades are in different colors. We can clearly see that these cascades are not isolated. Right: an example of 1-reachable graph retrieved from Weibo dataset. Dark nodes (red) come from a cascade graph Gc, where pale nodes are neighbors of the red nodes.",
+      "raw_text": "Fig. 9. Left: a global graph retrieved from the five largest cascades in Weibo dataset. It contains 262,458 nodes and 324,540 edges. Edges from different cascades are in different colors. We can clearly see that these cascades are not isolated. Right: an example of 1-reachable graph retrieved from Weibo dataset. Dark nodes (red) come from a cascade graph Gc, where pale nodes are neighbors of the red nodes.",
+      "caption_bbox_points": [
+        45.679,
+        210.977,
+        440.24,
+        253.737
+      ],
+      "caption_bbox_pixels": [
+        114,
+        527,
+        1101,
+        634
+      ],
+      "suggested_crop_bbox_points": [
+        35.679,
+        73.663,
+        450.24,
+        263.737
+      ],
+      "suggested_crop_bbox_pixels": [
+        89,
+        184,
+        1126,
+        659
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-015.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\figure-9-p015.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "table-6-p019",
+      "label": "Table 6",
+      "kind": "table",
+      "number": "6",
+      "page": 19,
+      "caption": "Machine Learning Methods",
+      "raw_text": "Table 6. Machine Learning Methods",
+      "caption_bbox_points": [
+        175.383,
+        82.007,
+        310.501,
+        90.973
+      ],
+      "caption_bbox_pixels": [
+        438,
+        205,
+        776,
+        227
+      ],
+      "suggested_crop_bbox_points": [
+        35.683,
+        72.007,
+        450.236,
+        416.72
+      ],
+      "suggested_crop_bbox_pixels": [
+        89,
+        180,
+        1126,
+        1042
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-019.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\table-6-p019.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "table-7-p026",
+      "label": "Table 7",
+      "kind": "table",
+      "number": "7",
+      "page": 26,
+      "caption": "Deep Learning Models",
+      "raw_text": "Table 7. Deep Learning Models",
+      "caption_bbox_points": [
+        184.563,
+        82.007,
+        300.963,
+        90.973
+      ],
+      "caption_bbox_pixels": [
+        461,
+        205,
+        752,
+        227
+      ],
+      "suggested_crop_bbox_points": [
+        35.504,
+        45.055,
+        450.016,
+        100.973
+      ],
+      "suggested_crop_bbox_pixels": [
+        89,
+        113,
+        1125,
+        252
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-026.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\table-7-p026.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    }
+  ]
+}

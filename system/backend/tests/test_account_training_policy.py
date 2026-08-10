@@ -195,8 +195,11 @@ def test_celery_beat_owns_training_reconciliation_and_model_monitoring_cadence()
     assert schedule["account-training-heartbeat-reconciliation"]["options"] == {"queue": "account_training"}
     assert schedule["account-model-monitoring-snapshot"]["task"] == "account_training.monitor_active_model"
     assert schedule["account-model-monitoring-snapshot"]["options"] == {"queue": "account_training"}
+    assert schedule["account-evaluation-dispatch-reconciliation"]["task"] == "account_evaluation.reconcile_dispatches"
+    assert schedule["account-evaluation-dispatch-reconciliation"]["options"] == {"queue": "account_evaluation"}
     assert schedule["account-training-heartbeat-reconciliation"]["schedule"] > 0
     assert schedule["account-model-monitoring-snapshot"]["schedule"] > 0
+    assert schedule["account-evaluation-dispatch-reconciliation"]["schedule"] > 0
 
 
 def test_start_script_launches_a_dedicated_celery_beat_scheduler():
@@ -211,6 +214,8 @@ def test_start_script_serializes_training_and_evaluation_on_one_gpu_worker():
 
     assert "'--queues', 'account_training,account_evaluation'" in script
     assert "'--concurrency', '1', '--pool', 'solo'" in script
+    assert "account_training|account_evaluation|account-training@|account-model@" in script
+    assert "Stop-StaleAccountModelWorkers" in script
 
 
 def test_start_script_binds_the_backend_for_static_frontend_delivery():

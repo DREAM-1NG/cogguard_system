@@ -1,0 +1,8 @@
+[44] K. Xu, J. Li, M. Zhang, S. S. Du, K.-I. Kawarabayashi, and S. Jegelka. What can neural networks reason
+about? In International Conference on Learning Representations (ICLR), 2020.
+[45] K. Xu, M. Zhang, J. Li, S. S. Du, K.-I. Kawarabayashi, and S. Jegelka. How neural networks extrapolate:
+From feedforward to graph neural networks. In International Conference on Learning Representations
+(ICLR), 2021.
+[46] Z. Zhang, F. Wu, and W. S. Lee. Factor graph neural networks. In Advances in Neural Information
+Processing Systems (NeurIPS), 2020.
+13

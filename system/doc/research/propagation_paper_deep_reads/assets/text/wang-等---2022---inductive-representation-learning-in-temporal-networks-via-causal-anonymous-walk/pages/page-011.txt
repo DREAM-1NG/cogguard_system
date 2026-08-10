@@ -1,0 +1,47 @@
+Published as a conference paper at ICLR 2021
+Seyed Mehran Kazemi, Rishab Goel, Sepehr Eghbali, Janahan Ramanan, Jaspreet Sahota, Sanjay
+Thakur, Stella Wu, Cathal Smyth, Pascal Poupart, and Marcus Brubaker. Time2vec: Learning a
+vector representation of time. arXiv preprint arXiv:1907.05321, 2019.
+Thomas N Kipf and Max Welling. Variational graph auto-encoders. arXiv preprint arXiv:1611.07308,
+2016.
+Thomas N Kipf and Max Welling. Semi-supervised classiﬁcation with graph convolutional networks.
+In International Conference on Learning Representations, 2017.
+Lauri Kovanen, Márton Karsai, Kimmo Kaski, János Kertész, and Jari Saramäki. Temporal motifs in
+time-dependent networks. Journal of Statistical Mechanics: Theory and Experiment, 2011(11),
+2011.
+Lauri Kovanen, Kimmo Kaski, János Kertész, and Jari Saramäki. Temporal motifs reveal homophily,
+gender-speciﬁc patterns, and group talk in call sequences. Proceedings of the National Academy of
+Sciences, 110(45), 2013.
+Srijan Kumar, Xikun Zhang, and Jure Leskovec. Predicting dynamic embedding trajectory in temporal
+interaction networks. In International Conference on Knowledge Discovery Data Mining, 2019.
+Mayank Lahiri and Tanya Y Berger-Wolf. Structure prediction in temporal networks using frequent
+subgraphs. In IEEE Symposium on Computational Intelligence and Data Mining, 2007.
+Günter Last and Mathew Penrose. Lectures on the Poisson process, volume 7. Cambridge University
+Press, 2017.
+Stephen Lavenberg. Computer performance modeling handbook. Elsevier, 1983.
+Pan Li and Olgica Milenkovic. Inhomogeneous hypergraph clustering with applications. In Advances
+in Neural Information Processing Systems, 2017.
+Taisong Li, Jiawei Zhang, S Yu Philip, Yan Zhang, and Yonghong Yan. Deep dynamic network
+embedding for link prediction. IEEE Access, 6, 2018.
+Sedigheh Mahdavi, Shima Khoshraftar, and Aijun An. dynnode2vec: Scalable dynamic network
+embedding. In International Conference on Big Data (Big Data). IEEE, 2018.
+Franco Manessi, Alessandro Rozza, and Mario Manzo. Dynamic graph convolutional networks.
+Pattern Recognition, 97, 2020.
+Shmoolik Mangan and Uri Alon. Structure and function of the feed-forward loop network motif.
+Proceedings of the National Academy of Sciences, 100(21), 2003.
+Silvio Micali and Zeyuan Allen Zhu. Reconstructing markov processes from independent and
+anonymous experiments. Discrete Applied Mathematics, 200, 2016.
+Grégoire Montavon, Wojciech Samek, and Klaus-Robert Müller. Methods for interpreting and
+understanding deep neural networks. Digital Signal Processing, 73:1–15, 2018.
+Giang Hoang Nguyen, John Boaz Lee, Ryan A Rossi, Nesreen K Ahmed, Eunyee Koh, and Sungchul
+Kim. Continuous-time dynamic network embeddings. In Companion Proceedings of the The Web
+Conference, 2018.
+Ashwin Paranjape, Austin R Benson, and Jure Leskovec. Motifs in temporal networks. In Interna-
+tional Conference on Web Search and Data Mining, 2017.
+Aldo Pareja, Giacomo Domeniconi, Jie Chen, Tengfei Ma, Toyotaro Suzumura, Hiroki Kanezashi,
+Tim Kaler, Tao B Schardl, and Charles E Leiserson. EvolveGCN: Evolving graph convolutional
+networks for dynamic graphs. In AAAI Conference on Artiﬁcial Intelligence, 2020.
+Mahmudur Rahman and Mohammad Al Hasan. Link prediction in dynamic networks using graphlet.
+In Joint European Conference on Machine Learning and Knowledge Discovery in Databases.
+Springer, 2016.
+11

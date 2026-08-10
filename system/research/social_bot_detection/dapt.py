@@ -80,6 +80,7 @@ class DAPTTrainingResult:
     global_step: int
     checkpoint_path: Path
     input_fingerprint: str
+    runtime_precision: str
     encoder_artifact_dir: Path
     encoder_manifest_path: Path
     encoder_payload_path: Path
@@ -275,8 +276,13 @@ def train_dapt(
         model.parameters(), lr=effective_config.learning_rate, weight_decay=effective_config.weight_decay
     )
     scheduler = scheduler or torch.optim.lr_scheduler.LambdaLR(optimizer, lambda _: 1.0)
-    amp_enabled = bool(effective_config.mixed_precision and runtime_device.type == "cuda")
-    scaler = torch.amp.GradScaler("cuda", enabled=amp_enabled)
+    runtime_precision, autocast_dtype, scaler_enabled = _resolve_runtime_precision(
+        torch,
+        runtime_device,
+        mixed_precision=effective_config.mixed_precision,
+    )
+    amp_enabled = runtime_precision != "float32"
+    scaler = torch.amp.GradScaler("cuda", enabled=scaler_enabled)
     target_checkpoint = Path(checkpoint_path) if checkpoint_path is not None else output / "dapt_checkpoint.pt"
     state = DAPTTrainingState(epoch=0, global_step=0, data_cursor=0)
     if resume_from is not None:
@@ -299,13 +305,28 @@ def train_dapt(
             for texts in window:
                 batch = _tokenize_for_mlm(tokenizer, texts, effective_config.max_length, runtime_device)
                 masked_inputs, labels = _mask_tokens(batch, tokenizer, effective_config.mlm_probability, torch)
-                with torch.autocast(device_type=runtime_device.type, enabled=amp_enabled):
+                with torch.autocast(
+                    device_type=runtime_device.type,
+                    enabled=amp_enabled,
+                    dtype=autocast_dtype,
+                ):
                     loss = model(**masked_inputs, labels=labels).loss / len(window)
                 scaler.scale(loss).backward()
+            scale_before_step = float(scaler.get_scale())
             scaler.step(optimizer)
             scaler.update()
-            scheduler.step()
-            state = DAPTTrainingState(epoch=epoch, global_step=state.global_step + 1, data_cursor=cursor + 1)
+            optimizer_step_completed = _amp_optimizer_step_completed(
+                enabled=scaler_enabled,
+                scale_before=scale_before_step,
+                scale_after=float(scaler.get_scale()),
+            )
+            if optimizer_step_completed:
+                scheduler.step()
+            state = DAPTTrainingState(
+                epoch=epoch,
+                global_step=state.global_step + int(optimizer_step_completed),
+                data_cursor=cursor + 1,
+            )
             save_dapt_checkpoint(
                 target_checkpoint,
                 model=model,
@@ -336,6 +357,7 @@ def train_dapt(
         global_step=state.global_step,
         checkpoint_path=target_checkpoint,
         input_fingerprint=corpus.manifest.input_fingerprint,
+        runtime_precision=runtime_precision,
         **_export_chinese_social_encoder_artifact(
             output,
             model=model,
@@ -343,6 +365,7 @@ def train_dapt(
             corpus=corpus,
             config=effective_config,
             base_model_identity=str(model_name_or_path),
+            runtime_precision=runtime_precision,
         ),
     )
     (output / "dapt_report.json").write_text(
@@ -352,6 +375,7 @@ def train_dapt(
                 "global_step": result.global_step,
                 "checkpoint_path": str(result.checkpoint_path),
                 "input_fingerprint": result.input_fingerprint,
+                "runtime_precision": result.runtime_precision,
                 "encoder_artifact_dir": str(result.encoder_artifact_dir),
                 "encoder_manifest_path": str(result.encoder_manifest_path),
                 "encoder_payload_path": str(result.encoder_payload_path),
@@ -453,6 +477,7 @@ def _export_chinese_social_encoder_artifact(
     corpus: DAPTCorpusVersion,
     config: DAPTConfig,
     base_model_identity: str,
+    runtime_precision: str,
 ) -> dict[str, Path | str]:
     """Persist the completed encoder once; resume verifies instead of overwriting it."""
 
@@ -461,6 +486,7 @@ def _export_chinese_social_encoder_artifact(
         "corpus": corpus.manifest.to_dict(),
         "dapt_config": asdict(config),
         "dapt_config_hash": dapt_config_hash(config),
+        "runtime_precision": runtime_precision,
     }
     if artifact_dir.exists():
         manifest = verify_chinese_social_encoder_artifact(artifact_dir)
@@ -681,6 +707,22 @@ def _validate_training_inputs(config: DAPTConfig, corpus: DAPTCorpusVersion, epo
         raise ValueError("mlm_probability must be in (0, 1]")
     if epochs < 0:
         raise ValueError("epochs must be non-negative")
+
+
+def _amp_optimizer_step_completed(*, enabled: bool, scale_before: float, scale_after: float) -> bool:
+    """Return false when GradScaler skipped an optimizer update after overflow."""
+
+    return not enabled or scale_after >= scale_before
+
+
+def _resolve_runtime_precision(torch: object, device: object, *, mixed_precision: bool) -> tuple[str, object, bool]:
+    """Resolve one explicit precision policy for the current training device."""
+
+    if not mixed_precision or getattr(device, "type", "") != "cuda":
+        return "float32", torch.float32, False
+    if torch.cuda.is_bf16_supported():
+        return "bfloat16", torch.bfloat16, False
+    return "float16", torch.float16, True
 
 
 def _load_local_transformers_model(model_name_or_path: str | Path) -> tuple[object, object]:

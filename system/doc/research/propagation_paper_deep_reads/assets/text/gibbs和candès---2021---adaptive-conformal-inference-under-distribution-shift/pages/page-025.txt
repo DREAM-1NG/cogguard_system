@@ -1,0 +1,22 @@
+A.10
+Technical lemmas
+Proof:
+[Proof of Lemma A.1:] We assume without loss of generality that f is non-decreasing and
+g is non-increasing as otherwise one can simply multiply both f and g by −1.
+Let gU := sup{g(y) : f(y) > E[f(Y )] and gL := inf{g(y) : f(y) ≤E[f(Y )]. By the monotonicity
+of f and g we clearly have that gL ≥gU. Therefore,
+E[f(Y )g(Y )] −E[f(Y )]E[g(Y )] = E[(f(Y ) −E[f(Y )])g(Y )]
+≤E[(f(Y ) −E[f(Y )])gL1f(Y )≤E[f(Y )]] + E[(f(Y ) −E[f(Y )])gU1f(Y )>E[f(Y )]]
+≤E[(f(Y ) −E[f(Y )])gL1f(Y )≤E[f(Y )]] + E[(f(Y ) −E[f(Y )])gL1f(Y )>E[f(Y )]]
+= 0,
+as desired.
+□
+Lemma A.5 [Hoeffding’s Lemma [18]] Let X be a mean 0 random variable such that X ∈[a, b]
+almost surely. Then, for all λ ∈R
+E[exp(λX)] ≤exp
+
+λ2 (b −a)2
+8
+
+.
+25

@@ -54,7 +54,10 @@ place of the static profile.
 
 Docker Compose runs MySQL, MongoDB, and Redis. The default helper runs the
 backend from the checked-out source tree and serves the built frontend from the
-Compose static-delivery profile.
+Compose static-delivery profile. If a complete set of compatible
+`cogguard-mysql`, `cogguard-mongodb`, and `cogguard-redis` containers already
+exists, the helper reuses those containers and their data volumes. It refuses
+to combine a partial or image-mismatched container set.
 
 ```powershell
 cd system
@@ -72,6 +75,12 @@ Expected ports:
 | Backend | `8000` |
 | Frontend | `5173` |
 
+Windows may reserve the default MongoDB port through a Hyper-V exclusion
+range. In that case, set `MONGO_PORT` in the ignored `system/.env` to an
+available host port such as `37017`; MongoDB continues to listen on `27017`
+inside its container. The startup helper reads the configured host port for its
+readiness check.
+
 ## Backend
 
 ```powershell
@@ -83,7 +92,7 @@ uv run uvicorn app.main:app --host 127.0.0.1 --port 8000
 
 Health check and API documentation:
 
-- `http://127.0.0.1:8000/api/v1/health`
+- `http://127.0.0.1:8000/api/v2/health`
 - `http://127.0.0.1:8000/docs`
 
 ## Celery Worker
@@ -207,14 +216,35 @@ nvidia-smi
 ```
 
 Do not treat the presence of an NVIDIA driver as proof that training uses the
-GPU. As measured on 2026-08-07, the host RTX 4060 was visible while the backend
-venv reported `torch 2.12.1+cpu`, `cuda.is_available() == False`. The first DAPT
-run also remains quantity-blocked until the registered Chinese corpus reaches
-500,000 qualified tokens; the current measured corpus contains 415,686.
+GPU. The backend venv was upgraded on 2026-08-07 to `torch 2.11.0+cu128` and
+verified with `cuda.is_available() == True`, a torch-geometric import, and a
+real local Chinese RoBERTa BF16 DAPT smoke. Set
+`ACCOUNT_ACQUISITION_DEVICE=cuda` in the deployment `.env`; the portable example
+keeps `cpu` as its default. The full DAPT run remains quantity-blocked until the
+registered Chinese corpus reaches 500,000 qualified tokens; the current
+measured corpus contains 415,686.
 
 An empty Active Pointer is a valid fail-closed state. `/api/v1/accounts/bot-detection`
 must return `unavailable_without_active_pointer` instead of using a legacy or
 heuristic detector.
+
+The standard startup uses one GPU-serialized account-model worker for both
+queues:
+
+```powershell
+cd system\backend
+.\.venv\Scripts\python.exe -m celery -A app.celery_app worker --loglevel=info --queues account_training,account_evaluation --concurrency 1 --pool solo --hostname account-training@%h
+```
+
+Do not operate an `account_evaluation` GPU worker in parallel with the training
+worker on the 8 GB deployment target. `start-system.ps1` removes stale consumers
+of either queue, and both task families must acquire the shared process-bound
+GPU fence before model execution. It also starts Celery Beat for heartbeat
+reconciliation, five-minute active-model monitor snapshots, and one-minute
+lease-aware evaluation outbox draining.
+The normal candidate evaluation path is
+`POST /api/v1/accounts/models/{model_version}/evaluation-jobs`; the external
+evaluation writeback endpoint is compatibility and recovery only.
 
 ## Verification
 

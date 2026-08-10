@@ -1,0 +1,72 @@
+Published as a conference paper at ICLR 2021
+Experiments show that CAW-N is extremely effective. CAW-N does not need to enumerate the types
+of motifs and count their numbers that have been used as features to predict network dynamics (Lahiri
+& Berger-Wolf, 2007; Rahman & Al Hasan, 2016; Rossi et al., 2019; AbuOda et al., 2019; Li
+& Milenkovic, 2017), which signiﬁcantly saves feature-engineering effort. CAW-N also keeps
+all ﬁne-grained temporal information along the walks that may be removed by directly counting
+motifs (Ahmed et al., 2015; Paranjape et al., 2017). CAWs share a similar idea as anonymous walks
+(AW) (Micali & Zhu, 2016) to remove node identities. However, AWs have only been used for
+entire static graph embedding (Ivanov & Burnaev, 2018) and are not directedly applied to represent
+temporal networks: AWs cannot capture causality; AWs get anonymized based on each single walk
+and hence lose the correlation between network motifs. In contrast, CAWs capture all the information,
+temporal, structural, motif-correlation that are needed, to represent temporal networks.
+We conclude our contributions in three-folds: (1) A novel approach to represent temporal network
+CAW-N is proposed, which leverages CAWs to encode temporal network motifs to capture network
+dynamics while keeping fully inductive. CAW-N is evaluated to predict links over 6 real-world tem-
+poral networks. CAW-N outperforms all SOTA methods by about 15% averaged over 6 networks in
+the inductive setting and also signiﬁcantly beat all SOTA methods over 5 networks in the transductive
+setting; (2) CAW-N signiﬁcantly decreases the feature-engineering effort in traditional motif selection
+and counting approaches and keeps ﬁne-grained temporal information; (3) CAW-N is paired with a
+CAW sampling method with constant memory and time cost, which conduces to online learning.
+2
+RELATED WORK
+Prior work on representation learning of temporal networks preprocesses the networks by simply
+aggregating the sequence of links within consecutive time windows into network snapshots, and
+use graph neural networks (GNN) (Scarselli et al., 2008; Kipf & Welling, 2017) and RNNs or
+transformer networks (Vaswani et al., 2017) to encode structural patterns and temporal patterns
+respectively (Pareja et al., 2020; Manessi et al., 2020; Goyal et al., 2020; Hajiramezanali et al., 2019;
+Sankar et al., 2020). The main drawback of these approaches is that they need to predetermine a time
+granularity for link aggregation, which is hard to learn structural dynamics in different time scales.
+Therefore, approaches that work on link streams directly have been recently proposed (Trivedi et al.,
+2017; 2019; Kumar et al., 2019; Xu et al., 2020). Know-E (Trivedi et al., 2017), DyRep (Trivedi
+et al., 2019) and JODIE (Kumar et al., 2019) use RNNs to propagate messages across interactions
+to update node representations. Know-E, JODIE consider message exchanges between two directly
+interacted nodes while DyRep considers an additional hop of interactions. Therefore, DyRep gives
+a more expressive model at a cost of high complexity. TGAT (Xu et al., 2020) in contrast mimics
+GraphSAGE (Hamilton et al., 2017a) and GAT (Veliˇckovi´c et al., 2018) to propagate messages in a
+GNN-like way from sampled historical neighbors of a node of interest. TGAT’s sampling strategy
+requires to store all historical neighbors, which is unscalable for online learning. Our CAW-N directly
+works on link streams and only requires to memorize constant many most recent links for each node.
+a
+b
+a’
+b’
+History: 𝑎, 𝑏, t1 , 𝑎′, 𝑏′, t1 , 𝑎, 𝑏, t2 , 𝑎′, 𝑏′, t2 ;
+The order of timestamps: 𝑡1 < 𝑡2 < 𝑡3.
+Question: Which is more likely to happen,
+𝑎, 𝑏, t3 or 𝑎′, 𝑏, t3 ?
+t1, t2
+t1, t2
+𝐭𝟑?
+Figure 3: Ambiguity due to removing node identi-
+ties in TGAT (Xu et al., 2020) (t1 < t2 < t3).
+Most of the above models are not inductive be-
+cause they associate each node with an one-
+hot identity (or the corresponding row of the
+adjacency matrix, or a free-trained vector) (Li
+et al., 2018; Chen et al., 2019; Kumar et al.,
+2019; Hajiramezanali et al., 2019; Sankar et al.,
+2020; Manessi et al., 2020; Goyal et al., 2020).
+TGAT (Xu et al., 2020) claimed to be inductive by removing node identities and just encoding link
+timestamps and attributes. However, TGAT was only evaluated over networks with rich link attributes,
+where the structural dynamics is not captured essentially: If we focus on structural dynamics only,
+it is easy to show a case when TGAT confuses node representations and will fail: Suppose in the
+history, two node pairs {a, b} and {a′, b′} only interact within each pair but share the timestamps
+(Fig. 3). Intuitively, a proper model should predict that future links still appear within each pair.
+However, TGAT cannot distinguish a v.s. a′, and b v.s. b′, which leads to incorrect prediction. Note
+that GraphSAGE (Hamilton et al., 2017a) and GAT (Veliˇckovi´c et al., 2018) also share the similar
+issue when representing static networks for link prediction (Zhang et al., 2020; Srinivasan & Ribeiro,
+2019). DyRep (Trivedi et al., 2019) is able to relieve such ambiguity by merging node representations
+with their neighbors’ via RNNs. However, when DyRep runs over a new network, it frequently
+encounters node representations unseen during its training and will fail to make correct prediction.
+3

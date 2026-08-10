@@ -1,0 +1,148 @@
+Figure 3: Impact of the diffusion steps.
+Figure 4: Impact of the hidden dimension.
+attributed to the fact that cascades on Twitter often lack intri-
+cate multi-level forwarding information, resulting in a rela-
+tively simpler structure of the cascade graph compared to the
+Weibo and APS datasets while previous research predomi-
+nantly concentrates on the evolution of dynamic graphs, un-
+derscoring the versatility of our proposed method, CasFT, in
+effectively handling various types of cascade graphs.
+Ablation Study (RQ2 & RQ3)
+To answer RQ2 and RQ3, we have conducted a series of
+experiments where we introduced different variants of our
+CasFT model. We conduct the ablation study to investigate
+the contribution of each component and develop four vari-
+ants: 1) CasFT-w/o FT. We remove the future trend model-
+ing module and only use the spatiotemporal features S for
+prediction; 2) CasFT-w/o ODE. We take the spatiotempo-
+ral features S as the condition of the later diffusion models,
+without parameterizing the growth rate; 3) CasFT-w/o Dif-
+fusion. We remove the diffusion block and directly input the
+condition c into an MLP; and 4) CasFT-FM. We just use an
+MLP to replace our future trend modules, predict both the
+segmented popularity and the incremental popularity during
+(to, tp), and also take the predicted segmented popularity se-
+quence as a significant cue.
+The results and comparison of these variants are shown
+in Table 3. The comparison of CasFT over CasFT-w/o FT
+validates the necessity of modeling the future trend of cas-
+cade with an improvement of up to 20.75%. Through a
+comparative analysis of CasFT-w/o FT, CasFT-w/o ODE,
+and CasFT-w/o Diffusion, it becomes evident that model-
+ing the growth rate and segmented popularity generation
+both facilitate prediction accuracy, achieving improvements
+of 20.75%, 13.63%, and 10.70% respectively. We also de-
+signed a variant CasFT-FM which outperforms CasFT-w/o
+FT but is worse than CasFT, showing the usefulness of our
+proposed future trend block.
+Hyperparameters (RQ4)
+We investigate the influence of hyperparameters including
+the hidden dimension of ht, the choice of ODESolvers, the
+number of the time interval l, and the diffusion steps. Firstly,
+the diffusion steps serve as a crucial parameter for diffusion
+models. To assess the influence of diffusion steps, we train
+Figure 5: Impact of the interval number.
+ODE Solver
+Twitter (1 day)
+APS (3 years)
+Weibo (0.5 hours)
+MSLE
+MAPE
+MSLE
+MAPE
+MSLE
+MAPE
+bosh3
+4.0933
+0.3764
+1.2701
+0.2292
+2.1792
+0.2509
+adaptive heun
+4.2215
+0.3995
+1.2702
+0.2291
+2.1786
+0.2578
+euler
+4.2487
+0.3989
+1.2837
+0.2304
+2.2188
+0.2598
+rk4
+4.2115
+0.3720
+1.2644
+0.2263
+2.1780
+0.2537
+implicit adams
+4.1503
+0.3722
+1.2644
+0.2263
+2.1780
+0.2537
+midpoint
+4.0760
+0.3697
+1.2622
+0.2280
+2.1873
+0.2457
+dopri5
+3.8546
+0.3679
+1.2468
+0.2282
+2.1728
+0.2448
+Table 4: Impact of different types of ODE Solver on the per-
+formance of CasFT across the three datasets.
+CasFT using varying steps, ranging from 500 to 1500. The
+results are shown in Figure 3 and we find that the number
+of diffusion steps has an impact on the Twitter dataset while
+the MAPE in APS and Weibo datasets tend to be stable. Ad-
+ditionally, among the ODESolver options shown in Table 4,
+euler yields the worst performance because the error of eu-
+ler’s method usually decreases as the step size decreases,
+while dopri5 demonstrates relatively superior predictive ca-
+pabilities and is used across all of our experiments.
+Moreover, the prognostication of CasFT relies on the dy-
+namic hidden state ht and the generated segmented popular-
+ity sequence Y 0, prompting an investigation into the influ-
+ence of the dimensionality of ht and the interval number l
+of Y 0 on the performance, shown in Figure 4 and Figure 5.
+It is observed that both the dimension of the hidden state
+and the number of intervals affect the ultimate forecasting
+outcomes.
+Conclusion
+In this work, we propose CasFT, which leverages observed
+information Cascades and dynamic cues modeled via neu-
+ral ODEs as conditions to guide the generation of Future
+popularity-increasing Trends through a diffusion model. The
+generated trends are integrated with the spatiotemporal pat-
+terns present in the observed information cascades to en-
+hance the accuracy of popularity predictions. Experiments
+on three real-world information cascade datasets demon-
+strate the superior performance of CasFT compared to a
+sizeable collection of state-of-the-art baselines. CasFT sig-
+nificantly outperforms all the baselines, with 2.2%-19.3%
+improvement over the best-performing baseline methods
+across various datasets.
+Acknowledgements
+This project has received funding from the Science
+and
+Technology
+Development
+Fund,
+Macau
+SAR
+(0047/2022/A1, 001/2024/SKL), and Taihu Innovation
+Scheme. This work was performed in part at SICC which is
+supported by SKL-IOTSC, University of Macau.
+11912

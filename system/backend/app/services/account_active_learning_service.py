@@ -11,7 +11,11 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.account_active_learning import select_account_detection_label_batch
-from app.core.account_labeling import AccountDetectionCase, build_account_detection_cases
+from app.core.account_labeling import (
+    AccountDetectionCase,
+    account_scope_key,
+    build_account_detection_cases,
+)
 from app.core.trained_bot_detection import run_trained_botrhg_detection
 from app.db.mongodb import get_mongo_db
 from app.models.account_labeling import AccountDetectionCaseRecord, AccountLabelBatch, AccountLabelBatchItem
@@ -131,19 +135,29 @@ async def _model_outputs(posts: list[dict[str, Any]]) -> dict[str, dict[str, Any
     active_model = await get_active_account_model()
     if active_model is None:
         return {}
-    result = await asyncio.to_thread(
-        run_trained_botrhg_detection,
-        posts,
-        active_model,
-        allow_legacy_fallback=False,
-    )
-    if not result:
-        return {}
-    return {
-        str(row.get("account_id") or ""): row
-        for row in result.get("accounts", [])
-        if str(row.get("account_id") or "")
-    }
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for post in posts:
+        platform = str(post.get("platform") or "unknown").strip().lower()
+        grouped.setdefault(platform, []).append(post)
+
+    outputs: dict[str, dict[str, Any]] = {}
+    for platform, scoped_posts in grouped.items():
+        result = await asyncio.to_thread(
+            run_trained_botrhg_detection,
+            scoped_posts,
+            active_model,
+            allow_legacy_fallback=False,
+        )
+        if not result:
+            continue
+        for row in result.get("accounts", []):
+            account_id = str(row.get("account_id") or "").strip()
+            if account_id:
+                outputs[account_scope_key(platform, account_id)] = {
+                    **row,
+                    "platform": platform,
+                }
+    return outputs
 
 
 async def _approved_case_ids(session: AsyncSession) -> set[str]:
@@ -186,7 +200,10 @@ async def _upsert_cases(
                 post_ids_json=json.dumps(case.post_ids, ensure_ascii=False),
                 evidence_post_ids_json=json.dumps(case.evidence_post_ids, ensure_ascii=False),
                 payload_json=json.dumps(case.to_dict(), ensure_ascii=False),
-                model_output_json=json.dumps(model_outputs.get(case.account_id, {}), ensure_ascii=False),
+                model_output_json=json.dumps(
+                    model_outputs.get(account_scope_key(case.platform, case.account_id), {}),
+                    ensure_ascii=False,
+                ),
             )
         )
 

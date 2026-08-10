@@ -36,8 +36,7 @@ from app.services import (
     bot_detection_service,
 )
 from app.services import account_training_service
-from app.services.account_model_runtime_service import get_active_account_model
-from app.tasks.account_evaluation_tasks import enqueue_account_model_evaluation_job
+from app.services.account_model_runtime_service import get_active_account_model_resolution
 from app.utils.response import success
 
 router = APIRouter()
@@ -351,6 +350,7 @@ async def export_account_dataset(
     dataset = await account_dataset_service.export_approved_account_dataset(
         session,
         dataset_version_id=payload.dataset_version_id,
+        corpus_version_id=payload.corpus_version_id,
         output_dir=payload.output_dir,
         operator_id=int(current_user.id),
     )
@@ -432,7 +432,6 @@ async def create_account_model_evaluation_job(
         evaluator_config=payload.evaluator_config,
         operator_id=int(current_user.id),
     )
-    enqueue_account_model_evaluation_job(job["job_id"], task_id=job["task_id"])
     return success(data=job)
 
 
@@ -470,9 +469,13 @@ async def activate_account_model(
 async def get_active_account_model_pointer(
     _current_user: User = Depends(get_current_user),
 ):
-    pointer = await get_active_account_model()
+    resolution = await get_active_account_model_resolution()
+    pointer = resolution.model
     return success(
         data={
+            "status": resolution.status,
+            "reason": resolution.reason,
+            "detail": resolution.detail,
             "model_version": pointer.model_version,
             "artifact_uri": pointer.artifact_uri,
             "artifact_hash": pointer.artifact_hash,
@@ -483,7 +486,14 @@ async def get_active_account_model_pointer(
             "research_approved": pointer.research_approved,
         }
         if pointer
-        else None
+        else {
+            "status": resolution.status,
+            "reason": resolution.reason,
+            "detail": resolution.detail,
+            "model_version": resolution.model_version,
+            "artifact_hash": resolution.artifact_hash,
+            "pointer_revision": resolution.pointer_revision,
+        }
     )
 
 

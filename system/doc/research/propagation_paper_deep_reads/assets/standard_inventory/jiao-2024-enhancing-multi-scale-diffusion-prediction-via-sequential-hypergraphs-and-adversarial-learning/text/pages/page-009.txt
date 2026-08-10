@@ -1,0 +1,68 @@
+The Thirty-Eighth AAAI Conference on Artiﬁcial Intelligence (AAAI-24)
+
+           dm     u1   u2   u3   u4   u5   u6   u7   u8
+
+
+
+                   u2                  u2                  u2                  u2             u1         GD1       u1         GD2       u1         GD3       u1         GD4
+                                     em                 em                   em                        u3                  u3                  u3                  u3
+                em            u5                  u5                  u5                  u5
+                   u8    u7            u8    u7            u8    u7            u8    u7
+               u4                  u4                  u4                  u4
+                       u6                  u6                  u6                  u6
+
+
+                       Figure 5: Hyperedge em connects different nodes in sequential hypergraphs.
+
+
+                                          Android                     Memetracker
+                     Models
+                               Hits@100  MAP@100  MSLE   Hits@100  MAP@100  MSLE
+
+                    w/o AdvDiff    0.2696       0.0711      0.467     0.5609       0.1605      0.895
+                    w/o Diff        0.2758       0.0716      0.265     0.5747       0.1614      0.853
+                    w/o Adv        0.2712       0.0718      0.369     0.5771       0.1634      0.844
+                    w/o HGNN      0.5871       0.2013      1.074     0.3692       0.1178      0.581
+
+                    w/o Macro      0.5580       0.1874      9.255     0.3665       0.1191      4.669
+                    w/o Micro       0.5871       0.1937      0.865     0.3591       0.1174      0.711
+
+               MINDS         0.2766       0.0727      0.151     0.5790       0.1638      0.506
+
+                             Table 6: Ablation study on Android and Memetracker datasets.
+
+
+  Microscopic prediction models:                              process.
+  TopoLSTM (Wang et  al. 2017) extends the standard
+LSTM model to simulate the information diffusion process     Construction of Sequential Hypergraphs
+and combines it with the social network.                                                                In the case that the cascade dm is divided into four parts
+ NDM (Yang et al. 2021) applies CNN to learn the dif-                                                           based on the time periods, the nodes connected by the hy-
+fusion representation of users and utilizes self-attention to                                                           peredge em in the hypergraph corresponding to each time
+make diffusion predictions.                                                               period are visually represented in Figure 5.
+  SNIDSA (Wang, Chen, and Li 2018) explores diffusion
+paths and the social network to jointly learn heterogeneous     Supplementary Results to Ablation Study
+information representations.
+                                         We observe that the ablation study across two datasets in Ta-  Inf-VAE (Sankar et al. 2020) embeds social homophily
+                                                                 ble 5 may be insufficient. For example, w/o AdvDiff showsthrough GNNs and designs a co-attentive fusion network to
+                                                                 the best, worst, and average performance on three metricsintegrate social and temporal variables.
+                                                      compared to w/o Adv and w/o Diff  respectively. To ad- DyHGCN (Yuan et al. 2020) jointly learns the structural
+                                                                 dress this concern, we conducted ablation experiments oncharacteristics of the social graph and dynamic diffusion
+                                                                 the other two datasets. The result is shown in Table 6. Thegraph, while encoding temporal information into a hetero-
+                                                            suboptimal results on the Christianity and Douban datasetsgeneous graph to capture users’ dynamic preferences.
+                                                            could be due to their unique characteristics, such as sparse  TAN-DRUD (Liu et al. 2022) models information cas-
+                                                         network connections leading to minimal feature overlap.cades by capturing the dual role user dependencies of infor-
+mation senders and receivers.
+  Unified multi-scale prediction models:                          Acknowledgements
+ FOREST (Yang et al. 2019) incorporates macroscopic in-      This work was supported in part by the Zhejiang Provin-
+formation into an RNN-based microscopic diffusion model        cial Natural Science Foundation of China under Grant
+to simultaneously predict microscopic and macroscopic dif-     LDT23F01012F01 and Grant LDT23F01015F01, in part by
+fusion.                                                           the Fundamental Research Funds for the Provincial Uni-
+  DMT-LIC  (Chen  et  al.  2019a)  designs  a  shared-       versities of Zhejiang Grant GK229909299001-008, in part
+representation layer to capture both the underlying structure     by the National Natural Science Foundation of China under
+of a cascade graph and the node sequence in the diffusion      Grant 62372146, Grant 62071327 and Grant 61806061, and
+
+
+
+
+
+                                                   8579

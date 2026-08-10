@@ -1,0 +1,40 @@
+Xu, X.; Zhou, F.; Zhang, K.; Liu, S.; and Trajcevski, G.
+2023b.
+CasFlow: Exploring Hierarchical Structures and
+Propagation Uncertainty for Cascade Prediction.
+IEEE
+Transactions on Knowledge and Data Engineering, 35:
+3484–3499.
+Yang, C.; Sun, M.; Liu, H.; Han, S.; Liu, Z.; and Luan, H.
+2021.
+Neural Diffusion Model for Microscopic Cascade
+Study. IEEE Transactions on Knowledge and Data Engi-
+neering, 33: 1128–1139.
+Yang, C.; Tang, J.; Sun, M.; Cui, G.; and Liu, Z. 2019. Full-
+Scale Information Diffusion Prediction With Reinforced Re-
+current Networks. IEEE Transactions on Neural Networks
+and Learning Systems, 34: 2271–2283.
+Yuan, C.; Li, J.; Zhou, W.; Lu, Y.; Zhang, X.; and Hu, S.
+2020. DyHGCN: A Dynamic Heterogeneous Graph Convo-
+lutional Network to Learn Users’ Dynamic Preferences for
+Information Diffusion Prediction. arXiv:2006.05169.
+Zhang, Q.; Guo, Z.; Zhu, Y.; Vijayakumar, P.; Castiglione,
+A.; and Gupta, B. B. 2023.
+A deep learning-based fast
+fake news detection model for cyber-physical social ser-
+vices. Pattern Recognition Letters, 168: 31–38.
+Zhao, Q.; Erdogdu, M. A.; He, H. Y.; Rajaraman, A.; and
+Leskovec, J. 2015. SEISMIC: A Self-Exciting Point Pro-
+cess Model for Predicting Tweet Popularity. Proceedings of
+the 21th ACM SIGKDD International Conference on Knowl-
+edge Discovery and Data Mining.
+Zhong, E.; Fan, W.; Wang, J.; Xiao, L.; and Li, Y. 2012.
+ComSoc: adaptive transfer of user behaviors over composite
+social network. In Knowledge Discovery and Data Mining.
+Zhou, F.; Xu, X.; Zhang, K.; Trajcevski, G.; and Zhong, T.
+2020.
+Variational Information Diffusion for Probabilistic
+Cascades Prediction. IEEE INFOCOM 2020 - IEEE Con-
+ference on Computer Communications, 1618–1627.
+The Thirty-Eighth AAAI Conference on Artiﬁcial Intelligence (AAAI-24)
+8581

@@ -1,0 +1,84 @@
+28                                                                                 Mannocci et al.
+
+
+behavior is orchestrated or spontaneous by assessing the extent to which highly connected nodes tend to connect with
+
+other highly connected nodes [18, 25, 90, 100, 149]. For example, high assortativity between nodes with large degree
+
+might indicate a centralized orchestrated structure. Instead, high assortativity between nodes with low degree might
+
+indicate decentralized orchestration, while low assortativity or disassortativity might indicate spontaneous behaviors.
+
+Likewise, low modularity, high density, or high clustering coefficient indicates a tendency for nodes to form tightly-knit
+
+groups, suggesting well-organized and potentially orchestrated behavior [18, 28, 44, 48, 60, 62, 90, 91, 96, 99, 100, 122].
+
+Finally, the time intervals between the actions of coordinated actors can provide information on whether the coordinated
+
+behavior is orchestrated or spontaneous because tightly synchronized actions suggest a higher level of premeditated
+
+organization, whereas more irregular intervals might indicate spontaneous, less structured coordination. The study
+
+of the internal structure and organization of coordinated communities is also relevant for investigating the diverse
+
+strategies of online manipulation. Organized influence campaigns often unfold in distinct ways: some aim to mobilize
+
+pre-existing organic communities, leveraging existing social ties and trust, while others seek to establish new com-
+
+munities controlled by a central entity [125]. Additionally, organic communities can emerge from grassroots efforts,
+
+where users are genuinely motivated by a common goal without external orchestration. These different strategies leave
+
+“network footprints” that can be captured by orchestration indicators [18].
+
+
+5.4  Time-variance
+
+Time-variance indicators aim at quantifying temporal changes in a wide array of characteristics of the coordinated
+
+actors. These include the number, intent, and behavior of the actors, which may result in changes in the types, timing,
+
+frequency, and intensity of their actions. Many measures can serve as time-variance indicators, including the indicators
+
+previously discussed for the dimensions of authenticity, harmfulness, and orchestration. Indeed, as shown in Table 9, all
+
+indicators for authenticity, harmfulness, and orchestration can potentially be analyzed over time, even if they have
+
+not been already studied in this way yet. However, utilizing a measure as a time-variance indicator requires repeated
+
+and extended monitoring to detect possible changes over time. This requirement for prolonged monitoring poses
+
+an additional challenge compared to other types of indicators, which explains the scarcity of studies that employed
+
+time-variance indicators or that investigated the temporal dynamics of coordinated behavior [129]. The few existing
+
+detailed temporal analyses examined user flows between coordinated communities or the variation of users between
+
+different time windows [65, 129]. Other temporal analyses of user activity can involve examining bursts of account
+
+creations [115], abnormal post or retweet volumes [15, 25, 26, 41, 55, 58, 59, 64, 110, 115, 116, 126, 138, 140, 142, 146], or
+
+inflated engagement metrics, such as the number of views [110, 140]. The analysis of topics and hashtags over time can
+
+reveal the evolution of the narratives promoted or discussed by the coordinated actors [129, 141]. The timing of the
+
+actions, such as the intervals between pairs of actions that result in a co-action, can provide insights into the type of
+
+coordination and strategies employed, which may evolve over time [14, 17, 102].
+
+
+5.5  Other general indicators
+
+In addition to the indicators that provide information about the four defining dimensions of coordinated behavior, other
+
+general-purpose indicators have also been used. These come in handy to provide additional context on the coordinated
+
+behavior and may be particularly relevant depending on the application context, as in the case of the indicators
+
+of political polarization or bias that are used to characterize coordinated communities involved in online electoral
+
+debates [62, 66, 100, 128, 129]. Political bias was computed based on MBFC scores or by leveraging hashtag polarity.
+
+Analyses of the level of activity of coordinated actors on a platform [15, 25, 26, 41, 55, 58, 59, 64, 110, 115, 116, 126, 138,
+
+Manuscript submitted to ACM

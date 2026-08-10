@@ -8,8 +8,10 @@ from __future__ import annotations
 
 from datetime import datetime, timezone, timedelta
 
+import networkx as nx
 import pytest
 
+from app.core import propagation_legacy
 from app.core.propagation import build_propagation_graph
 from app.services.propagation_prediction_service import build_event_inference_bundle, predict_event_with_checkpoint
 
@@ -183,6 +185,7 @@ class TestPropagationAnalysisEventInferenceAdapter:
             relation_neighbor_count=4,
             hyperedge_count=4,
             relation_neighbors={},
+            observation_ratio=1.0,
         )
 
         assert bundle["status"] == "ok"
@@ -203,6 +206,7 @@ class TestPropagationAnalysisEventInferenceAdapter:
             relation_neighbor_count=4,
             hyperedge_count=4,
             relation_neighbors={},
+            observation_ratio=1.0,
         )
 
         assert bundle["status"] == "ok"
@@ -354,6 +358,72 @@ class TestPropagationAnalysisEventInferenceAdapter:
             if not edge.get("is_parallel_root"):
                 assert (edge["source"], edge["target"]) in graph_edge_keys
 
+    def test_diffusion_layout_moves_unconnected_first_layer_branches_away_from_root(self):
+        simple_graph = nx.DiGraph()
+        simple_graph.add_edge("root", "near", weight=1, type="implicit", object_id="shared")
+        simple_graph.add_edge("detached", "detached_child", weight=1, type="implicit", object_id="shared")
+
+        visible_nodes = [
+            {"id": "root", "author_name": "Root", "layer": 0, "out_degree": 1, "post_count": 1},
+            {"id": "near", "author_name": "Near", "layer": 1, "out_degree": 0, "post_count": 1},
+            {"id": "detached", "author_name": "Detached", "layer": 1, "out_degree": 1, "post_count": 1},
+            {"id": "detached_child", "author_name": "Detached Child", "layer": 2, "out_degree": 0, "post_count": 1},
+        ]
+        tree_edges = [
+            {"source": "root", "target": "near", "type": "implicit", "object_id": "shared"},
+            {"source": "detached", "target": "detached_child", "type": "implicit", "object_id": "shared"},
+        ]
+        shared_objects = {
+            "shared": [
+                {"author_id": "root"},
+                {"author_id": "near"},
+                {"author_id": "detached"},
+                {"author_id": "detached_child"},
+            ]
+        }
+
+        laid_out = propagation_legacy._apply_clustered_diffusion_layout(
+            visible_nodes,
+            tree_edges,
+            shared_objects,
+            "root",
+            simple_graph,
+        )
+        nodes = {node["id"]: node for node in laid_out}
+
+        assert nodes["near"]["layout_radius"] < 100
+        assert nodes["detached"]["layout_radius"] >= 240
+        assert nodes["detached_child"]["layout_radius"] > nodes["detached"]["layout_radius"]
+
+    def test_diffusion_child_selection_prioritizes_confirmed_edges_then_supplements_inferred(self):
+        simple_graph = nx.DiGraph()
+        multi_graph = nx.MultiDiGraph()
+        simple_graph.add_node("root")
+        multi_graph.add_node("root", post_count=1)
+
+        simple_graph.add_edge("root", "confirmed", weight=1, type="explicit")
+        multi_graph.add_node("confirmed", post_count=1)
+        for index in range(20):
+            node_id = f"inferred_{index}"
+            simple_graph.add_edge("root", node_id, weight=50, type="implicit")
+            multi_graph.add_node(node_id, post_count=5)
+
+        children = list(simple_graph.successors("root"))
+        selected = propagation_legacy._select_diffusion_children(
+            simple_graph,
+            multi_graph,
+            "root",
+            children,
+            {node: 0 for node in simple_graph.nodes},
+            set(),
+            set(),
+            0,
+        )
+
+        assert selected[0] == "confirmed"
+        assert "confirmed" in selected
+        assert len([node for node in selected if node.startswith("inferred_")]) == 12
+
     def test_diffusion_summary_respects_dynamic_node_limit_and_full_view(self):
         posts = [
             {"post_id": f"p{i}", "author_id": f"u{i}", "author_name": f"User{i}",
@@ -379,6 +449,39 @@ class TestPropagationAnalysisEventInferenceAdapter:
 
         for edge in summary["tree_edges"] + summary["highlight_edges"]:
             assert layer_by_node[edge["source"]] != layer_by_node[edge["target"]]
+
+    def test_diffusion_summary_backfills_visible_inferred_predecessor_edges(self):
+        simple_graph = nx.DiGraph()
+        simple_graph.add_edge("root", "confirmed", weight=1, type="explicit")
+        simple_graph.add_edge("inferred_parent", "inferred_child", weight=3, type="implicit", object_id="shared")
+        visible_nodes = {"root", "confirmed", "inferred_parent", "inferred_child"}
+        node_layers = {
+            "root": 0,
+            "confirmed": 1,
+            "inferred_parent": 1,
+            "inferred_child": 2,
+        }
+        tree_edges = {
+            ("root", "confirmed"): {
+                "source": "root",
+                "target": "confirmed",
+                "weight": 1,
+                "type": "explicit",
+                "is_parallel_root": False,
+            }
+        }
+
+        propagation_legacy._backfill_visible_predecessor_edges(
+            simple_graph,
+            visible_nodes,
+            node_layers,
+            tree_edges,
+            "root",
+        )
+
+        assert ("inferred_parent", "inferred_child") in tree_edges
+        assert tree_edges[("inferred_parent", "inferred_child")]["type"] == "implicit"
+        assert tree_edges[("inferred_parent", "inferred_child")]["object_id"] == "shared"
 
 
 # ---------------------------------------------------------------------------

@@ -1,0 +1,77 @@
+20                                                                                 Mannocci et al.
+
+
+Table 5. Network science methods for detecting coordinated behavior based on multiplex user networks, where each layer corresponds
+to a different co-action. For each group of works we report the considered co-actions, similarity functions, filtering criteria, and the
+optional flattening step applied before the community detection method.
+
+  reference   action                       similarity                     filters†            flattening           community detection
+
+  [32]          share, message, URL, hashtag   cardinality                    threshold, ADO                             Louvain, IPVC‡
+   [29, 70]       retweet, tweet, URL, hashtag   cosine similarity TF-IDF      threshold, ADO    unweighted edge union
+                retweet, URL, hashtag,         temporal weighted
+  [52]                                                                                                               Generalized Leiden
+              mention                         cardinality
+  [48]          retweet, text, URL, reply        cardinality            EDO               multigraph             connected components
+  [72]        URL, hashtag                   cardinality            EDO                                       multi-view clustering
+  [73]        URL, hashtag, mention          cardinality            EDO                                       multi-view clustering
+   [92, 94]     URL, hashtag, mention          cardinality            EDO            sum cardinality
+             URL, hashtag, mention, reply,                                                                          Generalized Louvain,
+  [81]                                        cosine similarity TF-IDF      threshold, EDO
+               retweet                                                                                               Generalized Infomap
+  [96]        URL, tweet                       cardinality, cosine similarity  threshold, EDO     unweighted edge union  Louvain
+
+  † EDO: evenly distributed overlapping time window, ADO: action-driven overlapping time window. ‡ IPVC: iterative probabilistic voting consensus
+
+includes a temporal decay weighting scheme that emphasizes the contribution of recent time windows over older ones.
+
+Instead, Tardelli et al. [129] built a multiplex temporal network where the layers are obtained from a sequence of evenly
+
+distributed overlapping time windows. Differently from all other approaches, the multiplex temporal network is then
+
+analyzed as a whole. A further innovation is introduced in [95], which solves an optimization task to select the best
+
+window size 𝑍in an overlapping time windows setting. Finally, we remark that the filtering methods discussed in this
+section can be, and oftentimes are, used in combination for greater efficiency and to further reduce the network size
+
+when analyzing very large datasets.
+
+
+4.1.4  Community discovery. This step aims to detect a set of coordinated communities 𝑃= {𝑃1, . . . , 𝑃𝑛} via commu-
+nity discovery on the coordination network. Multiplex networks are either flattened before performing community
+
+discovery [145, 146] or an algorithm suitable for multiplex networks is used [74, 129].
+
+
+   Implementation. Most of the works dealing with single layer networks carry out community discovery with Lou-
+vain [16, 17, 26, 47, 59, 61, 62, 65, 90, 91, 95–97, 99, 140, 158], or more broadly via modularity clustering [18]. Other
+
+recent works relied on Leiden [3, 98, 114, 129, 138]. Among the advantages of these approaches is their scalability,
+
+which makes them suitable for the analysis of large networks. In addition, modularity clustering provides a hierarchical
+
+community structure, allowing for analyses at different levels of granularity. The authors of [100, 128] combined
+
+community discovery via Louvain with the iterative application of a progressively increasing edge weight filtering
+
+threshold on the coordination network. As a result of the moving threshold, they studied how the structure and the
+
+properties of the coordinated communities change across the whole spectrum of coordination. Moreover, the moving
+
+threshold implicitly defines a measure for the extent of coordination observed at each iteration, for each coordinated
+
+community, thus providing a continuous score of coordination rather than a binary label. Others proposed a variation
+
+of focal structures analysis to identify influential sets of nodes in a coordination network [145, 146].
+
+  An alternative to community discovery is the application of a particularly restrictive set of filters that results in
+
+splitting the coordination network in multiple connected components [14, 15, 20, 41–44, 48, 49, 104, 106, 110, 112, 121,
+
+122, 148, 152, 157]. Since each component is disconnected from the others, this process essentially produces an output
+
+that is similar to that of community discovery, in that it identifies groups of connected and highly coordinated users.
+
+However, the application of very restrictive filters also discards much of the coordination network [100].
+
+Manuscript submitted to ACM

@@ -7,7 +7,7 @@ Create Date: 2026-07-02 12:55:00.000000
 
 from typing import Sequence, Union
 
-from alembic import op
+from alembic import context, op
 import sqlalchemy as sa
 from sqlalchemy import inspect
 
@@ -19,16 +19,31 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def _has_table(table_name: str) -> bool:
+    if context.is_offline_mode():
+        return False
     return inspect(op.get_bind()).has_table(table_name)
 
 
-def _has_index(table_name: str, index_name: str) -> bool:
-    return any(index["name"] == index_name for index in inspect(op.get_bind()).get_indexes(table_name))
+def _find_index(table_name: str, index_name: str) -> dict | None:
+    if context.is_offline_mode():
+        return None
+    return next(
+        (index for index in inspect(op.get_bind()).get_indexes(table_name) if index.get("name") == index_name),
+        None,
+    )
 
 
 def _create_index_if_missing(index_name: str, table_name: str, columns: list[str], unique: bool = False) -> None:
-    if not _has_index(table_name, index_name):
+    existing = _find_index(table_name, index_name)
+    if existing is None:
         op.create_index(index_name, table_name, columns, unique=unique)
+        return
+    existing_columns = tuple(existing.get("column_names") or ())
+    if existing_columns != tuple(columns) or bool(existing.get("unique")) != unique:
+        raise RuntimeError(
+            f"Existing index {index_name!r} on {table_name!r} has incompatible columns or uniqueness; "
+            "remediate it before retrying the migration."
+        )
 
 
 def upgrade() -> None:
@@ -71,5 +86,5 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    if _has_table("risk_assessments"):
+    if context.is_offline_mode() or _has_table("risk_assessments"):
         op.drop_table("risk_assessments")

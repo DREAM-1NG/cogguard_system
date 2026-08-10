@@ -1,0 +1,46 @@
+Sarah Parisot, Soﬁa Ira Ktena, Enzo Ferrante, Matthew Lee, Ricardo Guerrero, Ben Glocker, and
+Daniel Rueckert. Disease prediction using graph convolutional networks: Application to autism
+spectrum disorder and alzheimer’s disease. Med Image Anal, 48:117–130, 2018.
+Yulong Pei, Jianpeng Zhang, GH Fletcher, and Mykola Pechenizkiy. Node classiﬁcation in dynamic
+social networks. AALTD, pp. 54, 2016.
+Bryan Perozzi, Rami Al-Rfou, and Steven Skiena. Deepwalk: Online learning of social representa-
+tions. In KDD ’14, pp. 701–710, 2014. ISBN 9781450329569. doi: 10.1145/2623330.2623732.
+URL https://doi.org/10.1145/2623330.2623732.
+Siyuan Qi, Wenguan Wang, Baoxiong Jia, Jianbing Shen, and Song-Chun Zhu. Learning human-
+object interactions by graph parsing neural networks. In ECCV, pp. 401–417, 2018.
+Emanuele Rossi, Federico Monti, Michael M. Bronstein, and Pietro Liò. ncrna classiﬁcation with
+graph convolutional networks. In KDD Workshop on Deep Learning on Graphs, 2019.
+Emanuele Rossi, Fabrizio Frasca, Ben Chamberlain, Davide Eynard, Michael Bronstein, and Federico
+Monti. Sign: Scalable inception graph neural networks. arXiv preprint arXiv:2004.11198, 2020.
+Aravind Sankar, Yanhong Wu, Liang Gou, Wei Zhang, and Hao Yang. Dysat: Deep neural rep-
+resentation learning on dynamic graphs via self-attention networks. In WSDM, pp. 519–527,
+2020.
+Youngjoo Seo, Michaël Defferrard, Pierre Vandergheynst, and Xavier Bresson. Structured sequence
+modeling with graph convolutional recurrent networks. Lecture Notes in Computer Science,
+pp. 362–373, 2018. ISSN 1611-3349. doi: 10.1007/978-3-030-04167-0_33. URL http:
+//dx.doi.org/10.1007/978-3-030-04167-0_33.
+Umang Sharan and Jennifer Neville. Temporal-relational classiﬁers for prediction in evolving
+domains. In ICDM, pp. 540–549. IEEE, 2008.
+Uriel Singer, Ido Guy, and Kira Radinsky. Node embedding over temporal graphs. In IJCAI, pp.
+4605–4612, 7 2019. doi: 10.24963/ijcai.2019/640. URL https://doi.org/10.24963/
+ijcai.2019/640.
+Rakshit Trivedi, Hanjun Dai, Yichen Wang, and Le Song. Know-evolve: Deep temporal reasoning
+for dynamic knowledge graphs. In ICML, pp. 3462–3471, 2017.
+Rakshit Trivedi, Mehrdad Farajtabar, Prasenjeet Biswal, and Hongyuan Zha. Dyrep: Learning
+representations over dynamic graphs. In ICLR, 2019. URL https://openreview.net/
+forum?id=HyePrhR5KX.
+Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N Gomez, Ł ukasz
+Kaiser, and Illia Polosukhin. Attention is all you need. In NIPS, pp. 5998–6008. 2017. URL
+http://papers.nips.cc/paper/7181-attention-is-all-you-need.pdf.
+Petar Velickovic, Guillem Cucurull, Arantxa Casanova, Adriana Romero, Pietro Liò, and Yoshua
+Bengio. Graph attention networks. In ICLR, 2018.
+Kirill Veselkov et al. Hyperfoods: Machine intelligent mapping of cancer-beating molecules in foods.
+Scientiﬁc Reports, 9(1):1–12, 2019.
+Thomas Wolf, Lysandre Debut, Victor Sanh, Julien Chaumond, Clement Delangue, Anthony Moi,
+Pierric Cistac, Tim Rault, R’emi Louf, Morgan Funtowicz, and Jamie Brew. Huggingface’s
+transformers: State-of-the-art natural language processing. arXiv:1910.03771, 2019.
+Yu Xin, Zhi-Qiang Xie, and Jing Yang. An adaptive random walk sampling method on dynamic
+community detection. Expert Systems with Applications, 58:10–19, 2016.
+Chengjin Xu, Mojtaba Nayyeri, Fouad Alkhoury, Jens Lehmann, and Hamed Shariat Yazdi. Temporal
+knowledge graph completion based on time series gaussian embedding. arXiv:1911.07893, 2019.
+12

@@ -1,0 +1,60 @@
+Detection and Characterization of Coordinated Online Behavior: A Survey                                   35
+
+
+ [40] Camille Francois, Vladimir Barash, and John Kelly. 2023. Measuring coordinated versus spontaneous activity in online social movements. New
+     Media & Society 25, 11 (2023), 3065–3092.
+ [41] Piyush Ghasiya and Kazutoshi Sasahara. 2022. Rapid sharing of Islamophobic hate on Facebook: The case of the Tablighi Jamaat controversy.
+       Social Media + Society 8, 4 (2022).
+ [42] Fabio Giglietto, Giada Marino, Roberto Mincigrucci, and Anna Stanziano. 2023. A workflow to detect, monitor, and update lists of coordinated
+       social media accounts across time: The case of the 2022 Italian election. Social Media + Society 9, 3 (2023).
+ [43] Fabio Giglietto, Nicola Righetti, Luca Rossi, and Giada Marino. 2020. Coordinated link sharing behavior as a signal to surface sources of problematic
+      information on Facebook. In ACM SMSociety. 85–91.
+ [44] Fabio Giglietto, Nicola Righetti, Luca Rossi, and Giada Marino. 2020. It takes a village to manipulate the media: Coordinated link sharing behavior
+      during 2018 and 2019 Italian elections. Information, Communication & Society 23, 6 (2020), 867–891.
+ [45] Fabio Giglietto, Massimo Terenzi, Giada Marino, Nicola Righetti, and Luca Rossi. 2020. Adapting to mitigation efforts: Evolving strategies of
+      coordinated link sharing on Facebook. SSRN:3775469
+ [46] Google. 2020.  Updates about government-backed hacking and disinformation.  https://blog.google/threat-analysis-group/updates-about-
+      government-backed-hacking-and-disinformation/. (accessed: 31/07/2024).
+ [47] Timothy Graham, Axel Bruns, Guangnan Zhu, and Rod Campbell. 2020. Like a virus: The coordinated spread of coronavirus disinformation. Technical
+      Report. Centre for Responsible Technology, The Australia Institute.
+ [48] Timothy Graham, Sam Hames, and Elizabeth Alpert. 2024. The coordination network toolkit: A framework for detecting and analysing coordinated
+      behaviour on social media. Journal of Computational Social Science 7, 2 (2024), 1139–1160.
+ [49] Anatoliy Gruzd, Philip Mai, and Felipe B. Soares. 2022. How coordinated link sharing behavior and partisans’ narrative framing fan the spread of
+     COVID-19 misinformation and conspiracy theories. Social Network Analysis and Mining 12, 1 (2022), 118.
+ [50] Chris Hays, Zachary Schutzman, Manish Raghavan, Erin Walk, and Philipp Zimmer. 2023. Simplistic collection and labeling practices limit the
+        utility of benchmark datasets for twitter bot detection. In ACM WWW. 3660–3669.
+ [51] Kristina Hristakieva, Stefano Cresci, Giovanni Da San Martino, Mauro Conti, and Preslav Nakov. 2022. The spread of propaganda by coordinated
+      communities on social media. In ACM WebSci. 191–201.
+ [52] Letizia Iannucci, Elisa Muratore, Antonis Matakos, and Mikko Kivelä. 2025. Detecting Coordinated Activities Through Temporal, Multiplex, and
+      Collaborative Analysis. arXiv:2512.19677
+ [53] Laura Jahn and Rasmus K. Rendsvig. 2023. Towards detecting inauthentic coordination in Twitter likes data. arXiv:2305.07384
+ [54] Laura Jahn, Rasmus K. Rendsvig, and Jacob Stærk-Østergaard. 2023. Detecting coordinated inauthentic behavior in likes on social media: Proof of
+      concept. arXiv:2305.07350
+ [55] Maurice Jakesch, Kiran Garimella, Dean Eckles, and Mor Naaman. 2021. Trend alert: A cross-platform organization manipulated Twitter trends in
+      the Indian general election. In ACM CSCW. 1–19.
+ [56] Anna Kalenkova, Lewis Mitchell, and Ethan Johnson. 2025. Discovering Coordinated Processes From Social Online Networks. arXiv:2506.12988
+ [57] Nikos Kanakaris, Heng Ping, Xiongye Xiao, Nesreen K Ahmed, Luca Luceri, Emilio Ferrara, and Paul Bogdan. 2025. Network-informed Prompt
+      Engineering against Organized Astroturf Campaigns under Extreme Class Imbalance. In ACM WWW. 2651–2660.
+ [58] Franziska B. Keller, David Schoch, Sebastian Stier, and JungHwan Yang. 2017. How to manipulate social media: Analyzing political astroturfing
+      using ground truth data from South Korea. In AAAI ICWSM. 564–567.
+ [59] Franziska B. Keller, David Schoch, Sebastian Stier, and JungHwan Yang. 2020. Political astroturfing on Twitter: How to coordinate a disinformation
+      campaign. Political Communication 37, 2 (2020), 256–280.
+ [60] Baris Kirdemir, Oluwaseyi Adeliyi, and Nitin Agarwal. 2022. Towards characterizing coordinated inauthentic behaviors on YouTube. In ROMCIR.
+      100–116.
+ [61] Aytalina Kulichkina, Paul Balluff, Nicola Righetti, and Annie Waldherr. 2026. Connective action and digital repression during China’s COVID-19
+       protests: a computational analysis of multilingual coordinated activity on Twitter. EPJ Data Science (2026).
+ [62] Aytalina Kulichkina, Nicola Righetti, and Annie Waldherr. 2025. Protest and repression on social media: Pro-Navalny and pro-government
+      mobilization dynamics and coordination patterns on Russian Twitter. New media & Society 27, 9 (2025), 5433–5454.
+ [63] Daria Kuznetsova. 2025. Amplifying the regime: identifying coordinated activity of pro-government Telegram channels in Russia and Belarus.
+      Journal of Information Technology & Politics (2025), 1–17.
+ [64] Kyumin Lee, James Caverlee, Zhiyuan Cheng, and Daniel Z. Sui. 2013. Campaign extraction from social media. ACM Transactions on Intelligent
+      Systems and Technology 5, 1 (2013), 9:1–9:28.
+ [65] Renan S. Linhares, José M. Rosa, Carlos H. G. Ferreira, Fabricio Murai, Gabriel Nobre, and Jussara Almeida. 2022. Uncovering coordinated
+      communities on Twitter during the 2020 US election. In IEEE/ACM ASONAM. 80–87.
+ [66] Edoardo Loru, Matteo Cinelli, Maurizio Tesconi, and Walter Quattrociocchi. 2024. The influence of coordinated behavior on toxicity. Online Social
+      Networks and Media 43 (2024), 100289.
+ [67] Edoardo Loru, Niccolò Di Marco, Matteo Cinelli, and Walter Quattrociocchi. 2025. A Compression-Based Approach to Detecting Automated and
+      Coordinated Behavior on Social Media. ACM Transactions on Knowledge Discovery from Data 20, 2 (2025), 25 pages.
+ [68] Lorenzo Lucchini, Luca M. Aiello, Laura Alessandretti, Gianmarco De Francisci Morales, Michele Starnini, and Andrea Baronchelli. 2022. From
+      Reddit to Wall Street: The role of committed minorities in financial collective action. Royal Society Open Science 9, 4 (2022), 211488.
+                                                                                                         Manuscript submitted to ACM

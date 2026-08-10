@@ -1,0 +1,54 @@
+30                                                                                 Mannocci et al.
+
+
+
+
+
+                                                                             Fig. 10. Distribution of works focused on different types
+                                                                         of coordinated behavior, categorized based on the defining
+                                                               dimensions of authenticity, harmfulness, orchestration, and
+   Fig. 9. Distribution of works based on the combination of analyzed   time-variance. Vertical bars show the number of works
+   platforms. The vast majority of works analyzed a single platform,   for each combination of dimensions, while horizontal bars
+  mainly Twitter/X. Only a few works performed cross-platform anal-  show the number of works for each individual dimension.
+   yses, represented by multiple connected dots.                  Only combinations covered by 2+ works are shown.
+
+hashtags, with minor variations between platforms. In contrast, cross-platform campaigns involve different platforms
+playing distinct roles, with coordinated behavior varying significantly across the involved platforms. For example,
+
+organizers of a targeted hate attack might use private groups on a messaging platform to plan their actions before moving
+
+to the target platform to flood it with hateful comments [55]. Detecting coordination on the planning platform might
+
+involve analyzing group joinings, while on the target platform it could involve examining synchronized commenting.
+
+The example highlights the challenges of multi- and cross-platform analyses, which require extensive data collection,
+
+careful selection of actions or machine learning features for each platform, and identification of the same groups of users
+across multiple platforms. While the latter can be mitigated via the analysis of content rather than user networks—as
+discussed in Section 4.1.5—the remaining outstanding challenges result in a scarcity of multi- and cross-platform
+
+analyses. Figure 9 shows that most studies analyzed coordinated behavior on Twitter/X, with only a few multiplatform
+
+analyses [11, 32, 52, 55, 81, 97, 98, 110, 113, 156], highlighting that this area still necessitates much investigation.
+
+   Temporal variability. Most studies on coordinated behavior incorporate time to some degree, as shown in Tables 3, 7, 8,
+and 9. However, the majority of such works only perform superficial temporal analyses. Figure 10 highlights that only a
+few works have deeply investigated the temporal dynamics of coordinated behavior, using methods like multiplex tem-
+poral networks [129] and temporal point processes [118, 155]. Thus, analyzing temporal dynamics remains a promising
+yet relatively unexplored research avenue. Temporal analyses offer numerous advantages, including examining (i) the
+temporal stability of coordinated groups, (ii) changes in membership, structure, and actions, and (iii) adaptation to
+countermeasures or other stimuli [45]. Further, dynamic analyses seem to yield more accurate results compared to
+
+static ones [129]. However, this approach faces several challenges, such as setting appropriate temporal parameters and
+
+addressing the computational demands resulting from the time-intensive nature of dynamic analyses.
+
+   Heterogeneity. The great degree of heterogeneity inherent of coordinated behavior does not only manifests through
+temporal variations, but also through the multitude of characteristics that the different instances of coordinated
+
+behaviors exhibit. Figure 10 shows the distribution of studies that addressed specific types of online coordination, based
+on the defining dimensions introduced in Section 2.5. As shown by the vertical bars, coordinated harmful inauthentic
+and orchestrated behavior is the type of coordination that was studied the most. As discussed in Section 2, this is due
+
+
+Manuscript submitted to ACM

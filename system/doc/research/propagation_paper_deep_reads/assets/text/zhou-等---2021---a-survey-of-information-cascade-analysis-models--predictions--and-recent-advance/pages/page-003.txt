@@ -1,0 +1,38 @@
+A Survey of Information Cascade Analysis: Models, Predictions, and Recent Advances
+27:3
+Fig. 1. Left: Number of publications over the last decade. Right: Distribution of venues of publications.
+In comparison with previous surveys, this article makes the following distinct contributions:
+(1) A more general perspective: We extend the realm of modeling online web content, e.g.,
+user-generated content microblogs [63], to a general definition of information, i.e., any
+measurable entities that can be propagated in any networks, including scientific publi-
+cations and citation networks, user published text/photos/videos and online sharing net-
+works, and so on.
+(2) A wider range of networks and cascades: As opposed to existing surveys that focus on a
+single type of social network (e.g., Twitter and Weibo in Reference [63]), this work reviews
+information spreading in various networks, including but not limited to Facebook, Flickr,
+YouTube, Netflix, IMDB, Instagram, Wikipedia, Reddit, and DBLP.
+(3) A broader and balanced in-depth survey of the methodologies for predicting the outcome
+or popularity of cascades: Complementing the previous surveys’ composite of methods at
+different analytical levels [70, 144, 185], we provide finer-grained analysis of trade-offs,
+advantages, and limitations of existing methods. We also consider a wider spectrum of
+features, methodologies and interpretations, compared to a recent survey that also focused
+on popularity prediction [63].
+(4) More comprehensive recent literature: We currently provide the most comprehensive lit-
+erature review of methods of modeling information diffusion, which not only spans a
+broad range of traditional feature engineering approaches and generative models but also
+contains recent advances in modeling and predicting information popularity with graph
+representation learning and deep learning techniques.
+Figure 1 provides a summary statistics of the papers included in this survey. As shown, infor-
+mation cascade modeling and prediction have consistently spurred great interest in recent years,
+although the methodologies employed varied over time—e.g., most recently, deep learning-based
+methods have emerged as the more popular techniques. Research works that we reviewed were
+published in high-ranking conferences/journals related to data mining, social networks and infor-
+mation management, such as WWW, ICWSM, KDD, CIKM, WSDM, SIGIR, MM, TKDE, TKDD,
+ICDM, AAAI, and IJCAI. We note, though, that more than 40% of papers come from a variety
+of conferences/journals outside of the typical venues, further attesting that this is an interdisci-
+plinary topic spanning computer science, artificial intelligence, sociology, economics, marketing,
+statistics, and so on.
+We build a taxonomy of methods from three different aspects, as illustrated in Figure 2. First,
+popularity prediction can be considered as either a classification or a regression problem, accord-
+ing to the problem formulation and target application tasks. For example, information outbreak
+ACM Computing Surveys, Vol. 54, No. 2, Article 27. Publication date: March 2021.

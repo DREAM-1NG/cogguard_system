@@ -1,0 +1,57 @@
+A Survey of Information Cascade Analysis: Models, Predictions, and Recent Advances       27:5
+
+
+and dies out. Even in conventional information fields, content such as magazines, newspapers, and
+academic journals are digitized and consumed in online platforms. Understanding the inner drive
+that determines the spread of information items is nontrivial and important for many real-world
+applications such as advertising, decision making, and caching strategy.
+  The spread and diffusion of information items are featured by various endogenous or exogenous
+factors. For example, in social networking platforms like Twitter and Weibo, users spontaneously
+post tweets, follow other users, “like” or comment on tweets, and most importantly, retweet other
+users’ (re)tweets, which will show in the feed of her/his followers (potential future retweeters of
+this tweet). In contrast, user-driven resharing mechanisms can also be triggered by social influ-
+ence [5] and by external influences like burst events [45].
+
+2.2  Problem Definitions
+
+Information items/cascades are transient, sparse, and biased data. The prediction of information
+item/cascade is challenging and in some cases, they are in fact unpredictable [33, 144]. To bet-
+ter characterize the complex nature of information items/cascades and to explore under which
+circumstances the problem can be tackled, here we apply threefold categorization: (i) classifica-
+tion/regression; (ii) before/after publication; and (iii) granularity of the prediction, i.e., a macro-
+level prediction (collective behavior) or micro-level prediction (individual behavior).
+
+   2.2.1   Classification versus Regression. The popularity prediction of information items/cascades
+can be defined as either a classification problem or a regression problem. Consider a piece of infor-
+mation that can be disseminated by other users in a social network. We use information diffusion
+to denote the process of dissemination. Therefore, the popularity prediction problem is to predict
+the final audience, attention, or influence of this information, given its initial state.
+
+   Definition 2.1 (Popularity Prediction). Given M information item {I1, I2, . . . , IM } and a specific
+measurement of popularity for each item Ii published by authoru0 at time t0, popularity prediction
+aims at predicting the popularity Pi (tp) of Ii at a future prediction time tp.
+
+  When it comes to the classification tasks, the exact value of Pi (tp) is not required. Instead, one
+aims to predict whether an information item will be popular or not, given a predefined abso-
+lute/relative threshold. For example, some models predict whether an item gains reshares [149,
+155], or whether an item will burst in the near future [39, 46]—both of which can be treated as
+a binary classification problem. Another line of works predefine several popularity intervals, and
+then predict which interval an item is most likely to fall into [61, 81, 134, 135], converting the prob-
+lem to a classical multi-class classification task. As for regression models, they primarily predict the
+exact popularity value Pi (tp) (e.g., retweets and citations) that an item will gain in the future [3,
+11, 106, 181].
+  Generally speaking, classification tasks are relatively easier than regression tasks. [12] showed
+that with only four types of features, classification accuracy can reach 84% but perform poorly on
+regression task. Although the intuition behind formulating regression is more natural and provides
+a fine-grained scope to analyze which factors affect the future popularity and lead information
+items to success, precise regression prediction often requires far more information regarding items
+and users, which therefore implies a higher complexity [60]. In addition, it suffers from undesirable
+issues such as overfitting, inductive bias, and prediction error accumulations [214]. We note many
+of the models we surveyed can be easily modified from regression to classification, or vice versa.
+
+   2.2.2  Ex-ante Prediction versus Peeking Strategy. Popularity prediction can also be made before
+or at the time of its publication (a.k.a. ex-ante prediction [136]), or after its publication (a.k.a. peek-
+ing strategy [175]). Obviously, prediction in advance is a more challenging task, since only limited
+
+
+                       ACM Computing Surveys, Vol. 54, No. 2, Article 27. Publication date: March 2021.

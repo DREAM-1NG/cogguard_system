@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 import pytest
 from sqlalchemy import select
@@ -24,6 +26,90 @@ from app.services.account_training_service import (
     resume_account_training_run,
 )
 from app.utils.exceptions import AppException
+
+
+@pytest.fixture(autouse=True)
+def _stub_preflight_for_synthetic_training_paths(request, monkeypatch):
+    """Lifecycle tests deliberately use paths that do not exist on disk."""
+
+    if "real_training_preflight" in request.fixturenames:
+        return
+
+    monkeypatch.setattr(
+        "app.services.account_training_service.preflight_account_training_artifact",
+        lambda *, family, config: {"family": family},
+        raising=False,
+    )
+    async def resolve_synthetic_detector(_session, config):
+        return dict(config)
+
+    monkeypatch.setattr(
+        "app.services.account_training_service._resolve_governed_detector_config",
+        resolve_synthetic_detector,
+        raising=False,
+    )
+
+
+@pytest.fixture
+def real_training_preflight():
+    """Opt into real local preflight in a service test."""
+
+
+def _write_local_mlm(tmp_path: Path) -> Path:
+    model_dir = tmp_path / "model"
+    model_dir.mkdir()
+    (model_dir / "config.json").write_text(
+        json.dumps({"model_type": "bert", "architectures": ["BertForMaskedLM"]}), encoding="utf-8"
+    )
+    (model_dir / "tokenizer.json").write_text("{}", encoding="utf-8")
+    (model_dir / "pytorch_model.bin").write_bytes(b"weights")
+    return model_dir
+
+
+def _write_detector_inputs(tmp_path: Path) -> tuple[Path, Path, dict[str, object]]:
+    dataset_root = tmp_path / "dataset"
+    dataset_root.mkdir()
+    records = [
+        {"account_id": "account-1", "text": "\u53ef\u8bad\u7ec3\u8d26\u53f7\u8bed\u6599", "training_target": "non_bot"},
+        {"account_id": "account-2", "text": "\u53e6\u4e00\u6761\u8bad\u7ec3\u8bed\u6599", "training_target": "bot"},
+    ]
+    serialized = [json.dumps(record, ensure_ascii=False, sort_keys=True) for record in records]
+    (dataset_root / "approved_account_labels.jsonl").write_text(
+        "\n".join(serialized) + "\n", encoding="utf-8"
+    )
+    (dataset_root / "dataset_manifest.json").write_text(
+        json.dumps(
+            {
+                "data_fingerprint": hashlib.sha256(("\n".join(serialized) + "\n").encode("utf-8")).hexdigest(),
+                "record_count": 2,
+                "class_counts": {"bot": 1, "non_bot": 1},
+            }
+        ),
+        encoding="utf-8",
+    )
+    holdout_payload = {
+        "schema": "cogguard.account-frozen-holdout.v1",
+        "account_ids": ["account-1"],
+        "record_fingerprints": {"account-1": "a" * 64},
+    }
+    holdout = {
+        **holdout_payload,
+        "manifest_sha256": hashlib.sha256(
+            json.dumps(holdout_payload, ensure_ascii=True, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        ).hexdigest(),
+    }
+    holdout_path = tmp_path / "holdout.json"
+    holdout_path.write_text(json.dumps(holdout), encoding="utf-8")
+    encoder_dir = tmp_path / "encoder"
+    encoder_dir.mkdir()
+    payload_path = encoder_dir / "payload"
+    payload_path.write_bytes(b"encoder")
+    return dataset_root, holdout_path, {
+        "encoder_version": "encoder-v1",
+        "encoder_artifact_hash": "a" * 64,
+        "text_model_path": str(encoder_dir),
+        "encoder_binding_payload_path": str(payload_path),
+    }
 
 
 class _Result:
@@ -115,6 +201,197 @@ async def test_detector_training_service_creates_queued_run_only_after_200_appro
     assert result["config"]["schema"] == "cogguard.account-training-config.v1"
     assert result["config"]["corpus_version_id"] == "corpus-1"
     assert result["max_attempts"] == 4
+
+
+@pytest.mark.asyncio
+async def test_create_preflight_failure_persists_no_run_or_outbox(monkeypatch):
+    corpus = AccountCorpusVersion(
+        corpus_version_id="preflight-failure",
+        input_fingerprint="p" * 64,
+        source_label_count=0,
+        manifest_json=json.dumps({"eligible_chinese_token_count": 500_000}),
+        status="candidate",
+        created_by=7,
+    )
+    session = _Session(corpus)
+
+    def reject(*, family, config):
+        raise AppException(code=409, msg="local model is incomplete")
+
+    monkeypatch.setattr("app.services.account_training_service.preflight_account_training_artifact", reject)
+    with pytest.raises(AppException, match="local model is incomplete"):
+        await create_account_training_run(
+            session,
+            family="chinese_social_encoder",
+            corpus_version_id=corpus.corpus_version_id,
+            input_fingerprint=corpus.input_fingerprint,
+            config={"corpus_documents_path": "synthetic.jsonl"},
+            manual=False,
+            operator_id=7,
+        )
+
+    assert session.added == []
+
+
+@pytest.mark.asyncio
+async def test_resume_preflight_failure_keeps_interrupted_state_and_config(monkeypatch):
+    config = {"schema": "cogguard.account-training-config.v1", "corpus_documents_path": "synthetic.jsonl"}
+    run = AccountModelTrainingRun(
+        run_id="resume-preflight-failure",
+        family="chinese_social_encoder",
+        status="interrupted",
+        stage="heartbeat_expired",
+        input_fingerprint="r" * 64,
+        config_hash="s" * 64,
+        config_json=json.dumps(config),
+        attempt=1,
+        max_attempts=4,
+        created_by=7,
+    )
+
+    def reject(*, family, config):
+        raise AppException(code=409, msg="corpus changed after dispatch")
+
+    monkeypatch.setattr("app.services.account_training_service.preflight_account_training_artifact", reject)
+    session = _RunSession(run)
+    with pytest.raises(AppException, match="corpus changed after dispatch"):
+        await resume_account_training_run(session, run_id=run.run_id, operator_id=9, dispatch=False)
+
+    assert run.status == "interrupted"
+    assert run.stage == "heartbeat_expired"
+    assert run.attempt == 1
+    assert run.max_attempts == 4
+    assert json.loads(run.config_json) == config
+    assert session.added == []
+
+
+@pytest.mark.asyncio
+async def test_create_encoder_persists_effective_model_and_device_from_settings(
+    tmp_path, monkeypatch, real_training_preflight
+):
+    model_dir = _write_local_mlm(tmp_path)
+    corpus_path = tmp_path / "corpus.jsonl"
+    corpus_path.write_text('{"text":"\u53ef\u8bad\u7ec3\u8bed\u6599"}\n', encoding="utf-8")
+    historical_path = tmp_path / "historical.jsonl"
+    historical_path.write_text('{"text":"\u5386\u53f2\u8bed\u6599"}\n', encoding="utf-8")
+    monkeypatch.setattr(settings, "ACCOUNT_ACQUISITION_TEXT_MODEL_PATH", str(model_dir))
+    monkeypatch.setattr(settings, "ACCOUNT_ACQUISITION_DEVICE", "cuda")
+    corpus = AccountCorpusVersion(
+        corpus_version_id="effective-dapt-config",
+        input_fingerprint="d" * 64,
+        source_label_count=0,
+        manifest_json=json.dumps({"eligible_chinese_token_count": 500_000, "corpus_path": str(corpus_path)}),
+        status="candidate",
+        created_by=7,
+    )
+
+    result = await create_account_training_run(
+        _Session(corpus),
+        family="chinese_social_encoder",
+        corpus_version_id=corpus.corpus_version_id,
+        input_fingerprint=corpus.input_fingerprint,
+        config={"historical_documents_path": str(historical_path)},
+        manual=False,
+        operator_id=7,
+        dispatch=False,
+    )
+
+    assert result["config"]["model_name_or_path"] == str(model_dir)
+    assert result["config"]["device"] == "cuda"
+    assert result["config"]["corpus_documents_path"] == str(corpus_path.resolve())
+    assert result["config"]["historical_documents_path"] == str(historical_path.resolve())
+
+
+@pytest.mark.asyncio
+async def test_create_detector_defaults_strict_and_persists_resolved_binding(
+    tmp_path, monkeypatch, real_training_preflight
+):
+    from app.core import account_training_runtime
+
+    dataset_root, holdout_path, binding = _write_detector_inputs(tmp_path)
+    dataset_fingerprint = json.loads((dataset_root / "dataset_manifest.json").read_text(encoding="utf-8"))["data_fingerprint"]
+    corpus = AccountDetectionDatasetVersion(
+        dataset_version_id="resolved-detector-config",
+        data_fingerprint=dataset_fingerprint,
+        source_label_count=200,
+        artifact_uri=str(dataset_root),
+        manifest_json=json.dumps({"record_count": 200}),
+        status="candidate",
+        created_by=7,
+    )
+    monkeypatch.setattr(
+        account_training_runtime,
+        "load_verified_chinese_social_encoder_artifact",
+        lambda *_args, **_kwargs: {"artifact_hash": "a" * 64, "encoder_payload": {"path": "payload"}},
+    )
+
+    async def resolve(_session, config):
+        assert config["strict_protocol"] is True
+        return {**config, **binding}
+
+    monkeypatch.setattr("app.services.account_training_service._resolve_governed_detector_config", resolve)
+    result = await create_account_training_run(
+        _Session(corpus),
+        family="chinese_account_detector",
+        corpus_version_id=corpus.dataset_version_id,
+        input_fingerprint=corpus.data_fingerprint,
+        config={"dataset_root": str(tmp_path / "untrusted"), "frozen_holdout_manifest_path": str(holdout_path)},
+        manual=False,
+        operator_id=7,
+        dispatch=False,
+    )
+
+    assert result["config"]["strict_protocol"] is True
+    assert result["config"]["text_model_path"] == binding["text_model_path"]
+    assert result["config"]["encoder_artifact_hash"] == "a" * 64
+    assert result["config"]["dataset_root"] == str(dataset_root.resolve())
+    assert "frozen_holdout_manifest_path" not in result["config"]
+    assert "frozen_holdout_manifest_sha256" not in result["config"]
+
+
+@pytest.mark.asyncio
+async def test_resume_legacy_detector_resolves_for_preflight_without_mutating_config(
+    tmp_path, monkeypatch, real_training_preflight
+):
+    from app.core import account_training_runtime
+
+    dataset_root, holdout_path, binding = _write_detector_inputs(tmp_path)
+    dataset_fingerprint = json.loads((dataset_root / "dataset_manifest.json").read_text(encoding="utf-8"))["data_fingerprint"]
+    persisted = {
+        "strict_protocol": True,
+        "dataset_name": "approved_account_corpus",
+        "dataset_root": str(dataset_root),
+        "frozen_holdout_manifest_path": str(holdout_path),
+        "encoder_version": "encoder-v1",
+        "input_fingerprint": dataset_fingerprint,
+    }
+    run = AccountModelTrainingRun(
+        run_id="legacy-resume-detector",
+        family="chinese_account_detector",
+        status="interrupted",
+        stage="heartbeat_expired",
+        input_fingerprint="l" * 64,
+        config_hash="m" * 64,
+        config_json=json.dumps(persisted),
+        attempt=1,
+        max_attempts=4,
+        created_by=7,
+    )
+    monkeypatch.setattr(
+        account_training_runtime,
+        "load_verified_chinese_social_encoder_artifact",
+        lambda *_args, **_kwargs: {"artifact_hash": "a" * 64, "encoder_payload": {"path": "payload"}},
+    )
+
+    async def resolve(_session, config):
+        assert config == persisted
+        return {**config, **binding}
+
+    monkeypatch.setattr("app.services.account_training_service._resolve_governed_detector_config", resolve)
+    resumed = await resume_account_training_run(_RunSession(run), run_id=run.run_id, operator_id=7, dispatch=False)
+
+    assert resumed["status"] == "queued"
+    assert json.loads(run.config_json) == persisted
 
 
 @pytest.mark.asyncio
@@ -480,7 +757,7 @@ async def test_resume_uses_configured_limit_and_clamps_a_tampered_persisted_limi
     with pytest.raises(AppException, match="retry limit"):
         await resume_account_training_run(_RunSession(run), run_id=run.run_id, operator_id=9, dispatch=False)
 
-    assert run.max_attempts == 4
+    assert run.max_attempts == 999
 
 
 @pytest.mark.asyncio

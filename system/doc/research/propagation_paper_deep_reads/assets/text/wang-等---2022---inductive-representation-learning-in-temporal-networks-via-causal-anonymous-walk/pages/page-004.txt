@@ -1,0 +1,96 @@
+Published as a conference paper at ICLR 2021
+Algorithm 1: Temporal Walk Extraction (E, α, M, m, w0, t0)
+1 Initialize M walks: Wi ←((w0, t0)), 1 ≤i ≤M ;
+2 for j from 1 to m do
+3
+for i from 1 to M do
+4
+(wp, tp) ←the last (node, time) pair in Wi;
+5
+Sample one (e, t) ∈Ewp,tp with prob. ∝exp(α(t −tp))
+Denote e = {w′, w} and then Wi ←Wi ⊕(w′, t);
+6 Return {Wi|1 ≤i ≤M};
+u
+a
+u
+a
+u
+a
+u
+b
+𝑢takes action
+𝑢NOT takes action
+The rule: “one node (e.g. u) interacts
+with other nodes only if another node 
+interacts with this node at least twice.”
+𝑡1
+𝑡2
+𝑡3
+𝑡4
+Figure 4:
+The correlation be-
+tween walks needs to be captured
+to learn this law.
+Our CAW-N removes node identities and leverages relative node identities to avoid the issue in Fig. 3.
+Detailed explanations are given in Sec.4.2.
+Network-embedding approaches may also be applied to temporal networks (Zhou et al., 2018; Du
+et al., 2018; Mahdavi et al., 2018; Singer et al., 2019; Nguyen et al., 2018). However, they directly
+assign each node with a learnable vector. Therefore, they are not inductive and cannot digest attributes.
+3
+PROBLEM FORMULATION AND NOTATIONS
+Problem Formulation. A temporal network can be represented as a sequence of links that come in
+over time, i.e. E = {(e1, t1), (e2, t2), ...} where ei is a link and ti is the timestamp showing when
+ei arrives. Each link ei corresponds to a dyadic event between two nodes {vi, ui}. For simplicity,
+we ﬁrst assume those links to be undirected and without attributes while later we discuss how to
+generalized our method to directed attributed networks. The sequence of links encodes network
+dynamics. Therefore, the capability of a model for representation learning of temporal networks is
+typically evaluated by how accurately it may predict future links based on the historical links (Sarkar
+et al., 2012). In this work, we also use link prediction as the metric. Note that we care not only the
+link prediction between the nodes that have been seen during the training. We also expect the models
+to predict links between the nodes that has never been seen as the inductive evaluation.
+Notations. We deﬁne Ev,t = {(e, t′) ∈E|t′ < t, v ∈e} to include the links attached to a node v
+before certain time t. A walk W (reverse over time) on temporal networks can be represented as
+W = ((w0, t0), (w1, t1), ..., (wm, tm)), t0 > t1 > · · · > tm, ({wi−1, wi}, ti) ∈E for all i.
+(1)
+We use W[i] to denote the ith node-time pair, and W[i][0] and W[i][1] to denote the corresponding
+node and time in W[i] correspondingly. Later, we also use ⊕as vector concatenation.
+Temporal network motifs are deﬁned as connected subgraphs that consist of links appearing within
+a restricted time range (Kovanen et al., 2011). Based this deﬁnition, each walk deﬁned in Eq. 1
+naturally corresponds to a temporal network motif as long as (t1 −tm) is in the time range.
+4
+PROPOSED METHOD: CAUSAL ANONYMOUS WALK-NETWORK
+4.1
+PRELIMINARIES: ANONYMOUS WALK AND TEMPORAL NETWORK MOTIF
+Anonymous walks were ﬁrst considered by Micali & Zhu (2016) to study the reconstruction of a
+Markov process from the records without sharing a common “name space”. AWs can be directly
+rephrased in the network context. Speciﬁcally, an AW starts from a node, performs random walks
+over the graph to collect a walk of nodes, e.g. (v1, v2, ..., vm). AW has an important anonymization
+step to replace the node identities by the orders of their appearance in each walk, which we term
+relative node identities in AW and deﬁne it as
+IAW (w; W) ≜|{v0, v1, ..., vk∗}|, where k∗is the smallest index s.t. vk∗= w.
+(2)
+Note that the set operation above removes duplicated elements. Although AW removes node identities,
+those nodes are still distinguishable within this walk. Therefore, an AW can be viewed as a network
+motif while the information on which speciﬁc nodes form this motif is removed. Examples of AWs
+are shown as follows. While these are two different walks, they may be mapped to the same AW
+when node identities get removed.
+a
+b
+a
+c
+b
+c
+b
+a
+Walks
+Anonymous Walks 
+1
+2
+1
+3
+Network Motifs
+1
+2
+3
+Each walk gets anonymized independently
+4

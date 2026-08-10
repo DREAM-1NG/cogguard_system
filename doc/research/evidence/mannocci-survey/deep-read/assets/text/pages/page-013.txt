@@ -1,0 +1,66 @@
+Detection and Characterization of Coordinated Online Behavior: A Survey                                   13
+
+
+compound action [73]. Similarly to the target, also the content can be undefined depending on the type of action, as
+
+in the case of a befriending or following action. To wrap up, the type of action and its timestamp are always defined,
+
+while one of content and target might be optional, depending on the type of action.
+
+3.1.2  Methods and output. As presented in Section 4, most of the existing literature on coordinated behavior detection
+analyzes both the set of users and their actions. Some studies only leverage the content of the actions, without
+
+considering their type [26, 83, 141]. Furthermore, certain works do not take into consideration the timings of the
+
+actions [16, 17, 19, 83], while some others only consider the timings [12]. The task of detecting coordinated online
+behavior is modelled by the function 𝑓(𝑈, 𝐻), which can provide three different outputs depending on the adopted
+method, corresponding to different levels of detail and information on the coordinated users:
+
+                  𝑃= {𝑃1, . . . , 𝑃𝑖, . . . 𝑃𝑘},  𝑃𝑖= (𝑉𝑖, 𝐸𝑖),𝑉𝑖⊆𝑈   communities
+                  𝑓(𝑈, 𝐻) =   𝐶= {𝐶1, . . . ,𝐶𝑖, . . .𝐶𝑘},  𝐶𝑖⊆𝑈                clusters                              (1)
+                                                                                                                     𝐵= {𝐵𝑐, 𝐵𝑢},        𝐵𝑐∪𝐵𝑢= 𝑈         binary labels
+In the most general case, the output of 𝑓(·) is a set 𝑃of communities of coordinated users. Coordinated communities 𝑃𝑖
+are sub-networks where the nodes are users from𝑈, and the edges—with their weights—encode the level of coordination
+
+among the users. Communities are typically outputted by those methods that adopt an internal network representation,
+
+which is then analyzed with community detection algorithms. Coordinated communities are an information rich
+
+representation, given that the presence and weight of links between the coordinated users facilitates subsequent
+analyses, such as those needed for the characterization task. Another possible output consists of a set of clusters
+of users. The clusters 𝐶𝑖are produced by methods that adopt tabular representations of the users, which are then
+analyzed with clustering algorithms. These methods typically ignore the relationships between the users but are able to
+
+identify multiple groups of coordinated users. Finally, the least informative output is given by those methods based
+on classification algorithms. These methods assign binary labels, partitioning the initial set of users 𝑈in two labeled
+groups of coordinated (𝐵𝑐) and non-coordinated (𝐵𝑢) users. These labelled groups do not provide information about
+neither the relationships between the users nor the existence of multiple coordinated groups of users in 𝑈.
+
+
+3.2  Characterization of coordinated online behavior
+
+3.2.1   Input. The characterization task is modelled by the function 𝑔(𝑌, 𝐻) = 𝑀whose inputs are the groups of
+coordinated users resulting from the detection task 𝑓(𝑈, 𝐻) = 𝑌∈{𝑃,𝐶, 𝐵}, defined in Eq. (1), with their activities 𝐻.
+
+3.2.2  Methods and output. As discussed in Section 5, the characterization task aims at computing a set of quantitative
+indicators 𝑀to measure distinctive properties of the detected coordinated behaviors in terms of the defining dimensions
+
+that we presented in Section 2.5: authenticity, harmfulness, orchestration, and time-variance. The indicators that can
+
+be used in the characterization task partly depend on the methods and outputs of the detection task. For example,
+
+assortativity measures the extent to which nodes with a high degree in a network are connected to other nodes with
+
+a high degree, and vice versa. This indicator was used to gain insights into the inner structure and organization of
+
+certain coordinated communities [100]. However, assortativity can be computed only if the coordination detection
+
+method outputs communities, rather than clusters or binary labels. On the contrary, other indicators can be computed
+
+independently of the detection method, such as the aforementioned bot scores that are commonly used as an estimator
+
+of the inauthenticity of the coordinated users [47, 51, 100, 103]. The utility of the characterization task is not limited to
+
+shedding light on the nature of the detected coordinated behaviors nor to distinguishing between different instances
+
+                                                                                                         Manuscript submitted to ACM

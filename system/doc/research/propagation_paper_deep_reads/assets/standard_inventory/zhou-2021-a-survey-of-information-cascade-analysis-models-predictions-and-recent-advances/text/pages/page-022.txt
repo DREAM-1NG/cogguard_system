@@ -1,0 +1,57 @@
+27:22                                                                                            F. Zhou et al.
+
+
+(i) a response function representing a power-law distribution of human activity waiting time; and
+(ii) an epidemic process, which can be modeled by self-exciting Hawkes conditional Poisson pro-
+cess. The conditional intensity was defined as
+
+                                     λi (t) = V (t) +     μjϕ(t −tj),                                    (5)
+                                                                                 tj <t
+
+where V (t) is the exogenous source, μj represents the number of potential participants that will
+be influenced by uj to join in this cascade Ci at time t, and ϕ(t) ∼1/t1+θ (0 < θ < 1) is a memory
+kernel. The idea was extended in Reference [237], utilizing self-exciting Hawkes process to char-
+acterize the tweet popularity in Twitter. The number of followers and a Pareto distribution of the
+kernel ϕ(τ ) were used to model the magnitude μj of each event.
+  The SpikeM model [137] fits the exponential rising and power-law falling patterns of infor-
+mation diffusion by incorporating (addressing) both the advantages (disadvantages) of epidemic
+model and self-exciting Hawkes processes. The base model of SpikeM can be represented as
+
+                                                                 tj+1
+                              P(tj+1) = |Vu | ·     μ(t)ϕ(tj+1 −t) + ϵ,                               (6)
+                                                     t=tb
+
+where |Vu | is the number of unaffected users, μ(t) = P(tj) + S · 1(t = tb) is the available stimuli
+at time t (1(·) is the indicator function), and S is the influence of external shock. SpikeM takes
+periodicity of human behavior into consideration by multiplying Equation (6) with an additional
+time-dependent periodicity factorp(tj+1). Extensions can be found in recent works [99, 159], which
+share the same idea of linking the epidemic model and Hawkes process.
+  Dual sentimental Hawkes process (DSHP) [48] is another generative prediction model built on
+Hawkes process. DSHP considers sentimental impact of information items, and two self-exciting
+processes, i.e., self-excitation and cross-excitation. The intensity function of DSHP is
+
+                        λi (t) = V (t) +      μikϕk (t −tj) +      μilϕl (t −tj) ,                      (7)
+                                                         tj,k <t                            tj,l <t
+                                                           self-excitation             cross-excitation
+
+where the exogenous source is formulated as a Pareto distribution V (t) = α/tα+1, and kernels (ϕk
+                                                                                                                                                   .and ϕl) are formulated as two Rayleigh distributions, i.e., ϕ(τ ) = στ 2 exp −τ2σ22
+  The self-exciting model of information cascades (SEISMIC) in Reference [246] aims to predict
+the retweet counts. It first fits a memory kernel ϕ(τ ) of human reaction time—a constant early on,
+then following a power-law decay later—and then measures the retweetability of tweet Ii at time
+t with a time dependent tweet infectiousness pi (t). The intensity is described as
+
+                                     λi (t) = pi (t) ·     μjϕ(t −tj),                                    (8)
+                                                                                tj <t
+
+where μj is the number of followers of user uj who retweet the original tweet Ii. Self-excited
+Hawkes process (SEHP) proposed in Reference [15] is another example, which defined the intensity
+function as: λi (t) = Viϕ(t) + μ    tj <t ϕ(t −tj), where ϕ(τ ) is an exponential decay memory kernel.
+  Time-dependent Hawkes process (TiDeH) [95] is yet another extension of SEISMIC taking into
+account the circadian oscillations and aging of information. Later, leveraging a combination of
+advantages of feature-based models and generative models, [142] proposed a hybrid model con-
+sisting of Hawkes process with a predictive layer trained from random forest and a feature-based
+predictor. A self-exciting Hawkes process model to predict the individual paper citation count was
+
+
+ACM Computing Surveys, Vol. 54, No. 2, Article 27. Publication date: March 2021.

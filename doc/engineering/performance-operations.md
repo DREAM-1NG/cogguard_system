@@ -61,9 +61,10 @@ powershell.exe -ExecutionPolicy Bypass -File .\start-system.ps1
 
 The helper starts only MySQL, MongoDB, and Redis from Compose; previews and
 then applies named MongoDB indexes; applies Alembic migrations; starts one host backend without
-`--reload`; waits for `/api/v2/health`; starts the dedicated hidden
-`account_training` Celery worker with concurrency 1; then builds and starts the static
-frontend profile. It logs host backend and account-training worker output under
+`--reload`; waits for `/api/v2/health`; starts the dedicated hidden account-model
+Celery worker for `account_training,account_evaluation` with concurrency 1; then
+starts Celery Beat and builds the static frontend profile. It logs host backend,
+account-model worker, and scheduler output under
 `system/logs/`. Use
 `-DevelopmentFrontend` only while changing `system/frontend/src/`.
 

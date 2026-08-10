@@ -1,0 +1,52 @@
+27:18
+F. Zhou et al.
+including size, time, date, season, orientation (landscape/portrait), device, dominant color, and even
+whether taken on flash, as well as image resolution, location (coordinates), caption, tag, and so on.
+One seminal work [91] studied the correlations between features of Flickr images and their nor-
+malized popularity (i.e., view count). In particular, the content features of images—categorized as
+simple human-interpretable features, low- and high-level image features—help in improving the
+prediction performance significantly, e.g., images with striking colors tend to be popular. The low-
+level image features, such as gist, texture, color patches, gradients, along with representative fea-
+tures are extracted by local binary pattern [152] and convolutional neural networks (CNNs) [110],
+while the high-level image features are retrieved from an ImageNet classifier [104] among 1,000
+object categories, each indicating presence or absence of a certain category in the image. The re-
+sults were later extended in Reference [64] by taking sentiment features into consideration.
+In Reference [187], authors analyzed a wide spectrum of visual features of Pinterest images and
+evaluated their influence on popularity. Except for frequently used individual features, visual fea-
+tures were grouped into two sets: aesthetic and semantic features, the former accounting for the
+“beautifulness” of an image (e.g., dominant colors, saturation, brightness, contrast, texture, back-
+ground area, region focus and focus centrality/density, etc.), while the latter are extracted from
+various computer vision techniques, e.g., SIFT local descriptor [127]. Other works include: Refer-
+ence [39], which estimates the likelihood scores of categories as the content features of Facebook
+photos; Reference [19], which preprocessed images of tweets into a bag of visual words as content
+features; and Reference [132], which, in addition to extracting features like texture and color, also
+adopted VGG19 [176] to extract deep features.
+3.4.3
+Other Content Features. For online videos, basic features include the video length, resolu-
+tion, and number of frames. Using several key frames of a short video to represent the video, [36]
+added color histogram and aesthetic features, quality features, object features retrieved from CNNs,
+and sentiment features trained by SentiBank [25], and used them as visual features of videos
+(acoustic features were also used—including Mel-Frequency Cepstral Coefficients and Audio-Six).
+Detection of faces and texts in video frames in Reference [188] combined scene dynamics, clutter,
+rigidity, thumbnail, and features extracted from ResNet [76]. In Reference [216], variational infer-
+ence and multimodal features are used against noisy and uncertain factors, when predicting the
+popularity of micro-videos.
+There have been some interesting experiments to collect features using crowd-sourcing. The
+controlled experiments on songs in Reference [169] found that social influence increases the in-
+equality and unpredictability of a song’s popularity. The experiments on Amazon Mechanical
+Turk [55] required the respondents to watch several YouTube videos and choose which video they
+were willing to share and predict which video would be the most popular in the future. Although
+the perceptions of users are very subjective and consensus among them is rare, the popularity of
+the target video became significantly higher once the respondents reached an agreement.
+3.4.4
+Discussion. Content of items has proven to be a qualified predictor, and the prediction
+can be made on and before the items’ publication when no posterior information is observed (cold
+start). Many existing studies have analyzed the relationships between content of items and their
+popularity, including linguistic characteristics of texts [182], color and objects in images [91], and
+so on. However, in analyzing the root causes of an item’s final popularity, it is still hard to disen-
+tangle the effects of such descriptive factors from the effects of the item’s intrinsic content [178].
+Opinions on the effectiveness of content features differ. Some previous works consider con-
+tent features as weak predictors compared to other features such as temporal, structural, and/or
+individual features. For example, Reference [39] found that content features get less important
+when observing more participants, and Reference [11] found that the model was not improved by
+ACM Computing Surveys, Vol. 54, No. 2, Article 27. Publication date: March 2021.

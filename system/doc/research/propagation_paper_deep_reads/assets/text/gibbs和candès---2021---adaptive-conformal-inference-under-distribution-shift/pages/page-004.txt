@@ -1,0 +1,81 @@
+the value of αt. In practice, large ﬂuctuations in αt may be undesirable as it allows the method to
+oscillate between outputting small conservative and large anti-conservative prediction sets.
+In Theorem 4.2 we give an upper bound on (Mt(αt)−α)2 that is optimized by choosing γ proportional
+to
+p
+|α∗
+t+1 −α∗
+t |. While not directly applicable in practice, this result supports the intuition that in
+environments with greater distributional shift the algorithm needs to be more adapatable and thus γ
+should be chosen to be larger. In our experiments we will take γ = 0.005. This value was chosen
+because it was found to give relatively stable trajectories for αt while still being sufﬁciently large as
+to allow αt to adapt to observed shifts. In agreement with the general principles outlined above we
+found that larger values of γ also successfully protect against distribution shifts, while taking γ to be
+too small causes adaptive conformal inference to perform similar to non-adaptive methods that hold
+αt = α constant across time.
+2.2
+Real data example: predicting market volatility
+We apply ACI to the prediction of market volatility. Let {Pt}1≤t≤T denote a sequence of daily open
+prices for a stock. For all t ≥2, deﬁne the return Rt := (Pt −Pt−1)/Pt−1 and realized volatility
+Vt = R2
+t . Our goal is to use the previously observed returns Xt := {Rs}1≤s≤t−1 to form prediction
+sets for Yt := Vt. More sophisticated ﬁnancial models might augment Xt with additional market
+covariates (available to the analyst at time t−1). As the primary purpose of this section is to illustrate
+adaptive conformal inference we work with only a simple prediction method.
+We start off by forming point predictions using a GARCH(1,1) model [4]. This method assumes that
+Rt = σtϵt with ϵ2, . . . , ϵT taken to be i.i.d. N(0, 1) and σt satisfying the recursive update
+σ2
+t = ω + τVt−1 + βσ2
+t−1.
+This is a common approach used for forecasting volatility in economics. In practice, shifting market
+dynamics can cause the predictions of this model to become inaccurate over large time periods.
+Thus, when forming point predictions we ﬁt the model using only the last 1250 trading days (i.e.
+approximately 5 years) of market data. More precisely, for all times t > 1250 we ﬁt the coefﬁcients
+ˆωt, ˆτt, ˆβt as well as the sequence of variances {ˆσt
+s}1≤s≤t−1 using only the data {Rr}t−1250≤r<t.
+Then, our point prediction for the realized volatility at time t is
+(ˆσt
+t)2 := ˆωt + ˆτtVt−1 + ˆβt(ˆσt
+t−1)2.
+To form prediction intervals we deﬁne the sequence of conformity scores
+St := |Vt −(ˆσt
+t)2|
+(ˆσt
+t)2
+and the corresponding quantile function
+ˆQt(p) := inf
+(
+x :
+1
+1250
+t−1
+X
+r=t−1250
+1Sr≤x ≥p
+)
+.
+Then, our prediction set at time t is
+ˆCt(αt) :=
+
+v : |v −(ˆσt
+t)2|
+(ˆσt
+t)2
+≤ˆQt(1 −αt)
+
+,
+where {αt} is initialized with α1250 = α = 0.1 and then updated recursively as in (2).
+We compare this algorithm to a non-adaptive alternative that takes αt = α ﬁxed. To measure the
+performance of these methods across time we examine their local coverage frequencies deﬁned as the
+average coverage rate over the most recent two years, i.e.
+localCovt := 1 −
+1
+500
+t+250
+X
+r=t−250+1
+errr.
+(4)
+If the methods perform well then we expect the local coverage frequency to stay near the target value
+1 −α across all time points.
+4

@@ -4,7 +4,10 @@ This package is intentionally independent from the external NLPCC research
 directory. It implements the paper's two-stage structure locally and records
 the missing-data adaptations required by each supported public corpus.
 
-Supported corpora are Botection, Cresci-2015, Cresci-2017, and Midterm-2018.
+Formal public benchmark corpora are TwiBot-20, Cresci-2015, Cresci-2017,
+and Midterm-2018. Botection is retained only as an explicit legacy migration
+loader and is excluded from benchmark dispatch, model selection, and deployment
+claims.
 The public-corpus loaders retain source labels and provenance but pass only
 normalized account text to the model.
 """
@@ -54,6 +57,7 @@ from .model_bundle import load_account_model_bundle, verify_account_model_bundle
 from .reliability import compute_correction_risk, select_routed_accounts
 from .strict_contracts import StrictAccountRecord, StrictCorpus, StrictFeatureSchema, StrictGraph, StrictRelationEdge
 from .strict_datasets import (
+    load_strict_approved_account_corpus,
     load_strict_cresci_2015_corpus,
     load_strict_cresci_2017_corpus,
     load_strict_midterm_2018_corpus,
@@ -61,6 +65,11 @@ from .strict_datasets import (
 )
 from .strict_training import train_strict_botrhg
 from .training import train_botrhg
+from .twibot20_runtime import (
+    TWIBOT20_DEPLOYMENT_SCOPE,
+    TwiBot20ResearchRuntime,
+    build_twibot20_research_bundle,
+)
 
 __all__ = [
     "AccountSample",
@@ -82,8 +91,11 @@ __all__ = [
     "StrictGraph",
     "StrictRelationEdge",
     "TrainingConfig",
+    "TWIBOT20_DEPLOYMENT_SCOPE",
+    "TwiBot20ResearchRuntime",
     "evaluate_active_round_gates",
     "build_support_hyperedges",
+    "build_twibot20_research_bundle",
     "build_reference_hyperedges",
     "compute_correction_risk",
     "build_frozen_holdout_manifest",
@@ -105,6 +117,7 @@ __all__ = [
     "load_cresci_2017_dataset",
     "load_midterm_2018_dataset",
     "load_strict_cresci_2015_corpus",
+    "load_strict_approved_account_corpus",
     "load_strict_cresci_2017_corpus",
     "load_strict_midterm_2018_corpus",
     "load_strict_social_corpus",

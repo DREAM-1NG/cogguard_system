@@ -1,0 +1,55 @@
+C
+Evaluation Settings in TG
+Based on how the test set information is used during the evaluation of temporal graph learning
+models, the existing approaches can be grouped into the following three categories. We emphasize
+that methods from different categories should be evaluated distinctly to avoid unfair comparison.
+Following the practice of the previous works and for the sake of clarity, we comply with streaming
+setting. Particularly, we consider a fixed split point in time, i.e. tsplit, where the information before
+and after this point constitute the training and test data, respectively.
+Streaming Setting. In this setting, information from the test set is only employed for updating the
+memory module in temporal graph learning methods (e.g., TGN [35]). However, no back-propagation
+or model update is possible based on the test set information. We consider this setting as streaming,
+since it helps in fast inference by incorporating the recent information (even from the test set), while
+observign the fact that retraining the model with the test data is too expensive.
+Deployed Setting. In this setting, the test set information is not available for any modification to
+the model. This setting closely follows the standard machine learning setting with distinct training
+dataset and test dataset. We refer to this setting as deployed to denote that after deploying the a model,
+it is only used for inference and no updates to any part of the model is allowed.
+Live-Update Setting. In this setting, information from any point in the past (including the test set
+information) can be used to re-train, fine-tune, or update the model. The goal of this setting is to
+achieve the best prediction for each timestamp t + 1 given the historical information at all previous
+timestamps in [0, ..., t]. We consider this setting as live-update because the model weights can be
+updated lively through the incoming data. Note that this setting is similar to the rolling setting
+exercised in ROLAND framework [51].
+D
+Temporal Graph Learning Models
+Recently, there is an increasing interest in developing graph representation learning models for
+networks that evolve over time. Evolving graphs can be investigated at different time granularity.
+Kazemi et al. [21] categorize temporal graphs into Discrete Time Dynamic Graphs (DTDGs) and
+Continous Time Dynamic Graphs (CTDGs). DTDGs consist of an ordered set of static graph
+snapshots while CTDGs compose of timestamped edge streams where edges are denoted by triplets
+of source, destination, and timestamp. DTDG models specialize in sequences of graph snapshots
+capturing the dynamics of a temporal graph where these snapshots are sampled at regular time
+intervals [51, 13, 32, 14, 49]. In contrast, CTDG methods often aggregate the features from temporal
+neighborhood (connected nodes with close time proximity) and constantly adjust the encoding as
+edge stream continues [35, 46, 25]. In this work, we primarily focus on CTDGs, driven by several
+compelling reasons. First, CTDG models which employ the precise temporal information offered by
+CTDGs, can be effectively utilized for DTDGs. On the contrary, adapting DTDG models for drawing
+inferences from CTDGs is a non-trivial task. Second, it has been shown that DTDGs are convertible
+to CTDGs [40], while the conversion in the opposite direction results in loss of information. Next, we
+introduce the methods used in our evaluation for the dynamic link property prediction and dynamic
+node property prediction task.
+Models Used for Evaluation of Dynamic Link Property Prediction Task.
+• DyRep [42] is a temporal point process-based model that propagates interaction messages via
+Recurrent Neural Networks (RNNs) to update the node representations. It employs a temporal
+attention mechanism to model the weights of a given node’s neighbors.
+• TGN [35] is a general framework for learning on continuous time dynamic graphs. It has the
+following components: memory module, message function, message aggregator, memory updater,
+and embedding module. TGN updates the node memories at test time with newly observed edges.
+• GraphMixer [9] is a simple model for dynamic link prediction consisting of three main modules:
+a node-encoder to summarize the node information, a link-encoder to summarize the temporal
+link information, and a link predictor module. These modules that only utilize Multi-Layer
+Perceptrons (MLPs), make GraphMixer a simple model without the use of a GNN architecture.
+• TCL [45] employs a transfomer module to generate temporal neighborhood representations for
+nodes involved in an interaction. It then models the inter-dependencies with a co-attentional trans-
+15

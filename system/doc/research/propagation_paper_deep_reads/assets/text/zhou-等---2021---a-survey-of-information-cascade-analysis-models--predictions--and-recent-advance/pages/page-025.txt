@@ -1,0 +1,51 @@
+A Survey of Information Cascade Analysis: Models, Predictions, and Recent Advances
+27:25
+The deep fusion of temporal processes and content features (DFTC) model [124] predicts the
+popularity of WeChat online articles. It first uses an LSTM to model the long-term growth trends
+of a cascade, and then utilizes 1D CNN to capture the short-term fluctuations. Article content is
+modeled by a hierarchical attention network [228]. The final prediction is made by an attentive
+fusion of previously learned representations.
+Recurrent cascades convolutional network (CasCN) [38] samples a cascade graph as a series of
+sequential subcascades and adopts a dynamic multi-directional GCN [93] to learn structural infor-
+mation of cascades. The subsequent work [37] addresses the activation prediction and popularity
+prediction problems jointly within a deep multi-task learning framework. To that end, attention
+and gated mechanisms were utilized, combined with a shared-representation layer, to capture the
+spatial-temporal dynamics of cascades. Coupled-GNNs [30] leveraged two specifically designed
+GNNs—one for node states and the other one for influence spread—to capture the cascading effect.
+More recently, variational cascade graph learning neural networks (VaCas) [250] integrated
+graph wavelets, hierarchical variational autoencoders, and Bi-GRUs to learn the structures of cas-
+cade graphs. Both node- and cascade-level diffusion uncertainties, as well as the contextualized
+user behaviors, were modeled in an end-to-end deep learning framework.
+There are some works focusing on different aspects of performance improvement. For exam-
+ple, KB-PPN [247] leverages the embeddings of knowledge base entities and their neighbors to
+enhance the popularity prediction based on a LSTM network. FOREST [221] first learns an RNN-
+based microscopic cascade prediction model, and then performs a series of simulations guided by
+reinforcement learning to predict the macroscopic popularity of observed cascades.
+5.1
+Discussion: Strengths and Limitations of Deep Learning Models
+Table 7 summarizes the deep learning-based cascade models and their main building blocks. Gen-
+erally, these works learn different aspects of information item/cascade with various deep learning
+techniques, e.g., capturing the long-term dependencies of time series and temporal characteristics
+of participation/citations with an RNN or its variants; learning representations of texts and images
+via deep language and visual models; dealing with graph-structured data by unsupervised network
+embedding [27] or (semi-supervised) graph neural networks [251]. Compared to feature-based
+models, which depend on hand-crafted features (platform-specific and rely on prior knowledge),
+or generative models, which assume hard-coded diffusion protocols (lack of flexibility and also rely
+on human designs), deep learning models do not require heavy feature engineering and can cap-
+ture non-linear representations of both user/item content and popularity accumulation trend. The
+success of deep learning in other domains seems to be continued in information cascade modeling,
+more and more approaches adopted techniques from deep learning and achieved state-of-the-art
+results. The main strength of deep learning models lies in their relatively simple architecture (deep
+stacked layers with little human designs) and powerful learning ability via backpropagation under
+supervision (with massive data and computational resources) [111].
+However, despite their improvements on the prediction performance, deep learning models still
+face many limitations. One main drawback of deep learning models is the lack of model inter-
+pretability owing to the “black-box” nature of neural networks. The computational cost of deep
+learning models is significantly larger than feature-based and generative models. The model tun-
+ing process, hyper-parameter selection, risk of overfitting, and so on, sometimes cause a lot of
+efforts for engineers to obtain the satisfactory performance.
+6
+OPEN CHALLENGES AND OPPORTUNITIES
+We now discuss some challenges and aspects that have not been sufficiently studied in cascade
+modeling and information diffusion prediction.
+ACM Computing Surveys, Vol. 54, No. 2, Article 27. Publication date: March 2021.

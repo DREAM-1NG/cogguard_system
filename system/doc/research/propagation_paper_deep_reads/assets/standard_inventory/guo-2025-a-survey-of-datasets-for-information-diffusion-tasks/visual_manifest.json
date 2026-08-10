@@ -1,0 +1,996 @@
+{
+  "schema_version": 2,
+  "generated_at": "2026-08-10T06:27:29.961686+00:00",
+  "source_pdf": "H:\\Zotero\\attenger\\Projects\\CISCN\\Propagation\\Guo 等 - 2025 - A survey of datasets for information diffusion tasks.pdf",
+  "source_sha256": "a554f3e2ccca5068feef0760e0075377e9189ad2be072c119ddcb6d2f2345494",
+  "page_count": 15,
+  "render_dpi": 180,
+  "selected_pages": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15
+  ],
+  "analysis_mode": "text-only",
+  "text_layer_available": true,
+  "text_layer_characters": 153553,
+  "automatic_crops_are_unverified": true,
+  "pages": [
+    {
+      "page": 1,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-001.txt",
+      "text_characters": 8133,
+      "caption_count": 0
+    },
+    {
+      "page": 2,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-002.txt",
+      "text_characters": 7345,
+      "caption_count": 1
+    },
+    {
+      "page": 3,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-003.txt",
+      "text_characters": 8515,
+      "caption_count": 1
+    },
+    {
+      "page": 4,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-004.txt",
+      "text_characters": 18737,
+      "caption_count": 1
+    },
+    {
+      "page": 5,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-005.txt",
+      "text_characters": 7603,
+      "caption_count": 0
+    },
+    {
+      "page": 6,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-006.txt",
+      "text_characters": 8940,
+      "caption_count": 0
+    },
+    {
+      "page": 7,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-007.txt",
+      "text_characters": 8960,
+      "caption_count": 0
+    },
+    {
+      "page": 8,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-008.txt",
+      "text_characters": 7805,
+      "caption_count": 1
+    },
+    {
+      "page": 9,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-009.txt",
+      "text_characters": 12640,
+      "caption_count": 0
+    },
+    {
+      "page": 10,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-010.txt",
+      "text_characters": 12898,
+      "caption_count": 0
+    },
+    {
+      "page": 11,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-011.txt",
+      "text_characters": 12876,
+      "caption_count": 0
+    },
+    {
+      "page": 12,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-012.txt",
+      "text_characters": 1785,
+      "caption_count": 0
+    },
+    {
+      "page": 13,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-013.txt",
+      "text_characters": 13006,
+      "caption_count": 5
+    },
+    {
+      "page": 14,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-014.txt",
+      "text_characters": 14871,
+      "caption_count": 4
+    },
+    {
+      "page": 15,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-015.txt",
+      "text_characters": 9439,
+      "caption_count": 1
+    }
+  ],
+  "visuals": [
+    {
+      "id": "figure-1-p002",
+      "label": "Figure 1",
+      "kind": "figure",
+      "number": "1",
+      "page": 2,
+      "caption": "Categorization of information diffusion tasks under the \"5W Model\" framework includes information diffusion prediction, social bot detection and misinformation detec- tion, along with their respective subtasks and interrelation- ships.",
+      "raw_text": "Figure 1: Categorization of information diffusion tasks under the \"5W Model\" framework includes information diffusion prediction, social bot detection and misinformation detec- tion, along with their respective subtasks and interrelation- ships.",
+      "caption_bbox_points": [
+        317.955,
+        198.953,
+        559.805,
+        251.754
+      ],
+      "caption_bbox_pixels": [
+        795,
+        497,
+        1400,
+        629
+      ],
+      "suggested_crop_bbox_points": [
+        307.955,
+        73.685,
+        569.805,
+        261.754
+      ],
+      "suggested_crop_bbox_pixels": [
+        770,
+        184,
+        1425,
+        654
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-002.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\figure-1-p002.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "table-1-p003",
+      "label": "Table 1",
+      "kind": "table",
+      "number": "1",
+      "page": 3,
+      "caption": "Notations of the concepts in the datasets",
+      "raw_text": "Table 1: Notations of the concepts in the datasets",
+      "caption_bbox_points": [
+        339.112,
+        121.496,
+        536.75,
+        130.462
+      ],
+      "caption_bbox_pixels": [
+        848,
+        304,
+        1342,
+        326
+      ],
+      "suggested_crop_bbox_points": [
+        43.582,
+        52.164,
+        568.202,
+        140.462
+      ],
+      "suggested_crop_bbox_pixels": [
+        109,
+        130,
+        1421,
+        351
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-003.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\table-1-p003.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "table-2-p004",
+      "label": "Table 2",
+      "kind": "table",
+      "number": "2",
+      "page": 4,
+      "caption": "Datasets comparison for each subtask: user information, social network, bot label, propagation content, diffusion network and veracity label.",
+      "raw_text": "Table 2: Datasets comparison for each subtask: user information, social network, bot label, propagation content, diffusion network and veracity label.",
+      "caption_bbox_points": [
+        94.373,
+        84.184,
+        517.33,
+        104.109
+      ],
+      "caption_bbox_pixels": [
+        236,
+        210,
+        1293,
+        260
+      ],
+      "suggested_crop_bbox_points": [
+        84.373,
+        74.184,
+        527.33,
+        510.325
+      ],
+      "suggested_crop_bbox_pixels": [
+        211,
+        185,
+        1318,
+        1276
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-004.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\table-2-p004.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "figure-2-p008",
+      "label": "Figure 2",
+      "kind": "figure",
+      "number": "2",
+      "page": 8,
+      "caption": "The statistics of time horizon, language and modal- ity of all datasets.",
+      "raw_text": "Figure 2: The statistics of time horizon, language and modal- ity of all datasets.",
+      "caption_bbox_points": [
+        53.798,
+        176.088,
+        295.653,
+        196.013
+      ],
+      "caption_bbox_pixels": [
+        134,
+        440,
+        739,
+        490
+      ],
+      "suggested_crop_bbox_points": [
+        43.798,
+        73.685,
+        305.653,
+        206.013
+      ],
+      "suggested_crop_bbox_pixels": [
+        109,
+        184,
+        764,
+        515
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-008.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\figure-2-p008.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "table-3-p013",
+      "label": "Table 3",
+      "kind": "table",
+      "number": "3",
+      "page": 13,
+      "caption": "Performance comparison between CasFlow and base- lines of cascade size prediction task on three datasets (Twitter- casflow, Sina Weibo, and APS) with different observation times. The best results in MSLE and MAPE arebolded.",
+      "raw_text": "Table 3: Performance comparison between CasFlow and base- lines of cascade size prediction task on three datasets (Twitter- casflow, Sina Weibo, and APS) with different observation times. The best results in MSLE and MAPE arebolded.",
+      "caption_bbox_points": [
+        53.502,
+        275.321,
+        295.653,
+        317.164
+      ],
+      "caption_bbox_pixels": [
+        134,
+        688,
+        739,
+        793
+      ],
+      "suggested_crop_bbox_points": [
+        43.502,
+        265.321,
+        305.653,
+        432.414
+      ],
+      "suggested_crop_bbox_pixels": [
+        109,
+        663,
+        764,
+        1081
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-013.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\table-3-p013.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "table-4-p013",
+      "label": "Table 4",
+      "kind": "table",
+      "number": "4",
+      "page": 13,
+      "caption": "Performance comparison between RAGTrans and baselines of popularity prediction task on three datasets (SMPD, ICIP, and WeChat). The best results in MSE, MAE and SRC are bolded.",
+      "raw_text": "Table 4: Performance comparison between RAGTrans and baselines of popularity prediction task on three datasets (SMPD, ICIP, and WeChat). The best results in MSE, MAE and SRC are bolded.",
+      "caption_bbox_points": [
+        53.502,
+        446.735,
+        294.047,
+        488.577
+      ],
+      "caption_bbox_pixels": [
+        134,
+        1117,
+        735,
+        1221
+      ],
+      "suggested_crop_bbox_points": [
+        43.502,
+        324.06,
+        304.047,
+        498.577
+      ],
+      "suggested_crop_bbox_pixels": [
+        109,
+        810,
+        760,
+        1246
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-013.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\table-4-p013.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "table-5-p013",
+      "label": "Table 5",
+      "kind": "table",
+      "number": "5",
+      "page": 13,
+      "caption": "Performance comparison between neutral state model and XYWZ1Z2 baseline model of user attitudes pre- diction task compared with the actual data on the COVID-19- rumor dataset. The best results in MAE and MSE are bolded.",
+      "raw_text": "Table 5: Performance comparison between neutral state model and XYWZ1Z2 baseline model of user attitudes pre- diction task compared with the actual data on the COVID-19- rumor dataset. The best results in MAE and MSE are bolded.",
+      "caption_bbox_points": [
+        317.659,
+        84.184,
+        559.81,
+        126.027
+      ],
+      "caption_bbox_pixels": [
+        794,
+        210,
+        1400,
+        315
+      ],
+      "suggested_crop_bbox_points": [
+        307.659,
+        74.184,
+        569.81,
+        188.862
+      ],
+      "suggested_crop_bbox_pixels": [
+        769,
+        185,
+        1425,
+        472
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-013.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\table-5-p013.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "table-6-p013",
+      "label": "Table 6",
+      "kind": "table",
+      "number": "6",
+      "page": 13,
+      "caption": "Performance comparison between MCDAN and base- lines of next user prediction task on four datasets (Twitter- MSHGAT, Douban-ComSoc, Android, Christianity). The best results in Hits@K and Map@K for K = 10, 50, 100 are bolded.",
+      "raw_text": "Table 6: Performance comparison between MCDAN and base- lines of next user prediction task on four datasets (Twitter- MSHGAT, Douban-ComSoc, Android, Christianity). The best results in Hits@K and Map@K for K = 10, 50, 100 are bolded.",
+      "caption_bbox_points": [
+        317.659,
+        190.213,
+        559.804,
+        232.056
+      ],
+      "caption_bbox_pixels": [
+        794,
+        476,
+        1400,
+        580
+      ],
+      "suggested_crop_bbox_points": [
+        307.659,
+        132.823,
+        569.804,
+        242.056
+      ],
+      "suggested_crop_bbox_pixels": [
+        769,
+        332,
+        1425,
+        605
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-013.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\table-6-p013.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "table-7-p013",
+      "label": "Table 7",
+      "kind": "table",
+      "number": "7",
+      "page": 13,
+      "caption": "Performance comparison between FedInf and base- lines of social influence prediction task across three datasets (OAG-DeepInf, Digg-DeepInf, Higgs Twitter). The best results in AUC, precision, recall and F1 are bolded.",
+      "raw_text": "Table 7: Performance comparison between FedInf and base- lines of social influence prediction task across three datasets (OAG-DeepInf, Digg-DeepInf, Higgs Twitter). The best results in AUC, precision, recall and F1 are bolded.",
+      "caption_bbox_points": [
+        317.659,
+        484.733,
+        559.805,
+        526.575
+      ],
+      "caption_bbox_pixels": [
+        794,
+        1212,
+        1400,
+        1316
+      ],
+      "suggested_crop_bbox_points": [
+        307.659,
+        273.428,
+        569.805,
+        536.575
+      ],
+      "suggested_crop_bbox_pixels": [
+        769,
+        684,
+        1425,
+        1341
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-013.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\table-7-p013.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "table-10-p014",
+      "label": "Table 10",
+      "kind": "table",
+      "number": "10",
+      "page": 14,
+      "caption": "Performance comparison between GMIN and base- lines of rumor detection task on three datasets (Ma-Weibo, Twitter15 and Twitter16). The best results in precision, recall, F1-score and accuracy are bolded.",
+      "raw_text": "Table 10: Performance comparison between GMIN and base- lines of rumor detection task on three datasets (Ma-Weibo, Twitter15 and Twitter16). The best results in precision, recall, F1-score and accuracy are bolded.",
+      "caption_bbox_points": [
+        53.502,
+        84.184,
+        295.646,
+        126.027
+      ],
+      "caption_bbox_pixels": [
+        134,
+        210,
+        739,
+        315
+      ],
+      "suggested_crop_bbox_points": [
+        43.502,
+        74.184,
+        305.646,
+        248.588
+      ],
+      "suggested_crop_bbox_pixels": [
+        109,
+        185,
+        764,
+        621
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-014.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\table-10-p014.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "table-11-p014",
+      "label": "Table 11",
+      "kind": "table",
+      "number": "11",
+      "page": 14,
+      "caption": "Performance comparison between ARG and base- lines of fake news detection task on two datasets (Weibo21 and GossipCop of FakeNewsNet). The best results in accu- racy, F1-score and macro F1 are bolded.",
+      "raw_text": "Table 11: Performance comparison between ARG and base- lines of fake news detection task on two datasets (Weibo21 and GossipCop of FakeNewsNet). The best results in accu- racy, F1-score and macro F1 are bolded.",
+      "caption_bbox_points": [
+        53.502,
+        253.974,
+        295.654,
+        295.816
+      ],
+      "caption_bbox_pixels": [
+        134,
+        635,
+        739,
+        740
+      ],
+      "suggested_crop_bbox_points": [
+        43.502,
+        243.974,
+        305.654,
+        424.129
+      ],
+      "suggested_crop_bbox_pixels": [
+        109,
+        610,
+        764,
+        1060
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-014.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\table-11-p014.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "table-8-p014",
+      "label": "Table 8",
+      "kind": "table",
+      "number": "8",
+      "page": 14,
+      "caption": "Performance comparison between Contextual LSTM and baselines of user-based and content-based bot detection bot detection tasks about the Cresci-2017 dataset. The best results in precision, recall, F1-score, accuracy and AUC are bolded",
+      "raw_text": "Table 8: Performance comparison between Contextual LSTM and baselines of user-based and content-based bot detection bot detection tasks about the Cresci-2017 dataset. The best results in precision, recall, F1-score, accuracy and AUC are bolded",
+      "caption_bbox_points": [
+        317.659,
+        84.184,
+        558.205,
+        136.986
+      ],
+      "caption_bbox_pixels": [
+        794,
+        210,
+        1396,
+        342
+      ],
+      "suggested_crop_bbox_points": [
+        307.659,
+        74.184,
+        568.205,
+        279.177
+      ],
+      "suggested_crop_bbox_pixels": [
+        769,
+        185,
+        1421,
+        698
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-014.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\table-8-p014.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "table-9-p014",
+      "label": "Table 9",
+      "kind": "table",
+      "number": "9",
+      "page": 14,
+      "caption": "Performance of the adversarial attack method in graph-based bot detection task on two datasets (Cresci-2015 and TwiBot-22). The best results in attack success rate and new node detected as bot are bolded.",
+      "raw_text": "Table 9: Performance of the adversarial attack method in graph-based bot detection task on two datasets (Cresci-2015 and TwiBot-22). The best results in attack success rate and new node detected as bot are bolded.",
+      "caption_bbox_points": [
+        317.659,
+        419.538,
+        558.204,
+        461.381
+      ],
+      "caption_bbox_pixels": [
+        794,
+        1049,
+        1396,
+        1153
+      ],
+      "suggested_crop_bbox_points": [
+        307.659,
+        409.538,
+        568.204,
+        552.061
+      ],
+      "suggested_crop_bbox_pixels": [
+        769,
+        1024,
+        1421,
+        1380
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-014.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\table-9-p014.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "table-12-p015",
+      "label": "Table 12",
+      "kind": "table",
+      "number": "12",
+      "page": 15,
+      "caption": "The URLs of datasets for each subtask.",
+      "raw_text": "Table 12: The URLs of datasets for each subtask.",
+      "caption_bbox_points": [
+        208.612,
+        84.184,
+        403.093,
+        93.15
+      ],
+      "caption_bbox_pixels": [
+        522,
+        210,
+        1008,
+        233
+      ],
+      "suggested_crop_bbox_points": [
+        84.93,
+        74.184,
+        510.745,
+        492.393
+      ],
+      "suggested_crop_bbox_pixels": [
+        212,
+        185,
+        1277,
+        1231
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-015.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\table-12-p015.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    }
+  ]
+}

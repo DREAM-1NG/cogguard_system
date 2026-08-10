@@ -1,0 +1,597 @@
+{
+  "schema_version": 2,
+  "generated_at": "2026-08-10T06:27:39.016666+00:00",
+  "source_pdf": "H:\\Zotero\\attenger\\Projects\\CISCN\\Propagation\\Yu 等 - 2023 - Towards better dynamic graph learning new architecture and unified library.pdf",
+  "source_sha256": "e43acdb0dea415e67bf0ff1367a14ddfddbd5d93f09a5a0b1f5561abcd20954e",
+  "page_count": 15,
+  "render_dpi": 180,
+  "selected_pages": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15
+  ],
+  "analysis_mode": "text-only",
+  "text_layer_available": true,
+  "text_layer_characters": 66937,
+  "automatic_crops_are_unverified": true,
+  "pages": [
+    {
+      "page": 1,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-001.txt",
+      "text_characters": 3650,
+      "caption_count": 0
+    },
+    {
+      "page": 2,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-002.txt",
+      "text_characters": 5069,
+      "caption_count": 0
+    },
+    {
+      "page": 3,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-003.txt",
+      "text_characters": 4775,
+      "caption_count": 0
+    },
+    {
+      "page": 4,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-004.txt",
+      "text_characters": 3541,
+      "caption_count": 1
+    },
+    {
+      "page": 5,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-005.txt",
+      "text_characters": 4236,
+      "caption_count": 0
+    },
+    {
+      "page": 6,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-006.txt",
+      "text_characters": 4704,
+      "caption_count": 0
+    },
+    {
+      "page": 7,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-007.txt",
+      "text_characters": 8174,
+      "caption_count": 1
+    },
+    {
+      "page": 8,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-008.txt",
+      "text_characters": 4210,
+      "caption_count": 2
+    },
+    {
+      "page": 9,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-009.txt",
+      "text_characters": 4565,
+      "caption_count": 3
+    },
+    {
+      "page": 10,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-010.txt",
+      "text_characters": 4511,
+      "caption_count": 0
+    },
+    {
+      "page": 11,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-011.txt",
+      "text_characters": 3999,
+      "caption_count": 0
+    },
+    {
+      "page": 12,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-012.txt",
+      "text_characters": 3806,
+      "caption_count": 0
+    },
+    {
+      "page": 13,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-013.txt",
+      "text_characters": 4063,
+      "caption_count": 0
+    },
+    {
+      "page": 14,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-014.txt",
+      "text_characters": 4011,
+      "caption_count": 0
+    },
+    {
+      "page": 15,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-015.txt",
+      "text_characters": 3623,
+      "caption_count": 0
+    }
+  ],
+  "visuals": [
+    {
+      "id": "figure-1-p004",
+      "label": "Figure 1",
+      "kind": "figure",
+      "number": "1",
+      "page": 4,
+      "caption": "Framework of the proposed model.",
+      "raw_text": "Figure 1: Framework of the proposed model.",
+      "caption_bbox_points": [
+        216.362,
+        214.131,
+        395.639,
+        224.094
+      ],
+      "caption_bbox_pixels": [
+        541,
+        535,
+        989,
+        560
+      ],
+      "suggested_crop_bbox_points": [
+        98.0,
+        61.998,
+        514.003,
+        234.094
+      ],
+      "suggested_crop_bbox_pixels": [
+        245,
+        155,
+        1285,
+        585
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-004.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\figure-1-p004.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "table-1-p007",
+      "label": "Table 1",
+      "kind": "table",
+      "number": "1",
+      "page": 7,
+      "caption": "AP for transductive dynamic link prediction with random, historical, and inductive negative sampling strategies. NSS is the abbreviation of Negative Sampling Strategies.",
+      "raw_text": "Table 1: AP for transductive dynamic link prediction with random, historical, and inductive negative sampling strategies. NSS is the abbreviation of Negative Sampling Strategies.",
+      "caption_bbox_points": [
+        107.691,
+        79.092,
+        503.995,
+        99.926
+      ],
+      "caption_bbox_pixels": [
+        269,
+        198,
+        1260,
+        250
+      ],
+      "suggested_crop_bbox_points": [
+        97.691,
+        69.092,
+        513.997,
+        464.324
+      ],
+      "suggested_crop_bbox_pixels": [
+        244,
+        173,
+        1285,
+        1161
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-007.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\table-1-p007.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "table-2-p008",
+      "label": "Table 2",
+      "kind": "table",
+      "number": "2",
+      "page": 8,
+      "caption": "AP for TCL with NCoE.",
+      "raw_text": "Table 2: AP for TCL with NCoE.",
+      "caption_bbox_points": [
+        118.336,
+        72.08,
+        251.795,
+        82.043
+      ],
+      "caption_bbox_pixels": [
+        296,
+        180,
+        629,
+        205
+      ],
+      "suggested_crop_bbox_points": [
+        100.799,
+        62.08,
+        269.639,
+        252.541
+      ],
+      "suggested_crop_bbox_pixels": [
+        252,
+        155,
+        674,
+        631
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-008.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\table-2-p008.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "figure-2-p008",
+      "label": "Figure 2",
+      "kind": "figure",
+      "number": "2",
+      "page": 8,
+      "caption": "Performance of different methods on LastFM and Can. Parl. with varying input lengths.",
+      "raw_text": "Figure 2: Performance of different methods on LastFM and Can. Parl. with varying input lengths.",
+      "caption_bbox_points": [
+        266.398,
+        208.462,
+        504.003,
+        229.341
+      ],
+      "caption_bbox_pixels": [
+        666,
+        521,
+        1260,
+        573
+      ],
+      "suggested_crop_bbox_points": [
+        256.398,
+        83.567,
+        514.003,
+        239.341
+      ],
+      "suggested_crop_bbox_pixels": [
+        641,
+        209,
+        1285,
+        598
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-008.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\figure-2-p008.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "table-3-p009",
+      "label": "Table 3",
+      "kind": "table",
+      "number": "3",
+      "page": 9,
+      "caption": "CLR and CNR of changes made by DyGFormer.",
+      "raw_text": "Table 3: CLR and CNR of changes made by DyGFormer.",
+      "caption_bbox_points": [
+        191.186,
+        180.01,
+        420.505,
+        189.973
+      ],
+      "caption_bbox_pixels": [
+        478,
+        450,
+        1051,
+        475
+      ],
+      "suggested_crop_bbox_points": [
+        97.532,
+        170.01,
+        515.741,
+        534.659
+      ],
+      "suggested_crop_bbox_pixels": [
+        244,
+        425,
+        1289,
+        1337
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-009.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\table-3-p009.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "table-4-p009",
+      "label": "Table 4",
+      "kind": "table",
+      "number": "4",
+      "page": 9,
+      "caption": "LR and CNR of TP and TN with random negative sampling strategy.",
+      "raw_text": "Table 4: LR and CNR of TP and TN with random negative sampling strategy.",
+      "caption_bbox_points": [
+        107.691,
+        544.359,
+        286.194,
+        565.306
+      ],
+      "caption_bbox_pixels": [
+        269,
+        1361,
+        715,
+        1413
+      ],
+      "suggested_crop_bbox_points": [
+        97.532,
+        181.33,
+        515.741,
+        575.306
+      ],
+      "suggested_crop_bbox_pixels": [
+        244,
+        453,
+        1289,
+        1438
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-009.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\table-4-p009.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "table-5-p009",
+      "label": "Table 5",
+      "kind": "table",
+      "number": "5",
+      "page": 9,
+      "caption": "LR and CNR of FP under random, historical, and inductive negative sampling strategy.",
+      "raw_text": "Table 5: LR and CNR of FP under random, historical, and inductive negative sampling strategy.",
+      "caption_bbox_points": [
+        287.783,
+        543.861,
+        507.137,
+        564.808
+      ],
+      "caption_bbox_pixels": [
+        719,
+        1360,
+        1268,
+        1412
+      ],
+      "suggested_crop_bbox_points": [
+        97.532,
+        533.861,
+        517.137,
+        762.295
+      ],
+      "suggested_crop_bbox_pixels": [
+        244,
+        1335,
+        1293,
+        1906
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-009.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\table-5-p009.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    }
+  ]
+}

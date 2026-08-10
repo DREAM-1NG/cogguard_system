@@ -21,6 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import resolve_project_path, settings
 from app.db.mongodb import get_mongo_db
+from app.core.account_labeling import account_scope_key
 from app.models.account_labeling import (
     AccountBehaviorLabelRecord,
     AccountCorpusVersion,
@@ -225,13 +226,29 @@ async def freeze_account_holdout(
     ).scalar_one_or_none()
     if corpus is None:
         raise AppException(code=404, msg="Account corpus version not found.")
-    result = await session.execute(
+    statement = (
         select(AccountBehaviorLabelRecord, AccountDetectionCaseRecord)
         .join(AccountDetectionCaseRecord, AccountDetectionCaseRecord.case_id == AccountBehaviorLabelRecord.case_id)
         .where(AccountBehaviorLabelRecord.label_status.in_(("approved", "adjudicated")))
         .where(AccountBehaviorLabelRecord.training_target.in_(("bot", "non_bot")))
         .where(AccountBehaviorLabelRecord.case_fingerprint == AccountDetectionCaseRecord.case_fingerprint)
     )
+    corpus_manifest = _loads(corpus.manifest_json)
+    manifest_platforms = tuple(
+        str(value).strip()
+        for value in (corpus_manifest.get("platforms") or ())
+        if str(value).strip()
+    )
+    manifest_events = tuple(
+        str(value).strip()
+        for value in (corpus_manifest.get("event_ids") or ())
+        if str(value).strip()
+    )
+    if manifest_platforms:
+        statement = statement.where(AccountDetectionCaseRecord.platform.in_(manifest_platforms))
+    if manifest_events:
+        statement = statement.where(AccountDetectionCaseRecord.event_id.in_(manifest_events))
+    result = await session.execute(statement)
     candidates = list(result.all())
     if not candidates:
         raise AppException(code=400, msg="No approved account labels are available for a frozen holdout.")
@@ -245,12 +262,16 @@ async def freeze_account_holdout(
         ).scalars().all()
     )
     existing = {(str(row.case_id), str(row.label_id)) for row in existing_rows}
-    existing_accounts = {str(row.account_id) for row in existing_rows if row.account_id}
+    existing_accounts = {
+        _holdout_account_scope(row)
+        for row in existing_rows
+        if row.account_id
+    }
     eligible = [
         (label, case)
         for label, case in candidates
         if (str(case.case_id), str(label.label_id)) not in existing
-        and str(case.account_id) not in existing_accounts
+        and account_scope_key(case.platform, case.account_id) not in existing_accounts
     ]
     if not eligible:
         return {"corpus_version_id": corpus_version_id, "membership_count": len(existing_rows), "created": 0}
@@ -267,6 +288,7 @@ async def freeze_account_holdout(
                 membership_id=f"account-holdout-{uuid4().hex[:16]}",
                 corpus_version_id=corpus_version_id,
                 account_id=case.account_id,
+                platform=case.platform,
                 case_id=case.case_id,
                 label_id=label.label_id,
                 stratum_json=json.dumps(
@@ -329,6 +351,7 @@ async def list_frozen_account_holdout(
             "membership_id": row.membership_id,
             "corpus_version_id": row.corpus_version_id,
             "account_id": row.account_id,
+            "platform": row.platform or _loads(row.stratum_json).get("platform"),
             "case_id": row.case_id,
             "label_id": row.label_id,
             "stratum": _loads(row.stratum_json),
@@ -351,20 +374,20 @@ def _stratified_selection(rows: list[tuple[Any, Any]], target_count: int) -> lis
         if len(selected) >= target_count:
             break
         for label, case in group:
-            account_id = str(case.account_id)
-            if account_id not in selected_accounts:
+            account_scope = account_scope_key(case.platform, case.account_id)
+            if account_scope not in selected_accounts:
                 selected.append((label, case))
-                selected_accounts.add(account_id)
+                selected_accounts.add(account_scope)
                 break
     if len(selected) < target_count:
         for label, case in rows:
             if len(selected) >= target_count:
                 break
-            account_id = str(case.account_id)
-            if account_id in selected_accounts:
+            account_scope = account_scope_key(case.platform, case.account_id)
+            if account_scope in selected_accounts:
                 continue
             selected.append((label, case))
-            selected_accounts.add(account_id)
+            selected_accounts.add(account_scope)
     return selected[:target_count]
 
 
@@ -378,6 +401,16 @@ def _loads(value: str) -> dict[str, Any]:
         return payload if isinstance(payload, dict) else {}
     except (TypeError, json.JSONDecodeError):
         return {}
+
+
+def _holdout_account_scope(row: AccountFrozenHoldoutMembership) -> str:
+    """Read platform from the column and support pre-migration rows."""
+
+    stratum = _loads(row.stratum_json)
+    return account_scope_key(
+        str(row.platform or stratum.get("platform") or "unknown"),
+        str(row.account_id or ""),
+    )
 
 
 def _digest(values: Any) -> str:

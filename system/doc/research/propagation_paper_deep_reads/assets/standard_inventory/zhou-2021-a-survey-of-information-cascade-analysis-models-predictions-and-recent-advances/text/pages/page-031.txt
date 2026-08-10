@@ -1,0 +1,64 @@
+A Survey of Information Cascade Analysis: Models, Predictions, and Recent Advances      27:31
+
+
+ [70]  Adrien Guille, Hakim Hacid, Cecile Favre, and Djamel A. Zighed. 2013. Information diffusion in online social net-
+      works: A survey. ACM Sigmod Record 42, 2 (2013), 17–28.
+ [71] Ruocheng Guo, Elham Shaabani, Abhinav Bhatnagar, and Paulo Shakarian. 2015. Toward order-of-magnitude cas-
+      cade prediction. In ASONAM. 1610–1613.
+ [72] Ruocheng Guo and Paulo Shakarian. 2016. A comparison of methods for cascade prediction. In ASONAM. 591–598.
+ [73] Manish Gupta, Jing Gao, ChengXiang Zhai, and Jiawei Han. 2012. Predicting future popularity trend of events in
+      microblogging platforms. ASIST 49, 1 (2012), 1–10.
+ [74] Gonca Gürsun, Mark Crovella, and Ibrahim Matta. 2011. Describing and forecasting video access patterns. In
+     INFOCOM. 16–20.
+ [75]  Trevor Hastie, Robert Tibshirani, and Jerome Friedman. 2009. The Elements of Statistical Learning: Data Mining,
+       Inference, and Prediction. Springer Science & Business Media.
+ [76] Kaiming He, Xiangyu Zhang, Shaoqing Ren, and Jian Sun. 2016. Deep residual learning for image recognition. In
+      CVPR. 770–778.
+ [77] Xiangnan He, Ming Gao, Min-Yen Kan, Yiqun Liu, and Kazunari Sugiyama. 2014. Predicting the popularity of web
+       2.0 items based on user comments. In SIGIR. 233–242.
+ [78] Minh X. Hoang, Xuan-Hong Dang, Xiang Wu, Zhenyu Yan, and Ambuj K. Singh. 2017. GPOP: Scalable group-level
+       popularity prediction for online content in social networks. In WWW. 725–733.
+ [79] Sepp Hochreiter and Jürgen Schmidhuber. 1997. Long short-term memory. Neural Comput. 9, 8 (1997), 1735–1780.
+ [80]  Jake M. Hofman, Amit Sharma, and Duncan J. Watts. 2017. Prediction and explanation in social systems. Science 355,
+      6324 (2017), 486–488.
+ [81]  Liangjie Hong, Ovidiu Dan, and Brian D. Davison. 2011. Predicting popular messages in twitter. In WWW
+      Companion.
+ [82]  Zhiting Hu, Junjie Yao, Bin Cui, and Eric Xing. 2015. Community level diffusion extraction. In SIGMOD. 1555–1569.
+ [83]  Bernardo A. Huberman, Daniel M. Romero, and Fang Wu. 2008. Social networks that matter: Twitter under the
+      microscope. (2008). arXiv:0812.1045
+ [84] Salman Jamali and Huzefa Rangwala. 2009. Digging digg: Comment mining, popularity prediction, and social net-
+     work analysis. In WISM. 32–38.
+ [85]  Maximilian Jenders, Gjergji Kasneci, and Felix Naumann. 2013. Analyzing and predicting viral tweets. In WWW.
+ [86]  Adele Lu Jia, Siqi Shen, Dongsheng Li, and Shengling Chen. 2018. Predicting the implicit and the explicit video
+       popularity in a user generated content site with enhanced social features. Comput. Netw. 140 (2018), 112–125.
+ [87] Xin Jin, Andrew Gallagher, Liangliang Cao, Jiebo Luo, and Jiawei Han. 2010. The wisdom of social multimedia:
+      Using flickr for prediction and forecast. In MM. 1235–1244.
+ [88]  Zekarias T Kefato, Nasrullah Sheikh, Leila Bahri, Amira Soliman, Alberto Montresor, and Sarunas Girdzijauskas.
+       2018. CAS2VEC: Network-agnostic cascade prediction in online social networks. In SNAMS. 72–79.
+ [89] David Kempe, Jon Kleinberg, and Éva Tardos. 2003. Maximizing the spread of influence through a social network.
+       In KDD. 137–146.
+ [90] Elham Khabiri, Chiao-Fang Hsu, and James Caverlee. 2009. Analyzing and predicting community preference of
+       socially generated metadata: A case study on comments in the digg community. In ICWSM.
+ [91]  Aditya Khosla, Atish Das Sarma, and Raffay Hamid. 2014. What makes an image popular? In WWW. 867–876.
+ [92] Su-Do Kim, Sung-Hwan Kim, and Hwan-Gue Cho. 2011. Predicting the virtual temperature of web-blog articles as
+      a measurement tool for online popularity. In CIT. 449–454.
+ [93] Thomas N. Kipf and Max Welling. 2017. Semi-supervised classification with graph convolutional networks. In ICLR.
+ [94]  Jon M. Kleinberg. 1999. Authoritative sources in a hyperlinked environment. J. ACM 46, 5 (1999), 604–632.
+ [95] Ryota Kobayashi and Renaud Lambiotte. 2016. TiDeH: Time-dependent hawkes process for predicting retweet dy-
+      namics. In ICWSM. 191–200.
+ [96] Qingchao Kong, Wenji Mao, Guandan Chen, and Daniel Zeng. 2020. Exploring trends and patterns of popularity
+       stage evolution in social media. IEEE Trans. Syst. Man Cybernet. 50, 10 (Oct. 2020), 3817–3827.
+ [97] Qingchao Kong, Wenji Mao, and Chunyang Liu. 2016. Popularity prediction based on interactions of online contents.
+       In CCIS. 1–5.
+ [98] Qingchao Kong, Wenji Mao, Daniel Zeng, and Lei Wang. 2014. Predicting popularity of forum threads for public
+      events security. In IEEE-ISI. 99–106.
+ [99] Quyu Kong, Marian-Andrei Rizoiu, and Lexing Xie. 2020. Modeling information cascades with self-exciting pro-
+       cesses via generalized epidemic models. In WSDM. 286–294.
+[100] Shoubin Kong, Qiaozhu Mei, Ling Feng, Fei Ye, and Zhe Zhao. 2014. Predicting bursts and popularity of hashtags in
+       real-time. In SIGIR. 927–930.
+[101] Shoubin Kong, Fei Ye, Ling Feng, and Zhe Zhao. 2015. Towards the prediction problems of bursting hashtags on t
+       witter. J. Assoc. Info. Sci. Technol. 66, 12 (2015), 2566–2579.
+
+
+
+                       ACM Computing Surveys, Vol. 54, No. 2, Article 27. Publication date: March 2021.

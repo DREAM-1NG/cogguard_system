@@ -140,6 +140,7 @@ class ExportAccountDatasetRequest(BaseModel):
     """Request to export approved account labels into a versioned corpus."""
 
     dataset_version_id: str | None = None
+    corpus_version_id: str | None = None
     output_dir: str | None = None
 
 

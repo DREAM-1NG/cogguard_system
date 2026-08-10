@@ -1,0 +1,50 @@
+A Survey of Information Cascade Analysis: Models, Predictions, and Recent Advances
+27:7
+Unfortunately, there is no explicit answer applicable to all situations. Such limitations of ex-ante
+prediction drive researchers to design various peeking strategies, and/or investigate the evolution
+patterns of information items after the publication.
+Observing who participates in forwarding (or adopts) a piece of an information item enables
+consideration a sequence of participants/adopters as an information cascade, often defined as:
+Definition 2.2 (Information Cascade). Given an information item Ii and its corresponding N
+participants/adopters, an information cascade can be defined as Ci = {(uj,tj)|j ∈[1, N],tj ≤tp},
+where each tuple (uj,tj) represents user uj participating in this cascade Ci at time tj.
+As an example, consider an information item Ii of a tweet, and use the number of retweets as
+its popularity. Then, within time window [t0,to], we can observe a sequence of retweets that form
+a cascade—framing the prediction task as: given item Ii’s observed cascade at observation time to,
+predict the future popularity Pi (tp) = |Ci | at prediction time tp.
+2.2.3
+Macro-, Micro-, and Meso-level. The problem of information cascades—especially the pre-
+diction of cascades—is interdisciplinary, involving various expertise: text/image/video processing,
+social influence analysis, temporal and topological modeling, and so on. The prediction methods
+can be further classified according to the granularity of tasks: macro-level prediction aims at the
+collective behavior of cascades, whereas a micro-level prediction focuses on the individual sta-
+tus/actions of users/items. Macro-level prediction [29, 39, 120] models the cascade from a holistic
+and global perspective. The output of macro-level prediction is how much attention an information
+item will get in the future. Instead of taking a cascade as a whole, micro-level prediction concerns
+the behavior of individual users/items, e.g., predicts the activation probability of a specific user,
+by giving the current cascade statuses, individual/group characteristics, and neighboring relation-
+ships [58, 122, 157, 158, 164, 183, 198, 204, 211, 220, 225, 239].
+Another scope, referred to as meso-level prediction [63], concerns the behaviors of communi-
+ties/clusters [9, 53, 78, 82, 117, 165, 191, 207]. For example, [207] studied information spreading
+by considering community structures; Reference [78] proposed a group-level prediction model.
+Models combining two levels of scope are also proposed, e.g., Reference [234] utilizes micro-level
+user behavioral dynamics (one-hop subcascades) to help in predicting the macro-level cascade
+popularity. In this survey, most methods are macro-level popularity prediction of information
+items/cascades—i.e., given an information item or partially observed cascade, the goal is to predict
+the future popularity of this item/cascade. Nonetheless, features and methods that can be used for
+micro-level and/or meso-level predictions are also reviewed, as they can be easily incorporated
+into macro-level models while providing insights into macroscopic cascade behaviors.
+2.3
+Evaluation Metrics and Datasets
+After introducing problem definitions w.r.t. information item/cascade popularity prediction, we
+now turn to present evaluation metrics and datasets that frequently used in existing literature.
+The most commonly used classification metrics are Accuracy, Precision, Recall, and F-measure.
+Given a predefined threshold, an item/cascade can be classified as outbreak or viral if its popu-
+larity (size) exceeds that threshold. One known limitation of accuracy metrics is the class imbal-
+ance problem, due to the highly skewed popularity distribution [98]. For example, in one Twitter
+dataset [207], more than 92.8% tweets have retweets ≤10, while only 0.114% tweets have retweets
+>1,000. They follow heavy-tailed distributions, which are consistent with the findings of many
+previous studies [29, 39], as shown in Figure 4. To address such limitations, researchers reformu-
+late the problem definitions or adopt other types of evaluation metrics, e.g., Reference [39] adopts a
+class balanced binary classification, by predicting whether a cascade will exceed the median size of
+ACM Computing Surveys, Vol. 54, No. 2, Article 27. Publication date: March 2021.

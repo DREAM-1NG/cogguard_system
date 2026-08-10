@@ -1,0 +1,108 @@
+4
+RELATED WORK
+Early models for learning on dynamic graphs focused on DTDGs. Such approaches either aggregate
+graph snapshots and then apply static methods (Liben-Nowell & Kleinberg, 2007; Hisano, 2018;
+Sharan & Neville, 2008; Ibrahim & Chen, 2015; Ahmed & Chen, 2016; Ahmed et al., 2016),
+assemble snapshots into tensors and factorize (Dunlavy et al., 2011; Yu et al., 2017; Ma et al., 2019),
+or encode each snapshot to produce a series of embeddings. In the latter case, the embeddings are
+either aggregated by taking a weighted sum (Yao et al., 2016; Zhu et al., 2012), ﬁt to time series
+models (Huang & Lin, 2009; Güne¸s et al., 2016; da Silva Soares & Prudêncio, 2012; Moradabadi
+& Meybodi, 2017), used as components in RNNs (Seo et al., 2018; Narayan & Roe, 2018; Manessi
+et al., 2020; Yu et al., 2019; Chen et al., 2018; Sankar et al., 2020; Pareja et al., 2019), or learned by
+imposing a smoothness constraint over time (Kim & Han, 2009; Gupta et al., 2011; Yao et al., 2016;
+Zhu et al., 2017; Zhou et al., 2018; Singer et al., 2019; Goyal et al., 2018; Fard et al., 2019; Pei et al.,
+2016). Another line of work encodes DTDGs by ﬁrst performing random walks on an initial snapshot
+and then modifying the walk behaviour for subsequent snapshots (Mahdavi et al., 2018; Du et al.,
+2018; Xin et al., 2016; De Winter et al., 2018; Yu et al., 2018). Spatio-temporal graphs (considered
+by Zhang et al. (2018); Li et al. (2018) for trafﬁc forecasting) are speciﬁc cases of dynamic graphs
+where the topology of the graph is ﬁxed.
+CTDGs have been addressed only recently. Several approaches use random walk models (Nguyen
+et al., 2018; Nguyen et al., 2018; Bastas et al., 2019) incorporating continuous time through constraints
+on transition probabilities. Sequence-based approaches for CTDGs (Kumar et al., 2019; Trivedi et al.,
+2017; 2019; Ma et al., 2018) use RNNs to update representations of the source and destination node
+each time a new edge appears. Other recent works have focused on dynamic knowledge graphs (Goel
+et al., 2019; Xu et al., 2019; Dasgupta et al., 2018; García-Durán et al., 2018). Many architectures for
+continuous-time dynamic graphs are based on a node-wise memory updated by an RNN when new
+interactions appear. Yet, they lack a GNN-like aggregation from a node’s neighbors when computing
+its embedding, which makes them susceptible to the staleness problem (i.e. a node embedding
+becoming out of date) while at the same time also limiting their expressive power.
+Most recent CTDGs learning models can be interpreted as speciﬁc cases of our framework (see
+Table 1). For example, Jodie (Kumar et al., 2019) uses the time projection embedding module
+emb(i, t) = (1 + ∆tw) ◦si(t). TGAT (Xu et al., 2020) is a speciﬁc case of TGN when the
+memory and its related modules are missing, and graph attention is used as the Embedding module.
+DyRep (Trivedi et al., 2019) computes messages using graph attention on the destination node
+neighbors. Finally, we note that TGN generalizes the Graph Networks (GN) model (Battaglia et al.,
+2018) for static graphs (with the exception of the global block that we omitted from our model for the
+sake of simplicity), and thus the majority of existing graph message passing-type architectures.
+Table 1: Previous models for deep learning on continuous-time dynamic graphs are speciﬁc case of
+our TGN framework. Shown are multiple variants of TGN used in our ablation studies. method (l,n)
+refers to graph convolution using l layers and n neighbors. †uses t-batches. ∗uses uniform sampling
+of neighbors, while the default is sampling the most recent neighbors. ‡message aggregation not
+explained in the paper. ∥uses a summary of the destination node neighborhood (obtained through
+graph attention) as additional input to the message function.
+Mem.
+Mem. Updater
+Embedding
+Mess. Agg.
+Mess. Func.
+Jodie
+node
+RNN
+time
+—†
+id
+TGAT
+—
+—
+attn (2l, 20n)∗
+—
+—
+DyRep
+node
+RNN
+id
+—‡
+attn∥
+TGN-attn
+node
+GRU
+attn (1l, 10n)
+last
+id
+TGN-2l
+node
+GRU
+attn (2l, 10n)
+last
+id
+TGN-no-mem
+—
+—
+attn (1l, 10n)
+—
+—
+TGN-time
+node
+GRU
+time
+last
+id
+TGN-id
+node
+GRU
+id
+last
+id
+TGN-sum
+node
+GRU
+sum (1l, 10n)
+last
+id
+TGN-mean
+node
+GRU
+attn (1l, 10n)
+mean
+id
+6

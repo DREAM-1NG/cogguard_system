@@ -1,0 +1,67 @@
+and time series forecasting [30, 73, 62]. The idea of dividing the original data into patches as inputs
+of the Transformer has been attempted in some studies. ViT [14] splits an image into multiple patches
+and feeds the sequence of patches’ linear embeddings into a Transformer, which achieves surprisingly
+good performance on image classification. PatchTST [38] divides a time series into subseries-level
+patches and calculates the patches by a channel-independent Transformer for long-term multivariate
+time series forecasting. In this work, we propose a patching technique to learn on dynamic graphs,
+which can provide our approach with the ability to handle nodes with longer histories.
+Graph Learning Library. Currently, there exist many libraries for static graphs [5, 58, 16, 22, 8,
+29, 32], but few for dynamic graph learning [18, 46, 74]. DynamicGEM [18] focuses on dynamic
+graph embedding methods, which just consider the graph topology and cannot leverage node features.
+PyTorch Geometric Temporal [46] implements discrete-time algorithms for spatiotemporal signal
+processing and is mainly applicable for nodes with aligned historical observations. TGL [74]
+trains on large-scale dynamic graphs with some engineering tricks. Though TGL has integrated
+some continuous-time methods, they are somewhat out-of-date, resulting in the lack of state-of-
+the-art models. Moreover, TGL is implemented by both PyTorch and C++, which needs additional
+compilation and increases the usage difficulty. In this paper, we present a unified continuous-time
+dynamic graph learning library with thorough baselines, diverse datasets, extensible implementations,
+and comprehensive evaluations to facilitate dynamic graph learning research.
+3
+Preliminaries
+Definition 1. Dynamic Graph. We represent a dynamic graph as a sequence of non-decreasing
+chronological interactions G = {(u1, v1, t1) , (u2, v2, t2) , · · · } with 0 ≤t1 ≤t2 ≤· · · , where
+ui, vi ∈N denote the source node and destination node of the i-th link at timestamp ti. N is the
+set of all the nodes. Each node u ∈N can be associated with node feature xu ∈RdN , and each
+interaction (u, v, t) has link feature et
+u,v ∈RdE. dN and dE denote the dimensions of the node
+feature and link feature. If the graph is non-attributed, we simply set the node feature and link feature
+to zero vectors, i.e., xu = 0 and et
+u,v = 0.
+Definition 2. Problem Formalization. Given the source node u, destination node v, timestamp t,
+and historical interactions before t, i.e., {(u′, v′, t′) |t′ < t}, representation learning on dynamic
+graph aims to design a model to learn time-aware representations ht
+u ∈Rd and ht
+v ∈Rd for u and v
+with d as the dimension. We validate the effectiveness of the learned representations via two common
+tasks in dynamic graph learning: (i) dynamic link prediction, which predicts whether u and v are
+connected at t; (ii) dynamic node classification, which infers the state of u or v at t.
+4
+New Architecture and Unified Library
+4.1
+DyGFormer: Transformer-based Architecture for Dynamic Graph Learning
+The framework of our DyGFormer is shown in Figure 1, which employs Transformer [56] as the
+backbone. Given an interaction (u, v, t), we first extract historical first-hop interactions of source
+node u and destination node v before timestamp t and obtain two interaction sequences St
+u and
+St
+v. Next, in addition to computing the encodings of neighbors, links, and time intervals for each
+sequence, we also encode the frequencies of every neighbor’s appearances in both St
+u and St
+v to
+exploit the correlations between u and v, resulting in four encoding sequences for u/v in total. Then,
+we divide each encoding sequence into multiple patches and feed all the patches into a Transformer
+for capturing long-term temporal dependencies. Finally, the outputs of the Transformer are averaged
+to derive time-aware representations of u and v at timestamp t (i.e., ht
+u and ht
+v), which can be applied
+in various downstream tasks like dynamic link prediction and dynamic node classification.
+Learning from Historical First-hop Interactions. Unlike most previous methods that require nodes’
+historical interactions from multiple hops (e.g., DyRep [55], TGAT [64], TGN [45], CAWN [60]), we
+only learn from the sequences of nodes’ historical first-hop interactions, turning the dynamic graph
+learning task into a simpler sequence learning problem. Mathematically, given an interaction (u, v, t),
+for source node u and destination node v, we obtain the sequences that involve first-hop interactions
+of u and v before timestamp t, which are denoted by St
+u = {(u, u′, t′) |t′ < t} ∪{(u′, u, t′) |t′ < t}
+and St
+v = {(v, v′, t′) |t′ < t} ∪{(v′, v, t′) |t′ < t}, respectively.
+3

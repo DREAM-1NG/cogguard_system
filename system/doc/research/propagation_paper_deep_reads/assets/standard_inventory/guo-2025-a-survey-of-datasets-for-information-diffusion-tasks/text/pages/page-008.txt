@@ -1,0 +1,62 @@
+Conference’17, July 2017, Washington, DC, USA                                                                                   Guo et al.
+
+
+                                                                            datasets with comprehensive attributes is essential for accurately
+                                                                modeling propagation processes.
+                                                           • Time-recorded datasets after 2020 are scarce, with those before
+                                                                   2016 comprising over half of the total and those from 2016 to 2020
+                                                             making up the largest portion, as shown in Figure 2. Information
+                                                                              diffusion patterns from five to ten years ago may not apply today,
+                                                           making it crucial to acquire data from the last five years.
+                                                           • This study acknowledges potential biases in various datasets.
+Figure 2: The statistics of time horizon, language and modal-       Nearly 80% of current datasets focus on English-speaking plat-
+ity of all datasets.                                                    forms, leading to under-representation of non-English speakers,
+                                                             which can distort conclusions. Future work should prioritize col-
+                                                                             lecting diverse datasets across different languages and regions.
+  and LIAR use six categories, while others employ a binary sys-     • Most propagation content in the datasets is text, with only eight
+  tem: 𝑦𝑃∈{0, 1} for rumor (non-rumor or rumor) and fake news        multimodal datasets available. Accurate results require diverse
+   (real or fake). These variations affect the granularity of detection        content types, such as images and videos.
+  models.                                                   • Most datasets are collected from a single platform, primarily
+                                                                           Twitter. However, users engage across multiple platforms, and
+5.3  Methodology.                                             information diffusion patterns vary. Future research can collect
+                                                                       data on the same users or events across multiple platforms for aThe representative SOTA methods for the subtasks of misinforma-
+                                                          more comprehensive understanding.tion detection are introduced in this paragraph respectively. They
+                                                           • Advances in generative AI allow for the creation of syntheticbriefly introduce the landmark algorithms and current performance
+                                                                           datasets simulating information diffusion processes. These tech-in this task.
+• Rumor detection: Graph-aware Multi-feature Interacting Network        nologies can generate users with varied attributes and set up
+                                                                               different scenarios, including bot interference and AI-generated  (GMIN) [23] detects rumors on social media by integrating text,
+                                                                      misinformation. These datasets will enable a deeper exploration  user interactions, and propagation. It includes a Text-based Rea-
+                                                                            of information diffusion complexities in the era of large language  soning module that uses BERT and CNN-BiGRU for feature ex-
+                                                                    models.   traction, a Graph-aware Interaction module that constructs a
+  user-text graph with GAT, a Propagation Structure module that
+  applies GCN on diffusion graphs, and a Feature Collaboration     6.2  Limitations on research topics
+  module that fuses features via co-attention for early detection      Limitations and opportunities for future research topics are as
+  and interpretability. Table 10 presents the performance com-      follows.
+  parison between GMIN and baseline models on three datasets     • In addition to the prediction of popularity and user attitudes, the
+  (Ma-Weibo [77], Twitter15 [78] and Twitter16 [78]), measured by         prediction of information diffusion is often based solely on cas-
+  precision, recall, F1-score, and accuracy.                             cade data, overlooking content-based information. Future work
+• Fake news detection: Adaptive Rationale Guidance (ARG) net-       can incorporate the content, focusing on semantic and emotional
+  work [24] employs Large and Small Language Models for fake         attributes to enhance predictions of paths and effects.
+  news detection. It inputs news and rationales from an LLM, en-     • Current research on social bot detection focuses on identifying a
+  codes them with BERT, and uses cross-attention to integrate         single bot, while group bot detection methods is more crucial.
+  rationales for classification, outperforming LLM-only and SLM-     • Regarding misinformation detection, rumor detection generally
+  only methods. Table 11 presents the performance comparison        overlooks early rumor detection for emerging events, and fake
+  between ARG and baseline models on two datasets (Weibo21 [91]       news detection lacks sufficient attention to the impact of temporal
+  and GossipCop of FakeNewsNet [47]), measured by accuracy, F1-        changes, user information, and social network, which can be
+  score and macro F1.                                                focused more in the future.
+                                                           • Existing studies [105–107] typically study on a single platform or
+6  Discussion                                                       several independent platforms without links between different
+6.1  Limitations on datasets                                    platforms, such as the same user, the same topic of content, etc.
+                                                                    Future research is expected to consider cross-platform analysis
+Currently, there is a lack of comprehensive datasets that encompass
+                                                                         to better explore the diffusion of the same user or event across
+all six attributes, preventing simultaneous exploration of the three
+                                                                               different media.
+main tasks of information diffusion prediction. Furthermore, data
+analysis reveals that the time range covered by existing datasets is
+relatively outdated and that the data is limited in terms of language,    7  Conclusion
+modality, and source platform.                                         In this survey, we categorize information diffusion tasks into three
+• Current datasets are incomplete due to the absence of user or     main categories based on the "5W Model" framework: information
+  content data. We identified six attributes for datasets in Sec-      diffusion prediction, social bot detection, and misinformation detec-
+  tion 2.2. However, no dataset in Table 2 includes all six attributes       tion. We review datasets within the information diffusion domain
+  although they often coexist in real scenarios. Therefore, creating     and assess them against six key attributes: user information, social

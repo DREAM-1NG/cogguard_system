@@ -1,0 +1,42 @@
+Published as a conference paper at ICLR 2021
+Figure 8: Visualizing most discriminatory CAWs, and their occurrence ratios with positive / negative samples.
+also observed by the recent work to model social interacting behaviors (Wang et al., 2020), although
+temporal convolutional networks may alleviate this issue to some extent. That said, snapshot-based
+methods usually has the advantage that they usually consume less memory and computation time.
+Stream-based methods on the other hand need to manage how they sample history very carefully to
+balance the efﬁciency and effectiveness. Our proposed algorithm on CAW sampling comes into the
+place in light of this to solve the problem.
+E
+VISUALIZING CAWS AND AWS
+Here, we introduce one way to visualize and interpret CAWs. Our interpretation can also illustrate
+the importance to capture the correlation between walks to represent the dynamics of temporal
+networks, where the set-based anonymization of CAWs can work while AWs will fail. The basic idea
+of our intrepretation is to identify different shapes of CAWs via their patterns encoded in ICAW , and
+compare their contributions to the link-prediction conﬁdence. The idea will be also used to interpret
+AWs so that we can compare CAWs with AWs.
+First, we deﬁne the shapes of walks based on ICAW . Recall from Eq. 3 that g(w, Su) encodes the
+number of times node w that appears in different walk positions w.r.t source node u. This encoding
+induces a temporal shortest-path distance duw between node w and u: duw ≜min{i|g(w, Su)[i] >
+0}. Note that in temporal networks, there is not a canonical way to deﬁne shortest-path distance
+between two nodes as there is no static structures. So our deﬁnition duw can be viewed the shortest-
+path distance between u and w over the subgraph that consists of walks in Su. Based on the way to
+deﬁne (duw, dvw), we introduce the mapping from ICAW of the node w to a coordinate of this node in
+the subgraph that consists of walks in Su ∩Sv: (g(w, Su), g(w, Sv)) −→coor(w; u, v) = (duw, dvw).
+This cooredinate can be viewed as a relative coordinate of node w w.r.t. the source nodes u, v. Each
+walk W ∈Su ∪Sv can then represented as a sequence of such coordinates by mapping each node’s
+ICAW to a coordinate. The obtained sequence can be viewed as a shape of W and we denote the
+obtained shape as sCAW (W). For instance, in the toy example shown by Fig. 2 right, the ﬁrst CAW in
+Su, u −→b −→a −→c is mapped to a new coordinate sequence (0, 2) −→(1, 2) −→(2, ∞) −→(3, ∞).
+The ∞marks the setting that node a, c do not appear in Sv.
+Next, we score the contributions of CAWs with different shapes. We use CAW-N-Mean as enc(Su ∪
+Sv) is simply mean over the encodings of sampled CAWs and further use linear projrepresented as a
+sequence of such coordinates by mapping each node’section βT enc(Su ∪Sv) to compute the ﬁnal
+scalar logit for prediction. As the two operations mean and projection are commutative, the above
+setting allows each CAW ˆWi contributing a scalar score logit( ˆWi) = βT enc( ˆWi) to the ﬁnal logit.
+Fig. 8 lists the 3 highest-scored and the 3 lowest-scored shapes of CAW, which are extracted
+from the Wikipedia dataset with M = 32 and m = 3. A law of general motif closure can be
+observed from the highest-scored CAWs: two nodes that commonly appear in some types of motif
+are more inclined to have a link in between. For example, the highest-scored shape of CAW,
+(0, ∞) →(1, 2) →(2, 3) →(1, 2), implies that the nodes except the ﬁrst in this CAW appear in
+the sampled common 3-hop neighborhood around the two nodes between which the link is to be
+20

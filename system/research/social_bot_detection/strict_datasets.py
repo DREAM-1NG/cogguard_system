@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from .contracts import DatasetManifest
+from .datasets import load_approved_account_corpus
 from .strict_contracts import StrictAccountRecord, StrictCorpus, StrictGraph, StrictRelationEdge
 from .strict_features import STRICT_CATEGORICAL_FIELDS, STRICT_NUMERIC_FIELDS, feature_coverage, linearize_account_text, normalize_nlpcc_text, parse_timestamp, sample_texts
 
@@ -21,6 +22,7 @@ __all__ = [
     "load_strict_cresci_2015_corpus",
     "load_strict_cresci_2017_corpus",
     "load_strict_midterm_2018_corpus",
+    "load_strict_approved_account_corpus",
     "load_strict_social_corpus",
 ]
 
@@ -38,6 +40,7 @@ def load_strict_social_corpus(
         "cresci_2015": load_strict_cresci_2015_corpus,
         "cresci_2017": load_strict_cresci_2017_corpus,
         "midterm_2018": load_strict_midterm_2018_corpus,
+        "approved_account_corpus": load_strict_approved_account_corpus,
     }
     try:
         loader = loaders[normalized]
@@ -45,6 +48,46 @@ def load_strict_social_corpus(
         valid = ", ".join(sorted(loaders))
         raise ValueError(f"unsupported strict social-bot dataset: {dataset_name}. Expected one of: {valid}") from error
     return loader(dataset_root, max_posts_per_account=max_posts_per_account)
+
+
+def load_strict_approved_account_corpus(
+    dataset_root: str | Path,
+    *,
+    max_posts_per_account: int = 64,
+) -> StrictCorpus:
+    """Adapt the governed Chinese approved corpus without inventing features."""
+
+    samples, manifest = load_approved_account_corpus(
+        dataset_root,
+        max_posts_per_account=max_posts_per_account,
+    )
+    records = [
+        StrictAccountRecord(
+            account_id=sample.account_id,
+            label=sample.label,
+            text=sample.text,
+            post_count=sample.post_count,
+            source_file_hash=sample.source_file_hash,
+            source_encoding=sample.source_encoding,
+            dataset_name=sample.dataset_name,
+            source_label=sample.source_label,
+            metadata=sample.metadata,
+            split_group=sample.split_group,
+            numeric_features={},
+            categorical_features={},
+        )
+        for sample in samples
+    ]
+    return StrictCorpus(
+        records=records,
+        graph=StrictGraph(
+            node_ids=tuple(record.account_id for record in records),
+            edges=(),
+            relation_types=(),
+            available=False,
+        ),
+        manifest=manifest,
+    )
 
 
 def load_strict_cresci_2015_corpus(

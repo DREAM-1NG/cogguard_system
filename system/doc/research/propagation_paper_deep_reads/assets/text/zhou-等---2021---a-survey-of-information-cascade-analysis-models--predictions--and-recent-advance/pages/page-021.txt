@@ -1,0 +1,64 @@
+A Survey of Information Cascade Analysis: Models, Predictions, and Recent Advances
+27:21
+Reference [174], since they observe a power-law distribution in retweeting dynamics. The linear
+reinforcement mechanism in RPP was replaced by an exponential decay reinforcement function
+pi (tj) = Pi (tj )
+j=0
+exp (−δij)(δi > 0) to regularize the large popularity, and a time mapping function
+f : tj →ˆtj to mitigate the influence of diurnal rhythm of user activities following their earlier
+works [60, 61].
+A dynamic activeness model based on Poisson process was introduced in Reference [125], aim-
+ing to predict the intensity (cascade size), coverage (number of users involved), and duration of
+a trend in DBLP co-authorship network. The RepostTree model [129] decomposes a sequence of
+Weibo retweets into tree-structures based on users’ follower relationships and subsequently com-
+putes a composite Poisson distribution based on early observation of retweets with maximum
+likelihood estimation. Another extension of RPP model [59] decomposed the Weibo retweet cas-
+cade graph as k sub-processes (in their case k = 3), and kept the attractiveness αi,j and log-normal
+distribution relaxation function ϕi (τ ) (cf. Equation (1)) unchanged. Then the rate function was
+defined as
+λi (t) =
+k
+
+j=1
+αi,jϕi (t,tj)Pi (t),
+(3)
+wheretj is the time when the jth sub-process starts. Recently, learning the collective user behaviors
+in cascades by utilizing Poisson process with a latent user interest layer was proposed in Reference
+[130].
+4.2
+Survival Analysis
+Survival analysis is a branch of statistics that is widely used in engineering, economics, and soci-
+ology [141]. Borrowing the idea from survival analysis to predict the popularity of online contents
+in References [112, 113], a model based on Cox proportional hazard regression [44] was imple-
+mented, consisting of two components: (i) a set of explanatory risk factors {xj}j; and (ii) a baseline
+Welbull distribution function h0(t) = γ
+λ ( t
+λ )γ −1. After fitting the parameters {βj}j of Cox regression
+and parameters γ and λ of Weibull distribution, the hazard function is approximated by
+hi (t) = hi0(t)
+
+j βijxij .
+(4)
+In similar spirit, a dynamic egocentric model of citation networks based on a counting process
+was proposed in Reference [196], with intensity function λi (t) = hi0(t) exp(
+j βijsij (t)), where
+h0(t) is the baseline hazard function, {sij (t)}j is a set of risk factors dependent on item Ii, and βij
+are parameters need to estimate. Risk factors are calculated by citation graph and LDA.
+The Weibull distribution in survival analysis was also adopted in References [234, 235], intro-
+ducing a networked Weibull regression model (NEWER) to characterize the information diffusion
+in a Weibo global graph. By modeling the retweeting event that happened on a node as the survival
+process, the density function is defined as γi
+λi ( t
+λi )γi−1 exp(−( t
+λi )γi ), where λi and γi are parameter
+vectors linearly associated with the user’s representation vector containing user and structural
+features extracted from user historical behaviors and global graph, respectively.
+There are a few other survival analysis-based models, e.g., References [179, 217], with the fun-
+damental difference between these models lying in the design of hazard functions and survival
+probabilities, which should be appropriate for the target application with empirical data.
+4.3
+Self-exciting Hawkes Point Processes and Epidemic Models
+Self-exciting point process-based models predict the rate of events (e.g., retweets or citations) as
+a function of time and the previous history of events. One of the seminal works was reported
+in Reference [45], describing the dynamics of viewing behavior of YouTube videos by two factors:
+ACM Computing Surveys, Vol. 54, No. 2, Article 27. Publication date: March 2021.

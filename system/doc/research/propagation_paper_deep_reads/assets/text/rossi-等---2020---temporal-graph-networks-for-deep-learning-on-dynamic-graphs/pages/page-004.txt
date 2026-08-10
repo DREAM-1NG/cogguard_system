@@ -1,0 +1,106 @@
+For interaction events involving two nodes i and j, the memories of both nodes are updated after the
+event has happened. For node-wise events, only the memory of the related node is updated. Here,
+mem is a learnable memory update function, e.g. a recurrent neural network such as LSTM (Hochre-
+iter & Schmidhuber, 1997) or GRU (Cho et al., 2014).
+Embedding.
+The embedding module is used to generate the temporal embedding zi(t) of node i
+at any time t. The main goal of the embedding module is to avoid the so-called memory staleness
+problem (Kazemi et al., 2020). Since the memory of a node i is updated only when the node is
+involved in an event, it might happen that, in the absence of events for a long time (e.g. a social
+network user who stops using the platform for some time before becoming active again), i’s memory
+becomes stale. While multiple implementations of the embedding module are possible, we use the
+form:
+zi(t) = emb(i, t) =
+X
+j∈Nk
+i ([0,t])
+h (si(t), sj(t), eij, vi(t), vj(t)) ,
+where h is a learnable function. This includes many different formulations as particular cases:
+Identity (id): emb(i, t) = si(t), which uses the memory directly as the node embedding.
+Time projection (time): emb(i, t) = (1 + ∆t w) ◦si(t), where w are learnable parameters, ∆t is
+the time since the last interaction, and ◦denotes element-wise vector product. This version of the
+embedding method was used in Jodie (Kumar et al., 2019).
+Temporal Graph Attention (attn): A series of L graph attention layers compute i’s embedding by
+aggregating information from its L-hop temporal neighborhood.
+The input to the l-th layer is i’s representation h(l−1)
+i
+(t), the current timestamp t, i’s neighbor-
+hood representation {h(l−1)
+1
+(t), . . . , h(l−1)
+N
+(t)} together with timestamps t1, . . . , tN and features
+ei1(t1), . . . , eiN(tN) for each of the considered interactions which form an edge in i’s temporal
+neighborhood:
+h(l)
+i (t)
+=
+MLP(l)(h(l−1)
+i
+(t) ∥˜h(l)
+i (t)),
+(5)
+˜h(l)
+i (t)
+=
+MultiHeadAttention(l)(q(l)(t), K(l)(t), V(l)(t)),
+(6)
+q(l)(t)
+=
+h(l−1)
+i
+(t) ∥φ(0),
+(7)
+K(l)(t)
+=
+V(l)(t) = C(l)(t),
+(8)
+C(l)(t)
+=
+[h(l−1)
+1
+(t) ∥ei1(t1) ∥φ(t −t1), . . . , h(l−1)
+N
+(t) ∥eiN(tN) ∥φ(t −tN)].
+(9)
+Here, φ(·) represents a generic time encoding (Xu et al., 2020), ∥is the concatenation operator and
+zi(t) = emb(i, t) = h(L)
+i
+(t). Each layer amounts to performing multi-head-attention (Vaswani et al.,
+2017) where the query (q(l)(t)) is a reference node (i.e. the target node or one of its L −1-hop
+neighbors), and the keys K(l)(t) and values V(l)(t) are its neighbors. Finally, an MLP is used to
+combine the reference node representation with the aggregated information. Differently from the
+original formulation of this layer (ﬁrstly proposed in TGAT (Xu et al., 2020)) where no node-wise
+temporal features were used, in our case the input representation of each node h(0)
+j (t) = sj(t)+vj(t)
+and as such it allows the model to exploit both the current memory sj(t) and the temporal node
+features vj(t).
+Temporal Graph Sum (sum): A simpler and faster aggregation over the graph:
+h(l)
+i (t)
+=
+W(l)
+2 (h(l−1)
+i
+(t) ∥˜h(l)
+i (t)),
+(10)
+˜h(l)
+i (t)
+=
+ReLu(
+X
+j∈Ni([0,t])
+W(l)
+1 (h(l−1)
+j
+(t) ∥eij ∥φ(t −tj))).
+(11)
+Here as well, φ(·) is a time encoding and zi(t) = emb(i, t) = h(L)
+i
+(t). In the experiment, both for
+the Temporal Graph Attention and for the Temporal Graph Sum modules we use the time encoding
+presented in Time2Vec (Kazemi et al., 2019) and used in TGAT (Xu et al., 2020).
+The graph embedding modules mitigate the staleness problem by aggregating information from a
+node’s neighbors memory. When a node has been inactive for a while, it is likely that some of its
+4

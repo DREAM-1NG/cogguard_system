@@ -1,0 +1,55 @@
+A Survey of Information Cascade Analysis: Models, Predictions, and Recent Advances      27:17
+
+
+by user topology in graph, reveals little about the actual influence [33, 46]. Leveraging histori-
+cal evidence of user behaviors, an orthogonal sparse logistic regression (OSLOR), which predicts
+cascade outbreak via selecting users who are more powerful and less redundant, was proposed
+in Reference [46].
+
+3.4  Content Features
+Content is recognized as the inner drive and one of the key factors that leads items to success [229],
+e.g., breaking news, rumors/fake news, hot spots, controversial/peculiar topics, disinformation and
+misinformation, and so on, attract significantly more attention than normal content.
+
+   3.4.1  Text Content. Text features are widely adopted by existing popularity prediction mod-
+els, since text is ubiquitous information appearing in articles, microblogs, image/audio/video cap-
+tions/descriptions, and can even be retrieved from images/audio/videos.
+  Existing works analyze the user-generated textual content with various language models,
+such as Term Frequency-Inverse Document Frequency (TF-IDF) and Latent Dirichlet Allocation
+(LDA) [21], combined with typical machine learning models such as naive Bayes, SVM and linear
+regression to predict item popularity. For example, TF-IDF and LDA are used to learn the topic
+distributions of tweets in Reference [81]. TF-IDF was also used in Reference [227] to estimate the
+importance of keywords in user tweets, and further calculated the mutual correlation between all
+the historical content of her/his tweets and the content of a specific item to measure how much a
+user likes a piece of content, i.e., if the correlation is high, then this user may have a higher prob-
+ability of adopting this item. In Reference [90], authors analyzed several semantic and statistical
+content features of Digg comments, including comment length, number of verbs/nouns, content
+entropy, readability, subjectivity/objectivity, polarity, and so on, and they found that people prefer
+to retweet short, simple, and readable content. The impact of textual and semantic features on the
+volume of news article comments was discussed in Reference [189]. Predicting whether a tweet
+would be retweeted purely based on the content of tweets (including marks, terms, emoticons, sen-
+timents and topics) from Reference [149] was later adopted in Reference [105] to predict the size of
+retweet cascades, and for sentiment impact on retweetability of political tweets in Reference [177].
+The design of content features for predicting scientific impact of academic papers, including LDA
+topic models, which extract probability distribution from paper titles/abstracts, topic diversity cal-
+culated by entropy, and paper novelty, as well authority of authors [94], and so on, in References
+[49, 50, 218] showed that the content features of papers play critical roles in prediction. The sen-
+timent and self-disclosure of tweets analysis, along with calculations of topic affinity of tweets
+using a Twitter-based LDA for better topic discovery and extraction, was presented in Reference
+[236]; another study embedded sentences in vectors to combine sentiments of the descriptions of
+short videos [36]. Combining domain, spam score, tweet topic, user topic, topic interactions be-
+tween tweet and user, and tweet category as the content features were studied in Reference [136].
+The comparative study of transactional (TF-IDF or LDA) and semantic (sentiment, controversy,
+content richness, hotness, and trend momentum) models and their inter-relationships in Refer-
+ence [248] considered three kinds of diffusion mechanism: cascades of URL, hashtag, and retweet.
+It was found that semantic features have better performance on hashtag cascades (with higher
+content complexity), while transactional features are more effective on URL and retweet cascades
+(with lower content complexity).
+
+   3.4.2  Content Features of Image. The characteristics of images are significantly different from
+texts, in terms of modeling and retrieving image features, which often require techniques from
+computer vision learning. Some basic features regarding an image can be retrieved easily if avail-
+able, e.g., in Reference [138] the authors analyzed the basic attributes associated with images,
+
+
+                       ACM Computing Surveys, Vol. 54, No. 2, Article 27. Publication date: March 2021.

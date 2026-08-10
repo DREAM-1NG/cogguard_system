@@ -1,0 +1,140 @@
+utilizes the outcomes of micro-prediction to guide macro-
+prediction, lacking a comprehensive recognition of the mu-
+tually reinforcing synergy inherent in these two tasks. Sim-
+ilarly, while DMT-LIC (Chen et al. 2019a) incorporates a
+shared representation layer to capture cascade graph repre-
+sentations and diffusion processes, it fails to address the is-
+sue of potential contamination and redundancy between the
+shared features and task-specific features. Moreover, both
+methods primarily concentrate on user interactions within
+individual cascades, neglecting the intricate interactions and
+dynamics among cascades at a global level.
+To address the above challenges, we propose MINDS, a
+streamlined and efficient model for Multi-scale INformation
+DiffuSion prediction. Specifically, at the macro level, we
+construct sequential hypergraphs to effectively capture the
+interactions and dynamics among cascades. From a global
+perspective, modeling complex interactions among users
+and cascades is consistent with the concept of the hyper-
+graph. Constructing sequential hypergraphs by dividing the
+time period into sequential time windows can accurately de-
+scribe the dynamic evolution of the cascades. At the mi-
+cro level, we focus on understanding the social homophily
+among users within social networks. We design a shared
+module to learn shared features for both macro and micro
+tasks. Furthermore, we incorporate adversarial training and
+orthogonality constraints to mitigate feature redundancy and
+contamination between shared and task-specific features. In
+summary, the main contributions of this paper are three-fold:
+• We propose an effective and straightforward model that
+tackles both macro and micro prediction, leveraging their
+mutual reinforcement to enhance overall performance.
+• We introduce an approach that captures the interactions
+and dynamics among cascades by modeling information
+diffusion in sequential hypergraphs. To address feature
+redundancy, we incorporate adversarial training and or-
+thogonality constraints.
+• We conducted comprehensive experiments to evaluate
+our model’s performance. The results demonstrate its su-
+periority over state-of-the-art methods in both macro and
+micro prediction.
+Problem Formulation
+To commence, we present the social graph and diffusion hy-
+pergraphs that constitute the foundation for diffusion pre-
+diction within our model. The social graph is denoted as
+GS = (U, E), where U is the user set and E is the edge
+set. Each edge (ui, uj) ∈E represents a social relationship
+between user ui and uj. The observed diffusion cascades
+D = {d1, d2, . . . , dM}, |D| = N are split into T subsets ac-
+cording to timestamps for constructing sequential diffusion
+hypergraphs GD = {Gt
+D|t = 1, 2, . . . , T}, Gt
+D = (U t, Et),
+where U t is the user set and Et is the hyperedge set. In
+the diffusion hypergraph, users participate in the same cas-
+cade and are connected by a hyperedge, in other words, a
+hyperedge represents a cascade. Note that the set of nodes
+connected by hyperedge is different in each hypergraph. It
+means that if ui participates in dm during the t-th time inter-
+val, then ui being connected to hyperedge em only occurs in
+diffusion hypergraph Gt
+D.
+In this work, we aim to address both the macroscopic
+and microscopic diffusion prediction problems based on the
+above introductions.
+Macroscopic Diffusion Prediction: Given a social graph
+GS, diffusion hypergraphs GD and an observed diffusion
+sequence dm = {(um
+i , tm
+i )|um
+i ∈U}, estimate the final size
+|dm| of cascade dm.
+Microscopic Diffusion Prediction: Given a social graph
+GS, diffusion hypergraphs GD and an observed diffusion
+sequence dm = {(um
+i , tm
+i )|um
+i
+∈U}, predict which user
+will participate in dm in the next step.
+Method
+In this section, we will provide a comprehensive introduc-
+tion to the proposed model. The architectural overview of
+the proposed model is depicted in Fig. 2, which comprises
+four primary modules:
+User Global Interactive Learning Module: This module
+is responsible for extracting user preferences at each time
+interval and characterizing the dynamic changes of cascades.
+A fusion layer at the cascade level facilitates this process.
+User Social Homophily Learning Module: It captures
+users’ social relationship at the individual user level using
+Graph Convolutional Networks (GCN).
+Shared-private Representation Learning Module: This
+module learns task-specific representations and shared rep-
+resentations to facilitate diffusion prediction.
+Diffusion Prediction Module: This module concatenates
+task-specific features with shared representation for macro-
+scopic and microscopic diffusion prediction, respectively.
+User Global Interactive Learning
+In order to simultaneously account for global interactions
+among cascades and dynamic changes of cascades. On the
+basis of the constructed sequential diffusion hypergraphs,
+we introduce the HGNN to learn the user global interactions
+of each independent time interval at the cascade level, and
+add a fusion layer between two continuous time intervals to
+model the dynamics of cascades.
+Hypergraph Neural Network
+At each time interval, we
+model the interactions of users through HGNN. The process
+of HGNN is illustrated in Fig. 3. For a simple graph, graph
+convolution takes the aggregation of its neighbor vertices to
+get a new representation of the central vertex. The informa-
+tion of vertices is passed through edges in a simple graph.
+Similarly, hyperedges play a role in information transmis-
+sion in a hypergraph. The message aggregating in the hy-
+pergraph can be summarized in a two-stage procedure: 1)
+Vertex-to-Hyperedge; 2) Hyperedge-to-Vertex.
+Vertex-to-Hyperedge. Given a diffusion hypergraph Gt
+D,
+the first stage of HGNN aims to update the feature yj,t of
+hyperedge et
+j by aggregating the information of all its con-
+nected vertices, which can be defined as:
+yl
+j,t = σ
+
+wet
+j ·
+X
+ut
+i∈Nv(et
+j)
+xl
+i,t
+|Nv(et
+j)|
+
+,
+(1)
+The Thirty-Eighth AAAI Conference on Artiﬁcial Intelligence (AAAI-24)
+8572

@@ -1,0 +1,52 @@
+[29] Jintang Li, Kun Xu, Liang Chen, Zibin Zheng, and Xiao Liu. Graphgallery: A platform for fast
+benchmarking and easy development of graph neural networks based intelligent software. In
+43rd IEEE/ACM International Conference on Software Engineering: Companion Proceedings,
+pages 13–16. IEEE, 2021.
+[30] Shiyang Li, Xiaoyong Jin, Yao Xuan, Xiyou Zhou, Wenhu Chen, Yu-Xiang Wang, and Xifeng
+Yan. Enhancing the locality and breaking the memory bottleneck of transformer on time series
+forecasting. In Advances in Neural Information Processing Systems 32, pages 5244–5254, 2019.
+[31] Xiaohan Li, Mengqi Zhang, Shu Wu, Zheng Liu, Liang Wang, and Philip S. Yu. Dynamic graph
+collaborative filtering. In 20th IEEE International Conference on Data Mining, pages 322–331.
+IEEE, 2020.
+[32] Meng Liu, Youzhi Luo, Limei Wang, Yaochen Xie, Hao Yuan, Shurui Gui, Haiyang Yu, Zhao
+Xu, Jingtun Zhang, Yi Liu, Keqiang Yan, Haoran Liu, Cong Fu, Bora Oztekin, Xuan Zhang,
+and Shuiwang Ji. DIG: A turnkey library for diving into graph deep learning research. J. Mach.
+Learn. Res., 22:240:1–240:9, 2021.
+[33] Yinhan Liu, Myle Ott, Naman Goyal, Jingfei Du, Mandar Joshi, Danqi Chen, Omer Levy,
+Mike Lewis, Luke Zettlemoyer, and Veselin Stoyanov. Roberta: A robustly optimized BERT
+pretraining approach. CoRR, abs/1907.11692, 2019.
+[34] Ze Liu, Yutong Lin, Yue Cao, Han Hu, Yixuan Wei, Zheng Zhang, Stephen Lin, and Baining
+Guo. Swin transformer: Hierarchical vision transformer using shifted windows. In 2021
+IEEE/CVF International Conference on Computer Vision, pages 9992–10002. IEEE, 2021.
+[35] Yuhong Luo and Pan Li. Neighborhood-aware scalable temporal network representation learning.
+In The First Learning on Graphs Conference, 2022.
+[36] Yao Ma, Ziyi Guo, Zhaochun Ren, Jiliang Tang, and Dawei Yin. Streaming graph neural
+networks. In Proceedings of the 43rd International ACM SIGIR conference on research and
+development in Information Retrieval, pages 719–728. ACM, 2020.
+[37] Vinod Nair and Geoffrey E. Hinton.
+Rectified linear units improve restricted boltzmann
+machines. In Proceedings of the 27th International Conference on Machine Learning, pages
+807–814. Omnipress, 2010.
+[38] Yuqi Nie, Nam H Nguyen, Phanwadee Sinthong, and Jayant Kalagnanam. A time series is
+worth 64 words: Long-term forecasting with transformers. In International Conference on
+Learning Representations, 2023.
+[39] Aldo Pareja, Giacomo Domeniconi, Jie Chen, Tengfei Ma, Toyotaro Suzumura, Hiroki Kaneza-
+shi, Tim Kaler, Tao B. Schardl, and Charles E. Leiserson. Evolvegcn: Evolving graph con-
+volutional networks for dynamic graphs. In The Thirty-Fourth AAAI Conference on Artificial
+Intelligence, pages 5363–5370. AAAI Press, 2020.
+[40] Razvan Pascanu, Tomás Mikolov, and Yoshua Bengio. On the difficulty of training recurrent
+neural networks. In Proceedings of the 30th International Conference on Machine Learning,
+volume 28 of JMLR Workshop and Conference Proceedings, pages 1310–1318. JMLR.org,
+2013.
+[41] Adam Paszke, Sam Gross, Francisco Massa, Adam Lerer, James Bradbury, Gregory Chanan,
+Trevor Killeen, Zeming Lin, Natalia Gimelshein, Luca Antiga, Alban Desmaison, Andreas
+Köpf, Edward Z. Yang, Zachary DeVito, Martin Raison, Alykhan Tejani, Sasank Chilamkurthy,
+Benoit Steiner, Lu Fang, Junjie Bai, and Soumith Chintala. Pytorch: An imperative style,
+high-performance deep learning library. In Advances in Neural Information Processing Systems
+32, pages 8024–8035, 2019.
+[42] James W Pennebaker, Martha E Francis, and Roger J Booth. Linguistic inquiry and word count:
+Liwc 2001. Mahway: Lawrence Erlbaum Associates, 71(2001):2001, 2001.
+[43] Tobias Pfaff, Meire Fortunato, Alvaro Sanchez-Gonzalez, and Peter W. Battaglia. Learning
+mesh-based simulation with graph networks. In 9th International Conference on Learning
+Representations. OpenReview.net, 2021.
+13

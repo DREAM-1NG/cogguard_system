@@ -4,7 +4,36 @@
 > **受众**：开发者、项目维护者、后续执行任务的 AI agent。  
 > **维护规则**：只维护可执行工程路线和状态；研究定位、文献依据和关键技术背景放入 `../research/`。
 
-> 最后更新：2026-08-05
+> 最后更新：2026-08-08
+
+## 2026-08-08 TwiBot-20 Research Runtime And Dataset Identity
+
+- [x] Deploy the selected NLPCC TwiBot-20 seed-3 checkpoint as a separate,
+  hash-verified fixed-graph research bundle and CLI.
+- [x] Keep the TwiBot-20 runtime permanently outside the Chinese account
+  model Active Pointer and document its transductive scope.
+- [x] Scope approved-corpus identities by platform, preserve source IDs, and
+  reject tampered JSONL fingerprints, record counts, and class counts.
+- [x] Use platform-scoped IDs in system-owned frozen-holdout inference and
+  audit lookup.
+- [ ] Chinese online deployment still requires the real DAPT threshold,
+  approved binary labels, detector retraining, signed shadow evaluation,
+  activation, latency measurement, and rollback rehearsal.
+
+## 2026-08-07 Account Detection Module Review
+
+- [x] Account detail is platform-scoped; ambiguous cross-platform account IDs
+  fail with an explicit request error instead of merging profiles.
+- [x] Account detector projection cache fingerprints include the complete
+  Mongo post input used by strict BotRHG inference, including nested profile,
+  interaction, and relation fields.
+- [x] Account-model migration chain has one Alembic head at
+  `e5c1b7d9a204`; offline upgrade SQL generation now completes through that
+  head.
+- [ ] A governed Chinese detector bundle, real MySQL migration round-trip to
+  `e5c1b7d9a204`, shadow run, activation, and rollback exercise remain
+  deployment gates. No result is claimed until these are executed with real
+  data and services.
 
 ## 2026-08-05 Review Teacher-Student Integrity
 
@@ -123,8 +152,8 @@
 - [x] 本地原型验收脚本已贯通 EventSnapshot、Coordination Discover、Propagation Analysis、Student Review 和 Teacher Review，并明确输出 fallback/shadow/advisory/non-claimable 状态。
 - [ ] 研究级 Coordination Discover、Propagation Analysis 和 Student/Teacher checkpoint 尚未因缺少批准 artifact 而声明为可研究主张结果；Social Bot Detection 的 BotRHG Weibo transfer 已有真实 checkpoint，但当前指标低于同切分 TF-IDF 参考，研究 claim 仍 blocked。
 - [x] 前端 `npm run build`（包含 `vue-tsc -b`）已通过；本轮不修改前端展示页面。
-- [x] 账号训练控制面已完成真实 MySQL/Mongo/Redis/Celery smoke：迁移回环、transactional outbox、worker receipt、重复投递门禁和无 Active Pointer 拒绝路径均有实测证据。
-- [ ] GPU 长实验仍未完成：当前中文语料为 415,686 tokens，低于 500,000-token DAPT 门禁；backend venv 为 CPU-only PyTorch，尚未完成 DAPT、监督重训、签名 shadow、激活和回滚全周期。
+- [x] 账号模型控制面已完成真实 MySQL/Mongo/Redis/Celery smoke：迁移回环、transactional outbox、训练/评估队列注册、重复投递门禁、不可变 Encoder Version、Frozen Holdout 评估、训练导出 lineage、Active Pointer 失效拒绝和受限自动回滚均有代码与回归证据。
+- [ ] GPU 长实验仍未完成：backend venv 已升级为 `torch 2.11.0+cu128`，本地中文 RoBERTa 的 BF16 DAPT smoke 已完成两个真实 optimizer update，峰值显存 1,972.8 MiB；当前中文语料仍为 415,686 tokens，低于 500,000-token DAPT 门禁，且尚无 200 个批准标签，因此完整 DAPT、监督重训、签名 shadow、激活和回滚全周期仍未完成。
 
 ## 技术决策记录
 
@@ -176,7 +205,7 @@
 | Coordination Discover / Detect | 🔧 可运行原型，研究 claim blocked | P1 | 标签数据、批准 checkpoint |
 | Propagation Analysis | 🔧 可运行 fallback，研究 claim blocked | P1 | 公开数据训练、批准 checkpoint、覆盖率验证 |
 | Review / Event Review Case | 🔧 案例工作台原型，确认仍需分析员审批 | P1 | 解析工作流、分析员工作流 |
-| 账户监测模块 | ✅ 已完成（含 BotRHG API） | P1 | 数据采集 |
+| 账户监测模块 | 🔧 后端子模块可接入，生产模型待激活 | P1 | 数据采集 |
 | 前端 - 协同检测页（网络可视化） | ✅ 已完成 | P1 | 后端协同检测 |
 | 前端 - 传播监控页（时间线+角色） | ✅ 已完成 | P1 | 后端传播监控 |
 | 前端 - 账户监测页（画像+评分） | ✅ 已完成 | P1 | 后端账户监测 |
@@ -272,12 +301,12 @@
   - [x] 内容多样性（标签/URL 统计）
 - [x] 自动化倾向评估算法（0-100 分，多维度综合评分）
 - [x] 账户监测 API 接口（`GET /api/v1/accounts/profiles`、`GET /api/v1/accounts/detail/{id}`）
-- [x] BotRHG 社交机器人检测 API（`POST /api/v1/accounts/bot-detection`）：优先加载内部 verified checkpoint，执行中文 Transformer 账号表示、低阶检测器、排除自身的 KNN 支持超边、可靠性路由和选择性残差修正；无 checkpoint 时显式回退 non-claimable proxy
+- [x] BotRHG 社交机器人检测 API（`POST /api/v1/accounts/bot-detection`）：优先加载内部 verified checkpoint，执行中文 Transformer 账号表示、低阶检测器、排除自身的 KNN 支持超边、可靠性路由和选择性残差修正；legacy checkpoint 仅允许本地兼容模式，生产默认 fail-closed
 - [x] 前端账户画像列表页（评分排序、进度条着色）
 - [ ] 单个用户主页采集：支持主页链接/用户 ID，收集主页元数据与全部发文
 - [ ] 账户详情页：查看用户主页、全部内容、内容风险/立场/模板化检测结果
 - [ ] 历史参与追踪
-- [ ] NLP 能力建设（中文文本向量化、语义相似度、情感分析）
+- [ ] NLP 能力建设（持续预训练后的中文文本向量化、语义相似度、情感分析）
 
 #### 2.4 前端 UX 增强 ✅
 
@@ -401,3 +430,13 @@
 - [MediaCrawler](../MediaCrawler-main/README.md) - 社交媒体爬虫参考
 - [NewsCrawler](../NewsCrawler-main/README.md) - 新闻爬虫参考
 - [CooRTweet](../CooRTweet-master/README.md) - 协调行为检测算法参考
+
+## 2026-08-10 Coordination 研究门禁
+
+- [x] 将冻结生产 `coordination-evidence-runtime-v2` 的静态图 prior 接入 IOHunter 同源评估。
+- [x] 配对强制校验 source/evaluator/fold 指纹，并按 campaign 均值执行 bootstrap。
+- [x] 在 G 盘完成最终 v2 五 campaign 跑批：50 行，35 success，15 production runtime-budget blocked。
+- [ ] 研究候选替换系统模型：继续阻断。Russia 全指标落后，Venezuela 全指标领先，跨 campaign 方向不稳定。
+- [ ] 完全交叉 model seed 与 official fold，消除当前 seed-fold 耦合。
+- [ ] 使用可扩展但单独命名的生产社区 baseline；不得替换冻结 baseline 后沿用原方法身份。
+- [ ] 使用具备真实 coordination edge/community Gold 的数据验证 Discovery，并用 harmful-CIB Gold 单独验证 Detect。

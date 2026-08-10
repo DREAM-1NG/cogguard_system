@@ -1,0 +1,639 @@
+{
+  "schema_version": 2,
+  "generated_at": "2026-08-10T06:27:33.405481+00:00",
+  "source_pdf": "H:\\Zotero\\attenger\\Projects\\CISCN\\Propagation\\Jing 等 - 2025 - CasFT future trend modeling for information popularity prediction with dynamic cues-driven diffusio.pdf",
+  "source_sha256": "a5db7d2daf2c9aa39da1705d6aeec42e4725ab9580ff95035369eacf0a87426c",
+  "page_count": 9,
+  "render_dpi": 180,
+  "selected_pages": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9
+  ],
+  "analysis_mode": "text-only",
+  "text_layer_available": true,
+  "text_layer_characters": 61042,
+  "automatic_crops_are_unverified": true,
+  "pages": [
+    {
+      "page": 1,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-001.txt",
+      "text_characters": 7869,
+      "caption_count": 1
+    },
+    {
+      "page": 2,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-002.txt",
+      "text_characters": 7408,
+      "caption_count": 0
+    },
+    {
+      "page": 3,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-003.txt",
+      "text_characters": 7175,
+      "caption_count": 0
+    },
+    {
+      "page": 4,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-004.txt",
+      "text_characters": 8795,
+      "caption_count": 1
+    },
+    {
+      "page": 5,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-005.txt",
+      "text_characters": 6724,
+      "caption_count": 1
+    },
+    {
+      "page": 6,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-006.txt",
+      "text_characters": 6455,
+      "caption_count": 2
+    },
+    {
+      "page": 7,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-007.txt",
+      "text_characters": 7055,
+      "caption_count": 4
+    },
+    {
+      "page": 8,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-008.txt",
+      "text_characters": 8504,
+      "caption_count": 0
+    },
+    {
+      "page": 9,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-009.txt",
+      "text_characters": 1057,
+      "caption_count": 0
+    }
+  ],
+  "visuals": [
+    {
+      "id": "figure-1-p001",
+      "label": "Figure 1",
+      "kind": "figure",
+      "number": "1",
+      "page": 1,
+      "caption": "A toy example of information popularity predic- tion problem (top) and the variations of average growth rates after observation time in Weibo and APS datasets, respec- tively (bottom), where t0 represents the observation time and tp represents the prediction time.",
+      "raw_text": "Figure 1: A toy example of information popularity predic- tion problem (top) and the variations of average growth rates after observation time in Weibo and APS datasets, respec- tively (bottom), where t0 represents the observation time and tp represents the prediction time.",
+      "caption_bbox_points": [
+        319.5,
+        460.21,
+        558.015,
+        515.503
+      ],
+      "caption_bbox_pixels": [
+        799,
+        1151,
+        1395,
+        1289
+      ],
+      "suggested_crop_bbox_points": [
+        309.5,
+        206.003,
+        571.4,
+        525.503
+      ],
+      "suggested_crop_bbox_pixels": [
+        774,
+        515,
+        1428,
+        1314
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-001.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\figure-1-p001.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "figure-2-p004",
+      "label": "Figure 2",
+      "kind": "figure",
+      "number": "2",
+      "page": 4,
+      "caption": "An overview of our proposed model CasFT.",
+      "raw_text": "Figure 2: An overview of our proposed model CasFT.",
+      "caption_bbox_points": [
+        199.141,
+        269.583,
+        412.867,
+        279.546
+      ],
+      "caption_bbox_pixels": [
+        498,
+        674,
+        1032,
+        699
+      ],
+      "suggested_crop_bbox_points": [
+        44.0,
+        43.998,
+        568.005,
+        289.546
+      ],
+      "suggested_crop_bbox_pixels": [
+        110,
+        110,
+        1420,
+        724
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-004.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\figure-2-p004.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "table-1-p005",
+      "label": "Table 1",
+      "kind": "table",
+      "number": "1",
+      "page": 5,
+      "caption": "Statistics of the three datasets.",
+      "raw_text": "Table 1: Statistics of the three datasets.",
+      "caption_bbox_points": [
+        361.257,
+        166.9,
+        516.252,
+        176.863
+      ],
+      "caption_bbox_pixels": [
+        903,
+        417,
+        1291,
+        442
+      ],
+      "suggested_crop_bbox_points": [
+        309.5,
+        156.9,
+        568.015,
+        538.227
+      ],
+      "suggested_crop_bbox_pixels": [
+        774,
+        392,
+        1420,
+        1346
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-005.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\table-1-p005.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "table-2-p006",
+      "label": "Table 2",
+      "kind": "table",
+      "number": "2",
+      "page": 6,
+      "caption": "Performance comparison between baselines and CasFT on three datasets across different observation times measured by MSLE, MAPE (lower is better).",
+      "raw_text": "Table 2: Performance comparison between baselines and CasFT on three datasets across different observation times measured by MSLE, MAPE (lower is better).",
+      "caption_bbox_points": [
+        54.0,
+        199.577,
+        558.019,
+        220.499
+      ],
+      "caption_bbox_pixels": [
+        135,
+        499,
+        1395,
+        551
+      ],
+      "suggested_crop_bbox_points": [
+        44.0,
+        45.49,
+        568.019,
+        230.499
+      ],
+      "suggested_crop_bbox_pixels": [
+        110,
+        114,
+        1420,
+        576
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-006.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\table-2-p006.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "table-3-p006",
+      "label": "Table 3",
+      "kind": "table",
+      "number": "3",
+      "page": 6,
+      "caption": "Performance comparison between CasFT and CasFT-variants on three datasets under two observation times measured by MSLE, MAPE (lower is better).",
+      "raw_text": "Table 3: Performance comparison between CasFT and CasFT-variants on three datasets under two observation times measured by MSLE, MAPE (lower is better).",
+      "caption_bbox_points": [
+        54.0,
+        320.531,
+        558.019,
+        341.453
+      ],
+      "caption_bbox_pixels": [
+        135,
+        801,
+        1395,
+        854
+      ],
+      "suggested_crop_bbox_points": [
+        44.0,
+        310.531,
+        568.019,
+        714.407
+      ],
+      "suggested_crop_bbox_pixels": [
+        110,
+        776,
+        1420,
+        1786
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-006.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\table-3-p006.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "figure-3-p007",
+      "label": "Figure 3",
+      "kind": "figure",
+      "number": "3",
+      "page": 7,
+      "caption": "Impact of the diffusion steps.",
+      "raw_text": "Figure 3: Impact of the diffusion steps.",
+      "caption_bbox_points": [
+        95.756,
+        118.59,
+        250.75,
+        128.553
+      ],
+      "caption_bbox_pixels": [
+        239,
+        296,
+        627,
+        321
+      ],
+      "suggested_crop_bbox_points": [
+        44.0,
+        44.002,
+        297.939,
+        138.553
+      ],
+      "suggested_crop_bbox_pixels": [
+        110,
+        110,
+        745,
+        346
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-007.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\figure-3-p007.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "figure-4-p007",
+      "label": "Figure 4",
+      "kind": "figure",
+      "number": "4",
+      "page": 7,
+      "caption": "Impact of the hidden dimension.",
+      "raw_text": "Figure 4: Impact of the hidden dimension.",
+      "caption_bbox_points": [
+        89.266,
+        205.316,
+        257.242,
+        215.279
+      ],
+      "caption_bbox_pixels": [
+        223,
+        513,
+        643,
+        538
+      ],
+      "suggested_crop_bbox_points": [
+        44.0,
+        138.639,
+        297.945,
+        225.279
+      ],
+      "suggested_crop_bbox_pixels": [
+        110,
+        347,
+        745,
+        563
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-007.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\figure-4-p007.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "figure-5-p007",
+      "label": "Figure 5",
+      "kind": "figure",
+      "number": "5",
+      "page": 7,
+      "caption": "Impact of the interval number.",
+      "raw_text": "Figure 5: Impact of the interval number.",
+      "caption_bbox_points": [
+        359.045,
+        127.676,
+        518.463,
+        137.639
+      ],
+      "caption_bbox_pixels": [
+        898,
+        319,
+        1296,
+        344
+      ],
+      "suggested_crop_bbox_points": [
+        309.5,
+        129.553,
+        563.445,
+        147.639
+      ],
+      "suggested_crop_bbox_pixels": [
+        774,
+        324,
+        1409,
+        369
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-007.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\figure-5-p007.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "table-4-p007",
+      "label": "Table 4",
+      "kind": "table",
+      "number": "4",
+      "page": 7,
+      "caption": "Impact of different types of ODE Solver on the per- formance of CasFT across the three datasets.",
+      "raw_text": "Table 4: Impact of different types of ODE Solver on the per- formance of CasFT across the three datasets.",
+      "caption_bbox_points": [
+        319.5,
+        227.011,
+        558.004,
+        247.933
+      ],
+      "caption_bbox_pixels": [
+        799,
+        568,
+        1395,
+        620
+      ],
+      "suggested_crop_bbox_points": [
+        309.5,
+        217.011,
+        568.015,
+        630.542
+      ],
+      "suggested_crop_bbox_pixels": [
+        774,
+        543,
+        1420,
+        1576
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-007.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\table-4-p007.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    }
+  ]
+}

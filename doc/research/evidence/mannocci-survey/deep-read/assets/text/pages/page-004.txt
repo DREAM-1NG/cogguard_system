@@ -1,0 +1,75 @@
+4                                                                                  Mannocci et al.
+
+
+of 4 non-English papers and 1118 records that were out of scope (e.g., biological coordination, general sociological
+
+coordination, or studies on bot detection or information operations not explicitly addressing coordinated behavior).
+
+Most of these discarded records derived from the search on Google Scholar, likely due to the choice of selecting the
+
+first 1000 results to maximize the coverage. After the screening phase, 83 papers were retained. A backward reference
+
+search of these studies identified an additional 38 relevant papers, resulting in a final corpus of 122 papers included in
+
+this survey. The full selection workflow is illustrated in the PRISMA diagram in Figure 3.
+   Subject area distribution. To analyze the disciplinary distribution of the collected studies, each paper was assigned a
+subject area based on the official classification associated with the publication outlet. For journal articles, the subject
+area was determined using the Scimago Journal Rank classification system1. For conference papers, the classification
+provided by the CORE conference ranking portal was used2. For preprints available on arXiv, the category assigned by
+
+arXiv itself was adopted. The resulting distribution of papers across subject areas is shown in Figure 4.
+
+   Organization. This survey is structured as follows. Section 2 presents the theoretical foundations of coordinated
+online behavior, proposing a new general definition and laying out a comprehensive conceptual framework. Section 3
+
+bridges the theoretical and methodological parts by defining the detection and characterization tasks. Section 4 discusses
+
+the existing literature on the detection task, while Section 5 focuses on the characterization task. Section 6 summarizes
+
+the main outstanding challenges and suggests promising directions of research. Finally, Section 7 concludes the survey.
+
+
+2 CONCEPTUAL FRAMEWORK
+
+The study of online coordination has its roots in the earlier studies of offline coordination. Recently, this study was
+
+advanced both by commercial platforms and academia, with a large array of different proposals. This section examines
+
+previously proposed definitions of coordination and discusses their advantages and limitations. Based on the results of
+
+this analysis, we then propose a general definition and a comprehensive conceptual framework.
+
+
+2.1  Offline coordination
+
+Coordination has already been extensively studied well before the emergence of social media across disciplines such
+
+as computer science, organization theory, management science, economics, and psychology [78, 119, 133]. Although
+
+the meaning of coordination is intuitive, researchers suggested many definitions to frame the concept. A concise and
+
+precise definition was given in [76]:
+
+  Definition 2.1. Coordination (1988):  The additional information processing performed when multiple, connected actors pursue
+
+   goals that a single actor pursuing the same goals would not perform [76].
+
+Definition 2.1 denotes coordination as the organizational overhead that multiple actors incur into when pursuing goals
+
+together. We note that this and similar definitions [9, 10, 75, 78] implicitly leverage the fundamental components of
+
+coordination, which we explicitly define as follows:
+
+  Definition 2.2. Coordination components: A set of two or more actors who perform activities in order to achieve goals.
+
+Definition 2.2 introduces the fundamental components of coordination: actors, activities, and goals. Being coordination
+a nuanced concept, the theoretical modeling of these components can have major implications on downstream analyses
+
+and results. For example, in the case of communities or groups of users, each user in the group can be treated as a
+
+standalone actor, or alternatively the entire group may be considered as a single actor. Similar choices must be made
+
+1https://www.scimagojr.com
+2https://portal.core.edu.au/conf-ranks/
+
+Manuscript submitted to ACM

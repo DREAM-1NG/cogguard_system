@@ -27,7 +27,7 @@ class AccountSample:
     post_count: int
     source_file_hash: str
     source_encoding: str
-    dataset_name: str = "botection"
+    dataset_name: str = "cresci_2017"
     source_label: str = ""
     metadata: dict[str, Any] = field(default_factory=dict)
     split_group: str = ""
@@ -48,7 +48,7 @@ class DatasetManifest:
     class_counts: dict[str, int]
     property_field_coverage: dict[str, float] = field(default_factory=dict)
     social_graph_coverage: str = "unavailable"
-    dataset_name: str = "botection"
+    dataset_name: str = "cresci_2017"
     label_provenance: str = ""
     text_provenance: str = ""
     source_archive_sha256: str = ""
@@ -87,7 +87,7 @@ class TrainingConfig:
     learning_rate: float = 2e-3
     encoder_learning_rate: float = 2e-5
     device: str = "cpu"
-    dataset_name: str = "botection"
+    dataset_name: str = "cresci_2017"
     model: ModelConfig = field(default_factory=ModelConfig)
 
 

@@ -1,0 +1,62 @@
+Detection and Characterization of Coordinated Online Behavior: A Survey
+
+         LORENZO MANNOCCI, University of Pisa, Italy and Institute for Informatics and Telematics, National Research
+               Council (IIT-CNR), Italy
+
+          MICHELE MAZZA, Institute for Informatics and Telematics, National Research Council (IIT-CNR), Italy
+        ANNA MONREALE, University of Pisa, Italy
+          MAURIZIO TESCONI, Institute for Informatics and Telematics, National Research Council (IIT-CNR), Italy
+          STEFANO CRESCI, Institute for Informatics and Telematics, National Research Council (IIT-CNR), Italy
+
+                 Coordination is a fundamental aspect of life. The advent of social media has made it integral also to online human interactions,
+
+                such as those that characterize thriving online communities and social movements. At the same time, coordination is also core to
+
+                    effective disinformation, manipulation, and hate campaigns. This survey collects, categorizes, and critically discusses the body of2026        work produced as a result of the growing interest on coordinated online behavior. We reconcile industry and academic definitions,
+
+                 propose a comprehensive framework to study coordinated online behavior, and review and critically discuss the existing detection and
+
+                   characterization methods. Our analysis identifies open challenges and promising directions of research, serving as a guide for scholars,Apr            practitioners, and policymakers in understanding and addressing the complexities inherent to online coordination.
+
+
+          ACM Reference Format:10
+                Lorenzo Mannocci, Michele Mazza, Anna Monreale, Maurizio Tesconi, and Stefano Cresci. 2026. Detection and Characterization of
+
+                 Coordinated Online Behavior: A Survey. 1, 1 (April 2026), 39 pages. https://doi.org/10.1145/nnnnnnn.nnnnnnn
+
+
+              1  INTRODUCTION[cs.SI]         Coordination, the process in which multiple connected actors are involved to pursue goals [78], is a fundamental aspect
+                 in the existence of various life forms, including human beings. From flocks of birds engaging in synchronized flight to
+
+                  insects working together in colonies, coordination enhances efficiency, safety, and resource utilization [77]. The ability
+
+                 to coordinate actions boosts the chances to overcome environmental challenges, fostering not only individual survival
+
+                but also the resilience and success of entire communities. For these reasons, human coordination has been extensively
+
+                 scrutinized in multiple scientific disciplines interested in the dynamics of our offline interactions [119, 133].
+                With the advent of social media platforms, coordination has also become a fundamental component of online interac-
+                   tions. Social media users are now provided with a broad array of tools to coordinate with each other, such as hashtags
+
+                 that enable them to collectively discuss specific topics [129]. Online platforms have become a suitable environment for
+
+                organizing social and political movements, giving rise to phenomena such as online activism [94, 100], boycotts [68],
+
+                  protests [73, 126], and coordinated crisis communication by democratic institutions during emergencies [151]. The 2011
+
+             Arab Springs are a notable example, being largely organized through social media [126]. At the same time however,
+
+                 scholars found evidence of online coordination being exploited by nefarious actors for all sorts of malicious purposes.arXiv:2408.01257v2         For instance, disinformation campaigns often leverage actors that coordinate their actions to maximize the outreach of
+
+
+                    Authors’ addresses: Lorenzo Mannocci, University of Pisa, Italy and Institute for Informatics and Telematics, National Research Council (IIT-CNR), Italy,
+                     lorenzo.mannocci@di.unipi.it; Michele Mazza, Institute for Informatics and Telematics, National Research Council (IIT-CNR), Italy, michele.mazza@iit.
+                           cnr.it; Anna Monreale, University of Pisa, Italy, anna.monreale@unipi.it; Maurizio Tesconi, Institute for Informatics and Telematics, National Research
+                    Council (IIT-CNR), Italy, maurizio.tesconi@iit.cnr.it; Stefano Cresci, Institute for Informatics and Telematics, National Research Council (IIT-CNR), Italy,
+                        stefano.cresci@iit.cnr.it.
+
+
+                      2026. Manuscript submitted to ACM
+
+
+                   Manuscript submitted to ACM                                                                                           1

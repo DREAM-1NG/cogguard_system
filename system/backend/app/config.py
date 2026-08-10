@@ -91,8 +91,10 @@ class Settings(BaseSettings):
     MEDIA_DOWNLOAD_ROOT: str = str(PROJECT_ROOT / "output" / "media_downloads")
 
     # ----- Internal trained BotRHG runtime -----
-    BOTRHG_CHECKPOINT_PATH: str = str(PROJECT_ROOT / "output" / "botrhg_weibo" / "checkpoint.pt")
-    BOTRHG_DATA_FINGERPRINT: str = "50327a90e7b9fa6cb65140af3e1573d139925033b184af2ed43aa938ab42c0ae"
+    # No historical transfer checkpoint is a default runtime dependency.
+    # Online detection resolves a governed bundle through the database pointer.
+    BOTRHG_CHECKPOINT_PATH: str = ""
+    BOTRHG_DATA_FINGERPRINT: str = ""
     BOTRHG_DEVICE: str = "cpu"
     ACCOUNT_ACQUISITION_TEXT_MODEL_PATH: str = ""
     ACCOUNT_ACQUISITION_MAX_LENGTH: int = 128

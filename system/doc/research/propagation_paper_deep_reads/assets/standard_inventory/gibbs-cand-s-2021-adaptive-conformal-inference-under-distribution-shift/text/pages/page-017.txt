@@ -1,0 +1,71 @@
+Adaptive Alpha    Fixed Alpha    Bernoulli Sequence
+
+
+       0.96  S&P 500                                             Nasdaq
+
+    Level 0.92
+      Coverage
+    Local 0.88
+
+
+
+
+
+       0.84
+
+
+
+
+       0.96  Dow Jones                                              Apple
+
+    Level 0.92
+      Coverage
+    Local 0.88
+
+
+
+
+
+       0.84
+
+
+
+
+       0.96   Illumina                                              Exxon Mobil
+
+    Level 0.92
+      Coverage
+    Local 0.88
+
+
+
+
+
+       0.84
+
+
+
+
+       0.96  Toyota                                              Goldman Sachs
+
+    Level 0.92
+      Coverage 0.88
+    Local
+
+
+
+
+       0.84
+
+
+
+                           2010                         2015                         2020                     2010                       2015                       2020
+                                                Time
+
+Figure 9: Local coverage frequencies for adaptive conformal (blue), a non-adaptive method that holds
+αt = α ﬁxed (red), and an i.i.d. Bernoulli(0.1) sequence (grey) for the prediction of market volatility.
+The coloured dotted lines mark the average coverage obtained across all time points, while the black
+line indicates the target level of 1 −α = 0.9.
+
+
+                                       17

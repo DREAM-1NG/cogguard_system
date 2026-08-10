@@ -100,7 +100,7 @@ async def analyze_observed_propagation(
     )
     if source_fingerprint:
         cache_key = build_query_cache_key(
-            "propagation-observed-v2",
+            "propagation-observed-v6",
             event_id or "*",
             platform or "*",
             source_fingerprint,

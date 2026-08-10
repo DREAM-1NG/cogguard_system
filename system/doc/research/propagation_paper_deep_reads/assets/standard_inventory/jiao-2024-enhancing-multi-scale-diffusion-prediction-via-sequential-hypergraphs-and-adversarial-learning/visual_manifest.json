@@ -1,0 +1,774 @@
+{
+  "schema_version": 2,
+  "generated_at": "2026-08-10T06:27:32.381049+00:00",
+  "source_pdf": "H:\\Zotero\\attenger\\Projects\\CISCN\\Propagation\\Jiao 等 - 2024 - Enhancing multi-scale diffusion prediction via sequential hypergraphs and adversarial learning.pdf",
+  "source_sha256": "4a3c6d974000d7cc9f87c286d5ba20a033fcfc869407066e7b8e6f3df32f0951",
+  "page_count": 11,
+  "render_dpi": 180,
+  "selected_pages": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11
+  ],
+  "analysis_mode": "text-only",
+  "text_layer_available": true,
+  "text_layer_characters": 73116,
+  "automatic_crops_are_unverified": true,
+  "pages": [
+    {
+      "page": 1,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-001.txt",
+      "text_characters": 7615,
+      "caption_count": 1
+    },
+    {
+      "page": 2,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-002.txt",
+      "text_characters": 8354,
+      "caption_count": 0
+    },
+    {
+      "page": 3,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-003.txt",
+      "text_characters": 7131,
+      "caption_count": 2
+    },
+    {
+      "page": 4,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-004.txt",
+      "text_characters": 8058,
+      "caption_count": 0
+    },
+    {
+      "page": 5,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-005.txt",
+      "text_characters": 7190,
+      "caption_count": 1
+    },
+    {
+      "page": 6,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-006.txt",
+      "text_characters": 6394,
+      "caption_count": 3
+    },
+    {
+      "page": 7,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-007.txt",
+      "text_characters": 6874,
+      "caption_count": 2
+    },
+    {
+      "page": 8,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-008.txt",
+      "text_characters": 7675,
+      "caption_count": 0
+    },
+    {
+      "page": 9,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-009.txt",
+      "text_characters": 5502,
+      "caption_count": 2
+    },
+    {
+      "page": 10,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-010.txt",
+      "text_characters": 6479,
+      "caption_count": 0
+    },
+    {
+      "page": 11,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-011.txt",
+      "text_characters": 1844,
+      "caption_count": 0
+    }
+  ],
+  "visuals": [
+    {
+      "id": "figure-1-p001",
+      "label": "Figure 1",
+      "kind": "figure",
+      "number": "1",
+      "page": 1,
+      "caption": "Illustrations depicting macroscopic cascade size prediction (left) and microscopic next influenced user pre- diction (right).",
+      "raw_text": "Figure 1: Illustrations depicting macroscopic cascade size prediction (left) and microscopic next influenced user pre- diction (right).",
+      "caption_bbox_points": [
+        319.5,
+        309.407,
+        558.015,
+        341.288
+      ],
+      "caption_bbox_pixels": [
+        799,
+        774,
+        1395,
+        853
+      ],
+      "suggested_crop_bbox_points": [
+        309.5,
+        221.931,
+        569.043,
+        351.288
+      ],
+      "suggested_crop_bbox_pixels": [
+        774,
+        555,
+        1423,
+        878
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-001.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\figure-1-p001.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "figure-2-p003",
+      "label": "Figure 2",
+      "kind": "figure",
+      "number": "2",
+      "page": 3,
+      "caption": "The architectural overview of our model.",
+      "raw_text": "Figure 2: The architectural overview of our model.",
+      "caption_bbox_points": [
+        205.01,
+        303.025,
+        407.0,
+        312.988
+      ],
+      "caption_bbox_pixels": [
+        513,
+        758,
+        1018,
+        782
+      ],
+      "suggested_crop_bbox_points": [
+        70.032,
+        53.476,
+        541.987,
+        322.988
+      ],
+      "suggested_crop_bbox_pixels": [
+        175,
+        134,
+        1355,
+        807
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-003.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\figure-2-p003.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "figure-3-p003",
+      "label": "Figure 3",
+      "kind": "figure",
+      "number": "3",
+      "page": 3,
+      "caption": "The two stages of hypergraph convolution.",
+      "raw_text": "Figure 3: The two stages of hypergraph convolution.",
+      "caption_bbox_points": [
+        68.842,
+        430.056,
+        277.667,
+        440.019
+      ],
+      "caption_bbox_pixels": [
+        172,
+        1075,
+        694,
+        1100
+      ],
+      "suggested_crop_bbox_points": [
+        44.6,
+        313.988,
+        320.715,
+        450.019
+      ],
+      "suggested_crop_bbox_pixels": [
+        111,
+        785,
+        802,
+        1125
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-003.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\figure-3-p003.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "table-1-p005",
+      "label": "Table 1",
+      "kind": "table",
+      "number": "1",
+      "page": 5,
+      "caption": "Statistics of datasets. Christ is short for the dataset Christianity, and Meme is short for the dataset Memetracker.",
+      "raw_text": "Table 1: Statistics of datasets. Christ is short for the dataset Christianity, and Meme is short for the dataset Memetracker.",
+      "caption_bbox_points": [
+        319.5,
+        124.991,
+        558.014,
+        145.913
+      ],
+      "caption_bbox_pixels": [
+        799,
+        312,
+        1395,
+        365
+      ],
+      "suggested_crop_bbox_points": [
+        184.968,
+        26.813,
+        568.014,
+        155.913
+      ],
+      "suggested_crop_bbox_pixels": [
+        462,
+        67,
+        1420,
+        390
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-005.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\table-1-p005.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "table-2-p006",
+      "label": "Table 2",
+      "kind": "table",
+      "number": "2",
+      "page": 6,
+      "caption": "Results on four datasets (Hits@k scores for k = 10, 50 and 100), where higher scores indicate better performance.",
+      "raw_text": "Table 2: Results on four datasets (Hits@k scores for k = 10, 50 and 100), where higher scores indicate better performance.",
+      "caption_bbox_points": [
+        61.787,
+        199.344,
+        550.225,
+        209.537
+      ],
+      "caption_bbox_pixels": [
+        154,
+        498,
+        1376,
+        524
+      ],
+      "suggested_crop_bbox_points": [
+        51.787,
+        26.813,
+        560.225,
+        219.537
+      ],
+      "suggested_crop_bbox_pixels": [
+        129,
+        67,
+        1401,
+        549
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-006.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\table-2-p006.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "table-3-p006",
+      "label": "Table 3",
+      "kind": "table",
+      "number": "3",
+      "page": 6,
+      "caption": "Results on four datasets (MAP@k scores for k = 10, 50 and 100), where higher scores indicate better performance.",
+      "raw_text": "Table 3: Results on four datasets (MAP@k scores for k = 10, 50 and 100), where higher scores indicate better performance.",
+      "caption_bbox_points": [
+        59.854,
+        367.716,
+        552.158,
+        377.909
+      ],
+      "caption_bbox_pixels": [
+        150,
+        919,
+        1380,
+        945
+      ],
+      "suggested_crop_bbox_points": [
+        49.854,
+        216.049,
+        562.158,
+        387.909
+      ],
+      "suggested_crop_bbox_pixels": [
+        125,
+        540,
+        1405,
+        970
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-006.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\table-3-p006.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "table-4-p006",
+      "label": "Table 4",
+      "kind": "table",
+      "number": "4",
+      "page": 6,
+      "caption": "Experimental results on four datasets in terms of MSLE, where lower scores indicate better performance. Christ is short for the dataset Christianity, and Meme is short for the dataset Memetracker.",
+      "raw_text": "Table 4: Experimental results on four datasets in terms of MSLE, where lower scores indicate better performance. Christ is short for the dataset Christianity, and Meme is short for the dataset Memetracker.",
+      "caption_bbox_points": [
+        54.0,
+        519.561,
+        292.514,
+        562.4
+      ],
+      "caption_bbox_pixels": [
+        135,
+        1299,
+        731,
+        1406
+      ],
+      "suggested_crop_bbox_points": [
+        44.0,
+        392.392,
+        302.514,
+        572.4
+      ],
+      "suggested_crop_bbox_pixels": [
+        110,
+        981,
+        756,
+        1431
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-006.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\table-4-p006.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "table-5-p007",
+      "label": "Table 5",
+      "kind": "table",
+      "number": "5",
+      "page": 7,
+      "caption": "Ablation study on Christianity and Douban datasets. We design six variants to demonstrate the rationale behind our model: w/o AdvDiff removes Ladv and Ldiff. w/o Diff removes Ldiff. w/o Adv removes Ladv. w/o HGNN replaces sequential hypergraphs with sequential digraphs and HGNN with GAT. w/o Macro removes Lmacro. w/o Micro removes Lmicro.",
+      "raw_text": "Table 5: Ablation study on Christianity and Douban datasets. We design six variants to demonstrate the rationale behind our model: w/o AdvDiff removes Ladv and Ldiff. w/o Diff removes Ldiff. w/o Adv removes Ladv. w/o HGNN replaces sequential hypergraphs with sequential digraphs and HGNN with GAT. w/o Macro removes Lmacro. w/o Micro removes Lmicro.",
+      "caption_bbox_points": [
+        54.0,
+        179.648,
+        558.019,
+        212.141
+      ],
+      "caption_bbox_pixels": [
+        135,
+        449,
+        1395,
+        530
+      ],
+      "suggested_crop_bbox_points": [
+        44.0,
+        169.648,
+        568.019,
+        474.283
+      ],
+      "suggested_crop_bbox_pixels": [
+        110,
+        424,
+        1420,
+        1186
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-007.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\table-5-p007.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "figure-4-p007",
+      "label": "Figure 4",
+      "kind": "figure",
+      "number": "4",
+      "page": 7,
+      "caption": "Parameter sensitivity on Douban and Android dataset. For balance parameter λ ∈(0, 1) and the number of time intervals ∈[2, 12], we evaluate all map and MSLE scores. For hyper parameter γ ∈(0, 0.1) and embedding size ∈{8, 16, 32, 64, 128, 256}, we evaluate all hits scores and MSLE score. In this figure, the macro indicator (MSLE) is pre- sented with an inverted Y-axis to align with the increasing trend of the micro indicator (MAP and Hits).",
+      "raw_text": "Figure 4: Parameter sensitivity on Douban and Android dataset. For balance parameter λ ∈(0, 1) and the number of time intervals ∈[2, 12], we evaluate all map and MSLE scores. For hyper parameter γ ∈(0, 0.1) and embedding size ∈{8, 16, 32, 64, 128, 256}, we evaluate all hits scores and MSLE score. In this figure, the macro indicator (MSLE) is pre- sented with an inverted Y-axis to align with the increasing trend of the micro indicator (MAP and Hits).",
+      "caption_bbox_points": [
+        54.0,
+        478.408,
+        558.013,
+        521.608
+      ],
+      "caption_bbox_pixels": [
+        135,
+        1196,
+        1395,
+        1304
+      ],
+      "suggested_crop_bbox_points": [
+        44.0,
+        214.365,
+        568.013,
+        531.608
+      ],
+      "suggested_crop_bbox_pixels": [
+        110,
+        536,
+        1420,
+        1329
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-007.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\figure-4-p007.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "figure-5-p009",
+      "label": "Figure 5",
+      "kind": "figure",
+      "number": "5",
+      "page": 9,
+      "caption": "Hyperedge em connects different nodes in sequential hypergraphs.",
+      "raw_text": "Figure 5: Hyperedge em connects different nodes in sequential hypergraphs.",
+      "caption_bbox_points": [
+        154.05,
+        210.549,
+        457.96,
+        222.236
+      ],
+      "caption_bbox_pixels": [
+        385,
+        526,
+        1145,
+        556
+      ],
+      "suggested_crop_bbox_points": [
+        96.361,
+        44.889,
+        515.601,
+        232.236
+      ],
+      "suggested_crop_bbox_pixels": [
+        241,
+        112,
+        1289,
+        581
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-009.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\figure-5-p009.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "table-6-p009",
+      "label": "Table 6",
+      "kind": "table",
+      "number": "6",
+      "page": 9,
+      "caption": "Ablation study on Android and Memetracker datasets.",
+      "raw_text": "Table 6: Ablation study on Android and Memetracker datasets.",
+      "caption_bbox_points": [
+        180.691,
+        359.226,
+        431.321,
+        369.189
+      ],
+      "caption_bbox_pixels": [
+        452,
+        898,
+        1078,
+        923
+      ],
+      "suggested_crop_bbox_points": [
+        131.867,
+        227.255,
+        480.117,
+        379.189
+      ],
+      "suggested_crop_bbox_pixels": [
+        330,
+        568,
+        1200,
+        948
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-009.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\table-6-p009.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    }
+  ]
+}

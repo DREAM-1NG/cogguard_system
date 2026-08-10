@@ -1,0 +1,88 @@
+4.2
+Performance in a hidden Markov model
+Although we believe Proposition 4.1 is an approximately tight characterization of the behaviour after
+initialization, we can still ask whether better bounds can be obtained for large time steps. In this
+section we answer this question positively by showing that if α1 is initialized appropriately and the
+distribution shift is small, then tighter coverage guarantees can be given. In order to obtain useful
+results we will make some simplifying assumptions about the data generating process. While we do
+not expect these assumptions to hold exactly in any real-world setting, we do consider our results to
+be representative of the true behaviour of adaptive conformal inference and we expect similar results
+to hold under alternative models.
+4.2.1
+Setting
+We model the data as coming from a hidden Markov model. In particular, we let {At}t∈N ⊆A
+denote the underlying Markov chain for the environment and we assume that conditional on {At}t∈N,
+{(Xt, Yt)}t∈N is an independent sequence with (Xt, Yt) ∼PAt for some collection of distributions
+{Pa : a ∈A}. In order to simplify our calculations, we assume additionally that the estimated
+quantile function ˆQt(·) and score function St(·) do not depend on t and we denote them by ˆQ(·) and
+S(·). This occurs for example in the split conformal setting with ﬁxed training and calibration sets.
+In this setting, {(αt, At)}t∈N forms a Markov chain on [−γ, 1 + γ] × A. We assume that this chain
+has a unique stationary distribution π and that (α1, A1) ∼π. This implies that (αt, At, errt) is a
+stationary process and thus will greatly simplify our characterization of the behaviour of errt. While
+there is little doubt that the theory can be extended, recall our that main goal is to get useful and
+simple results. That said, what we really have in mind here is that {At}t∈N is sufﬁciently well-
+behaved to guarantee that (αt, At) has a limiting stationary distribution. In Section A.5 we give
+an example where this is indeed provably the case. Lastly, the assumption that (α1, A1) ∼π is
+essentially equivalent to assuming that we have been running the algorithm for long enough to exit
+the initialization phase described in Section 4.1.
+4.2.2
+Large deviation bound for the errors
+Our ﬁrst observation is that errt has the correct average value. More precisely, by Proposition 4.1 we
+have that limT →∞T −1 PT
+t=1 errt
+a.s.
+= α and since errt is stationary it follows that E[errt] = α. Thus,
+to understand the deviation of T −1 PT
+t=1 errt from α we simply need to characterize the dependence
+structure of {errt}t∈N.
+We accomplish this in Theorem 4.1, which gives a large deviation bound on |T −1 PT
+t=1 errt −α|.
+The idea behind this result is to decompose the dependence in {errt}t∈N into two parts. First, there is
+dependence due to the fact that αt is a function of {errr}1≤r≤t−1. In Section A.7 in the Appendix
+we argue that this dependence induces a negative correlation and thus the errors concentrate around
+their expectation at a rate no slower than that of an i.i.d. Bernoulli sequence. This gives rise to the
+ﬁrst term in (6), which is what would be obtained by applying Hoeffding’s inequality to an i.i.d.
+sequence. Second, there is dependence due to the fact that At depends on At−1. More speciﬁcally,
+consider a setting in which the distribution of Y |X has more variability in some states than others.
+The goal of adaptive conformal inference is to adapt to the level of variability and thus return larger
+prediction sets in states where the distribution of Y |X is more spread. However, this algorithm is
+not perfect and as a result there may be some states a ∈A in which E[errt|At = a] is biased away
+from α. Furthermore, if the environment tends to spend long stretches of time in more variable (or
+less variable) states this will induce a positive dependence in the errors and cause T −1 PT
+t=1 errt
+to deviate from α. To control this dependence we use a Bernstein inequality for Markov chains to
+bound |T −1 PT
+t=1 E[errt|At] −α|. This gives rise to the second term in (6).
+Theorem 4.1 Assume that {At}t∈N has non-zero absolute spectral gap 1 −η > 0. Let
+B := sup
+a∈A
+|E[errt|At = a] −α|
+and
+σ2
+B := E[(E[errt|At] −α)2].
+Then,
+P
+ 
+1
+T
+T
+X
+t=1
+errt −α
+ ≥ϵ
+!
+≤2 exp
+
+−Tϵ2
+8
+
++ 2 exp
+
+−
+T(1 −η)ϵ2
+8(1 + η)σ2
+B + 20Bϵ
+
+.
+(6)
+7

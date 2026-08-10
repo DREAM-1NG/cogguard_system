@@ -1,0 +1,61 @@
+Published as a conference paper at ICLR 2021
+Task
+Reddit
+Wikipedia
+MOOC
+Social Evo.
+Enron
+UCI
+New vs. New
+98.13 ± 0.07
+98.72 ± 0.12
+84.96 ± 0.04
+93.81 ± 0.11
+72.81 ± 0.01
+75.47 ± 0.08
+New vs. Old
+97.45 ± 0.08
+97.29 ± 0.07
+87.68 ± 1.44
+90.79 ± 0.03
+77.05 ± 0.03
+80.53 ± 0.16
+Transductive
+98.70 ± 0.08
+98.47 ± 0.11
+89.14 ± 0.05
+93.54 ± 0.06
+85.19 ± 0.08
+78.91 ± 0.08
+Table 8: TGN performance in AP (mean in percentage ± 95% conﬁdence level). Bond font highlights
+the case when TGN out performs CAW-N. TGN generally outperforms other baselines.
+attention is 2; minibatch size is 200; the sampling number of temporal neighbors is 10; the dimension
+of time embedding is 100. The model is trained for 50 epochs with early stopping, and the learning
+rate is 0.0001.
+We report TGN’s AUC and AP scores in Tab.7, 8. Compared with previous baselines, we observe
+that TGN’s performance is generally better, and also shows smaller gaps between inductive and
+transductive settings. However, our CAW-N still outperforms TGN on most dataset, especially by
+signiﬁcant margin on Enron and UCI.
+In practice, we also note that TGN has the fastest execution speed among all baselines. It is also faster
+than CAW-N under its optimal hyperparameter setting. One possible reason is that TGN’s message
+function is simple and its graph attention module requires only the ﬁrst-hop neighbors to be sampled.
+To further speed up the execution of our CAW-N method, we can parallelize the computation of
+encodings in each minibatch. Another direction is to reduce the complexity of CAW sampling: Our
+current implementation repeatedly samples a number of CAWs from scratch for each new temporal
+link. Alternatively, we may only maintain a dynamic list of sampled CAWs Sv for each node v as we
+proceed along the temporal link stream. Each time we encounter a new link e that involves v, we
+update Sv by dropping outdated walks and by adding in newly sampled CAWs that start from e. This
+would signiﬁcantly reduce the redundancy of CAW sampling and thus speed up our method. Detailed
+implementation and evaluation are left for future study.
+G
+NOTES ON UPDATED EXPERIMENTAL RESULTS (OCT 16, 2022)
+It has come to our notice there exists an error in our original implementation of ICAW as well
+as the attention Self-Att-AGG(Su ∪Sv). Fixing the error leads to numerical changes to some of
+the experimental results reported in the original paper: Tables 2, 3, 6, and Fig.8. Based on the
+correct implementation, we have updated the artifacts above and their relevant text . The correct
+implementation has also been updated to the GitHub repository at the original code link. Despite the
+change, the vast majority of the conclusions about CAWN remain unaffected.
+We would also like to extend our gratitude to the authors of Online Graph Nets (https:
+//openreview.net/forum?id=0IqFsR9wJvI), Hojin Kang, Jou-Hui Ho, Diego Mesquita,
+Jorge Pérez, Amauri H Souza, for helping us identify the aforementioned error.
+22

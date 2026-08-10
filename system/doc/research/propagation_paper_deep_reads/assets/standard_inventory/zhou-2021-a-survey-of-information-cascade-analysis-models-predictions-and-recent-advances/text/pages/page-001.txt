@@ -1,0 +1,58 @@
+A Survey of Information Cascade Analysis: Models,
+Predictions, and Recent Advances
+
+
+FAN ZHOU and XOVEE XU, University of Electronic Science and Technology of China, China
+GOCE TRAJCEVSKI, Iowa State University, USA
+KUNPENG ZHANG, University of Maryland, USA
+
+
+The deluge of digital information in our daily life—from user-generated content, such as microblogs and scien-
+tific papers, to online business, such as viral marketing and advertising—offers unprecedented opportunities
+to explore and exploit the trajectories and structures of the evolution of information cascades. Abundant re-
+search efforts, both academic and industrial, have aimed to reach a better understanding of the mechanisms  27
+driving the spread of information and quantifying the outcome of information diffusion. This article presents
+a comprehensive review and categorization of information popularity prediction methods, from feature engi-
+neering and stochastic processes, through graph representation, to deep learning-based approaches. Specifically,
+we first formally define different types of information cascades and summarize the perspectives of existing
+studies. We then present a taxonomy that categorizes existing works into the aforementioned three main
+groups as well as the main subclasses in each group, and we systematically review cutting-edge research
+work. Finally, we summarize the pros and cons of existing research efforts and outline the open challenges
+and opportunities in this field.
+
+CCS Concepts: • Applied computing →Sociology; • Information systems →Data mining; • Comput-
+ing methodologies →Artificial intelligence; Machine learning;
+
+Additional Key Words and Phrases: Popularity prediction, information diffusion, information cascade
+
+ACM Reference format:
+Fan Zhou, Xovee Xu, Goce Trajcevski, and Kunpeng Zhang. 2021. A Survey of Information Cascade Analysis:
+Models, Predictions, and Recent Advances. ACM Comput. Surv. 54, 2, Article 27 (March 2021), 36 pages.
+https://doi.org/10.1145/3433000
+
+
+1  INTRODUCTION
+The rapid development of wireless communication technologies and the Internet, along with
+miniaturization and availability of mobile devices, have dramatically changed the way people ob-
+tain data and information and use it when interacting with each other. Understanding how infor-
+mation is spread, which factors drive the success of information diffusion, and making predictions
+
+
+
+Work was supported by National Natural Science Foundation of China Grants No. 62072077 and No. 61602097, and NSF
+Grants No. 1646107 and No. 2030249.
+Authors’ addresses: F. Zhou and X. Xu (corresponding author), University of Electronic Science and Technology of
+China, N.4, Section 2, North Jianshe Road, Chengdu, China, 610054; emails: fan.zhou@uestc.edu.cn, xovee@live.com;
+G. Trajcevski, Iowa State University, 347 Durham, 613 Morrill Rd. Ames, IA 50011-2100; email: gocet25@iastate.edu; K.
+Zhang, University of Maryland, VMH4316, 7699 Mowatt ln. College park MD, 20740; email: kpzhang@umd.edu.
+Permission to make digital or hard copies of all or part of this work for personal or classroom use is granted without fee
+provided that copies are not made or distributed for profit or commercial advantage and that copies bear this notice and
+the full citation on the first page. Copyrights for components of this work owned by others than ACM must be honored.
+Abstracting with credit is permitted. To copy otherwise, or republish, to post on servers or to redistribute to lists, requires
+prior specific permission and/or a fee. Request permissions from permissions@acm.org.
+© 2021 Association for Computing Machinery.
+0360-0300/2021/03-ART27 $15.00
+https://doi.org/10.1145/3433000
+
+
+                       ACM Computing Surveys, Vol. 54, No. 2, Article 27. Publication date: March 2021.

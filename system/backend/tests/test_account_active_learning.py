@@ -13,6 +13,7 @@ from app.config import settings
 from app.core.account_active_learning import select_account_detection_label_batch
 from app.core.account_labeling import (
     AccountBehaviorLabel,
+    account_scope_key,
     build_account_detection_cases,
     normalize_account_behavior_label,
 )
@@ -54,6 +55,43 @@ def test_active_learning_model_outputs_require_an_active_pointer(monkeypatch):
     )
 
     assert asyncio.run(account_active_learning_service._model_outputs([_post("account-1", "text")])) == {}
+
+
+def test_active_learning_model_outputs_are_platform_scoped(monkeypatch):
+    model = SimpleNamespace(model_version="model-1", artifact_hash="a" * 64, pointer_revision=1)
+
+    async def active_model():
+        return model
+
+    def detect(scoped_posts, _model, *, allow_legacy_fallback):
+        platform = scoped_posts[0]["platform"]
+        assert {post["platform"] for post in scoped_posts} == {platform}
+        return {
+            "accounts": [
+                {
+                    "account_id": "same-id",
+                    "calibrated_probability": 0.9 if platform == "weibo" else 0.1,
+                    "calibrated": True,
+                    "calibration_source": "temperature_scaling",
+                    "badge_embedding": [1.0, 0.0],
+                }
+            ]
+        }
+
+    monkeypatch.setattr(account_active_learning_service, "get_active_account_model", active_model)
+    monkeypatch.setattr(account_active_learning_service, "run_trained_botrhg_detection", detect)
+
+    outputs = asyncio.run(
+        account_active_learning_service._model_outputs(
+            [
+                _post("same-id", "weibo text", platform="weibo"),
+                _post("same-id", "douyin text", platform="douyin"),
+            ]
+        )
+    )
+
+    assert outputs[account_scope_key("weibo", "same-id")]["calibrated_probability"] == 0.9
+    assert outputs[account_scope_key("douyin", "same-id")]["calibrated_probability"] == 0.1
 
 
 def _post(account_id: str, content: str, *, platform: str = "weibo", post_id: str | None = None) -> dict:
@@ -420,8 +458,96 @@ async def test_approved_account_dataset_export_registers_manifest(db_session, tm
     assert output_path.is_file()
     assert (tmp_path / "account-dataset-test" / "dataset_card.md").is_file()
     exported = json.loads(output_path.read_text(encoding="utf-8").splitlines()[0])
+    assert exported["account_id"] == account_scope_key("weibo", "account-1")
+    assert exported["source_account_id"] == "account-1"
     assert exported["training_target"] == "bot"
     assert exported["text"] == "公开微博文本"
+    assert "observed_at" not in exported
+    assert "community_id" not in exported
+
+
+@pytest.mark.asyncio
+async def test_approved_dataset_export_scopes_equal_ids_and_preserves_governed_metadata(
+    db_session,
+    tmp_path,
+    monkeypatch,
+):
+    monkeypatch.setattr(settings, "MODEL_ARTIFACT_ROOT", str(tmp_path))
+    cases = []
+    labels = []
+    payloads = {
+        "weibo": {
+            "text": "weibo account text",
+            "last_seen_at": "2026-05-21T12:30:00+08:00",
+            "first_seen_at": "2026-05-20T12:30:00+08:00",
+            "community_id": "community-weibo",
+        },
+        "douyin": {
+            "text": "douyin account text",
+            "last_seen_at": "2026-05-21T12:30:00",
+            "community": "community-douyin",
+        },
+    }
+    for index, (platform, payload) in enumerate(payloads.items(), start=1):
+        fingerprint = str(index) * 64
+        case_id = f"case-{platform}"
+        cases.append(
+            AccountDetectionCaseRecord(
+                case_id=case_id,
+                account_id="same-id",
+                platform=platform,
+                event_id="event-1",
+                author_name="same-id",
+                case_fingerprint=fingerprint,
+                post_ids_json="[]",
+                evidence_post_ids_json="[]",
+                payload_json=json.dumps(payload),
+                model_output_json="{}",
+                label_status="labeled",
+            )
+        )
+        labels.append(
+            AccountBehaviorLabelRecord(
+                label_id=f"label-{platform}",
+                case_id=case_id,
+                batch_id=None,
+                behavior_label="bot" if platform == "weibo" else "human",
+                training_target="bot" if platform == "weibo" else "non_bot",
+                label_status="approved",
+                analyst_id=7,
+                confidence=0.9,
+                evidence_post_ids_json="[]",
+                reason_tags_json="[]",
+                notes="approved",
+                case_fingerprint=fingerprint,
+            )
+        )
+    db_session.add_all([*cases, *labels])
+    await db_session.flush()
+
+    await export_approved_account_dataset(
+        db_session,
+        dataset_version_id="scoped-dataset",
+        output_dir="scoped-dataset",
+        operator_id=7,
+    )
+
+    rows = [
+        json.loads(line)
+        for line in (tmp_path / "scoped-dataset" / "approved_account_labels.jsonl")
+        .read_text(encoding="utf-8")
+        .splitlines()
+    ]
+    by_platform = {row["platform"]: row for row in rows}
+    assert {row["account_id"] for row in rows} == {
+        account_scope_key("weibo", "same-id"),
+        account_scope_key("douyin", "same-id"),
+    }
+    assert {row["source_account_id"] for row in rows} == {"same-id"}
+    assert by_platform["weibo"]["observed_at"] == "2026-05-21T12:30:00+08:00"
+    assert by_platform["weibo"]["community_id"] == "community-weibo"
+    assert "observed_at" not in by_platform["douyin"]
+    assert by_platform["douyin"]["community_id"] == "community-douyin"
 
 
 @pytest.mark.asyncio

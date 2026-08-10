@@ -1,0 +1,79 @@
+10                                                                                 Mannocci et al.
+
+
+democratic ideals, social justice, and human rights. These examples highlight the difference between authenticity and
+
+harmfulness, which represent two orthogonal dimensions of coordinated online behavior.
+
+2.5.2  Harmfulness. Harmfulness refers to the negative impact, consequences, or outcomes—both online and offline—
+resulting from the coordinated actions of the actors. As discussed in Section 2.4.3, harmfulness depends both on the
+
+shared intent and actions of the actors engaged in coordination, and on the viewpoint of the observer, constituting a
+
+much more conceptually intricate dimension of online coordination than authenticity. However, in spite of the inherent
+
+subjectivity, there exist many clear cut cases of harmful and harmless coordination. For example, coordinated actors
+
+involved in the spread of disinformation, hate speech, and online harassment, represent straightforward cases of harmful
+
+coordination [18, 99]. In contrast, users who coordinate to collect and share information and other resources, such as in
+
+the aftermath of mass emergencies, represent cases of harmless coordination [73, 100, 102].
+
+2.5.3   Orchestration. Orchestration represents the degree of planning and organization between the coordinated actors.
+This dimension is closely linked to the intent of the actors, in that highly orchestrated campaigns typically imply
+
+shared intent and goals between the participants. The orchestration of a coordinated campaign can be centralized or
+
+distributed. In centralized orchestration, a single actor or entity exercises control and coordination over the actions
+
+of all other actors involved in the coordinated behavior. This centralized authority dictates the timing, content, and
+
+strategy of the coordinated actions, allowing for tight coordination and synchronization. An example of strong and
+
+centralized orchestration is the coordinated behavior exhibited by social botnets, where large groups of automated
+
+accounts quasi-simultaneously perform predefined actions depending on the command of a botmaster entity [82]. In
+
+decentralized orchestration, coordination and control are distributed among multiple actors within a network, without
+
+a single central authority dictating the actions of all participants. Actors may self-organize, collaborate, or communicate
+
+autonomously, often guided by shared goals, interests, or ideologies. For instance, in January 2021, retail investors
+
+coordinated on Reddit to target short-selling activity by hedge funds on GameStop shares, causing a surge in the share
+
+price and triggering significant losses for the funds involved [68]. Instead, non-orchestrated coordinated behavior
+
+occurs when the actions of multiple actors spontaneously converge around a given topic, narrative, or activity. Certain
+
+viral social media trends are an example of non-orchestrated coordination emerging from the widespread adoption of a
+
+particular hashtag or activity that occurs organically as many users observe and emulate others’ behavior [126].
+
+2.5.4  Time-variance. Time-variance refers to the temporal characteristics and the dynamic nature of coordinated online
+behavior. It grasps possible changes in the types, timing, frequency, and intensity of the actions, which in turn may
+
+reflect changes in the intent of the actors, as well as adaptations or responses to external stimuli. Examples of largely
+
+static coordinated behavior are the activities of some spammers and bots, who repeatedly perform the same actions
+
+adhering to a fixed pattern without much adaptation or variation [25, 102]. Conversely, many information operations
+
+are dynamic and time-varying, presenting different characteristics at different points in time. Among the changing
+
+characteristics are the types of actors involved in the coordination (e.g., whether automated or human-operated) or
+
+the topics of discussion [125, 138]. Time-variance also strongly depends on the duration of the coordinated behavior
+
+itself. Actors involved in certain state-sponsored disinformation campaigns operate on online platforms for extended
+
+periods, spanning years or even decades [138]. Over such lengthy time frames, the actors adapt their tactics, narratives,
+
+and targets in response to shifts in intent, changes in technology and platforms, or advancements in countermeasures.
+
+This extended duration implies a relatively gradual and nuanced evolution of the coordinated behavior. Conversely,
+
+other forms of online coordination rely on expendable or disposable accounts created for short-lived and fast-paced
+
+Manuscript submitted to ACM

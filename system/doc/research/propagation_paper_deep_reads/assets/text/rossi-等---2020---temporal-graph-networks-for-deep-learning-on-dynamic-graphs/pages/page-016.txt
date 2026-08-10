@@ -1,0 +1,40 @@
+Table 5: Model Hyperparameters.
+Value
+Memory Dimension
+172
+Node Embedding Dimension
+100
+Time Embedding Dimension
+100
+# Attention Heads
+2
+Dropout
+0.1
+time embedding module, while for DyRep we augment the messages with the result of a temporal
+graph attention performed on the destination’s neighborhood. For both we use a vanilla RNN as the
+memory updater module.
+A.4.1
+NEIGHBOR SAMPLING: UNIFORM VS MOST RECENT
+When performing neighborhood sampling (Hamilton et al., 2017a) in static graphs, nodes are usually
+sampled uniformly. While this strategy is also possible for dynamic graphs, it turns out that the most
+recent edges are often the most informative. In Figure 5 we compare two TGN-attn models (see Table
+1) with either uniform or most recent neighbor sampling, which shows that a model which samples
+the most recent edges obtains higher performances.
+23
+24
+25
+26
+27
+Time (per epoch) in seconds
+97.6
+97.8
+98.0
+98.2
+98.4
+Test Average Precision
+most_recent
+uniform
+Figure 5: Comparison of two TGN-attn models using different neighbor sampling strategies (when
+sampling 10 neighbors). Sampling the most recent edges clearly outperforms uniform sampling.
+Means and standard deviations (visualized as ellipses) were computed over 10 runs.
+16

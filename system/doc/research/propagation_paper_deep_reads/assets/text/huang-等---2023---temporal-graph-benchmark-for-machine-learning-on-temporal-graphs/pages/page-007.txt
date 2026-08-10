@@ -1,0 +1,53 @@
+to another at a time. The network starts from April 1st, 2022, and ends on November 1st, 2022, and
+contains transaction data of 5 stablecoins and 1 wrapped token. This duration includes the Terra Luna
+crash where the token lost its fixed price of 1 USD. The considered task for this dataset is to predict
+with which destination a given address will interact at a given time.
+tgbl-comment. This dataset is a directed reply network of Reddit where users reply to each other’s
+threads. Each node is a user and each interaction is a reply from one user to another. The network
+starts from 2005 and ends at 2010. The considered task for this dataset is to predict if a given user
+will reply to another one at a given time.
+tgbl-flight. This dataset is a crowd sourced international flight network from 2019 to 2022. The
+airports are modeled as nodes, while the edges are flights between airports at a given day. The node
+features include the type of the airport, the continent where the airport is located, the ISO region code
+of the airport as well as its longitude and latitude. The edge feature is the associated flight number. In
+this dataset, our task is to predict whether a flight will happen between two specific airport on a future
+date. This is useful for foreseeing potential flight disruptions such as cancellation and delays. For
+instance, during the COVID-19 pandemic, many flight routes were cancelled to combat the spread of
+COVID-19. In addition, the prediction of global flight network is also important for studying and
+forecasting the spread of disease such as COVID-19 to new regions, as shown in [3, 11].
+tgbn-trade. This is the international agriculture trading network between nations of the United
+Nations (UN) from 1986 to 2016. Each node is a nation and an edge represents the sum trade value
+of all agriculture products from one nation to another one. As the data is reported annually, the time
+granularity of the dataset is yearly. The considered task for this dataset is to predict the proportion of
+agriculture trade values from one nation to other nations during the next year.
+tgbn-genre. This is a bipartite and weighted interaction network between users and the music genres
+of songs they listen to. Both users and music genres are represented as nodes while an interaction
+specifies a user listens to a music genre at a given time. The edge weights denote the percentage of
+which a song belongs to a certain genre. The dataset is constructed by cross referencing the songs in
+the LastFM-song-listens dataset [24, 15] with that of music genres in the million-song dataset [2].
+The LastFM-song-listens dataset has one month of who-listens-to-which-song information for 1000
+users and the million-song dataset provides genre weights for all songs in the LastFM-song-listens
+dataset. We only retain genres with at least 10% weights for each song that are repeated at least a
+thousand times in the dataset. Genre names are cleaned to remove typos. Here, the task is to predict
+how frequently each user will interact with music genres over the next week. This is applicable to
+many music recommendation systems where providing personalized recommendation is important
+and user preference shifts over time.
+tgbn-reddit. This is a users and subreddits interaction network. Both users and subreddits are
+nodes and each edge indicates that a user posted on a subreddit at a given time. The dataset spans
+from 2008 to 2010. The task considered for this dataset is to learn the interaction frequency towards
+the subreddits of a user over the next week.
+tgbn-token. This is a user and cryptocurrency token transaction network. Both users and tokens are
+nodes and each edge indicates the transaction from a user to a token. The edge weights indicate the
+amount of token transferred and considering the disparity between weights, we normalized the edge
+weights using logarithm. The goal here is to predict how frequently a user will interact with various
+types of tokens over the next week. The dataset is extracted and curated from this source [37].
+5
+Experiments
+For dynamic link property prediction, we include DyRep [42], TGN [35], CAWN [46], TCL [45],
+GraphMixer [9], NAT [25], TGAT [48] and two deterministic heuristics namely EdgeBanktw and
+EdgeBank∞[33]. For dynamic node property prediction, we include DyRep, TGN, and deterministic
+heuristics such as persistence forecast [36] and moving average [31]. Details about the above
+methods are presented in Appendix D. The computing resources are discussed Appendix E. For
+the experimental results, we report the average and standard deviation across 5 different runs. We
+highlight the best results in bold and underline the second place results.
+7

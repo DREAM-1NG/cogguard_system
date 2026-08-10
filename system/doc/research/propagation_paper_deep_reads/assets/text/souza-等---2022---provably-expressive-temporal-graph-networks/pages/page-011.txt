@@ -1,0 +1,49 @@
+References
+[1] P. Barceló, E. V. Kostylev, M. Monet, J. Pérez, J. L. Reutter, and J.-P. Silva. The logical expressiveness of
+graph neural networks. In International Conference on Learning Representations (ICLR), 2020.
+[2] Q. Cappart, D. Chételat, E. B. Khalil, A. Lodi, C. Morris, and P. Velickovic. Combinatorial optimization
+and reasoning with graph neural networks. In International Joint Conference on Artiﬁcial Intelligence
+(IJCAI), 2021.
+[3] B. Chamberlain, J. Rowbottom, M. Gorinova, M. M. Bronstein, S. Webb, and E. Rossi. GRAND: graph
+neural diffusion. In International Conference on Machine Learning (ICML), 2021.
+[4] M. Chen, Z. Wei, Z. Huang, B. Ding, and Y. Li. Simple and deep graph convolutional networks. In
+International Conference on Machine Learning (ICML), 2020.
+[5] K. Cho, B. van Merriënboer, C. Gulcehre, D. Bahdanau, F. Bougares, H. Schwenk, and Y. Bengio.
+Learning phrase representations using RNN encoder–decoder for statistical machine translation. In
+Empirical Methods in Natural Language Processing (EMNLP), 2014.
+[6] N. Dehmamy, A.-L. Barabási, and R. Yu. Understanding the representation power of graph neural networks
+in learning graph topology. In Advances in neural information processing systems (NeurIPS), 2019.
+[7] A. Derrow-Pinion, J. She, D. Wong, O. Lange, T. Hester, L. Perez, M. Nunkesser, S. Lee, X. Guo,
+B. Wiltshire, P. W. Battaglia, V. Gupta, A. Li, Z. Xu, A. Sanchez-Gonzalez, Y. Li, and P. Velickovic. Eta
+prediction with graph neural networks in google maps. In Conference on Information and Knowledge
+Management (CIKM), 2021.
+[8] S. S. Du, K. Hou, R. Salakhutdinov, B. Póczos, R. Wang, and K. Xu. Graph neural tangent kernel:
+Fusing graph neural networks with graph kernels. In Advances in Neural Information Processing Systems
+(NeurIPS), 2019.
+[9] V. Garg, S. Jegelka, and T. Jaakkola. Generalization and representational limits of graph neural networks.
+In International Conference on Machine Learning (ICML), 2020.
+[10] J. Gilmer, S. S. Schoenholz, P. F. Riley, O. Vinyals, and G. E. Dahl. Neural message passing for quantum
+chemistry. In International Conference on Machine Learning (ICML), 2017.
+[11] M. Gori, G. Monfardini, and F. Scarselli. A new model for learning in graph domains. In IEEE International
+Joint Conference on Neural Networks (IJCNN), 2005.
+[12] W. Hamilton, Z. Ying, and J. Leskovec. Inductive representation learning on large graphs. In Advances in
+Neural Information Processing Systems (NeurIPS), 2017.
+[13] S. Hochreiter and J. Schmidhuber. Long short-term memory. Neural Computation, 9(8):1735–1780, 1997.
+[14] S. Kazemi, R. Goel, K. Jain, I. Kobyzev, A. Sethi, P. Forsyth, and P. Poupart. Representation learning for
+dynamic graphs: A survey. Journal of Machine Learning Research, 21(70):1–73, 2020.
+[15] S. M. Kazemi, R. Goel, S. Eghbali, J. Ramanan, J. Sahota, S. Thakur, S. Wu, C. Smyth, P. Poupart, and
+M. Brubaker. Time2vec: Learning a vector representation of time. ArXiv: 1907.05321, 2019.
+[16] S. Kumar, X. Zhang, and J. Leskovec. Predicting dynamic embedding trajectory in temporal interaction
+networks. In International Conference on Knowledge Discovery & Data Mining (KDD), 2019.
+[17] R. Liao, R. Urtasun, and R. Zemel. A PAC-bayesian approach to generalization bounds for graph neural
+networks. In International Conference on Learning Representations (ICLR), 2021.
+[18] D. Liben-Nowell and J. Kleinberg. The link prediction problem for social networks. Journal of the
+American Society for Information Science and Technology, 58(7):1019–1031, 2007.
+[19] A. Loukas. What graph neural networks cannot learn: depth vs width. In International Conference on
+Learning Representations (ICLR), 2020.
+[20] A. Loukas. How hard is to distinguish graphs with graph neural networks?
+In Advances in Neural
+Information Processing Systems (NeurIPS), 2020.
+[21] H. Maron, H. Ben-Hamu, H. Serviansky, and Y. Lipman. Provably powerful graph networks. In Advances
+in Neural Information Processing Systems (NeurIPS), 2019.
+11

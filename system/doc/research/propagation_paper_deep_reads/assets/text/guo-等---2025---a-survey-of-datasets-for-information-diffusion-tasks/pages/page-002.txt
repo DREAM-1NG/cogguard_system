@@ -1,0 +1,102 @@
+Conference’17, July 2017, Washington, DC, USA
+Guo et al.
+their research object, review their sixty-five datasets summarized
+in Table 2, offer their SOTA methods to know the experimental
+procedure, and provide the URLs of datasets in Table 12 in Ap-
+pendix B. Finally, after collecting and analyzing the datasets, we
+discuss the limitations and propose future research directions in
+current datasets and information diffusion tasks. Therefore, the
+contributions of our study can be summarized as follows.
+• We categorize the research tasks in the information diffusion
+process into three main tasks (social bot detection, misinforma-
+tion detection and information diffusion prediction) from the
+three perspectives of the spreader, the content and the combina-
+tion of paths, receivers and effects proposed in the Five W’s of
+Communication.
+• We further subdivide three main tasks into ten subtasks and com-
+pare sixty-five datasets utilizing in these tasks based on six key
+attributes (user information, social network, bot labels, propaga-
+tion content, diffusion network, and veracity labels).
+• We identify gaps in current information diffusion datasets and
+research, proposing directions for improvement. Mainly, compre-
+hensive datasets covering all six attributes are scarce, limiting
+the simultaneous study of the three main tasks. Existing datasets
+also lack diversity in language, modality, and source platforms,
+and many are outdated.
+2
+Taxonomy
+2.1
+Taxonomy of information diffusion tasks
+In 1948, Harold Lasswell, an American political scientist and com-
+munication theorist, described an act of communication in [15] by
+answering the following five questions:
+Who? Says What? In Which Channel? To Whom?
+With What Effect?
+This description is known as Laswell’s Model of Communication
+or Five W’s of Communication (abbr. 5W Model) due to the five
+words that begin with the letter𝑊which respectively demonstrate
+five elements during the process of communication: communicator,
+message, medium, audience and effect. In other words, it also rep-
+resents five elements in the diffusion process: user, content, path,
+receiver, and effect.
+2.1.1
+Task description. In computer science, research addresses
+various issues based on the five elements. Standing up for the user,
+it identifies whether the user is normal or a bot [16–20]. For the con-
+tent, it determines whether the information is true or false [14, 21–
+24]. For the path, it predicts the number of receivers a dissemination
+path can reach [1, 25, 26]. For the receiver, it identifies the next
+recipient of the message [27–30]. It also explores the influence on
+the receiver [31] and examines the popularity level of the informa-
+tion [32–35].
+This paper, following the "5W model" framework, categorizes
+these issues into three types: social bot detection (users), misinfor-
+mation detection (content), and information diffusion prediction
+(paths, receivers, and effects). Information diffusion prediction
+(Sec. 3) predicts future diffusion receivers, paths, and effects, such as
+user attitudes, the next user in a cascade, and post popularity. Social
+Figure 1: Categorization of information diffusion tasks under
+the "5W Model" framework includes information diffusion
+prediction, social bot detection and misinformation detec-
+tion, along with their respective subtasks and interrelation-
+ships.
+bot detection (Sec. 4) classifies users as bots or humans. Misinfor-
+mation detection (Sec. 5) identifies content as misinformation or
+real information.
+2.1.2
+Relationship between tasks. These three main tasks are also
+interrelated. Some studies [36–53] explore these tasks from overlap-
+ping perspectives. The relationships and cross-studies are illustrated
+in Figure 1.
+• From social bot detection to information diffusion prediction,
+there are studies [36] analyzing the diffusion ability and charac-
+teristics of social bots and exploring information diffusion mech-
+anisms between bots users and human users, and studies [37–39]
+assessing the manipulative influence of bots on public opinion.
+• From misinformation detection to information diffusion predic-
+tion, [40] analyzes the diffusion characteristics of misinformation,
+and [41] models the process of misinformation diffusion with
+agents.
+• From information diffusion prediction to misinformation detec-
+tion, [54] accurately predicts the cascade tendency at early stage
+to assist social platforms in preventing the spread of fake news.
+Misinformation mitigation and containment research leverage
+diffusion models such as the independent cascade model [42, 43]
+and multi-cascade diffusion [53] which are based on the previous
+diffusion research on misinformation.
+• From social bot detection to misinformation detection, many
+studies [44–50] have shown that social bots contribute to the
+generation and propagation of misinformation. Further, [51] con-
+ducts early rumor detection by exploring the behavior of social
+bots, and [52] uses adversarial attacks to improve the robustness
+of fake news detectors by simulating the behavior of bots.
+2.2
+Taxonomy of information diffusion data
+attributes
+According to the "5W model," information diffusion data involves
+three entities: user, content, and media. Media, as the data source, en-
+compasses platforms like websites, social media, and video-sharing
+services, as detailed in Table 2. The attributes necessary for clas-
+sification stem from two aspects that measure the content within
+the data. In practice, information diffusion is driven by user en-
+gagement, including comments, reposts, clicks, and likes. Unlike

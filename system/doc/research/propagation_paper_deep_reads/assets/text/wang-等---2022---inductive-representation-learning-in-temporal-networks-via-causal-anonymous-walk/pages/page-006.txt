@@ -1,0 +1,89 @@
+Published as a conference paper at ICLR 2021
+Measurement
+Reddit
+Wikipedia
+MOOC
+Enron
+Social Evo.
+UCI
+nodes & temporal links
+10,985 & 672,447
+9,227 & 157,474
+7145 & 411,749
+184 & 125,235
+74 & 2,099,520
+1,899 & 59,835
+attributes for nodes & links
+172 & 172
+172 & 172
+0 & 4
+0 & 0
+0 & 0
+0 & 0
+avg. link stream intensity τ
+4.57 × 10−5
+1.27 × 10−5
+4.48 × 10−5
+6.50 × 10−5
+4.98 × 10−3
+3.59 × 10−5
+Table 1: Summary of dataset statistics. Average link stream intensity is calculated by 2|E|/(|V |T), where T is
+the total time range of all edges in unit of seconds, |V | and |E| are number of nodes and temporal links.
+Encode ˆW. Note that each walk is a sequence of node-time pairs. If we encode each node-time pair
+and plug those pairs in a sequence encoder, e.g., RNNs, we obtain the encoding of ˆW:
+enc( ˆW) = RNN({f1(ICAW (wi)) ⊕f2(ti−1 −ti)}i=0,1,...,m), where t−1 = t0,
+(5)
+where f1, f2 are two encoding function on ICAW (wi) and ti−1 −ti respectively. One may use
+transformer networks instead of RNNs to encode the sequences but as the sequences in our case are
+not long (1 ∼5), RNNs have achieved good enough performance. Now, we specify the two encoding
+functions f1(ICAW (wi)) and f2(ti−1 −ti) as follows. Recall the deﬁnition of ICAW (wi) (Eq.3).
+f1(ICAW (wi)) = MLP(g(w, Su)) + MLP(g(w, Sv)),
+where two MLPs share parameters. (6)
+Here the encoding of ICAW (wi) adopts the sum-pooling as the order of u, v is not relevant. For
+f2(t), we adopt random Fourier features to encode time (Xu et al., 2019; Kazemi et al., 2019) which
+may approach any positive deﬁnite kernels according to the Bochner’s theorem (Bochner, 1992).
+f2(t) = [cos(ω1t), sin(ω1t), ..., cos(ωdt), sin(ωdt)], where ωi’s are learnable parameters.
+(7)
+Encode Su ∪Sv. After encoding each walk in Su ∪Sv, we aggregate all these walks to obtain
+the ﬁnal representation enc(Su ∪Sv) for prediction. We suggest to use either mean-pooling for
+algorithmic efﬁciency or self-attention (Vaswani et al., 2017) followed by mean-pooling to further
+capture subtle interactions between different walks. Speciﬁcally, suppose { ˆWi}1≤i≤2M are the 2M
+CAWs in Su ∪Sv and each enc( ˆWi) ∈Rd×1. We set enc(Su ∪Sv) as
+• Mean-AGG(Su ∪Sv):
+1
+2M
+P2M
+i=1 enc( ˆWi).
+• Self-Att-AGG(Su ∪Sv):
+1
+2M
+P2M
+i=1 softmax({enc( ˆWi)T Q1enc( ˆWj)}1≤j≤n)enc( ˆWi)Q2
+where Q1, Q2 ∈Rd×d are two learnable parameter matrices.
+We add a 2-layer perceptron over enc(Su ∪Sv) to make the ﬁnal link prediction.
+4.4
+EXTENSION AND DISCUSSION
+Attributed nodes/links and directed links. In some real networks, nodes or links may have at-
+tributes available, e.g., the message content in the case of SMS networks. In this case, the walk in
+Eq.1 can be associated with node/link attributes X0, X1, ..., Xm where Xi refers to the attributes on
+link ({wi−1, wi}, ti) or on the node wi or a concatenation of these two parts. Note that the direction
+of a link can also be viewed as a binary link attribute, where a 2-dimensional one-hot encoding can
+be used. To incorporate such information, we only need to change enc( ˆW) (Eq.5) as
+enc( ˆW) = RNN({f1(ICAW (wi)) ⊕f2(ti−1 −ti) ⊕Xi}i=0,1,...,m), where t−1 = t0.
+(8)
+The derived encoding is then concatenated with enc( ˆW) to obtain the enhanced ﬁnal encoding of ˆW.
+Efﬁcient link sampling. A naive implementation of the link sampling in step 5 in Alg.1 is to
+compute and normalize the sampling probabilities of all links in Ewp,tp, which requires to memorize
+all historical links and costs much time and memory. To solve this problem, we propose a sampling
+strategy (Appendix A) with expected time and memory complexity min{ 2τ
+α + 1, |Ewp,tp|} if links in
+Ewp,tp come in by following a Poisson process with intensity τ (Last & Penrose, 2017). This means
+that our sampling strategy with a positive α allows the model only recording O( τ
+α) recent links for
+each node instead of the entire history. Our experiments in Sec.5.3 show that α that achieves the best
+prediction performance makes τ
+α ≈5 in different datasets. Since the time and memory complexity
+do not increase with respect to the number of links, our model can be used for online training and
+inference. Note that the α = 0 case reduces to uniform sampling, mostly adopted by previous
+methods (Xu et al., 2020), which requires to record the entire history and thus is not scalable.
+6

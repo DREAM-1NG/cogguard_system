@@ -1,0 +1,75 @@
+8                                                                                  Mannocci et al.
+
+
+from similar behavior [19, 72, 73, 100, 103, 145] to synchronicity [72, 73, 155] and common intent [51, 59]. As practical
+
+examples of the above, some definitions and the resulting detection methods revolve around the anomalous use of
+
+hashtags or URLs by multiple users [44, 73], or repeated screen name swapping [103].
+
+  More fundamentally, the field still lacks a formal and statistically grounded definition of coordination, including
+
+well-defined null models against which coordinated behavior can be rigorously assessed. As a consequence, many
+
+approaches rely on platform- and task-specific heuristics, which complicates cross-domain comparisons, reproducibility,
+
+and the estimation of effect sizes. This limitation echoes challenges observed in related areas such as bot detection,
+
+where simplistic data collection and labeling practices have been shown to hinder generalization even across datasets
+
+from the same platform [50]. While no single definition fully captures the complexity of coordinated online behavior,
+
+existing works collectively highlight key properties of the phenomenon. These properties can serve as building blocks
+
+toward a more general and theoretically grounded definition of coordination.
+
+
+2.4  General definition and fundamental components of coordinated online behavior
+
+We propose a new general definition of coordinated online behavior that overcomes the ambiguities and limitations of
+
+the existing definitions. The new definition leverages the components of offline coordination introduced in Section 2.1
+
+and is informed by the various operational definitions proposed by social media platforms and by the academic literature,
+
+respectively discussed in Sections 2.2 and 2.3.
+
+   Definition 2.11. Coordinated online behavior: A group of users who perform synergic actions in pursuit of an intent.
+                                    |     actors{z   } |             actions{z       } |         intent{z     }
+Definition 2.11 delineates coordinated online behavior based on three fundamental components—actors, actions, and
+intent—that are similar to the components of offline coordination outlined in Definition 2.2. Definition 2.11 and its three
+fundamental components enable the comprehensive mapping of all instances of online coordination, as discussed in the
+
+following.
+
+2.4.1   Actors. Actors refer to the individuals or entities that are engaged in coordinated behavior. The attributes of
+the actors contribute to characterizing instances of coordination. For example, the way in which the actors represent
+
+themselves to those not involved in the coordinated behavior determines whether the coordination is authentic or
+
+otherwise. All instances of online coordination where the actors misrepresent themselves, as in the case of social
+
+bots [47, 51, 100, 103] and state-backed trolls [91], are cases of inauthentic coordination. Conversely, coordination
+
+among actors who accurately self-portray is deemed authentic [47]. In addition, the relationships between the actors
+
+determine whether the coordination is spontaneous, grassroots, or emergent (i.e., bottom-up) [100] or whether it is
+
+structured and well-organized (i.e., top-down) [138]. Finally, the number of the involved actors determines the scale of
+
+the coordination.
+
+2.4.2  Actions. Actions represent the practical means that allow actors to coordinate. In coordinated behavior the
+actions are synergic, in that they are mutually reinforcing and potentially capable of producing a larger effect than
+
+that obtainable by individual actions alone. While actors and intent can be misrepresented or concealed, actions
+
+are typically visible and non-falsifiable. In other words, the actions with which the actors coordinate represent the
+
+digital breadcrumbs of the coordination. For this reason, the actions are the component based on which the majority
+
+of coordination detection methods are developed. Furthermore, the types and attributes of the actions also provide
+
+information towards characterizing instances of coordination. For example, the timing and synchronization of the
+
+Manuscript submitted to ACM

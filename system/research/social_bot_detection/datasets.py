@@ -38,21 +38,23 @@ def load_social_dataset(
 ) -> tuple[list[AccountSample], DatasetManifest]:
     """Load one supported public dataset by its canonical name."""
 
+    # Botection remains available through the explicit legacy loader below for
+    # provenance, but it is intentionally excluded from the benchmark dispatch.
     loaders = {
-        "botection": None,
         "cresci_2015": load_cresci_2015_dataset,
         "cresci_2017": load_cresci_2017_dataset,
         "midterm_2018": load_midterm_2018_dataset,
         "approved_account_corpus": load_approved_account_corpus,
     }
     normalized = dataset_name.strip().lower().replace("-", "_")
-    if normalized == "botection":
-        from .dataset import load_botection_dataset
-
-        return load_botection_dataset(dataset_root)
     loader = loaders.get(normalized)
     if loader is None:
-        raise ValueError(f"unsupported social-bot dataset: {dataset_name}")
+        valid = ", ".join(sorted(loaders))
+        raise ValueError(
+            f"unsupported public social-bot benchmark: {dataset_name}. "
+            f"Expected one of: {valid}. "
+            "TwiBot-20 uses the fixed-graph research runtime; Botection is legacy-only."
+        )
     return loader(dataset_root, max_posts_per_account=max_posts_per_account)
 
 
@@ -80,16 +82,20 @@ def load_approved_account_corpus(
     skipped_abstain = 0
     skipped_empty = 0
     fingerprint = hashlib.sha256()
+    record_count = 0
     with label_path.open("r", encoding="utf-8") as stream:
         for line_number, line in enumerate(stream, start=1):
             text = line.strip()
             if not text:
                 continue
             payload = json.loads(text)
+            if not isinstance(payload, dict):
+                raise ValueError(f"invalid approved account record at line {line_number}")
             fingerprint.update(json.dumps(payload, ensure_ascii=False, sort_keys=True).encode("utf-8"))
             fingerprint.update(b"\n")
             target = str(payload.get("training_target") or "").strip()
             source_labels[target] += 1
+            record_count += 1
             if target == "abstain":
                 skipped_abstain += 1
                 continue
@@ -102,31 +108,47 @@ def load_approved_account_corpus(
             platform = str(payload.get("platform") or "unknown")
             event_id = str(payload.get("event_id") or "unknown")
             account_id = str(payload.get("account_id") or payload.get("case_id") or line_number)
+            metadata = {
+                "case_id": str(payload.get("case_id") or ""),
+                "event_id": event_id,
+                "platform": platform,
+                "label_id": str(payload.get("label_id") or ""),
+                "case_fingerprint": str(payload.get("case_fingerprint") or ""),
+                "source_account_id": str(payload.get("source_account_id") or ""),
+                "provenance": payload.get("provenance") or {},
+            }
+            for field in ("observed_at", "community_id"):
+                value = str(payload.get(field) or "").strip()
+                if value:
+                    metadata[field] = value
             samples.append(
-                _account_sample(
-                    dataset_name="approved_account_corpus",
-                    source_label=target,
-                    raw_account_id=account_id,
+                AccountSample(
+                    account_id=account_id,
                     label=1 if target == "bot" else 0,
                     text=normalized,
                     post_count=len(payload.get("evidence_post_ids") or []),
-                    metadata={
-                        "case_id": str(payload.get("case_id") or ""),
-                        "event_id": event_id,
-                        "platform": platform,
-                        "label_id": str(payload.get("label_id") or ""),
-                        "case_fingerprint": str(payload.get("case_fingerprint") or ""),
-                        "provenance": payload.get("provenance") or {},
-                    },
+                    source_file_hash=hashlib.sha256(normalized.encode("utf-8")).hexdigest(),
+                    source_encoding="utf-8",
+                    dataset_name="approved_account_corpus",
+                    source_label=target,
+                    metadata=metadata,
+                    split_group=event_id,
                 )
             )
+    observed_fingerprint = fingerprint.hexdigest()
+    _validate_approved_manifest(
+        exported_manifest,
+        data_fingerprint=observed_fingerprint,
+        record_count=record_count,
+        class_counts=dict(sorted(source_labels.items())),
+    )
     class_counts = Counter(str(sample.label) for sample in samples)
     return samples, DatasetManifest(
         source_root=str(label_path.parent.resolve()),
         label_file=str(label_path.resolve()),
         text_directory="approved_account_labels.jsonl text field",
-        data_fingerprint=str(exported_manifest.get("data_fingerprint") or fingerprint.hexdigest()),
-        labeled_account_count=sum(source_labels.values()),
+        data_fingerprint=observed_fingerprint,
+        labeled_account_count=record_count,
         usable_account_count=len(samples),
         skipped_empty_text_count=skipped_empty + skipped_abstain,
         missing_text_count=0,
@@ -138,6 +160,23 @@ def load_approved_account_corpus(
         text_provenance="approved_account_labels.jsonl text field from account cases",
         source_archive_sha256=_sha256(label_path),
     )
+
+
+def _validate_approved_manifest(
+    manifest: dict[str, Any],
+    *,
+    data_fingerprint: str,
+    record_count: int,
+    class_counts: dict[str, int],
+) -> None:
+    if not manifest:
+        return
+    if str(manifest.get("data_fingerprint") or "") != data_fingerprint:
+        raise ValueError("approved account dataset_manifest data_fingerprint does not match JSONL records")
+    if manifest.get("record_count") != record_count:
+        raise ValueError("approved account dataset_manifest record_count does not match JSONL records")
+    if manifest.get("class_counts") != class_counts:
+        raise ValueError("approved account dataset_manifest class_counts do not match JSONL records")
 
 
 def load_cresci_2015_dataset(

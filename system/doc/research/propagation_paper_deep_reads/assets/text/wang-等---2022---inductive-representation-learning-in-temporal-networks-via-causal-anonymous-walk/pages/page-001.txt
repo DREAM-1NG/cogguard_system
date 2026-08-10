@@ -1,0 +1,54 @@
+Published as a conference paper at ICLR 2021
+INDUCTIVE REPRESENTATION LEARNING IN TEMPO-
+RAL NETWORKS VIA CAUSAL ANONYMOUS WALKS
+Yanbang Wang1∗, Yen-Yu Chang2, Yunyu Liu3, Jure Leskovec1, Pan Li1,3
+1Department of Computer Science, 2Electrical Engineering, Stanford University
+3Department of Computer Science, Purdue University
+{ywangdr,jure}@cs.stanford.edu,yenyu@stanford.edu
+{liu3154,panli}@purdue.edu
+ABSTRACT
+Temporal networks serve as abstractions of many real-world dynamic systems.
+These networks typically evolve according to certain laws, such as the law of triadic
+closure, which is universal in social networks. Inductive representation learning
+of temporal networks should be able to capture such laws and further be applied
+to systems that follow the same laws but have not been unseen during the training
+stage. Previous works in this area depend on either network node identities or rich
+edge attributes and typically fail to extract these laws. Here, we propose Causal
+Anonymous Walks (CAWs) to inductively represent a temporal network. CAWs are
+extracted by temporal random walks and work as automatic retrieval of temporal
+network motifs to represent network dynamics while avoiding the time-consuming
+selection and counting of those motifs. CAWs adopt a novel anonymization strategy
+that replaces node identities with the hitting counts of the nodes based on a set
+of sampled walks to keep the method inductive, and simultaneously establish the
+correlation between motifs. We further propose a neural-network model CAW-N to
+encode CAWs, and pair it with a CAW sampling strategy with constant memory and
+time cost to support online training and inference. CAW-N is evaluated to predict
+links over 6 real temporal networks and outperforms previous SOTA methods in
+the inductive setting. CAW-N also outperforms previous methods in 4 out of the 6
+networks in the transductive setting.
+1
+INTRODUCTION
+Temporal networks consider dynamically interacting elements as nodes, interactions as temporal
+links, with labels of when those interactions happen. Such temporal networks provide abstractions to
+study many real-world dynamic systems (Holme & Saramäki, 2012). Researchers have investigated
+temporal networks in recent several decades and concluded many insightful laws that essentially reﬂect
+how these real-world systems evolve over time (Kovanen et al., 2011; Benson et al., 2016; Paranjape
+et al., 2017; Zitnik et al., 2019). For example, the law of triadic closure in social networks, describing
+that two nodes with common neighbors tend to have a mutual interaction later, reﬂects how people
+establish social connections (Simmel, 1950). Later, a more elaborate law on the correlation between
+the interaction frequency between two individuals and the degree that they share social connections,
+further got demonstrated (Granovetter, 1973; Toivonen et al., 2007). Feedforward control loops that
+consist of a direct interaction (from node w to node u) and an indirect interaction (from w through
+another node v to u), also work as a law in the modulation of gene regulatory systems (Mangan &
+Alon, 2003) and also as the control principles of many engineering systems (Gorochowski et al., 2018).
+Although research on temporal networks has achieved the above success, it can hardly be generalized
+to study more complicated laws: Researchers have to investigate an exponentially increasing number
+of patterns when incorporating more interacting elements let alone their time-evolving aspects.
+Recently, representation learning, via learning vector representations of data based on neural net-
+works, has offered unprecedented possibilities to extract, albeit implicitly, more complex structural
+patterns (Hamilton et al., 2017b; Battaglia et al., 2018). However, as opposed to the study on static
+networks, representation learning of temporal networks is far from mature. Two challenges on
+∗Project website with code and data: http://snap.stanford.edu/caw/. Updated 10/30/2022: we
+ﬁxed a bug in previous versions. See Appendix G for details.
+1
+arXiv:2101.05974v5  [cs.LG]  31 Oct 2022

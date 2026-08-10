@@ -1,0 +1,17 @@
+{
+  "status": "converted",
+  "source_path": "H:\\Zotero\\attenger\\Projects\\CISCN\\KT1\\Mannocci 等 - 2024 - Detection and characterization of coordinated online behavior a survey.pdf",
+  "source_name": "Mannocci 等 - 2024 - Detection and characterization of coordinated online behavior a survey.pdf",
+  "source_extension": ".pdf",
+  "source_size_bytes": 3899676,
+  "source_sha256": "f9cf9f7128375e9cdf33a2deb0251f2017ac5829189d08d08312a9b3f6d05bec",
+  "output_markdown": "G:\\CISCN\\CogGuard\\.worktrees\\refactor-system\\doc\\research\\evidence\\mannocci-survey\\Mannocci---2024---Detection-and-characterization-of-coordinated-online-behavior-a-survey-33bf6253.md",
+  "output_meta": "G:\\CISCN\\CogGuard\\.worktrees\\refactor-system\\doc\\research\\evidence\\mannocci-survey\\Mannocci---2024---Detection-and-characterization-of-coordinated-online-behavior-a-survey-33bf6253.meta.json",
+  "title": null,
+  "characters": 169851,
+  "converted_at": "2026-08-10T10:31:39.235309+00:00",
+  "converter": {
+    "name": "markitdown",
+    "version": "0.1.5"
+  }
+}

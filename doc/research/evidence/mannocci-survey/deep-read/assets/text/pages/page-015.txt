@@ -1,0 +1,57 @@
+Detection and Characterization of Coordinated Online Behavior: A Survey                                   15
+
+                   A: social network            B: interaction network        C: coordination network
+                          𝑢1                           𝑢1                           𝑢1
+
+
+                       õ            õ
+
+                   𝑢2             𝑢3            𝑢2   7     𝑢3            𝑢2  õ     𝑢3
+
+
+Fig. 8. Differences between social (A), interaction (B), and coordination (C) networks. Solid black edges represent actions on the
+online platform, while dashed colored edges show how actions are translated into edges in the corresponding type of network.
+Coordination networks are typically undirected and link users performing similar actions at around the same time. Differently to
+social and interaction networks, coordination networks allow connecting users even if they never directly interact with one another.
+
+or content. For instance, two users who comment, like, or re-share the same post are generating a co-action. As
+
+shown in Figure 8, the two coordinated users need not be directly connected in the social or interaction network.
+
+This characteristic makes coordination networks particularly suitable for surfacing coordination between seemingly
+
+unrelated users, such as those involved in inauthentic or harmful behavior, so much so that some scholars specifically
+refer to latent coordination networks [146]. In the most general case, a coordination network is a multiplex network
+𝐺(𝑉, 𝐸,𝑊, L). In order to build 𝐺, one must define the types of co-actions 𝐶𝑎to consider (e.g., re-shares, mentions,
+follows, etc.). When multiple co-actions are used, 𝐺is a multiplex network with 𝐿layers, where L = {1, . . . , 𝐿} is the set
+of layers, each corresponding to a co-action 𝑖∈𝐶𝑎. However, the majority of existing works leverage a single co-action.
+In this case, the number of layers is 𝐿= 1 and 𝐺is a single layer network. Each layer in 𝐺is an undirected weighted
+graph 𝐺𝑖(𝑉𝑖, 𝐸𝑖,𝑊𝑖), where 𝑉𝑖⊆𝑈′, 𝐸𝑖and 𝑊𝑖respectively denote the set of nodes, edges, and weights of layer 𝑖. We
+highlight that 𝑉= Ð𝑖∈L 𝑉𝑖, 𝐸= Ð𝑖∈L 𝐸𝑖, and 𝑊= Ð𝑖∈L 𝑊𝑖. Given a layer 𝑖, an edge 𝑒𝑖𝑗𝑘is created if there exists a
+co-action of type 𝑖between two users (𝑢𝑗,𝑢𝑘). The edge weight 𝑤𝑖𝑗𝑘= 𝑠𝑖𝑚𝑖(𝑢𝑗,𝑢𝑘) is obtained via a similarity function
+that computes pairwise user similarities in 𝑈′. Different similarity functions can be used for different co-actions.
+
+   Implementation. Building the coordination network 𝐺requires defining the types of co-actions and the corresponding
+similarity functions. The vast majority of works in literature rely on a single co-action and the resulting networks
+
+are single-layered. Table 2 reports the main implementation details for the works that built single layer coordination
+
+networks. In table, when multiple co-actions are listed for the same author or work, this means that multiple single layer
+
+networks were built, rather than a multiplex network resulting from the simultaneous analysis of multiple co-actions.
+
+The few existing works that built multiplex coordination networks are instead described in Table 5.
+  As shown in Table 2, the most common type of co-action is co-sharing (e.g., the co-retweet action on Twitter/X) [8, 17–
+19, 29, 30, 32, 47, 51, 52, 58, 61, 62, 65, 66, 70, 81, 100, 103, 104, 114–116, 128, 129, 138, 144–146]. Other frequently used
+co-actions are co-reply/co-comment [60, 71, 81, 106, 145, 146] and co-like [53], which occur when two users comment
+or leave a reaction to the same post. The previous co-actions are based on the type of interaction between users and
+content in an online platform. Other co-actions are instead based on the content of user posts. For example, co-post
+(e.g., co-tweet on Twitter/X and co-parley on Parler) [13, 17, 22, 28, 32, 48, 59, 67, 71, 104, 116, 138, 140, 141, 149],
+co-image, and co-video [152] represent the publishing of posts with the same text, image, or video by multiple users.
+More specific co-actions are also possible, such as co-text-image that occurs when multiple users post images that
+contain the same text [121]. Similarly, co-mention [3, 52, 73, 81, 90, 92, 94, 95, 138, 145, 146], co-URL [3, 14, 16, 22,
+29, 32, 41–44, 49, 52, 70–73, 81, 92, 94–97, 112, 122, 138, 145, 146, 148, 150], and co-hashtag [3, 15, 29, 32, 52, 70–
+73, 81, 91, 92, 94, 95, 103, 138, 142, 145, 146, 148] represent two users publishing a post with the same user mention,
+URL, or hashtag. Regarding the latter, the majority of works consider publishing a post with a single common hashtag
+
+                                                                                                         Manuscript submitted to ACM

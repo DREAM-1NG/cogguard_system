@@ -1,0 +1,21 @@
+Zaman, T.; Fox, E. B.; and Bradlow, E. T. 2014. A Bayesian
+approach for predicting the popularity of tweets.
+Zhang, X.; Aravamudan, A.; and Anagnostopoulos, G. C.
+2022. Anytime Information Cascade Popularity Prediction
+via Self-Exciting Processes. In International Conference on
+Machine Learning, 26028–26047. PMLR.
+Zhao, Q.; Erdogdu, M. A.; He, H. Y.; Rajaraman, A.; and
+Leskovec, J. 2015. Seismic: A self-exciting point process
+model for predicting tweet popularity. In Proceedings of the
+21th ACM SIGKDD international conference on knowledge
+discovery and data mining, 1513–1522.
+Zhou, F.; Jing, X.; Xu, X.; Zhong, T.; Trajcevski, G.; and
+Wu, J. 2020a.
+Continual information cascade learning.
+In GLOBECOM 2020-2020 IEEE Global Communications
+Conference, 1–6. IEEE.
+Zhou, F.; Xu, X.; Zhang, K.; Trajcevski, G.; and Zhong, T.
+2020b. Variational information diffusion for probabilistic
+cascades prediction. In IEEE INFOCOM 2020-IEEE con-
+ference on computer communications, 1618–1627. IEEE.
+11914

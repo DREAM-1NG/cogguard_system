@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
@@ -22,7 +23,7 @@ from app.core.account_training import (
     require_training_transition,
 )
 from app.config import settings
-from app.core.account_training_runtime import account_training_run_is_live
+from app.core.account_training_runtime import account_training_run_is_live, preflight_account_training_artifact
 from app.models.account_labeling import (
     AccountCorpusVersion,
     AccountDetectionDatasetVersion,
@@ -120,9 +121,27 @@ async def create_account_training_run(
         trigger=decision.reason,
     )
     if training_family == AccountTrainingFamily.CHINESE_SOCIAL_ENCODER:
-        config_payload.setdefault("corpus_documents_path", manifest.get("corpus_path"))
+        config_payload["corpus_documents_path"] = _absolute_local_path(
+            config_payload.get("corpus_documents_path") or manifest.get("corpus_path")
+        )
+        if config_payload.get("historical_documents_path"):
+            config_payload["historical_documents_path"] = _absolute_local_path(
+                config_payload["historical_documents_path"]
+            )
+        config_payload["model_name_or_path"] = _absolute_local_path(
+            config_payload.get("model_name_or_path") or settings.ACCOUNT_ACQUISITION_TEXT_MODEL_PATH
+        )
+        config_payload["device"] = str(
+            config_payload.get("device") or settings.ACCOUNT_ACQUISITION_DEVICE
+        ).strip()
     else:
-        config_payload.setdefault("dataset_root", corpus.artifact_uri)
+        config_payload["dataset_root"] = _absolute_local_path(corpus.artifact_uri)
+        config_payload.setdefault("dataset_name", "approved_account_corpus")
+        config_payload.setdefault("strict_protocol", True)
+        config_payload.pop("frozen_holdout_manifest_path", None)
+        config_payload.pop("frozen_holdout_manifest_sha256", None)
+        config_payload = await _resolve_governed_detector_config(session, config_payload)
+    preflight = preflight_account_training_artifact(family=training_family.value, config=config_payload)
     config_hash = _fingerprint(config_payload)
     created_at = datetime.now(timezone.utc).replace(tzinfo=None)
     run = AccountModelTrainingRun(
@@ -269,13 +288,18 @@ async def resume_account_training_run(
     if run.status != AccountTrainingState.INTERRUPTED.value:
         raise AppException(code=409, msg="Only interrupted account training runs can be resumed.")
     configured_max_attempts = _configured_max_attempts()
-    if not _normalize_persisted_attempt_limit(run, configured_max_attempts):
+    if not _persisted_attempt_is_valid(run):
         raise AppException(code=409, msg="Account training has an invalid persisted attempt ordinal.")
     if not recovery_attempt_allowed(attempt=run.attempt, max_attempts=configured_max_attempts):
         raise AppException(code=409, msg="Account training retry limit has been exhausted.")
     if account_training_run_is_live(run.run_id):
         raise AppException(code=409, msg="Account training run is still owned by a live runtime.")
+    effective_config = _loads(run.config_json)
+    if run.family == AccountTrainingFamily.CHINESE_ACCOUNT_DETECTOR.value and not _has_governed_detector_binding(effective_config):
+        effective_config = await _resolve_governed_detector_config(session, effective_config)
+    preflight_account_training_artifact(family=run.family, config=effective_config)
     require_training_transition(run.status, AccountTrainingState.QUEUED.value)
+    run.max_attempts = configured_max_attempts
     run.status = AccountTrainingState.QUEUED.value
     run.stage = "resume_queued"
     run.attempt += 1
@@ -393,12 +417,11 @@ def _configured_max_attempts() -> int:
     return 1 + max(0, int(settings.ACCOUNT_TRAINING_MAX_RESUMES))
 
 
-def _normalize_persisted_attempt_limit(run: AccountModelTrainingRun, configured_max_attempts: int) -> bool:
+def _persisted_attempt_is_valid(run: AccountModelTrainingRun) -> bool:
     try:
         attempt = int(run.attempt)
     except (TypeError, ValueError):
         return False
-    run.max_attempts = configured_max_attempts
     return attempt >= 1
 
 
@@ -524,3 +547,30 @@ def _account_training_policy() -> AccountTrainingPolicy:
         heartbeat_timeout_seconds=settings.ACCOUNT_TRAINING_HEARTBEAT_TIMEOUT_SECONDS,
         max_resumes=settings.ACCOUNT_TRAINING_MAX_RESUMES,
     )
+
+
+async def _resolve_governed_detector_config(session: AsyncSession, config: dict[str, Any]) -> dict[str, Any]:
+    """Bind a detector run to an immutable, registered Chinese encoder."""
+
+    from app.services.account_model_governance_service import resolve_governed_chinese_social_encoder
+
+    return await resolve_governed_chinese_social_encoder(session, config=config)
+
+
+def _has_governed_detector_binding(config: dict[str, Any]) -> bool:
+    return all(
+        str(config.get(key) or "").strip()
+        for key in (
+            "encoder_version",
+            "encoder_artifact_hash",
+            "text_model_path",
+            "encoder_binding_payload_path",
+        )
+    )
+
+
+def _absolute_local_path(value: Any) -> str:
+    """Persist DAPT local inputs independently of the worker's current directory."""
+
+    text = str(value or "").strip()
+    return str(Path(text).expanduser().resolve()) if text else ""

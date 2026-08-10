@@ -27,6 +27,42 @@ def test_dapt_config_uses_required_runtime_defaults():
     assert config.historical_replay_ratio == 0.20
 
 
+def test_amp_overflow_does_not_count_a_skipped_optimizer_update():
+    assert dapt._amp_optimizer_step_completed(enabled=True, scale_before=65536.0, scale_after=32768.0) is False
+    assert dapt._amp_optimizer_step_completed(enabled=True, scale_before=32768.0, scale_after=32768.0) is True
+    assert dapt._amp_optimizer_step_completed(enabled=False, scale_before=1.0, scale_after=0.5) is True
+
+
+def test_runtime_precision_prefers_bfloat16_and_falls_back_to_scaled_float16():
+    class FakeCuda:
+        def __init__(self, supported):
+            self.supported = supported
+
+        def is_bf16_supported(self):
+            return self.supported
+
+    class FakeTorch:
+        float32 = "float32"
+        bfloat16 = "bfloat16"
+        float16 = "float16"
+
+        def __init__(self, supported):
+            self.cuda = FakeCuda(supported)
+
+    cpu = SimpleNamespace(type="cpu")
+    cuda = SimpleNamespace(type="cuda")
+
+    assert dapt._resolve_runtime_precision(FakeTorch(True), cpu, mixed_precision=True) == (
+        "float32", "float32", False
+    )
+    assert dapt._resolve_runtime_precision(FakeTorch(True), cuda, mixed_precision=True) == (
+        "bfloat16", "bfloat16", False
+    )
+    assert dapt._resolve_runtime_precision(FakeTorch(False), cuda, mixed_precision=True) == (
+        "float16", "float16", True
+    )
+
+
 def test_versioned_corpus_counts_chinese_tokens_deduplicates_exactly_and_mixes_replay():
     config = DAPTConfig(min_chinese_tokens=3)
     current = ["社会机器人检测", "社会机器人检测", "中文语料一号", "中文语料二号", "中文语料三号", "ab"]
@@ -229,6 +265,8 @@ def test_completed_dapt_exports_a_verified_immutable_encoder_directory(tmp_path)
     assert payload["state_dict"]
     assert manifest["provenance"]["corpus"]["input_fingerprint"] == corpus.manifest.input_fingerprint
     assert manifest["provenance"]["dapt_config_hash"]
+    assert manifest["provenance"]["runtime_precision"] == "float32"
+    assert result.runtime_precision == "float32"
     assert manifest["base_model_identity"] == "fixture-base-model"
 
     (result.encoder_artifact_dir / "tokenizer.json").write_text("tampered", encoding="utf-8")

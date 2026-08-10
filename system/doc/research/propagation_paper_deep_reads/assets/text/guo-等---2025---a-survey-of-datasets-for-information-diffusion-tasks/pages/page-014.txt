@@ -1,0 +1,305 @@
+Conference’17, July 2017, Washington, DC, USA
+Guo et al.
+Table 10: Performance comparison between GMIN and base-
+lines of rumor detection task on three datasets (Ma-Weibo,
+Twitter15 and Twitter16). The best results in precision, recall,
+F1-score and accuracy are bolded.
+Model
+Ma-Weibo
+Twitter15
+Twitter16
+F1
+Rec
+Pre
+Acc
+F1
+Rec
+Pre
+Acc
+Rumor2vec 0.952 0.952 0.952 0.951 0.797 0.723 0.851 0.852
+dEFEND
+0.913 0.915 0.913 0.914 0.654 0.738 0.631 0.702
+HB-GAT
+0.955 0.954 0.954 0.955 0.919 0.920 0.951 0.951
+BiGCN
+0.960 0.963 0.961 0.961 0.891 0.886 0.847 0.880
+GCAN
+0.854 0.854 0.854 0.854 0.825 0.877 0.759 0.908
+GLAN
+0.946 0.943 0.943 0.945 0.924 0.905 0.921 0.902
+RvNN
+0.908 0.908 0.908 0.908 0.729 0.723 0.737 0.737
+PPC
+0.920 0.926 0.923 0.921 0.811 0.842 0.820 0.863
+GMIN
+0.959 0.963 0.957 0.961 0.931 0.921 0.920 0.938
+Table 11: Performance comparison between ARG and base-
+lines of fake news detection task on two datasets (Weibo21
+and GossipCop of FakeNewsNet). The best results in accu-
+racy, F1-score and macro F1 are bolded.
+Method
+Weibo21
+GossipCop
+macF1
+Acc 𝐹1𝑟𝑒𝑎𝑙𝐹1𝑓𝑎𝑘𝑒macF1
+Acc 𝐹1𝑟𝑒𝑎𝑙𝐹𝑙𝑓𝑎𝑘𝑒
+G1:LLM-
+Only
+GPT-3.5-turbo
+0.725
+0.734
+0.774
+0.676
+0.702
+0.813
+0.884
+0.519
+G2: SLM-
+Only
+Baseline
+0.753
+0.754
+0.769
+0.737
+0.765
+0.862
+0.916
+0.615
+EANNT
+0.754
+0.756
+0.773
+0.736
+0.763
+0.864
+0.918
+0.608
+Publisher-Emo
+0.761
+0.763
+0.784
+0.738
+0.766
+0.868
+0.920
+0.611
+ENDEF
+0.765
+0.766
+0.779
+0.751
+0.768
+0.865
+0.918
+0.618
+G3: LLM
++SLM
+Baseline+Rationale
+0.767
+0.769
+0.787
+0.748
+0.777
+0.870
+0.921
+0.633
+SuperICL
+0.757
+0.759
+0.779
+0.734
+0.736
+0.864
+0.920
+0.551
+ARG
+0.784
+0.786
+0.804
+0.764
+0.790
+0.878
+0.926
+0.653
+ARG-D
+0.771
+0.772
+0.785
+0.756
+0.778
+0.870
+0.921
+0.634
+ARG-D is the rationale-free ARG by distillation for cost-sensitive scenarios.
+Table 8: Performance comparison between Contextual LSTM
+and baselines of user-based and content-based bot detection
+bot detection tasks about the Cresci-2017 dataset. The best
+results in precision, recall, F1-score, accuracy and AUC are
+bolded
+Task Model
+Pre Recall F1 Acc AUC
+User-based
+bot detection
+Logistic Regression
+0.94
+0.93
+0.93 0.91 0.89
+SGD Classifier
+0.87
+0.87
+0.87 0.87 0.87
+Random Forest Classifier
+0.98
+0.98
+0.98 0.98 0.98
+AdaBoost Classifier
+0.98
+0.98
+0.98 0.98 0.98
+2-layer NN (500,200,1) RelU + Adam
+0.95
+0.95
+0.95 0.95 0.95
+Logistic Regression (With SMOTENN)
+0.99
+0.99
+0.99 0.99 0.99
+SGD Classifier (With SMOTENN)
+0.95
+0.94
+0.94 0.95 0.95
+Random Forest Classifier (With SMOTENN)
+0.99
+0.99
+0.99 0.99 0.99
+AdaBoost Classifier (With SMOTENN)
+1.00
+1.00
+1.00 1.00 1.00
+2-layer NN (300,200,1) RelU + Adam (With SMOTENN)
+0.99
+0.99
+0.99 0.99 0.98
+Logistic Regression (With SMOTOMEK)
+0.92
+0.91
+0.91 0.91 0.91
+SGD Classifier (With SMOTOMEK)
+0.90
+0.90
+0.90 0.90 0.90
+Random Forest Classifier (With SMOTOMEK)
+0.99
+0.99
+0.99 0.99 0.99
+AdaBoost Classifier (With SMOTOMEK)
+0.99
+0.99
+0.99 0.99 0.99
+2-layer NN (300,200,1) RelU+Adam (With SMOTOMEK) 0.95
+0.95
+0.95 0.94 0.95
+Content-based
+bot detection
+Logistic Regression (Metadata-only)
+0.80
+0.80
+0.79 0.80 0.76
+SGD Classifier (Metadata-only)
+0.76
+0.76
+0.75 0.76 0.72
+Random Forest Classifier (Metadata-only)
+0.80
+0.80
+0.80 0.80 0.78
+AdaBoost Classifier (Metadata-only)
+0.80
+0.80
+0.79 0.80 0.76
+Logistic Regression (Metadata-only+SMOTENN)
+0.92
+0.92
+0.92 0.92 0.88
+SGD Classifier (Metadata-only+SMOTENN)
+0.91
+0.90
+0.90 0.90 0.89
+Random Forest Classifier (Metadata-only+SMOTENN)
+0.92
+0.92
+0.92 0.92 0.88
+AdaBoost Classifier (Metadata-only+SMOTENN)
+0.93
+0.92
+0.93 0.92 0.91
+Logistic Regression (Metadata-only+SMOTOMEK)
+0.79
+0.77
+0.76 0.77 0.77
+SGD Classifier (Metadata-only+SMOTOMEK)
+0.78
+0.77
+0.76 0.77 0.77
+Random Forest Classifier (Metadata-only+SMOTOMEK) 0.79
+0.77
+0.77 0.77 0.77
+AdaBoost Classifier (Metadata-only+SMOTOMEK)
+0.79
+0.77
+0.77 0.77 0.77
+LSTM (Tweet-only+50D GloVE)
+0.96
+0.96
+0.96 0.96 0.96
+Contextual LSTM (25D GloVE)
+0.96
+0.96
+0.96 0.96 0.96
+Contextual LSTM (50D GloVE)
+0.96
+0.96
+0.96 0.96 0.96
+Contextual LSTM(100D GloVE)
+0.96
+0.96
+0.96 0.96 0.96
+Contextual LSTM (200D GloVE)
+0.96
+0.96
+0.96 0.96 0.96
+Table 9: Performance of the adversarial attack method in
+graph-based bot detection task on two datasets (Cresci-2015
+and TwiBot-22). The best results in attack success rate and
+new node detected as bot are bolded.
+Model
+Cresci-2015
+TwiBot-22
+Attack success
+rate
+New node
+become bot
+Attack success
+rate
+New node
+become bot
+GCN
+95.68 ± 1.44
+0.00 ± 0.00
+93.97 ± 5.43
+2.66 ± 5.09
+HGT
+94.79 ± 1.18
+0.06 ± 0.12
+89.37 ± 3.56
+5.40 ± 10.80
+Simple-HGN
+95.74 ± 1.25
+0.00 ± 0.00
+74.94 ± 2.16
+7.39 ± 14.78
+R-GCN
+95.74 ± 1.50
+0.06 ± 0.12
+73.73 ± 1.71
+12.94 ± 19.19

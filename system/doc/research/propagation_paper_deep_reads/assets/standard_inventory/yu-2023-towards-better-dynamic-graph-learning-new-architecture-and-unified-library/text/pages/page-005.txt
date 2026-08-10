@@ -1,0 +1,57 @@
+longer, we will correspondingly increase P, making the number of patches (i.e., ltu and ltv) at a
+constant level to reduce the computational cost.
+
+Transformer Encoder. We first align the patched encodings to the same dimension d with trainable
+weight W∗∈Rd∗·P ×d and b∗∈Rd to obtain Ztu,∗∈Rltu×d and Ztv,∗∈Rltv×d, where ∗could be
+N, E, T or C. To be specific, the alignments are realized by
+           Ztu,∗= Mu,∗W∗+t      b∗∈Rltu×d, Ztv,∗= M v,∗W∗+t      b∗∈Rltv×d.              (2)
+Then, we concatenate the aligned encodings of u and v, and get Ztu = Ztu,N∥Ztu,E∥Ztu,T ∥Ztu,C ∈
+Rltu×4d and Ztv = Ztv,N∥Ztv,E∥Ztv,T ∥Ztv,C ∈Rltv×4d.
+Next, we employ a Transformer encoder to capture the temporal dependencies, which is built by
+stacking L Multi-head Self-Attention (MSA) and Feed-Forward Network (FFN) blocks. The residual
+connection [20] is employed after every block. We follow [14] by using GELU [21] instead of ReLU
+[37] between the two-layer perception in each FFN block and applying Layer Normalization (LN) [3]
+before each block rather than after. Instead of individually processing Ztu and Ztv, our Transformer
+encoder takes the stacked Zt = [Ztu; Ztv] ∈R(ltu+ltv)×4d as inputs, aiming to learn the temporal
+dependencies within and across the sequences of u and v. The calculation process is
+
+                             QK⊤
+                         Attention (Q, K, V ) = Softmax  √dk  V ,                        (3)
+             FFN (O, W1, b1, W2, b2) = GELU (OW1 + b1) W2 + b2,                 (4)
+           Ot,li = Attention LN(Zt,l−1)WQ,i,l  LN(Zt,l−1)W K,i,l  LN(Zt,l−1)W V,il     ,         (5)
+               Ot,l = MSA Zt,l−1 + Zt,l−1 =  Ot,l1 ∥· · · ∥Ot,lI WOl + Zt,l−1,             (6)
+                        Zt,l = FFN LN  Ot,l  , W 1,l bl1, W 2,l bl2 + Ot,l.                      (7)
+W Q,il  ∈R4d×dk, WK,il  ∈R4d×dk, W V,il  ∈R4d×dv, WOl ∈RI·dv×4d, W 1l ∈R4d×16d, bl1 ∈R16d,
+W 2l ∈R16d×4d and bl2 ∈R4d are trainable parameters at the l-th layer. We set dk = dv = 4d/I with
+I as the number of attention heads. The input of the first layer is Zt,0 = Zt ∈R(ltu+ltv)×4d, and the
+output of the L-th layer is denoted by Ht = Zt,L ∈R(ltu+ltv)×4d.
+
+Time-aware Node Representation. The time-aware representations of node u and v at timestamp t
+are derived by averaging their related representations in Ht with an output layer,
+                 htu = MEAN Ht[: ltu, :] Wout + bout ∈Rdout,
+                                                                                                    (8)
+                  htv = MEAN Ht[ltu : ltu + ltv, :] Wout + bout ∈Rdout,
+where Wout ∈R4d×dout and bout ∈Rdout are trainable weights with dout as the output dimension.
+
+4.2  DyGLib: Unified Library for Continuous-Time Dynamic Graph Learning
+
+We introduce a unified library with standard training pipelines, extensible coding interfaces, and
+comprehensive evaluating strategies for reproducible, scalable, and credible continuous-time dynamic
+graph learning research. The overall procedure of DyGLib is shown in Figure 3 in Section A.3.
+
+Standard Training Pipelines. To eliminate the influence of different training pipelines in previous
+studies, we unify the data format, create a customized data loader, and train all the methods with the
+same model trainers. Our standard training pipelines guarantee reproducible performance and enable
+users to quickly identify the key components of different models. Researchers only need to focus on
+designing the model architecture without considering other irrelevant implementation details.
+
+Extensible Coding Interfaces. We provide extensible coding interfaces for the datasets and algo-
+rithms, which are all implemented by PyTorch. These scalable designs enable users to incorporate
+new datasets and popular models based on their specific requirements, which can significantly
+reduce the usage difficulty for beginners and allow experts to conveniently validate new ideas. Cur-
+rently, DyGLib has integrated thirteen datasets from various domains and nine continuous-time
+dynamic graph learning methods. It is worth noticing that we also found some issues in previous
+implementations and have fixed them in DyGLib (see details in Section B.3).
+
+
+                                       5

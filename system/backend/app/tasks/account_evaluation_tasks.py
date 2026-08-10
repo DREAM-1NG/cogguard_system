@@ -5,10 +5,15 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any
 
+from celery.exceptions import Reject
 from sqlalchemy import select
 from sqlalchemy.exc import OperationalError
 
 from app.celery_app import celery_app
+from app.core.account_training_runtime import (
+    AccountModelGpuOwnershipBusyError,
+    acquire_account_model_gpu_ownership,
+)
 from app.db.mysql import async_session_factory
 from app.models.account_labeling import AccountModelEvaluationJob
 from app.services.account_model_evaluation_service import (
@@ -16,9 +21,19 @@ from app.services.account_model_evaluation_service import (
     prepare_account_model_evaluation_job,
     run_prepared_account_model_evaluation,
 )
+from app.services.account_evaluation_dispatch import (
+    acknowledge_account_model_evaluation_dispatch,
+    drain_account_model_evaluation_dispatch_outbox,
+)
 from app.tasks.async_runtime import run_async
 
-__all__ = ["enqueue_account_model_evaluation_job", "execute_account_model_evaluation_job"]
+_TRANSIENT_RETRY_LIMIT = 3
+
+__all__ = [
+    "enqueue_account_model_evaluation_job",
+    "execute_account_model_evaluation_job",
+    "reconcile_account_model_evaluation_dispatches",
+]
 
 
 def enqueue_account_model_evaluation_job(job_id: str, *, task_id: str):
@@ -33,24 +48,71 @@ def enqueue_account_model_evaluation_job(job_id: str, *, task_id: str):
 
 
 @celery_app.task(
+    name="account_evaluation.reconcile_dispatches",
+    acks_late=True,
+    max_retries=0,
+)
+def reconcile_account_model_evaluation_dispatches(limit: int = 100) -> dict[str, int]:
+    """Drain committed or expired evaluation dispatch claims."""
+
+    return run_async(drain_account_model_evaluation_dispatch_outbox(limit=int(limit)))
+
+
+@celery_app.task(
     name="account_evaluation.execute",
     bind=True,
     acks_late=True,
     reject_on_worker_lost=True,
-    max_retries=3,
+    max_retries=None,
 )
 def execute_account_model_evaluation_job(self, job_id: str):
     try:
-        result = run_async(_execute_account_model_evaluation_job(str(job_id)))
+        acknowledged = run_async(
+            acknowledge_account_model_evaluation_dispatch(
+                job_id=str(job_id),
+                task_id=getattr(self.request, "id", None),
+            )
+        )
+        if not acknowledged:
+            return {"job_id": str(job_id), "status": "dispatch_not_acknowledged"}
+        ownership = acquire_account_model_gpu_ownership(f"evaluation:{job_id}")
     except OperationalError as error:
         retries = int(self.request.retries)
-        if retries >= int(self.max_retries):
-            run_async(_record_failed_job_transaction(str(job_id), error))
+        if retries >= _TRANSIENT_RETRY_LIMIT:
+            _record_failed_evaluation_or_requeue(str(job_id), error)
             raise
         return self.retry(exc=error, countdown=min(60, 2 ** max(0, retries)))
-    if result.get("status") == "missing":
-        raise self.retry(countdown=min(30, 2 ** max(0, int(self.request.retries))))
-    return result
+    except AccountModelGpuOwnershipBusyError as error:
+        return self.retry(exc=error, countdown=30)
+    try:
+        try:
+            result = run_async(_execute_account_model_evaluation_job(str(job_id)))
+        except OperationalError as error:
+            retries = int(self.request.retries)
+            if retries >= _TRANSIENT_RETRY_LIMIT:
+                _record_failed_evaluation_or_requeue(str(job_id), error)
+                raise
+            return self.retry(exc=error, countdown=min(60, 2 ** max(0, retries)))
+        if result.get("status") == "missing":
+            retries = int(self.request.retries)
+            if retries >= _TRANSIENT_RETRY_LIMIT:
+                raise RuntimeError(f"Account model evaluation job {job_id} remained missing after retries.")
+            raise self.retry(countdown=min(30, 2 ** max(0, retries)))
+        return result
+    finally:
+        ownership.release()
+
+
+def _record_failed_evaluation_or_requeue(job_id: str, error: Exception) -> None:
+    """Keep the broker message recoverable when terminal failure writeback is unavailable."""
+
+    try:
+        run_async(_record_failed_job_transaction(job_id, error))
+    except Exception as writeback_error:
+        raise Reject(
+            f"Could not persist account-evaluation failure for {job_id}: {writeback_error}",
+            requeue=True,
+        ) from writeback_error
 
 
 async def _execute_account_model_evaluation_job(job_id: str) -> dict[str, Any]:

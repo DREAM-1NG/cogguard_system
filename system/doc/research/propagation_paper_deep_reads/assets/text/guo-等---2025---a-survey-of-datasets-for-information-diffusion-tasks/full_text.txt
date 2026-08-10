@@ -1,0 +1,2841 @@
+
+
+===== PDF p.1 =====
+arXiv:2407.05161v2  [cs.SI]  13 Jun 2025
+A Survey of Datasets and Tasks for Information Diffusion
+Fuxia Guo, Xiaowen Wang, Yanwei Xie, Jingqiu Li, Zehao Wang, Lanjun Wang∗
+Tianjin University
+Tianjin, China
+wanglanjun@tju.edu.cn
+Abstract
+Information diffusion across various new media platforms grad-
+ually influences the perceptions, decisions, and social behaviors
+of individual users. In information communication studies, the fa-
+mous Five W’s of Communication model (5W Model) has displayed
+the process of information diffusion clearly. At present, although
+plenty of studies and corresponding datasets have emerged on in-
+formation diffusion, a systematic categorization of multiple tasks
+and integration of datasets are still lacking. To address this gap, we
+survey a systematic taxonomy of information diffusion tasks and
+datasets based on the "5W Model" framework. We first categorize
+the information diffusion tasks into ten subtasks with definitions,
+dataset analyses, and representative methodologies, from three
+main tasks of information diffusion prediction, social bot detection,
+and misinformation detection. We also collect the dataset repos-
+itory of information diffusion tasks with the available links and
+compare them based on six attributes associated with users and
+content: user information, social network, bot label, propagation
+content, diffusion network, and veracity label. In addition, we dis-
+cuss the limitations and future directions of current datasets and
+research topics to advance the future development of information
+diffusion. The dataset repository can be accessed on our website
+https://github.com/fuxiaG/Information-Diffusion-Datasets.
+Keywords
+Dataset, Information diffusion, Social bot detection, Misinformation
+detection, Review
+ACM Reference Format:
+Fuxia Guo, Xiaowen Wang, Yanwei Xie, Jingqiu Li, Zehao Wang, Lanjun
+Wang. 2025. A Survey of Datasets and Tasks for Information Diffusion. In . ,
+15 pages. https://doi.org/XXXXXXX.XXXXXXX
+1
+Introduction
+Online information can be extensively diffused across cyberspace
+as new media enable users to voice opinions, gather public insights,
+and share engaging content, promoting information diffusion [1–3].
+Information diffusion is critical for facilitating online interactions
+∗Corresponding author: wanglanjun@tju.edu.cn.
+Permission to make digital or hard copies of all or part of this work for personal or
+classroom use is granted without fee provided that copies are not made or distributed
+for profit or commercial advantage and that copies bear this notice and the full citation
+on the first page. Copyrights for components of this work owned by others than the
+author(s) must be honored. Abstracting with credit is permitted. To copy otherwise, or
+republish, to post on servers or to redistribute to lists, requires prior specific permission
+and/or a fee. Request permissions from permissions@acm.org.
+Conference’17, Washington, DC, USA
+© 2025 Copyright held by the owner/author(s). Publication rights licensed to ACM.
+ACM ISBN 978-1-4503-XXXX-X/2018/06
+https://doi.org/XXXXXXX.XXXXXXX
+and monitoring social networks [4]. Moreover, it can shape indi-
+vidual perceptions, influence public opinion, and potentially lead
+to economic losses [5].
+Previous surveys [6–10] on information diffusion primarily fo-
+cus on mechanisms, models, and influencing factors. For instance,
+[6] categorizes diffusion models into explanatory and predictive
+types, highlighting their complementarity, while [7] introduces a
+taxonomy for classifying models across disciplines. Additionally,
+[8] discusses vulnerabilities in diffusion models and their impact
+on social networks, and [9] provides an overview of theoretical and
+empirical studies, identifying challenges and future directions. A
+more recent work [10] offers a comprehensive analysis, combining
+model categorization with an evaluation of diffusion prediction
+datasets. Surveys on specific aspects include [11], which investi-
+gates retweet behavior, and [12], which categorizes methods for
+predicting information popularity. In the domain of misinformation,
+[13] reviews techniques for detecting fake news and rumors, while
+[14] proposes a taxonomy for fake news detection.
+Despite these contributions, the current review primarily focus
+on information diffusion mechanisms from a computer science
+perspective, failing to consider the practical diffusion situation
+facing communication studies, diminishing its real-world signifi-
+cance. Moreover, current studies just discuss single research task.
+However, many tasks in the information diffusion field are seen
+as scattered, but actually these issues share similar scenario and
+are associated with inter-relations. The similar scenario is reflected
+in the real-world data as a virtual public opinion scenario, but few
+studies integrate these datasets, not to mention those for multiple
+tasks. Therefore, there is still a lack of integrated consideration from
+the perspective of communication studies in categorizing multiple
+information diffusion tasks and comparing corresponding datasets
+in different tasks.
+To address this problem, this survey develops a systematic taxon-
+omy for information diffusion tasks utilizing the "5W Model" frame-
+work and compiles a set of publicly accessible datasets adapted to
+each task. Firstly, the Five W’s of Communication[15], as a classical
+communication pattern, elucidates the framework of the informa-
+tion diffusion process. Within this model, we categorize informa-
+tion diffusion tasks into social bot detection (users), misinformation
+detection (content), and information diffusion prediction (paths,
+receivers, and effects), aligning with the five "W"s. These primary
+tasks interact with each other and are further subdivided into ten
+subtasks as shown in Figure1. Secondly, from two entities of user
+and content in the five "W"s, six common attributes are identified
+in information diffusion data, presented in Table 1: user informa-
+tion, bot label, and social network for the user, and propagation
+content, veracity label, and diffusion network for content. Their
+presence across renowned datasets is compared in Table 2. Thirdly,
+we elaborate on each renowned subtask shown in Figure 1, define
+
+
+===== PDF p.2 =====
+Conference’17, July 2017, Washington, DC, USA
+Guo et al.
+their research object, review their sixty-five datasets summarized
+in Table 2, offer their SOTA methods to know the experimental
+procedure, and provide the URLs of datasets in Table 12 in Ap-
+pendix B. Finally, after collecting and analyzing the datasets, we
+discuss the limitations and propose future research directions in
+current datasets and information diffusion tasks. Therefore, the
+contributions of our study can be summarized as follows.
+• We categorize the research tasks in the information diffusion
+process into three main tasks (social bot detection, misinforma-
+tion detection and information diffusion prediction) from the
+three perspectives of the spreader, the content and the combina-
+tion of paths, receivers and effects proposed in the Five W’s of
+Communication.
+• We further subdivide three main tasks into ten subtasks and com-
+pare sixty-five datasets utilizing in these tasks based on six key
+attributes (user information, social network, bot labels, propaga-
+tion content, diffusion network, and veracity labels).
+• We identify gaps in current information diffusion datasets and
+research, proposing directions for improvement. Mainly, compre-
+hensive datasets covering all six attributes are scarce, limiting
+the simultaneous study of the three main tasks. Existing datasets
+also lack diversity in language, modality, and source platforms,
+and many are outdated.
+2
+Taxonomy
+2.1
+Taxonomy of information diffusion tasks
+In 1948, Harold Lasswell, an American political scientist and com-
+munication theorist, described an act of communication in [15] by
+answering the following five questions:
+Who? Says What? In Which Channel? To Whom?
+With What Effect?
+This description is known as Laswell’s Model of Communication
+or Five W’s of Communication (abbr. 5W Model) due to the five
+words that begin with the letter𝑊which respectively demonstrate
+five elements during the process of communication: communicator,
+message, medium, audience and effect. In other words, it also rep-
+resents five elements in the diffusion process: user, content, path,
+receiver, and effect.
+2.1.1
+Task description. In computer science, research addresses
+various issues based on the five elements. Standing up for the user,
+it identifies whether the user is normal or a bot [16–20]. For the con-
+tent, it determines whether the information is true or false [14, 21–
+24]. For the path, it predicts the number of receivers a dissemination
+path can reach [1, 25, 26]. For the receiver, it identifies the next
+recipient of the message [27–30]. It also explores the influence on
+the receiver [31] and examines the popularity level of the informa-
+tion [32–35].
+This paper, following the "5W model" framework, categorizes
+these issues into three types: social bot detection (users), misinfor-
+mation detection (content), and information diffusion prediction
+(paths, receivers, and effects). Information diffusion prediction
+(Sec. 3) predicts future diffusion receivers, paths, and effects, such as
+user attitudes, the next user in a cascade, and post popularity. Social
+Figure 1: Categorization of information diffusion tasks under
+the "5W Model" framework includes information diffusion
+prediction, social bot detection and misinformation detec-
+tion, along with their respective subtasks and interrelation-
+ships.
+bot detection (Sec. 4) classifies users as bots or humans. Misinfor-
+mation detection (Sec. 5) identifies content as misinformation or
+real information.
+2.1.2
+Relationship between tasks. These three main tasks are also
+interrelated. Some studies [36–53] explore these tasks from overlap-
+ping perspectives. The relationships and cross-studies are illustrated
+in Figure 1.
+• From social bot detection to information diffusion prediction,
+there are studies [36] analyzing the diffusion ability and charac-
+teristics of social bots and exploring information diffusion mech-
+anisms between bots users and human users, and studies [37–39]
+assessing the manipulative influence of bots on public opinion.
+• From misinformation detection to information diffusion predic-
+tion, [40] analyzes the diffusion characteristics of misinformation,
+and [41] models the process of misinformation diffusion with
+agents.
+• From information diffusion prediction to misinformation detec-
+tion, [54] accurately predicts the cascade tendency at early stage
+to assist social platforms in preventing the spread of fake news.
+Misinformation mitigation and containment research leverage
+diffusion models such as the independent cascade model [42, 43]
+and multi-cascade diffusion [53] which are based on the previous
+diffusion research on misinformation.
+• From social bot detection to misinformation detection, many
+studies [44–50] have shown that social bots contribute to the
+generation and propagation of misinformation. Further, [51] con-
+ducts early rumor detection by exploring the behavior of social
+bots, and [52] uses adversarial attacks to improve the robustness
+of fake news detectors by simulating the behavior of bots.
+2.2
+Taxonomy of information diffusion data
+attributes
+According to the "5W model," information diffusion data involves
+three entities: user, content, and media. Media, as the data source, en-
+compasses platforms like websites, social media, and video-sharing
+services, as detailed in Table 2. The attributes necessary for clas-
+sification stem from two aspects that measure the content within
+the data. In practice, information diffusion is driven by user en-
+gagement, including comments, reposts, clicks, and likes. Unlike
+
+
+===== PDF p.3 =====
+A Survey of Datasets and Tasks for Information Diffusion
+Conference’17, July 2017, Washington, DC, USA
+traditional media’s linear paths, new media operates in a network
+pattern, where nodes represent users or content and edges de-
+note their relationships. Thus, we can organize user and content
+attributes based on these nodes and edge relations. From these per-
+spectives, six key attributes assess information diffusion data: user
+information, propagation content, bot label, veracity label, social
+network, and diffusion network. These attributes facilitate dataset
+comparisons, as shown in the dataset analysis and Table 2, with
+corresponding notations in Table 1.
+2.2.1
+Attributes for user. The attribute information in the user sets
+involves user information, and bot label of each user, and static social
+network among users.
+• User information: Each user 𝑢has their user information, includ-
+ing a basic user profile with a combination of semantic infor-
+mation (user description) and property information (numerical
+and categorical data), and optionally user historical information
+(posts and user engagements).
+• Bot label: There are two types of user accounts: human-operated
+accounts and AI-controlled social bots accounts, requiring a bot
+label 𝑦𝑈to denote a social bot user (1) or a human user (0).
+• Social network: Among the user nodes set𝑉𝑈, static relationships
+are denoted as the edges set 𝐸𝑆, such as follower/followee rela-
+tionships, friendships, and co-authorships, which constitute the
+social network 𝐺𝑆.
+2.2.2
+Attributes for content. The attribute information in the con-
+tent sets involves propagation content and veracity label of each
+content, and dynamic diffusion network among users and its re-
+posts/comments.
+• Propagation content: Each content 𝑝published by users through
+media, such as posts, news, papers and comments, has its propa-
+gation content including texts/images/videos, tags, URLs, etc.
+• Veracity label: Propagation content contains both normal infor-
+mation and false misinformation, requiring a veracity label 𝑦𝑃
+to denote misinformation (1) or normal information (0). In ru-
+mor detection, this label sometimes is fine-grained in particular
+papers.
+• Diffusion network: Within a propagation content, dynamic rela-
+tionships revealing propagation paths are generated by user en-
+gagement behaviors among user or content nodes𝑉= {𝑉𝑈,𝑉𝑃},
+denoted as the edges set 𝐸𝐷, which constitute the diffusion net-
+work 𝐺𝐷.
+Diffusion network edges 𝐸𝐷can be further divided into the
+following three types based on whether nodes represent users or
+contents in different tasks.
+• For user-to-user interactions in information diffusion prediction,
+the edges 𝐸𝐷1 represent the interaction relationships (click/ like/
+repost/ comment/ citation) between two users 𝑢∈𝑉𝑈who
+publish the propagation content.
+• For content-to-content interactions in rumor detection, the edges
+𝐸𝐷2 represent the interaction relationships (repost/ comment/
+citation) between a post 𝑝∈𝑉𝑃and its repost/comment or
+between two reposts/comments.
+• For content-to-user interactions in fake news detection, the edges
+𝐸𝐷3 represent the engagement relationships (click/ like/ repost/
+comment) between a news item 𝑝∈𝑉𝑃and its engagement
+elements such as users or between two engagement elements.
+Table 1: Notations of the concepts in the datasets
+Symbol
+Description
+𝑈= {𝑢1,𝑢2, ...}
+User set
+𝑦𝑈∈{0, 1}
+Bot label
+𝐺𝑆= {𝑉𝑈, 𝐸𝑆}
+Social network
+𝑃= {𝑝1, 𝑝2, ...}
+Content set
+𝑦𝑃∈{0, 1}
+Veracity label
+𝐺𝐷= {𝑉, 𝐸𝐷}, 𝑉= {𝑉𝑈,𝑉𝑃}
+Diffusion network
+3
+Information diffusion prediction
+The prediction of information diffusion is used to forecast future
+propagation paths, users, and effects. In terms of output scale, infor-
+mation diffusion prediction can be focused on two directions [25]:
+macroscopic information diffusion prediction (Sec. 3.1), which pre-
+dicts the general situation of a social group or the entire environ-
+ment, and microscopic information diffusion prediction (Sec. 3.2),
+which predicts the behavior of individual users during the diffu-
+sion process. We will elaborate on these directions through specific
+subtasks, providing their definitions, associated datasets, and rep-
+resentative methods.
+3.1
+Macroscopic information diffusion
+prediction
+From a macroscopic view, propagation content diffuses widely
+over time, leading users to form different perceptions based on
+the information received. For the contents, current prediction prob-
+lems focus on anticipating graph-based cascade size [1, 25, 26] and
+content-based popularity [32–34]. For user groups, the prediction
+problem involves forecasting user attitudes [31]. Thus, there are
+three subtasks in macroscopic information diffusion prediction:
+cascade size prediction, popularity prediction, and user attitudes
+prediction.
+Greater user engagement with a post indicates higher attention.
+Predicting the future number of participants (cascade size) reflects
+the level of concern for the post. Cascade size prediction estimates
+the scale of information cascades by forecasting the total number of
+users engaged in the cascade [25]. Some popular content receives
+extensive views and is widely spread, while much content garners
+little attention. Besides user numbers, the content itself can indicate
+a post’s popularity. Therefore, popularity prediction forecasts
+online posts’ popularity scores as a regression problem by analyzing
+multimodal propagation content (text, image, and video), spatio-
+temporal data, and user information [32]. Additionally, harmful
+content like can evoke negative emotions in users, leading to social
+and economic chaos [5]. To understand these effects, user attitudes
+prediction assesses crowd attitudes during rumor propagation by
+modeling rumor dynamics [31].
+3.1.1
+Definition. Let 𝑈be the set of users and 𝑃be the set of
+posts. User engagement behavior can generate a cascade sequence
+
+
+===== PDF p.4 =====
+Conference’17, July 2017, Washington, DC, USA
+Guo et al.
+Table 2: Datasets comparison for each subtask: user information, social network, bot label, propagation
+content, diffusion network and veracity label.
+Task
+Dataset
+Sources
+User
+info.
+Social
+network
+Bot
+label
+Prop.
+content
+Diff.
+network
+Veracity
+label
+Macroscopic information
+diffusion prediction
+Cascade size
+prediction
+Twitter-casflow [26]
+Twitter
+—
+—
+—
+—
+✓
+—
+APS [26]
+APS
+—
+—
+—
+—
+✓
+—
+Sina Weibo [55]
+Sina Weibo
+—
+—
+—
+—
+✓
+—
+HEP-PH [56]
+arXiv
+—
+—
+—
+—
+✓
+—
+Twitter-FOREST [25]
+Twitter
+—
+✓
+—
+—
+✓
+—
+Douban-FOREST [25]
+Douban
+—
+✓
+—
+—
+✓
+—
+Memetracker [25]
+Google News
+—
+—
+—
+—
+✓
+—
+Popularity
+prediction
+SMPD [32]
+Flicker
+✓
+—
+—
+✓
+—
+—
+Yelp [57]
+Yelp
+✓
+✓
+—
+✓
+—
+—
+MovieLens [58]
+IMDB
+✓
+—
+—
+✓
+—
+—
+Micro-Videos [34]
+Vine
+✓
+✓
+—
+✓
+—
+—
+MicroLens [59]
+A microvideo platform
+—
+—
+—
+✓
+✓
+—
+ICIP [60]
+Flicker
+✓
+—
+—
+✓
+—
+—
+UAP1
+COVID-19-rumor [61]
+Twitter, news websites
+—
+—
+—
+✓
+—
+✓
+Microscopic information
+diffusion prediction
+Next user
+prediction
+Twitter-FOREST [25]
+Twitter
+—
+✓
+—
+—
+✓
+—
+Douban-FOREST [25]
+Douban
+—
+✓
+—
+—
+✓
+—
+Memetracker [25]
+Google News
+—
+—
+—
+—
+✓
+—
+Android [62]
+Stack-Exchange
+—
+✓
+—
+—
+✓
+—
+Christianity [62]
+Stack-Exchange
+—
+✓
+—
+—
+✓
+—
+Twitter-MSHGAT [62]
+Twitter
+—
+✓
+—
+—
+✓
+—
+Douban-MSHGAT [62]
+Douban
+—
+✓
+—
+—
+✓
+—
+Douban-ComSoc [63]
+Douban
+—
+✓
+—
+—
+✓
+—
+Social influence
+prediction
+OAG-DeepInf [29]
+MAG, AMiner
+—
+✓
+—
+✓
+✓
+—
+Digg-DeepInf [29]
+Digg
+—
+✓
+—
+—
+✓
+—
+Twitter-DeepInf [29]
+Twitter
+—
+✓
+—
+—
+✓
+—
+Higgs Twitter [64]
+Twitter
+—
+✓
+—
+—
+✓
+—
+Weibo-DeepInf [29]
+Sina Weibo
+—
+✓
+—
+—
+✓
+—
+Weibo-influencelocality [65]
+Sina Weibo
+✓
+✓
+—
+✓
+✓
+—
+Social bot detection
+User-
+based
+Cresci-2017 [66]
+Twitter
+✓
+—
+✓
+✓
+—
+—
+gilani-2017 [67]
+Twitter
+✓
+—
+✓
+—
+—
+—
+botometer-feedback-2019 [68]
+Twitter
+✓
+—
+✓
+—
+—
+—
+Content-
+based
+PAN-AP-2019 [69]
+Twitter
+—
+—
+✓
+✓
+—
+—
+caverlee-2011 [70]
+Twitter
+✓
+—
+✓
+✓
+—
+—
+Graph-
+based
+Cresci-2015 [71]
+Twitter
+✓
+✓
+✓
+—
+—
+—
+TwiBot-20 [72]
+Twitter
+✓
+✓
+✓
+—
+—
+—
+TwiBot-22 [17]
+Twitter
+✓
+✓
+✓
+—
+—
+—
+Misinformation detection
+Rumor detection
+PHEME-v1 [73]
+Twitter
+✓
+—
+—
+✓
+✓
+✓
+PHEME-v2 [74]
+Twitter
+✓
+—
+—
+✓
+✓
+✓
+PHEME-v3 [75]
+Twitter
+✓
+✓
+—
+✓
+✓
+✓
+Weibo-BiGCN [76]
+Sina Weibo
+—
+—
+—
+—
+✓
+✓
+Ma-Weibo [77]
+Sina Weibo
+✓
+—
+—
+✓
+✓
+✓
+Twitter15 [78]
+Twitter
+—
+—
+—
+✓
+✓
+✓
+Twitter16 [78]
+Twitter
+—
+—
+—
+✓
+✓
+✓
+Twitter15-RDMSC [75]
+Twitter
+✓
+✓
+—
+✓
+✓
+✓
+Twitter16-RDMSC [75]
+Twitter
+✓
+✓
+—
+✓
+✓
+✓
+MR2 [79]
+Social media platforms
+—
+—
+—
+✓
+—
+✓
+Fake news detection
+FakeNewsNet [47]
+Politifact, Gossipcop
+✓
+✓
+—
+✓
+✓
+✓
+FakeNewsNet-DECOR [80]
+Politifact, Gossipcop
+✓
+—
+—
+—
+—
+✓
+FakeNewsNet-UPFD [81]
+Politifact, Gossipcop
+✓
+—
+—
+✓
+✓
+✓
+TruthSeeker2023 [82]
+PolitiFact
+✓
+—
+✓
+—
+—
+✓
+MC-Fake [44]
+Twitter
+✓
+✓
+—
+—
+✓
+✓
+FineFake [83]
+Snopes
+✓
+—
+—
+✓
+✓
+✓
+FauxBuster [84]
+Twitter, Reddit
+—
+—
+—
+✓
+✓
+✓
+MM-Covid [85]
+PolitiFact, FullFact
+✓
+—
+—
+✓
+✓
+✓
+MuMIN [86]
+Twitter
+—
+—
+—
+✓
+✓
+✓
+CHECKED [87]
+Sina Weibo
+—
+—
+—
+✓
+—
+✓
+FakeSV [88]
+Douyin, Kuaishou
+✓
+—
+—
+✓
+—
+✓
+FTT [89]
+Fake news detection system
+—
+—
+—
+✓
+—
+✓
+MCFEND [90]
+Fact-checking agencies
+✓
+—
+—
+✓
+—
+✓
+Weibo21 [91]
+Sina Weibo
+—
+—
+—
+✓
+—
+✓
+Image-verification-corpus [92]
+Twitter
+✓
+—
+—
+✓
+—
+✓
+Breaking! [93]
+BS Detector
+—
+—
+—
+✓
+—
+✓
+LIAR [94]
+Politifact
+—
+—
+—
+✓
+—
+✓
+Evons [95]
+Media-source
+—
+—
+—
+✓
+—
+✓
+WeChat [96]
+WeChat’s Official Accounts
+—
+—
+—
+✓
+—
+✓
+Fakeddit [97]
+Reddit
+—
+—
+—
+✓
+—
+✓
+1 UAP: User attitudes prediction
+
+
+===== PDF p.5 =====
+A Survey of Datasets and Tasks for Information Diffusion
+Conference’17, July 2017, Washington, DC, USA
+𝐶(𝑡𝑤) = {(𝑢𝑖,𝑢𝑗,𝑡𝑗)}𝑖,𝑗≤𝐿, which means that there are 𝐿users
+interacting with the initial post 𝑝by the observed time 𝑡𝑤. The
+triple (𝑢𝑖,𝑢𝑗,𝑡𝑗) indicates that user 𝑢𝑗interacts with user 𝑢𝑖’s post
+at timestamp𝑡𝑗. From the interaction relations between two users in
+𝐶(𝑡𝑤), we can construct a diffusion network 𝐺𝐷(𝑡𝑤) = {𝑉𝑈, 𝐸𝐷1}
+at time 𝑡𝑤. In particular, for user attitude prediction during rumor
+propagation, user crowds can be categorized into three groups based
+on classical epidemic models SI, SIS, and SIR [98]: ignorants (𝑋) who
+are unaware of the rumor, spreaders (𝑌) who spread it, and stiflers
+(𝑍) who know it but do not spread it. Stiflers can be further divided
+into neutrality (𝑍0), belief (𝑍1), and disbelief (𝑍2) [31]. Predictions
+using epidemic models require the group density of ignorants (𝑥(𝑡)),
+spreaders (𝑦(𝑡)), and the three types of stiflers (𝑧0(𝑡), 𝑧1(𝑡), and
+𝑧2(𝑡)) at time 𝑡. Thus, based on the symbol definitions above, we
+can define cascade size prediction, popularity prediction, and user
+attitude prediction as follows.
+• Cascade size prediction: Given the cascade sequence 𝐶(𝑡𝑤) and
+the diffusion network 𝐺𝐷(𝑡𝑤) = {𝑉𝑈, 𝐸𝐷1} of an initial post 𝑝
+at observed timestamp 𝑡𝑤, cascade size prediction aims to predict
+the size of the cascade |𝐶(𝑡𝑝)| at predicted timestamp 𝑡𝑝≫𝑡𝑤.
+• Popularity prediction: Given the post set 𝑃with post content
+and the user set 𝑈, popularity prediction aims to predict the
+popularity 𝜔𝑖of a post 𝑝𝑖∈𝑃.
+• User attitudes prediction: Given a rumor 𝑝, the density of its
+ignorants 𝑥(𝑡0) and the density of its spreaders𝑦(𝑡0) at the initial
+timestamp 𝑡0, user attitudes prediction aims to obtain the group
+density 𝑧𝑖(𝑡𝑝) of stiflers 𝑧𝑖at predicted timestamp 𝑡𝑝.
+3.1.2
+Datasets analysis. The datasets of macroscopic information
+diffusion prediction are compared in Table 2.
+• The source platforms include social media platforms primarily,
+academic citation websites in cascade size prediction, and review
+sites of movies or merchants in popularity prediction. Social
+media is the most common platform in information diffusion.
+Academic citation datasets, focused on citation patterns, high-
+light how information propagates in scholarly contexts, where
+influence and relevance drive cascade sizes. Review sites reflect
+user opinions and behavior trends, which are critical for un-
+derstanding popularity but might lack the intricate interaction
+details found in social media.
+• The datasets in cascade size prediction all include the diffusion
+network, while Twitter-FOREST and Douban datasets include
+social network additionally. It helps capture the influence of user
+relationships during propagation, potentially supplementing the
+underlying user patterns not in diffusion networks.
+• The multimodality in SMPD, Yelp and ICLP datasets includes texts
+and images. Micro-Videos includes texts and videos. MicroLens
+incorporates texts, images, and videos. This variety improves pre-
+dictive performance by leveraging multiple types of information.
+3.1.3
+Methodology. To demonstrate the method of macroscopic
+information diffusion prediction and the current performance mea-
+sured by evaluation metrics, we will present a SOTA method for
+each subtask that introduces its landmark algorithm, respectively.
+Their performance are shown in Appendix A.
+• Cascade size prediction: CasFlow[26] proposes a probabilistic
+cascade size prediction model integrating hierarchical structures
+and propagation uncertainty. The model first analyzes both local
+and global diffusion patterns, then captures user interactions
+over time with Bi-GRUs. Following this, the model encodes un-
+certainty in propagation using Variational Autoencoders (VAEs)
+and refines predictions with Normalizing Flows. Table 3 presents
+its performance comparison between CasFlow and baseline mod-
+els across three datasets (Twitter-casflow [26], APS [26], and Sina
+Weibo [55]) with different observation times, measured by MSLE
+and MAPE.
+• Popularity prediction: RAGTrans[35] introduces a retrieval-augmented
+model for predicting the popularity of multimodal social media
+content. It retrieves relevant instances from a user-generated con-
+tent (UGC) memory bank, builds a multimodal hypergraph, and
+applies a bootstrapping transformer for neighborhood aggrega-
+tion. After that, a user-aware fusion module combines multimodal
+data with user characteristics. Table 4 presents its performance
+comparison between RAGTrans and baseline models on three
+datasets (SMPD [32], ICIP [60], and WeChat [35]), measured by
+MSE, MAE and SRC.
+• User attitudes prediction: Neutral state model[31] introduces
+a neutral state model to represent the crowd attitudes during
+rumor propagation by segmenting individuals into Ignorants,
+Spreaders, Skeptics, and Stifflers with varying beliefs. The model
+uses dynamic equations to simulate the flow of individuals and
+incorporates parameters for rumor spread rate and the influence
+of neutral discussions. Table 5 shows its simulated results of
+neutral state model and XYWZ1Z2 model compared with the
+actual data on the COVID-19-rumor [61] dataset measured by
+MAE and MSE.
+3.2
+Microscopic information diffusion
+prediction
+Microscopic information diffusion prediction targets the future
+diffusion result that a certain user will engage with certain content
+at a predicted time. From the standpoint of this content, the study
+of which user will engage with the target content is known as next
+user prediction [25, 27, 28]. From the standpoint of this user, the
+study of whether the content will be engaged by the target user
+is known as social influence prediction [29, 30]. Therefore, there
+are two subtasks of macroscopic information diffusion prediction,
+involving next user prediction and social influence prediction.
+Intuitively, a user is more likely to repost or comment on con-
+tent from users they follow or who follow them, especially if they
+share the same dynamic diffusion trace [28]. These relationships
+and historical diffusion records are available in social and diffu-
+sion networks. Thus, based on these networks, next user predic-
+tion forecasts which user is likely to be the next to engage in a
+cascade [25]. From a different perspective of a user, we wonder
+whether the content will be engaged by this user. Social action in
+activities are citations in academic sites, voting in news platforms,
+and reposting or commenting on social media [30]. Research [29]
+suggests that users’ emotions, decisions, and actions are influenced
+primarily by their social network neighbors, without external dis-
+turbances. Therefore, social influence prediction is necessary
+to forecast changes in a user’s actions regarding certain content
+
+
+===== PDF p.6 =====
+Conference’17, July 2017, Washington, DC, USA
+Guo et al.
+based on their neighbors’ influence. So similarly, social influence
+prediction also needs the social network and diffusion network.
+3.2.1
+Definition. In the social influence prediction task, 𝜌-neighbors
+Γ𝜌
+𝑢𝑖= {𝑢𝑗|𝑑(𝑢𝑗,𝑢𝑖) ≤𝜌, 𝑗≠𝑖} of user 𝑢𝑖∈𝑈are required to rep-
+resent users whose shortest path distances from 𝑢𝑖in the social
+network 𝐺𝑆= {𝑉𝑈, 𝐸𝑆} are no more than 𝜌. User 𝑢𝑖is referred to
+as the ego user of these neighbors. 𝐴𝑡𝑢𝑖= {𝑎𝑡𝑢𝑗|𝑢𝑗∈Γ𝜌
+𝑢𝑖} is the set
+of action state labels 𝑎𝑡𝑢𝑗for the ego user 𝑢𝑖’s neighbors 𝑢𝑗at times-
+tamp 𝑡, where 𝑎𝑡𝑢∈{0, 1} indicates whether user 𝑢has performed a
+social action (1) or not (0) by timestamp𝑡. Additionally, the topology
+of the previously mentioned cascade sequence can be simplified by
+projecting it onto the time axis, denoted as 𝑐(𝑡𝑤) = {(𝑢𝑗,𝑡𝑗)}𝑗≤𝑤,
+where (𝑢𝑗,𝑡𝑗) indicates that user 𝑢𝑗joined the cascade at times-
+tamp 𝑡𝑗. The diffusion network 𝐺𝐷
+𝑖(𝑡𝑤) = {𝑉𝑃
+𝑖, 𝐸𝐷1
+𝑖
+} for the ego
+user 𝑢𝑖is constructed from the subgraph of 𝐺𝑆and is extended
+with the action state labels set 𝐴𝑡𝑤
+𝑢𝑖at the observed timestamp 𝑡𝑤.
+The set 𝑉𝑃
+𝑖
+= {𝑢𝑖, Γ𝜌
+𝑢𝑖} includes the ego user 𝑢𝑖and its 𝜌-neighbors
+Γ𝜌
+𝑢𝑖along with their 𝐴𝑡𝑢𝑖. In the next user prediction task, the dif-
+fusion network is formed by combining the interaction relations
+in 𝑐(𝑡𝑤) with the social topology in the social network 𝐺𝑆. There-
+fore, drawing from the symbol definitions provided above, next
+user prediction and social influence prediction can be defined as
+follows. Therefore, based on the symbol definitions provided, next
+user prediction and social influence prediction can be defined as
+follows.
+• Next user prediction: Given the user set 𝑈, the social network
+𝐺𝑆= {𝑉𝑈, 𝐸𝑆}, the diffusion network 𝐺𝐷(𝑡𝑤) = {𝑉𝑈, 𝐸𝐷1} of a
+post at observed time 𝑡𝑤and a current cascade 𝑐= {(𝑢1,𝑡1),
+. . . , (𝑢𝑝−1,𝑡𝑝−1)}, next user prediction aims to predict the next
+spreading user 𝑢𝑝∈𝑈at predicted timestamp 𝑡𝑝.
+• Social influence prediction: Given the user set 𝑈and the diffusion
+network 𝐺𝐷
+𝑖(𝑡𝑤) = {𝑉𝑃
+𝑖, 𝐸𝐷1
+𝑖
+} of the ego user 𝑢𝑖at the observed
+timestamp 𝑡𝑤, social influence prediction aims to predict the
+future action states 𝑎𝑡𝑝
+𝑢𝑖of 𝑢𝑖at predicted timestamp 𝑡𝑝≫𝑡𝑤.
+3.2.2
+Datasets analysis.
+• In Table 2, the source platforms contain social media, community
+Q&A websites and new websites in next user prediction, and
+social media and academic citation websites in social influence
+prediction. Community Q&A websites offer context around user
+queries and responses, which can reveal user interests and in-
+fluence future interactions. News websites, with their dynamic
+content and readership patterns, offer insights into how current
+events may drive user behavior.
+• The attributes of datasets for next user prediction are all char-
+acterized by the diffusion network, and the attributes for social
+influence prediction are all characterized by the social network
+and its derived diffusion network. These dual data capture both
+direct interactions and social influence patterns.
+3.2.3
+Methodology. We present a SOTA method for each subtask
+of microscopic information diffusion prediction, respectively. They
+briefly introduce their landmark algorithms.
+• Next user prediction: MCDAN[99] predicts next user in cascades
+using a multi-scale context-enhanced dynamic attention network.
+It integrates global relationships from social networks and his-
+torical cascades, capturing user preferences with a multi-scale
+sequential hypergraph attention module. Next, a contextual atten-
+tion enhancement module strengthens user interaction within
+cascades, while susceptibility labels are constructed based on
+user analysis. Table 6 presents the performance comparison be-
+tween MCDAN and baseline models on four datasets (Twitter-
+MSHGAT [62], Douban-ComSoc[63], Android [62], Christian-
+ity [62]), measured by Hits@K and Map@K for K = 10, 50, 100.
+• Social influence prediction: FedInf[30] introduces a federated
+learning framework for social influence prediction, addressing
+privacy concerns and enabling cross-organizational collabora-
+tion. It uses differential privacy during model aggregation, pro-
+jecting parameters into a lower-dimensional space to minimize
+noise. The whole framework consists of local training and global
+model updates. Table 7 presents the performance comparison
+between FedInf and baseline models across three datasets (OAG-
+DeepInf [29], Digg-DeepInf [29], Higgs Twitter [64]), measured
+by AUC, precision, recall, and F1.
+4
+Social bot detection
+The emergence of AI-driven social bots that manipulate public opin-
+ion necessitates effective detection mechanisms to distinguish them
+from human accounts. Social bot detection is a binary classification
+problem where the bot label 𝑦𝑈∈{0, 1} indicates a bot user (1) or
+a human user (0). Current social bot detection tasks are categorized
+into three types based on input data: user-based, content-based, and
+graph-based detection [17]. User-based bot detection extracts
+features from user profiles and numerical or categorical data, em-
+ploying traditional classifiers to identify bots [17]. Content-based
+bot detection analyzes post content using NLP techniques, such
+as word embedding and RNN, on users’ posts and descriptions [18].
+Graph-based bot detection examines the user relationship struc-
+ture within a social network 𝐺𝑆, applying network analysis tech-
+niques to differentiate between bots and humans [17].
+4.1
+Definition.
+In light of the symbol definitions provided in the previous sections,
+user-based, content-based and graph-based bot detection can be
+defined as follows, respectively.
+• User-based bot detection: Given the labeled user set 𝑈with user
+information, user-based bot detection aims to learn a classifier
+𝑓: 𝑓(𝑈) →𝑦𝑈that can detect a user’s bot label 𝑦𝑈.
+• Content-based bot detection: Given the labeled user set 𝑈with
+user information and the post set 𝑝with the post content, content-
+based bot detection aims to learn a classifier 𝑓: 𝑓(𝑈, 𝑃) →𝑦𝑈
+that can automatically detect the bot label 𝑦𝑈for a user 𝑢.
+• Graph-based bot detection: Given the labeled user set 𝑈with user
+information and the social network 𝐺𝑆= {𝑉𝑈, 𝐸𝑆}, graph-based
+bot detection aims to learn a classifier 𝑓: 𝑓(𝐺𝑆) →𝑦𝑈that can
+automatically detect the bot label 𝑦𝑈for a user 𝑢.
+4.2
+Datasets analysis.
+• In Table 2, these datasets are widely used and all originated
+from Twitter platform. Twitter is a global social media platform
+that enables users to post and read short messages known as
+
+
+===== PDF p.7 =====
+A Survey of Datasets and Tasks for Information Diffusion
+Conference’17, July 2017, Washington, DC, USA
+"tweets," allowing for the sharing of news, personal insights,
+and various types of content, while also facilitating interaction
+through following other users, replying, retweeting, and liking.
+• According to different input, each kind of social bot detection
+dataset captures different aspects of user information, propaga-
+tion content, user behavior, and relations on Twitter.
+4.3
+Methodology.
+Similarly, we present a representative method for each subtask
+of social bot detection, respectively. They briefly introduce their
+landmark algorithms and current performance in this task.
+• User-based and content-based bot detection: [19] introduces a Con-
+textual LSTM network for detecting social bots using user and
+content data. The model converts tweet text into GloVe vectors
+and combines them with user metadata. It employs synthetic
+minority oversampling and interprets LSTM hidden layers to dif-
+ferentiate tweets generated from human or bot. Table 8 compares
+the performance of the Contextual LSTM and baseline models on
+account-level (user) and tweet-level bot detection tasks using the
+Cresci-2017 dataset [66], measured by precision, recall, F1-score,
+accuracy, and AUC.
+• Graph-based bot detection: [20] presents an adversarial attack
+method to bypass bot detection systems by placing a new bot
+near an existing one in the social graph. Utilizing a Relational
+Graph Convolutional Network (R-GCN), the method generates
+the new bot’s embedding and connects it to the target bot as
+second-order neighbors. An attribute recovery module conceals
+the new bot’s text attributes, achieving high attack success while
+differentiating the bot from human users. Table 9 shows per-
+formance results on two datasets (Cresci-2015 [71] and TwiBot-
+22 [17]), measured by attack success rate and new nodes detected
+as bots.
+5
+Misinformation detection
+For the content during the information diffusion process, the decen-
+tralization of discourse has led to an increase in false or misleading
+information (i.e., misinformation), which not only misguides the
+public but also threatens cyberspace security, making misinfor-
+mation detection essential [100, 101]. Misinformation primarily
+includes rumors and fake news [102]. Rumors are unverified, un-
+intentionally spread on social media, while fake news consists of
+deliberately false articles spread by official accounts or websites [13].
+Therefore, misinformation detection is divided into rumor and fake
+news detection.
+Current methods rely on a single information source [103] by
+incorporating post content and contextual information. Specifically,
+social context includes repost/comment content, user context (i.e.,
+user information), and network context (i.e., user social network,
+diffusion network, and user engagement set) [13, 44, 81, 88, 104].
+Based on these, rumor detection determines the veracity label of
+a post 𝑦𝑃∈{0, 1}, indicating a non-rumor (0) or a rumor (1). Fake
+news detection classifies news as real (0) or fake (1) [80].
+5.1
+Definition.
+Regarding rumor detection, the diffusion network 𝐺𝐷
+𝑖= {𝑉𝑃
+𝑖, 𝐸𝐷2
+𝑖
+}
+of each post comprises 𝑉𝑃
+𝑖
+= {𝑝𝑖,𝑟𝑖
+1,𝑟𝑖
+2, . . . } representing the set of
+a post 𝑝𝑖∈𝑃and its repost/comment 𝑟𝑖
+𝑗. In graph-based fake news
+detection, diffusion network 𝐺𝐷
+𝑖
+= {𝑉𝑖, 𝐸𝐷3
+𝑖
+} for each news com-
+prises 𝑉𝑖= {𝑝𝑖,𝑟𝑖
+1,𝑟𝑖
+2, . . . } including news 𝑝𝑖and its engagement
+elements 𝑟𝑖
+𝑗∈{𝑢𝑖
+𝑗, 𝑝𝑖
+𝑗, (𝑢𝑖
+𝑗, 𝑝𝑖
+𝑗)} (user, repost/comment, or both),
+varying across datasets. Particularly, either user engagements set
+𝑀or diffusion network 𝐺𝐷
+𝑖for each news can generate the news
+engagement graph representing connections between news via over-
+lapping engaged users. User engagement sets in user information
+𝑀= {𝑚∈(𝑢, 𝑝,𝑘)|𝑢∈𝑈, 𝑝∈𝑃} indicates that user 𝑢has 𝑘en-
+gagements with news 𝑝through reposts/comments [80]. Therefore,
+in light of the symbol definitions provided, rumor detection and
+fake news detection can be defined as follows.
+• Rumor detection: Given the labeled post set 𝑃with post con-
+tent and several aspects of social context (the user set 𝑈with
+user information, the social network 𝐺𝑆= {𝑉𝑈, 𝐸𝑆}, the re-
+post/comment content and the diffusion network𝐺𝐷
+𝑖= {𝑉𝑃
+𝑖, 𝐸𝐷2
+𝑖
+}
+of each post), rumor detection aims to learn a classifier 𝑓
+:
+𝑓(𝑝𝑖,𝑈,𝐺𝑆,𝐺𝐷
+𝑖) →𝑦𝑃that can automatically detect the veracity
+label 𝑦𝑃of a post 𝑝.
+• Fake news detection: Given the labeled news set 𝑃with the news
+content, the user set 𝑈with the user information and several
+aspects of social context (the social network 𝐺𝑆= {𝑉𝑈, 𝐸𝑆}, the
+repost/comment content, the diffusion network 𝐺𝐷
+𝑖= {𝑉𝑖, 𝐸𝐷3
+𝑖
+}
+of each news and the user engagements set 𝑀), fake news detec-
+tion aims to learn a classifier 𝑓: 𝑓(𝑃,𝑈,𝐺𝑆,𝐺𝐷
+𝑖, 𝑀) →𝑦𝑃that
+can automatically detect the veracity label 𝑦𝑃of a news 𝑝.
+5.2
+Datasets analysis.
+• In Table 2, several datasets are processed from the same source
+data to enrich the data quality. Based on PHEME-v1, PHEME-
+v2 extends more events and PHEME-v3 offers the social net-
+work. Twitter15/16-RDMSC extra crawl the user information and
+friendships based on Twitter15/16. Compare to the FakeNews-
+Net, Fake-NewsNet-DECOR only utilizes news content and extra
+provides the raw user-news engagement records. FakeNewsNet-
+UPFD enhances data quality by incorporating news propagation
+networks and news retweet graphs and crawling near 20 million
+historical tweets of users.
+• Regarding attributes, most rumor detection datasets include con-
+tent. Three PHEME, Twitter15-RDMSC and Twitter16-RDMSC
+also contain user property. Datasets from FakeNewsNet to MC-
+Fake in the table have user engagement sets 𝑀or the diffusion
+network 𝐺𝐷
+𝑖for graph-based detection.
+• Multimodal datasets for rumor detection are limited such as
+MR2. In contrast, fake news detection datasets are more diverse:
+FakeSV includes texts and videos, while MCFEND, Weibo21,
+Image-verification-corpus, Evons, FauxBuster, MM-Covid, and
+MuMIN combine texts and images, enhancing understanding and
+detection accuracy.
+• Datasets use various labeling systems. Twitter15,Twitter16,Twitt-
+er15-RDMSC and Twitter16-RDMSC apply a four-class system:
+𝑦𝑃∈{𝑁,𝑇, 𝐹,𝑈} (non-rumor, true rumor, false rumor, unveri-
+fied rumor). MR2, Breaking!, and MuMIN use three categories:
+𝑦𝑃∈{0, 1, 2} (non-rumor, rumor, unverified rumor). FineFake
+
+
+===== PDF p.8 =====
+Conference’17, July 2017, Washington, DC, USA
+Guo et al.
+Figure 2: The statistics of time horizon, language and modal-
+ity of all datasets.
+and LIAR use six categories, while others employ a binary sys-
+tem: 𝑦𝑃∈{0, 1} for rumor (non-rumor or rumor) and fake news
+(real or fake). These variations affect the granularity of detection
+models.
+5.3
+Methodology.
+The representative SOTA methods for the subtasks of misinforma-
+tion detection are introduced in this paragraph respectively. They
+briefly introduce the landmark algorithms and current performance
+in this task.
+• Rumor detection: Graph-aware Multi-feature Interacting Network
+(GMIN) [23] detects rumors on social media by integrating text,
+user interactions, and propagation. It includes a Text-based Rea-
+soning module that uses BERT and CNN-BiGRU for feature ex-
+traction, a Graph-aware Interaction module that constructs a
+user-text graph with GAT, a Propagation Structure module that
+applies GCN on diffusion graphs, and a Feature Collaboration
+module that fuses features via co-attention for early detection
+and interpretability. Table 10 presents the performance com-
+parison between GMIN and baseline models on three datasets
+(Ma-Weibo [77], Twitter15 [78] and Twitter16 [78]), measured by
+precision, recall, F1-score, and accuracy.
+• Fake news detection: Adaptive Rationale Guidance (ARG) net-
+work [24] employs Large and Small Language Models for fake
+news detection. It inputs news and rationales from an LLM, en-
+codes them with BERT, and uses cross-attention to integrate
+rationales for classification, outperforming LLM-only and SLM-
+only methods. Table 11 presents the performance comparison
+between ARG and baseline models on two datasets (Weibo21 [91]
+and GossipCop of FakeNewsNet [47]), measured by accuracy, F1-
+score and macro F1.
+6
+Discussion
+6.1
+Limitations on datasets
+Currently, there is a lack of comprehensive datasets that encompass
+all six attributes, preventing simultaneous exploration of the three
+main tasks of information diffusion prediction. Furthermore, data
+analysis reveals that the time range covered by existing datasets is
+relatively outdated and that the data is limited in terms of language,
+modality, and source platform.
+• Current datasets are incomplete due to the absence of user or
+content data. We identified six attributes for datasets in Sec-
+tion 2.2. However, no dataset in Table 2 includes all six attributes
+although they often coexist in real scenarios. Therefore, creating
+datasets with comprehensive attributes is essential for accurately
+modeling propagation processes.
+• Time-recorded datasets after 2020 are scarce, with those before
+2016 comprising over half of the total and those from 2016 to 2020
+making up the largest portion, as shown in Figure 2. Information
+diffusion patterns from five to ten years ago may not apply today,
+making it crucial to acquire data from the last five years.
+• This study acknowledges potential biases in various datasets.
+Nearly 80% of current datasets focus on English-speaking plat-
+forms, leading to under-representation of non-English speakers,
+which can distort conclusions. Future work should prioritize col-
+lecting diverse datasets across different languages and regions.
+• Most propagation content in the datasets is text, with only eight
+multimodal datasets available. Accurate results require diverse
+content types, such as images and videos.
+• Most datasets are collected from a single platform, primarily
+Twitter. However, users engage across multiple platforms, and
+information diffusion patterns vary. Future research can collect
+data on the same users or events across multiple platforms for a
+more comprehensive understanding.
+• Advances in generative AI allow for the creation of synthetic
+datasets simulating information diffusion processes. These tech-
+nologies can generate users with varied attributes and set up
+different scenarios, including bot interference and AI-generated
+misinformation. These datasets will enable a deeper exploration
+of information diffusion complexities in the era of large language
+models.
+6.2
+Limitations on research topics
+Limitations and opportunities for future research topics are as
+follows.
+• In addition to the prediction of popularity and user attitudes, the
+prediction of information diffusion is often based solely on cas-
+cade data, overlooking content-based information. Future work
+can incorporate the content, focusing on semantic and emotional
+attributes to enhance predictions of paths and effects.
+• Current research on social bot detection focuses on identifying a
+single bot, while group bot detection methods is more crucial.
+• Regarding misinformation detection, rumor detection generally
+overlooks early rumor detection for emerging events, and fake
+news detection lacks sufficient attention to the impact of temporal
+changes, user information, and social network, which can be
+focused more in the future.
+• Existing studies [105–107] typically study on a single platform or
+several independent platforms without links between different
+platforms, such as the same user, the same topic of content, etc.
+Future research is expected to consider cross-platform analysis
+to better explore the diffusion of the same user or event across
+different media.
+7
+Conclusion
+In this survey, we categorize information diffusion tasks into three
+main categories based on the "5W Model" framework: information
+diffusion prediction, social bot detection, and misinformation detec-
+tion. We review datasets within the information diffusion domain
+and assess them against six key attributes: user information, social
+
+
+===== PDF p.9 =====
+A Survey of Datasets and Tasks for Information Diffusion
+Conference’17, July 2017, Washington, DC, USA
+network, bot labels, propagation content, diffusion network, and
+veracity labels. We further subdivide these main tasks into ten fine-
+grained subtasks, detailing their definitions, datasets analysis, and
+representative methods. Additionally, we highlight the limitations
+and future directions of current datasets and research topics in the
+field of information diffusion tasks. We anticipate that our survey
+will advance information diffusion research and provide valuable
+data support. Future research can address the limitations of our
+study by creating new datasets for information diffusion tasks and
+reviewing generative datasets produced by AI systems.
+References
+[1] Xueqin Chen, Fan Zhou, Kunpeng Zhang, Goce Trajcevski, Ting Zhong, and
+Fengli Zhang. 2019. Information Diffusion Prediction via Recurrent Cascades
+Convolution. In 2019 IEEE 35th International Conference on Data Engineering
+(ICDE). 770–781. doi:10.1109/ICDE.2019.00074
+[2] Shweta Mayor Sabharwal and Niyati Aggrawal. 2023. A Survey on Information
+Diffusion over Social Network with the Application on Stock Market and its
+Future Prospects. Wireless Personal Communications 130, 4 (2023), 2981–3007.
+doi:10.1007/s11277-023-10412-5
+[3] Chunyuan Yuan, Jiacheng Li, Wei Zhou, Yijun Lu, Xiaodan Zhang, and Songlin
+Hu. 2021. DyHGCN: A Dynamic Heterogeneous Graph Convolutional Network
+to Learn Users’ Dynamic Preferences for Information Diffusion Prediction. In
+Machine Learning and Knowledge Discovery in Databases, Frank Hutter, Kris-
+tian Kersting, Jefrey Lijffijt, and Isabel Valera (Eds.). Springer International
+Publishing, Cham, 347–363.
+[4] Shiming Hu Jinghong Xu and Tongtong Hong. 2022. Wangluo Chuanbo Gailun.
+Tsinghua University Press.
+[5] Jianhong Chen, Chaoqun Chen, Qinghua Song, Yifei Zhao, Longxin Deng,
+Raoqing Xie, and Shan Yang. 2021. Spread Mechanism and Control Strategies
+of Rumor Propagation Model Considering Rumor Refutation and Information
+Feedback in Emergency Management. Symmetry 13, 9 (2021). doi:10.3390/
+sym13091694
+[6] Mei Li, Xiang Wang, Kai Gao, and Shanshan Zhang. 2017. A Survey on Infor-
+mation Diffusion in Online Social Networks: Models and Methods. Information
+8, 4 (2017). doi:10.3390/info8040118
+[7] Huacheng Li, Chunhe Xia, Tianbo Wang, Sheng Wen, Chao Chen, and Yang
+Xiang. 2021. Capturing Dynamics of Information Diffusion in SNS: A Survey of
+Methodology and Techniques. ACM Comput. Surv. 55, 1, Article 22 (nov 2021),
+51 pages. doi:10.1145/3485273
+[8] Abdul Razaque, Syed Rizvi, Meer Jaro khan, Muder Almiani, and Amer Al
+Rahayfeh. 2022. State-of-art review of information diffusion models and their
+impact on social network vulnerabilities. Journal of King Saud University -
+Computer and Information Sciences 34, 1 (2022), 1275–1294. doi:10.1016/j.jksuci.
+2019.08.008
+[9] Zi-Ke Zhang, Chuang Liu, Xiu-Xiu Zhan, Xin Lu, Chu-Xu Zhang, and Yi-Cheng
+Zhang. 2016. Dynamics of information diffusion and its applications on complex
+networks. Physics Reports 651 (2016), 1–34. doi:10.1016/j.physrep.2016.07.002
+[10] Yanchao Liu, Pengzhou Zhang, Lei Shi, and Junpeng Gong. 2023. A Survey of
+Information Dissemination Model, Datasets, and Insight. Mathematics 11, 17
+(2023). doi:10.3390/math11173707
+[11] Syeda Nadia Firdaus, Chen Ding, and Alireza Sadeghian. 2018. Retweet: A
+popular information diffusion mechanism – A survey paper. Online Social
+Networks and Media 6 (2018), 26–40. doi:10.1016/j.osnem.2018.04.001
+[12] Fan Zhou, Xovee Xu, Goce Trajcevski, and Kunpeng Zhang. 2021. A Survey of
+Information Cascade Analysis: Models, Predictions, and Recent Advances. ACM
+Comput. Surv. 54, 2, Article 27 (March 2021), 36 pages. doi:10.1145/3433000
+[13] Alessandro Bondielli and Francesco Marcelloni. 2019. A survey on fake news
+and rumour detection techniques. Information Sciences 497 (2019), 38–55. doi:10.
+1016/j.ins.2019.05.035
+[14] Faramarz Farhangian, Rafael M.O. Cruz, and George D.C. Cavalcanti. 2024. Fake
+news detection: Taxonomy and comparative study. Information Fusion 103
+(2024), 102140. doi:10.1016/j.inffus.2023.102140
+[15] Harold D Lasswell. 1948. The structure and function of communication in
+society. The communication of ideas 37, 1 (1948), 136–139.
+[16] Kadhim Hayawi, Sujith Mathew, Neethu Venugopal, Mohammad M Masud, and
+Pin-Han Ho. 2022. DeeProBot: a hybrid deep neural network model for social
+bot detection based on user profile data. Social Network Analysis and Mining 12,
+1 (2022), 43. doi:10.1007/s13278-022-00869-w
+[17] Shangbin Feng, Zhaoxuan Tan, Herun Wan, Ningnan Wang, Zilong Chen,
+Binchi Zhang, Qinghua Zheng, Wenqian Zhang, Zhenyu Lei, Shujie Yang, Xin-
+shun Feng, Qingyue Zhang, Hongrui Wang, Yuhan Liu, Yuyang Bai, Heng
+Wang, Zijian Cai, Yanbo Wang, Lijing Zheng, Zihan Ma, Jundong Li, and Min-
+nan Luo. 2022. TwiBot-22: Towards Graph-Based Twitter Bot Detection. In
+Advances in Neural Information Processing Systems, S. Koyejo, S. Mohamed,
+A. Agarwal, D. Belgrave, K. Cho, and A. Oh (Eds.), Vol. 35. Curran Associates,
+Inc., 35254–35269. https://proceedings.neurips.cc/paper_files/paper/2022/file/
+e4fd610b1d77699a02df07ae97de992a-Paper-Datasets_and_Benchmarks.pdf
+[18] Feng Wei and Uyen Trang Nguyen. 2019. Twitter Bot Detection Using Bidirec-
+tional Long Short-Term Memory Neural Networks and Word Embeddings. In
+2019 First IEEE International Conference on Trust, Privacy and Security in Intelli-
+gent Systems and Applications (TPS-ISA). IEEE, Los Angeles, CA, USA, 101–109.
+doi:10.1109/TPS-ISA48467.2019.00021
+[19] Sneha Kudugunta and Emilio Ferrara. 2018. Deep neural networks for bot
+detection. Information Sciences 467 (2018), 312–322. doi:10.1016/j.ins.2018.08.019
+[20] Lanjun Wang, Xinran Qiao, Yanwei Xie, Weizhi Nie, Yongdong Zhang, and
+Anan Liu. 2023.
+My Brother Helps Me: Node Injection Based Adversar-
+ial Attack on Social Bot Detection. In Proceedings of the 31st ACM Interna-
+tional Conference on Multimedia (<conf-loc>, <city>Ottawa ON</city>, <coun-
+try>Canada</country>, </conf-loc>) (MM ’23). Association for Computing Ma-
+chinery, New York, NY, USA, 6705–6714. doi:10.1145/3581783.3612396
+[21] Kai Shu, Amy Sliva, Suhang Wang, Jiliang Tang, and Huan Liu. 2017. Fake News
+Detection on Social Media: A Data Mining Perspective. SIGKDD Explor. Newsl.
+19, 1 (Sept. 2017), 22–36. doi:10.1145/3137597.3137600
+[22] Jingqiu Li, Lanjun Wang, Jianlin He, Yongdong Zhang, and Anan Liu. 2023.
+Improving Rumor Detection by Class-based Adversarial Domain Adaptation.
+In Proceedings of the 31st ACM International Conference on Multimedia (Ottawa
+ON, Canada) (MM ’23). Association for Computing Machinery, New York, NY,
+USA, 6634–6642. doi:10.1145/3581783.3612501
+[23] Chang Yang, Xia Yu, JiaYi Wu, BoZhen Zhang, and HaiBo Yang. 2024. Graph-
+aware multi-feature interacting network for explainable rumor detection on
+social network. Expert Systems with Applications 249 (2024), 123687. doi:10.
+1016/j.eswa.2024.123687
+[24] Beizhe Hu, Qiang Sheng, Juan Cao, Yuhui Shi, Yang Li, Danding Wang, and
+Peng Qi. 2024. Bad Actor, Good Advisor: Exploring the Role of Large Language
+Models in Fake News Detection. Proceedings of the AAAI Conference on Artificial
+Intelligence 38, 20 (Mar. 2024), 22105–22113. doi:10.1609/aaai.v38i20.30214
+[25] Cheng Yang, Jian Tang, Maosong Sun, Ganqu Cui, and Zhiyuan Liu. 2019. Multi-
+scale Information Diffusion Prediction with Reinforced Recurrent Networks.
+In Proceedings of the Twenty-Eighth International Joint Conference on Artificial
+Intelligence, IJCAI-19. International Joint Conferences on Artificial Intelligence
+Organization, 4033–4039. doi:10.24963/ijcai.2019/560
+[26] Xovee Xu, Fan Zhou, Kunpeng Zhang, Siyuan Liu, and Goce Trajcevski. 2023.
+CasFlow: Exploring Hierarchical Structures and Propagation Uncertainty for
+Cascade Prediction. IEEE Transactions on Knowledge and Data Engineering 35, 4
+(April 2023), 3484–3499. doi:10.1109/TKDE.2021.3126475
+[27] Jia Wang, Vincent W. Zheng, Zemin Liu, and Kevin Chen-Chuan Chang. 2017.
+Topological Recurrent Neural Network for Diffusion Prediction. In 2017 IEEE
+International Conference on Data Mining (ICDM). 475–484. doi:10.1109/ICDM.
+2017.57
+[28] Chunyuan Yuan, Jiacheng Li, Wei Zhou, Yijun Lu, Xiaodan Zhang, and Songlin
+Hu. 2021. DyHGCN: A Dynamic Heterogeneous Graph Convolutional Network
+to Learn Users’ Dynamic Preferences for Information Diffusion Prediction. In
+Machine Learning and Knowledge Discovery in Databases, Frank Hutter, Kris-
+tian Kersting, Jefrey Lijffijt, and Isabel Valera (Eds.). Springer International
+Publishing, Cham, 347–363.
+[29] Jiezhong Qiu, Jian Tang, Hao Ma, Yuxiao Dong, Kuansan Wang, and Jie Tang.
+2018. DeepInf: Social Influence Prediction with Deep Learning. In Proceedings
+of the 24th ACM SIGKDD International Conference on Knowledge Discovery &
+Data Mining (KDD ’18). Association for Computing Machinery, New York, NY,
+USA, 2110–2119. doi:10.1145/3219819.3220077
+[30] Lei Song, Hongbin Wang, Guoyin Zhang, and Shui Yu. 2023. FedInf: Social
+influence prediction with federated learning. Neurocomputing 548 (2023), 126407.
+doi:10.1016/j.neucom.2023.126407
+[31] Xinran Qiao, Lanjun Wang, Xiaowen Wang, Mengxiao Zhu, Bo Hu, Yongdong
+Zhang, and A.-A. Liu. 2024. Rumor propagation model with neutral state.
+International Journal of Modern Physics C 35, 03 (2024), 2450028. doi:10.1142/
+S0129183124500281
+[32] Bo Wu, Wen-Huang Cheng, Peiye Liu, Bei Liu, Zhaoyang Zeng, and Jiebo Luo.
+2019. SMP Challenge: An Overview of Social Media Prediction Challenge 2019.
+In Proceedings of the 27th ACM International Conference on Multimedia (Nice,
+France) (MM ’19). Association for Computing Machinery, New York, NY, USA,
+2667–2671. doi:10.1145/3343031.3356084
+[33] Syed Muhammad Raza Abidi, Yonglin Xu, Jianyue Ni, Xiangmeng Wang, and
+Wu Zhang. 2020. Popularity Prediction of Movies: From Statistical Modeling to
+Machine Learning Techniques. Multimedia Tools and Applications 79, 47 (Dec.
+2020), 35583–35617. doi:10.1007/s11042-019-08546-5
+[34] Jingyuan Chen, Xuemeng Song, Liqiang Nie, Xiang Wang, Hanwang Zhang,
+and Tat-Seng Chua. 2016. Micro Tells Macro: Predicting the Popularity of Micro-
+Videos via a Transductive Model. In Proceedings of the 24th ACM International
+
+
+===== PDF p.10 =====
+Conference’17, July 2017, Washington, DC, USA
+Guo et al.
+Conference on Multimedia. ACM, Amsterdam The Netherlands, 898–907. doi:10.
+1145/2964284.2964314
+[35] Zhangtao Cheng, Jienan Zhang, Xovee Xu, Goce Trajcevski, Ting Zhong, and
+Fan Zhou. 2024. Retrieval-Augmented Hypergraph for Multimodal Social Media
+Popularity Prediction. In Proceedings of the 30th ACM SIGKDD Conference on
+Knowledge Discovery and Data Mining (Barcelona, Spain) (KDD ’24). Association
+for Computing Machinery, New York, NY, USA, 445–455. doi:10.1145/3637528.
+3672041
+[36] Meng Cai, Han Luo, Xiao Meng, Ying Cui, and Wei Wang. 2023. Network
+distribution and sentiment interaction: Information diffusion mechanisms be-
+tween social bots and human users on social media. Information Processing &
+Management 60, 2 (2023), 103197. doi:10.1016/j.ipm.2022.103197
+[37] Björn Ross, Laura Pilz, Benjamin Cabrera, Florian Brachten, German Neubaum,
+and Stefan Stieglitz. 2019. Are social bots a real threat? An agent-based model
+of the spiral of silence to analyse the impact of manipulative actors in social
+networks. European Journal of Information Systems 28, 4 (2019), 394–412. doi:10.
+1080/0960085X.2018.1560920 arXiv:10.1080/0960085X.2018.1560920
+[38] Nicolas Guenon des Mesnards, David Scott Hunter, Zakaria el Hjouji, and
+Tauhid Zaman. 2022. Detecting Bots and Assessing Their Impact in Social
+Networks. Operations Research 70, 1 (2022), 1–22. doi:10.1287/opre.2021.2118
+arXiv:10.1287/opre.2021.2118
+[39] Aldo Averza, Khaled Slhoub, and Siddhartha Bhattacharyya. 2022. Evaluating
+the Influence of Twitter Bots via Agent-Based Social Simulation. IEEE Access 10
+(2022), 129394–129407. doi:10.1109/ACCESS.2022.3228258
+[40] Kelvin K King and Bin Wang. 2023. Diffusion of real versus misinformation
+during a crisis event: A big data-driven approach. International Journal of
+Information Management 71 (2023), 102390.
+[41] Lorenzo Prandi and Giuseppe Primiero. 2020. Effects of misinformation diffusion
+during a pandemic. Applied Network Science 5 (2020), 1–20. doi:10.1007/s41109-
+020-00327-6
+[42] Ceren Budak, Divyakant Agrawal, and Amr El Abbadi. 2011. Limiting the spread
+of misinformation in social networks. In Proceedings of the 20th International
+Conference on World Wide Web (Hyderabad, India) (WWW ’11). Association
+for Computing Machinery, New York, NY, USA, 665–674. doi:10.1145/1963405.
+1963499
+[43] Karishma Sharma, Xinran He, Sungyong Seo, and Yan Liu. 2021. Network Infer-
+ence from a Mixture of Diffusion Models for Fake News Mitigation. Proceedings
+of the International AAAI Conference on Web and Social Media 15, 1 (May 2021),
+668–679. doi:10.1609/icwsm.v15i1.18093
+[44] Erxue Min, Yu Rong, Yatao Bian, Tingyang Xu, Peilin Zhao, Junzhou Huang, and
+Sophia Ananiadou. 2022. Divide-and-Conquer: Post-User Interaction Network
+for Fake News Detection on Social Media. In Proceedings of the ACM Web
+Conference 2022. ACM, Virtual Event, Lyon France, 1148–1158. doi:10.1145/
+3485447.3512163
+[45] Enyan Dai, Yiwei Sun, and Suhang Wang. 2020. Ginger Cannot Cure Cancer:
+Battling Fake Health News with a Comprehensive Data Repository. Proceedings
+of the International AAAI Conference on Web and Social Media 14, 1 (May 2020),
+853–862. doi:10.1609/icwsm.v14i1.7350
+[46] Chengcheng Shao, Giovanni Luca Ciampaglia, Onur Varol, Kai-Cheng Yang,
+Alessandro Flammini, and Filippo Menczer. 2018. The Spread of Low-Credibility
+Content by Social Bots. Nature Communications 9, 1 (Nov. 2018), 4787. doi:10.
+1038/s41467-018-06930-7
+[47] Kai Shu, Deepak Mahudeswaran, Suhang Wang, Dongwon Lee, and Huan Liu.
+2020. FakeNewsNet: A Data Repository with News Content, Social Context,
+and Spatiotemporal Information for Studying Fake News on Social Media. Big
+Data 8, 3 (2020), 171–188. doi:10.1089/big.2020.0062 arXiv:10.1089/big.2020.0062
+PMID: 32491943.
+[48] Limeng Cui, Haeseung Seo, Maryam Tabar, Fenglong Ma, Suhang Wang, and
+Dongwon Lee. 2020. DETERRENT: Knowledge Guided Graph Attention Net-
+work for Detecting Healthcare Misinformation. In Proceedings of the 26th ACM
+SIGKDD International Conference on Knowledge Discovery & Data Mining (Vir-
+tual Event, CA, USA) (KDD ’20). Association for Computing Machinery, New
+York, NY, USA, 492–502. doi:10.1145/3394486.3403092
+[49] Youze Wang, Shengsheng Qian, Jun Hu, Quan Fang, and Changsheng Xu. 2020.
+Fake News Detection via Knowledge-driven Multimodal Graph Convolutional
+Networks. In Proceedings of the 2020 International Conference on Multimedia
+Retrieval (Dublin, Ireland) (ICMR ’20). Association for Computing Machinery,
+New York, NY, USA, 540–547. doi:10.1145/3372278.3390713
+[50] Yi Ju Lu and Cheng Te Li. 2020. GCAN: Graph-aware co-attention networks
+for explainable fake news detection on social media. In ACL 2020 - 58th Annual
+Meeting of the Association for Computational Linguistics, Proceedings of the Con-
+ference (Proceedings of the Annual Meeting of the Association for Computational
+Linguistics). Association for Computational Linguistics (ACL), 505–514.
+[51] Zhen Huang, Zhilong Lv, Xiaoyun Han, Binyang Li, Menglong Lu, and Dong-
+sheng Li. 2022. Social Bot-Aware Graph Neural Network for Early Rumor Detec-
+tion. In Proceedings of the 29th International Conference on Computational Linguis-
+tics, Nicoletta Calzolari, Chu-Ren Huang, Hansaem Kim, James Pustejovsky, Leo
+Wanner, Key-Sun Choi, Pum-Mo Ryu, Hsin-Hsi Chen, Lucia Donatelli, Heng
+Ji, Sadao Kurohashi, Patrizia Paggio, Nianwen Xue, Seokhwan Kim, Young-
+gyun Hahm, Zhong He, Tony Kyungil Lee, Enrico Santus, Francis Bond, and
+Seung-Hoon Na (Eds.). International Committee on Computational Linguistics,
+Gyeongju, Republic of Korea, 6680–6690. https://aclanthology.org/2022.coling-
+1.580
+[52] Haoran Wang, Yingtong Dou, Canyu Chen, Lichao Sun, Philip S. Yu, and
+Kai Shu. 2023. Attacking Fake News Detectors via Manipulating News So-
+cial Engagement. In Proceedings of the ACM Web Conference 2023 (<conf-loc>,
+<city>Austin</city>, <state>TX</state>, <country>USA</country>, </conf-
+loc>) (WWW ’23). Association for Computing Machinery, New York, NY, USA,
+3978–3986. doi:10.1145/3543507.3583868
+[53] Guangmo Amo Tong, Weili Wu, and Ding-Zhu Du. 2018.
+On mis-
+information containment in online social networks. In Proceedings of
+the 32nd International Conference on Neural Information Processing Sys-
+tems (Montréal, Canada) (NIPS’18). Curran Associates Inc., Red Hook, NY,
+USA, 339–349.
+https://proceedings.neurips.cc/paper_files/paper/2018/file/
+9b04d152845ec0a378394003c96da594-Paper.pdf
+[54] David M. J. Lazer, Matthew A. Baum, Yochai Benkler, Adam J. Berinsky, Kelly M.
+Greenhill, Filippo Menczer, Miriam J. Metzger, Brendan Nyhan, Gordon Penny-
+cook, David Rothschild, Michael Schudson, Steven A. Sloman, Cass R. Sunstein,
+Emily A. Thorson, Duncan J. Watts, and Jonathan L. Zittrain. 2018. The science
+of fake news. Science 359, 6380 (2018), 1094–1096. doi:10.1126/science.aao2998
+arXiv:https://www.science.org/doi/pdf/10.1126/science.aao2998
+[55] Qi Cao, Huawei Shen, Keting Cen, Wentao Ouyang, and Xueqi Cheng. 2017.
+DeepHawkes: Bridging the Gap between Prediction and Understanding of In-
+formation Cascades. In Proceedings of the 2017 ACM on Conference on Infor-
+mation and Knowledge Management. ACM, Singapore Singapore, 1149–1158.
+doi:10.1145/3132847.3132973
+[56] Jure Leskovec, Jon Kleinberg, and Christos Faloutsos. 2005. Graphs over time:
+densification laws, shrinking diameters and possible explanations. In Proceedings
+of the Eleventh ACM SIGKDD International Conference on Knowledge Discovery
+in Data Mining (Chicago, Illinois, USA) (KDD ’05). Association for Computing
+Machinery, New York, NY, USA, 177–187. doi:10.1145/1081870.1081893
+[57] Allen Lin, Jianling Wang, Ziwei Zhu, and James Caverlee. 2022. Quantifying
+and Mitigating Popularity Bias in Conversational Recommender Systems. In
+Proceedings of the 31st ACM International Conference on Information & Knowledge
+Management. ACM, Atlanta GA USA, 1238–1247. doi:10.1145/3511808.3557423
+[58] Navneet Garg, Mathini Sellathurai, Vimal Bhatia, B. N. Bharath, and Tharma-
+lingam Ratnarajah. 2020. Online Content Popularity Prediction and Learning in
+Wireless Edge Caching. IEEE Transactions on Communications 68, 2 (Feb. 2020),
+1087–1100. doi:10.1109/TCOMM.2019.2956041
+[59] Yongxin Ni, Yu Cheng, Xiangyan Liu, Junchen Fu, Youhua Li, Xiangnan He,
+Yongfeng Zhang, and Fajie Yuan. 2023. A Content-Driven Micro-Video Recom-
+mendation Dataset at Scale. doi:10.48550/arXiv.2309.15379 arXiv:2309.15379 [cs]
+[60] Alessandro Ortis, Giovanni Maria Farinella, and Sebastiano Battiato. 2019. Pre-
+diction of Social Image Popularity Dynamics. In Image Analysis and Processing
+– ICIAP 2019, Elisa Ricci, Samuel Rota Bulò, Cees Snoek, Oswald Lanz, Ste-
+fano Messelodi, and Nicu Sebe (Eds.). Springer International Publishing, Cham,
+572–582. doi:10.1007/978-3-030-30645-8_52
+[61] Mingxi Cheng, Songli Wang, Xiaofeng Yan, Tianqi Yang, Wenshuo Wang, Zehao
+Huang, Xiongye Xiao, Shahin Nazarian, and Paul Bogdan. 2021. A COVID-19
+Rumor Dataset. Frontiers in Psychology 12 (May 2021), 644801. doi:10.3389/
+fpsyg.2021.644801
+[62] Ling Sun, Yuan Rao, Xiangbo Zhang, Yuqian Lan, and Shuanghe Yu. 2022. MS-
+HGAT: Memory-Enhanced Sequential Hypergraph Attention Network for In-
+formation Diffusion Prediction. Proceedings of the AAAI Conference on Artificial
+Intelligence 36, 4 (June 2022), 4156–4164. doi:10.1609/aaai.v36i4.20334
+[63] Erheng Zhong, Wei Fan, Junwei Wang, Lei Xiao, and Yong Li. 2012. ComSoc:
+adaptive transfer of user behaviors over composite social network. In Proceedings
+of the 18th ACM SIGKDD International Conference on Knowledge Discovery and
+Data Mining (Beijing, China) (KDD ’12). Association for Computing Machinery,
+New York, NY, USA, 696–704. doi:10.1145/2339530.2339641
+[64] Manlio De Domenico, Antonio Lima, Paul Mougel, and Mirco Musolesi. 2013.
+The anatomy of a scientific rumor. Scientific reports 3, 1 (2013), 2980. doi:10.
+1038/srep02980
+[65] Jing Zhang, Biao Liu, Jie Tang, Ting Chen, and Juanzi Li. 2013. Social influence
+locality for modeling retweeting behaviors. In Proceedings of the Twenty-Third
+International Joint Conference on Artificial Intelligence (Beijing, China) (IJCAI
+’13). AAAI Press, 2761–2767.
+[66] Stefano Cresci, Roberto Di Pietro, Marinella Petrocchi, Angelo Spognardi, and
+Maurizio Tesconi. 2017. The Paradigm-Shift of Social Spambots: Evidence,
+Theories, and Tools for the Arms Race. In Proceedings of the 26th International
+Conference on World Wide Web Companion (Perth, Australia) (WWW ’17 Compan-
+ion). International World Wide Web Conferences Steering Committee, Republic
+and Canton of Geneva, CHE, 963–972. doi:10.1145/3041021.3055135
+[67] Zafar Gilani, Reza Farahbakhsh, Gareth Tyson, Liang Wang, and Jon Crowcroft.
+2017. Of Bots and Humans (on Twitter). In Proceedings of the 2017 IEEE/ACM
+International Conference on Advances in Social Networks Analysis and Mining
+
+
+===== PDF p.11 =====
+A Survey of Datasets and Tasks for Information Diffusion
+Conference’17, July 2017, Washington, DC, USA
+2017 (Sydney, Australia) (ASONAM ’17). Association for Computing Machinery,
+New York, NY, USA, 349–354. doi:10.1145/3110025.3110090
+[68] Kai-Cheng Yang, Onur Varol, Clayton A. Davis, Emilio Ferrara, Alessandro Flam-
+mini, and Filippo Menczer. 2019. Arming the Public with Artificial Intelligence
+to Counter Social Bots. Human Behavior and Emerging Technologies 1, 1 (Jan.
+2019), 48–61. doi:10.1002/hbe2.115
+[69] Francisco Rangel and Paolo Rosso. 2019. Overview of the 7th author profiling
+task at PAN 2019: bots and gender profiling in twitter. Working notes papers of
+the CLEF 2019 evaluation labs 2380 (2019), 1–7.
+[70] Kyumin Lee, Brian Eoff, and James Caverlee. 2021. Seven Months with the
+Devils: A Long-Term Study of Content Polluters on Twitter. Proceedings of the
+International AAAI Conference on Web and Social Media 5, 1 (Aug. 2021), 185–192.
+doi:10.1609/icwsm.v5i1.14106
+[71] Stefano Cresci, Roberto Di Pietro, Marinella Petrocchi, Angelo Spognardi, and
+Maurizio Tesconi. 2015. Fame for sale: Efficient detection of fake Twitter fol-
+lowers. Decision Support Systems 80 (2015), 56–71. doi:10.1016/j.dss.2015.09.003
+[72] Shangbin Feng, Herun Wan, Ningnan Wang, Jundong Li, and Minnan Luo.
+2021.
+TwiBot-20: A Comprehensive Twitter Bot Detection Benchmark. In
+Proceedings of the 30th ACM International Conference on Information & Knowledge
+Management (Virtual Event, Queensland, Australia) (CIKM ’21). Association for
+Computing Machinery, New York, NY, USA, 4485–4494. doi:10.1145/3459637.
+3482019
+[73] Arkaitz Zubiaga, Maria Liakata, and Rob Procter. 2016. Learning Reporting
+Dynamics during Breaking News for Rumour Detection in Social Media. doi:10.
+48550/arXiv.1610.07363 arXiv:1610.07363 [cs]
+[74] Elena Kochkina, Maria Liakata, and Arkaitz Zubiaga. 2018.
+All-in-One:
+Multi-task Learning for Rumour Verification. doi:10.48550/arXiv.1806.03713
+arXiv:1806.03713 [cs]
+[75] Peng Zheng, Zhen Huang, Yong Dou, and Yeqing Yan. 2023. Rumor detec-
+tion on social media through mining the social circles with high homogeneity.
+Information Sciences 642 (2023), 119083. doi:10.1016/j.ins.2023.119083
+[76] Tian Bian, Xi Xiao, Tingyang Xu, Peilin Zhao, Wenbing Huang, Yu Rong, and
+Junzhou Huang. 2020. Rumor Detection on Social Media with Bi-Directional
+Graph Convolutional Networks. Proceedings of the AAAI Conference on Artificial
+Intelligence 34, 01 (Apr. 2020), 549–556. doi:10.1609/aaai.v34i01.5393
+[77] Jing Ma, Wei Gao, Prasenjit Mitra, Sejeong Kwon, Bernard J. Jansen, Kam-Fai
+Wong, and Meeyoung Cha. 2016. Detecting rumors from microblogs with
+recurrent neural networks. In Proceedings of the Twenty-Fifth International Joint
+Conference on Artificial Intelligence (New York, New York, USA) (IJCAI’16). AAAI
+Press, 3818–3824. doi:doi/10.5555/3061053.3061153
+[78] Jing Ma, Wei Gao, and Kam-Fai Wong. 2017. Detect Rumors in Microblog Posts
+Using Propagation Structure via Kernel Learning. In Proceedings of the 55th
+Annual Meeting of the Association for Computational Linguistics (Volume 1: Long
+Papers), Regina Barzilay and Min-Yen Kan (Eds.). Association for Computational
+Linguistics, 708–717. doi:10.18653/v1/P17-1066
+[79] Xuming Hu, Zhijiang Guo, Junzhe Chen, Lijie Wen, and Philip S. Yu. 2023.
+MR2: A Benchmark for Multimodal Retrieval-Augmented Rumor Detection in
+Social Media. In Proceedings of the 46th International ACM SIGIR Conference on
+Research and Development in Information Retrieval (, Taipei, Taiwan,) (SIGIR
+’23). Association for Computing Machinery, New York, NY, USA, 2901–2912.
+doi:10.1145/3539618.3591896
+[80] Jiaying Wu and Bryan Hooi. 2023. DECOR: Degree-Corrected Social Graph
+Refinement for Fake News Detection. In Proceedings of the 29th ACM SIGKDD
+Conference on Knowledge Discovery and Data Mining (<conf-loc>, <city>Long
+Beach</city>, <state>CA</state>, <country>USA</country>, </conf-loc>)
+(KDD ’23). Association for Computing Machinery, New York, NY, USA,
+2582–2593. doi:10.1145/3580305.3599298
+[81] Yingtong Dou, Kai Shu, Congying Xia, Philip S. Yu, and Lichao Sun. 2021. User
+Preference-aware Fake News Detection. In Proceedings of the 44th International
+ACM SIGIR Conference on Research and Development in Information Retrieval
+(<conf-loc>, <city>Virtual Event</city>, <country>Canada</country>, </conf-
+loc>) (SIGIR ’21). Association for Computing Machinery, New York, NY, USA,
+2051–2055. doi:10.1145/3404835.3462990
+[82] Sajjad Dadkhah, Xichen Zhang, Alexander Gerald Weismann, Amir Firouzi,
+and Ali A. Ghorbani. 2023. The Largest Social Media Ground-Truth Dataset
+for Real/Fake Content: TruthSeeker. IEEE Transactions on Computational Social
+Systems (2023), 1–15. doi:10.1109/TCSS.2023.3322303
+[83] Ziyi Zhou, Xiaoming Zhang, Litian Zhang, Jiacheng Liu, Xi Zhang, and
+Chaozhuo Li. 2024. FineFake: A Knowledge-Enriched Dataset for Fine-Grained
+Multi-Domain Fake News Detecction. arXiv preprint arXiv:2404.01336 (2024).
+doi:10.48550/arXiv.2404.01336
+[84] Daniel Yue Zhang, Lanyu Shang, Biao Geng, Shuyue Lai, Ke Li, Hongmin Zhu,
+Md Tanvir Amin, and Dong Wang. 2018. FauxBuster: A Content-free Faux-
+tography Detector Using Social Media Comments. In 2018 IEEE International
+Conference on Big Data (Big Data). 891–900. doi:10.1109/BigData.2018.8622344
+[85] Yichuan Li, Bohan Jiang, Kai Shu, and Huan Liu. 2020. MM-COVID: A Multilin-
+gual and Multimodal Data Repository for Combating COVID-19 Disinformation.
+doi:10.48550/arXiv.2011.04088 arXiv:2011.04088 [cs.SI]
+[86] Dan S. Nielsen and Ryan McConville. 2022. MuMiN: A Large-Scale Multilingual
+Multimodal Fact-Checked Misinformation Social Network Dataset. In Proceed-
+ings of the 45th International ACM SIGIR Conference on Research and Development
+in Information Retrieval (Madrid, Spain) (SIGIR ’22). Association for Computing
+Machinery, New York, NY, USA, 3141–3153. doi:10.1145/3477495.3531744
+[87] Chen Yang, Xinyi Zhou, and Reza Zafarani. 2021. CHECKED: Chinese COVID-
+19 fake news dataset. Social Network Analysis and Mining 11, 1 (2021), 58.
+doi:10.1007/s13278-021-00766-8
+[88] Peng Qi, Yuyan Bu, Juan Cao, Wei Ji, Ruihao Shui, Junbin Xiao, Danding Wang,
+and Tat-Seng Chua. 2023. FakeSV: A Multimodal Benchmark with Rich Social
+Context for Fake News Detection on Short Video Platforms. Proceedings of
+the AAAI Conference on Artificial Intelligence 37, 12 (June 2023), 14444–14452.
+doi:10.1609/aaai.v37i12.26689
+[89] Beizhe Hu, Qiang Sheng, Juan Cao, Yongchun Zhu, Danding Wang, Zhengjia
+Wang, and Zhiwei Jin. 2023. Learn over Past, Evolve for Future: Forecasting
+Temporal Trends for Fake News Detection. In Proceedings of the 61st Annual
+Meeting of the Association for Computational Linguistics (Volume 5: Industry
+Track). Association for Computational Linguistics, Toronto, Canada, 116–125.
+doi:10.18653/v1/2023.acl-industry.13
+[90] Yupeng Li, Haorui He, Jin Bai, and Dacheng Wen. 2024. MCFEND: A Multi-
+source Benchmark Dataset for Chinese Fake News Detection. doi:10.1145/
+3589334.3645385 arXiv:2403.09092 [cs]
+[91] Qiong Nan, Juan Cao, Yongchun Zhu, Yanyan Wang, and Jintao Li. 2021. MD-
+FEND: Multi-domain Fake News Detection. In Proceedings of the 30th ACM
+International Conference on Information & Knowledge Management (CIKM
+’21). Association for Computing Machinery, New York, NY, USA, 3343–3347.
+doi:10.1145/3459637.3482139
+[92] Christina Boididou, Symeon Papadopoulos, Markos Zampoglou, Lazaros Apos-
+tolidis, Olga Papadopoulou, and Yiannis Kompatsiaris. 2018. Detection and
+visualization of misleading content on Twitter. International Journal of Multi-
+media Information Retrieval 7, 1 (2018), 71–86. doi:10.1007/s13735-017-0143-x
+[93] Archita Pathak and Rohini Srihari. 2019. BREAKING! Presenting Fake News
+Corpus for Automated Fact Checking. In Proceedings of the 57th Annual Meeting
+of the Association for Computational Linguistics: Student Research Workshop,
+Fernando Alva-Manchego, Eunsol Choi, and Daniel Khashabi (Eds.). Association
+for Computational Linguistics, Florence, Italy, 357–362. doi:10.18653/v1/P19-
+2050
+[94] William Yang Wang. 2017. “Liar, Liar Pants on Fire”: A New Benchmark Dataset
+for Fake News Detection. In Proceedings of the 55th Annual Meeting of the Asso-
+ciation for Computational Linguistics (Volume 2: Short Papers), Regina Barzilay
+and Min-Yen Kan (Eds.). Association for Computational Linguistics, Vancouver,
+Canada, 422–426. doi:10.18653/v1/P17-2067
+[95] Kriste Krstovski, Angela Ryu, and Bruce Kogut. 2022. Evons: A Dataset for Fake
+and Real News Virality Analysis and Prediction. In The 29th International Con-
+ference on Computational Linguistics (COLING 2022). doi:10.2139/ssrn.4221440
+[96] Yaqing Wang, Weifeng Yang, Fenglong Ma, Jin Xu, Bin Zhong, Qiang Deng, and
+Jing Gao. 2020. Weak Supervision for Fake News Detection via Reinforcement
+Learning. Proceedings of the AAAI Conference on Artificial Intelligence 34, 01
+(Apr. 2020), 516–523. doi:10.1609/aaai.v34i01.5389
+[97] Kai Nakamura, Sharon Levy, and William Yang Wang. 2020.
+Fakeddit: A
+New Multimodal Benchmark Dataset for Fine-grained Fake News Detection.
+In Proceedings of the Twelfth Language Resources and Evaluation Conference,
+Nicoletta Calzolari, Frédéric Béchet, Philippe Blache, Khalid Choukri, Christo-
+pher Cieri, Thierry Declerck, Sara Goggi, Hitoshi Isahara, Bente Maegaard,
+Joseph Mariani, Hélène Mazo, Asuncion Moreno, Jan Odijk, and Stelios Piperidis
+(Eds.). European Language Resources Association, Marseille, France, 6149–6157.
+https://aclanthology.org/2020.lrec-1.755
+[98] Claudio Castellano, Santo Fortunato, and Vittorio Loreto. 2009. Statistical
+physics of social dynamics. Rev. Mod. Phys. 81 (May 2009), 591–646. Issue 2.
+doi:10.1103/RevModPhys.81.591
+[99] Xiaowen Wang, Lanjun Wang, Yuting Su, Yongdong Zhang, and An-An Liu.
+2024. MCDAN: A Multi-Scale Context-Enhanced Dynamic Attention Network
+for Diffusion Prediction. IEEE Transactions on Multimedia 26 (2024), 7850–7862.
+doi:10.1109/TMM.2024.3372371
+[100] Zhiguo Qu, Yunyi Meng, Ghulam Muhammad, and Prayag Tiwari. 2024. QMFND:
+A quantum multimodal fusion-based fake news detection model for social media.
+Information Fusion 104 (2024), 102172. doi:10.1016/j.inffus.2023.102172
+[101] Bing Wang, Ximing Li, Changchun Li, Shengsheng Wang, and Wanfu Gao. 2024.
+Escaping the neutralization effect of modality features fusion in multimodal
+Fake News Detection. Information Fusion 111 (2024), 102500. doi:10.1016/j.inffus.
+2024.102500
+[102] Deepika Varshney and Dinesh Kumar Vishwakarma. 2021. A review on rumour
+prediction and veracity assessment in online social network. Expert Systems
+with Applications 168 (2021), 114208. doi:10.1016/j.eswa.2020.114208
+[103] Natali Ruchansky, Sungyong Seo, and Yan Liu. 2017. CSI: A Hybrid Deep Model
+for Fake News Detection. In Proceedings of the 2017 ACM on Conference on
+Information and Knowledge Management (Singapore, Singapore) (CIKM ’17).
+Association for Computing Machinery, New York, NY, USA, 797–806. doi:10.
+
+
+===== PDF p.12 =====
+Conference’17, July 2017, Washington, DC, USA
+Guo et al.
+1145/3132847.3132877
+[104] Lanjun Wang, Zehao Wang, Le Wu, and An-An Liu. 2024. Bots Shield Fake
+News: Adversarial Attack on User Engagement Based Fake News Detection. In
+Proceedings of the 33rd ACM International Conference on Information & Knowledge
+Management (Boise, ID, USA) (CIKM ’24). Association for Computing Machinery,
+New York, NY, USA. doi:10.1145/3627673.3679583
+[105] Shuo Ji, Xiaodong Lu, Mingzhe Liu, Leilei Sun, Chuanren Liu, Bowen Du, and
+Hui Xiong. 2023. Community-based Dynamic Graph Learning for Popularity
+Prediction. In Proceedings of the 29th ACM SIGKDD Conference on Knowledge
+Discovery and Data Mining (Long Beach, CA, USA) (KDD ’23). Association for
+Computing Machinery, New York, NY, USA, 930–940. doi:10.1145/3580305.
+3599281
+[106] Yuhan Liu, Zhaoxuan Tan, Heng Wang, Shangbin Feng, Qinghua Zheng, and
+Minnan Luo. 2023. BotMoE: Twitter Bot Detection with Community-Aware
+Mixtures of Modal-Specific Experts. In Proceedings of the 46th International ACM
+SIGIR Conference on Research and Development in Information Retrieval (Taipei,
+Taiwan) (SIGIR ’23). Association for Computing Machinery, New York, NY, USA,
+485–495. doi:10.1145/3539618.3591646
+[107] Jiaying Wu, Jiafeng Guo, and Bryan Hooi. 2024. Fake News in Sheep’s Clothing:
+Robust Fake News Detection Against LLM-Empowered Style Attacks. In Pro-
+ceedings of the 30th ACM SIGKDD Conference on Knowledge Discovery and Data
+Mining (Barcelona, Spain) (KDD ’24). Association for Computing Machinery,
+New York, NY, USA, 3367–3378. doi:10.1145/3637528.3671977
+
+
+===== PDF p.13 =====
+A Survey of Datasets and Tasks for Information Diffusion
+Conference’17, July 2017, Washington, DC, USA
+A
+Performance of the methodology
+To demonstrate the current experiment level, the performance in
+the corresponding landmark algorithms of all subtasks is shown in
+Table 3-11. The titles of tables present the datasets and the evalua-
+tion metrics used in those methods.
+B
+Links of datasets
+Datasets of general interest for information diffusion tasks are
+collected from the current works of each subtask in Table 2, and
+can be openly found in the corresponding data repository with
+GitHub links or special organization links in Table 12 below, al-
+though several datasets need to apply for usage. Their licenses can
+be found in the references and the URLs in this table. With the
+purpose of privacy concerns and content security, the data have
+been processed during their creation stage, for example, by using
+the number instead of the user name.
+Table 3: Performance comparison between CasFlow and base-
+lines of cascade size prediction task on three datasets (Twitter-
+casflow, Sina Weibo, and APS) with different observation
+times. The best results in MSLE and MAPE arebolded.
+Model
+Twitter-casflow
+Sina Weibo
+APS
+1 Day
+2 Days
+0.5 Hour
+1 Hour
+3 Years
+5 Years
+MSLE MAPE MSLE MAPE MSLE MAPE MSLE MAPE MSLE MAPE MSLE MAPE
+Feature-SH
+14.792
+0.960
+13.515
+0.983
+4.455
+0.390
+4.001
+0.398
+2.382
+0.316
+2.348
+0.350
+TimeSeries
+8.214
+0.547
+6.023
+0.445
+3.119
+0.277
+2.693
+0.268
+1.867
+0.271
+1.735
+0.291
+Feature-Linear
+9.326
+0.520
+6.758
+0.459
+2.959
+0.258
+2.640
+0.271
+1.852
+0.272
+1.728
+0.291
+Feature-Deep
+7.438
+0.485
+6.357
+0.500
+2.715
+0.228
+2.546
+0.272
+1.844
+0.270
+1.666
+0.282
+DeepHawkes
+7.216
+0.587
+5.788
+0.536
+2.891
+0.268
+2.796
+0.282
+1.573
+0.271
+1.324
+0.335
+CasCN
+7.183
+0.547
+5.561
+0.525
+2.804
+0.254
+2.732
+0.273
+1.562
+0.268
+1.421
+0.265
+DMT-LIC
+7.152
+0.467
+5.427
+0.481
+2.752
+0.249
+2.689
+0.270
+1.539
+0.264
+1.398
+0.258
+CasFlow*
+6.954
+0.455
+5.143
+0.361
+2.402
+0.210
+2.279
+0.238
+1.361
+0.222
+1.354*
+0.248
+A paired t-test is performed and * indicates a statistical significance 𝑝< 0.001 as compared to the best baselines.
+Table 4: Performance comparison between RAGTrans and
+baselines of popularity prediction task on three datasets
+(SMPD, ICIP, and WeChat). The best results in MSE, MAE
+and SRC are bolded.
+Model
+SMPD
+ICIP
+WeChat
+MSE
+MAE
+SRC
+MSE
+MAE
+SRC
+MSE
+MAE
+SRC
+SVR
+4.9886
+1.6749 0.5312
+2.0942 1.0552 0.3723
+2.9551 3.2072 0.0900
+Hyfea
+4.9297
+1.6623 0.5518
+1.9813 0.9935 0.3641
+2.8655 3.1073 0.1054
+MFTM
+6.3697
+1.9590 0.3479
+1.6268 0.8923 0.4349
+2.8104 3.0670 0.0794
+DTCN
+4.2523
+1.4998 0.5432
+2.8361 1.3432 0.3893
+3.6921 3.4432 0.0821
+UHAN
+3.8471
+1.4833 0.5541
+2.7492 1.2824 0.3981
+3.5925 3.3132 0.0835
+MMVED
+6.3672
+1.9607 0.2610
+1.9831 1.0796 0.2606
+2.9950 3.2151 0.0911
+MGC
+5.5216
+1.8489 0.3228
+1.7706 1.0117 0.3906
+2.945
+3.1954 0.0891
+MHF
+3.9297
+1.5433 0.5419
+1.8736 0.9132 0.4041
+2.8351 3.0543 0.1019
+CBAN
+5.6673
+1.9058 0.1285
+3.6143 1.3897 0.1294
+2.9325 3.0945 0.0706
+JAB
+6.1882
+1.9359 0.2353
+1.8606 0.9289 0.3057
+2.9654 3.1185 0.0280
+MASSL
+13.8925 3.1133 0.3037
+1.8359 0.8809 0.3937
+3.8951 3.1294 0.0529
+HGNN
+5.1770
+1.6061 0.4371
+1.6711 0.9093 0.4423
+2.9452 3.1753 0.0939
+DHGNN
+5.0450
+1.5836 0.4698
+1.6493 0.9010 0.4556
+2.9031 3.1048 0.0958
+RAGTrans 3.2763 1.3396 0.5859 1.2351 0.7149 0.5914 2.7928 2.9898 0.1147
+Table 5: Performance comparison between neutral state
+model and XYWZ1Z2 baseline model of user attitudes pre-
+diction task compared with the actual data on the COVID-19-
+rumor dataset. The best results in MAE and MSE are bolded.
+Model
+RMSE
+MAE
+𝑧0
+𝑧1
+𝑧2
+𝑠𝑢𝑚
+𝑧0
+𝑧1
+𝑧2
+𝑠𝑢𝑚
+XYWZ1Z2 15504.88 279.15 133.07 15507.96 10130.19 193.52 96.43 10420.14
+Neutral
+1284.82 387.77 253.01 1365.71
+917.77
+266.27 171.54 1355.58
+Table 6: Performance comparison between MCDAN and base-
+lines of next user prediction task on four datasets (Twitter-
+MSHGAT, Douban-ComSoc, Android, Christianity). The best
+results in Hits@K and Map@K for K = 10, 50, 100 are bolded.
+Hits@K
+Model
+Twitter-MSHGAT Douban-ComSoc
+Android
+Christianity
+@10
+@50 @100
+@10
+@50 @100
+@10
+@50 @100
+@10
+@50 @100
+DeepDiffuse
+5.79
+10.80 18.39
+9.02
+14.93 19.13
+4.13
+10.58 17.21 10.27 21.83 30.74
+Topo-LSTM
+8.45
+15.80 25.42
+8.57
+16.53 21.47
+4.56
+12.63 16.53 12.28 22.63 31.52
+NDM
+15.21 28.23 32.30
+10.00 21.13 30.14
+4.85
+14.24 18.97 15.41 31.36 45.86
+SNIDSA
+25.37 36.64 42.89
+16.23 27.24 35.59
+5.63
+15.22 20.93 17.74 34.58 48.76
+FOREST
+28.67 42.07 49.75
+19.50 32.03 39.08
+9.68
+17.73 24.08 24.85 42.01 51.28
+Inf-VAE
+14.85 32.72 45.72
+8.94
+22.02 35.72
+5.98
+14.70 20.91 18.38 38.50 51.05
+DyHGCN
+31.88 45.05 52.19
+18.71 32.33 39.71
+9.10
+16.38 23.09 26.62 42.80 52.47
+MS-HGAT
+33.50 49.59 58.91
+21.33 35.25 42.75 10.41 20.31 27.55 28.80 47.14 55.62
+Topic-HGAT 35.12 51.41 61.15
+23.50 37.58 45.66 11.76 21.72 29.39 30.02 48.73 57.80
+RotDiff
+35.90 52.46 61.21
+22.16 38.23 46.37 11.44 23.04 31.30 32.37 56.25 66.74
+MCDAN
+38.45 55.78 64.25 49.39 58.58 62.81 11.89 25.10 32.79 35.49 56.92 67.41
+Map@K
+Model
+Twitter-MSHGAT Douban-ComSoc
+Android
+Christianity
+@10
+@50 @100
+@10
+@50 @100
+@10
+@50 @100
+@10
+@50 @100
+DeepDiffuse
+5.87
+6.80
+6.39
+6.02
+6.93
+7.13
+2.30
+2.53
+2.56
+7.27
+7.83
+7.84
+Topo-LSTM
+8.51
+12.68 13.68
+6.57
+7.53
+7.78
+3.60
+4.05
+4.06
+7.93
+8.67
+9.86
+NDM
+12.41 13.23 14.30
+8.24
+8.73
+9.14
+2.01
+2.22
+2.93
+7.41
+7.68
+7.86
+SNIDSA
+15.34 16.64 16.89
+10.02 11.24 11.59
+2.98
+3.24
+3.97
+8.69
+8.94
+9.72
+FOREST
+19.60 20.21 21.75
+11.26 11.84 11.94
+5.83
+6.17
+6.26
+14.64 15.45 15.58
+Inf-VAE
+19.80 20.66 21.32
+11.02 11.28 12.28
+4.82
+4.86
+5.27
+9.25
+11.96 12.45
+DyHGCN
+20.87 21.48 21.58
+10.61 11.26 11.36
+6.09
+6.40
+6.50
+15.64 16.30 16.44
+MS-HGAT
+22.49 23.17 23.30
+11.72 12.52 12.60
+6.39
+6.87
+6.96
+17.44 18.27 18.40
+Topic-HGAT 23.71 24.53 24.66
+12.70 13.61 13.72
+6.80
+7.53
+7.68
+18.98 19.85 19.99
+RotDiff
+24.06 24.82 24.95
+11.70 12.54 12.66
+6.96
+7.45
+7.56
+19.81 20.91 21.05
+MCDAN
+25.89 26.69 26.81 40.70 41.13 41.19
+7.47
+8.04
+8.15
+22.88 23.78 23.94
+Table 7: Performance comparison between FedInf and base-
+lines of social influence prediction task across three datasets
+(OAG-DeepInf, Digg-DeepInf, Higgs Twitter). The best results
+in AUC, precision, recall and F1 are bolded.
+Model
+OAG-DeepInf
+Digg-DeepInf
+Higgs Twitter
+AUC
+Pre
+Recall
+F1
+AUC
+Pre
+Recall
+F1
+AUC
+Pre
+Recall
+F1
+DeepInf-GCN 63.55 30.28 74.36 43.03 84.15 58.76 67.61 62.88 76.60 44.31 66.74 53.26
+DeepInf-GAT 72.84 41.18 63.02 49.81 90.13 66.82 74.46 70.44 79.68 48.12 68.09 56.93
+HPPNP
+66.02 33.37 66.05 44.34 90.16 72.38 70.43 71.39 78.67 47.71 66.71 55.63
+FedAvg*
+73.18 44.59 56.58 49.88 90.44 68.07 75.94 71.79 79.75 49.32 65.84 56.40
+FedInf*
+73.19 43.51 58.22 49.81 90.26 70.08 69.89 69.99 79.73 48.85 66.02 56.15
+* indicates that the model operates in collaborative training mode; otherwise, it operates in
+centralized mode.
+
+
+===== PDF p.14 =====
+Conference’17, July 2017, Washington, DC, USA
+Guo et al.
+Table 10: Performance comparison between GMIN and base-
+lines of rumor detection task on three datasets (Ma-Weibo,
+Twitter15 and Twitter16). The best results in precision, recall,
+F1-score and accuracy are bolded.
+Model
+Ma-Weibo
+Twitter15
+Twitter16
+F1
+Rec
+Pre
+Acc
+F1
+Rec
+Pre
+Acc
+Rumor2vec 0.952 0.952 0.952 0.951 0.797 0.723 0.851 0.852
+dEFEND
+0.913 0.915 0.913 0.914 0.654 0.738 0.631 0.702
+HB-GAT
+0.955 0.954 0.954 0.955 0.919 0.920 0.951 0.951
+BiGCN
+0.960 0.963 0.961 0.961 0.891 0.886 0.847 0.880
+GCAN
+0.854 0.854 0.854 0.854 0.825 0.877 0.759 0.908
+GLAN
+0.946 0.943 0.943 0.945 0.924 0.905 0.921 0.902
+RvNN
+0.908 0.908 0.908 0.908 0.729 0.723 0.737 0.737
+PPC
+0.920 0.926 0.923 0.921 0.811 0.842 0.820 0.863
+GMIN
+0.959 0.963 0.957 0.961 0.931 0.921 0.920 0.938
+Table 11: Performance comparison between ARG and base-
+lines of fake news detection task on two datasets (Weibo21
+and GossipCop of FakeNewsNet). The best results in accu-
+racy, F1-score and macro F1 are bolded.
+Method
+Weibo21
+GossipCop
+macF1
+Acc 𝐹1𝑟𝑒𝑎𝑙𝐹1𝑓𝑎𝑘𝑒macF1
+Acc 𝐹1𝑟𝑒𝑎𝑙𝐹𝑙𝑓𝑎𝑘𝑒
+G1:LLM-
+Only
+GPT-3.5-turbo
+0.725
+0.734
+0.774
+0.676
+0.702
+0.813
+0.884
+0.519
+G2: SLM-
+Only
+Baseline
+0.753
+0.754
+0.769
+0.737
+0.765
+0.862
+0.916
+0.615
+EANNT
+0.754
+0.756
+0.773
+0.736
+0.763
+0.864
+0.918
+0.608
+Publisher-Emo
+0.761
+0.763
+0.784
+0.738
+0.766
+0.868
+0.920
+0.611
+ENDEF
+0.765
+0.766
+0.779
+0.751
+0.768
+0.865
+0.918
+0.618
+G3: LLM
++SLM
+Baseline+Rationale
+0.767
+0.769
+0.787
+0.748
+0.777
+0.870
+0.921
+0.633
+SuperICL
+0.757
+0.759
+0.779
+0.734
+0.736
+0.864
+0.920
+0.551
+ARG
+0.784
+0.786
+0.804
+0.764
+0.790
+0.878
+0.926
+0.653
+ARG-D
+0.771
+0.772
+0.785
+0.756
+0.778
+0.870
+0.921
+0.634
+ARG-D is the rationale-free ARG by distillation for cost-sensitive scenarios.
+Table 8: Performance comparison between Contextual LSTM
+and baselines of user-based and content-based bot detection
+bot detection tasks about the Cresci-2017 dataset. The best
+results in precision, recall, F1-score, accuracy and AUC are
+bolded
+Task Model
+Pre Recall F1 Acc AUC
+User-based
+bot detection
+Logistic Regression
+0.94
+0.93
+0.93 0.91 0.89
+SGD Classifier
+0.87
+0.87
+0.87 0.87 0.87
+Random Forest Classifier
+0.98
+0.98
+0.98 0.98 0.98
+AdaBoost Classifier
+0.98
+0.98
+0.98 0.98 0.98
+2-layer NN (500,200,1) RelU + Adam
+0.95
+0.95
+0.95 0.95 0.95
+Logistic Regression (With SMOTENN)
+0.99
+0.99
+0.99 0.99 0.99
+SGD Classifier (With SMOTENN)
+0.95
+0.94
+0.94 0.95 0.95
+Random Forest Classifier (With SMOTENN)
+0.99
+0.99
+0.99 0.99 0.99
+AdaBoost Classifier (With SMOTENN)
+1.00
+1.00
+1.00 1.00 1.00
+2-layer NN (300,200,1) RelU + Adam (With SMOTENN)
+0.99
+0.99
+0.99 0.99 0.98
+Logistic Regression (With SMOTOMEK)
+0.92
+0.91
+0.91 0.91 0.91
+SGD Classifier (With SMOTOMEK)
+0.90
+0.90
+0.90 0.90 0.90
+Random Forest Classifier (With SMOTOMEK)
+0.99
+0.99
+0.99 0.99 0.99
+AdaBoost Classifier (With SMOTOMEK)
+0.99
+0.99
+0.99 0.99 0.99
+2-layer NN (300,200,1) RelU+Adam (With SMOTOMEK) 0.95
+0.95
+0.95 0.94 0.95
+Content-based
+bot detection
+Logistic Regression (Metadata-only)
+0.80
+0.80
+0.79 0.80 0.76
+SGD Classifier (Metadata-only)
+0.76
+0.76
+0.75 0.76 0.72
+Random Forest Classifier (Metadata-only)
+0.80
+0.80
+0.80 0.80 0.78
+AdaBoost Classifier (Metadata-only)
+0.80
+0.80
+0.79 0.80 0.76
+Logistic Regression (Metadata-only+SMOTENN)
+0.92
+0.92
+0.92 0.92 0.88
+SGD Classifier (Metadata-only+SMOTENN)
+0.91
+0.90
+0.90 0.90 0.89
+Random Forest Classifier (Metadata-only+SMOTENN)
+0.92
+0.92
+0.92 0.92 0.88
+AdaBoost Classifier (Metadata-only+SMOTENN)
+0.93
+0.92
+0.93 0.92 0.91
+Logistic Regression (Metadata-only+SMOTOMEK)
+0.79
+0.77
+0.76 0.77 0.77
+SGD Classifier (Metadata-only+SMOTOMEK)
+0.78
+0.77
+0.76 0.77 0.77
+Random Forest Classifier (Metadata-only+SMOTOMEK) 0.79
+0.77
+0.77 0.77 0.77
+AdaBoost Classifier (Metadata-only+SMOTOMEK)
+0.79
+0.77
+0.77 0.77 0.77
+LSTM (Tweet-only+50D GloVE)
+0.96
+0.96
+0.96 0.96 0.96
+Contextual LSTM (25D GloVE)
+0.96
+0.96
+0.96 0.96 0.96
+Contextual LSTM (50D GloVE)
+0.96
+0.96
+0.96 0.96 0.96
+Contextual LSTM(100D GloVE)
+0.96
+0.96
+0.96 0.96 0.96
+Contextual LSTM (200D GloVE)
+0.96
+0.96
+0.96 0.96 0.96
+Table 9: Performance of the adversarial attack method in
+graph-based bot detection task on two datasets (Cresci-2015
+and TwiBot-22). The best results in attack success rate and
+new node detected as bot are bolded.
+Model
+Cresci-2015
+TwiBot-22
+Attack success
+rate
+New node
+become bot
+Attack success
+rate
+New node
+become bot
+GCN
+95.68 ± 1.44
+0.00 ± 0.00
+93.97 ± 5.43
+2.66 ± 5.09
+HGT
+94.79 ± 1.18
+0.06 ± 0.12
+89.37 ± 3.56
+5.40 ± 10.80
+Simple-HGN
+95.74 ± 1.25
+0.00 ± 0.00
+74.94 ± 2.16
+7.39 ± 14.78
+R-GCN
+95.74 ± 1.50
+0.06 ± 0.12
+73.73 ± 1.71
+12.94 ± 19.19
+
+
+===== PDF p.15 =====
+A Survey of Datasets and Tasks for Information Diffusion
+Conference’17, July 2017, Washington, DC, USA
+Table 12: The URLs of datasets for each subtask.
+Task
+Dataset
+URL
+Macroscopic information
+diffusion prediction
+Cascade size
+prediction
+Twitter-casflow [26]
+https://github.com/Xovee/casflow
+APS [26]
+https://github.com/Xovee/casflow
+Sina Weibo [55]
+https://github.com/CaoQi92/DeepHawkes
+Arxiv HEP-PH [56]
+http://snap.stanford.edu/data/cit-HepPh.html
+Twitter-FOREST [25]
+https://github.com/albertyang33/FOREST/tree/master/data
+Douban [25]
+https://github.com/albertyang33/FOREST/tree/master/data
+Memetracker [25]
+https://github.com/albertyang33/FOREST/tree/master/data
+Popularity
+prediction
+SMPD [32]
+https://smp-challenge.com/download.html
+Yelp [57]
+https://www.yelp.com/dataset/
+MovieLens [58]
+https://grouplens.org/datasets/movielens/
+Micro-Videos [34]
+https://acmmm2016.wixsite.com/micro-videos/blank
+MicroLens [59]
+https://github.com/westlake-repl/MicroLens
+ICIP [60]
+https://iplab.dmi.unict.it/popularitydataset/SIPD2020CHALLENGE/train/
+UAP1
+COVID-19-rumor [61]
+https://github.com/MickeysClubhouse/COVID-19-rumor-dataset
+Microscopic information
+diffusion prediction
+Next user
+prediction
+Twitter-FOREST [25]
+https://github.com/albertyang33/FOREST/tree/master/data
+Douban-FOREST [25]
+https://github.com/albertyang33/FOREST/tree/master/data
+Memetracker [25]
+https://github.com/albertyang33/FOREST/tree/master/data
+Android [62]
+https://github.com/slingling/MS-HGAT
+Christianity [62]
+https://github.com/slingling/MS-HGAT
+Twitter-MSHGAT [62]
+https://github.com/slingling/MS-HGAT
+Douban-MSHGAT [62]
+https://github.com/slingling/MS-HGAT
+Douban-ComSoc [63]
+http://www.cse.ust.hk/TL/dataset/Douban-50000.zip
+Social influence
+prediction
+OAG-DeepInf [29]
+https://github.com/xptree/DeepInf
+Digg-DeepInf [29]
+https://github.com/xptree/DeepInf
+Twitter-DeepInf [29]
+https://github.com/xptree/DeepInf
+Higgs Twitter [64]
+https://snap.stanford.edu/data/higgs-twitter.html
+Weibo-DeepInf [29]
+https://github.com/xptree/DeepInf
+Weibo-influencelocality [65]
+http://www.aminer.cn/influencelocality
+Social bot detection
+User-
+based
+Cresci-2017 [66]
+https://botometer.osome.iu.edu/bot-repository/datasets.html
+gilani-2017 [67]
+https://botometer.osome.iu.edu/bot-repository/datasets.html
+botometer-feedback-2019 [68]
+https://botometer.osome.iu.edu/bot-repository/datasets.html
+Content-
+based
+PAN-AP-2019 [69]
+https://pan.webis.de/clef19/pan19-web/author-profiling.html
+caverlee-2011 [70]
+https://botometer.osome.iu.edu/bot-repository/datasets.html
+Graph-
+based
+Cresci-2015 [71]
+https://botometer.osome.iu.edu/bot-repository/datasets.html
+TwiBot-20 [72]
+https://github.com/BunsenFeng/TwiBot-20
+TwiBot-22 [17]
+https://drive.google.com/drive/folders/1YwiOUwtl8pCd2GD97Q_WEzwEUtSPoxFs?usp=sharing
+Misinformation detection
+Rumor detection
+PHEME-v1 [73]
+https://figshare.com/articles/dataset/PHEME_dataset_of_rumours_and_non-rumours/4010619?file=6453753
+PHEME-v2 [74]
+https://figshare.com/articles/dataset/PHEME_dataset_for_Rumour_Detection_and_Veracity_Classification/6392078
+PHEME-v3 [75]
+https://www.sciencedirect.com/science/article/abs/pii/S0020025523006680
+Weibo-BiGCN [76]
+https://github.com/TianBian95/BiGCN
+Ma-Weibo [77]
+https://www.dropbox.com/s/46r50ctrfa0ur1o/rumdect.zip?dl=0
+Twitter15 [78]
+https://www.dropbox.com/s/7ewzdrbelpmrnxu/rumdetect2017.zip?dl=0
+Twitter16 [78]
+https://www.dropbox.com/s/7ewzdrbelpmrnxu/rumdetect2017.zip?dl=0
+Twitter15-RDMSC [75]
+https://github.com/Coder-HenryZa/RDMSC?tab=readme-ov-file
+Twitter16-RDMSC [75]
+https://github.com/Coder-HenryZa/RDMSC?tab=readme-ov-file
+MR2 [79]
+https://gitcode.com/THU-BPM/MR2/overview
+Fake news detection
+FakeNewsNet [47]
+https://github.com/KaiDMML/FakeNewsNet
+FakeNewsNet-DECOR [80]
+https://github.com/jiayingwu19/DECOR
+FakeNewsNet-UPFD [81]
+https://github.com/safe-graph/GNN-FakeNews
+TruthSeeker2023 [82]
+https://www.unb.ca/cic/datasets/truthseeker-2023.html
+MC-Fake [44]
+https://github.com/qwerfdsaplking/MC-Fake
+FineFake [83]
+https://github.com/Accuser907/FineFake
+FauxBuster [84]
+https://ieeexplore.ieee.org/abstract/document/8622344
+MM-Covid [85]
+https://github.com/bigheiniu/X-COVID
+MuMIN [86]
+https://mumin-dataset.github.io/
+CHECKED [87]
+https://github.com/cyang03/checked
+FakeSV [88]
+https://github.com/ICTMCG/FakeSV
+FTT [89]
+https://github.com/ICTMCG/FTT-ACL23
+MCFEND [90]
+https://github.com/Nicozwy/MCFEND_WWW/tree/main?tab=readme-ov-file
+Weibo21 [91]
+https://github.com/kennqiang/mdfend-weibo21
+Image-verification-corpus [92]
+https://github.com/MKLab-ITI/image-verification-corpus
+Breaking! [93]
+https://github.com/architapathak/FakeNewsCorpus
+LIAR [94]
+https://www.cs.ucsb.edu/~william/data/liar_dataset.zip
+Evons [95]
+https://github.com/krstovski/evons
+WeChat [96]
+https://github.com/yaqingwang/WeFEND-AAAI20
+Fakeddit [97]
+https://github.com/entitize/Fakeddit
+1 UAP: User Attitudes Prediction

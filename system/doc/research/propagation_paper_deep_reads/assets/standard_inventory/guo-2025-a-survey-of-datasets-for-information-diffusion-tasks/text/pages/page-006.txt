@@ -1,0 +1,68 @@
+Conference’17, July 2017, Washington, DC, USA                                                                                   Guo et al.
+
+
+based on their neighbors’ influence. So similarly, social influence            It integrates global relationships from social networks and his-
+prediction also needs the social network and diffusion network.            torical cascades, capturing user preferences with a multi-scale
+                                                                          sequential hypergraph attention module. Next, a contextual atten-
+3.2.1   Definition. In the social influence prediction task, 𝜌-neighbors        tion enhancement module strengthens user interaction within
+Γ𝜌𝑢𝑖= {𝑢𝑗|𝑑(𝑢𝑗,𝑢𝑖) ≤𝜌, 𝑗≠𝑖} of user 𝑢𝑖∈𝑈are required to rep-        cascades, while susceptibility labels are constructed based on
+resent users whose shortest path distances from 𝑢𝑖in the social        user analysis. Table 6 presents the performance comparison be-
+network 𝐺𝑆= {𝑉𝑈, 𝐸𝑆} are no more than 𝜌. User 𝑢𝑖is referred to       tween MCDAN and baseline models on four datasets (Twitter-
+as the ego user of these neighbors. 𝐴𝑡𝑢𝑖= {𝑎𝑡𝑢𝑗|𝑢𝑗∈Γ𝜌𝑢𝑖} is the set     MSHGAT [62], Douban-ComSoc[63], Android [62], Christian-
+of action state labels 𝑎𝑡𝑢𝑗for the ego user 𝑢𝑖’s neighbors 𝑢𝑗at times-         ity [62]), measured by Hits@K and Map@K for K = 10, 50, 100.
+                                                           • Social influence prediction: FedInf[30] introduces a federatedtamp 𝑡, where 𝑎𝑡𝑢∈{0, 1} indicates whether user 𝑢has performed a
+                                                                      learning framework for social influence prediction, addressingsocial action (1) or not (0) by timestamp𝑡. Additionally, the topology
+                                                                    privacy concerns and enabling cross-organizational collabora-of the previously mentioned cascade sequence can be simplified by
+projecting it onto the time axis, denoted as 𝑐(𝑡𝑤) = {(𝑢𝑗,𝑡𝑗)}𝑗≤𝑤,         tion. It uses differential privacy during model aggregation, pro-
+where (𝑢𝑗,𝑡𝑗) indicates that user 𝑢𝑗joined the cascade at times-         jecting parameters into a lower-dimensional space to minimize
+tamp 𝑡𝑗. The diffusion network 𝐺𝐷𝑖(𝑡𝑤) = {𝑉𝑃𝑖, 𝐸𝐷1𝑖  } for the ego         noise. The whole framework consists of local training and global
+                                                           model updates. Table 7 presents the performance comparisonuser 𝑢𝑖is constructed from the subgraph of 𝐺𝑆and is extended
+with the action state labels set 𝐴𝑡𝑤𝑢𝑖at the observed timestamp 𝑡𝑤.       between FedInf and baseline models across three datasets (OAG-                                                                 DeepInf [29], Digg-DeepInf [29], Higgs Twitter [64]), measured
+The set 𝑉𝑃𝑖 = {𝑢𝑖, Γ𝜌𝑢𝑖} includes the ego user 𝑢𝑖and its 𝜌-neighbors       by AUC, precision, recall, and F1.
+Γ𝜌𝑢𝑖along with their 𝐴𝑡𝑢𝑖. In the next user prediction task, the dif-
+fusion network is formed by combining the interaction relations    4  Social bot detection
+in 𝑐(𝑡𝑤) with the social topology in the social network 𝐺𝑆. There-
+                                                         The emergence of AI-driven social bots that manipulate public opin-
+fore, drawing from the symbol definitions provided above, next
+                                                                     ion necessitates effective detection mechanisms to distinguish them
+user prediction and social influence prediction can be defined as
+                                                             from human accounts. Social bot detection is a binary classification
+follows. Therefore, based on the symbol definitions provided, next                                                             problem where the bot label 𝑦𝑈∈{0, 1} indicates a bot user (1) or
+user prediction and social influence prediction can be defined as
+                                                                  a human user (0). Current social bot detection tasks are categorized
+follows.
+                                                                          into three types based on input data: user-based, content-based, and
+• Next user prediction: Given the user set 𝑈, the social network
+ 𝐺𝑆= {𝑉𝑈, 𝐸𝑆}, the diffusion network 𝐺𝐷(𝑡𝑤) = {𝑉𝑈, 𝐸𝐷1} of a      graph-based detection [17]. User-based bot detection extracts
+                                                                        features from user profiles and numerical or categorical data, em-
+  post at observed time 𝑡𝑤and a current cascade 𝑐= {(𝑢1,𝑡1),                                                                    ploying traditional classifiers to identify bots [17]. Content-based
+     . . . , (𝑢𝑝−1,𝑡𝑝−1)}, next user prediction aims to predict the next                                                            bot detection analyzes post content using NLP techniques, such
+  spreading user 𝑢𝑝∈𝑈at predicted timestamp 𝑡𝑝.
+                                                                       as word embedding and RNN, on users’ posts and descriptions [18].
+• Social influence prediction: Given the user set 𝑈and the diffusion
+                                                         Graph-based bot detection examines the user relationship struc-
+  network 𝐺𝐷𝑖(𝑡𝑤) = {𝑉𝑃𝑖, 𝐸𝐷1𝑖  } of the ego user 𝑢𝑖at the observed                                                                      ture within a social network 𝐺𝑆, applying network analysis tech-
+  timestamp 𝑡𝑤, social influence prediction aims to predict the
+  future action states 𝑎𝑡𝑝𝑢𝑖of 𝑢𝑖at predicted timestamp 𝑡𝑝≫𝑡𝑤.        niques to differentiate between bots and humans [17].
+                                                         4.1  Definition.
+3.2.2  Datasets analysis.
+                                                                        In light of the symbol definitions provided in the previous sections,• In Table 2, the source platforms contain social media, community
+                                                                     user-based, content-based and graph-based bot detection can be Q&A websites and new websites in next user prediction, and
+                                                                    defined as follows, respectively.   social media and academic citation websites in social influence
+                                                           • User-based bot detection: Given the labeled user set 𝑈with user   prediction. Community Q&A websites offer context around user
+                                                                      information, user-based bot detection aims to learn a classifier  queries and responses, which can reveal user interests and in-
+                                                           𝑓: 𝑓(𝑈) →𝑦𝑈that can detect a user’s bot label 𝑦𝑈.  fluence future interactions. News websites, with their dynamic
+                                                           • Content-based bot detection: Given the labeled user set 𝑈with  content and readership patterns, offer insights into how current
+                                                                       user information and the post set 𝑝with the post content, content-  events may drive user behavior.
+                                                                 based bot detection aims to learn a classifier 𝑓: 𝑓(𝑈, 𝑃) →𝑦𝑈• The attributes of datasets for next user prediction are all char-
+                                                                           that can automatically detect the bot label 𝑦𝑈for a user 𝑢.  acterized by the diffusion network, and the attributes for social
+                                                           • Graph-based bot detection: Given the labeled user set 𝑈with user  influence prediction are all characterized by the social network
+                                                                      information and the social network 𝐺𝑆= {𝑉𝑈, 𝐸𝑆}, graph-based  and its derived diffusion network. These dual data capture both
+                                                                      bot detection aims to learn a classifier 𝑓: 𝑓(𝐺𝑆) →𝑦𝑈that can   direct interactions and social influence patterns.
+                                                                       automatically detect the bot label 𝑦𝑈for a user 𝑢.
+
+3.2.3  Methodology. We present a SOTA method for each subtask
+of microscopic information diffusion prediction, respectively. They     4.2  Datasets analysis.
+briefly introduce their landmark algorithms.                       • In Table 2, these datasets are widely used and all originated
+• Next user prediction: MCDAN[99] predicts next user in cascades       from Twitter platform. Twitter is a global social media platform
+  using a multi-scale context-enhanced dynamic attention network.        that enables users to post and read short messages known as

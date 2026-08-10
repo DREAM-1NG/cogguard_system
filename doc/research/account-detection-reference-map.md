@@ -38,6 +38,15 @@ bibliography.
 | Feng et al., **BotRGCN: Twitter Bot Detection with Relational Graph Convolutional Networks**, [arXiv](https://arxiv.org/abs/2106.13092) | Preprint locator retained; no published venue is asserted here. | Supports graph/account representation baselines; not a Chinese-data validation source. |
 | **SATAR: A Self-supervised Approach to Twitter Account Representation Learning and its Application in Bot Detection** | The earlier DOI resolves to *Label-informed Graph Structure Learning for Node Classification*, not SATAR. Venue/archival locator remains unverified in this map. | Do not cite this entry for a formal claim until a primary source is verified; BotRGCN and published self-supervised baselines remain usable alternatives. |
 
+## Benchmark Boundary
+
+The formal benchmark policy is maintained in
+[`social-bot-benchmark-protocol.md`](social-bot-benchmark-protocol.md). TwiBot-20
+is the primary graph benchmark, with Cresci-2015, Cresci-2017, and Midterm-2018
+reported independently as public adaptation datasets. The local Botection
+corpus is legacy-only: it does not enter model selection, benchmark comparison,
+or deployment claims.
+
 ## Chinese Representation And Domain Adaptation
 
 | Reference | What it supports | Transfer to CogGuard |

@@ -1,0 +1,57 @@
+A Survey of Information Cascade Analysis: Models, Predictions, and Recent Advances      27:23
+
+
+introduced in Reference [214], with intensity defined as
+
+                                  λi (t) = Viϕik (t) + μi     ϕil (t −tj),                                 (9)
+                                                                                      tj <t
+
+where Vi captures the intrinsic popularity (or quality) of each paper, which  is defined by
+paper/author-specific covariates, and where ϕik (τ ) and ϕil (τ ) are exponential aging kernels.
+ A combination of Hawkes intensity processes (HIP) with exogenous stimuli and endogenous trig-
+gering effect from Twitter and YouTube was proposed in Reference [160], to predict the popularity
+of videos. In particular, the self-exciting Hawkes process was extended by defining the expectation
+of intensity of the observed events:
+
+                                                                                        t
+                              ξi (t) = E[λi (t)] = V (t) + μi     ξ (t −τ )ϕi (τ )dτ,                      (10)
+                                                                 0
+
+where V (t) accounts for the unobserved external influence from Twitter and the number of video
+shares, and ϕi (τ ) is a power-law memory kernel. HIP models the video view volumes directly
+rather than taking individual events one after another.
+
+4.4  Other Generative Models and Discussion (Pros and Cons)
+
+The spatial and temporal heterogeneous Bass model (STH-Bass) proposed by Reference [219] bor-
+rowed the idea of the Bass model [18] that describes the process of how new products get adopted
+in a population to predict popularity of tweets. Compared to the original Bass model, there is an
+additional consideration of spatial-temporal heterogeneity, which is more applicable for tweet pop-
+ularity prediction rather than predicting the sales of product. Subsequently, Reference [41] used
+a topic-oriented feature combined Bass model with association analysis to make the popularity
+prediction.
+  The Bayesian approach to predict the popularity of tweets in Reference [238] takes features
+into consideration, including time-series and retweet cascade graphs. In Reference [133], the pop-
+ularity growth was approached as a sequence of linear and non-linear phases and the proposed
+model does not rely on microscopic information, while the prediction can be made efficiently with-
+out training. Other related works include: Reference [170], proposing LMPP model to predict the
+hashtag popularity by modeling the hashtag-tweet reinforcement and inter-hashtag competitions;
+CHESS [183], predicting the popularity (watch time) of Facebook videos through an efficient and
+scalable Hawkes process; Reference [16], using Hawkes process with survival theory to predict
+the popularity of tweets and papers; and Reference [205], which devised MIC2MAC to link micro-
+scopic event data to macroscopic popularity inference, where Hawkes process and jump stochastic
+differential equation are used for prediction.
+  Generative models generally do not need heavy feature engineering and are inherently inter-
+pretable. They mainly rely on time-series data, and their predictions can be made in real-time,
+once the model has been prepared and the parameters have been estimated [246]. However, their
+performance has been questioned [29, 72], and they are often easily influenced by outliers [142]. In
+addition, generative models usually make strong assumptions on fixed parameters, which limits
+their generality and model expressiveness [52]. Moreover, the complex underlying mechanisms
+governing the success of cascades are underestimated and simplified, to simulate/reproduce the
+cascade diffusion processes. Finally, most of generative models are network-agnostic—i.e., they
+fail to model the important structural information that could help understand the process/paths
+of information diffusion. Thus, despite their efficiency and interpretability, generative models are
+less powerful in making precise predictions [29].
+
+
+                       ACM Computing Surveys, Vol. 54, No. 2, Article 27. Publication date: March 2021.

@@ -1,0 +1,49 @@
+Published as a conference paper at ICLR 2021
+Emanuele Rossi, Ben Chamberlain, Fabrizio Frasca, Davide Eynard, Federico Monti, and Michael
+Bronstein. Temporal graph networks for deep learning on dynamic graphs. arXiv preprint
+arXiv:2006.10637, 2020.
+Ryan A Rossi, Anup Rao, Sungchul Kim, Eunyee Koh, Nesreen K Ahmed, and Gang Wu. Higher-
+order ranking and link prediction: From closing triangles to closing higher-order motifs. arXiv
+preprint arXiv:1906.05059, 2019.
+David E Rumelhart, Geoffrey E Hinton, and Ronald J Williams. Learning representations by
+back-propagating errors. nature, 323(6088), 1986.
+Aravind Sankar, Yanhong Wu, Liang Gou, Wei Zhang, and Hao Yang. DySAT: Deep neural
+representation learning on dynamic graphs via self-attention networks. In International Conference
+on Web Search and Data Mining, 2020.
+Purnamrita Sarkar, Deepayan Chakrabarti, and Michael I Jordan. Nonparametric link prediction in
+dynamic networks. In International Conference on Machine Learning, 2012.
+Franco Scarselli, Marco Gori, Ah Chung Tsoi, Markus Hagenbuchner, and Gabriele Monfardini. The
+graph neural network model. IEEE Transactions on Neural Networks, 20(1), 2008.
+Georg Simmel. The sociology of georg simmel, volume 92892. Simon and Schuster, 1950.
+Uriel Singer, Ido Guy, and Kira Radinsky. Node embedding over temporal graphs. In International
+Joint Conference on Artiﬁcial Intelligence, 2019.
+Balasubramaniam Srinivasan and Bruno Ribeiro. On the equivalence between positional node
+embeddings and structural graph representations. In International Conference on Learning Repre-
+sentations, 2019.
+Riitta Toivonen, Jussi M Kumpula, Jari Saramäki, Jukka-Pekka Onnela, János Kertész, and Kimmo
+Kaski. The role of edge weights in social networks: modelling structure and dynamics. In Noise
+and Stochastics in Complex Systems and Finance, volume 6601. International Society for Optics
+and Photonics, 2007.
+Rakshit Trivedi, Hanjun Dai, Yichen Wang, and Le Song. Know-evolve: deep temporal reasoning for
+dynamic knowledge graphs. In International Conference on Machine Learning, 2017.
+Rakshit Trivedi, Mehrdad Farajtabar, Prasenjeet Biswal, and Hongyuan Zha. Dyrep: Learning
+representations over dynamic graphs. In International Conference on Learning Representation,
+2019.
+Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N Gomez, Łukasz
+Kaiser, and Illia Polosukhin. Attention is all you need. In Advances in Neural Information
+Processing Systems, 2017.
+Petar Veliˇckovi´c, Guillem Cucurull, Arantxa Casanova, Adriana Romero, Pietro Liò, and Yoshua
+Bengio. Graph attention networks. In International Conference on Learning Representations,
+2018.
+Yanbang Wang, Pan Li, Chongyang Bai, VS Subrahmanian, and Jure Leskovec. Generic representa-
+tion learning for dynamic social interaction. International Conference on Knowledge Discovery
+Data Mining, MLG workshop, 2020.
+Da Xu, Chuanwei Ruan, Evren Korpeoglu, Sushant Kumar, and Kannan Achan. Self-attention with
+functional time representation learning. In Advances in Neural Information Processing Systems,
+2019.
+Da Xu, Chuanwei Ruan, Evren Korpeoglu, Sushant Kumar, and Kannan Achan. Inductive repre-
+sentation learning on temporal graphs. In International Conference on Learning Representation,
+2020.
+Muhan Zhang, Pan Li, Yinglong Xia, Kai Wang, and Long Jin. Revisiting graph neural networks for
+link prediction. arXiv preprint arXiv:2010.16103, 2020.
+12

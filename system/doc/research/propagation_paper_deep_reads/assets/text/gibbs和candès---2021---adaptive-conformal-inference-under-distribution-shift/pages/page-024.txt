@@ -1,0 +1,111 @@
+Lemma A.4 Assume that for all a ∈A and p ∈[−γ, 1 + γ], M(·|a) admits the second order Taylor
+expansion
+M(p|a) −M(α∗
+a|a) = C1
+a(p −α∗
+a) + C2
+p,a(p −α∗
+a)2,
+where 0 < c1 ≤C1
+a ≤C1 < 1/γ and |C2
+p,a| ≤C2. Then, for all T ∈N and a ∈A,
+|E[err1|A1 = a] −α| ≤C1(1 −γc1)T −1E[|α1 −α∗
+A1||AT = a]
++
+T −1
+X
+t=1
+C1C2γ(1 −c1γ)T −t−1E[(αt −αA∗
+t )2|AT = a]
++
+T −1
+X
+t=1
+C1(1 −c1γ)T −t−1E[|α∗
+At+1 −α∗
+At||AT ] + C2E[(αT −α∗
+AT )2|AT = a].
+Furthermore, suppose the assumptions of Lemma A.3 hold and that ∀a ∈A and k ∈{0, 1, 2, . . . },
+E[|α∗
+AT −k −α∗
+AT −k−1||AT = a] ≤ϵ1 and E[(α∗
+AT −k −α∗
+AT −k−1)2|AT = a] ≤ϵ2.
+Then ∀a ∈A,
+|E[err1|A1 = a] −α| ≤
+
+C1C2
+1
+c1
++ C2
+ 1
+2cγ (γ2 + 2(1 + γ)ϵ1 + ϵ2) + C1
+c1γ ϵ1.
+Proof:
+Fix any T ∈N. Since {(errt, At)}t∈N is stationary we have that
+E[err1|A1 = a] = E[errT |AT = a].
+Then, by Taylor expanding M(·|AT ) we ﬁnd that
+|E[errT |AT = a] −α| =
+E[M(αT |AT ) −M(α∗
+AT |AT )|AT ]
+
+≤
+E[C1
+AT (αT −α∗
+AT )|AT ]
+ + E[C2
+αT ,AT (αT −α∗
+AT )2|AT ]
+≤
+E[C1
+AT (αT −α∗
+AT )|AT ]
+ + C2E[(αT −α∗
+AT )2|AT ].
+The ﬁrst term above can be further bounded as
+E[C1
+AT (αT −α∗
+AT )|AT ]
+
+=
+E[C1
+AT (αT −1 + γ(α −errT −1) −α∗
+AT −1)|AT ] + E[C1
+AT (α∗
+AT −1 −α∗
+AT )|AT ]
+
+≤
+E[C1
+AT (αT −1 −α∗
+AT −1)] + γE[C1
+AT (M(α∗
+AT −1|AT −1) −M(αT −1|AT −1))|AT ]
+
++ C1E[|α∗
+AT −1 −α∗
+AT ||AT ]
+=
+E[C1
+AT (1 −γC1
+AT −1)(αT −1 −α∗
+AT −1)|AT ]
+ + C1C2γE[(αT −1 −α∗
+AT −1)2|AT ]
++ C1E[|α∗
+AT −1 −α∗
+AT ||AT ].
+The desired result follows by repeating this process inductively. Finally, the last part of the Lemma
+follows by sending T →∞and applying the result of Lemma A.3.
+□
+As a ﬁnal aside we remark that in the main text we claimed that in the ideal case where M(p|a) = p
+for all p ∈[0, 1] this bound can be replaced by
+|E[err1|A1 = a] −α| ≤2(γ + γ−1ϵ1).
+This can be justiﬁed by using the fact that in this case we have that for all p ∈[−γ, 1 + γ]
+M(p|a) −M(α∗
+a|a) = (p −α∗
+a) + C2
+p,a
+with |C2
+p,a| ≤γ. The desired result then follows by repeating the argument of Lemma A.4.
+24

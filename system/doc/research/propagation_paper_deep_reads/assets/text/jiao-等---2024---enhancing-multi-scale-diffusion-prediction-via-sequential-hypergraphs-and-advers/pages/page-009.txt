@@ -1,0 +1,163 @@
+u1
+u2
+u3
+u4
+u5
+u6
+u7
+u8
+dm
+u1
+u2
+u3
+u4
+u5
+u6
+u7
+u8
+em
+u1
+u2
+u3
+u4
+u5
+u6
+u7
+u8
+em
+u1
+u2
+u3
+u4
+u5
+u6
+u7
+u8
+em
+u1
+u2
+u3
+u4
+u5
+u6
+u7
+u8
+em
+GD1
+GD2
+GD3
+GD4
+Figure 5: Hyperedge em connects different nodes in sequential hypergraphs.
+Models
+Android
+Memetracker
+Hits@100
+MAP@100
+MSLE
+Hits@100
+MAP@100
+MSLE
+w/o AdvDiff
+0.2696
+0.0711
+0.467
+0.5609
+0.1605
+0.895
+w/o Diff
+0.2758
+0.0716
+0.265
+0.5747
+0.1614
+0.853
+w/o Adv
+0.2712
+0.0718
+0.369
+0.5771
+0.1634
+0.844
+w/o HGNN
+0.5871
+0.2013
+1.074
+0.3692
+0.1178
+0.581
+w/o Macro
+0.5580
+0.1874
+9.255
+0.3665
+0.1191
+4.669
+w/o Micro
+0.5871
+0.1937
+0.865
+0.3591
+0.1174
+0.711
+MINDS
+0.2766
+0.0727
+0.151
+0.5790
+0.1638
+0.506
+Table 6: Ablation study on Android and Memetracker datasets.
+Microscopic prediction models:
+TopoLSTM (Wang et al. 2017) extends the standard
+LSTM model to simulate the information diffusion process
+and combines it with the social network.
+NDM (Yang et al. 2021) applies CNN to learn the dif-
+fusion representation of users and utilizes self-attention to
+make diffusion predictions.
+SNIDSA (Wang, Chen, and Li 2018) explores diffusion
+paths and the social network to jointly learn heterogeneous
+information representations.
+Inf-VAE (Sankar et al. 2020) embeds social homophily
+through GNNs and designs a co-attentive fusion network to
+integrate social and temporal variables.
+DyHGCN (Yuan et al. 2020) jointly learns the structural
+characteristics of the social graph and dynamic diffusion
+graph, while encoding temporal information into a hetero-
+geneous graph to capture users’ dynamic preferences.
+TAN-DRUD (Liu et al. 2022) models information cas-
+cades by capturing the dual role user dependencies of infor-
+mation senders and receivers.
+Unified multi-scale prediction models:
+FOREST (Yang et al. 2019) incorporates macroscopic in-
+formation into an RNN-based microscopic diffusion model
+to simultaneously predict microscopic and macroscopic dif-
+fusion.
+DMT-LIC (Chen et al. 2019a) designs a shared-
+representation layer to capture both the underlying structure
+of a cascade graph and the node sequence in the diffusion
+process.
+Construction of Sequential Hypergraphs
+In the case that the cascade dm is divided into four parts
+based on the time periods, the nodes connected by the hy-
+peredge em in the hypergraph corresponding to each time
+period are visually represented in Figure 5.
+Supplementary Results to Ablation Study
+We observe that the ablation study across two datasets in Ta-
+ble 5 may be insufficient. For example, w/o AdvDiff shows
+the best, worst, and average performance on three metrics
+compared to w/o Adv and w/o Diff respectively. To ad-
+dress this concern, we conducted ablation experiments on
+the other two datasets. The result is shown in Table 6. The
+suboptimal results on the Christianity and Douban datasets
+could be due to their unique characteristics, such as sparse
+network connections leading to minimal feature overlap.
+Acknowledgements
+This work was supported in part by the Zhejiang Provin-
+cial Natural Science Foundation of China under Grant
+LDT23F01012F01 and Grant LDT23F01015F01, in part by
+the Fundamental Research Funds for the Provincial Uni-
+versities of Zhejiang Grant GK229909299001-008, in part
+by the National Natural Science Foundation of China under
+Grant 62372146, Grant 62071327 and Grant 61806061, and
+The Thirty-Eighth AAAI Conference on Artiﬁcial Intelligence (AAAI-24)
+8579

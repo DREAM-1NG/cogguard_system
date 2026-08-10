@@ -1,6 +1,6 @@
 # Chinese Account Detection Active Learning Loop
 
-Updated: 2026-08-05
+Updated: 2026-08-07
 
 ## Scope And Claim Boundary
 
@@ -27,14 +27,14 @@ acceptance.
 
 | Stage | Implemented boundary | Current status |
 | --- | --- | --- |
-| Case and labels | Account case fingerprints, label batches, evidence-bound labels, approval records, corpus-version records, and frozen-holdout records. | Code and schema migration exist. The label-service conversion to a fully append-only `supersedes_id` chain is still incomplete. |
+| Case and labels | Account case fingerprints, label batches, evidence-bound labels, approval records, corpus-version records, and frozen-holdout records. | The append-only `supersedes_id` revision chain, corpus-scope filtering, platform-scoped holdout membership, and holdout exclusion are implemented. The current deployment database contains no approved binary account labels. |
 | Cold-start acquisition | Local Chinese MLM ALPS surprisal vectors followed by Core-set k-center selection. | Implemented and fail-closed. A missing `ACCOUNT_ACQUISITION_TEXT_MODEL_PATH` prevents batch creation. |
 | Warm-start acquisition | Calibrated uncertainty with BotRHG classifier-gradient BADGE embeddings. | Implemented and fail-closed. Uncalibrated probability or missing BADGE payload prevents batch creation. |
-| DAPT | Chinese-text filtering, exact deduplication, 20% historical replay, local-only MLM training, and resumable checkpoints. | Implemented as a research runtime. It is not yet connected to a real Mongo corpus or a completed 500,000-token run. |
+| DAPT | Chinese-text filtering, exact deduplication, 20% historical replay, local-only MLM training, resumable checkpoints, and resolved precision provenance. | Connected to a registered three-platform Mongo corpus version containing 17,520 documents and 415,686 locally tokenized WordPieces. CUDA BF16 smoke and immutable encoder export pass; no 500,000-token full DAPT run has completed. |
 | Detector evaluation | Account/event/community-disjoint, time-forward, platform-stratified, and frozen-holdout protocol reports. | Implemented as a record-derived gate. No signed real-data report is available yet. |
 | Model artifact | `cogguard.account-model-bundle.v1` with encoder, detector, feature schema, calibration, metrics, data fingerprints, and per-file SHA-256 checks. | Implemented and tested for local integrity checks. No accepted deployable bundle has been produced. |
-| Training and activation | Persistent training-run records, Celery `account_training` entry points, candidate registration, Active Pointer lookup, and audited rollback boundary. | Initial implementation exists. Real migration, worker-loss recovery, shadow execution, activation, and rollback rehearsal remain open. |
-| Monitoring | Latency, calibration, coverage, abstention, false-positive load, PSI drift, and hard-error calculations. | Pure computation layer exists; persistence and monitoring-summary API are not complete. |
+| Training and activation | Persistent training-run records, Celery `account_training` and `account_evaluation` entry points, candidate registration, Active Pointer lookup, and audited rollback boundary. | Schema migration, dispatch recovery, worker-loss handling, and rollback policy are implemented. The only local pointer targets an invalid historical bootstrap bundle; real shadow execution, governed activation, and rollback rehearsal remain open. |
+| Monitoring | Latency, calibration, coverage, abstention, false-positive load, PSI drift, and hard-error calculations. | Immutable snapshot persistence, read API, scheduled monitoring, and bounded automatic rollback are implemented. They have not been exercised against a governed active model. |
 
 ## Closed Loop
 

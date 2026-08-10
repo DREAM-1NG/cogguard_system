@@ -7,6 +7,7 @@ import hashlib
 import json
 import sys
 import uuid
+from datetime import datetime
 from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Any
 
@@ -21,6 +22,7 @@ from app.models.account_labeling import (
     AccountFrozenHoldoutMembership,
     AccountTrainingExportMembership,
 )
+from app.core.account_labeling import account_scope_key
 from app.utils.exceptions import AppException
 
 __all__ = [
@@ -36,6 +38,7 @@ async def export_approved_account_dataset(
     session: AsyncSession,
     *,
     dataset_version_id: str | None = None,
+    corpus_version_id: str | None = None,
     output_dir: str | Path | None = None,
     operator_id: int,
 ) -> dict[str, Any]:
@@ -44,7 +47,15 @@ async def export_approved_account_dataset(
     version_id = dataset_version_id or f"account-dataset-{uuid.uuid4().hex[:12]}"
     target_dir = _resolve_account_dataset_output_dir(output_dir, version_id)
     chinese_corpus = _load_chinese_corpus_module()
-    rows = await _approved_label_rows(session, corpus_version_id=version_id)
+    holdout_exists = (
+        await session.execute(select(AccountFrozenHoldoutMembership.id).limit(1))
+    ).scalar_one_or_none()
+    if holdout_exists is not None and not str(corpus_version_id or "").strip():
+        raise AppException(
+            code=400,
+            msg="corpus_version_id is required when frozen holdout memberships exist.",
+        )
+    rows = await _approved_label_rows(session, corpus_version_id=str(corpus_version_id or "").strip())
     if not rows:
         raise AppException(
             code=400,
@@ -54,7 +65,8 @@ async def export_approved_account_dataset(
     records = [
         chinese_corpus.ApprovedAccountLabel(
             case_id=str(label.case_id),
-            account_id=str(case.account_id),
+            account_id=account_scope_key(case.platform, case.account_id),
+            source_account_id=str(case.account_id),
             platform=str(case.platform),
             event_id=str(case.event_id),
             text=str((case_payload.get("text") or "")),
@@ -63,6 +75,8 @@ async def export_approved_account_dataset(
             evidence_post_ids=_loads(label.evidence_post_ids_json, []),
             case_fingerprint=str(label.case_fingerprint or case.case_fingerprint),
             label_id=str(label.label_id),
+            observed_at=_governed_observed_at(case_payload),
+            community_id=_governed_community_id(case_payload),
             provenance={
                 "label_status": label.label_status,
                 "analyst_id": label.analyst_id,
@@ -102,6 +116,7 @@ async def export_approved_account_dataset(
                 "dataset_card_path": str(dataset_card_path),
                 "dataset_card_policy": "generated_datasheet_draft_requires_review_before_public_claims",
                 "frozen_holdout_policy": "cases in account_frozen_holdout_memberships are excluded from training export",
+                "corpus_version_id": str(corpus_version_id or "") or None,
             },
             ensure_ascii=False,
         ),
@@ -181,7 +196,17 @@ async def _approved_label_rows(
                 select(1).where(
                     AccountFrozenHoldoutMembership.corpus_version_id == corpus_version_id,
                     (
-                        (AccountFrozenHoldoutMembership.account_id == AccountDetectionCaseRecord.account_id)
+                        (
+                            AccountFrozenHoldoutMembership.account_id == AccountDetectionCaseRecord.account_id
+                        )
+                        & (
+                            AccountFrozenHoldoutMembership.platform == AccountDetectionCaseRecord.platform
+                        )
+                        |
+                        (
+                            AccountFrozenHoldoutMembership.platform.is_(None)
+                            & (AccountFrozenHoldoutMembership.case_id == AccountBehaviorLabelRecord.case_id)
+                        )
                         | (
                             AccountFrozenHoldoutMembership.account_id.is_(None)
                             & (AccountFrozenHoldoutMembership.case_id == AccountBehaviorLabelRecord.case_id)
@@ -220,6 +245,30 @@ def _loads(payload: str, fallback: Any) -> Any:
         return json.loads(payload)
     except json.JSONDecodeError:
         return fallback
+
+
+def _governed_observed_at(payload: dict[str, Any]) -> str | None:
+    """Return persisted case time only when its timezone is explicit."""
+
+    raw_value = payload.get("last_seen_at")
+    if raw_value is None or not str(raw_value).strip():
+        raw_value = payload.get("first_seen_at")
+    value = str(raw_value or "").strip()
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return value if parsed.tzinfo is not None and parsed.utcoffset() is not None else None
+
+
+def _governed_community_id(payload: dict[str, Any]) -> str | None:
+    value = payload.get("community_id")
+    if value is None or not str(value).strip():
+        value = payload.get("community")
+    normalized = str(value or "").strip()
+    return normalized or None
 
 
 def _canonical_digest(value: Any) -> str:

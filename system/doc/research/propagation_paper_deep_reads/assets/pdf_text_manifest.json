@@ -1,0 +1,1023 @@
+[
+  {
+    "file": "H:\\Zotero\\attenger\\Projects\\CISCN\\Propagation\\Gibbs和Candès - 2021 - Adaptive conformal inference under distribution shift.pdf",
+    "slug": "gibbs和candès---2021---adaptive-conformal-inference-under-distribution-shift",
+    "title_meta": "",
+    "author_meta": "",
+    "pages": 25,
+    "chars": 64445,
+    "toc": [
+      [
+        1,
+        "1 Introduction",
+        1
+      ],
+      [
+        2,
+        "1.1 Conformal inference",
+        2
+      ],
+      [
+        1,
+        "2 Adapting conformal inference to distribution shifts",
+        2
+      ],
+      [
+        2,
+        "2.1 Choosing the step size",
+        3
+      ],
+      [
+        2,
+        "2.2 Real data example: predicting market volatility",
+        4
+      ],
+      [
+        1,
+        "3 Related Work",
+        5
+      ],
+      [
+        1,
+        "4 Coverage guarantees",
+        6
+      ],
+      [
+        2,
+        "4.1 Distribution-free results",
+        6
+      ],
+      [
+        2,
+        "4.2 Performance in a hidden Markov model",
+        7
+      ],
+      [
+        3,
+        "4.2.1 Setting",
+        7
+      ],
+      [
+        3,
+        "4.2.2 Large deviation bound for the errors",
+        7
+      ],
+      [
+        3,
+        "4.2.3 Achieving approximate marginal coverage",
+        8
+      ],
+      [
+        1,
+        "5 Impact of St- .4 () on the performance",
+        8
+      ],
+      [
+        1,
+        "6 Real data example: election night predictions",
+        9
+      ],
+      [
+        1,
+        "7 Discussion",
+        10
+      ],
+      [
+        1,
+        "8 Acknowledgements",
+        11
+      ],
+      [
+        1,
+        "A Appendix",
+        14
+      ],
+      [
+        2,
+        "A.1 Connection to online learning",
+        14
+      ],
+      [
+        2,
+        "A.2 Stock prices",
+        14
+      ],
+      [
+        2,
+        "A.3 Trajectories of t- .4 ",
+        14
+      ],
+      [
+        2,
+        "A.4 Coverage for additional stocks",
+        16
+      ],
+      [
+        2,
+        "A.5 Existence of a stationary distribution for (t,At)- .4 ",
+        18
+      ],
+      [
+        2,
+        "A.6 Additional information for Section 6",
+        18
+      ],
+      [
+        3,
+        "A.6.1 Dataset description",
+        18
+      ],
+      [
+        3,
+        "A.6.2 Detailed prediction algorithm",
+        18
+      ],
+      [
+        2,
+        "A.7 Large deviation bounds for the error sequence",
+        18
+      ],
+      [
+        2,
+        "A.8 Approximate marginal coverage",
+        21
+      ],
+      [
+        2,
+        "A.9 Bounds on B- .4  and 2B- .4 ",
+        21
+      ],
+      [
+        2,
+        "A.10 Technical lemmas",
+        25
+      ]
+    ],
+    "page_summaries": [
+      {
+        "page": 1,
+        "chars": 3357,
+        "sample": "Adaptive Conformal Inference Under Distribution Shift Isaac Gibbs Department of Statistics Stanford University igibbs@stanford.edu Emmanuel J. Candès Department of Statistics Department of Mathematics Stanford University candes@stanford.edu Abstract We develop methods for forming prediction sets in an online setting where the data generating distribution is allowed to vary over time in an unknown fashion. Our framework builds on ideas from conformal inference to provide a general wrapper that ca"
+      },
+      {
+        "page": 2,
+        "chars": 3772,
+        "sample": "events. Alternatively, the distribution of (Xt, Yt) may change as we deploy our prediction model in new environments. This paper develops adaptive conformal inference (ACI), a method for forming prediction sets that are robust to changes in the marginal distribution of the data. Our approach is both simple, in that it requires only the tracking of a single parameter that models the shift, and general as it can be combined with any modern machine learning algorithm that produces point predictions"
+      },
+      {
+        "page": 3,
+        "chars": 3347,
+        "sample": "be regularly re-estimated to align with the most recent observations. Therefore, we assume that at each time t we are given a ﬁtted score function St(·) and corresponding quantile function ˆQt(·). We deﬁne the realized miscoverage rate of the prediction set ˆCt(α) := {y : St(Xt, y) ≤ˆQt(1 −α)} as Mt(α) := P(St(Xt, Yt) > ˆQt(1 −α)), where the probability is over the test point (Xt, Yt) as well as the data used to ﬁt St(·) and ˆQt(·). Now, since the distribution generating the data is non-stationa"
+      }
+    ],
+    "text_file": "G:\\CISCN\\CogGuard\\.worktrees\\refactor-system\\system\\doc\\research\\propagation_paper_deep_reads\\assets\\text\\gibbs和candès---2021---adaptive-conformal-inference-under-distribution-shift\\full_text.txt"
+  },
+  {
+    "file": "H:\\Zotero\\attenger\\Projects\\CISCN\\Propagation\\Guo 等 - 2025 - A survey of datasets for information diffusion tasks.pdf",
+    "slug": "guo-等---2025---a-survey-of-datasets-for-information-diffusion-tasks",
+    "title_meta": "A Survey of Datasets for Information Diffusion Tasks",
+    "author_meta": "Fuxia Guo; Xiaowen Wang; Yanwei Xie; Zehao Wang; Jingqiu Li; Lanjun Wang",
+    "pages": 15,
+    "chars": 96336,
+    "toc": [
+      [
+        1,
+        "Abstract",
+        1
+      ],
+      [
+        1,
+        "1 Introduction",
+        1
+      ],
+      [
+        1,
+        "2 Taxonomy",
+        2
+      ],
+      [
+        2,
+        "2.1 Taxonomy of information diffusion tasks",
+        2
+      ],
+      [
+        2,
+        "2.2 Taxonomy of information diffusion data attributes",
+        2
+      ],
+      [
+        1,
+        "3 Information diffusion prediction",
+        3
+      ],
+      [
+        2,
+        "3.1 Macroscopic information diffusion prediction",
+        3
+      ],
+      [
+        2,
+        "3.2 Microscopic information diffusion prediction",
+        5
+      ],
+      [
+        1,
+        "4 Social bot detection",
+        6
+      ],
+      [
+        2,
+        "4.1 Definition.",
+        6
+      ],
+      [
+        2,
+        "4.2 Datasets analysis.",
+        6
+      ],
+      [
+        2,
+        "4.3 Methodology.",
+        7
+      ],
+      [
+        1,
+        "5 Misinformation detection",
+        7
+      ],
+      [
+        2,
+        "5.1 Definition.",
+        7
+      ],
+      [
+        2,
+        "5.2 Datasets analysis.",
+        7
+      ],
+      [
+        2,
+        "5.3 Methodology.",
+        8
+      ],
+      [
+        1,
+        "6 Discussion",
+        8
+      ],
+      [
+        2,
+        "6.1 Limitations on datasets",
+        8
+      ],
+      [
+        2,
+        "6.2 Limitations on research topics",
+        8
+      ],
+      [
+        1,
+        "7 Conclusion",
+        8
+      ],
+      [
+        1,
+        "References",
+        9
+      ],
+      [
+        1,
+        "A Performance of the methodology",
+        13
+      ],
+      [
+        1,
+        "B Links of datasets",
+        13
+      ]
+    ],
+    "page_summaries": [
+      {
+        "page": 1,
+        "chars": 6238,
+        "sample": "arXiv:2407.05161v2 [cs.SI] 13 Jun 2025 A Survey of Datasets and Tasks for Information Diffusion Fuxia Guo, Xiaowen Wang, Yanwei Xie, Jingqiu Li, Zehao Wang, Lanjun Wang∗ Tianjin University Tianjin, China wanglanjun@tju.edu.cn Abstract Information diffusion across various new media platforms grad- ually influences the perceptions, decisions, and social behaviors of individual users. In information communication studies, the fa- mous Five W’s of Communication model (5W Model) has displayed the pro"
+      },
+      {
+        "page": 2,
+        "chars": 5593,
+        "sample": "Conference’17, July 2017, Washington, DC, USA Guo et al. their research object, review their sixty-five datasets summarized in Table 2, offer their SOTA methods to know the experimental procedure, and provide the URLs of datasets in Table 12 in Ap- pendix B. Finally, after collecting and analyzing the datasets, we discuss the limitations and propose future research directions in current datasets and information diffusion tasks. Therefore, the contributions of our study can be summarized as follo"
+      },
+      {
+        "page": 3,
+        "chars": 5882,
+        "sample": "A Survey of Datasets and Tasks for Information Diffusion Conference’17, July 2017, Washington, DC, USA traditional media’s linear paths, new media operates in a network pattern, where nodes represent users or content and edges de- note their relationships. Thus, we can organize user and content attributes based on these nodes and edge relations. From these per- spectives, six key attributes assess information diffusion data: user information, propagation content, bot label, veracity label, socia"
+      }
+    ],
+    "text_file": "G:\\CISCN\\CogGuard\\.worktrees\\refactor-system\\system\\doc\\research\\propagation_paper_deep_reads\\assets\\text\\guo-等---2025---a-survey-of-datasets-for-information-diffusion-tasks\\full_text.txt"
+  },
+  {
+    "file": "H:\\Zotero\\attenger\\Projects\\CISCN\\Propagation\\Huang 等 - 2023 - Temporal graph benchmark for machine learning on temporal graphs.pdf",
+    "slug": "huang-等---2023---temporal-graph-benchmark-for-machine-learning-on-temporal-graphs",
+    "title_meta": "",
+    "author_meta": "",
+    "pages": 18,
+    "chars": 70452,
+    "toc": [
+      [
+        1,
+        "Introduction",
+        1
+      ],
+      [
+        1,
+        "Related Work",
+        3
+      ],
+      [
+        1,
+        "Task Evaluation on Temporal Graphs",
+        4
+      ],
+      [
+        2,
+        "Dynamic Link Property Prediction",
+        4
+      ],
+      [
+        2,
+        "Dynamic Node Property Prediction",
+        5
+      ],
+      [
+        1,
+        "Datasets",
+        6
+      ],
+      [
+        1,
+        "Experiments",
+        7
+      ],
+      [
+        2,
+        "Dynamic Link Property Prediction",
+        8
+      ],
+      [
+        2,
+        "Dynamic Node Property Prediction",
+        9
+      ],
+      [
+        1,
+        "Conclusion",
+        10
+      ],
+      [
+        1,
+        "Dataset Documentation and Intended Use",
+        14
+      ],
+      [
+        1,
+        "Dataset Licenses and Download Links",
+        14
+      ],
+      [
+        1,
+        "Evaluation Settings in TG",
+        15
+      ],
+      [
+        1,
+        "Temporal Graph Learning Models",
+        15
+      ],
+      [
+        1,
+        "Computing Resources",
+        16
+      ],
+      [
+        1,
+        "GPU Usage Comparison",
+        17
+      ],
+      [
+        1,
+        "Additional Dataset Statistics",
+        17
+      ],
+      [
+        1,
+        "Number of Negative Samples",
+        17
+      ],
+      [
+        1,
+        "Transductive and Inductive Comparison",
+        18
+      ]
+    ],
+    "page_summaries": [
+      {
+        "page": 1,
+        "chars": 3169,
+        "sample": "Temporal Graph Benchmark for Machine Learning on Temporal Graphs Shenyang Huang1,2,∗ Farimah Poursafaei1,2,∗ Jacob Danovitch1,2 Matthias Fey3 Weihua Hu3 Emanuele Rossi4 Jure Leskovec7 Michael Bronstein8 Guillaume Rabusseau1,5,6 Reihaneh Rabbany1,2,6 1Mila - Quebec AI Institute, 2School of Computer Science, McGill University 3Kumo.AI, 4Imperial College London, 5DIRO, Université de Montréal 6CIFAR AI Chair, 7Stanford University, 8University of Oxford Abstract We present the Temporal Graph Benchmar"
+      },
+      {
+        "page": 2,
+        "chars": 4708,
+        "sample": "— meaning they appear to perform better than they would in real-world applications — due to the inherent limitations of commonly used evaluation protocols. This over-optimism creates serious challenges for researchers. It becomes increasingly difficult to distinguish between the strengths and weaknesses of various methods when their test results suggest similarly high performance. Furthermore, there is a discrepancy between real-world applications of TG methods and the existing evaluation protoc"
+      },
+      {
+        "page": 3,
+        "chars": 4063,
+        "sample": "TGB Datasets novel TG model TGB Dataloaders TGB Evaluators TGB Leaderboards Figure 2: Overview of the Temporal Graph Benchmark (TGB) pipeline: (a) TGB includes large-scale and realistic datasets from five different domains with both dynamic link prediction and node property prediction tasks. (b) TGB automatically downloads datasets and processes them into numpy, PyTorch and PyG compatible TemporalData formats. (c) Novel TG models can be easily evaluated on TGB datasets via reproducible and reali"
+      }
+    ],
+    "text_file": "G:\\CISCN\\CogGuard\\.worktrees\\refactor-system\\system\\doc\\research\\propagation_paper_deep_reads\\assets\\text\\huang-等---2023---temporal-graph-benchmark-for-machine-learning-on-temporal-graphs\\full_text.txt"
+  },
+  {
+    "file": "H:\\Zotero\\attenger\\Projects\\CISCN\\Propagation\\Jiao 等 - 2024 - Enhancing multi-scale diffusion prediction via sequential hypergraphs and adversarial learning.pdf",
+    "slug": "jiao-等---2024---enhancing-multi-scale-diffusion-prediction-via-sequential-hypergraphs-and-advers",
+    "title_meta": "Enhancing Multi-Scale Diffusion Prediction via Sequential Hypergraphs and Adversarial Learning",
+    "author_meta": "Pengfei Jiao, Hongqian Chen, Qing Bao, Wang Zhang, Huaming Wu",
+    "pages": 11,
+    "chars": 49138,
+    "toc": [],
+    "page_summaries": [
+      {
+        "page": 1,
+        "chars": 5034,
+        "sample": "Enhancing Multi-Scale Diffusion Prediction via Sequential Hypergraphs and Adversarial Learning Pengfei Jiao1, 4, Hongqian Chen1, Qing Bao1, Wang Zhang2, Huaming Wu3* 1School of Cyberspace, Hangzhou Dianzi University, China 2College of Intelligence and Computing, Tianjin University, China 3Center for Applied Mathematics, Tianjin University, China 4Data Security Governance Zhejiang Engineering Research Center, Hangzhou Dianzi University, China {pjiao, hqchen, qbao}@hdu.edu.cn, {wangzhang, whming}@"
+      },
+      {
+        "page": 2,
+        "chars": 6037,
+        "sample": "utilizes the outcomes of micro-prediction to guide macro- prediction, lacking a comprehensive recognition of the mu- tually reinforcing synergy inherent in these two tasks. Sim- ilarly, while DMT-LIC (Chen et al. 2019a) incorporates a shared representation layer to capture cascade graph repre- sentations and diffusion processes, it fails to address the is- sue of potential contamination and redundancy between the shared features and task-specific features. Moreover, both methods primarily concen"
+      },
+      {
+        "page": 3,
+        "chars": 3068,
+        "sample": "HGNN HGNN Fusion Layer Fusion Layer …… HGNN GCN LSTM Shared LSTM LSTM MLP MLP MLP MLP Macro Prediction Micro Prediction ? ? Ldiff Ldiff Ladv User Global Interactive Learning User Social Homophily Learning Shared-private Representation Learning Diﬀusion Prediction Social graph Diffusion hypergraph Diffusion sequence ? ? XD XS GD1 GD2 GDT Figure 2: The architectural overview of our model. …… …… …… Xl Yl Xl+1 Figure 3: The two stages of hypergraph convolution. where σ is an non-linear activation fu"
+      }
+    ],
+    "text_file": "G:\\CISCN\\CogGuard\\.worktrees\\refactor-system\\system\\doc\\research\\propagation_paper_deep_reads\\assets\\text\\jiao-等---2024---enhancing-multi-scale-diffusion-prediction-via-sequential-hypergraphs-and-advers\\full_text.txt"
+  },
+  {
+    "file": "H:\\Zotero\\attenger\\Projects\\CISCN\\Propagation\\Jing 等 - 2025 - CasFT future trend modeling for information popularity prediction with dynamic cues-driven diffusio.pdf",
+    "slug": "jing-等---2025---casft-future-trend-modeling-for-information-popularity-prediction-with-dynamic-c",
+    "title_meta": "CasFT: Future Trend Modeling for Information Popularity Prediction with Dynamic Cues-Driven Diffusion Models",
+    "author_meta": "Xin Jing, Yichen Jing, Yuhuan Lu, Bangchao Deng, Xueqin Chen, Dingqi Yang",
+    "pages": 9,
+    "chars": 41209,
+    "toc": [],
+    "page_summaries": [
+      {
+        "page": 1,
+        "chars": 4439,
+        "sample": "CasFT: Future Trend Modeling for Information Popularity Prediction with Dynamic Cues-Driven Diffusion Models Xin Jing1, Yichen Jing1, Yuhuan Lu1 Bangchao Deng1, Xueqin Chen2, Dingqi Yang1* 1The State Key Laboratory of Internet of Things for Smart City, University of Macau, China 2Kash Institute of Electronics and Information Industry {yc27431, mc35259, yc17462, yc37980, dingqiyang}@um.edu.mo, nedchen0728@gmail.com Abstract The rapid spread of diverse information on online social plat- forms has "
+      },
+      {
+        "page": 2,
+        "chars": 6255,
+        "sample": "variation in growth rates fluctuates significantly across both two datasets, highlighting different cascade incremental pat- terns, which contributes to the uncertainty in depicting fu- ture diffusion trends. Subsequently, achieving robust pop- ularity prediction necessitates accommodating such uncer- tainties by accounting for cascade evolution patterns after the observation period. Nevertheless, the actual dynamic changes in cascades during this period are invisible when performing real-time p"
+      },
+      {
+        "page": 3,
+        "chars": 4941,
+        "sample": "Cascade Graph: Given a tweet I and an observation time to, the cascade graph can be defined as G(to) = (Vc, Ec), where Vc represents the set of users involved in C(to), and Ec represents the set of edges, each denoting a retweet rela- tionship between two users (nodes). Cascade Sequence: Different from the cascade graph, the cascade sequence S(to) for cascade C(to) is a collection of users, each arranged in chronological order based on their timestamps, i.e., S(to) = {u0, u1, . . . , uN}. Global"
+      }
+    ],
+    "text_file": "G:\\CISCN\\CogGuard\\.worktrees\\refactor-system\\system\\doc\\research\\propagation_paper_deep_reads\\assets\\text\\jing-等---2025---casft-future-trend-modeling-for-information-popularity-prediction-with-dynamic-c\\full_text.txt"
+  },
+  {
+    "file": "H:\\Zotero\\attenger\\Projects\\CISCN\\Propagation\\Rossi 等 - 2020 - Temporal graph networks for deep learning on dynamic graphs.pdf",
+    "slug": "rossi-等---2020---temporal-graph-networks-for-deep-learning-on-dynamic-graphs",
+    "title_meta": "",
+    "author_meta": "",
+    "pages": 16,
+    "chars": 53958,
+    "toc": [
+      [
+        1,
+        "1 Introduction",
+        1
+      ],
+      [
+        1,
+        "2 Background",
+        2
+      ],
+      [
+        1,
+        "3 Temporal Graph Networks",
+        2
+      ],
+      [
+        2,
+        "3.1 Core modules",
+        2
+      ],
+      [
+        2,
+        "3.2 Training",
+        5
+      ],
+      [
+        1,
+        "4 Related Work",
+        6
+      ],
+      [
+        1,
+        "5 Experiments",
+        7
+      ],
+      [
+        2,
+        "5.1 Performance",
+        7
+      ],
+      [
+        2,
+        "5.2 Choice of Modules",
+        8
+      ],
+      [
+        1,
+        "6 Conclusion",
+        8
+      ],
+      [
+        1,
+        "A Appendix",
+        13
+      ],
+      [
+        2,
+        "A.1 Deletion Events",
+        13
+      ],
+      [
+        2,
+        "A.2 TGN Training",
+        14
+      ],
+      [
+        2,
+        "A.3 Datasets",
+        15
+      ],
+      [
+        2,
+        "A.4 Additional Experimental Settings and Results",
+        15
+      ],
+      [
+        3,
+        "A.4.1 Neighbor Sampling: Uniform vs Most Recent",
+        16
+      ]
+    ],
+    "page_summaries": [
+      {
+        "page": 1,
+        "chars": 3545,
+        "sample": "TEMPORAL GRAPH NETWORKS FOR DEEP LEARNING ON DYNAMIC GRAPHS Emanuele Rossi∗ Twitter Ben Chamberlain Twitter Fabrizio Frasca Twitter Davide Eynard Twitter Federico Monti Twitter Michael Bronstein Twitter ABSTRACT Graph Neural Networks (GNNs) have recently become increasingly popular due to their ability to learn complex systems of relations or interactions. These arise in a broad spectrum of problems ranging from biology and particle physics to social networks and recommendation systems. Despite "
+      },
+      {
+        "page": 2,
+        "chars": 4045,
+        "sample": "and evolving (i.e. new nodes join the graph continuously). Only recently, several approaches have been proposed that support the continuous-time scenario (Xu et al., 2020; Trivedi et al., 2019; Kumar et al., 2019; Ma et al., 2018; Nguyen et al., 2018; Bastas et al., 2019). Contributions. In this paper, we ﬁrst propose the generic inductive framework of Temporal Graph Networks (TGNs) operating on continuous-time dynamic graphs represented as a sequence of events, and show that many previous metho"
+      },
+      {
+        "page": 3,
+        "chars": 3139,
+        "sample": "1 2 2 3 Batch loss Messages (Updated) Memory Node Embeddings Edge Probabilities 1 2 3 4 6 5 Aggregated Messages Figure 1: Computations performed by TGN on a batch of time-stamped interactions. Top: embeddings are produced by the embedding module using the temporal graph and the node’s memory (1). The embeddings are then used to predict the batch interactions and compute the loss (2, 3). Bottom: these same interactions are used to update the memory (4, 5, 6). This is a simpliﬁed ﬂow of operations"
+      }
+    ],
+    "text_file": "G:\\CISCN\\CogGuard\\.worktrees\\refactor-system\\system\\doc\\research\\propagation_paper_deep_reads\\assets\\text\\rossi-等---2020---temporal-graph-networks-for-deep-learning-on-dynamic-graphs\\full_text.txt"
+  },
+  {
+    "file": "H:\\Zotero\\attenger\\Projects\\CISCN\\Propagation\\Souza 等 - 2022 - Provably expressive temporal graph networks.pdf",
+    "slug": "souza-等---2022---provably-expressive-temporal-graph-networks",
+    "title_meta": "",
+    "author_meta": "",
+    "pages": 13,
+    "chars": 51061,
+    "toc": [
+      [
+        1,
+        "Introduction",
+        1
+      ],
+      [
+        1,
+        "Preliminaries",
+        3
+      ],
+      [
+        1,
+        "The representational power and limits of TGNs",
+        4
+      ],
+      [
+        2,
+        "Distinguishing nodes with MP-TGNs",
+        4
+      ],
+      [
+        2,
+        "Predicting temporal links",
+        5
+      ],
+      [
+        2,
+        "Connections with the WL test",
+        5
+      ],
+      [
+        1,
+        "Position-encoding injective temporal graph net",
+        6
+      ],
+      [
+        1,
+        "Experiments",
+        8
+      ],
+      [
+        1,
+        "Conclusion",
+        10
+      ],
+      [
+        1,
+        "Further details on temporal graph networks",
+        1
+      ],
+      [
+        2,
+        "Temporal graph attention (TGAT)",
+        1
+      ],
+      [
+        2,
+        "Temporal graph networks with attention (TGN-Att)",
+        1
+      ],
+      [
+        2,
+        "Causal anonymous walks (CAW)",
+        1
+      ],
+      [
+        1,
+        "Proofs",
+        1
+      ],
+      [
+        2,
+        "Further definitions and Lemmata",
+        1
+      ],
+      [
+        2,
+        "Proof of Proposition 1: Relationship between DTDGs and CTDGs",
+        1
+      ],
+      [
+        2,
+        "Proof of Lemma 1",
+        1
+      ],
+      [
+        2,
+        "Proof of Proposition 2: MP-TGNs with injective message passing",
+        1
+      ],
+      [
+        2,
+        "Proof of Proposition 3: The role of memory",
+        1
+      ],
+      [
+        2,
+        "Proof of Proposition 4: Limitations of TGAT and TGN-Att",
+        1
+      ],
+      [
+        2,
+        "Proof of Proposition 5: Limitations of MP-TGN and CAWs",
+        1
+      ],
+      [
+        2,
+        "Proof of Proposition 6: Injective MP-TGNs and the temporal WL test",
+        1
+      ],
+      [
+        2,
+        "Proof of Proposition 7: MP-TGNs and CAWs fail to decide some graph properties",
+        1
+      ],
+      [
+        2,
+        "Proof of Lemma 2",
+        1
+      ],
+      [
+        2,
+        "Proof of Proposition 8: Injective function on temporal neighborhood",
+        1
+      ],
+      [
+        2,
+        "Proof of Proposition 9: Expressiveness of PINT: link prediction",
+        1
+      ],
+      [
+        1,
+        "Additional related works",
+        1
+      ],
+      [
+        1,
+        "Datasets and implementation details",
+        1
+      ],
+      [
+        2,
+        "Datasets",
+        1
+      ],
+      [
+        2,
+        "Implementation details",
+        1
+      ],
+      [
+        1,
+        "Deletion and node-level events",
+        1
+      ],
+      [
+        1,
+        "Additional experiments",
+        1
+      ]
+    ],
+    "page_summaries": [
+      {
+        "page": 1,
+        "chars": 3756,
+        "sample": "Provably expressive temporal graph networks Amauri H. Souza1, Diego Mesquita2, Samuel Kaski1,3, Vikas Garg1,4 1Aalto University 2Getulio Vargas Foundation 3University of Manchester 4YaiYai Ltd {amauri.souza, samuel.kaski}@aalto.fi, diego.mesquita@fgv.br, vgarg@csail.mit.edu Abstract Temporal graph networks (TGNs) have gained prominence as models for embed- ding dynamic interactions, but little is known about their theoretical underpinnings. We establish fundamental results about the representati"
+      },
+      {
+        "page": 2,
+        "chars": 3942,
+        "sample": "PINT CAW Injective MP-TGNs SOTA MP-TGNs Open problems Overview of the theoretical results Relationship between CTDGs and DTDGs Prop. 1 Injective MP-TGNs ⌫MP-TGNs Prop. 2 Sufﬁciently deep MP-TGNs do not need memory Prop. 3 SOTA MP-TGNs ≺Injective MP-TGNs Prop. 4 MP-TGNs 6≻WA-TGNs and WA-TGNs 6≻MP-TGNs Prop. 5 Injective MP-TGNs ⇠= temporal-WL test Prop. 6 MP-TGNs/CAWs cannot recognize graph properties Prop. 7 Constructing injective temporal MP Prop. 8 PINT (ours) ≻both MP-TGNs and WA-TGNs Prop. 9 "
+      },
+      {
+        "page": 3,
+        "chars": 4541,
+        "sample": "2 Preliminaries We denote a static graph G as a tuple (V, E, X, E), where V = {1, 2, . . . , n} denotes the set of nodes and E ✓V ⇥V the set of edges. Each node u 2 V has a feature vector xu 2 X and each edge (u, v) 2 E has a feature vector euv 2 E, where X and E are countable sets of features. Dynamic graphs can be roughly split according to their discrete- or continuous-time nature [14]. A discrete-time dynamic graph (DTDG) is of a sequence of graph snapshots (G1, G2, . . . ) usually sampled a"
+      }
+    ],
+    "text_file": "G:\\CISCN\\CogGuard\\.worktrees\\refactor-system\\system\\doc\\research\\propagation_paper_deep_reads\\assets\\text\\souza-等---2022---provably-expressive-temporal-graph-networks\\full_text.txt"
+  },
+  {
+    "file": "H:\\Zotero\\attenger\\Projects\\CISCN\\Propagation\\Wang 等 - 2022 - Inductive representation learning in temporal networks via causal anonymous walks.pdf",
+    "slug": "wang-等---2022---inductive-representation-learning-in-temporal-networks-via-causal-anonymous-walk",
+    "title_meta": "",
+    "author_meta": "",
+    "pages": 22,
+    "chars": 82319,
+    "toc": [
+      [
+        1,
+        "1 Introduction",
+        1
+      ],
+      [
+        1,
+        "2 Related Work",
+        3
+      ],
+      [
+        1,
+        "3 Problem Formulation and Notations",
+        4
+      ],
+      [
+        1,
+        "4 Proposed Method: Causal Anonymous Walk-Network",
+        4
+      ],
+      [
+        2,
+        "4.1 Preliminaries: Anonymous Walk and Temporal Network Motif",
+        4
+      ],
+      [
+        2,
+        "4.2 Causal Anonymous Walk",
+        5
+      ],
+      [
+        2,
+        "4.3 Neural Encoding for Causal Anonymous Walks",
+        5
+      ],
+      [
+        2,
+        "4.4 Extension and Discussion",
+        6
+      ],
+      [
+        1,
+        "5 experiments",
+        7
+      ],
+      [
+        2,
+        "5.1 Experimental Setup",
+        7
+      ],
+      [
+        2,
+        "5.2 Results and Discussion",
+        7
+      ],
+      [
+        2,
+        "5.3 Hyperparameter Investigation of CAW Sampling",
+        8
+      ],
+      [
+        2,
+        "5.4 Complexity Evaluation",
+        9
+      ],
+      [
+        1,
+        "6 Conclusion",
+        9
+      ],
+      [
+        1,
+        "A Efficient link Sampling",
+        14
+      ],
+      [
+        1,
+        "B Tree-structured sampling",
+        16
+      ],
+      [
+        1,
+        "C Additional Experimental Setup Details",
+        16
+      ],
+      [
+        2,
+        "C.1 Dataset Introduction and Access",
+        16
+      ],
+      [
+        2,
+        "C.2 Baselines, Implementation and Training Details",
+        17
+      ],
+      [
+        3,
+        "C.2.1 CAW-N-mean and CAW-N-attn",
+        17
+      ],
+      [
+        3,
+        "C.2.2 Baselines",
+        17
+      ],
+      [
+        2,
+        "C.3 Evaluation of Snapshot-based Baselines",
+        18
+      ],
+      [
+        2,
+        "C.4 Choice of Evaluation Metric",
+        19
+      ],
+      [
+        2,
+        "C.5 Computing Infrastructure",
+        19
+      ],
+      [
+        1,
+        "D Additional Experimental Results",
+        19
+      ],
+      [
+        2,
+        "D.1 Performance in Average Precision",
+        19
+      ],
+      [
+        2,
+        "D.2 More Discussion on Stream-based vs. Snapshot-based Methods",
+        19
+      ],
+      [
+        1,
+        "E Visualizing CAWs and AWs",
+        20
+      ],
+      [
+        1,
+        "F Comparison with the most recent work",
+        21
+      ],
+      [
+        1,
+        "G Notes on Updated Experimental Results (Oct 16, 2022)",
+        22
+      ]
+    ],
+    "page_summaries": [
+      {
+        "page": 1,
+        "chars": 4099,
+        "sample": "Published as a conference paper at ICLR 2021 INDUCTIVE REPRESENTATION LEARNING IN TEMPO- RAL NETWORKS VIA CAUSAL ANONYMOUS WALKS Yanbang Wang1∗, Yen-Yu Chang2, Yunyu Liu3, Jure Leskovec1, Pan Li1,3 1Department of Computer Science, 2Electrical Engineering, Stanford University 3Department of Computer Science, Purdue University {ywangdr,jure}@cs.stanford.edu,yenyu@stanford.edu {liu3154,panli}@purdue.edu ABSTRACT Temporal networks serve as abstractions of many real-world dynamic systems. These netwo"
+      },
+      {
+        "page": 2,
+        "chars": 4428,
+        "sample": "Published as a conference paper at ICLR 2021 𝑡3 𝑤 Triadic closure (𝑡1, 𝑡2 < 𝑡3) Law explanation: Two nodes that share a common node directly connected to them tend to be connected. u w v w 𝑢 𝑣 𝑤 𝑢 𝑣 𝑤 Feed-forward control (𝑡1 < 𝑡2 < 𝑡3) 𝑢 𝑣 𝑤 𝑢 𝑣 𝑡1 𝑡2 𝑡1 𝑡2 𝑡1 𝑡2 𝑡1 𝑡2 𝑡3 𝑡1 𝑡2 Law explanation: One node (w) activates another node first (u) and then activates a third node (v). Mostly the third node will inhibit the second node later. u w v w 𝑡1 𝑡2 CAWs extracted: CAWs extracted: , , Figure 1: Tr"
+      },
+      {
+        "page": 3,
+        "chars": 5353,
+        "sample": "Published as a conference paper at ICLR 2021 Experiments show that CAW-N is extremely effective. CAW-N does not need to enumerate the types of motifs and count their numbers that have been used as features to predict network dynamics (Lahiri & Berger-Wolf, 2007; Rahman & Al Hasan, 2016; Rossi et al., 2019; AbuOda et al., 2019; Li & Milenkovic, 2017), which signiﬁcantly saves feature-engineering effort. CAW-N also keeps all ﬁne-grained temporal information along the walks that may be removed by d"
+      }
+    ],
+    "text_file": "G:\\CISCN\\CogGuard\\.worktrees\\refactor-system\\system\\doc\\research\\propagation_paper_deep_reads\\assets\\text\\wang-等---2022---inductive-representation-learning-in-temporal-networks-via-causal-anonymous-walk\\full_text.txt"
+  },
+  {
+    "file": "H:\\Zotero\\attenger\\Projects\\CISCN\\Propagation\\Yu 等 - 2023 - Towards better dynamic graph learning new architecture and unified library.pdf",
+    "slug": "yu-等---2023---towards-better-dynamic-graph-learning-new-architecture-and-unified-library",
+    "title_meta": "",
+    "author_meta": "",
+    "pages": 15,
+    "chars": 63989,
+    "toc": [],
+    "page_summaries": [
+      {
+        "page": 1,
+        "chars": 3334,
+        "sample": "Towards Better Dynamic Graph Learning: New Architecture and Unified Library Le Yu, Leilei Sun∗, Bowen Du, Weifeng Lv State Key Laboratory of Software Development Environment School of Computer Science and Engineering Beihang University {yule,leileisun,dubowen,lwf}@buaa.edu.cn Abstract We propose DyGFormer, a new Transformer-based architecture for dynamic graph learning. DyGFormer is conceptually simple and only needs to learn from nodes’ historical first-hop interactions by: (i) a neighbor co-oc"
+      },
+      {
+        "page": 2,
+        "chars": 5018,
+        "sample": "due to the usage of recurrent neural networks [40, 57]. Therefore, we conclude that previous methods lack the ability to capture either nodes’ correlations or long-term temporal dependencies. Secondly, the training pipelines of different methods are inconsistent and often lead to poor re- producibility. Also, existing methods are implemented by diverse frameworks (e.g., Pytorch [41], Tensorflow [1], DGL [58], PyG [16], C++), making it time-consuming and difficult for researchers to quickly under"
+      },
+      {
+        "page": 3,
+        "chars": 4735,
+        "sample": "and time series forecasting [30, 73, 62]. The idea of dividing the original data into patches as inputs of the Transformer has been attempted in some studies. ViT [14] splits an image into multiple patches and feeds the sequence of patches’ linear embeddings into a Transformer, which achieves surprisingly good performance on image classification. PatchTST [38] divides a time series into subseries-level patches and calculates the patches by a channel-independent Transformer for long-term multivar"
+      }
+    ],
+    "text_file": "G:\\CISCN\\CogGuard\\.worktrees\\refactor-system\\system\\doc\\research\\propagation_paper_deep_reads\\assets\\text\\yu-等---2023---towards-better-dynamic-graph-learning-new-architecture-and-unified-library\\full_text.txt"
+  },
+  {
+    "file": "H:\\Zotero\\attenger\\Projects\\CISCN\\Propagation\\Zhou 等 - 2021 - A survey of information cascade analysis models, predictions, and recent advances.pdf",
+    "slug": "zhou-等---2021---a-survey-of-information-cascade-analysis-models--predictions--and-recent-advance",
+    "title_meta": "CSUR5402-27",
+    "author_meta": "",
+    "pages": 36,
+    "chars": 146379,
+    "toc": [],
+    "page_summaries": [
+      {
+        "page": 1,
+        "chars": 3755,
+        "sample": "27 A Survey of Information Cascade Analysis: Models, Predictions, and Recent Advances FAN ZHOU and XOVEE XU, University of Electronic Science and Technology of China, China GOCE TRAJCEVSKI, Iowa State University, USA KUNPENG ZHANG, University of Maryland, USA The deluge of digital information in our daily life—from user-generated content, such as microblogs and scien- tific papers, to online business, such as viral marketing and advertising—offers unprecedented opportunities to explore and explo"
+      },
+      {
+        "page": 2,
+        "chars": 4541,
+        "sample": "27:2 F. Zhou et al. about the population size that information can affect are challenging but critical necessities in many real-world application domains, e.g., viral marketing [115], advertising [89], scientific im- pact quantification [197], recommendation [211], campaign strategy [22], and epidemic preven- tion [245]. The trajectories and structures of information diffusion, as well as the adopters/participants in information spreading, form the so-called information cascades. Many researches"
+      },
+      {
+        "page": 3,
+        "chars": 3121,
+        "sample": "A Survey of Information Cascade Analysis: Models, Predictions, and Recent Advances 27:3 Fig. 1. Left: Number of publications over the last decade. Right: Distribution of venues of publications. In comparison with previous surveys, this article makes the following distinct contributions: (1) A more general perspective: We extend the realm of modeling online web content, e.g., user-generated content microblogs [63], to a general definition of information, i.e., any measurable entities that can be "
+      }
+    ],
+    "text_file": "G:\\CISCN\\CogGuard\\.worktrees\\refactor-system\\system\\doc\\research\\propagation_paper_deep_reads\\assets\\text\\zhou-等---2021---a-survey-of-information-cascade-analysis-models--predictions--and-recent-advance\\full_text.txt"
+  }
+]

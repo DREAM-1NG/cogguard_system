@@ -1,0 +1,73 @@
+Detection and Characterization of Coordinated Online Behavior: A Survey                                   31
+
+
+to both practical reasons related to the urgency of contrasting online manipulations, as well as to the large body of
+
+work that adopted Facebook’s initial Definition 2.3 of coordinated inauthentic behavior. Almost all the other remaining
+combinations involve harmful behavior and static analyses. Figure 10 also shows that authentic spontaneous and harmless
+coordinated behavior is completely unstudied. While harmful, inauthentic, and orchestrated behaviors are of particular
+
+practical relevance for content moderation purposes, the study of harmless, authentic, and spontaneous coordination
+
+should not be overlooked as it provides valuable insights into fundamental aspects of online human interactions.
+
+Therefore, the analysis of the less problematic forms of online coordination should be increased in the near future.
+   Multimodality. Online coordination can involve multiple content modalities, such as text, images, and videos. This
+diversity of content types adds complexity to detecting and analyzing coordinated behavior, as each modality has
+
+unique characteristics requiring different analytical techniques. For instance, text-based coordination might involve
+
+analyzing text similarities or hashtags use [28, 140, 142]. Image-based coordination could require image recognition
+
+tasks or computing image similarities [42, 103, 152], while video-based coordination demands techniques like video
+
+content analysis and transcript examination. As shown in Tables 2, 6, 7, 8 however, only a handful of works investigated
+
+modalities other than text [42, 83, 99, 103, 121, 152]. Accounting for and integrating different modalities offers the
+
+potential to capture a more comprehensive picture of coordinated behavior, but also poses new challenges. These
+
+include developing features and methodologies to assess similarities based on multimedia content and addressing
+
+the computational demands of multimodal analyses. Nonetheless, given the rising trend of online platforms centered
+
+around multimedia content, multimodal analyses appear promising and well motivated.
+
+   Generative AI The rise of generative AI presents both challenges and opportunities. One potential challenge is the
+increased difficulty in detecting coordinated actors that use such techniques to mask their activities. AI is already capable
+
+of producing human-like text with given properties, and increasingly also images, audio, and video [20]. Moreover, it
+
+has already been used to simulate authentic online human behaviors in such a way as to evade detection by existing
+
+systems [93]. Progress in generative AI could thus make it harder to detect future instances of coordinated behavior or
+
+to assess the authenticity of coordinated actors. However, it is still unknown what the effect of these techniques will
+
+be on the landscape of online coordination. At the same time, as discussed in Section 4.4, recent work has begun to
+
+explore LLM-driven agents to simulate coordinated behavior in controlled environments [101]. Looking ahead, these
+
+approaches could enable more realistic and scalable simulations, supporting the development and stress-testing of
+
+detection methods. However, the use of LLMs in this context is still in its early stages, and a systematic understanding
+
+of their capabilities and limitations for modeling coordinated behavior is currently lacking.
+
+   Scalability. Large-scale coordinated campaigns can involve tens of thousands of users and millions of interactions,
+posing significant computational challenges, especially for methods based on pairwise user similarities. As a result,
+
+some studies analyze only a small fraction of data—sometimes as little as 1% [30, 100]—limiting reliability. Future efforts
+
+should focus on increasing the scalability of current detection methods to handle the vast amounts of data generated
+by large-scale campaigns. Possible solutions to this issue can include the use of approximation algorithms to obtain
+near-accurate results with reduced computational complexity, or sampling techniques to select representative data
+subsets. Additionally, online algorithms can update results incrementally as new data arrives, while graph summarization
+techniques can condense large networks while preserving key structural properties.
+
+   Validation and formalization. As discussed in Section 4.4, current validation strategies only partially alleviate the lack
+of labeled data. The challenge of data availability is expected to intensify as access to platform data continues to decline
+
+in the post-API era [132]. Although some works leverage publicly available repositories to construct ground-truth
+
+                                                                                                         Manuscript submitted to ACM

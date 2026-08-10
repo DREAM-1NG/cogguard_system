@@ -1,0 +1,81 @@
+32                                                                                 Mannocci et al.
+
+
+datasets [18, 70, 81], these resources remain limited in scope, typically focusing on a single platform or a specific
+
+type of coordinated behavior. This restricts the ability of models to generalize across the diverse manifestations of
+
+coordination, such as those illustrated in Figure 5. At the same time, simulation-based solutions are still underexplored
+
+in the coordinated behavior literature [54, 86, 101]. As discussed in Section 2.3, the field lacks a unified and statistically
+
+grounded definition of coordinated behavior, which limits principled validation. A key challenge is to translate existing
+
+operational definitions into formal, testable frameworks, for instance through appropriate null models capturing baseline
+
+behavior. Such models would enable more robust and comparable assessments across datasets and domains. In this
+
+direction, theory-driven approaches offer a promising path, drawing from socio-psychological models of collective
+
+action [137] and the statistical physics of complex networks [2] to develop more general and interpretable frameworks.
+
+   Subjectivity. The existence of many indicators of harmfulness—reported in Table 9—is advantageous from a practical
+standpoint. However, this multitude of indicators reflects great variability in how harmfulness has been practically
+
+defined. More broadly, the subjective nature of harmfulness—discussed in Sections 2.4.3 and 2.5.2—presents several
+
+challenges to its assessment. The first of such challenges is the variability with which different stakeholders define
+
+what constitutes harmful behavior, which hinder reaching a consensus on definitions and indicators [31]. Additionally,
+
+perceptions of harmfulness are influenced by cultural and social norms, which differ across individuals, regions, and
+
+communities. Consequently, what is seen as harmful by some might not be perceived the same way by others. Finally,
+
+assessing harmfulness involves evaluating both the intent behind the actions and their impact. While the impact
+
+can sometimes be measured—as with misinformation that leads to real-world violence [141] or that reduces vaccine
+
+uptake [122]—the intent is often hidden or ambiguous, making it difficult to measure accurately. Given that a certain
+
+degree of subjectivity in the assessment of online coordination is inevitable and bound to persist, future works must
+
+prioritize transparency in defining and implementing it, favoring nuanced analyses based on multiple indicators.
+
+   Attribution. Detecting coordination, especially in cases where malicious actors aim to remain hidden, is already
+challenging. Attributing these instances to the responsible entities is even more difficult. Attribution does not merely
+
+involve identifying the accounts that take part in the coordination, but most importantly uncovering the entities behind
+
+them—such as movements, organizations, or states—and understanding their goals. Several obstacles hinder this process,
+
+including the anonymity afforded by online platforms and the sophisticated techniques used to obfuscate identities,
+
+activities, and intentions. Potential solutions include strengthening the collaboration with platforms, which have access
+
+to more data than what is publicly visible or available via APIs or scraping. Additionally, advanced forensic techniques
+
+and multidisciplinary approaches that combine technical, social, and behavioral analysis are essential. Despite these
+
+solutions, the task will remain daunting and require continuous research and experimentation.
+
+   Multidisciplinarity. The study of coordinated behavior is intrinsically multidisciplinary due to the complex interplay
+of technical, social, and regulatory factors involved. This multidisciplinary nature is evident in the diversity of the
+
+studies on the subject, which employ a wide array of methods from multiple scientific communities. For instance,
+
+computer scientists and complex systems scholars develop computational methods to detect instances of coordinated
+
+behavior [73, 128, 146]. Social scientists study the emergent behaviors and interactions that lead to massive online
+
+coordination [26, 62], while political scientists analyze the impact of coordinated campaigns on real-world events, such
+
+as elections [17, 100, 152]. The involvement of media and communication experts in understanding the dissemination
+
+of (mis)information further highlights the multidisciplinary scope [44, 121]. In this context, multidisciplinarity is both a
+
+challenge and an opportunity. Challenges arise from the need to coordinate efforts among various scientific communities
+
+and to organize and keep track of the extensive body of work on the subject—a task for which this survey aims to
+
+Manuscript submitted to ACM

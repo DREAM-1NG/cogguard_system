@@ -1,0 +1,63 @@
+Then we can get the hidden state, growth rate, and cumula-                   Dataset        Twitter   APS     Weibo
+tive popularity at an arbitrary time by the above equations,                 Cascades       86,764   207,685   119,313
+even after observation time.                                            Avg. popularity     94       51       240
+                                                              Number of cascades in two observation settings
+Future Trends Simulation with Diffusion Model:  We               Train(1d//3y0.5h)    7,308    18,511    21,463
+first divide the time between the observation and pre-               Val(1d/3y/0.5h)     1,566     3,967     4,599
+diction time  into  l uniform time  intervals, denoted as               Test(1d/3y/0.5h)    1,566     3,966     4,599
+{(to, ts1), ..., (tsi−1, tsi), ..., (tsl−1, tsl)}, where i ∈l. The               Train(2d/5y/1h)    10,983    32,102    29,908
+                                                                              Val(2d/5y/1h)     2,353     6,879     6,409
+start time is to and the end time tsl equals to tp. We aim to                                                                               Test(2d/5y/1h)     2,353     6,879     6,408
+model the incremental popularity in each time interval and
+define Y = (P1, P2, ..., Pl) as the sequential increase pro-                                                                      Table 1: Statistics of the three datasets.
+cess of popularity. yi represents the popularity during the
+time interval (ti−1, ti).                                                       where P and ˆP is the ground-truth and the predicted popu-
+  We compute the hidden state hto at the exact observa-                                                                                 larity, respectively. For the generative part, we minimize the
+tion time, and the dynamic cues {Λts1, . . . , Λtsl} by using                                                              following negative log-likelihood:
+Eq. (16) and (19), respectively. We then concatenate them
+together to form a new guide vector c. Conditioned on c, we                 M
+utilize the diffusion model to approximate the real distribu-                 L2 = − X log pθ(Y k0 |ck).            (24)
+tion of the incremental popularity sequence Y . Specifically,                          k=1
+we characterize the diffusion operation of Y as a Markov     To sum up, the final loss is defined as:
+process (Y 0, Y 1, ..., Y K) to model the potential changes of
+                                                   L = L1 + γL2,                 (25)incremental popularity over the prediction window, with T
+denoting the number of diffusion steps. In the forward pro-      where γ is a hyperparameter used to adjust the trade-off be-
+cess, Gaussian noise is added to Y 0 step by step until it is      tween two losses.
+corrupted into pure Gaussian noise, which is formulated as
+follows:                                                      Experiments
+    q(Y k|Y k−1) = N(Y k; p1 −βkY k−1, βkI).     (20)       In this section, we  first present our benchmark datasets
+                                                       and then evaluate our model CasFT1 against state-of-the-art
+During the reverse diffusion process, we iteratively recon-       baselines in information cascade popularity prediction task
+struct the incremental popularity sequence Y 0 for the fi-       to answer the following questions:
+nal prediction. Specifically, the denoising process does not      RQ1: Compared to state-of-the-art baselines, can our ap-
+only depend on the representation obtained in the previous      proach achieve a more accurate prediction of cascade popu-
+step but also on the significant cue c serving as a condition,       larity?
+which is formulated as follows:                          RQ2: What are the benefits of employing neural ODEs
+                  K                                    to model the growth rate? How much does it contribute to
+     pθ(Y 0:K|c) := p(Y K) Y pθ(Y k−1|Y k, c),     (21)      performance improvement?
+                                               RQ3: Why do we need diffusion models for enhancing                        k=1
+                                                                 the modeling of future trend dynamics? In contrast, how
+In our implementation, we adopt a fully connected layer to      does the utilization of simpler models capture this charac-
+parameterize the denoising process and use Denoising Dif-        teristic?
+fusion Implicit Models (DDIM) (Song, Meng, and Ermon      RQ4: What is the impact of the hyperparameters, includ-
+2020) to generate segmented popularity sequence Y .             ing the number of segmented periods, the choice of ODES-
+                                                                       olver, the hidden dimension, and the diffusion steps?
+Prediction & Optimization
+                                                      Datasets and PreprocessingPrediction. After obtaining both the hidden state hto at ob-
+servation time to and the generated segmented popularity    We conducted experiments on three real-world datasets,
+sequence Y 0, we concatenate and feed them into an MLP to      including  Twitter, APS (Shen  et  al.  2014), and  Sina
+make the final cascade popularity prediction:                 Weibo (Cao et al. 2017). The details of these datasets are
+                                                                as follows:
+                ˆP = Softplus(MLP([Y 0, hto]))          (22)                                                                             • Twitter: We collected tweets posted between March 1
+where the softplus activation function is to ensure the pre-        and April 15, 2022, constructing the cascades based on
+dicted popularity is positive.                                         the hashtag, where original tweets are posted between
+Optimization. The training objective of CasFT can be de-        March 1 and March 31.
+composed into a regression loss and a generative loss. As         • American Physical Society (APS): This dataset includes
+for the regression part, the loss function is defined as:               papers published in APS journals between 1893 and
+                                                              1997, where each paper and its citations form a citation
+        M                                                  cascade.          1
+    L1 = X (log2(P + 1) −log2( ˆP + 1)) 2,     (23)
+     M                                                         1https://github.com/UM-Data-Intelligence-Lab/CasFT            k=1
+
+
+                                                  11910

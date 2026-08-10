@@ -8,7 +8,7 @@ Create Date: 2026-08-06 20:00:00.000000
 from typing import Sequence, Union
 
 import sqlalchemy as sa
-from alembic import op
+from alembic import context, op
 
 
 revision: str = "a1e9c7d4b605"
@@ -18,17 +18,18 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    duplicates = op.get_bind().execute(
-        sa.text(
-            "SELECT evaluation_run_id FROM account_model_evaluation_runs "
-            "GROUP BY evaluation_run_id HAVING COUNT(*) > 1"
-        )
-    ).fetchall()
-    if duplicates:
-        raise RuntimeError(
-            "Cannot make evaluation_run_id globally unique while existing evaluation runs are reused; "
-            "remediate the conflicting evaluator evidence before retrying the migration."
-        )
+    if not context.is_offline_mode():
+        duplicates = op.get_bind().execute(
+            sa.text(
+                "SELECT evaluation_run_id FROM account_model_evaluation_runs "
+                "GROUP BY evaluation_run_id HAVING COUNT(*) > 1"
+            )
+        ).fetchall()
+        if duplicates:
+            raise RuntimeError(
+                "Cannot make evaluation_run_id globally unique while existing evaluation runs are reused; "
+                "remediate the conflicting evaluator evidence before retrying the migration."
+            )
     op.drop_constraint(
         "uq_account_model_evaluation_runs_identity",
         "account_model_evaluation_runs",

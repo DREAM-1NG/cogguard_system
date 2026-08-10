@@ -1,0 +1,152 @@
+matrix of self-looped GS. The initial homophily embedding
+matrix X0
+S ∈RN×d is randomly initialized from a normal
+distribution, and d is the dimension of embedding. We can
+obtain the final social homophily representation XS after
+several layers of GCN.
+Shared-private Representation Learning
+Graph-based
+representation
+learning
+captures
+the
+co-
+occurrence relationship of users at the user level and cascade
+level, however, it does not enable further analysis of context
+interactions within cascades. Therefore, due to the excellent
+performance of the LSTM in sequential tasks such as natural
+language processing, we apply two LSTM modules to learn
+the social and global context interactions within cascades,
+respectively.
+We hold the belief that there exists a hidden common fea-
+ture between the macro-prediction and the micro-prediction
+tasks, with the potential to enhance the performance of each
+task individually. Drawing inspiration from the principles of
+multi-task learning (Liu, Qiu, and Huang 2017), we propose
+a shared LSTM architecture aimed at capturing these shared
+characteristics between the two tasks. Furthermore, to tackle
+the issue of feature redundancy, we introduce a combination
+of adversarial training and orthogonality constraints.
+Private Representation Learning
+We utilize the LSTM
+to model the cascade diffusion process sequentially, where a
+hidden state is employed to capture the diffusion history.
+The update of each LSTM unit can be shortened as:
+ht = LSTM(ht−1, xt, θp),
+(5)
+where ht ∈Rd is the hidden state and xt ∈Rd is the input
+at the current time step. θp represents all the parameters in
+LSTM.
+Based on the defined LSTM, we can compute the repre-
+sentation of the context interaction for the user social ho-
+mophily XS and user global interaction matrix XD as fol-
+lows:
+hcas
+t
+= LSTM(hcas
+t−1, xd
+t , θcas)
+huser
+t
+= LSTM(huser
+t−1 , xs
+t, θuser),
+(6)
+where LSTM(., θ) is defined as Eq. 5.
+Thus, the task-specific embeddings are represented as
+Hcas ∈RN×d and Huser ∈RN×d.
+Shared Representation Learning
+Inspired by the gated
+mechanisms used in LSTM, we design a novel shared-
+LSTM, that takes XD and XS as the input. The detail of
+the module is described as follows:
+ft = σ(xD
+t−1Wf + xS
+t−1Uf + ht−1Vf + bf),
+it = σ(xD
+t−1Wi + xS
+t−1Ui + ht−1Vi + bi),
+ot = σ(xD
+t−1Wo + xS
+t−1Uo + ht−1Vo + bo),
+˜ct = tanh(xD
+t−1Wc + xS
+t−1Uc + ht−1Vc + bc),
+ct = ˜ct · it + ct−1 · ft,
+ht = ot · tanh ct,
+(7)
+where σ is the sigmoid function. W∗∈Rd×d, U∗∈Rd×d,
+V∗∈Rd×d and b∗∈Rd are trainable parameters. The input
+gate it controls the amount of new information added to the
+hidden state, while the forget gate ft regulates the amount
+of information discarded from the previous memory cells ct.
+Additionally, the output gate ot determines the amount of in-
+formation to be output in the hidden state ht. By integrating
+the forget gate, input gate, update memory unit, and output
+gate, the shared LSTM can effectively handle the intricate
+relationship between micro-features and macro-features.
+We finally obtain a comprehensive representation of
+shared features between the macro-prediction task and
+micro-prediction task from the shared LSTM, which is de-
+noted as Hshare ∈RN×d.
+Adversarial Training
+Although the shared-private LSTM
+is designed to learn the shared and task-specific features,
+there is no guarantee that shared features can not be pre-
+served in private feature space, or vice versa. Therefore, a
+simple principle can be applied to shared LSTM that a re-
+liable shared feature should primarily consist of common
+information without any task-specific information. Inspired
+by adversarial networks, we introduce adversarial training to
+solve this problem.
+A task discriminator is used to map the representation
+into a probability distribution, estimating which tasks the en-
+coded feature comes from.
+D(h, θD) = softmax(b + Uh),
+(8)
+where U ∈Rd×d is a learnable parameter and b ∈Rd is a
+bias.
+To prevent task-specific features from infiltrating the
+shared representation, we design a task adversarial loss, de-
+noted as Ladv. This loss function is employed to train the
+model in such a way that the shared features generated are
+not easily predictable by a classifier in terms of their corre-
+sponding tasks. Formally, the task adversarial loss, Ladv, is
+defined as follows:
+Ladv = min
+θshare max
+θD
+2
+X
+k=1
+N
+X
+n=1
+(log D(hk
+n)+log(1−D(hshare
+n
+))),
+(9)
+where θshare represents all the parameters in Shared-LSTM,
+and k denotes the task type (either macro or micro). The op-
+timization process involves a min-max framework, with the
+underlying concept being that the shared LSTM generates
+a representation to intentionally confuse the task discrimi-
+nator. As the training progresses, the shared feature extrac-
+tor and task discriminator gradually reach a point of con-
+vergence, beyond which achieving additional enhancements
+becomes challenging. As a result, the task discriminator be-
+comes progressively incapable of distinguishing among var-
+ious tasks. This convergence indicates the successful acqui-
+sition of shared feature generation by the feature extractor,
+resulting in shared features that exhibit indistinguishability
+across all tasks.
+Orthogonality Constraints
+It is worth noting that the
+above model has a potential disadvantage. The disadvantage
+is that task-invariant features can appear in both shared and
+private representations. To alleviate this drawback, we in-
+troduce orthogonality constraints, which penalize redundant
+latent representations and encourage the shared and private
+The Thirty-Eighth AAAI Conference on Artiﬁcial Intelligence (AAAI-24)
+8574

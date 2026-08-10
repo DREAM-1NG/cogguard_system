@@ -1,0 +1,130 @@
+with an identical bound on the left tail. Choosing λ = ϵ/2 gives the bound
+P
+ 
+1
+T
+T
+X
+t=1
+errt −E[errt|At]
+ > ϵ/2
+!
+≤2 exp(−Tϵ2/8).
+On the other hand, the second term in (10) can be bounded directly using Theorem A.1.
+□
+A.8
+Approximate marginal coverage
+In this section we prove Theorem 4.2.
+Proof:
+[Proof of Theorem 4.2] Our proof follows similar steps to those presented in previous works
+on stochastic gradient descent under distribution shift [9, 35]. First, note that
+(αt+1 −α∗
+At)2 = (αt −α∗
+At)2 + 2γ(α −errt)(αt −α∗
+At) + γ2(α −errt)2.
+Now recalling that M(α∗
+At|At) = α, we ﬁnd that
+−E[(α −errt)(αt −α∗
+At)] = E[E[(errt −α)(αt −α∗
+At)|At, αt]]
+= E[(M(αt|At) −M(α∗
+At|At))(αt −α∗
+At)]
+≥1
+LE[(M(αt|At) −M(α∗
+At|At))2]
+= 1
+LE[(M(αt|At) −α)2].
+Thus it follows that
+2γL−1
+T
+X
+t=1
+E[(M(αt|At) −α)2] ≤
+T
+X
+t=1
+E[(αt −α∗
+At)2 −(αt+1 −α∗
+At)2 + γ2(α −errt)2]
+≤
+T
+X
+t=1
+E[(αt+1 −α∗
+At+1)2 −(αt+1 −α∗
+At)2] + E[(α1 −α∗
+A1)2] + γ2T
+≤
+T
+X
+t=1
+E[2αt+1(α∗
+At −α∗
+At+1)] + (α∗
+AT +1)2 + E[(α1 −α∗
+A1)2] + γ2T
+≤
+T
+X
+t=1
+2(1 + γ)E[|α∗
+At+1 −α∗
+At|] + (α∗
+AT +1)2 + E[(α1 −α∗
+A1)2] + γ2T,
+where the last inequality follows from Lemma 4.1. So, re-arranging we get the inequality
+1
+T
+T
+X
+t=1
+E[(M(αt|At) −α)2]
+≤
+L
+2Tγ
+ T
+X
+t=1
+2(1 + γ)E[|α∗
+At+1 −α∗
+At|] + (α∗
+AT +1)2 + E[(α1 −α∗
+A1)2] + γ2T
+!
+.
+Finally, since {(At, αt)}t∈N is stationary we may let T →∞to get that
+E[(M(αt|At) −α)2] ≤L(1 + γ)
+γ
+E[|α∗
+At+1 −α∗
+At|] + Lγ
+2
+as claimed.
+□
+A.9
+Bounds on B and σ2
+B
+σ2
+B
+σ2
+B
+In this section we bound the constants B and σ2
+B appearing in the statement of Theorem 4.1. Let
+ϵ1 =
+sup
+k∈{0,1,2,... }
+sup
+a∈A
+E[|α∗
+AT −k −α∗
+AT −k−1||AT = a]
+and ϵ2 =
+sup
+k∈{0,1,2,... }
+sup
+a∈A
+E[(α∗
+AT −k −α∗
+AT −k−1)2|AT = a].
+21

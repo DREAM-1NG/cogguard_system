@@ -199,7 +199,7 @@ def test_account_model_examples_document_production_governance_gates():
     assert "ACCOUNT_MODEL_EVALUATION_HMAC_SECRET=" in production_example
     assert "ACCOUNT_MODEL_BOOTSTRAP_MODE=disabled" in production_example
     assert "ACCOUNT_MODEL_EVALUATION_HMAC_SECRET=" in local_example
-    assert "ACCOUNT_MODEL_BOOTSTRAP_MODE=local_legacy" in local_example
+    assert "ACCOUNT_MODEL_BOOTSTRAP_MODE=disabled" in local_example
     assert "ACCOUNT_MODEL_EVALUATION_HMAC_SECRET" in readme
     assert "ACCOUNT_MODEL_BOOTSTRAP_MODE=disabled" in readme
 

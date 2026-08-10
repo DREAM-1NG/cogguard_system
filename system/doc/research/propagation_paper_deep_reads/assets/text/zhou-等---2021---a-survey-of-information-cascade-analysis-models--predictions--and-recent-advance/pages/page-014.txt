@@ -1,0 +1,49 @@
+27:14
+F. Zhou et al.
+Other features of the cascade graph include node degree/eigenvector/closeness/betweenness
+centrality, authority/hub score, graph depth/density/diameter, structural diversity/virality, and
+various variants of the same such as mean, median, percentile, entropy, standard deviation, and so
+on. More examples can be found in the supplementary materials [249].
+3.2.2
+Global Graph. Apart from the cascade graph, which presents the local spread of infor-
+mation, many works studied global graphs [39, 60, 66, 147, 164], the definition of which depends
+on the application scenarios. For example, in social networks, the most common global graph is
+the follower/followee graph or friendship graph [83]. There also exist many other types of global
+graphs—e.g., [83] retrieved a sparse hidden friend graph from the dense follower/followee graph
+and [84] defined a co-participation graph from Digg comments. Based on the interactions between
+users (retweet, comment, like/dislike, etc.), from Twitter an interaction global graph can be con-
+structed, e.g., a global graph based on historical mentioning relationships between users [60, 61,
+121, 165, 222]. From APS, based on the interactions between authors (cite, collaborate, etc.), a citing
+global graph or collaborating global graph was constructed in Reference [49]. These interaction
+global graphs can be useful in various prediction tasks, especially when the explicit social graph is
+unavailable, and a suitable choice to represent the actual diffusion of information from historical
+behaviors [203].
+Definition 3.2 (Global Graph). A global graph Gд = (Vд, Eд) is a collection of Vд nodes and a set
+of Eд ⊆Vд × Vд edges representing the relationships between nodes, e.g., friends or collaborators.
+Based on this simple definition, other types of graph can be defined, e.g.: (i) a directed graph
+with edges indicating the direction from one to another, e.g., unilateral relationships such as fol-
+lower/followee in social networks; (ii) a weighted graph whose nodes or edges are associated with
+assigned weights, e.g., multiple times of interactions between users [225]; (iii) a heterogeneous
+graph whose nodes or edges have more than one type of attribute, e.g., a graph with authors, pa-
+pers, venues as nodes, and publish, cite, co-authorship as edges; (iv) an attributed graph whose nodes
+or edges have associated features, e.g., the metadata of information items, the texts of tweets, the
+titles/abstracts of papers, the embeddings of images, and so on.
+A global graph provides us a macro perspective to analyze how information disseminates to in-
+dividuals and to communities, and how information cascades grow their popularity in the context
+of their positions in the global graph. Compared to information diffusion in the cascade graph
+only—which shows the local spread patterns for one specific cascade—the global graph describes
+all the relationships between users and potential routes for diffusion. For example, in social net-
+working platforms, besides various external stimuli such as recommendations from the system,
+key words search from users, and so on, information items are primarily discovered and dissemi-
+nated through the users’ social networks [181].
+The left portion of Figure 9 shows an example of global graph, which is composed of the five
+largest cascades in the Weibo dataset. Nodes in the graph are individual users while edges represent
+the retweeting relationships between users. As it shows, a large number of users not only partic-
+ipate in one cascade but also act as bridges between separate cascades. The historical behaviors,
+personal preferences, and communities of users can further help us to identify the roles of users in
+the cascade graphs [191, 208]. A complete global graph can be very large, e.g., a retweeting global
+graph retrieved from Weibo has more than 6M nodes (users) and 15M edges (retweet actions),
+while the citing global graph retrieved from APS has 422K nodes (authors) and 54M edges (cite
+actions). It is noteworthy that nodes in cascade graph may not necessarily appear in the global
+graph. For example, in Twitter, a user can retweet posts from other users who are not her/his
+ACM Computing Surveys, Vol. 54, No. 2, Article 27. Publication date: March 2021.

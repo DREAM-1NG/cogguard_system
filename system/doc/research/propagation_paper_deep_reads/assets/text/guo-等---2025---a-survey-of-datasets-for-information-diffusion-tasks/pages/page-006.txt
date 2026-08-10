@@ -1,0 +1,130 @@
+Conference’17, July 2017, Washington, DC, USA
+Guo et al.
+based on their neighbors’ influence. So similarly, social influence
+prediction also needs the social network and diffusion network.
+3.2.1
+Definition. In the social influence prediction task, 𝜌-neighbors
+Γ𝜌
+𝑢𝑖= {𝑢𝑗|𝑑(𝑢𝑗,𝑢𝑖) ≤𝜌, 𝑗≠𝑖} of user 𝑢𝑖∈𝑈are required to rep-
+resent users whose shortest path distances from 𝑢𝑖in the social
+network 𝐺𝑆= {𝑉𝑈, 𝐸𝑆} are no more than 𝜌. User 𝑢𝑖is referred to
+as the ego user of these neighbors. 𝐴𝑡𝑢𝑖= {𝑎𝑡𝑢𝑗|𝑢𝑗∈Γ𝜌
+𝑢𝑖} is the set
+of action state labels 𝑎𝑡𝑢𝑗for the ego user 𝑢𝑖’s neighbors 𝑢𝑗at times-
+tamp 𝑡, where 𝑎𝑡𝑢∈{0, 1} indicates whether user 𝑢has performed a
+social action (1) or not (0) by timestamp𝑡. Additionally, the topology
+of the previously mentioned cascade sequence can be simplified by
+projecting it onto the time axis, denoted as 𝑐(𝑡𝑤) = {(𝑢𝑗,𝑡𝑗)}𝑗≤𝑤,
+where (𝑢𝑗,𝑡𝑗) indicates that user 𝑢𝑗joined the cascade at times-
+tamp 𝑡𝑗. The diffusion network 𝐺𝐷
+𝑖(𝑡𝑤) = {𝑉𝑃
+𝑖, 𝐸𝐷1
+𝑖
+} for the ego
+user 𝑢𝑖is constructed from the subgraph of 𝐺𝑆and is extended
+with the action state labels set 𝐴𝑡𝑤
+𝑢𝑖at the observed timestamp 𝑡𝑤.
+The set 𝑉𝑃
+𝑖
+= {𝑢𝑖, Γ𝜌
+𝑢𝑖} includes the ego user 𝑢𝑖and its 𝜌-neighbors
+Γ𝜌
+𝑢𝑖along with their 𝐴𝑡𝑢𝑖. In the next user prediction task, the dif-
+fusion network is formed by combining the interaction relations
+in 𝑐(𝑡𝑤) with the social topology in the social network 𝐺𝑆. There-
+fore, drawing from the symbol definitions provided above, next
+user prediction and social influence prediction can be defined as
+follows. Therefore, based on the symbol definitions provided, next
+user prediction and social influence prediction can be defined as
+follows.
+• Next user prediction: Given the user set 𝑈, the social network
+𝐺𝑆= {𝑉𝑈, 𝐸𝑆}, the diffusion network 𝐺𝐷(𝑡𝑤) = {𝑉𝑈, 𝐸𝐷1} of a
+post at observed time 𝑡𝑤and a current cascade 𝑐= {(𝑢1,𝑡1),
+. . . , (𝑢𝑝−1,𝑡𝑝−1)}, next user prediction aims to predict the next
+spreading user 𝑢𝑝∈𝑈at predicted timestamp 𝑡𝑝.
+• Social influence prediction: Given the user set 𝑈and the diffusion
+network 𝐺𝐷
+𝑖(𝑡𝑤) = {𝑉𝑃
+𝑖, 𝐸𝐷1
+𝑖
+} of the ego user 𝑢𝑖at the observed
+timestamp 𝑡𝑤, social influence prediction aims to predict the
+future action states 𝑎𝑡𝑝
+𝑢𝑖of 𝑢𝑖at predicted timestamp 𝑡𝑝≫𝑡𝑤.
+3.2.2
+Datasets analysis.
+• In Table 2, the source platforms contain social media, community
+Q&A websites and new websites in next user prediction, and
+social media and academic citation websites in social influence
+prediction. Community Q&A websites offer context around user
+queries and responses, which can reveal user interests and in-
+fluence future interactions. News websites, with their dynamic
+content and readership patterns, offer insights into how current
+events may drive user behavior.
+• The attributes of datasets for next user prediction are all char-
+acterized by the diffusion network, and the attributes for social
+influence prediction are all characterized by the social network
+and its derived diffusion network. These dual data capture both
+direct interactions and social influence patterns.
+3.2.3
+Methodology. We present a SOTA method for each subtask
+of microscopic information diffusion prediction, respectively. They
+briefly introduce their landmark algorithms.
+• Next user prediction: MCDAN[99] predicts next user in cascades
+using a multi-scale context-enhanced dynamic attention network.
+It integrates global relationships from social networks and his-
+torical cascades, capturing user preferences with a multi-scale
+sequential hypergraph attention module. Next, a contextual atten-
+tion enhancement module strengthens user interaction within
+cascades, while susceptibility labels are constructed based on
+user analysis. Table 6 presents the performance comparison be-
+tween MCDAN and baseline models on four datasets (Twitter-
+MSHGAT [62], Douban-ComSoc[63], Android [62], Christian-
+ity [62]), measured by Hits@K and Map@K for K = 10, 50, 100.
+• Social influence prediction: FedInf[30] introduces a federated
+learning framework for social influence prediction, addressing
+privacy concerns and enabling cross-organizational collabora-
+tion. It uses differential privacy during model aggregation, pro-
+jecting parameters into a lower-dimensional space to minimize
+noise. The whole framework consists of local training and global
+model updates. Table 7 presents the performance comparison
+between FedInf and baseline models across three datasets (OAG-
+DeepInf [29], Digg-DeepInf [29], Higgs Twitter [64]), measured
+by AUC, precision, recall, and F1.
+4
+Social bot detection
+The emergence of AI-driven social bots that manipulate public opin-
+ion necessitates effective detection mechanisms to distinguish them
+from human accounts. Social bot detection is a binary classification
+problem where the bot label 𝑦𝑈∈{0, 1} indicates a bot user (1) or
+a human user (0). Current social bot detection tasks are categorized
+into three types based on input data: user-based, content-based, and
+graph-based detection [17]. User-based bot detection extracts
+features from user profiles and numerical or categorical data, em-
+ploying traditional classifiers to identify bots [17]. Content-based
+bot detection analyzes post content using NLP techniques, such
+as word embedding and RNN, on users’ posts and descriptions [18].
+Graph-based bot detection examines the user relationship struc-
+ture within a social network 𝐺𝑆, applying network analysis tech-
+niques to differentiate between bots and humans [17].
+4.1
+Definition.
+In light of the symbol definitions provided in the previous sections,
+user-based, content-based and graph-based bot detection can be
+defined as follows, respectively.
+• User-based bot detection: Given the labeled user set 𝑈with user
+information, user-based bot detection aims to learn a classifier
+𝑓: 𝑓(𝑈) →𝑦𝑈that can detect a user’s bot label 𝑦𝑈.
+• Content-based bot detection: Given the labeled user set 𝑈with
+user information and the post set 𝑝with the post content, content-
+based bot detection aims to learn a classifier 𝑓: 𝑓(𝑈, 𝑃) →𝑦𝑈
+that can automatically detect the bot label 𝑦𝑈for a user 𝑢.
+• Graph-based bot detection: Given the labeled user set 𝑈with user
+information and the social network 𝐺𝑆= {𝑉𝑈, 𝐸𝑆}, graph-based
+bot detection aims to learn a classifier 𝑓: 𝑓(𝐺𝑆) →𝑦𝑈that can
+automatically detect the bot label 𝑦𝑈for a user 𝑢.
+4.2
+Datasets analysis.
+• In Table 2, these datasets are widely used and all originated
+from Twitter platform. Twitter is a global social media platform
+that enables users to post and read short messages known as

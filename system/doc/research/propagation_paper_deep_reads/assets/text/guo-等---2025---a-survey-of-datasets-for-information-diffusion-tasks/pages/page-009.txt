@@ -1,0 +1,152 @@
+A Survey of Datasets and Tasks for Information Diffusion
+Conference’17, July 2017, Washington, DC, USA
+network, bot labels, propagation content, diffusion network, and
+veracity labels. We further subdivide these main tasks into ten fine-
+grained subtasks, detailing their definitions, datasets analysis, and
+representative methods. Additionally, we highlight the limitations
+and future directions of current datasets and research topics in the
+field of information diffusion tasks. We anticipate that our survey
+will advance information diffusion research and provide valuable
+data support. Future research can address the limitations of our
+study by creating new datasets for information diffusion tasks and
+reviewing generative datasets produced by AI systems.
+References
+[1] Xueqin Chen, Fan Zhou, Kunpeng Zhang, Goce Trajcevski, Ting Zhong, and
+Fengli Zhang. 2019. Information Diffusion Prediction via Recurrent Cascades
+Convolution. In 2019 IEEE 35th International Conference on Data Engineering
+(ICDE). 770–781. doi:10.1109/ICDE.2019.00074
+[2] Shweta Mayor Sabharwal and Niyati Aggrawal. 2023. A Survey on Information
+Diffusion over Social Network with the Application on Stock Market and its
+Future Prospects. Wireless Personal Communications 130, 4 (2023), 2981–3007.
+doi:10.1007/s11277-023-10412-5
+[3] Chunyuan Yuan, Jiacheng Li, Wei Zhou, Yijun Lu, Xiaodan Zhang, and Songlin
+Hu. 2021. DyHGCN: A Dynamic Heterogeneous Graph Convolutional Network
+to Learn Users’ Dynamic Preferences for Information Diffusion Prediction. In
+Machine Learning and Knowledge Discovery in Databases, Frank Hutter, Kris-
+tian Kersting, Jefrey Lijffijt, and Isabel Valera (Eds.). Springer International
+Publishing, Cham, 347–363.
+[4] Shiming Hu Jinghong Xu and Tongtong Hong. 2022. Wangluo Chuanbo Gailun.
+Tsinghua University Press.
+[5] Jianhong Chen, Chaoqun Chen, Qinghua Song, Yifei Zhao, Longxin Deng,
+Raoqing Xie, and Shan Yang. 2021. Spread Mechanism and Control Strategies
+of Rumor Propagation Model Considering Rumor Refutation and Information
+Feedback in Emergency Management. Symmetry 13, 9 (2021). doi:10.3390/
+sym13091694
+[6] Mei Li, Xiang Wang, Kai Gao, and Shanshan Zhang. 2017. A Survey on Infor-
+mation Diffusion in Online Social Networks: Models and Methods. Information
+8, 4 (2017). doi:10.3390/info8040118
+[7] Huacheng Li, Chunhe Xia, Tianbo Wang, Sheng Wen, Chao Chen, and Yang
+Xiang. 2021. Capturing Dynamics of Information Diffusion in SNS: A Survey of
+Methodology and Techniques. ACM Comput. Surv. 55, 1, Article 22 (nov 2021),
+51 pages. doi:10.1145/3485273
+[8] Abdul Razaque, Syed Rizvi, Meer Jaro khan, Muder Almiani, and Amer Al
+Rahayfeh. 2022. State-of-art review of information diffusion models and their
+impact on social network vulnerabilities. Journal of King Saud University -
+Computer and Information Sciences 34, 1 (2022), 1275–1294. doi:10.1016/j.jksuci.
+2019.08.008
+[9] Zi-Ke Zhang, Chuang Liu, Xiu-Xiu Zhan, Xin Lu, Chu-Xu Zhang, and Yi-Cheng
+Zhang. 2016. Dynamics of information diffusion and its applications on complex
+networks. Physics Reports 651 (2016), 1–34. doi:10.1016/j.physrep.2016.07.002
+[10] Yanchao Liu, Pengzhou Zhang, Lei Shi, and Junpeng Gong. 2023. A Survey of
+Information Dissemination Model, Datasets, and Insight. Mathematics 11, 17
+(2023). doi:10.3390/math11173707
+[11] Syeda Nadia Firdaus, Chen Ding, and Alireza Sadeghian. 2018. Retweet: A
+popular information diffusion mechanism – A survey paper. Online Social
+Networks and Media 6 (2018), 26–40. doi:10.1016/j.osnem.2018.04.001
+[12] Fan Zhou, Xovee Xu, Goce Trajcevski, and Kunpeng Zhang. 2021. A Survey of
+Information Cascade Analysis: Models, Predictions, and Recent Advances. ACM
+Comput. Surv. 54, 2, Article 27 (March 2021), 36 pages. doi:10.1145/3433000
+[13] Alessandro Bondielli and Francesco Marcelloni. 2019. A survey on fake news
+and rumour detection techniques. Information Sciences 497 (2019), 38–55. doi:10.
+1016/j.ins.2019.05.035
+[14] Faramarz Farhangian, Rafael M.O. Cruz, and George D.C. Cavalcanti. 2024. Fake
+news detection: Taxonomy and comparative study. Information Fusion 103
+(2024), 102140. doi:10.1016/j.inffus.2023.102140
+[15] Harold D Lasswell. 1948. The structure and function of communication in
+society. The communication of ideas 37, 1 (1948), 136–139.
+[16] Kadhim Hayawi, Sujith Mathew, Neethu Venugopal, Mohammad M Masud, and
+Pin-Han Ho. 2022. DeeProBot: a hybrid deep neural network model for social
+bot detection based on user profile data. Social Network Analysis and Mining 12,
+1 (2022), 43. doi:10.1007/s13278-022-00869-w
+[17] Shangbin Feng, Zhaoxuan Tan, Herun Wan, Ningnan Wang, Zilong Chen,
+Binchi Zhang, Qinghua Zheng, Wenqian Zhang, Zhenyu Lei, Shujie Yang, Xin-
+shun Feng, Qingyue Zhang, Hongrui Wang, Yuhan Liu, Yuyang Bai, Heng
+Wang, Zijian Cai, Yanbo Wang, Lijing Zheng, Zihan Ma, Jundong Li, and Min-
+nan Luo. 2022. TwiBot-22: Towards Graph-Based Twitter Bot Detection. In
+Advances in Neural Information Processing Systems, S. Koyejo, S. Mohamed,
+A. Agarwal, D. Belgrave, K. Cho, and A. Oh (Eds.), Vol. 35. Curran Associates,
+Inc., 35254–35269. https://proceedings.neurips.cc/paper_files/paper/2022/file/
+e4fd610b1d77699a02df07ae97de992a-Paper-Datasets_and_Benchmarks.pdf
+[18] Feng Wei and Uyen Trang Nguyen. 2019. Twitter Bot Detection Using Bidirec-
+tional Long Short-Term Memory Neural Networks and Word Embeddings. In
+2019 First IEEE International Conference on Trust, Privacy and Security in Intelli-
+gent Systems and Applications (TPS-ISA). IEEE, Los Angeles, CA, USA, 101–109.
+doi:10.1109/TPS-ISA48467.2019.00021
+[19] Sneha Kudugunta and Emilio Ferrara. 2018. Deep neural networks for bot
+detection. Information Sciences 467 (2018), 312–322. doi:10.1016/j.ins.2018.08.019
+[20] Lanjun Wang, Xinran Qiao, Yanwei Xie, Weizhi Nie, Yongdong Zhang, and
+Anan Liu. 2023.
+My Brother Helps Me: Node Injection Based Adversar-
+ial Attack on Social Bot Detection. In Proceedings of the 31st ACM Interna-
+tional Conference on Multimedia (<conf-loc>, <city>Ottawa ON</city>, <coun-
+try>Canada</country>, </conf-loc>) (MM ’23). Association for Computing Ma-
+chinery, New York, NY, USA, 6705–6714. doi:10.1145/3581783.3612396
+[21] Kai Shu, Amy Sliva, Suhang Wang, Jiliang Tang, and Huan Liu. 2017. Fake News
+Detection on Social Media: A Data Mining Perspective. SIGKDD Explor. Newsl.
+19, 1 (Sept. 2017), 22–36. doi:10.1145/3137597.3137600
+[22] Jingqiu Li, Lanjun Wang, Jianlin He, Yongdong Zhang, and Anan Liu. 2023.
+Improving Rumor Detection by Class-based Adversarial Domain Adaptation.
+In Proceedings of the 31st ACM International Conference on Multimedia (Ottawa
+ON, Canada) (MM ’23). Association for Computing Machinery, New York, NY,
+USA, 6634–6642. doi:10.1145/3581783.3612501
+[23] Chang Yang, Xia Yu, JiaYi Wu, BoZhen Zhang, and HaiBo Yang. 2024. Graph-
+aware multi-feature interacting network for explainable rumor detection on
+social network. Expert Systems with Applications 249 (2024), 123687. doi:10.
+1016/j.eswa.2024.123687
+[24] Beizhe Hu, Qiang Sheng, Juan Cao, Yuhui Shi, Yang Li, Danding Wang, and
+Peng Qi. 2024. Bad Actor, Good Advisor: Exploring the Role of Large Language
+Models in Fake News Detection. Proceedings of the AAAI Conference on Artificial
+Intelligence 38, 20 (Mar. 2024), 22105–22113. doi:10.1609/aaai.v38i20.30214
+[25] Cheng Yang, Jian Tang, Maosong Sun, Ganqu Cui, and Zhiyuan Liu. 2019. Multi-
+scale Information Diffusion Prediction with Reinforced Recurrent Networks.
+In Proceedings of the Twenty-Eighth International Joint Conference on Artificial
+Intelligence, IJCAI-19. International Joint Conferences on Artificial Intelligence
+Organization, 4033–4039. doi:10.24963/ijcai.2019/560
+[26] Xovee Xu, Fan Zhou, Kunpeng Zhang, Siyuan Liu, and Goce Trajcevski. 2023.
+CasFlow: Exploring Hierarchical Structures and Propagation Uncertainty for
+Cascade Prediction. IEEE Transactions on Knowledge and Data Engineering 35, 4
+(April 2023), 3484–3499. doi:10.1109/TKDE.2021.3126475
+[27] Jia Wang, Vincent W. Zheng, Zemin Liu, and Kevin Chen-Chuan Chang. 2017.
+Topological Recurrent Neural Network for Diffusion Prediction. In 2017 IEEE
+International Conference on Data Mining (ICDM). 475–484. doi:10.1109/ICDM.
+2017.57
+[28] Chunyuan Yuan, Jiacheng Li, Wei Zhou, Yijun Lu, Xiaodan Zhang, and Songlin
+Hu. 2021. DyHGCN: A Dynamic Heterogeneous Graph Convolutional Network
+to Learn Users’ Dynamic Preferences for Information Diffusion Prediction. In
+Machine Learning and Knowledge Discovery in Databases, Frank Hutter, Kris-
+tian Kersting, Jefrey Lijffijt, and Isabel Valera (Eds.). Springer International
+Publishing, Cham, 347–363.
+[29] Jiezhong Qiu, Jian Tang, Hao Ma, Yuxiao Dong, Kuansan Wang, and Jie Tang.
+2018. DeepInf: Social Influence Prediction with Deep Learning. In Proceedings
+of the 24th ACM SIGKDD International Conference on Knowledge Discovery &
+Data Mining (KDD ’18). Association for Computing Machinery, New York, NY,
+USA, 2110–2119. doi:10.1145/3219819.3220077
+[30] Lei Song, Hongbin Wang, Guoyin Zhang, and Shui Yu. 2023. FedInf: Social
+influence prediction with federated learning. Neurocomputing 548 (2023), 126407.
+doi:10.1016/j.neucom.2023.126407
+[31] Xinran Qiao, Lanjun Wang, Xiaowen Wang, Mengxiao Zhu, Bo Hu, Yongdong
+Zhang, and A.-A. Liu. 2024. Rumor propagation model with neutral state.
+International Journal of Modern Physics C 35, 03 (2024), 2450028. doi:10.1142/
+S0129183124500281
+[32] Bo Wu, Wen-Huang Cheng, Peiye Liu, Bei Liu, Zhaoyang Zeng, and Jiebo Luo.
+2019. SMP Challenge: An Overview of Social Media Prediction Challenge 2019.
+In Proceedings of the 27th ACM International Conference on Multimedia (Nice,
+France) (MM ’19). Association for Computing Machinery, New York, NY, USA,
+2667–2671. doi:10.1145/3343031.3356084
+[33] Syed Muhammad Raza Abidi, Yonglin Xu, Jianyue Ni, Xiangmeng Wang, and
+Wu Zhang. 2020. Popularity Prediction of Movies: From Statistical Modeling to
+Machine Learning Techniques. Multimedia Tools and Applications 79, 47 (Dec.
+2020), 35583–35617. doi:10.1007/s11042-019-08546-5
+[34] Jingyuan Chen, Xuemeng Song, Liqiang Nie, Xiang Wang, Hanwang Zhang,
+and Tat-Seng Chua. 2016. Micro Tells Macro: Predicting the Popularity of Micro-
+Videos via a Transductive Model. In Proceedings of the 24th ACM International

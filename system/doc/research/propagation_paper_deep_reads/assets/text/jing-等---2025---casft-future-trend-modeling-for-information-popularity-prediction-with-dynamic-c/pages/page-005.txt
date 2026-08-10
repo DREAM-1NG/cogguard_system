@@ -1,0 +1,152 @@
+Then we can get the hidden state, growth rate, and cumula-
+tive popularity at an arbitrary time by the above equations,
+even after observation time.
+Future Trends Simulation with Diffusion Model:
+We
+first divide the time between the observation and pre-
+diction time into l uniform time intervals, denoted as
+{(to, ts1), ..., (tsi−1, tsi), ..., (tsl−1, tsl)}, where i ∈l. The
+start time is to and the end time tsl equals to tp. We aim to
+model the incremental popularity in each time interval and
+define Y = (P1, P2, ..., Pl) as the sequential increase pro-
+cess of popularity. yi represents the popularity during the
+time interval (ti−1, ti).
+We compute the hidden state hto at the exact observa-
+tion time, and the dynamic cues {Λts1, . . . , Λtsl} by using
+Eq. (16) and (19), respectively. We then concatenate them
+together to form a new guide vector c. Conditioned on c, we
+utilize the diffusion model to approximate the real distribu-
+tion of the incremental popularity sequence Y . Specifically,
+we characterize the diffusion operation of Y as a Markov
+process (Y 0, Y 1, ..., Y K) to model the potential changes of
+incremental popularity over the prediction window, with T
+denoting the number of diffusion steps. In the forward pro-
+cess, Gaussian noise is added to Y 0 step by step until it is
+corrupted into pure Gaussian noise, which is formulated as
+follows:
+q(Y k|Y k−1) = N(Y k;
+p
+1 −βkY k−1, βkI).
+(20)
+During the reverse diffusion process, we iteratively recon-
+struct the incremental popularity sequence Y 0 for the fi-
+nal prediction. Specifically, the denoising process does not
+only depend on the representation obtained in the previous
+step but also on the significant cue c serving as a condition,
+which is formulated as follows:
+pθ(Y 0:K|c) := p(Y K)
+K
+Y
+k=1
+pθ(Y k−1|Y k, c),
+(21)
+In our implementation, we adopt a fully connected layer to
+parameterize the denoising process and use Denoising Dif-
+fusion Implicit Models (DDIM) (Song, Meng, and Ermon
+2020) to generate segmented popularity sequence Y .
+Prediction & Optimization
+Prediction. After obtaining both the hidden state hto at ob-
+servation time to and the generated segmented popularity
+sequence Y 0, we concatenate and feed them into an MLP to
+make the final cascade popularity prediction:
+ˆP = Softplus(MLP([Y 0, hto]))
+(22)
+where the softplus activation function is to ensure the pre-
+dicted popularity is positive.
+Optimization. The training objective of CasFT can be de-
+composed into a regression loss and a generative loss. As
+for the regression part, the loss function is defined as:
+L1 = 1
+M
+M
+X
+k=1
+(log2(P + 1) −log2( ˆP + 1))
+2,
+(23)
+Dataset
+Twitter
+APS
+Weibo
+Cascades
+86,764
+207,685
+119,313
+Avg. popularity
+94
+51
+240
+Number of cascades in two observation settings
+Train(1d//3y0.5h)
+7,308
+18,511
+21,463
+Val(1d/3y/0.5h)
+1,566
+3,967
+4,599
+Test(1d/3y/0.5h)
+1,566
+3,966
+4,599
+Train(2d/5y/1h)
+10,983
+32,102
+29,908
+Val(2d/5y/1h)
+2,353
+6,879
+6,409
+Test(2d/5y/1h)
+2,353
+6,879
+6,408
+Table 1: Statistics of the three datasets.
+where P and ˆP is the ground-truth and the predicted popu-
+larity, respectively. For the generative part, we minimize the
+following negative log-likelihood:
+L2 = −
+M
+X
+k=1
+log pθ(Y 0
+k |ck).
+(24)
+To sum up, the final loss is defined as:
+L = L1 + γL2,
+(25)
+where γ is a hyperparameter used to adjust the trade-off be-
+tween two losses.
+Experiments
+In this section, we first present our benchmark datasets
+and then evaluate our model CasFT1 against state-of-the-art
+baselines in information cascade popularity prediction task
+to answer the following questions:
+RQ1: Compared to state-of-the-art baselines, can our ap-
+proach achieve a more accurate prediction of cascade popu-
+larity?
+RQ2: What are the benefits of employing neural ODEs
+to model the growth rate? How much does it contribute to
+performance improvement?
+RQ3: Why do we need diffusion models for enhancing
+the modeling of future trend dynamics? In contrast, how
+does the utilization of simpler models capture this charac-
+teristic?
+RQ4: What is the impact of the hyperparameters, includ-
+ing the number of segmented periods, the choice of ODES-
+olver, the hidden dimension, and the diffusion steps?
+Datasets and Preprocessing
+We conducted experiments on three real-world datasets,
+including Twitter, APS (Shen et al. 2014), and Sina
+Weibo (Cao et al. 2017). The details of these datasets are
+as follows:
+• Twitter: We collected tweets posted between March 1
+and April 15, 2022, constructing the cascades based on
+the hashtag, where original tweets are posted between
+March 1 and March 31.
+• American Physical Society (APS): This dataset includes
+papers published in APS journals between 1893 and
+1997, where each paper and its citations form a citation
+cascade.
+1https://github.com/UM-Data-Intelligence-Lab/CasFT
+11910

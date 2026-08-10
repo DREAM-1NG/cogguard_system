@@ -1,0 +1,1306 @@
+{
+  "schema_version": 2,
+  "generated_at": "2026-08-10T06:27:31.342066+00:00",
+  "source_pdf": "H:\\Zotero\\attenger\\Projects\\CISCN\\Propagation\\Huang 等 - 2023 - Temporal graph benchmark for machine learning on temporal graphs.pdf",
+  "source_sha256": "0db6678701b4c64dc97e464708f46c4190df5202c2aa0d85b2814d109d2cf039",
+  "page_count": 18,
+  "render_dpi": 180,
+  "selected_pages": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18
+  ],
+  "analysis_mode": "text-only",
+  "text_layer_available": true,
+  "text_layer_characters": 77425,
+  "automatic_crops_are_unverified": true,
+  "pages": [
+    {
+      "page": 1,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-001.txt",
+      "text_characters": 3439,
+      "caption_count": 0
+    },
+    {
+      "page": 2,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-002.txt",
+      "text_characters": 5522,
+      "caption_count": 1
+    },
+    {
+      "page": 3,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-003.txt",
+      "text_characters": 4341,
+      "caption_count": 1
+    },
+    {
+      "page": 4,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-004.txt",
+      "text_characters": 4813,
+      "caption_count": 0
+    },
+    {
+      "page": 5,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-005.txt",
+      "text_characters": 4261,
+      "caption_count": 1
+    },
+    {
+      "page": 6,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-006.txt",
+      "text_characters": 4725,
+      "caption_count": 2
+    },
+    {
+      "page": 7,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-007.txt",
+      "text_characters": 4772,
+      "caption_count": 0
+    },
+    {
+      "page": 8,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-008.txt",
+      "text_characters": 4389,
+      "caption_count": 3
+    },
+    {
+      "page": 9,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-009.txt",
+      "text_characters": 4738,
+      "caption_count": 5
+    },
+    {
+      "page": 10,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-010.txt",
+      "text_characters": 5178,
+      "caption_count": 2
+    },
+    {
+      "page": 11,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-011.txt",
+      "text_characters": 3481,
+      "caption_count": 0
+    },
+    {
+      "page": 12,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-012.txt",
+      "text_characters": 3851,
+      "caption_count": 0
+    },
+    {
+      "page": 13,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-013.txt",
+      "text_characters": 3723,
+      "caption_count": 0
+    },
+    {
+      "page": 14,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-014.txt",
+      "text_characters": 4003,
+      "caption_count": 0
+    },
+    {
+      "page": 15,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-015.txt",
+      "text_characters": 4749,
+      "caption_count": 0
+    },
+    {
+      "page": 16,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-016.txt",
+      "text_characters": 4163,
+      "caption_count": 0
+    },
+    {
+      "page": 17,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-017.txt",
+      "text_characters": 3754,
+      "caption_count": 2
+    },
+    {
+      "page": 18,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-018.txt",
+      "text_characters": 3523,
+      "caption_count": 2
+    }
+  ],
+  "visuals": [
+    {
+      "id": "figure-1-p002",
+      "label": "Figure 1",
+      "kind": "figure",
+      "number": "1",
+      "page": 2,
+      "caption": "TGB consists of a diverse set of datasets that are one order of magnitude larger than existing datasets in terms of number of nodes, edges, and timestamps.",
+      "raw_text": "Figure 1: TGB consists of a diverse set of datasets that are one order of magnitude larger than existing datasets in terms of number of nodes, edges, and timestamps.",
+      "caption_bbox_points": [
+        286.199,
+        403.745,
+        504.0,
+        435.529
+      ],
+      "caption_bbox_pixels": [
+        715,
+        1009,
+        1260,
+        1089
+      ],
+      "suggested_crop_bbox_points": [
+        268.708,
+        237.393,
+        524.213,
+        445.529
+      ],
+      "suggested_crop_bbox_pixels": [
+        672,
+        593,
+        1311,
+        1114
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-002.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\figure-1-p002.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "figure-2-p003",
+      "label": "Figure 2",
+      "kind": "figure",
+      "number": "2",
+      "page": 3,
+      "caption": "Overview of the Temporal Graph Benchmark (TGB) pipeline: (a) TGB includes large-scale and realistic datasets from five different domains with both dynamic link prediction and node property prediction tasks. (b) TGB automatically downloads datasets and processes them into numpy, PyTorch and PyG compatible TemporalData formats. (c) Novel TG models can be easily evaluated on TGB datasets via reproducible and realistic evaluation protocols. (d) TGB provides public and online leaderboards to track recent developments in temporal graph learning domain. The code is publicly available as a Python library.",
+      "raw_text": "Figure 2: Overview of the Temporal Graph Benchmark (TGB) pipeline: (a) TGB includes large-scale and realistic datasets from five different domains with both dynamic link prediction and node property prediction tasks. (b) TGB automatically downloads datasets and processes them into numpy, PyTorch and PyG compatible TemporalData formats. (c) Novel TG models can be easily evaluated on TGB datasets via reproducible and realistic evaluation protocols. (d) TGB provides public and online leaderboards to track recent developments in temporal graph learning domain. The code is publicly available as a Python library.",
+      "caption_bbox_points": [
+        108.0,
+        117.556,
+        504.345,
+        193.14
+      ],
+      "caption_bbox_pixels": [
+        270,
+        294,
+        1261,
+        483
+      ],
+      "suggested_crop_bbox_points": [
+        98.0,
+        63.795,
+        514.345,
+        203.14
+      ],
+      "suggested_crop_bbox_pixels": [
+        245,
+        159,
+        1286,
+        508
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-003.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\figure-2-p003.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "figure-3-p005",
+      "label": "Figure 3",
+      "kind": "figure",
+      "number": "3",
+      "page": 5,
+      "caption": "The node affinity prediction task aims to predict how the preference of a user towards items changes over time. In the tgbn-genre example, the task is to predict the frequency at which the user would listen to each genre over the next week given their listening history until today.",
+      "raw_text": "Figure 3: The node affinity prediction task aims to predict how the preference of a user towards items changes over time. In the tgbn-genre example, the task is to predict the frequency at which the user would listen to each genre over the next week given their listening history until today.",
+      "caption_bbox_points": [
+        107.641,
+        154.151,
+        504.169,
+        186.03
+      ],
+      "caption_bbox_pixels": [
+        269,
+        385,
+        1260,
+        465
+      ],
+      "suggested_crop_bbox_points": [
+        97.641,
+        63.917,
+        514.169,
+        196.03
+      ],
+      "suggested_crop_bbox_pixels": [
+        244,
+        160,
+        1285,
+        490
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-005.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\figure-3-p005.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "table-1-p006",
+      "label": "Table 1",
+      "kind": "table",
+      "number": "1",
+      "page": 6,
+      "caption": "Dataset Statistics. Dataset names are colored based on their scale as small, medium, and large. ¶: Edges can be Weighted, Directed, or Attributed.",
+      "raw_text": "Table 1: Dataset Statistics. Dataset names are colored based on their scale as small, medium, and large. ¶: Edges can be Weighted, Directed, or Attributed.",
+      "caption_bbox_points": [
+        107.691,
+        72.005,
+        504.003,
+        92.952
+      ],
+      "caption_bbox_pixels": [
+        269,
+        180,
+        1260,
+        232
+      ],
+      "suggested_crop_bbox_points": [
+        97.691,
+        62.005,
+        514.353,
+        419.383
+      ],
+      "suggested_crop_bbox_pixels": [
+        244,
+        155,
+        1286,
+        1048
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-006.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\table-1-p006.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "table-1-p006",
+      "label": "Table 1",
+      "kind": "table",
+      "number": "1",
+      "page": 6,
+      "caption": "shows the statistics and properties of the temporal graph datasets provided by TGB. Datasets such as tgbl-flight, tgbl-comment, tgbl-coin, and tgbn-reddit are orders of magnitude larger than existing TG benchmark datasets [35, 33, 24], while their number of nodes and edges span a wide spectrum, ranging from thousands to millions. In addition, TGB dataset domains are highly diverse, coming from five distinct domains including social networks, interaction networks, rating networks, traffic networks, and trade networks. Moreover, the duration of the datasets varies from months to years, and the number of timestamps in TGB datasets ranges from 32 to more than 30 million with diverse ranges of time granularity from UNIX timestamps to annually. The datasets can be weighted, directed, or have edge attributes. We also report the surprise index (i.e., |Etest\\Etrain|",
+      "raw_text": "Table 1 shows the statistics and properties of the temporal graph datasets provided by TGB. Datasets such as tgbl-flight, tgbl-comment, tgbl-coin, and tgbn-reddit are orders of magnitude larger than existing TG benchmark datasets [35, 33, 24], while their number of nodes and edges span a wide spectrum, ranging from thousands to millions. In addition, TGB dataset domains are highly diverse, coming from five distinct domains including social networks, interaction networks, rating networks, traffic networks, and trade networks. Moreover, the duration of the datasets varies from months to years, and the number of timestamps in TGB datasets ranges from 32 to more than 30 million with diverse ranges of time granularity from UNIX timestamps to annually. The datasets can be weighted, directed, or have edge attributes. We also report the surprise index (i.e., |Etest\\Etrain|",
+      "caption_bbox_points": [
+        107.691,
+        415.859,
+        504.351,
+        515.355
+      ],
+      "caption_bbox_pixels": [
+        269,
+        1040,
+        1261,
+        1288
+      ],
+      "suggested_crop_bbox_points": [
+        97.691,
+        96.968,
+        514.353,
+        525.355
+      ],
+      "suggested_crop_bbox_pixels": [
+        244,
+        242,
+        1286,
+        1313
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-006.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\table-1-p006.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "table-2-p008",
+      "label": "Table 2",
+      "kind": "table",
+      "number": "2",
+      "page": 8,
+      "caption": "Results for dynamic link property prediction on small datasets.",
+      "raw_text": "Table 2: Results for dynamic link property prediction on small datasets.",
+      "caption_bbox_points": [
+        163.431,
+        71.904,
+        448.26,
+        82.043
+      ],
+      "caption_bbox_pixels": [
+        409,
+        180,
+        1121,
+        205
+      ],
+      "suggested_crop_bbox_points": [
+        97.704,
+        61.904,
+        508.739,
+        391.691
+      ],
+      "suggested_crop_bbox_pixels": [
+        244,
+        155,
+        1272,
+        979
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-008.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\table-2-p008.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "figure-4-p008",
+      "label": "Figure 4",
+      "kind": "figure",
+      "number": "4",
+      "page": 8,
+      "caption": "Test set inference time of TG methods can have up to two orders of magnitude difference.",
+      "raw_text": "Figure 4: Test set inference time of TG methods can have up to two orders of magnitude difference.",
+      "caption_bbox_points": [
+        108.0,
+        389.356,
+        503.998,
+        399.303
+      ],
+      "caption_bbox_pixels": [
+        270,
+        973,
+        1260,
+        998
+      ],
+      "suggested_crop_bbox_points": [
+        98.0,
+        275.85,
+        513.998,
+        409.303
+      ],
+      "suggested_crop_bbox_pixels": [
+        245,
+        690,
+        1285,
+        1023
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-008.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\figure-4-p008.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "table-2a-p008",
+      "label": "Table 2a",
+      "kind": "table",
+      "number": "2a",
+      "page": 8,
+      "caption": "shows the performance of TG methods for dynamic link property prediction on the tgbl-wiki dataset. tgbl-wiki is an existing dataset where many methods achieve over-optimistic performance in the literature [35, 46, 9]. With TGB’s evaluation protocol, there is now a clear distinction in model performance and NAT achieves the best result on this dataset. As tgbl-wiki is the smallest dataset in this task, it is computationally feasible to sample all possible destinations of a given source node. Thus, we compare the true destination with all possible negative destinations in this dataset. In Table 2b, we report the results on tgbl-review where we sample 100 negative edges per positive edge. Here, we observe that many of the best performing methods on tgbl-wiki has a significant drop in performance including NAT, CAWN and Edgebank. More notably, the method rankings also changed significantly with GraphMixer and TGAT being the top two methods. This observation emphasizes the importance of dataset diversity when benchmarking TG methods. In Appendix H, we conduct an ablation study on the effect of number of negative samples on the performance of dynamic link property prediction.",
+      "raw_text": "Table 2a shows the performance of TG methods for dynamic link property prediction on the tgbl-wiki dataset. tgbl-wiki is an existing dataset where many methods achieve over-optimistic performance in the literature [35, 46, 9]. With TGB’s evaluation protocol, there is now a clear distinction in model performance and NAT achieves the best result on this dataset. As tgbl-wiki is the smallest dataset in this task, it is computationally feasible to sample all possible destinations of a given source node. Thus, we compare the true destination with all possible negative destinations in this dataset. In Table 2b, we report the results on tgbl-review where we sample 100 negative edges per positive edge. Here, we observe that many of the best performing methods on tgbl-wiki has a significant drop in performance including NAT, CAWN and Edgebank. More notably, the method rankings also changed significantly with GraphMixer and TGAT being the top two methods. This observation emphasizes the importance of dataset diversity when benchmarking TG methods. In Appendix H, we conduct an ablation study on the effect of number of negative samples on the performance of dynamic link property prediction.",
+      "caption_bbox_points": [
+        107.691,
+        455.981,
+        505.747,
+        596.928
+      ],
+      "caption_bbox_pixels": [
+        269,
+        1140,
+        1264,
+        1492
+      ],
+      "suggested_crop_bbox_points": [
+        97.641,
+        445.981,
+        515.747,
+        762.295
+      ],
+      "suggested_crop_bbox_pixels": [
+        244,
+        1115,
+        1289,
+        1906
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-008.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\table-2a-p008.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "figure-5-p009",
+      "label": "Figure 5",
+      "kind": "figure",
+      "number": "5",
+      "page": 9,
+      "caption": "Total train and validation time of TG methods can have two orders of magnitude difference.",
+      "raw_text": "Figure 5: Total train and validation time of TG methods can have two orders of magnitude difference.",
+      "caption_bbox_points": [
+        108.0,
+        175.569,
+        504.002,
+        185.432
+      ],
+      "caption_bbox_pixels": [
+        270,
+        439,
+        1260,
+        464
+      ],
+      "suggested_crop_bbox_points": [
+        98.0,
+        62.0,
+        514.002,
+        195.432
+      ],
+      "suggested_crop_bbox_pixels": [
+        245,
+        155,
+        1285,
+        489
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-009.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\figure-5-p009.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "table-3-p009",
+      "label": "Table 3",
+      "kind": "table",
+      "number": "3",
+      "page": 9,
+      "caption": "Results for dynamic link property prediction task on medium and large datasets.",
+      "raw_text": "Table 3: Results for dynamic link property prediction task on medium and large datasets.",
+      "caption_bbox_points": [
+        129.075,
+        299.618,
+        482.616,
+        309.757
+      ],
+      "caption_bbox_pixels": [
+        323,
+        749,
+        1207,
+        774
+      ],
+      "suggested_crop_bbox_points": [
+        102.986,
+        193.475,
+        509.022,
+        319.757
+      ],
+      "suggested_crop_bbox_pixels": [
+        257,
+        484,
+        1273,
+        799
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-009.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\table-3-p009.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "figure-4a-p009",
+      "label": "Figure 4a",
+      "kind": "figure",
+      "number": "4a",
+      "page": 9,
+      "caption": "and 4b show the inference time of different methods for the test set of tgbl-wiki and tgbl-review, respectively. Similarly, Figure 5a and 5b show the total training and validation time of TG methods for tgbl-wiki and tgbl-review. Notice that as a heuristic baseline, EdgeBank inference, train, or validation time is generally at least one order of magnitude lower than neural network based methods. We also observe an order of difference in inference time within TG methods. We believe one important future direction is to improve the computational time of these models to be closer to baselines such as EdgeBank, which can better scale to large real-world temporal graphs.",
+      "raw_text": "Figure 4a and 4b show the inference time of different methods for the test set of tgbl-wiki and tgbl-review, respectively. Similarly, Figure 5a and 5b show the total training and validation time of TG methods for tgbl-wiki and tgbl-review. Notice that as a heuristic baseline, EdgeBank inference, train, or validation time is generally at least one order of magnitude lower than neural network based methods. We also observe an order of difference in inference time within TG methods. We believe one important future direction is to improve the computational time of these models to be closer to baselines such as EdgeBank, which can better scale to large real-world temporal graphs.",
+      "caption_bbox_points": [
+        107.532,
+        333.774,
+        505.739,
+        409.267
+      ],
+      "caption_bbox_pixels": [
+        269,
+        834,
+        1264,
+        1023
+      ],
+      "suggested_crop_bbox_points": [
+        97.532,
+        310.757,
+        515.739,
+        419.267
+      ],
+      "suggested_crop_bbox_pixels": [
+        244,
+        777,
+        1289,
+        1048
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-009.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\figure-4a-p009.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "table-3-p009",
+      "label": "Table 3",
+      "kind": "table",
+      "number": "3",
+      "page": 9,
+      "caption": "shows the performance of TG methods on medium and large TGB datasets. Note that some methods, including CAWN, TCL, and GraphMixer, ran out of memory on GPU for these datasets, thus their performance is not reported. Overall, TGN has the best performance on all of these three datasets. Surprisingly, the EdgeBank heuristic is highly competitive on the tgbl-coin dataset where it even significantly outperforms DyRep. Therefore, it is important to include EdgeBank as a baseline for all datasets. Another observation is that for medium and large TGB datasets, there can be a significant performance change for a single model between the validation and test set. This is because TGB datasets span over a long time (such as tgbl-comment, lasting 5 years) and one can expect that models need to deal with potential distribution shifts between the validation set and the test set. Figure 6a, 6b and 6c reports the test time for TG methods on tgbl-coin, tgbl-flight and tgbl-comment, respectively. On both tgbl-coin and tgbl-comment, Edgebank is at least one order of magnitude faster than TGN and DyRep while on the tgbl-flight, due to the large number of temporal edges, DyRep is the fastest method.",
+      "raw_text": "Table 3 shows the performance of TG methods on medium and large TGB datasets. Note that some methods, including CAWN, TCL, and GraphMixer, ran out of memory on GPU for these datasets, thus their performance is not reported. Overall, TGN has the best performance on all of these three datasets. Surprisingly, the EdgeBank heuristic is highly competitive on the tgbl-coin dataset where it even significantly outperforms DyRep. Therefore, it is important to include EdgeBank as a baseline for all datasets. Another observation is that for medium and large TGB datasets, there can be a significant performance change for a single model between the validation and test set. This is because TGB datasets span over a long time (such as tgbl-comment, lasting 5 years) and one can expect that models need to deal with potential distribution shifts between the validation set and the test set. Figure 6a, 6b and 6c reports the test time for TG methods on tgbl-coin, tgbl-flight and tgbl-comment, respectively. On both tgbl-coin and tgbl-comment, Edgebank is at least one order of magnitude faster than TGN and DyRep while on the tgbl-flight, due to the large number of temporal edges, DyRep is the fastest method.",
+      "caption_bbox_points": [
+        107.691,
+        415.689,
+        505.244,
+        556.564
+      ],
+      "caption_bbox_pixels": [
+        269,
+        1039,
+        1263,
+        1391
+      ],
+      "suggested_crop_bbox_points": [
+        97.691,
+        405.689,
+        515.244,
+        591.938
+      ],
+      "suggested_crop_bbox_pixels": [
+        244,
+        1014,
+        1288,
+        1480
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-009.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\table-3-p009.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "table-4-p009",
+      "label": "Table 4",
+      "kind": "table",
+      "number": "4",
+      "page": 9,
+      "caption": "shows the performance of various methods on the node affinity prediction task in the dynamic node property prediction category. As node-level tasks have received less attention compared to edge-level tasks in the literature, adopting methods that are specially designed for link prediction to this task is non-trivial. As a result, these methods are omitted in this section. Considering Table 4, the key observation is that simple heuristics like persistence forecast and moving average are strong contenders to TG methods such as DyRep and TGN. Notably, persistence forecast is SOTA on tgbn-trade while moving average is the best performing on other datasets. TGN is second place on tgbn-genre dataset. Different from link prediction where the existence of a link is casted as binary classification, the node affinity prediction task compares the likelihood or weight that the model assigns to different target nodes (mostly positive links). These results highlight the need for the future development of TG methods that can acquire flexible node representations capable of learning how user preferences evolve over time.",
+      "raw_text": "Table 4 shows the performance of various methods on the node affinity prediction task in the dynamic node property prediction category. As node-level tasks have received less attention compared to edge-level tasks in the literature, adopting methods that are specially designed for link prediction to this task is non-trivial. As a result, these methods are omitted in this section. Considering Table 4, the key observation is that simple heuristics like persistence forecast and moving average are strong contenders to TG methods such as DyRep and TGN. Notably, persistence forecast is SOTA on tgbn-trade while moving average is the best performing on other datasets. TGN is second place on tgbn-genre dataset. Different from link prediction where the existence of a link is casted as binary classification, the node affinity prediction task compares the likelihood or weight that the model assigns to different target nodes (mostly positive links). These results highlight the need for the future development of TG methods that can acquire flexible node representations capable of learning how user preferences evolve over time.",
+      "caption_bbox_points": [
+        107.691,
+        592.52,
+        505.247,
+        722.407
+      ],
+      "caption_bbox_pixels": [
+        269,
+        1481,
+        1263,
+        1806
+      ],
+      "suggested_crop_bbox_points": [
+        97.691,
+        582.52,
+        515.247,
+        762.295
+      ],
+      "suggested_crop_bbox_pixels": [
+        244,
+        1456,
+        1288,
+        1906
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-009.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\table-4-p009.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "figure-6-p010",
+      "label": "Figure 6",
+      "kind": "figure",
+      "number": "6",
+      "page": 10,
+      "caption": "Inference time comparison of TG methods.",
+      "raw_text": "Figure 6: Inference time comparison of TG methods.",
+      "caption_bbox_points": [
+        200.282,
+        146.449,
+        411.718,
+        156.412
+      ],
+      "caption_bbox_pixels": [
+        501,
+        366,
+        1029,
+        391
+      ],
+      "suggested_crop_bbox_points": [
+        116.553,
+        62.0,
+        495.447,
+        166.412
+      ],
+      "suggested_crop_bbox_pixels": [
+        291,
+        155,
+        1239,
+        416
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-010.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\figure-6-p010.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "table-4-p010",
+      "label": "Table 4",
+      "kind": "table",
+      "number": "4",
+      "page": 10,
+      "caption": "Node affinity prediction results.",
+      "raw_text": "Table 4: Node affinity prediction results.",
+      "caption_bbox_points": [
+        225.692,
+        250.828,
+        386.0,
+        260.967
+      ],
+      "caption_bbox_pixels": [
+        564,
+        627,
+        965,
+        652
+      ],
+      "suggested_crop_bbox_points": [
+        101.755,
+        166.767,
+        510.244,
+        270.967
+      ],
+      "suggested_crop_bbox_pixels": [
+        254,
+        417,
+        1276,
+        677
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-010.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\table-4-p010.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "figure-7-p017",
+      "label": "Figure 7",
+      "kind": "figure",
+      "number": "7",
+      "page": 17,
+      "caption": "GPU Memory Usage for tgbl-wiki dataset.",
+      "raw_text": "Figure 7: GPU Memory Usage for tgbl-wiki dataset.",
+      "caption_bbox_points": [
+        196.119,
+        206.881,
+        415.882,
+        217.092
+      ],
+      "caption_bbox_pixels": [
+        490,
+        517,
+        1040,
+        543
+      ],
+      "suggested_crop_bbox_points": [
+        157.401,
+        62.0,
+        454.608,
+        227.092
+      ],
+      "suggested_crop_bbox_pixels": [
+        394,
+        155,
+        1137,
+        568
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-017.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\figure-7-p017.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "table-5-p017",
+      "label": "Table 5",
+      "kind": "table",
+      "number": "5",
+      "page": 17,
+      "caption": "Additional dataset properties. Dataset names are colored based on their scale as small, medium, and large. ⋆: denotes the average number of edges per timestamp.",
+      "raw_text": "Table 5: Additional dataset properties. Dataset names are colored based on their scale as small, medium, and large. ⋆: denotes the average number of edges per timestamp.",
+      "caption_bbox_points": [
+        107.691,
+        229.26,
+        505.243,
+        250.207
+      ],
+      "caption_bbox_pixels": [
+        269,
+        573,
+        1263,
+        626
+      ],
+      "suggested_crop_bbox_points": [
+        97.691,
+        219.26,
+        515.243,
+        670.36
+      ],
+      "suggested_crop_bbox_pixels": [
+        244,
+        548,
+        1288,
+        1676
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-017.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\table-5-p017.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "table-6-p018",
+      "label": "Table 6",
+      "kind": "table",
+      "number": "6",
+      "page": 18,
+      "caption": "Results for dynamic link property prediction on small datasets with 20 negative samples.",
+      "raw_text": "Table 6: Results for dynamic link property prediction on small datasets with 20 negative samples.",
+      "caption_bbox_points": [
+        111.985,
+        71.904,
+        499.706,
+        82.043
+      ],
+      "caption_bbox_pixels": [
+        280,
+        180,
+        1249,
+        205
+      ],
+      "suggested_crop_bbox_points": [
+        97.704,
+        61.904,
+        509.706,
+        229.809
+      ],
+      "suggested_crop_bbox_pixels": [
+        244,
+        155,
+        1274,
+        575
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-018.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\table-6-p018.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "table-7-p018",
+      "label": "Table 7",
+      "kind": "table",
+      "number": "7",
+      "page": 18,
+      "caption": "Transductive vs. Inductive Setting on tgbl-wiki Dataset.",
+      "raw_text": "Table 7: Transductive vs. Inductive Setting on tgbl-wiki Dataset.",
+      "caption_bbox_points": [
+        171.73,
+        228.682,
+        439.962,
+        238.893
+      ],
+      "caption_bbox_pixels": [
+        429,
+        572,
+        1100,
+        597
+      ],
+      "suggested_crop_bbox_points": [
+        97.704,
+        83.588,
+        507.141,
+        248.893
+      ],
+      "suggested_crop_bbox_pixels": [
+        244,
+        209,
+        1268,
+        622
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-018.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": null,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\table-7-p018.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    }
+  ]
+}

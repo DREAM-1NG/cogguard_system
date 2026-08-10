@@ -38,34 +38,41 @@ function bodyOf(source, name) {
   throw new Error(`Could not extract ${name}`)
 }
 
-test('kept-alive propagation ignores route changes outside its own route', () => {
+test('propagation route watcher synchronizes event and platform scope before reloading analysis', () => {
+  const watcherStart = propagationView.indexOf('() => [route.query.event_id')
+  assert.notEqual(watcherStart, -1, 'Expected propagation route-query watcher to exist')
   const watcher = propagationView.slice(
-    propagationView.indexOf('watch(\n  () => [route.name'),
+    watcherStart,
     propagationView.indexOf('watch(displayLayerRows'),
   )
-  const deactivate = bodyOf(propagationView, 'deactivatePropagationPage')
-  const analyze = bodyOf(propagationView, 'handleAnalyze')
 
-  assert.match(propagationView, /onActivated/)
-  assert.match(propagationView, /onDeactivated/)
-  assert.match(watcher, /!pageActive\.value \|\| route\.name !== 'Propagation'/)
-  assert.match(deactivate, /analysisRequestGeneration \+= 1/)
-  assert.match(deactivate, /unbindResizeListener\(\)/)
-  assert.match(analyze, /await loadAnalysis\(true, true\)/)
+  assert.match(watcher, /route\.query\.event_id/)
+  assert.match(watcher, /route\.query\.platform/)
+  assert.match(watcher, /syncScopeFromRoute\(\)/)
+  assert.match(watcher, /void loadAnalysis\(false\)/)
+  assert.doesNotMatch(watcher, /route\.name/)
 })
 
-test('kept-alive propagation restores a completed route scope without another analysis request', () => {
-  const activate = bodyOf(propagationView, 'activatePropagationPage')
-  const watcher = propagationView.slice(
-    propagationView.indexOf('watch(\n  () => [route.name'),
-    propagationView.indexOf('watch(displayLayerRows'),
-  )
+test('propagation analysis reload cancels stale prediction requests unless explicitly preserved', () => {
+  const syncScope = bodyOf(propagationView, 'syncScopeFromRoute')
+  const loadAnalysis = bodyOf(propagationView, 'loadAnalysis')
+  const analyze = bodyOf(propagationView, 'handleAnalyze')
 
-  assert.match(
-    activate,
-    /if \(hasCompletedAnalysisForCurrentScope\(\)\) \{[\s\S]*await renderActiveTabCharts\(\)[\s\S]*return/,
-  )
-  assert.match(watcher, /if \(!hasRouteScopeChanged\(\)\) return/)
+  assert.match(syncScope, /predictionRequestGeneration \+= 1/)
+  assert.match(syncScope, /predicting\.value = false/)
+  assert.match(loadAnalysis, /if \(!preservePrediction\) \{[\s\S]*predictionRequestGeneration \+= 1/)
+  assert.match(loadAnalysis, /modelPrediction\.value = null/)
+  assert.match(loadAnalysis, /disposeModelTrendChart\(\)/)
+  assert.match(analyze, /await loadAnalysis\(true\)/)
+})
+
+test('propagation trend prediction retries the current event without platform when the selected platform has no data', () => {
+  const handlePredict = bodyOf(propagationView, 'handlePredict')
+
+  assert.match(propagationView, /function shouldRetryPredictionWithoutPlatform/)
+  assert.match(handlePredict, /shouldRetryPredictionWithoutPlatform\(result,\s*requestedPlatform\)/)
+  assert.match(handlePredict, /delete retryParams\.platform/)
+  assert.match(handlePredict, /predictPropagationCurrentEvent\(retryParams\)/)
 })
 
 test('coordination pauses work while its cached page is inactive', () => {

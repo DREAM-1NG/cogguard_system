@@ -26,7 +26,7 @@ class StrictAccountRecord:
     post_count: int
     source_file_hash: str
     source_encoding: str
-    dataset_name: str = "botection"
+    dataset_name: str = "cresci_2017"
     source_label: str = ""
     metadata: dict[str, Any] = field(default_factory=dict)
     split_group: str = ""
@@ -75,4 +75,3 @@ class StrictCorpus:
     records: list[StrictAccountRecord]
     graph: StrictGraph
     manifest: DatasetManifest
-

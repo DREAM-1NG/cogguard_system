@@ -1,0 +1,248 @@
+Published as a conference paper at ICLR 2021
+Task
+Methods
+Reddit
+Wikipedia
+MOOC
+Social Evo.
+Enron
+UCI
+Inductive
+new v.s. new
+DynAERNN
+57.51 ± 2.54
+55.16 ± 1.15
+60.85 ± 1.61
+52.00 ± 0.16
+51.57 ± 2.63
+50.20 ± 2.78
+JODIE
+72.49 ± 0.38
+70.78 ± 0.75
+80.04 ± 0.28†
+87.66 ± 0.12†
+73.99 ± 2.54†
+64.77 ± 0.75
+DyRep
+62.37 ± 1.49
+67.07 ± 1.26
+74.07 ± 1.88
+83.92 ± 0.02
+69.74 ± 0.44
+63.76 ± 4.67
+VGRNN
+61.93 ± 0.72
+60.64 ± 0.68
+63.01 ± 0.29
+54.49 ± 1.21
+72.01 ± 0.08
+61.35 ± 1.10
+EvolveGCN
+63.31 ± 0.53
+58.01 ± 0.16
+52.31 ± 4.14
+46.95 ± 0.85
+42.53 ± 2.12
+76.65 ± 0.63†
+TGAT
+94.96 ± 0.88†
+93.53 ± 0.84†
+70.10 ± 0.35
+53.27 ± 1.16
+63.34 ± 2.95
+76.36 ± 1.48
+CAW-N-mean
+97.67 ± 0.08∗
+99.27 ± 0.08∗
+90.52 ± 0.54∗
+95.55 ± 0.40∗
+96.43 ± 0.39∗
+93.14 ± 0.32∗
+CAW-N-attn
+97.71 ± 0.08∗
+99.29 ± 0.10∗
+90.86 ± 0.56∗
+95.20 ± 0.68∗
+96.98 ± 0.41∗
+93.16 ± 0.25∗
+new v.s. old
+DynAERNN
+58.79 ± 3.01
+57.97 ± 2.38
+80.99 ± 1.35
+52.31 ± 0.59
+54.36 ± 1.48
+52.26 ± 1.36
+JODIE
+76.33 ± 0.03
+74.65 ± 0.06
+87.40 ± 1.71
+91.80 ± 0.01†
+85.24 ± 0.08
+69.95 ± 0.11
+DyRep
+66.13 ± 1.07
+76.72 ± 0.19
+88.23 ± 1.20†
+87.98 ± 0.45
+94.39 ± 0.32†
+93.28 ± 0.96†
+VGRNN
+54.11 ± 0.74
+62.93 ± 0.69
+60.10 ± 0.88
+64.66 ± 0.41
+76.33 ± 0.05
+62.39 ± 1.08
+EvolveGCN
+65.61 ± 0.37
+56.29 ± 2.17
+50.20 ± 1.92
+50.73 ± 1.36
+42.53 ± 2.13
+70.78 ± 0.22
+TGAT
+97.25 ± 0.18†
+95.47 ± 0.17†
+69.30 ± 0.08
+54.22 ± 1.28
+58.76 ± 1.18
+74.19 ± 0.88
+CAW-N-mean
+97.70 ± 0.17∗
+98.77 ± 0.13∗
+91.08 ± 0.20∗
+91.52 ± 0.21
+93.98 ± 0.44
+91.15 ± 0.24
+CAW-N-attn
+97.56 ± 0.14∗
+98.21 ± 0.17∗
+90.40 ± 0.13∗
+91.55 ± 0.30
+93.99 ± 0.62
+91.17 ± 0.26
+Transductive
+DynAERNN
+83.37 ± 1.48
+71.00 ± 1.10
+89.34 ± 0.24
+67.78 ± 0.80
+63.11 ± 1.13
+83.72 ± 1.79
+JODIE
+87.71 ± 0.02
+88.43 ± 0.02
+90.50 ± 0.01†
+89.78 ± 0.04
+89.36 ± 0.06
+74.63 ± 0.11
+DyRep
+67.36 ± 1.23
+77.40 ± 0.13
+90.49 ± 0.03
+90.85 ± 0.01†
+96.71 ± 0.04†
+95.23 ± 0.25†
+VGRNN
+51.89 ± 0.92
+71.20 ± 0.65
+90.03 ± 0.32
+72.84 ± 0.73
+79.08 ± 0.02
+89.43 ± 0.27
+EvolveGCN
+58.42 ± 0.52
+60.48 ± 0.47
+50.36 ± 0.85
+60.36 ± 0.65
+74.02 ± 0.31
+78.30 ± 0.22
+TGAT
+96.65 ± 0.06†
+96.36 ± 0.05†
+72.09 ± 0.29
+56.63 ± 0.55
+60.88 ± 0.37
+77.67 ± 0.27
+CAW-N-mean
+98.07 ± 0.06∗
+98.83 ± 0.11∗
+94.28 ± 0.13∗
+93.88 ± 0.72∗
+91.64 ± 0.15
+95.25 ± 0.30∗
+CAW-N-attn
+98.05 ± 0.09∗
+98.96 ± 0.10∗
+94.33 ± 0.08∗
+92.54 ± 0.58∗
+92.06 ± 0.16
+95.14 ± 0.25
+Table 2: Performance in AUC (mean in percentage ± 95% conﬁdence level.) † highlights the best
+baselines. ∗, bold font, bold font∗respectively highlights the case where our models’ performance
+exceeds the best baseline on average, by 70% conﬁdence, by 95% conﬁdence.
+No.
+Ablation
+Wikipedia
+UCI
+Social Evo.
+1.
+original method (CAW-N-mean)
+98.94 ± 0.11
+91.88 ± 0.26
+91.97± 0.23
+2.
+remove f1(ICAW )
+96.28 ± 0.66
+79.45 ± 0.71
+53.69 ± 0.21
+3.
+remove f2(t)
+97.90 ± 0.17
+83.91 ± 0.39
+68.25 ± 1.99
+4.
+remove f1(ICAW ), f2(t)
+88.94 ± 0.85
+50.01 ± 0.02
+50.00 ± 0.00
+5
+replace f1(ICAW ) by one-hot(IAW )
+96.55 ± 0.21
+85.59 ± 0.34
+68.47 ± 0.86
+6.
+ﬁx α = 0
+74.38 ± 2.05
+80.44 ± 0.56
+77.72 ± 0.44
+Table 3: Ablation study with CAW-N-mean. AUC scores on all inductive test links are reported.
+gaps between the two settings are small, while they sometimes do not perform well in the transductive
+setting, as they encounter the ambiguity issue in Fig. 3. In contrast, our methods perform well
+in both the transductive and inductive settings. We attribute this superiority to the anonymization
+procedure: the set-based relative node identities well capture the correlation between walks to make
+good prediction while removing the original node identities to keep entirely inductive. Even when the
+network structures greatly change and new nodes come in as long as the network evolves according to
+the same law as the network used for training, CAW-N will always work. Comparing CAW-N-mean
+and CAW-N-attn, we see that our attention-based variant outperforms the mean-pooling variant, albeit
+at the cost of high computation complexity. Also note that the strongest baselines on all datasets
+are stream-based methods, which indicates that the aggregation of links into network snapshots may
+remove some useful time information (see more discussion in Appendix D.2).
+We further conduct ablation studies on Wikipedia (attributed), UCI (non-attributed), and Social
+Evolution (non-attributed), to validate effectiveness of critical components of our model. Tab. 3
+shows the results. By comparing Ab.1 with Ab.2, 3 and 4 respectively, we observe that our proposed
+node anonymization and encoding, f1(ICAW ), contributes most to the performance, though the time
+encoding f2(t) also helps. Comparing performance across different datasets, we see that the impact
+of ablation is more prominent when informative node/link attributes are unavailable such as with UCI
+and Social Evolution. Therefore, in such scenarios our CAWs are highly crucial. In Ab.5, we replace
+our proposed ICAW with IAW (Eq.2), which is used in standard AWs, and we use one-hot encoding
+of node new identities IAW . We see by comparing Ab.1, 2, and 5 that such anonymization process is
+signiﬁcantly less effective than our ICAW , though it helps to some extent. Finally, Ab.6 suggests that
+entirely uniform sampling of the history may hurt performance.
+5.3
+HYPERPARAMETER INVESTIGATION OF CAW SAMPLING
+We systematically analyze the effect of hyperparameters used in CAW sampling schemes, including
+sampling number M, temporal decay coefﬁcient α and walk length m. The experiments are conducted
+on UCI and Wikipedia datasets using CAW-N-mean. When investigating each hyperparameter, we
+8

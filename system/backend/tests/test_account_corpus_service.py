@@ -1,8 +1,14 @@
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 import pytest
 
-from app.services.account_corpus_service import build_corpus_documents
+from app.services.account_corpus_service import (
+    _holdout_account_scope,
+    _stratified_selection,
+    build_corpus_documents,
+)
 
 
 def test_build_corpus_documents_combines_posts_and_comments() -> None:
@@ -82,3 +88,35 @@ def test_build_corpus_documents_can_include_mixed_language_audit_fixture(require
     )
 
     assert len(documents) == 1
+
+
+def test_holdout_selection_keeps_same_account_id_separate_across_platforms() -> None:
+    rows = [
+        (
+            SimpleNamespace(label_id="label-weibo", training_target="bot"),
+            SimpleNamespace(account_id="same-id", platform="weibo", event_id="event-1"),
+        ),
+        (
+            SimpleNamespace(label_id="label-douyin", training_target="bot"),
+            SimpleNamespace(account_id="same-id", platform="douyin", event_id="event-1"),
+        ),
+    ]
+
+    selected = _stratified_selection(rows, target_count=2)
+
+    assert {(case.platform, case.account_id) for _, case in selected} == {
+        ("weibo", "same-id"),
+        ("douyin", "same-id"),
+    }
+
+
+def test_holdout_scope_reads_platform_column_and_legacy_stratum() -> None:
+    current = SimpleNamespace(account_id="same-id", platform="xhs", stratum_json="{}")
+    legacy = SimpleNamespace(
+        account_id="same-id",
+        platform=None,
+        stratum_json='{"platform": "douyin"}',
+    )
+
+    assert _holdout_account_scope(current) == "xhs\x1fsame-id"
+    assert _holdout_account_scope(legacy) == "douyin\x1fsame-id"

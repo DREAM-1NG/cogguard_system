@@ -1,0 +1,114 @@
+A Survey of Datasets and Tasks for Information Diffusion
+Conference’17, July 2017, Washington, DC, USA
+𝐶(𝑡𝑤) = {(𝑢𝑖,𝑢𝑗,𝑡𝑗)}𝑖,𝑗≤𝐿, which means that there are 𝐿users
+interacting with the initial post 𝑝by the observed time 𝑡𝑤. The
+triple (𝑢𝑖,𝑢𝑗,𝑡𝑗) indicates that user 𝑢𝑗interacts with user 𝑢𝑖’s post
+at timestamp𝑡𝑗. From the interaction relations between two users in
+𝐶(𝑡𝑤), we can construct a diffusion network 𝐺𝐷(𝑡𝑤) = {𝑉𝑈, 𝐸𝐷1}
+at time 𝑡𝑤. In particular, for user attitude prediction during rumor
+propagation, user crowds can be categorized into three groups based
+on classical epidemic models SI, SIS, and SIR [98]: ignorants (𝑋) who
+are unaware of the rumor, spreaders (𝑌) who spread it, and stiflers
+(𝑍) who know it but do not spread it. Stiflers can be further divided
+into neutrality (𝑍0), belief (𝑍1), and disbelief (𝑍2) [31]. Predictions
+using epidemic models require the group density of ignorants (𝑥(𝑡)),
+spreaders (𝑦(𝑡)), and the three types of stiflers (𝑧0(𝑡), 𝑧1(𝑡), and
+𝑧2(𝑡)) at time 𝑡. Thus, based on the symbol definitions above, we
+can define cascade size prediction, popularity prediction, and user
+attitude prediction as follows.
+• Cascade size prediction: Given the cascade sequence 𝐶(𝑡𝑤) and
+the diffusion network 𝐺𝐷(𝑡𝑤) = {𝑉𝑈, 𝐸𝐷1} of an initial post 𝑝
+at observed timestamp 𝑡𝑤, cascade size prediction aims to predict
+the size of the cascade |𝐶(𝑡𝑝)| at predicted timestamp 𝑡𝑝≫𝑡𝑤.
+• Popularity prediction: Given the post set 𝑃with post content
+and the user set 𝑈, popularity prediction aims to predict the
+popularity 𝜔𝑖of a post 𝑝𝑖∈𝑃.
+• User attitudes prediction: Given a rumor 𝑝, the density of its
+ignorants 𝑥(𝑡0) and the density of its spreaders𝑦(𝑡0) at the initial
+timestamp 𝑡0, user attitudes prediction aims to obtain the group
+density 𝑧𝑖(𝑡𝑝) of stiflers 𝑧𝑖at predicted timestamp 𝑡𝑝.
+3.1.2
+Datasets analysis. The datasets of macroscopic information
+diffusion prediction are compared in Table 2.
+• The source platforms include social media platforms primarily,
+academic citation websites in cascade size prediction, and review
+sites of movies or merchants in popularity prediction. Social
+media is the most common platform in information diffusion.
+Academic citation datasets, focused on citation patterns, high-
+light how information propagates in scholarly contexts, where
+influence and relevance drive cascade sizes. Review sites reflect
+user opinions and behavior trends, which are critical for un-
+derstanding popularity but might lack the intricate interaction
+details found in social media.
+• The datasets in cascade size prediction all include the diffusion
+network, while Twitter-FOREST and Douban datasets include
+social network additionally. It helps capture the influence of user
+relationships during propagation, potentially supplementing the
+underlying user patterns not in diffusion networks.
+• The multimodality in SMPD, Yelp and ICLP datasets includes texts
+and images. Micro-Videos includes texts and videos. MicroLens
+incorporates texts, images, and videos. This variety improves pre-
+dictive performance by leveraging multiple types of information.
+3.1.3
+Methodology. To demonstrate the method of macroscopic
+information diffusion prediction and the current performance mea-
+sured by evaluation metrics, we will present a SOTA method for
+each subtask that introduces its landmark algorithm, respectively.
+Their performance are shown in Appendix A.
+• Cascade size prediction: CasFlow[26] proposes a probabilistic
+cascade size prediction model integrating hierarchical structures
+and propagation uncertainty. The model first analyzes both local
+and global diffusion patterns, then captures user interactions
+over time with Bi-GRUs. Following this, the model encodes un-
+certainty in propagation using Variational Autoencoders (VAEs)
+and refines predictions with Normalizing Flows. Table 3 presents
+its performance comparison between CasFlow and baseline mod-
+els across three datasets (Twitter-casflow [26], APS [26], and Sina
+Weibo [55]) with different observation times, measured by MSLE
+and MAPE.
+• Popularity prediction: RAGTrans[35] introduces a retrieval-augmented
+model for predicting the popularity of multimodal social media
+content. It retrieves relevant instances from a user-generated con-
+tent (UGC) memory bank, builds a multimodal hypergraph, and
+applies a bootstrapping transformer for neighborhood aggrega-
+tion. After that, a user-aware fusion module combines multimodal
+data with user characteristics. Table 4 presents its performance
+comparison between RAGTrans and baseline models on three
+datasets (SMPD [32], ICIP [60], and WeChat [35]), measured by
+MSE, MAE and SRC.
+• User attitudes prediction: Neutral state model[31] introduces
+a neutral state model to represent the crowd attitudes during
+rumor propagation by segmenting individuals into Ignorants,
+Spreaders, Skeptics, and Stifflers with varying beliefs. The model
+uses dynamic equations to simulate the flow of individuals and
+incorporates parameters for rumor spread rate and the influence
+of neutral discussions. Table 5 shows its simulated results of
+neutral state model and XYWZ1Z2 model compared with the
+actual data on the COVID-19-rumor [61] dataset measured by
+MAE and MSE.
+3.2
+Microscopic information diffusion
+prediction
+Microscopic information diffusion prediction targets the future
+diffusion result that a certain user will engage with certain content
+at a predicted time. From the standpoint of this content, the study
+of which user will engage with the target content is known as next
+user prediction [25, 27, 28]. From the standpoint of this user, the
+study of whether the content will be engaged by the target user
+is known as social influence prediction [29, 30]. Therefore, there
+are two subtasks of macroscopic information diffusion prediction,
+involving next user prediction and social influence prediction.
+Intuitively, a user is more likely to repost or comment on con-
+tent from users they follow or who follow them, especially if they
+share the same dynamic diffusion trace [28]. These relationships
+and historical diffusion records are available in social and diffu-
+sion networks. Thus, based on these networks, next user predic-
+tion forecasts which user is likely to be the next to engage in a
+cascade [25]. From a different perspective of a user, we wonder
+whether the content will be engaged by this user. Social action in
+activities are citations in academic sites, voting in news platforms,
+and reposting or commenting on social media [30]. Research [29]
+suggests that users’ emotions, decisions, and actions are influenced
+primarily by their social network neighbors, without external dis-
+turbances. Therefore, social influence prediction is necessary
+to forecast changes in a user’s actions regarding certain content

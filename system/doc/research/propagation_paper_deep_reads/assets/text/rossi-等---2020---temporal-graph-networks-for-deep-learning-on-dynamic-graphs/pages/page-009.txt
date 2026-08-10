@@ -1,0 +1,46 @@
+Detailed ablation studies show the importance of the memory and its related modules to store long-
+term information, as well as the importance of the graph-based embedding module to generate
+up-to-date node embeddings. We envision interesting applications of TGN in the ﬁelds of social
+sciences, recommender systems, and biological interaction networks, opening up a future research
+direction of exploring more advanced settings of our model and understanding the most appropriate
+domain-speciﬁc choices.
+REFERENCES
+Nahla Mohamed Ahmed and Ling Chen. An efﬁcient algorithm for link prediction in temporal
+uncertain social networks. Information Sciences, 331:120–136, 2016.
+Nahla Mohamed Ahmed, Ling Chen, Yulong Wang, Bin Li, Yun Li, and Wei Liu. Sampling-based
+algorithm for link prediction in temporal networks. Information Sciences, 374:1–14, 2016.
+Nikolaos Bastas, Theodoros Semertzidis, Apostolos Axenopoulos, and Petros Daras. evolve2vec:
+Learning network representations using temporal unfolding. In International Conference on
+Multimedia Modeling, pp. 447–458. Springer, 2019.
+Peter W Battaglia, Razvan Pascanu, Matthew Lai, Danilo Jimenez Rezende, et al. Interaction
+networks for learning about objects, relations and physics. In NIPS, pp. 4502–4510, 2016.
+Peter W Battaglia, Jessica B Hamrick, Victor Bapst, Alvaro Sanchez-Gonzalez, Vinicius Zam-
+baldi, Mateusz Malinowski, Andrea Tacchetti, David Raposo, Adam Santoro, and Ryan Faulkner.
+Relational inductive biases, deep learning, and graph networks. arXiv:1806.01261, 2018.
+Luca Belli, Soﬁa Ira Ktena, Alykhan Tejani, Alexandre Lung-Yut-Fon, Frank Portman, Xiao Zhu,
+Yuanpu Xie, Akshay Gupta, Michael M. Bronstein, Amra Deli´c, et al. Privacy-preserving recom-
+mender systems challenge on twitter’s home timeline. arXiv:2004.13715, 2020.
+Michael M Bronstein, Joan Bruna, Yann LeCun, Arthur Szlam, and Pierre Vandergheynst. Geometric
+deep learning: going beyond euclidean data. IEEE Signal Process. Mag., 34(4):18–42, 2017.
+Jinyin Chen, Xuanheng Xu, Yangyang Wu, and Haibin Zheng. Gc-lstm: Graph convolution embedded
+lstm for dynamic link prediction. arXiv:1812.04206, 2018.
+Kyunghyun Cho, Bart van Merriënboer, Caglar Gulcehre, Dzmitry Bahdanau, Fethi Bougares, Holger
+Schwenk, and Yoshua Bengio. Learning phrase representations using RNN encoder–decoder for
+statistical machine translation. In EMNLP, pp. 1724–1734, 2014. doi: 10.3115/v1/D14-1179.
+URL https://www.aclweb.org/anthology/D14-1179.
+Nicholas Choma, Federico Monti, Lisa Gerhardt, Tomasz Palczewski, Zahra Ronaghi, Prabhat
+Prabhat, Wahid Bhimji, Michael M. Bronstein, Spencer Klein, and Joan Bruna. Graph neural
+networks for icecube signal classiﬁcation. In ICMLA, 2018.
+Paulo Ricardo da Silva Soares and Ricardo Bastos Cavalcante Prudêncio. Time series based link
+prediction. In IJCNN, pp. 1–7. IEEE, 2012.
+Shib Sankar Dasgupta, Swayambhu Nath Ray, and Partha Talukdar. HyTE: Hyperplane-based
+temporally aware knowledge graph embedding. In EMNLP, pp. 2001–2011, 2018. doi: 10.18653/
+v1/D18-1225. URL https://www.aclweb.org/anthology/D18-1225.
+S. De Winter, T. Decuypere, S. Mitrovi´c, B. Baesens, and J. De Weerdt. Combining temporal aspects
+of dynamic networks with node2vec for a more efﬁcient dynamic link prediction. In ASONAM, pp.
+1234–1241, 2018.
+Lun Du, Yun Wang, Guojie Song, Zhicong Lu, and Junshan Wang. Dynamic network embedding:
+An extended approach for skip-gram based network embedding. In IJCAI, pp. 2086–2092, 2018.
+Daniel M Dunlavy, Tamara G Kolda, and Evrim Acar. Temporal link prediction using matrix and
+tensor factorizations. TKDD, 5(2):1–27, 2011.
+9

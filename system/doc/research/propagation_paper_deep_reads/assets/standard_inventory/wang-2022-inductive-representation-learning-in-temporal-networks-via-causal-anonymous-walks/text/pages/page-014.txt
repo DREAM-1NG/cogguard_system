@@ -1,0 +1,64 @@
+Published as a conference paper at ICLR 2021
+
+
+
+
+ A  EFFICIENT LINK SAMPLING
+
+  Our efﬁcient link sampling strategy contains two subroutines – Online probability computation (Alg.2)
+  and Iterative sampling (Alg.3). The Online probability computation subroutine Alg.2 essentially
+  works online to assign each new incoming link ({u, v}, t) with a pair of probabilities {pu,t, pv,t}
+  such that
+                              exp(αt)                     exp(αt)
+                      pu,t =                             pv,t =                                        (9)
+           P                       P                                   (e,t′)∈Eu,t exp(αt′),                                                                         (e,t′)∈Ev,t exp(αt′).
+  These probabilities will be used later in sampling (Alg.3) and do not need to be updated any more.
+
+  Algorithm 2: Online probability computation (G, α)
+ 1 Initialize V ←∅, Ω←∅;
+ 2 for ({u, v}, t) ∈E do
+ 3     for w ∈{u, v} do
+ 4           if w ̸∈V then
+ 5         V ←V ∪{w};
+ 6        Pw ←exp(αt);
+ 7         else
+ 8           Find Pw ∈Ω;
+ 9        Pw ←Pw + exp(αt);
+10         pw,t ←exp(αt)Pw    ;
+11     Ω←Ω∪{Pw};
+12    Assign two probability scores: ({(u, pu,t), (v, pv,t)}, t, ) ←({u, v}, t) ;
+
+
+  The Iterative sampling subroutine Alg.3 is an efﬁcient implementation of step 5 in Alg.1. We may
+   ﬁrst show that the sampling probability of a link (e, t) in Ewp,tp is proportional to exp(α(t −tp)) in
+  Prop.A.1.
+
+  Algorithm 3: Iterative Sampling (E, α, wp, tp)
+ 1 Initialize V ←∅, Ω←∅;
+ 2 for (e, t) ∈Ewp,tp with an decreasing order of t do
+ 3    Sample a ∼Unif[0, 1];
+ 4     pwp,t is the score of this link related to wp obtained from Alg.2;
+ 5       if a < pwp,t then
+ 6        Return (e, t);
+
+ 7 Return ({wp, X}, tX);
+
+  Proposition A.1. Based on the probabilities (Eq.9) pre-computed by Alg.2, Alg.3 will sample a link
+  (e, t) in Ewp,tp with probability proportional to exp(α(t −tp)).
+
+   Proof. To show this, we ﬁrst order the timestamps of links in Ewp,tp between [t, tp) as t = t′0 < t′1 <
+    t′2 < · · · < t′k < tp where there exists an link (e′, t′i) ∈Ewp,tp for t′i. Then, the probability to sample
+  a link (e, t) ∈Ewp,tp satisﬁes
+
+                               k
+                p = pwp,t × Y 1 −pwp,t′i
+                              i=1
+                                                 k P             exp(αt′)
+                           exp(αt)                     (e′,t′)∈Ewp,t′i−1           =             × Y
+         P         exp (αt′)   P           exp(αt′)
+                                (e′,t′)∈Ewp,t            i=1     (e′,t′)∈Ewp,t′i
+                            exp(αt)                 exp(α(t −tp))
+           =              =         P          exp (αt′) P          exp (α(t′ −tp)),                                 (e′,t′)∈Ewp,tp                    (e′,t′)∈Ewp,tp
+
+
+                                         14

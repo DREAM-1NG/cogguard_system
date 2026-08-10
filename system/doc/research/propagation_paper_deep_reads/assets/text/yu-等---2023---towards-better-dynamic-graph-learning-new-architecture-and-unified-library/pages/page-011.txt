@@ -1,0 +1,50 @@
+References
+[1] Martín Abadi, Paul Barham, Jianmin Chen, Zhifeng Chen, Andy Davis, Jeffrey Dean, Matthieu
+Devin, Sanjay Ghemawat, Geoffrey Irving, Michael Isard, Manjunath Kudlur, Josh Levenberg,
+Rajat Monga, Sherry Moore, Derek Gordon Murray, Benoit Steiner, Paul A. Tucker, Vijay
+Vasudevan, Pete Warden, Martin Wicke, Yuan Yu, and Xiaoqiang Zheng. Tensorflow: A system
+for large-scale machine learning. In 12th USENIX Symposium on Operating Systems Design
+and Implementation, pages 265–283. USENIX Association, 2016.
+[2] Unai Alvarez-Rodriguez, Federico Battiston, Guilherme Ferraz de Arruda, Yamir Moreno,
+Matjaž Perc, and Vito Latora. Evolutionary dynamics of higher-order interactions in social
+networks. Nature Human Behaviour, 5(5):586–595, 2021.
+[3] Jimmy Lei Ba, Jamie Ryan Kiros, and Geoffrey E Hinton. Layer normalization. arXiv preprint
+arXiv:1607.06450, 2016.
+[4] Lei Bai, Lina Yao, Can Li, Xianzhi Wang, and Can Wang. Adaptive graph convolutional
+recurrent network for traffic forecasting. In Advances in Neural Information Processing Systems
+33, 2020.
+[5] Peter W. Battaglia, Jessica B. Hamrick, Victor Bapst, Alvaro Sanchez-Gonzalez, Vinícius Flo-
+res Zambaldi, Mateusz Malinowski, Andrea Tacchetti, David Raposo, Adam Santoro, Ryan
+Faulkner, Çaglar Gülçehre, H. Francis Song, Andrew J. Ballard, Justin Gilmer, George E. Dahl,
+Ashish Vaswani, Kelsey R. Allen, Charles Nash, Victoria Langston, Chris Dyer, Nicolas Heess,
+Daan Wierstra, Pushmeet Kohli, Matthew M. Botvinick, Oriol Vinyals, Yujia Li, and Razvan
+Pascanu. Relational inductive biases, deep learning, and graph networks. CoRR, abs/1806.01261,
+2018.
+[6] Tom B. Brown, Benjamin Mann, Nick Ryder, Melanie Subbiah, Jared Kaplan, Prafulla Dhariwal,
+Arvind Neelakantan, Pranav Shyam, Girish Sastry, Amanda Askell, Sandhini Agarwal, Ariel
+Herbert-Voss, Gretchen Krueger, Tom Henighan, Rewon Child, Aditya Ramesh, Daniel M.
+Ziegler, Jeffrey Wu, Clemens Winter, Christopher Hesse, Mark Chen, Eric Sigler, Mateusz
+Litwin, Scott Gray, Benjamin Chess, Jack Clark, Christopher Berner, Sam McCandlish, Alec
+Radford, Ilya Sutskever, and Dario Amodei. Language models are few-shot learners. In
+Advances in Neural Information Processing Systems 33, 2020.
+[7] Nicolas Carion, Francisco Massa, Gabriel Synnaeve, Nicolas Usunier, Alexander Kirillov, and
+Sergey Zagoruyko. End-to-end object detection with transformers. In Computer Vision - ECCV
+2020 - 16th European Conference, volume 12346 of Lecture Notes in Computer Science, pages
+213–229. Springer, 2020.
+[8] Yukuo Cen, Zhenyu Hou, Yan Wang, Qibin Chen, Yizhen Luo, Xingcheng Yao, Aohan Zeng,
+Shiguang Guo, Peng Zhang, Guohao Dai, Yu Wang, Chang Zhou, Hongxia Yang, and Jie Tang.
+Cogdl: An extensive toolkit for deep learning on graphs. CoRR, abs/2103.00959, 2021.
+[9] Xiaofu Chang, Xuqin Liu, Jianfeng Wen, Shuang Li, Yanming Fang, Le Song, and Yuan Qi.
+Continuous-time dynamic graph learning via neural interaction processes. In The 29th ACM
+International Conference on Information and Knowledge Management, pages 145–154. ACM,
+2020.
+[10] Kyunghyun Cho, Bart van Merrienboer, Dzmitry Bahdanau, and Yoshua Bengio. On the
+properties of neural machine translation: Encoder-decoder approaches. In Proceedings of
+SSST@EMNLP 2014, pages 103–111. Association for Computational Linguistics, 2014.
+[11] Weilin Cong, Yanhong Wu, Yuandong Tian, Mengting Gu, Yinglong Xia, Mehrdad Mahdavi,
+and Chun-cheng Jason Chen. Dynamic graph representation learning via graph transformer
+networks. CoRR, abs/2111.10447, 2021.
+[12] Weilin Cong, Si Zhang, Jian Kang, Baichuan Yuan, Hao Wu, Xin Zhou, Hanghang Tong, and
+Mehrdad Mahdavi. Do we really need complicated model architectures for temporal networks?
+In International Conference on Learning Representations, 2023.
+11

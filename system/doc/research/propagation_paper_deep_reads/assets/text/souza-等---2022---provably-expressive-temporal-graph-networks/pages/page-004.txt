@@ -1,0 +1,59 @@
+feature vectors. The `-th entry of g(w; Su) stores how many times w appears at the `-th position in a
+walk of Su, i.e. g(w, Su)[`] = |{W 2 Su : (w, t`) = W`}| where W` is `-th pair of W.
+To encode a walk W with respect to the sets Su and Sv, CAW applies ENC(W; Su, Sv) =
+RNN([f1(ICAW(wi; Su, Sv))kf2(ti−1 −ti)]L
+i=1) where f1 is a permutation-invariant function, f2 is
+a time encoder, and t0 = t1 = t. Finally, CAW combines the embeddings of each walk in Su [ Sv
+using mean-pooling or self-attention to obtain the representation for the event (u, v, t).
+In practice, TGNs often rely on sampling schemes for computational reasons. However we are
+concerned with the expressiveness of TGNs, so our analysis assumes complete structural information,
+i.e., Su is the set of all temporal walks from u and MP-TGNs combine information from all neighbors.
+3
+The representational power and limits of TGNs
+We now study the expressiveness of TGNs on node/edge-level prediction. We also establish connec-
+tions to a variant of the WL test and show limits of speciﬁc TGN models. Proofs are in Appendix B.
+3.1
+Distinguishing nodes with MP-TGNs
+We analyze MP-TGNs w.r.t. their ability to map different nodes to different locations in the embedding
+space. In particular, we say that an L-layer MP-TGN distinguishes two nodes u, v of a temporal
+graph at time t, if the last layer embeddings of u and v are different, i.e., h(L)
+u (t) 6= h(L)
+v
+(t).
+We can describe the MP computations of a node v at time t via its temporal computation tree (TCT)
+Tv(t). Tv(t) has v as its root and height equal to the number of MP-TGN layers L. We will keep
+the dependence on depth L implicit for notational simplicity. For each element (u, e, t0) 2 N(v, t)
+associated with v, we have a node, say i, in the next layer of the TCT linked to the root by an edge
+annotated with (e, t0). The remaining TCT layers are built recursively using the same mechanism.
+We denote by ]t
+v the (possibly many-to-one) operator that maps nodes in Tv(t) back to nodes in G(t),
+e.g., ]t
+vi = u. Each node i in Tv(t) has a state vector si = s]tvi(t). To get the embedding of the root
+v, information is propagated bottom-up, i.e., starting from the leaves all the way up to the root —
+each node aggregates the message from the layer below and updates its representation along the way.
+Whenever clear from context, we denote ]t
+v simply as ] for a cleaner notation.
+We study the expressive power of MP-TGNs through the lens of functions on multisets adapted to
+temporal settings, i.e., comprising triplets of node states, edge features, and timestamps. Intuitively,
+injective functions ‘preserve’ the information as it is propagated, so should be essential for maximally
+expressive MP-TGNs. We formalize this idea in Lemma 1 and Proposition 2 via Deﬁnition 1.
+Deﬁnition 1 (Isomorphic TCTs). Two TCTs Tz(t) and Tz0(t) at time t are isomorphic if there is a
+bijection f : V (Tz(t)) ! V (Tz0(t)) between the nodes of the trees such that the following holds:
+(u, v, t0) 2 E(Tz(t)) () (f(u), f(v), t0) 2 E(Tz0(t))
+8(u, v, t0) 2 E(Tz(t)) : euv(t0) = ef(u)f(v)(t0) and 8u 2 V (Tz(t)) : su = sf(u) and ku = kf(u)
+Here, ku denotes the level (depth) of node u in the tree. The root node has level 0, and for a node u
+with level ku, the children of u have level ku + 1.
+Lemma 1. If an MP-TGN Q with L layers distinguishes two nodes u, v of a dynamic graph G(t),
+then the L-depth TCTs Tu(t) and Tv(t) are not isomorphic.
+For non-isomorphic TCTs, Proposition 2 shows that improving MP-TGNs with injective message
+passing layers sufﬁces to achieve node distinguishability, extending results from static GNNs [43].
+Proposition 2 (MP-TGNs with injective message passing). If the L-depth TCTs of two nodes u, v of
+a temporal graph G(t) at time t are not isomorphic, then an MP-TGN Q with L layers and injective
+aggregation and update functions at each layer is able to distinguish nodes u and v.
+So far, we have considered TCTs with general memory modules, i.e., nodes are annotated with
+memory states. However, an important question remains: How does the expressive power of MP-
+TGNs change as a function of the memory? Naturally, different implementation of memory modules
+can determine whether the TCTs of two nodes are isomorphic or not. Thus, most expressive MP-
+TGNs should also employ injective memory aggregation/update. However, Proposition 3 shows that
+adding GRU-based memory does not increase the expressiveness of suitably deep MP-TGNs.
+4

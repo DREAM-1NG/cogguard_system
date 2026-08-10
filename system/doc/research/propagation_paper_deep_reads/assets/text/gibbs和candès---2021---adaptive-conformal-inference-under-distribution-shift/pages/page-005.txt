@@ -1,0 +1,64 @@
+Adaptive Alpha
+Fixed Alpha
+Bernoulli Sequence
+Nvidia
+0.85
+0.90
+0.95
+Local Coverage Level
+AMD
+BlackBerry
+0.85
+0.90
+0.95
+2005
+2010
+2015
+2020
+Local Coverage Level
+Fannie Mae
+2000
+2005
+2010
+2015
+2020
+Time
+Figure 1: Local coverage frequencies for adaptive conformal (blue), a non-adaptive method that holds
+αt = α ﬁxed (red), and an i.i.d. Bernoulli(0.1) sequence (grey) for the prediction of stock market
+volatility. The coloured dotted lines mark the average coverage obtained across all time points, while
+the black line indicates the target level of 1 −α = 0.9.
+Daily open prices were obtained from publicly available datasets published by The Wall Street Journal.
+The realized local coverage frequencies for the non-adaptive and adaptive conformal methods on four
+different stocks are shown in Figure 1. These stocks were selected out of a total of 12 stocks that
+we examined because they showed a clear failure of the non-adaptive method. Adaptive conformal
+inference was found to perform well in all cases (see Figure 9 in the appendix).
+As a visual comparator, the grey curves show the moving average 1 −
+1
+500
+Pt+250
+r=t−250+1 Ir for
+sequences {It}1≤t≤T that are i.i.d. Bernoulli(0.1). We see that the local coverage frequencies
+obtained by adaptive conformal inference (blue lines) always stay within the variation that would be
+expected from an i.i.d. Bernoulli sequence. On the other hand, the non-adaptive method undergoes
+large excursions away from the target level of 1 −α = 0.9 (red lines). For example, in the bottom
+right panel we can see that the non-adaptive method fails to cover the realized volatility of Fannie
+Mae during the 2008 ﬁnancial crisis, while the adaptive method is robust to this event (see Figure 4
+in the Appendix for a plot of the price of Fannie Mae over this time period).
+3
+Related Work
+Prior work on conformal inference has considered two different types of distribution shift [33, 10]. In
+both cases the focus was on environments in which the calibration data is drawn i.i.d. from a single
+distribution P0, while the test point comes from a second distribution P1. In this setting Tibshirani
+et al. [33] showed that valid prediction sets can be obtained by re-weighting the calibration data using
+the likelihood ratio between P1 and P0. However, this requires the conditional distribution of Y |X to
+be constant between training and testing and the likelihood ratio P1(X)/P0(X) to be either known
+or very accurately estimated. On the other hand, Cauchois et al. [10] develop methods for forming
+prediction sets that are valid whenever P1 and P0 are close in f-divergence. Similar to our work, they
+show that if Df(P1||P0) ≤ρ then there exists a conservative value αρ ∈(0, 1) such that
+M(αρ) := P(S(Xt, Yt) > ˆQ(1 −αρ)) ≤α.
+The difference between our approach and theirs is twofold. First, while they ﬁx a single conservative
+value αρ our methods aim to estimate the optimal choice α∗satisfying M(α∗) = α. This is not
+possible in the setting of [10] as they do not observe any data from which the size of the distribution
+shift can be estimated. Second, while they consider only one training and one testing distribution we
+work in a fully online setting in which the distribution is allowed to shift continuously over time.
+5

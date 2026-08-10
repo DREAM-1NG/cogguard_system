@@ -1,0 +1,82 @@
+Detection and Characterization of Coordinated Online Behavior: A Survey                                    3
+
+
+
+
+                                Identification of studies                                   Identification of studies
+                              via databases and registers                                    via other methods
+
+
+                       Records identified from:                        Additional studies identified through
+                         Scopus (𝑛= 353)                         backward reference searching
+                        Google Scholar (𝑛= 1000)                 (𝑛= 38)                                                                                 Identification
+
+                                             Records removed before screening:
+                                                  Duplicate records removed (𝑛= 147)
+
+
+
+                       Records screened (𝑛= 1206)                                                   Screening
+
+                                                        Full-text articles excluded (𝑛= 1123):
+                                            Not in English (𝑛= 4)
+                                           Out of scope (𝑛= 1118)
+                                                                                Fig. 4. Distribution of papers in the dataset according
+                     Studies included in review (𝑛= 122)                                      to the disciplinary area of the publication venue, high-                                              Included                                                                             lighting the predominance of Computer Science venues
+                                                                      alongside contributions from Social Sciences and inter-
+  Fig. 3. PRISMA diagram summarizing the stages used to construct the disciplinary outlets.
+  final corpus of studies considered in this survey.
+
+it critically evaluates and categorizes existing detection and characterization methods, informing the development
+
+of the next generation of robust and adaptive tools for studying both malicious and neutral instances of coordinated
+
+behavior. By shedding light on online coordination—a fundamental dynamic of computer-mediated human behavior—
+
+this survey contributes to safeguarding online integrity and to fostering positive interactions in digital spaces. It offers
+
+valuable insights for shaping future methodologies, platforms, and policies, and it also contributes to enriching the
+
+interdisciplinary research occurring at the intersection between computer science and social dynamics.
+
+   Scope. Coordinated online behavior is orthogonal to many of the research topics tackled in fields such as Web and
+social media analysis, online social networks security, as well as social computing and computational social science,
+
+as shown in Figure 1. Therefore, a large number of works from these scientific communities implicitly or explicitly
+
+deal with online coordination. While coordinated behavior can manifest across a wide range of online environments
+
+(e.g., e-commerce platforms, review systems, or online marketplaces [105]), this survey focuses primarily on online
+
+social media platforms, where coordination has been most extensively studied and where interactions are more readily
+
+observable at scale. Accordingly, this survey is constrained to those papers that address online coordination explicitly
+
+within this context and that provide relevant contributions to its detection, characterization, or understanding.
+
+   Literature search and selection. A systematic literature search was conducted to identify studies addressing coordinated
+behavior on social media platforms using two databases: Scopus and Google Scholar. The Scopus query targeted papers
+
+containing the following search strings:
+
+       (“coordinated behavior” OR “coordinated behaviour” OR “coordinated activity” OR “coordinated campaign” OR “coor-
+
+       dinated inauthentic behavior” OR “coordinated inauthentic behaviour” OR “inauthentic behavior” OR “inauthentic
+
+       behaviour” OR “information operation*”) AND (“social media” OR online OR twitter OR facebook OR instagram OR
+
+        reddit OR telegram OR tiktok OR youtube)
+
+  The search was restricted to publications between 2014 and 2026, written in English, and within relevant subject
+
+areas (Computer Science, Social Sciences, Decision Sciences, Engineering, and Multidisciplinary). This query returned
+
+353 records. To broaden coverage, a complementary search was performed on Google Scholar using similar search
+
+strings, collecting the first 1000 results returned by the platform. This choice aims to maximize coverage while reducing
+
+potential bias introduced by the platform’s ranking mechanism. After merging the two sources, 147 duplicate records
+
+were removed, leaving 1206 records for screening. Titles and abstracts were manually reviewed, leading to the exclusion
+
+                                                                                                         Manuscript submitted to ACM

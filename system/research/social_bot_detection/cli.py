@@ -17,8 +17,12 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Train and evaluate internal BotRHG on a supported social-bot corpus.")
     parser.add_argument(
         "--dataset-name",
-        default="botection",
-        choices=["botection", "cresci_2015", "cresci_2017", "midterm_2018", "approved_account_corpus"],
+        default="cresci_2017",
+        choices=["cresci_2015", "cresci_2017", "midterm_2018", "approved_account_corpus"],
+        help=(
+            "Public benchmark corpus for text/graph adaptation. "
+            "TwiBot-20 is queried with twibot20_cli; Botection is legacy-only."
+        ),
     )
     parser.add_argument("--dataset-root", required=True)
     parser.add_argument("--output-dir", required=True)
@@ -54,7 +58,7 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     if args.strict_method:
-        if args.dataset_name == "botection":
+        if args.dataset_name == "approved_account_corpus":
             parser.error("--strict-method requires one of: cresci_2015, cresci_2017, midterm_2018")
         report = train_strict_botrhg(args.dataset_root, args.output_dir, dataset_name=args.dataset_name, config=config)
     else:

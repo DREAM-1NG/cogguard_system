@@ -1,0 +1,11 @@
+Detection and Characterization of Coordinated Online Behavior: A Survey                                   39
+
+
+[158] Yasser Zouzou and Onur Varol. 2024. Unsupervised detection of coordinated fake-follower campaigns on social media. EPJ Data Science 13, 1
+       (2024), 62.
+
+
+
+
+
+                                                                                                         Manuscript submitted to ACM

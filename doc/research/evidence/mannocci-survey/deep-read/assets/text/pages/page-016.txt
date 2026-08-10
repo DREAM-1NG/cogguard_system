@@ -1,0 +1,88 @@
+16                                                                                 Mannocci et al.
+
+
+Table 2. Network science methods for detecting coordinated behavior based on single layer user networks. For each group of works
+we report the considered co-actions, similarity functions, filtering criteria, and community detection methods.
+
+           reference             action                              similarity                     filters†            community detection
+
+             [18]                   retweet                                 cardinality                    threshold, ADJ        modularity clustering
+             [47]                   retweet                                 cardinality             EDO                Louvain
+              [61, 62]                retweet                                 cardinality                    threshold, ADO       Louvain
+             [65]                   retweet                                 cardinality                  backbone, ADJ        Louvain
+             [115]                  retweet                                 cardinality             EDO
+              [19, 30, 51, 66, 100, 128]  retweet                               cosine similarity TF-IDF      backbone            Louvain
+              [114, 129]              retweet                               cosine similarity TF-IDF      backbone, EDO        Leiden
+             [144]                  retweet                                 cardinality                    threshold, ADJ
+                                                                      kNN graph,
+              [8]                     retweet                               cosine similarity                        HDBSCAN
+                                                                                                              correlation
+                                                                                                                          Louvain, connected
+             [17]                     retweet, tweet                          cardinality                    threshold, EDO
+                                                                                                             components
+             [59]                     retweet, tweet                          cardinality                    threshold, EDO       Louvain
+             [116]                    retweet, tweet                          cardinality                    threshold, EDO
+             [13]                   tweet                                 cosine similarity              threshold, EDO
+             [28]                   tweet                                   cardinality            ADO
+             [64]                   tweet                                   cardinality                   threshold              cohesive campaign
+             [102]                  tweet                                    text similarity                 threshold, ADO
+             [98]                    parley                                  cardinality                    threshold, kNN graph  Leiden
+             [140]                     text                                     cardinality                 backbone            Louvain
+                                                                                                              threshold, kNN graph,
+             [149]                  tweet
+                                                                ADO
+             [96]                     tweet, URL                              cardinality,cosine similarity   threshold, EDO       Louvain
+                                                                                  text similarity, cardinality,
+             [97]                     tweet, parley, URL, username                                          threshold, kNN graph  Louvain
+                                                                          cosine similarity
+                                                                           cosine similarity TF-IDF, text
+             [70]                     retweet, tweet, URL, hashtag                                          threshold, ADO
+                                                                                 similarity
+                                      retweet, tweet, URL, hashtag, fast
+             [104]                                                         cosine similarity TF-IDF    ADO (fast retweet)    connected components
+                                   retweet
+              [145, 146]               retweet, URL, hashtag, mention, reply  cardinality              ADJ                     focal structures
+             [138]                    retweet, tweet, URL, hashtag, mention  cosine similarity TF-IDF     ADJ                  Leiden
+                                      retweet, hashtag, image, handle        Jaccard coefficient,
+             [103]                                                                                           threshold, EDO
+                                   change, synchronization                 cardinality, cosine similarity
+             [27]                     retweet, tweet, image, synchronization  cosine similarity TF-IDF      threshold            Louvain
+                                                                   Normalized Compression
+             [67]                      interaction, text, synchronization                        kNN graph
+                                                                        Distance
+                                            text, synchronization, hashtag, URL,
+             [71]                                                          cosine similarity TF-IDF      threshold             connected components
+                                       duet, stitch, reply
+                                     hashtag, URL, video description,
+             [148]                                                             cardinality             kNN graph           connected components
+                                    music, audio
+             [20]              URL                                  cosine similarity TF-IDF       threshold, EDO        connected components
+             [16]              URL                                    cardinality             kNN graph           Louvain
+              [14, 41, 43, 44, 49, 110,
+                          URL                                    cardinality                    threshold, ADO       connected components
+             112, 122]
+             [150]              URL                                    cardinality
+              [3]                  URL, hashtag, mention              unweighted            EDO                 Leiden
+             [95]                 URL, hashtag, mention                 cardinality                    threshold, EDO       Louvain
+             [22]                 URL, text                             cosine similarity TF-IDF       threshold, ADJ
+              [42, 121]             URL, text-image                        cardinality                    threshold, ADO       connected components
+             [99]                 image                                   cardinality                    threshold, kNN graph
+             [152]                  image, video                            cardinality                    threshold, ADO       connected components
+             [15]                   hashtag                                 cardinality                   threshold             connected components
+             [91]                   hashtag                                 cardinality                    threshold, backbone   Louvain
+             [142]                  hashtag                                 cardinality
+             [53]                       like                                     cardinality                   threshold
+                                                                                                                      k-means, hierarchical
+             [60]                comment                               cardinality                   threshold
+                                                                                                                                      clustering
+             [106]               comment                               cardinality                    threshold, ADO       connected components
+             [90]                  mention                              cosine similarity TF-IDF      threshold            Louvain
+             [157]                   report                                   cardinality                   threshold             connected components
+             [158]                   follow                                cosine similarity                                 Louvain
+
+          † ADJ: adjacent time window, EDO: evenly distributed overlapping time window, ADO: action-driven overlapping time window
+
+as a valid co-action [3, 32, 72, 73, 91, 94, 95, 138, 142, 145, 146]. However, others argued that using the same set or
+sequence of hashtags represents a stronger and more reliable signal of coordination [15, 29, 70, 103]. More recently,
+
+Manuscript submitted to ACM

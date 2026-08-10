@@ -1,0 +1,60 @@
+27:10                                                                                            F. Zhou et al.
+
+
+               Table 3. Basic Statistics of Three Benchmark Datasets Used in This Survey
+
+  Dataset   # Cascades   # Nodes    # Edges   Avg. Depth      Avg. P(to)        Avg. P(tp )
+  Twitter       1,345,913     595,460   14,430,254          2.198   21.37 (to = 1d)   118.02 (tp = 16d)
+  Weibo         119,313   6,738,040   15,249,636          2.337   56.49 (to = 1h)   117.51 (tp = 24h)
+  APS           514,609     616,316   54,614,609          4.096     4.56 (to = 3y)      7.75 (tp = 20y)
+
+
+
+               Table 4. Frequency of Five Feature Groups Used by Feature-based Models
+
+             2009   2010   2011   2012   2013   2014   2015   2016   2017   2018   2019
+Temporal      2      3      5      6      5     10     6     10     3      1      0    22.8%
+Casc. struct.    1      0      1      2      6      6      5      7      2      2      0    14.3%
+Glob. graph    1      1      2      3      7      8      5      7      2      2      1    17.4%
+User/item      3      1      7      7      3     10     6      8      3      4      1    23.7%
+Content        3      1      7      9      5      7      3      6      4      3      1    21.9%
+             4.46%  2.68%  9.82%  12.1%  11.6%  18.3%  11.2%  17.0%  6.25%  5.26%  1.34%
+
+
+
+                     Table 5. Strategies and Formulations of Feature-based Models
+
+ Strategy  Formulation                             Reference
+ Ex-ante    Classification   [7, 49, 85, 86, 90, 131, 138, 149, 155, 173, 187, 189, 229, 248]
+           Regression      [11, 36, 64, 91, 106, 109, 132, 136, 166, 177, 192, 210, 212, 218]
+          Both             [12, 50, 105, 108]
+ Peeking    Classification   [4, 19, 23, 39, 46, 54, 71, 81, 86, 92, 96, 97, 103, 128, 134, 135, 165, 172, 175, 191,
+                             207, 208, 215, 241]
+           Regression       [3, 14, 31, 61, 74, 77, 78, 98, 106, 123, 126, 151, 156, 161, 168, 181, 184, 186, 188,
+                             190, 194, 200, 230, 232, 233]
+          Both              [1, 50, 60, 72, 73, 84, 100, 101, 105, 114, 142]
+
+
+decade.4 From Table 4, we can see that among the five groups of features, temporal, user/item,
+and content features have received more attention in comparison with structural features. Mod-
+els based only on features in recent years are becoming less. Table 5 showed that peeking is a
+more popular strategy than ex-ante, and some models evaluate the prediction performance in both
+classification and regression.
+
+3.1  Temporal Features
+
+Temporal features in information items/cascades have been among the most crucial factors in pop-
+ularity prediction [39, 60]. We discuss the temporal features in the context of feature engineering.
+
+   3.1.1  Observation Time. Temporal features are usually extracted based on peeking strategy,
+i.e., observing a small number of early participants and their action time, to retrieve a sequence of
+timestamps that can be utilized for feature selection. Since the length of time series are highly irreg-
+ular, e.g., in a fixed time interval, some cascades may have tens of thousands of participants, while
+most participants receive little attention, directly utilizing timestamps as a feature is ineffectual
+
+
+4Due to the space limitation, we refer readers to the supplementary material [249] for the details per individual work,
+including strategy, formulation, and incorporated features.
+
+
+ACM Computing Surveys, Vol. 54, No. 2, Article 27. Publication date: March 2021.

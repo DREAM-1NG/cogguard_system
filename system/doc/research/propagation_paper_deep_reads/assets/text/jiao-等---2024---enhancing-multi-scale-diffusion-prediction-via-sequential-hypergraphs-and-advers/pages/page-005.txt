@@ -1,0 +1,148 @@
+LSTM to encode different aspects of the inputs. The orthog-
+onality constraints are defined as:
+Ldiff =
+HshareT Hcas
+2
+F +
+HshareT Huser
+2
+F , (10)
+where ∥·∥2
+F is the squared Frobenius norm.
+Diffusion Prediction
+We concatenate the task-specific representation Hcas and
+Huser for each task with the shared representation Hshare,
+respectively. These concatenated representations are then
+separately fed into distinct output layers dedicated to the pre-
+diction process.
+Macroscopic Diffusion Prediction
+For macroscopic dif-
+fusion prediction, we aim to predict the final cascade size in
+the future. We calculate the final size of diffusion cascade
+dm by:
+Sm = MLP(concat(hcas, hshare)),
+(11)
+where concat(·, ·) is the concatenation operation.
+We train the macroscopic task by minimizing the follow-
+ing loss function:
+Lmacro = 1
+M
+M
+X
+m=1
+(Sm −ˆSm)2,
+(12)
+where M is the number of diffusion cascades and ˆSm is the
+ground truth.
+Microscopic Diffusion Prediction
+For microscopic diffu-
+sion prediction, we predict the next influenced probability
+pi ∈R|dm| for user ui:
+pi = softmax(MLP(concat(huser, hshare))).
+(13)
+We adopt the cross entropy loss for microscopic training:
+Lmicro = −
+|dm|
+X
+j=2
+|U|
+X
+i=1
+ˆpji log(pji),
+(14)
+where |U| is the number of users and ˜p is true probability. If
+user ui participate in cascade dm at the step j, then ˆpji = 1,
+otherwise ˆpji = 0.
+The overall loss function of our model is defined as:
+L = λLmacro + (1 −λ)Lmicro + Ladv + γLdiff,
+(15)
+where λ is a balance parameter and γ is a hyperparameter.
+Experiment
+In this section, we conduct experiments on both microscopic
+and macroscopic cascade predictions to demonstrate the ef-
+fectiveness of our proposed model.
+Experimental Setting
+Datasets
+We conduct experiments on four datasets, i.e.,
+Christianity, Android, Douban and Memetracker. The statis-
+tics of these datasets are shown in Table 1. A detailed de-
+scription of the datasets can be found in the Appendix.
+Dataset
+Christ
+Android
+Douban
+Meme
+# Users
+2,897
+9,958
+12,232
+4,709
+# Links
+35,624
+48,573
+39,658
+209,194
+# Cascades
+589
+679
+3,475
+12,661
+Avg. Length
+22.9
+33.3
+21.76
+16.24
+Table 1: Statistics of datasets. Christ is short for the dataset
+Christianity, and Meme is short for the dataset Memetracker.
+Baselines
+We compare thirteen representative baseline
+models with our models.
+For macroscopic prediction, we evaluate five models:
+DeepCas (Li et al. 2016), DeepHawkes (Cao et al. 2017),
+CasCN (Chen et al. 2019b), CasFlow (Xu et al. 2023b) and
+TCSE-net (Wu et al. 2022).
+For microscopic prediction, we evaluate six models:
+TopoLSTM (Wang et al. 2017), NDM (Yang et al. 2021),
+SNIDSA (Wang, Chen, and Li 2018), Inf-VAE (Sankar et al.
+2020), DyHGCN (Yuan et al. 2020) and TAN-DRUD (Liu
+et al. 2022).
+For multi-scale prediction, we evaluate two models: FOR-
+EST (Yang et al. 2019) and DMT-LIC (Chen et al. 2019a).
+A detailed description of baselines can be found in the
+Appendix.
+Evaluate Metrics
+For macroscopic prediction, we use
+Mean Squared Logarithmic Error (MSLE) as the evalua-
+tion metric, which is also used in previous experiments (Cao
+et al. 2017; Li et al. 2016). For microscopic prediction, we
+use two ranking metrics used in (Yang et al. 2019): Mean
+Average Precision on top k (MAP@k) and Hits Scores on
+top k (Hits@k) for evaluation, k = [10, 50, 100].
+Parameters Settings
+For each dataset, we employ a ran-
+dom sampling method to allocate 80% of cascades for train-
+ing, 10% for validation, and the remaining 10% for test-
+ing. Baseline methods follow the original paper settings. For
+MINDS, we implement the model using PyTorch and uti-
+lize the Adam optimizer with a learning rate of 0.001. The
+embedding dimension is set to 64, and the batch size is 32.
+The balance parameter λ is assigned a value of 0.3, while
+the hyperparameter γ is set to 0.05. Social homophily learn-
+ing utilizes a 2-layer GCN, and global interaction learning is
+facilitated through a single-layer HGNN. Additionally, the
+number of time intervals is set to 8.
+Performance Comparison
+We conduct a comprehensive comparison of MINDS with
+various baselines on four datasets, focusing on microscopic
+and macroscopic diffusion prediction. The results are sum-
+marized in Tables 2, 3, and 4, and we observe the following:
+1) MINDS consistently outperforms all state-of-the-art
+baselines in microscopic prediction tasks. Compared to the
+second-best model DyHGCN, MINDS leverages sequential
+hypergraphs to dynamically represent cascade interactions,
+leading to remarkable improvements of up to 3% in Hits
+scores and MAP scores.
+2) MINDS consistently outperforms all state-of-the-art
+baselines in macroscopic prediction tasks, achieving at least
+The Thirty-Eighth AAAI Conference on Artiﬁcial Intelligence (AAAI-24)
+8575

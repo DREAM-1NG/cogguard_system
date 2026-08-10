@@ -1,0 +1,149 @@
+HGNN
+HGNN
+Fusion Layer
+Fusion Layer
+……
+HGNN
+GCN
+LSTM
+Shared
+LSTM
+LSTM
+MLP
+MLP
+MLP
+MLP
+Macro Prediction
+Micro Prediction
+?
+?
+Ldiff
+Ldiff
+Ladv
+User Global Interactive Learning
+User Social Homophily Learning
+Shared-private
+ Representation Learning
+Diﬀusion Prediction
+Social graph
+Diffusion hypergraph
+Diffusion sequence
+?
+?
+XD
+XS
+GD1
+GD2
+GDT
+Figure 2: The architectural overview of our model.
+……
+……
+……
+Xl
+Yl
+Xl+1
+Figure 3: The two stages of hypergraph convolution.
+where σ is an non-linear activation function ReLU and
+Nv(et
+j) is the set of vertices connected by hyperedge et
+j. wet
+j
+is a weight associated to hyperedge et
+j. We consider each
+cascade to be of equal importance and give the same weight
+to each hyperedge when aggregating, i.e. wet
+j = 1.
+Hyperedge-to-Vertex. After updating features of hyper-
+edges, the second stage aims to aggregate the information
+of all hyperedges participated by ut
+i for updating the feature
+xi,t of ut
+i at t-th time interval. The update process can be
+defined as:
+xl+1
+i,t = σ
+
+Θl ·
+X
+et
+j∈Ne(ut
+i)
+yl
+j,t
+|Ne(ut
+i)|
+
+,
+(2)
+where Ne(ut
+i) is the set of hyperedges connected by vertex
+ut
+i. Θl ∈Rd×d is a trainable parameter of layer l and d is
+the dimension of embedding.
+Sequential HGNNs with Fusion Layer
+The above two-
+stage convolution operation only learns user interaction at a
+specific time interval, which can not adequately characterize
+the evolution of cascades in propagation. Therefore, we de-
+sign a fusion strategy to connect the interactions at different
+time intervals learned by HGNN in chronological order. The
+fusion strategy is defined as:
+x0
+i,t+1 = αxL
+i,t + (1 −α)x0
+i,t
+α =
+exp(WT
+F2σ(WF1xL
+i,t))
+exp(WT
+F2σ(WF1xL
+i,t))+exp(WT
+F2σ(WF1x0
+i,t)),
+(3)
+where x0
+i,t is the initial feature of user ut
+i and xL
+i,t is the up-
+dated feature of user ut
+i learned from diffusion hypergraph
+Gt
+D through L-layer HGNN. At the first time interval, we
+initialize the user feature embedding from a normal distri-
+bution. σ(·) is the activation function ReLU. WF1 repre-
+sents the transformation matrix, while WT
+F2 denotes the vec-
+tor used for calculating attention scores.
+We can obtain the final global interactive representation
+XD through sequential HGNNs.
+User Social Homophily Learning
+User tends to have more social interactions with users who
+are similar to them and this refers to the principle called so-
+cial homophily. Close friends, who are usually friends alike
+in certain qualities or interests, have more influence on each
+other than dissimilar ones. Users’ social homophily can be
+reflected through social network structure. We introduce the
+social graph to model user social relationships and apply a
+multi-layer GCN to embed social homophily. Given social
+graph GS = (U, E), the user social homophily embedding
+matrix Xl
+S at l-th layer is updated by:
+Xl+1
+S
+= σ( ˜D
+−1
+2
+S
+˜AS ˜D
+−1
+2
+S Xl
+SWS),
+(4)
+where σ is the ReLU activation function, WS is a train-
+able weight matrix, ˜
+AS and ˜
+DS are the adjacent and degree
+The Thirty-Eighth AAAI Conference on Artiﬁcial Intelligence (AAAI-24)
+8573

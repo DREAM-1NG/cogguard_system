@@ -5,9 +5,11 @@ from research.social_bot_detection.active_learning import (
     AcquisitionInputError,
     badge_select,
     calibrated_uncertainty,
+    compute_alps_embeddings,
     core_set_select,
     select_account_labeling_batch,
 )
+from transformers import BertConfig, BertForMaskedLM, BertTokenizer
 from research.social_bot_detection.evaluate_active_round import evaluate_active_round_gates
 from research.social_bot_detection.evaluate_active_round import build_frozen_holdout_manifest
 from research.social_bot_detection.evaluate_active_round import compare_active_learning_efficiency
@@ -139,6 +141,47 @@ def test_core_set_and_badge_helpers_are_deterministic():
     )
     assert selected == [0]
     assert calibrated_uncertainty(0.51, calibrated=True) > 0.9
+
+
+def test_alps_masks_tokens_and_emits_fixed_length_deterministic_vectors(tmp_path):
+    model_dir = tmp_path / "tiny-mlm"
+    model_dir.mkdir()
+    vocab_path = model_dir / "vocab.txt"
+    vocab_path.write_text(
+        "\n".join(("[PAD]", "[UNK]", "[CLS]", "[SEP]", "[MASK]", "social", "account", "post")),
+        encoding="utf-8",
+    )
+    BertTokenizer(str(vocab_path), do_lower_case=False).save_pretrained(model_dir)
+    BertForMaskedLM(
+        BertConfig(
+            vocab_size=8,
+            hidden_size=8,
+            num_hidden_layers=1,
+            num_attention_heads=2,
+            intermediate_size=16,
+        )
+    ).save_pretrained(model_dir)
+
+    first = compute_alps_embeddings(
+        ["social account", "social account post social"],
+        model_path=model_dir,
+        max_length=10,
+        batch_size=1,
+        device="cpu",
+        seed=7,
+    )
+    second = compute_alps_embeddings(
+        ["social account", "social account post social"],
+        model_path=model_dir,
+        max_length=10,
+        batch_size=2,
+        device="cpu",
+        seed=7,
+    )
+
+    assert first == second
+    assert all(len(vector) == 10 for vector in first)
+    assert all(any(value > 0.0 for value in vector) for vector in first)
 
 
 def test_platform_stratification_prevents_one_platform_from_owning_the_batch():

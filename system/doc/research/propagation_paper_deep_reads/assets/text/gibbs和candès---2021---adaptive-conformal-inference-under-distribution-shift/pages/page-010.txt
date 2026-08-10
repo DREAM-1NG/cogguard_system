@@ -1,0 +1,50 @@
+Adaptive Alpha
+Fixed Alpha
+Bernoulli Sequence
+0.825
+0.850
+0.875
+0.900
+500
+1000
+1500
+2000
+Time
+Local Coverage Level
+Figure 3: Local coverage frequencies of adaptive conformal (blue), a non-adaptive method that holds
+αt = α ﬁxed (red), and an i.i.d. Bernoulli(0.1) sequence (grey) for county-level election predictions.
+Coloured dotted lines show the average coverage across all time points, while the black line indicates
+the target coverage level of 1 −α = 0.9.
+To make the setting precise, let {Yt}1≤t≤T denote the number of votes cast for presidential candidate
+Joe Biden in the 2020 election in each of approximately T = 3000 counties in the United States.
+Let Xt denote a set of demographic covariates associated to the tth county. In our experiment Xt
+will include information on the make-up of the county population by ethnicity, age, sex, median
+income and education (see Section A.6.1 for details). On election night county vote totals were
+observed as soon as the vote count was completed. If the order in which vote counts completed was
+uniformly random {(Xt, Yt)}1≤t≤T would be an exchangeable sequence on which we could run
+standard conformal inference methods. In reality, larger urban counties tend to report results later
+than smaller rural counties and counties on the east coast of the US report earlier than those on the
+west coast. Thus, the distribution of (Xt, Yt) can be viewed as drifting throughout election night.
+We apply CQR to predict the county-level vote totals (see Section A.6.2 for details). To replicate
+the east to west coast bias observed on election night we order the counties by their time zone with
+eastern time counties appearing ﬁrst and Hawaiian counties appearing last. Within each time zone
+counties are ordered uniformly at random. Figure 3 shows the realized local coverage frequency over
+the most recent 300 counties (see (4)) for the non-adaptive and adaptive conformal methods. We
+ﬁnd that the non-adaptive method fails to maintain the desired 90% coverage level, incurring large
+troughs in its coverage frequency during time zone changes. On the other hand, the adaptive method
+maintains approximate 90% coverage across all time points with deviations in its local coverage level
+comparable to what is observed in Bernoulli sequences.
+7
+Discussion
+There are still many open problems in this area. The methods we develop are speciﬁc to cases where
+Yt is revealed at each time point. However, there are many settings in which we receive the response
+in a delayed fashion or in large batches. In addition, our theoretical results in Section 4.2 are limited
+to a single model for the data generating distribution and the special case where the quantile function
+ˆQt(·) is ﬁxed across time. It would be interesting to determine if similar results can be obtained in
+settings where ˆQt(·) is ﬁt in an online fashion on the most recent data. Another potential area for
+improvement is in the choice of the step size γ. In Section 2.1 we give some heuristic guidelines
+for choosing γ based on the size of the distribution shift in the environment. Ideally however we
+would like to be able to determine γ adaptively without prior knowledge. Finally, our experimental
+results are limited to just two domains. Additional work is needed to determine if our methods can
+successfully protect against a wider variety of real-world distribution shifts.
+10

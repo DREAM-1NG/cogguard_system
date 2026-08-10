@@ -57,6 +57,12 @@ celery_app.conf.update(
             "kwargs": {"window_seconds": 300},
             "options": {"queue": "account_training"},
         },
+        "account-evaluation-dispatch-reconciliation": {
+            "task": "account_evaluation.reconcile_dispatches",
+            "schedule": 60.0,
+            "kwargs": {"limit": 100},
+            "options": {"queue": "account_evaluation"},
+        },
     },
 )
 

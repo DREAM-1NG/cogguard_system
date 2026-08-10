@@ -1,0 +1,81 @@
+Detection and Characterization of Coordinated Online Behavior: A Survey                                    9
+
+
+actions among actors indicates the degree of planning and organization involved [73, 155]. The consistency of the
+
+actions and the actions performed in response to external events are further characteristics of coordinated behaviors.
+
+Finally, the types of actions and their content provides insights into the intent and goals of the actors [19].
+
+2.4.3   Intent. The intent is the objective that the actors pursue when they coordinate. When studying coordinated
+online behavior, the intent of the actors is typically unknown, if not deliberately concealed. For example, actors involved
+
+in malicious or harmful coordination conceal their intent to avoid being stopped in their endeavor [51]. However, also
+
+actors involved in neutral or benign forms of coordination might not openly state their goals and intent. For this reason,
+
+the observer often tries to infer the intent based on the visible actions performed by the actors. Furthermore, intent can
+
+be either shared and explicit among the actors, or implicit. For instance, the perpetrators of a disinformation campaign
+
+share the explicit goal of disseminating certain pieces of false information [59]. Conversely, fans of a sports team or
+
+public character may spontaneously engage in coordinated actions to support their idol, without having agreed on
+
+a specific objective or course of action [100]. The previous examples highlight that the characteristics of the intent
+
+are related to the degree of organization of the actors. Importantly, the intent also contributes to determining the
+
+harmfulness of the coordinated behavior. However, while there are cases in which it is relatively straightforward to
+
+categorize a coordinated behavior as harmful or otherwise—think for example of coordinated hate attacks [83] or
+
+state-backed disinformation campaigns [18]—there also exist situations where the harmfulness of the intent is inherently
+
+subjective. Coordinated efforts to promote a controversial political ideology may be perceived as harmful by some,
+
+while others may view them as legitimate expressions of free speech [102]. Similarly, coordinated campaigns to boycott
+
+a company or criticize a public figure may be seen as harmful by those targeted, but supporters may genuinely view
+
+them as justified forms of activism [97].
+
+
+2.5  Defining dimensions of coordinated online behavior
+
+As discussed in the preceding sections, coordinated online behavior constitutes a complex and multifaceted phenomenon
+
+whose instances are contingent upon the actions and intent of the involved actors. Here we leverage our discussion
+
+about the fundamental components of online coordination to introduce four defining dimensions of this phenomenon:
+
+authenticity, harmfulness, orchestration, and time-variance.
+
+2.5.1   Authenticity. Authenticity refers to the degree of genuineness and transparency that the actors exhibit in their
+actions and overall online presence. Coordinated authentic behavior is executed by genuine actors and typically emerges
+
+organically within a community of users who share common interests or beliefs. Examples of authentic coordination
+
+are activists, social movements, and mutual support groups, which are driven by motivations such as a desire for social
+
+or political change or the cultivation of a sense of community and belonging [100, 126]. While authentic forms of
+
+coordination are also harmless in the majority of cases, as in the previous examples, there also exist less frequent cases
+
+of authentic yet harmful behaviors. For instance, certain coordinated hate groups openly encourage racist, xenophobic,
+
+or supremacist ideologies [95, 97, 146]. Conversely, coordinated inauthentic behavior entails the use of fake accounts,
+
+such as social bots, trolls, and fake personas [25, 115]. These are typically employed for purposes such as spreading
+
+disinformation, sowing confusion, or eroding trust in democratic institutions. As such, inauthentic coordination is
+
+often characterized by its deceptive nature and aim to manipulate unaware users [125]. Nonetheless, there exist cases
+
+of inauthentic yet harmless coordination. For example, online participants in the Arab Spring movements concealed
+
+their identities to avoid government surveillance and potential reprisals [126]. While their coordinated efforts were
+
+inauthentic in terms of individual identity disclosure, they remained largely harmless in intent, aiming to promote
+
+                                                                                                         Manuscript submitted to ACM

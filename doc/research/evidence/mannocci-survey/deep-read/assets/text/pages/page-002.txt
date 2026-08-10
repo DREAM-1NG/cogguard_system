@@ -1,0 +1,68 @@
+2                                                                                  Mannocci et al.
+
+
+
+
+
+ Fig. 1. Coordination is a fundamental aspect of online human interactions
+ and the study of coordinated online behavior can complement the analyses    Fig. 2. Number of articles published yearly on co-
+ of many other online phenomena.                                          ordinated online behavior.
+
+their false narratives [59, 125, 138]. Similarly, coordination is employed within information operations [18, 99, 138],
+
+coordinated social media manipulation [87, 130], and astroturfing, which involves creating the false appearance of
+
+grassroots support for a target cause, product, or person [59]. Also, social bots (automated accounts [23, 93]) and trolls
+
+(human-driven accounts engaging in collective disruptive or deceptive behavior [153]) exploit coordination to amplify
+
+messages, manipulate trends, or spread disinformation [69, 82, 153]. Coordination both results from and contributes
+
+to echo chambers and online polarization [139]. Figure 1 illustrates its multifaceted nature, underlying diverse and
+
+interconnected phenomena in online social media.
+
+   Recognizing the profound impact of online coordination on social media as well as its consequences on the offline
+
+world, both researchers [100, 102, 138, 146] and industry stakeholders [35] devoted a great deal of efforts to study its
+
+dynamics and to develop effective strategies to detect and mitigate its malicious instances. Research sped up significantly
+after 2018, when Facebook introduced the concept of coordinated inauthentic behavior (CIB) [35], marking a milestone
+in the development of the field. As shown in Figure 2, subsequent years saw a surge of interest on the subject, testified
+
+by the steadily growing number of published papers, with only a minor fluctuation in 2023. This survey is motivated by
+
+this thriving interest on online coordination, which resulted in the availability of a large body of work. However, while
+
+Facebook’s interest towards online coordination was constrained to inauthentic behaviors as a response to the threat of
+
+orchestrated campaigns [35], here we embrace a more holistic and unbiased view by focusing on the broader concept of
+coordinated behavior. This inclusive approach allows for the analysis of a broader spectrum of works, including those
+focused on legitimate collective actions, offering a more comprehensive understanding of the coordination dynamics
+
+that shape digital spaces and fostering nuanced perspectives that go beyond mere threat detection. In spite of the many
+
+efforts, the existing literature still reflects the complexities and ambiguities surrounding this phenomenon. Among them
+
+is the limited agreement on a shared definition, which also hinders operationalization. Complexity also emerges from the
+
+diversity of methods proposed for detecting and characterizing coordinated online behavior, which impairs comparisons
+
+between different works and limits the generalizability of findings. Finally, the use of the same coordination technique
+
+by actors with disparate motivations poses challenges to estimating the impact and effects of online coordination.
+
+   This survey offers an extensive overview and critical analysis on coordinated behavior, starting from reconciling
+
+existing definitions from industry and academia, and proposing a general and comprehensive conceptual framework.
+
+We systematically analyze and categorize existing approaches for detecting and characterizing online coordination,
+
+elucidating open challenges and delineating promising directions for future research. Our work provides a roadmap for
+
+scholars, practitioners, and policymakers navigating the evolving complexities of coordinated online behavior.
+
+   Significance. Comprehensively modeling coordinated online behavior has far-reaching implications. On a theoretical
+level, it reconciles diverse definitions and provides a foundational framework for future research. On a technical level,
+
+Manuscript submitted to ACM

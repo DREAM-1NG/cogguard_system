@@ -1,0 +1,1727 @@
+
+
+===== PDF p.1 =====
+Enhancing Multi-Scale Diffusion Prediction via Sequential Hypergraphs and
+Adversarial Learning
+Pengfei Jiao1, 4, Hongqian Chen1, Qing Bao1, Wang Zhang2, Huaming Wu3*
+1School of Cyberspace, Hangzhou Dianzi University, China
+2College of Intelligence and Computing, Tianjin University, China
+3Center for Applied Mathematics, Tianjin University, China
+4Data Security Governance Zhejiang Engineering Research Center, Hangzhou Dianzi University, China
+{pjiao, hqchen, qbao}@hdu.edu.cn, {wangzhang, whming}@tju.edu.cn
+Abstract
+Information diffusion prediction plays a crucial role in under-
+standing the propagation of information in social networks,
+encompassing both macroscopic and microscopic prediction
+tasks. Macroscopic prediction estimates the overall impact of
+information diffusion, while microscopic prediction focuses
+on identifying the next user to be influenced. While prior
+research often concentrates on one of these aspects, a few
+tackle both concurrently. These two tasks provide comple-
+mentary insights into the diffusion process at different lev-
+els, revealing common traits and unique attributes. The ex-
+ploration of leveraging common features across these tasks
+to enhance information prediction remains an underexplored
+avenue. In this paper, we propose an intuitive and effective
+model that addresses both macroscopic and microscopic pre-
+diction tasks. Our approach considers the interactions and dy-
+namics among cascades at the macro level and incorporates
+the social homophily of users in social networks at the mi-
+cro level. Additionally, we introduce adversarial training and
+orthogonality constraints to ensure the integrity of shared fea-
+tures. Experimental results on four datasets demonstrate that
+our model significantly outperforms state-of-the-art methods.
+Introduction
+Online social platforms have become an essential part of our
+daily lives, enriching instant communication among indi-
+viduals and expediting the swift dissemination of informa-
+tion. The activity patterns of users in social networks play
+a pivotal role in the spread of information, leading to the
+emergence of information cascades. Gaining a deeper un-
+derstanding of the underlying mechanisms of information
+diffusion carries significant economic and social advantages,
+with applications in various fields, including fake news de-
+tection (Zhang et al. 2023), viral marketing (Miller and Lam-
+mas 2010), and recommender system (Ko et al. 2022).
+As shown in Fig. 1, current researches on modeling in-
+formation cascades primarily focus on two key aspects: 1)
+Macroscopic prediction, such as DeepCas (Li et al. 2016)
+and CasCN (Chen et al. 2019b), estimating the incremen-
+tal or total size of a cascade; 2) Microscopic prediction,
+such as TopoLSTM (Wang et al. 2017) and SNIDSA (Wang,
+*Corresponding author
+Copyright © 2024, Association for the Advancement of Artificial
+Intelligence (www.aaai.org). All rights reserved.
+……
+t1
+t2
+t10
+Observed influenced users
+How many influenced users 
+at last ?
+?
+t∞
+……
+Observed influenced users
+t1
+t2
+t10
+t11
+?
+Who is the next influenced 
+user ?
+?
+?
+Macroscopic
+Microscopic
+Figure 1: Illustrations depicting macroscopic cascade size
+prediction (left) and microscopic next influenced user pre-
+diction (right).
+Chen, and Li 2018), predicting the subsequent user to be in-
+fluenced within the cascade.
+On the one hand, macro-prediction concentrates on over-
+arching patterns and trends, employing network topology
+and dissemination models to forecast information propaga-
+tion. On the other hand, micro-prediction delves into the
+particulars of individual users’ behaviors and attributes, uti-
+lizing analyses of user and content characteristics to antici-
+pate the impact of information diffusion. Macro-prediction
+and micro-prediction collectively provide a comprehensive
+understanding of information dissemination across various
+levels and can mutually reinforce and enhance each other.
+Since both tasks require learning propagation features from
+observed cascades, they inherently share commonalities.
+Hence, the imperative to enhance prediction accuracy by
+extracting common features between these tasks assumes
+paramount importance.
+However, the extraction of such common features is con-
+fronted with challenges. Firstly, information dissemination
+involves complex interactions not only within a given cas-
+cade but also between different cascades. Moreover, the evo-
+lution of cascades over time demands an approach capa-
+ble of encapsulating both global interactions and dynamic
+changes. Secondly, ensuring the purity of public features in
+the presence of potential contamination by private features
+poses a significant challenge.
+To the best of our knowledge, only a limited number of
+studies have introduced a unified model catering to both
+macro and micro scales. The most representative works are
+FOREST (Yang et al. 2019) and DMT-LIC (Chen et al.
+2019a). Nevertheless, FOREST (Yang et al. 2019) primarily
+The Thirty-Eighth AAAI Conference on Artiﬁcial Intelligence (AAAI-24)
+8571
+
+
+===== PDF p.2 =====
+utilizes the outcomes of micro-prediction to guide macro-
+prediction, lacking a comprehensive recognition of the mu-
+tually reinforcing synergy inherent in these two tasks. Sim-
+ilarly, while DMT-LIC (Chen et al. 2019a) incorporates a
+shared representation layer to capture cascade graph repre-
+sentations and diffusion processes, it fails to address the is-
+sue of potential contamination and redundancy between the
+shared features and task-specific features. Moreover, both
+methods primarily concentrate on user interactions within
+individual cascades, neglecting the intricate interactions and
+dynamics among cascades at a global level.
+To address the above challenges, we propose MINDS, a
+streamlined and efficient model for Multi-scale INformation
+DiffuSion prediction. Specifically, at the macro level, we
+construct sequential hypergraphs to effectively capture the
+interactions and dynamics among cascades. From a global
+perspective, modeling complex interactions among users
+and cascades is consistent with the concept of the hyper-
+graph. Constructing sequential hypergraphs by dividing the
+time period into sequential time windows can accurately de-
+scribe the dynamic evolution of the cascades. At the mi-
+cro level, we focus on understanding the social homophily
+among users within social networks. We design a shared
+module to learn shared features for both macro and micro
+tasks. Furthermore, we incorporate adversarial training and
+orthogonality constraints to mitigate feature redundancy and
+contamination between shared and task-specific features. In
+summary, the main contributions of this paper are three-fold:
+• We propose an effective and straightforward model that
+tackles both macro and micro prediction, leveraging their
+mutual reinforcement to enhance overall performance.
+• We introduce an approach that captures the interactions
+and dynamics among cascades by modeling information
+diffusion in sequential hypergraphs. To address feature
+redundancy, we incorporate adversarial training and or-
+thogonality constraints.
+• We conducted comprehensive experiments to evaluate
+our model’s performance. The results demonstrate its su-
+periority over state-of-the-art methods in both macro and
+micro prediction.
+Problem Formulation
+To commence, we present the social graph and diffusion hy-
+pergraphs that constitute the foundation for diffusion pre-
+diction within our model. The social graph is denoted as
+GS = (U, E), where U is the user set and E is the edge
+set. Each edge (ui, uj) ∈E represents a social relationship
+between user ui and uj. The observed diffusion cascades
+D = {d1, d2, . . . , dM}, |D| = N are split into T subsets ac-
+cording to timestamps for constructing sequential diffusion
+hypergraphs GD = {Gt
+D|t = 1, 2, . . . , T}, Gt
+D = (U t, Et),
+where U t is the user set and Et is the hyperedge set. In
+the diffusion hypergraph, users participate in the same cas-
+cade and are connected by a hyperedge, in other words, a
+hyperedge represents a cascade. Note that the set of nodes
+connected by hyperedge is different in each hypergraph. It
+means that if ui participates in dm during the t-th time inter-
+val, then ui being connected to hyperedge em only occurs in
+diffusion hypergraph Gt
+D.
+In this work, we aim to address both the macroscopic
+and microscopic diffusion prediction problems based on the
+above introductions.
+Macroscopic Diffusion Prediction: Given a social graph
+GS, diffusion hypergraphs GD and an observed diffusion
+sequence dm = {(um
+i , tm
+i )|um
+i ∈U}, estimate the final size
+|dm| of cascade dm.
+Microscopic Diffusion Prediction: Given a social graph
+GS, diffusion hypergraphs GD and an observed diffusion
+sequence dm = {(um
+i , tm
+i )|um
+i
+∈U}, predict which user
+will participate in dm in the next step.
+Method
+In this section, we will provide a comprehensive introduc-
+tion to the proposed model. The architectural overview of
+the proposed model is depicted in Fig. 2, which comprises
+four primary modules:
+User Global Interactive Learning Module: This module
+is responsible for extracting user preferences at each time
+interval and characterizing the dynamic changes of cascades.
+A fusion layer at the cascade level facilitates this process.
+User Social Homophily Learning Module: It captures
+users’ social relationship at the individual user level using
+Graph Convolutional Networks (GCN).
+Shared-private Representation Learning Module: This
+module learns task-specific representations and shared rep-
+resentations to facilitate diffusion prediction.
+Diffusion Prediction Module: This module concatenates
+task-specific features with shared representation for macro-
+scopic and microscopic diffusion prediction, respectively.
+User Global Interactive Learning
+In order to simultaneously account for global interactions
+among cascades and dynamic changes of cascades. On the
+basis of the constructed sequential diffusion hypergraphs,
+we introduce the HGNN to learn the user global interactions
+of each independent time interval at the cascade level, and
+add a fusion layer between two continuous time intervals to
+model the dynamics of cascades.
+Hypergraph Neural Network
+At each time interval, we
+model the interactions of users through HGNN. The process
+of HGNN is illustrated in Fig. 3. For a simple graph, graph
+convolution takes the aggregation of its neighbor vertices to
+get a new representation of the central vertex. The informa-
+tion of vertices is passed through edges in a simple graph.
+Similarly, hyperedges play a role in information transmis-
+sion in a hypergraph. The message aggregating in the hy-
+pergraph can be summarized in a two-stage procedure: 1)
+Vertex-to-Hyperedge; 2) Hyperedge-to-Vertex.
+Vertex-to-Hyperedge. Given a diffusion hypergraph Gt
+D,
+the first stage of HGNN aims to update the feature yj,t of
+hyperedge et
+j by aggregating the information of all its con-
+nected vertices, which can be defined as:
+yl
+j,t = σ
+
+wet
+j ·
+X
+ut
+i∈Nv(et
+j)
+xl
+i,t
+|Nv(et
+j)|
+
+,
+(1)
+The Thirty-Eighth AAAI Conference on Artiﬁcial Intelligence (AAAI-24)
+8572
+
+
+===== PDF p.3 =====
+HGNN
+HGNN
+Fusion Layer
+Fusion Layer
+……
+HGNN
+GCN
+LSTM
+Shared
+LSTM
+LSTM
+MLP
+MLP
+MLP
+MLP
+Macro Prediction
+Micro Prediction
+?
+?
+Ldiff
+Ldiff
+Ladv
+User Global Interactive Learning
+User Social Homophily Learning
+Shared-private
+ Representation Learning
+Diﬀusion Prediction
+Social graph
+Diffusion hypergraph
+Diffusion sequence
+?
+?
+XD
+XS
+GD1
+GD2
+GDT
+Figure 2: The architectural overview of our model.
+……
+……
+……
+Xl
+Yl
+Xl+1
+Figure 3: The two stages of hypergraph convolution.
+where σ is an non-linear activation function ReLU and
+Nv(et
+j) is the set of vertices connected by hyperedge et
+j. wet
+j
+is a weight associated to hyperedge et
+j. We consider each
+cascade to be of equal importance and give the same weight
+to each hyperedge when aggregating, i.e. wet
+j = 1.
+Hyperedge-to-Vertex. After updating features of hyper-
+edges, the second stage aims to aggregate the information
+of all hyperedges participated by ut
+i for updating the feature
+xi,t of ut
+i at t-th time interval. The update process can be
+defined as:
+xl+1
+i,t = σ
+
+Θl ·
+X
+et
+j∈Ne(ut
+i)
+yl
+j,t
+|Ne(ut
+i)|
+
+,
+(2)
+where Ne(ut
+i) is the set of hyperedges connected by vertex
+ut
+i. Θl ∈Rd×d is a trainable parameter of layer l and d is
+the dimension of embedding.
+Sequential HGNNs with Fusion Layer
+The above two-
+stage convolution operation only learns user interaction at a
+specific time interval, which can not adequately characterize
+the evolution of cascades in propagation. Therefore, we de-
+sign a fusion strategy to connect the interactions at different
+time intervals learned by HGNN in chronological order. The
+fusion strategy is defined as:
+x0
+i,t+1 = αxL
+i,t + (1 −α)x0
+i,t
+α =
+exp(WT
+F2σ(WF1xL
+i,t))
+exp(WT
+F2σ(WF1xL
+i,t))+exp(WT
+F2σ(WF1x0
+i,t)),
+(3)
+where x0
+i,t is the initial feature of user ut
+i and xL
+i,t is the up-
+dated feature of user ut
+i learned from diffusion hypergraph
+Gt
+D through L-layer HGNN. At the first time interval, we
+initialize the user feature embedding from a normal distri-
+bution. σ(·) is the activation function ReLU. WF1 repre-
+sents the transformation matrix, while WT
+F2 denotes the vec-
+tor used for calculating attention scores.
+We can obtain the final global interactive representation
+XD through sequential HGNNs.
+User Social Homophily Learning
+User tends to have more social interactions with users who
+are similar to them and this refers to the principle called so-
+cial homophily. Close friends, who are usually friends alike
+in certain qualities or interests, have more influence on each
+other than dissimilar ones. Users’ social homophily can be
+reflected through social network structure. We introduce the
+social graph to model user social relationships and apply a
+multi-layer GCN to embed social homophily. Given social
+graph GS = (U, E), the user social homophily embedding
+matrix Xl
+S at l-th layer is updated by:
+Xl+1
+S
+= σ( ˜D
+−1
+2
+S
+˜AS ˜D
+−1
+2
+S Xl
+SWS),
+(4)
+where σ is the ReLU activation function, WS is a train-
+able weight matrix, ˜
+AS and ˜
+DS are the adjacent and degree
+The Thirty-Eighth AAAI Conference on Artiﬁcial Intelligence (AAAI-24)
+8573
+
+
+===== PDF p.4 =====
+matrix of self-looped GS. The initial homophily embedding
+matrix X0
+S ∈RN×d is randomly initialized from a normal
+distribution, and d is the dimension of embedding. We can
+obtain the final social homophily representation XS after
+several layers of GCN.
+Shared-private Representation Learning
+Graph-based
+representation
+learning
+captures
+the
+co-
+occurrence relationship of users at the user level and cascade
+level, however, it does not enable further analysis of context
+interactions within cascades. Therefore, due to the excellent
+performance of the LSTM in sequential tasks such as natural
+language processing, we apply two LSTM modules to learn
+the social and global context interactions within cascades,
+respectively.
+We hold the belief that there exists a hidden common fea-
+ture between the macro-prediction and the micro-prediction
+tasks, with the potential to enhance the performance of each
+task individually. Drawing inspiration from the principles of
+multi-task learning (Liu, Qiu, and Huang 2017), we propose
+a shared LSTM architecture aimed at capturing these shared
+characteristics between the two tasks. Furthermore, to tackle
+the issue of feature redundancy, we introduce a combination
+of adversarial training and orthogonality constraints.
+Private Representation Learning
+We utilize the LSTM
+to model the cascade diffusion process sequentially, where a
+hidden state is employed to capture the diffusion history.
+The update of each LSTM unit can be shortened as:
+ht = LSTM(ht−1, xt, θp),
+(5)
+where ht ∈Rd is the hidden state and xt ∈Rd is the input
+at the current time step. θp represents all the parameters in
+LSTM.
+Based on the defined LSTM, we can compute the repre-
+sentation of the context interaction for the user social ho-
+mophily XS and user global interaction matrix XD as fol-
+lows:
+hcas
+t
+= LSTM(hcas
+t−1, xd
+t , θcas)
+huser
+t
+= LSTM(huser
+t−1 , xs
+t, θuser),
+(6)
+where LSTM(., θ) is defined as Eq. 5.
+Thus, the task-specific embeddings are represented as
+Hcas ∈RN×d and Huser ∈RN×d.
+Shared Representation Learning
+Inspired by the gated
+mechanisms used in LSTM, we design a novel shared-
+LSTM, that takes XD and XS as the input. The detail of
+the module is described as follows:
+ft = σ(xD
+t−1Wf + xS
+t−1Uf + ht−1Vf + bf),
+it = σ(xD
+t−1Wi + xS
+t−1Ui + ht−1Vi + bi),
+ot = σ(xD
+t−1Wo + xS
+t−1Uo + ht−1Vo + bo),
+˜ct = tanh(xD
+t−1Wc + xS
+t−1Uc + ht−1Vc + bc),
+ct = ˜ct · it + ct−1 · ft,
+ht = ot · tanh ct,
+(7)
+where σ is the sigmoid function. W∗∈Rd×d, U∗∈Rd×d,
+V∗∈Rd×d and b∗∈Rd are trainable parameters. The input
+gate it controls the amount of new information added to the
+hidden state, while the forget gate ft regulates the amount
+of information discarded from the previous memory cells ct.
+Additionally, the output gate ot determines the amount of in-
+formation to be output in the hidden state ht. By integrating
+the forget gate, input gate, update memory unit, and output
+gate, the shared LSTM can effectively handle the intricate
+relationship between micro-features and macro-features.
+We finally obtain a comprehensive representation of
+shared features between the macro-prediction task and
+micro-prediction task from the shared LSTM, which is de-
+noted as Hshare ∈RN×d.
+Adversarial Training
+Although the shared-private LSTM
+is designed to learn the shared and task-specific features,
+there is no guarantee that shared features can not be pre-
+served in private feature space, or vice versa. Therefore, a
+simple principle can be applied to shared LSTM that a re-
+liable shared feature should primarily consist of common
+information without any task-specific information. Inspired
+by adversarial networks, we introduce adversarial training to
+solve this problem.
+A task discriminator is used to map the representation
+into a probability distribution, estimating which tasks the en-
+coded feature comes from.
+D(h, θD) = softmax(b + Uh),
+(8)
+where U ∈Rd×d is a learnable parameter and b ∈Rd is a
+bias.
+To prevent task-specific features from infiltrating the
+shared representation, we design a task adversarial loss, de-
+noted as Ladv. This loss function is employed to train the
+model in such a way that the shared features generated are
+not easily predictable by a classifier in terms of their corre-
+sponding tasks. Formally, the task adversarial loss, Ladv, is
+defined as follows:
+Ladv = min
+θshare max
+θD
+2
+X
+k=1
+N
+X
+n=1
+(log D(hk
+n)+log(1−D(hshare
+n
+))),
+(9)
+where θshare represents all the parameters in Shared-LSTM,
+and k denotes the task type (either macro or micro). The op-
+timization process involves a min-max framework, with the
+underlying concept being that the shared LSTM generates
+a representation to intentionally confuse the task discrimi-
+nator. As the training progresses, the shared feature extrac-
+tor and task discriminator gradually reach a point of con-
+vergence, beyond which achieving additional enhancements
+becomes challenging. As a result, the task discriminator be-
+comes progressively incapable of distinguishing among var-
+ious tasks. This convergence indicates the successful acqui-
+sition of shared feature generation by the feature extractor,
+resulting in shared features that exhibit indistinguishability
+across all tasks.
+Orthogonality Constraints
+It is worth noting that the
+above model has a potential disadvantage. The disadvantage
+is that task-invariant features can appear in both shared and
+private representations. To alleviate this drawback, we in-
+troduce orthogonality constraints, which penalize redundant
+latent representations and encourage the shared and private
+The Thirty-Eighth AAAI Conference on Artiﬁcial Intelligence (AAAI-24)
+8574
+
+
+===== PDF p.5 =====
+LSTM to encode different aspects of the inputs. The orthog-
+onality constraints are defined as:
+Ldiff =
+HshareT Hcas
+2
+F +
+HshareT Huser
+2
+F , (10)
+where ∥·∥2
+F is the squared Frobenius norm.
+Diffusion Prediction
+We concatenate the task-specific representation Hcas and
+Huser for each task with the shared representation Hshare,
+respectively. These concatenated representations are then
+separately fed into distinct output layers dedicated to the pre-
+diction process.
+Macroscopic Diffusion Prediction
+For macroscopic dif-
+fusion prediction, we aim to predict the final cascade size in
+the future. We calculate the final size of diffusion cascade
+dm by:
+Sm = MLP(concat(hcas, hshare)),
+(11)
+where concat(·, ·) is the concatenation operation.
+We train the macroscopic task by minimizing the follow-
+ing loss function:
+Lmacro = 1
+M
+M
+X
+m=1
+(Sm −ˆSm)2,
+(12)
+where M is the number of diffusion cascades and ˆSm is the
+ground truth.
+Microscopic Diffusion Prediction
+For microscopic diffu-
+sion prediction, we predict the next influenced probability
+pi ∈R|dm| for user ui:
+pi = softmax(MLP(concat(huser, hshare))).
+(13)
+We adopt the cross entropy loss for microscopic training:
+Lmicro = −
+|dm|
+X
+j=2
+|U|
+X
+i=1
+ˆpji log(pji),
+(14)
+where |U| is the number of users and ˜p is true probability. If
+user ui participate in cascade dm at the step j, then ˆpji = 1,
+otherwise ˆpji = 0.
+The overall loss function of our model is defined as:
+L = λLmacro + (1 −λ)Lmicro + Ladv + γLdiff,
+(15)
+where λ is a balance parameter and γ is a hyperparameter.
+Experiment
+In this section, we conduct experiments on both microscopic
+and macroscopic cascade predictions to demonstrate the ef-
+fectiveness of our proposed model.
+Experimental Setting
+Datasets
+We conduct experiments on four datasets, i.e.,
+Christianity, Android, Douban and Memetracker. The statis-
+tics of these datasets are shown in Table 1. A detailed de-
+scription of the datasets can be found in the Appendix.
+Dataset
+Christ
+Android
+Douban
+Meme
+# Users
+2,897
+9,958
+12,232
+4,709
+# Links
+35,624
+48,573
+39,658
+209,194
+# Cascades
+589
+679
+3,475
+12,661
+Avg. Length
+22.9
+33.3
+21.76
+16.24
+Table 1: Statistics of datasets. Christ is short for the dataset
+Christianity, and Meme is short for the dataset Memetracker.
+Baselines
+We compare thirteen representative baseline
+models with our models.
+For macroscopic prediction, we evaluate five models:
+DeepCas (Li et al. 2016), DeepHawkes (Cao et al. 2017),
+CasCN (Chen et al. 2019b), CasFlow (Xu et al. 2023b) and
+TCSE-net (Wu et al. 2022).
+For microscopic prediction, we evaluate six models:
+TopoLSTM (Wang et al. 2017), NDM (Yang et al. 2021),
+SNIDSA (Wang, Chen, and Li 2018), Inf-VAE (Sankar et al.
+2020), DyHGCN (Yuan et al. 2020) and TAN-DRUD (Liu
+et al. 2022).
+For multi-scale prediction, we evaluate two models: FOR-
+EST (Yang et al. 2019) and DMT-LIC (Chen et al. 2019a).
+A detailed description of baselines can be found in the
+Appendix.
+Evaluate Metrics
+For macroscopic prediction, we use
+Mean Squared Logarithmic Error (MSLE) as the evalua-
+tion metric, which is also used in previous experiments (Cao
+et al. 2017; Li et al. 2016). For microscopic prediction, we
+use two ranking metrics used in (Yang et al. 2019): Mean
+Average Precision on top k (MAP@k) and Hits Scores on
+top k (Hits@k) for evaluation, k = [10, 50, 100].
+Parameters Settings
+For each dataset, we employ a ran-
+dom sampling method to allocate 80% of cascades for train-
+ing, 10% for validation, and the remaining 10% for test-
+ing. Baseline methods follow the original paper settings. For
+MINDS, we implement the model using PyTorch and uti-
+lize the Adam optimizer with a learning rate of 0.001. The
+embedding dimension is set to 64, and the batch size is 32.
+The balance parameter λ is assigned a value of 0.3, while
+the hyperparameter γ is set to 0.05. Social homophily learn-
+ing utilizes a 2-layer GCN, and global interaction learning is
+facilitated through a single-layer HGNN. Additionally, the
+number of time intervals is set to 8.
+Performance Comparison
+We conduct a comprehensive comparison of MINDS with
+various baselines on four datasets, focusing on microscopic
+and macroscopic diffusion prediction. The results are sum-
+marized in Tables 2, 3, and 4, and we observe the following:
+1) MINDS consistently outperforms all state-of-the-art
+baselines in microscopic prediction tasks. Compared to the
+second-best model DyHGCN, MINDS leverages sequential
+hypergraphs to dynamically represent cascade interactions,
+leading to remarkable improvements of up to 3% in Hits
+scores and MAP scores.
+2) MINDS consistently outperforms all state-of-the-art
+baselines in macroscopic prediction tasks, achieving at least
+The Thirty-Eighth AAAI Conference on Artiﬁcial Intelligence (AAAI-24)
+8575
+
+
+===== PDF p.6 =====
+Models
+Christianity
+Android
+Douban
+Memetracker
+@10
+@50
+@100
+@10
+@50
+@100
+@10
+@50
+@100
+@10
+@50
+@100
+TopoLSTM
+0.1559
+0.3653
+0.4777
+0.0460
+0.1318
+0.2103
+0.0306
+0.0143
+0.0184
+0.1908
+0.3687
+0.4683
+NDM
+0.0464
+0.1145
+0.1461
+0.0170
+0.0423
+0.0555
+0.0388
+0.0506
+0.0528
+0.0931
+0.1228
+0.1279
+SNIDSA
+0.0660
+0.2098
+0.3502
+0.0271
+0.0829
+0.1299
+0.0702
+0.1807
+0.2324
+0.1395
+0.2945
+0.3977
+Inf-VAE
+0.0767
+0.2569
+0.3853
+0.0318
+0.0938
+0.1452
+0.1364
+0.2361
+0.3059
+0.1165
+0.3096
+0.4200
+DyHGCN
+0.2380
+0.4689
+0.5923
+0.0748
+0.1746
+0.2596
+0.1438
+0.2648
+0.3329
+0.2522
+0.4603
+0.5710
+TAN-DURD
+0.1908
+0.4406
+0.5697
+0.0281
+0.1024
+0.1658
+0.0841
+0.1604
+0.2175
+0.2139
+0.4247
+0.5383
+FOREST
+0.2746
+0.4665
+0.5603
+0.0866
+0.1739
+0.2314
+0.1106
+0.1986
+0.2559
+0.2648
+0.4502
+0.5499
+DMT-LIC
+0.2768
+0.4442
+0.5669
+0.0932
+0.1639
+0.2315
+0.1465
+0.2506
+0.3054
+0.2746
+0.4619
+0.5656
+MINDS
+0.3214
+0.4978
+0.6250
+0.1096
+0.1989
+0.2766
+0.1956
+0.3087
+0.3641
+0.2819
+0.4760
+0.5790
+Table 2: Results on four datasets (Hits@k scores for k = 10, 50 and 100), where higher scores indicate better performance.
+Models
+Christianity
+Android
+Douban
+Memetracker
+@10
+@50
+@100
+@10
+@50
+@100
+@10
+@50
+@100
+@10
+@50
+@100
+TopoLSTM
+0.0523
+0.0619
+0.0635
+0.0166
+0.0202
+0.0213
+0.0354
+0.0824
+0.0884
+0.0870
+0.0955
+0.0969
+NDM
+0.0144
+0.0177
+0.0182
+0.0059
+0.0070
+0.0072
+0.0141
+0.0824
+0.0884
+0.0463
+0.0480
+0.0481
+SNIDSA
+0.0246
+0.0306
+0.0326
+0.0100
+0.0122
+0.0129
+0.0371
+0.0419
+0.0148
+0.0605
+0.0674
+0.0689
+Inf-VAE
+0.0172
+0.0254
+0.0272
+0.0076
+0.0103
+0.0110
+0.0543
+0.0588
+0.0598
+0.0425
+0.0509
+0.0525
+DyHGCN
+0.1062
+0.1167
+0.1184
+0.0392
+0.0434
+0.0446
+0.0801
+0.0856
+0.0865
+0.1410
+0.1502
+0.1518
+TAN-DURD
+0.0752
+0.1167
+0.1184
+0.0099
+0.0130
+0.0139
+0.0359
+0.0401
+0.0409
+0.0991
+0.1086
+0.1102
+FOREST
+0.1569
+0.1658
+0.1672
+0.0628
+0.0667
+0.0675
+0.0655
+0.0694
+0.0702
+0.1429
+0.1514
+0.1528
+DMT-LIC
+0.1649
+0.1728
+0.1746
+0.0622
+0.0652
+0.0662
+0.0812
+0.0856
+0.0897
+0.1496
+0.1581
+0.1595
+MINDS
+0.1955
+0.2037
+0.2054
+0.0677
+0.0716
+0.0727
+0.1142
+0.1199
+0.1213
+0.1535
+0.1623
+0.1638
+Table 3: Results on four datasets (MAP@k scores for k = 10, 50 and 100), where higher scores indicate better performance.
+Model
+Christ
+Android
+Douban
+Meme
+DeepCas
+1.446
+2.122
+2.122
+2.231
+DeepHawkes
+1.111
+1.971
+1.725
+1.143
+CasCN
+1.046
+0.981
+1.476
+0.967
+CasFlow
+0.765
+1.041
+0.465
+0.535
+TCSE-net
+2.391
+2.882
+1.033
+2.285
+FOREST
+1.726
+0.556
+0.825
+0.621
+DMT-LIC
+1.692
+0.201
+0.741
+0.701
+MINDS
+0.572
+0.151
+0.404
+0.506
+Table 4: Experimental results on four datasets in terms
+of MSLE, where lower scores indicate better performance.
+Christ is short for the dataset Christianity, and Meme is short
+for the dataset Memetracker.
+a 10% decrease in MSLE. By combining macroscopic and
+microscopic prediction, MINDS achieves more promising
+performance.
+3) MINDS convincingly outperforms representative base-
+lines on multi-scale prediction tasks. The improvements
+stem from the pure shared features, avoiding impurities.
+MINDS’ ability to handle both prediction tasks in a single
+model enables multi-scale information diffusion prediction.
+Ablation Study
+We conduct ablation studies on the Christianity and Douban
+datasets to evaluate the individual contributions of different
+submodules in MINDS.
+As shown in Table 5, MINDS achieves the best results
+compared to other variants, indicating the effectiveness of
+its design. Specifically, the observations are as follows:
+1) Model performance declines after removing Ladv,
+Ldiff, or both, validating the importance of introducing ad-
+versarial training and orthogonality constraints to address
+feature redundancy.
+2) Introducing a series of interactive hypergraphs effec-
+tively captures cascade interactions from a global perspec-
+tive, as demonstrated by the results of w/o HGNN.
+3) Macroscopic prediction improves microscopic predic-
+tion by accurately predicting the propagation behavior of in-
+dividual users. Conversely, microscopic prediction enhances
+the understanding and interpretation of overall propagation
+trends by macroscopic prediction. Significant differences
+between w/o Macro, w/o Micro, and MINDS in macro and
+micro indicators reveal the mutual reinforcement between
+the two tasks, leading to improved performance.
+Parameter Analysis
+In this subsection, we investigate how different hyperparam-
+eter settings affect the performance of our model on the An-
+droid and Douban datasets. We explore the sensitivity of λ,
+The Thirty-Eighth AAAI Conference on Artiﬁcial Intelligence (AAAI-24)
+8576
+
+
+===== PDF p.7 =====
+Models
+Christianity
+Douban
+Hits@100
+MAP@100
+MSLE
+Hits@100
+MAP@100
+MSLE
+w/o AdvDiff
+0.5893
+0.1958
+0.971
+0.3682
+0.1170
+0.642
+w/o Diff
+0.6004
+0.1949
+1.222
+0.3688
+0.1173
+0.712
+w/o Adv
+0.5915
+0.1926
+0.861
+0.3572
+0.1193
+0.742
+w/o HGNN
+0.5871
+0.2013
+1.074
+0.3692
+0.1178
+0.581
+w/o Macro
+0.5580
+0.1874
+9.255
+0.3665
+0.1191
+4.669
+w/o Micro
+0.5871
+0.1937
+0.865
+0.3591
+0.1174
+0.711
+MINDS
+0.6250
+0.2054
+0.572
+0.3736
+0.1213
+0.549
+Table 5: Ablation study on Christianity and Douban datasets. We design six variants to demonstrate the rationale behind our
+model: w/o AdvDiff removes Ladv and Ldiff. w/o Diff removes Ldiff. w/o Adv removes Ladv. w/o HGNN replaces sequential
+hypergraphs with sequential digraphs and HGNN with GAT. w/o Macro removes Lmacro. w/o Micro removes Lmicro.
+0.25
+0.50
+0.75
+0.114
+0.116
+0.118
+0.120
+0.122
+0.025
+0.050
+0.075
+0.175
+0.225
+0.275
+0.325
+0.375
+8
+16
+32
+64
+128
+256
+Embedding…size
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+2
+4
+6
+8
+10
+12
+Intervals
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+MAP@100
+MAP@50
+MAP@10
+Hits@100
+Hits@50
+Hits@10
+MSLE
+(a) Douban
+0.25
+0.50
+0.75
+0.064
+0.066
+0.068
+0.070
+0.072
+0.025
+0.050
+0.075
+0.075
+0.115
+0.155
+0.195
+0.235
+0.275
+8
+16
+32
+64
+128
+256
+Embedding…size
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+2
+4
+6
+8
+10
+12
+Intervals
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+MAP@100
+MAP@50
+MAP@10
+Hits@100
+Hits@50
+Hits@10
+MSLE
+(b) Android
+Figure 4: Parameter sensitivity on Douban and Android dataset. For balance parameter λ ∈(0, 1) and the number of
+time intervals ∈[2, 12], we evaluate all map and MSLE scores. For hyper parameter γ ∈(0, 0.1) and embedding size
+∈{8, 16, 32, 64, 128, 256}, we evaluate all hits scores and MSLE score. In this figure, the macro indicator (MSLE) is pre-
+sented with an inverted Y-axis to align with the increasing trend of the micro indicator (MAP and Hits).
+γ, embedding size, and the number of time intervals, test-
+ing each parameter while keeping others fixed. Fig. 4 illus-
+trates the model’s performance on multi-scale prediction un-
+der various hyperparameter configurations.
+During the process of parameter value selection, we care-
+fully consider both macro and micro indicators. Optimal
+model performance occurs when the macro index is mini-
+mized, and the micro index is maximized. Remarkably, we
+observe that MINDS maintains stable performance when hy-
+perparameters are varied within a reasonable range. This
+experiment highlights the robustness of our model. Finally,
+we determine that the optimal hyperparameter configuration
+corresponds to (λ, γ, embedding size, number of time inter-
+vals) = (0.3, 0.05, 64, 8).
+Conclusion
+In this paper, we propose MINDS, a streamlined yet effec-
+tive multi-scale diffusion prediction model, capable of han-
+dling both microscopic and macroscopic predictions. Our
+approach involves constructing sequential hypergraphs to
+capture intricate influences and dynamics among cascades
+from a macro perspective. Simultaneously, we learn implicit
+structures and user characteristics in social networks from
+a micro perspective. A shared LSTM is then employed to
+extract common features between macro- and micro-tasks,
+while adversarial training and orthogonality constraints en-
+sure the purity of these shared features. Experimental re-
+sults on the next-influenced user and cascade size predic-
+tions demonstrate the effectiveness of our method.
+The Thirty-Eighth AAAI Conference on Artiﬁcial Intelligence (AAAI-24)
+8577
+
+
+===== PDF p.8 =====
+Appendix
+Related Work
+Macroscopic Diffusion Prediction
+Previous studies can
+be categorized into three main approaches: feature-based,
+generative process-based, and deep learning-based methods.
+Feature-based (Kong et al. 2014) approaches focus on ex-
+tracting handcrafted features from the input data, which are
+then used in machine learning algorithms for regression or
+classification tasks. However, these methods heavily rely on
+domain knowledge and lack generalizability.
+Generative process-based approaches (Zhao et al. 2015)
+model the arrival of infected users as a point process. While
+these methods enhance interpretability, they may overlook
+implicit information within the cascade dynamics.
+Recently, deep learning-based approaches have shown
+their effectiveness. For example, DeepCas (Li et al. 2016)
+utilizes RNN to encode sampled sequences from social
+graphs and cascades. DeepHawkes (Cao et al. 2017) incor-
+porates the Hawkes process within an RNN architecture.
+CoupledGNN (Cao et al. 2019) and CasCN (Chen et al.
+2019b) utilize GNNs to capture diffusion patterns across the
+underlying social network. VaCas (Zhou et al. 2020) com-
+bines graph wavelets, hierarchical variational autoencoders,
+and Bi-GRUs to learn the structures of cascade graphs.
+Microscopic Diffusion Prediction
+Conventional methods
+for microscopic diffusion prediction can be categorized into
+three groups: independent cascade (IC)-model-based ap-
+proaches, embedding-based approaches, and deep learning-
+based approaches.
+IC-model-based approaches (Wang et al. 2014) assume
+independent diffusion probabilities for user pairs and em-
+ploy Monte Carlo simulations to predict microscopic diffu-
+sion.
+Embedding-based approaches (Feng et al. 2018a) ex-
+tend the IC model by representing each user as a parame-
+terized vector. They model diffusion probabilities between
+users based on their embeddings, considering factors such
+as global user similarity. However, these methods overlook
+infection history.
+Deep
+learning
+techniques
+have
+shown
+promise
+in
+modeling information diffusion. Approaches like TopoL-
+STM (Wang et al. 2017) structure hidden states as di-
+rected acyclic graphs, while DeepDiffuse (Islam et al. 2018)
+and HiDAN (Wang and Li 2019) incorporate attention
+mechanisms to leverage infection timestamp information.
+NDM (Yang et al. 2021) combines self-attention and CNNs,
+while Inf-VAE (Sankar et al. 2020) integrates a VAE frame-
+work to capture social homophily and temporal influence.
+SNIDSA (Wang, Chen, and Li 2018) and DyHGCN (Yuan
+et al. 2020) utilize diffusion paths, social networks, and tem-
+poral information for prediction. Furthermore, methods like
+MS-HGAT (Sun et al. 2022) and HyperINF (Jin et al. 2022)
+leverage hypergraphs to learn global user dependencies.
+Hypergraph Neural Network
+Hypergraph offers a nat-
+ural way to represent group relations by connecting enti-
+ties through hyperedges. Recently, several approaches have
+emerged to leverage hypergraphs for learning latent node
+representations and capturing high-order structural informa-
+tion.
+HGNN (Feng et al. 2018b) stands as the pioneering spa-
+tial approach that uncovers latent node representations by
+exploring high-order structural information within hyper-
+graphs. Hyper-Atten (Bai, Zhang, and Torr 2019) intro-
+duced an attention mechanism to hypergraphs, enhancing
+their learning capabilities. UniGNN (Huang and Yang 2021)
+and HyperSAGE (Arya et al. 2020) take a direct message-
+passing approach on hypergraphs to learn representations.
+AllSet (Chien et al. 2021) has presented a powerful frame-
+work that unifies existing hypergraph learning methods.
+In various fields like social networks (Sun et al. 2023),
+recommendation (Ding et al. 2023), and natural language
+processing (Xu et al. 2023a), hypergraphs have demon-
+strated their efficacy in tackling complex problems.
+Datasets
+We used four datasets, i.e. Christianity, Android, Douban
+and Memetracker, to conduct experiments.
+Christianity (Sankar et al. 2020) consists of the user
+friendship network and cascading interactions related to
+Christian themes on Stack-Exchanges.
+Android (Sankar et al. 2020) is collected from StackEx-
+changes, which is a community Q&A website. It includes
+users’ interactions across different channels, which form
+their friendship relations.
+Douban (Zhong et al. 2012) is a Chinese social website
+where users can update their book reading statuses and fol-
+low the statuses of other users.
+Memetracker (Leskovec, Backstrom, and Kleinberg
+2009) collects a million news stories and blog posts from
+online websites, tracking the most frequent memes to ana-
+lyze their migration among people. Each meme is consid-
+ered an informational entity, while individual website URLs
+are treated as representations of users in the analysis.
+Baselines
+We compare thirteen representative baseline models with
+our models.
+Macroscopic prediction models:
+DeepCas (Li et al. 2016) transforms the cascade graph
+into node sequences through random walks and learns rep-
+resentations for each cascade using a deep learning frame-
+work.
+DeepHawkes (Cao et al. 2017) integrates an end-to-end
+deep learning technique into the Hawkes process for cascade
+prediction.
+CasCN (Chen et al. 2019b) applies GCN to capture the
+structures of information diffusion and uses LSTM to learn
+inherent dependencies between users’ retweeting behaviors
+in sequential cascade information.
+CasFlow (Xu et al. 2023b) leverages normalizing flows
+to learn node-level and cascade-level latent factors, enabling
+hierarchical pattern learning of information diffusion.
+TCSE-net (Wu et al. 2022) preserves distinguishable
+structure patterns and eliminates potential noise by aligning
+and fusing temporal popularity and cascade information.
+The Thirty-Eighth AAAI Conference on Artiﬁcial Intelligence (AAAI-24)
+8578
+
+
+===== PDF p.9 =====
+u1
+u2
+u3
+u4
+u5
+u6
+u7
+u8
+dm
+u1
+u2
+u3
+u4
+u5
+u6
+u7
+u8
+em
+u1
+u2
+u3
+u4
+u5
+u6
+u7
+u8
+em
+u1
+u2
+u3
+u4
+u5
+u6
+u7
+u8
+em
+u1
+u2
+u3
+u4
+u5
+u6
+u7
+u8
+em
+GD1
+GD2
+GD3
+GD4
+Figure 5: Hyperedge em connects different nodes in sequential hypergraphs.
+Models
+Android
+Memetracker
+Hits@100
+MAP@100
+MSLE
+Hits@100
+MAP@100
+MSLE
+w/o AdvDiff
+0.2696
+0.0711
+0.467
+0.5609
+0.1605
+0.895
+w/o Diff
+0.2758
+0.0716
+0.265
+0.5747
+0.1614
+0.853
+w/o Adv
+0.2712
+0.0718
+0.369
+0.5771
+0.1634
+0.844
+w/o HGNN
+0.5871
+0.2013
+1.074
+0.3692
+0.1178
+0.581
+w/o Macro
+0.5580
+0.1874
+9.255
+0.3665
+0.1191
+4.669
+w/o Micro
+0.5871
+0.1937
+0.865
+0.3591
+0.1174
+0.711
+MINDS
+0.2766
+0.0727
+0.151
+0.5790
+0.1638
+0.506
+Table 6: Ablation study on Android and Memetracker datasets.
+Microscopic prediction models:
+TopoLSTM (Wang et al. 2017) extends the standard
+LSTM model to simulate the information diffusion process
+and combines it with the social network.
+NDM (Yang et al. 2021) applies CNN to learn the dif-
+fusion representation of users and utilizes self-attention to
+make diffusion predictions.
+SNIDSA (Wang, Chen, and Li 2018) explores diffusion
+paths and the social network to jointly learn heterogeneous
+information representations.
+Inf-VAE (Sankar et al. 2020) embeds social homophily
+through GNNs and designs a co-attentive fusion network to
+integrate social and temporal variables.
+DyHGCN (Yuan et al. 2020) jointly learns the structural
+characteristics of the social graph and dynamic diffusion
+graph, while encoding temporal information into a hetero-
+geneous graph to capture users’ dynamic preferences.
+TAN-DRUD (Liu et al. 2022) models information cas-
+cades by capturing the dual role user dependencies of infor-
+mation senders and receivers.
+Unified multi-scale prediction models:
+FOREST (Yang et al. 2019) incorporates macroscopic in-
+formation into an RNN-based microscopic diffusion model
+to simultaneously predict microscopic and macroscopic dif-
+fusion.
+DMT-LIC (Chen et al. 2019a) designs a shared-
+representation layer to capture both the underlying structure
+of a cascade graph and the node sequence in the diffusion
+process.
+Construction of Sequential Hypergraphs
+In the case that the cascade dm is divided into four parts
+based on the time periods, the nodes connected by the hy-
+peredge em in the hypergraph corresponding to each time
+period are visually represented in Figure 5.
+Supplementary Results to Ablation Study
+We observe that the ablation study across two datasets in Ta-
+ble 5 may be insufficient. For example, w/o AdvDiff shows
+the best, worst, and average performance on three metrics
+compared to w/o Adv and w/o Diff respectively. To ad-
+dress this concern, we conducted ablation experiments on
+the other two datasets. The result is shown in Table 6. The
+suboptimal results on the Christianity and Douban datasets
+could be due to their unique characteristics, such as sparse
+network connections leading to minimal feature overlap.
+Acknowledgements
+This work was supported in part by the Zhejiang Provin-
+cial Natural Science Foundation of China under Grant
+LDT23F01012F01 and Grant LDT23F01015F01, in part by
+the Fundamental Research Funds for the Provincial Uni-
+versities of Zhejiang Grant GK229909299001-008, in part
+by the National Natural Science Foundation of China under
+Grant 62372146, Grant 62071327 and Grant 61806061, and
+The Thirty-Eighth AAAI Conference on Artiﬁcial Intelligence (AAAI-24)
+8579
+
+
+===== PDF p.10 =====
+in part by the Zhejiang Laboratory Open Research Project
+under Grant K2022QA0AB01.
+References
+Arya, D.; Gupta, D. K.; Rudinac, S.; and Worring, M. 2020.
+HyperSAGE: Generalizing Inductive Representation Learn-
+ing on Hypergraphs. arXiv:2010.04558.
+Bai, S.; Zhang, F.; and Torr, P. H. S. 2019. Hypergraph Con-
+volution and Hypergraph Attention. arXiv:1901.08150.
+Cao, Q.; Shen, H.; Cen, K.; Ouyang, W. R.; and Cheng, X.
+2017. DeepHawkes: Bridging the Gap between Prediction
+and Understanding of Information Cascades. Proceedings
+of the 2017 ACM on Conference on Information and Knowl-
+edge Management.
+Cao, Q.; Shen, H.; Gao, J.; Wei, B.; and Cheng, X. 2019.
+Popularity Prediction on Social Platforms with Coupled
+Graph Neural Networks. Proceedings of the 13th Interna-
+tional Conference on Web Search and Data Mining.
+Chen, X.; Zhang, K.; Zhou, F.; Trajcevski, G.; Zhong, T.;
+and Zhang, F. 2019a. Information Cascades Modeling via
+Deep Multi-Task Learning. Proceedings of the 42nd Inter-
+national ACM SIGIR Conference on Research and Develop-
+ment in Information Retrieval.
+Chen, X.; Zhou, F.; Zhang, K.; Trajcevski, G.; Zhong, T.;
+and Zhang, F. 2019b. Information Diffusion Prediction via
+Recurrent Cascades Convolution. 2019 IEEE 35th Interna-
+tional Conference on Data Engineering (ICDE), 770–781.
+Chien, E.; Pan, C.; Peng, J.; and Milenkovic, O. 2021. You
+are AllSet: A Multiset Function Framework for Hypergraph
+Neural Networks. arXiv:2106.13264.
+Ding, C.; Zhao, Z.; Li, C.; Yu, Y.; and Zeng, Q. 2023.
+Session-based recommendation with hypergraph convolu-
+tional networks and sequential information embeddings. Ex-
+pert Systems with Applications, 223: 119875.
+Feng, S.; Cong, G.; Khan, A.; Li, X.; Liu, Y.; and Chee,
+Y. M. 2018a. Inf2vec: Latent Representation Model for So-
+cial Influence Embedding. 2018 IEEE 34th International
+Conference on Data Engineering (ICDE), 941–952.
+Feng, Y.; You, H.; Zhang, Z.; Ji, R.; and Gao, Y. 2018b. Hy-
+pergraph Neural Networks. In AAAI Conference on Artificial
+Intelligence.
+Huang, J.; and Yang, J. 2021.
+UniGNN: a Unified
+Framework for Graph and Hypergraph Neural Networks.
+arXiv:2105.00956.
+Islam, M. R.; Muthiah, S.; Adhikari, B.; Prakash, B. A.; and
+Ramakrishnan, N. 2018. DeepDiffuse: Predicting the ’Who’
+and ’When’ in Cascades. 2018 IEEE International Confer-
+ence on Data Mining (ICDM), 1055–1060.
+Jin, H.; Wu, Y.; Huang, H.; Song, Y.; Wei, H.; and Shi, X.
+2022. Modeling Information Diffusion With Sequential In-
+teractive Hypergraphs. IEEE Transactions on Sustainable
+Computing, 7: 644–655.
+Ko, H.; Lee, S.; Park, Y.; and Choi, A. 2022.
+A survey
+of recommendation systems: recommendation models, tech-
+niques, and application fields. Electronics, 11(1): 141.
+Kong, S.; Mei, Q.; Feng, L.; Ye, F.; and Zhao, Z. 2014. Pre-
+dicting bursts and popularity of hashtags in real-time. Pro-
+ceedings of the 37th international ACM SIGIR conference
+on Research & development in information retrieval.
+Leskovec, J.; Backstrom, L.; and Kleinberg, J. M. 2009.
+Meme-tracking and the dynamics of the news cycle.
+In
+Knowledge Discovery and Data Mining.
+Li, C.; Ma, J.; Guo, X.; and Mei, Q. 2016. DeepCas: An
+End-to-end Predictor of Information Cascades. Proceedings
+of the 26th International Conference on World Wide Web.
+Liu, B.; Yang, D.; Wang, Y.; and Shi, Y. 2022.
+Improv-
+ing Information Cascade Modeling by Social Topology and
+Dual Role User Dependency. In International Conference
+on Database Systems for Advanced Applications.
+Liu, P.; Qiu, X.; and Huang, X. 2017. Adversarial Multi-task
+Learning for Text Classification. In Annual Meeting of the
+Association for Computational Linguistics.
+Miller, R.; and Lammas, N. 2010. Social media and its im-
+plications for viral marketing. Asia Pacific Public Relations
+Journal, 11(1): 1–9.
+Sankar, A.; Zhang, X.; Krishnan, A.; and Han, J. 2020. Inf-
+VAE: A Variational Autoencoder Framework to Integrate
+Homophily and Influence in Diffusion Prediction. Proceed-
+ings of the 13th International Conference on Web Search and
+Data Mining.
+Sun, L.; Rao, Y.; Zhang, X.; Lan, Y.; and Yu, S. 2022. MS-
+HGAT: Memory-Enhanced Sequential Hypergraph Atten-
+tion Network for Information Diffusion Prediction. In AAAI
+Conference on Artificial Intelligence.
+Sun, X.; Cheng, H.; Liu, B.; Li, J.; Chen, H.; Xu, G.; and
+Yin, H. 2023.
+Self-supervised hypergraph representation
+learning for sociological analysis.
+IEEE Transactions on
+Knowledge and Data Engineering.
+Wang, J.; Zheng, V. W.; Liu, Z.; and Chang, K. C.-C. 2017.
+Topological Recurrent Neural Network for Diffusion Predic-
+tion. 2017 IEEE International Conference on Data Mining
+(ICDM), 475–484.
+Wang, S.; Hu, X.; Yu, P. S.; and Li, Z. 2014. MMRate: infer-
+ring multi-aspect diffusion networks with multi-pattern cas-
+cades. Proceedings of the 20th ACM SIGKDD international
+conference on Knowledge discovery and data mining.
+Wang, Z.; Chen, C.; and Li, W. 2018. A Sequential Neu-
+ral Information Diffusion Model with Structure Attention.
+Proceedings of the 27th ACM International Conference on
+Information and Knowledge Management.
+Wang, Z.; and Li, W. 2019. Hierarchical Diffusion Attention
+Network. In International Joint Conference on Artificial In-
+telligence.
+Wu, D.; Tan, Z.; Xia, Z.; and Ning, J. 2022. TCSE: Trend
+and cascade based spatiotemporal evolution network to pre-
+dict online content popularity. Multimedia Tools and Appli-
+cations, 82: 1459–1475.
+Xu, H.; Zheng, C.; Zhao, Z.; and Sun, X. 2023a.
+Multi-
+Hypergraph Neural Networks for Emotion Recognition in
+Multi-Party Conversations. Applied Sciences, 13(3): 1660.
+The Thirty-Eighth AAAI Conference on Artiﬁcial Intelligence (AAAI-24)
+8580
+
+
+===== PDF p.11 =====
+Xu, X.; Zhou, F.; Zhang, K.; Liu, S.; and Trajcevski, G.
+2023b.
+CasFlow: Exploring Hierarchical Structures and
+Propagation Uncertainty for Cascade Prediction.
+IEEE
+Transactions on Knowledge and Data Engineering, 35:
+3484–3499.
+Yang, C.; Sun, M.; Liu, H.; Han, S.; Liu, Z.; and Luan, H.
+2021.
+Neural Diffusion Model for Microscopic Cascade
+Study. IEEE Transactions on Knowledge and Data Engi-
+neering, 33: 1128–1139.
+Yang, C.; Tang, J.; Sun, M.; Cui, G.; and Liu, Z. 2019. Full-
+Scale Information Diffusion Prediction With Reinforced Re-
+current Networks. IEEE Transactions on Neural Networks
+and Learning Systems, 34: 2271–2283.
+Yuan, C.; Li, J.; Zhou, W.; Lu, Y.; Zhang, X.; and Hu, S.
+2020. DyHGCN: A Dynamic Heterogeneous Graph Convo-
+lutional Network to Learn Users’ Dynamic Preferences for
+Information Diffusion Prediction. arXiv:2006.05169.
+Zhang, Q.; Guo, Z.; Zhu, Y.; Vijayakumar, P.; Castiglione,
+A.; and Gupta, B. B. 2023.
+A deep learning-based fast
+fake news detection model for cyber-physical social ser-
+vices. Pattern Recognition Letters, 168: 31–38.
+Zhao, Q.; Erdogdu, M. A.; He, H. Y.; Rajaraman, A.; and
+Leskovec, J. 2015. SEISMIC: A Self-Exciting Point Pro-
+cess Model for Predicting Tweet Popularity. Proceedings of
+the 21th ACM SIGKDD International Conference on Knowl-
+edge Discovery and Data Mining.
+Zhong, E.; Fan, W.; Wang, J.; Xiao, L.; and Li, Y. 2012.
+ComSoc: adaptive transfer of user behaviors over composite
+social network. In Knowledge Discovery and Data Mining.
+Zhou, F.; Xu, X.; Zhang, K.; Trajcevski, G.; and Zhong, T.
+2020.
+Variational Information Diffusion for Probabilistic
+Cascades Prediction. IEEE INFOCOM 2020 - IEEE Con-
+ference on Computer Communications, 1618–1627.
+The Thirty-Eighth AAAI Conference on Artiﬁcial Intelligence (AAAI-24)
+8581

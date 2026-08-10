@@ -1,0 +1,61 @@
+14                                                                                 Mannocci et al.
+
+       1: user selection             2: network construction            3: network filtering              4: community discovery
+
+
+
+
+
+Fig. 7. Main steps of the network science methods for the detection of coordinated online behavior. 1: The selected users become
+nodes in a network. 2: User similarities are computed with a similarity function and assigned to the edge weights of the network. 3:
+The network is filtered so as to retain only similarities with given properties. 4: Community discovery is performed to detect groups
+of strongly coordinated users.
+
+of the phenomenon. In fact, the output of characterization task can also be leveraged to validate the output of the
+
+detection task, as in those frequent cases when a ground-truth of coordinated users is unavailable.
+
+
+4  DETECTION OF COORDINATED BEHAVIOR
+
+Coordination detection methods can be classified into two main categories depending on their underlying approach:
+
+network science or machine learning. The following sections discuss the existing solutions in each category.
+
+
+4.1  Network science methods
+
+Network science coordination detection methods build a network of users or posts, where the links between the nodes
+
+in the network represent the presence, and possibly also the extent [100], of coordination. In spite of the existing
+differences, all methods in this category carry out the sequence of steps shown in Figure 7, namely: (i) user selection, (ii)
+coordination network construction, (iii) network filtering, and (iv) community discovery. We now discuss the objective
+and the implementation options available for each step.
+
+4.1.1  User selection. This step selects an initial subset 𝑈′ ⊆𝑈of users according to some criteria that depend on the
+purpose of the analysis. This initial selection is motivated by the observation that a small fraction of users accounts for
+
+the majority of actions on a social network [100], especially those associated with harmful behaviors [111]. Selecting a
+
+subset of users also has the positive consequence of reducing the computational cost of the subsequent steps, which
+
+can easily become time- and computation-intensive for large networks [21].
+
+   Implementation. Multiple choices can be made to select a subset of relevant users. A common choice is to select
+the most active users as they produce the largest share of actions and content. Most active users can be defined as
+those who publish a large number of original posts (super-producers) [64, 72, 103], or as those having a large number
+of re-shares (super-spreaders) [19, 30, 51, 66, 67, 90, 100, 128]. Other than activity, network centrality or influence,
+suspicious behavior, location, and timings are used for user selection [70]. Furthermore, many other general criteria can
+
+also be adopted, such as selecting all users who posted certain keywords, or all followers of a given user. Combining
+
+multiple criteria allows for even more fine-grained user selections.
+
+4.1.2  Coordination network construction. This step builds a coordination network between the users 𝑈′ ⊆𝑈previously
+selected.5 A coordination network is a type of network where links exist only between coordinated nodes. As per
+
+Definition 2.11, coordination implies synergic actions between users. In network science methods, this concept is
+operationalized with co-actions. A co-action represents two users performing the same action on the same target
+
+5A few works follow the general approach of network science methods, but build networks of content rather than users. These are discussed in Section 4.1.5.
+Manuscript submitted to ACM

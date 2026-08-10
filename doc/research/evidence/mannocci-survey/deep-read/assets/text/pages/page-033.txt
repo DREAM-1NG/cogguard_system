@@ -1,0 +1,75 @@
+Detection and Characterization of Coordinated Online Behavior: A Survey                                   33
+
+
+provide a contribution. In spite of the challenges however, the comprehensive understanding of the phenomenon and
+
+the effective mitigation of its nefarious instances can only be achieved through the collaboration between diverse
+
+stakeholders, such as scholars, platform operators, policymakers, and civil society organizations.
+
+   Ethical dilemmas. Research on coordinated online behavior also faces some ethical dilemmas. The process of
+collecting and analyzing online data involves monitoring user interactions and behaviors, which can raise concerns
+
+about surveillance and consent. The inherent subjectivity of coordinated behavior leads to additional challenges, as
+
+certain coordinated actions may be punished on some platforms while being tolerated on others [31], resulting in
+
+imbalanced interventions and potentially unfair decisions. Characterizing coordinated actors further complicates
+
+matters, as this requires assessing the authenticity and harmfulness of actors who might have strong motivations—such
+
+as social and political reasons [61, 126]—for remaining anonymous, raising privacy concerns. Additionally, developing
+
+methods to detect coordinated actors presents risks as these tools could be misused to silence certain groups or minorities,
+
+thereby selectively threatening freedom of expression. Ultimately, these issues demand that great attention to ethical
+
+and normative considerations should be devoted in future research.
+
+
+
+7  CONCLUSIONS
+
+Coordination is a fundamental dynamic of human behavior and its study holds great theoretical significance and
+
+numerous practical implications. Theoretically, understanding coordinated online behavior contributes to shedding
+
+light on social dynamics, group formation, and collective action. Practically, this research is pivotal in combating
+
+online manipulations, such as disinformation campaigns and orchestrated hate attacks, and fostering more inclusive
+
+online spaces that promote genuine cooperation and constructive discourse. However, the field faces several significant
+
+challenges, including the complexity of multimodal and cross-platform analyses, the opportunities and perils of
+
+generative AI, the scarcity of labeled data, the subjectivity and ethical dilemmas inherent to the evaluation of coordinated
+
+behavior. These diverse challenges, coupled with the broad interest in the topic, highlight the need for multidisciplinary
+
+efforts from diverse research communities. In the coming years, these efforts should aim to develop a comprehensive
+
+array of datasets, methods, and studies to better understand and address this complex and dynamic phenomenon.
+
+
+
+REFERENCES
+
+  [1] Md Sayeed Al-Zaman. 2025. Coordinated Computational Propaganda: Exploring Social Bot Activities During the July Revolution of Bangladesh.
+       Social Science Computer Review (2025).
+  [2] Réka Albert and Albert-László Barabási. 2002. Statistical mechanics of complex networks. Reviews of modern physics 74, 1 (2002), 47.
+  [3]  Iuliia Alieva, Lynnette H. X. Ng, and Kathleen M. Carley. 2022. Investigating the spread of Russian disinformation about biolabs in Ukraine on
+      Twitter using social network analysis. In IEEE BigData. 1770–1775.
+  [4] Atul Anand Gopalakrishnan, Jakir Hossain, Tuğrulcan Elmas, and Ahmet Erdem Sarıyüce. 2025. Density-Aware Walks for Coordinated Campaign
+      Detection. In ECML-PKDD. 283–298.
+  [5] Despoina Antonakaki and Sotiris Ioannidis. 2026. Coordinated Information Dissemination on Telegram and Reddit During Political Turbulence: A
+      Case Study of Venezuela in Global News Channels. arXiv:2602.13333
+  [6] Dennis Assenmacher, Lena Adam, Heike Trautmann, and Christian Grimme. 2020. Towards real-time and unsupervised campaign detection in
+       social media. In AAAI FLAIRS. 303–307.
+  [7] Dennis Assenmacher, Lena Clever, Janina S. Pohl, Heike Trautmann, and Christian Grimme. 2020. A two-phase framework for detecting
+      manipulation campaigns in social media. In HCII. 201–214.
+  [8] David Axelrod and John Paolillo. 2025. Structure and Context of Retweet Coordination in the 2022 US Midterm Elections. arXiv:2501.11165
+  [9] Helmy H. Baligh. 1986. Decision rules and transactions, organizations and markets. Management Science 32, 11 (1986), 1480–1491.
+ [10] Helmy H. Baligh and Richard M. Burton. 1981. Describing and designing organizational structures and processes. International Journal of Policy
+      Analysis and Information Systems 5, 4 (1981), 251–266.
+
+                                                                                                         Manuscript submitted to ACM

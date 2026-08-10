@@ -1,0 +1,53 @@
+Figure 3: The node affinity prediction task aims to predict how the preference of a user towards items
+changes over time. In the tgbn-genre example, the task is to predict the frequency at which the user
+would listen to each genre over the next week given their listening history until today.
+than random negatives [33]. We sample equally from historical and random negative edges. Note
+that depending on the dataset and the timestamp t, there might not be enough historical negatives to
+sample from. In this case, we simply increase the ratio of the random negatives to have the desired
+number of negative edges per positive ones. For reproducibility, we include a fixed set of negatives
+sampled for each dataset to ensure consistent comparison amongst models.
+Performance metric. The commonly used metric for reporting models’ performance for the dynamic
+link prediction task is either Area Under the Receiver Operating Characteristic curve (AUROC) or
+Average Precision (AP). An appropriate metric should be able to capture the ranking of a positive
+edge amongst the negative ones, which is not fulfilled by either AUROC or AP. Thus, we devise to
+use the filtered Mean Reciprocal Rank (MRR) as the evaluation metric for the dynamic link property
+prediction. The MRR computes the reciprocal rank of the true destination node among the negative
+or fake destinations. The MRR varies in the range of (0, 1] and it is a commonly used metric in
+recommendation systems [47] and knowledge graphs [44, 17, 16]. In addition, recent link prediction
+literature is also shifting towards adopting the MRR metric [5, 16, 50]. It should be noted that when
+reporting the MRR, we perform collision checks to ensure that no positive edge is sampled as a
+negative edge.
+3.2
+Dynamic Node Property Prediction
+The goal of dynamic node property prediction is to predict the property of a node at any given
+timestamp t, i.e., to learn a function f : Vt →Y, where Vt is the set of nodes at time t and Y is
+some output space (e.g. {−1, +1}, R, Rp, etc.). This is a general category for node-level tasks such
+as node classification and node regression. Here, the property of the node can be a one hot label, a
+weight vector or an euclidean coordinate. Currently, there is a lack of large-scale temporal graph
+datasets with node labels in the literature; therefore, we first include the node affinity prediction task
+(as defined below). In the future, we will add more node-level tasks and datasets into TGB.
+Node affinity prediction. This task considers the affinity of a subset of nodes (representing, e.g.,
+users) towards other nodes (e.g., items) as its property, and how the affinity naturally changes over
+time. This task is relevant for example in recommendation systems, where it is important to provide
+personalized recommendations for a user by modelling their preference towards different items over
+time. Figure 3 shows the node affinity prediction task in the context of music recommendation
+systems as seen in the tgbn-genre dataset. In this task, we are given the interaction history of a user
+with different music genres, and the goal is to predict the frequency at which the user would listen to
+each genre over the next week.
+More formally, given the observed evolution history of a temporal graph Gt until current timestamp t,
+the node affinity prediction task (on a dataset such as tgbn-genre) predicts the interaction frequency
+vector yt[u, :] for a node u over a set of candidate nodes N within a fixed future period [t, t+k] where
+k is the window size defined by the application. Each entry in yt[u, :] corresponds to a candidate
+node v ∈N and the groundtruth value is generated as follows:
+yt[u, v] =
+P
+t<ti≤t+k w(u,v,ti)
+P
+z∈N
+P
+t<ti≤t+k w(u,z,ti)
+(1)
+where w(u,v,ti) is the weight of the edge (u, v, ti) (which we assume to be 0 if the edge between u
+and v is not present at time ti). Observe that, by definition, ∥yt[u, :]∥1 = 1. We use the Normalized
+Discounted Cumulative Gain (NDCG) metric that takes into account the relative order of elements.
+5

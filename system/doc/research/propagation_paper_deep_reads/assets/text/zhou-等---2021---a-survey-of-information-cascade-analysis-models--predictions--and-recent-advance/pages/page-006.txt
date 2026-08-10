@@ -1,0 +1,42 @@
+27:6
+F. Zhou et al.
+Fig. 3. Left axis: growth trends of cascades over time, the points are means and the bars on each point
+are variances. Right axis: Pearson correlation coefficients between observed popularity and ground truth
+popularity over time. Plots are based on three datasets: Twitter hashtags (left), Weibo tweets (middle), and
+APS papers (right), each have 1.3M, 119K, and 452K information cascades, respectively.
+information about the items/users is available. Take tweets as an example: in ex-ante prediction, the
+available information includes: tweet’s content (e.g., purely text, emojis, embedded images/videos,
+URLs/hashtags), profile of the user who posts this tweet (e.g., name, bio, location, join date, number
+of followers/followees), the time when this tweet was published, and so on. Prediction before pub-
+lication is beneficial in many downstream tasks such as advertising and marketing, as one prefers
+to know how much attention and/or profit a specific advertisement would have in the near fu-
+ture [171]. Based on predicted results, one can invest in items with highest (potential) influence to
+spread information to larger audiences, thus maximizing the business interests of corresponding
+products.
+Although a priori popularity prediction is attractive, reliable prediction requires an exhaustive
+set of features, which is often unavailable, sensitive, and hard to obtain in real-world scenarios.
+Instead, if one could peek into the early stage of a cascade’s evolving process, prediction would
+become much easier [181]. Consider a time interval [t0,tp] of the life-cycle of an information item,
+and let [to,tp] denote the interval we can observe, where to < tp is the observation time. We cal-
+culated the proportion of overall observed popularity N
+i Pi (to) to the overall ground truth popu-
+larity N
+i Pi (tp) (values increased from 0 to 1 monotonically), and Pearson correlation coefficients
+between every observed Pi (to) and prediction target Pi (tp). Figure 3 shows the results for three
+large scale datasets: Twitter hashtags [207], Weibo tweets [29] and APS papers [174]. Clearly, for
+all three datasets with the increase of observation time to, the prediction task becomes simpler—
+coinciding with earlier findings [181] that a strong correlation exists between early and future
+popularity. Figure 3 also reveals different collective increasing patterns among the three different
+scenarios of information cascades: For Weibo tweets, the faster they gain attention from users, the
+faster they faded owing to the newly emerged competitors; for Twitter hashtags, the popularity
+last longer among users than it does for Weibo tweets; as for APS papers, the item evolving speeds
+are in the middle.
+Predicting the popularity after an item’s publication indicates how it is possible for an item to
+be successful in spreading. The rationale is that information items that have successfully prop-
+agated in their early stages tend to become popular—i.e., early patterns are indicative for long-
+term popularity [181]. Previous works found that the similar, or even the same, content infor-
+mation may vary significantly in terms of popularity [39]. This also raises questions about the
+limitations of prediction models—e.g., is it a problem of insufficient data, or is it inherently unpre-
+dictable [39, 136, 169, 175]? Is this because the innate quality of content has a minor impact, while
+the social influence or other external factors govern the eventual popularity of items [145, 169]?
+ACM Computing Surveys, Vol. 54, No. 2, Article 27. Publication date: March 2021.

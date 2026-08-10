@@ -1,0 +1,61 @@
+Detection and Characterization of Coordinated Online Behavior: A Survey                                   37
+
+
+
+ [98] Lynnette H. X. Ng, Iain J. Cruickshank, and Kathleen M. Carley. 2023. Coordinating narratives framework for cross-platform analysis in the 2021
+     US Capitol riots. Computational and Mathematical Organization Theory 29, 3 (2023), 470–486.
+ [99] Lynnette H. X. Ng, J. D. Moffitt, and Kathleen M. Carley. 2022. Coordinated through a Web of images: Analysis of image-based influence operations
+     from China, Iran, Russia, and Venezuela. arXiv:2206.03576
+[100] Leonardo Nizzoli, Serena Tardelli, Marco Avvenuti, Stefano Cresci, and Maurizio Tesconi. 2021. Coordinated behavior on social media in 2019 UK
+      General Election. In AAAI ICWSM. 443–454.
+[101] Gian Marco Orlando, Jinyi Ye, Valerio La Gatta, Mahdi Saeedi, Vincenzo Moscato, Emilio Ferrara, and Luca Luceri. 2025. Emergent coordinated
+      behaviors in networked LLM agents: Modeling the strategic dynamics of information operations. arXiv:2510.25003
+[102] Diogo Pacheco, Alessandro Flammini, and Filippo Menczer. 2020. Unveiling coordinated groups behind White Helmets disinformation. In ACM
+    WWW. 611–616.
+[103] Diogo Pacheco, Pik-Mai Hui, Christopher Torres-Lugo, Bao T. Truong, Alessandro Flammini, and Filippo Menczer. 2021. Uncovering coordinated
+      networks on social media: Methods and case studies. In AAAI ICWSM. 455–466.
+[104] Valeria Pantè, David Axelrod, Alessandro Flammini, Filippo Menczer, Emilio Ferrara, and Luca Luceri. 2025. Beyond Interaction Patterns: Assessing
+      Claims of Coordinated Inter-State Information Operations on Twitter/X. In ACM WWW. 1234–1238.
+[105] Himangshu Paul and Alexander Nikolaev. 2021. Fake review detection on online E-commerce platforms: a systematic literature review. Data
+      Mining and Knowledge Discovery 35, 5 (2021), 1830–1881.
+[106] Preston Piercey, Roger Pearce, and Nate Veldt. 2023. Coordinated Botnet Detection in Social Networks via Clustering Analysis. In ICPP. 192–196.
+[107] Janina Pohl, Dennis Assenmacher, Moritz V. Seiler, Heike Trautmann, and Christian Grimme. 2022. Artificial social media campaign creation for
+     benchmarking and challenging detection approaches. In AAAI ICWSM.
+[108] Manita Pote, Tuğrulcan Elmas, Alessandro Flammini, and Filippo Menczer. 2025. Coordinated Reply Attacks in Influence Operations: Characteriza-
+       tion and Detection. In AAAI ICWSM, Vol. 19. 1586–1598.
+[109] Reddit. 2022. 2022 Transparency report. https://www.redditinc.com/policies/2022-transparency-report/. (accessed: 31/07/2024).
+[110] Nicola Righetti, Fabio Giglietto, Azade E. Kakavand, Aytalina Kulichkina, Giada Marino, and Massimo Terenzi. 2022. Political advertisement and
+      coordinated behavior on social media in the lead-up to the 2021 German federal elections. Dusseldorf: Media Authority of North Rhine-Westphalia
+       (2022).
+[111] Ronald E Robertson. 2022. Uncommon yet consequential online harms. Journal of Online Trust and Safety 1, 3 (2022).
+[112] Richard Rogers and Nicola Righetti. 2025. Coordinated inauthentic behaviour on Facebook? A typology of manufactured attention. Platforms &
+       Society 2 (2025).
+[113] Mohammad H. Saeed, Kostantinos Papadamou, et al. 2024. TUBERAIDER: Attributing coordinated hate attacks on YouTube videos to their source
+      communities. In AAAI ICWSM, Vol. 18. 1354–1366.
+[114] Elisa Sartori, Serena Tardelli, Maurizio Tesconi, Mauro Conti, Alessandro Galeazzi, Stefano Cresci, Giovanni Da San Martino, et al. 2025. Insights
+       into using temporal coordinated behaviour to explore connections between social media posts and influence. In EMNLP. 24392–24404.
+[115] Marcel Schliebs, H. Bailey, J. Bright, and P. N. Howard. 2021. China’s inauthentic UK Twitter diplomacy: A coordinated network amplifying PRC
+       diplomats. Technical Report. Programme on Democracy and Technology, Oxford University.
+[116] David Schoch, Franziska B. Keller, Sebastian Stier, and JungHwan Yang. 2022. Coordination patterns reveal online political astroturfing across the
+      world. Scientific Reports 12, 1 (2022), 4572.
+[117] Ozgur Can Seckin, Manita Pote, Alexander C Nwala, Lake Yin, Luca Luceri, Alessandro Flammini, and Filippo Menczer. 2025. Labeled datasets for
+      research on information operations. In AAAI ICWSM, Vol. 19. 2567–2574.
+[118] Karishma Sharma, Yizhou Zhang, Emilio Ferrara, and Yan Liu. 2021. Identifying coordinated accounts on social media through hidden influence
+     and group behaviours. In ACM SIGKDD. 1441–1451.
+[119] Christophe Sibertin-Blanc, Frédéric Amblard, and Matthias Mailliard. 2005. A coordination framework based on the sociology of organized action.
+      In AAMAS. 3–17.
+[120] D Hudson Smith, Carl Ehrett, and Patrick Warren. 2025. Unsupervised detection of coordinated information operations in the wild. EPJ Data
+       Science 14, 1 (2025), 26.
+[121] Felipe B. Soares. 2023. From sharing misinformation to debunking it: How coordinated image text sharing behaviour is used in political campaigns
+     on Facebook. In MISDOOM. 45–59.
+[122] Yunya Song, Yin Zhang, Sheng Zou, Xian Yang, and Qintao Huang. 2025. The spread of pro-and anti-vaccine views by coordinated communities
+     on facebook during COVID-19 pandemic. Journal of Computational Social Science 8, 4 (2025), 98.
+[123] Lucas Stampe, Janina Pohl, and Christian Grimme. 2023. Towards multimodal campaign detection: Including image information in stream clustering
+       to detect social media campaigns. In MISDOOM. 144–159.
+[124] Lucas Stampe, Janina L¨"utke Stockdiek, Britta Grimme, and Christian Grimme. 2024. Benchmarking Sentence Embeddings in Textual Stream
+      Clustering with Applications to Campaign Detection. In IEEE IJCNN. 1–8.
+[125] Kate Starbird, Ahmer Arif, and Tom Wilson. 2019. Disinformation as collaborative work: Surfacing the participatory nature of strategic information
+      operations. In ACM CSCW. 127:1–127:26.
+[126] Zachary C. Steinert-Threlkeld, Delia Mocanu, Alessandro Vespignani, and James H. Fowler. 2015. Online social networks and offline protest. EPJ
+      Data Science 4, 1 (2015), 19.
+                                                                                                         Manuscript submitted to ACM

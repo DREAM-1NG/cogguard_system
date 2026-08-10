@@ -149,6 +149,7 @@ Use the glossary in `UBIQUITOUS_LANGUAGE.md` for domain terms. The system-level 
 - `system/backend/app/services/review_case_service.py` and `system/backend/app/api/v2/review_cases.py` are the product case boundary.
 - `system/research/coordination_discover`, `system/research/coordination_detect`, `system/research/propagation_analysis`, `system/research/review_teacher`, and `system/runtimes/review_student` are canonical semantic boundaries.
 - `system/research/social_bot_detection` is the canonical internal boundary for trainable BotRHG transfer. It must record dataset fingerprint, model checkpoint hash, missing property/social graph coverage, and comparison against a shallow reference baseline.
+- `system/research/social_bot_detection/twibot20_runtime.py` is a Fixed-Graph Research Runtime. Its TwiBot-20 bundle is benchmark-scoped and transductive; it is not eligible for the Chinese account-model Active Pointer.
 
 ### Prototype Boundary
 

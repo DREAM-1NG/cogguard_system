@@ -87,6 +87,19 @@ The application-facing ports are the `ReviewCaseService` methods that power thos
 
 ## Account Profile
 
+The NLPCC TwiBot-20 checkpoint is available separately as a hash-verified
+research runtime under `artifacts/social_bot_detection/nlpcc_twibot20_seed3`.
+It is fixed-graph and transductive: it only queries the deployed TwiBot-20
+node set and is never eligible for the Chinese online account-model Active
+Pointer. See `doc/research/twibot20-nlpcc-runtime.md` for the contract and
+selection evidence.
+
+Formal detector comparison follows [the social-bot benchmark protocol](../doc/research/social-bot-benchmark-protocol.md):
+TwiBot-20 is the primary graph benchmark; Cresci-2015, Cresci-2017, and
+Midterm-2018 are independently reported adaptation datasets. The historical
+Botection Weibo transfer corpus is legacy-only and cannot select a model or
+support an online deployment claim.
+
 `GET /api/v1/accounts/profiles` returns business-facing account profiles for
 the selected corpus. Each row contains a collected nickname, platform, activity
 context, and an **Account Finding** projected from the trained account detector.
@@ -102,11 +115,15 @@ Account detection also has an analyst-in-the-loop active-learning control plane:
 - `POST /api/v1/accounts/labels` records observable behavior labels only.
 - `POST /api/v1/accounts/labels/{label_id}/adjudicate` promotes or rejects a submitted label.
 - `POST /api/v1/accounts/training/candidates` registers a shadow model candidate trained from approved labels.
+- `POST /api/v1/accounts/models/{model_version}/evaluation-jobs` runs the normal system-owned frozen-holdout evaluation path.
+- `GET /api/v1/accounts/evaluation-jobs/{job_id}` returns durable evaluation state and signed result identity.
 - `POST /api/v1/accounts/models/{model_version}/activate` applies frozen-holdout, leakage, calibration, shadow-run, and dual-approval gates before activation.
+- `GET /api/v1/accounts/models/active` reports `available`, `missing`, or `invalid` pointer resolution without hiding artifact failures.
+- `POST /api/v1/accounts/models/{model_version}/rollback` records a governed manual rollback; monitor-driven automatic rollback is limited to hard runtime failures and the previous approved model.
 
 The active-learning loop is a label-efficiency and governance pipeline. It never treats model output as a gold label, and it keeps frozen evaluation data outside the selected labeling pool.
 
-Evaluator writeback must carry an `ACCOUNT_MODEL_EVALUATION_HMAC_SECRET` HMAC manifest bound to the candidate version, artifact SHA-256, evaluation run, protocol fingerprint, and raw audit fingerprint. Calibration is derived only from those labeled evaluator audits; candidate-provided `ece` or `calibration` fields are discarded. Production must set `ACCOUNT_MODEL_BOOTSTRAP_MODE=disabled`, configure a distinct evaluator secret of at least 32 characters, and create a governed MySQL Active Pointer before serving detection. A non-production local setup may set `ACCOUNT_MODEL_BOOTSTRAP_MODE=local_legacy` to create a persisted `local_bootstrap_unreviewed` pointer from the legacy checkpoint; no request path infers a checkpoint directly when the pointer is absent.
+The normal evaluator is system-owned: it locks candidate and Frozen Holdout identity, rejects any recorded training-export overlap, releases database locks during inference, rechecks the holdout fingerprint, and writes an `ACCOUNT_MODEL_EVALUATION_HMAC_SECRET` HMAC manifest bound to candidate version, artifact SHA-256, evaluation run, protocol fingerprint, and raw audit fingerprint. The direct writeback route is compatibility/recovery only. Calibration is derived only from labeled evaluator audits; candidate-provided `ece` or `calibration` fields are discarded. Production must set `ACCOUNT_MODEL_BOOTSTRAP_MODE=disabled`, configure a distinct evaluator secret of at least 32 characters, and create a governed MySQL Active Pointer before serving detection. A non-production local setup may set `ACCOUNT_MODEL_BOOTSTRAP_MODE=local_legacy` to create a persisted `local_bootstrap_unreviewed` pointer from the legacy checkpoint; no request path infers a checkpoint directly when the pointer is absent.
 
 Governed bundles use the canonical research-package verifier. Activation and
 rollback require `deployment={"eligible": true, "status": "eligible"}`; the
@@ -220,19 +237,34 @@ npm install
 npm run dev -- --host 127.0.0.1 --port 5173
 ```
 
-`start-system.ps1` starts a dedicated hidden `account_training` Celery worker
-with `--concurrency 1 --pool solo`. Its stdout and stderr are recorded under
+`start-system.ps1` starts a dedicated hidden account-model Celery worker for
+`account_training,account_evaluation` with `--concurrency 1 --pool solo`. Its
+stdout and stderr are recorded under
 `system/logs/account-training-worker-*.out.log` and `.err.log`. This worker is
-required for governed DAPT and detector retraining; it is intentionally
+required for governed DAPT, detector retraining, and Frozen Holdout evaluation;
+the shared queue consumer serializes GPU work. It is intentionally
 separate from the crawl, analysis, and review workers so GPU training cannot
-consume their worker slots.
+consume their worker slots. A process-bound GPU fence also rejects concurrent
+account-model work from an independently started local worker. Evaluation jobs
+carry a transactional dispatch intent; the backend publisher and Celery Beat
+claim pending or expired leases and token-finalize broker publication, so a
+broker failure does not leave a committed evaluation permanently stranded or
+replay every queued job each minute.
+
+On the RTX 4060 deployment, set `ACCOUNT_ACQUISITION_DEVICE=cuda`. DAPT uses
+BF16 when the CUDA device supports it and otherwise falls back to
+FP16 with GradScaler; the resolved precision is recorded in the encoder
+artifact provenance. The checked-in `.env.example` intentionally remains
+`cpu` so non-GPU development environments fail predictably rather than
+assuming CUDA.
 
 Separately operated workers:
 
 ```powershell
 cd system\backend
 celery -A app.celery_app worker --loglevel=info -Q crawl,analysis,review
-celery -A app.celery_app worker --loglevel=info -Q account_training --concurrency 1 --pool solo --hostname account-training@%h
+celery -A app.celery_app worker --loglevel=info -Q account_training,account_evaluation --concurrency 1 --pool solo --hostname account-training@%h
+celery -A app.celery_app beat --loglevel=info --schedule ..\logs\account-training-beat.schedule
 ```
 
 ## Delivery Performance Profile

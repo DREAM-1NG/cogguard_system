@@ -1,0 +1,69 @@
+Detection and Characterization of Coordinated Online Behavior: A Survey                                   19
+
+
+Table 4. Time window types, their parameters, and their effect on valid co-actions. To the right, a sequence of actions occurs at times
+𝑡1, . . . ,𝑡6. The same sequence results in different valid co-actions, marked by the µ lock icon, depending on the time window type.
+
+        type                                parameters             action sequence and valid co-actions
+
+
+                                                         Z
+         adjacent                                òµ
+
+
+                                                               Z
+         evenly distributed overlapping                                   µ           òµ
+                                          ò
+                                                                   𝛿   O
+
+                                                               Z
+         action driven overlapping
+                                          òµ           òµ        · µ ¸
+
+
+                                                                      𝑡𝑖𝑡𝑖+1                    𝑡0   𝑡1   𝑡2                            𝑡3   𝑡4                  𝑡5          𝑡6         time
+
+
+same time window. In other words, this filter corresponds to adding a further constraint to the actions that determine
+
+the coordination, in that such actions must be temporally close to one another. Table 3 displays the type and length of
+
+the time windows used in literature, along with the type of coordination network built. As shown in Tables 3 and 4,
+time windows can be either adjacent [1, 3, 18, 65, 138, 145, 146] or overlapping. Furthermore, overlapping time windows
+can be evenly distributed in time [3, 13, 17, 20, 47, 48, 59, 71–73, 81, 94–96, 103, 115, 116, 129], or action-driven—that is,
+positioned based on the timings of the actions [14, 28, 29, 32, 41, 41–44, 49, 61, 62, 70, 102, 104, 110, 121, 141, 149, 152].
+
+As shown in Table 4, in the latter case each time window starts when a relevant action occurs. In the former case instead,
+
+the additional parameter step 𝛿< 𝑍defines the temporal offset between two consecutive time windows. The amount
+of overlap 𝑂between two consecutive overlapping time windows is thus 𝑂= 𝑍−𝛿. Given a sequence of actions by
+two or more users, the choice of time windows and their parameters influence the number of such actions that are
+valid co-actions. These are indicated with the µ lock icon in the example shown in the rightmost column of Table 4.
+Let 𝑑= 𝑡2 −𝑡1 be the delay with which user 𝑢2 performs an action at time 𝑡2, with respect to the same action that 𝑢1
+performed at time 𝑡1. Independently of the type of time window, actions whose 𝑑> 𝑍are never considered as co-actions.
+Then, actions with 𝑑≤𝑍are always co-actions when using action-driven overlapping time windows. Conversely,
+actions with 𝑑≤𝑂are always co-actions when using evenly distributed overlapping time windows, and can possibly
+be co-actions when 𝑂< 𝑑≤𝑍. Instead, with adjacent time windows, also actions that are close in time (i.e., 𝑑≪𝑍) are
+occasionally not considered valid co-actions, when they occur across the boundary between two windows, as in the
+case of the actions occurred at 𝑡3 and 𝑡4 in the example of Table 4. Therefore, using overlapping rather than adjacent
+time windows ensures that no actions close in time are missed. However, it increases the number of windows required
+
+to cover the same time frame, leading to more computational demands. Another critical consideration is the length 𝑍of
+
+the time window. A larger 𝑍includes more actions as co-actions, while a shorter one restricts valid co-actions to highly
+synchronized events, while also increasing the number of windows and the resulting computations. The choice of 𝑍
+also depends on the goal of the analysis. Literature indicates that inauthentic or harmful coordinated behaviors are
+
+highly synchronized and can often be detected with short windows [73, 103], whereas emergent human behaviors that
+
+are typically less orchestrated and loosely synchronized, require longer windows to capture their relaxed temporal
+
+dynamics [100].
+
+  A few works departed from the traditional time windows filters presented above. For example, [129, 145, 146] built
+
+a distinct coordination network for each time window. Then, [145, 146] aggregated all networks, each correspond-
+
+ing to a different adjacent time window, by computing the pairwise sums of the network weights. The summation
+
+                                                                                                         Manuscript submitted to ACM

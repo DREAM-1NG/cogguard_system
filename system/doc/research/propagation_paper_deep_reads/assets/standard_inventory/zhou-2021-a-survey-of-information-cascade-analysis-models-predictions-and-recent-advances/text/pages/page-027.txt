@@ -1,0 +1,54 @@
+A Survey of Information Cascade Analysis: Models, Predictions, and Recent Advances      27:27
+
+
+predictions of existing models, a standardized comparison environment should be emphasized,
+e.g., selecting appropriate evaluation protocols for classification/regression, using publicly avail-
+able datasets, and so on, to avoid overestimating (or underestimating) the performance of a par-
+ticular model.
+  Other than purely pursuing prediction performance, or seeing at it in a new light, interpret-
+ing the behavior of predictions may enable better understanding of the disciplines governing
+the success of information items, maximizing social and business benefits through mastering and
+even managing the information diffusion process. Thus, it is desirable to unveil the inner-context
+driven mechanisms that guide information to spread further, for example: (i) investigating which
+topology of the diffusion network expands faster [39]; (ii) the temporal and textual characteris-
+tics of burst public events and fake news and why they are traveled fast [149, 195]; (iii) the visual
+explanations of why some images/videos become popular quickly and why others do not [91];
+(iv) interpreting deep neural networks [28]; and so on. Successfully explaining these phenomena
+will improve the prediction, and help design more powerful decision making systems to detect and
+bound viral marketing/advertising, rumor/fake news spreading, public opinion control, epidemic
+prevention, and so on.
+
+6.2  External Stimuli
+External stimuli are one of the primary causes that lead the prediction of information cascades to be
+unexplainable, unreliable, and finally maybe impossible. Compared to endogenous stimuli like in-
+site search and share [57], external (or endogenous) stimuli are uncertain and unforeseeable events.
+For example, a normal cascade with little fluctuations in its early stage may suddenly become
+popular due to some external stimuli, which significantly increases the exposure/adoption rate
+of that information. As a previous work [148] shows, about 71% of the information in Twitter is
+diffused in the network without external influence, while the remaining 29% of tweets have been
+significantly affected and even manipulated by exogenous force.
+  Retrieval of knowledge and propagation patterns from one platform to help the prediction of
+items in another platform with cross-domain real-time transfer learning (e.g., learn tweet spread-
+ing to enhance the performance of predicting YouTube video views) was studied in Reference
+[167]. Another example is SoVP [123], which learned the shared diffusion behavior in social net-
+works to strengthen the ability to predict video popularity. The rationale behind these works is
+that the trends appearing on Twitter would later drive users to search and watch related videos
+in YouTube. Moreover, burst events are more likely to first appear on microblogging platforms
+like Twitter/Weibo and then spread to other kinds of platforms such as newspapers and video
+sharing sites. This inspired later works to predict popularity in one domain via resorting to other
+information sources and dissemination platforms to model external stimuli responsible for the
+popularity [1, 160, 232]. More such examples can be found in References [151, 194], which retrieve
+information from Twitter and YouTube to predict the “ratings” and “views” of movies in IMDB.
+In Reference [31], information from Facebook and Twitter were collected to predict the views of
+articles. Another recent work [143] uses RNNs to model asynchronous media streams of YouTube
+videos.
+  Modeling external stimuli can significantly enrich data diversity and improve model robust-
+ness. Actually, many web sites now provide extra information that attracts external stimuli, e.g.,
+the information of referrers/URLs that may bring new views/adoptions. For YouTube videos, a re-
+ferrer can be a hyperlink embedded in a tweet pointing to a video. This provides clues to trace the
+sources of external stimuli. The top-10 referrers and the number of views each referrer brings as
+features to predict the evolving trends of videos were used in References [54, 57]. This anatomy
+of sources of popularity gives more insights into the future evolution of cascades [26], e.g., how
+
+
+                       ACM Computing Surveys, Vol. 54, No. 2, Article 27. Publication date: March 2021.

@@ -104,6 +104,11 @@ $frontendPortValue = Get-DotEnvValue -Name 'FRONTEND_PORT' -DefaultValue '5173'
 if (-not [int]::TryParse($frontendPortValue, [ref]$frontendPort) -or $frontendPort -lt 1 -or $frontendPort -gt 65535) {
     throw "FRONTEND_PORT must be a valid TCP port; received '$frontendPortValue'."
 }
+$mongoPort = 0
+$mongoPortValue = Get-DotEnvValue -Name 'MONGO_PORT' -DefaultValue '27017'
+if (-not [int]::TryParse($mongoPortValue, [ref]$mongoPort) -or $mongoPort -lt 1 -or $mongoPort -gt 65535) {
+    throw "MONGO_PORT must be a valid TCP port; received '$mongoPortValue'."
+}
 
 function Test-TcpPort {
     param(
@@ -243,14 +248,62 @@ function Stop-StaleDevelopmentFrontend {
     }
 }
 
+function Get-DockerContainerState {
+    param([string]$Name)
+
+    $inspectOutput = & $dockerExe inspect $Name 2>$null
+    if ($LASTEXITCODE -ne 0) {
+        return $null
+    }
+    $container = ($inspectOutput -join "`n" | ConvertFrom-Json)[0]
+    return [PSCustomObject]@{
+        Name = $Name
+        Image = [string]$container.Config.Image
+        Status = [string]$container.State.Status
+    }
+}
+
 if (-not $SkipDocker) {
     Write-Host 'Starting MySQL / MongoDB / Redis with Docker Compose...'
-    & $dockerExe compose -f $composeFile up -d mysql mongodb redis
-    if ($LASTEXITCODE -ne 0) {
-        throw "Docker Compose infrastructure startup failed with exit code $LASTEXITCODE."
+    $requiredInfrastructure = @(
+        [PSCustomObject]@{ Name = 'cogguard-mysql'; Image = 'mysql:8.0' },
+        [PSCustomObject]@{ Name = 'cogguard-mongodb'; Image = 'mongo:7.0' },
+        [PSCustomObject]@{ Name = 'cogguard-redis'; Image = 'redis:7-alpine' }
+    )
+    $existingInfrastructure = @(
+        foreach ($required in $requiredInfrastructure) {
+            $state = Get-DockerContainerState -Name $required.Name
+            if ($null -ne $state) {
+                $state
+            }
+        }
+    )
+
+    if ($existingInfrastructure.Count -eq $requiredInfrastructure.Count) {
+        foreach ($required in $requiredInfrastructure) {
+            $state = $existingInfrastructure | Where-Object Name -eq $required.Name | Select-Object -First 1
+            if ($state.Image -ne $required.Image) {
+                throw "$($required.Name) uses image '$($state.Image)', expected '$($required.Image)'."
+            }
+            if ($state.Status -ne 'running') {
+                & $dockerExe start $required.Name | Out-Null
+                if ($LASTEXITCODE -ne 0) {
+                    throw "Failed to start existing infrastructure container $($required.Name)."
+                }
+            }
+        }
+        Write-Host 'Reusing compatible CogGuard infrastructure containers and their existing data volumes.'
+    } elseif ($existingInfrastructure.Count -eq 0) {
+        & $dockerExe compose --project-directory $root -f $composeFile up -d mysql mongodb redis
+        if ($LASTEXITCODE -ne 0) {
+            throw "Docker Compose infrastructure startup failed with exit code $LASTEXITCODE."
+        }
+    } else {
+        $foundNames = ($existingInfrastructure | Select-Object -ExpandProperty Name) -join ', '
+        throw "Partial CogGuard infrastructure already exists ($foundNames). Refusing to create a mixed container set."
     }
     Wait-TcpPort -Name 'MySQL' -Port 3306
-    Wait-TcpPort -Name 'MongoDB' -Port 27017
+    Wait-TcpPort -Name 'MongoDB' -Port $mongoPort
     Wait-TcpPort -Name 'Redis' -Port 6379
 
     if (-not $SkipIndexPreparation) {
@@ -288,7 +341,7 @@ $accountTrainingBeatOutputLog = Join-Path $logsDir "account-training-beat-$runSt
 $accountTrainingBeatErrorLog = Join-Path $logsDir "account-training-beat-$runStamp.err.log"
 $accountTrainingBeatSchedule = Join-Path $logsDir 'account-training-beat.schedule'
 
-function Stop-StaleAccountTrainingWorkers {
+function Stop-StaleAccountModelWorkers {
     $backendPythonPath = [System.IO.Path]::GetFullPath($backendPython)
     $workers = Get-CimInstance Win32_Process -Filter "Name = 'python.exe'" -ErrorAction SilentlyContinue |
         Where-Object {
@@ -300,10 +353,10 @@ function Stop-StaleAccountTrainingWorkers {
                 [System.StringComparison]::OrdinalIgnoreCase
             ) -and
             $commandLine -match '(?i)(?:^|\s)-m\s+celery(?:\s|$)' -and
-            $commandLine -match '(?i)(?:--queues\s+account_training|account-training@)'
+            $commandLine -match '(?i)(?:account_training|account_evaluation|account-training@|account-model@)'
         }
     foreach ($worker in $workers) {
-        Write-Host "Stopping stale account-training worker (PID $($worker.ProcessId))..."
+        Write-Host "Stopping stale account-model worker (PID $($worker.ProcessId))..."
         Stop-Process -Id $worker.ProcessId -Force
     }
 }
@@ -343,12 +396,12 @@ $backendProcess = Start-Process @backendStartParameters
 Wait-HttpEndpoint -Name 'Backend API' -Url 'http://127.0.0.1:8000/api/v2/health' -FailureLogPath $backendErrorLog
 Write-Host "Backend PID: $($backendProcess.Id); logs: $logsDir"
 
-Stop-StaleAccountTrainingWorkers
-Write-Host 'Starting dedicated account-training Celery worker (concurrency 1)...'
+Stop-StaleAccountModelWorkers
+Write-Host 'Starting dedicated account-model Celery worker (training and evaluation, concurrency 1)...'
 $accountTrainingStartParameters = @{
     FilePath = $backendPython
     WorkingDirectory = $backendDir
-    ArgumentList = @('-m', 'celery', '-A', 'app.celery_app', 'worker', '--loglevel=info', '--queues', 'account_training', '--concurrency', '1', '--pool', 'solo', '--hostname', 'account-training@%h')
+    ArgumentList = @('-m', 'celery', '-A', 'app.celery_app', 'worker', '--loglevel=info', '--queues', 'account_training,account_evaluation', '--concurrency', '1', '--pool', 'solo', '--hostname', 'account-training@%h')
     WindowStyle = 'Hidden'
     RedirectStandardOutput = $accountTrainingOutputLog
     RedirectStandardError = $accountTrainingErrorLog
@@ -428,7 +481,7 @@ if (-not $SkipFrontend) {
     } else {
         Stop-StaleDevelopmentFrontend -Port $frontendPort
         Write-Host 'Building the optimized frontend and starting static delivery...'
-        & $dockerExe compose -f $composeFile --profile production-ui up -d --build frontend_static
+        & $dockerExe compose --project-directory $root -f $composeFile --profile production-ui up -d --build frontend_static
         if ($LASTEXITCODE -ne 0) {
             throw "Static frontend startup failed with exit code $LASTEXITCODE."
         }

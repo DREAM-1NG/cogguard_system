@@ -1,0 +1,63 @@
+Detection and Characterization of Coordinated Online Behavior: A Survey                                   17
+
+
+on platforms such as TikTok, coordinated behaviors have also been studied through co-stitch [71] and co-duet [71],
+
+which correspond to users jointly engaging with the same source content by embedding or responding to it within
+
+their own videos, as well as through the sharing of videos that reuse the same [148] or similar audio tracks [148].
+
+Additional forms of coordination include co-follow [158] and co-report [157], where users collectively follow or report
+
+the same account. When a co-action is defined in such a way that multiple atomic actions are required for two users
+to be considered as coordinated, that co-action is a compound action [73]. More generally, compound actions refer
+to actions that involve the simultaneous occurrence or combination of multiple individual actions or sub-events.
+
+Therefore, a co-action requiring the posting of the same set or sequence of hashtags is a compound action composed
+of multiple homogeneous elements: ⟨hashtag, hashtag, . . .⟩. However, compound co-actions can also be defined with
+heterogeneous elements, such as ⟨hashtag, mention⟩or ⟨URL, mention⟩[73]. When building coordination networks, the
+use of compound actions increases the confidence of labelling a group of users as coordinated, since compound actions
+
+are less likely to occur by chance. However, this approach risks neglecting simpler, milder, or looser forms of coordination.
+Lastly, co-handle changes refer to multiple users using the same handle or username at different points in time [103].
+After selecting one or more co-actions to identify similar user behaviors, it is necessary to define the corresponding
+similarity functions. A similarity function computes the weight 𝑤𝑗𝑘of the edges connecting two coordinated users
+𝑢𝑗and 𝑢𝑘based on how similar their behaviors are according to the chosen co-action. Independently of the type of
+co-action, the majority of works use similarity functions based on the cardinality of the co-action between the two
+users [14–18, 28, 32, 41–44, 47–49, 52, 54, 59–62, 65, 92, 94, 96–99, 106, 110, 112, 115, 116, 121, 122, 128, 140, 142, 144–
+146, 148, 150, 152, 157]. For example, when using co-hashtags, the similarity function may simply count the number of
+times the two users used the same hashtags. Another widely adopted function is the cosine similarity between the two
+user vectors [5, 8, 13, 19, 20, 22, 29, 29, 30, 51, 66, 70, 71, 81, 90, 96, 97, 100, 103, 104, 114, 129, 138, 158]. These can be binary
+
+vectors, frequency vectors, or TF-IDF weighted vectors. The latter allows discounting the importance of popular or viral
+
+content, boosting instead the relevance of unpopular items [5, 19, 20, 22, 29, 30, 51, 66, 70, 71, 81, 90, 100, 104, 129, 138].
+
+Depending on the choice of co-action, the previous similarity functions must be preceded by additional processing steps.
+For example, the use of co-actions such as co-post, co-image, and co-video involve counting the number of times two
+users shared the same content, which severely limits the possibility to detect certain coordinated behaviors. For this
+reason, some scholars relaxed this requirement by also considering the posting of similar—as opposed to equal—content.
+This solution requires defining additional similarity functions for texts, images, and videos. In literature, text similarity
+
+was computed via correlation [64], cosine similarity of document embeddings [29, 32, 70, 96, 98], Ratcliff/Obershelp
+
+algorithm [102], or Jaccard similarity [48]. All these works first computed similarities between the text of two users’
+
+posts. Then, they set a threshold to select highly similar texts. Finally, they computed user similarities based on the
+
+number of similar texts [32, 48, 96, 98], or as the average of the similarities between the highly similar texts [29, 70].
+Analogously, co-image involves a pre-processing step for representing the images with their embeddings [99] or with
+RGB color histograms [103]. Then, image similarity is computed via measures such as the Euclidean distance [99]. Finally,
+
+a similarity threshold is applied and user similarity is computed as the cardinality [99] or the Jaccard coefficient [103]
+
+of the sets of similar images.
+
+4.1.3  Network filtering. This optional, yet crucial, step allows to filter out nodes and edges from the coordination
+network so as to only retain network structures that convey meaningful and reliable coordination. Independently of the
+
+method used to the achieve this objective, performing network filtering also has the advantage of reducing the size of
+
+the final coordination network, which speeds-up subsequent analyses.
+
+                                                                                                         Manuscript submitted to ACM

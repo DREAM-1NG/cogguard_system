@@ -1,0 +1,62 @@
+34                                                                                 Mannocci et al.
+
+
+
+ [11] Fabio Barbero, Sander op den Camp, et al. 2023. Multi-modal embeddings for isolating cross-platform coordinated information campaigns on social
+      media. In MISDOOM. 14–28.
+ [12] Daniele Bellutta and Kathleen M. Carley. 2023. Investigating coordinated account creation using burst detection and network analysis. Journal of
+      Big Data 10, 1 (2023), 1–17.
+ [13] Leonardo Blas, Diya Saraf, Tanishq Salkar, Nora Adadurova, Luca Luceri, and Emilio Ferrara. 2025. Large-scale detection of multilingual coordinated
+       activity on Telegram. npj Complexity 2, 1 (2025), 33.
+ [14] D. A. Broniatowski. 2021. Towards statistical foundations for detecting coordinated inauthentic behavior on Facebook. Technical Report. Institute for
+      Data, Democracy and Politics, The George Washington University.
+ [15] Keith Burghardt, Ashwin Rao, Georgios Chochlakis, Baruah Sabyasachee, Siyi Guo, Zihao He, Andrew Rojecki, Shrikanth Narayanan, and Kristina
+      Lerman. 2024. Socio-linguistic characteristics of coordinated inauthentic accounts. In AAAI ICWSM, Vol. 18. 164–176.
+ [16] Cheng Cao, James Caverlee, Kyumin Lee, Hancheng Ge, and Jin-Wook Chung. 2015. Organic or organized?: Exploring URL sharing behavior. In
+    ACM CIKM. 513–522.
+ [17] Victor Chomel, Maziyar Panahi, and David Chavalarias. 2023. Manipulation during the French presidential campaign: Coordinated inauthentic
+      behaviors and astroturfing analysis on text and images. In CNA. 121–134.
+ [18] Lorenzo Cima, Lorenzo Mannocci, Marco Avvenuti, Maurizio Tesconi, and Stefano Cresci. 2024. Coordinated behavior in information operations
+     on Twitter. IEEE Access 11 (2024), 61568–61585.
+ [19] Matteo Cinelli, Stefano Cresci, Walter Quattrociocchi, Maurizio Tesconi, and Paola Zola. 2022. Coordinated inauthentic behavior and information
+      spreading on Twitter. Decision Support Systems 160 (2022), 113819.
+ [20] Federico Cinus, Marco Minici, Luca Luceri, and Emilio Ferrara. 2025. Exposing cross-platform coordinated inauthentic activity in the run-up to the
+      2024 us election. In ACM WWW. 541–559.
+ [21] Aaron Clauset, Mark EJ Newman, and Cristopher Moore. 2004. Finding community structure in very large networks. Physical Review E 70, 6 (2004),
+      066111.
+ [22] Carlo Colizzi, Antonio Alessio Della Sala, Giuseppe Fenza, and Lukasz Gajewski. 2025. Investigating Coordinated Inauthentic Behavior on
+      Alternative Platforms During the 2024 U.S. Election. In AAAI ICWSM.
+ [23] Stefano Cresci. 2020. A decade of social bot detection. Commun. ACM 63, 10 (2020), 72–83.
+ [24] Stefano Cresci, Fabrizio Lillo, Daniele Regoli, Serena Tardelli, and Maurizio Tesconi. 2018. $FAKE: Evidence of spam and bot activity in stock
+      microblogs on Twitter. In AAAI ICWSM. 580–583.
+ [25] Stefano Cresci, Fabrizio Lillo, Daniele Regoli, Serena Tardelli, and Maurizio Tesconi. 2019. Cashtag Piggybacking: Uncovering spam and bot activity
+       in stock microblogs on Twitter. ACM Transactions on the Web 13, 2 (2019), 11:1–11:27.
+ [26] Adya Danaditya, Lynnette H. X. Ng, and Kathleen M. Carley. 2022. From curious hashtags to polarized effect: Profiling coordinated actions in
+      Indonesian Twitter discourse. Social Network Analysis and Mining 12, 1 (2022), 105.
+ [27] Saloni Dash and Tanu Mitra. 2024. Decoding The Playbook: Multi-Modal Characterization of Coordinated Influence Operations on Indian Social
+      Media. ACM Journal on Computing and Sustainable Societies (2024).
+ [28] Bart De Clerck, Juan Carlos Fernandez Toledano, Filip Van Utterbeeck, and Luis EC Rocha. 2024. Detecting coordinated and bot-like behavior in
+       Twitter: the Jürgen Conings case. EPJ Data Science 13, 1 (2024), 40.
+ [29] Priyanka Dey, Luca Luceri, and Emilio Ferrara. 2024. Coordinated activity modulates the behavior and emotions of organic users: A case study on
+      tweets about the Gaza conflict. In ACM WWW. 682–685.
+ [30] Niccolò Di Marco, Sara Brunetti, Matteo Cinelli, and Walter Quattrociocchi. 2025. Post-hoc evaluation of nodes influence in information cascades:
+     The case of coordinated accounts. ACM Transactions on the Web 19, 2 (2025), 1–19.
+ [31] Evelyn Douek. 2020. What does “coordinated inauthentic behaviour” actually mean? https://slate.com/technology/2020/07/coordinated-inauthentic-
+      behavior-facebook-twitter.html. (accessed: 31/07/2024).
+ [32] Auriant Emeric and Chomel Victor. 2023. Interpretable cross-platform coordination detection on social networks. In CNA. 143–155.
+ [33] Keeley Erhardt and Dina Albassam. 2023. Detecting the hidden dynamics of networked actors using temporal correlations. In ACM WWW.
+      1214–1217.
+ [34] Keeley Erhardt and Alex Pentland. 2024. Hidden messages: mapping nations’ media campaigns. Computational and Mathematical Organization
+      Theory 30, 2 (2024), 161–172.
+ [35] Facebook. 2018. Coordinated inauthentic behavior explained. https://about.fb.com/news/2018/12/inside-feed-coordinated-inauthentic-behavior/.
+       (accessed: 31/07/2024).
+ [36] Facebook. 2019. How we respond to inauthentic behavior on our platforms: Policy update. https://about.fb.com/news/2019/10/inauthentic-
+      behavior-policy-update/. (accessed: 31/07/2024).
+ [37] Facebook. 2019. Inauthentic behavior. https://transparency.fb.com/policies/community-standards/inauthentic-behavior/. (accessed: 31/07/2024).
+ [38] Facebook. 2021. Advancing our policies on online bullying and harassment. https://about.fb.com/news/2021/10/advancing-online-bullying-
+      harassment-policies/. (accessed: 31/07/2024).
+ [39] Facebook. 2021. Removing new types of harmful networks. https://about.fb.com/news/2019/10/inauthentic-behavior-policy-update/. (accessed:
+       31/07/2024).
+
+
+Manuscript submitted to ACM

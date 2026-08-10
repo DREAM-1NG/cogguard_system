@@ -156,35 +156,66 @@ def compute_alps_embeddings(
     max_length: int = 128,
     batch_size: int = 4,
     device: str = "cpu",
+    mask_probability: float = 0.15,
+    seed: int = 42,
 ) -> list[list[float]]:
-    """Compute ALPS-style token surprisal embeddings with a local MLM."""
+    """Compute deterministic ALPS masked-token surprisal embeddings."""
 
     model_dir = Path(model_path).expanduser()
     if not model_dir.exists():
         raise AcquisitionInputError(f"ACCOUNT_ACQUISITION_TEXT_MODEL_PATH does not exist: {model_dir}")
+    if max_length <= 0 or batch_size <= 0:
+        raise AcquisitionInputError("ALPS max_length and batch_size must be positive")
+    if not 0.0 < mask_probability < 1.0:
+        raise AcquisitionInputError("ALPS mask_probability must be between 0 and 1")
     import torch
     from transformers import AutoModelForMaskedLM, AutoTokenizer
 
     requested_device = torch.device("cuda" if str(device).startswith("cuda") and torch.cuda.is_available() else "cpu")
     tokenizer = AutoTokenizer.from_pretrained(model_dir, local_files_only=True)
+    if tokenizer.mask_token_id is None:
+        raise AcquisitionInputError("ALPS requires a tokenizer with a mask token")
     model = AutoModelForMaskedLM.from_pretrained(model_dir, local_files_only=True).to(requested_device)
     model.eval()
     vectors: list[list[float]] = []
+    generator = torch.Generator(device="cpu")
+    generator.manual_seed(int(seed))
     with torch.no_grad():
         for start in range(0, len(texts), batch_size):
             encoded = tokenizer(
                 texts[start : start + batch_size],
-                padding=True,
+                padding="max_length",
                 truncation=True,
                 max_length=max_length,
                 return_tensors="pt",
+                return_special_tokens_mask=True,
             )
-            encoded = {key: value.to(requested_device) for key, value in encoded.items()}
-            logits = model(**encoded).logits
+            input_ids = encoded["input_ids"]
+            attention_mask = encoded["attention_mask"].bool()
+            special_tokens_mask = encoded.pop("special_tokens_mask").bool()
+            eligible = attention_mask & ~special_tokens_mask
+            mask_positions = (torch.rand(input_ids.shape, generator=generator) < mask_probability) & eligible
+            for row_index in range(mask_positions.shape[0]):
+                if not bool(mask_positions[row_index].any()) and bool(eligible[row_index].any()):
+                    first_eligible = int(torch.nonzero(eligible[row_index], as_tuple=False)[0].item())
+                    mask_positions[row_index, first_eligible] = True
+
+            masked_input_ids = input_ids.clone()
+            masked_input_ids[mask_positions] = int(tokenizer.mask_token_id)
+            model_inputs = {
+                "input_ids": masked_input_ids.to(requested_device),
+                "attention_mask": encoded["attention_mask"].to(requested_device),
+            }
+            if "token_type_ids" in encoded:
+                model_inputs["token_type_ids"] = encoded["token_type_ids"].to(requested_device)
+            logits = model(**model_inputs).logits
             log_probs = logits.log_softmax(dim=-1)
-            token_log_probs = log_probs.gather(2, encoded["input_ids"].unsqueeze(-1)).squeeze(-1)
-            surprisal = -token_log_probs * encoded["attention_mask"].to(token_log_probs.dtype)
-            vectors.extend([[float(value) for value in row.tolist()] for row in surprisal.detach().cpu().numpy()])
+            target_ids = input_ids.to(requested_device)
+            token_log_probs = log_probs.gather(2, target_ids.unsqueeze(-1)).squeeze(-1)
+            surprisal = -token_log_probs * mask_positions.to(requested_device, dtype=token_log_probs.dtype)
+            vectors.extend(
+                [[float(value) for value in row] for row in surprisal.detach().cpu().tolist()]
+            )
     return vectors
 
 

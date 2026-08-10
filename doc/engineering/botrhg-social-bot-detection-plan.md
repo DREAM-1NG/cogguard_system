@@ -19,12 +19,12 @@ executed by CogGuard.
 
 | Layer | Responsibility | Delivery status |
 | --- | --- | --- |
-| Chinese social encoder | Local Chinese MLM checkpoint and DAPT with replay and resumable state. | A provenance-bound corpus contains 17,520 documents and 415,686 WordPiece tokens; it is 84,314 tokens below the first DAPT gate, so no DAPT claim is made. |
-| Account detector | BotRHG training/inference, strict feature allowlist, account representation, calibration payload, and BADGE gradient embedding. | Existing transfer/checkpoint paths run; full Chinese retraining bundle not yet produced. |
+| Chinese social encoder | Local Chinese MLM checkpoint and DAPT with replay, resumable state, and immutable encoder versions. | DAPT exports a portable encoder/tokenizer and frozen `encoder_state.pt`; the registry binds version, artifact hash, corpus, and training run. The current provenance-bound corpus contains 17,520 documents and 415,686 WordPiece tokens, so no 500,000-token DAPT claim is made. |
+| Account detector | BotRHG training/inference, strict feature allowlist, account representation, calibration payload, and BADGE gradient embedding. | Deployable detectors must bind an immutable encoder version and hash. Existing transfer/checkpoint paths run; a fully retrained Chinese detector bundle has not yet been produced. |
 | Acquisition | ALPS + Core-set in cold start; calibrated uncertainty + BADGE in warm start. | Implemented fail-closed selector; no completed real annotation round. |
-| Evaluation | Frozen holdout plus account/event/community/time/platform audits. | Protocol code implemented; no signed real-data report. |
+| Evaluation | Frozen holdout plus account/event/community/time/platform audits. | A durable system-owned evaluation job locks the candidate and holdout identity, rejects training/holdout overlap, runs inference without a database lock, rechecks fingerprints, and writes an HMAC-signed immutable result. No signed real-data report has completed yet. |
 | Artifact delivery | `cogguard.account-model-bundle.v1`, file hashes, feature schema, calibration, and metrics. | Canonical verification is shared by registration and runtime. Activation rejects non-deployable bundles; runtime loads the verified encoder, feature schema, and calibration and checks them against the detector checkpoint. No completed production bundle is active. |
-| Operations | Celery `account_training`, transactional dispatch outbox, persisted training-run records, candidate/approval/activation/rollback policy. | MySQL migration round trip, Redis/Celery receipt, stable task identity, duplicate-delivery gating, and no-pointer fail-closed smoke are complete. Real shadow evaluation, activation, and rollback remain pending. |
+| Operations | Celery `account_training` and `account_evaluation`, transactional dispatch outbox, persisted training/evaluation records, Active Pointer, monitoring, and rollback policy. | Migration round trip, Redis/Celery registration, duplicate-delivery gating, pointer-invalid rejection, and bounded automatic rollback are implemented and tested. A real candidate shadow run, activation, and rollback exercise remain pending. |
 
 ## Explicit Non-Claims
 
@@ -34,8 +34,11 @@ executed by CogGuard.
   generalization.
 - A unit-tested DAPT or bundle function does not prove GPU throughput, model
   quality, calibration, or deployment safety.
-- The account-profile page remains unchanged in this delivery phase. Governance
-  and training controls are backend control-plane work.
+- The existing account-profile layout is intentionally preserved. Its current
+  projection now exposes only governed detector conclusions: bot probability,
+  prediction, model version, routing path, and support-hypergraph neighbor
+  summaries. Training and governance controls remain backend control-plane
+  work.
 
 ## Acceptance Sequence
 
@@ -60,8 +63,12 @@ The detailed research rationale and citation status are maintained in
 
 ## Training Operations
 
-`system/start-system.ps1` starts `account_training` in a separate hidden
-Celery process using `--concurrency 1 --pool solo`; inspect
+`system/start-system.ps1` stops stale workers consuming either account-model
+queue, then starts one hidden Celery process using `--queues
+account_training,account_evaluation --concurrency 1 --pool solo`. Training and
+candidate evaluation also acquire the same process-bound GPU fence under
+`MODEL_ARTIFACT_ROOT`, so a separately started local worker cannot bypass the
+single-node resource boundary; inspect
 `system/logs/account-training-worker-*.out.log` and `.err.log` when a run is
 deferred or interrupted. The runtime reads these deployment policy values from
 `system/.env` (or `system/backend/.env`):
@@ -78,17 +85,47 @@ Manual dispatch can bypass only a quantity threshold. Corpus readiness,
 cooldown, persisted configuration, heartbeat recovery, and the recovery limit
 remain enforced.
 
+Celery Beat reconciles training heartbeats, records five-minute active-model
+monitor snapshots, and drains the evaluation dispatch outbox every minute. The
+outbox claims only committed `pending` intents or expired `publishing` leases,
+publishes outside the database transaction, and token-finalizes the claim. A
+broker failure returns the intent to `pending`; a successful publish is not
+periodically replayed because a database timer cannot distinguish a task waiting
+in the Celery queue from a lost broker message. `dispatch_acknowledged_at` is
+retained as execution telemetry, not as a re-publish trigger. Reclaimed claims
+reuse the persisted task ID, while job and GPU ownership make at-least-once
+delivery safe.
+
 ## Measured Deployment Evidence
 
-- MySQL migration `c3a7e5d8f914 -> b3e5d8a7c421 -> c3a7e5d8f914`
-  completed; both outbox timestamps are `NOT NULL` at head.
+- The previous MySQL migration round trip completed through
+  `c4f7a9d2e618`. The new `e5c1b7d9a204` platform-scope migration is present
+  in the worktree, and the full offline upgrade script now generates through
+  that head. Online upgrade and downgrade round-trip still require a
+  responsive MySQL service.
+- The offline migration pass also fixed two legacy migration checks that used
+  database inspection or result fetching during SQL rendering; online
+  duplicate-data protection remains enabled.
 - The dedicated `account_training` worker received the stable task ID
   `account-training:account-training-a864b99c98f74b14:attempt:1`; the induced
   missing-corpus failure was persisted instead of starting an uncontrolled
   training run.
-- The current Active Pointer is empty. A real Trump/Weibo request returned
-  `unavailable_without_active_pointer` and `no_active_account_model_pointer`;
-  no legacy or heuristic detector ran.
-- The host exposes an RTX 4060 Laptop GPU with 8,188 MiB, but the backend venv
-  currently contains `torch 2.12.1+cpu`. CUDA DAPT, VRAM, and latency acceptance
-  remain blocked until a CUDA-enabled training environment is installed.
+- A real Celery worker smoke registered `account_training.execute`,
+  `account_training.monitor_active_model`, `account_evaluation.execute`, and
+  `account_evaluation.reconcile_dispatches` while listening to both
+  account-model queues.
+- Automatic rollback is deliberately narrow: immediate rollback is limited to
+  bundle corruption or runtime load failure; other hard errors require two
+  adjacent persisted monitor snapshots. The target must be the previously
+  activated, approved, signed, hash-valid model recorded by the current pointer
+  revision.
+- The current local database contains a historical bootstrap pointer, but the
+  strict runtime rejects its bundle as `active_model_bundle_invalid`. Account
+  profiles therefore fail closed to `暂无研判`; no heuristic detector runs and
+  no governed retrained model is active.
+- The backend venv now contains `torch 2.11.0+cu128`; CUDA and torch-geometric
+  import checks pass on the RTX 4060 Laptop GPU. A real local Chinese RoBERTa
+  DAPT smoke completed two optimizer updates with BF16, exported a verified
+  encoder artifact, and peaked at 1,972.8 MiB. Full-run VRAM, latency, and model
+  quality acceptance remain blocked by the 500,000-token and approved-label
+  data gates rather than by the runtime environment.

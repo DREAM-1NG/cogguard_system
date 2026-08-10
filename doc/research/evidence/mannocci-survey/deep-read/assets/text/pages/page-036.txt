@@ -1,0 +1,61 @@
+36                                                                                 Mannocci et al.
+
+
+
+ [69] Luca Luceri, Silvia Giordano, and Emilio Ferrara. 2020. Detecting troll behavior via inverse reinforcement learning: A case study of Russian trolls
+       in the 2016 US election. In AAAI ICWSM. 417–427.
+ [70] Luca Luceri, Valeria Pantè, Keith Burghardt, and Emilio Ferrara. 2024. Unmasking the Web of deceit: Uncovering coordinated activity to expose
+      information operations on Twitter. In ACM WWW. 2530–2541.
+ [71] Luca Luceri, Tanishq Vijay Salkar, Ashwin Balasubramanian, Gabriela Pinto, Chenning Sun, and Emilio Ferrara. 2025. Coordinated Inauthentic
+      Behavior on TikTok: Challenges and Opportunities for Detection in a Video-First Ecosystem. arXiv:2505.10867
+ [72] Thomas Magelinski and Kathleen M. Carley. 2020. Detecting coordinated behavior in the Twitter campaign to reopen America. Technical Report.
+      School of Computer Science, Carnegie Mellon University.
+ [73] Thomas Magelinski, Lynnette H. X. Ng, and Kathleen Carley. 2022. A synchronized action framework for detection of coordination on social
+      media. Journal of Online Trust and Safety 1, 2 (2022).
+ [74] Matteo Magnani, Obaida Hanteer, Roberto Interdonato, Luca Rossi, and Andrea Tagarelli. 2021. Community detection in multiplex networks. ACM
+     Computing Surveys (CSUR) 54, 3 (2021), 1–35.
+ [75] Thomas W. Malone. 1987. Modeling coordination in organizations and markets. Management Science 33, 10 (1987), 1317–1332.
+ [76] Thomas W. Malone. 1988. What is coordination theory? Technical Report 182. Massachusetts Institute of Technology (MIT), Sloan School of
+     Management.
+ [77] Thomas W. Malone and Kevin Crowston. 1990. What is coordination theory and how can it help design cooperative work systems?. In ACM CSCW.
+      357–370.
+ [78] Thomas W. Malone and Stephen A. Smith. 1988. Modeling the performance of organizational structures. Operations Research 36, 3 (1988), 421–436.
+ [79] Isura Manchanayaka, Zainab Zaidi, Shanika Karunasekera, and Christopher Leckie. 2024. Identifying coordinated activities on online social
+      networks using contrast pattern mining. In 2024 International Joint Conference on Neural Networks (IJCNN). IEEE, 1–9.
+ [80] Isura Manchanayaka, Zainab Razia Zaidi, Shanika Karunasekera, and Christopher Leckie. 2025. Using causality to infer coordinated attacks in
+       social media. In Proceedings of the International AAAI Conference on Web and Social Media, Vol. 19. 1176–1189.
+ [81] Lorenzo Mannocci, Stefano Cresci, Matteo Magnani, Anna Monreale, and Maurizio Tesconi. 2026. Multimodal coordinated online behavior:
+      Trade-offs and strategies. Information Sciences (2026), 123125.
+ [82] Lorenzo Mannocci, Stefano Cresci, Anna Monreale, Athina Vakali, and Maurizio Tesconi. 2022. MulBot: Unsupervised bot detection based on
+      multivariate time series. In IEEE BigData. 1485–1494.
+ [83] Enrico Mariconti, Guillermo Suarez-Tangil, Jeremy Blackburn, Emiliano De Cristofaro, Nicolas Kourtellis, Ilias Leontiadis, Jordi L. Serrano, and
+      Gianluca Stringhini. 2019. “You Know What to Do”: Proactive detection of YouTube videos targeted by coordinated hate attacks. In ACM CSCW.
+      1–21.
+ [84] Hodaka Matsuzaki, Isao Karube, and Junichi Hirayama. 2025. EDCOC: Early Detection of Coordinated Online Community Using Graph Neural
+      Networks. In IEEE/ACM ASONAM. 348–362.
+ [85] Michele Mazza, Guglielmo Cola, and Maurizio Tesconi. 2022. Ready-to-(ab) use: From fake account trafficking to coordinated inauthentic behavior
+     on Twitter. Online Social Networks and Media 31 (2022), 100224.
+ [86] Swapneel S. Mehta, Atilim G. Baydin, Bogdan State, Richard Bonneau, Jonathan Nagler, and Philip Torr. 2022. Estimating the impact of coordinated
+      inauthentic behavior on content recommendations in social networks. In AI4ABM.
+ [87] Miriam Milzner, Daniel Thiele, and Baoning Gong. 2025. Just the tip of the iceberg? State of the art of coordinated social media manipulation
+       research. Information, Communication & Society (2025), 1–20.
+ [88] Marco Minici, Luca Luceri, Francesco Fabbri, and Emilio Ferrara. 2025. IOHunter: Graph foundation model to uncover online information operations.
+      In AAAI, Vol. 39. 28258–28266.
+ [89] Monica Murero. 2023. Coordinated inauthentic behavior: An innovative manipulation tactic to amplify COVID-19 anti-vaccine communication
+      outreach via social media. Frontiers in Sociology 8 (2023), 28.
+ [90] Kumari Neha, Vibhu Agrawal, Saurav Chhatani, Rajesh Sharma, Arun Balaji Buduru, and Ponnurangam Kumaraguru. 2024. Understanding
+      coordinated communities through the lens of protest-centric narratives: A case study on #CAA protest. In AAAI ICWSM, Vol. 18. 1123–1133.
+ [91] Kin W. Ng and Adriana Iamnitchi. 2023. Coordinated information campaigns on social media: A multifaceted framework for detection and analysis.
+      In MISDOOM. 103–118.
+ [92] Lynnette H. X. Ng, Mihovil Bartulovic, and Kathleen Carley. 2024. Tiny-botbuster: Identifying automated political coordination in digital campaigns.
+      In SBP-BRiMS. 25–34.
+ [93] Lynnette H. X. Ng and Kathleen Carley. 2025. A global comparison of social media bot and human characteristics. Scientific Reports 15, 1 (2025),
+      10973.
+ [94] Lynnette H. X. Ng and Kathleen M. Carley. 2022. A combined synchronization index for grassroots activism on social media. arXiv:2212.13221
+ [95] Lynnette H. X. Ng and Kathleen M. Carley. 2022. Online coordination: Methods and comparative case studies of coordinated groups across four
+      events in the United States. In ACM WebSci. 12–21.
+ [96] Lynnette H. X. Ng and Kathleen M Carley. 2023. Do you hear the people sing? Comparison of synchronized URL and narrative themes in 2020 and
+      2023 French protests. Frontiers in Big Data 6 (2023), 1343108.
+ [97] Lynnette H. X. Ng, Iain J. Cruickshank, and Kathleen M. Carley. 2022. Cross-platform information spread during the January 6th Capitol riots.
+       Social Network Analysis and Mining 12, 1 (2022), 133.
+Manuscript submitted to ACM

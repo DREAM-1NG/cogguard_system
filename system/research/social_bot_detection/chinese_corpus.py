@@ -21,6 +21,7 @@ class ApprovedAccountLabel:
 
     case_id: str
     account_id: str
+    source_account_id: str
     platform: str
     event_id: str
     text: str
@@ -29,6 +30,8 @@ class ApprovedAccountLabel:
     evidence_post_ids: list[str]
     case_fingerprint: str
     label_id: str
+    observed_at: str | None = None
+    community_id: str | None = None
     provenance: dict[str, Any] = field(default_factory=dict)
 
 
@@ -62,7 +65,11 @@ def export_approved_account_corpus(
     class_counts: dict[str, int] = {}
     with path.open("w", encoding="utf-8") as handle:
         for record in ordered:
-            payload = asdict(record)
+            payload = {
+                key: value
+                for key, value in asdict(record).items()
+                if value is not None
+            }
             digest.update(json.dumps(payload, ensure_ascii=False, sort_keys=True).encode("utf-8"))
             digest.update(b"\n")
             class_counts[record.training_target] = class_counts.get(record.training_target, 0) + 1

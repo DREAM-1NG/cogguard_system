@@ -1,0 +1,71 @@
+A Survey of Datasets and Tasks for Information Diffusion                                                                   Conference’17, July 2017, Washington, DC, USA
+
+
+                                   Table 12: The URLs of datasets for each subtask.
+
+
+
+             Task      Dataset                  URL
+
+                            Twitter-casflow [26]                 https://github.com/Xovee/casflow
+                     APS [26]                            https://github.com/Xovee/casflow
+                                 size      Sina Weibo [55]                    https://github.com/CaoQi92/DeepHawkes
+                          Arxiv HEP-PH [56]                   http://snap.stanford.edu/data/cit-HepPh.html
+                         Twitter-FOREST [25]                https://github.com/albertyang33/FOREST/tree/master/data
+                                      [25]                                                                https://github.com/albertyang33/FOREST/tree/master/data                                                          Cascade  prediction   Douban
+                         Memetracker                                           [25]                                                                https://github.com/albertyang33/FOREST/tree/master/data                                                 information  prediction
+
+                   SMPD [32]                         https://smp-challenge.com/download.html
+                            Yelp [57]                            https://www.yelp.com/dataset/
+                         MovieLens                                         [58]                                                                   https://grouplens.org/datasets/movielens/                                                 Macroscopic  diffusion                           Micro-Videos                                            [34]                                                              https://acmmm2016.wixsite.com/micro-videos/blank                                                                                   Popularity  prediction
+                         MicroLens [59]                      https://github.com/westlake-repl/MicroLens
+                           ICIP [60]                            https://iplab.dmi.unict.it/popularitydataset/SIPD2020CHALLENGE/train/
+
+               UAP1   COVID-19-rumor [61]              https://github.com/MickeysClubhouse/COVID-19-rumor-dataset
+
+                         Twitter-FOREST [25]                https://github.com/albertyang33/FOREST/tree/master/data
+                       Douban-FOREST [25]                https://github.com/albertyang33/FOREST/tree/master/data
+                                 user      Memetracker [25]                   https://github.com/albertyang33/FOREST/tree/master/data
+                         Android [62]                       https://github.com/slingling/MS-HGAT
+                              Christianity                                          [62]                                                              https://github.com/slingling/MS-HGAT                                 Next  prediction
+                       Twitter-MSHGAT                                                [62]                                                              https://github.com/slingling/MS-HGAT                                                 information  prediction
+                     Douban-MSHGAT [62]              https://github.com/slingling/MS-HGAT
+                       Douban-ComSoc [63]                http://www.cse.ust.hk/TL/dataset/Douban-50000.zip
+
+                        OAG-DeepInf                                            [29]                   https://github.com/xptree/DeepInf                                                 Microscopic  diffusion                          Digg-DeepInf [29]                                                                  https://github.com/xptree/DeepInf                                                                             influence      Twitter-DeepInf [29]                 https://github.com/xptree/DeepInf
+                         Higgs Twitter [64]                    https://snap.stanford.edu/data/higgs-twitter.html                                                                                                 prediction   Weibo-DeepInf [29]                  https://github.com/xptree/DeepInf                                                   Social      Weibo-influencelocality [65]          http://www.aminer.cn/influencelocality
+
+                            Cresci-2017 [66]                      https://botometer.osome.iu.edu/bot-repository/datasets.html
+                                          User- based    gilani-2017botometer-feedback-2019[67]          [68]        https://botometer.osome.iu.edu/bot-repository/datasets.htmlhttps://botometer.osome.iu.edu/bot-repository/datasets.html
+                                       detection             PAN-AP-2019 [69]                    https://pan.webis.de/clef19/pan19-web/author-profiling.html
+                                                based   caverlee-2011 [70]                    https://botometer.osome.iu.edu/bot-repository/datasets.html             bot                         Content-
+
+                            Cresci-2015 [71]                      https://botometer.osome.iu.edu/bot-repository/datasets.html                          Social
+                          TwiBot-20                                         [72]                                                              https://github.com/BunsenFeng/TwiBot-20                                                  Graph- based                          TwiBot-22                                         [17]                                                            https://drive.google.com/drive/folders/1YwiOUwtl8pCd2GD97Q_WEzwEUtSPoxFs?usp=sharing
+
+                      PHEME-v1 [73]                     https://figshare.com/articles/dataset/PHEME_dataset_of_rumours_and_non-rumours/4010619?file=6453753
+                      PHEME-v2 [74]                     https://figshare.com/articles/dataset/PHEME_dataset_for_Rumour_Detection_and_Veracity_Classification/6392078
+                      PHEME-v3 [75]                      https://www.sciencedirect.com/science/article/abs/pii/S0020025523006680
+                       Weibo-BiGCN [76]                  https://github.com/TianBian95/BiGCN                                                                          detection      Ma-Weibo [77]                      https://www.dropbox.com/s/46r50ctrfa0ur1o/rumdect.zip?dl=0
+                                         Rumor       Twitter15Twitter16 [78][78]                      https://www.dropbox.com/s/7ewzdrbelpmrnxu/rumdetect2017.zip?dl=0https://www.dropbox.com/s/7ewzdrbelpmrnxu/rumdetect2017.zip?dl=0
+                        Twitter15-RDMSC [75]              https://github.com/Coder-HenryZa/RDMSC?tab=readme-ov-file
+                        Twitter16-RDMSC [75]              https://github.com/Coder-HenryZa/RDMSC?tab=readme-ov-file                                       detection           MR2 [79]                         https://gitcode.com/THU-BPM/MR2/overview
+
+                        FakeNewsNet [47]                 https://github.com/KaiDMML/FakeNewsNet
+                       FakeNewsNet-DECOR [80]          https://github.com/jiayingwu19/DECOR
+                       FakeNewsNet-UPFD [81]            https://github.com/safe-graph/GNN-FakeNews
+                          TruthSeeker2023 [82]                https://www.unb.ca/cic/datasets/truthseeker-2023.html                                                             Misinformation             MC-Fake [44]                       https://github.com/qwerfdsaplking/MC-Fake
+                           FineFake [83]                        https://github.com/Accuser907/FineFake                                                                          detection      FauxBuster [84]                      https://ieeexplore.ieee.org/abstract/document/8622344
+                                 news     MM-CovidMuMIN [86][85]                     https://github.com/bigheiniu/X-COVIDhttps://mumin-dataset.github.io/
+                                 Fake     CHECKED [87]                     https://github.com/cyang03/checked
+                        FakeSV [88]                       https://github.com/ICTMCG/FakeSV
+                     FTT [89]                         https://github.com/ICTMCG/FTT-ACL23
+                   MCFEND [90]                     https://github.com/Nicozwy/MCFEND_WWW/tree/main?tab=readme-ov-file
+                        Weibo21 [91]                       https://github.com/kennqiang/mdfend-weibo21
+                             Image-verification-corpus [92]        https://github.com/MKLab-ITI/image-verification-corpus
+                            Breaking! [93]                      https://github.com/architapathak/FakeNewsCorpus
+                       LIAR [94]                            https://www.cs.ucsb.edu/~william/data/liar_dataset.zip
+                        Evons [95]                           https://github.com/krstovski/evons
+                      WeChat [96]                      https://github.com/yaqingwang/WeFEND-AAAI20
+                            Fakeddit [97]                         https://github.com/entitize/Fakeddit
+            1 UAP: User Attitudes Prediction

@@ -1,0 +1,83 @@
+— meaning they appear to perform better than they would in real-world applications — due to the
+inherent limitations of commonly used evaluation protocols.
+This over-optimism creates serious challenges for researchers. It becomes increasingly difficult to
+distinguish between the strengths and weaknesses of various methods when their test results suggest
+similarly high performance. Furthermore, there is a discrepancy between real-world applications of
+TG methods and the existing evaluation protocols used to assess them. Therefore, there is a pressing
+need for an open and standardized benchmark that enhance the evaluation process for temporal graph
+learning, while being aligned with real-world applications.
+In this work, we present the Temporal Graph Benchmark (TGB), a collection of challenging and
+diverse benchmark datasets for realistic, reproducible, and robust evaluation for machine learning on
+temporal graphs. Figure 2 shows TGB’s ML pipeline. Inspired by the success of OGB, TGB automates
+the process of dataset downloading and processing as well as evaluation protocols, and allows the
+user to easily compare their model performance with other models on the public leaderboard. TGB
+improves the evaluation of temporal graph learning in both dataset selection and evaluation protocol
+and covers both edge and node-level tasks.
+~30M timestamps
+10 1
+10 3
+10 5
+10 7
+N um ber of nodes
+10 4
+10 5
+10 6
+10 7
+10 8
+10 9
+N um ber of edges
+tgbl-review
+tgbl-coin
+tgbl-com m ent
+tgbl-flight
+tgbn-genre
+tgbn-reddit
+tgbn-token
+TGB da ta sets
+Existing da ta sets
+<1M timestamps
+Figure 1: TGB consists of a diverse set of datasets that
+are one order of magnitude larger than existing datasets
+in terms of number of nodes, edges, and timestamps.
+Dataset Selection. Contrary to real-world
+networks that typically contain millions of
+nodes and tens of millions of edges, ex-
+isting TG benchmark datasets are notably
+smaller, falling short by several orders of
+magnitude [33, 40]. Furthermore, these
+datasets often have limitations in terms
+of their domain diversity, with a substan-
+tial focus on social and interaction net-
+works [35, 24, 25]. This lack of diversity
+can be problematic as network properties,
+such as network motifs [27], the scale-free
+property [4], and the modular structure [30]
+vary significantly across different domains.
+Consequently, it is important to benchmark
+existing methods across a wide variety of
+domains for a comprehensive evaluation.
+To address these limitations, TGB datasets
+provide diversity in terms of the number of nodes, edges, timestamps, and network domains. As
+shown in Figure 1, TGB datasets are larger in scale and present statistics that were under-explored
+in prior literature. For instance, the tgbn-token dataset has around 73 million edges while the
+tgbl-comment dataset has more than 30 million timestamps. Additionally, TGB introduces four
+datasets in the novel node affinity prediction task to address the scarcity of large scale datasets for
+node-level tasks in the current literature.
+Improved Evaluation. In TGB, we aim to design the evaluation for both edge and node-level tasks
+on temporal graphs based on real applications. Historically, the standard approach for dynamic link
+prediction evaluation is to treat it as a binary classification task using one negative edge per positive
+edge in the test set [9, 40, 25, 33]. This strategy tends to generate negatives that are easy to predict,
+given the structure and sparsity of real-world networks [1], leading to inflated model performance
+estimations [33]. To address this issue, we propose to treat this task as a ranking problem, contrasting
+each positive sample against multiple negatives and using Mean Reciprocal Rank (MRR) as the
+metric. Moreover, historical negatives – past edges absent in the current step – are generally more
+difficult to predict correctly than randomly sampled negatives [33]. Thus, we sample both historical
+and random negatives in link prediction evaluations.
+There is a lack of large-scale datasets for node-level tasks in temporal graphs as acquiring dynamic
+node labels remains challenging due to privacy concerns. We plan to include additional datasets for
+node classification in the future. As a starting point, we present the novel node affinity prediction task,
+which finds its motivation in recommendation systems. The objective is to anticipate the shifts in user
+preferences for items over time, as expanded in Section 3.2. In this task, node property is considered
+as the affinity towards different items at a given time. To assess the effectiveness of methods in
+addressing this task, we adopt the Normalized Discounted Cumulative Gain (NDCG) metric. This
+2

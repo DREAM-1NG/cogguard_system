@@ -1,0 +1,64 @@
+27:34                                                                                            F. Zhou et al.
+
+
+[164]  Daniel M. Romero, Brendan Meeder, and Jon Kleinberg. 2011. Differences in the mechanics of information diffusion
+       across topics: Idioms, political hashtags, and complex contagion on twitter. In WWW. 695–704.
+[165]  Daniel M. Romero, Chenhao Tan, and Johan Ugander. 2013. On the interplay between social and topical structure.
+       In ICWSM.
+[166] Matthew Rowe, Sofia Angeletou, and Harith Alani. 2011. Predicting discussions on the social semantic web. In ESWC.
+[167] Suman Deb Roy, Tao Mei, Wenjun Zeng, and Shipeng Li. 2013. Towards cross-domain learning for social video
+       popularity prediction. TMM 15, 6 (2013), 1255–1267.
+[168]  Yiye Ruan, Hemant Purohit, David Fuhry, Srinivasan Parthasarathy, and Amit P. Sheth. 2012. Prediction of topic
+      volume on twitter. In WebSci.
+[169] Matthew J. Salganik, Peter Sheridan Dodds, and Duncan J. Watts. 2006. Experimental study of inequality and un-
+       predictability in an artificial cultural market. Science 311, 5762 (2006), 854–856.
+[170]  Bidisha Samanta, Abir De, Abhijnan Chakraborty, and Niloy Ganguly. 2017. LMPP: A large margin point process
+      combining reinforcement and competition for modeling hashtag popularity. In IJCAI. 2679–2685.
+[171]  Satoshi Sanjo and Marie Katsurai. 2017. Recipe popularity prediction with deep visual-semantic fusion. In CIKM.
+[172]  Zubair Shafiq and Alex Liu. 2017. Cascade size prediction in online social networks. In IFIP Networking Conference.
+[173] David A Shamma, Jude Yew, Lyndon Kennedy, and Elizabeth F. Churchill. 2011. Viral actions: Predicting video view
+      counts using synchronous sharing behaviors. In ICWSM.
+[174] Huawei Shen, Dashun Wang, Chaoming Song, and Albert-László Barabási. 2014. Modeling and predicting popularity
+      dynamics via reinforced poisson processes. In AAAI. 291–297.
+[175] Benjamin Shulman, Amit Sharma, and Dan Cosley. 2016. Predictability of popularity: Gaps between prediction and
+      understanding. In ICWSM. 348–357.
+[176] Karen Simonyan and Andrew Zisserman. 2015. Very deep convolutional networks for large-scale image recognition.
+       In ICLR.
+[177]  Stefan Stieglitz and Linh Dang-Xuan. 2012. Political communication and influence through microblogging–an em-
+        pirical analysis of sentiment in twitter messages and retweet behavior. In HICSS. 3500–3509.
+[178] Greg Stoddard. 2015. Popularity dynamics and intrinsic quality in reddit and hacker news. In ICWSM. 416–425.
+[179]  Karthik Subbian, B. Aditya Prakash, and Lada Adamic. 2017. Detecting large reshare cascades in social networks. In
+    WWW. 597–606.
+[180] Bongwon Suh, Lichan Hong, Peter Pirolli, and Ed H. Chi. 2010. Want to be retweeted? Large scale analytics on
+       factors impacting retweet in twitter network. In SocialCom. 177–184.
+[181] Gabor Szabo and Bernardo A. Huberman. 2010. Predicting the popularity of online content. Commun. ACM 53, 8
+       (2010), 80–88.
+[182] Chenhao Tan, Lillian Lee, and Bo Pang. 2014. The effect of wording on message propagation: Topic-and author-
+       controlled natural experiments on twitter. In ACL. 175–185.
+[183]  linpeng Tang, Qi Huang, Amit Puntambekar, Ymir Vigfusson, Wyatt Lloyd, and Kai Li. 2017. Popularity prediction
+       of facebook videos for higher quality streaming. In USENIX ATC. 111–123.
+[184] Alexandru Tatar, Panayotis Antoniadis, Marcelo Dias De Amorim, and Serge Fdida. 2014. From popularity prediction
+       to ranking online news. Soc. Netw. Anal. Min. 4, 1 (2014), 174.
+[185] Alexandru Tatar, Marcelo Dias De Amorim, Serge Fdida, and Panayotis Antoniadis. 2014. A survey on predicting
+       the popularity of web content. J. Internet Serv. Appl. 5, 1 (2014), 8.
+[186] Alexandru Tatar, Jérémie Leguay, Panayotis Antoniadis, Arnaud Limbourg, Marcelo Dias de Amorim, and Serge
+       Fdida. 2011. Predicting the popularity of online articles based on user comments. In WIMS. 67.
+[187] Luam Catao Totti, Felipe Almeida Costa, Sandra Avila, Eduardo Valle, Wagner Meira Jr., and Virgilio Almeida. 2014.
+     The impact of visual attributes on online image diffusion. In WebSci. 42–51.
+[188] Tomasz Trzciński and Przemysław Rokita. 2017. Predicting popularity of online videos using support vector regres-
+       sion. TMM 19, 11 (2017), 2561–2570.
+[189] Manos Tsagkias, Wouter Weerkamp, and Maarten De Rijke. 2009. Predicting the volume of comments on online
+     news stories. In CIKM. 1765–1768.
+[190] Manos Tsagkias, Wouter Weerkamp, and Maarten De Rijke. 2010. News comments: Exploring, modeling, and online
+       prediction. In ECIR. 191–203.
+[191] Sho Tsugawa. 2019. Empirical analysis of the relation between community structure and cascading retweet diffusion.
+       In ICWSM. 493–504.
+[192] Oren Tsur and Ari Rappoport. 2012. What’s in a hashtag?: Content based prediction of the spread of ideas in mi-
+      croblogging communities. In WSDM. 643–652.
+[193]  Johan Ugander, Lars Backstrom, Cameron Marlow, and Jon Kleinberg. 2012. Structural diversity in social contagion.
+     PNAS 109, 16 (2012), 5962–5966.
+
+
+
+
+ACM Computing Surveys, Vol. 54, No. 2, Article 27. Publication date: March 2021.

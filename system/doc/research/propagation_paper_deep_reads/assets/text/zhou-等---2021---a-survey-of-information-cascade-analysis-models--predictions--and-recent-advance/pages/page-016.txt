@@ -1,0 +1,52 @@
+27:16
+F. Zhou et al.
+making an accurate prediction. Analyzing structural patterns and identifying influential users in
+evolving graphs become paramount [226]. In addition, different platforms have unique diffusion
+mechanisms that may cause dynamics to differ from the well studied social network scenarios [39,
+103, 115, 118, 121, 158, 246]. For example, the findings in Reference [6] show that the correlation
+between the popularity of LindedIn signup cascades and structural virality is remarkably high,
+which shows a very similar structural behavior to APS citation cascades. Even for a particular
+platform, the types of items (events) and the item contents may affect the information diffusion
+behavior [67, 241].
+3.3
+User/Item Features
+Temporal and structural features require probing into early observations, which is sometimes im-
+practical. Therefore, a number of works have focused on the features associated with users and
+information items, which have unique properties and innate attractiveness that make them espe-
+cially useful in predicting popularity before publication.
+3.3.1
+User Features. User behaviors play crucial roles in information dissemination and con-
+sumption (e.g., viewing, commenting, sharing, and preferring). One of the most common user fea-
+tures is the number of followers as a proxy of user influence, which implies the speed and timing of
+future popularity [238]. Those who have a large number of followers (audiences), e.g., celebrities
+and news organizations, are more likely to generate large cascades than normal users, since their
+messages are more visible in the network [11, 85, 180]. However, large cascades are not only pro-
+duced by influential users and it is of interest to study large cascades originated by normal users
+instead of celebrities [51]. Many other user features have been extensively studied and explored for
+analyzing and predicting the popularity of information items/cascades, e.g., profiles (name, age,
+region, education, employment, account creation date, etc.) [236], historical behaviors (frequency
+of publish items and interact with other users, active time, etc.) [11, 81, 180], user interests [227],
+collectivity [130], similarity [175], past success [11], activity/passivity [225, 232], discoveries [140],
+affinities and responsiveness [236], and so on.
+3.3.2
+Item Features. In addition to the effects of user features, the effects of item characteris-
+tics on diffusion have also been studied in the literature. For example, Reference [114] analyzed
+how Digg users’ interfaces affect the visibility of items; Reference [189] showed that metadata of
+news articles affects the volume of comments (e.g., the publication date of the article, number of
+articles published at the same time, number of articles with similar content, etc.); Reference [84]
+proposed to use entropy computed among information categories and topics; and Reference [210]
+used prevalence variability to analyze how popularity of different types of items changes over
+time.
+3.3.3
+Discussion. Most of the user/item features are self-explanatory, and it is not too hard to
+understand their correlations to popularity. For instance, users who have a larger audience, who
+live in a densely populated area, who speak a widely used language, who often discuss trend-
+ing topics, and so on, would have a greater chance to make their information popular. However,
+some features require more complicated algorithms and calculations to obtain, e.g., user influences,
+preferences, and similarities. Many prior works studied how individual users affect the diffusion
+of information. In Reference [107], number of followers, PageRank, and number of retweets were
+combined to rank influential users. Reference [19] studied three types of influence during infor-
+mation diffusion, i.e., interest-oriented influence, social-oriented influence, and epidemic-oriented
+influence, and showed that each of these three surrogates of influence can contribute to the pop-
+ularity prediction. However, some previous works found social influence that, merely measured
+ACM Computing Surveys, Vol. 54, No. 2, Article 27. Publication date: March 2021.
