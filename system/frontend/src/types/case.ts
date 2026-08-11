@@ -45,6 +45,17 @@ export interface SemanticDistribution {
   [label: string]: number
 }
 
+export interface SemanticTraceExample {
+  content_id: string
+  content_kind?: string
+  platform?: string
+  author_id?: string
+  excerpt?: string
+  score?: number
+  stance?: string
+  overlap?: number
+}
+
 export interface SemanticCommunityComparisonItem {
   community_id: string
   texts: number
@@ -78,8 +89,18 @@ export interface SemanticArtifactProvenance {
 }
 
 export interface SemanticArtifactSummary {
-  sentiment?: { distribution?: SemanticDistribution; average_score?: number }
-  stance?: { status?: string; code?: string; distribution?: SemanticDistribution; message?: string }
+  sentiment?: {
+    distribution?: SemanticDistribution
+    average_score?: number
+    examples?: Record<string, SemanticTraceExample[]>
+  }
+  stance?: {
+    status?: string
+    code?: string
+    distribution?: SemanticDistribution
+    message?: string
+    examples?: SemanticTraceExample[]
+  }
   community_comparison?: { group_by?: string; items?: SemanticCommunityComparisonItem[] }
   near_duplicates?: SemanticNearDuplicateGroup[]
   decision_support?: SemanticDecisionSupport

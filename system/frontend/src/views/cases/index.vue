@@ -247,10 +247,28 @@
                 <div v-if="nearDuplicateGroups.length" class="compact-list">
                   <div v-for="item in nearDuplicateGroups" :key="item.group_id" class="topic-row">
                     <strong>{{ item.group_id }} · {{ item.size }}</strong>
-                    <span>{{ item.representative_text || '-' }}</span>
+                    <span>
+                      {{ item.representative_text || '-' }}
+                      <br />
+                      {{ (item.content_ids || []).join(', ') || '-' }}
+                    </span>
                   </div>
                 </div>
                 <span v-else class="semantic-empty">No near-duplicate groups available.</span>
+              </div>
+              <div class="semantic-section">
+                <h3>Semantic examples</h3>
+                <div v-if="semanticTraceExamples.length" class="compact-list semantic-example-list">
+                  <div v-for="example in semanticTraceExamples" :key="`${example.source}-${example.content_id}`" class="topic-row">
+                    <strong>{{ example.content_id }} · {{ example.source }}</strong>
+                    <span>
+                      {{ example.platform || '-' }} · {{ example.author_id || '-' }} · {{ example.content_kind || '-' }}
+                      <br />
+                      {{ example.excerpt || '-' }}
+                    </span>
+                  </div>
+                </div>
+                <span v-else class="semantic-empty">No semantic examples available.</span>
               </div>
             </section>
           </div>
@@ -487,6 +505,23 @@ const stanceSummary = computed(() => semanticArtifact.value?.summary?.stance || 
 const stanceEntries = computed(() => distributionEntries(semanticArtifact.value?.summary?.stance?.distribution))
 const communityItems = computed(() => semanticArtifact.value?.summary?.community_comparison?.items || [])
 const nearDuplicateGroups = computed(() => semanticArtifact.value?.summary?.near_duplicates || [])
+const semanticTraceExamples = computed(() => {
+  const summary = semanticArtifact.value?.summary
+  const sentimentExamples = Object.entries(summary?.sentiment?.examples || {}).flatMap(([label, examples]) =>
+    (examples || []).map((example: any) => ({ ...example, source: `sentiment:${label}` })),
+  )
+  const stanceExamples = (summary?.stance?.examples || []).map((example: any) => ({
+    ...example,
+    source: `stance:${example.stance || summary?.stance?.status || 'unknown'}`,
+  }))
+  const seen = new Set<string>()
+  return [...sentimentExamples, ...stanceExamples].filter((example) => {
+    const key = `${example.source}-${example.content_id}`
+    if (!example.content_id || seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+})
 const semanticDecisionSupport = computed(() => semanticArtifact.value?.summary?.decision_support || null)
 const semanticReviewHints = computed(() => semanticDecisionSupport.value?.review_hints || [])
 const semanticModuleCoverageEntries = computed(() =>
@@ -992,6 +1027,11 @@ onMounted(() => {
   margin: 0 0 10px;
   color: #64748b;
   font-size: 12px;
+}
+
+.semantic-example-list .topic-row span {
+  max-width: 68%;
+  text-align: right;
 }
 
 .semantic-decision-support :deep(.ant-descriptions) {

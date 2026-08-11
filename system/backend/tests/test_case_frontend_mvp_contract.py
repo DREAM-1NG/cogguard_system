@@ -141,6 +141,36 @@ def test_case_workbench_surfaces_semantic_review_hints_and_action_evidence_refs(
     assert "semantic_case_workbench_demo" in service_source
 
 
+def test_case_workbench_exposes_semantic_example_traceability():
+    view = (FRONTEND / "views" / "cases" / "index.vue").read_text(encoding="utf-8")
+    types = (FRONTEND / "types" / "case.ts").read_text(encoding="utf-8")
+
+    for binding in (
+        "semanticTraceExamples",
+        "summary?.sentiment?.examples",
+        "summary?.stance?.examples",
+        "example.content_id",
+        "example.platform",
+        "example.author_id",
+        "example.excerpt",
+        "example.source",
+        "item.content_ids",
+        "Semantic examples",
+    ):
+        assert binding in view
+    for field in (
+        "export interface SemanticTraceExample",
+        "content_id: string",
+        "content_kind?: string",
+        "platform?: string",
+        "author_id?: string",
+        "excerpt?: string",
+        "examples?: Record<string, SemanticTraceExample[]>",
+        "examples?: SemanticTraceExample[]",
+    ):
+        assert field in types
+
+
 def test_case_evidence_matrix_exposes_semantic_truth_boundary_bindings():
     view = (FRONTEND / "views" / "cases" / "index.vue").read_text(encoding="utf-8")
     types = (FRONTEND / "types" / "case.ts").read_text(encoding="utf-8")
