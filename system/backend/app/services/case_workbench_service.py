@@ -34,6 +34,14 @@ SOURCE_TIERS = (
     "central_mainstream_original",
     "provincial_official_media",
 )
+PROTOTYPE_CONSTRAINTS = {
+    "platform_evidence_scope": "weibo_only_with_xhs_gap",
+    "semantic_examples_text_scope": "excerpt_only_not_full_source_text",
+    "semantic_score_policy": "evidence_overlay_only",
+    "risk_score_boundary": "semantic_artifacts_do_not_mutate_coordination_propagation_review_scores",
+    "model_validation_status": "candidate_unvalidated",
+    "pdf_export_status": "html_pdf_fallback",
+}
 PRIMARY_CLAIM = {
     "claim_id": "claim_cctv_primary",
     "role": "primary",
@@ -174,6 +182,7 @@ class CaseWorkbenchService:
                 "feedback_count": len(feedback),
                 "closeout_summary": closeout_review.get("summary") if closeout_review else None,
                 "closure_checklist": [(item["key"], item["status"]) for item in closure_checklist],
+                "prototype_constraints": PROTOTYPE_CONSTRAINTS,
             }
         )
 
@@ -252,6 +261,7 @@ class CaseWorkbenchService:
             "feedback": feedback,
             "closeout_review": closeout_review,
             "closure_checklist": closure_checklist,
+            "prototype_constraints": dict(PROTOTYPE_CONSTRAINTS),
             "reports": [
                 {
                     "version": 1,
@@ -260,7 +270,7 @@ class CaseWorkbenchService:
                     "content_hash": report_hash,
                     "html_url": f"/api/v2/cases/{DEFAULT_CASE_ID}/reports/1.html",
                     "pdf_url": f"/api/v2/cases/{DEFAULT_CASE_ID}/reports/1.pdf",
-                    "contains": ["case", "snapshot", "run", "model_versions", "content_hashes"],
+                    "contains": ["case", "snapshot", "run", "model_versions", "content_hashes", "prototype_constraints"],
                     "message": "Prototype HTML report is available; production PDF rendering is pending.",
                 }
             ],
@@ -449,6 +459,7 @@ class CaseWorkbenchService:
             f"<dt>Second platform honesty</dt><dd>{_report_text(acceptance_summary['second_platform_honesty'])}</dd>"
             "</dl></section>"
         )
+        prototype_limitations_html = _report_prototype_limitations(case)
         semantic_decision_support_html = _report_semantic_decision_support(semantic)
         semantic_evidence_appendix_html = _report_semantic_evidence_appendix(semantic)
         semantic_traceability_html = _report_semantic_traceability(semantic, case["actions"])
@@ -506,6 +517,7 @@ class CaseWorkbenchService:
 {semantic_traceability_html}
 <section><h2>CPR evidence layers</h2><ul>{evidence_layers}</ul></section>
 {acceptance_summary_html}
+{prototype_limitations_html}
 <section><h2>Closure checklist</h2><ul>{closure_checklist}</ul></section>
 <section><h2>Active blockers</h2><ul>{blockers}</ul></section><section><h2>Policy acknowledgements</h2><ul>{acknowledgements}</ul></section><section><h2>Actions</h2><ul>{actions}</ul></section><section><h2>Feedback</h2><p>Count: {len(case['feedback'])}</p></section><section><h2>Closeout review</h2><p>{_report_text(closeout.get('summary') or 'Not submitted')}</p></section>
 </body></html>"""
@@ -1050,6 +1062,20 @@ def _report_acceptance_summary(case: dict[str, Any]) -> dict[str, str]:
         "semantic_policy": case.get("workflow_summary", {}).get("semantic_score_policy", "unknown"),
         "second_platform_honesty": second_platform_honesty,
     }
+
+
+def _report_prototype_limitations(case: dict[str, Any]) -> str:
+    constraints = case.get("prototype_constraints") or {}
+    items = "".join(
+        f"<dt>{_report_text(key)}</dt><dd>{_report_text(value)}</dd>"
+        for key, value in constraints.items()
+    )
+    return (
+        "<section><h2>Prototype limitations</h2>"
+        "<p>These constraints make the demo evidence boundary explicit for review.</p>"
+        f"<dl>{items}</dl>"
+        "</section>"
+    )
 
 
 def _report_semantic_decision_support(semantic: dict[str, Any]) -> str:

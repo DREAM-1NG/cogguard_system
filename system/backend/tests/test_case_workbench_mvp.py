@@ -432,6 +432,40 @@ def test_report_preview_keeps_acknowledged_platform_gap_visible():
     asyncio.run(scenario())
 
 
+def test_case_payload_and_report_make_prototype_limitations_explicit():
+    async def scenario():
+        service = CaseWorkbenchService(mongo_db={})
+        case_id = "case_trump_visit_2026_05_21"
+        blocker_id = (await service.get_case(case_id))["active_blockers"][0]["blocker_id"]
+
+        case = await service.acknowledge_blocker(
+            case_id,
+            blocker_id,
+            actor_id="analyst",
+            reason="Documented XHS platform gap is acknowledged for prototype review.",
+        )
+        html = await service.render_report_html(case_id, 1, pdf_fallback=True)
+
+        assert case["prototype_constraints"] == {
+            "platform_evidence_scope": "weibo_only_with_xhs_gap",
+            "semantic_examples_text_scope": "excerpt_only_not_full_source_text",
+            "semantic_score_policy": "evidence_overlay_only",
+            "risk_score_boundary": "semantic_artifacts_do_not_mutate_coordination_propagation_review_scores",
+            "model_validation_status": "candidate_unvalidated",
+            "pdf_export_status": "html_pdf_fallback",
+        }
+        for value in (
+            "Prototype limitations",
+            "weibo_only_with_xhs_gap",
+            "excerpt_only_not_full_source_text",
+            "semantic_artifacts_do_not_mutate_coordination_propagation_review_scores",
+            "html_pdf_fallback",
+        ):
+            assert value in html
+
+    asyncio.run(scenario())
+
+
 def test_case_v2_acknowledgement_route_updates_shared_projection_and_returns_404_for_unknown_blocker():
     async def scenario():
         service = CaseWorkbenchService(mongo_db={})

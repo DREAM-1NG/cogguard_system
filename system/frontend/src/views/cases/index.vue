@@ -258,6 +258,9 @@
               </div>
               <div class="semantic-section">
                 <h3>Semantic examples</h3>
+                <p class="semantic-boundary-note">
+                  {{ prototypeConstraints.semantic_examples_text_scope || 'excerpt_only_not_full_source_text' }}
+                </p>
                 <div v-if="semanticTraceExamples.length" class="compact-list semantic-example-list">
                   <div v-for="example in semanticTraceExamples" :key="`${example.source}-${example.content_id}`" class="topic-row">
                     <strong>{{ example.content_id }} · {{ example.source }}</strong>
@@ -393,6 +396,17 @@
                 <a-descriptions-item label="CPR coverage">{{ acceptanceSummary.cprCoverage }}</a-descriptions-item>
                 <a-descriptions-item label="Semantic policy">{{ acceptanceSummary.semanticOverlayPolicy }}</a-descriptions-item>
                 <a-descriptions-item label="Second platform honesty">{{ acceptanceSummary.noFabricatedSecondPlatformEvidence }}</a-descriptions-item>
+              </a-descriptions>
+            </div>
+            <div class="prototype-limitations">
+              <h3>Prototype limitations</h3>
+              <a-descriptions size="small" :column="1" bordered>
+                <a-descriptions-item label="Platform evidence">{{ prototypeConstraints.platform_evidence_scope || '-' }}</a-descriptions-item>
+                <a-descriptions-item label="Semantic examples">{{ prototypeConstraints.semantic_examples_text_scope || 'excerpt_only_not_full_source_text' }}</a-descriptions-item>
+                <a-descriptions-item label="Semantic policy">{{ prototypeConstraints.semantic_score_policy || semanticArtifact?.provenance?.score_policy || 'evidence_overlay_only' }}</a-descriptions-item>
+                <a-descriptions-item label="Risk boundary">{{ prototypeConstraints.risk_score_boundary || 'semantic_artifacts_do_not_mutate_coordination_propagation_review_scores' }}</a-descriptions-item>
+                <a-descriptions-item label="Model validation">{{ prototypeConstraints.model_validation_status || semanticArtifact?.model_status || 'candidate_unvalidated' }}</a-descriptions-item>
+                <a-descriptions-item label="PDF export">{{ prototypeConstraints.pdf_export_status || 'html_pdf_fallback' }}</a-descriptions-item>
               </a-descriptions>
             </div>
             <div class="closure-checklist">
@@ -540,6 +554,14 @@ const graphNodes = computed<any[]>(() => caseDetail.value?.graph?.nodes || [])
 const graphEdges = computed<any[]>(() => caseDetail.value?.graph?.edges || [])
 const graphEvidenceLayers = computed<any[]>(() => caseDetail.value?.graph?.evidence_layers || [])
 const closureChecklist = computed(() => caseDetail.value?.closure_checklist || [])
+const prototypeConstraints = computed(() => caseDetail.value?.prototype_constraints || {
+  platform_evidence_scope: 'weibo_only_with_xhs_gap',
+  semantic_examples_text_scope: 'excerpt_only_not_full_source_text',
+  semantic_score_policy: 'evidence_overlay_only',
+  risk_score_boundary: 'semantic_artifacts_do_not_mutate_coordination_propagation_review_scores',
+  model_validation_status: 'candidate_unvalidated',
+  pdf_export_status: 'html_pdf_fallback',
+})
 const acceptanceSummary = computed(() => {
   const detail = caseDetail.value
   const claims = [
@@ -587,6 +609,7 @@ const acceptanceEvidencePayload = computed(() => {
     platforms: detail?.platforms || [],
     active_blockers: detail?.active_blockers || [],
     blocker_acknowledgements: detail?.blocker_acknowledgements || [],
+    prototype_constraints: prototypeConstraints.value,
     semantic_score_policy: detail?.workflow_summary?.semantic_score_policy,
     semantic_decision_support: {
       coverage: semanticDecisionSupport.value?.coverage,
@@ -609,6 +632,13 @@ const acceptanceEvidencePayload = computed(() => {
         excerpt: example.excerpt,
       })),
       near_duplicate_content_ids: nearDuplicateGroups.value.flatMap((group) => group.content_ids || []),
+    },
+    prototype_limitations: {
+      semantic_examples_text_scope: prototypeConstraints.value.semantic_examples_text_scope,
+      risk_score_boundary: prototypeConstraints.value.risk_score_boundary,
+      platform_evidence_scope: prototypeConstraints.value.platform_evidence_scope,
+      model_validation_status: prototypeConstraints.value.model_validation_status,
+      pdf_export_status: prototypeConstraints.value.pdf_export_status,
     },
     action_evidence_refs: (detail?.actions || []).map((action) => ({
       action_id: action.action_id,

@@ -180,6 +180,15 @@ export interface CaseClosureChecklistItem {
   evidence: Record<string, any>
 }
 
+export interface CasePrototypeConstraints {
+  platform_evidence_scope: string
+  semantic_examples_text_scope: string
+  semantic_score_policy: string
+  risk_score_boundary: string
+  model_validation_status: string
+  pdf_export_status: string
+}
+
 export interface CaseDetail {
   case_id: string
   event_id: string
@@ -206,6 +215,7 @@ export interface CaseDetail {
   active_blockers: CaseBlocker[]
   blocker_acknowledgements?: CaseBlockerAcknowledgement[]
   closure_checklist: CaseClosureChecklistItem[]
+  prototype_constraints: CasePrototypeConstraints
   audit_events?: Array<Record<string, any>>
   workflow_summary: Record<string, string>
 }

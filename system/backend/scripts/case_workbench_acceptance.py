@@ -104,6 +104,7 @@ async def run_acceptance() -> dict[str, Any]:
     _require("Semantic evidence appendix" in report_html, "report must show semantic evidence appendix")
     _require("Semantic traceability pack" in report_html, "report must show semantic traceability pack")
     _require("Semantic action evidence refs" in report_html, "report must show action evidence refs")
+    _require("Prototype limitations" in report_html, "report must show prototype limitations")
     for semantic_section in (
         "Sentiment",
         "Keywords",
@@ -127,6 +128,15 @@ async def run_acceptance() -> dict[str, Any]:
         for action in closed["actions"]
     ]
     _require(semantic_policy == "evidence_overlay_only", "semantic policy must remain overlay-only")
+    _require(
+        closed["prototype_constraints"]["semantic_examples_text_scope"] == "excerpt_only_not_full_source_text",
+        "semantic examples must be labeled as excerpts only",
+    )
+    _require(
+        closed["prototype_constraints"]["risk_score_boundary"]
+        == "semantic_artifacts_do_not_mutate_coordination_propagation_review_scores",
+        "semantic artifacts must not mutate CPR scores",
+    )
     _require("semantic_enrichment" in requested_stages, "semantic stage must be explicitly requested")
     _require(
         decision_support["operator_prompt"] == "Use semantic outputs as triage hints, not as risk-score inputs.",
@@ -164,6 +174,8 @@ async def run_acceptance() -> dict[str, Any]:
             "acceptance_summary_visible": True,
             "semantic_decision_support_visible": True,
             "semantic_evidence_appendix_visible": True,
+            "semantic_traceability_pack_visible": True,
+            "prototype_limitations_visible": True,
             "content_hash_changed": True,
         },
         "semantic": {
@@ -225,6 +237,7 @@ async def run_acceptance() -> dict[str, Any]:
             "second_platform_evidence_claimed": False,
             "statement": "No second-platform evidence is fabricated.",
         },
+        "prototype_constraints": closed["prototype_constraints"],
     }
 
 

@@ -21,6 +21,8 @@ def test_case_workbench_acceptance_closes_the_weibo_only_demo_case():
         "acceptance_summary_visible": True,
         "semantic_decision_support_visible": True,
         "semantic_evidence_appendix_visible": True,
+        "semantic_traceability_pack_visible": True,
+        "prototype_limitations_visible": True,
         "content_hash_changed": True,
     }
     assert result["semantic"] == {
@@ -135,4 +137,12 @@ def test_case_workbench_acceptance_closes_the_weibo_only_demo_case():
     assert result["claim_boundary"] == {
         "second_platform_evidence_claimed": False,
         "statement": "No second-platform evidence is fabricated.",
+    }
+    assert result["prototype_constraints"] == {
+        "platform_evidence_scope": "weibo_only_with_xhs_gap",
+        "semantic_examples_text_scope": "excerpt_only_not_full_source_text",
+        "semantic_score_policy": "evidence_overlay_only",
+        "risk_score_boundary": "semantic_artifacts_do_not_mutate_coordination_propagation_review_scores",
+        "model_validation_status": "candidate_unvalidated",
+        "pdf_export_status": "html_pdf_fallback",
     }

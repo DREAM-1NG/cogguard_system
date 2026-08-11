@@ -171,6 +171,31 @@ def test_case_workbench_exposes_semantic_example_traceability():
         assert field in types
 
 
+def test_case_workbench_exports_prototype_limitations_and_excerpt_boundary():
+    view = (FRONTEND / "views" / "cases" / "index.vue").read_text(encoding="utf-8")
+    types = (FRONTEND / "types" / "case.ts").read_text(encoding="utf-8")
+
+    for binding in (
+        "prototypeConstraints",
+        "prototype_constraints",
+        "Prototype limitations",
+        "excerpt_only_not_full_source_text",
+        "semantic_artifacts_do_not_mutate_coordination_propagation_review_scores",
+        "prototype_limitations",
+        "semantic_examples_text_scope",
+        "risk_score_boundary",
+    ):
+        assert binding in view
+    for field in (
+        "export interface CasePrototypeConstraints",
+        "platform_evidence_scope: string",
+        "semantic_examples_text_scope: string",
+        "risk_score_boundary: string",
+        "prototype_constraints: CasePrototypeConstraints",
+    ):
+        assert field in types
+
+
 def test_case_evidence_matrix_exposes_semantic_truth_boundary_bindings():
     view = (FRONTEND / "views" / "cases" / "index.vue").read_text(encoding="utf-8")
     types = (FRONTEND / "types" / "case.ts").read_text(encoding="utf-8")
