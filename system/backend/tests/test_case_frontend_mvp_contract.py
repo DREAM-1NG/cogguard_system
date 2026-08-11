@@ -209,6 +209,11 @@ def test_case_report_tab_can_export_acceptance_evidence_summary():
         "downloadAcceptanceSummary",
         "acceptanceEvidencePayload",
         "closure_checklist",
+        "semantic_decision_support",
+        "semanticDecisionSupport?.coverage",
+        "semanticDecisionSupport?.confidence",
+        "semanticDecisionSupport?.platform_slices",
+        "semanticDecisionSupport?.time_slices",
         "navigator.clipboard.writeText",
         "case-acceptance-summary",
     ):

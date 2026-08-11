@@ -514,6 +514,13 @@ const acceptanceEvidencePayload = computed(() => {
     active_blockers: detail?.active_blockers || [],
     blocker_acknowledgements: detail?.blocker_acknowledgements || [],
     semantic_score_policy: detail?.workflow_summary?.semantic_score_policy,
+    semantic_decision_support: {
+      coverage: semanticDecisionSupport.value?.coverage,
+      confidence: semanticDecisionSupport.value?.confidence,
+      platform_slices: semanticDecisionSupport.value?.platform_slices || [],
+      time_slices: semanticDecisionSupport.value?.time_slices || [],
+      operator_prompt: semanticDecisionSupport.value?.operator_prompt,
+    },
   }
 })
 

@@ -90,8 +90,17 @@ async def run_acceptance() -> dict[str, Any]:
 
     requested_stages = closed["analysis_runs"][0]["requested_stages"]
     semantic_policy = closed["workflow_summary"]["semantic_score_policy"]
+    decision_support = closed["semantic_artifacts"][0]["summary"]["decision_support"]
     _require(semantic_policy == "evidence_overlay_only", "semantic policy must remain overlay-only")
     _require("semantic_enrichment" in requested_stages, "semantic stage must be explicitly requested")
+    _require(
+        decision_support["operator_prompt"] == "Use semantic outputs as triage hints, not as risk-score inputs.",
+        "semantic decision support must keep advisory prompt",
+    )
+    _require(
+        decision_support["confidence"]["status"] == "candidate_unvalidated",
+        "semantic decision support must remain candidate_unvalidated",
+    )
     _require(closed["platforms"] == ["weibo"], "no second-platform evidence may be claimed")
     primary_claim = closed["primary_claim"]
     supplementary_claim = closed["supplementary_claims"][0]
@@ -120,7 +129,17 @@ async def run_acceptance() -> dict[str, Any]:
             "acceptance_summary_visible": True,
             "content_hash_changed": True,
         },
-        "semantic": {"policy": semantic_policy, "requested_stage": "semantic_enrichment"},
+        "semantic": {
+            "policy": semantic_policy,
+            "requested_stage": "semantic_enrichment",
+            "decision_support": {
+                "coverage_ratio": decision_support["coverage"]["coverage_ratio"],
+                "confidence_status": decision_support["confidence"]["status"],
+                "platform_slices": [item["platform"] for item in decision_support["platform_slices"]],
+                "time_slices_present": bool(decision_support["time_slices"]),
+                "operator_prompt": decision_support["operator_prompt"],
+            },
+        },
         "claim_archive": {
             "primary_archive_id": primary_claim["source_archive_id"],
             "supplementary_archive_id": supplementary_claim["source_archive_id"],

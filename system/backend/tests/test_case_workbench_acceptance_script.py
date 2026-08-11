@@ -24,6 +24,13 @@ def test_case_workbench_acceptance_closes_the_weibo_only_demo_case():
     assert result["semantic"] == {
         "policy": "evidence_overlay_only",
         "requested_stage": "semantic_enrichment",
+        "decision_support": {
+            "coverage_ratio": 1.0,
+            "confidence_status": "candidate_unvalidated",
+            "platform_slices": ["weibo"],
+            "time_slices_present": True,
+            "operator_prompt": "Use semantic outputs as triage hints, not as risk-score inputs.",
+        },
     }
     assert result["claim_archive"] == {
         "primary_archive_id": "archive_cctv_primary_claim_20260811",

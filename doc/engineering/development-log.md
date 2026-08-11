@@ -20,6 +20,8 @@
 
 ## 2026-08-11
 
+- Case Workbench 验收导出补充语义研判摘要：后端 `case_workbench_acceptance.py` 和前端验收 JSON 导出均包含 `semantic_decision_support`，记录覆盖率、候选状态、平台/时间切片和“只作分诊提示”的操作边界，便于演示后复查 NLP 支撑证据。
+
 - 增强 Case Workbench 的语义研判摘要：`semantic_enrichment` 新增 `decision_support`，统一输出覆盖率、候选置信等级、模块可用性、时间切片、平台切片和研判提示；前端“语义辅助”面板新增密集摘要卡片，仍明确语义只作分诊提示，不进入风险分数。
 - `system/backend/app/core/analysis/semantic_enrichment.py`、`system/backend/app/services/case_workbench_service.py`、`system/frontend/src/{types/case.ts,views/cases/index.vue}`：补齐 NLP 支撑功能的可见闭环；相关后端 Case/语义回归和前端构建通过。
 
