@@ -342,3 +342,43 @@ def test_case_report_tab_can_export_acceptance_evidence_summary():
         "case-acceptance-summary",
     ):
         assert binding in view
+
+
+def test_case_report_tab_can_export_semantic_support_pack():
+    view = (FRONTEND / "views" / "cases" / "index.vue").read_text(encoding="utf-8")
+
+    for binding in (
+        "semanticSupportPackPayload",
+        "copySemanticSupportPack",
+        "downloadSemanticSupportPack",
+        "cogguard.semantic_support_pack.v1",
+        "semantic-support-pack",
+        "复制语义辅助包",
+        "导出语义辅助包",
+        "schema",
+        "case_id",
+        "event_id",
+        "semantic_artifact_id",
+        "model_status",
+        "artifact_sha256",
+        "score_policy",
+        "risk_score_boundary",
+        "prototype_constraints",
+        "sentiment",
+        "keywords",
+        "topics",
+        "entities",
+        "stance",
+        "near_duplicates",
+        "community_comparison",
+        "decision_support",
+        "semantic_examples",
+        "semantic_corrections",
+        "provenance",
+        "evidence_overlay_only",
+        "candidate_unvalidated",
+        "excerpt_only_not_full_source_text",
+        "semantic_artifacts_do_not_mutate_coordination_propagation_review_scores",
+        "weibo_only_with_xhs_gap",
+    ):
+        assert binding in view

@@ -418,6 +418,8 @@
                 <a-space>
                   <a-button size="small" @click="copyAcceptanceSummary">复制验收摘要</a-button>
                   <a-button size="small" @click="downloadAcceptanceSummary">导出验收摘要</a-button>
+                  <a-button size="small" @click="copySemanticSupportPack">复制语义辅助包</a-button>
+                  <a-button size="small" @click="downloadSemanticSupportPack">导出语义辅助包</a-button>
                 </a-space>
               </div>
               <a-descriptions size="small" :column="2" bordered>
@@ -687,6 +689,41 @@ const acceptanceEvidencePayload = computed(() => {
     })),
   }
 })
+const semanticSupportPackPayload = computed(() => {
+  const detail = caseDetail.value
+  const artifact = semanticArtifact.value
+  const summary = artifact?.summary
+  const constraints = prototypeConstraints.value
+  return {
+    schema: 'cogguard.semantic_support_pack.v1',
+    case_id: detail?.case_id ?? null,
+    event_id: detail?.event_id ?? null,
+    semantic_artifact_id: artifact?.artifact_id ?? null,
+    model_status: artifact?.model_status || constraints.model_validation_status || 'candidate_unvalidated',
+    artifact_sha256: artifact?.artifact_sha256 ?? null,
+    score_policy: artifact?.provenance?.score_policy || constraints.semantic_score_policy || 'evidence_overlay_only',
+    risk_score_boundary: constraints.risk_score_boundary || 'semantic_artifacts_do_not_mutate_coordination_propagation_review_scores',
+    prototype_constraints: constraints,
+    sentiment: summary?.sentiment ?? null,
+    keywords: summary?.top_keywords || [],
+    topics: summary?.topics ?? null,
+    entities: summary?.entities || [],
+    stance: summary?.stance ?? null,
+    near_duplicates: summary?.near_duplicates || [],
+    community_comparison: summary?.community_comparison ?? null,
+    decision_support: summary?.decision_support ?? null,
+    semantic_examples: semanticTraceExamples.value.map((example) => ({
+      source: example.source,
+      content_id: example.content_id,
+      content_kind: example.content_kind,
+      platform: example.platform,
+      author_id: example.author_id,
+      excerpt: example.excerpt,
+    })),
+    semantic_corrections: semanticCorrections.value,
+    provenance: artifact?.provenance || {},
+  }
+})
 
 const runColumns = [
   { title: 'Run', dataIndex: 'run_id', key: 'run_id' },
@@ -842,6 +879,36 @@ function downloadAcceptanceSummary() {
   const url = URL.createObjectURL(blob)
   link.href = url
   link.download = `${caseDetail.value.case_id}-case-acceptance-summary.json`
+  link.click()
+  URL.revokeObjectURL(url)
+}
+
+async function copySemanticSupportPack() {
+  if (!caseDetail.value) return
+  const text = JSON.stringify(semanticSupportPackPayload.value, null, 2)
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text)
+  } else {
+    const textarea = document.createElement('textarea')
+    textarea.value = text
+    textarea.setAttribute('readonly', 'readonly')
+    document.body.appendChild(textarea)
+    textarea.select()
+    document.execCommand('copy')
+    document.body.removeChild(textarea)
+  }
+  message.success('语义辅助包已复制')
+}
+
+function downloadSemanticSupportPack() {
+  if (!caseDetail.value) return
+  const blob = new Blob([JSON.stringify(semanticSupportPackPayload.value, null, 2)], {
+    type: 'application/json;charset=utf-8',
+  })
+  const link = document.createElement('a')
+  const url = URL.createObjectURL(blob)
+  link.href = url
+  link.download = `${caseDetail.value.case_id}-semantic-support-pack.json`
   link.click()
   URL.revokeObjectURL(url)
 }

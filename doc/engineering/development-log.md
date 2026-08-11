@@ -311,6 +311,9 @@
 
 ## 2026-08-12
 
+- Case Workbench 报告页新增可复制/下载的 Semantic Support Pack JSON；导出仅复用当前语义 artifact 和既有人工修正，包含情感、关键词、主题、实体、立场、近重复、社区对比、决策支持、provenance 与原型限制，保持 `evidence_overlay_only`、`candidate_unvalidated`、微博单平台/XHS 缺口和 excerpt-only 边界，不改变 Coordination/Propagation/Review 分数。
+- `system/frontend/src/views/cases/index.vue`、`system/backend/tests/test_case_frontend_mvp_contract.py`：新增前端计算 payload、复用剪贴板/下载辅助流程以及静态契约测试；下载文件名包含 `semantic-support-pack`。
+
 - Case Workbench 报告增加紧凑语义证据附录，直接复用现有 `semantic_artifacts[0].summary`，展示情感、关键词、主题、实体、立场、近重复和社区对比，保持 `candidate_unvalidated` / `evidence_overlay_only` 边界。
 - 缺少 Primary Claim 时报告继续可渲染，明确显示 `blocked_missing_primary_claim`，同时保留非立场语义辅助，不伪造来源、归档或哈希。
 - 验收脚本输出 `semantic_evidence_appendix_visible` 与附录类别统计；演示数据仍为微博单平台并记录 XHS 缺口。
