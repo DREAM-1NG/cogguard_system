@@ -303,6 +303,16 @@
         <a-tab-pane key="reports" tab="报告">
           <section class="panel reports-panel">
             <div class="panel-title">冻结报告版本</div>
+            <div class="acceptance-summary">
+              <h3>Acceptance summary</h3>
+              <a-descriptions size="small" :column="2" bordered>
+                <a-descriptions-item label="Closeout">{{ acceptanceSummary.closeoutState }}</a-descriptions-item>
+                <a-descriptions-item label="Archive coverage">{{ acceptanceSummary.archiveCoverage }}</a-descriptions-item>
+                <a-descriptions-item label="CPR coverage">{{ acceptanceSummary.cprCoverage }}</a-descriptions-item>
+                <a-descriptions-item label="Semantic policy">{{ acceptanceSummary.semanticOverlayPolicy }}</a-descriptions-item>
+                <a-descriptions-item label="Second platform honesty">{{ acceptanceSummary.noFabricatedSecondPlatformEvidence }}</a-descriptions-item>
+              </a-descriptions>
+            </div>
             <a-table
               size="small"
               :columns="reportColumns"
@@ -405,6 +415,25 @@ const nearDuplicateGroups = computed(() => semanticArtifact.value?.summary?.near
 const graphNodes = computed<any[]>(() => caseDetail.value?.graph?.nodes || [])
 const graphEdges = computed<any[]>(() => caseDetail.value?.graph?.edges || [])
 const graphEvidenceLayers = computed<any[]>(() => caseDetail.value?.graph?.evidence_layers || [])
+const acceptanceSummary = computed(() => {
+  const detail = caseDetail.value
+  const claims = [
+    ...(detail?.primary_claim ? [detail.primary_claim] : []),
+    ...(detail?.supplementary_claims || []),
+  ]
+  const archiveCoverage = claims.length > 0 && claims.every((claim) => Boolean(claim.source_archive_id))
+  const cprCoverage = ['coordination', 'propagation', 'review'].every((key) =>
+    graphEvidenceLayers.value.some((layer) => layer.key === key),
+  )
+  const noFabricatedSecondPlatformEvidence = detail?.platforms?.length === 1 && detail.platforms[0] === 'weibo'
+  return {
+    closeoutState: detail?.closeout_review ? 'closed_loop_review_submitted' : detail?.state || 'not_loaded',
+    archiveCoverage: archiveCoverage ? 'cctv_xinhua_markitdown_archive' : 'incomplete',
+    cprCoverage: cprCoverage ? 'coordination_propagation_review' : 'incomplete',
+    semanticOverlayPolicy: detail?.workflow_summary?.semantic_score_policy || 'unknown',
+    noFabricatedSecondPlatformEvidence: noFabricatedSecondPlatformEvidence ? 'weibo_only_with_platform_gap' : 'check_required',
+  }
+})
 
 const runColumns = [
   { title: 'Run', dataIndex: 'run_id', key: 'run_id' },

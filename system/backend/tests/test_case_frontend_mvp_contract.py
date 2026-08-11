@@ -148,3 +148,17 @@ def test_case_graph_evidence_layers_tab_exposes_cpr_bindings():
         "caseDetail.value?.graph?.evidence_layers",
     ):
         assert binding in view
+
+
+def test_case_report_tab_exposes_acceptance_summary_bindings():
+    view = (FRONTEND / "views" / "cases" / "index.vue").read_text(encoding="utf-8")
+
+    for binding in (
+        "Acceptance summary",
+        "acceptanceSummary",
+        "archiveCoverage",
+        "cprCoverage",
+        "semanticOverlayPolicy",
+        "noFabricatedSecondPlatformEvidence",
+    ):
+        assert binding in view
