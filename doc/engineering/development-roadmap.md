@@ -14,6 +14,7 @@
 - [x] 前端新增“案例闭环”入口和 C 型密集五标签工作台：概览 / 证据矩阵 / 图谱 / 处置 / 报告。
 - [x] 新增进程内 demo mutation：平台缺口确认、处置项完成/豁免、反馈提交、结案复核提交；默认微博-only fallback 可在明确承认缺口后继续原型闭环，但不声称存在 XHS/抖音证据。
 - [x] 新增本地 Case Workbench 验收脚本，验证 demo fixture 从平台缺口确认到结案和 PDF fallback 报告预览的闭环，并保留 XHS 缺口可见。
+- [x] 独立注册 Twitter IO 基准 manifest：仅提交字段、行数、用户数、retweet/reply/quote 统计、字节数和 SHA-256，并提供 stdlib 校验器；该基准与中文 Case 验收完全隔离，不提交 CSV 或 Markdown payload。
 - [ ] 完整 SQLAlchemy Case/Authority/Claim/Action/Report/Audit 持久化模型、Alembic 迁移、真实报告 HTML/PDF 文件服务、权限细分和端到端结案仍待后续迭代；在可见演示闭环稳定后，优先完成持久化和真实报告渲染。
 
 ## 2026-08-01 状态收口

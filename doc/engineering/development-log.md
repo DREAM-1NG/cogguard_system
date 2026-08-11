@@ -20,6 +20,9 @@
 
 ## 2026-08-11
 
+- 独立注册 Twitter IO benchmark 清单：只保存 31 列字段、39,964 行、60 用户、retweet/reply/quote 统计、25.6 MB 字节数和 SHA-256，不提交 CSV 或 Markdown 转换文本，也不接入中文 Case 验收。
+- `system/backend/app/schemas/twitter_benchmark.py`、`system/backend/scripts/verify_twitter_benchmark.py`、`system/backend/fixtures/case_workbench/twitter_io_manifest.json`、`system/backend/tests/test_twitter_benchmark_manifest.py`：新增 digest-only Pydantic 契约、stdlib CSV/hashlib 校验器、fixture manifest 和隔离回归测试。
+
 - 新增 Case Workbench 研究归档契约：结构化搜索记录和 reviewed MarkItDown 归档可校验 SHA-256、NFC 规范化摘录范围、归档路径及可选原始来源字节；第二平台结果只能来自已校验归档或显式 `platform-gap.json`，不伪造 CCTV、新华社或第二平台来源。
 - `system/backend/app/{schemas/case_research.py,services/case_research_archive.py}`、`system/backend/tests/test_case_research_archive.py`、`doc/research/case-workbench/README.md`：新增 Pydantic 公共契约、只读归档验证器、回归测试和 append-only 研究协议说明。
 

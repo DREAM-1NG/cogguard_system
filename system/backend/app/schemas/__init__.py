@@ -10,10 +10,12 @@ from app.schemas.case_research import (
     StructuredSearchHit,
     StructuredSearchRecord,
 )
+from app.schemas.twitter_benchmark import TwitterBenchmarkManifest
 
 __all__ = [
     "PlatformGap",
     "ResearchArchiveEntry",
     "StructuredSearchHit",
     "StructuredSearchRecord",
+    "TwitterBenchmarkManifest",
 ]

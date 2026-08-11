@@ -152,6 +152,16 @@ The Case Workbench acceptance command uses the in-memory demo fixture. It keeps
 the `xhs` platform gap acknowledged and visible in the report preview; it does
 not claim XHS or Douyin evidence.
 
+The archived Twitter IO benchmark is registered separately from the Chinese
+demo case. Its checked-in manifest lives at
+`backend/fixtures/case_workbench/twitter_io_manifest.json` and records only the
+CSV schema, row/user/relation counts, byte size, and SHA-256. Verify a local
+external copy without importing it into Case Workbench:
+
+```powershell
+uv run python scripts/verify_twitter_benchmark.py --csv-path <external\twitter_io\tweets.csv> --manifest fixtures/case_workbench/twitter_io_manifest.json
+```
+
 ## Runtime Boundary
 
 Product code executes crawler and review runtime code from `system/runtimes/`.
