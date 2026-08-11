@@ -17,6 +17,7 @@ _CAPABILITY_FIELDS = {
     "campaign_holdout": "supports_campaign_holdout",
     "observed_time_holdout": "supports_time_holdout",
     "social_bot_classification": "supports_social_bot_classification",
+    "binary_coordination_detection": "supports_binary_coordination_detection",
     "harmful_cib_detection": "supports_harmful_cib_detection",
     "campaign_io_evaluation": "supports_campaign_io_evaluation",
 }
@@ -109,6 +110,7 @@ class DatasetCapability:
     supports_campaign_holdout: bool
     supports_time_holdout: bool
     supports_social_bot_classification: bool
+    supports_binary_coordination_detection: bool
     supports_harmful_cib_detection: bool
     supports_campaign_io_evaluation: bool
     blocked_reasons: Mapping[str, str] = field(default_factory=dict)
@@ -169,6 +171,7 @@ class DatasetCapability:
             supports_campaign_holdout=value["supports_campaign_holdout"],
             supports_time_holdout=value["supports_time_holdout"],
             supports_social_bot_classification=value["supports_social_bot_classification"],
+            supports_binary_coordination_detection=value["supports_binary_coordination_detection"],
             supports_harmful_cib_detection=value["supports_harmful_cib_detection"],
             supports_campaign_io_evaluation=value["supports_campaign_io_evaluation"],
             blocked_reasons=value["blocked_reasons"],

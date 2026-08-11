@@ -178,6 +178,7 @@ def _capability(package, *, dataset_id="fixture"):
         supports_campaign_holdout=True,
         supports_time_holdout=True,
         supports_social_bot_classification=False,
+        supports_binary_coordination_detection=True,
         supports_harmful_cib_detection=True,
         supports_campaign_io_evaluation=True,
         blocked_reasons={"social_bot_classification": "not a bot dataset"},
@@ -522,6 +523,7 @@ def test_baseline_registry_exposes_required_methods_ablations_and_blocking():
             supports_campaign_holdout=True,
             supports_time_holdout=False,
             supports_social_bot_classification=False,
+            supports_binary_coordination_detection=True,
             supports_harmful_cib_detection=True,
             supports_campaign_io_evaluation=True,
             blocked_reasons={
@@ -718,6 +720,7 @@ def test_typed_discovery_runner_retains_blocked_and_failed_outcomes():
         supports_campaign_holdout=True,
         supports_time_holdout=False,
         supports_social_bot_classification=False,
+        supports_binary_coordination_detection=True,
         supports_harmful_cib_detection=True,
         supports_campaign_io_evaluation=True,
         blocked_reasons={

@@ -1,0 +1,288 @@
+{
+  "schema_version": 3,
+  "paper": {
+    "title": "Coordinated Behavior on Social Media in 2019 UK General Election",
+    "authors": [
+      "Leonardo Nizzoli",
+      "Serena Tardelli",
+      "Marco Avvenuti",
+      "Stefano Cresci",
+      "Maurizio Tesconi"
+    ],
+    "venue": "Proceedings of the 15th International AAAI Conference on Web and Social Media (ICWSM 2021)",
+    "version": "User-supplied PDF; first page identifies arXiv:2008.08370v2 [cs.SI], 1 April 2021",
+    "sources": [
+      {
+        "type": "pdf",
+        "location": "doc/research/coordination-characterization/authenticity/sources/nizzoli-et-al-2021-coordinated-behavior.pdf",
+        "sha256": "26134ff9c5c69762d148e1eb583adfc6b84d5145878cfb315a01d8d25f5b01cc",
+        "role": "primary"
+      }
+    ],
+    "page_convention": "1-based PDF page numbers"
+  },
+  "reader_profile": {
+    "domain": "computational social science and network-based coordinated-behavior analysis",
+    "selected_lenses": [
+      "empirical-observational-discovery",
+      "computer-science-and-social-behavioral"
+    ],
+    "audience": "research-generalist",
+    "goal": "reproduce the account-to-community characterization handoff and assess transfer to CogGuard",
+    "depth": "deep",
+    "language": "zh-CN"
+  },
+  "execution": {
+    "visual_mode": "visual",
+    "visual_verification": "complete",
+    "text_evidence_sources": [
+      "PyMuPDF text layer for all 12 PDF pages",
+      "figure and table captions",
+      "body references",
+      "direct inspection of extracted page and crop images"
+    ],
+    "verified_visuals": [
+      "Table 1, PDF p.3",
+      "Table 2, PDF p.3",
+      "Figure 1, PDF p.4",
+      "Algorithm 1, PDF p.5",
+      "Figure 2, PDF p.5",
+      "Figure 3, PDF p.6",
+      "Figure 4, PDF p.7",
+      "Figure 5, PDF p.7",
+      "Figure 6, PDF p.8",
+      "Figure 7, PDF p.9",
+      "Figure 8, PDF p.9",
+      "Figure 9, PDF p.10",
+      "Figure 10, PDF p.11"
+    ],
+    "limitations": [
+      "No supplementary appendix or official implementation was provided with the user-supplied PDF.",
+      "The paper does not report the multiscale-backbone significance parameter, threshold increment, software versions, or random seeds.",
+      "Dataset availability is treated only as a paper-stated DOI and was not independently verified in this task."
+    ]
+  },
+  "claims": [
+    {
+      "id": "C1",
+      "claim": "The framework treats coordination as graded behavioral similarity and analyzes it across a continuum rather than emitting a single coordinated/uncoordinated label.",
+      "status": "strong",
+      "inference": false,
+      "evidence": [
+        {
+          "type": "method",
+          "locator": "Contributions and Method overview, PDF pp.2-4",
+          "note": "The authors define coordination as latent, suspicious, or remarkable similarity and describe the six-stage framework."
+        },
+        {
+          "type": "algorithm",
+          "locator": "Algorithm 1, PDF p.5",
+          "note": "Community detection is repeated while the similarity threshold increases."
+        }
+      ],
+      "caveats": [
+        "The coordination scale is a percentile of one filtered graph's edge-weight distribution, not an externally calibrated probability."
+      ]
+    },
+    {
+      "id": "C2",
+      "claim": "The case study reduces 1,179,659 election-discussion users to 10,782 top-1-percent retweet superspreaders, who generated 39 percent of tweets and 44.2 percent of retweets.",
+      "status": "strong",
+      "inference": false,
+      "evidence": [
+        {
+          "type": "dataset",
+          "locator": "Dataset and User similarity network, PDF pp.3-5",
+          "note": "The paper reports 11,264,820 tweets, 1,179,659 users, the superspreader selection, and retained activity shares."
+        },
+        {
+          "type": "table",
+          "locator": "Tables 1-2, PDF p.3",
+          "note": "Collection channels and counts are shown explicitly."
+        }
+      ],
+      "caveats": [
+        "This purposive high-activity sample does not represent ordinary users or the electorate."
+      ]
+    },
+    {
+      "id": "C3",
+      "claim": "The account-to-community handoff is TF-IDF co-retweet vectors, cosine user similarity, Serrano multiscale-backbone filtering, and warm-started Louvain over increasing thresholds.",
+      "status": "partial",
+      "inference": false,
+      "evidence": [
+        {
+          "type": "method",
+          "locator": "Method overview and Surfacing coordination, PDF pp.4-6",
+          "note": "The text names each transformation and reports 276,775 edges after backbone filtering."
+        },
+        {
+          "type": "algorithm",
+          "locator": "Algorithm 1, PDF p.5",
+          "note": "The iterative removal and community warm start are specified in pseudocode."
+        },
+        {
+          "type": "figure",
+          "locator": "Figure 3, PDF p.6",
+          "note": "The filtered graph retains a broad edge-weight range unlike a fixed 0.9 cut."
+        }
+      ],
+      "caveats": [
+        "Backbone significance, TF-IDF details, threshold increment, software, random seed, and community lineage rules are incompletely reported."
+      ]
+    },
+    {
+      "id": "C4",
+      "claim": "The unsupervised graph partition yields seven politically and topically interpretable communities, including major-party, tactical-voting, activist, and antagonist groups.",
+      "status": "partial",
+      "inference": false,
+      "evidence": [
+        {
+          "type": "figure",
+          "locator": "Figures 2, 4, and 5, PDF pp.5-7",
+          "note": "Network location, political-leaning colors, community labels, and hashtag clouds align descriptively."
+        },
+        {
+          "type": "discussion",
+          "locator": "Coordinated communities, PDF pp.6-8",
+          "note": "The authors identify CON, LAB, TVT, SNP, B60, ASE, and LCH using account and hashtag context."
+        }
+      ],
+      "caveats": [
+        "Political polarity comes from seeded hashtag propagation and the interpretations are post hoc, without independent annotator agreement or ground truth."
+      ]
+    },
+    {
+      "id": "C5",
+      "claim": "Different communities persist to different coordination levels, so one fixed threshold discards groups unevenly.",
+      "status": "strong",
+      "inference": false,
+      "evidence": [
+        {
+          "type": "figure",
+          "locator": "Figure 6, PDF p.8",
+          "note": "Community-size curves have different plateaux and decay shapes; the authors suggest about 0.9 for LCH and 0.55 for ASE."
+        },
+        {
+          "type": "figure",
+          "locator": "Figure 10, PDF p.11",
+          "note": "Fixed thresholds 0.5, 0.7, and 0.9 retain sharply different and uneven subsets; 0.9 leaves six edges."
+        }
+      ],
+      "caveats": [
+        "The suggested characteristic levels are exploratory elbow judgments, not uncertainty-calibrated estimates."
+      ]
+    },
+    {
+      "id": "C6",
+      "claim": "Density, clustering, and assortativity expose distinct structural patterns across communities as coordination increases.",
+      "status": "partial",
+      "inference": false,
+      "evidence": [
+        {
+          "type": "figure",
+          "locator": "Figure 7, PDF p.9",
+          "note": "B60 rises sharply in density, clustering, and assortativity near high coordination, while several other communities show opposite trends."
+        }
+      ],
+      "caveats": [
+        "The curves are descriptive, lack uncertainty intervals, and are dependent because successive subnetworks are nested."
+      ]
+    },
+    {
+      "id": "C7",
+      "claim": "Within B60 and LCH, strongly coordinated accounts emphasize more specific campaign narratives than the full communities.",
+      "status": "partial",
+      "inference": false,
+      "evidence": [
+        {
+          "type": "figure",
+          "locator": "Figure 8, PDF p.9 and discussion on PDF p.10",
+          "note": "Word-shift panels emphasize 1950s-women terms for B60 and loan-charge terms for LCH."
+        }
+      ],
+      "caveats": [
+        "Only two communities are shown, thresholds come from the same exploratory analysis, and no resampling uncertainty is reported."
+      ]
+    },
+    {
+      "id": "C8",
+      "claim": "Coordination and automation are largely orthogonal in this case study.",
+      "status": "partial",
+      "inference": false,
+      "evidence": [
+        {
+          "type": "figure",
+          "locator": "Figure 9, PDF p.10",
+          "note": "Most community Botometer means and suspension rates do not move monotonically with coordination; LCH has higher Botometer scores and B60 suspensions decline."
+        }
+      ],
+      "caveats": [
+        "No correlation coefficient, uncertainty interval, missing-score analysis, or causal test is reported; suspension is not a clean automation or inauthenticity label."
+      ]
+    },
+    {
+      "id": "C9",
+      "claim": "The paper states that the 2019 UK GE dataset is publicly available for research purposes and cites DOI 10.5281/zenodo.4647893.",
+      "status": "partial",
+      "inference": false,
+      "evidence": [
+        {
+          "type": "paper-dataset-statement",
+          "locator": "Dataset, PDF p.3",
+          "note": "The PDF says the final dataset contains 11,264,820 tweets from 1,179,659 users and is publicly available for research purposes, with a DOI footnote."
+        }
+      ],
+      "caveats": [
+        "This report did not download or independently verify the dataset record; the PDF does not provide a complete execution environment."
+      ]
+    },
+    {
+      "id": "C10",
+      "claim": "This work is not supervised community-authenticity detection: it has no authenticity labels, train/test protocol, learned classifier, or community-authenticity evaluation.",
+      "status": "strong",
+      "inference": false,
+      "evidence": [
+        {
+          "type": "scope-statement",
+          "locator": "Introduction, PDF pp.1-2",
+          "note": "The paper explicitly separates coordination from inauthenticity and states that successful automatic distinction was unavailable."
+        },
+        {
+          "type": "conclusion",
+          "locator": "Conclusions, PDF p.11",
+          "note": "The authors explicitly state that the framework still does not distinguish inauthentic coordinated behavior from authentic coordination."
+        },
+        {
+          "type": "figure",
+          "locator": "Figure 9, PDF p.10",
+          "note": "Bot and suspension indicators are post hoc characterization evidence, not target labels."
+        }
+      ],
+      "caveats": [
+        "The framework can feed a later authenticity model, but that downstream model and its labels are outside this paper."
+      ]
+    },
+    {
+      "id": "C11",
+      "claim": "For CogGuard, the transferable unit is a provenance-rich multilevel community characterization dossier, with authenticity left unset until independent evidence is added.",
+      "status": "partial",
+      "inference": true,
+      "evidence": [
+        {
+          "type": "method-transfer",
+          "locator": "Figure 1 and Algorithm 1, PDF pp.4-5",
+          "note": "The paper supplies the discovery-to-characterization interfaces."
+        },
+        {
+          "type": "scope-boundary",
+          "locator": "Introduction and Conclusions, PDF pp.1-2 and 11",
+          "note": "The paper forbids equating coordination with authenticity."
+        }
+      ],
+      "caveats": [
+        "CogGuard must independently validate backbone parameters, temporal stability, lineage matching, feature calibration, and authenticity labels."
+      ]
+    }
+  ]
+}

@@ -40,6 +40,7 @@ _COMPACT_METHOD_VARIANTS = frozenset(
     {
         "tsgs_mhcr_compact",
         "frozen_system_evidence_prior",
+        "frozen_system_account_score_prior",
         "edgebank",
         "dense_cosine_leiden",
         "no_tsgs",
@@ -1120,6 +1121,159 @@ class FrozenSystemEvidencePriorImplementation(DiscoveryImplementation):
 
 
 @dataclass(frozen=True, slots=True)
+class _FrozenSystemAccountScoreProjection:
+    fused: _FusedCompactGraph
+    candidate_weights: np.ndarray
+    edge_scores: np.ndarray
+    account_scores: np.ndarray
+
+
+def _production_weighted_degree_scores(
+    account_count: int,
+    endpoints: np.ndarray,
+    candidate_weights: np.ndarray,
+) -> np.ndarray:
+    weighted_degree = np.zeros(account_count, dtype=np.float32)
+    if endpoints.size:
+        np.add.at(weighted_degree, endpoints[:, 0], candidate_weights)
+        np.add.at(weighted_degree, endpoints[:, 1], candidate_weights)
+    return _normalized(weighted_degree)
+
+
+@dataclass(frozen=True, slots=True)
+class FrozenSystemAccountScorePriorImplementation(DiscoveryImplementation):
+    """Metric-equivalent production account ranking without community inference."""
+
+    method_id: str = "frozen_system_account_score_prior"
+    method_version: str = "coordination-evidence-account-score-v2"
+    implementation_id: str = "frozen-system-account-score-compact-adapter-v2"
+    config: CompactDiscoveryMethodConfig = field(
+        default_factory=lambda: CompactDiscoveryMethodConfig(
+            method_variant="frozen_system_account_score_prior",
+            epochs=1,
+        )
+    )
+    unavailable_reason: str | None = None
+    _projection_cache: dict[str, _FrozenSystemAccountScoreProjection] = field(
+        default_factory=dict,
+        init=False,
+        repr=False,
+        compare=False,
+    )
+
+    def execute(
+        self, execution_input: CompactDiscoveryExecutionInput
+    ) -> CompactDiscoveryPrediction:
+        if not isinstance(execution_input, CompactDiscoveryExecutionInput):
+            raise ValueError("frozen system account-score prior requires CompactDiscoveryExecutionInput")
+        if execution_input.discovery_view.time_semantics != IOHUNTER_STATIC_TIME_SEMANTICS:
+            raise ValueError("frozen system account-score comparison requires static time semantics")
+
+        cache_key = execution_input.discovery_view.source_layer_fingerprint
+        if self._projection_cache and cache_key not in self._projection_cache:
+            self._projection_cache.clear()
+        projection = self._projection_cache.get(cache_key)
+        cache_hit = projection is not None
+        started = time.perf_counter()
+        if projection is None:
+            fused = _fuse_relation_layers(execution_input)
+            candidate_weights = np.count_nonzero(
+                fused.relation_weights, axis=1
+            ).astype(np.float32)
+            projection = _FrozenSystemAccountScoreProjection(
+                fused=fused,
+                candidate_weights=candidate_weights,
+                edge_scores=_normalized(candidate_weights),
+                account_scores=_production_weighted_degree_scores(
+                    execution_input.discovery_view.account_count,
+                    fused.endpoints,
+                    candidate_weights,
+                ),
+            )
+            self._projection_cache.clear()
+            self._projection_cache[cache_key] = projection
+
+        account_count = execution_input.discovery_view.account_count
+        assignments = np.arange(account_count, dtype=np.int32)
+        elapsed = time.perf_counter() - started
+        batch, _ = _cluster_batch(
+            execution_input=execution_input,
+            method_id=self.method_id,
+            method_version=self.method_version,
+            assignments=assignments,
+            endpoints=projection.fused.endpoints,
+            edge_scores=projection.edge_scores,
+            relation_weights=projection.fused.relation_weights,
+            candidate_weights=projection.candidate_weights,
+            tsgs_diagnostics={
+                "resistance_backend": "not_run_production_account_score_prior",
+                "guarantee_scope": "account_ranking_equivalence_only",
+            },
+            mhcr_diagnostics={"objective": "not_run_production_account_score_prior"},
+            timings={
+                "tsgs_seconds": 0.0,
+                "mhcr_seconds": 0.0,
+                "leiden_seconds": 0.0,
+                "total_seconds": elapsed,
+            },
+        )
+        diagnostics = {
+            "method_role": "frozen_production_account_score_equivalent_baseline",
+            "system_model_version": "coordination-evidence-runtime-v2",
+            "evaluation_adapter_scope": "post_evidence_projection_static_account_ranking_only",
+            "equivalence_scope": "external_account_ranking_account_scores_only",
+            "time_semantics": IOHUNTER_STATIC_TIME_SEMANTICS,
+            "source_layer_counts": dict(projection.fused.source_layer_counts),
+            "duplicate_relation_edges_collapsed": projection.fused.duplicate_relation_edges_collapsed,
+            "source_weight_policy": "ignored_by_production_pair_count_core",
+            "projection_cache_hit": cache_hit,
+            "clustering": {"backend": "singleton_placeholder_partition"},
+            "edge_score_formula": "normalized_production_shared_relation_count",
+            "account_score_formula": "normalized_production_weighted_degree",
+            "account_score_role": "production_evidence_prior_not_probability",
+            "seed_policy": "deterministic_seed_ignored",
+            "evaluator_labels_absent": True,
+        }
+        index_dtype = (
+            np.dtype("<u2") if account_count <= np.iinfo(np.uint16).max + 1 else np.dtype("<u4")
+        )
+        return CompactDiscoveryPrediction(
+            account_count=account_count,
+            candidate_endpoints=_readonly(
+                projection.fused.endpoints,
+                index_dtype,
+                (projection.fused.endpoints.shape[0], 2),
+            ),
+            edge_scores=_readonly(
+                projection.edge_scores,
+                np.dtype("<f4"),
+                (projection.edge_scores.shape[0],),
+            ),
+            account_scores=_readonly(
+                projection.account_scores,
+                np.dtype("<f4"),
+                (projection.account_scores.shape[0],),
+            ),
+            cluster_assignments=_readonly(assignments, np.dtype("<i4"), (account_count,)),
+            discovered_cluster_batch=batch,
+            method_id=self.method_id,
+            method_version=self.method_version,
+            implementation_id=self.implementation_id,
+            diagnostics=diagnostics,
+            claim_markers=(
+                _STATIC_CLAIM_MARKER,
+                "production_account_score_exact_for_static_projection",
+                "singleton_placeholder_partition",
+                "community_output_not_production_equivalent",
+                "production_dynamic_windows_not_evaluated",
+                "iohunter_no_ground_truth_coordination_edges",
+                "iohunter_no_ground_truth_communities",
+                "iohunter_no_causal_campaign_labels",
+            ),
+        )
+
+
+@dataclass(frozen=True, slots=True)
 class _BlockedCompactDiscoveryImplementation(DiscoveryImplementation):
     method_id: str = ""
     method_version: str = ""
@@ -1201,6 +1355,7 @@ def default_compact_discovery_registry() -> CompactDiscoveryRegistry:
                 "tsgs_mhcr_compact", "tsgs-mhcr-compact-v1", unavailable_reason=mhcr_reason
             ),
             "frozen_system_evidence_prior": FrozenSystemEvidencePriorImplementation(),
+            "frozen_system_account_score_prior": FrozenSystemAccountScorePriorImplementation(),
             "edgebank": implementation(
                 "edgebank", "edgebank-static-compact-v1", unavailable_reason=leiden_reason, epochs=1
             ),
@@ -1239,6 +1394,7 @@ __all__ = [
     "CompactDiscoveryMethodConfig",
     "CompactDiscoveryRegistry",
     "FrozenSystemEvidencePriorImplementation",
+    "FrozenSystemAccountScorePriorImplementation",
     "GraphNativeDiscoveryImplementation",
     "default_compact_discovery_registry",
 ]

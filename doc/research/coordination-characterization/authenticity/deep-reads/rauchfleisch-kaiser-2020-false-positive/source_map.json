@@ -1,0 +1,268 @@
+{
+  "schema_version": 3,
+  "paper": {
+    "title": "The False positive problem of automatic bot detection in social science research",
+    "authors": [
+      "Adrian Rauchfleisch",
+      "Jonas Kaiser"
+    ],
+    "venue": "PLOS ONE 15(10): e0241045",
+    "version": "Version of Record, published 2020-10-22",
+    "doi": "10.1371/journal.pone.0241045",
+    "sources": [
+      {
+        "type": "pdf",
+        "location": "../../sources/rauchfleisch-kaiser-2020-false-positive.pdf",
+        "sha256": "2e76b06a7258989a1c6a1dbf4fe31ee351a871610f50e6533a0e05bfd684761c",
+        "role": "primary"
+      },
+      {
+        "type": "official-supplement",
+        "location": "assets/supplementary/s001.docx",
+        "sha256": "83a6814b48fe50fb34432672b8465bed5d51b75d73b3101a35d9dd4d410a1510",
+        "role": "S1 Fig"
+      },
+      {
+        "type": "official-supplement",
+        "location": "assets/supplementary/s002.docx",
+        "sha256": "d3098c157a44432d2fd41bc3af30943afcad6fe6ad78cb68fad6b9cd1f496fc4",
+        "role": "S2 Fig"
+      },
+      {
+        "type": "official-supplement",
+        "location": "assets/supplementary/s003.docx",
+        "sha256": "5032090dc96a0e44bdd8f002c7a916662b3417f5e815f4f89f16fc384bf3877e",
+        "role": "S3 Fig"
+      },
+      {
+        "type": "official-supplement",
+        "location": "assets/supplementary/s004.docx",
+        "sha256": "1eb5c4e141d1d6fa99be7e0c49e0a839743f1f09246929ed2959c781dc9481bf",
+        "role": "S4 Fig"
+      },
+      {
+        "type": "official-supplement",
+        "location": "assets/supplementary/s005.docx",
+        "sha256": "2cb2f13939b07781b6745dc3a5930cad2d145263901b1060153fd49c246908f4",
+        "role": "S5 Fig"
+      },
+      {
+        "type": "replication-readme",
+        "location": "assets/reproduction/readme.txt",
+        "sha256": "31c4d397af86ae0e1163eca4c48901f57076e564f6809b07c0aea7a393792989",
+        "role": "reproduction protocol"
+      },
+      {
+        "type": "replication-code",
+        "location": "assets/reproduction/code.R",
+        "sha256": "60e667912d03db77cdb0cb76dadfd4dd90a781e66f966528565e6bc1641524e8",
+        "role": "main analysis"
+      },
+      {
+        "type": "replication-code",
+        "location": "assets/reproduction/code_additional.R",
+        "sha256": "e778608c2e1bfa87c2e93714c1a94c69b5373c5db0d074a243cc729a3b02c512",
+        "role": "supplementary analysis"
+      },
+      {
+        "type": "data-record",
+        "location": "https://doi.org/10.7910/DVN/XVCKRS",
+        "version": "3.1, released 2021-11-07",
+        "role": "official replication data and code record"
+      }
+    ],
+    "page_convention": "1-based PDF page numbers; S1-S5 are separate official DOCX supplements cited from PDF p.17"
+  },
+  "reader_profile": {
+    "domain": "social-behavioral",
+    "selected_lenses": [
+      "social-behavioral",
+      "computer-science-ai"
+    ],
+    "paper_type": "empirical-observational",
+    "audience": "research-generalist",
+    "goal": "reproduce-and-transfer-to-CogGuard",
+    "depth": "deep",
+    "language": "zh-CN"
+  },
+  "execution": {
+    "visual_mode": "visual",
+    "visual_verification": "complete",
+    "text_evidence_sources": [
+      "pdf-text-layer",
+      "figure-and-table-captions",
+      "official-supplement-docx",
+      "official-replication-readme",
+      "official-replication-code"
+    ]
+  },
+  "claims": [
+    {
+      "id": "C1",
+      "claim": "Botometer v3 的区分能力随账户集合显著变化，在作者所选完整样本上的 universal score ROC-AUC 为 0.85，低于原研究报告的 0.94。",
+      "status": "partial",
+      "inference": false,
+      "evidence": [
+        {
+          "type": "figure",
+          "locator": "Figure 2, PDF p.8",
+          "note": "不同数据集 ROC 曲线明显分离。"
+        },
+        {
+          "type": "table",
+          "locator": "Table 2, PDF p.8",
+          "note": "All=0.85; German politicians/German bots=0.76; US politicians/bots=0.93。"
+        }
+      ],
+      "caveats": [
+        "样本由清晰案例和旧训练集组成，不代表真实世界所有 bot/human。",
+        "原研究还报告过 0.85 的 baseline model，因此不能概括为所有历史基准都下降。"
+      ]
+    },
+    {
+      "id": "C2",
+      "claim": "在假设总体仅有 15% bots 时，文献阈值会同时产生大量 false positives 与 false negatives。",
+      "status": "partial",
+      "inference": false,
+      "evidence": [
+        {
+          "type": "figure",
+          "locator": "Figure 4, PDF p.10",
+          "note": "universal score 阈值 0.76 时，All precision=0.59、recall=0.20；German politicians/bots precision=0.24、recall=0.10。"
+        },
+        {
+          "type": "figure",
+          "locator": "Figure 5, PDF p.11",
+          "note": "universal CAP 阈值 0.25 时，All precision=0.55、recall=0.29；German politicians/bots precision=0.30、recall=0.18。"
+        },
+        {
+          "type": "table",
+          "locator": "Tables 2-3, PDF pp.8-9",
+          "note": "15/85 重采样后 PR-AUC 明显低于原始样本，而 ROC-AUC 基本不变。"
+        }
+      ],
+      "caveats": [
+        "15% prevalence 是外部假设，不是本文样本估计。",
+        "100,000 个有放回伪样本上的区间没有传播原始样本与 prevalence 不确定性。"
+      ]
+    },
+    {
+      "id": "C3",
+      "claim": "Botometer 的表现受语言和账户总体迁移影响，German 账户集合通常弱于 US/English 集合。",
+      "status": "partial",
+      "inference": false,
+      "evidence": [
+        {
+          "type": "table",
+          "locator": "Tables 2-5, PDF pp.8-12",
+          "note": "German politicians/German bots 的 sample PR-AUC 在 universal score/CAP 为 0.27/0.27，在 English score/CAP 为 0.23/0.22。"
+        },
+        {
+          "type": "figure",
+          "locator": "S1 Fig and S4 Fig, official supplements",
+          "note": "English score/CAP 的 ROC 与 PR 曲线仍显示 German 集合最弱。"
+        },
+        {
+          "type": "text",
+          "locator": "Results, PDF pp.10-12",
+          "note": "作者报告 DeLong tests 的 p<0.001。"
+        }
+      ],
+      "caveats": [
+        "语言与国家、政治人物类型、bot 来源及训练覆盖混杂，设计不能识别纯语言效应。",
+        "German bots 仅 27 个。"
+      ]
+    },
+    {
+      "id": "C4",
+      "claim": "同一账户的 Botometer 分数会跨越固定阈值，单日分类因此不可稳定复现。",
+      "status": "strong",
+      "inference": false,
+      "evidence": [
+        {
+          "type": "figure",
+          "locator": "Figures 6-7, PDF p.13",
+          "note": "逐账户 SD 分布与 0-1 阈值扫描均显示跨阈值比例。"
+        },
+        {
+          "type": "text",
+          "locator": "Results, PDF p.12",
+          "note": "score 0.76 下 new bots 27.2%、German bots 22.2%、Varol bots 13.9% 曾在阈值两侧；CAP 0.25 下对应比例为 37.5%、33.3%、17.7%。"
+        },
+        {
+          "type": "figure",
+          "locator": "S2-S3 Figs, official supplements",
+          "note": "English score/CAP 复现同类时间波动。"
+        }
+      ],
+      "caveats": [
+        "结论限定于 Botometer v3、2019-03-03 至 2019-06-02 和所选账户。",
+        "论文没有分离账户行为变化、API 特征变化和模型服务变化。"
+      ]
+    },
+    {
+      "id": "C5",
+      "claim": "原始 Botometer score 的总体分布不能在没有本地标签和测量模型时直接解释为 bot prevalence。",
+      "status": "partial",
+      "inference": false,
+      "evidence": [
+        {
+          "type": "figure",
+          "locator": "Figure 8, PDF p.15",
+          "note": "相同 15/85 bot-human 比例的重采样集合产生不同 score 分布，人类集合之间也不同。"
+        },
+        {
+          "type": "figure",
+          "locator": "S5 Fig, official supplement",
+          "note": "English score 的分布也呈相同不可比性。"
+        }
+      ],
+      "caveats": [
+        "图示证明跨集合不可直接比较，但没有拟合正式 prevalence estimator 或校准模型。"
+      ]
+    },
+    {
+      "id": "C6",
+      "claim": "本研究评估的是 discrimination、threshold utility 与 temporal reliability，而不是概率 calibration。",
+      "status": "strong",
+      "inference": true,
+      "evidence": [
+        {
+          "type": "text",
+          "locator": "Methods and Results, PDF pp.6-13",
+          "note": "报告 ROC-AUC、PR-AUC、precision/recall、SD 与 threshold crossing；未报告 reliability diagram、Brier score、ECE 或 calibration slope/intercept。"
+        }
+      ],
+      "caveats": [
+        "CAP 名称含 probability 不等于本文已验证概率校准。"
+      ]
+    },
+    {
+      "id": "C7",
+      "claim": "该论文不能为 CogGuard 提供 community-level authenticity Gold，只能提供测量风险证据和验证协议。",
+      "status": "strong",
+      "inference": true,
+      "evidence": [
+        {
+          "type": "table",
+          "locator": "Table 1, PDF p.4",
+          "note": "标签单位是单个账户的 bot/human，而非 community。"
+        },
+        {
+          "type": "text",
+          "locator": "Data and methods, PDF pp.4-6",
+          "note": "标签来自政治人物账户、明显 bot 和 Varol 旧标注，其中一部分还是 Botometer 训练数据。"
+        },
+        {
+          "type": "text",
+          "locator": "Discussion, PDF pp.14-17",
+          "note": "作者明确区分 automation、sockpuppets、group behavior、astroturfing 与 coordinated inauthentic behavior。"
+        }
+      ],
+      "caveats": [
+        "community authenticity 需要群体边界、协调证据、意图/身份欺骗和人工裁决；本文均未提供。",
+        "benign bots 可自动但真实披露，human-operated sockpuppets 可不自动却不真实。"
+      ]
+    }
+  ]
+}

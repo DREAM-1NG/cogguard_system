@@ -104,17 +104,15 @@ def test_matrix_enumerates_campaign_seed_fold_method_and_time_rows_deterministic
         first = module.preflight_iohunter_matrix(dataset_root, output, memory_budget_bytes=256 * 1024 * 1024)
         second = module.preflight_iohunter_matrix(dataset_root, output, memory_budget_bytes=256 * 1024 * 1024)
         method_count = len(module.default_baseline_registry().specs())
-        assert len(first.rows) == 6 * 5 * method_count * 2
+        assert len(first.rows) == 6 * 5 * 5 * method_count * 2
         assert first.matrix_fingerprint == second.matrix_fingerprint
         assert [row.run_id for row in first.rows] == [row.run_id for row in second.rows]
         assert len({row.run_id for row in first.rows}) == len(first.rows)
         assert {row.resume_action for row in second.rows} == {"skip_preflight"}
         assert {(row.seed, row.fold_id) for row in first.rows} == {
-            (42, "fold-000"),
-            (43, "fold-001"),
-            (44, "fold-002"),
-            (45, "fold-003"),
-            (46, "fold-004"),
+            (seed, f"fold-{fold_index:03d}")
+            for seed in module.IOHUNTER_OFFICIAL_SEEDS
+            for fold_index in range(5)
         }
     finally:
         shutil.rmtree(output, ignore_errors=True)

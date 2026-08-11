@@ -1,0 +1,176 @@
+{
+  "schema_version": 3,
+  "paper": {
+    "title": "Detection and Characterization of Coordinated Online Behavior: A Survey",
+    "authors": [
+      "Lorenzo Mannocci",
+      "Michele Mazza",
+      "Anna Monreale",
+      "Maurizio Tesconi",
+      "Stefano Cresci"
+    ],
+    "venue": "ACM Computing Surveys",
+    "version": "User-supplied arXiv:2408.01257v2 manuscript, 10 April 2026; publisher DOI verified separately",
+    "sources": [
+      {
+        "type": "pdf",
+        "location": "H:\\Zotero\\attenger\\Projects\\CISCN\\KT1\\Mannocci 等 - 2024 - Detection and characterization of coordinated online behavior a survey.pdf",
+        "sha256": "f9cf9f7128375e9cdf33a2deb0251f2017ac5829189d08d08312a9b3f6d05bec",
+        "role": "primary"
+      },
+      {
+        "type": "arxiv",
+        "location": "https://arxiv.org/abs/2408.01257",
+        "sha256": null,
+        "role": "version-identity"
+      },
+      {
+        "type": "doi",
+        "location": "https://doi.org/10.1145/3839225",
+        "sha256": null,
+        "role": "publication-metadata"
+      }
+    ],
+    "page_convention": "1-based PDF page numbers"
+  },
+  "reader_profile": {
+    "domain": "computational social science and graph-based coordinated-behavior analysis",
+    "selected_lenses": [
+      "systematic-survey",
+      "machine-learning-and-network-science"
+    ],
+    "audience": "CogGuard researchers and system engineers",
+    "goal": "review and transfer",
+    "depth": "deep",
+    "language": "zh-CN"
+  },
+  "execution": {
+    "visual_mode": "visual",
+    "visual_verification": "complete",
+    "text_evidence_sources": [
+      "MarkItDown 0.1.5 conversion",
+      "PyMuPDF page text for PDF pages 1-39",
+      "visual_manifest.json captions"
+    ],
+    "verified_visuals": [
+      "Definition 2.11 and surrounding text, PDF p.8",
+      "Authenticity and harmfulness definitions, PDF p.9",
+      "Figure 3, PDF p.3",
+      "Table 1, PDF p.7",
+      "Figure 5, PDF p.11",
+      "Figure 6, PDF p.12",
+      "Figure 7, PDF p.14",
+      "Figure 8, PDF p.15",
+      "Tables 3-5, PDF pp.18-20",
+      "Table 8, PDF p.23",
+      "Table 9, PDF p.26",
+      "Characterization discussion, PDF pp.27-28",
+      "Figures 9-10, PDF p.30",
+      "Open challenges, PDF pp.30-32"
+    ],
+    "limitation": "All report-designated key visuals were directly inspected. The extractor manifest still contains duplicate Figure 6 and Table 9 entries and unclassified automatic crops, so manifest-level classification remains incomplete even though the decision-bearing visual review is complete."
+  },
+  "claims": [
+    {
+      "id": "C1",
+      "claim": "Coordinated online behavior consists of actors performing synergic actions in pursuit of an intent.",
+      "status": "strong",
+      "inference": false,
+      "evidence": [
+        {
+          "type": "definition",
+          "locator": "Definition 2.11, PDF p.8",
+          "note": "The survey's general definition and its actors-actions-intent decomposition."
+        }
+      ],
+      "caveats": [
+        "Intent is usually hidden and cannot be recovered from behavioral similarity alone."
+      ]
+    },
+    {
+      "id": "C2",
+      "claim": "The survey separates coordinated-user detection from multidimensional characterization.",
+      "status": "strong",
+      "inference": false,
+      "evidence": [
+        {
+          "type": "figure",
+          "locator": "Figure 6, PDF p.12",
+          "note": "Detection outputs labels, clusters, or communities; characterization outputs indicators."
+        }
+      ],
+      "caveats": [
+        "CogGuard calls the first task Discovery and reserves Detection for harmful-intent classification, so terminology must be translated explicitly."
+      ]
+    },
+    {
+      "id": "C3",
+      "claim": "Authenticity, harmfulness, orchestration, and time-variance are distinct dimensions of coordinated behavior.",
+      "status": "strong",
+      "inference": false,
+      "evidence": [
+        {
+          "type": "definition",
+          "locator": "Section 2.5, PDF pp.9-11",
+          "note": "The survey defines the four dimensions and gives counterexamples to collapsing authenticity into harmfulness."
+        },
+        {
+          "type": "figure",
+          "locator": "Figure 10, PDF p.30",
+          "note": "The reviewed literature covers these dimensions unevenly."
+        }
+      ],
+      "caveats": [
+        "The dimensions can correlate empirically but are not interchangeable labels."
+      ]
+    },
+    {
+      "id": "C4",
+      "claim": "Bot scores are useful but error-prone account-level proxies for inauthenticity, not sufficient community authenticity labels.",
+      "status": "strong",
+      "inference": false,
+      "evidence": [
+        {
+          "type": "table",
+          "locator": "Table 9 and Section 5.1, PDF pp.26-27",
+          "note": "The survey lists automation and bot scores under authenticity, then details false-positive and false-negative mechanisms."
+        }
+      ],
+      "caveats": [
+        "Benign self-declared bots and non-automated deceptive actors break a direct bot-to-inauthenticity mapping."
+      ]
+    },
+    {
+      "id": "C5",
+      "claim": "Network-science discovery commonly follows user selection, network construction, filtering, and community discovery.",
+      "status": "strong",
+      "inference": false,
+      "evidence": [
+        {
+          "type": "figure",
+          "locator": "Figure 7, PDF p.14",
+          "note": "The survey's four-step network discovery workflow."
+        }
+      ],
+      "caveats": [
+        "The filtering criterion and time-window design remain task-specific and can dominate results."
+      ]
+    },
+    {
+      "id": "C6",
+      "claim": "Cross-platform, temporal, multimodal, scalable, formally validated, and attribution-aware analysis remain open challenges.",
+      "status": "strong",
+      "inference": false,
+      "evidence": [
+        {
+          "type": "discussion",
+          "locator": "Section 6, PDF pp.30-32",
+          "note": "The survey enumerates these limitations and explains their measurement and data constraints."
+        }
+      ],
+      "caveats": [
+        "An open challenge is not by itself a novelty claim; a concrete method and comparative evidence are still required."
+      ]
+    }
+  ]
+}

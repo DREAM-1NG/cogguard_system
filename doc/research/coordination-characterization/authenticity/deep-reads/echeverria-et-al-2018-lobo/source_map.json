@@ -1,0 +1,210 @@
+{
+  "schema_version": 3,
+  "paper": {
+    "title": "LOBO - Evaluation of Generalization Deficiencies in Twitter Bot Classifiers",
+    "authors": [
+      "Juan Echeverria",
+      "Emiliano De Cristofaro",
+      "Nicolas Kourtellis",
+      "Ilias Leontiadis",
+      "Gianluca Stringhini",
+      "Shi Zhou"
+    ],
+    "venue": "Proceedings of the 2018 Annual Computer Security Applications Conference (ACSAC 2018)",
+    "version": "arXiv:1809.09684v1, 2018-09-25; PDF states published at ACSAC 2018",
+    "sources": [
+      {
+        "type": "pdf",
+        "location": "doc/research/coordination-characterization/authenticity/sources/echeverria-et-al-2018-lobo.pdf",
+        "sha256": "710acce743fa34d0ad6760a623acaa523a200e37c22607a24746ce41de363e17",
+        "role": "primary"
+      }
+    ],
+    "page_convention": "1-based PDF page numbers; equal to printed page numbers in this file"
+  },
+  "reader_profile": {
+    "domain": "computer-science-ai",
+    "selected_lenses": [
+      "method-system",
+      "empirical-evaluation",
+      "computer-science-ai",
+      "social-behavioral-construct-validity"
+    ],
+    "audience": "research-generalist",
+    "goal": "reproduce-and-transfer-to-CogGuard",
+    "depth": "deep",
+    "language": "zh-CN"
+  },
+  "execution": {
+    "visual_mode": "visual",
+    "visual_verification": "complete",
+    "text_evidence_sources": [
+      "PDF text layer by 1-based page",
+      "direct inspection of 180-DPI rendered pages",
+      "direct inspection of all 12 selected visual crops"
+    ]
+  },
+  "claims": [
+    {
+      "id": "C1",
+      "claim": "High conventional account-level accuracy does not imply generalization to an unseen bot family.",
+      "status": "strong",
+      "inference": false,
+      "evidence": [
+        {
+          "type": "table",
+          "locator": "Table 3, PDF p.6",
+          "note": "LightGBM reaches 97.84% on C30K and 93.93% on C500 under conventional random splitting."
+        },
+        {
+          "type": "table",
+          "locator": "Table 6, PDF p.8",
+          "note": "C500 full-model mean is 94.29%, while held-family LOBO mean is 57.51%."
+        }
+      ],
+      "caveats": [
+        "The result is limited to the collected Twitter classes and acquisition protocols.",
+        "Held-family target accuracy is bot-only recall and does not measure deployment false positives."
+      ]
+    },
+    {
+      "id": "C2",
+      "claim": "LOBO performance is highly family-dependent even after balancing each included family to 500 accounts.",
+      "status": "strong",
+      "inference": false,
+      "evidence": [
+        {
+          "type": "table",
+          "locator": "Table 6, PDF p.8",
+          "note": "Per-family LOBO accuracy ranges from 0.71% for F to 98.14% for B."
+        }
+      ],
+      "caveats": [
+        "Table 6 contains 13 target rows although the text says 14, and U is undefined in Table 1."
+      ]
+    },
+    {
+      "id": "C3",
+      "claim": "A small number of labeled target-family examples can rapidly recover performance for some, but not all, families.",
+      "status": "partial",
+      "inference": false,
+      "evidence": [
+        {
+          "type": "figure",
+          "locator": "Figures 3-4, PDF p.8",
+          "note": "Mean accuracy rises with target samples, while selected families show sharply different curves."
+        },
+        {
+          "type": "table",
+          "locator": "Table 7, PDF p.9",
+          "note": "A and F improve rapidly; H remains 81.6% at 256 samples and V/T/W improve little."
+        }
+      ],
+      "caveats": [
+        "Target test size shrinks as samples are moved into training.",
+        "The experiment uses one sampled C500 dataset and does not report full implementation settings."
+      ]
+    },
+    {
+      "id": "C4",
+      "claim": "The paper's t-SNE visualization is consistent with some families being feature-separable and others overlapping real users.",
+      "status": "weak",
+      "inference": false,
+      "evidence": [
+        {
+          "type": "figure",
+          "locator": "Figure 5, PDF p.9",
+          "note": "Star Wars and Bursty form visibly distinct strands, whereas Honeypot points overlap many real-user strands."
+        }
+      ],
+      "caveats": [
+        "t-SNE settings and seed are not reported.",
+        "A two-dimensional embedding is qualitative evidence and cannot establish the classification mechanism."
+      ]
+    },
+    {
+      "id": "C5",
+      "claim": "LOBO results are mostly stable across C500 resampling, with notable exceptions.",
+      "status": "partial",
+      "inference": false,
+      "evidence": [
+        {
+          "type": "text",
+          "locator": "Section 7.1, PDF p.8",
+          "note": "The paper reports standard deviation below 4% for almost all targets, except A at 24% and E at 13%."
+        }
+      ],
+      "caveats": [
+        "Per-repeat values and the full per-class uncertainty table are not published in the PDF."
+      ]
+    },
+    {
+      "id": "C6",
+      "claim": "Exact numerical reproduction is blocked by missing artifacts and internal reporting inconsistencies.",
+      "status": "strong",
+      "inference": true,
+      "evidence": [
+        {
+          "type": "table",
+          "locator": "Table 2 and Section 6.2, PDF p.6",
+          "note": "The paper states 30 dimensions, while Table 2 visibly enumerates 29 entries and includes User ID."
+        },
+        {
+          "type": "table",
+          "locator": "Table 5 and Section 6.3, PDF p.7",
+          "note": "Headers, row semantics, and the reported 54.88% mean cannot be reconciled from displayed values."
+        },
+        {
+          "type": "table",
+          "locator": "Tables 1, 6, and 7, PDF pp.4,8-9",
+          "note": "U is undefined, X disappears, and 13 displayed C500 targets conflict with the stated 14 classes."
+        }
+      ],
+      "caveats": [
+        "A released code/data snapshot could resolve some ambiguities, but none is identified in the PDF."
+      ]
+    },
+    {
+      "id": "C7",
+      "claim": "Account bot classification is not a valid substitute for community authenticity assessment.",
+      "status": "strong",
+      "inference": true,
+      "evidence": [
+        {
+          "type": "figure",
+          "locator": "Figures 1-2, PDF pp.3-4",
+          "note": "The complete pipeline represents and labels individual accounts as bot or user; no community construct is defined."
+        },
+        {
+          "type": "table",
+          "locator": "Table 2, PDF p.6",
+          "note": "Features are account profile and tweet aggregates, not group coordination, provenance, common control, or deceptive intent."
+        }
+      ],
+      "caveats": [
+        "Bot scores may be useful as one account-level signal inside a broader community evidence model."
+      ]
+    },
+    {
+      "id": "C8",
+      "claim": "For CogGuard, LOBO should be transferred as leave-campaign, leave-platform, and forward-time evaluation with group-level leakage controls.",
+      "status": "partial",
+      "inference": true,
+      "evidence": [
+        {
+          "type": "figure",
+          "locator": "Figure 2 and Section 4, PDF pp.4-5",
+          "note": "LOBO supplies the general group-held-out principle: remove the complete target domain from training before evaluation."
+        },
+        {
+          "type": "table",
+          "locator": "Table 6, PDF p.8",
+          "note": "The large random-split versus held-group gap motivates analogous external-domain tests."
+        }
+      ],
+      "caveats": [
+        "The campaign/platform/time extension is a report inference and is not evaluated in the source paper."
+      ]
+    }
+  ]
+}

@@ -1,0 +1,1068 @@
+{
+  "schema_version": 2,
+  "generated_at": "2026-08-11T09:55:09.181366+00:00",
+  "source_pdf": "G:\\CISCN\\CogGuard\\.worktrees\\refactor-system\\doc\\research\\coordination-characterization\\authenticity\\sources\\rauchfleisch-kaiser-2020-false-positive.pdf",
+  "source_sha256": "2e76b06a7258989a1c6a1dbf4fe31ee351a871610f50e6533a0e05bfd684761c",
+  "page_count": 20,
+  "render_dpi": 180,
+  "selected_pages": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20
+  ],
+  "analysis_mode": "visual",
+  "text_layer_available": true,
+  "text_layer_characters": 96172,
+  "automatic_crops_are_unverified": true,
+  "pages": [
+    {
+      "page": 1,
+      "width_pixels": 1530,
+      "height_pixels": 1980,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": "pages\\page-001.png",
+      "text": "text\\pages\\page-001.txt",
+      "text_characters": 4974,
+      "caption_count": 0
+    },
+    {
+      "page": 2,
+      "width_pixels": 1530,
+      "height_pixels": 1980,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": "pages\\page-002.png",
+      "text": "text\\pages\\page-002.txt",
+      "text_characters": 6697,
+      "caption_count": 0
+    },
+    {
+      "page": 3,
+      "width_pixels": 1530,
+      "height_pixels": 1980,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": "pages\\page-003.png",
+      "text": "text\\pages\\page-003.txt",
+      "text_characters": 6326,
+      "caption_count": 0
+    },
+    {
+      "page": 4,
+      "width_pixels": 1530,
+      "height_pixels": 1980,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": "pages\\page-004.png",
+      "text": "text\\pages\\page-004.txt",
+      "text_characters": 5932,
+      "caption_count": 1
+    },
+    {
+      "page": 5,
+      "width_pixels": 1530,
+      "height_pixels": 1980,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": "pages\\page-005.png",
+      "text": "text\\pages\\page-005.txt",
+      "text_characters": 475,
+      "caption_count": 1
+    },
+    {
+      "page": 6,
+      "width_pixels": 1530,
+      "height_pixels": 1980,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": "pages\\page-006.png",
+      "text": "text\\pages\\page-006.txt",
+      "text_characters": 6684,
+      "caption_count": 0
+    },
+    {
+      "page": 7,
+      "width_pixels": 1530,
+      "height_pixels": 1980,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": "pages\\page-007.png",
+      "text": "text\\pages\\page-007.txt",
+      "text_characters": 6209,
+      "caption_count": 0
+    },
+    {
+      "page": 8,
+      "width_pixels": 1530,
+      "height_pixels": 1980,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": "pages\\page-008.png",
+      "text": "text\\pages\\page-008.txt",
+      "text_characters": 2744,
+      "caption_count": 2
+    },
+    {
+      "page": 9,
+      "width_pixels": 1530,
+      "height_pixels": 1980,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": "pages\\page-009.png",
+      "text": "text\\pages\\page-009.txt",
+      "text_characters": 4256,
+      "caption_count": 2
+    },
+    {
+      "page": 10,
+      "width_pixels": 1530,
+      "height_pixels": 1980,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": "pages\\page-010.png",
+      "text": "text\\pages\\page-010.txt",
+      "text_characters": 3261,
+      "caption_count": 1
+    },
+    {
+      "page": 11,
+      "width_pixels": 1530,
+      "height_pixels": 1980,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": "pages\\page-011.png",
+      "text": "text\\pages\\page-011.txt",
+      "text_characters": 2975,
+      "caption_count": 2
+    },
+    {
+      "page": 12,
+      "width_pixels": 1530,
+      "height_pixels": 1980,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": "pages\\page-012.png",
+      "text": "text\\pages\\page-012.txt",
+      "text_characters": 6110,
+      "caption_count": 1
+    },
+    {
+      "page": 13,
+      "width_pixels": 1530,
+      "height_pixels": 1980,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": "pages\\page-013.png",
+      "text": "text\\pages\\page-013.txt",
+      "text_characters": 1035,
+      "caption_count": 2
+    },
+    {
+      "page": 14,
+      "width_pixels": 1530,
+      "height_pixels": 1980,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": "pages\\page-014.png",
+      "text": "text\\pages\\page-014.txt",
+      "text_characters": 6268,
+      "caption_count": 0
+    },
+    {
+      "page": 15,
+      "width_pixels": 1530,
+      "height_pixels": 1980,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": "pages\\page-015.png",
+      "text": "text\\pages\\page-015.txt",
+      "text_characters": 4193,
+      "caption_count": 1
+    },
+    {
+      "page": 16,
+      "width_pixels": 1530,
+      "height_pixels": 1980,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": "pages\\page-016.png",
+      "text": "text\\pages\\page-016.txt",
+      "text_characters": 5986,
+      "caption_count": 0
+    },
+    {
+      "page": 17,
+      "width_pixels": 1530,
+      "height_pixels": 1980,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": "pages\\page-017.png",
+      "text": "text\\pages\\page-017.txt",
+      "text_characters": 4985,
+      "caption_count": 0
+    },
+    {
+      "page": 18,
+      "width_pixels": 1530,
+      "height_pixels": 1980,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": "pages\\page-018.png",
+      "text": "text\\pages\\page-018.txt",
+      "text_characters": 6354,
+      "caption_count": 0
+    },
+    {
+      "page": 19,
+      "width_pixels": 1530,
+      "height_pixels": 1980,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": "pages\\page-019.png",
+      "text": "text\\pages\\page-019.txt",
+      "text_characters": 7801,
+      "caption_count": 0
+    },
+    {
+      "page": 20,
+      "width_pixels": 1530,
+      "height_pixels": 1980,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": "pages\\page-020.png",
+      "text": "text\\pages\\page-020.txt",
+      "text_characters": 2907,
+      "caption_count": 0
+    }
+  ],
+  "visuals": [
+    {
+      "id": "table-1-p004",
+      "label": "Table 1",
+      "kind": "table",
+      "number": "1",
+      "page": 4,
+      "caption": "Data sets and how we combined them for our analysis.",
+      "raw_text": "Table 1. Data sets and how we combined them for our analysis.",
+      "caption_bbox_points": [
+        200.012,
+        610.249,
+        409.175,
+        618.249
+      ],
+      "caption_bbox_pixels": [
+        500,
+        1526,
+        1023,
+        1546
+      ],
+      "suggested_crop_bbox_points": [
+        26.0,
+        600.249,
+        586.001,
+        767.6
+      ],
+      "suggested_crop_bbox_pixels": [
+        65,
+        1501,
+        1465,
+        1919
+      ],
+      "candidate_crop": "crops\\table-1-p004.png",
+      "selected_asset": "crops\\table-1-p004.png",
+      "candidate_crop_size_pixels": [
+        1401,
+        419
+      ],
+      "source_page_image": "pages\\page-004.png",
+      "source_page_text": "text\\pages\\page-004.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": false,
+      "visual_verification": "complete",
+      "review_notes": "Visually checked: dataset combinations and valid-account counts are complete and readable; this table establishes the account-level label unit and sample imbalance.",
+      "key": true,
+      "claim_ids": [
+        "C1",
+        "C7"
+      ],
+      "text_asset": "text\\visuals\\table-1-p004.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "figure-1-p005",
+      "label": "Figure 1",
+      "kind": "figure",
+      "number": "1",
+      "page": 5,
+      "caption": "Example accounts for each data set.",
+      "raw_text": "Fig 1. Example accounts for each data set.",
+      "caption_bbox_points": [
+        200.012,
+        661.102,
+        337.976,
+        669.102
+      ],
+      "caption_bbox_pixels": [
+        500,
+        1653,
+        845,
+        1673
+      ],
+      "suggested_crop_bbox_points": [
+        190.012,
+        68.009,
+        521.484,
+        679.102
+      ],
+      "suggested_crop_bbox_pixels": [
+        475,
+        170,
+        1304,
+        1698
+      ],
+      "candidate_crop": "crops\\figure-1-p005.png",
+      "selected_asset": "crops\\figure-1-p005.png",
+      "candidate_crop_size_pixels": [
+        829,
+        1528
+      ],
+      "source_page_image": "pages\\page-005.png",
+      "source_page_text": "text\\pages\\page-005.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": false,
+      "visual_verification": "complete",
+      "review_notes": "Visually checked: all five source groups and representative account panels are present; the figure illustrates clear-cut account examples rather than community labels.",
+      "key": true,
+      "claim_ids": [
+        "C1",
+        "C7"
+      ],
+      "text_asset": "text\\visuals\\figure-1-p005.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "table-2-p008",
+      "label": "Table 2",
+      "kind": "table",
+      "number": "2",
+      "page": 8,
+      "caption": "ROC-AUC as well as the PR-AUC universal score.",
+      "raw_text": "Table 2. ROC-AUC as well as the PR-AUC universal score.",
+      "caption_bbox_points": [
+        36.0,
+        572.888,
+        230.55,
+        580.888
+      ],
+      "caption_bbox_pixels": [
+        90,
+        1432,
+        576,
+        1452
+      ],
+      "suggested_crop_bbox_points": [
+        26.0,
+        562.888,
+        586.001,
+        767.6
+      ],
+      "suggested_crop_bbox_pixels": [
+        65,
+        1407,
+        1465,
+        1919
+      ],
+      "candidate_crop": "crops\\table-2-p008.png",
+      "selected_asset": "crops\\table-2-p008.png",
+      "candidate_crop_size_pixels": [
+        1401,
+        512
+      ],
+      "source_page_image": "pages\\page-008.png",
+      "source_page_text": "text\\pages\\page-008.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": false,
+      "visual_verification": "complete",
+      "review_notes": "Visually checked: all ROC-AUC and PR-AUC columns, confidence intervals, five datasets, and the resampling note are legible.",
+      "key": true,
+      "claim_ids": [
+        "C1",
+        "C2"
+      ],
+      "text_asset": "text\\visuals\\table-2-p008.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "figure-2-p008",
+      "label": "Figure 2",
+      "kind": "figure",
+      "number": "2",
+      "page": 8,
+      "caption": "Receiver operating characteristics curve for Botometer and the universal score (average over 3 months for each account). The x-axis represents the false positive rate and the y-axis represents the true positive rate (sensitivity).",
+      "raw_text": "Fig 2. Receiver operating characteristics curve for Botometer and the universal score (average over 3 months for each account). The x-axis represents the false positive rate and the y-axis represents the true positive rate (sensitivity).",
+      "caption_bbox_points": [
+        48.019,
+        416.302,
+        562.493,
+        433.826
+      ],
+      "caption_bbox_pixels": [
+        120,
+        1041,
+        1406,
+        1085
+      ],
+      "suggested_crop_bbox_points": [
+        26.0,
+        44.4,
+        586.0,
+        443.826
+      ],
+      "suggested_crop_bbox_pixels": [
+        65,
+        111,
+        1465,
+        1110
+      ],
+      "candidate_crop": "crops\\figure-2-p008.png",
+      "selected_asset": "crops\\figure-2-p008.png",
+      "candidate_crop_size_pixels": [
+        1400,
+        999
+      ],
+      "source_page_image": "pages\\page-008.png",
+      "source_page_text": "text\\pages\\page-008.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": false,
+      "visual_verification": "complete",
+      "review_notes": "Visually checked: ROC axes, chance diagonal, five dataset curves, legend, and caption are complete and readable.",
+      "key": true,
+      "claim_ids": [
+        "C1"
+      ],
+      "text_asset": "text\\visuals\\figure-2-p008.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "figure-3-p009",
+      "label": "Figure 3",
+      "kind": "figure",
+      "number": "3",
+      "page": 9,
+      "caption": "Receiver operating characteristics curve for Botometer and the universal complete automation probability (CAP) (average over 3 months for each account). The x-axis represents the false positive rate and the y-axis represents the true positive rate (sensitivity).",
+      "raw_text": "Fig 3. Receiver operating characteristics curve for Botometer and the universal complete automation probability (CAP) (average over 3 months for each account). The x-axis represents the false positive rate and the y-axis represents the true positive rate (sensitivity).",
+      "caption_bbox_points": [
+        200.012,
+        282.621,
+        571.124,
+        309.613
+      ],
+      "caption_bbox_pixels": [
+        500,
+        707,
+        1428,
+        774
+      ],
+      "suggested_crop_bbox_points": [
+        26.0,
+        44.4,
+        586.0,
+        319.613
+      ],
+      "suggested_crop_bbox_pixels": [
+        65,
+        111,
+        1465,
+        799
+      ],
+      "candidate_crop": "crops\\figure-3-p009.png",
+      "selected_asset": "crops\\figure-3-p009.png",
+      "candidate_crop_size_pixels": [
+        1400,
+        689
+      ],
+      "source_page_image": "pages\\page-009.png",
+      "source_page_text": "text\\pages\\page-009.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": false,
+      "visual_verification": "complete",
+      "review_notes": "Visually checked: CAP ROC axes, chance diagonal, five curves, legend, and caption are present; ordering parallels Figure 2.",
+      "key": true,
+      "claim_ids": [
+        "C1"
+      ],
+      "text_asset": "text\\visuals\\figure-3-p009.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "table-3-p009",
+      "label": "Table 3",
+      "kind": "table",
+      "number": "3",
+      "page": 9,
+      "caption": "ROC-AUC as well as the PR-AUC scores universal CAP.",
+      "raw_text": "Table 3. ROC-AUC as well as the PR-AUC scores universal CAP.",
+      "caption_bbox_points": [
+        36.0,
+        576.517,
+        251.082,
+        584.517
+      ],
+      "caption_bbox_pixels": [
+        90,
+        1441,
+        628,
+        1461
+      ],
+      "suggested_crop_bbox_points": [
+        26.0,
+        566.517,
+        586.001,
+        767.6
+      ],
+      "suggested_crop_bbox_pixels": [
+        65,
+        1416,
+        1465,
+        1919
+      ],
+      "candidate_crop": "crops\\table-3-p009.png",
+      "selected_asset": "crops\\table-3-p009.png",
+      "candidate_crop_size_pixels": [
+        1401,
+        503
+      ],
+      "source_page_image": "pages\\page-009.png",
+      "source_page_text": "text\\pages\\page-009.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": false,
+      "visual_verification": "complete",
+      "review_notes": "Visually checked: universal CAP ROC-AUC and PR-AUC values, intervals, datasets, and resampling note are complete and readable.",
+      "key": true,
+      "claim_ids": [
+        "C1",
+        "C2"
+      ],
+      "text_asset": "text\\visuals\\table-3-p009.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "figure-4-p010",
+      "label": "Figure 4",
+      "kind": "figure",
+      "number": "4",
+      "page": 10,
+      "caption": "Universal score precision-recall curves for the resampled data sets. We consider the population baseline on Twitter (15% bots) for the universal Botometer score, black points indicate the precision and the recall for the Botometer score 0.76. With the German politicians and bots data set, for almost every threshold level the identified sample of bots has more humans than real bots (precision). The x-axis represents the recall (sensitivity) and the y-axis represents the precision.",
+      "raw_text": "Fig 4. Universal score precision-recall curves for the resampled data sets. We consider the population baseline on Twitter (15% bots) for the universal Botometer score, black points indicate the precision and the recall for the Botometer score 0.76. With the German politicians and bots data set, for almost every threshold level the identified sample of bots has more humans than real bots (precision). The x-axis represents the recall (sensitivity) and the y-axis represents the precision.",
+      "caption_bbox_points": [
+        48.019,
+        406.154,
+        574.771,
+        433.146
+      ],
+      "caption_bbox_pixels": [
+        120,
+        1015,
+        1437,
+        1083
+      ],
+      "suggested_crop_bbox_points": [
+        26.0,
+        44.4,
+        586.0,
+        443.146
+      ],
+      "suggested_crop_bbox_pixels": [
+        65,
+        111,
+        1465,
+        1108
+      ],
+      "candidate_crop": "crops\\figure-4-p010.png",
+      "selected_asset": "crops\\figure-4-p010.png",
+      "candidate_crop_size_pixels": [
+        1400,
+        997
+      ],
+      "source_page_image": "pages\\page-010.png",
+      "source_page_text": "text\\pages\\page-010.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": false,
+      "visual_verification": "complete",
+      "review_notes": "Visually checked: precision-recall axes, two datasets, legend, threshold markers, and caption are complete; the crop supports the reported 0.76 operating point.",
+      "key": true,
+      "claim_ids": [
+        "C2"
+      ],
+      "text_asset": "text\\visuals\\figure-4-p010.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "figure-5-p011",
+      "label": "Figure 5",
+      "kind": "figure",
+      "number": "5",
+      "page": 11,
+      "caption": "CAP precision-recall curves for the resampled data sets. We consider the population baseline on Twitter (15% bots) for the universal CAP Botometer score, Black points indicate the precision and the recall for the universal CAP 0.25. With the German politicians and bots for almost every threshold level the identified sample of bots has more humans than real bots (precision). The x-axis represents the recall (sensitivity) and the y-axis represents the precision.",
+      "raw_text": "Fig 5. CAP precision-recall curves for the resampled data sets. We consider the population baseline on Twitter (15% bots) for the universal CAP Botometer score, Black points indicate the precision and the recall for the universal CAP 0.25. With the German politicians and bots for almost every threshold level the identified sample of bots has more humans than real bots (precision). The x-axis represents the recall (sensitivity) and the y-axis represents the precision.",
+      "caption_bbox_points": [
+        48.019,
+        412.674,
+        567.24,
+        439.723
+      ],
+      "caption_bbox_pixels": [
+        120,
+        1032,
+        1418,
+        1099
+      ],
+      "suggested_crop_bbox_points": [
+        26.0,
+        44.4,
+        586.0,
+        449.723
+      ],
+      "suggested_crop_bbox_pixels": [
+        65,
+        111,
+        1465,
+        1124
+      ],
+      "candidate_crop": "crops\\figure-5-p011.png",
+      "selected_asset": "crops\\figure-5-p011.png",
+      "candidate_crop_size_pixels": [
+        1400,
+        1014
+      ],
+      "source_page_image": "pages\\page-011.png",
+      "source_page_text": "text\\pages\\page-011.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": false,
+      "visual_verification": "complete",
+      "review_notes": "Visually checked: CAP precision-recall axes, two datasets, legend, threshold markers, and caption are complete; the crop supports the reported 0.25 operating point.",
+      "key": true,
+      "claim_ids": [
+        "C2"
+      ],
+      "text_asset": "text\\visuals\\figure-5-p011.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "table-4-p011",
+      "label": "Table 4",
+      "kind": "table",
+      "number": "4",
+      "page": 11,
+      "caption": "ROC-AUC as well as the PR-AUC English score.",
+      "raw_text": "Table 4. ROC-AUC as well as the PR-AUC English score.",
+      "caption_bbox_points": [
+        36.0,
+        576.517,
+        224.937,
+        584.517
+      ],
+      "caption_bbox_pixels": [
+        90,
+        1441,
+        562,
+        1461
+      ],
+      "suggested_crop_bbox_points": [
+        26.0,
+        566.517,
+        586.001,
+        767.6
+      ],
+      "suggested_crop_bbox_pixels": [
+        65,
+        1416,
+        1465,
+        1919
+      ],
+      "candidate_crop": "crops\\table-4-p011.png",
+      "selected_asset": "crops\\table-4-p011.png",
+      "candidate_crop_size_pixels": [
+        1401,
+        503
+      ],
+      "source_page_image": "pages\\page-011.png",
+      "source_page_text": "text\\pages\\page-011.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": false,
+      "visual_verification": "complete",
+      "review_notes": "Visually checked: English-score ROC-AUC and PR-AUC columns, intervals, datasets, and resampling note are complete and readable.",
+      "key": true,
+      "claim_ids": [
+        "C3"
+      ],
+      "text_asset": "text\\visuals\\table-4-p011.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "table-5-p012",
+      "label": "Table 5",
+      "kind": "table",
+      "number": "5",
+      "page": 12,
+      "caption": "ROC-AUC as well as the PR-AUC for the English CAP.",
+      "raw_text": "Table 5. ROC-AUC as well as the PR-AUC for the English CAP.",
+      "caption_bbox_points": [
+        36.0,
+        76.882,
+        247.51,
+        84.882
+      ],
+      "caption_bbox_pixels": [
+        90,
+        192,
+        619,
+        212
+      ],
+      "suggested_crop_bbox_points": [
+        26.0,
+        66.882,
+        565.845,
+        220.966
+      ],
+      "suggested_crop_bbox_pixels": [
+        65,
+        167,
+        1415,
+        552
+      ],
+      "candidate_crop": "crops\\table-5-p012.png",
+      "selected_asset": "crops\\table-5-p012-verified.png",
+      "candidate_crop_size_pixels": [
+        1350,
+        386
+      ],
+      "source_page_image": "pages\\page-012.png",
+      "source_page_text": "text\\pages\\page-012.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": false,
+      "visual_verification": "complete",
+      "review_notes": "Visually checked using the verified recrop: the complete English-CAP table, all confidence intervals, and explanatory note are readable without adjacent-page contamination.",
+      "key": true,
+      "claim_ids": [
+        "C3"
+      ],
+      "text_asset": "text\\visuals\\table-5-p012.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "figure-6-p013",
+      "label": "Figure 6",
+      "kind": "figure",
+      "number": "6",
+      "page": 13,
+      "caption": "Density plot of the SDs for single accounts plotted for each group. Left for the Botometer universal score, right for the Botometer CAP. Bandwith of 0.015 was used for the CAP and the universal scores. The x-axis represents standard deviation and the y-axis represents the density.",
+      "raw_text": "Fig 6. Density plot of the SDs for single accounts plotted for each group. Left for the Botometer universal score, right for the Botometer CAP. Bandwith of 0.015 was used for the CAP and the universal scores. The x-axis represents standard deviation and the y-axis represents the density.",
+      "caption_bbox_points": [
+        48.019,
+        322.929,
+        575.972,
+        340.453
+      ],
+      "caption_bbox_pixels": [
+        120,
+        807,
+        1440,
+        851
+      ],
+      "suggested_crop_bbox_points": [
+        26.0,
+        44.4,
+        586.0,
+        350.453
+      ],
+      "suggested_crop_bbox_pixels": [
+        65,
+        111,
+        1465,
+        876
+      ],
+      "candidate_crop": "crops\\figure-6-p013.png",
+      "selected_asset": "crops\\figure-6-p013.png",
+      "candidate_crop_size_pixels": [
+        1400,
+        766
+      ],
+      "source_page_image": "pages\\page-013.png",
+      "source_page_text": "text\\pages\\page-013.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": false,
+      "visual_verification": "complete",
+      "review_notes": "Visually checked: both score and CAP standard-deviation panels, six group labels, axes, bandwidth statement, and long-tailed bot distributions are visible.",
+      "key": true,
+      "claim_ids": [
+        "C4"
+      ],
+      "text_asset": "text\\visuals\\figure-6-p013.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "figure-7-p013",
+      "label": "Figure 7",
+      "kind": "figure",
+      "number": "7",
+      "page": 13,
+      "caption": "Changing score over time. Percentage of accounts (y-axis) that have at least once a score in the three months below as well as above the threshold for all thresholds between 0 and 1 in steps of 0.05. The x-axis represents the chosen threshold for the Botometer score. Left for the universal score, right for the universal CAP.",
+      "raw_text": "Fig 7. Changing score over time. Percentage of accounts (y-axis) that have at least once a score in the three months below as well as above the threshold for all thresholds between 0 and 1 in steps of 0.05. The x-axis represents the chosen threshold for the Botometer score. Left for the universal score, right for the universal CAP.",
+      "caption_bbox_points": [
+        48.019,
+        663.71,
+        574.377,
+        681.818
+      ],
+      "caption_bbox_pixels": [
+        120,
+        1659,
+        1436,
+        1705
+      ],
+      "suggested_crop_bbox_points": [
+        38.0,
+        341.453,
+        586.0,
+        691.818
+      ],
+      "suggested_crop_bbox_pixels": [
+        95,
+        854,
+        1465,
+        1730
+      ],
+      "candidate_crop": "crops\\figure-7-p013.png",
+      "selected_asset": "crops\\figure-7-p013-verified.png",
+      "candidate_crop_size_pixels": [
+        1370,
+        877
+      ],
+      "source_page_image": "pages\\page-013.png",
+      "source_page_text": "text\\pages\\page-013.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": false,
+      "visual_verification": "complete",
+      "review_notes": "Visually checked using the verified recrop: both threshold-crossing panels, percentage axes, six-series legend, and full caption are readable.",
+      "key": true,
+      "claim_ids": [
+        "C4"
+      ],
+      "text_asset": "text\\visuals\\figure-7-p013.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "figure-8-p015",
+      "label": "Figure 8",
+      "kind": "figure",
+      "number": "8",
+      "page": 15,
+      "caption": "Density plots for the different data sets. Left: Density plots for the different combined data sets in our analysis showing the distribution of Botometer’s universal score. We used the resampled data sets with 15% bots and 85% humans with a total n = 100,000 for each data set. Right: Density plots for the human accounts data sets. Lines indicate the median, a bandwidth of 0.04 was used for all data sets. The x-axis represents the Botometer score and the y-axis represents the density.",
+      "raw_text": "Fig 8. Density plots for the different data sets. Left: Density plots for the different combined data sets in our analysis showing the distribution of Botometer’s universal score. We used the resampled data sets with 15% bots and 85% humans with a total n = 100,000 for each data set. Right: Density plots for the human accounts data sets. Lines indicate the median, a bandwidth of 0.04 was used for all data sets. The x-axis represents the Botometer score and the y-axis represents the density.",
+      "caption_bbox_points": [
+        48.019,
+        315.786,
+        575.317,
+        343.362
+      ],
+      "caption_bbox_pixels": [
+        120,
+        789,
+        1438,
+        858
+      ],
+      "suggested_crop_bbox_points": [
+        26.0,
+        44.4,
+        586.0,
+        353.362
+      ],
+      "suggested_crop_bbox_pixels": [
+        65,
+        111,
+        1465,
+        883
+      ],
+      "candidate_crop": "crops\\figure-8-p015.png",
+      "selected_asset": "crops\\figure-8-p015.png",
+      "candidate_crop_size_pixels": [
+        1400,
+        773
+      ],
+      "source_page_image": "pages\\page-015.png",
+      "source_page_text": "text\\pages\\page-015.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": false,
+      "visual_verification": "complete",
+      "review_notes": "Visually checked: mixture and human-only density panels, dataset labels, median lines, axes, and the common 15/85 resampling statement are present.",
+      "key": true,
+      "claim_ids": [
+        "C5"
+      ],
+      "text_asset": "text\\visuals\\figure-8-p015.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    }
+  ]
+}

@@ -50,6 +50,7 @@ def _capability(module):
         supports_campaign_holdout=True,
         supports_time_holdout=False,
         supports_social_bot_classification=False,
+        supports_binary_coordination_detection=True,
         supports_harmful_cib_detection=True,
         supports_campaign_io_evaluation=True,
         blocked_reasons={
@@ -717,10 +718,13 @@ def test_iohunter_and_cresci_capabilities_block_unsupported_claims():
     assert iohunter.supports_campaign_holdout is True
     assert iohunter.supports_time_holdout is False
     assert "observed_time_holdout" in iohunter.blocked_reasons
+    assert iohunter.supports_binary_coordination_detection is False
+    assert "binary_coordination_detection" in iohunter.blocked_reasons
     assert iohunter.supports_harmful_cib_detection is False
     assert "harmful_cib_detection" in iohunter.blocked_reasons
     assert "not_harmful_cib_claim" in iohunter.claim_markers
     assert cresci.supports_social_bot_classification is True
+    assert cresci.supports_binary_coordination_detection is False
     assert cresci.supports_harmful_cib_detection is False
     assert cresci.supports_coordination_discovery is False
     assert cresci.supports_campaign_io_evaluation is False

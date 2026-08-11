@@ -362,24 +362,25 @@ def _campaign_load_failure_rows(
         "fold": "sha256:" + "0" * 64,
     }
     rows: list[IOHunterPreflightRow] = []
-    for seed_index, seed in enumerate(IOHUNTER_OFFICIAL_SEEDS):
-        fold_id = f"fold-{seed_index:03d}"
-        for spec in registry.specs():
-            for split_policy in ("official_fold", "observed_time_holdout"):
-                rows.append(
-                    _row(
-                        output_dir=output_dir,
-                        campaign=campaign,
-                        seed=seed,
-                        fold_id=fold_id,
-                        split_policy=split_policy,
-                        spec=spec,
-                        fingerprints=fingerprints,
-                        status="blocked",
-                        reason=f"blocked: compact IOHunter load failed for {source}: {reason}",
-                        memory_profile=memory_profile,
+    for seed in IOHUNTER_OFFICIAL_SEEDS:
+        for fold_index in range(5):
+            fold_id = f"fold-{fold_index:03d}"
+            for spec in registry.specs():
+                for split_policy in ("official_fold", "observed_time_holdout"):
+                    rows.append(
+                        _row(
+                            output_dir=output_dir,
+                            campaign=campaign,
+                            seed=seed,
+                            fold_id=fold_id,
+                            split_policy=split_policy,
+                            spec=spec,
+                            fingerprints=fingerprints,
+                            status="blocked",
+                            reason=f"blocked: compact IOHunter load failed for {source}: {reason}",
+                            memory_profile=memory_profile,
+                        )
                     )
-                )
     return rows
 
 
@@ -417,32 +418,33 @@ def _build_campaign_rows(
     registry = default_baseline_registry()
     capability = iohunter_capability()
     rows: list[IOHunterPreflightRow] = []
-    for seed, fold in zip(IOHUNTER_OFFICIAL_SEEDS, compact.evaluator.official_folds, strict=True):
-        fingerprints = {
-            "discovery": compact.discovery_view.source_layer_fingerprint,
-            "evaluator": compact.evaluator.content_fingerprint,
-            "fold": compact_fold_fingerprint(fold),
-        }
-        for spec in registry.specs():
-            resolution = registry.resolve(spec.method_id, capability=capability)
-            unavailable = resolution.reason if resolution.status == "blocked" else None
-            for split_policy in ("official_fold", "observed_time_holdout"):
-                reason = _blocked_reason(spec.method_id, split_policy, unavailable)
-                status = "blocked" if reason else "ready"
-                rows.append(
-                    _row(
-                        output_dir=output_dir,
-                        campaign=campaign,
-                        seed=seed,
-                        fold_id=fold.fold_id,
-                        split_policy=split_policy,
-                        spec=spec,
-                        fingerprints=fingerprints,
-                        status=status,
-                        reason=reason,
-                        memory_profile=compact.memory_profile.to_dict(),
+    for seed in IOHUNTER_OFFICIAL_SEEDS:
+        for fold in compact.evaluator.official_folds:
+            fingerprints = {
+                "discovery": compact.discovery_view.source_layer_fingerprint,
+                "evaluator": compact.evaluator.content_fingerprint,
+                "fold": compact_fold_fingerprint(fold),
+            }
+            for spec in registry.specs():
+                resolution = registry.resolve(spec.method_id, capability=capability)
+                unavailable = resolution.reason if resolution.status == "blocked" else None
+                for split_policy in ("official_fold", "observed_time_holdout"):
+                    reason = _blocked_reason(spec.method_id, split_policy, unavailable)
+                    status = "blocked" if reason else "ready"
+                    rows.append(
+                        _row(
+                            output_dir=output_dir,
+                            campaign=campaign,
+                            seed=seed,
+                            fold_id=fold.fold_id,
+                            split_policy=split_policy,
+                            spec=spec,
+                            fingerprints=fingerprints,
+                            status=status,
+                            reason=reason,
+                            memory_profile=compact.memory_profile.to_dict(),
+                        )
                     )
-                )
     return rows
 
 

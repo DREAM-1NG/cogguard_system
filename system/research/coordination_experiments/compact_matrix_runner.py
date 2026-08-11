@@ -46,22 +46,24 @@ from .runner import CANONICAL_REPRODUCTION_OUTPUT_ROOT
 
 IOHUNTER_COMPACT_CAMPAIGNS = ("china", "cuba", "iran", "russia", "UAE", "venezuela")
 IOHUNTER_COMPACT_SEEDS = (42, 43, 44, 45, 46)
+IOHUNTER_COMPACT_FOLDS = tuple(f"fold-{index:03d}" for index in range(5))
 IOHUNTER_COMPACT_METHODS = (
     "tsgs_mhcr_compact",
     "frozen_system_evidence_prior",
+    "frozen_system_account_score_prior",
     "edgebank",
     "dense_cosine_leiden",
     "no_tsgs",
     "no_mhcr",
     "no_relation_specific",
 )
-IOHUNTER_COMPACT_MATRIX_SCHEMA_VERSION = "cogguard.iohunter-compact-matrix/v1"
-IOHUNTER_COMPACT_ROW_SCHEMA_VERSION = "cogguard.iohunter-compact-matrix-row/v1"
-IOHUNTER_COMPACT_AGGREGATE_SCHEMA_VERSION = "cogguard.iohunter-compact-aggregates/v1"
-IOHUNTER_COMPACT_CLAIM_SCHEMA_VERSION = "cogguard.iohunter-compact-claims/v2"
-IOHUNTER_COMPACT_IMPLEMENTATION_VERSION = "task-7c-compact-matrix-v4"
+IOHUNTER_COMPACT_MATRIX_SCHEMA_VERSION = "cogguard.iohunter-compact-matrix/v3"
+IOHUNTER_COMPACT_ROW_SCHEMA_VERSION = "cogguard.iohunter-compact-matrix-row/v3"
+IOHUNTER_COMPACT_AGGREGATE_SCHEMA_VERSION = "cogguard.iohunter-compact-aggregates/v3"
+IOHUNTER_COMPACT_CLAIM_SCHEMA_VERSION = "cogguard.iohunter-compact-claims/v5"
+IOHUNTER_COMPACT_IMPLEMENTATION_VERSION = "full-crossed-compact-matrix-v6"
 IOHUNTER_COMPACT_METHOD_CONFIG_VERSION = "compact-discovery-method-config/v1"
-COMPACT_PREDICTION_ARTIFACT_SCHEMA_VERSION = "cogguard.compact-discovery-prediction-artifact/v1"
+COMPACT_PREDICTION_ARTIFACT_SCHEMA_VERSION = "cogguard.compact-discovery-prediction-artifact/v2"
 IOHUNTER_EXTERNAL_EVALUATION_SCOPE = "external_account_recovery_not_coordination_ground_truth"
 _EVALUATION_CONFIG = {"threshold_objective": "macro_f1"}
 _CLAIMABLE_PROXY_METRICS = frozenset(
@@ -73,9 +75,10 @@ _CLAIMABLE_PROXY_METRICS = frozenset(
     }
 )
 _REQUIRED_PROXY_PAIRS = frozenset(
-    (campaign, seed)
+    (campaign, seed, fold_id)
     for campaign in IOHUNTER_COMPACT_CAMPAIGNS
     for seed in IOHUNTER_COMPACT_SEEDS
+    for fold_id in IOHUNTER_COMPACT_FOLDS
 )
 _PAIR_PROVENANCE_FIELDS = (
     "fold_id",
@@ -203,18 +206,28 @@ def compact_iohunter_matrix_coordinates(
     *,
     campaigns: Sequence[str] | None = None,
     seeds: Sequence[int] | None = None,
+    folds: Sequence[str] | None = None,
     methods: Sequence[str] | None = None,
 ) -> tuple[CompactMatrixCoordinate, ...]:
     selected_campaigns = _canonical_subset(campaigns, IOHUNTER_COMPACT_CAMPAIGNS, "campaigns")
     selected_seeds = _canonical_subset(seeds, IOHUNTER_COMPACT_SEEDS, "seeds")
+    selected_folds = _canonical_subset(folds, IOHUNTER_COMPACT_FOLDS, "folds")
     selected_methods = _canonical_subset(methods, IOHUNTER_COMPACT_METHODS, "methods")
-    fold_by_seed = dict(zip(IOHUNTER_COMPACT_SEEDS, (f"fold-{index:03d}" for index in range(5)), strict=True))
     return tuple(
-        CompactMatrixCoordinate(campaign, seed, fold_by_seed[seed], method)
+        CompactMatrixCoordinate(campaign, seed, fold_id, method)
         for campaign in selected_campaigns
         for seed in selected_seeds
+        for fold_id in selected_folds
         for method in selected_methods
     )
+
+
+def _execution_coordinate(coordinate: CompactMatrixCoordinate) -> dict[str, Any]:
+    return {
+        "campaign": coordinate.campaign,
+        "seed": coordinate.seed,
+        "method_id": coordinate.method_id,
+    }
 
 
 def _method_configs(
@@ -337,7 +350,7 @@ def _write_prediction_artifact(
     array_layout = _atomic_write_prediction_arrays(arrays_path, prediction)
     metadata = {
         "schema_version": COMPACT_PREDICTION_ARTIFACT_SCHEMA_VERSION,
-        "coordinate": dataclasses.asdict(coordinate),
+        "execution_coordinate": _execution_coordinate(coordinate),
         "source_layer_fingerprint": source_layer_fingerprint,
         "source_sha256": source_sha256,
         "method_config_version": IOHUNTER_COMPACT_METHOD_CONFIG_VERSION,
@@ -405,7 +418,7 @@ def _validate_prediction_artifact(
         return None
     expected = {
         "schema_version": COMPACT_PREDICTION_ARTIFACT_SCHEMA_VERSION,
-        "coordinate": dataclasses.asdict(coordinate),
+        "execution_coordinate": _execution_coordinate(coordinate),
         "source_layer_fingerprint": source_layer_fingerprint,
         "source_sha256": source_sha256,
         "method_config_version": IOHUNTER_COMPACT_METHOD_CONFIG_VERSION,
@@ -574,7 +587,7 @@ def _load_prediction_artifact(
             shape=(account_count,),
         ),
         discovered_cluster_batch=batch,
-        method_id=str(metadata["coordinate"]["method_id"]),
+        method_id=str(metadata["execution_coordinate"]["method_id"]),
         method_version=str(metadata["method_version"]),
         implementation_id=str(metadata["implementation_id"]),
         diagnostics=metadata.get("diagnostics") or {},
@@ -891,6 +904,7 @@ def _run_campaign(
     rows: list[dict[str, Any]] = []
     actions: Counter[str] = Counter()
     pending_executions: list[_SpooledExecution] = []
+    execution_cache: dict[tuple[int, str], _SpooledExecution] = {}
     view = discovery_load.discovery_view
     for coordinate in coordinates:
         path = _row_path(output_dir, coordinate)
@@ -919,6 +933,29 @@ def _run_campaign(
         if resumed is not None:
             rows.append(resumed)
             actions["resumed"] += 1
+            if resumed.get("prediction_artifact") is None:
+                execution_cache.setdefault(
+                    (coordinate.seed, coordinate.method_id),
+                    _SpooledExecution(
+                        coordinate=coordinate,
+                        method_version=str(resumed["method_version"]),
+                        implementation_id=str(resumed["implementation_id"]),
+                        execution_input_fingerprint=str(resumed["execution_input_fingerprint"]),
+                        runtime_seconds=float(resumed["runtime_seconds"]),
+                        peak_memory_bytes=int(resumed["peak_memory_bytes"]),
+                        status=str(resumed["status"]),
+                        reason=resumed.get("reason"),
+                        prediction_artifact=None,
+                        prediction_array_bytes=0,
+                    ),
+                )
+            continue
+
+        execution_key = (coordinate.seed, coordinate.method_id)
+        cached_execution = execution_cache.get(execution_key)
+        if cached_execution is not None:
+            pending_executions.append(dataclasses.replace(cached_execution, coordinate=coordinate))
+            actions["rewritten" if existed_before else "executed"] += 1
             continue
 
         recovered = _validate_prediction_artifact(
@@ -933,20 +970,20 @@ def _run_campaign(
         )
         if recovered is not None:
             metadata, descriptor = recovered
-            pending_executions.append(
-                _SpooledExecution(
-                    coordinate=coordinate,
-                    method_version=str(metadata["method_version"]),
-                    implementation_id=str(metadata["implementation_id"]),
-                    execution_input_fingerprint=str(metadata["execution_input_fingerprint"]),
-                    runtime_seconds=float(metadata["runtime_seconds"]),
-                    peak_memory_bytes=int(metadata["peak_memory_bytes"]),
-                    status=str(metadata["execution_status"]),
-                    reason=metadata.get("execution_reason"),
-                    prediction_artifact=descriptor,
-                    prediction_array_bytes=int(metadata["array_bytes"]),
-                )
+            execution = _SpooledExecution(
+                coordinate=coordinate,
+                method_version=str(metadata["method_version"]),
+                implementation_id=str(metadata["implementation_id"]),
+                execution_input_fingerprint=str(metadata["execution_input_fingerprint"]),
+                runtime_seconds=float(metadata["runtime_seconds"]),
+                peak_memory_bytes=int(metadata["peak_memory_bytes"]),
+                status=str(metadata["execution_status"]),
+                reason=metadata.get("execution_reason"),
+                prediction_artifact=descriptor,
+                prediction_array_bytes=int(metadata["array_bytes"]),
             )
+            execution_cache[execution_key] = execution
+            pending_executions.append(execution)
             actions["rewritten" if existed_before else "executed"] += 1
             continue
 
@@ -972,20 +1009,20 @@ def _run_campaign(
                 execution_reason=outcome.reason,
             )
             prediction_array_bytes = int(descriptor["array_bytes"])
-        pending_executions.append(
-            _SpooledExecution(
-                coordinate=coordinate,
-                method_version=outcome.method_version,
-                implementation_id=outcome.implementation_id,
-                execution_input_fingerprint=outcome.execution_input_fingerprint,
-                runtime_seconds=outcome.runtime_seconds,
-                peak_memory_bytes=outcome.peak_memory_bytes,
-                status=outcome.status,
-                reason=outcome.reason,
-                prediction_artifact=descriptor,
-                prediction_array_bytes=prediction_array_bytes,
-            )
+        execution = _SpooledExecution(
+            coordinate=coordinate,
+            method_version=outcome.method_version,
+            implementation_id=outcome.implementation_id,
+            execution_input_fingerprint=outcome.execution_input_fingerprint,
+            runtime_seconds=outcome.runtime_seconds,
+            peak_memory_bytes=outcome.peak_memory_bytes,
+            status=outcome.status,
+            reason=outcome.reason,
+            prediction_artifact=descriptor,
+            prediction_array_bytes=prediction_array_bytes,
         )
+        execution_cache[execution_key] = execution
+        pending_executions.append(execution)
         actions["rewritten" if existed_before else "executed"] += 1
         del outcome
         gc.collect()
@@ -1070,7 +1107,8 @@ def _run_campaign(
             )
         elif evaluator is not None:
             evaluator_fingerprint = evaluator.content_fingerprint
-            fold = evaluator.official_folds[IOHUNTER_COMPACT_SEEDS.index(coordinate.seed)]
+            folds_by_id = {fold.fold_id: fold for fold in evaluator.official_folds}
+            fold = folds_by_id[coordinate.fold_id]
             fold_fingerprint = compact_fold_fingerprint(fold)
             identity = _run_identity(
                 coordinate,
@@ -1161,20 +1199,41 @@ def aggregate_compact_matrix_rows(
     bootstrap_seed: int = 0,
     bootstrap_resamples: int = 2_000,
 ) -> tuple[dict[str, Any], ...]:
-    groups: dict[tuple[str, str | None, str, str], list[float]] = defaultdict(list)
+    groups: dict[
+        tuple[str, str | None, str, str],
+        list[tuple[str, int, str, float]],
+    ] = defaultdict(list)
     for row in rows:
         if row.get("status") != "success":
             continue
         for metric_name, raw_value in row.get("proxy_metrics", {}).items():
             value = float(raw_value)
-            groups[("campaign", str(row["campaign"]), str(row["method_id"]), metric_name)].append(value)
-            groups[("matrix", None, str(row["method_id"]), metric_name)].append(value)
+            observation = (
+                str(row["campaign"]),
+                int(row["seed"]),
+                str(row["fold_id"]),
+                value,
+            )
+            groups[("campaign", str(row["campaign"]), str(row["method_id"]), metric_name)].append(observation)
+            groups[("matrix", None, str(row["method_id"]), metric_name)].append(observation)
     aggregates = []
-    for (scope, campaign, method_id, metric_name), values in sorted(
+    for (scope, campaign, method_id, metric_name), observations in sorted(
         groups.items(), key=lambda item: tuple("" if part is None else part for part in item[0])
     ):
+        raw_values = tuple(value for _campaign, _seed, _fold, value in observations)
+        grouped: dict[str | int, list[float]] = defaultdict(list)
+        if scope == "campaign":
+            for _campaign, seed, _fold, value in observations:
+                grouped[seed].append(value)
+            inference_values = tuple(float(np.mean(grouped[key])) for key in sorted(grouped))
+            inference_unit = "model_seed_mean_over_official_folds_conditional_on_campaign"
+        else:
+            for observed_campaign, _seed, _fold, value in observations:
+                grouped[observed_campaign].append(value)
+            inference_values = tuple(float(np.mean(grouped[key])) for key in sorted(grouped))
+            inference_unit = "campaign_mean_over_crossed_seed_fold_cells"
         low, high = bootstrap_confidence_interval(
-            tuple(values), seed=bootstrap_seed, resamples=bootstrap_resamples
+            inference_values, seed=bootstrap_seed, resamples=bootstrap_resamples
         )
         aggregates.append(
             {
@@ -1182,11 +1241,14 @@ def aggregate_compact_matrix_rows(
                 "campaign": campaign,
                 "method_id": method_id,
                 "metric_name": metric_name,
-                "count": len(values),
-                "mean": float(np.mean(values)),
-                "sample_std": float(np.std(values, ddof=1)) if len(values) > 1 else 0.0,
+                "count": len(raw_values),
+                "mean": float(np.mean(inference_values)),
+                "sample_std": float(np.std(inference_values, ddof=1)) if len(inference_values) > 1 else 0.0,
                 "ci_95_low": low,
                 "ci_95_high": high,
+                "inference_unit": inference_unit,
+                "inference_unit_count": len(inference_values),
+                "seed_fold_policy": "fully_crossed_orthogonal_model_seed_and_official_fold",
                 "bootstrap_seed": bootstrap_seed,
                 "bootstrap_resamples": bootstrap_resamples,
             }
@@ -1202,13 +1264,16 @@ def _matching_provenance(left: Mapping[str, Any], right: Mapping[str, Any]) -> b
 
 
 def _campaign_level_summary(
-    observations: Sequence[tuple[str, int, float]],
+    observations: Sequence[tuple[str, int, str, float]],
     *,
     bootstrap_seed: int,
     bootstrap_resamples: int,
+    family_size: int = 1,
 ) -> dict[str, Any]:
+    if isinstance(family_size, bool) or not isinstance(family_size, int) or family_size <= 0:
+        raise ValueError("family_size must be a positive integer")
     by_campaign: dict[str, list[float]] = defaultdict(list)
-    for campaign, _seed, difference in observations:
+    for campaign, _seed, _fold_id, difference in observations:
         by_campaign[campaign].append(float(difference))
     campaign_differences = tuple(
         float(np.mean(by_campaign[campaign])) for campaign in sorted(by_campaign)
@@ -1219,6 +1284,12 @@ def _campaign_level_summary(
             seed=bootstrap_seed,
             resamples=bootstrap_resamples,
         )
+        simultaneous_low, simultaneous_high = bootstrap_confidence_interval(
+            campaign_differences,
+            seed=bootstrap_seed,
+            resamples=bootstrap_resamples,
+            confidence=1.0 - (0.05 / family_size),
+        )
         mean = float(np.mean(campaign_differences))
         sample_std = (
             float(np.std(campaign_differences, ddof=1))
@@ -1228,6 +1299,8 @@ def _campaign_level_summary(
     else:
         low = None
         high = None
+        simultaneous_low = None
+        simultaneous_high = None
         mean = None
         sample_std = None
     return {
@@ -1235,38 +1308,43 @@ def _campaign_level_summary(
         "sample_std": sample_std,
         "ci_95_low": low,
         "ci_95_high": high,
+        "simultaneous_ci_95_low": simultaneous_low,
+        "simultaneous_ci_95_high": simultaneous_high,
+        "multiplicity_adjustment": (
+            "none" if family_size == 1 else f"bonferroni_{family_size}_metrics"
+        ),
         "campaign_count": len(campaign_differences),
         "required_campaign_count": len(IOHUNTER_COMPACT_CAMPAIGNS),
         "missing_campaign_count": len(set(IOHUNTER_COMPACT_CAMPAIGNS) - set(by_campaign)),
-        "inference_unit": "campaign_mean_over_seed_fold_pairs",
-        "seed_fold_policy": "coupled_seed_to_official_fold_not_crossed",
+        "inference_unit": "campaign_mean_over_crossed_seed_fold_cells",
+        "seed_fold_policy": "fully_crossed_orthogonal_model_seed_and_official_fold",
     }
 
 
 def _paired_method_rows(
-    successful: Mapping[tuple[str, int, str], Mapping[str, Any]],
+    successful: Mapping[tuple[str, int, str, str], Mapping[str, Any]],
     baseline_method_id: str,
 ) -> tuple[
-    tuple[tuple[str, int, Mapping[str, Any], Mapping[str, Any]], ...],
-    tuple[tuple[str, int], ...],
+    tuple[tuple[str, int, str, Mapping[str, Any], Mapping[str, Any]], ...],
+    tuple[tuple[str, int, str], ...],
 ]:
     pairs = []
     provenance_mismatches = []
-    for campaign, seed in sorted(_REQUIRED_PROXY_PAIRS):
-        candidate = successful.get((campaign, seed, "tsgs_mhcr_compact"))
-        baseline = successful.get((campaign, seed, baseline_method_id))
+    for campaign, seed, fold_id in sorted(_REQUIRED_PROXY_PAIRS):
+        candidate = successful.get((campaign, seed, fold_id, "tsgs_mhcr_compact"))
+        baseline = successful.get((campaign, seed, fold_id, baseline_method_id))
         if candidate is None or baseline is None:
             continue
         if not _matching_provenance(candidate, baseline):
-            provenance_mismatches.append((campaign, seed))
+            provenance_mismatches.append((campaign, seed, fold_id))
             continue
-        pairs.append((campaign, seed, candidate, baseline))
+        pairs.append((campaign, seed, fold_id, candidate, baseline))
     return tuple(pairs), tuple(provenance_mismatches)
 
 
 def _proxy_comparison_rows(
-    pairs: Sequence[tuple[str, int, Mapping[str, Any], Mapping[str, Any]]],
-    provenance_mismatches: Sequence[tuple[str, int]],
+    pairs: Sequence[tuple[str, int, str, Mapping[str, Any], Mapping[str, Any]]],
+    provenance_mismatches: Sequence[tuple[str, int, str]],
     *,
     baseline_method_id: str,
     mean_field: str,
@@ -1274,8 +1352,8 @@ def _proxy_comparison_rows(
     bootstrap_seed: int,
     bootstrap_resamples: int,
 ) -> list[dict[str, Any]]:
-    values: dict[str, list[tuple[str, int, float]]] = defaultdict(list)
-    for campaign, seed, candidate, baseline in pairs:
+    values: dict[str, list[tuple[str, int, str, float]]] = defaultdict(list)
+    for campaign, seed, fold_id, candidate, baseline in pairs:
         shared_metrics = (
             set(candidate.get("proxy_metrics", {}))
             & set(baseline.get("proxy_metrics", {}))
@@ -1286,6 +1364,7 @@ def _proxy_comparison_rows(
                 (
                     campaign,
                     seed,
+                    fold_id,
                     float(candidate["proxy_metrics"][metric_name])
                     - float(baseline["proxy_metrics"][metric_name]),
                 )
@@ -1294,12 +1373,13 @@ def _proxy_comparison_rows(
     comparisons = []
     for metric_name in sorted(_CLAIMABLE_PROXY_METRICS):
         observations = values.get(metric_name, [])
-        observed_pairs = {(campaign, seed) for campaign, seed, _ in observations}
+        observed_pairs = {(campaign, seed, fold_id) for campaign, seed, fold_id, _ in observations}
         missing_pairs = _REQUIRED_PROXY_PAIRS - observed_pairs - set(provenance_mismatches)
         summary = _campaign_level_summary(
             observations,
             bootstrap_seed=bootstrap_seed,
             bootstrap_resamples=bootstrap_resamples,
+            family_size=len(_CLAIMABLE_PROXY_METRICS),
         )
         if provenance_mismatches:
             decision = "blocked_provenance_mismatch"
@@ -1307,18 +1387,23 @@ def _proxy_comparison_rows(
         elif missing_pairs:
             decision = "blocked_incomplete_matrix"
             decision_reason = (
-                "proxy comparison requires all 30 canonical campaign-seed pairs; "
+                "proxy comparison requires all 150 canonical campaign-seed-fold pairs; "
                 f"observed {len(observed_pairs)}"
             )
-        elif summary["ci_95_low"] is not None and summary["ci_95_low"] > 0.0:
+        elif (
+            summary["simultaneous_ci_95_low"] is not None
+            and summary["simultaneous_ci_95_low"] > 0.0
+        ):
             decision = supported_decision
             decision_reason = (
-                "campaign-level paired 95% bootstrap confidence interval is strictly positive"
+                "campaign-level paired Bonferroni simultaneous 95% bootstrap "
+                "confidence interval is strictly positive"
             )
         else:
             decision = "not_supported"
             decision_reason = (
-                "campaign-level paired 95% bootstrap confidence interval does not show superiority"
+                "campaign-level paired Bonferroni simultaneous 95% bootstrap "
+                "confidence interval does not show superiority"
             )
         comparisons.append(
             {
@@ -1329,15 +1414,15 @@ def _proxy_comparison_rows(
                 "required_pair_count": len(_REQUIRED_PROXY_PAIRS),
                 "missing_pair_count": len(missing_pairs),
                 "provenance_mismatch_count": len(provenance_mismatches),
-                "provenance_mismatch_campaign_seeds": [
-                    {"campaign": campaign, "seed": seed}
-                    for campaign, seed in provenance_mismatches
+                "provenance_mismatch_coordinates": [
+                    {"campaign": campaign, "seed": seed, "fold_id": fold_id}
+                    for campaign, seed, fold_id in provenance_mismatches
                 ],
                 mean_field: summary.pop("mean"),
                 **summary,
-                "paired_campaign_seeds": [
-                    {"campaign": campaign, "seed": seed}
-                    for campaign, seed, _ in observations
+                "paired_coordinates": [
+                    {"campaign": campaign, "seed": seed, "fold_id": fold_id}
+                    for campaign, seed, fold_id, _ in observations
                 ],
                 "decision": decision,
                 "decision_reason": decision_reason,
@@ -1348,15 +1433,20 @@ def _proxy_comparison_rows(
 
 
 def _runtime_comparison(
-    pairs: Sequence[tuple[str, int, Mapping[str, Any], Mapping[str, Any]]],
-    provenance_mismatches: Sequence[tuple[str, int]],
+    pairs: Sequence[tuple[str, int, str, Mapping[str, Any], Mapping[str, Any]]],
+    provenance_mismatches: Sequence[tuple[str, int, str]],
     *,
     bootstrap_seed: int,
     bootstrap_resamples: int,
 ) -> dict[str, Any]:
     observations = []
     ratios = []
-    for campaign, seed, candidate, baseline in pairs:
+    seen_executions: set[tuple[str, int]] = set()
+    for campaign, seed, _fold_id, candidate, baseline in pairs:
+        execution_key = (campaign, seed)
+        if execution_key in seen_executions:
+            continue
+        seen_executions.add(execution_key)
         candidate_seconds = candidate.get("runtime_seconds")
         baseline_seconds = baseline.get("diagnostics_summary", {}).get(
             "cold_projection_seconds",
@@ -1370,11 +1460,17 @@ def _runtime_comparison(
         baseline_seconds = float(baseline_seconds)
         if not math.isfinite(candidate_seconds) or not math.isfinite(baseline_seconds):
             continue
-        observations.append((campaign, seed, candidate_seconds - baseline_seconds))
+        observations.append((campaign, seed, "all-folds", candidate_seconds - baseline_seconds))
         if baseline_seconds > 0.0:
             ratios.append(candidate_seconds / baseline_seconds)
-    observed_pairs = {(campaign, seed) for campaign, seed, _ in observations}
-    missing_pairs = _REQUIRED_PROXY_PAIRS - observed_pairs - set(provenance_mismatches)
+    required_executions = {
+        (campaign, seed)
+        for campaign in IOHUNTER_COMPACT_CAMPAIGNS
+        for seed in IOHUNTER_COMPACT_SEEDS
+    }
+    observed_pairs = {(campaign, seed) for campaign, seed, _fold_id, _ in observations}
+    mismatched_executions = {(campaign, seed) for campaign, seed, _fold_id in provenance_mismatches}
+    missing_pairs = required_executions - observed_pairs - mismatched_executions
     summary = _campaign_level_summary(
         observations,
         bootstrap_seed=bootstrap_seed,
@@ -1396,7 +1492,7 @@ def _runtime_comparison(
         "candidate_method_id": "tsgs_mhcr_compact",
         "baseline_method_id": "frozen_system_evidence_prior",
         "pair_count": len(observations),
-        "required_pair_count": len(_REQUIRED_PROXY_PAIRS),
+        "required_pair_count": len(required_executions),
         "missing_pair_count": len(missing_pairs),
         "provenance_mismatch_count": len(provenance_mismatches),
         "mean_candidate_minus_baseline_seconds": summary.pop("mean"),
@@ -1418,7 +1514,12 @@ def build_compact_claim_decisions(
     bootstrap_resamples: int = 2_000,
 ) -> dict[str, Any]:
     successful = {
-        (str(row["campaign"]), int(row["seed"]), str(row["method_id"])): row
+        (
+            str(row["campaign"]),
+            int(row["seed"]),
+            str(row["fold_id"]),
+            str(row["method_id"]),
+        ): row
         for row in rows
         if row.get("status") == "success"
     }
@@ -1426,6 +1527,13 @@ def build_compact_claim_decisions(
     system_pairs, system_mismatches = _paired_method_rows(
         successful, "frozen_system_evidence_prior"
     )
+    system_score_pairs, system_score_mismatches = _paired_method_rows(
+        successful, "frozen_system_account_score_prior"
+    )
+    ablation_pairs = {
+        method_id: _paired_method_rows(successful, method_id)
+        for method_id in ("no_tsgs", "no_mhcr", "no_relation_specific")
+    }
     paired = _proxy_comparison_rows(
         edgebank_pairs,
         edgebank_mismatches,
@@ -1446,6 +1554,30 @@ def build_compact_claim_decisions(
     )
     for comparison in system_paired:
         comparison["adapter_scope"] = "post_evidence_projection_static_graph_only"
+    system_score_paired = _proxy_comparison_rows(
+        system_score_pairs,
+        system_score_mismatches,
+        baseline_method_id="frozen_system_account_score_prior",
+        mean_field="mean_candidate_minus_baseline",
+        supported_decision="supported_candidate_over_frozen_system_account_score_only",
+        bootstrap_seed=bootstrap_seed,
+        bootstrap_resamples=bootstrap_resamples,
+    )
+    for comparison in system_score_paired:
+        comparison["adapter_scope"] = "post_evidence_projection_static_account_ranking_only"
+        comparison["equivalence_scope"] = "external_account_ranking_account_scores_only"
+    paired_ablations = {
+        method_id: _proxy_comparison_rows(
+            pairs,
+            mismatches,
+            baseline_method_id=method_id,
+            mean_field="mean_candidate_minus_ablation",
+            supported_decision="supported_candidate_over_ablation_proxy_only",
+            bootstrap_seed=bootstrap_seed,
+            bootstrap_resamples=bootstrap_resamples,
+        )
+        for method_id, (pairs, mismatches) in ablation_pairs.items()
+    }
     fixed = (
         ("harmful_cib_detection", "IOHunter lacks harmful-CIB Gold labels and Stage 2 Detection was not executed"),
         ("true_coordination_edge_community_recovery", "IOHunter lacks true coordination-edge and community labels"),
@@ -1464,15 +1596,13 @@ def build_compact_claim_decisions(
             "equal_compute_budget",
             "the research candidate caps selected edges while the frozen production graph core consumes the full projected graph",
         ),
-        (
-            "pure_cross_seed_stability",
-            "model seed and official evaluation fold are coupled rather than fully crossed",
-        ),
     )
     return {
         "schema_version": IOHUNTER_COMPACT_CLAIM_SCHEMA_VERSION,
         "paired_external_account_proxy": paired,
         "paired_frozen_system_proxy": system_paired,
+        "paired_frozen_system_account_score_proxy": system_score_paired,
+        "paired_ablations": paired_ablations,
         "paired_frozen_system_runtime": _runtime_comparison(
             system_pairs,
             system_mismatches,
@@ -1490,7 +1620,8 @@ def build_compact_claim_decisions(
 def _write_aggregate_csv(path: Path, rows: Sequence[Mapping[str, Any]]) -> None:
     fields = (
         "scope", "campaign", "method_id", "metric_name", "count", "mean", "sample_std",
-        "ci_95_low", "ci_95_high", "bootstrap_seed", "bootstrap_resamples",
+        "ci_95_low", "ci_95_high", "inference_unit", "inference_unit_count",
+        "seed_fold_policy", "bootstrap_seed", "bootstrap_resamples",
     )
     output = io.StringIO(newline="")
     writer = csv.DictWriter(output, fieldnames=fields, lineterminator="\n")
@@ -1515,6 +1646,7 @@ def run_compact_iohunter_matrix(
     *,
     campaigns: Sequence[str] | None = None,
     seeds: Sequence[int] | None = None,
+    folds: Sequence[str] | None = None,
     methods: Sequence[str] | None = None,
     memory_budget_bytes: int = 16 * 1024**3,
     method_config_overrides: Mapping[str, Mapping[str, Any]] | None = None,
@@ -1529,7 +1661,12 @@ def run_compact_iohunter_matrix(
     if isinstance(bootstrap_resamples, bool) or not isinstance(bootstrap_resamples, int) or bootstrap_resamples <= 0:
         raise ValueError("bootstrap_resamples must be a positive integer")
     dataset = Path(dataset_root).resolve(strict=False)
-    coordinates = compact_iohunter_matrix_coordinates(campaigns=campaigns, seeds=seeds, methods=methods)
+    coordinates = compact_iohunter_matrix_coordinates(
+        campaigns=campaigns,
+        seeds=seeds,
+        folds=folds,
+        methods=methods,
+    )
     selected_campaigns = tuple(dict.fromkeys(row.campaign for row in coordinates))
     selected_methods = tuple(dict.fromkeys(row.method_id for row in coordinates))
     registry = default_compact_discovery_registry()
@@ -1589,6 +1726,8 @@ def run_compact_iohunter_matrix(
         "output_dir": str(output),
         "campaigns": list(selected_campaigns),
         "seeds": list(dict.fromkeys(row.seed for row in coordinates)),
+        "folds": list(dict.fromkeys(row.fold_id for row in coordinates)),
+        "seed_fold_policy": "fully_crossed_orthogonal_model_seed_and_official_fold",
         "methods": list(selected_methods),
         "method_config_version": IOHUNTER_COMPACT_METHOD_CONFIG_VERSION,
         "method_configs": configs,
@@ -1634,6 +1773,7 @@ def run_compact_iohunter_matrix(
 __all__ = [
     "IOHUNTER_COMPACT_AGGREGATE_SCHEMA_VERSION",
     "IOHUNTER_COMPACT_CAMPAIGNS",
+    "IOHUNTER_COMPACT_FOLDS",
     "IOHUNTER_COMPACT_CLAIM_SCHEMA_VERSION",
     "IOHUNTER_COMPACT_IMPLEMENTATION_VERSION",
     "IOHUNTER_COMPACT_MATRIX_SCHEMA_VERSION",

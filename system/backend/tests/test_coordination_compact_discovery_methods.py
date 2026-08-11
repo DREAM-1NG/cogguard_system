@@ -153,6 +153,44 @@ def test_frozen_system_baseline_executes_canonical_static_graph_core_without_see
     assert "production_dynamic_windows_not_evaluated" in first.prediction.claim_markers
 
 
+def test_frozen_system_account_score_prior_is_exact_for_the_evaluated_ranking_only():
+    package = _load_experiments()
+    registry = package.default_compact_discovery_registry()
+    exact = package.execute_compact_discovery_method(
+        {"frozen_system_evidence_prior": registry.implementation("frozen_system_evidence_prior")},
+        "frozen_system_evidence_prior",
+        _input(package),
+    )
+    score_only = package.execute_compact_discovery_method(
+        {
+            "frozen_system_account_score_prior": registry.implementation(
+                "frozen_system_account_score_prior"
+            )
+        },
+        "frozen_system_account_score_prior",
+        _input(package),
+    )
+
+    assert exact.status == score_only.status == "success"
+    assert exact.prediction is not None and score_only.prediction is not None
+    assert np.array_equal(exact.prediction.account_scores, score_only.prediction.account_scores)
+    assert np.array_equal(exact.prediction.candidate_endpoints, score_only.prediction.candidate_endpoints)
+    assert np.array_equal(exact.prediction.edge_scores, score_only.prediction.edge_scores)
+    assert score_only.prediction.diagnostics["equivalence_scope"] == (
+        "external_account_ranking_account_scores_only"
+    )
+    assert np.array_equal(
+        score_only.prediction.cluster_assignments,
+        np.arange(score_only.prediction.account_count, dtype=np.int32),
+    )
+    assert all(
+        cluster.size == 1
+        for cluster in score_only.prediction.discovered_cluster_batch.candidate_clusters
+    )
+    assert "singleton_placeholder_partition" in score_only.prediction.claim_markers
+    assert "community_output_not_production_equivalent" in score_only.prediction.claim_markers
+
+
 def test_frozen_system_baseline_blocks_instead_of_truncating_over_runtime_budget(monkeypatch):
     package = _load_experiments()
     compact = importlib.import_module("research.coordination_experiments.compact_discovery_methods")

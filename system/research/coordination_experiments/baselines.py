@@ -30,6 +30,7 @@ _CAPABILITY_ATTRIBUTES = MappingProxyType(
         "campaign_holdout": "supports_campaign_holdout",
         "observed_time_holdout": "supports_time_holdout",
         "social_bot_classification": "supports_social_bot_classification",
+        "binary_coordination_detection": "supports_binary_coordination_detection",
         "harmful_cib_detection": "supports_harmful_cib_detection",
         "campaign_io_evaluation": "supports_campaign_io_evaluation",
     }
@@ -155,18 +156,31 @@ class HeuristicDetectionImplementation:
         predictions: list[DetectionPrediction] = []
         for case in test_input.test_cases:
             features = dict(zip(case.feature_names, case.feature_values, strict=True))
-            required = (
-                "tsgs_density",
-                "mhcr_coherence",
-                "temporal_sync_score",
-                "unsupervised_ranking",
-            )
-            missing = [name for name in required if name not in features]
+            missing = [
+                name
+                for name in ("tsgs_density", "mhcr_coherence")
+                if name not in features
+            ]
+            if "temporal_sync_score" not in features and "temporal_sync_delta_seconds" not in features:
+                missing.append("temporal_sync_score")
+            if "unsupervised_ranking" not in features and "unsupervised_coordination_ranking" not in features:
+                missing.append("unsupervised_ranking")
             if missing:
                 raise ValueError(f"heuristic baseline input is missing features: {missing}")
+            temporal_sync_score = features.get("temporal_sync_score")
+            if temporal_sync_score is None:
+                delta = max(0.0, float(features["temporal_sync_delta_seconds"]))
+                temporal_sync_score = 1.0 / (1.0 + delta / 3600.0)
+            unsupervised_ranking = features.get(
+                "unsupervised_ranking",
+                features.get("unsupervised_coordination_ranking"),
+            )
             verdict = baseline.predict(
                 cluster_id=case.cluster_id,
-                **{name: features[name] for name in required},
+                tsgs_density=features["tsgs_density"],
+                mhcr_coherence=features["mhcr_coherence"],
+                temporal_sync_score=temporal_sync_score,
+                unsupervised_ranking=unsupervised_ranking,
             )
             predictions.append(
                 DetectionPrediction(
@@ -363,23 +377,108 @@ def default_baseline_registry() -> BaselineRegistry:
         BaselineSpec(
             "coordination_only_logistic", "coordination-only-logistic-v1", "detection", "learned_comparison",
             "coordination-only-logistic-implementation-v1",
-            ("harmful_cib_detection", "external_label_evaluation"),
+            ("binary_coordination_detection", "external_label_evaluation"),
         ),
         BaselineSpec(
             "detection_features_only_classifier", "detection-features-only-logistic-v1", "detection",
             "learned_comparison", "detection-features-only-implementation-v1",
-            ("harmful_cib_detection", "external_label_evaluation"),
+            ("binary_coordination_detection", "external_label_evaluation"),
         ),
         BaselineSpec(
             "learned_fused_detector", "learned-coordination-logistic-v1", "detection", "primary_learned",
             "learned-fused-implementation-v1",
-            ("harmful_cib_detection", "external_label_evaluation"), selection_eligible=True,
+            ("binary_coordination_detection", "external_label_evaluation"), selection_eligible=True,
         ),
         BaselineSpec(
             HEURISTIC_BASELINE_ID, HEURISTIC_BASELINE_ID, "detection", "heuristic_baseline",
             "heuristic-baseline-implementation-v1",
-            ("harmful_cib_detection", "external_label_evaluation"),
+            ("binary_coordination_detection", "external_label_evaluation"),
             warning=HEURISTIC_BASELINE_WARNING, claimable=False,
+        ),
+        BaselineSpec(
+            "len_graph_stat_logistic", "len-graph-stat-logistic-v1", "detection",
+            "learned_comparison", "len-graph-stat-logistic-implementation-v1",
+            ("binary_coordination_detection", "external_label_evaluation"),
+        ),
+        BaselineSpec(
+            "vargas_coordination_activity_classifier",
+            "vargas-coordination-activity-logistic-v1",
+            "detection",
+            "learned_comparison",
+            "vargas-coordination-activity-implementation-v1",
+            ("binary_coordination_detection", "external_label_evaluation"),
+        ),
+        BaselineSpec(
+            "truthy_feature_logistic", "truthy-classic-feature-logistic-v1", "detection",
+            "learned_comparison", "truthy-feature-logistic-implementation-v1",
+            ("binary_coordination_detection", "external_label_evaluation"),
+        ),
+        BaselineSpec(
+            "gcn_graph_classifier", "gcn-graph-classifier-local-compact-v1", "detection",
+            "learned_comparison", "gcn-graph-classifier-local-compact-implementation-v1",
+            ("binary_coordination_detection", "external_label_evaluation"), ("torch",),
+            warning="Research-only compact LEN graph adapter; not an official GCN reproduction.",
+            claimable=False,
+        ),
+        BaselineSpec(
+            "graphsage_graph_classifier", "graphsage-graph-classifier-local-compact-v1",
+            "detection", "learned_comparison",
+            "graphsage-graph-classifier-local-compact-implementation-v1",
+            ("binary_coordination_detection", "external_label_evaluation"), ("torch",),
+            warning="Research-only compact LEN graph adapter; not an official GraphSAGE reproduction.",
+            claimable=False,
+        ),
+        BaselineSpec(
+            "gin_graph_classifier", "gin-graph-classifier-local-compact-v1", "detection",
+            "learned_comparison", "gin-graph-classifier-local-compact-implementation-v1",
+            ("binary_coordination_detection", "external_label_evaluation"), ("torch",),
+            warning="Research-only compact LEN graph adapter; not an official GIN reproduction.",
+            claimable=False,
+        ),
+        BaselineSpec(
+            "diffpool_graph_classifier", "diffpool-graph-classifier-local-compact-v1",
+            "detection", "learned_comparison",
+            "diffpool-graph-classifier-local-compact-implementation-v1",
+            ("binary_coordination_detection", "external_label_evaluation"), ("torch",),
+            warning="Research-only compact LEN graph adapter; not an official DiffPool reproduction.",
+            claimable=False,
+        ),
+        BaselineSpec(
+            "inductive_io_graph_learning", "inductive-io-graph-learning-adapter-missing-v1",
+            "detection", "learned_comparison",
+            "inductive-io-graph-learning-unavailable-implementation-v1",
+            ("external_label_evaluation",),
+            warning="Registered for public comparison coverage; local adapter is not implemented.",
+            claimable=False,
+        ),
+        BaselineSpec(
+            "iohunter_account_graph_learning", "iohunter-account-graph-learning-adapter-missing-v1",
+            "detection", "learned_comparison",
+            "iohunter-account-graph-learning-unavailable-implementation-v1",
+            ("external_label_evaluation",),
+            warning="Registered for public comparison coverage; local adapter is not implemented.",
+            claimable=False,
+        ),
+        BaselineSpec(
+            "tgat", "tgat-detection-adapter-missing-v1", "detection",
+            "learned_comparison", "tgat-detection-unavailable-implementation-v1",
+            ("external_label_evaluation",),
+            warning="Registered for public comparison coverage; timestamped Detection adapter is not implemented.",
+            claimable=False,
+        ),
+        BaselineSpec(
+            "tgn", "tgn-detection-adapter-missing-v1", "detection",
+            "learned_comparison", "tgn-detection-unavailable-implementation-v1",
+            ("external_label_evaluation",),
+            warning="Registered for public comparison coverage; timestamped Detection adapter is not implemented.",
+            claimable=False,
+        ),
+        BaselineSpec(
+            "dygformer", "dygformer-detection-adapter-missing-v1", "detection",
+            "learned_comparison", "dygformer-detection-unavailable-implementation-v1",
+            ("external_label_evaluation",),
+            warning="Registered for public comparison coverage; timestamped Detection adapter is not implemented.",
+            claimable=False,
         ),
         BaselineSpec(
             "no_tsgs", "tsgs-mhcr-compact-no-tsgs-v1", "discovery", "ablation",
@@ -410,12 +509,12 @@ def default_baseline_registry() -> BaselineRegistry:
         BaselineSpec(
             "coordination_only", "coordination-only-logistic-v1", "detection", "learned_comparison",
             "coordination-only-ablation-implementation-v1",
-            ("harmful_cib_detection", "external_label_evaluation"), ablation_id="coordination_only",
+            ("binary_coordination_detection", "external_label_evaluation"), ablation_id="coordination_only",
         ),
         BaselineSpec(
             "detection_features_only", "detection-features-only-logistic-v1", "detection", "learned_comparison",
             "detection-features-only-ablation-implementation-v1",
-            ("harmful_cib_detection", "external_label_evaluation"), ablation_id="detection_features_only",
+            ("binary_coordination_detection", "external_label_evaluation"), ablation_id="detection_features_only",
         ),
     ]
     try:
@@ -438,6 +537,10 @@ def default_baseline_registry() -> BaselineRegistry:
 
     compact_registry = default_compact_discovery_registry()
     from .detection_methods import LearnedDetectionImplementation as ConcreteLearnedDetection
+    from .graph_neural_detection import (
+        GRAPH_NEURAL_DETECTION_METHODS,
+        GraphNeuralDetectionImplementation,
+    )
 
     entries = []
     for spec in specs:
@@ -445,10 +548,20 @@ def default_baseline_registry() -> BaselineRegistry:
             implementation = compact_registry.implementation(spec.method_id)
         elif spec.method_id == HEURISTIC_BASELINE_ID:
             implementation = HeuristicDetectionImplementation()
+        elif spec.method_id in GRAPH_NEURAL_DETECTION_METHODS:
+            implementation = GraphNeuralDetectionImplementation(
+                method_id=spec.method_id,
+                implementation_id=spec.implementation_id,
+            )
         elif spec.method_id in {
             "coordination_only_logistic",
             "detection_features_only_classifier",
             "learned_fused_detector",
+            "coordination_only",
+            "detection_features_only",
+            "len_graph_stat_logistic",
+            "vargas_coordination_activity_classifier",
+            "truthy_feature_logistic",
         }:
             implementation = ConcreteLearnedDetection(
                 method_id=spec.method_id,

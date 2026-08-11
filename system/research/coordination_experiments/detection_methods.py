@@ -15,10 +15,30 @@ from .runner import (
 )
 
 
+_LEN_GRAPH_FEATURES = (
+    "node_count",
+    "edge_count",
+    "density",
+    "weighted_density",
+    "reciprocity",
+    "mean_interaction_count",
+    "max_interaction_count",
+    "timestamp_span_seconds",
+    "mean_kcore",
+    "mean_node_attr",
+    "url_edge_ratio",
+    "hashtag_edge_ratio",
+)
+
 _METHOD_PROJECTIONS = {
     "coordination_only_logistic": "coordination",
+    "coordination_only": "coordination",
     "detection_features_only_classifier": "detection",
+    "detection_features_only": "detection",
     "learned_fused_detector": "fused",
+    "len_graph_stat_logistic": _LEN_GRAPH_FEATURES,
+    "vargas_coordination_activity_classifier": "coordination",
+    "truthy_feature_logistic": "detection",
 }
 
 
@@ -42,8 +62,13 @@ def _shared_schema(partitions: DetectionPartitions) -> DetectionFeatureSchema:
     return schema
 
 
-def _projected_names(source_schema: DetectionFeatureSchema, projection: str) -> tuple[str, ...]:
+def _projected_names(source_schema: DetectionFeatureSchema, projection: str | tuple[str, ...]) -> tuple[str, ...]:
     source_names = source_schema.names
+    if isinstance(projection, tuple):
+        missing = tuple(name for name in projection if name not in source_names)
+        if missing:
+            raise ValueError(f"projected feature group is missing source features: {missing}")
+        return projection
     coordination_names = tuple(name for name in STAGE1_FEATURE_NAMES if name in source_names)
     detection_names = tuple(name for name in source_names if name not in STAGE1_FEATURE_NAMES)
     if projection == "coordination":
@@ -61,9 +86,10 @@ def _projected_names(source_schema: DetectionFeatureSchema, projection: str) -> 
     raise ValueError(f"unknown learned detection projection: {projection}")
 
 
-def _projected_schema(source_schema: DetectionFeatureSchema, projection: str) -> DetectionFeatureSchema:
+def _projected_schema(source_schema: DetectionFeatureSchema, projection: str | tuple[str, ...]) -> DetectionFeatureSchema:
+    projection_name = "custom" if isinstance(projection, tuple) else projection
     return DetectionFeatureSchema(
-        version=f"{source_schema.version}/stage2-{projection}",
+        version=f"{source_schema.version}/stage2-{projection_name}",
         names=_projected_names(source_schema, projection),
     )
 

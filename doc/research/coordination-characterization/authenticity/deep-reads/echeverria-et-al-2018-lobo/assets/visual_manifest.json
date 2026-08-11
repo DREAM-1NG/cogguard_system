@@ -1,0 +1,868 @@
+{
+  "schema_version": 2,
+  "generated_at": "2026-08-11T09:55:17.960086+00:00",
+  "source_pdf": "G:\\CISCN\\CogGuard\\.worktrees\\refactor-system\\doc\\research\\coordination-characterization\\authenticity\\sources\\echeverria-et-al-2018-lobo.pdf",
+  "source_sha256": "710acce743fa34d0ad6760a623acaa523a200e37c22607a24746ce41de363e17",
+  "page_count": 11,
+  "render_dpi": 180,
+  "selected_pages": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11
+  ],
+  "analysis_mode": "visual",
+  "text_layer_available": true,
+  "text_layer_characters": 76502,
+  "automatic_crops_are_unverified": false,
+  "pages": [
+    {
+      "page": 1,
+      "width_pixels": 1530,
+      "height_pixels": 1980,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": "pages\\page-001.png",
+      "text": "text\\pages\\page-001.txt",
+      "text_characters": 8971,
+      "caption_count": 0
+    },
+    {
+      "page": 2,
+      "width_pixels": 1530,
+      "height_pixels": 1980,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": "pages\\page-002.png",
+      "text": "text\\pages\\page-002.txt",
+      "text_characters": 7195,
+      "caption_count": 0
+    },
+    {
+      "page": 3,
+      "width_pixels": 1530,
+      "height_pixels": 1980,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": "pages\\page-003.png",
+      "text": "text\\pages\\page-003.txt",
+      "text_characters": 7401,
+      "caption_count": 1
+    },
+    {
+      "page": 4,
+      "width_pixels": 1530,
+      "height_pixels": 1980,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": "pages\\page-004.png",
+      "text": "text\\pages\\page-004.txt",
+      "text_characters": 7086,
+      "caption_count": 2
+    },
+    {
+      "page": 5,
+      "width_pixels": 1530,
+      "height_pixels": 1980,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": "pages\\page-005.png",
+      "text": "text\\pages\\page-005.txt",
+      "text_characters": 7619,
+      "caption_count": 0
+    },
+    {
+      "page": 6,
+      "width_pixels": 1530,
+      "height_pixels": 1980,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": "pages\\page-006.png",
+      "text": "text\\pages\\page-006.txt",
+      "text_characters": 7349,
+      "caption_count": 3
+    },
+    {
+      "page": 7,
+      "width_pixels": 1530,
+      "height_pixels": 1980,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": "pages\\page-007.png",
+      "text": "text\\pages\\page-007.txt",
+      "text_characters": 7562,
+      "caption_count": 1
+    },
+    {
+      "page": 8,
+      "width_pixels": 1530,
+      "height_pixels": 1980,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": "pages\\page-008.png",
+      "text": "text\\pages\\page-008.txt",
+      "text_characters": 7086,
+      "caption_count": 3
+    },
+    {
+      "page": 9,
+      "width_pixels": 1530,
+      "height_pixels": 1980,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": "pages\\page-009.png",
+      "text": "text\\pages\\page-009.txt",
+      "text_characters": 4894,
+      "caption_count": 2
+    },
+    {
+      "page": 10,
+      "width_pixels": 1530,
+      "height_pixels": 1980,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": "pages\\page-010.png",
+      "text": "text\\pages\\page-010.txt",
+      "text_characters": 7990,
+      "caption_count": 0
+    },
+    {
+      "page": 11,
+      "width_pixels": 1530,
+      "height_pixels": 1980,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": "pages\\page-011.png",
+      "text": "text\\pages\\page-011.txt",
+      "text_characters": 3349,
+      "caption_count": 0
+    }
+  ],
+  "visuals": [
+    {
+      "id": "figure-1-p003",
+      "label": "Figure 1",
+      "kind": "figure",
+      "number": "1",
+      "page": 3,
+      "caption": "Data collection strategy.",
+      "raw_text": "Figure 1: Data collection strategy.",
+      "caption_bbox_points": [
+        243.792,
+        167.079,
+        368.209,
+        176.127
+      ],
+      "caption_bbox_pixels": [
+        609,
+        418,
+        921,
+        440
+      ],
+      "suggested_crop_bbox_points": [
+        41.024,
+        41.024,
+        571.306,
+        186.127
+      ],
+      "suggested_crop_bbox_pixels": [
+        103,
+        103,
+        1428,
+        465
+      ],
+      "candidate_crop": "crops\\figure-1-p003.png",
+      "selected_asset": "crops\\figure-1-p003.png",
+      "candidate_crop_size_pixels": [
+        1327,
+        364
+      ],
+      "source_page_image": "pages\\page-003.png",
+      "source_page_text": "text\\pages\\page-003.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": false,
+      "visual_verification": "complete",
+      "review_notes": "Directly inspected at original resolution. Complete left-to-right pipeline, arrows, feature branches, C30K/C500 outputs, and caption are visible.",
+      "key": true,
+      "claim_ids": ["C6", "C7"],
+      "text_asset": "text\\visuals\\figure-1-p003.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "table-1-p004",
+      "label": "Table 1",
+      "kind": "table",
+      "number": "1",
+      "page": 4,
+      "caption": "Different bot datasets, their identiﬁers, botometer metrics, and number of accounts collected for each of them",
+      "raw_text": "Table 1: Different bot datasets, their identiﬁers, botometer metrics, and number of accounts collected for each of them",
+      "caption_bbox_points": [
+        51.024,
+        291.205,
+        298.202,
+        311.212
+      ],
+      "caption_bbox_pixels": [
+        128,
+        728,
+        746,
+        778
+      ],
+      "suggested_crop_bbox_points": [
+        41.024,
+        41.988,
+        308.202,
+        321.212
+      ],
+      "suggested_crop_bbox_pixels": [
+        103,
+        105,
+        771,
+        803
+      ],
+      "candidate_crop": "crops\\table-1-p004.png",
+      "selected_asset": "crops\\table-1-p004.png",
+      "candidate_crop_size_pixels": [
+        669,
+        700
+      ],
+      "source_page_image": "pages\\page-004.png",
+      "source_page_text": "text\\pages\\page-004.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": false,
+      "visual_verification": "complete",
+      "review_notes": "Directly inspected at original resolution. All 20 ID rows, BTS columns, sizes, and caption are legible and complete.",
+      "key": true,
+      "claim_ids": ["C2", "C6"],
+      "text_asset": "text\\visuals\\table-1-p004.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "figure-2-p004",
+      "label": "Figure 2",
+      "kind": "figure",
+      "number": "2",
+      "page": 4,
+      "caption": "Abstract representation of the LOBO test. The classiﬁer gets trained on all bot classes BCi except the target class BCt, and then tested on the target class to assess how well the classiﬁer gener- alizes.",
+      "raw_text": "Figure 2: Abstract representation of the LOBO test. The classiﬁer gets trained on all bot classes BCi except the target class BCt, and then tested on the target class to assess how well the classiﬁer gener- alizes.",
+      "caption_bbox_points": [
+        313.795,
+        275.269,
+        560.981,
+        317.194
+      ],
+      "caption_bbox_pixels": [
+        784,
+        688,
+        1402,
+        793
+      ],
+      "suggested_crop_bbox_points": [
+        303.795,
+        41.023,
+        570.981,
+        327.194
+      ],
+      "suggested_crop_bbox_pixels": [
+        759,
+        103,
+        1427,
+        818
+      ],
+      "candidate_crop": "crops\\figure-2-p004.png",
+      "selected_asset": "crops\\figure-2-p004.png",
+      "candidate_crop_size_pixels": [
+        669,
+        716
+      ],
+      "source_page_image": "pages\\page-004.png",
+      "source_page_text": "text\\pages\\page-004.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": false,
+      "visual_verification": "complete",
+      "review_notes": "Directly inspected at original resolution. Full and LOBO branches, bot/user color coding, train/test labels, target tests, and caption are complete.",
+      "key": true,
+      "claim_ids": ["C1", "C8"],
+      "text_asset": "text\\visuals\\figure-2-p004.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "table-2-p006",
+      "label": "Table 2",
+      "kind": "table",
+      "number": "2",
+      "page": 6,
+      "caption": "Features employed for classiﬁcation.",
+      "raw_text": "Table 2: Features employed for classiﬁcation.",
+      "caption_bbox_points": [
+        91.873,
+        184.884,
+        257.357,
+        193.932
+      ],
+      "caption_bbox_pixels": [
+        230,
+        462,
+        643,
+        485
+      ],
+      "suggested_crop_bbox_points": [
+        21.42,
+        174.884,
+        590.58,
+        221.799
+      ],
+      "suggested_crop_bbox_pixels": [
+        54,
+        437,
+        1476,
+        554
+      ],
+      "candidate_crop": "crops\\table-2-p006.png",
+      "selected_asset": "crops\\table-2-p006-verified.png",
+      "candidate_crop_size_pixels": [
+        1424,
+        118
+      ],
+      "source_page_image": "pages\\page-006.png",
+      "source_page_text": "text\\pages\\page-006.txt",
+      "crop_confidence": "low",
+      "crop_review_required": false,
+      "visual_verification": "complete",
+      "review_notes": "Automatic crop was incomplete. Manually recropped and directly inspected; all user/tweet feature rows, three columns, and caption are complete.",
+      "key": true,
+      "claim_ids": ["C6", "C7"],
+      "text_asset": "text\\visuals\\table-2-p006.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "table-3-p006",
+      "label": "Table 3",
+      "kind": "table",
+      "number": "3",
+      "page": 6,
+      "caption": "Classiﬁer performance on C30K and C500 datasets.",
+      "raw_text": "Table 3: Classiﬁer performance on C30K and C500 datasets.",
+      "caption_bbox_points": [
+        327.58,
+        126.484,
+        547.194,
+        135.532
+      ],
+      "caption_bbox_pixels": [
+        819,
+        316,
+        1368,
+        339
+      ],
+      "suggested_crop_bbox_points": [
+        317.58,
+        116.484,
+        557.194,
+        225.721
+      ],
+      "suggested_crop_bbox_pixels": [
+        794,
+        291,
+        1393,
+        564
+      ],
+      "candidate_crop": "crops\\table-3-p006.png",
+      "selected_asset": "crops\\table-3-p006-verified.png",
+      "candidate_crop_size_pixels": [
+        600,
+        274
+      ],
+      "source_page_image": "pages\\page-006.png",
+      "source_page_text": "text\\pages\\page-006.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": false,
+      "visual_verification": "complete",
+      "review_notes": "Automatic crop targeted the neighboring table. Manually recropped and directly inspected; C30K/C500 headers, all five algorithms, metrics, and caption are complete.",
+      "key": true,
+      "claim_ids": ["C1"],
+      "text_asset": "text\\visuals\\table-3-p006.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "table-4-p006",
+      "label": "Table 4",
+      "kind": "table",
+      "number": "4",
+      "page": 6,
+      "caption": "Confusion Matrices for different classiﬁers trained on dataset C30K.",
+      "raw_text": "Table 4: Confusion Matrices for different classiﬁers trained on dataset C30K.",
+      "caption_bbox_points": [
+        313.795,
+        222.799,
+        560.977,
+        242.806
+      ],
+      "caption_bbox_pixels": [
+        784,
+        557,
+        1402,
+        607
+      ],
+      "suggested_crop_bbox_points": [
+        303.795,
+        212.799,
+        570.98,
+        753.383
+      ],
+      "suggested_crop_bbox_pixels": [
+        759,
+        532,
+        1427,
+        1883
+      ],
+      "candidate_crop": "crops\\table-4-p006.png",
+      "selected_asset": "crops\\table-4-p006-verified.png",
+      "candidate_crop_size_pixels": [
+        669,
+        1353
+      ],
+      "source_page_image": "pages\\page-006.png",
+      "source_page_text": "text\\pages\\page-006.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": false,
+      "visual_verification": "complete",
+      "review_notes": "Automatic crop included excess page content and clipped columns. Manually recropped and directly inspected; TN/FP/FN/TP headers, all rows, and caption are complete.",
+      "key": true,
+      "claim_ids": ["C1"],
+      "text_asset": "text\\visuals\\table-4-p006.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "table-5-p007",
+      "label": "Table 5",
+      "kind": "table",
+      "number": "5",
+      "page": 7,
+      "caption": "LOBO test on dataset C30K",
+      "raw_text": "Table 5: LOBO test on dataset C30K",
+      "caption_bbox_points": [
+        370.036,
+        279.454,
+        504.737,
+        288.502
+      ],
+      "caption_bbox_pixels": [
+        925,
+        699,
+        1262,
+        721
+      ],
+      "suggested_crop_bbox_points": [
+        340.372,
+        42.082,
+        532.402,
+        298.502
+      ],
+      "suggested_crop_bbox_pixels": [
+        851,
+        105,
+        1331,
+        746
+      ],
+      "candidate_crop": "crops\\table-5-p007.png",
+      "selected_asset": "crops\\table-5-p007.png",
+      "candidate_crop_size_pixels": [
+        482,
+        642
+      ],
+      "source_page_image": "pages\\page-007.png",
+      "source_page_text": "text\\pages\\page-007.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": false,
+      "visual_verification": "complete",
+      "review_notes": "Directly inspected at original resolution. All target rows and printed headers are complete; report preserves the source-level header/value inconsistency.",
+      "key": true,
+      "claim_ids": ["C1", "C6"],
+      "text_asset": "text\\visuals\\table-5-p007.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "table-6-p008",
+      "label": "Table 6",
+      "kind": "table",
+      "number": "6",
+      "page": 8,
+      "caption": "Lobo test on dataset C500",
+      "raw_text": "Table 6: Lobo test on dataset C500",
+      "caption_bbox_points": [
+        110.998,
+        213.893,
+        238.231,
+        222.941
+      ],
+      "caption_bbox_pixels": [
+        277,
+        535,
+        596,
+        557
+      ],
+      "suggested_crop_bbox_points": [
+        59.658,
+        41.914,
+        291.269,
+        232.941
+      ],
+      "suggested_crop_bbox_pixels": [
+        149,
+        105,
+        728,
+        582
+      ],
+      "candidate_crop": "crops\\table-6-p008.png",
+      "selected_asset": "crops\\table-6-p008.png",
+      "candidate_crop_size_pixels": [
+        580,
+        479
+      ],
+      "source_page_image": "pages\\page-008.png",
+      "source_page_text": "text\\pages\\page-008.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": false,
+      "visual_verification": "complete",
+      "review_notes": "Directly inspected at original resolution. All 13 target rows, four metric columns, average row, and caption are complete; undefined U is preserved.",
+      "key": true,
+      "claim_ids": ["C1", "C2", "C5", "C6"],
+      "text_asset": "text\\visuals\\table-6-p008.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "figure-3-p008",
+      "label": "Figure 3",
+      "kind": "figure",
+      "number": "3",
+      "page": 8,
+      "caption": "Mean (Blue) and error range (blue shade 95% conﬁdence) for the classiﬁer accuracy on target classes according to the number of samples seen from the target class",
+      "raw_text": "Figure 3: Mean (Blue) and error range (blue shade 95% conﬁdence) for the classiﬁer accuracy on target classes according to the number of samples seen from the target class",
+      "caption_bbox_points": [
+        313.795,
+        206.089,
+        560.981,
+        237.055
+      ],
+      "caption_bbox_pixels": [
+        784,
+        515,
+        1402,
+        593
+      ],
+      "suggested_crop_bbox_points": [
+        303.795,
+        41.024,
+        570.981,
+        247.055
+      ],
+      "suggested_crop_bbox_pixels": [
+        759,
+        103,
+        1427,
+        618
+      ],
+      "candidate_crop": "crops\\figure-3-p008.png",
+      "selected_asset": "crops\\figure-3-p008.png",
+      "candidate_crop_size_pixels": [
+        669,
+        516
+      ],
+      "source_page_image": "pages\\page-008.png",
+      "source_page_text": "text\\pages\\page-008.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": false,
+      "visual_verification": "complete",
+      "review_notes": "Directly inspected at original resolution. Samples and accuracy axes, mean line, shaded 95% range, legend, endpoints, and caption are complete.",
+      "key": true,
+      "claim_ids": ["C3"],
+      "text_asset": "text\\visuals\\figure-3-p008.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "figure-4-p008",
+      "label": "Figure 4",
+      "kind": "figure",
+      "number": "4",
+      "page": 8,
+      "caption": "Error range for mean (blue shade) and classiﬁer accuracy against number of samples seen (for speciﬁc classes)",
+      "raw_text": "Figure 4: Error range for mean (blue shade) and classiﬁer accuracy against number of samples seen (for speciﬁc classes)",
+      "caption_bbox_points": [
+        313.795,
+        398.807,
+        560.98,
+        418.814
+      ],
+      "caption_bbox_pixels": [
+        784,
+        997,
+        1402,
+        1047
+      ],
+      "suggested_crop_bbox_points": [
+        303.795,
+        238.055,
+        570.98,
+        428.814
+      ],
+      "suggested_crop_bbox_pixels": [
+        759,
+        595,
+        1427,
+        1072
+      ],
+      "candidate_crop": "crops\\figure-4-p008.png",
+      "selected_asset": "crops\\figure-4-p008.png",
+      "candidate_crop_size_pixels": [
+        669,
+        478
+      ],
+      "source_page_image": "pages\\page-008.png",
+      "source_page_text": "text\\pages\\page-008.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": false,
+      "visual_verification": "complete",
+      "review_notes": "Directly inspected at original resolution. Both axes, mean shade, A/C/F/H/V color legend, all curves, and caption are complete.",
+      "key": true,
+      "claim_ids": ["C3"],
+      "text_asset": "text\\visuals\\figure-4-p008.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "figure-5-p009",
+      "label": "Figure 5",
+      "kind": "figure",
+      "number": "5",
+      "page": 9,
+      "caption": "T-SNE plot of all the bot classes against real users.",
+      "raw_text": "Figure 5: T-SNE plot of all the bot classes against real users.",
+      "caption_bbox_points": [
+        196.177,
+        253.904,
+        415.826,
+        262.952
+      ],
+      "caption_bbox_pixels": [
+        490,
+        635,
+        1040,
+        657
+      ],
+      "suggested_crop_bbox_points": [
+        83.311,
+        41.023,
+        557.72,
+        272.952
+      ],
+      "suggested_crop_bbox_pixels": [
+        208,
+        103,
+        1394,
+        682
+      ],
+      "candidate_crop": "crops\\figure-5-p009.png",
+      "selected_asset": "crops\\figure-5-p009.png",
+      "candidate_crop_size_pixels": [
+        1187,
+        581
+      ],
+      "source_page_image": "pages\\page-009.png",
+      "source_page_text": "text\\pages\\page-009.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": false,
+      "visual_verification": "complete",
+      "review_notes": "Directly inspected at original resolution. Both panels, real-user and highlighted-family legends, panel labels, all plotted regions, and caption are complete.",
+      "key": true,
+      "claim_ids": ["C4"],
+      "text_asset": "text\\visuals\\figure-5-p009.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "table-7-p009",
+      "label": "Table 7",
+      "kind": "table",
+      "number": "7",
+      "page": 9,
+      "caption": "Classiﬁer accuracy (%) - trained C500 excluding all but X samples of target class.",
+      "raw_text": "Table 7: Classiﬁer accuracy (%) - trained C500 excluding all but X samples of target class.",
+      "caption_bbox_points": [
+        51.024,
+        437.946,
+        298.206,
+        457.953
+      ],
+      "caption_bbox_pixels": [
+        128,
+        1095,
+        746,
+        1145
+      ],
+      "suggested_crop_bbox_points": [
+        41.024,
+        274.895,
+        308.206,
+        467.953
+      ],
+      "suggested_crop_bbox_pixels": [
+        103,
+        687,
+        771,
+        1170
+      ],
+      "candidate_crop": "crops\\table-7-p009.png",
+      "selected_asset": "crops\\table-7-p009.png",
+      "candidate_crop_size_pixels": [
+        669,
+        483
+      ],
+      "source_page_image": "pages\\page-009.png",
+      "source_page_text": "text\\pages\\page-009.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": false,
+      "visual_verification": "complete",
+      "review_notes": "Directly inspected at original resolution. All 13 target rows, nine sample-count columns, values, and caption are legible and complete; undefined U is preserved.",
+      "key": true,
+      "claim_ids": ["C3", "C6"],
+      "text_asset": "text\\visuals\\table-7-p009.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    }
+  ]
+}
