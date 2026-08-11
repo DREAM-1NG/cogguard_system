@@ -42,11 +42,26 @@
       <div class="case-blocker-block">
         <span class="eyebrow">阻塞项</span>
         <template v-if="caseDetail.active_blockers.length">
-          <a-tag v-for="item in caseDetail.active_blockers" :key="item.blocker_id" color="orange">
-            {{ item.code }}
-          </a-tag>
+          <div v-for="item in caseDetail.active_blockers" :key="item.blocker_id" class="blocker-row">
+            <a-tag color="orange">{{ item.code }}</a-tag>
+            <span>{{ item.message }}</span>
+            <a-button
+              v-if="item.code === 'platform_gap'"
+              size="small"
+              type="primary"
+              :loading="savingBlockerId === item.blocker_id"
+              @click="acknowledgeCaseBlocker(item.blocker_id)"
+            >
+              确认平台缺口继续
+            </a-button>
+          </div>
         </template>
         <a-tag v-else color="green">无活动阻塞</a-tag>
+        <div v-if="caseDetail.blocker_acknowledgements?.length" class="blocker-acknowledgements">
+          <span v-for="item in caseDetail.blocker_acknowledgements" :key="item.acknowledgement_id">
+            {{ item.actor_id }}: {{ item.reason }}
+          </span>
+        </div>
       </div>
     </section>
 
@@ -309,6 +324,7 @@ import { computed, onMounted, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import PageHeader from '@/components/PageHeader.vue'
 import {
+  acknowledgeCaseBlocker as acknowledgeCaseBlockerRequest,
   completeCaseAction as completeCaseActionRequest,
   getCase,
   listCases,
@@ -331,6 +347,7 @@ const closeoutSummary = ref('')
 const savingActionId = ref('')
 const savingFeedback = ref(false)
 const savingCloseout = ref(false)
+const savingBlockerId = ref('')
 
 const claimRows = computed<CaseClaim[]>(() => {
   if (!caseDetail.value) return []
@@ -466,6 +483,20 @@ async function waiveCaseAction(actionId: string) {
   }
 }
 
+async function acknowledgeCaseBlocker(blockerId: string) {
+  if (!caseDetail.value) return
+  savingBlockerId.value = blockerId
+  try {
+    const response = await acknowledgeCaseBlockerRequest(caseDetail.value.case_id, blockerId, {
+      reason: 'Analyst acknowledges missing same-event platform evidence for prototype review.',
+    })
+    caseDetail.value = response.data
+    message.success('平台缺口已确认，原始证据缺口仍保留')
+  } finally {
+    savingBlockerId.value = ''
+  }
+}
+
 async function submitCaseFeedback() {
   if (!caseDetail.value || !feedbackText.value.trim()) {
     message.warning('请先填写反馈内容')
@@ -570,6 +601,22 @@ onMounted(() => {
 .case-claim-block strong {
   color: #111827;
   line-height: 1.5;
+}
+
+.blocker-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+  color: #475569;
+  font-size: 12px;
+}
+
+.blocker-acknowledgements {
+  display: grid;
+  gap: 4px;
+  color: #64748b;
+  font-size: 12px;
 }
 
 .case-claim-block small,

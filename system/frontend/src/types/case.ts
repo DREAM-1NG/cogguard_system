@@ -119,6 +119,16 @@ export interface CaseBlocker {
   missing_platforms?: string[]
 }
 
+export interface CaseBlockerAcknowledgement {
+  acknowledgement_id: string
+  blocker_id: string
+  actor_id: string
+  reason: string
+  missing_platforms?: string[]
+  status: string
+  created_at: string
+}
+
 export interface CaseDetail {
   case_id: string
   event_id: string
@@ -143,6 +153,7 @@ export interface CaseDetail {
   closeout_review?: CaseCloseoutReview | null
   reports: CaseReportVersion[]
   active_blockers: CaseBlocker[]
+  blocker_acknowledgements?: CaseBlockerAcknowledgement[]
   audit_events?: Array<Record<string, any>>
   workflow_summary: Record<string, string>
 }
@@ -163,6 +174,10 @@ export interface CaseFeedbackRequest {
 
 export interface CaseCloseoutReviewRequest {
   summary: string
+}
+
+export interface CaseBlockerAcknowledgementRequest {
+  reason: string
 }
 
 export interface ApiEnvelope<T> {

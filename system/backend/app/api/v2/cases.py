@@ -7,7 +7,12 @@ from fastapi.responses import HTMLResponse
 
 from app.core.security import get_current_user_or_local_preview
 from app.models.user import User
-from app.schemas.cases import CaseActionDecisionRequest, CaseCloseoutReviewRequest, CaseFeedbackRequest
+from app.schemas.cases import (
+    CaseActionDecisionRequest,
+    CaseBlockerAcknowledgementRequest,
+    CaseCloseoutReviewRequest,
+    CaseFeedbackRequest,
+)
 from app.services.case_workbench_service import CaseOperationConflict, CaseWorkbenchService
 from app.utils.response import success
 
@@ -84,6 +89,27 @@ async def complete_case_action(
                 action_id,
                 actor_id=_actor_id(current_user),
                 note=request.note,
+            )
+        )
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.post("/{case_id}/blockers/{blocker_id}/acknowledge")
+async def acknowledge_case_blocker(
+    case_id: str,
+    blocker_id: str,
+    request: CaseBlockerAcknowledgementRequest,
+    service: CaseWorkbenchService = Depends(get_case_workbench_service),
+    current_user: User | None = Depends(get_current_user_or_local_preview),
+):
+    try:
+        return success(
+            data=await service.acknowledge_blocker(
+                case_id,
+                blocker_id,
+                actor_id=_actor_id(current_user),
+                reason=request.reason,
             )
         )
     except KeyError as exc:

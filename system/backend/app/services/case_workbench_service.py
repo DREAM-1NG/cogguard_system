@@ -116,10 +116,13 @@ class CaseWorkbenchService:
         )
         platforms = _platforms(posts, comments)
         blockers = _blockers(platforms)
+        acknowledgements = list(self.demo_state["blocker_acknowledgements"])
+        acknowledged_blocker_ids = {record["blocker_id"] for record in acknowledgements}
+        active_blockers = [blocker for blocker in blockers if blocker["blocker_id"] not in acknowledged_blocker_ids]
         actions = _action_rows(self.demo_state)
         feedback = list(self.demo_state["feedback"])
         closeout_review = self.demo_state.get("closeout_review")
-        state = _case_state(blockers=blockers, actions=actions, feedback=feedback, closeout_review=closeout_review)
+        state = _case_state(blockers=active_blockers, actions=actions, feedback=feedback, closeout_review=closeout_review)
         report_hash = _hash_payload(
             {
                 "case_id": DEFAULT_CASE_ID,
@@ -131,7 +134,8 @@ class CaseWorkbenchService:
                 "primary_claim_source": PRIMARY_CLAIM["source"],
                 "semantic_artifact_hash": semantic["artifact_sha256"],
                 "semantic_model_status": semantic["model_status"],
-                "blockers": [(blocker["code"], blocker["message"]) for blocker in blockers],
+                "blockers": [(blocker["code"], blocker["message"]) for blocker in active_blockers],
+                "blocker_acknowledgements": acknowledgements,
                 "actions": [(action["action_id"], action["status"]) for action in actions],
                 "feedback_count": len(feedback),
                 "closeout_summary": closeout_review.get("summary") if closeout_review else None,
@@ -222,7 +226,8 @@ class CaseWorkbenchService:
                     "message": "Prototype HTML report is available; production PDF rendering is pending.",
                 }
             ],
-            "active_blockers": blockers,
+            "active_blockers": active_blockers,
+            "blocker_acknowledgements": acknowledgements,
             "audit_events": list(self.demo_state["audit_events"]),
             "workflow_summary": {
                 "closed_loop": "事件 -> 证据 -> Coordination -> Propagation -> Review -> 处置 -> 反馈",
@@ -291,6 +296,41 @@ class CaseWorkbenchService:
         self._append_audit("waive_case_action", actor_id=actor_id, target_id=action_id, payload={"note": note})
         return await self.get_case(case_id)
 
+    async def acknowledge_blocker(
+        self,
+        case_id: str,
+        blocker_id: str,
+        *,
+        actor_id: str,
+        reason: str,
+    ) -> dict[str, Any]:
+        self._assert_case(case_id)
+        posts, comments, _source_mode = await self._load_evidence(DEFAULT_EVENT_ID)
+        blocker = next(
+            (item for item in _blockers(_platforms(posts, comments)) if item["blocker_id"] == blocker_id),
+            None,
+        )
+        if blocker is None:
+            raise KeyError(f"Case blocker not found: {blocker_id}")
+        acknowledgement = {
+            "acknowledgement_id": f"blocker_acknowledgement_{len(self.demo_state['blocker_acknowledgements']) + 1}",
+            "blocker_id": blocker_id,
+            "actor_id": actor_id,
+            "reason": reason,
+            "missing_platforms": list(blocker["missing_platforms"]),
+            "created_at": _now(),
+            "status": "policy_acknowledged",
+            "code": "policy_acknowledged",
+        }
+        self.demo_state["blocker_acknowledgements"].append(acknowledgement)
+        self._append_audit(
+            "acknowledge_case_blocker",
+            actor_id=actor_id,
+            target_id=blocker_id,
+            payload={"acknowledgement_id": acknowledgement["acknowledgement_id"], "reason": reason},
+        )
+        return await self.get_case(case_id)
+
     async def submit_feedback(self, case_id: str, *, actor_id: str, content: str) -> dict[str, Any]:
         self._assert_case(case_id)
         feedback = {
@@ -333,6 +373,13 @@ class CaseWorkbenchService:
             f"<li>{_report_text(blocker['code'])}: {_report_text(blocker['message'])}</li>"
             for blocker in case["active_blockers"]
         ) or "<li>None</li>"
+        acknowledgements = "".join(
+            "<li>"
+            f"{_report_text(record['blocker_id'])}: {_report_text(record['reason'])} "
+            f"(missing: {_report_text(', '.join(record.get('missing_platforms') or []))})"
+            "</li>"
+            for record in case.get("blocker_acknowledgements", [])
+        ) or "<li>None</li>"
         closeout = case.get("closeout_review") or {}
         pending_note = (
             "<p><strong>Production PDF rendering is pending.</strong> This HTML is the MVP PDF fallback.</p>"
@@ -346,7 +393,7 @@ class CaseWorkbenchService:
 <section><dl><dt>Case ID</dt><dd>{_report_text(case['case_id'])}</dd><dt>Event ID</dt><dd>{_report_text(case['event_id'])}</dd><dt>Title</dt><dd>{_report_text(case['title'])}</dd><dt>State</dt><dd>{_report_text(case['state'])}</dd><dt>Snapshot ID</dt><dd><code>{_report_text(case['evidence']['snapshot_id'])}</code></dd><dt>Run ID</dt><dd><code>{_report_text(case['analysis_runs'][0]['run_id'])}</code></dd></dl></section>
 <section><h2>Primary claim</h2><p>{_report_text(primary_claim['excerpt'])}</p><dl><dt>Source</dt><dd>{_report_text(primary_claim['source']['name'])}</dd><dt>Source tier</dt><dd>{_report_text(primary_claim['source']['tier'])}</dd></dl></section>
 <section><h2>Semantic evidence overlay</h2><dl><dt>artifact_sha256</dt><dd><code>{_report_text(semantic['artifact_sha256'])}</code></dd><dt>Model status</dt><dd>{_report_text(semantic['model_status'])}</dd><dt>Score policy</dt><dd>evidence_overlay_only</dd></dl></section>
-<section><h2>Active blockers</h2><ul>{blockers}</ul></section><section><h2>Actions</h2><ul>{actions}</ul></section><section><h2>Feedback</h2><p>Count: {len(case['feedback'])}</p></section><section><h2>Closeout review</h2><p>{_report_text(closeout.get('summary') or 'Not submitted')}</p></section>
+<section><h2>Active blockers</h2><ul>{blockers}</ul></section><section><h2>Policy acknowledgements</h2><ul>{acknowledgements}</ul></section><section><h2>Actions</h2><ul>{actions}</ul></section><section><h2>Feedback</h2><p>Count: {len(case['feedback'])}</p></section><section><h2>Closeout review</h2><p>{_report_text(closeout.get('summary') or 'Not submitted')}</p></section>
 </body></html>"""
 
     def _assert_case(self, case_id: str) -> None:
@@ -444,6 +491,7 @@ def _new_demo_state() -> dict[str, Any]:
         "actions": {},
         "action_history": {template["action_id"]: [] for template in ACTION_TEMPLATES},
         "feedback": [],
+        "blocker_acknowledgements": [],
         "closeout_review": None,
         "audit_events": [],
     }

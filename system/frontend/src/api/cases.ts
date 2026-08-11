@@ -4,6 +4,7 @@ import router from '@/router'
 import type {
   ApiEnvelope,
   CaseActionDecisionRequest,
+  CaseBlockerAcknowledgementRequest,
   CaseCloseoutReviewRequest,
   CaseDetail,
   CaseFeedbackRequest,
@@ -92,6 +93,17 @@ export function submitCaseCloseoutReview(
   body: CaseCloseoutReviewRequest,
 ): Promise<ApiEnvelope<CaseDetail>> {
   return caseRequest.post(`/${encodeURIComponent(caseId)}/closeout`, body)
+}
+
+export function acknowledgeCaseBlocker(
+  caseId: string,
+  blockerId: string,
+  body: CaseBlockerAcknowledgementRequest,
+): Promise<ApiEnvelope<CaseDetail>> {
+  return caseRequest.post(
+    `/${encodeURIComponent(caseId)}/blockers/${encodeURIComponent(blockerId)}/acknowledge`,
+    body,
+  )
 }
 
 export function caseReportUrl(caseId: string, version: number, format: 'html' | 'pdf'): string {

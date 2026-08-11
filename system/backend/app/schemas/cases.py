@@ -9,6 +9,10 @@ class CaseActionDecisionRequest(BaseModel):
     note: str = Field(default="", max_length=1000)
 
 
+class CaseBlockerAcknowledgementRequest(BaseModel):
+    reason: str = Field(min_length=1, max_length=4000)
+
+
 class CaseFeedbackRequest(BaseModel):
     content: str = Field(min_length=1, max_length=4000)
 
@@ -19,7 +23,7 @@ class CaseCloseoutReviewRequest(BaseModel):
 
 __all__ = [
     "CaseActionDecisionRequest",
+    "CaseBlockerAcknowledgementRequest",
     "CaseCloseoutReviewRequest",
     "CaseFeedbackRequest",
 ]
-

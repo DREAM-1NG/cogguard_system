@@ -297,6 +297,105 @@ def test_case_service_falls_back_with_platform_gap_when_evidence_is_missing():
     asyncio.run(scenario())
 
 
+def test_platform_gap_acknowledgement_unblocks_default_fallback_without_fabricating_evidence():
+    async def scenario():
+        service = CaseWorkbenchService(mongo_db={})
+        case_id = "case_trump_visit_2026_05_21"
+        initial = await service.get_case(case_id)
+        blocker = initial["active_blockers"][0]
+
+        acknowledged = await service.acknowledge_blocker(
+            case_id,
+            blocker["blocker_id"],
+            actor_id="analyst",
+            reason="Prototype review accepts the documented XHS collection gap.",
+        )
+
+        assert acknowledged["platforms"] == ["weibo"]
+        assert acknowledged["state"] == "actioning"
+        assert acknowledged["active_blockers"] == []
+        record = acknowledged["blocker_acknowledgements"][0]
+        assert record["blocker_id"] == blocker["blocker_id"]
+        assert record["actor_id"] == "analyst"
+        assert record["reason"] == "Prototype review accepts the documented XHS collection gap."
+        assert record["missing_platforms"] == ["xhs"]
+        assert record["status"] == "policy_acknowledged"
+        assert acknowledged["audit_events"][-1]["action"] == "acknowledge_case_blocker"
+
+    asyncio.run(scenario())
+
+
+def test_acknowledged_platform_gap_allows_actions_feedback_and_closeout():
+    async def scenario():
+        service = CaseWorkbenchService(mongo_db={})
+        case_id = "case_trump_visit_2026_05_21"
+        blocker_id = (await service.get_case(case_id))["active_blockers"][0]["blocker_id"]
+        await service.acknowledge_blocker(case_id, blocker_id, actor_id="analyst", reason="Documented demo gap.")
+        await service.complete_action(case_id, "action_review_public_response", actor_id="analyst")
+        await service.complete_action(case_id, "action_record_feedback", actor_id="analyst")
+        ready = await service.submit_feedback(case_id, actor_id="analyst", content="Feedback recorded.")
+        closed = await service.submit_closeout_review(case_id, actor_id="analyst", summary="Closeout approved.")
+
+        assert ready["state"] == "ready_to_close"
+        assert closed["state"] == "closed"
+        assert closed["platforms"] == ["weibo"]
+        assert closed["blocker_acknowledgements"][0]["missing_platforms"] == ["xhs"]
+
+    asyncio.run(scenario())
+
+
+def test_report_preview_keeps_acknowledged_platform_gap_visible():
+    async def scenario():
+        service = CaseWorkbenchService(mongo_db={})
+        case_id = "case_trump_visit_2026_05_21"
+        blocker_id = (await service.get_case(case_id))["active_blockers"][0]["blocker_id"]
+
+        await service.acknowledge_blocker(
+            case_id,
+            blocker_id,
+            actor_id="analyst",
+            reason="Documented XHS platform gap is acknowledged for prototype review.",
+        )
+
+        html = await service.render_report_html(case_id, 1)
+
+        assert "Policy acknowledgements" in html
+        assert "Documented XHS platform gap is acknowledged for prototype review." in html
+        assert "xhs" in html
+
+    asyncio.run(scenario())
+
+
+def test_case_v2_acknowledgement_route_updates_shared_projection_and_returns_404_for_unknown_blocker():
+    async def scenario():
+        service = CaseWorkbenchService(mongo_db={})
+        app = FastAPI()
+        app.include_router(router, prefix="/api/v2/cases")
+        app.dependency_overrides[get_case_workbench_service] = lambda: service
+        app.dependency_overrides[get_current_user_or_local_preview] = lambda: None
+        transport = ASGITransport(app=app)
+        case_id = "case_trump_visit_2026_05_21"
+        blocker_id = (await service.get_case(case_id))["active_blockers"][0]["blocker_id"]
+
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            acknowledged = await client.post(
+                f"/api/v2/cases/{case_id}/blockers/{blocker_id}/acknowledge",
+                json={"reason": "Recorded platform collection limitation."},
+            )
+            missing = await client.post(
+                f"/api/v2/cases/{case_id}/blockers/not-a-blocker/acknowledge",
+                json={"reason": "Recorded platform collection limitation."},
+            )
+            detail = await client.get(f"/api/v2/cases/{case_id}")
+
+        assert acknowledged.status_code == 200
+        assert acknowledged.json()["data"]["state"] == "actioning"
+        assert missing.status_code == 404
+        assert detail.json()["data"]["blocker_acknowledgements"][0]["blocker_id"] == blocker_id
+
+    asyncio.run(scenario())
+
+
 def test_case_service_uses_fixture_when_mongo_configuration_is_unavailable(monkeypatch):
     async def scenario():
         def raise_configuration_error():

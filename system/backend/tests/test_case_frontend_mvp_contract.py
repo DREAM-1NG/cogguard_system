@@ -37,6 +37,9 @@ def test_case_frontend_mvp_files_routes_and_tabs_exist():
     assert "completeCaseAction" in view
     assert "submitCaseFeedback" in view
     assert "submitCaseCloseoutReview" in view
+    assert "acknowledgeCaseBlocker" in view
+    assert "确认平台缺口继续" in view
+    assert "blocker_acknowledgements" in view
     assert "标记完成" in view
     assert "提交反馈" in view
     assert "提交结案复核" in view
@@ -46,11 +49,15 @@ def test_case_frontend_mvp_files_routes_and_tabs_exist():
     assert "waiveCaseAction" in api
     assert "submitCaseFeedback" in api
     assert "submitCaseCloseoutReview" in api
+    assert "acknowledgeCaseBlocker" in api
     assert "CaseDetail" in types
     assert "SemanticArtifact" in types
     assert "CaseActionDecisionRequest" in types
     assert "CaseFeedbackRequest" in types
     assert "CaseCloseoutReviewRequest" in types
+    assert "CaseBlockerAcknowledgement" in types
+    assert "CaseBlockerAcknowledgementRequest" in types
+    assert "blocker_acknowledgements" in types
     assert ":disabled=\"caseDetail.state !== 'ready_to_close'\"" in view
     assert "path: 'cases'" in router
     assert "path: '/cases'" in layout

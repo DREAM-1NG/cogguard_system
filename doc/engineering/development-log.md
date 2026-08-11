@@ -20,6 +20,9 @@
 
 ## 2026-08-11
 
+- 新增 Case Workbench 平台缺口确认原型：默认 fallback 仍只含微博证据，但研判员可在页面显式确认 `platform_gap` 后继续处置、反馈和结案；确认记录保存在进程内 demo state，并保留缺失平台，不伪造 XHS/抖音证据。
+- `system/backend/app/{schemas/cases.py,api/v2/cases.py,services/case_workbench_service.py}` 与 `system/frontend/src/{api/cases.ts,types/case.ts,views/cases/index.vue}`：新增 blocker acknowledgement API、前端“确认平台缺口继续”按钮、确认记录展示和报告预览中的 Policy acknowledgements 区块。
+
 - 同步 Case Workbench 快速原型状态：工作台展示 `事件 -> 证据 -> Coordination -> Propagation -> Review -> 处置 -> 反馈`；`semantic_enrichment` 保持 opt-in，默认四阶段 Analysis Run 不变，并记录情感、关键词、主题、实体、有 Primary Claim 时的立场、近重复与平台/社区对比。
 - `doc/engineering/{development-log.md,development-roadmap.md}`、`system/README.md`、`README.md`：明确处置/反馈/结案变更只保存于进程内 demo state，默认 fallback 证据仅为微博且不伪造 XHS/抖音证据，报告预览/PDF 在持久 HTML/PDF 渲染落地前可使用原型 fallback。
 

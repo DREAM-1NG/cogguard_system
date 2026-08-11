@@ -109,6 +109,8 @@ The fast prototype Case Workbench entrypoint is `/api/v2/cases`.
   projection used by the frontend page.
 - `POST /api/v2/cases/{case_id}/actions/{action_id}/complete` and `/waive`
   update prototype Case Actions.
+- `POST /api/v2/cases/{case_id}/blockers/{blocker_id}/acknowledge` records an
+  explicit prototype acknowledgement for a known blocker such as Platform Gap.
 - `POST /api/v2/cases/{case_id}/feedback` appends analyst feedback.
 - `POST /api/v2/cases/{case_id}/closeout` submits the prototype Closeout
   Review.
@@ -121,11 +123,14 @@ entities, stance when a Primary Claim exists, near duplicates, and
 platform/community comparison; the stage leaves the default four-stage
 `AnalysisRun` unchanged. Default fallback evidence is Weibo-only and exposes a
 Platform Gap blocker, so the MVP does not claim XHS or Douyin evidence exists.
-The mutation routes above are process-local demo state for presenting the Action
-and Feedback loop. Persistent Case records, approval workflows, and strict
-closeout gates remain future work; report preview/PDF can be a prototype
-fallback until durable HTML/PDF rendering lands. Once the visible loop is
-stable, durable persistence and real report rendering are the next priorities.
+Analysts can explicitly acknowledge the documented Platform Gap to continue the
+prototype loop; the acknowledgement and missing platform remain visible in the
+Case and report preview. The mutation routes above are process-local demo state
+for presenting the Action and Feedback loop. Persistent Case records, approval
+workflows, and strict closeout gates remain future work; report preview/PDF can
+be a prototype fallback until durable HTML/PDF rendering lands. Once the visible
+loop is stable, durable persistence and real report rendering are the next
+priorities.
 
 ## Prototype Acceptance
 
