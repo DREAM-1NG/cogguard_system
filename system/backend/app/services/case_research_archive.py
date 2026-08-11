@@ -13,6 +13,20 @@ from app.schemas.case_research import PlatformGap, ResearchArchiveEntry, Structu
 
 ARCHIVE_MANIFEST_FILENAME = "archive-manifest.json"
 PLATFORM_GAP_FILENAME = "platform-gap.json"
+_MARKITDOWN_METADATA_KEYS = {
+    "characters",
+    "converted_at",
+    "converter",
+    "output_markdown",
+    "output_meta",
+    "source_extension",
+    "source_name",
+    "source_path",
+    "source_sha256",
+    "source_size_bytes",
+    "status",
+    "title",
+}
 
 
 def load_structured_search_records(path: Path) -> tuple[StructuredSearchRecord, ...]:
@@ -103,6 +117,9 @@ def _verify_metadata(metadata_path: Path, entry: ResearchArchiveEntry) -> None:
     payload: Any = json.loads(metadata_path.read_text(encoding="utf-8"))
     if not isinstance(payload, dict):
         raise ValueError("metadata must be a JSON object")
+    unsupported = sorted(set(payload) - _MARKITDOWN_METADATA_KEYS)
+    if unsupported:
+        raise ValueError(f"metadata contains unsupported fields: {unsupported}")
     converter = payload.get("converter")
     if not isinstance(converter, dict):
         raise ValueError("metadata converter must be a JSON object")

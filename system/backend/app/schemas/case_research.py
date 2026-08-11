@@ -91,7 +91,11 @@ class PlatformGapSearch(BaseModel):
     disposition_reason: str
 
     @model_validator(mode="after")
-    def require_rejection_reason(self) -> PlatformGapSearch:
+    def require_search_provenance(self) -> PlatformGapSearch:
+        if not self.query.strip():
+            raise ValueError("platform gap searches require query")
+        if not self.provider.strip():
+            raise ValueError("platform gap searches require provider")
         if not self.disposition_reason.strip():
             raise ValueError("platform gap searches require disposition_reason")
         return self
@@ -105,6 +109,13 @@ class PlatformGap(BaseModel):
     status: Literal["unverified_second_platform"]
     summary: str = Field(min_length=1)
     searches: list[PlatformGapSearch] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def require_both_second_platforms(self) -> PlatformGap:
+        platforms = {search.candidate_platform for search in self.searches}
+        if platforms != {"douyin", "xhs"}:
+            raise ValueError("platform gap searches must include douyin and xhs")
+        return self
 
 
 __all__ = [

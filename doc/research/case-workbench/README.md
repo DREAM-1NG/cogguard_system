@@ -30,7 +30,28 @@ When a same-event Douyin or Xiaohongshu (XHS) source is verified, add a reviewed
 same-event source, commit an explicit `platform-gap.json` instead:
 
 ```json
-{"status": "unverified_second_platform"}
+{
+  "status": "unverified_second_platform",
+  "summary": "No same-event Douyin or XHS source body was verified from archived pages.",
+  "searches": [
+    {
+      "candidate_platform": "douyin",
+      "query": "the recorded query",
+      "provider": "the search provider",
+      "searched_at": "2026-08-11T00:00:00+00:00",
+      "rejected_urls": ["https://example.com/candidate"],
+      "disposition_reason": "Why this candidate was not verifiable source evidence."
+    },
+    {
+      "candidate_platform": "xhs",
+      "query": "the recorded query",
+      "provider": "the search provider",
+      "searched_at": "2026-08-11T00:00:00+00:00",
+      "rejected_urls": [],
+      "disposition_reason": "Why no verifiable source body was archived."
+    }
+  ]
+}
 ```
 
 Do not fill the evidence set with unrelated platform content to make the

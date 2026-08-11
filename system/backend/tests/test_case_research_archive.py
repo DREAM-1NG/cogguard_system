@@ -68,6 +68,14 @@ def _write_platform_gap(root: Path) -> None:
                         "searched_at": datetime(2026, 8, 11, tzinfo=timezone.utc).isoformat(),
                         "rejected_urls": ["https://example.com/douyin-candidate"],
                         "disposition_reason": "Downloaded candidate did not contain source text, account, or publication metadata.",
+                    },
+                    {
+                        "candidate_platform": "xhs",
+                        "query": "example xhs query",
+                        "provider": "test-provider",
+                        "searched_at": datetime(2026, 8, 11, tzinfo=timezone.utc).isoformat(),
+                        "rejected_urls": [],
+                        "disposition_reason": "No verifiable same-event source body was retrieved.",
                     }
                 ],
             }
@@ -199,6 +207,86 @@ def test_platform_gap_requires_search_provenance_and_rejection_reasons(tmp_path:
     )
 
     with pytest.raises(ValidationError, match="disposition_reason"):
+        verify_research_archive(root)
+
+
+def test_platform_gap_requires_both_second_platforms_and_nonblank_search_fields(tmp_path: Path):
+    root = tmp_path / "archive"
+    root.mkdir()
+    _write_manifest(root, [_entry(root, "primary_claim"), _entry(root, "supplementary_claim")])
+    (root / "platform-gap.json").write_text(
+        json.dumps(
+            {
+                "status": "unverified_second_platform",
+                "summary": "No same-event second-platform source was verified.",
+                "searches": [
+                    {
+                        "candidate_platform": "douyin",
+                        "query": " ",
+                        "provider": "test-provider",
+                        "searched_at": datetime(2026, 8, 11, tzinfo=timezone.utc).isoformat(),
+                        "rejected_urls": ["https://example.com/douyin-candidate"],
+                        "disposition_reason": "Downloaded candidate did not contain source text.",
+                    },
+                    {
+                        "candidate_platform": "xhs",
+                        "query": "example second-platform query",
+                        "provider": " ",
+                        "searched_at": datetime(2026, 8, 11, tzinfo=timezone.utc).isoformat(),
+                        "rejected_urls": [],
+                        "disposition_reason": "No verifiable source body was retrieved.",
+                    },
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValidationError, match="query"):
+        verify_research_archive(root)
+
+    (root / "platform-gap.json").write_text(
+        json.dumps(
+            {
+                "status": "unverified_second_platform",
+                "summary": "No same-event second-platform source was verified.",
+                "searches": [
+                    {
+                        "candidate_platform": "douyin",
+                        "query": "example second-platform query",
+                        "provider": "test-provider",
+                        "searched_at": datetime(2026, 8, 11, tzinfo=timezone.utc).isoformat(),
+                        "rejected_urls": ["https://example.com/douyin-candidate"],
+                        "disposition_reason": "Downloaded candidate did not contain source text.",
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValidationError, match="douyin and xhs"):
+        verify_research_archive(root)
+
+
+def test_verify_research_archive_rejects_undeclared_metadata_postprocessing(tmp_path: Path):
+    root = tmp_path / "archive"
+    root.mkdir()
+    primary = _entry(root, "primary_claim")
+    supplementary = _entry(root, "supplementary_claim")
+    (root / str(primary["metadata_path"])).write_text(
+        json.dumps(
+            {
+                "converter": {"name": "markitdown", "version": "test"},
+                "postprocess": {"name": "custom_text_extraction"},
+            }
+        ),
+        encoding="utf-8",
+    )
+    _write_manifest(root, [primary, supplementary])
+    _write_platform_gap(root)
+
+    with pytest.raises(ValueError, match="unsupported fields"):
         verify_research_archive(root)
 
 
