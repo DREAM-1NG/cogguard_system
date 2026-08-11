@@ -216,6 +216,17 @@
             <div class="node-list">
               <a-tag v-for="node in graphNodes" :key="node.id">{{ node.label || node.id }}</a-tag>
             </div>
+            <div v-if="graphEvidenceLayers.length" class="evidence-layer-list">
+              <div v-for="layer in graphEvidenceLayers" :key="layer.key" class="evidence-layer-row">
+                <div>
+                  <a-tag>{{ layer.key }}</a-tag>
+                  <strong>{{ layer.label }}</strong>
+                  <a-tag :color="layer.status === 'available' ? 'blue' : 'orange'">{{ layer.status }}</a-tag>
+                </div>
+                <p>{{ layer.summary }}</p>
+                <small>{{ formatMetrics(layer.metrics) }}</small>
+              </div>
+            </div>
           </section>
         </a-tab-pane>
 
@@ -393,6 +404,7 @@ const communityItems = computed(() => semanticArtifact.value?.summary?.community
 const nearDuplicateGroups = computed(() => semanticArtifact.value?.summary?.near_duplicates || [])
 const graphNodes = computed<any[]>(() => caseDetail.value?.graph?.nodes || [])
 const graphEdges = computed<any[]>(() => caseDetail.value?.graph?.edges || [])
+const graphEvidenceLayers = computed<any[]>(() => caseDetail.value?.graph?.evidence_layers || [])
 
 const runColumns = [
   { title: 'Run', dataIndex: 'run_id', key: 'run_id' },
@@ -473,6 +485,13 @@ function actionStatusColor(status?: string) {
 function compactHash(value?: string | null) {
   if (!value) return '-'
   return value.length > 16 ? `${value.slice(0, 8)}...${value.slice(-6)}` : value
+}
+
+function formatMetrics(metrics?: Record<string, unknown>) {
+  if (!metrics) return '-'
+  return Object.entries(metrics)
+    .map(([key, value]) => `${key}: ${String(value)}`)
+    .join(' · ')
 }
 
 function distributionEntries(distribution?: SemanticDistribution) {

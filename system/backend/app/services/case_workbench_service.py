@@ -795,8 +795,46 @@ def _graph_projection(posts: list[dict[str, Any]]) -> dict[str, Any]:
     return {
         "nodes": nodes,
         "edges": [],
+        "evidence_layers": _graph_evidence_layers(posts=posts, account_count=len(nodes)),
         "provenance": "case_workbench_projection_only",
     }
+
+
+def _graph_evidence_layers(*, posts: list[dict[str, Any]], account_count: int) -> list[dict[str, Any]]:
+    post_count = len(posts)
+    status = "available" if post_count else "partial"
+    return [
+        {
+            "key": "coordination",
+            "label": "Coordination",
+            "status": status,
+            "summary": "Accounts are grouped as prototype coordination evidence from shared event participation.",
+            "metrics": {
+                "accounts": account_count,
+                "candidate_communities": 1 if account_count else 0,
+            },
+        },
+        {
+            "key": "propagation",
+            "label": "Propagation",
+            "status": status,
+            "summary": "Posts form the current observed propagation sample; explicit repost edges remain source-dependent.",
+            "metrics": {
+                "posts": post_count,
+                "explicit_edges": 0,
+            },
+        },
+        {
+            "key": "review",
+            "label": "Review",
+            "status": "available",
+            "summary": "Risk Review is represented by the current canonical demo verdict and cited evidence overlays.",
+            "metrics": {
+                "canonical_verdict_status": "approved",
+                "required_actions": len(ACTION_TEMPLATES),
+            },
+        },
+    ]
 
 
 def _hash_payload(payload: dict[str, Any]) -> str:

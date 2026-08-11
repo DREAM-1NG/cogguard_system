@@ -135,3 +135,16 @@ def test_case_evidence_matrix_exposes_claim_archive_provenance_bindings():
         "source_content_capture?: string",
     ):
         assert field in types
+
+
+def test_case_graph_evidence_layers_tab_exposes_cpr_bindings():
+    view = (FRONTEND / "views" / "cases" / "index.vue").read_text(encoding="utf-8")
+
+    for binding in (
+        "graphEvidenceLayers",
+        "layer.key",
+        "layer.metrics",
+        "formatMetrics",
+        "caseDetail.value?.graph?.evidence_layers",
+    ):
+        assert binding in view

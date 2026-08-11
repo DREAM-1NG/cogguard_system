@@ -330,6 +330,26 @@ def test_case_service_falls_back_with_platform_gap_when_evidence_is_missing():
     asyncio.run(scenario())
 
 
+def test_case_graph_evidence_layers_project_coordination_propagation_review():
+    async def scenario():
+        service = CaseWorkbenchService(mongo_db=_complete_demo_mongo())
+        case = await service.get_case("case_trump_visit_2026_05_21")
+
+        layers = case["graph"]["evidence_layers"]
+
+        assert [layer["key"] for layer in layers] == ["coordination", "propagation", "review"]
+        for layer in layers:
+            assert layer["label"]
+            assert layer["status"] in {"available", "partial"}
+            assert layer["summary"]
+            assert layer["metrics"]
+        assert layers[0]["metrics"]["accounts"] >= 2
+        assert layers[1]["metrics"]["posts"] >= 2
+        assert layers[2]["metrics"]["canonical_verdict_status"] == "approved"
+
+    asyncio.run(scenario())
+
+
 def test_platform_gap_acknowledgement_unblocks_default_fallback_without_fabricating_evidence():
     async def scenario():
         service = CaseWorkbenchService(mongo_db={})
