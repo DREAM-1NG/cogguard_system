@@ -24,6 +24,17 @@ def test_case_workbench_acceptance_closes_the_weibo_only_demo_case():
         "policy": "evidence_overlay_only",
         "requested_stage": "semantic_enrichment",
     }
+    assert result["claim_archive"] == {
+        "primary_archive_id": "archive_cctv_primary_claim_20260811",
+        "supplementary_archive_id": "archive_xinhua_supplementary_claim_20260811",
+        "claim_status": "candidate_unvalidated",
+        "source_capture": "markitdown_archive",
+        "report_archive_provenance_visible": True,
+    }
+    assert result["graph_layers"] == {
+        "keys": ["coordination", "propagation", "review"],
+        "review_canonical_verdict_status": "approved",
+    }
     assert {
         "acknowledge_case_blocker",
         "complete_case_action",

@@ -54,6 +54,7 @@ async def run_acceptance() -> dict[str, Any]:
     _require("Policy acknowledgements" in report_html, "report must show policy acknowledgements")
     _require("candidate_unvalidated" in report_html, "report must show semantic model status")
     _require("Production PDF rendering is pending." in report_html, "report must show PDF fallback")
+    _require("archive_cctv_primary_claim_20260811" in report_html, "report must show primary archive provenance")
     _require(closed["reports"][0]["content_hash"] != initial_hash, "report hash must track visible mutations")
 
     requested_stages = closed["analysis_runs"][0]["requested_stages"]
@@ -61,6 +62,16 @@ async def run_acceptance() -> dict[str, Any]:
     _require(semantic_policy == "evidence_overlay_only", "semantic policy must remain overlay-only")
     _require("semantic_enrichment" in requested_stages, "semantic stage must be explicitly requested")
     _require(closed["platforms"] == ["weibo"], "no second-platform evidence may be claimed")
+    primary_claim = closed["primary_claim"]
+    supplementary_claim = closed["supplementary_claims"][0]
+    graph_layers = closed["graph"]["evidence_layers"]
+    _require(primary_claim["status"] == "candidate_unvalidated", "primary claim must remain unapproved")
+    _require(supplementary_claim["status"] == "candidate_unvalidated", "supplementary claim must remain unapproved")
+    _require(primary_claim["source_content_capture"] == "markitdown_archive", "primary source capture must use archive")
+    _require(
+        [layer["key"] for layer in graph_layers] == ["coordination", "propagation", "review"],
+        "graph must expose CPR evidence layers",
+    )
 
     return {
         "schema": "cogguard.case_workbench_acceptance.v1",
@@ -78,6 +89,17 @@ async def run_acceptance() -> dict[str, Any]:
             "content_hash_changed": True,
         },
         "semantic": {"policy": semantic_policy, "requested_stage": "semantic_enrichment"},
+        "claim_archive": {
+            "primary_archive_id": primary_claim["source_archive_id"],
+            "supplementary_archive_id": supplementary_claim["source_archive_id"],
+            "claim_status": primary_claim["status"],
+            "source_capture": primary_claim["source_content_capture"],
+            "report_archive_provenance_visible": True,
+        },
+        "graph_layers": {
+            "keys": [layer["key"] for layer in graph_layers],
+            "review_canonical_verdict_status": graph_layers[2]["metrics"]["canonical_verdict_status"],
+        },
         "audit_actions": [event["action"] for event in closed["audit_events"]],
         "claim_boundary": {
             "second_platform_evidence_claimed": False,
