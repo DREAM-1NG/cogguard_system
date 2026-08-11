@@ -131,6 +131,38 @@
                 <a-tag color="orange">{{ semanticArtifact?.model_status || 'candidate_unvalidated' }}</a-tag>
                 <a-tag>证据叠加，不改风险分</a-tag>
               </a-space>
+              <div v-if="semanticDecisionSupport" class="semantic-section semantic-decision-support">
+                <h3>Semantic decision support</h3>
+                <a-descriptions size="small" bordered :column="2">
+                  <a-descriptions-item label="Coverage">
+                    {{ semanticDecisionSupport?.coverage?.covered_texts || 0 }}/{{ semanticDecisionSupport?.coverage?.total_texts || 0 }}
+                    · {{ percent(semanticDecisionSupport?.coverage?.coverage_ratio) }}
+                  </a-descriptions-item>
+                  <a-descriptions-item label="Confidence">
+                    {{ semanticDecisionSupport?.confidence?.level || '-' }}
+                    · {{ semanticDecisionSupport?.confidence?.status || semanticArtifact?.model_status || '-' }}
+                  </a-descriptions-item>
+                  <a-descriptions-item label="Prompt" :span="2">
+                    {{ semanticDecisionSupport?.operator_prompt || '-' }}
+                  </a-descriptions-item>
+                </a-descriptions>
+                <div class="semantic-slice-grid">
+                  <div>
+                    <h4>Time slices</h4>
+                    <div v-for="item in semanticDecisionSupport?.time_slices || []" :key="item.time" class="topic-row">
+                      <strong>{{ item.time }}</strong>
+                      <span>{{ item.texts }} texts · {{ (item.top_keywords || []).join(', ') || '-' }}</span>
+                    </div>
+                  </div>
+                  <div>
+                    <h4>Platform slices</h4>
+                    <div v-for="item in semanticDecisionSupport?.platform_slices || []" :key="item.platform" class="topic-row">
+                      <strong>{{ item.platform }}</strong>
+                      <span>{{ item.texts }} texts · {{ (item.top_keywords || []).join(', ') || '-' }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
               <div v-if="semanticProvenanceEntries.length" class="semantic-section">
                 <h3>Semantic provenance</h3>
                 <div class="compact-list">
@@ -429,6 +461,7 @@ const stanceSummary = computed(() => semanticArtifact.value?.summary?.stance || 
 const stanceEntries = computed(() => distributionEntries(semanticArtifact.value?.summary?.stance?.distribution))
 const communityItems = computed(() => semanticArtifact.value?.summary?.community_comparison?.items || [])
 const nearDuplicateGroups = computed(() => semanticArtifact.value?.summary?.near_duplicates || [])
+const semanticDecisionSupport = computed(() => semanticArtifact.value?.summary?.decision_support || null)
 const graphNodes = computed<any[]>(() => caseDetail.value?.graph?.nodes || [])
 const graphEdges = computed<any[]>(() => caseDetail.value?.graph?.edges || [])
 const graphEvidenceLayers = computed<any[]>(() => caseDetail.value?.graph?.evidence_layers || [])
@@ -582,6 +615,11 @@ function formatMetrics(metrics?: Record<string, unknown>) {
 
 function distributionEntries(distribution?: SemanticDistribution) {
   return Object.entries(distribution || {}).map(([label, value]) => ({ label, value }))
+}
+
+function percent(value?: number) {
+  if (value === undefined || value === null || Number.isNaN(Number(value))) return '-'
+  return `${Math.round(Number(value) * 100)}%`
 }
 
 function formatTime(value?: string | null) {
@@ -879,6 +917,22 @@ onMounted(() => {
 
 .semantic-empty {
   color: #64748b;
+  font-size: 12px;
+}
+
+.semantic-decision-support :deep(.ant-descriptions) {
+  margin-bottom: 10px;
+}
+
+.semantic-slice-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+}
+
+.semantic-slice-grid h4 {
+  margin: 0 0 6px;
+  color: #475569;
   font-size: 12px;
 }
 

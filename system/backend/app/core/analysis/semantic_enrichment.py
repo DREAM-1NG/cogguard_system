@@ -102,6 +102,16 @@ def analyze_semantic_enrichment_snapshot(
     }
     community_comparison = _community_comparison(main_posts, comments)
     stance = _stance(all_rows, primary_claim)
+    decision_support = _decision_support(
+        rows=all_rows,
+        sentiment=sentiment,
+        keywords=keywords,
+        topics=topics,
+        entities=entities,
+        stance=stance,
+        near_duplicates=near_duplicates,
+        community_comparison=community_comparison,
+    )
     status = "partial" if stance.get("status") == "blocked" else "ok"
 
     payload = {
@@ -133,6 +143,7 @@ def analyze_semantic_enrichment_snapshot(
         "stance": stance,
         "near_duplicates": near_duplicates,
         "community_comparison": community_comparison,
+        "decision_support": decision_support,
         "provenance": {
             "embedding_reuse": "shared_text_token_pass",
             "device": "cpu",
@@ -354,6 +365,171 @@ def _community_comparison(main_posts: list[dict[str, Any]], comments: list[dict[
             for platform, rows in sorted(platform_rows.items())
         ],
     }
+
+
+def _decision_support(
+    *,
+    rows: list[dict[str, Any]],
+    sentiment: dict[str, Any],
+    keywords: dict[str, Any],
+    topics: dict[str, Any],
+    entities: dict[str, Any],
+    stance: dict[str, Any],
+    near_duplicates: dict[str, Any],
+    community_comparison: dict[str, Any],
+) -> dict[str, Any]:
+    total_texts = len(rows)
+    covered_texts = len([row for row in rows if row.get("text")])
+    coverage_ratio = round(covered_texts / total_texts, 4) if total_texts else 0.0
+    stance_available = stance.get("status") == "ok"
+    module_coverage = {
+        "sentiment": _module_status(sentiment["summary"]["total_texts"], total_texts),
+        "keywords": _module_status(len(keywords["main_posts"]) + len(keywords["comments"]), total_texts),
+        "topics": _module_status(
+            topics["main_posts"]["topic_count"] + topics["comments"]["topic_count"],
+            total_texts,
+        ),
+        "entities": _module_status(len(entities["main_posts"]) + len(entities["comments"]), total_texts),
+        "stance": {
+            "status": "available" if stance_available else "blocked",
+            "covered": covered_texts if stance_available else 0,
+            "total": total_texts,
+            "block_code": None if stance_available else stance.get("code"),
+        },
+        "near_duplicates": _module_status(
+            len(near_duplicates["main_posts"]) + len(near_duplicates["comments"]),
+            total_texts,
+            allow_empty_available=True,
+        ),
+        "community_comparison": _module_status(len(community_comparison["items"]), total_texts),
+    }
+    confidence_score = _semantic_confidence_score(
+        total_texts=total_texts,
+        coverage_ratio=coverage_ratio,
+        stance_available=stance_available,
+        platform_count=len({row["platform"] for row in rows}),
+    )
+    return {
+        "coverage": {
+            "total_texts": total_texts,
+            "covered_texts": covered_texts,
+            "coverage_ratio": coverage_ratio,
+            "main_posts": sentiment["main_posts"]["total_texts"],
+            "comments": sentiment["comments"]["total_texts"],
+        },
+        "confidence": {
+            "status": MODEL_STATUS,
+            "level": _confidence_level(confidence_score),
+            "score": confidence_score,
+            "basis": "coverage_ratio, stance availability, and platform diversity",
+        },
+        "module_coverage": module_coverage,
+        "platform_slices": _platform_slices(rows),
+        "time_slices": _time_slices(rows),
+        "review_hints": _review_hints(
+            sentiment=sentiment,
+            stance=stance,
+            near_duplicates=near_duplicates,
+            community_comparison=community_comparison,
+        ),
+        "operator_prompt": "Use semantic outputs as triage hints, not as risk-score inputs.",
+    }
+
+
+def _module_status(count: int, total_texts: int, *, allow_empty_available: bool = False) -> dict[str, Any]:
+    if count > 0 or (allow_empty_available and total_texts > 0):
+        status = "available"
+    elif total_texts:
+        status = "empty"
+    else:
+        status = "missing_input"
+    return {
+        "status": status,
+        "covered": min(count, total_texts),
+        "total": total_texts,
+    }
+
+
+def _semantic_confidence_score(
+    *,
+    total_texts: int,
+    coverage_ratio: float,
+    stance_available: bool,
+    platform_count: int,
+) -> float:
+    if total_texts <= 0:
+        return 0.0
+    score = 0.35 + 0.35 * coverage_ratio
+    if stance_available:
+        score += 0.15
+    if platform_count > 1:
+        score += 0.1
+    return round(min(score, 0.95), 4)
+
+
+def _confidence_level(score: float) -> str:
+    if score >= 0.75:
+        return "high"
+    if score >= 0.5:
+        return "medium"
+    return "low"
+
+
+def _platform_slices(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    platform_rows: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for row in rows:
+        platform_rows[row["platform"]].append(row)
+    return [
+        {
+            "platform": platform,
+            "texts": len(members),
+            "top_keywords": [item["term"] for item in _keywords(members, limit=5)],
+            "sentiment": _sentiment_summary(members)["distribution"],
+        }
+        for platform, members in sorted(platform_rows.items())
+    ]
+
+
+def _time_slices(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    grouped: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for row in rows:
+        grouped[_date_slice(row.get("timestamp"))].append(row)
+    return [
+        {
+            "time": time_key,
+            "texts": len(members),
+            "sentiment": _sentiment_summary(members)["distribution"],
+            "top_keywords": [item["term"] for item in _keywords(members, limit=5)],
+        }
+        for time_key, members in sorted(grouped.items())
+    ]
+
+
+def _date_slice(value: Any) -> str:
+    text = str(value or "").strip()
+    if len(text) >= 10 and text[4:5] == "-" and text[7:8] == "-":
+        return text[:10]
+    return "unknown_time"
+
+
+def _review_hints(
+    *,
+    sentiment: dict[str, Any],
+    stance: dict[str, Any],
+    near_duplicates: dict[str, Any],
+    community_comparison: dict[str, Any],
+) -> list[str]:
+    hints = ["Keep semantic evidence advisory until local calibration passes."]
+    distribution = sentiment["summary"]["distribution"]
+    if distribution.get("negative", 0) > distribution.get("positive", 0):
+        hints.append("Review negative sentiment examples before public-response action.")
+    if stance.get("status") == "blocked":
+        hints.append("Approve a Primary Claim before using stance as a review hint.")
+    if near_duplicates["main_posts"] or near_duplicates["comments"]:
+        hints.append("Inspect near-duplicate groups for templated amplification.")
+    if len(community_comparison.get("items", [])) <= 1:
+        hints.append("Current semantic comparison is single-platform; preserve the Platform Gap note.")
+    return hints
 
 
 def _primary_claim_text(options: dict[str, Any]) -> str | None:

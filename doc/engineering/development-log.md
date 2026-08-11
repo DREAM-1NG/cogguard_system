@@ -20,6 +20,9 @@
 
 ## 2026-08-11
 
+- 增强 Case Workbench 的语义研判摘要：`semantic_enrichment` 新增 `decision_support`，统一输出覆盖率、候选置信等级、模块可用性、时间切片、平台切片和研判提示；前端“语义辅助”面板新增密集摘要卡片，仍明确语义只作分诊提示，不进入风险分数。
+- `system/backend/app/core/analysis/semantic_enrichment.py`、`system/backend/app/services/case_workbench_service.py`、`system/frontend/src/{types/case.ts,views/cases/index.vue}`：补齐 NLP 支撑功能的可见闭环；相关后端 Case/语义回归和前端构建通过。
+
 - 独立注册 Twitter IO benchmark 清单：只保存 31 列字段、39,964 行、60 用户、retweet/reply/quote 统计、25.6 MB 字节数和 SHA-256，不提交 CSV 或 Markdown 转换文本，也不接入中文 Case 验收。
 - `system/backend/app/schemas/twitter_benchmark.py`、`system/backend/scripts/verify_twitter_benchmark.py`、`system/backend/fixtures/case_workbench/twitter_io_manifest.json`、`system/backend/tests/test_twitter_benchmark_manifest.py`：新增 digest-only Pydantic 契约、stdlib CSV/hashlib 校验器、fixture manifest 和隔离回归测试。
 

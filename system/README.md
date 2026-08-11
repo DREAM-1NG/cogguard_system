@@ -119,9 +119,10 @@ The MVP is a read projection over the archived Trump-visit demonstration event.
 It binds CCTV News as the Primary Claim, Xinhua as a Supplementary Claim,
 and demonstrates `事件 -> 证据 -> Coordination -> Propagation -> Review -> 处置 -> 反馈`.
 Its opt-in `semantic_enrichment` artifacts cover sentiment, keywords, topics,
-entities, stance when a Primary Claim exists, near duplicates, and
-platform/community comparison; the stage leaves the default four-stage
-`AnalysisRun` unchanged. Default fallback evidence is Weibo-only and exposes a
+entities, stance when a Primary Claim exists, near duplicates,
+platform/community comparison, time/platform slices, and decision-support
+coverage summaries; the stage leaves the default four-stage `AnalysisRun`
+unchanged. Default fallback evidence is Weibo-only and exposes a
 Platform Gap blocker, so the MVP does not claim XHS or Douyin evidence exists.
 Analysts can explicitly acknowledge the documented Platform Gap to continue the
 prototype loop; the acknowledgement and missing platform remain visible in the

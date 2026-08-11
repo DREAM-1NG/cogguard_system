@@ -59,6 +59,16 @@ export interface SemanticNearDuplicateGroup {
   representative_text?: string
 }
 
+export interface SemanticDecisionSupport {
+  coverage?: Record<string, any>
+  confidence?: Record<string, any>
+  module_coverage?: Record<string, any>
+  platform_slices?: Array<Record<string, any>>
+  time_slices?: Array<Record<string, any>>
+  review_hints?: string[]
+  operator_prompt?: string
+}
+
 export interface SemanticArtifactProvenance {
   embedding_reuse?: string
   device?: string
@@ -72,6 +82,7 @@ export interface SemanticArtifactSummary {
   stance?: { status?: string; code?: string; distribution?: SemanticDistribution; message?: string }
   community_comparison?: { group_by?: string; items?: SemanticCommunityComparisonItem[] }
   near_duplicates?: SemanticNearDuplicateGroup[]
+  decision_support?: SemanticDecisionSupport
   top_keywords?: Array<{ term: string; count?: number }>
   topics?: { items?: Array<Record<string, any>> }
   entities?: Array<{ entity: string }>

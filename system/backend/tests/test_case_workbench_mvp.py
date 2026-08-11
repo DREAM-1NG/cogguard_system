@@ -313,16 +313,29 @@ def test_case_service_falls_back_with_platform_gap_when_evidence_is_missing():
         service = CaseWorkbenchService(mongo_db={})
 
         payload = await service.get_case("case_trump_visit_2026_05_21")
+        semantic_summary = payload["semantic_artifacts"][0]["summary"]
+        decision_support = semantic_summary["decision_support"]
 
         assert payload["state"] == "evidence_ready"
         assert payload["evidence"]["source_mode"] == "demo_fixture"
         assert payload["platforms"] == ["weibo"]
         assert payload["active_blockers"][0]["code"] == "platform_gap"
         assert payload["active_blockers"][0]["missing_platforms"] == ["xhs"]
-        assert payload["semantic_artifacts"][0]["summary"]["near_duplicates"] == []
-        assert "community_comparison" in payload["semantic_artifacts"][0]["summary"]
+        assert semantic_summary["near_duplicates"] == []
+        assert "community_comparison" in semantic_summary
+        assert decision_support["coverage"]["total_texts"] == payload["evidence"]["posts"] + payload["evidence"]["comments"]
+        assert decision_support["coverage"]["covered_texts"] == decision_support["coverage"]["total_texts"]
+        assert decision_support["coverage"]["coverage_ratio"] == 1.0
+        assert decision_support["confidence"]["status"] == "candidate_unvalidated"
+        assert decision_support["confidence"]["level"] in {"low", "medium", "high"}
+        assert decision_support["operator_prompt"] == "Use semantic outputs as triage hints, not as risk-score inputs."
+        assert [item["platform"] for item in decision_support["platform_slices"]] == ["weibo"]
+        assert decision_support["time_slices"][0]["texts"] >= 1
+        assert "sentiment" in decision_support["module_coverage"]
+        assert decision_support["module_coverage"]["stance"]["status"] == "available"
         assert "near_duplicates" in payload["evidence_matrix"]["semantic"]
         assert "community_comparison" in payload["evidence_matrix"]["semantic"]
+        assert "decision_support" in payload["evidence_matrix"]["semantic"]
         assert payload["reports"][0]["status"] == "prototype_preview"
         assert payload["reports"][0]["html_url"].endswith("/reports/1.html")
         assert payload["reports"][0]["pdf_url"].endswith("/reports/1.pdf")

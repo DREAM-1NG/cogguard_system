@@ -90,9 +90,24 @@ def test_case_evidence_matrix_exposes_semantic_assistance_bindings():
         "summary?.stance",
         "summary?.community_comparison?.items",
         "summary?.near_duplicates",
+        "summary?.decision_support",
+        "semanticDecisionSupport?.coverage",
+        "semanticDecisionSupport?.confidence",
+        "semanticDecisionSupport?.time_slices",
+        "semanticDecisionSupport?.platform_slices",
     ):
         assert binding in view
-    for label in ("Sentiment", "Stance", "Community comparison", "Near duplicates"):
+    for label in (
+        "Sentiment",
+        "Stance",
+        "Community comparison",
+        "Near duplicates",
+        "Semantic decision support",
+        "Coverage",
+        "Confidence",
+        "Time slices",
+        "Platform slices",
+    ):
         assert label in view
     assert "案例闭环" in layout
 

@@ -10,7 +10,7 @@
 
 - [x] 新增 `/api/v2/cases` 读模型 MVP，面向特朗普访华归档案例聚合 Event Snapshot、Analysis Run、权威主张、语义辅助、处置项、反馈入口和报告版本占位。
 - [x] 新增显式 `semantic_enrichment` Analysis Stage；默认 Analysis Run 四阶段保持不变，Case 编排才显式请求语义阶段。
-- [x] 语义辅助已覆盖情感、关键词、主题、实体、近重复、平台/社区对比和立场；立场需已存在 Primary Claim。当前使用轻量确定性覆盖层和固定候选模型标识，状态保持 `candidate_unvalidated`，不改变 Coordination Discover、Propagation Analysis 或 Risk Review 分数。
+- [x] 语义辅助已覆盖情感、关键词、主题、实体、近重复、平台/社区对比、时间切片、覆盖率/置信度摘要和立场；立场需已存在 Primary Claim。当前使用轻量确定性覆盖层和固定候选模型标识，状态保持 `candidate_unvalidated`，不改变 Coordination Discover、Propagation Analysis 或 Risk Review 分数。
 - [x] 前端新增“案例闭环”入口和 C 型密集五标签工作台：概览 / 证据矩阵 / 图谱 / 处置 / 报告。
 - [x] 新增进程内 demo mutation：平台缺口确认、处置项完成/豁免、反馈提交、结案复核提交；默认微博-only fallback 可在明确承认缺口后继续原型闭环，但不声称存在 XHS/抖音证据。
 - [x] 新增本地 Case Workbench 验收脚本，验证 demo fixture 从平台缺口确认到结案和 PDF fallback 报告预览的闭环，并保留 XHS 缺口可见。

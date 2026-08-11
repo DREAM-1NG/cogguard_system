@@ -235,6 +235,7 @@ class CaseWorkbenchService:
                         "stance": semantic["stance"],
                         "near_duplicates": semantic["near_duplicates"]["main_posts"],
                         "community_comparison": semantic["community_comparison"],
+                        "decision_support": semantic["decision_support"],
                     },
                     "provenance": semantic["provenance"],
                 }
@@ -824,6 +825,7 @@ def _evidence_matrix(
             "stance": semantic["stance"],
             "near_duplicates": semantic["near_duplicates"],
             "community_comparison": semantic["community_comparison"],
+            "decision_support": semantic["decision_support"],
         },
     }
 
