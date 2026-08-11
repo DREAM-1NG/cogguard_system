@@ -1,1 +1,25 @@
-{"status":"unverified_second_platform"}
+{
+  "status": "unverified_second_platform",
+  "summary": "No same-event Douyin or XHS source body was verified from archived pages; search-result snippets were not accepted as evidence.",
+  "searches": [
+    {
+      "candidate_platform": "douyin",
+      "query": "特朗普 访华 2026 抖音 5月15 同事件 平台 归档",
+      "provider": "codex_web_search",
+      "searched_at": "2026-08-11T11:07:00+00:00",
+      "rejected_urls": [
+        "https://www.douyin.com/video/7640004423434931483",
+        "https://jingxuan.douyin.com/m/video/7640133993576353062"
+      ],
+      "disposition_reason": "Downloaded candidate pages were identical generic JavaScript shells with no event text, account, or publication metadata, so they were not verifiable same-event evidence."
+    },
+    {
+      "candidate_platform": "xhs",
+      "query": "site:xiaohongshu.com 特朗普 访华 2026 5月15 同事件",
+      "provider": "codex_web_search",
+      "searched_at": "2026-08-11T11:08:00+00:00",
+      "rejected_urls": [],
+      "disposition_reason": "No verifiable same-event Xiaohongshu source body with account and publication metadata was retrieved for archive conversion."
+    }
+  ]
+}

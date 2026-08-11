@@ -7,12 +7,12 @@
     "markdown_path": "sources/cctv-news-primary-claim.md",
     "metadata_path": "sources/cctv-news-primary-claim.meta.json",
     "source_sha256": "a3e73ac60fe7c801972f609f84b883e067af1c448179f92602ac2d11023dfeb7",
-    "markdown_sha256": "fc08e1e8dc2171560b23dea5623c71ee547990cc6709fcdf71cadb03829bfae9",
+    "markdown_sha256": "266988c725168dc7d9c5147a8b777a8ff168db698dee6019c04f3342124b8622",
     "converter": "Microsoft MarkItDown",
     "converter_version": "0.1.5",
     "verified_excerpt": "推动中美关系这艘巨轮沿着正确航道平稳前行",
-    "verified_span_start": 933,
-    "verified_span_end": 953,
+    "verified_span_start": 658,
+    "verified_span_end": 678,
     "archived_at": "2026-08-11T11:09:00+00:00"
   },
   {
@@ -23,12 +23,12 @@
     "markdown_path": "sources/xinhua-supplementary-claim.md",
     "metadata_path": "sources/xinhua-supplementary-claim.meta.json",
     "source_sha256": "0c26be8a705d2c5e2f8436e6f74a0b0661a79c0b3b46f702e30aed314bd5c222",
-    "markdown_sha256": "05fc58b856204787d70bdec4bfd45076ffb7bbc53d49f1c7d4056b74ce2f8015",
+    "markdown_sha256": "4097ff1f841ab550175e8f69f9b330ca7c0d12564f253d08b2366cc7179ee9c2",
     "converter": "Microsoft MarkItDown",
     "converter_version": "0.1.5",
     "verified_excerpt": "历史性、标志性的访问",
-    "verified_span_start": 748,
-    "verified_span_end": 758,
+    "verified_span_start": 988,
+    "verified_span_end": 998,
     "archived_at": "2026-08-11T11:09:00+00:00"
   }
 ]

@@ -6,7 +6,7 @@ import re
 from datetime import datetime
 from typing import Literal
 
-from pydantic import AnyHttpUrl, BaseModel, ConfigDict, field_validator, model_validator
+from pydantic import AnyHttpUrl, BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 _SHA256_PATTERN = re.compile(r"[0-9a-fA-F]{64}")
@@ -78,16 +78,38 @@ class ResearchArchiveEntry(BaseModel):
         return value
 
 
+class PlatformGapSearch(BaseModel):
+    """One attempted second-platform evidence search that did not verify."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    candidate_platform: Literal["douyin", "xhs"]
+    query: str
+    provider: str
+    searched_at: datetime
+    rejected_urls: list[AnyHttpUrl] = Field(default_factory=list)
+    disposition_reason: str
+
+    @model_validator(mode="after")
+    def require_rejection_reason(self) -> PlatformGapSearch:
+        if not self.disposition_reason.strip():
+            raise ValueError("platform gap searches require disposition_reason")
+        return self
+
+
 class PlatformGap(BaseModel):
     """The record used when no same-event second-platform source is verified."""
 
     model_config = ConfigDict(extra="forbid")
 
     status: Literal["unverified_second_platform"]
+    summary: str = Field(min_length=1)
+    searches: list[PlatformGapSearch] = Field(min_length=1)
 
 
 __all__ = [
     "PlatformGap",
+    "PlatformGapSearch",
     "ResearchArchiveEntry",
     "StructuredSearchHit",
     "StructuredSearchRecord",
