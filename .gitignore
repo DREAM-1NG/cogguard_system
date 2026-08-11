@@ -84,6 +84,7 @@ temp/
 *.ndjson
 *.geojson
 !system/frontend/src/assets/world-countries.geojson
+!doc/research/case-workbench/structured-search-records.jsonl
 *.parquet
 *.feather
 *.npy
@@ -164,6 +165,7 @@ system/frontend/dist/
 system/frontend/node_modules/
 system/output/logs/
 system/output/playwright/
+system/backend/.case-research-input/
 
 # Nested repositories and local worktrees should be committed separately.
 subsystems/cogguard_dev/

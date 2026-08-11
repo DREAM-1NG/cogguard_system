@@ -1,0 +1,22 @@
+{
+  "status": "converted",
+  "source_path": "G:\\CISCN\\CogGuard\\.worktrees\\case-workbench\\system\\backend\\.case-research-input\\xinhua-supplementary-claim.html",
+  "source_name": "xinhua-supplementary-claim.html",
+  "source_extension": ".html",
+  "source_size_bytes": 12107,
+  "source_sha256": "0c26be8a705d2c5e2f8436e6f74a0b0661a79c0b3b46f702e30aed314bd5c222",
+  "output_markdown": "G:\\CISCN\\CogGuard\\.worktrees\\case-workbench\\doc\\research\\case-workbench\\sources\\xinhua-supplementary-claim.md",
+  "output_meta": "G:\\CISCN\\CogGuard\\.worktrees\\case-workbench\\doc\\research\\case-workbench\\sources\\xinhua-supplementary-claim.meta.json",
+  "title": "习近平同美国总统特朗普在中南海小范围会晤-新华网",
+  "characters": 1303,
+  "converted_at": "2026-08-11T10:59:22.108491+00:00",
+  "converter": {
+    "name": "markitdown",
+    "version": "0.1.5"
+  },
+  "postprocess": {
+    "name": "utf8_html_text_extraction_after_markitdown_mojibake",
+    "reason": "MarkItDown converted the HTML body with mojibake in this environment; committed Markdown preserves readable UTF-8 text extracted from the same captured source bytes.",
+    "performed_at": "2026-08-11T11:05:24.249928+00:00"
+  }
+}
