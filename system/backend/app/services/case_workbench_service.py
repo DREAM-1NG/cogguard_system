@@ -30,7 +30,6 @@ SOURCE_TIERS = (
     "central_mainstream_original",
     "provincial_official_media",
 )
-
 PRIMARY_CLAIM = {
     "claim_id": "claim_cctv_primary",
     "role": "primary",
@@ -49,6 +48,22 @@ PRIMARY_CLAIM = {
         "status": "approved",
     },
 }
+ACTION_TEMPLATES = (
+    {
+        "action_id": "action_review_public_response",
+        "title": "复核公开回应口径",
+        "required": True,
+        "assignee": "analyst",
+        "evidence_refs": [PRIMARY_CLAIM["claim_id"], "semantic_case_workbench_demo"],
+    },
+    {
+        "action_id": "action_record_feedback",
+        "title": "记录研判反馈",
+        "required": True,
+        "assignee": "analyst",
+        "evidence_refs": ["run_case_workbench_demo"],
+    },
+)
 SUPPLEMENTARY_CLAIM = {
     "claim_id": "claim_xinhua_support",
     "role": "supplementary",
@@ -72,8 +87,9 @@ SUPPLEMENTARY_CLAIM = {
 class CaseWorkbenchService:
     """Build a case-level projection from current event evidence and analysis contracts."""
 
-    def __init__(self, mongo_db: Any | None = None) -> None:
+    def __init__(self, mongo_db: Any | None = None, demo_state: dict[str, Any] | None = None) -> None:
         self.mongo_db = mongo_db
+        self.demo_state = demo_state if demo_state is not None else _new_demo_state()
 
     async def list_cases(self, *, event_id: str | None = None) -> dict[str, Any]:
         case = await self.get_case(DEFAULT_CASE_ID)
@@ -99,7 +115,10 @@ class CaseWorkbenchService:
         )
         platforms = _platforms(posts, comments)
         blockers = _blockers(platforms)
-        state = "awaiting_review" if not blockers else "evidence_ready"
+        actions = _action_rows(self.demo_state)
+        feedback = list(self.demo_state["feedback"])
+        closeout_review = self.demo_state.get("closeout_review")
+        state = _case_state(blockers=blockers, actions=actions, feedback=feedback, closeout_review=closeout_review)
         report_hash = _hash_payload(
             {
                 "case_id": DEFAULT_CASE_ID,
@@ -136,6 +155,12 @@ class CaseWorkbenchService:
             "lifecycle": _lifecycle(state=state),
             "primary_claim": _claim_with_hash(PRIMARY_CLAIM),
             "supplementary_claims": [_claim_with_hash(SUPPLEMENTARY_CLAIM)],
+            "canonical_verdict": {
+                "verdict_id": "canonical_demo_verdict",
+                "status": "approved",
+                "label": "needs_human_review",
+                "source": "demo_analyst_approval",
+            },
             "analysis_runs": [
                 {
                     "run_id": "run_case_workbench_demo",
@@ -172,25 +197,9 @@ class CaseWorkbenchService:
             ],
             "evidence_matrix": _evidence_matrix(posts, comments, semantic),
             "graph": _graph_projection(posts),
-            "actions": [
-                {
-                    "action_id": "action_review_public_response",
-                    "title": "复核公开回应口径",
-                    "status": "required",
-                    "required": True,
-                    "assignee": "analyst",
-                    "evidence_refs": [PRIMARY_CLAIM["claim_id"], "semantic_case_workbench_demo"],
-                },
-                {
-                    "action_id": "action_record_feedback",
-                    "title": "记录研判反馈",
-                    "status": "required",
-                    "required": True,
-                    "assignee": "analyst",
-                    "evidence_refs": ["run_case_workbench_demo"],
-                },
-            ],
-            "feedback": [],
+            "actions": actions,
+            "feedback": feedback,
+            "closeout_review": closeout_review,
             "reports": [
                 {
                     "version": 1,
@@ -202,6 +211,7 @@ class CaseWorkbenchService:
                 }
             ],
             "active_blockers": blockers,
+            "audit_events": list(self.demo_state["audit_events"]),
             "workflow_summary": {
                 "closed_loop": "事件 -> 证据 -> Coordination -> Propagation -> Review -> 处置 -> 反馈",
                 "display_loop": "事件 -> 证据 -> Coordination -> Propagation -> Review -> 处置 -> 反馈",
@@ -222,6 +232,94 @@ class CaseWorkbenchService:
         if posts or comments:
             return posts, comments, "mongo"
         return _fixture_posts(), _fixture_comments(), "demo_fixture"
+
+    async def complete_action(
+        self,
+        case_id: str,
+        action_id: str,
+        *,
+        actor_id: str,
+        note: str = "",
+    ) -> dict[str, Any]:
+        self._assert_case(case_id)
+        _assert_action(action_id)
+        now = _now()
+        self.demo_state["actions"][action_id] = "completed"
+        self.demo_state["action_history"][action_id].append(
+            {
+                "status": "completed",
+                "actor_id": actor_id,
+                "note": note,
+                "created_at": now,
+            }
+        )
+        self._append_audit("complete_case_action", actor_id=actor_id, target_id=action_id, payload={"note": note})
+        return await self.get_case(case_id)
+
+    async def waive_action(
+        self,
+        case_id: str,
+        action_id: str,
+        *,
+        actor_id: str,
+        note: str = "",
+    ) -> dict[str, Any]:
+        self._assert_case(case_id)
+        _assert_action(action_id)
+        now = _now()
+        self.demo_state["actions"][action_id] = "waived"
+        self.demo_state["action_history"][action_id].append(
+            {
+                "status": "waived",
+                "actor_id": actor_id,
+                "note": note,
+                "created_at": now,
+            }
+        )
+        self._append_audit("waive_case_action", actor_id=actor_id, target_id=action_id, payload={"note": note})
+        return await self.get_case(case_id)
+
+    async def submit_feedback(self, case_id: str, *, actor_id: str, content: str) -> dict[str, Any]:
+        self._assert_case(case_id)
+        feedback = {
+            "feedback_id": f"feedback_{len(self.demo_state['feedback']) + 1}",
+            "actor_id": actor_id,
+            "content": content,
+            "created_at": _now(),
+        }
+        self.demo_state["feedback"].append(feedback)
+        self._append_audit("submit_case_feedback", actor_id=actor_id, target_id=feedback["feedback_id"], payload={})
+        return await self.get_case(case_id)
+
+    async def submit_closeout_review(self, case_id: str, *, actor_id: str, summary: str) -> dict[str, Any]:
+        self._assert_case(case_id)
+        case = await self.get_case(case_id)
+        if case["state"] != "ready_to_close":
+            raise CaseOperationConflict("Closeout review requires completed or waived actions, feedback, and no blockers.")
+        self.demo_state["closeout_review"] = {
+            "review_id": "closeout_review_demo",
+            "actor_id": actor_id,
+            "summary": summary,
+            "submitted_at": _now(),
+        }
+        self._append_audit("submit_closeout_review", actor_id=actor_id, target_id="closeout_review_demo", payload={})
+        return await self.get_case(case_id)
+
+    def _assert_case(self, case_id: str) -> None:
+        if case_id != DEFAULT_CASE_ID:
+            raise KeyError(f"Case not found: {case_id}")
+
+    def _append_audit(self, action: str, *, actor_id: str, target_id: str, payload: dict[str, Any]) -> None:
+        self.demo_state["audit_events"].append(
+            {
+                "event_id": f"audit_{len(self.demo_state['audit_events']) + 1}",
+                "action": action,
+                "actor_id": actor_id,
+                "target_id": target_id,
+                "payload": payload,
+                "created_at": _now(),
+            }
+        )
 
 
 def _snapshot_from_evidence(posts: list[dict[str, Any]], comments: list[dict[str, Any]]):
@@ -293,6 +391,55 @@ def _summary(case: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+class CaseOperationConflict(ValueError):
+    """Raised when a prototype Case operation violates lifecycle gates."""
+
+
+def _new_demo_state() -> dict[str, Any]:
+    return {
+        "actions": {},
+        "action_history": {template["action_id"]: [] for template in ACTION_TEMPLATES},
+        "feedback": [],
+        "closeout_review": None,
+        "audit_events": [],
+    }
+
+
+def _action_rows(state: dict[str, Any]) -> list[dict[str, Any]]:
+    statuses = state["actions"]
+    history = state["action_history"]
+    return [
+        {
+            **template,
+            "status": statuses.get(template["action_id"], "required"),
+            "history": list(history.get(template["action_id"], [])),
+        }
+        for template in ACTION_TEMPLATES
+    ]
+
+
+def _assert_action(action_id: str) -> None:
+    if action_id not in {template["action_id"] for template in ACTION_TEMPLATES}:
+        raise KeyError(f"Case action not found: {action_id}")
+
+
+def _case_state(
+    *,
+    blockers: list[dict[str, Any]],
+    actions: list[dict[str, Any]],
+    feedback: list[dict[str, Any]],
+    closeout_review: dict[str, Any] | None,
+) -> str:
+    if blockers:
+        return "evidence_ready"
+    actions_terminal = all(action["status"] in {"completed", "waived"} for action in actions)
+    if actions_terminal and feedback and closeout_review:
+        return "closed"
+    if actions_terminal and feedback:
+        return "ready_to_close"
+    return "actioning"
+
+
 def _platforms(posts: list[dict[str, Any]], comments: list[dict[str, Any]]) -> list[str]:
     return sorted(
         {
@@ -331,12 +478,21 @@ def _lifecycle(*, state: str) -> list[dict[str, str]]:
         ("action", "处置"),
         ("feedback", "反馈"),
     ]
-    active_index = 4 if state == "awaiting_review" else 1
+    active_index = {
+        "evidence_ready": 1,
+        "analyzing": 2,
+        "awaiting_review": 4,
+        "actioning": 5,
+        "ready_to_close": 6,
+        "closed": len(order),
+    }.get(state, 0)
     return [
         {
             "key": key,
             "label": label,
-            "status": "done" if index < active_index else ("active" if index == active_index else "pending"),
+            "status": "done"
+            if index < active_index or state == "closed"
+            else ("active" if index == active_index else "pending"),
         }
         for index, (key, label) in enumerate(order)
     ]
@@ -425,8 +581,14 @@ def _hash_payload(payload: dict[str, Any]) -> str:
     ).hexdigest()
 
 
+def _now() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
 __all__ = [
+    "ACTION_TEMPLATES",
     "CASE_STATES",
+    "CaseOperationConflict",
     "DEFAULT_CASE_ID",
     "DEFAULT_EVENT_ID",
     "SOURCE_TIERS",

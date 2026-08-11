@@ -34,11 +34,24 @@ def test_case_frontend_mvp_files_routes_and_tabs_exist():
     assert ':disabled="!record.pdf_url"' in view
     assert "caseDetail.value = null" in view
     assert "未找到匹配案例" in view
-    assert "createCase" in api
+    assert "completeCaseAction" in view
+    assert "submitCaseFeedback" in view
+    assert "submitCaseCloseoutReview" in view
+    assert "标记完成" in view
+    assert "提交反馈" in view
+    assert "提交结案复核" in view
     assert "getCase" in api
     assert "listCases" in api
+    assert "completeCaseAction" in api
+    assert "waiveCaseAction" in api
+    assert "submitCaseFeedback" in api
+    assert "submitCaseCloseoutReview" in api
     assert "CaseDetail" in types
     assert "SemanticArtifact" in types
+    assert "CaseActionDecisionRequest" in types
+    assert "CaseFeedbackRequest" in types
+    assert "CaseCloseoutReviewRequest" in types
+    assert ":disabled=\"caseDetail.state !== 'ready_to_close'\"" in view
     assert "path: 'cases'" in router
     assert "path: '/cases'" in layout
     assert "案例闭环" in layout

@@ -20,6 +20,11 @@
 
 ## 2026-08-11
 
+- 继续推进 Case Workbench 原型闭环从“展示态”到“可操作态”：处置项可在页面标记完成/豁免，反馈和结案复核说明可通过 `/api/v2/cases` demo mutation API 写入并刷新页面；当前状态为进程内 demo 记录，服务重启后不保留，正式持久化仍待后续 Case 模型与迁移。
+- `system/backend/app/schemas/cases.py`、`system/backend/app/api/v2/cases.py`、`system/backend/app/services/case_workbench_service.py`：新增 `complete/waive action`、`feedback`、`closeout` API 和 append-only demo audit events；完整第二平台证据存在时可从 `actioning -> ready_to_close -> closed`，默认 fixture 继续因 XHS platform gap 停留在 `evidence_ready`。
+- `system/frontend/src/api/cases.ts`、`system/frontend/src/types/case.ts`、`system/frontend/src/views/cases/index.vue`：新增 Case 操作客户端、处置按钮、反馈列表、结案复核提交控件和状态刷新。
+- 验证：后端选择集 `40 passed`；前端 `npm.cmd run build` 通过（仅 Vite 大 chunk warning）。
+
 - 新增 Case Workbench 快速原型闭环：以已归档特朗普访华事件为演示对象，将事件证据、权威主张、显式语义辅助、分析运行、处置项、反馈入口和冻结报告占位聚合到一个案例视图；当前为读模型 MVP，不声称已完成完整 SQL 持久化、迁移或真实 PDF 渲染。
 - `system/backend/app/core/analysis/{contracts.py,executor.py,semantic_enrichment.py}`：新增显式 `semantic_enrichment` Analysis Stage，默认四阶段仍保持 `coordination_discover / propagation_analysis / student / teacher`；语义辅助输出情感、关键词、主题、实体、近重复、社区差异和立场，模型状态统一为 `candidate_unvalidated`，缺少主主张时立场返回 `blocked_missing_primary_claim`。
 - `system/backend/app/services/case_workbench_service.py`、`system/backend/app/api/v2/cases.py`、`system/backend/app/api/v2/router.py`：新增 `/api/v2/cases` 读接口，内置 CCTV 主主张、新华社辅助主张、平台缺口 blocker、Case 生命周期和报告版本占位；Mongo 不可用时显式返回 `demo_fixture` 来源并保留 XHS 平台缺口，不伪造第二平台证据。

@@ -54,6 +54,21 @@ export interface CaseAction {
   required?: boolean
   assignee?: string
   evidence_refs?: string[]
+  history?: Array<Record<string, any>>
+}
+
+export interface CaseFeedback {
+  feedback_id: string
+  actor_id: string
+  content: string
+  created_at: string
+}
+
+export interface CaseCloseoutReview {
+  review_id: string
+  actor_id: string
+  summary: string
+  submitted_at: string
 }
 
 export interface CaseReportVersion {
@@ -96,9 +111,11 @@ export interface CaseDetail {
   evidence_matrix: Record<string, any>
   graph: Record<string, any>
   actions: CaseAction[]
-  feedback: Array<Record<string, any>>
+  feedback: CaseFeedback[]
+  closeout_review?: CaseCloseoutReview | null
   reports: CaseReportVersion[]
   active_blockers: CaseBlocker[]
+  audit_events?: Array<Record<string, any>>
   workflow_summary: Record<string, string>
 }
 
@@ -108,9 +125,16 @@ export interface CasePage {
   meta?: Record<string, any>
 }
 
-export interface CaseCreateRequest {
-  event_id: string
-  title: string
+export interface CaseActionDecisionRequest {
+  note?: string
+}
+
+export interface CaseFeedbackRequest {
+  content: string
+}
+
+export interface CaseCloseoutReviewRequest {
+  summary: string
 }
 
 export interface ApiEnvelope<T> {

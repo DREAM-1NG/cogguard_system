@@ -153,8 +153,64 @@
               :data-source="caseDetail.actions"
               row-key="action_id"
               :pagination="false"
+            >
+              <template #bodyCell="{ column, record }">
+                <template v-if="column.key === 'status'">
+                  <a-tag :color="actionStatusColor(record.status)">{{ record.status }}</a-tag>
+                </template>
+                <template v-else-if="column.key === 'actions'">
+                  <a-space>
+                    <a-button
+                      size="small"
+                      type="primary"
+                      :disabled="record.status === 'completed'"
+                      :loading="savingActionId === record.action_id"
+                      @click="completeCaseAction(record.action_id)"
+                    >
+                      标记完成
+                    </a-button>
+                    <a-button
+                      size="small"
+                      :disabled="record.status === 'waived'"
+                      @click="waiveCaseAction(record.action_id)"
+                    >
+                      豁免
+                    </a-button>
+                  </a-space>
+                </template>
+              </template>
+            </a-table>
+
+            <div class="feedback-panel">
+              <a-textarea v-model:value="feedbackText" :rows="3" placeholder="记录人工反馈" />
+              <a-button type="primary" :loading="savingFeedback" @click="submitCaseFeedback">提交反馈</a-button>
+            </div>
+
+            <div class="feedback-list" v-if="caseDetail.feedback.length">
+              <div v-for="item in caseDetail.feedback" :key="item.feedback_id" class="feedback-item">
+                <strong>{{ item.actor_id }}</strong>
+                <span>{{ formatTime(item.created_at) }}</span>
+                <p>{{ item.content }}</p>
+              </div>
+            </div>
+
+            <div class="feedback-panel">
+              <a-textarea v-model:value="closeoutSummary" :rows="3" placeholder="提交结案复核说明" />
+              <a-button
+                :disabled="caseDetail.state !== 'ready_to_close'"
+                :loading="savingCloseout"
+                @click="submitCaseCloseoutReview"
+              >
+                提交结案复核
+              </a-button>
+            </div>
+            <a-alert
+              v-if="caseDetail.closeout_review"
+              class="case-alert"
+              type="success"
+              show-icon
+              :message="`结案复核已提交：${caseDetail.closeout_review.summary}`"
             />
-            <a-textarea class="feedback-box" :rows="3" placeholder="记录人工反馈或结案复核说明" />
           </section>
         </a-tab-pane>
 
@@ -208,7 +264,14 @@
 import { computed, onMounted, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import PageHeader from '@/components/PageHeader.vue'
-import { getCase, listCases } from '@/api/cases'
+import {
+  completeCaseAction as completeCaseActionRequest,
+  getCase,
+  listCases,
+  submitCaseCloseoutReview as submitCaseCloseoutReviewRequest,
+  submitCaseFeedback as submitCaseFeedbackRequest,
+  waiveCaseAction as waiveCaseActionRequest,
+} from '@/api/cases'
 import type { CaseClaim, CaseDetail } from '@/types/case'
 
 const DEFAULT_EVENT_ID = 'trump_visit_2026_05_21'
@@ -219,6 +282,11 @@ const activeTab = ref('overview')
 const loading = ref(false)
 const errorText = ref('')
 const drawerOpen = ref(false)
+const feedbackText = ref('')
+const closeoutSummary = ref('')
+const savingActionId = ref('')
+const savingFeedback = ref(false)
+const savingCloseout = ref(false)
 
 const claimRows = computed<CaseClaim[]>(() => {
   if (!caseDetail.value) return []
@@ -252,6 +320,7 @@ const actionColumns = [
   { title: '处置项', dataIndex: 'title', key: 'title' },
   { title: '状态', dataIndex: 'status', key: 'status' },
   { title: '负责人', dataIndex: 'assignee', key: 'assignee' },
+  { title: '操作', key: 'actions' },
 ]
 
 const reportColumns = [
@@ -296,6 +365,14 @@ function stateColor(state?: string) {
   } as Record<string, string>)[state || ''] || 'default'
 }
 
+function actionStatusColor(status?: string) {
+  return ({
+    required: 'orange',
+    completed: 'green',
+    waived: 'default',
+  } as Record<string, string>)[status || ''] || 'default'
+}
+
 function compactHash(value?: string | null) {
   if (!value) return '-'
   return value.length > 16 ? `${value.slice(0, 8)}...${value.slice(-6)}` : value
@@ -310,6 +387,68 @@ function formatTime(value?: string | null) {
 function openReport(url?: string) {
   if (!url) return
   window.open(url, '_blank', 'noopener,noreferrer')
+}
+
+async function completeCaseAction(actionId: string) {
+  if (!caseDetail.value) return
+  savingActionId.value = actionId
+  try {
+    const response = await completeCaseActionRequest(caseDetail.value.case_id, actionId, { note: '前端演示标记完成' })
+    caseDetail.value = response.data
+    message.success('处置项已完成')
+  } finally {
+    savingActionId.value = ''
+  }
+}
+
+async function waiveCaseAction(actionId: string) {
+  if (!caseDetail.value) return
+  savingActionId.value = actionId
+  try {
+    const response = await waiveCaseActionRequest(caseDetail.value.case_id, actionId, { note: '前端演示豁免' })
+    caseDetail.value = response.data
+    message.success('处置项已豁免')
+  } finally {
+    savingActionId.value = ''
+  }
+}
+
+async function submitCaseFeedback() {
+  if (!caseDetail.value || !feedbackText.value.trim()) {
+    message.warning('请先填写反馈内容')
+    return
+  }
+  savingFeedback.value = true
+  try {
+    const response = await submitCaseFeedbackRequest(caseDetail.value.case_id, { content: feedbackText.value.trim() })
+    caseDetail.value = response.data
+    feedbackText.value = ''
+    message.success('反馈已提交')
+  } finally {
+    savingFeedback.value = false
+  }
+}
+
+async function submitCaseCloseoutReview() {
+  if (!caseDetail.value || !closeoutSummary.value.trim()) {
+    message.warning('请先填写结案复核说明')
+    return
+  }
+  if (caseDetail.value.state !== 'ready_to_close') {
+    message.warning('请先完成必需处置并提交反馈，且确认没有活动阻塞项')
+    return
+  }
+  savingCloseout.value = true
+  try {
+    const response = await submitCaseCloseoutReviewRequest(caseDetail.value.case_id, {
+      summary: closeoutSummary.value.trim(),
+    })
+    caseDetail.value = response.data
+    closeoutSummary.value = ''
+    message.success('结案复核已提交')
+  } finally {
+    savingCloseout.value = false
+  }
 }
 
 onMounted(() => {
@@ -483,8 +622,37 @@ onMounted(() => {
   gap: 8px;
 }
 
-.feedback-box {
+.feedback-panel {
   margin-top: 12px;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.feedback-panel .ant-btn {
+  flex: 0 0 auto;
+}
+
+.feedback-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.feedback-item {
+  padding: 10px;
+  border: 1px solid #edf0f5;
+  border-radius: 6px;
+  background: #f8fafc;
+}
+
+.feedback-item span {
+  margin-left: 8px;
+  color: #64748b;
+}
+
+.feedback-item p {
+  margin: 6px 0 0;
 }
 
 .drawer-post div {

@@ -1,7 +1,14 @@
 import axios from 'axios'
 import { message } from 'ant-design-vue'
 import router from '@/router'
-import type { ApiEnvelope, CaseCreateRequest, CaseDetail, CasePage } from '@/types/case'
+import type {
+  ApiEnvelope,
+  CaseActionDecisionRequest,
+  CaseCloseoutReviewRequest,
+  CaseDetail,
+  CaseFeedbackRequest,
+  CasePage,
+} from '@/types/case'
 
 const caseRequest = axios.create({
   baseURL: '/api/v2/cases',
@@ -47,12 +54,44 @@ export function listCases(params: CaseListParams = {}): Promise<ApiEnvelope<Case
   return caseRequest.get('', { params })
 }
 
-export function createCase(body: CaseCreateRequest): Promise<ApiEnvelope<CaseDetail>> {
-  return caseRequest.post('', body)
-}
-
 export function getCase(caseId: string): Promise<ApiEnvelope<CaseDetail>> {
   return caseRequest.get(`/${encodeURIComponent(caseId)}`)
+}
+
+export function completeCaseAction(
+  caseId: string,
+  actionId: string,
+  body: CaseActionDecisionRequest = {},
+): Promise<ApiEnvelope<CaseDetail>> {
+  return caseRequest.post(
+    `/${encodeURIComponent(caseId)}/actions/${encodeURIComponent(actionId)}/complete`,
+    body,
+  )
+}
+
+export function waiveCaseAction(
+  caseId: string,
+  actionId: string,
+  body: CaseActionDecisionRequest = {},
+): Promise<ApiEnvelope<CaseDetail>> {
+  return caseRequest.post(
+    `/${encodeURIComponent(caseId)}/actions/${encodeURIComponent(actionId)}/waive`,
+    body,
+  )
+}
+
+export function submitCaseFeedback(
+  caseId: string,
+  body: CaseFeedbackRequest,
+): Promise<ApiEnvelope<CaseDetail>> {
+  return caseRequest.post(`/${encodeURIComponent(caseId)}/feedback`, body)
+}
+
+export function submitCaseCloseoutReview(
+  caseId: string,
+  body: CaseCloseoutReviewRequest,
+): Promise<ApiEnvelope<CaseDetail>> {
+  return caseRequest.post(`/${encodeURIComponent(caseId)}/closeout`, body)
 }
 
 export function caseReportUrl(caseId: string, version: number, format: 'html' | 'pdf'): string {

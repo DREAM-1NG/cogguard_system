@@ -107,13 +107,20 @@ The fast prototype Case Workbench entrypoint is `/api/v2/cases`.
 - `GET /api/v2/cases?event_id=trump_visit_2026_05_21` lists the demo case.
 - `GET /api/v2/cases/case_trump_visit_2026_05_21` returns the dense case
   projection used by the frontend page.
+- `POST /api/v2/cases/{case_id}/actions/{action_id}/complete` and `/waive`
+  update prototype Case Actions.
+- `POST /api/v2/cases/{case_id}/feedback` appends analyst feedback.
+- `POST /api/v2/cases/{case_id}/closeout` submits the prototype Closeout
+  Review.
 
 The MVP is a read projection over the archived Trump-visit demonstration event.
 It binds CCTV News as the Primary Claim, Xinhua as a Supplementary Claim,
 includes `semantic_enrichment` artifacts with `candidate_unvalidated` model
 status, and represents missing same-event platform evidence as a Platform Gap
-blocker instead of inventing data. Persistent Case records, approval workflows,
-formal report file serving, and strict closeout gates remain future work.
+blocker instead of inventing data. The mutation routes above are process-local
+demo state for presenting the Action and Feedback loop; persistent Case records,
+approval workflows, formal report file serving, and strict closeout gates remain
+future work.
 
 ## Prototype Acceptance
 
