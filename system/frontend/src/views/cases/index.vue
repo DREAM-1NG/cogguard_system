@@ -126,6 +126,50 @@
                 <h3>实体</h3>
                 <a-tag v-for="item in entityItems" :key="item.entity">{{ item.entity }}</a-tag>
               </div>
+              <div class="semantic-section">
+                <h3>Sentiment</h3>
+                <div v-if="sentimentEntries.length" class="semantic-stat-row">
+                  <a-statistic
+                    v-for="item in sentimentEntries"
+                    :key="item.label"
+                    :title="item.label"
+                    :value="item.value"
+                  />
+                </div>
+                <span v-else class="semantic-empty">No sentiment distribution available.</span>
+              </div>
+              <div class="semantic-section">
+                <h3>Stance</h3>
+                <a-space v-if="stanceSummary" wrap>
+                  <a-tag :color="stanceSummary.status === 'ok' ? 'blue' : 'default'">
+                    {{ stanceSummary.status || 'unknown' }}
+                  </a-tag>
+                  <a-tag v-for="item in stanceEntries" :key="item.label">
+                    {{ item.label }} {{ item.value }}
+                  </a-tag>
+                </a-space>
+                <span v-else class="semantic-empty">No stance assessment available.</span>
+              </div>
+              <div class="semantic-section">
+                <h3>Community comparison</h3>
+                <div v-if="communityItems.length" class="compact-list">
+                  <div v-for="item in communityItems" :key="item.community_id" class="topic-row">
+                    <strong>{{ item.community_id }}</strong>
+                    <span>{{ item.texts }} texts · {{ (item.top_keywords || []).join(', ') || '-' }}</span>
+                  </div>
+                </div>
+                <span v-else class="semantic-empty">No community comparison available.</span>
+              </div>
+              <div class="semantic-section">
+                <h3>Near duplicates</h3>
+                <div v-if="nearDuplicateGroups.length" class="compact-list">
+                  <div v-for="item in nearDuplicateGroups" :key="item.group_id" class="topic-row">
+                    <strong>{{ item.group_id }} · {{ item.size }}</strong>
+                    <span>{{ item.representative_text || '-' }}</span>
+                  </div>
+                </div>
+                <span v-else class="semantic-empty">No near-duplicate groups available.</span>
+              </div>
             </section>
           </div>
         </a-tab-pane>
@@ -272,7 +316,7 @@ import {
   submitCaseFeedback as submitCaseFeedbackRequest,
   waiveCaseAction as waiveCaseActionRequest,
 } from '@/api/cases'
-import type { CaseClaim, CaseDetail } from '@/types/case'
+import type { CaseClaim, CaseDetail, SemanticDistribution } from '@/types/case'
 
 const DEFAULT_EVENT_ID = 'trump_visit_2026_05_21'
 
@@ -300,6 +344,11 @@ const semanticStatus = computed(() => semanticArtifact.value?.status || 'not_run
 const topKeywords = computed<any[]>(() => semanticArtifact.value?.summary?.top_keywords || [])
 const topicItems = computed<any[]>(() => semanticArtifact.value?.summary?.topics?.items || [])
 const entityItems = computed<any[]>(() => semanticArtifact.value?.summary?.entities || [])
+const sentimentEntries = computed(() => distributionEntries(semanticArtifact.value?.summary?.sentiment?.distribution))
+const stanceSummary = computed(() => semanticArtifact.value?.summary?.stance || null)
+const stanceEntries = computed(() => distributionEntries(semanticArtifact.value?.summary?.stance?.distribution))
+const communityItems = computed(() => semanticArtifact.value?.summary?.community_comparison?.items || [])
+const nearDuplicateGroups = computed(() => semanticArtifact.value?.summary?.near_duplicates || [])
 const graphNodes = computed<any[]>(() => caseDetail.value?.graph?.nodes || [])
 const graphEdges = computed<any[]>(() => caseDetail.value?.graph?.edges || [])
 
@@ -376,6 +425,10 @@ function actionStatusColor(status?: string) {
 function compactHash(value?: string | null) {
   if (!value) return '-'
   return value.length > 16 ? `${value.slice(0, 8)}...${value.slice(-6)}` : value
+}
+
+function distributionEntries(distribution?: SemanticDistribution) {
+  return Object.entries(distribution || {}).map(([label, value]) => ({ label, value }))
 }
 
 function formatTime(value?: string | null) {
@@ -595,6 +648,26 @@ onMounted(() => {
   margin: 0 0 8px;
   color: #334155;
   font-size: 13px;
+}
+
+.semantic-stat-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
+  gap: 8px;
+}
+
+.semantic-stat-row :deep(.ant-statistic) {
+  padding: 6px 8px;
+  border: 1px solid #edf0f5;
+}
+
+.semantic-empty {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.compact-list .topic-row:first-child {
+  border-top: 1px solid #f1f5f9;
 }
 
 .topic-row {

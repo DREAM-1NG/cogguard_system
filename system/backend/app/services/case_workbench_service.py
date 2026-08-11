@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+from html import escape
 from collections import Counter
 from datetime import datetime, timezone
 from typing import Any
@@ -122,9 +123,18 @@ class CaseWorkbenchService:
         report_hash = _hash_payload(
             {
                 "case_id": DEFAULT_CASE_ID,
+                "event_id": DEFAULT_EVENT_ID,
+                "state": state,
                 "snapshot_id": snapshot.snapshot_id,
-                "primary_claim": PRIMARY_CLAIM,
+                "run_id": "run_case_workbench_demo",
+                "primary_claim_excerpt": PRIMARY_CLAIM["excerpt"],
+                "primary_claim_source": PRIMARY_CLAIM["source"],
                 "semantic_artifact_hash": semantic["artifact_sha256"],
+                "semantic_model_status": semantic["model_status"],
+                "blockers": [(blocker["code"], blocker["message"]) for blocker in blockers],
+                "actions": [(action["action_id"], action["status"]) for action in actions],
+                "feedback_count": len(feedback),
+                "closeout_summary": closeout_review.get("summary") if closeout_review else None,
             }
         )
 
@@ -203,11 +213,13 @@ class CaseWorkbenchService:
             "reports": [
                 {
                     "version": 1,
-                    "status": "placeholder",
-                    "format": "html_pdf_pending",
+                    "status": "prototype_preview",
+                    "format": "html_pdf_fallback",
                     "content_hash": report_hash,
+                    "html_url": f"/api/v2/cases/{DEFAULT_CASE_ID}/reports/1.html",
+                    "pdf_url": f"/api/v2/cases/{DEFAULT_CASE_ID}/reports/1.pdf",
                     "contains": ["case", "snapshot", "run", "model_versions", "content_hashes"],
-                    "message": "正式冻结 HTML/PDF 报告文件服务待后续迭代接入。",
+                    "message": "Prototype HTML report is available; production PDF rendering is pending.",
                 }
             ],
             "active_blockers": blockers,
@@ -304,6 +316,38 @@ class CaseWorkbenchService:
         }
         self._append_audit("submit_closeout_review", actor_id=actor_id, target_id="closeout_review_demo", payload={})
         return await self.get_case(case_id)
+
+    async def render_report_html(self, case_id: str, version: int, *, pdf_fallback: bool = False) -> str:
+        self._assert_case(case_id)
+        if version != 1:
+            raise KeyError(f"Case report version not found: {version}")
+
+        case = await self.get_case(case_id)
+        semantic = case["semantic_artifacts"][0]
+        primary_claim = case["primary_claim"]
+        actions = "".join(
+            f"<li>{_report_text(action['action_id'])}: {_report_text(action['status'])}</li>"
+            for action in case["actions"]
+        ) or "<li>None</li>"
+        blockers = "".join(
+            f"<li>{_report_text(blocker['code'])}: {_report_text(blocker['message'])}</li>"
+            for blocker in case["active_blockers"]
+        ) or "<li>None</li>"
+        closeout = case.get("closeout_review") or {}
+        pending_note = (
+            "<p><strong>Production PDF rendering is pending.</strong> This HTML is the MVP PDF fallback.</p>"
+            if pdf_fallback
+            else ""
+        )
+        return f"""<!doctype html>
+<html lang=\"en\"><head><meta charset=\"utf-8\"><title>Case report {version}</title>
+<style>body{{font-family:Arial,sans-serif;line-height:1.5;margin:2rem;max-width:900px}}section{{border-top:1px solid #bbb;margin-top:1.25rem;padding-top:.75rem}}dt{{font-weight:bold}}dd{{margin:0 0 .6rem}}code{{word-break:break-all}}@media print{{body{{margin:1cm}}}}</style>
+</head><body><h1>CogGuard Case Report</h1>{pending_note}
+<section><dl><dt>Case ID</dt><dd>{_report_text(case['case_id'])}</dd><dt>Event ID</dt><dd>{_report_text(case['event_id'])}</dd><dt>Title</dt><dd>{_report_text(case['title'])}</dd><dt>State</dt><dd>{_report_text(case['state'])}</dd><dt>Snapshot ID</dt><dd><code>{_report_text(case['evidence']['snapshot_id'])}</code></dd><dt>Run ID</dt><dd><code>{_report_text(case['analysis_runs'][0]['run_id'])}</code></dd></dl></section>
+<section><h2>Primary claim</h2><p>{_report_text(primary_claim['excerpt'])}</p><dl><dt>Source</dt><dd>{_report_text(primary_claim['source']['name'])}</dd><dt>Source tier</dt><dd>{_report_text(primary_claim['source']['tier'])}</dd></dl></section>
+<section><h2>Semantic evidence overlay</h2><dl><dt>artifact_sha256</dt><dd><code>{_report_text(semantic['artifact_sha256'])}</code></dd><dt>Model status</dt><dd>{_report_text(semantic['model_status'])}</dd><dt>Score policy</dt><dd>evidence_overlay_only</dd></dl></section>
+<section><h2>Active blockers</h2><ul>{blockers}</ul></section><section><h2>Actions</h2><ul>{actions}</ul></section><section><h2>Feedback</h2><p>Count: {len(case['feedback'])}</p></section><section><h2>Closeout review</h2><p>{_report_text(closeout.get('summary') or 'Not submitted')}</p></section>
+</body></html>"""
 
     def _assert_case(self, case_id: str) -> None:
         if case_id != DEFAULT_CASE_ID:
@@ -583,6 +627,10 @@ def _hash_payload(payload: dict[str, Any]) -> str:
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _report_text(value: Any) -> str:
+    return escape(str(value))
 
 
 __all__ = [

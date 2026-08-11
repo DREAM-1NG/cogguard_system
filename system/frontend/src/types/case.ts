@@ -37,13 +37,41 @@ export interface CaseClaim {
   excerpt_hash?: string
 }
 
+export interface SemanticDistribution {
+  [label: string]: number
+}
+
+export interface SemanticCommunityComparisonItem {
+  community_id: string
+  texts: number
+  top_keywords?: string[]
+  sentiment?: SemanticDistribution
+}
+
+export interface SemanticNearDuplicateGroup {
+  group_id: string
+  size: number
+  content_ids?: string[]
+  representative_text?: string
+}
+
+export interface SemanticArtifactSummary {
+  sentiment?: { distribution?: SemanticDistribution; average_score?: number }
+  stance?: { status?: string; distribution?: SemanticDistribution; message?: string }
+  community_comparison?: { group_by?: string; items?: SemanticCommunityComparisonItem[] }
+  near_duplicates?: SemanticNearDuplicateGroup[]
+  top_keywords?: Array<{ term: string; count?: number }>
+  topics?: { items?: Array<Record<string, any>> }
+  entities?: Array<{ entity: string }>
+}
+
 export interface SemanticArtifact {
   artifact_id: string
   artifact_type: string
   status: string
   model_status: string
   artifact_sha256?: string
-  summary?: Record<string, any>
+  summary?: SemanticArtifactSummary
   provenance?: Record<string, any>
 }
 

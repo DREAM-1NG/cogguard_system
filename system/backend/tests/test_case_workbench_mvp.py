@@ -290,9 +290,9 @@ def test_case_service_falls_back_with_platform_gap_when_evidence_is_missing():
         assert "community_comparison" in payload["semantic_artifacts"][0]["summary"]
         assert "near_duplicates" in payload["evidence_matrix"]["semantic"]
         assert "community_comparison" in payload["evidence_matrix"]["semantic"]
-        assert payload["reports"][0]["status"] == "placeholder"
-        assert "html_url" not in payload["reports"][0]
-        assert "pdf_url" not in payload["reports"][0]
+        assert payload["reports"][0]["status"] == "prototype_preview"
+        assert payload["reports"][0]["html_url"].endswith("/reports/1.html")
+        assert payload["reports"][0]["pdf_url"].endswith("/reports/1.pdf")
 
     asyncio.run(scenario())
 
@@ -309,5 +309,81 @@ def test_case_service_uses_fixture_when_mongo_configuration_is_unavailable(monke
 
         assert payload["case_id"] == "case_trump_visit_2026_05_21"
         assert payload["active_blockers"][0]["code"] == "platform_gap"
+
+    asyncio.run(scenario())
+
+
+def test_case_report_endpoints_expose_preview_provenance_and_pdf_fallback():
+    async def scenario():
+        service = CaseWorkbenchService(mongo_db=_complete_demo_mongo())
+        app = FastAPI()
+        app.include_router(router, prefix="/api/v2/cases")
+        app.dependency_overrides[get_case_workbench_service] = lambda: service
+        app.dependency_overrides[get_current_user_or_local_preview] = lambda: None
+        transport = ASGITransport(app=app)
+
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            detail = await client.get("/api/v2/cases/case_trump_visit_2026_05_21")
+            html = await client.get("/api/v2/cases/case_trump_visit_2026_05_21/reports/1.html")
+            pdf = await client.get("/api/v2/cases/case_trump_visit_2026_05_21/reports/1.pdf")
+
+        report = detail.json()["data"]["reports"][0]
+        assert report["status"] == "prototype_preview"
+        assert report["html_url"] == "/api/v2/cases/case_trump_visit_2026_05_21/reports/1.html"
+        assert report["pdf_url"] == "/api/v2/cases/case_trump_visit_2026_05_21/reports/1.pdf"
+        assert html.status_code == 200
+        assert html.headers["content-type"].startswith("text/html")
+        for value in (
+            "case_trump_visit_2026_05_21",
+            "trump_visit_2026_05_21",
+            "run_case_workbench_demo",
+            "candidate_unvalidated",
+            "artifact_sha256",
+        ):
+            assert value in html.text
+        assert pdf.status_code == 200
+        assert pdf.headers["content-type"].startswith("text/html")
+        assert "Production PDF rendering is pending." in pdf.text
+        assert 'filename="case_trump_visit_2026_05_21-report-1.html"' in pdf.headers["content-disposition"]
+
+    asyncio.run(scenario())
+
+
+def test_unknown_case_report_version_returns_404():
+    async def scenario():
+        service = CaseWorkbenchService(mongo_db=_complete_demo_mongo())
+        app = FastAPI()
+        app.include_router(router, prefix="/api/v2/cases")
+        app.dependency_overrides[get_case_workbench_service] = lambda: service
+        app.dependency_overrides[get_current_user_or_local_preview] = lambda: None
+        transport = ASGITransport(app=app)
+
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            missing_version = await client.get("/api/v2/cases/case_trump_visit_2026_05_21/reports/2.html")
+            missing_case = await client.get("/api/v2/cases/not-a-case/reports/1.html")
+
+        assert missing_version.status_code == 404
+        assert missing_case.status_code == 404
+
+    asyncio.run(scenario())
+
+
+def test_case_report_preview_hash_tracks_visible_mutation_state():
+    async def scenario():
+        service = CaseWorkbenchService(mongo_db=_complete_demo_mongo())
+
+        initial = await service.get_case("case_trump_visit_2026_05_21")
+        initial_hash = initial["reports"][0]["content_hash"]
+
+        changed = await service.complete_action(
+            "case_trump_visit_2026_05_21",
+            "action_review_public_response",
+            actor_id="analyst",
+            note="report hash should reflect visible action status",
+        )
+
+        assert changed["reports"][0]["status"] == "prototype_preview"
+        assert changed["actions"][0]["status"] == "completed"
+        assert changed["reports"][0]["content_hash"] != initial_hash
 
     asyncio.run(scenario())

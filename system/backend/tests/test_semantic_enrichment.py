@@ -5,6 +5,8 @@ from datetime import datetime, timezone
 from typing import Any
 
 from app.core.analysis import DEFAULT_ANALYSIS_STAGES, TimeWindow, build_event_snapshot
+from app.core.analysis import semantic_enrichment as semantic_enrichment_module
+from app.core.analysis.semantic_enrichment import analyze_semantic_enrichment_snapshot
 from app.core.analysis.executor import (
     AnalysisEnginePorts,
     AnalysisExecutor,
@@ -260,3 +262,29 @@ def test_missing_primary_claim_status_is_not_hidden_by_queued_teacher_job():
         assert result["results"]["semantic_enrichment"]["stance"]["code"] == "blocked_missing_primary_claim"
 
     asyncio.run(scenario())
+
+
+def test_semantic_artifact_hash_is_stable_for_identical_inputs(monkeypatch):
+    snapshot = _snapshot()
+
+    class SequenceDatetime(datetime):
+        call_count = 0
+
+        @classmethod
+        def now(cls, tz=None):
+            cls.call_count += 1
+            return datetime(2026, 5, 14, 12, 0, cls.call_count, tzinfo=tz or timezone.utc)
+
+    monkeypatch.setattr(semantic_enrichment_module, "datetime", SequenceDatetime)
+
+    first = semantic_enrichment_module.analyze_semantic_enrichment_snapshot(
+        snapshot,
+        {"primary_claim_text": "中美关系稳定前行"},
+    )
+    second = semantic_enrichment_module.analyze_semantic_enrichment_snapshot(
+        snapshot,
+        {"primary_claim_text": "中美关系稳定前行"},
+    )
+
+    assert first["generated_at"] != second["generated_at"]
+    assert first["artifact_sha256"] == second["artifact_sha256"]

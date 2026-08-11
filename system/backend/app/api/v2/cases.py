@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import HTMLResponse
 
 from app.core.security import get_current_user_or_local_preview
 from app.models.user import User
@@ -35,6 +36,35 @@ async def get_case(
 ):
     try:
         return success(data=await service.get_case(case_id))
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.get("/{case_id}/reports/{version}.html")
+async def get_case_report_html(
+    case_id: str,
+    version: int,
+    service: CaseWorkbenchService = Depends(get_case_workbench_service),
+    _current_user: User | None = Depends(get_current_user_or_local_preview),
+):
+    try:
+        return HTMLResponse(content=await service.render_report_html(case_id, version))
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.get("/{case_id}/reports/{version}.pdf")
+async def get_case_report_pdf_fallback(
+    case_id: str,
+    version: int,
+    service: CaseWorkbenchService = Depends(get_case_workbench_service),
+    _current_user: User | None = Depends(get_current_user_or_local_preview),
+):
+    try:
+        return HTMLResponse(
+            content=await service.render_report_html(case_id, version, pdf_fallback=True),
+            headers={"Content-Disposition": f'inline; filename="{case_id}-report-{version}.html"'},
+        )
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 

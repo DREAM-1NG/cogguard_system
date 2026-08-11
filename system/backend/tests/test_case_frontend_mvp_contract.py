@@ -54,4 +54,20 @@ def test_case_frontend_mvp_files_routes_and_tabs_exist():
     assert ":disabled=\"caseDetail.state !== 'ready_to_close'\"" in view
     assert "path: 'cases'" in router
     assert "path: '/cases'" in layout
+    assert "\u6848\u4f8b\u95ed\u73af" in layout
+
+
+def test_case_evidence_matrix_exposes_semantic_assistance_bindings():
+    view = (FRONTEND / "views" / "cases" / "index.vue").read_text(encoding="utf-8")
+    layout = (FRONTEND / "components" / "layout" / "BasicLayout.vue").read_text(encoding="utf-8")
+
+    for binding in (
+        "summary?.sentiment?.distribution",
+        "summary?.stance",
+        "summary?.community_comparison?.items",
+        "summary?.near_duplicates",
+    ):
+        assert binding in view
+    for label in ("Sentiment", "Stance", "Community comparison", "Near duplicates"):
+        assert label in view
     assert "案例闭环" in layout

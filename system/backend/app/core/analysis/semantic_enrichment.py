@@ -393,7 +393,11 @@ def _text(value: Any) -> str:
 
 
 def _sha256(payload: dict[str, Any]) -> str:
-    stable = {key: value for key, value in payload.items() if key != "artifact_sha256"}
+    stable = {
+        key: value
+        for key, value in payload.items()
+        if key not in {"artifact_sha256", "generated_at"}
+    }
     return hashlib.sha256(json.dumps(stable, ensure_ascii=False, sort_keys=True, default=str).encode("utf-8")).hexdigest()
 
 

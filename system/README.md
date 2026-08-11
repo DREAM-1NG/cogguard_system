@@ -115,12 +115,17 @@ The fast prototype Case Workbench entrypoint is `/api/v2/cases`.
 
 The MVP is a read projection over the archived Trump-visit demonstration event.
 It binds CCTV News as the Primary Claim, Xinhua as a Supplementary Claim,
-includes `semantic_enrichment` artifacts with `candidate_unvalidated` model
-status, and represents missing same-event platform evidence as a Platform Gap
-blocker instead of inventing data. The mutation routes above are process-local
-demo state for presenting the Action and Feedback loop; persistent Case records,
-approval workflows, formal report file serving, and strict closeout gates remain
-future work.
+and demonstrates `事件 -> 证据 -> Coordination -> Propagation -> Review -> 处置 -> 反馈`.
+Its opt-in `semantic_enrichment` artifacts cover sentiment, keywords, topics,
+entities, stance when a Primary Claim exists, near duplicates, and
+platform/community comparison; the stage leaves the default four-stage
+`AnalysisRun` unchanged. Default fallback evidence is Weibo-only and exposes a
+Platform Gap blocker, so the MVP does not claim XHS or Douyin evidence exists.
+The mutation routes above are process-local demo state for presenting the Action
+and Feedback loop. Persistent Case records, approval workflows, and strict
+closeout gates remain future work; report preview/PDF can be a prototype
+fallback until durable HTML/PDF rendering lands. Once the visible loop is
+stable, durable persistence and real report rendering are the next priorities.
 
 ## Prototype Acceptance
 

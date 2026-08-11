@@ -20,6 +20,9 @@
 
 ## 2026-08-11
 
+- 同步 Case Workbench 快速原型状态：工作台展示 `事件 -> 证据 -> Coordination -> Propagation -> Review -> 处置 -> 反馈`；`semantic_enrichment` 保持 opt-in，默认四阶段 Analysis Run 不变，并记录情感、关键词、主题、实体、有 Primary Claim 时的立场、近重复与平台/社区对比。
+- `doc/engineering/{development-log.md,development-roadmap.md}`、`system/README.md`、`README.md`：明确处置/反馈/结案变更只保存于进程内 demo state，默认 fallback 证据仅为微博且不伪造 XHS/抖音证据，报告预览/PDF 在持久 HTML/PDF 渲染落地前可使用原型 fallback。
+
 - 继续推进 Case Workbench 原型闭环从“展示态”到“可操作态”：处置项可在页面标记完成/豁免，反馈和结案复核说明可通过 `/api/v2/cases` demo mutation API 写入并刷新页面；当前状态为进程内 demo 记录，服务重启后不保留，正式持久化仍待后续 Case 模型与迁移。
 - `system/backend/app/schemas/cases.py`、`system/backend/app/api/v2/cases.py`、`system/backend/app/services/case_workbench_service.py`：新增 `complete/waive action`、`feedback`、`closeout` API 和 append-only demo audit events；完整第二平台证据存在时可从 `actioning -> ready_to_close -> closed`，默认 fixture 继续因 XHS platform gap 停留在 `evidence_ready`。
 - `system/frontend/src/api/cases.ts`、`system/frontend/src/types/case.ts`、`system/frontend/src/views/cases/index.vue`：新增 Case 操作客户端、处置按钮、反馈列表、结案复核提交控件和状态刷新。

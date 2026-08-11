@@ -10,10 +10,10 @@
 
 - [x] 新增 `/api/v2/cases` 读模型 MVP，面向特朗普访华归档案例聚合 Event Snapshot、Analysis Run、权威主张、语义辅助、处置项、反馈入口和报告版本占位。
 - [x] 新增显式 `semantic_enrichment` Analysis Stage；默认 Analysis Run 四阶段保持不变，Case 编排才显式请求语义阶段。
-- [x] 语义辅助已覆盖情感、关键词、主题、实体、近重复、社区差异和立场；当前使用轻量确定性覆盖层和固定候选模型标识，状态保持 `candidate_unvalidated`，不改变 Coordination Discover、Propagation Analysis 或 Risk Review 分数。
+- [x] 语义辅助已覆盖情感、关键词、主题、实体、近重复、平台/社区对比和立场；立场需已存在 Primary Claim。当前使用轻量确定性覆盖层和固定候选模型标识，状态保持 `candidate_unvalidated`，不改变 Coordination Discover、Propagation Analysis 或 Risk Review 分数。
 - [x] 前端新增“案例闭环”入口和 C 型密集五标签工作台：概览 / 证据矩阵 / 图谱 / 处置 / 报告。
 - [x] 新增进程内 demo mutation：处置项完成/豁免、反馈提交、结案复核提交，可支撑演示从静态展示进入实际操作闭环。
-- [ ] 完整 SQLAlchemy Case/Authority/Claim/Action/Report/Audit 持久化模型、Alembic 迁移、真实报告 HTML/PDF 文件服务、权限细分和端到端结案仍待后续迭代；当前原型先满足演示闭环。
+- [ ] 完整 SQLAlchemy Case/Authority/Claim/Action/Report/Audit 持久化模型、Alembic 迁移、真实报告 HTML/PDF 文件服务、权限细分和端到端结案仍待后续迭代；在可见演示闭环稳定后，优先完成持久化和真实报告渲染。
 
 ## 2026-08-01 状态收口
 
@@ -212,12 +212,12 @@
 
 #### 3.1bis 案例闭环工作台 🔧 读模型 MVP 已接通
 
-- [x] 后端 `/api/v2/cases` 返回特朗普访华主案例投影，展示事件、证据、Coordination、Propagation、Review、处置和反馈闭环。
-- [x] CCTV News 作为主主张，新华社作为辅助主张；非完整平台来源以 Platform Gap blocker 显示，不伪造证据。
-- [x] `semantic_enrichment` 明确作为 Case 编排 opt-in 阶段；输出只作为证据叠加。
+- [x] 后端 `/api/v2/cases` 返回特朗普访华主案例投影，展示 `事件 -> 证据 -> Coordination -> Propagation -> Review -> 处置 -> 反馈` 闭环。
+- [x] CCTV News 作为主主张，新华社作为辅助主张；默认 fallback 证据仅来自微博，并以 Platform Gap blocker 显式暴露缺口，不声称存在 XHS/抖音证据。
+- [x] `semantic_enrichment` 明确作为 Case 编排 opt-in 阶段；默认四阶段 Analysis Run 不变，输出只作为证据叠加。
 - [x] 前端“案例闭环”五标签工作台完成构建验证。
 - [x] 处置/反馈标签页可标记处置完成或豁免、提交反馈和结案复核说明；当前记录保存在后端进程内 demo state。
-- [ ] 持久化 Case 聚合、权威来源审批、一主多辅增量补跑、正式处置台账、结案门槛和冻结报告文件服务仍待完成。
+- [ ] 持久化 Case 聚合、权威来源审批、一主多辅增量补跑、正式处置台账、结案门槛和冻结报告文件服务仍待完成；当前报告预览/PDF 可以使用原型 fallback，直到持久 HTML/PDF 渲染落地。
 - [ ] 后续需要接入真实归档第二平台证据或保留明确平台缺口说明。
 
 #### 3.2 预警管理 🔲
