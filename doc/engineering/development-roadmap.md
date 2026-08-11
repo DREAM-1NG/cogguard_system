@@ -4,7 +4,15 @@
 > **受众**：开发者、项目维护者、后续执行任务的 AI agent。  
 > **维护规则**：只维护可执行工程路线和状态；研究定位、文献依据和关键技术背景放入 `../research/`。
 
-> 最后更新：2026-08-01
+> 最后更新：2026-08-11
+
+## 2026-08-11 Case Workbench 原型闭环
+
+- [x] 新增 `/api/v2/cases` 读模型 MVP，面向特朗普访华归档案例聚合 Event Snapshot、Analysis Run、权威主张、语义辅助、处置项、反馈入口和报告版本占位。
+- [x] 新增显式 `semantic_enrichment` Analysis Stage；默认 Analysis Run 四阶段保持不变，Case 编排才显式请求语义阶段。
+- [x] 语义辅助已覆盖情感、关键词、主题、实体、近重复、社区差异和立场；当前使用轻量确定性覆盖层和固定候选模型标识，状态保持 `candidate_unvalidated`，不改变 Coordination Discover、Propagation Analysis 或 Risk Review 分数。
+- [x] 前端新增“案例闭环”入口和 C 型密集五标签工作台：概览 / 证据矩阵 / 图谱 / 处置 / 报告。
+- [ ] 完整 SQLAlchemy Case/Authority/Claim/Action/Report/Audit 持久化模型、Alembic 迁移、真实报告 HTML/PDF 文件服务、权限细分和端到端结案仍待后续迭代；当前原型先满足演示闭环。
 
 ## 2026-08-01 状态收口
 
@@ -72,6 +80,8 @@
 | 前端 - 账户监测页（画像+评分） | ✅ 已完成 | P1 | 后端账户监测 |
 | 前端 - 报告研判页 | ✅ 已完成 | P1 | 后端报告研判 |
 | 前端 - UX 增强（密度/分页/引导） | ✅ 已完成 | P1 | 各前端页面 |
+| 案例闭环工作台 | 🔧 读模型 MVP 已接通 | P0 | EventSnapshot、AnalysisRun、特朗普访华归档证据 |
+| NLP 语义辅助 | 🔧 轻量原型已接入；模型验证 blocked | P0 | EventSnapshot、权威主张 |
 | 报告研判模块 | ✅ MVP 已完成 | P2 | 协同检测、传播监控、账户监测 |
 | 前端 - 监测看板 | 🔧 开发中（真实数据 + 地图） | P1 | Dashboard API、Mongo 事件数据 |
 | 系统联调与测试 | 🔧 部分（新增 BotRHG 后端回归测试） | P2 | 所有模块 |
@@ -198,6 +208,15 @@
 - [x] 前端研判工作台 — `frontend/src/views/risk/index.vue`
 - [ ] 数据库迁移补齐（`models/risk_assessment.py` 50 行已建模型，缺 alembic 迁移）⚠️ 部署阻塞
 - [ ] LLM 桥接 `core/risk/llm_bridge.py`（当前 30 行 stub，需补 LLM 客户端依赖）
+
+#### 3.1bis 案例闭环工作台 🔧 读模型 MVP 已接通
+
+- [x] 后端 `/api/v2/cases` 返回特朗普访华主案例投影，展示事件、证据、Coordination、Propagation、Review、处置和反馈闭环。
+- [x] CCTV News 作为主主张，新华社作为辅助主张；非完整平台来源以 Platform Gap blocker 显示，不伪造证据。
+- [x] `semantic_enrichment` 明确作为 Case 编排 opt-in 阶段；输出只作为证据叠加。
+- [x] 前端“案例闭环”五标签工作台完成构建验证。
+- [ ] 持久化 Case 聚合、权威来源审批、一主多辅增量补跑、正式处置台账、结案门槛和冻结报告文件服务仍待完成。
+- [ ] 后续需要接入真实归档第二平台证据或保留明确平台缺口说明。
 
 #### 3.2 预警管理 🔲
 

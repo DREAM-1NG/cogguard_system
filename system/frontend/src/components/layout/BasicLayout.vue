@@ -76,6 +76,7 @@ import {
   ShareAltOutlined,
   UserOutlined,
   AlertOutlined,
+  FolderOpenOutlined,
   SettingOutlined,
   LogoutOutlined,
   CloseOutlined,
@@ -94,6 +95,7 @@ const menuItems = [
   { path: '/coordination', label: '协同发现', icon: ApartmentOutlined, desc: '发现协同行为并构建协同网络', disabled: false },
   { path: '/propagation', label: '传播分析', icon: ShareAltOutlined, desc: '查看传播预测、证据链和传播角色', disabled: false },
   { path: '/accounts', label: '账号画像', icon: UserOutlined, desc: '账号画像、活跃节律和自动化倾向', disabled: false },
+  { path: '/cases', label: '案例闭环', icon: FolderOpenOutlined, desc: '以案例为对象串联证据、分析、处置、反馈和报告', disabled: false },
   { path: '/risk', label: '风险研判', icon: AlertOutlined, desc: '风险研判、证据融合和治理分析', disabled: false },
   { path: '/system', label: '系统管理', icon: SettingOutlined, desc: '管理研判服务、评测数据集、策略、任务和回填', disabled: false, roles: ['admin'] },
 ]
@@ -284,4 +286,3 @@ onMounted(async () => {
   min-height: 360px;
 }
 </style>
-

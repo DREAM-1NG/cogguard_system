@@ -18,6 +18,15 @@
 
 ---
 
+## 2026-08-11
+
+- 新增 Case Workbench 快速原型闭环：以已归档特朗普访华事件为演示对象，将事件证据、权威主张、显式语义辅助、分析运行、处置项、反馈入口和冻结报告占位聚合到一个案例视图；当前为读模型 MVP，不声称已完成完整 SQL 持久化、迁移或真实 PDF 渲染。
+- `system/backend/app/core/analysis/{contracts.py,executor.py,semantic_enrichment.py}`：新增显式 `semantic_enrichment` Analysis Stage，默认四阶段仍保持 `coordination_discover / propagation_analysis / student / teacher`；语义辅助输出情感、关键词、主题、实体、近重复、社区差异和立场，模型状态统一为 `candidate_unvalidated`，缺少主主张时立场返回 `blocked_missing_primary_claim`。
+- `system/backend/app/services/case_workbench_service.py`、`system/backend/app/api/v2/cases.py`、`system/backend/app/api/v2/router.py`：新增 `/api/v2/cases` 读接口，内置 CCTV 主主张、新华社辅助主张、平台缺口 blocker、Case 生命周期和报告版本占位；Mongo 不可用时显式返回 `demo_fixture` 来源并保留 XHS 平台缺口，不伪造第二平台证据。
+- `system/frontend/src/{api/cases.ts,types/case.ts,views/cases/index.vue,router/index.ts,components/layout/BasicLayout.vue}`：新增“案例闭环”侧边栏入口和五标签工作台（概览 / 证据矩阵 / 图谱 / 处置 / 报告），跨标签常驻生命周期、主核心主张和阻塞项。
+- `system/backend/tests/{test_semantic_enrichment.py,test_case_workbench_mvp.py,test_case_frontend_mvp_contract.py}`：新增 MVP 契约测试，覆盖默认四阶段兼容、显式语义阶段、缺主张降级、Case API 闭环投影和前端路由/标签契约。
+- 验证：后端选择集 `37 passed`；前端 `npm.cmd run build` 通过（仅 Vite 大 chunk warning）；Terra 只读复审确认 4 个原型阻塞项均已修复。
+
 ## 2026-08-05
 
 - 将传播能力拆分为观测传播分析与传播预测两个独立运行边界：观测接口不调用预测代码，预测接口只消费截止时间前的事件快照。

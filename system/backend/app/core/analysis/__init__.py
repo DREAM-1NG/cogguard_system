@@ -23,6 +23,10 @@ from app.core.analysis.registry import AnalysisRegistry, SqlAlchemyAnalysisStore
 from app.core.analysis.snapshots import build_event_snapshot
 from app.core.analysis.sse import format_sse_event, iter_sse_events, parse_last_event_id
 from app.core.analysis.coordination_discover_adapter import try_load_coordination_discover_result
+from app.core.analysis.semantic_enrichment import (
+    SemanticEnrichmentEngine,
+    analyze_semantic_enrichment_snapshot,
+)
 
 __all__ = [
     "AnalysisRegistry",
@@ -41,6 +45,8 @@ __all__ = [
     "build_event_snapshot",
     "analyze_coordination_discover_snapshot",
     "build_coordination_discover_evidence_edges",
+    "SemanticEnrichmentEngine",
+    "analyze_semantic_enrichment_snapshot",
     "format_sse_event",
     "iter_sse_events",
     "parse_last_event_id",

@@ -61,6 +61,12 @@ const router = createRouter({
           meta: { title: '系统管理', roles: ['admin'] },
         },
         {
+          path: 'cases',
+          name: 'Cases',
+          component: () => import('@/views/cases/index.vue'),
+          meta: { title: '案例闭环' },
+        },
+        {
           path: 'risk',
           name: 'Risk',
           component: () => import('@/views/risk/index.vue'),

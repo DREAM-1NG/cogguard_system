@@ -5,7 +5,7 @@ CogGuard is a research-oriented product system for evidence-driven social media 
 The current product narrative is:
 
 ```text
-event -> evidence -> Coordination Discover -> Propagation Analysis -> Risk Review -> governance action
+event -> evidence -> Coordination Discover -> Propagation Analysis -> Risk Review -> governance action -> feedback
 ```
 
 ## Active Capabilities
@@ -18,7 +18,8 @@ event -> evidence -> Coordination Discover -> Propagation Analysis -> Risk Revie
 | Coordination Detect | `system/research/coordination_detect/` | Public-label validation boundary exists; the current unlabeled event is correctly non-claimable and reports missing labels. |
 | Propagation Analysis | `system/research/propagation_analysis/`, `system/backend/app/core/propagation/` | Hindcast protocol, baselines, intervals, and live fallback are runnable; current live/cached paths remain prototype-only without an approved checkpoint. |
 | Risk Review | `system/backend/app/core/review/`, `system/research/review_teacher/`, `system/runtimes/review_student/` | Student and 5+1+1 Teacher seams run locally; Student is shadow/untrained, Teacher is advisory, and canonical verdicts require analyst approval. |
-  | Social Bot Detection | `system/research/social_bot_detection/`, `system/backend/app/core/trained_bot_detection.py` | Internal BotRHG transfer is runnable on Botection, and the strict NLPCC-aligned path is runnable on Cresci-2015, Cresci-2017, and Midterm-2018 with local RoBERTa-backed checkpoints; public benchmark runs remain transfer artifacts, not superiority claims. |
+| Case Workbench | `system/backend/app/api/v2/cases.py`, `system/backend/app/services/case_workbench_service.py`, `system/frontend/src/views/cases/index.vue` | Read-model MVP shows the Trump-visit case loop from evidence through semantic overlays, Review, actions, feedback, and report placeholders; durable persistence and closeout are not complete. |
+| Social Bot Detection | `system/research/social_bot_detection/`, `system/backend/app/core/trained_bot_detection.py` | Internal BotRHG transfer is runnable on Botection, and the strict NLPCC-aligned path is runnable on Cresci-2015, Cresci-2017, and Midterm-2018 with local RoBERTa-backed checkpoints; public benchmark runs remain transfer artifacts, not superiority claims. |
 
 ## Repository Map
 
@@ -66,6 +67,7 @@ Useful URLs after startup:
 - Backend API docs: `http://127.0.0.1:8000/docs`
 - Frontend: `http://127.0.0.1:5173`
 - Analysis API prefix: `/api/v2/analysis`
+- Case Workbench API prefix: `/api/v2/cases`
 
 ## Verification
 

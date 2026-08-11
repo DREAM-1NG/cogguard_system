@@ -18,6 +18,11 @@ class PropagationEngine(Protocol):
         ...
 
 
+class SemanticEngine(Protocol):
+    async def analyze(self, snapshot: EventSnapshot, options: dict[str, Any]) -> dict[str, Any]:
+        ...
+
+
 class StudentRuntime(Protocol):
     async def predict(self, case: dict[str, Any]) -> dict[str, Any]:
         ...
@@ -34,6 +39,7 @@ class AnalysisEnginePorts:
     propagation: PropagationEngine
     student: StudentRuntime
     teacher: TeacherJobPort
+    semantic: SemanticEngine | None = None
 
 
 class AnalysisExecutor:
@@ -138,7 +144,13 @@ class AnalysisExecutor:
         if getter is None:
             return {}
         models: dict[str, dict[str, Any]] = {}
-        for technology in ("coordination_discover", "propagation_analysis", "review_student", "review_teacher"):
+        for technology in (
+            "coordination_discover",
+            "propagation_analysis",
+            "semantic_enrichment",
+            "review_student",
+            "review_teacher",
+        ):
             model = await getter(technology)
             if isinstance(model, dict) and model.get("status") == "active":
                 models[technology] = model
@@ -154,6 +166,12 @@ class AnalysisExecutor:
             return await self.engines.coordination.analyze(snapshot, options)
         if stage == "propagation_analysis":
             return await self.engines.propagation.hindcast(snapshot, options)
+        if stage == "semantic_enrichment":
+            if self.engines.semantic is None:
+                from app.core.analysis.semantic_enrichment import SemanticEnrichmentEngine
+
+                return await SemanticEnrichmentEngine().analyze(snapshot, options)
+            return await self.engines.semantic.analyze(snapshot, options)
         if stage == "student":
             return await self.engines.student.predict(_case_from_snapshot(snapshot, options=options))
         if stage == "teacher":
@@ -222,11 +240,14 @@ class UnavailableTeacherJobPort:
 
 
 def default_analysis_engine_ports() -> AnalysisEnginePorts:
+    from app.core.analysis.semantic_enrichment import SemanticEnrichmentEngine
+
     return AnalysisEnginePorts(
         coordination=SnapshotCoordinationEngine(),
         propagation=PropagationAnalysisPropagationEngine(),
         student=InternalStudentRuntime(),
         teacher=InternalTeacherJobPort(),
+        semantic=SemanticEnrichmentEngine(),
     )
 
 
@@ -309,10 +330,10 @@ def _normalize_stage(stage: Any) -> str:
 
 
 def _final_status(results: dict[str, Any]) -> AnalysisRunStatus:
-    if _teacher_job_id(results.get("teacher")):
-        return AnalysisRunStatus.AWAITING_REVIEW
     if any(_needs_evidence(result) for result in results.values()):
         return AnalysisRunStatus.NEEDS_EVIDENCE
+    if _teacher_job_id(results.get("teacher")):
+        return AnalysisRunStatus.AWAITING_REVIEW
     return AnalysisRunStatus.COMPLETED
 
 
@@ -331,6 +352,9 @@ def _stage_completed_event_type(stage: str, result: Any) -> str:
 def _needs_evidence(result: Any) -> bool:
     if not isinstance(result, dict):
         return False
+    stance = result.get("stance") if isinstance(result.get("stance"), dict) else {}
+    if stance.get("code") == "blocked_missing_primary_claim":
+        return True
     return str(result.get("status") or "").strip() in {
         "unavailable",
         "missing_data",

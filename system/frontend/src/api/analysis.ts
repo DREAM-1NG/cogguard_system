@@ -2,7 +2,7 @@ import axios from 'axios'
 import { message } from 'ant-design-vue'
 import router from '@/router'
 
-export type AnalysisStage = 'coordination_discover' | 'propagation_analysis' | 'student' | 'teacher'
+export type AnalysisStage = 'coordination_discover' | 'propagation_analysis' | 'semantic_enrichment' | 'student' | 'teacher'
 
 export interface AnalysisTimeWindow {
   start: string

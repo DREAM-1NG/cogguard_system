@@ -14,12 +14,17 @@ ANALYSIS_STAGE_ALIASES: dict[str, str] = {
     "propagation": "propagation_analysis",
     "propagation_engine": "propagation_analysis",
     "propagation_analysis": "propagation_analysis",
+    "semantic": "semantic_enrichment",
+    "semantics": "semantic_enrichment",
+    "semantic_enrichment": "semantic_enrichment",
     "review_student": "student",
     "review_teacher": "teacher",
     "review_student": "student",
     "review_teacher": "teacher",
 }
-ANALYSIS_STAGE_ALLOWLIST = frozenset({"coordination_discover", "propagation_analysis", "student", "teacher"})
+ANALYSIS_STAGE_ALLOWLIST = frozenset(
+    {"coordination_discover", "propagation_analysis", "semantic_enrichment", "student", "teacher"}
+)
 # A prototype run should exercise the complete capability chain by default.
 # Callers may still request a narrower stage list for focused diagnostics.
 DEFAULT_ANALYSIS_STAGES = (

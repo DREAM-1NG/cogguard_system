@@ -34,9 +34,9 @@ system/
   backend/
     app/
       api/v1/           legacy thin compatibility layer
-      api/v2/           current product API surface
+      api/v2/           current Analysis and Case Workbench API surface
       core/
-        analysis/       EventSnapshot, AnalysisRun, SSE, Coordination Discover, Propagation Analysis, Review ports, governance
+        analysis/       EventSnapshot, AnalysisRun, semantic enrichment, SSE, Coordination Discover, Propagation Analysis, Review ports, governance
         coordination_baseline/ CooRTweet-style fallback baseline implementation
         coordination/   legacy compatibility aliases for coordination_baseline
         crawler/        social/news/mock acquisition adapters
@@ -123,6 +123,11 @@ Use the glossary in `UBIQUITOUS_LANGUAGE.md` for domain terms. The system-level 
 - `Propagation Forecast`
 - `ReviewVerdict`
 - `Canonical Verdict`
+- `Case`
+- `Case Workbench`
+- `Authority Source`
+- `Case Claim`
+- `Semantic Artifact`
 - `Artifact Manifest`
 - `Strict Leiden Artifact`
 
@@ -184,6 +189,7 @@ Use the glossary in `UBIQUITOUS_LANGUAGE.md` for domain terms. The system-level 
 - Keep UI, API, runtime, research, and docs separate.
 - Keep product API models in `schemas/`, persistent records in `models/`, and orchestration in `services/` or `core/`.
 - Keep analysis lifecycle logic in `app/core/analysis/`.
+- Keep Case Workbench orchestration and read projections in focused services under `app/services/`; long-lived Case persistence belongs in `app/models/` and API contracts in `app/schemas/` when the MVP becomes durable.
 - Keep analysis capability-specific research logic in semantic research packages: `coordination_discover`, `coordination_detect`, `propagation_analysis`, and `review_teacher`.
 - Keep deployable ML/runtime code in `system/runtimes/*`.
 

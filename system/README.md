@@ -9,6 +9,7 @@ Canonical capabilities:
 - `Coordination Discover` and `Coordination Detect`
 - `Propagation Analysis`
 - `Risk Review`, including `Student Review` and `Teacher Review`
+- `Case Workbench`
 - `Crawler`
 
 ## Directory Layout
@@ -18,9 +19,9 @@ system/
   backend/
     app/
       api/v1/                  legacy thin API mappings
-      api/v2/                  current Analysis API surface
+      api/v2/                  current Analysis and Case Workbench API surface
       core/
-        analysis/              EventSnapshot, AnalysisRun, ports, SSE recovery
+        analysis/              EventSnapshot, AnalysisRun, semantic enrichment, ports, SSE recovery
         coordination_baseline/ reference-style fallback baseline
         coordination/          legacy compatibility alias for coordination_baseline
         crawler/               Crawler interface, social/news/mock adapters
@@ -96,6 +97,23 @@ The application-facing ports are:
 When `requested_stages` is omitted, a prototype run executes
 `coordination_discover`, `propagation_analysis`, `student`, and `teacher` in
 that order. A narrower list remains available for focused diagnostics.
+`semantic_enrichment` is an explicit opt-in stage used by the Case Workbench and
+does not alter Coordination, Propagation, Student, Teacher, or risk scores.
+
+## Case Workbench API
+
+The fast prototype Case Workbench entrypoint is `/api/v2/cases`.
+
+- `GET /api/v2/cases?event_id=trump_visit_2026_05_21` lists the demo case.
+- `GET /api/v2/cases/case_trump_visit_2026_05_21` returns the dense case
+  projection used by the frontend page.
+
+The MVP is a read projection over the archived Trump-visit demonstration event.
+It binds CCTV News as the Primary Claim, Xinhua as a Supplementary Claim,
+includes `semantic_enrichment` artifacts with `candidate_unvalidated` model
+status, and represents missing same-event platform evidence as a Platform Gap
+blocker instead of inventing data. Persistent Case records, approval workflows,
+formal report file serving, and strict closeout gates remain future work.
 
 ## Prototype Acceptance
 
@@ -175,6 +193,7 @@ Useful targeted gates:
 cd system\backend
 python -m pytest tests/test_system_naming_governance.py -q
 python -m pytest tests/test_analysis_executor.py tests/test_analysis_registry.py -q
+python -m pytest tests/test_semantic_enrichment.py tests/test_case_workbench_mvp.py tests/test_case_frontend_mvp_contract.py -q
 python -m pytest tests/test_coordination_local_discover_detect_script.py -q
 ```
 
