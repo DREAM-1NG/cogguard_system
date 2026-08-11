@@ -115,3 +115,23 @@ def test_case_evidence_matrix_exposes_semantic_truth_boundary_bindings():
         "score_policy?: string",
     ):
         assert field in types
+
+
+def test_case_evidence_matrix_exposes_claim_archive_provenance_bindings():
+    view = (FRONTEND / "views" / "cases" / "index.vue").read_text(encoding="utf-8")
+    types = (FRONTEND / "types" / "case.ts").read_text(encoding="utf-8")
+
+    for binding in (
+        "source_archive_id",
+        "source_content_hash",
+        "source_markdown_hash",
+        "source_content_capture",
+    ):
+        assert binding in view
+    for field in (
+        "content_capture?: string",
+        "source_archive_id?: string",
+        "source_markdown_hash?: string",
+        "source_content_capture?: string",
+    ):
+        assert field in types

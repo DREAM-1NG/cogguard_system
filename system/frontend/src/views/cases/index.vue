@@ -406,6 +406,10 @@ const claimColumns = [
   { title: '角色', dataIndex: 'role', key: 'role' },
   { title: '来源', key: 'source', customRender: ({ record }: { record: CaseClaim }) => `${record.source?.name || '-'} · ${record.source?.tier || '-'}` },
   { title: '原句', dataIndex: 'excerpt', key: 'excerpt' },
+  { title: 'Archive', dataIndex: 'source_archive_id', key: 'source_archive_id', customRender: ({ text }: { text: string }) => text || '-' },
+  { title: 'Capture', dataIndex: 'source_content_capture', key: 'source_content_capture', customRender: ({ text }: { text: string }) => text || '-' },
+  { title: 'Source hash', dataIndex: 'source_content_hash', key: 'source_content_hash', customRender: ({ text }: { text: string }) => compactHash(text) },
+  { title: 'Markdown hash', dataIndex: 'source_markdown_hash', key: 'source_markdown_hash', customRender: ({ text }: { text: string }) => compactHash(text) },
   { title: 'Hash', dataIndex: 'excerpt_hash', key: 'excerpt_hash', customRender: ({ text }: { text: string }) => compactHash(text) },
 ]
 

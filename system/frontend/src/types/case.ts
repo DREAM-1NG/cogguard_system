@@ -20,6 +20,7 @@ export interface AuthoritySourceRef {
   tier: 'government_official' | 'central_mainstream_original' | 'provincial_official_media' | string
   url: string
   status?: string
+  content_capture?: string
 }
 
 export interface CaseClaim {
@@ -33,7 +34,10 @@ export interface CaseClaim {
   published_at?: string
   source_tier?: string
   source: AuthoritySourceRef
+  source_archive_id?: string
   source_content_hash?: string
+  source_markdown_hash?: string
+  source_content_capture?: string
   excerpt_hash?: string
 }
 
