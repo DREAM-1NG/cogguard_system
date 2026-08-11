@@ -644,6 +644,29 @@ def test_case_report_prints_closure_checklist():
     asyncio.run(scenario())
 
 
+def test_case_report_prints_acceptance_summary():
+    async def scenario():
+        service = CaseWorkbenchService(mongo_db={})
+        case_id = "case_trump_visit_2026_05_21"
+        blocker_id = (await service.get_case(case_id))["active_blockers"][0]["blocker_id"]
+        await service.acknowledge_blocker(case_id, blocker_id, actor_id="analyst", reason="Documented XHS gap.")
+        for action in (await service.get_case(case_id))["actions"]:
+            await service.complete_action(case_id, action["action_id"], actor_id="analyst")
+        await service.submit_feedback(case_id, actor_id="analyst", content="Feedback recorded.")
+        await service.submit_closeout_review(case_id, actor_id="analyst", summary="Closeout accepted.")
+
+        html = await service.render_report_html(case_id, 1)
+
+        assert "Acceptance summary" in html
+        assert "closed_loop_review_submitted" in html
+        assert "cctv_xinhua_markitdown_archive" in html
+        assert "coordination_propagation_review" in html
+        assert "evidence_overlay_only" in html
+        assert "weibo_only_with_platform_gap" in html
+
+    asyncio.run(scenario())
+
+
 async def _close_fallback_demo_case(service: CaseWorkbenchService) -> tuple[dict[str, Any], str]:
     case_id = "case_trump_visit_2026_05_21"
     initial = await service.get_case(case_id)

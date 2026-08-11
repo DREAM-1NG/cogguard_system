@@ -438,6 +438,16 @@ class CaseWorkbenchService:
             "</li>"
             for item in case.get("closure_checklist", [])
         ) or "<li>None</li>"
+        acceptance_summary = _report_acceptance_summary(case)
+        acceptance_summary_html = (
+            "<section><h2>Acceptance summary</h2><dl>"
+            f"<dt>Closeout</dt><dd>{_report_text(acceptance_summary['closeout'])}</dd>"
+            f"<dt>Archive coverage</dt><dd>{_report_text(acceptance_summary['archive_coverage'])}</dd>"
+            f"<dt>CPR coverage</dt><dd>{_report_text(acceptance_summary['cpr_coverage'])}</dd>"
+            f"<dt>Semantic policy</dt><dd>{_report_text(acceptance_summary['semantic_policy'])}</dd>"
+            f"<dt>Second platform honesty</dt><dd>{_report_text(acceptance_summary['second_platform_honesty'])}</dd>"
+            "</dl></section>"
+        )
         pending_note = (
             "<p><strong>Production PDF rendering is pending.</strong> This HTML is the MVP PDF fallback.</p>"
             if pdf_fallback
@@ -461,6 +471,7 @@ class CaseWorkbenchService:
 <section><h2>Primary claim</h2><p>{_report_text(primary_claim['excerpt'])}</p><dl><dt>Source</dt><dd>{_report_text(primary_claim['source']['name'])}</dd><dt>Source tier</dt><dd>{_report_text(primary_claim['source']['tier'])}</dd></dl></section>
 <section><h2>Semantic evidence overlay</h2><dl><dt>artifact_sha256</dt><dd><code>{_report_text(semantic['artifact_sha256'])}</code></dd><dt>Model status</dt><dd>{_report_text(semantic['model_status'])}</dd><dt>Score policy</dt><dd>evidence_overlay_only</dd></dl></section>
 <section><h2>CPR evidence layers</h2><ul>{evidence_layers}</ul></section>
+{acceptance_summary_html}
 <section><h2>Closure checklist</h2><ul>{closure_checklist}</ul></section>
 <section><h2>Active blockers</h2><ul>{blockers}</ul></section><section><h2>Policy acknowledgements</h2><ul>{acknowledgements}</ul></section><section><h2>Actions</h2><ul>{actions}</ul></section><section><h2>Feedback</h2><p>Count: {len(case['feedback'])}</p></section><section><h2>Closeout review</h2><p>{_report_text(closeout.get('summary') or 'Not submitted')}</p></section>
 </body></html>"""
@@ -974,6 +985,36 @@ def _closure_checklist(
             },
         },
     ]
+
+
+def _report_acceptance_summary(case: dict[str, Any]) -> dict[str, str]:
+    claims = [
+        *([case["primary_claim"]] if case.get("primary_claim") else []),
+        *case.get("supplementary_claims", []),
+    ]
+    archive_coverage = (
+        "cctv_xinhua_markitdown_archive"
+        if claims and all(claim.get("source_archive_id") for claim in claims)
+        else "incomplete"
+    )
+    graph_layer_keys = {layer.get("key") for layer in case.get("graph", {}).get("evidence_layers", [])}
+    cpr_coverage = (
+        "coordination_propagation_review"
+        if {"coordination", "propagation", "review"}.issubset(graph_layer_keys)
+        else "incomplete"
+    )
+    second_platform_honesty = (
+        "weibo_only_with_platform_gap"
+        if case.get("platforms") == ["weibo"] and case.get("blocker_acknowledgements")
+        else "check_required"
+    )
+    return {
+        "closeout": "closed_loop_review_submitted" if case.get("closeout_review") else case.get("state", "not_loaded"),
+        "archive_coverage": archive_coverage,
+        "cpr_coverage": cpr_coverage,
+        "semantic_policy": case.get("workflow_summary", {}).get("semantic_score_policy", "unknown"),
+        "second_platform_honesty": second_platform_honesty,
+    }
 
 
 def _hash_payload(payload: dict[str, Any]) -> str:
