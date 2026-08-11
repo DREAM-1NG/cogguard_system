@@ -229,6 +229,37 @@ def test_case_actions_feedback_and_closeout_are_append_only_demo_state():
     asyncio.run(scenario())
 
 
+def test_missing_primary_claim_blocks_stance_and_closeout_without_suppressing_other_semantics():
+    async def scenario():
+        service = CaseWorkbenchService(mongo_db=_complete_demo_mongo(), missing_primary_claim=True)
+        case_id = "case_trump_visit_2026_05_21"
+
+        initial = await service.get_case(case_id)
+        semantic_summary = initial["semantic_artifacts"][0]["summary"]
+        primary_claim_blocker = next(
+            blocker
+            for blocker in initial["active_blockers"]
+            if blocker["code"] == "blocked_missing_primary_claim"
+        )
+
+        assert semantic_summary["stance"]["status"] == "blocked"
+        assert semantic_summary["stance"]["code"] == "blocked_missing_primary_claim"
+        assert primary_claim_blocker["scope"] == "claim"
+        assert primary_claim_blocker["operation"] == "stance_review_closeout"
+        assert semantic_summary["sentiment"]
+        assert semantic_summary["top_keywords"]
+        assert semantic_summary["topics"]
+
+        for action in initial["actions"]:
+            await service.complete_action(case_id, action["action_id"], actor_id="analyst")
+        await service.submit_feedback(case_id, actor_id="analyst", content="Feedback recorded.")
+
+        with pytest.raises(CaseOperationConflict, match="Closeout review requires"):
+            await service.submit_closeout_review(case_id, actor_id="analyst", summary="Closeout is blocked.")
+
+    asyncio.run(scenario())
+
+
 def test_closeout_is_blocked_until_case_is_ready_to_close():
     async def scenario():
         service = CaseWorkbenchService(mongo_db={})

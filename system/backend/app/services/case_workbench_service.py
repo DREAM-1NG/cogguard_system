@@ -90,9 +90,16 @@ SUPPLEMENTARY_CLAIM = {
 class CaseWorkbenchService:
     """Build a case-level projection from current event evidence and analysis contracts."""
 
-    def __init__(self, mongo_db: Any | None = None, demo_state: dict[str, Any] | None = None) -> None:
+    def __init__(
+        self,
+        mongo_db: Any | None = None,
+        demo_state: dict[str, Any] | None = None,
+        *,
+        missing_primary_claim: bool = False,
+    ) -> None:
         self.mongo_db = mongo_db
         self.demo_state = demo_state if demo_state is not None else _new_demo_state()
+        self.missing_primary_claim = missing_primary_claim
 
     async def list_cases(self, *, event_id: str | None = None) -> dict[str, Any]:
         case = await self.get_case(DEFAULT_CASE_ID)
@@ -112,12 +119,13 @@ class CaseWorkbenchService:
             raise KeyError(f"Case not found: {case_id}")
         posts, comments, source_mode = await self._load_evidence(DEFAULT_EVENT_ID)
         snapshot = _snapshot_from_evidence(posts, comments)
+        primary_claim = None if self.missing_primary_claim else PRIMARY_CLAIM
         semantic = analyze_semantic_enrichment_snapshot(
             snapshot,
-            {"primary_claim": PRIMARY_CLAIM},
+            {"primary_claim": primary_claim},
         )
         platforms = _platforms(posts, comments)
-        blockers = _blockers(platforms)
+        blockers = [*_blockers(platforms), *_primary_claim_blockers(primary_claim)]
         acknowledgements = list(self.demo_state["blocker_acknowledgements"])
         acknowledged_blocker_ids = {record["blocker_id"] for record in acknowledgements}
         active_blockers = [blocker for blocker in blockers if blocker["blocker_id"] not in acknowledged_blocker_ids]
@@ -132,8 +140,8 @@ class CaseWorkbenchService:
                 "state": state,
                 "snapshot_id": snapshot.snapshot_id,
                 "run_id": "run_case_workbench_demo",
-                "primary_claim_excerpt": PRIMARY_CLAIM["excerpt"],
-                "primary_claim_source": PRIMARY_CLAIM["source"],
+                "primary_claim_excerpt": primary_claim["excerpt"] if primary_claim else None,
+                "primary_claim_source": primary_claim["source"] if primary_claim else None,
                 "semantic_artifact_hash": semantic["artifact_sha256"],
                 "semantic_model_status": semantic["model_status"],
                 "blockers": [(blocker["code"], blocker["message"]) for blocker in active_blockers],
@@ -169,7 +177,7 @@ class CaseWorkbenchService:
                 "recent_posts": _recent_posts(posts),
             },
             "lifecycle": _lifecycle(state=state),
-            "primary_claim": _claim_with_hash(PRIMARY_CLAIM),
+            "primary_claim": _claim_with_hash(primary_claim) if primary_claim else None,
             "supplementary_claims": [_claim_with_hash(SUPPLEMENTARY_CLAIM)],
             "canonical_verdict": {
                 "verdict_id": "canonical_demo_verdict",
@@ -211,7 +219,7 @@ class CaseWorkbenchService:
                     "provenance": semantic["provenance"],
                 }
             ],
-            "evidence_matrix": _evidence_matrix(posts, comments, semantic),
+            "evidence_matrix": _evidence_matrix(posts, comments, semantic, primary_claim=primary_claim),
             "graph": _graph_projection(posts),
             "actions": actions,
             "feedback": feedback,
@@ -578,6 +586,25 @@ def _blockers(platforms: list[str]) -> list[dict[str, Any]]:
     ]
 
 
+def _primary_claim_blockers(primary_claim: dict[str, Any] | None) -> list[dict[str, Any]]:
+    if primary_claim is not None:
+        return []
+    return [
+        {
+            "blocker_id": "blocker_missing_primary_claim",
+            "code": "blocked_missing_primary_claim",
+            "scope": "claim",
+            "operation": "stance_review_closeout",
+            "severity": "blocking",
+            "message": (
+                "Stance, Review finalization, and Closeout require one approved Primary Claim; "
+                "non-stance semantic artifacts remain available."
+            ),
+            "missing_platforms": [],
+        }
+    ]
+
+
 def _lifecycle(*, state: str) -> list[dict[str, str]]:
     order = [
         ("event", "事件"),
@@ -651,9 +678,18 @@ def _recent_posts(posts: list[dict[str, Any]], *, limit: int = 6) -> list[dict[s
     ]
 
 
-def _evidence_matrix(posts: list[dict[str, Any]], comments: list[dict[str, Any]], semantic: dict[str, Any]) -> dict[str, Any]:
+def _evidence_matrix(
+    posts: list[dict[str, Any]],
+    comments: list[dict[str, Any]],
+    semantic: dict[str, Any],
+    *,
+    primary_claim: dict[str, Any] | None = PRIMARY_CLAIM,
+) -> dict[str, Any]:
+    claims = [_claim_with_hash(SUPPLEMENTARY_CLAIM)]
+    if primary_claim is not None:
+        claims.insert(0, _claim_with_hash(primary_claim))
     return {
-        "claims": [_claim_with_hash(PRIMARY_CLAIM), _claim_with_hash(SUPPLEMENTARY_CLAIM)],
+        "claims": claims,
         "posts": _recent_posts(posts, limit=20),
         "comments": [
             {
