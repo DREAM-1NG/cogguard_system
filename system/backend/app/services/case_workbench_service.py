@@ -6,13 +6,16 @@ import hashlib
 from html import escape
 from collections import Counter
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 from app.core.analysis.semantic_enrichment import analyze_semantic_enrichment_snapshot
 from app.core.analysis.snapshots import build_event_snapshot
 from app.core.analysis.contracts import TimeWindow
 from app.db.mongodb import get_mongo_db
+from app.schemas.case_research import ResearchArchiveEntry
 from app.services.event_data import load_event_comments, load_event_posts
+from app.services.case_research_archive import verify_research_archive
 
 DEFAULT_EVENT_ID = "trump_visit_2026_05_21"
 DEFAULT_CASE_ID = "case_trump_visit_2026_05_21"
@@ -119,7 +122,10 @@ class CaseWorkbenchService:
             raise KeyError(f"Case not found: {case_id}")
         posts, comments, source_mode = await self._load_evidence(DEFAULT_EVENT_ID)
         snapshot = _snapshot_from_evidence(posts, comments)
+        primary_template, supplementary_claim = _archived_demo_claims()
         primary_claim = None if self.missing_primary_claim else PRIMARY_CLAIM
+        if primary_claim is not None:
+            primary_claim = primary_template
         semantic = analyze_semantic_enrichment_snapshot(
             snapshot,
             {"primary_claim": primary_claim},
@@ -178,7 +184,7 @@ class CaseWorkbenchService:
             },
             "lifecycle": _lifecycle(state=state),
             "primary_claim": _claim_with_hash(primary_claim) if primary_claim else None,
-            "supplementary_claims": [_claim_with_hash(SUPPLEMENTARY_CLAIM)],
+            "supplementary_claims": [_claim_with_hash(supplementary_claim)],
             "canonical_verdict": {
                 "verdict_id": "canonical_demo_verdict",
                 "status": "approved",
@@ -219,7 +225,13 @@ class CaseWorkbenchService:
                     "provenance": semantic["provenance"],
                 }
             ],
-            "evidence_matrix": _evidence_matrix(posts, comments, semantic, primary_claim=primary_claim),
+            "evidence_matrix": _evidence_matrix(
+                posts,
+                comments,
+                semantic,
+                primary_claim=primary_claim,
+                supplementary_claim=supplementary_claim,
+            ),
             "graph": _graph_projection(posts),
             "actions": actions,
             "feedback": feedback,
@@ -405,6 +417,9 @@ class CaseWorkbenchService:
             f"<dt>Claim verification</dt><dd>{_report_text(primary_claim['status'])}</dd>"
             f"<dt>Source verification</dt><dd>{_report_text(primary_claim['source'].get('status') or 'unverified')}</dd>"
             f"<dt>Source content capture</dt><dd>{_report_text(primary_claim.get('source_content_capture') or 'unavailable')}</dd>"
+            f"<dt>Source archive ID</dt><dd>{_report_text(primary_claim.get('source_archive_id') or 'unavailable')}</dd>"
+            f"<dt>Source content hash</dt><dd><code>{_report_text(primary_claim.get('source_content_hash') or 'unavailable')}</code></dd>"
+            f"<dt>Source Markdown hash</dt><dd><code>{_report_text(primary_claim.get('source_markdown_hash') or 'unavailable')}</code></dd>"
             "</dl></section>"
         )
         return f"""<!doctype html>
@@ -510,6 +525,61 @@ def _summary(case: dict[str, Any]) -> dict[str, Any]:
 
 class CaseOperationConflict(ValueError):
     """Raised when a prototype Case operation violates lifecycle gates."""
+
+
+def _archived_demo_claims() -> tuple[dict[str, Any], dict[str, Any]]:
+    try:
+        entries = verify_research_archive(_research_archive_root())
+    except Exception:
+        return _copy_claim(PRIMARY_CLAIM), _copy_claim(SUPPLEMENTARY_CLAIM)
+
+    by_purpose = {entry.purpose: entry for entry in entries}
+    return (
+        _claim_bound_to_archive(PRIMARY_CLAIM, by_purpose.get("primary_claim")),
+        _claim_bound_to_archive(SUPPLEMENTARY_CLAIM, by_purpose.get("supplementary_claim")),
+    )
+
+
+def _research_archive_root() -> Path:
+    return Path(__file__).resolve().parents[4] / "doc" / "research" / "case-workbench"
+
+
+def _claim_bound_to_archive(template: dict[str, Any], entry: ResearchArchiveEntry | None) -> dict[str, Any]:
+    claim = _copy_claim(template)
+    if entry is None:
+        return claim
+    source = dict(claim["source"])
+    source.update(
+        {
+            "url": str(entry.source_url),
+            "status": "verified_archive",
+            "content_capture": "markitdown_archive",
+            "archive_id": entry.archive_id,
+            "source_sha256": entry.source_sha256,
+            "markdown_sha256": entry.markdown_sha256,
+        }
+    )
+    claim.update(
+        {
+            "excerpt": entry.verified_excerpt,
+            "span": {"start": entry.verified_span_start, "end": entry.verified_span_end},
+            "url": str(entry.source_url),
+            "source_archive_id": entry.archive_id,
+            "source_content_capture": "markitdown_archive",
+            "source_content_hash": entry.source_sha256,
+            "source_markdown_hash": entry.markdown_sha256,
+            "source": source,
+        }
+    )
+    return claim
+
+
+def _copy_claim(claim: dict[str, Any]) -> dict[str, Any]:
+    return {
+        **claim,
+        "span": dict(claim["span"]),
+        "source": dict(claim["source"]),
+    }
 
 
 def _new_demo_state() -> dict[str, Any]:
@@ -639,7 +709,7 @@ def _claim_with_hash(claim: dict[str, Any]) -> dict[str, Any]:
     excerpt = str(claim["excerpt"])
     return {
         **claim,
-        "source_content_capture": "unavailable",
+        "source_content_capture": claim.get("source_content_capture") or "unavailable",
         "excerpt_hash": hashlib.sha256(excerpt.encode("utf-8")).hexdigest(),
     }
 
@@ -684,8 +754,9 @@ def _evidence_matrix(
     semantic: dict[str, Any],
     *,
     primary_claim: dict[str, Any] | None = PRIMARY_CLAIM,
+    supplementary_claim: dict[str, Any] = SUPPLEMENTARY_CLAIM,
 ) -> dict[str, Any]:
-    claims = [_claim_with_hash(SUPPLEMENTARY_CLAIM)]
+    claims = [_claim_with_hash(supplementary_claim)]
     if primary_claim is not None:
         claims.insert(0, _claim_with_hash(primary_claim))
     return {

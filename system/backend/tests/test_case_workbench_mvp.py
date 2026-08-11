@@ -542,17 +542,31 @@ async def _close_fallback_demo_case(service: CaseWorkbenchService) -> tuple[dict
     return closed, blocker_id
 
 
-def test_demo_claims_are_candidate_records_without_captured_source_content():
+def test_demo_claims_bind_verified_authority_archives_without_approving_claims():
     async def scenario():
         service = CaseWorkbenchService(mongo_db={})
         case = await service.get_case("case_trump_visit_2026_05_21")
+        primary = case["primary_claim"]
+        supplementary = case["supplementary_claims"][0]
 
-        for claim in [case["primary_claim"], *case["supplementary_claims"]]:
+        assert primary["source"]["url"] == "https://news.cctv.com/2026/05/14/ARTIKHqdq6wvI5Npz7H7UEPx260514.shtml"
+        assert primary["source_archive_id"] == "archive_cctv_primary_claim_20260811"
+        assert primary["span"] == {"start": 658, "end": 678}
+        assert primary["source_content_hash"] == "a3e73ac60fe7c801972f609f84b883e067af1c448179f92602ac2d11023dfeb7"
+        assert primary["source_markdown_hash"] == "266988c725168dc7d9c5147a8b777a8ff168db698dee6019c04f3342124b8622"
+        assert supplementary["source"]["url"] == (
+            "https://www.news.cn/politics/leaders/20260515/210c5d4fc07c413e8d2ba8e4519fe816/c.html"
+        )
+        assert supplementary["source_archive_id"] == "archive_xinhua_supplementary_claim_20260811"
+        assert supplementary["span"] == {"start": 988, "end": 998}
+        assert supplementary["source_content_hash"] == "0c26be8a705d2c5e2f8436e6f74a0b0661a79c0b3b46f702e30aed314bd5c222"
+        assert supplementary["source_markdown_hash"] == "4097ff1f841ab550175e8f69f9b330ca7c0d12564f253d08b2366cc7179ee9c2"
+
+        for claim in [primary, supplementary]:
             assert claim["status"] == "candidate_unvalidated"
-            assert claim["source"]["status"] == "candidate_unvalidated"
-            assert claim["source"]["content_capture"] == "unavailable"
-            assert claim["source_content_capture"] == "unavailable"
-            assert "source_content_hash" not in claim
+            assert claim["source"]["status"] == "verified_archive"
+            assert claim["source"]["content_capture"] == "markitdown_archive"
+            assert claim["source_content_capture"] == "markitdown_archive"
             assert len(claim["excerpt_hash"]) == 64
 
         html = await service.render_report_html("case_trump_visit_2026_05_21", 1)
@@ -560,7 +574,8 @@ def test_demo_claims_are_candidate_records_without_captured_source_content():
         assert "Source verification" in html
         assert "Source content capture" in html
         assert "candidate_unvalidated" in html
-        assert "unavailable" in html
+        assert "archive_cctv_primary_claim_20260811" in html
+        assert "a3e73ac60fe7c801972f609f84b883e067af1c448179f92602ac2d11023dfeb7" in html
 
     asyncio.run(scenario())
 
