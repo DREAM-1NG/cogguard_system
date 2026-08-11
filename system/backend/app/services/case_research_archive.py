@@ -52,7 +52,10 @@ def verify_research_archive(root: Path, *, source_root: Path | None = None) -> t
         if required_purpose not in purposes:
             raise ValueError(f"research archive requires a {required_purpose} entry")
 
-    if "second_platform" not in purposes and not _has_unverified_second_platform_gap(resolved_root):
+    has_platform_gap = _has_unverified_second_platform_gap(resolved_root)
+    if "second_platform" in purposes and has_platform_gap:
+        raise ValueError("verified second-platform entry and platform-gap.json are mutually exclusive")
+    if "second_platform" not in purposes and not has_platform_gap:
         raise ValueError("research archive requires a verified second-platform entry or platform-gap.json")
     return entries
 
@@ -69,6 +72,7 @@ def _verify_entry(
         raise ValueError(f"markdown_path does not exist: {entry.markdown_path}")
     if not metadata_path.is_file():
         raise ValueError(f"metadata_path does not exist: {entry.metadata_path}")
+    _verify_metadata(metadata_path, entry)
 
     markdown_bytes = markdown_path.read_bytes()
     _require_sha256(markdown_bytes, entry.markdown_sha256, label="markdown")
@@ -93,6 +97,16 @@ def _has_unverified_second_platform_gap(root: Path) -> bool:
         return False
     PlatformGap.model_validate(json.loads(platform_gap_path.read_text(encoding="utf-8")))
     return True
+
+
+def _verify_metadata(metadata_path: Path, entry: ResearchArchiveEntry) -> None:
+    payload: Any = json.loads(metadata_path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise ValueError("metadata must be a JSON object")
+    if payload.get("converter") != entry.converter:
+        raise ValueError("metadata converter does not match its archive manifest")
+    if payload.get("converter_version") != entry.converter_version:
+        raise ValueError("metadata converter version does not match its archive manifest")
 
 
 def _resolve_within_root(raw_path: str, *, root: Path, label: str) -> Path:

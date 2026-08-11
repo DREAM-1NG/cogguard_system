@@ -4,7 +4,7 @@
 遵循 FastAPI 最佳实践。
 """
 
-from .case_research import (
+from app.schemas.case_research import (
     PlatformGap,
     ResearchArchiveEntry,
     StructuredSearchHit,

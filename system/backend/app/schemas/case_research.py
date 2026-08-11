@@ -27,9 +27,11 @@ class StructuredSearchHit(BaseModel):
     disposition_reason: str | None = None
 
     @model_validator(mode="after")
-    def require_provenance_for_verified_hit(self) -> StructuredSearchHit:
+    def require_disposition_evidence(self) -> StructuredSearchHit:
         if self.disposition == "verified" and (not self.source_account or self.published_at is None):
             raise ValueError("verified hits require source_account and published_at")
+        if self.disposition == "rejected" and not str(self.disposition_reason or "").strip():
+            raise ValueError("rejected hits require disposition_reason")
         return self
 
 

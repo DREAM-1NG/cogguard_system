@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from app.schemas.case_research import ResearchArchiveEntry
+from app.schemas.case_research import ResearchArchiveEntry, StructuredSearchHit
 from app.services.case_research_archive import (
     load_research_archive_manifest,
     load_structured_search_records,
@@ -92,6 +92,19 @@ def test_load_structured_search_records_rejects_verified_hit_without_provenance(
         load_structured_search_records(records_path)
 
 
+def test_structured_search_hit_rejects_rejected_hit_without_disposition_reason():
+    with pytest.raises(ValidationError, match="disposition_reason"):
+        StructuredSearchHit.model_validate(
+            {
+                "rank": 1,
+                "title": "Rejected result",
+                "url": "https://example.com/source",
+                "snippet": "result",
+                "disposition": "rejected",
+            }
+        )
+
+
 def test_research_archive_entry_rejects_non_sha256_values(tmp_path: Path):
     entry = _entry(tmp_path, "primary_claim")
     entry["markdown_sha256"] = "not-a-sha256"
@@ -136,6 +149,47 @@ def test_verify_research_archive_requires_claim_sources_and_second_platform_outc
 
     _write_platform_gap(root)
     assert len(verify_research_archive(root)) == 2
+
+
+@pytest.mark.parametrize(
+    ("metadata", "match"),
+    [
+        ({"converter": "Different converter", "converter_version": "test"}, "metadata converter"),
+        ({"converter": "Microsoft MarkItDown", "converter_version": "different"}, "metadata converter version"),
+    ],
+)
+def test_verify_research_archive_rejects_metadata_converter_mismatch(
+    tmp_path: Path,
+    metadata: dict[str, str],
+    match: str,
+):
+    root = tmp_path / "archive"
+    root.mkdir()
+    primary = _entry(root, "primary_claim")
+    supplementary = _entry(root, "supplementary_claim")
+    (root / str(primary["metadata_path"])).write_text(json.dumps(metadata), encoding="utf-8")
+    _write_manifest(root, [primary, supplementary])
+    _write_platform_gap(root)
+
+    with pytest.raises(ValueError, match=match):
+        verify_research_archive(root)
+
+
+def test_verify_research_archive_rejects_verified_second_platform_with_platform_gap(tmp_path: Path):
+    root = tmp_path / "archive"
+    root.mkdir()
+    _write_manifest(
+        root,
+        [
+            _entry(root, "primary_claim"),
+            _entry(root, "supplementary_claim"),
+            _entry(root, "second_platform"),
+        ],
+    )
+    _write_platform_gap(root)
+
+    with pytest.raises(ValueError, match="mutually exclusive"):
+        verify_research_archive(root)
 
 
 def test_verify_research_archive_rejects_paths_and_excerpt_mismatches_outside_root(tmp_path: Path):
