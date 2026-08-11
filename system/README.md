@@ -138,12 +138,19 @@ From `system/backend/`, run:
 
 ```powershell
 python scripts/prototype_acceptance.py
+
+# Exercise the Case Workbench's acknowledged Weibo-only demo through closeout.
+uv run python scripts/case_workbench_acceptance.py
 ```
 
 The command uses an isolated fixture and temporary artifact directory. It
 does not create labels, activate models, persist database rows, or modify the
 frontend. Expected output explicitly reports strict Leiden, propagation
 fallback/abstain, Student `shadow_untrained`, and Teacher advisory status.
+
+The Case Workbench acceptance command uses the in-memory demo fixture. It keeps
+the `xhs` platform gap acknowledged and visible in the report preview; it does
+not claim XHS or Douyin evidence.
 
 ## Runtime Boundary
 
