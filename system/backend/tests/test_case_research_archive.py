@@ -28,7 +28,7 @@ def _entry(root: Path, purpose: str, *, markdown_text: str = "Verified excerpt")
     markdown_path.parent.mkdir(parents=True, exist_ok=True)
     markdown_path.write_text(markdown_text, encoding="utf-8")
     metadata_path.write_text(
-        json.dumps({"converter": "Microsoft MarkItDown", "converter_version": "test"}),
+        json.dumps({"converter": {"name": "markitdown", "version": "test"}}),
         encoding="utf-8",
     )
     normalized = unicodedata.normalize("NFC", markdown_text)
@@ -154,8 +154,8 @@ def test_verify_research_archive_requires_claim_sources_and_second_platform_outc
 @pytest.mark.parametrize(
     ("metadata", "match"),
     [
-        ({"converter": "Different converter", "converter_version": "test"}, "metadata converter"),
-        ({"converter": "Microsoft MarkItDown", "converter_version": "different"}, "metadata converter version"),
+        ({"converter": {"name": "different", "version": "test"}}, "metadata converter"),
+        ({"converter": {"name": "markitdown", "version": "different"}}, "metadata converter version"),
     ],
 )
 def test_verify_research_archive_rejects_metadata_converter_mismatch(

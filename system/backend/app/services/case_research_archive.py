@@ -103,9 +103,12 @@ def _verify_metadata(metadata_path: Path, entry: ResearchArchiveEntry) -> None:
     payload: Any = json.loads(metadata_path.read_text(encoding="utf-8"))
     if not isinstance(payload, dict):
         raise ValueError("metadata must be a JSON object")
-    if payload.get("converter") != entry.converter:
+    converter = payload.get("converter")
+    if not isinstance(converter, dict):
+        raise ValueError("metadata converter must be a JSON object")
+    if entry.converter != "Microsoft MarkItDown" or str(converter.get("name") or "").lower() != "markitdown":
         raise ValueError("metadata converter does not match its archive manifest")
-    if payload.get("converter_version") != entry.converter_version:
+    if converter.get("version") != entry.converter_version:
         raise ValueError("metadata converter version does not match its archive manifest")
 
 
