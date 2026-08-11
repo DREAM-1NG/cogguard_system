@@ -139,6 +139,24 @@ class CaseWorkbenchService:
         feedback = list(self.demo_state["feedback"])
         closeout_review = self.demo_state.get("closeout_review")
         state = _case_state(blockers=active_blockers, actions=actions, feedback=feedback, closeout_review=closeout_review)
+        canonical_verdict = {
+            "verdict_id": "canonical_demo_verdict",
+            "status": "approved",
+            "label": "needs_human_review",
+            "source": "demo_analyst_approval",
+        }
+        closure_checklist = _closure_checklist(
+            canonical_verdict=canonical_verdict,
+            actions=actions,
+            feedback=feedback,
+            closeout_review=closeout_review,
+            active_blockers=active_blockers,
+            blocker_acknowledgements=acknowledgements,
+            primary_claim=primary_claim,
+            supplementary_claims=[supplementary_claim],
+            semantic=semantic,
+            semantic_score_policy="evidence_overlay_only",
+        )
         report_hash = _hash_payload(
             {
                 "case_id": DEFAULT_CASE_ID,
@@ -155,6 +173,7 @@ class CaseWorkbenchService:
                 "actions": [(action["action_id"], action["status"]) for action in actions],
                 "feedback_count": len(feedback),
                 "closeout_summary": closeout_review.get("summary") if closeout_review else None,
+                "closure_checklist": [(item["key"], item["status"]) for item in closure_checklist],
             }
         )
 
@@ -185,12 +204,7 @@ class CaseWorkbenchService:
             "lifecycle": _lifecycle(state=state),
             "primary_claim": _claim_with_hash(primary_claim) if primary_claim else None,
             "supplementary_claims": [_claim_with_hash(supplementary_claim)],
-            "canonical_verdict": {
-                "verdict_id": "canonical_demo_verdict",
-                "status": "approved",
-                "label": "needs_human_review",
-                "source": "demo_analyst_approval",
-            },
+            "canonical_verdict": canonical_verdict,
             "analysis_runs": [
                 {
                     "run_id": "run_case_workbench_demo",
@@ -236,6 +250,7 @@ class CaseWorkbenchService:
             "actions": actions,
             "feedback": feedback,
             "closeout_review": closeout_review,
+            "closure_checklist": closure_checklist,
             "reports": [
                 {
                     "version": 1,
@@ -415,6 +430,14 @@ class CaseWorkbenchService:
             "</li>"
             for layer in case["graph"].get("evidence_layers", [])
         ) or "<li>None</li>"
+        closure_checklist = "".join(
+            "<li>"
+            f"<strong>{_report_text(item['key'])}</strong> "
+            f"({_report_text(item['status'])}) - {_report_text(item['label'])}; "
+            f"{_report_text(_format_report_metrics(item.get('evidence') or {}))}"
+            "</li>"
+            for item in case.get("closure_checklist", [])
+        ) or "<li>None</li>"
         pending_note = (
             "<p><strong>Production PDF rendering is pending.</strong> This HTML is the MVP PDF fallback.</p>"
             if pdf_fallback
@@ -438,6 +461,7 @@ class CaseWorkbenchService:
 <section><h2>Primary claim</h2><p>{_report_text(primary_claim['excerpt'])}</p><dl><dt>Source</dt><dd>{_report_text(primary_claim['source']['name'])}</dd><dt>Source tier</dt><dd>{_report_text(primary_claim['source']['tier'])}</dd></dl></section>
 <section><h2>Semantic evidence overlay</h2><dl><dt>artifact_sha256</dt><dd><code>{_report_text(semantic['artifact_sha256'])}</code></dd><dt>Model status</dt><dd>{_report_text(semantic['model_status'])}</dd><dt>Score policy</dt><dd>evidence_overlay_only</dd></dl></section>
 <section><h2>CPR evidence layers</h2><ul>{evidence_layers}</ul></section>
+<section><h2>Closure checklist</h2><ul>{closure_checklist}</ul></section>
 <section><h2>Active blockers</h2><ul>{blockers}</ul></section><section><h2>Policy acknowledgements</h2><ul>{acknowledgements}</ul></section><section><h2>Actions</h2><ul>{actions}</ul></section><section><h2>Feedback</h2><p>Count: {len(case['feedback'])}</p></section><section><h2>Closeout review</h2><p>{_report_text(closeout.get('summary') or 'Not submitted')}</p></section>
 </body></html>"""
 
@@ -841,6 +865,112 @@ def _graph_evidence_layers(*, posts: list[dict[str, Any]], account_count: int) -
             "metrics": {
                 "canonical_verdict_status": "approved",
                 "required_actions": len(ACTION_TEMPLATES),
+            },
+        },
+    ]
+
+
+def _closure_checklist(
+    *,
+    canonical_verdict: dict[str, Any],
+    actions: list[dict[str, Any]],
+    feedback: list[dict[str, Any]],
+    closeout_review: dict[str, Any] | None,
+    active_blockers: list[dict[str, Any]],
+    blocker_acknowledgements: list[dict[str, Any]],
+    primary_claim: dict[str, Any] | None,
+    supplementary_claims: list[dict[str, Any]],
+    semantic: dict[str, Any],
+    semantic_score_policy: str,
+) -> list[dict[str, Any]]:
+    required_actions = [action for action in actions if action.get("required")]
+    terminal_actions = [
+        action
+        for action in required_actions
+        if action.get("status") in {"completed", "waived"}
+    ]
+    claims = ([primary_claim] if primary_claim else []) + supplementary_claims
+    archived_claims = [
+        claim
+        for claim in claims
+        if claim.get("source_archive_id")
+        and claim.get("source_content_hash")
+        and claim.get("source_markdown_hash")
+    ]
+    semantic_policy_passed = (
+        semantic_score_policy == "evidence_overlay_only"
+        and semantic.get("model_status") == "candidate_unvalidated"
+    )
+
+    return [
+        {
+            "key": "canonical_verdict",
+            "label": "Canonical verdict approved",
+            "status": "passed" if canonical_verdict.get("status") == "approved" else "pending",
+            "evidence": {
+                "verdict_id": canonical_verdict.get("verdict_id"),
+                "status": canonical_verdict.get("status"),
+                "source": canonical_verdict.get("source"),
+            },
+        },
+        {
+            "key": "required_actions",
+            "label": "Required actions completed or waived",
+            "status": "passed" if len(terminal_actions) == len(required_actions) else "pending",
+            "evidence": {
+                "required": len(required_actions),
+                "terminal": len(terminal_actions),
+                "pending_action_ids": [
+                    action["action_id"]
+                    for action in required_actions
+                    if action.get("status") not in {"completed", "waived"}
+                ],
+            },
+        },
+        {
+            "key": "feedback",
+            "label": "Human feedback submitted",
+            "status": "passed" if feedback else "pending",
+            "evidence": {"feedback_count": len(feedback)},
+        },
+        {
+            "key": "closeout_review",
+            "label": "Closeout review submitted",
+            "status": "passed" if closeout_review else "pending",
+            "evidence": {
+                "review_id": closeout_review.get("review_id") if closeout_review else None,
+                "submitted_at": closeout_review.get("submitted_at") if closeout_review else None,
+            },
+        },
+        {
+            "key": "active_blockers",
+            "label": "No active blocking items remain",
+            "status": "blocked" if active_blockers else "passed",
+            "evidence": {
+                "active_count": len(active_blockers),
+                "active_codes": [blocker["code"] for blocker in active_blockers],
+                "acknowledgement_count": len(blocker_acknowledgements),
+            },
+        },
+        {
+            "key": "claim_archive",
+            "label": "Primary and supplementary claims are archive-backed",
+            "status": "passed" if primary_claim and len(archived_claims) == len(claims) else "blocked",
+            "evidence": {
+                "primary": primary_claim.get("source_archive_id") if primary_claim else "missing_primary_claim",
+                "archived_claims": len(archived_claims),
+                "claim_count": len(claims),
+                "claim_statuses": [claim.get("status") for claim in claims],
+            },
+        },
+        {
+            "key": "semantic_overlay_policy",
+            "label": "Semantic artifacts are candidate overlays only",
+            "status": "passed" if semantic_policy_passed else "blocked",
+            "evidence": {
+                "score_policy": semantic_score_policy,
+                "model_status": semantic.get("model_status"),
+                "artifact_id": "semantic_case_workbench_demo",
             },
         },
     ]

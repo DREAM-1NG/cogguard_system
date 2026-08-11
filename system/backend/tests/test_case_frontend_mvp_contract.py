@@ -162,3 +162,24 @@ def test_case_report_tab_exposes_acceptance_summary_bindings():
         "noFabricatedSecondPlatformEvidence",
     ):
         assert binding in view
+
+
+def test_case_report_tab_exposes_backend_closure_checklist_bindings():
+    view = (FRONTEND / "views" / "cases" / "index.vue").read_text(encoding="utf-8")
+    types = (FRONTEND / "types" / "case.ts").read_text(encoding="utf-8")
+
+    for binding in (
+        "Closure checklist",
+        "closureChecklist",
+        "caseDetail.value?.closure_checklist",
+        "check.evidence",
+        "check.status",
+    ):
+        assert binding in view
+    for field in (
+        "export interface CaseClosureChecklistItem",
+        "closure_checklist: CaseClosureChecklistItem[]",
+        "status: 'passed' | 'pending' | 'blocked' | string",
+        "evidence: Record<string, any>",
+    ):
+        assert field in types

@@ -556,6 +556,94 @@ def test_case_report_cpr_evidence_layers_are_printable():
     asyncio.run(scenario())
 
 
+def test_case_closure_checklist_tracks_closeout_gates_without_fabricating_evidence():
+    async def scenario():
+        service = CaseWorkbenchService(mongo_db={})
+        case_id = "case_trump_visit_2026_05_21"
+
+        initial = await service.get_case(case_id)
+        checklist = {item["key"]: item for item in initial["closure_checklist"]}
+
+        assert list(checklist) == [
+            "canonical_verdict",
+            "required_actions",
+            "feedback",
+            "closeout_review",
+            "active_blockers",
+            "claim_archive",
+            "semantic_overlay_policy",
+        ]
+        assert checklist["canonical_verdict"]["status"] == "passed"
+        assert checklist["required_actions"]["status"] == "pending"
+        assert checklist["feedback"]["status"] == "pending"
+        assert checklist["closeout_review"]["status"] == "pending"
+        assert checklist["active_blockers"]["status"] == "blocked"
+        assert checklist["active_blockers"]["evidence"]["active_codes"] == ["platform_gap"]
+        assert checklist["claim_archive"]["status"] == "passed"
+        assert checklist["claim_archive"]["evidence"]["claim_statuses"] == [
+            "candidate_unvalidated",
+            "candidate_unvalidated",
+        ]
+        assert checklist["semantic_overlay_policy"]["status"] == "passed"
+        assert initial["platforms"] == ["weibo"]
+
+        blocker_id = initial["active_blockers"][0]["blocker_id"]
+        await service.acknowledge_blocker(
+            case_id,
+            blocker_id,
+            actor_id="analyst",
+            reason="Documented XHS platform gap for prototype closure.",
+        )
+        for action in (await service.get_case(case_id))["actions"]:
+            await service.complete_action(case_id, action["action_id"], actor_id="analyst")
+        ready = await service.submit_feedback(case_id, actor_id="analyst", content="Feedback recorded.")
+        ready_checklist = {item["key"]: item for item in ready["closure_checklist"]}
+
+        assert ready["state"] == "ready_to_close"
+        assert ready_checklist["active_blockers"]["status"] == "passed"
+        assert ready_checklist["active_blockers"]["evidence"]["acknowledgement_count"] == 1
+        assert ready_checklist["required_actions"]["status"] == "passed"
+        assert ready_checklist["feedback"]["status"] == "passed"
+        assert ready_checklist["closeout_review"]["status"] == "pending"
+        assert ready["platforms"] == ["weibo"]
+
+        closed = await service.submit_closeout_review(case_id, actor_id="analyst", summary="Closeout accepted.")
+        assert {item["status"] for item in closed["closure_checklist"]} == {"passed"}
+        assert closed["platforms"] == ["weibo"]
+
+    asyncio.run(scenario())
+
+
+def test_case_closure_checklist_exposes_missing_primary_claim_blocker():
+    async def scenario():
+        service = CaseWorkbenchService(mongo_db=_complete_demo_mongo(), missing_primary_claim=True)
+
+        case = await service.get_case("case_trump_visit_2026_05_21")
+        checklist = {item["key"]: item for item in case["closure_checklist"]}
+
+        assert checklist["claim_archive"]["status"] == "blocked"
+        assert checklist["claim_archive"]["evidence"]["primary"] == "missing_primary_claim"
+        assert checklist["active_blockers"]["status"] == "blocked"
+        assert "blocked_missing_primary_claim" in checklist["active_blockers"]["evidence"]["active_codes"]
+
+    asyncio.run(scenario())
+
+
+def test_case_report_prints_closure_checklist():
+    async def scenario():
+        service = CaseWorkbenchService(mongo_db={})
+
+        html = await service.render_report_html("case_trump_visit_2026_05_21", 1)
+
+        assert "Closure checklist" in html
+        assert "canonical_verdict" in html
+        assert "active_blockers" in html
+        assert "claim_archive" in html
+        assert "semantic_overlay_policy" in html
+
+    asyncio.run(scenario())
+
+
 async def _close_fallback_demo_case(service: CaseWorkbenchService) -> tuple[dict[str, Any], str]:
     case_id = "case_trump_visit_2026_05_21"
     initial = await service.get_case(case_id)

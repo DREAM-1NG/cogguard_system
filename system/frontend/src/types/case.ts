@@ -141,6 +141,13 @@ export interface CaseBlockerAcknowledgement {
   created_at: string
 }
 
+export interface CaseClosureChecklistItem {
+  key: string
+  label: string
+  status: 'passed' | 'pending' | 'blocked' | string
+  evidence: Record<string, any>
+}
+
 export interface CaseDetail {
   case_id: string
   event_id: string
@@ -166,6 +173,7 @@ export interface CaseDetail {
   reports: CaseReportVersion[]
   active_blockers: CaseBlocker[]
   blocker_acknowledgements?: CaseBlockerAcknowledgement[]
+  closure_checklist: CaseClosureChecklistItem[]
   audit_events?: Array<Record<string, any>>
   workflow_summary: Record<string, string>
 }

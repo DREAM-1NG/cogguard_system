@@ -313,6 +313,17 @@
                 <a-descriptions-item label="Second platform honesty">{{ acceptanceSummary.noFabricatedSecondPlatformEvidence }}</a-descriptions-item>
               </a-descriptions>
             </div>
+            <div class="closure-checklist">
+              <h3>Closure checklist</h3>
+              <div v-for="check in closureChecklist" :key="check.key" class="closure-check-row">
+                <div>
+                  <a-tag :color="checklistStatusColor(check.status)">{{ check.status }}</a-tag>
+                  <strong>{{ check.label }}</strong>
+                  <small>{{ check.key }}</small>
+                </div>
+                <p>{{ formatMetrics(check.evidence) }}</p>
+              </div>
+            </div>
             <a-table
               size="small"
               :columns="reportColumns"
@@ -415,6 +426,7 @@ const nearDuplicateGroups = computed(() => semanticArtifact.value?.summary?.near
 const graphNodes = computed<any[]>(() => caseDetail.value?.graph?.nodes || [])
 const graphEdges = computed<any[]>(() => caseDetail.value?.graph?.edges || [])
 const graphEvidenceLayers = computed<any[]>(() => caseDetail.value?.graph?.evidence_layers || [])
+const closureChecklist = computed(() => caseDetail.value?.closure_checklist || [])
 const acceptanceSummary = computed(() => {
   const detail = caseDetail.value
   const claims = [
@@ -508,6 +520,14 @@ function actionStatusColor(status?: string) {
     required: 'orange',
     completed: 'green',
     waived: 'default',
+  } as Record<string, string>)[status || ''] || 'default'
+}
+
+function checklistStatusColor(status?: string) {
+  return ({
+    passed: 'green',
+    pending: 'orange',
+    blocked: 'red',
   } as Record<string, string>)[status || ''] || 'default'
 }
 
@@ -839,6 +859,42 @@ onMounted(() => {
   display: grid;
   gap: 8px;
   margin-top: 12px;
+}
+
+.closure-checklist {
+  display: grid;
+  gap: 8px;
+  margin: 14px 0;
+}
+
+.closure-checklist h3 {
+  margin: 0;
+  color: #334155;
+  font-size: 13px;
+}
+
+.closure-check-row {
+  padding: 10px;
+  border: 1px solid #edf0f5;
+  border-radius: 6px;
+  background: #f8fafc;
+}
+
+.closure-check-row div {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.closure-check-row small {
+  color: #64748b;
+}
+
+.closure-check-row p {
+  margin: 6px 0 0;
+  color: #475569;
+  font-size: 12px;
 }
 
 .feedback-item {
