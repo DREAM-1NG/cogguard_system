@@ -507,7 +507,30 @@ def test_baseline_registry_exposes_required_methods_ablations_and_blocking():
         "tgn_style_memory_prior", "coordination_only_logistic",
         "detection_features_only_classifier", "learned_fused_detector",
         "heuristic_baseline_v1",
+        "deep_pyg_graphsage_fused_detector", "deep_pyg_gin_fused_detector",
+        "deep_pyg_gcn_fused_detector", "deep_tabular_mlp_detector",
+        "deep_tabular_residual_detector",
     } <= set(registry.method_ids())
+    assert package.DEEP_PYG_DETECTION_METHODS == {
+        "deep_pyg_graphsage_fused_detector",
+        "deep_pyg_gin_fused_detector",
+        "deep_pyg_gcn_fused_detector",
+    }
+    assert package.DEEP_TABULAR_DETECTION_METHODS == {
+        "deep_tabular_mlp_detector",
+        "deep_tabular_residual_detector",
+    }
+    for method_id in package.DEEP_DETECTION_METHODS:
+        spec = registry.get(method_id)
+        assert spec.model_role == "learned_comparison"
+        assert spec.claimable is False
+        assert spec.selection_eligible is False
+        assert spec.warning is not None
+    assert registry.get("deep_pyg_graphsage_fused_detector").optional_dependencies == (
+        "torch",
+        "torch_geometric",
+    )
+    assert registry.get("deep_tabular_mlp_detector").optional_dependencies == ("torch",)
     assert set(baselines.REQUIRED_ABLATIONS) == {
         "no_tsgs", "no_mhcr", "no_relation_specific", "no_temporal_augmentation",
         "coordination_only", "detection_features_only",
@@ -783,6 +806,24 @@ def test_cli_default_output_stays_under_g_drive_repository_root():
     expected = PROJECT_ROOT / "output" / "coordination_two_stage_reproduction"
     assert module.DEFAULT_OUTPUT == expected
     assert module._parser().parse_args(["--smoke-fixture"]).output == expected
+    public_args = module._parser().parse_args(
+        [
+            "--public-detection",
+            "--seeds",
+            "11,23",
+            "--methods",
+            "learned_fused_detector,deep_tabular_mlp_detector",
+            "--max-cases",
+            "6",
+            "--bootstrap-resamples",
+            "10",
+        ]
+    )
+    assert public_args.output == expected
+    assert public_args.seeds == "11,23"
+    assert public_args.methods == "learned_fused_detector,deep_tabular_mlp_detector"
+    assert public_args.max_cases == 6
+    assert public_args.bootstrap_resamples == 10
     assert module.DEFAULT_OUTPUT.drive.upper() == "G:"
 
 

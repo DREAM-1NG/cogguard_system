@@ -9,6 +9,7 @@ import random
 import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 from types import MappingProxyType
 from typing import Any
@@ -81,6 +82,23 @@ _LEN_GRAPH_NAMES = (
 )
 _URL_RE = re.compile(r"https?://", re.IGNORECASE)
 _HASHTAG_RE = re.compile(r"(?<!\w)#\w+", re.UNICODE)
+_DEEP_DETECTION_CANDIDATE_IDS = frozenset(
+    {
+        "deep_pyg_graphsage_fused_detector",
+        "deep_pyg_gin_fused_detector",
+        "deep_pyg_gcn_fused_detector",
+        "deep_tabular_mlp_detector",
+        "deep_tabular_residual_detector",
+    }
+)
+_DEEP_ACTIVATION_METRICS = (
+    "auprc",
+    "macro_f1",
+    "roc_auc",
+    "ece",
+    "selective_coverage",
+    "runtime_seconds",
+)
 
 
 def _canonical_json(value: Any) -> str:
@@ -140,6 +158,15 @@ def _metadata_checksum(path: Path) -> str:
         "mtime_ns": stat.st_mtime_ns,
     }
     return _fingerprint(payload)
+
+
+def _source_metadata(path: Path) -> dict[str, Any]:
+    stat = path.stat()
+    return {
+        "path": path.resolve(strict=False).as_posix(),
+        "size": int(stat.st_size),
+        "mtime_ns": int(stat.st_mtime_ns),
+    }
 
 
 @dataclass(frozen=True, slots=True)
@@ -427,6 +454,36 @@ def default_public_detection_method_registry() -> PublicDetectionMethodRegistry:
             "Local compact LEN graph adapter with differentiable assignment pooling; not the official implementation.",
         ),
         PublicDetectionMethodSpec(
+            "deep_pyg_graphsage_fused_detector",
+            "PyG GraphSAGE fused detector",
+            "deep_graph_neural_detection",
+            2017,
+            "https://arxiv.org/abs/1706.02216",
+            ("graph_labels", "weighted_edges", "binary_detection_gold"),
+            "deep_pyg_graphsage_fused_detector",
+            "Research-only LEN candidate: PyG GraphSAGE graph encoder fused with graph/stat/Stage-1 features.",
+        ),
+        PublicDetectionMethodSpec(
+            "deep_pyg_gin_fused_detector",
+            "PyG GIN fused detector",
+            "deep_graph_neural_detection",
+            2019,
+            "https://openreview.net/forum?id=ryGs6iA5Km",
+            ("graph_labels", "weighted_edges", "binary_detection_gold"),
+            "deep_pyg_gin_fused_detector",
+            "Research-only LEN candidate: PyG GIN graph encoder fused with graph/stat/Stage-1 features.",
+        ),
+        PublicDetectionMethodSpec(
+            "deep_pyg_gcn_fused_detector",
+            "PyG GCN fused detector",
+            "deep_graph_neural_detection",
+            2017,
+            "https://arxiv.org/abs/1609.02907",
+            ("graph_labels", "weighted_edges", "binary_detection_gold"),
+            "deep_pyg_gcn_fused_detector",
+            "Research-only LEN candidate: PyG GCN graph encoder fused with graph/stat/Stage-1 features.",
+        ),
+        PublicDetectionMethodSpec(
             "inductive_io_graph_learning",
             "Inductive graph learning for influence operation detection",
             "account_level_io_detection",
@@ -455,6 +512,26 @@ def default_public_detection_method_registry() -> PublicDetectionMethodRegistry:
             ("handcrafted_feature_table", "binary_detection_gold"),
             "truthy_feature_logistic",
             "Local reproduction uses ALClassification ARFF features with the shared calibrated logistic runner.",
+        ),
+        PublicDetectionMethodSpec(
+            "deep_tabular_mlp_detector",
+            "Deep tabular MLP detector",
+            "deep_tabular_detection",
+            2026,
+            "local:system/research/coordination_experiments/deep_detection.py",
+            ("handcrafted_feature_table", "binary_detection_gold"),
+            "deep_tabular_mlp_detector",
+            "Research-only ALClassification candidate: train-only standardized ARFF features with MLP regularization.",
+        ),
+        PublicDetectionMethodSpec(
+            "deep_tabular_residual_detector",
+            "Deep residual tabular detector",
+            "deep_tabular_detection",
+            2026,
+            "local:system/research/coordination_experiments/deep_detection.py",
+            ("handcrafted_feature_table", "binary_detection_gold"),
+            "deep_tabular_residual_detector",
+            "Research-only ALClassification candidate: residual MLP/FT-Transformer-lite style tabular encoder.",
         ),
         PublicDetectionMethodSpec(
             "tgat",
@@ -517,13 +594,24 @@ def _safe_std(values: Sequence[float]) -> float:
     return float(np.std(values)) if values else 0.0
 
 
-def _len_features(path: Path) -> tuple[dict[str, float], dict[str, Any]]:
+def _graph_sketch_to_dict(sketch: Any) -> dict[str, Any]:
+    return {
+        "node_features": [list(row) for row in sketch.node_features],
+        "edge_index": [list(edge) for edge in sketch.edge_index],
+        "edge_weight": list(sketch.edge_weight),
+    }
+
+
+def _len_features(path: Path) -> tuple[dict[str, float], dict[str, Any], dict[str, Any]]:
     with path.open("r", encoding="utf-8") as stream:
         data = json.load(stream)
     nodes = data.get("nodes", ())
     links = data.get("links", data.get("edges", ()))
     if not isinstance(nodes, list) or not isinstance(links, list):
         raise ValueError(f"LEN graph must contain node-link arrays: {path.name}")
+    from .deep_detection import build_deep_graph_sketch_from_node_link
+
+    deep_graph_sketch = build_deep_graph_sketch_from_node_link(data, source_name=path.name)
     node_count = len(nodes)
     edge_count = len(links)
     directed = bool(data.get("directed", True))
@@ -606,7 +694,7 @@ def _len_features(path: Path) -> tuple[dict[str, float], dict[str, Any]]:
         "edge_count": edge_count,
         "checksum_scope": "path_size_mtime_metadata",
     }
-    return features, provenance
+    return features, provenance, _graph_sketch_to_dict(deep_graph_sketch)
 
 
 def _case_id(prefix: str, source: str) -> str:
@@ -614,30 +702,74 @@ def _case_id(prefix: str, source: str) -> str:
     return f"{prefix}-{digest}"
 
 
-def _load_len_cases(config: PublicDetectionDatasetConfig) -> tuple[dict[str, float], ...]:
-    root = Path(config.path)
-    files = sorted(root.glob("*.json"))
-    if config.max_cases:
-        files = files[: config.max_cases]
-    cases: list[dict[str, float]] = []
-    for path in files:
-        label, label_text = _len_label(path)
-        features, provenance = _len_features(path)
-        case_id = _case_id("len", path.name)
-        cases.append(
-            {
-                "case_id": case_id,
-                "cluster_id": case_id,
-                "label": label,
-                "label_text": label_text,
-                "source_path": path.as_posix(),
-                "provenance": provenance,
-                **features,
-            }
+def _len_cache_path(path: Path) -> Path:
+    metadata = _source_metadata(path)
+    digest = hashlib.sha256(
+        _canonical_json({"cache_version": 1, "source": metadata}).encode("utf-8")
+    ).hexdigest()
+    return CANONICAL_REPRODUCTION_OUTPUT_ROOT / "dataset_cache" / "len_graph_json_v1" / f"{digest}.json"
+
+
+def _load_or_build_len_case(path: Path, label: int, label_text: str) -> dict[str, Any]:
+    cache_path = _len_cache_path(path)
+    if cache_path.exists():
+        try:
+            cached = json.loads(cache_path.read_text(encoding="utf-8"))
+            if cached.get("source_metadata") == _source_metadata(path):
+                case = cached["case"]
+                if isinstance(case, dict):
+                    return case
+        except (OSError, json.JSONDecodeError, KeyError, TypeError):
+            pass
+    features, provenance, deep_graph_sketch = _len_features(path)
+    case_id = _case_id("len", path.name)
+    case = {
+        "case_id": case_id,
+        "cluster_id": case_id,
+        "label": label,
+        "label_text": label_text,
+        "source_path": path.resolve(strict=False).as_posix(),
+        "provenance": provenance,
+        "deep_graph_sketch": deep_graph_sketch,
+        **features,
+    }
+    _atomic_write_json(
+        cache_path,
+        {
+            "schema_version": "cogguard.public-detection-len-case-cache/v1",
+            "source_metadata": _source_metadata(path),
+            "case": case,
+        },
+    )
+    return case
+
+
+@lru_cache(maxsize=16)
+def _load_len_cases_cached(root_path: str, max_cases: int) -> tuple[dict[str, Any], ...]:
+    root = Path(root_path)
+    labeled_files = tuple((path, *_len_label(path)) for path in sorted(root.glob("*.json")))
+    if max_cases:
+        by_label = {
+            0: [item for item in labeled_files if item[1] == 0],
+            1: [item for item in labeled_files if item[1] == 1],
+        }
+        per_class = max_cases // 2
+        remainder = max_cases % 2
+        labeled_files = tuple(
+            by_label[0][:per_class]
+            + by_label[1][: per_class + remainder]
         )
+    cases: list[dict[str, Any]] = []
+    for path, label, label_text in labeled_files:
+        cases.append(_load_or_build_len_case(path, label, label_text))
     if not cases:
         raise ValueError("LEN dataset adapter found no graph JSON files")
     return tuple(cases)
+
+
+def _load_len_cases(config: PublicDetectionDatasetConfig) -> tuple[dict[str, Any], ...]:
+    root = Path(config.path).resolve(strict=False)
+    return _load_len_cases_cached(root.as_posix(), config.max_cases)
 
 
 def _parse_arff(path: Path) -> tuple[tuple[str, ...], tuple[tuple[float, ...], ...], tuple[str, ...]]:
@@ -678,8 +810,19 @@ def _load_al_cases(config: PublicDetectionDatasetConfig) -> tuple[tuple[str, ...
     path = Path(config.path)
     names, rows, labels = _parse_arff(path)
     if config.max_cases:
-        rows = rows[: config.max_cases]
-        labels = labels[: config.max_cases]
+        labeled_rows = tuple(zip(rows, labels, strict=True))
+        by_label = {
+            "legitimate": [item for item in labeled_rows if item[1] == "legitimate"],
+            "truthy": [item for item in labeled_rows if item[1] == "truthy"],
+        }
+        per_class = config.max_cases // 2
+        remainder = config.max_cases % 2
+        selected = tuple(
+            by_label["legitimate"][:per_class]
+            + by_label["truthy"][: per_class + remainder]
+        )
+        rows = tuple(item[0] for item in selected)
+        labels = tuple(item[1] for item in selected)
     cases: list[dict[str, Any]] = []
     name_index = {name: index for index, name in enumerate(names)}
 
@@ -1034,6 +1177,185 @@ def _public_detection_claim_gates(seeds: Sequence[int]) -> tuple[ClaimGate, ...]
     )
 
 
+def _row_metric(row: ResultRow, metric_name: str) -> float:
+    if metric_name == "runtime_seconds":
+        return row.runtime_seconds
+    if metric_name == "peak_memory_bytes":
+        return float(row.peak_memory_bytes)
+    return float(row.metrics[metric_name])
+
+
+def _mean_row_metric(rows: Sequence[ResultRow], metric_name: str) -> float | None:
+    if not rows:
+        return None
+    return float(np.mean([_row_metric(row, metric_name) for row in rows]))
+
+
+def _deep_activation_summary(
+    *,
+    candidate: Sequence[ResultRow],
+    system: Sequence[ResultRow],
+    strongest: Sequence[ResultRow],
+    strongest_method_id: str | None,
+    required_seed_count: int,
+) -> tuple[bool, str, dict[str, Any]]:
+    candidate_success = len({row.seed for row in candidate})
+    system_success = len({row.seed for row in system})
+    strongest_success = len({row.seed for row in strongest})
+    metrics = {
+        name: {
+            "candidate_mean": _mean_row_metric(candidate, name),
+            "system_mean": _mean_row_metric(system, name),
+            "strongest_fair_baseline_mean": _mean_row_metric(strongest, name),
+        }
+        for name in _DEEP_ACTIVATION_METRICS
+    }
+    if candidate_success < required_seed_count:
+        return False, "candidate did not complete the required seed budget", metrics
+    if system_success < required_seed_count:
+        return False, "learned_fused_detector did not complete the required seed budget", metrics
+    if strongest_success < required_seed_count or strongest_method_id is None:
+        return False, "no strongest fair non-deep baseline completed the required seed budget", metrics
+
+    candidate_auprc = metrics["auprc"]["candidate_mean"]
+    system_auprc = metrics["auprc"]["system_mean"]
+    strongest_auprc = metrics["auprc"]["strongest_fair_baseline_mean"]
+    candidate_f1 = metrics["macro_f1"]["candidate_mean"]
+    system_f1 = metrics["macro_f1"]["system_mean"]
+    strongest_f1 = metrics["macro_f1"]["strongest_fair_baseline_mean"]
+    candidate_roc = metrics["roc_auc"]["candidate_mean"]
+    system_roc = metrics["roc_auc"]["system_mean"]
+    strongest_roc = metrics["roc_auc"]["strongest_fair_baseline_mean"]
+    candidate_ece = metrics["ece"]["candidate_mean"]
+    system_ece = metrics["ece"]["system_mean"]
+    strongest_ece = metrics["ece"]["strongest_fair_baseline_mean"]
+    candidate_coverage = metrics["selective_coverage"]["candidate_mean"]
+    system_coverage = metrics["selective_coverage"]["system_mean"]
+    strongest_coverage = metrics["selective_coverage"]["strongest_fair_baseline_mean"]
+    candidate_runtime = metrics["runtime_seconds"]["candidate_mean"]
+    system_runtime = metrics["runtime_seconds"]["system_mean"]
+    strongest_runtime = metrics["runtime_seconds"]["strongest_fair_baseline_mean"]
+    if not (
+        candidate_auprc is not None
+        and system_auprc is not None
+        and strongest_auprc is not None
+        and candidate_f1 is not None
+        and system_f1 is not None
+        and strongest_f1 is not None
+        and candidate_roc is not None
+        and system_roc is not None
+        and strongest_roc is not None
+        and candidate_ece is not None
+        and system_ece is not None
+        and strongest_ece is not None
+        and candidate_coverage is not None
+        and system_coverage is not None
+        and strongest_coverage is not None
+        and candidate_runtime is not None
+        and system_runtime is not None
+        and strongest_runtime is not None
+    ):
+        return False, "one or more activation metrics are unavailable", metrics
+    quality_passed = (
+        candidate_auprc > system_auprc
+        and candidate_auprc > strongest_auprc
+        and candidate_f1 > system_f1
+        and candidate_f1 > strongest_f1
+        and candidate_roc > system_roc
+        and candidate_roc > strongest_roc
+    )
+    calibration_passed = candidate_ece <= max(system_ece, strongest_ece) + 0.02
+    coverage_passed = candidate_coverage >= min(system_coverage, strongest_coverage) - 0.05
+    runtime_passed = candidate_runtime <= 2.0 * max(system_runtime, strongest_runtime, 1.0e-9)
+    if not quality_passed:
+        return False, "candidate does not exceed both learned_fused_detector and strongest fair baseline on AUPRC, Macro-F1, and ROC-AUC", metrics
+    if not calibration_passed:
+        return False, "candidate ECE regresses beyond the fixed tolerance", metrics
+    if not coverage_passed:
+        return False, "candidate selective coverage regresses beyond the fixed tolerance", metrics
+    if not runtime_passed:
+        return False, "candidate runtime regresses beyond the fixed 2x tolerance", metrics
+    return True, "candidate satisfies the research activation gate", metrics
+
+
+def _deep_candidate_claim_gates(
+    rows: Sequence[ResultRow],
+    *,
+    dataset_ids: Sequence[str],
+    execution_method_ids: Sequence[str],
+    required_seed_count: int,
+) -> dict[str, Any]:
+    gates: list[dict[str, Any]] = []
+    selected_candidates = tuple(
+        method_id for method_id in execution_method_ids if method_id in _DEEP_DETECTION_CANDIDATE_IDS
+    )
+    for dataset_id in dataset_ids:
+        successful_by_method: dict[str, tuple[ResultRow, ...]] = {
+            method_id: tuple(
+                row
+                for row in rows
+                if row.dataset_id == dataset_id
+                and row.method_id == method_id
+                and row.status == "success"
+            )
+            for method_id in {row.method_id for row in rows if row.dataset_id == dataset_id}
+        }
+        system_rows = successful_by_method.get("learned_fused_detector", ())
+        fair_candidates = {
+            method_id: method_rows
+            for method_id, method_rows in successful_by_method.items()
+            if method_id not in _DEEP_DETECTION_CANDIDATE_IDS
+            and method_id != "learned_fused_detector"
+            and method_rows
+            and method_rows[0].model_role == "learned_comparison"
+        }
+        strongest_method_id = None
+        strongest_rows: tuple[ResultRow, ...] = ()
+        if fair_candidates:
+            strongest_method_id, strongest_rows = max(
+                fair_candidates.items(),
+                key=lambda item: _mean_row_metric(item[1], "auprc") or -1.0,
+            )
+        for candidate_id in selected_candidates:
+            candidate_rows = successful_by_method.get(candidate_id, ())
+            passed, reason, metrics = _deep_activation_summary(
+                candidate=candidate_rows,
+                system=system_rows,
+                strongest=strongest_rows,
+                strongest_method_id=strongest_method_id,
+                required_seed_count=required_seed_count,
+            )
+            gates.append(
+                {
+                    "gate_id": f"deep-detection-activation::{dataset_id}::{candidate_id}",
+                    "dataset_id": dataset_id,
+                    "candidate_method_id": candidate_id,
+                    "system_baseline_method_id": "learned_fused_detector",
+                    "strongest_fair_baseline_method_id": strongest_method_id,
+                    "status": "supported" if passed else "not_supported",
+                    "claimable": bool(passed),
+                    "selection_eligible": False,
+                    "required_successful_seed_count": required_seed_count,
+                    "candidate_successful_seed_count": len({row.seed for row in candidate_rows}),
+                    "system_successful_seed_count": len({row.seed for row in system_rows}),
+                    "strongest_fair_baseline_successful_seed_count": len(
+                        {row.seed for row in strongest_rows}
+                    ),
+                    "activation_rule": (
+                        "candidate must exceed learned_fused_detector and the strongest "
+                        "successful non-deep learned_comparison baseline on AUPRC, Macro-F1, "
+                        "and ROC-AUC, while meeting fixed ECE, coverage, and runtime tolerances"
+                    ),
+                    "reason": reason,
+                    "metrics": metrics,
+                }
+            )
+    return {
+        "schema_version": "cogguard.public-detection-deep-activation-gates/v1",
+        "gates": gates,
+    }
+
+
 def run_public_detection_comparison(
     configs: Sequence[PublicDetectionDatasetConfig],
     output_dir: str | Path,
@@ -1084,6 +1406,14 @@ def run_public_detection_comparison(
     )
     public_registry = default_public_detection_method_registry()
     dataset_ids = tuple(dict.fromkeys(config.dataset_id for config in configs))
+    deep_activation_gates = _deep_candidate_claim_gates(
+        rows,
+        dataset_ids=dataset_ids,
+        execution_method_ids=run_method_ids,
+        required_seed_count=len(normalized_seeds),
+    )
+    deep_activation_path = output / "deep_detection_claim_gates.json"
+    _atomic_write_json(deep_activation_path, deep_activation_gates)
     feasibility = tuple(item.to_dict() for item in public_registry.feasibility_matrix(dataset_ids))
     manifest = {
         "schema_version": PUBLIC_DETECTION_SCHEMA_VERSION,
@@ -1127,8 +1457,10 @@ def run_public_detection_comparison(
             "aggregates_json": artifact_paths.aggregates_json.as_posix(),
             "aggregates_csv": artifact_paths.aggregates_csv.as_posix(),
             "claim_gates_json": artifact_paths.claim_gates_json.as_posix(),
+            "deep_detection_claim_gates_json": deep_activation_path.as_posix(),
             "identity": artifact_paths.artifact_identity,
         },
+        "deep_detection_claim_gates": deep_activation_gates,
     }
     manifest["fingerprint"] = _fingerprint(manifest)
     _atomic_write_json(output / "public_detection_manifest.json", manifest)

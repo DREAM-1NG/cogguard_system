@@ -444,6 +444,61 @@ def default_baseline_registry() -> BaselineRegistry:
             claimable=False,
         ),
         BaselineSpec(
+            "deep_pyg_graphsage_fused_detector",
+            "deep-pyg-graphsage-fused-detector-v1",
+            "detection",
+            "learned_comparison",
+            "deep-pyg-graphsage-fused-implementation-v1",
+            ("binary_coordination_detection", "external_label_evaluation"),
+            ("torch", "torch_geometric"),
+            warning="Research-only PyG GraphSAGE fused detector for LEN graph-label proxy evaluation.",
+            claimable=False,
+        ),
+        BaselineSpec(
+            "deep_pyg_gin_fused_detector",
+            "deep-pyg-gin-fused-detector-v1",
+            "detection",
+            "learned_comparison",
+            "deep-pyg-gin-fused-implementation-v1",
+            ("binary_coordination_detection", "external_label_evaluation"),
+            ("torch", "torch_geometric"),
+            warning="Research-only PyG GIN fused detector for LEN graph-label proxy evaluation.",
+            claimable=False,
+        ),
+        BaselineSpec(
+            "deep_pyg_gcn_fused_detector",
+            "deep-pyg-gcn-fused-detector-v1",
+            "detection",
+            "learned_comparison",
+            "deep-pyg-gcn-fused-implementation-v1",
+            ("binary_coordination_detection", "external_label_evaluation"),
+            ("torch", "torch_geometric"),
+            warning="Research-only PyG GCN fused detector for LEN graph-label proxy evaluation.",
+            claimable=False,
+        ),
+        BaselineSpec(
+            "deep_tabular_mlp_detector",
+            "deep-tabular-mlp-detector-v1",
+            "detection",
+            "learned_comparison",
+            "deep-tabular-mlp-implementation-v1",
+            ("binary_coordination_detection", "external_label_evaluation"),
+            ("torch",),
+            warning="Research-only deep tabular detector for ALClassification proxy evaluation.",
+            claimable=False,
+        ),
+        BaselineSpec(
+            "deep_tabular_residual_detector",
+            "deep-tabular-residual-detector-v1",
+            "detection",
+            "learned_comparison",
+            "deep-tabular-residual-implementation-v1",
+            ("binary_coordination_detection", "external_label_evaluation"),
+            ("torch",),
+            warning="Research-only residual tabular detector for ALClassification proxy evaluation.",
+            claimable=False,
+        ),
+        BaselineSpec(
             "inductive_io_graph_learning", "inductive-io-graph-learning-adapter-missing-v1",
             "detection", "learned_comparison",
             "inductive-io-graph-learning-unavailable-implementation-v1",
@@ -541,6 +596,7 @@ def default_baseline_registry() -> BaselineRegistry:
         GRAPH_NEURAL_DETECTION_METHODS,
         GraphNeuralDetectionImplementation,
     )
+    from .deep_detection import DEEP_DETECTION_METHODS, DeepDetectionImplementation
 
     entries = []
     for spec in specs:
@@ -550,6 +606,11 @@ def default_baseline_registry() -> BaselineRegistry:
             implementation = HeuristicDetectionImplementation()
         elif spec.method_id in GRAPH_NEURAL_DETECTION_METHODS:
             implementation = GraphNeuralDetectionImplementation(
+                method_id=spec.method_id,
+                implementation_id=spec.implementation_id,
+            )
+        elif spec.method_id in DEEP_DETECTION_METHODS:
+            implementation = DeepDetectionImplementation(
                 method_id=spec.method_id,
                 implementation_id=spec.implementation_id,
             )

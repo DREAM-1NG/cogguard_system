@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from datetime import datetime
 from typing import Sequence
 
 from research.coordination_experiments import (
@@ -10,7 +11,9 @@ from research.coordination_experiments import (
     ExperimentSplit,
     ResearchDatasetManifest,
     ResultRow,
+    default_local_public_detection_configs,
     default_baseline_registry,
+    run_public_detection_comparison,
     validate_reproduction_output_dir,
     write_reproduction_artifacts,
 )
@@ -34,13 +37,56 @@ def _parser() -> argparse.ArgumentParser:
         "--smoke-fixture", action="store_true",
         help="write a deterministic fixture artifact without loading IOHunter",
     )
+    mode.add_argument(
+        "--public-detection",
+        action="store_true",
+        help="run LEN and ALClassification public Coordination Detection comparison",
+    )
     parser.add_argument(
         "--output",
         type=validate_reproduction_output_dir,
         default=DEFAULT_OUTPUT,
         help="artifact directory for --smoke-fixture",
     )
+    parser.add_argument(
+        "--seeds",
+        default="11,23,37,41,53",
+        help="comma-separated seed list for --public-detection",
+    )
+    parser.add_argument(
+        "--methods",
+        default="",
+        help="optional comma-separated execution/public method ids for --public-detection",
+    )
+    parser.add_argument(
+        "--max-cases",
+        type=int,
+        default=0,
+        help="optional per-dataset case cap for smoke/debug public Detection runs",
+    )
+    parser.add_argument(
+        "--bootstrap-resamples",
+        type=int,
+        default=2000,
+        help="bootstrap resamples for aggregate confidence intervals",
+    )
     return parser
+
+
+def _csv_text(value: str, field_name: str) -> tuple[str, ...]:
+    if not value:
+        return ()
+    result = tuple(item.strip() for item in value.split(",") if item.strip())
+    if not result:
+        raise ValueError(f"{field_name} must contain at least one value")
+    return result
+
+
+def _csv_ints(value: str, field_name: str) -> tuple[int, ...]:
+    result = tuple(int(item) for item in _csv_text(value, field_name))
+    if any(item < 0 for item in result):
+        raise ValueError(f"{field_name} must contain non-negative integers")
+    return result
 
 
 def _smoke_model_artifact(split: ExperimentSplit) -> DetectionModelArtifact:
@@ -148,6 +194,34 @@ def main(argv: Sequence[str] | None = None) -> int:
             [spec.to_dict() for spec in default_baseline_registry().specs()],
             ensure_ascii=False, sort_keys=True, indent=2,
         ))
+        return 0
+    if args.public_detection:
+        if args.max_cases < 0:
+            raise ValueError("--max-cases must be non-negative")
+        if args.bootstrap_resamples <= 0:
+            raise ValueError("--bootstrap-resamples must be positive")
+        if output_dir == DEFAULT_OUTPUT:
+            output_dir = DEFAULT_OUTPUT / (
+                "public-detection-"
+                + datetime.now().strftime("%Y%m%d-%H%M%S")
+            )
+        manifest = run_public_detection_comparison(
+            default_local_public_detection_configs(max_cases=args.max_cases),
+            output_dir,
+            seeds=_csv_ints(args.seeds, "seeds"),
+            method_ids=(_csv_text(args.methods, "methods") or None),
+            bootstrap_resamples=args.bootstrap_resamples,
+        )
+        rows = manifest["rows"]
+        print(json.dumps({
+            "output": str(output_dir),
+            "status": "public_detection_complete",
+            "row_count": len(rows),
+            "success_count": sum(1 for row in rows if row["status"] == "success"),
+            "blocked_count": sum(1 for row in rows if row["status"] == "blocked"),
+            "failed_count": sum(1 for row in rows if row["status"] == "failed"),
+            "artifact_identity": manifest["artifact_paths"]["identity"],
+        }, ensure_ascii=False, sort_keys=True))
         return 0
     artifacts = write_reproduction_artifacts(
         _smoke_rows(),

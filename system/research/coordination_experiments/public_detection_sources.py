@@ -7,6 +7,7 @@ from typing import Any
 
 
 _SOURCE_PATHS: dict[str, str] = {}
+_GRAPH_SKETCHES: dict[str, object] = {}
 
 
 def _text(value: Any, field_name: str) -> str:
@@ -27,10 +28,13 @@ def register_public_detection_sources(cases: Sequence[Mapping[str, Any]]) -> Non
         if not resolved.is_absolute():
             raise ValueError("public Detection source paths must be absolute")
         _SOURCE_PATHS[case_id] = resolved.as_posix()
+        if "deep_graph_sketch" in case:
+            _GRAPH_SKETCHES[case_id] = case["deep_graph_sketch"]
 
 
 def clear_public_detection_sources() -> None:
     _SOURCE_PATHS.clear()
+    _GRAPH_SKETCHES.clear()
 
 
 def resolve_public_detection_source_path(case_id: str) -> Path:
@@ -43,6 +47,10 @@ def resolve_public_detection_source_path(case_id: str) -> Path:
         ) from exc
 
 
+def resolve_public_detection_graph_sketch(case_id: str) -> object | None:
+    return _GRAPH_SKETCHES.get(_text(case_id, "case_id"))
+
+
 def registered_public_detection_sources() -> Mapping[str, str]:
     return MappingProxyType(dict(sorted(_SOURCE_PATHS.items())))
 
@@ -51,5 +59,6 @@ __all__ = [
     "clear_public_detection_sources",
     "registered_public_detection_sources",
     "register_public_detection_sources",
+    "resolve_public_detection_graph_sketch",
     "resolve_public_detection_source_path",
 ]

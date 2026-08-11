@@ -145,10 +145,17 @@ from .graph_neural_detection import (
     GRAPH_NEURAL_DETECTION_METHODS,
     GraphNeuralDetectionImplementation,
 )
+from .deep_detection import (
+    DEEP_DETECTION_METHODS,
+    DEEP_PYG_DETECTION_METHODS,
+    DEEP_TABULAR_DETECTION_METHODS,
+    DeepDetectionImplementation,
+)
 from .public_detection_sources import (
     clear_public_detection_sources,
     registered_public_detection_sources,
     register_public_detection_sources,
+    resolve_public_detection_graph_sketch,
     resolve_public_detection_source_path,
 )
 from .runner import (
@@ -208,6 +215,10 @@ __all__ = [
     "HEURISTIC_BASELINE_ID",
     "HEURISTIC_BASELINE_WARNING",
     "HeuristicDetectionImplementation",
+    "DEEP_DETECTION_METHODS",
+    "DEEP_PYG_DETECTION_METHODS",
+    "DEEP_TABULAR_DETECTION_METHODS",
+    "DeepDetectionImplementation",
     "GRAPH_NEURAL_DETECTION_METHODS",
     "GraphNeuralDetectionImplementation",
     "PublicBenchmarkRegistry",
@@ -322,6 +333,7 @@ __all__ = [
     "clear_public_detection_sources",
     "registered_public_detection_sources",
     "register_public_detection_sources",
+    "resolve_public_detection_graph_sketch",
     "resolve_public_detection_source_path",
     "run_detection_method",
     "run_public_proxy_comparison",

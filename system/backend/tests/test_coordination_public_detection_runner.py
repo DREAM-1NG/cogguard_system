@@ -151,9 +151,14 @@ def test_public_detection_method_registry_fixes_dataset_method_boundaries():
         "graphsage_graph_classifier",
         "gin_graph_classifier",
         "diffpool_graph_classifier",
+        "deep_pyg_graphsage_fused_detector",
+        "deep_pyg_gin_fused_detector",
+        "deep_pyg_gcn_fused_detector",
         "inductive_io_graph_learning",
         "iohunter_account_graph_learning",
         "truthy_classic_feature_classifier",
+        "deep_tabular_mlp_detector",
+        "deep_tabular_residual_detector",
         "tgat",
         "tgn",
         "dygformer",
@@ -162,8 +167,12 @@ def test_public_detection_method_registry_fixes_dataset_method_boundaries():
     assert "observed_timestamps" in registry.feasibility("large_engagement_networks", "tgn").missing_signals
     assert registry.feasibility("large_engagement_networks", "len_graph_stat_logistic").status == "ready"
     assert registry.feasibility("large_engagement_networks", "gcn_graph_classifier").status == "ready"
+    assert registry.feasibility("large_engagement_networks", "deep_pyg_graphsage_fused_detector").status == "ready"
     assert registry.feasibility("astroturf_legitimate_classification", "truthy_classic_feature_classifier").status == "ready"
+    assert registry.feasibility("astroturf_legitimate_classification", "deep_tabular_mlp_detector").status == "ready"
     assert registry.feasibility("astroturf_legitimate_classification", "gcn_graph_classifier").status == "blocked"
+    assert registry.feasibility("astroturf_legitimate_classification", "deep_pyg_graphsage_fused_detector").status == "blocked"
+    assert registry.feasibility("large_engagement_networks", "deep_tabular_mlp_detector").status == "blocked"
 
 
 def test_len_and_astroturf_adapters_build_same_detection_contract():
@@ -248,6 +257,8 @@ def test_public_detection_runner_writes_g_drive_results_for_executable_and_block
             "vargas_coordination_activity_classifier",
             "truthy_feature_logistic",
             "gcn_graph_classifier",
+            "deep_pyg_graphsage_fused_detector",
+            "deep_tabular_mlp_detector",
             "tgn",
         ),
         bootstrap_resamples=25,
@@ -258,8 +269,21 @@ def test_public_detection_runner_writes_g_drive_results_for_executable_and_block
     assert manifest["dataset_protocols"][0]["test_count"] >= 2
     assert (output / "public_detection_manifest.json").exists()
     assert (output / "per_seed_rows.json").exists()
+    assert Path(manifest["artifact_paths"]["deep_detection_claim_gates_json"]).drive.upper() == "G:"
+    assert (output / "deep_detection_claim_gates.json").exists()
     claim_gates = json.loads((output / "claim_gates.json").read_text(encoding="utf-8"))["claim_gates"]
     assert {gate["status"] for gate in claim_gates} == {"blocked"}
+    deep_gates = json.loads((output / "deep_detection_claim_gates.json").read_text(encoding="utf-8"))["gates"]
+    assert {
+        (gate["dataset_id"], gate["candidate_method_id"])
+        for gate in deep_gates
+    } == {
+        ("large_engagement_networks", "deep_pyg_graphsage_fused_detector"),
+        ("large_engagement_networks", "deep_tabular_mlp_detector"),
+        ("astroturf_legitimate_classification", "deep_pyg_graphsage_fused_detector"),
+        ("astroturf_legitimate_classification", "deep_tabular_mlp_detector"),
+    }
+    assert all(gate["selection_eligible"] is False for gate in deep_gates)
     row_methods = {
         row["method_id"]
         for row in manifest["rows"]
@@ -270,7 +294,14 @@ def test_public_detection_runner_writes_g_drive_results_for_executable_and_block
         "heuristic_baseline_v1",
         "len_graph_stat_logistic",
         "gcn_graph_classifier",
+        "deep_pyg_graphsage_fused_detector",
     }.issubset(row_methods)
+    al_success = {
+        row["method_id"]
+        for row in manifest["rows"]
+        if row["dataset_id"] == "astroturf_legitimate_classification" and row["status"] == "success"
+    }
+    assert "deep_tabular_mlp_detector" in al_success
     blocked_rows = {
         (row["dataset_id"], row["method_id"]): row["status"]
         for row in manifest["rows"]
@@ -278,12 +309,30 @@ def test_public_detection_runner_writes_g_drive_results_for_executable_and_block
     }
     assert blocked_rows[("large_engagement_networks", "tgn")] == "blocked"
     assert blocked_rows[("astroturf_legitimate_classification", "gcn_graph_classifier")] == "blocked"
+    assert blocked_rows[("astroturf_legitimate_classification", "deep_pyg_graphsage_fused_detector")] == "blocked"
+    assert blocked_rows[("large_engagement_networks", "deep_tabular_mlp_detector")] == "blocked"
     blocked = {
         (item["dataset_id"], item["method_id"]): item["status"]
         for item in manifest["feasibility_matrix"]
     }
     assert blocked[("large_engagement_networks", "tgn")] == "blocked"
     assert blocked[("astroturf_legitimate_classification", "gcn_graph_classifier")] == "blocked"
+    assert blocked[("astroturf_legitimate_classification", "deep_pyg_graphsage_fused_detector")] == "blocked"
+    assert blocked[("large_engagement_networks", "deep_tabular_mlp_detector")] == "blocked"
+    deep_row = next(
+        row
+        for row in manifest["rows"]
+        if row["dataset_id"] == "large_engagement_networks"
+        and row["method_id"] == "deep_pyg_graphsage_fused_detector"
+    )
+    artifact = deep_row["model_artifact"]
+    assert artifact["train_fit_case_ids_fingerprint"] == deep_row["train_partition_fingerprint"]
+    assert artifact["validation_calibration_case_ids_fingerprint"] == deep_row["validation_partition_fingerprint"]
+    assert artifact["validation_threshold_case_ids_fingerprint"] == deep_row["validation_partition_fingerprint"]
+    assert artifact["validation_ood_case_ids_fingerprint"] == deep_row["validation_partition_fingerprint"]
+    assert deep_row["test_partition_fingerprint"] not in json.dumps(artifact, sort_keys=True)
+    assert deep_row["selection_eligible"] is False
+    assert "test_labels" not in json.dumps(artifact, sort_keys=True)
 
 
 def test_public_detection_runner_clears_stale_source_registry_between_runs():
@@ -300,6 +349,8 @@ def test_public_detection_runner_clears_stale_source_registry_between_runs():
         seed=3,
     ).manifest.source_case_ids[0]
     assert "stale" in module.resolve_public_detection_source_path(stale_case_id).as_posix()
+    stale_sketch = module.resolve_public_detection_graph_sketch(stale_case_id)
+    assert stale_sketch is not None
 
     output = module.CANONICAL_REPRODUCTION_OUTPUT_ROOT / f"pytest-public-detection-registry-{uuid.uuid4().hex}"
     module.run_public_detection_comparison(
@@ -317,3 +368,4 @@ def test_public_detection_runner_clears_stale_source_registry_between_runs():
     )
 
     assert "stale" not in module.resolve_public_detection_source_path(stale_case_id).as_posix()
+    assert module.resolve_public_detection_graph_sketch(stale_case_id) is not stale_sketch
