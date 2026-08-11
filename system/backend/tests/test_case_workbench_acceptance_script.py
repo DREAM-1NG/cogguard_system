@@ -19,6 +19,7 @@ def test_case_workbench_acceptance_closes_the_weibo_only_demo_case():
         "candidate_unvalidated_visible": True,
         "pdf_fallback_visible": True,
         "acceptance_summary_visible": True,
+        "semantic_decision_support_visible": True,
         "content_hash_changed": True,
     }
     assert result["semantic"] == {

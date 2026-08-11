@@ -45,6 +45,7 @@ Current semantic package paths: `system/research/coordination_discover/`, `syste
 | **Primary Claim** | The single approved **Case Claim** required by stance; approval triggers incremental stance plus **Risk Review**, while absence does not block other permitted stages or Risk Review. | Main topic, inferred claim, headline |
 | **Supplementary Claim** | An approved or pending **Case Claim** that adds authoritative context without replacing the **Primary Claim**. | Secondary verdict, supporting summary |
 | **Semantic Artifact** | An immutable, provenance-bound output of the explicit `semantic_enrichment` **Analysis Stage**. | Tag cache, model guess, score input |
+| **Semantic Decision Support** | A reportable summary of semantic coverage, candidate confidence, module availability, platform slices, time slices, and operator prompts that supports triage without changing any risk score. | Risk score, model verdict, automatic action |
 | **Semantic Correction** | An append-only human correction that references a **Semantic Artifact** and preserves both the original output and the correction rationale. | Artifact edit, overwrite, relabel in place |
 | **Case Action** | A required, completed, or explicitly waived disposition record attached to a **Case**. | Task, note, recommendation |
 | **Closeout Review** | The submitted human rationale that closure gates are satisfied and unresolved limitations remain visible; submission is the gate and has no separate acceptance status. | Canonical Verdict, approval click, final report |
@@ -136,6 +137,7 @@ Current semantic package paths: `system/research/coordination_discover/`, `syste
 - A **Case Claim** is a verbatim, source-spanned authority record; a topic, generated summary, or analyst paraphrase is semantic or narrative material and cannot substitute for it.
 - **Student Review** and **Teacher Review** produce advisory **Review Verdicts**; analyst approval creates an immutable **Canonical Verdict**, and a later **Closeout Review** verifies closure gates rather than changing that verdict.
 - A **Case** can close only after it has an approved **Canonical Verdict**, every required **Case Action** is completed or explicitly waived, and a **Closeout Review** is submitted; no additional Closeout Review acceptance gate exists.
+- **Semantic Decision Support** belongs to one **Semantic Artifact** and may appear in the **Case Workbench**, acceptance export, or **Case Report Version**, but it never changes Coordination, Propagation, Review, or closure scores.
 - A **Semantic Correction** points to one **Semantic Artifact** and never overwrites its model output or provenance.
 - Each **Case Report Version** freezes the case, snapshot, run, model-version, and content-hash references used to render it.
 - Every case mutation emits an **Audit Event**; repeated idempotent requests reuse the prior result without erasing history.

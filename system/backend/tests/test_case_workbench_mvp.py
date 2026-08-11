@@ -680,6 +680,25 @@ def test_case_report_prints_acceptance_summary():
     asyncio.run(scenario())
 
 
+def test_case_report_prints_semantic_decision_support_summary():
+    async def scenario():
+        service = CaseWorkbenchService(mongo_db={})
+
+        html = await service.render_report_html("case_trump_visit_2026_05_21", 1)
+
+        assert "Semantic decision support" in html
+        assert "Coverage" in html
+        assert "1.0" in html
+        assert "Confidence" in html
+        assert "candidate_unvalidated" in html
+        assert "Platform slices" in html
+        assert "weibo" in html
+        assert "Time slices" in html
+        assert "Use semantic outputs as triage hints, not as risk-score inputs." in html
+
+    asyncio.run(scenario())
+
+
 async def _close_fallback_demo_case(service: CaseWorkbenchService) -> tuple[dict[str, Any], str]:
     case_id = "case_trump_visit_2026_05_21"
     initial = await service.get_case(case_id)

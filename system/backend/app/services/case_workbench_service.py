@@ -449,6 +449,7 @@ class CaseWorkbenchService:
             f"<dt>Second platform honesty</dt><dd>{_report_text(acceptance_summary['second_platform_honesty'])}</dd>"
             "</dl></section>"
         )
+        semantic_decision_support_html = _report_semantic_decision_support(semantic)
         pending_note = (
             "<p><strong>Production PDF rendering is pending.</strong> This HTML is the MVP PDF fallback.</p>"
             if pdf_fallback
@@ -471,6 +472,7 @@ class CaseWorkbenchService:
 <section><dl><dt>Case ID</dt><dd>{_report_text(case['case_id'])}</dd><dt>Event ID</dt><dd>{_report_text(case['event_id'])}</dd><dt>Title</dt><dd>{_report_text(case['title'])}</dd><dt>State</dt><dd>{_report_text(case['state'])}</dd><dt>Snapshot ID</dt><dd><code>{_report_text(case['evidence']['snapshot_id'])}</code></dd><dt>Run ID</dt><dd><code>{_report_text(case['analysis_runs'][0]['run_id'])}</code></dd></dl></section>
 <section><h2>Primary claim</h2><p>{_report_text(primary_claim['excerpt'])}</p><dl><dt>Source</dt><dd>{_report_text(primary_claim['source']['name'])}</dd><dt>Source tier</dt><dd>{_report_text(primary_claim['source']['tier'])}</dd></dl></section>
 <section><h2>Semantic evidence overlay</h2><dl><dt>artifact_sha256</dt><dd><code>{_report_text(semantic['artifact_sha256'])}</code></dd><dt>Model status</dt><dd>{_report_text(semantic['model_status'])}</dd><dt>Score policy</dt><dd>evidence_overlay_only</dd></dl></section>
+{semantic_decision_support_html}
 <section><h2>CPR evidence layers</h2><ul>{evidence_layers}</ul></section>
 {acceptance_summary_html}
 <section><h2>Closure checklist</h2><ul>{closure_checklist}</ul></section>
@@ -1017,6 +1019,39 @@ def _report_acceptance_summary(case: dict[str, Any]) -> dict[str, str]:
         "semantic_policy": case.get("workflow_summary", {}).get("semantic_score_policy", "unknown"),
         "second_platform_honesty": second_platform_honesty,
     }
+
+
+def _report_semantic_decision_support(semantic: dict[str, Any]) -> str:
+    support = (semantic.get("summary") or {}).get("decision_support") or {}
+    coverage = support.get("coverage") or {}
+    confidence = support.get("confidence") or {}
+    platform_slices = "".join(
+        "<li>"
+        f"{_report_text(item.get('platform', '-'))}: "
+        f"{_report_text(item.get('texts', 0))} texts"
+        "</li>"
+        for item in support.get("platform_slices", [])
+    ) or "<li>None</li>"
+    time_slices = "".join(
+        "<li>"
+        f"{_report_text(item.get('time', '-'))}: "
+        f"{_report_text(item.get('texts', 0))} texts"
+        "</li>"
+        for item in support.get("time_slices", [])
+    ) or "<li>None</li>"
+    return (
+        "<section><h2>Semantic decision support</h2>"
+        "<dl>"
+        f"<dt>Coverage</dt><dd>{_report_text(coverage.get('coverage_ratio', 'unknown'))} "
+        f"({_report_text(coverage.get('covered_texts', 0))}/{_report_text(coverage.get('total_texts', 0))} texts)</dd>"
+        f"<dt>Confidence</dt><dd>{_report_text(confidence.get('level', 'unknown'))} / "
+        f"{_report_text(confidence.get('status', 'unknown'))}</dd>"
+        f"<dt>Operator prompt</dt><dd>{_report_text(support.get('operator_prompt', 'not_available'))}</dd>"
+        "</dl>"
+        f"<h3>Platform slices</h3><ul>{platform_slices}</ul>"
+        f"<h3>Time slices</h3><ul>{time_slices}</ul>"
+        "</section>"
+    )
 
 
 def _hash_payload(payload: dict[str, Any]) -> str:

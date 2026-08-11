@@ -20,6 +20,8 @@
 
 ## 2026-08-11
 
+- Case 报告预览补齐语义研判摘要：HTML/PDF fallback 报告现在打印 `Semantic decision support`，包含覆盖率、候选置信状态、平台切片、时间切片和“语义只作分诊提示”的操作边界；本地验收脚本同步检查该区块可见。
+
 - Case Workbench 验收导出补充语义研判摘要：后端 `case_workbench_acceptance.py` 和前端验收 JSON 导出均包含 `semantic_decision_support`，记录覆盖率、候选状态、平台/时间切片和“只作分诊提示”的操作边界，便于演示后复查 NLP 支撑证据。
 
 - 增强 Case Workbench 的语义研判摘要：`semantic_enrichment` 新增 `decision_support`，统一输出覆盖率、候选置信等级、模块可用性、时间切片、平台切片和研判提示；前端“语义辅助”面板新增密集摘要卡片，仍明确语义只作分诊提示，不进入风险分数。
