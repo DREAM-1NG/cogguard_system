@@ -9,6 +9,7 @@ import type {
   CaseDetail,
   CaseFeedbackRequest,
   CasePage,
+  CaseSemanticCorrectionRequest,
 } from '@/types/case'
 
 const caseRequest = axios.create({
@@ -86,6 +87,17 @@ export function submitCaseFeedback(
   body: CaseFeedbackRequest,
 ): Promise<ApiEnvelope<CaseDetail>> {
   return caseRequest.post(`/${encodeURIComponent(caseId)}/feedback`, body)
+}
+
+export function recordSemanticCorrection(
+  caseId: string,
+  artifactId: string,
+  body: CaseSemanticCorrectionRequest,
+): Promise<ApiEnvelope<CaseDetail>> {
+  return caseRequest.post(
+    `/${encodeURIComponent(caseId)}/semantic-artifacts/${encodeURIComponent(artifactId)}/corrections`,
+    body,
+  )
 }
 
 export function submitCaseCloseoutReview(

@@ -588,6 +588,61 @@ def test_case_report_preview_hash_tracks_visible_mutation_state():
     asyncio.run(scenario())
 
 
+def test_semantic_correction_api_appends_advisory_overlay_without_changing_closeout_gates():
+    async def scenario():
+        service = CaseWorkbenchService(mongo_db={})
+        app = FastAPI()
+        app.include_router(router, prefix="/api/v2/cases")
+        app.dependency_overrides[get_case_workbench_service] = lambda: service
+        app.dependency_overrides[get_current_user_or_local_preview] = lambda: None
+        transport = ASGITransport(app=app)
+        case_id = "case_trump_visit_2026_05_21"
+        before = await service.get_case(case_id)
+        before_statuses = {item["key"]: item["status"] for item in before["closure_checklist"]}
+        before_actions = [(action["action_id"], action["status"]) for action in before["actions"]]
+        before_hash = before["reports"][0]["content_hash"]
+
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.post(
+                f"/api/v2/cases/{case_id}/semantic-artifacts/semantic_case_workbench_demo/corrections",
+                json={
+                    "module": "sentiment",
+                    "target_ref": "weibo_demo_1",
+                    "original_value": "positive",
+                    "corrected_value": "neutral",
+                    "reason": "Analyst correction during prototype review.",
+                },
+            )
+
+        assert response.status_code == 200
+        changed = response.json()["data"]
+        correction = changed["semantic_corrections"][0]
+        assert correction["correction_id"] == "semantic_correction_1"
+        assert correction["artifact_id"] == "semantic_case_workbench_demo"
+        assert correction["module"] == "sentiment"
+        assert correction["target_ref"] == "weibo_demo_1"
+        assert correction["original_value"] == "positive"
+        assert correction["corrected_value"] == "neutral"
+        assert correction["reason"] == "Analyst correction during prototype review."
+        assert correction["status"] == "advisory_overlay"
+        assert changed["audit_events"][-1]["action"] == "record_semantic_correction"
+        assert changed["state"] == before["state"]
+        assert changed["platforms"] == before["platforms"] == ["weibo"]
+        assert [(action["action_id"], action["status"]) for action in changed["actions"]] == before_actions
+        assert {item["key"]: item["status"] for item in changed["closure_checklist"]} == before_statuses
+        assert changed["workflow_summary"]["semantic_score_policy"] == "evidence_overlay_only"
+        assert changed["reports"][0]["content_hash"] != before_hash
+
+        html = await service.render_report_html(case_id, 1)
+        assert "Semantic corrections" in html
+        assert "record_semantic_correction" in html
+        assert "weibo_demo_1" in html
+        assert "neutral" in html
+        assert "advisory_overlay" in html
+
+    asyncio.run(scenario())
+
+
 def test_case_report_cpr_evidence_layers_are_printable():
     async def scenario():
         service = CaseWorkbenchService(mongo_db=_complete_demo_mongo())
@@ -948,6 +1003,17 @@ def test_closed_case_rejects_all_mutations_without_changing_demo_state():
                 case_id,
                 actor_id="analyst",
                 summary="Late closeout is not permitted.",
+            )
+        with pytest.raises(CaseOperationConflict, match="Closed cases"):
+            await service.record_semantic_correction(
+                case_id,
+                "semantic_case_workbench_demo",
+                actor_id="analyst",
+                module="sentiment",
+                target_ref="weibo_demo_1",
+                original_value="positive",
+                corrected_value="neutral",
+                reason="Late correction is not permitted.",
             )
 
         assert service.demo_state == state_before

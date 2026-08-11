@@ -273,6 +273,36 @@
                 </div>
                 <span v-else class="semantic-empty">No semantic examples available.</span>
               </div>
+              <div class="semantic-section">
+                <h3>Semantic corrections</h3>
+                <p class="semantic-boundary-note">
+                  advisory_overlay / record_semantic_correction /
+                  semantic_artifacts_do_not_mutate_coordination_propagation_review_scores
+                </p>
+                <div class="semantic-correction-form">
+                  <a-input v-model:value="semanticCorrectionForm.module" :disabled="caseDetail.state === 'closed'" placeholder="module" />
+                  <a-input v-model:value="semanticCorrectionForm.target_ref" :disabled="caseDetail.state === 'closed'" placeholder="target_ref" />
+                  <a-input v-model:value="semanticCorrectionForm.original_value" :disabled="caseDetail.state === 'closed'" placeholder="original_value" />
+                  <a-input v-model:value="semanticCorrectionForm.corrected_value" :disabled="caseDetail.state === 'closed'" placeholder="corrected_value" />
+                  <a-textarea v-model:value="semanticCorrectionForm.reason" :disabled="caseDetail.state === 'closed'" :rows="2" placeholder="reason" />
+                  <a-button
+                    size="small"
+                    type="primary"
+                    :disabled="caseDetail.state === 'closed'"
+                    :loading="savingSemanticCorrection"
+                    @click="submitSemanticCorrection"
+                  >
+                    Record semantic correction
+                  </a-button>
+                </div>
+                <div v-if="semanticCorrections.length" class="compact-list">
+                  <div v-for="item in semanticCorrections" :key="item.correction_id" class="topic-row">
+                    <strong>{{ item.correction_id }} 路 {{ item.module }} 路 {{ item.status || 'advisory_overlay' }}</strong>
+                    <span>{{ item.target_ref }}: {{ item.original_value || '-' }} -> {{ item.corrected_value }}<br />{{ item.reason }}</span>
+                  </div>
+                </div>
+                <span v-else class="semantic-empty">No semantic corrections recorded.</span>
+              </div>
             </section>
           </div>
         </a-tab-pane>
@@ -473,6 +503,7 @@ import {
   fetchCaseReport as fetchCaseReportRequest,
   getCase,
   listCases,
+  recordSemanticCorrection as recordSemanticCorrectionRequest,
   submitCaseCloseoutReview as submitCaseCloseoutReviewRequest,
   submitCaseFeedback as submitCaseFeedbackRequest,
   waiveCaseAction as waiveCaseActionRequest,
@@ -493,6 +524,14 @@ const savingActionId = ref('')
 const savingFeedback = ref(false)
 const savingCloseout = ref(false)
 const savingBlockerId = ref('')
+const savingSemanticCorrection = ref(false)
+const semanticCorrectionForm = ref({
+  module: 'sentiment',
+  target_ref: 'weibo_demo_1',
+  original_value: 'positive',
+  corrected_value: '',
+  reason: '',
+})
 
 const claimRows = computed<CaseClaim[]>(() => {
   if (!caseDetail.value) return []
@@ -538,6 +577,7 @@ const semanticTraceExamples = computed(() => {
 })
 const semanticDecisionSupport = computed(() => semanticArtifact.value?.summary?.decision_support || null)
 const semanticReviewHints = computed(() => semanticDecisionSupport.value?.review_hints || [])
+const semanticCorrections = computed(() => caseDetail.value?.semantic_corrections || [])
 const semanticModuleCoverageEntries = computed(() =>
   Object.entries(semanticDecisionSupport.value?.module_coverage || {}).map(([module, value]) => {
     const coverage = (value || {}) as Record<string, any>
@@ -633,6 +673,7 @@ const acceptanceEvidencePayload = computed(() => {
       })),
       near_duplicate_content_ids: nearDuplicateGroups.value.flatMap((group) => group.content_ids || []),
     },
+    semantic_corrections: semanticCorrections.value,
     prototype_limitations: {
       semantic_examples_text_scope: prototypeConstraints.value.semantic_examples_text_scope,
       risk_score_boundary: prototypeConstraints.value.risk_score_boundary,
@@ -856,6 +897,34 @@ async function submitCaseFeedback() {
     message.success('反馈已提交')
   } finally {
     savingFeedback.value = false
+  }
+}
+
+async function submitSemanticCorrection() {
+  if (!caseDetail.value || !semanticArtifact.value) return
+  if (!semanticCorrectionForm.value.corrected_value.trim() || !semanticCorrectionForm.value.reason.trim()) {
+    message.warning('Please provide corrected_value and reason.')
+    return
+  }
+  savingSemanticCorrection.value = true
+  try {
+    const response = await recordSemanticCorrectionRequest(
+      caseDetail.value.case_id,
+      semanticArtifact.value.artifact_id,
+      {
+        module: semanticCorrectionForm.value.module.trim(),
+        target_ref: semanticCorrectionForm.value.target_ref.trim(),
+        original_value: semanticCorrectionForm.value.original_value.trim(),
+        corrected_value: semanticCorrectionForm.value.corrected_value.trim(),
+        reason: semanticCorrectionForm.value.reason.trim(),
+      },
+    )
+    caseDetail.value = response.data
+    semanticCorrectionForm.value.corrected_value = ''
+    semanticCorrectionForm.value.reason = ''
+    message.success('Semantic correction recorded as advisory_overlay.')
+  } finally {
+    savingSemanticCorrection.value = false
   }
 }
 

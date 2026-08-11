@@ -145,6 +145,7 @@ class CaseWorkbenchService:
         active_blockers = [blocker for blocker in blockers if blocker["blocker_id"] not in acknowledged_blocker_ids]
         actions = _action_rows(self.demo_state)
         feedback = list(self.demo_state["feedback"])
+        semantic_corrections = list(self.demo_state["semantic_corrections"])
         closeout_review = self.demo_state.get("closeout_review")
         state = _case_state(blockers=active_blockers, actions=actions, feedback=feedback, closeout_review=closeout_review)
         canonical_verdict = {
@@ -180,6 +181,17 @@ class CaseWorkbenchService:
                 "blocker_acknowledgements": acknowledgements,
                 "actions": [(action["action_id"], action["status"]) for action in actions],
                 "feedback_count": len(feedback),
+                "semantic_corrections": [
+                    (
+                        correction["correction_id"],
+                        correction["artifact_id"],
+                        correction["module"],
+                        correction["target_ref"],
+                        correction["corrected_value"],
+                        correction["status"],
+                    )
+                    for correction in semantic_corrections
+                ],
                 "closeout_summary": closeout_review.get("summary") if closeout_review else None,
                 "closure_checklist": [(item["key"], item["status"]) for item in closure_checklist],
                 "prototype_constraints": PROTOTYPE_CONSTRAINTS,
@@ -259,6 +271,7 @@ class CaseWorkbenchService:
             "graph": _graph_projection(posts),
             "actions": actions,
             "feedback": feedback,
+            "semantic_corrections": semantic_corrections,
             "closeout_review": closeout_review,
             "closure_checklist": closure_checklist,
             "prototype_constraints": dict(PROTOTYPE_CONSTRAINTS),
@@ -394,6 +407,46 @@ class CaseWorkbenchService:
         self._append_audit("submit_case_feedback", actor_id=actor_id, target_id=feedback["feedback_id"], payload={})
         return await self.get_case(case_id)
 
+    async def record_semantic_correction(
+        self,
+        case_id: str,
+        artifact_id: str,
+        *,
+        actor_id: str,
+        module: str,
+        target_ref: str,
+        original_value: str = "",
+        corrected_value: str,
+        reason: str,
+    ) -> dict[str, Any]:
+        await self._assert_case_mutable(case_id)
+        _assert_semantic_artifact(artifact_id)
+        correction = {
+            "correction_id": f"semantic_correction_{len(self.demo_state['semantic_corrections']) + 1}",
+            "artifact_id": artifact_id,
+            "module": _require_nonblank_text(module, "Semantic correction module"),
+            "target_ref": _require_nonblank_text(target_ref, "Semantic correction target_ref"),
+            "original_value": str(original_value or "").strip(),
+            "corrected_value": _require_nonblank_text(corrected_value, "Semantic correction corrected_value"),
+            "reason": _require_nonblank_text(reason, "Semantic correction reason"),
+            "actor_id": actor_id,
+            "status": "advisory_overlay",
+            "created_at": _now(),
+        }
+        self.demo_state["semantic_corrections"].append(correction)
+        self._append_audit(
+            "record_semantic_correction",
+            actor_id=actor_id,
+            target_id=correction["correction_id"],
+            payload={
+                "artifact_id": artifact_id,
+                "module": correction["module"],
+                "target_ref": correction["target_ref"],
+                "status": correction["status"],
+            },
+        )
+        return await self.get_case(case_id)
+
     async def submit_closeout_review(self, case_id: str, *, actor_id: str, summary: str) -> dict[str, Any]:
         await self._assert_case_mutable(case_id)
         summary = _require_nonblank_text(summary, "Closeout summary")
@@ -463,6 +516,7 @@ class CaseWorkbenchService:
         semantic_decision_support_html = _report_semantic_decision_support(semantic)
         semantic_evidence_appendix_html = _report_semantic_evidence_appendix(semantic)
         semantic_traceability_html = _report_semantic_traceability(semantic, case["actions"])
+        semantic_corrections_html = _report_semantic_corrections(case["semantic_corrections"])
         pending_note = (
             "<p><strong>Production PDF rendering is pending.</strong> This HTML is the MVP PDF fallback.</p>"
             if pdf_fallback
@@ -515,6 +569,7 @@ class CaseWorkbenchService:
 {semantic_decision_support_html}
 {semantic_evidence_appendix_html}
 {semantic_traceability_html}
+{semantic_corrections_html}
 <section><h2>CPR evidence layers</h2><ul>{evidence_layers}</ul></section>
 {acceptance_summary_html}
 {prototype_limitations_html}
@@ -677,6 +732,7 @@ def _new_demo_state() -> dict[str, Any]:
         "actions": {},
         "action_history": {template["action_id"]: [] for template in ACTION_TEMPLATES},
         "feedback": [],
+        "semantic_corrections": [],
         "blocker_acknowledgements": [],
         "closeout_review": None,
         "audit_events": [],
@@ -699,6 +755,11 @@ def _action_rows(state: dict[str, Any]) -> list[dict[str, Any]]:
 def _assert_action(action_id: str) -> None:
     if action_id not in {template["action_id"] for template in ACTION_TEMPLATES}:
         raise KeyError(f"Case action not found: {action_id}")
+
+
+def _assert_semantic_artifact(artifact_id: str) -> None:
+    if artifact_id != "semantic_case_workbench_demo":
+        raise KeyError(f"Semantic artifact not found: {artifact_id}")
 
 
 def _case_state(
@@ -1216,6 +1277,26 @@ def _report_semantic_traceability(semantic: dict[str, Any], actions: list[dict[s
         f"<h3>Module coverage</h3><ul>{module_items}</ul>"
         f"<h3>Semantic examples</h3><ul>{semantic_examples}</ul>"
         f"<h3>Semantic action evidence refs</h3><ul>{action_refs}</ul>"
+        "</section>"
+    )
+
+
+def _report_semantic_corrections(corrections: list[dict[str, Any]]) -> str:
+    items = _report_term_items(
+        (
+            f"{item.get('correction_id', '-')}: record_semantic_correction; "
+            f"{item.get('artifact_id', '-')}; {item.get('module', '-')}; "
+            f"{item.get('target_ref', '-')}; {item.get('original_value', '')} -> "
+            f"{item.get('corrected_value', '-')}; {item.get('status', '-')}; "
+            f"{item.get('reason', '-')}"
+            for item in corrections
+        ),
+        empty="No semantic corrections recorded",
+    )
+    return (
+        "<section><h2>Semantic corrections</h2>"
+        "<p>Manual corrections are advisory overlays and do not change CPR scores or closure gates.</p>"
+        f"<ul>{items}</ul>"
         "</section>"
     )
 

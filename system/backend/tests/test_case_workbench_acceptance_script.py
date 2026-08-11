@@ -22,6 +22,7 @@ def test_case_workbench_acceptance_closes_the_weibo_only_demo_case():
         "semantic_decision_support_visible": True,
         "semantic_evidence_appendix_visible": True,
         "semantic_traceability_pack_visible": True,
+        "semantic_corrections_visible": True,
         "prototype_limitations_visible": True,
         "content_hash_changed": True,
     }
@@ -76,6 +77,12 @@ def test_case_workbench_acceptance_closes_the_weibo_only_demo_case():
                     "evidence_refs": ["run_case_workbench_demo"],
                 },
             ],
+        },
+        "corrections": {
+            "count": 1,
+            "ids": ["semantic_correction_1"],
+            "statuses": ["advisory_overlay"],
+            "modules": ["sentiment"],
         },
     }
     assert result["claim_archive"] == {
@@ -133,6 +140,7 @@ def test_case_workbench_acceptance_closes_the_weibo_only_demo_case():
         "complete_case_action",
         "submit_case_feedback",
         "submit_closeout_review",
+        "record_semantic_correction",
     }.issubset(result["audit_actions"])
     assert result["claim_boundary"] == {
         "second_platform_evidence_claimed": False,

@@ -88,8 +88,23 @@ async def run_acceptance() -> dict[str, Any]:
     _require(ready_checklist["feedback"] == "passed", "feedback should pass feedback gate")
     _require(ready_checklist["closeout_review"] == "pending", "closeout review should pend before submission")
 
+    corrected = await service.record_semantic_correction(
+        ready["case_id"],
+        "semantic_case_workbench_demo",
+        actor_id="acceptance_script",
+        module="sentiment",
+        target_ref="weibo_demo_1",
+        original_value="positive",
+        corrected_value="neutral",
+        reason="Acceptance records one analyst semantic correction.",
+    )
+    corrected_checklist = _checklist_statuses(corrected)
+    _require(corrected["state"] == "ready_to_close", "semantic correction must not change ready state")
+    _require(corrected["platforms"] == ["weibo"], "semantic correction must not add platform evidence")
+    _require(corrected_checklist == ready_checklist, "semantic correction must not change closure gates")
+
     closed = await service.submit_closeout_review(
-        ready["case_id"], actor_id="acceptance_script", summary="Local prototype closeout accepted."
+        corrected["case_id"], actor_id="acceptance_script", summary="Local prototype closeout accepted."
     )
     closed_checklist = _checklist_statuses(closed)
     _require(closed["state"] == "closed", "expected closed after closeout review")
@@ -104,6 +119,7 @@ async def run_acceptance() -> dict[str, Any]:
     _require("Semantic evidence appendix" in report_html, "report must show semantic evidence appendix")
     _require("Semantic traceability pack" in report_html, "report must show semantic traceability pack")
     _require("Semantic action evidence refs" in report_html, "report must show action evidence refs")
+    _require("Semantic corrections" in report_html, "report must show semantic corrections")
     _require("Prototype limitations" in report_html, "report must show prototype limitations")
     for semantic_section in (
         "Sentiment",
@@ -127,6 +143,7 @@ async def run_acceptance() -> dict[str, Any]:
         {"action_id": action["action_id"], "evidence_refs": action.get("evidence_refs") or []}
         for action in closed["actions"]
     ]
+    semantic_corrections = closed["semantic_corrections"]
     _require(semantic_policy == "evidence_overlay_only", "semantic policy must remain overlay-only")
     _require(
         closed["prototype_constraints"]["semantic_examples_text_scope"] == "excerpt_only_not_full_source_text",
@@ -175,6 +192,7 @@ async def run_acceptance() -> dict[str, Any]:
             "semantic_decision_support_visible": True,
             "semantic_evidence_appendix_visible": True,
             "semantic_traceability_pack_visible": True,
+            "semantic_corrections_visible": True,
             "prototype_limitations_visible": True,
             "content_hash_changed": True,
         },
@@ -212,6 +230,12 @@ async def run_acceptance() -> dict[str, Any]:
                 "module_coverage_modules": list(decision_support["module_coverage"]),
                 "semantic_example_ids": semantic_example_ids,
                 "action_evidence_refs": action_evidence_refs,
+            },
+            "corrections": {
+                "count": len(semantic_corrections),
+                "ids": [item["correction_id"] for item in semantic_corrections],
+                "statuses": [item["status"] for item in semantic_corrections],
+                "modules": [item["module"] for item in semantic_corrections],
             },
         },
         "claim_archive": {

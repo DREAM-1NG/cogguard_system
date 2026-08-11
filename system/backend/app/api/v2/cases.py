@@ -12,6 +12,7 @@ from app.schemas.cases import (
     CaseBlockerAcknowledgementRequest,
     CaseCloseoutReviewRequest,
     CaseFeedbackRequest,
+    CaseSemanticCorrectionRequest,
 )
 from app.services.case_workbench_service import CaseOperationConflict, CaseWorkbenchService
 from app.utils.response import success
@@ -157,6 +158,34 @@ async def submit_case_feedback(
         _require_case_mutation_role(current_user)
         return success(
             data=await service.submit_feedback(case_id, actor_id=_actor_id(current_user), content=request.content)
+        )
+    except CaseOperationConflict as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.post("/{case_id}/semantic-artifacts/{artifact_id}/corrections")
+async def record_semantic_correction(
+    case_id: str,
+    artifact_id: str,
+    request: CaseSemanticCorrectionRequest,
+    service: CaseWorkbenchService = Depends(get_case_workbench_service),
+    current_user: User | None = Depends(get_current_user_or_local_preview),
+):
+    try:
+        _require_case_mutation_role(current_user)
+        return success(
+            data=await service.record_semantic_correction(
+                case_id,
+                artifact_id,
+                actor_id=_actor_id(current_user),
+                module=request.module,
+                target_ref=request.target_ref,
+                original_value=request.original_value,
+                corrected_value=request.corrected_value,
+                reason=request.reason,
+            )
         )
     except CaseOperationConflict as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc

@@ -316,3 +316,4 @@
 - 验收脚本输出 `semantic_evidence_appendix_visible` 与附录类别统计；演示数据仍为微博单平台并记录 XHS 缺口。
 - Case Workbench 前端与报告补齐语义复核链路：展示 review hints、module coverage、Semantic examples 和 action evidence refs，验收输出新增 traceability 包，仍不影响风险分、处置状态或结案门槛。
 - Case Workbench 新增 `prototype_constraints` 原型限制契约，在后端 payload、报告、前端报告页和验收导出中显式记录：微博单平台 + XHS 缺口、语义样例仅为 excerpt、语义产物不改 Coordination/Propagation/Review 风险分、模型 `candidate_unvalidated`、PDF 为 HTML fallback。
+- Case Workbench 增加 `SemanticCorrection` 原型闭环：分析员可对语义辅助结果追加人工修正，后端 API、报告、前端语义区与验收导出均可见，并通过审计事件 `record_semantic_correction` 记录；修正保持 `advisory_overlay`，不改变 Case 状态、处置、结案门槛或平台证据。

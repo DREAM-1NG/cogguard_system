@@ -196,6 +196,41 @@ def test_case_workbench_exports_prototype_limitations_and_excerpt_boundary():
         assert field in types
 
 
+def test_case_workbench_exposes_semantic_correction_bindings():
+    view = (FRONTEND / "views" / "cases" / "index.vue").read_text(encoding="utf-8")
+    api = (FRONTEND / "api" / "cases.ts").read_text(encoding="utf-8")
+    types = (FRONTEND / "types" / "case.ts").read_text(encoding="utf-8")
+
+    for binding in (
+        "semanticCorrections",
+        "semanticCorrectionForm",
+        "recordSemanticCorrection",
+        "submitSemanticCorrection",
+        "semantic_corrections",
+        "Semantic corrections",
+        "advisory_overlay",
+        "record_semantic_correction",
+        "semantic_artifacts_do_not_mutate_coordination_propagation_review_scores",
+    ):
+        assert binding in view
+    for binding in (
+        "recordSemanticCorrection",
+        "/semantic-artifacts/${encodeURIComponent(artifactId)}/corrections",
+        "CaseSemanticCorrectionRequest",
+    ):
+        assert binding in api
+    for field in (
+        "export interface CaseSemanticCorrection",
+        "export interface CaseSemanticCorrectionRequest",
+        "semantic_corrections: CaseSemanticCorrection[]",
+        "module: string",
+        "target_ref: string",
+        "corrected_value: string",
+        "reason: string",
+    ):
+        assert field in types
+
+
 def test_case_evidence_matrix_exposes_semantic_truth_boundary_bindings():
     view = (FRONTEND / "views" / "cases" / "index.vue").read_text(encoding="utf-8")
     types = (FRONTEND / "types" / "case.ts").read_text(encoding="utf-8")

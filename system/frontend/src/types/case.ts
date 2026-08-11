@@ -136,6 +136,19 @@ export interface CaseFeedback {
   created_at: string
 }
 
+export interface CaseSemanticCorrection {
+  correction_id: string
+  artifact_id: string
+  module: string
+  target_ref: string
+  original_value?: string
+  corrected_value: string
+  reason: string
+  actor_id: string
+  status: string
+  created_at: string
+}
+
 export interface CaseCloseoutReview {
   review_id: string
   actor_id: string
@@ -210,6 +223,7 @@ export interface CaseDetail {
   graph: Record<string, any>
   actions: CaseAction[]
   feedback: CaseFeedback[]
+  semantic_corrections: CaseSemanticCorrection[]
   closeout_review?: CaseCloseoutReview | null
   reports: CaseReportVersion[]
   active_blockers: CaseBlocker[]
@@ -232,6 +246,14 @@ export interface CaseActionDecisionRequest {
 
 export interface CaseFeedbackRequest {
   content: string
+}
+
+export interface CaseSemanticCorrectionRequest {
+  module: string
+  target_ref: string
+  original_value?: string
+  corrected_value: string
+  reason: string
 }
 
 export interface CaseCloseoutReviewRequest {
