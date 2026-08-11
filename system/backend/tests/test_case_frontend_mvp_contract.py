@@ -112,6 +112,35 @@ def test_case_evidence_matrix_exposes_semantic_assistance_bindings():
     assert "案例闭环" in layout
 
 
+def test_case_workbench_surfaces_semantic_review_hints_and_action_evidence_refs():
+    view = (FRONTEND / "views" / "cases" / "index.vue").read_text(encoding="utf-8")
+
+    for binding in (
+        "semanticReviewHints",
+        "semanticDecisionSupport.value?.review_hints",
+        "semanticModuleCoverageEntries",
+        "semanticDecisionSupport.value?.module_coverage",
+        "moduleCoverageColor",
+        "record.evidence_refs",
+        "record.evidence_refs || []",
+        "Evidence refs",
+        "action_evidence_refs",
+    ):
+        assert binding in view
+    for label in (
+        "Review hints",
+        "Module coverage",
+        "Action evidence refs",
+        "candidate_unvalidated",
+        "evidence_overlay_only",
+    ):
+        assert label in view
+
+    service = ROOT / "system" / "backend" / "app" / "services" / "case_workbench_service.py"
+    service_source = service.read_text(encoding="utf-8")
+    assert "semantic_case_workbench_demo" in service_source
+
+
 def test_case_evidence_matrix_exposes_semantic_truth_boundary_bindings():
     view = (FRONTEND / "views" / "cases" / "index.vue").read_text(encoding="utf-8")
     types = (FRONTEND / "types" / "case.ts").read_text(encoding="utf-8")

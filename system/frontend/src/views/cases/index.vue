@@ -146,6 +146,25 @@
                     {{ semanticDecisionSupport?.operator_prompt || '-' }}
                   </a-descriptions-item>
                 </a-descriptions>
+                <div v-if="semanticReviewHints.length" class="semantic-section">
+                  <h3>Review hints</h3>
+                  <ul class="semantic-hint-list">
+                    <li v-for="hint in semanticReviewHints" :key="hint">{{ hint }}</li>
+                  </ul>
+                </div>
+                <div v-if="semanticModuleCoverageEntries.length" class="semantic-section">
+                  <h3>Module coverage</h3>
+                  <a-space wrap>
+                    <a-tag
+                      v-for="item in semanticModuleCoverageEntries"
+                      :key="item.module"
+                      :color="moduleCoverageColor(item.status)"
+                    >
+                      {{ item.module }}: {{ item.status }} {{ item.covered }}/{{ item.total }}
+                      <span v-if="item.block_code"> · {{ item.block_code }}</span>
+                    </a-tag>
+                  </a-space>
+                </div>
                 <div class="semantic-slice-grid">
                   <div>
                     <h4>Time slices</h4>
@@ -265,6 +284,7 @@
         <a-tab-pane key="actions" tab="处置">
           <section class="panel">
             <div class="panel-title">处置与反馈</div>
+            <p class="action-evidence-note">Action evidence refs: candidate_unvalidated / evidence_overlay_only</p>
             <a-table
               size="small"
               :columns="actionColumns"
@@ -275,6 +295,12 @@
               <template #bodyCell="{ column, record }">
                 <template v-if="column.key === 'status'">
                   <a-tag :color="actionStatusColor(record.status)">{{ record.status }}</a-tag>
+                </template>
+                <template v-else-if="column.key === 'evidence_refs'">
+                  <a-space wrap>
+                    <a-tag v-for="ref in record.evidence_refs || []" :key="ref">{{ ref }}</a-tag>
+                    <span v-if="!(record.evidence_refs || []).length">-</span>
+                  </a-space>
                 </template>
                 <template v-else-if="column.key === 'actions'">
                   <a-space>
@@ -462,6 +488,19 @@ const stanceEntries = computed(() => distributionEntries(semanticArtifact.value?
 const communityItems = computed(() => semanticArtifact.value?.summary?.community_comparison?.items || [])
 const nearDuplicateGroups = computed(() => semanticArtifact.value?.summary?.near_duplicates || [])
 const semanticDecisionSupport = computed(() => semanticArtifact.value?.summary?.decision_support || null)
+const semanticReviewHints = computed(() => semanticDecisionSupport.value?.review_hints || [])
+const semanticModuleCoverageEntries = computed(() =>
+  Object.entries(semanticDecisionSupport.value?.module_coverage || {}).map(([module, value]) => {
+    const coverage = (value || {}) as Record<string, any>
+    return {
+      module,
+      status: coverage.status || 'unknown',
+      covered: coverage.covered ?? 0,
+      total: coverage.total ?? 0,
+      block_code: coverage.block_code,
+    }
+  }),
+)
 const graphNodes = computed<any[]>(() => caseDetail.value?.graph?.nodes || [])
 const graphEdges = computed<any[]>(() => caseDetail.value?.graph?.edges || [])
 const graphEvidenceLayers = computed<any[]>(() => caseDetail.value?.graph?.evidence_layers || [])
@@ -519,8 +558,14 @@ const acceptanceEvidencePayload = computed(() => {
       confidence: semanticDecisionSupport.value?.confidence,
       platform_slices: semanticDecisionSupport.value?.platform_slices || [],
       time_slices: semanticDecisionSupport.value?.time_slices || [],
+      review_hints: semanticReviewHints.value,
+      module_coverage: semanticModuleCoverageEntries.value,
       operator_prompt: semanticDecisionSupport.value?.operator_prompt,
     },
+    action_evidence_refs: (detail?.actions || []).map((action) => ({
+      action_id: action.action_id,
+      evidence_refs: action.evidence_refs || [],
+    })),
   }
 })
 
@@ -547,6 +592,7 @@ const actionColumns = [
   { title: '处置项', dataIndex: 'title', key: 'title' },
   { title: '状态', dataIndex: 'status', key: 'status' },
   { title: '负责人', dataIndex: 'assignee', key: 'assignee' },
+  { title: 'Evidence refs', dataIndex: 'evidence_refs', key: 'evidence_refs' },
   { title: '操作', key: 'actions' },
 ]
 
@@ -618,6 +664,14 @@ function formatMetrics(metrics?: Record<string, unknown>) {
   return Object.entries(metrics)
     .map(([key, value]) => `${key}: ${String(value)}`)
     .join(' · ')
+}
+
+function moduleCoverageColor(status?: string) {
+  return ({
+    available: 'blue',
+    blocked: 'orange',
+    unavailable: 'default',
+  } as Record<string, string>)[status || ''] || 'default'
 }
 
 function distributionEntries(distribution?: SemanticDistribution) {
@@ -923,6 +977,19 @@ onMounted(() => {
 }
 
 .semantic-empty {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.semantic-hint-list {
+  margin: 0;
+  padding-left: 18px;
+  color: #475569;
+  font-size: 12px;
+}
+
+.action-evidence-note {
+  margin: 0 0 10px;
   color: #64748b;
   font-size: 12px;
 }
