@@ -699,6 +699,31 @@ def test_case_report_prints_semantic_decision_support_summary():
     asyncio.run(scenario())
 
 
+def test_case_report_prints_compact_semantic_evidence_appendix():
+    async def scenario():
+        service = CaseWorkbenchService(mongo_db={})
+
+        html = await service.render_report_html("case_trump_visit_2026_05_21", 1)
+
+        assert "Semantic evidence appendix" in html
+        assert "Sentiment" in html
+        assert "Keywords" in html
+        assert "Topics" in html
+        assert "Entities" in html
+        assert "Stance" in html
+        assert "Near duplicates" in html
+        assert "Community comparison" in html
+        assert "candidate_unvalidated" in html
+        assert "evidence_overlay_only" in html
+        assert "特朗普访华欢迎仪式开始" in html
+        assert "positive: 3" in html
+        assert "neutral: 3" in html
+        assert "特朗普" in html
+        assert "weibo" in html
+
+    asyncio.run(scenario())
+
+
 def test_case_report_handles_missing_primary_claim_without_hiding_semantic_support():
     async def scenario():
         service = CaseWorkbenchService(mongo_db=_complete_demo_mongo(), missing_primary_claim=True)
@@ -711,6 +736,25 @@ def test_case_report_handles_missing_primary_claim_without_hiding_semantic_suppo
         assert "Confidence" in html
         assert "candidate_unvalidated" in html
         assert "Use semantic outputs as triage hints, not as risk-score inputs." in html
+
+    asyncio.run(scenario())
+
+
+def test_case_report_appendix_keeps_stance_blocked_when_primary_claim_is_missing():
+    async def scenario():
+        service = CaseWorkbenchService(mongo_db=_complete_demo_mongo(), missing_primary_claim=True)
+
+        html = await service.render_report_html("case_trump_visit_2026_05_21", 1)
+
+        assert "Semantic evidence appendix" in html
+        assert "Stance" in html
+        assert "blocked_missing_primary_claim" in html
+        assert "Stance requires an approved Primary Claim" in html
+        assert "Sentiment" in html
+        assert "Keywords" in html
+        assert "Topics" in html
+        assert "Entities" in html
+        assert "Community comparison" in html
 
     asyncio.run(scenario())
 

@@ -306,3 +306,11 @@
 - 同切分结果：BotRHG corrected test ROC-AUC `0.6473`、macro-F1 `0.4312`；字符 TF-IDF 参考 ROC-AUC `0.7843`、macro-F1 `0.7028`。因此真实训练链路和部署推理已验证，但研究有效性和论文主张仍 blocked。
 - backend 只在 checkpoint 存在且 fingerprint 门禁通过时使用 `trained_checkpoint`，否则返回明确 `proxy` fallback；本轮不修改前端展示页面。
 - 验证：研究包 `8 passed`，相关 backend tests `8 passed`，backend 全量 `443 passed, 18 skipped`。
+
+---
+
+## 2026-08-12
+
+- Case Workbench 报告增加紧凑语义证据附录，直接复用现有 `semantic_artifacts[0].summary`，展示情感、关键词、主题、实体、立场、近重复和社区对比，保持 `candidate_unvalidated` / `evidence_overlay_only` 边界。
+- 缺少 Primary Claim 时报告继续可渲染，明确显示 `blocked_missing_primary_claim`，同时保留非立场语义辅助，不伪造来源、归档或哈希。
+- 验收脚本输出 `semantic_evidence_appendix_visible` 与附录类别统计；演示数据仍为微博单平台并记录 XHS 缺口。

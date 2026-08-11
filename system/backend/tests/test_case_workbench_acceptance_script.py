@@ -20,6 +20,7 @@ def test_case_workbench_acceptance_closes_the_weibo_only_demo_case():
         "pdf_fallback_visible": True,
         "acceptance_summary_visible": True,
         "semantic_decision_support_visible": True,
+        "semantic_evidence_appendix_visible": True,
         "content_hash_changed": True,
     }
     assert result["semantic"] == {
@@ -31,6 +32,25 @@ def test_case_workbench_acceptance_closes_the_weibo_only_demo_case():
             "platform_slices": ["weibo"],
             "time_slices_present": True,
             "operator_prompt": "Use semantic outputs as triage hints, not as risk-score inputs.",
+        },
+        "appendix": {
+            "sections": [
+                "sentiment",
+                "keywords",
+                "topics",
+                "entities",
+                "stance",
+                "near_duplicates",
+                "community_comparison",
+            ],
+            "sentiment_total_texts": 3,
+            "keyword_count": 4,
+            "topic_count": 2,
+            "entity_count": 3,
+            "stance_status": "ok",
+            "near_duplicate_group_count": 0,
+            "community_count": 1,
+            "model_status": "candidate_unvalidated",
         },
     }
     assert result["claim_archive"] == {

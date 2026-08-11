@@ -86,12 +86,24 @@ async def run_acceptance() -> dict[str, Any]:
     _require("archive_cctv_primary_claim_20260811" in report_html, "report must show primary archive provenance")
     _require("Acceptance summary" in report_html, "report must show acceptance summary")
     _require("Semantic decision support" in report_html, "report must show semantic decision support")
+    _require("Semantic evidence appendix" in report_html, "report must show semantic evidence appendix")
+    for semantic_section in (
+        "Sentiment",
+        "Keywords",
+        "Topics",
+        "Entities",
+        "Stance",
+        "Near duplicates",
+        "Community comparison",
+    ):
+        _require(semantic_section in report_html, f"report must show semantic appendix section: {semantic_section}")
     _require("Closure checklist" in report_html, "report must show closure checklist")
     _require(closed["reports"][0]["content_hash"] != initial_hash, "report hash must track visible mutations")
 
     requested_stages = closed["analysis_runs"][0]["requested_stages"]
     semantic_policy = closed["workflow_summary"]["semantic_score_policy"]
-    decision_support = closed["semantic_artifacts"][0]["summary"]["decision_support"]
+    semantic_summary = closed["semantic_artifacts"][0]["summary"]
+    decision_support = semantic_summary["decision_support"]
     _require(semantic_policy == "evidence_overlay_only", "semantic policy must remain overlay-only")
     _require("semantic_enrichment" in requested_stages, "semantic stage must be explicitly requested")
     _require(
@@ -129,6 +141,7 @@ async def run_acceptance() -> dict[str, Any]:
             "pdf_fallback_visible": True,
             "acceptance_summary_visible": True,
             "semantic_decision_support_visible": True,
+            "semantic_evidence_appendix_visible": True,
             "content_hash_changed": True,
         },
         "semantic": {
@@ -140,6 +153,25 @@ async def run_acceptance() -> dict[str, Any]:
                 "platform_slices": [item["platform"] for item in decision_support["platform_slices"]],
                 "time_slices_present": bool(decision_support["time_slices"]),
                 "operator_prompt": decision_support["operator_prompt"],
+            },
+            "appendix": {
+                "sections": [
+                    "sentiment",
+                    "keywords",
+                    "topics",
+                    "entities",
+                    "stance",
+                    "near_duplicates",
+                    "community_comparison",
+                ],
+                "sentiment_total_texts": semantic_summary["sentiment"]["total_texts"],
+                "keyword_count": len(semantic_summary["top_keywords"]),
+                "topic_count": semantic_summary["topics"]["topic_count"],
+                "entity_count": len(semantic_summary["entities"]),
+                "stance_status": semantic_summary["stance"]["status"],
+                "near_duplicate_group_count": len(semantic_summary["near_duplicates"]),
+                "community_count": len(semantic_summary["community_comparison"]["items"]),
+                "model_status": closed["semantic_artifacts"][0]["model_status"],
             },
         },
         "claim_archive": {

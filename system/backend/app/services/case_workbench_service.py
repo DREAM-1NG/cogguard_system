@@ -450,6 +450,7 @@ class CaseWorkbenchService:
             "</dl></section>"
         )
         semantic_decision_support_html = _report_semantic_decision_support(semantic)
+        semantic_evidence_appendix_html = _report_semantic_evidence_appendix(semantic)
         pending_note = (
             "<p><strong>Production PDF rendering is pending.</strong> This HTML is the MVP PDF fallback.</p>"
             if pdf_fallback
@@ -500,6 +501,7 @@ class CaseWorkbenchService:
 {primary_claim_html}
 <section><h2>Semantic evidence overlay</h2><dl><dt>artifact_sha256</dt><dd><code>{_report_text(semantic['artifact_sha256'])}</code></dd><dt>Model status</dt><dd>{_report_text(semantic['model_status'])}</dd><dt>Score policy</dt><dd>evidence_overlay_only</dd></dl></section>
 {semantic_decision_support_html}
+{semantic_evidence_appendix_html}
 <section><h2>CPR evidence layers</h2><ul>{evidence_layers}</ul></section>
 {acceptance_summary_html}
 <section><h2>Closure checklist</h2><ul>{closure_checklist}</ul></section>
@@ -1079,6 +1081,88 @@ def _report_semantic_decision_support(semantic: dict[str, Any]) -> str:
         f"<h3>Time slices</h3><ul>{time_slices}</ul>"
         "</section>"
     )
+
+
+def _report_semantic_evidence_appendix(semantic: dict[str, Any]) -> str:
+    summary = semantic.get("summary") or {}
+    sentiment = summary.get("sentiment") or {}
+    keywords = summary.get("top_keywords") or []
+    topics = summary.get("topics") or {}
+    entities = summary.get("entities") or []
+    stance = summary.get("stance") or {}
+    near_duplicates = summary.get("near_duplicates") or []
+    community_comparison = summary.get("community_comparison") or {}
+    distribution = sentiment.get("distribution") or {}
+    stance_distribution = stance.get("distribution") or {}
+
+    keyword_items = _report_term_items(
+        (item.get("term") for item in keywords[:8]),
+        empty="No keywords available",
+    )
+    topic_items = _report_term_items(
+        (
+            f"{item.get('topic_id', '-')}: {item.get('label', '-')} "
+            f"({item.get('size', 0)} texts)"
+            for item in (topics.get("items") or [])[:6]
+        ),
+        empty="No topics available",
+    )
+    entity_items = _report_term_items(
+        (
+            f"{item.get('entity', '-')} ({item.get('entity_type', 'entity')}, "
+            f"{item.get('count', 0)})"
+            for item in entities[:10]
+        ),
+        empty="No entities available",
+    )
+    near_duplicate_items = _report_term_items(
+        (
+            f"{item.get('group_id', '-')} ({item.get('size', 0)} texts)"
+            for item in near_duplicates[:5]
+        ),
+        empty="None",
+    )
+    community_items = _report_term_items(
+        (
+            f"{item.get('community_id', '-')} ({item.get('texts', 0)} texts): "
+            f"{_format_report_metrics(item.get('sentiment') or {})}"
+            for item in (community_comparison.get("items") or [])[:6]
+        ),
+        empty="No community comparison available",
+    )
+    stance_status = stance.get("status", "unknown")
+    stance_detail = (
+        _format_report_metrics(stance_distribution)
+        if stance_distribution
+        else stance.get("code") or stance.get("message") or "unavailable"
+    )
+    return (
+        "<section><h2>Semantic evidence appendix</h2>"
+        "<p>candidate_unvalidated / evidence_overlay_only</p>"
+        "<dl>"
+        f"<dt>Sentiment</dt><dd>{_report_text(_format_report_metrics(distribution))}</dd>"
+        f"<dt>Stance</dt><dd>{_report_text(stance_status)} - {_report_text(stance_detail)}"
+        f"{_report_stance_message(stance)}</dd>"
+        "</dl>"
+        f"<h3>Keywords</h3><ul>{keyword_items}</ul>"
+        f"<h3>Topics</h3><ul>{topic_items}</ul>"
+        f"<h3>Entities</h3><ul>{entity_items}</ul>"
+        f"<h3>Near duplicates</h3><ul>{near_duplicate_items}</ul>"
+        f"<h3>Community comparison</h3><ul>{community_items}</ul>"
+        "</section>"
+    )
+
+
+def _report_term_items(values: Any, *, empty: str) -> str:
+    items = [value for value in values if value]
+    return "".join(f"<li>{_report_text(value)}</li>" for value in items) or f"<li>{_report_text(empty)}</li>"
+
+
+def _report_stance_message(stance: dict[str, Any]) -> str:
+    message = stance.get("message")
+    if not message:
+        return ""
+    return f" <span>{_report_text(message)}</span>"
 
 
 def _hash_payload(payload: dict[str, Any]) -> str:
