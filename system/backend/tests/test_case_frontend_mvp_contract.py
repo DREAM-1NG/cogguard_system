@@ -64,6 +64,23 @@ def test_case_frontend_mvp_files_routes_and_tabs_exist():
     assert "\u6848\u4f8b\u95ed\u73af" in layout
 
 
+def test_case_frontend_fetches_reports_with_authenticated_blob_flow_and_disables_closed_mutations():
+    api = (FRONTEND / "api" / "cases.ts").read_text(encoding="utf-8")
+    view = (FRONTEND / "views" / "cases" / "index.vue").read_text(encoding="utf-8")
+
+    assert "fetchCaseReport" in api
+    assert "caseRequest.get<Blob, Blob>" in api
+    assert "responseType: 'blob'" in api
+    assert "fetchCaseReport as fetchCaseReportRequest" in view
+    assert "URL.createObjectURL(blob)" in view
+    assert "window.open(blobUrl, '_blank', 'noopener,noreferrer')" in view
+    assert "window.open(url, '_blank', 'noopener,noreferrer')" not in view
+
+    assert ':disabled="caseDetail.state === \'closed\' || record.status === \'completed\'"' in view
+    assert ':disabled="caseDetail.state === \'closed\' || record.status === \'waived\'"' in view
+    assert view.count(":disabled=\"caseDetail.state === 'closed'\"") >= 3
+
+
 def test_case_evidence_matrix_exposes_semantic_assistance_bindings():
     view = (FRONTEND / "views" / "cases" / "index.vue").read_text(encoding="utf-8")
     layout = (FRONTEND / "components" / "layout" / "BasicLayout.vue").read_text(encoding="utf-8")

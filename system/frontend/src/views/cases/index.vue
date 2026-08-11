@@ -38,6 +38,10 @@
           {{ caseDetail.primary_claim?.source?.name || '-' }}
           · {{ caseDetail.primary_claim?.source?.tier || '-' }}
         </small>
+        <a-space size="small">
+          <a-tag color="orange">{{ caseDetail.primary_claim?.status || 'candidate_unvalidated' }}</a-tag>
+          <a-tag>{{ caseDetail.primary_claim?.source?.status || 'unverified' }}</a-tag>
+        </a-space>
       </div>
       <div class="case-blocker-block">
         <span class="eyebrow">阻塞项</span>
@@ -49,6 +53,7 @@
               v-if="item.code === 'platform_gap'"
               size="small"
               type="primary"
+              :disabled="caseDetail.state === 'closed'"
               :loading="savingBlockerId === item.blocker_id"
               @click="acknowledgeCaseBlocker(item.blocker_id)"
             >
@@ -222,7 +227,7 @@
                     <a-button
                       size="small"
                       type="primary"
-                      :disabled="record.status === 'completed'"
+                      :disabled="caseDetail.state === 'closed' || record.status === 'completed'"
                       :loading="savingActionId === record.action_id"
                       @click="completeCaseAction(record.action_id)"
                     >
@@ -230,7 +235,7 @@
                     </a-button>
                     <a-button
                       size="small"
-                      :disabled="record.status === 'waived'"
+                      :disabled="caseDetail.state === 'closed' || record.status === 'waived'"
                       @click="waiveCaseAction(record.action_id)"
                     >
                       豁免
@@ -241,8 +246,8 @@
             </a-table>
 
             <div class="feedback-panel">
-              <a-textarea v-model:value="feedbackText" :rows="3" placeholder="记录人工反馈" />
-              <a-button type="primary" :loading="savingFeedback" @click="submitCaseFeedback">提交反馈</a-button>
+              <a-textarea v-model:value="feedbackText" :disabled="caseDetail.state === 'closed'" :rows="3" placeholder="记录人工反馈" />
+              <a-button type="primary" :disabled="caseDetail.state === 'closed'" :loading="savingFeedback" @click="submitCaseFeedback">提交反馈</a-button>
             </div>
 
             <div class="feedback-list" v-if="caseDetail.feedback.length">
@@ -254,7 +259,7 @@
             </div>
 
             <div class="feedback-panel">
-              <a-textarea v-model:value="closeoutSummary" :rows="3" placeholder="提交结案复核说明" />
+              <a-textarea v-model:value="closeoutSummary" :disabled="caseDetail.state === 'closed'" :rows="3" placeholder="提交结案复核说明" />
               <a-button
                 :disabled="caseDetail.state !== 'ready_to_close'"
                 :loading="savingCloseout"
@@ -326,6 +331,7 @@ import PageHeader from '@/components/PageHeader.vue'
 import {
   acknowledgeCaseBlocker as acknowledgeCaseBlockerRequest,
   completeCaseAction as completeCaseActionRequest,
+  fetchCaseReport as fetchCaseReportRequest,
   getCase,
   listCases,
   submitCaseCloseoutReview as submitCaseCloseoutReviewRequest,
@@ -376,6 +382,8 @@ const runColumns = [
 ]
 
 const claimColumns = [
+  { title: 'Claim verification', dataIndex: 'status', key: 'status' },
+  { title: 'Source verification', key: 'source_status', customRender: ({ record }: { record: CaseClaim }) => record.source?.status || 'unverified' },
   { title: '角色', dataIndex: 'role', key: 'role' },
   { title: '来源', key: 'source', customRender: ({ record }: { record: CaseClaim }) => `${record.source?.name || '-'} · ${record.source?.tier || '-'}` },
   { title: '原句', dataIndex: 'excerpt', key: 'excerpt' },
@@ -454,9 +462,12 @@ function formatTime(value?: string | null) {
   return Number.isNaN(date.getTime()) ? value : date.toLocaleString('zh-CN', { hour12: false })
 }
 
-function openReport(url?: string) {
+async function openReport(url?: string) {
   if (!url) return
-  window.open(url, '_blank', 'noopener,noreferrer')
+  const blob = await fetchCaseReportRequest(url)
+  const blobUrl = URL.createObjectURL(blob)
+  window.open(blobUrl, '_blank', 'noopener,noreferrer')
+  window.setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000)
 }
 
 async function completeCaseAction(actionId: string) {

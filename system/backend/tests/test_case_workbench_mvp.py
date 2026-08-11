@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import asyncio
+from copy import deepcopy
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -484,5 +486,200 @@ def test_case_report_preview_hash_tracks_visible_mutation_state():
         assert changed["reports"][0]["status"] == "prototype_preview"
         assert changed["actions"][0]["status"] == "completed"
         assert changed["reports"][0]["content_hash"] != initial_hash
+
+    asyncio.run(scenario())
+
+
+async def _close_fallback_demo_case(service: CaseWorkbenchService) -> tuple[dict[str, Any], str]:
+    case_id = "case_trump_visit_2026_05_21"
+    initial = await service.get_case(case_id)
+    blocker_id = initial["active_blockers"][0]["blocker_id"]
+    case = await service.acknowledge_blocker(
+        case_id,
+        blocker_id,
+        actor_id="analyst",
+        reason="Documented XHS platform gap for prototype closure.",
+    )
+    for action in case["actions"]:
+        case = await service.complete_action(case_id, action["action_id"], actor_id="analyst")
+    await service.submit_feedback(case_id, actor_id="analyst", content="Feedback recorded for closure.")
+    closed = await service.submit_closeout_review(
+        case_id,
+        actor_id="analyst",
+        summary="Closeout review completed for the local prototype.",
+    )
+    return closed, blocker_id
+
+
+def test_demo_claims_are_candidate_records_without_captured_source_content():
+    async def scenario():
+        service = CaseWorkbenchService(mongo_db={})
+        case = await service.get_case("case_trump_visit_2026_05_21")
+
+        for claim in [case["primary_claim"], *case["supplementary_claims"]]:
+            assert claim["status"] == "candidate_unvalidated"
+            assert claim["source"]["status"] == "candidate_unvalidated"
+            assert claim["source"]["content_capture"] == "unavailable"
+            assert claim["source_content_capture"] == "unavailable"
+            assert "source_content_hash" not in claim
+            assert len(claim["excerpt_hash"]) == 64
+
+        html = await service.render_report_html("case_trump_visit_2026_05_21", 1)
+        assert "Claim verification" in html
+        assert "Source verification" in html
+        assert "Source content capture" in html
+        assert "candidate_unvalidated" in html
+        assert "unavailable" in html
+
+    asyncio.run(scenario())
+
+
+def test_case_service_rejects_blank_required_mutation_text():
+    async def scenario():
+        service = CaseWorkbenchService(mongo_db={})
+        case_id = "case_trump_visit_2026_05_21"
+
+        with pytest.raises(CaseOperationConflict, match="non-blank"):
+            await service.waive_action(
+                case_id,
+                "action_review_public_response",
+                actor_id="analyst",
+                note=" \n ",
+            )
+        assert (await service.get_case(case_id))["actions"][0]["history"] == []
+
+        blocker_id = (await service.get_case(case_id))["active_blockers"][0]["blocker_id"]
+        with pytest.raises(CaseOperationConflict, match="non-blank"):
+            await service.acknowledge_blocker(case_id, blocker_id, actor_id="analyst", reason=" \t ")
+        assert (await service.get_case(case_id))["blocker_acknowledgements"] == []
+
+        with pytest.raises(CaseOperationConflict, match="non-blank"):
+            await service.submit_feedback(case_id, actor_id="analyst", content="  ")
+        assert (await service.get_case(case_id))["feedback"] == []
+
+        case = await service.acknowledge_blocker(
+            case_id,
+            blocker_id,
+            actor_id="analyst",
+            reason="Documented XHS platform gap.",
+        )
+        for action in case["actions"]:
+            case = await service.complete_action(case_id, action["action_id"], actor_id="analyst")
+        ready = await service.submit_feedback(case_id, actor_id="analyst", content="Feedback recorded.")
+        assert ready["state"] == "ready_to_close"
+
+        with pytest.raises(CaseOperationConflict, match="non-blank"):
+            await service.submit_closeout_review(case_id, actor_id="analyst", summary=" \n ")
+        after = await service.get_case(case_id)
+        assert after["state"] == "ready_to_close"
+        assert after["closeout_review"] is None
+
+    asyncio.run(scenario())
+
+
+def test_closed_case_rejects_all_mutations_without_changing_demo_state():
+    async def scenario():
+        service = CaseWorkbenchService(mongo_db={})
+        closed, blocker_id = await _close_fallback_demo_case(service)
+        case_id = closed["case_id"]
+        state_before = deepcopy(service.demo_state)
+
+        with pytest.raises(CaseOperationConflict, match="Closed cases"):
+            await service.complete_action(case_id, "action_review_public_response", actor_id="analyst")
+        with pytest.raises(CaseOperationConflict, match="Closed cases"):
+            await service.waive_action(
+                case_id,
+                "action_record_feedback",
+                actor_id="analyst",
+                note="Late waiver is not permitted.",
+            )
+        with pytest.raises(CaseOperationConflict, match="Closed cases"):
+            await service.acknowledge_blocker(
+                case_id,
+                blocker_id,
+                actor_id="analyst",
+                reason="Late acknowledgement is not permitted.",
+            )
+        with pytest.raises(CaseOperationConflict, match="Closed cases"):
+            await service.submit_feedback(case_id, actor_id="analyst", content="Late feedback is not permitted.")
+        with pytest.raises(CaseOperationConflict, match="Closed cases"):
+            await service.submit_closeout_review(
+                case_id,
+                actor_id="analyst",
+                summary="Late closeout is not permitted.",
+            )
+
+        assert service.demo_state == state_before
+        assert (await service.get_case(case_id))["state"] == "closed"
+
+    asyncio.run(scenario())
+
+
+def test_case_v2_rejects_blank_mutation_text_with_controlled_conflict():
+    async def scenario():
+        service = CaseWorkbenchService(mongo_db={})
+        app = FastAPI()
+        app.include_router(router, prefix="/api/v2/cases")
+        app.dependency_overrides[get_case_workbench_service] = lambda: service
+        app.dependency_overrides[get_current_user_or_local_preview] = lambda: None
+        transport = ASGITransport(app=app, raise_app_exceptions=False)
+        case_id = "case_trump_visit_2026_05_21"
+        blocker_id = (await service.get_case(case_id))["active_blockers"][0]["blocker_id"]
+
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            waived = await client.post(
+                f"/api/v2/cases/{case_id}/actions/action_review_public_response/waive",
+                json={"note": "  "},
+            )
+            acknowledged = await client.post(
+                f"/api/v2/cases/{case_id}/blockers/{blocker_id}/acknowledge",
+                json={"reason": "  "},
+            )
+            feedback = await client.post(f"/api/v2/cases/{case_id}/feedback", json={"content": "  "})
+
+        assert waived.status_code == 409
+        assert acknowledged.status_code == 409
+        assert feedback.status_code == 409
+
+    asyncio.run(scenario())
+
+
+def test_case_v2_mutation_roles_allow_analyst_and_local_preview_but_reject_viewer():
+    async def scenario():
+        service = CaseWorkbenchService(mongo_db=_complete_demo_mongo())
+        app = FastAPI()
+        app.include_router(router, prefix="/api/v2/cases")
+        app.dependency_overrides[get_case_workbench_service] = lambda: service
+        transport = ASGITransport(app=app)
+        case_id = "case_trump_visit_2026_05_21"
+
+        app.dependency_overrides[get_current_user_or_local_preview] = lambda: SimpleNamespace(
+            username="viewer", role="viewer"
+        )
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            readable = await client.get(f"/api/v2/cases/{case_id}")
+            viewer = await client.post(
+                f"/api/v2/cases/{case_id}/actions/action_review_public_response/complete",
+                json={"note": "Viewer must not mutate cases."},
+            )
+
+            app.dependency_overrides[get_current_user_or_local_preview] = lambda: SimpleNamespace(
+                username="analyst", role="analyst"
+            )
+            analyst = await client.post(
+                f"/api/v2/cases/{case_id}/actions/action_review_public_response/complete",
+                json={"note": "Analyst can complete actions."},
+            )
+
+            app.dependency_overrides[get_current_user_or_local_preview] = lambda: None
+            local_preview = await client.post(
+                f"/api/v2/cases/{case_id}/feedback",
+                json={"content": "Local preview can record feedback."},
+            )
+
+        assert readable.status_code == 200
+        assert viewer.status_code == 403
+        assert analyst.status_code == 200
+        assert local_preview.status_code == 200
 
     asyncio.run(scenario())

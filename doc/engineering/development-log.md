@@ -20,6 +20,7 @@
 
 ## 2026-08-11
 
+- 加固 Case Workbench 原型可信边界：demo 权威主张统一标记为 `candidate_unvalidated`，不再伪造 `source_content_hash`；结案后禁止继续修改，viewer 角色禁止处置/反馈/结案类写操作，报告预览改为通过 Axios 鉴权后打开 Blob URL。
 - 新增 `system/backend/scripts/case_workbench_acceptance.py` 本地验收脚本：以 Weibo-only demo fixture 验证平台缺口确认、处置完成、反馈、结案和报告预览闭环；XHS 缺口保留可见，不伪造第二平台证据。
 - 新增 Case Workbench 平台缺口确认原型：默认 fallback 仍只含微博证据，但研判员可在页面显式确认 `platform_gap` 后继续处置、反馈和结案；确认记录保存在进程内 demo state，并保留缺失平台，不伪造 XHS/抖音证据。
 - `system/backend/app/{schemas/cases.py,api/v2/cases.py,services/case_workbench_service.py}` 与 `system/frontend/src/{api/cases.ts,types/case.ts,views/cases/index.vue}`：新增 blocker acknowledgement API、前端“确认平台缺口继续”按钮、确认记录展示和报告预览中的 Policy acknowledgements 区块。

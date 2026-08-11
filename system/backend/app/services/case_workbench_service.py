@@ -34,7 +34,7 @@ SOURCE_TIERS = (
 PRIMARY_CLAIM = {
     "claim_id": "claim_cctv_primary",
     "role": "primary",
-    "status": "approved",
+    "status": "candidate_unvalidated",
     "excerpt": "推动中美关系这艘巨轮沿着正确航道平稳前行。",
     "span": {"start": 0, "end": 22},
     "url": "https://news.cctv.com/cogguard/archive/trump-visit-primary",
@@ -46,7 +46,8 @@ PRIMARY_CLAIM = {
         "name": "央视新闻",
         "tier": "central_mainstream_original",
         "url": "https://news.cctv.com/cogguard/archive/trump-visit-primary",
-        "status": "approved",
+        "status": "candidate_unvalidated",
+        "content_capture": "unavailable",
     },
 }
 ACTION_TEMPLATES = (
@@ -68,7 +69,7 @@ ACTION_TEMPLATES = (
 SUPPLEMENTARY_CLAIM = {
     "claim_id": "claim_xinhua_support",
     "role": "supplementary",
-    "status": "approved",
+    "status": "candidate_unvalidated",
     "excerpt": "一次历史性访问。",
     "span": {"start": 0, "end": 8},
     "url": "https://www.news.cn/cogguard/archive/trump-visit-supplementary",
@@ -80,7 +81,8 @@ SUPPLEMENTARY_CLAIM = {
         "name": "新华社",
         "tier": "central_mainstream_original",
         "url": "https://www.news.cn/cogguard/archive/trump-visit-supplementary",
-        "status": "approved",
+        "status": "candidate_unvalidated",
+        "content_capture": "unavailable",
     },
 }
 
@@ -258,7 +260,7 @@ class CaseWorkbenchService:
         actor_id: str,
         note: str = "",
     ) -> dict[str, Any]:
-        self._assert_case(case_id)
+        await self._assert_case_mutable(case_id)
         _assert_action(action_id)
         now = _now()
         self.demo_state["actions"][action_id] = "completed"
@@ -281,8 +283,9 @@ class CaseWorkbenchService:
         actor_id: str,
         note: str = "",
     ) -> dict[str, Any]:
-        self._assert_case(case_id)
+        await self._assert_case_mutable(case_id)
         _assert_action(action_id)
+        note = _require_nonblank_text(note, "Waiver note")
         now = _now()
         self.demo_state["actions"][action_id] = "waived"
         self.demo_state["action_history"][action_id].append(
@@ -304,7 +307,8 @@ class CaseWorkbenchService:
         actor_id: str,
         reason: str,
     ) -> dict[str, Any]:
-        self._assert_case(case_id)
+        await self._assert_case_mutable(case_id)
+        reason = _require_nonblank_text(reason, "Blocker acknowledgement reason")
         posts, comments, _source_mode = await self._load_evidence(DEFAULT_EVENT_ID)
         blocker = next(
             (item for item in _blockers(_platforms(posts, comments)) if item["blocker_id"] == blocker_id),
@@ -332,7 +336,8 @@ class CaseWorkbenchService:
         return await self.get_case(case_id)
 
     async def submit_feedback(self, case_id: str, *, actor_id: str, content: str) -> dict[str, Any]:
-        self._assert_case(case_id)
+        await self._assert_case_mutable(case_id)
+        content = _require_nonblank_text(content, "Feedback content")
         feedback = {
             "feedback_id": f"feedback_{len(self.demo_state['feedback']) + 1}",
             "actor_id": actor_id,
@@ -344,7 +349,8 @@ class CaseWorkbenchService:
         return await self.get_case(case_id)
 
     async def submit_closeout_review(self, case_id: str, *, actor_id: str, summary: str) -> dict[str, Any]:
-        self._assert_case(case_id)
+        await self._assert_case_mutable(case_id)
+        summary = _require_nonblank_text(summary, "Closeout summary")
         case = await self.get_case(case_id)
         if case["state"] != "ready_to_close":
             raise CaseOperationConflict("Closeout review requires completed or waived actions, feedback, and no blockers.")
@@ -386,10 +392,17 @@ class CaseWorkbenchService:
             if pdf_fallback
             else ""
         )
+        claim_provenance = (
+            "<section><h2>Primary claim verification</h2><dl>"
+            f"<dt>Claim verification</dt><dd>{_report_text(primary_claim['status'])}</dd>"
+            f"<dt>Source verification</dt><dd>{_report_text(primary_claim['source'].get('status') or 'unverified')}</dd>"
+            f"<dt>Source content capture</dt><dd>{_report_text(primary_claim.get('source_content_capture') or 'unavailable')}</dd>"
+            "</dl></section>"
+        )
         return f"""<!doctype html>
 <html lang=\"en\"><head><meta charset=\"utf-8\"><title>Case report {version}</title>
 <style>body{{font-family:Arial,sans-serif;line-height:1.5;margin:2rem;max-width:900px}}section{{border-top:1px solid #bbb;margin-top:1.25rem;padding-top:.75rem}}dt{{font-weight:bold}}dd{{margin:0 0 .6rem}}code{{word-break:break-all}}@media print{{body{{margin:1cm}}}}</style>
-</head><body><h1>CogGuard Case Report</h1>{pending_note}
+</head><body><h1>CogGuard Case Report</h1>{pending_note}{claim_provenance}
 <section><dl><dt>Case ID</dt><dd>{_report_text(case['case_id'])}</dd><dt>Event ID</dt><dd>{_report_text(case['event_id'])}</dd><dt>Title</dt><dd>{_report_text(case['title'])}</dd><dt>State</dt><dd>{_report_text(case['state'])}</dd><dt>Snapshot ID</dt><dd><code>{_report_text(case['evidence']['snapshot_id'])}</code></dd><dt>Run ID</dt><dd><code>{_report_text(case['analysis_runs'][0]['run_id'])}</code></dd></dl></section>
 <section><h2>Primary claim</h2><p>{_report_text(primary_claim['excerpt'])}</p><dl><dt>Source</dt><dd>{_report_text(primary_claim['source']['name'])}</dd><dt>Source tier</dt><dd>{_report_text(primary_claim['source']['tier'])}</dd></dl></section>
 <section><h2>Semantic evidence overlay</h2><dl><dt>artifact_sha256</dt><dd><code>{_report_text(semantic['artifact_sha256'])}</code></dd><dt>Model status</dt><dd>{_report_text(semantic['model_status'])}</dd><dt>Score policy</dt><dd>evidence_overlay_only</dd></dl></section>
@@ -399,6 +412,11 @@ class CaseWorkbenchService:
     def _assert_case(self, case_id: str) -> None:
         if case_id != DEFAULT_CASE_ID:
             raise KeyError(f"Case not found: {case_id}")
+
+    async def _assert_case_mutable(self, case_id: str) -> None:
+        self._assert_case(case_id)
+        if (await self.get_case(case_id))["state"] == "closed":
+            raise CaseOperationConflict("Closed cases cannot be modified.")
 
     def _append_audit(self, action: str, *, actor_id: str, target_id: str, payload: dict[str, Any]) -> None:
         self.demo_state["audit_events"].append(
@@ -594,9 +612,16 @@ def _claim_with_hash(claim: dict[str, Any]) -> dict[str, Any]:
     excerpt = str(claim["excerpt"])
     return {
         **claim,
-        "source_content_hash": hashlib.sha256((claim["url"] + excerpt).encode("utf-8")).hexdigest(),
+        "source_content_capture": "unavailable",
         "excerpt_hash": hashlib.sha256(excerpt.encode("utf-8")).hexdigest(),
     }
+
+
+def _require_nonblank_text(value: str, field_name: str) -> str:
+    normalized = str(value or "").strip()
+    if not normalized:
+        raise CaseOperationConflict(f"{field_name} must be non-blank.")
+    return normalized
 
 
 def _platform_distribution(posts: list[dict[str, Any]], comments: list[dict[str, Any]]) -> list[dict[str, Any]]:

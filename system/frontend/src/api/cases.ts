@@ -106,6 +106,13 @@ export function acknowledgeCaseBlocker(
   )
 }
 
+export function fetchCaseReport(reportUrl: string): Promise<Blob> {
+  const requestUrl = reportUrl.startsWith('/api/v2/cases')
+    ? reportUrl.slice('/api/v2/cases'.length)
+    : reportUrl
+  return caseRequest.get<Blob, Blob>(requestUrl, { responseType: 'blob' })
+}
+
 export function caseReportUrl(caseId: string, version: number, format: 'html' | 'pdf'): string {
   return `/api/v2/cases/${encodeURIComponent(caseId)}/reports/${version}.${format}`
 }

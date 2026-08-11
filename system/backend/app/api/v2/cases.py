@@ -83,6 +83,7 @@ async def complete_case_action(
     current_user: User | None = Depends(get_current_user_or_local_preview),
 ):
     try:
+        _require_case_mutation_role(current_user)
         return success(
             data=await service.complete_action(
                 case_id,
@@ -91,6 +92,8 @@ async def complete_case_action(
                 note=request.note,
             )
         )
+    except CaseOperationConflict as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
@@ -104,6 +107,7 @@ async def acknowledge_case_blocker(
     current_user: User | None = Depends(get_current_user_or_local_preview),
 ):
     try:
+        _require_case_mutation_role(current_user)
         return success(
             data=await service.acknowledge_blocker(
                 case_id,
@@ -112,6 +116,8 @@ async def acknowledge_case_blocker(
                 reason=request.reason,
             )
         )
+    except CaseOperationConflict as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
@@ -125,6 +131,7 @@ async def waive_case_action(
     current_user: User | None = Depends(get_current_user_or_local_preview),
 ):
     try:
+        _require_case_mutation_role(current_user)
         return success(
             data=await service.waive_action(
                 case_id,
@@ -133,6 +140,8 @@ async def waive_case_action(
                 note=request.note,
             )
         )
+    except CaseOperationConflict as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
@@ -145,9 +154,12 @@ async def submit_case_feedback(
     current_user: User | None = Depends(get_current_user_or_local_preview),
 ):
     try:
+        _require_case_mutation_role(current_user)
         return success(
             data=await service.submit_feedback(case_id, actor_id=_actor_id(current_user), content=request.content)
         )
+    except CaseOperationConflict as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
@@ -160,6 +172,7 @@ async def submit_case_closeout_review(
     current_user: User | None = Depends(get_current_user_or_local_preview),
 ):
     try:
+        _require_case_mutation_role(current_user)
         return success(
             data=await service.submit_closeout_review(
                 case_id,
@@ -175,6 +188,14 @@ async def submit_case_closeout_review(
 
 def _actor_id(current_user: User | None) -> str:
     return str(getattr(current_user, "username", "") or "local_preview")
+
+
+def _require_case_mutation_role(current_user: User | None) -> None:
+    if current_user is None:
+        return
+    role = str(getattr(current_user, "role", "") or "")
+    if role not in {"admin", "analyst"}:
+        raise HTTPException(status_code=403, detail="Case mutations require an admin or analyst role.")
 
 
 __all__ = ["get_case_workbench_service", "router"]
