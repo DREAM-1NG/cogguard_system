@@ -16,14 +16,36 @@ def _require(condition: bool, message: str) -> None:
         raise AssertionError(message)
 
 
+def _checklist_statuses(case: dict[str, Any]) -> dict[str, str]:
+    return {item["key"]: item["status"] for item in case["closure_checklist"]}
+
+
 async def run_acceptance() -> dict[str, Any]:
     """Exercise the default Weibo-only demo case through closeout."""
     service = CaseWorkbenchService(mongo_db={})
     initial = await service.get_case("case_trump_visit_2026_05_21")
+    checklist_keys = [
+        "canonical_verdict",
+        "required_actions",
+        "feedback",
+        "closeout_review",
+        "active_blockers",
+        "claim_archive",
+        "semantic_overlay_policy",
+    ]
+    initial_checklist = _checklist_statuses(initial)
     _require(initial["case_id"] == "case_trump_visit_2026_05_21", "unexpected case id")
     _require(initial["evidence"]["source_mode"] == "demo_fixture", "expected demo fixture")
     _require(initial["platforms"] == ["weibo"], "fallback evidence must remain Weibo-only")
     _require(initial["active_blockers"][0]["code"] == "platform_gap", "expected platform gap")
+    _require(list(initial_checklist) == checklist_keys, "closure checklist keys must remain stable")
+    _require(initial_checklist["canonical_verdict"] == "passed", "canonical verdict gate should initially pass")
+    _require(initial_checklist["required_actions"] == "pending", "required actions gate should initially pend")
+    _require(initial_checklist["feedback"] == "pending", "feedback gate should initially pend")
+    _require(initial_checklist["closeout_review"] == "pending", "closeout review gate should initially pend")
+    _require(initial_checklist["active_blockers"] == "blocked", "platform gap should block initial closeout")
+    _require(initial_checklist["claim_archive"] == "passed", "archive-backed claims should satisfy archive gate")
+    _require(initial_checklist["semantic_overlay_policy"] == "passed", "semantic overlay policy gate should pass")
     initial_hash = initial["reports"][0]["content_hash"]
 
     acknowledged = await service.acknowledge_blocker(
@@ -44,17 +66,25 @@ async def run_acceptance() -> dict[str, Any]:
     ready = await service.submit_feedback(
         case["case_id"], actor_id="acceptance_script", content="Acceptance feedback recorded."
     )
+    ready_checklist = _checklist_statuses(ready)
     _require(ready["state"] == "ready_to_close", "expected ready_to_close after actions and feedback")
+    _require(ready_checklist["active_blockers"] == "passed", "acknowledged platform gap should clear blocker gate")
+    _require(ready_checklist["required_actions"] == "passed", "completed actions should pass action gate")
+    _require(ready_checklist["feedback"] == "passed", "feedback should pass feedback gate")
+    _require(ready_checklist["closeout_review"] == "pending", "closeout review should pend before submission")
 
     closed = await service.submit_closeout_review(
         ready["case_id"], actor_id="acceptance_script", summary="Local prototype closeout accepted."
     )
+    closed_checklist = _checklist_statuses(closed)
     _require(closed["state"] == "closed", "expected closed after closeout review")
+    _require(set(closed_checklist.values()) == {"passed"}, "all closure gates should pass after closeout")
     report_html = await service.render_report_html(closed["case_id"], 1, pdf_fallback=True)
     _require("Policy acknowledgements" in report_html, "report must show policy acknowledgements")
     _require("candidate_unvalidated" in report_html, "report must show semantic model status")
     _require("Production PDF rendering is pending." in report_html, "report must show PDF fallback")
     _require("archive_cctv_primary_claim_20260811" in report_html, "report must show primary archive provenance")
+    _require("Closure checklist" in report_html, "report must show closure checklist")
     _require(closed["reports"][0]["content_hash"] != initial_hash, "report hash must track visible mutations")
 
     requested_stages = closed["analysis_runs"][0]["requested_stages"]
@@ -99,6 +129,13 @@ async def run_acceptance() -> dict[str, Any]:
         "graph_layers": {
             "keys": [layer["key"] for layer in graph_layers],
             "review_canonical_verdict_status": graph_layers[2]["metrics"]["canonical_verdict_status"],
+        },
+        "closure_checklist": {
+            "keys": checklist_keys,
+            "initial_statuses": initial_checklist,
+            "ready_statuses": ready_checklist,
+            "closed_statuses": closed_checklist,
+            "report_visible": True,
         },
         "audit_actions": [event["action"] for event in closed["audit_events"]],
         "claim_boundary": {

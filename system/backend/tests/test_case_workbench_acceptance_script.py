@@ -35,6 +35,45 @@ def test_case_workbench_acceptance_closes_the_weibo_only_demo_case():
         "keys": ["coordination", "propagation", "review"],
         "review_canonical_verdict_status": "approved",
     }
+    assert result["closure_checklist"] == {
+        "keys": [
+            "canonical_verdict",
+            "required_actions",
+            "feedback",
+            "closeout_review",
+            "active_blockers",
+            "claim_archive",
+            "semantic_overlay_policy",
+        ],
+        "initial_statuses": {
+            "canonical_verdict": "passed",
+            "required_actions": "pending",
+            "feedback": "pending",
+            "closeout_review": "pending",
+            "active_blockers": "blocked",
+            "claim_archive": "passed",
+            "semantic_overlay_policy": "passed",
+        },
+        "ready_statuses": {
+            "canonical_verdict": "passed",
+            "required_actions": "passed",
+            "feedback": "passed",
+            "closeout_review": "pending",
+            "active_blockers": "passed",
+            "claim_archive": "passed",
+            "semantic_overlay_policy": "passed",
+        },
+        "closed_statuses": {
+            "canonical_verdict": "passed",
+            "required_actions": "passed",
+            "feedback": "passed",
+            "closeout_review": "passed",
+            "active_blockers": "passed",
+            "claim_archive": "passed",
+            "semantic_overlay_policy": "passed",
+        },
+        "report_visible": True,
+    }
     assert {
         "acknowledge_case_blocker",
         "complete_case_action",
