@@ -95,3 +95,23 @@ def test_case_evidence_matrix_exposes_semantic_assistance_bindings():
     for label in ("Sentiment", "Stance", "Community comparison", "Near duplicates"):
         assert label in view
     assert "案例闭环" in layout
+
+
+def test_case_evidence_matrix_exposes_semantic_truth_boundary_bindings():
+    view = (FRONTEND / "views" / "cases" / "index.vue").read_text(encoding="utf-8")
+    types = (FRONTEND / "types" / "case.ts").read_text(encoding="utf-8")
+
+    for binding in (
+        "semanticArtifact?.model_status",
+        "semanticProvenanceEntries",
+        "stanceSummary.code",
+        "stanceSummary.message",
+    ):
+        assert binding in view
+    for field in (
+        "embedding_reuse?: string",
+        "device?: string",
+        "degradation_reason?: string",
+        "score_policy?: string",
+    ):
+        assert field in types

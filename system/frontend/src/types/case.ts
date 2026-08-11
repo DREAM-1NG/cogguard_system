@@ -55,9 +55,17 @@ export interface SemanticNearDuplicateGroup {
   representative_text?: string
 }
 
+export interface SemanticArtifactProvenance {
+  embedding_reuse?: string
+  device?: string
+  degradation_reason?: string
+  score_policy?: string
+  [key: string]: string | string[] | undefined
+}
+
 export interface SemanticArtifactSummary {
   sentiment?: { distribution?: SemanticDistribution; average_score?: number }
-  stance?: { status?: string; distribution?: SemanticDistribution; message?: string }
+  stance?: { status?: string; code?: string; distribution?: SemanticDistribution; message?: string }
   community_comparison?: { group_by?: string; items?: SemanticCommunityComparisonItem[] }
   near_duplicates?: SemanticNearDuplicateGroup[]
   top_keywords?: Array<{ term: string; count?: number }>
@@ -72,7 +80,7 @@ export interface SemanticArtifact {
   model_status: string
   artifact_sha256?: string
   summary?: SemanticArtifactSummary
-  provenance?: Record<string, any>
+  provenance?: SemanticArtifactProvenance
 }
 
 export interface CaseAction {

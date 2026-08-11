@@ -128,9 +128,18 @@
               <div class="panel-title">语义辅助</div>
               <a-space wrap class="semantic-tags">
                 <a-tag color="blue">{{ semanticStatus }}</a-tag>
-                <a-tag color="orange">candidate_unvalidated</a-tag>
+                <a-tag color="orange">{{ semanticArtifact?.model_status || 'candidate_unvalidated' }}</a-tag>
                 <a-tag>证据叠加，不改风险分</a-tag>
               </a-space>
+              <div v-if="semanticProvenanceEntries.length" class="semantic-section">
+                <h3>Semantic provenance</h3>
+                <div class="compact-list">
+                  <div v-for="item in semanticProvenanceEntries" :key="item.key" class="topic-row">
+                    <strong>{{ item.key }}</strong>
+                    <span>{{ item.value }}</span>
+                  </div>
+                </div>
+              </div>
               <div class="semantic-section">
                 <h3>关键词</h3>
                 <a-tag v-for="item in topKeywords" :key="item.term">{{ item.term }} {{ item.count }}</a-tag>
@@ -167,6 +176,8 @@
                   <a-tag v-for="item in stanceEntries" :key="item.label">
                     {{ item.label }} {{ item.value }}
                   </a-tag>
+                  <a-tag v-if="stanceSummary.code" color="orange">{{ stanceSummary.code }}</a-tag>
+                  <span v-if="stanceSummary.message" class="semantic-message">{{ stanceSummary.message }}</span>
                 </a-space>
                 <span v-else class="semantic-empty">No stance assessment available.</span>
               </div>
@@ -364,6 +375,14 @@ const claimRows = computed<CaseClaim[]>(() => {
 })
 const semanticArtifact = computed(() => caseDetail.value?.semantic_artifacts?.[0] || null)
 const semanticStatus = computed(() => semanticArtifact.value?.status || 'not_run')
+const semanticProvenanceEntries = computed(() =>
+  Object.entries(semanticArtifact.value?.provenance || {})
+    .filter(([, value]) => value !== undefined && value !== null && value !== '')
+    .map(([key, value]) => ({
+      key,
+      value: Array.isArray(value) ? value.join(', ') : String(value),
+    })),
+)
 const topKeywords = computed<any[]>(() => semanticArtifact.value?.summary?.top_keywords || [])
 const topicItems = computed<any[]>(() => semanticArtifact.value?.summary?.topics?.items || [])
 const entityItems = computed<any[]>(() => semanticArtifact.value?.summary?.entities || [])
