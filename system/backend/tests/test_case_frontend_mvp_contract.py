@@ -183,3 +183,18 @@ def test_case_report_tab_exposes_backend_closure_checklist_bindings():
         "evidence: Record<string, any>",
     ):
         assert field in types
+
+
+def test_case_report_tab_can_export_acceptance_evidence_summary():
+    view = (FRONTEND / "views" / "cases" / "index.vue").read_text(encoding="utf-8")
+
+    for binding in (
+        "导出验收摘要",
+        "copyAcceptanceSummary",
+        "downloadAcceptanceSummary",
+        "acceptanceEvidencePayload",
+        "closure_checklist",
+        "navigator.clipboard.writeText",
+        "case-acceptance-summary",
+    ):
+        assert binding in view

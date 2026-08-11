@@ -304,7 +304,13 @@
           <section class="panel reports-panel">
             <div class="panel-title">冻结报告版本</div>
             <div class="acceptance-summary">
-              <h3>Acceptance summary</h3>
+              <div class="report-section-heading">
+                <h3>Acceptance summary</h3>
+                <a-space>
+                  <a-button size="small" @click="copyAcceptanceSummary">复制验收摘要</a-button>
+                  <a-button size="small" @click="downloadAcceptanceSummary">导出验收摘要</a-button>
+                </a-space>
+              </div>
               <a-descriptions size="small" :column="2" bordered>
                 <a-descriptions-item label="Closeout">{{ acceptanceSummary.closeoutState }}</a-descriptions-item>
                 <a-descriptions-item label="Archive coverage">{{ acceptanceSummary.archiveCoverage }}</a-descriptions-item>
@@ -446,6 +452,37 @@ const acceptanceSummary = computed(() => {
     noFabricatedSecondPlatformEvidence: noFabricatedSecondPlatformEvidence ? 'weibo_only_with_platform_gap' : 'check_required',
   }
 })
+const acceptanceEvidencePayload = computed(() => {
+  const detail = caseDetail.value
+  return {
+    schema: 'cogguard.case_workbench_frontend_acceptance.v1',
+    case_id: detail?.case_id,
+    event_id: detail?.event_id,
+    state: detail?.state,
+    acceptance_summary: acceptanceSummary.value,
+    closure_checklist: closureChecklist.value,
+    primary_claim: detail?.primary_claim
+      ? {
+          claim_id: detail.primary_claim.claim_id,
+          status: detail.primary_claim.status,
+          source_archive_id: detail.primary_claim.source_archive_id,
+          source_content_hash: detail.primary_claim.source_content_hash,
+          source_markdown_hash: detail.primary_claim.source_markdown_hash,
+        }
+      : null,
+    supplementary_claims: (detail?.supplementary_claims || []).map((claim) => ({
+      claim_id: claim.claim_id,
+      status: claim.status,
+      source_archive_id: claim.source_archive_id,
+      source_content_hash: claim.source_content_hash,
+      source_markdown_hash: claim.source_markdown_hash,
+    })),
+    platforms: detail?.platforms || [],
+    active_blockers: detail?.active_blockers || [],
+    blocker_acknowledgements: detail?.blocker_acknowledgements || [],
+    semantic_score_policy: detail?.workflow_summary?.semantic_score_policy,
+  }
+})
 
 const runColumns = [
   { title: 'Run', dataIndex: 'run_id', key: 'run_id' },
@@ -559,6 +596,36 @@ async function openReport(url?: string) {
   const blobUrl = URL.createObjectURL(blob)
   window.open(blobUrl, '_blank', 'noopener,noreferrer')
   window.setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000)
+}
+
+async function copyAcceptanceSummary() {
+  if (!caseDetail.value) return
+  const text = JSON.stringify(acceptanceEvidencePayload.value, null, 2)
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text)
+  } else {
+    const textarea = document.createElement('textarea')
+    textarea.value = text
+    textarea.setAttribute('readonly', 'readonly')
+    document.body.appendChild(textarea)
+    textarea.select()
+    document.execCommand('copy')
+    document.body.removeChild(textarea)
+  }
+  message.success('验收摘要已复制')
+}
+
+function downloadAcceptanceSummary() {
+  if (!caseDetail.value) return
+  const blob = new Blob([JSON.stringify(acceptanceEvidencePayload.value, null, 2)], {
+    type: 'application/json;charset=utf-8',
+  })
+  const link = document.createElement('a')
+  const url = URL.createObjectURL(blob)
+  link.href = url
+  link.download = `${caseDetail.value.case_id}-case-acceptance-summary.json`
+  link.click()
+  URL.revokeObjectURL(url)
 }
 
 async function completeCaseAction(actionId: string) {
@@ -867,6 +934,16 @@ onMounted(() => {
   margin: 14px 0;
 }
 
+.report-section-heading {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.report-section-heading h3,
 .closure-checklist h3 {
   margin: 0;
   color: #334155;
