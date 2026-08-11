@@ -541,6 +541,21 @@ def test_case_report_preview_hash_tracks_visible_mutation_state():
     asyncio.run(scenario())
 
 
+def test_case_report_cpr_evidence_layers_are_printable():
+    async def scenario():
+        service = CaseWorkbenchService(mongo_db=_complete_demo_mongo())
+
+        html = await service.render_report_html("case_trump_visit_2026_05_21", 1)
+
+        assert "CPR evidence layers" in html
+        assert "Coordination" in html
+        assert "Propagation" in html
+        assert "Review" in html
+        assert "canonical_verdict_status: approved" in html
+
+    asyncio.run(scenario())
+
+
 async def _close_fallback_demo_case(service: CaseWorkbenchService) -> tuple[dict[str, Any], str]:
     case_id = "case_trump_visit_2026_05_21"
     initial = await service.get_case(case_id)

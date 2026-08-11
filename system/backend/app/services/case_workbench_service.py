@@ -407,6 +407,14 @@ class CaseWorkbenchService:
             for record in case.get("blocker_acknowledgements", [])
         ) or "<li>None</li>"
         closeout = case.get("closeout_review") or {}
+        evidence_layers = "".join(
+            "<li>"
+            f"<strong>{_report_text(layer['label'])}</strong> "
+            f"({_report_text(layer['status'])}) - {_report_text(layer['summary'])}; "
+            f"{_report_text(_format_report_metrics(layer.get('metrics') or {}))}"
+            "</li>"
+            for layer in case["graph"].get("evidence_layers", [])
+        ) or "<li>None</li>"
         pending_note = (
             "<p><strong>Production PDF rendering is pending.</strong> This HTML is the MVP PDF fallback.</p>"
             if pdf_fallback
@@ -429,6 +437,7 @@ class CaseWorkbenchService:
 <section><dl><dt>Case ID</dt><dd>{_report_text(case['case_id'])}</dd><dt>Event ID</dt><dd>{_report_text(case['event_id'])}</dd><dt>Title</dt><dd>{_report_text(case['title'])}</dd><dt>State</dt><dd>{_report_text(case['state'])}</dd><dt>Snapshot ID</dt><dd><code>{_report_text(case['evidence']['snapshot_id'])}</code></dd><dt>Run ID</dt><dd><code>{_report_text(case['analysis_runs'][0]['run_id'])}</code></dd></dl></section>
 <section><h2>Primary claim</h2><p>{_report_text(primary_claim['excerpt'])}</p><dl><dt>Source</dt><dd>{_report_text(primary_claim['source']['name'])}</dd><dt>Source tier</dt><dd>{_report_text(primary_claim['source']['tier'])}</dd></dl></section>
 <section><h2>Semantic evidence overlay</h2><dl><dt>artifact_sha256</dt><dd><code>{_report_text(semantic['artifact_sha256'])}</code></dd><dt>Model status</dt><dd>{_report_text(semantic['model_status'])}</dd><dt>Score policy</dt><dd>evidence_overlay_only</dd></dl></section>
+<section><h2>CPR evidence layers</h2><ul>{evidence_layers}</ul></section>
 <section><h2>Active blockers</h2><ul>{blockers}</ul></section><section><h2>Policy acknowledgements</h2><ul>{acknowledgements}</ul></section><section><h2>Actions</h2><ul>{actions}</ul></section><section><h2>Feedback</h2><p>Count: {len(case['feedback'])}</p></section><section><h2>Closeout review</h2><p>{_report_text(closeout.get('summary') or 'Not submitted')}</p></section>
 </body></html>"""
 
@@ -845,6 +854,10 @@ def _hash_payload(payload: dict[str, Any]) -> str:
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _format_report_metrics(metrics: dict[str, Any]) -> str:
+    return "; ".join(f"{key}: {value}" for key, value in metrics.items())
 
 
 def _report_text(value: Any) -> str:
