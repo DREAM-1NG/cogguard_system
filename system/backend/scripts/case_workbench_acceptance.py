@@ -20,6 +20,21 @@ def _checklist_statuses(case: dict[str, Any]) -> dict[str, str]:
     return {item["key"]: item["status"] for item in case["closure_checklist"]}
 
 
+def _semantic_example_ids(semantic_summary: dict[str, Any]) -> list[str]:
+    ids: list[str] = []
+    sentiment_examples = (semantic_summary.get("sentiment") or {}).get("examples") or {}
+    for examples in sentiment_examples.values():
+        for example in examples or []:
+            content_id = example.get("content_id")
+            if content_id and content_id not in ids:
+                ids.append(content_id)
+    for example in (semantic_summary.get("stance") or {}).get("examples") or []:
+        content_id = example.get("content_id")
+        if content_id and content_id not in ids:
+            ids.append(content_id)
+    return ids
+
+
 async def run_acceptance() -> dict[str, Any]:
     """Exercise the default Weibo-only demo case through closeout."""
     service = CaseWorkbenchService(mongo_db={})
@@ -87,6 +102,8 @@ async def run_acceptance() -> dict[str, Any]:
     _require("Acceptance summary" in report_html, "report must show acceptance summary")
     _require("Semantic decision support" in report_html, "report must show semantic decision support")
     _require("Semantic evidence appendix" in report_html, "report must show semantic evidence appendix")
+    _require("Semantic traceability pack" in report_html, "report must show semantic traceability pack")
+    _require("Semantic action evidence refs" in report_html, "report must show action evidence refs")
     for semantic_section in (
         "Sentiment",
         "Keywords",
@@ -104,6 +121,11 @@ async def run_acceptance() -> dict[str, Any]:
     semantic_policy = closed["workflow_summary"]["semantic_score_policy"]
     semantic_summary = closed["semantic_artifacts"][0]["summary"]
     decision_support = semantic_summary["decision_support"]
+    semantic_example_ids = _semantic_example_ids(semantic_summary)
+    action_evidence_refs = [
+        {"action_id": action["action_id"], "evidence_refs": action.get("evidence_refs") or []}
+        for action in closed["actions"]
+    ]
     _require(semantic_policy == "evidence_overlay_only", "semantic policy must remain overlay-only")
     _require("semantic_enrichment" in requested_stages, "semantic stage must be explicitly requested")
     _require(
@@ -172,6 +194,12 @@ async def run_acceptance() -> dict[str, Any]:
                 "near_duplicate_group_count": len(semantic_summary["near_duplicates"]),
                 "community_count": len(semantic_summary["community_comparison"]["items"]),
                 "model_status": closed["semantic_artifacts"][0]["model_status"],
+            },
+            "traceability": {
+                "review_hints_present": bool(decision_support["review_hints"]),
+                "module_coverage_modules": list(decision_support["module_coverage"]),
+                "semantic_example_ids": semantic_example_ids,
+                "action_evidence_refs": action_evidence_refs,
             },
         },
         "claim_archive": {

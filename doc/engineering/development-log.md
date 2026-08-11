@@ -314,3 +314,4 @@
 - Case Workbench 报告增加紧凑语义证据附录，直接复用现有 `semantic_artifacts[0].summary`，展示情感、关键词、主题、实体、立场、近重复和社区对比，保持 `candidate_unvalidated` / `evidence_overlay_only` 边界。
 - 缺少 Primary Claim 时报告继续可渲染，明确显示 `blocked_missing_primary_claim`，同时保留非立场语义辅助，不伪造来源、归档或哈希。
 - 验收脚本输出 `semantic_evidence_appendix_visible` 与附录类别统计；演示数据仍为微博单平台并记录 XHS 缺口。
+- Case Workbench 前端与报告补齐语义复核链路：展示 review hints、module coverage、Semantic examples 和 action evidence refs，验收输出新增 traceability 包，仍不影响风险分、处置状态或结案门槛。

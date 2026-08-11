@@ -46,6 +46,8 @@ Current semantic package paths: `system/research/coordination_discover/`, `syste
 | **Supplementary Claim** | An approved or pending **Case Claim** that adds authoritative context without replacing the **Primary Claim**. | Secondary verdict, supporting summary |
 | **Semantic Artifact** | An immutable, provenance-bound output of the explicit `semantic_enrichment` **Analysis Stage**. | Tag cache, model guess, score input |
 | **Semantic Decision Support** | A reportable summary of semantic coverage, candidate confidence, module availability, platform slices, time slices, and operator prompts that supports triage without changing any risk score. | Risk score, model verdict, automatic action |
+| **Semantic Traceability Pack** | A reportable bundle of review hints, module coverage, semantic examples, and action evidence references derived from one **Semantic Artifact** for human inspection. | Risk explanation, provenance proof, automatic action |
+| **Semantic Example** | A traceable excerpt-level example from a **Semantic Artifact** containing content identity, hint origin, platform, author, content kind, and excerpt. | Full source text, verified claim, platform evidence |
 | **Semantic Correction** | An append-only human correction that references a **Semantic Artifact** and preserves both the original output and the correction rationale. | Artifact edit, overwrite, relabel in place |
 | **Case Action** | A required, completed, or explicitly waived disposition record attached to a **Case**. | Task, note, recommendation |
 | **Closeout Review** | The submitted human rationale that closure gates are satisfied and unresolved limitations remain visible; submission is the gate and has no separate acceptance status. | Canonical Verdict, approval click, final report |
@@ -138,6 +140,8 @@ Current semantic package paths: `system/research/coordination_discover/`, `syste
 - **Student Review** and **Teacher Review** produce advisory **Review Verdicts**; analyst approval creates an immutable **Canonical Verdict**, and a later **Closeout Review** verifies closure gates rather than changing that verdict.
 - A **Case** can close only after it has an approved **Canonical Verdict**, every required **Case Action** is completed or explicitly waived, and a **Closeout Review** is submitted; no additional Closeout Review acceptance gate exists.
 - **Semantic Decision Support** belongs to one **Semantic Artifact** and may appear in the **Case Workbench**, acceptance export, or **Case Report Version**, but it never changes Coordination, Propagation, Review, or closure scores.
+- A **Semantic Traceability Pack** belongs to one **Semantic Artifact** and may cite **Case Actions**, but it remains an advisory inspection aid rather than source provenance or disposition logic.
+- A **Semantic Example** may show an excerpt and content identity; it is not a **Case Claim** and must not be treated as full-text authoritative evidence.
 - A **Semantic Correction** points to one **Semantic Artifact** and never overwrites its model output or provenance.
 - Each **Case Report Version** freezes the case, snapshot, run, model-version, and content-hash references used to render it.
 - Every case mutation emits an **Audit Event**; repeated idempotent requests reuse the prior result without erasing history.
@@ -180,6 +184,7 @@ Current semantic package paths: `system/research/coordination_discover/`, `syste
 - "community" is not automatically a campaign or botnet; use **Coordination Community** unless human review or external labels justify a stronger claim.
 - "case" and "event" are not synonyms; an event is captured in an immutable **Event Snapshot**, while a **Case** is the durable investigation aggregate.
 - "claim" is overloaded; use **Case Claim** only for verbatim authority evidence and use topic, generated summary, or analyst paraphrase for derived language.
+- "source" is overloaded in semantic UI; use **Semantic Example** hint origin for `sentiment:*` or `stance:*`, and reserve source provenance for **Authority Source** and **Case Claim** records.
 - "review" can mean advisory model output, approval, or closure checking; use **Review Verdict**, **Canonical Verdict**, or **Closeout Review** respectively.
 - "status" can mean execution or lifecycle progress; use **Analysis Run** status for execution and **Case State** for the investigation lifecycle.
 - Numbered shorthand was previously used for the three research workstreams; current code and documentation must use **Coordination Discover/Detect**, **Propagation Analysis**, and **Risk Review** instead.

@@ -724,6 +724,29 @@ def test_case_report_prints_compact_semantic_evidence_appendix():
     asyncio.run(scenario())
 
 
+def test_case_report_prints_semantic_traceability_for_review_and_actions():
+    async def scenario():
+        service = CaseWorkbenchService(mongo_db={})
+
+        html = await service.render_report_html("case_trump_visit_2026_05_21", 1)
+
+        assert "Review hints" in html
+        assert "Keep semantic evidence advisory until local calibration passes." in html
+        assert "Module coverage" in html
+        assert "sentiment: available 3/3" in html
+        assert "stance: available 3/3" in html
+        assert "Semantic examples" in html
+        assert "weibo_demo_1" in html
+        assert "sentiment:positive" in html
+        assert "stance:neutral" in html
+        assert "Semantic action evidence refs" in html
+        assert "action_review_public_response" in html
+        assert "semantic_case_workbench_demo" in html
+        assert "candidate_unvalidated / evidence_overlay_only" in html
+
+    asyncio.run(scenario())
+
+
 def test_case_report_handles_missing_primary_claim_without_hiding_semantic_support():
     async def scenario():
         service = CaseWorkbenchService(mongo_db=_complete_demo_mongo(), missing_primary_claim=True)

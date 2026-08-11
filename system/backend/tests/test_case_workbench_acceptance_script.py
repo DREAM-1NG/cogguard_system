@@ -52,6 +52,29 @@ def test_case_workbench_acceptance_closes_the_weibo_only_demo_case():
             "community_count": 1,
             "model_status": "candidate_unvalidated",
         },
+        "traceability": {
+            "review_hints_present": True,
+            "module_coverage_modules": [
+                "sentiment",
+                "keywords",
+                "topics",
+                "entities",
+                "stance",
+                "near_duplicates",
+                "community_comparison",
+            ],
+            "semantic_example_ids": ["weibo_demo_1", "weibo_demo_2", "weibo_comment_1"],
+            "action_evidence_refs": [
+                {
+                    "action_id": "action_review_public_response",
+                    "evidence_refs": ["claim_cctv_primary", "semantic_case_workbench_demo"],
+                },
+                {
+                    "action_id": "action_record_feedback",
+                    "evidence_refs": ["run_case_workbench_demo"],
+                },
+            ],
+        },
     }
     assert result["claim_archive"] == {
         "primary_archive_id": "archive_cctv_primary_claim_20260811",

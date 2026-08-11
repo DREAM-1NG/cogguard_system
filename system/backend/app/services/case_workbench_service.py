@@ -451,6 +451,7 @@ class CaseWorkbenchService:
         )
         semantic_decision_support_html = _report_semantic_decision_support(semantic)
         semantic_evidence_appendix_html = _report_semantic_evidence_appendix(semantic)
+        semantic_traceability_html = _report_semantic_traceability(semantic, case["actions"])
         pending_note = (
             "<p><strong>Production PDF rendering is pending.</strong> This HTML is the MVP PDF fallback.</p>"
             if pdf_fallback
@@ -502,6 +503,7 @@ class CaseWorkbenchService:
 <section><h2>Semantic evidence overlay</h2><dl><dt>artifact_sha256</dt><dd><code>{_report_text(semantic['artifact_sha256'])}</code></dd><dt>Model status</dt><dd>{_report_text(semantic['model_status'])}</dd><dt>Score policy</dt><dd>evidence_overlay_only</dd></dl></section>
 {semantic_decision_support_html}
 {semantic_evidence_appendix_html}
+{semantic_traceability_html}
 <section><h2>CPR evidence layers</h2><ul>{evidence_layers}</ul></section>
 {acceptance_summary_html}
 <section><h2>Closure checklist</h2><ul>{closure_checklist}</ul></section>
@@ -1151,6 +1153,71 @@ def _report_semantic_evidence_appendix(semantic: dict[str, Any]) -> str:
         f"<h3>Community comparison</h3><ul>{community_items}</ul>"
         "</section>"
     )
+
+
+def _report_semantic_traceability(semantic: dict[str, Any], actions: list[dict[str, Any]]) -> str:
+    summary = semantic.get("summary") or {}
+    support = summary.get("decision_support") or {}
+    review_hints = _report_term_items(
+        support.get("review_hints") or [],
+        empty="No review hints available",
+    )
+    module_coverage = support.get("module_coverage") or {}
+    module_items = _report_term_items(
+        (
+            f"{module}: {(coverage or {}).get('status', 'unknown')} "
+            f"{(coverage or {}).get('covered', 0)}/{(coverage or {}).get('total', 0)}"
+            f"{_format_block_code(coverage or {})}"
+            for module, coverage in module_coverage.items()
+        ),
+        empty="No module coverage available",
+    )
+    semantic_examples = _report_term_items(
+        _semantic_example_lines(summary),
+        empty="No semantic examples available",
+    )
+    action_refs = _report_term_items(
+        (
+            f"{action.get('action_id', '-')}: {', '.join(action.get('evidence_refs') or []) or '-'}"
+            for action in actions
+        ),
+        empty="No action evidence refs available",
+    )
+    return (
+        "<section><h2>Semantic traceability pack</h2>"
+        "<p>candidate_unvalidated / evidence_overlay_only</p>"
+        f"<h3>Review hints</h3><ul>{review_hints}</ul>"
+        f"<h3>Module coverage</h3><ul>{module_items}</ul>"
+        f"<h3>Semantic examples</h3><ul>{semantic_examples}</ul>"
+        f"<h3>Semantic action evidence refs</h3><ul>{action_refs}</ul>"
+        "</section>"
+    )
+
+
+def _semantic_example_lines(summary: dict[str, Any]) -> list[str]:
+    lines: list[str] = []
+    sentiment_examples = (summary.get("sentiment") or {}).get("examples") or {}
+    for label, examples in sentiment_examples.items():
+        for example in examples or []:
+            lines.append(_semantic_example_line(example, source=f"sentiment:{label}"))
+    stance = summary.get("stance") or {}
+    for example in stance.get("examples") or []:
+        source = f"stance:{example.get('stance') or stance.get('status') or 'unknown'}"
+        lines.append(_semantic_example_line(example, source=source))
+    return lines
+
+
+def _semantic_example_line(example: dict[str, Any], *, source: str) -> str:
+    return (
+        f"{example.get('content_id', '-')}: {source}; "
+        f"{example.get('platform', '-')}; {example.get('author_id', '-')}; "
+        f"{example.get('content_kind', '-')}; {example.get('excerpt', '-')}"
+    )
+
+
+def _format_block_code(coverage: dict[str, Any]) -> str:
+    block_code = coverage.get("block_code")
+    return f" ({block_code})" if block_code else ""
 
 
 def _report_term_items(values: Any, *, empty: str) -> str:
