@@ -455,22 +455,49 @@ class CaseWorkbenchService:
             if pdf_fallback
             else ""
         )
-        claim_provenance = (
-            "<section><h2>Primary claim verification</h2><dl>"
-            f"<dt>Claim verification</dt><dd>{_report_text(primary_claim['status'])}</dd>"
-            f"<dt>Source verification</dt><dd>{_report_text(primary_claim['source'].get('status') or 'unverified')}</dd>"
-            f"<dt>Source content capture</dt><dd>{_report_text(primary_claim.get('source_content_capture') or 'unavailable')}</dd>"
-            f"<dt>Source archive ID</dt><dd>{_report_text(primary_claim.get('source_archive_id') or 'unavailable')}</dd>"
-            f"<dt>Source content hash</dt><dd><code>{_report_text(primary_claim.get('source_content_hash') or 'unavailable')}</code></dd>"
-            f"<dt>Source Markdown hash</dt><dd><code>{_report_text(primary_claim.get('source_markdown_hash') or 'unavailable')}</code></dd>"
-            "</dl></section>"
-        )
+        if primary_claim is None:
+            claim_provenance = (
+                "<section><h2>Primary claim verification</h2><dl>"
+                "<dt>Claim verification</dt><dd>Primary claim unavailable</dd>"
+                "<dt>Blocking code</dt><dd>blocked_missing_primary_claim</dd>"
+                "<dt>Source verification</dt><dd>unavailable</dd>"
+                "<dt>Source content capture</dt><dd>unavailable</dd>"
+                "<dt>Source archive ID</dt><dd>unavailable</dd>"
+                "<dt>Source content hash</dt><dd><code>unavailable</code></dd>"
+                "<dt>Source Markdown hash</dt><dd><code>unavailable</code></dd>"
+                "</dl></section>"
+            )
+            primary_claim_html = (
+                "<section><h2>Primary claim</h2>"
+                "<p>Primary claim unavailable.</p>"
+                "<p>blocked_missing_primary_claim</p>"
+                "</section>"
+            )
+        else:
+            claim_provenance = (
+                "<section><h2>Primary claim verification</h2><dl>"
+                f"<dt>Claim verification</dt><dd>{_report_text(primary_claim['status'])}</dd>"
+                f"<dt>Source verification</dt><dd>{_report_text(primary_claim['source'].get('status') or 'unverified')}</dd>"
+                f"<dt>Source content capture</dt><dd>{_report_text(primary_claim.get('source_content_capture') or 'unavailable')}</dd>"
+                f"<dt>Source archive ID</dt><dd>{_report_text(primary_claim.get('source_archive_id') or 'unavailable')}</dd>"
+                f"<dt>Source content hash</dt><dd><code>{_report_text(primary_claim.get('source_content_hash') or 'unavailable')}</code></dd>"
+                f"<dt>Source Markdown hash</dt><dd><code>{_report_text(primary_claim.get('source_markdown_hash') or 'unavailable')}</code></dd>"
+                "</dl></section>"
+            )
+            primary_claim_html = (
+                "<section><h2>Primary claim</h2>"
+                f"<p>{_report_text(primary_claim['excerpt'])}</p>"
+                "<dl>"
+                f"<dt>Source</dt><dd>{_report_text(primary_claim['source']['name'])}</dd>"
+                f"<dt>Source tier</dt><dd>{_report_text(primary_claim['source']['tier'])}</dd>"
+                "</dl></section>"
+            )
         return f"""<!doctype html>
 <html lang=\"en\"><head><meta charset=\"utf-8\"><title>Case report {version}</title>
 <style>body{{font-family:Arial,sans-serif;line-height:1.5;margin:2rem;max-width:900px}}section{{border-top:1px solid #bbb;margin-top:1.25rem;padding-top:.75rem}}dt{{font-weight:bold}}dd{{margin:0 0 .6rem}}code{{word-break:break-all}}@media print{{body{{margin:1cm}}}}</style>
 </head><body><h1>CogGuard Case Report</h1>{pending_note}{claim_provenance}
 <section><dl><dt>Case ID</dt><dd>{_report_text(case['case_id'])}</dd><dt>Event ID</dt><dd>{_report_text(case['event_id'])}</dd><dt>Title</dt><dd>{_report_text(case['title'])}</dd><dt>State</dt><dd>{_report_text(case['state'])}</dd><dt>Snapshot ID</dt><dd><code>{_report_text(case['evidence']['snapshot_id'])}</code></dd><dt>Run ID</dt><dd><code>{_report_text(case['analysis_runs'][0]['run_id'])}</code></dd></dl></section>
-<section><h2>Primary claim</h2><p>{_report_text(primary_claim['excerpt'])}</p><dl><dt>Source</dt><dd>{_report_text(primary_claim['source']['name'])}</dd><dt>Source tier</dt><dd>{_report_text(primary_claim['source']['tier'])}</dd></dl></section>
+{primary_claim_html}
 <section><h2>Semantic evidence overlay</h2><dl><dt>artifact_sha256</dt><dd><code>{_report_text(semantic['artifact_sha256'])}</code></dd><dt>Model status</dt><dd>{_report_text(semantic['model_status'])}</dd><dt>Score policy</dt><dd>evidence_overlay_only</dd></dl></section>
 {semantic_decision_support_html}
 <section><h2>CPR evidence layers</h2><ul>{evidence_layers}</ul></section>

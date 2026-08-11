@@ -699,6 +699,22 @@ def test_case_report_prints_semantic_decision_support_summary():
     asyncio.run(scenario())
 
 
+def test_case_report_handles_missing_primary_claim_without_hiding_semantic_support():
+    async def scenario():
+        service = CaseWorkbenchService(mongo_db=_complete_demo_mongo(), missing_primary_claim=True)
+
+        html = await service.render_report_html("case_trump_visit_2026_05_21", 1)
+
+        assert "Primary claim unavailable" in html
+        assert "blocked_missing_primary_claim" in html
+        assert "Semantic decision support" in html
+        assert "Confidence" in html
+        assert "candidate_unvalidated" in html
+        assert "Use semantic outputs as triage hints, not as risk-score inputs." in html
+
+    asyncio.run(scenario())
+
+
 async def _close_fallback_demo_case(service: CaseWorkbenchService) -> tuple[dict[str, Any], str]:
     case_id = "case_trump_visit_2026_05_21"
     initial = await service.get_case(case_id)
