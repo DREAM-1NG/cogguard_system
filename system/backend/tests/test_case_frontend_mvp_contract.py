@@ -273,6 +273,11 @@ def test_case_report_tab_can_export_acceptance_evidence_summary():
         "semanticDecisionSupport?.confidence",
         "semanticDecisionSupport?.platform_slices",
         "semanticDecisionSupport?.time_slices",
+        "semantic_traceability",
+        "semanticTraceExamples",
+        "semanticModuleCoverageEntries",
+        "semanticReviewHints",
+        "action_evidence_refs",
         "navigator.clipboard.writeText",
         "case-acceptance-summary",
     ):

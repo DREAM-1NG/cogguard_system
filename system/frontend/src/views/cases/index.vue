@@ -597,6 +597,19 @@ const acceptanceEvidencePayload = computed(() => {
       module_coverage: semanticModuleCoverageEntries.value,
       operator_prompt: semanticDecisionSupport.value?.operator_prompt,
     },
+    semantic_traceability: {
+      review_hints: semanticReviewHints.value,
+      module_coverage: semanticModuleCoverageEntries.value,
+      semantic_examples: semanticTraceExamples.value.map((example) => ({
+        source: example.source,
+        content_id: example.content_id,
+        content_kind: example.content_kind,
+        platform: example.platform,
+        author_id: example.author_id,
+        excerpt: example.excerpt,
+      })),
+      near_duplicate_content_ids: nearDuplicateGroups.value.flatMap((group) => group.content_ids || []),
+    },
     action_evidence_refs: (detail?.actions || []).map((action) => ({
       action_id: action.action_id,
       evidence_refs: action.evidence_refs || [],
