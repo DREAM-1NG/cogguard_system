@@ -84,6 +84,7 @@ async def run_acceptance() -> dict[str, Any]:
     _require("candidate_unvalidated" in report_html, "report must show semantic model status")
     _require("Production PDF rendering is pending." in report_html, "report must show PDF fallback")
     _require("archive_cctv_primary_claim_20260811" in report_html, "report must show primary archive provenance")
+    _require("Acceptance summary" in report_html, "report must show acceptance summary")
     _require("Closure checklist" in report_html, "report must show closure checklist")
     _require(closed["reports"][0]["content_hash"] != initial_hash, "report hash must track visible mutations")
 
@@ -116,6 +117,7 @@ async def run_acceptance() -> dict[str, Any]:
             "policy_acknowledgements_visible": True,
             "candidate_unvalidated_visible": True,
             "pdf_fallback_visible": True,
+            "acceptance_summary_visible": True,
             "content_hash_changed": True,
         },
         "semantic": {"policy": semantic_policy, "requested_stage": "semantic_enrichment"},
