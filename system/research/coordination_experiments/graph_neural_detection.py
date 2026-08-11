@@ -32,6 +32,7 @@ from .runner import (
 
 GRAPH_NEURAL_DETECTION_METHODS = frozenset(
     {
+        "compact_graphsage_fused_detector",
         "gcn_graph_classifier",
         "graphsage_graph_classifier",
         "gin_graph_classifier",
@@ -40,6 +41,8 @@ GRAPH_NEURAL_DETECTION_METHODS = frozenset(
 )
 
 _GRAPH_NEURAL_EPOCHS = 48
+_GRAPH_NEURAL_PATIENCE = 6
+_GRAPH_NEURAL_MIN_DELTA = 1.0e-5
 _GRAPH_NEURAL_HIDDEN_DIM = 24
 _MAX_SKETCH_NODES = 96
 _MAX_SKETCH_EDGES = 512
@@ -82,6 +85,8 @@ class _GraphExample:
     case_id: str
     cluster_id: str
     label: int | None
+    feature_values: tuple[float, ...]
+    feature_names: tuple[str, ...]
     graph: _GraphSketch
 
 
@@ -200,12 +205,19 @@ def _seed_for(method_id: str, partitions: DetectionPartitions) -> int:
     return int(digest[:8], 16)
 
 
+def _fingerprint(value: Any) -> str:
+    payload = json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False)
+    return "sha256:" + hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
 def _example_from_training_case(case: DetectionTrainingCase) -> _GraphExample:
     source_path = resolve_public_detection_source_path(case.case_id)
     return _GraphExample(
         case_id=case.case_id,
         cluster_id=case.cluster_id,
         label=case.label,
+        feature_values=tuple(float(value) for value in case.feature_values),
+        feature_names=case.feature_names,
         graph=_load_graph_sketch(source_path.as_posix()),
     )
 
@@ -216,19 +228,22 @@ def _example_from_inference_case(case: DetectionInferenceCase) -> _GraphExample:
         case_id=case.case_id,
         cluster_id=case.cluster_id,
         label=None,
+        feature_values=tuple(float(value) for value in case.feature_values),
+        feature_names=case.feature_names,
         graph=_load_graph_sketch(source_path.as_posix()),
     )
 
 
 class _GraphClassifier:
-    def __init__(self, method_id: str, *, seed: int, input_dim: int):
+    def __init__(self, method_id: str, *, seed: int, input_dim: int, fused_dim: int = 0):
         torch, nn, functional = _require_torch()
 
         class Model(nn.Module):
             def __init__(self) -> None:
                 super().__init__()
                 self.method_id = method_id
-                if method_id == "graphsage_graph_classifier":
+                self.fused_dim = fused_dim
+                if method_id in {"graphsage_graph_classifier", "compact_graphsage_fused_detector"}:
                     self.layer1 = nn.Linear(input_dim * 2, _GRAPH_NEURAL_HIDDEN_DIM)
                     self.layer2 = nn.Linear(_GRAPH_NEURAL_HIDDEN_DIM * 2, _GRAPH_NEURAL_HIDDEN_DIM)
                 elif method_id == "gin_graph_classifier":
@@ -255,7 +270,7 @@ class _GraphClassifier:
                         nn.Linear(_GRAPH_NEURAL_HIDDEN_DIM, 1),
                     )
                 else:
-                    self.classifier = nn.Linear(_GRAPH_NEURAL_HIDDEN_DIM * 2, 1)
+                    self.classifier = nn.Linear(_GRAPH_NEURAL_HIDDEN_DIM * 2 + fused_dim, 1)
 
             @staticmethod
             def _aggregate(x, edge_index, edge_weight, *, mean: bool, normalize: bool):
@@ -286,8 +301,8 @@ class _GraphClassifier:
                 aggregate = self._aggregate(x, edge_index, edge_weight, mean=True, normalize=True)
                 return functional.relu(layer(aggregate))
 
-            def forward(self, x, edge_index, edge_weight):
-                if self.method_id == "graphsage_graph_classifier":
+            def forward(self, x, edge_index, edge_weight, fused_features=None):
+                if self.method_id in {"graphsage_graph_classifier", "compact_graphsage_fused_detector"}:
                     hidden = self._layer(x, edge_index, edge_weight, self.layer1, sage=True)
                     hidden = self._layer(hidden, edge_index, edge_weight, self.layer2, sage=True)
                 elif self.method_id == "gin_graph_classifier":
@@ -303,6 +318,10 @@ class _GraphClassifier:
                     readout = torch.cat((pooled.mean(dim=0), pooled.max(dim=0).values), dim=0)
                 else:
                     readout = torch.cat((hidden.mean(dim=0), hidden.max(dim=0).values), dim=0)
+                if self.fused_dim:
+                    if fused_features is None:
+                        raise ValueError("compact fused graph classifier requires fused features")
+                    readout = torch.cat((readout, fused_features.reshape(-1)), dim=0)
                 return self.classifier(readout).squeeze()
 
         random.seed(seed)
@@ -312,6 +331,7 @@ class _GraphClassifier:
         self.nn = nn
         self.functional = functional
         self.model = Model()
+        self.epochs_run = 0
 
     def _tensorize(self, graph: _GraphSketch):
         torch = self.torch
@@ -325,7 +345,15 @@ class _GraphClassifier:
             edge_weight = torch.empty((0,), dtype=torch.float32)
         return x, edge_index, edge_weight
 
-    def fit(self, train: tuple[_GraphExample, ...], validation: tuple[_GraphExample, ...], *, seed: int) -> None:
+    def fit(
+        self,
+        train: tuple[_GraphExample, ...],
+        validation: tuple[_GraphExample, ...],
+        *,
+        seed: int,
+        train_features: np.ndarray | None = None,
+        validation_features: np.ndarray | None = None,
+    ) -> None:
         torch = self.torch
         if {example.label for example in train} != {0, 1}:
             raise ValueError("graph neural Detection training split must contain both classes")
@@ -335,9 +363,11 @@ class _GraphClassifier:
         optimizer = torch.optim.Adam(self.model.parameters(), lr=0.01, weight_decay=1.0e-4)
         best_state: dict[str, Any] | None = None
         best_loss = math.inf
+        stale = 0
         order = list(range(len(train)))
         rng = random.Random(seed)
-        for _epoch in range(_GRAPH_NEURAL_EPOCHS):
+        for epoch_index in range(_GRAPH_NEURAL_EPOCHS):
+            self.epochs_run = epoch_index + 1
             rng.shuffle(order)
             self.model.train()
             for index in order:
@@ -345,7 +375,12 @@ class _GraphClassifier:
                 x, edge_index, edge_weight = self._tensorize(example.graph)
                 label = torch.tensor(float(example.label), dtype=torch.float32)
                 weight = class_weights[int(example.label)]
-                logit = self.model(x, edge_index, edge_weight)
+                features = (
+                    None
+                    if train_features is None
+                    else torch.tensor(train_features[index], dtype=torch.float32)
+                )
+                logit = self.model(x, edge_index, edge_weight, features)
                 loss = self.functional.binary_cross_entropy_with_logits(
                     logit.reshape(()),
                     label,
@@ -354,41 +389,48 @@ class _GraphClassifier:
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
-            validation_loss = self._loss(validation)
-            if validation_loss < best_loss:
+            validation_loss = self._loss(validation, validation_features)
+            if validation_loss < best_loss - _GRAPH_NEURAL_MIN_DELTA:
                 best_loss = validation_loss
                 best_state = {
                     key: value.detach().clone()
                     for key, value in self.model.state_dict().items()
                 }
+                stale = 0
+            else:
+                stale += 1
+                if stale >= _GRAPH_NEURAL_PATIENCE:
+                    break
         if best_state is not None:
             self.model.load_state_dict(best_state)
 
-    def _loss(self, examples: tuple[_GraphExample, ...]) -> float:
+    def _loss(self, examples: tuple[_GraphExample, ...], features: np.ndarray | None = None) -> float:
         if not examples:
             return math.inf
         torch = self.torch
         losses: list[float] = []
         self.model.eval()
         with torch.no_grad():
-            for example in examples:
+            for index, example in enumerate(examples):
                 x, edge_index, edge_weight = self._tensorize(example.graph)
                 label = torch.tensor(float(example.label), dtype=torch.float32)
+                fused = None if features is None else torch.tensor(features[index], dtype=torch.float32)
                 loss = self.functional.binary_cross_entropy_with_logits(
-                    self.model(x, edge_index, edge_weight).reshape(()),
+                    self.model(x, edge_index, edge_weight, fused).reshape(()),
                     label,
                 )
                 losses.append(float(loss.item()))
         return float(np.mean(losses))
 
-    def logits(self, examples: tuple[_GraphExample, ...]) -> np.ndarray:
+    def logits(self, examples: tuple[_GraphExample, ...], features: np.ndarray | None = None) -> np.ndarray:
         torch = self.torch
         values: list[float] = []
         self.model.eval()
         with torch.no_grad():
-            for example in examples:
+            for index, example in enumerate(examples):
                 x, edge_index, edge_weight = self._tensorize(example.graph)
-                values.append(float(self.model(x, edge_index, edge_weight).item()))
+                fused = None if features is None else torch.tensor(features[index], dtype=torch.float32)
+                values.append(float(self.model(x, edge_index, edge_weight, fused).item()))
         return np.asarray(values, dtype=np.float64)
 
     def state_hash(self) -> str:
@@ -426,6 +468,30 @@ def _calibration(values: np.ndarray, labels: np.ndarray) -> tuple[float, float, 
     return float(slope), float(intercept), float(lower), float(upper), mode
 
 
+def _feature_matrix(examples: tuple[_GraphExample, ...]) -> np.ndarray:
+    return np.asarray([example.feature_values for example in examples], dtype=np.float64)
+
+
+def _standardize_train_only(
+    train: tuple[_GraphExample, ...],
+    validation: tuple[_GraphExample, ...],
+    test: tuple[_GraphExample, ...],
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, tuple[float, ...], tuple[float, ...]]:
+    train_x = _feature_matrix(train)
+    validation_x = _feature_matrix(validation)
+    test_x = _feature_matrix(test)
+    mean = np.mean(train_x, axis=0)
+    scale = np.std(train_x, axis=0)
+    scale = np.where(scale == 0.0, 1.0, scale)
+    return (
+        (train_x - mean) / scale,
+        (validation_x - mean) / scale,
+        (test_x - mean) / scale,
+        tuple(float(value) for value in mean),
+        tuple(float(value) for value in scale),
+    )
+
+
 def _artifact(
     *,
     method_id: str,
@@ -439,6 +505,10 @@ def _artifact(
     lower: float,
     upper: float,
     calibration_mode: str,
+    epochs_run: int,
+    fused_feature_names: tuple[str, ...] = (),
+    fused_scaler_mean: tuple[float, ...] = (),
+    fused_scaler_scale: tuple[float, ...] = (),
 ) -> DetectionModelArtifact:
     schema = DetectionFeatureSchema(
         version=f"cogguard.public-detection-graph-neural/{method_id}/v1",
@@ -461,11 +531,24 @@ def _artifact(
             "method_id": method_id,
             "adapter_scope": "research_len_graph_classification",
             "epochs": _GRAPH_NEURAL_EPOCHS,
+            "epochs_run": epochs_run,
+            "early_stopping_patience": _GRAPH_NEURAL_PATIENCE,
+            "early_stopping_min_delta": _GRAPH_NEURAL_MIN_DELTA,
             "hidden_dim": _GRAPH_NEURAL_HIDDEN_DIM,
             "max_sketch_nodes": _MAX_SKETCH_NODES,
             "max_sketch_edges": _MAX_SKETCH_EDGES,
             "seed": seed,
             "model_state_hash": model_state_hash,
+            "fused_feature_width": len(fused_feature_names),
+            "fused_feature_schema_fingerprint": _fingerprint(
+                {"names": list(fused_feature_names)}
+            ),
+            "fused_scaler_fingerprint": _fingerprint(
+                {
+                    "mean": list(fused_scaler_mean),
+                    "scale": list(fused_scaler_scale),
+                }
+            ),
         },
         calibrator_config={
             "algorithm": calibration_mode,
@@ -497,14 +580,35 @@ class GraphNeuralDetectionImplementation(_LearnedDetectionImplementation):
         test = tuple(_example_from_inference_case(case) for case in partitions.test_cases)
         input_dim = len(train[0].graph.node_features[0])
         seed = _seed_for(self.method_id, partitions)
-        classifier = _GraphClassifier(self.method_id, seed=seed, input_dim=input_dim)
-        classifier.fit(train, validation, seed=seed)
-        validation_logits = classifier.logits(validation)
+        if self.method_id == "compact_graphsage_fused_detector":
+            train_features, validation_features, test_features, mean, scale = _standardize_train_only(
+                train,
+                validation,
+                test,
+            )
+        else:
+            train_features = validation_features = test_features = None
+            mean = scale = ()
+        classifier = _GraphClassifier(
+            self.method_id,
+            seed=seed,
+            input_dim=input_dim,
+            fused_dim=0 if train_features is None else train_features.shape[1],
+        )
+        classifier.fit(
+            train,
+            validation,
+            seed=seed,
+            train_features=train_features,
+            validation_features=validation_features,
+        )
+        validation_logits = classifier.logits(validation, validation_features)
         validation_labels = np.asarray([int(example.label) for example in validation], dtype=np.int64)
         slope, intercept, lower, upper, calibration_mode = _calibration(
             validation_logits,
             validation_labels,
         )
+        feature_names = train[0].feature_names if self.method_id == "compact_graphsage_fused_detector" else ()
         artifact = _artifact(
             method_id=self.method_id,
             model_state_hash=classifier.state_hash(),
@@ -517,8 +621,12 @@ class GraphNeuralDetectionImplementation(_LearnedDetectionImplementation):
             lower=lower,
             upper=upper,
             calibration_mode=calibration_mode,
+            epochs_run=classifier.epochs_run,
+            fused_feature_names=feature_names,
+            fused_scaler_mean=mean,
+            fused_scaler_scale=scale,
         )
-        test_logits = classifier.logits(test)
+        test_logits = classifier.logits(test, test_features)
         probabilities = _sigmoid(slope * test_logits + intercept)
         predictions: list[DetectionPrediction] = []
         low = artifact.validation_ood_min[0]

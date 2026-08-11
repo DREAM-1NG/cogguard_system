@@ -51,6 +51,7 @@ DEEP_DETECTION_METHODS = DEEP_PYG_DETECTION_METHODS | DEEP_TABULAR_DETECTION_MET
 
 _MAX_DEEP_GRAPH_NODES = 384
 _MAX_DEEP_GRAPH_EDGES = 4096
+_DEEP_NODE_FEATURE_WIDTH = 12
 _SMOKE_THRESHOLD = 8
 
 
@@ -97,6 +98,7 @@ class _FitResult:
     global_mean: tuple[float, ...]
     global_scale: tuple[float, ...]
     device: str
+    internal_feature_width: int = 0
 
 
 def _finite(value: Any, default: float = 0.0) -> float:
@@ -325,25 +327,32 @@ def _labels(examples: tuple[_DeepExample, ...]) -> np.ndarray:
     return np.asarray([int(example.label) for example in examples], dtype=np.int64)
 
 
-def _standardize_train_only(
-    train: tuple[_DeepExample, ...],
-    validation: tuple[_DeepExample, ...],
-    test: tuple[_DeepExample, ...],
+def _standardize_arrays(
+    train_x: np.ndarray,
+    validation_x: np.ndarray,
+    test_x: np.ndarray,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, tuple[float, ...], tuple[float, ...]]:
-    train_x = _feature_matrix(train)
     mean = np.mean(train_x, axis=0)
     scale = np.std(train_x, axis=0)
     scale = np.where(scale == 0.0, 1.0, scale)
     return (
         (train_x - mean) / scale,
-        (_feature_matrix(validation) - mean) / scale,
-        (_feature_matrix(test) - mean) / scale,
+        (validation_x - mean) / scale,
+        (test_x - mean) / scale,
         tuple(float(value) for value in mean),
         tuple(float(value) for value in scale),
     )
 
 
-def _configs(kind: str, train_count: int) -> tuple[_TrainConfig, ...]:
+def _standardize_train_only(
+    train: tuple[_DeepExample, ...],
+    validation: tuple[_DeepExample, ...],
+    test: tuple[_DeepExample, ...],
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, tuple[float, ...], tuple[float, ...]]:
+    return _standardize_arrays(_feature_matrix(train), _feature_matrix(validation), _feature_matrix(test))
+
+
+def _configs(kind: str, train_count: int, method_id: str = "") -> tuple[_TrainConfig, ...]:
     if train_count <= _SMOKE_THRESHOLD:
         if kind == "graph":
             return (
@@ -360,13 +369,12 @@ def _configs(kind: str, train_count: int) -> tuple[_TrainConfig, ...]:
             for dropout in (0.1, 0.3)
             for lr in (0.001, 0.003)
         )
-    return tuple(
-        _TrainConfig(hidden, depth, dropout, lr, wd, 200, 25, "medium_5seed_grid")
-        for hidden in (64, 128)
-        for depth in (2, 3)
-        for dropout in (0.1, 0.3)
-        for lr in (0.001, 0.003)
-        for wd in (1.0e-4, 1.0e-3)
+    if method_id == "deep_tabular_residual_detector":
+        return (
+            _TrainConfig(64, 2, 0.1, 0.003, 1.0e-4, 40, 5, "fast_tabular_single_v4"),
+        )
+    return (
+        _TrainConfig(64, 2, 0.1, 0.003, 1.0e-4, 40, 5, "fast_tabular_single_v4"),
     )
 
 
@@ -464,6 +472,7 @@ def _artifact(
             "searched_config_count": fit.searched_config_count,
             "search_budget": fit.selected_config.search_budget,
             "feature_width": feature_width,
+            "internal_feature_width": fit.internal_feature_width,
             "max_graph_nodes": _MAX_DEEP_GRAPH_NODES,
             "max_graph_edges": _MAX_DEEP_GRAPH_EDGES,
             "model_state_hash": fit.model_state_hash,
@@ -523,6 +532,63 @@ def _case_feature_indices(feature_names: tuple[str, ...], *, tabular: bool) -> t
 
 def _project_values(values: tuple[float, ...], indices: tuple[int, ...]) -> tuple[float, ...]:
     return tuple(float(values[index]) for index in indices)
+
+
+def _graph_node_features_for_pyg(graph: _GraphSketch) -> tuple[tuple[float, ...], ...]:
+    rows: list[tuple[float, ...]] = []
+    for row in graph.node_features:
+        cleaned = tuple(_finite(value) for value in row[:_DEEP_NODE_FEATURE_WIDTH])
+        if len(cleaned) < _DEEP_NODE_FEATURE_WIDTH:
+            cleaned = cleaned + (0.0,) * (_DEEP_NODE_FEATURE_WIDTH - len(cleaned))
+        rows.append(cleaned)
+    if not rows:
+        return ((0.0,) * _DEEP_NODE_FEATURE_WIDTH,)
+    return tuple(rows)
+
+
+def _graph_edges_for_pyg(graph: _GraphSketch, node_count: int) -> tuple[tuple[tuple[int, int], ...], tuple[float, ...]]:
+    edge_index: list[tuple[int, int]] = []
+    edge_weight: list[float] = []
+    for index, edge in enumerate(graph.edge_index):
+        if len(edge) != 2:
+            continue
+        source, target = int(edge[0]), int(edge[1])
+        if source < 0 or target < 0 or source >= node_count or target >= node_count:
+            continue
+        weight = graph.edge_weight[index] if index < len(graph.edge_weight) else 1.0
+        edge_index.append((source, target))
+        edge_weight.append(max(0.0, _finite(weight, 1.0)))
+    return tuple(edge_index), tuple(edge_weight)
+
+
+def _graph_internal_features(graph: _GraphSketch) -> tuple[float, ...]:
+    node_values = np.asarray(_graph_node_features_for_pyg(graph), dtype=np.float64)
+    _, weights = _graph_edges_for_pyg(graph, int(node_values.shape[0]))
+    edge_weights = np.asarray(weights, dtype=np.float64)
+    if edge_weights.size == 0:
+        edge_weights = np.zeros((1,), dtype=np.float64)
+    node_count = float(node_values.shape[0])
+    edge_count = float(len(graph.edge_index))
+    possible_edges = max(1.0, node_count * max(1.0, node_count - 1.0))
+    pooled = np.concatenate(
+        (
+            node_values.mean(axis=0),
+            node_values.std(axis=0),
+            node_values.max(axis=0),
+            np.asarray(
+                (
+                    math.log1p(node_count),
+                    math.log1p(edge_count),
+                    edge_count / possible_edges,
+                    float(edge_weights.mean()),
+                    float(edge_weights.std()),
+                    float(edge_weights.max()),
+                ),
+                dtype=np.float64,
+            ),
+        )
+    )
+    return tuple(float(value) for value in pooled)
 
 
 def _shared_feature_names(partitions: DetectionPartitions) -> tuple[str, ...]:
@@ -690,8 +756,8 @@ def _fit_tabular(
             model.load_state_dict(best_state)
         return model
 
-    best: tuple[float, _FitResult] | None = None
-    configs = _configs("tabular", len(train))
+    best: tuple[float, _FitResult, int] | None = None
+    configs = _configs("tabular", len(train), method_id)
     for index, config in enumerate(configs):
         model = fit_config(config, seed + index * 7919)
         model.eval()
@@ -720,10 +786,11 @@ def _fit_tabular(
             global_mean=mean,
             global_scale=scale,
             device=str(device),
+            internal_feature_width=0,
         )
         rank = (score, -index)
-        if best is None or rank > (best[0], -configs.index(best[1].selected_config)):
-            best = (score, result)
+        if best is None or rank > (best[0], -best[2]):
+            best = (score, result, index)
     if best is None:
         raise ValueError("tabular deep detector did not train any candidate")
     fit = best[1]
@@ -750,20 +817,48 @@ def _fit_graph(
     torch, nn, functional = _require_torch()
     device = _device_for(torch)
     Batch, Data, GCNConv, GINConv, SAGEConv, global_max_pool, global_mean_pool = _require_pyg()
-    train_x, validation_x, test_x, mean, scale = _standardize_train_only(train, validation, test)
+    base_train_x = _feature_matrix(train)
+    base_validation_x = _feature_matrix(validation)
+    base_test_x = _feature_matrix(test)
+    graph_train_x = np.asarray(
+        [_graph_internal_features(example.graph) for example in train if example.graph is not None],
+        dtype=np.float64,
+    )
+    graph_validation_x = np.asarray(
+        [_graph_internal_features(example.graph) for example in validation if example.graph is not None],
+        dtype=np.float64,
+    )
+    graph_test_x = np.asarray(
+        [_graph_internal_features(example.graph) for example in test if example.graph is not None],
+        dtype=np.float64,
+    )
+    if (
+        graph_train_x.shape[0] != len(train)
+        or graph_validation_x.shape[0] != len(validation)
+        or graph_test_x.shape[0] != len(test)
+    ):
+        raise ValueError("graph deep detector requires graph sketches for all partitions")
+    train_x, validation_x, test_x, mean, scale = _standardize_arrays(
+        np.concatenate((base_train_x, graph_train_x), axis=1),
+        np.concatenate((base_validation_x, graph_validation_x), axis=1),
+        np.concatenate((base_test_x, graph_test_x), axis=1),
+    )
     train_y = _labels(train)
     validation_y = _labels(validation)
     global_dim = train_x.shape[1]
-    node_dim = len(train[0].graph.node_features[0]) if train[0].graph is not None else 0
+    internal_feature_width = int(graph_train_x.shape[1])
+    node_dim = _DEEP_NODE_FEATURE_WIDTH
 
     def to_data(example: _DeepExample, global_features: np.ndarray, label: int | None = None):
         if example.graph is None:
             raise ValueError("graph deep detector requires graph sketches")
         graph = example.graph
-        x = torch.tensor(graph.node_features, dtype=torch.float32)
-        if graph.edge_index:
-            edge_index = torch.tensor(graph.edge_index, dtype=torch.long).t().contiguous()
-            edge_weight = torch.tensor(graph.edge_weight, dtype=torch.float32)
+        node_features = _graph_node_features_for_pyg(graph)
+        edge_pairs, weights = _graph_edges_for_pyg(graph, len(node_features))
+        x = torch.tensor(node_features, dtype=torch.float32)
+        if edge_pairs:
+            edge_index = torch.tensor(edge_pairs, dtype=torch.long).t().contiguous()
+            edge_weight = torch.tensor(weights, dtype=torch.float32)
             edge_weight = edge_weight / edge_weight.mean().clamp_min(1.0e-6)
         else:
             edge_index = torch.empty((2, 0), dtype=torch.long)
@@ -917,6 +1012,7 @@ def _fit_graph(
             global_mean=mean,
             global_scale=scale,
             device=str(device),
+            internal_feature_width=internal_feature_width,
         )
         rank = (score, -index)
         if best is None or rank > (best[0], -best[2]):

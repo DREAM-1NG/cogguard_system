@@ -429,6 +429,17 @@ def default_baseline_registry() -> BaselineRegistry:
             claimable=False,
         ),
         BaselineSpec(
+            "compact_graphsage_fused_detector",
+            "compact-graphsage-fused-detector-v1",
+            "detection",
+            "learned_comparison",
+            "compact-graphsage-fused-implementation-v1",
+            ("binary_coordination_detection", "external_label_evaluation"),
+            ("torch",),
+            warning="Research-only compact GraphSAGE fused detector for LEN graph-label proxy evaluation.",
+            claimable=False,
+        ),
+        BaselineSpec(
             "gin_graph_classifier", "gin-graph-classifier-local-compact-v1", "detection",
             "learned_comparison", "gin-graph-classifier-local-compact-implementation-v1",
             ("binary_coordination_detection", "external_label_evaluation"), ("torch",),

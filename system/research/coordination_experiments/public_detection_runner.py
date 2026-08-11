@@ -84,6 +84,7 @@ _URL_RE = re.compile(r"https?://", re.IGNORECASE)
 _HASHTAG_RE = re.compile(r"(?<!\w)#\w+", re.UNICODE)
 _DEEP_DETECTION_CANDIDATE_IDS = frozenset(
     {
+        "compact_graphsage_fused_detector",
         "deep_pyg_graphsage_fused_detector",
         "deep_pyg_gin_fused_detector",
         "deep_pyg_gcn_fused_detector",
@@ -98,6 +99,20 @@ _DEEP_ACTIVATION_METRICS = (
     "ece",
     "selective_coverage",
     "runtime_seconds",
+)
+_TORCH_WARMUP_METHOD_IDS = frozenset(
+    {
+        "compact_graphsage_fused_detector",
+        "gcn_graph_classifier",
+        "graphsage_graph_classifier",
+        "gin_graph_classifier",
+        "diffpool_graph_classifier",
+        "deep_pyg_graphsage_fused_detector",
+        "deep_pyg_gin_fused_detector",
+        "deep_pyg_gcn_fused_detector",
+        "deep_tabular_mlp_detector",
+        "deep_tabular_residual_detector",
+    }
 )
 
 
@@ -462,6 +477,16 @@ def default_public_detection_method_registry() -> PublicDetectionMethodRegistry:
             ("graph_labels", "weighted_edges", "binary_detection_gold"),
             "deep_pyg_graphsage_fused_detector",
             "Research-only LEN candidate: PyG GraphSAGE graph encoder fused with graph/stat/Stage-1 features.",
+        ),
+        PublicDetectionMethodSpec(
+            "compact_graphsage_fused_detector",
+            "Compact GraphSAGE fused detector",
+            "deep_graph_neural_detection",
+            2017,
+            "https://arxiv.org/abs/1706.02216",
+            ("graph_labels", "weighted_edges", "binary_detection_gold"),
+            "compact_graphsage_fused_detector",
+            "Research-only LEN candidate: compact GraphSAGE-style encoder fused with graph/stat/Stage-1 features.",
         ),
         PublicDetectionMethodSpec(
             "deep_pyg_gin_fused_detector",
@@ -1150,6 +1175,30 @@ def _run_ids(method_ids: Sequence[str] | None) -> tuple[str, ...]:
     return tuple(dict.fromkeys(result))
 
 
+def _maybe_warm_torch_runtime(method_ids: Sequence[str]) -> dict[str, Any]:
+    if not any(method_id in _TORCH_WARMUP_METHOD_IDS for method_id in method_ids):
+        return {"status": "not_required", "runtime_seconds": 0.0}
+    import time
+
+    started = time.perf_counter()
+    try:
+        import torch
+
+        values = torch.tensor([0.0, 1.0], dtype=torch.float32)
+        _ = torch.sigmoid(values).sum().item()
+        return {
+            "status": "completed",
+            "runtime_seconds": time.perf_counter() - started,
+            "device": "cuda" if torch.cuda.is_available() else "cpu",
+        }
+    except Exception as exc:
+        return {
+            "status": "failed",
+            "runtime_seconds": time.perf_counter() - started,
+            "reason": f"{type(exc).__name__}: {exc}",
+        }
+
+
 def _public_detection_claim_gates(seeds: Sequence[int]) -> tuple[ClaimGate, ...]:
     minimum = len(tuple(seeds))
     return (
@@ -1373,6 +1422,7 @@ def run_public_detection_comparison(
     if any(seed < 0 for seed in normalized_seeds):
         raise ValueError("seeds must be non-negative")
     run_method_ids = _run_ids(method_ids)
+    runtime_warmup = _maybe_warm_torch_runtime(run_method_ids)
     baseline_registry = default_baseline_registry()
     rows: list[ResultRow] = []
     datasets: list[PublicDetectionDataset] = []
@@ -1430,6 +1480,7 @@ def run_public_detection_comparison(
         "seeds": list(normalized_seeds),
         "requested_method_ids": list(method_ids) if method_ids is not None else None,
         "executed_method_ids": list(run_method_ids),
+        "runtime_warmup": runtime_warmup,
         "method_registry": [public_registry.method(method_id).to_dict() for method_id in public_registry.method_ids],
         "feasibility_matrix": feasibility,
         "dataset_manifests": [dataset.manifest.to_dict() for dataset in datasets],

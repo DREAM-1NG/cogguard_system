@@ -149,6 +149,7 @@ def test_public_detection_method_registry_fixes_dataset_method_boundaries():
         "vargas_coordination_activity_classifier",
         "gcn_graph_classifier",
         "graphsage_graph_classifier",
+        "compact_graphsage_fused_detector",
         "gin_graph_classifier",
         "diffpool_graph_classifier",
         "deep_pyg_graphsage_fused_detector",
@@ -167,10 +168,12 @@ def test_public_detection_method_registry_fixes_dataset_method_boundaries():
     assert "observed_timestamps" in registry.feasibility("large_engagement_networks", "tgn").missing_signals
     assert registry.feasibility("large_engagement_networks", "len_graph_stat_logistic").status == "ready"
     assert registry.feasibility("large_engagement_networks", "gcn_graph_classifier").status == "ready"
+    assert registry.feasibility("large_engagement_networks", "compact_graphsage_fused_detector").status == "ready"
     assert registry.feasibility("large_engagement_networks", "deep_pyg_graphsage_fused_detector").status == "ready"
     assert registry.feasibility("astroturf_legitimate_classification", "truthy_classic_feature_classifier").status == "ready"
     assert registry.feasibility("astroturf_legitimate_classification", "deep_tabular_mlp_detector").status == "ready"
     assert registry.feasibility("astroturf_legitimate_classification", "gcn_graph_classifier").status == "blocked"
+    assert registry.feasibility("astroturf_legitimate_classification", "compact_graphsage_fused_detector").status == "blocked"
     assert registry.feasibility("astroturf_legitimate_classification", "deep_pyg_graphsage_fused_detector").status == "blocked"
     assert registry.feasibility("large_engagement_networks", "deep_tabular_mlp_detector").status == "blocked"
 
@@ -228,6 +231,54 @@ def test_public_detection_stratified_split_uses_proportional_holdout():
     assert set(dataset.evaluation.test_labels.values()) == {0, 1}
 
 
+def test_deep_detection_standardization_uses_train_statistics_only():
+    _load_experiments()
+    from research.coordination_experiments.deep_detection import _standardize_arrays
+
+    train = _np_array([[1.0, 10.0], [3.0, 14.0]])
+    validation = _np_array([[101.0, 110.0]])
+    test = _np_array([[201.0, 210.0]])
+
+    train_x, validation_x, test_x, mean, scale = _standardize_arrays(train, validation, test)
+
+    assert mean == (2.0, 12.0)
+    assert scale == (1.0, 2.0)
+    assert train_x.tolist() == [[-1.0, -1.0], [1.0, 1.0]]
+    assert validation_x.tolist() == [[99.0, 49.0]]
+    assert test_x.tolist() == [[199.0, 99.0]]
+
+
+def _np_array(rows):
+    import numpy as np
+
+    return np.asarray(rows, dtype=np.float64)
+
+
+def test_deep_detection_graph_features_clean_empty_and_invalid_sketches():
+    _load_experiments()
+    from research.coordination_experiments.deep_detection import (
+        _graph_edges_for_pyg,
+        _graph_internal_features,
+        _graph_node_features_for_pyg,
+        _GraphSketch,
+    )
+
+    empty = _GraphSketch(node_features=(), edge_index=((0, 9),), edge_weight=(1.0,))
+    assert _graph_node_features_for_pyg(empty) == ((0.0,) * 12,)
+    assert _graph_edges_for_pyg(empty, 1) == ((), ())
+    assert len(_graph_internal_features(empty)) == 42
+
+    dirty = _GraphSketch(
+        node_features=((1.0, 2.0), (float("nan"),) * 20),
+        edge_index=((0, 1), (1, 7), (-1, 0)),
+        edge_weight=(2.0, 9.0, 3.0),
+    )
+    nodes = _graph_node_features_for_pyg(dirty)
+    assert len(nodes) == 2
+    assert all(len(row) == 12 for row in nodes)
+    assert _graph_edges_for_pyg(dirty, len(nodes)) == (((0, 1),), (2.0,))
+
+
 def test_public_detection_runner_writes_g_drive_results_for_executable_and_blocked_methods():
     module = _load_experiments()
     fixture_root = _g_fixture_root(module, "runner")
@@ -257,6 +308,7 @@ def test_public_detection_runner_writes_g_drive_results_for_executable_and_block
             "vargas_coordination_activity_classifier",
             "truthy_feature_logistic",
             "gcn_graph_classifier",
+            "compact_graphsage_fused_detector",
             "deep_pyg_graphsage_fused_detector",
             "deep_tabular_mlp_detector",
             "tgn",
@@ -266,6 +318,8 @@ def test_public_detection_runner_writes_g_drive_results_for_executable_and_block
 
     assert manifest["schema_version"] == module.PUBLIC_DETECTION_SCHEMA_VERSION
     assert Path(manifest["artifact_paths"]["per_seed_json"]).drive.upper() == "G:"
+    assert manifest["runtime_warmup"]["status"] == "completed"
+    assert manifest["runtime_warmup"]["runtime_seconds"] >= 0.0
     assert manifest["dataset_protocols"][0]["test_count"] >= 2
     assert (output / "public_detection_manifest.json").exists()
     assert (output / "per_seed_rows.json").exists()
@@ -278,8 +332,10 @@ def test_public_detection_runner_writes_g_drive_results_for_executable_and_block
         (gate["dataset_id"], gate["candidate_method_id"])
         for gate in deep_gates
     } == {
+        ("large_engagement_networks", "compact_graphsage_fused_detector"),
         ("large_engagement_networks", "deep_pyg_graphsage_fused_detector"),
         ("large_engagement_networks", "deep_tabular_mlp_detector"),
+        ("astroturf_legitimate_classification", "compact_graphsage_fused_detector"),
         ("astroturf_legitimate_classification", "deep_pyg_graphsage_fused_detector"),
         ("astroturf_legitimate_classification", "deep_tabular_mlp_detector"),
     }
@@ -294,6 +350,7 @@ def test_public_detection_runner_writes_g_drive_results_for_executable_and_block
         "heuristic_baseline_v1",
         "len_graph_stat_logistic",
         "gcn_graph_classifier",
+        "compact_graphsage_fused_detector",
         "deep_pyg_graphsage_fused_detector",
     }.issubset(row_methods)
     al_success = {
@@ -309,6 +366,7 @@ def test_public_detection_runner_writes_g_drive_results_for_executable_and_block
     }
     assert blocked_rows[("large_engagement_networks", "tgn")] == "blocked"
     assert blocked_rows[("astroturf_legitimate_classification", "gcn_graph_classifier")] == "blocked"
+    assert blocked_rows[("astroturf_legitimate_classification", "compact_graphsage_fused_detector")] == "blocked"
     assert blocked_rows[("astroturf_legitimate_classification", "deep_pyg_graphsage_fused_detector")] == "blocked"
     assert blocked_rows[("large_engagement_networks", "deep_tabular_mlp_detector")] == "blocked"
     blocked = {
@@ -330,9 +388,22 @@ def test_public_detection_runner_writes_g_drive_results_for_executable_and_block
     assert artifact["validation_calibration_case_ids_fingerprint"] == deep_row["validation_partition_fingerprint"]
     assert artifact["validation_threshold_case_ids_fingerprint"] == deep_row["validation_partition_fingerprint"]
     assert artifact["validation_ood_case_ids_fingerprint"] == deep_row["validation_partition_fingerprint"]
+    assert artifact["optimizer_config"]["internal_feature_width"] == 42
     assert deep_row["test_partition_fingerprint"] not in json.dumps(artifact, sort_keys=True)
     assert deep_row["selection_eligible"] is False
     assert "test_labels" not in json.dumps(artifact, sort_keys=True)
+    compact_row = next(
+        row
+        for row in manifest["rows"]
+        if row["dataset_id"] == "large_engagement_networks"
+        and row["method_id"] == "compact_graphsage_fused_detector"
+    )
+    compact_artifact = compact_row["model_artifact"]
+    assert compact_artifact["train_fit_case_ids_fingerprint"] == compact_row["train_partition_fingerprint"]
+    assert compact_artifact["validation_calibration_case_ids_fingerprint"] == compact_row["validation_partition_fingerprint"]
+    assert compact_artifact["optimizer_config"]["fused_feature_width"] == manifest["dataset_protocols"][0]["feature_count"]
+    assert compact_row["test_partition_fingerprint"] not in json.dumps(compact_artifact, sort_keys=True)
+    assert compact_row["selection_eligible"] is False
 
 
 def test_public_detection_runner_clears_stale_source_registry_between_runs():
