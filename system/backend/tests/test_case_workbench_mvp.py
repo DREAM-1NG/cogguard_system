@@ -1022,6 +1022,44 @@ def test_closed_case_rejects_all_mutations_without_changing_demo_state():
     asyncio.run(scenario())
 
 
+def test_case_report_includes_closed_loop_audit_trail():
+    async def scenario():
+        service = CaseWorkbenchService(mongo_db={})
+        case_id = "case_trump_visit_2026_05_21"
+        blocker_id = (await service.get_case(case_id))["active_blockers"][0]["blocker_id"]
+        await service.acknowledge_blocker(case_id, blocker_id, actor_id="audit_analyst", reason="Documented gap.")
+        for action in (await service.get_case(case_id))["actions"]:
+            await service.complete_action(case_id, action["action_id"], actor_id="audit_analyst")
+        await service.submit_feedback(case_id, actor_id="audit_analyst", content="Feedback with audit trail.")
+        before_correction = await service.get_case(case_id)
+        before_hash = before_correction["reports"][0]["content_hash"]
+        await service.record_semantic_correction(
+            case_id,
+            "semantic_case_workbench_demo",
+            actor_id="audit_analyst",
+            module="sentiment",
+            target_ref="weibo_demo_1",
+            original_value="positive",
+            corrected_value="neutral",
+            reason="Audit trail should cite this correction.",
+        )
+        after_correction = await service.get_case(case_id)
+        await service.submit_closeout_review(case_id, actor_id="audit_analyst", summary="Audit trail visible.")
+
+        html = await service.render_report_html(case_id, 1)
+
+        assert after_correction["reports"][0]["content_hash"] != before_hash
+        assert "Closed-loop audit trail" in html
+        assert "record_semantic_correction" in html
+        assert "submit_case_feedback" in html
+        assert "submit_closeout_review" in html
+        assert "audit_analyst" in html
+        assert "semantic_correction_1" in html
+        assert "weibo_demo_1" in html
+
+    asyncio.run(scenario())
+
+
 def test_case_v2_rejects_blank_mutation_text_with_controlled_conflict():
     async def scenario():
         service = CaseWorkbenchService(mongo_db={})

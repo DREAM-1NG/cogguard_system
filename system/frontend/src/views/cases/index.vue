@@ -452,6 +452,22 @@
                 <p>{{ formatMetrics(check.evidence) }}</p>
               </div>
             </div>
+            <div class="closure-checklist">
+              <h3>Closed-loop audit trail</h3>
+              <p class="action-evidence-note">
+                {{ auditTrailSummary.count }} events · semantic_correction_audited:
+                {{ auditTrailSummary.semantic_correction_audited }}
+              </p>
+              <div v-for="event in auditTrailItems" :key="event.event_id" class="closure-check-row">
+                <div>
+                  <a-tag>{{ event.action }}</a-tag>
+                  <strong>{{ event.actor_id || '-' }}</strong>
+                  <small>{{ formatTime(event.created_at) }}</small>
+                </div>
+                <p>{{ event.target_id || '-' }} · {{ formatMetrics(event.payload) }}</p>
+              </div>
+              <span v-if="!caseDetail.audit_events?.length" class="semantic-empty">No audit events recorded.</span>
+            </div>
             <a-table
               size="small"
               :columns="reportColumns"
@@ -596,6 +612,16 @@ const graphNodes = computed<any[]>(() => caseDetail.value?.graph?.nodes || [])
 const graphEdges = computed<any[]>(() => caseDetail.value?.graph?.edges || [])
 const graphEvidenceLayers = computed<any[]>(() => caseDetail.value?.graph?.evidence_layers || [])
 const closureChecklist = computed(() => caseDetail.value?.closure_checklist || [])
+const auditTrailItems = computed(() => caseDetail.value?.audit_events || [])
+const auditTrailSummary = computed(() => {
+  const actions = auditTrailItems.value.map((event) => String(event.action || ''))
+  return {
+    count: auditTrailItems.value.length,
+    actions,
+    semantic_correction_audited: actions.includes('record_semantic_correction'),
+    closed_loop_mutations: [...new Set(actions.filter(Boolean))],
+  }
+})
 const prototypeConstraints = computed(() => caseDetail.value?.prototype_constraints || {
   platform_evidence_scope: 'weibo_only_with_xhs_gap',
   semantic_examples_text_scope: 'excerpt_only_not_full_source_text',
@@ -687,6 +713,7 @@ const acceptanceEvidencePayload = computed(() => {
       action_id: action.action_id,
       evidence_refs: action.evidence_refs || [],
     })),
+    audit_trail: auditTrailSummary.value,
   }
 })
 const semanticSupportPackPayload = computed(() => {

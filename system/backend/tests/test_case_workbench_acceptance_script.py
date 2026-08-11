@@ -23,6 +23,7 @@ def test_case_workbench_acceptance_closes_the_weibo_only_demo_case():
         "semantic_evidence_appendix_visible": True,
         "semantic_traceability_pack_visible": True,
         "semantic_corrections_visible": True,
+        "closed_loop_audit_trail_visible": True,
         "prototype_limitations_visible": True,
         "content_hash_changed": True,
     }
@@ -142,6 +143,25 @@ def test_case_workbench_acceptance_closes_the_weibo_only_demo_case():
         "submit_closeout_review",
         "record_semantic_correction",
     }.issubset(result["audit_actions"])
+    assert result["audit_trail"] == {
+        "count": 6,
+        "actions": [
+            "acknowledge_case_blocker",
+            "complete_case_action",
+            "complete_case_action",
+            "submit_case_feedback",
+            "record_semantic_correction",
+            "submit_closeout_review",
+        ],
+        "semantic_correction_audited": True,
+        "closed_loop_mutations": [
+            "acknowledge_case_blocker",
+            "complete_case_action",
+            "submit_case_feedback",
+            "record_semantic_correction",
+            "submit_closeout_review",
+        ],
+    }
     assert result["claim_boundary"] == {
         "second_platform_evidence_claimed": False,
         "statement": "No second-platform evidence is fabricated.",

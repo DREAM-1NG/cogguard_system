@@ -147,6 +147,7 @@ class CaseWorkbenchService:
         feedback = list(self.demo_state["feedback"])
         semantic_corrections = list(self.demo_state["semantic_corrections"])
         closeout_review = self.demo_state.get("closeout_review")
+        audit_events = list(self.demo_state["audit_events"])
         state = _case_state(blockers=active_blockers, actions=actions, feedback=feedback, closeout_review=closeout_review)
         canonical_verdict = {
             "verdict_id": "canonical_demo_verdict",
@@ -191,6 +192,17 @@ class CaseWorkbenchService:
                         correction["status"],
                     )
                     for correction in semantic_corrections
+                ],
+                "audit_events": [
+                    (
+                        event["event_id"],
+                        event["action"],
+                        event["actor_id"],
+                        event["target_id"],
+                        event["created_at"],
+                        event.get("payload") or {},
+                    )
+                    for event in audit_events
                 ],
                 "closeout_summary": closeout_review.get("summary") if closeout_review else None,
                 "closure_checklist": [(item["key"], item["status"]) for item in closure_checklist],
@@ -289,7 +301,7 @@ class CaseWorkbenchService:
             ],
             "active_blockers": active_blockers,
             "blocker_acknowledgements": acknowledgements,
-            "audit_events": list(self.demo_state["audit_events"]),
+            "audit_events": audit_events,
             "workflow_summary": {
                 "closed_loop": "事件 -> 证据 -> Coordination -> Propagation -> Review -> 处置 -> 反馈",
                 "display_loop": "事件 -> 证据 -> Coordination -> Propagation -> Review -> 处置 -> 反馈",
@@ -517,6 +529,7 @@ class CaseWorkbenchService:
         semantic_evidence_appendix_html = _report_semantic_evidence_appendix(semantic)
         semantic_traceability_html = _report_semantic_traceability(semantic, case["actions"])
         semantic_corrections_html = _report_semantic_corrections(case["semantic_corrections"])
+        audit_trail_html = _report_audit_trail(case.get("audit_events", []))
         pending_note = (
             "<p><strong>Production PDF rendering is pending.</strong> This HTML is the MVP PDF fallback.</p>"
             if pdf_fallback
@@ -570,6 +583,7 @@ class CaseWorkbenchService:
 {semantic_evidence_appendix_html}
 {semantic_traceability_html}
 {semantic_corrections_html}
+{audit_trail_html}
 <section><h2>CPR evidence layers</h2><ul>{evidence_layers}</ul></section>
 {acceptance_summary_html}
 {prototype_limitations_html}
@@ -1296,6 +1310,24 @@ def _report_semantic_corrections(corrections: list[dict[str, Any]]) -> str:
     return (
         "<section><h2>Semantic corrections</h2>"
         "<p>Manual corrections are advisory overlays and do not change CPR scores or closure gates.</p>"
+        f"<ul>{items}</ul>"
+        "</section>"
+    )
+
+
+def _report_audit_trail(audit_events: list[dict[str, Any]]) -> str:
+    items = _report_term_items(
+        (
+            f"{item.get('event_id', '-')}: action={item.get('action', '-')}; "
+            f"actor_id={item.get('actor_id', '-')}; target_id={item.get('target_id', '-')}; "
+            f"created_at={item.get('created_at', '-')}; payload={_format_report_metrics(item.get('payload') or {})}"
+            for item in audit_events
+        ),
+        empty="No audit events recorded",
+    )
+    return (
+        "<section><h2>Closed-loop audit trail</h2>"
+        "<p>Only real Case mutation events are listed; this trail does not fabricate platform evidence.</p>"
         f"<ul>{items}</ul>"
         "</section>"
     )

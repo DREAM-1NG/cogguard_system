@@ -120,6 +120,7 @@ async def run_acceptance() -> dict[str, Any]:
     _require("Semantic traceability pack" in report_html, "report must show semantic traceability pack")
     _require("Semantic action evidence refs" in report_html, "report must show action evidence refs")
     _require("Semantic corrections" in report_html, "report must show semantic corrections")
+    _require("Closed-loop audit trail" in report_html, "report must show closed-loop audit trail")
     _require("Prototype limitations" in report_html, "report must show prototype limitations")
     for semantic_section in (
         "Sentiment",
@@ -144,6 +145,7 @@ async def run_acceptance() -> dict[str, Any]:
         for action in closed["actions"]
     ]
     semantic_corrections = closed["semantic_corrections"]
+    audit_actions = [event["action"] for event in closed["audit_events"]]
     _require(semantic_policy == "evidence_overlay_only", "semantic policy must remain overlay-only")
     _require(
         closed["prototype_constraints"]["semantic_examples_text_scope"] == "excerpt_only_not_full_source_text",
@@ -193,6 +195,7 @@ async def run_acceptance() -> dict[str, Any]:
             "semantic_evidence_appendix_visible": True,
             "semantic_traceability_pack_visible": True,
             "semantic_corrections_visible": True,
+            "closed_loop_audit_trail_visible": True,
             "prototype_limitations_visible": True,
             "content_hash_changed": True,
         },
@@ -238,6 +241,12 @@ async def run_acceptance() -> dict[str, Any]:
                 "modules": [item["module"] for item in semantic_corrections],
             },
         },
+        "audit_trail": {
+            "count": len(closed["audit_events"]),
+            "actions": audit_actions,
+            "semantic_correction_audited": "record_semantic_correction" in audit_actions,
+            "closed_loop_mutations": list(dict.fromkeys(audit_actions)),
+        },
         "claim_archive": {
             "primary_archive_id": primary_claim["source_archive_id"],
             "supplementary_archive_id": supplementary_claim["source_archive_id"],
@@ -256,7 +265,7 @@ async def run_acceptance() -> dict[str, Any]:
             "closed_statuses": closed_checklist,
             "report_visible": True,
         },
-        "audit_actions": [event["action"] for event in closed["audit_events"]],
+        "audit_actions": audit_actions,
         "claim_boundary": {
             "second_platform_evidence_claimed": False,
             "statement": "No second-platform evidence is fabricated.",

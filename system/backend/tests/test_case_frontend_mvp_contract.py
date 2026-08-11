@@ -382,3 +382,19 @@ def test_case_report_tab_can_export_semantic_support_pack():
         "weibo_only_with_xhs_gap",
     ):
         assert binding in view
+
+
+def test_case_report_tab_exposes_closed_loop_audit_trail():
+    view = (FRONTEND / "views" / "cases" / "index.vue").read_text(encoding="utf-8")
+
+    for binding in (
+        "auditTrailSummary",
+        "auditTrailItems",
+        "audit_trail",
+        "caseDetail.audit_events",
+        "Closed-loop audit trail",
+        "record_semantic_correction",
+        "semantic_correction_audited",
+        "closed_loop_mutations",
+    ):
+        assert binding in view
