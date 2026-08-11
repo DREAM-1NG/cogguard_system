@@ -52,6 +52,8 @@ Current semantic package paths: `system/research/coordination_discover/`, `syste
 | **Audit Event** | An append-only record of an actor, action, target, timestamp, request identity, and before/after references for a case mutation. | Log line, history overwrite, activity note |
 | **Partial Collection Acknowledgement** | An explicit analyst record accepting known collection incompleteness for a named scope without claiming that evidence is complete. | Ignore warning, complete collection, waiver |
 | **Platform Gap** | A **Case Blocker** recording that a required same-event platform source lacks a verifiable archived source. | Empty dataset, fabricated source, unrelated substitute |
+| **Structured Search Record** | An append-only JSONL record of a research query, every returned hit, and each hit's candidate, verified, or rejected disposition. | Search note, selected-links list |
+| **Research Archive Entry** | A reviewed MarkItDown source conversion bound to source and Markdown SHA-256 values plus an exact verified excerpt span. | Source note, trusted URL |
 
 ## Acquisition And Ingestion
 

@@ -20,6 +20,9 @@
 
 ## 2026-08-11
 
+- 新增 Case Workbench 研究归档契约：结构化搜索记录和 reviewed MarkItDown 归档可校验 SHA-256、NFC 规范化摘录范围、归档路径及可选原始来源字节；第二平台结果只能来自已校验归档或显式 `platform-gap.json`，不伪造 CCTV、新华社或第二平台来源。
+- `system/backend/app/{schemas/case_research.py,services/case_research_archive.py}`、`system/backend/tests/test_case_research_archive.py`、`doc/research/case-workbench/README.md`：新增 Pydantic 公共契约、只读归档验证器、回归测试和 append-only 研究协议说明。
+
 - 加固 Case Workbench 原型可信边界：demo 权威主张统一标记为 `candidate_unvalidated`，不再伪造 `source_content_hash`；结案后禁止继续修改，viewer 角色禁止处置/反馈/结案类写操作，报告预览改为通过 Axios 鉴权后打开 Blob URL。
 - 新增 `system/backend/scripts/case_workbench_acceptance.py` 本地验收脚本：以 Weibo-only demo fixture 验证平台缺口确认、处置完成、反馈、结案和报告预览闭环；XHS 缺口保留可见，不伪造第二平台证据。
 - 新增 Case Workbench 平台缺口确认原型：默认 fallback 仍只含微博证据，但研判员可在页面显式确认 `platform_gap` 后继续处置、反馈和结案；确认记录保存在进程内 demo state，并保留缺失平台，不伪造 XHS/抖音证据。
