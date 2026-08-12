@@ -334,6 +334,21 @@
             <div class="node-list">
               <a-tag v-for="node in graphNodes" :key="node.id">{{ node.label || node.id }}</a-tag>
             </div>
+            <div v-if="propagationPaths.length" class="propagation-path-list">
+              <h3>Propagation paths</h3>
+              <div v-for="path in propagationPaths" :key="path.path_id" class="propagation-path-row">
+                <div class="propagation-path-main">
+                  <strong>{{ path.label || path.path_id }}</strong>
+                  <a-tag>{{ path.evidence_type || 'unknown' }}</a-tag>
+                  <span>Evidence type: {{ path.evidence_type || 'unknown' }}</span>
+                </div>
+                <p>{{ path.explanation }}</p>
+                <small>
+                  {{ (path.nodes || []).map((node: any) => node.label || node.id).join(' → ') }}
+                  · {{ (path.edges || []).length }} edge(s)
+                </small>
+              </div>
+            </div>
             <div v-if="graphEvidenceLayers.length" class="evidence-layer-list">
               <div v-for="layer in graphEvidenceLayers" :key="layer.key" class="evidence-layer-row">
                 <div>
@@ -639,6 +654,7 @@ const semanticModuleCoverageEntries = computed(() =>
 )
 const graphNodes = computed<any[]>(() => caseDetail.value?.graph?.nodes || [])
 const graphEdges = computed<any[]>(() => caseDetail.value?.graph?.edges || [])
+const propagationPaths = computed<any[]>(() => caseDetail.value?.graph?.propagation_paths || [])
 const graphEvidenceLayers = computed<any[]>(() => caseDetail.value?.graph?.evidence_layers || [])
 const closureChecklist = computed(() => caseDetail.value?.closure_checklist || [])
 const auditTrailItems = computed(() => caseDetail.value?.audit_events || [])
@@ -1323,6 +1339,26 @@ onMounted(() => {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.propagation-path-list {
+  display: grid;
+  gap: 10px;
+  margin: 16px 0;
+}
+
+.propagation-path-row {
+  padding: 10px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.propagation-path-main {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
 }
 
 .feedback-panel {

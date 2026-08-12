@@ -363,6 +363,31 @@ def test_case_graph_evidence_layers_project_coordination_propagation_review():
     asyncio.run(scenario())
 
 
+def test_case_graph_exposes_minimal_propagation_paths():
+    async def scenario():
+        mongo = _complete_demo_mongo()
+        mongo["raw_posts"].rows[1]["platform"] = "weibo"
+        mongo["raw_posts"].rows[1]["repost_id"] = "weibo_demo_1"
+        service = CaseWorkbenchService(mongo_db=mongo)
+        case = await service.get_case("case_trump_visit_2026_05_21")
+
+        graph = case["graph"]
+        assert graph["propagation_paths"]
+
+        first_path = graph["propagation_paths"][0]
+        assert first_path["path_id"]
+        assert first_path["label"]
+        assert first_path["nodes"]
+        assert first_path["edges"]
+        assert first_path["explanation"]
+        assert first_path["evidence_type"] in {"explicit", "reconstructed", "derived"}
+        assert first_path["edges"][0]["relation_type"] == "repost"
+        assert graph["edges"][0]["source"] == "xinhua"
+        assert graph["edges"][0]["target"] == "observer_1"
+
+    asyncio.run(scenario())
+
+
 def test_platform_gap_acknowledgement_unblocks_default_fallback_without_fabricating_evidence():
     async def scenario():
         service = CaseWorkbenchService(mongo_db={})

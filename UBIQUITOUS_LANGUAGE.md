@@ -94,6 +94,7 @@ Current semantic package paths: `system/research/coordination_discover/`, `syste
 | **Propagation Forecast** | The output that estimates spread size and next-hop behavior from a snapshot. | Trend guess, prediction blob |
 | **Observed Propagation Analysis** | A non-predictive reconstruction of paths, objects, roles, provenance, timelines, and stability from the event snapshot. | Forecast, causal proof |
 | **Propagation Evidence Type** | `explicit`, `reconstructed`, or `inferred`; respectively platform-observed, parent-ID-rebuilt, or shared-object temporal-proximity evidence. | All edges are reposts |
+| **Case Graph Propagation Path** | A compact Case Workbench display row derived from existing `EventSnapshot.relationships`, showing who amplified whom and the observed relation evidence. | Propagation Forecast, semantic path, generated chain |
 | **Observation Cutoff** | A timezone-aware inclusive `observed_until` boundary applied before any prediction input or candidate construction. | Optional display time |
 | **Hindcast** | A retrospective propagation forecast over an observed event window. | Backtest, replay |
 | **Next-Hop Ranking** | The ordered identity-mapped accounts predicted for reactivation after the observation cutoff; anonymous buckets are coverage only. | Candidate list, new-user identity prediction |
@@ -156,6 +157,7 @@ Current semantic package paths: `system/research/coordination_discover/`, `syste
 - **Coordination Detect** can consume **Coordination Discover** representations, but it does not label unlabeled project events.
 - **Propagation Monitoring** consumes one **Event Snapshot** and separates **Observed Propagation Analysis** from **Propagation Forecast**.
 - **Observed Propagation Analysis** never calls prediction code and must preserve **Propagation Evidence Type** provenance.
+- A **Case Graph Propagation Path** is a UI projection of existing relationships; it must not infer future spread, alter risk scores, or fabricate edges when no relationship exists.
 - **Propagation Forecast** must apply an **Observation Cutoff** before candidate construction and may return **Abstain** instead of a fallback prediction.
 - A **Next-Hop Ranking** is displayable only when **Identity Mapping** resolves the candidate to a real event identity.
 - **Candidate Coverage** and **Calibration Status** qualify a **Propagation Forecast**; they are not evidence that a future outcome is certain.

@@ -426,6 +426,23 @@ def test_case_workbench_surfaces_semantic_action_recommendations():
         assert field in types
 
 
+def test_case_graph_tab_exposes_propagation_path_bindings():
+    view = (FRONTEND / "views" / "cases" / "index.vue").read_text(encoding="utf-8")
+
+    for binding in (
+        "propagationPaths",
+        "caseDetail.value?.graph?.propagation_paths",
+        "path.edges",
+        "path.evidence_type",
+    ):
+        assert binding in view
+    for label in (
+        "Propagation paths",
+        "Evidence type",
+    ):
+        assert label in view
+
+
 def test_case_action_evidence_refs_can_drill_down_to_semantic_assistance():
     view = (FRONTEND / "views" / "cases" / "index.vue").read_text(encoding="utf-8")
 

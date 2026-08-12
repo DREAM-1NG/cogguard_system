@@ -281,7 +281,7 @@ class CaseWorkbenchService:
                 primary_claim=primary_claim,
                 supplementary_claim=supplementary_claim,
             ),
-            "graph": _graph_projection(posts),
+            "graph": _graph_projection(posts, snapshot.relationships),
             "actions": actions,
             "feedback": feedback,
             "semantic_corrections": semantic_corrections,
@@ -952,23 +952,94 @@ def _evidence_matrix(
     }
 
 
-def _graph_projection(posts: list[dict[str, Any]]) -> dict[str, Any]:
+def _graph_projection(posts: list[dict[str, Any]], relationships: list[Any] | None = None) -> dict[str, Any]:
     nodes = []
     seen = set()
+    content_accounts: dict[str, dict[str, str]] = {}
     for post in posts:
         author = str(post.get("author_id") or "").strip()
+        platform = str(post.get("platform") or "unknown")
+        post_id = str(post.get("post_id") or "").strip()
         if author and author not in seen:
             seen.add(author)
             nodes.append({"id": author, "label": post.get("author_name") or author, "type": "account"})
+        if author and post_id:
+            content_accounts[f"{platform}:post:{post_id}"] = {
+                "id": author,
+                "label": str(post.get("author_name") or author),
+            }
+    edges = _graph_relationship_edges(relationships or [], content_accounts)
+    propagation_paths = _graph_propagation_paths(edges)
     return {
         "nodes": nodes,
-        "edges": [],
-        "evidence_layers": _graph_evidence_layers(posts=posts, account_count=len(nodes)),
-        "provenance": "case_workbench_projection_only",
+        "edges": edges,
+        "propagation_paths": propagation_paths,
+        "path_analysis": {
+            "edge_count": len(edges),
+            "key_paths": propagation_paths,
+        },
+        "evidence_layers": _graph_evidence_layers(posts=posts, account_count=len(nodes), edge_count=len(edges)),
+        "provenance": "event_snapshot_relationships",
     }
 
 
-def _graph_evidence_layers(*, posts: list[dict[str, Any]], account_count: int) -> list[dict[str, Any]]:
+def _graph_relationship_edges(
+    relationships: list[Any],
+    content_accounts: dict[str, dict[str, str]],
+) -> list[dict[str, Any]]:
+    edges: list[dict[str, Any]] = []
+    seen: set[tuple[str, str, str, str]] = set()
+    for relation in relationships:
+        source_ref = str(getattr(relation, "source_id", "") or "")
+        target_ref = str(getattr(relation, "target_id", "") or "")
+        source = content_accounts.get(source_ref)
+        target = content_accounts.get(target_ref)
+        if not source or not target:
+            continue
+        relation_type = str(getattr(relation, "relation_type", "") or "related")
+        key = (source["id"], target["id"], relation_type, target_ref)
+        if key in seen:
+            continue
+        seen.add(key)
+        edges.append(
+            {
+                "id": f"{relation_type}:{source_ref}->{target_ref}",
+                "source": source["id"],
+                "target": target["id"],
+                "source_label": source["label"],
+                "target_label": target["label"],
+                "relation_type": relation_type,
+                "platform": str(getattr(relation, "platform", "") or ""),
+                "evidence_ref": str(getattr(relation, "evidence_ref", "") or target_ref),
+                "source_ref": source_ref,
+                "target_ref": target_ref,
+            }
+        )
+    return edges
+
+
+def _graph_propagation_paths(edges: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    paths: list[dict[str, Any]] = []
+    for index, edge in enumerate(edges[:8], start=1):
+        nodes = [
+            {"id": edge["source"], "label": edge.get("source_label") or edge["source"]},
+            {"id": edge["target"], "label": edge.get("target_label") or edge["target"]},
+        ]
+        relation_type = edge.get("relation_type") or "related"
+        paths.append(
+            {
+                "path_id": f"snapshot_path_{index}",
+                "label": f"{nodes[0]['label']} -> {nodes[1]['label']}",
+                "nodes": nodes,
+                "edges": [edge],
+                "evidence_type": "explicit",
+                "explanation": f"Observed {relation_type} relationship from EventSnapshot.relationships.",
+            }
+        )
+    return paths
+
+
+def _graph_evidence_layers(*, posts: list[dict[str, Any]], account_count: int, edge_count: int = 0) -> list[dict[str, Any]]:
     post_count = len(posts)
     status = "available" if post_count else "partial"
     return [
@@ -989,7 +1060,7 @@ def _graph_evidence_layers(*, posts: list[dict[str, Any]], account_count: int) -
             "summary": "Posts form the current observed propagation sample; explicit repost edges remain source-dependent.",
             "metrics": {
                 "posts": post_count,
-                "explicit_edges": 0,
+                "explicit_edges": edge_count,
             },
         },
         {
