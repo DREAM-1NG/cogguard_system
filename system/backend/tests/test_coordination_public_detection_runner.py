@@ -155,6 +155,8 @@ def test_public_detection_method_registry_fixes_dataset_method_boundaries():
         "deep_pyg_graphsage_fused_detector",
         "deep_pyg_gin_fused_detector",
         "deep_pyg_gcn_fused_detector",
+        "deep_len_mlp_fused_detector",
+        "deep_len_fast_mlp_fused_detector",
         "inductive_io_graph_learning",
         "iohunter_account_graph_learning",
         "truthy_classic_feature_classifier",
@@ -170,11 +172,15 @@ def test_public_detection_method_registry_fixes_dataset_method_boundaries():
     assert registry.feasibility("large_engagement_networks", "gcn_graph_classifier").status == "ready"
     assert registry.feasibility("large_engagement_networks", "compact_graphsage_fused_detector").status == "ready"
     assert registry.feasibility("large_engagement_networks", "deep_pyg_graphsage_fused_detector").status == "ready"
+    assert registry.feasibility("large_engagement_networks", "deep_len_mlp_fused_detector").status == "ready"
+    assert registry.feasibility("large_engagement_networks", "deep_len_fast_mlp_fused_detector").status == "ready"
     assert registry.feasibility("astroturf_legitimate_classification", "truthy_classic_feature_classifier").status == "ready"
     assert registry.feasibility("astroturf_legitimate_classification", "deep_tabular_mlp_detector").status == "ready"
     assert registry.feasibility("astroturf_legitimate_classification", "gcn_graph_classifier").status == "blocked"
     assert registry.feasibility("astroturf_legitimate_classification", "compact_graphsage_fused_detector").status == "blocked"
     assert registry.feasibility("astroturf_legitimate_classification", "deep_pyg_graphsage_fused_detector").status == "blocked"
+    assert registry.feasibility("astroturf_legitimate_classification", "deep_len_mlp_fused_detector").status == "blocked"
+    assert registry.feasibility("astroturf_legitimate_classification", "deep_len_fast_mlp_fused_detector").status == "blocked"
     assert registry.feasibility("large_engagement_networks", "deep_tabular_mlp_detector").status == "blocked"
 
 
@@ -310,6 +316,8 @@ def test_public_detection_runner_writes_g_drive_results_for_executable_and_block
             "gcn_graph_classifier",
             "compact_graphsage_fused_detector",
             "deep_pyg_graphsage_fused_detector",
+            "deep_len_mlp_fused_detector",
+            "deep_len_fast_mlp_fused_detector",
             "deep_tabular_mlp_detector",
             "tgn",
         ),
@@ -334,9 +342,13 @@ def test_public_detection_runner_writes_g_drive_results_for_executable_and_block
     } == {
         ("large_engagement_networks", "compact_graphsage_fused_detector"),
         ("large_engagement_networks", "deep_pyg_graphsage_fused_detector"),
+        ("large_engagement_networks", "deep_len_mlp_fused_detector"),
+        ("large_engagement_networks", "deep_len_fast_mlp_fused_detector"),
         ("large_engagement_networks", "deep_tabular_mlp_detector"),
         ("astroturf_legitimate_classification", "compact_graphsage_fused_detector"),
         ("astroturf_legitimate_classification", "deep_pyg_graphsage_fused_detector"),
+        ("astroturf_legitimate_classification", "deep_len_mlp_fused_detector"),
+        ("astroturf_legitimate_classification", "deep_len_fast_mlp_fused_detector"),
         ("astroturf_legitimate_classification", "deep_tabular_mlp_detector"),
     }
     assert all(gate["selection_eligible"] is False for gate in deep_gates)
@@ -352,6 +364,8 @@ def test_public_detection_runner_writes_g_drive_results_for_executable_and_block
         "gcn_graph_classifier",
         "compact_graphsage_fused_detector",
         "deep_pyg_graphsage_fused_detector",
+        "deep_len_mlp_fused_detector",
+        "deep_len_fast_mlp_fused_detector",
     }.issubset(row_methods)
     al_success = {
         row["method_id"]
@@ -368,6 +382,8 @@ def test_public_detection_runner_writes_g_drive_results_for_executable_and_block
     assert blocked_rows[("astroturf_legitimate_classification", "gcn_graph_classifier")] == "blocked"
     assert blocked_rows[("astroturf_legitimate_classification", "compact_graphsage_fused_detector")] == "blocked"
     assert blocked_rows[("astroturf_legitimate_classification", "deep_pyg_graphsage_fused_detector")] == "blocked"
+    assert blocked_rows[("astroturf_legitimate_classification", "deep_len_mlp_fused_detector")] == "blocked"
+    assert blocked_rows[("astroturf_legitimate_classification", "deep_len_fast_mlp_fused_detector")] == "blocked"
     assert blocked_rows[("large_engagement_networks", "deep_tabular_mlp_detector")] == "blocked"
     blocked = {
         (item["dataset_id"], item["method_id"]): item["status"]
@@ -376,6 +392,8 @@ def test_public_detection_runner_writes_g_drive_results_for_executable_and_block
     assert blocked[("large_engagement_networks", "tgn")] == "blocked"
     assert blocked[("astroturf_legitimate_classification", "gcn_graph_classifier")] == "blocked"
     assert blocked[("astroturf_legitimate_classification", "deep_pyg_graphsage_fused_detector")] == "blocked"
+    assert blocked[("astroturf_legitimate_classification", "deep_len_mlp_fused_detector")] == "blocked"
+    assert blocked[("astroturf_legitimate_classification", "deep_len_fast_mlp_fused_detector")] == "blocked"
     assert blocked[("large_engagement_networks", "deep_tabular_mlp_detector")] == "blocked"
     deep_row = next(
         row
@@ -392,6 +410,38 @@ def test_public_detection_runner_writes_g_drive_results_for_executable_and_block
     assert deep_row["test_partition_fingerprint"] not in json.dumps(artifact, sort_keys=True)
     assert deep_row["selection_eligible"] is False
     assert "test_labels" not in json.dumps(artifact, sort_keys=True)
+    len_mlp_row = next(
+        row
+        for row in manifest["rows"]
+        if row["dataset_id"] == "large_engagement_networks"
+        and row["method_id"] == "deep_len_mlp_fused_detector"
+    )
+    len_mlp_artifact = len_mlp_row["model_artifact"]
+    assert len_mlp_artifact["optimizer_config"]["algorithm"] == "deep_len_graph_stat_mlp_fused_detector"
+    assert len_mlp_artifact["optimizer_config"]["search_budget"] in {
+        "smoke_small_fixture",
+        "fast_len_sklearn_mlp_grid_v2",
+    }
+    assert len_mlp_artifact["optimizer_config"]["device"] == "cpu/sklearn"
+    assert len_mlp_artifact["optimizer_config"]["internal_feature_width"] == 42
+    assert len_mlp_row["test_partition_fingerprint"] not in json.dumps(len_mlp_artifact, sort_keys=True)
+    assert len_mlp_row["selection_eligible"] is False
+    assert "test_labels" not in json.dumps(len_mlp_artifact, sort_keys=True)
+    fast_len_mlp_row = next(
+        row
+        for row in manifest["rows"]
+        if row["dataset_id"] == "large_engagement_networks"
+        and row["method_id"] == "deep_len_fast_mlp_fused_detector"
+    )
+    fast_artifact = fast_len_mlp_row["model_artifact"]
+    assert fast_artifact["optimizer_config"]["search_budget"] in {
+        "smoke_small_fixture",
+        "fast_len_sklearn_mlp_single_v1",
+    }
+    assert fast_artifact["optimizer_config"]["device"] == "cpu/sklearn"
+    assert fast_len_mlp_row["test_partition_fingerprint"] not in json.dumps(fast_artifact, sort_keys=True)
+    assert fast_len_mlp_row["selection_eligible"] is False
+    assert "test_labels" not in json.dumps(fast_artifact, sort_keys=True)
     compact_row = next(
         row
         for row in manifest["rows"]

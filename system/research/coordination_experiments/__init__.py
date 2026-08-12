@@ -147,6 +147,7 @@ from .graph_neural_detection import (
 )
 from .deep_detection import (
     DEEP_DETECTION_METHODS,
+    DEEP_LEN_FUSED_DETECTION_METHODS,
     DEEP_PYG_DETECTION_METHODS,
     DEEP_TABULAR_DETECTION_METHODS,
     DeepDetectionImplementation,
@@ -216,6 +217,7 @@ __all__ = [
     "HEURISTIC_BASELINE_WARNING",
     "HeuristicDetectionImplementation",
     "DEEP_DETECTION_METHODS",
+    "DEEP_LEN_FUSED_DETECTION_METHODS",
     "DEEP_PYG_DETECTION_METHODS",
     "DEEP_TABULAR_DETECTION_METHODS",
     "DeepDetectionImplementation",

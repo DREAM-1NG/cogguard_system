@@ -47,7 +47,17 @@ DEEP_TABULAR_DETECTION_METHODS = frozenset(
         "deep_tabular_residual_detector",
     }
 )
-DEEP_DETECTION_METHODS = DEEP_PYG_DETECTION_METHODS | DEEP_TABULAR_DETECTION_METHODS
+DEEP_LEN_FUSED_DETECTION_METHODS = frozenset(
+    {
+        "deep_len_mlp_fused_detector",
+        "deep_len_fast_mlp_fused_detector",
+    }
+)
+DEEP_DETECTION_METHODS = (
+    DEEP_PYG_DETECTION_METHODS
+    | DEEP_TABULAR_DETECTION_METHODS
+    | DEEP_LEN_FUSED_DETECTION_METHODS
+)
 
 _MAX_DEEP_GRAPH_NODES = 384
 _MAX_DEEP_GRAPH_EDGES = 4096
@@ -369,6 +379,27 @@ def _configs(kind: str, train_count: int, method_id: str = "") -> tuple[_TrainCo
             for dropout in (0.1, 0.3)
             for lr in (0.001, 0.003)
         )
+    if kind == "len_mlp":
+        if method_id == "deep_len_fast_mlp_fused_detector":
+            return (
+                _TrainConfig(
+                    16,
+                    1,
+                    0.0,
+                    0.003,
+                    1.0e-3,
+                    80,
+                    0,
+                    "fast_len_sklearn_mlp_single_v1",
+                ),
+            )
+        return tuple(
+            _TrainConfig(hidden, layers, 0.0, lr, alpha, 250, 0, "fast_len_sklearn_mlp_grid_v2")
+            for hidden in (16, 32)
+            for layers in (1, 2)
+            for lr in (0.001, 0.003)
+            for alpha in (1.0e-4,)
+        )
     if method_id == "deep_tabular_residual_detector":
         return (
             _TrainConfig(64, 2, 0.1, 0.003, 1.0e-4, 40, 5, "fast_tabular_single_v4"),
@@ -430,6 +461,23 @@ def _state_hash(model: Any) -> str:
             round(float(item), 8)
             for item in value.detach().cpu().reshape(-1).tolist()[:512]
         ]
+    return "sha256:" + hashlib.sha256(
+        json.dumps(payload, sort_keys=True, separators=(",", ":"), allow_nan=False).encode("utf-8")
+    ).hexdigest()
+
+
+def _sklearn_state_hash(model: Any) -> str:
+    payload: dict[str, Any] = {
+        "classes": [int(value) for value in getattr(model, "classes_", ())],
+        "loss": float(getattr(model, "loss_", 0.0)),
+        "n_iter": int(getattr(model, "n_iter_", 0)),
+    }
+    for prefix in ("coefs_", "intercepts_"):
+        values = []
+        for value in getattr(model, prefix, ()):
+            array = np.asarray(value, dtype=np.float64).reshape(-1)
+            values.append([round(float(item), 8) for item in array[:512].tolist()])
+        payload[prefix] = values
     return "sha256:" + hashlib.sha256(
         json.dumps(payload, sort_keys=True, separators=(",", ":"), allow_nan=False).encode("utf-8")
     ).hexdigest()
@@ -806,6 +854,111 @@ def _fit_tabular(
     return fit, test_logits
 
 
+def _graph_internal_matrix(examples: tuple[_DeepExample, ...]) -> np.ndarray:
+    values = [
+        _graph_internal_features(example.graph)
+        for example in examples
+        if example.graph is not None
+    ]
+    if len(values) != len(examples):
+        raise ValueError("LEN fused deep detector requires graph sketches for all partitions")
+    return np.asarray(values, dtype=np.float64)
+
+
+def _fit_len_mlp(
+    method_id: str,
+    train: tuple[_DeepExample, ...],
+    validation: tuple[_DeepExample, ...],
+    test: tuple[_DeepExample, ...],
+    *,
+    seed: int,
+) -> tuple[_FitResult, np.ndarray]:
+    try:
+        from sklearn.exceptions import ConvergenceWarning
+        from sklearn.neural_network import MLPClassifier
+    except ImportError as exc:
+        raise ValueError("sklearn is required for the LEN fused deep detector") from exc
+    import warnings
+
+    base_train_x = _feature_matrix(train)
+    base_validation_x = _feature_matrix(validation)
+    base_test_x = _feature_matrix(test)
+    graph_train_x = _graph_internal_matrix(train)
+    graph_validation_x = _graph_internal_matrix(validation)
+    graph_test_x = _graph_internal_matrix(test)
+    train_x, validation_x, test_x, mean, scale = _standardize_arrays(
+        np.concatenate((base_train_x, graph_train_x), axis=1),
+        np.concatenate((base_validation_x, graph_validation_x), axis=1),
+        np.concatenate((base_test_x, graph_test_x), axis=1),
+    )
+    train_y = _labels(train)
+    validation_y = _labels(validation)
+    internal_feature_width = int(graph_train_x.shape[1])
+
+    def probability_logits(model: Any, values: np.ndarray) -> np.ndarray:
+        classes = list(getattr(model, "classes_", ()))
+        if 1 not in classes:
+            raise ValueError("LEN fused deep detector did not learn the positive class")
+        positive_index = classes.index(1)
+        probabilities = np.asarray(model.predict_proba(values), dtype=np.float64)[:, positive_index]
+        probabilities = np.clip(probabilities, 1.0e-6, 1.0 - 1.0e-6)
+        return np.log(probabilities / (1.0 - probabilities)).astype(np.float64)
+
+    def fit_config(config: _TrainConfig, config_seed: int):
+        random.seed(config_seed)
+        np.random.seed(config_seed % (2**32 - 1))
+        model = MLPClassifier(
+            hidden_layer_sizes=(config.hidden_dim,) * config.layers,
+            activation="relu",
+            solver="adam",
+            alpha=config.weight_decay,
+            learning_rate_init=config.learning_rate,
+            max_iter=config.max_epochs,
+            early_stopping=False,
+            random_state=config_seed,
+            batch_size=min(32, max(2, len(train))),
+            shuffle=True,
+        )
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", ConvergenceWarning)
+            model.fit(train_x, train_y)
+        return model
+
+    best: tuple[float, _FitResult, int] | None = None
+    configs = _configs("len_mlp", len(train), method_id)
+    for index, config in enumerate(configs):
+        model = fit_config(config, seed + index * 3571)
+        validation_logits = probability_logits(model, validation_x)
+        slope, intercept, lower, upper, mode, score = _calibration_and_score(
+            validation_logits,
+            validation_y,
+        )
+        result = _FitResult(
+            model=model,
+            validation_logits=validation_logits,
+            calibrator_slope=slope,
+            calibrator_intercept=intercept,
+            lower_threshold=lower,
+            upper_threshold=upper,
+            calibration_mode=mode,
+            selected_config=config,
+            searched_config_count=len(configs),
+            model_state_hash=_sklearn_state_hash(model),
+            global_mean=mean,
+            global_scale=scale,
+            device="cpu/sklearn",
+            internal_feature_width=internal_feature_width,
+        )
+        rank = (score, -index)
+        if best is None or rank > (best[0], -best[2]):
+            best = (score, result, index)
+    if best is None:
+        raise ValueError("LEN fused deep detector did not train any candidate")
+    fit = best[1]
+    test_logits = probability_logits(fit.model, test_x)
+    return fit, test_logits
+
+
 def _fit_graph(
     method_id: str,
     train: tuple[_DeepExample, ...],
@@ -1040,9 +1193,10 @@ class DeepDetectionImplementation(_LearnedDetectionImplementation):
         seed = _seed_for(self.method_id, partitions)
         is_graph = self.method_id in DEEP_PYG_DETECTION_METHODS
         is_tabular = self.method_id in DEEP_TABULAR_DETECTION_METHODS
+        is_len_fused = self.method_id in DEEP_LEN_FUSED_DETECTION_METHODS
         train, validation, test, feature_width = _examples_from_partitions(
             partitions,
-            graph=is_graph,
+            graph=is_graph or is_len_fused,
             tabular=is_tabular,
         )
         if {example.label for example in train} != {0, 1}:
@@ -1052,6 +1206,9 @@ class DeepDetectionImplementation(_LearnedDetectionImplementation):
         if is_graph:
             fit, test_logits = _fit_graph(self.method_id, train, validation, test, seed=seed)
             algorithm = "deep_pyg_graph_fused_detector"
+        elif is_len_fused:
+            fit, test_logits = _fit_len_mlp(self.method_id, train, validation, test, seed=seed)
+            algorithm = "deep_len_graph_stat_mlp_fused_detector"
         else:
             fit, test_logits = _fit_tabular(self.method_id, train, validation, test, seed=seed)
             algorithm = "deep_tabular_feature_detector"
@@ -1071,6 +1228,7 @@ class DeepDetectionImplementation(_LearnedDetectionImplementation):
 
 __all__ = [
     "DEEP_DETECTION_METHODS",
+    "DEEP_LEN_FUSED_DETECTION_METHODS",
     "DEEP_PYG_DETECTION_METHODS",
     "DEEP_TABULAR_DETECTION_METHODS",
     "DeepDetectionImplementation",

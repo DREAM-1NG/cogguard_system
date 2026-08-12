@@ -88,8 +88,16 @@ _DEEP_DETECTION_CANDIDATE_IDS = frozenset(
         "deep_pyg_graphsage_fused_detector",
         "deep_pyg_gin_fused_detector",
         "deep_pyg_gcn_fused_detector",
+        "deep_len_mlp_fused_detector",
+        "deep_len_fast_mlp_fused_detector",
         "deep_tabular_mlp_detector",
         "deep_tabular_residual_detector",
+    }
+)
+_SKLEARN_WARMUP_METHOD_IDS = frozenset(
+    {
+        "deep_len_mlp_fused_detector",
+        "deep_len_fast_mlp_fused_detector",
     }
 )
 _DEEP_ACTIVATION_METRICS = (
@@ -507,6 +515,26 @@ def default_public_detection_method_registry() -> PublicDetectionMethodRegistry:
             ("graph_labels", "weighted_edges", "binary_detection_gold"),
             "deep_pyg_gcn_fused_detector",
             "Research-only LEN candidate: PyG GCN graph encoder fused with graph/stat/Stage-1 features.",
+        ),
+        PublicDetectionMethodSpec(
+            "deep_len_mlp_fused_detector",
+            "LEN nonlinear fused detector",
+            "deep_graph_stat_detection",
+            2026,
+            "local:system/research/coordination_experiments/deep_detection.py",
+            ("graph_labels", "weighted_edges", "binary_detection_gold"),
+            "deep_len_mlp_fused_detector",
+            "Research-only LEN candidate: train-only standardized graph/stat/Stage-1 features plus graph-sketch summaries with a lightweight MLP.",
+        ),
+        PublicDetectionMethodSpec(
+            "deep_len_fast_mlp_fused_detector",
+            "LEN fast nonlinear fused detector",
+            "deep_graph_stat_detection",
+            2026,
+            "local:system/research/coordination_experiments/deep_detection.py",
+            ("graph_labels", "weighted_edges", "binary_detection_gold"),
+            "deep_len_fast_mlp_fused_detector",
+            "Research-only LEN candidate: single-configuration lightweight MLP over train-only standardized graph/stat/Stage-1 features plus graph-sketch summaries.",
         ),
         PublicDetectionMethodSpec(
             "inductive_io_graph_learning",
@@ -1176,20 +1204,33 @@ def _run_ids(method_ids: Sequence[str] | None) -> tuple[str, ...]:
 
 
 def _maybe_warm_torch_runtime(method_ids: Sequence[str]) -> dict[str, Any]:
-    if not any(method_id in _TORCH_WARMUP_METHOD_IDS for method_id in method_ids):
+    needs_torch = any(method_id in _TORCH_WARMUP_METHOD_IDS for method_id in method_ids)
+    needs_sklearn = any(method_id in _SKLEARN_WARMUP_METHOD_IDS for method_id in method_ids)
+    if not needs_torch and not needs_sklearn:
         return {"status": "not_required", "runtime_seconds": 0.0}
     import time
 
     started = time.perf_counter()
+    warmed: list[str] = []
+    device = "cpu"
     try:
-        import torch
+        if needs_torch:
+            import torch
 
-        values = torch.tensor([0.0, 1.0], dtype=torch.float32)
-        _ = torch.sigmoid(values).sum().item()
+            values = torch.tensor([0.0, 1.0], dtype=torch.float32)
+            _ = torch.sigmoid(values).sum().item()
+            warmed.append("torch")
+            device = "cuda" if torch.cuda.is_available() else "cpu"
+        if needs_sklearn:
+            from sklearn.neural_network import MLPClassifier
+
+            _ = MLPClassifier(hidden_layer_sizes=(2,), max_iter=1, random_state=0)
+            warmed.append("sklearn")
         return {
             "status": "completed",
             "runtime_seconds": time.perf_counter() - started,
-            "device": "cuda" if torch.cuda.is_available() else "cpu",
+            "components": warmed,
+            "device": device,
         }
     except Exception as exc:
         return {

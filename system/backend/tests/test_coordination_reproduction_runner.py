@@ -509,12 +509,17 @@ def test_baseline_registry_exposes_required_methods_ablations_and_blocking():
         "heuristic_baseline_v1",
         "deep_pyg_graphsage_fused_detector", "deep_pyg_gin_fused_detector",
         "deep_pyg_gcn_fused_detector", "deep_tabular_mlp_detector",
-        "deep_tabular_residual_detector",
+        "deep_tabular_residual_detector", "deep_len_mlp_fused_detector",
+        "deep_len_fast_mlp_fused_detector",
     } <= set(registry.method_ids())
     assert package.DEEP_PYG_DETECTION_METHODS == {
         "deep_pyg_graphsage_fused_detector",
         "deep_pyg_gin_fused_detector",
         "deep_pyg_gcn_fused_detector",
+    }
+    assert package.DEEP_LEN_FUSED_DETECTION_METHODS == {
+        "deep_len_mlp_fused_detector",
+        "deep_len_fast_mlp_fused_detector",
     }
     assert package.DEEP_TABULAR_DETECTION_METHODS == {
         "deep_tabular_mlp_detector",
@@ -531,6 +536,8 @@ def test_baseline_registry_exposes_required_methods_ablations_and_blocking():
         "torch_geometric",
     )
     assert registry.get("deep_tabular_mlp_detector").optional_dependencies == ("torch",)
+    assert registry.get("deep_len_mlp_fused_detector").optional_dependencies == ("sklearn",)
+    assert registry.get("deep_len_fast_mlp_fused_detector").optional_dependencies == ("sklearn",)
     assert set(baselines.REQUIRED_ABLATIONS) == {
         "no_tsgs", "no_mhcr", "no_relation_specific", "no_temporal_augmentation",
         "coordination_only", "detection_features_only",
