@@ -836,6 +836,26 @@ def test_case_report_prints_semantic_traceability_for_review_and_actions():
     asyncio.run(scenario())
 
 
+def test_case_report_prints_semantic_action_recommendations():
+    async def scenario():
+        service = CaseWorkbenchService(mongo_db={})
+
+        case = await service.get_case("case_trump_visit_2026_05_21")
+        recommendations = case["semantic_artifacts"][0]["summary"]["action_recommendations"]
+        html = await service.render_report_html("case_trump_visit_2026_05_21", 1)
+
+        assert recommendations
+        assert recommendations[0]["action_id"] == "action_review_public_response"
+        assert recommendations[0]["score_policy"] == "evidence_overlay_only"
+        assert recommendations[0]["status"] == "candidate_unvalidated"
+        assert "Semantic action recommendations" in html
+        assert "semantic_action_review_public_response" in html
+        assert "action_review_public_response" in html
+        assert "candidate_unvalidated / evidence_overlay_only" in html
+
+    asyncio.run(scenario())
+
+
 def test_case_report_handles_missing_primary_claim_without_hiding_semantic_support():
     async def scenario():
         service = CaseWorkbenchService(mongo_db=_complete_demo_mongo(), missing_primary_claim=True)

@@ -269,6 +269,7 @@ class CaseWorkbenchService:
                         "near_duplicates": semantic["near_duplicates"]["main_posts"],
                         "community_comparison": semantic["community_comparison"],
                         "decision_support": semantic["decision_support"],
+                        "action_recommendations": semantic["decision_support"]["action_recommendations"],
                     },
                     "provenance": semantic["provenance"],
                 }
@@ -946,6 +947,7 @@ def _evidence_matrix(
             "near_duplicates": semantic["near_duplicates"],
             "community_comparison": semantic["community_comparison"],
             "decision_support": semantic["decision_support"],
+            "action_recommendations": semantic["decision_support"]["action_recommendations"],
         },
     }
 
@@ -1277,6 +1279,15 @@ def _report_semantic_traceability(semantic: dict[str, Any], actions: list[dict[s
         _semantic_example_lines(summary),
         empty="No semantic examples available",
     )
+    action_recommendations = _report_term_items(
+        (
+            f"{item.get('recommendation_id', '-')}: {item.get('action_id', '-')} "
+            f"({item.get('status', '-')}/{item.get('score_policy', '-')}); "
+            f"refs={', '.join(item.get('evidence_refs') or []) or '-'}; {item.get('rationale', '-')}"
+            for item in support.get("action_recommendations") or []
+        ),
+        empty="No semantic action recommendations available",
+    )
     action_refs = _report_term_items(
         (
             f"{action.get('action_id', '-')}: {', '.join(action.get('evidence_refs') or []) or '-'}"
@@ -1290,6 +1301,7 @@ def _report_semantic_traceability(semantic: dict[str, Any], actions: list[dict[s
         f"<h3>Review hints</h3><ul>{review_hints}</ul>"
         f"<h3>Module coverage</h3><ul>{module_items}</ul>"
         f"<h3>Semantic examples</h3><ul>{semantic_examples}</ul>"
+        f"<h3>Semantic action recommendations</h3><ul>{action_recommendations}</ul>"
         f"<h3>Semantic action evidence refs</h3><ul>{action_refs}</ul>"
         "</section>"
     )

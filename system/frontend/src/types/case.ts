@@ -70,6 +70,18 @@ export interface SemanticNearDuplicateGroup {
   representative_text?: string
 }
 
+export interface SemanticActionRecommendation {
+  recommendation_id: string
+  action_id: string
+  status: string
+  score_policy: string
+  label?: string
+  evidence_refs?: string[]
+  rationale?: string
+  does_not_modify?: string[]
+  signals?: Record<string, any>
+}
+
 export interface SemanticDecisionSupport {
   coverage?: Record<string, any>
   confidence?: Record<string, any>
@@ -77,6 +89,7 @@ export interface SemanticDecisionSupport {
   platform_slices?: Array<Record<string, any>>
   time_slices?: Array<Record<string, any>>
   review_hints?: string[]
+  action_recommendations?: SemanticActionRecommendation[]
   operator_prompt?: string
 }
 
@@ -104,6 +117,7 @@ export interface SemanticArtifactSummary {
   community_comparison?: { group_by?: string; items?: SemanticCommunityComparisonItem[] }
   near_duplicates?: SemanticNearDuplicateGroup[]
   decision_support?: SemanticDecisionSupport
+  action_recommendations?: SemanticActionRecommendation[]
   top_keywords?: Array<{ term: string; count?: number }>
   topics?: { items?: Array<Record<string, any>> }
   entities?: Array<{ entity: string }>

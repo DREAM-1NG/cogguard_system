@@ -22,6 +22,7 @@ def test_case_workbench_acceptance_closes_the_weibo_only_demo_case():
         "semantic_decision_support_visible": True,
         "semantic_evidence_appendix_visible": True,
         "semantic_traceability_pack_visible": True,
+        "semantic_action_recommendations_visible": True,
         "semantic_corrections_visible": True,
         "closed_loop_audit_trail_visible": True,
         "prototype_limitations_visible": True,
@@ -78,6 +79,12 @@ def test_case_workbench_acceptance_closes_the_weibo_only_demo_case():
                     "evidence_refs": ["run_case_workbench_demo"],
                 },
             ],
+            "action_recommendations": {
+                "count": 1,
+                "action_ids": ["action_review_public_response"],
+                "statuses": ["candidate_unvalidated"],
+                "score_policy": ["evidence_overlay_only"],
+            },
         },
         "corrections": {
             "count": 1,

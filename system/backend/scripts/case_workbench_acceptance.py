@@ -118,6 +118,7 @@ async def run_acceptance() -> dict[str, Any]:
     _require("Semantic decision support" in report_html, "report must show semantic decision support")
     _require("Semantic evidence appendix" in report_html, "report must show semantic evidence appendix")
     _require("Semantic traceability pack" in report_html, "report must show semantic traceability pack")
+    _require("Semantic action recommendations" in report_html, "report must show semantic action recommendations")
     _require("Semantic action evidence refs" in report_html, "report must show action evidence refs")
     _require("Semantic corrections" in report_html, "report must show semantic corrections")
     _require("Closed-loop audit trail" in report_html, "report must show closed-loop audit trail")
@@ -194,6 +195,7 @@ async def run_acceptance() -> dict[str, Any]:
             "semantic_decision_support_visible": True,
             "semantic_evidence_appendix_visible": True,
             "semantic_traceability_pack_visible": True,
+            "semantic_action_recommendations_visible": True,
             "semantic_corrections_visible": True,
             "closed_loop_audit_trail_visible": True,
             "prototype_limitations_visible": True,
@@ -233,6 +235,12 @@ async def run_acceptance() -> dict[str, Any]:
                 "module_coverage_modules": list(decision_support["module_coverage"]),
                 "semantic_example_ids": semantic_example_ids,
                 "action_evidence_refs": action_evidence_refs,
+                "action_recommendations": {
+                    "count": len(decision_support.get("action_recommendations") or []),
+                    "action_ids": [item["action_id"] for item in decision_support.get("action_recommendations") or []],
+                    "statuses": [item["status"] for item in decision_support.get("action_recommendations") or []],
+                    "score_policy": [item["score_policy"] for item in decision_support.get("action_recommendations") or []],
+                },
             },
             "corrections": {
                 "count": len(semantic_corrections),

@@ -288,3 +288,30 @@ def test_semantic_artifact_hash_is_stable_for_identical_inputs(monkeypatch):
 
     assert first["generated_at"] != second["generated_at"]
     assert first["artifact_sha256"] == second["artifact_sha256"]
+
+
+def test_semantic_decision_support_recommends_action_refs_without_changing_score_policy():
+    snapshot = _snapshot()
+
+    semantic = analyze_semantic_enrichment_snapshot(
+        snapshot,
+        {"primary_claim_text": "涓編鍏崇郴绋冲畾鍓嶈"},
+    )
+    recommendations = semantic["decision_support"]["action_recommendations"]
+
+    assert recommendations
+    assert recommendations[0]["recommendation_id"] == "semantic_action_review_public_response"
+    assert recommendations[0]["action_id"] == "action_review_public_response"
+    assert recommendations[0]["status"] == "candidate_unvalidated"
+    assert recommendations[0]["score_policy"] == "evidence_overlay_only"
+    assert recommendations[0]["evidence_refs"] == [
+        "semantic_case_workbench_demo",
+        "claim_cctv_primary",
+    ]
+    assert recommendations[0]["does_not_modify"] == [
+        "coordination_discover",
+        "propagation_analysis",
+        "student",
+        "teacher",
+    ]
+    assert semantic["provenance"]["score_policy"] == "semantic_artifacts_are_evidence_overlay_only"

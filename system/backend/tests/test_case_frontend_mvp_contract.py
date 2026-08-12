@@ -398,3 +398,29 @@ def test_case_report_tab_exposes_closed_loop_audit_trail():
         "closed_loop_mutations",
     ):
         assert binding in view
+
+
+def test_case_workbench_surfaces_semantic_action_recommendations():
+    view = (FRONTEND / "views" / "cases" / "index.vue").read_text(encoding="utf-8")
+    types = (FRONTEND / "types" / "case.ts").read_text(encoding="utf-8")
+
+    for binding in (
+        "semanticActionRecommendations",
+        "summary?.action_recommendations",
+        "Semantic action recommendations",
+        "recommendation.action_id",
+        "recommendation.evidence_refs",
+        "action_recommendations",
+        "semantic_action_recommendations",
+    ):
+        assert binding in view
+    for field in (
+        "export interface SemanticActionRecommendation",
+        "recommendation_id: string",
+        "action_id: string",
+        "status: string",
+        "score_policy: string",
+        "evidence_refs?: string[]",
+        "action_recommendations?: SemanticActionRecommendation[]",
+    ):
+        assert field in types

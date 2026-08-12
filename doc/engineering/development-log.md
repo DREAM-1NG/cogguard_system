@@ -20,6 +20,8 @@
 
 ## 2026-08-11
 
+- Case Workbench 新增语义处置建议原型：`semantic_enrichment` 将情感、立场、近重复和社区对比汇总为 `action_recommendations`，在 Case payload、证据矩阵、报告、验收 JSON 和语义辅助包中可见；建议保持 `candidate_unvalidated` / `evidence_overlay_only`，不改变 CPR 分数、Case 状态、处置状态或平台证据。
+
 - Case 报告预览补齐语义研判摘要：HTML/PDF fallback 报告现在打印 `Semantic decision support`，包含覆盖率、候选置信状态、平台切片、时间切片和“语义只作分诊提示”的操作边界；本地验收脚本同步检查该区块可见。
 
 - Case Workbench 验收导出补充语义研判摘要：后端 `case_workbench_acceptance.py` 和前端验收 JSON 导出均包含 `semantic_decision_support`，记录覆盖率、候选状态、平台/时间切片和“只作分诊提示”的操作边界，便于演示后复查 NLP 支撑证据。

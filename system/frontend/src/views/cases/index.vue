@@ -165,6 +165,22 @@
                     </a-tag>
                   </a-space>
                 </div>
+                <div v-if="semanticActionRecommendations.length" class="semantic-section semantic_action_recommendations">
+                  <h3>Semantic action recommendations</h3>
+                  <p class="semantic-boundary-note">candidate_unvalidated / evidence_overlay_only</p>
+                  <div
+                    v-for="recommendation in semanticActionRecommendations"
+                    :key="recommendation.recommendation_id"
+                    class="topic-row"
+                  >
+                    <strong>{{ recommendation.action_id }} · {{ recommendation.status }}</strong>
+                    <span>
+                      {{ recommendation.rationale || '-' }}
+                      <br />
+                      {{ (recommendation.evidence_refs || []).join(', ') || '-' }}
+                    </span>
+                  </div>
+                </div>
                 <div class="semantic-slice-grid">
                   <div>
                     <h4>Time slices</h4>
@@ -595,6 +611,11 @@ const semanticTraceExamples = computed(() => {
 })
 const semanticDecisionSupport = computed(() => semanticArtifact.value?.summary?.decision_support || null)
 const semanticReviewHints = computed(() => semanticDecisionSupport.value?.review_hints || [])
+const semanticActionRecommendations = computed(() =>
+  semanticArtifact.value?.summary?.action_recommendations
+  || semanticDecisionSupport.value?.action_recommendations
+  || [],
+)
 const semanticCorrections = computed(() => caseDetail.value?.semantic_corrections || [])
 const semanticModuleCoverageEntries = computed(() =>
   Object.entries(semanticDecisionSupport.value?.module_coverage || {}).map(([module, value]) => {
@@ -686,6 +707,7 @@ const acceptanceEvidencePayload = computed(() => {
       time_slices: semanticDecisionSupport.value?.time_slices || [],
       review_hints: semanticReviewHints.value,
       module_coverage: semanticModuleCoverageEntries.value,
+      action_recommendations: semanticActionRecommendations.value,
       operator_prompt: semanticDecisionSupport.value?.operator_prompt,
     },
     semantic_traceability: {
@@ -700,6 +722,7 @@ const acceptanceEvidencePayload = computed(() => {
         excerpt: example.excerpt,
       })),
       near_duplicate_content_ids: nearDuplicateGroups.value.flatMap((group) => group.content_ids || []),
+      action_recommendations: semanticActionRecommendations.value,
     },
     semantic_corrections: semanticCorrections.value,
     prototype_limitations: {
@@ -739,6 +762,7 @@ const semanticSupportPackPayload = computed(() => {
     near_duplicates: summary?.near_duplicates || [],
     community_comparison: summary?.community_comparison ?? null,
     decision_support: summary?.decision_support ?? null,
+    action_recommendations: semanticActionRecommendations.value,
     semantic_examples: semanticTraceExamples.value.map((example) => ({
       source: example.source,
       content_id: example.content_id,

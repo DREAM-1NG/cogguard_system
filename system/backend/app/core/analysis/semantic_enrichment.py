@@ -111,6 +111,7 @@ def analyze_semantic_enrichment_snapshot(
         stance=stance,
         near_duplicates=near_duplicates,
         community_comparison=community_comparison,
+        primary_claim_ref="claim_cctv_primary" if primary_claim else None,
     )
     status = "partial" if stance.get("status") == "blocked" else "ok"
 
@@ -377,6 +378,7 @@ def _decision_support(
     stance: dict[str, Any],
     near_duplicates: dict[str, Any],
     community_comparison: dict[str, Any],
+    primary_claim_ref: str | None,
 ) -> dict[str, Any]:
     total_texts = len(rows)
     covered_texts = len([row for row in rows if row.get("text")])
@@ -431,6 +433,14 @@ def _decision_support(
             stance=stance,
             near_duplicates=near_duplicates,
             community_comparison=community_comparison,
+        ),
+        "action_recommendations": _action_recommendations(
+            rows=rows,
+            sentiment=sentiment,
+            stance=stance,
+            near_duplicates=near_duplicates,
+            community_comparison=community_comparison,
+            primary_claim_ref=primary_claim_ref,
         ),
         "operator_prompt": "Use semantic outputs as triage hints, not as risk-score inputs.",
     }
@@ -530,6 +540,54 @@ def _review_hints(
     if len(community_comparison.get("items", [])) <= 1:
         hints.append("Current semantic comparison is single-platform; preserve the Platform Gap note.")
     return hints
+
+
+def _action_recommendations(
+    *,
+    rows: list[dict[str, Any]],
+    sentiment: dict[str, Any],
+    stance: dict[str, Any],
+    near_duplicates: dict[str, Any],
+    community_comparison: dict[str, Any],
+    primary_claim_ref: str | None,
+) -> list[dict[str, Any]]:
+    if not rows:
+        return []
+
+    evidence_refs = ["semantic_case_workbench_demo"]
+    if primary_claim_ref:
+        evidence_refs.append(primary_claim_ref)
+
+    recommendation = {
+        "recommendation_id": "semantic_action_review_public_response",
+        "action_id": "action_review_public_response",
+        "label": "Review public response posture",
+        "status": MODEL_STATUS,
+        "score_policy": "evidence_overlay_only",
+        "evidence_refs": evidence_refs,
+        "rationale": (
+            "Sentiment, stance, near duplicates, and community comparison should be reviewed "
+            "before public-response action."
+        ),
+        "does_not_modify": [
+            "coordination_discover",
+            "propagation_analysis",
+            "student",
+            "teacher",
+        ],
+        "signals": {
+            "sentiment_distribution": sentiment["summary"]["distribution"],
+            "stance_status": stance.get("status"),
+            "near_duplicate_groups": len(near_duplicates["main_posts"]) + len(near_duplicates["comments"]),
+            "community_count": len(community_comparison.get("items", [])),
+        },
+    }
+    if stance.get("status") == "blocked":
+        recommendation["rationale"] = (
+            "Sentiment and community comparison remain available; approve a Primary Claim before "
+            "using stance as an actioning signal."
+        )
+    return [recommendation]
 
 
 def _primary_claim_text(options: dict[str, Any]) -> str | None:
