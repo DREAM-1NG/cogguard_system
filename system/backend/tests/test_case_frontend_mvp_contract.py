@@ -439,3 +439,7 @@ def test_case_action_evidence_refs_can_drill_down_to_semantic_assistance():
         "candidate_unvalidated / evidence_overlay_only",
     ):
         assert binding in view
+    assert (
+        '<section ref="semanticAssistancePanel" class="panel">\n'
+        '              <div class="panel-title">语义辅助</div>'
+    ) in view

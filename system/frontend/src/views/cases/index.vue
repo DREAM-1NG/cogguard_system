@@ -88,7 +88,7 @@
       <a-tabs v-model:activeKey="activeTab" class="case-tabs">
         <a-tab-pane key="overview" tab="概览">
           <div class="overview-grid">
-            <section ref="semanticAssistancePanel" class="panel">
+            <section class="panel">
               <div class="panel-title">事件证据</div>
               <a-descriptions size="small" :column="2" bordered>
                 <a-descriptions-item label="Snapshot">{{ caseDetail.evidence.snapshot_id }}</a-descriptions-item>
@@ -124,7 +124,7 @@
                 :pagination="false"
               />
             </section>
-            <section class="panel">
+            <section ref="semanticAssistancePanel" class="panel">
               <div class="panel-title">语义辅助</div>
               <a-space wrap class="semantic-tags">
                 <a-tag color="blue">{{ semanticStatus }}</a-tag>
