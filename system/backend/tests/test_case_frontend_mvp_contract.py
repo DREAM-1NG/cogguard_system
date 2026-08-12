@@ -424,3 +424,18 @@ def test_case_workbench_surfaces_semantic_action_recommendations():
         "action_recommendations?: SemanticActionRecommendation[]",
     ):
         assert field in types
+
+
+def test_case_action_evidence_refs_can_drill_down_to_semantic_assistance():
+    view = (FRONTEND / "views" / "cases" / "index.vue").read_text(encoding="utf-8")
+
+    for binding in (
+        "semanticAssistancePanel",
+        "openActionEvidenceRef",
+        "semantic_case_workbench_demo",
+        "activeTab.value = 'evidence'",
+        "scrollIntoView",
+        "semanticEvidenceRef",
+        "candidate_unvalidated / evidence_overlay_only",
+    ):
+        assert binding in view

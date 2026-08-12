@@ -88,7 +88,7 @@
       <a-tabs v-model:activeKey="activeTab" class="case-tabs">
         <a-tab-pane key="overview" tab="概览">
           <div class="overview-grid">
-            <section class="panel">
+            <section ref="semanticAssistancePanel" class="panel">
               <div class="panel-title">事件证据</div>
               <a-descriptions size="small" :column="2" bordered>
                 <a-descriptions-item label="Snapshot">{{ caseDetail.evidence.snapshot_id }}</a-descriptions-item>
@@ -365,7 +365,14 @@
                 </template>
                 <template v-else-if="column.key === 'evidence_refs'">
                   <a-space wrap>
-                    <a-tag v-for="ref in record.evidence_refs || []" :key="ref">{{ ref }}</a-tag>
+                    <a-tag
+                      v-for="semanticEvidenceRef in record.evidence_refs || []"
+                      :key="semanticEvidenceRef"
+                      :class="{ 'clickable-ref': semanticEvidenceRef === 'semantic_case_workbench_demo' }"
+                      @click="openActionEvidenceRef(semanticEvidenceRef)"
+                    >
+                      {{ semanticEvidenceRef }}
+                    </a-tag>
                     <span v-if="!(record.evidence_refs || []).length">-</span>
                   </a-space>
                 </template>
@@ -549,6 +556,7 @@ const DEFAULT_EVENT_ID = 'trump_visit_2026_05_21'
 const eventId = ref(DEFAULT_EVENT_ID)
 const caseDetail = ref<CaseDetail | null>(null)
 const activeTab = ref('overview')
+const semanticAssistancePanel = ref<HTMLElement | null>(null)
 const loading = ref(false)
 const errorText = ref('')
 const drawerOpen = ref(false)
@@ -894,6 +902,14 @@ function formatTime(value?: string | null) {
   if (!value) return '-'
   const date = new Date(value)
   return Number.isNaN(date.getTime()) ? value : date.toLocaleString('zh-CN', { hour12: false })
+}
+
+function openActionEvidenceRef(semanticEvidenceRef: string) {
+  if (semanticEvidenceRef !== 'semantic_case_workbench_demo') return
+  activeTab.value = 'evidence'
+  window.setTimeout(() => {
+    semanticAssistancePanel.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, 0)
 }
 
 async function openReport(url?: string) {
