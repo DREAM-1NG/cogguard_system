@@ -15,6 +15,7 @@ from app.core.semantic.runtime import (
     MODEL_SPECS,
     ModelWeightsBlockedError,
     SemanticEnrichmentRuntime,
+    _attach_near_duplicates,
 )
 
 
@@ -189,6 +190,41 @@ def test_keyword_candidates_are_encoded_in_bounded_batches_without_recomputing_d
         candidate_terms[BGE_ENCODING_BATCH_SIZE:],
     ]
     assert [term for batch in encoder.batches[1:] for term in batch] == candidate_terms
+
+
+def test_near_duplicates_use_bounded_neighbors_and_keep_only_prior_threshold_matches(monkeypatch):
+    from sklearn.neighbors import NearestNeighbors
+
+    query_neighbor_counts: list[int] = []
+    original_kneighbors = NearestNeighbors.kneighbors
+
+    def record_kneighbors(self, *args, **kwargs):
+        query_neighbor_counts.append(self.n_neighbors)
+        return original_kneighbors(self, *args, **kwargs)
+
+    monkeypatch.setattr(NearestNeighbors, "kneighbors", record_kneighbors)
+    angles = np.radians([*range(12), 40])
+    embeddings = np.column_stack((np.cos(angles), np.sin(angles))).tolist()
+    items = [{"id": f"item-{index}"} for index in range(len(embeddings))]
+
+    _attach_near_duplicates(items, embeddings)
+
+    assert query_neighbor_counts == [11]
+    assert items[0]["near_duplicates"] == []
+    assert [match["id"] for match in items[11]["near_duplicates"]] == [
+        f"item-{index}" for index in range(1, 11)
+    ]
+    assert items[12]["near_duplicates"] == []
+    for index, item in enumerate(items):
+        prior_ids = {f"item-{prior}" for prior in range(index)}
+        assert all(match["id"] in prior_ids for match in item["near_duplicates"])
+        assert all(match["similarity"] >= 0.92 for match in item["near_duplicates"])
+        assert len(item["near_duplicates"]) <= 10
+
+    tied_items = [{"id": f"tied-{index}"} for index in range(13)]
+    _attach_near_duplicates(tied_items, [[1.0, 0.0] for _ in tied_items])
+
+    assert len(tied_items[-1]["near_duplicates"]) == 10
 
 
 def test_real_runtime_contract_stratifies_layers_and_reuses_embeddings(tmp_path: Path):

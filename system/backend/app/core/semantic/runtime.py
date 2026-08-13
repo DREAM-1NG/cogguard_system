@@ -27,6 +27,7 @@ MODEL_SPECS: dict[str, dict[str, str]] = {
     "ner": {"repo": "shibing624/bert4ner-base-chinese", "revision": "5d660ed"},
 }
 BGE_ENCODING_BATCH_SIZE = 32
+NEAR_DUPLICATE_MAX_NEIGHBORS = 10
 
 
 class ModelWeightsBlockedError(RuntimeError):
@@ -408,13 +409,24 @@ def _topics(texts: list[str], embeddings: list[list[float]]) -> list[dict[str, A
 
 def _attach_near_duplicates(items: list[dict[str, Any]], embeddings: list[list[float]], threshold: float = 0.92) -> None:
     import numpy as np
+    from sklearn.neighbors import NearestNeighbors
 
+    for item in items:
+        item["near_duplicates"] = []
+    if len(items) < 2:
+        return
     matrix = np.asarray(embeddings, dtype=float)
+    neighbor_count = min(NEAR_DUPLICATE_MAX_NEIGHBORS + 1, len(items))
+    distances, neighbors = NearestNeighbors(metric="cosine", n_neighbors=neighbor_count).fit(matrix).kneighbors(matrix)
     for index, item in enumerate(items):
+        matches = [
+            (int(other), 1.0 - float(distance))
+            for distance, other in zip(distances[index], neighbors[index])
+            if other < index and 1.0 - float(distance) >= threshold
+        ]
         item["near_duplicates"] = [
-            {"id": items[other]["id"], "similarity": round(float(np.dot(matrix[index], matrix[other])), 6)}
-            for other in range(index)
-            if float(np.dot(matrix[index], matrix[other])) >= threshold
+            {"id": items[other]["id"], "similarity": round(similarity, 6)}
+            for other, similarity in sorted(matches)[:NEAR_DUPLICATE_MAX_NEIGHBORS]
         ]
 
 
