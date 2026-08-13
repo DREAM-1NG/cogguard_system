@@ -86,6 +86,39 @@ test('does not let an older case load apply detail, evidence, activity, routing,
   assert.match(invalidatePendingCaseLoadState, /loadingEvidenceGroup\.value = null/)
 })
 
+test('does not let a stale event-linked initial load start a case load', () => {
+  const loadInitialCase = bodyOf(riskView, 'loadInitialCase')
+  const eventLinkedBranch = between(
+    loadInitialCase,
+    'if (linkedEventId) {',
+    '  loading.value = true',
+  )
+
+  const sequenceGuard = eventLinkedBranch.indexOf('if (requestSequence !== caseLoadSequence) return')
+  const caseItemsRead = eventLinkedBranch.indexOf('const matched = caseItems.value.find')
+  const caseLoad = eventLinkedBranch.indexOf('await loadCase(matched.case_id)')
+
+  assert.notEqual(sequenceGuard, -1)
+  assert.notEqual(caseItemsRead, -1)
+  assert.notEqual(caseLoad, -1)
+  assert.ok(sequenceGuard < caseItemsRead, 'the stale guard must run before reading caseItems')
+  assert.ok(sequenceGuard < caseLoad, 'the stale guard must run before loading the matched case')
+})
+
+test('does not let a stale unauthorized activity recovery stop the current case recovery', () => {
+  const recoverCaseActivities = bodyOf(riskView, 'recoverCaseActivities')
+  const unauthorizedBranch = between(
+    recoverCaseActivities,
+    'if (isUnauthorizedCaseEventStreamError(error)) {',
+    '    if ((error as { name?: string }).name !== \'AbortError\')',
+  )
+
+  assert.match(
+    unauthorizedBranch,
+    /if \(requestSequence === caseLoadSequence && currentCase\.value\?\.case_id === caseId\) \{\s*stopActivityRecovery\(\)\s*\}/,
+  )
+})
+
 test('renders ready semantic evidence from its layers and cross-analysis slices', () => {
   const semanticPanel = between(riskView, '<section class="semantic-panel"', '<section class="workspace-grid"')
 

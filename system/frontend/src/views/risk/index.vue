@@ -999,6 +999,7 @@ async function loadInitialCase() {
   }
   if (linkedEventId) {
     await loadCaseOptions(linkedEventId)
+    if (requestSequence !== caseLoadSequence) return
     const matched = caseItems.value.find((item) => item.event_id === linkedEventId)
     if (matched) {
       await loadCase(matched.case_id)
@@ -1322,7 +1323,9 @@ async function recoverCaseActivities(caseId: string, requestSequence = caseLoadS
     }
   } catch (error) {
     if (isUnauthorizedCaseEventStreamError(error)) {
-      stopActivityRecovery()
+      if (requestSequence === caseLoadSequence && currentCase.value?.case_id === caseId) {
+        stopActivityRecovery()
+      }
       return
     }
     if ((error as { name?: string }).name !== 'AbortError') {
