@@ -276,7 +276,7 @@ class SemanticEnrichmentRuntime:
         if not unique_terms:
             return [[] for _ in texts]
         try:
-            term_vectors = self.embedding_model.encode(unique_terms, normalize_embeddings=True, show_progress_bar=False)
+            term_vectors = self._encode_texts(unique_terms)
         except Exception as exc:
             raise ModelWeightsBlockedError(f"bge keyword candidate encoding failed: {exc}") from exc
         vector_by_term = {term: np.asarray(vector, dtype=float) for term, vector in zip(unique_terms, term_vectors)}

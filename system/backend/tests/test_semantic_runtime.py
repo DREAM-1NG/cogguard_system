@@ -163,6 +163,34 @@ def test_bge_encoding_batches_each_text_once_in_original_order(tmp_path: Path):
     assert vectors == [[float(index)] for index in range(batch_size + 2)]
 
 
+def test_keyword_candidates_are_encoded_in_bounded_batches_without_recomputing_documents(
+    monkeypatch, tmp_path: Path
+):
+    import jieba
+
+    encoder = RecordingEmbedding()
+    runtime = _runtime(tmp_path)
+    runtime.embedding_model = encoder
+    document_texts = ["document-40", "document-41"]
+    candidate_terms = [f"candidate-{index}" for index in range(BGE_ENCODING_BATCH_SIZE + 8)]
+    terms_by_document = {
+        document_texts[0]: candidate_terms[:20],
+        document_texts[1]: candidate_terms[20:],
+    }
+    monkeypatch.setattr(jieba, "lcut", lambda text: terms_by_document[text])
+
+    document_embeddings = runtime._encode_texts(document_texts)
+    keywords = runtime._keywords(document_texts, document_embeddings)
+
+    assert keywords
+    assert encoder.batches[0] == document_texts
+    assert encoder.batches[1:] == [
+        candidate_terms[:BGE_ENCODING_BATCH_SIZE],
+        candidate_terms[BGE_ENCODING_BATCH_SIZE:],
+    ]
+    assert [term for batch in encoder.batches[1:] for term in batch] == candidate_terms
+
+
 def test_real_runtime_contract_stratifies_layers_and_reuses_embeddings(tmp_path: Path):
     runtime = _runtime(tmp_path)
     snapshot = _snapshot()
