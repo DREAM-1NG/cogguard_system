@@ -94,15 +94,41 @@ test('does not let a stale event-linked initial load start a case load', () => {
     '  loading.value = true',
   )
 
-  const sequenceGuard = eventLinkedBranch.indexOf('if (requestSequence !== caseLoadSequence) return')
-  const caseItemsRead = eventLinkedBranch.indexOf('const matched = caseItems.value.find')
+  const sequenceGuard = eventLinkedBranch.indexOf('requestSequence !== caseLoadSequence')
+  const caseItemsRead = eventLinkedBranch.indexOf('const matched = eventSearch.items.find')
   const caseLoad = eventLinkedBranch.indexOf('await loadCase(matched.case_id)')
 
   assert.notEqual(sequenceGuard, -1)
   assert.notEqual(caseItemsRead, -1)
   assert.notEqual(caseLoad, -1)
-  assert.ok(sequenceGuard < caseItemsRead, 'the stale guard must run before reading caseItems')
+  assert.ok(sequenceGuard < caseItemsRead, 'the stale guard must run before reading the event search response')
   assert.ok(sequenceGuard < caseLoad, 'the stale guard must run before loading the matched case')
+})
+
+test('resolves an event-linked initial case from its own current search response', () => {
+  const loadCaseOptions = bodyOf(riskView, 'loadCaseOptions')
+  const loadInitialCase = bodyOf(riskView, 'loadInitialCase')
+  const eventLinkedBranch = between(
+    loadInitialCase,
+    'if (linkedEventId) {',
+    '  loading.value = true',
+  )
+
+  assert.match(loadCaseOptions, /if \(requestSequence !== caseSearchSequence\) return null/)
+  assert.match(loadCaseOptions, /return \{\s*requestSequence,\s*items: res\.data\.items\s*\}/)
+  assert.match(eventLinkedBranch, /const eventSearch = await loadCaseOptions\(linkedEventId\)/)
+  assert.match(eventLinkedBranch, /eventSearch\.requestSequence !== caseSearchSequence/)
+  assert.match(eventLinkedBranch, /const matched = eventSearch\.items\.find/)
+  assert.doesNotMatch(eventLinkedBranch, /caseItems\.value/)
+
+  const searchGuard = eventLinkedBranch.indexOf('eventSearch.requestSequence !== caseSearchSequence')
+  const matchRead = eventLinkedBranch.indexOf('const matched = eventSearch.items.find')
+  const caseLoad = eventLinkedBranch.indexOf('await loadCase(matched.case_id)')
+  const warning = eventLinkedBranch.indexOf('message.warning')
+
+  assert.ok(searchGuard < matchRead, 'the search guard must run before selecting an event case')
+  assert.ok(searchGuard < caseLoad, 'the search guard must run before loading an event case')
+  assert.ok(searchGuard < warning, 'the search guard must run before warning about a missing event case')
 })
 
 test('does not let a stale unauthorized activity recovery stop the current case recovery', () => {
@@ -150,4 +176,17 @@ test('fails closed when semantic evidence is missing or blocked', () => {
   assert.match(semanticPanel, /语义证据暂不可用/)
   assert.match(semanticPanel, /semanticUnavailableText/)
   assert.doesNotMatch(semanticPanel, /currentCase|coordination_summary|preliminary_finding|review_advisory/)
+})
+
+test('requires complete semantic evidence containers before the panel is ready', () => {
+  const semanticEvidence = between(riskView, 'const semanticEvidence = computed', 'const semanticReady = computed')
+  const hasSemanticEvidenceStructure = bodyOf(riskView, 'hasSemanticEvidenceStructure')
+
+  assert.match(semanticEvidence, /!hasSemanticEvidenceStructure\(projection\.evidence\)/)
+  assert.match(hasSemanticEvidenceStructure, /const layers = objectValue\(evidence\.layers\)/)
+  assert.match(hasSemanticEvidenceStructure, /Array\.isArray\(layers\.posts\)/)
+  assert.match(hasSemanticEvidenceStructure, /Array\.isArray\(layers\.comments\)/)
+  assert.match(hasSemanticEvidenceStructure, /const crossAnalysis = evidence\.cross_analysis/)
+  assert.match(hasSemanticEvidenceStructure, /typeof crossAnalysis === 'object'/)
+  assert.match(hasSemanticEvidenceStructure, /!Array\.isArray\(crossAnalysis\)/)
 })

@@ -825,7 +825,9 @@ const coordinationNarrative = computed(() => {
 
 const semanticEvidence = computed<SemanticEvidencePayload | null>(() => {
   const projection = semanticProjection.value
-  if (!projection || projection.status !== 'ready' || !projection.evidence) return null
+  if (!projection || projection.status !== 'ready' || !projection.evidence || !hasSemanticEvidenceStructure(projection.evidence)) {
+    return null
+  }
   return projection.evidence
 })
 
@@ -970,9 +972,9 @@ async function loadCaseOptions(query = '') {
   searching.value = true
   try {
     const res = await searchReviewCases({ query, limit: 20 })
-    if (requestSequence === caseSearchSequence) {
-      caseItems.value = res.data.items
-    }
+    if (requestSequence !== caseSearchSequence) return null
+    caseItems.value = res.data.items
+    return { requestSequence, items: res.data.items }
   } finally {
     if (requestSequence === caseSearchSequence) {
       searching.value = false
@@ -998,9 +1000,13 @@ async function loadInitialCase() {
     return
   }
   if (linkedEventId) {
-    await loadCaseOptions(linkedEventId)
-    if (requestSequence !== caseLoadSequence) return
-    const matched = caseItems.value.find((item) => item.event_id === linkedEventId)
+    const eventSearch = await loadCaseOptions(linkedEventId)
+    if (
+      requestSequence !== caseLoadSequence
+      || !eventSearch
+      || eventSearch.requestSequence !== caseSearchSequence
+    ) return
+    const matched = eventSearch.items.find((item) => item.event_id === linkedEventId)
     if (matched) {
       await loadCase(matched.case_id)
       return
@@ -1520,6 +1526,19 @@ function objectValue(value: unknown): Record<string, unknown> {
 
 function arrayValue(value: unknown): unknown[] {
   return Array.isArray(value) ? value : []
+}
+
+function hasSemanticEvidenceStructure(value: unknown): value is SemanticEvidencePayload {
+  const evidence = objectValue(value)
+  const layers = objectValue(evidence.layers)
+  const crossAnalysis = evidence.cross_analysis
+  return (
+    Array.isArray(layers.posts)
+    && Array.isArray(layers.comments)
+    && Boolean(crossAnalysis)
+    && typeof crossAnalysis === 'object'
+    && !Array.isArray(crossAnalysis)
+  )
 }
 
 function textValue(value: unknown): string {
