@@ -78,6 +78,152 @@
           </a-card>
         </section>
 
+        <section class="semantic-panel" aria-label="语义证据">
+          <a-card size="small">
+            <template #title>语义证据</template>
+            <a-skeleton v-if="semanticLoading" active :paragraph="{ rows: 3 }" />
+            <a-alert
+              v-if="semanticUnavailable"
+              type="info"
+              show-icon
+              message="语义证据暂不可用"
+              :description="semanticUnavailableText"
+            />
+            <template v-else-if="semanticReady">
+              <div class="semantic-summary-grid">
+                <div class="semantic-summary-block">
+                  <div class="semantic-summary-label">高频关键词</div>
+                  <div class="semantic-tag-list">
+                    <a-tag v-for="item in topSemanticKeywords" :key="item.label">
+                      {{ item.label }} {{ item.count }}
+                    </a-tag>
+                    <span v-if="topSemanticKeywords.length === 0" class="muted">暂无</span>
+                  </div>
+                </div>
+                <div class="semantic-summary-block">
+                  <div class="semantic-summary-label">主题</div>
+                  <div class="semantic-tag-list">
+                    <a-tag v-for="item in topSemanticTopics" :key="item.label" color="blue">
+                      {{ item.label }} {{ item.count }}
+                    </a-tag>
+                    <span v-if="topSemanticTopics.length === 0" class="muted">暂无</span>
+                  </div>
+                </div>
+                <div class="semantic-summary-block">
+                  <div class="semantic-summary-label">情感</div>
+                  <div class="semantic-tag-list">
+                    <a-tag v-for="item in semanticSentiment" :key="item.label" color="green">
+                      {{ item.label }} {{ item.count }}
+                    </a-tag>
+                    <span v-if="semanticSentiment.length === 0" class="muted">暂无</span>
+                  </div>
+                </div>
+                <div class="semantic-summary-block">
+                  <div class="semantic-summary-label">立场</div>
+                  <div class="semantic-tag-list">
+                    <a-tag v-for="item in semanticStance" :key="item.label" color="gold">
+                      {{ item.label }} {{ item.count }}
+                    </a-tag>
+                    <span v-if="semanticStance.length === 0" class="muted">暂无</span>
+                  </div>
+                </div>
+                <div class="semantic-summary-block semantic-summary-wide">
+                  <div class="semantic-summary-label">实体</div>
+                  <div class="semantic-tag-list">
+                    <a-tag v-for="item in topSemanticEntities" :key="item.label" color="purple">
+                      {{ item.label }} {{ item.count }}
+                    </a-tag>
+                    <span v-if="topSemanticEntities.length === 0" class="muted">暂无</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="semantic-slices">
+                <div>
+                  <div class="semantic-section-title">时间切片</div>
+                  <a-list size="small" :data-source="semanticTimeSlices">
+                    <template #renderItem="{ item }">
+                      <a-list-item>{{ item.date }} · {{ item.count }} 条</a-list-item>
+                    </template>
+                  </a-list>
+                  <span v-if="semanticTimeSlices.length === 0" class="muted">暂无时间切片</span>
+                </div>
+                <div>
+                  <div class="semantic-section-title">平台切片</div>
+                  <a-list size="small" :data-source="semanticPlatformSlices">
+                    <template #renderItem="{ item }">
+                      <a-list-item>
+                        {{ item.platform }} · {{ item.count }} 条
+                        <span v-if="item.sentiment" class="semantic-slice-detail">{{ item.sentiment }}</span>
+                      </a-list-item>
+                    </template>
+                  </a-list>
+                  <span v-if="semanticPlatformSlices.length === 0" class="muted">暂无平台切片</span>
+                </div>
+              </div>
+
+              <div class="semantic-community-section">
+                <div class="semantic-section-title">协同群体语义摘要</div>
+                <a-list v-if="semanticCommunities.length" size="small" :data-source="semanticCommunities">
+                  <template #renderItem="{ item }">
+                    <a-list-item>
+                      <div class="semantic-community-item">
+                        <div class="semantic-community-heading">
+                          <strong>{{ item.communityId }}</strong>
+                          <span>{{ item.memberCount }} 个成员 · {{ item.itemCount }} 条内容</span>
+                        </div>
+                        <div v-if="item.sentiment || item.stance" class="semantic-community-detail">
+                          <span v-if="item.sentiment">情感：{{ item.sentiment }}</span>
+                          <span v-if="item.stance">立场：{{ item.stance }}</span>
+                        </div>
+                        <div v-if="item.keywords.length || item.topics.length || item.entities.length" class="semantic-community-detail">
+                          <span v-if="item.keywords.length">关键词：{{ semanticSummaryText(item.keywords) }}</span>
+                          <span v-if="item.topics.length">主题：{{ semanticSummaryText(item.topics) }}</span>
+                          <span v-if="item.entities.length">实体：{{ semanticSummaryText(item.entities) }}</span>
+                        </div>
+                      </div>
+                    </a-list-item>
+                  </template>
+                </a-list>
+                <span v-else class="muted">当前语义结果未包含可展示的协同群体摘要</span>
+              </div>
+
+              <div class="semantic-matrix-section">
+                <div class="semantic-section-title">帖子与评论语义矩阵</div>
+                <div class="semantic-matrix-scroll">
+                  <table class="semantic-matrix-table">
+                    <thead>
+                      <tr>
+                        <th>类型</th>
+                        <th>平台</th>
+                        <th>时间</th>
+                        <th>关键词</th>
+                        <th>主题</th>
+                        <th>情感</th>
+                        <th>立场</th>
+                        <th>实体</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="item in semanticMatrixRows" :key="item.key">
+                        <td>{{ item.kind }}</td>
+                        <td>{{ item.platform }}</td>
+                        <td>{{ item.timestamp }}</td>
+                        <td>{{ item.keywords.join('、') || '暂无' }}</td>
+                        <td>{{ item.topics.join('、') || '暂无' }}</td>
+                        <td>{{ item.sentiment }}</td>
+                        <td>{{ item.stance }}</td>
+                        <td>{{ item.entities.join('、') || '暂无' }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <span v-if="semanticMatrixRows.length === 0" class="muted">当前语义结果未包含帖子或评论</span>
+              </div>
+            </template>
+          </a-card>
+        </section>
+
         <section class="workspace-grid">
           <a-card size="small" class="evidence-panel">
             <template #title>证据分组与标注</template>
@@ -406,6 +552,7 @@ import {
 import { useRoute, useRouter } from 'vue-router'
 import { Modal, message } from 'ant-design-vue'
 import PageHeader from '@/components/PageHeader.vue'
+import { getEventSemantic } from '@/api/analysis'
 import {
   annotateReviewCaseEvidence,
   confirmDecision,
@@ -433,6 +580,7 @@ import type {
   ReviewConclusion,
   ReviewUrgency,
 } from '@/types/reviewCase'
+import type { SemanticEvidenceProjection } from '@/api/analysis'
 
 type SelectOption = { label: string; value: string }
 type EvidenceGroup = {
@@ -440,12 +588,41 @@ type EvidenceGroup = {
   label: string
   items: EvidenceItem[]
 }
+type SemanticEvidencePayload = Record<string, unknown>
+type SemanticItem = Record<string, unknown>
+type SemanticCount = { label: string; count: number }
+type SemanticSlice = { date: string; count: number }
+type SemanticPlatformSlice = { platform: string; count: number; sentiment: string }
+type SemanticCommunity = {
+  communityId: string
+  memberCount: number
+  itemCount: number
+  sentiment: string
+  stance: string
+  keywords: SemanticCount[]
+  topics: SemanticCount[]
+  entities: SemanticCount[]
+}
+type SemanticMatrixRow = {
+  key: string
+  kind: string
+  platform: string
+  timestamp: string
+  keywords: string[]
+  topics: string[]
+  sentiment: string
+  stance: string
+  entities: string[]
+}
 
 const route = useRoute()
 const router = useRouter()
 
 const currentCase = ref<ReviewCaseDetail | null>(null)
 const evidence = ref<ReviewCaseEvidence | null>(null)
+const semanticProjection = ref<SemanticEvidenceProjection | null>(null)
+const semanticLoading = ref(false)
+const semanticRequestEventId = ref('')
 const caseItems = ref<ReviewCaseSummary[]>([])
 const selectedCaseId = ref<string | undefined>()
 const loading = ref(false)
@@ -514,6 +691,7 @@ const draftForm = reactive<{
 })
 const keyEvidenceInput = ref('')
 const unresolvedInput = ref('')
+let semanticRequestSequence = 0
 
 const conclusionLabels: Record<ReviewConclusion, string> = {
   harmful: '存在风险',
@@ -643,6 +821,87 @@ const coordinationNarrative = computed(() => {
   }
   return '当前未发现需要重点关注的协同行为线索。'
 })
+
+const semanticEvidence = computed<SemanticEvidencePayload | null>(() => {
+  const projection = semanticProjection.value
+  if (!projection || projection.status !== 'ready' || !projection.evidence) return null
+  return projection.evidence
+})
+
+const semanticReady = computed(() => Boolean(semanticEvidence.value))
+
+const semanticUnavailable = computed(() => !semanticLoading.value && !semanticReady.value)
+
+const semanticUnavailableText = computed(() => {
+  if (semanticProjection.value?.status === 'not_found') return '当前事件尚未生成可用的语义证据。'
+  if (semanticProjection.value?.blocking_reason) return '当前事件的语义证据暂不可用，请稍后刷新。'
+  return '当前事件的语义证据不可用。'
+})
+
+const semanticLayers = computed(() => objectValue(semanticEvidence.value?.layers))
+
+const semanticItems = computed(() => [
+  ...semanticLayerItems('posts'),
+  ...semanticLayerItems('comments'),
+])
+
+const topSemanticKeywords = computed(() => semanticCounts(
+  semanticItems.value.flatMap((item) => arrayValue(item.keywords).map((keyword) => ({
+    label: textValue(objectValue(keyword).term),
+    count: 1,
+  }))),
+))
+
+const topSemanticTopics = computed(() => semanticCounts(
+  semanticItems.value.flatMap((item) => arrayValue(item.topics).map((topic) => ({
+    label: textValue(objectValue(topic).label),
+    count: 1,
+  }))),
+))
+
+const semanticSentiment = computed(() => semanticDistribution(semanticItems.value, 'sentiment'))
+
+const semanticStance = computed(() => semanticDistribution(semanticItems.value, 'stance'))
+
+const topSemanticEntities = computed(() => semanticCounts(
+  semanticItems.value.flatMap((item) => arrayValue(item.entities).map((entity) => ({
+    label: textValue(objectValue(entity).text),
+    count: 1,
+  }))),
+))
+
+const semanticCrossAnalysis = computed(() => objectValue(semanticEvidence.value?.cross_analysis))
+
+const semanticTimeSlices = computed<SemanticSlice[]>(() => arrayValue(semanticCrossAnalysis.value.time_slices)
+  .map((slice) => objectValue(slice))
+  .map((slice) => ({ date: textValue(slice.date) || '未标明', count: numberValue(slice.count) }))
+  .filter((slice) => Boolean(slice.date)))
+
+const semanticPlatformSlices = computed<SemanticPlatformSlice[]>(() => arrayValue(semanticCrossAnalysis.value.platform_slices)
+  .map((slice) => objectValue(slice))
+  .map((slice) => ({
+    platform: textValue(slice.platform) || '未标明',
+    count: numberValue(slice.count),
+    sentiment: distributionText(objectValue(slice.sentiment)),
+  })))
+
+const semanticCommunities = computed<SemanticCommunity[]>(() => arrayValue(semanticCrossAnalysis.value.community_slices)
+  .map((slice) => objectValue(slice))
+  .map((slice, index) => ({
+    communityId: textValue(slice.community_id) || `协同群体 ${index + 1}`,
+    memberCount: numberValue(slice.member_count),
+    itemCount: numberValue(slice.item_count),
+    sentiment: distributionText(objectValue(slice.sentiment_distribution)),
+    stance: distributionText(objectValue(slice.stance_distribution)),
+    keywords: semanticNamedCounts(slice.top_keywords, 'term'),
+    topics: semanticNamedCounts(slice.top_topics, 'label'),
+    entities: semanticNamedCounts(slice.top_entities, 'text'),
+  })))
+
+const semanticMatrixRows = computed<SemanticMatrixRow[]>(() => [
+  ...semanticLayerMatrixRows('posts', '帖子'),
+  ...semanticLayerMatrixRows('comments', '评论'),
+])
 
 const decisionLocked = computed(() => {
   return Boolean(
@@ -788,6 +1047,7 @@ async function applyCase(
   currentCase.value = detail
   selectedCaseId.value = detail.case_id
   evidence.value = null
+  semanticProjection.value = null
   selectedEvidenceRefs.value = []
   hydrateDraft(detail)
   void router.replace({
@@ -797,6 +1057,7 @@ async function applyCase(
       event_id: detail.event_id,
     },
   })
+  void loadSemanticProjection()
   const pendingLoads: Promise<void>[] = []
   if (evidenceData) {
     applyEvidencePage(evidenceData, false)
@@ -811,6 +1072,37 @@ async function applyCase(
   }
   await Promise.all(pendingLoads)
   startActivityRecovery(detail.case_id)
+}
+
+async function loadSemanticProjection() {
+  const eventId = currentCase.value?.event_id
+  const requestSequence = ++semanticRequestSequence
+  semanticRequestEventId.value = eventId || ''
+  semanticProjection.value = null
+  semanticLoading.value = Boolean(eventId)
+  if (!eventId) return
+  try {
+    const response = await getEventSemantic(eventId)
+    if (
+      requestSequence === semanticRequestSequence
+      && currentCase.value?.event_id === eventId
+      && semanticRequestEventId.value === eventId
+    ) {
+      semanticProjection.value = response.data
+    }
+  } catch {
+    if (
+      requestSequence === semanticRequestSequence
+      && currentCase.value?.event_id === eventId
+      && semanticRequestEventId.value === eventId
+    ) {
+      semanticProjection.value = null
+    }
+  } finally {
+    if (requestSequence === semanticRequestSequence && semanticRequestEventId.value === eventId) {
+      semanticLoading.value = false
+    }
+  }
 }
 
 function resetEvidencePaging() {
@@ -1170,6 +1462,87 @@ function splitLines(value: string) {
     .filter(Boolean)
 }
 
+function objectValue(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {}
+}
+
+function arrayValue(value: unknown): unknown[] {
+  return Array.isArray(value) ? value : []
+}
+
+function textValue(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : value === null || value === undefined ? '' : String(value).trim()
+}
+
+function numberValue(value: unknown): number {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+function semanticLayerItems(layer: 'posts' | 'comments'): SemanticItem[] {
+  return arrayValue(semanticLayers.value[layer])
+    .map((item) => objectValue(item))
+}
+
+function semanticCounts(items: SemanticCount[]): SemanticCount[] {
+  const counts = new Map<string, number>()
+  for (const item of items) {
+    if (!item.label) continue
+    counts.set(item.label, (counts.get(item.label) || 0) + item.count)
+  }
+  return [...counts.entries()]
+    .map(([label, count]) => ({ label, count }))
+    .sort((left, right) => right.count - left.count || left.label.localeCompare(right.label, 'zh-CN'))
+    .slice(0, 10)
+}
+
+function semanticNamedCounts(value: unknown, labelKey: string): SemanticCount[] {
+  return arrayValue(value)
+    .map((item) => objectValue(item))
+    .map((item) => ({ label: textValue(item[labelKey]), count: numberValue(item.count) }))
+    .filter((item) => Boolean(item.label))
+    .slice(0, 10)
+}
+
+function semanticDistribution(items: SemanticItem[], field: string): SemanticCount[] {
+  return semanticCounts(items.map((item) => ({
+    label: textValue(objectValue(item[field]).label),
+    count: 1,
+  })))
+}
+
+function distributionText(value: Record<string, unknown>): string {
+  return Object.entries(value)
+    .map(([label, count]) => `${label} ${numberValue(count)}`)
+    .join('，')
+}
+
+function semanticSummaryText(items: SemanticCount[]): string {
+  return items.map((item) => `${item.label} ${item.count}`).join('，')
+}
+
+function semanticLayerMatrixRows(layer: 'posts' | 'comments', kind: string): SemanticMatrixRow[] {
+  return semanticLayerItems(layer).map((item, index) => ({
+    key: `${layer}:${textValue(item.id) || index}`,
+    kind,
+    platform: textValue(item.platform) || '未标明',
+    timestamp: textValue(item.timestamp) || '未标明',
+    keywords: arrayValue(item.keywords)
+      .map((keyword) => textValue(objectValue(keyword).term))
+      .filter(Boolean),
+    topics: arrayValue(item.topics)
+      .map((topic) => textValue(objectValue(topic).label))
+      .filter(Boolean),
+    sentiment: textValue(objectValue(item.sentiment).label) || '暂无',
+    stance: textValue(objectValue(item.stance).label) || '暂无',
+    entities: arrayValue(item.entities)
+      .map((entity) => textValue(objectValue(entity).text))
+      .filter(Boolean),
+  }))
+}
+
 function conclusionLabel(value: ReviewConclusion) {
   return conclusionLabels[value]
 }
@@ -1311,6 +1684,110 @@ onBeforeUnmount(() => {
 
 .summary-card {
   min-height: 224px;
+}
+
+.semantic-panel {
+  margin-bottom: 16px;
+}
+
+.semantic-summary-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.semantic-summary-block {
+  border-left: 2px solid #d6e4ff;
+  min-width: 0;
+  padding-left: 10px;
+}
+
+.semantic-summary-wide {
+  grid-column: span 2;
+}
+
+.semantic-summary-label,
+.semantic-section-title {
+  color: #4e5969;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.semantic-tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.semantic-slices {
+  display: grid;
+  gap: 24px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 18px;
+}
+
+.semantic-slices .ant-list {
+  margin-top: 4px;
+}
+
+.semantic-slice-detail {
+  color: #86909c;
+  margin-left: 8px;
+}
+
+.semantic-community-section,
+.semantic-matrix-section {
+  margin-top: 18px;
+}
+
+.semantic-community-item {
+  width: 100%;
+}
+
+.semantic-community-heading,
+.semantic-community-detail {
+  align-items: baseline;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  line-height: 1.6;
+}
+
+.semantic-community-heading span,
+.semantic-community-detail {
+  color: #86909c;
+  font-size: 12px;
+}
+
+.semantic-matrix-scroll {
+  margin-top: 8px;
+  overflow-x: auto;
+}
+
+.semantic-matrix-table {
+  border-collapse: collapse;
+  font-size: 12px;
+  min-width: 900px;
+  width: 100%;
+}
+
+.semantic-matrix-table th,
+.semantic-matrix-table td {
+  border: 1px solid #eef0f4;
+  line-height: 1.55;
+  padding: 8px;
+  text-align: left;
+  vertical-align: top;
+  word-break: break-word;
+}
+
+.semantic-matrix-table th {
+  background: #f7f8fa;
+  color: #4e5969;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .case-title {
@@ -1513,6 +1990,21 @@ onBeforeUnmount(() => {
 
   .case-select {
     width: min(420px, 70vw);
+  }
+
+  .semantic-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .semantic-summary-grid,
+  .semantic-slices {
+    grid-template-columns: 1fr;
+  }
+
+  .semantic-summary-wide {
+    grid-column: auto;
   }
 }
 </style>
