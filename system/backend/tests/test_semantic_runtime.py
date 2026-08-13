@@ -11,6 +11,7 @@ import pytest
 
 from app.core.analysis import TimeWindow, build_event_snapshot
 from app.core.semantic.runtime import (
+    BGE_ENCODING_BATCH_SIZE,
     MODEL_SPECS,
     ModelWeightsBlockedError,
     SemanticEnrichmentRuntime,
@@ -66,6 +67,16 @@ class FakeEmbedding:
         self.calls += 1
         self.batches.append(list(texts))
         return [[float(index + 1), 1.0, 0.5] for index, _ in enumerate(texts)]
+
+
+class RecordingEmbedding:
+    def __init__(self):
+        self.batches: list[list[str]] = []
+
+    def encode(self, texts, **_kwargs):
+        batch = list(texts)
+        self.batches.append(batch)
+        return [[float(int(text.rsplit("-", 1)[1]))] for text in batch]
 
 
 class FakePipeline:
@@ -134,6 +145,21 @@ def test_missing_local_weights_blocks_without_rule_fallback(tmp_path: Path):
 
     assert "bge_embedding" in str(exc_info.value)
     assert all(spec["revision"] for spec in MODEL_SPECS.values())
+
+
+def test_bge_encoding_batches_each_text_once_in_original_order(tmp_path: Path):
+    encoder = RecordingEmbedding()
+    runtime = _runtime(tmp_path)
+    runtime.embedding_model = encoder
+    batch_size = BGE_ENCODING_BATCH_SIZE
+    texts = [f"text-{index}" for index in range(batch_size + 2)]
+
+    vectors = runtime._encode_texts(texts)
+
+    assert len(encoder.batches) == 2
+    assert all(len(batch) <= batch_size for batch in encoder.batches)
+    assert [text for batch in encoder.batches for text in batch] == texts
+    assert vectors == [[float(index)] for index in range(batch_size + 2)]
 
 
 def test_real_runtime_contract_stratifies_layers_and_reuses_embeddings(tmp_path: Path):

@@ -26,6 +26,7 @@ MODEL_SPECS: dict[str, dict[str, str]] = {
     "stance": {"repo": "MoritzLaurer/multilingual-MiniLMv2-L6-mnli-xnli", "revision": "0a71e92"},
     "ner": {"repo": "shibing624/bert4ner-base-chinese", "revision": "5d660ed"},
 }
+BGE_ENCODING_BATCH_SIZE = 32
 
 
 class ModelWeightsBlockedError(RuntimeError):
@@ -239,8 +240,16 @@ class SemanticEnrichmentRuntime:
         if not texts:
             return []
         try:
-            vectors = self.embedding_model.encode(texts, normalize_embeddings=True, show_progress_bar=False)
-            return [[float(value) for value in vector] for vector in vectors]
+            vectors: list[list[float]] = []
+            for start in range(0, len(texts), BGE_ENCODING_BATCH_SIZE):
+                batch = texts[start : start + BGE_ENCODING_BATCH_SIZE]
+                batch_vectors = self.embedding_model.encode(
+                    batch,
+                    normalize_embeddings=True,
+                    show_progress_bar=False,
+                )
+                vectors.extend([[float(value) for value in vector] for vector in batch_vectors])
+            return vectors
         except Exception as exc:
             raise ModelWeightsBlockedError(f"bge_embedding inference failed: {exc}") from exc
 
