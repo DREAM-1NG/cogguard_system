@@ -48,6 +48,14 @@ async def _check_database_readiness() -> None:
         await execute(text("SELECT 1"))
 
 
+async def _close_mongo_safely() -> None:
+    try:
+        await close_mongo()
+    except Exception:
+        # Readiness failures should retain their original diagnostic.
+        return
+
+
 def _platform_counts(normalized: list[Any]) -> dict[str, dict[str, int]]:
     return {
         str(result.platform): {
@@ -111,11 +119,18 @@ async def main_async(args: argparse.Namespace) -> int:
         )
         await _check_database_readiness()
     except ModelWeightsBlockedError as exc:
+        await _close_mongo_safely()
         print(json.dumps(_summary(platform_counts=platform_counts, semantic_status="model_weights_blocked", blocking_reason=str(exc)), ensure_ascii=False, indent=2, default=str))
         return 2
     except Exception as exc:
+        await _close_mongo_safely()
         print(json.dumps(_summary(platform_counts=platform_counts, semantic_status="database_blocked", blocking_reason=str(exc)), ensure_ascii=False, indent=2, default=str))
         return 3
+
+    if not args.execute:
+        await _close_mongo_safely()
+        print(json.dumps(_summary(platform_counts=platform_counts, semantic_status="validation_only"), ensure_ascii=False, indent=2, default=str))
+        return 0
 
     if args.execute:
         for result in normalized:
@@ -148,7 +163,7 @@ async def main_async(args: argparse.Namespace) -> int:
         ).execute_run(run["run_id"])
         summary = _summary(snapshot=snapshot, result=result, platform_counts=platform_counts, semantic_status="completed")
         print(json.dumps(summary, ensure_ascii=False, indent=2, default=str))
-    await close_mongo()
+    await _close_mongo_safely()
     return 0
 
 

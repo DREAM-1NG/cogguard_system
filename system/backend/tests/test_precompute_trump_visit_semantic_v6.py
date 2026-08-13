@@ -223,3 +223,30 @@ def test_precompute_reports_a_blocked_runtime_before_any_data_mutation(monkeypat
     assert summary["semantic_status"] == "model_weights_blocked"
     assert summary["blocking_reason"] == "jieba runtime dependency unavailable"
     assert summary["run_id"] is None
+
+
+def test_precompute_validation_only_does_not_create_snapshot_or_run(monkeypatch, tmp_path: Path, capsys):
+    script = _load_script()
+    events: list[str] = []
+    _PrebuiltRuntime.events = events
+
+    class UnexpectedRegistry:
+        def __init__(self, **_kwargs):
+            raise AssertionError("validation-only precompute must not create a registry")
+
+    monkeypatch.setattr(script, "import_mediacrawler_data_runs", _fake_importer(events))
+    monkeypatch.setattr(script, "SemanticEnrichmentRuntime", _PrebuiltRuntime)
+    monkeypatch.setattr(script, "async_session_factory", lambda: _AsyncContext(_FakeSession(events)))
+    monkeypatch.setattr(script, "get_mongo_db", lambda: _FakeMongo(events))
+    monkeypatch.setattr(script, "AnalysisRegistry", UnexpectedRegistry)
+    monkeypatch.setattr(script, "close_mongo", lambda: asyncio.sleep(0))
+
+    exit_code = asyncio.run(script.main_async(_args(tmp_path, execute=False)))
+    summary = json.loads(capsys.readouterr().out)
+
+    assert exit_code == 0
+    assert summary["status"] == "validation_only"
+    assert summary["semantic_status"] == "validation_only"
+    assert summary["snapshot_id"] is None
+    assert summary["run_id"] is None
+    assert "data_mutation" not in events

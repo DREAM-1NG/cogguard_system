@@ -65,7 +65,7 @@ class SemanticEnrichmentRuntime:
         for module_name in ("jieba", "numpy", "sklearn", "transformers", "torch"):
             try:
                 importlib.import_module(module_name)
-            except ModuleNotFoundError as exc:
+            except Exception as exc:
                 raise ModelWeightsBlockedError(
                     f"{module_name} runtime dependency unavailable: {exc}"
                 ) from exc
