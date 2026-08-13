@@ -9,7 +9,7 @@ const frontendRoot = resolve(__dirname, '..')
 const riskView = readFileSync(resolve(frontendRoot, 'src/views/risk/index.vue'), 'utf8')
 
 function bodyOf(source, name) {
-  const start = source.indexOf(`function ${name}`)
+  const start = source.indexOf(`function ${name}(`)
   assert.notEqual(start, -1, `Expected ${name} to exist`)
   const paramsStart = source.indexOf('(', start)
   let paramsDepth = 0
@@ -60,6 +60,30 @@ test('ignores stale semantic responses while a case is refreshed', () => {
   assert.match(loadSemanticProjection, /const requestSequence = \+\+semanticRequestSequence/)
   assert.match(loadSemanticProjection, /semanticLoading\.value = Boolean\(eventId\)/)
   assert.match(loadSemanticProjection, /requestSequence === semanticRequestSequence/)
+})
+
+test('does not let an older case load apply detail, evidence, activity, routing, or semantic state', () => {
+  const loadCase = bodyOf(riskView, 'loadCase')
+  const applyCase = bodyOf(riskView, 'applyCase')
+  const loadSemanticProjection = bodyOf(riskView, 'loadSemanticProjection')
+  const loadActivities = bodyOf(riskView, 'loadActivities')
+  const recoverCaseActivities = bodyOf(riskView, 'recoverCaseActivities')
+  const invalidatePendingCaseLoadState = bodyOf(riskView, 'invalidatePendingCaseLoadState')
+
+  assert.match(riskView, /let caseLoadSequence = 0/)
+  assert.match(loadCase, /const requestSequence = \+\+caseLoadSequence/)
+  assert.match(loadCase, /if \(requestSequence !== caseLoadSequence\) return/)
+  assert.match(loadCase, /applyCase\(detailRes\.data, evidenceRes\.data, activityRes\.data, requestSequence\)/)
+  assert.match(applyCase, /if \(requestSequence !== caseLoadSequence\) return/)
+  assert.match(applyCase, /void loadSemanticProjection\(\)/)
+  assert.match(applyCase, /loadActivities\(detail\.case_id\)/)
+  assert.match(applyCase, /startActivityRecovery\(detail\.case_id\)/)
+  assert.match(loadSemanticProjection, /caseRequestSequence === caseLoadSequence/)
+  assert.match(loadActivities, /requestSequence === caseLoadSequence/)
+  assert.match(recoverCaseActivities, /requestSequence === caseLoadSequence/)
+  assert.match(invalidatePendingCaseLoadState, /semanticRequestSequence \+= 1/)
+  assert.match(invalidatePendingCaseLoadState, /activityLoading\.value = false/)
+  assert.match(invalidatePendingCaseLoadState, /loadingEvidenceGroup\.value = null/)
 })
 
 test('renders ready semantic evidence from its layers and cross-analysis slices', () => {

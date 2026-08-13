@@ -676,6 +676,7 @@ const draftSaveTimer = ref<number | undefined>()
 let draftSavePromise: Promise<DecisionDraft | null> | null = null
 let caseSearchTimer: number | undefined
 let caseSearchSequence = 0
+let caseLoadSequence = 0
 let activityRecoveryTimer: number | undefined
 let activityRecoveryController: AbortController | null = null
 const draftForm = reactive<{
@@ -988,6 +989,8 @@ async function refreshCurrentCase() {
 }
 
 async function loadInitialCase() {
+  const requestSequence = ++caseLoadSequence
+  invalidatePendingCaseLoadState()
   const linkedCaseId = queryText(route.query.case_id)
   const linkedEventId = queryText(route.query.event_id)
   if (linkedCaseId) {
@@ -1001,6 +1004,7 @@ async function loadInitialCase() {
       await loadCase(matched.case_id)
       return
     }
+    if (requestSequence !== caseLoadSequence) return
     currentCase.value = null
     evidence.value = null
     message.warning('未找到对应事件')
@@ -1009,20 +1013,22 @@ async function loadInitialCase() {
   loading.value = true
   try {
     const latest = await getLatestReviewCase()
+    if (requestSequence !== caseLoadSequence) return
     await applyCase(latest.data)
     void loadCaseOptions('')
   } catch {
+    if (requestSequence !== caseLoadSequence) return
     currentCase.value = null
     evidence.value = null
   } finally {
-    loading.value = false
+    if (requestSequence === caseLoadSequence) loading.value = false
   }
 }
 
 async function loadCase(caseId: string) {
+  const requestSequence = ++caseLoadSequence
   loading.value = true
-  stopActivityRecovery()
-  resetEvidencePaging()
+  invalidatePendingCaseLoadState()
   try {
     const [detailRes, evidenceRes, activityRes] = await Promise.all([
       getReviewCase(caseId),
@@ -1033,17 +1039,31 @@ async function loadCase(caseId: string) {
       }),
       listCaseActivities(caseId, { limit: 100 }),
     ])
-    await applyCase(detailRes.data, evidenceRes.data, activityRes.data)
+    if (requestSequence !== caseLoadSequence) return
+    await applyCase(detailRes.data, evidenceRes.data, activityRes.data, requestSequence)
   } finally {
-    loading.value = false
+    if (requestSequence === caseLoadSequence) loading.value = false
   }
+}
+
+function invalidatePendingCaseLoadState() {
+  stopActivityRecovery()
+  resetEvidencePaging()
+  semanticRequestSequence += 1
+  semanticRequestEventId.value = ''
+  semanticProjection.value = null
+  semanticLoading.value = false
+  activityLoading.value = false
+  loadingEvidenceGroup.value = null
 }
 
 async function applyCase(
   detail: ReviewCaseDetail,
   evidenceData?: ReviewCaseEvidence,
   activityData?: { items: CaseActivity[]; next_cursor: number | null },
+  requestSequence = caseLoadSequence,
 ) {
+  if (requestSequence !== caseLoadSequence) return
   currentCase.value = detail
   selectedCaseId.value = detail.case_id
   evidence.value = null
@@ -1071,10 +1091,11 @@ async function applyCase(
     pendingLoads.push(loadActivities(detail.case_id))
   }
   await Promise.all(pendingLoads)
+  if (requestSequence !== caseLoadSequence) return
   startActivityRecovery(detail.case_id)
 }
 
-async function loadSemanticProjection() {
+async function loadSemanticProjection(caseRequestSequence = caseLoadSequence) {
   const eventId = currentCase.value?.event_id
   const requestSequence = ++semanticRequestSequence
   semanticRequestEventId.value = eventId || ''
@@ -1085,6 +1106,7 @@ async function loadSemanticProjection() {
     const response = await getEventSemantic(eventId)
     if (
       requestSequence === semanticRequestSequence
+      && caseRequestSequence === caseLoadSequence
       && currentCase.value?.event_id === eventId
       && semanticRequestEventId.value === eventId
     ) {
@@ -1093,13 +1115,18 @@ async function loadSemanticProjection() {
   } catch {
     if (
       requestSequence === semanticRequestSequence
+      && caseRequestSequence === caseLoadSequence
       && currentCase.value?.event_id === eventId
       && semanticRequestEventId.value === eventId
     ) {
       semanticProjection.value = null
     }
   } finally {
-    if (requestSequence === semanticRequestSequence && semanticRequestEventId.value === eventId) {
+    if (
+      requestSequence === semanticRequestSequence
+      && caseRequestSequence === caseLoadSequence
+      && semanticRequestEventId.value === eventId
+    ) {
       semanticLoading.value = false
     }
   }
@@ -1140,18 +1167,24 @@ async function loadEvidenceGroup(
   group: EvidenceAssessment,
   cursor = 0,
   append = false,
+  requestSequence = caseLoadSequence,
 ) {
   if (!currentCase.value || loadingEvidenceGroup.value) return
+  const caseId = currentCase.value.case_id
   loadingEvidenceGroup.value = group
   try {
-    const res = await getReviewCaseEvidence(currentCase.value.case_id, {
+    const res = await getReviewCaseEvidence(caseId, {
       assessment: group,
       cursor,
       limit: 40,
     })
-    applyEvidencePage(res.data, append)
+    if (requestSequence === caseLoadSequence && currentCase.value?.case_id === caseId) {
+      applyEvidencePage(res.data, append)
+    }
   } finally {
-    loadingEvidenceGroup.value = null
+    if (requestSequence === caseLoadSequence && currentCase.value?.case_id === caseId) {
+      loadingEvidenceGroup.value = null
+    }
   }
 }
 
@@ -1211,21 +1244,25 @@ function hydrateDraft(detail: ReviewCaseDetail) {
   }, 0)
 }
 
-async function loadActivities(caseId: string) {
+async function loadActivities(caseId: string, requestSequence = caseLoadSequence) {
   activityLoading.value = true
   try {
     const res = await listCaseActivities(caseId, { limit: 100 })
-    activities.value = res.data.items
-    activityCursor.value = res.data.next_cursor || 0
+    if (requestSequence === caseLoadSequence && currentCase.value?.case_id === caseId) {
+      activities.value = res.data.items
+      activityCursor.value = res.data.next_cursor || 0
+    }
   } finally {
-    activityLoading.value = false
+    if (requestSequence === caseLoadSequence && currentCase.value?.case_id === caseId) {
+      activityLoading.value = false
+    }
   }
 }
 
-function startActivityRecovery(caseId: string) {
+function startActivityRecovery(caseId: string, requestSequence = caseLoadSequence) {
   stopActivityRecovery()
   activityRecoveryTimer = window.setInterval(() => {
-    void recoverCaseActivities(caseId)
+    void recoverCaseActivities(caseId, requestSequence)
   }, 10000)
 }
 
@@ -1238,23 +1275,30 @@ function stopActivityRecovery() {
   activityRecoveryController = null
 }
 
-async function recoverCaseActivities(caseId: string) {
-  if (!pageActive.value || currentCase.value?.case_id !== caseId || activityRecoveryController) return
+async function recoverCaseActivities(caseId: string, requestSequence = caseLoadSequence) {
+  if (
+    !pageActive.value
+    || requestSequence !== caseLoadSequence
+    || currentCase.value?.case_id !== caseId
+    || activityRecoveryController
+  ) return
   const controller = new AbortController()
   activityRecoveryController = controller
   try {
     const events = await readCaseEventStream(caseId, activityCursor.value, controller.signal)
+    if (requestSequence !== caseLoadSequence || currentCase.value?.case_id !== caseId) return
     if (events.length === 0) return
     const response = await listCaseActivities(caseId, {
       after_id: activityCursor.value,
       limit: 100,
     })
+    if (requestSequence !== caseLoadSequence || currentCase.value?.case_id !== caseId) return
     const known = new Set(activities.value.map((item) => item.cursor))
     activities.value.push(...response.data.items.filter((item) => !known.has(item.cursor)))
     activityCursor.value = response.data.next_cursor || activityCursor.value
 
     const detail = await getReviewCase(caseId)
-    if (currentCase.value?.case_id === caseId) {
+    if (requestSequence === caseLoadSequence && currentCase.value?.case_id === caseId) {
       const localDraft = currentCase.value.decision_draft
       currentCase.value = detail.data
       if (draftDirty.value || savingDraft.value) {
@@ -1265,12 +1309,15 @@ async function recoverCaseActivities(caseId: string) {
     }
 
     if (events.some((item) => ['snapshot_added', 'reconfirmation_required'].includes(item.activity_type))) {
+      if (requestSequence !== caseLoadSequence || currentCase.value?.case_id !== caseId) return
       resetEvidencePaging()
       if (activeEvidenceGroup.value === 'unresolved') {
         const evidenceResponse = await getReviewCaseEvidence(caseId)
-        applyEvidencePage(evidenceResponse.data, false)
+        if (requestSequence === caseLoadSequence && currentCase.value?.case_id === caseId) {
+          applyEvidencePage(evidenceResponse.data, false)
+        }
       } else {
-        await loadEvidenceGroup(activeEvidenceGroup.value)
+        await loadEvidenceGroup(activeEvidenceGroup.value, 0, false, requestSequence)
       }
     }
   } catch (error) {
