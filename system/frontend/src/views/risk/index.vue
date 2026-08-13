@@ -1558,7 +1558,7 @@ function hasSemanticEvidenceStructure(value: unknown): value is SemanticEvidence
       && isRecord(stance)
       && (
         (stance.status === 'ready' && hasText(stance.label))
-        || stance.status === 'blocked_missing_primary_claim'
+        || (stance.status === 'blocked_missing_primary_claim' && stance.label === null)
       )
       && hasRecords(candidate.keywords, (record) => hasText(record.term))
       && hasRecords(candidate.topics, (record) => hasText(record.label))
@@ -1610,6 +1610,8 @@ function hasSemanticEvidenceStructure(value: unknown): value is SemanticEvidence
   if (!isRecord(value)) return false
   const layers = value.layers
   const crossAnalysis = value.cross_analysis
+  const timeSlices = isRecord(crossAnalysis) ? crossAnalysis.time_slices : undefined
+  const platformSlices = isRecord(crossAnalysis) ? crossAnalysis.platform_slices : undefined
   return (
     isRecord(layers)
     && Array.isArray(layers.posts)
@@ -1618,8 +1620,12 @@ function hasSemanticEvidenceStructure(value: unknown): value is SemanticEvidence
     && hasRecords(layers.comments, hasSemanticItem)
     && (layers.posts.length > 0 || layers.comments.length > 0)
     && isRecord(crossAnalysis)
-    && hasRecords(crossAnalysis.time_slices, hasTimeSlice)
-    && hasRecords(crossAnalysis.platform_slices, hasPlatformSlice)
+    && Array.isArray(timeSlices)
+    && hasRecords(timeSlices, hasTimeSlice)
+    && timeSlices.length > 0
+    && Array.isArray(platformSlices)
+    && hasRecords(platformSlices, hasPlatformSlice)
+    && platformSlices.length > 0
     && hasRecords(crossAnalysis.community_slices, hasCommunitySlice)
     && hasRecords(crossAnalysis.propagation_path_overlays, hasPathOverlay)
   )

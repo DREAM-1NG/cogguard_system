@@ -260,8 +260,10 @@ test('requires complete semantic evidence containers before the panel is ready',
   assert.match(semanticEvidence, /!hasSemanticEvidenceStructure\(projection\.evidence\)/)
   assert.match(hasSemanticEvidenceStructure, /hasRecords\(layers\.posts, hasSemanticItem\)/)
   assert.match(hasSemanticEvidenceStructure, /hasRecords\(layers\.comments, hasSemanticItem\)/)
-  assert.match(hasSemanticEvidenceStructure, /hasRecords\(crossAnalysis\.time_slices, hasTimeSlice\)/)
-  assert.match(hasSemanticEvidenceStructure, /hasRecords\(crossAnalysis\.platform_slices, hasPlatformSlice\)/)
+  assert.match(hasSemanticEvidenceStructure, /hasRecords\(timeSlices, hasTimeSlice\)/)
+  assert.match(hasSemanticEvidenceStructure, /timeSlices\.length > 0/)
+  assert.match(hasSemanticEvidenceStructure, /hasRecords\(platformSlices, hasPlatformSlice\)/)
+  assert.match(hasSemanticEvidenceStructure, /platformSlices\.length > 0/)
   assert.match(hasSemanticEvidenceStructure, /hasRecords\(crossAnalysis\.community_slices, hasCommunitySlice\)/)
   assert.match(hasSemanticEvidenceStructure, /hasRecords\(crossAnalysis\.propagation_path_overlays, hasPathOverlay\)/)
 })
@@ -306,5 +308,24 @@ test('accepts only runtime-shaped nested semantic evidence artifacts', () => {
   unavailableCrossAnalysis.cross_analysis.platform_slices = []
   unavailableCrossAnalysis.cross_analysis.community_slices = []
   unavailableCrossAnalysis.cross_analysis.propagation_path_overlays = []
-  assert.equal(validate(unavailableCrossAnalysis), true)
+  assert.equal(validate(unavailableCrossAnalysis), false)
+})
+
+test('requires time and platform slices when semantic layers contain items', () => {
+  const validate = semanticEvidenceValidator()
+  const populatedLayersWithoutRequiredSlices = validSemanticEvidence()
+
+  populatedLayersWithoutRequiredSlices.cross_analysis.time_slices = []
+  populatedLayersWithoutRequiredSlices.cross_analysis.platform_slices = []
+
+  assert.equal(validate(populatedLayersWithoutRequiredSlices), false)
+})
+
+test('requires blocked missing-primary-claim stances to have a null label', () => {
+  const validate = semanticEvidenceValidator()
+  const blockedItemWithLabel = validSemanticEvidence()
+
+  blockedItemWithLabel.layers.comments[0].stance.label = 'neutral'
+
+  assert.equal(validate(blockedItemWithLabel), false)
 })
