@@ -100,12 +100,14 @@ def test_missing_local_weights_blocks_without_rule_fallback(tmp_path: Path):
 def test_real_runtime_contract_stratifies_layers_and_reuses_embeddings(tmp_path: Path):
     runtime = _runtime(tmp_path)
     snapshot = _snapshot()
+    coordination_artifact = tmp_path / "coordination_artifact"
+    coordination_artifact.mkdir()
 
     result = runtime.enrich(
         snapshot,
         coordination={
             "fallback": False,
-            "artifact_dir": str(tmp_path / "coordination_artifact"),
+            "artifact_dir": str(coordination_artifact),
             "artifact_manifest": {"data_fingerprint": snapshot.data_fingerprint},
             "network": {"clusters": [{"cluster_id": "c1", "members": ["u1", "u2"]}]},
         },
@@ -238,3 +240,19 @@ def test_path_overlay_requires_a_matching_propagation_artifact(tmp_path: Path):
 
     assert cross_analysis["propagation_path_overlays"] == []
     assert cross_analysis["propagation_path_overlays_unavailable_reason"] == "propagation_result_unavailable"
+
+
+def test_matching_fingerprint_without_existing_propagation_artifact_is_unavailable(tmp_path: Path):
+    snapshot = _snapshot()
+    result = _runtime(tmp_path).enrich(
+        snapshot,
+        propagation={
+            "artifact_dir": str(tmp_path / "missing-propagation-artifact"),
+            "artifact_manifest": {"data_fingerprint": snapshot.data_fingerprint},
+            "key_paths": [],
+        },
+        claim="primary claim",
+    )
+
+    assert result["cross_analysis"]["propagation_path_overlays"] == []
+    assert result["cross_analysis"]["propagation_path_overlays_unavailable_reason"] == "propagation_result_unavailable"

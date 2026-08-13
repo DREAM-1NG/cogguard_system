@@ -15,6 +15,7 @@ import importlib
 import math
 from pathlib import Path
 from typing import Any, Iterable
+from urllib.parse import unquote, urlparse
 
 
 MODEL_SPECS: dict[str, dict[str, str]] = {
@@ -432,7 +433,8 @@ def _community_slices(
     if coordination.get("fallback") is True:
         return [], "coordination_fallback"
     manifest = coordination.get("artifact_manifest")
-    if not str(coordination.get("artifact_dir") or "").strip() or not isinstance(manifest, dict):
+    artifact_ref = coordination.get("artifact_dir") or coordination.get("artifact_uri") or coordination.get("artifact")
+    if not _artifact_reference_exists(artifact_ref) or not isinstance(manifest, dict):
         return [], "coordination_artifact_unavailable"
     if str(manifest.get("data_fingerprint") or "") != str(snapshot.data_fingerprint):
         return [], "coordination_artifact_snapshot_mismatch"
@@ -526,9 +528,30 @@ def _matching_propagation_artifact(propagation: dict[str, Any], snapshot: Any) -
         return False
     artifact_ref = propagation.get("artifact_dir") or propagation.get("artifact_uri") or propagation.get("artifact")
     manifest = propagation.get("artifact_manifest")
-    return bool(str(artifact_ref or "").strip()) and isinstance(manifest, dict) and str(
+    return _artifact_reference_exists(artifact_ref) and isinstance(manifest, dict) and str(
         manifest.get("data_fingerprint") or ""
     ) == str(snapshot.data_fingerprint)
+
+
+def _artifact_reference_exists(reference: Any) -> bool:
+    """Require a locally verifiable artifact before deriving cross-stage overlays."""
+    value = str(reference or "").strip()
+    if not value:
+        return False
+    parsed = urlparse(value)
+    if parsed.scheme and parsed.scheme != "file" and not _windows_drive_path(value):
+        return False
+    path_value = unquote(parsed.path) if parsed.scheme == "file" and not _windows_drive_path(value) else value
+    if parsed.scheme == "file" and parsed.netloc:
+        path_value = f"//{parsed.netloc}{path_value}"
+    try:
+        return Path(path_value).exists()
+    except (OSError, ValueError):
+        return False
+
+
+def _windows_drive_path(value: str) -> bool:
+    return len(value) >= 3 and value[1:3] in {":\\", ":/"} and value[0].isalpha()
 
 
 def _direct_post_comment(edge: Any) -> bool:
