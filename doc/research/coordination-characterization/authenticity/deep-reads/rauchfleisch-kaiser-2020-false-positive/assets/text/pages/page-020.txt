@@ -1,0 +1,40 @@
+PLOS ONE                                              The False positive problem of automatic bot detection in social science research
+
+
+
+
+                                             39.  Bradshaw S, Howard PN. THE GLOBAL ORGANIZATION OF SOCIAL MEDIA DISINFORMATION
+                                     CAMPAIGNS. Journal of International Affairs. 2018; 71:23–32. Available from: https://www.jstor.org/
+                                                 stable/26508115.
+
+                                             40.  Facebook. 20. Inauthentic Behavior. 2020 [cited 27 Jul 2020]. https://www.facebook.com/
+                                                  communitystandards/inauthentic_behavior.
+
+                                             41.   Christensen GS, Freese J, Miguel E. Transparent and reproducible social science research. How to do
+                                           open science / Garret Christensen, Jeremy Freese, and Edward Miguel. Oakland, California: University
+                                                        of California Press; 2019.
+
+                                             42.   Ferna´ndez DM, Graziotin D, Wagner S, Seibold H. Open Science in Software Engineering; 2019.
+                                                      https://arxiv.org/abs/1904.06499.
+
+                                             43.   Sayyadiharikandeh M, Varol O, Yang K-C, Flammini A, Menczer F. Detection of Novel Social Bots by
+                                           Ensembles of Specialized Classifiers. 2020 [cited 6 Oct 2020]. https://arxiv.org/abs/2006.06867.
+
+                                             44.  Vargas L, Emami P, Traynor P. On the Detection of Disinformation Campaign Activity with Network
+                                                     Analysis; 2020. https://arxiv.org/abs/2005.13466v1.
+
+                                             45.  Hayes AF, Krippendorff K. Answering the Call for a Standard Reliability Measure for Coding Data. Com-
+                                                 munication Methods and Measures. 2007; 1:77–89. https://doi.org/10.1080/19312450709336664
+
+                                             46.   Keller FB, Schoch D, Stier S, Yang J. Political Astroturfing on Twitter: How to Coordinate a Disinforma-
+                                                           tion Campaign. Political Communication. 2019; 63:1–25. https://doi.org/10.1080/10584609.2019.
+                                           1661888
+
+                                             47.   Kovic M, Rauchfleisch A, Sele M, Caspar C. Digital astroturfing in politics: Definition, typology, and
+                                               countermeasures: Studies in Communication Sciences; 2018.
+
+
+
+
+
+PLOS ONE | https://doi.org/10.1371/journal.pone.0241045  October 22, 2020                                                        20 / 20

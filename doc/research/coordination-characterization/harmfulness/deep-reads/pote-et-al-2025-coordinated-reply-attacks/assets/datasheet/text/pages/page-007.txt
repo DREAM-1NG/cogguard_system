@@ -1,0 +1,50 @@
+Who was involved in the data col-  The data were collected through the
+lection  process  (e.g.,  students,  Twitter API (https://developer.x.
+crowdworkers,  contractors)  and  com/en/docs/x-api).
+how were they compensated (e.g.,
+                             Were the individuals in questionhow  much  were  crowdworkers
+                                       notified about the data collection?paid)?
+                                                                If so, please describe (or show with The first author collected the data.
+                                    screenshots or other information) how
+Over what timeframe was the data  notice was provided, and provide a
+collected?  Does this timeframe   link or other access point to, or other-
+match the creation timeframe of the  wise reproduce, the exact language of
+data associated with the instances  the notification itself.
+(e.g., recent crawl of old news ar-   No, the individuals were not notified.
+ticles)?   If not, please describe the
+timeframe in which the data associ-
+                                 Did the individuals in question con-ated with the instances was created.
+                                   sent to the collection and use of The data from IO accounts comes
+                                         their data?  If so, please describe (orfrom an archived dataset. The normal
+                               show with screenshots or other infor-replies to the targeted tweets and the
+                                     mation) how consent was requestedcontrol dataset were collected in the
+                                and provided, and provide a link orspring of 2023 but created over a pe-
+                                       other access point to, or otherwise re-riod of years prior to that.
+                                     produce, the exact language to which
+Were any ethical review processes  the individuals consented.
+conducted (e.g., by an institutional  No consent was required.
+review board)?    If so, please pro-
+                                                          If  consent was  obtained,  werevide a description of these review pro-
+                                    the  consenting  individuals  pro-cesses, including the outcomes, as
+                                  vided with a mechanism to revokewell as a link or other access point to
+                                         their consent in the future or forany supporting documentation.
+                                      certain uses?   If so, please provide The data collection was deemed ex-
+                                a description, as well as a link or otherempt  from  review by  the  Indiana
+                                  access point to the mechanism (if ap-University IRB (protocols 12410 and
+                                           propriate).1102004860).
+                                   n/a
+Does the dataset relate to people?
+                             Has an analysis of the potentialIf not, you may skip the remaining
+                                 impact of the dataset and its usequestions in this section.
+                             on data subjects (e.g., a data pro- Yes, RQ1 target annotation.csv,
+                                      tection impact analysis) been con-RQ3 replier info.csv and
+                                ducted?   If so, please provide a de-RQ1 target follower following count.csv
+                                           scription of this analysis, including theare associated with Twitter profiles.
+                                   outcomes, as well as a link or other
+Did you collect the data from the  access point to any supporting docu-
+individuals in question directly, or  mentation.
+obtain it via third parties or other   The Indiana University IRB deter-
+sources (e.g., websites)?           mined that the data collection con-
+
+
+                                  7

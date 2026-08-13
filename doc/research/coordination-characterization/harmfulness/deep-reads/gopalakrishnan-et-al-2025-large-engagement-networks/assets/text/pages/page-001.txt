@@ -1,0 +1,66 @@
+Proceedings of the Nineteenth International AAAI Conference on Web and Social Media (ICWSM 2025)
+
+
+
+
+    Large Engagement Networks for Classifying Coordinated Campaigns and
+                         Organic Twitter Trends
+
+    Atul Anand Gopalakrishnan1, Jakir Hossain1, Tu˘grulcan Elmas2, Ahmet Erdem Sarıy¨uce1
+                                                  1University at Buffalo
+                                                         2 University of Edinburgh
+                    atulanan@buffalo.edu, mh267@buffalo.edu, telmas@ed.ac.uk, erdem@buffalo.edu
+
+
+
+                      Abstract                          them on its main page, implying that those are the topics that
+                                                                 users widely discuss. On the other hand, coordinated efforts   Social media users and inauthentic accounts, such as bots,
+                                                          can manipulate perceptions on certain topics. Users with  may coordinate in promoting their topics. Such topics may
+   give the impression that they are organically popular among      common goals may attempt to artificially inflate the pop-
+   the public, even though they are astroturfing campaigns that          ularity of certain topics to promote their campaigns. They
+   are centrally managed. It is challenging to predict if a topic is      may employ fake accounts and bots in a coordinated man-
+   organic or a coordinated campaign due to the lack of reliable         ner to achieve that while hiding those accounts’ inauthen-
+  ground truth. In this paper, we create such ground truth by           tic nature, which is a strategy named astroturfing (Elmas
+   detecting the campaigns promoted by ephemeral astroturfing          et al. 2021). Such efforts can obscure genuine discourse,
+   attacks. These attacks push any topic to Twitter’s (X) trends         presenting a challenge in discerning topics that are popular
+    list by employing bots that tweet in a coordinated manner in                                                       due to organic activity from coordinated campaigns. Twit-
+   a short period and then immediately delete their tweets. We
+                                                                             ter’s trends are also susceptible to such manipulation. Past  manually curate a dataset of organic Twitter trends. We then
+                                                                   studies reported that adversaries manipulate Twitter trends   create engagement networks out of these datasets which can
+   serve as a challenging testbed for graph classification task to         frequently in various countries, such as Pakistan (Kausar,
+   distinguish between campaigns and organic trends. Engage-          Tahir, and Mehmood 2021), India (Jakesch et al. 2021), and
+  ment networks consist of users as nodes and engagements as        Turkey (Elmas et al. 2021).
+  edges (retweets, replies, and quotes) between users. We re-       We focus on the latter case, where the adversaries primar-
+   lease the engagement networks for 179 campaigns and 135           ily employ a special attack named “ephemeral astroturfing”.
+  non-campaigns, and also provide finer-grain labels to char-                                                                In this attack, a set of bots promote a topic (a hashtag or
+   acterize the type of the campaigns and non-campaigns. Our
+                                                        an n-gram representing a campaign) by bulk-tweeting it in   dataset, LEN (Large Engagement Networks), is available in
+                                                            a text that is randomly generated using a lexicon. They then   the URL below. In comparison to traditional graph classifi-
+   cation datasets, which are small with tens of nodes and hun-        immediately delete their tweets. Despite this, the topics still
+   dreds of edges at most, graphs in LEN are larger. The average        appear on the trend lists. Since this attack is both effective
+  graph in LEN has ∼11K nodes and ∼23K edges. We show        and easy to detect due to its distinct activity pattern, it helps
+   that state-of-the-art GNN methods give only mediocre results        us to establish a reliable ground truth on the topics that are
+   for campaign vs. non-campaign and campaign type classifica-        campaigns.
+   tion on LEN. LEN offers a unique and challenging playfield
+                                                     Our work aims to create a graph classification bench-
+   for the graph classification problem. We believe that LEN will
+                                                    mark of Turkish Twitter engagement networks to help iden-   help advance the frontiers of graph classification techniques
+  on large networks and also provide an interesting use case in           tify campaign graphs and other downstream tasks (such as
+   terms of distinguishing coordinated campaigns and organic         identifying the type of campaign). To do this, we detect
+   trends.                                                  ephemeral astroturfing attacks and annotate their target top-
+                                                                        ics as campaigns. Manual verification of these annotations
+Code — https://github.com/erdemUB/LEN                   shows that they are mostly related to politics, financial pro-
+Datasets —                                               motions (e.g., cryptocurrencies), and groups of people orga-
+  https://erdemub.github.io/large-engagement-network/          nizing themselves to call for reforms. The collected data is
+                                                              then converted to a set of engagement networks or graphs,
+                Introduction                       where the nodes are the users and the edges indicate en-
+                                                        gagements between the users, which in our case can be
+Social media serves as a censor to public sentiment, reflect-                                                                   retweets, replies, or quotes. Our dataset, LEN, contains 314
+ing popular topics of widespread interest through organic                                                                   large networks, 179 campaign and 135 non-campaign, con-
+discussions among users. For instance, Twitter (recently re-                                                                   taining 11,769 nodes and 23,593 edges, on average. We fur-
+named as X) monitors popular topics, trends, and publishes                                                                     ther provide finer-grain labels for the types of campaigns
+Copyright © 2025, Association for the Advancement of Artificial      and non-campaigns. LEN is publicly available at https://
+Intelligence (www.aaai.org). All rights reserved.                      erdemub.github.io/large-engagement-network/. The dataset
+
+
+                                                   688

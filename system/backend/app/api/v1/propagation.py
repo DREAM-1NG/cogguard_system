@@ -22,7 +22,14 @@ router = APIRouter()
 SUPPORTED_OBSERVATION_RATIOS = frozenset({0.1, 0.3, 0.5})
 
 
-async def _call_observed_analysis(*, platform: str | None, event_id: str | None, node_limit: int) -> dict:
+async def _call_observed_analysis(
+    *,
+    platform: str | None,
+    event_id: str | None,
+    node_limit: int,
+    first_layer_limit: int | None = None,
+    second_layer_limit: int | None = None,
+) -> dict:
     analyze_fn = propagation_observation_service.analyze_observed_propagation
     try:
         parameters = signature(analyze_fn).parameters
@@ -31,7 +38,20 @@ async def _call_observed_analysis(*, platform: str | None, event_id: str | None,
     supports_node_limit = "node_limit" in parameters or any(
         param.kind == Parameter.VAR_KEYWORD for param in parameters.values()
     )
+    layer_budget = {
+        "total": node_limit,
+        "parallel_roots": 8,
+        "first_layer": first_layer_limit if first_layer_limit is not None else 40,
+        "second_layer": second_layer_limit if second_layer_limit is not None else 80,
+    }
     if supports_node_limit:
+        if "layer_budget" in parameters or any(param.kind == Parameter.VAR_KEYWORD for param in parameters.values()):
+            return await analyze_fn(
+                platform=platform,
+                event_id=event_id,
+                node_limit=node_limit,
+                layer_budget=layer_budget,
+            )
         return await analyze_fn(platform=platform, event_id=event_id, node_limit=node_limit)
     return await analyze_fn(platform=platform, event_id=event_id)
 
@@ -40,11 +60,19 @@ async def _call_observed_analysis(*, platform: str | None, event_id: str | None,
 async def analyze(
     platform: str | None = Query(None, description="Limit analysis to one platform."),
     event_id: str | None = Query(None, description="Limit analysis to one event id."),
-    node_limit: int = Query(300, ge=0, description="Maximum diffusion-summary nodes; 0 means all summary nodes."),
+    node_limit: int = Query(160, ge=0, description="Maximum diffusion-summary nodes; 0 means all summary nodes."),
+    first_layer_limit: int = Query(40, ge=1, le=160),
+    second_layer_limit: int = Query(80, ge=1, le=160),
     _current_user: User = Depends(get_current_user),
 ):
     """Analyze observed propagation paths, roles, objects, and evidence."""
-    result = await _call_observed_analysis(platform=platform, event_id=event_id, node_limit=node_limit)
+    result = await _call_observed_analysis(
+        platform=platform,
+        event_id=event_id,
+        node_limit=node_limit,
+        first_layer_limit=first_layer_limit,
+        second_layer_limit=second_layer_limit,
+    )
     return success(data=result)
 
 
@@ -52,11 +80,19 @@ async def analyze(
 async def observed_analysis(
     platform: str | None = Query(None, description="Limit analysis to one platform."),
     event_id: str | None = Query(None, description="Limit analysis to one event id."),
-    node_limit: int = Query(300, ge=0, description="Maximum diffusion-summary nodes; 0 means all summary nodes."),
+    node_limit: int = Query(160, ge=0, description="Maximum diffusion-summary nodes; 0 means all summary nodes."),
+    first_layer_limit: int = Query(40, ge=1, le=160),
+    second_layer_limit: int = Query(80, ge=1, le=160),
     _current_user: User = Depends(get_current_user),
 ):
     """Canonical observed-only Propagation Analysis endpoint."""
-    result = await _call_observed_analysis(platform=platform, event_id=event_id, node_limit=node_limit)
+    result = await _call_observed_analysis(
+        platform=platform,
+        event_id=event_id,
+        node_limit=node_limit,
+        first_layer_limit=first_layer_limit,
+        second_layer_limit=second_layer_limit,
+    )
     return success(data=result)
 
 
@@ -86,6 +122,7 @@ async def predict_model_event(
         float,
         Query(ge=0.1, le=0.5, description="Supported observed-prefix ratio used by the deployed checkpoint."),
     ] = 0.5,
+    force_refresh: bool = Query(True, include_in_schema=False),
     _current_user: User = Depends(get_current_user),
 ):
     """Run the prediction model for current-event propagation data."""
@@ -110,6 +147,15 @@ async def predict_model_event(
             status_code=422,
             detail="The deployed checkpoint exposes normalized trajectory steps; wall-clock prediction_horizon is unsupported.",
         )
+    if not force_refresh:
+        result = await propagation_model_service.read_cached_current_event_prediction(
+            event_id=event_id,
+            platform=platform,
+            observed_until=effective_observed_until,
+            observation_ratio=observation_ratio,
+            top_k=top_k,
+        )
+        return success(data=result)
     result = await propagation_model_service.predict_current_event_model(
         platform=platform,
         event_id=event_id,
@@ -121,6 +167,30 @@ async def predict_model_event(
         result,
         event_id=event_id,
         platform=platform,
+    )
+    return success(data=result)
+
+
+@router.get("/model-event-predict/cached", response_model=PropagationPredictionResponse)
+async def get_cached_model_event_prediction(
+    event_id: Annotated[str, Query(min_length=1, description="Event id required for event-scoped prediction.")],
+    platform: Annotated[str | None, Query(description="Limit prediction to one platform.")] = None,
+    top_k: Annotated[int, Query(ge=1, le=50)] = 10,
+    observed_until: Annotated[str | None, Query(description="Inclusive timezone-aware ISO-8601 observation cutoff.")] = None,
+    observation_ratio: Annotated[float, Query(ge=0.1, le=0.5)] = 0.5,
+    _current_user: User = Depends(get_current_user),
+):
+    """Read a persisted prediction without invoking the event model."""
+    try:
+        propagation_model_service.validate_observed_until(observed_until)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    result = await propagation_model_service.read_cached_current_event_prediction(
+        event_id=event_id,
+        platform=platform,
+        observed_until=observed_until,
+        observation_ratio=observation_ratio,
+        top_k=top_k,
     )
     return success(data=result)
 

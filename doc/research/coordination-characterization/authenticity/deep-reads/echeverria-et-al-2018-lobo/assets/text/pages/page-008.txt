@@ -1,0 +1,67 @@
+Target    1 - Class    Full Model  LOBO Model  Accuracy
+     Class   Model Acc.   Accuracy     Accuracy      Gain
+                                                                                      100    A        99.80%      93.90%        62.01%    31.89%
+    B        99.74%      93.92%        98.14%     -4.22%
+    C        96.42%      94.22%        84.81%     9.41%                 80
+    D        92.37%      94.17%        86.65%     7.52%
+    E        97.42%      94.11%        49.19%    44.92%              (%) 60
+     F        99.47%      94.02%         0.71%    93.31%
+    H        94.56%      94.92%         2.19%    92.73%
+                                                                                       40    K        99.70%      94.05%         1.97%    92.08%                                       Accuracy
+   M        98.43%      94.25%        66.02%    28.23%
+    T        92.79%      94.25%        88.79%     5.46%                 20
+    U        91.14%      95.16%        39.44%    55.73%
+    V        92.22%      94.57%        77.86%    16.71%                                                                                        0
+   W        94.53%      94.21%        89.82%     4.39%                    0      2      4      8     16     32     64    128    256
+     Avg.      96.05%     94.29%       57.51%    36.78%                                        Samples
+                                                              Figure 3: Mean (Blue) and error range (blue shade 95% conﬁdence)
+              Table 6: Lobo test on dataset C500                                                                           for the classiﬁer accuracy on target classes according to the number
+                                                                      of samples seen from the target class
+average results per bot class.  In this table we added a new
+measure for context: 1-Class Model Acc. This provides the
+                                                                                      100
+accuracy when the model is trained and tested on a single bot
+                                                                                                                    Aclass (dividing the data in the same 70/30 split).                                                                                       80                                                C
+  Another interesting fact is that in this test the accuracy on                                                                     F
+unseen classes is almost the same as shown in 5 but the aver-         (%) 60                                                HV
+age accuracy of the full model is not. In this test, the per class
+average accuracy for the full model is very close to the ex-                                                                                                                                                                                                                                                        Accuracy 40
+pected 92.1% shown in Tab. 3. It is likely due to the balancing
+of bot classes.                                                                      20
+
+
+                                                                                        0
+7  Beyond the LOBO test                                         0      2      4      8     16     32     64    128    256                                                                                                         Samples
+                                                              Figure 4: Error range for mean (blue shade) and classiﬁer accuracy
+7.1  Relatively Stable Results
+                                                                         against number of samples seen (for speciﬁc classes)
+  To evaluate whether these results are stable or not, we take
+the standard deviation of the LOBO model accuracy from
+LOBO test II. This was made on dataset C500 and there are   choose X Bursty bots from the test data, and move them to
+14 classes to analyze. Almost all of these target classes show    the training data. And so on. The test ﬁnishes at the 9th step
+low standard deviation of less than 4%, meaning that regard-   when both the test data and the training data contain about 250
+less of the way the dataset is sampled and split, the accuracy    Bursty bots. The step sizes are ﬁxed at 0, 2, 4, 8, 16, 32,
+on each target (unseen) class remains stable.  This suggests    64, 128, and 256 (basically it is a 2x scale but we traded the
+that the LOBO test will provide consistent results overall. The    ﬁrst step for zero bots which matches LOBO test II).Note that,
+only two exceptions with a standard deviation above 4% are    this being a single C500 dataset, the difference in accuracy
+the Star Wars bots at 24% standard deviation, and the Social   between the 0 bot case and LOBO test II is expected. We also
+Spambots # 1 at 13% .                                       use the full 500 instances of each of the classes except the
+                                                                          target, instead of limiting to 70%.
+7.2  Learning Rate                          We repeat the above process 50 iterations, and then calculate
+  To further analyse the gap of accuracy between the Full    the average prediction accuracy at each step for the target class.
+Model and the LOBO model, here we measure how fast the    Repetition is needed because each of the times different bots
+LOBO model can improve its performance by moving a few   from the target class are being sent into the training set, and
+of the target bots, from the test data to the training data. The      it affects the overall accuracy differently. Finally, we run the
+learning rate is measured on a single sampled dataset from    learning rate test for each bot class in Table 6 as a target class.
+LOBO Test II. For example, take the Bursty bots as the tar-    Detailed results are shown in Table 7.
+get class.  Initially, none of the 500 Bursty bots are included      Figure 3 shows the average accuracy after X samples for all
+in the training data, and all the 500 form the whole of the test    bot classes that have been tested, with the shaded area repre-
+data.                                                           senting the 95% conﬁdence interval. The overall trend would
+  Consider X as the step size. At the ﬁrst step, we randomly    suggest that the classiﬁer has learned to identify most target
+choose X Bursty bots and remove them from the test data, and    classes of bots after a few examples.  In contrast, Figure 4
+then add them to the training data (in addition to the training   shows that the performance for different classes varies signiﬁ-
+data of the other bot classes). We train the classiﬁer and record    cantly. It contains the same shaded area as Figure 3 to show the
+the prediction results. In the second step, again, we randomly    stark differences between the average and the widely varying
+
+
+                                                   8

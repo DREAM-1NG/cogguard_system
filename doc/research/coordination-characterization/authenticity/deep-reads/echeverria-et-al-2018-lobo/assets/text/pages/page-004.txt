@@ -1,0 +1,66 @@
+ID  Name              BTS(%)  BTS(Avg)      Size                       General dataset consisting of users and
+ A    Star Wars Bots        —    —   357,000                            several classes of bots or botnets
+  B    Bursty Bots                  2.75        0.04   500,000
+  C   DeBot                       7.67        0.09   700,000                         Bot Ci                 User C
+ D   Fake followers              96.79        0.90      721
+  E    Social spambots #1          92.35        0.85      551                         Randomly split into train/test
+  F    Social spambots #2          99.37        0.96     3,320                           (with or without balancing/subsampling)
+ G    Social spambots #3          94.10        0.87      458
+ H    Traditional spambots #1      98.28        0.93      872                    Train Bci     Test Bci     Train Uc     Test Uc
+   I     Traditional spambots #2    100.00        0.85        1
+   J     Traditional spambots #3      66.08        0.60      283                                           First Training round
+ K    Traditional spambots #4      97.81        0.90      977                  LOBO Model                Full Model
+  L   ∼1k followers              20.89        0.21      387
+ M  ∼100K followers           10.90        0.13      534                 Train {Bci - Bct}   Train Uc      Train Bci   Train Uc
+ N  ∼1M followers              1.32        0.02      229
+ O  ∼10M followers             0.00        0.00       26                                     Classiﬁer testing on
+                                                                                                                      target class
+ Q   Fake followers-FSF        100.00        0.96       33
+  S    Fake followers-INT        100.00        0.95       64                LOBO Model                       Full Model
+  T    Fake followers-TWT        95.34        0.89      624
+ V   HoneyPot bots (Darpa)       27.69        0.30     2,521                         Bot Ct                          Test Ct
+ W   Attack on Ben Nimmo       59.09        0.54     1,558
+ X    Attack on Brian Krebs       83.05        0.78      728      Figure 2: Abstract representation of the LOBO test. The classiﬁer
+                                                                         gets trained on all bot classes BCi except the target class BCt, and
+Table 1: Different bot datasets, their identiﬁers, botometer metrics,
+                                                                    then tested on the target class to assess how well the classiﬁer gener-
+and number of accounts collected for each of them
+                                                                                 alizes.
+
+3.2  Aggregated Bot Dataset
+  Our aggregated bot dataset is over 1.5 million bots with all   which shows the average botometer scores for each of the bot
+their available tweets. To the best of our knowledge, this is by    classes. To evaluate whether this tool would be able to predict
+far the largest bot dataset that has been analyzed in research.    the dataset, we provide another metric which is the percentage
+It contains bots from several different sources, including con-    of the queried accounts that receive a botometer score over 0.5
+tent polluters, fake followers, silent accounts, phishing bots,      . Because of rate limiting, we only collected botometer scores
+and political bots (albeit, in a wide array of quantities for each    for up to 1,000 randomly selected accounts belonging to each
+class).                                                         of the classes.
+                                          We can see that many of these bot classes are overwhelm-
+3.3  User Dataset                                          ingly classiﬁed as users, for example, only 2.75% of the Bursty
+                                                          Bots are classiﬁed as bots, and less than 10% of DeBot bots  To contrast against the bot datasets, we face the problem
+                                                                    (dataset C) are classiﬁed as bots. Both of them with averageof ﬁnding a suitable real-user dataset of similar size. While
+                                                           botometer scores less than 0.1, indicating that they are “verywe could just randomly sample Twitter to get an equal amount
+                                                                    likely” to be users.of users, this methodology might result in including a small
+                                                                    Different bot classes will achieve reasonable and even per-amount of bots in our real-user class. To minimize this issue,
+                                                                      fect performance on this bot detection task, but variability be-we use crawling techniques that attempt to give us an unbiased
+                                                       tween bot classes is very clear.sample of the general real-user population in Twitter. Please
+note that this methodology does not guarantee that no bots will
+be represented in this dataset:  it is just a way of minimizing
+their presence.                             4  Methodology - The LOBO test
+  We begin with a real user as a seed, and follow his outgoing    Evaluating bot classiﬁers faces an important challenge.  For
+connections (friends only, not followers). We manually verify   obvious reasons, we are unable to evaluate the performance on
+that each of the users in the ﬁrst level are real users. We use    the bots that we haven’t seen. This is a real problem, as bots
+up to 4 steps and obtain over 1 million English speaking users.   mutate all the time, and botmasters are actively and creatively
+We assume that a real user is unlikely to follow bots. A similar    trying to get around any form of detection (which sometimes
+approach was used in [18]. While there might be a few bots in   means suspension from the service).
+this dataset, the vast majority of it must be real users.               In this paper we propose a new form of testing accuracy for
+                                                                 generalization of bot detection strategies. We call it the LOBO
+3.4  Botometer Scores                                             test, for Leave One Botnet Out.  It derives inspiration from
+  Botometer [15] (previously botornot) is a public API that    cross validation where a section of the available data is kept
+provides a score based on whether an account is likely to be    out, and used for testing on N number of “fold.” Then, the
+a bot or a user.   It has been used to verify bot accounts in    section of the data used for testing changes on each fold.
+other research [9].  For our different bot classes, botometer     The LOBO test was created to assess whether a classiﬁer
+does not perform well enough. This can be seen in Table 1,   can detect a bot class, which we will call the target class,
+
+
+                                                   4

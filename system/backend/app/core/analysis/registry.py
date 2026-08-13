@@ -286,6 +286,34 @@ class AnalysisRegistry:
             "chunk_count": len(chunks),
         }
 
+    async def load_run_artifact(self, run_id: str, artifact_key: str) -> Any:
+        """Load and validate a chunked Mongo run artifact payload."""
+        collection = _get_collection(self.mongo_db, RUN_ARTIFACT_COLLECTION)
+        artifact_id = f"{run_id}:{artifact_key}"
+        root = await collection.find_one({"artifact_id": artifact_id}, {"_id": 0})
+        if root is None:
+            raise KeyError(f"Analysis artifact not found: {artifact_id}")
+        expected_chunks = int(root.get("chunk_count", 0) or 0)
+        cursor = collection.find(
+            {"root_artifact_id": artifact_id},
+            {"_id": 0, "chunk_index": 1, "payload": 1},
+        )
+        sorter = getattr(cursor, "sort", None)
+        if sorter is not None:
+            cursor = sorter("chunk_index", 1)
+        rows = await cursor.to_list(length=expected_chunks or None)
+        chunks = sorted(rows, key=lambda row: int(row.get("chunk_index", 0) or 0))
+        if len(chunks) != expected_chunks:
+            raise KeyError(
+                f"Analysis artifact chunks incomplete: {artifact_id} "
+                f"expected={expected_chunks} actual={len(chunks)}"
+            )
+        payload_text = "".join(str(row.get("payload") or "") for row in chunks)
+        payload_hash = hashlib.sha256(payload_text.encode("utf-8")).hexdigest()
+        if payload_hash != str(root.get("payload_sha256") or ""):
+            raise ValueError(f"Analysis artifact hash mismatch: {artifact_id}")
+        return json.loads(payload_text)
+
     async def append_run_event(
         self,
         run_id: str,

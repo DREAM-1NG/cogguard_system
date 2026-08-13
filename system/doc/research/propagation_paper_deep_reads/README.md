@@ -1,14 +1,15 @@
-# 传播监测论文精读材料索引
+# 传播监测论文精读与实验索引
 
-本目录记录 `H:\Zotero\attenger\Projects\CISCN\Propagation` 下信息扩散、动态传播预测和不确定性校准相关论文的 text-only 精读材料。
+本目录记录 `H:\Zotero\attenger\Projects\CISCN\Propagation` 下信息扩散、动态传播预测和不确定性校准相关论文的精读材料，以及本地 Propagation 方法对比实验报告。
 
 ## 核心报告
 
 | 文件 | 内容 |
 |---|---|
 | `information_diffusion_system_transfer_report.md` | 多论文精读综合、信息扩散问题意识、方法谱系、当前传播监测系统迁移和优化计划 |
-| `propagation_prediction_research_line_and_local_experiments.md` | 传播预测方法研究线补充、本地 FOREST 数据集实验口径、MINDS 与系统方法采样对比、后续严格评测计划 |
-| `propagation_sota_full_run_status_20260810.md` | Propagation SOTA baseline 本地拉取状态、可运行 adapter 边界、后台全量运行命令与输出路径 |
+| `propagation_prediction_research_line_and_local_experiments.md` | 传播预测方法研究线补充、本地 FOREST 数据集实验路径、MINDS 与系统方法采样对比、后续严格评测计划 |
+| `propagation_sota_full_run_status_20260810.md` | Propagation SOTA baseline 本地拉取状态、可运行 adapter 边界、全量运行命令与输出路径 |
+| `propagation_sota_stable_matrix_report_20260810.md` | 资源受限稳定矩阵结果，覆盖 Douban/Twitter/Memetracker、MINDS/FOREST/CasFT/DyGFormer/TGN/Ours |
 
 ## 抽取资产
 
@@ -22,9 +23,9 @@
 
 ## 使用边界
 
-本轮为多论文综合分析，不是 10 篇论文各自的完整单篇 `report.md`。报告中的图表解释仅基于文字层、图表标题、正文引用和可抽取文本，未进行像素级视觉核验。
+本目录中的综合报告和稳定矩阵用于系统设计、实现审查和工程可运行性证据。`propagation_sota_stable_matrix_report_20260810.md` 是本机资源受限矩阵，不是无裁剪严格全量验证；正式论文结论仍需要更大算力下的 uncapped full validation。
 
-如需继续复现，建议按以下顺序拆单篇深读：
+建议后续按以下顺序拆单篇深读与复现：
 
 | 顺序 | 论文 | 原因 |
 |---:|---|---|

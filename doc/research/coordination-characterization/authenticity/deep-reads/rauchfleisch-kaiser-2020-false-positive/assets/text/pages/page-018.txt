@@ -1,0 +1,86 @@
+PLOS ONE                                              The False positive problem of automatic bot detection in social science research
+
+
+                         Author Contributions
+
+                                     Conceptualization: Adrian Rauchfleisch, Jonas Kaiser.
+
+                                        Investigation: Adrian Rauchfleisch, Jonas Kaiser.
+
+                                  Methodology: Adrian Rauchfleisch, Jonas Kaiser.
+
+                                     Resources: Adrian Rauchfleisch.
+
+                                       Validation: Adrian Rauchfleisch.
+
+                                        Visualization: Adrian Rauchfleisch, Jonas Kaiser.
+
+                                   Writing – original draft: Adrian Rauchfleisch, Jonas Kaiser.
+
+                                   Writing – review & editing: Adrian Rauchfleisch, Jonas Kaiser.
+
+
+                          References
+
+                                                   1.  Howard PN, Kollanyi B. Bots, #Strongerin, and #Brexit: Computational Propaganda During the UK-EU
+                                             Referendum. SSRN Journal. 2016. https://doi.org/10.2139/ssrn.2798311
+
+                                                   2.  Bastos MT, Mercea D. The Brexit Botnet and User-Generated Hyperpartisan News. Social Science
+                                           Computer Review. 2019; 37:38–54. https://doi.org/10.1177/0894439317734157
+
+                                                   3.   Davis CA, Varol O, Ferrara E, Flammini A, Menczer F. BotOrNot: A System to Evaluate Social Bots. In:
+                                            Bourdeau J, Hendler JA, Nkambou RN, Horrocks I, Zhao BY, editors. Proceedings of the 25th Interna-
+                                                            tional Conference Companion on World Wide Web—WWW ’16 Companion. New York, New York,
+                                        USA: ACM Press; 2016. pp. 273–4.
+
+                                                   4.   Varol O, Ferrara E, Davis C, Menczer F, Flammini A. Online Human-Bot Interactions: Detection, Esti-
+                                                  mation, and Characterization; 2017. https://aaai.org/ocs/index.php/ICWSM/ICWSM17/paper/view/
+                                               15587/14817.
+
+                                                   5.   Wojcik S, Messing S, Smith A, Rainie L, Htilin P. Twitter Bots: An Analysis of the Links Automated
+                                              Accounts Share. 2018 [cited 27 Feb 2019]. http://www.pewinternet.org/2018/04/09/bots-in-the-
+                                                       twittersphere.
+
+                                                   6.   Bessi A, Ferrara E. Social bots distort the 2016 U.S. Presidential election online discussion. First Mon-
+                                                  day. 2016; 21. https://doi.org/10.5210/fm.v21i11.7090
+
+                                                   7.   Keller TR, Klinger U. Social Bots in Election Campaigns: Theoretical, Empirical, and Methodological
+                                                       Implications. Political Communication. 2019; 36:171–89. https://doi.org/10.1080/10584609.2018.
+                                           1526238
+
+                                                   8.  Vosoughi S, Roy D, Aral S. The spread of true and false news online. Science. 2018; 359:1146–51.
+                                                    https://doi.org/10.1126/science.aap9559 PMID: 29590045
+
+                                                   9.  Shao C, Ciampaglia GL, Varol O, Yang K-C, Flammini A, Menczer F. The spread of low-credibility con-
+                                                        tent by social bots. Nat Commun. 2018; 9:4787. https://doi.org/10.1038/s41467-018-06930-7 PMID:
+                                             30459415.
+
+                                             10.  Zhang Y, Shah D, Foley J, Abhishek A, Lukito J, Suk J, et al. Whose Lives Matter? Mass Shootings and
+                                                    Social Media Discourses of Sympathy and Policy, 2012–2014. Journal of Computer-Mediated Commu-
+                                                         nication. 2019; 24:182–202. https://doi.org/10.1093/jcmc/zmz009
+
+                                             11.  Grimme C, Assenmacher D, Adam L. Changing Perspectives: Is It Sufficient to Detect Social Bots. In:
+                                                   Meiselwitz G, editor. Social Computing and Social Media. User Experience and Behavior. Cham:
+                                                  Springer International Publishing; 2018. pp. 445–61.
+
+                                             12.  Yang K- C, Varol O, Davis CA, Ferrara E, Flammini A, Menczer F. Arming the public with artificial intelli-
+                                           gence to counter social bots. Hum Behav & Emerg Tech. 2019; 1:48–61. https://doi.org/10.1002/hbe2.
+                                          115
+
+                                             13.   Botometer. FAQ. 2019 [cited 24 Jun 2019]. https://botometer.iuni.iu.edu/#!/faq.
+
+                                             14.   Fernquist J, Kaati L, Schroeder R. Political Bots and the Swedish General Election. 2018 IEEE Interna-
+                                                            tional Conference on Intelligence and Security Informatics (ISI). IEEE; 2018. pp. 124–9.
+
+                                             15.   Echeverrı´a J, Cristofaro E de, Kourtellis N, Leontiadis I, Stringhini G, Zhou S. LOBO. Proceedings of
+                                                   the 34th Annual Computer Security Applications Conference. New York, NY, USA: ACM;
+                                               2018. pp. 137–46.
+
+                                             16.   Cresci S, Di Pietro R, Petrocchi M, Spognardi A, Tesconi M. The Paradigm-Shift of Social Spambots.
+                                                               In: Barrett R, Cummings R, Agichtein E, Gabrilovich E, editors. Proceedings of the 26th International
+
+
+
+
+
+PLOS ONE | https://doi.org/10.1371/journal.pone.0241045  October 22, 2020                                                        18 / 20

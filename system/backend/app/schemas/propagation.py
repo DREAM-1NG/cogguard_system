@@ -92,6 +92,7 @@ class PropagationPredictionData(BaseModel):
     capability: dict[str, Any] | None = None
     methodology: dict[str, Any] | None = None
     prediction_boundary: dict[str, Any] | None = None
+    cache: dict[str, Any] | None = None
     note: str | None = None
 
 

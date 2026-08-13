@@ -1,0 +1,64 @@
+Test
+                                                                Train
+                                                           RS   SA   TR  EG   SA/EG/AE   Other
+                                                  RS          0.85   0.54   0.61   0.56      0.52      0.65
+                                               SA          0.55   0.76   0.53   0.63      0.74      0.68
+                                               TR          0.61   0.60   0.74   0.63      0.65      0.68
+                                             EG          0.43   0.37   0.36   0.65      0.38      0.39
+                                                      SA/EG/AE   0.47   0.58   0.57   0.60      0.73      0.48
+                                                                   Other        0.62   0.59   0.63   0.56      0.52     0 .74
+
+                                                             Table 4: F1 scores obtained from same-campaign (diago-
+                                                                 nal entries, in bold) and cross-campaign evaluations of the
+                                                              tweet classifier. RS=Serbia, SA=Saudi Arabia, TR=Turkey,
+                                                     EG=Egypt. SA/EG/AE = Saudi Arabia/Egypt/Arab Emi-
+                                                                       rates is a campaign involving three countries.
+
+Figure 7: Scores of tweet classifiers based on different
+thresholds for the number of IO replies received by targeted                                                               values are obtained when the model trained on all data from
+tweets.                                                       one campaign (optimized to maximize F1) is tested on other
+                                                           campaigns. As expected, the models perform better when
+                                                                   trained and tested on the same campaign. However, models
+whether tweet-level engagement features would provide suf-      can generalize, with F1 drops that depend on the specific
+ficient signals to discriminate between targeted and control      campaigns. This suggests that at least some commonalities
+tweets. However, Table 3 indicates that tweet-level reply,       exist across coordinated reply campaigns.
+like, and retweet counts do not provide very informative sig-
+nals for tweet classification. To further explore this question,           RQ3: Replier Classification
+let us measure the correlation between tweet-level features
+(reply count, retweet count, and like count)     Once we identify potentially targeted tweets, we can attempt
+                                                                     to detect, among the accounts that reply to them, those thatand the corresponding reply-level engagement counts. As
+                                                                 are engaged in coordinated activity. Distinguishing authen-each original tweet can have many replies, there are many
+                                                                                tic replies from inauthentic ones poses a non-trivial chal-more replies than original tweets. We therefore calculate
+                                                                  lenge, given that inauthentic accounts attempt to create anthe mean correlation between pairs of tweet/reply engage-
+                                                             impression of authenticity. For this task, we train a super-ment features across 10 random samples of replies matching
+                                                               vised replier classifier using the targeted tweet dataset.the number of original tweets. The correlations are all very
+small (around 0.001), confirming that reply engagement is
+not a mere reflection of tweet popularity.                        Classifier Features
+  We previously defined targeted tweets as those that re-    We engineer features for each replier from their profile meta-
+ceive five or more replies from IO accounts. Let us test the       data and their replies to the targeted tweets. Starting with
+robustness of our classifier with respect to this definition by       profile metadata, we calculate the age of repliers by subtract-
+considering a range of threshold values between five and 20      ing the account creation date from the date of the last reply
+replies from IO accounts. This filters down the set of tar-     by the account. As illustrated in Fig. 8(A), most IO repli-
+geted tweets and corresponding control tweets. We follow       ers are relatively new accounts, with a median age of 0.37
+the same procedure described above to construct the classi-      years compared to 2.08 years for normal repliers. Despite
+fication dataset, extract the features, and train and evaluate       their relatively young age, IO repliers display a higher me-
+the classifier. Fig. 7 reports the mean precision, recall, F1,      dian number of followers (282) and followings (380) com-
+and AUC from 10-fold cross-validation. While we observe      pared to normal repliers, whose medians are 114 and 292,
+slight increases as the criterion for defining targeted tweets       respectively (Figure 8(B, C)). However, IO repliers exhibit
+becomes more stringent, the results appear to be robust with      lower activity levels (original tweets + replies + quotes +
+respect to this parameter.                                           retweets), with a median of 699 compared to 4406 for nor-
+  Next, let us evaluate the generality of the classifier by test-     mal repliers (Figure 8(D)).
+ing how well a model trained on one campaign performs       To leverage these key differences between IO and nor-
+when tested on other campaigns. First, we split the classifi-     mal repliers, we create four features specific to profile meta-
+cation dataset into six subsets: one for each of the top five       data: age, follower rate, following rate, and
+campaigns, based on the number of targeted tweets, and one     activity rate. Since the numbers of followers/follow-
+with data aggregated from the remaining campaigns. Sec-      ing and the activity are correlated with an account’s age, we
+ond, we train campaign-specific models on each of these      normalize the rate features by the age of the account.
+datasets, as in the original tweet classification setup. Finally,       Each replier may be involved in one or more replies to
+we evaluate the models on test data from each dataset. In the      multiple targeted tweets. Therefore, we create a number
+diagonal of Table 4 we report F1 values when the model       of features that summarize the characteristics of the set of
+trained on one campaign is tested on the same campaign       replies generated by each replier, including replies to multi-
+(mean across 10-fold cross-validation). The off-diagonal F1       ple targeted tweets. These features are based on eight reply
+
+
+                                                   1592

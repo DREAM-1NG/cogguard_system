@@ -1,0 +1,163 @@
+{
+  "schema_version": 3,
+  "paper": {
+    "title": "Coordinated Reply Attacks in Influence Operations: Characterization and Detection",
+    "authors": [
+      "Manita Pote",
+      "Tugrulcan Elmas",
+      "Alessandro Flammini",
+      "Filippo Menczer"
+    ],
+    "venue": "Proceedings of the Nineteenth International AAAI Conference on Web and Social Media (ICWSM 2025)",
+    "version": "AAAI/ICWSM official PDF; arXiv 2410.19272 cross-checked as preprint source",
+    "sources": [
+      {
+        "type": "pdf",
+        "location": "assets/sources/pote-et-al-2025-aaai-official.pdf",
+        "sha256": "6e925d59b9a98a465005ccc1fc1d0590edca5b401ac792f90df32d66459e45d0",
+        "role": "primary"
+      },
+      {
+        "type": "pdf",
+        "location": "assets/sources/pote-et-al-2024-arxiv.pdf",
+        "sha256": "b617c1e707aea4723faba003c8f8c88526142b02f5128fdd14e39e0ba2950409",
+        "role": "version cross-check"
+      },
+      {
+        "type": "dataset-metadata",
+        "location": "assets/sources/zenodo-13896308.json and assets/sources/zenodo-13896309.json",
+        "role": "data DOI and file inventory"
+      },
+      {
+        "type": "datasheet",
+        "location": "assets/sources/coordinated_reply_datasheet.pdf",
+        "sha256": "26cf076108ac305e02060148b8d2caab88d097120b0cd57f4c31fad847d25453",
+        "role": "dataset documentation"
+      },
+      {
+        "type": "code",
+        "location": "https://github.com/osome-iu/io-coordinated-replies commit a834156ae2eee0c0cf652817f599fc7a17e76d9d",
+        "role": "official replication code"
+      }
+    ],
+    "page_convention": "1-based PDF page numbers; PDF p.1 is printed page 1586"
+  },
+  "reader_profile": {
+    "domain": "social-behavioral plus computer-science-ai",
+    "selected_lenses": [
+      "social-behavioral",
+      "computer-science-ai"
+    ],
+    "audience": "research-generalist auditing CogGuard harmfulness transfer",
+    "goal": "understand-review-transfer",
+    "depth": "deep",
+    "language": "zh-CN"
+  },
+  "execution": {
+    "visual_mode": "visual",
+    "visual_verification": "complete",
+    "text_evidence_sources": [
+      "official PDF text layer",
+      "visual inspection of selected crops",
+      "Zenodo metadata and datasheet",
+      "official GitHub README and API metadata"
+    ]
+  },
+  "claims": [
+    {
+      "id": "C1",
+      "claim": "Coordinated reply attacks in the studied Twitter IO data primarily target influential public figures such as journalists, news media, state officials, and politicians.",
+      "status": "partial",
+      "inference": false,
+      "evidence": [
+        {"type": "figure", "locator": "Figure 2, PDF p.4", "note": "Target account and tweet/reply distribution CCDFs."},
+        {"type": "figure", "locator": "Figure 3, PDF p.4", "note": "Serbia target country/profession and word-shift case study."},
+        {"type": "figure", "locator": "Figure 4, PDF p.5", "note": "Egypt target country/profession and word-shift case study."},
+        {"type": "text", "locator": "PDF p.4-p.5", "note": "Manual annotation and case-study conclusions."}
+      ],
+      "caveats": [
+        "The target-profile annotation is limited to Serbia and Egypt case studies and was performed by one author.",
+        "The paper explicitly says the descriptive statistics lack a general Twitter-user reference model."
+      ]
+    },
+    {
+      "id": "C2",
+      "claim": "A supervised tweet classifier can identify tweets targeted by coordinated replies within the constructed dataset.",
+      "status": "strong",
+      "inference": false,
+      "evidence": [
+        {"type": "figure", "locator": "Figure 1, PDF p.3", "note": "Positive/control tweet construction."},
+        {"type": "table", "locator": "Table 2, PDF p.6", "note": "Random Forest F1 0.80 and AUC 0.88."},
+        {"type": "table", "locator": "Table 3, PDF p.6", "note": "All features outperform simple tweet-level counts."},
+        {"type": "figure", "locator": "Figure 6, PDF p.6", "note": "Permutation importance for tweet classifier."},
+        {"type": "figure", "locator": "Figure 7, PDF p.7", "note": "Threshold robustness from 5 to 20 IO replies."}
+      ],
+      "caveats": [
+        "The claim depends on the paper's positive and control construction.",
+        "The tweet dataset is artificially balanced."
+      ]
+    },
+    {
+      "id": "C3",
+      "claim": "A supervised replier classifier can identify IO repliers among replies to targeted tweets in the studied data.",
+      "status": "strong",
+      "inference": false,
+      "evidence": [
+        {"type": "table", "locator": "Table 5, PDF p.9", "note": "Downsampling plus Random Forest F1 0.92 and AUC 0.97."},
+        {"type": "table", "locator": "Table 6, PDF p.9", "note": "Similarity features are the strongest single feature set."},
+        {"type": "figure", "locator": "Figure 9, PDF p.8", "note": "Similarity dominates permutation importance."},
+        {"type": "figure", "locator": "Figure 10, PDF p.9", "note": "IO replies have higher similarity distribution than normal replies."},
+        {"type": "figure", "locator": "Figure 11, PDF p.10", "note": "Performance under different class imbalance ratios."}
+      ],
+      "caveats": [
+        "The strongest table result is from balanced downsampling, not an online prevalence setting.",
+        "IO replier label should not be interpreted as harmful intent."
+      ]
+    },
+    {
+      "id": "C4",
+      "claim": "The classifiers show partial cross-campaign generalization within Twitter IO campaigns.",
+      "status": "partial",
+      "inference": false,
+      "evidence": [
+        {"type": "table", "locator": "Table 4, PDF p.7", "note": "Tweet classifier cross-campaign F1 matrix has uneven off-diagonal drops."},
+        {"type": "table", "locator": "Table 7, PDF p.10", "note": "Replier classifier cross-campaign F1 matrix is stronger but still has weak campaign pairs."}
+      ],
+      "caveats": [
+        "All cross-campaign tests remain inside the Twitter IO data universe.",
+        "The paper does not evaluate on other platforms due to lack of IO datasets."
+      ]
+    },
+    {
+      "id": "C5",
+      "claim": "Reply-level engagement and similarity are important operational signals for coordinated reply detection.",
+      "status": "partial",
+      "inference": false,
+      "evidence": [
+        {"type": "table", "locator": "Table 3, PDF p.6", "note": "Engagement feature set improves tweet classifier over simple counts."},
+        {"type": "figure", "locator": "Figure 6, PDF p.6", "note": "Tweet-level feature importance emphasizes reply-level engagement."},
+        {"type": "table", "locator": "Table 6, PDF p.9", "note": "Similarity feature set reaches F1 0.84 and AUC 0.92 for replier classifier."},
+        {"type": "figure", "locator": "Figure 9 and Figure 10, PDF p.8-p.9", "note": "Similarity dominates replier importance and has visible distributional separation."}
+      ],
+      "caveats": [
+        "Similarity can arise from common topic or event context, not only malicious coordination.",
+        "Permutation importance is not a causal test."
+      ]
+    },
+    {
+      "id": "C6",
+      "claim": "For CogGuard, the paper supports tactic-specific reply-attack detection, not direct community harmfulness labeling.",
+      "status": "weak",
+      "inference": true,
+      "evidence": [
+        {"type": "text", "locator": "PDF p.10-p.11", "note": "Authors discuss safety impact and warn that activism may also use coordinated replies."},
+        {"type": "text", "locator": "PDF p.11", "note": "Authors recommend human investigation and warn against labeling users as IO accounts without thorough investigation."},
+        {"type": "text", "locator": "PDF p.3", "note": "Labels are based on Twitter IO membership and reply timing, not harmful intent annotation."}
+      ],
+      "caveats": [
+        "This is a migration recommendation by the report, not a direct paper claim.",
+        "IO membership, coordination, and harmful intent are distinct constructs."
+      ]
+    }
+  ]
+}

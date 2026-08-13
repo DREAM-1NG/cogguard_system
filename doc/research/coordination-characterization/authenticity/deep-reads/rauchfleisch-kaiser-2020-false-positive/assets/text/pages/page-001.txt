@@ -1,0 +1,67 @@
+PLOS ONE
+
+
+
+
+
+                              RESEARCH ARTICLE
+                The False positive problem of automatic bot
+                   detection in social science research
+
+                                   Adrian RauchfleischID1*, Jonas Kaiser2,3,4
+
+                                     1 Graduate Institute of Journalism, National Taiwan University, Taipei, Taiwan (R.O.C.), 2 Communication,
+                                             Journalism, & Media Department, Suffolk University, Boston, Massachusetts, United States of America,
+                                     3 Berkman Klein Center, Harvard University, Cambridge, Massachusetts, United States of America,
+                                     4 Alexander von Humboldt Institute for Internet & Society, Berlin, Germany
+
+a1111111111                         * adrian.rauchfleisch@gmail.com
+a1111111111
+a1111111111
+a1111111111                Abstract
+a1111111111
+                               The identification of bots is an important and complicated task. The bot classifier "Bot-
+                                   ometer" was successfully introduced as a way to estimate the number of bots in a given list
+                                          of accounts and, as a consequence, has been frequently used in academic publications.
+                                  Given its relevance for academic research and our understanding of the presence of auto-  OPEN ACCESS
+                                mated accounts in any given Twitter discourse, we are interested in Botometer’s diagnostic
+Citation: Rauchfleisch A, Kaiser J (2020) The False
+                                                ability over time. To do so, we collected the Botometer scores for five datasets (three verifiedpositive problem of automatic bot detection in
+social science research. PLoS ONE 15(10):        as bots, two verified as human; n = 4,134) in two languages (English/German) over three
+e0241045. https://doi.org/10.1371/journal.        months. We show that the Botometer scores are imprecise when it comes to estimating
+pone.0241045
+                                        bots; especially in a different language. We further show in an analysis of Botometer scores
+Editor: Fabiana Zollo, Ca’ Foscari University of      over time that Botometer’s thresholds, even when used very conservatively, are prone to
+Venice, ITALY
+                                       variance, which, in turn, will lead to false negatives (i.e., bots being classified as humans)
+Received: April 14, 2020                 and false positives (i.e., humans being classified as bots). This has immediate conse-
+Accepted: October 7, 2020                 quences for academic research as most studies in social science using the tool will unknow-
+                                           ingly count a high number of human users as bots and vice versa. We conclude our studyPublished: October 22, 2020
+                                        with a discussion about how computational social scientists should evaluate machine learn-
+Copyright: © 2020 Rauchfleisch, Kaiser. This is an
+                                        ing systems that are developed for identifying bots.open access article distributed under the terms of
+the Creative Commons Attribution License, which
+permits unrestricted use, distribution, and
+reproduction in any medium, provided the original
+author and source are credited.
+
+Data Availability Statement: Data underlying this
+study can be downloaded from the Harvard
+Dataverse, V3 (https://doi.org/10.7910/DVN/      Introduction
+XVCKRS).
+                                         Identifying bots (here understood as fully automated accounts) on social media platforms like
+Funding: This work was supported by the Ministry    Twitter is a task that is as important as it is challenging. Indeed, being able to estimate the
+of Science and Technology, Taiwan (R.O.C) (Grant
+                                          authenticity of a Twitter discourse by detecting malicious botnets or identifying how many
+No 108-2410-H-002 -007 -MY2). The funders had
+no role in study design, data collection and          “real” (i.e. human) followers a politician has, is an important baseline for computational social
+analysis, decision to publish, or preparation of the     scientists. This is not only relevant in the context of political communication but especially so
+manuscript.                        when it comes to the detection of disinformation campaigns and strengthening a platform’s
+Competing interests: The authors have declared     security. Consequently, several methods have been introduced to get a handle on this problem,
+that no competing interests exist.               including a generic activity filter [1], an analysis of posting patterns [2], as well as machine-
+
+
+
+
+
+PLOS ONE | https://doi.org/10.1371/journal.pone.0241045  October 22, 2020                                                         1 / 20

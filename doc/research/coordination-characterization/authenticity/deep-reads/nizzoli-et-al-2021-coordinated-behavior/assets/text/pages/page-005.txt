@@ -1,0 +1,66 @@
+Data: G(E, V, W)                           // ﬁltered user similarity network
+ Result: C
+
+         /* initialization                                                                   */
+    1 C0 = perform community detection on G
+    2 C = ⟨C0⟩
+    3 t0 = min(w ∈W)
+         /* detect communities as a function of coordination                   */
+    4  i = 1
+    5 while ti−1 + δw ≤max(w ∈W) do
+    6       ti = ti−1 + δw                // increment threshold by step δw
+    7   E−= {e ∈E | w(e) < ti}                  // ﬁlter out edges
+    8    Gei = G −E−
+                         e    9    V −= {v ∈V i  | d(v) = 0}                 // ﬁlter out nodes
+                −   10     Ge,vi = Gei −V                          // obtain subnetwork Ge,vi
+   11      initialize community detection with Ci−1
+   12    Ci = perform community detection on Ge,vi
+   13     append Ci to C                      // trace evolving communities
+   14      i = i + 1
+   15 end
+   16 return C                                                                             labour                                           conservative
+  Algorithm 1: Coordination-aware community de-
+                                                             Figure 2: The ﬁltered user similarity network of the 2019
+   tection. We perform the community detection iter-
+                                     UK GE. Nodes represent users involved in the online de-
+   atively at increasing coordination levels, exposing
+                                                                      bate, while edges weight according to the similarity strength
+  how communities’ structure and properties change
+                                                        between one another, as deﬁned in Step 2. Users are colored
+  when imposing increasingly restrictive similarity
+                                                             according to their political leaning, inferred from the polar-
+   thresholds.
+                                                                            ity of the hashtags they used, computed using label propaga-
+                                                                          tion.
+
+framework to uncover and characterize possible coordinated
+behaviors affecting the 2019 UK General Election. Then, we
+demonstrate the beneﬁts of our new framework by compar-      puted user similarities as the cosine similarity of user vec-
+ing its ﬁndings with those obtained by applying a threshold-        tors. Before studying the network, we applied the technique
+based approach.                                            proposed in (Serrano, Bogun´a, and Vespignani 2009) to re-
+                                                                       tain only statistically-relevant edges, thus obtaining the mul-
+    Surfacing coordination in 2019 UK GE             tiscale backbone of our network, which we exploited for
+                                                                 the remaining analyses. The resulting ﬁltered user similar-In the following, we describe how we implemented and ap-
+                                                                            ity network contains 276,775 edges and is shown in Fig-plied the aforementioned framework to uncover coordinated
+                                                               ure 2. In addition, Figure 3 shows the distribution of edgebehaviors on Twitter related to the 2019 UK GE. This sec-
+                                                            weights in the ﬁltered network. The ﬁltering step preservedtion’s content roughly corresponds to steps 1 to 5 of our
+                                                                 the rich, multiscale nature of the network, as opposed to ﬁl-methodology, while the next section describes step 6 (i.e.,
+                                                                     tering based on a ﬁxed threshold.analysis of coordinated communities).
+  User similarity network. For our analysis, we focused          Political leaning. In Figure 2, nodes are colored based
+on the activity of superspreaders – coarsely deﬁned as the     on their political leaning, as inferred from the hashtags that
+most inﬂuential spreaders of information, including mis-      they used. In particular, we employed a label propagation
+and disinformation, in online social media (Pei et al. 2014).      algorithm for assigning a polarity score to each hashtag in
+Here, we deﬁned superspreaders as the top 1% of users that      our dataset. In detail,  it is a modiﬁed version of the so-
+shared more retweets. This deﬁnition resulted in the selec-       called valence score, a simple, standard, well-known method
+tion of 10,782 users for our analysis. Despite representing      from literature adopted in many studies before (Wang et al.
+only the 1% of all users in the online electoral debate, su-      2011). The score for a given hashtag is inferred from its co-
+perspreaders shared the 39% of all tweets and the 44.2%      occurrences with seeds of known polarity. We used the 13
+of retweets. Thus, by focusing on them, we investigated the      hashtags in Table 1 as the seeds for the label propagation.
+most proliﬁc users and a considerable share of all messages.       Finally, a user’s polarity is computed as the term-frequency
+Next, we characterized each superspreader with a TF-IDF      weighted average of the polarities of the hashtags used by
+weighted vector of its retweeted tweet IDs. In other words,       that user.
+we modeled the users according to the tweets they retweeted.       Network interpretation. As shown in Figure 2, the user
+The TF-IDF weight allows us to reduce the relevance of       similarity network presents a visible structure character-
+highly popular tweets in our dataset and emphasize simi-       ized by several large communities and a few smaller ones.
+larities due to retweets of unpopular tweets – a much more      Concerning political polarization, all users can be grouped
+suspicious behavior. (Mazza et al. 2019). Then, we com-       into three main classes: Labour (red-colored), Conservative

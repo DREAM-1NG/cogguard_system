@@ -1,0 +1,20 @@
+{
+    "schema_version":  1,
+    "generated_at":  "2026-08-11T18:50:41.3899402Z",
+    "command":  "python C:\\Users\\p\\.codex\\skills\\paper-deep-reader\\scripts\\validate_report.py G:\\CISCN\\CogGuard\\.worktrees\\refactor-system\\doc\\research\\coordination-characterization\\harmfulness\\deep-reads\\angelopoulos-et-al-2024-conformal-risk-control\\report.md --manifest G:\\CISCN\\CogGuard\\.worktrees\\refactor-system\\doc\\research\\coordination-characterization\\harmfulness\\deep-reads\\angelopoulos-et-al-2024-conformal-risk-control\\assets\\visual_manifest.json --strict",
+    "exit_code":  0,
+    "result":  "PASS",
+    "output":  [
+                   "NOTE: Found 6 Markdown image reference(s).",
+                   "NOTE: Visual coverage: 7 total, 6 marked key.",
+                   "NOTE: Source map contains 8 claim(s).",
+                   "PASS: 0 errors, 0 warning(s)."
+               ],
+    "report_sha256":  "cf1afafdc62930ad22ca7bbfd1fc88c49632b494c0d6b42d7490275b96ed6e84",
+    "manifest_sha256":  "60c2792f045b0927bd25ca4edc711574d6a58533b3322a9754ca8bdbd032cd35",
+    "source_map_sha256":  "243abd4605d7502d4785d6519fbacf7ba239a50b14dcd42fa7fa66fc82a34fc1",
+    "visual_verification":  "complete",
+    "selected_assets_reviewed":  true,
+    "automatic_crops_are_unverified":  false,
+    "interpretation":  "Strict validation passed. Selected/key assets were manually reviewed; automatic crops remain unverified by design unless selected."
+}

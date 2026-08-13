@@ -99,6 +99,12 @@ export type PropagationPredictionData = {
   model?: PredictionModelScope | null
   methodology?: Record<string, unknown> | null
   prediction_boundary?: Record<string, unknown> | null
+  cache?: {
+    hit: boolean
+    stale: boolean
+    snapshot_fingerprint?: string | null
+    generated_at?: string | null
+  } | null
   note?: string | null
 }
 
@@ -109,5 +115,9 @@ export type PropagationPredictionResponse = {
 }
 
 export function predictPropagationCurrentEvent(params?: PropagationPredictionParams): Promise<PropagationPredictionResponse> {
-  return request.post('/propagation/model-event-predict', null, { params }) as unknown as Promise<PropagationPredictionResponse>
+  return request.post('/propagation/model-event-predict', null, { params: { ...params, force_refresh: true } }) as unknown as Promise<PropagationPredictionResponse>
+}
+
+export function getCachedPropagationPrediction(params?: PropagationPredictionParams): Promise<PropagationPredictionResponse> {
+  return request.get('/propagation/model-event-predict/cached', { params }) as unknown as Promise<PropagationPredictionResponse>
 }

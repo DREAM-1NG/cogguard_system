@@ -1,0 +1,48 @@
+(a) Density.                              (b) Clustering coefﬁcient.                              (c) Assortativity.
+
+Figure 7: Network measures computed for each coordinated community, as a function of the extent of coordination. By studying
+the whole extent of coordination among users, we are able to highlight the radically different patterns of coordination that
+characterize different communities, as highlighted by opposite trends in given network measures.
+
+
+plying that the most coordinated users in that community
+are likely not colluded nor organized between themselves.
+On the contrary, the most coordinated members of B60 are
+likely well-organized together, as shown by the density spike
+observed when coordination ≥0.8. Clustering coefﬁcient,
+shown in Figure 7b, provides similar results with respect to
+density. In fact, it shows decreasing trends for SNP, LCH
+and TVT, as well as rising trends for CON and LAB and, to
+a much greater extent, for B60. Trends in density and clus-
+tering coefﬁcient conﬁrm that coordination ≃0.9 appears to
+be a representative value for LCH.
+   Finally, we evaluate the assortativity of coordinated net-
+works. Here, assortativity measures the extent to which
+nodes with a high degree are connected to other nodes                    (a)  B60.                       (b)  LCH.
+with a high degree, and vice versa. Again, different patterns
+emerge. In particular, some coordinated communities (e.g.,      Figure 8: Application of word shift graphs for highlight-
+ASE and LAB) are moderately disassortative. This result rep-      ing narratives that characterize coordinated communities.
+resents a situation where a few nodes with a high degree are     Words are ranked based on their contribution towards dif-
+connected to many nodes with a low degree, realizing a net-       ferentiating coordinated and non-coordinated users. Yellow-
+work structure that is similar to a star. In turn, this highlights      colored words (right-hand side of each word shift graph)
+a coordination pattern characterized by a few hubs supported       are in-formative for coordinated users, while blue-colored
+by many less important nodes – a pattern already found to      words(left-hand side) are informative for non-coordinated
+be informative when studying online manipulations (Nizzoli       users.
+et al. 2020). Conversely, the B60 community appears to be
+strongly assortative, especially when considering coordina-
+tion in the region of 0.8. This ﬁnding represents a situation                                                       which allow comparing two corpora by highlighting those
+where many similar nodes are connected to each other, re-                                                            terms that mostly contribute to differentiate them. We ap-
+inforcing the idea of a clique of coordinated peers. By com-                                                               ply word shift graphs in our context by selecting all tweets
+bining all results shown in Figure 7, the B60 community                                                             shared by members of a community as the reference corpus
+appears to be well-described by a coordination value ≃0.8.                                                       and all tweets shared by strongly-coordinated users in that
+  Themes and narratives. Until now, we have only lever-     community as the comparison corpus. Meaningful strongly-
+aged network measures to characterize coordinated commu-      coordinated users from a community can be picked by lever-
+nities. However, their content production can also reveal in-      aging the results of our previous network-based analyses.
+teresting insights into their preferred narratives. Here, we      For instance, the B60 community can be assigned a coor-
+propose and brieﬂy experiment with a text-based analysis       dination value ≃0.8 while LCH can be characterized by
+that can be used to investigate the activity of coordinated      coordination ≃0.9. Thus, in Figure 8 we highlight con-
+groups. In particular, we are interested in highlighting the       tent production differences between all users in B60 and
+differences in the content produced by the coordinated users     LCH, with respect to the users in those communities whose
+in a community, with respect to all other – less coordi-      coordination ≥0.8 and 0.9, respectively. In ﬁgures, words
+nated – users of that community. One way to reach our goal       are ranked based on their contribution towards differentiat-
+is by exploiting word shift graphs (Gallagher et al. 2020),      ing coordinated and non-coordinated users. Yellow-colored

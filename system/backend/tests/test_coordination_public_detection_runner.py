@@ -182,6 +182,7 @@ def test_public_detection_method_registry_fixes_dataset_method_boundaries():
     assert registry.feasibility("astroturf_legitimate_classification", "deep_len_mlp_fused_detector").status == "blocked"
     assert registry.feasibility("astroturf_legitimate_classification", "deep_len_fast_mlp_fused_detector").status == "blocked"
     assert registry.feasibility("large_engagement_networks", "deep_tabular_mlp_detector").status == "blocked"
+    assert "account membership" in registry.method("iohunter_account_graph_learning").reproduction_note
 
 
 def test_len_and_astroturf_adapters_build_same_detection_contract():
@@ -254,6 +255,26 @@ def test_deep_detection_standardization_uses_train_statistics_only():
     assert test_x.tolist() == [[199.0, 99.0]]
 
 
+def test_deep_tabular_candidates_use_the_fixed_medium_grid_outside_smoke_mode():
+    _load_experiments()
+    from research.coordination_experiments.deep_detection import _configs
+
+    mlp_configs = _configs("tabular", 24, "deep_tabular_mlp_detector")
+    residual_configs = _configs("tabular", 24, "deep_tabular_residual_detector")
+
+    assert len(mlp_configs) == 32
+    assert len(residual_configs) == 32
+    assert {config.hidden_dim for config in mlp_configs} == {64, 128}
+    assert {config.layers for config in mlp_configs} == {2, 3}
+    assert {config.dropout for config in mlp_configs} == {0.1, 0.3}
+    assert {config.learning_rate for config in mlp_configs} == {0.001, 0.003}
+    assert {config.weight_decay for config in mlp_configs} == {1.0e-4, 1.0e-3}
+    assert {config.max_epochs for config in mlp_configs} == {200}
+    assert {config.patience for config in mlp_configs} == {25}
+    assert {config.search_budget for config in mlp_configs} == {"medium_5seed_grid"}
+    assert mlp_configs == residual_configs
+
+
 def _np_array(rows):
     import numpy as np
 
@@ -319,6 +340,7 @@ def test_public_detection_runner_writes_g_drive_results_for_executable_and_block
             "deep_len_mlp_fused_detector",
             "deep_len_fast_mlp_fused_detector",
             "deep_tabular_mlp_detector",
+            "deep_tabular_residual_detector",
             "tgn",
         ),
         bootstrap_resamples=25,
@@ -345,11 +367,13 @@ def test_public_detection_runner_writes_g_drive_results_for_executable_and_block
         ("large_engagement_networks", "deep_len_mlp_fused_detector"),
         ("large_engagement_networks", "deep_len_fast_mlp_fused_detector"),
         ("large_engagement_networks", "deep_tabular_mlp_detector"),
+        ("large_engagement_networks", "deep_tabular_residual_detector"),
         ("astroturf_legitimate_classification", "compact_graphsage_fused_detector"),
         ("astroturf_legitimate_classification", "deep_pyg_graphsage_fused_detector"),
         ("astroturf_legitimate_classification", "deep_len_mlp_fused_detector"),
         ("astroturf_legitimate_classification", "deep_len_fast_mlp_fused_detector"),
         ("astroturf_legitimate_classification", "deep_tabular_mlp_detector"),
+        ("astroturf_legitimate_classification", "deep_tabular_residual_detector"),
     }
     assert all(gate["selection_eligible"] is False for gate in deep_gates)
     row_methods = {
@@ -373,6 +397,7 @@ def test_public_detection_runner_writes_g_drive_results_for_executable_and_block
         if row["dataset_id"] == "astroturf_legitimate_classification" and row["status"] == "success"
     }
     assert "deep_tabular_mlp_detector" in al_success
+    assert "deep_tabular_residual_detector" in al_success
     blocked_rows = {
         (row["dataset_id"], row["method_id"]): row["status"]
         for row in manifest["rows"]
@@ -385,6 +410,7 @@ def test_public_detection_runner_writes_g_drive_results_for_executable_and_block
     assert blocked_rows[("astroturf_legitimate_classification", "deep_len_mlp_fused_detector")] == "blocked"
     assert blocked_rows[("astroturf_legitimate_classification", "deep_len_fast_mlp_fused_detector")] == "blocked"
     assert blocked_rows[("large_engagement_networks", "deep_tabular_mlp_detector")] == "blocked"
+    assert blocked_rows[("large_engagement_networks", "deep_tabular_residual_detector")] == "blocked"
     blocked = {
         (item["dataset_id"], item["method_id"]): item["status"]
         for item in manifest["feasibility_matrix"]
@@ -395,6 +421,7 @@ def test_public_detection_runner_writes_g_drive_results_for_executable_and_block
     assert blocked[("astroturf_legitimate_classification", "deep_len_mlp_fused_detector")] == "blocked"
     assert blocked[("astroturf_legitimate_classification", "deep_len_fast_mlp_fused_detector")] == "blocked"
     assert blocked[("large_engagement_networks", "deep_tabular_mlp_detector")] == "blocked"
+    assert blocked[("large_engagement_networks", "deep_tabular_residual_detector")] == "blocked"
     deep_row = next(
         row
         for row in manifest["rows"]

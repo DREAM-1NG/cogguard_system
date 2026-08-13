@@ -1,0 +1,67 @@
+User Features                                               C30K          C500
+ User ID                # Followers             # Friends                           Algorithm      Acc.   AUC    Acc.   AUC
+ Friend To Follower Ratio  # User favorites          username length             LGBM         97.84%    0.98   93.93%    0.94
+ Seconds active           Days active                Total tweet count             XGBC         95.91%    0.96   91.24%    0.91
+ Proﬁle description length                                                 Random Forest   97.02%    0.97   91.54%    0.92
+                         Tweet Features                                            DecissionTree   95.99%    0.96   86.93%    0.87
+ # Geolocated tweets    % of Geolocated Tweets  # Mentions (Rtw)                  AdaBoost       94.29%    0.94   88.88%    0.89
+ Avg. Edit distance (Rtw)   # Hashtags             # Mentions (Twt)
+                                                                  Table 3: Classiﬁer performance on C30K and C500 datasets.
+ Avg. Edit distance (Twt)   # URLs             URLs (per tweet)
+ # Tweets analyzed        # Favorites                Favorites (per tweet)
+ # APIs used             # Unique hashtags       Unique hashtag ratio                            True       False       False      True
+ # Unique mentions        Avg. tweet length        Avg. retweet length                              Negatives   Positives   Negatives   Positives
+ # Retweets analyzed                                      LGBM            31161       344       1010     30152
+                                                    XGBC             30767       738       1824     29338
+          Table 2: Features employed for classiﬁcation.                 Random Forest      31073       432       1438     29724
+                                                                                  DecissionTree       30241      1264       1250     29912
+                                                                         AdaBoost          30002      1503       2078     29084
+analyzed tweets (or favorites per tweet). This summarizes both
+directions of the endorsement: how much the user being ana-    Table 4:  Confusion Matrices for different classiﬁers trained on
+                                                                          dataset C30K.lyzed endorses other users, and how much other users endorse
+the user at hand.
+                                             ﬂow from the bot class identiﬁcation to our C30K and C500
+                                                                     datasets.
+6  Experiments
+                                                     6.2  General Classiﬁers
+In this section, we describe the experimental setups used, ma-
+                                          We utilize our user dataset against the bot training data. Allchine learning classiﬁers applied and results extracted using
+                                                                 the features presented in previous Section have been calcu-the LOBO test under different scenarios.
+                                                                    lated for every user, making each user representation a 30-
+                                                         dimension vector. We use some of the most common classi-
+6.1  Subsampling
+                                                             ﬁers (mostly based on trees). The classiﬁers to test are Gra-
+Dataset with class size ≤30k In real life, botnets will come    dient Boosted Trees (using Xgboost and LightGBM), Random
+in varying sizes. Furthermore, the amount of data that will be    Forests, Decision Trees, and AdaBoost.
+available for training each bot class will vary even more. As      All these algorithms are deliberately trained using their most
+an easy example, the bot classes analyzed in this paper range    standard and naive python implementation. Naturally, the per-
+from tens of accounts to hundreds of thousands. To provide   formance evaluation is done purely on the test data which was
+an opportunity for our smallest bot classes, in this experimen-    not “seen” during training.
+tal setup we limit the numbers of the three larger bot classes.   Performance Evaluation - C30K Table 3 shows the results of
+With this in mind, we include only 30,000 randomly sampled    a binary classiﬁcation attempt using the dataset C30K. All of
+bot accounts from each of these datasets (A, B, and C). How-    the algorithms show clear signs of an easy separation task, with
+ever, we include all of the bots in datasets D-X for a total of    accuracies over 95% in most cases. This level of accuracy in
+∼105,000 bots. The reasoning behind this is to not allow our    bot classiﬁcation is not unheard of: it has been claimed before
+three large datasets to exceed 100 times the largest of our other,    several times (e.g., [11, 34, 25]).
+smaller, datasets.                                        To further reiterate that this is not a ﬂuke, we also check the
+  To contrast these bots against users, we randomly sample    area under the ROC curve and the confusion matrix for some
+our real user dataset to only include 105,000 accounts. The    of the results generated (Table 4). As can be seen, almost all
+aggregation of these 105k users and 105k bots will be referred    bots are classiﬁed as bots, and almost all users are classiﬁed as
+to as the dataset with class size ≤30k, C30K for short.           users, for all the algorithms tested (remember that the testing
+Dataset with class size = 500 Dataset C30K is still quite im-    set was 30% of the C30K dataset, i.e., ∼63k instances total).
+balanced, having classes with 30,000 bots and classes with 26    This result was repeated several times just for consistency, all
+bots. To measure the effect of bot classes without being biased    with random 70-30 training-test splits and showed little vari-
+by their size, we create another bot dataset.  This balanced    ation. One could argue that our LGBM classiﬁer is compara-
+sub-sampled bot dataset contains 500 random instances from    ble to the state of the art in bot detection, having been trained
+each of the bot classes that have over 500 accounts in them.    with over 200,000 data points spanning a wide variety of bot
+This means a few of the bot datasets have been excluded, but    classes, achieving accuracy of over 97%.
+choosing 500 as the size still allows us to have 14 bot datasets   Performance Evaluation - C500 We need to know the per-
+to evaluate on. This bot dataset is made of 7,000 bot instances.   formance on a dataset where the bots have the same numbers,
+  To contrast against this bot dataset, we add an equivalent    since we cannot always count on having the beneﬁt of large
+number of users from our user dataset. The aggregation of both    bot data corpuses like DeBot, Star Wars bots or Bursty bots.
+of these datasets will be referred to as the dataset with class    We evaluate performance on dataset C500 with the same
+size = 500, or C500. Please note that this dataset is created on    strategy, using the same standard and naive versions of several
+the ﬂy every time it is needed. Fig. 1 shows the data collection    popular classiﬁcation algorithms. The results, while still en-
+
+
+                                                   6

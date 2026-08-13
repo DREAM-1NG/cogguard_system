@@ -1,0 +1,71 @@
+Published as a conference paper at ICLR 2024
+
+
+
+
+
+        soupsoupsoup bowlbowlbowl            LoaferLoaferLoafer             ponchoponchoponcho              candlecandlecandle
+         dishdish                shoeshoe                 cloakcloak              lamplamp
+        hot pot              sandal               cloak                  jack-o'-lantern
+
+
+
+
+
+       meatmeatmeat loafloafloaf             tabletabletable lamplamplamp            spotlightspotlightspotlight            soupsoupsoup bowlbowlbowl
+         dishdish               lamplamp              lamplamp                 dishdish
+         burrito              candle              candle            consomme
+
+
+
+
+
+                                                                              100
+
+                  density                                                            10 1
+          100                                                         10 2
+
+            0
+                     0.047   0.048   0.049   0.050   0.051   0.052   0.053          0     1     2     3     4     5     6     7     8
+                                                    risk                                                              height
+Figure 3: Control of graph distance on hierarchical ImageNet. The top figure shows examples
+of our procedure with correct classes in black, false positives in blue, and false negatives in red.
+The bottom plots report our minimum hierarchical distance loss and set size over 1000 independent
+random data splits. The dashed gray line marks α.
+
+3.2  FNR CONTROL IN MULTILABEL CLASSIFICATION
+
+In the multilabel classification setting, our input Xi is an image and our label is a set of classes
+Yi ⊂{1, . . . , K} for some number of classes K. Using a multiclass classification model f  : X →
+[0, 1]K, we form prediction sets and calculate the number of false positives exactly as in (7). By
+Theorem 1, picking ˆλ as in (4) again yields the FNR-control guarantee in (8). We evaluate on the
+Microsoft Common Objects in Context (MS COCO) dataset (Lin et al., 2014), a large-scale 80-class
+multiclass classification task commonly used in computer vision. We choose a TResNet (Ridnik
+et al., 2020) as our model f and used n = 4000, and evaluated risk control with 1000 validation
+data points. We report results with α = 0.1 in Figure 2. The mean and standard deviation of the
+risk over 1000 trials are 0.0996 and 0.0052, respectively. The results indicate that the risk is almost
+exactly controlled, the spread is not too wide, and the set sizes are reasonable, not overly inflated.
+
+3.3  CONTROL OF GRAPH DISTANCE IN HIERARCHICAL IMAGE CLASSIFICATION
+
+In the K-class hierarchical classification setting, our input Xi is an image and our label is a leaf
+node Yi ∈{1, ..., K} on a tree with nodes V and edges E. Using a single-class classification model
+f  : X →∆K, we calibrate a loss in graph distance between the interior node we select and the
+closest ancestor of the true class. For any x ∈X, let ˆy(x) = arg maxk f(x)k be the class with the
+highest estimated probability. Further, let d : V × V →Z be the function that returns the length of
+the shortest path between two nodes, let A : V →2V be the function that returns the ancestors of its
+argument, and let P : V →2V be the function that returns the set of leaf nodes that are descendants
+of its argument. We also let g(v, x) = Pk∈P(v)f(x)k be the sum of scores of leaves descended
+from v. Further, define a hierarchical distance
+                            dH(v, u) = a∈A(v){d(a,inf       u)}.
+For a set of nodes Cλ ∈2V, we then define the set-valued loss
+      LGraphi    (λ) = s∈Cλ(Xi){dH(y,inf         s)}/D, where Cλ(x) =    \         P(a).
+                                                                  {a∈A(ˆy(x)) : g(a,x)≥−λ}
+
+This loss returns zero if y is a child of any element in Cλ, and otherwise returns the minimum
+distance between any element of Cλ and any ancestor of y, scaled by the depth D. Thus, it is a
+monotone loss function and can be controlled by choosing ˆλ as in (4) to achieve the guarantee
+                        Eh LGraphn+1  (ˆλ)i ≤α.
+
+
+                                       6

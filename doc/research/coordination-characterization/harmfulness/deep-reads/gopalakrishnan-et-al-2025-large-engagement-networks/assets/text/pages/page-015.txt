@@ -1,0 +1,25 @@
+Sub-type  # of Conn. Comp.     fLCC
+            Min Max    Avg Min Max  Avg
+       Politics       1 2,004   207.29 0.355     1 0.800
+      Reform       1   112    13.16 0.396     1 0.826
+     News       17 2,138   578.67 0.147 0.975 0.735
+      Finance      6 1,486   159.71 0.257 0.973 0.691          Campaign Noise       16 8,908 1,865.22 0.065 0.976 0.469
+       Cult        12   122    67.00 0.293 0.899 0.553
+      Overall      1 8,908   269.47 0.065     1 0.767
+     News       10   818    6,169 0.203 0.989 0.793
+       Sports       54 3,114   576.00 0.180 0.981 0.655
+       Festival     128 7,289 1,721.24 0.349 0.924 0.793
+       Internal     164 7,605 1,096.45 0.337 0.988 0.793
+     Common   103 1,851   788.13 0.298 0.940 0.945              Non-Campaign  Enter.      101   396   193.28 0.570 0.953 0.792
+      Sp. cam.     68   105    76.00 0.885 0.926 0.906
+      Overall     54 7,605   675.80 0.180 0.989 0.816
+
+Table 7: Description of connected components in the graph.
+Here fLCC is the fraction of the largest connected compo-
+nent to the whole graph.
+
+
+
+
+
+                                                   702

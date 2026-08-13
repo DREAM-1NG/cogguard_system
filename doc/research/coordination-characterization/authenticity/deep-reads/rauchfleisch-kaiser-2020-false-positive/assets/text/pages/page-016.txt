@@ -1,0 +1,59 @@
+PLOS ONE                                              The False positive problem of automatic bot detection in social science research
+
+
+
+                                              et al. [14], Cresci and colleagues [16], as well as Echeverrı`a et al. [15] did in their studies. Our
+                                             results are in line with this prior research as Botometer struggles with specific types of
+                                        accounts, bots and humans, that are not covered by the training data [18]. We do think that
+                                     Botometer can still be a useful tool for researchers, journalists as well as citizens. Just recently a
+                              new version (v4) of Botometer was released that addressed some aspects of our criticism [43]
+                                 and has overall a better performance than prior versions of Botometer, such as the one (v3)
+                                      analyzed in our study. Yet, major points of criticism that we identified here such as unclarity
+                                      regarding what type of bot Botometer identifies, inadequate training data for other languages,
+                                 and the potential vulnerability to temporal patterns still apply for Botometer’s new version.
+                                     Botometer thus should, in this context, only be one step of a multi-step process that is built
+                                  around human investigation of individual accounts [11]. While prior research has shown that
+                               humans in the case of crowdsourcing fail with more complex bots [16], we believe experienced
+                                        researchers will still be able to identify bots with a combination of classifiers and manual foren-
+                                               sic analysis. However, we believe that for computational social scientists working at scale, the
+                                        uncertainty is too high. At least researchers should be aware of the data used as training data
+                                          for the classifier that might only cover certain types of bots [15, 16, 18]. If researchers want to
+                                      use Botometer for their datasets or even develop their own new classifiers we suggest certain
+                                          steps going forward:
+
+                                               1. Manual classification: They should manually analyze a substantial sample of the classified
+                                        bot and human accounts that were classified by the machine learning system. Researchers
+                                        could then calculate the intercoder-reliability between the machine learning system’s classi-
+                                               fication and the human coder classification. While the percentage agreement is already an
+                                              interesting indicator, we would highly recommend the use of a measurement like Krippen-
+                                                dorff’s alpha [45] that takes into account chance agreement. They should also always manu-
+                                                   ally validate, if possible, all the accounts that were classified as bots by the machine learning
+                                       system if researchers want to make statements about the number of bots in a population.
+                             When a data set is too large for a complete manual analysis researchers should at least take
+                                    an appropriate random sample for a manual classification. Furthermore, if the accounts in
+                                         a data set are not homogenous (e.g., different languages, different topical context) research-
+                                              ers should use a stratified sampling strategy for manual post-hoc validation (see also point 4
+                                          below).
+
+                                               2. Time: Researchers should validate their results over time. As we’ve shown with Botometer,
+                                          the scores are prone to changes over time. Consequently, researchers using Botometer or
+                                        developing a new machine learning classifier should test their data set over time and look at
+                                          the changes over time.
+
+                                               3. Language: Researchers should be aware of Botometer’s limitations (that are even stated by
+                                          the creators of the tool) when it comes to classifying accounts that tweet in other languages.
+                                      Hence, scholars will have to consider using other tools to check the number of bots in their
+                                          data set; e.g., manual coding. Future machine learning systems should also consider differ-
+                                          ent languages.
+
+                                               4. Data sharing: Researchers analyzing bots should share the user ids of the classified “bots” as
+                                          the Twitter developer terms allows researchers to share the id of users. While the creators of
+                                       Botometer share their lists of bots on their official homepage, social scientists using Bot-
+                                       ometer or similar machine learning systems in their studies often do not even share the ids
+                                            of the accounts that got classified as bots.
+
+
+
+
+
+PLOS ONE | https://doi.org/10.1371/journal.pone.0241045  October 22, 2020                                                        16 / 20

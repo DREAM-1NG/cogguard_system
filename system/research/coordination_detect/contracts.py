@@ -275,8 +275,8 @@ class DetectionModelArtifact:
             object.__setattr__(self, field_name, _finite_float(getattr(self, field_name), field_name))
         lower = _finite_float(self.lower_decision_threshold, "lower_decision_threshold")
         upper = _finite_float(self.upper_decision_threshold, "upper_decision_threshold")
-        if not 0.0 <= lower < upper <= 1.0:
-            raise ValueError("decision thresholds must satisfy 0 <= lower < upper <= 1")
+        if not 0.0 <= lower <= upper <= 1.0:
+            raise ValueError("decision thresholds must satisfy 0 <= lower <= upper <= 1")
         object.__setattr__(self, "lower_decision_threshold", lower)
         object.__setattr__(self, "upper_decision_threshold", upper)
         object.__setattr__(self, "optimizer_config", _immutable_mapping(self.optimizer_config, "optimizer_config"))
@@ -373,13 +373,12 @@ class ClusterDetectionVerdict:
     model_version: str
     model_role: str
     artifact_hash: str | None = None
-    abstain_reason: str | None = None
     ood_features: tuple[str, ...] = ()
     warning: str | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "cluster_id", _required_text(self.cluster_id, "cluster_id"))
-        if self.decision not in {"benign_coordination", "harmful_coordination", "abstain"}:
+        if self.decision not in {"benign_coordination", "harmful_coordination"}:
             raise ValueError("decision is invalid")
         probability = _finite_float(self.harmful_probability, "harmful_probability")
         if not 0.0 <= probability <= 1.0:
@@ -390,8 +389,6 @@ class ClusterDetectionVerdict:
         object.__setattr__(self, "ood_features", _text_tuple(self.ood_features, "ood_features", sorted_values=True))
         if self.artifact_hash is not None:
             object.__setattr__(self, "artifact_hash", _required_text(self.artifact_hash, "artifact_hash"))
-        if self.abstain_reason is not None:
-            object.__setattr__(self, "abstain_reason", _required_text(self.abstain_reason, "abstain_reason"))
         if self.warning is not None:
             object.__setattr__(self, "warning", _required_text(self.warning, "warning"))
 

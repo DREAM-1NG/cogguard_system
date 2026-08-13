@@ -1,0 +1,60 @@
+PLOS ONE                                              The False positive problem of automatic bot detection in social science research
+
+
+
+                                         indicate in their study of Swedish Twitter data that Botometer struggles with non-English lan-
+                                    guage tweets and report that their own supervised classifier outperforms Botometer. Echeverrı´a
+                                              et al. [15] developed their own approach and showed that Botometer struggles with some of
+                                            their bot data sets. Cresci and colleagues [16], for example, compare the performance of an ear-
+                                                  lier version of Botometer (BotOrNot) with other methods as well as their own method [17]
+                                 and show that BotOrNot struggles with more recent versions of spambots. So while Botometer
+                                                    is one of the most popular bot detection some researchers have shown that other approaches
+                                    outperform Botometer on certain data sets [16, 18, 19]. The examples above show that many
+                                           different methods exist besides Botometer’s method. Orabi et al. [20] identified 53 different
+                                 methods in their survey of the bot classification literature. In general, supervised and unsuper-
+                                         vised methods can be distinguished [20] that are sometimes even combined [21]. Cresci [22]
+                                        points out in his survey of the last decade of bot detection research that while the early days of
+                                      bot detection methods were coined by supervised classifiers focusing on single accounts, more
+                                           recently, many unsupervised methods [17, 23] focusing on groups [23] instead of single
+                                     accounts were developed. Besides these mainly inferential approaches, Grimme and colleagues
+                                        [11] discuss descriptive approaches in which researchers usually manually analyse specific
+                                     campaigns. Some of these descriptive approaches are a combination of classifiers and manual
+                                           analysis [24]. Even though many new bot detection methods are developed every year—out-
+                                    performing Botometer in some cases—[15, 16, 18], we focus on Botometer as it is by far the
+                                 most used tool in studies analyzing bots on Twitter [12], especially in social science [5, 7, 10].
+                                        In this paper we will use the term “bot” throughout. We acknowledge that other researchers
+                                    have talked about “automated accounts” [1] or “social bots” [7] but since the creators of Bot-
+                                     ometer specifically talk about identifying “bots” we will use the same terminology [13]. It is
+                                    noteworthy that the creators of Botometer will generally speak of “social bots” in their aca-
+                                  demic work [3, 6, 12, 25], but have not used the term in the tool’s FAQ system until recently.
+                                     In Luceri et al. [26], one of the original Botometer creators even understands bot as short for
+                                            “social media bot”, adding to the confusion. While there is agreement on the definition of
+                                       “bot” (automation as a deciding factor), the social in “social bot” is contested. Yet, a debate
+                                    about this part is beyond the scope of this paper and Gorwa and Guilbeault [27] have already
+                                              clarified many aspects of the conceptual confusion in their bot typology.
+                                  The goal of this paper is twofold. Firstly, we want to critically assess, as we have shown
+                                       above, one of the most popular bot detection tools used in social science. Secondly, we want to
+                                        stimulate reflections on the role of computational methods as some of our findings help to bet-
+                                             ter understand the limitations of machine learning systems that are developed to identify bots
+                               on social media platforms.
+
+
+                         Research questions
+
+                                  Given that it is very complicated to detect bots and Botometer’s prominence in the social sci-
+                                      ences we ask: How precise is Botometer in detecting bots? More specifically we are interested in
+                                       four different research questions. Firstly, we are interested in the general diagnostic ability of
+                                       Botometer. We want to assess Botometer with the Receiver Operating Characteristics (ROC)
+                                     curve as this is the common approach used, for example, by Varol et al. [4]. This approach
+                                        allows us to assess how well Botometer can distinguish between bots and human users overall.
+                                  RQ1: How good is Botometer’s diagnostic ability for five distinct sets of Twitter accounts?
+                                             Yet, in practice many researchers analyze data sets that are sampled from the general Twit-
+                                             ter population and manually define thresholds of what qualifies as a bot and what not. We are
+                                      thus interested in the precision (percentage of accounts that are classified as bots) as well as the
+                                              recall (percentage of identified bots from the whole population).
+
+
+
+
+
+PLOS ONE | https://doi.org/10.1371/journal.pone.0241045  October 22, 2020                                                         3 / 20

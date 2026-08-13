@@ -1,0 +1,862 @@
+
+
+===== PDF p.1 =====
+Proceedings of the Nineteenth International AAAI Conference on Web and Social Media (ICWSM 2025)
+
+
+
+
+             Coordinated Reply Attacks in Influence Operations:
+                        Characterization and Detection
+
+          Manita Pote1*, Tu˘grulcan Elmas2, Alessandro Flammini1, Filippo Menczer1
+                                                     1 Indiana University Bloomington
+                                                         2 University of Edinburgh
+
+
+
+
+                      Abstract                                 to distort trends and attract or distract the attention of main-
+                                                            stream media (Ong and Caba˜nes 2018); use of inauthentic
+  Coordinated reply attacks are a tactic observed in online in-                                                       and automated accounts to create the appearance of popu-
+   fluence operations and other coordinated campaigns to sup-
+                                                                            larity (Elmas 2023; Woolley and Howard 2018); deletion of   port or harass targeted individuals, or influence them or their
+                                                               content violating terms of service to avoid detection by plat-   followers. Despite its potential to influence the public, past
+   studies have yet to analyze or provide a methodology to de-        forms (Torres-Lugo et al. 2022); troll accounts (Zannettou
+   tect this tactic. In this study, we characterize coordinated re-          et al. 2019a); the spread of disinformation and propaganda
+   ply attacks in the context of influence operations on Twitter.        (Woolley and Howard 2018; Hristakieva et al. 2022); politi-
+  Our analysis reveals that the primary targets of these attacks          cal memes (Rowett 2018; Zannettou et al. 2020; Ng, Moffitt,
+   are influential people such as journalists, news media, state        and Carley 2022); and ‘kompromat’ strategies to influence
+   officials, and politicians.                                              political events (Woolley and Howard 2018).
+  We propose two supervised machine-learning models, one to          IOs can be state-sponsored, and originate domestically or
+   classify tweets to determine whether they are targeted by a re-          in a foreign state (Bradshaw and Howard 2017). A prime
+   ply attack, and one to classify accounts that reply to a targeted                                                       example of foreign-initiated campaign was the effort to in-
+   tweet to determine whether they are part of a coordinated at-
+                                                                       terfere in the 2016 US Presidential Election by the Rus-
+   tack. The classifiers achieve AUC scores of 0.88 and 0.97,
+                                                                  sian Internet Research Agency (IRA) (Senate Select Com-   respectively. These results indicate that accounts involved in
+   reply attacks can be detected, and the targeted accounts them-         mittee on Intelligence 2019). Reports on IOs from differ-
+   selves can serve as sensors for influence operation detection.         ent countries like China, Brazil, and Nigeria show that such
+                                                        campaigns have emerged as a global threat (Bradshaw and
+                                                  Howard 2017; Woolley and Howard 2018; Bush 2020).
+                Introduction                                                               Here, we focus on coordinated reply attacks, where a
+Social media platforms are the primary environments in      group of accounts work together to target specific individ-
+which civic engagement takes place. They play an impor-       uals or entities by flooding their posts with replies. This can
+tant role in the exchange of ideas, discussion of political      be done to overwhelm the target, push a particular narrative,
+agendas, and development of political identities thanks to       or generate engagement. Coordinated reply attacks are ac-
+the ease with which one can access and consume informa-       tively employed in influence operations (Matthews and Go-
+tion and build influence. However, social media platforms      erzen 2019; Bush 2020). Such a tactic has been used for
+are also exploited by coordinated groups to purposefully dis-      harassment, as observed for example in a hate-speech cam-
+tribute misleading information (Weedon, Nuland, and Sta-      paign against Mehreen Faruqi, Australia’s first female Mus-
+mos 2017; Starbird, Arif, and Wilson 2019), artificially am-      lim senator (Thomas, Thompson, and Wanless 2020); ampli-
+plify certain content (Elmas, Overdorf, and Aberer 2022), or       fication by inauthentic accounts (Weedon, Nuland, and Sta-
+interfere with elections (Ferrara et al. 2020; Office of the Di-     mos 2017; Thomas et al. 2021); and spamming, trolling, and
+rector of National Intelligence 2017; Neudert, Howard, and       incitement.
+Kollanyi 2019). These types of social media exploitation are         In this paper, we provide a quantitative, large-scale study
+referred to as information operations or influence operations       of coordinated reply attacks in influence operations reported
+(IOs).                                                 by Twitter.1 We explore the targeting patterns of IO actors
+  Influence operations are organized attempts to achieve a      employing this tactic and introduce methods to detect the
+specific effect, such as manipulating public opinion, usually       targets of these attacks and the actors involved. We pose the
+through coordinated tactics (Pamment and Smith 2022). IO      following research questions:
+tactics include public relations via advertising or paid digi-
+                                                                             • RQ1: Who are the targets of coordinated replies, and
+tal influencers (Ong and Caba˜nes 2018); hashtag hijacking
+                                                          what specific topics characterize the tweets that attract
+   *Corresponding author. Email: potem@iu.edu
+Copyright © 2025, Association for the Advancement of Artificial          1Although Twitter is now called X, we use the previous name
+Intelligence (www.aaai.org). All rights reserved.                       because the data analyzed here predates the name change.
+
+
+                                                   1586
+
+
+===== PDF p.2 =====
+such coordinated responses?                                Stanford Internet Observatory (2021) produced several re-
+                                                                   ports describing influence campaigns and a range of tactics • RQ2: Among a set of tweets by potential targets, how
+                                                          used by IO actors, including coordinated reply attacks (Bush   can we identify those that receive coordinated replies?
+                                                              2020). While that work provides a qualitative description of
+ • RQ3: Given a set of targeted tweets, how can we detect                                                                 the tactic, here we focus on methods to detect it.
+   the accounts that participate in coordinated replies?
+                                                              Coordinated reply attacks are also carried out by auto-
+  We make the following contributions:                      mated accounts; social bots have been reported to target in-
+ • We find that primary targets of coordinated reply attacks       fluential users in an attempt to direct their attention toward
+   are mostly influential people such as journalists, news      fake news (Shao et al. 2018). Financial rather than political
+   media, state officials, and politicians. Most of the targets       incentives may be the drivers of such tactics, as in the case of
+   are attacked only once. The attacks for most of the tar-      cryptocurrency manipulation (Yang and Menczer 2024). The
+   gets are sporadic and tend to focus on specific contexts,      methods presented here are context-independent and there-
+   such as politics. The attackers can originate from within       fore could be applied to these kinds of campaigns.
+   the target’s country or from foreign states.
+ • We present a classifier model to identify tweets that are     Detection of Influence Operations
+   targeted by coordinated replies. This model is general-
+   izable to other contexts, as it does not use any features
+                                              Many supervised machine-learning models have been pro-
+   specific to IOs. It can also be developed into a tool for
+                                                         posed in the literature to detect IO actors, especially IRA
+   monitoring and safety.
+                                                                              trolls on Twitter, using deceptive linguistic cues (Addawood
+ • We present a second model that performs well on the task        et al. 2019) and behavioral and linguistic features (Im et al.
+   of detecting accounts that are involved in reply attacks.        2020). Luceri, Giordano, and Ferrara (2020) propose an in-
+                                                                verse reinforcement learning model for this task. Alizadeh
+               Related Work                               et al. (2020) build a content-based classifier to detect tweets
+                                                       from troll accounts in Russia, China, and Venezuela IO cam-Given the dearth of prior research on coordinated reply at-
+                                                                 paigns. Work from Sharma et al. (2021) uses a generativetacks, we review the literature on IOs in general.
+                                                     model to learn hidden group behavior to identify coordi-
+                                                              nated accounts. Ezzeddine et al. (2023) present an LSTM-
+Characterization of Influence Operations
+                                                           based approach that identifies troll accounts based on behav-
+Influence operations present novel challenges to content       ioral cues. Kong et al. (2023) propose an interval-censored
+moderation on social media. A crucial initial step to ad-      transformer Hawkes architecture to identify IO operators. A
+dress these challenges is to characterize how IO actors op-      supervised model by Saeed et al. (2022) leverages the fea-
+erate: their tactics, motivations, and engagement patterns.       tures engineered from the interaction patterns of seed Rus-
+Matthews and Goerzen (2019) present different trolling       sian troll accounts on Reddit to find other troll accounts.
+techniques used in social media, from dogpiling to sock                                                     Our work is similar to the above-mentioned efforts in the
+puppetry, along with interventions. Zannettou et al. (2019a)                                                            use of a supervised learning approach to identify coordi-
+observe that Russian trolls displayed different behavior in                                                              nated accounts. However, we design features that leverage
+the use of Twitter compared to random users. The same au-                                                                 the targeting behaviors of the IO actors, specifically focus-
+thors also find that Russian trolls on Twitter and Reddit were                                                               ing on reply/comment engagements. Our method does not
+pro-Trump, while Iranian trolls were anti-Trump (Zannet-                                                            use any IO-specific features or sentiment cues, therefore it
+tou et al. 2019b). The images shared by Russian trolls ap-                                                          can be generalized to different social media platforms that
+peared in many popular social networks as well as main-                                                          have similar engagement functionalities.
+stream and alternative news outlets, and focused on Russia,
+                                                                   Influence operations are one kind of coordinated cam-Ukraine, and the USA (Zannettou et al. 2020). Dutt, Deb,
+                                                                 paign. A body of work has explored unsupervised methodsand Ferrara (2018) analyze the advertisements purchased by
+                                                                     to detect coordinated behaviors in general. Pacheco et al.IRA accounts on Facebook and identify their changing cam-
+                                                            (2021) introduced a network-based framework for coordi-paign targets over time by performing clustering and seman-
+                                                                nation detection. As campaigns use more than one tactictic analysis. Stewart, Arif, and Starbird (2018) investigate
+                                                                          at a time, Uyheng, Cruickshank, and Carley (2022) presentthe behavior of Russian trolls around the #BlackLivesMat-
+                                                            a multi-view modularity clustering method. A Bayesianter movement and find that the trolls infiltrated both right-
+                                                     model by Hudson Smith, Ehrett, and Warren (2024) lever-and left-leaning political communities to participate in both
+                                                            ages similarities in narrative and account characteristics.sides of the discussion. Farkas and Bastos (2018) manu-
+                                                        Nwala, Flammini, and Menczer (2023) propose a languageally annotate IRA-linked tweets into 19 different categories
+                                                       framework that represents user actions and content as se-to study whether IRA operations are consistent with clas-
+                                                          quences of symbols to find coordinated accounts.sic propaganda models. Merhi, Rajtmajer, and Lee (2023)
+find that the accounts involved in an IO in Turkey were re-        Unlike the above methods, we do not cluster accounts
+silient to large-scale shutdown. Elmas, Overdorf, and Aberer      based on similar behaviors. We classify individual posts
+(2023) discover that IO actors and other adversarial accounts      based on aggregate features of their replies, and individual
+often change their names and assume new identities. The      accounts based on their metadata and reply activity.
+
+
+                                                   1587
+
+
+===== PDF p.3 =====
+Data Collection
+
+For the present study of coordinated reply attacks, we use 43
+different state-sponsored IO datasets released by the Twit-
+ter Moderation Research Consortium from October 2018 to
+December 2021.2 These datasets are archives of suspended
+accounts that Twitter claims to have been involved in foreign
+influence operations. Along with the account metadata, the
+datasets provide all the tweets generated by the accounts.
+  Since according to Twitter the campaigns in these datasets
+are coordinated by a single entity, they provide us with
+ground truth for our study. Indeed,  if we observe mass
+replies to a single target from multiple accounts labeled by
+Twitter as coordinated, we can establish that the coordinated      Figure 1: Data collection for the classifiers. The dashed line
+reply attack tactic has been used.                                separated the last IO reply and the first successive tweet by
+                                                                 the target.
+Target Dataset
+First, we merge the datasets of all the IOs and keep all the      Classification Dataset
+replies by IO accounts to tweets by non-IO accounts. We
+                                                    To identify tweets targeted by coordinated replies (RQ2) andrefer to the latter accounts as targets and to the replies by
+                                                             accounts that participate in such activity (RQ3), we considerIO accounts as IO replies. There are in total 17,873,714 IO
+                                                                   targeted tweets as our positive examples. For correspondingreplies from 44,425 IO accounts targeting 15,256,547 tweets
+                                                                negative examples, we collect control tweets posted by theby 1,763,084 distinct targets. From this data, we extract
+                                                    same targets after the last IO reply. This ensures that the15,016 targets and 96,041 tweets that received five or more
+                                                               tweets in our control data did not receive any coordinateddirect replies from IO accounts. We assume these tweets
+                                                                      replies by IO accounts. Fig. 1 illustrates the data collection.have been targeted by coordinated reply attacks, and we la-
+                                                  As in the case of positive examples, we only retain con-bel them as targeted tweets. The threshold of five or more
+                                                                             trol tweets with five or more replies. In addition, to avoidreplies is arbitrary; a robustness analysis shows that the de-
+                                                                  bias due to the diverse activity of the targets, we collecttection of targeted tweets does not seem to be affected by
+                                                       from each target as many control tweets as targeted tweets.this parameter, as discussed later (Fig. 7).
+                                                                       Specifically, we select control tweets that were posted im-
+  The targeted tweets can still be publicly available at the
+                                                             mediately after the last IO reply, subject to the five-reply
+time of our analysis, allowing us to collect all of their replies.
+                                                   minimum. In cases where we could not obtain as many con-
+Some of these replies may have originated from non-IO
+                                                                             trol tweets as targeted tweets, we ensure a balanced dataset
+repliers, both before and after the IO accounts were taken
+                                                     by keeping the most recent targeted tweets.
+down by Twitter. We refer to these replies as normal replies
+                                                                  Similar to the targeted tweets, we fetch all the replies to
+and to their authors as normal repliers. Since we only have
+                                                                 the control tweets and all replier metadata. The resulting
+direct replies by IO accounts, we only consider direct replies
+                                                                       classification dataset includes 3,866 targeted tweets and the
+by normal repliers as well; replies to replies are discarded.
+                                                    same number of control tweets by 1,507 targets. The drop
+In addition to the metadata about the IO replies that are
+                                                                     in the number of tweets compared to the target dataset is
+present in the initial data, we query the /users/:id,
+                                                       due to the various constraints outlined above: authors with
+/search/all, and /tweets/?ids= endpoints of the
+                                                                 deleted or suspended accounts, or with no original tweets af-Twitter API3 to collect metadata about the targets, the tar-
+                                                                            ter the IO, were removed; only original tweets with at least
+geted tweets, their normal replies, and the normal repliers.
+                                                                         five replies were considered; and original (targeted or con-
+We collected this information in April 2023.
+                                                                             trol) tweets were removed due to balancing. There are in to-
+  Among the 15,016 targets, 5,041 were suspended, 3,992                                                                                tal 881,918 and 323,378 repliers in the positive and negative
+could not be found (possibly deleted accounts), and 5,983                                                            examples, respectively. These include IO and normal repli-
+were alive at analysis time (2,031 verified and 3,952 non-                                                                           ers. While the full classification dataset is used for RQ2, for
+verified accounts). Of the  total 96,041 targeted tweets,                                        RQ3 we only use the positive examples (targeted tweets):
+43,048 could not be found, which means these tweets could                                                           7,670 IO repliers and 874,248 normal repliers.
+have originated from deleted or suspended accounts; 18,808
+had unauthorized access; and 34,185 were accessible. For                                              RQ1: Targets and Topics
+our influence operation case studies (RQ1), we consider this
+target dataset of 34,185 tweets by 5,983 targets.                  In this section, we present an exploratory analysis of the tar-
+                                                                  gets of coordinated reply attacks and two case studies of spe-
+   2IO datasets were available at transparency.x.com/en/reports/        cific campaigns where we can analyze the targets as well as
+moderation-research until summer 2024. An archival version of       the topics of their targeted tweets and other tactics employed
+the site is available at web.archive.org/web/20240829231920/https:       in the campaigns.
+//transparency.x.com/en/reports/moderation-research.                   Exploratory analysis of target metadata (Fig. 2a) shows
+    3developer.twitter.com/en/docs/twitter-api/                           that targets tend to have more followers (median 22,540)
+
+
+                                                   1588
+
+
+===== PDF p.4 =====
+Figure 3: Characterization of the Serbia campaign. Distribu-
+                                                                     tions of (A) countries and (B) professions of the targets. BiH
+                                               = Bosnia and Herzegovina, NA = Not Available (C) Word-
+                                                                           shift graph comparing the most frequent words in targeted
+                                                       and non-targeted tweets. The top bar represents the cumula-
+                                                                         tive contribution of each type of word shift.
+Figure 2: Complementary cumulative distribution functions
+(CCDF) of statistics describing target accounts and their
+tweets. (A) Numbers of followers and following (friends) of     we report the top 10 target professions/types and countries.
+targets. (B) Number of targeted tweets per target. (C) Num-    We also inspected the targeted tweets to understand the con-
+ber of coordinated replies received by each targeted tweet.       text of the attacks. In preprocessing, we used Google Trans-
+(D) Time delay between targeted tweets and their coordi-        late to translate the targeted tweets into English and removed
+nated replies.                                                   stop words and emojis.
+
+                                                    Case Study: Serbia.  The majority of accounts targeted by
+                                                                 the Serbia campaign, approximately 648, were from Serbiathan following (median 707). This suggests that targets can
+                                                                                   itself, with the remaining coming from the Balkan regionbe influential people. Reply attacks tend to be selective
+                                                                      (Fig. 3a). This suggests that the campaign focused its ef-(Fig. 2b): only a few tweets by each target were targeted
+                                                                         forts on influencing public opinion within Serbia. Fig. 3b(median one). The median number of coordinated replies re-
+                                                                   reveals that the coordinated reply attacks primarily targetedceived by targeted tweets was eight (Fig. 2c). Coordinated
+                                                                      journalists (102), state officials (99), news media organi-replies tend to occur quickly after a targeted tweet, with a
+                                                                  zations (76), and politicians (43). A wordshift graph (Gal-median delay of 3 hours (Fig. 2d). However, these distri-
+                                                                lagher et al. 2021) highlighting the most prominent termsbutions are broad. For example, 54 of the targeted tweets
+                                                                     in the targeted tweets (Fig. 3c) shows that the campaignreceived more than 1,000 replies.
+                                                            focused on President Vucic, the Serbian Progressive Party
+  The above statistics are merely descriptive, as we lack a
+                                                          (SNS), the 2017 election, the “1 out of 5 Millions” protest,
+reference model to interpret how targeted users differ from
+                                                       and the Serbia-Kosovo diplomatic crisis. These findings are
+the general population of Twitter users. To better understand
+                                                                   consistent with analysis by Bush (2020), who reported that
+what kinds of accounts were targeted, one of the authors
+                                                                 the primary objective of IO actors involved in the Serbia
+annotated some target profiles with the corresponding pro-
+                                                       campaign was to rally support for President Alexander Vu-
+fessions or organization types and country of origin. We
+                                                                     cic and his party, the SNS. This was achieved by promoting
+used manual annotation by checking each Twitter profile,
+                                                                 the popularity and visibility of Vucic and the SNS through
+description, the profession metadata indicated by the ‘brief-
+                                                               retweeting their content and replying to other accounts with
+case icon,’ and by searching Google for the accounts with
+                                                                supportive messages. The IO accounts also targeted oppo-
+more than a million followers. We grouped profession and
+                                                              nent political parties with derisive tweets and attempted to
+organization types into broad categories, such as state of-
+                                                                      discredit them by flooding their posts with negative com-
+ficials, news media, and politicians. Accounts with insuffi-
+                                                             ments. This tactic aimed to create a public perception that
+cient information were labeled ‘Not Available.’
+                                                                 the opposition was unpopular.
+  As the annotation process was time-consuming, we fo-
+cused on two cases, namely two of the five campaigns with     Case Study: Egypt.   Fig. 4a shows that the majority of
+the most targets: Serbia (the top campaign with 1,175 tar-      accounts targeted by the Egypt campaign were from mul-
+gets) and Egypt (the fifth campaign with 372 targets). Ap-        tiple Middle East and North Africa countries, primarily
+proximately 26% of the targeted accounts in the Serbia cam-      Saudi Arabia (74 targets), Egypt (39), UAE (36), Qatar
+paign and 20% in the Egypt campaign did not have sufficient       (30), and Yemen (26). This suggests a potential interstate
+information available. In the next subsections, for each case,       attack. News media organization (67), journalists (52), and
+
+
+                                                   1589
+
+
+===== PDF p.5 =====
+Set           Attributes
+                                                                      like count
+                                                                       Engagement  retweet count
+                                                                      reply count
+                                                                      mention count
+                                                                                             Entities     hashtag count
+                                                                      url count
+                                                                          Delay       reply time diff
+                                                                                         Similarity    cosine
+
+                                                             Table 1: Reply-level attributes used to generate features for
+                                                                 the tweet classifier.
+
+
+Figure 4: Characterization of the Egypt campaign. Distribu-       ing, while inauthentic activity mainly focused on manipu-
+tions of (A) countries and (B) professions of the targets. (C)       lating conversations through replies. Based on these obser-
+Wordshift graph comparing the most frequent words in tar-       vations, we use three tweet-level features: reply count,
+geted and non-targeted tweets.                        retweet count, and like count.
+                                                               Next, let us consider reply-level features. These are based
+                                                     on eight attributes, listed in Table 1. Engagement and en-
+state officials (29) were again the main targets of the co-        tity attributes are defined for each reply. The delay is also
+ordinated replies (Fig. 4b). The analysis of common terms       defined, for each reply, as the difference between the times-
+in the targeted tweets (Fig. 4c) and manual inspection re-      tamps of the tweet and the reply. The similarity is designed
+veal that the Egypt campaign primarily focused on religious       to capture the presence of similar narratives in replies, a
+themes, terrorism, and current affairs like the Iran Nuclear     common characteristic of inauthentic engagement. To this
+deal (2018), Yemen’s Houthi movement, Sudan’s military      end, we first generate vector embeddings for the replies us-
+coup, and the Muslim Brotherhood. These observations are      ing the LaBSE model (Feng et al. 2020), which supports 109
+consistent with a report by DiResta, Kheradpir, and Miller      languages. The cosine attribute is then computed for each
+(2020), describing an IO activity orchestrated by Egypt and       pair of replies to the same tweet as the cosine similarity be-
+the UAE, supporting the Saudi and Egyptian governments      tween the corresponding vectors.
+and criticizing Qatar, Turkey, Yemen, Iran.                        Since targeted tweets can have many replies, this proce-
+  Both case studies indicate that influential people like jour-      dure yields many attribute values that must be aggregated
+nalists, news media, state officials, and politicians, are the       to obtain a set of features for each tweet. In the case of en-
+primary targets of coordinated reply attacks. These targets      gagement, entities, and delay attributes, we have one value
+can be from different countries than the campaign’s country      per reply. For the similarity attribute, we have one value
+of origin. The topics of the targeted tweets depend on the      per a pair of replies. In all cases, we aggregate these val-
+current affairs of the specific geographic region or country.       ues to obtain a single distribution of attribute values for each
+                                                                  tweet. From these distributions we compute the following 12
+        RQ2: Tweet Classification               summary statistic features: range, 25/50/75 quartiles, inter-
+                                                                      quartile range, minimum, maximum, mean, standard devia-Identifying the tweets that receive inauthentic coordinated
+                                                                          tion, skewness, kurtosis, and entropy. Since we do this forreplies  is a necessary  first step toward the detection of
+                                                          each of eight attributes, the total number of reply-level fea-both the targets and the perpetrators of a coordinated at-
+                                                                     tures used in the classifier is 8×12 = 96. Including the threetack. To address this challenge, we propose a campaign-
+                                                                   tweet-level features, the classifier uses a total of 99 features.independent classifier for identifying IO-targeted tweets.
+The same methodology could also be generalized to plat-
+                                                       Resultsforms other than Twitter.
+                                         We compare different machine learning models: Logistic
+Classifier Features                                          Regression, Random Forest, AdaBoost, Decision Tree, and
+The tweet  classifier leverages several features extracted      Naive Bayes. Prior to training, we standardize the input fea-
+from tweets and from the replies they receive. Let us first       tures via z-scores. We conduct 10-fold cross-validation to
+focus on tweet-level features, specifically tweet engage-       mitigate over-fitting of the training data and report on the
+ment. We find a few key differences between the engage-     mean precision, recall, and F1 values across folds along with
+ment metrics of IO-targeted vs. control tweets. As illus-    AUC in Table 2. Precision, recall, and F1 depend on a thresh-
+trated in Fig. 5a, IO-targeted tweets receive more replies      old to transform the model score into a binary classification
+(median 31 vs. 22 for control tweets). On the other hand,       label. We tune the threshold to maximize the mean F1 across
+control tweets receive slightly more retweets (median 84       folds. In the following, we focus on Random Forest (with
+vs. 75 for IO-targeted tweets, Fig. 5b) and more likes (me-     100 estimator trees), which yields the best scores overall.
+dian 420 vs. 250, Fig. 5c). This suggests that organic en-       To study the contributions of different features, we fol-
+gagement generated more positive interactions and shar-      lowed two approaches. First, we trained and tested Random
+
+
+                                                   1590
+
+
+===== PDF p.6 =====
+Figure 5: Engagement received by targeted and control tweets. (A) Replies, (B) retweets, and (C) likes. The distributions are
+significantly different in all cases according to Kolmogorov-Smirnov tests (p < 10−6).
+
+                              Classifier               Prec.         Rec.        F1      AUC
+                             Logistic Regression   0.65 ± 0.00   0.86 ± 0.00   0.74 ± 0.00   0.80 ± 0.00
+                     Random Forest       0.73 ± 0.00   0.87 ± 0.00   0.80 ± 0.00   0.88 ± 0.00
+                        AdaBoost            0.64 ± 0.00   0.89 ± 0.00   0.74 ± 0.00   0.81 ± 0.00
+                           Decision Tree        0.52 ± 0.01   0.95 ± 0.02   0.66 ± 0.00   0.69 ± 0.00
+                         Naive Bayes          0.49 ± 0.00   1.00 ± 0.00   0.66 ± 0.00   0.68 ± 0.00
+
+Table 2: Results of different algorithms in the tweet classification task. We present standard errors rounded to the second decimal
+point.
+
+
+      Features set         Prec.   Rec.   F1  AUC
+     reply count       0.5    0.99   0.67   0.59
+     retweet count    0.49    1     0.66   0.54
+     like count        0.49    1     0.66   0.52
+      Engagement         0.69    0.86   0.77   0.84
+        Entities              0.52    0.95   0.67   0.65
+      Delay               0.51    0.96   0.67   0.66
+       Similarity            0.54    0.96   0.69   0.68
+       All features          0.73    0.87   0.80   0.88
+
+Table 3: Contributions of different tweet-level features and
+reply-level feature sets to the Random Forest tweet classifier.
+The last row (using all features) corresponds to the results in
+Table 2.
+
+
+Forest on individual tweet-level features and reply-level fea-      Figure 6: Permutation feature importance for tweet classi-
+ture sets. The results using 10-fold cross-validation are given         fier. We report the median (orange line), 50% confidence in-
+in Table 3. Second, we performed a permutation feature im-       terval (box), and 99.3% confidence interval (whiskers) of the
+portance test, which measures the importance of features by      drop in F1 score when each feature/attribute set is shuffled.
+computing the loss in accuracy when the values of those fea-     Boxes with the same color indicate attributes in the same
+tures are shuffled (permuted). To simplify the analysis, for       feature set. Larger values indicate higher importance.
+each reply-level attribute we shuffled all the corresponding
+features rather than each feature individually. For example,
+for the like count engagement attribute, we shuffled all
+12 summary statistics features at once. We repeated this test        ter users; instead, they primarily boosted retweet and reply
+10 times and recorded the drop in mean F1 score from 10-      counts for other IO accounts to artificially amplify Vucic
+fold cross-validation for each iteration. The distribution of      and his allies on Twitter (Bush 2020). In fact, we find that
+these drop values is given in Fig. 6.                                 replies to targeted tweets from IO accounts have a higher
+                                                 mean retweet count than replies from normal repliers (0.63  Both approaches consistently show that reply-level en-
+                                                            vs 0.31) and also a higher mean like count (1.28 vs 0.81) andgagement features are important. A classifier using only
+                                                 mean reply count (0.20 vs 0.13). However, our data does notthose features achieves F1=0.77 and AUC=0.84 (Table 3),
+                                                             allow us to determine if such engagement was mostly drivenand removing those features causes significant drops in F1
+                                                     by IO accounts or organic.(Fig. 6). In our classification dataset, the majority of targets
+are from the Serbia campaign. IO accounts in this campaign        Since reply-level engagement may be affected by the
+were not intended to generate engagement with other Twit-       popularity of the targeted tweets,  it is legitimate to ask
+
+
+                                                   1591
+
+
+===== PDF p.7 =====
+Test
+                                                                Train
+                                                           RS   SA   TR  EG   SA/EG/AE   Other
+                                                  RS          0.85   0.54   0.61   0.56      0.52      0.65
+                                               SA          0.55   0.76   0.53   0.63      0.74      0.68
+                                               TR          0.61   0.60   0.74   0.63      0.65      0.68
+                                             EG          0.43   0.37   0.36   0.65      0.38      0.39
+                                                      SA/EG/AE   0.47   0.58   0.57   0.60      0.73      0.48
+                                                                   Other        0.62   0.59   0.63   0.56      0.52     0 .74
+
+                                                             Table 4: F1 scores obtained from same-campaign (diago-
+                                                                 nal entries, in bold) and cross-campaign evaluations of the
+                                                              tweet classifier. RS=Serbia, SA=Saudi Arabia, TR=Turkey,
+                                                     EG=Egypt. SA/EG/AE = Saudi Arabia/Egypt/Arab Emi-
+                                                                       rates is a campaign involving three countries.
+
+Figure 7: Scores of tweet classifiers based on different
+thresholds for the number of IO replies received by targeted                                                               values are obtained when the model trained on all data from
+tweets.                                                       one campaign (optimized to maximize F1) is tested on other
+                                                           campaigns. As expected, the models perform better when
+                                                                   trained and tested on the same campaign. However, models
+whether tweet-level engagement features would provide suf-      can generalize, with F1 drops that depend on the specific
+ficient signals to discriminate between targeted and control      campaigns. This suggests that at least some commonalities
+tweets. However, Table 3 indicates that tweet-level reply,       exist across coordinated reply campaigns.
+like, and retweet counts do not provide very informative sig-
+nals for tweet classification. To further explore this question,           RQ3: Replier Classification
+let us measure the correlation between tweet-level features
+(reply count, retweet count, and like count)     Once we identify potentially targeted tweets, we can attempt
+                                                                     to detect, among the accounts that reply to them, those thatand the corresponding reply-level engagement counts. As
+                                                                 are engaged in coordinated activity. Distinguishing authen-each original tweet can have many replies, there are many
+                                                                                tic replies from inauthentic ones poses a non-trivial chal-more replies than original tweets. We therefore calculate
+                                                                  lenge, given that inauthentic accounts attempt to create anthe mean correlation between pairs of tweet/reply engage-
+                                                             impression of authenticity. For this task, we train a super-ment features across 10 random samples of replies matching
+                                                               vised replier classifier using the targeted tweet dataset.the number of original tweets. The correlations are all very
+small (around 0.001), confirming that reply engagement is
+not a mere reflection of tweet popularity.                        Classifier Features
+  We previously defined targeted tweets as those that re-    We engineer features for each replier from their profile meta-
+ceive five or more replies from IO accounts. Let us test the       data and their replies to the targeted tweets. Starting with
+robustness of our classifier with respect to this definition by       profile metadata, we calculate the age of repliers by subtract-
+considering a range of threshold values between five and 20      ing the account creation date from the date of the last reply
+replies from IO accounts. This filters down the set of tar-     by the account. As illustrated in Fig. 8(A), most IO repli-
+geted tweets and corresponding control tweets. We follow       ers are relatively new accounts, with a median age of 0.37
+the same procedure described above to construct the classi-      years compared to 2.08 years for normal repliers. Despite
+fication dataset, extract the features, and train and evaluate       their relatively young age, IO repliers display a higher me-
+the classifier. Fig. 7 reports the mean precision, recall, F1,      dian number of followers (282) and followings (380) com-
+and AUC from 10-fold cross-validation. While we observe      pared to normal repliers, whose medians are 114 and 292,
+slight increases as the criterion for defining targeted tweets       respectively (Figure 8(B, C)). However, IO repliers exhibit
+becomes more stringent, the results appear to be robust with      lower activity levels (original tweets + replies + quotes +
+respect to this parameter.                                           retweets), with a median of 699 compared to 4406 for nor-
+  Next, let us evaluate the generality of the classifier by test-     mal repliers (Figure 8(D)).
+ing how well a model trained on one campaign performs       To leverage these key differences between IO and nor-
+when tested on other campaigns. First, we split the classifi-     mal repliers, we create four features specific to profile meta-
+cation dataset into six subsets: one for each of the top five       data: age, follower rate, following rate, and
+campaigns, based on the number of targeted tweets, and one     activity rate. Since the numbers of followers/follow-
+with data aggregated from the remaining campaigns. Sec-      ing and the activity are correlated with an account’s age, we
+ond, we train campaign-specific models on each of these      normalize the rate features by the age of the account.
+datasets, as in the original tweet classification setup. Finally,       Each replier may be involved in one or more replies to
+we evaluate the models on test data from each dataset. In the      multiple targeted tweets. Therefore, we create a number
+diagonal of Table 4 we report F1 values when the model       of features that summarize the characteristics of the set of
+trained on one campaign is tested on the same campaign       replies generated by each replier, including replies to multi-
+(mean across 10-fold cross-validation). The off-diagonal F1       ple targeted tweets. These features are based on eight reply
+
+
+                                                   1592
+
+
+===== PDF p.8 =====
+Figure 9: Permutation feature importance for replier clas-
+                                                                                     sifier. We report the median (orange line), 50% confidence
+                                                                      interval (box), and 99.3% confidence interval (whiskers) of
+                                                                 the drop in F1 score when each feature/attribute is shuffled.
+                                                      Boxes with the same color indicate attributes in the same
+                                                                   feature set. Larger values indicate higher importance.
+
+Figure 8: Differences between complementary cumulative
+distributions of IO and normal replier metadata: (A) age,
+(B) following count, (C) follower count, and (D) activ-      balance leads to poor classification, which can be addressed
+ity, as measured by the sum of the numbers of original       in two ways. First, we downsampled the normal repliers by
+tweets, replies, quotes, and retweets. The distributions are       creating 10 different balanced datasets. Each includes all the
+significantly different in all cases according to Kolmogorov-     IO repliers and an equal number (7,670) of normal repliers,
+Smirnov tests (p < 10−6).                                  sampled without replacement. We train and test the model on
+                                                          each balanced dataset using 10-fold cross-validation and re-
+                                                                  port the average performance score. As a second approach,
+attributes, which we organize into four sets, just like those     we over sampled the IO repliers by splitting the data into
+listed in Table 1. The only criterion that distinguishes how       train and test sets, then replicating the minority class. Repli-
+these features are calculated in the tweet versus the replier       cation occurs only in the training data, to avoid data leakage.
+classification task is the reply set — all replies to a tweet in    We run 10-fold cross-validation on the resulting dataset. The
+the former case and all replies by a replier in the latter.               first approach might eliminate some potential false positives
+  Given a set of replies, the replier classifier features are   — normal repliers with similar reply behavior — potentially
+calculated as for the tweet classifier, with two exceptions.     making the task easier. In the second approach, the model is
+First, the delay of each reply is computed with respect to the       tested on data that still maintains the class imbalance, po-
+timestamp of the targeted tweet to which the reply was di-       tentially overfitting the training data. This approach is also
+rected. Second, cosine similarity s for replier i is calculated     more expensive due to the large dataset. Given these comple-
+for each pair (rti, rtj) where rti is a reply by i to a targeted      mentary disadvantages, below we report on both methods.
+tweet t and rtj is a reply by a different user j to the same      We standardize the features with z-scores and report the
+targeted tweet t. We obtain a distribution of these similar-     mean performance metrics obtained by different machine
+ities ∪t∈T (i) ∪j∈J(t) s(rti, rtj) across the set J(t) of other       learning models: Logistic Regression, Random Forest, Ad-
+users who reply to t and then across the set T(i) of targeted      aBoost, Decision Tree, and Naive Bayes. As in the tweet
+tweets that receive a reply from i.                                       classifier, we tune the threshold to maximize the mean F1
+  From the distribution of each attribute, we compute nine       across folds. Table 5 shows that all classifiers perform better
+summary statistic features: range, 25/50/75 quartiles, inter-      with downsampling, and Random Forest (with 100 estimator
+quartile range, maximum, minimum, mean, and entropy. We       trees) performs the best with both downsampling and over-
+do not calculate standard deviation, skewness, and kurtosis      sampling. Therefore, let us focus on this model — Random
+because they are not defined for many repliers who are in-       Forest trained with downsampling — for further analysis.
+volved in a single reply to a single targeted tweet.               To test the contribution of each feature to the replier clas-
+  We end up with four profile metadata features and 8×9 =         sifier, we follow the same procedure as for the tweet clas-
+72 reply-level features, for a total of 76 features.                       sifier. However, here we report the averages across the 10
+                                                            balanced dataset. Table 6 reports on mean 10-fold cross-
+Results                                                                   validation scores for Random Forest trained and tested on
+The targeted tweet dataset is highly imbalanced with 0.8%      each profile metadata feature and reply feature set. Fig. 9
+IO repliers (7,670 vs. 874,248 normal repliers). Such an im-       reports on the results of a permutation feature importance
+
+
+                                                   1593
+
+
+===== PDF p.9 =====
+Downsampling          Prec.         Rec.        F1      AUC
+                             Logistic Regression   0.89 ± 0.00   0.88 ± 0.00   0.88 ± 0.00   0.93 ± 0.00
+                     Random Forest       0.93 ± 0.00   0.92 ± 0.00   0.92 ± 0.00   0.97 ± 0.00
+                        AdaBoost            0.90 ± 0.00   0.90 ± 0.00   0.90 ± 0.00   0.96 ± 0.00
+                           Decision Tree        0.88 ± 0.00   0.88 ± 0.00   0.88 ± 0.00   0.88 ± 0.00
+                         Naive Bayes          0.62 ± 0.02   0.86 ± 0.02   0.68 ± 0.00   0.87 ± 0.00
+                        Oversampling        Precision      Recall        F1      AUC
+                             Logistic Regression   0.27 ± 0.00   0.48 ± 0.01   0.35 ± 0.00   0.94 ± 0.00
+                     Random Forest       0.70 ± 0.00   0.72 ± 0.01   0.71 ± 0.00   0.96 ± 0.00
+                        AdaBoost            0.47 ± 0.02   0.54 ± 0.02   0.50 ± 0.01   0.96 ± 0.00
+                           Decision Tree        0.55 ± 0.01   0.51 ± 0.01   0.53 ± 0.01   0.75 ± 0.01
+                         Naive Bayes          0.06 ± 0.00   0.50 ± 0.03   0.10 ± 0.00   0.86 ± 0.00
+
+Table 5: Results of different algorithms in the replier classification task. Top: downsampling of the majority class (normal
+repliers). Bottom: oversampling of the minority class (IO repliers). We present standard errors rounded to the second decimal
+point.
+
+
+      Features set          Prec.   Rec.   F1  AUC
+    activity rate     0.60    0.63   0.61   0.65
+    following rate    0.54    0.52   0.53   0.56
+    follower rate     0.55    0.51   0.53   0.56
+    age                  0.58    0.66   0.61   0.66
+     Delay                 0.57    0.60   0.58   0.62
+     Engagement           0.57    0.57   0.53   0.63
+       Entities               0.63    0.50   0.53   0.63
+       Similarity             0.85    0.84   0.84   0.92
+      All features           0.93    0.92   0.92   0.97
+
+Table 6: Contributions of different profile features and reply-
+level feature sets to the Random Forest replier classifier. The                                                             Figure 10: (A) Distributions of cosine similarity attributes
+last row corresponds to the results in Table 5 (top).                                                                     for replies by IO and normal repliers. (B) Similarity distri-
+                                                                butions for normal repliers (blue, same as in panel (A)) and
+                                                                 the 10 different samples (different colored outlines).
+test. Both analyses consistently shows that the similarity
+among replies is the most important attribute. To help in-
+terpret this finding, Fig. 10(A) compares the distributions of                                                     model trained on one campaign is tested on the same cam-
+similarity attributes for replies by IO versus normal repliers.                                                            paign (mean across 10-fold cross-validation and 10 different
+Replies by IO repliers are more similar to other replies to the                                                            balanced datasets). The off-diagonal F1 values are obtained
+same tweets, compared to those by normal repliers. This is                                                 when the model trained on one of the balanced datasets (se-
+a pattern that the classifier can exploit. We also observe in                                                                   lected to maximize F1) is tested on other campaigns. We
+Fig. 10(B) that the downsampling process does not bias the                                                            observe that the campaign-specific models tend to perform
+similarity distributions.                                                              well both on their own campaigns and across campaigns.
+  So far, we have tested the replier classifier on balanced                                                   The Serbia campaign is an exception, where we observe
+datasets. In more realistic scenarios, the data may be imbal-                                                            a sizable deterioration in cross-campaign evaluation. These
+anced with different ratios of coordinated and organic repli-                                                                       results suggest that the features of the replier classifier are
+ers. To test whether the classifier can generalize to such sce-                                                                   relevant across different campaigns.
+narios, we train and test with 10-fold cross-validation using
+different positive to negative data ratios ranging from 1:5
+                                                                   Discussionto 1:45. Fig. 11 shows that precision and AUC are robust to
+class imbalance, whereas recall (and consequently F1) drops      Understanding the engagement patterns of IO operators is
+as the class imbalance increases. While this result indicates       crucial for identifying vulnerable individuals and devising
+that balancing the classes affects recall, we also found that       effective countermeasures. Our Serbia and Egypt campaign
+training on the original imbalanced dataset leads to a high      case studies reveal that journalists, state officials, news me-
+false-positive rate and deteriorated precision.                        dia, and politicians are primary targets for coordinated IO
+  Next, we test the generalizability of the replier classifier       attacks. These attacks can originate either from within the
+by training and testing the model across different campaigns.       targeted country or from other nation-states. Our findings
+Similarly to the tweet classifier, we prepare six campaign       further suggest that influential individuals may serve as po-
+datasets: five selected based on the highest number of IO        tential sensors for identifying IO campaigns.
+repliers and one by aggregating the remaining campaigns.       To  detect  coordinated  reply  attacks, we  propose  a
+In the diagonal of Table 7 we report F1 values when the      campaign-independent and general machine learning frame-
+
+
+                                                   1594
+
+
+===== PDF p.10 =====
+that offer similar reply functionalities, including Facebook,
+                                                             Threads, Mastodon, and Bluesky. However, the lack of IO
+                                                                   datasets prevents us from evaluating our framework on these
+                                                                 platforms.
+                                                     Our study has potential impacts on platform integrity and
+                                                                public dialogue. First, it reveals that what looks like public
+                                                                  reactions may in fact be efforts to manipulate a target and
+                                                                 other participants of a genuine conversation. For instance,
+                                                                      politicians may be posting on social media to solicit pub-
+                                                                                lic opinions. Coordinated replies may skew their perception
+                                                                of public sentiment (Stewart et al. 2019). Such replies can
+                                                                     further distort genuine discourse if portrayed by the me-
+                                                                 dia as reflective of public opinion. Secondly, coordinated
+                                                                      replies enable malicious actors to maximize the public ex-
+Figure 11: Replier classification scores for different data im-      posure of their posts by exploiting the popularity of their
+balance ratios.                                                          targets, thereby amplifying their influence. This pollutes on-
+                                                                       line dialogues with spam, influence campaigns, and divisive
+                                 Test                          messages that harass the targeted individuals or provoke the     Train
+          SA   RS   TR   EG  HN   Other             public. Such behavior may also alienate the targets and pre-
+    SA      0.96   0.79   0.86   0.86   0.55    0.90            vent them from sharing their opinion on social media. For all
+    RS      0.53   0.89   0.76   0.53   0.48    0.49                                                                 these reasons, platforms should protect the targets from co-
+    TR      0.90   0.91   0.92   0.84   0.84    0.85
+                                                               ordinated reply attacks. The research community may use    EG     0.92   0.90   0.88   0.92   0.74    0.90
+                                                            our methodology to detect coordinated reply attacks and    HN     0.93   0.97   0.98   0.89   0.95    0.91
+      Other   0.95   0.89   0.92   0.89   0.72    0.94            study the campaigns, perpetrators, and their potential effects
+                                                     on the individuals. Our methodology may also guide the de-
+Table 7: F1 scores obtained from same-campaign (diago-      velopment of countermeasures by social media platforms.
+nal entries, in bold) and cross-campaign evaluations of the                                                              Limitations.  Our study has several limitations, some of
+replier classifier. HN=Honduras; see Table 4 for other coun-                                                       which are mentioned below:
+try codes.
+                                                                             • We define control tweets as those posted by previously
+                                                                      targeted authors. This might lead to some biases. Our
+                                                                       collection of replies to these control tweets was limited
+work consisting of a tweet classifier and a replier classifier.
+                                                        by the collection time, which could in theory affect the
+First, the tweet classifier identifies tweets that receive co-
+                                                                         distributions of numbers and delays of replies. However,
+ordinated replies, narrowing the scope for further investiga-
+                                                      more than 99.8% of control tweets were posted at least
+tion. This classifier is robust to variations in targeted tweet
+                                                        13 days before our collection of replies, and only 2%
+popularity and general across various campaigns. An anal-
+                                                                   of replies to IO tweets arrived after more than 13 days.
+ysis of the features used by the classifier indicates that the
+                                                                        Similarly, only 1.2% of replies to IO tweets arrived after
+level of engagement received by the replies is the most dis-
+                                                      more than 32 days, and more than 90% of control tweets
+tinguishing factor.
+                                                          were at least this old at collection time. Therefore, the
+  Second, the replier classifier identifies operators engaged
+                                                                       collection time did not significantly bias these distribu-
+in coordinated reply attacks. In addition to generalizing
+                                                                            tions. Nevertheless, these features could be affected by
+across campaigns like the tweet classifier, the replier clas-
+                                                               time-dependent factors, such as the deletion of accounts
+sifier is also capable of handling different levels of class im-
+                                                                   or replies. As a result, our analysis may be subject to po-
+balance. The most significant features for replier classifica-
+                                                                              tential survivor bias, which could limit the applicability
+tion are those describing the distribution of similarity be-
+                                                                   of the proposed classifiers to real-world scenarios.
+tween replies from a replier and those from other repliers to
+                                                                             • The median time difference between the end of a cam-the same tweets.
+                                                               paign (last targeted tweet) and the start of the control data  This study presents a proof of concept for the proposed
+                                                                                         (first control tweet) is approximately 21 months. Conse-classifiers, evaluated on a number of IO campaigns that have
+                                                                      quently, the control data may not be representative of thebeen detected and taken down by Twitter. Our experiments
+                                                                      targeted tweets in terms of temporal alignment.were carried out on compute nodes equipped with two 64-
+core AMD EPYC 7742 2.25 GHz CPUs and 512 GB of         • The dataset was  artificially balanced for training the
+RAM. The efficacy, efficiency, and robustness of our clas-         tweet classifier. Other approaches to handle class imbal-
+sifiers would ideally be validated in the wild. Unfortunately,         ance should be explored.
+due to changes in data-sharing policies from X/Twitter, we         • In feature construction, we focus solely on direct replies,
+are unable to conduct such tests.                                       for both IO and control data. This approach is due to
+  Our models could be developed into monitoring tools for          the fact that the classification dataset contains only di-
+enhanced online safety. Although the proposed framework is           rect replies to targeted tweets, forcing us to ignore that a
+designed for Twitter, it could be extended to other platforms          reply thread can form a tree-like structure.
+
+
+                                                   1595
+
+
+===== PDF p.11 =====
+• The classifiers could be enhanced by incorporating addi-      Ezzeddine, F.; Ayoub, O.; Giordano, S.; Nogara, G.; Sbe-
+   tional features, such as distributions of account age and         ity, I.; Ferrara, E.; and Luceri, L. 2023. Exposing Influence
+   other profile metadata for the tweet classifier, and of the     Campaigns in the Age of LLMs: A Behavioral-based AI Ap-
+   number of replies by each account for the replier classi-      proach to Detecting State-Sponsored Trolls. EPJ Data Sci-
+    fier. We identify these enhancements as future research.        ence, 12(1): 46.
+ • While our main objective is to detect coordinated replies,       Farkas, J.; and Bastos, M. 2018. IRA Propaganda on Twitter:
+   an attack that is frequently employed by information op-      Stoking Antagonism and Tweeting Local News. In Proc. 9th
+   erations, we acknowledge that it may be also used by        Intl. Conf. on Social Media and Society, 281–285.
+   regular social media users organizing among themselves      Feng, F.; Yang, Y.; Cer, D.; Arivazhagan, N.; and Wang,
+   for activism. Thus, we suggest that our classifiers should     W. 2020. Language-agnostic BERT Sentence Embedding.
+   complement human investigation when employed in the      arXiv preprint arXiv:2007.01852.
+   wild. Furthermore, they should not be misused to label                                                                    Ferrara, E.; Chang, H.; Chen, E.-P.; Muric, G.; and Patel,
+   users as information operation accounts without thor-                                                                                   J. 2020.  Characterizing Social Media Manipulation in the
+   ough human verification.                                                     2020 U.S. Presidential Election. First Monday, 25(11).
+                                                                Gallagher, R. J.; Frank, M. R.; Mitchell, L.; Schwartz, A. J.;           Acknowledgements
+                                                          Reagan, A. J.; Danforth, C. M.; and Dodds, P. S. 2021. Gen-
+This work was supported  in  part by Knight Founda-       eralized word shift graphs: a method for visualizing and ex-
+tion, Craig Newmark  Philanthropies, DARPA  (contract       plaining pairwise comparisons between texts. EPJ Data Sci-
+HR001121C0169), and Lilly Endowment, Inc., through its       ence, 10(1): 4.
+support for the Indiana University Pervasive Technology In-                                                                  Hristakieva, K.; Cresci, S.; Da San Martino, G.; Conti, M.;
+stitute.                                                       and Nakov, P. 2022. The Spread of Propaganda by Coordi-
+                                                              nated Communities on Social Media. In Proceedings of the
+                References                           14th ACM Web Science Conference (WebSci), 191–201.
+Addawood, A.; Badawy, A.; Lerman, K.; and Ferrara, E.     Hudson Smith, D.; Ehrett, C.; and Warren, P. L. 2024. Unsu-
+2019.  Linguistic Cues to Deception: Identifying Political      pervised Detection of Coordinated Information Operations
+Trolls on Social Media.  In Proc. Intl. AAAI Conf. on Web       in the Wild. Technical Report 2401.06205, arXiv.
+and Social Media, volume 13, 15–25.                                                           Im, J.; Chandrasekharan, E.; Sargent, J.; Lighthammer, P.;
+Alizadeh, M.; Shapiro, J. N.; Buntain, C.; and Tucker, J. A.      Denby, T.; Bhargava, A.; Hemphill, L.; Jurgens, D.; and
+2020.  Content-based Features Predict Social Media Influ-       Gilbert, E. 2020.  Still Out There: Modeling and Identify-
+ence Operations. Science Advances, 6(30).                      ing Russian Troll Accounts on Twitter. In 12th ACM Conf.
+Bradshaw, S.; and Howard, P. 2017. Troops, Trolls and Trou-     on Web Science.
+blemakers: A Global Inventory of Organized Social Media      Kong, Q.; Calderon, P.; Ram, R.; Boichak, O.; and Rizoiu,
+Manipulation. Technical report, University of Oxford.          M.-A. 2023.  Interval-censored Transformer Hawkes: De-
+Bush, D. 2020.   Fighting Like a Lion for Serbia: An       tecting Information Operations using the Reaction of Social
+Analysis of Government-Linked Influence Operations in      Systems. In Proc. ACM Web Conf., 1813—-1821.
+Serbia.  https://fsi-live.s3.us-west-1.amazonaws.com/s3fs-       Luceri, L.; Giordano, S.; and Ferrara, E. 2020.  Detecting
+public/serbia march twitter.pdf. Accessed: 30 Oct 2023.          Troll Behavior via Inverse Reinforcement Learning: A Case
+DiResta, R.; Kheradpir, T.; and Miller, C. 2020.  “The      Study of Russian Trolls in the 2016 US Election.  In Intl.
+World   is  Swimming  in  a  Sea  of  Rumors”:  Influ-     AAAI Conf. on Web and Social Media, volume 14, 417–427.
+ence  Operations  Associated  with  El  Fagr Newspaper      Matthews, J.; and Goerzen, M. 2019. Black Hat Trolling,
+(Egypt).    Technical  report,  Stanford  Internet  Obser-      White Hat Trolling, and Hacking the Attention Landscape.
+vatory.   https://fsi-live.s3.us-west-1.amazonaws.com/s3fs-       In Companion Proc. WWW Conf., 523–528.
+public/egypt whitepaper.pdf. Accessed: 8 Nov 2023.                                                           Merhi, M.; Rajtmajer, S.; and Lee, D. 2023.  Information
+Dutt, R.; Deb, A.; and Ferrara, E. 2018. “Senator, We Sell      Operations in Turkey: Manufacturing Resilience with Free
+Ads”: Analysis of the 2016 Russian Facebook Ads Cam-       Twitter Accounts.  In Proc. Intl. AAAI Conf. on Web and
+paign. In Intl. Conf. Intell. Info. Techn., 151–168.                Social Media.
+Elmas, T. 2023.  Analyzing Activity and Suspension Pat-      Neudert, L.-M.; Howard, P.; and Kollanyi, B. 2019. Sourc-
+terns of Twitter Bots Attacking Turkish Twitter Trends by a      ing and Automation of Political News and Information Dur-
+Longitudinal Dataset. In Companion Proc. ACM Web Conf.,      ing Three European Elections. Social Media + Society, 5(3).
+1404–1412.                                                      Ng, L. H. X.; Moffitt, J.; and Carley, K. M. 2022. Coordi-
+Elmas, T.; Overdorf, R.; and Aberer, K. 2022. Characteriz-      nated through a Web of Images: Analysis of Image-based In-
+ing Retweet Bots: The Case of Black Market Accounts. In       fluence Operations from China, Iran, Russia, and Venezuela.
+Proc. Intl. AAAI Conf. on Web and Social Media, 171–182.       Preprint arXiv:2206.03576.
+Elmas, T.; Overdorf, R.; and Aberer, K. 2023. Misleading      Nwala, A. C.; Flammini, A.; and Menczer, F. 2023. A Lan-
+Repurposing on Twitter. In Proc. Intl. AAAI Conf. on Web      guage Framework for Modeling Social Media Account Be-
+and Social Media, 209–220.                                       havior. EPJ Data Science, 12(1): 33.
+
+
+                                                   1596
+
+
+===== PDF p.12 =====
+Office of the Director of National Intelligence. 2017. As-     Thomas, K.; Akhawe, D.; Bailey, M.; Boneh, D.; Bursztein,
+sessing Russian Activities and Intentions in Recent US Elec-       E.; Consolvo, S.; Dell, N.; Durumeric, Z.; Kelley, P. G.;
+tions. Technical report, National Intelligence Council.          Kumar, D.; McCoy, D.; Meiklejohn, S.; Ristenpart, T.; and
+Ong, J. C.; and Caba˜nes, J. V. A. 2018.   Architects of       Stringhini, G. 2021. SoK: Hate, Harassment, and the Chang-
+Networked Disinformation: Behind the Scenes of Troll Ac-      ing Landscape of Online Abuse. In Proc. IEEE Symposium
+counts and Fake News Production in the Philippines. Tech.     on Security and Privacy (SP), 247–267.
+rep., UMass Amherst. https://doi.org/10.7275/2cq4-5396.        Torres-Lugo, C.; Pote, M.; Nwala, A.; and Menczer, F. 2022.
+Pacheco, D.; Hui, P.-M.; Torres-Lugo, C.; Truong, B. T.;      Manipulating Twitter through Deletions. In Proc. Intl. AAAI
+Flammini, A.; and Menczer, F. 2021. Uncovering Coordi-      Conf. on Web and Social Media, 1029–1039.
+nated Networks on Social Media: Methods and Case Stud-      Uyheng, J.; Cruickshank, I. J.; and Carley, K. M. 2022. Map-
+ies.  In Proc. Intl. AAAI Conf. on Web and Social Media,      ping State-sponsored Information Operations with Multi-
+volume 21, 455–466.                                      view Modularity Clustering. EPJ Data Science, 11(1): 25.
+Pamment, J.; and Smith, V. 2022.  Attributing Information     Weedon, J.; Nuland, W.; and Stamos, A. 2017. Information
+Influence Operations: Identifying those Responsible for Ma-      Operations and Facebook. Technical report, Facebook. Ac-
+licious Behavior Online. Technical report, NATO Strategic       cessed: 2025-04-08.
+Communications Center of Excellence.                         Woolley, S. C.; and Howard, P. N. 2018. Conclusion: Po-
+Rowett, G. 2018. The Strategic Need to Understand Online        litical Parties, Politicians, and Computational Propaganda.
+Memes and Modern Information Warfare Theory. In Proc.       In Computational propaganda: Political parties, politicians,
+IEEE Big Data.                                         and political manipulation on social media, 241–248. Ox-
+Saeed, M. H.; Ali, S.; Blackburn, J.; Cristofaro, E. D.; Zan-       ford University Press.
+nettou, S.; and Stringhini, G. 2022. TrollMagnifier: Detect-      Yang, K.-C.; and Menczer, F. 2024.  Anatomy of an AI-
+ing State-Sponsored Troll Accounts on Reddit.  In Proc.      powered Malicious Social Botnet. Journal of Quantitative
+IEEE Symposium on Security and Privacy (SP), 2161–2175.      Description: Digital Media, 4.
+Senate  Select Committee on  Intelligence. 2019.   Re-      Zannettou, S.; Caulfield, T.; Bradlyn, B.; De Cristofaro, E.;
+port  of  the  Select Committee on  Intelligence  United       Stringhini, G.; and Blackburn, J. 2020. Characterizing the
+States Senate on Russian Active Measures Campaigns     Use of Images in State-Sponsored Information Warfare Op-
+and Interference  in the 2016 U.S. Election Volume  2:       erations by Russian Trolls on Twitter. Proc. Intl. AAAI Conf.
+Russia’s Use  of  Social Media with Additional Views.     on Web and Social Media.
+https://www.intelligence.senate.gov/sites/default/files/            Zannettou, S.; Caulfield, T.; De Cristofaro, E.; Sirivianos,
+documents/Report Volume2.pdf. Accessed: 2024-01-16.        M.; Stringhini, G.; and Blackburn, J. 2019a. Disinformation
+Shao, C.; Ciampaglia, G. L.; Varol, O.; Yang, K.; Flammini,      Warfare: Understanding State-sponsored Trolls on Twitter
+A.; and Menczer, F. 2018. The Spread of Low-credibility      and their Influence on the Web. In Companion Proc. WWW
+Content by Social bots. Nature Communications, 9: 4787.        Conf., 218–226.
+Sharma, K.; Zhang, Y.; Ferrara, E.; and Liu, Y. 2021. Identi-      Zannettou, S.; Caulfield,  T.; Setzer, W.; Sirivianos, M.;
+fying Coordinated Accounts on Social Media through Hid-       Stringhini, G.; and Blackburn, J. 2019b. Who Let the Trolls
+den Influence and Group Behaviours. In 27th ACM SIGKDD      Out? Towards Understanding State-sponsored Trolls.   In
+Conf. on Knowledge Discovery & Data Mining, 1441–1451.      Proc. 10th ACM Conf. on Web Science, 353–362.
+Stanford Internet Observatory. 2021.   Published reports
+of the Stanford Internet Observatory.  https://github.com/                    Ethics Checklist
+stanfordio/publications. Accessed: 2025-04-08.
+                                                                       1. For most authors...
+Starbird, K.; Arif, A.; and Wilson, T. 2019. Disinformation
+as Collaborative Work: Surfacing the Participatory Nature of         (a) Would answering this research question advance sci-
+Strategic Information Operations. Proc. ACM Hum. Com-           ence without violating social contracts, such as violat-
+put. Interact.                                                        ing privacy norms, perpetuating unfair profiling, exac-
+                                                                       erbating the socio-economic divide, or implying disre-
+Stewart, A.; Mosleh, M.; Diakonova, M.; Arechar, A.; Rand,
+                                                                      spect to societies or cultures? Yes
+D.; and Plotkin, J. 2019. Information gerrymandering and
+undemocratic decisions. Nature, 573(7772): 117–121.              (b) Do your main claims in the abstract and introduction
+                                                                      accurately reflect the paper’s contributions and scope?
+Stewart, L. G.; Arif, A.; and Starbird, K. 2018. Examining
+                                                            Yes
+Trolls and Polarization with a Retweet Network.  In Proc.
+                                                                          (c) Do you clarify how the proposed methodological ap-ACM WSDM Workshop on Misinformation and Misbehavior
+                                                                proach is appropriate for the claims made? YesMining on the Web (MIS2). https://api.semanticscholar.org/
+CorpusID:44033303.                                                (d) Do you clarify what are possible artifacts in the data
+                                                                     used, given population-specific distributions? YesThomas, E.; Thompson, N.; and Wanless, A. 2020.  The
+Challenges of Countering Influence Operations.  Techni-         (e) Did you describe the limitations of your work? Yes
+cal report, Carnegie Endowment for Intl. Peace. Accessed:           (f) Did you discuss any potential negative societal im-
+2025-04-08.                                                          pacts of your work? NA
+
+
+                                                   1597
+
+
+===== PDF p.13 =====
+(g) Did you discuss any potential misuse of your work?         (a)  If your work uses existing assets, did you cite the cre-
+   NA                                                               ators? Yes.
+  (h) Did you describe steps taken to prevent or mitigate po-         (b) Did you mention the license of the assets? NA
+      tential negative outcomes of the research, such as data         (c) Did you include any new assets in the supplemental
+     and model documentation, data anonymization, re-            material or as a URL? Yes. We provide link to data
+     sponsible release, access control, and the reproducibil-          and code as URL.
+      ity of findings? Yes                                                                      (d) Did you discuss whether and how consent was ob-
+   (i) Have you read the ethics review guidelines and en-            tained from people whose data you’re using/curating?
+     sured that your paper conforms to them? Yes                    Yes; this is addressed by IRB exemption.
+2. Additionally, if your study involves hypotheses testing...          (e) Did you discuss whether the data you are using/cu-
+                                                                          rating contains personally identifiable information or
+  (a) Did you clearly state the assumptions underlying all                                                                       offensive content? Yes. The Twitter profiles are public
+      theoretical results? NA                                                                      information.
+  (b) Have you provided justifications for all theoretical re-                                                                                  (f)  If you are curating or releasing new datasets, did you
+      sults? NA                                                                      discuss how you intend to make your datasets FAIR?
+  (c) Did you discuss competing hypotheses or theories that            Yes. The link to data is included in the paper so that
+     might challenge or complement your theoretical re-          anyone can access it, including the details of the meta-
+      sults? NA                                                       data in the Datasheet to make  it interoperable and
+  (d) Have you considered alternative mechanisms or expla-             reusable.
+     nations that might account for the same outcomes ob-         (g)  If you are curating or releasing new datasets, did you
+     served in your study? NA                                         create a Datasheet for the Dataset? The Datasheet is
+  (e) Did you address potential biases or limitations in your             available at doi.org/10.5281/zenodo.13896308
+      theoretical framework? NA                                    6. Additionally, if you used crowdsourcing or conducted
+  (f) Have you related your theoretical results to the existing          research with human subjects, without compromising
+      literature in social science? NA                              anonymity...
+  (g) Did you discuss the implications of your theoretical         (a) Did you include the full text of instructions given to
+      results for policy, practice, or further research in the             participants and screenshots? NA
+      social science domain? Answer                                                                      (b) Did you describe any potential participant risks, with
+3. Additionally, if you are including theoretical proofs...              mentions of Institutional Review Board (IRB) ap-
+                                                                     provals? NA
+  (a) Did you state the full set of assumptions of all theoret-
+                                                                          (c) Did you include the estimated hourly wage paid to      ical results? NA
+                                                                          participants and the total amount spent on participant
+  (b) Did you include complete proofs of all theoretical re-                                                               compensation? NA
+      sults? NA
+                                                                      (d) Did you discuss how data is stored, shared, and dei-
+4. Additionally, if you ran machine learning experiments...             dentified? NA
+  (a) Did you include  the code,  data, and  instructions
+     needed to reproduce the main experimental results (ei-                     Ethical Impact
+      ther in the supplemental material or as a URL)? Yes        This  study  has been  granted exemption from  Institu-
+  (b) Did you specify all the training details (e.g., data splits,       tional Review Board review (Indiana University proto-
+     hyperparameters, how they were chosen)? Yes              cols 12410 and 1102004860). Our  results can be  re-
+                                                         produced using code available at github.com/osome-iu/io-  (c) Did you report error bars (e.g., with respect to the ran-
+                                                                 coordinated-replies and data available at doi.org/10.5281/    dom seed after running experiments multiple times)?
+                                                          zenodo.13896308. The collection and release of the dataset     Yes. Our experiments report averages across 10-fold
+                                                     comply with the Twitter platform’s terms of service. To mit-      cross-validation as well as standard errors.
+                                                                     igate the potential ethical risks of analyzing human subjects,
+  (d) Did you include the total amount of computation and                                              we only rely on the data of public Twitter accounts do not
+      the type of resources used (e.g., type of GPUs, internal                                                               include any raw data. We only manually inspect the profiles
+      cluster, or cloud provider)? Yes                                                                of the targets of the attacks, who are public figures and con-
+  (e) Do you justify how the proposed evaluation is suffi-        stitute the vulnerable group our study aims to protect. We
+      cient and appropriate to the claims made? Yes              provide our annotation data about these profiles for repro-
+  (f) Do you discuss what is “the cost” of misclassification       ducibility. Our classification models do not use any person-
+     and fault (in)tolerance? Yes. We recommend manual       ally identifiable information. We only report aggregated re-
+     inspection to complement our classifiers.                       sults.
+
+5. Additionally, if you are using existing assets (e.g., code,
+   data, models) or curating/releasing new assets, without
+  compromising anonymity...
+
+
+                                                   1598

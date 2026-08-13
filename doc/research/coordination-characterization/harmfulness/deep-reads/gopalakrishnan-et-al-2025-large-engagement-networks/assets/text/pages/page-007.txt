@@ -1,0 +1,61 @@
+Model       Accuracy       Precision       Recall        Micro F1     Macro F1
+              Text + MLP   0.367 ± 0.041   0.209 ± 0.135   0.367 ± 0.041   0.367 ± 0.041   0.133 ± 0.041
+         GCN         0.533 ± 0.041   0.371 ± 0.042   0.533 ± 0.041   0.533 ± 0.041   0.251 ± 0.022
+          GAT         0.567 ± 0.033   0.387 ± 0.031   0.567 ± 0.033   0.567 ± 0.033   0.264 ± 0.014
+           GIN          0.633 ± 0.067   0.484 ± 0.105   0.633 ± 0.067   0.633 ± 0.067   0.351 ± 0.091
+           GraphSAGE   0.583 ± 0.053   0.470 ± 0.082   0.583 ± 0.053   0.583 ± 0.053   0.320 ± 0.061                                       LEN-small          GINE         0.650 ± 0.033   0.569 ± 0.040   0.650 ± 0.033   0.650 ± 0.033   0.361 ± 0.042
+         VNGE        0.833 ± 0.000   0.771 ± 0.000   0.833 ± 0.000   0.833 ± 0.000   0.671 ± 0.000
+          LSD          0.667 ± 0.000   0.594 ± 0.000   0.667 ± 0.000   0.667 ± 0.000   0.414 ± 0.000
+              Text + MLP   0.645 ± 0.011   0.462 ± 0.017   0.645 ± 0.011   0.645 ± 0.011   0.218 ± 0.006
+         GCN         0.641 ± 0.009   0.457 ± 0.008   0.641 ± 0.009   0.641 ± 0.009   0.252 ± 0.004
+          GAT         0.636 ± 0.000   0.467 ± 0.006   0.636 ± 0.000   0.636 ± 0.000   0.257 ± 0.001
+           GIN          0.659 ± 0.000   0.495 ± 0.010   0.659 ± 0.000   0.659 ± 0.000   0.269 ± 0.002             LEN
+           GraphSAGE   0.641 ± 0.017   0.453 ± 0.010   0.641 ± 0.017   0.641 ± 0.017   0.252 ± 0.006
+          GINE         0.677 ± 0.009   0.478 ± 0.013   0.677 ± 0.009   0.677 ± 0.009   0.233 ± 0.004
+         VNGE        0.659 ± 0.000   0.640 ± 0.000   0.659 ± 0.000   0.659 ± 0.000   0.383 ± 0.000
+          LSD          0.545 ± 0.000   0.512 ± 0.000   0.545 ± 0.000   0.545 ± 0.000   0.252 ± 0.000
+
+Table 5: Campaign type classification for 7 labels: politics, reform, news, finance, cult, entertainment, and common, see Table
+2 for details. Text + MLP refers to the non-graph based classifier. The best results are in bold.
+
+
+respective edges, before aggregating them in the message-     Binary Classification
+passing function.                              We first identify campaign networks by distinguishing them
+  Additionally, we use two non-neural network based graph      from non-campaign networks. Table 4 summarizes the re-
+embedding models, namely VNGE and LSD. (1) VNGE:       sults for LEN, 179+135 graphs, as well as LEN-small,
+Approximates the spectral distances between graphs using      which has 51+49 networks of smaller size. GraphSAGE
+the Von Neumann Graph Entropy (VNGE) by measuring in-      and VNGE achieve the best accuracy for the small and the
+formation divergence/distance between graphs (Chen et al.      complete dataset, while VNGE and LSD achieve the best
+2019). (2) NetLSD: Measures the spectral distance between     F1 scores. ROC curves across different training epochs are
+graphs using the heat kernel (Tsitsulin et al. 2018). Both      given in Appendix (Figure 4 refers to the ROC curves for
+models are approximated using SLaQ, which helps approx-       the small dataset and Figure 5 refers to the ROC curves for
+imate spectral distances. To do this, SLaQ takes in two pa-       the complete dataset). One interesting observation is that
+rameters, namely, number of random steps (nv) and number       the accuracy and F1 scores are lower for LEN, which has
+of Lanczos steps (s).                                                larger networks than the LEN-small. This highlights the dif-
+                                                                         ficulty in classifying large networks, which is expected as  These GNNs can handle both directed and undirected
+                                                       most datasets in the graph classification literature containgraphs, allowing us to directly apply them to our directed
+                                                             small networks, as discussed in the related work. Regardingnetworks without modification. Initially, each graph is pro-
+                                                                 the runtime performance, Figure 2 presents the time taken tocessed by a 2-layer GNN to generate informative node em-
+                                                            run the graph classification models plotted along the size ofbeddings and those are combined using global mean pooling
+                                                                 the graph. We observe that GCN, GIN and GAT have minorto create a single graph-level embedding. Lastly, we utilize
+                                                          changes in performance with graph size. However, GINEa two-layer MLP to predict the class.
+                                                      shows a linear growth with the size of the graph.
+  To demonstrate the difficulty of classifying large engage-
+ment networks, we perform several experiments.            Campaign Type Classification
+  We use the established GNNs as graph classifiers, de-    We next classify campaign graphs into seven specific types:
+scribed before. We conduct three experiments: (1) Binary        politics, reform, news, finance, cult, entertainment, and com-
+classification to distinguish campaign networks from non-     mon, as detailed in Table 2. Identifying the campaigns with
+campaign networks; (2) Multi-class classification to cate-       potentially negative social impacts (e.g., false political cam-
+gorize campaigns based into the 7 sub-types as shown in      paigns) by only using the graph structure can be an im-
+Table 2; and (3) Binary classification to identify if a trend-       portant problem to understand misinformation. Similar to
+ing topic signifying news is a campaign or not. We ensure a       the binary classification setup above, we use the established
+fair comparison across the four GNN architectures by tuning    GNNs for multi-class classification. Table 5 presents the re-
+hyperparameters: l ∈{0.001, 0.0001, 0.00001} and hidden        sults.
+layer dimension h ∈{128, 256, 512, 1024}. For each com-     VGNE achieves the highest accuracy in LEN-small and
+bination, we ran our model five times with different random     GINE achieves the highest accuracy on LEN. While VGNE
+seeds and report the average scores. Similarly, for VNGE      and GINE provide high micro F1 scores, we notice that the
+and LSD, we tune the models by trying all combinations of     macro F1 scores are lower. This applies to all the other mod-
+nv ∈{10, 15, 20} and s ∈{10, 15, 20}.                               els. We suspect this is due to imbalanced labels in the data, as
+
+
+                                                   694

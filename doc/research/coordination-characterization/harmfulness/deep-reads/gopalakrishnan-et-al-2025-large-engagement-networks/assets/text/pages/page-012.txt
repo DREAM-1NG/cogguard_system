@@ -1,0 +1,72 @@
+– Did you state the full set of assumptions of all theoret-          amount of metadata and our data is accessible. We also
+     ical results? No. We don’t have any theoretical results         made an effort to keep our data interoperable and re-
+     in the paper.                                                      usable.
+  – Did you include complete proofs of all theoretical re-        –  If you are curating or releasing new datasets, did you
+     sults? No. We don’t have any theoretical results in the             create a Datasheet for the Dataset (see (Gebru et al.
+     paper.                                                       2021))? We have the datasheet included in the ap-
+                                                                   pendix.• Additionally, if you ran machine learning experiments...
+                                                                            • Additionally, if you used crowdsourcing or conducted  – Did you include  the code,  data, and  instructions
+                                                                  research with human subjects, without compromising    needed to reproduce the main experimental results (ei-
+                                                              anonymity...     ther in the supplemental material or as a URL)? Yes.
+    The URL for the code and the accompanying instruc-        – Did you include the full text of instructions given to
+     tions are given in Graph classification on engagement             participants and screenshots? NA
+    networks. The data is provided in the URL in the ab-        – Did you describe any potential participant risks, with
+     stract.                                                     mentions of Institutional Review Board (IRB) ap-
+  – Did you specify all the training details (e.g., data splits,            provals? NA
+    hyperparameters, how they were chosen)? Yes. All of        – Did you include the estimated hourly wage paid to
+    them are specified in the section titled Graph classifi-             participants and the total amount spent on participant
+     cation on engagement networks under the subsection           compensation? NA.
+     titled Experimental setup and Graph classifiers.                                                       – Did you discuss how data is stored, shared, and de-
+  – Did you report error bars (e.g., with respect to the ran-             identified? NA
+   dom seed after running experiments multiple times)?
+    Yes. This is observable in Table 4, 5 and 6.                            Ethics Statement
+  – Did you include the total amount of compute and the
+                                                   Our dataset consists of only users with public profiles. To
+    type of resources used (e.g., type of GPUs, internal
+                                                                     better protect the privacy of those users, we concealed the
+     cluster, or cloud provider)? Yes. This is specified in the
+                                                                  identifying information of all users in the public version
+     section titled Graph classification on engagement net-
+                                                               of our dataset. This aligns with Twitter’s policy for shar-
+    works under the subsection titled Experimental setup.
+                                                             ing information operations accounts, where they publicly
+  – Do you justify how the proposed evaluation is suffi-                                                              share data of malicious accounts but hash the identifying in-
+     cient and appropriate to the claims made? Yes. We do                                                            formation of those with fewer than 5000 followers (Center
+    specify that in the section titled Graph classification on                                                             2024). We hashed the following fields: user id, user display
+    engagement networks.                                                      name, user screen name (handle), retweeted, mentioned, and
+  – Do you discuss what is “the cost“ of misclassification       replied user id. We would like to clarify that this process
+    and fault (in)tolerance? We do not. The main objective      does not interfere with developing the baselines employ-
+    of the paper is providing a challenging dataset, not a      ing those datasets. We will grant full access including these
+   new method.                                                     fields to the researchers upon reasonable request.
+• Additionally, if you are using existing assets (e.g., code,      We would like to clarify that although campaigns in this
+  data, models) or curating/releasing new assets, without       dataset were supported by bots, and so were inauthentic to
+  compromising anonymity...                          some degree, it is unfair to label all of them as fully inau-
+                                                                   thentic and have absolutely no genuine support. Thus, our
+  –  If your work uses existing assets, did you cite the cre-                                                   work should not be misused to disregard those campaigns
+     ators? Yes we do                                                               as inauthentic or disregard other movements as inauthentic
+  – Did you mention the license of the assets? Yes. We      using a classifier trained by this dataset.
+    have mentioned the license of our datasets?
+  – Did you include any new assets in the supplemental                 Author statement
+     material or as a URL? No. We dont have any new as-
+                                                   The dataset is released under a CC-BY license, enabling free
+     sets.
+                                                              sharing and adaptation for research or development purpose.
+  – Did you discuss whether and how consent was ob-                                        We bear all responsibility in case of violation of rights.
+     tained from people whose data you’re using/curating?
+    Yes. The data was obtained using the Twitter API be-                    Appendix
+     fore it became a payed feature.
+                                                            Table 7 provides a description on the number o connected
+  – Did you discuss whether the data you are using/curat-
+                                                      components in the graph.
+    ing contains personally identifiable information or of-
+                                                               Figure 4 and 5 provide ROC curves for campaign vs non-
+     fensive content? Yes. We did discus this in the ethics
+                                                      campaign classification across small and complete dataset
+     section.
+                                                                    respectively.
+  –  If you are curating or releasing new datasets, did you
+    discuss how you intend to make your datasets FAIR
+     (see (Wilkinson et al. 2016))? We do provide a rich
+
+
+                                                  699

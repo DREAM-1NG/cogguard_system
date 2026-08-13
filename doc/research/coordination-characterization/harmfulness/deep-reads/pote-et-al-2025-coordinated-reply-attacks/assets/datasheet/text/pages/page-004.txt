@@ -1,0 +1,53 @@
+• replier userid y                          files contain features for the tweet and
+                                             replier classifiers.  For the full list of
+   • replier tweetid x                                      the features and information on how
+                                     they are constructed, please refer to   • replier tweetid y
+                                          sections RQ2 and RQ3 in the paper.
+   • poster tweetid                     All other files contain derived data that
+                                        are required to replicate the results of
+   • cosine                           the paper.
+
+                                           Is there a label or target associated
+How many instances are there in to-
+                                    with each instance?    If so, please
+tal (of each type, if appropriate)?
+                                      provide a description.
+The numbers of records in each file are
+                                         Yes. Please refer to the individual file
+mentioned in the previous section.
+                                         descriptions above.
+Does the dataset contain all possi-                                           Is any information missing from in-
+ble instances or is it a sample (not                                      dividual instances?    If so, please
+necessarily random) of instances                                      provide a description, explaining why
+from a larger set?      If the dataset                                              this information is missing (e.g., be-
+is a sample, then what is the larger                                 cause  it was unavailable). This does
+set?   Is the sample representative                                      not include intentionally removed in-
+of the  larger  set  (e.g.,  geographic                                        formation,  but might  include,  e.g.,
+coverage)?     If so, please describe                                    redacted text.
+how this representativeness was val-                                          All data is preprocessed.  Most raw
+idated/verified.  If it is not representa-                                     data from the tweets is excluded. Only
+tive of the larger set, please describe                                      information needed to reproduce the
+why not (e.g., to cover a more diverse                                            results is included.
+range of instances, because instances
+                                Are relationships between individ-were withheld or unavailable).
+                                     ual instances made explicit (e.g., For RQ1, the dataset contains records
+                                    users’ movie ratings,  social net-for only two campaigns selected by the
+                               work links)?   If so, please describeauthors. For RQ2 and RQ3, the con-
+                             how these relationships are made ex-trol data contains records about replies
+                                                       plicit.to tweets by target users limited to
+                                         Yes.  Records can be linked throughspecific time intervals (see paper for
+                                        user IDs and tweet IDs.details).  With these exceptions, the
+dataset contains all records related to  Are   there  recommended  data
+the selected influence operations  re-  splits   (e.g.,   training,   develop-
+ported by Twitter (see paper for de-  ment/validation,  testing)?      If  so,
+tails).                               please provide a description of these
+                                                 splits, explaining the rationale behindWhat data does each instance con-
+                                   them.sist of?  “Raw” data (e.g., unpro-
+                          We recommend 10-fold cross valida-cessed text or images) or features?
+                                            tion. Please refer to the details of theIn either case, please provide a de-
+                                         training setup in the paper.scription.
+The ‘RQ2 tweet classifier features.csv’  Are there any errors, sources of
+and ‘RQ3 replier classifier features.csv’  noise,  or  redundancies  in  the
+
+
+                                  4

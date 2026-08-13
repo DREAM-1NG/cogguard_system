@@ -1,0 +1,245 @@
+{
+  "schema_version": 3,
+  "paper": {
+    "title": "Large Engagement Networks for Classifying Coordinated Campaigns and Organic Twitter Trends",
+    "authors": [
+      "Atul Anand Gopalakrishnan",
+      "Jakir Hossain",
+      "Tuğrulcan Elmas",
+      "Ahmet Erdem Sarıyüce"
+    ],
+    "venue": "Proceedings of the Nineteenth International AAAI Conference on Web and Social Media (ICWSM 2025), 19(1): 688-702",
+    "version": "AAAI/OJS official PDF, metadata creationDate 2025-06-07; arXiv:2503.00599v2 used for version cross-check",
+    "sources": [
+      {
+        "type": "pdf",
+        "location": "sources/paper/aaai-ojs-35839.pdf",
+        "url": "https://ojs.aaai.org/index.php/ICWSM/article/download/35839/37993/39907",
+        "sha256": "3be5dc933ff853b13fd64992c1ef82d169e07e10a72e60b690ab7d2eaf67351b",
+        "role": "primary"
+      },
+      {
+        "type": "pdf",
+        "location": "sources/paper/arxiv-2503.00599.pdf",
+        "url": "https://arxiv.org/pdf/2503.00599",
+        "sha256": "7f77e4a6cecdbb3038d9056ac369c544dca368b1e0c0c4b4170c0ec46b5521d7",
+        "role": "version-cross-check"
+      },
+      {
+        "type": "html",
+        "location": "sources/pages/arxiv-2503.00599-abs.html",
+        "url": "https://arxiv.org/abs/2503.00599",
+        "role": "version-metadata"
+      },
+      {
+        "type": "html",
+        "location": "sources/pages/large-engagement-dataset.html",
+        "url": "https://atg70.github.io/large-engagement-dataset/",
+        "role": "official-data-page-cross-check"
+      },
+      {
+        "type": "code-archive",
+        "location": "sources/code/LEN-1dfe57a.zip",
+        "url": "https://github.com/erdemUB/LEN/archive/1dfe57aaad7398ddf9914e639dc0604f52271d55.zip",
+        "sha256": "a7f718b7d3aee262d38377fa146f3b0acd6ca1d3e7a7fabaf6ca88896408b4b2",
+        "role": "official-code-snapshot"
+      },
+      {
+        "type": "github-metadata",
+        "location": "sources/code/github_head_commit.json",
+        "url": "https://github.com/erdemUB/LEN/commit/1dfe57aaad7398ddf9914e639dc0604f52271d55",
+        "role": "code-revision"
+      }
+    ],
+    "page_convention": "1-based PDF page numbers; PDF p.1 corresponds to printed page 688"
+  },
+  "reader_profile": {
+    "domain": "social-behavioral + computer-science-ai",
+    "selected_lenses": [
+      "social-behavioral",
+      "computer-science-ai",
+      "dataset/benchmark",
+      "method/model"
+    ],
+    "audience": "domain-researcher",
+    "goal": "review",
+    "depth": "deep",
+    "language": "zh-CN"
+  },
+  "execution": {
+    "visual_mode": "visual",
+    "visual_verification": "complete",
+    "text_evidence_sources": [
+      "official-pdf-text-layer",
+      "official-data-page-html",
+      "official-code-snapshot",
+      "arxiv-metadata"
+    ]
+  },
+  "claims": [
+    {
+      "id": "C1",
+      "claim": "LEN is a large Twitter engagement-network graph classification benchmark with 314 graphs in the official PDF: 179 campaigns and 135 non-campaigns.",
+      "status": "strong",
+      "inference": false,
+      "evidence": [
+        {
+          "type": "table",
+          "locator": "Table 2, PDF p.4",
+          "note": "Reports 179 campaign graphs, 135 non-campaign graphs, node and edge ranges, and subtype descriptions."
+        },
+        {
+          "type": "table",
+          "locator": "Table 1, PDF p.2",
+          "note": "Compares LEN Original: 314 graphs, 11,769.23 average nodes, 23,593.97 average edges."
+        },
+        {
+          "type": "table",
+          "locator": "Table 3, PDF p.5",
+          "note": "Defines LEN-small as 100 smallest networks, 51 campaign and 49 non-campaign."
+        }
+      ],
+      "caveats": [
+        "Official data page and README snapshot report 170 campaigns and 135 non-campaigns, creating a 305-vs-314 version conflict."
+      ]
+    },
+    {
+      "id": "C2",
+      "claim": "The campaign label is topic-level campaign/non-campaign supervision derived from ephemeral astroturfing detection and manual trend curation, not a harmful-intent gold label.",
+      "status": "partial",
+      "inference": false,
+      "evidence": [
+        {
+          "type": "text",
+          "locator": "Campaigns Collection Methodology, PDF p.4-5",
+          "note": "Campaign topics are detected via lexicon-tweet ephemeral astroturfing and then filtered/annotated."
+        },
+        {
+          "type": "text",
+          "locator": "Non-Campaigns Collection Methodology, PDF p.5",
+          "note": "Non-campaign labels are manually curated from external/internal events and popular trends."
+        },
+        {
+          "type": "text",
+          "locator": "Ethics Statement, PDF p.12",
+          "note": "Authors warn it is unfair to label all campaigns as fully inauthentic or to disregard movements using a trained classifier."
+        }
+      ],
+      "caveats": [
+        "Campaign detection depends on prior ephemeral astroturfing detector assumptions and a Turkey 2023 collection setting.",
+        "Non-campaign is a conservative organic-trend proxy, not proof of no coordination."
+      ]
+    },
+    {
+      "id": "C3",
+      "claim": "The paper provides moderate evidence that graph and spectral classifiers can separate campaign from non-campaign networks, with performance lower on the full large-graph LEN than on LEN-small.",
+      "status": "strong",
+      "inference": false,
+      "evidence": [
+        {
+          "type": "table",
+          "locator": "Table 4, PDF p.6",
+          "note": "LEN-small best accuracy 0.900 and F1 0.884 for GraphSAGE; full LEN best accuracy 0.747 for VNGE and best F1 0.788 for LSD."
+        },
+        {
+          "type": "figure",
+          "locator": "Figure 4, PDF p.13",
+          "note": "LEN-small ROC/AUROC curves for multiple models."
+        },
+        {
+          "type": "figure",
+          "locator": "Figure 5, PDF p.14",
+          "note": "Full LEN ROC/AUROC curves for multiple models."
+        }
+      ],
+      "caveats": [
+        "The reported split is stratified random graph-level 75/25; no cross-time, cross-campaign-family, cross-platform, or leave-event-out test is reported.",
+        "The code snapshot appears to repeat five seeds on one split loaded before the seed loop."
+      ]
+    },
+    {
+      "id": "C4",
+      "claim": "Campaign type classification is substantially weaker than binary campaign-vs-non-campaign classification, especially by macro-F1.",
+      "status": "strong",
+      "inference": false,
+      "evidence": [
+        {
+          "type": "table",
+          "locator": "Table 5, PDF p.7",
+          "note": "Full LEN campaign type macro-F1 peaks at 0.383 for VNGE; LEN-small macro-F1 peaks at 0.671 for VNGE."
+        },
+        {
+          "type": "figure",
+          "locator": "Figure 3, PDF p.8",
+          "note": "Confusion matrices show many predictions concentrated in Politics/Reform."
+        },
+        {
+          "type": "text",
+          "locator": "Results discussion, PDF p.8",
+          "note": "Authors attribute lower macro-F1 to imbalanced labels and state the type task is more challenging."
+        }
+      ],
+      "caveats": [
+        "Campaign type labels such as Politics, Reform, Finance, Cult, and Noise are not harmfulness labels.",
+        "Small class counts make macro-F1 unstable."
+      ]
+    },
+    {
+      "id": "C5",
+      "claim": "Graph construction and implementation choices create notable reproducibility and leakage risks.",
+      "status": "strong",
+      "inference": true,
+      "evidence": [
+        {
+          "type": "text",
+          "locator": "Building Networks, PDF p.5",
+          "note": "Repeated user-pair interactions are reduced to latest engagement, retaining about 74% of edges."
+        },
+        {
+          "type": "text",
+          "locator": "Limitations, PDF p.9",
+          "note": "Twitter API restrictions make real-time detection and dataset extension infeasible or costly."
+        },
+        {
+          "type": "code",
+          "locator": "train_twitter_MPNN.py lines 182, 347, 440-453 in commit 1dfe57a",
+          "note": "Random split is created before the seed loop; validation loss is commented out; five runs may vary initialization/training but not split."
+        },
+        {
+          "type": "code",
+          "locator": "requirements.txt in commit 1dfe57a",
+          "note": "Requirements contain incomplete pins such as scikit-learn== and pytorch-geometric=2.2.0."
+        }
+      ],
+      "caveats": [
+        "This is an audit inference from source and code; exact released data files were not downloaded due size/access constraints."
+      ]
+    },
+    {
+      "id": "C6",
+      "claim": "LEN should not be cited as a unified Harmfulness SOTA or as a coordination-discovery method.",
+      "status": "strong",
+      "inference": true,
+      "evidence": [
+        {
+          "type": "text",
+          "locator": "Abstract and Introduction, PDF p.1",
+          "note": "The task is graph classification to distinguish campaigns from organic trends."
+        },
+        {
+          "type": "text",
+          "locator": "Campaign Type Classification, PDF p.7",
+          "note": "Potentially negative social impacts are mentioned as motivation, not as a labeled harmfulness outcome."
+        },
+        {
+          "type": "text",
+          "locator": "Ethics Statement, PDF p.12",
+          "note": "Authors explicitly warn against overusing campaign labels to disregard movements as inauthentic."
+        }
+      ],
+      "caveats": [
+        "The dataset can be useful as a coordination-characterization benchmark, but harmfulness requires separate annotation and validation."
+      ]
+    }
+  ]
+}

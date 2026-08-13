@@ -1,0 +1,28 @@
+dynamics in sybil defenses. In ACM CCS, 2015.                   [35] K. Thomas, C. Grier, J. Ma, V. Paxson, and D. Song. Design
+                                                                  and evaluation of a real-time url spam ﬁltering service. In IEEE[28] S. Narang.  Green Coffee and Spam: Elaborate spam opera-
+                                                           S&P, 2011.      tion on Twitter uses nearly 750,000 accounts.  https://symc.ly/
+    2Cp7CJ5, 2017.                                                 [36] K. Thomas, C. Grier, D. Song, and V. Paxson. Suspended ac-
+                                                                        counts in retrospect: an analysis of twitter spam. In ACM IMC,[29] S. Nilizadeh, F. Labr`eche, A. Sedighian, A. Zand, J. Fernan-
+                                                                     pages 243–258. ACM, 2011.     dez, C. Kruegel, G. Stringhini, and G. Vigna. Poised: Spotting
+      twitter spam off the beaten paths. In CCS, 2017.                   [37] K. Thomas, D. McCoy, C. Grier, A. Kolcz, and V. Paxson.
+                                                                       Trafﬁcking Fraudulent Accounts: The Role of the Underground[30] G. Stringhini, M. Egele, C. Kruegel, and G. Vigna.  Poultry
+                                                                  Market in Twitter Spam and Abuse. In Usenix Security, 2013.     Markets: On the Underground Economy of Twitter Followers.
+     In WOSN, 2012.                                                 [38] L. van der Maaten and G. Hinton. Visualizing data using t-SNE.
+                                                                        Journal of Machine Learning Research, 2008.[31] G. Stringhini, C. Kruegel, and G. Vigna. Detecting spammers
+    on social networks. In ACSAC, 2010.                             [39] G. Wang, T. Konolige, C. Wilson, X. Wang, H. Zheng, and B. Y.
+                                                                    Zhao. You are how you click: Clickstream analysis for sybil[32] G. Stringhini, P. Mourlanne, G. Jacob, M. Egele, C. Kruegel,
+                                                                                 detection. In Usenix Security, volume 14, 2013.     and G. Vigna. Evilcohort: detecting communities of malicious
+     accounts on online services. In USENIX Security Symposium,    [40] C. Yang, R. Harkreader, J. Zhang, S. Shin, and G. Gu. Analyz-
+     2015.                                                                ing Spammers’ Social Networks for Fun and Proﬁt. In WWW,
+                                                                      2012.[33] G. Stringhini, G. Wang, M. Egele, C. Kruegel, G. Vigna,
+     H. Zheng, and B. Y. Zhao. Follow the Green: Growth and Dy-    [41] C. Yang, R. C. Harkreader, and G. Gu. Die free or live hard?
+     namics in Twitter Follower Markets. In ACM IMC, 2013.               empirical evaluation and new design for ﬁghting evolving twit-
+                                                                                          ter spammers. In RAID, 2011.[34] V. S. Subrahmanian, A. Azaria, S. Durst, V. Kagan, A. Galstyan,
+     K. Lerman, L. Zhu, E. Ferrara, A. Flammini, and F. Menczer.
+    The DARPA twitter bot challenge. IEEE Computer, 49, 2016.
+
+
+
+
+
+                                                  11

@@ -1,0 +1,64 @@
+PLOS ONE                                              The False positive problem of automatic bot detection in social science research
+
+
+
+                                               5. Improvements: Going forward, researchers should support tools that are not based on
+                                          black boxes but rather commit to the idea of open science. We should be able to work
+                                           together on finding solutions and improving those solutions over time. This, then, would
+                                              also allow us to deal more transparently with potential weaknesses.
+
+                                                Finally, there are other ways to identify bots on Twitter as Cresci [22] and Orabi et al. [20]
+                                show in their overviews. We believe it is important to consider the context as Bastos and Mer-
+                                       cea [2], for example, have investigated suspicious patterns based on communication metrics as
+                                         well as network analytics. And while this method might be more complicated and computa-
+                                            tionally expensive, it offers social scientists a way forward in identifying bots and understand-
+                                       ing patterns of disinformation campaigns. Overall it is also important to broaden the
+                                         perspective and focus more on political digital astroturfing [46] for which bots are just one
+                                          potential dimension [47]. A potential solution could be to focus, as suggested in the literature,
+                               more on group behavior with unsupervised classifiers [22] in combination with a descriptive
+                                              digital forensic analysis [11]. Still, our suggestions from above hold true even in this new sce-
+                                       nario as Vargas and colleagues [44] show in the evaluation of such methods.
+
+
+                          Supporting information
+
+                                 S1 Fig. Receiver operating characteristics curve for Botometer. The English score (left) and
+                                        the English CAP (right). Average score over 3 months for each account.
+                            (DOCX)
+
+                                 S2 Fig. Distribution of the SD for single accounts plotted as groups. Left for the Botometer
+                                       English score, right for the Botometer English CAP. Bandwith of 0.015 was used for the both.
+                            (DOCX)
+
+                                 S3 Fig. Changing score over time. Percentage of accounts (y-axis) that have at least once a
+                                        score in the three months below as well as above the threshold for all thresholds between 0 and
+                                  1 in steps of 0.05. Left for the English score, right for the English CAP.
+                            (DOCX)
+
+                                 S4 Fig. CAP precision-recall curves for the resampled data sets. We consider the population
+                                         baseline on Twitter (15% bots) for the English score (left) and the English CAP score (right).
+                                      Black points indicate the precision and the recall for the Botometer English score 0.76 (left)
+                                 and for the English CAP 0.25 (right). With the German politicians and bots for almost every
+                                       threshold level the identified sample of bots has more humans than real bots (precision).
+                            (DOCX)
+
+                                 S5 Fig. Density plots for the different data sets. Left: Density plots for the different combined
+                                       data sets in our analysis showing the distribution of Botometer’s English score. We used the
+                                    resampled data sets with 15% bots and 85% humans with a total n = 100,000 for each data set.
+                                         Right: Density plots for the human accounts data sets. Lines indicate the median, a bandwidth
+                                         of 0.04 was used for all data sets.
+                            (DOCX)
+
+
+
+                        Acknowledgments
+
+                        We thank Chung-hong Chan as well as Momin M. Malik for their valuable feedback that
+                                     helped us to substantially improve our paper. We also want to thank Martin Fuchs for provid-
+                                       ing us with his manually validated list of German Members of Parliament.
+
+
+
+
+
+PLOS ONE | https://doi.org/10.1371/journal.pone.0241045  October 22, 2020                                                        17 / 20

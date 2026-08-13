@@ -1,0 +1,50 @@
+Published as a conference paper at ICLR 2024
+
+
+
+
+Proposition 7. Because Li(λ, γ) is bounded and monotone in λ for all choices of γ, it is also true
+that ˜Li(λ) is bounded and monotone. Furthermore, the pointwise supremum of right-continuous
+functions is also right-continuous. Therefore, the ˜Li satisfy the assumptions of Theorem 1.
+
+Proposition 8. Let
+
+                                 
+               X      LS(λ) ≤α                               ˆλ′k = inf    :   k!n!
+                             (n + k)!                λ            S⊂{1,...,n+k},|S|=k       .
+Since LS(λmax) ≤α, ˆλ′k exists almost surely. Since LS(λ) ≤B, we have
+
+             k!n!
+        X      LS(λ)
+         (n + k)!
+                     S⊂{1,...,n+k},|S|=k
+                k!n!
+      ≤     X     LS(λ) + B ·   X        1
+            (n + k)!
+                          S⊂{1,...,n},|S|=k              S∩{n+1,...,n+k}̸=∅,|S|=k
+                                      
+                k!n!                                      k!n!
+      =
+            (n + k)!        X     LS(λ) + B 1 − (n + k)!  X     1 
+                          S⊂{1,...,n},|S|=k                               S⊂{1,...,n},|S|=k
+                k!n!                                           (n!)2
+      =     X     LS(λ) + B  1 −                              .
+            (n + k)!                             (n + k)!(n −k)!
+                          S⊂{1,...,n},|S|=k
+
+Since LS(λ) is non-increasing in λ, we conclude that ˆλ′k ≤ˆλk if the right-hand side of (15) is not
+empty; otherwise, by definition, ˆλ′k ≤λmax = ˆλk. Thus, ˆλ′k ≤ˆλk almost surely. Let E be the
+multiset of loss functions {LS : S ⊂{1, . . . , n + k}, |S| = k}. Using the same argument in the end
+of the proof of Theorem 1 and the right-continuity of LS, we can show that
+
+                 X      LS(λ) ≤α.        E h L{n+1,...,n+k}(ˆλ′k) | E i =   k!n!
+                                    (n + k)!
+                                                        S⊂{1,...,n+k},|S|=k
+
+The proof is then completed by the law of iterated expectation.
+
+
+
+
+
+                                       21

@@ -1,0 +1,49 @@
+sisted in observation of public behavior             Uses
+with minimal risks to subjects.
+                             Has the dataset been used for any
+ Preprocessing/cleaning/labeling    tasks already?  If so, please provide
+                                a description.
+Was any  preprocessing/cleaning/   Part  of our data  is derived from
+labeling of the data done (e.g., dis-  Twitter’s Influence Operation dataset,
+cretization or bucketing, tokeniza-  which has been analyzed in other stud-
+tion, part-of-speech tagging, SIFT   ies.
+feature extraction, removal of in-
+stances, processing of missing val-  Is there a repository that links to
+ues)? If so, please provide a descrip-  any or all papers or systems that
+tion.  If not, you may skip the remain-  use the dataset?   If so, please pro-
+der of the questions in this section.     vide a link or other access point.
+ Our data processing pipeline includes  We are not aware of all the papers
+cleaning (matching accounts  in  tar-  that used the Twitter’s Influence Oper-
+get and control datasets, balancing the  ation datasets. Papers from our lab are
+classification dataset, etc.); removal of  available at https://osome.iu.edu/
+duplicate, suspended, and inconsistent  research/publications
+accounts; missing data handling; and
+                             What  (other)  tasks  could  thestandardization of features.  For the
+                                   dataset be used for?case studies, the tweets were translated
+into English from Serbian and Arabic.  The dataset could be used to develop
+                                 more advanced models for detecting
+                                      coordinated inauthentic behaviors.
+Was   the   “raw”   data   saved
+in   addition   to   the   prepro-                                           Is there anything about the com-
+cessed/cleaned/labeled data  (e.g.,                                     position  of  the  dataset  or  the
+to  support  unanticipated  future                            way  it was collected and prepro-
+uses)?  If so, please provide a link or                                   cessed/cleaned/labeled that might
+other access point to the “raw” data.                                 impact future uses? For example, is
+ The raw data is saved along with the                                       there anything that a future user might
+preprocessed one for future consistency                                need to know to avoid uses that could
+checks and reproducibility.  It may be                                            result in unfair treatment of individu-
+shared upon request if required for re-                                          als or groups (e.g., stereotyping, qual-
+producibility and  if this can be done                                                     ity of service issues) or other undesir-
+in compliance with ethical/IRB poli-                                      able harms (e.g., financial harms, le-
+cies and platform terms.                                        gal risks)  If so, please provide a de-
+Is the software used  to prepro-  scription.  Is there anything a future
+cess/clean/label   the   instances  user could do to mitigate these unde-
+available?    If so, please provide a  sirable harms?
+link or other access point.             The  target  dataset  includes  only
+ No. Software is available to reproduce  tweets with five or more replies from
+the results in the paper starting from  IO accounts. We are not aware of any
+the cleaned data in our data repository.  future uses that might result in unde-
+                                            sirable harms.
+
+
+                                  8

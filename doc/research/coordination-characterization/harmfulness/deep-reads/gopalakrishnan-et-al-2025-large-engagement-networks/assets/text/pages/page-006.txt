@@ -1,0 +1,60 @@
+Model       Accuracy       Precision       Recall         F1-Score
+                      Text + MLP   0.715 ± 0.019   0.705 ± 0.011   0.738 ± 0.038   0.721 ± 0.024
+              GCN         0.832 ± 0.078   0.909 ± 0.138   0.750 ± 0.000   0.816 ± 0.064
+               GAT         0.856 ± 0.048   0.871 ± 0.090   0.833 ± 0.000   0.850 ± 0.043
+                GIN          0.840 ± 0.000   1.000 ± 0.000   0.667 ± 0.000   0.800 ± 0.000                                                                      LEN-small  GraphSAGE   0.900 ± 0.033   0.964 ± 0.073   0.818 ± 0.000   0.884 ± 0.033
+                GINE         0.800 ± 0.160   0.896 ± 0.208   0.800 ± 0.100   0.815 ± 0.083
+              VNGE        0.875 ± 0.000   0.877 ± 0.000   0.818 ± 0.000   0.857 ± 0.000
+               LSD          0.833 ± 0.000   0.833 ± 0.000   0.818 ± 0.000   0.818 ± 0.000
+                      Text + MLP   0.57 ± 0.018    0.581 ± 0.02    0.891 ± 0.067   0.701 ± 0.012
+              GCN         0.702 ± 0.018   0.869 ± 0.030   0.570 ± 0.025   0.687 ± 0.021
+                       LEN  GATGIN          0.7350.633 ±± 0.0150.065   0.7830.676 ±± 0.0320.091   0.7520.791 ±± 0.0560.157   0.7650.710 ±± 0.0180.037
+                 GraphSAGE   0.729 ± 0.006   0.930 ± 0.001   0.578 ± 0.011   0.713 ± 0.008
+                GINE         0.648 ± 0.091   0.673 ± 0.121   0.896 ± 0.139   0.748 ± 0.035
+              VNGE        0.747 ± 0.000   0.759 ± 0.000   0.717 ± 0.000   0.767 ± 0.000
+               LSD          0.734 ± 0.000   0.734 ± 0.000   0.848 ± 0.000   0.788 ± 0.000
+
+Table 4: Campaign vs. non-campaign classification. Text + MLP is the non-graph based classifier. The best results are in bold.
+
+
+                                                                 the engagement network. The mean user caption embedding
+                                                       and tweet embedding are concatenated and passed through
+                                                        an MLP. The user captions and tweets are encoded using the
+                                                              Conditional Masked Language Modeling.
+                                                 Graph Classifiers: We use five established Graph Neural
+                                                     Network (GNN) architectures for evaluation.
+                                                                       (1) Graph Convolutional Network (GCN): Leverages a
+                                                              technique called “neural message passing” to learn node
+                                                                  representations (Kipf and Welling 2016). A node’s embed-
+                                                            ding is updated by aggregating and combining the embed-
+                                                             dings of its neighboring nodes. These neighborhood em-
+                                                           beddings are normalized using the diagonal degree matrix
+                                                                     to account for the varying number of neighbors each node
+                                              may have. (2) Graph Attention Network (GAT): Also em-
+                                                              ploys a message-passing approach to learn node represen-
+                                                                      tations (Veliˇckovi´c et al. 2018). Different from GCN, GAT
+                                                                 incorporates an attention mechanism during message aggre-
+   Figure 2: Training runtime (in seconds) vs graph size.         gation which assigns weights to incoming messages from
+                                                             neighboring nodes, focusing the node’s representation on the
+                                                       most informative neighbors. (3) Graph Isomorphism Net-
+75% training and 25% testing sets. For binary classifica-     work (GIN): A provably more-expressive GNN which is
+tion (campaign vs non-campaign), we measure model per-       as powerful as the Weisfeiler-Lehman test in distinguish-
+formance using accuracy, precision, recall, and F1-Score.      ing isomorphic graphs (Xu et al. 2018). The architecture
+For multi-class classification (campaign type), we use accu-      aggregates neighborhood embeddings similar to GCN’s but
+racy, weighted precision/recall, and micro/macro F1-Scores.       additionally passes it through a MLP, after each layer, to
+The experiments were conducted on a Linux operating sys-     make the architecture more expressive. Additionally, GIN
+tem (v. 3.10.0-1127) running on a machine with Intel(R)       also weights out the importance of the ego node using a pa-
+Xeon(R) Gold 6130 CPU processor at 2.10 GHz with 192      rameter ϵ where a high value gives more importance to the
+GB memory. An Nvidia A100 GPU was used specifically      node compared to its neighbors. (4) GraphSAGE: Provides
+for the GNN experiments. Our code is publicly available      an inductive representational learning capability, thanks to
+at https://github.com/erdemUB/LEN.                                  its ability to generalize to unseen nodes, unlike transduc-
+  Non-Graph Based Classifiers: To emphasize the impact       tive models (Hamilton, Ying, and Leskovec 2017). This is
+of graph structure, we use a non-graph based classifier that      done by learning a message-passing model on a sampled
+uses the user description and tweets in an engagement net-       set of nodes in the given graph. (5) Edge attribute GIN
+work along with a MLP for downstream classification tasks.      (GINE): To leverage the additional information present in
+For this, we use the mean user caption embedding and mean      edge features, we use a modified version of the GIN archi-
+tweet embedding, both of which can be obtained by aver-       tecture, called GINE. Here the node features of the neighbor-
+aging the user caption embeddings for all users or tweets in      ing nodes along with the edge features are added along the
+
+
+                                                   693

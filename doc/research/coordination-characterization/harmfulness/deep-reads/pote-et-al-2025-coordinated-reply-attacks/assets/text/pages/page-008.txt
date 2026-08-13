@@ -1,0 +1,47 @@
+Figure 9: Permutation feature importance for replier clas-
+                                                                                     sifier. We report the median (orange line), 50% confidence
+                                                                      interval (box), and 99.3% confidence interval (whiskers) of
+                                                                 the drop in F1 score when each feature/attribute is shuffled.
+                                                      Boxes with the same color indicate attributes in the same
+                                                                   feature set. Larger values indicate higher importance.
+
+Figure 8: Differences between complementary cumulative
+distributions of IO and normal replier metadata: (A) age,
+(B) following count, (C) follower count, and (D) activ-      balance leads to poor classification, which can be addressed
+ity, as measured by the sum of the numbers of original       in two ways. First, we downsampled the normal repliers by
+tweets, replies, quotes, and retweets. The distributions are       creating 10 different balanced datasets. Each includes all the
+significantly different in all cases according to Kolmogorov-     IO repliers and an equal number (7,670) of normal repliers,
+Smirnov tests (p < 10−6).                                  sampled without replacement. We train and test the model on
+                                                          each balanced dataset using 10-fold cross-validation and re-
+                                                                  port the average performance score. As a second approach,
+attributes, which we organize into four sets, just like those     we over sampled the IO repliers by splitting the data into
+listed in Table 1. The only criterion that distinguishes how       train and test sets, then replicating the minority class. Repli-
+these features are calculated in the tweet versus the replier       cation occurs only in the training data, to avoid data leakage.
+classification task is the reply set — all replies to a tweet in    We run 10-fold cross-validation on the resulting dataset. The
+the former case and all replies by a replier in the latter.               first approach might eliminate some potential false positives
+  Given a set of replies, the replier classifier features are   — normal repliers with similar reply behavior — potentially
+calculated as for the tweet classifier, with two exceptions.     making the task easier. In the second approach, the model is
+First, the delay of each reply is computed with respect to the       tested on data that still maintains the class imbalance, po-
+timestamp of the targeted tweet to which the reply was di-       tentially overfitting the training data. This approach is also
+rected. Second, cosine similarity s for replier i is calculated     more expensive due to the large dataset. Given these comple-
+for each pair (rti, rtj) where rti is a reply by i to a targeted      mentary disadvantages, below we report on both methods.
+tweet t and rtj is a reply by a different user j to the same      We standardize the features with z-scores and report the
+targeted tweet t. We obtain a distribution of these similar-     mean performance metrics obtained by different machine
+ities ∪t∈T (i) ∪j∈J(t) s(rti, rtj) across the set J(t) of other       learning models: Logistic Regression, Random Forest, Ad-
+users who reply to t and then across the set T(i) of targeted      aBoost, Decision Tree, and Naive Bayes. As in the tweet
+tweets that receive a reply from i.                                       classifier, we tune the threshold to maximize the mean F1
+  From the distribution of each attribute, we compute nine       across folds. Table 5 shows that all classifiers perform better
+summary statistic features: range, 25/50/75 quartiles, inter-      with downsampling, and Random Forest (with 100 estimator
+quartile range, maximum, minimum, mean, and entropy. We       trees) performs the best with both downsampling and over-
+do not calculate standard deviation, skewness, and kurtosis      sampling. Therefore, let us focus on this model — Random
+because they are not defined for many repliers who are in-       Forest trained with downsampling — for further analysis.
+volved in a single reply to a single targeted tweet.               To test the contribution of each feature to the replier clas-
+  We end up with four profile metadata features and 8×9 =         sifier, we follow the same procedure as for the tweet clas-
+72 reply-level features, for a total of 76 features.                       sifier. However, here we report the averages across the 10
+                                                            balanced dataset. Table 6 reports on mean 10-fold cross-
+Results                                                                   validation scores for Random Forest trained and tested on
+The targeted tweet dataset is highly imbalanced with 0.8%      each profile metadata feature and reply feature set. Fig. 9
+IO repliers (7,670 vs. 874,248 normal repliers). Such an im-       reports on the results of a permutation feature importance
+
+
+                                                   1593

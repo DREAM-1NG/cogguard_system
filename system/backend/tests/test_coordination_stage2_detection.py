@@ -456,12 +456,19 @@ def test_inverse_frequency_class_weights_are_train_label_derived(stage2):
     assert second.optimizer_config["class_weight_1"] == first.optimizer_config["class_weight_1"]
 
 
-def test_threshold_ties_use_wider_interval_then_lexicographic_order(stage2):
-    probabilities = np.asarray((0.1, 0.2, 0.3, 0.4), dtype=np.float64)
-    labels = np.asarray((0, 1, 0, 1), dtype=np.int64)
+def test_artifact_uses_fixed_binary_probability_threshold(stage2, schema):
+    detector, artifact, _, _ = _fit_fixture(stage2, schema)
+    rows = (
+        _case(stage2, schema, "binary-low", "validation", 0, (-3.0, -1.0)),
+        _case(stage2, schema, "binary-high", "validation", 1, (3.0, 1.0)),
+    )
 
-    # Both candidate pairs cover every row with macro-F1 11/15 and width 0.1.
-    assert stage2.learned._select_thresholds(probabilities, labels) == (0.1, 0.2)
+    verdicts = detector.predict_feature_rows(rows).verdicts
+
+    assert artifact.lower_decision_threshold == pytest.approx(0.5)
+    assert artifact.upper_decision_threshold == pytest.approx(0.5)
+    assert artifact.threshold_objective == "forced_binary_probability_at_0_5"
+    assert {verdict.decision for verdict in verdicts} <= {"benign_coordination", "harmful_coordination"}
 
 
 def test_constant_validation_logits_calibrate_finitely_and_deterministically(stage2, schema):
@@ -479,7 +486,7 @@ def test_constant_validation_logits_calibrate_finitely_and_deterministically(sta
     assert first == second
 
 
-def test_zero_width_validation_ood_accepts_exact_value_and_abstains_on_change(stage2, schema):
+def test_zero_width_validation_ood_records_features_without_rejecting_prediction(stage2, schema):
     _, _, train, _ = _fit_fixture(stage2, schema)
     validation = [
         _case(stage2, schema, f"zero-width-v{index}", "validation", label, (0.0, 0.0))
@@ -497,9 +504,8 @@ def test_zero_width_validation_ood_accepts_exact_value_and_abstains_on_change(st
 
     assert artifact.validation_ood_min == (0.0, 0.0)
     assert artifact.validation_ood_max == (0.0, 0.0)
-    assert verdicts[exact.cluster_id].abstain_reason != "out_of_distribution"
-    assert verdicts[changed.cluster_id].decision == "abstain"
-    assert verdicts[changed.cluster_id].abstain_reason == "out_of_distribution"
+    assert verdicts[exact.cluster_id].decision in {"benign_coordination", "harmful_coordination"}
+    assert verdicts[changed.cluster_id].decision in {"benign_coordination", "harmful_coordination"}
     assert verdicts[changed.cluster_id].ood_features == ("signal",)
 
 
@@ -525,15 +531,14 @@ def test_stage1_features_are_explicit_ordered_and_extra_features_fail_closed(sta
         stage2.features.build_detection_feature_rows(batch, schema, {"candidate-1": {}})
 
 
-def test_prediction_abstains_for_ood_and_rejects_schema_uncertainty(stage2, schema):
+def test_prediction_records_ood_and_rejects_schema_uncertainty(stage2, schema):
     detector, artifact, _, _ = _fit_fixture(stage2, schema)
     inside = _case(stage2, schema, "inside", "validation", 0, (0.0, 0.0))
     outside = _case(stage2, schema, "outside", "validation", 0, (99.0, 0.0))
 
     verdicts = detector.predict_feature_rows((inside, outside)).verdicts
 
-    assert verdicts[1].decision == "abstain"
-    assert verdicts[1].abstain_reason == "out_of_distribution"
+    assert verdicts[1].decision in {"benign_coordination", "harmful_coordination"}
     assert verdicts[1].ood_features == ("signal",)
     wrong_schema = stage2.contracts.DetectionFeatureSchema(
         version="fixture-features/v2", names=schema.names

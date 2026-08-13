@@ -63,9 +63,6 @@ _DETECTION_METRICS = frozenset(
         "macro_f1",
         "roc_auc",
         "ece",
-        "selective_coverage",
-        "selective_risk",
-        "abstain_rate",
     }
 )
 
@@ -77,7 +74,7 @@ CANONICAL_REPRODUCTION_OUTPUT_ROOT = (
 
 
 def validate_reproduction_output_dir(output_dir: str | Path) -> Path:
-    """Return a resolved output directory only when it is below the repository root."""
+    """Return a resolved output directory only when it is under the canonical reproduction root."""
     if not isinstance(output_dir, (str, Path)):
         raise ValueError("output_dir must be a filesystem path")
     candidate = Path(output_dir)
@@ -1368,7 +1365,7 @@ class DetectionPrediction:
         if probability > 1.0:
             raise ValueError("harmful_probability must be within [0, 1]")
         object.__setattr__(self, "harmful_probability", probability)
-        if self.decision not in {"benign_coordination", "harmful_coordination", "abstain"}:
+        if self.decision not in {"benign_coordination", "harmful_coordination"}:
             raise ValueError("Detection prediction decision is invalid")
 
 

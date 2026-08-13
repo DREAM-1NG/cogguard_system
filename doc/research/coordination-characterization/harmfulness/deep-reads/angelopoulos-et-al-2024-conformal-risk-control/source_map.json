@@ -1,0 +1,272 @@
+{
+  "schema_version": 3,
+  "paper": {
+    "title": "Conformal Risk Control",
+    "authors": [
+      "Anastasios Angelopoulos",
+      "Stephen Bates",
+      "Adam Fisch",
+      "Lihua Lei",
+      "Tal Schuster"
+    ],
+    "venue": "International Conference on Learning Representations (ICLR) 2024",
+    "version": "Published conference paper",
+    "sources": [
+      {
+        "type": "official_html",
+        "location": "sources/official_page.html",
+        "url": "https://proceedings.iclr.cc/paper_files/paper/2024/hash/f3549ef9b5ff520a7e41ff3cc306ab2b-Abstract-Conference.html",
+        "sha256": "da3a13280db4a3dac79a4dbfc9c1ca294701f3cd718467cf5ce0830320844638",
+        "role": "metadata"
+      },
+      {
+        "type": "pdf",
+        "location": "sources/paper.pdf",
+        "url": "https://proceedings.iclr.cc/paper_files/paper/2024/file/f3549ef9b5ff520a7e41ff3cc306ab2b-Paper-Conference.pdf",
+        "sha256": "0fff32a0254a47f06a399522b83ba463d0ca62f71e3a0e094985d80cba166c0c",
+        "role": "primary"
+      },
+      {
+        "type": "supplementary_zip",
+        "location": "sources/supplementary.zip",
+        "url": "https://proceedings.iclr.cc/paper_files/paper/2024/file/f3549ef9b5ff520a7e41ff3cc306ab2b-Supplementary-Conference.zip",
+        "sha256": "597b1fcdadcf5705815f8d0ff68444653ee9ed1e928ac29ec97efe47e22d626f",
+        "role": "supplementary"
+      },
+      {
+        "type": "supplementary_code_excerpt",
+        "location": "sources/supplementary_selected/core__get_lhat.py",
+        "sha256": "ddf93c30cc703aa782c1d4f0201ca1360616b510000662cfbd0a506e91cc7546",
+        "role": "implementation_check"
+      }
+    ],
+    "page_convention": "1-based PDF page numbers; PDF p.N equals the rendered page image assets/pages/page-NNN.png"
+  },
+  "reader_profile": {
+    "domain": "computer-science-ai",
+    "selected_lenses": [
+      "computer-science-ai",
+      "theory",
+      "method"
+    ],
+    "audience": "cross-disciplinary",
+    "goal": "transfer",
+    "depth": "deep",
+    "language": "zh-CN"
+  },
+  "execution": {
+    "visual_mode": "visual",
+    "visual_verification": "complete",
+    "text_evidence_sources": [
+      "official-html",
+      "pdf-text-layer",
+      "rendered-page-images",
+      "direct-crop-review",
+      "supplementary-code-excerpt"
+    ]
+  },
+  "claims": [
+    {
+      "id": "C1",
+      "claim": "CRC chooses a post-processing parameter lambda from a calibration split to control the expected test loss of a monotone bounded loss function.",
+      "status": "strong",
+      "inference": false,
+      "evidence": [
+        {
+          "type": "equation",
+          "locator": "Eq. (2)-(4), PDF p.1-p.2",
+          "note": "Risk definition and lambda selection rule are stated before the main theorem."
+        },
+        {
+          "type": "code",
+          "locator": "sources/supplementary_selected/core__get_lhat.py",
+          "note": "Supplementary implementation computes empirical risk with the finite-sample correction."
+        }
+      ],
+      "caveats": [
+        "The base model and loss must already be defined; CRC is a calibration protocol, not a classifier."
+      ]
+    },
+    {
+      "id": "C2",
+      "claim": "The finite-sample guarantee requires exchangeable random loss functions that are non-increasing in lambda, right-continuous, bounded, and able to reach the target risk at lambda_max.",
+      "status": "strong",
+      "inference": false,
+      "evidence": [
+        {
+          "type": "theorem",
+          "locator": "Theorem 1 and Eq. (5), PDF p.3",
+          "note": "The theorem lists the assumptions and concludes E[L_{n+1}(lambda_hat)] <= alpha."
+        }
+      ],
+      "caveats": [
+        "The guarantee is marginal over the random calibration/test draw, not conditional per individual point."
+      ]
+    },
+    {
+      "id": "C3",
+      "claim": "For continuous i.i.d. losses, the procedure is tight up to a 2B/(n+1) lower-bound gap, but this does not make it a high-probability calibration guarantee.",
+      "status": "strong",
+      "inference": false,
+      "evidence": [
+        {
+          "type": "theorem",
+          "locator": "Theorem 2 and Proposition 1, PDF p.4",
+          "note": "The lower bound and tightness example quantify conservativeness."
+        },
+        {
+          "type": "figure",
+          "locator": "Figure 5, PDF p.14",
+          "note": "Appendix comparison contrasts expectation CRC with RCPS/LTT high-probability procedures."
+        }
+      ],
+      "caveats": [
+        "The tightness statement relies on extra continuity/i.i.d. assumptions."
+      ]
+    },
+    {
+      "id": "C4",
+      "claim": "The experiments show CRC can control task-specific monotone risks across segmentation, multilabel classification, hierarchical classification, and QA examples.",
+      "status": "partial",
+      "inference": false,
+      "evidence": [
+        {
+          "type": "figure",
+          "locator": "Figures 1-4, PDF p.5-p.7",
+          "note": "Risk histograms are centered near the specified alpha values across 1000 random data splits."
+        },
+        {
+          "type": "text",
+          "locator": "Section 3, PDF p.5-p.7",
+          "note": "The paper reports mean and standard deviation for risk in each worked example."
+        }
+      ],
+      "caveats": [
+        "These are worked examples, not exhaustive stress tests for arbitrary deployments."
+      ]
+    },
+    {
+      "id": "C5",
+      "claim": "CRC differs from RCPS/LTT by giving an expectation guarantee with a simpler and more sample-efficient monotone-risk procedure, while RCPS/LTT offer high-probability risk bounds.",
+      "status": "strong",
+      "inference": false,
+      "evidence": [
+        {
+          "type": "appendix",
+          "locator": "Appendix B, PDF p.13-p.14",
+          "note": "The paper lists conceptual differences and reports the polyp comparison."
+        },
+        {
+          "type": "figure",
+          "locator": "Figure 5, PDF p.14",
+          "note": "Figure 5 compares FNR and time over n."
+        }
+      ],
+      "caveats": [
+        "The empirical comparison is on the polyp dataset and selected baselines, not all risk-control methods."
+      ]
+    },
+    {
+      "id": "C6",
+      "claim": "CRC strictly generalizes split conformal prediction: miscoverage is one special binary loss, while CRC targets general expected monotone losses.",
+      "status": "strong",
+      "inference": false,
+      "evidence": [
+        {
+          "type": "equation",
+          "locator": "Eq. (1)-(2), PDF p.1",
+          "note": "The paper shows miscoverage and expected loss side by side."
+        },
+        {
+          "type": "appendix",
+          "locator": "Appendix A, PDF p.10",
+          "note": "The appendix states the reduction from conformal prediction to risk control."
+        }
+      ],
+      "caveats": [
+        "CRC does not automatically produce classical set coverage semantics unless the loss is miscoverage."
+      ]
+    },
+    {
+      "id": "C7",
+      "claim": "Standard CRC does not automatically survive distribution shift; the paper gives weighted and total-variation extensions that require information about the shift.",
+      "status": "strong",
+      "inference": false,
+      "evidence": [
+        {
+          "type": "section",
+          "locator": "Section 4.1, PDF p.8",
+          "note": "Distribution shift extension uses likelihood ratios or total variation terms."
+        },
+        {
+          "type": "figure",
+          "locator": "Figure 6, PDF p.16",
+          "note": "Synthetic covariate-shift experiment shows standard CRC fails while covariate-shift correction controls risk."
+        }
+      ],
+      "caveats": [
+        "Arbitrary campaign/platform/time shifts without validated weights or exchangeability are outside the finite-sample guarantee."
+      ]
+    },
+    {
+      "id": "C8",
+      "claim": "For CogGuard selective Harmfulness, CRC can calibrate thresholds, prediction sets, or abstention policies against a pre-defined harm loss, but it cannot create Gold labels, define harmfulness, or solve OOD shift by itself.",
+      "status": "partial",
+      "inference": true,
+      "evidence": [
+        {
+          "type": "equation",
+          "locator": "Eq. (2)-(4), PDF p.1-p.2",
+          "note": "The protocol assumes a loss and calibration data are already available."
+        },
+        {
+          "type": "theorem",
+          "locator": "Theorem 1, PDF p.3",
+          "note": "The assumptions imply a same-population/exchangeability requirement for the calibration and test losses."
+        },
+        {
+          "type": "section",
+          "locator": "Section 4.1 and Figure 6, PDF p.8 and p.16",
+          "note": "Shift requires an explicit correction, not automatic validity."
+        }
+      ],
+      "caveats": [
+        "This is a transfer inference from the paper's formal guarantees, not an experiment in harmfulness detection."
+      ]
+    }
+  ],
+  "equations": [
+    {
+      "id": "E1",
+      "locator": "Eq. (1), PDF p.1",
+      "purpose": "Split conformal miscoverage guarantee."
+    },
+    {
+      "id": "E2",
+      "locator": "Eq. (2), PDF p.1",
+      "purpose": "General expected risk-control target."
+    },
+    {
+      "id": "E3",
+      "locator": "Eq. (3), PDF p.2",
+      "purpose": "Abstract loss-function risk guarantee."
+    },
+    {
+      "id": "E4",
+      "locator": "Eq. (4), PDF p.2",
+      "purpose": "Finite-sample lambda selection rule."
+    },
+    {
+      "id": "E5",
+      "locator": "Eq. (5), PDF p.3",
+      "purpose": "Theorem 1 boundedness and achievability assumptions."
+    }
+  ],
+  "limitations": [
+    "Loss must be monotone or deliberately monotonized; non-monotone losses have no finite-sample guarantee in the basic algorithm.",
+    "Exchangeability is central; arbitrary distribution shift needs additional assumptions or weighted extensions.",
+    "Guarantee is in expectation, not high probability over every calibration sample or subgroup.",
+    "Experiments are illustrative worked examples across CV and NLP, not a harmfulness-classification benchmark.",
+    "Supplementary ZIP was preserved completely, but full extraction of long output paths was not completed due to Windows path limitations; selected README and core implementation files were extracted for inspection."
+  ]
+}

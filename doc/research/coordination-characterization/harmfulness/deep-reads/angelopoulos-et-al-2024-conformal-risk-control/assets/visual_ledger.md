@@ -1,0 +1,13 @@
+# Visual inventory
+
+> Automatic crops are candidates. Visually inspect every asset before publication.
+
+| ID | Label | PDF page | Caption | Candidate crop | Review |
+|---|---|---:|---|---|---|
+| figure-1-p005 | Figure 1 | 5 | FNR control in tumor segmentation. The top figure shows examples of our procedure with correct pixels in white, false positives in blue, and false negatives in red. The bottom plots report FNR and set size over 1000 independent random data splits. The dashed gray line marks α. | `crops\figure-1-p005.png` | VISUAL REVIEW REQUIRED |
+| figure-2-p005 | Figure 2 | 5 | FNR control on MS COCO. The top figure shows examples of our procedure with correct classes in black, false positives in blue, and false negatives in red. The bottom plots report FNR and set size over 1000 independent random data splits. The dashed gray line marks α. | `crops\figure-2-p005.png` | VISUAL REVIEW REQUIRED |
+| figure-3-p006 | Figure 3 | 6 | Control of graph distance on hierarchical ImageNet. The top figure shows examples of our procedure with correct classes in black, false positives in blue, and false negatives in red. The bottom plots report our minimum hierarchical distance loss and set size over 1000 independent random data splits. The dashed gray line marks α. | `crops\figure-3-p006.png` | VISUAL REVIEW REQUIRED |
+| figure-4-p007 | Figure 4 | 7 | F1-score control on Natural Questions. The top figure shows examples of our procedure with fully correct answers in green, partially correct answers in blue, and false positives in gray. Note that answers that are technically correct may still be down-graded if they do not match the reference. We treat this as part of the randomness in the task. The bottom plots report the F1 risk and average set size over 1000 independent random data splits. The dashed gray line marks α. | `crops\figure-4-p007.png` | VISUAL REVIEW REQUIRED |
+| figure-5-p014 | Figure 5 | 14 | Comparison of RCPS/LTT with conformal risk control on the polyp dataset. | `crops\figure-5-p014.png` | VISUAL REVIEW REQUIRED |
+| figure-6-p015 | Figure 6 | 15 | shows results. | `crops\figure-6-p015.png` | VISUAL REVIEW REQUIRED |
+| figure-6-p016 | Figure 6 | 16 | Risk control results on a synthetic covariate shift dataset. Running standard conformal risk control does not control the risk, while running the covariate shift algorithm from Section 4 does—even though the likelihood ratios are estimated by a logistic regression model. We also com- puted the risk with the true likelihood ratios, and it overlaps entirely with the histogram for estimated likelihood ratios, so we do not show it here. | `crops\figure-6-p016.png` | VISUAL REVIEW REQUIRED |

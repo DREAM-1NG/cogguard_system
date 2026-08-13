@@ -1,0 +1,59 @@
+of LCH for which we measured overall higher automation
+                                                                    scores. Other communities are more affected by Twitter sus-
+                                                                pensions, such as both clusters of Conservative users (CON
+                                                       and ASE). Interestingly, we notice a marked downward trend
+                                                                of suspensions for the B60 group, which might indicate an
+                                                                    authentic, strongly-coordinated grassroots initiative.
+                                                                    Overall, our results conﬁrm that coordination and automa-
+                                                                     tion are two different and orthogonal concepts. On the one
+                                                             hand, this suggests that using automation and bot detection
+                                                                     to study CIB might be ineffective and leading to inaccurate
+                                                                           results. On the other hand, it motivates to complement exist-   (a) Mean Botometer scores.       (b) Suspended accounts.
+                                                               ing analyses on IOs with new results that are based on the
+Figure 9: Correlation between coordination and use of au-      study of coordinated behaviors.
+tomation, in terms of bot scores estimated by Botometer,
+and accounts suspend by Twitter. Both indicators of possible              Comparative evaluation
+automation appear to be two orthogonal and largely uncor-     The analysis carried out so far demonstrated how our frame-
+related with respect to coordination.                        work embeds – and therefore allows investigating – the in-
+                                                                           trinsic properties of coordinated behavior. In fact, by avoid-
+                                                               ing to enforce a binary separation between coordinated vs.
+words (right-hand side of each word shift graph) are in-      uncoordinated behaviors, we were able to study this phe-
+formative for coordinated users, while blue-colored words     nomenon across its entire spectrum, thus measuring the in-
+(left-hand side) are informative for non-coordinated users.        trinsic coordination of each emerging community and char-
+The informativeness of the different words towards char-       acterizing it under multiple dimensions of analysis. To high-
+acterizing coordinated users (i.e., their shift) is computed       light the theoretical and practical contribution of our novel
+by means of Shannon entropy (Gallagher et al. 2020). As      framework, in this section we compare our ﬁndings with
+shown, this analysis reveals that coordinated users embrace      those obtainable with previous, threshold-based approaches.
+much more speciﬁc narratives and themes with respect to           First, we consider the unﬁltered user similarity network,
+non-coordinated users. In fact, while both B60 and LCH are       that is what we obtained after carrying out step 3 of our
+characterized by generic Labour topics, coordinated users in      framework, as outlined in Figure 1. This  is where our
+those communities ﬁght for 50s women’s rights and against     method departs from previous approaches. Then, we set an
+the loan charge tax.                                                    arbitrary, very strict threshold, and we cut all those edges
+  Use of automation. As a last experiment on coordi-     whose weight is below the threshold, and the resulting dis-
+nated behavior, we are interested in evaluating the relation-      connected nodes. Finally, we visualize the obtained ﬁltered
+ship between coordination and the use of automation. De-      networks. By comparing the results obtained in this way
+tection of automation (e.g., social bots) has been a matter      with those of our framework, we can comparatively evalu-
+of study for years and has been one of the most widely       ate the contributions of steps 4-6, which constitute the main
+used approaches for investigating online deception and ma-      novelty of our work.
+nipulation (Cresci 2020). Many bot detection techniques      We set the ﬁltering threshold to 0.9, following the value
+have been proposed (Chavoshi, Hamooni, and Mueen 2016;      proposed in (Pacheco et al. 2020) for a similar, co-retweet-
+Varol et al. 2017; Cresci et al. 2018; Mazza et al. 2019),      based analysis. We recall that here we are directly consid-
+but their effectiveness towards tracking IOs and CIB  is       ering edge weights, following previous approaches, whereas
+still debated12. For these reasons, we compared our assess-       in our framework the coordination was measured as a per-
+ments on coordination with the automation score provided       centile rank. We refer to the edge weight distribution shown
+by Botometer (Yang et al. 2019). We used the maximum of       in Figure 3 to compare values. Figure 10c shows the re-
+Botometer’s English and universal scores, both provided in       sulting ﬁltered network, where only six edges managed to
+the [0, 1] range, as our automation score. In addition, we also       satisfy the condition. On the one hand, such severe ﬁlter-
+considered Twitter suspensions as an indicator of possible      ing ensures that all the surviving edges are undoubtedly re-
+automation or inauthenticity. Then, similarly to our previ-       lated to coordinated behaviors. On the other, it discards a
+ous analyses, we reported the mean automation scores and      huge amount of information, whose usefulness is not limited
+the percentage of suspended users for the different coordi-       to uncover much more accounts characterized by a certain
+nated communities as a function of coordination. Figure 9       extent of coordination. Conversely, by adopting a more ad-
+shows the results of this analysis. Automation appears to be      vanced ﬁltering technique, based on extracting the network
+almost completely uncorrelated with coordination. Indepen-       multiscale backbone, our framework (in step 4) retained all
+dently of coordination, results do not show meaningful dif-       the signiﬁcant structures of the network, while keeping the
+ferences between our communities, with the sole exception     amount of information manageable. Then, by surfacing co-
+                                                                ordinated groups of accounts within the related communities
+   12Y. Roth, and N. Pickles, “Bot or not? The facts about platform      through the novel coordination-aware community detection
+manipulation on Twitter.” Twitter, date. Available at https://blog.      algorithm (step 5), our framework enabled us to discover
+twitter.com/en us/topics/company/2020/bot-or-not.html                possible shifts in the supported themes and narratives, and

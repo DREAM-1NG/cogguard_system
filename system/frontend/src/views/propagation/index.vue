@@ -31,7 +31,7 @@
           同步数据库传播结果
         </a-button>
         <a-button @click="handlePredict" :loading="predicting" :disabled="!eventId.trim()">
-          运行趋势预测
+          刷新趋势预测
         </a-button>
       </a-space>
       <span v-if="lastSyncedAt" class="sync-hint">最近同步：{{ lastSyncedAt }}</span>
@@ -93,29 +93,46 @@
       <a-tab-pane key="objects" tab="传播对象">
         <a-card size="small" style="margin-bottom: 16px" :loading="analyzing && !analysisReady">
           <template #title>高频共享对象</template>
-          <div v-if="claimGroups.length" class="claim-groups">
-            <div v-for="group in claimGroups" :key="group.type" class="claim-group">
+          <div v-if="activeClaimGroup" class="claim-object-layout">
+            <section class="primary-hashtag-panel">
               <div class="claim-group-title">
-                <span>共享对象：{{ group.label }}</span>
-                <a-tag>{{ group.items.length }} 条</a-tag>
+                <span>高频共享对象 · {{ activeClaimGroup.label }}</span>
+                <a-space :size="4">
+                  <a-tag>{{ activeClaimGroup.items.length }} 条</a-tag>
+                  <a-dropdown v-model:open="claimGroupMenuOpen" :trigger="['click']">
+                    <a-button size="small" type="text" aria-label="切换共享对象类别">...</a-button>
+                    <template #overlay>
+                      <a-menu @click="handleClaimGroupMenuClick">
+                        <a-menu-item v-for="group in claimGroups" :key="group.type">
+                          {{ group.label }} · {{ group.items.length }}
+                        </a-menu-item>
+                      </a-menu>
+                    </template>
+                  </a-dropdown>
+                </a-space>
               </div>
-              <a-list :dataSource="group.items" size="small">
-                <template #renderItem="{ item }">
-                  <a-list-item>
-                    <div class="claim-item">
-                      <a-button type="link" class="claim-inline-button" @click="openClaimDetail(item)">
-                        {{ item.display }}
-                      </a-button>
-                      <div class="claim-meta">
-                        <a-tag color="blue">分享 {{ item.share_count }}</a-tag>
-                        <a-tag color="purple">账户 {{ item.account_count }}</a-tag>
-                        <span>首次分享 {{ formatTimestamp(item.first_share) }}</span>
-                      </div>
-                    </div>
-                  </a-list-item>
-                </template>
-              </a-list>
-            </div>
+              <div class="hashtag-cloud">
+                <button
+                  v-for="item in visibleClaimGroupItems(activeClaimGroup)"
+                  :key="item.object_id"
+                  type="button"
+                  class="hashtag-pill"
+                  @click="openClaimDetail(item)"
+                >
+                  <span>{{ item.display }}</span>
+                  <small>{{ item.share_count }} 次</small>
+                </button>
+              </div>
+              <a-button
+                v-if="activeClaimGroup.items.length > CLAIM_GROUP_COLLAPSED_LIMIT"
+                type="link"
+                size="small"
+                class="claim-more-button"
+                @click="showMoreClaimGroup(activeClaimGroup.type)"
+              >
+                {{ isClaimGroupExpanded(activeClaimGroup.type) ? '收起' : '... 查看全部' }}
+              </a-button>
+            </section>
           </div>
           <a-empty v-else description="数据库中暂无可展示的高频共享对象" :image-style="{ height: '40px' }" />
         </a-card>
@@ -216,7 +233,7 @@
               <a-descriptions-item label="模型名称">{{ modelPrediction?.model?.name || 'Ours' }}</a-descriptions-item>
               <a-descriptions-item label="参考数据">{{ modelPrediction?.model?.dataset || 'twitter' }}</a-descriptions-item>
               <a-descriptions-item label="模型范围">{{ modelScopeLabel(modelPrediction?.model?.scope) }}</a-descriptions-item>
-              <a-descriptions-item label="身份映射">{{ identityMappingLabel(modelPrediction?.micro?.coverage?.identity_mapping_status) }}</a-descriptions-item>
+              <a-descriptions-item label="预测更新时间">{{ formatTimestamp(modelPrediction?.cache?.generated_at) }}</a-descriptions-item>
             </a-descriptions>
             <div ref="modelTrendChartRef" class="model-trend-chart" />
           </a-card>
@@ -402,8 +419,6 @@
           <a-descriptions-item label="研判类型">{{ nextHopAssessmentLabel(selectedNextHopUser) }}</a-descriptions-item>
           <a-descriptions-item label="候选分数">{{ formatScore(selectedNextHopUser.score) }}</a-descriptions-item>
           <a-descriptions-item label="候选来源">{{ candidateSourceLabel(selectedNextHopUser.candidate_source) }}</a-descriptions-item>
-          <a-descriptions-item label="身份映射">{{ identityResolutionLabel(selectedNextHopUser.identity_resolution) }}</a-descriptions-item>
-          <a-descriptions-item label="同桶候选数">{{ selectedNextHopUser.bucket_collision_size ?? 1 }}</a-descriptions-item>
           <a-descriptions-item label="当前事件出现次数">{{ selectedNextHopUser.event_count ?? 0 }}</a-descriptions-item>
           <a-descriptions-item label="最近出现">{{ formatTimestamp(selectedNextHopUser.last_seen_at) }}</a-descriptions-item>
         </a-descriptions>
@@ -440,7 +455,11 @@ import { useRoute } from 'vue-router'
 import { message } from 'ant-design-vue'
 import * as echarts from 'echarts'
 import type { EChartsOption } from 'echarts'
-import { analyzeObservedPropagation, predictPropagationCurrentEvent } from '@/api/propagation'
+import {
+  analyzeObservedPropagation,
+  getCachedPropagationPrediction,
+  predictPropagationCurrentEvent,
+} from '@/api/propagation'
 import PageHeader from '@/components/PageHeader.vue'
 
 const DEFAULT_EVENT_ID = 'trump_visit_2026_05_21'
@@ -757,6 +776,12 @@ type EventModelPrediction = {
   event_id?: string
   platform?: string
   data_scope?: PredictionDataScope
+  cache?: {
+    hit?: boolean
+    stale?: boolean
+    snapshot_fingerprint?: string
+    generated_at?: string
+  }
 }
 
 type UnknownRecord = Record<string, unknown>
@@ -888,6 +913,7 @@ function normalizePredictionResponse(value: unknown): EventModelPrediction | nul
 
   const rawModel = isRecord(raw.model) ? raw.model : {}
   const rawScope = isRecord(raw.data_scope) ? raw.data_scope : {}
+  const rawCache = isRecord(raw.cache) ? raw.cache : {}
   const rawCoverage = isRecord(rawMicro.coverage) ? rawMicro.coverage : {}
   const lastTrendPoint = trendPoints.length ? trendPoints[trendPoints.length - 1] : undefined
   const macro: EventModelPrediction['macro'] = {
@@ -932,6 +958,12 @@ function normalizePredictionResponse(value: unknown): EventModelPrediction | nul
     event_id: typeof raw.event_id === 'string' ? raw.event_id : undefined,
     platform: typeof raw.platform === 'string' ? raw.platform : undefined,
     data_scope: rawScope as PredictionDataScope,
+    cache: {
+      hit: rawCache.hit === true,
+      stale: rawCache.stale === true,
+      snapshot_fingerprint: typeof rawCache.snapshot_fingerprint === 'string' ? rawCache.snapshot_fingerprint : undefined,
+      generated_at: typeof rawCache.generated_at === 'string' ? rawCache.generated_at : undefined,
+    },
     note: typeof raw.note === 'string' ? raw.note : undefined,
   }
 }
@@ -1026,7 +1058,11 @@ const observationRatio = ref(0.5)
 const activeTab = ref('path')
 const selectedObjectId = ref('')
 const timelineFocusPostId = ref('')
-const DEFAULT_DIFFUSION_NODE_LIMIT = 300
+const expandedClaimGroupTypes = ref<Set<string>>(new Set())
+const activeClaimGroupType = ref('hashtag')
+const claimGroupMenuOpen = ref(false)
+const DEFAULT_DIFFUSION_NODE_LIMIT = 160
+const CLAIM_GROUP_COLLAPSED_LIMIT = 6
 const diffusionNodeLimit = ref(DEFAULT_DIFFUSION_NODE_LIMIT)
 const diffusionPendingNodeLimit = ref(DEFAULT_DIFFUSION_NODE_LIMIT)
 const diffusionFullViewRequested = ref(false)
@@ -1098,10 +1134,23 @@ const claimGroups = computed(() => {
       href: claimHref(claim.object_id),
     })
   }
-  return Array.from(groups.values()).sort((left, right) => {
-    const order = ['tweet', 'url', 'hashtag', 'keyword', 'other']
-    return order.indexOf(left.type) - order.indexOf(right.type)
-  })
+  return Array.from(groups.values())
+    .map((group) => ({
+      ...group,
+      items: group.items.sort((left, right) => Number(right.share_count ?? 0) - Number(left.share_count ?? 0)),
+    }))
+    .sort((left, right) => {
+      const order = ['hashtag', 'keyword', 'url', 'tweet', 'other']
+      const leftOrder = order.indexOf(left.type)
+      const rightOrder = order.indexOf(right.type)
+      return (leftOrder === -1 ? order.length : leftOrder) - (rightOrder === -1 ? order.length : rightOrder)
+    })
+})
+const activeClaimGroup = computed(() => {
+  if (!claimGroups.value.length) return null
+  return claimGroups.value.find((group) => group.type === activeClaimGroupType.value)
+    || claimGroups.value.find((group) => group.type === 'hashtag')
+    || claimGroups.value[0]
 })
 const claimTimelineMatches = computed(() => {
   if (!selectedClaim.value) return []
@@ -1134,7 +1183,13 @@ const claimEvidenceMatches = computed(() => {
     .slice(0, 10)
 })
 const requestParams = computed(() => {
-  const params: { event_id?: string; platform?: string; node_limit?: number } = {}
+  const params: {
+    event_id?: string
+    platform?: string
+    node_limit?: number
+    first_layer_limit?: number
+    second_layer_limit?: number
+  } = {}
   const event = eventId.value.trim()
   const currentPlatform = platform.value.trim()
   if (event) {
@@ -1144,6 +1199,10 @@ const requestParams = computed(() => {
     params.platform = currentPlatform
   }
   params.node_limit = diffusionFullViewRequested.value ? 0 : diffusionNodeLimit.value
+  if (!diffusionFullViewRequested.value) {
+    params.first_layer_limit = 40
+    params.second_layer_limit = 80
+  }
   return params
 })
 
@@ -1307,7 +1366,7 @@ function formatScore(value?: number | null) {
 
 function candidateSourceLabel(value?: string) {
   const labels: Record<string, string> = {
-    observed_user_hash_bucket_proxy: '当前事件哈希桶候选',
+    observed_user_hash_bucket_proxy: '当前事件候选',
     observed_event: '当前事件用户',
     observed_post: '当前事件帖子用户',
     observed_comment: '当前事件评论用户',
@@ -1320,18 +1379,6 @@ function candidateSourceLabel(value?: string) {
 function modelScopeLabel(value?: string) {
   if (value === 'current_event') return '当前事件'
   if (value === 'research_benchmark') return '研究基准'
-  return value || '--'
-}
-
-function identityMappingLabel(value?: string) {
-  if (value === 'unique_current_event_bucket_proxy_only') return '仅保留单一桶候选'
-  if (value === 'hash_bucket_proxy_not_exact_identity') return '哈希桶代理映射'
-  return value || '--'
-}
-
-function identityResolutionLabel(value?: string) {
-  if (value === 'unique_current_event_bucket_proxy') return '当前事件单一桶候选'
-  if (value === 'ambiguous_current_event_bucket_proxy') return '当前事件同桶多候选'
   return value || '--'
 }
 
@@ -1533,7 +1580,7 @@ function buildModelTrendOption(): EChartsOption {
   })
   const labels = [...observedLabels, ...trendPoints.map((item) => item.label)]
   const observedData = observedPoints.map((item) => Number(item.predicted_size ?? observedSize))
-  const predictedData = [...observedData.map(() => null), ...trendPoints.map((item) => Math.max(observedSize, item.value))]
+  const predictedData = [...observedData.map(() => null), ...trendPoints.map((item) => item.value)]
   if (observedData.length && trendPoints.length) {
     predictedData[observedData.length - 1] = observedData[observedData.length - 1]
   }
@@ -1554,18 +1601,16 @@ function buildModelTrendOption(): EChartsOption {
       type: 'line',
       data: observedData,
       symbolSize: 9,
-      lineStyle: { width: 0 },
+      lineStyle: { width: 3 },
       itemStyle: { color: '#0891b2' },
     },
     {
       name: '预测趋势',
       type: 'line',
-      smooth: true,
       data: predictedData,
       symbolSize: 7,
-      lineStyle: { width: 3, color: '#2563eb' },
+      lineStyle: { width: 3, type: 'dashed', color: '#2563eb' },
       itemStyle: { color: '#2563eb' },
-      areaStyle: { color: 'rgba(37, 99, 235, 0.1)' },
     },
   ]
   if (showPredictionInterval) {
@@ -1645,15 +1690,14 @@ function stableHash(value: string) {
   return Math.abs(hash)
 }
 
-function layeredEdgeCurveness(source: string, target: string, sourceLayer: number, targetLayer: number) {
+function stableEdgeCurveness(source: string, target: string, sourceLayer: number, targetLayer: number) {
   const layerGap = Math.max(1, Math.abs(targetLayer - sourceLayer))
   const direction = stableHash(`${source}->${target}`) % 2 === 0 ? 1 : -1
-  return direction * Math.min(0.28, 0.1 + layerGap * 0.055)
+  return direction * Math.min(0.06, 0.02 + (layerGap - 1) * 0.012)
 }
 
 function fitGraphPositions(
   positions: Map<string, { x: number; y: number; layer: number }>,
-  rootId: string,
 ) {
   const values = Array.from(positions.values())
   if (!values.length) return positions
@@ -1678,19 +1722,6 @@ function fitGraphPositions(
     })
   }
 
-  const rootPosition = fitted.get(rootId)
-  if (rootPosition) {
-    // Keep the main source in a Zhiwei-like lower-right focus while preserving full graph bounds.
-    const focusX = 92
-    const focusY = 72
-    for (const [id, position] of fitted.entries()) {
-      fitted.set(id, {
-        x: position.x - rootPosition.x + focusX,
-        y: position.y - rootPosition.y + focusY,
-        layer: position.layer,
-      })
-    }
-  }
   return fitted
 }
 
@@ -1780,7 +1811,7 @@ function buildPathGraphOption(summary?: DiffusionSummary | null): EChartsOption 
       })
     }
   }
-  const fittedPositions = fitGraphPositions(positions, rootId)
+  const fittedPositions = fitGraphPositions(positions)
 
   const graphData = nodes.map((node) => {
     const id = String(node.id)
@@ -1849,7 +1880,7 @@ function buildPathGraphOption(summary?: DiffusionSummary | null): EChartsOption 
         lineStyle: {
           color: objectFocused ? 'rgba(250, 204, 21, 0.92)' : highlighted ? 'rgba(56, 189, 248, 0.72)' : confirmed ? 'rgba(45, 212, 191, 0.52)' : 'rgba(148, 163, 184, 0.3)',
           width: objectFocused ? 2.2 : highlighted ? 1.35 : confirmed ? 1 : 0.72,
-          curveness: layeredEdgeCurveness(source, target, sourceLayer, targetLayer),
+          curveness: stableEdgeCurveness(source, target, sourceLayer, targetLayer),
           opacity: objectFocused ? 0.94 : highlighted ? 0.62 : confirmed ? 0.48 : 0.28,
         },
         relationLabel: relationTypeLabel(edge),
@@ -1897,7 +1928,7 @@ function buildPathGraphOption(summary?: DiffusionSummary | null): EChartsOption 
         layout: 'none',
         roam: true,
         zoom: 0.94,
-        center: [82, 64],
+        center: ['50%', '50%'],
         draggable: true,
         top: 54,
         bottom: 22,
@@ -1918,12 +1949,12 @@ function buildPathGraphOption(summary?: DiffusionSummary | null): EChartsOption 
         labelLayout: {
           hideOverlap: true,
         },
-        edgeSymbol: ['none', 'none'],
-        edgeSymbolSize: [0, 0],
+        edgeSymbol: ['none', 'arrow'],
+        edgeSymbolSize: [0, 7],
         lineStyle: {
           color: 'source',
           opacity: 0.18,
-          curveness: 0.16,
+          curveness: 0.02,
         },
         emphasis: {
           focus: 'adjacency',
@@ -2071,6 +2102,31 @@ function formatClaimObject(value: string) {
 function claimHref(value: string) {
   const text = String(value || '').trim()
   return /^https?:\/\//i.test(text) ? text : undefined
+}
+
+function isClaimGroupExpanded(type: string) {
+  return expandedClaimGroupTypes.value.has(type)
+}
+
+function visibleClaimGroupItems(group: { type: string; items: ClaimGroupItem[] }) {
+  return isClaimGroupExpanded(group.type)
+    ? group.items
+    : group.items.slice(0, CLAIM_GROUP_COLLAPSED_LIMIT)
+}
+
+function showMoreClaimGroup(type: string) {
+  const next = new Set(expandedClaimGroupTypes.value)
+  if (next.has(type)) {
+    next.delete(type)
+  } else {
+    next.add(type)
+  }
+  expandedClaimGroupTypes.value = next
+}
+
+function handleClaimGroupMenuClick({ key }: { key: string }) {
+  activeClaimGroupType.value = String(key)
+  claimGroupMenuOpen.value = false
 }
 
 function openClaimDetail(item: ClaimGroupItem) {
@@ -2235,9 +2291,32 @@ async function handlePredict() {
   }
 }
 
+async function loadCachedPrediction() {
+  const requestedEventId = eventId.value.trim()
+  if (!requestedEventId) return
+  const requestGeneration = ++predictionRequestGeneration
+  const requestedPlatform = platform.value.trim()
+  try {
+    const response = await getCachedPropagationPrediction(predictionRequestParams.value)
+    if (
+      requestGeneration !== predictionRequestGeneration
+      || requestedEventId !== eventId.value.trim()
+      || requestedPlatform !== platform.value.trim()
+    ) return
+    const result = normalizePredictionResponse(response)
+    if (matchesCurrentPredictionScope(result, requestedEventId, requestedPlatform)) {
+      modelPrediction.value = result
+      if (hasPredictionOutput(result)) scheduleModelTrendChartRender()
+    }
+  } catch {
+    // Cache availability is optional. The observed propagation view remains usable.
+  }
+}
+
 onMounted(() => {
   syncScopeFromRoute()
   void loadAnalysis(false)
+  void loadCachedPrediction()
   window.addEventListener('resize', resizeCharts)
 })
 
@@ -2249,6 +2328,7 @@ watch(
     diffusionNodeLimit.value = DEFAULT_DIFFUSION_NODE_LIMIT
     diffusionPendingNodeLimit.value = DEFAULT_DIFFUSION_NODE_LIMIT
     void loadAnalysis(false)
+    void loadCachedPrediction()
   },
 )
 
@@ -2265,11 +2345,7 @@ watch(diffusionSummary, () => {
   void renderPathTabCharts()
 })
 
-watch(activeTab, (tab) => {
-  if (tab === 'model' && eventId.value.trim() && !modelPredictionReady.value && !predicting.value) {
-    void handlePredict()
-    return
-  }
+watch(activeTab, () => {
   void renderActiveTabCharts()
 })
 

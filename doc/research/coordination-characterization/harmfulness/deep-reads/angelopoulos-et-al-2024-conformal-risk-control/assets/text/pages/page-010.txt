@@ -1,0 +1,70 @@
+Published as a conference paper at ICLR 2024
+
+
+
+
+REFERENCES
+
+Anastasios N Angelopoulos, Stephen Bates, Emmanuel J Cand`es, Michael I Jordan, and Lihua
+   Lei. Learn then Test: Calibrating predictive algorithms to achieve risk control. arXiv preprint
+  arXiv:2110.01052, 2021a.
+
+Anastasios N Angelopoulos, Amit Pal Kohli, Stephen Bates, Michael Jordan, Jitendra Malik,
+  Thayer Alshaabi, Srigokul Upadhyayula, and Yaniv Romano. Image-to-image regression with
+   distribution-free uncertainty quantification and applications in imaging. In International Confer-
+  ence on Machine Learning, pp. 717–730. PMLR, 2022a.
+
+Anastasios N Angelopoulos, Karl Krauth, Stephen Bates, Yixin Wang, and Michael  I Jor-
+  dan.  Recommendation systems with distribution-free reliability guarantees.  arXiv preprint
+  arXiv:2207.01609, 2022b.
+
+Anastasios Nikolas Angelopoulos and Stephen Bates. A gentle introduction to conformal predic-
+   tion and distribution-free uncertainty quantification, 2021. URL https://arxiv.org/abs/
+  2107.07511.
+
+Anastasios Nikolas Angelopoulos, Stephen Bates, Jitendra Malik, and Michael I Jordan. Uncertainty
+   sets for image classifiers using conformal prediction. In International Conference on Learning
+  Representations (ICLR), 2021b. URL https://openreview.net/forum?id=eNdiU_
+  DbM9.
+
+Martin Anthony and John Shawe-Taylor. A result of vapnik with applications.  Discrete Applied
+  Mathematics, 47(3):207–217, 1993.
+
+Rina Barber, Emmanuel Cand`es, Aaditya Ramdas, and Ryan Tibshirani. The limits of distribution-
+   free conditional predictive inference.  Information and Inference, 10, 08 2020.  doi: 10.1093/
+  imaiai/iaaa017.
+
+Rina Foygel Barber, Emmanuel J Candes, Aaditya Ramdas, and Ryan J Tibshirani.  Conformal
+  prediction beyond exchangeability. arXiv preprint arXiv:2202.13415, 2022.
+
+Stephen Bates, Anastasios Angelopoulos, Lihua Lei, Jitendra Malik, and Michael  I. Jordan.
+   Distribution-free, risk-controlling prediction sets. Journal of the ACM, 68(6), September 2021.
+  ISSN 0004-5411. doi: 10.1145/3478535. URL https://doi.org/10.1145/3478535.
+
+Vidmantas Bentkus. On Hoeffding’s inequalities. The Annals of Probability, 32(2):1650 – 1673,
+  2004. doi: 10.1214/009117904000000360.
+
+Jia Deng, Wei Dong, Richard Socher, Li-Jia Li, Kai Li, and Li Fei-Fei. Imagenet: A large-scale
+   hierarchical image database.  In Proceedings of the IEEE Conference on Computer Vision and
+  Pattern Recognition (CVPR), pp. 248–255, 2009. doi: 10.1109/CVPR.2009.5206848.
+
+Deng-Ping Fan, Ge-Peng Ji, Tao Zhou, Geng Chen, Huazhu Fu, Jianbing Shen, and Ling Shao.
+  Pranet: Parallel reverse attention network for polyp segmentation. In International Conference
+  on Medical Image Computing and Computer-Assisted Intervention, pp. 263–273, 2020.  doi:
+  10.1007/978-3-030-59725-2 26.
+
+Clara Fannjiang, Stephen Bates, Anastasios N Angelopoulos, Jennifer Listgarten, and Michael I
+  Jordan. Conformal prediction for the design problem. arXiv preprint arXiv:2202.03613, 2022.
+
+Adam Fisch, Tal Schuster, Tommi S. Jaakkola, and Regina Barzilay.  Efficient conformal predic-
+   tion via cascaded inference with expanded admission. In International Conference on Learning
+  Representations, 2021. URL https://openreview.net/forum?id=tnSo6VRLmT.
+
+Adam Fisch, Tal Schuster, Tommi Jaakkola, and Regina Barzilay. Conformal prediction sets with
+  limited false positives. arXiv preprint arXiv:2202.07650, 2022.
+
+Alexandre Froda. Sur la distribution des propri´et´es de voisinage des fonctions de variables r´eelles.
+   Bulletin math´ematique de la Soci´et´e Roumaine des Sciences, 32(2):105–202, 1931.
+
+
+                                       10

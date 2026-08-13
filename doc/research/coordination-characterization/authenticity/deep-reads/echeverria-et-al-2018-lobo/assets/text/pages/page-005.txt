@@ -1,0 +1,67 @@
+by training only with other bot classes, explicitly without any     silent, which have been detected in large numbers [17, 18].
+direct knowledge of the target class itself.  It was conceived   ”Days active” is better suited to address how long a user has
+strictly in the context of a binary classiﬁcation between bots   been tweeting. Merging them in a single feature would possi-
+and users, to speciﬁcally address the variety of bot classes that    bly lose some of the details. Total tweet count is the number of
+such a classiﬁer would face.                                       lifetime tweets the account has created or retweeted, and this
+  We assume the LOBO test to be a proxy for generalization.   number comes directly from the proﬁle and is not limited to
+For example, let us take the Bursty bots as the target class. We    the 3200 tweets that we get through the API. It includes tweets
+train the classiﬁer with all other datasets except dataset B, then    that have been deleted. We consider these proﬁle features be-
+we test the classiﬁer against dataset B. If the classiﬁer performs    cause they can be obtained from a single API call to the user
+well on the Bursty bots when it hasn’t actually trained on them,    proﬁle (which includes the user’s last tweet).
+then it has “generalized” from the seen bot classes to this target
+class. A ﬂowchart of how the test should be applied can be   5.2  Tweet Features
+seen in Fig 2.                                  We use the tweets and their text obtained from users to ex-
+Train-Test split. We now face the need to compare between    tract useful features. The most basic ones such as number of
+a classiﬁer that has been trained with and without the target    tweets and retweets, average tweet and retweet length, etc., are
+class. Addressing this need, we decided to use a 70-30 train-    considered, and other more elaborate features are computed
+test split instead of cross validation. Each bot class is randomly   and used.
+and independently sampled so that 70% of each bot class is in   Hashtags. Hashtags are a way of grouping topics within Twit-
+the training set and 30% in the testing set. This is to ensure that     ter. We have created features from the number of hashtags in
+the smallest classes will still be represented and tested prop-    analyzed tweets and retweets, number of unique hashtags, and
+erly. This strategy allows us to test a single bot class using the    the unique hashtag ratio. Unique hashtags are included to ac-
+30% test data for that speciﬁc class, which has never been seen    count for the difference between accounts tweeting many times
+by the classiﬁer.                                              using a small set of hashtags against people who are involved
+  One could argue that comparing accuracy on 30% of the   and tweeting over many different hashtags.
+target class with accuracy tested on 100% of the target class is                                                        Mentions. Mentions are a way of publicly addressing another
+misleading. However, this split is not strictly part of the LOBO                                                                       user. They are also commonly abused by spammers to generate
+test, we ﬁnd it useful to test on at least 30% of each bot class                                                       engagement with unsuspecting users. We use the number of
+to provide context to the performance of the classiﬁer on the                                                          mentions in tweets and in retweets as features. We also include
+target class when it has already trained on it.                                                                 the number of unique mentions as a feature.
+
+                                                          Edit Distance. To account for tweets that are equal or with
+5  Features for Classiﬁcation                   small variations, we use the edit distance between tweets and
+                                                               retweets of a user. The edit distance (or Levenshtein distance)
+This section describes the features to be used in our classiﬁer.
+                                                       between two strings is the minimum number of one-character
+Most of these features have been used in research before and
+                                                                      edits to turn one string into the other.  Because of process-
+are relatively common place. We placed speciﬁc importance
+                                                              ing time, we only evaluate this feature for the last 200 tweets
+on not including graph information.  Twitter imposes strong
+                                                       and the last 200 retweets of each user; each of these tweets
+rate limits on graph information, making it very time consum-
+                                                                               is compared to the rest, and then the mean of the distances is
+ing to collect the followers of a popular user (e.g., a celebrity
+                                                         computed.
+or politician) from Twitter’s API. Additionally, any real time
+implementation of this classiﬁer would need to depend on a    Geolocation. Depending on user preference, each tweet can
+few API calls, which does not bode well with the inclusion of   have geolocation embedded, consisting of latitude and longi-
+graph information.                                                tude. We use the number of tweets that are geolocated, as well
+                                                               as the percentage of the analyzed tweets that have this infor-  Table 2 shows all the features that are used in the classiﬁers
+                                                             mation, as features.analysed in this paper. Also, the way the datasets at hand were
+ﬁnally prepared for feature extraction is illustrated in Fig. 1.   Tweet Sources. When apps are used to publish tweets through
+Next, we deﬁne some of the features that might not be straight    Twitter’s API, an app publisher needs to deﬁne the ”source”
+forward.                                                       of the tweet. We use the number of unique sources used to
+                                                               publish the tweets as a feature. While some older botnets rely
+5.1  User Features                                 on using a single source to publish all of their tweets [17, 18],
+  We include several features obtainable directly from a user    other botnets may use as many sources as possible to confuse
+proﬁle. Seconds active and days active is the number of sec-    detection efforts. Regardless of the assumption, we calculate
+onds and days between account creation and last obtainable    this feature for each of the users in our dataset.
+tweet.                                                         Favorites. Marking a tweet as a favorite or “liking” it, is an
+  Their maximum value is 1 month and 3 years respectively,    action a user can take to endorse a speciﬁc tweet. We use the
+to account for differences in collection dates. While these two   number of tweets a user has liked as a feature. However, we
+features might seem redundant, seconds active is able to detect    also include how many of a user’s tweets have been marked as
+bots that tweet immediately after creation date and then fall    favorites by other users, and the ratio between liked tweets and
+
+
+                                                   5

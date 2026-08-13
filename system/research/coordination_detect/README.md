@@ -23,9 +23,11 @@ label-free events
 
 The primary implementation is `LearnedCoordinationDetector`. It fits feature
 standardization and coefficients on training cases, uses validation cases for
-Platt calibration, decision thresholds, abstention, and OOD bounds, and never
-fits on test rows. `CoordinationDetectionEngine` requires an explicitly fitted
-learned artifact; there is no implicit production fallback.
+Platt calibration and OOD bounds, and never fits on test rows. Predictions are
+forced binary decisions at probability 0.5 so public Detection comparisons use
+standard SOTA metrics instead of selective abstention metrics.
+`CoordinationDetectionEngine` requires an explicitly fitted learned artifact;
+there is no implicit production fallback.
 
 `HeuristicBayesianBaseline` is isolated as `heuristic_baseline_v1`. Its fixed
 weights and thresholds are comparison constants only. It cannot be selected as
@@ -39,7 +41,7 @@ the primary detector or used to claim learned harmful-CIB performance.
 - `LearnedCoordinationDetector.fit(train_cases, validation_cases)` produces a
   checksummed `DetectionModelArtifact`.
 - `CoordinationDetectionEngine.predict(batch, detection_features)` produces a
-  `ClusterDetectionBatch` with benign, harmful, or abstain verdicts.
+  `ClusterDetectionBatch` with benign or harmful verdicts.
 - `HeuristicBayesianBaseline.predict(...)` produces baseline-only verdicts with
   a mandatory warning.
 
@@ -51,6 +53,7 @@ the primary detector or used to claim learned harmful-CIB performance.
 | Validation-only calibration, thresholds, and OOD bounds | `test_coordination_stage2_detection.py` | supported | Artifact fingerprints record each fit partition. |
 | Fixed Bayesian weights are not the primary model | Engine type checks and Stage 2 tests | supported | The heuristic remains an explicit baseline. |
 | IOHunter proves harmful-CIB Detection | IOHunter capability manifest | blocked | IOHunter labels external account membership, not harmful-CIB Gold; Stage 2 was not run in the compact matrix. |
+| Official InfoOpsGFM account classifier runs locally | `iohunter_socgfm.py` manifests and `iohunter-socgfm-official-reproduction-20260812.md` | partially supported | The canonical upstream is `mminici/InfoOpsGFM`; the local checkout retains the historical `SocGFM` directory name. Four official SAGE entry points completed on the Russia bundle, and Cross-Attention completed on five campaigns. Cuba remains blocked by the local 8GB GPU. This is account-level IO membership classification only. |
 | Trump three-platform data proves Detect accuracy | Local event inventory | blocked | No approved harmful-CIB labels exist for that event. |
 | Learned detector is production-ready | Model activation gate | blocked | No full labeled multi-dataset/cross-event result has passed the activation gate. |
 
@@ -69,9 +72,21 @@ The backend `coordination-evidence-runtime-v2` remains the frozen production
 Discovery mainline. This package has no production activation path. A candidate
 can be proposed only after a leakage-safe multi-seed evaluation demonstrates
 improvement over fair baselines on the target harmful-CIB task, with calibration,
-coverage, abstention, campaign/platform/time holdouts, signed manifests, and
-independent review. A proxy improvement alone cannot activate either stage.
+campaign/platform/time holdouts, signed manifests, and independent review. A
+proxy improvement alone cannot activate either stage.
 
 All experiment outputs, caches, reports, and temporary files must be written
 under an explicit G-drive path. C-drive temporary directories are not valid
 research artifact roots.
+
+## Official IOHunter Baseline
+
+`research.coordination_experiments.iohunter_socgfm` runs the official
+InfoOpsGFM entry points from the local historical `SocGFM` checkout in an
+isolated G-drive sandbox. It supports `run_GNN.py`, `run_GNNPlusLLM.py`,
+`run_MultiModalGNN.py`, and `run_MultiModalGNN_CrossAttention.py`; each output
+records the executed-source hashes, command, dataset fingerprint, and G-drive
+artifact locations. This remains an account-level IO membership baseline
+outside this package's harmful-CIB Detection activation path. The wrapper
+preserves the official dataset-provided split protocol; those five splits must
+not be described as five independent model seeds.

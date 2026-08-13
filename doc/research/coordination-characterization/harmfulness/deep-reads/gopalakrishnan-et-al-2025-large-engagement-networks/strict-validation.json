@@ -1,0 +1,20 @@
+{
+    "schema_version":  1,
+    "generated_at":  "2026-08-11T18:50:41.2134872Z",
+    "command":  "python C:\\Users\\p\\.codex\\skills\\paper-deep-reader\\scripts\\validate_report.py G:\\CISCN\\CogGuard\\.worktrees\\refactor-system\\doc\\research\\coordination-characterization\\harmfulness\\deep-reads\\gopalakrishnan-et-al-2025-large-engagement-networks\\report.md --manifest G:\\CISCN\\CogGuard\\.worktrees\\refactor-system\\doc\\research\\coordination-characterization\\harmfulness\\deep-reads\\gopalakrishnan-et-al-2025-large-engagement-networks\\assets\\visual_manifest.json --strict",
+    "exit_code":  0,
+    "result":  "PASS",
+    "output":  [
+                   "NOTE: Found 10 Markdown image reference(s).",
+                   "NOTE: Visual coverage: 12 total, 10 marked key.",
+                   "NOTE: Source map contains 6 claim(s).",
+                   "PASS: 0 errors, 0 warning(s)."
+               ],
+    "report_sha256":  "c7ef053f6f321b3e4abbe920b33e29f24c023faa618786b7537d4f96d5ea0faa",
+    "manifest_sha256":  "d4e289321fe3169f4661b711b109602cb1dc337435688dc33382d36b3c260c63",
+    "source_map_sha256":  "642ea849dca475d3b6a1f03060d99145a4fffcb0e48e4ab4b231e9ff09e89908",
+    "visual_verification":  "complete",
+    "selected_assets_reviewed":  true,
+    "automatic_crops_are_unverified":  true,
+    "interpretation":  "Strict validation passed. Selected/key assets were manually reviewed; automatic crops remain unverified by design unless selected."
+}

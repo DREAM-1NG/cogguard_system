@@ -1,0 +1,58 @@
+Published as a conference paper at ICLR 2024
+
+
+
+
+4  EXTENSIONS
+
+We now discuss several extensions of conformal risk control to different settings and risks.
+
+4.1  RISK CONTROL UNDER DISTRIBUTIONAL SHIFT
+
+Under a distribution shift, the goal in (3) can be redefined as
+                    E(X1,Y1),...,(Xn,Yn)∼Ptrain, (Xn+1,Yn+1)∼Ptest h Ln+1  ˆλ i ≤α.                (9)
+
+Assuming that Ptest  is absolutely continuous with respect to Ptrain and defining w(x, y) =
+dPtrain(x,y),dPtest(x,y)  the weighted objective (9) can be rewritten as
+                   E(X1,Y1),...,(Xn+1,Yn+1)∼Ptrain h w(Xn+1, Yn+1)Ln+1  ˆλ i ≤α.             (10)
+
+When w  is known  and  bounded,  we  can  apply  our  procedure  on  the  loss  function
+˜Ln+1(λ) = w(Xn+1, Yn+1)Ln+1(λ), which is non-decreasing, bounded, and right-continuous in
+λ whenever Ln+1 is. Thus, Theorem 1 guarantees that the resulting ˆλ satisfies (10). For example,
+                                                                            In this case, we canin the covariate shift setting, w(Xn+1, Yn+1) = w(Xn+1) △= dPtrain(Xn+1).dPtest(Xn+1)
+achieve risk control even when w is unbounded.  In particular, assuming Li ∈[0, B], for any
+potential value x of the covariate, we define
+                    Pni=1 w(Xi)Li(λ) + w(x)B                       ˆλ(x) = inf  λ :               ≤α   .
+                      Pni=1 w(Xi) + w(x)
+Proposition 3. In the setting of Theorem 1, with ˆλ as above,
+                E(X1,Y1),...,(Xn,Yn)∼Ptrain,(Xn+1,Yn+1)∼Ptest[Ln+1(ˆλ(Xn+1))] ≤α.
+
+This is an exact generalization of the procedure of Tibshirani et al. (2019) beyond indicator losses.
+As proposed therein, when unlabeled data in the test domain is available, w can be estimated by
+the probabilistic classification algorithm; this gives good practical results (see also our experiment
+in Appendix D). For arbitrary distribution shifts, we give a total variation bound analogous to that
+of Barber et al. (2022) for independent data (see their Section 4.1), though the proof is different.
+Here we will use the notation Zi = (Xi, Yi), and ˆλ(Z1, . . . , Zn) to refer to that chosen in (4).
+Proposition 4. Let Z = (Z1, . . . , Zn+1) be a sequence of random variables.  Then, under the
+conditions in Theorem 1, E h Ln+1(ˆλ)i ≤α + B Pni=1 TV(Zi, Zn+1). If further the assumptions
+of Theorem 2 hold, E h Ln+1(ˆλ)i ≥α −B  n+12 + Pni=1 TV(Zi, Zn+1)   .
+
+4.2  QUANTILE RISK CONTROL
+
+Snell et al. (2022) generalizes Bates et al. (2021) to control the quantile of a monotone loss function
+conditional on (Xi, Yi)ni=1 with probability 1 −δ over the calibration dataset for any user-specified
+tolerance parameter δ. In some applications, it may be sufficient to control the unconditional quantile
+of the loss function, which alleviates the burden of the user to choose the tolerance parameter δ.
+For any random variable X, let Quantileβ(X) = inf{x : P(X ≤x) ≥β}. Analogous to (3), we
+want to find ˆλ based on (Xi, Yi)ni=1 such that
+                              Quantileβ  Ln+1(ˆλβ) ≤α.                             (11)
+By definition, Quantileβ  Ln+1(ˆλβ) ≤α ⇐⇒E h 1 nLn+1(ˆλβ) > α oi ≤1 −β.  As a
+consequence, quantile risk control is equivalent to expected risk control (3) with loss function
+˜Li(λ) = 1 {Li(λ) > α}. Let ˆλβ = inf nλ ∈Λ : n+11 Pni=1 1 {Li(λ) > α} + n+11 ≤1 −β o .
+Proposition 5. In the setting of Theorem 1, with ˆλ as above, (11) is achieved.
+
+It is unclear whether the wider class of quantile-based risks considered by Snell et al. (2022) (e.g.
+the CVaR) can be controlled unconditionally.
+
+
+                                       8

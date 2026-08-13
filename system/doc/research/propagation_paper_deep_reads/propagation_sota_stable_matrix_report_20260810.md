@@ -1,6 +1,6 @@
 # Propagation SOTA Stable Matrix Report 2026-08-10
 
-- generated_at: `2026-08-10T18:45:51`
+- generated_at: `2026-08-10T18:47:08`
 - evidence_level: `resource_bounded_stable_matrix`
 - strict_full_validation_passed: `false`
 - datasets: `douban, twitter, memetracker`
@@ -13,7 +13,7 @@
 | --- | --- | --- |
 | Ours vs MINDS | 300 cascades, 5 epochs, 3 seeds, 3 datasets | Completed earlier and reused as trainable paired evidence. |
 | FOREST | 1 epoch, 2 train batches, 2 eval batches, RL disabled | Runnable public-code adapter evidence; non-finite loss is flagged. |
-| CasFT | 50 events, 1 epoch, timesteps=2, 3 seeds, 3 datasets | Upstream CasFT training executes under local resource cap. |
+| CasFT | 200 events, 1 epoch, timesteps=2, 3 seeds, 3 datasets | Upstream CasFT training executes under local resource cap. |
 | DyGFormer/TGN | 50 cascades, 1 epoch, CPU, upstream smoke training | Upstream scripts complete; reported Top-K metrics remain shared candidate-protocol metrics. |
 
 ## Strict Full Attempt Failures Kept For Provenance

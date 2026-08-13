@@ -8,6 +8,7 @@ from typing import Any, Sequence
 from research.coordination_experiments import (
     CANONICAL_IOHUNTER_PROCESSED_ROOT,
     IOHUNTER_COMPACT_CAMPAIGNS,
+    IOHUNTER_COMPACT_FOLDS,
     IOHUNTER_COMPACT_METHODS,
     IOHUNTER_COMPACT_SEEDS,
     run_compact_iohunter_matrix,
@@ -59,6 +60,7 @@ def _parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--campaign", action="append", choices=IOHUNTER_COMPACT_CAMPAIGNS)
     parser.add_argument("--seed", action="append", type=int, choices=IOHUNTER_COMPACT_SEEDS)
+    parser.add_argument("--fold", action="append", choices=IOHUNTER_COMPACT_FOLDS)
     parser.add_argument("--method", action="append", choices=IOHUNTER_COMPACT_METHODS)
     parser.add_argument("--memory-budget-bytes", type=int, default=16 * 1024**3)
     parser.add_argument("--bootstrap-seed", type=int, default=0)
@@ -80,6 +82,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         args.output,
         campaigns=args.campaign,
         seeds=args.seed,
+        folds=args.fold,
         methods=args.method,
         memory_budget_bytes=args.memory_budget_bytes,
         method_config_overrides=overrides,

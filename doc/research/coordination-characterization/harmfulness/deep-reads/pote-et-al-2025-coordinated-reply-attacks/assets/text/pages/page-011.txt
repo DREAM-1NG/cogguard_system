@@ -1,0 +1,59 @@
+• The classifiers could be enhanced by incorporating addi-      Ezzeddine, F.; Ayoub, O.; Giordano, S.; Nogara, G.; Sbe-
+   tional features, such as distributions of account age and         ity, I.; Ferrara, E.; and Luceri, L. 2023. Exposing Influence
+   other profile metadata for the tweet classifier, and of the     Campaigns in the Age of LLMs: A Behavioral-based AI Ap-
+   number of replies by each account for the replier classi-      proach to Detecting State-Sponsored Trolls. EPJ Data Sci-
+    fier. We identify these enhancements as future research.        ence, 12(1): 46.
+ • While our main objective is to detect coordinated replies,       Farkas, J.; and Bastos, M. 2018. IRA Propaganda on Twitter:
+   an attack that is frequently employed by information op-      Stoking Antagonism and Tweeting Local News. In Proc. 9th
+   erations, we acknowledge that it may be also used by        Intl. Conf. on Social Media and Society, 281–285.
+   regular social media users organizing among themselves      Feng, F.; Yang, Y.; Cer, D.; Arivazhagan, N.; and Wang,
+   for activism. Thus, we suggest that our classifiers should     W. 2020. Language-agnostic BERT Sentence Embedding.
+   complement human investigation when employed in the      arXiv preprint arXiv:2007.01852.
+   wild. Furthermore, they should not be misused to label                                                                    Ferrara, E.; Chang, H.; Chen, E.-P.; Muric, G.; and Patel,
+   users as information operation accounts without thor-                                                                                   J. 2020.  Characterizing Social Media Manipulation in the
+   ough human verification.                                                     2020 U.S. Presidential Election. First Monday, 25(11).
+                                                                Gallagher, R. J.; Frank, M. R.; Mitchell, L.; Schwartz, A. J.;           Acknowledgements
+                                                          Reagan, A. J.; Danforth, C. M.; and Dodds, P. S. 2021. Gen-
+This work was supported  in  part by Knight Founda-       eralized word shift graphs: a method for visualizing and ex-
+tion, Craig Newmark  Philanthropies, DARPA  (contract       plaining pairwise comparisons between texts. EPJ Data Sci-
+HR001121C0169), and Lilly Endowment, Inc., through its       ence, 10(1): 4.
+support for the Indiana University Pervasive Technology In-                                                                  Hristakieva, K.; Cresci, S.; Da San Martino, G.; Conti, M.;
+stitute.                                                       and Nakov, P. 2022. The Spread of Propaganda by Coordi-
+                                                              nated Communities on Social Media. In Proceedings of the
+                References                           14th ACM Web Science Conference (WebSci), 191–201.
+Addawood, A.; Badawy, A.; Lerman, K.; and Ferrara, E.     Hudson Smith, D.; Ehrett, C.; and Warren, P. L. 2024. Unsu-
+2019.  Linguistic Cues to Deception: Identifying Political      pervised Detection of Coordinated Information Operations
+Trolls on Social Media.  In Proc. Intl. AAAI Conf. on Web       in the Wild. Technical Report 2401.06205, arXiv.
+and Social Media, volume 13, 15–25.                                                           Im, J.; Chandrasekharan, E.; Sargent, J.; Lighthammer, P.;
+Alizadeh, M.; Shapiro, J. N.; Buntain, C.; and Tucker, J. A.      Denby, T.; Bhargava, A.; Hemphill, L.; Jurgens, D.; and
+2020.  Content-based Features Predict Social Media Influ-       Gilbert, E. 2020.  Still Out There: Modeling and Identify-
+ence Operations. Science Advances, 6(30).                      ing Russian Troll Accounts on Twitter. In 12th ACM Conf.
+Bradshaw, S.; and Howard, P. 2017. Troops, Trolls and Trou-     on Web Science.
+blemakers: A Global Inventory of Organized Social Media      Kong, Q.; Calderon, P.; Ram, R.; Boichak, O.; and Rizoiu,
+Manipulation. Technical report, University of Oxford.          M.-A. 2023.  Interval-censored Transformer Hawkes: De-
+Bush, D. 2020.   Fighting Like a Lion for Serbia: An       tecting Information Operations using the Reaction of Social
+Analysis of Government-Linked Influence Operations in      Systems. In Proc. ACM Web Conf., 1813—-1821.
+Serbia.  https://fsi-live.s3.us-west-1.amazonaws.com/s3fs-       Luceri, L.; Giordano, S.; and Ferrara, E. 2020.  Detecting
+public/serbia march twitter.pdf. Accessed: 30 Oct 2023.          Troll Behavior via Inverse Reinforcement Learning: A Case
+DiResta, R.; Kheradpir, T.; and Miller, C. 2020.  “The      Study of Russian Trolls in the 2016 US Election.  In Intl.
+World   is  Swimming  in  a  Sea  of  Rumors”:  Influ-     AAAI Conf. on Web and Social Media, volume 14, 417–427.
+ence  Operations  Associated  with  El  Fagr Newspaper      Matthews, J.; and Goerzen, M. 2019. Black Hat Trolling,
+(Egypt).    Technical  report,  Stanford  Internet  Obser-      White Hat Trolling, and Hacking the Attention Landscape.
+vatory.   https://fsi-live.s3.us-west-1.amazonaws.com/s3fs-       In Companion Proc. WWW Conf., 523–528.
+public/egypt whitepaper.pdf. Accessed: 8 Nov 2023.                                                           Merhi, M.; Rajtmajer, S.; and Lee, D. 2023.  Information
+Dutt, R.; Deb, A.; and Ferrara, E. 2018. “Senator, We Sell      Operations in Turkey: Manufacturing Resilience with Free
+Ads”: Analysis of the 2016 Russian Facebook Ads Cam-       Twitter Accounts.  In Proc. Intl. AAAI Conf. on Web and
+paign. In Intl. Conf. Intell. Info. Techn., 151–168.                Social Media.
+Elmas, T. 2023.  Analyzing Activity and Suspension Pat-      Neudert, L.-M.; Howard, P.; and Kollanyi, B. 2019. Sourc-
+terns of Twitter Bots Attacking Turkish Twitter Trends by a      ing and Automation of Political News and Information Dur-
+Longitudinal Dataset. In Companion Proc. ACM Web Conf.,      ing Three European Elections. Social Media + Society, 5(3).
+1404–1412.                                                      Ng, L. H. X.; Moffitt, J.; and Carley, K. M. 2022. Coordi-
+Elmas, T.; Overdorf, R.; and Aberer, K. 2022. Characteriz-      nated through a Web of Images: Analysis of Image-based In-
+ing Retweet Bots: The Case of Black Market Accounts. In       fluence Operations from China, Iran, Russia, and Venezuela.
+Proc. Intl. AAAI Conf. on Web and Social Media, 171–182.       Preprint arXiv:2206.03576.
+Elmas, T.; Overdorf, R.; and Aberer, K. 2023. Misleading      Nwala, A. C.; Flammini, A.; and Menczer, F. 2023. A Lan-
+Repurposing on Twitter. In Proc. Intl. AAAI Conf. on Web      guage Framework for Modeling Social Media Account Be-
+and Social Media, 209–220.                                       havior. EPJ Data Science, 12(1): 33.
+
+
+                                                   1596

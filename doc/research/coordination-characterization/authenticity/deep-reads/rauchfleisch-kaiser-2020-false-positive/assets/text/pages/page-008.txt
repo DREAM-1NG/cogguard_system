@@ -1,0 +1,46 @@
+PLOS ONE                                              The False positive problem of automatic bot detection in social science research
+
+
+
+
+
+    Fig 2. Receiver operating characteristics curve for Botometer and the universal score (average over 3 months for each account). The x-axis represents the false
+    positive rate and the y-axis represents the true positive rate (sensitivity).
+
+    https://doi.org/10.1371/journal.pone.0241045.g002
+
+
+                                            their study. However, the PR-AUC shows a different score for the resampled data sets as the
+                           PR-AUC changes depending on the imbalance in a data set. The only exception is the in its
+                                           original form highly skewed German politicians and German bots data set which shows an
+                                 improvement but overall still an extremely low score (from 0.10 to 0.27).
+                                  The PR curves allow us to better evaluate how many bots will be amongst the accounts that
+                                     Botometer classified as bots, and how many bots were not identified if we use a high threshold
+                                            (as many studies do with this tool, e.g. [7]). PR curves start on the right with a Botometer score
+
+
+Table 2. ROC-AUC as well as the PR-AUC universal score.
+
+                Data set                  ROC-AUC         ROC-AUC sample          PR-AUC          PR-AUC sample
+
+                       All                             0.85 (0.84–0.86)              0.85 (0.85–0.86)              0.77 (0.75–0.79)             0.50 (0.49–0.51)
+
+    German politicians and German bots            0.76 (0.70–0.83)              0.76 (0.76–0.77)              0.10 (0.07–0.14)             0.27 (0.27–0.27)
+
+       German politicians and bots                 0.77 (0.74–0.79)              0.76 (0.76–0.77)              0.81 (0.78–0.84)             0.30 (0.30–0.31)
+
+        US politicians and bots                   0.93 (0.92–0.94)              0.93 (0.93–0.93)              0.96 (0.95–0.97)             0.79 (0.79–0.80)
+
+                 Varol et al.                         0.86 (0.84–0.88)              0.86 (0.86–0.86)              0.76 (0.73–0.79)             0.58 (0.58–0.59)
+
+ROC-AUC as well as the PR-AUC scores for the original data sets as well as the weighted resampled data sets (sample = 100,000) for the universal score. The 95%
+
+confidence intervals based on 10,000 stratified bootstrap replicates are shown in brackets.
+
+https://doi.org/10.1371/journal.pone.0241045.t002
+
+
+
+
+
+PLOS ONE | https://doi.org/10.1371/journal.pone.0241045  October 22, 2020                                                         8 / 20

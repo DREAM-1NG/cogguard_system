@@ -1,0 +1,51 @@
+(a) Star Wars Bots and Bursty Bots                                    (b) HoneyPot Bots
+
+                                   Figure 5: T-SNE plot of all the bot classes against real users.
+
+
+  Tgt.     Number (X) of samples of target class in training data          ality reduction algorithm that is also helpful to visualize high
+  Class    0     2     4     8    16    32    64   128   256
+                                                         dimension datasets in two dimension plots. In Figure 5a it is
+  A     59.4   71.7   89.4   96.4   98.8   99.9   100   100   100
+  B     97.4   97.4   97.7   97.4   98.1   98.6   99.0   99.6   99.8      clearly shown that there are clusters readily formed by differ-
+  C     86.7   86.5   86.9   87.3   87.5   88.0   88.6   90.9   92.9      ent bot classes, where each one is plotted in a different colour,
+  D     86.7   86.8   86.7   86.8   87.0   87.6   87.8   89.0   90.6     and users are always in black.
+  E     64.9   68.6   72.2   79.8   84.9   89.4   92.8   94.7   95.9
+                                                               Figure 5a emphasizes the Star Wars bots and the Bursty
+   F      0.8    1.7   21.3   72.0   86.8   94.9   96.9   97.6   98.3
+  H      1.7    2.3    4.3   10.5   25.7   49.4   66.9   76.3   81.6      bots, which show clear cut groups and clusters that are rarely
+  K      4.0   17.8   51.9   85.3   95.2   96.6   98.5   99.2   99.5     mixed with the real users.
+  M    64.2   64.8   66.3   67.3   70.1   74.2   80.8   87.5   95.3        In contrast, Figure 5b tells a different tale. We can see the
+  T     89.9   89.9   89.6   89.6   89.5   89.7   90.1   90.2   91.0     honeypot bots (dataset B) mostly sharing the same ”strands”
+  U     33.7   34.0   34.6   36.9   38.5   43.2   50.0   59.1   69.6
+                                                           with the real users. These bots are the ones the LOBO test  V     80.0   79.7   79.7   79.9   80.0   80.7   81.0   82.2   84.3
+ W    90.9   91.0   90.9   91.1   91.2   91.5   91.7   92.2   93.0     showed to be difﬁcult to classify, so it is no surprise that they
+                                                           look similar to our user dataset.
+Table 7: Classiﬁer accuracy (%) - trained C500 excluding all but X
+samples of target class.
+                                     8  Discussion
+performance of each target class.
+                                                     8.1  Accuracy and Generalization  We can further notice bot class V (caught by honeypots)
+making no reasonable improvement regardless of how many     The average accuracy on target classes was very similar in
+instances of it has been shown to the classiﬁer. Finally, we can  LOBO tests I and II. Even after accounting for the fact that the
+see some classes that increase dramatically from 50 to 99%  LOBO test I accuracies on target classes might be affected by
+accuracy (bot class A) and from 0-95% accuracy (bot class   chance (since it was not repeated 100 times) it is interesting
+F), after only 16 and 32 instances, respectively. This implies    to see that both tests have almost the exact same accuracy on
+learning to identify the whole class while training only on 6%    target bot classes.
+of it.
+  Notably, this section has shown the learning speeds for some   8.2  Improvements with small data additions
+target classes is much higher than others. Improvements of     There is a silver lining that is clearly noticeable in this eval-
+over 20 accuracy percent points for the addition of 2 single    uation. Apparently, it does not matter how much data of a bot
+instances are seen in more than one class.  Finally, different    class is added in proportion to the dataset size, improvement
+bot classes show various degrees of improvement. Some of    in performance follows.
+the target classes, worryingly, show almost no improvement at                                                         However, there is one more important fact. In the LOBO
+all.                                                                            test II, we are testing the classiﬁer on the complete target class.
+                                                           This means, potentially, that adding 500 bots to a simple clas-
+7.3  TSNE plot                                              siﬁer allows us to further detect the full botnet (in this case,
+  In an effort to further understand why some of these bot   357,000 instances) at over 99% accuracy up from 62%. If we
+classes seem easier to predict than others, we’ve created a t-    further delve into the details, we can see from the learning
+distributed stochastic neighbor embedding (TSNE) plot [38]   speed test that adding 16 samples gets us to 99% accuracy on
+with the dataset with class size ≤30k. This is a dimension-    the Star Wars bots.
+
+
+                                                   9

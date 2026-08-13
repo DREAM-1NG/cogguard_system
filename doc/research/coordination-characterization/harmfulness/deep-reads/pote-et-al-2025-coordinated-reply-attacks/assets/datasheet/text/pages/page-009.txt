@@ -1,0 +1,61 @@
+Are  there  tasks  for  which  the  creativecommons.org/licenses/
+dataset should not be used?  If so,  by/4.0/).
+please provide a description.
+                              Have any  third  parties imposed
+ Not to our knowledge.
+                                  IP-based or other restrictions on
+                                    the data associated with the  in-
+            Distribution            stances? If so, please describe these
+                                             restrictions, and provide a link or other
+Will the dataset be distributed to  access point to, or otherwise repro-
+third parties outside of the entity  duce, any relevant licensing terms, as
+(e.g., company,  institution, orga-  well as any fees associated with these
+nization) on behalf of which the   restrictions.
+dataset was created?   If so, please   Twitter IO datasets were available un-
+provide a description.                  der Twitter terms and policies.
+ Yes, we are making the dataset pub-
+                           Do any export controls or other
+licly available for replication purposes.
+                                    regulatory restrictions apply to the
+                                   dataset or to individual instances?
+How will the dataset will be dis-    If so, please describe these restric-
+tributed  (e.g.,  tarball on website,   tions, and provide a link or other ac-
+API, GitHub) Does the dataset have  cess point to, or otherwise reproduce,
+a digital object identifier (DOI)?        any supporting documentation.
+ This datasheet is in the Zenodo repos-   No.
+itory that contains the dataset. The
+code is available in a Github repository
+                                          Maintenance
+(https://github.com/osome-iu/
+io-coordinated-replies),    which
+                         Who  will be  supporting/hosting/
+points to the Zenodo DOI.
+                                   maintaining the dataset?
+When  will  the  dataset  be  dis-   The authors will be supporting and
+tributed?                            maintaining the dataset.
+ The dataset will be distributed after
+                         How can the owner/curator/manager
+the publication of our manuscript.  If
+                                      of the dataset be contacted (e.g.,
+you are reading this datasheet it means
+                                   email address)?
+the dataset has been distributed.
+                                     Contact author’s homepage: https:
+Will the dataset be distributed un-  //manitapote.github.io/
+der a copyright or other intellectual
+                                           Is there an erratum?   If so, please
+property (IP) license, and/or under
+                                      provide a link or other access point.
+applicable terms of use (ToU)?  If
+                                   n/a
+so, please describe this license and/or
+ToU, and provide a link or other ac-  Will the dataset be updated (e.g.,
+cess point to, or otherwise reproduce,  to correct labeling errors, add new
+any relevant licensing terms or ToU, as  instances,  delete instances)?     If
+well as any fees associated with these  so, please describe how  often, by
+restrictions.                     whom, and how updates will be com-
+    Creative   Commons    Attribu-  municated to users (e.g., mailing list,
+tion   4.0   International  (https://  GitHub)?
+
+
+                                  9

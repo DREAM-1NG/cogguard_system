@@ -1,0 +1,61 @@
+Dou, Y.; Shu, K.; Xia, C.; Yu, P. S.; and Sun, L. 2021. User      Kang, U.; Tong, H.; and Sun, J. 2012.  Fast random walk
+preference-aware fake news detection. In Proceedings of the      graph kernel. In Proceedings of the 2012 SIAM international
+44th international ACM SIGIR conference on research and      conference on data mining, 828–838. SIAM.
+development in information retrieval, 2051–2055.                                                             Kausar, S.; Tahir, B.; and Mehmood, M. A. 2021.  To-
+Duchenne, O.; Joulin, A.; and Ponce, J. 2011. A graph-      wards understanding trends manipulation in Pakistan Twit-
+matching kernel for object categorization.  In 2011 Inter-         ter. arXiv preprint arXiv:2109.14872.
+national conference on computer vision, 1792–1799. IEEE.       Kipf, T. N.; and Welling, M. 2016. Semi-supervised classi-
+Elmas, T. 2023. Analyzing activity and suspension patterns       fication with graph convolutional networks. arXiv preprint
+of twitter bots attacking turkish twitter trends by a longitu-      arXiv:1609.02907.
+dinal dataset. In Companion Proceedings of the ACM Web      Kriege, N.; and Mutzel, P. 2012. Subgraph matching kernels
+Conference 2023, 1404–1412.                                      for attributed graphs. arXiv preprint arXiv:1206.6483.
+Elmas, T.; Overdorf, R.; and Aberer, K. 2022.  Character-      Lee, J.; Lee, I.; and Kang, J. 2019. Self-attention graph pool-
+izing retweet bots: The case of black market accounts.  In       ing. In International conference on machine learning, 3734–
+Proceedings of the International AAAI Conference on Web      3743. PMLR.
+and Social Media, volume 16, 171–182.
+                                                             Lee, J. B.; Rossi, R.; and Kong, X. 2018.  Graph classi-
+Elmas, T.; Overdorf, R.; and Aberer, K. 2023. Misleading       fication using structural attention.  In Proceedings of the
+repurposing on twitter. In Proceedings of the International      24th ACM SIGKDD International Conference on Knowl-
+AAAI Conference on Web and Social Media, volume 17,      edge Discovery & Data Mining, 1666–1674.
+209–220.
+                                                             Lee, K.; Caverlee,  J.; Cheng, Z.; and Sui, D. Z. 2011.
+Elmas, T.; Overdorf, R.; ¨Ozkalay, A. F.; and Aberer, K.      Content-driven detection of campaigns in social media. In
+2021. Ephemeral astroturfing attacks: The case of fake twit-      Proceedings of the 20th ACM international conference on
+ter trends. In 2021 IEEE European symposium on security      Information and knowledge management, 551–556.
+and privacy (EuroS&P), 403–422. IEEE.
+                                                             Lee, K.; Caverlee, J.; Cheng, Z.; and Sui, D. Z. 2014. Cam-
+Elmas, T.; Randl, M.; and Attia, Y. 2024. # TeamFollow-      paign extraction from social media. ACM Transactions on
+Back: Detection & Analysis of Follow Back Accounts on       Intelligent Systems and Technology (TIST), 5(1): 1–28.
+Social Media.  In Proceedings of the International AAAI                                                           Merhi, M.; Rajtmajer, S.; and Lee, D. 2023. Information op-
+Conference on Web and Social Media, volume 18, 381–393.                                                                   erations in turkey: Manufacturing resilience with free twitter
+Feng, F.; Yang, Y.; Cer, D.; Arivazhagan, N.; and Wang, W.       accounts. In Proceedings of the International AAAI Confer-
+2020. Language-agnostic BERT sentence embedding. arXiv      ence on Web and Social Media, volume 17, 638–649.
+preprint arXiv:2007.01852.                                                           Minnich, A.; Chavoshi, N.; Koutra, D.; and Mueen, A. 2017.
+Freitas, S.; Dong, Y.; Neil, J.; and Chau, D. H. 2020. A      BotWalk: Efficient adaptive exploration of Twitter bot net-
+large-scale database for graph representation learning. arXiv      works.  In Proceedings of the 2017 IEEE/ACM interna-
+preprint arXiv:2011.07682.                                        tional conference on advances in social networks analysis
+Frohlich, H.; Wegner, J. K.; and Zell, A. 2005.  Assign-     and mining 2017, 467–474.
+ment kernels for chemical compounds. In Proceedings. 2005      Morris, C.; Kersting, K.; and Mutzel, P. 2017.  Glocalized
+IEEE International Joint Conference on Neural Networks,      weisfeiler-lehman graph kernels: Global-local feature maps
+2005., volume 2, 913–918. IEEE.                                of graphs. In 2017 IEEE International Conference on Data
+Gebru, T.; Morgenstern, J.; Vecchione, B.; Vaughan, J. W.;      Mining (ICDM), 327–336. IEEE.
+Wallach, H.; Iii, H. D.; and Crawford, K. 2021. Datasheets       Murtfeldt, R.; Alterman, N.; Kahveci, I.; and West, J. D.
+for datasets. Communications of the ACM, 64(12): 86–92.        2024. RIP Twitter API: A eulogy to its vast research contri-
+Hamilton, W.; Ying, Z.; and Leskovec, J. 2017.  Inductive       butions. arXiv preprint arXiv:2404.07340.
+representation learning on large graphs. Advances in neural      Shervashidze, N.; Schweitzer,  P.; Van Leeuwen, E.  J.;
+information processing systems, 30.                          Mehlhorn, K.; and Borgwardt, K. M. 2011.   Weisfeiler-
+Hammack, R. H.; Imrich, W.; Klavˇzar, S.; Imrich, W.; and      lehman graph kernels.  Journal of Machine Learning Re-
+Klavˇzar, S. 2011. Handbook of product graphs, volume 2.       search, 12(9).
+CRC press Boca Raton.                                        Shervashidze, N.; Vishwanathan, S.; Petri, T.; Mehlhorn, K.;
+Hu, W.; Fey, M.; Zitnik, M.; Dong, Y.; Ren, H.; Liu, B.;      and Borgwardt, K. 2009. Efficient graphlet kernels for large
+Catasta, M.; and Leskovec, J. 2020. Open graph benchmark:      graph comparison.  In Artificial intelligence and statistics,
+Datasets for machine learning on graphs. Advances in neural      488–495. PMLR.
+information processing systems, 33: 22118–22133.             Sugiyama, M.; and Borgwardt, K. 2015. Halting in random
+                                                       walk kernels.  Advances in neural information processingJakesch, M.; Garimella, K.; Eckles, D.; and Naaman, M.
+                                                                 systems, 28.2021.  Trend alert: A cross-platform organization manip-
+ulated Twitter trends in the Indian general election.  Pro-       Tardelli, S.; Avvenuti, M.; Tesconi, M.; and Cresci, S. 2022.
+ceedings  of the ACM on Human-computer  Interaction,      Detecting inorganic financial campaigns on Twitter.  Infor-
+5(CSCW2): 1–19.                                          mation Systems, 103: 101769.
+
+
+                                                   697

@@ -1,0 +1,64 @@
+LOBO – Evaluation of Generalization Deﬁciencies in
+                            Twitter Bot Classiﬁers*
+
+                          Juan Echeverr´ıa1, Emiliano De Cristofaro1, Nicolas Kourtellis2,
+                                        Ilias Leontiadis2, Gianluca Stringhini3, and Shi Zhou1
+                                    1University College London  2Telefonica Research  3Boston University
+
+
+      Abstract                                                         their operators [8, 32, 39], or at the content that they post, look-
+                                                                       ing for signs of maliciousness [26, 29, 35].
+         Botnets in online social networks are increasingly often affect-
+                                                                        Despite the large body of research on detecting bots on Twit-
+         ing the regular ﬂow of discussion, attacking regular users and2018                                                                                        ter, this is still an open problem. One reason for this is that
+           their posts, spamming them with irrelevant or offensive con-
+                                                                       bot detection is an inherently adversarial problem, and once
+           tent, and even manipulating the popularity of messages and
+                                                                    a defense mechanism is known, adversaries can modify their
+          accounts. Researchers and cybercriminals are involved in anSep                                                    modus operandi and avoid detection [41].  Another reason,
+        arms race, and new and updated botnets designed to defeat
+                                                           more fundamental, and often overlooked by the research com-
+          current detection systems are constantly developed, rendering25                                                           munity is that detection systems based on machine learning
+         such detection systems obsolete.
+                                                                           require example datasets of bots to be trained on, and these
+            In this paper, we motivate the need for a generalized eval-                                                                          often contain biases. For example, if a system was trained on
+          uation in Twitter bot detection and propose a methodology to                                                                    a dataset containing only bot accounts belonging to one bot-
+          evaluate bot classiﬁers by testing them on unseen bot classes.                                                                                   net, it would learn the idiosyncrasies (e.g., the times at which
+      We show that this methodology is empirically robust, using bot                                                                messages are typically sent or the spam templates used) of that
+          classes of varying sizes and characteristics and reaching sim-[cs.CR]                                                                speciﬁc botnet and become very accurate in detecting it. How-
+            ilar results, and argue that methods trained and tested on sin-                                                                                ever, when trying to identify bots belonging to other botnets
+          gle bot classes or datasets might not able to generalize to new                                                                                                             it would perform very poorly, because rather than learning the
+         bot classes. We train one such classiﬁer on over 200,000 data                                                                        general characteristics of bots on Twitter, it would overﬁt on
+          points and show that it achieves over 97% accuracy. The data                                                                    a single family of bots. Even having multiple families of bots
+         used to train and test this classiﬁer includes some of the largest                                                                         represented in the training set, there is no guarantee that the
+        and most varied collections of bots used in literature. We                                                                  system will be able to identify new bot types or new botnets as
+         then test this theoretically sound classiﬁer using our methodol-                                                                       they appear.
+          ogy, highlighting that it does not generalize well to unseen bot
+                                                                           In this paper, we set to study this problem in a systematic
+           classes. Finally, we discuss the implications of our results, and
+                                                                  way.  Firstly we collect a dataset that contains more than 20
+         reasons why some bot classes are easier and faster to detect
+                                                                                different bot classes , most of them used in previous bot de-
+         than others.
+                                                                              tection efforts as ground truth [11, 12, 21, 17, 18]. Secondly,
+                                                    we propose a methodology to overcome this issue and pro-
+      1  Introduction                                   duce a generalized bot detection method. This methodology
+                                                                          takes into account multiple types of bots, and leverages state-arXiv:1809.09684v1   Automated malicious activity on social networks such as                                                                                  of-art machine learning algorithms for detection of different
+          Twitter has been a signiﬁcant problem for many years now.                                                                        types of bots. The training and testing we introduce is done
+        Fake accounts controlled by bots are used to perform vari-                                                                      using an effective “Leave-One-Botnet-Out” (LOBO) method,
+         ous types of abuse, e.g., sending spam [20, 22], participating                                                              which allows the machine learning algorithms to train on data
+          in reputation-manipulation schemes [6, 16, 24, 30], spreading                                                                 produced by many and diverse bots, and test its accuracy on
+        malware [19], and phishing [17].  Large quantities of mali-                                                                             datasets which include bots with behaviors never seen before
+          cious accounts are often created and controlled by single mis-                                                             by the classiﬁers.
+          creants, forming so-called botnets [1]. To counter this prob-                                                                           In particular, we use  this novel methodology on these
+         lem, the research community has developed a number of sys-                                                                             classes of Twitter bots testing on over 1.5 million bots. We
+         tems to detect and block bot accounts on social networks.                                                          show that the typical approach of training a model to detect
+        Such approaches look at either proﬁle characteristics of fake                                                                         bots using single bot dataset is extremely effective, effortlessly
+         accounts that distinguish them from legitimate ones [2, 31],                                                                       reaching >97% accuracy. However, the way these datasets are
+           at differences in the social graph of fake and legitimate ac-                                                                            collected prevents them from being representative of all bots
+         counts [7, 13, 27], at the way in which they are controlled by                                                                              in Twitter. We demonstrate that when we mix bot classes eq-
+               *Published in the Proceedings of the 2018 Annual Computer Security Ap-    uitably in a single dataset, the prediction power of the same
+             plications Conference (ACSAC 2018).                                    classiﬁer drops signiﬁcantly. More importantly, we demon-
+
+
+                                                           1

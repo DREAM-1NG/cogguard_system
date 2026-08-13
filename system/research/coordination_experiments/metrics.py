@@ -25,9 +25,6 @@ _DIRECTIONS = MappingProxyType(
         "macro_f1": "maximize",
         "roc_auc": "maximize",
         "ece": "minimize",
-        "selective_coverage": "maximize",
-        "selective_risk": "minimize",
-        "abstain_rate": "minimize",
         "runtime_seconds": "minimize",
         "peak_memory_bytes": "minimize",
     }
@@ -279,21 +276,15 @@ def detection_metrics(
         raise ValueError("probabilities must match labels and be within [0, 1]")
     if not isinstance(decisions, Sequence) or len(decisions) != len(truth):
         raise ValueError("decisions must match labels")
-    allowed = {"benign_coordination", "harmful_coordination", "abstain"}
+    allowed = {"benign_coordination", "harmful_coordination"}
     if set(decisions) - allowed:
         raise ValueError("decisions contain an unknown value")
     predictions = (scores >= 0.5).astype(np.int64)
-    covered = np.asarray([decision != "abstain" for decision in decisions], dtype=bool)
-    decision_predictions = np.asarray([decision == "harmful_coordination" for decision in decisions], dtype=np.int64)
-    risk = 0.0 if not np.any(covered) else float(np.mean(decision_predictions[covered] != truth[covered]))
     return {
         "auprc": average_precision(labels, probabilities),
         "macro_f1": float((_binary_f1(truth, predictions, 0) + _binary_f1(truth, predictions, 1)) / 2.0),
         "roc_auc": roc_auc(labels, probabilities),
         "ece": expected_calibration_error(labels, probabilities),
-        "selective_coverage": float(np.mean(covered)),
-        "selective_risk": risk,
-        "abstain_rate": float(np.mean(~covered)),
     }
 
 

@@ -105,6 +105,62 @@ def test_event_prediction_route_exposes_observed_prefix_parameters():
     assert {"event_id", "platform", "top_k", "observed_until", "t_obs", "observation_ratio"}.issubset(names)
 
 
+def test_cached_event_prediction_uses_snapshot_fingerprint_and_marks_stale(monkeypatch):
+    class CacheCollection:
+        document = None
+
+        async def find_one(self, _filter, *_args, **_kwargs):
+            return self.document
+
+        async def update_one(self, _filter, update, upsert=False):
+            assert upsert is True
+            self.document = dict(update["$set"])
+
+    collection = CacheCollection()
+    database = {"propagation_prediction_cache_v1": collection}
+
+    async def fingerprint_v1(*_args, **_kwargs):
+        return "snapshot-v1"
+
+    monkeypatch.setattr(propagation_model_service, "get_mongo_db", lambda: database)
+    monkeypatch.setattr(propagation_model_service, "event_data_fingerprint", fingerprint_v1)
+    result = propagation_model_service.empty_prediction_result("event-1", "weibo")
+    result.update({"status": "ok", "model_status": "available"})
+    result["macro"].update({"observed_size": 2, "predicted_size": 4, "trend_points": [{"step": 1, "predicted_size": 4}]})
+
+    asyncio.run(
+        propagation_model_service.store_cached_current_event_prediction(
+            result,
+            event_id="event-1",
+            platform="weibo",
+            observed_until=None,
+            observation_ratio=0.5,
+            top_k=10,
+            snapshot_fingerprint="snapshot-v1",
+        )
+    )
+    fresh = asyncio.run(
+        propagation_model_service.read_cached_current_event_prediction(
+            event_id="event-1", platform="weibo", observed_until=None, observation_ratio=0.5, top_k=10
+        )
+    )
+    assert fresh["status"] == "ok"
+    assert fresh["cache"]["hit"] is True
+    assert fresh["cache"]["stale"] is False
+
+    async def fingerprint_v2(*_args, **_kwargs):
+        return "snapshot-v2"
+
+    monkeypatch.setattr(propagation_model_service, "event_data_fingerprint", fingerprint_v2)
+    stale = asyncio.run(
+        propagation_model_service.read_cached_current_event_prediction(
+            event_id="event-1", platform="weibo", observed_until=None, observation_ratio=0.5, top_k=10
+        )
+    )
+    assert stale["cache"]["hit"] is True
+    assert stale["cache"]["stale"] is True
+
+
 def test_propagation_analysis_cached_prediction_uses_internal_research_artifact():
     result = asyncio.run(
         propagation_prediction_service.predict_propagation_macro_micro(

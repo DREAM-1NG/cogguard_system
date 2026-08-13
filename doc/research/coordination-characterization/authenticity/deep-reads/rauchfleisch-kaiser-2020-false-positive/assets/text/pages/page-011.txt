@@ -1,0 +1,46 @@
+PLOS ONE                                              The False positive problem of automatic bot detection in social science research
+
+
+
+
+
+    Fig 5. CAP precision-recall curves for the resampled data sets. We consider the population baseline on Twitter (15% bots) for the universal CAP Botometer score,
+    Black points indicate the precision and the recall for the universal CAP 0.25. With the German politicians and bots for almost every threshold level the identified
+   sample of bots has more humans than real bots (precision). The x-axis represents the recall (sensitivity) and the y-axis represents the precision.
+
+    https://doi.org/10.1371/journal.pone.0241045.g005
+
+
+                                    even with the English scores. We further tested with unpaired DeLong tests [36, 37] whether
+                                        the ROC-AUC of the German data sets are statistically different from other data sets. Our test
+                                  shows that the ROC-AUC for the German data sets are significantly different from the
+                          ROC-AUC of the US politicians and bots with regard to the universal score (German politi-
+                                         cians and bots: D = -10.58, df = 2133.1, p < 0.001; German politicians and German bots: D =
+                                            -4.67, df = 586.12, p < 0.001; Bonferroni correction α = 0.005) as well as the universal CAP
+                                (German politicians and bots: D = -4.81, df = 579.12, p < 0.001; German politicians and
+
+
+Table 4. ROC-AUC as well as the PR-AUC English score.
+
+                Data set                  ROC-AUC         ROC-AUC sample          PR-AUC          PR-AUC sample
+
+                       All                             0.88 (0.86–0.89)              0.88 (0.87–0.88)              0.80 (0.79–0.82)             0.56 (0.55–0.56)
+
+    German politicians and German bots            0.68 (0.60–0.77)              0.69 (0.68–0.69)              0.08 (0.06–0.11)             0.23 (0.22–0.23)
+
+       German politicians and bots                 0.82 (0.79–0.84)              0.82 (0.81–0.82)              0.83 (0.81–0.86)             0.34 (0.34–0.35)
+
+        US politicians and bots                   0.93 (0.92–0.94)              0.93 (0.93–0.93)              0.96 (0.95–0.97)             0.75 (0.74–0.76)
+
+                 Varol et al.                         0.90 (0.88–0.91)              0.90 (0.90–0.90)              0.83 (0.80–0.85)             0.69 (0.68–0.70)
+
+ROC-AUC as well as the PR-AUC scores for the original data sets as well as the weighted resampled data sets (sample = 100,000) for the English score. The 95%
+confidence intervals based on 10,000 stratified bootstrap replicates are shown in brackets.
+
+https://doi.org/10.1371/journal.pone.0241045.t004
+
+
+
+
+
+PLOS ONE | https://doi.org/10.1371/journal.pone.0241045  October 22, 2020                                                        11 / 20

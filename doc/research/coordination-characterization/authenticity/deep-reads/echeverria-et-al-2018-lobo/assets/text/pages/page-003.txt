@@ -1,0 +1,75 @@
+Previous research
+       datasets
+
+  DeBot (from API)              Twitter                   User          Proﬁle                                   Full        Sub-Sampling
+                           User IDs                   Proﬁles       Features                          Dataset
+   Public Research
+                                                                                     General user      Datasets
+                                                                                                 features
+   Journalist attack                                                                                  (30)
+      Datasets                                       User          Tweet
+  Real User Dataset                                  Tweets        Features                               Dataset         Dataset
+    (Through BFS)                                                                         C30K          C500
+                                            Twitter API
+
+                                              Figure 1: Data collection strategy.
+
+
+so far in the literature.                                         fake followers from different fake follower services (Q) fast-
+  While most of the datasets have high percentage of bot ac-    followerz, (S) intertwitter, and (T) twittertechnology. All these
+counts associated with them, a few might have small amounts    datasets are used as ground truth.
+of false positives in them. This is a trade-off that needs to be
+                                                            Traditional spambots. Datasets H and I are traditional spam
+made to avoid inducing bias by ﬁltering these datasets before
+                                                          campaigns, pushing links to scam sites. Unfortunately the for-
+classiﬁcation. Do note that we are only reporting the number
+                                                   mer dataset was unavailable for collection, due to all but one
+of accounts that, at collection time, had not been suspended
+                                                               of its accounts being suspended. Datasets K and J are both
+by Twitter or marked as private. This is because suspension or
+                                                          groups of accounts spamming job offers.  All these datasets
+marking an account as private prevents us from collecting any
+                                                      were used in [12], while H was also used in [40].
+of its information.
+  Many of these datasets were obtained from past papers ei-    Social spambots. Social spambots are a relatively new breed
+ther from authors or directly querying each of the user IDs in    of bots which are better described in [12]. In summary, Social
+them against the Twitter API. Some of them come from an   spambots have evolved to accurately mimic the characteristics
+API themselves, and a couple of extra ones are not related to    of real users, making them very difﬁcult to identify. Dataset
+research, but the result of botnet attacks on two journalists and   F are retweeters of an Italian political candidate. Dataset E
+their own listing of the IDs that were involved in those attacks.    consists of spammers of paid apps for mobile devices. Finally,
+A summary of these datasets is presented in Table 1. Overall,    dataset G is made of spammers of products on sale at Ama-
+what follows is how we aggregated one of the largest and most   zon.com.
+varied bot datasets in research.
+                                                   Honeypot bots.  Dataset V consists of bots collected using
+The Star Wars Bots. Dataset A consists of bot accounts that   honeypot accounts. A honeypot account is a fake account con-
+tweet exclusively quotes from Star Wars novels.  It was re-    trolled by a researcher. The interactions with the account are
+ported by [18]. The Star Wars bots all share characteristics    logged, assuming they can only come from malicious accounts
+like a creation period, id range and small numbers of friends    since the honeypot account is fake and generally inactive. This
+and followers. This dataset consists of over 355,000 accounts.    dataset was made available through the DARPA twitter bot
+The Bursty Bots. The Bursty Bots is a botnet created on Twit-    challenge [34]. It is used as ground truth in that competition.
+ter with the objective of enticing users into blacklisted sites                                                             Journalist attack bots.  In August 2017, journalists Brian
+[17, 3].  It’s strategy was simple by using a mention and a
+                                                       Krebs and Ben Nimmo were subject to an attack by twitter
+shortened or obfuscated URL. They share some characteris-                                                                     bots. They logged some of the bots and published a dataset 1.
+tics like having zero friends and followers, and only a few
+                                        We collected the accounts from these two datasets and added
+tweets created immediately after account creation, only to re-                                                     them to our bot datasets as datasets W (the attack on Brian
+main completely silent afterwards. This dataset B consists of                                                          Krebs) and X (the attack on Ben Nimmo). These datasets are
+over 500,000 accounts.
+                                                              not used as ground truth and, to the best of our knowledge,
+DeBot. Debot is a bot detection service that generates daily   have not been used in research before.
+reports of bot activity, and stems from the work of [10][9].
+                                         Human Annotated Bots. Datasets L,M,N and O have beenIt comes with an API which we were able to query to obtain
+                                                               identiﬁed by humans as bots, and were used as ground truth inover 700,000 accounts that the service detected as bots. This
+                                                                     [21]. They were divided by the amount of followers that thedataset C is unique in our list, as it is actually the result of a
+                                                               bots have. The bands in which they are divided are 900-1100detection strategy, and not either ground truth or a single bot-
+                                                                followers(L), 90k to 110k followers(M), 900k to 1m follow-net. The main feature that DeBot detection exploits is warped
+                                                                  ers(N), and over 9m followers(O). Noticeably, the intermedi-correlation in the tweet timing of different accounts.
+                                                                    ate groups with different numbers of followers were not avail-
+Fake Followers. We explore different fake follower datasets                                                               able for collection.
+that have been used in various research studies. Dataset D is
+used in [12] and is just described as being fake followers. In
+contrast, datasets Q-T are described in [11] as being purchased     1https://krebsonsecurity.com/tag/twitter-bots/
+
+
+                                                   3

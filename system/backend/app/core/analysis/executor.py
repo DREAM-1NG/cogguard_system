@@ -6,6 +6,7 @@ from typing import Any, Protocol
 from app.core.analysis.contracts import AnalysisRunStatus, EventSnapshot, UnknownAnalysisStage, normalize_analysis_stage
 from app.core.analysis.registry import AnalysisRegistry
 from app.core.analysis.runtime import InternalStudentRuntime, InternalTeacherJobPort
+from app.core.semantic.runtime import ModelWeightsBlockedError, SemanticEnrichmentRuntime
 
 
 class CoordinationEngine(Protocol):
@@ -28,12 +29,25 @@ class TeacherJobPort(Protocol):
         ...
 
 
+class SemanticEngine(Protocol):
+    async def enrich(
+        self,
+        snapshot: EventSnapshot,
+        *,
+        options: dict[str, Any],
+        coordination: dict[str, Any] | None,
+        propagation: dict[str, Any] | None,
+    ) -> dict[str, Any]:
+        ...
+
+
 @dataclass(slots=True)
 class AnalysisEnginePorts:
     coordination: CoordinationEngine
     propagation: PropagationEngine
     student: StudentRuntime
     teacher: TeacherJobPort
+    semantic: SemanticEngine | None = None
 
 
 class AnalysisExecutor:
@@ -82,6 +96,7 @@ class AnalysisExecutor:
                 snapshot,
                 stage_options,
                 run_id=run_id,
+                prior_results=results,
             )
             results[stage] = result
             artifact_ref = await self.registry.save_run_artifact(
@@ -156,6 +171,7 @@ class AnalysisExecutor:
         options: dict[str, Any],
         *,
         run_id: str | None = None,
+        prior_results: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         if stage == "coordination_discover":
             return await self.engines.coordination.analyze(snapshot, options)
@@ -169,6 +185,31 @@ class AnalysisExecutor:
             return await self.engines.teacher.submit(
                 _case_from_snapshot(snapshot, options=options, run_id=run_id)
             )
+        if stage == "semantic_enrichment":
+            if self.engines.semantic is None:
+                return {
+                    "technology": "semantic_enrichment",
+                    "status": "unavailable",
+                    "runtime_status": "blocked",
+                    "blocking_reason": "Semantic engine is not configured",
+                    "fallback": False,
+                }
+            try:
+                prior = prior_results or {}
+                return await self.engines.semantic.enrich(
+                    snapshot,
+                    options=options,
+                    coordination=prior.get("coordination_discover"),
+                    propagation=prior.get("propagation_analysis"),
+                )
+            except ModelWeightsBlockedError as exc:
+                return {
+                    "technology": "semantic_enrichment",
+                    "status": "model_weights_blocked",
+                    "runtime_status": "blocked",
+                    "blocking_reason": str(exc),
+                    "fallback": False,
+                }
         raise UnknownAnalysisStage(f"Unknown analysis stage: {stage}")
 
 
@@ -232,12 +273,42 @@ class UnavailableTeacherJobPort:
         }
 
 
-def default_analysis_engine_ports() -> AnalysisEnginePorts:
+class LocalSemanticEnrichmentEngine:
+    """Lazy adapter for the fixed local-model semantic runtime."""
+
+    def __init__(self, runtime: SemanticEnrichmentRuntime | None = None) -> None:
+        self._runtime = runtime
+
+    async def enrich(
+        self,
+        snapshot: EventSnapshot,
+        *,
+        options: dict[str, Any],
+        coordination: dict[str, Any] | None,
+        propagation: dict[str, Any] | None,
+    ) -> dict[str, Any]:
+        if self._runtime is None:
+            self._runtime = SemanticEnrichmentRuntime()
+        return self._runtime.enrich(
+            snapshot,
+            coordination=coordination,
+            propagation=propagation,
+            claim=str(options.get("claim") or "") or None,
+        )
+
+
+def default_analysis_engine_ports(
+    semantic_runtime: SemanticEnrichmentRuntime | None = None,
+    semantic_engine: SemanticEngine | None = None,
+) -> AnalysisEnginePorts:
+    if semantic_runtime is not None and semantic_engine is not None:
+        raise ValueError("Provide either semantic_runtime or semantic_engine, not both")
     return AnalysisEnginePorts(
         coordination=SnapshotCoordinationEngine(),
         propagation=PropagationAnalysisPropagationEngine(),
         student=InternalStudentRuntime(),
         teacher=InternalTeacherJobPort(),
+        semantic=semantic_engine or LocalSemanticEnrichmentEngine(semantic_runtime),
     )
 
 
@@ -363,6 +434,7 @@ def _needs_evidence(result: Any) -> bool:
         "failed",
         "dispatch_failed",
         "persistence_failed",
+        "model_weights_blocked",
     }
 
 

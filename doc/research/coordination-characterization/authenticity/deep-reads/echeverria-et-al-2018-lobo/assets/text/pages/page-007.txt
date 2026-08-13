@@ -1,0 +1,66 @@
+couraging, show clear deterioration in accuracy.  In Table 3,              Target   Full Model  LOBO Model   Accuracy
+                                                                                   Class    Accuracy     Accuracy      Gain
+we see more than 5% loss in accuracy for the best performing
+                                                     A        97.41%       100.00%     60.34%
+algorithm, and a steeper 8% loss for decision trees.                    B        97.43%        99.98%     97.30%
+                                                     C        98.41%        96.19%     76.85%
+6.3 LOBO Test I - C30K                              D        97.91%        75.11%     68.79%
+                                                          E        97.83%        92.21%     23.23%
+  We run a LOBO test on our C30K bot dataset with class
+                                                               F        97.82%        98.30%      0.36%
+size ≤30k.  It follows the steps in Fig.  2. The results are                                                 G        97.84%        87.59%     11.79%
+summarized in Tab. 5, where:                              H        97.97%        73.47%      0.69%
+                                                                             J        97.79%        90.67%     93.29%
+   • Target Class is the dataset (Bct) or bot class that is being          K        97.71%        97.92%      2.35%
+     target of training                                         L        97.76%        87.39%     89.15%
+                                         M        97.81%        80.62%     76.59%
+   • Full Model Accuracy is the accuracy of the binary model          N        97.75%        90.54%     71.62%
+                                                 O        97.82%       100.00%     92.31%
+     trained on the training set of all classes (Train Bci +          Q        97.76%        80.00%     69.70%
+    Train Uc). It is calculated on the test subset of the target              S        97.74%        72.22%     73.44%
+     class (Test Ct). It provides the expected performance of           T        97.80%        73.45%     69.87%
+     the general (full) model on the target class, this is useful          V        98.24%        72.80%     47.16%
+     for context.                              W        97.91%        71.67%     64.83%
+                                                     X        97.76%        85.71%     79.12%
+   • LOBO Model Accuracy is the accuracy of the model                 Table 5: LOBO test on dataset C30K
+     trained on the dataset  that excludes the  target class
+    (Train {Bci −Bct} + Train Uc) when tested on the                                                            For this test, there is an expected level of variability, as se-
+      full target class (Bct) . This measure can be tested against                                                                    lecting just 500 instances of the large bot classes leaves large
+     the complete target class because none of it has been used                                                             percentages of them outside of the training set. In the case of
+     for training the model2.                                                                 the Bursty Bots (B) or DeBot bots (C), over 99.9% of the class
+                                                                               is kept out of the training. To mitigate this effect, we do this   • Acc.  gain This is just LOBO Model Accuracy sub-
+                                                      measurement 100 times for each of the target dataset. Each of     tracted from Full Model Accuracy.  It represents how
+                                                                these times we:    much a model’s performance improves when trained on
+     a the target class, as compared to its performance with-                                                                               • Randomly generate the C500 dataset.
+     out training on the target class. It is a subtraction because
+     differences will be substantial, so a ratio would have been        • Randomly split the resulting dataset 70% for training and
+     misleading.                                    30% for testing 3.
+
+  The results speak for themselves. The average expected ac-        • Train a classiﬁer on the training set that has just been cre-
+curacy on a target bot class that the classiﬁer has not been         ated (this is referred to as the Full Model)
+trained on is 54.88%.  This is almost as bad as random (al-                                                                               • Test the Full model on the 30% testing set of the class
+though we are deliberately excluding the user class from the                                                                            that will be evaluated as target. This gives the Full Model
+testing). As would be expected, there are some exceptions that                                                           Accuracy.
+perform well like the Bursty bots (B). However, even before
+excluding the target class from the training data some of the        • Remove all instances of the target bot class from the train-
+classes performed as poorly as 19%.                                ing set.
+   It is noticeable that some of these classes are actually ”los-
+                                                                               • Train a new “LOBO model” on the new training set thating” accuracy when being included in the test set, this is most
+                                                                     lacks the target class.likely due to the large difference in size between the test set
+for the LOBO model (Bct) and the test set for the Full model                                                                               • Test the accuracy of the LOBO model on the full target
+(TestCt). We further note that the average accuracy for all                                                                         class (which was recently removed from the training set),
+classes is well below the 97% achieved originally, which only                                                           and obtain LOBO Model Accuracy
+means that we are performing better on the large classes than
+the smaller ones.                                                All of these steps are performed 100 times for each of the
+                                                              bot classes. What results is the ability to evaluate how a model
+6.4 LOBO Test II - C500                                 trained on balanced bot classes can be expected to perform
+  One could make the argument that the differences in the per-    against a target bot class which is previously unseen by this
+formance of these classiﬁers is due to their large imbalance   model.  Furthermore,  it allows performance comparison for
+between their classes. We use dataset C500 to test if this is   when this model has seen just 500 of the target class against
+true.                                                          not seeing any, with some surprising results. Table 6 shows
+
+2Because we are testing only on the bot class, accuracy and recall are the same     3In contrast to LOBO test I, now every bot class gets a similar number of
+ because false positives and true negatives are zero                                instances for training and testing
+
+
+                                                   7

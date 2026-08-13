@@ -1,0 +1,20 @@
+{
+    "schema_version":  1,
+    "generated_at":  "2026-08-11T18:50:40.7812118Z",
+    "command":  "python C:\\Users\\p\\.codex\\skills\\paper-deep-reader\\scripts\\validate_report.py G:\\CISCN\\CogGuard\\.worktrees\\refactor-system\\doc\\research\\coordination-characterization\\harmfulness\\deep-reads\\pote-et-al-2025-coordinated-reply-attacks\\report.md --manifest G:\\CISCN\\CogGuard\\.worktrees\\refactor-system\\doc\\research\\coordination-characterization\\harmfulness\\deep-reads\\pote-et-al-2025-coordinated-reply-attacks\\assets\\visual_manifest.json --strict",
+    "exit_code":  0,
+    "result":  "PASS",
+    "output":  [
+                   "NOTE: Found 16 Markdown image reference(s).",
+                   "NOTE: Visual coverage: 18 total, 16 marked key.",
+                   "NOTE: Source map contains 6 claim(s).",
+                   "PASS: 0 errors, 0 warning(s)."
+               ],
+    "report_sha256":  "f96bf6bbfef48f255e54b8bb40f6acb4175cbb5a9a7ffcd18a420cdb989f43be",
+    "manifest_sha256":  "5eab12d93402c0db663987ba1369efc1a70a7263e24d933f0f95d05832fb8207",
+    "source_map_sha256":  "701345737c06fccd98fe19d25a2c109662ad6dc48d4daeca8bc87d4b67a1a364",
+    "visual_verification":  "complete",
+    "selected_assets_reviewed":  true,
+    "automatic_crops_are_unverified":  true,
+    "interpretation":  "Strict validation passed. Selected/key assets were manually reviewed; automatic crops remain unverified by design unless selected."
+}

@@ -29,6 +29,7 @@ __all__ = [
     "review_queue",
     "review_executor",
     "selective_student",
+    "taxonomy_student",
     "teacher_silver",
     "trainable_post",
     "user_gate",

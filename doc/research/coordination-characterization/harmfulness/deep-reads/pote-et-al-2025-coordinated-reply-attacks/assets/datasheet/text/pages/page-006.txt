@@ -1,0 +1,57 @@
+Yes. We provide user IDs of Twit-  and control tweets, were collected us-
+ter accounts, which are public informa-  ing the Twitter Academic API. The
+tion. One can identify the individuals  data has been thoroughly validated
+by querying the Twitter API.           to remove duplicates and ensure con-
+                                         sistency in data types.  Data about
+Does the dataset contain data that
+                                    suspended accounts and inconsistent
+might be considered sensitive in
+                                        records  (e.g.,  profiles with  creation
+any way  (e.g.,  data that reveals
+                                      date before the creation of Twitter)
+racial or ethnic origins, sexual ori-
+                                    have been removed to maintain data
+entations, religious beliefs,  polit-
+                                            quality.
+ical opinions or union member-
+ships,  or locations;  financial or                             What mechanisms or procedures
+health data; biometric or genetic                               were  used  to  collect  the  data
+data; forms of government iden-                                             (e.g., hardware apparatus or sen-
+tification, such as social security                                        sor, manual human curation, soft-
+numbers; criminal history)?   If so,                               ware program, software API)? How
+please provide a description.                                 were these mechanisms  or proce-
+ No.  The dataset contains derived
+                                   dures validated?
+data and Twitter account/tweet IDs
+                                The target accounts were manually
+are public information.
+                                    annotated by one of the authors. The
+                                      annotation process is described in the
+        Collection Process        RQ1 section of the paper. Other data
+                                    were collected from the Twitter API
+How was the data associated with  using client software developed by the
+each instance acquired? Was the  author.   Extensive exploratory data
+data  directly observable  (e.g.,  raw  analysis was conducted to gain insights
+text, movie ratings), reported by sub-  into the data, with key findings sum-
+jects (e.g., survey responses), or indi-  marized in the paper.
+rectly inferred/derived from other data
+(e.g.,  part-of-speech  tags,  model-   If the dataset is a sample from a
+based guesses for age or language)?  larger set, what was the sampling
+If data was reported by subjects or  strategy (e.g., deterministic, proba-
+indirectly inferred/derived from other   bilistic with specific sampling prob-
+data, was the data validated/verified?  abilities)?
+If so, please describe how.           The targeted tweet dataset consists
+ The  replies from Influence Opera-  of a sample of tweets from Twitter
+tion (IO) accounts were derived from  Influence Operation (IO) campaigns,
+Twitter’s Influence Operation dataset,   specifically those that have five or more
+which was publicly available on the   replies from IO accounts. In addition,
+website  of  the  Twitter Moderation  we collected all replies (without sam-
+Research Consortium (https://web.  pling) from normal users responding
+archive.org/web/20240829231920/   to the same targeted tweets. For the
+https://transparency.x.com/en/     control dataset, we collected all replies
+reports/moderation-research) un-  (not sampled) to selected tweets by
+til summer 2024.  All other data, in-  targeted users that had five or more
+cluding target profiles, normal replies,   replies from any users.
+
+
+                                  6

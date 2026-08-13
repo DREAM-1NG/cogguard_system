@@ -54,7 +54,7 @@
             <strong>{{ detectionSummary.account_count }}</strong>
           </div>
           <div class="metric-item attention">
-            <span>需关注</span>
+            <span>BotRHG 判别</span>
             <strong>{{ detectionSummary.bot_count }}</strong>
           </div>
           <div class="metric-item">
@@ -75,7 +75,7 @@
             <strong>{{ profileStats.total }}</strong>
           </div>
           <div class="metric-item attention">
-            <span>需关注</span>
+            <span>BotRHG 判别</span>
             <strong>{{ profileStats.attention }}</strong>
           </div>
           <div class="metric-item">
@@ -91,7 +91,7 @@
       <template #title>账号列表</template>
       <template #extra>
         <a-space :size="8">
-          <a-tag color="gold">需关注 {{ profileStats.attention }}</a-tag>
+          <a-tag color="gold">BotRHG 判别 {{ profileStats.attention }}</a-tag>
           <a-tag>待研判 {{ profileStats.pending }}</a-tag>
         </a-space>
       </template>
@@ -122,9 +122,6 @@
             </template>
             <template v-else-if="column.key === 'prediction'">
               <span>{{ predictionLabel(record.assessment?.prediction) }}</span>
-              <div class="account-subtitle">
-                {{ record.assessment?.calibrated ? '已校准' : '未校准或暂无校准' }}
-              </div>
             </template>
             <template v-else-if="column.key === 'bot_probability'">
               <div class="probability-cell">
@@ -169,7 +166,7 @@
             <a-descriptions-item label="发言数">{{ detail.post_count ?? 0 }}</a-descriptions-item>
             <a-descriptions-item label="活跃时段">{{ activeHoursLabel(detail.active_hours) }}</a-descriptions-item>
             <a-descriptions-item label="最短间隔">{{ intervalLabel(detail.min_interval_seconds) }}</a-descriptions-item>
-            <a-descriptions-item label="研判结果">
+            <a-descriptions-item label="BotRHG 判别">
               <a-tag :color="assessmentColor(detail.assessment?.level)">
                 {{ assessmentLabel(detail.assessment?.level) }}
               </a-tag>
@@ -177,11 +174,8 @@
             <a-descriptions-item label="模型判别">
               {{ predictionLabel(detail.assessment?.prediction) }}
             </a-descriptions-item>
-            <a-descriptions-item label="机器人概率">
+            <a-descriptions-item label="机器人概率（模型概率 / BotRHG 概率）">
               {{ probabilityLabel(detail.assessment?.bot_probability) }}
-            </a-descriptions-item>
-            <a-descriptions-item label="校准状态">
-              {{ detail.assessment?.calibrated ? '已校准' : '未校准或暂无校准' }}
             </a-descriptions-item>
             <a-descriptions-item label="模型版本">
               {{ detail.assessment?.model_version || activeModel?.model_version || '暂无' }}
@@ -190,14 +184,6 @@
               {{ decisionPathLabel(detail.assessment) }}
             </a-descriptions-item>
           </a-descriptions>
-
-          <a-alert
-            v-if="detailAssessmentProblem"
-            class="detail-section"
-            type="info"
-            show-icon
-            :message="detailAssessmentProblem"
-          />
 
           <section class="detail-section">
             <h3 class="section-title">超图相近账号</h3>
@@ -331,9 +317,9 @@ const columns = [
   { title: '账号', dataIndex: 'author_name', key: 'author_name', width: 220, ellipsis: true },
   { title: '平台', dataIndex: 'platform', key: 'platform', width: 100 },
   { title: '发言数', dataIndex: 'post_count', key: 'post_count', width: 90 },
-  { title: '研判结果', dataIndex: 'assessment', key: 'assessment', width: 120 },
+  { title: 'BotRHG 判别', dataIndex: 'assessment', key: 'assessment', width: 120 },
   { title: '模型判别', dataIndex: ['assessment', 'prediction'], key: 'prediction', width: 150 },
-  { title: '机器人概率', dataIndex: ['assessment', 'bot_probability'], key: 'bot_probability', width: 150 },
+  { title: '机器人概率（模型概率 / BotRHG 概率）', dataIndex: ['assessment', 'bot_probability'], key: 'bot_probability', width: 150 },
   { title: '相近账号', dataIndex: ['assessment', 'similar_accounts'], key: 'support_count', width: 90 },
   { title: '活跃时段', dataIndex: 'active_hours', key: 'active_hours', width: 110 },
   { title: '操作', dataIndex: 'operation', key: 'operation', width: 80 },
@@ -393,20 +379,6 @@ const detectionNarrative = computed(() => {
   }
   const latency = result.prediction_latency_ms ? `，耗时 ${Math.round(result.prediction_latency_ms)}ms` : ''
   return `已完成 BotRHG 账号检测${latency}。`
-})
-
-const modelProblemMessage = computed(() => {
-  if (!activeModel.value) return '尚未读取当前模型指针。'
-  if (activeModel.value.status === 'available') return ''
-  const reason = reasonLabel(activeModel.value.reason || activeModel.value.detail)
-  return `当前账号检测模型不可用：${reason}`
-})
-
-const detailAssessmentProblem = computed(() => {
-  if (!detail.value) return ''
-  if (detail.value.assessment?.prediction) return ''
-  if (modelProblemMessage.value) return modelProblemMessage.value
-  return '当前账号没有可展示的模型判别结果。'
 })
 
 function queryParams(): AccountQueryParams {
@@ -498,7 +470,7 @@ function detectionAccountToAssessment(row: Record<string, any>): AccountAssessme
   const probability = probabilityValue(row.calibrated_bot_probability ?? row.final_bot_probability)
   return {
     level: prediction === 'bot' ? 'attention' : prediction === 'human' ? 'normal' : 'pending',
-    label: prediction === 'bot' ? '需关注' : prediction === 'human' ? '未见异常' : '暂无研判',
+    label: prediction === 'bot' ? 'BotRHG: bot' : prediction === 'human' ? 'BotRHG: human' : '暂无模型输出',
     prediction,
     final_prediction: prediction,
     bot_probability: probability,
@@ -546,9 +518,9 @@ function displayName(record: AccountProfile) {
 }
 
 function assessmentLabel(level: AccountAssessment['level']) {
-  if (level === 'attention') return '需关注'
-  if (level === 'normal') return '未见异常'
-  return '暂无研判'
+  if (level === 'attention') return 'BotRHG: bot'
+  if (level === 'normal') return 'BotRHG: human'
+  return '暂无模型输出'
 }
 
 function assessmentColor(level: AccountAssessment['level']) {
@@ -559,7 +531,7 @@ function assessmentColor(level: AccountAssessment['level']) {
 
 function predictionLabel(value: unknown) {
   const prediction = normalizedPrediction(value)
-  if (prediction === 'bot') return '社交机器人'
+  if (prediction === 'bot') return 'Bot'
   if (prediction === 'human') return '正常账号'
   return '暂无'
 }
@@ -631,7 +603,7 @@ function reasonLabel(value: unknown) {
 
 function decisionPathLabel(assessment?: AccountAssessment) {
   if (!assessment?.prediction) return '暂无'
-  return assessment.routed ? '超图校正' : '基础分类'
+  return assessment.routed ? 'BotRHG 超图校正' : 'BotRHG 模型输出'
 }
 
 function postTitle(post: Record<string, any>) {

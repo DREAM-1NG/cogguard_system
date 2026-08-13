@@ -150,9 +150,6 @@ def _complete_detection_metrics():
         "macro_f1": 0.75,
         "roc_auc": 0.85,
         "ece": 0.1,
-        "selective_coverage": 0.75,
-        "selective_risk": 0.1,
-        "abstain_rate": 0.25,
     }
 
 
@@ -430,14 +427,12 @@ def test_metric_suite_covers_discovery_detection_and_cross_seed_stability():
     detection = metrics.detection_metrics(
         labels=(0, 1, 0, 1),
         probabilities=(0.05, 0.95, 0.1, 0.9),
-        decisions=("benign_coordination", "harmful_coordination", "abstain", "harmful_coordination"),
+        decisions=("benign_coordination", "harmful_coordination", "benign_coordination", "harmful_coordination"),
     )
     assert detection["auprc"] == pytest.approx(1.0)
     assert detection["macro_f1"] == pytest.approx(1.0)
     assert detection["roc_auc"] == pytest.approx(1.0)
-    assert detection["selective_coverage"] == pytest.approx(0.75)
-    assert detection["selective_risk"] == pytest.approx(0.0)
-    assert detection["abstain_rate"] == pytest.approx(0.25)
+    assert set(detection) == {"auprc", "macro_f1", "roc_auc", "ece"}
     assert metrics.cross_seed_stability((
         {"a": "x", "b": "x", "c": "y"},
         {"a": "one", "b": "one", "c": "two"},
@@ -472,9 +467,9 @@ def test_metric_directions_are_explicit_and_complete():
     maximize = {
         "candidate_recall", "edge_auprc", "b_cubed_precision", "b_cubed_recall",
         "b_cubed_f1", "nmi", "ari", "cross_seed_stability", "auprc",
-        "macro_f1", "roc_auc", "selective_coverage",
+        "macro_f1", "roc_auc",
     }
-    minimize = {"spectral_distortion", "ece", "selective_risk", "abstain_rate", "runtime_seconds", "peak_memory_bytes"}
+    minimize = {"spectral_distortion", "ece", "runtime_seconds", "peak_memory_bytes"}
     assert {name for name in maximize if metrics.metric_direction(name) != "maximize"} == set()
     assert {name for name in minimize if metrics.metric_direction(name) != "minimize"} == set()
     with pytest.raises(ValueError, match="unknown metric"):

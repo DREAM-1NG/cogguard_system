@@ -16,6 +16,35 @@ from app.core.propagation import build_propagation_graph
 from app.services.propagation_prediction_service import build_event_inference_bundle, predict_event_with_checkpoint
 
 
+def test_layered_visibility_keeps_early_layers_and_key_path_connectors():
+    graph = {
+        "root": {"layer": 0, "is_key": False},
+        "first-a": {"layer": 1, "is_key": False},
+        "first-b": {"layer": 1, "is_key": False},
+        "second-a": {"layer": 2, "is_key": False},
+        "second-b": {"layer": 2, "is_key": False},
+        "connector": {"layer": 3, "is_key": False},
+        "deep-key": {"layer": 4, "is_key": True},
+        "noise": {"layer": 4, "is_key": False},
+    }
+    edges = [("root", "first-a"), ("root", "first-b"), ("first-a", "second-a"),
+             ("first-b", "second-b"), ("second-a", "connector"), ("connector", "deep-key"),
+             ("second-b", "noise")]
+
+    visible = propagation_legacy._select_layered_visible_nodes(
+        graph,
+        edges,
+        root_id="root",
+        key_paths=[["root", "first-a", "second-a", "connector", "deep-key"]],
+        total_limit=7,
+        first_layer_limit=2,
+        second_layer_limit=2,
+    )
+
+    assert {"root", "first-a", "first-b", "second-a", "second-b", "connector", "deep-key"}.issubset(visible)
+    assert "noise" not in visible
+
+
 # ---------------------------------------------------------------------------
 # Fixtures: 构造测试数据
 # ---------------------------------------------------------------------------

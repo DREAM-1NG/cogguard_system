@@ -19,7 +19,7 @@ from research.coordination_detect.contracts import (
     case_id_fingerprint,
 )
 from research.coordination_detect.features import STAGE1_FEATURE_NAMES
-from research.coordination_detect.learned import _fit_platt, _select_thresholds, _sigmoid
+from research.coordination_detect.learned import _fit_platt, _sigmoid
 
 from .baselines import LearnedDetectionImplementation as _LearnedDetectionImplementation
 from .public_detection_sources import (
@@ -400,13 +400,25 @@ def _configs(kind: str, train_count: int, method_id: str = "") -> tuple[_TrainCo
             for lr in (0.001, 0.003)
             for alpha in (1.0e-4,)
         )
-    if method_id == "deep_tabular_residual_detector":
-        return (
-            _TrainConfig(64, 2, 0.1, 0.003, 1.0e-4, 40, 5, "fast_tabular_single_v4"),
+    if kind == "tabular":
+        if method_id == "deep_tabular_residual_detector":
+            return tuple(
+                _TrainConfig(hidden, depth, dropout, lr, weight_decay, 200, 25, "medium_5seed_grid")
+                for hidden in (64, 128)
+                for depth in (2, 3)
+                for dropout in (0.1, 0.3)
+                for lr in (0.001, 0.003)
+                for weight_decay in (1.0e-4, 1.0e-3)
+            )
+        return tuple(
+            _TrainConfig(hidden, depth, dropout, lr, weight_decay, 200, 25, "medium_5seed_grid")
+            for hidden in (64, 128)
+            for depth in (2, 3)
+            for dropout in (0.1, 0.3)
+            for lr in (0.001, 0.003)
+            for weight_decay in (1.0e-4, 1.0e-3)
         )
-    return (
-        _TrainConfig(64, 2, 0.1, 0.003, 1.0e-4, 40, 5, "fast_tabular_single_v4"),
-    )
+    raise ValueError(f"unknown deep Detection config kind: {kind}")
 
 
 def _calibration_and_score(
@@ -427,19 +439,9 @@ def _calibration_and_score(
         intercept = 0.0
         mode = "identity_sigmoid_fallback"
     probabilities = _sigmoid(float(slope) * logits + float(intercept))
-    try:
-        lower, upper = _select_thresholds(probabilities, labels.astype(np.int64))
-    except ValueError:
-        lower, upper = 0.45, 0.55
-        mode = f"{mode}_with_default_selective_thresholds"
-    covered = (probabilities <= lower) | (probabilities >= upper)
-    if not np.any(covered):
-        score = 0.0
-    else:
-        predictions = (probabilities[covered] >= upper).astype(np.int64)
-        covered_labels = labels[covered].astype(np.int64)
-        score = _macro_f1(covered_labels, predictions) * float(np.mean(covered))
-    return float(slope), float(intercept), float(lower), float(upper), mode, float(score)
+    predictions = (probabilities >= 0.5).astype(np.int64)
+    score = _macro_f1(labels.astype(np.int64), predictions)
+    return float(slope), float(intercept), 0.5, 0.5, mode, float(score)
 
 
 def _binary_f1(labels: np.ndarray, predictions: np.ndarray, positive_label: int) -> float:
@@ -530,7 +532,7 @@ def _artifact(
             "algorithm": fit.calibration_mode,
             "regularization": 0.001,
         },
-        threshold_objective="maximize_covered_macro_f1_times_coverage",
+        threshold_objective="forced_binary_probability_at_0_5",
         train_fit_case_ids_fingerprint=case_id_fingerprint(example.case_id for example in train),
         validation_calibration_case_ids_fingerprint=case_id_fingerprint(example.case_id for example in validation),
         validation_threshold_case_ids_fingerprint=case_id_fingerprint(example.case_id for example in validation),
@@ -545,18 +547,9 @@ def _predictions(
     logits: np.ndarray,
 ) -> tuple[DetectionPrediction, ...]:
     probabilities = _sigmoid(artifact.calibrator_slope * logits + artifact.calibrator_intercept)
-    low = artifact.validation_ood_min[0]
-    high = artifact.validation_ood_max[0]
     predictions: list[DetectionPrediction] = []
-    for example, logit, probability in zip(examples, logits, probabilities, strict=True):
-        if logit < low or logit > high:
-            decision = "abstain"
-        elif probability <= artifact.lower_decision_threshold:
-            decision = "benign_coordination"
-        elif probability >= artifact.upper_decision_threshold:
-            decision = "harmful_coordination"
-        else:
-            decision = "abstain"
+    for example, _logit, probability in zip(examples, logits, probabilities, strict=True):
+        decision = "harmful_coordination" if probability >= 0.5 else "benign_coordination"
         predictions.append(
             DetectionPrediction(
                 case_id=example.case_id,

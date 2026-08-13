@@ -1,0 +1,53 @@
+Figure 5: Engagement received by targeted and control tweets. (A) Replies, (B) retweets, and (C) likes. The distributions are
+significantly different in all cases according to Kolmogorov-Smirnov tests (p < 10−6).
+
+                              Classifier               Prec.         Rec.        F1      AUC
+                             Logistic Regression   0.65 ± 0.00   0.86 ± 0.00   0.74 ± 0.00   0.80 ± 0.00
+                     Random Forest       0.73 ± 0.00   0.87 ± 0.00   0.80 ± 0.00   0.88 ± 0.00
+                        AdaBoost            0.64 ± 0.00   0.89 ± 0.00   0.74 ± 0.00   0.81 ± 0.00
+                           Decision Tree        0.52 ± 0.01   0.95 ± 0.02   0.66 ± 0.00   0.69 ± 0.00
+                         Naive Bayes          0.49 ± 0.00   1.00 ± 0.00   0.66 ± 0.00   0.68 ± 0.00
+
+Table 2: Results of different algorithms in the tweet classification task. We present standard errors rounded to the second decimal
+point.
+
+
+      Features set         Prec.   Rec.   F1  AUC
+     reply count       0.5    0.99   0.67   0.59
+     retweet count    0.49    1     0.66   0.54
+     like count        0.49    1     0.66   0.52
+      Engagement         0.69    0.86   0.77   0.84
+        Entities              0.52    0.95   0.67   0.65
+      Delay               0.51    0.96   0.67   0.66
+       Similarity            0.54    0.96   0.69   0.68
+       All features          0.73    0.87   0.80   0.88
+
+Table 3: Contributions of different tweet-level features and
+reply-level feature sets to the Random Forest tweet classifier.
+The last row (using all features) corresponds to the results in
+Table 2.
+
+
+Forest on individual tweet-level features and reply-level fea-      Figure 6: Permutation feature importance for tweet classi-
+ture sets. The results using 10-fold cross-validation are given         fier. We report the median (orange line), 50% confidence in-
+in Table 3. Second, we performed a permutation feature im-       terval (box), and 99.3% confidence interval (whiskers) of the
+portance test, which measures the importance of features by      drop in F1 score when each feature/attribute set is shuffled.
+computing the loss in accuracy when the values of those fea-     Boxes with the same color indicate attributes in the same
+tures are shuffled (permuted). To simplify the analysis, for       feature set. Larger values indicate higher importance.
+each reply-level attribute we shuffled all the corresponding
+features rather than each feature individually. For example,
+for the like count engagement attribute, we shuffled all
+12 summary statistics features at once. We repeated this test        ter users; instead, they primarily boosted retweet and reply
+10 times and recorded the drop in mean F1 score from 10-      counts for other IO accounts to artificially amplify Vucic
+fold cross-validation for each iteration. The distribution of      and his allies on Twitter (Bush 2020). In fact, we find that
+these drop values is given in Fig. 6.                                 replies to targeted tweets from IO accounts have a higher
+                                                 mean retweet count than replies from normal repliers (0.63  Both approaches consistently show that reply-level en-
+                                                            vs 0.31) and also a higher mean like count (1.28 vs 0.81) andgagement features are important. A classifier using only
+                                                 mean reply count (0.20 vs 0.13). However, our data does notthose features achieves F1=0.77 and AUC=0.84 (Table 3),
+                                                             allow us to determine if such engagement was mostly drivenand removing those features causes significant drops in F1
+                                                     by IO accounts or organic.(Fig. 6). In our classification dataset, the majority of targets
+are from the Serbia campaign. IO accounts in this campaign        Since reply-level engagement may be affected by the
+were not intended to generate engagement with other Twit-       popularity of the targeted tweets,  it is legitimate to ask
+
+
+                                                   1591

@@ -1,0 +1,27 @@
+If any errors are found in the future,  please describe how.   If not, please
+the dataset will be updated by the au-  describe how its obsolescence will be
+thor.                             communicated to users.
+                                                       If the dataset is updated in the fu-If the dataset relates to people, are
+                                           ture, older versions will continue to bethere applicable limits on the reten-
+                                          available on Zenodo.tion of the data associated with the
+instances (e.g., were individuals in                                                          If others want to extend/augment/
+question told that their data would                                     build on/contribute to the dataset,
+be retained for a fixed period of                                           is  there a mechanism  for them
+time and then deleted)? If so, please                                      to do so?     If so, please provide
+describe these limits and explain how                                a description.   Will these contribu-
+they will be enforced.                                          tions be  validated/verified?      If  so,
+The  Indiana  University IRB  deter-                                    please describe how.  If not, why not?
+mined that the data collection con-                                              Is there a process for communicat-
+sisted in observation of public behavior                                            ing/distributing these contributions to
+with minimal risks to subjects, there-                                       other users?   If so, please provide a
+fore we are not aware of applicable lim-                                          description.
+its.                                         Yes, the CC BY 4.0 license allows for
+Will   older   versions   of   the  adaptations with attribution. We may
+dataset  continue   to  be  sup-  or may not be asked or be available to
+ported/hosted/maintained?     If so,  validate/verify derived datasets.
+
+
+
+
+
+                                  10

@@ -1,0 +1,62 @@
+LCH                                                                                                                                                      CON LAB TVT SNP B60 ASE LCH
+                                                                                                                                          more
+                                                                                                                                                             coord
+
+
+
+                 SNP
+                                                        TVT
+                                                                                                                                                                                                       less
+                                                                                                                                                             coord
+
+
+
+                                                                 B60
+
+
+
+
+
+                                                        ASE             CON                  LAB
+
+
+
+
+ Figure 4: Coordinated communities found within the ﬁltered user similarity network. Communities are color-coded. For each
+ color, intensity encodes the extent of coordination. In this way, users exhibiting higher coordination with other users are identi-
+ ﬁed with darker shades of colors.
+
+
+
+
+
+       (a)  CON.         (b)  LAB.         (c)  TVT.         (d)  SNP.         (e)  B60.           (f)  ASE.         (g)  LCH.
+
+ Figure 5: TF-IDF weighted hashtag clouds for the different coordinated communities, representing the key issues and debates
+ within the communities. Hashtag polarity is color-coded.
+
+
+   connections of Backto60 activists are well reﬂected in our           tivists, similarly to the B60 cluster. This time activists
+   network, as represented by the B60 cluster being linked        were protesting against “loan charge”, a tax charge in-
+   to both the LAB and TVT clusters.                              troduced to contrast a form of tax avoidance based on
+                                                                  disguised remunerations. Anti-loan charge campaigners6.   ASE: The tightly connected users in this cluster are
+                                                               claim that it is a retrospective taxation that, due to the ab-
+    all strongly leaning towards Conservatives, as also clearly
+                                                              normally long period of application, caused involved peo-
+   visible by their connections. However, their activities are
+                                                                    ple to return unsustainable amounts, also inducing several
+   mainly devoted towards attacking the Labour party and
+                                                                         suicides10.
+    its leader, rather than to support the Tories. As con-
+  ﬁrmed from Figure 5f, some of the most relevant hashtags     The analysis of the communities detected in our user sim-
+   of this cluster are against Labours (labourlies, nevercorbyn)        ilarity network allowed us to identify both large clusters,
+   and, in particular, are about the antisemitism allegations      each corresponding to one of the major political forces in-
+    (labourantisemitism, votelabourvoteracism) that held the stage dur-      volved in the election, as well as much smaller ones. The
+   ing the entire electoral campaign9.                           small clusters are related to highly organized activists (B60,
+                                                  LCH) and political campaigns (ASE). The previous analysis
+7.   LCH: Finally, the last cluster is again composed of ac-
+                                                            10GOV.UK,   “Disguised   remuneration:   guidance    fol-
+    9G. Pogrund,  J.  Calavert, and G.  Arbuthnott, “Revealed:       lowing  the  outcome  of  the  independent  loan  charge  re-
+ the  depth  of Labour  anti-semitism.” The  Times, 8 Decem-       view.”  GOV.UK,  20  January  2020.  Available   at   https:
+ ber 2019. Available at https://www.thetimes.co.uk/article/revealed-       //www.gov.uk/government/publications/disguised-remuneration-
+ the-depth-of-labour-anti-semitism-bb57h9pdz                         independent-loan-charge-review/guidance

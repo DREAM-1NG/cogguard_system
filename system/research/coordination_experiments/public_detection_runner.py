@@ -105,7 +105,6 @@ _DEEP_ACTIVATION_METRICS = (
     "macro_f1",
     "roc_auc",
     "ece",
-    "selective_coverage",
     "runtime_seconds",
 )
 _TORCH_WARMUP_METHOD_IDS = frozenset(
@@ -554,7 +553,11 @@ def default_public_detection_method_registry() -> PublicDetectionMethodRegistry:
             "https://arxiv.org/abs/2412.14663",
             ("account_membership_labels",),
             None,
-            "Discovery/account recovery baseline, not harmful graph-level Detection without extra labels.",
+            (
+                "Official SocGFM Cross-Attention reproduction is available through "
+                "iohunter_socgfm.py for account membership; it is not a harmful "
+                "graph-level Detection adapter without additional labels."
+            ),
         ),
         PublicDetectionMethodSpec(
             "truthy_classic_feature_classifier",
@@ -1319,9 +1322,6 @@ def _deep_activation_summary(
     candidate_ece = metrics["ece"]["candidate_mean"]
     system_ece = metrics["ece"]["system_mean"]
     strongest_ece = metrics["ece"]["strongest_fair_baseline_mean"]
-    candidate_coverage = metrics["selective_coverage"]["candidate_mean"]
-    system_coverage = metrics["selective_coverage"]["system_mean"]
-    strongest_coverage = metrics["selective_coverage"]["strongest_fair_baseline_mean"]
     candidate_runtime = metrics["runtime_seconds"]["candidate_mean"]
     system_runtime = metrics["runtime_seconds"]["system_mean"]
     strongest_runtime = metrics["runtime_seconds"]["strongest_fair_baseline_mean"]
@@ -1338,9 +1338,6 @@ def _deep_activation_summary(
         and candidate_ece is not None
         and system_ece is not None
         and strongest_ece is not None
-        and candidate_coverage is not None
-        and system_coverage is not None
-        and strongest_coverage is not None
         and candidate_runtime is not None
         and system_runtime is not None
         and strongest_runtime is not None
@@ -1355,14 +1352,11 @@ def _deep_activation_summary(
         and candidate_roc > strongest_roc
     )
     calibration_passed = candidate_ece <= max(system_ece, strongest_ece) + 0.02
-    coverage_passed = candidate_coverage >= min(system_coverage, strongest_coverage) - 0.05
     runtime_passed = candidate_runtime <= 2.0 * max(system_runtime, strongest_runtime, 1.0e-9)
     if not quality_passed:
         return False, "candidate does not exceed both learned_fused_detector and strongest fair baseline on AUPRC, Macro-F1, and ROC-AUC", metrics
     if not calibration_passed:
         return False, "candidate ECE regresses beyond the fixed tolerance", metrics
-    if not coverage_passed:
-        return False, "candidate selective coverage regresses beyond the fixed tolerance", metrics
     if not runtime_passed:
         return False, "candidate runtime regresses beyond the fixed 2x tolerance", metrics
     return True, "candidate satisfies the research activation gate", metrics
@@ -1434,7 +1428,7 @@ def _deep_candidate_claim_gates(
                     "activation_rule": (
                         "candidate must exceed learned_fused_detector and the strongest "
                         "successful non-deep learned_comparison baseline on AUPRC, Macro-F1, "
-                        "and ROC-AUC, while meeting fixed ECE, coverage, and runtime tolerances"
+                        "and ROC-AUC, while meeting fixed ECE and runtime tolerances"
                     ),
                     "reason": reason,
                     "metrics": metrics,

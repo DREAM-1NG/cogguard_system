@@ -1,0 +1,66 @@
+Published as a conference paper at ICLR 2024
+
+
+
+
+
+          30                                                                100
+                  density 20                                                         10 1
+          10                                                         10 2
+
+           0
+              0.06    0.07    0.08    0.09    0.10    0.11    0.12    0.13           0        5        10       15       20       25
+                                                   risk                                                   set size as a fraction of polyp size
+Figure 1: FNR control in tumor segmentation. The top figure shows examples of our procedure
+with correct pixels in white, false positives in blue, and false negatives in red. The bottom plots
+report FNR and set size over 1000 independent random data splits. The dashed gray line marks α.
+
+
+          fork                       person                       suitcase                   person                    person
+        cake                         tennis racket                 chair                              traffic light                       tie
+         dining table                                                                       umbrella
+                                                                                handbag
+
+
+
+
+
+          80                                                                 0.30
+                                                                               0.25
+          60
+                                                                               0.20
+          40                                                                 0.15                  density
+                                                                               0.10
+          20
+                                                                               0.05
+           0                                                                 0.00
+                         0.09            0.10            0.11            0.12            0       2       4       6       8      10      12
+                                                   risk                                                                     size
+Figure 2: FNR control on MS COCO. The top figure shows examples of our procedure with correct
+classes in black, false positives in blue, and false negatives in red. The bottom plots report FNR and
+set size over 1000 independent random data splits. The dashed gray line marks α.
+
+to the end-user. We note that the choices of Cλ used herein are only for the purposes of illustration;
+any nested family of sets will work. For each example use case, for a representative α (details
+provided for each task) we provide both qualitative results and quantitative histograms of the risk
+and set sizes over 1000 random data splits that demonstrate valid risk control (i.e., with mean ≤α).
+
+3.1  FNR CONTROL IN TUMOR SEGMENTATION
+
+In tumor segmentation, our input  is a d × d image and our label  is a set of pixels Yi ∈
+℘({(1, 1), (1, 2), ..., (d, d)}), with ℘the power set. We use an image segmentation model f : X →
+[0, 1]d×d outputting a probability for each pixel and measure loss as the fraction of false negatives,
+        LFNRi   (λ) = 1 −|Yi ∩Cλ(Xi)| , where Cλ(Xi) = {y : f(Xi)y ≥1 −λ} .          (7)
+                                      |Yi|
+The expected value of LFNRi     is the FNR. Since LFNRi     is monotone, so is the FNR. Thus, we use the
+technique in Section 2.1 to pick ˆλ by (4) that controls the FNR on a new point, which guarantees:
+                        Eh LFNRn+1 (ˆλ)i ≤α.                                      (8)
+
+For evaluating the proposed procedure we pool data from several online open-source gut polyp
+segmentation datasets: Kvasir, Hyper-Kvasir, CVC-ColonDB, CVC-ClinicDB, and ETIS-Larib. We
+choose a PraNet (Fan et al., 2020) as our base model f and used n = 1000, and evaluated risk
+control with the 781 remaining validation data points. We report results with α = 0.1 in Figure 1.
+The mean and standard deviation of the risk over 1000 trials are 0.0987 and 0.0114, respectively.
+
+
+                                       5

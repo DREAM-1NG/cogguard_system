@@ -1,0 +1,59 @@
+PLOS ONE                                              The False positive problem of automatic bot detection in social science research
+
+
+
+                                        automatically lead to media attention and increased scrutiny. In Germany, for example, jour-
+                                              nalists have discovered a network around AfD politicians’ Twitter accounts that consisted of
+                                     sockpuppets that boosted engagement numbers [29]. This is not to say that politicians might
+                                     not make use of any automation but rather that this form of automation is and should not be
+                                     confused with bots or social bots. Finally, we also included Varol’s list that included both bots
+                                         as well as humans. While we were not always able to individually verify whether an account
+                                 was a bot or a human, we trust in the initial categorization which parts of Botometer’s training
+                                                    is based on. As a result, we have four data sets of accounts that human coders would have no
+                                              difficulty in differentiating between bots and humans and one which was used to train the Bot-
+                                     ometer classifier on. Based on these criteria, we would expect the Botometer tool to perform
+                                         rather well as the “real world” data from Twitter is much messier.
+                                To conduct this test, we created a Python script that ran every day at 00:00 UTC time on an
+                               Ubuntu Linux server for 3 months (3rd March– 2nd of June, 2019). The data collection went
+                                       uninterrupted. For every account in our sample (n = 4,583) we requested the Twitter data via
+                                        the Twitter search API and the Botometer user scores via the Botometer API giving us a total of
+                                      374,724 valid scores. For the analysis we accessed Botometer v3 [12] which was the latest ver-
+                                       sion of the tool in March 2019. Besides an empty timeline (Botometer needs at least one tweet–
+                                       2,021 calls had to be excluded), missing accounts (mainly from Varol’s data set which includes
+                                     accounts that do not exist anymore– 11,197 calls) and private accounts (also mainly from Var-
+                                                  ol’s data set– 33,608 calls had to be excluded), only 86 calls (less than 0.05% of all calls)
+                                      returned an error because of a technical API issue from Botometer or the Twitter API. Eventu-
+                                                ally we could analyze 4,134 existing accounts that could be accessed at least once during the
+                                       process of data collection and have at least one tweet on their timeline (see Table 1). For the
+                                        following analysis we use the language-independent universal Botometer score between 0 and
+                                  1 (which corresponds to the score 0–5 also used by Botometer—e.g., 0.5 will be 2.5), the specific
+                                       English language Botometer score between 0 and 1, as well as Botometer’s newly integrated
+                                       English and universal complete automation probability (CAP) (ranging between 0 and 1).
+                                  While we are aware that the Botometer creators offer more fine-grained feature scores besides
+                                        the overall universal scores, we focus on the universal overall scores as they are the scores used
+                                  by social scientists in their studies and are independent from the language that the accounts
+                                       tweet in. Still, as we are interested in language differences we also report Botometer’s English
+                                        scores for our third research question (see also S1–S5 Figs for all other visualizations with the
+                                       English score and CAP).
+                                      For RQ1 we compared the ROC-AUC (Receiver Operating Characteristics-Area Under
+                                The Curve) with the old ROC-AUC reported in older studies for Botometer to evaluate Bot-
+                                        ometer’s diagnostic ability. ROC-AUC indicates how well a model discriminates between two
+                                            classes (bot and no bot). The true positive rate on the y-axis is plotted against the false positive
+                                           rate on the x-axis. While this statistic is useful to directly compare the overall performance of
+                                           different models and labelled data sets with regard to the accuracy of the classifications, this
+                                        evaluation method also has its limitations [30, 31]. Researchers, for example, are often not
+                                          interested in all potential score thresholds as used in the AUC-ROC approach and instead only
+                                        in specific classification values [32]. The AUC-ROC approach does not consider the cost of
+                                             false-positive and false-negatives and does not fully consider imbalances in the general popula-
+                                         tion [33]. However, in their original paper for the first version of the tool (BotOrNot) the
+                                      authors transparently warn that the accuracy of their model (they received a ROC-AUC of
+                                          0.95/0.94) overestimates future performance due to the age of the training data [3].
+                                  As the ROC-AUC approach has limitations, we also use a different approach for RQ2. In
+                                      bot research the biggest problem is the lower occurrence of bots in relation to humans. In the
+                                        general population of all Twitter users there are more real users than bots. However, the
+
+
+
+
+
+PLOS ONE | https://doi.org/10.1371/journal.pone.0241045  October 22, 2020                                                         6 / 20

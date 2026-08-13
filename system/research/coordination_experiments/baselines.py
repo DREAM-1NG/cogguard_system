@@ -540,11 +540,14 @@ def default_baseline_registry() -> BaselineRegistry:
             claimable=False,
         ),
         BaselineSpec(
-            "iohunter_account_graph_learning", "iohunter-account-graph-learning-adapter-missing-v1",
+            "iohunter_account_graph_learning", "iohunter-socgfm-official-account-reproduction-v1",
             "detection", "learned_comparison",
-            "iohunter-account-graph-learning-unavailable-implementation-v1",
+            "iohunter-socgfm-official-sandbox-runner-v1",
             ("external_label_evaluation",),
-            warning="Registered for public comparison coverage; local adapter is not implemented.",
+            warning=(
+                "Official SocGFM account-membership reproduction is available through "
+                "iohunter_socgfm.py, but it is not a harmful-CIB Stage 2 Detection adapter."
+            ),
             claimable=False,
         ),
         BaselineSpec(

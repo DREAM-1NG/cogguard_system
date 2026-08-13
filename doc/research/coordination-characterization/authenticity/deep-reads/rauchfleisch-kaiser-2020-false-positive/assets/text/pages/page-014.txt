@@ -1,0 +1,60 @@
+PLOS ONE                                              The False positive problem of automatic bot detection in social science research
+
+
+
+                                               least once. However, the universal CAP, works better for the new bots as well as the German
+                                              bots.
+
+
+                          Discussion
+
+                                     In a time where terms like “computational propaganda” [38], “disinformation campaigns”
+                                        [39] or “coordinated inauthentic behavior” [40] are often used, identifying the automated
+                                     accounts that spread disinformation or attempt to shift the conversation seems paramount.
+                                      Indeed, being able to estimate the degree of inauthentic behaviors within a given online dis-
+                                      course and understanding their patterns could lead to the identification of coordinated disin-
+                                     formation campaigns. Consequently, there was and still is an academic demand for tools like
+                                     Botometer that did not only come with an API but, more importantly, also with the necessary
+                                   academic credentials (i.e. institution and citations). Botometer was and is a very good example
+                                         of how supervised machine learning models analysing single accounts can be trained and what
+                                        the potential outcome might be.
+                                             Yet, as we show in this study, researchers should be cautious using tools that were devel-
+                                 oped by other scientists, sometimes in a totally different context. A high ROC-AUC score with
+                                        the original data set and research setting does not translate into a good “precision” for compu-
+                                            tational social science studies investigating a different context as we show for Botometer v3.
+                              Our results are thus in line with what some prior studies could show for older versions of Bot-
+                                     ometer [14, 16]. Even a good diagnostic ability (ROC-AUC) leads to problematic outcomes
+                              when the population baseline is considered. In other words: just because the model works with
+                                        the test data set, does not mean that the results are reliable for a specific use case. As scientists
+                              we should care about reliability, validity, and reproducibility [41, 42]. In many of the social sci-
+                                    ence studies that make use of Botometer, these criteria have been disregarded. As we have
+                               shown with our analysis, Botometer has problems in identifying false positives and false nega-
+                                              tives in our collections when applying analytical approaches from computational social sci-
+                                         ences; especially with thresholds used in prior studies. This is noteworthy, as our data sets
+                                        consisted either of accounts that Botometer was directly trained on or where the cases were
+                                          clear-cut and easily identifiable for a human coder. The Botometer creators [43] argue in their
+                                    newest paper that some of the German politicians’ accounts used in our study might have a
+                                          certain degree of automation. However, we manually checked all false-positive politician
+                                     accounts (score above .76) and only one out of 27 false-positive politicians shows some behav-
+                                           ior that might be classified by Botometer as Automation. Namely, the politician had synchro-
+                                      nized her Facebook account with her Twitter account and all Facebook posts were also pushed
+                                      over Twitter. This shows that Botometer’s misclassification is not due to real automation by the
+                                              political accounts. Indeed, most of the other accounts that had been falsely classified as bots
+                                   were mostly inactive and hadn’t tweeted in that time period. Furthermore, we show that the
+                                        scores change over time, thus, effectively, making studies that use Botometer data from one day
+                                     or a week hard to replicate. Botometer worked, unsurprisingly, better on accounts that the
+                                      algorithm was trained on even in our analysis over time. However, the tool was imprecise over
+                                    time for the new bots as well as the German dataset. In addition, bots that are not aimed at
+                                        entertaining other users but rather aim at obfuscating their automated identity and real goals
+                                                    (e.g., spreading misinformation) will pretend to be humans, thus making it even harder for bot
+                                        detection tools to identify them [11, 16]. In this sense, distinguishing clearly between humans
+                                         as well as bots is the minimum that bot detection tools should accomplish. Indeed, as research-
+                                           ers we should be careful when relying on existing tools and, as our thought experiment
+                                          highlighted, also have to be mindful of the population we apply the classifiers on. If the num-
+                                        bers of bots are in the minority for the general population (as we assume in this case on
+
+
+
+
+
+PLOS ONE | https://doi.org/10.1371/journal.pone.0241045  October 22, 2020                                                        14 / 20

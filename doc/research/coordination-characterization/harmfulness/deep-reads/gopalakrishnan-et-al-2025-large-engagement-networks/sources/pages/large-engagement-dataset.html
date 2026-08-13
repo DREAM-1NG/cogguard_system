@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- <title>Your Name</title> -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        html, body {
+            height: 100%;
+			padding-top: 56px;
+			overflow: auto;
+        }
+        body {
+            display: flex;
+            flex-direction: column;
+        }
+        .content {
+            flex: 1;
+        }
+        .bg-dark {
+            background-color: #343a40 !important;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
+        <div class="container">
+            <!-- <a class="navbar-brand" href="#">Your Name</a> -->
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarResponsive" aria-controls="navbarResponsive" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarResponsive">
+                <ul class="navbar-nav ml-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="#about">ABOUT</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#properties">DATA PROPERTIES</a>
+                    </li>
+					<li class="nav-item">
+                        <a class="nav-link" href="#Download">DOWNLOAD</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container content">
+		<section id="about">
+            <h2>LEN: Large Engagement Networks</h2>
+            <div class="mb-4">
+                <!-- <h5>Background</h5> -->
+                <p>Social media users and inauthentic accounts, such as bots, may coordinate in promoting their topics. Such topics may give the impression that they are organically popular among the public, even though they are astroturfing campaigns that are centrally managed. It is challenging to predict if a topic is organic or a coordinated campaign due to a reliable lack of ground truth. </p>            </div>
+            <div class="mb-4">
+                <h5>Groundtruth</h5>
+                <p>We create a ground truth by detecting the campaigns promoted by ephemeral astroturfing attacks. These attacks push any topic to Twitter's trends list by employing bots that tweet in a coordinated manner within a short period and then immediately delete their tweets. We also manually curate a dataset of organic Twitter trends. We then create engagement networks out of these datasets and present them as graph classification datasets, where the task is to distinguish between campaigns and organic trends. Engagement networks consist of users as nodes and edges indicate interactions (retweets, replies and quotes) between users.</p>
+            </div>
+            <div class="mb-4">
+                <h5>New public dataset</h5>
+                <p>We release the data of 170 campaigns and 135 non-campaigns. Our graph dataset posits a challenge for large graph classification problems. Traditional graph classification datasets are small, with tens of nodes and hundreds of edges at most. In comparison to standard benchmarks, our graphs are at a larger scale. On average, each engagement network in our dataset contains ~11K nodes and ~23K edges. We show that state-of-the-art GNN methods give only mediocre results on our datasets, hence our datasets offer a new challenge for graph classification problem. We believe that our dataset will help advance the frontiers of graph classification techniques on large networks and provide an interesting use case in terms of distinguishing coordinated campaigns and organic trends.</p>
+            </div>
+        </section>
+
+        <section id="properties">
+		<h2>Dataset Properties</h2>
+			<p> 
+				Our dataset (LEN), comprises of graphs where the nodes denote the users and the edges indicate the type of interaction between the user,
+				which in this case could be retweet reply or quote. We have a total of 305 engagement graphs, comprising of 170 campaign graphs and 
+				135 non-campaign graphs. There are 7 sub-types in campaign and 8 in non-campaign as indicated in the Overall Graph Description below. 
+
+				 <!-- <br> <br> -->
+			</p>
+			<style>
+				.tg  {border-collapse:collapse;border-spacing:0;}
+				.tg td{border-color:black;border-style:solid;border-width:1px;font-family:Arial, sans-serif;font-size:14px;
+				  overflow:hidden;word-break:normal;}
+				.tg th{border-color:black;border-style:solid;border-width:1px;font-family:Arial, sans-serif;font-size:14px;
+				  font-weight:normal;overflow:hidden;word-break:normal;}
+				.tg .tg-0thz{border-color:inherit;font-weight:bold;text-align:left;vertical-align:bottom}
+				.tg .tg-j6zm{font-weight:bold;text-align:left;vertical-align:bottom}
+				.tg .tg-7zrl{text-align:left;vertical-align:bottom}
+				.rotate {
+					transform: rotate(-90deg);
+					white-space: nowrap;
+				}
+				.small-text {
+					font-size: 10px;
+				}
+				.table-container {
+	            			display: flex;
+	            			justify-content: center;
+	        		}
+				caption {
+					caption-side: top;
+					text-align: center;
+					font-weight: bold;
+					margin-bottom: 10px;
+	        		}
+
+				p {
+					text-align: justify;
+				}
+			</style>
+			<div class="table-container">
+				<table class="tg">
+					<caption>Network statistics and label descriptions for the complete dataset</caption>
+					<thead>
+					    <tr>
+						<th class="tg-0thz" rowspan="2"></th>
+						<th class="tg-0thz" rowspan="2"><b>Sub-types</b></th>
+						<th class="tg-0thz" rowspan="2"><b># graphs</b></th>
+						<th class="tg-0thz" colspan="3"><b># nodes</b></th>
+						<th class="tg-0thz" colspan="3"><b># edges</b></th>
+						<th class="tg-0thz" rowspan="2"><b>Explanation</b></th>
+					    </tr>
+					    <tr>
+						<th class="tg-0thz"><b>Min</b></th>
+						<th class="tg-0thz"><b>Max</b></th>
+						<th class="tg-0thz"><b>Avg</b></th>
+						<th class="tg-0thz"><b>Min</b></th>
+						<th class="tg-0thz"><b>Max</b></th>
+						<th class="tg-0thz"><b>Avg</b></th>
+					    </tr>
+					</thead>
+					<tbody>
+					    <tr>
+						<td rowspan="8" class="rotate">Campaign</td>
+						<td>Politics</td>
+						<td>62</td>
+						<td>100</td>
+						<td>50,286</td>
+						<td>6,570</td>
+						<td>203</td>
+						<td>71,704</td>
+						<td>10,210</td>
+						<td class="small-text">Political promotions, slogans, misinformation camp.</td>
+					    </tr>
+					    <tr>
+						<td>Reform</td>
+						<td>58</td>
+						<td>131</td>
+						<td>19,578</td>
+						<td>1,229</td>
+						<td>540</td>
+						<td>1,105,918</td>
+						<td>25,268</td>
+						<td class="small-text">People organized for political reforms.</td>
+					    </tr>
+					    <tr>
+						<td>News</td>
+						<td>24</td>
+						<td>581</td>
+						<td>54,996</td>
+						<td>10,368</td>
+						<td>942</td>
+						<td>80,784</td>
+						<td>15,582</td>
+						<td class="small-text">News pumped up by bots and trolls for more attention.</td>
+					    </tr>
+					    <tr>
+						<td>Finance</td>
+						<td>14</td>
+						<td>273</td>
+						<td>9,976</td>
+						<td>1,802</td>
+						<td>243</td>
+						<td>10,725</td>
+						<td>2,334</td>
+						<td class="small-text">Finance marketing (mostly cryptocurrency).</td>
+					    </tr>
+					    <tr>
+						<td>Noise</td>
+						<td>9</td>
+						<td>454</td>
+						<td>55,933</td>
+						<td>12,180</td>
+						<td>473</td>
+						<td>48,937</td>
+						<td>10,882</td>
+						<td class="small-text">Cannot be put in any type.</td>
+					    </tr>
+					    <tr>
+						<td>Cult</td>
+						<td>6</td>
+						<td>313</td>
+						<td>7,880</td>
+						<td>2,303</td>
+						<td>637</td>
+						<td>11,615</td>
+						<td>3,431</td>
+						<td class="small-text">Slogans by a famous cult with immense access to bots.</td>
+					    </tr>
+					    <tr>
+						<td>Entertainment</td>
+						<td>3</td>
+						<td>678</td>
+						<td>4,220</td>
+						<td>2,237</td>
+						<td>3,806</td>
+						<td>132,013</td>
+						<td>48,767</td>
+						<td class="small-text">Celebrities attempting to promote themselves.</td>
+					    </tr>
+					    <tr>
+						<td>Common</td>
+						<td>3</td>
+						<td>3,487</td>
+						<td>9,974</td>
+						<td>5,919</td>
+						<td>2,818</td>
+						<td>9,470</td>
+						<td>7,066</td>
+						<td class="small-text">Common sub-strings combined without known reasons.</td>
+					    </tr>
+					    <tr>
+						<td></td>
+						<td><strong>Overall</strong></td>
+						<td><strong>170</strong></td>
+						<td><strong>100</strong></td>
+						<td><strong>55,933</strong></td>
+						<td><strong>5,157</strong></td>
+						<td><strong>203</strong></td>
+						<td><strong>1,105,918</strong></td>
+						<td><strong>16,006</strong></td>
+						<td></td>
+					    </tr>
+					    <tr>
+						<td rowspan="9" class="rotate">Non-Campaign</td>
+						<td>News</td>
+						<td>52</td>
+						<td>818</td>
+						<td>95,575</td>
+						<td>24,834</td>
+						<td>709</td>
+						<td>213,444</td>
+						<td>43,201</td>
+						<td class="small-text">Popular events, sourced outside Twitter.</td>
+					    </tr>
+					    <tr>
+						<td>Sports</td>
+						<td>30</td>
+						<td>469</td>
+						<td>75,653</td>
+						<td>9,530</td>
+						<td>403</td>
+						<td>101,656</td>
+						<td>12,948</td>
+						<td class="small-text">Popular sports events.</td>
+					    </tr>
+					    <tr>
+						<td>Festival</td>
+						<td>17</td>
+						<td>885</td>
+						<td>119,952</td>
+						<td>35,466</td>
+						<td>803</td>
+						<td>199,305</td>
+						<td>55,947</td>
+						<td class="small-text">About festivals, holidays, special days.</td>
+					    </tr>
+					    <tr>
+						<td>Internal</td>
+						<td>11</td>
+						<td>4,188</td>
+						<td>87,720</td>
+						<td>33,061</td>
+						<td>4,374</td>
+						<td>196,103</td>
+						<td>54,442</td>
+						<td class="small-text">Popular events, sourced inside Twitter.</td>
+					    </tr>
+					    <tr>
+						<td>Common</td>
+						<td>10</td>
+						<td>1,214</td>
+						<td>64,320</td>
+						<td>17,079</td>
+						<td>1,270</td>
+						<td>99,306</td>
+						<td>24,869</td>
+						<td class="small-text">Common substrings combined by people.</td>
+					    </tr>
+					    <tr>
+						<td>Entertainment</td>
+						<td>8</td>
+						<td>1,477</td>
+						<td>20,060</td>
+						<td>7,289</td>
+						<td>1,712</td>
+						<td>45,211</td>
+						<td>12,578</td>
+						<td class="small-text">Popular TV shows and YouTube videos.</td>
+					    </tr>
+					    <tr>
+						<td>Announced cam.</td>
+						<td>4</td>
+						<td>6,650</td>
+						<td>26,358</td>
+						<td>13,382</td>
+						<td>14,362</td>
+						<td>50,864</td>
+						<td>24,817</td>
+						<td class="small-text">Official campaigns launched by major political parties.</td>
+					    </tr>
+					    <tr>
+						<td>Sports cam.</td>
+						<td>3</td>
+						<td>2,880</td>
+						<td>4,661</td>
+						<td>3,654</td>
+						<td>4,451</td>
+						<td>7,367</td>
+						<td>5,534</td>
+						<td class="small-text">Hashtags launched by popular sports teams.</td>
+					    </tr>
+					    <tr>
+						<td><strong>Overall</strong></td>
+						<td><strong>135</strong></td>
+						<td><strong>469</strong></td>
+						<td><strong>119,952</strong></td>
+						<td><strong>20,632</strong></td>
+						<td><strong>403</strong></td>
+						<td><strong>213,444</strong></td>
+						<td><strong>33,765</strong></td>
+						<td></td>
+					    </tr>
+					</tbody>
+				</table>
+			</div>
+			<br><br>
+			<p>	
+				We also have a smaller, balanced verssion of LEN (LEN-Small), which has 51 campaign and 49 non-campaign graphs. A brief description of this table
+				is given below in the Small Graph Description Table.
+				<!-- <br><br> -->
+				
+			</p>
+			<div class="table-container">
+				<table class="tg">
+				    <caption>Statistics of the engagement networks for the small dataset with 100 networks. We omit the label description here as they remain the same.</caption>
+				    <thead>
+				        <tr>
+				            <th class="tg-0thz" rowspan="2"></th>
+				            <th class="tg-0thz" rowspan="2"><b>Sub-types</b></th>
+				            <th class="tg-0thz" rowspan="2"><b># graphs</b></th>
+				            <th class="tg-0thz" colspan="3"><b># nodes</b></th>
+				            <th class="tg-0thz" colspan="3"><b># edges</b></th>
+				        </tr>
+				        <tr>
+				            <th class="tg-0thz"><b>Min</b></th>
+				            <th class="tg-0thz"><b>Max</b></th>
+				            <th class="tg-0thz"><b>Avg</b></th>
+				            <th class="tg-0thz"><b>Min</b></th>
+				            <th class="tg-0thz"><b>Max</b></th>
+				            <th class="tg-0thz"><b>Avg</b></th>
+				        </tr>
+				    </thead>
+				    <tbody>
+				        <tr>
+				            <td rowspan="6" class="rotate">Campaign</td>
+				            <td>Politics</td>
+				            <td>14</td>
+				            <td>100</td>
+				            <td>1,908</td>
+				            <td>805</td>
+				            <td>203</td>
+				            <td>2,000</td>
+				            <td>1108</td>
+				        </tr>
+				        <tr>
+				            <td>Reform</td>
+				            <td>16</td>
+				            <td>131</td>
+				            <td>634</td>
+				            <td>297</td>
+				            <td>540</td>
+				            <td>2,027</td>
+				            <td>1192</td>
+				        </tr>
+				        <tr>
+				            <td>News</td>
+				            <td>3</td>
+				            <td>581</td>
+				            <td>1,671</td>
+				            <td>1123</td>
+				            <td>942</td>
+				            <td>1,726</td>
+				            <td>1410</td>
+				        </tr>
+				        <tr>
+				            <td>Finance</td>
+				            <td>9</td>
+				            <td>273</td>
+				            <td>1,590</td>
+				            <td>775</td>
+				            <td>243</td>
+				            <td>1,862</td>
+				            <td>1024</td>
+				        </tr>
+				        <tr>
+				            <td>Noise</td>
+				            <td>5</td>
+				            <td>454</td>
+				            <td>2,520</td>
+				            <td>1060</td>
+				            <td>473</td>
+				            <td>1,634</td>
+				            <td>1074</td>
+				        </tr>
+				        <tr>
+				            <td>Cult</td>
+				            <td>4</td>
+				            <td>313</td>
+				            <td>705</td>
+				            <td>512</td>
+				            <td>637</td>
+				            <td>1,035</td>
+				            <td>843</td>
+				        </tr>
+				        <tr>
+				            <td></td>
+				            <td><b>Overall</b></td>
+				            <td><b>51</b></td>
+				            <td><b>100</b></td>
+				            <td><b>2,520</b></td>
+				            <td><b>661</b></td>
+				            <td><b>203</b></td>
+				            <td><b>2,027</b></td>
+				            <td><b>1113</b></td>
+				        </tr>
+				        <tr>
+				            <td rowspan="7" class="rotate">Non-Campaign</td>
+				            <td>News</td>
+				            <td>10</td>
+				            <td>818</td>
+				            <td>6,169</td>
+				            <td>3757</td>
+				            <td>709</td>
+				            <td>9,076</td>
+				            <td>4578</td>
+				        </tr>
+				        <tr>
+				            <td>Sports</td>
+				            <td>23</td>
+				            <td>469</td>
+				            <td>8,355</td>
+				            <td>3357</td>
+				            <td>403</td>
+				            <td>9,998</td>
+				            <td>3994</td>
+				        </tr>
+				        <tr>
+				            <td>Festival</td>
+				            <td>2</td>
+				            <td>885</td>
+				            <td>5,982</td>
+				            <td>3433</td>
+				            <td>803</td>
+				            <td>6,509</td>
+				            <td>3656</td>
+				        </tr>
+				        <tr>
+				            <td>Internal</td>
+				            <td>1</td>
+				            <td>4,188</td>
+				            <td>4,188</td>
+				            <td>4,188</td>
+				            <td>4,374</td>
+				            <td>4,374</td>
+				            <td>4374</td>
+				        </tr>
+				        <tr>
+				            <td>Common</td>
+				            <td>5</td>
+				            <td>1,214</td>
+				            <td>4,962</td>
+				            <td>2,989</td>
+				            <td>1,270</td>
+				            <td>6,277</td>
+				            <td>3559</td>
+				        </tr>
+				        <tr>
+				            <td>Entertainment</td>
+				            <td>5</td>
+				            <td>1,477</td>
+				            <td>7,739</td>
+				            <td>4,391</td>
+				            <td>1,712</td>
+				            <td>10,608</td>
+				            <td>6021</td>
+				        </tr>
+				        <tr>
+				            <td>Sports cam.</td>
+				            <td>3</td>
+				            <td>2,880</td>
+				            <td>4,661</td>
+				            <td>3,654</td>
+				            <td>4,451</td>
+				            <td>7,367</td>
+				            <td>5534</td>
+				        </tr>
+				        <tr>
+				            <td></td>
+				            <td><b>Overall</b></td>
+				            <td><b>49</b></td>
+				            <td><b>469</b></td>
+				            <td><b>8,355</b></td>
+				            <td><b>3545</b></td>
+				            <td><b>403</b></td>
+				            <td><b>10,608</b></td>
+				            <td><b>4364</b></td>
+				        </tr>
+				    </tbody>
+				</table>
+
+			</div>
+	</section>
+        <section id="Download" style="margin-top: 20px;">
+			<div class="mb-5">
+				<h2>Download</h2>
+				Our original dataset comprises 101 GB of graph data, and 5.4 GB of small graphs data.
+				Click <a href="download_page.html"> here</a> to download all the data (including metadata) separately.
+
+			</div>
+			
+            
+        </section>
+    </div>
+
+    <footer class="py-4 bg-dark text-white-50">
+        <div class="container text-center">
+            <!-- <small>&copy; 2024 Your Name. All Rights Reserved.</small> -->
+        </div>
+    </footer>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>

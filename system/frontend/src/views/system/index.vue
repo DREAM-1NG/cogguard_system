@@ -8,7 +8,7 @@
     <div class="operation-message" aria-live="polite">{{ operationMessage }}</div>
 
     <div class="operations-grid">
-      <a-card size="small" title="服务配置" class="configuration-card">
+      <a-card v-if="canManageServices" size="small" title="服务配置" class="configuration-card">
         <a-form :model="serviceForm" layout="vertical" @finish="handleCreateService">
           <div class="form-grid">
             <a-form-item label="服务名称" name="name" required>
@@ -131,7 +131,7 @@
             </a-tag>
           </template>
           <template v-else-if="column.key === 'actions'">
-            <a-space v-if="canOperateService(record)" :size="8">
+            <a-space v-if="canManageServices && canOperateService(record)" :size="8">
               <a-button size="small" :loading="checkingServiceId === record.id" @click="handleCheckService(record)">
                 检查
               </a-button>
@@ -165,6 +165,7 @@ import {
   setServiceEnabled,
 } from '@/api/systemOperations'
 import type { OperationHealth, ServiceConfig, ServicePurpose } from '@/api/systemOperations'
+import { useAuthStore } from '@/stores/auth'
 
 type ConnectivityState = 'unchecked' | 'ready' | 'incomplete' | 'failed'
 
@@ -181,6 +182,8 @@ const operationHealth = ref<OperationHealth>({
 })
 const connectivity = ref<Record<string, ConnectivityState>>({})
 const operationMessage = ref('')
+const authStore = useAuthStore()
+const canManageServices = computed(() => authStore.userInfo?.role === 'admin')
 
 const serviceForm = ref({
   name: '',

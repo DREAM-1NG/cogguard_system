@@ -1,0 +1,948 @@
+{
+  "schema_version": 2,
+  "generated_at": "2026-08-11T17:24:35.033426+00:00",
+  "source_pdf": "G:\\CISCN\\CogGuard\\.worktrees\\refactor-system\\doc\\research\\coordination-characterization\\harmfulness\\deep-reads\\gopalakrishnan-et-al-2025-large-engagement-networks\\sources\\paper\\aaai-ojs-35839.pdf",
+  "source_sha256": "3be5dc933ff853b13fd64992c1ef82d169e07e10a72e60b690ab7d2eaf67351b",
+  "page_count": 15,
+  "render_dpi": 180,
+  "selected_pages": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15
+  ],
+  "analysis_mode": "visual",
+  "text_layer_available": true,
+  "text_layer_characters": 83018,
+  "automatic_crops_are_unverified": true,
+  "pages": [
+    {
+      "page": 1,
+      "width_pixels": 1530,
+      "height_pixels": 1980,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": "pages\\page-001.png",
+      "text": "text\\pages\\page-001.txt",
+      "text_characters": 7087,
+      "caption_count": 0
+    },
+    {
+      "page": 2,
+      "width_pixels": 1530,
+      "height_pixels": 1980,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": "pages\\page-002.png",
+      "text": "text\\pages\\page-002.txt",
+      "text_characters": 8266,
+      "caption_count": 1
+    },
+    {
+      "page": 3,
+      "width_pixels": 1530,
+      "height_pixels": 1980,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": "pages\\page-003.png",
+      "text": "text\\pages\\page-003.txt",
+      "text_characters": 7069,
+      "caption_count": 1
+    },
+    {
+      "page": 4,
+      "width_pixels": 1530,
+      "height_pixels": 1980,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": "pages\\page-004.png",
+      "text": "text\\pages\\page-004.txt",
+      "text_characters": 6587,
+      "caption_count": 1
+    },
+    {
+      "page": 5,
+      "width_pixels": 1530,
+      "height_pixels": 1980,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": "pages\\page-005.png",
+      "text": "text\\pages\\page-005.txt",
+      "text_characters": 8193,
+      "caption_count": 1
+    },
+    {
+      "page": 6,
+      "width_pixels": 1530,
+      "height_pixels": 1980,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": "pages\\page-006.png",
+      "text": "text\\pages\\page-006.txt",
+      "text_characters": 6218,
+      "caption_count": 2
+    },
+    {
+      "page": 7,
+      "width_pixels": 1530,
+      "height_pixels": 1980,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": "pages\\page-007.png",
+      "text": "text\\pages\\page-007.txt",
+      "text_characters": 6696,
+      "caption_count": 1
+    },
+    {
+      "page": 8,
+      "width_pixels": 1530,
+      "height_pixels": 1980,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": "pages\\page-008.png",
+      "text": "text\\pages\\page-008.txt",
+      "text_characters": 1919,
+      "caption_count": 2
+    },
+    {
+      "page": 9,
+      "width_pixels": 1530,
+      "height_pixels": 1980,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": "pages\\page-009.png",
+      "text": "text\\pages\\page-009.txt",
+      "text_characters": 7753,
+      "caption_count": 0
+    },
+    {
+      "page": 10,
+      "width_pixels": 1530,
+      "height_pixels": 1980,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": "pages\\page-010.png",
+      "text": "text\\pages\\page-010.txt",
+      "text_characters": 6678,
+      "caption_count": 0
+    },
+    {
+      "page": 11,
+      "width_pixels": 1530,
+      "height_pixels": 1980,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": "pages\\page-011.png",
+      "text": "text\\pages\\page-011.txt",
+      "text_characters": 7793,
+      "caption_count": 0
+    },
+    {
+      "page": 12,
+      "width_pixels": 1530,
+      "height_pixels": 1980,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": "pages\\page-012.png",
+      "text": "text\\pages\\page-012.txt",
+      "text_characters": 7254,
+      "caption_count": 0
+    },
+    {
+      "page": 13,
+      "width_pixels": 1530,
+      "height_pixels": 1980,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": "pages\\page-013.png",
+      "text": "text\\pages\\page-013.txt",
+      "text_characters": 187,
+      "caption_count": 1
+    },
+    {
+      "page": 14,
+      "width_pixels": 1530,
+      "height_pixels": 1980,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": "pages\\page-014.png",
+      "text": "text\\pages\\page-014.txt",
+      "text_characters": 190,
+      "caption_count": 1
+    },
+    {
+      "page": 15,
+      "width_pixels": 1530,
+      "height_pixels": 1980,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": "pages\\page-015.png",
+      "text": "text\\pages\\page-015.txt",
+      "text_characters": 1128,
+      "caption_count": 1
+    }
+  ],
+  "visuals": [
+    {
+      "id": "table-1-p002",
+      "label": "Table 1",
+      "kind": "table",
+      "number": "1",
+      "page": 2,
+      "caption": "Comparison of graph classification datasets to our large engagement networks.",
+      "raw_text": "Table 1: Comparison of graph classification datasets to our large engagement networks.",
+      "caption_bbox_points": [
+        319.5,
+        315.983,
+        558.015,
+        336.905
+      ],
+      "caption_bbox_pixels": [
+        799,
+        790,
+        1395,
+        842
+      ],
+      "suggested_crop_bbox_points": [
+        309.5,
+        44.024,
+        568.015,
+        346.905
+      ],
+      "suggested_crop_bbox_pixels": [
+        774,
+        110,
+        1420,
+        867
+      ],
+      "candidate_crop": "crops\\table-1-p002.png",
+      "selected_asset": null,
+      "candidate_crop_size_pixels": [
+        648,
+        758
+      ],
+      "source_page_image": "pages\\page-002.png",
+      "source_page_text": "text\\pages\\page-002.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": false,
+      "visual_verification": "complete",
+      "review_notes": "已核对裁剪图：表格比较 Biological、Social、Misc. 与 Ours Small/Original；Ours Original 为 314 graphs。",
+      "key": false,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\table-1-p002.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "figure-1-p003",
+      "label": "Figure 1",
+      "kind": "figure",
+      "number": "1",
+      "page": 3,
+      "caption": "(Left) Randomly generated (lexicon) tweets from bots promoting the hashtag #HeartBridgeCoin. (Right) It be- comes trending in 6 countries and globally for the first and the last time.",
+      "raw_text": "Figure 1: (Left) Randomly generated (lexicon) tweets from bots promoting the hashtag #HeartBridgeCoin. (Right) It be- comes trending in 6 countries and globally for the first and the last time.",
+      "caption_bbox_points": [
+        319.5,
+        256.527,
+        558.015,
+        299.367
+      ],
+      "caption_bbox_pixels": [
+        799,
+        641,
+        1395,
+        748
+      ],
+      "suggested_crop_bbox_points": [
+        309.5,
+        43.994,
+        568.015,
+        309.367
+      ],
+      "suggested_crop_bbox_pixels": [
+        774,
+        110,
+        1420,
+        773
+      ],
+      "candidate_crop": "crops\\figure-1-p003.png",
+      "selected_asset": null,
+      "candidate_crop_size_pixels": [
+        648,
+        665
+      ],
+      "source_page_image": "pages\\page-003.png",
+      "source_page_text": "text\\pages\\page-003.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": false,
+      "visual_verification": "complete",
+      "review_notes": "已核对裁剪图：左侧为 #HeartBridgeCoin 机器人推文列表，右侧为趋势页与 6 国分布地图示例。",
+      "key": false,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\figure-1-p003.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "table-2-p004",
+      "label": "Table 2",
+      "kind": "table",
+      "number": "2",
+      "page": 4,
+      "caption": "Statistics of the engagement networks for LEN which has 314 networks.",
+      "raw_text": "Table 2: Statistics of the engagement networks for LEN which has 314 networks.",
+      "caption_bbox_points": [
+        144.517,
+        284.451,
+        467.498,
+        294.414
+      ],
+      "caption_bbox_pixels": [
+        361,
+        711,
+        1169,
+        736
+      ],
+      "suggested_crop_bbox_points": [
+        67.586,
+        44.024,
+        558.132,
+        304.414
+      ],
+      "suggested_crop_bbox_pixels": [
+        169,
+        110,
+        1395,
+        761
+      ],
+      "candidate_crop": "crops\\table-2-p004.png",
+      "selected_asset": "crops\\table-2-p004.png",
+      "candidate_crop_size_pixels": [
+        1228,
+        652
+      ],
+      "source_page_image": "pages\\page-004.png",
+      "source_page_text": "text\\pages\\page-004.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": false,
+      "visual_verification": "complete",
+      "review_notes": "已核对裁剪图：LEN 全量统计表分 campaign 和 non-campaign 两组；Overall 为 179 和 135。",
+      "key": true,
+      "claim_ids": [
+        "C1",
+        "C2",
+        "C6"
+      ],
+      "text_asset": "text\\visuals\\table-2-p004.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "table-3-p005",
+      "label": "Table 3",
+      "kind": "table",
+      "number": "3",
+      "page": 5,
+      "caption": "Statistics of the engagement networks for the small dataset with 100 networks. This is simply the smallest 100 networks, out of 314, with respect to node counts.",
+      "raw_text": "Table 3: Statistics of the engagement networks for the small dataset with 100 networks. This is simply the smallest 100 networks, out of 314, with respect to node counts.",
+      "caption_bbox_points": [
+        54.0,
+        251.575,
+        292.514,
+        283.456
+      ],
+      "caption_bbox_pixels": [
+        135,
+        629,
+        731,
+        709
+      ],
+      "suggested_crop_bbox_points": [
+        44.0,
+        44.024,
+        302.514,
+        293.456
+      ],
+      "suggested_crop_bbox_pixels": [
+        110,
+        110,
+        756,
+        734
+      ],
+      "candidate_crop": "crops\\table-3-p005.png",
+      "selected_asset": "crops\\table-3-p005.png",
+      "candidate_crop_size_pixels": [
+        647,
+        624
+      ],
+      "source_page_image": "pages\\page-005.png",
+      "source_page_text": "text\\pages\\page-005.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": false,
+      "visual_verification": "complete",
+      "review_notes": "已核对裁剪图：LEN-small 100 图统计表完整；Overall 为 51 campaign 和 49 non-campaign。",
+      "key": true,
+      "claim_ids": [
+        "C1",
+        "C3"
+      ],
+      "text_asset": "text\\visuals\\table-3-p005.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "table-4-p006",
+      "label": "Table 4",
+      "kind": "table",
+      "number": "4",
+      "page": 6,
+      "caption": "Campaign vs. non-campaign classification. Text + MLP is the non-graph based classifier. The best results are in bold.",
+      "raw_text": "Table 4: Campaign vs. non-campaign classification. Text + MLP is the non-graph based classifier. The best results are in bold.",
+      "caption_bbox_points": [
+        54.556,
+        251.085,
+        557.446,
+        261.139
+      ],
+      "caption_bbox_pixels": [
+        136,
+        628,
+        1394,
+        653
+      ],
+      "suggested_crop_bbox_points": [
+        44.556,
+        44.024,
+        567.446,
+        271.139
+      ],
+      "suggested_crop_bbox_pixels": [
+        111,
+        110,
+        1419,
+        678
+      ],
+      "candidate_crop": "crops\\table-4-p006.png",
+      "selected_asset": "crops\\table-4-p006.png",
+      "candidate_crop_size_pixels": [
+        1308,
+        568
+      ],
+      "source_page_image": "pages\\page-006.png",
+      "source_page_text": "text\\pages\\page-006.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": false,
+      "visual_verification": "complete",
+      "review_notes": "已核对裁剪图：二分类结果表含 LEN-small 与 LEN 两块；GraphSAGE 在 LEN-small accuracy 最高，LSD 在 LEN F1 最高。",
+      "key": true,
+      "claim_ids": [
+        "C3",
+        "C4"
+      ],
+      "text_asset": "text\\visuals\\table-4-p006.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "figure-2-p006",
+      "label": "Figure 2",
+      "kind": "figure",
+      "number": "2",
+      "page": 6,
+      "caption": "Training runtime (in seconds) vs graph size.",
+      "raw_text": "Figure 2: Training runtime (in seconds) vs graph size.",
+      "caption_bbox_points": [
+        66.203,
+        473.466,
+        280.308,
+        483.429
+      ],
+      "caption_bbox_pixels": [
+        166,
+        1184,
+        701,
+        1209
+      ],
+      "suggested_crop_bbox_points": [
+        44.0,
+        271.945,
+        305.925,
+        493.429
+      ],
+      "suggested_crop_bbox_pixels": [
+        110,
+        680,
+        765,
+        1234
+      ],
+      "candidate_crop": "crops\\figure-2-p006.png",
+      "selected_asset": "crops\\figure-2-p006.png",
+      "candidate_crop_size_pixels": [
+        655,
+        555
+      ],
+      "source_page_image": "pages\\page-006.png",
+      "source_page_text": "text\\pages\\page-006.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": false,
+      "visual_verification": "complete",
+      "review_notes": "已核对裁剪图：运行时对边数曲线含 GCN、GAT、GIN、GINE 四条线；GINE 随边数增大上升最明显。",
+      "key": true,
+      "claim_ids": [
+        "C3",
+        "C5"
+      ],
+      "text_asset": "text\\visuals\\figure-2-p006.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "table-5-p007",
+      "label": "Table 5",
+      "kind": "table",
+      "number": "5",
+      "page": 7,
+      "caption": "Campaign type classification for 7 labels: politics, reform, news, finance, cult, entertainment, and common, see Table 2 for details. Text + MLP refers to the non-graph based classifier. The best results are in bold.",
+      "raw_text": "Table 5: Campaign type classification for 7 labels: politics, reform, news, finance, cult, entertainment, and common, see Table 2 for details. Text + MLP refers to the non-graph based classifier. The best results are in bold.",
+      "caption_bbox_points": [
+        54.0,
+        251.176,
+        558.019,
+        272.098
+      ],
+      "caption_bbox_pixels": [
+        135,
+        628,
+        1395,
+        680
+      ],
+      "suggested_crop_bbox_points": [
+        44.0,
+        44.024,
+        568.019,
+        282.098
+      ],
+      "suggested_crop_bbox_pixels": [
+        110,
+        110,
+        1420,
+        705
+      ],
+      "candidate_crop": "crops\\table-5-p007.png",
+      "selected_asset": "crops\\table-5-p007.png",
+      "candidate_crop_size_pixels": [
+        1311,
+        596
+      ],
+      "source_page_image": "pages\\page-007.png",
+      "source_page_text": "text\\pages\\page-007.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": false,
+      "visual_verification": "complete",
+      "review_notes": "已核对裁剪图：7 类 campaign type 结果表完整；VNGE 在 LEN-small 与 LEN 的 macro F1 都最高。",
+      "key": true,
+      "claim_ids": [
+        "C3",
+        "C4",
+        "C6"
+      ],
+      "text_asset": "text\\visuals\\table-5-p007.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "table-6-p008",
+      "label": "Table 6",
+      "kind": "table",
+      "number": "6",
+      "page": 8,
+      "caption": "Campaign vs. non-campaign classification for news-based engagement networks. Text + MLP refers to the non-graph based classifier. The best results are in bold.",
+      "raw_text": "Table 6: Campaign vs. non-campaign classification for news-based engagement networks. Text + MLP refers to the non-graph based classifier. The best results are in bold.",
+      "caption_bbox_points": [
+        54.0,
+        163.106,
+        558.019,
+        184.028
+      ],
+      "caption_bbox_pixels": [
+        135,
+        408,
+        1395,
+        460
+      ],
+      "suggested_crop_bbox_points": [
+        44.0,
+        44.024,
+        568.019,
+        194.028
+      ],
+      "suggested_crop_bbox_pixels": [
+        110,
+        110,
+        1420,
+        485
+      ],
+      "candidate_crop": "crops\\table-6-p008.png",
+      "selected_asset": "crops\\table-6-p008.png",
+      "candidate_crop_size_pixels": [
+        1311,
+        376
+      ],
+      "source_page_image": "pages\\page-008.png",
+      "source_page_text": "text\\pages\\page-008.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": false,
+      "visual_verification": "complete",
+      "review_notes": "已核对裁剪图：news-based 二分类结果表完整；LSD 的 F1 最高 0.800，accuracy 与 GraphSAGE、VNGE 并列 0.769。",
+      "key": true,
+      "claim_ids": [
+        "C4",
+        "C6"
+      ],
+      "text_asset": "text\\visuals\\table-6-p008.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "figure-3-p008",
+      "label": "Figure 3",
+      "kind": "figure",
+      "number": "3",
+      "page": 8,
+      "caption": "Confusion matrices to display the performance of the graph classifiers.",
+      "raw_text": "Figure 3: Confusion matrices to display the performance of the graph classifiers.",
+      "caption_bbox_points": [
+        145.793,
+        583.232,
+        466.223,
+        593.195
+      ],
+      "caption_bbox_pixels": [
+        364,
+        1458,
+        1166,
+        1483
+      ],
+      "suggested_crop_bbox_points": [
+        44.0,
+        186.865,
+        568.008,
+        603.195
+      ],
+      "suggested_crop_bbox_pixels": [
+        110,
+        467,
+        1420,
+        1508
+      ],
+      "candidate_crop": "crops\\figure-3-p008.png",
+      "selected_asset": "crops\\figure-3-p008.png",
+      "candidate_crop_size_pixels": [
+        1311,
+        1041
+      ],
+      "source_page_image": "pages\\page-008.png",
+      "source_page_text": "text\\pages\\page-008.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": false,
+      "visual_verification": "complete",
+      "review_notes": "已核对裁剪图：6 个混淆矩阵对应 GCN、GINE、GAT、GIN、LSD、VNGE；多数预测集中在 Politics 和 Reform。",
+      "key": true,
+      "claim_ids": [
+        "C4",
+        "C6"
+      ],
+      "text_asset": "text\\visuals\\figure-3-p008.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "figure-4-p013",
+      "label": "Figure 4",
+      "kind": "figure",
+      "number": "4",
+      "page": 13,
+      "caption": "Receiver Operating Characteristic (ROC) curves for campaign vs. non-campaign classification across the small dataset.",
+      "raw_text": "Figure 4: Receiver Operating Characteristic (ROC) curves for campaign vs. non-campaign classification across the small dataset.",
+      "caption_bbox_points": [
+        54.0,
+        624.13,
+        558.018,
+        645.052
+      ],
+      "caption_bbox_pixels": [
+        135,
+        1560,
+        1395,
+        1613
+      ],
+      "suggested_crop_bbox_points": [
+        44.0,
+        100.067,
+        568.018,
+        655.052
+      ],
+      "suggested_crop_bbox_pixels": [
+        110,
+        250,
+        1420,
+        1638
+      ],
+      "candidate_crop": "crops\\figure-4-p013.png",
+      "selected_asset": "crops\\figure-4-p013.png",
+      "candidate_crop_size_pixels": [
+        1311,
+        1388
+      ],
+      "source_page_image": "pages\\page-013.png",
+      "source_page_text": "text\\pages\\page-013.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": false,
+      "visual_verification": "complete",
+      "review_notes": "已核对裁剪图：LEN-small ROC 面板含 7 个模型；GIN、GCN、VNGE 的 AUROC 较高，LSD 各 epoch 基本重合。",
+      "key": true,
+      "claim_ids": [
+        "C3"
+      ],
+      "text_asset": "text\\visuals\\figure-4-p013.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "figure-5-p014",
+      "label": "Figure 5",
+      "kind": "figure",
+      "number": "5",
+      "page": 14,
+      "caption": "Receiver Operating Characteristic (ROC) curves for campaign vs. non-campaign classification across the complete dataset.",
+      "raw_text": "Figure 5: Receiver Operating Characteristic (ROC) curves for campaign vs. non-campaign classification across the complete dataset.",
+      "caption_bbox_points": [
+        54.0,
+        624.13,
+        558.019,
+        645.052
+      ],
+      "caption_bbox_pixels": [
+        135,
+        1560,
+        1395,
+        1613
+      ],
+      "suggested_crop_bbox_points": [
+        44.0,
+        100.067,
+        568.019,
+        655.052
+      ],
+      "suggested_crop_bbox_pixels": [
+        110,
+        250,
+        1420,
+        1638
+      ],
+      "candidate_crop": "crops\\figure-5-p014.png",
+      "selected_asset": "crops\\figure-5-p014.png",
+      "candidate_crop_size_pixels": [
+        1311,
+        1388
+      ],
+      "source_page_image": "pages\\page-014.png",
+      "source_page_text": "text\\pages\\page-014.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": false,
+      "visual_verification": "complete",
+      "review_notes": "已核对裁剪图：完整 LEN ROC 面板含 7 个模型；GINE 与 VNGE AUROC 较高，LSD 各 epoch 固定在 0.66。",
+      "key": true,
+      "claim_ids": [
+        "C3"
+      ],
+      "text_asset": "text\\visuals\\figure-5-p014.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "table-7-p015",
+      "label": "Table 7",
+      "kind": "table",
+      "number": "7",
+      "page": 15,
+      "caption": "Description of connected components in the graph. Here fLCC is the fraction of the largest connected compo- nent to the whole graph.",
+      "raw_text": "Table 7: Description of connected components in the graph. Here fLCC is the fraction of the largest connected compo- nent to the whole graph.",
+      "caption_bbox_points": [
+        54.0,
+        460.407,
+        292.514,
+        492.287
+      ],
+      "caption_bbox_pixels": [
+        135,
+        1151,
+        731,
+        1231
+      ],
+      "suggested_crop_bbox_points": [
+        44.0,
+        252.856,
+        302.514,
+        502.287
+      ],
+      "suggested_crop_bbox_pixels": [
+        110,
+        632,
+        756,
+        1256
+      ],
+      "candidate_crop": "crops\\table-7-p015.png",
+      "selected_asset": "crops\\table-7-p015.png",
+      "candidate_crop_size_pixels": [
+        647,
+        624
+      ],
+      "source_page_image": "pages\\page-015.png",
+      "source_page_text": "text\\pages\\page-015.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": false,
+      "visual_verification": "complete",
+      "review_notes": "已核对裁剪图：连通分量与 fLCC 统计表完整；campaign Overall fLCC 均值 0.767，non-campaign 为 0.816。",
+      "key": true,
+      "claim_ids": [
+        "C1",
+        "C5"
+      ],
+      "text_asset": "text\\visuals\\table-7-p015.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "pending",
+        "sources": [],
+        "notes": "",
+        "limitations": ""
+      }
+    }
+  ]
+}

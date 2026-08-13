@@ -1,0 +1,32 @@
+Model       Accuracy       Precision       Recall        F1 Score
+                    Text + MLP   0.585 ± 0.062   0.535 ± 0.040   0.843 ± 0.000   0.651 ± 0.031
+             GCN         0.554 ± 0.031   0.551 ± 0.018   0.943 ± 0.114   0.692 ± 0.037
+              GAT         0.585 ± 0.092   0.631 ± 0.185   0.914 ± 0.171   0.705 ± 0.011
+               GIN          0.492 ± 0.062   0.529 ± 0.057   0.543 ± 0.057   0.535 ± 0.055
+                GraphSAGE   0.769 ± 0.028   1.000 ± 0.000   0.571 ± 0.089   0.727 ± 0.032
+               GINE         0.585 ± 0.092   0.635 ± 0.135   0.800 ± 0.194   0.673 ± 0.026
+             VNGE        0.769 ± 0.020   0.769 ± 0.024   0.833 ± 0.049   0.769 ± 0.063
+              LSD          0.769 ± 0.001   0.773 ± 0.005   0.857 ± 0.010   0.800 ± 0.006
+
+Table 6: Campaign vs. non-campaign classification for news-based engagement networks. Text + MLP refers to the non-graph
+based classifier. The best results are in bold.
+
+
+
+
+
+                     Figure 3: Confusion matrices to display the performance of the graph classifiers.
+
+
+shown in Table 2, where some campaign types have signifi-       the task of distinguishing the campaign type is more chal-
+cantly fewer graphs. This is further demonstrated by the con-      lenging than simply detecting the campaigns. Overall, the
+fusion matrices shown in Figure 3, where most graphs are       label imbalance within seven classes of large networks is an
+classified as either Politics or Reform by the baseline mod-       interesting and challenging direction for graph classification
+els. Another noteworthy observation is that accuracy and F1      methods and our dataset offers a promising testbed.
+scores for both datasets in multi-class campaign type clas-
+sification is lower than the scores for binary campaign vs.
+non-campaign classification (in Table 4). This suggests that
+
+
+
+                                                   695

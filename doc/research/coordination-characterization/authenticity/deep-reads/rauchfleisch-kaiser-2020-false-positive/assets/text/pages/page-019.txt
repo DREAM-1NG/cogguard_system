@@ -1,0 +1,91 @@
+PLOS ONE                                              The False positive problem of automatic bot detection in social science research
+
+
+
+
+                                              Conference on World Wide Web Companion—WWW ’17 Companion. New York, New York, USA:
+                                ACM Press; 2017. pp. 963–72.
+
+                                             17.   Cresci S, Di Pietro R, Petrocchi M, Spognardi A, Tesconi M. Social fingerprinting: detection of spambot
+                                              groups through DNA-inspired behavioral modeling. IEEE Trans Dependable and Secure Comput.
+                                               2017: 1. https://doi.org/10.1109/TDSC.2017.2681672
+
+                                             18.  Yang K-C, Varol O, Hui P-M, Menczer F. Scalable and Generalizable Social Bot Detection through Data
+                                                      Selection. AAAI. 2020; 34:1096–103. https://doi.org/10.1609/aaai.v34i01.5460
+
+                                             19.  Mazza M, Cresci S, Avvenuti M, Quattrociocchi W, Tesconi M. RTbust. In: Boldi P, Welles BF, Kinder-
+                                               Kurlanda K, Wilson C, Peters I, et al., editors. Proceedings of the 10th ACM Conference on Web Sci-
+                                       ence—WebSci ’19. New York, New York, USA: ACM Press; 2019. pp. 183–92.
+
+                                             20.   Orabi M, Mouheb D, Al Aghbari Z, Kamel I. Detection of Bots in Social Media: A Systematic Review.
+                                                    Information Processing & Management. 2020; 57:102250. https://doi.org/10.1016/j.ipm.2020.102250
+
+                                             21.  Daya AA, Salahuddin MA, Limam N, Boutaba R. BotChase: Graph-Based Bot Detection Using Machine
+                                                   Learning. IEEE Trans Netw Serv Manage. 2020; 17:15–29. https://doi.org/10.1109/TNSM.2020.
+                                           2972405
+
+                                             22.   Cresci S. A decade of social bot detection. Commun ACM. 2020; 63:72–83. https://doi.org/10.1145/
+                                           3409116
+
+                                             23.  Chavoshi N, Hamooni H, Mueen A. DeBot: Twitter Bot Detection via Warped Correlation. 2016 IEEE
+                                                 16th International Conference on Data Mining (ICDM). IEEE; 12/12/2016–12/15/2016. pp. 817–22.
+
+                                             24.   Hegelich S, Janetzko D. Are Social Bots on Twitter Political Actors? Empirical Evidence from a Ukrai-
+                                                  nian Social Botnet. Tenth International AAAI Conference on Web and Social Media. AAAI Press; 2016.
+
+                                             25.   Ferrara E, Varol O, Davis C, Menczer F, Flammini A. The rise of social bots. Commun ACM. 2016;
+                                               59:96–104. https://doi.org/10.1145/2818717
+
+                                             26.   Luceri L, Deb A, Giordano S, Ferrara E. Evolution of bot and human behavior during elections. First
+                                           Monday. 2019; 24. Available from: https://journals.uic.edu/ojs/index.php/fm/article/view/10213.
+
+                                             27.  Gorwa R, Guilbeault D. Unpacking the Social Media Bot: A Typology to Guide Research and Policy.
+                                                     Policy & Internet. 2018; 40:420. https://doi.org/10.1002/poi3.184
+
+                                             28.   Social Feed Manager. A List of Twitter Handles for Members of Congress. 2017 [cited 27 Feb 2019].
+                                                       https://gwu-libraries.github.io/sfm-ui/posts/2017-05-23-congress-seed-list.
+
+                                             29.   Reuter M. Fa¨lschen, zu¨chten und versta¨rken: Fragwu¨rdige Twitter-Tricks bei der AfD. 23.05.2019 [cited
+                                          27 Jul 2020]. https://netzpolitik.org/2019/faelschen-zuechten-und-verstaerken-fragwuerdige-twitter-
+                                                           tricks-bei-der-afd/.
+
+                                             30.   Halligan S, Altman DG, Mallett S. Disadvantages of using the area under the receiver operating charac-
+                                                                 teristic curve to assess imaging tests: a discussion and proposal for an alternative approach. Eur Radiol.
+                                               2015; 25:932–9. https://doi.org/10.1007/s00330-014-3487-0 PMID: 25599932.
+
+                                             31.   Davis J, Goadrich M. The relationship between Precision-Recall and ROC curves. In: Cohen W, Moore
+                                                  A, editors. Proceedings of the 23rd international conference on Machine learning—ICML ’06. New York,
+                                   New York, USA: ACM Press; 2006. pp. 233–40.
+
+                                             32.  Lobo JM, Jime´nez-Valverde A, Real R. AUC: a misleading measure of the performance of predictive
+                                                           distribution models. Global Ecol Biogeography. 2008; 17:145–51. https://doi.org/10.1111/j.1466-8238.
+                                               2007.00358.x
+
+                                             33.   Saito T, Rehmsmeier M. The precision-recall plot is more informative than the ROC plot when evaluat-
+                                                     ing binary classifiers on imbalanced datasets. PLoS ONE. 2015; 10:e0118432. https://doi.org/10.1371/
+                                                 journal.pone.0118432 PMID: 25738806.
+
+                                             34.  Chicco D. Ten quick tips for machine learning in computational biology. BioData Min. 2017; 10:35.
+                                                   https://doi.org/10.1186/s13040-017-0155-3 PMID: 29234465
+
+                                             35.  Chicco D, Jurman G. The advantages of the Matthews correlation coefficient (MCC) over F1 score and
+                                               accuracy in binary classification evaluation. BMC Genomics. 2020; 21:6. https://doi.org/10.1186/
+                                              s12864-019-6413-7 PMID: 31898477.
+
+                                             36.  DeLong ER, DeLong DM, Clarke-Pearson DL. Comparing the Areas under Two or More Correlated
+                                                Receiver Operating Characteristic Curves: A Nonparametric Approach. Biometrics. 1988; 44:837.
+                                                    https://doi.org/10.2307/2531595 PMID: 3203132
+
+                                             37.  Sun X, Xu W. Fast Implementation of DeLong’s Algorithm for Comparing the Areas Under Correlated
+                                                Receiver Operating Characteristic Curves. IEEE Signal Process Lett. 2014; 21:1389–93. https://doi.
+                                               org/10.1109/LSP.2014.2337313
+
+                                             38.  Bradshaw S, Howard PN, Kollanyi B, Neudert L-M. Sourcing and Automation of Political News and
+                                                    Information over Social Media in the United States, 2016–2018. Political Communication. 2019; 15:1–
+                                                   21. https://doi.org/10.1080/10584609.2019.1663322
+
+
+
+
+
+PLOS ONE | https://doi.org/10.1371/journal.pone.0241045  October 22, 2020                                                        19 / 20

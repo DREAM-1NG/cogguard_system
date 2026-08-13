@@ -436,6 +436,11 @@
 - [x] 将冻结生产 `coordination-evidence-runtime-v2` 的静态图 prior 接入 IOHunter 同源评估。
 - [x] 配对强制校验 source/evaluator/fold 指纹，并按 campaign 均值执行 bootstrap。
 - [x] 在 G 盘完成最终 v2 五 campaign 跑批：50 行，35 success，15 production runtime-budget blocked。
+- [x] 拉通官方 InfoOpsGFM（本地历史 `SocGFM` checkout）四个同国训练入口：`run_GNN.py`、`run_GNNPlusLLM.py`、`run_MultiModalGNN.py`、`run_MultiModalGNN_CrossAttention.py` 均在 Russia IOHunter bundle 完成相同五折官方协议复现；sandbox、日志、MLflow、临时缓存与 manifest 均在 G 盘。
+- [x] 官方 Cross-Attention SAGE 五 campaign 复现完成 UAE、Russia、Venezuela、Iran、China；Russia 四入口统一矩阵已落盘。该结果限外部账号成员恢复 proxy，不得作为 Coordination Discover 或 harmful-CIB Coordination Detect 主张。
+- [~] 官方 InfoOpsGFM 同国全矩阵已具备资源门控的串行、断点续跑 runner：五个可执行 campaign × 四个官方入口将在 GPU/主存空闲后执行；Cuba 使用已验证的 12GiB full-graph 显存门禁写 blocked manifest，不以非等价采样替代。
+- [ ] 补齐官方 InfoOpsGFM Cuba full-graph 复现：本地 8GB GPU 对 SAGE 与 GCN 均在约 9GB 单次传播分配时 OOM；不得以降采样结果替代官方 full-graph 行。
+- [ ] 官方 InfoOpsGFM cross-country 与 fine-tuning 路径：本地数据为 `UAE`，官方一个脚本要求 `UAE_sample`；不得静默创建别名改变路径契约。两个脚本还加载 Cuba，因此至少需要数据路径对齐和大于当前 8GB 的可用显存。
 - [ ] 研究候选替换系统模型：继续阻断。Russia 全指标落后，Venezuela 全指标领先，跨 campaign 方向不稳定。
 - [ ] 完全交叉 model seed 与 official fold，消除当前 seed-fold 耦合。
 - [ ] 使用可扩展但单独命名的生产社区 baseline；不得替换冻结 baseline 后沿用原方法身份。

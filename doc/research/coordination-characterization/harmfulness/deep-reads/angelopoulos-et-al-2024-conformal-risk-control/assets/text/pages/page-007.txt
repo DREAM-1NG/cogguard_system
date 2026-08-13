@@ -1,0 +1,73 @@
+Published as a conference paper at ICLR 2024
+
+
+
+
+
+                                                                                                                          {1 august 1965, 1965, 11 january 2006, …}
+        when were cigarette ads banned from tv uk?
+                                                                                                     Answers = {1 august 1965, …}    F1 = 1.0
+
+
+                                                                                                                                   {robert wilkins, jesus, david, keith green, …}
+        who told the story of the prodigal son?
+                                                                                                      Answers = {Jesus Christ}        F1 = 0.66
+
+
+           25
+                                                                     10 1
+           20
+           15                  density
+           10
+            5                                                         10 2
+            0
+                   0.26       0.28       0.30       0.32       0.34                  20        22        24        26        28        30
+                                                   risk                                                                set size
+Figure 4: F1-score control on Natural Questions. The top figure shows examples of our procedure
+with fully correct answers in green, partially correct answers in blue, and false positives in gray.
+Note that answers that are technically correct may still be down-graded if they do not match the
+reference. We treat this as part of the randomness in the task. The bottom plots report the F1 risk
+and average set size over 1000 independent random data splits. The dashed gray line marks α.
+
+We use the ImageNet dataset (Deng et al., 2009), which comes with an existing label hierarchy,
+WordNet, of maximum depth D = 14. We choose a ResNet152 (He et al., 2016) for f and
+n = 30000, and evaluate risk with the remaining 20000. We report results with α = 0.05 in Figure 3.
+The mean and standard deviation of the risk over 1000 trials are 0.0499 and 0.0011, respectively. The
+results indicate that the risk is almost exactly controlled, and that the adaptively chosen resolution
+of the prediction appropriately encodes the model uncertainty (it is almost always a leaf node).
+
+3.4  F1-SCORE CONTROL IN OPEN-DOMAIN QUESTION ANSWERING
+
+In the open-domain question answering setting, our input Xi is a question and our label Yi is a set
+of (possibly non-unique) correct answers. For example, the input
+                   Xn+1 = “Where was Barack Obama Born?”
+could have the answer set
+          Yn+1 = {“Hawaii”, “Honolulu, Hawaii”, “Kapo’olani Medical Center”}
+Formally, here we treat all questions and answers as being composed of sequences (up to size m) of
+tokens in a vocabulary V—i.e., assuming k valid answers, we have Xi ∈Z and Yi ∈Zk, where
+Z := Vm. Using an open-domain question answering model that individually scores candidate
+output answers f : Z × Z →R, we calibrate the best token-based F1-score of the prediction set,
+taken over all pairs of predictions and answers:
+LF1i  (λ) = 1 −max  F1(a, c): c ∈Cλ(Xi), a ∈Yi  , where Cλ(Xi) = {y ∈Vm : f(Xi, y) ≥λ} .
+We define the F1-score following popular QA evaluation metrics (Rajpurkar et al., 2016), where we
+treat predictions and ground truth answers as bags of tokens and compute the geometric average of
+their precision and recall (while ignoring punctuation and articles {“a”, “an”, “the”}). Since LF1i   ,
+as defined in this way, is monotone and upper bounded by 1, it can be controlled by choosing ˆλ as
+in Section 2.1 to achieve the following guarantee:
+                        E h LF1n+1(ˆλ)i ≤α.
+
+We use the Natural Questions (NQ) dataset (Kwiatkowski et al., 2019), a popular open-domain ques-
+tion answering baseline, to evaluate our method. We use the splits distributed as part of the Dense
+Passage Retrieval (DPR) package (Karpukhin et al., 2020). Our base model is the DPR Retriever-
+Reader model (Karpukhin et al., 2020), which retrieves passages from Wikipedia that might contain
+the answer to the given query, and then uses a reader model to extract text sub-spans from the
+retrieved passages that serve as candidate answers. Instead of enumerating all possible answers to
+a given question, we retrieve the top several hundred candidate answers, extracted from the top 100
+passages. We use n = 2500 calibration points, and evaluate risk control with the remaining 1110.
+We use α = 0.3 (chosen empirically as the lowest F1 score which reliably results in approximately
+correct answers by manual validation) in Figure 4. The mean and standard deviation of the risk over
+1000 trials are 0.2996 and 0.0150, respectively. The results indicate that the risk is almost exactly
+controlled, and that the sets are reasonably sized, scaling appropriately with question difficulty.
+
+
+                                       7

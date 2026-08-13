@@ -1,0 +1,62 @@
+Campaign vs. Non-Campaign Classification for                   Acknowledgements
+News-Based Graphs                                   A. A. Gopalakrishnan, J. Hossain, and A. E. Sarıy¨uce were
+                                                             supported by NSF awards OAC-2107089 and IIS-2236789,
+We also investigate a finer-grained binary  classification                                                       and this research used resources from the Center for Com-
+among engagement networks that are based on news. There                                                                   putational Research at the University at Buffalo (Center for
+are 24 campaign networks within which the news are am-                                                          Computational Research 2025). We also thank Yazgı Akata
+plified by bots and trolls, and 52 non-campaign networks                                                                     for helping with annotating the trends according to cam-
+that are organically formed due to popular events happen-                                                            paign types.
+ing in real world. We conjecture that this subset is uniquely
+challenging for classification as they share the same theme
+                                                                Referencesbut different formation processes. To address the imbalance,
+we randomly sample 24 non-campaign graphs and run the      Alon, U.; and Yahav, E. 2020.  On the bottleneck of
+GNNs mentioned above using the same setup above. Table      graph neural networks and its practical implications. arXiv
+6 gives the results. LSD performs the best in terms of ac-       preprint arXiv:2006.05205.
+curacy and F1 score, similar to the case in binary classifica-      Bacciu, D.; Conte, A.; and Landolfi, F. 2023. Graph pool-
+tion over all networks (Table 4). However, the scores for all      ing with maximum-weight k-independent sets.  In Thirty-
+the classifiers are consistently lower for the news networks,      Seventh AAAI Conference on Artificial Intelligence.
+which again suggests a challenging testbed, especially for                                                               Beers, A.; Schafer, J. S.; Kennedy, I.; Wack, M.; Spiro, E. S.;
+the neural network based approaches.                                                       and Starbird, K. 2023.  Followback clusters, satellite au-
+                                                                  diences, and bridge nodes: coengagement networks for the
+                 Limitations                       2020 US election. In Proceedings of the International AAAI
+                                                          Conference on Web and Social Media, volume 17, 59–71.
+The most prominent limitation is that the data collection pre-      Bian, T.; Xiao, X.; Xu, T.; Zhao, P.; Huang, W.; Rong, Y.;
+dates the decision to restrict API access (Murtfeldt et al.      and Huang, J. 2020. Rumor detection on social media with
+2024). Twitter revoked access to the API endpoint that pro-       bi-directional graph convolutional networks. In Proceedings
+vides the 1% sample of all tweets, rendering real-time de-       of the AAAI conference on artificial intelligence, 549–556.
+tection of bots creating fake trends infeasible as these bots                                                               Bianchi, F. M.; Grattarola, D.; and Alippi, C. 2020. Spec-
+delete their tweets immediately. In addition, collecting large-                                                                                tral clustering with graph neural networks for graph pooling.
+scale datasets has become prohibitively expensive ($5000                                                                In International conference on machine learning, 874–883.
+per month for access to 1M tweets as of May 2024 (De-                                             PMLR.
+veloper 2024)). Consequently, it is not possible to reproduce
+                                                               Bianchi, F. M.; Grattarola, D.; Livi, L.; and Alippi, C. 2020.or practically extend this dataset, potentially making it one
+                                                                 Hierarchical representation learning in graph neural net-of the last of its kind.
+                                                       works with node decimation pooling. IEEE Transactions on
+  Another limitation is in our methodology used to build                                                          Neural Networks and Learning Systems, 33(5): 2195–2207.
+the engagement networks. As part of our experimental setup,
+                                                           Borgwardt, K. M.; and Kriegel, H.-P. 2005.  Shortest-pathwhile building the graphs, we restrict ourselves to only using
+                                                                 kernels on graphs.  In Fifth IEEE international conferencethe latest interaction between any two users. Although this
+                                                     on data mining (ICDM’05), 8–pp. IEEE.removes some interactions, we end up preserving about 74%
+of the edges across all networks.                              Borgwardt, K. M.; Ong, C. S.; Sch¨onauer, S.; Vishwanathan,
+  We acknowledge a potential bias in our dataset towards       S.; Smola, A. J.; and Kriegel, H.-P. 2005. Protein function
+popular events, which resulted in larger networks compared       prediction via graph kernels.  Bioinformatics, 21(suppl 1):
+to campaign-related events. This bias likely arises because       i47–i56.
+less popular events do not make it to the trends list, and even      Cao, C.; and Caverlee, J. 2015. Detecting spam urls in social
+if they do, they often do not fit our heuristics for annotat-      media via behavioral analysis. In Advances in Information
+ing non-campaigns and are subsequently excluded from the       Retrieval: 37th European Conference on IR Research, ECIR
+dataset.                                                    2015, Vienna, Austria, March 29-April 2, 2015. Proceedings
+  We also acknowledge that adversarial activity on social       37, 703–714. Springer.
+media is diverse and evolving, and ephemeral astroturfing       Center, X. T. 2024. Moderation Research. Accessed: 2024-
+may not be the only strategy for creating fake Twitter trends.      05-27.
+We would like to clarify that we followed Elmas et al.’s 2021                                                            Center for Computational Research, U. a. B. 2025.  http:
+findings which suggested that ephemeral astroturfing was                                                                //hdl.handle.net/10477/79221. Accessed: 2025-04-14.
+the only strategy adversaries employed after 2015 to create
+                                                        Chen, P.-Y.; Wu, L.; Liu, S.; and Rajapakse, I. 2019. Fast in-fake trends using bots although there were other strategies
+                                                             cremental von neumann graph entropy computation: Theory,before. Therefore we assumed it is still the primary strat-
+                                                                algorithm, and applications. In International Conference onegy while conducting this study. To address the potential is-
+                                                      Machine Learning, 1091–1101. PMLR.sue of misclassifying campaigns created by other malicious
+strategies as non-campaigns, we manually annotated non-      Developer, T. 2024. About the Twitter API. Accessed: 2024-
+campaigns using our heuristics.                                 05-29.
+
+
+                                                   696

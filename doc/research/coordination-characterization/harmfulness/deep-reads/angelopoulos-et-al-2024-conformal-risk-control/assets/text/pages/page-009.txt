@@ -1,0 +1,61 @@
+Published as a conference paper at ICLR 2024
+
+
+
+
+
+4.3  CONTROLLING MULTIPLE RISKS
+
+Let Li(λ; γ) be a family of loss functions indexed by γ ∈Γ for some domain Γ that may have
+infinitely many elements. A researcher may want to control E[Li(λ; γ)] at level α(γ). Equivalently,
+we need to find an ˆλ based on (Xi, Yi)ni=1 such that
+                              supγ∈Γ E h Li(ˆλ;γ)α(γ) i ≤1.                                (12)
+
+Though the above worst-case risk is not an expectation, it can still be controlled. Towards this end,
+we define ˆλ = supγ∈Γ ˆλγ, where ˆλγ = inf{λ : n+11 Pni=1 Li(λ; γ) + n+1B  ≤α(γ)}.
+Proposition 6. In the setting of Theorem 1, with ˆλ as above, (12) is satisfied.
+
+4.4  ADVERSARIAL RISKS
+
+We next show how to control risks defined by adversarial perturbations. We adopt the same notation
+as Section 4.3. Bates et al. (2021) (Section 6.3) discusses the adversarial risk where Γ parametrizes
+a class of perturbations of Xn+1, e.g., Li(λ; γ) = L(Xi + γ, Yi) and Γ = {γ  : ∥γ∥∞≤ϵ}. A
+researcher may want to find an ˆλ based on (Xi, Yi)ni=1 such that
+                              E[supγ∈Γ Li(λ; γ)] ≤α.                                (13)
+
+This can be recast as a conformal risk control problem by taking ˜Li(λ) = supγ∈Γ Li(λ; γ). Then,
+the following choice of λ leads to risk control: ˆλ = inf{λ : n+11 Pni=1 ˜Li(λ) + n+1B ≤α}.
+Proposition 7. In the setting of Theorem 1, with ˆλ as above, (13) is satisfied.
+
+4.5  U-RISK CONTROL
+
+For ranking and metric learning, Bates et al. (2021) considered loss functions that depend on two
+test points. In general, for any k > 1 and subset S ⊂{1, . . . , n + k} with |S| = k, let LS(λ) be a
+loss function. Our goal is to find ˆλk based on (Xi, Yi)ni=1 such that
+                     E h L{n+1,...,n+k}(ˆλk)i ≤α.                              (14)
+
+We call the LHS a U-risk since, for any fixed ˆλk, it is the expectation of an order-k U-statistic. As a
+natural extension, we can define
+           ˆλk = inf nλ : (n+k)!k!n!                                                   (n!)2      o            PS⊂{1,...,n},|S|=k LS(λ) + B  1 − (n+k)!(n−k)! ≤α   .     (15)
+
+Again, we define ˆλk = λmax when the RHS is empty. Then we can prove the following result.
+Proposition 8. Assume that LS(λ) is non-increasing in λ, right-continuous, and LS(λmax) ≤
+α,  supλ LS(λ) ≤B < ∞almost surely. Then (14) is achieved with ˆλ as above.
+
+5  CONCLUSION
+
+This generalization of conformal prediction broadens its scope to new applications, as shown in
+Section 3.  Still, two primary limitations of our technique remain:  firstly, the requirement of a
+monotone loss is difficult to lift. Secondly, extensions to non-exchangeable data require knowledge
+about the form of the shift. This issue affects most statistical methods, including standard conformal
+prediction, and ours is no different in this regard.  Finally, the mathematical tools developed in
+Sections 2 and 4 may be of independent technical interest, as they provide a new, and more general,
+language for studying conformal prediction, along with new results about its validity.
+
+REPRODUCIBILITY STATEMENT
+
+Code to reproduce our examples is available at https://github.com/aangelopoulos/
+conformal-risk.
+
+
+                                       9

@@ -1,0 +1,66 @@
+Published as a conference paper at ICLR 2024
+
+
+
+
+
+improved conditional coverage (Barber et al., 2020; Romano et al., 2019; Guan, 2020; Romano
+et al., 2020; Angelopoulos et al., 2021b). Most relevant to us is recent work on risk control in high
+probability (Vovk, 2012; Bates et al., 2021; Angelopoulos et al., 2021a) and its applications (Park
+et al., 2020; Fisch et al., 2022; Schuster et al., 2021; 2022; Sankaranarayanan et al., 2022; An-
+gelopoulos et al., 2022a;b, inter alia). However, while Bates et al. (2021) and Angelopoulos et al.
+(2021a) operate in similar mathematical settings and we reuse much of their notation, the algorithm
+presented herein differs greatly.  It is far more sample-efficient, simpler, and provides a guarantee
+in expectation versus a guarantee in probability. Our algorithm is entirely different—no existing
+algorithm gives guarantees in expectation for risk control—and its validity proof is mathematically
+unrelated to these previous works. See Appendix B for a detailed discussion and comparison of
+these algorithms, including experiments.
+
+To further elaborate on the difference between our work and the broader existing literature, first con-
+sider conformal prediction. The purpose of conformal prediction is to provide coverage guarantees
+of the form in (1). The guarantee available through conformal risk control, (3), strictly subsumes that
+of conformal prediction; it is generally impossible to recast risk control as coverage control. As a
+second question, one might ask whether (3) can be achieved through standard statistical machinery,
+such as uniform concentration inequalities. Though it is possible to integrate a uniform concentration
+inequality to get a bound in expectation, this strategy tends to be excessively loose both in theory and
+in practice (see, e.g., the bound of Anthony & Shawe-Taylor (1993)). The technique herein avoids
+these complications; it is simpler than concentration-based approaches, practical to implement, and
+tight up to a factor of 1/n, which is comparatively faster than concentration would allow.
+
+2  THEORY
+
+In this section, we establish the core theoretical properties of conformal risk control. All proofs,
+unless otherwise specified, are deferred to Appendix E.
+
+2.1  RISK CONTROL
+
+We first show that the proposed algorithm leads to risk control when the loss is monotone.
+Theorem 1. Consider a sequence of exchangeable random loss functions, {Li(λ)}n+1i=1 , where Li :
+Λ →R which are non-increasing in λ, right-continuous, and for λmax = sup Λ ∈Λ, satisfy
+                   Li(λmax) ≤α,  sup Li(λ) ≤B < ∞almost surely.                    (5)
+                                    λ
+Then
+                                     E[Ln+1(ˆλ)] ≤α.
+
+Proof. Let bRn+1(λ) = (L1(λ) + . . . + Ln+1(λ))/(n + 1) and
+                                               ˆλ′ = inf nλ ∈Λ :     ≤α o .                                            bRn+1(λ)
+Since infλ Li(λ) = Li(λmax) ≤α, ˆλ′ is well-defined almost surely. Since Ln+1(λ) ≤B, we know
+bRn+1(λ) = n+1n bRn(λ) + Ln+1(λ)n+1 ≤ n+1n bRn(λ) + n+1.B   Thus,
+                   n        B
+                 n + 1 bRn(λ) + n + 1 ≤α =⇒bRn+1(λ) ≤α.
+This implies ˆλ′ ≤ˆλ when the LHS holds for some λ ∈Λ. When the LHS is above α for all λ ∈Λ,
+by definition, ˆλ = λmax ≥ˆλ′. Thus, ˆλ′ ≤ˆλ almost surely. Since Li(λ) is non-increasing in λ,
+                    Eh                           Ln+1  ˆλ i ≤Eh Ln+1  ˆλ′ i .                                (6)
+
+Let E be the multiset of loss functions {L1, . . . , Ln+1}. Then ˆλ′ is a function of E, or, equiva-
+lently, ˆλ′ is a constant conditional on E. Additionally, Ln+1(λ)|E ∼Uniform({L1, ..., Ln+1}) by
+exchangeability. These facts combined with the right-continuity of Li imply
+
+                                            n+1
+                E h Ln+1(ˆλ′) | E i =   1               X Li(ˆλ′) ≤α.
+                                 n + 1
+                                                    i=1
+The proof is completed by the law of total expectation and (6).
+
+
+                                       3

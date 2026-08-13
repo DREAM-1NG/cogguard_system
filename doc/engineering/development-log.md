@@ -1,5 +1,43 @@
 ﻿# 开发变更日志
 
+## 2026-08-12 Official InfoOpsGFM IOHunter Reproduction
+
+- Extended `system/research/coordination_experiments/iohunter_socgfm.py` into
+  an isolated G-drive runner for the canonical official InfoOpsGFM repository
+  (the local checkout retains the historical `SocGFM` directory name).
+  `run_GNN.py`, `run_GNNPlusLLM.py`, `run_MultiModalGNN.py`, and
+  `run_MultiModalGNN_CrossAttention.py` now share source/data fingerprinting,
+  executable-source auditing, full log capture, parsed official global
+  `[TEST]` aggregates, and explicit non-claimable manifests.
+- Moved wrapper temporary directories, PyTorch caches, Matplotlib state, and
+  MLflow storage to G:. The wrapper creates a sandbox-local MLflow experiment
+  and preserves post-training artifacts when Windows file-store path length
+  blocks an upload; it does not modify upstream algorithm code.
+- Completed official SAGE Cross-Attention runs for UAE, Russia, Venezuela,
+  Iran, and China. Completed the four-entry-point Russia ablation:
+  GNN Macro-F1 `0.8916`, GNN+LLM `0.9022`, MultiModalGNN `0.9085`, and
+  Cross-Attention `0.9206`; the latter took `295.14s`, versus `67.29s` for
+  MultiModalGNN. The five dataset-provided splits are folds, not multi-seed
+  evidence.
+- Cuba is explicitly blocked: both SAGE and GCN full-graph executions request
+  about 9GB during propagation, above the local 8GB GPU capacity. Cross-country
+  paths are fail-closed because the local bundle provides `UAE` while one
+  official script requires `UAE_sample`; the wrapper does not synthesize it.
+- Added a serial resource-gated matrix launcher with stable per-entry
+  directories, resume-by-manifest, matrix coverage summary, and G-drive-only
+  temporary/cache/MLflow/artifact paths. It waits for an idle GPU and enough
+  host memory before executing the remaining five-campaign, four-method
+  official matrix. Cuba is written as a blocked row until an equivalent
+  full-graph run has at least 12GiB available GPU memory.
+- `doc/research/iohunter-socgfm-official-reproduction-20260812.md` records
+  protocol, metrics, runtime, official-source identity, and claim boundaries.
+  The result remains an account-level IO membership reproduction, not
+  harmful-CIB Coordination Detect validation.
+- Verification: `test_iohunter_socgfm_runner.py` covers method-specific
+  commands, G-drive isolation, Windows MLflow recovery, source auditing,
+  same/cross-country preflight, matrix resume coverage, and duplicate/smoke
+  rejection in method summaries.
+
 ## 2026-08-08: TwiBot-20 Research Deployment And Dataset Identity
 
 - Added an internal `TwiBot20ResearchRuntime` and CLI. It verifies a compact,

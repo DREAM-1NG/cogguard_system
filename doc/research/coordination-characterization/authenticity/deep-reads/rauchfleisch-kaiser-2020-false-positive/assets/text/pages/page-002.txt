@@ -1,0 +1,59 @@
+PLOS ONE                                              The False positive problem of automatic bot detection in social science research
+
+
+
+                                        learning based classifiers [3]. Especially the trained classifier Botometer [3, 4] has established
+                                                     itself in the social sciences to estimate the number of bots within a given dataset.
+                                        In April 2018, for example, Pew Research Center published a large-scale study analyzing
+                                   Tweets with links to popular websites finding that two-thirds of the analyzed tweets are posted
+                                  by automated accounts [5]. Another study by Bessi and Ferrara [6] estimated that 19% of the
+                                        tweets published during the 2016 presidential election in the US were posted by “social bots”.
+                        A study conducted in the German context found that 9.9% of the followers of German national
+                                        party accounts on Twitter are “social bots” [7]. And a study published in Science found that
+                                        fake news spread faster on Twitter due to humans and not bots [8]. These studies share a com-
+                          mon feature: the bot detection tool Botometer [4] which was formerly known as BotOrNot [3].
+                                                   It is, however, worth noting that these are by far not the only studies making use of this partic-
+                                          ular form of bot detection method. A simple Google Scholar search for ““botometer” OR
+                                      “botornot”” yields 918 results (as of July 28, 2020) with 439 results since 2019. It is thus fair to
+                                        say that the tool is arguably the most popular bot detection method in the social sciences and
+                                         applications of the tools have been published both in field specific journals such as Political
+                                 Communication [7] as well as high-ranked general-interest journals like Science [8] or Nature
+                                  Communications [9]. This, then, would suggest that Botometer is the de-facto standard of bot
+                                        detection in computational social science.
+                                      Bot detection, however, is notoriously tricky. Not only will bot creators (especially in the
+                                       context of fraudulent social bots that pretend to be human) try to convince users as well as
+                                        researchers applying their detection methods that their bots are legitimate humans but they
+                                              will also adjust their bots to the newest identification methods and will thus often be one step
+                                   ahead of researchers. This, of course, goes hand in hand with a certain uncertainty when it
+                                 comes to detecting bots. There are numerous cases of Twitter accounts that look like bots but
+                                        are actually human and vice versa; some accounts are both: semi-automated and semi-manual.
+                             To account for this complexity, Botometer does not say whether a user is a bot or not but
+                                         rather will give a probability estimate between 0–1 (1 = most likely bot, 0 = most likely being
+                                human; the scale can also be 0–5 as shown on Botometer’s homepage). Researchers conse-
+                                      quently have to define a manual threshold that seems reasonable to them if they want to clas-
+                                                sify accounts in a binary fashion. If an account has a higher score than the defined threshold, it
+                                              will be defined as bot by the researchers. Wojcik et al. [5], for example, chose 0.43, while Keller
+                                 and Klinger [7] opted for 0.76. In contrast, Zhang et al. [10] use a rather low threshold of .25
+                                          for the complete automation probability (CAP) which is also provided by Botometer.
+                                      For researchers, established tools like Botometer that come with a large body of peer-
+                                     reviewed publications that lend authority and legitimacy to the tool as well as an easy to access
+                                    API, are an important resource in their goal to shine a light into the role of bots on social
+                                 media platforms such as Twitter and their potential impact on the public discourse. However,
+                                     Botometer is not above criticism. Grimme et al. [11] show in their study, for example, that Bot-
+                                     ometer could not classify the hybrid and full automation bot accounts that the authors had cre-
+                                       ated precisely. The original creators acknowledge these potential limitations of their tool and
+                                   admit that “many machine learning algorithms, including those used by Botometer, do not
+                              make it easy to interpret their classifications” [12]. They further suggest in the official FAQ on
+                                        the homepage of Botometer that “[i]t’s tempting to set some arbitrary threshold score and con-
+                                          sider everything above that number a bot and everything below a human, but this is probably
+                                     not the best way to think about it [the bot score]” [13]. Yet, as we have already indicated above,
+                             many studies relying on Botometer as a tool do use a fixed threshold [5, 7, 8].
+                                                            Still, there are some notable few exceptions in the literature where researchers have vali-
+                                     dated existing tools like Bototmeter in a first step and, then, opted for a self-developed solution
+                                           instead. While not explicitly discussing the diagnostic ability of Botometer, Fernquist et al. [14]
+
+
+
+
+
+PLOS ONE | https://doi.org/10.1371/journal.pone.0241045  October 22, 2020                                                         2 / 20

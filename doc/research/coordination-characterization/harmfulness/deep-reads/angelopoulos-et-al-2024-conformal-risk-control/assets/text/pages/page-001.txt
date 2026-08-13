@@ -1,0 +1,65 @@
+Published as a conference paper at ICLR 2024
+
+
+
+CONFORMAL RISK CONTROL
+
+ Anastasios N. Angelopoulos1, Stephen Bates2, Adam Fisch2, Lihua Lei3, Tal Schuster4
+
+ 1UC Berkeley  2MIT   3Stanford   4Google Research
+
+
+                         ABSTRACT
+
+      We extend conformal prediction to control the expected value of any monotone
+         loss function. The algorithm generalizes split conformal prediction together with
+           its coverage guarantee.  Like conformal prediction, the conformal risk control
+        procedure is tight up to an O(1/n) factor. We also introduce extensions of the idea
+         to distribution shift, quantile risk control, multiple and adversarial risk control, and
+         expectations of U-statistics. Worked examples from computer vision and natural
+        language processing demonstrate the usage of our algorithm to bound the false
+         negative rate, graph distance, and token-level F1-score.
+
+1  INTRODUCTION
+
+We seek to endow some pre-trained machine learning model with guarantees on its performance as
+to ensure its safe deployment. Suppose we have a base model f that is a function mapping inputs
+x ∈X to values in some other space, such as a probability distribution over classes. Our job is to
+design a procedure that post-processes the output of f to give it a statistical safety property.
+
+Split conformal prediction (Vovk et al., 2005; Papadopoulos et al., 2002), which we will refer to sim-
+ply as “conformal prediction”, has been useful in areas such as computer vision (Angelopoulos et al.,
+2021b) and natural language processing (Fisch et al., 2021) to provide such a guarantee. By measur-
+                                                     n
+ing the model’s performance on a calibration dataset  (Xi, Yi) i=1 of feature-response pairs, con-
+formal prediction post-processes the model to construct prediction sets that bound the miscoverage,
+
+                       P Yn+1 /∈C(Xn+1) ≤α,                                  (1)
+
+where (Xn+1, Yn+1) is a new test point, α is a user-specified error rate (e.g., 10%), and C is a
+function of the model and calibration data that outputs a prediction set. Note that C is formed using
+the first n data points, and the probability in (1) is over the randomness in all n + 1 data points (i.e.,
+the draw of both the calibration points 1, . . . , n and the test point n + 1).
+
+In this work, we extend conformal prediction to prediction tasks where the natural notion of er-
+ror is not simply miscoverage. In particular, our main result is that a generalization of conformal
+prediction provides guarantees of the form
+                     Eh ℓ Cλ(Xn+1), Yn+1 i ≤α,                                 (2)
+
+for any bounded loss function ℓthat shrinks as Cλ(Xn+1) grows, and λ is an input parameter that
+controls the growth of Cλ(Xn+1). We call this conformal risk control. Note that (2) recovers the
+conformal miscoverage guarantee in (1) when using the miscoverage loss, ℓ Cλ(Xn+1), Yn+1) =
+1 {Yn+1 /∈Cλ(Xn+1)}. However, our algorithm also extends conformal prediction to situations
+where other loss functions, such as the false negative rate (FNR), are more appropriate.
+
+As an example, consider multilabel classification, where the Yi ⊆{1, ..., K} are sets comprising
+a subset of K classes. Creating sets that contain all the classes may be too conservative if K is
+massive; instead, given a trained multilabel classifier f  : X →[0, 1]K, we want to output sets
+that include a large fraction of the true classes in Yi. To that end, we post-process the model’s raw
+outputs into the set of classes with sufficiently high scores, Cλ(x) = {k : f(X)k ≥1 −λ}, where
+the main parameter of the algorithm λ ∈[0, 1] is a threshold. Note that as the threshold λ grows,
+we include more classes in Cλ(x)—i.e., it becomes more conservative. In this case, conformal risk
+control finds a threshold value ˆλ that controls the fraction of missed classes, i.e., the expected value
+
+
+                                       1

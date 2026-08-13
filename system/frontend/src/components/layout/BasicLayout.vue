@@ -84,6 +84,7 @@ import {
   ShareAltOutlined,
   UserOutlined,
   AlertOutlined,
+  ExperimentOutlined,
   SettingOutlined,
   LogoutOutlined,
   CloseOutlined,
@@ -103,7 +104,8 @@ const menuItems = [
   { path: '/propagation', label: '传播监测', icon: ShareAltOutlined, desc: '查看传播路径、证据链和传播角色', disabled: false },
   { path: '/accounts', label: '账号画像', icon: UserOutlined, desc: '查看账号研判与活跃节律', disabled: false },
   { path: '/risk', label: '事件研判', icon: AlertOutlined, desc: '查看证据、复核建议并确认处置结论', disabled: false },
-  { path: '/system', label: '系统运维', icon: SettingOutlined, desc: '配置服务并检查系统连通性与任务健康', disabled: false, roles: ['admin'] },
+  { path: '/analysis', label: '语义辅助', icon: ExperimentOutlined, desc: '查看关键词、主题、情感、立场、实体和传播路径语义叠加', disabled: false },
+  { path: '/system', label: '系统运维', icon: SettingOutlined, desc: '查看系统连通性与任务健康', disabled: false, roles: ['admin', 'analyst'] },
 ]
 
 const visibleMenuItems = computed(() => {

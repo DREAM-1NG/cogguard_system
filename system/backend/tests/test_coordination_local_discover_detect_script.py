@@ -22,7 +22,7 @@ def _write_jsonl(path: Path, rows: list[dict[str, object]]) -> None:
     path.write_text("\n".join(json.dumps(row, ensure_ascii=False) for row in rows) + "\n", encoding="utf-8")
 
 
-def test_local_discover_detect_script_normalizes_jsonl_and_abstains_without_labels(tmp_path: Path):
+def test_local_discover_detect_script_normalizes_jsonl_and_preserves_missing_label_boundary(tmp_path: Path):
     script = _load_script()
     data_root = tmp_path / "data_runs"
     _write_jsonl(
@@ -135,7 +135,7 @@ def test_local_discover_detect_script_normalizes_jsonl_and_abstains_without_labe
 
     assert effectiveness["experiment_scope"] == "full_all_snapshots"
     assert effectiveness["gates"]["evidence_multigraph"] is True
-    assert effectiveness["gates"]["detect_abstain_boundary"] is True
+    assert effectiveness["gates"]["detect_label_boundary"] is True
     assert effectiveness["by_snapshot"][0]["dynamic_window_gate"] is True
     assert effectiveness["by_snapshot"][0]["process_exploratory_gate"] in {True, False}
     assert effectiveness["overall_conclusion"] in {"effective_for_discovery_case_study", "needs_followup"}

@@ -20,7 +20,7 @@ from .contracts import (
 from .features import build_detection_feature_rows
 
 
-_THRESHOLD_OBJECTIVE = "maximize_covered_macro_f1_times_coverage"
+_THRESHOLD_OBJECTIVE = "forced_binary_probability_at_0_5"
 
 
 def _sigmoid(values: np.ndarray) -> np.ndarray:
@@ -120,36 +120,8 @@ def _binary_f1(true: np.ndarray, predicted: np.ndarray, positive_label: int) -> 
     return 0.0 if denominator == 0 else (2.0 * true_positive) / denominator
 
 
-def _select_thresholds(probabilities: np.ndarray, labels: np.ndarray) -> tuple[float, float]:
-    candidates = tuple(sorted({0.0, 1.0, *(float(value) for value in probabilities)}))
-    ranked: list[tuple[tuple[float, ...], tuple[float, float]]] = []
-    for lower in candidates:
-        for upper in candidates:
-            if lower >= upper:
-                continue
-            covered = (probabilities <= lower) | (probabilities >= upper)
-            if not np.any(covered & (labels == 0)) or not np.any(covered & (labels == 1)):
-                continue
-            covered_labels = labels[covered]
-            predictions = (probabilities[covered] >= upper).astype(np.int64)
-            macro_f1 = (
-                _binary_f1(covered_labels, predictions, 0)
-                + _binary_f1(covered_labels, predictions, 1)
-            ) / 2.0
-            coverage = float(np.mean(covered))
-            score = macro_f1 * coverage
-            rank = (
-                round(score, 15),
-                round(macro_f1, 15),
-                round(coverage, 15),
-                round(upper - lower, 15),
-                -lower,
-                -upper,
-            )
-            ranked.append((rank, (lower, upper)))
-    if not ranked:
-        raise ValueError("validation rows cannot produce selective thresholds with both classes covered")
-    return max(ranked, key=lambda item: item[0])[1]
+def _fixed_binary_thresholds(_probabilities: np.ndarray, _labels: np.ndarray) -> tuple[float, float]:
+    return 0.5, 0.5
 
 
 def _validate_partition(
@@ -275,7 +247,7 @@ class LearnedCoordinationDetector:
         calibrated = _sigmoid(slope * validation_logits + calibration_intercept)
         if not np.all(np.isfinite(calibrated)):
             raise ValueError("calibrator produced non-finite validation probabilities")
-        lower, upper = _select_thresholds(calibrated, validation_labels.astype(np.int64))
+        lower, upper = _fixed_binary_thresholds(calibrated, validation_labels.astype(np.int64))
         validation_fingerprint = case_id_fingerprint(case.case_id for case in validation)
         artifact = DetectionModelArtifact(
             feature_schema=self.schema,
@@ -358,18 +330,11 @@ class LearnedCoordinationDetector:
                 if value < low or value > high
             )
             probability = float(probabilities[row_index])
-            if ood_features:
-                decision = "abstain"
-                reason = "out_of_distribution"
-            elif probability <= artifact.lower_decision_threshold:
-                decision = "benign_coordination"
-                reason = None
-            elif probability >= artifact.upper_decision_threshold:
-                decision = "harmful_coordination"
-                reason = None
-            else:
-                decision = "abstain"
-                reason = "selective_threshold"
+            decision = (
+                "harmful_coordination"
+                if probability >= artifact.upper_decision_threshold
+                else "benign_coordination"
+            )
             verdicts.append(
                 ClusterDetectionVerdict(
                     cluster_id=cluster_id,
@@ -378,7 +343,6 @@ class LearnedCoordinationDetector:
                     model_version=artifact.model_version,
                     model_role=artifact.model_role,
                     artifact_hash=artifact.artifact_hash,
-                    abstain_reason=reason,
                     ood_features=ood_features,
                 )
             )

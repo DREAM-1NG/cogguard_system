@@ -1,0 +1,62 @@
+Set           Attributes
+                                                                      like count
+                                                                       Engagement  retweet count
+                                                                      reply count
+                                                                      mention count
+                                                                                             Entities     hashtag count
+                                                                      url count
+                                                                          Delay       reply time diff
+                                                                                         Similarity    cosine
+
+                                                             Table 1: Reply-level attributes used to generate features for
+                                                                 the tweet classifier.
+
+
+Figure 4: Characterization of the Egypt campaign. Distribu-       ing, while inauthentic activity mainly focused on manipu-
+tions of (A) countries and (B) professions of the targets. (C)       lating conversations through replies. Based on these obser-
+Wordshift graph comparing the most frequent words in tar-       vations, we use three tweet-level features: reply count,
+geted and non-targeted tweets.                        retweet count, and like count.
+                                                               Next, let us consider reply-level features. These are based
+                                                     on eight attributes, listed in Table 1. Engagement and en-
+state officials (29) were again the main targets of the co-        tity attributes are defined for each reply. The delay is also
+ordinated replies (Fig. 4b). The analysis of common terms       defined, for each reply, as the difference between the times-
+in the targeted tweets (Fig. 4c) and manual inspection re-      tamps of the tweet and the reply. The similarity is designed
+veal that the Egypt campaign primarily focused on religious       to capture the presence of similar narratives in replies, a
+themes, terrorism, and current affairs like the Iran Nuclear     common characteristic of inauthentic engagement. To this
+deal (2018), Yemen’s Houthi movement, Sudan’s military      end, we first generate vector embeddings for the replies us-
+coup, and the Muslim Brotherhood. These observations are      ing the LaBSE model (Feng et al. 2020), which supports 109
+consistent with a report by DiResta, Kheradpir, and Miller      languages. The cosine attribute is then computed for each
+(2020), describing an IO activity orchestrated by Egypt and       pair of replies to the same tweet as the cosine similarity be-
+the UAE, supporting the Saudi and Egyptian governments      tween the corresponding vectors.
+and criticizing Qatar, Turkey, Yemen, Iran.                        Since targeted tweets can have many replies, this proce-
+  Both case studies indicate that influential people like jour-      dure yields many attribute values that must be aggregated
+nalists, news media, state officials, and politicians, are the       to obtain a set of features for each tweet. In the case of en-
+primary targets of coordinated reply attacks. These targets      gagement, entities, and delay attributes, we have one value
+can be from different countries than the campaign’s country      per reply. For the similarity attribute, we have one value
+of origin. The topics of the targeted tweets depend on the      per a pair of replies. In all cases, we aggregate these val-
+current affairs of the specific geographic region or country.       ues to obtain a single distribution of attribute values for each
+                                                                  tweet. From these distributions we compute the following 12
+        RQ2: Tweet Classification               summary statistic features: range, 25/50/75 quartiles, inter-
+                                                                      quartile range, minimum, maximum, mean, standard devia-Identifying the tweets that receive inauthentic coordinated
+                                                                          tion, skewness, kurtosis, and entropy. Since we do this forreplies  is a necessary  first step toward the detection of
+                                                          each of eight attributes, the total number of reply-level fea-both the targets and the perpetrators of a coordinated at-
+                                                                     tures used in the classifier is 8×12 = 96. Including the threetack. To address this challenge, we propose a campaign-
+                                                                   tweet-level features, the classifier uses a total of 99 features.independent classifier for identifying IO-targeted tweets.
+The same methodology could also be generalized to plat-
+                                                       Resultsforms other than Twitter.
+                                         We compare different machine learning models: Logistic
+Classifier Features                                          Regression, Random Forest, AdaBoost, Decision Tree, and
+The tweet  classifier leverages several features extracted      Naive Bayes. Prior to training, we standardize the input fea-
+from tweets and from the replies they receive. Let us first       tures via z-scores. We conduct 10-fold cross-validation to
+focus on tweet-level features, specifically tweet engage-       mitigate over-fitting of the training data and report on the
+ment. We find a few key differences between the engage-     mean precision, recall, and F1 values across folds along with
+ment metrics of IO-targeted vs. control tweets. As illus-    AUC in Table 2. Precision, recall, and F1 depend on a thresh-
+trated in Fig. 5a, IO-targeted tweets receive more replies      old to transform the model score into a binary classification
+(median 31 vs. 22 for control tweets). On the other hand,       label. We tune the threshold to maximize the mean F1 across
+control tweets receive slightly more retweets (median 84       folds. In the following, we focus on Random Forest (with
+vs. 75 for IO-targeted tweets, Fig. 5b) and more likes (me-     100 estimator trees), which yields the best scores overall.
+dian 420 vs. 250, Fig. 5c). This suggests that organic en-       To study the contributions of different features, we fol-
+gagement generated more positive interactions and shar-      lowed two approaches. First, we trained and tested Random
+
+
+                                                   1590

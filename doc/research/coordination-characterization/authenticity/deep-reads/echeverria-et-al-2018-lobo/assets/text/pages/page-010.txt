@@ -1,0 +1,68 @@
+8.3  Scalability                                                      [7] Z. Cai and C. Jermaine. The latent community model for de-
+  While re-training a classiﬁer several times can be computa-          tecting sybil attacks in social networks. In NDSS, 2012.
+tionally expensive, we have empirically shown that using a few      [8] Q. Cao, X. Yang, J. Yu, and C. Palow. Uncovering large groups
+examples on a dataset with balanced bot classes yields similar          of active malicious accounts in online social networks. In CCS,
+and stable results. Reducing the size of each bot class from         2014.
+several thousands to 500 decreases the needed resources sig-      [9] N. Chavoshi, H. Hamooni, and A. Mueen. DeBot: Twitter Bot
+niﬁcantly. Resource-wise, this speciﬁc implementation of the         Detection via Warped Correlation. In IEEE ICDM, pages 817–
+classiﬁers used a relatively large amount of storage capacity,         822, 2016.
+mostly because we are analysing all the tweets for each of the                                                                      [10] N. Chavoshi, H. Hamooni, and A. Mueen.  Identifying Corre-
+users. This ends up being several terabytes of data. However,          lated Bots in Twitter.  In Social Informatics, Lecture Notes in
+most, if not all, of the methodology can be implemented in par-        Computer Science. Springer, Cham, 2016.
+allel. Collecting, parsing, sampling, training (each) classiﬁer,
+                                                                      [11] S. Cresci, R. Di Pietro, M. Petrocchi, A. Spognardi, and
+and testing can easily be done in parallel.                                                       M. Tesconi. Fame for sale: Efﬁcient detection of fake Twitter
+  The importance of this method goes beyond this, as it can          followers. Decision Support Systems, 2015.
+readily allow multiple bot classes to be plugged in as needed,
+                                                                      [12] S. Cresci, R. Di Pietro, M. Petrocchi, A. Spognardi, and
+provided there are more than a few samples of them.
+                                                       M. Tesconi. The Paradigm-Shift of Social Spambots: Evidence,
+                                                                            Theories, and Tools for the Arms Race. In WWW, 2017.
+9  Conclusion                                              [13] G. Danezis and P. Mittal. Sybilinfer: Detecting sybil nodes us-
+                                                                          ing social networks. In NDSS. San Diego, CA, 2009.
+In this paper, we investigated the resilience of bot detec-
+tion systems on Twitter. We showed that these systems per-    [14] V. Dave, S. Guha, and Y. Zhang. Measuring and Fingerprinting
+form very well when trained on homogeneous data, but that        Click-Spam in Ad Networks. In SIGCOMM, 2012.
+their performance drops dramatically when they are tested on    [15] C. A. Davis, O. Varol, E. Ferrara, A. Flammini, and F. Menczer.
+classes of bots that they have not observed before. We also        BotOrNot: A System to Evaluate Social Bots. In WWW Com-
+proposed a methodology to evaluate how well we can expect         panion, 2016.
+any given classiﬁer to generalize on unseen bot data.  It uses    [16] E. De Cristofaro, A. Friedman, G. Jourjon, M. A. Kaafar, and
+different bot datasets or classes as a proxy for the new and un-       M. Z. Shaﬁq. Paying for likes?: Understanding facebook like
+seen classes. These unseen classes may be developed in the         fraud using honeypots. In ACM IMC, 2014.
+future, but may also be already present but undetected. This                                                                      [17]  J. Echeverria, C. Besel, and S. Zhou. Discovery of the twitter
+ﬁnding has important implications for our research ﬁeld, since          bursty botnet. Data Science for Cyber-Security, 2017.
+it shows that detection systems might not generalize very well,
+                                                                      [18]  J. Echeverria and S. Zhou. Discovery, retrieval, and analysis of
+a problem that becomes particularly important in the fast paced
+                                                                                            ’star wars’ botnet in twitter. In ASONAM, 2017.
+and inherently adversarial world of social network abuse.
+                                                                      [19] M. Egele, G. Stringhini, C. Kruegel, and G. Vigna. Compa:
+Acknowledgments. This project has received funding from
+                                                                         Detecting compromised accounts on social networks. In NDSS,
+the European Union’s Horizon 2020 Research and Innovation                                                                      2013.
+program under the Marie Skłodowska-Curie ENCASE project
+                                                                      [20] H. Gao, J. Hu, C. Wilson, Z. Li, Y. Chen, and B. Y. Zhao.(Grant Agreement No. 691025).
+                                                                         Detecting and characterizing social spam campaigns. In ACM
+                                                             IMC, 2010.
+References                                                     [21] Z. Gilani, R. Farahbakhsh, G. Tyson, L. Wang, and J. Crowcroft.
+                                                            Of Bots and Humans (on Twitter). In ASONAM, 2017. [1] M. Abu Rajab, J. Zarfoss, F. Monrose, and A. Terzis. A multi-
+     faceted approach to understanding the botnet phenomenon. In    [22] C. Grier, K. Thomas, V. Paxson, and M. Zhang. @ spam: the
+   ACM IMC, 2006.                                                underground on 140 characters or less. In ACM CCS, 2010.
+ [2]  F. Benevenuto, G. Magno, T. Rodrigues, and V. Almeida. De-    [23] B. Hooi, H. A. Song, A. Beutel, N. Shah, K. Shin, and C. Falout-
+      tecting spammers on twitter. In CEAS, volume 6, page 12, 2010.          sos. Fraudar: Bounding graph fraud in the face of camouﬂage.
+                                                                            In ACM KDD, 2016. [3] C. Besel, J. Echeverria, and S. Zhou.  Full cycle analysis of a
+      large-scale botnet attack on twitter. In ASONAM, 2018.            [24] M. Ikram,  L. Onwuzurike,  S. Farooqi,  E. D.  Cristofaro,
+                                                                 A. Friedman, G. Jourjon, M. A. Kaafar, and M. Z. Shaﬁq. Mea- [4] A. Bessi and E. Ferrara. Social bots distort the 2016 U.S. Presi-
+      dential election online discussion. First Monday, 21(11), 2016.          suring, Characterizing, and Detecting Facebook Like Farms.
+                                             ACM TOPS, 20(4):13, 2017.
+ [5] Y. Boshmaf, D. Logothetis, G. Siganos, J. Ler´ıa, J. Lorenzo,
+                                                                      [25] K. Lee, B. D. Eoff, and J. Caverlee.  Seven Months with the    M. Ripeanu, and K. Beznosov. Integro: Leveraging victim pre-
+                                                                             Devils: A Long-Term Study of Content Polluters on Twitter. In      diction for robust fake account detection in osns. In NDSS, vol-
+                                                       ICWSM, 2011.    ume 15, 2015.
+                                                                      [26] S. Lee and J. Kim. Warningbird: Detecting suspicious urls in [6] Y. Boshmaf, I. Muslukhov, K. Beznosov, and M. Ripeanu. The
+                                                                                     twitter stream. In NDSS, 2012.      socialbot network: when bots socialize for fame and money. In
+     Proceedings of the 27th Annual Computer Security Applications    [27] C. Liu, P. Gao, M. Wright, and P. Mittal. Exploiting temporal
+     Conference, pages 93–102. ACM, 2011.
+
+
+                                                  10

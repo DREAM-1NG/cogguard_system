@@ -16,13 +16,19 @@ from pydantic import ValidationError
 
 from app.db.mongodb import get_mongo_db
 from app.schemas.propagation import PropagationPredictionData
-from app.services.event_data import analysis_scope_metadata, load_event_comments, load_event_posts
+from app.services.event_data import (
+    analysis_scope_metadata,
+    event_data_fingerprint,
+    load_event_comments,
+    load_event_posts,
+)
 from app.services import propagation_prediction_service
 
 
 logger = logging.getLogger(__name__)
 
 PREDICTION_EVENT_DATA_TIMEOUT_SECONDS = 15.0
+PREDICTION_CACHE_COLLECTION = "propagation_prediction_cache_v1"
 
 
 PREDICTION_MODEL_CAPABILITY = {
@@ -33,6 +39,128 @@ PREDICTION_MODEL_CAPABILITY = {
 }
 
 SUPPORTED_CHECKPOINT_OBSERVATION_RATIOS = (0.1, 0.3, 0.5)
+
+
+def _prediction_cache_filter(
+    *,
+    event_id: str,
+    platform: str | None,
+    observed_until: str | None,
+    observation_ratio: float,
+    top_k: int,
+) -> dict[str, Any]:
+    return {
+        "event_id": event_id,
+        "platform": platform or "",
+        "observed_until": observed_until or "",
+        "observation_ratio": round(float(observation_ratio), 4),
+        "top_k": int(top_k),
+    }
+
+
+def _prediction_cache_collection(mongo_db: Any) -> Any:
+    if mongo_db is None:
+        return None
+    if isinstance(mongo_db, dict):
+        return mongo_db.get(PREDICTION_CACHE_COLLECTION)
+    return mongo_db[PREDICTION_CACHE_COLLECTION]
+
+
+async def read_cached_current_event_prediction(
+    *,
+    event_id: str,
+    platform: str | None,
+    observed_until: str | None,
+    observation_ratio: float,
+    top_k: int,
+) -> dict[str, Any]:
+    """Return the latest event prediction without invoking the model runtime."""
+
+    try:
+        mongo_db = get_mongo_db()
+    except Exception:
+        logger.exception("MongoDB is unavailable while reading propagation prediction cache")
+        mongo_db = None
+    collection = _prediction_cache_collection(mongo_db)
+    if collection is None:
+        result = empty_prediction_result(event_id, platform)
+        result.update({"status": "cache_miss", "note": "No cached prediction is available for this event."})
+        result["cache"] = {"hit": False, "stale": False}
+        return enforce_prediction_contract(result, event_id=event_id, platform=platform)
+
+    cache_filter = _prediction_cache_filter(
+        event_id=event_id,
+        platform=platform,
+        observed_until=observed_until,
+        observation_ratio=observation_ratio,
+        top_k=top_k,
+    )
+    try:
+        document = await collection.find_one(cache_filter, {"_id": 0})
+    except TypeError:
+        document = await collection.find_one(cache_filter)
+    except Exception:
+        logger.exception("Unable to read propagation prediction cache for event_id=%r", event_id)
+        document = None
+    if not isinstance(document, dict) or not isinstance(document.get("result"), dict):
+        result = empty_prediction_result(event_id, platform)
+        result.update({"status": "cache_miss", "note": "No cached prediction is available for this event."})
+        result["cache"] = {"hit": False, "stale": False}
+        return enforce_prediction_contract(result, event_id=event_id, platform=platform)
+
+    try:
+        current_fingerprint = await event_data_fingerprint(mongo_db, event_id=event_id, platform=platform)
+    except Exception:
+        current_fingerprint = None
+    result = dict(document["result"])
+    result["cache"] = {
+        "hit": True,
+        "stale": bool(not current_fingerprint or current_fingerprint != document.get("snapshot_fingerprint")),
+        "snapshot_fingerprint": document.get("snapshot_fingerprint"),
+        "generated_at": document.get("generated_at"),
+    }
+    return enforce_prediction_contract(result, event_id=event_id, platform=platform)
+
+
+async def store_cached_current_event_prediction(
+    result: dict[str, Any],
+    *,
+    event_id: str,
+    platform: str | None,
+    observed_until: str | None,
+    observation_ratio: float,
+    top_k: int,
+    snapshot_fingerprint: str | None,
+) -> None:
+    """Persist a successful event prediction for a matching observation snapshot."""
+
+    if result.get("status") != "ok":
+        return
+    try:
+        mongo_db = get_mongo_db()
+    except Exception:
+        logger.exception("MongoDB is unavailable while storing propagation prediction cache")
+        return
+    collection = _prediction_cache_collection(mongo_db)
+    if collection is None:
+        return
+    cache_filter = _prediction_cache_filter(
+        event_id=event_id,
+        platform=platform,
+        observed_until=observed_until,
+        observation_ratio=observation_ratio,
+        top_k=top_k,
+    )
+    document = {
+        **cache_filter,
+        "snapshot_fingerprint": snapshot_fingerprint,
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "result": {key: value for key, value in result.items() if key != "cache"},
+    }
+    try:
+        await collection.update_one(cache_filter, {"$set": document}, upsert=True)
+    except Exception:
+        logger.exception("Unable to store propagation prediction cache for event_id=%r", event_id)
 
 
 def empty_prediction_result(event_id: str | None, platform: str | None) -> dict:
@@ -261,6 +389,19 @@ async def predict_current_event_model(
     platform = str(platform).strip().lower() if platform is not None and str(platform).strip() else None
     effective_observation_ratio = observation_ratio
     try:
+        mongo_db = get_mongo_db()
+    except Exception:
+        logger.exception("MongoDB is unavailable while preparing propagation prediction")
+        mongo_db = None
+    try:
+        snapshot_fingerprint = (
+            await event_data_fingerprint(mongo_db, event_id=event_id, platform=platform)
+            if mongo_db is not None
+            else None
+        )
+    except Exception:
+        snapshot_fingerprint = None
+    try:
         posts, comments = await asyncio.wait_for(
             _load_prediction_event_data(event_id=event_id, platform=platform),
             timeout=PREDICTION_EVENT_DATA_TIMEOUT_SECONDS,
@@ -408,7 +549,23 @@ async def predict_current_event_model(
             "prefix_selection": "timestamp_cutoff" if observed_until is not None else "observation_ratio",
         }
     )
-    return enforce_prediction_contract(scoped_result, event_id=event_id, platform=platform)
+    normalized = enforce_prediction_contract(scoped_result, event_id=event_id, platform=platform)
+    await store_cached_current_event_prediction(
+        normalized,
+        event_id=event_id,
+        platform=platform,
+        observed_until=observed_until,
+        observation_ratio=observation_ratio,
+        top_k=top_k,
+        snapshot_fingerprint=snapshot_fingerprint,
+    )
+    normalized["cache"] = {
+        "hit": False,
+        "stale": False,
+        "snapshot_fingerprint": snapshot_fingerprint,
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    return enforce_prediction_contract(normalized, event_id=event_id, platform=platform)
 
 
 def _latest_observed_timestamp(rows: list[dict[str, Any]]) -> str | None:

@@ -1,0 +1,61 @@
+• quote count              RQ3 replier classifier features.csv
+
+   • type                                    Each record in this file represents a
+                                             replier and lists features used to clas-The ‘type’ columns has two values : (1)
+                                               sify that replier.  The ‘replier label’target or (2) control.
+                                  column indicates if the replier is a nor-
+RQ2 tweet classifier features.csv  mal replier (0) or an IO replier (1).
+                               The file has 881,918 records. For de-
+   Each record in this file represents   tail about the features, please refer to
+a targeted or control tweet and  re-  the RQ3 section of the paper.
+ports  features  associated with  that
+                        RQ3 replier info.csv
+tweet.  Please refer to the RQ2 sec-
+tion of the manuscript for the names
+                                    Each record in this file represents
+of the features and how they are calcu-
+                                              profile meta-data for a replier.  The
+lated. There are 7,732 records in this
+                                                        file reports the aggregated count of the
+file.  The ‘tweet label’ columns indi-
+                                              replier’s activities, their follower and
+cates whether the tweet is targeted (1)
+                                         following counts, age, and whether the
+or control (0) and is used to train/test
+                                             replier is an IO replier (1) or a normal
+the tweet classifier.
+                                             replier (0). There are 881,918 records.
+poster tweetid campaign type.csv This file has the following columns:
+
+                                       • replier userid
+   Each record in this file represents a
+pair consisting of a tweet by a target     • activity count
+and a reply to that tweet. The file re-
+                                       • replier labelports the target user, the replier, which
+campaign the replier belongs to, a la-     • following count
+bel for the type of replier, and a label
+                                       • followers countfor the type of original tweet. This file
+has 2,673,091 records with the follow-                                       • age
+ing columns:
+                                pos cosine with replier info.pkl.gz
+   • poster tweetid
+
+   • campaign                       Each record in this file represents a
+                                         pair of replies to a tweet. The file re-
+   • replier userid                     ports the cosine similarity between the
+                                  two replies, the original tweet that re-
+   • replier label
+                                        ceived the two replies, the two users
+   • replier tweetid               who posted the replies, and their la-
+                                             bels: 0 for normal repliers and 1 for
+   • type                       IO repliers. This file has 1,260,848,920
+                                        records with the following columns:
+The ‘type’ column indicates if the orig-
+inal tweet  is targeted or part of the     • replier label x
+control. The ‘replier label’ column in-
+                                       • replier label y
+dicates if the replier is a normal replier
+(0) or an IO replier (1).                  • replier userid x
+
+
+                                  3

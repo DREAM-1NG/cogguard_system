@@ -1,0 +1,70 @@
+Published as a conference paper at ICLR 2024
+
+
+
+
+
+Tal Schuster, Adam Fisch, Jai Gupta, Mostafa Dehghani, Dara Bahri, Vinh Q Tran, Yi Tay, and
+  Donald Metzler. Confident adaptive language modeling. arXiv preprint arXiv:2207.07061, 2022.
+
+Glenn Shafer and Vladimir Vovk. A tutorial on conformal prediction. Journal of Machine Learning
+  Research, 9(Mar):371–421, 2008.
+
+Jake C Snell, Thomas P Zollo, Zhun Deng, Toniann Pitassi, and Richard Zemel. Quantile risk con-
+   trol: A flexible framework for bounding the probability of high-loss predictions. arXiv preprint
+  arXiv:2212.13629, 2022.
+
+Ryan J Tibshirani, Rina Foygel Barber, Emmanuel Candes, and Aaditya Ramdas. Conformal predic-
+   tion under covariate shift. In Advances in Neural Information Processing Systems, volume 32, pp.
+  2530–2540. 2019. URL https://proceedings.neurips.cc/paper/2019/file/
+  8fb21ee7a2207526da55a679f0332de2-Paper.pdf.
+
+Aad W Van der Vaart. Asymptotic statistics, volume 3. Cambridge university press, 2000.
+
+Vladimir Vovk.  Conditional validity of inductive conformal predictors.  In Proceedings of the
+  Asian Conference on Machine Learning, volume 25, pp. 475–490, 2012.  URL http://
+  proceedings.mlr.press/v25/vovk12.html.
+
+Vladimir Vovk, Alexander Gammerman, and Craig Saunders.  Machine-learning applications of
+  algorithmic randomness. In International Conference on Machine Learning, pp. 444–453, 1999.
+
+Vladimir Vovk, Alex Gammerman, and Glenn Shafer. Algorithmic Learning in a Random World.
+  Springer, New York, NY, USA, 2005.
+
+Ian Waudby-Smith and Aaditya Ramdas. Variance-adaptive confidence sequences by betting. arXiv
+   preprinttt arXiv:2010.09686, 2020.
+
+A  CONFORMAL PREDICTION REDUCES TO RISK CONTROL
+
+Conformal prediction can be thought of as controlling the expectation of an indicator loss function.
+Recall that the risk upper bound (2) specializes to the conformal coverage guarantee in (1) when
+the loss function is the indicator of a miscoverage event. The conformal risk control procedure
+specializes to conformal prediction under this loss function as well. However, the risk lower bound
+in Theorem 2 has a slightly worse constant than the usual conformal guarantee. We now describe
+these correspondences.
+
+First, we show the equivalence of the algorithms.  In conformal prediction, we have conformal
+scores s(Xi, Yi) for some score function s : X × Y →R. Based on this score function, we create
+prediction sets for the test point Xn+1 as Cˆλ(Xn+1) =  y  : s(Xn+1, y) ≤ˆλ  , where ˆλ is the
+conformal quantile, a parameter that is set based on the calibration data. In particular, conformal
+prediction chooses ˆλ to be the ⌈(n + 1)(1 −α)⌉/n sample quantile of {s(Xi, Yi)}ni=1. To formulate
+                                                  =this in the language of risk control, we consider a miscoverage loss LCvgi   (λ) = 1 nYi /∈bCλ(Xi)o
+1 {s(Xi, Yi) > λ}. Direct calculation of ˆλ from (4) then shows the equivalence of the proposed
+procedure to conformal prediction:
+
+     (         n                 )               1                         1
+   ˆλ = inf  λ :  X 1 {s(Xi, Yi) > λ} +    ≤α =
+           n + 1                  n + 1
+                      i=1
+                    (      n                     )                                      1                + 1)(1 −α)⌉                                        inf  λ : X 1 {s(Xi, Yi) ≤λ} ≥⌈(n                        .
+                               n                       n
+                                              i=1
+                                  |               conformal prediction{z    algorithm             }
+
+Next, we discuss how the risk lower bound relates to its conformal prediction equivalent. In the
+setting of conformal prediction, Lei et al. (2018) proves that P(Yn+1 /∈Cˆλ(Xn+1)) ≥α −1/(n +
+1) when the conformal score function follows a continuous distribution. Theorem 2 recovers this
+guarantee with a slightly worse constant: P(Yn+1 /∈Cˆλ(Xn+1)) ≥α−2/(n+1). First, note that our
+
+
+                                       12

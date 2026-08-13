@@ -1,0 +1,67 @@
+Proceedings of the Nineteenth International AAAI Conference on Web and Social Media (ICWSM 2025)
+
+
+
+
+             Coordinated Reply Attacks in Influence Operations:
+                        Characterization and Detection
+
+          Manita Pote1*, Tu˘grulcan Elmas2, Alessandro Flammini1, Filippo Menczer1
+                                                     1 Indiana University Bloomington
+                                                         2 University of Edinburgh
+
+
+
+
+                      Abstract                                 to distort trends and attract or distract the attention of main-
+                                                            stream media (Ong and Caba˜nes 2018); use of inauthentic
+  Coordinated reply attacks are a tactic observed in online in-                                                       and automated accounts to create the appearance of popu-
+   fluence operations and other coordinated campaigns to sup-
+                                                                            larity (Elmas 2023; Woolley and Howard 2018); deletion of   port or harass targeted individuals, or influence them or their
+                                                               content violating terms of service to avoid detection by plat-   followers. Despite its potential to influence the public, past
+   studies have yet to analyze or provide a methodology to de-        forms (Torres-Lugo et al. 2022); troll accounts (Zannettou
+   tect this tactic. In this study, we characterize coordinated re-          et al. 2019a); the spread of disinformation and propaganda
+   ply attacks in the context of influence operations on Twitter.        (Woolley and Howard 2018; Hristakieva et al. 2022); politi-
+  Our analysis reveals that the primary targets of these attacks          cal memes (Rowett 2018; Zannettou et al. 2020; Ng, Moffitt,
+   are influential people such as journalists, news media, state        and Carley 2022); and ‘kompromat’ strategies to influence
+   officials, and politicians.                                              political events (Woolley and Howard 2018).
+  We propose two supervised machine-learning models, one to          IOs can be state-sponsored, and originate domestically or
+   classify tweets to determine whether they are targeted by a re-          in a foreign state (Bradshaw and Howard 2017). A prime
+   ply attack, and one to classify accounts that reply to a targeted                                                       example of foreign-initiated campaign was the effort to in-
+   tweet to determine whether they are part of a coordinated at-
+                                                                       terfere in the 2016 US Presidential Election by the Rus-
+   tack. The classifiers achieve AUC scores of 0.88 and 0.97,
+                                                                  sian Internet Research Agency (IRA) (Senate Select Com-   respectively. These results indicate that accounts involved in
+   reply attacks can be detected, and the targeted accounts them-         mittee on Intelligence 2019). Reports on IOs from differ-
+   selves can serve as sensors for influence operation detection.         ent countries like China, Brazil, and Nigeria show that such
+                                                        campaigns have emerged as a global threat (Bradshaw and
+                                                  Howard 2017; Woolley and Howard 2018; Bush 2020).
+                Introduction                                                               Here, we focus on coordinated reply attacks, where a
+Social media platforms are the primary environments in      group of accounts work together to target specific individ-
+which civic engagement takes place. They play an impor-       uals or entities by flooding their posts with replies. This can
+tant role in the exchange of ideas, discussion of political      be done to overwhelm the target, push a particular narrative,
+agendas, and development of political identities thanks to       or generate engagement. Coordinated reply attacks are ac-
+the ease with which one can access and consume informa-       tively employed in influence operations (Matthews and Go-
+tion and build influence. However, social media platforms      erzen 2019; Bush 2020). Such a tactic has been used for
+are also exploited by coordinated groups to purposefully dis-      harassment, as observed for example in a hate-speech cam-
+tribute misleading information (Weedon, Nuland, and Sta-      paign against Mehreen Faruqi, Australia’s first female Mus-
+mos 2017; Starbird, Arif, and Wilson 2019), artificially am-      lim senator (Thomas, Thompson, and Wanless 2020); ampli-
+plify certain content (Elmas, Overdorf, and Aberer 2022), or       fication by inauthentic accounts (Weedon, Nuland, and Sta-
+interfere with elections (Ferrara et al. 2020; Office of the Di-     mos 2017; Thomas et al. 2021); and spamming, trolling, and
+rector of National Intelligence 2017; Neudert, Howard, and       incitement.
+Kollanyi 2019). These types of social media exploitation are         In this paper, we provide a quantitative, large-scale study
+referred to as information operations or influence operations       of coordinated reply attacks in influence operations reported
+(IOs).                                                 by Twitter.1 We explore the targeting patterns of IO actors
+  Influence operations are organized attempts to achieve a      employing this tactic and introduce methods to detect the
+specific effect, such as manipulating public opinion, usually       targets of these attacks and the actors involved. We pose the
+through coordinated tactics (Pamment and Smith 2022). IO      following research questions:
+tactics include public relations via advertising or paid digi-
+                                                                             • RQ1: Who are the targets of coordinated replies, and
+tal influencers (Ong and Caba˜nes 2018); hashtag hijacking
+                                                          what specific topics characterize the tweets that attract
+   *Corresponding author. Email: potem@iu.edu
+Copyright © 2025, Association for the Advancement of Artificial          1Although Twitter is now called X, we use the previous name
+Intelligence (www.aaai.org). All rights reserved.                       because the data analyzed here predates the name change.
+
+
+                                                   1586

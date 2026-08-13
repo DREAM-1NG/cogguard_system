@@ -1,0 +1,66 @@
+such coordinated responses?                                Stanford Internet Observatory (2021) produced several re-
+                                                                   ports describing influence campaigns and a range of tactics • RQ2: Among a set of tweets by potential targets, how
+                                                          used by IO actors, including coordinated reply attacks (Bush   can we identify those that receive coordinated replies?
+                                                              2020). While that work provides a qualitative description of
+ • RQ3: Given a set of targeted tweets, how can we detect                                                                 the tactic, here we focus on methods to detect it.
+   the accounts that participate in coordinated replies?
+                                                              Coordinated reply attacks are also carried out by auto-
+  We make the following contributions:                      mated accounts; social bots have been reported to target in-
+ • We find that primary targets of coordinated reply attacks       fluential users in an attempt to direct their attention toward
+   are mostly influential people such as journalists, news      fake news (Shao et al. 2018). Financial rather than political
+   media, state officials, and politicians. Most of the targets       incentives may be the drivers of such tactics, as in the case of
+   are attacked only once. The attacks for most of the tar-      cryptocurrency manipulation (Yang and Menczer 2024). The
+   gets are sporadic and tend to focus on specific contexts,      methods presented here are context-independent and there-
+   such as politics. The attackers can originate from within       fore could be applied to these kinds of campaigns.
+   the target’s country or from foreign states.
+ • We present a classifier model to identify tweets that are     Detection of Influence Operations
+   targeted by coordinated replies. This model is general-
+   izable to other contexts, as it does not use any features
+                                              Many supervised machine-learning models have been pro-
+   specific to IOs. It can also be developed into a tool for
+                                                         posed in the literature to detect IO actors, especially IRA
+   monitoring and safety.
+                                                                              trolls on Twitter, using deceptive linguistic cues (Addawood
+ • We present a second model that performs well on the task        et al. 2019) and behavioral and linguistic features (Im et al.
+   of detecting accounts that are involved in reply attacks.        2020). Luceri, Giordano, and Ferrara (2020) propose an in-
+                                                                verse reinforcement learning model for this task. Alizadeh
+               Related Work                               et al. (2020) build a content-based classifier to detect tweets
+                                                       from troll accounts in Russia, China, and Venezuela IO cam-Given the dearth of prior research on coordinated reply at-
+                                                                 paigns. Work from Sharma et al. (2021) uses a generativetacks, we review the literature on IOs in general.
+                                                     model to learn hidden group behavior to identify coordi-
+                                                              nated accounts. Ezzeddine et al. (2023) present an LSTM-
+Characterization of Influence Operations
+                                                           based approach that identifies troll accounts based on behav-
+Influence operations present novel challenges to content       ioral cues. Kong et al. (2023) propose an interval-censored
+moderation on social media. A crucial initial step to ad-      transformer Hawkes architecture to identify IO operators. A
+dress these challenges is to characterize how IO actors op-      supervised model by Saeed et al. (2022) leverages the fea-
+erate: their tactics, motivations, and engagement patterns.       tures engineered from the interaction patterns of seed Rus-
+Matthews and Goerzen (2019) present different trolling       sian troll accounts on Reddit to find other troll accounts.
+techniques used in social media, from dogpiling to sock                                                     Our work is similar to the above-mentioned efforts in the
+puppetry, along with interventions. Zannettou et al. (2019a)                                                            use of a supervised learning approach to identify coordi-
+observe that Russian trolls displayed different behavior in                                                              nated accounts. However, we design features that leverage
+the use of Twitter compared to random users. The same au-                                                                 the targeting behaviors of the IO actors, specifically focus-
+thors also find that Russian trolls on Twitter and Reddit were                                                               ing on reply/comment engagements. Our method does not
+pro-Trump, while Iranian trolls were anti-Trump (Zannet-                                                            use any IO-specific features or sentiment cues, therefore it
+tou et al. 2019b). The images shared by Russian trolls ap-                                                          can be generalized to different social media platforms that
+peared in many popular social networks as well as main-                                                          have similar engagement functionalities.
+stream and alternative news outlets, and focused on Russia,
+                                                                   Influence operations are one kind of coordinated cam-Ukraine, and the USA (Zannettou et al. 2020). Dutt, Deb,
+                                                                 paign. A body of work has explored unsupervised methodsand Ferrara (2018) analyze the advertisements purchased by
+                                                                     to detect coordinated behaviors in general. Pacheco et al.IRA accounts on Facebook and identify their changing cam-
+                                                            (2021) introduced a network-based framework for coordi-paign targets over time by performing clustering and seman-
+                                                                nation detection. As campaigns use more than one tactictic analysis. Stewart, Arif, and Starbird (2018) investigate
+                                                                          at a time, Uyheng, Cruickshank, and Carley (2022) presentthe behavior of Russian trolls around the #BlackLivesMat-
+                                                            a multi-view modularity clustering method. A Bayesianter movement and find that the trolls infiltrated both right-
+                                                     model by Hudson Smith, Ehrett, and Warren (2024) lever-and left-leaning political communities to participate in both
+                                                            ages similarities in narrative and account characteristics.sides of the discussion. Farkas and Bastos (2018) manu-
+                                                        Nwala, Flammini, and Menczer (2023) propose a languageally annotate IRA-linked tweets into 19 different categories
+                                                       framework that represents user actions and content as se-to study whether IRA operations are consistent with clas-
+                                                          quences of symbols to find coordinated accounts.sic propaganda models. Merhi, Rajtmajer, and Lee (2023)
+find that the accounts involved in an IO in Turkey were re-        Unlike the above methods, we do not cluster accounts
+silient to large-scale shutdown. Elmas, Overdorf, and Aberer      based on similar behaviors. We classify individual posts
+(2023) discover that IO actors and other adversarial accounts      based on aggregate features of their replies, and individual
+often change their names and assume new identities. The      accounts based on their metadata and reply activity.
+
+
+                                                   1587

@@ -1,0 +1,70 @@
+Published as a conference paper at ICLR 2024
+
+
+
+
+
+                                                                             35
+                                                                                                          Integrate Tail Bound (Hoeffding)
+       0.10                                                                             30        Conformal Risk Control
+                                                                                   RCPS ( = 0.5)
+       0.08                                                                   25
+
+       0.06                                                                   20
+    FNR                                                                                                     time
+                                                                             15
+       0.04
+                                                                             10
+       0.02                                  Integrate Tail Bound (Hoeffding)               5                                         Conformal Risk Control
+       0.00                          RCPS ( = 0.5)                             0
+                 50      100      150      200      250      300                       50      100      150      200      250      300
+                                     n                                                                    n
+
+    Figure 5: Comparison of RCPS/LTT with conformal risk control on the polyp dataset.
+
+
+we only derive it here for the purpose of the above comparison (i.e., to show that this approach
+should essentially never be used for monotone losses).
+
+Consider a pointwise upper-bound on the empirical risk, as constructed in RCPS Bates et al. (2021):
+                         P(R(λ) −ˆRn(λ) > ϵ) < δ(ϵ, λ),
+
+for all ϵ ∈[0, B]. The next proposition says that if the bound has equal width everywhere, like
+in the case of Hoeffding’s inequality, then it can be integrated to control the risk. Unfortunately,
+this strategy is not possible for general concentration inequalities, such as that of Bentkus (2004)
+or Waudby-Smith & Ramdas (2020), as it would require knowing δ(ϵ, λ∗) (for an oracle λ∗defined
+in the proof below).
+Proposition B.1. Let Li(λ) be right-continuous, monotone, i.i.d.  functions in [0, B] satisfying
+P(J(Li, λ) > 0) = 0. Furthermore, define δ+(ϵ) = supλ δ(ϵ, λ) and
+                                                 ˆλ = inf nλ :    ≤α−o ,                                              bR(λ)
+
+                      B−α−
+where α−satisfies α−≤α − R 0     δ+(ϵ)dϵ. Then,
+                                          R(ˆλ) ≤α.
+
+Proof. Let λ∗= inf{λ : R(λ) ≤α−+ ϵ}. By monotonicity and the definition of ˆλ,
+                                                ˆλ ≥λ∗=⇒ˆRn(λ∗) ≤α−.
+But also, by the bounded jump assumption, R(λ∗) = α−+ ϵ. Therefore, on the event ˆλ ≥λ∗, we
+have that
+                       R(λ∗) −ˆRn(λ∗) ≥α−−α−+ ϵ = ϵ.                         (16)
+Since the event in (16) happens with probability at most δ+(ϵ), we have that P(ˆλ ≥λ∗) ≤δ+(ϵ),
+so
+                               P(R(ˆλ) ≥α−+ ϵ) ≤δ+(ϵ).
+Finally, we have that
+                            Z B
+                          E[R(ˆλ)] =     P(R(ˆλ) > r)dr
+                                         0
+                                 Z B
+                 ≤α−+  α−P(R(ˆλ) > α−+ ϵ)dϵ
+                                 B−α−
+                                 Z
+                 ≤α−+        δ+(ϵ)dϵ
+                                               0
+                      ≤α.
+
+
+
+This can be applied to Hoeffding’s inequality, giving the aforementioned Baseline 2.
+
+
+                                       14

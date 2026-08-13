@@ -1,0 +1,8 @@
+Figure 5: Receiver Operating Characteristic (ROC) curves for campaign vs. non-campaign classification across the complete
+dataset.
+
+
+
+
+
+                                                   701

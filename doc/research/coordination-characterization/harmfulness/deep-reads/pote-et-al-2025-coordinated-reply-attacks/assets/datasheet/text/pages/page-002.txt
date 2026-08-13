@@ -1,0 +1,58 @@
+• country label                 number of IO replies received by that
+                                         tweet. There are 53,931 records. This
+   • campaign                                                        file has the following columns:
+Values of the ‘campaign’ column are ei-                                       • poster tweetid
+ther Serbia or Egypt. There are 1,547
+records.                                • reply count
+
+RQ1 target non target tweets.csv
+                        RQ1 num targeted tweet by IO
+                                      .csv
+   Each record in this file represents
+an English translated targeted or non-
+                                    Each record in this dataset repre-
+targeted tweet in the Serbia and Egypt
+                                         sents a pair of users: a target (poster)
+campaigns. This file has the following
+                                 and an IO replier. The record reports
+columns:
+                                      the number  of tweets by the given
+   • tweetid                           poster that are targeted by the given
+                               IO replier. There are 148,450 records.
+   • english text                                    This file has the following columns:
+
+   • type                                       • poster userid
+
+   • campaign                                       • replier userid
+
+The  ‘type’ column has two  values:                                       • count
+(1) target, which represents a targeted
+tweet, or (2) non target, which repre-                        RQ1 time difference of reply.csv
+sents a non-targeted tweet. The ‘cam-
+paign’ column has two values, Serbia                                    Each record in this file represents a
+or Egypt. There are 36,885 records.                                        reply and its delay (time since tweet
+  RQ1 target follower following   targeted by the  reply).   There are
+count.csv                            148,450 records. This file has the fol-
+                                      lowing columns:
+   Each record in this file represents a
+                                       • replier tweetid
+target user and reports the numbers of
+followers and following of that target.     • diff min
+There are 15,016 records. This file has
+the following columns:           RQ2 engagement.csv
+
+   • userid
+                                    Each record in this file represents
+   • followers count                 a targeted or control tweet and reports
+                                      the engagement received by that tweet.
+   • following count                 There are 7,732 records. This file has
+                                      the following columns:
+ RQ1 number of reply per tweet
+.csv                                   • tweetid
+
+                                       • retweet count
+   Each record in this dataset repre-
+sents a targeted tweet and reports the     • like count
+
+
+                                  2

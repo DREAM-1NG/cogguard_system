@@ -1,0 +1,62 @@
+Biological datasets are typically either molecule-based
+graphs and protein graphs. Molecule graphs (MUTAG,
+PTC, and NCI1) are labeled based on bioinformatics ap-
+plications such as disease-curing effectiveness (Kriege and
+Mutzel 2012; Shervashidze  et  al. 2011). MUTAG con-
+sists of compound graphs with binary labels that indi-
+cate if they are effective against the Salmonella. PTC are
+molecule graphs extracted from rodents, labeled with one
+of eight levels of carcinogenic activity. NCI1 has multi-
+ple molecules and their effectiveness against cellular lung
+cancer and are labelled positive if they display anti-cancer
+properties. Protein graphs (ENZYMES and PROTEINS) are
+used to predict properties like enzyme-related class labels
+and taxonomy groups (Borgwardt et al. 2005). Other ex-
+amples of commonly used biological datasets belong to the
+Open Graph Benchmark framework, including obgn-molhiv,
+obgn-molpcba, obgn-ppa (Hu et al. 2020).
+  Social network datasets are employed to classify the net-
+works into specific labels. These networks are constructed      Figure 1: (Left) Randomly generated (lexicon) tweets from
+through stardom or coauthorship relations. IMDB-B and      bots promoting the hashtag #HeartBridgeCoin. (Right) It be-
+IMDB-Multi are actor graphs where nodes represent actors     comes trending in 6 countries and globally for the first and
+and edges indicate co-starring in a movie. Graph labels cor-       the last time.
+respond to the movie genres, such as romance or action.
+COLLAB is an academic collaboration network comprising
+egocentric graphs obtained from three public physics-related                                                             accounts promoting sponsored topics (Varol et al. 2017), and
+collaboration datasets. Reddit datasets contain graphs of                                                                cryptocurrencies (Tardelli et al. 2022). Additionally there
+users where edges denote replies between users, and graphs                                                          have been instances when GCNs were leveraged to help with
+labels are different types of subreddits such as question-                                                                   tasks like fake news detection (Dou et al. 2021) and rumor
+answering or discussion-based ones (Yanardag and Vish-                                                                 detection (Bian et al. 2020). In this study, we present a spe-
+wanathan 2015).                                                                          cial case of a network where the users organize themselves
+ A common feature of the graph classification datasets is                                                                     to promote a topic as part of their campaign. This has not
+that the sizes of the graphs are typically small. This is of-                                                        been studied to date to the best of our knowledge as it is
+ten related to the actual domains the networks are obtained                                                            hard to acquire ground truth, i.e., it is not possible to know
+from, e.g., molecules with tens of nodes. Such graphs have                                                                     for which topics the users organized among themselves to
+limited relational information and hence the datasets they                                                        promote it as a campaign.
+are part of do not serve as true testbeds where the complex                                          We provide a ground truth of topics that are coordinated
+graph structure can be utilized for the classification task.                                                        campaigns using fake trends. Trend manipulation has been
+Some recent effort has been attempted to address this is-                                                                 studied in different contexts. Jakesch et al. 2021 found that
+sue. MalNet consists of function call graphs where nodes                                                                         political trolls aligned with the Indian ruling party BJP coor-
+are functions and edges are the calls among them (Freitas                                                                 dinate on WhatsApp groups to mention hashtags in a coordi-
+et al. 2020). However, there are drastically many duplicate                                                              nated manner to make them trending. They reported 75 hash-
+function call-graphs in it due to methodological errors in the                                                                 tag manipulation campaigns. Kausar et al. 2021 detected the
+data collection process.                                                                bots and showed that bots are more likely to manipulate po-
+                                                                                  litical trending topics in Pakistan.Trend Manipulation
+                                                     Our work distinguishes itself by providing the first large-
+Although our main focus is on graph classification, we also                                                                   scale annotated dataset of fake Twitter trends for which we
+make contributions to the broader area of misinformation                                                          have hard proof that bots were used to push them to the
+and propaganda online by proposing a dataset of coordi-                                                                 trends list. We extend the work of Elmas et al. by refor-
+nated campaigns. Such campaigns aiming to influence pub-                                                            mulating the classification of fake Twitter trends as a graph
+lic opinion are a common issue in the social media ecosys-                                                                       classification problem (Elmas et al. 2021; Elmas 2023).
+tem. Past studies studied user behavior (Cao and Caverlee
+2015), content (Lee et al. 2011, 2014), strategies (Zannet-
+                                            Engagement Networks: Campaign or Nottou et al. 2019; Elmas, Overdorf, and Aberer 2023), and
+networks to understand and detect coordinated campaigns.    We  collect  two  types  of  data:  campaigns  and  non-
+Studies focusing on networks investigated the cases of ac-      campaigns. We collect campaigns by detecting ephemeral
+counts determined to be inauthentic by Twitter (Merhi, Ra-       astroturfing attacks in real-time. We collect non-campaigns
+jtmajer, and Lee 2023), automated accounts (bot) (Minnich     by manually annotating the popular Twitter trends that were
+et al. 2017; Elmas, Overdorf, and Aberer 2022), follow back      not targeted by the ephemeral astroturfing attacks. We now
+accounts (Beers et al. 2023; Elmas, Randl, and Attia 2024),       describe each data collection methodology in detail.
+
+
+                                                   690

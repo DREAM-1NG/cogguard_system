@@ -1,0 +1,60 @@
+PLOS ONE                                              The False positive problem of automatic bot detection in social science research
+
+
+
+                          ROC-AUC approach does not consider the baseline in the Twitter population. This is a general
+                                  problem with classifiers if the structure of the population in which the classifier should be later
+                                    used is ignored. In the case of bots, we want to clearly identify bots and make statements about
+                                        the number of bots in a data set. This becomes even clearer when the main goal as well as the
+                                  wording in bot studies is considered. Researchers are interested in the number of bots and not
+                                    mainly in the number of human users. Therefore, even a small false-positive rate (FPR) has a
+                                           large impact on the results. The data used to test (as in our case) and train Botometer is often
+                               more balanced than the rather imbalanced general Twitter population. Saito and Rehmsmeier
+                                        [33] advocate in such cases to evaluate the performance of a classifier based on the Precision-
+                                         Recall (PR) curves as they “allow for an accurate and intuitive interpretation of practical classi-
+                                                 fier performance”. While the so-called Matthews correlation coefficient is better than the F1
+                                        score if researchers use only one specific threshold, PR curves are recommended [34, 35] if dif-
+                                          ferent threshold levels exist as in the case with Botometer. To simulate a population that repre-
+                                         sents the same assumed real ratio of the general Twitter population with 15% bots [4] and 85%
+                                       non-bots, we resampled the different data sets for RQ2.
+
+
+                           Results
+
+                              Our analysis (see Fig 2 and Table 2) shows that the ROC-AUC is worse with our complete data
+                           (AUC = 0.85) than with the data sets used in the Botometer creators’ original papers which
+                                        received an AUC of 0.94 [4]. However, their baseline model also received only an AUC of 0.85
+                                        in the original paper. The nearer the ROC curve (Fig 2) is to the upper-left corner and the
+                               more space is under the curve, the better Botometer can distinguish between bots and humans.
+                                     In the lower-left corner the curve starts with a threshold of 0 for the Botometer which means
+                                        the false-positive rate is 0 but at the same time 0 of the bots in the population will be identified.
+                                The curve ends with a threshold of 1 in the upper-right corner as then all bots in the popula-
+                                         tion will be identified. However, such a threshold also means that all human accounts will be
+                                   wrongly classified as bots (false-positive rate = 1). Each point in the curve thus represents a
+                                            specific threshold for which the true positive rate as well as the false positive rate is shown.
+                             When applying this to our data sets, we see that the classifier has the highest AUC score for
+                                        the US politicians and bots data set (0.93) followed by Varol et al.’s labeled data set (0.86). The
+                                        score for the German politicians and German bots yields a lower score (0.76). As we only had a
+                                   few German bots we also tested the German politicians and bots (with the new bots instead of
+                                        the German bots) which had a slightly higher AUC (0.78).
+                                 We, then, calculated the ROC-AUC for the universal CAP (complete automation probabil-
+                                                     ity; Fig 3 and Table 3). We could observe similar results as before for the universal score: the
+                           US politicians received the highest AUC (0.94) followed by Varol et al. (0.86), the complete
+                                       data set (0.86), the German politicians with the new bots (0.78) and the German politicians
+                                 and the German bots (0.77).
+                                      For RQ2 we suggest a thought experiment based on the data sets analyzed in this study.
+                                  While the data sets are not perfectly balanced, they definitely do not represent the imbalanced
+                                            ratio of bots and human accounts of the real Twitter population. We thus assume for our simu-
+                                           lation that the Twitter population has 15% bots [4] and 85% non-bots. We first gave every sin-
+                                            gle account a sampling probability that reflects the occurrence of cases in the Twitter
+                                      population (n bots/0.15 and n humans/0.85) and took 100,000 random samples with replace-
+                                ment for every analyzed data set. As a result, we created new data sets that have 15,000 bots
+                                 and 85,000 non-bots. We then calculated for all the data sets the ROC-AUC as well as the
+                           PR-AUC (see Tables 2 and 3). As expected the ROC-AUC is the same with the new sample
+                                       data for all analyzed data sets, which is also in line with what Saito & Rehmsmeier [33] show in
+
+
+
+
+
+PLOS ONE | https://doi.org/10.1371/journal.pone.0241045  October 22, 2020                                                         7 / 20

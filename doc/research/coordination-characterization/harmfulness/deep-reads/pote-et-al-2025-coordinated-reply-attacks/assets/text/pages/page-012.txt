@@ -1,0 +1,64 @@
+Office of the Director of National Intelligence. 2017. As-     Thomas, K.; Akhawe, D.; Bailey, M.; Boneh, D.; Bursztein,
+sessing Russian Activities and Intentions in Recent US Elec-       E.; Consolvo, S.; Dell, N.; Durumeric, Z.; Kelley, P. G.;
+tions. Technical report, National Intelligence Council.          Kumar, D.; McCoy, D.; Meiklejohn, S.; Ristenpart, T.; and
+Ong, J. C.; and Caba˜nes, J. V. A. 2018.   Architects of       Stringhini, G. 2021. SoK: Hate, Harassment, and the Chang-
+Networked Disinformation: Behind the Scenes of Troll Ac-      ing Landscape of Online Abuse. In Proc. IEEE Symposium
+counts and Fake News Production in the Philippines. Tech.     on Security and Privacy (SP), 247–267.
+rep., UMass Amherst. https://doi.org/10.7275/2cq4-5396.        Torres-Lugo, C.; Pote, M.; Nwala, A.; and Menczer, F. 2022.
+Pacheco, D.; Hui, P.-M.; Torres-Lugo, C.; Truong, B. T.;      Manipulating Twitter through Deletions. In Proc. Intl. AAAI
+Flammini, A.; and Menczer, F. 2021. Uncovering Coordi-      Conf. on Web and Social Media, 1029–1039.
+nated Networks on Social Media: Methods and Case Stud-      Uyheng, J.; Cruickshank, I. J.; and Carley, K. M. 2022. Map-
+ies.  In Proc. Intl. AAAI Conf. on Web and Social Media,      ping State-sponsored Information Operations with Multi-
+volume 21, 455–466.                                      view Modularity Clustering. EPJ Data Science, 11(1): 25.
+Pamment, J.; and Smith, V. 2022.  Attributing Information     Weedon, J.; Nuland, W.; and Stamos, A. 2017. Information
+Influence Operations: Identifying those Responsible for Ma-      Operations and Facebook. Technical report, Facebook. Ac-
+licious Behavior Online. Technical report, NATO Strategic       cessed: 2025-04-08.
+Communications Center of Excellence.                         Woolley, S. C.; and Howard, P. N. 2018. Conclusion: Po-
+Rowett, G. 2018. The Strategic Need to Understand Online        litical Parties, Politicians, and Computational Propaganda.
+Memes and Modern Information Warfare Theory. In Proc.       In Computational propaganda: Political parties, politicians,
+IEEE Big Data.                                         and political manipulation on social media, 241–248. Ox-
+Saeed, M. H.; Ali, S.; Blackburn, J.; Cristofaro, E. D.; Zan-       ford University Press.
+nettou, S.; and Stringhini, G. 2022. TrollMagnifier: Detect-      Yang, K.-C.; and Menczer, F. 2024.  Anatomy of an AI-
+ing State-Sponsored Troll Accounts on Reddit.  In Proc.      powered Malicious Social Botnet. Journal of Quantitative
+IEEE Symposium on Security and Privacy (SP), 2161–2175.      Description: Digital Media, 4.
+Senate  Select Committee on  Intelligence. 2019.   Re-      Zannettou, S.; Caulfield, T.; Bradlyn, B.; De Cristofaro, E.;
+port  of  the  Select Committee on  Intelligence  United       Stringhini, G.; and Blackburn, J. 2020. Characterizing the
+States Senate on Russian Active Measures Campaigns     Use of Images in State-Sponsored Information Warfare Op-
+and Interference  in the 2016 U.S. Election Volume  2:       erations by Russian Trolls on Twitter. Proc. Intl. AAAI Conf.
+Russia’s Use  of  Social Media with Additional Views.     on Web and Social Media.
+https://www.intelligence.senate.gov/sites/default/files/            Zannettou, S.; Caulfield, T.; De Cristofaro, E.; Sirivianos,
+documents/Report Volume2.pdf. Accessed: 2024-01-16.        M.; Stringhini, G.; and Blackburn, J. 2019a. Disinformation
+Shao, C.; Ciampaglia, G. L.; Varol, O.; Yang, K.; Flammini,      Warfare: Understanding State-sponsored Trolls on Twitter
+A.; and Menczer, F. 2018. The Spread of Low-credibility      and their Influence on the Web. In Companion Proc. WWW
+Content by Social bots. Nature Communications, 9: 4787.        Conf., 218–226.
+Sharma, K.; Zhang, Y.; Ferrara, E.; and Liu, Y. 2021. Identi-      Zannettou, S.; Caulfield,  T.; Setzer, W.; Sirivianos, M.;
+fying Coordinated Accounts on Social Media through Hid-       Stringhini, G.; and Blackburn, J. 2019b. Who Let the Trolls
+den Influence and Group Behaviours. In 27th ACM SIGKDD      Out? Towards Understanding State-sponsored Trolls.   In
+Conf. on Knowledge Discovery & Data Mining, 1441–1451.      Proc. 10th ACM Conf. on Web Science, 353–362.
+Stanford Internet Observatory. 2021.   Published reports
+of the Stanford Internet Observatory.  https://github.com/                    Ethics Checklist
+stanfordio/publications. Accessed: 2025-04-08.
+                                                                       1. For most authors...
+Starbird, K.; Arif, A.; and Wilson, T. 2019. Disinformation
+as Collaborative Work: Surfacing the Participatory Nature of         (a) Would answering this research question advance sci-
+Strategic Information Operations. Proc. ACM Hum. Com-           ence without violating social contracts, such as violat-
+put. Interact.                                                        ing privacy norms, perpetuating unfair profiling, exac-
+                                                                       erbating the socio-economic divide, or implying disre-
+Stewart, A.; Mosleh, M.; Diakonova, M.; Arechar, A.; Rand,
+                                                                      spect to societies or cultures? Yes
+D.; and Plotkin, J. 2019. Information gerrymandering and
+undemocratic decisions. Nature, 573(7772): 117–121.              (b) Do your main claims in the abstract and introduction
+                                                                      accurately reflect the paper’s contributions and scope?
+Stewart, L. G.; Arif, A.; and Starbird, K. 2018. Examining
+                                                            Yes
+Trolls and Polarization with a Retweet Network.  In Proc.
+                                                                          (c) Do you clarify how the proposed methodological ap-ACM WSDM Workshop on Misinformation and Misbehavior
+                                                                proach is appropriate for the claims made? YesMining on the Web (MIS2). https://api.semanticscholar.org/
+CorpusID:44033303.                                                (d) Do you clarify what are possible artifacts in the data
+                                                                     used, given population-specific distributions? YesThomas, E.; Thompson, N.; and Wanless, A. 2020.  The
+Challenges of Countering Influence Operations.  Techni-         (e) Did you describe the limitations of your work? Yes
+cal report, Carnegie Endowment for Intl. Peace. Accessed:           (f) Did you discuss any potential negative societal im-
+2025-04-08.                                                          pacts of your work? NA
+
+
+                                                   1597

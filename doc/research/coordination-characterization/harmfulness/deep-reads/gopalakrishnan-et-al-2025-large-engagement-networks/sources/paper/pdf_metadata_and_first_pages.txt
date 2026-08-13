@@ -1,0 +1,125 @@
+## aaai-ojs-35839.pdf
+
+pages: 15
+
+metadata: {"format": "PDF 1.5", "title": "Large Engagement Networks for Classifying Coordinated Campaigns and Organic Twitter Trends", "author": "Atul Anand Gopalakrishnan, Jakir Hossain, Tuğrulcan Elmas, Ahmet Erdem Sariyüce", "subject": "Paper accepted and presented at ICWSM-2025", "keywords": "ICWSM: Web and Social Media, ICWSM: Social network analysis; communities identification; expertise and authority discovery", "creator": "", "producer": "", "creationDate": "D:20250607073400Z", "modDate": "D:20250607073403Z", "trapped": "", "encryption": null}
+
+page1_text:
+Large Engagement Networks for Classifying Coordinated Campaigns and
+Organic Twitter Trends
+Atul Anand Gopalakrishnan1, Jakir Hossain1, Tu˘grulcan Elmas2, Ahmet Erdem Sarıy¨uce1
+1University at Buffalo
+2 University of Edinburgh
+atulanan@buffalo.edu, mh267@buffalo.edu, telmas@ed.ac.uk, erdem@buffalo.edu
+Abstract
+Social media users and inauthentic accounts, such as bots,
+may coordinate in promoting their topics. Such topics may
+give the impression that they are organically popular among
+the public, even though they are astroturfing campaigns that
+are centrally managed. It is challenging to predict if a topic is
+organic or a coordinated campaign due to the lack of reliable
+ground truth. In this paper, we create such ground truth by
+detecting the campaigns promoted by ephemeral astroturfing
+attacks. These attacks push any topic to Twitter’s (X) trends
+list by employing bots that tweet in a coordinated manner in
+a short period and then immediately delete their tweets. We
+manually curate a dataset of organic Twitter trends. We then
+create engagement networks out of these datasets which can
+serve as a challenging testbed for graph classification task to
+distinguish between campaigns and organic trends. Engage-
+ment networks consist of users as nodes and engagements as
+edges (retweets, replies, and quotes) between users. We re-
+lease the engagement networks for 179 campaigns and 135
+non-campaigns, and also provide finer-grain labels to char-
+acterize the type of the campaigns and non-campaigns. Our
+dataset, LEN (Large Engagement Networks), is available in
+the URL below. In comparison to traditional graph classifi-
+cation datasets, which are small with tens of nodes and hun-
+dreds of edges at most, graphs in LEN are larger. The average
+graph in LEN has ∼11K nodes and ∼23K edges. We show
+that state-of-the-art GNN methods give only mediocre results
+for campaign vs. non-campaign and campaign type classifica-
+tion on LEN. LEN offers a unique and challenging playfield
+for the graph classification problem. We believe that LEN will
+help advance the frontiers of graph classification techniques
+on large networks and also provide an interesting use case in
+terms of distinguishing coordinated campaigns and organic
+trends.
+Code — https://github.com/erdemUB/LEN
+Datasets —
+https://erdemub.github.io/large-engagement-network/
+Introduction
+Social media serves as a censor to public sentiment, reflect-
+ing popular topics of widespread interest through organic
+discussions among users. For instance, Twitter (recently re-
+named as X) monitors popular topics, trends, and publishes
+Copyright © 2025, Association for the Advancement of Artificial
+Intelligence (www.aaai.org). All rights reserved.
+them on its main page, implying that those are the topics that
+users widely discuss. On the other hand, coordinated efforts
+can manipulate perceptions on certain topics. Users with
+common goals may attempt to artificially inflate the pop-
+ularity of certain topics to promote their campaigns.
+
+## arxiv-2503.00599.pdf
+
+pages: 14
+
+metadata: {"format": "PDF 1.5", "title": "", "author": "", "subject": "", "keywords": "", "creator": "TeX", "producer": "pdfTeX-1.40.25", "creationDate": "D:20250331005137Z", "modDate": "D:20250331005137Z", "trapped": "", "encryption": null}
+
+page1_text:
+Large Engagement Networks for Classifying Coordinated Campaigns and
+Organic Twitter Trends
+Atul Anand Gopalakrishnan1, Jakir Hossain1, Tu˘grulcan Elmas2, Ahmet Erdem Sarıy¨uce1
+1University at Buffalo
+2 University of Edinburgh
+atulanan@buffalo.edu, mh267@buffalo.edu, telmas@ed.ac.uk, erdem@buffalo.edu
+Abstract
+Social media users and inauthentic accounts, such as bots,
+may coordinate in promoting their topics. Such topics may
+give the impression that they are organically popular among
+the public, even though they are astroturfing campaigns that
+are centrally managed. It is challenging to predict if a topic is
+organic or a coordinated campaign due to the lack of reliable
+ground truth. In this paper, we create such ground truth by
+detecting the campaigns promoted by ephemeral astroturfing
+attacks. These attacks push any topic to Twitter’s (X) trends
+list by employing bots that tweet in a coordinated manner in
+a short period and then immediately delete their tweets. We
+manually curate a dataset of organic Twitter trends. We then
+create engagement networks out of these datasets which can
+serve as a challenging testbed for graph classification task to
+distinguish between campaigns and organic trends. Engage-
+ment networks consist of users as nodes and engagements as
+edges (retweets, replies, and quotes) between users. We re-
+lease the engagement networks for 179 campaigns and 135
+non-campaigns, and also provide finer-grain labels to char-
+acterize the type of the campaigns and non-campaigns. Our
+dataset, LEN (Large Engagement Networks), is available in
+the URL below. In comparison to traditional graph classifi-
+cation datasets, which are small with tens of nodes and hun-
+dreds of edges at most, graphs in LEN are larger. The average
+graph in LEN has ∼11K nodes and ∼23K edges. We show
+that state-of-the-art GNN methods give only mediocre results
+for campaign vs. non-campaign and campaign type classifica-
+tion on LEN. LEN offers a unique and challenging playfield
+for the graph classification problem. We believe that LEN will
+help advance the frontiers of graph classification techniques
+on large networks and also provide an interesting use case in
+terms of distinguishing coordinated campaigns and organic
+trends.
+Code — https://github.com/erdemUB/LEN
+Datasets —
+https://erdemub.github.io/large-engagement-network/
+Introduction
+Social media serves as a censor to public sentiment, reflect-
+ing popular topics of widespread interest through organic
+discussions among users. For instance, Twitter (recently re-
+named as X) monitors popular topics, trends, and publishes
+Copyright © 2025, Association for the Advancement of Artificial
+Intelligence (www.aaai.org). All rights reserved.
+them on its main page, implying that those are the topics that
+users widely discuss. On the other hand, coordinated efforts
+can manipulate perceptions on certain topics. Users with
+common goals may attempt to artificially inflate the pop-
+ularity of certain topics to promote their campaigns.

@@ -36,6 +36,7 @@ from app.models.review_case import ReviewCase
 from app.models.review_case import ReviewCaseSnapshotRevision
 from app.models.review_case import ReviewDecision
 from app.models.review_case import ReviewDecisionDraft
+from app.models.case_workbench import AuthoritySource, CaseAction, CaseAnalysisLink, CaseAuditEvent, CaseClaim, CaseFeedback, CaseRecord, CaseReportVersion, SemanticArtifact, SemanticCorrection
 from app.models.review_system import ReviewAgentDebateTrace
 from app.models.review_system import ReviewAgentFeedback
 from app.models.review_system import ReviewAgentReport
@@ -97,6 +98,7 @@ __all__ = [
     "ReviewCaseSnapshotRevision",
     "ReviewDecision",
     "ReviewDecisionDraft",
+    "AuthoritySource", "CaseAction", "CaseAnalysisLink", "CaseAuditEvent", "CaseClaim", "CaseFeedback", "CaseRecord", "CaseReportVersion", "SemanticArtifact", "SemanticCorrection",
     "ReviewAgentDebateTrace",
     "ReviewAgentFeedback",
     "ReviewAgentReport",

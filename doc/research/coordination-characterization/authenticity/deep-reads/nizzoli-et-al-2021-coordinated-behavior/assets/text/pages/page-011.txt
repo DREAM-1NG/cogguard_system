@@ -1,0 +1,48 @@
+(a) Edge weight threshold at 0.5.               (b) Edge weight threshold at 0.7.                  (c) Edge weight threshold at 0.9.
+
+Figure 10: Results obtained with approaches that perform simple ﬁltering on edge weights based on ﬁxed, arbitrary thresholds
+to obtain a binary distinction between coordinated and uncoordinated behaviors. As shown, these approaches capture only a
+small portion of the nuances and communities involved in the online debate.
+
+
+investigate the interactions with other users (step 6). More-       tion of the whole spectrum of coordination. We reached this
+over, since our algorithm deﬁnes a continuous measure for      goal via an improved network ﬁltering and a coordination-
+the coordination extent, we were able to characterize the      aware community detection process. Our nuanced approach
+emerging groups with informative network measures when      allowed us to uncover different patterns of coordination. We
+varying the coordination level. None of these results would      demonstrated that there is a certain extent of coordination in
+have been possible by focusing only on the most coordinated      every online community but that not all coordinated groups
+accounts, as in previous works.                                   are equally interesting. Furthermore, while previous works
+  Furthermore, setting a suitable, unique threshold for the      applied simple, ﬁxed coordination thresholds to the whole
+entire user similarity network, based on our intuition of what      network, our approach allows estimating the degree of coor-
+can be considered a suspiciously strong similarity, can prove       dination that characterizes each different community, open-
+problematic. In fact, if for example we measure the user be-      ing up more accurate and ﬁne-grained downstream analyses.
+havior similarity according to the usage of the same hash-       From a practical standpoint, we created and shared a Twit-
+tags, the resulting representation will be much less sparse        ter dataset for the 2019 UK GE. Despite smaller numbers,
+than the one used in this paper, based on co-retweets. As     we found that Conservatives were overall more coordinated
+a consequence, the same similarity threshold value that is      than Labours and that they also featured a higher degree of
+suitable for the hashtag-based representation can be too re-      automation and Twitter suspensions. However, the commu-
+strictive for the co-retweet-based one. In Figures 10b, 10a,        nities with the largest degree of coordination were not sup-
+we provide the ﬁltered networks obtained for less severe val-       porters of the main parties but rather small groups of ac-
+ues of the threshold (0.7 and 0.5, respectively). As expected,        tivists and political antagonists.
+lower threshold values imply larger coordinated groups.         In summary, our work goes in the direction of embracing
+However, as conﬁrmed by a visual comparison between the       the growing complexity of critical phenomena, such as on-
+two ﬁgures, relaxing the threshold condition does not affect       line deception and manipulation. Doing so would allow us to
+each coordinated group in the same way, with the CON clus-      develop better models of our complex reality, which would
+ter expanding much more than the B60 or LAB ones. Con-      give us higher chances of providing accurate and reliable re-
+versely, our nuanced analysis allowed us to estimate the in-        sults. Despite still not distinguishing inauthentic coordinated
+trinsic coordination that characterizes each emerging group,      behaviors from authentic ones, our work makes a step for-
+according to a multifaceted set of measures.                  ward in this direction by providing more nuanced and more
+  In summary, our framework introduced many innovations       accurate results.
+compared to previous approaches, each of which contributed
+to obtaining more meaningful and signiﬁcant results.                          References
+                                                                      [Alassad, Spann, and Agarwal 2020] Alassad, M.; Spann, B.; and
+                Conclusions                            Agarwal, N. 2020. Combining advanced computational social sci-
+                                                                 ence and graph theoretic techniques to reveal adversarial informa-
+We addressed the problem of uncovering coordinated be-        tion operations. Information Processing & Management 102385.
+haviors in social media. We proposed a new network-based                                                             [Assenmacher et al. 2020a] Assenmacher,  D.; Adam,  L.;  Traut-
+framework and applied it for studying coordinated behaviors      mann, H.; and Grimme, C. 2020a. Semi-automatic campaign de-
+in the 2019 UK General Election (GE). Our work has both        tection by means of text stream clustering. In AAAI FLAIRS’20.
+theoretical and practical implications.                                                             [Assenmacher et al. 2020b] Assenmacher,  D.;  Clever,  L.;  Pohl,
+  From a theoretical standpoint of ﬁghting IOs and CIB,         J. S.; Trautmann, H.; and Grimme, C. 2020b. A two-phase frame-
+our framework goes beyond a binary deﬁnition of coordi-      work for detecting manipulation campaigns in social media.  In
+nated vs. uncoordinated behaviors, allowing the investiga-      SCSM’20.

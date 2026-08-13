@@ -1,0 +1,82 @@
+Sub-type # G     # nodes          # edges             conservatively to maximize precision.
+              Min Max  Avg Min  Max Avg
+     Politics     14   100 1,908   805   203   2,000 1108      Building Networks
+    Reform     16   131   634   297   540   2,027 1192
+                                                        Using the data collected in the last two sections, we build
+    News        3   581 1,671  1123   942   1,726 1410
+                                                       engagement networks. The nodes in the networks represent
+    Finance      9   273 1,590   775   243   1,862 1024
+                                                                 the users on Twitter and a directed edge from a node A to   Campaign Noise        5   454 2,520  1060   473   1,634 1074
+                                                       node B signify that A engaged with (retweeted, replied to,
+     Cult         4   313   705   512   637   1,035  843
+                                                                or quoted) B. Some users engaged with the same user re-
+    Overall     51   100 2,520   661   203   2,027 1113
+                                                             peated times. We only consider their latest engagement. In
+    News       10   818 6,169  3757   709   9,076 4578                                                                          this process, we retain around 74% of edges across all the
+     Sports      23   469 8,355  3357   403   9,998 3994                                                             networks.
+     Festival      2   885 5,982  3433   803   6,509 3656
+                                          We use profile and tweet data to assign the attributes of
+     Internal      1 4,188 4,188 4,188 4,374   4,374 4374
+                                                         nodes and edges respectively. We used the user descrip-
+   Common     5 1,214 4,962 2,989 1,270   6,277 3559
+                                                                     tion (bio), follower count, following count, user’s total tweet     Non-Campaign  Enter.       5 1,477 7,739 4,391 1,712 10,608 6021                                                                 count, and user’s verification status as node attributes. The
+     Sp. cam.     3 2,880 4,661 3,654 4,451   7,367 5534
+                                                        edge attributes are features of the tweets that are the user
+    Overall     49   469 8,355  3545   403 10,608 4364
+                                                        engaged with: the type of engagement (retweet, reply, or
+                                                                   quote), text, impression count, engagement count (e.g., num-
+Table 3: Statistics of the engagement networks for the small
+                                                               ber of retweets), number of likes, the timestamp of the tweet
+dataset with 100 networks. This is simply the smallest 100
+                                                       and whether the tweet is labeled as sensitive or not. The au-
+networks, out of 314, with respect to node counts.
+                                                                      thor’s description and the text of the tweet are encoded us-
+                                                               ing an established text encoder called LaBSE (Feng et al.
+                                                              2020). The LaBSE model is an bidirectional encoder, that
+saries used bots to further amplify them which may be due
+                                                                 takes source and target translation pairs and embeds them
+to political purposes. For instance, when a politician left his
+                                                                     into the same space. The text encoder is initialized with a
+party and criticized it, the rival parties amplified his name as
+                                                                   pre-trained masked language model (MLM) and a transla-
+part of their campaign. For 9 campaign trends, we could not
+                                                                     tion language model (TLM), which are then concatenated
+ascertain a specific group promoting a campaign related to
+                                                                     to produce a text embedding. The model is trained using
+the topic. Despite this uncertainty, we retained these trends
+                                                                   trained using in-batch negative sampling. For our work, we
+in our analysis, labeling them as “noise.”.
+                                                          used the pre-trained set of weights for the LaBSE encoder.
+                                           LEN comprises of 314 graphs of which 179 are cam-
+Non-Campaigns Collection Methodology
+                                                            paign and 135 are non-campaign. Table 2 presents impor-
+We acquired the ground truth for the campaigns by detecting       tant statistics. There are 7 sub-types in campaign and 8 in
+bot activity that specifically aims at trending topics. How-      non-campaign. Overall, the number of nodes vary between
+ever, we cannot assume that trends that do not observe such     100 and 119,952 with an average of 11,769, and number of
+activity are devoid of coordinated efforts since other types      edges are in the range of 203 and 1,105,918 with a mean of
+of activities (e.g., organizing through messaging apps) may      23,593.
+still be the main drivers. Thus, we do a round of manual       To facilitate fast experiments, we also create a smaller,
+annotation of the trends that are not classified as part of an      balanced, version of LEN, named LEN-small, that includes
+ephemeral astroturfing activity. We make the following as-     100 networks of the smallest size in LEN. LEN-small con-
+sumption: the trends associated with external events that at-        sists of 51 campaign and 49 non-campaign networks, details
+tract nationwide interest are more likely to be organic, as       are shown in Table 3. Note that the largest connected compo-
+their popularity is more likely driven by people tweeting      nent in campaign and non-campaign graphs contain around
+independently, rather than by coordinated efforts. Alterna-    76% and 81% of the nodes on average, respectively. Such
+tively, adversaries would be less inclined to campaign using        statistics are provided in Appendix (Table 7).
+topics that already trending due to external events, as their         In LEN-small, the number of nodes vary between 100 and
+messages risk being overshadowed by organic discourse. We      8,355 with an average of 2,079 and number of edges are in
+annotated the trends between March and May 2023 that are       the range of 203 and 10,608 with a mean of 2,696.
+1) person or location names due to a news related to them
+(49); 2) news that are originally sourced from internal dis-        Graph Classification on Engagement
+cussions but later made to the mainstream media and be-
+                                                           Networkscame external events (11); 3) popular sports (mostly foot-
+ball) events (30), TV or YouTube shows (8); 4) special days     To understand the challenges of classifying networks in
+(17); and 5) common hashtags (e.g., #NewProfilePic) or un-     LEN, we experiment with several established graph classifi-
+igrams (10). 7 hashtags signify a campaign (announced po-       cation methods to perform binary classification, campaign
+litical or sports campaigns), but those hashtags and their       vs. non-campaign, and multi-class classification, which is
+campaigns were discussed widely. We discarded the trends       classifying the type of campaign.
+that did not  fit those categories. We annotated 135 non-        Experimental Setup: For  all of our experiments, we
+campaigns in total. The annotation is not exhaustive but done        utilize  stratified random sampling to  split the data into
+
+
+                                                   692

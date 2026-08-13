@@ -14,6 +14,7 @@ from app.core.analysis.executor import (
 )
 from app.core.analysis.registry import AnalysisRegistry
 from app.core.analysis import UnknownAnalysisStage
+from app.core.semantic.runtime import ModelWeightsBlockedError
 
 
 class FakeSnapshotCollection:
@@ -172,6 +173,25 @@ class FailedTeacherJobPort:
             "task_state": "dispatch_failed",
             "review_required": True,
         }
+
+
+class RecordingSemanticEngine:
+    def __init__(self) -> None:
+        self.calls: list[tuple[Any, dict[str, Any] | None, dict[str, Any] | None]] = []
+
+    async def enrich(self, snapshot, *, options, coordination, propagation):
+        self.calls.append((snapshot, coordination, propagation))
+        return {
+            "technology": "semantic_enrichment",
+            "status": "ok",
+            "runtime_status": "ready",
+            "layers": {"posts": [], "comments": []},
+        }
+
+
+class PrebuiltSemanticRuntime:
+    def enrich(self, *_args, **_kwargs):
+        return {"technology": "semantic_enrichment", "status": "ok"}
 
 
 def _dt(day: int, hour: int = 0) -> datetime:
@@ -448,6 +468,92 @@ def test_executor_marks_missing_checkpoint_as_needs_evidence():
         assert result["results"]["propagation_analysis"]["status"] == "missing_checkpoint"
 
     asyncio.run(scenario())
+
+
+def test_semantic_stage_receives_prior_results_and_blocks_without_fallback_when_weights_are_missing():
+    async def scenario():
+        snapshot = _snapshot()
+        store = FakeAnalysisStore(
+            snapshot_record={
+                "snapshot_id": snapshot.snapshot_id,
+                "mongo_collection": "analysis_event_snapshots",
+                "mongo_key": snapshot.snapshot_id,
+            },
+            run={
+                "run_id": "run_semantic",
+                "event_id": snapshot.event_id,
+                "snapshot_id": snapshot.snapshot_id,
+                "status": "queued",
+                "requested_stages": ["coordination_discover", "propagation_analysis", "semantic_enrichment"],
+                "options": {"semantic_enrichment": {"claim": "official claim"}},
+                "finished_at": None,
+            },
+        )
+        registry = AnalysisRegistry(
+            mongo_db={
+                "analysis_event_snapshots": FakeSnapshotCollection(
+                    {snapshot.snapshot_id: snapshot.model_dump(mode="json")}
+                ),
+                "analysis_run_artifacts": FakeArtifactCollection(),
+            },
+            store=store,
+        )
+        semantic = RecordingSemanticEngine()
+        executor = AnalysisExecutor(
+            registry=registry,
+            engines=AnalysisEnginePorts(
+                coordination=RecordingCoordinationEngine(),
+                propagation=RecordingPropagationEngine(),
+                student=RecordingStudentRuntime(),
+                teacher=UnavailableTeacherJobPort(),
+                semantic=semantic,
+            ),
+        )
+
+        result = await executor.execute_run("run_semantic")
+
+        assert result["status"] == "completed"
+        assert semantic.calls[0][1] == {"status": "ok", "community_count": 2}
+        assert semantic.calls[0][2] == {"status": "ok", "scale_interval": [1, 3]}
+        assert result["results"]["semantic_enrichment"]["runtime_status"] == "ready"
+        assert result["artifact_manifest"]["stages"]["semantic_enrichment"]["status"] == "ok"
+
+        class MissingWeightsSemanticEngine:
+            async def enrich(self, *_args, **_kwargs):
+                raise ModelWeightsBlockedError("bge_embedding unavailable")
+
+        store.runs["run_semantic_blocked"] = {
+            **store.runs["run_semantic"],
+            "run_id": "run_semantic_blocked",
+            "status": "queued",
+            "requested_stages": ["semantic_enrichment"],
+            "finished_at": None,
+        }
+        executor.engines.semantic = MissingWeightsSemanticEngine()
+
+        blocked = await executor.execute_run("run_semantic_blocked")
+
+        assert blocked["status"] == "needs_evidence"
+        assert blocked["results"]["semantic_enrichment"] == {
+            "technology": "semantic_enrichment",
+            "status": "model_weights_blocked",
+            "runtime_status": "blocked",
+            "blocking_reason": "bge_embedding unavailable",
+            "fallback": False,
+        }
+
+    asyncio.run(scenario())
+
+
+def test_default_analysis_engine_ports_reuses_the_injected_semantic_runtime_and_engine():
+    runtime = PrebuiltSemanticRuntime()
+    semantic_engine = RecordingSemanticEngine()
+
+    runtime_ports = default_analysis_engine_ports(semantic_runtime=runtime)
+    engine_ports = default_analysis_engine_ports(semantic_engine=semantic_engine)
+
+    assert runtime_ports.semantic._runtime is runtime
+    assert engine_ports.semantic is semantic_engine
 
 
 def test_propagation_engine_uses_verified_checkpoint_path(monkeypatch):

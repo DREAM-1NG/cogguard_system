@@ -1,0 +1,64 @@
+Downsampling          Prec.         Rec.        F1      AUC
+                             Logistic Regression   0.89 ± 0.00   0.88 ± 0.00   0.88 ± 0.00   0.93 ± 0.00
+                     Random Forest       0.93 ± 0.00   0.92 ± 0.00   0.92 ± 0.00   0.97 ± 0.00
+                        AdaBoost            0.90 ± 0.00   0.90 ± 0.00   0.90 ± 0.00   0.96 ± 0.00
+                           Decision Tree        0.88 ± 0.00   0.88 ± 0.00   0.88 ± 0.00   0.88 ± 0.00
+                         Naive Bayes          0.62 ± 0.02   0.86 ± 0.02   0.68 ± 0.00   0.87 ± 0.00
+                        Oversampling        Precision      Recall        F1      AUC
+                             Logistic Regression   0.27 ± 0.00   0.48 ± 0.01   0.35 ± 0.00   0.94 ± 0.00
+                     Random Forest       0.70 ± 0.00   0.72 ± 0.01   0.71 ± 0.00   0.96 ± 0.00
+                        AdaBoost            0.47 ± 0.02   0.54 ± 0.02   0.50 ± 0.01   0.96 ± 0.00
+                           Decision Tree        0.55 ± 0.01   0.51 ± 0.01   0.53 ± 0.01   0.75 ± 0.01
+                         Naive Bayes          0.06 ± 0.00   0.50 ± 0.03   0.10 ± 0.00   0.86 ± 0.00
+
+Table 5: Results of different algorithms in the replier classification task. Top: downsampling of the majority class (normal
+repliers). Bottom: oversampling of the minority class (IO repliers). We present standard errors rounded to the second decimal
+point.
+
+
+      Features set          Prec.   Rec.   F1  AUC
+    activity rate     0.60    0.63   0.61   0.65
+    following rate    0.54    0.52   0.53   0.56
+    follower rate     0.55    0.51   0.53   0.56
+    age                  0.58    0.66   0.61   0.66
+     Delay                 0.57    0.60   0.58   0.62
+     Engagement           0.57    0.57   0.53   0.63
+       Entities               0.63    0.50   0.53   0.63
+       Similarity             0.85    0.84   0.84   0.92
+      All features           0.93    0.92   0.92   0.97
+
+Table 6: Contributions of different profile features and reply-
+level feature sets to the Random Forest replier classifier. The                                                             Figure 10: (A) Distributions of cosine similarity attributes
+last row corresponds to the results in Table 5 (top).                                                                     for replies by IO and normal repliers. (B) Similarity distri-
+                                                                butions for normal repliers (blue, same as in panel (A)) and
+                                                                 the 10 different samples (different colored outlines).
+test. Both analyses consistently shows that the similarity
+among replies is the most important attribute. To help in-
+terpret this finding, Fig. 10(A) compares the distributions of                                                     model trained on one campaign is tested on the same cam-
+similarity attributes for replies by IO versus normal repliers.                                                            paign (mean across 10-fold cross-validation and 10 different
+Replies by IO repliers are more similar to other replies to the                                                            balanced datasets). The off-diagonal F1 values are obtained
+same tweets, compared to those by normal repliers. This is                                                 when the model trained on one of the balanced datasets (se-
+a pattern that the classifier can exploit. We also observe in                                                                   lected to maximize F1) is tested on other campaigns. We
+Fig. 10(B) that the downsampling process does not bias the                                                            observe that the campaign-specific models tend to perform
+similarity distributions.                                                              well both on their own campaigns and across campaigns.
+  So far, we have tested the replier classifier on balanced                                                   The Serbia campaign is an exception, where we observe
+datasets. In more realistic scenarios, the data may be imbal-                                                            a sizable deterioration in cross-campaign evaluation. These
+anced with different ratios of coordinated and organic repli-                                                                       results suggest that the features of the replier classifier are
+ers. To test whether the classifier can generalize to such sce-                                                                   relevant across different campaigns.
+narios, we train and test with 10-fold cross-validation using
+different positive to negative data ratios ranging from 1:5
+                                                                   Discussionto 1:45. Fig. 11 shows that precision and AUC are robust to
+class imbalance, whereas recall (and consequently F1) drops      Understanding the engagement patterns of IO operators is
+as the class imbalance increases. While this result indicates       crucial for identifying vulnerable individuals and devising
+that balancing the classes affects recall, we also found that       effective countermeasures. Our Serbia and Egypt campaign
+training on the original imbalanced dataset leads to a high      case studies reveal that journalists, state officials, news me-
+false-positive rate and deteriorated precision.                        dia, and politicians are primary targets for coordinated IO
+  Next, we test the generalizability of the replier classifier       attacks. These attacks can originate either from within the
+by training and testing the model across different campaigns.       targeted country or from other nation-states. Our findings
+Similarly to the tweet classifier, we prepare six campaign       further suggest that influential individuals may serve as po-
+datasets: five selected based on the highest number of IO        tential sensors for identifying IO campaigns.
+repliers and one by aggregating the remaining campaigns.       To  detect  coordinated  reply  attacks, we  propose  a
+In the diagonal of Table 7 we report F1 values when the      campaign-independent and general machine learning frame-
+
+
+                                                   1594

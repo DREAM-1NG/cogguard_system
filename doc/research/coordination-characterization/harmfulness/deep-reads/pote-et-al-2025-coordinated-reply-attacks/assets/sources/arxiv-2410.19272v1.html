@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta content="text/html; charset=utf-8" http-equiv="content-type"/>
+<title>Datasheet for “Coordinated Reply Attacks in Influence Operations: Characterization and Detection”</title>
+<!--Generated on Fri Oct 25 02:53:55 2024 by LaTeXML (version 0.8.8) http://dlmf.nist.gov/LaTeXML/.-->
+<meta content="width=device-width, initial-scale=1, shrink-to-fit=no" name="viewport"/>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" type="text/css"/>
+<link href="/static/browse/0.3.4/css/ar5iv.0.7.9.min.css" rel="stylesheet" type="text/css"/>
+<link href="/static/browse/0.3.4/css/ar5iv-fonts.0.7.9.min.css" rel="stylesheet" type="text/css"/>
+<link href="/static/browse/0.3.4/css/latexml_styles.css" rel="stylesheet" type="text/css"/>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.3.3/html2canvas.min.js"></script>
+<script src="/static/browse/0.3.4/js/addons_new.js"></script>
+<script src="/static/browse/0.3.4/js/feedbackOverlay.js"></script>
+<base href="/html/2410.19272v1/"/></head>
+<body>
+<nav class="ltx_page_navbar">
+</nav>
+<div class="ltx_page_main">
+<div class="ltx_page_content">
+<article class="ltx_document ltx_authors_1line">
+<h1 class="ltx_title ltx_title_document">Datasheet for “Coordinated Reply Attacks in Influence Operations:
+Characterization and Detection”</h1>
+<div class="ltx_authors">
+<span class="ltx_creator ltx_role_author">
+<span class="ltx_personname">Manita Pote
+</span></span>
+</div>
+<div class="ltx_pagination ltx_role_start_2_columns"></div>
+<div class="ltx_para ltx_noindent" id="p1">
+<p class="ltx_p" id="p1.1"><span class="ltx_text ltx_font_sansserif ltx_font_bold ltx_framed ltx_framed_rectangle ltx_inline-block" id="p1.1.1" style="width:433.6pt;color:#2E196E;">Motivation</span>
+</p>
+</div>
+<div class="ltx_para ltx_noindent" id="p2">
+<p class="ltx_p" id="p2.1"><span class="ltx_text ltx_font_sansserif ltx_font_bold" id="p2.1.1" style="color:#2E196E;">For what purpose was the dataset created?<span class="ltx_text ltx_font_medium" id="p2.1.1.1"> Was there a specific task in mind? Was there a specific gap that needed to be filled? Please provide a description.</span></span></p>
+</div>
+<div class="ltx_para ltx_noindent" id="p3">
+<p class="ltx_p" id="p3.1">The ‘Reply Coordination Detection’ dataset was curated to study the coordinated replies in the context of influence operation on Twitter and to build a machine learning model to identify tweets that get malicious coordinated replies as well as the repliers involved in such tasks.</p>
+</div>
+<div class="ltx_para ltx_noindent" id="p4">
+<p class="ltx_p" id="p4.1"><span class="ltx_text ltx_font_sansserif ltx_font_bold" id="p4.1.1" style="color:#2E196E;">Who created this dataset (e.g., which team, research group) and on behalf of which entity (e.g., company, institution, organization)?</span></p>
+</div>
+<div class="ltx_para ltx_noindent" id="p5">
+<p class="ltx_p" id="p5.1">The dataset was created by the first author of the paper on behalf of the Observatory in Social Media at Indiana University, Bloomington.</p>
+</div>
+<div class="ltx_para ltx_noindent" id="p6">
+<p class="ltx_p" id="p6.1"><span class="ltx_text ltx_font_sansserif ltx_font_bold" id="p6.1.1" style="color:#2E196E;">Who funded the creation of the dataset?<span class="ltx_text ltx_font_medium" id="p6.1.1.1"> If there is an associated grant, please provide the name of the grantor and the grant name and number.</span></span></p>
+</div>
+<div class="ltx_para ltx_noindent" id="p7">
+<p class="ltx_p" id="p7.1">This work was supported in part by Knight Foundation, Craig Newmark Philanthropies, and DARPA (contract HR001121C0169); and by Lilly Endowment, Inc. through funding for the Indiana University Pervasive Technology Institute.</p>
+</div>
+<div class="ltx_para ltx_noindent" id="p8">
+<br class="ltx_break"/>
+<p class="ltx_p" id="p8.1"><span class="ltx_text ltx_font_sansserif ltx_font_bold ltx_framed ltx_framed_rectangle ltx_inline-block" id="p8.1.1" style="width:433.6pt;color:#2E196E;">Composition</span>
+</p>
+</div>
+<div class="ltx_para ltx_noindent" id="p9">
+<p class="ltx_p" id="p9.1"><span class="ltx_text ltx_font_sansserif ltx_font_bold" id="p9.1.1" style="color:#2E196E;">What do the instances that comprise the dataset represent (e.g., documents, photos, people, countries)?<span class="ltx_text ltx_font_medium" id="p9.1.1.1">  Are there multiple types of instances (e.g., movies, users, and ratings; people and interactions between them; nodes and edges)? Please provide a description.</span></span></p>
+</div>
+<div class="ltx_para ltx_noindent" id="p10">
+<p class="ltx_p" id="p10.1">There are multiple data files related to each research question.
+Therefore, we present the details on each of these data files.
+
+<br class="ltx_break"/>
+<br class="ltx_break"/><span class="ltx_text ltx_font_bold" id="p10.1.1">RQ1_target_annotation.csv
+<br class="ltx_break"/></span></p>
+</div>
+<div class="ltx_para" id="p11">
+<p class="ltx_p" id="p11.1">Each record in this file represents the manual annotation of the profession and country of a user or target for the Serbia and Egypt campaigns.
+This file has following columns:</p>
+<ul class="ltx_itemize" id="S0.I1">
+<li class="ltx_item" id="S0.I1.i1" style="list-style-type:none;">
+<span class="ltx_tag ltx_tag_item">•</span>
+<div class="ltx_para" id="S0.I1.i1.p1">
+<p class="ltx_p" id="S0.I1.i1.p1.1">userid</p>
+</div>
+</li>
+<li class="ltx_item" id="S0.I1.i2" style="list-style-type:none;">
+<span class="ltx_tag ltx_tag_item">•</span>
+<div class="ltx_para" id="S0.I1.i2.p1">
+<p class="ltx_p" id="S0.I1.i2.p1.1">profession_label</p>
+</div>
+</li>
+<li class="ltx_item" id="S0.I1.i3" style="list-style-type:none;">
+<span class="ltx_tag ltx_tag_item">•</span>
+<div class="ltx_para" id="S0.I1.i3.p1">
+<p class="ltx_p" id="S0.I1.i3.p1.1">country_label</p>
+</div>
+</li>
+<li class="ltx_item" id="S0.I1.i4" style="list-style-type:none;">
+<span class="ltx_tag ltx_tag_item">•</span>
+<div class="ltx_para" id="S0.I1.i4.p1">
+<p class="ltx_p" id="S0.I1.i4.p1.1">campaign</p>
+</div>
+</li>
+</ul>
+<p class="ltx_p" id="p11.2">Values of the ‘campaign’ column are either Serbia or Egypt.
+There are 1,547 records.</p>
+</div>
+<div class="ltx_para ltx_noindent" id="p12">
+<p class="ltx_p" id="p12.1"><span class="ltx_text ltx_font_bold" id="p12.1.1">RQ1_target_non_target_tweets.csv
+<br class="ltx_break"/></span></p>
+</div>
+<div class="ltx_para" id="p13">
+<p class="ltx_p" id="p13.1">Each record in this file represents an English translated targeted or non-targeted tweet in the Serbia and Egypt campaigns.
+This file has the following columns:</p>
+<ul class="ltx_itemize" id="S0.I2">
+<li class="ltx_item" id="S0.I2.i1" style="list-style-type:none;">
+<span class="ltx_tag ltx_tag_item">•</span>
+<div class="ltx_para" id="S0.I2.i1.p1">
+<p class="ltx_p" id="S0.I2.i1.p1.1">tweetid</p>
+</div>
+</li>
+<li class="ltx_item" id="S0.I2.i2" style="list-style-type:none;">
+<span class="ltx_tag ltx_tag_item">•</span>
+<div class="ltx_para" id="S0.I2.i2.p1">
+<p class="ltx_p" id="S0.I2.i2.p1.1">english_text</p>
+</div>
+</li>
+<li class="ltx_item" id="S0.I2.i3" style="list-style-type:none;">
+<span class="ltx_tag ltx_tag_item">•</span>
+<div class="ltx_para" id="S0.I2.i3.p1">
+<p class="ltx_p" id="S0.I2.i3.p1.1">type</p>
+</div>
+</li>
+<li class="ltx_item" id="S0.I2.i4" style="list-style-type:none;">
+<span class="ltx_tag ltx_tag_item">•</span>
+<div class="ltx_para" id="S0.I2.i4.p1">
+<p class="ltx_p" id="S0.I2.i4.p1.1">campaign</p>
+</div>
+</li>
+</ul>
+<p class="ltx_p" id="p13.2">The ‘type’ column has two values: (1) <span class="ltx_text ltx_font_italic" id="p13.2.1">target</span>, which represents a targeted tweet, or (2) <span class="ltx_text ltx_font_italic" id="p13.2.2">non_target</span>, which represents a non-targeted tweet.
+The ‘campaign’ column has two values, Serbia or Egypt.
+There are 36,885 records.</p>
+</div>
+<div class="ltx_para ltx_noindent" id="p14">
+<p class="ltx_p" id="p14.1"><span class="ltx_text ltx_font_bold" id="p14.1.1">RQ1_target_follower_following_ count.csv
+<br class="ltx_break"/></span></p>
+</div>
+<div class="ltx_para" id="p15">
+<p class="ltx_p" id="p15.1">Each record in this file represents a target user and reports the numbers of followers and following of that target.
+There are 15,016 records.
+This file has the following columns:</p>
+<ul class="ltx_itemize" id="S0.I3">
+<li class="ltx_item" id="S0.I3.i1" style="list-style-type:none;">
+<span class="ltx_tag ltx_tag_item">•</span>
+<div class="ltx_para" id="S0.I3.i1.p1">
+<p class="ltx_p" id="S0.I3.i1.p1.1">userid</p>
+</div>
+</li>
+<li class="ltx_item" id="S0.I3.i2" style="list-style-type:none;">
+<span class="ltx_tag ltx_tag_item">•</span>
+<div class="ltx_para" id="S0.I3.i2.p1">
+<p class="ltx_p" id="S0.I3.i2.p1.1">followers_count</p>
+</div>
+</li>
+<li class="ltx_item" id="S0.I3.i3" style="list-style-type:none;">
+<span class="ltx_tag ltx_tag_item">•</span>
+<div class="ltx_para" id="S0.I3.i3.p1">
+<p class="ltx_p" id="S0.I3.i3.p1.1">following_count</p>
+</div>
+</li>
+</ul>
+</div>
+<div class="ltx_para ltx_noindent" id="p16">
+<p class="ltx_p" id="p16.1"><span class="ltx_text ltx_font_bold" id="p16.1.1">RQ1_number_of_reply_per_tweet .csv
+<br class="ltx_break"/></span></p>
+</div>
+<div class="ltx_para" id="p17">
+<p class="ltx_p" id="p17.1">Each record in this dataset represents a targeted tweet and reports the number of IO replies received by that tweet.
+There are 53,931 records.
+This file has the following columns:</p>
+<ul class="ltx_itemize" id="S0.I4">
+<li class="ltx_item" id="S0.I4.i1" style="list-style-type:none;">
+<span class="ltx_tag ltx_tag_item">•</span>
+<div class="ltx_para" id="S0.I4.i1.p1">
+<p class="ltx_p" id="S0.I4.i1.p1.1">poster_tweetid</p>
+</div>
+</li>
+<li class="ltx_item" id="S0.I4.i2" style="list-style-type:none;">
+<span class="ltx_tag ltx_tag_item">•</span>
+<div class="ltx_para" id="S0.I4.i2.p1">
+<p class="ltx_p" id="S0.I4.i2.p1.1">reply_count</p>
+</div>
+</li>
+</ul>
+</div>
+<div class="ltx_para ltx_noindent" id="p18">
+<p class="ltx_p" id="p18.1"><span class="ltx_text ltx_font_bold" id="p18.1.1">RQ1_num_targeted_tweet_by_IO .csv
+<br class="ltx_break"/></span></p>
+</div>
+<div class="ltx_para" id="p19">
+<p class="ltx_p" id="p19.1">Each record in this dataset represents a pair of users: a target (poster) and an IO replier. The record reports the number of tweets by the given poster that are targeted by the given IO replier.
+There are 148,450 records.
+This file has the following columns:</p>
+<ul class="ltx_itemize" id="S0.I5">
+<li class="ltx_item" id="S0.I5.i1" style="list-style-type:none;">
+<span class="ltx_tag ltx_tag_item">•</span>
+<div class="ltx_para" id="S0.I5.i1.p1">
+<p class="ltx_p" id="S0.I5.i1.p1.1">poster_userid</p>
+</div>
+</li>
+<li class="ltx_item" id="S0.I5.i2" style="list-style-type:none;">
+<span class="ltx_tag ltx_tag_item">•</span>
+<div class="ltx_para" id="S0.I5.i2.p1">
+<p class="ltx_p" id="S0.I5.i2.p1.1">replier_userid</p>
+</div>
+</li>
+<li class="ltx_item" id="S0.I5.i3" style="list-style-type:none;">
+<span class="ltx_tag ltx_tag_item">•</span>
+<div class="ltx_para" id="S0.I5.i3.p1">
+<p class="ltx_p" id="S0.I5.i3.p1.1">count</p>
+</div>
+</li>
+</ul>
+</div>
+<div class="ltx_para ltx_noindent" id="p20">
+<p class="ltx_p" id="p20.1"><span class="ltx_text ltx_font_bold" id="p20.1.1">RQ1_time_difference_of_reply.csv
+<br class="ltx_break"/></span></p>
+</div>
+<div class="ltx_para" id="p21">
+<p class="ltx_p" id="p21.1">Each record in this file represents a reply and its delay (time since tweet targeted by the reply).
+There are 148,450 records.
+This file has the following columns:</p>
+<ul class="ltx_itemize" id="S0.I6">
+<li class="ltx_item" id="S0.I6.i1" style="list-style-type:none;">
+<span class="ltx_tag ltx_tag_item">•</span>
+<div class="ltx_para" id="S0.I6.i1.p1">
+<p class="ltx_p" id="S0.I6.i1.p1.1">replier_tweetid</p>
+</div>
+</li>
+<li class="ltx_item" id="S0.I6.i2" style="list-style-type:none;">
+<span class="ltx_tag ltx_tag_item">•</span>
+<div class="ltx_para" id="S0.I6.i2.p1">
+<p class="ltx_p" id="S0.I6.i2.p1.1">diff_min</p>
+</div>
+</li>
+</ul>
+</div>
+<div class="ltx_para ltx_noindent" id="p22">
+<p class="ltx_p" id="p22.1"><span class="ltx_text ltx_font_bold" id="p22.1.1">RQ2_engagement.csv
+<br class="ltx_break"/></span></p>
+</div>
+<div class="ltx_para" id="p23">
+<p class="ltx_p" id="p23.1">Each record in this file represents a targeted or control tweet and reports the engagement received by that tweet.
+There are 7,732 records.
+This file has the following columns:</p>
+<ul class="ltx_itemize" id="S0.I7">
+<li class="ltx_item" id="S0.I7.i1" style="list-style-type:none;">
+<span class="ltx_tag ltx_tag_item">•</span>
+<div class="ltx_para" id="S0.I7.i1.p1">
+<p class="ltx_p" id="S0.I7.i1.p1.1">tweetid</p>
+</div>
+</li>
+<li class="ltx_item" id="S0.I7.i2" style="list-style-type:none;">
+<span class="ltx_tag ltx_tag_item">•</span>
+<div class="ltx_para" id="S0.I7.i2.p1">
+<p class="ltx_p" id="S0.I7.i2.p1.1">retweet_count</p>
+</div>
+</li>
+<li class="ltx_item" id="S0.I7.i3" style="list-style-type:none;">
+<span class="ltx_tag ltx_tag_item">•</span>
+<div class="ltx_para" id="S0.I7.i3.p1">
+<p class="ltx_p" id="S0.I7.i3.p1.1">like_count</p>
+</div>
+</li>
+<li class="ltx_item" id="S0.I7.i4" style="list-style-type:none;">
+<span class="ltx_tag ltx_tag_item">•</span>
+<div class="ltx_para" id="S0.I7.i4.p1">
+<p class="ltx_p" id="S0.I7.i4.p1.1">quote_count</p>
+</div>
+</li>
+<li class="ltx_item" id="S0.I7.i5" style="list-style-type:none;">
+<span class="ltx_tag ltx_tag_item">•</span>
+<div class="ltx_para" id="S0.I7.i5.p1">
+<p class="ltx_p" id="S0.I7.i5.p1.1">type</p>
+</div>
+</li>
+</ul>
+<p class="ltx_p" id="p23.2">The ‘type’ columns has two values : (1) <span class="ltx_text ltx_font_italic" id="p23.2.1">target</span> or (2) <span class="ltx_text ltx_font_italic" id="p23.2.2">control</span>.</p>
+</div>
+<div class="ltx_para ltx_noindent" id="p24">
+<p class="ltx_p" id="p24.1"><span class="ltx_text ltx_font_bold" id="p24.1.1">RQ2_tweet_classifier_features.csv
+<br class="ltx_break"/></span></p>
+</div>
+<div class="ltx_para" id="p25">
+<p class="ltx_p" id="p25.1">Each record in this file represents a targeted or control tweet and reports features associated with that tweet.
+Please refer to the RQ2 section of the manuscript for the names of the features and how they are calculated.
+There are 7,732 records in this file.
+The ‘tweet_label’ columns indicates whether the tweet is targeted (1) or control (0) and is used to train/test the tweet classifier.</p>
+</div>
+<div class="ltx_para ltx_noindent" id="p26">
+<p class="ltx_p" id="p26.1"><span class="ltx_text ltx_font_bold" id="p26.1.1">poster_tweetid_campaign_type.csv
+<br class="ltx_break"/></span></p>
+</div>
+<div class="ltx_para" id="p27">
+<p class="ltx_p" id="p27.1">Each record in this file represents a pair consisting of a tweet by a target and a reply to that tweet. The file reports the target user, the replier, which campaign the replier belongs to, a label for the type of replier, and a label for the type of original tweet.
+This file has 2,673,091 records with the following columns:</p>
+<ul class="ltx_itemize" id="S0.I8">
+<li class="ltx_item" id="S0.I8.i1" style="list-style-type:none;">
+<span class="ltx_tag ltx_tag_item">•</span>
+<div class="ltx_para" id="S0.I8.i1.p1">
+<p class="ltx_p" id="S0.I8.i1.p1.1">poster_tweetid</p>
+</div>
+</li>
+<li class="ltx_item" id="S0.I8.i2" style="list-style-type:none;">
+<span class="ltx_tag ltx_tag_item">•</span>
+<div class="ltx_para" id="S0.I8.i2.p1">
+<p class="ltx_p" id="S0.I8.i2.p1.1">campaign</p>
+</div>
+</li>
+<li class="ltx_item" id="S0.I8.i3" style="list-style-type:none;">
+<span class="ltx_tag ltx_tag_item">•</span>
+<div class="ltx_para" id="S0.I8.i3.p1">
+<p class="ltx_p" id="S0.I8.i3.p1.1">replier_userid</p>
+</div>
+</li>
+<li class="ltx_item" id="S0.I8.i4" style="list-style-type:none;">
+<span class="ltx_tag ltx_tag_item">•</span>
+<div class="ltx_para" id="S0.I8.i4.p1">
+<p class="ltx_p" id="S0.I8.i4.p1.1">replier_label</p>
+</div>
+</li>
+<li class="ltx_item" id="S0.I8.i5" style="list-style-type:none;">
+<span class="ltx_tag ltx_tag_item">•</span>
+<div class="ltx_para" id="S0.I8.i5.p1">
+<p class="ltx_p" id="S0.I8.i5.p1.1">replier_tweetid</p>
+</div>
+</li>
+<li class="ltx_item" id="S0.I8.i6" style="list-style-type:none;">
+<span class="ltx_tag ltx_tag_item">•</span>
+<div class="ltx_para" id="S0.I8.i6.p1">
+<p class="ltx_p" id="S0.I8.i6.p1.1">type</p>
+</div>
+</li>
+</ul>
+<p class="ltx_p" id="p27.2">The ‘type’ column indicates if the original tweet is targeted or part of the control.
+The ‘replier_label’ column indicates if the replier is a normal replier (0) or an IO replier (1).</p>
+</div>
+<div class="ltx_para ltx_noindent" id="p28">
+<p class="ltx_p" id="p28.1"><span class="ltx_text ltx_font_bold" id="p28.1.1">RQ3_replier_classifier_features.csv
+<br class="ltx_break"/></span></p>
+</div>
+<div class="ltx_para" id="p29">
+<p class="ltx_p" id="p29.1">Each record in this file represents a replier and lists features used to classify that replier.
+The ‘replier_label’ column indicates if the replier is a normal replier (0) or an IO replier (1).
+The file has 881,918 records.
+For detail about the features, please refer to the RQ3 section of the paper.</p>
+</div>
+<div class="ltx_para ltx_noindent" id="p30">
+<p class="ltx_p" id="p30.1"><span class="ltx_text ltx_font_bold" id="p30.1.1">RQ3_replier_info.csv
+<br class="ltx_break"/></span></p>
+</div>
+<div class="ltx_para" id="p31">
+<p class="ltx_p" id="p31.1">Each record in this file represents profile meta-data for a replier.
+The file reports the aggregated count of the replier’s activities, their follower and following counts, age, and whether the replier is an IO replier (1) or a normal replier (0).
+There are 881,918 records.
+This file has the following columns:</p>
+<ul class="ltx_itemize" id="S0.I9">
+<li class="ltx_item" id="S0.I9.i1" style="list-style-type:none;">
+<span class="ltx_tag ltx_tag_item">•</span>
+<div class="ltx_para" id="S0.I9.i1.p1">
+<p class="ltx_p" id="S0.I9.i1.p1.1">replier_userid</p>
+</div>
+</li>
+<li class="ltx_item" id="S0.I9.i2" style="list-style-type:none;">
+<span class="ltx_tag ltx_tag_item">•</span>
+<div class="ltx_para" id="S0.I9.i2.p1">
+<p class="ltx_p" id="S0.I9.i2.p1.1">activity_count</p>
+</div>
+</li>
+<li class="ltx_item" id="S0.I9.i3" style="list-style-type:none;">
+<span class="ltx_tag ltx_tag_item">•</span>
+<div class="ltx_para" id="S0.I9.i3.p1">
+<p class="ltx_p" id="S0.I9.i3.p1.1">replier_label</p>
+</div>
+</li>
+<li class="ltx_item" id="S0.I9.i4" style="list-style-type:none;">
+<span class="ltx_tag ltx_tag_item">•</span>
+<div class="ltx_para" id="S0.I9.i4.p1">
+<p class="ltx_p" id="S0.I9.i4.p1.1">following_count</p>
+</div>
+</li>
+<li class="ltx_item" id="S0.I9.i5" style="list-style-type:none;">
+<span class="ltx_tag ltx_tag_item">•</span>
+<div class="ltx_para" id="S0.I9.i5.p1">
+<p class="ltx_p" id="S0.I9.i5.p1.1">followers_count</p>
+</div>
+</li>
+<li class="ltx_item" id="S0.I9.i6" style="list-style-type:none;">
+<span class="ltx_tag ltx_tag_item">•</span>
+<div class="ltx_para" id="S0.I9.i6.p1">
+<p class="ltx_p" id="S0.I9.i6.p1.1">age</p>
+</div>
+</li>
+</ul>
+</div>
+<div class="ltx_para ltx_noindent" id="p32">
+<p class="ltx_p" id="p32.1"><span class="ltx_text ltx_font_bold" id="p32.1.1">pos_cosine_with_replier_info.pkl.gz
+<br class="ltx_break"/></span></p>
+</div>
+<div class="ltx_para" id="p33">
+<p class="ltx_p" id="p33.1">Each record in this file represents a pair of replies to a tweet.
+The file reports the cosine similarity between the two replies, the original tweet that received the two replies, the two users who posted the replies, and their labels: 0 for normal repliers and 1 for IO repliers.
+This file has 1,260,848,920 records with the following columns:</p>
+<ul class="ltx_itemize" id="S0.I10">
+<li class="ltx_item" id="S0.I10.i1" style="list-style-type:none;">
+<span class="ltx_tag ltx_tag_item">•</span>
+<div class="ltx_para" id="S0.I10.i1.p1">
+<p class="ltx_p" id="S0.I10.i1.p1.1">replier_label_x</p>
+</div>
+</li>
+<li class="ltx_item" id="S0.I10.i2" style="list-style-type:none;">
+<span class="ltx_tag ltx_tag_item">•</span>
+<div class="ltx_para" id="S0.I10.i2.p1">
+<p class="ltx_p" id="S0.I10.i2.p1.1">replier_label_y</p>
+</div>
+</li>
+<li class="ltx_item" id="S0.I10.i3" style="list-style-type:none;">
+<span class="ltx_tag ltx_tag_item">•</span>
+<div class="ltx_para" id="S0.I10.i3.p1">
+<p class="ltx_p" id="S0.I10.i3.p1.1">replier_userid_x</p>
+</div>
+</li>
+<li class="ltx_item" id="S0.I10.i4" style="list-style-type:none;">
+<span class="ltx_tag ltx_tag_item">•</span>
+<div class="ltx_para" id="S0.I10.i4.p1">
+<p class="ltx_p" id="S0.I10.i4.p1.1">replier_userid_y</p>
+</div>
+</li>
+<li class="ltx_item" id="S0.I10.i5" style="list-style-type:none;">
+<span class="ltx_tag ltx_tag_item">•</span>
+<div class="ltx_para" id="S0.I10.i5.p1">
+<p class="ltx_p" id="S0.I10.i5.p1.1">replier_tweetid_x</p>
+</div>
+</li>
+<li class="ltx_item" id="S0.I10.i6" style="list-style-type:none;">
+<span class="ltx_tag ltx_tag_item">•</span>
+<div class="ltx_para" id="S0.I10.i6.p1">
+<p class="ltx_p" id="S0.I10.i6.p1.1">replier_tweetid_y</p>
+</div>
+</li>
+<li class="ltx_item" id="S0.I10.i7" style="list-style-type:none;">
+<span class="ltx_tag ltx_tag_item">•</span>
+<div class="ltx_para" id="S0.I10.i7.p1">
+<p class="ltx_p" id="S0.I10.i7.p1.1">poster_tweetid</p>
+</div>
+</li>
+<li class="ltx_item" id="S0.I10.i8" style="list-style-type:none;">
+<span class="ltx_tag ltx_tag_item">•</span>
+<div class="ltx_para" id="S0.I10.i8.p1">
+<p class="ltx_p" id="S0.I10.i8.p1.1">cosine</p>
+</div>
+</li>
+</ul>
+</div>
+<div class="ltx_para ltx_noindent" id="p34">
+<p class="ltx_p" id="p34.1"><span class="ltx_text ltx_font_sansserif ltx_font_bold" id="p34.1.1" style="color:#2E196E;">How many instances are there in total (of each type, if appropriate)?</span></p>
+</div>
+<div class="ltx_para ltx_noindent" id="p35">
+<p class="ltx_p" id="p35.1">The numbers of records in each file are mentioned in the previous section.</p>
+</div>
+<div class="ltx_para ltx_noindent" id="p36">
+<p class="ltx_p" id="p36.1"><span class="ltx_text ltx_font_sansserif ltx_font_bold" id="p36.1.1" style="color:#2E196E;">Does the dataset contain all possible instances or is it a sample (not necessarily random) of instances from a larger set?<span class="ltx_text ltx_font_medium" id="p36.1.1.1">  If the dataset is a sample, then what is the larger set? Is the sample representative of the larger set (e.g., geographic coverage)? If so, please describe how this representativeness was validated/verified. If it is not representative of the larger set, please describe why not (e.g., to cover a more diverse range of instances, because instances were withheld or unavailable).</span></span></p>
+</div>
+<div class="ltx_para ltx_noindent" id="p37">
+<p class="ltx_p" id="p37.1">For RQ1, the dataset contains records for only two campaigns selected by the authors.
+For RQ2 and RQ3, the control data contains records about replies to tweets by target users limited to specific time intervals (see paper for details).
+With these exceptions, the dataset contains all records related to the selected influence operations reported by Twitter (see paper for details).</p>
+</div>
+<div class="ltx_para ltx_noindent" id="p38">
+<p class="ltx_p" id="p38.1"><span class="ltx_text ltx_font_sansserif ltx_font_bold" id="p38.1.1" style="color:#2E196E;">What data does each instance consist of? “Raw” data (e.g., unprocessed text or images) or features?<span class="ltx_text ltx_font_medium" id="p38.1.1.1"> In either case, please provide a description.</span></span></p>
+</div>
+<div class="ltx_para ltx_noindent" id="p39">
+<p class="ltx_p" id="p39.1">The ‘RQ2_tweet_classifier_features.csv’ and ‘RQ3_replier_classifier_features.csv’ files contain features for the tweet and replier classifiers.
+For the full list of the features and information on how they are constructed, please refer to sections RQ2 and RQ3 in the paper.
+All other files contain derived data that are required to replicate the results of the paper.</p>
+</div>
+<div class="ltx_para ltx_noindent" id="p40">
+<p class="ltx_p" id="p40.1"><span class="ltx_text ltx_font_sansserif ltx_font_bold" id="p40.1.1" style="color:#2E196E;">Is there a label or target associated with each instance?<span class="ltx_text ltx_font_medium" id="p40.1.1.1"> If so, please provide a description.</span></span></p>
+</div>
+<div class="ltx_para ltx_noindent" id="p41">
+<p class="ltx_p" id="p41.1">Yes. Please refer to the individual file descriptions above.</p>
+</div>
+<div class="ltx_para ltx_noindent" id="p42">
+<p class="ltx_p" id="p42.1"><span class="ltx_text ltx_font_sansserif ltx_font_bold" id="p42.1.1" style="color:#2E196E;">Is any information missing from individual instances?<span class="ltx_text ltx_font_medium" id="p42.1.1.1"> If so, please provide a description, explaining why this information is missing (e.g., because it was unavailable). This does not include intentionally removed information, but might include, e.g., redacted text.</span></span></p>
+</div>
+<div class="ltx_para ltx_noindent" id="p43">
+<p class="ltx_p" id="p43.1">All data is preprocessed. Most raw data from the tweets is excluded. Only information needed to reproduce the results is included.</p>
+</div>
+<div class="ltx_para ltx_noindent" id="p44">
+<p class="ltx_p" id="p44.1"><span class="ltx_text ltx_font_sansserif ltx_font_bold" id="p44.1.1" style="color:#2E196E;">Are relationships between individual instances made explicit (e.g., users’ movie ratings, social network links)?<span class="ltx_text ltx_font_medium" id="p44.1.1.1"> If so, please describe how these relationships are made explicit.</span></span></p>
+</div>
+<div class="ltx_para ltx_noindent" id="p45">
+<p class="ltx_p" id="p45.1">Yes. Records can be linked through user IDs and tweet IDs.</p>
+</div>
+<div class="ltx_para ltx_noindent" id="p46">
+<p class="ltx_p" id="p46.1"><span class="ltx_text ltx_font_sansserif ltx_font_bold" id="p46.1.1" style="color:#2E196E;">Are there recommended data splits (e.g., training, development/validation, testing)?<span class="ltx_text ltx_font_medium" id="p46.1.1.1"> If so, please provide a description of these splits, explaining the rationale behind them.</span></span></p>
+</div>
+<div class="ltx_para ltx_noindent" id="p47">
+<p class="ltx_p" id="p47.1">We recommend 10-fold cross validation. Please refer to the details of the training setup in the paper.</p>
+</div>
+<div class="ltx_para ltx_noindent" id="p48">
+<p class="ltx_p" id="p48.1"><span class="ltx_text ltx_font_sansserif ltx_font_bold" id="p48.1.1" style="color:#2E196E;">Are there any errors, sources of noise, or redundancies in the dataset?<span class="ltx_text ltx_font_medium" id="p48.1.1.1"> If so, please provide a description.</span></span></p>
+</div>
+<div class="ltx_para ltx_noindent" id="p49">
+<p class="ltx_p" id="p49.1">Not to our knowledge.</p>
+</div>
+<div class="ltx_para ltx_noindent" id="p50">
+<p class="ltx_p" id="p50.1"><span class="ltx_text ltx_font_sansserif ltx_font_bold" id="p50.1.1" style="color:#2E196E;">Is the dataset self-contained, or does it link to or otherwise rely on external resources (e.g., websites, tweets, other datasets)?<span class="ltx_text ltx_font_medium" id="p50.1.1.1"> If it links to or relies on external resources, a) are there guarantees that they will exist, and remain constant, over time; b) are there official archival versions of the complete dataset (i.e., including the external resources as they existed at the time the dataset was created); c) are there any restrictions (e.g., licenses, fees) associated with any of the external resources that might apply to a future user? Please provide descriptions of all external resources and any restrictions associated with them, as well as links or other access points, as appropriate.</span></span></p>
+</div>
+<div class="ltx_para ltx_noindent" id="p51">
+<p class="ltx_p" id="p51.1">The dataset is self-contained in terms of reproducing the results.
+The original data for IO replies to targeted tweets comes from the Twitter Influence Operation dataset, which was publicly available until summer 2024 (<a class="ltx_ref ltx_url ltx_font_typewriter" href="https://web.archive.org/web/20240829231920/https://transparency.x.com/en/reports/moderation-research" title="">https://web.archive.org/web/20240829231920/https://transparency.x.com/en/reports/moderation-research</a>).
+The replies from normal repliers as well as control tweets were collected by the first author using the Twitter API.
+However, due to recent changes in Twitter/X’s data sharing policy, the future availability of this data is uncertain. Currently, obtaining raw tweet and user metadata from Twitter/X using the IDs in our dataset is prohibitively expensive.</p>
+</div>
+<div class="ltx_para ltx_noindent" id="p52">
+<p class="ltx_p" id="p52.1"><span class="ltx_text ltx_font_sansserif ltx_font_bold" id="p52.1.1" style="color:#2E196E;">Does the dataset contain data that might be considered confidential (e.g., data that is protected by legal privilege or by doctor-patient confidentiality, data that includes the content of individuals non-public communications)?<span class="ltx_text ltx_font_medium" id="p52.1.1.1"> If so, please provide a description.</span></span></p>
+</div>
+<div class="ltx_para ltx_noindent" id="p53">
+<p class="ltx_p" id="p53.1">The dataset contains tweet IDs and user IDs for IO users/tweets that have been suspended, and for control users/tweets that are public. This is consistent with Twitter/X terms.
+The dataset also includes annotations of a sample of target users based on their public profiles.
+None of this data should include any confidential information.</p>
+</div>
+<div class="ltx_para ltx_noindent" id="p54">
+<p class="ltx_p" id="p54.1"><span class="ltx_text ltx_font_sansserif ltx_font_bold" id="p54.1.1" style="color:#2E196E;">Does the dataset contain data that, if viewed directly, might be offensive, insulting, threatening, or might otherwise cause anxiety?<span class="ltx_text ltx_font_medium" id="p54.1.1.1"> If so, please describe why.</span></span></p>
+</div>
+<div class="ltx_para ltx_noindent" id="p55">
+<p class="ltx_p" id="p55.1">No.</p>
+</div>
+<div class="ltx_para ltx_noindent" id="p56">
+<p class="ltx_p" id="p56.1"><span class="ltx_text ltx_font_sansserif ltx_font_bold" id="p56.1.1" style="color:#2E196E;">Does the dataset relate to people?<span class="ltx_text ltx_font_medium" id="p56.1.1.1"> If not, you may skip the remaining questions in this section.</span></span></p>
+</div>
+<div class="ltx_para ltx_noindent" id="p57">
+<p class="ltx_p" id="p57.1">Yes, some of the files with user IDs are related to people.</p>
+</div>
+<div class="ltx_para ltx_noindent" id="p58">
+<p class="ltx_p" id="p58.1"><span class="ltx_text ltx_font_sansserif ltx_font_bold" id="p58.1.1" style="color:#2E196E;">Does the dataset identify any subpopulations (e.g., by age, gender)?<span class="ltx_text ltx_font_medium" id="p58.1.1.1"> If so, please describe how these subpopulations are identified and provide a description of their respective distributions within the dataset.</span></span></p>
+</div>
+<div class="ltx_para ltx_noindent" id="p59">
+<p class="ltx_p" id="p59.1">In the ‘RQ1_target_annotation.csv’ file, target Twitter accounts are identified by profession and country of origin. The distributions are reported in the paper.</p>
+</div>
+<div class="ltx_para ltx_noindent" id="p60">
+<p class="ltx_p" id="p60.1"><span class="ltx_text ltx_font_sansserif ltx_font_bold" id="p60.1.1" style="color:#2E196E;">Is it possible to identify individuals (i.e., one or more natural persons), either directly or indirectly (i.e., in combination with other data) from the dataset?<span class="ltx_text ltx_font_medium" id="p60.1.1.1"> If so, please describe how.</span></span></p>
+</div>
+<div class="ltx_para ltx_noindent" id="p61">
+<p class="ltx_p" id="p61.1">Yes. We provide user IDs of Twitter accounts, which are public information. One can identify the individuals by querying the Twitter API.</p>
+</div>
+<div class="ltx_para ltx_noindent" id="p62">
+<p class="ltx_p" id="p62.1"><span class="ltx_text ltx_font_sansserif ltx_font_bold" id="p62.1.1" style="color:#2E196E;">Does the dataset contain data that might be considered sensitive in any way (e.g., data that reveals racial or ethnic origins, sexual orientations, religious beliefs, political opinions or union memberships, or locations; financial or health data; biometric or genetic data; forms of government identification, such as social security numbers; criminal history)?<span class="ltx_text ltx_font_medium" id="p62.1.1.1"> If so, please provide a description.</span></span></p>
+</div>
+<div class="ltx_para ltx_noindent" id="p63">
+<p class="ltx_p" id="p63.1">No. The dataset contains derived data and Twitter account/tweet IDs are public information.</p>
+</div>
+<div class="ltx_para ltx_noindent" id="p64">
+<br class="ltx_break"/>
+<p class="ltx_p" id="p64.1"><span class="ltx_text ltx_font_sansserif ltx_font_bold ltx_framed ltx_framed_rectangle ltx_inline-block" id="p64.1.1" style="width:433.6pt;color:#2E196E;">Collection Process</span>
+</p>
+</div>
+<div class="ltx_para ltx_noindent" id="p65">
+<p class="ltx_p" id="p65.1"><span class="ltx_text ltx_font_sansserif ltx_font_bold" id="p65.1.1" style="color:#2E196E;">How was the data associated with each instance acquired?<span class="ltx_text ltx_font_medium" id="p65.1.1.1"> Was the data directly observable (e.g., raw text, movie ratings), reported by subjects (e.g., survey responses), or indirectly inferred/derived from other data (e.g., part-of-speech tags, model-based guesses for age or language)? If data was reported by subjects or indirectly inferred/derived from other data, was the data validated/verified? If so, please describe how.</span></span></p>
+</div>
+<div class="ltx_para ltx_noindent" id="p66">
+<p class="ltx_p" id="p66.1">The replies from Influence Operation (IO) accounts were derived from Twitter’s Influence Operation dataset, which was publicly available on the website of the Twitter Moderation Research Consortium (<a class="ltx_ref ltx_url ltx_font_typewriter" href="https://web.archive.org/web/20240829231920/https://transparency.x.com/en/reports/moderation-research" title="">https://web.archive.org/web/20240829231920/https://transparency.x.com/en/reports/moderation-research</a>) until summer 2024.
+All other data, including target profiles, normal replies, and control tweets, were collected using the Twitter Academic API.
+The data has been thoroughly validated to remove duplicates and ensure consistency in data types.
+Data about suspended accounts and inconsistent records (e.g., profiles with creation date before the creation of Twitter) have been removed to maintain data quality.</p>
+</div>
+<div class="ltx_para ltx_noindent" id="p67">
+<p class="ltx_p" id="p67.1"><span class="ltx_text ltx_font_sansserif ltx_font_bold" id="p67.1.1" style="color:#2E196E;">What mechanisms or procedures were used to collect the data (e.g., hardware apparatus or sensor, manual human curation, software program, software API)?<span class="ltx_text ltx_font_medium" id="p67.1.1.1"> How were these mechanisms or procedures validated?</span></span></p>
+</div>
+<div class="ltx_para ltx_noindent" id="p68">
+<p class="ltx_p" id="p68.1">The target accounts were manually annotated by one of the authors.
+The annotation process is described in the RQ1 section of the paper.
+Other data were collected from the Twitter API using client software developed by the author.
+Extensive exploratory data analysis was conducted to gain insights into the data, with key findings summarized in the paper.</p>
+</div>
+<div class="ltx_para ltx_noindent" id="p69">
+<p class="ltx_p" id="p69.1"><span class="ltx_text ltx_font_sansserif ltx_font_bold" id="p69.1.1" style="color:#2E196E;">If the dataset is a sample from a larger set, what was the sampling strategy (e.g., deterministic, probabilistic with specific sampling probabilities)?</span></p>
+</div>
+<div class="ltx_para ltx_noindent" id="p70">
+<p class="ltx_p" id="p70.1">The targeted tweet dataset consists of a sample of tweets from Twitter Influence Operation (IO) campaigns, specifically those that have five or more replies from IO accounts.
+In addition, we collected all replies (without sampling) from normal users responding to the same targeted tweets.
+For the control dataset, we collected all replies (not sampled) to selected tweets by targeted users that had five or more replies from any users.</p>
+</div>
+<div class="ltx_para ltx_noindent" id="p71">
+<p class="ltx_p" id="p71.1"><span class="ltx_text ltx_font_sansserif ltx_font_bold" id="p71.1.1" style="color:#2E196E;">Who was involved in the data collection process (e.g., students, crowdworkers, contractors) and how were they compensated (e.g., how much were crowdworkers paid)?</span></p>
+</div>
+<div class="ltx_para ltx_noindent" id="p72">
+<p class="ltx_p" id="p72.1">The first author collected the data.</p>
+</div>
+<div class="ltx_para ltx_noindent" id="p73">
+<p class="ltx_p" id="p73.1"><span class="ltx_text ltx_font_sansserif ltx_font_bold" id="p73.1.1" style="color:#2E196E;">Over what timeframe was the data collected? Does this timeframe match the creation timeframe of the data associated with the instances (e.g., recent crawl of old news articles)?<span class="ltx_text ltx_font_medium" id="p73.1.1.1"> If not, please describe the timeframe in which the data associated with the instances was created.</span></span></p>
+</div>
+<div class="ltx_para ltx_noindent" id="p74">
+<p class="ltx_p" id="p74.1">The data from IO accounts comes from an archived dataset.
+The normal replies to the targeted tweets and the control dataset were collected in the spring of 2023 but created over a period of years prior to that.</p>
+</div>
+<div class="ltx_para ltx_noindent" id="p75">
+<p class="ltx_p" id="p75.1"><span class="ltx_text ltx_font_sansserif ltx_font_bold" id="p75.1.1" style="color:#2E196E;">Were any ethical review processes conducted (e.g., by an institutional review board)?<span class="ltx_text ltx_font_medium" id="p75.1.1.1"> If so, please provide a description of these review processes, including the outcomes, as well as a link or other access point to any supporting documentation.</span></span></p>
+</div>
+<div class="ltx_para ltx_noindent" id="p76">
+<p class="ltx_p" id="p76.1">The data collection was deemed exempt from review by the Indiana University IRB (protocols 12410 and 1102004860).</p>
+</div>
+<div class="ltx_para ltx_noindent" id="p77">
+<p class="ltx_p" id="p77.1"><span class="ltx_text ltx_font_sansserif ltx_font_bold" id="p77.1.1" style="color:#2E196E;">Does the dataset relate to people?<span class="ltx_text ltx_font_medium" id="p77.1.1.1"> If not, you may skip the remaining questions in this section.</span></span></p>
+</div>
+<div class="ltx_para ltx_noindent" id="p78">
+<p class="ltx_p" id="p78.1">Yes, RQ1_target_annotation.csv, 
+<br class="ltx_break"/>RQ3_replier_info.csv and 
+<br class="ltx_break"/>RQ1_target_follower_following_count.csv are associated with Twitter profiles.</p>
+</div>
+<div class="ltx_para ltx_noindent" id="p79">
+<p class="ltx_p" id="p79.1"><span class="ltx_text ltx_font_sansserif ltx_font_bold" id="p79.1.1" style="color:#2E196E;">Did you collect the data from the individuals in question directly, or obtain it via third parties or other sources (e.g., websites)?</span></p>
+</div>
+<div class="ltx_para ltx_noindent" id="p80">
+<p class="ltx_p" id="p80.1">The data were collected through the Twitter API (<a class="ltx_ref ltx_url ltx_font_typewriter" href="https://developer.x.com/en/docs/x-api" title="">https://developer.x.com/en/docs/x-api</a>).</p>
+</div>
+<div class="ltx_para ltx_noindent" id="p81">
+<p class="ltx_p" id="p81.1"><span class="ltx_text ltx_font_sansserif ltx_font_bold" id="p81.1.1" style="color:#2E196E;">Were the individuals in question notified about the data collection?<span class="ltx_text ltx_font_medium" id="p81.1.1.1"> If so, please describe (or show with screenshots or other information) how notice was provided, and provide a link or other access point to, or otherwise reproduce, the exact language of the notification itself.</span></span></p>
+</div>
+<div class="ltx_para ltx_noindent" id="p82">
+<p class="ltx_p" id="p82.1">No, the individuals were not notified.</p>
+</div>
+<div class="ltx_para ltx_noindent" id="p83">
+<p class="ltx_p" id="p83.1"><span class="ltx_text ltx_font_sansserif ltx_font_bold" id="p83.1.1" style="color:#2E196E;">Did the individuals in question consent to the collection and use of their data?<span class="ltx_text ltx_font_medium" id="p83.1.1.1"> If so, please describe (or show with screenshots or other information) how consent was requested and provided, and provide a link or other access point to, or otherwise reproduce, the exact language to which the individuals consented.</span></span></p>
+</div>
+<div class="ltx_para ltx_noindent" id="p84">
+<p class="ltx_p" id="p84.1">No consent was required.</p>
+</div>
+<div class="ltx_para ltx_noindent" id="p85">
+<p class="ltx_p" id="p85.1"><span class="ltx_text ltx_font_sansserif ltx_font_bold" id="p85.1.1" style="color:#2E196E;">If consent was obtained, were the consenting individuals provided with a mechanism to revoke their consent in the future or for certain uses?<span class="ltx_text ltx_font_medium" id="p85.1.1.1"> If so, please provide a description, as well as a link or other access point to the mechanism (if appropriate).</span></span></p>
+</div>
+<div class="ltx_para ltx_noindent" id="p86">
+<p class="ltx_p" id="p86.1">n/a</p>
+</div>
+<div class="ltx_para ltx_noindent" id="p87">
+<p class="ltx_p" id="p87.1"><span class="ltx_text ltx_font_sansserif ltx_font_bold" id="p87.1.1" style="color:#2E196E;">Has an analysis of the potential impact of the dataset and its use on data subjects (e.g., a data protection impact analysis) been conducted?<span class="ltx_text ltx_font_medium" id="p87.1.1.1"> If so, please provide a description of this analysis, including the outcomes, as well as a link or other access point to any supporting documentation.</span></span></p>
+</div>
+<div class="ltx_para ltx_noindent" id="p88">
+<p class="ltx_p" id="p88.1">The Indiana University IRB determined that the data collection consisted in observation of public behavior with minimal risks to subjects.</p>
+</div>
+<div class="ltx_para ltx_noindent" id="p89">
+<br class="ltx_break"/>
+<p class="ltx_p" id="p89.1"><span class="ltx_text ltx_font_sansserif ltx_font_bold ltx_framed ltx_framed_rectangle ltx_inline-block" id="p89.1.1" style="width:433.6pt;color:#2E196E;">Preprocessing/cleaning/labeling</span>
+</p>
+</div>
+<div class="ltx_para ltx_noindent" id="p90">
+<p class="ltx_p" id="p90.1"><span class="ltx_text ltx_font_sansserif ltx_font_bold" id="p90.1.1" style="color:#2E196E;">Was any preprocessing/cleaning/ labeling of the data done (e.g., discretization or bucketing, tokenization, part-of-speech tagging, SIFT feature extraction, removal of instances, processing of missing values)?<span class="ltx_text ltx_font_medium" id="p90.1.1.1"> If so, please provide a description. If not, you may skip the remainder of the questions in this section.</span></span></p>
+</div>
+<div class="ltx_para ltx_noindent" id="p91">
+<p class="ltx_p" id="p91.1">Our data processing pipeline includes cleaning (matching accounts in target and control datasets, balancing the classification dataset, etc.); removal of duplicate, suspended, and inconsistent accounts; missing data handling; and standardization of features.
+For the case studies, the tweets were translated into English from Serbian and Arabic.</p>
+</div>
+<div class="ltx_para ltx_noindent" id="p92">
+<p class="ltx_p" id="p92.1"><span class="ltx_text ltx_font_sansserif ltx_font_bold" id="p92.1.1" style="color:#2E196E;">Was the “raw” data saved in addition to the preprocessed/cleaned/labeled data (e.g., to support unanticipated future uses)?<span class="ltx_text ltx_font_medium" id="p92.1.1.1"> If so, please provide a link or other access point to the “raw” data.</span></span></p>
+</div>
+<div class="ltx_para ltx_noindent" id="p93">
+<p class="ltx_p" id="p93.1">The raw data is saved along with the preprocessed one for future consistency checks and reproducibility.
+It may be shared upon request if required for reproducibility and if this can be done in compliance with ethical/IRB policies and platform terms.</p>
+</div>
+<div class="ltx_para ltx_noindent" id="p94">
+<p class="ltx_p" id="p94.1"><span class="ltx_text ltx_font_sansserif ltx_font_bold" id="p94.1.1" style="color:#2E196E;">Is the software used to preprocess/clean/label the instances available?<span class="ltx_text ltx_font_medium" id="p94.1.1.1"> If so, please provide a link or other access point.</span></span></p>
+</div>
+<div class="ltx_para ltx_noindent" id="p95">
+<p class="ltx_p" id="p95.1">No. Software is available to reproduce the results in the paper starting from the cleaned data in our data repository.</p>
+</div>
+<div class="ltx_para ltx_noindent" id="p96">
+<br class="ltx_break"/>
+<p class="ltx_p" id="p96.1"><span class="ltx_text ltx_font_sansserif ltx_font_bold ltx_framed ltx_framed_rectangle ltx_inline-block" id="p96.1.1" style="width:433.6pt;color:#2E196E;">Uses</span>
+</p>
+</div>
+<div class="ltx_para ltx_noindent" id="p97">
+<p class="ltx_p" id="p97.1"><span class="ltx_text ltx_font_sansserif ltx_font_bold" id="p97.1.1" style="color:#2E196E;">Has the dataset been used for any tasks already?<span class="ltx_text ltx_font_medium" id="p97.1.1.1"> If so, please provide a description.</span></span></p>
+</div>
+<div class="ltx_para ltx_noindent" id="p98">
+<p class="ltx_p" id="p98.1">Part of our data is derived from Twitter’s Influence Operation dataset, which has been analyzed in other studies.</p>
+</div>
+<div class="ltx_para ltx_noindent" id="p99">
+<p class="ltx_p" id="p99.1"><span class="ltx_text ltx_font_sansserif ltx_font_bold" id="p99.1.1" style="color:#2E196E;">Is there a repository that links to any or all papers or systems that use the dataset?<span class="ltx_text ltx_font_medium" id="p99.1.1.1"> If so, please provide a link or other access point.</span></span></p>
+</div>
+<div class="ltx_para ltx_noindent" id="p100">
+<p class="ltx_p" id="p100.1">We are not aware of all the papers that used the Twitter’s Influence Operation datasets. Papers from our lab are available at <a class="ltx_ref ltx_url ltx_font_typewriter" href="https://osome.iu.edu/research/publications" title="">https://osome.iu.edu/research/publications</a></p>
+</div>
+<div class="ltx_para ltx_noindent" id="p101">
+<p class="ltx_p" id="p101.1"><span class="ltx_text ltx_font_sansserif ltx_font_bold" id="p101.1.1" style="color:#2E196E;">What (other) tasks could the dataset be used for?</span></p>
+</div>
+<div class="ltx_para ltx_noindent" id="p102">
+<p class="ltx_p" id="p102.1">The dataset could be used to develop more advanced models for detecting coordinated inauthentic behaviors.</p>
+</div>
+<div class="ltx_para ltx_noindent" id="p103">
+<p class="ltx_p" id="p103.1"><span class="ltx_text ltx_font_sansserif ltx_font_bold" id="p103.1.1" style="color:#2E196E;">Is there anything about the composition of the dataset or the way it was collected and preprocessed/cleaned/labeled that might impact future uses?<span class="ltx_text ltx_font_medium" id="p103.1.1.1"> For example, is there anything that a future user might need to know to avoid uses that could result in unfair treatment of individuals or groups (e.g., stereotyping, quality of service issues) or other undesirable harms (e.g., financial harms, legal risks) If so, please provide a description. Is there anything a future user could do to mitigate these undesirable harms?</span></span></p>
+</div>
+<div class="ltx_para ltx_noindent" id="p104">
+<p class="ltx_p" id="p104.1">The target dataset includes only tweets with five or more replies from IO accounts.
+We are not aware of any future uses that might result in undesirable harms.</p>
+</div>
+<div class="ltx_para ltx_noindent" id="p105">
+<p class="ltx_p" id="p105.1"><span class="ltx_text ltx_font_sansserif ltx_font_bold" id="p105.1.1" style="color:#2E196E;">Are there tasks for which the dataset should not be used?<span class="ltx_text ltx_font_medium" id="p105.1.1.1"> If so, please provide a description.</span></span></p>
+</div>
+<div class="ltx_para ltx_noindent" id="p106">
+<p class="ltx_p" id="p106.1">Not to our knowledge.</p>
+</div>
+<div class="ltx_para ltx_noindent" id="p107">
+<br class="ltx_break"/>
+<p class="ltx_p" id="p107.1"><span class="ltx_text ltx_font_sansserif ltx_font_bold ltx_framed ltx_framed_rectangle ltx_inline-block" id="p107.1.1" style="width:433.6pt;color:#2E196E;">Distribution</span>
+</p>
+</div>
+<div class="ltx_para ltx_noindent" id="p108">
+<p class="ltx_p" id="p108.1"><span class="ltx_text ltx_font_sansserif ltx_font_bold" id="p108.1.1" style="color:#2E196E;">Will the dataset be distributed to third parties outside of the entity (e.g., company, institution, organization) on behalf of which the dataset was created?<span class="ltx_text ltx_font_medium" id="p108.1.1.1"> If so, please provide a description.</span></span></p>
+</div>
+<div class="ltx_para ltx_noindent" id="p109">
+<p class="ltx_p" id="p109.1">Yes, we are making the dataset publicly available for replication purposes.</p>
+</div>
+<div class="ltx_para ltx_noindent" id="p110">
+<p class="ltx_p" id="p110.1"><span class="ltx_text ltx_font_sansserif ltx_font_bold" id="p110.1.1" style="color:#2E196E;">How will the dataset will be distributed (e.g., tarball on website, API, GitHub)<span class="ltx_text ltx_font_medium" id="p110.1.1.1"> Does the dataset have a digital object identifier (DOI)?</span></span></p>
+</div>
+<div class="ltx_para ltx_noindent" id="p111">
+<p class="ltx_p" id="p111.1">This datasheet is in the Zenodo repository that contains the dataset. The code is available in a Github repository (<a class="ltx_ref ltx_url ltx_font_typewriter" href="https://github.com/osome-iu/io-coordinated-replies" title="">https://github.com/osome-iu/io-coordinated-replies</a>), which points to the Zenodo DOI.</p>
+</div>
+<div class="ltx_para ltx_noindent" id="p112">
+<p class="ltx_p" id="p112.1"><span class="ltx_text ltx_font_sansserif ltx_font_bold" id="p112.1.1" style="color:#2E196E;">When will the dataset be distributed?</span></p>
+</div>
+<div class="ltx_para ltx_noindent" id="p113">
+<p class="ltx_p" id="p113.1">The dataset will be distributed after the publication of our manuscript. If you are reading this datasheet it means the dataset has been distributed.</p>
+</div>
+<div class="ltx_para ltx_noindent" id="p114">
+<p class="ltx_p" id="p114.1"><span class="ltx_text ltx_font_sansserif ltx_font_bold" id="p114.1.1" style="color:#2E196E;">Will the dataset be distributed under a copyright or other intellectual property (IP) license, and/or under applicable terms of use (ToU)?<span class="ltx_text ltx_font_medium" id="p114.1.1.1"> If so, please describe this license and/or ToU, and provide a link or other access point to, or otherwise reproduce, any relevant licensing terms or ToU, as well as any fees associated with these restrictions.</span></span></p>
+</div>
+<div class="ltx_para ltx_noindent" id="p115">
+<p class="ltx_p" id="p115.1">Creative Commons Attribution 4.0 International (<a class="ltx_ref ltx_url ltx_font_typewriter" href="https://creativecommons.org/licenses/by/4.0/" title="">https://creativecommons.org/licenses/by/4.0/</a>).</p>
+</div>
+<div class="ltx_para ltx_noindent" id="p116">
+<p class="ltx_p" id="p116.1"><span class="ltx_text ltx_font_sansserif ltx_font_bold" id="p116.1.1" style="color:#2E196E;">Have any third parties imposed IP-based or other restrictions on the data associated with the instances?<span class="ltx_text ltx_font_medium" id="p116.1.1.1"> If so, please describe these restrictions, and provide a link or other access point to, or otherwise reproduce, any relevant licensing terms, as well as any fees associated with these restrictions.</span></span></p>
+</div>
+<div class="ltx_para ltx_noindent" id="p117">
+<p class="ltx_p" id="p117.1">Twitter IO datasets were available under Twitter terms and policies.</p>
+</div>
+<div class="ltx_para ltx_noindent" id="p118">
+<p class="ltx_p" id="p118.1"><span class="ltx_text ltx_font_sansserif ltx_font_bold" id="p118.1.1" style="color:#2E196E;">Do any export controls or other regulatory restrictions apply to the dataset or to individual instances?<span class="ltx_text ltx_font_medium" id="p118.1.1.1"> If so, please describe these restrictions, and provide a link or other access point to, or otherwise reproduce, any supporting documentation.</span></span></p>
+</div>
+<div class="ltx_para ltx_noindent" id="p119">
+<p class="ltx_p" id="p119.1">No.</p>
+</div>
+<div class="ltx_para ltx_noindent" id="p120">
+<br class="ltx_break"/>
+<p class="ltx_p" id="p120.1"><span class="ltx_text ltx_font_sansserif ltx_font_bold ltx_framed ltx_framed_rectangle ltx_inline-block" id="p120.1.1" style="width:433.6pt;color:#2E196E;">Maintenance</span>
+</p>
+</div>
+<div class="ltx_para ltx_noindent" id="p121">
+<p class="ltx_p" id="p121.1"><span class="ltx_text ltx_font_sansserif ltx_font_bold" id="p121.1.1" style="color:#2E196E;">Who will be supporting/hosting/ maintaining the dataset?</span></p>
+</div>
+<div class="ltx_para ltx_noindent" id="p122">
+<p class="ltx_p" id="p122.1">The authors will be supporting and maintaining the dataset.</p>
+</div>
+<div class="ltx_para ltx_noindent" id="p123">
+<p class="ltx_p" id="p123.1"><span class="ltx_text ltx_font_sansserif ltx_font_bold" id="p123.1.1" style="color:#2E196E;">How can the owner/curator/manager of the dataset be contacted (e.g., email address)?</span></p>
+</div>
+<div class="ltx_para ltx_noindent" id="p124">
+<p class="ltx_p" id="p124.1">Contact author’s homepage: <a class="ltx_ref ltx_url ltx_font_typewriter" href="https://manitapote.github.io/" title="">https://manitapote.github.io/</a></p>
+</div>
+<div class="ltx_para ltx_noindent" id="p125">
+<p class="ltx_p" id="p125.1"><span class="ltx_text ltx_font_sansserif ltx_font_bold" id="p125.1.1" style="color:#2E196E;">Is there an erratum?<span class="ltx_text ltx_font_medium" id="p125.1.1.1"> If so, please provide a link or other access point.</span></span></p>
+</div>
+<div class="ltx_para ltx_noindent" id="p126">
+<p class="ltx_p" id="p126.1">n/a</p>
+</div>
+<div class="ltx_para ltx_noindent" id="p127">
+<p class="ltx_p" id="p127.1"><span class="ltx_text ltx_font_sansserif ltx_font_bold" id="p127.1.1" style="color:#2E196E;">Will the dataset be updated (e.g., to correct labeling errors, add new instances, delete instances)?<span class="ltx_text ltx_font_medium" id="p127.1.1.1"> If so, please describe how often, by whom, and how updates will be communicated to users (e.g., mailing list, GitHub)?</span></span></p>
+</div>
+<div class="ltx_para ltx_noindent" id="p128">
+<p class="ltx_p" id="p128.1">If any errors are found in the future, the dataset will be updated by the author.</p>
+</div>
+<div class="ltx_para ltx_noindent" id="p129">
+<p class="ltx_p" id="p129.1"><span class="ltx_text ltx_font_sansserif ltx_font_bold" id="p129.1.1" style="color:#2E196E;">If the dataset relates to people, are there applicable limits on the retention of the data associated with the instances (e.g., were individuals in question told that their data would be retained for a fixed period of time and then deleted)?<span class="ltx_text ltx_font_medium" id="p129.1.1.1"> If so, please describe these limits and explain how they will be enforced.</span></span></p>
+</div>
+<div class="ltx_para ltx_noindent" id="p130">
+<p class="ltx_p" id="p130.1">The Indiana University IRB determined that the data collection consisted in observation of public behavior with minimal risks to subjects, therefore we are not aware of applicable limits.</p>
+</div>
+<div class="ltx_para ltx_noindent" id="p131">
+<p class="ltx_p" id="p131.1"><span class="ltx_text ltx_font_sansserif ltx_font_bold" id="p131.1.1" style="color:#2E196E;">Will older versions of the dataset continue to be supported/hosted/maintained?<span class="ltx_text ltx_font_medium" id="p131.1.1.1"> If so, please describe how. If not, please describe how its obsolescence will be communicated to users.</span></span></p>
+</div>
+<div class="ltx_para ltx_noindent" id="p132">
+<p class="ltx_p" id="p132.1">If the dataset is updated in the future, older versions will continue to be available on Zenodo.</p>
+</div>
+<div class="ltx_para ltx_noindent" id="p133">
+<p class="ltx_p" id="p133.1"><span class="ltx_text ltx_font_sansserif ltx_font_bold" id="p133.1.1" style="color:#2E196E;">If others want to extend/augment/ build on/contribute to the dataset, is there a mechanism for them to do so?<span class="ltx_text ltx_font_medium" id="p133.1.1.1"> If so, please provide a description. Will these contributions be validated/verified? If so, please describe how. If not, why not? Is there a process for communicating/distributing these contributions to other users? If so, please provide a description.</span></span></p>
+</div>
+<div class="ltx_para ltx_noindent" id="p134">
+<p class="ltx_p" id="p134.1">Yes, the CC BY 4.0 license allows for adaptations with attribution. We may or may not be asked or be available to validate/verify derived datasets.</p>
+</div>
+<div class="ltx_pagination ltx_role_end_2_columns"></div>
+</article>
+</div>
+<footer class="ltx_page_footer">
+<div class="ltx_page_logo">Generated  on Fri Oct 25 02:53:55 2024 by <a class="ltx_LaTeXML_logo" href="http://dlmf.nist.gov/LaTeXML/"><span style="letter-spacing:-0.2em; margin-right:0.1em;">L<span class="ltx_font_smallcaps" style="position:relative; bottom:2.2pt;">a</span>T<span class="ltx_font_smallcaps" style="font-size:120%;position:relative; bottom:-0.2ex;">e</span></span><span style="font-size:90%; position:relative; bottom:-0.2ex;">XML</span><img alt="Mascot Sammy" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAsAAAAOCAYAAAD5YeaVAAAAAXNSR0IArs4c6QAAAAZiS0dEAP8A/wD/oL2nkwAAAAlwSFlzAAALEwAACxMBAJqcGAAAAAd0SU1FB9wKExQZLWTEaOUAAAAddEVYdENvbW1lbnQAQ3JlYXRlZCB3aXRoIFRoZSBHSU1Q72QlbgAAAdpJREFUKM9tkL+L2nAARz9fPZNCKFapUn8kyI0e4iRHSR1Kb8ng0lJw6FYHFwv2LwhOpcWxTjeUunYqOmqd6hEoRDhtDWdA8ApRYsSUCDHNt5ul13vz4w0vWCgUnnEc975arX6ORqN3VqtVZbfbTQC4uEHANM3jSqXymFI6yWazP2KxWAXAL9zCUa1Wy2tXVxheKA9YNoR8Pt+aTqe4FVVVvz05O6MBhqUIBGk8Hn8HAOVy+T+XLJfLS4ZhTiRJgqIoVBRFIoric47jPnmeB1mW/9rr9ZpSSn3Lsmir1fJZlqWlUonKsvwWwD8ymc/nXwVBeLjf7xEKhdBut9Hr9WgmkyGEkJwsy5eHG5vN5g0AKIoCAEgkEkin0wQAfN9/cXPdheu6P33fBwB4ngcAcByHJpPJl+fn54mD3Gg0NrquXxeLRQAAwzAYj8cwTZPwPH9/sVg8PXweDAauqqr2cDjEer1GJBLBZDJBs9mE4zjwfZ85lAGg2+06hmGgXq+j3+/DsixYlgVN03a9Xu8jgCNCyIegIAgx13Vfd7vdu+FweG8YRkjXdWy329+dTgeSJD3ieZ7RNO0VAXAPwDEAO5VKndi2fWrb9jWl9Esul6PZbDY9Go1OZ7PZ9z/lyuD3OozU2wAAAABJRU5ErkJggg=="/></a>
+</div></footer>
+</div>
+</body>
+</html>

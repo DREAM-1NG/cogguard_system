@@ -1,0 +1,61 @@
+Published as a conference paper at ICLR 2024
+
+
+
+Chaining the above inequalities yields P ∃λ : J(bRn, λ) > Bn  ≤0, so
+P ∃λ : J(bRn, λ) > Bn = 0.
+
+Proof of Theorem 2.  If Li(λmax) ≥α−2B/(n+1), then E[Ln+1(ˆλ)] ≥α−2B/(n+1). Through-
+out the rest of the proof, we assume that Li(λmax) < α −2B/(n + 1). Define the quantity
+
+                               B
+                                            ˆλ′′ = inf  λ : bRn+1(λ) + n + 1 ≤α   .
+
+Since Li(λmax) < α −2B/(n + 1) < α −B/(n + 1), ˆλ′′ exists almost surely. Deterministically,
+
+n+1 n bRn(λ) ≤bRn+1(λ), which yields ˆλ ≤ˆλ′′. Again since Li(λ) is non-increasing in λ,
+                    E h                           Ln+1  ˆλ′′ i ≤E h Ln+1  ˆλ i
+
+By exchangeability and the fact that ˆλ′′ is a symmetric function of L1, . . . , Ln+1,
+
+                    E h                          Ln+1  ˆλ′′ i = E h           ˆλ′′ i                                                bRn+1
+
+For the remainder of the proof we focus on lower-bounding bRn+1  ˆλ′′  . We begin with the following
+identity:
+                      B            B
+             α = bRn+1  ˆλ′′ + n + 1 −  bRn+1  ˆλ′′ + n + 1 −α  .
+Rearranging the identity,
+
+                      B            B
+                   bRn+1  ˆλ′′ = α − n + 1 +  bRn+1  ˆλ′′ + n + 1 −α  .
+Using the Jump Lemma to bound  bRn+1  ˆλ′′ + n+1B −α  below by −Bn+1 gives
+
+                                    2B
+                                bRn+1  ˆλ′′ ≥α − n + 1.
+
+Finally, chaining together the above inequalities,
+
+                                           2B
+                E Ln+1(ˆλ) ≥E bRn+1(ˆλ′′) ≥α − n + 1.
+
+
+
+Proof of Proposition 1. Without loss of generality, assume B = 1. Fix any ϵ′ > 0. Consider the
+following loss functions, which satisfy the conditions in Theorem 2:
+
+                    1    λ ∈[0, Zi)
+                                                       i.i.d.  k
+                           Li(λ) ∼    k+1  λ ∈[Zi, Wi) ,
+                    0      else
+
+                              i.i.d.                                     i.i.d.
+where k ∈N, the Zi ∼Uniform(0, 0.5), the Wi ∼Uniform(0.5, 1) for i ∈{1, ..., n + 1} and
+     k+1−ϵ′α =  n+1   . Then, by the definition of ˆλ, we know
+                                                              ˆλ ≤k −ϵ′ .                                   (17)                                       bRn       n
+If n > k + 1, bR(λ) ≥ k+1k > nk whenever λ ≤12. Thus, we must have ˆλ > 12. Since k is an
+integer and by (17), we know that {i ∈{1, ..., n} : Li  ˆλ > 0} ≤⌊(k + 1)(k −ϵ′)/k⌋≤k. This
+immediately implies that
+                                                         ˆλ ≥W(n−k+1),
+
+
+                                       17

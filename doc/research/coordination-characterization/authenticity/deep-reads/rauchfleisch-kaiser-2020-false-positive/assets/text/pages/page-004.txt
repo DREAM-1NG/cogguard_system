@@ -1,0 +1,68 @@
+PLOS ONE                                              The False positive problem of automatic bot detection in social science research
+
+
+
+                                  RQ2: How good is the precision and the recall of Botometer scores when used for five dis-
+                                             tinct sets of Twitter accounts representing the bot/human ratio in the general Twitter
+                                      population?
+                                  As Fernquist et al.’s [14] analysis already indicates, there might be differences between lan-
+                                     guages with regard to Botometer‘s performance. The data analysis for the first two research
+                                       questions allows us also to specifically assess whether there are differences between languages.
+                                  RQ3: Does Botometer’s performance differ between languages?
+                                        In an experimental setting, Grimme et al. [11] showed that the classification score is not sta-
+                                          ble over time. Therefore, we are interested in not only measuring the Botometer score once but
+                                        instead tracking accounts over a longer period of time.
+                                  RQ4: How stable are Botometer classifications over time?
+                                        In answering these four questions, we want to add to the literature on bots by shining a
+                                              light on some of the issues that Botometer has and discuss what consequences this has for social
+                                              scientists conducting research on bots.
+
+
+                          Data and methods
+
+                             To answer these research questions, we rely on five data sets. We included all official accounts
+                                         of German members of parliament based on a list of personally confirmed official accounts
+                                (German politicians: n = 532) and all members of the 115th U.S. Congress with a Twitter
+                                     account (US politicians: n = 516) [28] as “human” accounts. We also created a list of obvious
+                                       bots (new bots: n = 935). We used all bots listed on https://botwiki.org/, a database with the
+                                        goal to preserve interesting and creative Twitter bots as well as a number of other labelled bots
+                              we identified on Twitter. Most of these accounts are labelled as bots and for many even their
+                                   code is available on GitHub. As most of these bots use the English language, we also collected
+                                  an additional list of German language bots (German bots: n = 27). As a fifth dataset we use a
+                                    manually annotated data set with human (n = 1747) and bot accounts (n = 826) that was cre-
+                                       ated by the makers of Botometer [4]. We combined these data sets for our data analysis (see
+                                     Table 1). For the first three research questions we need bots as well as human accounts com-
+                                    bined as we are evaluating how well Botometer can distinguish automated from human
+                                        accounts. We therefore combine the different datasets (see Table 1). For RQ4, however, we can
+                                      use single datasets consisting only of bots or humans.
+                                Our selection of the data sets is based on one basic assumption: bot detection tools like Bot-
+                                     ometer will perform better in distinguishing between bots and humans when the cases are
+                                            clear-cut. As can be seen in Fig 1, clear cut bot accounts will often outright state in their
+                                        description that they are, in fact, bots; occasionally even sharing the code on GitHub. Similarly,
+                                          clear-cut human cases will often have indicators that signal their authenticity such as a blue
+                                  checkmark (Twitter’s verification badge) or their personal website. To make it even clearer, we
+                                     chose elected national politicians with their official accounts, i.e. people that are in the public
+                                          limelight and often have high follower numbers, where suspicious Twitter activity would
+
+
+                                            Table 1. Data sets and how we combined them for our analysis.
+
+                                                dataset              In our analysis                                        Valid accounts
+
+                                     German politicians       all/ German politicians and bots                     human = 516
+
+                                  US politicians             all/ US politicians and bots                        human = 502
+
+                                 New bots                   all/ US politicians and bots/ German politicians and bots     bots = 928
+
+                                     German bots              all/ German politicians and German bots                    bots = 27
+
+                                             Varol                        all/ Varol et al.                                             bots = 699 / human = 1462
+
+                                                      https://doi.org/10.1371/journal.pone.0241045.t001
+
+
+
+
+
+PLOS ONE | https://doi.org/10.1371/journal.pone.0241045  October 22, 2020                                                         4 / 20

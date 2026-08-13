@@ -1,0 +1,67 @@
+Topping, J.; Di Giovanni, F.; Chamberlain, B. P.; Dong, X.;        – Do your main claims in the abstract and introduction
+and Bronstein, M. M. 2021. Understanding over-squashing            accurately reflect the paper’s contributions and scope?
+and bottlenecks on graphs via curvature.  arXiv preprint          Yes
+arXiv:2111.14522.                                         – Do you clarify how the proposed methodological ap-
+Tsitsulin, A.; Mottin, D.; Karras,  P.; Bronstein, A.; and           proach is appropriate for the claims made? Yes. This
+M¨uller, E. 2018. Netlsd: hearing the shape of a graph. In               is mentioned in section titled Engagement networks:
+Proceedings of the 24th ACM SIGKDD International Con-          campaign or not.
+ference on Knowledge Discovery & Data Mining, 2347–                                                        – Do you clarify what are possible artifacts in the data
+2356.                                                                     used, given  population-specific  distributions?  Yes.
+Varol, O.; Ferrara, E.; Menczer, F.; and Flammini, A. 2017.           This is mentioned in Campaigns collection method-
+Early detection of promoted campaigns on social media.            ology, Non-campaign  collection methodology, and
+EPJ data science, 6: 1–19.                                          Building networks.
+Veliˇckovi´c, P.; Cucurull, G.; Casanova, A.; Romero, A.; Li`o,                                                        – Did you describe the limitations of your work? Yes. In
+P.; and Bengio, Y. 2018.  Graph Attention Networks.  In                                                                        section titled Limitations.
+International Conference on Learning Representations.
+                                                        – Did you discuss any potential negative societal im-Wilkinson, M. D.; Dumontier, M.; Aalbersberg, I. J.; Apple-
+                                                                      pacts of your work? No. We do not foresee our contri-ton, G.; Axton, M.; Baak, A.; Blomberg, N.; Boiten, J.-W.;
+                                                                     butions to have any negative societal impacts on theirda Silva Santos, L. B.; Bourne, P. E.; et al. 2016. The FAIR
+                                                           own.Guiding Principles for scientific data management and stew-
+ardship. Scientific data, 3(1): 1–9.                             – Did you discuss any potential misuse of your work?
+                                                           No. To the best of our knowledge, there are no knownWu, Y.; Shi, J.; Wang, P.; Zeng, D.; and Sun, C. 2023. Deep-
+                                                                       instances of misuse related to our work.Catra: Learning flow-and graph-based behaviours for An-
+droid malware detection. IET Information Security, 17(1):        – Did you describe steps taken to prevent or mitigate po-
+118–130.                                                                       tential negative outcomes of the research, such as data
+Xu,  K.; Hu, W.; Leskovec,  J.; and  Jegelka,  S. 2018.          and model documentation, data anonymization, re-
+How powerful are graph neural networks?  arXiv preprint            sponsible release, access control, and the reproducibil-
+arXiv:1810.00826.                                                             ity of findings? Yes. We do anonimize the user names
+                                                                 while creating the graphs. This is done on the users,Yanardag, P.; and Vishwanathan, S. 2015. Deep Graph Ker-
+                                                                               their tweets and their captions.nels.  In Proceedings of the 21th ACM SIGKDD Interna-
+tional Conference on Knowledge Discovery and Data Min-        – Have you read the ethics review guidelines and en-
+ing, KDD ’15, 1365–1374. New York, NY, USA: Associa-            sured that your paper conforms to them? Yes
+tion for Computing Machinery. ISBN 9781450336642.
+                                                                             • Additionally, if your study involves hypotheses testing...
+Ying, Z.; You, J.; Morris, C.; Ren, X.; Hamilton, W.; and
+Leskovec, J. 2018. Hierarchical graph representation learn-        – Did you clearly state the assumptions underlying all
+ing with differentiable pooling. Advances in neural infor-             theoretical results? No. We don’t have any theoretical
+mation processing systems, 31.                                       reasons and therefore haven’t stated any assumptions
+You, Y.; Chen, T.; Sui, Y.; Chen, T.; Wang, Z.; and Shen, Y.        – Have you provided justifications for all theoretical re-
+2020. Graph contrastive learning with augmentations. Ad-             sults? No. We don’t have any theoretical results.
+vances in neural information processing systems, 33: 5812–                                                        – Did you discuss competing hypotheses or theories that
+5823.                                                              might challenge or complement your theoretical re-
+Zannettou, S.; Caulfield, T.; De Cristofaro, E.; Sirivianos,             sults? No. We don’t have any competing hypothesis’.
+M.; Stringhini, G.; and Blackburn, J. 2019. Disinformation
+                                                        – Have you considered alternative mechanisms or expla-
+warfare: Understanding state-sponsored trolls on Twitter and
+                                                                      nations that might account for the same outcomes ob-
+their influence on the web. In Companion proceedings of the
+                                                                   served in your study? No. We don’t do any hypothesis
+2019 world wide web conference, 218–226.
+                                                                               testing.
+Zhang, M.; Cui, Z.; Neumann, M.; and Chen, Y. 2018. An
+                                                        – Did you address potential biases or limitations in yourend-to-end deep learning architecture for graph classifica-
+                                                                           theoretical framework? No. We don’t have any theo-tion.  In Proceedings of the AAAI conference on artificial
+                                                                                 retical limitationsintelligence.
+                                                        – Have you related your theoretical results to the exist-
+               Ethics Checklist                              ing literature in social science? No. We don’t have any
+                                                                           theoretical results in the paper.
+ • For most authors...
+                                                        – Did you discuss the implications of your theoretical
+   – Would answering this research question advance sci-                                                                              results for policy, practice, or further research in the
+     ence without violating social contracts, such as violat-                                                                          social science domain? No. We don’t have any theo-
+     ing privacy norms, perpetuating unfair profiling, exac-                                                                                 retical results in the paper.
+      erbating the socio-economic divide, or implying disre-
+      spect to societies or cultures? Yes                                • Additionally, if you are including theoretical proofs...
+
+
+                                                   698

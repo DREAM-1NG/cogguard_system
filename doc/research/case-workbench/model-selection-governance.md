@@ -4,7 +4,7 @@
 
 All models below are pinned **candidate** dependencies for a future `semantic_enrichment` analysis stage. No local evaluation, activation, Chinese-domain quality claim, calibration claim, or production readiness claim exists in Task 01.
 
-The Case Workbench uses semantic material only as evidence-linked descriptive artifacts. It cannot feed Coordination Discover, Propagation Analysis, Student Review, Teacher Review, preliminary finding, canonical verdict, or any risk score.
+The Case Workbench uses semantic material only as evidence-linked descriptive artifacts. Artifacts and corrections cannot feed or alter Coordination Discover, Propagation Analysis, Student Review, Teacher Review, preliminary finding, canonical verdict, or any core risk score.
 
 ## Pin Set
 
@@ -33,7 +33,7 @@ EventSnapshot revision
 
 - Posts and comments are two separate populations. No aggregate sentiment/topic/stance number may silently mix them.
 - Each request stores a half-open time window, platform allowlist, selected Coordination community IDs, optional propagation path IDs, selected content types, ordering rule, and a canonical JSON SHA-256 scope hash.
-- A model sees only items admitted by the recorded scope. A rerun with a different scope creates a new SemanticArtifact rather than updating an old one.
+- A model sees only items admitted by the recorded scope. Every attempted artifact write appends a new immutable row, including an identical input/scope/model rerun. Each row carries a per-link/per-artifact-type monotonic attempt version plus run, input, scope, model, and output hashes; no retry updates an old row.
 - Entities/keywords/topics may link to an evidence item, but link creation does not change an evidence assessment or risk result.
 
 ### CPU and availability rules
@@ -72,7 +72,7 @@ Semantic correction is immutable:
 | `corrected_value` | Analyst-supplied replacement or abstention. |
 | `rationale` | Required concise reason with linked evidence. |
 | `actor`, `created_at` | Authenticated identity and server timestamp. |
-| `SemanticArtifact` | Never updated to replace the original; projection renders correction alongside it. |
+| `SemanticArtifact` | Never updated to replace the original. A correction targets one immutable artifact attempt; projection renders correction alongside it. |
 
 Feedback can refer to a correction but cannot mutate it. Feedback scoped to a canonical verdict must belong to the same CaseRecord, EventSnapshot revision, and CaseAnalysisLink.
 
@@ -85,7 +85,7 @@ Feedback can refer to a correction but cannot mutate it. Feedback scoped to a ca
 3. Split strategy that prevents event/time leakage; report population size and excluded data.
 4. Per-stratum metrics, confidence intervals where applicable, error analysis, abstentions, and calibration/reliability evidence.
 5. Exact local model bytes/checksum, code revision, runtime version/device, prompt/template version for stance, tokenizer/configuration, and reproducible command.
-6. A comparison against no-semantic projection proving core Coordination/Propagation/Review risk fields are unchanged.
+6. A comparison against no-semantic projection proving that artifact creation and correction creation leave Coordination, Propagation, Student, Teacher, preliminary finding, canonical verdict, and every core risk field unchanged.
 7. Analyst correction/feedback agreement analysis and an explicit decision on whether output remains candidate-only.
 
 The evaluation result may permit a display-status change, but it cannot make a semantic model automatically create a canonical verdict or action.

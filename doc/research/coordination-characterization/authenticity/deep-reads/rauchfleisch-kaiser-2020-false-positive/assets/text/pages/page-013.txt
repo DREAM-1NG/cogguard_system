@@ -1,0 +1,25 @@
+PLOS ONE                                              The False positive problem of automatic bot detection in social science research
+
+
+
+
+
+    Fig 6. Density plot of the SDs for single accounts plotted for each group. Left for the Botometer universal score, right for the Botometer CAP. Bandwith of 0.015 was
+    used for the CAP and the universal scores. The x-axis represents standard deviation and the y-axis represents the density.
+
+    https://doi.org/10.1371/journal.pone.0241045.g006
+
+
+
+
+
+    Fig 7. Changing score over time. Percentage of accounts (y-axis) that have at least once a score in the three months below as well as above the threshold for all
+    thresholds between 0 and 1 in steps of 0.05. The x-axis represents the chosen threshold for the Botometer score. Left for the universal score, right for the universal CAP.
+
+    https://doi.org/10.1371/journal.pone.0241045.g007
+
+
+
+
+
+PLOS ONE | https://doi.org/10.1371/journal.pone.0241045  October 22, 2020                                                        13 / 20

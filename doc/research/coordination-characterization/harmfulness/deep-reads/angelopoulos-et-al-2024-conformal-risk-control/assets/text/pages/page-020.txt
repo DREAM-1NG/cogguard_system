@@ -1,0 +1,67 @@
+Published as a conference paper at ICLR 2024
+
+
+
+
+
+Lemma 2 (Glivenko-Cantelli for Monotone Functions). For i.i.d., right-continuous, monotone loss
+functions L1, . . . , Ln, we have that
+
+                                                                           a.s.
+                     n→∞suplim  λ  |bRn(λ) −R(λ)| = 0.
+
+Lemma 2. We generalize the proof of the Glivenko-Cantelli Theorem (see, e.g.,  Van der Vaart
+(2000)).  Let the notation R(λ−) denote the limit of R from the left-hand side approaching λ.
+                                                               a.s.                              a.s.
+By the strong law of large numbers, bRn(λ) →R(λ) and bRn(λ−) →R(λ−) for all λ.  Fix
+ϵ > 0.  It is well-known that a monotone function cannot have more than a countable number of
+discontinuities (Froda, 1931). Thus, there exists a finite partition Λ(ϵ) = {−∞≤λ1 ≤. . . ≤
+λk ≤∞}, such that R(λi−) −R(λi−1) < ϵ. (There can only be a finite number of jumps greater
+than ϵ in size, and these can be included in Λ(ϵ).) The uniform convergence on the finite set Λ(ϵ) is
+                                                                                                                              a.s.
+immediate by the law of large numbers; thus, we have that limn→∞supλ∈Λ(ϵ) |bRn(λ)−R(λ)| = 0.
+For any λ ̸∈Λ(ϵ), suppose λ ∈(λj−1, λj). Then ˆRn(λ) −R(λ) ≤ˆRn(λj) −R(λj−1) <
+ˆRn(λj)−R(λj)+ϵ. Similarly, ˆRn(λ)−R(λ) ≥ˆRn(λj−1)−R(λ−j ) > ˆRn(λj−1)−R(λj−1)−ϵ.
+Combining two pieces, we conclude that supλ |ˆRn(λ) −R(λ)| ≤supλ∈Λ(ϵ) |bRn(λ) −R(λ)| + ϵ.
+                                                           a.s.
+As a result, limn→∞supλ |bRn(λ) −R(λ)| ≤ϵ. Taking ϵ →0 completes the proof.
+
+Proposition 4. Define the vector Z′ = (Z′1, . . . , Z′n, Zn+1), where Z′i i.i.d.∼L(Zn+1) for all i ∈[n].
+Let
+                                    n
+                                       ϵ = X TV(Zi, Z′i).
+                                         i=1
+By sublinearity,
+                             TV(Z, Z′) ≤ϵ.                                    (18)
+It is a standard fact that (18) implies
+                           sup |E[f(Z)] −E[f(Z′)]| ≤ϵ,
+                           f∈F1
+
+where F1 = {f  : Z 7→[0, 1]}. Let ℓ: Z × Λ →[0, B] be a bounded loss function. Furthermore,
+let g(z) = ℓ(zn+1; ˆλ(z1, . . . , zn)). Since g(Z) ∈[0, B],
+                                |E[g(Z)] −E[g(Z′)]| ≤Bϵ.
+Furthermore, since Z′1, . . . , Z′n+1 are exchangeable, we can apply Theorems 1 and 2 to E[g(Z′)],
+recovering
+                          2B
+                      α −      ≤E[g(Z′)] ≤α.
+                           n + 1
+A final step of triangle inequality implies the result:
+                       2B
+                  α −    −Bϵ ≤E[g(Z)] ≤α + Bϵ.
+                       n + 1
+
+
+Proposition 5.  It is left to prove that ˜Li(λ) satisfies the conditions of Theorem 1.  It is clear that
+˜Li(λ) ≤1 and ˜Li(λ) is non-increasing in λ when Li(λ) is. Since Li(λ) is non-increasing and
+right-continuous, for any sequence λm ↓λ,
+               Li(λm) ↑Li(λ) =⇒1 {Li(λm) > α} →1 {Li(λ) > α} .
+Thus, ˜Li(λ) is right-continuous. Finally, Li(λmax) ≤α implies ˜Li(λmax) = 0 ≤1 −β.
+
+Proposition 6. Examining the form of ˆλ, for each γ ∈Γ, we have
+                  E h L(ˆλ, γ)i ≤E h L(ˆλγ, γ)i ≤α(γ).
+
+Thus, dividing both sides by α(γ) and taking the supremum, we get that supγ∈Γ E h L(ˆλ,γ)α(γ) i ≤1,
+and the worst-case risk is controlled.
+
+
+                                       20

@@ -1,0 +1,66 @@
+Published as a conference paper at ICLR 2024
+
+
+
+
+of ℓ Cˆλ(Xn+1), Yn+1 = 1 −|Yn+1 ∩Cλ(Xn+1)|/|Yn+1|. Setting α = 0.1 would ensure that our
+algorithm produces sets Cˆλ(Xn+1) containing ≥90% of the true classes in Yn+1 on average.
+
+1.1  ALGORITHM AND PREVIEW OF MAIN RESULTS
+
+Formally, we will consider post-processing the predictions of the model f to create a function
+Cλ(·). The function has a parameter λ that encodes its conservativeness: larger λ values yield more
+conservative outputs (e.g., larger prediction sets). To measure the quality of Cλ, we consider a loss
+function ℓ(Cλ(x), y) ∈(−∞, B] for some B < ∞.1 We require this loss to be non-increasing in λ.
+Our goal is to choose ˆλ based on the observed data {(Xi, Yi)}ni=1 so that risk control as in (2) holds.
+We now rewrite this same task in a more notationally convenient and abstract form.  Consider
+an exchangeable collection of non-increasing, bounded, random functions Li  : Λ →(−∞, B],
+i = 1, . . . , n + 1, where Λ is the space of all inputs (e.g., ‘thresholds’) to the function Li(λ).
+Throughout the paper, we assume λmax := sup Λ ∈Λ, so that Li(λmax) is well-defined and
+satisfies Li(λmax) ≤α for any α by design (i.e., α is achievable). We seek to use the first n
+functions to choose a value of the parameter, ˆλ, so that the risk on the unseen function is controlled:
+
+                        Eh                               Ln+1  ˆλ i ≤α.                                      (3)
+
+We are primarily motivated by the case where Li(λ) = ℓ(Cλ(Xi), Yi), in which case the guarantee
+in (3) coincides with risk control as in (2).
+Now we describe the algorithm. Let bRn(λ) = (L1(λ) + . . . + Ln(λ))/n. Given any desired risk
+level upper bound α ∈(−∞, B), define
+
+                 n                      B
+             ˆλ = inf  λ :                   +                      ≤α = inf  λ :    ≤α −B −α    .       (4)                n + 1 bRn(λ)  n + 1                 bRn(λ)       n
+Since bRn(λ) is monotone, we can efficiently search for ˆλ using binary search to arbitrary precision.
+When the set is empty, we define ˆλ = λmax. Our proposed conformal risk control algorithm
+is to deploy ˆλ on the forthcoming test point. Our main result is that this algorithm satisfies (3).
+Intuitively, we can see that this algorithm reduces to searching for a value of λ that results in a
+slightly conservative empirical risk—that gets less conservative when the difference between the
+worst-case risk (B) and the desired risk (α) is smaller, or the calibration set size (n) is larger.
+
+Moreover, when the Li are i.i.d. from a continuous distribution, we can show that the algorithm
+satisfies a tight lower bound saying it is not too conservative,
+
+                     Eh                            Ln+1  ˆλ i ≥α − 2B                                      n + 1.
+We show the reduction from conformal risk control to conformal prediction in Appendix A. Fur-
+thermore, if the risk is non-monotone, then this algorithm does not control the risk; we discuss
+this in Section 2.3. Finally, we provide both practical examples using real-world data and several
+theoretical extensions of our procedure in Sections 3 and 4, respectively.
+
+1.2  RELATED WORK
+
+Conformal prediction was developed by Vladimir Vovk and collaborators beginning in the late
+1990s (Vovk et al., 1999; 2005), and has recently become a popular uncertainty estimation tool in the
+machine learning community, due to its favorable model-agnostic, distribution-free, finite-sample
+guarantees. See Angelopoulos & Bates (2021) for a modern introduction to the area or Shafer &
+Vovk (2008) for a more classical alternative. As previously discussed, in this paper we primarily
+build on split conformal prediction (Papadopoulos et al., 2002); statistical properties of this algo-
+rithm including the coverage upper bound were studied in Lei et al. (2018). Recently there have
+been many extensions of the conformal algorithm, mainly targeting deviations from exchangeabil-
+ity (Tibshirani et al., 2019; Gibbs & Candes, 2021; Barber et al., 2022; Fannjiang et al., 2022) and
+
+   1Note that any unbounded loss can be transformed to a bounded loss. For example, any unbounded loss
+ℓ(λ) on the positive reals can be transformed by taking the inverse tangent, i.e., ℓ′(λ) = arctan (ℓ(λ)). As
+long as the transformation is monotone, a loss of α on the original loss corresponds exactly to a loss of α′ on
+the new loss; controlling this transformed risk may be enough in practice.
+
+
+                                       2

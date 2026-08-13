@@ -1,0 +1,53 @@
+Coordinated Behavior on Social Media in 2019 UK General Election
+
+
+         Leonardo Nizzoli,12* Serena Tardelli,12*† Marco Avvenuti,2 Stefano Cresci,1 Maurizio Tesconi1
+                                     1Institute of Informatics and Telematics, National Research Council, Pisa, Italy.
+                                   2Department of Information Engineering, University of Pisa, Italy
+
+
+
+
+
+                               Abstract                                    efforts, researchers debate the efﬁcacy of the proposed so-
+                                                                                   lutions, and IOs still appear to pose a severe threat to our2021       Coordinated online behaviors are an essential part of infor-                                                                    democracies and societies (Barrett 2019).
+             mation and inﬂuence operations, as they allow a more effec-
+                                                                   Meanwhile, groundbreaking advances in speciﬁc areas of                tive disinformation’s spread. Most studies on coordinated be-
+              haviors involved manual investigations, and the few existing        computing are causing profound changes to the online infor-Apr       computational approaches make bold assumptions or over-        mation landscape. Advances in artiﬁcial intelligence brought
+1       simplify the problem to make it tractable.                            to the rise of deepfakes – synthetic media where the source
+             Here, we propose a new network-based framework for un-        has been modiﬁed via deep learning techniques. Deepfakes
+              covering and studying coordinated behaviors on social media.        allow crafting arbitrary texts that resemble a target person’s
+           Our research extends existing systems and goes beyond lim-         writing style or audio and video samples where a target per-
+                iting binary classiﬁcations of coordinated and uncoordinated         son’s face and voice could be made to do or say anything.
+              behaviors. It allows to expose different coordination patterns         Unsurprisingly, these powerful techniques have already been[cs.SI]      and to estimate the degree of coordination that characterizes        used to create fake news (Zellers et al. 2019) and fake proﬁle
+               diverse communities. We apply our framework to a dataset                                                                              pictures for fraudulent accounts1. However, each IO must
+               collected during the 2019 UK General Election, detecting and
+                                                                       spread to “infect” many users in order to be successful, in-
+               characterizing coordinated communities that participated in
+                                                                      dependently of its aims and tools used to deceive. This goal               the electoral debate. Our work conveys both theoretical and
+               practical implications and provides more nuanced and ﬁne-         often mandates extensive and coordinated social media ef-
+              grained results for studying online information manipulation.          forts for the campaign to obtain a signiﬁcant outreach, exert
+                                                                       inﬂuence, and thus have an impact. In light of this considera-
+                                                                                      tion, since 2018, all leading platforms showed great interest
+                        Introduction                             in studying coordinated inauthentic behavior (CIB)2. De-
+          In recent years, information or inﬂuence operations (IOs)       spite often appearing together, coordination and inauthen-
+         have been frequently carried out on social media to mis-        ticity are two distinct concepts. For example, activists and
+          lead and manipulate. With this terminology, borrowed from       other grassroots initiatives typically feature coordinated but
+           the military sphere, social media companies have designated       authentic behaviors. Conversely, a single fake account man-
+           the attempts to spread deceptive content on their platforms,      aged with the intent to mislead might exhibit inauthentic
+           orchestrated by state and non-state actors (Alassad, Spann,      but uncoordinated behavior. The majority of existing efforts
+         and Agarwal 2020; Weedon, Nuland, and Stamos 2017). IOs       for studying CIB involved plenty of manual investigations,arXiv:2008.08370v2    can take different shapes, target various individuals, online      while the computational approaches are still few and far be-
+          crowds, or communities, and have diverse goals (Starbird,      tween. Among the challenges, there are the ambiguity and
+           Arif, and Wilson 2019). Among the strategic tools used by       fuzziness of CIB itself: What exactly is a coordinated be-
+           perpetrators are fake news, propaganda, hateful speech, as-      havior? What is inauthentic behavior? How many organized
+           troturﬁng, colluding users (e.g., paid trolls), and automation      accounts are needed for a (meaningful) coordinated behav-
+             (e.g., social bots). Since the Donald Trump election and the       ior to surface? Unfortunately, there are no agreed-upon an-
+          Brexit referendum in 2016, each of these tools has attracted      swers to these questions and, thus, operationalizing such
+          extensive scientiﬁc attention. The ongoing endeavors have
+           led to a vast body of work on these issues and a plethora            1P.  Martineau,  “Facebook Removes  Accounts  With  AI-
+          of different solutions for solving them. However, despite the       Generated Proﬁle Photos.” Wired, 20 December 2019. Avail-
+                                                                                   able at https://www.wired.com/story/facebook-removes-accounts-
+             *These authors contributed equally.                                  ai-generated-photos/
+              †Corresponding author. serena.tardelli@iit.cnr.it                       2N. Gleicher, “Coordinated Inauthentic Behavior Explained.”
+           Copyright © 2020, Association for the Advancement of Artiﬁcial       Facebook, 6 December 2019. Available at https://about.fb.com/
+            Intelligence (www.aaai.org). All rights reserved.                        news/2018/12/inside-feed-coordinated-inauthentic-behavior/

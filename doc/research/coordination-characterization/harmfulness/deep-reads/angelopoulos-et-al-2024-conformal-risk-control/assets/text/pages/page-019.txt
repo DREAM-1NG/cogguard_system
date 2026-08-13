@@ -1,0 +1,63 @@
+Published as a conference paper at ICLR 2024
+
+
+
+
+
+Now let N be sufficiently large such that
+
+                                    !                                           N
+                   1 − 1 −BinoCDF n, p, ⌈(n + 1)α⌉−1    > p.
+
+
+Then
+                        Eh                               Ln+1  ˆλ i > p2
+
+For any α > 0, we can take p close enough to 1 to render the claim false.
+
+Proof of Theorem C.1. Define the monotonized population risk as
+                            R↑(λ) = sup Eh Ln+1(t)i
+                                        t≥λ
+Note that the independence of Ln+1 and ˆλ↑n implies that for all n,
+                     Eh                           Ln+1  ˆλ↑n i ≤Eh R↑  ˆλ↑n i .
+
+Since R↑is bounded, monotone, and one-dimensional, a generalization of the Glivenko-Cantelli
+Theorem given in Lemma 2 gives that uniformly over λ,
+
+                                                                                 a.s.
+                     n→∞suplim  λ  |bRn(λ) −R(λ)| →0.
+
+As a result,
+                                                                                  a.s.
+                     n→∞suplim  λ  |bR↑n(λ) −R↑(λ)| →0,
+which implies that
+                                 →0.                       n→∞|lim  bR↑n(ˆλ↑) −R↑(ˆλ↑)| a.s.
+By definition, bR↑(ˆλ↑) ≤α almost surely and thus this directly implies
+                                        n ≤α   a.s..                               limn→∞R↑sup      ˆλ↑
+Finally, since for all n, R↑  ˆλ↑n ≤B, by Fatou’s lemma,
+
+                                sup                                                     sup      ˆλ↑n i ≤α.        n→∞Elim  h               Ln+1  ˆλ↑n i ≤limn→∞E                                       h R↑  ˆλ↑n i ≤Eh limn→∞R↑
+
+
+
+Proposition 3. Let
+                  (  Pn+1i=1 w(Xi)Li(λ)   )                                          ˆλ′ = inf  λ :          ≤α    .
+                             Pn+1i=1 w(Xi)
+Since infλ Li(λ) ≤α, ˆλ′ exists almost surely. Using the same argument as in the proof of Theorem
+1, we can show that ˆλ′ ≤ˆλ(Xn+1). Since Ln+1(λ) is non-increasing in λ,
+                           E[Ln+1(ˆλ(Xn+1))] ≤E[Ln+1(ˆλ′)].
+Let E be the multiset of loss functions {(X1, Y1), . . . , (Xn+1, Yn+1)}. Then ˆλ′ is a function of E,
+or, equivalently, ˆλ′ is a constant conditional on E. Lemma 3 of Tibshirani et al. (2019) implies that
+
+                     n+1                                 n+1
+                          w(Xi)                             w(Xi)
+    (Xn+1, Yn+1) | E ∼ X               δ(Xj,Yj) =⇒Ln+1 | E ∼ X              δLi
+                         i=1                    Pn+1j=1 w(Xj)                         i=1 Pn+1j=1 w(Xj)
+where δz denotes the Dirac measure at z. Together with the right-continuity of Li, the above result
+implies
+                              Pn+1i=1 w(Xi)Li(ˆλ′)                                          ≤α.               E h Ln+1(ˆλ′) | E i =
+                                Pn+1i=1 w(Xi)
+The proof is then completed by the law of total expectation.
+
+
+                                       19

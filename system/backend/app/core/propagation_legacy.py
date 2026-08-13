@@ -74,6 +74,7 @@ def build_propagation_graph(
     posts: list[dict],
     comments: list[dict] | None = None,
     diffusion_node_limit: int = DIFFUSION_VISIBLE_NODE_LIMIT,
+    diffusion_layer_budget: dict[str, int] | None = None,
 ) -> dict:
     """从帖子列表构建传播图，按共享对象（URL/标签）追踪传播链。
 
@@ -184,6 +185,7 @@ def build_propagation_graph(
         df,
         comments or [],
         node_limit=diffusion_node_limit,
+        layer_budget=diffusion_layer_budget,
     )
     user_quality = build_user_quality_portrait(posts, comments or [])
 
@@ -418,6 +420,7 @@ def _build_diffusion_summary(
     df: pd.DataFrame,
     comments: list[dict],
     node_limit: int = DIFFUSION_VISIBLE_NODE_LIMIT,
+    layer_budget: dict[str, int] | None = None,
 ) -> dict:
     """Build a stable radial diffusion-tree summary from the full observed graph.
 
@@ -440,15 +443,60 @@ def _build_diffusion_summary(
 
     root_id = _select_key_path_root(key_paths, simple_G, G) or _select_diffusion_root(simple_G, G)
     parallel_roots = _select_parallel_roots(simple_G, G, root_id)
-    subtree_sizes = _estimate_subtree_sizes(simple_G, root_id)
     post_index = _build_post_index(df)
     comment_index = _build_comment_index(comments)
     is_full_view = resolved_node_limit >= G.number_of_nodes()
 
-    visible_nodes: set[str] = set()
+    requested_budget = _resolve_layer_budget(layer_budget, resolved_node_limit)
+    all_layers = _diffusion_all_node_layers(simple_G, root_id)
+    visible_nodes = _select_layered_visible_nodes(
+        {
+            node_id: {
+                "layer": all_layers.get(node_id, DIFFUSION_MAX_DEPTH),
+                "score": _diffusion_node_priority(simple_G, G, node_id, key_node_set),
+            }
+            for node_id in simple_G.nodes()
+        },
+        list(simple_G.edges()),
+        root_id=root_id,
+        key_paths=[path.get("nodes", []) for path in key_paths],
+        total_limit=requested_budget["total"],
+        first_layer_limit=requested_budget["first_layer"],
+        second_layer_limit=requested_budget["second_layer"],
+        parallel_roots=parallel_roots[:requested_budget["parallel_roots"]],
+    )
+    node_layers = {node_id: all_layers.get(node_id, DIFFUSION_MAX_DEPTH) for node_id in visible_nodes}
     tree_edges: dict[tuple[str, str], dict] = {}
-    node_layers: dict[str, int] = {}
 
+    for source, target, edge_data in simple_G.edges(data=True):
+        if source not in visible_nodes or target not in visible_nodes or source == target:
+            continue
+        if node_layers.get(source) == node_layers.get(target):
+            continue
+        tree_edges[(source, target)] = _diffusion_tree_edge(simple_G, source, target)
+
+    for parallel_root in parallel_roots:
+        if parallel_root in visible_nodes and root_id:
+            tree_edges.setdefault((root_id, parallel_root), {
+                "source": root_id,
+                "target": parallel_root,
+                "weight": simple_G[root_id][parallel_root]["weight"] if simple_G.has_edge(root_id, parallel_root) else 1,
+                "type": "parallel_root",
+                "is_parallel_root": True,
+            })
+
+    # Retain the legacy full graph response for explicit full-view requests.
+    if not is_full_view:
+        _backfill_visible_predecessor_edges(simple_G, visible_nodes, node_layers, tree_edges, root_id)
+    else:
+        visible_nodes = set(simple_G.nodes())
+        node_layers = all_layers
+        for source, target in simple_G.edges():
+            if source != target and node_layers.get(source) != node_layers.get(target):
+                tree_edges.setdefault((source, target), _diffusion_tree_edge(simple_G, source, target))
+
+    """Legacy breadth-first builder retained below for historical source context."""
+    """
     def add_node(node_id: str, layer: int, *, force: bool = False) -> bool:
         if not node_id or not simple_G.has_node(node_id):
             return False
@@ -554,7 +602,7 @@ def _build_diffusion_summary(
                 "is_parallel_root": False,
             })
 
-    _backfill_visible_predecessor_edges(simple_G, visible_nodes, node_layers, tree_edges, root_id)
+    """
 
     visible_node_rows = [
         _diffusion_node_row(G, simple_G, node_id, node_layers.get(node_id, -1), key_node_set, root_id)
@@ -615,6 +663,7 @@ def _build_diffusion_summary(
             "total_edges": G.number_of_edges(),
             "requested_node_limit": int(node_limit or 0),
             "visible_node_limit": resolved_node_limit,
+            "layer_budget": requested_budget,
             "visible_node_count": len(visible_node_rows),
             "is_full_view": is_full_view,
             "tree_edge_count": len(tree_edge_rows),
@@ -633,6 +682,94 @@ def _resolve_diffusion_node_limit(node_limit: int | None, total_nodes: int) -> i
     if requested <= 0:
         return total_nodes
     return min(max(requested, 1), total_nodes)
+
+
+def _resolve_layer_budget(layer_budget: dict[str, int] | None, total_limit: int) -> dict[str, int]:
+    """Normalize the first-screen budget without changing legacy full views."""
+
+    requested = layer_budget or {}
+
+    def value(name: str, default: int) -> int:
+        try:
+            return max(0, int(requested.get(name, default)))
+        except (TypeError, ValueError):
+            return default
+
+    return {
+        "total": min(max(1, value("total", min(total_limit, 160))), max(total_limit, 1)),
+        "parallel_roots": value("parallel_roots", 8),
+        "first_layer": value("first_layer", 40),
+        "second_layer": value("second_layer", 80),
+    }
+
+
+def _diffusion_node_priority(
+    simple_G: nx.DiGraph,
+    G: nx.MultiDiGraph,
+    node_id: str,
+    key_node_set: set[str],
+) -> float:
+    attrs = G.nodes[node_id] if G.has_node(node_id) else {}
+    return (
+        (250.0 if node_id in key_node_set else 0.0)
+        + float(simple_G.out_degree(node_id)) * 10.0
+        + float(simple_G.in_degree(node_id)) * 4.0
+        + float(attrs.get("post_count", 0) or 0)
+    )
+
+
+def _select_layered_visible_nodes(
+    nodes: dict[str, dict],
+    edges: list[tuple[str, str]],
+    *,
+    root_id: str,
+    key_paths: list[list[str]],
+    total_limit: int,
+    first_layer_limit: int,
+    second_layer_limit: int,
+    parallel_roots: list[str] | None = None,
+) -> set[str]:
+    """Keep the readable first two rings, then connect every visible key path."""
+
+    if not nodes:
+        return set()
+    visible: set[str] = {root_id} if root_id in nodes else set()
+    parallel_set = set(parallel_roots or [])
+
+    def score(node_id: str) -> tuple[float, str]:
+        return (float(nodes[node_id].get("score", 0.0)), node_id)
+
+    first_layer = sorted(
+        (node_id for node_id, node in nodes.items() if int(node.get("layer", -1)) == 1 and node_id not in parallel_set),
+        key=score,
+        reverse=True,
+    )[:max(first_layer_limit, 0)]
+    second_layer = sorted(
+        (node_id for node_id, node in nodes.items() if int(node.get("layer", -1)) == 2),
+        key=score,
+        reverse=True,
+    )[:max(second_layer_limit, 0)]
+    visible.update(first_layer)
+    visible.update(second_layer)
+    visible.update(node_id for node_id in parallel_set if node_id in nodes)
+
+    # Path connectors are never dropped merely because a lower-priority deep node exists.
+    for path in key_paths:
+        normalized = [node_id for node_id in path if node_id in nodes]
+        if any(nodes[node_id].get("is_key") for node_id in normalized):
+            visible.update(normalized)
+
+    # The configured limit applies to ordinary nodes. Evidence-path connectors
+    # remain visible so a highlighted key node is never visually detached.
+    required = set(visible)
+    if len(required) >= total_limit:
+        return required
+
+    for node_id in sorted(nodes, key=score, reverse=True):
+        if len(visible) >= total_limit:
+            break
+        visible.add(node_id)
+    return visible
 
 
 def _empty_diffusion_summary(

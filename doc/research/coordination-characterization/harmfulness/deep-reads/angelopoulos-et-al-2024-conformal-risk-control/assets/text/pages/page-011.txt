@@ -1,0 +1,71 @@
+Published as a conference paper at ICLR 2024
+
+
+
+
+
+Isaac Gibbs and Emmanuel Candes.  Adaptive conformal inference under distribution shift. Ad-
+  vances in Neural Information Processing Systems, 34:1660–1672, 2021.
+
+Leying Guan. Conformal prediction with localization. arXiv:1908.08558, 2020.
+
+Kaiming He, Xiangyu Zhang, Shaoqing Ren, and Jian Sun. Deep residual learning for image recog-
+   nition.  In Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition
+  (CVPR), pp. 770–778, 2016. doi: 10.1109/CVPR.2016.90.
+
+Vladimir Karpukhin, Barlas Oguz, Sewon Min, Patrick Lewis, Ledell Wu, Sergey Edunov, Danqi
+  Chen, and Wen-tau Yih.  Dense passage retrieval for open-domain question answering.  In
+  Proceedings of the 2020 Conference on Empirical Methods in Natural Language Processing
+  (EMNLP), Online, November 2020. Association for Computational Linguistics.
+
+Tom Kwiatkowski, Jennimaria Palomaki, Olivia Redfield, Michael Collins, Ankur Parikh, Chris
+   Alberti, Danielle Epstein, Illia Polosukhin, Jacob Devlin, Kenton Lee, Kristina Toutanova, Llion
+  Jones, Matthew Kelcey, Ming-Wei Chang, Andrew M. Dai, Jakob Uszkoreit, Quoc Le, and Slav
+   Petrov. Natural questions: A benchmark for question answering research. Transactions of the
+  Association for Computational Linguistics, 7:452–466, 2019.
+
+Jing Lei, Max G’Sell, Alessandro Rinaldo, Ryan J. Tibshirani, and Larry Wasserman. Distribution-
+   free predictive inference for regression.  Journal of the American Statistical Association, 113
+  (523):1094–1111, 2018.
+
+Tsung-Yi Lin, Michael Maire, Serge Belongie, James Hays, Pietro Perona, Deva Ramanan, Piotr
+   Doll´ar, and C Lawrence Zitnick. Microsoft COCO: Common objects in context. In European
+  conference on computer vision, pp. 740–755. Springer, 2014. doi: 10.1007/978-3-319-10602-1
+  48.
+
+Harris Papadopoulos, Kostas Proedrou, Vladimir Vovk, and Alex Gammerman.  Inductive confi-
+  dence machines for regression. In Machine Learning: European Conference on Machine Learn-
+   ing, pp. 345–356, 2002. doi: https://doi.org/10.1007/3-540-36755-1 29.
+
+Sangdon Park, Osbert Bastani, Nikolai Matni, and Insup Lee. PAC confidence sets for deep neural
+  networks via calibrated prediction.  In International Conference on Learning Representations
+  (ICLR), 2020. URL https://openreview.net/forum?id=BJxVI04YvB.
+
+Pranav Rajpurkar, Jian Zhang, Konstantin Lopyrev, and Percy Liang. SQuAD: 100,000+ questions
+   for machine comprehension of text. In Proceedings of the 2016 Conference on Empirical Methods
+   in Natural Language Processing, pp. 2383–2392, November 2016.
+
+Tal Ridnik, Hussam Lawen, Asaf Noy, and Itamar Friedman. TResNet: High performance GPU-
+  dedicated architecture. arXiv:2003.13630, 2020.
+
+Yaniv Romano,  Evan  Patterson,  and Emmanuel  Cand`es.    Conformalized  quantile  re-
+   gression.     In  Advances  in  Neural  Information  Processing  Systems,  volume  32,  pp.
+  3543–3553. 2019. URL https://proceedings.neurips.cc/paper/2019/file/
+  5103c3584b063c431bd1268e9b5e76fb-Paper.pdf.
+
+Yaniv Romano, Matteo Sesia, and Emmanuel Cand`es.   Classification with valid and adaptive
+  coverage.  In H. Larochelle, M. Ranzato, R. Hadsell, M. F. Balcan, and H. Lin (eds.), Ad-
+  vances in Neural Information Processing Systems, volume 33, pp. 3581–3591. Curran Asso-
+   ciates, Inc., 2020. URL https://proceedings.neurips.cc/paper/2020/file/
+  244edd7e85dc81602b7615cd705545f5-Paper.pdf.
+
+Swami Sankaranarayanan, Anastasios N Angelopoulos, Stephen Bates, Yaniv Romano, and
+   Phillip Isola.  Semantic uncertainty intervals for disentangled latent spaces.  arXiv preprint
+  arXiv:2207.10074, 2022.
+
+Tal Schuster, Adam Fisch, Tommi Jaakkola, and Regina Barzilay. Consistent accelerated inference
+  via confident adaptive transformers. In Proceedings of the 2021 Conference on Empirical Methods
+   in Natural Language Processing. Association for Computational Linguistics, 2021.
+
+
+                                       11

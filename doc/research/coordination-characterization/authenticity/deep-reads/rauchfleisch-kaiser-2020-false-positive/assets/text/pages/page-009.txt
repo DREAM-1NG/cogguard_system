@@ -1,0 +1,56 @@
+PLOS ONE                                              The False positive problem of automatic bot detection in social science research
+
+
+
+
+
+                                               Fig 3. Receiver operating characteristics curve for Botometer and the universal complete automation probability
+                                       (CAP) (average over 3 months for each account). The x-axis represents the false positive rate and the y-axis
+                                                  represents the true positive rate (sensitivity).
+
+                                                     https://doi.org/10.1371/journal.pone.0241045.g003
+
+
+                                       threshold of 0. If an extremely low threshold is used, all bots in the population will be identified
+                                              (recall = 1) but the number of false-positive cases will be extremely high. The precision is thus
+                                          .15 as 85% of the accounts in the sample are humans. On the left, the curve ends with an
+                                      extremely high threshold for the Botometer score which means that the precision is extremely
+                                     high (the classified bot accounts are all bots) but the recall is extremely low (almost all bots in
+                                        the general population are not identified). We can now also check the precision and recall for
+                                            specific thresholds. For example, if 0.76 is used as a threshold for the resampled all data set,
+                             59% real bots (precision = 0.59) and 41% false-positive humans will be amongst the accounts
+                                              classified as bots (see Fig 4). However, around 80% (recall = 0.2) of the bots in the population
+                                              will not be identified (false-negatives). If we consider the German politician and bots data set,
+                                        the results are even worse. Of the accounts classified as “bot” only around 24% (preci-
+                                       sion = 0.24) would be bots and 76% of the accounts would be false-positive human accounts.
+                                    Moreover, around 90% (recall = 0.1) of the bots in the Twitter population would not be identi-
+                                            fied (see Fig 4).
+                         We then also calculated the PR-AUC for the universal CAP with the newly weighted resam-
+                                           ples (see Table 3). With regard to the PR-AUC and the ROC-AUC, the results are almost the
+                                same as for the universal Botometer scores. When calculating the CAP and using a threshold of
+
+
+Table 3. ROC-AUC as well as the PR-AUC scores universal CAP.
+
+                Data set                  ROC-AUC         ROC-AUC sample          PR-AUC          PR-AUC sample
+
+                       All                             0.86 (0.85–0.87)              0.86 (0.86–0.86)              0.78 (0.76–0.80)             0.51 (0.50–0.52)
+
+    German politicians and German bots            0.77 (0.70–0.84)              0.77 (0.76–0.77)              0.10 (0.08–0.14)             0.27 (0.27–0.27)
+
+       German politicians and bots                 0.78 (0.75–0.81)              0.78 (0.77–0.78)              0.81 (0.79–0.84)             0.31 (0.30–0.31)
+
+        US politicians and bots                   0.94 (0.93–0.95)              0.94 (0.94–0.94)              0.97 (0.96–0.98)             0.81 (0.81–0.82)
+
+                 Varol et al.                         0.86 (0.84–0.88)              0.86 (0.86–0.87)              0.76 (0.73–0.79)             0.58 (0.57–0.59)
+
+ROC-AUC as well as the PR-AUC scores for the original data sets as well as the weighted resampled data sets (sample = 100,000) for the universal CAP. The 95%
+confidence intervals based on 10,000 stratified bootstrap replicates are shown in brackets.
+
+https://doi.org/10.1371/journal.pone.0241045.t003
+
+
+
+
+
+PLOS ONE | https://doi.org/10.1371/journal.pone.0241045  October 22, 2020                                                         9 / 20

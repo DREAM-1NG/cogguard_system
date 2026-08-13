@@ -127,7 +127,7 @@
       "visual_verification": "complete",
       "review_notes": "Directly inspected; CCDF axes, linear and log inset, filtered/unfiltered legend, fixed-threshold marker at 0.9, and caption are complete.",
       "key": true,
-      "claim_ids": ["C3", "C8"]
+      "claim_ids": ["C3", "C5"]
     },
     {
       "id": "figure-4-p007",
@@ -161,7 +161,7 @@
       "visual_verification": "complete",
       "review_notes": "Directly inspected; panels (a)-(g), community labels, polarity markers, hashtags, and caption are complete.",
       "key": true,
-      "claim_ids": ["C4", "C6"]
+      "claim_ids": ["C4"]
     },
     {
       "id": "figure-6-p008",

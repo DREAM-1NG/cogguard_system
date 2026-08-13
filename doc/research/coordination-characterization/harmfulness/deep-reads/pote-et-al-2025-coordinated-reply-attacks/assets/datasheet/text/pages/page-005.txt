@@ -1,0 +1,63 @@
+dataset?  If so, please provide a de-  privilege or by doctor-patient con-
+scription.                                  fidentiality, data that includes the
+ Not to our knowledge.               content of individuals non-public
+                                communications)? If so, please pro-
+Is the dataset self-contained,  or
+                                       vide a description.
+does it link to or otherwise rely on
+                                The dataset contains tweet IDs and
+external resources (e.g., websites,
+                                        user  IDs  for IO  users/tweets  that
+tweets, other datasets)?   If  it links
+                                    have been suspended, and for control
+to or relies on external resources, a)
+                                       users/tweets that are public.  This is
+are there guarantees that they will ex-
+                                         consistent with Twitter/X terms. The
+ist, and remain constant, over time;
+                                       dataset also includes annotations of a
+b) are there official archival versions
+                                   sample of target users based on their
+of the complete dataset (i.e., including
+                                        public  profiles.   None  of  this data
+the external resources as they existed
+                                      should include any confidential infor-
+at the time the dataset was created);
+                                     mation.
+c) are there any restrictions (e.g.,  li-
+censes, fees) associated with any of  Does the dataset contain data that,
+the external resources that might ap-   if viewed  directly,  might be  of-
+ply to a future user? Please provide  fensive, insulting, threatening, or
+descriptions of all external resources  might otherwise cause anxiety?   If
+and any restrictions associated with  so, please describe why.
+them, as well as links or other access                                    No.
+points, as appropriate.
+  The  dataset   is  self-contained  in  Does the dataset relate to people?
+terms of reproducing the results. The    If not, you may skip the remaining
+original data  for IO  replies to  tar-  questions in this section.
+geted tweets comes from the Twit-   Yes, some of the files with user IDs are
+ter Influence Operation dataset, which  related to people.
+was  publicly  available  until  sum-
+mer  2024  (https://web.archive.  Does the dataset identify any sub-
+                                  populations (e.g., by age, gender)?org/web/20240829231920/https://
+                                                                If so, please describe how these sub-transparency.x.com/en/reports/
+moderation-research).  The replies  populations are identified and provide
+from normal repliers as well as con-  a description of their respective distri-
+trol tweets were collected by the first  butions within the dataset.
+author using the Twitter API. How-    In  the ‘RQ1 target annotation.csv’
+ever, due to recent changes in Twit-   file, target Twitter accounts are iden-
+ter/X’s data sharing policy, the future   tified by profession and country of ori-
+availability of this data  is uncertain.  gin. The distributions are reported in
+Currently,  obtaining raw tweet and  the paper.
+user metadata from Twitter/X using
+                                           Is it possible to identify individuals
+the IDs in our dataset is prohibitively
+                                                     (i.e., one or more natural persons),
+expensive.
+                                       either directly or indirectly (i.e., in
+Does the dataset contain data that  combination with other data) from
+might be considered confidential  the dataset?   If so, please describe
+(e.g., data that is protected by legal  how.
+
+
+                                  5

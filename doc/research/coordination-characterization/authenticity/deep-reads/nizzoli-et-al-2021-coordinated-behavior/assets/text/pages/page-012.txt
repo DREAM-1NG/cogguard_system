@@ -1,0 +1,72 @@
+[Barrett 2019] Barrett, P. M. 2019. Disinformation and the 2020      [Ratkiewicz et al. 2011] Ratkiewicz, J.; Conover, M. D.; Meiss, M.;
+ Election: How the social media industry should prepare. White pa-       Gonc¸alves, B.; Flammini, A.; and Menczer, F. M. 2011. Detecting
+  per. Center for Business and Human Rights, New York University.       and tracking political abuse in social media. In AAAI ICWSM’11.
+[Blondel et al. 2008] Blondel, V. D.; Guillaume, J.-L.; Lambiotte,     [Schumacher 2019] Schumacher, S. 2019. Brexit divides the UK,
+ R.; and Lefebvre, E. 2008. Fast unfolding of communities in large       but partisanship and ideology are still key factors. Technical report,
+ networks. Journal of statistical mechanics: theory and experiment     Pew Research Center.
+ 2008(10):P10008.                                                     [Serrano, Bogun´a, and Vespignani 2009] Serrano, M. ´A.; Bogun´a,
+[Chavoshi, Hamooni, and Mueen 2016] Chavoshi,  N.;  Hamooni,      M.; and Vespignani, A. 2009. Extracting the multiscale backbone
+ H.; and Mueen, A. 2016. DeBot: Twitter bot detection via warped       of complex weighted networks. PNAS 106(16).
+ correlation. In IEEE ICDM’16.                                           [Starbird, Arif, and Wilson 2019] Starbird, K.; Arif, A.; and Wil-
+[Cresci et al. 2018] Cresci, S.; Di Pietro, R.; Petrocchi, M.; Spog-       son, T.  2019.  Disinformation as Collaborative Work: Surfacing
+ nardi, A.; and Tesconi, M. 2018. Social Fingerprinting: Detection       the Participatory Nature of Strategic Information Operations.  In
+                                           ACM CSCW’19. of Spambot Groups Through DNA-Inspired Behavioral Modeling.
+ IEEE TDSC 15(4).                                                       [Starbird 2019] Starbird, K. 2019. Disinformation’s spread: bots,
+                                                                                        trolls and all of us. Nature 571:449–449.[Cresci 2020] Cresci, S. 2020. A decade of social bot detection.
+ CACM 63(10).                                                 [Tumminello et al. 2011] Tumminello, M.; Micciche, S.; Lillo, F.;
+                                                                                     Piilo, J.; and Mantegna, R. N.  2011.  Statistically validated net-
+[Fazil and Abulaish 2020] Fazil, M., and Abulaish, M. 2020. A so-
+                                                              works in bipartite complex systems. PloS one 6(3):e17994.
+ cialbots analysis-driven graph-based approach for identifying co-
+ ordinated campaigns in Twitter.  Journal of Intelligent & Fuzzy      [Vargas, Emami, and Traynor 2020] Vargas,  L.; Emami,  P.; and
+ Systems 38:2961–2977.                                                Traynor, P.  2020. On the detection of disinformation campaign
+                                                                                 activity with network analysis. arXiv preprint arXiv:2005.13466.
+[Gallagher et al. 2020] Gallagher, R. J.; Frank, M. R.; Mitchell, L.;
+                                                                       [Varol et al. 2017] Varol, O.; Ferrara, E.; Davis, C. A.; Menczer, F.; Schwartz, A. J.; Reagan, A. J.; Danforth, C. M.; and Dodds, P. S.
+                                                               and Flammini, A. 2017. Online human-bot interactions: Detection, 2020.  Generalized word shift graphs: A method for visualizing
+ and explaining pairwise comparisons between texts. arXiv preprint        estimation, and characterization. In AAAI ICWSM’17.
+ arXiv:2008.02250.                                         [Wang et al. 2011] Wang, X.; Wei,  F.; Liu, X.; Zhou, M.; and
+                                                                 Zhang, M. 2011. Topic sentiment analysis in twitter: a graph-based[Garlaschelli and Loffredo 2008] Garlaschelli,  D., and Loffredo,
+                                                                     hashtag sentiment classiﬁcation approach.  In Proc. of CIKM’11, M. I. 2008. Maximum likelihood: Extracting unbiased informa-
+                                                                1031–1040. tion from complex networks. Physical Review E 78(1):015101.
+                                                              [Weedon, Nuland, and Stamos 2017] Weedon,   J.;  Nuland,  W.;
+[Giglietto et al. 2020a] Giglietto, F.; Righetti, N.; Rossi, L.; and
+                                                               and Stamos, A.   2017.    Information operations and Face-
+ Marino, G.  2020a.  Coordinated link sharing behavior as a sig-
+                                                                   book.     Technical  report,  Facebook  Secutity.  Available  at:
+ nal to surface sources of problematic information on Facebook. In
+                                                                    https://www.mm.dk/wp-content/uploads/2017/05/facebook-and-
+ International Conference on Social Media and Society, 85–91.
+                                                                        information-operations-v1.pdf.
+[Giglietto et al. 2020b] Giglietto, F.; Righetti, N.; Rossi, L.; and                                                              [Yang et al. 2019] Yang, K.-C.; Varol, O.; Davis, C. A.; Ferrara, E.;
+ Marino, G. 2020b.  It takes a village to manipulate the media: co-                                                                  Flammini, A.; and Menczer, F.  2019.  Arming the public with
+ ordinated link sharing behavior during 2018 and 2019 italian elec-                                                                                 artiﬁcial intelligence to counter social bots. Human Behavior and
+  tions. Information, Communication & Society 1–25.                                                              Emerging Technologies 1(1).
+[Jackson et al. 2019] Jackson, D.; Thorsen, E.; Lilleker, D.; and      [Zellers et al. 2019] Zellers, R.; Holtzman, A.; Rashkin, H.; Bisk,
+ Weidhase, N. 2019. UK Election Analysis 2019: Media, Voters        Y.; Farhadi, A.; Roesner, F.; and Choi, Y. 2019. Defending against
+ and the Campaign. Technical report, Bournemouth University.           neural fake news. In NeurIPS’19.
+[Keller et al. 2020] Keller, F. B.; Schoch, D.; Stier, S.; and Yang, J.
+ 2020. Political astroturﬁng on twitter: How to coordinate a disin-
+ formation campaign. Political Communication 37(2):256–280.
+
+[Mazza et al. 2019] Mazza, M.; Cresci, S.; Avvenuti, M.; Quattro-
+ ciocchi, W.; and Tesconi, M. 2019. RTbust: Exploiting temporal
+ patterns for botnet detection on Twitter. In ACM WebSci’19. ACM.
+
+[Nizzoli et al. 2020] Nizzoli, L.; Tardelli, S.; Avvenuti, M.; Cresci,
+  S.; Tesconi, M.; and Ferrara, E.  2020.  Charting the landscape
+ of online cryptocurrency manipulation. IEEE Access 8:113230–
+ 113245.
+
+[Pacheco et al. 2020] Pacheco, D.; Hui, P.-M.; Torres-Lugo, C.;
+ Truong, B.  T.; Flammini, A.; and Menczer, F.   2020.  Un-
+ covering coordinated networks on social media.  arXiv preprint
+ arXiv:2001.05658.
+
+[Pacheco, Flammini, and Menczer 2020] Pacheco,  D.; Flammini,
+ A.; and Menczer, F. 2020. Unveiling coordinated groups behind
+ white helmets disinformation. In WWW’20 Companion.
+
+[Pei et al. 2014] Pei, S.; Muchnik, L.; Andrade Jr, J. S.; Zheng, Z.;
+ and Makse, H. A. 2014. Searching for superspreaders of informa-
+ tion in real-world social media. Scientiﬁc reports 4:5547.

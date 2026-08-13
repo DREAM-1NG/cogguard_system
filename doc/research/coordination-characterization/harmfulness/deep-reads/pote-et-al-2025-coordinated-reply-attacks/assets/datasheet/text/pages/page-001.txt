@@ -1,0 +1,45 @@
+Datasheet for “Coordinated Reply Attacks in
+   Influence Operations: Characterization and
+                  Detection”
+
+                       Manita Pote
+
+
+
+
+
+           Motivation                Philanthropies, and DARPA (contract
+                                  HR001121C0169); and by  Lilly En-
+For what purpose was the dataset  dowment, Inc. through funding for the
+created? Was there a specific task in  Indiana University Pervasive Technol-
+mind? Was there a specific gap that  ogy Institute.
+needed to be filled? Please provide a
+description.                                Composition
+ The ‘Reply Coordination Detection’
+dataset was curated to study the coor-  What do the instances that com-
+dinated replies in the context of influ-  prise the dataset represent  (e.g.,
+ence operation on Twitter and to build  documents, photos, people, coun-
+a machine learning model to identify  tries)? Are there multiple types of in-
+tweets that get malicious coordinated  stances (e.g., movies, users, and rat-
+replies as well as the repliers involved  ings; people and interactions between
+in such tasks.                        them; nodes and edges)? Please pro-
+                                       vide a description.Who  created  this  dataset  (e.g.,
+                                    There are multiple data files relatedwhich team, research group) and
+                                        to each research question.  Therefore,on behalf of which entity (e.g., com-
+                               we present the details on each of thesepany, institution, organization)?
+                                     data files. The dataset was created by the first
+author of the paper on behalf of the
+                       RQ1 target annotation.csvObservatory in Social Media at Indi-
+ana University, Bloomington.
+                                    Each record in this file represents
+Who funded the creation of the  the manual annotation of the profes-
+dataset?    If there is an associated  sion and country of a user or target for
+grant, please provide the name of the  the Serbia and Egypt campaigns. This
+grantor and the grant name and num-   file has following columns:
+ber.
+                                       • userid
+ This work was supported in part by
+Knight Foundation, Craig Newmark     • profession label
+
+
+                                  1

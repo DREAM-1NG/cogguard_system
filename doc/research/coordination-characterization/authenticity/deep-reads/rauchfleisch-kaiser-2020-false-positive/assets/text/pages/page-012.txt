@@ -1,0 +1,67 @@
+PLOS ONE                                              The False positive problem of automatic bot detection in social science research
+
+
+
+
+Table 5. ROC-AUC as well as the PR-AUC for the English CAP.
+
+                Data set                  ROC-AUC         ROC-AUC sample          PR-AUC          PR-AUC sample
+
+                       All                             0.88 (0.86–0.89)              0.87 (0.87–0.88)              0.80 (0.79–0.82)             0.55 (0.54–0.55)
+
+    German politicians and German bots            0.69 (0.60–0.78)              0.69 (0.69–0.70)              0.08 (0.06–0.11)             0.22 (0.22–0.22)
+
+       German politicians and bots                 0.82 (0.79–0.84)              0.82 (0.81–0.82)              0.83 (0.80–0.86)             0.34 (0.33–0.34)
+
+        US politicians and bots                   0.93 (0.92–0.95)              0.94 (0.93–0.94)              0.96 (0.95–0.97)             0.75 (0.75–0.76)
+
+                 Varol et al.                         0.90 (0.88–0.91)              0.89 (0.89–0.90)              0.82 (0.80–0.85)             0.68 (0.67–0.69)
+
+ROC-AUC as well as the PR-AUC scores for the original data sets as well as the weighted resampled data sets (sample = 100,000) for the English CAP. The 95%
+confidence intervals based on 10,000 stratified bootstrap replicates are shown in brackets.
+
+https://doi.org/10.1371/journal.pone.0241045.t005
+
+
+                              German bots: D = -10.65, df = 2066.3, p < 0.001; Bonferroni correction α = 0.005; see also
+                                      Tables 2 and 3). The same holds true for the English scores. Furthermore, if Botometer is used
+                                     with German accounts, the real rate of false-positives is higher than researchers might assume
+                              when their only indicator for performance is the ROC-AUC. While the ROC-AUC approach
+                                                    is a good indicator for the original study and data set, researchers should be cautious to assume
+                                        the same level of discriminatory power can be reached with a new data set from a different
+                                     account population. Additionally, researchers should consider the absolute number of false-
+                                           positives in the classified sample and report the MCC, precision as well as the recall for the
+                                       threshold used in a study.
+                                                Finally, in RQ4 we are interested in the temporal volatility of Botometer scores. We identi-
+                                            fied substantive changes in the bot scores on an individual level. We first calculated the stan-
+                                   dard deviation of the universal score as well as the universal CAP for every single account, ie.
+                                          for each account in our analysis based on all individual measurements over time and then plot-
+                                        ted the density of all the individual account SDs for every individual data set to evaluate the
+                                                volatility of the scores over time. The SD will be high if the Botometer scores of an account
+                                    have a high variability over time. Our analysis indicates that especially the accounts in the bot
+                                          datasets show high standard deviations and thus are rather volatile over time (Fig 6). The only
+                                    noteworthy difference between the universal score and the universal CAP is that the CAP over-
+                                                     all seems to be slightly less volatile overall (see also S2 Fig).
+                                                Lastly, we also checked how many accounts in each data set are classified differently during
+                                        the three months. The volatility alone is only a problem if single accounts are depending on
+                                        the day below or above a chosen threshold used by researchers to classify bots. If we chose a
+                                       threshold of 0.76, 27.2% of the new bots, 22.2% of the German bots and 13.9% of the Varol
+                                       bots will have a daily measurement above and below the threshold at least once. For the
+                               humans the volatility is less severe with regard to the classification based on a high threshold.
+                                  7.4% of the German politicians, 3.1% of the Varol humans and only 0.6% of the US politicians
+                                    have a daily measurement above and below the threshold at least once.
+                         We also calculated the change of classification for a threshold of 0.25 for the universal CAP.
+                        We see that 37.5% of the new bots, 33.3% of the German bots, 10.7% of the German politicians
+                                         as well as 1% of the US politicians have a score below as well as above the threshold at least
+                                       once. Of the Varol bot data set 17.7% and of the Varol human data set 4.7% are a bot or a
+                             human at least once.
+                         We additionally calculated the percentage of accounts that have a score in the three months
+                                   below as well as above the threshold at least once for all thresholds between 0 and 1 in steps of
+                                        0.05 (see Fig 7; see also S3 Fig). Our analysis shows that overall bots are more prone to have a
+                                        score below and above the threshold for both the universal CAP and the universal score at
+
+
+
+
+
+PLOS ONE | https://doi.org/10.1371/journal.pone.0241045  October 22, 2020                                                        12 / 20

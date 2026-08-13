@@ -18,7 +18,7 @@ from research.coordination_detect.contracts import (
     DetectionTrainingCase,
     case_id_fingerprint,
 )
-from research.coordination_detect.learned import _fit_platt, _select_thresholds, _sigmoid
+from research.coordination_detect.learned import _fit_platt, _sigmoid
 
 from .baselines import LearnedDetectionImplementation as _LearnedDetectionImplementation
 from .public_detection_sources import resolve_public_detection_source_path
@@ -459,13 +459,7 @@ def _calibration(values: np.ndarray, labels: np.ndarray) -> tuple[float, float, 
         slope = 1.0
         intercept = 0.0
         mode = "identity_sigmoid_fallback"
-    probabilities = _sigmoid(slope * values + intercept)
-    try:
-        lower, upper = _select_thresholds(probabilities, labels.astype(np.int64))
-    except ValueError:
-        lower, upper = 0.45, 0.55
-        mode = f"{mode}_with_default_selective_thresholds"
-    return float(slope), float(intercept), float(lower), float(upper), mode
+    return float(slope), float(intercept), 0.5, 0.5, mode
 
 
 def _feature_matrix(examples: tuple[_GraphExample, ...]) -> np.ndarray:
@@ -554,7 +548,7 @@ def _artifact(
             "algorithm": calibration_mode,
             "regularization": 0.001,
         },
-        threshold_objective="maximize_covered_macro_f1_times_coverage",
+        threshold_objective="forced_binary_probability_at_0_5",
         train_fit_case_ids_fingerprint=case_id_fingerprint(example.case_id for example in train),
         validation_calibration_case_ids_fingerprint=case_id_fingerprint(example.case_id for example in validation),
         validation_threshold_case_ids_fingerprint=case_id_fingerprint(example.case_id for example in validation),
@@ -629,17 +623,8 @@ class GraphNeuralDetectionImplementation(_LearnedDetectionImplementation):
         test_logits = classifier.logits(test, test_features)
         probabilities = _sigmoid(slope * test_logits + intercept)
         predictions: list[DetectionPrediction] = []
-        low = artifact.validation_ood_min[0]
-        high = artifact.validation_ood_max[0]
         for example, logit, probability in zip(test, test_logits, probabilities, strict=True):
-            if logit < low or logit > high:
-                decision = "abstain"
-            elif probability <= lower:
-                decision = "benign_coordination"
-            elif probability >= upper:
-                decision = "harmful_coordination"
-            else:
-                decision = "abstain"
+            decision = "harmful_coordination" if probability >= 0.5 else "benign_coordination"
             predictions.append(
                 DetectionPrediction(
                     case_id=example.case_id,

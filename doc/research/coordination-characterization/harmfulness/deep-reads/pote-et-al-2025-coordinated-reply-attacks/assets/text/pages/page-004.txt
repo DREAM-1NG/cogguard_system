@@ -1,0 +1,61 @@
+Figure 3: Characterization of the Serbia campaign. Distribu-
+                                                                     tions of (A) countries and (B) professions of the targets. BiH
+                                               = Bosnia and Herzegovina, NA = Not Available (C) Word-
+                                                                           shift graph comparing the most frequent words in targeted
+                                                       and non-targeted tweets. The top bar represents the cumula-
+                                                                         tive contribution of each type of word shift.
+Figure 2: Complementary cumulative distribution functions
+(CCDF) of statistics describing target accounts and their
+tweets. (A) Numbers of followers and following (friends) of     we report the top 10 target professions/types and countries.
+targets. (B) Number of targeted tweets per target. (C) Num-    We also inspected the targeted tweets to understand the con-
+ber of coordinated replies received by each targeted tweet.       text of the attacks. In preprocessing, we used Google Trans-
+(D) Time delay between targeted tweets and their coordi-        late to translate the targeted tweets into English and removed
+nated replies.                                                   stop words and emojis.
+
+                                                    Case Study: Serbia.  The majority of accounts targeted by
+                                                                 the Serbia campaign, approximately 648, were from Serbiathan following (median 707). This suggests that targets can
+                                                                                   itself, with the remaining coming from the Balkan regionbe influential people. Reply attacks tend to be selective
+                                                                      (Fig. 3a). This suggests that the campaign focused its ef-(Fig. 2b): only a few tweets by each target were targeted
+                                                                         forts on influencing public opinion within Serbia. Fig. 3b(median one). The median number of coordinated replies re-
+                                                                   reveals that the coordinated reply attacks primarily targetedceived by targeted tweets was eight (Fig. 2c). Coordinated
+                                                                      journalists (102), state officials (99), news media organi-replies tend to occur quickly after a targeted tweet, with a
+                                                                  zations (76), and politicians (43). A wordshift graph (Gal-median delay of 3 hours (Fig. 2d). However, these distri-
+                                                                lagher et al. 2021) highlighting the most prominent termsbutions are broad. For example, 54 of the targeted tweets
+                                                                     in the targeted tweets (Fig. 3c) shows that the campaignreceived more than 1,000 replies.
+                                                            focused on President Vucic, the Serbian Progressive Party
+  The above statistics are merely descriptive, as we lack a
+                                                          (SNS), the 2017 election, the “1 out of 5 Millions” protest,
+reference model to interpret how targeted users differ from
+                                                       and the Serbia-Kosovo diplomatic crisis. These findings are
+the general population of Twitter users. To better understand
+                                                                   consistent with analysis by Bush (2020), who reported that
+what kinds of accounts were targeted, one of the authors
+                                                                 the primary objective of IO actors involved in the Serbia
+annotated some target profiles with the corresponding pro-
+                                                       campaign was to rally support for President Alexander Vu-
+fessions or organization types and country of origin. We
+                                                                     cic and his party, the SNS. This was achieved by promoting
+used manual annotation by checking each Twitter profile,
+                                                                 the popularity and visibility of Vucic and the SNS through
+description, the profession metadata indicated by the ‘brief-
+                                                               retweeting their content and replying to other accounts with
+case icon,’ and by searching Google for the accounts with
+                                                                supportive messages. The IO accounts also targeted oppo-
+more than a million followers. We grouped profession and
+                                                              nent political parties with derisive tweets and attempted to
+organization types into broad categories, such as state of-
+                                                                      discredit them by flooding their posts with negative com-
+ficials, news media, and politicians. Accounts with insuffi-
+                                                             ments. This tactic aimed to create a public perception that
+cient information were labeled ‘Not Available.’
+                                                                 the opposition was unpopular.
+  As the annotation process was time-consuming, we fo-
+cused on two cases, namely two of the five campaigns with     Case Study: Egypt.   Fig. 4a shows that the majority of
+the most targets: Serbia (the top campaign with 1,175 tar-      accounts targeted by the Egypt campaign were from mul-
+gets) and Egypt (the fifth campaign with 372 targets). Ap-        tiple Middle East and North Africa countries, primarily
+proximately 26% of the targeted accounts in the Serbia cam-      Saudi Arabia (74 targets), Egypt (39), UAE (36), Qatar
+paign and 20% in the Egypt campaign did not have sufficient       (30), and Yemen (26). This suggests a potential interstate
+information available. In the next subsections, for each case,       attack. News media organization (67), journalists (52), and
+
+
+                                                   1589

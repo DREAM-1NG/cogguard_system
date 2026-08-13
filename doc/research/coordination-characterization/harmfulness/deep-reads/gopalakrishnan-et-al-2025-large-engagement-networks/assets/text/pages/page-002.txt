@@ -1,0 +1,61 @@
+is released under a CC-BY license, enabling free sharing and          Dataset       #      Avg.     Avg.     #
+adaptation for research or development purpose.                                 graphs # nodes  # edges   classes
+  In the rest, we first provide a background and summarize       MUTAG        118     17.9      20       2
+related works on graph classification methods, graph classi-         PTC-FR        349     14.11     14.48     2
+fication datasets, and trend manipulation. Then we provide a        PTC-MR        344     14.29     14.69     2
+detailed description of how the data is collected from Twit-         PTC-FM        349     14.11     14.48     2
+ter and converted into graphs for classification tasks. Next,        PTC-MM       336     13.97     14.32     2                                                                                                                                                                                                                                                                                                              Biological NCI1           4110    29.8      64.69     2we conduct graph classification experiments on LEN us-
+ing established GNNs, performing both campaign vs. non-        ENZYMES      600     32.63     62.14     6
+campaign classification and campaign type detection. Fi-         PROTEINS      1113    39.06     72.82     2
+nally, we discuss the limitations and ethic of our dataset.           obgn-molhiv     41,127   25.5       27.5      2
+LEN offers a challenging testbed for the graph classifica-           obgn-molpcba    437,929 26.0       28.1      2
+tion problem. We believe that our dataset will help advance           obgn-ppa        158,100 243.4      2,266.1   37
+the frontiers of graph classification techniques on large net-         IMDB-B        1000    19.77     96.53     2
+works and also provides an interesting use case in terms of        IMDB-M       1500    13        65.94     3
+distinguishing coordinated campaigns and organic trends.                           Social REDDIT-BREDDIT-M-5K  20004999    429.63508.52    497.75594.87    25
+               Related Work                         REDDIT-M-12K 11929   391.41    456.89    11
+                                                COLLAB       5000    74.49     2457.78   3
+In this section, we first provide a brief overview of graph
+                                                              MalNet        1.2M    15,378    35,167    696classification methods, and then summarize the datasets tai-                  Misc.
+lored for this task. We also discuss recent studies on trend           Small          100     2,070.63   2,696.23  13
+manipulation.                                                                                                Ours Original        314     11,769.23 23,593.97 15
+
+Graph Classification Methods                             Table 1: Comparison of graph classification datasets to our
+                                                                   large engagement networks.
+Graph classification is a fundamental task in machine learn-
+ing with applications in bioinformatics, chemistry, social
+network analysis, and malware detection (Lee, Rossi, and
+                                                             neighbors each node may have (Kipf and Welling 2016),Kong 2018; You et al. 2020; Wu et al. 2023). At high level,
+                                         GAT uses attention-weight to assign varying weights toan embedding is created for each graph in a given dataset
+                                                          each neighbour (Veliˇckovi´c et al. 2018), and GIN uses anand then those embeddings are used for classification. There
+                                       MLP to perform aggregation using a trainable parameterare broadly two approaches for graph classification, namely
+                                                                           (ϵ) to determine the amount of importance given to the egograph kernels and graph neural networks (GNNs). Graph
+                                                       node in comparison to its neighbours (Xu et al. 2018). Tokernels measure the similarities between each pair of graphs,
+                                                                obtain a graph-level embedding, the node embeddings areusing similarity functions that compare structural proper-
+                                                               pooled. The simplest way to do this is via a simple read-ties. A kernel matrix is constructed using the pairwise sim-
+                                                               out function like Max-Pool or Average-Pool. However, dueilarities between  all graphs. This matrix  is then fed to
+                                                                     to the structural properties of graphs, a readout functiona kernel-based machine learning model (e.g., SVMs) for
+                                                          does not preserve structural knowledge about the graph.graph classification. Different approaches exist, primarily
+                                                 More effective pooling methods include SORTPOOL, whichdistinguished by the kernel function employed. The meth-
+                                                                       sorts the nodes using its WL-color obtained from the fi-ods include random-walk based approaches (Hammack et al.
+                                                                 nal layer of applying a GNN (Zhang et al. 2018), and Hi-2011; Kang, Tong, and Sun 2012; Sugiyama and Borg-
+                                                                    erarchical pooling methods which focus on coarsening thewardt 2015), shortest-path based approaches (Borgwardt
+                                                           graph after message-passing to capture structural informa-and Kriegel 2005), graph-matching (Duchenne, Joulin, and
+                                                                     tion about the graph (Ying et al. 2018; Bianchi et al. 2020;Ponce 2011; Frohlich, Wegner, and Zell 2005), neighbour-
+                                                               Bianchi, Grattarola, and Alippi 2020; Bacciu, Conte, andhood based approaches (Shervashidze et  al. 2011; Mor-
+                                                          Landolfi 2023; Lee, Lee, and Kang 2019). GNNs tend toris, Kersting, and Mutzel 2017), and graphlet-based meth-
+                                                                            falter while capturing global information and long-range de-ods (Shervashidze et al. 2009).
+                                                              pendencies, often leading to issues like over-smoothing and A major drawback of kernel-based approaches is the in-
+                                                              over-squashing (Alon and Yahav 2020; Topping et al. 2021).ability to learn feature extraction and the downstream clas-
+                                                                In this paper we use average pooling because our primarysification task simultaneously. GNNs overcome this issue
+                                                          motive is to understand how graph ML models performsthanks to neural network architectures, which automatically
+                                                            with respect to our dataset.create features by using message-passing (Kipf and Welling
+2016). Here, each node has an embedding and sends it as a
+                                           Graph Classification Datasetsmessage to all the neighboring nodes. Each node then ag-
+gregates the messages from neighbors and updates its em-      Given  the  importance  of  graph  classification,  several
+bedding. Over the years, there have been many approaches       datasets have been curated within various application do-
+to aggregating neighborhood embeddings. GCN uses dual-      mains. Table 1 shows a summary of established graph clas-
+degree normalization to account for the varying number of       sification datasets.
+
+
+                                                   689

@@ -1,0 +1,66 @@
+analyze the communities’ characteristics at different levels
+                                                                of coordination, as opposed to cutting at a predetermined,
+                                                      ﬁxed threshold, which would exclude almost the entire net-
+                                                    work from the subsequent analysis. In detail, we carried out
+                                                                 the analysis by applying community detection and the well-
+                                                 known Louvain algorithm (Blondel et al. 2008). This step in
+                                                            our analysis corresponds to line 1 of Algorithm 1. Detected
+                                                         communities (resolution = 1.5, minimum size at t0 = 20)
+                                                                 are outlined in Figure 4 and are brieﬂy described in the
+                                                                 following. Users exhibiting higher coordination with other
+                                                                 users are assigned darker shades of color. For each commu-
+                                                                             nity, we also computed its TF-IDF weighted hashtag cloud,
+                                                                as shown in Figure 5, to highlight the debated topics.
+Figure 3: Edge weight distribution of the unﬁltered (blue-                                                                      1.   CON: The community of Conservative users that was
+colored) and ﬁltered (red-colored) user similarity networks.                                                                       clearly visible in Figure 2 was also detected by our com-
+The network ﬁltered using a multiscale ﬁltering method al-                                                           munity detection algorithm. It includes all major Con-
+lows us to retain statistically-meaningful network structures                                                                      servative users (e.g., @BorisJohnson and @Conservatives), and
+independently on their scale (i.e., edge weight), as opposed                                                                                                   it is characterized by a majority of hashtags supporting
+to cutting at a predetermined, ﬁxed threshold (dotted-black                                                                    the Conservative Party (voteconservative), its leader (backboris)
+line), which would exclude almost the entire network from                                                         and Brexit (getbrexitdone).
+the subsequent analysis.
+                                                                      2.   LAB: Similarly, also the dense group of Labour users
+                                                                          that we highlighted in Figure 2 has been identiﬁed as a
+                                                                           distinct community of Labours. These users are charac-
+(blue-colored), and Neutral users (yellow-colored). We per-
+                                                                       terized by hashtags supporting the party (votelabour), their
+formed a ﬁrst sanity check by comparing the structural prop-
+                                                                    leader (jc4pm), and traditional Labour ﬂags like healthcare
+erties of the network with political ones. In particular, col-
+                                                                              (saveournhs) and climate change (climatedebate). Notably, the
+ors in the network appear to be clearly separated. In other
+                                                             absence of Brexit-related keywords seems to conﬁrm the
+words, communities derived from network structure appear
+                                                                   alleged ambiguity of Jeremy Corbyn’s campaign on this
+to be extremely politically homogeneous, and we do not
+                                                                         topic7.
+have any cluster that contains users with markedly differ-
+ent colors. Moving forward, the Conservative cluster ap-       3.   TVT: The largest group of neutral users in Figure 2,
+pears to be sharply separated from the rest of the network,          tightly related to LAB users, was assigned to this com-
+while the Labour and Neutral clusters are more intertwined         munity. These users debated topics related to  liberal
+with one another. This interesting property of our network        democrats  (votelibdem), anti-Tory  (liarjohnson), anti-Brexit
+closely resembles the political landscape in the UK ahead            (stopbrexit) and to the campaigns promoting tactical voting
+of the 2019 GE. Indeed, one of the debate’s main topics was             (votetactically, tacticalvote).
+Brexit, which led to a strong polarization between Conserva-                                                                      4.   SNP: The remaining share of neutral users was assigned
+tives and all other parties. (Schumacher 2019). In addition,                                                                       to this community, related to the Scottish National Party
+the ﬁrst-past-the-post UK voting system also motivated anti-                                                            (SNP). The main hashtags used by members of this com-
+Tory electors to converge on the candidate of the party hav-                                                           munity support the party (votesnp) and ask for a new ref-
+ing the highest chances to defeat the Conservative’s one in                                                       erendum for the independence from the UK (indyref2020).
+each constituency – a strategy dubbed tactical voting6. Our                                                     The traditional hostility of SNP against Brexit and To-
+rich and informative network embeds and conveys these nu-                                                                             ries (Jackson et al. 2019) also explains the proximity of
+ances.                                                                             this cluster to the LAB and TVT ones.
+  Coordinated communities. Building on these promis-
+                                                                      5.   B60: This small cluster identiﬁes activists involveding preliminary results, we are now interested in a ﬁne-
+                                                                       in the so-called Backto60 initiative (backto60, 50swomen),grained analysis of the user similarity network communities.
+                                                         which represents 4 million women born in the 1950s thatAs mentioned before, previous works focused on threshold-
+                                                                    are negatively affected by state pension age equalisation.based approaches and enforced restrictive edge weight ﬁlters
+                                                                Their instances have been addressed in the Labour mani-to retain only edges with very large weights. Instead, in our
+                                                                            festo, while Conservatives denied their support to the ini-study, the ﬁltered user similarity network features diverse
+                                                                               tiative despite Boris Johnson’s promises8. The politicaldegrees of similarity and coordination, as testiﬁed by the dis-
+tribution of edge weights in Figure 3. Hence, we are able to           7T. Harris, “Labour’s policy of constructive ambiguity over
+                                                                       Brexit  is running out of road.” The Telegraph, 3 September
+    6P. Kellner, “Tactical voting guide 2019: the 50 seats where       2019. Available at https://www.telegraph.co.uk/politics/2019/09/
+it is vital to keep the Tories out.” The Guardian, 8 December       03/labours-policy-constructive-ambiguity-brexit-running-road/
+2019.  Available  at  https://www.theguardian.com/politics/2019/           8S. Smith, “Backto60 granted leave to appeal.” Pensions Age
+dec/08/tactical-voting-guide-2019-keep-tories-out-remain-voter-       Magazine, 21 January 2020. Available at https://pensionsage.com/
+general-election                                                      pa/Backto60-granted-leave-to-appeal.php

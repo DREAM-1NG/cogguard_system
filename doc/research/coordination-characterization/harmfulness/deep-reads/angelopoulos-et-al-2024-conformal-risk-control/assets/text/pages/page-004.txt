@@ -1,0 +1,69 @@
+Published as a conference paper at ICLR 2024
+
+
+
+
+
+2.2 A TIGHT RISK LOWER BOUND
+
+Next we show that the conformal risk control procedure is tight up to a factor 2B/(n+1) that cannot
+be improved in general. The proof will rely on a form of continuity that generalizes the assumption
+of continuous non-conformity scores used for the standard conformal proof. Define the jump func-
+tion, which quantifies the size of the discontinuity in a right-continuous input function l at point λ, a
+J(l, λ) = limϵ→0+ l(λ −ϵ) −l(λ). If the probability that Li has a discontinuity at any pre-specified
+λ is P(J(Li, λ) > 0) = 0, then the conformal risk control procedure is not too conservative.
+Theorem 2. In the setting of Theorem 1, further assume that the Li are i.i.d., Li ≥0, and for any
+λ, P (J(Li, λ) > 0) = 0. Then
+
+                     Eh                            Ln+1  ˆλ i ≥α − 2B                                      n + 1.
+
+This bound is tight for general monotone loss functions, as we show next.
+Proposition 1. In the setting of Theorem 2, for any ϵ > 0, there exists a loss function and α ∈(0, 1)
+such that
+                     E h                            Ln+1  ˆλ i ≤α −2B −ϵ .
+                                      n + 1
+
+Since we can take ϵ arbitrarily close to zero, the factor 2B/(n + 1) in Theorem 2 is required. Con-
+formal prediction—both the algorithm and the guarantee—is exactly equivalent to conformal risk
+control when the loss function is an indicator, including the tighter lower bound (see Appendix A).
+
+2.3  CONTROLLING GENERAL LOSS FUNCTIONS
+
+We next show that the conformal risk control algorithm does not control the risk if the Li are not
+assumed to be monotone. In particular, (3) does not hold. We show this by example.
+Proposition 2. For any ϵ, there exists a non-monotone loss function such that
+
+                       E h                              Ln+1  ˆλ i ≥B −ϵ.
+
+
+Notice that for any desired level α, the expectation in (3) can be arbitrarily close to B.  Since
+the function values here are in [0, B], this means that even for bounded random variables, risk
+control can be violated by an arbitrary amount—unless further assumptions are placed on the Li.
+However, the algorithms developed may still be appropriate for near-monotone loss functions.
+Simply ‘monotonizing’ all loss functions Li and running conformal risk control will guarantee (3),
+but this strategy will only be powerful (i.e., not conservative) if the loss is near-monotone. For
+concreteness, we describe this procedure below as a corollary of Theorem 1.
+Corollary 1. Allow Li(λ) to be any (possibly non-monotone) function of λ satisfying 5. Take
+
+                               n
+                            1                      n        B
+  ˜Li(λ) = sup Li(λ′),  ˜Rn(λ) = X ˜Li(λ) and ˜λ = inf  λ :      ˜Rn(λ) +    ≤α   .
+          λ′≥λ             n                    n + 1       n + 1                                   i=1
+
+Then,
+                        E h                                Ln+1  ˜λ i ≤α.
+
+If the loss function is already monotone, then ˜λ reduces to ˆλ. We propose a further algorithm for
+picking λ in Appendix C that provides an asymptotic risk-control guarantee for non-monotone
+loss functions. However, this algorithm again is only powerful when the risk E[Ln+1(λ)] is near-
+monotone and reduces to the standard conformal risk control algorithm when the loss is monotone.
+
+3  EXAMPLES
+
+To demonstrate the flexibility and empirical effectiveness of the proposed algorithm, we apply it to
+four tasks across computer vision and natural language processing. All four loss functions are non-
+binary, monotone losses bounded by 1. They are commonly used within their respective application
+domains. Our results validate that the procedure bounds the risk as desired and gives useful outputs
+
+
+                                       4

@@ -1,0 +1,68 @@
+Published as a conference paper at ICLR 2024
+
+
+
+where W(j) denotes the j-th order statistic. Notice that for all λ > 2,1
+                                 k               k
+               R(λ) = E [Li(λ)] =      Wi > λ =           · 2(1 −λ),                                k + 1P           k + 1
+so R  ˆλ ≤ k+1k   · 2(1 −W(n−k+1)). Let U(k) be the k-th smallest order statistic of n i.i.d. uniform
+random variables on (0, 1). Then, by symmetry and rescaling, 2(1 −W(n−k+1)) d= U(k),
+
+                                       k
+                     R  ˆλ ⪯                                     k + 1U(k),
+where ⪯denotes the stochastic dominance. It is well-known that U(k) ∼Beta(k, n + 1 −k) and
+hence
+                                       k     k
+                         E[R  ˆλ  ] ≤           ·                                     k + 1  n + 1.
+Thus,
+              h     i   + 1 −ϵ        k2          1    (2 −ϵ′)k + 1 −ϵ′       α −E R  ˆλ ≥k     −         =           ·                            .
+                    n + 1     (n + 1)(k + 1)   n + 1       k + 1
+For any given ϵ > 0, let ϵ′ = ϵ/2 and k = ⌈2ϵ −1⌉. Then
+                                (2 −ϵ′)k + 1 −ϵ′
+                            ≥2 −ϵ,
+                                k + 1
+implying that
+                                     h     i   −ϵ                       α −E R  ˆλ ≥2                                     n + 1.
+
+
+Proof of Proposition 2. Without loss of generality, we assume B = 1. Assume ˆλ takes values in
+[0, 1] and α ∈(1/(n + 1), 1). Let p ∈(0, 1), N be any positive integer, and Li(λ) be i.i.d. right-
+continuous piecewise constant (random) functions with
+
+                                                                                                          i.i.d.
+         Li(N/N) = 0,  (Li(0/N), Li(1/N), . . . , Li((N −1)/N)) ∼Ber(p).
+By definition, ˆλ is independent of Ln+1. Thus, for any j = 0, 1, . . . , N −1,
+           nLn+1(ˆλ) | ˆλ = j/N o ∼Ber(p),  nLn+1(ˆλ) | ˆλ = 1o ∼δ0.
+
+Then,
+                     Eh                            Ln+1  ˆλ i = p · P(ˆλ ̸= 1)
+
+Note that
+                                           n
+                                      1                     1
+                           ˆλ ̸= 1 ⇐⇒    min   X Li(j/N) ≤α −                                 j∈{0,...,N−1} n + 1               n + 1.
+                                                i=1
+Since α > 1/(n + 1),
+
+                                                       n             !                                                  1                     1
+   P(ˆλ ̸= 1) = 1 −P(ˆλ = 1) = 1 −P  for all j, we have  X Li(j/N) > α −
+                                        n + 1               n + 1
+                                                              i=1
+                     n            N
+                                   n
+                = 1 −  X        pk(1 −p)(n−k)
+                           k        
+                                    k=⌈(n+1)α⌉
+
+                                                 N
+                = 1 − 1 −BinoCDF n, p, ⌈(n + 1)α⌉−1
+
+
+As a result,
+
+                                         !
+         Eh             Ln+1  ˆλ i = p  1 − 1 −BinoCDF n, p, ⌈(n + 1)α⌉−1 N    .
+
+
+
+                                       18

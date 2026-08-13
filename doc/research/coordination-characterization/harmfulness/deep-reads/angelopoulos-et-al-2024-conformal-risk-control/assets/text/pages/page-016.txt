@@ -1,0 +1,67 @@
+Published as a conference paper at ICLR 2024
+
+
+
+
+
+                    14                                    method
+                                                             standard
+                    12                                      covariate shift (estimated)
+
+                    10
+                                Count 8
+                     6
+
+                     4
+
+                     2
+
+                     0
+                             0.05   0.10   0.15   0.20   0.25   0.30   0.35   0.40
+                                                                    risk
+
+Figure 6: Risk control results on a synthetic covariate shift dataset. Running standard conformal
+risk control does not control the risk, while running the covariate shift algorithm from Section 4
+does—even though the likelihood ratios are estimated by a logistic regression model. We also com-
+puted the risk with the true likelihood ratios, and it overlaps entirely with the histogram for estimated
+likelihood ratios, so we do not show it here.
+
+
+E  PROOFS
+
+The proof of Theorem 2 uses the following lemma on the approximate continuity of the empirical
+risk.
+Lemma 1 (Jump Lemma). In the setting of Theorem 2, any jumps in the empirical risk are bounded,
+i.e.,
+
+                               sup J    λ                                                                        a.s.≤B .                                              bRn,     n                                  λ
+
+Proof of Jump Lemma, Lemma 1. By boundedness, the maximum contribution of any single point
+to the jump is Bn , so
+
+               B
+       ∃λ : J bRn, λ > n =⇒∃λ : J(Li, λ) > 0 and J(Lj, λ) > 0 for some i ̸= j.
+
+Call Di = {λ : J(Li, λ) > 0} the sets of discontinuities in Li. Since Li is bounded monotone, Di
+has countably many points. The union bound then implies that
+
+                         B
+                P  ∃λ : J(bRn, λ) > n  ≤ X P(Di ∩Dj ̸= ∅)
+                                                                       i̸=j
+
+Rewriting each term of the right-hand side using tower property and law of total probability gives
+        P (Di ∩Dj ̸= ∅) = E P Di ∩Dj ̸= ∅ Dj
+                                                
+              ≤E X P λ ∈Di  Dj = E X P (λ ∈Di),
+                              λ∈Dj                      λ∈Dj
+
+Where the second inequality is because the union of the events λ ∈Dj is the entire sample space,
+but they are not disjoint, and the third equality is due to the independence between Di and Dj.
+Rewriting in terms of the jump function and applying the assumption P (J(Li, λ) > 0) = 0,
+
+                                        
+            E X P (λ ∈Di)= E X P (J(Li, λ) > 0)= 0.
+                    λ∈Dj                 λ∈Dj
+
+
+                                       16

@@ -102,4 +102,6 @@ def test_public_proxy_output_dir_must_stay_on_g_drive(tmp_path):
     with pytest.raises(ValueError, match="absolute descendant"):
         module.validate_public_proxy_output_dir("relative/path")
     with pytest.raises(ValueError, match="G:"):
+        module.validate_public_proxy_output_dir(Path("C:/tmp/outside"))
+    with pytest.raises(ValueError, match="canonical reproduction output root"):
         module.validate_public_proxy_output_dir(tmp_path / "outside")

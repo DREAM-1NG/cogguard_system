@@ -21,7 +21,7 @@ router = APIRouter()
 
 @router.get("/operation-health")
 async def get_operation_health(
-    _current_user: User = Depends(require_roles("admin")),
+    _current_user: User = Depends(require_roles("admin", "analyst")),
     db: AsyncSession = Depends(get_db),
 ):
     return success(data=await system_operations_service.operation_health(db))
@@ -29,7 +29,7 @@ async def get_operation_health(
 
 @router.get("/services")
 async def list_services(
-    _current_user: User = Depends(require_roles("admin")),
+    _current_user: User = Depends(require_roles("admin", "analyst")),
     db: AsyncSession = Depends(get_db),
 ):
     return success(data=await system_operations_service.list_service_configs(db))

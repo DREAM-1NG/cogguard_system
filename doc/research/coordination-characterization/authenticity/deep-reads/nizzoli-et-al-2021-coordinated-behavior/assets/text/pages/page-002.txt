@@ -1,0 +1,63 @@
+concepts and developing computational methods for their        • We empirically demonstrate that coordination and au-
+analysis represent open challenges. In particular, so far, no        tomation are orthogonal concepts. Thus, our framework
+successful attempt has been reported to distinguish between        can complement long-studied techniques for detecting au-
+authentic and inauthentic coordination automatically (Var-         tomation, manipulation, and inauthenticity.
+gas, Emami, and Traynor 2020). Instead, some researchers                                                                             • We perform a comparative evaluation of our framework
+have recently focused on the more straightforward task of                                                                    against existing binary approaches. These results demon-
+detecting and studying coordinated behaviors, disregarding                                                                             strate the advantages of our nuanced, non-binary frame-
+intent and authenticity. To this end, the few existing tech-                                                      work in terms of its ability to quantify the extent of coor-
+niques make simple assumptions, such as using ﬁxed thresh-                                                                   dination and to uncover interesting network properties of
+olds to obtain a binary distinction between coordinated and                                                                    the coordinated communities.
+uncoordinated behaviors (Pacheco et al. 2020). However, co-
+ordination is a complex, non-binary concept, similarly to au-        • We create and publicly share a large dataset for the 2019
+tomation (Cresci 2020) and inauthenticity (Starbird 2019).     UK GE, comprising 11M tweets shared by 1.2M users.
+In the present work, we focus on studying coordinated be-
+havior by combining the advantages and indications of pre-                    Related Work
+vious preliminary results and moving forward to overcome     Due to the many existing challenges, to date, only a few
+the drawbacks of a binary approach to coordination.            works have attempted  to develop computational means
+                                                                     to detect and characterize coordinated online behaviors.
+Contributions                                  Among them, the most similar approach to our present work
+                                                                                is (Pacheco et al. 2020; Pacheco, Flammini, and MenczerIn this work, we go beyond existing approaches for study-
+                                                              2020). Such a work proposed to extract behavioral traces ofing coordinated behaviors by proposing a new network-
+                                                                online activity and use them to build a bipartite network. Tobased framework that relaxes previous assumptions, extend-
+                                                     do so, they projected the network onto the accounts, obtain-ing and generalizing existing works. Within our framework,
+                                                               ing a user similarity network. Then, they ﬁltered low-weightwe deﬁne coordination as a latent, suspicious, or remark-
+                                                               edges, and disconnected nodes, by applying a restrictive andable similarity between any number of users. We do not
+                                                                      arbitrary similarity threshold. In this way, they deemed theprovide a binary classiﬁcation of coordinated vs. uncoordi-
+                                                           remaining nodes as coordinated and computed the connectednated users, but instead, we estimate the extent of coordi-
+                                                       components of the ﬁltered network, analyzing each compo-nation. In summary, with our framework we build a user-
+                                                              nent as a distinct group of coordinated users. Such a studysimilarity network. Then, we obtain the multi-scale back-
+                                                                              falls under what we call threshold-based approaches, worksbone of the network by retaining only statistically-relevant
+                                                                 characterized by a crisp distinction between coordinated andlinks and nodes. Next, we iteratively perform community
+                                                             uncoordinated users. Similarly, in our work, we build a userdetection on subsets of increasingly coordinated users. Our
+                                                                      similarity network. However, the most impactful novelty isapproach does not require ﬁxed thresholds for deﬁning co-
+                                                                       that we do not apply a similarity-based ﬁlter. Instead, weordination. Rather, it allows studying the whole extent of
+                                                                         iteratively perform community detection at different lev-coordination found in the data, from weakly-coordinated to
+                                                                        els of coordination. In this way, we are able to study thestrongly-coordinated users. In particular, the main novelty
+                                                       whole extent of coordination among the accounts, uncov-of our framework is to provide a measure of coordination
+                                                                 ering different patterns and dynamics of coordination thaton a continuous range, instead of separating strongly coor-
+                                                      would not be visible with previous approaches. Moreover,dinated accounts and characterizing them apart. Hence, we
+                                                     by measuring coordination on a continuous range, we areconclude our analysis by crosschecking our new coordina-
+                                                                able to crosscheck this new coordination index with relevanttion index with a multifaceted set of network measures, thus
+                                                         network properties, obtaining new ﬁndings that would notcharacterizing the emerging coordinated communities with
+                                                          have been possible by characterizing strongly coordinatedunprecedented ﬁndings. Finally, we test our framework on
+                                                             accounts apart.Twitter data in the context of the 2019 UK General Election
+                                                             Other works  experimented  with  threshold-based  ap-(GE) and compare it to previous threshold-based techniques.
+                                                               proaches. The work discussed in (Giglietto et al. 2020b;
+  Our main contributions are as follows:
+                                                                   Giglietto et al. 2020a) focused on a speciﬁc instance of
+• We move beyond existing approaches for detecting co-      CIB. The authors proposed a 2-step process to detect co-
+  ordination by proposing a more nuanced, non-binary,      ordinated link-sharing behavior and tested it on a Facebook
+  network-based framework.                                       dataset. In the ﬁrst step, they detected groups of entities that
+                                                                                all shared a given link, almost simultaneously. In the sec-
+• We uncover coordinated communities that operated dur-
+                                                     ond step, the coordinated networks were identiﬁed by con-
+  ing the 2019 UK GE, and we discuss them in light of their
+                                                               necting only those entities that repeatedly shared the same
+   role in the electoral debate.
+                                                                         links. Then, they manually assessed inauthenticity by ana-
+• We ﬁnd and  discuss  different  coordination  patterns       lyzing shared domains and stories. The proposed algorithm
+  emerging from the behavior of diverse communities. This       required two parameters: one for deﬁning near-simultaneous
+   characterization is made possible by our non-binary ap-       link sharing, and the other for deﬁning repetitive link shar-
+  proach to coordination, and it demonstrates the power and       ing. Such parameters represented ﬁxed similarity thresholds
+  usefulness of our framework.                              used for ﬁltering, bringing along all previous implications

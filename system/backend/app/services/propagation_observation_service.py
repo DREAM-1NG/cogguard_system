@@ -69,7 +69,13 @@ def attach_observed_scope(
     return result
 
 
-def build_observed_propagation_graph(posts: list[dict], comments: list[dict], *, node_limit: int) -> dict:
+def build_observed_propagation_graph(
+    posts: list[dict],
+    comments: list[dict],
+    *,
+    node_limit: int,
+    layer_budget: dict[str, int] | None = None,
+) -> dict:
     """Build the observed propagation graph while preserving legacy signatures."""
     parameters: Mapping[str, Parameter]
     try:
@@ -80,7 +86,12 @@ def build_observed_propagation_graph(posts: list[dict], comments: list[dict], *,
         param.kind == Parameter.VAR_KEYWORD for param in parameters.values()
     )
     if supports_limit:
-        return build_propagation_graph(posts, comments, diffusion_node_limit=node_limit)
+        kwargs = {"diffusion_node_limit": node_limit}
+        if layer_budget and ("diffusion_layer_budget" in parameters or any(
+            param.kind == Parameter.VAR_KEYWORD for param in parameters.values()
+        )):
+            kwargs["diffusion_layer_budget"] = layer_budget
+        return build_propagation_graph(posts, comments, **kwargs)
     return build_propagation_graph(posts, comments)
 
 
@@ -89,6 +100,7 @@ async def analyze_observed_propagation(
     event_id: str | None = None,
     *,
     node_limit: int = 300,
+    layer_budget: dict[str, int] | None = None,
 ) -> dict:
     """Analyze only observed propagation facts for an optional event/platform scope."""
     mongo_db = get_mongo_db()
@@ -105,6 +117,7 @@ async def analyze_observed_propagation(
             platform or "*",
             source_fingerprint,
             node_limit,
+            layer_budget or {},
         )
         return await get_or_build_query_result(
             cache_key,
@@ -113,6 +126,7 @@ async def analyze_observed_propagation(
                 event_id=event_id,
                 platform=platform,
                 node_limit=node_limit,
+                layer_budget=layer_budget,
             ),
         )
 
@@ -121,6 +135,7 @@ async def analyze_observed_propagation(
         event_id=event_id,
         platform=platform,
         node_limit=node_limit,
+        layer_budget=layer_budget,
     )
 
 
@@ -130,6 +145,7 @@ async def _build_observed_propagation_result(
     event_id: str | None,
     platform: str | None,
     node_limit: int,
+    layer_budget: dict[str, int] | None,
 ) -> dict:
     """Build a projection after the versioned cache has been checked."""
 
@@ -138,7 +154,12 @@ async def _build_observed_propagation_result(
         return empty_observed_result(event_id, platform)
 
     comments = await load_event_comments(mongo_db, event_id=event_id, platform=platform)
-    result = build_observed_propagation_graph(posts, comments, node_limit=node_limit)
+    result = build_observed_propagation_graph(
+        posts,
+        comments,
+        node_limit=node_limit,
+        layer_budget=layer_budget,
+    )
 
     return attach_observed_scope(
         result,

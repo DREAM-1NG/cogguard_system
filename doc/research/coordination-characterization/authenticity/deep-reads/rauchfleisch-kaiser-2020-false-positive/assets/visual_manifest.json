@@ -1063,6 +1063,226 @@
         "notes": "",
         "limitations": ""
       }
+    },
+    {
+      "id": "supplementary-figure-s1",
+      "label": "S1 Fig",
+      "kind": "figure",
+      "number": "S1",
+      "page": 17,
+      "caption": "Receiver operating characteristics curve for Botometer. The English score (left) and the English CAP (right). Average score over 3 months for each account.",
+      "raw_text": "S1 Fig. Receiver operating characteristics curve for Botometer. The English score (left) and the English CAP (right). Average score over 3 months for each account.",
+      "caption_bbox_points": null,
+      "caption_bbox_pixels": null,
+      "suggested_crop_bbox_points": null,
+      "suggested_crop_bbox_pixels": null,
+      "candidate_crop": "crops\\s1-figure.jpeg",
+      "selected_asset": "crops\\s1-figure.jpeg",
+      "candidate_crop_size_pixels": [
+        1427,
+        530
+      ],
+      "source_page_image": "pages\\page-017.png",
+      "source_page_text": "text\\pages\\page-017.txt",
+      "crop_confidence": "high",
+      "crop_review_required": false,
+      "visual_verification": "complete",
+      "review_notes": "Visually checked from the official S1 DOCX image: both English score/CAP ROC panels, axes, five series, and legend are complete and readable.",
+      "key": true,
+      "claim_ids": [
+        "C3"
+      ],
+      "text_asset": null,
+      "available_text_sources": [
+        "caption",
+        "official-supplement",
+        "body-references"
+      ],
+      "text_extraction_status": "caption-available",
+      "text_review": {
+        "status": "complete",
+        "sources": [
+          "text\\pages\\page-017.txt"
+        ],
+        "notes": "Caption and report interpretation cross-checked against the official supplementary image.",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "supplementary-figure-s2",
+      "label": "S2 Fig",
+      "kind": "figure",
+      "number": "S2",
+      "page": 17,
+      "caption": "Distribution of the SD for single accounts plotted as groups. Left for the Botometer English score, right for the Botometer English CAP. Bandwidth of 0.015 was used for both.",
+      "raw_text": "S2 Fig. Distribution of the SD for single accounts plotted as groups. Left for the Botometer English score, right for the Botometer English CAP.",
+      "caption_bbox_points": null,
+      "caption_bbox_pixels": null,
+      "suggested_crop_bbox_points": null,
+      "suggested_crop_bbox_pixels": null,
+      "candidate_crop": "crops\\s2-figure.jpeg",
+      "selected_asset": "crops\\s2-figure.jpeg",
+      "candidate_crop_size_pixels": [
+        1427,
+        885
+      ],
+      "source_page_image": "pages\\page-017.png",
+      "source_page_text": "text\\pages\\page-017.txt",
+      "crop_confidence": "high",
+      "crop_review_required": false,
+      "visual_verification": "complete",
+      "review_notes": "Visually checked from the official S2 DOCX image: both standard-deviation panels, six dataset rows, and x-axis ranges are complete and readable.",
+      "key": true,
+      "claim_ids": [
+        "C4"
+      ],
+      "text_asset": null,
+      "available_text_sources": [
+        "caption",
+        "official-supplement",
+        "body-references"
+      ],
+      "text_extraction_status": "caption-available",
+      "text_review": {
+        "status": "complete",
+        "sources": [
+          "text\\pages\\page-017.txt"
+        ],
+        "notes": "Caption and report interpretation cross-checked against the official supplementary image.",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "supplementary-figure-s3",
+      "label": "S3 Fig",
+      "kind": "figure",
+      "number": "S3",
+      "page": 17,
+      "caption": "Changing score over time. Percentage of accounts that cross each threshold during the three months. Left for the English score, right for the English CAP.",
+      "raw_text": "S3 Fig. Changing score over time. Percentage of accounts that have at least once a score below and above each threshold from 0 to 1 in steps of 0.05.",
+      "caption_bbox_points": null,
+      "caption_bbox_pixels": null,
+      "suggested_crop_bbox_points": null,
+      "suggested_crop_bbox_pixels": null,
+      "candidate_crop": "crops\\s3-figure.jpeg",
+      "selected_asset": "crops\\s3-figure.jpeg",
+      "candidate_crop_size_pixels": [
+        1427,
+        692
+      ],
+      "source_page_image": "pages\\page-017.png",
+      "source_page_text": "text\\pages\\page-017.txt",
+      "crop_confidence": "high",
+      "crop_review_required": false,
+      "visual_verification": "complete",
+      "review_notes": "Visually checked from the official S3 DOCX image: both threshold-crossing panels, percentage axes, six-series legend, and threshold range are readable.",
+      "key": true,
+      "claim_ids": [
+        "C4"
+      ],
+      "text_asset": null,
+      "available_text_sources": [
+        "caption",
+        "official-supplement",
+        "body-references"
+      ],
+      "text_extraction_status": "caption-available",
+      "text_review": {
+        "status": "complete",
+        "sources": [
+          "text\\pages\\page-017.txt"
+        ],
+        "notes": "Caption and report interpretation cross-checked against the official supplementary image.",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "supplementary-figure-s4",
+      "label": "S4 Fig",
+      "kind": "figure",
+      "number": "S4",
+      "page": 17,
+      "caption": "Precision-recall curves for the resampled data sets using the English score (left) and English CAP (right), with black operating-point markers at 0.76 and 0.25.",
+      "raw_text": "S4 Fig. Precision-recall curves for the resampled data sets using the English score and English CAP under the 15 percent bot population baseline.",
+      "caption_bbox_points": null,
+      "caption_bbox_pixels": null,
+      "suggested_crop_bbox_points": null,
+      "suggested_crop_bbox_pixels": null,
+      "candidate_crop": "crops\\s4-figure.jpeg",
+      "selected_asset": "crops\\s4-figure.jpeg",
+      "candidate_crop_size_pixels": [
+        1429,
+        608
+      ],
+      "source_page_image": "pages\\page-017.png",
+      "source_page_text": "text\\pages\\page-017.txt",
+      "crop_confidence": "high",
+      "crop_review_required": false,
+      "visual_verification": "complete",
+      "review_notes": "Visually checked from the official S4 DOCX image: both precision-recall panels, operating-point markers, axes, two series, and legend are complete.",
+      "key": true,
+      "claim_ids": [
+        "C3"
+      ],
+      "text_asset": null,
+      "available_text_sources": [
+        "caption",
+        "official-supplement",
+        "body-references"
+      ],
+      "text_extraction_status": "caption-available",
+      "text_review": {
+        "status": "complete",
+        "sources": [
+          "text\\pages\\page-017.txt"
+        ],
+        "notes": "Caption and report interpretation cross-checked against the official supplementary image.",
+        "limitations": ""
+      }
+    },
+    {
+      "id": "supplementary-figure-s5",
+      "label": "S5 Fig",
+      "kind": "figure",
+      "number": "S5",
+      "page": 17,
+      "caption": "Density plots for resampled data sets and human account sets using Botometer English score, with common 15 percent bot and 85 percent human mixtures and median lines.",
+      "raw_text": "S5 Fig. Density plots for the different data sets using Botometer English score.",
+      "caption_bbox_points": null,
+      "caption_bbox_pixels": null,
+      "suggested_crop_bbox_points": null,
+      "suggested_crop_bbox_pixels": null,
+      "candidate_crop": "crops\\s5-figure.jpeg",
+      "selected_asset": "crops\\s5-figure.jpeg",
+      "candidate_crop_size_pixels": [
+        1428,
+        481
+      ],
+      "source_page_image": "pages\\page-017.png",
+      "source_page_text": "text\\pages\\page-017.txt",
+      "crop_confidence": "high",
+      "crop_review_required": false,
+      "visual_verification": "complete",
+      "review_notes": "Visually checked from the official S5 DOCX image: mixture and human-only density panels, labels, axes, and median lines are complete and readable.",
+      "key": true,
+      "claim_ids": [
+        "C5"
+      ],
+      "text_asset": null,
+      "available_text_sources": [
+        "caption",
+        "official-supplement",
+        "body-references"
+      ],
+      "text_extraction_status": "caption-available",
+      "text_review": {
+        "status": "complete",
+        "sources": [
+          "text\\pages\\page-017.txt"
+        ],
+        "notes": "Caption and report interpretation cross-checked against the official supplementary image.",
+        "limitations": ""
+      }
     }
   ]
 }

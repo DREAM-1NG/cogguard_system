@@ -1,0 +1,60 @@
+1     2     3     4     5     6
+
+            selectstarting          selectsimilarity               build                        filter                  perform                 study
+          setofusers            measure                user-similarity             user-similarity          coordination-aware           coordinated
+                                                          network               network              community             communities
+                                                                                                                     detection
+
+                e.g.,                   e.g.,                                           e.g.,                   e.g.,                   e.g.,
+            superspreaders,        hashtagsimilarity,                                 entropy-based,            modularity,         networkmeasures,
+            superproducers         retweetsimilarity                                      statisticalvalidation         minimum-cut            automation
+                       
+
+                     Figure 1: Overview of the proposed framework for studying coordinated behavior.
+
+
+   are the cosine similarity between user feature vectors en-       more nuanced approach for surfacing coordinated be-
+   coding account proﬁle characteristics, as done in (Fazil         haviors. As such, we base our approach on an iterative
+   and Abulaish 2020), or the Jaccard similarity between the         process that examines increasing coordination levels, as
+   sets of hashtags used by each user or between the sets of       shown in Algorithm 1. We begin by performing com-
+   followings/retweeted accounts.                              munity detection on the ﬁltered network resulting from
+                                                                     step 4, identifying the set C0 of communities. Then, we3. Build user similarity network. In this step, we compute
+                                                               apply an increasingly restrictive similarity threshold ti   pairwise user similarities between all users identiﬁed at
+                                                                        to edge weights at each iteration, thus removing certain   step 1, employing the metric selected at step 2. We lever-
+                                                             edges and disconnected nodes. We repeat community de-   age user similarities to build a weighted undirected user
+   similarity network G(E, V, W) that encodes behavioral          tection on the obtained subnetwork Ge,vi   . At each itera-
+                                                                             tion, the community detection algorithm is initialized with   and interaction patterns between users.
+                                                                    the set of communities Ci−1 found at the previous itera-
+4. Filter user similarity network. When studying real-                                                                             tion. This process guarantees that the starting communi-
+   world datasets of large IOs, the network resulting from                                                                                ties are kept, to a certain extent5, throughout all the pro-
+   step 3 can be too big to analyze and even to visualize.                                                                         cess. As a result of the “moving” threshold, we are able
+   Hence, a ﬁltering step is needed. Contrarily to previous                                                                        to study how the structure and the properties of coordi-
+   works focused on threshold-based approaches, we avoid                                                                nated communities change across the whole spectrum of
+   simple ﬁltering strategies based on ﬁxed edge weight                                                                    coordination. Moreover, the moving threshold implicitly
+   thresholds. We recall that edge weights encode similar-                                                           deﬁnes a measure for the extent of coordination observed
+    ity and, to a certain extent, coordination between users.                                                                             at each iteration, that is for each obtained subnetwork.
+  As such, applying a weight threshold t and discarding all
+   edges e ∈E whose weight is lower than the threshold       6. Study coordinated communities. To study the structure
+   (w(e) < t) would mean to arbitrarily perform a binary         of coordinated communities and their patterns of coor-
+   distinction between coordinated behaviors (w(e) ≥t)         dination, we employ several network measures. In addi-
+   and uncoordinated ones (w(e) < t), which is a limiting          tion, we put communities into context, and we character-
+   and theoretically-unmotivated choice. Instead, we pro-          ize their content production by applying natural language
+   pose to use complex network-based multiscale ﬁltering         processing techniques. By leveraging our novel approach
+   methods, such as any of those discussed in (Garlaschelli          to the detection of coordinated communities described in
+   and Loffredo 2008; Serrano, Bogun´a, and Vespignani         step 5, we can obtain these analyses’ results as a function
+   2009; Tumminello et al. 2011). These techniques retain         of the measured extent of coordination between users.
+   statistically-meaningful network structures independently                                                                   In summary, the ﬁrst three steps of our framework lead
+   on their scale (i.e., edge weight). As such, the network ﬁl-                                                                     to the user similarity network, and they are also present in
+   tering step is not biased towards certain levels of similar-                                                             a similar way in previous threshold-based approaches. In
+    ity and coordination but instead erases network structures                                                                        turn, step 4 is where we depart from previous works since
+   that convey limited information, allowing us to focus on                                              we ﬁlter the network to retain the most signiﬁcant, multi-
+   meaningful similarities.                                                                   scale structures instead of performing a single-scale analy-
+5. Perform coordination-aware community  detection.        sis on the most similar accounts. However, our main novelty
+  The detection of coordinated groups of users  is  of-        is the coordination-aware community detection algorithm of
+   ten achieved via clustering and community detection.       step 5, which allows us to measure coordination at all its
+   Threshold-based approaches consider the ﬁltered user       extent and study it as a function of other relevant network
+   similarity network only to contain highly-coordinated       properties (step 6), which would not have been possible with
+   users. Thus, a single run of a community detection algo-      threshold-based approaches. In the following, we use our
+   rithm is enough for them to highlight coordinated groups.
+   Instead, in our case, the ﬁltered user similarity network         5Communities may still break or merge, which we account for
+    still features diverse levels of coordination and needs a        in our process.

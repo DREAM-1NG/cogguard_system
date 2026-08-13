@@ -1,0 +1,64 @@
+strate that even this bot-detection system that has been trained   show that these techniques can be gamed by adversaries by
+with a variety of bots is incapable of detecting new bot fam-    exploiting the temporal dynamics used for detection.
+ilies that were never observed before. In fact, some “target”      Other approaches leverage bots’ similarity in their opera-
+botnets completely mislead the classiﬁer resulting to less than    tion, such as synchronization in posting messages [8], accesses
+1% detection accuracy, meaning 99% of the bots in that class   by a common set of IP addresses [23, 32], or similar uses of the
+were classiﬁed as users.                                      accounts [39]. Additional work focuses on the content posted
+  This methodology provides a proxy for the real world gen-   by bots. Thomas et al. [35] analyze the content of the Web
+eralization performance of the bot classiﬁer being evaluated.   pages linked by tweets, learning to identify signs of spam.
+It further aids in identifying how much each target class is re-   Lee et al. [26] look for signs of evasion commonly used by
+lated to the rest of the bot classes without the need of extensive    cybercriminals, e.g., multiple HTTP redirections. More re-
+and costly inspection.                                               cently, Nilizadeh et al. [29] presented POISED, a system that
+  Our results provide important insights to the research com-    detects malicious messages (e.g., spam) by identifying ones
+munity including a way to compare bot detection algorithms,    with anomalous spreading patterns across the Twitter graph.
+beyond their stated accuracy. We further suggest high general-   Fake Accounts. Thomas et al. [36] analyze over a million
+ization performance does not necessarily follow high accuracy.    accounts suspended by Twitter and, in follow-up work [37]
+We ﬁnally show the positive insight that even a small portion    trafﬁcking of fake Twitter accounts. Yang et al. [40] look at
+of certain botnets can be enough to fully identify them when    social relationships between spam accounts on Twitter, while
+adding it to a common learning algorithm, allowing a classi-   Dave et al. [14] measure click-spam in ad networks, and Gao
+ﬁer to quickly scale, and incrementally consider different and    et al. [20] analyze spam campaigns on Facebook. Stringhini et
+newly revealed bots. In summary, this paper makes the follow-     al. [30, 33] study the market of Twitter followers and proposes
+ing contributions:                                                   strategies to detect them in the wild. Finally, there have been a
+                                                      few efforts both in and out of academia to identify single bot-
+   • Shows the need to go beyond common machine learning    nets in their entirety. Some of them have obtained large bot-
+     metrics like accuracy, precision, recall, etc.  for Twitter    nets based on geographic anomalies [18] and temporal anoma-
+     bot detection. As even getting near perfect values for all     lies [17]. There have been also analysis on botnets promoting
+     of them for single bot classes is not necessarily followed    topics or products, including diet pills [28] and even political
+    by the ability to detect other botnets.                       candidates [4].
+                                                     Our work takes features from these efforts, but changes one
+   • Addresses that need by providing a framework with
+                                                             important aspect of them. We explicitly test against unseen
+    which to evaluate expected generalization of a bot de-
+                                                                  classes to evaluate the performance of a classiﬁer. We cre-
+     tection algorithm by selectively leaving bot classes and
+                                                                    ate a test for this, which is inspired by cross validation and is
+     behaviours out of the training data.
+                                                            thought of as a proxy for generalization of bot classiﬁcation. It
+                                                                    will be clear that for a bot detection strategy to be deemed as   • Collects and combines the biggest and broadest botnet li-
+                                                                 “generalizable”, the minimum standard that should be passed     brary to date, which it uses to train a Twitter bot classiﬁer.
+                                                                               is the test designed in this paper.
+   • Provides a Twitter bot classiﬁcation strategy that reaches
+     accuracy values over 97% with a small number of com-
+                                     3  Datasets    monly used features, and evaluates its performance using
+     the generalization test mentioned earlier.              Two datasets were compiled for this paper.  First, a botnet
+                                                                dataset that contains the aggregated content generated from
+   • Introduces a framework to explore the trade-offs between    a variety of bot datasets (some previously used in research as
+    adding more data from a single bot class and diversifying   ground truth [11, 12, 21]) and, second, a real-user dataset.
+     the training data with data from a different bot class. Then     Each dataset includes the information available from the
+     analyzes the amount of new samples needed to reach rea-    user’s proﬁle, and all the retrievable tweets at collection time in
+     sonable performance on an target bot class, and discuss   accordance to Twitter’s API limitations. This means that each
+    on why differences in this metric happen.                  account in our dataset contains a maximum of 3,200 tweets
+                                                            authored or retweeted by that account. The way these datasets
+                                                      were ﬁnally constructed is illustrated in Fig. 1.
+2  Related Work
+Bot Detection.  Early approaches to detect bots on Twitter   3.1  Bot Datasets
+rely on account characteristics that are typical of fake ac-      In this work, we study to which extent various bot types
+counts [2, 31]. Yang et al. [41] show that these approaches   have different signatures that can potentially lead to detection
+have a hard time keeping up with the evolution of bots, and    failure when they are ﬁrst discovered (before enough of their
+that they require constant retraining.  Another line of work   samples are identiﬁed and included to the training set). To do
+looks at the way in which bots connect with other accounts,     this, we build a dataset of 20 different botnet types, each with
+forming social networks that are very different from the ones    different purpose and characteristics. To our knowledge, this is
+built by legitimate accounts [5, 7, 13]. However, Liu et al [27]    the most extensive and diverse collection of Twitter bots used
+
+
+                                                   2

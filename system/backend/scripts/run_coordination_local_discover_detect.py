@@ -462,7 +462,6 @@ def _compact_coordination_result(result: dict[str, Any]) -> dict[str, Any]:
         },
         "communities_preview": list(result.get("communities") or [])[:20],
         "account_risk_tiers_preview": list(result.get("account_risk_tiers") or [])[:50],
-        "abstain": result.get("abstain"),
         "fallback": result.get("fallback"),
         "fallback_reason": result.get("fallback_reason"),
         "error": result.get("error"),
@@ -601,14 +600,14 @@ def _effectiveness_summary(
         )
         if by_snapshot
         else False,
-        "detect_abstain_boundary": all(item["detect_status"] == "missing_labels" for item in by_snapshot) if by_snapshot else False,
+        "detect_label_boundary": all(item["detect_status"] == "missing_labels" for item in by_snapshot) if by_snapshot else False,
         "process_motif_boundary": all(_process_is_exploratory(record) for record in result_records) if result_records else False,
     }
     core_gate_names = (
         "evidence_multigraph",
         "higher_order_co_evidence",
         "dynamic_communities",
-        "detect_abstain_boundary",
+        "detect_label_boundary",
         "process_motif_boundary",
     )
     core_gates_passed = all(gates[name] for name in core_gate_names)
@@ -634,11 +633,11 @@ def _effectiveness_summary(
         "interpretation": [
             "Directed weighted account multigraph effectiveness is assessed as evidence coverage, not supervised accuracy.",
             "Dynamic community effectiveness is assessed by window graphs, lineage, and membership transitions.",
-            "Detect effectiveness on the local Trump dataset is a boundary check: missing labels must produce abstain/missing_labels.",
+            "Detect effectiveness on the local Trump dataset is a boundary check: missing labels must block Detection claims.",
             "Process motifs are counted only as exploratory analyst hypotheses and remain non-claimable causal evidence.",
         ],
         "remaining_research_requirements": [
-            "Public labeled Detect data for AUPRC, MaxF1, ECE, calibration, and abstain evaluation.",
+            "Public labeled Detect data for AUPRC, MaxF1, ECE, and calibration evaluation.",
             "Precomputed text embeddings for with_lm versus without_lm ablation.",
             "Cross-event validation before generalization claims.",
         ],
@@ -724,7 +723,7 @@ def _report_markdown(
         "",
         "1. Evidence graph v2: directed weighted multigraph plus higher-order co-evidence.",
         "2. Dynamic communities: centered overlapping windows, lineage, transitions, and stability.",
-        "3. Representation/Detect boundary: precomputed text embeddings only; missing labels force Detect abstain.",
+        "3. Representation/Detect boundary: precomputed text embeddings only; missing labels block Detect claims.",
         "4. Process motifs: descriptive branch only, non-claimable without separate causal validation.",
         "",
         "## Dataset",
@@ -746,7 +745,7 @@ def _report_markdown(
         f"- Evidence multigraph gate: `{effectiveness['gates']['evidence_multigraph']}`",
         f"- Higher-order co-evidence gate: `{effectiveness['gates']['higher_order_co_evidence']}`",
         f"- Dynamic community gate: `{effectiveness['gates']['dynamic_communities']}`",
-        f"- Detect abstain boundary gate: `{effectiveness['gates']['detect_abstain_boundary']}`",
+        f"- Detect label boundary gate: `{effectiveness['gates']['detect_label_boundary']}`",
         f"- Process motif boundary gate: `{effectiveness['gates']['process_motif_boundary']}`",
         "",
         "## Claim Boundary",

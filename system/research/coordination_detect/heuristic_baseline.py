@@ -8,8 +8,6 @@ from .contracts import ClusterDetectionVerdict
 
 _WEIGHTS = (0.25, 0.35, 0.25, 0.15)
 _SIGMOID_SCALE = 10.0
-_LOWER_THRESHOLD = 0.65
-_UPPER_THRESHOLD = 0.85
 _WARNING = "Research-only heuristic baseline; output is not a learned or production decision."
 
 
@@ -45,12 +43,7 @@ class HeuristicBayesianBaseline:
         )
         score = sum(weight * value for weight, value in zip(_WEIGHTS, values, strict=True))
         probability = 1.0 / (1.0 + math.exp(-_SIGMOID_SCALE * (score - 0.5)))
-        if probability <= _LOWER_THRESHOLD:
-            decision = "benign_coordination"
-        elif probability >= _UPPER_THRESHOLD:
-            decision = "harmful_coordination"
-        else:
-            decision = "abstain"
+        decision = "harmful_coordination" if probability >= 0.5 else "benign_coordination"
         warnings.warn(_WARNING, UserWarning, stacklevel=2)
         return ClusterDetectionVerdict(
             cluster_id=cluster_id,
@@ -58,7 +51,6 @@ class HeuristicBayesianBaseline:
             harmful_probability=probability,
             model_version="heuristic_baseline_v1",
             model_role="heuristic_baseline",
-            abstain_reason="heuristic_uncertainty" if decision == "abstain" else None,
             warning=_WARNING,
         )
 

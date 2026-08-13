@@ -1,0 +1,61 @@
+Published as a conference paper at ICLR 2024
+
+
+
+                                          √πB erf( √2n/B)Corollary 2. In the setting of Proposition B.1, let α−= α −    √             . Then, R(ˆλ) ≤α.
+                                                                    2 2n
+
+Proof. Applying Hoeffding’s inequality we have δ+(ϵ) = e−2nϵ2, and then
+                                   √             1−α−                     1           Z                  Z           √πB erf( 2n/B)      α −        e−2nϵ2B2 dϵ ≥α −    e−2nϵ2B2 dϵ = α −    √     = α−,
+                0                         0                     2  2n
+
+as required.
+
+C  MONOTONIZING NON-MONOTONE RISKS
+
+We next show that the proposed algorithm leads to asymptotic risk control for non-monotone risk
+functions when applied to a monotonized version of the empirical risk. We set the monotonized
+empirical risk to be
+                                        bR↑n(λ) = sup bRn(t),                                          t≥λ
+
+then define
+                           ≤α   .                                          ˆλ↑n = inf nλ : bR↑n(λ)   o
+Theorem C.1. Let the Li(λ) be right-continuous, i.i.d., bounded (both above and below) functions
+satisfying (5). Then,
+                                 lim   Ln+1  ˆλ↑n  ≤α.                     n→∞Eh         i
+
+Theorem C.1 implies that an analogous procedure to 4 also controls the risk asymptotically.  In
+particular, taking
+                              B
+                       ˜λ↑= inf  λ : bR↑n(λ) + n + 1 ≤α
+also results in asymptotic risk control (to see this, plug ˜λ↑into Theorem C.1 and see that the risk
+level is bounded above by α − n+1).B   Note that in the case of a monotone loss function, ˜λ↑= ˆλ.
+However, the counterexample in Proposition 2 does not apply to ˜λ↑, and it is currently unknown
+whether this procedure does or does not provide finite-sample risk control.
+
+D  EXPERIMENTS ON COVARIATE SHIFT
+
+To validate the covariate shift extension from Section 4, we perform an experiment on a synthetic
+regression under covariate shift. The model is as follows:
+
+                         Xi ∼N(0, 1)
+                                Yi = 2Xi + N(0, 0.5|Xi|)
+                              Xtest ∼N(0, 2)
+                                  Ytest = 2Xtest + N(0, 0.5|Xtest|).
+
+The model used for prediction was a standard linear regression pre-trained on 1000 data points
+independent and identically distributed with the calibration data. We estimated the likelihood ratio
+using a logistic regression model by solving a classification problem to classify between all the
+available training/calibration covariates and batch of 1000 unlabeled test datapoints from the shifted
+distribution. The probits from the logistic regression were then transformed to likelihood ratios via
+the function h(x) = x/1 −x. We took n = 100 and α = 0.1, controlling the clipped projective
+distance of y onto the set C:
+                                  ℓ(y, C) = min(projC(y), B),
+where B = 2. The set construction is the standard
+
+                                        h        i                                Cλ(x) =  ˆY (x) ± λ  .
+
+Figure 6 shows results.
+
+
+                                       15

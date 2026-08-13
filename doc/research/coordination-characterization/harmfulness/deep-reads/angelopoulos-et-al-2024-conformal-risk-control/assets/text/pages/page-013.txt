@@ -1,0 +1,69 @@
+Published as a conference paper at ICLR 2024
+
+
+
+
+
+assumption in Theorem 2 about the distribution of discontinuities specializes to the continuity of the
+score function when the miscoverage loss is used: P J LCvgi    , λ > 0 = 0 ⇐⇒P(s(Xi, Yi) =
+λ) = 0. However, the bound for the conformal case is better than the bound for the general case in
+Theorem 2 by a factor of two, which cannot be improved according to Proposition 1. This difference
+is an interesting oddity of the binary loss, but is not practically important.
+
+B  COMPARISON WITH RCPS/LTT
+
+The setting of conformal risk control resembles the setting of previous works in high-probability
+risk control Bates et al. (2021); Angelopoulos et al. (2021a) (RCPS/LTT); however, the algorithms,
+guarantees, and proof strategies are entirely different.
+
+To summarize, the main differences are as follows:
+
+      1. Conformal risk control is substantially more sample-efficient than RCPS/LTT. On the scale
+         of the risk, RCPS/LTT are far more conservative, converging to α at a √n1   rate, while
+        conformal risk control converges at a n1 rate.
+      2. RCPS/LTT are high probability bounds of the form
+                       P(E[ℓ(Yn+1, Cˆλ(Xn+1)) | {Xi, Yi}ni=1] ≤α) ≥1 −δ
+
+       Conformal risk control gives an expectation bound of the form
+                                  E[ℓ(Yn+1, Cˆλ(Xn+1))] ≤α.
+
+       The former bound provides high-probability control over the sampling of the calibration
+         data, which can be attractive if one needs to be below α with high probability, as opposed
+         to centered at α as in the latter. However, the former bound is more difficult to interpret
+         for nonstatisticians and requires the selection of two parameters—α and δ—which can
+         introduce complexity.
+
+      3. RCPS/LTT are substantially more complicated procedures than conformal risk control—
+         especially LTT, which requires careful discretization and bespoke multiple testing correc-
+          tion. This careful construction is required because the LTT procedure allows for the high-
+         probability control of non-monotone risks, while conformal risk control only applies to
+       monotone ones.
+
+      4. The theory of conformal risk control is a basic advancement to the core theory of conformal
+         prediction and exchangeability-based arguments, extending them to a broader mathemati-
+         cal setting. Meanwhile, LTT/RCPS use well-established concentration bounds, which are
+        mathematically unrelated to conformal prediction.
+
+To underscore these points, we perform a careful evaluation against these procedures on the polyp
+segmentation dataset in Figure 5. We compare against two versions of LTT/RCPS: Baseline 1 has
+δ = 0.5, Baseline 2 integrates the tail bound of LTT/RCPS to achieve a bound in expectation. The
+former strategy is not statistically valid for the goal of expectation control, and the latter strategy is
+essentially only possible using fixed-width bounds such as Hoeffding’s inequality, and is described
+in the below Appendix B.1. We use the same risk level α = 0.1 for all procedures and make plots
+with n = {25, 50, 100, 200, 300}.
+
+The takeaways are as follows: The statistical efficiency gains of conformal risk control are massive.
+On the scale of the risk gap, |E[R(ˆλ)] −α|, conformal risk control is 50% closer to the desired risk
+than Baseline 1, and orders of magnitude closer than Baseline 2. This is expected given the theo-
+retical convergence rate is quadratically faster than both approaches. The computational efficiency
+of conformal risk control is substantially better than all baselines. For example, it is 14x faster than
+Baseline 1 and 19% faster than Baseline 2. It is also substantially easier to implement than Baseline
+1, only requiring 5 lines of code. Baseline 2 is equally easy to implement, although far less flexible.
+
+B.1  RECOVERING EXPECTATION BOUNDS FROM RCPS
+
+We  introduce  a  technique  for  deriving bounds  in  expectation  using RCPS  Bates  et  al.
+(2021)/LTT Angelopoulos et al. (2021a). This technique was not described in the original papers;
+
+
+                                       13

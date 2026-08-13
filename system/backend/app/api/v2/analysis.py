@@ -14,6 +14,8 @@ from app.db.mongodb import get_mongo_db
 from app.db.mysql import get_db
 from app.models.user import User
 from app.schemas.analysis import (
+    AnalysisRunCreateRequest,
+    AnalysisSnapshotCreateRequest,
     CanonicalVerdictApprovalRequest,
     ModelActivationRequest,
     ModelCandidateApprovalRequest,
@@ -25,6 +27,7 @@ from app.services import analysis_governance_service
 from app.utils.response import success
 
 router = APIRouter()
+execution_router = APIRouter()
 
 
 def get_analysis_registry(
@@ -40,6 +43,54 @@ def get_analysis_executor(
     return AnalysisExecutor(registry=registry, engines=default_analysis_engine_ports())
 
 
+@execution_router.post("/snapshots")
+async def create_snapshot(
+    body: AnalysisSnapshotCreateRequest,
+    registry: AnalysisRegistry = Depends(get_analysis_registry),
+    current_user: User = Depends(require_roles("admin", "analyst")),
+):
+    try:
+        snapshot = await registry.create_event_snapshot(
+            event_id=body.event_id,
+            core_window=body.core_window,
+            context_window=body.context_window,
+            platform=body.platform,
+            created_by=int(current_user.id),
+        )
+    except (KeyError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return success(data=snapshot.model_dump(mode="json"))
+
+
+@execution_router.post("/runs")
+async def create_run(
+    body: AnalysisRunCreateRequest,
+    registry: AnalysisRegistry = Depends(get_analysis_registry),
+    current_user: User = Depends(require_roles("admin", "analyst")),
+):
+    return success(
+        data=await registry.create_run(
+            event_id=body.event_id,
+            snapshot_id=body.snapshot_id,
+            requested_stages=body.requested_stages,
+            options=body.options,
+            created_by=int(current_user.id),
+        )
+    )
+
+
+@execution_router.post("/runs/{run_id}/execute")
+async def execute_run(
+    run_id: str,
+    executor: AnalysisExecutor = Depends(get_analysis_executor),
+    _current_user: User = Depends(require_roles("admin", "analyst")),
+):
+    try:
+        return success(data=await executor.execute_run(run_id))
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
 @router.get("/runs/{run_id}")
 async def get_run(
     run_id: str,
@@ -50,6 +101,22 @@ async def get_run(
     if run is None:
         raise HTTPException(status_code=404, detail="Analysis run not found")
     return success(data=run)
+
+
+@router.get("/runs/{run_id}/artifacts/{artifact_key:path}")
+async def get_run_artifact(
+    run_id: str,
+    artifact_key: str,
+    registry: AnalysisRegistry = Depends(get_analysis_registry),
+    _current_user: User = Depends(require_roles("admin", "analyst")),
+):
+    try:
+        payload = await registry.load_run_artifact(run_id, artifact_key)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return success(data=payload)
 
 
 @router.get("/runs/{run_id}/events")

@@ -271,9 +271,12 @@ $$
 | C3: TF-IDF co-retweet + multiscale backbone + Louvain 形成可复用 handoff | 图1、算法1、图2-3 | 部分支持 | 关键参数未报告完整，复现可能不稳定 | 固化参数、代码、随机种子和社区谱系规则 |
 | C4: 七个社区具有政治和议题可解释性 | 图4、图5、正文社区解释 | 部分支持 | hashtag polarity 与作者解释可能有偏 | 独立标注社区议题和政治倾向，报告一致性 |
 | C5: 不同社区有不同特征协同强度 | 图6、图7、图10 | 强支持 | elbow 判断探索性强 | 用预注册阈值选择、bootstrap 和新事件重复验证 |
-| C6: 强协调用户叙事更具体 | 图8 | 部分支持 | 只展示两个社区，文本预处理不透明 | 对所有社区做同一 word shift/主题模型稳定性检查 |
-| C7: coordination 与 automation largely orthogonal | 图9 | 部分支持 | 没有相关系数和不确定性，Botometer/suspension 有测量误差 | 报告相关、置信区间、缺失率和人工账号类型核验 |
-| C8: 本文支持 CogGuard 的社区表征，但不支持社区 Authenticity 分类准确率 | Introduction、Figure 9、Conclusions | 强支持 | 后续系统可把本文特征接入真实性模型 | 增加真实性标签、身份证据、平台处置证据和独立验证集 |
+| C6: density、clustering 和 assortativity 揭示社区随协同强度变化的不同结构模式 | 图7 | 部分支持 | 描述性曲线没有不确定性或跨事件复现 | 对窗口、阈值、Louvain seed 和新事件做 bootstrap/敏感性分析 |
+| C7: 强协调用户叙事更具体 | 图8 | 部分支持 | 只展示两个社区，文本预处理不透明 | 对所有社区做同一 word shift/主题模型稳定性检查 |
+| C8: coordination 与 automation largely orthogonal | 图9 | 部分支持 | 没有相关系数和不确定性，Botometer/suspension 有测量误差 | 报告相关、置信区间、缺失率和人工账号类型核验 |
+| C9: 论文声明数据以 DOI 10.5281/zenodo.4647893 公开 | Data Availability、表1-2 | 部分支持 | 本精读未独立核验当前载荷和许可状态 | 单独访问 DOI、核对文件清单、校验和与许可 |
+| C10: 本文不是 supervised community-authenticity detection | Introduction、Figure 9、Conclusions | 强支持 | 无 authenticity 标签、训练/测试协议或准确率 | 增加独立真实性 Gold 与 held-domain 评估 |
+| C11: 对 CogGuard 可迁移的是 provenance-rich community dossier | 图1、算法1、图6-9 | 部分支持（本文推断） | dossier 到四状态判决尚无训练或验证证据 | 在冻结 Discovery 输出上比较透明聚合、MIL 和 selective abstention |
 
 ### 4.7 可靠性、复现性与争议点
 
