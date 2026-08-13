@@ -174,13 +174,13 @@ test('sends Last-Event-ID only when recovering after a known activity cursor', (
   assert.match(readCaseEventStream, /parseCaseEventStream\(await response\.text\(\)\)/)
 })
 
-test('stops review activity recovery when the event stream reports an expired session', () => {
+test('stops active review activity recovery when the event stream reports an expired session', () => {
   const readCaseEventStream = bodyOf(reviewCaseApi, 'readCaseEventStream')
   const recoverCaseActivities = bodyOf(riskView, 'recoverCaseActivities')
 
   assert.match(readCaseEventStream, /if \(response\.status === 401\) \{\s*handleUnauthorizedResponse\(\)\s*\}/)
   assert.match(readCaseEventStream, /throw new CaseEventStreamError\(response\.status\)/)
-  assert.match(recoverCaseActivities, /if \(isUnauthorizedCaseEventStreamError\(error\)\) \{\s*stopActivityRecovery\(\)\s*return\s*\}/)
+  assert.match(recoverCaseActivities, /if \(isUnauthorizedCaseEventStreamError\(error\)\) \{\s*if \(requestSequence === caseLoadSequence && currentCase\.value\?\.case_id === caseId\) \{\s*stopActivityRecovery\(\)\s*\}\s*return\s*\}/)
 })
 
 test('parses event-stream blocks into ordered case activity events', () => {
