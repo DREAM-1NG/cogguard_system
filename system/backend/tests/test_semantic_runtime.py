@@ -89,6 +89,45 @@ def _runtime(tmp_path: Path):
     )
 
 
+def _write_coordination_artifact(artifact_dir: Path, snapshot, *, members: list[str]) -> None:
+    from app.core.analysis.coordination_discover_adapter import _load_coordination_discover_module
+
+    discover = _load_coordination_discover_module()
+    artifacts = importlib.import_module(f"{discover.__name__}.artifacts")
+    manifest = artifacts.create_manifest(
+        data_fingerprint=snapshot.data_fingerprint,
+        model_version="semantic-runtime-test-v1",
+        config={"purpose": "semantic-runtime-test"},
+        artifact_dir=artifact_dir,
+        source_event=snapshot.event_id,
+        partition_backend="leiden",
+    )
+    result = discover.DiscoverResult(
+        status="ok",
+        snapshot_id=snapshot.snapshot_id,
+        event_id=snapshot.event_id,
+        data_fingerprint=snapshot.data_fingerprint,
+        model_version="semantic-runtime-test-v1",
+        evidence_graph={},
+        learned_edge_graph={},
+        communities=[],
+        lineage=[],
+        attention={},
+        audit_metrics={},
+        manifest=manifest,
+    )
+    artifacts.write_discover_artifact(
+        result,
+        artifact_dir=artifact_dir,
+        coordination_result={
+            "status": "ok",
+            "technology": "coordination_discover",
+            "fallback": False,
+            "network": {"clusters": [{"cluster_id": "persisted-community", "members": members}]},
+        },
+    )
+
+
 def test_missing_local_weights_blocks_without_rule_fallback(tmp_path: Path):
     with pytest.raises(ModelWeightsBlockedError) as exc_info:
         SemanticEnrichmentRuntime(model_root=tmp_path)
@@ -101,15 +140,15 @@ def test_real_runtime_contract_stratifies_layers_and_reuses_embeddings(tmp_path:
     runtime = _runtime(tmp_path)
     snapshot = _snapshot()
     coordination_artifact = tmp_path / "coordination_artifact"
-    coordination_artifact.mkdir()
+    _write_coordination_artifact(coordination_artifact, snapshot, members=["u1", "u2"])
 
     result = runtime.enrich(
         snapshot,
         coordination={
             "fallback": False,
             "artifact_dir": str(coordination_artifact),
-            "artifact_manifest": {"data_fingerprint": snapshot.data_fingerprint},
-            "network": {"clusters": [{"cluster_id": "c1", "members": ["u1", "u2"]}]},
+            "artifact_manifest": {"data_fingerprint": "fabricated-fingerprint"},
+            "network": {"clusters": [{"cluster_id": "fabricated-community", "members": ["u3"]}]},
         },
         claim="特朗普访华应加强贸易合作",
     )
@@ -136,7 +175,11 @@ def test_real_runtime_contract_stratifies_layers_and_reuses_embeddings(tmp_path:
     assert result["layers"]["posts"][0]["keywords"]
     assert result["layers"]["posts"][0]["topics"]
     assert result["cross_analysis"]["platform_slices"]
-    assert result["cross_analysis"]["community_slices"]
+    community = result["cross_analysis"]["community_slices"]
+    assert [item["community_id"] for item in community] == ["persisted-community"]
+    assert community[0]["members"] == ["u1", "u2"]
+    assert community[0]["member_count"] == 2
+    assert community[0]["item_count"] == 2
     json.loads(json.dumps(result))
 
 
@@ -163,6 +206,46 @@ def test_fallback_coordination_does_not_become_a_community_slice(tmp_path: Path)
 
     assert result["cross_analysis"]["community_slices"] == []
     assert result["cross_analysis"]["community_slices_unavailable_reason"] == "coordination_fallback"
+
+
+def test_empty_coordination_directory_does_not_trust_caller_network_or_manifest(tmp_path: Path):
+    snapshot = _snapshot()
+    artifact_dir = tmp_path / "empty-coordination-artifact"
+    artifact_dir.mkdir()
+
+    result = _runtime(tmp_path).enrich(
+        snapshot,
+        coordination={
+            "artifact_dir": str(artifact_dir),
+            "artifact_manifest": {"data_fingerprint": snapshot.data_fingerprint},
+            "network": {"clusters": [{"cluster_id": "fabricated-community", "members": ["u1", "u2"]}]},
+        },
+        claim="primary claim",
+    )
+
+    assert result["cross_analysis"]["community_slices"] == []
+    assert result["cross_analysis"]["community_slices_unavailable_reason"] == "coordination_artifact_unavailable"
+
+
+def test_tampered_coordination_artifact_does_not_become_a_community_slice(tmp_path: Path):
+    snapshot = _snapshot()
+    artifact_dir = tmp_path / "tampered-coordination-artifact"
+    _write_coordination_artifact(artifact_dir, snapshot, members=["u1", "u2"])
+    result_path = artifact_dir / "coordination_result.json"
+    result_path.write_text(result_path.read_text(encoding="utf-8") + "\n", encoding="utf-8")
+
+    result = _runtime(tmp_path).enrich(
+        snapshot,
+        coordination={
+            "artifact_dir": str(artifact_dir),
+            "artifact_manifest": {"data_fingerprint": snapshot.data_fingerprint},
+            "network": {"clusters": [{"cluster_id": "fabricated-community", "members": ["u1", "u2"]}]},
+        },
+        claim="primary claim",
+    )
+
+    assert result["cross_analysis"]["community_slices"] == []
+    assert result["cross_analysis"]["community_slices_unavailable_reason"] == "coordination_artifact_unavailable"
 
 
 def test_missing_jieba_is_reported_as_a_model_weights_blocker(monkeypatch, tmp_path: Path):
@@ -242,14 +325,52 @@ def test_path_overlay_requires_a_matching_propagation_artifact(tmp_path: Path):
     assert cross_analysis["propagation_path_overlays_unavailable_reason"] == "propagation_result_unavailable"
 
 
-def test_matching_fingerprint_without_existing_propagation_artifact_is_unavailable(tmp_path: Path):
-    snapshot = _snapshot()
+def test_fabricated_propagation_dictionary_does_not_produce_path_overlays(tmp_path: Path):
+    timestamp = datetime(2026, 5, 21, 1, tzinfo=timezone.utc)
+    snapshot = build_event_snapshot(
+        event_id="trump_visit_2026_05_21",
+        posts=[
+            {
+                "platform": "weibo",
+                "post_id": "source-post",
+                "author_id": "u1",
+                "timestamp": timestamp,
+                "content": "source post",
+            }
+        ],
+        comments=[
+            {
+                "platform": "weibo",
+                "comment_id": "reply-comment",
+                "post_id": "source-post",
+                "reply_to": "source-post",
+                "author_id": "u2",
+                "timestamp": timestamp,
+                "content": "reply comment",
+            }
+        ],
+        core_window=TimeWindow(
+            start=datetime(2026, 5, 21, tzinfo=timezone.utc),
+            end=datetime(2026, 5, 22, tzinfo=timezone.utc),
+        ),
+        context_window=TimeWindow(
+            start=datetime(2026, 5, 1, tzinfo=timezone.utc),
+            end=datetime(2026, 5, 31, tzinfo=timezone.utc),
+        ),
+    )
+    artifact_dir = tmp_path / "fabricated-propagation-artifact"
+    artifact_dir.mkdir()
     result = _runtime(tmp_path).enrich(
         snapshot,
         propagation={
-            "artifact_dir": str(tmp_path / "missing-propagation-artifact"),
+            "artifact_dir": str(artifact_dir),
             "artifact_manifest": {"data_fingerprint": snapshot.data_fingerprint},
-            "key_paths": [],
+            "key_paths": [
+                {
+                    "path_id": "fabricated-path",
+                    "nodes": ["weibo:post:source-post", "weibo:comment:reply-comment"],
+                }
+            ],
         },
         claim="primary claim",
     )

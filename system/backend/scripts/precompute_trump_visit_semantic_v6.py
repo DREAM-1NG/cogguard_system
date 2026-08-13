@@ -164,6 +164,15 @@ async def main_async(args: argparse.Namespace) -> int:
         summary = _summary(snapshot=snapshot, result=result, platform_counts=platform_counts, semantic_status="completed")
         print(json.dumps(summary, ensure_ascii=False, indent=2, default=str))
     await _close_mongo_safely()
+    semantic = ((result.get("results") or {}).get("semantic_enrichment") or {})
+    semantic_status = str(semantic.get("status") or "").strip().lower()
+    runtime_status = str(semantic.get("runtime_status") or "").strip().lower()
+    if (
+        str(result.get("status") or "").strip().lower() != "completed"
+        or semantic_status in {"blocked", "unavailable", "failed", "model_weights_blocked"}
+        or runtime_status in {"blocked", "unavailable", "failed"}
+    ):
+        return 4
     return 0
 
 

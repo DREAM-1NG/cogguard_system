@@ -15,7 +15,6 @@ import importlib
 import math
 from pathlib import Path
 from typing import Any, Iterable
-from urllib.parse import unquote, urlparse
 
 
 MODEL_SPECS: dict[str, dict[str, str]] = {
@@ -432,13 +431,10 @@ def _community_slices(
         return [], "coordination_result_unavailable"
     if coordination.get("fallback") is True:
         return [], "coordination_fallback"
-    manifest = coordination.get("artifact_manifest")
-    artifact_ref = coordination.get("artifact_dir") or coordination.get("artifact_uri") or coordination.get("artifact")
-    if not _artifact_reference_exists(artifact_ref) or not isinstance(manifest, dict):
-        return [], "coordination_artifact_unavailable"
-    if str(manifest.get("data_fingerprint") or "") != str(snapshot.data_fingerprint):
-        return [], "coordination_artifact_snapshot_mismatch"
-    network = coordination.get("network") if isinstance(coordination.get("network"), dict) else {}
+    verified, unavailable_reason = _load_verified_coordination_result(coordination, snapshot)
+    if verified is None:
+        return [], unavailable_reason or "coordination_artifact_unavailable"
+    network = verified.get("network") if isinstance(verified.get("network"), dict) else {}
     clusters = network.get("clusters") if isinstance(network.get("clusters"), list) else []
     available = _all_items(layers)
     slices: list[dict[str, Any]] = []
@@ -463,6 +459,28 @@ def _community_slices(
             }
         )
     return (slices, None) if slices else ([], "coordination_clusters_unavailable")
+
+
+def _load_verified_coordination_result(
+    coordination: dict[str, Any], snapshot: Any
+) -> tuple[dict[str, Any] | None, str | None]:
+    artifact_dir = str(coordination.get("artifact_dir") or "").strip()
+    if not artifact_dir:
+        return None, "coordination_artifact_unavailable"
+    try:
+        from app.core.analysis.coordination_discover_adapter import try_load_coordination_discover_result
+
+        loaded, reason = try_load_coordination_discover_result(
+            snapshot,
+            {"artifact_dir": artifact_dir},
+        )
+    except Exception:
+        return None, "coordination_artifact_unavailable"
+    if isinstance(loaded, dict):
+        return loaded, None
+    if reason == "artifact_fingerprint_mismatch":
+        return None, "coordination_artifact_snapshot_mismatch"
+    return None, "coordination_artifact_unavailable"
 
 
 def _cluster_members(cluster: dict[str, Any]) -> list[str]:
@@ -507,78 +525,8 @@ def _path_overlays(
     propagation: dict[str, Any],
     claim: str | None,
 ) -> tuple[list[dict[str, Any]], str | None]:
-    if not _matching_propagation_artifact(propagation, snapshot):
-        return [], "propagation_result_unavailable"
-    direct = {(edge.source_id, edge.target_id) for edge in snapshot.relationships if _direct_post_comment(edge)}
-    by_ref = _items_by_ref(layers)
-    overlays: list[dict[str, Any]] = []
-    for index, path in enumerate(propagation.get("key_paths") or propagation.get("paths") or []):
-        nodes = path.get("nodes") if isinstance(path, dict) else None
-        if not isinstance(nodes, list) or len(nodes) != 2:
-            continue
-        refs = (str(nodes[0]), str(nodes[1]))
-        if refs not in direct or refs[0] not in by_ref or refs[1] not in by_ref:
-            continue
-        overlays.append({"path_id": str(path.get("path_id") or index), "semantic_overlay": _overlay([by_ref[refs[0]], by_ref[refs[1]]], list(refs), claim)})
-    return (overlays, None) if overlays else ([], "propagation_paths_unavailable")
-
-
-def _matching_propagation_artifact(propagation: dict[str, Any], snapshot: Any) -> bool:
-    if propagation.get("fallback") is True:
-        return False
-    artifact_ref = propagation.get("artifact_dir") or propagation.get("artifact_uri") or propagation.get("artifact")
-    manifest = propagation.get("artifact_manifest")
-    return _artifact_reference_exists(artifact_ref) and isinstance(manifest, dict) and str(
-        manifest.get("data_fingerprint") or ""
-    ) == str(snapshot.data_fingerprint)
-
-
-def _artifact_reference_exists(reference: Any) -> bool:
-    """Require a locally verifiable artifact before deriving cross-stage overlays."""
-    value = str(reference or "").strip()
-    if not value:
-        return False
-    parsed = urlparse(value)
-    if parsed.scheme and parsed.scheme != "file" and not _windows_drive_path(value):
-        return False
-    path_value = unquote(parsed.path) if parsed.scheme == "file" and not _windows_drive_path(value) else value
-    if parsed.scheme == "file" and parsed.netloc:
-        path_value = f"//{parsed.netloc}{path_value}"
-    try:
-        return Path(path_value).exists()
-    except (OSError, ValueError):
-        return False
-
-
-def _windows_drive_path(value: str) -> bool:
-    return len(value) >= 3 and value[1:3] in {":\\", ":/"} and value[0].isalpha()
-
-
-def _direct_post_comment(edge: Any) -> bool:
-    return str(edge.source_id).split(":", 2)[1:2] == ["post"] and str(edge.target_id).split(":", 2)[1:2] == ["comment"]
-
-
-def _items_by_ref(layers: dict[str, list[dict[str, Any]]]) -> dict[str, dict[str, Any]]:
-    return {
-        f"{item['platform']}:{kind}:{item['id']}": item
-        for kind, items in (("post", layers["posts"]), ("comment", layers["comments"]))
-        for item in items
-    }
-
-
-def _overlay(items: list[dict[str, Any]], refs: list[str], claim: str | None) -> dict[str, Any]:
-    timestamps = sorted(item["timestamp"] for item in items if item.get("timestamp"))
-    return {
-        "sentiment": _distribution(items, "sentiment"),
-        "keywords": [keyword for item in items for keyword in item["keywords"]],
-        "topics": [topic for item in items for topic in item["topics"]],
-        "entities": [entity for item in items for entity in item["entities"]],
-        "stance": _distribution(items, "stance"),
-        "platforms": sorted({item["platform"] for item in items}),
-        "time_range": {"start": timestamps[0], "end": timestamps[-1]} if timestamps else None,
-        "associated_claim": claim,
-        "evidence_refs": refs,
-    }
+    del snapshot, layers, propagation, claim
+    return [], "propagation_result_unavailable"
 
 
 def _json_primitives(value: Any) -> Any:
