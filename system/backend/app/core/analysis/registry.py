@@ -23,6 +23,7 @@ SNAPSHOT_COLLECTION = "analysis_event_snapshots"
 RUN_ARTIFACT_COLLECTION = "analysis_run_artifacts"
 SNAPSHOT_CHUNK_SCHEMA = "cogguard.analysis.event_snapshot.chunked.v1"
 RUN_ARTIFACT_CHUNK_SCHEMA = "cogguard.analysis.run_artifact.chunked.v1"
+SEMANTIC_ARTIFACT_KEY = "stage:semantic_enrichment:result"
 # Keep chunks far below MongoDB's 16MB document limit; event snapshots can carry
 # tens of thousands of comments during real-system runs.
 SNAPSHOT_PAYLOAD_CHARS = 512_000
@@ -313,6 +314,38 @@ class AnalysisRegistry:
         if payload_hash != str(root.get("payload_sha256") or ""):
             raise ValueError(f"Analysis artifact hash mismatch: {artifact_id}")
         return json.loads(payload_text)
+
+    async def list_semantic_artifact_candidates(self, event_id: str) -> list[dict[str, Any]]:
+        """Return semantic result roots for one event, newest run first."""
+        collection = _get_collection(self.mongo_db, RUN_ARTIFACT_COLLECTION)
+        cursor = collection.find(
+            {"artifact_key": SEMANTIC_ARTIFACT_KEY},
+            {"_id": 0, "run_id": 1, "created_at": 1, "root_artifact_id": 1},
+        )
+        sorter = getattr(cursor, "sort", None)
+        if sorter is not None:
+            cursor = sorter("created_at", -1)
+        artifacts = await cursor.to_list(length=None)
+
+        candidates: list[tuple[dict[str, Any], str]] = []
+        for artifact in artifacts:
+            if not isinstance(artifact, dict) or artifact.get("root_artifact_id") is not None:
+                continue
+            run_id = str(artifact.get("run_id") or "").strip()
+            if not run_id:
+                continue
+            run = await self.get_run(run_id)
+            if run is not None and str(run.get("event_id") or "") == event_id:
+                candidates.append((run, str(artifact.get("created_at") or "")))
+        candidates.sort(
+            key=lambda candidate: (
+                str(candidate[0].get("created_at") or ""),
+                candidate[1],
+                str(candidate[0].get("run_id") or ""),
+            ),
+            reverse=True,
+        )
+        return [run for run, _artifact_created_at in candidates]
 
     async def append_run_event(
         self,

@@ -8,8 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.analysis.executor import AnalysisExecutor, default_analysis_engine_ports
 from app.core.analysis.registry import (
-    RUN_ARTIFACT_COLLECTION,
     AnalysisRegistry,
+    SEMANTIC_ARTIFACT_KEY,
     SqlAlchemyAnalysisStore,
 )
 from app.core.analysis.sse import iter_sse_events, parse_last_event_id
@@ -33,9 +33,6 @@ from app.utils.response import success
 router = APIRouter()
 execution_router = APIRouter()
 product_router = APIRouter()
-
-SEMANTIC_ARTIFACT_KEY = "stage:semantic_enrichment:result"
-
 
 def get_analysis_registry(
     db: AsyncSession = Depends(get_db),
@@ -137,12 +134,13 @@ async def get_event_semantic_projection(
 
 
 async def _event_semantic_projection(event_id: str, registry: AnalysisRegistry) -> dict[str, Any]:
-    candidates, lookup_reason = await _semantic_artifact_runs(event_id, registry)
-    if lookup_reason:
+    try:
+        candidates = await registry.list_semantic_artifact_candidates(event_id)
+    except Exception:
         return _semantic_projection(
             event_id=event_id,
             status="blocked",
-            blocking_reason=lookup_reason,
+            blocking_reason="semantic_artifact_lookup_failed",
         )
     if not candidates:
         return _semantic_projection(
@@ -194,45 +192,6 @@ async def _event_semantic_projection(event_id: str, registry: AnalysisRegistry) 
         status="not_found",
         blocking_reason="semantic_artifact_not_found",
     )
-
-
-async def _semantic_artifact_runs(
-    event_id: str,
-    registry: AnalysisRegistry,
-) -> tuple[list[dict[str, Any]], str | None]:
-    try:
-        collection = registry.mongo_db[RUN_ARTIFACT_COLLECTION]
-        cursor = collection.find(
-            {"artifact_key": SEMANTIC_ARTIFACT_KEY},
-            {"_id": 0, "run_id": 1, "created_at": 1},
-        )
-        sorter = getattr(cursor, "sort", None)
-        if sorter is not None:
-            cursor = sorter("created_at", -1)
-        artifacts = await cursor.to_list(length=None)
-    except Exception:
-        return [], "semantic_artifact_lookup_failed"
-
-    candidates: list[tuple[dict[str, Any], str]] = []
-    for artifact in artifacts:
-        run_id = _optional_text(artifact.get("run_id")) if isinstance(artifact, dict) else None
-        if not run_id:
-            continue
-        try:
-            run = await registry.get_run(run_id)
-        except Exception:
-            return [], "semantic_artifact_lookup_failed"
-        if run is not None and str(run.get("event_id") or "") == event_id:
-            candidates.append((run, _optional_text(artifact.get("created_at")) or ""))
-    candidates.sort(
-        key=lambda candidate: (
-            str(candidate[0].get("created_at") or ""),
-            candidate[1],
-            str(candidate[0].get("run_id") or ""),
-        ),
-        reverse=True,
-    )
-    return [run for run, _artifact_created_at in candidates], None
 
 
 def _semantic_projection(

@@ -7,7 +7,11 @@ from typing import Any
 import pytest
 
 from app.core.analysis import AnalysisRunStatus, InvalidRunTransition, TimeWindow
-from app.core.analysis.registry import AnalysisRegistry, SqlAlchemyAnalysisStore
+from app.core.analysis.registry import (
+    RUN_ARTIFACT_COLLECTION,
+    AnalysisRegistry,
+    SqlAlchemyAnalysisStore,
+)
 from app.models.analysis import AnalysisRun
 
 
@@ -340,6 +344,83 @@ def test_registry_creates_run_events_and_recovers_after_cursor():
         assert [event["status"] for event in events_after_first] == ["running", "completed"]
         with pytest.raises(InvalidRunTransition):
             await registry.transition_run_status("run_fixed", AnalysisRunStatus.RUNNING)
+
+    asyncio.run(scenario())
+
+
+def test_registry_lists_only_target_event_semantic_artifact_roots_in_newest_run_order():
+    async def scenario():
+        store = FakeAnalysisStore()
+        store.runs = {
+            "run_target_old": {
+                "run_id": "run_target_old",
+                "event_id": "event_target",
+                "snapshot_id": "snapshot_target_old",
+                "created_at": "2026-08-14T01:00:00+00:00",
+            },
+            "run_target_new": {
+                "run_id": "run_target_new",
+                "event_id": "event_target",
+                "snapshot_id": "snapshot_target_new",
+                "created_at": "2026-08-14T02:00:00+00:00",
+            },
+            "run_other_newer_ready": {
+                "run_id": "run_other_newer_ready",
+                "event_id": "event_other",
+                "snapshot_id": "snapshot_other",
+                "created_at": "2026-08-14T09:00:00+00:00",
+            },
+            "run_chunk": {
+                "run_id": "run_chunk",
+                "event_id": "event_target",
+                "snapshot_id": "snapshot_chunk",
+                "created_at": "2026-08-14T10:00:00+00:00",
+            },
+        }
+        semantic_key = "stage:semantic_enrichment:result"
+        artifacts = FakeCollection(
+            [
+                {
+                    "artifact_id": f"run_target_old:{semantic_key}",
+                    "run_id": "run_target_old",
+                    "artifact_key": semantic_key,
+                    "created_at": "2026-08-14T03:00:00+00:00",
+                },
+                {
+                    "artifact_id": f"run_target_new:{semantic_key}",
+                    "run_id": "run_target_new",
+                    "artifact_key": semantic_key,
+                    "created_at": "2026-08-14T04:00:00+00:00",
+                },
+                {
+                    "artifact_id": f"run_other_newer_ready:{semantic_key}",
+                    "run_id": "run_other_newer_ready",
+                    "artifact_key": semantic_key,
+                    "created_at": "2026-08-14T11:00:00+00:00",
+                },
+                {
+                    "artifact_id": f"run_chunk:{semantic_key}:chunk:000000",
+                    "root_artifact_id": f"run_chunk:{semantic_key}",
+                    "run_id": "run_chunk",
+                    "artifact_key": semantic_key,
+                    "created_at": "2026-08-14T12:00:00+00:00",
+                },
+            ]
+        )
+        registry = AnalysisRegistry(
+            mongo_db={RUN_ARTIFACT_COLLECTION: artifacts},
+            store=store,
+        )
+
+        candidates = await registry.list_semantic_artifact_candidates("event_target")
+
+        assert [candidate["run_id"] for candidate in candidates] == ["run_target_new", "run_target_old"]
+        assert artifacts.find_calls == [
+            {
+                "query": {"artifact_key": semantic_key},
+                "projection": {"_id": 0, "run_id": 1, "created_at": 1, "root_artifact_id": 1},
+            }
+        ]
 
     asyncio.run(scenario())
 

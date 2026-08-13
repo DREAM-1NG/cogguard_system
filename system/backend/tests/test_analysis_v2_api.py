@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
 from app.api.v2.analysis import get_analysis_registry, product_router, router
-from app.core.analysis.registry import RUN_ARTIFACT_COLLECTION
+from app.api.v2.router import api_router
 from app.core.security import get_current_user
 from app.main import app as main_app
 
@@ -76,7 +76,11 @@ class SemanticProjectionRegistry:
         self.runs = {str(run["run_id"]): dict(run) for run in runs}
         self.artifacts = dict(artifacts)
         self.errors = dict(errors or {})
-        self.mongo_db = {RUN_ARTIFACT_COLLECTION: FakeArtifactRootCollection(roots or [])}
+        self.candidate_roots = list(roots or [])
+
+    @property
+    def mongo_db(self):
+        raise AssertionError("API routes must not access registry.mongo_db")
 
     async def get_run(self, run_id: str):
         run = self.runs.get(run_id)
@@ -91,27 +95,22 @@ class SemanticProjectionRegistry:
             raise KeyError(f"missing artifact: {run_id}:{artifact_key}")
         return value
 
-
-class FakeArtifactRootCursor:
-    def __init__(self, rows: list[dict[str, Any]]) -> None:
-        self.rows = list(rows)
-
-    def sort(self, key: str, direction: int):
-        self.rows.sort(key=lambda row: str(row.get(key) or ""), reverse=direction < 0)
-        return self
-
-    async def to_list(self, length: int | None):
-        return list(self.rows if length is None else self.rows[:length])
-
-
-class FakeArtifactRootCollection:
-    def __init__(self, rows: list[dict[str, Any]]) -> None:
-        self.rows = list(rows)
-
-    def find(self, query: dict[str, Any], _projection: dict[str, int]):
-        return FakeArtifactRootCursor(
-            [row for row in self.rows if all(row.get(key) == value for key, value in query.items())]
+    async def list_semantic_artifact_candidates(self, event_id: str):
+        candidates: list[tuple[dict[str, Any], str]] = []
+        for root in self.candidate_roots:
+            run_id = str(root.get("run_id") or "")
+            run = self.runs.get(run_id)
+            if run is not None and run.get("event_id") == event_id:
+                candidates.append((dict(run), str(root.get("created_at") or "")))
+        candidates.sort(
+            key=lambda candidate: (
+                str(candidate[0].get("created_at") or ""),
+                candidate[1],
+                str(candidate[0].get("run_id") or ""),
+            ),
+            reverse=True,
         )
+        return [run for run, _created_at in candidates]
 
 
 def _semantic_root(run_id: str, created_at: str) -> dict[str, str]:
@@ -129,6 +128,14 @@ def _product_app(registry, role: str = "analyst"):
 
     app.include_router(execution_router, prefix="/api/v2/analysis")
     app.include_router(product_router, prefix="/api/v2/analysis")
+    app.dependency_overrides[get_analysis_registry] = lambda: registry
+    app.dependency_overrides[get_current_user] = lambda: FakeUser(role)
+    return app
+
+
+def _deployed_v2_app(registry, role: str = "analyst"):
+    app = FastAPI()
+    app.include_router(api_router)
     app.dependency_overrides[get_analysis_registry] = lambda: registry
     app.dependency_overrides[get_current_user] = lambda: FakeUser(role)
     return app
@@ -237,14 +244,14 @@ def test_main_app_mounts_v2_router():
     asyncio.run(scenario())
 
 
-def test_analysis_product_artifact_route_reads_encoded_keys_for_analysts_and_governance_remains_compatible():
+def test_deployed_v2_router_registers_product_and_legacy_artifact_routes_for_analysts():
     async def scenario():
         artifact_key = "stage:semantic enrichment/result"
         registry = SemanticProjectionRegistry(
             runs=[{"run_id": "run_ready", "event_id": "event_1", "snapshot_id": "snap_1"}],
             artifacts={("run_ready", artifact_key): {"status": "ok", "value": 7}},
         )
-        app = _product_app(registry)
+        app = _deployed_v2_app(registry)
         transport = ASGITransport(app=app)
         encoded_key = quote(artifact_key, safe="")
 
@@ -324,6 +331,65 @@ def test_semantic_event_projection_selects_latest_ready_artifact():
                 "status": "ok",
                 "runtime_status": "ready",
                 "layers": {"posts": [], "comments": []},
+            },
+        }
+
+    asyncio.run(scenario())
+
+
+def test_semantic_event_projection_uses_registry_candidates_and_never_selects_other_event_root():
+    async def scenario():
+        artifact_key = "stage:semantic_enrichment:result"
+        registry = SemanticProjectionRegistry(
+            runs=[
+                {
+                    "run_id": "run_target_ready",
+                    "event_id": "event_target",
+                    "snapshot_id": "snapshot_target",
+                    "created_at": "2026-08-14T02:00:00+00:00",
+                },
+                {
+                    "run_id": "run_other_newer_ready",
+                    "event_id": "event_other",
+                    "snapshot_id": "snapshot_other",
+                    "created_at": "2026-08-14T10:00:00+00:00",
+                },
+            ],
+            artifacts={
+                ("run_target_ready", artifact_key): {
+                    "technology": "semantic_enrichment",
+                    "status": "ok",
+                    "runtime_status": "ready",
+                    "marker": "target",
+                },
+                ("run_other_newer_ready", artifact_key): {
+                    "technology": "semantic_enrichment",
+                    "status": "ok",
+                    "runtime_status": "ready",
+                    "marker": "other",
+                },
+            },
+            roots=[
+                _semantic_root("run_target_ready", "2026-08-14T03:00:00+00:00"),
+                _semantic_root("run_other_newer_ready", "2026-08-14T11:00:00+00:00"),
+            ],
+        )
+        app = _deployed_v2_app(registry)
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            response = await client.get("/api/v2/analysis/events/event_target/semantic")
+
+        assert response.status_code == 200
+        assert response.json()["data"] == {
+            "event_id": "event_target",
+            "run_id": "run_target_ready",
+            "snapshot_id": "snapshot_target",
+            "status": "ready",
+            "blocking_reason": None,
+            "artifact": {
+                "technology": "semantic_enrichment",
+                "status": "ok",
+                "runtime_status": "ready",
+                "marker": "target",
             },
         }
 
