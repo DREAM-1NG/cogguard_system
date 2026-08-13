@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import test from 'node:test'
 import { fileURLToPath } from 'node:url'
+import ts from 'typescript'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const frontendRoot = resolve(__dirname, '..')
@@ -40,6 +41,80 @@ function between(source, startMarker, endMarker) {
   const end = source.indexOf(endMarker, start)
   assert.notEqual(end, -1, `Expected ${endMarker} to exist after ${startMarker}`)
   return source.slice(start, end)
+}
+
+function semanticEvidenceValidator() {
+  const validator = bodyOf(riskView, 'hasSemanticEvidenceStructure')
+  const objectHelper = bodyOf(riskView, 'objectValue')
+  const compiled = ts.transpileModule(
+    `${objectHelper}\n${validator}\nmodule.exports = hasSemanticEvidenceStructure`,
+    {
+      compilerOptions: {
+        module: ts.ModuleKind.CommonJS,
+        target: ts.ScriptTarget.ES2020,
+      },
+    },
+  ).outputText
+  const module = { exports: undefined }
+  new Function('module', compiled)(module)
+  return module.exports
+}
+
+function validSemanticEvidence() {
+  const item = {
+    id: 'post-1',
+    platform: 'weibo',
+    timestamp: '2026-08-14T08:00:00Z',
+    sentiment: { label: 'positive' },
+    stance: { status: 'ready', label: 'entailment' },
+    keywords: [{ term: 'trade' }],
+    topics: [{ id: 'topic-1', label: 'policy' }],
+    entities: [{ text: 'Beijing', label: 'LOC' }],
+    near_duplicates: [{ id: 'post-0', similarity: 0.93 }],
+  }
+
+  return {
+    layers: {
+      posts: [item],
+      comments: [{
+        ...item,
+        id: 'comment-1',
+        stance: { status: 'blocked_missing_primary_claim', label: null },
+      }],
+    },
+    cross_analysis: {
+      time_slices: [{ date: '2026-08-14', count: 2 }],
+      platform_slices: [{ platform: 'weibo', count: 2, sentiment: { positive: 2 } }],
+      community_slices: [{
+        community_id: 'community-1',
+        members: ['account-1', 'account-2'],
+        member_count: 2,
+        item_count: 2,
+        sentiment_distribution: { positive: 2 },
+        stance_distribution: { entailment: 1, unknown: 1 },
+        top_keywords: [{ term: 'trade', count: 2 }],
+        top_topics: [{ label: 'policy', count: 2 }],
+        top_entities: [{ text: 'Beijing', count: 2 }],
+      }],
+      propagation_path_overlays: [{
+        path_id: 'path-1',
+        semantic_overlay: {
+          sentiment: { positive: 2 },
+          keywords: [{ term: 'trade' }],
+          topics: [{ label: 'policy' }],
+          entities: [{ text: 'Beijing' }],
+          stance: { entailment: 1, unknown: 1 },
+          platforms: ['weibo'],
+          time_range: {
+            start: '2026-08-14T08:00:00Z',
+            end: '2026-08-14T08:01:00Z',
+          },
+          associated_claim: 'A primary claim',
+          evidence_refs: ['weibo:post:post-1', 'weibo:comment:comment-1'],
+        },
+      }],
+    },
+  }
 }
 
 test('loads the semantic projection with the current Event Review Case event id', () => {
@@ -183,10 +258,53 @@ test('requires complete semantic evidence containers before the panel is ready',
   const hasSemanticEvidenceStructure = bodyOf(riskView, 'hasSemanticEvidenceStructure')
 
   assert.match(semanticEvidence, /!hasSemanticEvidenceStructure\(projection\.evidence\)/)
-  assert.match(hasSemanticEvidenceStructure, /const layers = objectValue\(evidence\.layers\)/)
-  assert.match(hasSemanticEvidenceStructure, /Array\.isArray\(layers\.posts\)/)
-  assert.match(hasSemanticEvidenceStructure, /Array\.isArray\(layers\.comments\)/)
-  assert.match(hasSemanticEvidenceStructure, /const crossAnalysis = evidence\.cross_analysis/)
-  assert.match(hasSemanticEvidenceStructure, /typeof crossAnalysis === 'object'/)
-  assert.match(hasSemanticEvidenceStructure, /!Array\.isArray\(crossAnalysis\)/)
+  assert.match(hasSemanticEvidenceStructure, /hasRecords\(layers\.posts, hasSemanticItem\)/)
+  assert.match(hasSemanticEvidenceStructure, /hasRecords\(layers\.comments, hasSemanticItem\)/)
+  assert.match(hasSemanticEvidenceStructure, /hasRecords\(crossAnalysis\.time_slices, hasTimeSlice\)/)
+  assert.match(hasSemanticEvidenceStructure, /hasRecords\(crossAnalysis\.platform_slices, hasPlatformSlice\)/)
+  assert.match(hasSemanticEvidenceStructure, /hasRecords\(crossAnalysis\.community_slices, hasCommunitySlice\)/)
+  assert.match(hasSemanticEvidenceStructure, /hasRecords\(crossAnalysis\.propagation_path_overlays, hasPathOverlay\)/)
+})
+
+test('accepts only runtime-shaped nested semantic evidence artifacts', () => {
+  const validate = semanticEvidenceValidator()
+  const valid = validSemanticEvidence()
+
+  assert.equal(validate(valid), true)
+
+  const malformedItems = structuredClone(valid)
+  delete malformedItems.layers.posts[0].sentiment.label
+  assert.equal(validate(malformedItems), false)
+
+  const malformedFeatures = structuredClone(valid)
+  malformedFeatures.layers.comments[0].near_duplicates = [{ similarity: 0.93 }]
+  assert.equal(validate(malformedFeatures), false)
+
+  const malformedSlices = structuredClone(valid)
+  delete malformedSlices.cross_analysis.time_slices[0].date
+  assert.equal(validate(malformedSlices), false)
+
+  const malformedCommunities = structuredClone(valid)
+  malformedCommunities.cross_analysis.community_slices[0].community_id = ''
+  assert.equal(validate(malformedCommunities), false)
+
+  const malformedOverlays = structuredClone(valid)
+  delete malformedOverlays.cross_analysis.propagation_path_overlays[0].semantic_overlay
+  assert.equal(validate(malformedOverlays), false)
+
+  const emptyEvidence = structuredClone(valid)
+  emptyEvidence.layers.posts = []
+  emptyEvidence.layers.comments = []
+  emptyEvidence.cross_analysis.time_slices = []
+  emptyEvidence.cross_analysis.platform_slices = []
+  emptyEvidence.cross_analysis.community_slices = []
+  emptyEvidence.cross_analysis.propagation_path_overlays = []
+  assert.equal(validate(emptyEvidence), false)
+
+  const unavailableCrossAnalysis = structuredClone(valid)
+  unavailableCrossAnalysis.cross_analysis.time_slices = []
+  unavailableCrossAnalysis.cross_analysis.platform_slices = []
+  unavailableCrossAnalysis.cross_analysis.community_slices = []
+  unavailableCrossAnalysis.cross_analysis.propagation_path_overlays = []
+  assert.equal(validate(unavailableCrossAnalysis), true)
 })

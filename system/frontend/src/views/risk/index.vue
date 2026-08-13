@@ -877,23 +877,22 @@ const semanticCrossAnalysis = computed(() => objectValue(semanticEvidence.value?
 
 const semanticTimeSlices = computed<SemanticSlice[]>(() => arrayValue(semanticCrossAnalysis.value.time_slices)
   .map((slice) => objectValue(slice))
-  .map((slice) => ({ date: textValue(slice.date) || '未标明', count: numberValue(slice.count) }))
-  .filter((slice) => Boolean(slice.date)))
+  .map((slice) => ({ date: slice.date as string, count: slice.count as number })))
 
 const semanticPlatformSlices = computed<SemanticPlatformSlice[]>(() => arrayValue(semanticCrossAnalysis.value.platform_slices)
   .map((slice) => objectValue(slice))
   .map((slice) => ({
-    platform: textValue(slice.platform) || '未标明',
-    count: numberValue(slice.count),
+    platform: slice.platform as string,
+    count: slice.count as number,
     sentiment: distributionText(objectValue(slice.sentiment)),
   })))
 
 const semanticCommunities = computed<SemanticCommunity[]>(() => arrayValue(semanticCrossAnalysis.value.community_slices)
   .map((slice) => objectValue(slice))
-  .map((slice, index) => ({
-    communityId: textValue(slice.community_id) || `协同群体 ${index + 1}`,
-    memberCount: numberValue(slice.member_count),
-    itemCount: numberValue(slice.item_count),
+  .map((slice) => ({
+    communityId: slice.community_id as string,
+    memberCount: slice.member_count as number,
+    itemCount: slice.item_count as number,
     sentiment: distributionText(objectValue(slice.sentiment_distribution)),
     stance: distributionText(objectValue(slice.stance_distribution)),
     keywords: semanticNamedCounts(slice.top_keywords, 'term'),
@@ -1529,15 +1528,100 @@ function arrayValue(value: unknown): unknown[] {
 }
 
 function hasSemanticEvidenceStructure(value: unknown): value is SemanticEvidencePayload {
-  const evidence = objectValue(value)
-  const layers = objectValue(evidence.layers)
-  const crossAnalysis = evidence.cross_analysis
+  const isRecord = (candidate: unknown): candidate is Record<string, unknown> => {
+    return Boolean(candidate) && typeof candidate === 'object' && !Array.isArray(candidate)
+  }
+  const hasText = (candidate: unknown) => typeof candidate === 'string' && Boolean(candidate.trim())
+  const hasCount = (candidate: unknown): candidate is number => typeof candidate === 'number'
+    && Number.isInteger(candidate)
+    && Number.isFinite(candidate)
+    && candidate >= 0
+  const hasPositiveCount = (candidate: unknown) => hasCount(candidate) && candidate > 0
+  const hasDistribution = (candidate: unknown) => {
+    return isRecord(candidate)
+      && Object.keys(candidate).length > 0
+      && Object.entries(candidate).every(([label, count]) => hasText(label) && hasPositiveCount(count))
+  }
+  const hasRecords = (
+    candidate: unknown,
+    predicate: (record: Record<string, unknown>) => boolean,
+  ) => Array.isArray(candidate) && candidate.every((record) => isRecord(record) && predicate(record))
+  const hasSemanticItem = (candidate: Record<string, unknown>) => {
+    const sentiment = candidate.sentiment
+    const stance = candidate.stance
+    return (
+      hasText(candidate.id)
+      && hasText(candidate.platform)
+      && hasText(candidate.timestamp)
+      && isRecord(sentiment)
+      && hasText(sentiment.label)
+      && isRecord(stance)
+      && (
+        (stance.status === 'ready' && hasText(stance.label))
+        || stance.status === 'blocked_missing_primary_claim'
+      )
+      && hasRecords(candidate.keywords, (record) => hasText(record.term))
+      && hasRecords(candidate.topics, (record) => hasText(record.label))
+      && hasRecords(candidate.entities, (record) => hasText(record.text))
+      && hasRecords(candidate.near_duplicates, (record) => hasText(record.id))
+    )
+  }
+  const hasTimeSlice = (candidate: Record<string, unknown>) => hasText(candidate.date) && hasCount(candidate.count)
+  const hasPlatformSlice = (candidate: Record<string, unknown>) => {
+    return hasText(candidate.platform) && hasCount(candidate.count) && hasDistribution(candidate.sentiment)
+  }
+  const hasCommunitySlice = (candidate: Record<string, unknown>) => {
+    return (
+      hasText(candidate.community_id)
+      && Array.isArray(candidate.members)
+      && candidate.members.length > 0
+      && candidate.members.every(hasText)
+      && hasPositiveCount(candidate.member_count)
+      && hasPositiveCount(candidate.item_count)
+      && hasDistribution(candidate.sentiment_distribution)
+      && hasDistribution(candidate.stance_distribution)
+      && hasRecords(candidate.top_keywords, (record) => hasText(record.term) && hasCount(record.count))
+      && hasRecords(candidate.top_topics, (record) => hasText(record.label) && hasCount(record.count))
+      && hasRecords(candidate.top_entities, (record) => hasText(record.text) && hasCount(record.count))
+    )
+  }
+  const hasPathOverlay = (candidate: Record<string, unknown>) => {
+    const overlay = candidate.semantic_overlay
+    const timeRange = isRecord(overlay) ? overlay.time_range : undefined
+    return (
+      hasText(candidate.path_id)
+      && isRecord(overlay)
+      && hasDistribution(overlay.sentiment)
+      && hasRecords(overlay.keywords, (record) => hasText(record.term))
+      && hasRecords(overlay.topics, (record) => hasText(record.label))
+      && hasRecords(overlay.entities, (record) => hasText(record.text))
+      && hasDistribution(overlay.stance)
+      && Array.isArray(overlay.platforms)
+      && overlay.platforms.length > 0
+      && overlay.platforms.every(hasText)
+      && (timeRange === null || (isRecord(timeRange) && hasText(timeRange.start) && hasText(timeRange.end)))
+      && (overlay.associated_claim === null || typeof overlay.associated_claim === 'string')
+      && Array.isArray(overlay.evidence_refs)
+      && overlay.evidence_refs.length > 0
+      && overlay.evidence_refs.every(hasText)
+    )
+  }
+
+  if (!isRecord(value)) return false
+  const layers = value.layers
+  const crossAnalysis = value.cross_analysis
   return (
-    Array.isArray(layers.posts)
+    isRecord(layers)
+    && Array.isArray(layers.posts)
     && Array.isArray(layers.comments)
-    && Boolean(crossAnalysis)
-    && typeof crossAnalysis === 'object'
-    && !Array.isArray(crossAnalysis)
+    && hasRecords(layers.posts, hasSemanticItem)
+    && hasRecords(layers.comments, hasSemanticItem)
+    && (layers.posts.length > 0 || layers.comments.length > 0)
+    && isRecord(crossAnalysis)
+    && hasRecords(crossAnalysis.time_slices, hasTimeSlice)
+    && hasRecords(crossAnalysis.platform_slices, hasPlatformSlice)
+    && hasRecords(crossAnalysis.community_slices, hasCommunitySlice)
+    && hasRecords(crossAnalysis.propagation_path_overlays, hasPathOverlay)
   )
 }
 
@@ -1593,19 +1677,19 @@ function semanticSummaryText(items: SemanticCount[]): string {
 }
 
 function semanticLayerMatrixRows(layer: 'posts' | 'comments', kind: string): SemanticMatrixRow[] {
-  return semanticLayerItems(layer).map((item, index) => ({
-    key: `${layer}:${textValue(item.id) || index}`,
+  return semanticLayerItems(layer).map((item) => ({
+    key: `${layer}:${item.id as string}`,
     kind,
-    platform: textValue(item.platform) || '未标明',
-    timestamp: textValue(item.timestamp) || '未标明',
+    platform: item.platform as string,
+    timestamp: item.timestamp as string,
     keywords: arrayValue(item.keywords)
       .map((keyword) => textValue(objectValue(keyword).term))
       .filter(Boolean),
     topics: arrayValue(item.topics)
       .map((topic) => textValue(objectValue(topic).label))
       .filter(Boolean),
-    sentiment: textValue(objectValue(item.sentiment).label) || '暂无',
-    stance: textValue(objectValue(item.stance).label) || '暂无',
+    sentiment: objectValue(item.sentiment).label as string,
+    stance: objectValue(item.stance).label as string,
     entities: arrayValue(item.entities)
       .map((entity) => textValue(objectValue(entity).text))
       .filter(Boolean),
