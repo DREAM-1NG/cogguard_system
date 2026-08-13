@@ -357,6 +357,19 @@
           </template>
         </a-list>
         <a-empty v-else description="暂无支撑帖子" :image-style="{ height: '36px' }" />
+
+        <div class="section-title drawer-section">语义叠加</div>
+        <a-descriptions v-if="semanticPathOverlay" size="small" :column="1" bordered>
+          <a-descriptions-item label="情绪">{{ formatSemanticDistribution(semanticPathOverlay.sentiment) }}</a-descriptions-item>
+          <a-descriptions-item label="关键词">{{ formatSemanticTerms(semanticPathOverlay.keywords, 'term') }}</a-descriptions-item>
+          <a-descriptions-item label="主题">{{ formatSemanticTerms(semanticPathOverlay.topics, 'label') }}</a-descriptions-item>
+          <a-descriptions-item label="实体">{{ formatSemanticTerms(semanticPathOverlay.entities, 'text') }}</a-descriptions-item>
+          <a-descriptions-item label="立场">{{ formatSemanticDistribution(semanticPathOverlay.stance) }}</a-descriptions-item>
+          <a-descriptions-item label="平台范围">{{ semanticPathOverlay.platforms.join('、') }}</a-descriptions-item>
+          <a-descriptions-item label="时间范围">{{ formatSemanticTimeRange(semanticPathOverlay.time_range) }}</a-descriptions-item>
+          <a-descriptions-item label="证据引用">{{ semanticPathOverlay.evidence_refs.join('、') }}</a-descriptions-item>
+        </a-descriptions>
+        <a-empty v-else description="暂无语义叠加" :image-style="{ height: '36px' }" />
       </template>
     </a-drawer>
 
@@ -460,6 +473,7 @@ import {
   getCachedPropagationPrediction,
   predictPropagationCurrentEvent,
 } from '@/api/propagation'
+import { getEventSemantic, type SemanticEvidenceProjection } from '@/api/analysis'
 import PageHeader from '@/components/PageHeader.vue'
 
 const DEFAULT_EVENT_ID = 'trump_visit_2026_05_21'
@@ -478,7 +492,22 @@ type EvidencePath = {
   score?: number
   confidence?: number | string
   path_id?: string
+  evidence_refs?: string[]
   metadata?: Record<string, unknown>
+}
+
+type SemanticPathOverlay = {
+  path_id: string
+  semantic_overlay: {
+    sentiment: Record<string, number>
+    keywords: Array<{ term: string; count?: number }>
+    topics: Array<{ label: string; count?: number }>
+    entities: Array<{ text: string; count?: number }>
+    stance: Record<string, number>
+    platforms: string[]
+    time_range: { start: string; end: string } | null
+    evidence_refs: string[]
+  }
 }
 
 type SupportingPost = {
@@ -1042,6 +1071,8 @@ const analyzing = ref(false)
 const predicting = ref(false)
 const analysisResult = ref<AnalysisResult | null>(null)
 const modelPrediction = ref<EventModelPrediction | null>(null)
+const semanticProjection = ref<SemanticEvidenceProjection | null>(null)
+const semanticLoading = ref(false)
 const selectedClaim = ref<ClaimGroupItem | null>(null)
 const claimDetailOpen = ref(false)
 const selectedClaimPathDetail = ref<ClaimPathDetail | null>(null)
@@ -1075,6 +1106,14 @@ let pathGraphChart: echarts.ECharts | null = null
 let modelTrendChart: echarts.ECharts | null = null
 let modelTrendResizeObserver: ResizeObserver | null = null
 let predictionRequestGeneration = 0
+let semanticRequestGeneration = 0
+
+const semanticPathOverlay = computed(() => {
+  const selectedPath = selectedClaimPathDetail.value?.path
+  if (!selectedPath || semanticProjection.value?.status !== 'ready') return null
+  if (!hasPropagationPathOverlays(semanticProjection.value.evidence)) return null
+  return findPathSemanticOverlay(selectedPath, semanticProjection.value.evidence.cross_analysis.propagation_path_overlays)
+})
 
 const analysisReady = computed(() => !!analysisResult.value && !analysisResult.value.error)
 const keyRoles = computed(() => analysisResult.value?.key_roles ?? null)
@@ -1344,6 +1383,63 @@ function formatTimestamp(value?: string) {
     return '--'
   }
   return value.replace('T', ' ').replace('Z', '')
+}
+
+function hasPropagationPathOverlays(value: unknown): value is { cross_analysis: { propagation_path_overlays: SemanticPathOverlay[] } } {
+  if (!isRecord(value) || !isRecord(value.cross_analysis)) return false
+  const overlays = value.cross_analysis.propagation_path_overlays
+  return Array.isArray(overlays) && overlays.every((candidate) => {
+    if (!isRecord(candidate) || typeof candidate.path_id !== 'string' || !candidate.path_id.trim()) return false
+    const overlay = candidate.semantic_overlay
+    const timeRange = isRecord(overlay) ? overlay.time_range : undefined
+    return isRecord(overlay)
+      && isRecord(overlay.sentiment)
+      && Array.isArray(overlay.keywords)
+      && Array.isArray(overlay.topics)
+      && Array.isArray(overlay.entities)
+      && isRecord(overlay.stance)
+      && Array.isArray(overlay.platforms)
+      && overlay.platforms.every((item) => typeof item === 'string' && Boolean(item.trim()))
+      && (timeRange === null || (isRecord(timeRange) && typeof timeRange.start === 'string' && typeof timeRange.end === 'string'))
+      && Array.isArray(overlay.evidence_refs)
+      && overlay.evidence_refs.every((item) => typeof item === 'string' && Boolean(item.trim()))
+  })
+}
+
+function sameEvidenceRefs(left: string[], right: string[]) {
+  if (left.length !== right.length) return false
+  const leftRefs = [...left].map((item) => item.trim()).sort()
+  const rightRefs = [...right].map((item) => item.trim()).sort()
+  return leftRefs.every((item, index) => item === rightRefs[index])
+}
+
+function findPathSemanticOverlay(path: EvidencePath, overlays: SemanticPathOverlay[]) {
+  const pathId = path.path_id?.trim()
+  if (pathId) {
+    const matchedPathId = overlays.find((overlay) => overlay.path_id === pathId)
+    if (matchedPathId) return matchedPathId.semantic_overlay
+  }
+  const metadataEvidenceRefs = Array.isArray(path.metadata?.evidence_refs)
+    ? path.metadata.evidence_refs.filter((item): item is string => typeof item === 'string')
+    : []
+  const pathEvidenceRefs = path.evidence_refs ?? metadataEvidenceRefs
+  if (!pathEvidenceRefs.length) return null
+  return overlays.find((overlay) => sameEvidenceRefs(overlay.semantic_overlay.evidence_refs, pathEvidenceRefs))?.semantic_overlay ?? null
+}
+
+function formatSemanticDistribution(values: Record<string, number>) {
+  return Object.entries(values).map(([label, count]) => `${label} ${count}`).join('、') || '--'
+}
+
+function formatSemanticTerms(
+  values: Array<{ term?: string; label?: string; text?: string; count?: number }>,
+  field: 'term' | 'label' | 'text',
+) {
+  return values.map((item) => `${item[field]}${item.count === undefined ? '' : ` ${item.count}`}`).join('、') || '--'
+}
+
+function formatSemanticTimeRange(value: { start: string; end: string } | null) {
+  return value ? `${formatTimestamp(value.start)} 至 ${formatTimestamp(value.end)}` : '--'
 }
 
 function updateSyncTime() {
@@ -2169,6 +2265,32 @@ function syncScopeFromRoute() {
   observedUntil.value = firstQueryValue(route.query.observed_until) || undefined
 }
 
+function resetSemanticProjection() {
+  semanticRequestGeneration += 1
+  semanticProjection.value = null
+  semanticLoading.value = false
+}
+
+async function loadSemanticProjection() {
+  const requestedEventId = eventId.value.trim()
+  const requestGeneration = ++semanticRequestGeneration
+  semanticProjection.value = null
+  semanticLoading.value = Boolean(requestedEventId)
+  if (!requestedEventId) return
+  try {
+    const response = await getEventSemantic(requestedEventId)
+    if (requestGeneration !== semanticRequestGeneration || requestedEventId !== eventId.value.trim()) return
+    semanticProjection.value = response.data
+  } catch {
+    if (requestGeneration !== semanticRequestGeneration || requestedEventId !== eventId.value.trim()) return
+    semanticProjection.value = null
+  } finally {
+    if (requestGeneration === semanticRequestGeneration && requestedEventId === eventId.value.trim()) {
+      semanticLoading.value = false
+    }
+  }
+}
+
 async function loadAnalysis(showToast = false, preservePrediction = false) {
   if (!preservePrediction) {
     predictionRequestGeneration += 1
@@ -2317,6 +2439,7 @@ onMounted(() => {
   syncScopeFromRoute()
   void loadAnalysis(false)
   void loadCachedPrediction()
+  void loadSemanticProjection()
   window.addEventListener('resize', resizeCharts)
 })
 
@@ -2331,6 +2454,11 @@ watch(
     void loadCachedPrediction()
   },
 )
+
+watch([eventId, platform], () => {
+  resetSemanticProjection()
+  void loadSemanticProjection()
+})
 
 watch(displayLayerRows, () => {
   void renderPathTabCharts()

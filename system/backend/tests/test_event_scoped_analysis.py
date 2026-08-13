@@ -578,12 +578,26 @@ def test_propagation_model_event_reads_current_event_data(monkeypatch):
     fake_db = FakeMongoDB(raw_posts=raw_posts, raw_comments=raw_comments)
     monkeypatch.setattr(propagation_model_service, "get_mongo_db", lambda: fake_db)
 
-    async def fake_predict_event_macro_micro(*, posts, comments=None, top_k=10):
+    async def fake_predict_event_macro_micro(*, posts, comments=None, top_k=10, observation_ratio=0.5, observed_until=None):
         return {
             "status": "ok",
             "model_status": "available",
-            "macro": {"predicted_size": 5},
-            "micro": {"top_users": [{"author_id": "u2", "author_name": "u2", "score": 0.5}]},
+            "macro": {
+                "observed_size": 3,
+                "predicted_size": 5,
+                "trend_points": [],
+                "calibration_status": "unavailable",
+            },
+            "micro": {
+                "top_users": [{
+                    "rank": 1,
+                    "author_id": "u2",
+                    "author_name": "u2",
+                    "score": 0.5,
+                    "candidate_source": "observed_user_hash_bucket_proxy",
+                    "activation_type": "reactivation",
+                }],
+            },
             "model": {"name": "Ours"},
         }
 
@@ -604,7 +618,8 @@ def test_propagation_model_event_reads_current_event_data(monkeypatch):
     assert raw_posts.calls[0]["query"] == {"event_id": "event-1", "platform": "weibo"}
     assert raw_comments.calls[0]["query"] == {"event_id": "event-1", "platform": "weibo"}
     assert result["status"] == "ok"
-    assert result["data_scope"] == {"posts": 3, "comments": 1}
+    assert result["data_scope"]["posts"] == 3
+    assert result["data_scope"]["comments"] == 1
     assert result["micro"]["top_users"][0]["author_id"] == "u2"
     assert result["methodology"]["schema"] == "cogguard.propagation.methodology.macro_micro_sequence.v1"
 
@@ -612,11 +627,26 @@ def test_propagation_model_event_reads_current_event_data(monkeypatch):
 def test_propagation_api_passes_event_model_prediction_params(monkeypatch):
     calls = {}
 
-    async def fake_predict_propagation_model_event(platform=None, event_id=None, top_k=10):
-        calls.update({"platform": platform, "event_id": event_id, "top_k": top_k})
+    async def fake_predict_propagation_model_event(
+        platform=None,
+        event_id=None,
+        top_k=10,
+        observed_until=None,
+        observation_ratio=0.5,
+    ):
+        calls.update({
+            "platform": platform,
+            "event_id": event_id,
+            "top_k": top_k,
+            "observed_until": observed_until,
+            "observation_ratio": observation_ratio,
+        })
         return {
             "status": "ok",
             "model_status": "available",
+            "macro": {"observed_size": 0, "trend_points": [], "calibration_status": "unavailable"},
+            "micro": {"top_users": []},
+            "data_scope": {"event_id": event_id, "platform": platform},
             "methodology": {"method_name": "Macro/Micro Sequence Propagation Prediction"},
         }
 
@@ -635,7 +665,13 @@ def test_propagation_api_passes_event_model_prediction_params(monkeypatch):
         )
     )
 
-    assert calls == {"platform": "weibo", "event_id": "event-1", "top_k": 7}
+    assert calls == {
+        "platform": "weibo",
+        "event_id": "event-1",
+        "top_k": 7,
+        "observed_until": None,
+        "observation_ratio": 0.5,
+    }
     assert payload["data"]["model_status"] == "available"
     assert payload["data"].get("methodology", {}).get("method_name") == "Macro/Micro Sequence Propagation Prediction"
 
@@ -650,9 +686,29 @@ def test_propagation_api_accepts_authenticated_dependency_override(monkeypatch):
         calls["analyze"] = {"platform": platform, "event_id": event_id}
         return {"event_id": event_id, "platform": platform}
 
-    async def fake_predict_current_event_model(platform=None, event_id=None, top_k=10):
-        calls["predict"] = {"platform": platform, "event_id": event_id, "top_k": top_k}
-        return {"event_id": event_id, "platform": platform}
+    async def fake_predict_current_event_model(
+        platform=None,
+        event_id=None,
+        top_k=10,
+        observed_until=None,
+        observation_ratio=0.5,
+    ):
+        calls["predict"] = {
+            "platform": platform,
+            "event_id": event_id,
+            "top_k": top_k,
+            "observed_until": observed_until,
+            "observation_ratio": observation_ratio,
+        }
+        return {
+            "status": "data_insufficient",
+            "model_status": "unavailable",
+            "event_id": event_id,
+            "platform": platform,
+            "macro": {"observed_size": 0, "trend_points": [], "calibration_status": "unavailable"},
+            "micro": {"top_users": []},
+            "data_scope": {"event_id": event_id, "platform": platform},
+        }
 
     monkeypatch.setattr(
         propagation_api.propagation_observation_service,
@@ -683,9 +739,16 @@ def test_propagation_api_accepts_authenticated_dependency_override(monkeypatch):
     assert analyze_resp.status_code == 200
     assert prediction_resp.status_code == 200
     assert analyze_resp.json()["data"] == {"event_id": "event-1", "platform": "weibo"}
-    assert prediction_resp.json()["data"] == {"event_id": "event-1", "platform": "weibo"}
+    assert prediction_resp.json()["data"]["event_id"] == "event-1"
+    assert prediction_resp.json()["data"]["platform"] == "weibo"
     assert calls["analyze"] == {"platform": "weibo", "event_id": "event-1"}
-    assert calls["predict"] == {"platform": "weibo", "event_id": "event-1", "top_k": 10}
+    assert calls["predict"] == {
+        "platform": "weibo",
+        "event_id": "event-1",
+        "top_k": 10,
+        "observed_until": None,
+        "observation_ratio": 0.5,
+    }
 
 
 def test_propagation_api_passes_prediction_params(monkeypatch):
