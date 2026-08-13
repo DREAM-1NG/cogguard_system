@@ -152,6 +152,7 @@ def test_bge_encoding_batches_each_text_once_in_original_order(tmp_path: Path):
     runtime = _runtime(tmp_path)
     runtime.embedding_model = encoder
     batch_size = BGE_ENCODING_BATCH_SIZE
+    assert BGE_ENCODING_BATCH_SIZE == 32
     texts = [f"text-{index}" for index in range(batch_size + 2)]
 
     vectors = runtime._encode_texts(texts)
