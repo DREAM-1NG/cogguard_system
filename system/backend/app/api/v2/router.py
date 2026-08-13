@@ -16,6 +16,11 @@ api_router.include_router(
     tags=["analysis-v2"],
 )
 api_router.include_router(
+    analysis.product_router,
+    prefix="/analysis",
+    tags=["analysis-product-v2"],
+)
+api_router.include_router(
     review_cases.router,
     prefix="/review-cases",
     tags=["review-cases-v2"],

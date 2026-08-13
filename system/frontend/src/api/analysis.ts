@@ -6,11 +6,25 @@ interface ApiEnvelope<T> {
   data: T
 }
 
+export interface SemanticArtifactProjection {
+  event_id: string
+  run_id: string | null
+  snapshot_id: string | null
+  status: 'ready' | 'blocked' | 'not_found'
+  blocking_reason: string | null
+  artifact: Record<string, unknown> | null
+}
+
 const analysisRequest = createApiClient('/api/v2/analysis', 120000)
 
 export function getAnalysisArtifact(runId: string, artifactKey = 'stage:semantic_enrichment:result') {
   return analysisRequest.get<unknown, ApiEnvelope<Record<string, any>>>(
-    `/runs/${encodeURIComponent(runId)}/artifacts/${artifactKey}`,
+    `/runs/${encodeURIComponent(runId)}/artifacts/${encodeURIComponent(artifactKey)}`,
   )
 }
 
+export function getEventSemantic(eventId: string) {
+  return analysisRequest.get<unknown, ApiEnvelope<SemanticArtifactProjection>>(
+    `/events/${encodeURIComponent(eventId)}/semantic`,
+  )
+}
