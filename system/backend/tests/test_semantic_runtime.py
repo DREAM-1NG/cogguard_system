@@ -227,6 +227,25 @@ def test_empty_coordination_directory_does_not_trust_caller_network_or_manifest(
     assert result["cross_analysis"]["community_slices_unavailable_reason"] == "coordination_artifact_unavailable"
 
 
+def test_coordination_artifact_without_hashes_does_not_become_a_community_slice(tmp_path: Path):
+    snapshot = _snapshot()
+    artifact_dir = tmp_path / "coordination-artifact-without-hashes"
+    _write_coordination_artifact(artifact_dir, snapshot, members=["u1", "u2"])
+    manifest_path = artifact_dir / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["artifact_hashes"] = {}
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+    result = _runtime(tmp_path).enrich(
+        snapshot,
+        coordination={"artifact_dir": str(artifact_dir)},
+        claim="primary claim",
+    )
+
+    assert result["cross_analysis"]["community_slices"] == []
+    assert result["cross_analysis"]["community_slices_unavailable_reason"] == "coordination_artifact_unavailable"
+
+
 def test_tampered_coordination_artifact_does_not_become_a_community_slice(tmp_path: Path):
     snapshot = _snapshot()
     artifact_dir = tmp_path / "tampered-coordination-artifact"

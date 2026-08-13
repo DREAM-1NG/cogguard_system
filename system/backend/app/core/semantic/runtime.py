@@ -477,7 +477,10 @@ def _load_verified_coordination_result(
     except Exception:
         return None, "coordination_artifact_unavailable"
     if isinstance(loaded, dict):
-        return loaded, None
+        manifest = loaded.get("artifact_manifest")
+        if isinstance(manifest, dict) and manifest.get("artifact_hashes"):
+            return loaded, None
+        return None, "coordination_artifact_unavailable"
     if reason == "artifact_fingerprint_mismatch":
         return None, "coordination_artifact_snapshot_mismatch"
     return None, "coordination_artifact_unavailable"
