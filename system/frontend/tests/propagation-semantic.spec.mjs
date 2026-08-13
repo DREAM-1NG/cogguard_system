@@ -23,7 +23,19 @@ function bodyOf(source, name) {
       break
     }
   }
-  const brace = source.indexOf('{', paramsEnd)
+  let brace = source.indexOf('{', paramsEnd)
+  if (source.slice(paramsEnd, brace).includes(': value is') && source.slice(brace, brace + 32).includes('cross_analysis')) {
+    let typeDepth = 0
+    for (let index = brace; index < source.length; index += 1) {
+      const char = source[index]
+      if (char === '{') typeDepth += 1
+      if (char === '}') typeDepth -= 1
+      if (typeDepth === 0) {
+        brace = source.indexOf('{', index + 1)
+        break
+      }
+    }
+  }
   let depth = 0
   for (let index = brace; index < source.length; index += 1) {
     const char = source[index]
@@ -32,6 +44,40 @@ function bodyOf(source, name) {
     if (depth === 0) return source.slice(start, index + 1)
   }
   throw new Error(`Could not extract ${name}`)
+}
+
+function executableFunction(source, name, dependencies = {}) {
+  const definition = bodyOf(source, name)
+    .replace(/: unknown/g, '')
+    .replace(/: string\[\]/g, '')
+    .replace(/: EvidencePath/g, '')
+    .replace(/: value is \{ cross_analysis: \{ propagation_path_overlays: SemanticPathOverlay\[\] \} \}/g, '')
+    .replace(/: SemanticPathOverlay\[\]/g, '')
+    .replace(/: Record<string, number>/g, '')
+    .replace(/: 'term' \| 'label' \| 'text'/g, '')
+    .replace(/: value is UnknownRecord/g, '')
+    .replace(/\(item\): item is string =>/g, '(item) =>')
+  return Function(...Object.keys(dependencies), `return (${definition})`)(...Object.values(dependencies))
+}
+
+function functionOr(source, name, fallback, dependencies = {}) {
+  return source.includes(`function ${name}(`) ? executableFunction(source, name, dependencies) : fallback
+}
+
+function semanticOverlay(pathId = 'path-1', evidenceRefs = ['post-1']) {
+  return {
+    path_id: pathId,
+    semantic_overlay: {
+      sentiment: { positive: 1 },
+      keywords: [{ term: 'keyword', count: 1 }],
+      topics: [{ label: 'topic', count: 1 }],
+      entities: [{ text: 'entity', count: 1 }],
+      stance: { support: 1 },
+      platforms: ['weibo'],
+      time_range: { start: '2026-01-01T00:00:00Z', end: '2026-01-01T01:00:00Z' },
+      evidence_refs: evidenceRefs,
+    },
+  }
 }
 
 test('loads the semantic projection for the selected propagation event', () => {
@@ -57,17 +103,56 @@ test('clears semantic projection state when event or platform scope changes', ()
   assert.match(scopeWatch, /void loadSemanticProjection\(\)/)
 })
 
-test('matches a path semantic overlay by path id before exact evidence references', () => {
-  const findPathSemanticOverlay = bodyOf(propagationView, 'findPathSemanticOverlay')
+test('matches numeric path IDs before falling back to exact evidence references', () => {
+  const normalizePathId = functionOr(propagationView, 'normalizePathId', (value) => String(value ?? '').trim())
+  const sameEvidenceRefs = executableFunction(propagationView, 'sameEvidenceRefs')
+  const findPathSemanticOverlay = executableFunction(propagationView, 'findPathSemanticOverlay', {
+    normalizePathId,
+    sameEvidenceRefs,
+  })
+  const pathIdMatch = semanticOverlay('42', ['different-ref'])
+  const evidenceRefMatch = semanticOverlay('not-the-path', ['post-42'])
 
-  assert.match(findPathSemanticOverlay, /path\.path_id/)
-  assert.match(findPathSemanticOverlay, /overlay\.path_id === pathId/)
-  assert.match(findPathSemanticOverlay, /sameEvidenceRefs\(overlay\.semantic_overlay\.evidence_refs, pathEvidenceRefs\)/)
-  assert.ok(
-    findPathSemanticOverlay.indexOf('overlay.path_id === pathId')
-      < findPathSemanticOverlay.indexOf('sameEvidenceRefs('),
-    'path_id matching must be checked before evidence reference matching',
+  assert.equal(
+    findPathSemanticOverlay({ path_id: 42, evidence_refs: ['post-42'] }, [evidenceRefMatch, pathIdMatch]),
+    pathIdMatch.semantic_overlay,
   )
+  assert.equal(
+    findPathSemanticOverlay({ path_id: 84, evidence_refs: ['post-42'] }, [evidenceRefMatch]),
+    evidenceRefMatch.semantic_overlay,
+  )
+})
+
+test('fails closed when any required nested semantic overlay field is empty or malformed', () => {
+  const isRecord = executableFunction(propagationView, 'isRecord')
+  const hasNonEmptyDistribution = functionOr(propagationView, 'hasNonEmptyDistribution', () => true, { isRecord })
+  const hasSemanticFeatureRecords = functionOr(propagationView, 'hasSemanticFeatureRecords', () => true, { isRecord })
+  const hasNonEmptyTextList = functionOr(propagationView, 'hasNonEmptyTextList', () => true)
+  const normalizePathId = functionOr(propagationView, 'normalizePathId', (value) => String(value ?? '').trim())
+  const hasPropagationPathOverlays = executableFunction(propagationView, 'hasPropagationPathOverlays', {
+    isRecord,
+    hasNonEmptyDistribution,
+    hasSemanticFeatureRecords,
+    hasNonEmptyTextList,
+    normalizePathId,
+  })
+  const valid = semanticOverlay()
+
+  assert.equal(hasPropagationPathOverlays({ cross_analysis: { propagation_path_overlays: [valid] } }), true)
+  for (const mutate of [
+    (overlay) => { overlay.semantic_overlay.sentiment = {} },
+    (overlay) => { overlay.semantic_overlay.keywords = [{ term: '' }] },
+    (overlay) => { overlay.semantic_overlay.topics = [{ label: 1 }] },
+    (overlay) => { overlay.semantic_overlay.entities = [] },
+    (overlay) => { overlay.semantic_overlay.stance = { support: '1' } },
+    (overlay) => { overlay.semantic_overlay.platforms = [] },
+    (overlay) => { overlay.semantic_overlay.time_range = { start: '', end: '2026-01-01T01:00:00Z' } },
+    (overlay) => { overlay.semantic_overlay.evidence_refs = [''] },
+  ]) {
+    const malformed = structuredClone(valid)
+    mutate(malformed)
+    assert.equal(hasPropagationPathOverlays({ cross_analysis: { propagation_path_overlays: [malformed] } }), false)
+  }
 })
 
 test('keeps malformed, blocked, and empty semantic projections unavailable', () => {

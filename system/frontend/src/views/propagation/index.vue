@@ -491,13 +491,13 @@ type EvidencePath = {
   nodes?: string[]
   score?: number
   confidence?: number | string
-  path_id?: string
+  path_id?: string | number
   evidence_refs?: string[]
   metadata?: Record<string, unknown>
 }
 
 type SemanticPathOverlay = {
-  path_id: string
+  path_id: string | number
   semantic_overlay: {
     sentiment: Record<string, number>
     keywords: Array<{ term: string; count?: number }>
@@ -505,7 +505,7 @@ type SemanticPathOverlay = {
     entities: Array<{ text: string; count?: number }>
     stance: Record<string, number>
     platforms: string[]
-    time_range: { start: string; end: string } | null
+    time_range: { start: string; end: string }
     evidence_refs: string[]
   }
 }
@@ -1385,24 +1385,50 @@ function formatTimestamp(value?: string) {
   return value.replace('T', ' ').replace('Z', '')
 }
 
+function hasNonEmptyDistribution(value: unknown) {
+  return isRecord(value) && Object.entries(value).length > 0 && Object.entries(value).every(
+    ([label, count]) => Boolean(label.trim()) && typeof count === 'number' && Number.isFinite(count),
+  )
+}
+
+function hasSemanticFeatureRecords(value: unknown, field: 'term' | 'label' | 'text') {
+  return Array.isArray(value) && value.length > 0 && value.every((item) => (
+    isRecord(item)
+    && typeof item[field] === 'string'
+    && Boolean(item[field].trim())
+    && (item.count === undefined || (typeof item.count === 'number' && Number.isFinite(item.count)))
+  ))
+}
+
+function hasNonEmptyTextList(value: unknown) {
+  return Array.isArray(value) && value.length > 0 && value.every((item) => typeof item === 'string' && Boolean(item.trim()))
+}
+
+function normalizePathId(value: unknown) {
+  if (typeof value !== 'string' && (typeof value !== 'number' || !Number.isFinite(value))) return ''
+  return String(value).trim()
+}
+
 function hasPropagationPathOverlays(value: unknown): value is { cross_analysis: { propagation_path_overlays: SemanticPathOverlay[] } } {
   if (!isRecord(value) || !isRecord(value.cross_analysis)) return false
   const overlays = value.cross_analysis.propagation_path_overlays
   return Array.isArray(overlays) && overlays.every((candidate) => {
-    if (!isRecord(candidate) || typeof candidate.path_id !== 'string' || !candidate.path_id.trim()) return false
+    if (!isRecord(candidate) || !normalizePathId(candidate.path_id)) return false
     const overlay = candidate.semantic_overlay
     const timeRange = isRecord(overlay) ? overlay.time_range : undefined
     return isRecord(overlay)
-      && isRecord(overlay.sentiment)
-      && Array.isArray(overlay.keywords)
-      && Array.isArray(overlay.topics)
-      && Array.isArray(overlay.entities)
-      && isRecord(overlay.stance)
-      && Array.isArray(overlay.platforms)
-      && overlay.platforms.every((item) => typeof item === 'string' && Boolean(item.trim()))
-      && (timeRange === null || (isRecord(timeRange) && typeof timeRange.start === 'string' && typeof timeRange.end === 'string'))
-      && Array.isArray(overlay.evidence_refs)
-      && overlay.evidence_refs.every((item) => typeof item === 'string' && Boolean(item.trim()))
+      && hasNonEmptyDistribution(overlay.sentiment)
+      && hasSemanticFeatureRecords(overlay.keywords, 'term')
+      && hasSemanticFeatureRecords(overlay.topics, 'label')
+      && hasSemanticFeatureRecords(overlay.entities, 'text')
+      && hasNonEmptyDistribution(overlay.stance)
+      && hasNonEmptyTextList(overlay.platforms)
+      && isRecord(timeRange)
+      && typeof timeRange.start === 'string'
+      && Boolean(timeRange.start.trim())
+      && typeof timeRange.end === 'string'
+      && Boolean(timeRange.end.trim())
+      && hasNonEmptyTextList(overlay.evidence_refs)
   })
 }
 
@@ -1414,15 +1440,16 @@ function sameEvidenceRefs(left: string[], right: string[]) {
 }
 
 function findPathSemanticOverlay(path: EvidencePath, overlays: SemanticPathOverlay[]) {
-  const pathId = path.path_id?.trim()
+  const pathId = normalizePathId(path.path_id)
   if (pathId) {
-    const matchedPathId = overlays.find((overlay) => overlay.path_id === pathId)
+    const matchedPathId = overlays.find((overlay) => normalizePathId(overlay.path_id) === pathId)
     if (matchedPathId) return matchedPathId.semantic_overlay
   }
   const metadataEvidenceRefs = Array.isArray(path.metadata?.evidence_refs)
     ? path.metadata.evidence_refs.filter((item): item is string => typeof item === 'string')
     : []
-  const pathEvidenceRefs = path.evidence_refs ?? metadataEvidenceRefs
+  const pathEvidenceRefs = (Array.isArray(path.evidence_refs) ? path.evidence_refs : metadataEvidenceRefs)
+    .filter((item): item is string => typeof item === 'string' && Boolean(item.trim()))
   if (!pathEvidenceRefs.length) return null
   return overlays.find((overlay) => sameEvidenceRefs(overlay.semantic_overlay.evidence_refs, pathEvidenceRefs))?.semantic_overlay ?? null
 }
