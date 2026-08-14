@@ -72,6 +72,8 @@ system/
       router/          navigation and guards
 ```
 
+`app.core.analysis.runtime` now declares an explicit `__all__`, and retired deterministic builder implementations must not be restored or imported by new product code.
+
 ## Naming Rules
 
 ### Files and modules

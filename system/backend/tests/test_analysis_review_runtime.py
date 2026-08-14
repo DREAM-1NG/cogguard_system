@@ -16,6 +16,24 @@ from app.core.analysis.governance import (
 from app.core.analysis.runtime import build_student_verdict, build_teacher_advisory_verdict
 
 
+def test_runtime_exposes_only_active_review_entry_points():
+    assert set(runtime.__all__) == {
+        "ANALYSIS_STUDENT_MODEL_VERSION",
+        "ANALYSIS_TEACHER_MODEL_VERSION",
+        "ANALYSIS_TEACHER_SOURCE",
+        "InternalStudentRuntime",
+        "InternalTeacherJobPort",
+        "build_student_verdict",
+        "build_teacher_advisory_verdict",
+        "build_teacher_advisory_verdict_async",
+        "submit_teacher_review_job",
+        "finalize_teacher_review_job",
+        "mark_teacher_review_failed",
+    }
+    assert not hasattr(runtime, "_legacy_build_student_verdict")
+    assert not hasattr(runtime, "_legacy_build_teacher_advisory_verdict")
+
+
 def _case() -> dict:
     return {
         "snapshot_id": "snap_trump",

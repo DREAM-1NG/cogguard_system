@@ -41,6 +41,20 @@ REVIEW_STUDENT_RUNTIME_PATH = SYSTEM_ROOT / "runtimes" / "review_student" / "run
 REVIEW_TEACHER_DAG_PATH = SYSTEM_ROOT / "research" / "review_teacher" / "dag.py"
 TEACHER_JOB_CACHE: dict[str, dict[str, Any]] = {}
 
+__all__ = [
+    "ANALYSIS_STUDENT_MODEL_VERSION",
+    "ANALYSIS_TEACHER_MODEL_VERSION",
+    "ANALYSIS_TEACHER_SOURCE",
+    "InternalStudentRuntime",
+    "InternalTeacherJobPort",
+    "build_student_verdict",
+    "build_teacher_advisory_verdict",
+    "build_teacher_advisory_verdict_async",
+    "submit_teacher_review_job",
+    "finalize_teacher_review_job",
+    "mark_teacher_review_failed",
+]
+
 
 class InternalStudentRuntime:
     async def predict(self, case: dict[str, Any]) -> dict[str, Any]:
@@ -177,202 +191,6 @@ def _load_internal_module(*, path: Path, module_name: str, label: str):
     sys.modules[module_name] = module
     spec.loader.exec_module(module)
     return module
-
-
-def _legacy_build_student_verdict(case: dict[str, Any]) -> dict[str, Any]:
-    normalized = _normalize_case(case)
-    quality_report = normalized["quality_report"]
-    if _quality_status(quality_report) == "reject" or not normalized["posts"]:
-        return {
-            "technology": "student",
-            "status": "data_insufficient",
-            "verdict_type": "preliminary",
-            "verdict_id": _verdict_id("student", normalized),
-            "snapshot_id": normalized["snapshot_id"],
-            "event_id": normalized["event_id"],
-            "model_version": ANALYSIS_STUDENT_MODEL_VERSION,
-            "reason": "Event snapshot has insufficient evidence for a deployed student verdict.",
-            "capability_boundary": _capability_boundary("student"),
-            "quality_report": quality_report,
-            "review_required": True,
-            "abstain": True,
-        }
-
-    post_semantics = assess_post_semantics(
-        normalized["posts"],
-        _build_post_semantics_context(normalized),
-        prefer_embeddings=False,
-    )
-    coordination = _build_coordination_context(normalized)
-    propagation = _build_propagation_context(normalized)
-    layered = assess_layered_harmfulness(
-        post_semantics=post_semantics,
-        account_profiles=_build_account_profiles(normalized),
-        coordination=coordination,
-        propagation=propagation,
-        event_id=normalized["event_id"],
-        platform=normalized["platform"],
-    )
-    detector_outputs = _build_student_detector_outputs(post_semantics)
-    fusion = fuse_detector_outputs(detector_outputs)
-    agent_review = build_agent_review(detector_outputs, fusion)
-    confidence = round(max(fusion["final_score"], 1.0 - fusion["final_score"]), 4)
-    review_required = bool(agent_review["review_required"] or fusion["review_required"])
-    verdict = {
-        "technology": "student",
-        "status": "ok",
-        "verdict_type": "preliminary",
-        "verdict_id": _verdict_id("student", normalized),
-        "snapshot_id": normalized["snapshot_id"],
-        "event_id": normalized["event_id"],
-        "platforms": normalized["platforms"],
-        "model_version": ANALYSIS_STUDENT_MODEL_VERSION,
-        "label": fusion["final_harmfulness"],
-        "score": fusion["final_score"],
-        "confidence": confidence,
-        "risk_level": _student_risk_level(post_semantics, layered, fusion),
-        "abstain": confidence < 0.55,
-        "review_required": review_required,
-        "review_reason": list(fusion["review_reason"]),
-        "capability_boundary": _capability_boundary("student"),
-        "quality_report": quality_report,
-        "summary": {
-            "input_posts": post_semantics["summary"]["input_posts"],
-            "analyzed_posts": post_semantics["summary"]["analyzed_posts"],
-            "harmful_posts": post_semantics["summary"]["harmful_posts"],
-            "harmful_ratio": post_semantics["summary"]["harmful_ratio"],
-            "linked_posts": post_semantics["summary"]["linked_posts"],
-            "available_claims": post_semantics["summary"]["available_claims"],
-            "account_count": layered["user_level"]["summary"]["account_count"],
-            "community_count": layered["community_level"]["summary"]["community_count"],
-        },
-        "signals": {
-            "post_semantics": {
-                "backend": post_semantics["summary"]["backend"],
-                "harmful_ratio": post_semantics["summary"]["harmful_ratio"],
-                "stance_distribution": post_semantics["summary"]["stance_distribution"],
-                "top_claims": post_semantics["summary"]["top_claims"][:5],
-            },
-            "layered_harmfulness": {
-                "user_level": layered["user_level"]["summary"],
-                "community_level": layered["community_level"]["summary"],
-                "global_summary": layered["global_summary"],
-            },
-            "fusion": fusion,
-            "agent_review": agent_review,
-        },
-        "evidence": _student_evidence(post_semantics, layered, detector_outputs),
-    }
-    return verdict
-
-
-def _legacy_build_teacher_advisory_verdict(
-    case: dict[str, Any],
-    *,
-    job_id: str | None = None,
-) -> dict[str, Any]:
-    normalized = _normalize_case(case)
-    student = build_student_verdict(case)
-    if student["status"] == "data_insufficient":
-        return {
-            "technology": "teacher",
-            "status": "data_insufficient",
-            "verdict_type": "teacher_advisory",
-            "verdict_id": job_id or _verdict_id("teacher", normalized),
-            "snapshot_id": normalized["snapshot_id"],
-            "event_id": normalized["event_id"],
-            "model_version": ANALYSIS_TEACHER_MODEL_VERSION,
-            "capability_boundary": _capability_boundary("teacher"),
-            "reason": "Event snapshot has insufficient evidence for a teacher advisory review.",
-            "review_required": True,
-            "advisory": {
-                "decision": "needs_evidence",
-                "recommended_actions": {"human_review": 1},
-                "avg_agent_confidence": 0.0,
-                "external_followup_required": False,
-            },
-            "student_reference": {
-                "verdict_id": student["verdict_id"],
-                "label": student["label"],
-                "score": student["score"],
-            },
-        }
-
-    post_semantics = assess_post_semantics(
-        normalized["posts"],
-        _build_post_semantics_context(normalized),
-        prefer_embeddings=False,
-    )
-    coordination = _build_coordination_context(normalized)
-    propagation = _build_propagation_context(normalized)
-    layered = assess_layered_harmfulness(
-        post_semantics=post_semantics,
-        account_profiles=_build_account_profiles(normalized),
-        coordination=coordination,
-        propagation=propagation,
-        event_id=normalized["event_id"],
-        platform=normalized["platform"],
-    )
-    review_queue = build_review_queue(
-        post_semantics=post_semantics,
-        review_harmfulness=layered,
-        max_items=int(normalized["options"].get("teacher_max_review_items", 20) or 20),
-    )
-    review_execution = execute_review_queue(
-        post_semantics=post_semantics,
-        review_harmfulness=layered,
-        review_queue=review_queue,
-    )
-    multi_agent = execute_multi_agent_review(
-        post_semantics=post_semantics,
-        review_harmfulness=layered,
-        review_execution=review_execution,
-    )
-    final_decision = multi_agent["final_decision"]
-    verdict = {
-        "technology": "teacher",
-        "status": "completed",
-        "verdict_type": "teacher_advisory",
-        "verdict_id": job_id or _verdict_id("teacher", normalized),
-        "snapshot_id": normalized["snapshot_id"],
-        "event_id": normalized["event_id"],
-        "platforms": normalized["platforms"],
-        "model_version": ANALYSIS_TEACHER_MODEL_VERSION,
-        "capability_boundary": _capability_boundary("teacher"),
-        "review_required": bool(final_decision["external_followup_required"]),
-        "advisory": {
-            "decision": final_decision["decision"],
-            "recommended_actions": final_decision["recommended_actions"],
-            "avg_agent_confidence": final_decision["avg_agent_confidence"],
-            "external_followup_required": final_decision["external_followup_required"],
-        },
-        "summary": {
-            "review_items": review_queue["summary"]["review_items"],
-            "retrieval_tasks": review_queue["summary"]["retrieval_tasks"],
-            "agent_tasks": review_queue["summary"]["agent_tasks"],
-            "external_followup_required": final_decision["external_followup_required"],
-            "agents_executed": multi_agent["summary"]["agents_executed"],
-            "blackboard_posts": multi_agent["summary"]["blackboard_posts"],
-        },
-        "signals": {
-            "post_semantics": {
-                "backend": post_semantics["summary"]["backend"],
-                "harmful_ratio": post_semantics["summary"]["harmful_ratio"],
-                "top_claims": post_semantics["summary"]["top_claims"][:5],
-            },
-            "layered_harmfulness": {
-                "user_level": layered["user_level"]["summary"],
-                "community_level": layered["community_level"]["summary"],
-                "global_summary": layered["global_summary"],
-            },
-            "review_queue": review_queue["summary"],
-            "review_execution": review_execution["summary"],
-            "multi_agent": multi_agent["summary"],
-            "final_decision": final_decision,
-        },
-        "evidence": _teacher_evidence(post_semantics, layered, review_execution, multi_agent),
-    }
-    return verdict
 
 
 async def submit_teacher_review_job(case: dict[str, Any]) -> dict[str, Any]:
