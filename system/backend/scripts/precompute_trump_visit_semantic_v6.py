@@ -95,52 +95,26 @@ def _summary(
     }
 
 
-class VerifiedSemanticInputEngine:
-    """Inject already verified same-snapshot analysis inputs into semantic enrichment."""
+class SnapshotObservedPropagationEngine:
+    """Persist exact observed paths from the immutable snapshot, not forecasts."""
 
-    def __init__(
-        self,
-        runtime: SemanticEnrichmentRuntime,
-        *,
-        coordination: dict[str, Any] | None = None,
-        propagation: dict[str, Any] | None = None,
-    ) -> None:
-        self.runtime = runtime
-        self.coordination = coordination
-        self.propagation = propagation
+    async def hindcast(self, snapshot: Any, options: dict[str, Any]) -> dict[str, Any]:
+        from app.services.propagation_observation_service import build_observed_propagation_graph
 
-    async def enrich(
-        self,
-        snapshot: Any,
-        *,
-        options: dict[str, Any],
-        coordination: dict[str, Any] | None,
-        propagation: dict[str, Any] | None,
-    ) -> dict[str, Any]:
-        return self.runtime.enrich(
-            snapshot,
-            coordination=self.coordination if self.coordination is not None else coordination,
-            propagation=self.propagation if self.propagation is not None else propagation,
-            claim=str(options.get("claim") or "") or None,
+        result = build_observed_propagation_graph(
+            list(snapshot.posts),
+            list(snapshot.comments),
+            node_limit=int(options.get("node_limit", 300) or 300),
         )
-
-
-def _semantic_input_overrides(args: argparse.Namespace) -> dict[str, dict[str, Any] | None]:
-    coordination_artifact_dir = str(getattr(args, "coordination_artifact_dir", "") or "").strip()
-    propagation_artifact_path = str(getattr(args, "propagation_artifact_path", "") or "").strip()
-    propagation_artifact_sha256 = str(getattr(args, "propagation_artifact_sha256", "") or "").strip()
-    return {
-        "coordination": {"artifact_dir": coordination_artifact_dir} if coordination_artifact_dir else None,
-        "propagation": (
-            {
-                "artifact_key": "stage:propagation_analysis:result",
-                "artifact_path": propagation_artifact_path,
-                "payload_sha256": propagation_artifact_sha256,
-            }
-            if propagation_artifact_path and propagation_artifact_sha256
-            else None
-        ),
-    }
+        return {
+            **result,
+            "technology": "propagation_analysis",
+            "status": "ok",
+            "fallback": False,
+            "snapshot_id": snapshot.snapshot_id,
+            "data_fingerprint": snapshot.data_fingerprint,
+            "event_id": snapshot.event_id,
+        }
 
 
 async def main_async(args: argparse.Namespace) -> int:
@@ -197,12 +171,6 @@ async def main_async(args: argparse.Namespace) -> int:
         )
 
     async with async_session_factory() as db:
-        semantic_inputs = _semantic_input_overrides(args)
-        semantic_engine = (
-            VerifiedSemanticInputEngine(runtime, **semantic_inputs)
-            if semantic_inputs["coordination"] is not None or semantic_inputs["propagation"] is not None
-            else None
-        )
         registry = AnalysisRegistry(mongo_db=get_mongo_db(), store=SqlAlchemyAnalysisStore(db))
         snapshot = await registry.create_event_snapshot(
             event_id=EVENT_ID,
@@ -213,17 +181,19 @@ async def main_async(args: argparse.Namespace) -> int:
         run = await registry.create_run(
             event_id=EVENT_ID,
             snapshot_id=snapshot.snapshot_id,
-            requested_stages=["semantic_enrichment"],
-            options={"semantic_enrichment": {"claim": args.primary_claim}},
+            requested_stages=["propagation_analysis", "semantic_enrichment"],
+            options={
+                "propagation_analysis": {"mode": "observed_evidence", "node_limit": 300},
+                "semantic_enrichment": {"claim": args.primary_claim},
+            },
             created_by=0,
-            run_id=f"run_{EVENT_ID}_semantic_v6",
+            run_id=f"run_{EVENT_ID}_semantic_v7",
         )
+        engines = default_analysis_engine_ports(semantic_runtime=runtime)
+        engines.propagation = SnapshotObservedPropagationEngine()
         result = await AnalysisExecutor(
             registry=registry,
-            engines=default_analysis_engine_ports(
-                semantic_runtime=None if semantic_engine is not None else runtime,
-                semantic_engine=semantic_engine,
-            ),
+            engines=engines,
         ).execute_run(run["run_id"])
         await db.commit()
         summary = _summary(
@@ -253,9 +223,6 @@ def main() -> int:
     parser.add_argument("--model-root", default=r"G:\CISCN\hf_models")
     parser.add_argument("--embedding-root", default=None)
     parser.add_argument("--primary-claim", default="央视新闻：特朗普访华期间，中美双方就经贸与合作议题开展会谈")
-    parser.add_argument("--coordination-artifact-dir", default="")
-    parser.add_argument("--propagation-artifact-path", default="")
-    parser.add_argument("--propagation-artifact-sha256", default="")
     parser.add_argument("--execute", action="store_true", help="写入三平台原始数据；默认只校验来源")
     return asyncio.run(main_async(parser.parse_args()))
 

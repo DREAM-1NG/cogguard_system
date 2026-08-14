@@ -136,6 +136,7 @@ def build_propagation_graph(
             shared_objects[obj].append({
                 "author_id": author_id,
                 "post_id": _clean_str(row.get("post_id")),
+                "platform": _clean_str(row.get("platform")),
                 "ts": row["ts"],
             })
 
@@ -164,6 +165,10 @@ def build_propagation_graph(
                 weight=1,
                 object_id=obj_id,
                 time_delta=round(time_delta, 1),
+                evidence_refs=_deduplicate_evidence_refs([
+                    _post_evidence_ref(predecessor),
+                    _post_evidence_ref(follower),
+                ]),
             )
 
     # --- 显式边：评论回复关系 ---
@@ -286,6 +291,7 @@ def _add_explicit_edges(
             type="explicit",
             weight=1,
             comment_id=_clean_str(c.get("comment_id")),
+            evidence_refs=_deduplicate_evidence_refs([_comment_evidence_ref(c)]),
         )
 
 
@@ -350,6 +356,7 @@ def _build_path_analysis(G: nx.MultiDiGraph, evidence_chains: list[dict]) -> dic
                 "confidence": path.get("confidence", "unknown"),
                 "path_length": (path.get("metadata") or {}).get("path_length", len(path.get("nodes", []))),
                 "explanation": path.get("explanation", ""),
+                "evidence_refs": list(path.get("evidence_refs") or []),
             })
     key_paths.sort(key=lambda item: item.get("score", 0), reverse=True)
 
@@ -1707,6 +1714,7 @@ def _extract_key_paths_for_claim(
             all_paths.append({
                 "nodes": path_nodes,
                 "edges": path_edges,
+                "evidence_refs": _path_evidence_refs(path_edges),
                 "score": score,
                 "explanation": explanation,
                 "confidence": confidence,
@@ -1731,7 +1739,7 @@ def _extract_key_paths_for_claim(
 
     # 添加 path_id
     for i, p in enumerate(selected):
-        p["path_id"] = i
+        p["path_id"] = f"{claim_obj_id}:{i}"
 
     return selected
 
@@ -1758,6 +1766,62 @@ def _best_edge_info(G: nx.MultiDiGraph, u: str, v: str) -> dict:
         "weight": best.get("weight", 1),
         **({k: v for k, v in best.items() if k not in ("type", "weight")}),
     }
+
+
+def _post_evidence_ref(share: dict) -> dict | None:
+    post_id = _clean_str(share.get("post_id"))
+    if not post_id:
+        return None
+    reference = {"post_id": post_id}
+    platform = _clean_str(share.get("platform"))
+    if platform:
+        reference["platform"] = platform
+    return reference
+
+
+def _comment_evidence_ref(comment: dict) -> dict | None:
+    comment_id = _clean_str(comment.get("comment_id"))
+    if not comment_id:
+        return None
+    reference = {"comment_id": comment_id}
+    platform = _clean_str(comment.get("platform"))
+    if platform:
+        reference["platform"] = platform
+    return reference
+
+
+def _path_evidence_refs(path_edges: list[dict]) -> list[dict]:
+    references: list[dict | None] = []
+    for edge in path_edges:
+        values = edge.get("evidence_refs") if isinstance(edge, dict) else None
+        if not isinstance(values, list):
+            continue
+        references.extend(value for value in values if isinstance(value, dict))
+    return _deduplicate_evidence_refs(references)
+
+
+def _deduplicate_evidence_refs(references: list[dict | None]) -> list[dict]:
+    deduplicated: list[dict] = []
+    seen: set[tuple[str, str, str]] = set()
+    for reference in references:
+        if not isinstance(reference, dict):
+            continue
+        if _clean_str(reference.get("post_id")):
+            kind, identifier = "post_id", _clean_str(reference.get("post_id"))
+        elif _clean_str(reference.get("comment_id")):
+            kind, identifier = "comment_id", _clean_str(reference.get("comment_id"))
+        else:
+            continue
+        platform = _clean_str(reference.get("platform"))
+        key = (kind, identifier, platform)
+        if key in seen:
+            continue
+        seen.add(key)
+        value = {kind: identifier}
+        if platform:
+            value["platform"] = platform
+        deduplicated.append(value)
+    return deduplicated
 
 
 def _is_duplicate(candidate: dict, selected: list[dict], threshold: float = 0.5) -> bool:

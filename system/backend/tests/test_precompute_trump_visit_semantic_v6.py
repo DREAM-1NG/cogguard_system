@@ -61,6 +61,7 @@ class _QualityReport:
 
 class _Snapshot:
     snapshot_id = "snapshot_semantic"
+    data_fingerprint = "fingerprint_semantic"
     platforms = ["douyin", "weibo", "xhs"]
     posts = [{"platform": "weibo"}, {"platform": "xhs"}, {"platform": "douyin"}]
     comments = [{"platform": "weibo"}, {"platform": "xhs"}, {"platform": "douyin"}]
@@ -143,7 +144,7 @@ def _args(tmp_path: Path, *, execute: bool = True):
     )
 
 
-def test_precompute_runs_only_semantic_stage_with_the_prebuilt_runtime(monkeypatch, tmp_path: Path, capsys):
+def test_precompute_persists_observed_propagation_before_semantic_enrichment(monkeypatch, tmp_path: Path, capsys):
     script = _load_script()
     events: list[str] = []
     captures: dict[str, object] = {}
@@ -184,7 +185,7 @@ def test_precompute_runs_only_semantic_stage_with_the_prebuilt_runtime(monkeypat
                 },
             }
 
-    sentinel_ports = object()
+    sentinel_ports = SimpleNamespace(propagation=None)
 
     def fake_default_ports(*, semantic_runtime=None, semantic_engine=None):
         captures["semantic_runtime"] = semantic_runtime
@@ -205,9 +206,10 @@ def test_precompute_runs_only_semantic_stage_with_the_prebuilt_runtime(monkeypat
     summary = json.loads(capsys.readouterr().out)
 
     assert exit_code == 0
-    assert captures["requested_stages"] == ["semantic_enrichment"]
+    assert captures["requested_stages"] == ["propagation_analysis", "semantic_enrichment"]
     assert captures["semantic_runtime"] is _PrebuiltRuntime.instance
     assert captures["engines"] is sentinel_ports
+    assert isinstance(sentinel_ports.propagation, script.SnapshotObservedPropagationEngine)
     assert events.index("dependencies_ready") < events.index("data_mutation")
     assert events.index("runtime_ready") < events.index("data_mutation")
     assert events.index("mysql_ready") < events.index("data_mutation")

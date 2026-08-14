@@ -9,6 +9,7 @@ semantic stage.
 from __future__ import annotations
 
 from collections import Counter, defaultdict
+from dataclasses import dataclass
 from datetime import datetime, timezone
 import gzip
 import hashlib
@@ -30,7 +31,16 @@ MODEL_SPECS: dict[str, dict[str, str]] = {
 }
 BGE_ENCODING_BATCH_SIZE = 32
 NEAR_DUPLICATE_MAX_NEIGHBORS = 10
-PROPAGATION_RESULT_ARTIFACT_KEY = "stage:propagation_analysis:result"
+
+
+@dataclass(frozen=True, slots=True)
+class VerifiedPropagationArtifact:
+    """A Propagation Analysis payload reloaded and hash-checked by the registry."""
+
+    payload: dict[str, Any]
+    snapshot_id: str
+    data_fingerprint: str
+    artifact_ref: dict[str, Any]
 
 
 class ModelWeightsBlockedError(RuntimeError):
@@ -648,35 +658,18 @@ def _path_overlays(
 
 
 def _load_verified_propagation_result(
-    propagation: dict[str, Any], snapshot: Any
+    propagation: Any, snapshot: Any
 ) -> tuple[dict[str, Any] | None, str | None]:
-    if not propagation:
+    if propagation is None or propagation == {}:
         return None, "propagation_result_unavailable"
-    if propagation.get("fallback") is True:
-        return None, "propagation_fallback"
-
-    artifact_path = _propagation_artifact_path(propagation)
-    if artifact_path is None:
-        return None, "propagation_result_unavailable"
-    artifact_key = _propagation_artifact_key(propagation)
-    if artifact_key != PROPAGATION_RESULT_ARTIFACT_KEY:
-        return None, "propagation_artifact_unavailable"
-    expected_sha = _propagation_artifact_sha(propagation, artifact_path)
-    if not expected_sha:
-        return None, "propagation_artifact_unavailable"
-    try:
-        payload_text = artifact_path.read_text(encoding="utf-8")
-    except OSError:
-        return None, "propagation_artifact_unavailable"
-    actual_sha = hashlib.sha256(payload_text.encode("utf-8")).hexdigest()
-    if actual_sha != expected_sha:
-        return None, "propagation_artifact_integrity_failed"
-    try:
-        payload = json.loads(payload_text)
-    except json.JSONDecodeError:
-        return None, "propagation_artifact_unavailable"
-    if not isinstance(payload, dict):
-        return None, "propagation_artifact_unavailable"
+    if not isinstance(propagation, VerifiedPropagationArtifact):
+        return None, "propagation_artifact_unverified"
+    if (
+        propagation.snapshot_id != str(getattr(snapshot, "snapshot_id", ""))
+        or propagation.data_fingerprint != str(getattr(snapshot, "data_fingerprint", ""))
+    ):
+        return None, "propagation_artifact_snapshot_mismatch"
+    payload = propagation.payload
     if payload.get("fallback") is True:
         return None, "propagation_fallback"
     status = str(payload.get("status") or "").strip().lower()
@@ -685,51 +678,6 @@ def _load_verified_propagation_result(
     if _propagation_snapshot_mismatch(payload, snapshot):
         return None, "propagation_artifact_snapshot_mismatch"
     return payload, None
-
-
-def _propagation_artifact_key(propagation: dict[str, Any]) -> str:
-    artifact_ref = propagation.get("artifact_ref") if isinstance(propagation.get("artifact_ref"), dict) else {}
-    return str(propagation.get("artifact_key") or artifact_ref.get("artifact_key") or "").strip()
-
-
-def _propagation_artifact_path(propagation: dict[str, Any]) -> Path | None:
-    artifact_ref = propagation.get("artifact_ref") if isinstance(propagation.get("artifact_ref"), dict) else {}
-    path_text = str(
-        propagation.get("artifact_path")
-        or propagation.get("artifact_uri")
-        or artifact_ref.get("artifact_path")
-        or artifact_ref.get("artifact_uri")
-        or ""
-    ).strip()
-    if not path_text:
-        return None
-    path = Path(path_text)
-    return path if path.is_file() else None
-
-
-def _propagation_artifact_sha(propagation: dict[str, Any], artifact_path: Path) -> str:
-    artifact_ref = propagation.get("artifact_ref") if isinstance(propagation.get("artifact_ref"), dict) else {}
-    manifest = propagation.get("artifact_manifest") if isinstance(propagation.get("artifact_manifest"), dict) else {}
-    candidates = [
-        propagation.get("payload_sha256"),
-        propagation.get("artifact_sha256"),
-        artifact_ref.get("payload_sha256"),
-        artifact_ref.get("artifact_sha256"),
-        manifest.get("payload_sha256"),
-        manifest.get("artifact_sha256"),
-    ]
-    artifact_hashes = manifest.get("artifact_hashes")
-    if isinstance(artifact_hashes, dict):
-        for key in (artifact_path.name, str(artifact_path)):
-            if key in artifact_hashes:
-                candidates.append(artifact_hashes[key])
-    for candidate in candidates:
-        value = str(candidate or "").strip().lower()
-        if value.startswith("sha256:"):
-            value = value.split(":", 1)[1]
-        if len(value) == 64 and all(char in "0123456789abcdef" for char in value):
-            return value
-    return ""
 
 
 def _propagation_snapshot_mismatch(payload: dict[str, Any], snapshot: Any) -> bool:
@@ -792,14 +740,12 @@ def _mapped_path_items(path: dict[str, Any], item_index: dict[str, Any]) -> list
 
 def _path_evidence_references(path: dict[str, Any]) -> list[Any]:
     refs: list[Any] = []
-    for key in ("evidence_refs", "nodes", "evidence_nodes"):
-        refs.extend(_as_list(path.get(key)))
+    refs.extend(_as_list(path.get("evidence_refs")))
     metadata = path.get("metadata") if isinstance(path.get("metadata"), dict) else {}
-    for key in ("evidence_refs", "nodes", "evidence_nodes"):
-        refs.extend(_as_list(metadata.get(key)))
+    refs.extend(_as_list(metadata.get("evidence_refs")))
     for edge in _as_list(path.get("edges")):
         if isinstance(edge, dict):
-            refs.append(edge)
+            refs.extend(_as_list(edge.get("evidence_refs")))
     return refs
 
 

@@ -14,7 +14,7 @@ from app.core.analysis.executor import (
 )
 from app.core.analysis.registry import AnalysisRegistry
 from app.core.analysis import UnknownAnalysisStage
-from app.core.semantic.runtime import ModelWeightsBlockedError
+from app.core.semantic.runtime import ModelWeightsBlockedError, VerifiedPropagationArtifact
 
 
 class FakeSnapshotCollection:
@@ -39,6 +39,25 @@ class FakeArtifactCollection:
         artifact_id = str(query["artifact_id"])
         if "$set" in update:
             self.documents[artifact_id] = {**self.documents.get(artifact_id, {}), **dict(update["$set"])}
+
+    async def find_one(self, query: dict[str, Any], projection: dict[str, int] | None = None):
+        return self.documents.get(str(query["artifact_id"]))
+
+    def find(self, query: dict[str, Any], projection: dict[str, int] | None = None):
+        key, value = next(iter(query.items()))
+        return FakeArtifactCursor([row for row in self.documents.values() if row.get(key) == value])
+
+
+class FakeArtifactCursor:
+    def __init__(self, rows: list[dict[str, Any]]) -> None:
+        self.rows = rows
+
+    def sort(self, field: str, direction: int):
+        self.rows.sort(key=lambda row: row.get(field, 0), reverse=direction < 0)
+        return self
+
+    async def to_list(self, length: int | None = None) -> list[dict[str, Any]]:
+        return list(self.rows if length is None else self.rows[:length])
 
 
 class FakeAnalysisStore:
@@ -514,7 +533,11 @@ def test_semantic_stage_receives_prior_results_and_blocks_without_fallback_when_
 
         assert result["status"] == "completed"
         assert semantic.calls[0][1] == {"status": "ok", "community_count": 2}
-        assert semantic.calls[0][2] == {"status": "ok", "scale_interval": [1, 3]}
+        propagation_input = semantic.calls[0][2]
+        assert isinstance(propagation_input, VerifiedPropagationArtifact)
+        assert propagation_input.payload == {"status": "ok", "scale_interval": [1, 3]}
+        assert propagation_input.snapshot_id == snapshot.snapshot_id
+        assert propagation_input.data_fingerprint == snapshot.data_fingerprint
         assert result["results"]["semantic_enrichment"]["runtime_status"] == "ready"
         assert result["artifact_manifest"]["stages"]["semantic_enrichment"]["status"] == "ok"
 

@@ -6,7 +6,11 @@ from typing import Any, Protocol
 from app.core.analysis.contracts import AnalysisRunStatus, EventSnapshot, UnknownAnalysisStage, normalize_analysis_stage
 from app.core.analysis.registry import AnalysisRegistry
 from app.core.analysis.runtime import InternalStudentRuntime, InternalTeacherJobPort
-from app.core.semantic.runtime import ModelWeightsBlockedError, SemanticEnrichmentRuntime
+from app.core.semantic.runtime import (
+    ModelWeightsBlockedError,
+    SemanticEnrichmentRuntime,
+    VerifiedPropagationArtifact,
+)
 
 
 class CoordinationEngine(Protocol):
@@ -71,6 +75,7 @@ class AnalysisExecutor:
         )
 
         results: dict[str, Any] = {}
+        verified_prior: dict[str, VerifiedPropagationArtifact] = {}
         active_models = await self._active_models()
         artifact_manifest: dict[str, Any] = {
             "schema": "cogguard.analysis.artifact_manifest.v1",
@@ -97,6 +102,7 @@ class AnalysisExecutor:
                 stage_options,
                 run_id=run_id,
                 prior_results=results,
+                verified_prior=verified_prior,
             )
             results[stage] = result
             artifact_ref = await self.registry.save_run_artifact(
@@ -104,6 +110,14 @@ class AnalysisExecutor:
                 artifact_key=f"stage:{stage}:result",
                 payload=result,
             )
+            if stage == "propagation_analysis":
+                verified = await self._load_verified_propagation_artifact(
+                    run_id=run_id,
+                    snapshot=snapshot,
+                    artifact_ref=artifact_ref,
+                )
+                if verified is not None:
+                    verified_prior[stage] = verified
             result_summary = _stage_result_summary(stage, result)
             artifact_manifest["stages"][stage] = {
                 **_stage_artifact_record(stage, result),
@@ -172,6 +186,7 @@ class AnalysisExecutor:
         *,
         run_id: str | None = None,
         prior_results: dict[str, Any] | None = None,
+        verified_prior: dict[str, VerifiedPropagationArtifact] | None = None,
     ) -> dict[str, Any]:
         if stage == "coordination_discover":
             return await self.engines.coordination.analyze(snapshot, options)
@@ -196,11 +211,12 @@ class AnalysisExecutor:
                 }
             try:
                 prior = prior_results or {}
+                verified = verified_prior or {}
                 return await self.engines.semantic.enrich(
                     snapshot,
                     options=options,
                     coordination=prior.get("coordination_discover"),
-                    propagation=prior.get("propagation_analysis"),
+                    propagation=verified.get("propagation_analysis"),
                 )
             except ModelWeightsBlockedError as exc:
                 return {
@@ -211,6 +227,31 @@ class AnalysisExecutor:
                     "fallback": False,
                 }
         raise UnknownAnalysisStage(f"Unknown analysis stage: {stage}")
+
+    async def _load_verified_propagation_artifact(
+        self,
+        *,
+        run_id: str,
+        snapshot: EventSnapshot,
+        artifact_ref: dict[str, Any],
+    ) -> VerifiedPropagationArtifact | None:
+        if not artifact_ref.get("stored"):
+            return None
+        artifact_key = str(artifact_ref.get("artifact_key") or "")
+        if artifact_key != "stage:propagation_analysis:result":
+            return None
+        try:
+            payload = await self.registry.load_run_artifact(run_id, artifact_key)
+        except (KeyError, TypeError, ValueError):
+            return None
+        if not isinstance(payload, dict):
+            return None
+        return VerifiedPropagationArtifact(
+            payload=payload,
+            snapshot_id=snapshot.snapshot_id,
+            data_fingerprint=snapshot.data_fingerprint,
+            artifact_ref=dict(artifact_ref),
+        )
 
 
 class SnapshotCoordinationEngine:

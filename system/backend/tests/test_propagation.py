@@ -659,6 +659,118 @@ class TestKeyPaths:
                     assert edge["source"] == path["nodes"][i]
                     assert edge["target"] == path["nodes"][i + 1]
 
+    def test_key_paths_preserve_exact_post_evidence_for_semantic_overlays(self):
+        posts = [
+            {
+                "post_id": "p1",
+                "author_id": "u1",
+                "author_name": "Alice",
+                "platform": "weibo",
+                "timestamp": _ts(0),
+                "url": "https://example.com/claim",
+                "hashtags": [],
+                "content": "source",
+            },
+            {
+                "post_id": "p2",
+                "author_id": "u2",
+                "author_name": "Bob",
+                "platform": "xhs",
+                "timestamp": _ts(5),
+                "url": "https://example.com/claim",
+                "hashtags": [],
+                "content": "amplification",
+            },
+            {
+                "post_id": "p3",
+                "author_id": "u3",
+                "author_name": "Carol",
+                "platform": "douyin",
+                "timestamp": _ts(10),
+                "url": "https://example.com/claim",
+                "hashtags": [],
+                "content": "further amplification",
+            },
+        ]
+
+        result = build_propagation_graph(posts)
+        chain = next(
+            chain
+            for chain in result["evidence_chains"]
+            if chain["claim_id"] == "https://example.com/claim"
+        )
+        path = chain["key_paths"][0]
+        projected = next(
+            item
+            for item in result["path_analysis"]["key_paths"]
+            if item["path_id"] == path["path_id"]
+        )
+
+        assert path["evidence_refs"] == [
+            {"post_id": "p1", "platform": "weibo"},
+            {"post_id": "p2", "platform": "xhs"},
+            {"post_id": "p3", "platform": "douyin"},
+        ]
+        assert projected["evidence_refs"] == path["evidence_refs"]
+        assert all("author_id" not in reference for reference in path["evidence_refs"])
+
+    def test_path_ids_are_unique_across_claims(self):
+        result = build_propagation_graph(_make_posts(), _make_comments())
+        path_ids = [
+            path["path_id"]
+            for chain in result["evidence_chains"]
+            for path in chain["key_paths"]
+        ]
+
+        assert len(path_ids) == len(set(path_ids))
+
+    def test_key_paths_preserve_exact_reply_comment_evidence(self):
+        posts = [
+            {
+                "post_id": "p1",
+                "author_id": "u1",
+                "author_name": "Alice",
+                "platform": "weibo",
+                "timestamp": _ts(0),
+                "url": "https://example.com/reply-claim",
+                "hashtags": [],
+                "content": "source",
+            },
+            {
+                "post_id": "p2",
+                "author_id": "u2",
+                "author_name": "Bob",
+                "platform": "xhs",
+                "timestamp": _ts(5),
+                "url": "https://example.com/reply-claim",
+                "hashtags": [],
+                "content": "amplification",
+            },
+        ]
+        comments = [
+            {
+                "comment_id": "c1",
+                "post_id": "p1",
+                "author_id": "u2",
+                "author_name": "Bob",
+                "platform": "douyin",
+                "timestamp": _ts(6),
+                "reply_to": "p1",
+                "content": "reply",
+            }
+        ]
+
+        result = build_propagation_graph(posts, comments)
+        chain = next(
+            chain
+            for chain in result["evidence_chains"]
+            if chain["claim_id"] == "https://example.com/reply-claim"
+        )
+
+        assert chain["key_paths"][0]["evidence_refs"] == [
+            {"comment_id": "c1", "platform": "douyin"}
+        ]
+
     def test_path_score_positive(self):
         result = build_propagation_graph(_make_posts(), _make_comments())
         for chain in result["evidence_chains"]:
