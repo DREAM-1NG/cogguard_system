@@ -726,6 +726,38 @@ def test_path_overlay_is_deduplicated_by_exact_evidence_signature(tmp_path: Path
     assert overlays[0]["evidence_refs"] == ["weibo:post:source-post"]
 
 
+def test_path_overlay_deduplicates_exact_evidence_signature_regardless_of_order(tmp_path: Path):
+    snapshot = _path_snapshot()
+    propagation = _verified_propagation_artifact(
+        snapshot,
+        paths=[
+            {
+                "path_id": "ordered-path",
+                "evidence_refs": [
+                    {"post_id": "source-post", "platform": "weibo"},
+                    {"comment_id": "reply-comment", "platform": "weibo"},
+                ],
+            },
+            {
+                "evidence_refs": [
+                    "weibo:comment:reply-comment",
+                    "weibo:post:source-post",
+                ],
+            },
+        ],
+    )
+
+    result = _runtime(tmp_path).enrich(snapshot, propagation=propagation, claim="primary claim")
+
+    overlays = result["cross_analysis"]["propagation_path_overlays"]
+    assert len(overlays) == 1
+    assert overlays[0]["path_id"] == "ordered-path"
+    assert overlays[0]["evidence_refs"] == [
+        "weibo:post:source-post",
+        "weibo:comment:reply-comment",
+    ]
+
+
 def test_unknown_path_evidence_does_not_borrow_event_level_semantics(tmp_path: Path):
     snapshot = _path_snapshot()
     propagation = _verified_propagation_artifact(

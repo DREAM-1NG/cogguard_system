@@ -794,7 +794,7 @@ def _path_exact_evidence_signature(path: dict[str, Any]) -> tuple[str, ...]:
     keys: list[str] = []
     for reference in _path_evidence_references(path):
         keys.extend(_semantic_reference_keys(reference))
-    return tuple(dict.fromkeys(keys))
+    return tuple(sorted(dict.fromkeys(keys)))
 
 
 def _semantic_time_range(items: list[dict[str, Any]]) -> dict[str, str]:
