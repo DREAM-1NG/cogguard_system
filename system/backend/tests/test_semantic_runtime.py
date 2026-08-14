@@ -14,6 +14,7 @@ from app.core.semantic.runtime import (
     BGE_ENCODING_BATCH_SIZE,
     MODEL_SPECS,
     ModelWeightsBlockedError,
+    NEAR_DUPLICATE_MAX_NEIGHBORS,
     SemanticEnrichmentRuntime,
     _attach_near_duplicates,
 )
@@ -192,24 +193,34 @@ def test_keyword_candidates_are_encoded_in_bounded_batches_without_recomputing_d
     assert [term for batch in encoder.batches[1:] for term in batch] == candidate_terms
 
 
-def test_near_duplicates_use_bounded_neighbors_and_keep_only_prior_threshold_matches(monkeypatch):
-    from sklearn.neighbors import NearestNeighbors
+def test_near_duplicates_use_bounded_index_queries_not_exact_cosine_all_pairs(monkeypatch):
+    import scipy.spatial
+    from scipy.spatial import cKDTree as NativeKDTree
+    from sklearn import neighbors
 
     query_neighbor_counts: list[int] = []
-    original_kneighbors = NearestNeighbors.kneighbors
 
-    def record_kneighbors(self, *args, **kwargs):
-        query_neighbor_counts.append(self.n_neighbors)
-        return original_kneighbors(self, *args, **kwargs)
+    class RecordingKDTree:
+        def __init__(self, data):
+            self._tree = NativeKDTree(data)
 
-    monkeypatch.setattr(NearestNeighbors, "kneighbors", record_kneighbors)
+        def query(self, point, k=1, **kwargs):
+            query_neighbor_counts.append(k)
+            return self._tree.query(point, k=k, **kwargs)
+
+    def exact_cosine_search_is_not_allowed(*_args, **_kwargs):
+        raise AssertionError("near-duplicate search must not use exact cosine all-pairs")
+
+    monkeypatch.setattr(scipy.spatial, "cKDTree", RecordingKDTree)
+    monkeypatch.setattr(neighbors, "NearestNeighbors", exact_cosine_search_is_not_allowed)
     angles = np.radians([*range(12), 40])
     embeddings = np.column_stack((np.cos(angles), np.sin(angles))).tolist()
     items = [{"id": f"item-{index}"} for index in range(len(embeddings))]
 
     _attach_near_duplicates(items, embeddings)
 
-    assert query_neighbor_counts == [11]
+    assert query_neighbor_counts
+    assert all(1 <= count <= NEAR_DUPLICATE_MAX_NEIGHBORS for count in query_neighbor_counts)
     assert items[0]["near_duplicates"] == []
     assert [match["id"] for match in items[11]["near_duplicates"]] == [
         f"item-{index}" for index in range(1, 11)
@@ -225,6 +236,19 @@ def test_near_duplicates_use_bounded_neighbors_and_keep_only_prior_threshold_mat
     _attach_near_duplicates(tied_items, [[1.0, 0.0] for _ in tied_items])
 
     assert len(tied_items[-1]["near_duplicates"]) == 10
+
+
+def test_near_duplicates_keep_prior_evidence_when_later_matches_are_closer():
+    prior_similarity = 0.93
+    target = [1.0, 0.0]
+    prior = [prior_similarity, float(np.sqrt(1.0 - prior_similarity**2))]
+    embeddings = [prior, target, *[target for _ in range(NEAR_DUPLICATE_MAX_NEIGHBORS)]]
+    items = [{"id": "prior"}, {"id": "target"}]
+    items.extend({"id": f"later-{index}"} for index in range(NEAR_DUPLICATE_MAX_NEIGHBORS))
+
+    _attach_near_duplicates(items, embeddings)
+
+    assert items[1]["near_duplicates"] == [{"id": "prior", "similarity": prior_similarity}]
 
 
 def test_real_runtime_contract_stratifies_layers_and_reuses_embeddings(tmp_path: Path):

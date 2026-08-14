@@ -409,25 +409,52 @@ def _topics(texts: list[str], embeddings: list[list[float]]) -> list[dict[str, A
 
 def _attach_near_duplicates(items: list[dict[str, Any]], embeddings: list[list[float]], threshold: float = 0.92) -> None:
     import numpy as np
-    from sklearn.neighbors import NearestNeighbors
+    from scipy.spatial import cKDTree
 
     for item in items:
         item["near_duplicates"] = []
     if len(items) < 2:
         return
     matrix = np.asarray(embeddings, dtype=float)
-    neighbor_count = min(NEAR_DUPLICATE_MAX_NEIGHBORS + 1, len(items))
-    distances, neighbors = NearestNeighbors(metric="cosine", n_neighbors=neighbor_count).fit(matrix).kneighbors(matrix)
-    for index, item in enumerate(items):
-        matches = [
-            (int(other), 1.0 - float(distance))
-            for distance, other in zip(distances[index], neighbors[index])
-            if other < index and 1.0 - float(distance) >= threshold
-        ]
-        item["near_duplicates"] = [
+    norms = np.linalg.norm(matrix, axis=1, keepdims=True)
+    normalized = np.divide(matrix, norms, out=np.zeros_like(matrix), where=norms > 0)
+
+    # cKDTree is immutable, so keep a logarithmic forest of trees that can be
+    # merged as rows arrive. Every query therefore sees only preceding rows,
+    # while each tree returns a bounded candidate set.
+    trees: list[tuple[np.ndarray, Any] | None] = []
+    for index, vector in enumerate(normalized):
+        matches: list[tuple[int, float]] = []
+        for block in trees:
+            if block is None:
+                continue
+            block_indices, tree = block
+            query_count = min(NEAR_DUPLICATE_MAX_NEIGHBORS, len(block_indices))
+            distances, neighbors = tree.query(vector, k=query_count)
+            for distance, neighbor in zip(np.atleast_1d(distances), np.atleast_1d(neighbors)):
+                if not np.isfinite(distance):
+                    continue
+                other = int(block_indices[int(neighbor)])
+                similarity = float(np.dot(vector, normalized[other]))
+                if similarity >= threshold:
+                    matches.append((other, similarity))
+
+        selected = sorted(matches, key=lambda match: (-match[1], match[0]))[:NEAR_DUPLICATE_MAX_NEIGHBORS]
+        items[index]["near_duplicates"] = [
             {"id": items[other]["id"], "similarity": round(similarity, 6)}
-            for other, similarity in sorted(matches)[:NEAR_DUPLICATE_MAX_NEIGHBORS]
+            for other, similarity in sorted(selected)
         ]
+
+        carry = np.asarray([index], dtype=np.intp)
+        level = 0
+        while level < len(trees) and trees[level] is not None:
+            prior, _ = trees[level]
+            carry = np.concatenate((prior, carry))
+            trees[level] = None
+            level += 1
+        if level == len(trees):
+            trees.append(None)
+        trees[level] = (carry, cKDTree(normalized[carry]))
 
 
 def _platform_slices(layers: dict[str, list[dict[str, Any]]]) -> list[dict[str, Any]]:
