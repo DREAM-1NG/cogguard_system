@@ -180,6 +180,8 @@ class SemanticEnrichmentRuntime:
 
             tokenizer = AutoTokenizer.from_pretrained(str(path), local_files_only=True)
             model = AutoModel.from_pretrained(str(path), local_files_only=True)
+            device = _torch_device()
+            model.to(device)
             model.eval()
 
             class _BgeEncoder:
@@ -188,6 +190,7 @@ class SemanticEnrichmentRuntime:
 
                     with torch.no_grad():
                         encoded = tokenizer(texts, padding=True, truncation=True, return_tensors="pt")
+                        encoded = {key: value.to(device) for key, value in encoded.items()}
                         output = model(**encoded).last_hidden_state
                         mask = encoded["attention_mask"].unsqueeze(-1).expand(output.size()).float()
                         pooled = (output * mask).sum(1) / mask.sum(1).clamp(min=1e-9)
@@ -212,7 +215,7 @@ class SemanticEnrichmentRuntime:
             tokenizer = AutoTokenizer.from_pretrained(str(path), local_files_only=True)
             model_type = AutoModelForTokenClassification if task == "token-classification" else AutoModelForSequenceClassification
             model = model_type.from_pretrained(str(path), local_files_only=True)
-            return pipeline(task, model=model, tokenizer=tokenizer, device=-1)
+            return pipeline(task, model=model, tokenizer=tokenizer, device=_transformers_pipeline_device())
         except Exception as exc:
             raise ModelWeightsBlockedError(f"{name} failed to load from {path}: {exc}") from exc
 
@@ -341,6 +344,22 @@ def _patch_torch_distribution_metadata() -> None:
 
     metadata.version = version
     metadata._cogguard_torch_patch = True
+
+
+def _torch_device() -> Any:
+    """Choose the single local inference device without changing semantics."""
+
+    import torch
+
+    return torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+
+def _transformers_pipeline_device() -> int:
+    """Use the first CUDA device when present; Transformers uses -1 for CPU."""
+
+    import torch
+
+    return 0 if torch.cuda.is_available() else -1
 
 
 def _result_rows(value: Any, expected: int) -> list[Any]:

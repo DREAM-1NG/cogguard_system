@@ -41,6 +41,9 @@ class _FakeSession:
     async def execute(self, _statement):
         self.events.append("mysql_ready")
 
+    async def commit(self):
+        self.events.append("commit")
+
 
 class _FakeMongo:
     def __init__(self, events):
@@ -168,6 +171,7 @@ def test_precompute_runs_only_semantic_stage_with_the_prebuilt_runtime(monkeypat
 
         async def execute_run(self, run_id):
             assert run_id == "run_semantic"
+            events.append("semantic_completed")
             return {
                 "run_id": run_id,
                 "status": "completed",
@@ -208,6 +212,7 @@ def test_precompute_runs_only_semantic_stage_with_the_prebuilt_runtime(monkeypat
     assert events.index("runtime_ready") < events.index("data_mutation")
     assert events.index("mysql_ready") < events.index("data_mutation")
     assert events.index("mongo_ready") < events.index("data_mutation")
+    assert events.index("semantic_completed") < events.index("commit")
     assert summary["platform_counts"] == {
         "douyin": {"comments": 1, "posts": 1},
         "weibo": {"comments": 1, "posts": 1},

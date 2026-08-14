@@ -5,6 +5,8 @@ from datetime import datetime, timezone
 import importlib
 import json
 from pathlib import Path
+import sys
+from types import ModuleType, SimpleNamespace
 
 import numpy as np
 import pytest
@@ -17,6 +19,7 @@ from app.core.semantic.runtime import (
     NEAR_DUPLICATE_MAX_NEIGHBORS,
     SemanticEnrichmentRuntime,
     _attach_near_duplicates,
+    _transformers_pipeline_device,
 )
 
 
@@ -147,6 +150,38 @@ def test_missing_local_weights_blocks_without_rule_fallback(tmp_path: Path):
 
     assert "bge_embedding" in str(exc_info.value)
     assert all(spec["revision"] for spec in MODEL_SPECS.values())
+
+
+def test_transformers_pipeline_uses_cuda_zero_when_available(monkeypatch, tmp_path: Path):
+    import torch
+
+    monkeypatch.setattr(torch.cuda, "is_available", lambda: True)
+    assert _transformers_pipeline_device() == 0
+
+    calls: dict[str, object] = {}
+    fake_transformers = ModuleType("transformers")
+    fake_transformers.AutoTokenizer = SimpleNamespace(
+        from_pretrained=lambda *_args, **_kwargs: object(),
+    )
+    fake_transformers.AutoModelForSequenceClassification = SimpleNamespace(
+        from_pretrained=lambda *_args, **_kwargs: object(),
+    )
+    fake_transformers.AutoModelForTokenClassification = SimpleNamespace(
+        from_pretrained=lambda *_args, **_kwargs: object(),
+    )
+
+    def fake_pipeline(*_args, **kwargs):
+        calls.update(kwargs)
+        return object()
+
+    fake_transformers.pipeline = fake_pipeline
+    monkeypatch.setitem(sys.modules, "transformers", fake_transformers)
+    monkeypatch.setattr(SemanticEnrichmentRuntime, "_require_weights", lambda *_args: tmp_path)
+
+    runtime = object.__new__(SemanticEnrichmentRuntime)
+    runtime._load_pipeline("sentiment", "text-classification")
+
+    assert calls["device"] == 0
 
 
 def test_bge_encoding_batches_each_text_once_in_original_order(tmp_path: Path):

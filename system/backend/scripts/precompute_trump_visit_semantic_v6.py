@@ -168,6 +168,7 @@ async def main_async(args: argparse.Namespace) -> int:
             registry=registry,
             engines=default_analysis_engine_ports(semantic_runtime=runtime),
         ).execute_run(run["run_id"])
+        await db.commit()
         summary = _summary(
             snapshot=snapshot,
             result=result,
