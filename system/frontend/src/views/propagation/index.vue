@@ -60,10 +60,6 @@
                   </span>
                   <a-button size="small" type="link" @click="showFullDiffusionGraph">全量</a-button>
                 </div>
-                <div class="path-relation-legend">
-                  <span><i class="relation-swatch confirmed" />确认关系：回复、转发、引用等可追溯关系</span>
-                  <span><i class="relation-swatch inferred" />推断关系：共享对象与时间邻近推断</span>
-                </div>
                 <div class="path-graph-shell">
                   <div ref="pathGraphRef" class="path-graph" />
                 </div>
@@ -213,6 +209,27 @@
       </a-tab-pane>
 
       <a-tab-pane key="model" tab="趋势预测">
+        <a-card size="small" title="真实传播趋势" class="evidence-timeline-card" :loading="evidenceTimelineLoading">
+          <template #extra>
+            <a-space :size="4" wrap>
+              <a-button
+                v-for="item in timelineRangeOptions"
+                :key="item.value"
+                size="small"
+                :type="timelineRange === item.value ? 'primary' : 'default'"
+                @click="selectTimelineRange(item.value)"
+              >
+                {{ item.label }}
+              </a-button>
+            </a-space>
+          </template>
+          <div v-if="evidenceTimelineReady" class="evidence-timeline-meta">
+            <span>{{ evidenceTimelineResolutionLabel }}</span>
+            <span>{{ formatTimelineWindow(evidenceTimeline?.window) }}</span>
+          </div>
+          <div v-if="evidenceTimelineReady" ref="evidenceTimelineChartRef" class="evidence-timeline-chart" />
+          <a-empty v-else description="暂无可展示的时间证据" :image-style="{ height: '40px' }" />
+        </a-card>
         <a-spin :spinning="predicting">
         <template v-if="modelPredictionReady">
           <a-row :gutter="12" style="margin-bottom: 16px">
@@ -224,7 +241,7 @@
               </a-card>
             </a-col>
           </a-row>
-          <a-card size="small" title="传播趋势预测" style="margin-bottom: 16px">
+            <a-card size="small" title="传播趋势预测" style="margin-bottom: 16px">
             <a-descriptions size="small" :column="2" bordered>
               <a-descriptions-item label="趋势方向">{{ modelDirectionLabel }}</a-descriptions-item>
               <a-descriptions-item label="观测截止">{{ formatTimestamp(modelPrediction?.data_scope?.observed_until as string || observedUntil) }}</a-descriptions-item>
@@ -235,8 +252,8 @@
               <a-descriptions-item label="模型范围">{{ modelScopeLabel(modelPrediction?.model?.scope) }}</a-descriptions-item>
               <a-descriptions-item label="预测更新时间">{{ formatTimestamp(modelPrediction?.cache?.generated_at) }}</a-descriptions-item>
             </a-descriptions>
-            <div ref="modelTrendChartRef" class="model-trend-chart" />
-          </a-card>
+              <div ref="modelTrendChartRef" class="model-trend-chart" />
+            </a-card>
           <a-card size="small" title="下一跳预测 Top-K" style="margin-bottom: 16px">
             <a-table
               :columns="nextHopColumns"
@@ -471,12 +488,16 @@ import type { EChartsOption } from 'echarts'
 import {
   analyzeObservedPropagation,
   getCachedPropagationPrediction,
+  getPropagationEventTimeline,
   predictPropagationCurrentEvent,
+  type PropagationEventTimelineProjection,
+  type PropagationTimelineRange,
 } from '@/api/propagation'
-import { getEventSemantic, type SemanticEvidenceProjection } from '@/api/analysis'
+import { getAnalysisArtifact, getEventSemantic, type SemanticEvidenceProjection } from '@/api/analysis'
 import PageHeader from '@/components/PageHeader.vue'
 
 const DEFAULT_EVENT_ID = 'trump_visit_2026_05_21'
+const PROPAGATION_ANALYSIS_ARTIFACT_KEY = 'stage:propagation_analysis:result'
 
 type KeyRoleItem = {
   account_id: string
@@ -492,7 +513,7 @@ type EvidencePath = {
   score?: number
   confidence?: number | string
   path_id?: string | number
-  evidence_refs?: string[]
+  evidence_refs?: unknown[]
   metadata?: Record<string, unknown>
 }
 
@@ -506,8 +527,12 @@ type SemanticPathOverlay = {
     stance: Record<string, number>
     platforms: string[]
     time_range: { start: string; end: string }
-    evidence_refs: string[]
+    evidence_refs: unknown[]
   }
+}
+
+type SemanticOverlayPayload = Omit<SemanticPathOverlay['semantic_overlay'], 'evidence_refs'> & {
+  evidence_refs: string[]
 }
 
 type SupportingPost = {
@@ -699,11 +724,24 @@ type AnalysisResult = {
   error?: string
 }
 
+type PropagationAnalysisArtifact = AnalysisResult & {
+  status?: string
+  fallback?: boolean
+  snapshot_id?: string
+  data_fingerprint?: string
+  artifact_manifest?: Record<string, unknown>
+}
+
 type ModelTrendPoint = {
   step: number | string
   predicted_size: number
   at?: string
   timestamp?: string
+}
+
+type CumulativeTimelinePoint = {
+  at?: string
+  cumulative_size: number
 }
 
 type ModelTrendInterval = {
@@ -783,7 +821,8 @@ type EventModelPrediction = {
     predicted_size?: number
     trend_points?: ModelTrendPoint[]
     intervals?: ModelTrendInterval[]
-    observed_points?: ModelTrendPoint[]
+    observed_points?: CumulativeTimelinePoint[]
+    realized_points?: CumulativeTimelinePoint[]
     direction?: string
     score_concentration?: number
     calibration_status?: 'available' | 'unavailable'
@@ -817,6 +856,10 @@ type UnknownRecord = Record<string, unknown>
 
 function isRecord(value: unknown): value is UnknownRecord {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function optionalText(value: unknown) {
+  return typeof value === 'string' ? value.trim() : ''
 }
 
 function firstFiniteNumber(...values: unknown[]) {
@@ -883,6 +926,20 @@ function normalizeTrendPoints(value: unknown): ModelTrendPoint[] {
   })
 }
 
+function normalizeCumulativeTimelinePoints(value: unknown): CumulativeTimelinePoint[] {
+  return asObjectArray(value).flatMap((item) => {
+    const at = typeof item.at === 'string'
+      ? item.at
+      : typeof item.timestamp === 'string'
+        ? item.timestamp
+        : typeof item.time === 'string'
+          ? item.time
+          : undefined
+    const cumulativeSize = firstFiniteNumber(item.cumulative_size, item.observed_size, item.realized_size, item.predicted_size)
+    return at && cumulativeSize !== undefined ? [{ at, cumulative_size: cumulativeSize }] : []
+  })
+}
+
 function normalizeIntervals(value: unknown): ModelTrendInterval[] {
   if (isRecord(value) && Array.isArray(value.points)) {
     return normalizeIntervals(value.points)
@@ -911,8 +968,10 @@ function normalizePredictionResponse(value: unknown): EventModelPrediction | nul
     : isRecord(raw.forecast) ? raw.forecast : raw
   const rawTrend = rawMacro.trend_points ?? rawMacro.trend ?? rawMacro.points
   const rawObserved = rawMacro.observed_points ?? rawMacro.observed_trend ?? raw.observed_points
+  const rawRealized = rawMacro.realized_points ?? rawMacro.realized_trend ?? raw.realized_points
   const trendPoints = normalizeTrendPoints(rawTrend)
-  const observedPoints = normalizeTrendPoints(rawObserved)
+  const observedPoints = normalizeCumulativeTimelinePoints(rawObserved)
+  const realizedPoints = normalizeCumulativeTimelinePoints(rawRealized)
   const rawMicro = isRecord(raw.micro)
     ? raw.micro
     : isRecord(raw.next_hop) ? raw.next_hop : {}
@@ -951,6 +1010,7 @@ function normalizePredictionResponse(value: unknown): EventModelPrediction | nul
     trend_points: trendPoints,
     intervals: normalizeIntervals(rawMacro.intervals ?? rawMacro.interval ?? rawMacro.prediction_interval),
     observed_points: observedPoints,
+    realized_points: realizedPoints,
     direction: typeof rawMacro.direction === 'string' ? rawMacro.direction : undefined,
     score_concentration: firstFiniteNumber(rawMacro.score_concentration, rawMacro.confidence_like_score),
     calibration_status: rawMacro.calibration_status === 'available' ? 'available' : 'unavailable',
@@ -1071,7 +1131,11 @@ const analyzing = ref(false)
 const predicting = ref(false)
 const analysisResult = ref<AnalysisResult | null>(null)
 const modelPrediction = ref<EventModelPrediction | null>(null)
+const evidenceTimeline = ref<PropagationEventTimelineProjection | null>(null)
+const evidenceTimelineLoading = ref(false)
+const timelineRange = ref<PropagationTimelineRange>('active')
 const semanticProjection = ref<SemanticEvidenceProjection | null>(null)
+const linkedPropagationArtifact = ref<PropagationAnalysisArtifact | null>(null)
 const semanticLoading = ref(false)
 const selectedClaim = ref<ClaimGroupItem | null>(null)
 const claimDetailOpen = ref(false)
@@ -1101,16 +1165,22 @@ const route = useRoute()
 const layerChartRef = ref<HTMLDivElement | null>(null)
 const pathGraphRef = ref<HTMLDivElement | null>(null)
 const modelTrendChartRef = ref<HTMLDivElement | null>(null)
+const modelBacktestChartRef = ref<HTMLDivElement | null>(null)
+const evidenceTimelineChartRef = ref<HTMLDivElement | null>(null)
 let layerChart: echarts.ECharts | null = null
 let pathGraphChart: echarts.ECharts | null = null
 let modelTrendChart: echarts.ECharts | null = null
+let modelBacktestChart: echarts.ECharts | null = null
+let evidenceTimelineChart: echarts.ECharts | null = null
 let modelTrendResizeObserver: ResizeObserver | null = null
 let predictionRequestGeneration = 0
+let evidenceTimelineRequestGeneration = 0
 let semanticRequestGeneration = 0
 
 const semanticPathOverlay = computed(() => {
   const selectedPath = selectedClaimPathDetail.value?.path
   if (!selectedPath || semanticProjection.value?.status !== 'ready') return null
+  if (!linkedPropagationArtifact.value) return null
   if (!hasPropagationPathOverlays(semanticProjection.value.evidence)) return null
   return findPathSemanticOverlay(selectedPath, semanticProjection.value.evidence.cross_analysis.propagation_path_overlays)
 })
@@ -1120,6 +1190,10 @@ const keyRoles = computed(() => analysisResult.value?.key_roles ?? null)
 const claims = computed(() => analysisResult.value?.claims ?? [])
 const timeline = computed(() => analysisResult.value?.timeline ?? [])
 const evidenceChains = computed(() => analysisResult.value?.evidence_chains ?? [])
+const linkedPropagationEvidenceChains = computed(() => linkedPropagationArtifact.value?.evidence_chains ?? [])
+const semanticDrilldownEvidenceChains = computed(() => (
+  linkedPropagationEvidenceChains.value.length ? linkedPropagationEvidenceChains.value : evidenceChains.value
+))
 const pathAnalysis = computed(() => analysisResult.value?.path_analysis ?? null)
 const diffusionSummary = computed(() => {
   const serverSummary = analysisResult.value?.diffusion_summary
@@ -1213,11 +1287,13 @@ const claimTimelineMatches = computed(() => {
 })
 const claimEvidenceMatches = computed(() => {
   if (!selectedClaim.value) return []
-  const objectEvidence = (diffusionSummary.value?.detail_index?.objects?.[selectedClaim.value.object_id] as any)?.evidence
-  if (objectEvidence?.claim_id) {
-    return [objectEvidence as EvidenceChain]
+  if (!linkedPropagationEvidenceChains.value.length) {
+    const objectEvidence = (diffusionSummary.value?.detail_index?.objects?.[selectedClaim.value.object_id] as any)?.evidence
+    if (objectEvidence?.claim_id) {
+      return [objectEvidence as EvidenceChain]
+    }
   }
-  return evidenceChains.value
+  return semanticDrilldownEvidenceChains.value
     .filter((item) => item.claim_id === selectedClaim.value?.object_id)
     .slice(0, 10)
 })
@@ -1269,6 +1345,32 @@ const predictionRequestParams = computed(() => {
 
 const modelPredictionReady = computed(() => {
   return hasPredictionOutput(modelPrediction.value)
+})
+
+const timelineRangeOptions: Array<{ value: PropagationTimelineRange; label: string }> = [
+  { value: 'active', label: '活跃期' },
+  { value: '24h', label: '24小时' },
+  { value: '7d', label: '7天' },
+  { value: 'all', label: '全部' },
+]
+
+const evidenceTimelineReady = computed(() => {
+  const timeline = evidenceTimeline.value
+  return Boolean((timeline?.observed_points?.length ?? 0) || (timeline?.realized_points?.length ?? 0))
+})
+
+const evidenceTimelineResolutionLabel = computed(() => {
+  const labels: Record<string, string> = {
+    minute: '分钟聚合',
+    hour: '小时聚合',
+    day: '日聚合',
+    week: '周聚合',
+  }
+  return labels[evidenceTimeline.value?.resolution || ''] || '时间聚合'
+})
+
+const historicalBacktestAvailable = computed(() => {
+  return (modelPrediction.value?.macro?.realized_points?.length ?? 0) > 1
 })
 
 const predictionEmptyDescription = computed(() => {
@@ -1385,6 +1487,11 @@ function formatTimestamp(value?: string) {
   return value.replace('T', ' ').replace('Z', '')
 }
 
+function formatTimelineWindow(window?: { start?: string; end?: string } | null) {
+  if (!window?.start || !window.end) return '暂无时间范围'
+  return `${formatTimestamp(window.start)} 至 ${formatTimestamp(window.end)}`
+}
+
 function hasNonEmptyDistribution(value: unknown) {
   return isRecord(value) && Object.entries(value).length > 0 && Object.entries(value).every(
     ([label, count]) => Boolean(label.trim()) && typeof count === 'number' && Number.isFinite(count),
@@ -1409,6 +1516,37 @@ function normalizePathId(value: unknown) {
   return String(value).trim()
 }
 
+function normalizeEvidenceReference(value: unknown) {
+  if (typeof value === 'string') {
+    const parts = value.trim().split(':')
+    if (parts.length < 3) return ''
+    const platform = parts[0].trim()
+    const kind = parts[1].trim()
+    const id = parts.slice(2).join(':').trim()
+    if (!platform || !id || (kind !== 'post' && kind !== 'comment')) return ''
+    return `${platform}:${kind}:${id}`
+  }
+  if (!isRecord(value)) return ''
+  const platform = optionalText(value.platform)
+  if (!platform) return ''
+  const postId = optionalText(value.post_id)
+  if (postId) return `${platform}:post:${postId}`
+  const commentId = optionalText(value.comment_id)
+  if (commentId) return `${platform}:comment:${commentId}`
+  return ''
+}
+
+function normalizeEvidenceRefs(value: unknown) {
+  const refs = Array.isArray(value) ? value : []
+  return refs
+    .map((item) => normalizeEvidenceReference(item))
+    .filter((item) => item.length > 0)
+}
+
+function hasCanonicalEvidenceRefs(value: unknown) {
+  return Array.isArray(value) && value.length > 0 && normalizeEvidenceRefs(value).length === value.length
+}
+
 function hasPropagationPathOverlays(value: unknown): value is { cross_analysis: { propagation_path_overlays: SemanticPathOverlay[] } } {
   if (!isRecord(value) || !isRecord(value.cross_analysis)) return false
   const overlays = value.cross_analysis.propagation_path_overlays
@@ -1428,30 +1566,74 @@ function hasPropagationPathOverlays(value: unknown): value is { cross_analysis: 
       && Boolean(timeRange.start.trim())
       && typeof timeRange.end === 'string'
       && Boolean(timeRange.end.trim())
-      && hasNonEmptyTextList(overlay.evidence_refs)
+      && hasCanonicalEvidenceRefs(overlay.evidence_refs)
   })
 }
 
-function sameEvidenceRefs(left: string[], right: string[]) {
-  if (left.length !== right.length) return false
-  const leftRefs = [...left].map((item) => item.trim()).sort()
-  const rightRefs = [...right].map((item) => item.trim()).sort()
+function sameEvidenceRefs(left: unknown, right: unknown) {
+  const leftRefs = normalizeEvidenceRefs(left).sort()
+  const rightRefs = normalizeEvidenceRefs(right).sort()
+  if (leftRefs.length !== rightRefs.length || leftRefs.length === 0) return false
   return leftRefs.every((item, index) => item === rightRefs[index])
+}
+
+function pathEvidenceRefs(path: EvidencePath) {
+  const metadataEvidenceRefs = Array.isArray(path.metadata?.evidence_refs)
+    ? path.metadata.evidence_refs
+    : []
+  const rawRefs = Array.isArray(path.evidence_refs) ? path.evidence_refs : metadataEvidenceRefs
+  return normalizeEvidenceRefs(rawRefs)
+}
+
+function normalizeSemanticOverlay(overlay: SemanticPathOverlay['semantic_overlay']): SemanticOverlayPayload {
+  return {
+    ...overlay,
+    evidence_refs: normalizeEvidenceRefs(overlay.evidence_refs),
+  }
+}
+
+function artifactSnapshotId(artifact: PropagationAnalysisArtifact) {
+  return optionalText(artifact.snapshot_id)
+}
+
+function artifactDataFingerprint(artifact: PropagationAnalysisArtifact) {
+  const manifest = isRecord(artifact.artifact_manifest) ? artifact.artifact_manifest : null
+  return optionalText(artifact.data_fingerprint) || optionalText(manifest?.data_fingerprint)
+}
+
+function semanticEmbeddingFingerprint(evidence: unknown) {
+  if (!isRecord(evidence) || !isRecord(evidence.embedding_manifest)) return ''
+  const manifest = evidence.embedding_manifest
+  return optionalText(manifest.snapshot_fingerprint)
+    || optionalText(manifest.data_fingerprint)
+    || optionalText(manifest.fingerprint)
+}
+
+function hasLinkedEvidenceChains(artifact: PropagationAnalysisArtifact) {
+  return Array.isArray(artifact.evidence_chains) && artifact.evidence_chains.length > 0
+}
+
+function isVerifiedLinkedPropagationArtifact(semantic: SemanticEvidenceProjection, artifact: PropagationAnalysisArtifact) {
+  if (semantic.status !== 'ready' || !semantic.run_id || !semantic.snapshot_id || !artifact) return false
+  if (artifactSnapshotId(artifact) !== semantic.snapshot_id) return false
+  const artifactStatus = optionalText(artifact.status).toLowerCase()
+  if (artifactStatus !== 'ok' && artifactStatus !== 'completed') return false
+  if (artifact.fallback === true) return false
+  const semanticFingerprint = semanticEmbeddingFingerprint(semantic.evidence)
+  const artifactFingerprint = artifactDataFingerprint(artifact)
+  if (semanticFingerprint && artifactFingerprint && semanticFingerprint !== artifactFingerprint) return false
+  return hasLinkedEvidenceChains(artifact)
 }
 
 function findPathSemanticOverlay(path: EvidencePath, overlays: SemanticPathOverlay[]) {
   const pathId = normalizePathId(path.path_id)
-  if (pathId) {
-    const matchedPathId = overlays.find((overlay) => normalizePathId(overlay.path_id) === pathId)
-    if (matchedPathId) return matchedPathId.semantic_overlay
-  }
-  const metadataEvidenceRefs = Array.isArray(path.metadata?.evidence_refs)
-    ? path.metadata.evidence_refs.filter((item): item is string => typeof item === 'string')
-    : []
-  const pathEvidenceRefs = (Array.isArray(path.evidence_refs) ? path.evidence_refs : metadataEvidenceRefs)
-    .filter((item): item is string => typeof item === 'string' && Boolean(item.trim()))
-  if (!pathEvidenceRefs.length) return null
-  return overlays.find((overlay) => sameEvidenceRefs(overlay.semantic_overlay.evidence_refs, pathEvidenceRefs))?.semantic_overlay ?? null
+  const evidenceRefs = pathEvidenceRefs(path)
+  if (!pathId || !evidenceRefs.length) return null
+  const matchedOverlay = overlays.find((overlay) => (
+    normalizePathId(overlay.path_id) === pathId
+    && sameEvidenceRefs(overlay.semantic_overlay.evidence_refs, evidenceRefs)
+  ))
+  return matchedOverlay ? normalizeSemanticOverlay(matchedOverlay.semantic_overlay) : null
 }
 
 function formatSemanticDistribution(values: Record<string, number>) {
@@ -1503,27 +1685,6 @@ function modelScopeLabel(value?: string) {
   if (value === 'current_event') return '当前事件'
   if (value === 'research_benchmark') return '研究基准'
   return value || '--'
-}
-
-function relationTypeLabel(edge?: DiffusionEdge) {
-  const value = String(edge?.relation_type || edge?.type || '').toLowerCase()
-  if (value.includes('reply')) return '回复关系'
-  if (value.includes('repost')) return '转发关系'
-  if (value.includes('quote')) return '引用关系'
-  if (value.includes('parent')) return '父子关系'
-  if (value.includes('shared') || value.includes('implicit') || value.includes('inferred')) return '共享对象推断'
-  return '传播关系'
-}
-
-function evidenceTypeLabel(edge?: DiffusionEdge) {
-  const value = String(edge?.evidence_type || edge?.relation_type || edge?.type || '').toLowerCase()
-  if (value.includes('layout') || value.includes('synthetic') || edge?.is_synthetic || edge?.is_parallel_root) return '布局关系'
-  if (value.includes('reply') || value.includes('repost') || value.includes('quote') || value.includes('parent') || value.includes('explicit')) return '确认关系'
-  return '推断关系'
-}
-
-function isPropagationEdge(edge: DiffusionEdge) {
-  return evidenceTypeLabel(edge) !== '布局关系'
 }
 
 function nextHopAssessmentLabel(record: NextHopUser) {
@@ -1687,26 +1848,16 @@ function buildLayerOption(rows: LayerRow[]): EChartsOption {
 function buildModelTrendOption(): EChartsOption {
   const macro = modelPrediction.value?.macro ?? {}
   const observedSize = Number(macro.observed_size ?? 0)
-  const observedPoints = Array.isArray(macro.observed_points) && macro.observed_points.length
-    ? macro.observed_points
-    : [{ step: '观测截止', predicted_size: observedSize }]
   const trendPoints = (Array.isArray(macro.trend_points) ? macro.trend_points : []).map((item, index) => ({
-    label: (item.at || item.timestamp) ? formatTimestamp(item.at || item.timestamp) : `预测 ${item.step || index + 1}`,
+    label: (item.at || item.timestamp) ? formatTimestamp(item.at || item.timestamp) : `模型相对步 ${item.step || index + 1}`,
     value: Number(item.predicted_size ?? 0),
   }))
   if (!trendPoints.length && macro.predicted_size != null) {
-    trendPoints.push({ label: '预测最终', value: Number(macro.predicted_size) })
+    trendPoints.push({ label: '模型相对步 最终', value: Number(macro.predicted_size) })
   }
-  const observedLabels = observedPoints.map((item, index) => {
-    const timestamp = item.at || item.timestamp
-    return timestamp ? formatTimestamp(timestamp) : `观测 ${item.step || index + 1}`
-  })
-  const labels = [...observedLabels, ...trendPoints.map((item) => item.label)]
-  const observedData = observedPoints.map((item) => Number(item.predicted_size ?? observedSize))
-  const predictedData = [...observedData.map(() => null), ...trendPoints.map((item) => item.value)]
-  if (observedData.length && trendPoints.length) {
-    predictedData[observedData.length - 1] = observedData[observedData.length - 1]
-  }
+  const labels = ['观测终点', ...trendPoints.map((item) => item.label)]
+  const observedData = [observedSize, ...trendPoints.map(() => null)]
+  const predictedData = [observedSize, ...trendPoints.map((item) => item.value)]
   const intervals = Array.isArray(macro.intervals) ? macro.intervals : []
   const showPredictionInterval = hasCalibratedPredictionIntervals(macro)
   const intervalByStep = new Map(intervals.map((item, index) => [String(item.step ?? item.timestamp ?? index + 1), item]))
@@ -1720,18 +1871,20 @@ function buildModelTrendOption(): EChartsOption {
   })] : []
   const series: EChartsOption['series'] = [
     {
-      name: '已观测规模',
+      name: '真实观测累计',
       type: 'line',
       data: observedData,
       symbolSize: 9,
+      smooth: false,
       lineStyle: { width: 3 },
       itemStyle: { color: '#0891b2' },
     },
     {
-      name: '预测趋势',
+      name: '模型相对预测',
       type: 'line',
       data: predictedData,
       symbolSize: 7,
+      smooth: false,
       lineStyle: { width: 3, type: 'dashed', color: '#2563eb' },
       itemStyle: { color: '#2563eb' },
     },
@@ -1780,7 +1933,7 @@ function buildModelTrendOption(): EChartsOption {
     legend: {
       top: 4,
       right: 12,
-      data: showPredictionInterval ? ['已观测规模', '预测趋势', '预测区间'] : ['已观测规模', '预测趋势'],
+      data: showPredictionInterval ? ['真实观测累计', '模型相对预测', '预测区间'] : ['真实观测累计', '模型相对预测'],
     },
     xAxis: {
       type: 'category',
@@ -1799,24 +1952,127 @@ function buildModelTrendOption(): EChartsOption {
   }
 }
 
+function buildHistoricalBacktestOption(): EChartsOption {
+  const macro = modelPrediction.value?.macro ?? {}
+  const observedPoints = Array.isArray(macro.observed_points) ? macro.observed_points : []
+  const realizedPoints = Array.isArray(macro.realized_points) ? macro.realized_points : []
+  const observedByTime = new Map(observedPoints.filter((point) => point.at).map((point) => [String(point.at), point.cumulative_size]))
+  const realizedByTime = new Map(realizedPoints.filter((point) => point.at).map((point) => [String(point.at), point.cumulative_size]))
+  const timestamps = Array.from(new Set([...observedByTime.keys(), ...realizedByTime.keys()])).sort((left, right) => left.localeCompare(right))
+  const labels = timestamps.map((timestamp) => formatTimestamp(timestamp))
+  const observedData = timestamps.map((timestamp) => observedByTime.get(timestamp) ?? null)
+  const realizedData = timestamps.map((timestamp) => realizedByTime.get(timestamp) ?? null)
+
+  return {
+    backgroundColor: 'transparent',
+    grid: { left: 48, right: 24, top: 34, bottom: 34 },
+    tooltip: {
+      trigger: 'axis',
+      formatter: (params: any) => (Array.isArray(params) ? params : [])
+        .filter((item) => item.value != null)
+        .map((item) => `${item.marker}${item.seriesName}：${formatNumber(Number(item.value))}`)
+        .join('<br/>'),
+    },
+    legend: { top: 4, right: 12, data: ['真实观测累计', '历史实际累计'] },
+    xAxis: {
+      type: 'category',
+      boundaryGap: false,
+      data: labels,
+      axisLabel: { color: '#64748b' },
+      axisLine: { lineStyle: { color: '#cbd5e1' } },
+    },
+    yAxis: {
+      type: 'value',
+      min: 0,
+      axisLabel: { color: '#64748b' },
+      splitLine: { lineStyle: { color: 'rgba(148, 163, 184, 0.25)' } },
+    },
+    series: [
+      {
+        name: '真实观测累计',
+        type: 'line',
+        data: observedData,
+        symbolSize: 7,
+        smooth: false,
+        lineStyle: { width: 3, color: '#0891b2' },
+        itemStyle: { color: '#0891b2' },
+      },
+      {
+        name: '历史实际累计',
+        type: 'line',
+        data: realizedData,
+        symbolSize: 7,
+        smooth: false,
+        lineStyle: { width: 3, type: 'dashed', color: '#f97316' },
+        itemStyle: { color: '#f97316' },
+      },
+    ],
+  }
+}
+
+function buildEvidenceTimelineOption(): EChartsOption {
+  const timeline = evidenceTimeline.value
+  const observedByTime = new Map((timeline?.observed_points ?? []).map((point) => [point.at, point.cumulative_size]))
+  const realizedByTime = new Map((timeline?.realized_points ?? []).map((point) => [point.at, point.cumulative_size]))
+  const timestamps = Array.from(new Set([...observedByTime.keys(), ...realizedByTime.keys()])).sort((left, right) => left.localeCompare(right))
+
+  return {
+    backgroundColor: 'transparent',
+    grid: { left: 48, right: 24, top: 34, bottom: 58 },
+    tooltip: {
+      trigger: 'axis',
+      formatter: (params: any) => (Array.isArray(params) ? params : [])
+        .filter((item) => item.value != null)
+        .map((item) => `${item.marker}${item.seriesName}：${formatNumber(Number(item.value))}`)
+        .join('<br/>'),
+    },
+    legend: { top: 4, right: 12, data: ['真实观测累计', '历史实际累计'] },
+    xAxis: {
+      type: 'category',
+      boundaryGap: false,
+      data: timestamps.map((timestamp) => formatTimestamp(timestamp)),
+      axisLabel: { color: '#64748b', hideOverlap: true },
+      axisLine: { lineStyle: { color: '#cbd5e1' } },
+    },
+    yAxis: {
+      type: 'value',
+      min: 0,
+      axisLabel: { color: '#64748b' },
+      splitLine: { lineStyle: { color: 'rgba(148, 163, 184, 0.25)' } },
+    },
+    dataZoom: [
+      { type: 'inside', xAxisIndex: 0, filterMode: 'filter' },
+      { type: 'slider', xAxisIndex: 0, filterMode: 'filter', height: 18, bottom: 8 },
+    ],
+    series: [
+      {
+        name: '真实观测累计',
+        type: 'line',
+        data: timestamps.map((timestamp) => observedByTime.get(timestamp) ?? null),
+        showSymbol: false,
+        smooth: false,
+        connectNulls: false,
+        lineStyle: { width: 3, color: '#0891b2' },
+        itemStyle: { color: '#0891b2' },
+      },
+      {
+        name: '历史实际累计',
+        type: 'line',
+        data: timestamps.map((timestamp) => realizedByTime.get(timestamp) ?? null),
+        showSymbol: false,
+        smooth: false,
+        connectNulls: false,
+        lineStyle: { width: 3, type: 'dashed', color: '#f97316' },
+        itemStyle: { color: '#f97316' },
+      },
+    ],
+  }
+}
+
 function shortNodeLabel(value: string) {
   const text = String(value || '').trim()
   if (!text) return '--'
   return text.length > 10 ? `${text.slice(0, 10)}…` : text
-}
-
-function stableHash(value: string) {
-  let hash = 0
-  for (let index = 0; index < value.length; index += 1) {
-    hash = ((hash << 5) - hash + value.charCodeAt(index)) | 0
-  }
-  return Math.abs(hash)
-}
-
-function stableEdgeCurveness(source: string, target: string, sourceLayer: number, targetLayer: number) {
-  const layerGap = Math.max(1, Math.abs(targetLayer - sourceLayer))
-  const direction = stableHash(`${source}->${target}`) % 2 === 0 ? 1 : -1
-  return direction * Math.min(0.06, 0.02 + (layerGap - 1) * 0.012)
 }
 
 function fitGraphPositions(
@@ -1881,11 +2137,8 @@ function formatNodePath(nodes?: string[]) {
 
 function buildPathGraphOption(summary?: DiffusionSummary | null): EChartsOption {
   const nodes = summary?.visible_nodes ?? []
-  const treeEdges = summary?.tree_edges ?? []
-  const highlightEdges = summary?.highlight_edges ?? []
   const nodeById = new Map(nodes.map((node) => [String(node.id), node]))
   const rootId = String(summary?.root_node?.id || nodes.find((node) => node.is_root)?.id || nodes[0]?.id || '')
-  const keyEdgeKeys = new Set(highlightEdges.map((edge) => `${edge.source}->${edge.target}`))
 
   const nodesByLayer = new Map<number, DiffusionNode[]>()
   for (const node of nodes) {
@@ -1898,41 +2151,28 @@ function buildPathGraphOption(summary?: DiffusionSummary | null): EChartsOption 
   const radialGap = 95
   positions.set(rootId, { x: 0, y: 0, layer: 0 })
 
-  const hasBackendLayout = nodes.some((node) => Number.isFinite(Number(node.layout_x)) && Number.isFinite(Number(node.layout_y)))
-  if (hasBackendLayout) {
-    for (const node of nodes) {
-      const id = String(node.id)
-      if (Number.isFinite(Number(node.layout_x)) && Number.isFinite(Number(node.layout_y))) {
-        positions.set(id, {
-          x: Number(node.layout_x),
-          y: Number(node.layout_y),
-          layer: Number(node.layer ?? 0),
-        })
-      }
-    }
-  } else {
-    for (const [layer, layerNodes] of nodesByLayer.entries()) {
-      if (layer === 0) continue
-      const ringNodes = layerNodes
-        .filter((node) => String(node.id) !== rootId)
-        .sort((left, right) => {
-          const leftScore = Number(left.out_degree ?? 0) + Number(left.post_count ?? 0) + (left.is_key ? 100 : 0)
-          const rightScore = Number(right.out_degree ?? 0) + Number(right.post_count ?? 0) + (right.is_key ? 100 : 0)
-          return rightScore - leftScore
-        })
-      if (!ringNodes.length) continue
-      const radius = Math.max(1, layer) * radialGap
-      const step = (Math.PI * 2) / Math.max(ringNodes.length, 1)
-      const offset = layer % 2 === 0 ? -Math.PI / 2 : -Math.PI / 2 + step / 2
-      ringNodes.forEach((node, index) => {
-        const angle = offset + step * index
-        positions.set(String(node.id), {
-          x: Math.cos(angle) * radius,
-          y: Math.sin(angle) * radius,
-          layer,
-        })
+  for (const [layer, layerNodes] of nodesByLayer.entries()) {
+    if (layer === 0) continue
+    const ringNodes = layerNodes
+      .filter((node) => String(node.id) !== rootId)
+      .sort((left, right) => {
+        const leftScore = Number(left.out_degree ?? 0) + Number(left.post_count ?? 0) + (left.is_key ? 100 : 0)
+        const rightScore = Number(right.out_degree ?? 0) + Number(right.post_count ?? 0) + (right.is_key ? 100 : 0)
+        if (rightScore !== leftScore) return rightScore - leftScore
+        return String(left.id).localeCompare(String(right.id))
       })
-    }
+    if (!ringNodes.length) continue
+    const radius = Math.max(1, layer) * radialGap
+    const step = (Math.PI * 2) / Math.max(ringNodes.length, 1)
+    const offset = layer % 2 === 0 ? -Math.PI / 2 : -Math.PI / 2 + step / 2
+    ringNodes.forEach((node, index) => {
+      const angle = offset + step * index
+      positions.set(String(node.id), {
+        x: Math.cos(angle) * radius,
+        y: Math.sin(angle) * radius,
+        layer,
+      })
+    })
   }
   const fittedPositions = fitGraphPositions(positions)
 
@@ -1967,52 +2207,6 @@ function buildPathGraphOption(summary?: DiffusionSummary | null): EChartsOption 
     }
   })
 
-  const mergedEdges = new Map<string, DiffusionEdge>()
-  for (const edge of treeEdges) {
-    if (isPropagationEdge(edge)) mergedEdges.set(`${edge.source}->${edge.target}`, edge)
-  }
-  for (const edge of highlightEdges) {
-    const key = `${edge.source}->${edge.target}`
-    const existingEdge = mergedEdges.get(key)
-    if (existingEdge) {
-      mergedEdges.set(key, { ...existingEdge, is_key_path: true })
-    }
-  }
-
-  const graphLinks = Array.from(mergedEdges.values())
-    .filter((edge) => {
-      const source = String(edge.source)
-      const target = String(edge.target)
-      if (!isPropagationEdge(edge) || !source || !target || source === target || !nodeById.has(source) || !nodeById.has(target)) return false
-      const sourceLayer = Number(nodeById.get(source)?.layer ?? -1)
-      const targetLayer = Number(nodeById.get(target)?.layer ?? -1)
-      return sourceLayer !== targetLayer
-    })
-    .map((edge) => {
-      const source = String(edge.source)
-      const target = String(edge.target)
-      const highlighted = Boolean(edge.is_key_path) || keyEdgeKeys.has(`${source}->${target}`)
-      const confirmed = evidenceTypeLabel(edge) === '确认关系'
-      const objectFocused = Boolean(selectedObjectId.value) && String(edge.object_id || '') === selectedObjectId.value
-      const sourceLayer = Number(nodeById.get(source)?.layer ?? 0)
-      const targetLayer = Number(nodeById.get(target)?.layer ?? sourceLayer + 1)
-      return {
-        source,
-        target,
-        value: Number(edge.weight ?? 1) || 1,
-        lineStyle: {
-          color: objectFocused ? 'rgba(250, 204, 21, 0.92)' : highlighted ? 'rgba(56, 189, 248, 0.72)' : confirmed ? 'rgba(45, 212, 191, 0.52)' : 'rgba(148, 163, 184, 0.3)',
-          width: objectFocused ? 2.2 : highlighted ? 1.35 : confirmed ? 1 : 0.72,
-          curveness: stableEdgeCurveness(source, target, sourceLayer, targetLayer),
-          opacity: objectFocused ? 0.94 : highlighted ? 0.62 : confirmed ? 0.48 : 0.28,
-        },
-        relationLabel: relationTypeLabel(edge),
-        evidenceLabel: evidenceTypeLabel(edge),
-        objectId: edge.object_id,
-        postId: edge.post_id || edge.target_post_id || edge.source_post_id,
-      }
-    })
-
   return {
     backgroundColor: {
       type: 'linear',
@@ -2029,9 +2223,6 @@ function buildPathGraphOption(summary?: DiffusionSummary | null): EChartsOption 
     tooltip: {
       trigger: 'item',
       formatter: (params: any) => {
-        if (params.dataType === 'edge') {
-          return `${displayUserName(params.data.source)}<br/>→ ${displayUserName(params.data.target)}<br/>${params.data.relationLabel || '传播关系'}：${params.data.evidenceLabel || '推断关系'}${params.data.objectId ? `<br/>共享对象：${params.data.objectId}` : ''}`
-        }
         const node = nodeById.get(String(params.data.userId))
         const degreeText = `出度：${node?.out_degree ?? 0} / 入度：${node?.in_degree ?? 0}`
         return `${displayUserName(params.data.userId)}<br/>用户ID：${params.data.userId}<br/>${degreeText}`
@@ -2049,10 +2240,10 @@ function buildPathGraphOption(summary?: DiffusionSummary | null): EChartsOption 
       {
         type: 'graph',
         layout: 'none',
-        roam: true,
+        roam: 'scale',
         zoom: 0.94,
         center: ['50%', '50%'],
-        draggable: true,
+        draggable: false,
         top: 54,
         bottom: 22,
         left: 24,
@@ -2063,7 +2254,7 @@ function buildPathGraphOption(summary?: DiffusionSummary | null): EChartsOption 
           { name: '普通节点', itemStyle: { color: '#60a5fa' } },
         ],
         data: graphData,
-        links: graphLinks,
+        links: [],
         label: {
           color: '#eef6ff',
           fontSize: 10,
@@ -2071,19 +2262,6 @@ function buildPathGraphOption(summary?: DiffusionSummary | null): EChartsOption 
         },
         labelLayout: {
           hideOverlap: true,
-        },
-        edgeSymbol: ['none', 'arrow'],
-        edgeSymbolSize: [0, 7],
-        lineStyle: {
-          color: 'source',
-          opacity: 0.18,
-          curveness: 0.02,
-        },
-        emphasis: {
-          focus: 'adjacency',
-          lineStyle: {
-            width: 4,
-          },
         },
       },
     ],
@@ -2127,6 +2305,7 @@ function observeModelTrendContainer(container: HTMLDivElement) {
       const visible = entries.some((entry) => entry.contentRect.width > 0 && entry.contentRect.height > 0)
       if (visible && activeTab.value === 'model' && modelPredictionReady.value) {
         void renderModelTrendChart()
+        void renderHistoricalBacktestChart()
       }
     })
   }
@@ -2136,8 +2315,15 @@ function observeModelTrendContainer(container: HTMLDivElement) {
 function disposeModelTrendChart() {
   modelTrendChart?.dispose()
   modelTrendChart = null
+  modelBacktestChart?.dispose()
+  modelBacktestChart = null
   modelTrendResizeObserver?.disconnect()
   modelTrendResizeObserver = null
+}
+
+function disposeEvidenceTimelineChart() {
+  evidenceTimelineChart?.dispose()
+  evidenceTimelineChart = null
 }
 
 async function renderModelTrendChart() {
@@ -2159,11 +2345,62 @@ async function renderModelTrendChart() {
   modelTrendChart.resize()
 }
 
+async function renderHistoricalBacktestChart() {
+  await nextTick()
+  if (activeTab.value !== 'model' || !historicalBacktestAvailable.value) {
+    modelBacktestChart?.dispose()
+    modelBacktestChart = null
+    return
+  }
+  const container = modelBacktestChartRef.value
+  if (!container || container.offsetWidth === 0 || container.offsetHeight === 0) return
+  if (modelBacktestChart && modelBacktestChart.getDom() !== container) {
+    modelBacktestChart.dispose()
+    modelBacktestChart = null
+  }
+  if (!modelBacktestChart) {
+    modelBacktestChart = echarts.init(container)
+  }
+  modelBacktestChart.setOption(buildHistoricalBacktestOption(), true)
+  modelBacktestChart.resize()
+}
+
+async function renderEvidenceTimelineChart() {
+  await nextTick()
+  if (activeTab.value !== 'model' || !evidenceTimelineReady.value) return
+  const container = evidenceTimelineChartRef.value
+  if (!container || container.offsetWidth === 0 || container.offsetHeight === 0) return
+  if (evidenceTimelineChart && evidenceTimelineChart.getDom() !== container) {
+    disposeEvidenceTimelineChart()
+  }
+  if (!evidenceTimelineChart) {
+    evidenceTimelineChart = echarts.init(container)
+  }
+  evidenceTimelineChart.setOption(buildEvidenceTimelineOption(), true)
+  evidenceTimelineChart.resize()
+}
+
+function scheduleEvidenceTimelineRender() {
+  void nextTick().then(() => {
+    void renderEvidenceTimelineChart()
+    const renderAgain = () => {
+      void renderEvidenceTimelineChart()
+    }
+    if (typeof window.requestAnimationFrame === 'function') {
+      window.requestAnimationFrame(renderAgain)
+    } else {
+      window.setTimeout(renderAgain, 0)
+    }
+  })
+}
+
 function scheduleModelTrendChartRender() {
   void nextTick().then(() => {
     void renderModelTrendChart()
+    void renderHistoricalBacktestChart()
     const renderAgain = () => {
       void renderModelTrendChart()
+      void renderHistoricalBacktestChart()
     }
     if (typeof window.requestAnimationFrame === 'function') {
       window.requestAnimationFrame(renderAgain)
@@ -2177,6 +2414,8 @@ function resizeCharts() {
   layerChart?.resize()
   pathGraphChart?.resize()
   modelTrendChart?.resize()
+  modelBacktestChart?.resize()
+  evidenceTimelineChart?.resize()
 }
 
 async function renderPathTabCharts() {
@@ -2190,7 +2429,7 @@ async function renderActiveTabCharts() {
     return
   }
   if (activeTab.value === 'model') {
-    await renderModelTrendChart()
+    await Promise.all([renderModelTrendChart(), renderHistoricalBacktestChart(), renderEvidenceTimelineChart()])
   }
 }
 
@@ -2295,6 +2534,7 @@ function syncScopeFromRoute() {
 function resetSemanticProjection() {
   semanticRequestGeneration += 1
   semanticProjection.value = null
+  linkedPropagationArtifact.value = null
   semanticLoading.value = false
 }
 
@@ -2302,15 +2542,24 @@ async function loadSemanticProjection() {
   const requestedEventId = eventId.value.trim()
   const requestGeneration = ++semanticRequestGeneration
   semanticProjection.value = null
+  linkedPropagationArtifact.value = null
   semanticLoading.value = Boolean(requestedEventId)
   if (!requestedEventId) return
   try {
     const response = await getEventSemantic(requestedEventId)
     if (requestGeneration !== semanticRequestGeneration || requestedEventId !== eventId.value.trim()) return
     semanticProjection.value = response.data
+    if (response.data.status === 'ready' && response.data.run_id && response.data.snapshot_id) {
+      const artifactResponse = await getAnalysisArtifact(response.data.run_id, PROPAGATION_ANALYSIS_ARTIFACT_KEY)
+      if (requestGeneration !== semanticRequestGeneration || requestedEventId !== eventId.value.trim()) return
+      if (isVerifiedLinkedPropagationArtifact(response.data, artifactResponse.data)) {
+        linkedPropagationArtifact.value = artifactResponse.data
+      }
+    }
   } catch {
     if (requestGeneration !== semanticRequestGeneration || requestedEventId !== eventId.value.trim()) return
     semanticProjection.value = null
+    linkedPropagationArtifact.value = null
   } finally {
     if (requestGeneration === semanticRequestGeneration && requestedEventId === eventId.value.trim()) {
       semanticLoading.value = false
@@ -2353,7 +2602,7 @@ async function handleAnalyze() {
   diffusionFullViewRequested.value = false
   diffusionNodeLimit.value = Math.min(DEFAULT_DIFFUSION_NODE_LIMIT, diffusionSliderMax.value)
   diffusionPendingNodeLimit.value = diffusionNodeLimit.value
-  await loadAnalysis(true)
+  await Promise.all([loadAnalysis(true), loadEvidenceTimeline()])
 }
 
 function handleDiffusionLimitChange(value: number) {
@@ -2385,6 +2634,7 @@ async function handlePredict() {
   const requestedPlatform = platform.value.trim()
   predicting.value = true
   activeTab.value = 'model'
+  void loadEvidenceTimeline()
   try {
     let response = await predictPropagationCurrentEvent(predictionRequestParams.value)
     if (
@@ -2462,10 +2712,48 @@ async function loadCachedPrediction() {
   }
 }
 
+async function loadEvidenceTimeline() {
+  const requestedEventId = eventId.value.trim()
+  if (!requestedEventId) return
+  const requestGeneration = ++evidenceTimelineRequestGeneration
+  const requestedPlatform = platform.value.trim()
+  evidenceTimelineLoading.value = true
+  try {
+    const response = await getPropagationEventTimeline({
+      event_id: requestedEventId,
+      platform: requestedPlatform || undefined,
+      timeline_range: timelineRange.value,
+    })
+    if (
+      requestGeneration !== evidenceTimelineRequestGeneration
+      || requestedEventId !== eventId.value.trim()
+      || requestedPlatform !== platform.value.trim()
+    ) return
+    evidenceTimeline.value = response.data
+    scheduleEvidenceTimelineRender()
+  } catch {
+    if (requestGeneration === evidenceTimelineRequestGeneration) {
+      evidenceTimeline.value = null
+      disposeEvidenceTimelineChart()
+    }
+  } finally {
+    if (requestGeneration === evidenceTimelineRequestGeneration) {
+      evidenceTimelineLoading.value = false
+    }
+  }
+}
+
+async function selectTimelineRange(nextRange: PropagationTimelineRange) {
+  if (timelineRange.value === nextRange && evidenceTimelineReady.value) return
+  timelineRange.value = nextRange
+  await loadEvidenceTimeline()
+}
+
 onMounted(() => {
   syncScopeFromRoute()
-  void loadAnalysis(false)
+  void loadAnalysis(false, true)
   void loadCachedPrediction()
+  void loadEvidenceTimeline()
   void loadSemanticProjection()
   window.addEventListener('resize', resizeCharts)
 })
@@ -2477,8 +2765,9 @@ watch(
     diffusionFullViewRequested.value = false
     diffusionNodeLimit.value = DEFAULT_DIFFUSION_NODE_LIMIT
     diffusionPendingNodeLimit.value = DEFAULT_DIFFUSION_NODE_LIMIT
-    void loadAnalysis(false)
+    void loadAnalysis(false, true)
     void loadCachedPrediction()
+    void loadEvidenceTimeline()
   },
 )
 
@@ -2515,6 +2804,7 @@ onBeforeUnmount(() => {
   layerChart?.dispose()
   pathGraphChart?.dispose()
   disposeModelTrendChart()
+  disposeEvidenceTimelineChart()
 })
 </script>
 
@@ -2578,31 +2868,6 @@ onBeforeUnmount(() => {
 
 .path-node-slider {
   min-width: 0;
-}
-
-.path-relation-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 14px;
-  padding: 0 4px 9px;
-  color: #64748b;
-  font-size: 12px;
-}
-
-.relation-swatch {
-  display: inline-block;
-  width: 18px;
-  height: 2px;
-  margin-right: 5px;
-  vertical-align: middle;
-}
-
-.relation-swatch.confirmed {
-  background: #2dd4bf;
-}
-
-.relation-swatch.inferred {
-  background: #94a3b8;
 }
 
 .path-graph-shell {
@@ -2758,6 +3023,25 @@ onBeforeUnmount(() => {
   width: 100%;
   height: 280px;
   margin-top: 14px;
+}
+
+.evidence-timeline-card {
+  min-height: 360px;
+}
+
+.evidence-timeline-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+  color: #64748b;
+  font-size: 12px;
+  flex-wrap: wrap;
+}
+
+.evidence-timeline-chart {
+  width: 100%;
+  height: 300px;
 }
 
 .table-link-button {

@@ -51,6 +51,9 @@ function executableFunction(source, name, dependencies = {}) {
     .replace(/: unknown/g, '')
     .replace(/: string\[\]/g, '')
     .replace(/: EvidencePath/g, '')
+    .replace(/: SemanticEvidenceProjection/g, '')
+    .replace(/: SemanticOverlayPayload/g, '')
+    .replace(/: SemanticPathOverlay\['semantic_overlay'\]/g, '')
     .replace(/: value is \{ cross_analysis: \{ propagation_path_overlays: SemanticPathOverlay\[\] \} \}/g, '')
     .replace(/: SemanticPathOverlay\[\]/g, '')
     .replace(/: Record<string, number>/g, '')
@@ -64,7 +67,7 @@ function functionOr(source, name, fallback, dependencies = {}) {
   return source.includes(`function ${name}(`) ? executableFunction(source, name, dependencies) : fallback
 }
 
-function semanticOverlay(pathId = 'path-1', evidenceRefs = ['post-1']) {
+function semanticOverlay(pathId = 'path-1', evidenceRefs = ['weibo:post:post-1']) {
   return {
     path_id: pathId,
     semantic_overlay: {
@@ -83,9 +86,15 @@ function semanticOverlay(pathId = 'path-1', evidenceRefs = ['post-1']) {
 test('loads the semantic projection for the selected propagation event', () => {
   const loadSemanticProjection = bodyOf(propagationView, 'loadSemanticProjection')
 
-  assert.match(propagationView, /import \{ getEventSemantic, type SemanticEvidenceProjection \} from '@\/api\/analysis'/)
+  assert.match(propagationView, /import \{ getAnalysisArtifact, getEventSemantic, type SemanticEvidenceProjection \} from '@\/api\/analysis'/)
+  assert.match(propagationView, /const PROPAGATION_ANALYSIS_ARTIFACT_KEY = 'stage:propagation_analysis:result'/)
   assert.match(loadSemanticProjection, /const requestedEventId = eventId\.value\.trim\(\)/)
   assert.match(loadSemanticProjection, /await getEventSemantic\(requestedEventId\)/)
+  assert.match(loadSemanticProjection, /response\.data\.status === 'ready'/)
+  assert.match(loadSemanticProjection, /response\.data\.run_id/)
+  assert.match(loadSemanticProjection, /response\.data\.snapshot_id/)
+  assert.match(loadSemanticProjection, /await getAnalysisArtifact\(response\.data\.run_id, PROPAGATION_ANALYSIS_ARTIFACT_KEY\)/)
+  assert.match(loadSemanticProjection, /isVerifiedLinkedPropagationArtifact\(response\.data, artifactResponse\.data\)/)
   assert.match(loadSemanticProjection, /requestedEventId !== eventId\.value\.trim\(\)/)
 })
 
@@ -98,43 +107,99 @@ test('clears semantic projection state when event or platform scope changes', ()
   )
 
   assert.match(resetSemanticProjection, /semanticProjection\.value = null/)
+  assert.match(resetSemanticProjection, /linkedPropagationArtifact\.value = null/)
   assert.match(resetSemanticProjection, /semanticLoading\.value = false/)
   assert.match(scopeWatch, /resetSemanticProjection\(\)/)
   assert.match(scopeWatch, /void loadSemanticProjection\(\)/)
 })
 
-test('matches numeric path IDs before falling back to exact evidence references', () => {
+test('verifies linked propagation artifacts before semantic drill-down can use them', () => {
+  const gate = bodyOf(propagationView, 'isVerifiedLinkedPropagationArtifact')
+
+  assert.match(gate, /semantic\.status !== 'ready'/)
+  assert.match(gate, /!semantic\.run_id/)
+  assert.match(gate, /!semantic\.snapshot_id/)
+  assert.match(gate, /artifactSnapshotId\(artifact\) !== semantic\.snapshot_id/)
+  assert.match(gate, /artifactStatus !== 'ok' && artifactStatus !== 'completed'/)
+  assert.match(gate, /artifact\.fallback === true/)
+  assert.match(gate, /semanticFingerprint && artifactFingerprint && semanticFingerprint !== artifactFingerprint/)
+  assert.match(gate, /hasLinkedEvidenceChains\(artifact\)/)
+})
+
+test('matches semantic overlays only by path ID and exact canonical evidence references', () => {
+  const isRecord = executableFunction(propagationView, 'isRecord')
+  const optionalText = executableFunction(propagationView, 'optionalText')
+  const normalizeEvidenceReference = executableFunction(propagationView, 'normalizeEvidenceReference', {
+    isRecord,
+    optionalText,
+  })
+  const normalizeEvidenceRefs = executableFunction(propagationView, 'normalizeEvidenceRefs', {
+    normalizeEvidenceReference,
+  })
   const normalizePathId = functionOr(propagationView, 'normalizePathId', (value) => String(value ?? '').trim())
-  const sameEvidenceRefs = executableFunction(propagationView, 'sameEvidenceRefs')
+  const sameEvidenceRefs = executableFunction(propagationView, 'sameEvidenceRefs', { normalizeEvidenceRefs })
+  const pathEvidenceRefs = executableFunction(propagationView, 'pathEvidenceRefs', { normalizeEvidenceRefs })
+  const normalizeSemanticOverlay = executableFunction(propagationView, 'normalizeSemanticOverlay', { normalizeEvidenceRefs })
   const findPathSemanticOverlay = executableFunction(propagationView, 'findPathSemanticOverlay', {
     normalizePathId,
     sameEvidenceRefs,
+    pathEvidenceRefs,
+    normalizeSemanticOverlay,
   })
-  const pathIdMatch = semanticOverlay('42', ['different-ref'])
-  const evidenceRefMatch = semanticOverlay('not-the-path', ['post-42'])
+  const exactMatch = semanticOverlay('42', ['weibo:post:post-42', 'weibo:comment:comment-42'])
+  const wrongEvidence = semanticOverlay('42', ['weibo:post:other'])
+  const evidenceOnlyMatch = semanticOverlay('not-the-path', ['weibo:post:post-42', 'weibo:comment:comment-42'])
 
-  assert.equal(
-    findPathSemanticOverlay({ path_id: 42, evidence_refs: ['post-42'] }, [evidenceRefMatch, pathIdMatch]),
-    pathIdMatch.semantic_overlay,
+  assert.deepEqual(
+    normalizeEvidenceRefs([
+      { platform: 'weibo', post_id: 'post-42' },
+      { platform: 'weibo', comment_id: 'comment-42' },
+      'weibo:post:post-43',
+      { author_id: 'u1' },
+      'post-44',
+    ]),
+    ['weibo:post:post-42', 'weibo:comment:comment-42', 'weibo:post:post-43'],
   )
-  assert.equal(
-    findPathSemanticOverlay({ path_id: 84, evidence_refs: ['post-42'] }, [evidenceRefMatch]),
-    evidenceRefMatch.semantic_overlay,
+
+  assert.deepEqual(
+    findPathSemanticOverlay({
+      path_id: 42,
+      evidence_refs: [
+        { platform: 'weibo', post_id: 'post-42' },
+        { platform: 'weibo', comment_id: 'comment-42' },
+      ],
+    }, [wrongEvidence, evidenceOnlyMatch, exactMatch]),
+    exactMatch.semantic_overlay,
   )
+  assert.equal(findPathSemanticOverlay({ path_id: 42, evidence_refs: ['weibo:post:post-42'] }, [wrongEvidence]), null)
+  assert.equal(findPathSemanticOverlay({ path_id: 84, evidence_refs: exactMatch.semantic_overlay.evidence_refs }, [exactMatch]), null)
+  assert.equal(findPathSemanticOverlay({ path_id: 42 }, [exactMatch]), null)
 })
 
 test('fails closed when any required nested semantic overlay field is empty or malformed', () => {
   const isRecord = executableFunction(propagationView, 'isRecord')
+  const optionalText = executableFunction(propagationView, 'optionalText')
   const hasNonEmptyDistribution = functionOr(propagationView, 'hasNonEmptyDistribution', () => true, { isRecord })
   const hasSemanticFeatureRecords = functionOr(propagationView, 'hasSemanticFeatureRecords', () => true, { isRecord })
   const hasNonEmptyTextList = functionOr(propagationView, 'hasNonEmptyTextList', () => true)
   const normalizePathId = functionOr(propagationView, 'normalizePathId', (value) => String(value ?? '').trim())
+  const normalizeEvidenceReference = executableFunction(propagationView, 'normalizeEvidenceReference', {
+    isRecord,
+    optionalText,
+  })
+  const normalizeEvidenceRefs = executableFunction(propagationView, 'normalizeEvidenceRefs', {
+    normalizeEvidenceReference,
+  })
+  const hasCanonicalEvidenceRefs = executableFunction(propagationView, 'hasCanonicalEvidenceRefs', {
+    normalizeEvidenceRefs,
+  })
   const hasPropagationPathOverlays = executableFunction(propagationView, 'hasPropagationPathOverlays', {
     isRecord,
     hasNonEmptyDistribution,
     hasSemanticFeatureRecords,
     hasNonEmptyTextList,
     normalizePathId,
+    hasCanonicalEvidenceRefs,
   })
   const valid = semanticOverlay()
 
@@ -148,6 +213,8 @@ test('fails closed when any required nested semantic overlay field is empty or m
     (overlay) => { overlay.semantic_overlay.platforms = [] },
     (overlay) => { overlay.semantic_overlay.time_range = { start: '', end: '2026-01-01T01:00:00Z' } },
     (overlay) => { overlay.semantic_overlay.evidence_refs = [''] },
+    (overlay) => { overlay.semantic_overlay.evidence_refs = [{ post_id: 'post-1' }] },
+    (overlay) => { overlay.semantic_overlay.evidence_refs = ['post-1'] },
   ]) {
     const malformed = structuredClone(valid)
     mutate(malformed)
@@ -166,6 +233,7 @@ test('keeps malformed, blocked, and empty semantic projections unavailable', () 
   )
 
   assert.match(semanticPathOverlay, /semanticProjection\.value\?\.status !== 'ready'/)
+  assert.match(semanticPathOverlay, /!linkedPropagationArtifact\.value/)
   assert.match(semanticPathOverlay, /!hasPropagationPathOverlays\(semanticProjection\.value\.evidence\)/)
   assert.match(pathDrawer, /v-if="semanticPathOverlay"/)
   assert.match(pathDrawer, /v-else description="暂无语义叠加"/)
@@ -183,4 +251,50 @@ test('renders all required semantic overlay fields without replacing observed pa
   }
   assert.match(pathDrawer, /selectedClaimPathDetail\.path\.explanation/)
   assert.match(pathDrawer, /selectedClaimPathDetail\.chain\.supporting_posts/)
+})
+
+test('renders propagation nodes as fixed hierarchy rings without relationship lines', () => {
+  const graphOption = bodyOf(propagationView, 'buildPathGraphOption')
+
+  assert.match(graphOption, /const radialGap = 95/)
+  assert.doesNotMatch(graphOption, /hasBackendLayout/)
+  assert.doesNotMatch(graphOption, /layout_x/)
+  assert.match(graphOption, /links:\s*\[\]/)
+  assert.match(graphOption, /draggable:\s*false/)
+  assert.doesNotMatch(graphOption, /edgeSymbol:/)
+  assert.doesNotMatch(graphOption, /focus:\s*'adjacency'/)
+})
+
+test('keeps evidence time series separate from relative model forecast steps', () => {
+  const trendOption = bodyOf(propagationView, 'buildModelTrendOption')
+  const evidenceOption = bodyOf(propagationView, 'buildEvidenceTimelineOption')
+
+  assert.match(trendOption, /真实观测累计/)
+  assert.match(trendOption, /模型相对步/)
+  assert.doesNotMatch(trendOption, /macro\.observed_points/)
+  assert.doesNotMatch(trendOption, /macro\.realized_points/)
+  assert.match(evidenceOption, /observed_points/)
+  assert.match(evidenceOption, /realized_points/)
+  assert.match(evidenceOption, /历史实际累计/)
+})
+
+test('renders active-window controls and evidence zoom without assigning timestamps to forecast steps', () => {
+  const option = bodyOf(propagationView, 'buildEvidenceTimelineOption')
+
+  assert.match(propagationView, /getPropagationEventTimeline/)
+  assert.match(propagationView, /timelineRange/)
+  assert.match(propagationView, /活跃期/)
+  assert.match(propagationView, /24小时/)
+  assert.match(propagationView, /7天/)
+  assert.match(propagationView, /全部/)
+  assert.match(option, /type: 'inside'/)
+  assert.match(option, /type: 'slider'/)
+  assert.match(option, /真实观测累计/)
+  assert.match(option, /历史实际累计/)
+  assert.match(bodyOf(propagationView, 'buildModelTrendOption'), /模型相对步/)
+})
+
+test('refreshes the evidence timeline after an analyst changes the event scope', () => {
+  assert.match(bodyOf(propagationView, 'handleAnalyze'), /loadEvidenceTimeline\(\)/)
+  assert.match(bodyOf(propagationView, 'handlePredict'), /loadEvidenceTimeline\(\)/)
 })
