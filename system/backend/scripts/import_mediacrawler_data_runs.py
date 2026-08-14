@@ -35,6 +35,10 @@ from app.db.mongodb import close_mongo, get_mongo_db
 from app.models.post import StandardComment, StandardPost
 
 DEFAULT_EVENT_ID = "trump_visit_2026_05_21"
+LEGACY_WEIBO_PLATFORM = "weibo"
+LEGACY_WEIBO_CRAWL_JOB_ID = 0
+LEGACY_WEIBO_INGESTION_MODE = "historical_jsonl_sync"
+LEGACY_WEIBO_JSONL_DATE = "2026-05-20"
 DEFAULT_KEYWORD = "特朗普访华"
 
 
@@ -55,6 +59,71 @@ class PlatformImportResult:
     stats: dict[str, int]
     missing_comment_post_refs: list[str] = field(default_factory=list)
     source_files: dict[str, str] = field(default_factory=dict)
+
+
+def build_legacy_weibo_reconciliation_filters(
+    normalized: list[PlatformImportResult], *, event_id: str
+) -> dict[str, dict[str, Any]]:
+    """Build exact manifest-absence filters for audited legacy Weibo rows."""
+
+    if event_id != DEFAULT_EVENT_ID:
+        raise ValueError(f"Legacy Weibo reconciliation is limited to event {DEFAULT_EVENT_ID}")
+    weibo_results = [result for result in normalized if result.platform == LEGACY_WEIBO_PLATFORM]
+    post_ids = sorted(
+        {
+            str(document.get("post_id") or "").strip()
+            for result in weibo_results
+            for document in result.posts
+            if str(document.get("post_id") or "").strip()
+        }
+    )
+    comment_ids = sorted(
+        {
+            str(document.get("comment_id") or "").strip()
+            for result in weibo_results
+            for document in result.comments
+            if str(document.get("comment_id") or "").strip()
+        }
+    )
+    if not post_ids or not comment_ids:
+        raise ValueError("Legacy Weibo reconciliation requires a non-empty normalized Weibo manifest")
+
+    legacy_signature = {
+        "event_id": event_id,
+        "platform": LEGACY_WEIBO_PLATFORM,
+        "crawl_job_id": LEGACY_WEIBO_CRAWL_JOB_ID,
+        "crawl_metadata.ingestion_mode": LEGACY_WEIBO_INGESTION_MODE,
+        "crawl_metadata.jsonl_date": LEGACY_WEIBO_JSONL_DATE,
+    }
+    return {
+        "posts": {**legacy_signature, "post_id": {"$nin": post_ids}},
+        "comments": {**legacy_signature, "comment_id": {"$nin": comment_ids}},
+    }
+
+
+async def reconcile_legacy_weibo_manifest(
+    normalized: list[PlatformImportResult], *, event_id: str, execute: bool
+) -> dict[str, int]:
+    """Preview or delete only audited legacy Weibo rows absent from the manifest."""
+
+    filters = build_legacy_weibo_reconciliation_filters(normalized, event_id=event_id)
+    mongo_db = get_mongo_db()
+    posts = mongo_db["raw_posts"]
+    comments = mongo_db["raw_comments"]
+    counts = {
+        "post_preview": await posts.count_documents(filters["posts"]),
+        "post_deleted": 0,
+        "comment_preview": await comments.count_documents(filters["comments"]),
+        "comment_deleted": 0,
+    }
+    if not execute:
+        return counts
+
+    post_delete = await posts.delete_many(filters["posts"])
+    comment_delete = await comments.delete_many(filters["comments"])
+    counts["post_deleted"] = int(post_delete.deleted_count)
+    counts["comment_deleted"] = int(comment_delete.deleted_count)
+    return counts
 
 
 def _latest_jsonl(directory: Path, pattern: str) -> Path:

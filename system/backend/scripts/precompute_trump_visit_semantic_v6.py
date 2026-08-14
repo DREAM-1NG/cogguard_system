@@ -71,6 +71,7 @@ def _summary(
     snapshot: Any | None = None,
     result: dict[str, Any] | None = None,
     platform_counts: dict[str, dict[str, int]] | None = None,
+    reconciliation: dict[str, int] | None = None,
     semantic_status: str,
     blocking_reason: str | None = None,
 ) -> dict[str, Any]:
@@ -80,6 +81,7 @@ def _summary(
         "snapshot_id": getattr(snapshot, "snapshot_id", None),
         "run_id": (result or {}).get("run_id"),
         "platform_counts": platform_counts or {},
+        "reconciliation": reconciliation or {},
         "status": (result or {}).get("status") or semantic_status,
         "semantic_status": semantic.get("status") or semantic_status,
         "blocking_reason": blocking_reason or semantic.get("blocking_reason"),
@@ -140,6 +142,11 @@ async def main_async(args: argparse.Namespace) -> int:
                 keyword="特朗普访华",
             )
             await import_mediacrawler_data_runs.upsert_platform_result(result, job_id=job_id)
+        reconciliation = await import_mediacrawler_data_runs.reconcile_legacy_weibo_manifest(
+            normalized,
+            event_id=EVENT_ID,
+            execute=True,
+        )
 
     async with async_session_factory() as db:
         registry = AnalysisRegistry(mongo_db=get_mongo_db(), store=SqlAlchemyAnalysisStore(db))
@@ -161,7 +168,13 @@ async def main_async(args: argparse.Namespace) -> int:
             registry=registry,
             engines=default_analysis_engine_ports(semantic_runtime=runtime),
         ).execute_run(run["run_id"])
-        summary = _summary(snapshot=snapshot, result=result, platform_counts=platform_counts, semantic_status="completed")
+        summary = _summary(
+            snapshot=snapshot,
+            result=result,
+            platform_counts=platform_counts,
+            reconciliation=reconciliation,
+            semantic_status="completed",
+        )
         print(json.dumps(summary, ensure_ascii=False, indent=2, default=str))
     await _close_mongo_safely()
     semantic = ((result.get("results") or {}).get("semantic_enrichment") or {})

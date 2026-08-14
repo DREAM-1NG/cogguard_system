@@ -8,6 +8,8 @@ from argparse import Namespace
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
+
 from app.core.semantic.runtime import ModelWeightsBlockedError
 
 
@@ -100,6 +102,17 @@ def _fake_importer(events):
         assert job_id > 0
         events.append("data_mutation")
 
+    async def reconcile_legacy_weibo_manifest(_normalized, *, event_id, execute):
+        assert event_id == "trump_visit_2026_05_21"
+        assert execute is True
+        events.append("manifest_reconciliation")
+        return {
+            "post_preview": 58,
+            "post_deleted": 58,
+            "comment_preview": 4068,
+            "comment_deleted": 4068,
+        }
+
     def normalize_platform_files(*, platform, **_kwargs):
         return SimpleNamespace(
             platform=platform,
@@ -113,6 +126,7 @@ def _fake_importer(events):
         normalize_platform_files=normalize_platform_files,
         ensure_mysql_import_job=lambda *_args, **_kwargs: 1,
         upsert_platform_result=upsert_platform_result,
+        reconcile_legacy_weibo_manifest=reconcile_legacy_weibo_manifest,
     )
 
 
@@ -202,6 +216,87 @@ def test_precompute_runs_only_semantic_stage_with_the_prebuilt_runtime(monkeypat
     assert summary["semantic_status"] == "ok"
     assert summary["model_versions"] == {"bge_embedding": "BAAI/bge-small-zh-v1.5@7999e1d"}
     assert summary["embedding_manifest"] == {"artifact_sha256": "abc"}
+
+
+def test_precompute_reconciles_the_current_manifest_after_upsert_and_before_snapshot(monkeypatch, tmp_path: Path, capsys):
+    script = _load_script()
+    events: list[str] = []
+    _PrebuiltRuntime.events = events
+    snapshot = _Snapshot()
+
+    class FakeRegistry:
+        def __init__(self, **_kwargs):
+            pass
+
+        async def create_event_snapshot(self, **_kwargs):
+            events.append("snapshot_mutation")
+            return snapshot
+
+        async def create_run(self, **_kwargs):
+            return {"run_id": "run_semantic"}
+
+    class FakeExecutor:
+        def __init__(self, **_kwargs):
+            pass
+
+        async def execute_run(self, run_id):
+            return {
+                "run_id": run_id,
+                "status": "completed",
+                "results": {"semantic_enrichment": {"status": "ok"}},
+            }
+
+    monkeypatch.setattr(script, "import_mediacrawler_data_runs", _fake_importer(events))
+    monkeypatch.setattr(script, "SemanticEnrichmentRuntime", _PrebuiltRuntime)
+    monkeypatch.setattr(script, "async_session_factory", lambda: _AsyncContext(_FakeSession(events)))
+    monkeypatch.setattr(script, "get_mongo_db", lambda: _FakeMongo(events))
+    monkeypatch.setattr(script, "SqlAlchemyAnalysisStore", lambda _db: object())
+    monkeypatch.setattr(script, "AnalysisRegistry", FakeRegistry)
+    monkeypatch.setattr(script, "AnalysisExecutor", FakeExecutor)
+    monkeypatch.setattr(script, "close_mongo", lambda: asyncio.sleep(0))
+
+    exit_code = asyncio.run(script.main_async(_args(tmp_path)))
+    summary = json.loads(capsys.readouterr().out)
+
+    assert exit_code == 0
+    assert events.index("data_mutation") < events.index("manifest_reconciliation")
+    assert events.index("manifest_reconciliation") < events.index("snapshot_mutation")
+    assert summary["reconciliation"] == {
+        "post_preview": 58,
+        "post_deleted": 58,
+        "comment_preview": 4068,
+        "comment_deleted": 4068,
+    }
+
+
+def test_precompute_stops_before_snapshot_when_manifest_reconciliation_fails(monkeypatch, tmp_path: Path):
+    script = _load_script()
+    events: list[str] = []
+    _PrebuiltRuntime.events = events
+
+    class UnexpectedRegistry:
+        def __init__(self, **_kwargs):
+            raise AssertionError("a failed reconciliation must stop before snapshot creation")
+
+    importer = _fake_importer(events)
+
+    async def fail_reconciliation(*_args, **_kwargs):
+        events.append("manifest_reconciliation")
+        raise RuntimeError("legacy manifest cleanup failed")
+
+    importer.reconcile_legacy_weibo_manifest = fail_reconciliation
+    monkeypatch.setattr(script, "import_mediacrawler_data_runs", importer)
+    monkeypatch.setattr(script, "SemanticEnrichmentRuntime", _PrebuiltRuntime)
+    monkeypatch.setattr(script, "async_session_factory", lambda: _AsyncContext(_FakeSession(events)))
+    monkeypatch.setattr(script, "get_mongo_db", lambda: _FakeMongo(events))
+    monkeypatch.setattr(script, "AnalysisRegistry", UnexpectedRegistry)
+    monkeypatch.setattr(script, "close_mongo", lambda: asyncio.sleep(0))
+
+    with pytest.raises(RuntimeError, match="legacy manifest cleanup failed"):
+        asyncio.run(script.main_async(_args(tmp_path)))
+
+    assert events.index("data_mutation") < events.index("manifest_reconciliation")
+    assert "snapshot_mutation" not in events
 
 
 def test_precompute_reports_a_blocked_runtime_before_any_data_mutation(monkeypatch, tmp_path: Path, capsys):
@@ -302,3 +397,4 @@ def test_precompute_validation_only_does_not_create_snapshot_or_run(monkeypatch,
     assert summary["snapshot_id"] is None
     assert summary["run_id"] is None
     assert "data_mutation" not in events
+    assert "manifest_reconciliation" not in events
