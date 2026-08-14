@@ -705,6 +705,7 @@ def _verified_propagation_paths(payload: dict[str, Any]) -> list[dict[str, Any]]
                     candidates.append(row)
     paths: list[dict[str, Any]] = []
     seen_path_ids: set[str] = set()
+    seen_evidence_signatures: set[tuple[str, ...]] = set()
     for candidate in candidates:
         if not isinstance(candidate, dict):
             continue
@@ -712,15 +713,19 @@ def _verified_propagation_paths(payload: dict[str, Any]) -> list[dict[str, Any]]
         path_id = str(path.get("path_id") or path.get("id") or "").strip()
         if path_id and path_id in seen_path_ids:
             continue
+        evidence_signature = _path_exact_evidence_signature(path)
+        if evidence_signature and evidence_signature in seen_evidence_signatures:
+            continue
         if path_id:
             seen_path_ids.add(path_id)
+        if evidence_signature:
+            seen_evidence_signatures.add(evidence_signature)
         paths.append(path)
     return paths
 
 
 def _semantic_item_index(layers: dict[str, list[dict[str, Any]]]) -> dict[str, Any]:
     by_ref: dict[str, dict[str, Any]] = {}
-    raw_candidates: dict[str, list[dict[str, Any]]] = defaultdict(list)
     canonical_refs: dict[int, str] = {}
     for layer_name, items in layers.items():
         kind = "comment" if layer_name == "comments" else "post"
@@ -731,11 +736,8 @@ def _semantic_item_index(layers: dict[str, list[dict[str, Any]]]) -> dict[str, A
             platform = str(item.get("platform") or "unknown").strip() or "unknown"
             canonical = f"{platform}:{kind}:{item_id}"
             canonical_refs[id(item)] = canonical
-            for key in {canonical, f"{kind}:{item_id}", f"{platform}:{layer_name}:{item_id}", f"{layer_name}:{item_id}"}:
-                by_ref[key] = item
-            raw_candidates[item_id].append(item)
-    raw_unique = {key: values[0] for key, values in raw_candidates.items() if len(values) == 1}
-    return {"by_ref": by_ref, "raw": raw_unique, "canonical_refs": canonical_refs}
+            by_ref[canonical] = item
+    return {"by_ref": by_ref, "canonical_refs": canonical_refs}
 
 
 def _mapped_path_items(path: dict[str, Any], item_index: dict[str, Any]) -> list[dict[str, Any]]:
@@ -765,34 +767,34 @@ def _semantic_item_for_reference(reference: Any, item_index: dict[str, Any]) -> 
     for key in _semantic_reference_keys(reference):
         if key in item_index["by_ref"]:
             return item_index["by_ref"][key]
-        if key in item_index["raw"]:
-            return item_index["raw"][key]
     return None
 
 
 def _semantic_reference_keys(reference: Any) -> list[str]:
     keys: list[str] = []
     if isinstance(reference, dict):
+        platform = str(reference.get("platform") or "").strip()
+        if not platform:
+            return []
         for field, kind in (("comment_id", "comment"), ("post_id", "post")):
             value = str(reference.get(field) or "").strip()
             if value:
-                keys.append(f"{kind}:{value}")
-                keys.append(value)
-        for field in ("evidence_ref", "doc_id", "id", "content_id", "source_ref", "target_ref"):
-            value = reference.get(field)
-            if value not in (None, ""):
-                keys.extend(_semantic_reference_keys(value))
+                keys.append(f"{platform}:{kind}:{value}")
         return list(dict.fromkeys(keys))
     value = str(reference or "").strip()
     if not value:
         return []
-    keys.append(value)
-    parts = [part for part in value.replace("/", ":").split(":") if part]
-    if len(parts) >= 2 and parts[-2] in {"post", "comment", "posts", "comments"}:
-        kind = "comment" if parts[-2] in {"comment", "comments"} else "post"
-        keys.append(f"{kind}:{parts[-1]}")
-        keys.append(parts[-1])
+    parts = value.split(":", 2)
+    if len(parts) == 3 and parts[0].strip() and parts[1] in {"post", "comment"} and parts[2].strip():
+        keys.append(f"{parts[0].strip()}:{parts[1]}:{parts[2].strip()}")
     return list(dict.fromkeys(keys))
+
+
+def _path_exact_evidence_signature(path: dict[str, Any]) -> tuple[str, ...]:
+    keys: list[str] = []
+    for reference in _path_evidence_references(path):
+        keys.extend(_semantic_reference_keys(reference))
+    return tuple(dict.fromkeys(keys))
 
 
 def _semantic_time_range(items: list[dict[str, Any]]) -> dict[str, str]:

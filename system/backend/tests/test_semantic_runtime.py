@@ -194,6 +194,55 @@ def _path_snapshot():
     )
 
 
+def _same_id_path_snapshot():
+    timestamp = datetime(2026, 5, 21, 1, tzinfo=timezone.utc)
+    return build_event_snapshot(
+        event_id="trump_visit_2026_05_21",
+        posts=[
+            {
+                "platform": "weibo",
+                "post_id": "shared-content",
+                "author_id": "u1",
+                "timestamp": timestamp,
+                "content": "微博 平台 精确证据",
+            },
+            {
+                "platform": "xhs",
+                "post_id": "shared-content",
+                "author_id": "u2",
+                "timestamp": timestamp,
+                "content": "小红书 平台 不应混用",
+            },
+        ],
+        comments=[
+            {
+                "platform": "weibo",
+                "comment_id": "shared-comment",
+                "post_id": "shared-content",
+                "author_id": "u3",
+                "timestamp": timestamp,
+                "content": "微博 评论 精确证据",
+            },
+            {
+                "platform": "xhs",
+                "comment_id": "shared-comment",
+                "post_id": "shared-content",
+                "author_id": "u4",
+                "timestamp": timestamp,
+                "content": "小红书 评论 不应混用",
+            },
+        ],
+        core_window=TimeWindow(
+            start=datetime(2026, 5, 21, tzinfo=timezone.utc),
+            end=datetime(2026, 5, 22, tzinfo=timezone.utc),
+        ),
+        context_window=TimeWindow(
+            start=datetime(2026, 5, 1, tzinfo=timezone.utc),
+            end=datetime(2026, 5, 31, tzinfo=timezone.utc),
+        ),
+    )
+
+
 def _verified_propagation_artifact(
     snapshot,
     *,
@@ -539,9 +588,9 @@ def test_verified_same_snapshot_propagation_artifact_builds_exact_path_semantic_
                     {"post_id": "unknown-post"},
                 ],
                 "evidence_refs": [
-                    {"post_id": "source-post"},
-                    {"comment_id": "reply-comment"},
-                    {"comment_id": "unknown-comment"},
+                    {"post_id": "source-post", "platform": "weibo"},
+                    {"comment_id": "reply-comment", "platform": "weibo"},
+                    {"comment_id": "unknown-comment", "platform": "weibo"},
                 ],
             }
         ],
@@ -572,6 +621,111 @@ def test_verified_same_snapshot_propagation_artifact_builds_exact_path_semantic_
     assert semantic_overlay["entities"] == [{"text": "特朗普", "label": "PER", "count": 2}]
 
 
+def test_platform_qualified_path_evidence_maps_only_the_matching_platform(tmp_path: Path):
+    snapshot = _same_id_path_snapshot()
+    propagation = _verified_propagation_artifact(
+        snapshot,
+        paths=[
+            {
+                "path_id": "weibo-only",
+                "evidence_refs": [
+                    {"post_id": "shared-content", "platform": "weibo"},
+                    "weibo:comment:shared-comment",
+                ],
+            }
+        ],
+    )
+
+    result = _runtime(tmp_path).enrich(snapshot, propagation=propagation, claim="primary claim")
+
+    overlays = result["cross_analysis"]["propagation_path_overlays"]
+    assert result["cross_analysis"]["propagation_path_overlays_unavailable_reason"] is None
+    assert len(overlays) == 1
+    assert overlays[0]["platforms"] == ["weibo"]
+    assert overlays[0]["evidence_refs"] == [
+        "weibo:post:shared-content",
+        "weibo:comment:shared-comment",
+    ]
+    assert overlays[0]["mapped_item_count"] == 2
+
+
+def test_wrong_or_missing_platform_path_evidence_does_not_map(tmp_path: Path):
+    snapshot = _same_id_path_snapshot()
+    propagation = _verified_propagation_artifact(
+        snapshot,
+        paths=[
+            {"path_id": "wrong-platform", "evidence_refs": [{"post_id": "shared-content", "platform": "douyin"}]},
+            {"path_id": "missing-platform", "evidence_refs": [{"comment_id": "shared-comment"}]},
+            {"path_id": "empty-platform", "evidence_refs": [{"post_id": "shared-content", "platform": ""}]},
+        ],
+    )
+
+    result = _runtime(tmp_path).enrich(snapshot, propagation=propagation, claim="primary claim")
+
+    assert result["cross_analysis"]["propagation_path_overlays"] == []
+    assert (
+        result["cross_analysis"]["propagation_path_overlays_unavailable_reason"]
+        == "propagation_path_evidence_unmapped"
+    )
+
+
+def test_generic_path_evidence_fields_and_raw_ids_do_not_map(tmp_path: Path):
+    snapshot = _path_snapshot()
+    propagation = _verified_propagation_artifact(
+        snapshot,
+        paths=[
+            {
+                "path_id": "generic-evidence",
+                "evidence_refs": [
+                    {"post_id": "source-post"},
+                    {"comment_id": "reply-comment"},
+                    {"id": "source-post"},
+                    {"doc_id": "weibo:post:source-post"},
+                    {"content_id": "weibo:comment:reply-comment"},
+                    {"source_ref": "weibo:post:source-post"},
+                    {"target_ref": "weibo:comment:reply-comment"},
+                    {"evidence_ref": "weibo:post:source-post"},
+                    "source-post",
+                    "post:source-post",
+                    "author:u1",
+                ],
+            }
+        ],
+    )
+
+    result = _runtime(tmp_path).enrich(snapshot, propagation=propagation, claim="primary claim")
+
+    assert result["cross_analysis"]["propagation_path_overlays"] == []
+    assert (
+        result["cross_analysis"]["propagation_path_overlays_unavailable_reason"]
+        == "propagation_path_evidence_unmapped"
+    )
+
+
+def test_path_overlay_is_deduplicated_by_exact_evidence_signature(tmp_path: Path):
+    snapshot = _path_snapshot()
+    propagation = _verified_propagation_artifact(
+        snapshot,
+        paths=[
+            {
+                "path_id": "key-path",
+                "evidence_refs": [{"post_id": "source-post", "platform": "weibo"}],
+            },
+            {
+                "path_id": "chain-path",
+                "evidence_refs": ["weibo:post:source-post"],
+            },
+        ],
+    )
+
+    result = _runtime(tmp_path).enrich(snapshot, propagation=propagation, claim="primary claim")
+
+    overlays = result["cross_analysis"]["propagation_path_overlays"]
+    assert len(overlays) == 1
+    assert overlays[0]["path_id"] == "key-path"
+    assert overlays[0]["evidence_refs"] == ["weibo:post:source-post"]
+
+
 def test_unknown_path_evidence_does_not_borrow_event_level_semantics(tmp_path: Path):
     snapshot = _path_snapshot()
     propagation = _verified_propagation_artifact(
@@ -599,7 +753,7 @@ def test_path_overlay_is_not_duplicated_between_path_views(tmp_path: Path):
     path = {
         "path_id": "same-path",
         "claim_id": "artifact claim",
-        "evidence_refs": [{"post_id": "source-post"}],
+        "evidence_refs": [{"post_id": "source-post", "platform": "weibo"}],
     }
     propagation = _verified_propagation_artifact(snapshot, paths=[path])
     propagation.payload["evidence_chains"] = [
