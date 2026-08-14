@@ -703,7 +703,19 @@ def _verified_propagation_paths(payload: dict[str, Any]) -> list[dict[str, Any]]
                     row = dict(path)
                     row.setdefault("claim_id", chain.get("claim_id"))
                     candidates.append(row)
-    return [dict(path) for path in candidates if isinstance(path, dict)]
+    paths: list[dict[str, Any]] = []
+    seen_path_ids: set[str] = set()
+    for candidate in candidates:
+        if not isinstance(candidate, dict):
+            continue
+        path = dict(candidate)
+        path_id = str(path.get("path_id") or path.get("id") or "").strip()
+        if path_id and path_id in seen_path_ids:
+            continue
+        if path_id:
+            seen_path_ids.add(path_id)
+        paths.append(path)
+    return paths
 
 
 def _semantic_item_index(layers: dict[str, list[dict[str, Any]]]) -> dict[str, Any]:

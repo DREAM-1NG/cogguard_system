@@ -594,6 +594,23 @@ def test_unknown_path_evidence_does_not_borrow_event_level_semantics(tmp_path: P
     )
 
 
+def test_path_overlay_is_not_duplicated_between_path_views(tmp_path: Path):
+    snapshot = _path_snapshot()
+    path = {
+        "path_id": "same-path",
+        "claim_id": "artifact claim",
+        "evidence_refs": [{"post_id": "source-post"}],
+    }
+    propagation = _verified_propagation_artifact(snapshot, paths=[path])
+    propagation.payload["evidence_chains"] = [
+        {"claim_id": "artifact claim", "key_paths": [dict(path)]}
+    ]
+
+    result = _runtime(tmp_path).enrich(snapshot, propagation=propagation, claim="primary claim")
+
+    assert len(result["cross_analysis"]["propagation_path_overlays"]) == 1
+
+
 def test_path_nodes_are_not_treated_as_semantic_evidence(tmp_path: Path):
     snapshot = _path_snapshot()
     propagation = _verified_propagation_artifact(
