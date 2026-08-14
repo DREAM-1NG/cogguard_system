@@ -95,6 +95,54 @@ def _summary(
     }
 
 
+class VerifiedSemanticInputEngine:
+    """Inject already verified same-snapshot analysis inputs into semantic enrichment."""
+
+    def __init__(
+        self,
+        runtime: SemanticEnrichmentRuntime,
+        *,
+        coordination: dict[str, Any] | None = None,
+        propagation: dict[str, Any] | None = None,
+    ) -> None:
+        self.runtime = runtime
+        self.coordination = coordination
+        self.propagation = propagation
+
+    async def enrich(
+        self,
+        snapshot: Any,
+        *,
+        options: dict[str, Any],
+        coordination: dict[str, Any] | None,
+        propagation: dict[str, Any] | None,
+    ) -> dict[str, Any]:
+        return self.runtime.enrich(
+            snapshot,
+            coordination=self.coordination if self.coordination is not None else coordination,
+            propagation=self.propagation if self.propagation is not None else propagation,
+            claim=str(options.get("claim") or "") or None,
+        )
+
+
+def _semantic_input_overrides(args: argparse.Namespace) -> dict[str, dict[str, Any] | None]:
+    coordination_artifact_dir = str(getattr(args, "coordination_artifact_dir", "") or "").strip()
+    propagation_artifact_path = str(getattr(args, "propagation_artifact_path", "") or "").strip()
+    propagation_artifact_sha256 = str(getattr(args, "propagation_artifact_sha256", "") or "").strip()
+    return {
+        "coordination": {"artifact_dir": coordination_artifact_dir} if coordination_artifact_dir else None,
+        "propagation": (
+            {
+                "artifact_key": "stage:propagation_analysis:result",
+                "artifact_path": propagation_artifact_path,
+                "payload_sha256": propagation_artifact_sha256,
+            }
+            if propagation_artifact_path and propagation_artifact_sha256
+            else None
+        ),
+    }
+
+
 async def main_async(args: argparse.Namespace) -> int:
     sources = import_mediacrawler_data_runs.build_latest_trump_visit_sources(Path(args.data_runs_root))
     normalized = [
@@ -149,6 +197,12 @@ async def main_async(args: argparse.Namespace) -> int:
         )
 
     async with async_session_factory() as db:
+        semantic_inputs = _semantic_input_overrides(args)
+        semantic_engine = (
+            VerifiedSemanticInputEngine(runtime, **semantic_inputs)
+            if semantic_inputs["coordination"] is not None or semantic_inputs["propagation"] is not None
+            else None
+        )
         registry = AnalysisRegistry(mongo_db=get_mongo_db(), store=SqlAlchemyAnalysisStore(db))
         snapshot = await registry.create_event_snapshot(
             event_id=EVENT_ID,
@@ -166,7 +220,10 @@ async def main_async(args: argparse.Namespace) -> int:
         )
         result = await AnalysisExecutor(
             registry=registry,
-            engines=default_analysis_engine_ports(semantic_runtime=runtime),
+            engines=default_analysis_engine_ports(
+                semantic_runtime=None if semantic_engine is not None else runtime,
+                semantic_engine=semantic_engine,
+            ),
         ).execute_run(run["run_id"])
         await db.commit()
         summary = _summary(
@@ -196,6 +253,9 @@ def main() -> int:
     parser.add_argument("--model-root", default=r"G:\CISCN\hf_models")
     parser.add_argument("--embedding-root", default=None)
     parser.add_argument("--primary-claim", default="央视新闻：特朗普访华期间，中美双方就经贸与合作议题开展会谈")
+    parser.add_argument("--coordination-artifact-dir", default="")
+    parser.add_argument("--propagation-artifact-path", default="")
+    parser.add_argument("--propagation-artifact-sha256", default="")
     parser.add_argument("--execute", action="store_true", help="写入三平台原始数据；默认只校验来源")
     return asyncio.run(main_async(parser.parse_args()))
 

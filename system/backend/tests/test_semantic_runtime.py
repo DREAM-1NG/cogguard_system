@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import asyncio
 import builtins
 from datetime import datetime, timezone
+import hashlib
 import importlib
 import json
 from pathlib import Path
@@ -142,6 +144,87 @@ def _write_coordination_artifact(artifact_dir: Path, snapshot, *, members: list[
             "network": {"clusters": [{"cluster_id": "persisted-community", "members": members}]},
         },
     )
+
+
+def _path_snapshot():
+    return build_event_snapshot(
+        event_id="trump_visit_2026_05_21",
+        posts=[
+            {
+                "platform": "weibo",
+                "post_id": "source-post",
+                "author_id": "u1",
+                "timestamp": datetime(2026, 5, 21, 1, tzinfo=timezone.utc),
+                "content": "特朗普访华 贸易 合作",
+            },
+            {
+                "platform": "xhs",
+                "post_id": "unrelated-post",
+                "author_id": "u9",
+                "timestamp": datetime(2026, 5, 21, 5, tzinfo=timezone.utc),
+                "content": "不应进入路径聚合",
+            },
+        ],
+        comments=[
+            {
+                "platform": "weibo",
+                "comment_id": "parent-comment",
+                "post_id": "source-post",
+                "author_id": "u2",
+                "timestamp": datetime(2026, 5, 21, 2, tzinfo=timezone.utc),
+                "content": "父评论 不能借用",
+            },
+            {
+                "platform": "weibo",
+                "comment_id": "reply-comment",
+                "post_id": "source-post",
+                "reply_to": "parent-comment",
+                "author_id": "u3",
+                "timestamp": datetime(2026, 5, 21, 3, tzinfo=timezone.utc),
+                "content": "回复评论 精确证据",
+            },
+        ],
+        core_window=TimeWindow(
+            start=datetime(2026, 5, 21, tzinfo=timezone.utc),
+            end=datetime(2026, 5, 22, tzinfo=timezone.utc),
+        ),
+        context_window=TimeWindow(
+            start=datetime(2026, 5, 1, tzinfo=timezone.utc),
+            end=datetime(2026, 5, 31, tzinfo=timezone.utc),
+        ),
+    )
+
+
+def _write_propagation_artifact(
+    artifact_dir: Path,
+    snapshot,
+    *,
+    paths: list[dict[str, object]],
+    fallback: bool = False,
+    data_fingerprint: str | None = None,
+    snapshot_id: str | None = None,
+) -> dict[str, str]:
+    payload = {
+        "technology": "propagation_analysis",
+        "status": "ok",
+        "fallback": fallback,
+        "snapshot_id": snapshot_id or snapshot.snapshot_id,
+        "data_fingerprint": data_fingerprint or snapshot.data_fingerprint,
+        "artifact_manifest": {
+            "snapshot_id": snapshot_id or snapshot.snapshot_id,
+            "data_fingerprint": data_fingerprint or snapshot.data_fingerprint,
+        },
+        "path_analysis": {"key_paths": paths},
+    }
+    artifact_dir.mkdir(parents=True, exist_ok=True)
+    payload_text = json.dumps(payload, ensure_ascii=False, sort_keys=True)
+    artifact_path = artifact_dir / "propagation_result.json"
+    artifact_path.write_text(payload_text, encoding="utf-8")
+    return {
+        "artifact_key": "stage:propagation_analysis:result",
+        "artifact_path": str(artifact_path),
+        "payload_sha256": hashlib.sha256(payload_text.encode("utf-8")).hexdigest(),
+    }
 
 
 def test_missing_local_weights_blocks_without_rule_fallback(tmp_path: Path):
@@ -444,6 +527,169 @@ def test_dependency_import_failure_is_reported_as_a_model_weights_blocker(monkey
 
     with pytest.raises(ModelWeightsBlockedError, match="transformers runtime dependency unavailable"):
         SemanticEnrichmentRuntime.ensure_runtime_dependencies()
+
+
+def test_verified_same_snapshot_propagation_artifact_builds_exact_path_semantic_overlay(tmp_path: Path):
+    snapshot = _path_snapshot()
+    propagation = _write_propagation_artifact(
+        tmp_path / "propagation-artifact",
+        snapshot,
+        paths=[
+            {
+                "path_id": "path-1",
+                "claim": "artifact claim",
+                "nodes": [
+                    "author:u1",
+                    "weibo:post:source-post",
+                    "weibo:comment:reply-comment",
+                    {"post_id": "unknown-post"},
+                ],
+                "evidence_refs": [
+                    {"post_id": "source-post"},
+                    {"post_id": "reply-comment"},
+                    {"comment_id": "unknown-comment"},
+                ],
+            }
+        ],
+    )
+
+    result = _runtime(tmp_path).enrich(snapshot, propagation=propagation, claim="primary claim")
+    cross_analysis = result["cross_analysis"]
+
+    assert cross_analysis["propagation_path_overlays_unavailable_reason"] is None
+    assert len(cross_analysis["propagation_path_overlays"]) == 1
+    overlay = cross_analysis["propagation_path_overlays"][0]
+    semantic_overlay = overlay["semantic_overlay"]
+    assert overlay["path_id"] == "path-1"
+    assert overlay["claim"] == "artifact claim"
+    assert overlay["mapped_item_count"] == 2
+    assert overlay["mapped_item_ids"] == ["source-post", "reply-comment"]
+    assert overlay["evidence_refs"] == ["weibo:post:source-post", "weibo:comment:reply-comment"]
+    assert semantic_overlay["evidence_refs"] == overlay["evidence_refs"]
+    assert semantic_overlay["sentiment"] == {"positive": 2}
+    assert semantic_overlay["stance"] == {"entailment": 2}
+    assert semantic_overlay["platforms"] == ["weibo"]
+    assert semantic_overlay["time_range"] == {
+        "start": "2026-05-21T01:00:00+00:00",
+        "end": "2026-05-21T03:00:00+00:00",
+    }
+    assert {keyword["term"] for keyword in semantic_overlay["keywords"]}.isdisjoint({"借用", "路径聚合"})
+    assert semantic_overlay["topics"]
+    assert semantic_overlay["entities"] == [{"text": "特朗普", "label": "PER", "count": 2}]
+
+
+def test_unknown_path_evidence_does_not_borrow_event_level_semantics(tmp_path: Path):
+    snapshot = _path_snapshot()
+    propagation = _write_propagation_artifact(
+        tmp_path / "unmapped-propagation-artifact",
+        snapshot,
+        paths=[
+            {
+                "path_id": "path-unmapped",
+                "nodes": ["weibo:post:missing-post"],
+                "evidence_refs": [{"post_id": "also-missing"}],
+            }
+        ],
+    )
+
+    result = _runtime(tmp_path).enrich(snapshot, propagation=propagation, claim="primary claim")
+
+    assert result["cross_analysis"]["propagation_path_overlays"] == []
+    assert (
+        result["cross_analysis"]["propagation_path_overlays_unavailable_reason"]
+        == "propagation_path_evidence_unmapped"
+    )
+
+
+def test_tampered_fallback_and_mismatched_propagation_artifacts_fail_closed(tmp_path: Path):
+    snapshot = _path_snapshot()
+    path = {
+        "path_id": "path-1",
+        "nodes": ["weibo:post:source-post"],
+        "evidence_refs": [{"post_id": "source-post"}],
+    }
+
+    tampered = _write_propagation_artifact(tmp_path / "tampered-propagation-artifact", snapshot, paths=[path])
+    Path(tampered["artifact_path"]).write_text(
+        Path(tampered["artifact_path"]).read_text(encoding="utf-8") + "\n",
+        encoding="utf-8",
+    )
+    tampered_result = _runtime(tmp_path).enrich(snapshot, propagation=tampered, claim="primary claim")
+    assert tampered_result["cross_analysis"]["propagation_path_overlays"] == []
+    assert (
+        tampered_result["cross_analysis"]["propagation_path_overlays_unavailable_reason"]
+        == "propagation_artifact_integrity_failed"
+    )
+
+    fallback = _write_propagation_artifact(
+        tmp_path / "fallback-propagation-artifact",
+        snapshot,
+        paths=[path],
+        fallback=True,
+    )
+    fallback_result = _runtime(tmp_path).enrich(snapshot, propagation=fallback, claim="primary claim")
+    assert fallback_result["cross_analysis"]["propagation_path_overlays"] == []
+    assert fallback_result["cross_analysis"]["propagation_path_overlays_unavailable_reason"] == "propagation_fallback"
+
+    mismatched = _write_propagation_artifact(
+        tmp_path / "mismatched-propagation-artifact",
+        snapshot,
+        paths=[path],
+        data_fingerprint="other-fingerprint",
+    )
+    mismatched_result = _runtime(tmp_path).enrich(snapshot, propagation=mismatched, claim="primary claim")
+    assert mismatched_result["cross_analysis"]["propagation_path_overlays"] == []
+    assert (
+        mismatched_result["cross_analysis"]["propagation_path_overlays_unavailable_reason"]
+        == "propagation_artifact_snapshot_mismatch"
+    )
+
+
+def test_precompute_semantic_engine_passes_verified_propagation_inputs(tmp_path: Path):
+    script_path = Path(__file__).resolve().parents[1] / "scripts" / "precompute_trump_visit_semantic_v6.py"
+    spec = importlib.util.spec_from_file_location("_test_semantic_runtime_precompute", script_path)
+    assert spec is not None and spec.loader is not None
+    script = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = script
+    spec.loader.exec_module(script)
+    snapshot = _path_snapshot()
+    propagation = _write_propagation_artifact(
+        tmp_path / "precompute-propagation-artifact",
+        snapshot,
+        paths=[{"path_id": "path-1", "nodes": ["weibo:post:source-post"]}],
+    )
+    captures: dict[str, object] = {}
+
+    class RecordingRuntime:
+        def enrich(self, snapshot_arg, *, coordination, propagation, claim):
+            captures["snapshot"] = snapshot_arg
+            captures["coordination"] = coordination
+            captures["propagation"] = propagation
+            captures["claim"] = claim
+            return {"technology": "semantic_enrichment", "status": "ok", "runtime_status": "ready"}
+
+    engine = script.VerifiedSemanticInputEngine(
+        RecordingRuntime(),
+        coordination={"artifact_dir": "verified-coordination"},
+        propagation=propagation,
+    )
+
+    result = asyncio.run(
+        engine.enrich(
+            snapshot,
+            options={"claim": "primary claim"},
+            coordination={"artifact_dir": "caller-coordination"},
+            propagation={"key_paths": [{"path_id": "caller-path"}]},
+        )
+    )
+
+    assert result["runtime_status"] == "ready"
+    assert captures == {
+        "snapshot": snapshot,
+        "coordination": {"artifact_dir": "verified-coordination"},
+        "propagation": propagation,
+        "claim": "primary claim",
+    }
 
 
 def test_path_overlay_requires_a_matching_propagation_artifact(tmp_path: Path):

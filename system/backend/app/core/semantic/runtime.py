@@ -9,9 +9,11 @@ semantic stage.
 from __future__ import annotations
 
 from collections import Counter, defaultdict
+from datetime import datetime, timezone
 import gzip
 import hashlib
 import importlib
+import json
 import math
 from pathlib import Path
 from typing import Any, Iterable
@@ -28,6 +30,7 @@ MODEL_SPECS: dict[str, dict[str, str]] = {
 }
 BGE_ENCODING_BATCH_SIZE = 32
 NEAR_DUPLICATE_MAX_NEIGHBORS = 10
+PROPAGATION_RESULT_ARTIFACT_KEY = "stage:propagation_analysis:result"
 
 
 class ModelWeightsBlockedError(RuntimeError):
@@ -595,8 +598,270 @@ def _path_overlays(
     propagation: dict[str, Any],
     claim: str | None,
 ) -> tuple[list[dict[str, Any]], str | None]:
-    del snapshot, layers, propagation, claim
-    return [], "propagation_result_unavailable"
+    verified, unavailable_reason = _load_verified_propagation_result(propagation, snapshot)
+    if verified is None:
+        return [], unavailable_reason or "propagation_result_unavailable"
+
+    item_index = _semantic_item_index(layers)
+    overlays: list[dict[str, Any]] = []
+    for path_index, path in enumerate(_verified_propagation_paths(verified)):
+        mapped_items = _mapped_path_items(path, item_index)
+        if not mapped_items:
+            continue
+        path_id = str(path.get("path_id") or path.get("id") or path_index)
+        evidence_refs = [item_index["canonical_refs"][id(item)] for item in mapped_items]
+        keywords = _top_keywords(mapped_items)
+        topics = _top_topics(mapped_items)
+        entities = _top_entities(mapped_items)
+        sentiment = _distribution(mapped_items, "sentiment")
+        stance = _distribution(mapped_items, "stance")
+        platforms = sorted({str(item.get("platform") or "unknown") for item in mapped_items})
+        time_range = _semantic_time_range(mapped_items)
+        semantic_overlay = {
+            "sentiment": sentiment,
+            "keywords": keywords,
+            "topics": topics,
+            "entities": entities,
+            "stance": stance,
+            "platforms": platforms,
+            "time_range": time_range,
+            "evidence_refs": evidence_refs,
+        }
+        overlays.append(
+            {
+                "path_id": path_id,
+                "evidence_refs": evidence_refs,
+                "claim": str(path.get("claim") or path.get("claim_id") or claim or ""),
+                "sentiment_distribution": sentiment,
+                "stance_distribution": stance,
+                "keywords": keywords,
+                "topics": topics,
+                "entities": entities,
+                "platforms": platforms,
+                "time_range": time_range,
+                "mapped_item_count": len(mapped_items),
+                "mapped_item_ids": [str(item.get("id") or "") for item in mapped_items],
+                "semantic_overlay": semantic_overlay,
+            }
+        )
+    return (overlays, None) if overlays else ([], "propagation_path_evidence_unmapped")
+
+
+def _load_verified_propagation_result(
+    propagation: dict[str, Any], snapshot: Any
+) -> tuple[dict[str, Any] | None, str | None]:
+    if not propagation:
+        return None, "propagation_result_unavailable"
+    if propagation.get("fallback") is True:
+        return None, "propagation_fallback"
+
+    artifact_path = _propagation_artifact_path(propagation)
+    if artifact_path is None:
+        return None, "propagation_result_unavailable"
+    artifact_key = _propagation_artifact_key(propagation)
+    if artifact_key != PROPAGATION_RESULT_ARTIFACT_KEY:
+        return None, "propagation_artifact_unavailable"
+    expected_sha = _propagation_artifact_sha(propagation, artifact_path)
+    if not expected_sha:
+        return None, "propagation_artifact_unavailable"
+    try:
+        payload_text = artifact_path.read_text(encoding="utf-8")
+    except OSError:
+        return None, "propagation_artifact_unavailable"
+    actual_sha = hashlib.sha256(payload_text.encode("utf-8")).hexdigest()
+    if actual_sha != expected_sha:
+        return None, "propagation_artifact_integrity_failed"
+    try:
+        payload = json.loads(payload_text)
+    except json.JSONDecodeError:
+        return None, "propagation_artifact_unavailable"
+    if not isinstance(payload, dict):
+        return None, "propagation_artifact_unavailable"
+    if payload.get("fallback") is True:
+        return None, "propagation_fallback"
+    status = str(payload.get("status") or "").strip().lower()
+    if status and status not in {"ok", "completed"}:
+        return None, "propagation_artifact_unavailable"
+    if _propagation_snapshot_mismatch(payload, snapshot):
+        return None, "propagation_artifact_snapshot_mismatch"
+    return payload, None
+
+
+def _propagation_artifact_key(propagation: dict[str, Any]) -> str:
+    artifact_ref = propagation.get("artifact_ref") if isinstance(propagation.get("artifact_ref"), dict) else {}
+    return str(propagation.get("artifact_key") or artifact_ref.get("artifact_key") or "").strip()
+
+
+def _propagation_artifact_path(propagation: dict[str, Any]) -> Path | None:
+    artifact_ref = propagation.get("artifact_ref") if isinstance(propagation.get("artifact_ref"), dict) else {}
+    path_text = str(
+        propagation.get("artifact_path")
+        or propagation.get("artifact_uri")
+        or artifact_ref.get("artifact_path")
+        or artifact_ref.get("artifact_uri")
+        or ""
+    ).strip()
+    if not path_text:
+        return None
+    path = Path(path_text)
+    return path if path.is_file() else None
+
+
+def _propagation_artifact_sha(propagation: dict[str, Any], artifact_path: Path) -> str:
+    artifact_ref = propagation.get("artifact_ref") if isinstance(propagation.get("artifact_ref"), dict) else {}
+    manifest = propagation.get("artifact_manifest") if isinstance(propagation.get("artifact_manifest"), dict) else {}
+    candidates = [
+        propagation.get("payload_sha256"),
+        propagation.get("artifact_sha256"),
+        artifact_ref.get("payload_sha256"),
+        artifact_ref.get("artifact_sha256"),
+        manifest.get("payload_sha256"),
+        manifest.get("artifact_sha256"),
+    ]
+    artifact_hashes = manifest.get("artifact_hashes")
+    if isinstance(artifact_hashes, dict):
+        for key in (artifact_path.name, str(artifact_path)):
+            if key in artifact_hashes:
+                candidates.append(artifact_hashes[key])
+    for candidate in candidates:
+        value = str(candidate or "").strip().lower()
+        if value.startswith("sha256:"):
+            value = value.split(":", 1)[1]
+        if len(value) == 64 and all(char in "0123456789abcdef" for char in value):
+            return value
+    return ""
+
+
+def _propagation_snapshot_mismatch(payload: dict[str, Any], snapshot: Any) -> bool:
+    manifest = payload.get("artifact_manifest") if isinstance(payload.get("artifact_manifest"), dict) else {}
+    data_fingerprint = str(payload.get("data_fingerprint") or manifest.get("data_fingerprint") or "").strip()
+    snapshot_id = str(payload.get("snapshot_id") or manifest.get("snapshot_id") or "").strip()
+    if data_fingerprint and data_fingerprint != str(getattr(snapshot, "data_fingerprint", "")):
+        return True
+    if snapshot_id and snapshot_id != str(getattr(snapshot, "snapshot_id", "")):
+        return True
+    return not data_fingerprint and not snapshot_id
+
+
+def _verified_propagation_paths(payload: dict[str, Any]) -> list[dict[str, Any]]:
+    candidates = []
+    path_analysis = payload.get("path_analysis") if isinstance(payload.get("path_analysis"), dict) else {}
+    candidates.extend(path_analysis.get("key_paths") or [])
+    candidates.extend(payload.get("key_paths") or [])
+    for chain in payload.get("evidence_chains") or []:
+        if isinstance(chain, dict):
+            for path in chain.get("key_paths") or []:
+                if isinstance(path, dict):
+                    row = dict(path)
+                    row.setdefault("claim_id", chain.get("claim_id"))
+                    candidates.append(row)
+    return [dict(path) for path in candidates if isinstance(path, dict)]
+
+
+def _semantic_item_index(layers: dict[str, list[dict[str, Any]]]) -> dict[str, Any]:
+    by_ref: dict[str, dict[str, Any]] = {}
+    raw_candidates: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    canonical_refs: dict[int, str] = {}
+    for layer_name, items in layers.items():
+        kind = "comment" if layer_name == "comments" else "post"
+        for item in items:
+            item_id = str(item.get("id") or "").strip()
+            if not item_id:
+                continue
+            platform = str(item.get("platform") or "unknown").strip() or "unknown"
+            canonical = f"{platform}:{kind}:{item_id}"
+            canonical_refs[id(item)] = canonical
+            for key in {canonical, f"{kind}:{item_id}", f"{platform}:{layer_name}:{item_id}", f"{layer_name}:{item_id}"}:
+                by_ref[key] = item
+            raw_candidates[item_id].append(item)
+    raw_unique = {key: values[0] for key, values in raw_candidates.items() if len(values) == 1}
+    return {"by_ref": by_ref, "raw": raw_unique, "canonical_refs": canonical_refs}
+
+
+def _mapped_path_items(path: dict[str, Any], item_index: dict[str, Any]) -> list[dict[str, Any]]:
+    mapped: list[dict[str, Any]] = []
+    seen_items: set[int] = set()
+    for reference in _path_evidence_references(path):
+        item = _semantic_item_for_reference(reference, item_index)
+        if item is None or id(item) in seen_items:
+            continue
+        mapped.append(item)
+        seen_items.add(id(item))
+    return mapped
+
+
+def _path_evidence_references(path: dict[str, Any]) -> list[Any]:
+    refs: list[Any] = []
+    for key in ("evidence_refs", "nodes", "evidence_nodes"):
+        refs.extend(_as_list(path.get(key)))
+    metadata = path.get("metadata") if isinstance(path.get("metadata"), dict) else {}
+    for key in ("evidence_refs", "nodes", "evidence_nodes"):
+        refs.extend(_as_list(metadata.get(key)))
+    for edge in _as_list(path.get("edges")):
+        if isinstance(edge, dict):
+            refs.append(edge)
+    return refs
+
+
+def _semantic_item_for_reference(reference: Any, item_index: dict[str, Any]) -> dict[str, Any] | None:
+    for key in _semantic_reference_keys(reference):
+        if key in item_index["by_ref"]:
+            return item_index["by_ref"][key]
+        if key in item_index["raw"]:
+            return item_index["raw"][key]
+    return None
+
+
+def _semantic_reference_keys(reference: Any) -> list[str]:
+    keys: list[str] = []
+    if isinstance(reference, dict):
+        for field, kind in (("comment_id", "comment"), ("post_id", "post")):
+            value = str(reference.get(field) or "").strip()
+            if value:
+                keys.append(f"{kind}:{value}")
+                keys.append(value)
+        for field in ("evidence_ref", "doc_id", "id", "content_id", "source_ref", "target_ref"):
+            value = reference.get(field)
+            if value not in (None, ""):
+                keys.extend(_semantic_reference_keys(value))
+        return list(dict.fromkeys(keys))
+    value = str(reference or "").strip()
+    if not value:
+        return []
+    keys.append(value)
+    parts = [part for part in value.replace("/", ":").split(":") if part]
+    if len(parts) >= 2 and parts[-2] in {"post", "comment", "posts", "comments"}:
+        kind = "comment" if parts[-2] in {"comment", "comments"} else "post"
+        keys.append(f"{kind}:{parts[-1]}")
+        keys.append(parts[-1])
+    return list(dict.fromkeys(keys))
+
+
+def _semantic_time_range(items: list[dict[str, Any]]) -> dict[str, str]:
+    values = [_normalized_timestamp(item.get("timestamp")) for item in items]
+    values = [value for value in values if value]
+    if not values:
+        return {"start": "unknown", "end": "unknown"}
+    return {"start": min(values), "end": max(values)}
+
+
+def _normalized_timestamp(value: Any) -> str:
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    try:
+        parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except ValueError:
+        return text
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc).isoformat()
+
+
+def _as_list(value: Any) -> list[Any]:
+    if value is None:
+        return []
+    return value if isinstance(value, list) else [value]
 
 
 def _json_primitives(value: Any) -> Any:
