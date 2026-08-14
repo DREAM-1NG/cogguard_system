@@ -4,7 +4,28 @@
 > **受众**：开发者、项目维护者、后续执行任务的 AI agent。  
 > **维护规则**：只维护可执行工程路线和状态；研究定位、文献依据和关键技术背景放入 `../research/`。
 
-> 最后更新：2026-08-08
+> 最后更新：2026-08-14
+
+## 2026-08-14 Real Semantic Evidence Frontend Closure
+
+- [x] Added a fail-closed, real-local-model semantic runtime using the fixed
+  BGE, sentiment, stance, and Chinese NER model revisions. Semantic evidence
+  remains additive and cannot alter Coordination, Propagation, Review, or risk
+  scores.
+- [x] Added event-scoped semantic artifact projection APIs and connected them
+  to the existing Event Review (`/risk`) and Propagation (`/propagation`)
+  workspaces. The review workspace renders keywords, topics, sentiment,
+  stance, entities, post/comment layers, and available time/platform/community
+  slices; propagation renders path overlays only when verified evidence exists.
+- [x] Added bounded, preceding-only BGE near-duplicate evidence search to
+  avoid all-pairs Python cosine comparison on the three-platform snapshot.
+- [x] Backend semantic regression tests (`43 passed`), frontend semantic
+  contract tests (`48 passed`), and the production frontend build pass.
+- [ ] The real `trump_visit_2026_05_21` artifact is intentionally not claimed
+  as precomputed: the source manifest is ready (Weibo 165/2680, XHS 98/1905,
+  Douyin 31/10137), but the local Docker daemon is unavailable, so MongoDB,
+  MySQL, and Redis cannot be reached. The precompute script returns the
+  explicit `database_blocked` state and writes no successful semantic artifact.
 
 ## 2026-08-08 TwiBot-20 Research Runtime And Dataset Identity
 
