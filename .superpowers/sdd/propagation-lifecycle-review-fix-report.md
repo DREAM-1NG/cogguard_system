@@ -72,3 +72,45 @@ The existing chart resize lifecycle behavior from `6a5ba41` was preserved and re
 ## Concerns
 
 The mobile overflow check is covered by a focused CSS contract test rather than a live browser screenshot at 390px, because the existing frontend test suite for this area is Node-based source/behavior checks.
+
+## 2026-08-15 Behavioral Test Repair
+
+### RED
+
+- Command: `node --test tests/propagation-scope-race.spec.mjs`
+- Result: failed as expected before implementation.
+- Key failure: `ENOENT: no such file or directory, open '...\src\views\propagation\requestScope.ts'`
+
+### GREEN
+
+- Added `system/frontend/src/views/propagation/requestScope.ts` so the request-scope policy is executable from both production code and the Node test harness.
+- Replaced source-shape lifecycle assertions in `system/frontend/tests/propagation-scope-race.spec.mjs` with controlled deferred-request behavior checks for stale analysis success, stale alert success, and stale alert failure.
+- Wired `loadAnalysis()` and `loadPropagationAlerts()` in `system/frontend/src/views/propagation/index.vue` to use the shared scope creation, request params, scope comparison, and generation/scope acceptance helper.
+
+### Commands And Results
+
+- Focused RED: `node --test tests/propagation-scope-race.spec.mjs` -> failed with missing helper.
+- Focused GREEN: `node --test tests/propagation-scope-race.spec.mjs` -> `pass 5`, `fail 0`.
+- Lifecycle focused suite: `node --test tests/propagation-scope-race.spec.mjs tests/propagation-mobile-resize.spec.mjs tests/kept-alive-route-lifecycle.spec.mjs` -> `pass 18`, `fail 0`.
+- Type check: `npx vue-tsc -b` -> exit 0.
+- Frontend suite: `npm test` -> `pass 93`, `fail 0`.
+
+### Files Changed
+
+- `system/frontend/src/views/propagation/index.vue`
+- `system/frontend/src/views/propagation/requestScope.ts`
+- `system/frontend/tests/propagation-scope-race.spec.mjs`
+- `.superpowers/sdd/propagation-lifecycle-review-fix-report.md`
+
+### Self-Review
+
+- Analysis requests snapshot event, platform, node limit, and full-view status into a shared scope before awaiting the request; stale generation or stale scope responses cannot write `analysisResult`.
+- Analysis API params are derived from the captured scope, keeping the request payload aligned with the acceptance scope.
+- Alert success and alert failure paths both use the same shared generation/scope acceptance helper before mutating `propagationAlerts`.
+- The alert request scope remains event plus platform only.
+- The mobile 390px path-node control contract remains covered by the existing CSS contract checks.
+- No backend files, claim-response contracts, propagation facts, ranking, risk scores, or API behavior were modified.
+
+### Concern
+
+The lifecycle race is now behavior-tested with controlled deferred promises, but the 390px mobile layout remains a Node CSS contract rather than a live browser screenshot.

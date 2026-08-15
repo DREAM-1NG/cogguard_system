@@ -729,6 +729,17 @@ import {
 } from '@/api/propagation'
 import { getAnalysisArtifact, getEventSemantic, type SemanticEvidenceProjection } from '@/api/analysis'
 import PageHeader from '@/components/PageHeader.vue'
+import {
+  acceptPropagationScopedResponse,
+  analysisRequestParamsFromScope,
+  alertsRequestParamsFromScope,
+  createPropagationAlertsScope,
+  createPropagationAnalysisScope,
+  samePropagationAlertsScope,
+  samePropagationAnalysisScope,
+  type PropagationAlertsRequestScope,
+  type PropagationAnalysisRequestScope,
+} from './requestScope'
 
 const DEFAULT_EVENT_ID = 'trump_visit_2026_05_21'
 const PROPAGATION_ANALYSIS_ARTIFACT_KEY = 'stage:propagation_analysis:result'
@@ -1450,18 +1461,6 @@ let claimResponseRequestGeneration = 0
 
 type PropagationChartInstance = Pick<echarts.ECharts, 'getDom' | 'isDisposed' | 'resize'>
 
-type PropagationAnalysisRequestScope = {
-  eventId: string
-  platform: string
-  nodeLimit: number
-  fullViewRequested: boolean
-}
-
-type PropagationAlertsRequestScope = {
-  eventId: string
-  platform: string
-}
-
 const semanticPathOverlay = computed(() => {
   const selectedPath = selectedClaimPathDetail.value?.path
   if (!selectedPath || semanticProjection.value?.status !== 'ready') return null
@@ -1687,62 +1686,21 @@ const claimEvidenceMatches = computed(() => {
     .filter((item) => item.claim_id === selectedClaim.value?.object_id)
     .slice(0, 10)
 })
-const requestParams = computed(() => {
-  const params: {
-    event_id?: string
-    platform?: string
-    node_limit?: number
-    first_layer_limit?: number
-    second_layer_limit?: number
-  } = {}
-  const event = eventId.value.trim()
-  const currentPlatform = platform.value.trim()
-  if (event) {
-    params.event_id = event
-  }
-  if (currentPlatform) {
-    params.platform = currentPlatform
-  }
-  params.node_limit = diffusionFullViewRequested.value ? 0 : diffusionNodeLimit.value
-  if (!diffusionFullViewRequested.value) {
-    params.first_layer_limit = 40
-    params.second_layer_limit = 80
-  }
-  return params
-})
-
 function currentPropagationAnalysisScope(): PropagationAnalysisRequestScope {
-  return {
-    eventId: eventId.value.trim(),
-    platform: platform.value.trim(),
-    nodeLimit: diffusionFullViewRequested.value ? 0 : Math.max(1, Math.floor(Number(diffusionNodeLimit.value) || DEFAULT_DIFFUSION_NODE_LIMIT)),
-    fullViewRequested: diffusionFullViewRequested.value,
-  }
-}
-
-function samePropagationAnalysisScope(
-  left: PropagationAnalysisRequestScope,
-  right: PropagationAnalysisRequestScope,
-): boolean {
-  return left.eventId === right.eventId
-    && left.platform === right.platform
-    && left.nodeLimit === right.nodeLimit
-    && left.fullViewRequested === right.fullViewRequested
+  return createPropagationAnalysisScope({
+    eventId: eventId.value,
+    platform: platform.value,
+    diffusionNodeLimit: diffusionNodeLimit.value,
+    diffusionFullViewRequested: diffusionFullViewRequested.value,
+    defaultNodeLimit: DEFAULT_DIFFUSION_NODE_LIMIT,
+  })
 }
 
 function currentPropagationAlertsScope(): PropagationAlertsRequestScope {
-  return {
-    eventId: eventId.value.trim(),
-    platform: platform.value.trim(),
-  }
-}
-
-function samePropagationAlertsScope(
-  left: PropagationAlertsRequestScope,
-  right: PropagationAlertsRequestScope,
-): boolean {
-  return left.eventId === right.eventId
-    && left.platform === right.platform
+  return createPropagationAlertsScope({
+    eventId: eventId.value,
+    platform: platform.value,
+  })
 }
 
 const predictionRequestParams = computed(() => {
@@ -3393,17 +3351,20 @@ async function loadSemanticProjection() {
 async function loadAnalysis(showToast = false, preservePrediction = false) {
   const requestGeneration = ++analysisRequestGeneration
   const requestedScope = currentPropagationAnalysisScope()
-  const requestedParams = { ...requestParams.value }
+  const requestedParams = analysisRequestParamsFromScope(requestedScope)
   if (!preservePrediction) {
     predictionRequestGeneration += 1
   }
   analyzing.value = true
   try {
     const res = (await analyzeObservedPropagation(requestedParams)) as { data: AnalysisResult }
-    if (
-      requestGeneration !== analysisRequestGeneration
-      || !samePropagationAnalysisScope(requestedScope, currentPropagationAnalysisScope())
-    ) {
+    if (!acceptPropagationScopedResponse({
+      requestGeneration,
+      currentGeneration: analysisRequestGeneration,
+      requestedScope,
+      currentScope: currentPropagationAnalysisScope(),
+      sameScope: samePropagationAnalysisScope,
+    })) {
       return
     }
     analysisResult.value = res.data
@@ -3554,25 +3515,28 @@ async function loadPropagationAlerts() {
     alertsLoading.value = false
     return
   }
-  const requestedParams = {
-    event_id: requestedScope.eventId,
-    platform: requestedScope.platform || undefined,
-  }
+  const requestedParams = alertsRequestParamsFromScope(requestedScope)
   alertsLoading.value = true
   try {
     const response = await getPropagationAlerts(requestedParams)
-    if (
-      requestGeneration !== alertsRequestGeneration
-      || !samePropagationAlertsScope(requestedScope, currentPropagationAlertsScope())
-    ) {
+    if (!acceptPropagationScopedResponse({
+      requestGeneration,
+      currentGeneration: alertsRequestGeneration,
+      requestedScope,
+      currentScope: currentPropagationAlertsScope(),
+      sameScope: samePropagationAlertsScope,
+    })) {
       return
     }
     propagationAlerts.value = Array.isArray(response.data) ? response.data : []
   } catch {
-    if (
-      requestGeneration !== alertsRequestGeneration
-      || !samePropagationAlertsScope(requestedScope, currentPropagationAlertsScope())
-    ) {
+    if (!acceptPropagationScopedResponse({
+      requestGeneration,
+      currentGeneration: alertsRequestGeneration,
+      requestedScope,
+      currentScope: currentPropagationAlertsScope(),
+      sameScope: samePropagationAlertsScope,
+    })) {
       return
     }
     propagationAlerts.value = []

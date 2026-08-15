@@ -3,43 +3,35 @@ import { readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import test from 'node:test'
 import { fileURLToPath } from 'node:url'
+import ts from 'typescript'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const frontendRoot = resolve(__dirname, '..')
 const propagationView = readFileSync(resolve(frontendRoot, 'src/views/propagation/index.vue'), 'utf8')
 
-function bodyOf(source, name) {
-  const start = source.indexOf(`function ${name}(`)
-  assert.notEqual(start, -1, `Expected ${name} to exist`)
-  const paramsStart = source.indexOf('(', start)
-  let paramsDepth = 0
-  let paramsEnd = -1
-  for (let index = paramsStart; index < source.length; index += 1) {
-    const char = source[index]
-    if (char === '(') paramsDepth += 1
-    if (char === ')') paramsDepth -= 1
-    if (paramsDepth === 0) {
-      paramsEnd = index
-      break
-    }
-  }
-  const brace = source.indexOf('{', paramsEnd)
-  let depth = 0
-  for (let index = brace; index < source.length; index += 1) {
-    const char = source[index]
-    if (char === '{') depth += 1
-    if (char === '}') depth -= 1
-    if (depth === 0) return source.slice(start, index + 1)
-  }
-  throw new Error(`Could not extract ${name}`)
+async function loadRequestScopeHelper() {
+  const helperSource = readFileSync(resolve(frontendRoot, 'src/views/propagation/requestScope.ts'), 'utf8')
+  const { outputText } = ts.transpileModule(helperSource, {
+    compilerOptions: {
+      module: ts.ModuleKind.ESNext,
+      target: ts.ScriptTarget.ES2020,
+    },
+  })
+  return import(`data:text/javascript;base64,${Buffer.from(outputText).toString('base64')}`)
 }
 
-function executableFunction(source, name) {
-  const definition = bodyOf(source, name)
-    .replace(/: PropagationAnalysisRequestScope/g, '')
-    .replace(/: PropagationAlertsRequestScope/g, '')
-    .replace(/\): boolean \{/, ') {')
-  return Function(`return (${definition})`)()
+function deferred() {
+  let resolvePromise
+  let rejectPromise
+  const promise = new Promise((resolve, reject) => {
+    resolvePromise = resolve
+    rejectPromise = reject
+  })
+  return {
+    promise,
+    resolve: resolvePromise,
+    reject: rejectPromise,
+  }
 }
 
 function styleBlock(source) {
@@ -51,56 +43,179 @@ function styleBlock(source) {
   return source.slice(bodyStart, end)
 }
 
-test('analysis responses update only the latest matching event, platform, and node-limit scope', () => {
-  const sameScope = executableFunction(propagationView, 'samePropagationAnalysisScope')
-  const current = {
-    eventId: 'evt-current',
+const {
+  acceptPropagationScopedResponse,
+  analysisRequestParamsFromScope,
+  alertsRequestParamsFromScope,
+  createPropagationAnalysisScope,
+  createPropagationAlertsScope,
+  samePropagationAnalysisScope,
+  samePropagationAlertsScope,
+} = await loadRequestScopeHelper()
+
+test('slower analysis response for scope A cannot overwrite scope B analysis state', async () => {
+  let generation = 0
+  let currentScope = createPropagationAnalysisScope({
+    eventId: 'evt-a',
     platform: 'weibo',
-    nodeLimit: 160,
-    fullViewRequested: false,
+    diffusionNodeLimit: 160,
+    diffusionFullViewRequested: false,
+    defaultNodeLimit: 160,
+  })
+  let analysisResult = null
+  const requests = []
+
+  async function loadAnalysis(responsePromise) {
+    const requestGeneration = ++generation
+    const requestedScope = currentScope
+    const requestedParams = analysisRequestParamsFromScope(requestedScope)
+    requests.push(requestedParams)
+    const response = await responsePromise
+    if (!acceptPropagationScopedResponse({
+      requestGeneration,
+      currentGeneration: generation,
+      requestedScope,
+      currentScope,
+      sameScope: samePropagationAnalysisScope,
+    })) {
+      return
+    }
+    analysisResult = response.data
   }
 
-  assert.equal(sameScope(current, { ...current }), true)
-  assert.equal(sameScope({ ...current, eventId: 'evt-old' }, current), false)
-  assert.equal(sameScope({ ...current, platform: 'xhs' }, current), false)
-  assert.equal(sameScope({ ...current, nodeLimit: 320 }, current), false)
-  assert.equal(sameScope({ ...current, nodeLimit: 0, fullViewRequested: true }, current), false)
+  const oldResponse = deferred()
+  const currentResponse = deferred()
+  const oldLoad = loadAnalysis(oldResponse.promise)
 
-  const loadAnalysis = bodyOf(propagationView, 'loadAnalysis')
-  const guardIndex = loadAnalysis.indexOf('samePropagationAnalysisScope(requestedScope, currentPropagationAnalysisScope())')
-  const assignIndex = loadAnalysis.indexOf('analysisResult.value = res.data')
+  currentScope = createPropagationAnalysisScope({
+    eventId: 'evt-b',
+    platform: 'xhs',
+    diffusionNodeLimit: 320,
+    diffusionFullViewRequested: true,
+    defaultNodeLimit: 160,
+  })
+  const currentLoad = loadAnalysis(currentResponse.promise)
 
-  assert.match(loadAnalysis, /const requestGeneration = \+\+analysisRequestGeneration/)
-  assert.match(loadAnalysis, /const requestedScope = currentPropagationAnalysisScope\(\)/)
-  assert.match(loadAnalysis, /const requestedParams = \{ \.\.\.requestParams\.value \}/)
-  assert.match(loadAnalysis, /analyzeObservedPropagation\(requestedParams\)/)
-  assert.match(loadAnalysis, /requestGeneration !== analysisRequestGeneration/)
-  assert.ok(guardIndex !== -1, 'Expected loadAnalysis to compare response scope before applying it')
-  assert.ok(guardIndex < assignIndex, 'Expected stale analysis responses to be rejected before assignment')
+  currentResponse.resolve({ data: { scope: 'b' } })
+  await currentLoad
+  assert.deepEqual(analysisResult, { scope: 'b' })
+
+  oldResponse.resolve({ data: { scope: 'a' } })
+  await oldLoad
+  assert.deepEqual(analysisResult, { scope: 'b' })
+  assert.deepEqual(requests, [
+    {
+      event_id: 'evt-a',
+      platform: 'weibo',
+      node_limit: 160,
+      first_layer_limit: 40,
+      second_layer_limit: 80,
+    },
+    {
+      event_id: 'evt-b',
+      platform: 'xhs',
+      node_limit: 0,
+    },
+  ])
 })
 
-test('alert responses update only the latest matching event and platform scope', () => {
-  const sameScope = executableFunction(propagationView, 'samePropagationAlertsScope')
-  const current = { eventId: 'evt-current', platform: 'news' }
+test('stale alert success cannot overwrite current scope B alert rows', async () => {
+  let generation = 0
+  let currentScope = createPropagationAlertsScope({ eventId: 'evt-a', platform: 'news' })
+  let alertRows = []
+  const requests = []
 
-  assert.equal(sameScope(current, { ...current }), true)
-  assert.equal(sameScope({ ...current, eventId: 'evt-old' }, current), false)
-  assert.equal(sameScope({ ...current, platform: 'weibo' }, current), false)
+  async function loadPropagationAlerts(responsePromise) {
+    const requestGeneration = ++generation
+    const requestedScope = currentScope
+    requests.push(alertsRequestParamsFromScope(requestedScope))
+    const response = await responsePromise
+    if (!acceptPropagationScopedResponse({
+      requestGeneration,
+      currentGeneration: generation,
+      requestedScope,
+      currentScope,
+      sameScope: samePropagationAlertsScope,
+    })) {
+      return
+    }
+    alertRows = Array.isArray(response.data) ? response.data : []
+  }
 
-  const loadAlerts = bodyOf(propagationView, 'loadPropagationAlerts')
-  const guardIndex = loadAlerts.indexOf('samePropagationAlertsScope(requestedScope, currentPropagationAlertsScope())')
-  const assignIndex = loadAlerts.indexOf('propagationAlerts.value = Array.isArray(response.data) ? response.data : []')
-  const catchIndex = loadAlerts.indexOf('} catch')
+  const oldResponse = deferred()
+  const currentResponse = deferred()
+  const oldLoad = loadPropagationAlerts(oldResponse.promise)
 
-  assert.match(loadAlerts, /const requestGeneration = \+\+alertsRequestGeneration/)
-  assert.match(loadAlerts, /const requestedScope = currentPropagationAlertsScope\(\)/)
-  assert.match(loadAlerts, /const requestedParams = \{[\s\S]*event_id: requestedScope\.eventId/)
-  assert.match(loadAlerts, /getPropagationAlerts\(requestedParams\)/)
-  assert.match(loadAlerts, /requestGeneration !== alertsRequestGeneration/)
-  assert.ok(guardIndex !== -1, 'Expected loadPropagationAlerts to compare response scope before applying it')
-  assert.ok(guardIndex < assignIndex, 'Expected stale alert responses to be rejected before assignment')
-  assert.ok(catchIndex !== -1 && catchIndex < loadAlerts.indexOf('propagationAlerts.value = []', catchIndex))
-  assert.match(loadAlerts, /if \(requestGeneration === alertsRequestGeneration\) \{[\s\S]*alertsLoading\.value = false/)
+  currentScope = createPropagationAlertsScope({ eventId: 'evt-b', platform: 'weibo' })
+  const currentLoad = loadPropagationAlerts(currentResponse.promise)
+
+  currentResponse.resolve({ data: [{ id: 'b-alert' }] })
+  await currentLoad
+  assert.deepEqual(alertRows, [{ id: 'b-alert' }])
+
+  oldResponse.resolve({ data: [{ id: 'a-alert' }] })
+  await oldLoad
+  assert.deepEqual(alertRows, [{ id: 'b-alert' }])
+  assert.deepEqual(requests, [
+    { event_id: 'evt-a', platform: 'news' },
+    { event_id: 'evt-b', platform: 'weibo' },
+  ])
+})
+
+test('stale alert failure cannot clear current scope B alert rows', async () => {
+  let generation = 0
+  let currentScope = createPropagationAlertsScope({ eventId: 'evt-a', platform: 'news' })
+  let alertRows = []
+
+  async function loadPropagationAlerts(responsePromise) {
+    const requestGeneration = ++generation
+    const requestedScope = currentScope
+    try {
+      const response = await responsePromise
+      if (!acceptPropagationScopedResponse({
+        requestGeneration,
+        currentGeneration: generation,
+        requestedScope,
+        currentScope,
+        sameScope: samePropagationAlertsScope,
+      })) {
+        return
+      }
+      alertRows = Array.isArray(response.data) ? response.data : []
+    } catch {
+      if (!acceptPropagationScopedResponse({
+        requestGeneration,
+        currentGeneration: generation,
+        requestedScope,
+        currentScope,
+        sameScope: samePropagationAlertsScope,
+      })) {
+        return
+      }
+      alertRows = []
+    }
+  }
+
+  const oldResponse = deferred()
+  const currentResponse = deferred()
+  const oldLoad = loadPropagationAlerts(oldResponse.promise)
+
+  currentScope = createPropagationAlertsScope({ eventId: 'evt-b', platform: 'weibo' })
+  const currentLoad = loadPropagationAlerts(currentResponse.promise)
+
+  currentResponse.resolve({ data: [{ id: 'b-alert' }] })
+  await currentLoad
+  assert.deepEqual(alertRows, [{ id: 'b-alert' }])
+
+  oldResponse.reject(new Error('old scope failed'))
+  await oldLoad
+  assert.deepEqual(alertRows, [{ id: 'b-alert' }])
+})
+
+test('propagation lifecycle functions use the shared request-scope policy helper', () => {
+  assert.match(propagationView, /from '\.\/requestScope'/)
+  assert.match(propagationView, /acceptPropagationScopedResponse\(\{[\s\S]*?sameScope: samePropagationAnalysisScope/)
+  assert.match(propagationView, /acceptPropagationScopedResponse\(\{[\s\S]*?sameScope: samePropagationAlertsScope/)
 })
 
 test('path node controls stack inside the mobile propagation viewport', () => {
