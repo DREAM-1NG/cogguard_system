@@ -366,7 +366,7 @@ def test_landscape_reports_path_and_semantic_coverage_gaps(monkeypatch):
     asyncio.run(scenario())
 
 
-def test_landscape_derives_official_response_paths_from_observed_graph_when_key_paths_absent(monkeypatch):
+def test_landscape_reports_no_path_when_graph_has_no_observed_official_path(monkeypatch):
     async def scenario():
         db, session = _db_with_case_material()
         try:
@@ -390,18 +390,13 @@ def test_landscape_derives_official_response_paths_from_observed_graph_when_key_
                 semantic_projection={"status": "ready", "artifact": {"cross_analysis": {}}},
             )
 
-            assert result["coverage"]["observed_paths"]["status"] == "available"
-            assert result["coverage"]["observed_paths"]["path_count"] > 0
-            ranked_ids = [row["author_id"] for row in result["influential_responses"]]
-            assert "responder-a" in ranked_ids
-            first_path = next(
-                path_ref
-                for response in result["influential_responses"]
-                for path_ref in response["path_refs"]
-                if path_ref["path_id"].startswith("observed_graph:claim-1:")
-            )
-            assert first_path["evidence_refs"][0] == "weibo:post:p-official"
-            assert all(ref.startswith("weibo:post:") for ref in first_path["evidence_refs"])
+            assert result["official_publications"]
+            assert result["coverage"]["observed_paths"] == {
+                "status": "unavailable",
+                "reason": "observed_path_evidence_unavailable",
+                "path_count": 0,
+            }
+            assert result["influential_responses"] == []
         finally:
             session.close()
 

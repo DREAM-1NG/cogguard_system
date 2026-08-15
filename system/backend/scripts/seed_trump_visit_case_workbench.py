@@ -107,6 +107,9 @@ async def _load_authority_post(mongo_db: Any, spec: dict[str, str]) -> dict[str,
     content = str(post.get("content") or "").strip()
     if not content:
         raise RuntimeError(f"authority post content is empty: {spec['post_id']}")
+    source_url = str(post.get("url") or "").strip()
+    if not source_url:
+        raise RuntimeError(f"authority post URL is empty: {spec['post_id']}")
     return post
 
 
