@@ -55,6 +55,7 @@ class CaseWorkbenchService:
         # captured source fragment exactly from offset zero.
         if quote_start != 0 or quote_end - quote_start != len(exact_quote):
             raise ValueError("exact quote span")
+        source_url=_required_text(source_url,"source_url")
         source=(await self.db.execute(select(AuthoritySource).where(AuthoritySource.source_id==authority_source_id))).scalar_one_or_none()
         if not source: raise KeyError("authority source not found")
         if role == "primary" and source.review_status != "allowlisted": raise ValueError("allowlisted")

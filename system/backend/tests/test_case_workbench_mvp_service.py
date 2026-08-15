@@ -21,7 +21,7 @@ from app.models.case_workbench import (
     SemanticArtifact,
     SemanticCorrection,
 )
-from app.schemas.case_workbench import CaseLifecycle
+from app.schemas.case_workbench import CaseLifecycle, ClaimCreate
 from app.services.case_workbench_service import CaseWorkbenchService
 
 
@@ -125,6 +125,64 @@ def test_claim_requires_exact_span_and_allowlisted_primary_source():
         finally:
             session.close()
     asyncio.run(scenario())
+
+
+def test_claim_rejects_blank_source_url_at_schema_and_service_boundaries():
+    schema_rejected = False
+    try:
+        ClaimCreate(
+            authority_source_id="source-1",
+            exact_quote="quoted",
+            quote_start=0,
+            quote_end=6,
+            source_url="   ",
+            account="official",
+            published_at=None,
+            role="primary",
+        )
+    except ValueError:
+        schema_rejected = True
+
+    async def scenario():
+        actor = SimpleNamespace(id=9, username="analyst")
+        service, session = make_service()
+        service_rejected = False
+        try:
+            case = await service.create_case(event_id="event-blank-url", title="Blank URL", actor=actor)
+            source = await service.register_authority_source(
+                name="Official source",
+                url="https://example.test/source",
+                actor=actor,
+            )
+            await service.review_authority_source(
+                source.source_id,
+                decision="allowlist",
+                tier="government_official",
+                actor=actor,
+            )
+            try:
+                await service.add_claim(
+                    case.case_id,
+                    authority_source_id=source.source_id,
+                    exact_quote="quoted",
+                    quote_start=0,
+                    quote_end=6,
+                    source_url="   ",
+                    account="official",
+                    published_at=None,
+                    role="primary",
+                    actor=actor,
+                )
+            except ValueError:
+                service_rejected = True
+            return service_rejected
+        finally:
+            session.close()
+
+    assert {
+        "schema": schema_rejected,
+        "service": asyncio.run(scenario()),
+    } == {"schema": True, "service": True}
 
 
 def test_authority_source_account_binding_requires_allowlist_and_exact_platform_identity():

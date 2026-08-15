@@ -136,8 +136,16 @@ def _db_with_case_material() -> tuple[AsyncSessionAdapter, Session]:
     return AsyncSessionAdapter(session), session
 
 
-def _post(platform: str, post_id: str, author_id: str, *, likes: int, author_name: str | None = None) -> dict:
-    return {
+def _post(
+    platform: str,
+    post_id: str,
+    author_id: str,
+    *,
+    likes: int,
+    author_name: str | None = None,
+    url: str | None = None,
+) -> dict:
+    row = {
         "event_id": "event-1",
         "platform": platform,
         "post_id": post_id,
@@ -152,11 +160,21 @@ def _post(platform: str, post_id: str, author_id: str, *, likes: int, author_nam
             "verification_snapshot": {"is_verified": True, "reason": "platform badge"}
         },
     }
+    if url is not None:
+        row["url"] = url
+    return row
 
 
 def _mongo() -> FakeMongo:
     posts = [
-        _post("weibo", "p-official", "official-1", likes=10, author_name="Official Desk"),
+        _post(
+            "weibo",
+            "p-official",
+            "official-1",
+            likes=10,
+            author_name="Official Desk",
+            url="https://authority.example/post",
+        ),
         _post("weibo", "p-same-name", "impostor-1", likes=900, author_name="Official Desk"),
         _post("weibo", "p-other-source", "official-other", likes=800, author_name="Official Desk"),
         _post("weibo", "p-responder-a", "responder-a", likes=1, author_name="Responder A"),
@@ -514,7 +532,7 @@ def test_landscape_keeps_ranks_platform_local_and_projects_exact_semantic_eviden
             for row in result["influential_responses"]:
                 rows_by_platform.setdefault(row["platform"], []).append(row)
             assert [row["rank"] for row in rows_by_platform["weibo"]] == [1, 2, 3]
-            assert [row["rank"] for row in rows_by_platform["xhs"]] == [1]
+            assert "xhs" not in rows_by_platform
             assert result["official_publications"][0]["semantic"] == {"stance": "support"}
             responder_a = next(row for row in rows_by_platform["weibo"] if row["author_id"] == "responder-a")
             assert responder_a["stance"] == "support"
@@ -561,6 +579,108 @@ def test_landscape_excludes_same_event_path_without_bound_official_publication(m
 
             assert all(
                 path_ref["path_id"] != "same-event-unrelated"
+                for response in result["influential_responses"]
+                for path_ref in response["path_refs"]
+            )
+        finally:
+            session.close()
+
+    asyncio.run(scenario())
+
+
+def test_landscape_excludes_path_without_primary_claim_id_even_when_primary_post_is_referenced(monkeypatch):
+    async def scenario():
+        db, session = _db_with_case_material()
+        try:
+            observed = _observed_result()
+            observed["path_analysis"]["key_paths"].append(
+                {
+                    "path_id": "missing-claim-id",
+                    "nodes": ["official-1", "responder-c"],
+                    "score": 99.0,
+                    "evidence_refs": [
+                        {"platform": "weibo", "post_id": "p-official"},
+                        {"platform": "weibo", "post_id": "p-responder-c"},
+                    ],
+                }
+            )
+
+            async def fake_observed(**_kwargs):
+                return observed
+
+            monkeypatch.setattr(
+                claim_response_landscape_service.propagation_observation_service,
+                "analyze_observed_propagation",
+                fake_observed,
+            )
+
+            result = await claim_response_landscape_service.build_claim_response_landscape(
+                "event-1",
+                platform="weibo",
+                db=db,
+                mongo_db=_mongo(),
+                semantic_projection={"status": "ready", "artifact": {"cross_analysis": {}}},
+            )
+
+            assert all(
+                path_ref["path_id"] != "missing-claim-id"
+                for response in result["influential_responses"]
+                for path_ref in response["path_refs"]
+            )
+        finally:
+            session.close()
+
+    asyncio.run(scenario())
+
+
+def test_landscape_excludes_secondary_post_from_same_allowlisted_account(monkeypatch):
+    async def scenario():
+        db, session = _db_with_case_material()
+        try:
+            mongo = _mongo()
+            mongo["raw_posts"].rows.append(
+                _post(
+                    "weibo",
+                    "p-official-secondary",
+                    "official-1",
+                    likes=700,
+                    author_name="Official Desk",
+                    url="https://authority.example/secondary-post",
+                )
+            )
+            observed = _observed_result()
+            observed["path_analysis"]["key_paths"].append(
+                {
+                    "path_id": "secondary-official-post",
+                    "claim_id": "claim-1",
+                    "nodes": ["official-1", "responder-c"],
+                    "score": 99.0,
+                    "evidence_refs": [
+                        {"platform": "weibo", "post_id": "p-official-secondary"},
+                        {"platform": "weibo", "post_id": "p-responder-c"},
+                    ],
+                }
+            )
+
+            async def fake_observed(**_kwargs):
+                return observed
+
+            monkeypatch.setattr(
+                claim_response_landscape_service.propagation_observation_service,
+                "analyze_observed_propagation",
+                fake_observed,
+            )
+
+            result = await claim_response_landscape_service.build_claim_response_landscape(
+                "event-1",
+                platform="weibo",
+                db=db,
+                mongo_db=mongo,
+                semantic_projection={"status": "ready", "artifact": {"cross_analysis": {}}},
+            )
+
+            assert all(
+                path_ref["path_id"] != "secondary-official-post"
                 for response in result["influential_responses"]
                 for path_ref in response["path_refs"]
             )

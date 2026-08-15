@@ -6,6 +6,7 @@ import json
 from collections import Counter, defaultdict, deque
 from datetime import datetime
 from typing import Any
+from urllib.parse import urlsplit, urlunsplit
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -126,16 +127,12 @@ async def build_claim_response_landscape(
         engagement_percentiles=engagement_percentiles,
         semantic_by_ref=semantic_by_ref,
     )
-    official_publication_refs = {
-        ref
-        for publication in official_publications
-        for ref in publication.get("evidence_refs") or []
-    }
+    primary_claim_refs = _claim_source_refs(claim, posts)
     observed_paths = _verified_paths_for_platform(
         observed,
         platform=platform,
         primary_claim_id=claim.claim_id,
-        official_publication_refs=official_publication_refs,
+        primary_claim_refs=primary_claim_refs,
     )
     influential_responses = _influential_responses(
         observed,
@@ -437,6 +434,20 @@ def _official_publications(
     return publications
 
 
+def _claim_source_refs(claim: CaseClaim, posts: list[dict[str, Any]]) -> set[str]:
+    source_url = _canonical_url(claim.source_url)
+    if source_url is None:
+        return set()
+    refs: set[str] = set()
+    for post in posts:
+        if _canonical_url(post.get("url")) != source_url:
+            continue
+        ref = _post_ref(post)
+        if ref is not None:
+            refs.add(ref)
+    return refs
+
+
 def _influential_responses(
     observed: dict[str, Any],
     observed_paths: list[dict[str, Any]],
@@ -688,18 +699,19 @@ def _verified_paths_for_platform(
     *,
     platform: str | None,
     primary_claim_id: str | None = None,
-    official_publication_refs: set[str] | None = None,
+    primary_claim_refs: set[str] | None = None,
 ) -> list[dict[str, Any]]:
     paths: list[dict[str, Any]] = []
     seen: set[tuple[str, tuple[str, ...]]] = set()
+    expected_claim_id = _optional_text(primary_claim_id)
     for path in _candidate_paths(observed):
         refs = _path_canonical_refs(path)
         if not refs:
             continue
         claim_id = _optional_text(path.get("claim_id"))
-        if primary_claim_id is not None and claim_id and claim_id != primary_claim_id:
+        if expected_claim_id and claim_id != expected_claim_id:
             continue
-        if official_publication_refs is not None and not official_publication_refs.intersection(refs):
+        if primary_claim_refs is not None and not primary_claim_refs.intersection(refs):
             continue
         if platform:
             ref_platforms = {_reference_platform(ref) for ref in refs}
@@ -904,6 +916,27 @@ def _canonical_ref(reference: Any) -> str | None:
     if comment_id:
         return f"{platform}:comment:{comment_id}"
     return None
+
+
+def _canonical_url(value: Any) -> str | None:
+    text = _optional_text(value)
+    if text is None:
+        return None
+    try:
+        parsed = urlsplit(text)
+    except ValueError:
+        return text.rstrip("/")
+    if not parsed.scheme or not parsed.netloc:
+        return text.rstrip("/")
+    return urlunsplit(
+        (
+            parsed.scheme.lower(),
+            parsed.netloc.lower(),
+            parsed.path.rstrip("/"),
+            parsed.query,
+            "",
+        )
+    )
 
 
 def _post_ref(post: dict[str, Any]) -> str | None:
