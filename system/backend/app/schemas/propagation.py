@@ -14,6 +14,7 @@ class TrendPoint(BaseModel):
 
 
 NonEmptyString = Annotated[str, Field(min_length=1)]
+ClaimAnchorString = Annotated[str, Field(min_length=1, pattern=r".*\S.*")]
 EvidenceReference = Annotated[
     str,
     Field(
@@ -25,15 +26,15 @@ EvidenceReferenceList = Annotated[list[EvidenceReference], Field(min_length=1)]
 
 
 class ClaimResponseClaimAnchor(BaseModel):
-    case_id: NonEmptyString
-    claim_id: NonEmptyString
-    authority_source_id: NonEmptyString
-    text: NonEmptyString
-    source_url: NonEmptyString
-    account: NonEmptyString
+    case_id: ClaimAnchorString
+    claim_id: ClaimAnchorString
+    authority_source_id: ClaimAnchorString
+    text: ClaimAnchorString
+    source_url: ClaimAnchorString
+    account: ClaimAnchorString
     published_at: str | None
-    role: NonEmptyString
-    source_review_status: NonEmptyString
+    role: ClaimAnchorString
+    source_review_status: ClaimAnchorString
     source_tier: str | None
     evidence_refs: EvidenceReferenceList
 

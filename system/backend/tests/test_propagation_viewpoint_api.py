@@ -236,6 +236,58 @@ def test_claim_response_landscape_rejects_ready_payload_without_complete_claim_a
         app.dependency_overrides.pop(propagation_api.get_mongo_db, None)
 
 
+@pytest.mark.parametrize(
+    "claim_anchor_field",
+    [
+        "case_id",
+        "claim_id",
+        "authority_source_id",
+        "text",
+        "source_url",
+        "account",
+        "role",
+        "source_review_status",
+    ],
+)
+def test_claim_response_landscape_rejects_whitespace_only_required_claim_anchor_field(
+    monkeypatch, claim_anchor_field
+):
+    fake_db = SimpleNamespace(name="db")
+    fake_mongo = SimpleNamespace(name="mongo")
+
+    async def override_db():
+        yield fake_db
+
+    async def fake_build_claim_response_landscape(event_id, platform=None, **kwargs):
+        result = _valid_ready_claim_response_landscape(event_id, platform)
+        result["claim_anchor"][claim_anchor_field] = "   "
+        return result
+
+    monkeypatch.setattr(
+        propagation_api.claim_response_landscape_service,
+        "build_claim_response_landscape",
+        fake_build_claim_response_landscape,
+    )
+    app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(id=7, role="analyst", is_active=True)
+    app.dependency_overrides[propagation_api.get_db] = override_db
+    app.dependency_overrides[propagation_api.get_mongo_db] = lambda: fake_mongo
+
+    async def scenario():
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            with pytest.raises(ResponseValidationError):
+                await client.get(
+                    "/api/v1/propagation/claim-response-landscape?event_id=event-1&platform=weibo"
+                )
+
+    try:
+        asyncio.run(scenario())
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+        app.dependency_overrides.pop(propagation_api.get_db, None)
+        app.dependency_overrides.pop(propagation_api.get_mongo_db, None)
+
+
 @pytest.mark.parametrize("invalid_ref", ["   ", "not-an-evidence-reference"])
 def test_claim_response_landscape_rejects_blank_or_malformed_evidence_reference(monkeypatch, invalid_ref):
     fake_db = SimpleNamespace(name="db")
