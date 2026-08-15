@@ -66,18 +66,30 @@ test('propagation resize skips hidden, detached, or disposed ECharts instances b
   assert.equal(resizeCalls, 1)
 })
 
-test('propagation resize uses the mounted-chart guard for every cached chart instance', () => {
+test('propagation resize skips inactive-tab ECharts instances even when their DOM remains mounted', () => {
+  const safelyResizeChart = executableFunction(propagationView, 'safelyResizeChart')
+  const attachedDom = { isConnected: true, offsetWidth: 390, offsetHeight: 260 }
+  let resizeCalls = 0
+
+  const chart = { isDisposed: () => false, getDom: () => attachedDom, resize: () => { resizeCalls += 1 } }
+  safelyResizeChart(chart, false)
+  safelyResizeChart(chart, true)
+
+  assert.equal(resizeCalls, 1)
+})
+
+test('propagation resize passes active-tab ownership to every cached chart instance', () => {
   const resizeCharts = bodyOf(propagationView, 'resizeCharts')
 
-  for (const chartName of [
-    'layerChart',
-    'pathGraphChart',
-    'roleIgnitionGraph',
-    'modelTrendChart',
-    'modelBacktestChart',
-    'evidenceTimelineChart',
+  for (const [chartName, tabName] of [
+    ['layerChart', 'path'],
+    ['pathGraphChart', 'path'],
+    ['roleIgnitionGraph', 'evidence'],
+    ['modelTrendChart', 'model'],
+    ['modelBacktestChart', 'model'],
+    ['evidenceTimelineChart', 'model'],
   ]) {
-    assert.match(resizeCharts, new RegExp(`safelyResizeChart\\(${chartName}\\)`))
+    assert.match(resizeCharts, new RegExp(`safelyResizeChart\\(${chartName}, activeTab\\.value === '${tabName}'\\)`))
   }
   assert.doesNotMatch(resizeCharts, /\?\.resize\(/)
 })

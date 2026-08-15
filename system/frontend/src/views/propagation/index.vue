@@ -3108,20 +3108,20 @@ function scheduleModelTrendChartRender() {
   })
 }
 
-function safelyResizeChart(chart: PropagationChartInstance | null) {
-  if (!chart || chart.isDisposed()) return
+function safelyResizeChart(chart: PropagationChartInstance | null, isTabActive = true) {
+  if (!isTabActive || !chart || chart.isDisposed()) return
   const chartDom = chart.getDom()
   if (!chartDom || chartDom.isConnected === false || chartDom.offsetWidth === 0 || chartDom.offsetHeight === 0) return
   chart.resize()
 }
 
 function resizeCharts() {
-  safelyResizeChart(layerChart)
-  safelyResizeChart(pathGraphChart)
-  safelyResizeChart(roleIgnitionGraph)
-  safelyResizeChart(modelTrendChart)
-  safelyResizeChart(modelBacktestChart)
-  safelyResizeChart(evidenceTimelineChart)
+  safelyResizeChart(layerChart, activeTab.value === 'path')
+  safelyResizeChart(pathGraphChart, activeTab.value === 'path')
+  safelyResizeChart(roleIgnitionGraph, activeTab.value === 'evidence')
+  safelyResizeChart(modelTrendChart, activeTab.value === 'model')
+  safelyResizeChart(modelBacktestChart, activeTab.value === 'model')
+  safelyResizeChart(evidenceTimelineChart, activeTab.value === 'model')
 }
 
 async function renderPathTabCharts() {
