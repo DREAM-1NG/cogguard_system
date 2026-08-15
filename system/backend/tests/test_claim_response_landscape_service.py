@@ -312,6 +312,8 @@ def test_landscape_ranks_responses_by_platform_local_paths_before_engagement(mon
                         "weibo:post:p-responder-a",
                         "weibo:post:p-responder-b",
                     ],
+                    "nodes": ["official-1", "responder-a", "responder-b"],
+                    "score": 8.0,
                 }
             ]
         finally:
@@ -456,6 +458,136 @@ def test_landscape_keeps_ranks_platform_local_and_projects_exact_semantic_eviden
             responder_a = next(row for row in rows_by_platform["weibo"] if row["author_id"] == "responder-a")
             assert responder_a["stance"] == "support"
             assert responder_a["semantic"]["stance_distribution"] == {"support": 1}
+        finally:
+            session.close()
+
+    asyncio.run(scenario())
+
+
+def test_landscape_excludes_same_event_path_without_bound_official_publication(monkeypatch):
+    async def scenario():
+        db, session = _db_with_case_material()
+        try:
+            observed = _observed_result()
+            observed["path_analysis"]["key_paths"].append(
+                {
+                    "path_id": "same-event-unrelated",
+                    "nodes": ["responder-b", "responder-c"],
+                    "score": 99.0,
+                    "evidence_refs": [
+                        {"platform": "weibo", "post_id": "p-responder-b"},
+                        {"platform": "weibo", "post_id": "p-responder-c"},
+                    ],
+                }
+            )
+
+            async def fake_observed(**_kwargs):
+                return observed
+
+            monkeypatch.setattr(
+                claim_response_landscape_service.propagation_observation_service,
+                "analyze_observed_propagation",
+                fake_observed,
+            )
+
+            result = await claim_response_landscape_service.build_claim_response_landscape(
+                "event-1",
+                platform="weibo",
+                db=db,
+                mongo_db=_mongo(),
+                semantic_projection={"status": "ready", "artifact": {"cross_analysis": {}}},
+            )
+
+            assert all(
+                path_ref["path_id"] != "same-event-unrelated"
+                for response in result["influential_responses"]
+                for path_ref in response["path_refs"]
+            )
+        finally:
+            session.close()
+
+    asyncio.run(scenario())
+
+
+def test_landscape_excludes_path_with_mismatched_claim_id(monkeypatch):
+    async def scenario():
+        db, session = _db_with_case_material()
+        try:
+            observed = _observed_result()
+            observed["path_analysis"]["key_paths"].append(
+                {
+                    "path_id": "other-claim",
+                    "claim_id": "claim-2",
+                    "nodes": ["official-1", "responder-c"],
+                    "score": 99.0,
+                    "evidence_refs": [
+                        {"platform": "weibo", "post_id": "p-official"},
+                        {"platform": "weibo", "post_id": "p-responder-c"},
+                    ],
+                }
+            )
+
+            async def fake_observed(**_kwargs):
+                return observed
+
+            monkeypatch.setattr(
+                claim_response_landscape_service.propagation_observation_service,
+                "analyze_observed_propagation",
+                fake_observed,
+            )
+
+            result = await claim_response_landscape_service.build_claim_response_landscape(
+                "event-1",
+                platform="weibo",
+                db=db,
+                mongo_db=_mongo(),
+                semantic_projection={"status": "ready", "artifact": {"cross_analysis": {}}},
+            )
+
+            assert all(
+                path_ref["path_id"] != "other-claim"
+                for response in result["influential_responses"]
+                for path_ref in response["path_refs"]
+            )
+        finally:
+            session.close()
+
+    asyncio.run(scenario())
+
+
+def test_landscape_preserves_observed_nodes_and_score_in_path_refs(monkeypatch):
+    async def scenario():
+        db, session = _db_with_case_material()
+        try:
+            async def fake_observed(**_kwargs):
+                return _observed_result()
+
+            monkeypatch.setattr(
+                claim_response_landscape_service.propagation_observation_service,
+                "analyze_observed_propagation",
+                fake_observed,
+            )
+
+            result = await claim_response_landscape_service.build_claim_response_landscape(
+                "event-1",
+                platform="weibo",
+                db=db,
+                mongo_db=_mongo(),
+                semantic_projection={"status": "ready", "artifact": {"cross_analysis": {}}},
+            )
+
+            assert result["influential_responses"][0]["path_refs"] == [
+                {
+                    "path_id": "claim-1:0",
+                    "evidence_refs": [
+                        "weibo:post:p-official",
+                        "weibo:post:p-responder-a",
+                        "weibo:post:p-responder-b",
+                    ],
+                    "nodes": ["official-1", "responder-a", "responder-b"],
+                    "score": 8.0,
+                }
+            ]
         finally:
             session.close()
 

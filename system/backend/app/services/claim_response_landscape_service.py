@@ -119,7 +119,17 @@ async def build_claim_response_landscape(
         engagement_percentiles=engagement_percentiles,
         semantic_by_ref=semantic_by_ref,
     )
-    observed_paths = _verified_paths_for_platform(observed, platform=platform)
+    official_publication_refs = {
+        ref
+        for publication in official_publications
+        for ref in publication.get("evidence_refs") or []
+    }
+    observed_paths = _verified_paths_for_platform(
+        observed,
+        platform=platform,
+        primary_claim_id=claim.claim_id,
+        official_publication_refs=official_publication_refs,
+    )
     influential_responses = _influential_responses(
         observed,
         observed_paths,
@@ -452,7 +462,12 @@ def _influential_responses(
                 row["path_contribution"] += path_score
                 row["path_count"] += 1
                 row["evidence_refs"] = _dedupe([*row["evidence_refs"], *platform_refs])
-                row["path_refs"].append({"path_id": path_id, "evidence_refs": path_refs})
+                path_ref = {"path_id": path_id, "evidence_refs": path_refs}
+                if isinstance(path.get("nodes"), list):
+                    path_ref["nodes"] = list(path["nodes"])
+                if path.get("score") is not None:
+                    path_ref["score"] = path["score"]
+                row["path_refs"].append(path_ref)
                 row["engagement_percentile"] = max(
                     row["engagement_percentile"],
                     max((engagement_percentiles.get(ref, 0.0) for ref in platform_refs), default=0.0),
@@ -624,12 +639,23 @@ def _semantic_stance_label(value: Any) -> str | None:
     return labels.get(str(label or "").lower())
 
 
-def _verified_paths_for_platform(observed: dict[str, Any], *, platform: str | None) -> list[dict[str, Any]]:
+def _verified_paths_for_platform(
+    observed: dict[str, Any],
+    *,
+    platform: str | None,
+    primary_claim_id: str | None = None,
+    official_publication_refs: set[str] | None = None,
+) -> list[dict[str, Any]]:
     paths: list[dict[str, Any]] = []
     seen: set[tuple[str, tuple[str, ...]]] = set()
     for path in _candidate_paths(observed):
         refs = _path_canonical_refs(path)
         if not refs:
+            continue
+        claim_id = _optional_text(path.get("claim_id"))
+        if primary_claim_id is not None and claim_id and claim_id != primary_claim_id:
+            continue
+        if official_publication_refs is not None and not official_publication_refs.intersection(refs):
             continue
         if platform:
             ref_platforms = {_reference_platform(ref) for ref in refs}
