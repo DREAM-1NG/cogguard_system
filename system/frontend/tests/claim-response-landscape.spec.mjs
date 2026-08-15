@@ -96,3 +96,29 @@ test('claim response view keeps influence ranking platform-local and path-backed
   assert.doesNotMatch(propagationView, /author_name.*官方/)
   assert.doesNotMatch(propagationView, /verification_context.*authority_binding/)
 })
+
+test('claim response path drill-down uses only observed nodes and declines an unnamed path', () => {
+  const openPathDetail = bodyOf(propagationView, 'openClaimResponsePathDetail')
+
+  assert.match(openPathDetail, /pathRef\.nodes/)
+  assert.match(openPathDetail, /if \(!nodes\.length\)/)
+  assert.match(openPathDetail, /message\.info/)
+  assert.doesNotMatch(openPathDetail, /anchor\?\.account/)
+  assert.doesNotMatch(openPathDetail, /\[anchor\?\.account, response\.author_id\]/)
+})
+
+test('claim response scope reset clears projection and related path and node drawers before reload', () => {
+  const reset = bodyOf(propagationView, 'resetClaimResponseLandscape')
+  const load = bodyOf(propagationView, 'loadClaimResponseLandscape')
+
+  assert.match(reset, /claimResponseLandscape\.value = null/)
+  assert.match(reset, /selectedClaimPathDetail\.value = null/)
+  assert.match(reset, /claimPathDetailOpen\.value = false/)
+  assert.match(reset, /selectedNodeDetail\.value = null/)
+  assert.match(reset, /nodeDetailOpen\.value = false/)
+  assert.match(load, /resetClaimResponseLandscape\(\)/)
+  assert.ok(
+    load.indexOf('resetClaimResponseLandscape()') < load.indexOf('getClaimResponseLandscape'),
+    'Expected stale claim-response state to clear before a replacement request begins',
+  )
+})

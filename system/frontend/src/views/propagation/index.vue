@@ -3235,9 +3235,11 @@ function openClaimResponsePathDetail(
 ) {
   const anchor = claimResponseLandscape.value?.claim_anchor
   const evidenceRefs = pathRef.evidence_refs
-  const nodes = pathRef.nodes?.length
-    ? pathRef.nodes
-    : [anchor?.account, response.author_id].filter((value): value is string => Boolean(value))
+  const nodes = (pathRef.nodes || []).map((node) => String(node || '').trim()).filter(Boolean)
+  if (!nodes.length) {
+    message.info('该路径缺少可下钻的观察节点。')
+    return
+  }
   const path: EvidencePath = {
     path_id: pathRef.path_id,
     evidence_refs: evidenceRefs,
@@ -3249,9 +3251,8 @@ function openClaimResponsePathDetail(
     claim_id: anchor?.claim_id || response.author_id,
     share_count: Number(response.path_count ?? 0),
     originator: {
-      account_id: anchor?.authority_source_id || anchor?.account || '',
-      author_name: anchor?.account || undefined,
-      first_ts: anchor?.published_at || undefined,
+      account_id: nodes[0],
+      author_name: displayUserName(nodes[0]),
     },
     key_paths: [path],
     supporting_posts: [],
@@ -3297,6 +3298,10 @@ function resetClaimResponseLandscape() {
   claimResponseRequestGeneration += 1
   claimResponseLandscape.value = null
   claimResponseLoading.value = false
+  selectedClaimPathDetail.value = null
+  claimPathDetailOpen.value = false
+  selectedNodeDetail.value = null
+  nodeDetailOpen.value = false
 }
 
 async function loadSemanticProjection() {
@@ -3496,8 +3501,8 @@ async function loadPropagationAlerts() {
 
 async function loadClaimResponseLandscape() {
   const requestedEventId = eventId.value.trim()
+  resetClaimResponseLandscape()
   if (!requestedEventId) {
-    resetClaimResponseLandscape()
     return
   }
   const requestGeneration = ++claimResponseRequestGeneration
