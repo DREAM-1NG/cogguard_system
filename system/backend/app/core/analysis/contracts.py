@@ -16,8 +16,6 @@ ANALYSIS_STAGE_ALIASES: dict[str, str] = {
     "propagation_analysis": "propagation_analysis",
     "review_student": "student",
     "review_teacher": "teacher",
-    "review_student": "student",
-    "review_teacher": "teacher",
     "semantic": "semantic_enrichment",
     "semantic_enrichment": "semantic_enrichment",
 }

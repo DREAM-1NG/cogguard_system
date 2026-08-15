@@ -1,14 +1,19 @@
 from __future__ import annotations
 
+import ast
 from datetime import datetime, timezone
+from pathlib import Path
 
 import pytest
 
+import app.core.analysis.contracts as analysis_contracts
 from app.core.analysis import (
+    ANALYSIS_STAGE_ALIASES,
     AnalysisRunStatus,
     InvalidRunTransition,
     TimeWindow,
     build_event_snapshot,
+    normalize_analysis_stage,
     transition_run_status,
 )
 
@@ -132,6 +137,25 @@ def test_analysis_run_state_machine_rejects_terminal_reversal():
 
     with pytest.raises(InvalidRunTransition):
         transition_run_status(AnalysisRunStatus.COMPLETED, AnalysisRunStatus.RUNNING)
+
+
+def test_analysis_stage_alias_literal_has_unique_keys_and_preserves_legacy_normalization():
+    module = ast.parse(Path(analysis_contracts.__file__).read_text(encoding="utf-8"))
+    assignment = next(
+        node
+        for node in module.body
+        if isinstance(node, ast.AnnAssign)
+        and isinstance(node.target, ast.Name)
+        and node.target.id == "ANALYSIS_STAGE_ALIASES"
+    )
+    assert isinstance(assignment.value, ast.Dict)
+
+    alias_keys = [key.value for key in assignment.value.keys if isinstance(key, ast.Constant) and isinstance(key.value, str)]
+
+    assert len(alias_keys) == len(ANALYSIS_STAGE_ALIASES)
+    assert normalize_analysis_stage("review_student") == "student"
+    assert normalize_analysis_stage("review_teacher") == "teacher"
+    assert normalize_analysis_stage("semantic") == "semantic_enrichment"
 
 
 def test_snapshot_rejects_missing_core_evidence_without_fabricating_content():
