@@ -1446,6 +1446,8 @@ let evidenceTimelineRequestGeneration = 0
 let semanticRequestGeneration = 0
 let claimResponseRequestGeneration = 0
 
+type PropagationChartInstance = Pick<echarts.ECharts, 'getDom' | 'isDisposed' | 'resize'>
+
 const semanticPathOverlay = computed(() => {
   const selectedPath = selectedClaimPathDetail.value?.path
   if (!selectedPath || semanticProjection.value?.status !== 'ready') return null
@@ -3106,13 +3108,20 @@ function scheduleModelTrendChartRender() {
   })
 }
 
+function safelyResizeChart(chart: PropagationChartInstance | null) {
+  if (!chart || chart.isDisposed()) return
+  const chartDom = chart.getDom()
+  if (!chartDom || chartDom.isConnected === false || chartDom.offsetWidth === 0 || chartDom.offsetHeight === 0) return
+  chart.resize()
+}
+
 function resizeCharts() {
-  layerChart?.resize()
-  pathGraphChart?.resize()
-  roleIgnitionGraph?.resize()
-  modelTrendChart?.resize()
-  modelBacktestChart?.resize()
-  evidenceTimelineChart?.resize()
+  safelyResizeChart(layerChart)
+  safelyResizeChart(pathGraphChart)
+  safelyResizeChart(roleIgnitionGraph)
+  safelyResizeChart(modelTrendChart)
+  safelyResizeChart(modelBacktestChart)
+  safelyResizeChart(evidenceTimelineChart)
 }
 
 async function renderPathTabCharts() {
@@ -3679,6 +3688,11 @@ onBeforeUnmount(() => {
 .propagation-page {
   display: flex;
   flex-direction: column;
+  min-width: 0;
+}
+
+.propagation-tabs {
+  min-width: 0;
 }
 
 .action-bar {
@@ -3746,6 +3760,14 @@ onBeforeUnmount(() => {
   margin-bottom: 12px;
   border-color: rgba(245, 158, 11, 0.28);
   box-shadow: 0 8px 22px rgba(15, 23, 42, 0.06);
+}
+
+.claim-response-anchor-card,
+.claim-response-timeline,
+.claim-response-lane,
+.claim-response-timeline-card {
+  max-width: 100%;
+  min-width: 0;
 }
 
 .claim-response-timeline {
@@ -4112,6 +4134,36 @@ onBeforeUnmount(() => {
     height: 320px;
   }
 
+  .claim-response-toolbar {
+    align-items: stretch;
+  }
+
+  .claim-response-toolbar :deep(.ant-space),
+  .claim-response-toolbar :deep(.ant-space-item) {
+    max-width: 100%;
+  }
+
+  .claim-response-anchor-card :deep(.ant-descriptions-view) {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .claim-response-anchor-card :deep(table) {
+    width: 100%;
+    table-layout: fixed;
+  }
+
+  .claim-response-anchor-card :deep(.ant-descriptions-item-label) {
+    width: 88px;
+    white-space: normal;
+  }
+
+  .claim-response-anchor-card :deep(.ant-descriptions-item-content) {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
   .claim-response-node-main strong,
   .claim-response-node-main span,
   .claim-response-node-main small {
@@ -4122,6 +4174,27 @@ onBeforeUnmount(() => {
   .claim-response-stance-tag {
     margin-left: 0;
     padding-left: 0;
+  }
+
+  .claim-response-timeline-card .timeline-head {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px 8px;
+  }
+
+  .claim-response-timeline-card .timeline-time {
+    margin-left: 0;
+  }
+
+  .timeline-content {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .claim-path-link {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    word-break: break-word;
   }
 }
 
