@@ -134,7 +134,161 @@
         </a-card>
       </a-tab-pane>
 
+      <a-tab-pane key="claim-response" tab="主张回应图谱">
+        <div class="claim-response-toolbar">
+          <a-space wrap>
+            <span class="claim-response-toolbar-label">平台内影响力</span>
+            <a-select
+              v-model:value="claimResponsePlatform"
+              size="small"
+              style="width: 148px"
+              @change="handleClaimResponsePlatformChange"
+            >
+              <a-select-option v-for="item in claimResponsePlatformOptions" :key="item.value || 'all'" :value="item.value">
+                {{ item.label }}
+              </a-select-option>
+            </a-select>
+            <a-tag :color="claimResponseSemanticReady ? 'green' : 'default'">
+              {{ claimResponseSemanticLabel }}
+            </a-tag>
+          </a-space>
+          <a-button size="small" @click="loadClaimResponseLandscape" :loading="claimResponseLoading">刷新</a-button>
+        </div>
+
+        <a-result
+          v-if="claimResponseBlocked"
+          status="warning"
+          title="主张回应图谱暂不可用"
+          :sub-title="claimResponseEmptyDescription"
+        />
+        <a-empty
+          v-else-if="!claimResponseReady"
+          :description="claimResponseEmptyDescription"
+          :image-style="{ height: '48px' }"
+        />
+        <template v-else>
+          <a-card size="small" class="claim-response-anchor-card" :loading="claimResponseLoading">
+            <template #title>权威主张锚点</template>
+            <a-descriptions size="small" :column="1" bordered>
+              <a-descriptions-item label="主张文本">{{ claimResponseLandscape?.claim_anchor?.text || '--' }}</a-descriptions-item>
+              <a-descriptions-item label="权威来源">{{ claimResponseLandscape?.claim_anchor?.authority_source_id || '--' }}</a-descriptions-item>
+              <a-descriptions-item label="发布账号">{{ claimResponseLandscape?.claim_anchor?.account || '--' }}</a-descriptions-item>
+              <a-descriptions-item label="发布时间">{{ formatTimestamp(claimResponseLandscape?.claim_anchor?.published_at) }}</a-descriptions-item>
+              <a-descriptions-item label="证据引用">
+                <a-space v-if="claimResponseLandscape?.claim_anchor?.evidence_refs?.length" wrap :size="4">
+                  <a-tag v-for="ref in claimResponseLandscape.claim_anchor.evidence_refs" :key="ref">{{ ref }}</a-tag>
+                </a-space>
+                <span v-else>--</span>
+              </a-descriptions-item>
+            </a-descriptions>
+          </a-card>
+
+          <div class="claim-response-timeline">
+            <section class="claim-response-lane claim-response-official-lane">
+              <div class="claim-response-lane-head">
+                <span>官方发布</span>
+                <a-tag>{{ claimResponseOfficialPublications.length }} 条</a-tag>
+              </div>
+              <div v-if="claimResponseOfficialPublications.length" class="claim-response-node-list">
+                <button
+                  v-for="item in claimResponseOfficialPublications"
+                  :key="`${item.platform}-${item.post_id}`"
+                  type="button"
+                  class="claim-response-node claim-response-node-official"
+                  :style="{ '--claim-response-node-size': `${claimResponseNodeSize(item)}px` }"
+                  @click="openClaimResponsePublication(item)"
+                >
+                  <span class="claim-response-node-dot" />
+                  <span class="claim-response-node-main">
+                    <strong>{{ item.author_name || item.author_id }}</strong>
+                    <small>{{ platformLabel(item.platform) }} · {{ formatTimestamp(item.published_at) }}</small>
+                    <span>{{ item.content || '暂无文本摘要' }}</span>
+                  </span>
+                </button>
+              </div>
+              <a-empty v-else description="暂无精确绑定账号发布记录" :image-style="{ height: '36px' }" />
+            </section>
+
+            <section class="claim-response-lane claim-response-response-lane">
+              <div class="claim-response-lane-head">
+                <span>影响回应</span>
+                <a-space :size="4">
+                  <a-tag>{{ claimResponseInfluentialResponses.length }} 个账号</a-tag>
+                  <a-tag>{{ claimResponseRankScopeText }}</a-tag>
+                </a-space>
+              </div>
+              <div v-if="claimResponseInfluentialResponses.length" class="claim-response-node-list">
+                <article
+                  v-for="item in claimResponseInfluentialResponses"
+                  :key="`${item.platform}-${item.author_id}`"
+                  class="claim-response-response-item"
+                >
+                  <button
+                    type="button"
+                    :class="['claim-response-node', 'claim-response-node-response', claimResponseStanceClass(item)]"
+                    :style="{ '--claim-response-node-size': `${claimResponseNodeSize(item)}px` }"
+                    @click="openClaimResponseNode(item)"
+                  >
+                    <span class="claim-response-node-dot" />
+                    <span class="claim-response-node-main">
+                      <strong>#{{ item.rank ?? '-' }} {{ item.author_name || item.author_id }}</strong>
+                      <small>
+                        {{ platformLabel(item.platform) }} ·
+                        {{ item.rank_scope === 'platform' ? '平台内排序' : '事件排序' }} ·
+                        下游 {{ formatNumber(item.downstream_reach) }}
+                      </small>
+                      <span>
+                        路径 {{ formatNumber(item.path_count) }} 条 · 贡献 {{ formatScore(item.path_contribution) }} · 互动分位 {{ formatPercentile(item.engagement_percentile) }}
+                      </span>
+                    </span>
+                  </button>
+                  <div class="claim-response-path-list" v-if="item.path_refs?.length">
+                    <button
+                      v-for="(pathRef, index) in item.path_refs"
+                      :key="`${item.author_id}-${pathRef.path_id}-${index}`"
+                      type="button"
+                      class="claim-path-link"
+                      @click="openClaimResponsePathDetail(item, pathRef, index)"
+                    >
+                      路径 {{ pathRef.path_id }} · {{ pathRef.evidence_refs.length }} 条证据
+                    </button>
+                  </div>
+                  <a-tag v-if="claimResponseSemanticReady && claimResponseResponseStance(item)" class="claim-response-stance-tag">
+                    {{ claimResponseStanceLabel(item) }}
+                  </a-tag>
+                </article>
+              </div>
+              <a-empty v-else description="暂无路径支撑的影响回应" :image-style="{ height: '36px' }" />
+            </section>
+          </div>
+
+          <a-card size="small" title="回应时间轴" class="claim-response-timeline-card">
+            <a-timeline v-if="claimResponseTimelineRows.length" mode="left">
+              <a-timeline-item
+                v-for="(item, index) in claimResponseTimelineRows"
+                :key="`${item.type}-${item.author_id || item.post_id || index}`"
+                :color="item.type === 'official_publication' ? 'orange' : 'blue'"
+              >
+                <p class="timeline-head">
+                  <span>{{ claimResponseTimelineLabel(item) }}</span>
+                  <span class="timeline-time">{{ formatTimestamp(item.at) }}</span>
+                </p>
+                <p class="timeline-content">{{ item.evidence_refs?.join('、') || '暂无证据引用' }}</p>
+              </a-timeline-item>
+            </a-timeline>
+            <a-empty v-else description="暂无回应时间轴" :image-style="{ height: '36px' }" />
+          </a-card>
+        </template>
+      </a-tab-pane>
+
       <a-tab-pane key="evidence" tab="角色分析">
+        <a-card size="small" title="引爆点研判" class="role-ignition-card" :loading="analyzing && !analysisReady">
+          <div v-if="roleIgnitionOverview" class="role-ignition-graph-shell">
+            <div ref="roleIgnitionGraphRef" class="role-ignition-graph" />
+          </div>
+          <a-empty v-else description="暂无具备直接传播证据的引爆关系" :image-style="{ height: '36px' }" />
+        </a-card>
+
         <a-row :gutter="16" style="margin-bottom: 16px">
           <a-col :xs="24" :lg="12">
             <a-card size="small" title="起爆节点" :loading="analyzing && !analysisReady">
@@ -295,6 +449,47 @@
         </template>
         <a-empty v-else :description="predictionEmptyDescription" :image-style="{ height: '48px' }" />
         </a-spin>
+      </a-tab-pane>
+
+      <a-tab-pane key="alerts" tab="预警处置">
+        <a-card size="small" title="传播预警" :loading="alertsLoading">
+          <template #extra>
+            <a-button size="small" @click="loadPropagationAlerts">刷新</a-button>
+          </template>
+          <a-table
+            :columns="alertColumns"
+            :data-source="propagationAlerts"
+            :pagination="false"
+            :scroll="{ x: 860 }"
+            row-key="id"
+          >
+            <template #bodyCell="{ column, record }">
+              <template v-if="column.key === 'type'">
+                {{ propagationAlertTypeLabel((record as PropagationAlert).type) }}
+              </template>
+              <template v-else-if="column.key === 'severity'">
+                <a-tag :color="propagationAlertSeverityColor((record as PropagationAlert).severity)">
+                  {{ propagationAlertSeverityLabel((record as PropagationAlert).severity) }}
+                </a-tag>
+              </template>
+              <template v-else-if="column.key === 'state'">
+                <a-tag>{{ propagationAlertStateLabel((record as PropagationAlert).state) }}</a-tag>
+              </template>
+              <template v-else-if="column.key === 'triggered_at'">
+                {{ formatTimestamp((record as PropagationAlert).last_triggered_at) }}
+              </template>
+              <template v-else-if="column.key === 'action'">
+                <a-space :size="4">
+                  <a-button size="small" type="link" @click="openPropagationAlert(record as PropagationAlert)">证据</a-button>
+                  <a-button v-if="isPropagationAlertOpen(record as PropagationAlert)" size="small" type="link" @click="handlePropagationAlertAction(record as PropagationAlert, 'acknowledge')">确认</a-button>
+                  <a-button v-if="isPropagationAlertOpen(record as PropagationAlert)" size="small" type="link" @click="handlePropagationAlertAction(record as PropagationAlert, 'ignore')">忽略</a-button>
+                  <a-button v-if="isPropagationAlertOpen(record as PropagationAlert)" size="small" type="link" danger @click="handlePropagationAlertAction(record as PropagationAlert, 'close')">关闭</a-button>
+                </a-space>
+              </template>
+            </template>
+          </a-table>
+          <a-empty v-if="!alertsLoading && !propagationAlerts.length" description="当前事件暂无传播预警" :image-style="{ height: '40px' }" />
+        </a-card>
       </a-tab-pane>
     </a-tabs>
 
@@ -477,6 +672,34 @@
         <a-empty v-else description="暂无关联记录" :image-style="{ height: '32px' }" />
       </template>
     </a-drawer>
+
+    <a-drawer v-model:open="propagationAlertDetailOpen" width="680" title="传播预警证据" placement="right">
+      <template v-if="selectedPropagationAlert">
+        <a-descriptions size="small" :column="1" bordered style="margin-bottom: 16px">
+          <a-descriptions-item label="预警类型">{{ propagationAlertTypeLabel(selectedPropagationAlert.type) }}</a-descriptions-item>
+          <a-descriptions-item label="预警等级">{{ propagationAlertSeverityLabel(selectedPropagationAlert.severity) }}</a-descriptions-item>
+          <a-descriptions-item label="状态">{{ propagationAlertStateLabel(selectedPropagationAlert.state) }}</a-descriptions-item>
+          <a-descriptions-item label="最近触发">{{ formatTimestamp(selectedPropagationAlert.last_triggered_at) }}</a-descriptions-item>
+          <a-descriptions-item label="触发次数">{{ selectedPropagationAlert.trigger_count }}</a-descriptions-item>
+        </a-descriptions>
+        <a-space wrap style="margin-bottom: 16px">
+          <a-button size="small" @click="activeTab = 'path'">查看传播路径</a-button>
+          <a-button size="small" @click="activeTab = 'timeline'">查看时间线</a-button>
+          <a-button size="small" @click="activeTab = 'model'">查看趋势预测</a-button>
+        </a-space>
+        <div class="section-title">触发证据</div>
+        <pre class="alert-evidence">{{ formatPropagationAlertEvidence(selectedPropagationAlert.evidence) }}</pre>
+        <div class="section-title drawer-section">处置记录</div>
+        <a-list v-if="selectedPropagationAlert.actions?.length" :data-source="selectedPropagationAlert.actions" size="small">
+          <template #renderItem="{ item }">
+            <a-list-item>
+              {{ propagationAlertActionLabel(item.action) }} · {{ formatTimestamp(item.created_at) }}<span v-if="item.note"> · {{ item.note }}</span>
+            </a-list-item>
+          </template>
+        </a-list>
+        <a-empty v-else description="暂无处置记录" :image-style="{ height: '32px' }" />
+      </template>
+    </a-drawer>
   </div>
 </template>
 <script setup lang="ts">
@@ -486,9 +709,20 @@ import { message } from 'ant-design-vue'
 import * as echarts from 'echarts'
 import type { EChartsOption } from 'echarts'
 import {
+  applyPropagationAlertAction,
   analyzeObservedPropagation,
   getCachedPropagationPrediction,
+  getClaimResponseLandscape,
+  getPropagationAlertDetail,
+  getPropagationAlerts,
   getPropagationEventTimeline,
+  type ClaimResponseInfluentialResponse,
+  type ClaimResponseLandscapeParams,
+  type ClaimResponseLandscapeProjection,
+  type ClaimResponsePathRef,
+  type ClaimResponsePublication,
+  type PropagationAlert,
+  type PropagationAlertAction,
   predictPropagationCurrentEvent,
   type PropagationEventTimelineProjection,
   type PropagationTimelineRange,
@@ -498,6 +732,7 @@ import PageHeader from '@/components/PageHeader.vue'
 
 const DEFAULT_EVENT_ID = 'trump_visit_2026_05_21'
 const PROPAGATION_ANALYSIS_ARTIFACT_KEY = 'stage:propagation_analysis:result'
+const CLAIM_RESPONSE_DEFAULT_PLATFORMS = ['weibo', 'douyin', 'xhs', 'news']
 
 type KeyRoleItem = {
   account_id: string
@@ -507,9 +742,18 @@ type KeyRoleItem = {
   betweenness?: number
 }
 
+type EvidencePathEdge = {
+  source?: string
+  target?: string
+  type?: string
+  weight?: number
+  evidence_refs?: unknown[]
+}
+
 type EvidencePath = {
   explanation?: string
   nodes?: string[]
+  edges?: EvidencePathEdge[]
   score?: number
   confidence?: number | string
   path_id?: string | number
@@ -552,6 +796,19 @@ type EvidenceChain = {
   }
   key_paths: EvidencePath[]
   supporting_posts: SupportingPost[]
+}
+
+type RoleIgnitionSpoke = {
+  targetId: string
+  targetName: string
+  type: 'explicit' | 'implicit'
+  rank: number
+}
+
+type RoleIgnitionOverview = {
+  rootId: string
+  rootName: string
+  spokes: RoleIgnitionSpoke[]
 }
 
 type ClaimItem = {
@@ -852,6 +1109,8 @@ type EventModelPrediction = {
   }
 }
 
+type ClaimResponseTimelineRow = ClaimResponseLandscapeProjection['timeline'][number]
+
 type UnknownRecord = Record<string, unknown>
 
 function isRecord(value: unknown): value is UnknownRecord {
@@ -1145,6 +1404,13 @@ const selectedNodeDetail = ref<DiffusionNodeDetail | null>(null)
 const nodeDetailOpen = ref(false)
 const selectedNextHopUser = ref<NextHopUser | null>(null)
 const nextHopDetailOpen = ref(false)
+const propagationAlerts = ref<PropagationAlert[]>([])
+const alertsLoading = ref(false)
+const selectedPropagationAlert = ref<PropagationAlert | null>(null)
+const propagationAlertDetailOpen = ref(false)
+const claimResponseLandscape = ref<ClaimResponseLandscapeProjection | null>(null)
+const claimResponseLoading = ref(false)
+const claimResponsePlatform = ref('')
 const lastSyncedAt = ref('')
 const eventId = ref(DEFAULT_EVENT_ID)
 const platform = ref('')
@@ -1164,11 +1430,13 @@ const diffusionFullViewRequested = ref(false)
 const route = useRoute()
 const layerChartRef = ref<HTMLDivElement | null>(null)
 const pathGraphRef = ref<HTMLDivElement | null>(null)
+const roleIgnitionGraphRef = ref<HTMLDivElement | null>(null)
 const modelTrendChartRef = ref<HTMLDivElement | null>(null)
 const modelBacktestChartRef = ref<HTMLDivElement | null>(null)
 const evidenceTimelineChartRef = ref<HTMLDivElement | null>(null)
 let layerChart: echarts.ECharts | null = null
 let pathGraphChart: echarts.ECharts | null = null
+let roleIgnitionGraph: echarts.ECharts | null = null
 let modelTrendChart: echarts.ECharts | null = null
 let modelBacktestChart: echarts.ECharts | null = null
 let evidenceTimelineChart: echarts.ECharts | null = null
@@ -1176,6 +1444,7 @@ let modelTrendResizeObserver: ResizeObserver | null = null
 let predictionRequestGeneration = 0
 let evidenceTimelineRequestGeneration = 0
 let semanticRequestGeneration = 0
+let claimResponseRequestGeneration = 0
 
 const semanticPathOverlay = computed(() => {
   const selectedPath = selectedClaimPathDetail.value?.path
@@ -1183,6 +1452,63 @@ const semanticPathOverlay = computed(() => {
   if (!linkedPropagationArtifact.value) return null
   if (!hasPropagationPathOverlays(semanticProjection.value.evidence)) return null
   return findPathSemanticOverlay(selectedPath, semanticProjection.value.evidence.cross_analysis.propagation_path_overlays)
+})
+
+const claimResponseOfficialPublications = computed(() => claimResponseLandscape.value?.official_publications ?? [])
+const claimResponseInfluentialResponses = computed(() => claimResponseLandscape.value?.influential_responses ?? [])
+const claimResponseTimelineRows = computed(() => claimResponseLandscape.value?.timeline ?? [])
+const claimResponseSemanticReady = computed(() => claimResponseLandscape.value?.coverage?.semantic?.status === 'available')
+const claimResponseBlocked = computed(() => {
+  const status = claimResponseLandscape.value?.status
+  return status === 'blocked' || status === 'not_found'
+})
+const claimResponseReady = computed(() => {
+  const landscape = claimResponseLandscape.value
+  if (landscape?.status !== 'ready' || !landscape.claim_anchor) return false
+  return Boolean(
+    landscape.official_publications.length
+    || landscape.influential_responses.length
+    || landscape.timeline.length,
+  )
+})
+const claimResponsePlatformOptions = computed(() => {
+  const values = new Set<string>()
+  const scopedPlatform = platform.value.trim()
+  if (scopedPlatform) values.add(scopedPlatform)
+  for (const row of [
+    ...claimResponseOfficialPublications.value,
+    ...claimResponseInfluentialResponses.value,
+    ...claimResponseTimelineRows.value,
+  ]) {
+    const value = String(row.platform || '').trim()
+    if (value) values.add(value)
+  }
+  for (const value of CLAIM_RESPONSE_DEFAULT_PLATFORMS) values.add(value)
+  return [
+    { value: '', label: '全部平台' },
+    ...Array.from(values).sort().map((value) => ({ value, label: platformLabel(value) })),
+  ]
+})
+const claimResponseRankScopeText = computed(() => {
+  const scopes = new Set(claimResponseInfluentialResponses.value.map((item) => item.rank_scope).filter(Boolean))
+  return scopes.has('platform') ? '平台内排序' : '事件排序'
+})
+const claimResponseSemanticLabel = computed(() => {
+  const semantic = claimResponseLandscape.value?.coverage?.semantic
+  if (semantic?.status === 'available') return '语义状态就绪'
+  if (semantic?.status === 'blocked') return '语义状态受阻'
+  return '语义状态未就绪'
+})
+const claimResponseEmptyDescription = computed(() => {
+  const landscape = claimResponseLandscape.value
+  if (!eventId.value.trim()) return '请输入事件 ID 后查看主张回应图谱'
+  if (!landscape) return '暂无主张回应图谱'
+  if (landscape.status === 'not_found') return '当前事件尚未绑定事件复核案例'
+  if (landscape.status === 'blocked') return claimResponseBlockingReasonLabel(landscape.blocking_reason)
+  if (!landscape.claim_anchor) return '当前事件尚未绑定权威主张锚点'
+  const binding = landscape.coverage?.official_account_binding
+  if (binding?.status === 'unavailable') return '权威来源尚未完成精确平台账号绑定'
+  return '暂无权威发布或路径支撑的影响回应'
 })
 
 const analysisReady = computed(() => !!analysisResult.value && !analysisResult.value.error)
@@ -1231,6 +1557,54 @@ const userNameById = computed(() => {
     }
   }
   return map
+})
+const roleIgnitionOverview = computed<RoleIgnitionOverview | null>(() => {
+  const chains = [...evidenceChains.value]
+    .sort((left, right) => Number(right.share_count ?? 0) - Number(left.share_count ?? 0))
+
+  for (const chain of chains) {
+    const rootId = String(chain.originator?.account_id || '').trim()
+    if (!rootId) continue
+
+    const spokesByTarget = new Map<string, RoleIgnitionSpoke>()
+    for (const path of chain.key_paths ?? []) {
+      const pathRank = Number(path.score ?? 0)
+      for (const pathEdge of path.edges ?? []) {
+        const sourceId = String(pathEdge.source || '').trim()
+        const targetId = String(pathEdge.target || '').trim()
+        if (sourceId !== rootId || !targetId || targetId === rootId) continue
+
+        const type = pathEdge.type === 'explicit' ? 'explicit' : 'implicit'
+        const candidate: RoleIgnitionSpoke = {
+          targetId,
+          targetName: userNameById.value.get(targetId) || targetId,
+          type,
+          rank: Number.isFinite(pathRank) ? pathRank : 0,
+        }
+        const previous = spokesByTarget.get(targetId)
+        const preferCandidate = !previous
+          || (candidate.type === 'explicit' && previous.type !== 'explicit')
+          || (candidate.type === previous.type && candidate.rank > previous.rank)
+        if (preferCandidate) spokesByTarget.set(targetId, candidate)
+      }
+    }
+
+    const spokes = Array.from(spokesByTarget.values())
+      .sort((left, right) => {
+        if (left.type !== right.type) return left.type === 'explicit' ? -1 : 1
+        return right.rank - left.rank
+      })
+      .slice(0, 12)
+    if (!spokes.length) continue
+
+    return {
+      rootId,
+      rootName: String(chain.originator?.author_name || userNameById.value.get(rootId) || rootId),
+      spokes,
+    }
+  }
+
+  return null
 })
 const claimGroups = computed(() => {
   const groups = new Map<string, { type: string; label: string; items: ClaimGroupItem[] }>()
@@ -1342,6 +1716,13 @@ const predictionRequestParams = computed(() => {
   }
   return params
 })
+
+function claimResponseRequestParams(): ClaimResponseLandscapeParams {
+  return {
+    event_id: eventId.value.trim(),
+    platform: claimResponsePlatform.value || undefined,
+  }
+}
 
 const modelPredictionReady = computed(() => {
   return hasPredictionOutput(modelPrediction.value)
@@ -1466,6 +1847,15 @@ const nextHopColumns = computed(() => [
   },
 ])
 
+const alertColumns = [
+  { title: '类型', key: 'type', width: 132 },
+  { title: '等级', key: 'severity', width: 92 },
+  { title: '状态', key: 'state', width: 96 },
+  { title: '触发次数', dataIndex: 'trigger_count', width: 94 },
+  { title: '最近触发', key: 'triggered_at', width: 180 },
+  { title: '操作', key: 'action', width: 230 },
+]
+
 function formatRatio(value?: number | null) {
   if (value == null || Number.isNaN(value)) {
     return '--'
@@ -1480,11 +1870,114 @@ function ratioPercent(value?: number | null) {
   return Math.round(Number(value) * 1000) / 10
 }
 
-function formatTimestamp(value?: string) {
+function formatTimestamp(value?: string | null) {
   if (!value) {
     return '--'
   }
   return value.replace('T', ' ').replace('Z', '')
+}
+
+function platformLabel(value?: string | null) {
+  const labels: Record<string, string> = {
+    weibo: '微博',
+    douyin: '抖音',
+    xhs: '小红书',
+    news: '新闻',
+  }
+  return labels[String(value || '').trim()] || value || '--'
+}
+
+function formatPercentile(value?: number | null) {
+  if (value == null || Number.isNaN(Number(value))) return '--'
+  return `${Math.round(Number(value) * 100)}%`
+}
+
+function claimResponseBlockingReasonLabel(value?: string | null) {
+  const labels: Record<string, string> = {
+    event_review_case_not_found: '当前事件尚未绑定事件复核案例',
+    primary_claim_unavailable: '事件复核案例尚未记录主张锚点',
+    authority_source_unavailable: '主张锚点缺少权威来源',
+    authority_source_not_allowlisted: '权威来源尚未通过白名单复核',
+    authority_source_account_binding_unavailable: '权威来源尚未完成精确平台账号绑定',
+    claim_response_landscape_request_failed: '主张回应图谱请求失败，请稍后重试',
+  }
+  return labels[String(value || '')] || value || '主张回应图谱暂不可用'
+}
+
+function claimResponseNodeSize(item: ClaimResponsePublication | ClaimResponseInfluentialResponse) {
+  const reach = 'downstream_reach' in item ? Number(item.downstream_reach ?? 0) : 0
+  if (!Number.isFinite(reach) || reach <= 0) return 28
+  return Math.max(28, Math.min(64, 28 + Math.sqrt(reach) * 8))
+}
+
+function claimResponseResponseStance(response: ClaimResponseInfluentialResponse) {
+  const stance = String(response.stance || '').trim().toLowerCase()
+  if (stance === 'support' || stance === 'supports') return 'support'
+  if (stance === 'oppose' || stance === 'opposes' || stance === 'opposition' || stance === 'refute') return 'oppose'
+  if (stance === 'neutral' || stance === 'mixed') return 'neutral'
+  return ''
+}
+
+function claimResponseStanceClass(response: ClaimResponseInfluentialResponse) {
+  if (!claimResponseSemanticReady.value) return 'claim-response-node-stance-neutral'
+  const stance = claimResponseResponseStance(response)
+  return stance ? `claim-response-node-stance-${stance}` : 'claim-response-node-stance-neutral'
+}
+
+function claimResponseStanceLabel(response: ClaimResponseInfluentialResponse) {
+  const stance = claimResponseResponseStance(response)
+  const labels: Record<string, string> = {
+    support: '支持',
+    oppose: '反对',
+    neutral: '中性',
+  }
+  return labels[stance] || '--'
+}
+
+function claimResponseTimelineLabel(item: ClaimResponseTimelineRow) {
+  if (item.type === 'official_publication') {
+    const publication = claimResponseOfficialPublications.value.find((row) => row.post_id === item.post_id)
+    return `官方发布 · ${publication?.author_name || item.author_id || '--'}`
+  }
+  const response = claimResponseInfluentialResponses.value.find((row) => row.author_id === item.author_id)
+  return `影响回应 · ${response?.author_name || item.author_id || '--'}`
+}
+
+function propagationAlertTypeLabel(value: string) {
+  const labels: Record<string, string> = {
+    propagation_surge: '传播突增',
+    forecast_scale_jump: '预测规模跃升',
+    path_structure_change: '路径结构变化',
+    coordination_spread: '协同传播',
+  }
+  return labels[value] || value || '--'
+}
+
+function propagationAlertSeverityLabel(value: string) {
+  const labels: Record<string, string> = { medium: '中', high: '高', critical: '严重' }
+  return labels[value] || value || '--'
+}
+
+function propagationAlertSeverityColor(value: string) {
+  return value === 'critical' ? 'red' : value === 'high' ? 'orange' : 'blue'
+}
+
+function propagationAlertStateLabel(value: string) {
+  const labels: Record<string, string> = { new: '新建', acknowledged: '已确认', closed: '已关闭', ignored: '已忽略' }
+  return labels[value] || value || '--'
+}
+
+function propagationAlertActionLabel(value: PropagationAlertAction) {
+  const labels: Record<PropagationAlertAction, string> = { acknowledge: '确认', close: '关闭', ignore: '忽略' }
+  return labels[value]
+}
+
+function isPropagationAlertOpen(alert: PropagationAlert) {
+  return alert.state === 'new' || alert.state === 'acknowledged'
+}
+
+function formatPropagationAlertEvidence(value?: Record<string, unknown>) {
+  return JSON.stringify(value || {}, null, 2)
 }
 
 function formatTimelineWindow(window?: { start?: string; end?: string } | null) {
@@ -2130,6 +2623,103 @@ function displayUserName(userId: string) {
   return userNameById.value.get(id) || id || '--'
 }
 
+function buildRoleIgnitionOption(): EChartsOption {
+  const overview = roleIgnitionOverview.value
+  if (!overview) return {}
+
+  const radius = 160
+  const total = overview.spokes.length
+  const data = [
+    {
+      id: overview.rootId,
+      name: shortNodeLabel(overview.rootName),
+      userId: overview.rootId,
+      x: 0,
+      y: 0,
+      category: 0,
+      symbolSize: 42,
+      label: {
+        show: true,
+        position: 'bottom' as const,
+        color: '#f8fafc',
+        fontSize: 12,
+        fontWeight: 700,
+      },
+    },
+    ...overview.spokes.map((edge, index) => {
+      const angle = (-Math.PI / 2) + ((Math.PI * 2 * index) / Math.max(total, 1))
+      const x = Math.cos(angle) * radius
+      const labelPosition: 'left' | 'right' = x >= 0 ? 'right' : 'left'
+      return {
+        id: edge.targetId,
+        name: shortNodeLabel(edge.targetName),
+        userId: edge.targetId,
+        x,
+        y: Math.sin(angle) * radius,
+        category: edge.type === 'explicit' ? 1 : 2,
+        symbolSize: edge.type === 'explicit' ? 17 : 15,
+        label: {
+          show: true,
+          position: labelPosition,
+          color: edge.type === 'explicit' ? '#d9f99d' : '#cbd5e1',
+          fontSize: 10,
+          fontWeight: 500,
+        },
+      }
+    }),
+  ]
+  const links = overview.spokes.map((edge) => {
+    const type = edge.type
+    return {
+      source: overview.rootId,
+      target: edge.targetId,
+      relationType: type,
+      lineStyle: {
+        color: type === 'explicit' ? 'rgba(45, 212, 191, 0.78)' : 'rgba(148, 163, 184, 0.68)',
+        width: type === 'explicit' ? 1.5 : 1,
+        type: (type === 'explicit' ? 'solid' : 'dashed') as 'solid' | 'dashed',
+        curveness: 0.08,
+      },
+    }
+  })
+
+  return {
+    backgroundColor: 'transparent',
+    tooltip: {
+      trigger: 'item',
+      formatter: (params: any) => {
+        if (params.dataType === 'edge') {
+          return params.data.relationType === 'explicit' ? '确认传播关系' : '推断传播关系'
+        }
+        return displayUserName(String(params.data?.userId || params.data?.id || ''))
+      },
+    },
+    series: [
+      {
+        type: 'graph',
+        layout: 'none',
+        roam: true,
+        data,
+        links,
+        categories: [
+          { name: '引爆点', itemStyle: { color: '#f97316', borderColor: '#fed7aa', borderWidth: 2 } },
+          { name: '确认关系', itemStyle: { color: '#2dd4bf', borderColor: '#99f6e4', borderWidth: 1 } },
+          { name: '推断关系', itemStyle: { color: '#64748b', borderColor: '#cbd5e1', borderWidth: 1 } },
+        ],
+        edgeSymbol: ['none', 'arrow'],
+        edgeSymbolSize: [0, 6],
+        lineStyle: {
+          opacity: 0.8,
+        },
+        emphasis: {
+          focus: 'adjacency',
+          lineStyle: { width: 2 },
+        },
+      },
+    ],
+  }
+}
+
 function formatNodePath(nodes?: string[]) {
   if (!nodes?.length) return '--'
   return nodes.map((node) => displayUserName(node)).join(' → ')
@@ -2137,8 +2727,11 @@ function formatNodePath(nodes?: string[]) {
 
 function buildPathGraphOption(summary?: DiffusionSummary | null): EChartsOption {
   const nodes = summary?.visible_nodes ?? []
+  const treeEdges = summary?.tree_edges ?? []
+  const highlightEdges = summary?.highlight_edges ?? []
   const nodeById = new Map(nodes.map((node) => [String(node.id), node]))
   const rootId = String(summary?.root_node?.id || nodes.find((node) => node.is_root)?.id || nodes[0]?.id || '')
+  const keyEdgeKeys = new Set(highlightEdges.map((edge) => `${edge.source}->${edge.target}`))
 
   const nodesByLayer = new Map<number, DiffusionNode[]>()
   for (const node of nodes) {
@@ -2174,12 +2767,27 @@ function buildPathGraphOption(summary?: DiffusionSummary | null): EChartsOption 
       })
     })
   }
+
+  // Server coordinates preserve branch clusters derived from shared objects.
+  // The concentric fallback remains available for legacy analysis responses.
+  const hasBackendLayout = nodes.some((node) => (
+    Number.isFinite(Number(node.layout_x)) && Number.isFinite(Number(node.layout_y))
+  ))
+  if (hasBackendLayout) {
+    for (const node of nodes) {
+      const x = Number(node.layout_x)
+      const y = Number(node.layout_y)
+      if (Number.isFinite(x) && Number.isFinite(y)) {
+        positions.set(String(node.id), { x, y, layer: Math.max(0, Number(node.layer ?? 0)) })
+      }
+    }
+  }
   const fittedPositions = fitGraphPositions(positions)
 
   const graphData = nodes.map((node) => {
     const id = String(node.id)
     const position = fittedPositions.get(id) || { x: 0, y: 0, layer: Number(node.layer ?? 0) }
-    const isRoot = id === rootId || Boolean(node.is_root)
+    const isRoot = id === rootId
     const isKey = Boolean(node.is_key)
     const objectFocused = Boolean(selectedObjectId.value) && (node.shared_object_ids ?? []).includes(selectedObjectId.value)
     const value = Math.max(1, Number(node.post_count ?? 1))
@@ -2207,6 +2815,54 @@ function buildPathGraphOption(summary?: DiffusionSummary | null): EChartsOption 
     }
   })
 
+  const mergedEdges = new Map<string, DiffusionEdge>()
+  for (const edge of treeEdges) {
+    if (!edge.is_parallel_root && !edge.is_synthetic) {
+      mergedEdges.set(`${edge.source}->${edge.target}`, edge)
+    }
+  }
+  for (const edge of highlightEdges) {
+    const key = `${edge.source}->${edge.target}`
+    const existing = mergedEdges.get(key)
+    mergedEdges.set(key, existing ? { ...existing, is_key_path: true } : { ...edge, is_key_path: true })
+  }
+
+  const graphLinks = Array.from(mergedEdges.values())
+    .filter((edge) => {
+      const source = String(edge.source)
+      const target = String(edge.target)
+      if (!source || !target || source === target || !nodeById.has(source) || !nodeById.has(target)) return false
+      const sourceLayer = Number(nodeById.get(source)?.layer ?? -1)
+      const targetLayer = Number(nodeById.get(target)?.layer ?? -1)
+      return sourceLayer >= 0 && targetLayer > sourceLayer
+    })
+    .map((edge) => {
+      const source = String(edge.source)
+      const target = String(edge.target)
+      const sourceLayer = Number(nodeById.get(source)?.layer ?? 0)
+      const targetLayer = Number(nodeById.get(target)?.layer ?? sourceLayer + 1)
+      const key = `${source}->${target}`
+      const isKeyPath = Boolean(edge.is_key_path) || keyEdgeKeys.has(key)
+      const isConfirmed = edge.evidence_type === 'explicit' || edge.type === 'explicit'
+      const hash = Array.from(key).reduce((value, character) => ((value * 33) + character.charCodeAt(0)) >>> 0, 5381)
+      const layerGap = Math.max(1, targetLayer - sourceLayer)
+      const curveness = (hash % 2 === 0 ? 1 : -1) * (0.1 + Math.min(0.16, layerGap * 0.035))
+      return {
+        source,
+        target,
+        value: Number(edge.weight ?? 1) || 1,
+        relationLabel: edge.relation_type || edge.type || '传播关系',
+        evidenceLabel: edge.evidence_type === 'explicit' ? '确认关系' : edge.evidence_type === 'reconstructed' ? '重建关系' : '推断关系',
+        objectId: edge.object_id,
+        lineStyle: {
+          color: isKeyPath ? 'rgba(56, 189, 248, 0.78)' : isConfirmed ? 'rgba(45, 212, 191, 0.52)' : 'rgba(148, 163, 184, 0.3)',
+          width: isKeyPath ? 1.5 : isConfirmed ? 1 : 0.72,
+          opacity: isKeyPath ? 0.72 : isConfirmed ? 0.48 : 0.28,
+          curveness,
+        },
+      }
+    })
+
   return {
     backgroundColor: {
       type: 'linear',
@@ -2223,6 +2879,9 @@ function buildPathGraphOption(summary?: DiffusionSummary | null): EChartsOption 
     tooltip: {
       trigger: 'item',
       formatter: (params: any) => {
+        if (params.dataType === 'edge') {
+          return `${displayUserName(params.data.source)}<br/>→ ${displayUserName(params.data.target)}<br/>${params.data.relationLabel || '传播关系'}：${params.data.evidenceLabel || '推断关系'}${params.data.objectId ? `<br/>共享对象：${params.data.objectId}` : ''}`
+        }
         const node = nodeById.get(String(params.data.userId))
         const degreeText = `出度：${node?.out_degree ?? 0} / 入度：${node?.in_degree ?? 0}`
         return `${displayUserName(params.data.userId)}<br/>用户ID：${params.data.userId}<br/>${degreeText}`
@@ -2254,7 +2913,7 @@ function buildPathGraphOption(summary?: DiffusionSummary | null): EChartsOption 
           { name: '普通节点', itemStyle: { color: '#60a5fa' } },
         ],
         data: graphData,
-        links: [],
+        links: graphLinks,
         label: {
           color: '#eef6ff',
           fontSize: 10,
@@ -2262,6 +2921,17 @@ function buildPathGraphOption(summary?: DiffusionSummary | null): EChartsOption 
         },
         labelLayout: {
           hideOverlap: true,
+        },
+        edgeSymbol: ['none', 'arrow'],
+        edgeSymbolSize: [0, 7],
+        lineStyle: {
+          color: 'source',
+          opacity: 0.18,
+          curveness: 0.02,
+        },
+        emphasis: {
+          focus: 'adjacency',
+          lineStyle: { width: 3 },
         },
       },
     ],
@@ -2296,6 +2966,32 @@ async function renderPathGraph() {
   pathGraphChart.setOption(buildPathGraphOption(diffusionSummary.value), true)
   updatePathGraphLabelsByZoom()
   pathGraphChart.resize()
+}
+
+async function renderRoleIgnitionGraph() {
+  await nextTick()
+  if (activeTab.value !== 'evidence') return
+  if (!roleIgnitionOverview.value) {
+    roleIgnitionGraph?.dispose()
+    roleIgnitionGraph = null
+    return
+  }
+  const container = roleIgnitionGraphRef.value
+  if (!container || container.offsetWidth === 0 || container.offsetHeight === 0) return
+  if (roleIgnitionGraph && roleIgnitionGraph.getDom() !== container) {
+    roleIgnitionGraph.dispose()
+    roleIgnitionGraph = null
+  }
+  if (!roleIgnitionGraph) {
+    roleIgnitionGraph = echarts.init(container)
+  }
+  roleIgnitionGraph.off('click')
+  roleIgnitionGraph.on('click', (params: any) => {
+    if (params.dataType !== 'node') return
+    openNodeDetail(String(params.data?.userId || params.data?.id || ''))
+  })
+  roleIgnitionGraph.setOption(buildRoleIgnitionOption(), true)
+  roleIgnitionGraph.resize()
 }
 
 function observeModelTrendContainer(container: HTMLDivElement) {
@@ -2413,6 +3109,7 @@ function scheduleModelTrendChartRender() {
 function resizeCharts() {
   layerChart?.resize()
   pathGraphChart?.resize()
+  roleIgnitionGraph?.resize()
   modelTrendChart?.resize()
   modelBacktestChart?.resize()
   evidenceTimelineChart?.resize()
@@ -2430,6 +3127,10 @@ async function renderActiveTabCharts() {
   }
   if (activeTab.value === 'model') {
     await Promise.all([renderModelTrendChart(), renderHistoricalBacktestChart(), renderEvidenceTimelineChart()])
+    return
+  }
+  if (activeTab.value === 'evidence') {
+    await renderRoleIgnitionGraph()
   }
 }
 
@@ -2505,6 +3206,59 @@ function openClaimPathDetail(chain: EvidenceChain, path: EvidencePath, index: nu
   claimPathDetailOpen.value = true
 }
 
+function openClaimResponsePublication(publication: ClaimResponsePublication) {
+  const detail = diffusionSummary.value?.detail_index?.nodes?.[publication.author_id]
+  selectedNodeDetail.value = detail || {
+    id: publication.author_id,
+    author_name: publication.author_name || publication.author_id,
+    first_ts: publication.published_at || undefined,
+    posts: [{
+      post_id: publication.post_id,
+      author_id: publication.author_id,
+      author_name: publication.author_name || publication.author_id,
+      timestamp: publication.published_at || undefined,
+      content: publication.content || undefined,
+      url: publication.source_url || undefined,
+    }],
+  }
+  nodeDetailOpen.value = true
+}
+
+function openClaimResponseNode(response: ClaimResponseInfluentialResponse) {
+  openNodeDetail(response.author_id)
+}
+
+function openClaimResponsePathDetail(
+  response: ClaimResponseInfluentialResponse,
+  pathRef: ClaimResponsePathRef,
+  index: number,
+) {
+  const anchor = claimResponseLandscape.value?.claim_anchor
+  const evidenceRefs = pathRef.evidence_refs
+  const nodes = pathRef.nodes?.length
+    ? pathRef.nodes
+    : [anchor?.account, response.author_id].filter((value): value is string => Boolean(value))
+  const path: EvidencePath = {
+    path_id: pathRef.path_id,
+    evidence_refs: evidenceRefs,
+    nodes,
+    score: pathRef.score ?? response.path_contribution ?? undefined,
+    explanation: `主张回应路径 ${index + 1}`,
+  }
+  const chain: EvidenceChain = {
+    claim_id: anchor?.claim_id || response.author_id,
+    share_count: Number(response.path_count ?? 0),
+    originator: {
+      account_id: anchor?.authority_source_id || anchor?.account || '',
+      author_name: anchor?.account || undefined,
+      first_ts: anchor?.published_at || undefined,
+    },
+    key_paths: [path],
+    supporting_posts: [],
+  }
+  openClaimPathDetail(chain, path, index)
+}
+
 function openNodeDetail(nodeId: string) {
   const id = String(nodeId || '').trim()
   if (!id) return
@@ -2528,6 +3282,7 @@ function syncScopeFromRoute() {
   predicting.value = false
   eventId.value = firstQueryValue(route.query.event_id) || DEFAULT_EVENT_ID
   platform.value = firstQueryValue(route.query.platform)
+  claimResponsePlatform.value = platform.value.trim()
   observedUntil.value = firstQueryValue(route.query.observed_until) || undefined
 }
 
@@ -2536,6 +3291,12 @@ function resetSemanticProjection() {
   semanticProjection.value = null
   linkedPropagationArtifact.value = null
   semanticLoading.value = false
+}
+
+function resetClaimResponseLandscape() {
+  claimResponseRequestGeneration += 1
+  claimResponseLandscape.value = null
+  claimResponseLoading.value = false
 }
 
 async function loadSemanticProjection() {
@@ -2602,7 +3363,7 @@ async function handleAnalyze() {
   diffusionFullViewRequested.value = false
   diffusionNodeLimit.value = Math.min(DEFAULT_DIFFUSION_NODE_LIMIT, diffusionSliderMax.value)
   diffusionPendingNodeLimit.value = diffusionNodeLimit.value
-  await Promise.all([loadAnalysis(true), loadEvidenceTimeline()])
+  await Promise.all([loadAnalysis(true), loadEvidenceTimeline(), loadClaimResponseLandscape()])
 }
 
 function handleDiffusionLimitChange(value: number) {
@@ -2712,6 +3473,94 @@ async function loadCachedPrediction() {
   }
 }
 
+async function loadPropagationAlerts() {
+  const requestedEventId = eventId.value.trim()
+  if (!requestedEventId) {
+    propagationAlerts.value = []
+    return
+  }
+  alertsLoading.value = true
+  try {
+    const response = await getPropagationAlerts({
+      event_id: requestedEventId,
+      platform: platform.value.trim() || undefined,
+    })
+    propagationAlerts.value = Array.isArray(response.data) ? response.data : []
+  } catch {
+    propagationAlerts.value = []
+    /* The shared request interceptor displays the transport error. */
+  } finally {
+    alertsLoading.value = false
+  }
+}
+
+async function loadClaimResponseLandscape() {
+  const requestedEventId = eventId.value.trim()
+  if (!requestedEventId) {
+    resetClaimResponseLandscape()
+    return
+  }
+  const requestGeneration = ++claimResponseRequestGeneration
+  const requestedPlatform = claimResponsePlatform.value
+  claimResponseLoading.value = true
+  try {
+    const response = await getClaimResponseLandscape(claimResponseRequestParams())
+    if (
+      requestGeneration !== claimResponseRequestGeneration
+      || requestedEventId !== eventId.value.trim()
+      || requestedPlatform !== claimResponsePlatform.value
+    ) return
+    claimResponseLandscape.value = response.data
+  } catch {
+    if (requestGeneration !== claimResponseRequestGeneration) return
+    claimResponseLandscape.value = {
+      status: 'blocked',
+      event_id: requestedEventId,
+      platform: requestedPlatform || null,
+      blocking_reason: 'claim_response_landscape_request_failed',
+      claim_anchor: null,
+      official_publications: [],
+      influential_responses: [],
+      timeline: [],
+      coverage: {},
+      capability: {},
+      data_scope: {},
+    }
+  } finally {
+    if (requestGeneration === claimResponseRequestGeneration) {
+      claimResponseLoading.value = false
+    }
+  }
+}
+
+async function handleClaimResponsePlatformChange(value: string) {
+  claimResponsePlatform.value = String(value || '')
+  await loadClaimResponseLandscape()
+}
+
+async function openPropagationAlert(alert: PropagationAlert) {
+  try {
+    const response = await getPropagationAlertDetail(alert.id)
+    selectedPropagationAlert.value = response.data
+    propagationAlertDetailOpen.value = true
+  } catch {
+    /* The shared request interceptor displays the transport error. */
+  }
+}
+
+async function handlePropagationAlertAction(alert: PropagationAlert, action: PropagationAlertAction) {
+  try {
+    await applyPropagationAlertAction(alert.id, action)
+    message.success(`预警已${propagationAlertActionLabel(action)}`)
+    await loadPropagationAlerts()
+    if (selectedPropagationAlert.value?.id === alert.id) {
+      await openPropagationAlert(alert)
+    }
+  } catch {
+    /* The shared request interceptor displays the transport error. */
+  }
+}
+
 async function loadEvidenceTimeline() {
   const requestedEventId = eventId.value.trim()
   if (!requestedEventId) return
@@ -2754,6 +3603,8 @@ onMounted(() => {
   void loadAnalysis(false, true)
   void loadCachedPrediction()
   void loadEvidenceTimeline()
+  void loadPropagationAlerts()
+  void loadClaimResponseLandscape()
   void loadSemanticProjection()
   window.addEventListener('resize', resizeCharts)
 })
@@ -2768,12 +3619,16 @@ watch(
     void loadAnalysis(false, true)
     void loadCachedPrediction()
     void loadEvidenceTimeline()
+    void loadPropagationAlerts()
+    void loadClaimResponseLandscape()
   },
 )
 
 watch([eventId, platform], () => {
   resetSemanticProjection()
   void loadSemanticProjection()
+  claimResponsePlatform.value = platform.value.trim()
+  void loadClaimResponseLandscape()
 })
 
 watch(displayLayerRows, () => {
@@ -2789,8 +3644,14 @@ watch(diffusionSummary, () => {
   void renderPathTabCharts()
 })
 
+watch(roleIgnitionOverview, () => {
+  if (activeTab.value === 'evidence') void renderRoleIgnitionGraph()
+})
+
 watch(activeTab, () => {
   void renderActiveTabCharts()
+  if (activeTab.value === 'alerts') void loadPropagationAlerts()
+  if (activeTab.value === 'claim-response') void loadClaimResponseLandscape()
 })
 
 watch(modelPredictionReady, (ready) => {
@@ -2803,6 +3664,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('resize', resizeCharts)
   layerChart?.dispose()
   pathGraphChart?.dispose()
+  roleIgnitionGraph?.dispose()
   disposeModelTrendChart()
   disposeEvidenceTimelineChart()
 })
@@ -2832,11 +3694,186 @@ onBeforeUnmount(() => {
   height: 100%;
 }
 
+.role-ignition-card {
+  margin-bottom: 16px;
+}
+
+.role-ignition-graph-shell {
+  height: 360px;
+  overflow: hidden;
+  border: 1px solid rgba(45, 212, 191, 0.24);
+  border-radius: 4px;
+  background:
+    radial-gradient(circle at center, rgba(249, 115, 22, 0.16), transparent 19%),
+    linear-gradient(135deg, #071826 0%, #102235 54%, #06111d 100%);
+}
+
+.role-ignition-graph {
+  width: 100%;
+  height: 360px;
+}
+
 .section-title {
   color: #1f1f1f;
   font-size: 13px;
   font-weight: 600;
   margin-bottom: 10px;
+}
+
+.claim-response-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.claim-response-toolbar-label {
+  color: #475569;
+  font-size: 12px;
+}
+
+.claim-response-anchor-card {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  margin-bottom: 12px;
+  border-color: rgba(245, 158, 11, 0.28);
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.06);
+}
+
+.claim-response-timeline {
+  display: grid;
+  grid-template-rows: auto auto;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.claim-response-lane {
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.claim-response-official-lane {
+  border-left: 4px solid #f59e0b;
+}
+
+.claim-response-response-lane {
+  border-left: 4px solid #0ea5e9;
+}
+
+.claim-response-lane-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.claim-response-node-list {
+  display: grid;
+  gap: 10px;
+}
+
+.claim-response-node {
+  --claim-response-node-size: 28px;
+  display: grid;
+  grid-template-columns: var(--claim-response-node-size) minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid #dbeafe;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #0f172a;
+  cursor: pointer;
+  text-align: left;
+}
+
+.claim-response-node:hover {
+  border-color: #38bdf8;
+  background: #f0f9ff;
+}
+
+.claim-response-node-dot {
+  width: var(--claim-response-node-size);
+  height: var(--claim-response-node-size);
+  border-radius: 999px;
+  background: #0ea5e9;
+  box-shadow: inset 0 0 0 4px rgba(255, 255, 255, 0.72);
+}
+
+.claim-response-node-official .claim-response-node-dot {
+  background: #f59e0b;
+}
+
+.claim-response-node-stance-support .claim-response-node-dot {
+  background: #16a34a;
+}
+
+.claim-response-node-stance-oppose .claim-response-node-dot {
+  background: #dc2626;
+}
+
+.claim-response-node-stance-neutral .claim-response-node-dot {
+  background: #64748b;
+}
+
+.claim-response-node-main {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.claim-response-node-main strong,
+.claim-response-node-main span,
+.claim-response-node-main small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.claim-response-node-main strong {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.claim-response-node-main small {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.claim-response-node-main span {
+  color: #475569;
+  font-size: 12px;
+}
+
+.claim-response-response-item {
+  display: grid;
+  gap: 6px;
+}
+
+.claim-response-path-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  padding-left: 38px;
+}
+
+.claim-response-stance-tag {
+  width: fit-content;
+  margin-left: 38px;
+}
+
+.claim-response-timeline-card {
+  margin-bottom: 16px;
 }
 
 .path-card {
@@ -2932,6 +3969,22 @@ onBeforeUnmount(() => {
   max-height: 540px;
   overflow-y: auto;
   padding-top: 10px;
+}
+
+.alert-evidence {
+  max-height: 340px;
+  margin: 0;
+  padding: 12px;
+  overflow: auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  background: #f8fafc;
+  color: #334155;
+  font-family: Consolas, 'Courier New', monospace;
+  font-size: 12px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .timeline-wrap :deep(.ant-timeline) {
@@ -3046,6 +4099,25 @@ onBeforeUnmount(() => {
 
 .table-link-button {
   padding: 0;
+}
+
+@media (max-width: 768px) {
+  .role-ignition-graph-shell,
+  .role-ignition-graph {
+    height: 320px;
+  }
+
+  .claim-response-node-main strong,
+  .claim-response-node-main span,
+  .claim-response-node-main small {
+    white-space: normal;
+  }
+
+  .claim-response-path-list,
+  .claim-response-stance-tag {
+    margin-left: 0;
+    padding-left: 0;
+  }
 }
 
 :deep(.clickable-table-row) {

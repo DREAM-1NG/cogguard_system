@@ -253,16 +253,17 @@ test('renders all required semantic overlay fields without replacing observed pa
   assert.match(pathDrawer, /selectedClaimPathDetail\.chain\.supporting_posts/)
 })
 
-test('renders propagation nodes as fixed hierarchy rings without relationship lines', () => {
+test('renders backend clustered propagation nodes with forward evidence relationships', () => {
   const graphOption = bodyOf(propagationView, 'buildPathGraphOption')
 
-  assert.match(graphOption, /const radialGap = 95/)
-  assert.doesNotMatch(graphOption, /hasBackendLayout/)
-  assert.doesNotMatch(graphOption, /layout_x/)
-  assert.match(graphOption, /links:\s*\[\]/)
+  assert.match(graphOption, /const treeEdges = summary\?\.tree_edges \?\? \[\]/)
+  assert.match(graphOption, /hasBackendLayout/)
+  assert.match(graphOption, /layout_x/)
+  assert.match(graphOption, /targetLayer > sourceLayer/)
+  assert.match(graphOption, /links:\s*graphLinks/)
   assert.match(graphOption, /draggable:\s*false/)
-  assert.doesNotMatch(graphOption, /edgeSymbol:/)
-  assert.doesNotMatch(graphOption, /focus:\s*'adjacency'/)
+  assert.match(graphOption, /edgeSymbol:/)
+  assert.match(graphOption, /focus:\s*'adjacency'/)
 })
 
 test('keeps evidence time series separate from relative model forecast steps', () => {
@@ -297,4 +298,17 @@ test('renders active-window controls and evidence zoom without assigning timesta
 test('refreshes the evidence timeline after an analyst changes the event scope', () => {
   assert.match(bodyOf(propagationView, 'handleAnalyze'), /loadEvidenceTimeline\(\)/)
   assert.match(bodyOf(propagationView, 'handlePredict'), /loadEvidenceTimeline\(\)/)
+})
+
+test('claim response stance styling is disabled until semantic coverage is ready', () => {
+  const ready = propagationView.slice(
+    propagationView.indexOf('const claimResponseSemanticReady = computed'),
+    propagationView.indexOf('function claimResponseStanceClass'),
+  )
+  const stanceClass = bodyOf(propagationView, 'claimResponseStanceClass')
+
+  assert.match(ready, /claimResponseLandscape\.value\?\.coverage\?\.semantic\?\.status === 'available'/)
+  assert.match(stanceClass, /if \(!claimResponseSemanticReady\.value\) return 'claim-response-node-stance-neutral'/)
+  assert.match(stanceClass, /claimResponseResponseStance\(response\)/)
+  assert.match(stanceClass, /return stance \? `claim-response-node-stance-\$\{stance\}` : 'claim-response-node-stance-neutral'/)
 })
