@@ -31,6 +31,7 @@ Current semantic package paths: `system/research/coordination_discover/`, `syste
 | **Evidence Sufficiency** | The assessment of whether the current evidence set is enough to support a case action. | Completeness score, confidence score |
 | **Evidence Annotation** | A note attached to a specific evidence item, including its assessment and supporting context. | Comment, tag, annotation blob |
 | **Case Activity** | An append-only business activity record that explains what happened to a case and when. | Audit spam, task log |
+| **Semantic Evidence Assistance** | Auxiliary, model-derived evidence projections such as keywords, topics, sentiment, stance, and entities that help an analyst inspect an Event Review Case without changing its conclusions. | Semantic enrichment, semantic result, model conclusion |
 
 ## Internal Analysis Lifecycle
 

@@ -2,7 +2,7 @@
   "name": "cogguard-frontend",
   "private": true,
   "version": "0.1.0",
-  "description": "CogGuard 前端 - 基于 Vue 3 + Ant Design Vue 的智能联合防御系统管理界面",
+  "description": "CogGuard 前端 - 本地/LAN 事件研判案例工作台",
   "type": "module",
   "scripts": {
     "dev": "vite",

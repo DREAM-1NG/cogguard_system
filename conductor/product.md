@@ -8,7 +8,7 @@ review of coordinated manipulation. The runnable product is entirely under
 
 ## Product flow
 
-`event -> evidence -> Coordination Discover -> Propagation Analysis -> Review -> Event Review Case -> governance action`
+`Event Review Case -> evidence -> Coordination Discover / Propagation Analysis / Review -> findings and advisory -> Confirmed Decision -> governance action`
 
 An Event Review Case is the product-facing aggregate. Event Snapshot,
 Analysis Run, model checkpoints, artifact paths, and queue internals are
@@ -27,7 +27,7 @@ diagnostic concepts, not primary product copy.
 - Evidence acquisition from Weibo, Douyin, Xiaohongshu, and news.
 - Event Review Case evidence, annotation, advisory, draft, decision, and activity workflows.
 - Coordination Discover, Propagation Analysis, and Review as evidence-producing capabilities.
-- Semantic evidence assistance for the event-review workspace, with model/runtime state remaining diagnostic.
+- Semantic Evidence Assistance for the event-review workspace, with model/runtime state remaining diagnostic.
 
 ## Scope limits
 

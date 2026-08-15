@@ -17,7 +17,7 @@ Use the canonical names in `../UBIQUITOUS_LANGUAGE.md`.
 ## Presentation rules
 
 - Present the evidence, its provenance, and uncertainty before a conclusion.
-- Keep semantic enrichment as evidence assistance; it must not alter Coordination Discover, Propagation Analysis, or Review conclusions.
+- Keep Semantic Evidence Assistance as auxiliary evidence; it must not alter Coordination Discover, Propagation Analysis, or Review conclusions.
 - Do not expose model version, checkpoint path, artifact hash, queue state, Active Pointer, or rollback controls in the primary product workspace.
 - When an internal capability is unavailable, say what evidence is unavailable and why; do not substitute a successful-looking result.
 

@@ -1,7 +1,7 @@
 [project]
 name = "cogguard-backend"
 version = "0.1.0"
-description = "CogGuard - Intelligent Joint Defense System for Cross-domain Cognitive Manipulation"
+description = "CogGuard - local/LAN evidence-driven Event Review Case prototype"
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.115.0",
