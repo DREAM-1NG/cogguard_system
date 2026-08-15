@@ -1,0 +1,462 @@
+from __future__ import annotations
+
+import asyncio
+import json
+from datetime import datetime, timezone
+from types import SimpleNamespace
+
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session
+
+from app.db.mysql import Base
+from app.models.case_workbench import (
+    AuthoritySource,
+    AuthoritySourceAccount,
+    CaseClaim,
+    CaseRecord,
+)
+from app.services import claim_response_landscape_service
+
+
+class AsyncSessionAdapter:
+    def __init__(self, session: Session) -> None:
+        self.session = session
+
+    async def execute(self, statement):
+        return self.session.execute(statement)
+
+
+class FakeCursor:
+    def __init__(self, rows: list[dict]) -> None:
+        self.rows = rows
+
+    async def to_list(self, length):
+        return self.rows[:length] if length is not None else list(self.rows)
+
+
+class FakeCollection:
+    def __init__(self, rows: list[dict]) -> None:
+        self.rows = rows
+        self.calls: list[dict] = []
+
+    def find(self, query, projection=None):
+        self.calls.append({"query": dict(query), "projection": projection})
+        rows = [row for row in self.rows if _matches(row, query)]
+        return FakeCursor(rows)
+
+
+class FakeMongo(dict):
+    pass
+
+
+def _matches(row: dict, query: dict) -> bool:
+    for key, expected in query.items():
+        value = row.get(key)
+        if isinstance(expected, dict) and "$in" in expected:
+            if value not in expected["$in"]:
+                return False
+        elif value != expected:
+            return False
+    return True
+
+
+def _db_with_case_material() -> tuple[AsyncSessionAdapter, Session]:
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(
+        engine,
+        tables=[
+            CaseRecord.__table__,
+            AuthoritySource.__table__,
+            AuthoritySourceAccount.__table__,
+            CaseClaim.__table__,
+        ],
+    )
+    session = Session(engine, expire_on_commit=False)
+    session.add_all(
+        [
+            CaseRecord(case_id="case-1", event_id="event-1", title="Case one", created_by=7),
+            AuthoritySource(
+                source_id="source-1",
+                name="Official Desk",
+                url="https://authority.example",
+                review_status="allowlisted",
+                tier="government_official",
+                reviewed_by=7,
+            ),
+            AuthoritySource(
+                source_id="source-2",
+                name="Different Desk",
+                url="https://other.example",
+                review_status="allowlisted",
+                tier="media",
+                reviewed_by=7,
+            ),
+            AuthoritySourceAccount(
+                source_id="source-1",
+                platform="weibo",
+                author_id="official-1",
+                display_name_snapshot="Official Desk",
+                verification_snapshot=json.dumps({"is_verified": True}),
+                reviewed_by=7,
+            ),
+            AuthoritySourceAccount(
+                source_id="source-1",
+                platform="xhs",
+                author_id="official-1",
+                display_name_snapshot="Official Desk",
+                verification_snapshot=json.dumps({"is_verified": True}),
+                reviewed_by=7,
+            ),
+            AuthoritySourceAccount(
+                source_id="source-2",
+                platform="weibo",
+                author_id="official-other",
+                display_name_snapshot="Official Desk",
+                verification_snapshot=json.dumps({"is_verified": True}),
+                reviewed_by=7,
+            ),
+            CaseClaim(
+                claim_id="claim-1",
+                case_id="case-1",
+                authority_source_id="source-1",
+                exact_quote="The primary authority claim.",
+                quote_start=0,
+                quote_end=len("The primary authority claim."),
+                source_url="https://authority.example/post",
+                account="Official Desk",
+                published_at=datetime(2026, 8, 15, tzinfo=timezone.utc),
+                role="primary",
+                source_tier_snapshot="government_official",
+                source_review_snapshot="allowlisted",
+                content_sha256="a" * 64,
+            ),
+        ]
+    )
+    session.commit()
+    return AsyncSessionAdapter(session), session
+
+
+def _post(platform: str, post_id: str, author_id: str, *, likes: int, author_name: str | None = None) -> dict:
+    return {
+        "event_id": "event-1",
+        "platform": platform,
+        "post_id": post_id,
+        "author_id": author_id,
+        "author_name": author_name or author_id,
+        "timestamp": f"2026-08-15T00:{len(post_id):02d}:00+00:00",
+        "content": f"content for {post_id}",
+        "likes": likes,
+        "reposts": 0,
+        "comments_count": 0,
+        "author_profile": {
+            "verification_snapshot": {"is_verified": True, "reason": "platform badge"}
+        },
+    }
+
+
+def _mongo() -> FakeMongo:
+    posts = [
+        _post("weibo", "p-official", "official-1", likes=10, author_name="Official Desk"),
+        _post("weibo", "p-same-name", "impostor-1", likes=900, author_name="Official Desk"),
+        _post("weibo", "p-other-source", "official-other", likes=800, author_name="Official Desk"),
+        _post("weibo", "p-responder-a", "responder-a", likes=1, author_name="Responder A"),
+        _post("weibo", "p-responder-b", "responder-b", likes=500, author_name="Responder B"),
+        _post("weibo", "p-responder-c", "responder-c", likes=50, author_name="Responder C"),
+        _post("xhs", "p-xhs-official", "official-1", likes=5_000, author_name="Official Desk"),
+        _post("xhs", "p-xhs-responder", "xhs-responder", likes=6_000, author_name="XHS Responder"),
+    ]
+    return FakeMongo(raw_posts=FakeCollection(posts), raw_comments=FakeCollection([]))
+
+
+def _observed_result() -> dict:
+    return {
+        "graph": {
+            "nodes": [
+                {"id": "official-1", "author_name": "Official Desk"},
+                {"id": "responder-a", "author_name": "Responder A"},
+                {"id": "responder-b", "author_name": "Responder B"},
+                {"id": "responder-c", "author_name": "Responder C"},
+                {"id": "xhs-responder", "author_name": "XHS Responder"},
+            ],
+            "edges": [
+                {"source": "official-1", "target": "responder-a"},
+                {"source": "responder-a", "target": "responder-b"},
+                {"source": "official-1", "target": "responder-c"},
+                {"source": "official-1", "target": "xhs-responder"},
+            ],
+        },
+        "path_analysis": {
+            "key_paths": [
+                {
+                    "path_id": "claim-1:0",
+                    "claim_id": "claim-1",
+                    "nodes": ["official-1", "responder-a", "responder-b"],
+                    "score": 8.0,
+                    "evidence_refs": [
+                        {"platform": "weibo", "post_id": "p-official"},
+                        {"platform": "weibo", "post_id": "p-responder-a"},
+                        {"platform": "weibo", "post_id": "p-responder-b"},
+                    ],
+                },
+                {
+                    "path_id": "claim-1:1",
+                    "claim_id": "claim-1",
+                    "nodes": ["official-1", "responder-c"],
+                    "score": 4.0,
+                    "evidence_refs": [
+                        {"platform": "weibo", "post_id": "p-official"},
+                        {"platform": "weibo", "post_id": "p-responder-c"},
+                    ],
+                },
+                {
+                    "path_id": "claim-1:xhs",
+                    "claim_id": "claim-1",
+                    "nodes": ["official-1", "xhs-responder"],
+                    "score": 20.0,
+                    "evidence_refs": [
+                        {"platform": "xhs", "post_id": "p-xhs-official"},
+                        {"platform": "xhs", "post_id": "p-xhs-responder"},
+                    ],
+                },
+            ]
+        },
+    }
+
+
+def test_landscape_uses_exact_bound_authority_accounts_and_excludes_verified_same_name(monkeypatch):
+    async def scenario():
+        db, session = _db_with_case_material()
+        try:
+            mongo = _mongo()
+
+            async def fake_observed(**kwargs):
+                assert kwargs == {"event_id": "event-1", "platform": "weibo", "node_limit": 300}
+                return _observed_result()
+
+            monkeypatch.setattr(
+                claim_response_landscape_service.propagation_observation_service,
+                "analyze_observed_propagation",
+                fake_observed,
+            )
+
+            result = await claim_response_landscape_service.build_claim_response_landscape(
+                "event-1",
+                platform="weibo",
+                db=db,
+                mongo_db=mongo,
+                semantic_projection={"status": "ready", "artifact": {"cross_analysis": {}}},
+            )
+
+            assert result["status"] == "ready"
+            assert result["claim_anchor"] == {
+                "case_id": "case-1",
+                "claim_id": "claim-1",
+                "authority_source_id": "source-1",
+                "text": "The primary authority claim.",
+                "source_url": "https://authority.example/post",
+                "account": "Official Desk",
+                "published_at": "2026-08-15T00:00:00",
+                "role": "primary",
+                "source_review_status": "allowlisted",
+                "source_tier": "government_official",
+                "evidence_refs": ["case:case-1:claim:claim-1"],
+            }
+            assert [row["post_id"] for row in result["official_publications"]] == ["p-official"]
+            assert result["official_publications"][0]["authority_binding"] == {
+                "source_id": "source-1",
+                "platform": "weibo",
+                "author_id": "official-1",
+            }
+            assert result["official_publications"][0]["evidence_refs"] == ["weibo:post:p-official"]
+        finally:
+            session.close()
+
+    asyncio.run(scenario())
+
+
+def test_landscape_ranks_responses_by_platform_local_paths_before_engagement(monkeypatch):
+    async def scenario():
+        db, session = _db_with_case_material()
+        try:
+            mongo = _mongo()
+
+            async def fake_observed(**_kwargs):
+                return _observed_result()
+
+            monkeypatch.setattr(
+                claim_response_landscape_service.propagation_observation_service,
+                "analyze_observed_propagation",
+                fake_observed,
+            )
+
+            result = await claim_response_landscape_service.build_claim_response_landscape(
+                "event-1",
+                platform="weibo",
+                db=db,
+                mongo_db=mongo,
+                semantic_projection={"status": "ready", "artifact": {"cross_analysis": {}}},
+            )
+
+            ranked_ids = [row["author_id"] for row in result["influential_responses"]]
+            assert ranked_ids == ["responder-a", "responder-b", "responder-c"]
+            assert result["influential_responses"][0]["downstream_reach"] == 1
+            assert result["influential_responses"][0]["engagement_percentile"] < result["influential_responses"][1]["engagement_percentile"]
+            assert all(row["platform"] == "weibo" for row in result["influential_responses"])
+            assert all(row["rank_scope"] == "platform" for row in result["influential_responses"])
+            assert all("xhs-responder" != row["author_id"] for row in result["influential_responses"])
+            assert result["influential_responses"][0]["path_refs"] == [
+                {
+                    "path_id": "claim-1:0",
+                    "evidence_refs": [
+                        "weibo:post:p-official",
+                        "weibo:post:p-responder-a",
+                        "weibo:post:p-responder-b",
+                    ],
+                }
+            ]
+        finally:
+            session.close()
+
+    asyncio.run(scenario())
+
+
+def test_landscape_reports_path_and_semantic_coverage_gaps(monkeypatch):
+    async def scenario():
+        db, session = _db_with_case_material()
+        try:
+            mongo = _mongo()
+
+            async def fake_observed(**_kwargs):
+                return {"graph": {"nodes": [], "edges": []}, "path_analysis": {"key_paths": []}}
+
+            monkeypatch.setattr(
+                claim_response_landscape_service.propagation_observation_service,
+                "analyze_observed_propagation",
+                fake_observed,
+            )
+
+            result = await claim_response_landscape_service.build_claim_response_landscape(
+                "event-1",
+                platform="weibo",
+                db=db,
+                mongo_db=mongo,
+                semantic_projection={
+                    "status": "not_found",
+                    "blocking_reason": "semantic_artifact_not_found",
+                    "artifact": None,
+                },
+            )
+
+            assert result["status"] == "ready"
+            assert result["coverage"]["observed_paths"] == {
+                "status": "unavailable",
+                "reason": "observed_path_evidence_unavailable",
+                "path_count": 0,
+            }
+            assert result["coverage"]["semantic"] == {
+                "status": "unavailable",
+                "reason": "semantic_artifact_not_found",
+            }
+            assert result["influential_responses"] == []
+        finally:
+            session.close()
+
+    asyncio.run(scenario())
+
+
+def test_latest_semantic_projection_continues_after_newest_candidate_is_unavailable(monkeypatch):
+    async def scenario():
+        load_order: list[str] = []
+
+        class FakeRegistry:
+            def __init__(self, **_kwargs) -> None:
+                pass
+
+            async def list_semantic_artifact_candidates(self, event_id):
+                assert event_id == "event-1"
+                return [
+                    {"run_id": "newest-missing", "snapshot_id": "snapshot-new"},
+                    {"run_id": "older-ready", "snapshot_id": "snapshot-old"},
+                ]
+
+            async def load_run_artifact(self, run_id, artifact_key):
+                assert artifact_key == claim_response_landscape_service.SEMANTIC_ARTIFACT_KEY
+                load_order.append(run_id)
+                if run_id == "newest-missing":
+                    raise KeyError("artifact not found")
+                return {
+                    "technology": "semantic_enrichment",
+                    "status": "ok",
+                    "runtime_status": "ready",
+                    "fallback": False,
+                    "cross_analysis": {"propagation_path_overlays": [{"path_id": "claim-1:0"}]},
+                }
+
+        monkeypatch.setattr(claim_response_landscape_service, "AnalysisRegistry", FakeRegistry)
+
+        result = await claim_response_landscape_service._load_latest_semantic_projection(
+            "event-1",
+            db=SimpleNamespace(name="db"),
+            mongo_db=SimpleNamespace(name="mongo"),
+        )
+
+        assert result["status"] == "ready"
+        assert result["run_id"] == "older-ready"
+        assert result["snapshot_id"] == "snapshot-old"
+        assert load_order == ["newest-missing", "older-ready"]
+
+    asyncio.run(scenario())
+
+
+def test_landscape_keeps_ranks_platform_local_and_projects_exact_semantic_evidence(monkeypatch):
+    async def scenario():
+        db, session = _db_with_case_material()
+        try:
+            async def fake_observed(**_kwargs):
+                return _observed_result()
+
+            monkeypatch.setattr(
+                claim_response_landscape_service.propagation_observation_service,
+                "analyze_observed_propagation",
+                fake_observed,
+            )
+            semantic_projection = {
+                "status": "ready",
+                "artifact": {
+                    "technology": "semantic_enrichment",
+                    "status": "ok",
+                    "runtime_status": "ready",
+                    "fallback": False,
+                    "layers": {
+                        "posts": [
+                            {"id": "p-official", "platform": "weibo", "stance": {"label": "supports"}},
+                            {"id": "p-responder-a", "platform": "weibo", "stance": {"label": "supports"}},
+                            {"id": "p-responder-b", "platform": "weibo", "stance": {"label": "contradicts"}},
+                            {"id": "p-responder-c", "platform": "weibo", "stance": {"label": "unrelated"}},
+                            {"id": "p-xhs-responder", "platform": "xhs", "stance": {"label": "supports"}},
+                        ],
+                        "comments": [],
+                    },
+                },
+            }
+
+            result = await claim_response_landscape_service.build_claim_response_landscape(
+                "event-1",
+                db=db,
+                mongo_db=_mongo(),
+                semantic_projection=semantic_projection,
+            )
+
+            rows_by_platform: dict[str, list[dict]] = {}
+            for row in result["influential_responses"]:
+                rows_by_platform.setdefault(row["platform"], []).append(row)
+            assert [row["rank"] for row in rows_by_platform["weibo"]] == [1, 2, 3]
+            assert [row["rank"] for row in rows_by_platform["xhs"]] == [1]
+            assert result["official_publications"][0]["semantic"] == {"stance": "supports"}
+            responder_a = next(row for row in rows_by_platform["weibo"] if row["author_id"] == "responder-a")
+            assert responder_a["stance"] == "supports"
+            assert responder_a["semantic"]["stance_distribution"] == {"supports": 1}
+        finally:
+            session.close()
+
+    asyncio.run(scenario())

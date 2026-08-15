@@ -13,6 +13,27 @@ class TrendPoint(BaseModel):
     predicted_size: int
 
 
+class ClaimResponseLandscapeData(BaseModel):
+    """Observed Event Review Case claim-response projection."""
+
+    status: Literal["ready", "not_found", "blocked"]
+    event_id: str
+    platform: str | None = None
+    blocking_reason: str | None = None
+    claim_anchor: dict[str, Any] | None = None
+    official_publications: list[dict[str, Any]] = Field(default_factory=list)
+    influential_responses: list[dict[str, Any]] = Field(default_factory=list)
+    timeline: list[dict[str, Any]] = Field(default_factory=list)
+    coverage: dict[str, Any] = Field(default_factory=dict)
+    capability: dict[str, Any] = Field(default_factory=dict)
+    data_scope: dict[str, Any] = Field(default_factory=dict)
+
+
+class ClaimResponseLandscapeResponse(BaseModel):
+    code: int = 0
+    data: ClaimResponseLandscapeData
+    msg: str = "ok"
+
 class TrendInterval(BaseModel):
     step: int | str
     at: str | None = None

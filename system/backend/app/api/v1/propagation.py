@@ -7,14 +7,24 @@ prediction endpoint estimates future trend and next-hop candidates.
 
 from inspect import Parameter, signature
 
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import get_current_user
+from app.db.mongodb import get_mongo_db
+from app.db.mysql import get_db
 from app.models.user import User
-from app.schemas.propagation import PropagationPredictionResponse
-from app.services import propagation_model_service, propagation_observation_service
+from app.schemas.propagation import (
+    ClaimResponseLandscapeResponse,
+    PropagationPredictionResponse,
+)
+from app.services import (
+    claim_response_landscape_service,
+    propagation_model_service,
+    propagation_observation_service,
+)
 from app.utils.response import success
 
 router = APIRouter()
@@ -95,6 +105,23 @@ async def observed_analysis(
     )
     return success(data=result)
 
+
+@router.get("/claim-response-landscape", response_model=ClaimResponseLandscapeResponse)
+async def get_claim_response_landscape(
+    event_id: Annotated[str, Query(min_length=1, description="Event id required for the Event Review Case landscape.")],
+    platform: Annotated[str | None, Query(description="Limit publications and responses to one platform.")] = None,
+    db: AsyncSession = Depends(get_db),
+    mongo_db: Any = Depends(get_mongo_db),
+    _current_user: User = Depends(get_current_user),
+):
+    """Read observed authority-claim publications and path-backed responses."""
+    result = await claim_response_landscape_service.build_claim_response_landscape(
+        event_id,
+        platform=platform,
+        db=db,
+        mongo_db=mongo_db,
+    )
+    return success(data=result)
 
 @router.post("/model-event-predict", response_model=PropagationPredictionResponse)
 async def predict_model_event(
