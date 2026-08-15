@@ -32,4 +32,4 @@ Workspace: `G:\CISCN\CogGuard\.worktrees\refactor-system`
 - Harmfulness synthesis and whole-task review: complete (`doc/research/coordination-characterization/harmfulness/README.md`; three hash-bound `strict-validation.json` records; canonical 20-paper beast evidence plus P04/P13/P10 transfer map). Final independent review PASS/APPROVED with 0 findings.
 
 - Case Workbench Task 01: separate documentation/research baseline ledger at `.superpowers/sdd/case-workbench-progress.md` (rollback `425a8f2`; preserves the Coordination history above).
-- Runtime cleanup Task 1: implementation committed (`393110f..3365764`); follow-up review removed retired imports, and focused verification / independent review remain pending.
+- Runtime cleanup Task 1: complete (commits `393110f..174b678`, review clean; review runtime and executor tests passed).
