@@ -34,22 +34,22 @@
 - Consumes: the Event Review Case product boundary in `CONTEXT.md` and ADR 0007.
 - Produces: context and package descriptions that describe the local/LAN Event Review Case prototype.
 
-- [ ] Replace the `conductor/product.md` product flow with:
+- [x] Replace the `conductor/product.md` product flow with:
 
 ```text
 Event Review Case -> evidence -> Coordination Discover / Propagation Analysis / Review -> findings and advisory -> Confirmed Decision -> governance action
 ```
 
-- [ ] Add this row under the Event Review Case table in `UBIQUITOUS_LANGUAGE.md`:
+- [x] Add this row under the Event Review Case table in `UBIQUITOUS_LANGUAGE.md`:
 
 ```markdown
 | **Semantic Evidence Assistance** | Auxiliary, model-derived evidence projections such as keywords, topics, sentiment, stance, and entities that help an analyst inspect an Event Review Case without changing its conclusions. | Semantic enrichment, semantic result, model conclusion |
 ```
 
-- [ ] Replace semantic-enrichment wording in `conductor/product.md` and `conductor/product-guidelines.md` with the exact canonical term **Semantic Evidence Assistance**.
-- [ ] Set the backend description to `CogGuard - local/LAN evidence-driven Event Review Case prototype`.
-- [ ] Set the frontend description to `CogGuard 前端 - 本地/LAN 事件研判案例工作台`.
-- [ ] Run `git diff --check`, inspect only task files, then commit only task-owned files with `docs(context): align case workflow terminology`.
+- [x] Replace semantic-enrichment wording in `conductor/product.md` and `conductor/product-guidelines.md` with the exact canonical term **Semantic Evidence Assistance**.
+- [x] Set the backend description to `CogGuard - local/LAN evidence-driven Event Review Case prototype`.
+- [x] Set the frontend description to `CogGuard 前端 - 本地/LAN 事件研判案例工作台`.
+- [x] Run `git diff --check`, inspect only task files, then commit only task-owned files with `docs(context): align case workflow terminology`.
 
 ---
 
@@ -65,7 +65,7 @@ Event Review Case -> evidence -> Coordination Discover / Propagation Analysis / 
 - Consumes: `normalize_analysis_stage(stage: Any) -> str` and `UnknownAnalysisStage`.
 - Produces: one canonical `ANALYSIS_STAGE_ALIASES` mapping with unchanged normalized values.
 
-- [ ] Add a failing test that parses `app.core.analysis.contracts.__file__` with `ast.parse`, finds the `ANALYSIS_STAGE_ALIASES` dictionary literal, and asserts its string keys have no duplicates. Python overwrites duplicate dictionary keys during import, so this source-level assertion is the required RED evidence for a behavior-preserving cleanup. In the same test, retain the public normalization assertions:
+- [x] Add a failing test that parses `app.core.analysis.contracts.__file__` with `ast.parse`, finds the `ANALYSIS_STAGE_ALIASES` dictionary literal, and asserts its string keys have no duplicates. Python overwrites duplicate dictionary keys during import, so this source-level assertion is the required RED evidence for a behavior-preserving cleanup. In the same test, retain the public normalization assertions:
 
 ```python
 assert len(alias_keys) == len(set(alias_keys))
@@ -74,11 +74,17 @@ assert normalize_analysis_stage("review_teacher") == "teacher"
 assert normalize_analysis_stage("semantic") == "semantic_enrichment"
 ```
 
-- [ ] Verify the test fails because the mapping currently repeats the two review entries.
-- [ ] Remove only the second repeated `review_student` and `review_teacher` entries in `contracts.py`.
-- [ ] Run `uv run --no-sync python -m pytest tests/test_analysis_contracts.py tests/test_analysis_executor.py -q` from `system/backend`.
-- [ ] Run `git diff --check`, inspect only task files, then commit only task-owned files with `refactor(analysis): deduplicate stage aliases`.
+- [x] Verify the test fails because the mapping currently repeats the two review entries.
+- [x] Remove only the second repeated `review_student` and `review_teacher` entries in `contracts.py`.
+- [x] Run `uv run --no-sync python -m pytest tests/test_analysis_contracts.py tests/test_analysis_executor.py -q` from `system/backend`.
+- [x] Run `git diff --check`, inspect only task files, then commit only task-owned files with `refactor(analysis): deduplicate stage aliases`.
 
 ## Final Validation
 
 Run `uv run --no-sync python -m pytest tests/test_analysis_contracts.py tests/test_analysis_review_runtime.py tests/test_analysis_executor.py -q` from `system/backend`, then `git diff --check`. Conduct a whole-branch review from `5ae88ad` through the final structural commit.
+
+## Execution Record
+
+- Task 1 completed in `a7062ba`; TOML and JSON metadata parsing plus `git diff --check` passed.
+- Task 2 completed in `f0fa321` and `4d2dbc2`; the AST test failed before the duplicate-literal removal, and focused contracts plus executor regressions passed.
+- The runtime cleanup preceding this plan completed in `3365764` and `174b678`, with independent review recorded in `83f947a`.
