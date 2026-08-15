@@ -152,7 +152,8 @@ def test_analysis_stage_alias_literal_has_unique_keys_and_preserves_legacy_norma
 
     alias_keys = [key.value for key in assignment.value.keys if isinstance(key, ast.Constant) and isinstance(key.value, str)]
 
-    assert len(alias_keys) == len(ANALYSIS_STAGE_ALIASES)
+    assert len(alias_keys) == len(set(alias_keys))
+    assert set(alias_keys) == set(ANALYSIS_STAGE_ALIASES)
     assert normalize_analysis_stage("review_student") == "student"
     assert normalize_analysis_stage("review_teacher") == "teacher"
     assert normalize_analysis_stage("semantic") == "semantic_enrichment"
