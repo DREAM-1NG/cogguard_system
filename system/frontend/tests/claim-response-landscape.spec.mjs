@@ -90,7 +90,7 @@ test('a ready projection with an anchor keeps the claim-response evidence lanes 
   const tabStart = propagationView.indexOf('key="claim-response" tab="主张回应图谱"')
   const tabSource = propagationView.slice(tabStart, propagationView.indexOf('</a-tab-pane>', tabStart))
 
-  assert.match(ready, /landscape\?\.status === 'ready' && Boolean\(landscape\.claim_anchor\)/)
+  assert.match(ready, /claimResponsePresentation\.value\.isReady/)
   assert.doesNotMatch(ready, /official_publications\.length/)
   assert.doesNotMatch(ready, /influential_responses\.length/)
   assert.match(tabSource, /暂无精确绑定账号发布记录/)
@@ -107,7 +107,7 @@ test('claim response view keeps influence ranking platform-local and path-backed
   assert.match(requestParams, /platform: claimResponsePlatform\.value \|\| undefined/)
   assert.match(propagationView, /rank_scope === 'platform'/)
   assert.match(openPathDetail, /openClaimPathDetail/)
-  assert.match(openPathDetail, /pathRef\.evidence_refs/)
+  assert.match(openPathDetail, /drilldown\.evidenceRefs/)
   assert.doesNotMatch(propagationView, /author_name.*官方/)
   assert.doesNotMatch(propagationView, /verification_context.*authority_binding/)
 })
@@ -115,8 +115,9 @@ test('claim response view keeps influence ranking platform-local and path-backed
 test('claim response path drill-down uses only observed nodes and declines an unnamed path', () => {
   const openPathDetail = bodyOf(propagationView, 'openClaimResponsePathDetail')
 
-  assert.match(openPathDetail, /pathRef\.nodes/)
-  assert.match(openPathDetail, /if \(!nodes\.length \|\| !evidenceRefs\.length\)/)
+  assert.match(openPathDetail, /createClaimResponsePathDrilldown/)
+  assert.match(openPathDetail, /if \(!drilldown\)/)
+  assert.match(openPathDetail, /drilldown\.nodes/)
   assert.match(openPathDetail, /message\.info/)
   assert.doesNotMatch(openPathDetail, /\[anchor\?\.account, response\.author_id\]/)
 })
@@ -126,8 +127,8 @@ test('claim response path drawer presents exact observed evidence rather than fa
   const drawerStart = propagationView.indexOf('v-model:open="claimPathDetailOpen"')
   const drawerSource = propagationView.slice(drawerStart, propagationView.indexOf('</a-drawer>', drawerStart))
 
-  assert.match(openPathDetail, /pathRef\.evidence_refs/)
-  assert.match(openPathDetail, /pathRef\.score \?\? response\.path_contribution/)
+  assert.match(openPathDetail, /drilldown\.evidenceRefs/)
+  assert.match(openPathDetail, /drilldown\.pathScore/)
   assert.match(openPathDetail, /authority_account/)
   assert.match(openPathDetail, /authority_source_id/)
   assert.match(drawerSource, /精确证据引用/)

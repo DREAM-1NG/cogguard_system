@@ -44,6 +44,7 @@ test('ready projection preserves the anchor and exposes explicit empty lanes', (
   const view = helper.presentClaimResponseLandscape(projection)
 
   assert.equal(view.status, 'ready')
+  assert.equal(view.isReady, true)
   assert.deepEqual(view.anchor, anchor)
   assert.deepEqual(view.lanes, {
     officialPublications: [],
@@ -55,6 +56,30 @@ test('ready projection preserves the anchor and exposes explicit empty lanes', (
     influentialResponses: true,
     timeline: true,
   })
+})
+
+test('presentation readiness requires both a ready projection and an anchor', () => {
+  const readyWithoutAnchor = helper.presentClaimResponseLandscape({
+    status: 'ready',
+    event_id: 'event-1',
+    official_publications: [],
+    influential_responses: [],
+    timeline: [],
+    coverage: {},
+  })
+  const blockedWithAnchor = helper.presentClaimResponseLandscape({
+    status: 'blocked',
+    event_id: 'event-1',
+    claim_anchor: anchor,
+    official_publications: [],
+    influential_responses: [],
+    timeline: [],
+    coverage: {},
+  })
+
+  assert.equal(readyWithoutAnchor.isReady, false)
+  assert.equal(blockedWithAnchor.isReady, false)
+  assert.equal(helper.presentClaimResponseLandscape(null).isReady, false)
 })
 
 test('path drill-down returns only observed nodes and exact evidence context', () => {
@@ -109,7 +134,19 @@ test('path drill-down rejects missing nodes or exact evidence references', () =>
 
 test('production page delegates claim-response readiness and path detail decisions', () => {
   const source = readFileSync(resolve(frontendRoot, 'src/views/propagation/index.vue'), 'utf8')
+  const readyStart = source.indexOf('const claimResponseReady = computed(() =>')
+  const readyEnd = source.indexOf('const claimResponsePathEvidence', readyStart)
+  const pathStart = source.indexOf('function openClaimResponsePathDetail(')
+  const pathEnd = source.indexOf('function claimResponsePathEvidenceFromPath', pathStart)
+  const readySource = source.slice(readyStart, readyEnd)
+  const pathSource = source.slice(pathStart, pathEnd)
+
   assert.match(source, /from '\.\/claimResponsePresentation'/)
-  assert.match(source, /presentClaimResponseLandscape\(/)
-  assert.match(source, /createClaimResponsePathDrilldown\(/)
+  assert.match(readySource, /claimResponsePresentation\.value\.isReady/)
+  assert.doesNotMatch(readySource, /claimResponseLandscape\.value\?\.status/)
+  assert.doesNotMatch(readySource, /claimResponseLandscape\.value\?\.claim_anchor/)
+  assert.match(pathSource, /const drilldown = createClaimResponsePathDrilldown/)
+  assert.doesNotMatch(pathSource, /const evidenceRefs = pathRef\.evidence_refs/)
+  assert.doesNotMatch(pathSource, /const nodes = \(pathRef\.nodes/)
+  assert.doesNotMatch(pathSource, /const pathScore = pathRef\.score/)
 })

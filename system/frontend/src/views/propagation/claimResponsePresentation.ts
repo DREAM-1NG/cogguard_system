@@ -7,6 +7,7 @@ import type {
 
 export type ClaimResponsePresentation = {
   status: ClaimResponseLandscapeProjection['status'] | 'empty'
+  isReady: boolean
   anchor: ClaimResponseClaimAnchor | null
   lanes: {
     officialPublications: ClaimResponseLandscapeProjection['official_publications']
@@ -42,6 +43,7 @@ export function presentClaimResponseLandscape(
   }
   return {
     status: projection?.status ?? 'empty',
+    isReady: projection?.status === 'ready' && Boolean(anchor),
     anchor,
     lanes,
     emptyLanes: {

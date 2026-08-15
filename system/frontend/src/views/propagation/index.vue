@@ -1505,13 +1505,7 @@ const claimResponseBlocked = computed(() => {
   const status = claimResponseLandscape.value?.status
   return status === 'blocked' || status === 'not_found'
 })
-const claimResponseReady = computed(() => (
-  (() => {
-    const landscape = claimResponseLandscape.value
-    return landscape?.status === 'ready' && Boolean(landscape.claim_anchor)
-      && claimResponsePresentation.value.status === 'ready'
-  })()
-))
+const claimResponseReady = computed(() => claimResponsePresentation.value.isReady)
 const claimResponsePathEvidence = computed(() => {
   const path = selectedClaimPathDetail.value?.path
   const metadata = path?.metadata
@@ -3291,23 +3285,16 @@ function openClaimResponsePathDetail(
   index: number,
 ) {
   const anchor = claimResponsePresentation.value.anchor
-  const evidenceRefs = pathRef.evidence_refs.map((ref) => String(ref || '').trim()).filter(Boolean)
-  const nodes = (pathRef.nodes || []).map((node) => String(node || '').trim()).filter(Boolean)
-  if (!nodes.length || !evidenceRefs.length) {
-    message.info('该路径缺少可下钻的观察节点或精确证据引用。')
-    return
-  }
   const drilldown = createClaimResponsePathDrilldown({ anchor, response, pathRef, index })
   if (!drilldown) {
     message.info('该路径缺少可下钻的观察节点或精确证据引用。')
     return
   }
-  const pathScore = pathRef.score ?? response.path_contribution ?? undefined
   const path: EvidencePath = {
     path_id: drilldown.pathId,
     evidence_refs: drilldown.evidenceRefs,
     nodes: drilldown.nodes,
-    score: pathScore,
+    score: drilldown.pathScore,
     explanation: `主张回应路径 ${index + 1}`,
     metadata: {
       claim_response: true,
