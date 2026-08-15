@@ -28,6 +28,10 @@ diagnostic concepts, not primary product copy.
 - Event Review Case evidence, annotation, advisory, draft, decision, and activity workflows.
 - Coordination Discover, Propagation Analysis, and Review as evidence-producing capabilities.
 - Semantic Evidence Assistance for the event-review workspace, with model/runtime state remaining diagnostic.
+- Claim Response Landscape as an observed Propagation Analysis projection: it
+  aligns a bound authority claim, exact official-account publications,
+  influential account responses, and path-backed evidence without changing a
+  case conclusion.
 
 ## Scope limits
 
