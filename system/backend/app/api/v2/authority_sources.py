@@ -31,4 +31,9 @@ async def review_source(source_id:str, body:AuthorityReview, service:CaseWorkben
 @router.post("/{source_id}/accounts")
 async def bind_source_account(source_id:str, body:AuthoritySourceAccountCreate, service:CaseWorkbenchService=Depends(get_case_workbench_service), current_user:User=Depends(require_authority_editor)): return await _write(lambda:service.bind_authority_source_account(source_id,**body.model_dump(),actor=current_user),service)
 @router.get("/{source_id}/accounts")
-async def list_source_accounts(source_id:str, service:CaseWorkbenchService=Depends(get_case_workbench_service), _current_user:User=Depends(require_authority_reader)): return success(data=[_dump(row) for row in await service.list_authority_source_accounts(source_id)])
+async def list_source_accounts(source_id:str, service:CaseWorkbenchService=Depends(get_case_workbench_service), _current_user:User=Depends(require_authority_reader)):
+    try:
+        accounts=await service.list_authority_source_accounts(source_id)
+    except KeyError as exc:
+        raise HTTPException(404,str(exc)) from exc
+    return success(data=[_dump(row) for row in accounts])

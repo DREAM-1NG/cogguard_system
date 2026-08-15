@@ -1,7 +1,7 @@
 """add authority source account bindings
 
 Revision ID: a7c5e9d2f481
-Revises: f4c7b9e1a602
+Revises: f8a1c2d3e4b5
 """
 
 from typing import Sequence, Union
@@ -11,7 +11,7 @@ from alembic import op
 
 
 revision: str = "a7c5e9d2f481"
-down_revision: Union[str, None] = "f4c7b9e1a602"
+down_revision: Union[str, None] = "f8a1c2d3e4b5"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
