@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Annotated, Any, Literal, Self
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class TrendPoint(BaseModel):
@@ -13,20 +13,140 @@ class TrendPoint(BaseModel):
     predicted_size: int
 
 
+NonEmptyString = Annotated[str, Field(min_length=1)]
+EvidenceReferenceList = Annotated[list[NonEmptyString], Field(min_length=1)]
+
+
+class ClaimResponseClaimAnchor(BaseModel):
+    case_id: NonEmptyString
+    claim_id: NonEmptyString
+    authority_source_id: NonEmptyString
+    text: NonEmptyString
+    source_url: NonEmptyString
+    account: NonEmptyString
+    published_at: str | None
+    role: NonEmptyString
+    source_review_status: NonEmptyString
+    source_tier: str | None
+    evidence_refs: EvidenceReferenceList
+
+
+class ClaimResponseAuthorityBinding(BaseModel):
+    source_id: NonEmptyString
+    platform: NonEmptyString
+    author_id: NonEmptyString
+
+
+class ClaimResponsePathReference(BaseModel):
+    path_id: NonEmptyString
+    evidence_refs: EvidenceReferenceList
+    nodes: list[NonEmptyString] | None = None
+    score: float | int | None = None
+
+
+class ClaimResponseOfficialPublication(BaseModel):
+    post_id: NonEmptyString
+    platform: NonEmptyString
+    author_id: NonEmptyString
+    author_name: NonEmptyString
+    content: str
+    published_at: str | None
+    source_url: str | None
+    authority_binding: ClaimResponseAuthorityBinding
+    verification_context: dict[str, Any]
+    engagement_percentile: float = Field(ge=0.0, le=1.0)
+    evidence_refs: EvidenceReferenceList
+    semantic: dict[str, Any] | None
+
+
+class ClaimResponseInfluentialResponse(BaseModel):
+    platform: NonEmptyString
+    author_id: NonEmptyString
+    author_name: NonEmptyString
+    rank_scope: NonEmptyString
+    downstream_reach: int = Field(ge=0)
+    path_contribution: float | int
+    path_count: int = Field(ge=1)
+    engagement_percentile: float = Field(ge=0.0, le=1.0)
+    first_seen_at: str | None
+    evidence_refs: EvidenceReferenceList
+    path_refs: list[ClaimResponsePathReference]
+    rank: int = Field(ge=1)
+    semantic: dict[str, Any] | None = None
+    stance: str | None = None
+
+
+class ClaimResponseOfficialTimelineRow(BaseModel):
+    type: Literal["official_publication"]
+    at: str | None
+    platform: NonEmptyString
+    author_id: NonEmptyString
+    post_id: NonEmptyString
+    evidence_refs: EvidenceReferenceList
+
+
+class ClaimResponseInfluentialTimelineRow(BaseModel):
+    type: Literal["influential_response"]
+    at: str | None
+    platform: NonEmptyString
+    author_id: NonEmptyString
+    rank: int = Field(ge=1)
+    evidence_refs: EvidenceReferenceList
+    path_refs: list[ClaimResponsePathReference]
+
+
+class ClaimResponseCoverageSection(BaseModel):
+    status: Literal["available", "unavailable", "not_found", "blocked"]
+    reason: str | None = None
+    case_id: str | None = None
+    claim_id: str | None = None
+    source_id: str | None = None
+    review_status: str | None = None
+    binding_count: int | None = Field(default=None, ge=0)
+    path_count: int | None = Field(default=None, ge=0)
+    path_overlay_count: int | None = Field(default=None, ge=0)
+
+
+class ClaimResponseEvidenceRefsCoverage(BaseModel):
+    status: Literal["available", "unavailable"]
+    official_publication_count: int = Field(ge=0)
+    response_count: int = Field(ge=0)
+
+
+class ClaimResponseCoverage(BaseModel):
+    case: ClaimResponseCoverageSection
+    primary_claim: ClaimResponseCoverageSection
+    official_account_binding: ClaimResponseCoverageSection
+    observed_paths: ClaimResponseCoverageSection
+    semantic: ClaimResponseCoverageSection
+    authority_source: ClaimResponseCoverageSection | None = None
+    evidence_refs: ClaimResponseEvidenceRefsCoverage | None = None
+    data_scope: dict[str, Any] | None = None
+
+
 class ClaimResponseLandscapeData(BaseModel):
     """Observed Event Review Case claim-response projection."""
 
     status: Literal["ready", "not_found", "blocked"]
-    event_id: str
+    event_id: NonEmptyString
     platform: str | None = None
     blocking_reason: str | None = None
-    claim_anchor: dict[str, Any] | None = None
-    official_publications: list[dict[str, Any]] = Field(default_factory=list)
-    influential_responses: list[dict[str, Any]] = Field(default_factory=list)
-    timeline: list[dict[str, Any]] = Field(default_factory=list)
-    coverage: dict[str, Any] = Field(default_factory=dict)
-    capability: dict[str, Any] = Field(default_factory=dict)
-    data_scope: dict[str, Any] = Field(default_factory=dict)
+    claim_anchor: ClaimResponseClaimAnchor | None = None
+    official_publications: list[ClaimResponseOfficialPublication]
+    influential_responses: list[ClaimResponseInfluentialResponse]
+    timeline: list[ClaimResponseOfficialTimelineRow | ClaimResponseInfluentialTimelineRow]
+    coverage: ClaimResponseCoverage
+    capability: dict[str, Any]
+    data_scope: dict[str, Any]
+
+    @model_validator(mode="after")
+    def ready_projection_requires_evidence_contract(self) -> Self:
+        if self.status == "ready":
+            if self.claim_anchor is None:
+                raise ValueError("ready claim-response projection requires claim_anchor")
+            if self.coverage.evidence_refs is None:
+                raise ValueError("ready claim-response projection requires evidence_refs coverage")
+        return self
 
 
 class ClaimResponseLandscapeResponse(BaseModel):
