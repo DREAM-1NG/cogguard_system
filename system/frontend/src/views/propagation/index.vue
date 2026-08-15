@@ -1441,12 +1441,26 @@ let modelTrendChart: echarts.ECharts | null = null
 let modelBacktestChart: echarts.ECharts | null = null
 let evidenceTimelineChart: echarts.ECharts | null = null
 let modelTrendResizeObserver: ResizeObserver | null = null
+let analysisRequestGeneration = 0
+let alertsRequestGeneration = 0
 let predictionRequestGeneration = 0
 let evidenceTimelineRequestGeneration = 0
 let semanticRequestGeneration = 0
 let claimResponseRequestGeneration = 0
 
 type PropagationChartInstance = Pick<echarts.ECharts, 'getDom' | 'isDisposed' | 'resize'>
+
+type PropagationAnalysisRequestScope = {
+  eventId: string
+  platform: string
+  nodeLimit: number
+  fullViewRequested: boolean
+}
+
+type PropagationAlertsRequestScope = {
+  eventId: string
+  platform: string
+}
 
 const semanticPathOverlay = computed(() => {
   const selectedPath = selectedClaimPathDetail.value?.path
@@ -1696,6 +1710,40 @@ const requestParams = computed(() => {
   }
   return params
 })
+
+function currentPropagationAnalysisScope(): PropagationAnalysisRequestScope {
+  return {
+    eventId: eventId.value.trim(),
+    platform: platform.value.trim(),
+    nodeLimit: diffusionFullViewRequested.value ? 0 : Math.max(1, Math.floor(Number(diffusionNodeLimit.value) || DEFAULT_DIFFUSION_NODE_LIMIT)),
+    fullViewRequested: diffusionFullViewRequested.value,
+  }
+}
+
+function samePropagationAnalysisScope(
+  left: PropagationAnalysisRequestScope,
+  right: PropagationAnalysisRequestScope,
+): boolean {
+  return left.eventId === right.eventId
+    && left.platform === right.platform
+    && left.nodeLimit === right.nodeLimit
+    && left.fullViewRequested === right.fullViewRequested
+}
+
+function currentPropagationAlertsScope(): PropagationAlertsRequestScope {
+  return {
+    eventId: eventId.value.trim(),
+    platform: platform.value.trim(),
+  }
+}
+
+function samePropagationAlertsScope(
+  left: PropagationAlertsRequestScope,
+  right: PropagationAlertsRequestScope,
+): boolean {
+  return left.eventId === right.eventId
+    && left.platform === right.platform
+}
 
 const predictionRequestParams = computed(() => {
   const params: {
@@ -3343,12 +3391,21 @@ async function loadSemanticProjection() {
 }
 
 async function loadAnalysis(showToast = false, preservePrediction = false) {
+  const requestGeneration = ++analysisRequestGeneration
+  const requestedScope = currentPropagationAnalysisScope()
+  const requestedParams = { ...requestParams.value }
   if (!preservePrediction) {
     predictionRequestGeneration += 1
   }
   analyzing.value = true
   try {
-    const res = (await analyzeObservedPropagation(requestParams.value)) as { data: AnalysisResult }
+    const res = (await analyzeObservedPropagation(requestedParams)) as { data: AnalysisResult }
+    if (
+      requestGeneration !== analysisRequestGeneration
+      || !samePropagationAnalysisScope(requestedScope, currentPropagationAnalysisScope())
+    ) {
+      return
+    }
     analysisResult.value = res.data
 
     if (res.data.error) {
@@ -3369,7 +3426,9 @@ async function loadAnalysis(showToast = false, preservePrediction = false) {
   } catch {
     /* handled in interceptor */
   } finally {
-    analyzing.value = false
+    if (requestGeneration === analysisRequestGeneration) {
+      analyzing.value = false
+    }
   }
 }
 
@@ -3488,23 +3547,40 @@ async function loadCachedPrediction() {
 }
 
 async function loadPropagationAlerts() {
-  const requestedEventId = eventId.value.trim()
-  if (!requestedEventId) {
+  const requestGeneration = ++alertsRequestGeneration
+  const requestedScope = currentPropagationAlertsScope()
+  if (!requestedScope.eventId) {
     propagationAlerts.value = []
+    alertsLoading.value = false
     return
+  }
+  const requestedParams = {
+    event_id: requestedScope.eventId,
+    platform: requestedScope.platform || undefined,
   }
   alertsLoading.value = true
   try {
-    const response = await getPropagationAlerts({
-      event_id: requestedEventId,
-      platform: platform.value.trim() || undefined,
-    })
+    const response = await getPropagationAlerts(requestedParams)
+    if (
+      requestGeneration !== alertsRequestGeneration
+      || !samePropagationAlertsScope(requestedScope, currentPropagationAlertsScope())
+    ) {
+      return
+    }
     propagationAlerts.value = Array.isArray(response.data) ? response.data : []
   } catch {
+    if (
+      requestGeneration !== alertsRequestGeneration
+      || !samePropagationAlertsScope(requestedScope, currentPropagationAlertsScope())
+    ) {
+      return
+    }
     propagationAlerts.value = []
     /* The shared request interceptor displays the transport error. */
   } finally {
-    alertsLoading.value = false
+    if (requestGeneration === alertsRequestGeneration) {
+      alertsLoading.value = false
+    }
   }
 }
 
@@ -4132,6 +4208,21 @@ onBeforeUnmount(() => {
   .role-ignition-graph-shell,
   .role-ignition-graph {
     height: 320px;
+  }
+
+  .path-node-control {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+    max-width: 100%;
+  }
+
+  .path-node-slider {
+    width: 100%;
+  }
+
+  .path-node-control-label,
+  .path-node-control-count {
+    white-space: normal;
   }
 
   .claim-response-toolbar {
