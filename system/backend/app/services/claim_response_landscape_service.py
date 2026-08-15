@@ -57,7 +57,8 @@ async def build_claim_response_landscape(
                 semantic_projection=semantic_projection,
             )
 
-    mongo_db = mongo_db or get_mongo_db()
+    if mongo_db is None:
+        mongo_db = get_mongo_db()
     case = await _load_case(db, event_id)
     if case is None:
         return _base_projection(
@@ -83,6 +84,7 @@ async def build_claim_response_landscape(
             reason="primary_claim_unavailable",
         )
 
+    case_claims = await _load_case_claims(db, case.case_id)
     source = await _load_authority_source(db, claim.authority_source_id)
     if source is None:
         return _blocked_projection(
@@ -102,7 +104,13 @@ async def build_claim_response_landscape(
             reason="authority_source_not_allowlisted",
         )
 
-    bindings = await _load_authority_accounts(db, source.source_id, platform=platform)
+    claim_sources = await _load_claim_authority_sources(db, case.case_id)
+    allowlisted_source_ids = [
+        row.source_id
+        for row in claim_sources
+        if row.review_status == "allowlisted"
+    ]
+    bindings = await _load_authority_accounts_for_sources(db, allowlisted_source_ids, platform=platform)
     posts = await load_event_posts(mongo_db, event_id=event_id, platform=platform)
     comments = await load_event_comments(mongo_db, event_id=event_id, platform=platform)
     observed = await _load_observed_paths(event_id=event_id, platform=platform)
@@ -124,12 +132,24 @@ async def build_claim_response_landscape(
         for publication in official_publications
         for ref in publication.get("evidence_refs") or []
     }
+    claim_id_by_source_id = _claim_id_by_source_id(case_claims)
+    claim_id_by_official_ref = _claim_id_by_official_ref(official_publications, claim_id_by_source_id)
     observed_paths = _verified_paths_for_platform(
         observed,
         platform=platform,
         primary_claim_id=claim.claim_id,
         official_publication_refs=official_publication_refs,
     )
+    if not observed_paths and official_publication_refs:
+        observed_paths = _official_response_paths_from_graph(
+            observed,
+            evidence_index=evidence_index,
+            official_keys=official_keys,
+            official_publication_refs=official_publication_refs,
+            claim_id_by_official_ref=claim_id_by_official_ref,
+            platform=platform,
+            primary_claim_id=claim.claim_id,
+        )
     influential_responses = _influential_responses(
         observed,
         observed_paths,
@@ -186,9 +206,35 @@ async def _load_primary_claim(db: AsyncSession, case_id: str) -> CaseClaim | Non
     return result.scalars().first()
 
 
+async def _load_case_claims(db: AsyncSession, case_id: str) -> list[CaseClaim]:
+    result = await db.execute(
+        select(CaseClaim)
+        .where(CaseClaim.case_id == case_id)
+        .order_by(CaseClaim.role.desc(), CaseClaim.id.asc())
+    )
+    return list(result.scalars().all())
+
+
 async def _load_authority_source(db: AsyncSession, source_id: str) -> AuthoritySource | None:
     result = await db.execute(select(AuthoritySource).where(AuthoritySource.source_id == source_id))
     return result.scalars().first()
+
+
+async def _load_claim_authority_sources(db: AsyncSession, case_id: str) -> list[AuthoritySource]:
+    result = await db.execute(
+        select(AuthoritySource)
+        .join(CaseClaim, CaseClaim.authority_source_id == AuthoritySource.source_id)
+        .where(CaseClaim.case_id == case_id)
+        .order_by(CaseClaim.role.desc(), CaseClaim.id.asc())
+    )
+    seen: set[str] = set()
+    sources: list[AuthoritySource] = []
+    for source in result.scalars().all():
+        if source.source_id in seen:
+            continue
+        seen.add(source.source_id)
+        sources.append(source)
+    return sources
 
 
 async def _load_authority_accounts(
@@ -201,6 +247,25 @@ async def _load_authority_accounts(
     if platform:
         statement = statement.where(AuthoritySourceAccount.platform == platform)
     result = await db.execute(statement.order_by(AuthoritySourceAccount.platform, AuthoritySourceAccount.author_id))
+    return list(result.scalars().all())
+
+
+async def _load_authority_accounts_for_sources(
+    db: AsyncSession,
+    source_ids: list[str],
+    *,
+    platform: str | None,
+) -> list[AuthoritySourceAccount]:
+    if not source_ids:
+        return []
+    statement = select(AuthoritySourceAccount).where(AuthoritySourceAccount.source_id.in_(source_ids))
+    if platform:
+        statement = statement.where(AuthoritySourceAccount.platform == platform)
+    result = await db.execute(statement.order_by(
+        AuthoritySourceAccount.source_id,
+        AuthoritySourceAccount.platform,
+        AuthoritySourceAccount.author_id,
+    ))
     return list(result.scalars().all())
 
 
@@ -670,6 +735,146 @@ def _verified_paths_for_platform(
         enriched["evidence_refs"] = refs
         paths.append(enriched)
     return paths
+
+
+def _official_response_paths_from_graph(
+    observed: dict[str, Any],
+    *,
+    evidence_index: dict[str, Any],
+    official_keys: set[tuple[str, str]],
+    official_publication_refs: set[str],
+    claim_id_by_official_ref: dict[str, str],
+    platform: str | None,
+    primary_claim_id: str,
+) -> list[dict[str, Any]]:
+    """Derive observed response chains from graph edges when key_paths are absent.
+
+    The derived chains are deliberately conservative: every node in a returned
+    chain must resolve to a real post/comment ref in the event evidence index.
+    """
+
+    adjacency = _adjacency(observed)
+    if not adjacency:
+        return []
+
+    author_by_ref = evidence_index["author_by_ref"]
+    official_seed_refs = [
+        ref for ref in sorted(official_publication_refs)
+        if (not platform or _reference_platform(ref) == platform) and author_by_ref.get(ref)
+    ]
+    paths: list[dict[str, Any]] = []
+    seen: set[tuple[str, ...]] = set()
+    max_depth = 3
+
+    for official_ref in official_seed_refs:
+        official_author = author_by_ref.get(official_ref)
+        if not official_author:
+            continue
+        path_platform = _reference_platform(official_ref)
+        queue: deque[list[str]] = deque([[official_author]])
+        while queue and len(paths) < 50:
+            node_path = queue.popleft()
+            if len(node_path) > max_depth:
+                continue
+            current = node_path[-1]
+            for neighbor in sorted(adjacency.get(current, set())):
+                if neighbor in node_path:
+                    continue
+                next_path = [*node_path, neighbor]
+                if len(next_path) <= max_depth:
+                    queue.append(next_path)
+                if (path_platform, neighbor) in official_keys:
+                    continue
+                evidence_refs = _path_refs_from_node_evidence(
+                    next_path,
+                    official_ref=official_ref,
+                    path_platform=path_platform,
+                    evidence_index=evidence_index,
+                )
+                if not evidence_refs:
+                    continue
+                key = tuple(next_path)
+                if key in seen:
+                    continue
+                seen.add(key)
+                claim_id = claim_id_by_official_ref.get(official_ref) or primary_claim_id
+                path_id = f"observed_graph:{claim_id}:{path_platform}:{len(paths)}"
+                paths.append(
+                    {
+                        "path_id": path_id,
+                        "claim_id": claim_id,
+                        "nodes": next_path,
+                        "score": max(1.0, 4.0 - len(next_path)),
+                        "confidence": "medium",
+                        "source": "observed_graph_official_bfs",
+                        "evidence_refs": evidence_refs,
+                    }
+                )
+    return paths
+
+
+def _path_refs_from_node_evidence(
+    node_path: list[str],
+    *,
+    official_ref: str,
+    path_platform: str,
+    evidence_index: dict[str, Any],
+) -> list[str]:
+    refs = [official_ref]
+    for node in node_path[1:]:
+        node_refs = _refs_for_author(
+            node,
+            evidence_index=evidence_index,
+            platform=path_platform,
+        )
+        if not node_refs:
+            return []
+        refs.append(node_refs[0])
+    return _dedupe(refs)
+
+
+def _refs_for_author(
+    author_id: str,
+    *,
+    evidence_index: dict[str, Any],
+    platform: str | None,
+) -> list[str]:
+    rows = [
+        row for row in evidence_index["by_author"].get(author_id, [])
+        if not platform or _optional_text(row.get("platform")) == platform
+    ]
+    refs: list[tuple[str, str]] = []
+    for row in rows:
+        ref = _post_ref(row) if row.get("kind") == "post" else _comment_ref(row)
+        if ref:
+            refs.append((_optional_text(row.get("timestamp")) or "", ref))
+    return [ref for _timestamp, ref in sorted(refs)]
+
+
+def _claim_id_by_source_id(claims: list[CaseClaim]) -> dict[str, str]:
+    mapping: dict[str, str] = {}
+    for claim in claims:
+        source_id = _optional_text(claim.authority_source_id)
+        claim_id = _optional_text(claim.claim_id)
+        if source_id and claim_id and source_id not in mapping:
+            mapping[source_id] = claim_id
+    return mapping
+
+
+def _claim_id_by_official_ref(
+    official_publications: list[dict[str, Any]],
+    claim_id_by_source_id: dict[str, str],
+) -> dict[str, str]:
+    mapping: dict[str, str] = {}
+    for publication in official_publications:
+        binding = publication.get("authority_binding") if isinstance(publication.get("authority_binding"), dict) else {}
+        claim_id = claim_id_by_source_id.get(str(binding.get("source_id") or ""))
+        if not claim_id:
+            continue
+        for ref in publication.get("evidence_refs") or []:
+            if isinstance(ref, str):
+                mapping[ref] = claim_id
+    return mapping
 
 
 def _candidate_paths(observed: dict[str, Any]) -> list[dict[str, Any]]:

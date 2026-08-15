@@ -366,6 +366,48 @@ def test_landscape_reports_path_and_semantic_coverage_gaps(monkeypatch):
     asyncio.run(scenario())
 
 
+def test_landscape_derives_official_response_paths_from_observed_graph_when_key_paths_absent(monkeypatch):
+    async def scenario():
+        db, session = _db_with_case_material()
+        try:
+            observed = _observed_result()
+            observed["path_analysis"]["key_paths"] = []
+
+            async def fake_observed(**_kwargs):
+                return observed
+
+            monkeypatch.setattr(
+                claim_response_landscape_service.propagation_observation_service,
+                "analyze_observed_propagation",
+                fake_observed,
+            )
+
+            result = await claim_response_landscape_service.build_claim_response_landscape(
+                "event-1",
+                platform="weibo",
+                db=db,
+                mongo_db=_mongo(),
+                semantic_projection={"status": "ready", "artifact": {"cross_analysis": {}}},
+            )
+
+            assert result["coverage"]["observed_paths"]["status"] == "available"
+            assert result["coverage"]["observed_paths"]["path_count"] > 0
+            ranked_ids = [row["author_id"] for row in result["influential_responses"]]
+            assert "responder-a" in ranked_ids
+            first_path = next(
+                path_ref
+                for response in result["influential_responses"]
+                for path_ref in response["path_refs"]
+                if path_ref["path_id"].startswith("observed_graph:claim-1:")
+            )
+            assert first_path["evidence_refs"][0] == "weibo:post:p-official"
+            assert all(ref.startswith("weibo:post:") for ref in first_path["evidence_refs"])
+        finally:
+            session.close()
+
+    asyncio.run(scenario())
+
+
 def test_latest_semantic_projection_continues_after_newest_candidate_is_unavailable(monkeypatch):
     async def scenario():
         load_order: list[str] = []
@@ -406,6 +448,30 @@ def test_latest_semantic_projection_continues_after_newest_candidate_is_unavaila
         assert result["run_id"] == "older-ready"
         assert result["snapshot_id"] == "snapshot-old"
         assert load_order == ["newest-missing", "older-ready"]
+
+    asyncio.run(scenario())
+
+
+def test_landscape_accepts_database_object_that_disallows_truthiness(monkeypatch):
+    async def scenario():
+        class BoolBlockedMongo:
+            def __bool__(self):
+                raise NotImplementedError("database truth value is not supported")
+
+        async def fake_load_case(_db, event_id):
+            assert event_id == "event-1"
+            return None
+
+        monkeypatch.setattr(claim_response_landscape_service, "_load_case", fake_load_case)
+
+        result = await claim_response_landscape_service.build_claim_response_landscape(
+            "event-1",
+            db=SimpleNamespace(name="db"),
+            mongo_db=BoolBlockedMongo(),
+        )
+
+        assert result["status"] == "not_found"
+        assert result["blocking_reason"] == "event_review_case_not_found"
 
     asyncio.run(scenario())
 
