@@ -592,3 +592,57 @@ def test_landscape_preserves_observed_nodes_and_score_in_path_refs(monkeypatch):
             session.close()
 
     asyncio.run(scenario())
+
+
+def test_landscape_omits_path_ref_without_observed_path_identity(monkeypatch):
+    async def scenario():
+        db, session = _db_with_case_material()
+        try:
+            observed = _observed_result()
+            observed["path_analysis"]["key_paths"].append(
+                {
+                    "claim_id": "claim-1",
+                    "nodes": ["official-1", "responder-c"],
+                    "score": 99.0,
+                    "evidence_refs": [
+                        {"platform": "weibo", "post_id": "p-official"},
+                        {"platform": "weibo", "post_id": "p-responder-c"},
+                    ],
+                }
+            )
+
+            async def fake_observed(**_kwargs):
+                return observed
+
+            monkeypatch.setattr(
+                claim_response_landscape_service.propagation_observation_service,
+                "analyze_observed_propagation",
+                fake_observed,
+            )
+
+            result = await claim_response_landscape_service.build_claim_response_landscape(
+                "event-1",
+                platform="weibo",
+                db=db,
+                mongo_db=_mongo(),
+                semantic_projection={"status": "ready", "artifact": {"cross_analysis": {}}},
+            )
+
+            responder_c = next(
+                row for row in result["influential_responses"] if row["author_id"] == "responder-c"
+            )
+            assert responder_c["path_refs"] == [
+                {
+                    "path_id": "claim-1:1",
+                    "evidence_refs": [
+                        "weibo:post:p-official",
+                        "weibo:post:p-responder-c",
+                    ],
+                    "nodes": ["official-1", "responder-c"],
+                    "score": 4.0,
+                }
+            ]
+        finally:
+            session.close()
+
+    asyncio.run(scenario())

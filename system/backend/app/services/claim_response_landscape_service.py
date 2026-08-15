@@ -411,7 +411,7 @@ def _influential_responses(
 
     for path in observed_paths:
         path_refs = _path_canonical_refs(path)
-        path_id = _optional_text(path.get("path_id") or path.get("id")) or _path_id_from_refs(path_refs)
+        path_id = _optional_text(path.get("path_id") or path.get("id"))
         path_score = _float(path.get("score"), default=1.0)
         for node in [str(value or "").strip() for value in path.get("nodes") or []]:
             if not node:
@@ -462,12 +462,13 @@ def _influential_responses(
                 row["path_contribution"] += path_score
                 row["path_count"] += 1
                 row["evidence_refs"] = _dedupe([*row["evidence_refs"], *platform_refs])
-                path_ref = {"path_id": path_id, "evidence_refs": path_refs}
-                if isinstance(path.get("nodes"), list):
-                    path_ref["nodes"] = list(path["nodes"])
-                if path.get("score") is not None:
-                    path_ref["score"] = path["score"]
-                row["path_refs"].append(path_ref)
+                if path_id:
+                    path_ref = {"path_id": path_id, "evidence_refs": path_refs}
+                    if isinstance(path.get("nodes"), list):
+                        path_ref["nodes"] = list(path["nodes"])
+                    if path.get("score") is not None:
+                        path_ref["score"] = path["score"]
+                    row["path_refs"].append(path_ref)
                 row["engagement_percentile"] = max(
                     row["engagement_percentile"],
                     max((engagement_percentiles.get(ref, 0.0) for ref in platform_refs), default=0.0),
@@ -911,10 +912,6 @@ def _first_seen(author_id: str, by_author: dict[str, list[dict[str, Any]]], *, p
     ]
     values = [value for value in timestamps if value]
     return min(values) if values else None
-
-
-def _path_id_from_refs(refs: list[str]) -> str:
-    return "path:" + "|".join(refs)
 
 
 def _is_ready_semantic_artifact(artifact: Any) -> bool:
