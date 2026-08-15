@@ -122,6 +122,54 @@ def to_int(*values: Any) -> int:
     return 0
 
 
+def to_optional_int(*values: Any) -> int | None:
+    unit_multiplier = {
+        "\u4e07": 10_000,
+        "w": 10_000,
+        "W": 10_000,
+        "\u4ebf": 100_000_000,
+    }
+    for value in values:
+        if value is None:
+            continue
+        if isinstance(value, str):
+            value = value.strip()
+            if not value or value.lower() == "none":
+                continue
+            value = value.replace(",", "").replace(" ", "")
+            multiplier = 1
+            if value[-1:] in unit_multiplier:
+                multiplier = unit_multiplier[value[-1]]
+                value = value[:-1]
+            try:
+                return int(float(value) * multiplier)
+            except (TypeError, ValueError):
+                continue
+        try:
+            return int(float(value))
+        except (TypeError, ValueError):
+            continue
+    return None
+
+
+def to_optional_bool(*values: Any) -> bool | None:
+    for value in values:
+        if value is None:
+            continue
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, (int, float)):
+            return bool(value)
+        text = str(value).strip().lower()
+        if not text or text == "none":
+            continue
+        if text in {"1", "true", "yes", "y", "verified"}:
+            return True
+        if text in {"0", "false", "no", "n", "unverified"}:
+            return False
+    return None
+
+
 def normalize_url(value: str) -> str | None:
     text = value.strip()
     if not text:
@@ -453,6 +501,49 @@ def extract_author_profile(raw: dict[str, Any]) -> dict[str, Any] | None:
             if not value:
                 continue
         profile[key] = value
+    verification_snapshot: dict[str, Any] = {}
+    verified = to_optional_bool(
+        raw.get("is_verified"),
+        raw.get("verified"),
+        raw.get("user_verified"),
+        raw.get("author_verified"),
+    )
+    if verified is not None:
+        verification_snapshot["is_verified"] = verified
+    verification_type = first_non_empty(
+        raw.get("verify_type"),
+        raw.get("verified_type"),
+        raw.get("verification_type"),
+        raw.get("author_verification_type"),
+    )
+    if verification_type is not None:
+        verification_snapshot["verification_type"] = str(verification_type).strip()
+    verification_reason = first_non_empty(
+        raw.get("verify_reason"),
+        raw.get("verified_reason"),
+        raw.get("verification_reason"),
+        raw.get("author_verification_reason"),
+    )
+    if verification_reason is not None:
+        verification_snapshot["verification_reason"] = str(verification_reason).strip()
+    if verification_snapshot:
+        profile["verification_snapshot"] = verification_snapshot
+    followers_count = to_optional_int(
+        raw.get("followers_count"),
+        raw.get("follower_count"),
+        raw.get("fans_count"),
+        raw.get("fans"),
+    )
+    if followers_count is not None:
+        profile["followers_count"] = followers_count
+    following_count = to_optional_int(
+        raw.get("following_count"),
+        raw.get("follow_count"),
+        raw.get("follows_count"),
+        raw.get("follows"),
+    )
+    if following_count is not None:
+        profile["following_count"] = following_count
     return profile or None
 
 

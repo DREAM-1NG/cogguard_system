@@ -10,6 +10,10 @@ STAGES=["semantic_enrichment","coordination_discover","propagation_analysis","st
 def _id(prefix): return f"{prefix}_{uuid4().hex}"
 def _actor(actor): return int(getattr(actor,"id",0) or 0)
 def _json(v): return json.dumps(v, ensure_ascii=False, sort_keys=True, default=str)
+def _required_text(value, field):
+    text=str(value or "").strip()
+    if not text: raise ValueError(field)
+    return text
 class CaseWorkbenchService:
     def __init__(self, db: AsyncSession): self.db=db
     async def create_case(self,event_id,title,actor):
@@ -33,6 +37,18 @@ class CaseWorkbenchService:
         elif decision == "reject": row.review_status="rejected"; row.tier=None
         else: raise ValueError("invalid review decision")
         row.reviewed_by=_actor(actor); await self.db.flush(); return row
+    async def bind_authority_source_account(self,source_id,platform,author_id,display_name_snapshot,verification_snapshot=None,actor=None):
+        source=(await self.db.execute(select(AuthoritySource).where(AuthoritySource.source_id==source_id))).scalar_one_or_none()
+        if not source: raise KeyError("authority source not found")
+        if source.review_status != "allowlisted": raise ValueError("allowlisted authority source required")
+        platform=_required_text(platform,"platform"); author_id=_required_text(author_id,"author_id"); display_name_snapshot=_required_text(display_name_snapshot,"display_name_snapshot")
+        existing=(await self.db.execute(select(AuthoritySourceAccount).where(AuthoritySourceAccount.source_id==source_id,AuthoritySourceAccount.platform==platform,AuthoritySourceAccount.author_id==author_id))).scalar_one_or_none()
+        if existing: raise ValueError("authority source account already bound")
+        row=AuthoritySourceAccount(source_id=source_id,platform=platform,author_id=author_id,display_name_snapshot=display_name_snapshot,verification_snapshot=_json(verification_snapshot or {}),reviewed_by=_actor(actor)); self.db.add(row); await self.db.flush(); return row
+    async def list_authority_source_accounts(self,source_id):
+        source=(await self.db.execute(select(AuthoritySource).where(AuthoritySource.source_id==source_id))).scalar_one_or_none()
+        if not source: raise KeyError("authority source not found")
+        return list((await self.db.execute(select(AuthoritySourceAccount).where(AuthoritySourceAccount.source_id==source_id).order_by(AuthoritySourceAccount.platform,AuthoritySourceAccount.author_id))).scalars())
     async def add_claim(self,case_id,authority_source_id,exact_quote,quote_start,quote_end,source_url,account,published_at,role,actor):
         # Claims currently receive the captured quotation itself (without a
         # separate full-page text payload), so its span must anchor that

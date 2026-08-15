@@ -108,6 +108,38 @@ def test_generic_jsonl_to_post_preserves_media_and_author_profile():
     assert post.raw_data == raw
 
 
+def test_generic_jsonl_to_post_normalizes_author_verification_and_followers_without_dropping_raw_fields():
+    raw = {
+        "note_id": "xhs-authority-1",
+        "title": "权威发布",
+        "user_id": "authority-1",
+        "nickname": "Official source",
+        "time": 1779201805000,
+        "fans": "4.3万",
+        "follows": "12",
+        "is_verified": True,
+        "verify_type": "government",
+        "verify_reason": "政务蓝V",
+    }
+
+    post = generic_jsonl_to_post(raw, "xhs")
+
+    assert post.author_profile == {
+        "user_id": "authority-1",
+        "nickname": "Official source",
+        "follows": "12",
+        "fans": "4.3万",
+        "verification_snapshot": {
+            "is_verified": True,
+            "verification_type": "government",
+            "verification_reason": "政务蓝V",
+        },
+        "followers_count": 43000,
+        "following_count": 12,
+    }
+    assert post.raw_data == raw
+
+
 def test_xhs_post_uses_millisecond_timestamp_chinese_counts_and_title_desc_content():
     raw = {
         "note_id": "xhs-1",

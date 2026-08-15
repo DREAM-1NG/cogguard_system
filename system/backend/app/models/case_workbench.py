@@ -33,6 +33,21 @@ class AuthoritySource(Base):
     reviewed_by: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
 
+class AuthoritySourceAccount(Base):
+    __tablename__ = "authority_source_accounts"
+    __table_args__ = (
+        UniqueConstraint("source_id", "platform", "author_id", name="uq_authority_source_accounts_identity"),
+    )
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    source_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    platform: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    author_id: Mapped[str] = mapped_column(String(256), nullable=False, index=True)
+    display_name_snapshot: Mapped[str] = mapped_column(String(512), nullable=False)
+    verification_snapshot: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
+    reviewed_by: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), nullable=False)
+
+
 class CaseClaim(Base):
     __tablename__ = "case_claims"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -124,4 +139,4 @@ class CaseAuditEvent(Base):
     payload_json: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
 
 
-__all__ = ["CaseRecord", "AuthoritySource", "CaseClaim", "CaseAnalysisLink", "SemanticArtifact", "SemanticCorrection", "CaseAction", "CaseFeedback", "CaseReportVersion", "CaseAuditEvent"]
+__all__ = ["CaseRecord", "AuthoritySource", "AuthoritySourceAccount", "CaseClaim", "CaseAnalysisLink", "SemanticArtifact", "SemanticCorrection", "CaseAction", "CaseFeedback", "CaseReportVersion", "CaseAuditEvent"]

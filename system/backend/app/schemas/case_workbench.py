@@ -12,6 +12,7 @@ class ActionState(StrEnum): PENDING="pending"; COMPLETED="completed"; WAIVED="wa
 class CaseCreate(BaseModel): event_id: str; title: str
 class AuthoritySourceCreate(BaseModel): name: str; url: str
 class AuthorityReview(BaseModel): decision: str; tier: AuthorityTier | None = None
+class AuthoritySourceAccountCreate(BaseModel): platform: str; author_id: str; display_name_snapshot: str; verification_snapshot: dict[str, Any] = Field(default_factory=dict)
 class ClaimCreate(BaseModel): authority_source_id: str; exact_quote: str; quote_start: int; quote_end: int; source_url: str; account: str; published_at: datetime | None = None; role: ClaimRole
 class RunRequest(BaseModel): snapshot_or_run_id: str | None = None
 class VerdictRequest(BaseModel): verdict: dict[str, Any]; approved: bool = False

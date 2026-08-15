@@ -1,4 +1,5 @@
 import asyncio
+import json
 from datetime import datetime, timezone
 from types import SimpleNamespace
 
@@ -7,6 +8,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
 from app.db.mysql import Base
+from app.models import case_workbench as case_workbench_models
 from app.models.case_workbench import (
     AuthoritySource,
     CaseAction,
@@ -39,20 +41,24 @@ class AsyncSessionAdapter:
 
 def make_service() -> tuple[CaseWorkbenchService, Session]:
     engine = create_engine("sqlite:///:memory:")
+    tables = [
+        CaseRecord.__table__,
+        AuthoritySource.__table__,
+        CaseClaim.__table__,
+        CaseAnalysisLink.__table__,
+        SemanticArtifact.__table__,
+        SemanticCorrection.__table__,
+        CaseAction.__table__,
+        CaseFeedback.__table__,
+        CaseReportVersion.__table__,
+        CaseAuditEvent.__table__,
+    ]
+    account_model = getattr(case_workbench_models, "AuthoritySourceAccount", None)
+    if account_model is not None:
+        tables.append(account_model.__table__)
     Base.metadata.create_all(
         engine,
-        tables=[
-            CaseRecord.__table__,
-            AuthoritySource.__table__,
-            CaseClaim.__table__,
-            CaseAnalysisLink.__table__,
-            SemanticArtifact.__table__,
-            SemanticCorrection.__table__,
-            CaseAction.__table__,
-            CaseFeedback.__table__,
-            CaseReportVersion.__table__,
-            CaseAuditEvent.__table__,
-        ],
+        tables=tables,
     )
     session = Session(engine, expire_on_commit=False)
     return CaseWorkbenchService(AsyncSessionAdapter(session)), session
@@ -118,4 +124,76 @@ def test_claim_requires_exact_span_and_allowlisted_primary_source():
             assert run.blockers == ["blocked_missing_primary_claim"]
         finally:
             session.close()
+    asyncio.run(scenario())
+
+
+def test_authority_source_account_binding_requires_allowlist_and_exact_platform_identity():
+    async def scenario():
+        actor = SimpleNamespace(id=9, username="analyst")
+        service, session = make_service()
+        try:
+            source = await service.register_authority_source(
+                name="Official source",
+                url="https://example.test/source",
+                actor=actor,
+            )
+            with pytest.raises(ValueError, match="allowlisted"):
+                await service.bind_authority_source_account(
+                    source.source_id,
+                    platform="weibo",
+                    author_id="authority-1",
+                    display_name_snapshot="Official source",
+                    verification_snapshot={"is_verified": True, "reason": "blue-v"},
+                    actor=actor,
+                )
+
+            await service.review_authority_source(
+                source.source_id,
+                decision="allowlist",
+                tier="government_official",
+                actor=actor,
+            )
+            weibo_account = await service.bind_authority_source_account(
+                source.source_id,
+                platform="weibo",
+                author_id="authority-1",
+                display_name_snapshot="Official source",
+                verification_snapshot={"is_verified": True, "reason": "blue-v"},
+                actor=actor,
+            )
+            xhs_account = await service.bind_authority_source_account(
+                source.source_id,
+                platform="xhs",
+                author_id="authority-1",
+                display_name_snapshot="Official source",
+                verification_snapshot={"is_verified": False},
+                actor=actor,
+            )
+
+            accounts = await service.list_authority_source_accounts(source.source_id)
+
+            assert [(row.platform, row.author_id) for row in accounts] == [
+                ("weibo", "authority-1"),
+                ("xhs", "authority-1"),
+            ]
+            assert weibo_account.source_id == source.source_id
+            assert json.loads(weibo_account.verification_snapshot) == {
+                "is_verified": True,
+                "reason": "blue-v",
+            }
+            assert weibo_account.reviewed_by == actor.id
+            assert xhs_account.author_id == weibo_account.author_id
+            assert xhs_account.platform != weibo_account.platform
+            with pytest.raises(ValueError, match="already bound"):
+                await service.bind_authority_source_account(
+                    source.source_id,
+                    platform="weibo",
+                    author_id="authority-1",
+                    display_name_snapshot="Official source",
+                    verification_snapshot={"is_verified": True},
+                    actor=actor,
+                )
+        finally:
+            session.close()
+
     asyncio.run(scenario())
