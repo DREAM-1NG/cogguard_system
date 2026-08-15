@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+from pathlib import Path
 from unittest.mock import AsyncMock
 
 import pytest
@@ -32,6 +33,24 @@ def test_runtime_exposes_only_active_review_entry_points():
     }
     assert not hasattr(runtime, "_legacy_build_student_verdict")
     assert not hasattr(runtime, "_legacy_build_teacher_advisory_verdict")
+
+
+def test_runtime_does_not_import_retired_deterministic_builder_dependencies():
+    source = Path(runtime.__file__).read_text(encoding="utf-8")
+
+    retired_imports = {
+        "from collections import Counter, defaultdict",
+        "from app.core.review.layered_harmfulness import assess_layered_harmfulness",
+        "from app.core.review.multi_agent import execute_multi_agent_review",
+        "from app.core.review.review_executor import execute_review_queue",
+        "from app.core.review.review_queue import build_review_queue",
+        "from app.core.review.trainable_post import build_agent_review",
+        "from app.core.review.trainable_post import fuse_detector_outputs",
+        "from app.core.review.trainable_post import standard_detector_output",
+        "from app.core.review.post_semantics import assess_post_semantics",
+    }
+
+    assert all(import_line not in source for import_line in retired_imports)
 
 
 def _case() -> dict:
