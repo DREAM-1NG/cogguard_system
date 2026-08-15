@@ -83,6 +83,21 @@ test('claim response tab renders anchored claim, two evidence lanes, and explici
   assert.match(tabSource, /a-empty/)
 })
 
+test('a ready projection with an anchor keeps the claim-response evidence lanes visible even when they are empty', () => {
+  const readyStart = propagationView.indexOf('const claimResponseReady = computed(() =>')
+  assert.notEqual(readyStart, -1, 'Expected claimResponseReady computed state to exist')
+  const ready = propagationView.slice(readyStart, propagationView.indexOf('const claimResponsePlatformOptions', readyStart))
+  const tabStart = propagationView.indexOf('key="claim-response" tab="主张回应图谱"')
+  const tabSource = propagationView.slice(tabStart, propagationView.indexOf('</a-tab-pane>', tabStart))
+
+  assert.match(ready, /landscape\?\.status === 'ready' && Boolean\(landscape\.claim_anchor\)/)
+  assert.doesNotMatch(ready, /official_publications\.length/)
+  assert.doesNotMatch(ready, /influential_responses\.length/)
+  assert.match(tabSource, /暂无精确绑定账号发布记录/)
+  assert.match(tabSource, /暂无路径支撑的影响回应/)
+  assert.match(tabSource, /暂无回应时间轴/)
+})
+
 test('claim response view keeps influence ranking platform-local and path-backed', () => {
   const requestParams = bodyOf(propagationView, 'claimResponseRequestParams')
   const openPathDetail = bodyOf(propagationView, 'openClaimResponsePathDetail')
@@ -101,10 +116,26 @@ test('claim response path drill-down uses only observed nodes and declines an un
   const openPathDetail = bodyOf(propagationView, 'openClaimResponsePathDetail')
 
   assert.match(openPathDetail, /pathRef\.nodes/)
-  assert.match(openPathDetail, /if \(!nodes\.length\)/)
+  assert.match(openPathDetail, /if \(!nodes\.length \|\| !evidenceRefs\.length\)/)
   assert.match(openPathDetail, /message\.info/)
-  assert.doesNotMatch(openPathDetail, /anchor\?\.account/)
   assert.doesNotMatch(openPathDetail, /\[anchor\?\.account, response\.author_id\]/)
+})
+
+test('claim response path drawer presents exact observed evidence rather than fabricated supporting posts', () => {
+  const openPathDetail = bodyOf(propagationView, 'openClaimResponsePathDetail')
+  const drawerStart = propagationView.indexOf('v-model:open="claimPathDetailOpen"')
+  const drawerSource = propagationView.slice(drawerStart, propagationView.indexOf('</a-drawer>', drawerStart))
+
+  assert.match(openPathDetail, /pathRef\.evidence_refs/)
+  assert.match(openPathDetail, /pathRef\.score \?\? response\.path_contribution/)
+  assert.match(openPathDetail, /authority_account/)
+  assert.match(openPathDetail, /authority_source_id/)
+  assert.match(drawerSource, /精确证据引用/)
+  assert.match(drawerSource, /权威来源账号/)
+  assert.match(drawerSource, /路径贡献/)
+  assert.match(drawerSource, /路径评分/)
+  assert.match(drawerSource, /节点序列/)
+  assert.match(drawerSource, /claimResponsePathEvidence/)
 })
 
 test('claim response scope reset clears projection and related path and node drawers before reload', () => {

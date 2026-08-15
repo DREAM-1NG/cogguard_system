@@ -556,19 +556,41 @@
           </a-descriptions-item>
         </a-descriptions>
 
-        <div class="section-title">支撑帖子</div>
-        <a-list v-if="selectedClaimPathDetail.chain.supporting_posts?.length" :dataSource="selectedClaimPathDetail.chain.supporting_posts" size="small">
-          <template #renderItem="{ item }">
-            <a-list-item>
-              <div>
-                <strong>{{ item.author_id }}</strong>
-                <span class="timeline-time">{{ formatTimestamp(item.timestamp) }}</span>
-                <p class="timeline-content">{{ item.content }}</p>
-              </div>
-            </a-list-item>
-          </template>
-        </a-list>
-        <a-empty v-else description="暂无支撑帖子" :image-style="{ height: '36px' }" />
+        <template v-if="claimResponsePathEvidence">
+          <div class="section-title">路径证据</div>
+          <a-descriptions size="small" :column="1" bordered>
+            <a-descriptions-item label="权威来源账号">{{ claimResponsePathEvidence.authorityAccount || '--' }}</a-descriptions-item>
+            <a-descriptions-item label="权威来源">{{ claimResponsePathEvidence.authoritySourceId || '--' }}</a-descriptions-item>
+            <a-descriptions-item label="回应账号">{{ claimResponsePathEvidence.responseAccount || '--' }}</a-descriptions-item>
+            <a-descriptions-item label="路径评分">
+              {{ claimResponsePathEvidence.pathScore === undefined ? '--' : formatScore(claimResponsePathEvidence.pathScore) }}
+            </a-descriptions-item>
+            <a-descriptions-item label="路径贡献">
+              {{ claimResponsePathEvidence.pathContribution === undefined ? '--' : formatScore(claimResponsePathEvidence.pathContribution) }}
+            </a-descriptions-item>
+            <a-descriptions-item label="精确证据引用">
+              <a-space v-if="claimResponsePathEvidence.evidenceRefs.length" wrap :size="4">
+                <a-tag v-for="ref in claimResponsePathEvidence.evidenceRefs" :key="ref">{{ ref }}</a-tag>
+              </a-space>
+              <span v-else>--</span>
+            </a-descriptions-item>
+          </a-descriptions>
+        </template>
+        <template v-else>
+          <div class="section-title">支撑帖子</div>
+          <a-list v-if="selectedClaimPathDetail.chain.supporting_posts?.length" :dataSource="selectedClaimPathDetail.chain.supporting_posts" size="small">
+            <template #renderItem="{ item }">
+              <a-list-item>
+                <div>
+                  <strong>{{ item.author_id }}</strong>
+                  <span class="timeline-time">{{ formatTimestamp(item.timestamp) }}</span>
+                  <p class="timeline-content">{{ item.content }}</p>
+                </div>
+              </a-list-item>
+            </template>
+          </a-list>
+          <a-empty v-else description="暂无支撑帖子" :image-style="{ height: '36px' }" />
+        </template>
 
         <div class="section-title drawer-section">语义叠加</div>
         <a-descriptions v-if="semanticPathOverlay" size="small" :column="1" bordered>
@@ -1479,12 +1501,23 @@ const claimResponseBlocked = computed(() => {
 })
 const claimResponseReady = computed(() => {
   const landscape = claimResponseLandscape.value
-  if (landscape?.status !== 'ready' || !landscape.claim_anchor) return false
-  return Boolean(
-    landscape.official_publications.length
-    || landscape.influential_responses.length
-    || landscape.timeline.length,
-  )
+  return landscape?.status === 'ready' && Boolean(landscape.claim_anchor)
+})
+const claimResponsePathEvidence = computed(() => {
+  const path = selectedClaimPathDetail.value?.path
+  const metadata = path?.metadata
+  if (!metadata || metadata.claim_response !== true) return null
+  const evidenceRefs = (path?.evidence_refs || [])
+    .map((ref) => String(ref || '').trim())
+    .filter(Boolean)
+  return {
+    authorityAccount: optionalText(metadata.authority_account),
+    authoritySourceId: optionalText(metadata.authority_source_id),
+    responseAccount: optionalText(metadata.response_account),
+    pathScore: firstFiniteNumber(path?.score),
+    pathContribution: firstFiniteNumber(metadata.path_contribution),
+    evidenceRefs,
+  }
 })
 const claimResponsePlatformOptions = computed(() => {
   const values = new Set<string>()
@@ -3249,10 +3282,10 @@ function openClaimResponsePathDetail(
   index: number,
 ) {
   const anchor = claimResponseLandscape.value?.claim_anchor
-  const evidenceRefs = pathRef.evidence_refs
+  const evidenceRefs = pathRef.evidence_refs.map((ref) => String(ref || '').trim()).filter(Boolean)
   const nodes = (pathRef.nodes || []).map((node) => String(node || '').trim()).filter(Boolean)
-  if (!nodes.length) {
-    message.info('该路径缺少可下钻的观察节点。')
+  if (!nodes.length || !evidenceRefs.length) {
+    message.info('该路径缺少可下钻的观察节点或精确证据引用。')
     return
   }
   const path: EvidencePath = {
@@ -3261,6 +3294,13 @@ function openClaimResponsePathDetail(
     nodes,
     score: pathRef.score ?? response.path_contribution ?? undefined,
     explanation: `主张回应路径 ${index + 1}`,
+    metadata: {
+      claim_response: true,
+      authority_account: anchor?.account,
+      authority_source_id: anchor?.authority_source_id,
+      response_account: response.author_name || response.author_id,
+      path_contribution: response.path_contribution,
+    },
   }
   const chain: EvidenceChain = {
     claim_id: anchor?.claim_id || response.author_id,
