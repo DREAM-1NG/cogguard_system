@@ -762,6 +762,10 @@ import {
   type PropagationAlertsRequestScope,
   type PropagationAnalysisRequestScope,
 } from './requestScope'
+import {
+  createClaimResponsePathDrilldown,
+  presentClaimResponseLandscape,
+} from './claimResponsePresentation'
 
 const DEFAULT_EVENT_ID = 'trump_visit_2026_05_21'
 const PROPAGATION_ANALYSIS_ARTIFACT_KEY = 'stage:propagation_analysis:result'
@@ -1491,18 +1495,23 @@ const semanticPathOverlay = computed(() => {
   return findPathSemanticOverlay(selectedPath, semanticProjection.value.evidence.cross_analysis.propagation_path_overlays)
 })
 
-const claimResponseOfficialPublications = computed(() => claimResponseLandscape.value?.official_publications ?? [])
-const claimResponseInfluentialResponses = computed(() => claimResponseLandscape.value?.influential_responses ?? [])
-const claimResponseTimelineRows = computed(() => claimResponseLandscape.value?.timeline ?? [])
+const claimResponsePresentation = computed(() => presentClaimResponseLandscape(claimResponseLandscape.value))
+const claimResponseLanes = computed(() => claimResponsePresentation.value.lanes)
+const claimResponseOfficialPublications = computed(() => claimResponseLanes.value.officialPublications)
+const claimResponseInfluentialResponses = computed(() => claimResponseLanes.value.influentialResponses)
+const claimResponseTimelineRows = computed(() => claimResponseLanes.value.timeline)
 const claimResponseSemanticReady = computed(() => claimResponseLandscape.value?.coverage?.semantic?.status === 'available')
 const claimResponseBlocked = computed(() => {
   const status = claimResponseLandscape.value?.status
   return status === 'blocked' || status === 'not_found'
 })
-const claimResponseReady = computed(() => {
-  const landscape = claimResponseLandscape.value
-  return landscape?.status === 'ready' && Boolean(landscape.claim_anchor)
-})
+const claimResponseReady = computed(() => (
+  (() => {
+    const landscape = claimResponseLandscape.value
+    return landscape?.status === 'ready' && Boolean(landscape.claim_anchor)
+      && claimResponsePresentation.value.status === 'ready'
+  })()
+))
 const claimResponsePathEvidence = computed(() => {
   const path = selectedClaimPathDetail.value?.path
   const metadata = path?.metadata
@@ -3281,33 +3290,39 @@ function openClaimResponsePathDetail(
   pathRef: ClaimResponsePathRef,
   index: number,
 ) {
-  const anchor = claimResponseLandscape.value?.claim_anchor
+  const anchor = claimResponsePresentation.value.anchor
   const evidenceRefs = pathRef.evidence_refs.map((ref) => String(ref || '').trim()).filter(Boolean)
   const nodes = (pathRef.nodes || []).map((node) => String(node || '').trim()).filter(Boolean)
   if (!nodes.length || !evidenceRefs.length) {
     message.info('该路径缺少可下钻的观察节点或精确证据引用。')
     return
   }
+  const drilldown = createClaimResponsePathDrilldown({ anchor, response, pathRef, index })
+  if (!drilldown) {
+    message.info('该路径缺少可下钻的观察节点或精确证据引用。')
+    return
+  }
+  const pathScore = pathRef.score ?? response.path_contribution ?? undefined
   const path: EvidencePath = {
-    path_id: pathRef.path_id,
-    evidence_refs: evidenceRefs,
-    nodes,
-    score: pathRef.score ?? response.path_contribution ?? undefined,
+    path_id: drilldown.pathId,
+    evidence_refs: drilldown.evidenceRefs,
+    nodes: drilldown.nodes,
+    score: pathScore,
     explanation: `主张回应路径 ${index + 1}`,
     metadata: {
       claim_response: true,
-      authority_account: anchor?.account,
-      authority_source_id: anchor?.authority_source_id,
-      response_account: response.author_name || response.author_id,
-      path_contribution: response.path_contribution,
+      authority_account: drilldown.authorityAccount,
+      authority_source_id: drilldown.authoritySourceId,
+      response_account: drilldown.responseAccount,
+      path_contribution: drilldown.contribution,
     },
   }
   const chain: EvidenceChain = {
     claim_id: anchor?.claim_id || response.author_id,
     share_count: Number(response.path_count ?? 0),
     originator: {
-      account_id: nodes[0],
-      author_name: displayUserName(nodes[0]),
+      account_id: drilldown.nodes[0],
+      author_name: displayUserName(drilldown.nodes[0]),
     },
     key_paths: [path],
     supporting_posts: [],
