@@ -33,3 +33,5 @@ Workspace: `G:\CISCN\CogGuard\.worktrees\refactor-system`
 
 - Case Workbench Task 01: separate documentation/research baseline ledger at `.superpowers/sdd/case-workbench-progress.md` (rollback `425a8f2`; preserves the Coordination history above).
 - Runtime cleanup Task 1: complete (commits `393110f..174b678`, review clean; review runtime and executor tests passed).
+- Structural context follow-up Task 1: implementation committed (`a7062ba`); TOML and JSON metadata parsing plus whitespace checks passed; included in the end-of-cycle structural review.
+- Structural context follow-up Task 2: implementation committed (`f0fa321..4d2dbc2`); AST RED evidence recorded, focused contracts and executor regressions passed; included in the end-of-cycle structural review.

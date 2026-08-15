@@ -4,7 +4,7 @@
 | --- | --- | --- | --- |
 | Semantic evidence workbench | In progress in the existing dirty worktree | Real semantic artifacts and their `/risk` and `/propagation` projections | Preserve existing work; validate and integrate separately from structural refactoring. |
 | Coordination two-stage research | Implemented with gated research claims | Discovery/Detection seam and reproduction contracts | Maintain ADR 0014 and ADR 0015 constraints. |
-| Structural deepening | In progress | The first completed subtask narrowed the Review runtime interface and removed retired builders without changing runtime behavior. | Review runtime interface is verified; next selected low-risk candidate is canonical Analysis Stage alias cleanup in `app.core.analysis.contracts`. |
+| Structural deepening | First cleanup cycle complete | The Review runtime now has an explicit interface, retired deterministic builders are removed, and Analysis Stage aliases are canonicalized without changing product behavior. | Hold further structural migration until the existing semantic, propagation, and Coordination work is integrated; resume from the architecture review report. |
 
 ## Structural deepening rules
 
