@@ -421,6 +421,94 @@ def test_landscape_reports_no_path_when_graph_has_no_observed_official_path(monk
     asyncio.run(scenario())
 
 
+def test_landscape_projects_direct_comment_thread_as_primary_claim_response_without_graph_inference(monkeypatch):
+    async def scenario():
+        db, session = _db_with_case_material()
+        try:
+            mongo = _mongo()
+            mongo["raw_posts"].rows.append(
+                {
+                    **_post(
+                        "weibo",
+                        "unrelated-earlier-post",
+                        "responder-child",
+                        likes=1,
+                        author_name="Child responder",
+                    ),
+                    "timestamp": "2026-08-14T00:00:00+00:00",
+                }
+            )
+            mongo["raw_comments"].rows.extend(
+                [
+                    {
+                        "event_id": "event-1",
+                        "platform": "weibo",
+                        "comment_id": "comment-root",
+                        "post_id": "p-official",
+                        "author_id": "responder-root",
+                        "author_name": "Root responder",
+                        "timestamp": "2026-08-15T00:10:00+00:00",
+                        "likes": 5,
+                    },
+                    {
+                        "event_id": "event-1",
+                        "platform": "weibo",
+                        "comment_id": "comment-child",
+                        "post_id": "p-official",
+                        "author_id": "responder-child",
+                        "author_name": "Child responder",
+                        "timestamp": "2026-08-15T00:11:00+00:00",
+                        "reply_to": "comment-root",
+                        "likes": 9,
+                    },
+                ]
+            )
+
+            async def graph_must_not_be_used(**_kwargs):
+                raise AssertionError("direct comment evidence must not require inferred graph paths")
+
+            monkeypatch.setattr(
+                claim_response_landscape_service.propagation_observation_service,
+                "analyze_observed_propagation",
+                graph_must_not_be_used,
+            )
+
+            result = await claim_response_landscape_service.build_claim_response_landscape(
+                "event-1",
+                platform="weibo",
+                db=db,
+                mongo_db=mongo,
+                semantic_projection={"status": "ready", "artifact": {"cross_analysis": {}}},
+            )
+
+            child = next(
+                row
+                for row in result["influential_responses"]
+                if row["author_id"] == "responder-child"
+            )
+            assert child["path_refs"] == [
+                {
+                    "path_id": "weibo:comment:comment-child",
+                    "evidence_refs": [
+                        "weibo:post:p-official",
+                        "weibo:comment:comment-root",
+                        "weibo:comment:comment-child",
+                    ],
+                    "nodes": ["official-1", "responder-root", "responder-child"],
+                    "score": 1.0,
+                }
+            ]
+            assert child["first_seen_at"] == "2026-08-15T00:11:00+00:00"
+            assert result["coverage"]["observed_paths"] == {
+                "status": "available",
+                "path_count": 2,
+            }
+        finally:
+            session.close()
+
+    asyncio.run(scenario())
+
+
 def test_latest_semantic_projection_continues_after_newest_candidate_is_unavailable(monkeypatch):
     async def scenario():
         load_order: list[str] = []

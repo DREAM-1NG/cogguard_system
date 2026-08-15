@@ -113,7 +113,6 @@ async def build_claim_response_landscape(
     bindings = await _load_authority_accounts_for_sources(db, allowlisted_source_ids, platform=platform)
     posts = await load_event_posts(mongo_db, event_id=event_id, platform=platform)
     comments = await load_event_comments(mongo_db, event_id=event_id, platform=platform)
-    observed = await _load_observed_paths(event_id=event_id, platform=platform)
     if semantic_projection is None:
         semantic_projection = await _load_latest_semantic_projection(event_id, db=db, mongo_db=mongo_db)
 
@@ -128,12 +127,24 @@ async def build_claim_response_landscape(
         semantic_by_ref=semantic_by_ref,
     )
     primary_claim_refs = _claim_source_refs(claim, posts)
-    observed_paths = _verified_paths_for_platform(
-        observed,
-        platform=platform,
+    direct_comment_paths = _direct_comment_response_paths(
+        posts,
+        comments,
         primary_claim_id=claim.claim_id,
         primary_claim_refs=primary_claim_refs,
+        platform=platform,
     )
+    observed = {"graph": {"nodes": [], "edges": []}}
+    if direct_comment_paths:
+        observed_paths = direct_comment_paths
+    else:
+        observed = await _load_observed_paths(event_id=event_id, platform=platform)
+        observed_paths = _verified_paths_for_platform(
+            observed,
+            platform=platform,
+            primary_claim_id=claim.claim_id,
+            primary_claim_refs=primary_claim_refs,
+        )
     influential_responses = _influential_responses(
         observed,
         observed_paths,
@@ -448,6 +459,118 @@ def _claim_source_refs(claim: CaseClaim, posts: list[dict[str, Any]]) -> set[str
     return refs
 
 
+def _direct_comment_response_paths(
+    posts: list[dict[str, Any]],
+    comments: list[dict[str, Any]],
+    *,
+    primary_claim_id: str,
+    primary_claim_refs: set[str],
+    platform: str | None,
+) -> list[dict[str, Any]]:
+    """Project exact comment-thread responses to the primary source post.
+
+    A comment's ``post_id`` is an observed parent-child relation to its source
+    post. Nested comments add only their recorded ``reply_to`` ancestors. This
+    intentionally does not use text similarity, account identity, or graph
+    adjacency to create a claim response path.
+    """
+
+    if not primary_claim_refs:
+        return []
+
+    post_by_ref = {
+        ref: post
+        for post in posts
+        if (ref := _post_ref(post)) is not None and ref in primary_claim_refs
+    }
+    if not post_by_ref:
+        return []
+
+    comment_by_key = {
+        (_optional_text(comment.get("platform")) or "", _optional_text(comment.get("comment_id")) or ""): comment
+        for comment in comments
+        if _optional_text(comment.get("platform")) and _optional_text(comment.get("comment_id"))
+    }
+    paths: list[dict[str, Any]] = []
+    for comment in comments:
+        comment_platform = _optional_text(comment.get("platform"))
+        if not comment_platform or (platform is not None and comment_platform != platform):
+            continue
+        response_ref = _comment_ref(comment)
+        source_ref = _comment_post_ref(comment)
+        if response_ref is None or source_ref not in post_by_ref:
+            continue
+
+        source_author = _optional_text(post_by_ref[source_ref].get("author_id"))
+        thread = _comment_thread_evidence(
+            comment,
+            source_ref=source_ref,
+            comment_by_key=comment_by_key,
+        )
+        if not source_author or not thread:
+            continue
+
+        evidence_refs = [source_ref, *[row["ref"] for row in thread]]
+        nodes = [source_author]
+        for row in thread:
+            author_id = row["author_id"]
+            if author_id != nodes[-1]:
+                nodes.append(author_id)
+        if len(nodes) < 2:
+            continue
+        paths.append(
+            {
+                # The terminal source-record reference is the path identity;
+                # it is not a synthetic graph identifier.
+                "path_id": response_ref,
+                "claim_id": primary_claim_id,
+                "nodes": nodes,
+                "score": 1.0,
+                "evidence_refs": _dedupe(evidence_refs),
+                "relation_type": "direct_comment_thread",
+            }
+        )
+    return paths
+
+
+def _comment_thread_evidence(
+    comment: dict[str, Any],
+    *,
+    source_ref: str,
+    comment_by_key: dict[tuple[str, str], dict[str, Any]],
+) -> list[dict[str, str]]:
+    """Return the exact in-scope comment ancestry from root to response."""
+
+    chain: list[dict[str, str]] = []
+    visited: set[tuple[str, str]] = set()
+    current = comment
+    while isinstance(current, dict):
+        current_platform = _optional_text(current.get("platform"))
+        current_id = _optional_text(current.get("comment_id"))
+        current_ref = _comment_ref(current)
+        author_id = _optional_text(current.get("author_id"))
+        if not current_platform or not current_id or current_ref is None or not author_id:
+            return []
+        key = (current_platform, current_id)
+        if key in visited:
+            return []
+        visited.add(key)
+        if _comment_post_ref(current) != source_ref:
+            return []
+        chain.append({"ref": current_ref, "author_id": author_id})
+        parent_id = _optional_text(current.get("reply_to"))
+        if parent_id is None:
+            break
+        parent = comment_by_key.get((current_platform, parent_id))
+        if parent is None:
+            # The response is still directly attached to the exact source post,
+            # but the missing intermediate row cannot be invented.
+            break
+        current = parent
+    chain.reverse()
+    return chain
+
+
 def _influential_responses(
     observed: dict[str, Any],
     observed_paths: list[dict[str, Any]],
@@ -508,7 +631,7 @@ def _influential_responses(
                         "path_contribution": 0.0,
                         "path_count": 0,
                         "engagement_percentile": 0.0,
-                        "first_seen_at": _first_seen(node, by_author, platform=resolved_platform),
+                        "first_seen_at": None,
                         "evidence_refs": [],
                         "path_refs": [],
                     },
@@ -527,6 +650,11 @@ def _influential_responses(
                     row["engagement_percentile"],
                     max((engagement_percentiles.get(ref, 0.0) for ref in platform_refs), default=0.0),
                 )
+                first_seen_at = _first_evidence_seen(platform_refs, evidence_index)
+                if first_seen_at and (
+                    row["first_seen_at"] is None or first_seen_at < row["first_seen_at"]
+                ):
+                    row["first_seen_at"] = first_seen_at
 
     ranked_rows: list[dict[str, Any]] = []
     by_platform: dict[str, list[dict[str, Any]]] = defaultdict(list)
@@ -542,6 +670,7 @@ def _influential_responses(
             key=lambda row: (
                 -int(row["downstream_reach"]),
                 -float(row["path_contribution"]),
+                -float(row["engagement_percentile"]),
                 str(row["author_id"]),
             ),
         )
@@ -955,6 +1084,14 @@ def _comment_ref(comment: dict[str, Any]) -> str | None:
     return f"{platform}:comment:{comment_id}"
 
 
+def _comment_post_ref(comment: dict[str, Any]) -> str | None:
+    platform = _optional_text(comment.get("platform"))
+    post_id = _optional_text(comment.get("post_id"))
+    if not platform or not post_id:
+        return None
+    return f"{platform}:post:{post_id}"
+
+
 def _reference_platform(ref: str) -> str:
     return ref.split(":", 1)[0]
 
@@ -980,11 +1117,10 @@ def _author_name(author_id: str, by_author: dict[str, list[dict[str, Any]]]) -> 
     return author_id
 
 
-def _first_seen(author_id: str, by_author: dict[str, list[dict[str, Any]]], *, platform: str) -> str | None:
+def _first_evidence_seen(evidence_refs: list[str], evidence_index: dict[str, Any]) -> str | None:
     timestamps = [
-        _optional_text(row.get("timestamp"))
-        for row in by_author.get(author_id, [])
-        if _optional_text(row.get("platform")) == platform
+        _optional_text((evidence_index["by_ref"].get(ref) or {}).get("timestamp"))
+        for ref in evidence_refs
     ]
     values = [value for value in timestamps if value]
     return min(values) if values else None
