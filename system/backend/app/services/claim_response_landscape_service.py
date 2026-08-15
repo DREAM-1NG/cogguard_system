@@ -572,7 +572,7 @@ def _semantic_evidence_by_ref(projection: dict[str, Any] | None) -> dict[str, di
             if not platform or not item_id:
                 continue
             evidence: dict[str, Any] = {}
-            stance = _semantic_label(item.get("stance"))
+            stance = _semantic_stance_label(item.get("stance"))
             sentiment = _semantic_label(item.get("sentiment"))
             if stance:
                 evidence["stance"] = stance
@@ -610,6 +610,18 @@ def _semantic_label(value: Any) -> str | None:
     if not isinstance(value, dict):
         return None
     return _optional_text(value.get("label"))
+
+
+def _semantic_stance_label(value: Any) -> str | None:
+    """Map the fixed NLI runtime labels to analyst-facing claim stance."""
+
+    label = _semantic_label(value)
+    labels = {
+        "entailment": "support",
+        "contradiction": "oppose",
+        "neutral": "neutral",
+    }
+    return labels.get(str(label or "").lower())
 
 
 def _verified_paths_for_platform(observed: dict[str, Any], *, platform: str | None) -> list[dict[str, Any]]:

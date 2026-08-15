@@ -429,11 +429,11 @@ def test_landscape_keeps_ranks_platform_local_and_projects_exact_semantic_eviden
                     "fallback": False,
                     "layers": {
                         "posts": [
-                            {"id": "p-official", "platform": "weibo", "stance": {"label": "supports"}},
-                            {"id": "p-responder-a", "platform": "weibo", "stance": {"label": "supports"}},
-                            {"id": "p-responder-b", "platform": "weibo", "stance": {"label": "contradicts"}},
-                            {"id": "p-responder-c", "platform": "weibo", "stance": {"label": "unrelated"}},
-                            {"id": "p-xhs-responder", "platform": "xhs", "stance": {"label": "supports"}},
+                            {"id": "p-official", "platform": "weibo", "stance": {"label": "entailment"}},
+                            {"id": "p-responder-a", "platform": "weibo", "stance": {"label": "entailment"}},
+                            {"id": "p-responder-b", "platform": "weibo", "stance": {"label": "contradiction"}},
+                            {"id": "p-responder-c", "platform": "weibo", "stance": {"label": "neutral"}},
+                            {"id": "p-xhs-responder", "platform": "xhs", "stance": {"label": "entailment"}},
                         ],
                         "comments": [],
                     },
@@ -452,10 +452,10 @@ def test_landscape_keeps_ranks_platform_local_and_projects_exact_semantic_eviden
                 rows_by_platform.setdefault(row["platform"], []).append(row)
             assert [row["rank"] for row in rows_by_platform["weibo"]] == [1, 2, 3]
             assert [row["rank"] for row in rows_by_platform["xhs"]] == [1]
-            assert result["official_publications"][0]["semantic"] == {"stance": "supports"}
+            assert result["official_publications"][0]["semantic"] == {"stance": "support"}
             responder_a = next(row for row in rows_by_platform["weibo"] if row["author_id"] == "responder-a")
-            assert responder_a["stance"] == "supports"
-            assert responder_a["semantic"]["stance_distribution"] == {"supports": 1}
+            assert responder_a["stance"] == "support"
+            assert responder_a["semantic"]["stance_distribution"] == {"support": 1}
         finally:
             session.close()
 
