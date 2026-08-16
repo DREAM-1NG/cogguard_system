@@ -583,7 +583,7 @@ function namedCountsText(items: SemanticCount[]): string {
 .section-kicker,
 .section-heading > span {
   color: #6b7785;
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .platform-filter {
@@ -598,7 +598,7 @@ function namedCountsText(items: SemanticCount[]): string {
   color: #455564;
   cursor: pointer;
   font: inherit;
-  font-size: 13px;
+  font-size: 14px;
   min-height: 28px;
   padding: 3px 8px;
 }
@@ -977,7 +977,7 @@ function namedCountsText(items: SemanticCount[]): string {
 
 .semantic-matrix-table {
   border-collapse: collapse;
-  font-size: 12px;
+  font-size: 13px;
   min-width: 900px;
   width: 100%;
 }
@@ -1131,10 +1131,10 @@ function namedCountsText(items: SemanticCount[]): string {
     padding: 7px 8px;
   }
 
-  .semantic-matrix-table td::before {
+.semantic-matrix-table td::before {
     color: #86909c;
     content: attr(data-label);
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 600;
     line-height: 1.3;
   }

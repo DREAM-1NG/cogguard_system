@@ -14,6 +14,7 @@ import type {
   ReviewCaseList,
   ReviewRequestCreate,
   ReviewRequestReceipt,
+  ReviewAudit,
 } from '@/types/reviewCase'
 
 interface ApiEnvelope<T> {
@@ -54,6 +55,12 @@ export function getReviewCaseEvidence(
   return reviewCaseRequest.get<unknown, ApiEnvelope<ReviewCaseEvidence>>(
     `/${encodeURIComponent(caseId)}/evidence`,
     { params },
+  )
+}
+
+export function getReviewAudit(caseId: string) {
+  return reviewCaseRequest.get<unknown, ApiEnvelope<ReviewAudit>>(
+    `/${encodeURIComponent(caseId)}/teacher-audit`,
   )
 }
 

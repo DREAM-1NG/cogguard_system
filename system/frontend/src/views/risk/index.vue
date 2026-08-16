@@ -93,6 +93,143 @@
           </a-card>
         </section>
 
+        <section class="review-panel" aria-label="智能审计">
+          <a-card size="small">
+            <template #title>
+              <div class="panel-heading">
+                <span>智能审计</span>
+                <span class="panel-kicker">系统初判 · 复核建议</span>
+              </div>
+            </template>
+            <template #extra>
+              <a-button
+                size="small"
+                :loading="reviewAuditLoading"
+                aria-label="刷新智能审计"
+                @click="refreshReviewAudit"
+              >
+                刷新审计
+              </a-button>
+            </template>
+
+            <a-skeleton v-if="reviewAuditLoading && !reviewAudit" active :paragraph="{ rows: 3 }" />
+            <a-alert
+              v-else-if="reviewAuditError"
+              type="warning"
+              show-icon
+              :message="reviewAuditError"
+              description="案件摘要、证据列表和人工确认流程仍然可用。"
+            />
+            <a-alert
+              v-else-if="!reviewAudit || reviewAudit.status === 'unavailable'"
+              type="info"
+              show-icon
+              message="尚未产生复核审计"
+              description="复核审计只在分析员明确申请复核后运行，不会由页面自动触发。"
+            />
+            <template v-else>
+              <div class="audit-status-row" aria-live="polite">
+                <div class="audit-status-main">
+                  <a-tag :color="reviewStatusColor(reviewAudit.status)">
+                    {{ reviewStatusLabel(reviewAudit.status) }}
+                  </a-tag>
+                  <span class="audit-mode">{{ executionModeLabel(reviewAudit.execution_mode) }}</span>
+                  <span class="muted">{{ reviewAudit.model || reviewAudit.model_version || '模型信息未提供' }}</span>
+                </div>
+                <div class="audit-meta">
+                  <span>{{ reviewAudit.provider_name || 'Provider 未记录' }}</span>
+                  <span>{{ formatTime(reviewAudit.completed_at || reviewAudit.requested_at) }}</span>
+                </div>
+              </div>
+
+              <div class="audit-stat-grid" aria-label="智能审计运行摘要">
+                <div class="audit-stat">
+                  <span class="audit-stat-value">{{ reviewAudit.stages.length }}</span>
+                  <span class="audit-stat-label">角色阶段</span>
+                </div>
+                <div class="audit-stat">
+                  <span class="audit-stat-value">{{ completedReviewStageCount }}</span>
+                  <span class="audit-stat-label">已完成阶段</span>
+                </div>
+                <div class="audit-stat">
+                  <span class="audit-stat-value">{{ reviewAudit.sources.length }}</span>
+                  <span class="audit-stat-label">可追溯来源</span>
+                </div>
+                <div class="audit-stat">
+                  <span class="audit-stat-value">{{ reviewAudit.queries.length }}</span>
+                  <span class="audit-stat-label">检索查询</span>
+                </div>
+              </div>
+
+              <div class="audit-workspace">
+                <div class="audit-column">
+                  <div class="audit-section-label">执行链</div>
+                  <div class="audit-stage-list" role="list" aria-label="复核角色执行链">
+                    <article v-for="(stage, index) in reviewAudit.stages" :key="`${stage.name}-${index}`" class="audit-stage" role="listitem">
+                      <div class="audit-stage-marker" :class="`is-${stage.status}`" aria-hidden="true">
+                        {{ index + 1 }}
+                      </div>
+                      <div class="audit-stage-content">
+                        <div class="audit-stage-heading">
+                          <strong>{{ stageLabel(stage.name) }}</strong>
+                          <a-tag :color="stageStatusColor(stage.status)">{{ stageStatusLabel(stage.status) }}</a-tag>
+                        </div>
+                        <p v-if="stage.summary" class="audit-stage-summary">{{ stage.summary }}</p>
+                        <div class="audit-stage-meta">
+                          <span v-if="stage.role">{{ stageRoleLabel(stage.role) }}</span>
+                          <span>来源 {{ stage.source_count }}</span>
+                          <span>查询 {{ stage.query_count }}</span>
+                          <span v-if="stage.rationale_available">含短理由</span>
+                        </div>
+                      </div>
+                    </article>
+                  </div>
+                </div>
+
+                <div class="audit-column">
+                  <div class="audit-section-label">证据与理由</div>
+                  <div class="audit-quality-rail" aria-label="审计对象完整度">
+                    <div class="quality-rail-track"><span :style="{ width: `${auditEvidenceCoverage}%` }" /></div>
+                    <span>{{ auditEvidenceCoverage }}% 的阶段已有来源或短理由记录</span>
+                  </div>
+                  <div v-if="reviewAudit.rationale.available" class="rationale-capsule">
+                    <div class="capsule-header">
+                      <strong>理由摘要</strong>
+                      <a-tag :color="reviewAudit.rationale.quality_gate ? 'green' : 'gold'">
+                        {{ reviewAudit.rationale.quality_gate ? '质量门控通过' : '仅供审计' }}
+                      </a-tag>
+                    </div>
+                    <p>{{ reviewAudit.rationale.text }}</p>
+                    <div v-if="reviewAudit.rationale.input_spans.length" class="span-list">
+                      <span v-for="span in reviewAudit.rationale.input_spans" :key="span" class="input-span">{{ span }}</span>
+                    </div>
+                  </div>
+                  <div v-else class="audit-empty-note">当前运行没有可展示的短理由摘要；不以完整分析报告替代。</div>
+                  <div v-if="reviewAudit.sources.length" class="source-list" role="list" aria-label="复核检索来源">
+                    <article v-for="source in reviewAudit.sources.slice(0, 4)" :key="source.source_id" class="source-item" role="listitem">
+                      <div class="source-heading">
+                        <span class="source-dot" aria-hidden="true" />
+                        <a v-if="source.url" :href="source.url" target="_blank" rel="noopener noreferrer">{{ source.title || source.source_id }}</a>
+                        <strong v-else>{{ source.title || source.source_id }}</strong>
+                      </div>
+                      <p v-if="source.excerpt">{{ source.excerpt }}</p>
+                      <div class="audit-stage-meta"><span>{{ source.source || '来源未标明' }}</span><span v-if="source.relation">{{ source.relation }}</span></div>
+                    </article>
+                  </div>
+                  <div v-else class="audit-empty-note">当前运行没有可追溯来源。来源数量为零不等于事实已被证实。</div>
+                </div>
+              </div>
+              <a-alert
+                class="audit-boundary-alert"
+                type="info"
+                show-icon
+                message="这是 Review Advisory，不是自动确认结论"
+                description="复核轨迹用于补充分析员判断；最终结论仍需在右侧确认流程中提交。"
+              />
+            </template>
+          </a-card>
+        </section>
+
         <section class="workspace-grid">
           <a-card size="small" class="evidence-panel">
             <template #title>证据分组与标注</template>
@@ -147,7 +284,13 @@
                         <a-button size="small" aria-label="标注证据" @click="openAnnotation(item)">
                           标注
                         </a-button>
-                        <a v-if="item.source_url" :href="item.source_url" target="_blank" rel="noopener noreferrer">
+                        <a
+                          v-if="item.source_url"
+                          class="evidence-source-link"
+                          :href="item.source_url"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
                           原始链接
                         </a>
                       </a-space>
@@ -429,6 +572,7 @@ import {
   getLatestReviewCase,
   getReviewCase,
   getReviewCaseEvidence,
+  getReviewAudit,
   isUnauthorizedCaseEventStreamError,
   listCaseActivities,
   readCaseEventStream,
@@ -449,6 +593,7 @@ import type {
   ReviewCaseSummary,
   ReviewConclusion,
   ReviewUrgency,
+  ReviewAudit,
 } from '@/types/reviewCase'
 import type { SemanticEvidenceProjection } from '@/api/analysis'
 
@@ -476,6 +621,9 @@ const activityLoading = ref(false)
 const activeEvidenceGroup = ref<EvidenceAssessment>('unresolved')
 const selectedEvidenceRefs = ref<string[]>([])
 const activities = ref<CaseActivity[]>([])
+const reviewAudit = ref<ReviewAudit | null>(null)
+const reviewAuditLoading = ref(false)
+const reviewAuditError = ref('')
 const activityCursor = ref(0)
 const loadingEvidenceGroup = ref<EvidenceAssessment | null>(null)
 const evidenceGroupLoaded = reactive<Record<EvidenceAssessment, boolean>>({
@@ -686,6 +834,17 @@ const semanticUnavailableText = computed(() => {
   return '当前事件的语义证据不可用。'
 })
 
+const completedReviewStageCount = computed(() => {
+  return (reviewAudit.value?.stages || []).filter((stage) => stage.status === 'completed').length
+})
+
+const auditEvidenceCoverage = computed(() => {
+  const stages = reviewAudit.value?.stages || []
+  if (!stages.length) return 0
+  const covered = stages.filter((stage) => stage.source_count > 0 || stage.rationale_available).length
+  return Math.round((covered / stages.length) * 100)
+})
+
 const decisionLocked = computed(() => {
   return Boolean(
     currentCase.value?.confirmed_decision
@@ -802,6 +961,7 @@ async function loadInitialCase() {
     const latest = await getLatestReviewCase()
     if (requestSequence !== caseLoadSequence) return
     await applyCase(latest.data)
+    void loadReviewAudit(latest.data.case_id, requestSequence)
     void loadCaseOptions('')
   } catch {
     if (requestSequence !== caseLoadSequence) return
@@ -817,7 +977,7 @@ async function loadCase(caseId: string) {
   loading.value = true
   invalidatePendingCaseLoadState()
   try {
-    const [detailRes, evidenceRes, activityRes] = await Promise.all([
+    const [detailRes, evidenceRes, activityRes, reviewAuditRes] = await Promise.all([
       getReviewCase(caseId),
       getReviewCaseEvidence(caseId, {
         assessment: activeEvidenceGroup.value,
@@ -825,9 +985,14 @@ async function loadCase(caseId: string) {
         limit: 40,
       }),
       listCaseActivities(caseId, { limit: 100 }),
+      getReviewAudit(caseId),
     ])
     if (requestSequence !== caseLoadSequence) return
     await applyCase(detailRes.data, evidenceRes.data, activityRes.data, requestSequence)
+    if (requestSequence === caseLoadSequence) {
+      reviewAudit.value = reviewAuditRes.data
+      reviewAuditLoading.value = false
+    }
   } finally {
     if (requestSequence === caseLoadSequence) loading.value = false
   }
@@ -842,6 +1007,9 @@ function invalidatePendingCaseLoadState() {
   semanticLoading.value = false
   activityLoading.value = false
   loadingEvidenceGroup.value = null
+  reviewAudit.value = null
+  reviewAuditLoading.value = false
+  reviewAuditError.value = ''
 }
 
 async function applyCase(
@@ -852,6 +1020,8 @@ async function applyCase(
 ) {
   if (requestSequence !== caseLoadSequence) return
   currentCase.value = detail
+  reviewAudit.value = null
+  reviewAuditLoading.value = false
   selectedCaseId.value = detail.case_id
   evidence.value = null
   semanticProjection.value = null
@@ -880,6 +1050,32 @@ async function applyCase(
   await Promise.all(pendingLoads)
   if (requestSequence !== caseLoadSequence) return
   startActivityRecovery(detail.case_id)
+}
+
+function refreshReviewAudit() {
+  if (currentCase.value) {
+    void loadReviewAudit(currentCase.value.case_id)
+  }
+}
+
+async function loadReviewAudit(caseId: string, requestSequence = caseLoadSequence) {
+  reviewAuditLoading.value = true
+  reviewAuditError.value = ''
+  try {
+    const response = await getReviewAudit(caseId)
+    if (requestSequence === caseLoadSequence && currentCase.value?.case_id === caseId) {
+      reviewAudit.value = response.data
+    }
+  } catch {
+    if (requestSequence === caseLoadSequence && currentCase.value?.case_id === caseId) {
+      reviewAudit.value = null
+      reviewAuditError.value = '智能审计详情暂不可用，请稍后刷新。'
+    }
+  } finally {
+    if (requestSequence === caseLoadSequence && currentCase.value?.case_id === caseId) {
+      reviewAuditLoading.value = false
+    }
+  }
 }
 
 async function loadSemanticProjection(caseRequestSequence = caseLoadSequence) {
@@ -1415,6 +1611,60 @@ function activityLabel(value: CaseActivityType) {
   return activityLabels[value]
 }
 
+function reviewStatusLabel(value: string) {
+  if (value === 'completed') return '审计已完成'
+  if (value === 'queued') return '审计排队中'
+  if (value === 'failed') return '审计失败'
+  return '尚未运行'
+}
+
+function reviewStatusColor(value: string) {
+  if (value === 'completed') return 'green'
+  if (value === 'failed') return 'red'
+  if (value === 'queued') return 'blue'
+  return 'default'
+}
+
+function executionModeLabel(value: string) {
+  if (value === 'maro_llm') return 'MARO-compatible LLM 链'
+  if (value === 'deterministic_dag_fallback') return '确定性 DAG fallback'
+  return value || '执行模式未记录'
+}
+
+function stageLabel(value: string) {
+  const labels: Record<string, string> = {
+    PostHarm: '内容风险分析',
+    ClaimEvidence: '主张与证据',
+    MultimodalConsistency: '多模态一致性',
+    PropagationTree: '传播上下文',
+    QuestionReflection: '问题反思',
+    HarmfulnessJudge: '风险综合 Judge',
+  }
+  return labels[value] || value
+}
+
+function stageStatusLabel(value: string) {
+  if (value === 'completed') return '已完成'
+  if (value === 'failed') return '失败'
+  if (value === 'skipped' || value.startsWith('skipped')) return '未执行'
+  if (value === 'running') return '执行中'
+  return value || '未记录'
+}
+
+function stageStatusColor(value: string) {
+  if (value === 'completed') return 'green'
+  if (value === 'failed') return 'red'
+  if (value === 'running') return 'blue'
+  return 'default'
+}
+
+function stageRoleLabel(value: string) {
+  if (value === 'reflection_response') return '定向补答'
+  if (value === 'expert_initial') return '专家初始分析'
+  if (value === 'question_reflection') return '反思节点'
+  return value
+}
+
 function evidenceTypeLabel(value: string) {
   return value === 'comment' ? '评论' : value === 'post' ? '帖文' : '其他材料'
 }
@@ -1543,7 +1793,7 @@ onBeforeUnmount(() => {
 .semantic-summary-label,
 .semantic-section-title {
   color: #4e5969;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   line-height: 1.5;
 }
@@ -1635,7 +1885,7 @@ onBeforeUnmount(() => {
   color: #86909c;
   display: flex;
   flex-wrap: wrap;
-  font-size: 12px;
+  font-size: 13px;
   gap: 8px;
   line-height: 1.5;
 }
@@ -1674,7 +1924,7 @@ onBeforeUnmount(() => {
   color: #86909c;
   display: flex;
   flex-wrap: wrap;
-  font-size: 12px;
+  font-size: 13px;
   gap: 6px;
   line-height: 1.6;
   margin-top: 16px;
@@ -1690,6 +1940,274 @@ onBeforeUnmount(() => {
   white-space: pre-wrap;
 }
 
+.review-panel {
+  margin-bottom: 16px;
+}
+
+.panel-heading {
+  align-items: baseline;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.panel-kicker {
+  color: #86909c;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.audit-status-row {
+  align-items: center;
+  border-bottom: 1px solid #eef0f4;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  padding-bottom: 12px;
+}
+
+.audit-status-main,
+.audit-meta {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.audit-mode {
+  color: #1d39c4;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.audit-meta {
+  color: #86909c;
+  font-size: 12px;
+}
+
+.audit-stat-grid {
+  display: grid;
+  gap: 1px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 14px 0 18px;
+  overflow: hidden;
+}
+
+.audit-stat {
+  background: #f7f8fa;
+  min-width: 0;
+  padding: 12px;
+}
+
+.audit-stat-value {
+  color: #1f2329;
+  display: block;
+  font-size: 22px;
+  font-weight: 650;
+  line-height: 1.2;
+}
+
+.audit-stat-label {
+  color: #86909c;
+  display: block;
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.audit-workspace {
+  display: grid;
+  gap: 28px;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.9fr);
+}
+
+.audit-section-label {
+  color: #4e5969;
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  margin-bottom: 10px;
+}
+
+.audit-stage-list {
+  border-left: 1px solid #d9d9d9;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-left: 10px;
+  padding-left: 16px;
+}
+
+.audit-stage {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 1fr;
+  min-width: 0;
+  position: relative;
+}
+
+.audit-stage-marker {
+  align-items: center;
+  background: #f0f2f5;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  color: #86909c;
+  display: flex;
+  font-size: 11px;
+  font-weight: 650;
+  height: 22px;
+  justify-content: center;
+  left: -29px;
+  position: absolute;
+  top: 0;
+  width: 22px;
+}
+
+.audit-stage-marker.is-completed {
+  background: #d9f7be;
+  color: #237804;
+}
+
+.audit-stage-marker.is-failed {
+  background: #fff1f0;
+  color: #cf1322;
+}
+
+.audit-stage-content {
+  min-width: 0;
+}
+
+.audit-stage-heading,
+.capsule-header,
+.source-heading {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.audit-stage-heading strong {
+  color: #1f2329;
+  font-size: 13px;
+}
+
+.audit-stage-summary,
+.rationale-capsule p,
+.source-item p {
+  color: #4e5969;
+  line-height: 1.65;
+  margin: 6px 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.audit-stage-meta {
+  align-items: center;
+  color: #86909c;
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 11px;
+  gap: 10px;
+}
+
+.audit-quality-rail {
+  align-items: center;
+  color: #86909c;
+  display: flex;
+  font-size: 11px;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.quality-rail-track {
+  background: #f0f2f5;
+  height: 5px;
+  min-width: 82px;
+  overflow: hidden;
+  width: 35%;
+}
+
+.quality-rail-track span {
+  background: #2f54eb;
+  display: block;
+  height: 100%;
+  transition: width 180ms ease-out;
+}
+
+.rationale-capsule,
+.audit-empty-note,
+.source-item {
+  border: 1px solid #eef0f4;
+  padding: 10px 12px;
+}
+
+.rationale-capsule {
+  background: #fafbff;
+  margin-bottom: 10px;
+}
+
+.capsule-header strong {
+  color: #1d39c4;
+  font-size: 12px;
+}
+
+.span-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.input-span {
+  background: #e6f4ff;
+  color: #0958d9;
+  font-size: 12px;
+  line-height: 1.5;
+  padding: 3px 6px;
+}
+
+.audit-empty-note {
+  color: #86909c;
+  font-size: 12px;
+  line-height: 1.6;
+  margin-bottom: 10px;
+}
+
+.source-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.source-item {
+  min-width: 0;
+}
+
+.source-heading {
+  justify-content: flex-start;
+}
+
+.source-heading a,
+.source-heading strong {
+  color: #1d39c4;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.source-dot {
+  background: #52c41a;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  height: 7px;
+  width: 7px;
+}
+
+.audit-boundary-alert {
+  margin-top: 18px;
+}
+
 .mini-list {
   align-items: center;
   display: flex;
@@ -1700,7 +2218,7 @@ onBeforeUnmount(() => {
 
 .mini-label {
   color: #4e5969;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
 }
 
@@ -1712,7 +2230,7 @@ onBeforeUnmount(() => {
 
 .muted {
   color: #86909c;
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .workspace-grid {
@@ -1853,6 +2371,20 @@ onBeforeUnmount(() => {
   }
 
   .summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .audit-status-row,
+  .audit-quality-rail {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .audit-stat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .audit-workspace {
     grid-template-columns: 1fr;
   }
 

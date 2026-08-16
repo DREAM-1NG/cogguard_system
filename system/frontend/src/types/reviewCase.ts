@@ -86,6 +86,58 @@ export interface ReviewCaseDetail extends ReviewCaseSummary {
   decision_draft: DecisionDraft | null
 }
 
+export type ReviewAuditStatus = 'unavailable' | 'queued' | 'completed' | 'failed'
+
+export interface ReviewAuditStage {
+  name: string
+  status: string
+  role: string
+  summary: string
+  query_count: number
+  source_count: number
+  rationale_available: boolean
+}
+
+export interface ReviewAuditSource {
+  source_id: string
+  source: string
+  title: string
+  url: string | null
+  excerpt: string
+  relation: string
+  status: string
+}
+
+export interface ReviewAuditRationale {
+  available: boolean
+  text: string
+  input_spans: string[]
+  evidence_refs: string[]
+  policy_refs: string[]
+  quality_gate: boolean
+  citation_coverage: number | null
+}
+
+export interface ReviewAudit {
+  case_id: string
+  status: ReviewAuditStatus
+  execution_mode: string
+  verdict_id: string | null
+  run_id: string | null
+  model_version: string
+  provider_name: string
+  model: string
+  non_claimable: boolean
+  analyst_approval_required: boolean
+  requested_at: string | null
+  completed_at: string | null
+  stages: ReviewAuditStage[]
+  sources: ReviewAuditSource[]
+  queries: string[]
+  rationale: ReviewAuditRationale
+  quality: Record<string, string | number | boolean | null>
+}
+
 export interface ReviewCaseList {
   items: ReviewCaseSummary[]
   total: number
