@@ -33,7 +33,8 @@ Current semantic package paths: `system/research/coordination_discover/`, `syste
 | **Case Activity** | An append-only business activity record that explains what happened to a case and when. | Audit spam, task log |
 | **Semantic Evidence Assistance** | Auxiliary, model-derived evidence projections such as keywords, topics, sentiment, stance, and entities that help an analyst inspect an Event Review Case without changing its conclusions. | Semantic enrichment, semantic result, model conclusion |
 | **Authority Source Account** | A reviewed exact binding from an allowlisted Authority Source to one platform account. Platform verification is preserved as evidence but does not itself establish authority. | Official-looking account, verified media guess |
-| **Claim Response Landscape** | An observed Propagation Analysis view that aligns a bound authority claim, official account publications, influential account responses, and their path evidence. | Fact checker, public opinion verdict |
+| **Claim Response Landscape** | An observed Propagation Analysis view that aligns a bound authority claim, official account publications, influential account responses, and their path evidence. A direct comment path is valid only when its `post_id` matches the bound authority publication; nested comment ancestry uses only recorded `reply_to` values. | Fact checker, public opinion verdict |
+| **Claim Response Path Semantic Overlay** | A read-only aggregation of sentiment, raw NLI stance, keywords, topics, entities, platforms, time range, and evidence references for one direct-comment path. It is emitted only when every canonical path reference maps to a ready non-fallback semantic-layer item. | Path label, inferred stance, propagation score |
 
 ## Internal Analysis Lifecycle
 

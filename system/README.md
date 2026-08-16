@@ -85,6 +85,22 @@ The application-facing ports are the `ReviewCaseService` methods that power thos
 - `confirm_decision(case_id, request, actor)`
 - `activities(case_id, after_id, limit)`
 
+## Claim Response Landscape
+
+The **主张回应图谱** tab in `/propagation` is a read-only propagation
+projection. It aligns an allowlisted authority-source account and bound primary
+claim with observed official publications and comment-thread responses. A
+path's semantic readout is shown only when every exact post/comment evidence
+reference maps to the same ready, non-fallback semantic artifact. The drawer
+does not infer paths from text similarity, account names, or graph adjacency,
+and semantic evidence does not alter Coordination, Propagation, Review, or
+risk scores.
+
+When a direct comment thread lacks a calculated network downstream-reach
+metric, the page explicitly shows that it is unavailable instead of displaying
+zero. The available semantic fields are sentiment, raw NLI stance, keywords,
+topics, entities, platform/time scope, and the exact evidence references.
+
 ## Account Profile
 
 The NLPCC TwiBot-20 checkpoint is available separately as a hash-verified

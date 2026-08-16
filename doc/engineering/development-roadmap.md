@@ -6,6 +6,26 @@
 
 > 最后更新：2026-08-14
 
+## 2026-08-17 Claim Response Semantic Readout
+
+- [x] The Claim Response Landscape now returns a direct-comment path semantic
+  overlay only when every path `evidence_ref` exactly matches a ready,
+  non-fallback semantic-layer post or comment. The projection fails closed for
+  partial references, fallback artifacts, malformed values, and missing stance
+  labels.
+- [x] `/propagation` passes that exact overlay to its existing path drawer and
+  renders sentiment, raw NLI stance, keywords, topics, entities, platforms,
+  time range, and the same evidence references. The generic Propagation
+  Analysis artifact overlay remains available only for ordinary propagation
+  paths.
+- [x] Comment-thread paths show `评论链路径，未计算网络下游覆盖` when no
+  network downstream-reach measurement exists; they no longer display a
+  misleading numeric zero.
+- [x] Focused verification: backend `38 passed`, frontend semantic path
+  contracts `28 passed`, `vue-tsc -b`, and the production frontend build
+  passed. Docker Desktop Linux Engine cannot currently be reached locally, so
+  authenticated API and browser smoke remain pending until it is restored.
+
 ## 2026-08-14 Real Semantic Evidence Frontend Closure
 
 - [x] Added a fail-closed, real-local-model semantic runtime using the fixed

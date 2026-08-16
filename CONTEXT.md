@@ -54,6 +54,14 @@ _Avoid_: detect shorthand, main detector, event labeler
 The propagation boundary that estimates spread size, next-hop behavior, and tree structure from a snapshot.
 _Avoid_: trend guess, prediction blob
 
+**Claim Response Path Semantic Overlay**:
+A read-only semantic evidence summary for one observed authority-claim response
+path. It is available only when every displayed platform-qualified post or
+comment reference resolves to the same ready, non-fallback semantic artifact.
+It is never inferred from account identity, text similarity, graph adjacency,
+or event-level aggregates, and cannot change any propagation or risk result.
+_Avoid_: path classification, inferred response, path risk score
+
 **Review**:
 The internal review routing boundary that produces advisory input and confirmed-decision prompts behind the case workspace.
 _Avoid_: generic analysis, unbounded internal loop

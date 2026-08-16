@@ -1,5 +1,20 @@
 ﻿# 开发变更日志
 
+## 2026-08-17 主张回应路径语义展示闭环
+
+- `/propagation` 的“主张回应图谱”路径抽屉现在可以直接读取后端投影的
+  `semantic_overlay`。该 overlay 仅由同一路径中全部精确的
+  `<platform>:post:<id>` / `<platform>:comment:<id>` 引用聚合；缺少任一
+  semantic-layer 记录、artifact 是 fallback 或结构不完整时不展示结果。
+- 抽屉展示情绪、原始 NLI 立场、关键词、主题、实体、平台、时间范围和证据
+  引用。普通传播路径仍沿用既有的 Propagation Analysis artifact 匹配，不把
+  主张回应 overlay 写回传播图或风险结论。
+- 直接评论链尚未计算网络下游覆盖时，前端显示“评论链路径，未计算网络下游
+  覆盖”，而不是把缺失指标误写为 `0`。
+- 验证：后端主张回应服务/API 聚焦测试 `38 passed`；前端语义路径契约测试
+  `28 passed`；`vue-tsc -b` 通过。Docker Desktop Linux Engine 当前不可用，
+  因此认证 API 与浏览器实机验收待其恢复后执行。
+
 ## 2026-08-12 Official InfoOpsGFM IOHunter Reproduction
 
 - Extended `system/research/coordination_experiments/iohunter_socgfm.py` into
