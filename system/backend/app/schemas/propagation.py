@@ -13,6 +13,29 @@ class TrendPoint(BaseModel):
     predicted_size: int
 
 
+class CumulativeTimelinePoint(BaseModel):
+    """Timestamp-window cumulative count backed by event evidence."""
+
+    at: str
+    cumulative_size: int = Field(ge=0)
+
+
+class TimelineWindow(BaseModel):
+    start: str
+    end: str
+
+
+class EventTimelineProjection(BaseModel):
+    """Evidence timeline rendered independently from checkpoint inference."""
+
+    range: Literal["active", "24h", "7d", "all"]
+    resolution: Literal["minute", "hour", "day", "week"]
+    active_window: TimelineWindow | None = None
+    window: TimelineWindow | None = None
+    observed_points: list[CumulativeTimelinePoint] = Field(default_factory=list)
+    realized_points: list[CumulativeTimelinePoint] = Field(default_factory=list)
+
+
 NonEmptyString = Annotated[str, Field(min_length=1)]
 ClaimAnchorString = Annotated[str, Field(min_length=1, pattern=r".*\S.*")]
 EvidenceReference = Annotated[
@@ -50,6 +73,7 @@ class ClaimResponsePathReference(BaseModel):
     evidence_refs: EvidenceReferenceList
     nodes: list[NonEmptyString] | None = None
     score: float | int | None = None
+    semantic_overlay: dict[str, Any] | None = None
 
 
 class ClaimResponseOfficialPublication(BaseModel):
@@ -72,7 +96,9 @@ class ClaimResponseInfluentialResponse(BaseModel):
     author_id: NonEmptyString
     author_name: NonEmptyString
     rank_scope: NonEmptyString
-    downstream_reach: int = Field(ge=0)
+    downstream_reach: int | None = Field(default=None, ge=0)
+    downstream_reach_status: Literal["available", "unavailable"] | None = None
+    downstream_reach_reason: str | None = None
     path_contribution: float | int
     path_count: int = Field(ge=1)
     engagement_percentile: float = Field(ge=0.0, le=1.0)
@@ -113,6 +139,7 @@ class ClaimResponseCoverageSection(BaseModel):
     binding_count: int | None = Field(default=None, ge=0)
     path_count: int | None = Field(default=None, ge=0)
     path_overlay_count: int | None = Field(default=None, ge=0)
+    claim_response_path_overlay_count: int | None = Field(default=None, ge=0)
 
 
 class ClaimResponseEvidenceRefsCoverage(BaseModel):
@@ -162,6 +189,7 @@ class ClaimResponseLandscapeResponse(BaseModel):
     data: ClaimResponseLandscapeData
     msg: str = "ok"
 
+
 class TrendInterval(BaseModel):
     step: int | str
     at: str | None = None
@@ -174,6 +202,8 @@ class MacroPrediction(BaseModel):
     observed_size: int = 0
     predicted_size: int | None = None
     trend_points: list[TrendPoint] = Field(default_factory=list)
+    observed_points: list[CumulativeTimelinePoint] = Field(default_factory=list)
+    realized_points: list[CumulativeTimelinePoint] = Field(default_factory=list)
     intervals: list[TrendInterval] | None = None
     direction: str | None = None
     score_concentration: float | None = None
@@ -249,3 +279,16 @@ class PropagationPredictionResponse(BaseModel):
     code: int = 0
     data: PropagationPredictionData
     msg: str = "ok"
+
+
+class PropagationMonitorProfileRequest(BaseModel):
+    event_id: str = Field(min_length=1, max_length=128)
+    platform: str | None = Field(default=None, max_length=32)
+    enabled: bool = True
+    interval_minutes: int = Field(default=5, ge=1, le=1440)
+    thresholds: dict[str, dict[str, float | int]] = Field(default_factory=dict)
+
+
+class PropagationAlertActionRequest(BaseModel):
+    action: Literal["acknowledge", "close", "ignore"]
+    note: str | None = Field(default=None, max_length=2000)

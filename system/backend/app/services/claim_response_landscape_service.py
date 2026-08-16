@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from collections import Counter, defaultdict, deque
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 from urllib.parse import urlsplit, urlunsplit
 
@@ -119,6 +119,7 @@ async def build_claim_response_landscape(
     evidence_index = _build_evidence_index(posts, comments)
     engagement_percentiles = _platform_engagement_percentiles(posts, comments)
     semantic_by_ref = _semantic_evidence_by_ref(semantic_projection)
+    semantic_items_by_ref = _semantic_items_by_ref(semantic_projection)
     official_keys = {(row.platform, row.author_id) for row in bindings}
     official_publications = _official_publications(
         posts,
@@ -153,6 +154,7 @@ async def build_claim_response_landscape(
         platform=platform,
         engagement_percentiles=engagement_percentiles,
         semantic_by_ref=semantic_by_ref,
+        semantic_items_by_ref=semantic_items_by_ref,
     )
     coverage = _coverage(
         case=case,
@@ -580,6 +582,7 @@ def _influential_responses(
     platform: str | None,
     engagement_percentiles: dict[str, float],
     semantic_by_ref: dict[str, dict[str, Any]],
+    semantic_items_by_ref: dict[str, dict[str, Any]],
 ) -> list[dict[str, Any]]:
     adjacency = _adjacency(observed)
     account_platforms = evidence_index["account_platforms"]
@@ -590,6 +593,7 @@ def _influential_responses(
         path_refs = _path_canonical_refs(path)
         path_id = _optional_text(path.get("path_id") or path.get("id"))
         path_score = _float(path.get("score"), default=1.0)
+        is_direct_comment_path = _optional_text(path.get("relation_type")) == "direct_comment_thread"
         for node in [str(value or "").strip() for value in path.get("nodes") or []]:
             if not node:
                 continue
@@ -622,11 +626,23 @@ def _influential_responses(
                         "author_id": node,
                         "author_name": _author_name(node, by_author),
                         "rank_scope": "platform",
-                        "downstream_reach": _downstream_reach(
-                            node,
-                            adjacency,
-                            platform=resolved_platform,
-                            account_platforms=account_platforms,
+                        "downstream_reach": (
+                            None
+                            if is_direct_comment_path
+                            else _downstream_reach(
+                                node,
+                                adjacency,
+                                platform=resolved_platform,
+                                account_platforms=account_platforms,
+                            )
+                        ),
+                        "downstream_reach_status": (
+                            "unavailable" if is_direct_comment_path else "available"
+                        ),
+                        "downstream_reach_reason": (
+                            "direct_comment_thread_network_reach_not_computed"
+                            if is_direct_comment_path
+                            else None
                         ),
                         "path_contribution": 0.0,
                         "path_count": 0,
@@ -634,17 +650,27 @@ def _influential_responses(
                         "first_seen_at": None,
                         "evidence_refs": [],
                         "path_refs": [],
+                        "_has_direct_comment_path": is_direct_comment_path,
                     },
                 )
                 row["path_contribution"] += path_score
                 row["path_count"] += 1
                 row["evidence_refs"] = _dedupe([*row["evidence_refs"], *platform_refs])
+                row["_has_direct_comment_path"] = row["_has_direct_comment_path"] or is_direct_comment_path
+                if is_direct_comment_path:
+                    row["downstream_reach"] = None
+                    row["downstream_reach_status"] = "unavailable"
+                    row["downstream_reach_reason"] = "direct_comment_thread_network_reach_not_computed"
                 if path_id:
                     path_ref = {"path_id": path_id, "evidence_refs": path_refs}
                     if isinstance(path.get("nodes"), list):
                         path_ref["nodes"] = list(path["nodes"])
                     if path.get("score") is not None:
                         path_ref["score"] = path["score"]
+                    if is_direct_comment_path:
+                        semantic_overlay = _semantic_overlay_for_refs(path_refs, semantic_items_by_ref)
+                        if semantic_overlay is not None:
+                            path_ref["semantic_overlay"] = semantic_overlay
                     row["path_refs"].append(path_ref)
                 row["engagement_percentile"] = max(
                     row["engagement_percentile"],
@@ -659,16 +685,17 @@ def _influential_responses(
     ranked_rows: list[dict[str, Any]] = []
     by_platform: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for row in rows.values():
-        semantic = _aggregate_semantic_evidence(row["evidence_refs"], semantic_by_ref)
-        if semantic is not None:
-            row["semantic"] = semantic
-            row["stance"] = semantic.get("dominant_stance")
+        if not row.pop("_has_direct_comment_path"):
+            semantic = _aggregate_semantic_evidence(row["evidence_refs"], semantic_by_ref)
+            if semantic is not None:
+                row["semantic"] = semantic
+                row["stance"] = semantic.get("dominant_stance")
         by_platform[str(row["platform"])].append(row)
     for scoped_platform in sorted(by_platform):
         ranked = sorted(
             by_platform[scoped_platform],
             key=lambda row: (
-                -int(row["downstream_reach"]),
+                -_downstream_reach_sort_value(row),
                 -float(row["path_contribution"]),
                 -float(row["engagement_percentile"]),
                 str(row["author_id"]),
@@ -714,7 +741,10 @@ def _coverage(
             if path_count
             else {"status": "unavailable", "reason": "observed_path_evidence_unavailable", "path_count": 0}
         ),
-        "semantic": _semantic_coverage(semantic_projection),
+        "semantic": _semantic_coverage(
+            semantic_projection,
+            claim_response_path_overlay_count=_claim_response_path_overlay_count(influential_responses),
+        ),
         "evidence_refs": {
             "status": "available" if _returned_refs_available(official_publications, influential_responses) else "unavailable",
             "official_publication_count": len(official_publications),
@@ -729,18 +759,31 @@ def _coverage(
     }
 
 
-def _semantic_coverage(projection: dict[str, Any] | None) -> dict[str, Any]:
+def _semantic_coverage(
+    projection: dict[str, Any] | None,
+    *,
+    claim_response_path_overlay_count: int = 0,
+) -> dict[str, Any]:
     if not isinstance(projection, dict):
         return {"status": "unavailable", "reason": "semantic_projection_unavailable"}
     status = str(projection.get("status") or "").strip().lower()
     if status == "ready":
-        artifact = projection.get("artifact") if isinstance(projection.get("artifact"), dict) else {}
+        artifact = projection.get("artifact")
+        if not _is_ready_semantic_artifact(artifact):
+            return {
+                "status": "unavailable",
+                "reason": _semantic_artifact_unavailable_reason(artifact),
+            }
         overlays = (
             ((artifact.get("cross_analysis") or {}).get("propagation_path_overlays") or [])
             if isinstance(artifact, dict)
             else []
         )
-        return {"status": "available", "path_overlay_count": len(overlays)}
+        return {
+            "status": "available",
+            "path_overlay_count": len(overlays),
+            "claim_response_path_overlay_count": claim_response_path_overlay_count,
+        }
     if status == "blocked":
         return {
             "status": "blocked",
@@ -780,6 +823,110 @@ def _semantic_evidence_by_ref(projection: dict[str, Any] | None) -> dict[str, di
             if evidence:
                 indexed[f"{platform}:{ref_kind}:{item_id}"] = evidence
     return indexed
+
+
+def _semantic_items_by_ref(projection: dict[str, Any] | None) -> dict[str, dict[str, Any]]:
+    """Index full semantic layer records by exact canonical evidence ref."""
+
+    if not isinstance(projection, dict) or projection.get("status") != "ready":
+        return {}
+    artifact = projection.get("artifact")
+    if not _is_ready_semantic_artifact(artifact):
+        return {}
+    layers = artifact.get("layers") if isinstance(artifact.get("layers"), dict) else {}
+    indexed: dict[str, dict[str, Any]] = {}
+    for layer, ref_kind in (("posts", "post"), ("comments", "comment")):
+        for item in layers.get(layer) or []:
+            if not isinstance(item, dict):
+                continue
+            platform = _optional_text(item.get("platform"))
+            item_id = _optional_text(item.get("id"))
+            if not platform or not item_id:
+                continue
+            indexed[f"{platform}:{ref_kind}:{item_id}"] = item
+    return indexed
+
+
+def _semantic_overlay_for_refs(
+    evidence_refs: list[str],
+    semantic_items_by_ref: dict[str, dict[str, Any]],
+) -> dict[str, Any] | None:
+    if not evidence_refs:
+        return None
+    items: list[dict[str, Any]] = []
+    for ref in evidence_refs:
+        item = semantic_items_by_ref.get(ref)
+        if item is None:
+            return None
+        items.append(item)
+    overlay = {
+        "sentiment": _semantic_distribution(items, "sentiment"),
+        "stance": _semantic_distribution(items, "stance"),
+        "keywords": _top_semantic_keywords(items),
+        "topics": _top_semantic_topics(items),
+        "entities": _top_semantic_entities(items),
+        "platforms": sorted({_optional_text(item.get("platform")) or "unknown" for item in items}),
+        "evidence_refs": list(evidence_refs),
+    }
+    time_range = _semantic_time_range(items)
+    if time_range is not None:
+        overlay["time_range"] = time_range
+    return overlay
+
+
+def _semantic_distribution(items: list[dict[str, Any]], field: str) -> dict[str, int]:
+    labels = [_semantic_label(item.get(field)) for item in items]
+    return dict(sorted(Counter(label for label in labels if label).items()))
+
+
+def _top_semantic_keywords(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    counts = Counter(
+        keyword["term"]
+        for item in items
+        for keyword in item.get("keywords") or []
+        if isinstance(keyword, dict) and keyword.get("term")
+    )
+    return [{"term": term, "count": count} for term, count in counts.most_common(10)]
+
+
+def _top_semantic_topics(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    counts = Counter(
+        (topic.get("id"), topic.get("label"))
+        for item in items
+        for topic in item.get("topics") or []
+        if isinstance(topic, dict) and topic.get("label")
+    )
+    return [{"id": key[0], "label": key[1], "count": count} for key, count in counts.most_common(10)]
+
+
+def _top_semantic_entities(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    counts = Counter(
+        (entity.get("text"), entity.get("label"))
+        for item in items
+        for entity in item.get("entities") or []
+        if isinstance(entity, dict) and entity.get("text")
+    )
+    return [{"text": key[0], "label": key[1], "count": count} for key, count in counts.most_common(10)]
+
+
+def _semantic_time_range(items: list[dict[str, Any]]) -> dict[str, str] | None:
+    values = [_normalized_timestamp(item.get("timestamp")) for item in items]
+    values = [value for value in values if value]
+    if not values:
+        return None
+    return {"start": min(values), "end": max(values)}
+
+
+def _claim_response_path_overlay_count(influential_responses: list[dict[str, Any]]) -> int:
+    unique_overlays: set[tuple[str, tuple[str, ...]]] = set()
+    for response in influential_responses:
+        for path_ref in response.get("path_refs") or []:
+            if not isinstance(path_ref, dict) or not isinstance(path_ref.get("semantic_overlay"), dict):
+                continue
+            path_id = _optional_text(path_ref.get("path_id")) or ""
+            refs = tuple(_dedupe(path_ref.get("evidence_refs") or []))
+            unique_overlays.add((path_id, refs))
+    return len(unique_overlays)
 
 
 def _aggregate_semantic_evidence(
@@ -940,6 +1087,16 @@ def _downstream_reach(
         seen.add(node)
         queue.extend(adjacency.get(node, set()) - seen)
     return sum(1 for node in seen if platform in account_platforms.get(node, {platform}))
+
+
+def _downstream_reach_sort_value(row: dict[str, Any]) -> int:
+    value = row.get("downstream_reach")
+    if value is None:
+        return 0
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return 0
 
 
 def _platform_engagement_percentiles(posts: list[dict[str, Any]], comments: list[dict[str, Any]]) -> dict[str, float]:
@@ -1127,13 +1284,36 @@ def _first_evidence_seen(evidence_refs: list[str], evidence_index: dict[str, Any
 
 
 def _is_ready_semantic_artifact(artifact: Any) -> bool:
+    if not isinstance(artifact, dict):
+        return False
+    layers = artifact.get("layers")
     return (
-        isinstance(artifact, dict)
-        and artifact.get("technology") == "semantic_enrichment"
+        artifact.get("technology") == "semantic_enrichment"
         and artifact.get("status") == "ok"
         and artifact.get("runtime_status") == "ready"
         and not artifact.get("fallback")
+        and isinstance(layers, dict)
+        and all(isinstance(layers.get(layer), list) for layer in ("posts", "comments"))
     )
+
+
+def _semantic_artifact_unavailable_reason(artifact: Any) -> str:
+    if not isinstance(artifact, dict):
+        return "semantic_artifact_not_ready"
+    if artifact.get("fallback"):
+        return "semantic_artifact_fallback"
+    layers = artifact.get("layers")
+    metadata_is_ready = (
+        artifact.get("technology") == "semantic_enrichment"
+        and artifact.get("status") == "ok"
+        and artifact.get("runtime_status") == "ready"
+    )
+    if metadata_is_ready and (
+        not isinstance(layers, dict)
+        or not all(isinstance(layers.get(layer), list) for layer in ("posts", "comments"))
+    ):
+        return "semantic_artifact_malformed"
+    return "semantic_artifact_not_ready"
 
 
 def _dedupe(values) -> list:
@@ -1161,6 +1341,19 @@ def _optional_text(value: Any) -> str | None:
 
 def _iso(value: datetime | None) -> str | None:
     return value.isoformat() if isinstance(value, datetime) else None
+
+
+def _normalized_timestamp(value: Any) -> str:
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    try:
+        parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except ValueError:
+        return text
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc).isoformat()
 
 
 def _json_loads(value: str | None, default: Any) -> Any:

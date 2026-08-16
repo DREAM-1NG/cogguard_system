@@ -509,6 +509,366 @@ def test_landscape_projects_direct_comment_thread_as_primary_claim_response_with
     asyncio.run(scenario())
 
 
+def test_landscape_projects_direct_comment_path_semantic_overlay_from_exact_ready_layers(monkeypatch):
+    async def scenario():
+        db, session = _db_with_case_material()
+        try:
+            mongo = _mongo()
+            mongo["raw_comments"].rows.extend(
+                [
+                    {
+                        "event_id": "event-1",
+                        "platform": "weibo",
+                        "comment_id": "comment-root",
+                        "post_id": "p-official",
+                        "author_id": "responder-root",
+                        "author_name": "Root responder",
+                        "timestamp": "2026-08-15T00:10:00+00:00",
+                        "likes": 5,
+                    },
+                    {
+                        "event_id": "event-1",
+                        "platform": "weibo",
+                        "comment_id": "comment-child",
+                        "post_id": "p-official",
+                        "author_id": "responder-child",
+                        "author_name": "Child responder",
+                        "timestamp": "2026-08-15T00:11:00+00:00",
+                        "reply_to": "comment-root",
+                        "likes": 9,
+                    },
+                ]
+            )
+
+            async def graph_must_not_be_used(**_kwargs):
+                raise AssertionError("direct comment evidence must not require inferred graph paths")
+
+            monkeypatch.setattr(
+                claim_response_landscape_service.propagation_observation_service,
+                "analyze_observed_propagation",
+                graph_must_not_be_used,
+            )
+
+            semantic_projection = {
+                "status": "ready",
+                "artifact": {
+                    "technology": "semantic_enrichment",
+                    "status": "ok",
+                    "runtime_status": "ready",
+                    "fallback": False,
+                    "layers": {
+                        "posts": [
+                            {
+                                "id": "p-official",
+                                "platform": "weibo",
+                                "timestamp": "2026-08-15T00:00:00+00:00",
+                                "sentiment": {"label": "neutral"},
+                                "stance": {"label": "entailment"},
+                                "keywords": [{"term": "visit"}, {"term": "claim"}],
+                                "topics": [{"id": "topic-1", "label": "diplomacy"}],
+                                "entities": [{"text": "Beijing", "label": "LOC"}],
+                            }
+                        ],
+                        "comments": [
+                            {
+                                "id": "comment-root",
+                                "platform": "weibo",
+                                "timestamp": "2026-08-15T00:10:00+00:00",
+                                "sentiment": {"label": "negative"},
+                                "stance": {"label": "contradiction"},
+                                "keywords": [{"term": "visit"}, {"term": "concern"}],
+                                "topics": [{"id": "topic-2", "label": "public response"}],
+                                "entities": [{"text": "tariff", "label": "POLICY"}],
+                            },
+                            {
+                                "id": "comment-child",
+                                "platform": "weibo",
+                                "timestamp": "2026-08-15T00:11:00+00:00",
+                                "sentiment": {"label": "positive"},
+                                "stance": {"label": "neutral"},
+                                "keywords": [{"term": "dialogue"}],
+                                "topics": [{"id": "topic-2", "label": "public response"}],
+                                "entities": [{"text": "Beijing", "label": "LOC"}],
+                            },
+                            {
+                                "id": "comment-child-same-author-wrong-ref",
+                                "platform": "weibo",
+                                "timestamp": "2026-08-15T00:12:00+00:00",
+                                "sentiment": {"label": "negative"},
+                                "stance": {"label": "contradiction"},
+                                "keywords": [{"term": "wrong"}],
+                                "topics": [{"id": "topic-wrong", "label": "wrong"}],
+                                "entities": [{"text": "Wrong", "label": "ORG"}],
+                            },
+                        ],
+                    },
+                    "cross_analysis": {"propagation_path_overlays": []},
+                },
+            }
+
+            result = await claim_response_landscape_service.build_claim_response_landscape(
+                "event-1",
+                platform="weibo",
+                db=db,
+                mongo_db=mongo,
+                semantic_projection=semantic_projection,
+            )
+
+            child = next(row for row in result["influential_responses"] if row["author_id"] == "responder-child")
+            assert child["downstream_reach"] is None
+            assert child["downstream_reach_status"] == "unavailable"
+            assert child["downstream_reach_reason"] == "direct_comment_thread_network_reach_not_computed"
+            assert child["path_refs"][0]["semantic_overlay"] == {
+                "sentiment": {"negative": 1, "neutral": 1, "positive": 1},
+                "stance": {"contradiction": 1, "entailment": 1, "neutral": 1},
+                "keywords": [
+                    {"term": "visit", "count": 2},
+                    {"term": "claim", "count": 1},
+                    {"term": "concern", "count": 1},
+                    {"term": "dialogue", "count": 1},
+                ],
+                "topics": [
+                    {"id": "topic-2", "label": "public response", "count": 2},
+                    {"id": "topic-1", "label": "diplomacy", "count": 1},
+                ],
+                "entities": [
+                    {"text": "Beijing", "label": "LOC", "count": 2},
+                    {"text": "tariff", "label": "POLICY", "count": 1},
+                ],
+                "platforms": ["weibo"],
+                "time_range": {
+                    "start": "2026-08-15T00:00:00+00:00",
+                    "end": "2026-08-15T00:11:00+00:00",
+                },
+                "evidence_refs": [
+                    "weibo:post:p-official",
+                    "weibo:comment:comment-root",
+                    "weibo:comment:comment-child",
+                ],
+            }
+            assert result["coverage"]["semantic"] == {
+                "status": "available",
+                "path_overlay_count": 0,
+                "claim_response_path_overlay_count": 2,
+            }
+        finally:
+            session.close()
+
+    asyncio.run(scenario())
+
+
+def test_landscape_omits_direct_comment_path_semantic_overlay_when_any_exact_ref_is_unmapped(monkeypatch):
+    async def scenario():
+        db, session = _db_with_case_material()
+        try:
+            mongo = _mongo()
+            mongo["raw_comments"].rows.extend(
+                [
+                    {
+                        "event_id": "event-1",
+                        "platform": "weibo",
+                        "comment_id": "comment-root",
+                        "post_id": "p-official",
+                        "author_id": "responder-root",
+                        "author_name": "Root responder",
+                        "timestamp": "2026-08-15T00:10:00+00:00",
+                    },
+                    {
+                        "event_id": "event-1",
+                        "platform": "weibo",
+                        "comment_id": "comment-child",
+                        "post_id": "p-official",
+                        "author_id": "responder-child",
+                        "author_name": "Child responder",
+                        "timestamp": "2026-08-15T00:11:00+00:00",
+                        "reply_to": "comment-root",
+                    },
+                ]
+            )
+
+            async def graph_must_not_be_used(**_kwargs):
+                raise AssertionError("direct comment evidence must not require inferred graph paths")
+
+            monkeypatch.setattr(
+                claim_response_landscape_service.propagation_observation_service,
+                "analyze_observed_propagation",
+                graph_must_not_be_used,
+            )
+
+            semantic_projection = {
+                "status": "ready",
+                "artifact": {
+                    "technology": "semantic_enrichment",
+                    "status": "ok",
+                    "runtime_status": "ready",
+                    "fallback": False,
+                    "layers": {
+                        "posts": [{"id": "p-official", "platform": "weibo", "sentiment": {"label": "neutral"}}],
+                        "comments": [
+                            {"id": "comment-child", "platform": "weibo", "sentiment": {"label": "positive"}},
+                            {"id": "comment-root-wrong-ref", "platform": "weibo", "sentiment": {"label": "negative"}},
+                        ],
+                    },
+                    "cross_analysis": {"propagation_path_overlays": []},
+                },
+            }
+
+            result = await claim_response_landscape_service.build_claim_response_landscape(
+                "event-1",
+                platform="weibo",
+                db=db,
+                mongo_db=mongo,
+                semantic_projection=semantic_projection,
+            )
+
+            child = next(row for row in result["influential_responses"] if row["author_id"] == "responder-child")
+            assert "semantic_overlay" not in child["path_refs"][0]
+            assert "semantic" not in child
+            assert "stance" not in child
+            assert result["coverage"]["semantic"] == {
+                "status": "available",
+                "path_overlay_count": 0,
+                "claim_response_path_overlay_count": 0,
+            }
+        finally:
+            session.close()
+
+    asyncio.run(scenario())
+
+
+def test_landscape_marks_fallback_semantic_artifact_unavailable_for_direct_comment_paths(monkeypatch):
+    async def scenario():
+        db, session = _db_with_case_material()
+        try:
+            mongo = _mongo()
+            mongo["raw_comments"].rows.append(
+                {
+                    "event_id": "event-1",
+                    "platform": "weibo",
+                    "comment_id": "comment-root",
+                    "post_id": "p-official",
+                    "author_id": "responder-root",
+                    "author_name": "Root responder",
+                    "timestamp": "2026-08-15T00:10:00+00:00",
+                }
+            )
+
+            async def graph_must_not_be_used(**_kwargs):
+                raise AssertionError("direct comment evidence must not require inferred graph paths")
+
+            monkeypatch.setattr(
+                claim_response_landscape_service.propagation_observation_service,
+                "analyze_observed_propagation",
+                graph_must_not_be_used,
+            )
+
+            result = await claim_response_landscape_service.build_claim_response_landscape(
+                "event-1",
+                platform="weibo",
+                db=db,
+                mongo_db=mongo,
+                semantic_projection={
+                    "status": "ready",
+                    "artifact": {
+                        "technology": "semantic_enrichment",
+                        "status": "ok",
+                        "runtime_status": "ready",
+                        "fallback": True,
+                        "layers": {
+                            "posts": [
+                                {
+                                    "id": "p-official",
+                                    "platform": "weibo",
+                                    "sentiment": {"label": "positive"},
+                                    "stance": {"label": "entailment"},
+                                }
+                            ],
+                            "comments": [
+                                {
+                                    "id": "comment-root",
+                                    "platform": "weibo",
+                                    "sentiment": {"label": "negative"},
+                                    "stance": {"label": "contradiction"},
+                                }
+                            ],
+                        },
+                    },
+                },
+            )
+
+            response = next(row for row in result["influential_responses"] if row["author_id"] == "responder-root")
+            assert "semantic_overlay" not in response["path_refs"][0]
+            assert result["coverage"]["semantic"] == {
+                "status": "unavailable",
+                "reason": "semantic_artifact_fallback",
+            }
+        finally:
+            session.close()
+
+    asyncio.run(scenario())
+
+
+def test_semantic_overlay_omits_missing_nli_labels_instead_of_synthesizing_unknown():
+    overlay = claim_response_landscape_service._semantic_overlay_for_refs(
+        ["weibo:post:p-official", "weibo:comment:comment-root"],
+        {
+            "weibo:post:p-official": {
+                "platform": "weibo",
+                "sentiment": {"label": "neutral"},
+                "stance": {"label": "entailment"},
+            },
+            "weibo:comment:comment-root": {
+                "platform": "weibo",
+                "sentiment": {"label": "negative"},
+                "stance": {"label": None},
+            },
+        },
+    )
+
+    assert overlay is not None
+    assert overlay["stance"] == {"entailment": 1}
+    assert overlay["sentiment"] == {"negative": 1, "neutral": 1}
+
+
+def test_semantic_overlay_omits_time_range_without_recorded_semantic_timestamps():
+    overlay = claim_response_landscape_service._semantic_overlay_for_refs(
+        ["weibo:post:p-official", "weibo:comment:comment-root"],
+        {
+            "weibo:post:p-official": {
+                "platform": "weibo",
+                "sentiment": {"label": "neutral"},
+                "stance": {"label": "entailment"},
+            },
+            "weibo:comment:comment-root": {
+                "platform": "weibo",
+                "sentiment": {"label": "negative"},
+                "stance": {"label": "contradiction"},
+            },
+        },
+    )
+
+    assert overlay is not None
+    assert "time_range" not in overlay
+
+
+def test_semantic_coverage_rejects_ready_artifact_without_semantic_layer_lists():
+    assert claim_response_landscape_service._semantic_coverage(
+        {
+            "status": "ready",
+            "artifact": {
+                "technology": "semantic_enrichment",
+                "status": "ok",
+                "runtime_status": "ready",
+                "fallback": False,
+                "layers": {"posts": []},
+            },
+        }
+    ) == {
+        "status": "unavailable",
+        "reason": "semantic_artifact_malformed",
+    }
+
+
 def test_latest_semantic_projection_continues_after_newest_candidate_is_unavailable(monkeypatch):
     async def scenario():
         load_order: list[str] = []
@@ -531,11 +891,12 @@ def test_latest_semantic_projection_continues_after_newest_candidate_is_unavaila
                     raise KeyError("artifact not found")
                 return {
                     "technology": "semantic_enrichment",
-                    "status": "ok",
-                    "runtime_status": "ready",
-                    "fallback": False,
-                    "cross_analysis": {"propagation_path_overlays": [{"path_id": "claim-1:0"}]},
-                }
+                        "status": "ok",
+                        "runtime_status": "ready",
+                        "fallback": False,
+                        "layers": {"posts": [], "comments": []},
+                        "cross_analysis": {"propagation_path_overlays": [{"path_id": "claim-1:0"}]},
+                    }
 
         monkeypatch.setattr(claim_response_landscape_service, "AnalysisRegistry", FakeRegistry)
 
