@@ -235,7 +235,8 @@
                       <small>
                         {{ platformLabel(item.platform) }} ·
                         {{ item.rank_scope === 'platform' ? '平台内排序' : '事件排序' }} ·
-                        下游 {{ formatNumber(item.downstream_reach) }}
+                        <template v-if="item.downstream_reach_status === 'unavailable'">评论链路径，未计算网络下游覆盖</template>
+                        <template v-else>下游 {{ formatNumber(item.downstream_reach) }}</template>
                       </small>
                       <span>
                         路径 {{ formatNumber(item.path_count) }} 条 · 贡献 {{ formatScore(item.path_contribution) }} · 互动分位 {{ formatPercentile(item.engagement_percentile) }}
@@ -1489,7 +1490,10 @@ type PropagationChartInstance = Pick<echarts.ECharts, 'getDom' | 'isDisposed' | 
 
 const semanticPathOverlay = computed(() => {
   const selectedPath = selectedClaimPathDetail.value?.path
-  if (!selectedPath || semanticProjection.value?.status !== 'ready') return null
+  if (!selectedPath) return null
+  const claimResponseOverlay = findClaimResponsePathSemanticOverlay(selectedPath)
+  if (claimResponseOverlay) return claimResponseOverlay
+  if (semanticProjection.value?.status !== 'ready') return null
   if (!linkedPropagationArtifact.value) return null
   if (!hasPropagationPathOverlays(semanticProjection.value.evidence)) return null
   return findPathSemanticOverlay(selectedPath, semanticProjection.value.evidence.cross_analysis.propagation_path_overlays)
@@ -2089,22 +2093,25 @@ function hasPropagationPathOverlays(value: unknown): value is { cross_analysis: 
   const overlays = value.cross_analysis.propagation_path_overlays
   return Array.isArray(overlays) && overlays.every((candidate) => {
     if (!isRecord(candidate) || !normalizePathId(candidate.path_id)) return false
-    const overlay = candidate.semantic_overlay
-    const timeRange = isRecord(overlay) ? overlay.time_range : undefined
-    return isRecord(overlay)
-      && hasNonEmptyDistribution(overlay.sentiment)
-      && hasSemanticFeatureRecords(overlay.keywords, 'term')
-      && hasSemanticFeatureRecords(overlay.topics, 'label')
-      && hasSemanticFeatureRecords(overlay.entities, 'text')
-      && hasNonEmptyDistribution(overlay.stance)
-      && hasNonEmptyTextList(overlay.platforms)
-      && isRecord(timeRange)
-      && typeof timeRange.start === 'string'
-      && Boolean(timeRange.start.trim())
-      && typeof timeRange.end === 'string'
-      && Boolean(timeRange.end.trim())
-      && hasCanonicalEvidenceRefs(overlay.evidence_refs)
+    return isSemanticOverlayPayload(candidate.semantic_overlay)
   })
+}
+
+function isSemanticOverlayPayload(value: unknown): value is SemanticPathOverlay['semantic_overlay'] {
+  if (!isRecord(value)) return false
+  const timeRange = value.time_range
+  return hasNonEmptyDistribution(value.sentiment)
+    && hasSemanticFeatureRecords(value.keywords, 'term')
+    && hasSemanticFeatureRecords(value.topics, 'label')
+    && hasSemanticFeatureRecords(value.entities, 'text')
+    && hasNonEmptyDistribution(value.stance)
+    && hasNonEmptyTextList(value.platforms)
+    && isRecord(timeRange)
+    && typeof timeRange.start === 'string'
+    && Boolean(timeRange.start.trim())
+    && typeof timeRange.end === 'string'
+    && Boolean(timeRange.end.trim())
+    && hasCanonicalEvidenceRefs(value.evidence_refs)
 }
 
 function sameEvidenceRefs(left: unknown, right: unknown) {
@@ -2171,6 +2178,16 @@ function findPathSemanticOverlay(path: EvidencePath, overlays: SemanticPathOverl
     && sameEvidenceRefs(overlay.semantic_overlay.evidence_refs, evidenceRefs)
   ))
   return matchedOverlay ? normalizeSemanticOverlay(matchedOverlay.semantic_overlay) : null
+}
+
+function findClaimResponsePathSemanticOverlay(path: EvidencePath) {
+  const metadata = path.metadata
+  if (!metadata || metadata.claim_response !== true) return null
+  const candidate = metadata.claim_response_semantic_overlay
+  if (!isSemanticOverlayPayload(candidate)) return null
+  const evidenceRefs = pathEvidenceRefs(path)
+  if (!evidenceRefs.length || !sameEvidenceRefs(candidate.evidence_refs, evidenceRefs)) return null
+  return normalizeSemanticOverlay(candidate)
 }
 
 function formatSemanticDistribution(values: Record<string, number>) {
@@ -3302,6 +3319,7 @@ function openClaimResponsePathDetail(
       authority_source_id: drilldown.authoritySourceId,
       response_account: drilldown.responseAccount,
       path_contribution: drilldown.contribution,
+      claim_response_semantic_overlay: pathRef.semantic_overlay,
     },
   }
   const chain: EvidenceChain = {

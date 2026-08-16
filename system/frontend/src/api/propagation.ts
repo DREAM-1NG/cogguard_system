@@ -88,11 +88,23 @@ export type ClaimResponsePublication = {
   evidence_refs?: string[]
 }
 
+export type ClaimResponseSemanticOverlay = {
+  sentiment: Record<string, number>
+  keywords: Array<{ term: string; count?: number }>
+  topics: Array<{ label: string; count?: number }>
+  entities: Array<{ text: string; count?: number }>
+  stance: Record<string, number>
+  platforms: string[]
+  time_range: { start: string; end: string }
+  evidence_refs: string[]
+}
+
 export type ClaimResponsePathRef = {
   path_id: string
   evidence_refs: string[]
   nodes?: string[]
   score?: number | null
+  semantic_overlay?: ClaimResponseSemanticOverlay
 }
 
 export type ClaimResponseInfluentialResponse = {
@@ -102,6 +114,8 @@ export type ClaimResponseInfluentialResponse = {
   author_name?: string | null
   rank_scope?: string | null
   downstream_reach?: number | null
+  downstream_reach_status?: 'available' | 'unavailable' | null
+  downstream_reach_reason?: string | null
   path_contribution?: number | null
   path_count?: number | null
   engagement_percentile?: number | null

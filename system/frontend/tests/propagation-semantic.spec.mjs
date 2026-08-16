@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url'
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const frontendRoot = resolve(__dirname, '..')
 const propagationView = readFileSync(resolve(frontendRoot, 'src/views/propagation/index.vue'), 'utf8')
+const propagationApi = readFileSync(resolve(frontendRoot, 'src/api/propagation.ts'), 'utf8')
 
 function bodyOf(source, name) {
   const start = source.indexOf(`function ${name}(`)
@@ -55,6 +56,7 @@ function executableFunction(source, name, dependencies = {}) {
     .replace(/: SemanticOverlayPayload/g, '')
     .replace(/: SemanticPathOverlay\['semantic_overlay'\]/g, '')
     .replace(/: value is \{ cross_analysis: \{ propagation_path_overlays: SemanticPathOverlay\[\] \} \}/g, '')
+    .replace(/: value is SemanticPathOverlay\['semantic_overlay'\]/g, '')
     .replace(/: SemanticPathOverlay\[\]/g, '')
     .replace(/: Record<string, number>/g, '')
     .replace(/: 'term' \| 'label' \| 'text'/g, '')
@@ -176,6 +178,41 @@ test('matches semantic overlays only by path ID and exact canonical evidence ref
   assert.equal(findPathSemanticOverlay({ path_id: 42 }, [exactMatch]), null)
 })
 
+test('prefers an exact Claim Response path overlay over the generic propagation artifact', () => {
+  const overlaySelector = bodyOf(propagationView, 'findClaimResponsePathSemanticOverlay')
+  const semanticPathOverlay = propagationView.slice(
+    propagationView.indexOf('const semanticPathOverlay = computed'),
+    propagationView.indexOf('const claimResponsePresentation = computed'),
+  )
+  const claimResponsePathOpen = bodyOf(propagationView, 'openClaimResponsePathDetail')
+
+  assert.match(propagationApi, /export type ClaimResponseSemanticOverlay = \{/)
+  assert.match(propagationApi, /semantic_overlay\?: ClaimResponseSemanticOverlay/)
+  assert.match(overlaySelector, /metadata\.claim_response !== true/)
+  assert.match(overlaySelector, /metadata\.claim_response_semantic_overlay/)
+  assert.match(overlaySelector, /sameEvidenceRefs\(candidate\.evidence_refs, evidenceRefs\)/)
+  assert.match(semanticPathOverlay, /findClaimResponsePathSemanticOverlay\(selectedPath\)/)
+  assert.match(semanticPathOverlay, /if \(claimResponseOverlay\) return claimResponseOverlay/)
+  assert.ok(
+    semanticPathOverlay.indexOf('findClaimResponsePathSemanticOverlay(selectedPath)')
+      < semanticPathOverlay.indexOf("semanticProjection.value?.status !== 'ready'"),
+    'Claim Response overlay should not depend on the separate generic propagation artifact request',
+  )
+  assert.match(claimResponsePathOpen, /claim_response_semantic_overlay: pathRef\.semantic_overlay/)
+})
+
+test('labels an unavailable direct-comment network reach instead of rendering it as zero', () => {
+  const responseRow = propagationView.slice(
+    propagationView.indexOf("v-for=\"item in claimResponseInfluentialResponses\""),
+    propagationView.indexOf('<div class="claim-response-path-list"'),
+  )
+
+  assert.match(propagationApi, /downstream_reach_status\?: 'available' \| 'unavailable' \| null/)
+  assert.match(responseRow, /item\.downstream_reach_status === 'unavailable'/)
+  assert.match(responseRow, /评论链路径，未计算网络下游覆盖/)
+  assert.match(responseRow, /formatNumber\(item\.downstream_reach\)/)
+})
+
 test('fails closed when any required nested semantic overlay field is empty or malformed', () => {
   const isRecord = executableFunction(propagationView, 'isRecord')
   const optionalText = executableFunction(propagationView, 'optionalText')
@@ -193,13 +230,17 @@ test('fails closed when any required nested semantic overlay field is empty or m
   const hasCanonicalEvidenceRefs = executableFunction(propagationView, 'hasCanonicalEvidenceRefs', {
     normalizeEvidenceRefs,
   })
-  const hasPropagationPathOverlays = executableFunction(propagationView, 'hasPropagationPathOverlays', {
+  const isSemanticOverlayPayload = executableFunction(propagationView, 'isSemanticOverlayPayload', {
     isRecord,
     hasNonEmptyDistribution,
     hasSemanticFeatureRecords,
     hasNonEmptyTextList,
-    normalizePathId,
     hasCanonicalEvidenceRefs,
+  })
+  const hasPropagationPathOverlays = executableFunction(propagationView, 'hasPropagationPathOverlays', {
+    isRecord,
+    normalizePathId,
+    isSemanticOverlayPayload,
   })
   const valid = semanticOverlay()
 
