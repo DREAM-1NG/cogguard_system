@@ -924,6 +924,35 @@ def test_semantic_coverage_rejects_ready_artifact_without_semantic_layer_lists()
     }
 
 
+def test_ready_semantic_artifact_rejects_malformed_or_duplicate_layer_members():
+    base = {
+        "technology": "semantic_enrichment",
+        "status": "ok",
+        "runtime_status": "ready",
+        "fallback": False,
+        "layers": {"posts": [], "comments": []},
+    }
+    malformed = {**base, "layers": {"posts": [None], "comments": []}}
+    duplicate = {
+        **base,
+        "layers": {
+            "posts": [
+                {"id": "post-1", "platform": "weibo"},
+                {"id": "post-1", "platform": "weibo"},
+            ],
+            "comments": [],
+        },
+    }
+
+    for artifact in (malformed, duplicate):
+        assert claim_response_landscape_service._semantic_coverage(
+            {"status": "ready", "artifact": artifact}
+        ) == {
+            "status": "unavailable",
+            "reason": "semantic_artifact_malformed",
+        }
+
+
 def test_latest_semantic_projection_continues_after_newest_candidate_is_unavailable(monkeypatch):
     async def scenario():
         load_order: list[str] = []

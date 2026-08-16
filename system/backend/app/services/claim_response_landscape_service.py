@@ -335,8 +335,9 @@ async def _load_latest_semantic_projection(
                         }
                     reason = "semantic_artifact_snapshot_mismatch"
             else:
-                reason = _optional_text(artifact.get("blocking_reason")) if isinstance(artifact, dict) else None
-                reason = reason or "semantic_artifact_not_ready"
+                reason = _semantic_artifact_unavailable_reason(artifact)
+                if reason == "semantic_artifact_not_ready" and isinstance(artifact, dict):
+                    reason = _optional_text(artifact.get("blocking_reason")) or reason
         if first_failure is None:
             first_failure = {"status": "blocked", "blocking_reason": reason, "artifact": None}
 
@@ -1287,10 +1288,15 @@ def _path_canonical_refs(path: dict[str, Any]) -> list[str]:
 
 def _canonical_ref(reference: Any) -> str | None:
     if isinstance(reference, str):
-        text = reference.strip()
-        parts = text.split(":", 2)
-        if len(parts) == 3 and parts[0] and parts[1] in {"post", "comment"} and parts[2]:
-            return text
+        parts = reference.split(":")
+        if (
+            len(parts) == 3
+            and parts[0]
+            and parts[1] in {"post", "comment"}
+            and parts[2]
+            and all(not any(character.isspace() for character in part) for part in parts)
+        ):
+            return reference
         return None
     if not isinstance(reference, dict):
         return None
@@ -1394,9 +1400,27 @@ def _is_ready_semantic_artifact(artifact: Any) -> bool:
         and artifact.get("status") == "ok"
         and artifact.get("runtime_status") == "ready"
         and not artifact.get("fallback")
-        and isinstance(layers, dict)
-        and all(isinstance(layers.get(layer), list) for layer in ("posts", "comments"))
+        and _semantic_layers_are_well_formed(layers)
     )
+
+
+def _semantic_layers_are_well_formed(layers: Any) -> bool:
+    if not isinstance(layers, dict) or not all(isinstance(layers.get(layer), list) for layer in ("posts", "comments")):
+        return False
+    seen_refs: set[str] = set()
+    for layer, ref_kind in (("posts", "post"), ("comments", "comment")):
+        for item in layers[layer]:
+            if not isinstance(item, dict):
+                return False
+            platform = item.get("platform")
+            item_id = item.get("id")
+            if not isinstance(platform, str) or not isinstance(item_id, str):
+                return False
+            canonical = _canonical_ref(f"{platform}:{ref_kind}:{item_id}")
+            if canonical is None or canonical in seen_refs:
+                return False
+            seen_refs.add(canonical)
+    return True
 
 
 def _semantic_artifact_matches_snapshot(artifact: dict[str, Any], snapshot: Any, *, snapshot_id: str | None) -> bool:
@@ -1461,10 +1485,7 @@ def _semantic_artifact_unavailable_reason(artifact: Any) -> str:
         and artifact.get("status") == "ok"
         and artifact.get("runtime_status") == "ready"
     )
-    if metadata_is_ready and (
-        not isinstance(layers, dict)
-        or not all(isinstance(layers.get(layer), list) for layer in ("posts", "comments"))
-    ):
+    if metadata_is_ready and not _semantic_layers_are_well_formed(layers):
         return "semantic_artifact_malformed"
     return "semantic_artifact_not_ready"
 

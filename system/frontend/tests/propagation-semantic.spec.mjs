@@ -65,7 +65,11 @@ function executableFunction(source, name, dependencies = {}) {
   const definition = bodyOf(source, name)
     .replace(/: unknown/g, '')
     .replace(/: string\[\]/g, '')
+    .replace(/: EvidencePath \| null \| undefined/g, '')
     .replace(/: EvidencePath/g, '')
+    .replace(/: SemanticEvidenceProjection \| null/g, '')
+    .replace(/: PropagationAnalysisArtifact \| null/g, '')
+    .replace(/: SemanticOverlayPayload \| ClaimResponseSemanticOverlay \| null/g, '')
     .replace(/: SemanticEvidenceProjection/g, '')
     .replace(/: SemanticOverlayPayload/g, '')
     .replace(/: SemanticPathOverlay\['semantic_overlay'\]/g, '')
@@ -166,6 +170,16 @@ test('matches semantic overlays only by path ID and exact canonical evidence ref
   const wrongEvidence = semanticOverlay('42', ['weibo:post:other'])
   const evidenceOnlyMatch = semanticOverlay('not-the-path', ['weibo:post:post-42', 'weibo:comment:comment-42'])
 
+  for (const invalid of [
+    ' weibo:post:post-42',
+    'weibo:post:post-42 ',
+    'weibo::post-42',
+    'weibo:video:post-42',
+    'weibo:post:post-42:extra',
+  ]) {
+    assert.equal(normalizeEvidenceReference(invalid), '')
+  }
+
   assert.deepEqual(
     normalizeEvidenceRefs([
       { platform: 'weibo', post_id: 'post-42' },
@@ -190,6 +204,62 @@ test('matches semantic overlays only by path ID and exact canonical evidence ref
   assert.equal(findPathSemanticOverlay({ path_id: 42, evidence_refs: ['weibo:post:post-42'] }, [wrongEvidence]), null)
   assert.equal(findPathSemanticOverlay({ path_id: 84, evidence_refs: exactMatch.semantic_overlay.evidence_refs }, [exactMatch]), null)
   assert.equal(findPathSemanticOverlay({ path_id: 42 }, [exactMatch]), null)
+})
+
+test('never falls back to a generic propagation overlay for a Claim Response path', () => {
+  const isRecord = executableFunction(propagationView, 'isRecord')
+  const optionalText = executableFunction(propagationView, 'optionalText')
+  const normalizeEvidenceReference = executableFunction(propagationView, 'normalizeEvidenceReference', {
+    isRecord,
+    optionalText,
+  })
+  const normalizeEvidenceRefs = executableFunction(propagationView, 'normalizeEvidenceRefs', {
+    normalizeEvidenceReference,
+  })
+  const sameEvidenceRefs = executableFunction(propagationView, 'sameEvidenceRefs', { normalizeEvidenceRefs })
+  const pathEvidenceRefs = executableFunction(propagationView, 'pathEvidenceRefs', { normalizeEvidenceRefs })
+  const normalizeSemanticOverlay = executableFunction(propagationView, 'normalizeSemanticOverlay', { normalizeEvidenceRefs })
+  const normalizePathId = functionOr(propagationView, 'normalizePathId', (value) => String(value ?? '').trim())
+  const findPathSemanticOverlay = executableFunction(propagationView, 'findPathSemanticOverlay', {
+    normalizePathId,
+    sameEvidenceRefs,
+    pathEvidenceRefs,
+    normalizeSemanticOverlay,
+  })
+  const hasNonEmptyDistribution = functionOr(propagationView, 'hasNonEmptyDistribution', () => true, { isRecord })
+  const hasSemanticFeatureRecords = functionOr(propagationView, 'hasSemanticFeatureRecords', () => true, { isRecord })
+  const hasNonEmptyTextList = functionOr(propagationView, 'hasNonEmptyTextList', () => true)
+  const hasCanonicalEvidenceRefs = executableFunction(propagationView, 'hasCanonicalEvidenceRefs', {
+    normalizeEvidenceRefs,
+  })
+  const isSemanticOverlayPayload = executableFunction(propagationView, 'isSemanticOverlayPayload', {
+    isRecord,
+    hasNonEmptyDistribution,
+    hasSemanticFeatureRecords,
+    hasNonEmptyTextList,
+    hasCanonicalEvidenceRefs,
+  })
+  const hasPropagationPathOverlays = executableFunction(propagationView, 'hasPropagationPathOverlays', {
+    isRecord,
+    normalizePathId,
+    isSemanticOverlayPayload,
+  })
+  const selectSemanticPathOverlay = executableFunction(propagationView, 'selectSemanticPathOverlay', {
+    selectClaimResponseSemanticOverlay: claimResponsePresentation.selectClaimResponseSemanticOverlay,
+    hasPropagationPathOverlays,
+    findPathSemanticOverlay,
+  })
+  const generic = semanticOverlay('claim-path', ['weibo:post:official', 'weibo:comment:response'])
+  const path = {
+    path_id: 'claim-path',
+    evidence_refs: ['weibo:post:official', 'weibo:comment:response'],
+    metadata: { claim_response: true },
+  }
+
+  assert.equal(selectSemanticPathOverlay(path, {
+    status: 'ready',
+    evidence: { cross_analysis: { propagation_path_overlays: [generic] } },
+  }, {}), null)
 })
 
 test('selects the direct Claim Response semantic overlay without a generic propagation artifact', () => {
@@ -270,18 +340,16 @@ test('fails closed when any required nested semantic overlay field is empty or m
 })
 
 test('keeps malformed, blocked, and empty semantic projections unavailable', () => {
-  const semanticPathOverlay = propagationView.slice(
-    propagationView.indexOf('const semanticPathOverlay = computed'),
-    propagationView.indexOf('function formatTimestamp'),
-  )
+  const semanticPathOverlay = bodyOf(propagationView, 'selectSemanticPathOverlay')
   const pathDrawer = propagationView.slice(
     propagationView.indexOf('<a-drawer v-model:open="claimPathDetailOpen"'),
     propagationView.indexOf('<a-drawer v-model:open="nodeDetailOpen"'),
   )
 
-  assert.match(semanticPathOverlay, /semanticProjection\.value\?\.status !== 'ready'/)
-  assert.match(semanticPathOverlay, /!linkedPropagationArtifact\.value/)
-  assert.match(semanticPathOverlay, /!hasPropagationPathOverlays\(semanticProjection\.value\.evidence\)/)
+  assert.match(semanticPathOverlay, /path\?\.metadata\?\.claim_response === true/)
+  assert.match(semanticPathOverlay, /semantic\?\.status !== 'ready'/)
+  assert.match(semanticPathOverlay, /!linkedArtifact/)
+  assert.match(semanticPathOverlay, /!hasPropagationPathOverlays\(semantic\.evidence\)/)
   assert.match(pathDrawer, /v-if="semanticPathOverlay"/)
   assert.match(pathDrawer, /v-else description="暂无语义叠加"/)
   assert.match(pathDrawer, /语义叠加/)

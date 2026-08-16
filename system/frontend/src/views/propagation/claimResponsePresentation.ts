@@ -113,12 +113,11 @@ function canonicalEvidenceRefs(value: unknown): string[] {
 }
 
 function canonicalEvidenceRef(value: unknown): string {
-  if (typeof value !== 'string') return ''
-  const [platform, kind, ...idParts] = value.trim().split(':')
-  const id = idParts.join(':').trim()
-  return platform?.trim() && id && (kind === 'post' || kind === 'comment')
-    ? `${platform.trim()}:${kind}:${id}`
-    : ''
+  if (typeof value !== 'string' || value !== value.trim()) return ''
+  const parts = value.split(':')
+  if (parts.length !== 3 || parts.some((part) => !part || /\s/.test(part))) return ''
+  const [platform, kind, id] = parts
+  return kind === 'post' || kind === 'comment' ? `${platform}:${kind}:${id}` : ''
 }
 
 function isClaimResponseSemanticOverlay(value: unknown): value is ClaimResponseSemanticOverlay {

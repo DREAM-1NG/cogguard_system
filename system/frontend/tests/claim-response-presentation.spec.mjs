@@ -158,6 +158,35 @@ test('selects a Claim Response overlay only for exact canonical evidence referen
   assert.equal(helper.selectClaimResponseSemanticOverlay(path), null)
 })
 
+test('rejects Claim Response overlays whose supplied string references are not canonical', () => {
+  const invalidReferences = [
+    ' weibo:post:official',
+    'weibo:post:official ',
+    'weibo::official',
+    'weibo:video:official',
+    'weibo:post:official:extra',
+  ]
+  for (const invalidReference of invalidReferences) {
+    const path = {
+      evidence_refs: [invalidReference],
+      metadata: {
+        claim_response: true,
+        claim_response_semantic_overlay: {
+          sentiment: { neutral: 1 },
+          keywords: [{ term: 'claim', count: 1 }],
+          topics: [{ label: 'official claim', count: 1 }],
+          entities: [{ text: 'Beijing', count: 1 }],
+          stance: { entailment: 1 },
+          platforms: ['weibo'],
+          time_range: { start: '2026-08-15T00:00:00Z', end: '2026-08-15T00:01:00Z' },
+          evidence_refs: [invalidReference],
+        },
+      },
+    }
+    assert.equal(helper.selectClaimResponseSemanticOverlay(path), null, invalidReference)
+  }
+})
+
 test('renders unavailable direct-comment reach with the stable Chinese copy', () => {
   assert.equal(
     helper.claimResponseDownstreamReachText({
