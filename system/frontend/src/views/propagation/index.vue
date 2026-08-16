@@ -235,7 +235,7 @@
                       <small>
                         {{ platformLabel(item.platform) }} ·
                         {{ item.rank_scope === 'platform' ? '平台内排序' : '事件排序' }} ·
-                        <template v-if="item.downstream_reach_status === 'unavailable'">评论链路径，未计算网络下游覆盖</template>
+                        <template v-if="claimResponseDownstreamReachText(item)">{{ claimResponseDownstreamReachText(item) }}</template>
                         <template v-else>下游 {{ formatNumber(item.downstream_reach) }}</template>
                       </small>
                       <span>
@@ -764,8 +764,10 @@ import {
   type PropagationAnalysisRequestScope,
 } from './requestScope'
 import {
+  claimResponseDownstreamReachText,
   createClaimResponsePathDrilldown,
   presentClaimResponseLandscape,
+  selectClaimResponseSemanticOverlay,
 } from './claimResponsePresentation'
 
 const DEFAULT_EVENT_ID = 'trump_visit_2026_05_21'
@@ -1491,7 +1493,7 @@ type PropagationChartInstance = Pick<echarts.ECharts, 'getDom' | 'isDisposed' | 
 const semanticPathOverlay = computed(() => {
   const selectedPath = selectedClaimPathDetail.value?.path
   if (!selectedPath) return null
-  const claimResponseOverlay = findClaimResponsePathSemanticOverlay(selectedPath)
+  const claimResponseOverlay = selectClaimResponseSemanticOverlay(selectedPath)
   if (claimResponseOverlay) return claimResponseOverlay
   if (semanticProjection.value?.status !== 'ready') return null
   if (!linkedPropagationArtifact.value) return null
@@ -2178,16 +2180,6 @@ function findPathSemanticOverlay(path: EvidencePath, overlays: SemanticPathOverl
     && sameEvidenceRefs(overlay.semantic_overlay.evidence_refs, evidenceRefs)
   ))
   return matchedOverlay ? normalizeSemanticOverlay(matchedOverlay.semantic_overlay) : null
-}
-
-function findClaimResponsePathSemanticOverlay(path: EvidencePath) {
-  const metadata = path.metadata
-  if (!metadata || metadata.claim_response !== true) return null
-  const candidate = metadata.claim_response_semantic_overlay
-  if (!isSemanticOverlayPayload(candidate)) return null
-  const evidenceRefs = pathEvidenceRefs(path)
-  if (!evidenceRefs.length || !sameEvidenceRefs(candidate.evidence_refs, evidenceRefs)) return null
-  return normalizeSemanticOverlay(candidate)
 }
 
 function formatSemanticDistribution(values: Record<string, number>) {

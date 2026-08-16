@@ -551,11 +551,19 @@ def test_landscape_projects_direct_comment_path_semantic_overlay_from_exact_read
 
             semantic_projection = {
                 "status": "ready",
+                "snapshot_id": "snapshot-current",
+                "snapshot": SimpleNamespace(
+                    snapshot_id="snapshot-current",
+                    data_fingerprint="current-fingerprint",
+                    posts=list(mongo["raw_posts"].rows),
+                    comments=list(mongo["raw_comments"].rows),
+                ),
                 "artifact": {
                     "technology": "semantic_enrichment",
                     "status": "ok",
                     "runtime_status": "ready",
                     "fallback": False,
+                    "embedding_manifest": {"snapshot_fingerprint": "current-fingerprint"},
                     "layers": {
                         "posts": [
                             {
@@ -697,11 +705,19 @@ def test_landscape_omits_direct_comment_path_semantic_overlay_when_any_exact_ref
 
             semantic_projection = {
                 "status": "ready",
+                "snapshot_id": "snapshot-current",
+                "snapshot": SimpleNamespace(
+                    snapshot_id="snapshot-current",
+                    data_fingerprint="current-fingerprint",
+                    posts=list(mongo["raw_posts"].rows),
+                    comments=list(mongo["raw_comments"].rows),
+                ),
                 "artifact": {
                     "technology": "semantic_enrichment",
                     "status": "ok",
                     "runtime_status": "ready",
                     "fallback": False,
+                    "embedding_manifest": {"snapshot_fingerprint": "current-fingerprint"},
                     "layers": {
                         "posts": [{"id": "p-official", "platform": "weibo", "sentiment": {"label": "neutral"}}],
                         "comments": [
@@ -808,7 +824,7 @@ def test_landscape_marks_fallback_semantic_artifact_unavailable_for_direct_comme
     asyncio.run(scenario())
 
 
-def test_semantic_overlay_omits_missing_nli_labels_instead_of_synthesizing_unknown():
+def test_semantic_overlay_rejects_missing_nli_labels_instead_of_synthesizing_unknown():
     overlay = claim_response_landscape_service._semantic_overlay_for_refs(
         ["weibo:post:p-official", "weibo:comment:comment-root"],
         {
@@ -825,12 +841,10 @@ def test_semantic_overlay_omits_missing_nli_labels_instead_of_synthesizing_unkno
         },
     )
 
-    assert overlay is not None
-    assert overlay["stance"] == {"entailment": 1}
-    assert overlay["sentiment"] == {"negative": 1, "neutral": 1}
+    assert overlay is None
 
 
-def test_semantic_overlay_omits_time_range_without_recorded_semantic_timestamps():
+def test_semantic_overlay_rejects_missing_semantic_timestamps():
     overlay = claim_response_landscape_service._semantic_overlay_for_refs(
         ["weibo:post:p-official", "weibo:comment:comment-root"],
         {
@@ -847,8 +861,49 @@ def test_semantic_overlay_omits_time_range_without_recorded_semantic_timestamps(
         },
     )
 
-    assert overlay is not None
-    assert "time_range" not in overlay
+    assert overlay is None
+
+
+def test_semantic_overlay_rejects_incomplete_ready_evidence_records():
+    overlay = claim_response_landscape_service._semantic_overlay_for_refs(
+        ["weibo:post:official", "weibo:comment:response"],
+        {
+            "weibo:post:official": {
+                "platform": "weibo",
+                "timestamp": "2026-08-15T00:00:00+00:00",
+                "sentiment": {"label": "neutral"},
+                "stance": {"label": "entailment"},
+                "keywords": [{"term": "claim"}],
+                "topics": [{"label": "official claim"}],
+                "entities": [{"text": "Beijing"}],
+            },
+            "weibo:comment:response": {
+                "platform": "weibo",
+                "timestamp": "2026-08-15T00:01:00+00:00",
+                "sentiment": {"label": "negative"},
+                "stance": {"label": "contradiction"},
+                "keywords": [{"term": "response"}],
+                "topics": [],
+                "entities": [{"text": "policy"}],
+            },
+        },
+    )
+
+    assert overlay is None
+
+
+def test_semantic_evidence_record_rejects_an_invalid_timestamp():
+    assert not claim_response_landscape_service._is_complete_semantic_evidence_item(
+        {
+            "platform": "weibo",
+            "timestamp": "not-a-timestamp",
+            "sentiment": {"label": "neutral"},
+            "stance": {"label": "entailment"},
+            "keywords": [{"term": "claim"}],
+            "topics": [{"label": "official claim"}],
+            "entities": [{"text": "Beijing"}],
+        }
+    )
 
 
 def test_semantic_coverage_rejects_ready_artifact_without_semantic_layer_lists():
@@ -891,12 +946,17 @@ def test_latest_semantic_projection_continues_after_newest_candidate_is_unavaila
                     raise KeyError("artifact not found")
                 return {
                     "technology": "semantic_enrichment",
-                        "status": "ok",
-                        "runtime_status": "ready",
-                        "fallback": False,
-                        "layers": {"posts": [], "comments": []},
-                        "cross_analysis": {"propagation_path_overlays": [{"path_id": "claim-1:0"}]},
-                    }
+                    "status": "ok",
+                    "runtime_status": "ready",
+                    "fallback": False,
+                    "embedding_manifest": {"snapshot_fingerprint": "older-fingerprint"},
+                    "layers": {"posts": [], "comments": []},
+                    "cross_analysis": {"propagation_path_overlays": [{"path_id": "claim-1:0"}]},
+                }
+
+            async def load_event_snapshot(self, snapshot_id):
+                assert snapshot_id == "snapshot-old"
+                return SimpleNamespace(snapshot_id=snapshot_id, data_fingerprint="older-fingerprint")
 
         monkeypatch.setattr(claim_response_landscape_service, "AnalysisRegistry", FakeRegistry)
 
@@ -912,6 +972,86 @@ def test_latest_semantic_projection_continues_after_newest_candidate_is_unavaila
         assert load_order == ["newest-missing", "older-ready"]
 
     asyncio.run(scenario())
+
+
+def test_latest_semantic_projection_rejects_artifact_with_stale_snapshot_fingerprint(monkeypatch):
+    async def scenario():
+        class FakeRegistry:
+            def __init__(self, **_kwargs):
+                pass
+
+            async def list_semantic_artifact_candidates(self, event_id):
+                assert event_id == "event-1"
+                return [{"run_id": "stale-run", "snapshot_id": "snapshot-current"}]
+
+            async def load_event_snapshot(self, snapshot_id):
+                assert snapshot_id == "snapshot-current"
+                return SimpleNamespace(
+                    snapshot_id="snapshot-current",
+                    data_fingerprint="current-fingerprint",
+                )
+
+            async def load_run_artifact(self, run_id, artifact_key):
+                assert run_id == "stale-run"
+                assert artifact_key == claim_response_landscape_service.SEMANTIC_ARTIFACT_KEY
+                return {
+                    "technology": "semantic_enrichment",
+                    "status": "ok",
+                    "runtime_status": "ready",
+                    "fallback": False,
+                    "embedding_manifest": {"snapshot_fingerprint": "stale-fingerprint"},
+                    "layers": {"posts": [], "comments": []},
+                }
+
+        monkeypatch.setattr(claim_response_landscape_service, "AnalysisRegistry", FakeRegistry)
+
+        result = await claim_response_landscape_service._load_latest_semantic_projection(
+            "event-1",
+            db=SimpleNamespace(),
+            mongo_db=SimpleNamespace(),
+        )
+
+        assert result == {
+            "status": "blocked",
+            "blocking_reason": "semantic_artifact_snapshot_mismatch",
+            "artifact": None,
+        }
+
+    asyncio.run(scenario())
+
+
+def test_semantic_projection_rejects_current_rows_that_do_not_match_its_snapshot():
+    projection = {
+        "status": "ready",
+        "snapshot_id": "snapshot-current",
+        "snapshot": SimpleNamespace(
+            snapshot_id="snapshot-current",
+            data_fingerprint="current-fingerprint",
+            posts=[{"platform": "weibo", "post_id": "official", "content": "old claim"}],
+            comments=[{"platform": "weibo", "comment_id": "response", "content": "old response"}],
+        ),
+        "artifact": {
+            "technology": "semantic_enrichment",
+            "status": "ok",
+            "runtime_status": "ready",
+            "fallback": False,
+            "embedding_manifest": {"snapshot_fingerprint": "current-fingerprint"},
+            "layers": {"posts": [], "comments": []},
+        },
+    }
+
+    assert claim_response_landscape_service._semantic_projection_matches_current_source(
+        projection,
+        posts=[{"platform": "weibo", "post_id": "official", "content": "old claim"}],
+        comments=[{"platform": "weibo", "comment_id": "response", "content": "old response"}],
+        platform="weibo",
+    )
+    assert not claim_response_landscape_service._semantic_projection_matches_current_source(
+        projection,
+        posts=[{"platform": "weibo", "post_id": "official", "content": "updated claim"}],
+        comments=[{"platform": "weibo", "comment_id": "response", "content": "old response"}],
+        platform="weibo",
+    )
 
 
 def test_landscape_accepts_database_object_that_disallows_truthiness(monkeypatch):
@@ -942,6 +1082,7 @@ def test_landscape_keeps_ranks_platform_local_and_projects_exact_semantic_eviden
     async def scenario():
         db, session = _db_with_case_material()
         try:
+            mongo = _mongo()
             async def fake_observed(**_kwargs):
                 return _observed_result()
 
@@ -952,11 +1093,19 @@ def test_landscape_keeps_ranks_platform_local_and_projects_exact_semantic_eviden
             )
             semantic_projection = {
                 "status": "ready",
+                "snapshot_id": "snapshot-current",
+                "snapshot": SimpleNamespace(
+                    snapshot_id="snapshot-current",
+                    data_fingerprint="current-fingerprint",
+                    posts=list(mongo["raw_posts"].rows),
+                    comments=list(mongo["raw_comments"].rows),
+                ),
                 "artifact": {
                     "technology": "semantic_enrichment",
                     "status": "ok",
                     "runtime_status": "ready",
                     "fallback": False,
+                    "embedding_manifest": {"snapshot_fingerprint": "current-fingerprint"},
                     "layers": {
                         "posts": [
                             {"id": "p-official", "platform": "weibo", "stance": {"label": "entailment"}},
@@ -973,7 +1122,7 @@ def test_landscape_keeps_ranks_platform_local_and_projects_exact_semantic_eviden
             result = await claim_response_landscape_service.build_claim_response_landscape(
                 "event-1",
                 db=db,
-                mongo_db=_mongo(),
+                mongo_db=mongo,
                 semantic_projection=semantic_projection,
             )
 

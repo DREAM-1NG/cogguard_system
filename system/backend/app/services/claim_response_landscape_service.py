@@ -115,6 +115,22 @@ async def build_claim_response_landscape(
     comments = await load_event_comments(mongo_db, event_id=event_id, platform=platform)
     if semantic_projection is None:
         semantic_projection = await _load_latest_semantic_projection(event_id, db=db, mongo_db=mongo_db)
+    if (
+        isinstance(semantic_projection, dict)
+        and semantic_projection.get("status") == "ready"
+        and _is_ready_semantic_artifact(semantic_projection.get("artifact"))
+        and not _semantic_projection_matches_current_source(
+            semantic_projection,
+            posts=posts,
+            comments=comments,
+            platform=platform,
+        )
+    ):
+        semantic_projection = {
+            "status": "blocked",
+            "blocking_reason": "semantic_artifact_snapshot_mismatch",
+            "artifact": None,
+        }
 
     evidence_index = _build_evidence_index(posts, comments)
     engagement_percentiles = _platform_engagement_percentiles(posts, comments)
@@ -300,14 +316,27 @@ async def _load_latest_semantic_projection(
             reason = "semantic_artifact_load_failed"
         else:
             if _is_ready_semantic_artifact(artifact):
-                return {
-                    "status": "ready",
-                    "run_id": run_id,
-                    "snapshot_id": _optional_text(run.get("snapshot_id")),
-                    "artifact": artifact,
-                }
-            reason = _optional_text(artifact.get("blocking_reason")) if isinstance(artifact, dict) else None
-            reason = reason or "semantic_artifact_not_ready"
+                snapshot_id = _optional_text(run.get("snapshot_id"))
+                try:
+                    snapshot = await registry.load_event_snapshot(snapshot_id or "")
+                except KeyError:
+                    reason = "semantic_snapshot_not_found"
+                except Exception:
+                    reason = "semantic_snapshot_load_failed"
+                else:
+                    if _semantic_artifact_matches_snapshot(artifact, snapshot, snapshot_id=snapshot_id):
+                        return {
+                            "status": "ready",
+                            "run_id": run_id,
+                            "snapshot_id": snapshot_id,
+                            "data_fingerprint": _optional_text(getattr(snapshot, "data_fingerprint", None)),
+                            "snapshot": snapshot,
+                            "artifact": artifact,
+                        }
+                    reason = "semantic_artifact_snapshot_mismatch"
+            else:
+                reason = _optional_text(artifact.get("blocking_reason")) if isinstance(artifact, dict) else None
+                reason = reason or "semantic_artifact_not_ready"
         if first_failure is None:
             first_failure = {"status": "blocked", "blocking_reason": reason, "artifact": None}
 
@@ -856,7 +885,7 @@ def _semantic_overlay_for_refs(
     items: list[dict[str, Any]] = []
     for ref in evidence_refs:
         item = semantic_items_by_ref.get(ref)
-        if item is None:
+        if item is None or not _is_complete_semantic_evidence_item(item):
             return None
         items.append(item)
     overlay = {
@@ -871,7 +900,80 @@ def _semantic_overlay_for_refs(
     time_range = _semantic_time_range(items)
     if time_range is not None:
         overlay["time_range"] = time_range
-    return overlay
+    return overlay if _is_complete_semantic_overlay(overlay) else None
+
+
+def _is_complete_semantic_evidence_item(item: dict[str, Any]) -> bool:
+    return (
+        _optional_text(item.get("platform")) is not None
+        and _is_valid_semantic_timestamp(item.get("timestamp"))
+        and _semantic_label(item.get("sentiment")) is not None
+        and _semantic_stance_label(item.get("stance")) is not None
+        and _has_semantic_feature_values(item.get("keywords"), "term")
+        and _has_semantic_feature_values(item.get("topics"), "label")
+        and _has_semantic_feature_values(item.get("entities"), "text")
+    )
+
+
+def _is_complete_semantic_overlay(overlay: dict[str, Any]) -> bool:
+    time_range = overlay.get("time_range")
+    return (
+        _has_semantic_distribution(overlay.get("sentiment"))
+        and _has_semantic_distribution(overlay.get("stance"))
+        and _has_semantic_feature_values(overlay.get("keywords"), "term")
+        and _has_semantic_feature_values(overlay.get("topics"), "label")
+        and _has_semantic_feature_values(overlay.get("entities"), "text")
+        and isinstance(overlay.get("platforms"), list)
+        and bool(overlay["platforms"])
+        and all(_optional_text(platform) is not None for platform in overlay["platforms"])
+        and isinstance(time_range, dict)
+        and _is_valid_semantic_timestamp(time_range.get("start"))
+        and _is_valid_semantic_timestamp(time_range.get("end"))
+        and _has_canonical_evidence_refs(overlay.get("evidence_refs"))
+    )
+
+
+def _has_semantic_distribution(value: Any) -> bool:
+    return (
+        isinstance(value, dict)
+        and bool(value)
+        and all(_optional_text(label) is not None and isinstance(count, int) and count > 0 for label, count in value.items())
+    )
+
+
+def _has_semantic_feature_values(value: Any, field: str) -> bool:
+    return (
+        isinstance(value, list)
+        and bool(value)
+        and all(
+            isinstance(item, dict)
+            and _optional_text(item.get(field)) is not None
+            and (
+                item.get("count") is None
+                or (isinstance(item.get("count"), int) and item["count"] > 0)
+            )
+            for item in value
+        )
+    )
+
+
+def _has_canonical_evidence_refs(value: Any) -> bool:
+    return (
+        isinstance(value, list)
+        and bool(value)
+        and all(isinstance(ref, str) and _canonical_ref(ref) == ref for ref in value)
+    )
+
+
+def _is_valid_semantic_timestamp(value: Any) -> bool:
+    text = _optional_text(value)
+    if text is None:
+        return False
+    try:
+        datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except ValueError:
+        return False
+    return True
 
 
 def _semantic_distribution(items: list[dict[str, Any]], field: str) -> dict[str, int]:
@@ -1295,6 +1397,57 @@ def _is_ready_semantic_artifact(artifact: Any) -> bool:
         and isinstance(layers, dict)
         and all(isinstance(layers.get(layer), list) for layer in ("posts", "comments"))
     )
+
+
+def _semantic_artifact_matches_snapshot(artifact: dict[str, Any], snapshot: Any, *, snapshot_id: str | None) -> bool:
+    if not snapshot_id or _optional_text(getattr(snapshot, "snapshot_id", None)) != snapshot_id:
+        return False
+    expected_fingerprint = _optional_text(getattr(snapshot, "data_fingerprint", None))
+    manifest = artifact.get("embedding_manifest") if isinstance(artifact.get("embedding_manifest"), dict) else {}
+    return expected_fingerprint is not None and _optional_text(manifest.get("snapshot_fingerprint")) == expected_fingerprint
+
+
+def _semantic_projection_matches_current_source(
+    projection: dict[str, Any],
+    *,
+    posts: list[dict[str, Any]],
+    comments: list[dict[str, Any]],
+    platform: str | None,
+) -> bool:
+    snapshot = projection.get("snapshot")
+    artifact = projection.get("artifact")
+    snapshot_id = _optional_text(projection.get("snapshot_id"))
+    if not isinstance(artifact, dict) or not _semantic_artifact_matches_snapshot(artifact, snapshot, snapshot_id=snapshot_id):
+        return False
+    snapshot_posts = getattr(snapshot, "posts", None)
+    snapshot_comments = getattr(snapshot, "comments", None)
+    if not isinstance(snapshot_posts, list) or not isinstance(snapshot_comments, list):
+        return False
+    return (
+        _same_scoped_source_rows(posts, snapshot_posts, platform=platform)
+        and _same_scoped_source_rows(comments, snapshot_comments, platform=platform)
+    )
+
+
+def _same_scoped_source_rows(
+    current_rows: list[dict[str, Any]],
+    snapshot_rows: list[dict[str, Any]],
+    *,
+    platform: str | None,
+) -> bool:
+    def canonical_rows(rows: list[dict[str, Any]]) -> list[str] | None:
+        selected: list[str] = []
+        for row in rows:
+            if not isinstance(row, dict):
+                return None
+            if platform is not None and _optional_text(row.get("platform")) != platform:
+                continue
+            selected.append(json.dumps(row, ensure_ascii=False, sort_keys=True, default=str, separators=(",", ":")))
+        return sorted(selected)
+
+    current = canonical_rows(current_rows)
+    snapshot = canonical_rows(snapshot_rows)
+    return current is not None and snapshot is not None and current == snapshot
 
 
 def _semantic_artifact_unavailable_reason(artifact: Any) -> str:

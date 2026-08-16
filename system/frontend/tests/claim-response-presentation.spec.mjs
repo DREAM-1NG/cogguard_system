@@ -132,21 +132,39 @@ test('path drill-down rejects missing nodes or exact evidence references', () =>
   assert.equal(missingEvidence, null)
 })
 
-test('production page delegates claim-response readiness and path detail decisions', () => {
-  const source = readFileSync(resolve(frontendRoot, 'src/views/propagation/index.vue'), 'utf8')
-  const readyStart = source.indexOf('const claimResponseReady = computed(() =>')
-  const readyEnd = source.indexOf('const claimResponsePathEvidence', readyStart)
-  const pathStart = source.indexOf('function openClaimResponsePathDetail(')
-  const pathEnd = source.indexOf('function claimResponsePathEvidenceFromPath', pathStart)
-  const readySource = source.slice(readyStart, readyEnd)
-  const pathSource = source.slice(pathStart, pathEnd)
+test('selects a Claim Response overlay only for exact canonical evidence references', () => {
+  const path = {
+    evidence_refs: ['weibo:post:official', 'weibo:comment:response'],
+    metadata: {
+      claim_response: true,
+      claim_response_semantic_overlay: {
+        sentiment: { neutral: 1 },
+        keywords: [{ term: 'claim', count: 1 }],
+        topics: [{ label: 'official claim', count: 1 }],
+        entities: [{ text: 'Beijing', count: 1 }],
+        stance: { entailment: 1 },
+        platforms: ['weibo'],
+        time_range: { start: '2026-08-15T00:00:00Z', end: '2026-08-15T00:01:00Z' },
+        evidence_refs: ['weibo:post:official', 'weibo:comment:response'],
+      },
+    },
+  }
 
-  assert.match(source, /from '\.\/claimResponsePresentation'/)
-  assert.match(readySource, /claimResponsePresentation\.value\.isReady/)
-  assert.doesNotMatch(readySource, /claimResponseLandscape\.value\?\.status/)
-  assert.doesNotMatch(readySource, /claimResponseLandscape\.value\?\.claim_anchor/)
-  assert.match(pathSource, /const drilldown = createClaimResponsePathDrilldown/)
-  assert.doesNotMatch(pathSource, /const evidenceRefs = pathRef\.evidence_refs/)
-  assert.doesNotMatch(pathSource, /const nodes = \(pathRef\.nodes/)
-  assert.doesNotMatch(pathSource, /const pathScore = pathRef\.score/)
+  assert.deepEqual(
+    helper.selectClaimResponseSemanticOverlay(path),
+    path.metadata.claim_response_semantic_overlay,
+  )
+  path.metadata.claim_response_semantic_overlay.evidence_refs = ['weibo:post:official']
+  assert.equal(helper.selectClaimResponseSemanticOverlay(path), null)
+})
+
+test('renders unavailable direct-comment reach with the stable Chinese copy', () => {
+  assert.equal(
+    helper.claimResponseDownstreamReachText({
+      downstream_reach_status: 'unavailable',
+      downstream_reach_reason: 'direct_comment_thread_network_reach_not_computed',
+    }),
+    '评论链路径，未计算网络下游覆盖',
+  )
+  assert.equal(helper.claimResponseDownstreamReachText({ downstream_reach_status: 'available' }), null)
 })

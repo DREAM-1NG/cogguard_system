@@ -3,11 +3,25 @@ import { readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import test from 'node:test'
 import { fileURLToPath } from 'node:url'
+import ts from 'typescript'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const frontendRoot = resolve(__dirname, '..')
 const propagationView = readFileSync(resolve(frontendRoot, 'src/views/propagation/index.vue'), 'utf8')
 const propagationApi = readFileSync(resolve(frontendRoot, 'src/api/propagation.ts'), 'utf8')
+
+async function loadClaimResponsePresentation() {
+  const helperSource = readFileSync(resolve(frontendRoot, 'src/views/propagation/claimResponsePresentation.ts'), 'utf8')
+  const { outputText } = ts.transpileModule(helperSource, {
+    compilerOptions: {
+      module: ts.ModuleKind.ESNext,
+      target: ts.ScriptTarget.ES2020,
+    },
+  })
+  return import(`data:text/javascript;base64,${Buffer.from(outputText).toString('base64')}`)
+}
+
+const claimResponsePresentation = await loadClaimResponsePresentation()
 
 function bodyOf(source, name) {
   const start = source.indexOf(`function ${name}(`)
@@ -178,39 +192,31 @@ test('matches semantic overlays only by path ID and exact canonical evidence ref
   assert.equal(findPathSemanticOverlay({ path_id: 42 }, [exactMatch]), null)
 })
 
-test('prefers an exact Claim Response path overlay over the generic propagation artifact', () => {
-  const overlaySelector = bodyOf(propagationView, 'findClaimResponsePathSemanticOverlay')
-  const semanticPathOverlay = propagationView.slice(
-    propagationView.indexOf('const semanticPathOverlay = computed'),
-    propagationView.indexOf('const claimResponsePresentation = computed'),
-  )
-  const claimResponsePathOpen = bodyOf(propagationView, 'openClaimResponsePathDetail')
+test('selects the direct Claim Response semantic overlay without a generic propagation artifact', () => {
+  const overlay = semanticOverlay('claim-path', ['weibo:post:official', 'weibo:comment:response']).semantic_overlay
+  const selected = claimResponsePresentation.selectClaimResponseSemanticOverlay({
+    evidence_refs: ['weibo:post:official', 'weibo:comment:response'],
+    metadata: {
+      claim_response: true,
+      claim_response_semantic_overlay: overlay,
+    },
+  })
 
-  assert.match(propagationApi, /export type ClaimResponseSemanticOverlay = \{/)
-  assert.match(propagationApi, /semantic_overlay\?: ClaimResponseSemanticOverlay/)
-  assert.match(overlaySelector, /metadata\.claim_response !== true/)
-  assert.match(overlaySelector, /metadata\.claim_response_semantic_overlay/)
-  assert.match(overlaySelector, /sameEvidenceRefs\(candidate\.evidence_refs, evidenceRefs\)/)
-  assert.match(semanticPathOverlay, /findClaimResponsePathSemanticOverlay\(selectedPath\)/)
-  assert.match(semanticPathOverlay, /if \(claimResponseOverlay\) return claimResponseOverlay/)
-  assert.ok(
-    semanticPathOverlay.indexOf('findClaimResponsePathSemanticOverlay(selectedPath)')
-      < semanticPathOverlay.indexOf("semanticProjection.value?.status !== 'ready'"),
-    'Claim Response overlay should not depend on the separate generic propagation artifact request',
-  )
-  assert.match(claimResponsePathOpen, /claim_response_semantic_overlay: pathRef\.semantic_overlay/)
+  assert.deepEqual(selected, overlay)
 })
 
-test('labels an unavailable direct-comment network reach instead of rendering it as zero', () => {
-  const responseRow = propagationView.slice(
-    propagationView.indexOf("v-for=\"item in claimResponseInfluentialResponses\""),
-    propagationView.indexOf('<div class="claim-response-path-list"'),
+test('keeps direct-comment downstream reach unavailable rather than treating it as zero', () => {
+  assert.equal(
+    claimResponsePresentation.claimResponseDownstreamReachText({
+      downstream_reach_status: 'unavailable',
+      downstream_reach_reason: 'direct_comment_thread_network_reach_not_computed',
+    }),
+    '评论链路径，未计算网络下游覆盖',
   )
-
-  assert.match(propagationApi, /downstream_reach_status\?: 'available' \| 'unavailable' \| null/)
-  assert.match(responseRow, /item\.downstream_reach_status === 'unavailable'/)
-  assert.match(responseRow, /评论链路径，未计算网络下游覆盖/)
-  assert.match(responseRow, /formatNumber\(item\.downstream_reach\)/)
+  assert.equal(claimResponsePresentation.claimResponseDownstreamReachText({
+    downstream_reach_status: 'available',
+    downstream_reach_reason: null,
+  }), null)
 })
 
 test('fails closed when any required nested semantic overlay field is empty or malformed', () => {
