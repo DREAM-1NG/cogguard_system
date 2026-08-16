@@ -10,31 +10,38 @@
     </PageHeader>
 
     <div class="action-bar">
-      <a-space wrap>
-        <a-input v-model:value="eventId" size="small" placeholder="事件 ID" style="width: 220px" allow-clear />
-        <a-input v-model:value="platform" size="small" placeholder="平台，可选" style="width: 140px" allow-clear />
-        <a-date-picker
-          v-model:value="observedUntil"
-          size="small"
-          show-time
-          value-format="YYYY-MM-DDTHH:mm:ss"
-          placeholder="观测截止时间"
-          style="width: 208px"
-          allow-clear
-        />
-        <a-select v-model:value="observationRatio" size="small" style="width: 136px">
-          <a-select-option :value="0.1">观测阶段：10%</a-select-option>
-          <a-select-option :value="0.3">观测阶段：30%</a-select-option>
-          <a-select-option :value="0.5">观测阶段：50%</a-select-option>
-        </a-select>
-        <a-button type="primary" @click="handleAnalyze" :loading="analyzing">
-          同步数据库传播结果
-        </a-button>
-        <a-button @click="handlePredict" :loading="predicting" :disabled="!eventId.trim()">
-          刷新趋势预测
-        </a-button>
-      </a-space>
-      <span v-if="lastSyncedAt" class="sync-hint">最近同步：{{ lastSyncedAt }}</span>
+      <div class="filter-group" aria-label="传播筛选条件">
+        <span class="toolbar-group-label">筛选条件</span>
+        <a-space wrap>
+          <a-input v-model:value="eventId" size="small" placeholder="事件 ID" style="width: 220px" allow-clear />
+          <a-input v-model:value="platform" size="small" placeholder="平台，可选" style="width: 140px" allow-clear />
+          <a-date-picker
+            v-model:value="observedUntil"
+            size="small"
+            show-time
+            value-format="YYYY-MM-DDTHH:mm:ss"
+            placeholder="观测截止时间"
+            style="width: 208px"
+            allow-clear
+          />
+          <a-select v-model:value="observationRatio" size="small" style="width: 136px">
+            <a-select-option :value="0.1">观测阶段：10%</a-select-option>
+            <a-select-option :value="0.3">观测阶段：30%</a-select-option>
+            <a-select-option :value="0.5">观测阶段：50%</a-select-option>
+          </a-select>
+        </a-space>
+      </div>
+      <div class="action-group" aria-label="传播操作">
+        <a-space wrap>
+          <a-button type="primary" @click="handleAnalyze" :loading="analyzing">
+            同步传播结果
+          </a-button>
+          <a-button @click="handlePredict" :loading="predicting" :disabled="!eventId.trim()">
+            刷新趋势预测
+          </a-button>
+        </a-space>
+        <span v-if="lastSyncedAt" class="sync-hint">最近同步：{{ lastSyncedAt }}</span>
+      </div>
     </div>
 
     <a-tabs v-model:activeKey="activeTab" class="propagation-tabs">
@@ -744,6 +751,7 @@ import {
   type ClaimResponseLandscapeProjection,
   type ClaimResponsePathRef,
   type ClaimResponsePublication,
+  type ClaimResponseSemanticOverlay,
   type PropagationAlert,
   type PropagationAlertAction,
   predictPropagationCurrentEvent,
@@ -1492,13 +1500,7 @@ type PropagationChartInstance = Pick<echarts.ECharts, 'getDom' | 'isDisposed' | 
 
 const semanticPathOverlay = computed(() => {
   const selectedPath = selectedClaimPathDetail.value?.path
-  if (!selectedPath) return null
-  const claimResponseOverlay = selectClaimResponseSemanticOverlay(selectedPath)
-  if (claimResponseOverlay) return claimResponseOverlay
-  if (semanticProjection.value?.status !== 'ready') return null
-  if (!linkedPropagationArtifact.value) return null
-  if (!hasPropagationPathOverlays(semanticProjection.value.evidence)) return null
-  return findPathSemanticOverlay(selectedPath, semanticProjection.value.evidence.cross_analysis.propagation_path_overlays)
+  return selectSemanticPathOverlay(selectedPath, semanticProjection.value, linkedPropagationArtifact.value)
 })
 
 const claimResponsePresentation = computed(() => presentClaimResponseLandscape(claimResponseLandscape.value))
@@ -2061,13 +2063,14 @@ function normalizePathId(value: unknown) {
 
 function normalizeEvidenceReference(value: unknown) {
   if (typeof value === 'string') {
-    const parts = value.trim().split(':')
-    if (parts.length < 3) return ''
-    const platform = parts[0].trim()
-    const kind = parts[1].trim()
-    const id = parts.slice(2).join(':').trim()
-    if (!platform || !id || (kind !== 'post' && kind !== 'comment')) return ''
-    return `${platform}:${kind}:${id}`
+    const parts = value.split(':')
+    if (
+      value !== value.trim()
+      || parts.length !== 3
+      || parts.some((part) => !part || /\s/.test(part))
+      || (parts[1] !== 'post' && parts[1] !== 'comment')
+    ) return ''
+    return value
   }
   if (!isRecord(value)) return ''
   const platform = optionalText(value.platform)
@@ -2169,6 +2172,21 @@ function isVerifiedLinkedPropagationArtifact(semantic: SemanticEvidenceProjectio
   const artifactFingerprint = artifactDataFingerprint(artifact)
   if (semanticFingerprint && artifactFingerprint && semanticFingerprint !== artifactFingerprint) return false
   return hasLinkedEvidenceChains(artifact)
+}
+
+function selectSemanticPathOverlay(
+  path: EvidencePath | null | undefined,
+  semantic: SemanticEvidenceProjection | null,
+  linkedArtifact: PropagationAnalysisArtifact | null,
+): SemanticOverlayPayload | ClaimResponseSemanticOverlay | null {
+  if (!path) return null
+  const claimResponseOverlay = selectClaimResponseSemanticOverlay(path)
+  if (claimResponseOverlay) return claimResponseOverlay
+  if (path?.metadata?.claim_response === true) return null
+  if (semantic?.status !== 'ready') return null
+  if (!linkedArtifact) return null
+  if (!hasPropagationPathOverlays(semantic.evidence)) return null
+  return findPathSemanticOverlay(path, semantic.evidence.cross_analysis.propagation_path_overlays)
 }
 
 function findPathSemanticOverlay(path: EvidencePath, overlays: SemanticPathOverlay[]) {
@@ -3781,6 +3799,7 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  font-variant-numeric: tabular-nums;
 }
 
 .propagation-tabs {
@@ -3788,17 +3807,64 @@ onBeforeUnmount(() => {
 }
 
 .action-bar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 10px 16px;
+  margin-bottom: 12px;
+  padding: 8px 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: #ffffff;
+}
+
+.filter-group,
+.action-group {
+  min-width: 0;
+}
+
+.filter-group {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 16px;
-  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.filter-group :deep(.ant-space) {
+  min-width: 0;
+  flex: 1;
+}
+
+.filter-group :deep(.ant-space-item) {
+  min-width: 0;
+}
+
+.toolbar-group-label {
+  flex: 0 0 auto;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.action-group {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.action-group :deep(.ant-space) {
+  min-width: 0;
+  max-width: 100%;
+  justify-content: flex-end;
 }
 
 .sync-hint {
-  color: #8c8c8c;
-  font-size: 12px;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.4;
+  text-align: right;
 }
 
 .analysis-card {
@@ -3842,7 +3908,8 @@ onBeforeUnmount(() => {
 
 .claim-response-toolbar-label {
   color: #475569;
-  font-size: 12px;
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 .claim-response-anchor-card {
@@ -3966,12 +4033,14 @@ onBeforeUnmount(() => {
 
 .claim-response-node-main small {
   color: #64748b;
-  font-size: 12px;
+  font-size: 13px;
+  line-height: 1.45;
 }
 
 .claim-response-node-main span {
   color: #475569;
-  font-size: 12px;
+  font-size: 13px;
+  line-height: 1.45;
 }
 
 .claim-response-response-item {
@@ -4018,7 +4087,8 @@ onBeforeUnmount(() => {
 .path-node-control-label,
 .path-node-control-count {
   color: #475569;
-  font-size: 12px;
+  font-size: 13px;
+  line-height: 1.4;
   white-space: nowrap;
 }
 
@@ -4059,7 +4129,8 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 8px;
   color: #475569;
-  font-size: 12px;
+  font-size: 13px;
+  line-height: 1.4;
 }
 
 .layer-row strong {
@@ -4100,7 +4171,7 @@ onBeforeUnmount(() => {
   background: #f8fafc;
   color: #334155;
   font-family: Consolas, 'Courier New', monospace;
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1.55;
   white-space: pre-wrap;
   word-break: break-word;
@@ -4128,7 +4199,8 @@ onBeforeUnmount(() => {
 
 .timeline-time {
   color: #999;
-  font-size: 12px;
+  font-size: 13px;
+  line-height: 1.45;
   margin-left: 8px;
 }
 
@@ -4174,7 +4246,8 @@ onBeforeUnmount(() => {
 
 .forecast-label {
   color: #8c8c8c;
-  font-size: 12px;
+  font-size: 13px;
+  line-height: 1.45;
   margin-bottom: 8px;
 }
 
@@ -4188,7 +4261,8 @@ onBeforeUnmount(() => {
 .forecast-interval {
   margin-top: 10px;
   color: #595959;
-  font-size: 12px;
+  font-size: 13px;
+  line-height: 1.45;
 }
 
 .model-trend-chart {
@@ -4207,7 +4281,8 @@ onBeforeUnmount(() => {
   gap: 12px;
   margin-bottom: 8px;
   color: #64748b;
-  font-size: 12px;
+  font-size: 13px;
+  line-height: 1.45;
   flex-wrap: wrap;
 }
 
@@ -4221,6 +4296,50 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 768px) {
+  .action-bar {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+    gap: 8px;
+    padding: 8px;
+  }
+
+  .filter-group,
+  .action-group {
+    width: 100%;
+    align-items: stretch;
+  }
+
+  .filter-group {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .filter-group :deep(.ant-space),
+  .action-group :deep(.ant-space) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+    gap: 6px !important;
+  }
+
+  .filter-group :deep(.ant-space-item),
+  .action-group :deep(.ant-space-item),
+  .action-group :deep(.ant-btn),
+  .filter-group :deep(.ant-input),
+  .filter-group :deep(.ant-input-affix-wrapper),
+  .filter-group :deep(.ant-picker),
+  .filter-group :deep(.ant-select) {
+    width: 100% !important;
+  }
+
+  .action-group {
+    gap: 4px;
+  }
+
+  .sync-hint {
+    text-align: left;
+  }
+
   .role-ignition-graph-shell,
   .role-ignition-graph {
     height: 320px;
