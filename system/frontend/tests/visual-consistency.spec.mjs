@@ -104,6 +104,10 @@ test('uses a readable baseline for semantic evidence controls and matrix text', 
   assert.match(risk, /\.semantic-summary-label,[\s\S]*font-size: 13px/)
 })
 
+test('keeps a visible keyboard focus ring on semantic filters', () => {
+  assert.doesNotMatch(semantic, /outline:\s*none/)
+})
+
 test('keeps the login shell visually quiet and usable on small screens', () => {
   assert.match(login, /box-shadow: 0 4px 16px rgba\(15, 23, 42, 0\.06\)/)
   assert.match(login, /min-height: 100dvh/)

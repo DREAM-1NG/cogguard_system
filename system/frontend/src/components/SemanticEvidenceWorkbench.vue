@@ -767,7 +767,6 @@ function namedCountsText(items: SemanticCount[]): string {
 .distribution-legend-button:focus-visible {
   border-bottom-color: #1769aa;
   color: #0f4f84;
-  outline: none;
 }
 
 .distribution-legend-button span:last-child {
@@ -911,7 +910,6 @@ function namedCountsText(items: SemanticCount[]): string {
 .time-column:focus-visible {
   border-bottom-color: #1769aa;
   color: #0f4f84;
-  outline: none;
 }
 
 .time-bar {
