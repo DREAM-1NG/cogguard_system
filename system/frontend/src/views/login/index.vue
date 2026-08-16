@@ -9,7 +9,10 @@
     <div class="login-shell">
       <section class="brand-panel">
         <div class="brand-content">
-          <div class="brand-wordmark">CogGuard</div>
+          <div class="brand-wordmark">
+            <span class="brand-mark" aria-hidden="true"><SafetyCertificateOutlined /></span>
+            <span>CogGuard</span>
+          </div>
           <h1>面向跨域认知操纵的智能联合防御系统</h1>
         </div>
       </section>
@@ -121,6 +124,7 @@
 import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
+import { SafetyCertificateOutlined } from '@ant-design/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 import { register } from '@/api/auth'
 
@@ -195,20 +199,16 @@ async function handleRegister() {
 .login-container {
   --ink: #071224;
   --muted: #6b7385;
-  --panel-blue: #102647;
-  --panel-cyan: #1ac8d8;
-  --panel-orange: #ff8a3d;
+  --accent: #1677ff;
 
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 100vh;
+  min-height: 100dvh;
   padding: 32px;
-  overflow: hidden;
-  background:
-    radial-gradient(circle at 12% 18%, rgba(26, 200, 216, 0.22), transparent 32%),
-    radial-gradient(circle at 88% 86%, rgba(255, 138, 61, 0.16), transparent 30%),
-    linear-gradient(135deg, #071224 0%, #102647 52%, #14345f 100%);
+  overflow: auto;
+  background: #f5f7fa;
   font-family: "HarmonyOS Sans SC", "Source Han Sans SC", "Microsoft YaHei", sans-serif;
 }
 
@@ -216,52 +216,27 @@ async function handleRegister() {
   position: relative;
   display: grid;
   grid-template-columns: minmax(360px, 0.92fr) minmax(420px, 1fr);
+  box-sizing: border-box;
   width: min(1120px, 100%);
   min-height: 650px;
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  border-radius: 28px;
-  overflow: hidden;
-  background: rgba(255, 255, 255, 0.94);
-  box-shadow: 0 34px 90px rgba(3, 10, 25, 0.42);
+  min-width: 0;
+  border: 1px solid #d9e2f2;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06);
 }
 
 .brand-panel {
   position: relative;
   display: flex;
   align-items: center;
+  box-sizing: border-box;
   min-height: 650px;
   padding: 64px 56px;
-  color: #fff;
-  isolation: isolate;
-  background:
-    linear-gradient(135deg, rgba(10, 28, 58, 0.94), rgba(18, 74, 111, 0.9)),
-    repeating-radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.1) 0 1px, transparent 1px 18px);
-}
-
-.brand-panel::before,
-.brand-panel::after {
-  position: absolute;
-  inset: auto;
-  z-index: -1;
-  content: "";
-  border-radius: 999px;
-  filter: blur(1px);
-}
-
-.brand-panel::before {
-  top: 72px;
-  right: -120px;
-  width: 280px;
-  height: 280px;
-  background: radial-gradient(circle, rgba(26, 200, 216, 0.44), transparent 65%);
-}
-
-.brand-panel::after {
-  bottom: -86px;
-  left: -72px;
-  width: 300px;
-  height: 300px;
-  background: radial-gradient(circle, rgba(255, 138, 61, 0.35), transparent 68%);
+  color: #17324d;
+  border-right: 1px solid #d9e2f2;
+  border-radius: 8px 0 0 8px;
+  background: #eef5ff;
 }
 
 .brand-content {
@@ -271,12 +246,22 @@ async function handleRegister() {
 }
 
 .brand-wordmark {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   margin-bottom: 42px;
   font-size: 46px;
   font-weight: 800;
   line-height: 1;
   letter-spacing: 0.04em;
-  text-shadow: 0 12px 36px rgba(0, 0, 0, 0.28);
+}
+
+.brand-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+  font-size: 40px;
 }
 
 .brand-content h1 {
@@ -293,18 +278,19 @@ async function handleRegister() {
   height: 4px;
   margin-top: 30px;
   content: "";
-  border-radius: 99px;
-  background: linear-gradient(90deg, var(--panel-cyan), var(--panel-orange));
+  border-radius: 2px;
+  background: var(--accent);
 }
 
 .login-card {
   display: flex;
   flex-direction: column;
   justify-content: center;
+  box-sizing: border-box;
+  min-width: 0;
   padding: 64px 76px;
-  background:
-    radial-gradient(circle at 86% 10%, rgba(26, 200, 216, 0.1), transparent 28%),
-    linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);
+  border-radius: 0 8px 8px 0;
+  background: #fff;
 }
 
 .login-header {
@@ -334,30 +320,37 @@ async function handleRegister() {
 :deep(.ant-input-affix-wrapper) {
   min-height: 48px;
   border-color: #d7deea;
-  border-radius: 12px;
+  border-radius: 6px;
   background: #fff;
-  box-shadow: 0 8px 24px rgba(20, 52, 95, 0.06);
+  box-shadow: none;
 }
 
 :deep(.ant-input:focus),
 :deep(.ant-input-focused),
 :deep(.ant-input-affix-wrapper-focused) {
-  border-color: var(--panel-cyan);
-  box-shadow: 0 0 0 3px rgba(26, 200, 216, 0.16);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(22, 119, 255, 0.14);
+}
+
+:deep(.ant-input:focus-visible),
+:deep(.ant-input-affix-wrapper:focus-within),
+:deep(.ant-btn:focus-visible) {
+  outline: 3px solid #91caff;
+  outline-offset: 2px;
 }
 
 :deep(.ant-btn-primary) {
   height: 50px;
   border: none;
-  border-radius: 13px;
-  background: linear-gradient(90deg, #1177ff, #1ac8d8);
-  box-shadow: 0 14px 28px rgba(17, 119, 255, 0.28);
+  border-radius: 6px;
+  background: var(--accent);
+  box-shadow: none;
   font-size: 17px;
   font-weight: 700;
 }
 
 :deep(.ant-btn-primary:hover) {
-  background: linear-gradient(90deg, #0e68df, #15b6c5);
+  background: #0958d9;
 }
 
 :deep(.ant-btn-link) {
@@ -367,9 +360,9 @@ async function handleRegister() {
 
 .login-error {
   margin-bottom: 18px;
-  border-color: rgba(255, 138, 61, 0.32);
-  border-radius: 14px;
-  background: rgba(255, 244, 238, 0.95);
+  border-color: #ffccc7;
+  border-radius: 6px;
+  background: #fff2f0;
 }
 
 .switch-mode {
@@ -392,11 +385,18 @@ async function handleRegister() {
   .brand-panel {
     min-height: 250px;
     padding: 44px 34px;
+    border-right: 0;
+    border-bottom: 1px solid #d9e2f2;
+    border-radius: 8px 8px 0 0;
   }
 
   .brand-wordmark {
     margin-bottom: 22px;
     font-size: 36px;
+  }
+
+  .brand-mark {
+    font-size: 32px;
   }
 
   .brand-content h1 {
@@ -405,6 +405,7 @@ async function handleRegister() {
 
   .login-card {
     padding: 40px 28px 44px;
+    border-radius: 0 0 8px 8px;
   }
 
   .login-header {
@@ -413,6 +414,45 @@ async function handleRegister() {
     h2 {
       font-size: 25px;
     }
+  }
+}
+
+@media (max-width: 520px) {
+  .login-container {
+    align-items: flex-start;
+    padding: 16px 12px;
+  }
+
+  .login-shell {
+    width: 100%;
+  }
+
+  .brand-panel {
+    min-height: 220px;
+    padding: 32px 24px;
+  }
+
+  .brand-wordmark {
+    gap: 8px;
+    margin-bottom: 18px;
+    font-size: 32px;
+  }
+
+  .brand-mark {
+    font-size: 28px;
+  }
+
+  .brand-content h1 {
+    font-size: 20px;
+    line-height: 1.45;
+  }
+
+  .login-card {
+    padding: 28px 20px 32px;
+  }
+
+  .login-header h2 {
+    font-size: 23px;
   }
 }
 </style>

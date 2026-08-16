@@ -3,8 +3,9 @@
     <a class="skip-link" href="#main-content">跳转到主内容</a>
     <a-layout-sider v-model:collapsed="collapsed" collapsible theme="dark">
       <div class="logo">
-        <span v-if="!collapsed">CogGuard</span>
-        <span v-else>CG</span>
+        <span class="logo-mark" aria-hidden="true"><SafetyCertificateOutlined /></span>
+        <span v-if="!collapsed" class="logo-wordmark">CogGuard</span>
+        <span v-else class="logo-collapsed">CG</span>
       </div>
       <a-menu theme="dark" mode="inline" :selectedKeys="selectedKeys" @click="handleMenuClick">
         <a-menu-item v-for="item in visibleMenuItems" :key="item.path" :disabled="item.disabled">
@@ -16,10 +17,32 @@
       </a-menu>
     </a-layout-sider>
 
+    <a-drawer
+      v-model:open="mobileNavigationOpen"
+      title="模块导航"
+      placement="left"
+      :width="264"
+      class="mobile-navigation-drawer"
+    >
+      <a-menu mode="inline" :selectedKeys="selectedKeys" @click="handleMenuClick">
+        <a-menu-item v-for="item in visibleMenuItems" :key="item.path" :disabled="item.disabled">
+          <component :is="item.icon" />
+          <span>{{ item.label }}</span>
+        </a-menu-item>
+      </a-menu>
+    </a-drawer>
+
     <a-layout>
       <a-layout-header class="app-header">
         <div class="header-left">
-          <span class="header-module">{{ currentMenu?.label || 'CogGuard' }}</span>
+          <button
+            type="button"
+            class="mobile-menu-button"
+            aria-label="打开模块导航"
+            @click="mobileNavigationOpen = true"
+          >
+            <MenuOutlined aria-hidden="true" />
+          </button>
         </div>
         <div class="header-right">
           <a-dropdown>
@@ -44,7 +67,7 @@
         </div>
       </a-layout-header>
 
-      <nav class="tab-bar" aria-label="已打开页面">
+      <nav v-if="openTabs.length > 1" class="tab-bar" aria-label="已打开页面">
         <div
           v-for="tab in openTabs"
           :key="tab.path"
@@ -84,10 +107,11 @@ import {
   ShareAltOutlined,
   UserOutlined,
   AlertOutlined,
-  ExperimentOutlined,
   SettingOutlined,
   LogoutOutlined,
   CloseOutlined,
+  MenuOutlined,
+  SafetyCertificateOutlined,
 } from '@ant-design/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 
@@ -96,6 +120,7 @@ const route = useRoute()
 const authStore = useAuthStore()
 
 const collapsed = ref(false)
+const mobileNavigationOpen = ref(false)
 
 const menuItems = [
   { path: '/dashboard', label: '数据大屏', icon: DashboardOutlined, desc: '系统首页的大屏总览，保留本地地图资产和平台分布可视化', disabled: false },
@@ -104,7 +129,6 @@ const menuItems = [
   { path: '/propagation', label: '传播监测', icon: ShareAltOutlined, desc: '查看传播路径、证据链和传播角色', disabled: false },
   { path: '/accounts', label: '账号画像', icon: UserOutlined, desc: '查看账号研判与活跃节律', disabled: false },
   { path: '/risk', label: '事件研判', icon: AlertOutlined, desc: '查看证据、复核建议并确认处置结论', disabled: false },
-  { path: '/analysis', label: '语义辅助', icon: ExperimentOutlined, desc: '查看关键词、主题、情感、立场、实体和传播路径语义叠加', disabled: false },
   { path: '/system', label: '系统运维', icon: SettingOutlined, desc: '查看系统连通性与任务健康', disabled: false, roles: ['admin', 'analyst'] },
 ]
 
@@ -119,7 +143,6 @@ const selectedKeys = computed(() => {
   const prefix = visibleMenuItems.value.find((item) => item.path !== '/' && route.path.startsWith(item.path))
   return [prefix?.path || route.path]
 })
-const currentMenu = computed(() => visibleMenuItems.value.find((item) => item.path === selectedKeys.value[0]))
 const userDisplayName = computed(() => {
   const username = authStore.userInfo?.username || ''
   return username === 'admin' ? '管理员' : username || '用户'
@@ -154,6 +177,7 @@ function closeTab(path: string) {
 watch(() => route.path, (path) => addTab(path), { immediate: true })
 
 function handleMenuClick({ key }: { key: string }) {
+  mobileNavigationOpen.value = false
   router.push(key)
 }
 
@@ -174,7 +198,32 @@ onMounted(async () => {
 
 <style scoped lang="less">
 .app-layout {
+  --cg-page-bg: #f5f7fa;
+  --cg-surface: #ffffff;
+  --cg-border: #e5e7eb;
+  --cg-text: #1f2937;
+  --cg-muted: #64748b;
+  --cg-accent: #1677ff;
+  --cg-radius: 8px;
+  --cg-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
   min-height: 100vh;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--cg-page-bg);
+  color: var(--cg-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.app-layout :deep(.ant-layout) {
+  min-width: 0;
+  background: var(--cg-page-bg);
+}
+
+.app-layout :deep(.ant-card) {
+  border: 1px solid var(--cg-border);
+  border-radius: var(--cg-radius);
+  box-shadow: none;
 }
 
 .skip-link {
@@ -201,6 +250,7 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 8px;
   color: #fff;
   font-size: 18px;
   font-weight: 700;
@@ -208,11 +258,27 @@ onMounted(async () => {
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
+.logo-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #69b1ff;
+  font-size: 20px;
+}
+
+.logo-wordmark,
+.logo-collapsed {
+  line-height: 1;
+}
+
 .app-header {
   background: #fff;
+  box-sizing: border-box;
   padding: 0 20px;
   height: 48px;
   line-height: 48px;
+  min-width: 0;
+  width: 100%;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -222,18 +288,32 @@ onMounted(async () => {
 .header-left {
   display: flex;
   align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1 1 auto;
 }
 
-.header-module {
-  font-size: 15px;
-  font-weight: 600;
+.mobile-menu-button {
+  align-items: center;
+  background: transparent;
+  border: 0;
   color: #1a1a2e;
-  letter-spacing: 0;
+  cursor: pointer;
+  display: none;
+  font-size: 18px;
+  justify-content: center;
+  padding: 4px;
+}
+
+.mobile-menu-button:focus-visible {
+  outline: 3px solid #91caff;
+  outline-offset: 2px;
 }
 
 .header-right {
   display: flex;
   align-items: center;
+  min-width: 0;
 }
 
 .user-badge {
@@ -243,7 +323,9 @@ onMounted(async () => {
   cursor: pointer;
   font: inherit;
   padding: 4px 14px;
-  border-radius: 20px;
+  border-radius: 6px;
+  max-width: 100%;
+  min-width: 0;
   background: #f0f5ff;
   border: 1px solid #d6e4ff;
   transition: background-color 0.2s, border-color 0.2s, box-shadow 0.2s;
@@ -263,15 +345,22 @@ onMounted(async () => {
   color: #1a1a2e;
   font-weight: 600;
   font-size: 13px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .tab-bar {
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   background: #fafafa;
   padding: 6px 16px 0;
   border-bottom: 1px solid #f0f0f0;
   gap: 4px;
+  min-width: 0;
+  max-width: 100%;
   overflow-x: auto;
 }
 
@@ -338,16 +427,56 @@ onMounted(async () => {
 }
 
 .app-content {
-  margin: 12px;
-  padding: 16px 20px;
-  background: #fff;
-  border-radius: 6px;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 20px 24px 28px;
+  background: transparent;
+  border-radius: 0;
   min-height: 360px;
+  min-width: 0;
+  width: 100%;
 }
 
 .app-content:focus-visible {
   outline: 3px solid #91caff;
   outline-offset: -3px;
+}
+
+@media (max-width: 720px) {
+  .app-layout :deep(.ant-layout-sider) {
+    display: none !important;
+  }
+
+  .app-header {
+    padding: 0 12px;
+  }
+
+  .mobile-menu-button {
+    display: inline-flex;
+  }
+
+  .user-badge {
+    padding: 4px 8px;
+  }
+
+  .user-name {
+    display: none;
+  }
+
+  .tab-bar {
+    padding: 6px 8px 0;
+  }
+
+  .tab-link {
+    padding: 6px 6px 6px 10px;
+  }
+
+  .app-content {
+    margin: 0;
+    min-width: 0;
+    padding: 16px 12px 24px;
+    width: 100%;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
