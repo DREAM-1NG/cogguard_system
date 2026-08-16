@@ -69,3 +69,21 @@ account names, or graph adjacency.
   partially mapped remains unavailable rather than being presented as evidence.
 - Backend and frontend targeted checks pass; broader checks and runtime smoke
   outcomes are recorded truthfully.
+
+## Final Contract Hardening (2026-08-17)
+
+The final review identified three fail-closed gaps and they were repaired in
+`1200856`:
+
+- A Claim Response path cannot use a generic Propagation semantic overlay when
+  its own exact overlay is absent or rejected.
+- A string evidence reference is accepted only in its supplied canonical form:
+  `platform:post|comment:id`, with no whitespace, empty segment, or extra
+  colon.
+- A semantic artifact is unavailable when either semantic layer contains a
+  malformed entry or a duplicate canonical post/comment identity.
+
+The repair was test-first. Focused backend validation passed (`39 passed`),
+frontend contracts passed (`30 passed`), and `vue-tsc -b`, the production
+frontend build, and `git diff --check` passed. Live authenticated browser/API
+verification remains an environment-dependent check; it is not claimed here.
