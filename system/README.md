@@ -211,6 +211,20 @@ Product code executes crawler and review runtime code from `system/runtimes/`. R
 
 Supported production crawl platforms are `weibo`, `douyin`, `xhs`, and `news`. `mock_weibo` is test-only.
 
+## Crawl Evidence Workbench
+
+`/crawl` is being delivered as a selected-job evidence-reading workspace:
+analysts group their own retrieval terms, while the existing crawler receives a
+stable de-duplicated `keywords` array. The right pane must read posts and
+bounded comment previews only from the selected `crawl_job_id`.
+
+Images and video are previewable only after a media download task has written a
+manifest-backed local file within `MEDIA_DOWNLOAD_ROOT`. The browser obtains
+that file through an authenticated media endpoint; it must not use a platform
+media URL as a fallback or receive a server filesystem path. The source
+checkpoint is `dfe54f3`; see the development roadmap for remaining type,
+scope, ownership, Range, and browser acceptance gates.
+
 Useful crawler configuration:
 
 ```dotenv

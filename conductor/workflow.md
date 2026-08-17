@@ -27,6 +27,10 @@
   evidence comes from persisted member predictions or is explicitly
   unavailable. Never describe that projection as a fresh neural inference or a
   final analyst decision.
+- For Crawl Evidence Workbench work, distinguish a source checkpoint from an
+  accepted delivery. Acceptance requires job-scope and ownership tests,
+  manifest-root and Range checks, frontend type/build gates, and authenticated
+  desktop/mobile verification. Do not call a platform media URL a local preview.
 
 ## Git and recovery
 

@@ -137,6 +137,10 @@ Use the glossary in `UBIQUITOUS_LANGUAGE.md` for domain terms. The system-level 
 - `Canonical Verdict`
 - `Artifact Manifest`
 - `Strict Leiden Artifact`
+- `Crawl Request`
+- `Crawl Job Scope`
+- `Crawl Evidence Workbench`
+- `Local Media Preview`
 
 ## Boundary Rules
 
@@ -149,6 +153,11 @@ Use the glossary in `UBIQUITOUS_LANGUAGE.md` for domain terms. The system-level 
 - `app.core.risk` and `app.core.coordination` are legacy application aliases.
 - `system/research/*_legacy_alias` and `system/runtimes/*_legacy_alias` are import-only compatibility packages.
 - `system/backend/app/services/review_case_service.py` and `system/backend/app/api/v2/review_cases.py` are the product case boundary.
+- `system/backend/app/services/crawl_service.py` owns selected Crawl Job post and
+  comment scope. `system/backend/app/services/media_download_service.py` owns
+  manifest-root validation and local-media resolution. Product API responses
+  expose an authenticated media endpoint, never an absolute filesystem path or
+  a remote platform-media fallback.
 - `system/research/coordination_discover`, `system/research/coordination_detect`, `system/research/propagation_analysis`, `system/research/review_teacher`, and `system/runtimes/review_student` are canonical semantic boundaries.
 - `system/research/social_bot_detection` is the canonical internal boundary for trainable BotRHG transfer. It must record dataset fingerprint, model checkpoint hash, missing property/social graph coverage, and comparison against a shallow reference baseline.
 - `system/research/social_bot_detection/twibot20_runtime.py` is a Fixed-Graph Research Runtime. Its TwiBot-20 bundle is benchmark-scoped and transductive; it is not eligible for the Chinese account-model Active Pointer.

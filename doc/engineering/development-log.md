@@ -1,5 +1,27 @@
 ﻿# 开发变更日志
 
+## 2026-08-17: Crawl Evidence Workbench recovery checkpoint
+
+- Created the source recovery checkpoint `dfe54f3` and annotated tag
+  `backup/20260817-crawl-workbench-wip` on branch
+  `coordination/deep-detection-upgrade`. The checkpoint includes the current
+  `/crawl` workbench source, targeted media-preview tests, and concurrent
+  semantic/claim-response edits already present in the worktree; generated
+  browser captures, CodeGraph data, and output folders remain outside Git.
+- The checkpoint implements selected Crawl Job post filtering, bounded comment
+  previews, manifest-root validation, authenticated local media discovery and
+  content access, grouped analyst retrieval terms, and a two-pane content
+  preview. It is intentionally recorded as WIP rather than a delivered feature.
+- Known acceptance gaps: frontend typecheck has one unused-parameter error;
+  batch media download is not yet constrained by selected Crawl Job; the legacy
+  media-download read response still needs a filesystem-path exposure review;
+  database-backed authorization and HTTP Range behavior have not been
+  revalidated because MySQL and MongoDB were unavailable in the prior run.
+- Focused pure backend contracts (`6 passed`) and the crawl client-model test
+  passed before this checkpoint. Broader frontend tests still include three
+  pre-existing propagation-page failures and must be separated from the crawl
+  workbench acceptance run.
+
 ## 2026-08-17 数据采集工作台交付启动
 
 - 建立 `backup/20260817-crawl-workbench-preimplementation` Git 检查点，保留当前

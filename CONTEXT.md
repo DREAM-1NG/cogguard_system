@@ -70,6 +70,15 @@ file remains an explicit unavailable state. Local media content is served by an
 authenticated, range-capable endpoint; filesystem paths and raw manifests are
 not product-facing data.
 
+**Implementation checkpoint (2026-08-17, `dfe54f3`)**: the source snapshot
+contains selected-job post filtering, bounded comment previews, manifest-backed
+local-media discovery and content routes, plus the two-pane `/crawl` workbench
+and its client state helpers. This is a recovery checkpoint, not an acceptance
+claim. Before the workbench is described as delivered, restore the frontend
+typecheck, constrain a batch media download to its selected Crawl Job, remove
+legacy product exposure of filesystem paths, and run authenticated database,
+Range-response, desktop, and mobile checks.
+
 ---
 
 ## Internal Diagnostics

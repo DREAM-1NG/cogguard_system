@@ -34,7 +34,10 @@ diagnostic concepts, not primary product copy.
 - Crawl Evidence Workbench delivery is in progress: grouped analyst retrieval
   terms, selected-job scoped content reading, and authenticated local image or
   video preview will extend the existing crawler without changing its request
-  contract or treating remote media URLs as locally playable evidence.
+  contract or treating remote media URLs as locally playable evidence. The
+  `dfe54f3` checkpoint contains the corresponding source and tests, but it is
+  not an accepted product capability until its type, access-control, Range,
+  and browser verification gates pass.
 - Claim Response Landscape as an observed Propagation Analysis projection: it
   aligns a bound authority claim, exact official-account publications,
   influential account responses, and path-backed evidence without changing a
