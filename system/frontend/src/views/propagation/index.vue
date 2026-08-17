@@ -91,7 +91,7 @@
               </div>
               <a-empty
                 v-else-if="!analysisTransportFailed && !analysisBusinessEmptyReason"
-                description="当前范围暂未形成可展示路径"
+                :description="diffusionEmptyDescription"
                 :image-style="{ height: '36px' }"
               />
             </a-card>
@@ -1634,12 +1634,20 @@ const semanticDrilldownEvidenceChains = computed(() => (
   linkedPropagationEvidenceChains.value.length ? linkedPropagationEvidenceChains.value : evidenceChains.value
 ))
 const pathAnalysis = computed(() => analysisResult.value?.path_analysis ?? null)
+const propagationSummary = computed(() => analysisResult.value?.diffusion_summary ?? null)
 const diffusionSummary = computed(() => {
-  const serverSummary = analysisResult.value?.diffusion_summary
+  const serverSummary = propagationSummary.value
   return serverSummary?.key_path_projection?.nodes?.length ? serverSummary : null
 })
 const diffusionReady = computed(() => (diffusionSummary.value?.key_path_projection?.nodes?.length ?? 0) > 0)
-const diffusionMeta = computed(() => diffusionSummary.value?.meta ?? {})
+const diffusionEmptyDescription = computed(() => {
+  const summary = propagationSummary.value
+  if (!summary) return '当前范围未返回传播投影，请同步传播结果后重试'
+  if (!summary.key_path_projection) return '当前传播结果尚未生成关键脉络投影，请同步传播结果后重试'
+  if (!(summary.key_path_projection.nodes ?? []).length) return '当前范围未观察到可连接的传播账号'
+  return '当前范围暂未形成可展示路径'
+})
+const diffusionMeta = computed(() => propagationSummary.value?.meta ?? {})
 const diffusionTotalNodes = computed(() => {
   const total = Number(diffusionMeta.value.total_nodes ?? analysisResult.value?.graph?.node_count ?? 0)
   return Number.isFinite(total) && total > 0 ? Math.floor(total) : DEFAULT_DIFFUSION_NODE_LIMIT
@@ -1654,9 +1662,9 @@ const diffusionSliderMax = computed(() => {
   const min = Math.min(DEFAULT_DIFFUSION_NODE_LIMIT, rawMax)
   return alignSliderMax(rawMax, min, diffusionSliderStep.value)
 })
-const layerRows = computed(() => diffusionSummary.value?.layers?.length ? diffusionSummary.value.layers : (pathAnalysis.value?.layer_distribution ?? []))
+const layerRows = computed(() => propagationSummary.value?.layers?.length ? propagationSummary.value.layers : (pathAnalysis.value?.layer_distribution ?? []))
 const displayLayerRows = computed(() => normalizeLayerRows(layerRows.value))
-const hasIndependentObservations = computed(() => Number(diffusionSummary.value?.independent_observations?.node_count ?? 0) > 0)
+const hasIndependentObservations = computed(() => Number(propagationSummary.value?.independent_observations?.node_count ?? 0) > 0)
 const userNameById = computed(() => {
   const map = new Map<string, string>()
   for (const node of analysisResult.value?.graph?.nodes ?? []) {
@@ -1668,7 +1676,7 @@ const userNameById = computed(() => {
   }
   return map
 })
-const roleContributions = computed(() => diffusionSummary.value?.role_contributions ?? null)
+const roleContributions = computed(() => propagationSummary.value?.role_contributions ?? null)
 const roleContributionGroups = computed(() => {
   const contributions = roleContributions.value
   if (!contributions) return []

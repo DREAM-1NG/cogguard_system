@@ -118,3 +118,9 @@ test('propagation path can expand and collapse only a backend-returned observed 
   assert.match(source, /expandedBranchProjections\.value = \{\}/)
   assert.match(source, /togglePropagationBranch\(/)
 })
+
+test('layer composition reads the full server population even when no compact path is drawable', () => {
+  assert.match(source, /const propagationSummary = computed\(\(\) => analysisResult\.value\?\.diffusion_summary \?\? null\)/)
+  assert.match(source, /const layerRows = computed\(\(\) => propagationSummary\.value\?\.layers\?\.length/)
+  assert.doesNotMatch(source, /const layerRows = computed\(\(\) => diffusionSummary\.value\?\.layers/)
+})

@@ -120,6 +120,39 @@ async def test_propagation_service_reuses_projection_until_ingestion_changes(mon
 
 
 @pytest.mark.asyncio
+async def test_propagation_service_invalidates_cached_projection_when_key_path_schema_changes(monkeypatch):
+    posts = _SourceCollection(10)
+    comments = _SourceCollection(10)
+    mongo_db = {"raw_posts": posts, "raw_comments": comments}
+    cache_keys: list[str] = []
+
+    async def load_posts(*_args, **_kwargs):
+        return [{"post_id": "p1"}]
+
+    async def load_comments(*_args, **_kwargs):
+        return []
+
+    async def capture_cache_key(key, builder):
+        cache_keys.append(key)
+        return await builder()
+
+    monkeypatch.setattr(propagation_observation_service, "get_mongo_db", lambda: mongo_db)
+    monkeypatch.setattr(propagation_observation_service, "load_event_posts", load_posts)
+    monkeypatch.setattr(propagation_observation_service, "load_event_comments", load_comments)
+    monkeypatch.setattr(propagation_observation_service, "get_or_build_query_result", capture_cache_key)
+    monkeypatch.setattr(
+        propagation_observation_service,
+        "build_observed_propagation_graph",
+        lambda *_args, **_kwargs: {"diffusion_summary": {"key_path_projection": {"nodes": [{"id": "root"}]}}},
+    )
+
+    await propagation_observation_service.analyze_observed_propagation(event_id="event-1")
+
+    assert len(cache_keys) == 1
+    assert ":propagation-observed-v7:" in cache_keys[0]
+
+
+@pytest.mark.asyncio
 async def test_coordination_latest_result_reuses_completed_run_projection(monkeypatch):
     monkeypatch.setattr(settings, "ANALYSIS_RESULT_CACHE_REDIS_ENABLED", False)
     clear_local_query_result_cache()
