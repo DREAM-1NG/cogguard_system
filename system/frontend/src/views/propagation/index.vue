@@ -105,8 +105,7 @@
           </a-col>
 
           <a-col :xs="24" :xl="8">
-            <a-card size="small" title="已连接账号层级占比" :loading="analyzing && !analysisReady" class="analysis-card layer-card">
-              <p class="layer-scope-note">仅基于已建立传播证据的账号计算，比例合计 100.00%。</p>
+            <a-card size="small" title="层级占比" :loading="analyzing && !analysisReady" class="analysis-card layer-card">
               <div v-if="displayLayerRows.length" class="layer-visual">
                 <div v-for="item in displayLayerRows" :key="item.level" class="layer-row">
                   <span class="layer-name">{{ item.label }}</span>
@@ -4113,13 +4112,6 @@ onBeforeUnmount(() => {
 
 .layer-card {
   min-height: 560px;
-}
-
-.layer-scope-note {
-  margin: 0 0 12px;
-  color: #64748b;
-  font-size: 13px;
-  line-height: 1.5;
 }
 
 .layer-visual {

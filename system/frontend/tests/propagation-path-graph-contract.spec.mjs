@@ -44,9 +44,10 @@ test('propagation defaults to an expanded first-screen node budget', () => {
   assert.match(source, /const DEFAULT_DIFFUSION_NODE_LIMIT = 500/)
 })
 
-test('layer composition is clearly labelled as a connected-population statistic', () => {
-  assert.match(source, /已连接账号层级占比/)
-  assert.match(source, /仅基于已建立传播证据的账号计算，比例合计 100\.00%/)
+test('layer composition uses only a concise title', () => {
+  assert.match(source, /title="层级占比"/)
+  assert.doesNotMatch(source, /已连接账号层级占比/)
+  assert.doesNotMatch(source, /基于本次传播证据计算，比例合计 100\.00%/)
 })
 
 test('two-decimal layer proportions use deterministic remainder allocation', () => {
