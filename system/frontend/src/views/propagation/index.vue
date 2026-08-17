@@ -2862,7 +2862,7 @@ function buildConcentricEvidencePositions(
       if (angleOrder) return angleOrder
       return String(left.id).localeCompare(String(right.id))
     })
-    const radius = 96 + (depth - 1) * 70
+    const radius = 70 + (depth - 1) * 110
     const ringAngles = ordered.map((node) => (
       angleByNode.get(String(node.id))
       ?? ((stableLayoutFraction(`node:${node.id}`) * Math.PI * 2) - (Math.PI / 2))
@@ -2953,7 +2953,7 @@ function buildPathGraphOption(summary?: DiffusionSummary | null): EChartsOption 
         type: 'graph',
         layout: 'none',
         roam: 'scale',
-        zoom: 0.40,
+        zoom: 0.32,
         center: ['50%', '50%'],
         draggable: false,
         top: 54,
