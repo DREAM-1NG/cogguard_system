@@ -1771,10 +1771,32 @@ def _build_role_contributions(
         "按零入度观察内容、下游覆盖、首次观察时间和账号ID确定的主源；fallback 时不视为已证明源头。",
     )
     source_row.update({
+        "source_kind": "primary_source",
         "selection_basis": primary_source.get("selection_basis"),
         "is_fallback": bool(primary_source.get("is_fallback")),
         "proven_source": bool(primary_source.get("proven_source")),
     })
+
+    independent_source_rows = []
+    for node_id, status in sorted(independent_status_by_node.items(), key=lambda item: str(item[0])):
+        if status != "independent_root":
+            continue
+        independent_row = _role_contribution_row(
+            G,
+            simple_G,
+            node_id,
+            primary_layers,
+            independent_status_by_node,
+            _node_key_path_refs(node_id, key_paths),
+            "独立观察分支的零入度节点；未证实从当前主源头传播，不能视为事件已证明源头。",
+        )
+        independent_row.update({
+            "source_kind": "independent_observation_root",
+            "selection_basis": "independent_observation_branch_root",
+            "is_fallback": True,
+            "proven_source": False,
+        })
+        independent_source_rows.append(independent_row)
 
     bridges = []
     for node_id, score in sorted(bc.items(), key=lambda item: item[1], reverse=True):
@@ -1824,7 +1846,7 @@ def _build_role_contributions(
         ))
 
     return {
-        "sources": [source_row],
+        "sources": [source_row, *independent_source_rows],
         "bridges": bridges,
         "amplifiers": amplifiers,
     }

@@ -373,6 +373,12 @@ class TestPropagationAnalysisEventInferenceAdapter:
         assert summary["independent_observations"]["status"] == "independent_observations_available"
         assert summary["detail_index"]["nodes"]["independent"]["independent_status"] == "independent_root"
         assert summary["detail_index"]["nodes"]["independent_leaf"]["independent_status"] == "independent_descendant"
+        independent_source = next(
+            row for row in summary["role_contributions"]["sources"]
+            if row["account_id"] == "independent"
+        )
+        assert independent_source["source_kind"] == "independent_observation_root"
+        assert independent_source["proven_source"] is False
 
     def test_diffusion_layers_use_full_primary_connected_population_not_visible_limit(self):
         posts = [
