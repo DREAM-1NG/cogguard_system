@@ -32,6 +32,12 @@ test('propagation path graph excludes independent observations from the primary-
   assert.doesNotMatch(source, /独立观察分支：未证实从当前主源头传播/)
 })
 
+test('propagation density controls use only the source-connected population', () => {
+  assert.match(source, /primary_connected_node_count/)
+  assert.match(source, /\.filter\(\(node\) => !isIndependentObservation\(node\)\)\.length/)
+  assert.match(source, /activeTab === 'path' && diffusionTotalNodes > DEFAULT_DIFFUSION_NODE_LIMIT/)
+})
+
 test('propagation evidence workspace displays connected-population layer proportions only', () => {
   assert.match(source, /\{\{ formatRatio\(item\.ratio\) \}\}/)
   assert.match(source, /toFixed\(2\)/)
