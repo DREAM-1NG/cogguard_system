@@ -2652,7 +2652,7 @@ function fitGraphPositions(
   const maxY = Math.max(...ys)
   const width = Math.max(maxX - minX, 1)
   const height = Math.max(maxY - minY, 1)
-  const scale = Math.min(520 / width, 430 / height, 0.92)
+  const scale = Math.min(460 / width, 380 / height, 0.92)
   const centerX = (minX + maxX) / 2
   const centerY = (minY + maxY) / 2
   const fitted = new Map<string, { x: number; y: number; layer: number }>()
@@ -2862,15 +2862,27 @@ function buildConcentricEvidencePositions(
       if (angleOrder) return angleOrder
       return String(left.id).localeCompare(String(right.id))
     })
-    const baseRadius = 104 + (depth - 1) * 102 + Math.min(depth - 1, 4) * 14
-    const minSpacingRadius = (ordered.length * 13) / (Math.PI * 2)
+    const baseRadius = 86 + (depth - 1) * 82 + Math.min(depth - 1, 4) * 10
+    const minSpacingRadius = (ordered.length * 11.5) / (Math.PI * 2)
     const radius = Math.max(baseRadius, minSpacingRadius)
-    ordered.forEach((node) => {
+    const ringAngles = ordered.map((node) => (
+      angleByNode.get(String(node.id))
+      ?? ((stableLayoutFraction(`node:${node.id}`) * Math.PI * 2) - (Math.PI / 2))
+    ))
+    ordered.forEach((node, index) => {
       const id = String(node.id)
-      const angle = angleByNode.get(id) ?? ((stableLayoutFraction(`node:${id}`) * Math.PI * 2) - (Math.PI / 2))
+      const angle = ringAngles[index]
+      const previousAngle = index === 0 ? ringAngles[ringAngles.length - 1] - (Math.PI * 2) : ringAngles[index - 1]
+      const nextAngle = index === ringAngles.length - 1 ? ringAngles[0] + (Math.PI * 2) : ringAngles[index + 1]
+      const localGap = Math.max(0, Math.min(angle - previousAngle, nextAngle - angle))
+      const angularJitterLimit = Math.min(0.16, Math.max(0.012, localGap * 0.32))
+      const angularJitter = ((stableLayoutFraction(`angle:${depth}:${id}`) - 0.5) * 2) * angularJitterLimit
+      const radialJitterLimit = Math.min(16, Math.max(6, radius * 0.065))
+      const radialJitter = ((stableLayoutFraction(`radius:${depth}:${id}`) - 0.5) * 2) * radialJitterLimit
+      const nodeRadius = radius + radialJitter
       positions.set(id, {
-        x: Math.cos(angle) * radius,
-        y: Math.sin(angle) * radius,
+        x: Math.cos(angle + angularJitter) * nodeRadius,
+        y: Math.sin(angle + angularJitter) * nodeRadius,
         layer: depth,
       })
     })
