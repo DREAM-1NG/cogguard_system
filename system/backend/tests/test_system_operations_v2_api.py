@@ -10,6 +10,7 @@ from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
 from app.api.v2 import system_operations as system_operations_api
+from app.api.v2.router import api_router as api_v2_router
 from app.core.security import get_current_user
 from app.db.mysql import get_db
 from app.services import system_operations_service
@@ -154,6 +155,40 @@ def test_analyst_can_read_system_status_but_cannot_change_service_configuration(
         assert health.status_code == 200
         assert services.status_code == 200
         assert mutation.status_code == 403
+
+    asyncio.run(scenario())
+
+
+def test_system_operations_are_reachable_through_the_full_v2_router(monkeypatch):
+    """Keep the frontend's /api/v2 client base aligned with the mounted API."""
+
+    async def scenario():
+        app = FastAPI()
+        app.include_router(api_v2_router)
+
+        async def override_db():
+            yield SimpleNamespace()
+
+        app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(id=7, role="analyst")
+        app.dependency_overrides[get_db] = override_db
+
+        async def fake_operation_health(_db):
+            return {
+                "processing_count": 0,
+                "waiting_count": 0,
+                "completed_count": 1,
+                "attention_required_count": 0,
+                "message": "ok",
+            }
+
+        monkeypatch.setattr(system_operations_api.system_operations_service, "operation_health", fake_operation_health)
+
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            health = await client.get("/api/v2/system/operation-health")
+
+        assert health.status_code == 200
+        assert health.json()["data"]["completed_count"] == 1
 
     asyncio.run(scenario())
 

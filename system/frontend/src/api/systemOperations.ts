@@ -1,4 +1,4 @@
-import request from '@/utils/request'
+import { createApiClient } from '@/utils/request'
 
 export type ServicePurpose = 'text_review' | 'media_verification' | 'source_retrieval'
 
@@ -21,12 +21,14 @@ export interface OperationHealth {
   message: string
 }
 
+const systemOperationsRequest = createApiClient('/api/v2')
+
 export function getOperationHealth() {
-  return request.get('/v2/system/operation-health')
+  return systemOperationsRequest.get('/system/operation-health')
 }
 
 export function listServiceConfigs() {
-  return request.get('/v2/system/services')
+  return systemOperationsRequest.get('/system/services')
 }
 
 export function createServiceConfig(body: {
@@ -38,13 +40,13 @@ export function createServiceConfig(body: {
   credential?: string
   supports_media?: boolean
 }) {
-  return request.post('/v2/system/services', body)
+  return systemOperationsRequest.post('/system/services', body)
 }
 
 export function setServiceEnabled(serviceId: number, enabled = true) {
-  return request.post(`/v2/system/services/${serviceId}/activation`, { enabled })
+  return systemOperationsRequest.post(`/system/services/${serviceId}/activation`, { enabled })
 }
 
 export function checkServiceConnection(serviceId: number) {
-  return request.post(`/v2/system/services/${serviceId}/connection-check`)
+  return systemOperationsRequest.post(`/system/services/${serviceId}/connection-check`)
 }
