@@ -191,6 +191,7 @@ def build_propagation_graph(
         comments or [],
         node_limit=diffusion_node_limit,
         layer_budget=diffusion_layer_budget,
+        bc=bc,
     )
     user_quality = build_user_quality_portrait(posts, comments or [])
 
@@ -428,6 +429,7 @@ def _build_diffusion_summary(
     comments: list[dict],
     node_limit: int = DIFFUSION_VISIBLE_NODE_LIMIT,
     layer_budget: dict[str, int] | None = None,
+    bc: dict[str, float] | None = None,
 ) -> dict:
     """Build a stable radial diffusion-tree summary from the full observed graph.
 
@@ -448,7 +450,8 @@ def _build_diffusion_summary(
         for index in range(max(len(path.get("nodes", [])) - 1, 0))
     }
 
-    root_id = _select_key_path_root(key_paths, simple_G, G) or _select_diffusion_root(simple_G, G)
+    primary_source = _select_primary_source(simple_G, G)
+    root_id = primary_source.get("account_id") or _select_key_path_root(key_paths, simple_G, G) or _select_diffusion_root(simple_G, G)
     parallel_roots = _select_parallel_roots(simple_G, G, root_id)
     post_index = _build_post_index(df)
     comment_index = _build_comment_index(comments)
@@ -456,6 +459,10 @@ def _build_diffusion_summary(
 
     requested_budget = _resolve_layer_budget(layer_budget, resolved_node_limit)
     all_layers = _diffusion_all_node_layers(simple_G, root_id)
+    primary_layers = _primary_connected_layers(simple_G, root_id)
+    primary_connected_nodes = set(primary_layers)
+    independent_status_by_node = _independent_observation_statuses(simple_G, root_id, primary_connected_nodes)
+    independent_node_count = len(independent_status_by_node)
     visible_nodes = _select_layered_visible_nodes(
         {
             node_id: {
@@ -481,16 +488,6 @@ def _build_diffusion_summary(
         if node_layers.get(source) == node_layers.get(target):
             continue
         tree_edges[(source, target)] = _diffusion_tree_edge(simple_G, source, target)
-
-    for parallel_root in parallel_roots:
-        if parallel_root in visible_nodes and root_id:
-            tree_edges.setdefault((root_id, parallel_root), {
-                "source": root_id,
-                "target": parallel_root,
-                "weight": simple_G[root_id][parallel_root]["weight"] if simple_G.has_edge(root_id, parallel_root) else 1,
-                "type": "parallel_root",
-                "is_parallel_root": True,
-            })
 
     # Retain the legacy full graph response for explicit full-view requests.
     if not is_full_view:
@@ -612,7 +609,16 @@ def _build_diffusion_summary(
     """
 
     visible_node_rows = [
-        _diffusion_node_row(G, simple_G, node_id, node_layers.get(node_id, -1), key_node_set, root_id)
+        _diffusion_node_row(
+            G,
+            simple_G,
+            node_id,
+            node_layers.get(node_id, -1),
+            key_node_set,
+            root_id,
+            connected_depth=primary_layers.get(node_id),
+            independent_status=independent_status_by_node.get(node_id),
+        )
         for node_id in sorted(
             visible_nodes,
             key=lambda item: (node_layers.get(item, 999), -simple_G.out_degree(item), str(item)),
@@ -639,7 +645,7 @@ def _build_diffusion_summary(
         simple_G,
     )
 
-    layers = _diffusion_layer_rows(visible_node_rows, simple_G.number_of_nodes())
+    layers = _diffusion_connected_layer_rows(primary_layers)
     detail_index = _build_diffusion_detail_index(
         visible_node_ids,
         shared_objects,
@@ -648,19 +654,51 @@ def _build_diffusion_summary(
         evidence_chains,
         simple_G,
         G,
+        primary_layers,
+        independent_status_by_node,
     )
 
     return {
-        "root_node": _diffusion_node_row(G, simple_G, root_id, 0, key_node_set, root_id) if root_id else None,
+        "primary_source": primary_source if primary_source.get("account_id") else None,
+        "root_node": _diffusion_node_row(
+            G,
+            simple_G,
+            root_id,
+            0,
+            key_node_set,
+            root_id,
+            connected_depth=primary_layers.get(root_id),
+            independent_status=independent_status_by_node.get(root_id),
+        ) if root_id else None,
         "parallel_roots": [
-            _diffusion_node_row(G, simple_G, node_id, node_layers.get(node_id, 1), key_node_set, root_id)
+            _diffusion_node_row(
+                G,
+                simple_G,
+                node_id,
+                node_layers.get(node_id, 1),
+                key_node_set,
+                root_id,
+                connected_depth=primary_layers.get(node_id),
+                independent_status=independent_status_by_node.get(node_id),
+            )
             for node_id in parallel_roots
             if node_id in visible_node_ids
         ],
+        "independent_observations": _independent_observations_summary(G, simple_G, independent_status_by_node),
         "visible_nodes": visible_node_rows,
         "tree_edges": tree_edge_rows,
         "highlight_edges": highlight_edges,
         "layers": layers,
+        "role_contributions": _build_role_contributions(
+            G,
+            simple_G,
+            root_id,
+            primary_source,
+            primary_layers,
+            independent_status_by_node,
+            key_paths,
+            bc or {},
+        ),
         "detail_index": detail_index,
         "meta": {
             "mode": "layered_summary",
@@ -668,6 +706,8 @@ def _build_diffusion_summary(
             "source": "full_observed_graph",
             "total_nodes": G.number_of_nodes(),
             "total_edges": G.number_of_edges(),
+            "primary_connected_node_count": len(primary_connected_nodes),
+            "independent_observation_node_count": independent_node_count,
             "requested_node_limit": int(node_limit or 0),
             "visible_node_limit": resolved_node_limit,
             "layer_budget": requested_budget,
@@ -786,11 +826,19 @@ def _empty_diffusion_summary(
 ) -> dict:
     return {
         "root_node": None,
+        "primary_source": None,
         "parallel_roots": [],
+        "independent_observations": {
+            "status": "no_independent_observations",
+            "root_count": 0,
+            "node_count": 0,
+            "roots": [],
+        },
         "visible_nodes": [],
         "tree_edges": [],
         "highlight_edges": [],
         "layers": [],
+        "role_contributions": {"sources": [], "bridges": [], "amplifiers": []},
         "detail_index": {"nodes": {}, "objects": {}},
         "meta": {
             "mode": "layered_summary",
@@ -798,6 +846,8 @@ def _empty_diffusion_summary(
             "source": "full_observed_graph",
             "total_nodes": 0,
             "total_edges": 0,
+            "primary_connected_node_count": 0,
+            "independent_observation_node_count": 0,
             "requested_node_limit": int(requested_node_limit or visible_node_limit or 0),
             "visible_node_limit": visible_node_limit,
             "visible_node_count": 0,
@@ -857,9 +907,11 @@ def _flatten_key_paths(evidence_chains: list[dict]) -> list[dict]:
                 continue
             key_paths.append({
                 "claim_id": chain.get("claim_id"),
+                "path_id": path.get("path_id"),
                 "nodes": nodes,
                 "score": path.get("score", 0),
                 "explanation": path.get("explanation", ""),
+                "evidence_refs": list(path.get("evidence_refs") or []),
             })
     key_paths.sort(key=lambda item: item.get("score", 0), reverse=True)
     return key_paths[:8]
@@ -909,6 +961,133 @@ def _select_diffusion_root(simple_G: nx.DiGraph, G: nx.MultiDiGraph) -> str:
             str(node),
         ),
     )[0]
+
+
+def _select_primary_source(simple_G: nx.DiGraph, G: nx.MultiDiGraph) -> dict:
+    if simple_G.number_of_nodes() == 0:
+        return {}
+
+    observed_nodes = [node for node in simple_G.nodes() if _node_has_observed_content(G, node)]
+
+    def first_ts(node: str) -> pd.Timestamp:
+        ts = G.nodes[node].get("first_ts", "") if G.has_node(node) else ""
+        parsed = pd.to_datetime(ts, errors="coerce", utc=True)
+        return parsed if not pd.isna(parsed) else pd.Timestamp.max.tz_localize("UTC")
+
+    def row(node: str, *, selection_basis: str, is_fallback: bool) -> dict:
+        attrs = G.nodes[node] if G.has_node(node) else {}
+        reach = len(nx.descendants(simple_G, node)) if simple_G.has_node(node) else 0
+        return {
+            "account_id": node,
+            "author_name": attrs.get("author_name") or node,
+            "first_ts": attrs.get("first_ts", ""),
+            "selection_basis": selection_basis,
+            "is_fallback": is_fallback,
+            "proven_source": not is_fallback,
+            "direct_downstream_count": int(simple_G.out_degree(node)) if simple_G.has_node(node) else 0,
+            "unique_directed_downstream_reach": reach,
+        }
+
+    zero_in_degree = [
+        node for node in observed_nodes
+        if simple_G.in_degree(node) == 0
+    ]
+    if zero_in_degree:
+        selected = sorted(
+            zero_in_degree,
+            key=lambda node: (
+                -len(nx.descendants(simple_G, node)),
+                first_ts(node),
+                str(node),
+            ),
+        )[0]
+        return row(
+            selected,
+            selection_basis="zero_in_degree_observed_descendant_reach",
+            is_fallback=False,
+        )
+
+    if observed_nodes:
+        selected = sorted(observed_nodes, key=lambda node: (first_ts(node), str(node)))[0]
+        return row(
+            selected,
+            selection_basis="fallback_earliest_observed_no_zero_in_degree_source",
+            is_fallback=True,
+        )
+
+    selected = sorted(simple_G.nodes(), key=lambda node: str(node))[0]
+    return row(
+        selected,
+        selection_basis="fallback_stable_node_no_observed_content",
+        is_fallback=True,
+    )
+
+
+def _primary_connected_layers(simple_G: nx.DiGraph, root_id: str) -> dict[str, int]:
+    if not root_id or not simple_G.has_node(root_id):
+        return {}
+    return {
+        node: int(layer)
+        for node, layer in nx.single_source_shortest_path_length(simple_G, root_id).items()
+    }
+
+
+def _independent_observation_statuses(
+    simple_G: nx.DiGraph,
+    root_id: str,
+    primary_connected_nodes: set[str],
+) -> dict[str, str]:
+    remaining = {
+        node for node in simple_G.nodes()
+        if node != root_id and node not in primary_connected_nodes
+    }
+    statuses: dict[str, str] = {}
+
+    def mark_branch(root: str, root_status: str) -> None:
+        statuses[root] = root_status
+        for descendant in nx.descendants(simple_G, root):
+            if descendant in remaining:
+                statuses.setdefault(descendant, "independent_descendant")
+
+    roots = sorted(
+        [node for node in remaining if not any(parent in remaining for parent in simple_G.predecessors(node))],
+        key=lambda node: str(node),
+    )
+    for root in roots:
+        mark_branch(root, "independent_root")
+
+    # A detached directed cycle has no zero-indegree member. Preserve it as an
+    # observed independent component without inventing an origin account.
+    for node in sorted(remaining - set(statuses), key=lambda item: str(item)):
+        if node in statuses:
+            continue
+        mark_branch(node, "independent_cycle_observation")
+    return statuses
+
+
+def _independent_observations_summary(
+    G: nx.MultiDiGraph,
+    simple_G: nx.DiGraph,
+    independent_status_by_node: dict[str, str],
+) -> dict:
+    root_ids = sorted(
+        [node for node, status in independent_status_by_node.items() if status == "independent_root"],
+        key=lambda node: str(node),
+    )
+    return {
+        "status": "independent_observations_available" if root_ids else "no_independent_observations",
+        "root_count": len(root_ids),
+        "node_count": len(independent_status_by_node),
+        "roots": [
+            {
+                "account_id": node,
+                "author_name": G.nodes[node].get("author_name", node) if G.has_node(node) else node,
+                "direct_downstream_count": int(simple_G.out_degree(node)) if simple_G.has_node(node) else 0,
+                "unique_directed_downstream_reach": len(nx.descendants(simple_G, node)) if simple_G.has_node(node) else 0,
+            }
+            for node in root_ids
+        ],
+    }
 
 
 def _select_parallel_roots(simple_G: nx.DiGraph, G: nx.MultiDiGraph, root_id: str, limit: int = 8) -> list[str]:
@@ -1044,12 +1223,17 @@ def _diffusion_node_row(
     layer: int,
     key_node_set: set[str],
     root_id: str,
+    *,
+    connected_depth: int | None = None,
+    independent_status: str | None = None,
 ) -> dict:
     attrs = G.nodes[node_id] if node_id and G.has_node(node_id) else {}
     return {
         "id": node_id,
         "author_name": attrs.get("author_name") or node_id,
         "layer": layer,
+        "connected_depth": connected_depth,
+        "independent_status": independent_status or ("primary_connected" if connected_depth is not None else "unconnected_observation"),
         "post_count": int(attrs.get("post_count", 0) or 0),
         "first_ts": attrs.get("first_ts", ""),
         "out_degree": int(simple_G.out_degree(node_id)) if node_id and simple_G.has_node(node_id) else 0,
@@ -1415,7 +1599,29 @@ def _diffusion_layer_rows(visible_nodes: list[dict], total_nodes: int) -> list[d
             "level": layer,
             "label": label,
             "node_count": count,
-            "ratio": round(count / total, 4),
+            "ratio": count / total,
+        })
+    return rows
+
+
+def _diffusion_connected_layer_rows(primary_layers: dict[str, int]) -> list[dict]:
+    if not primary_layers:
+        return []
+    total = max(len(primary_layers), 1)
+    counts = Counter(primary_layers.values())
+    rows = []
+    for layer, count in sorted(counts.items(), key=lambda item: item[0]):
+        if layer < 0:
+            label = "未连接"
+        elif layer == 0:
+            label = "源头层"
+        else:
+            label = f"第{layer}层"
+        rows.append({
+            "level": layer,
+            "label": label,
+            "node_count": count,
+            "ratio": count / total,
         })
     return rows
 
@@ -1454,6 +1660,176 @@ def _build_comment_index(comments: list[dict]) -> dict[str, list[dict]]:
     return comment_index
 
 
+def _key_path_reference(path: dict, node_id: str | None = None) -> dict:
+    nodes = list(path.get("nodes") or [])
+    reference = {
+        "claim_id": path.get("claim_id"),
+        "path_id": path.get("path_id"),
+        "nodes": nodes,
+        "evidence_refs": list(path.get("evidence_refs") or []),
+    }
+    if node_id is not None and node_id in nodes:
+        reference["node_index"] = nodes.index(node_id)
+    return reference
+
+
+def _node_key_path_refs(node_id: str, key_paths: list[dict], *, internal_only: bool = False) -> list[dict]:
+    refs = []
+    for path in key_paths:
+        nodes = list(path.get("nodes") or [])
+        if node_id not in nodes:
+            continue
+        index = nodes.index(node_id)
+        if internal_only and index in {0, len(nodes) - 1}:
+            continue
+        refs.append(_key_path_reference(path, node_id))
+    return refs[:8]
+
+
+def _object_representative_path_refs(object_id: str, evidence_chains: list[dict]) -> list[dict]:
+    refs = []
+    for chain in evidence_chains:
+        if chain.get("claim_id") != object_id:
+            continue
+        for path in chain.get("key_paths", []) or []:
+            nodes = list(path.get("nodes") or [])
+            if len(nodes) < 2:
+                continue
+            refs.append({
+                "claim_id": chain.get("claim_id"),
+                "path_id": path.get("path_id"),
+                "nodes": nodes,
+                "evidence_refs": list(path.get("evidence_refs") or []),
+            })
+            if len(refs) >= 3:
+                return refs
+    return refs
+
+
+def _contribution_location_fields(
+    node_id: str,
+    primary_layers: dict[str, int],
+    independent_status_by_node: dict[str, str],
+) -> dict:
+    connected_depth = primary_layers.get(node_id)
+    return {
+        "connected_depth": connected_depth,
+        "independent_status": independent_status_by_node.get(
+            node_id,
+            "primary_connected" if connected_depth is not None else "unconnected_observation",
+        ),
+    }
+
+
+def _role_contribution_row(
+    G: nx.MultiDiGraph,
+    simple_G: nx.DiGraph,
+    node_id: str,
+    primary_layers: dict[str, int],
+    independent_status_by_node: dict[str, str],
+    key_path_refs: list[dict],
+    evidence_reason: str,
+    *,
+    betweenness: float | None = None,
+) -> dict:
+    attrs = G.nodes[node_id] if G.has_node(node_id) else {}
+    row = {
+        "account_id": node_id,
+        "author_name": attrs.get("author_name") or node_id,
+        **_contribution_location_fields(node_id, primary_layers, independent_status_by_node),
+        "direct_downstream_count": int(simple_G.out_degree(node_id)) if simple_G.has_node(node_id) else 0,
+        "unique_directed_downstream_reach": len(nx.descendants(simple_G, node_id)) if simple_G.has_node(node_id) else 0,
+        "evidence_reason": evidence_reason,
+        "key_path_refs": key_path_refs,
+    }
+    if betweenness is not None:
+        row["betweenness"] = round(float(betweenness), 4)
+    return row
+
+
+def _build_role_contributions(
+    G: nx.MultiDiGraph,
+    simple_G: nx.DiGraph,
+    root_id: str,
+    primary_source: dict,
+    primary_layers: dict[str, int],
+    independent_status_by_node: dict[str, str],
+    key_paths: list[dict],
+    bc: dict[str, float],
+) -> dict:
+    if not root_id or not simple_G.has_node(root_id):
+        return {"sources": [], "bridges": [], "amplifiers": []}
+
+    source_refs = _node_key_path_refs(root_id, key_paths)
+    source_row = _role_contribution_row(
+        G,
+        simple_G,
+        root_id,
+        primary_layers,
+        independent_status_by_node,
+        source_refs,
+        "按零入度观察内容、下游覆盖、首次观察时间和账号ID确定的主源；fallback 时不视为已证明源头。",
+    )
+    source_row.update({
+        "selection_basis": primary_source.get("selection_basis"),
+        "is_fallback": bool(primary_source.get("is_fallback")),
+        "proven_source": bool(primary_source.get("proven_source")),
+    })
+
+    bridges = []
+    for node_id, score in sorted(bc.items(), key=lambda item: item[1], reverse=True):
+        if node_id == root_id or not simple_G.has_node(node_id):
+            continue
+        if float(score or 0) <= 0:
+            continue
+        if simple_G.in_degree(node_id) <= 0 or simple_G.out_degree(node_id) <= 0:
+            continue
+        path_refs = _node_key_path_refs(node_id, key_paths, internal_only=True)
+        if not path_refs:
+            continue
+        bridges.append(_role_contribution_row(
+            G,
+            simple_G,
+            node_id,
+            primary_layers,
+            independent_status_by_node,
+            path_refs,
+            "具备上游和下游传播证据，且出现在可追溯关键路径中；介数中心性为非零。",
+            betweenness=float(score),
+        ))
+        if len(bridges) >= 10:
+            break
+
+    amplifier_candidates = []
+    for node_id in simple_G.nodes():
+        if node_id == root_id:
+            continue
+        reach = len(nx.descendants(simple_G, node_id))
+        direct = int(simple_G.out_degree(node_id))
+        if reach <= 0 or direct <= 0:
+            continue
+        amplifier_candidates.append((node_id, reach, direct))
+    amplifier_candidates.sort(key=lambda item: (item[1], item[2], str(item[0])), reverse=True)
+
+    amplifiers = []
+    for node_id, _reach, _direct in amplifier_candidates[:10]:
+        amplifiers.append(_role_contribution_row(
+            G,
+            simple_G,
+            node_id,
+            primary_layers,
+            independent_status_by_node,
+            _node_key_path_refs(node_id, key_paths),
+            "非源头账号，按唯一有向下游覆盖和直接下游数量排序；仅有高入度不足以入选。",
+        ))
+
+    return {
+        "sources": [source_row],
+        "bridges": bridges,
+        "amplifiers": amplifiers,
+    }
+
+
 def _build_diffusion_detail_index(
     visible_node_ids: set[str],
     shared_objects: dict[str, list],
@@ -1462,8 +1838,12 @@ def _build_diffusion_detail_index(
     evidence_chains: list[dict],
     simple_G: nx.DiGraph,
     G: nx.MultiDiGraph,
+    primary_layers: dict[str, int] | None = None,
+    independent_status_by_node: dict[str, str] | None = None,
 ) -> dict:
     node_details = {}
+    primary_layers = primary_layers or {}
+    independent_status_by_node = independent_status_by_node or {}
     for node_id in visible_node_ids:
         attrs = G.nodes[node_id] if G.has_node(node_id) else {}
         upstream = [
@@ -1479,6 +1859,11 @@ def _build_diffusion_detail_index(
             "author_name": attrs.get("author_name") or node_id,
             "post_count": int(attrs.get("post_count", 0) or 0),
             "first_ts": attrs.get("first_ts", ""),
+            "connected_depth": primary_layers.get(node_id),
+            "independent_status": independent_status_by_node.get(
+                node_id,
+                "primary_connected" if node_id in primary_layers else "unconnected_observation",
+            ),
             "out_degree": int(simple_G.out_degree(node_id)) if simple_G.has_node(node_id) else 0,
             "in_degree": int(simple_G.in_degree(node_id)) if simple_G.has_node(node_id) else 0,
             "upstream": upstream,
@@ -1492,11 +1877,15 @@ def _build_diffusion_detail_index(
     evidence_by_claim = {chain.get("claim_id"): chain for chain in evidence_chains}
     for object_id, shares in shared_objects.items():
         sorted_shares = sorted(shares, key=lambda item: item.get("ts"))
+        representative_path_refs = _object_representative_path_refs(object_id, evidence_chains)
         object_details[object_id] = {
             "object_id": object_id,
             "share_count": len(sorted_shares),
             "account_count": len({share.get("author_id") for share in sorted_shares if share.get("author_id")}),
             "first_share": str(sorted_shares[0]["ts"]) if sorted_shares else "",
+            "first_observed_ts": str(sorted_shares[0]["ts"]) if sorted_shares else None,
+            "representative_path_refs": representative_path_refs or None,
+            "path_evidence_status": "available" if representative_path_refs else "unavailable",
             "participants": [
                 _diffusion_neighbor_row(G, str(share.get("author_id", "")))
                 for share in sorted_shares[:20]

@@ -302,6 +302,204 @@ class TestPropagationAnalysisEventInferenceAdapter:
         assert result["user_quality"]["verified_count"] == 1
         assert any(row["quality"] == "高" and row["count"] == 1 for row in result["user_quality"]["buckets"])
 
+    def test_diffusion_summary_selects_deterministic_primary_source_by_reach_time_and_id(self):
+        posts = [
+            {"post_id": "p_beta_0", "author_id": "beta", "author_name": "Beta",
+             "timestamp": _ts(0), "url": "https://example.com/beta", "hashtags": [], "content": "beta source"},
+            {"post_id": "p_alpha_0", "author_id": "alpha", "author_name": "Alpha",
+             "timestamp": _ts(0), "url": "https://example.com/alpha", "hashtags": [], "content": "alpha source"},
+            {"post_id": "p_beta_1", "author_id": "beta_mid", "author_name": "Beta Mid",
+             "timestamp": _ts(1), "url": "https://example.com/beta", "hashtags": [], "content": "beta mid"},
+            {"post_id": "p_alpha_1", "author_id": "alpha_mid", "author_name": "Alpha Mid",
+             "timestamp": _ts(1), "url": "https://example.com/alpha", "hashtags": [], "content": "alpha mid"},
+            {"post_id": "p_beta_2", "author_id": "beta_leaf", "author_name": "Beta Leaf",
+             "timestamp": _ts(2), "url": "https://example.com/beta", "hashtags": [], "content": "beta leaf"},
+            {"post_id": "p_alpha_2", "author_id": "alpha_leaf", "author_name": "Alpha Leaf",
+             "timestamp": _ts(2), "url": "https://example.com/alpha", "hashtags": [], "content": "alpha leaf"},
+        ]
+
+        summary = build_propagation_graph(posts, diffusion_node_limit=0)["diffusion_summary"]
+
+        assert summary["primary_source"]["account_id"] == "alpha"
+        assert summary["primary_source"]["selection_basis"] == "zero_in_degree_observed_descendant_reach"
+        assert summary["primary_source"]["is_fallback"] is False
+        assert summary["primary_source"]["unique_directed_downstream_reach"] == 2
+        assert summary["root_node"]["id"] == "alpha"
+
+    def test_diffusion_summary_labels_fallback_source_without_claiming_proven_source(self):
+        posts = [
+            {"post_id": "p_a", "author_id": "early", "author_name": "Early",
+             "timestamp": _ts(0), "url": "", "hashtags": [], "content": "early"},
+            {"post_id": "p_b", "author_id": "late", "author_name": "Late",
+             "timestamp": _ts(2), "url": "", "hashtags": [], "content": "late"},
+        ]
+        comments = [
+            {"comment_id": "c_late", "post_id": "p_a", "author_id": "late", "author_name": "Late",
+             "timestamp": _ts(3), "reply_to": "p_a", "content": "late replies"},
+            {"comment_id": "c_early", "post_id": "p_b", "author_id": "early", "author_name": "Early",
+             "timestamp": _ts(4), "reply_to": "p_b", "content": "early replies"},
+        ]
+
+        summary = build_propagation_graph(posts, comments, diffusion_node_limit=0)["diffusion_summary"]
+
+        assert summary["primary_source"]["account_id"] == "early"
+        assert summary["primary_source"]["selection_basis"] == "fallback_earliest_observed_no_zero_in_degree_source"
+        assert summary["primary_source"]["is_fallback"] is True
+        assert summary["primary_source"]["proven_source"] is False
+
+    def test_diffusion_summary_preserves_independent_branches_without_synthetic_root_edges(self):
+        posts = [
+            {"post_id": "p0", "author_id": "source", "author_name": "Source",
+             "timestamp": _ts(0), "url": "https://example.com/main", "hashtags": [], "content": "source"},
+            {"post_id": "p1", "author_id": "mid", "author_name": "Mid",
+             "timestamp": _ts(1), "url": "https://example.com/main", "hashtags": [], "content": "mid"},
+            {"post_id": "p2", "author_id": "leaf", "author_name": "Leaf",
+             "timestamp": _ts(2), "url": "https://example.com/main", "hashtags": [], "content": "leaf"},
+            {"post_id": "p3", "author_id": "independent", "author_name": "Independent",
+             "timestamp": _ts(3), "url": "https://example.com/side", "hashtags": [], "content": "independent"},
+            {"post_id": "p4", "author_id": "independent_leaf", "author_name": "Independent Leaf",
+             "timestamp": _ts(4), "url": "https://example.com/side", "hashtags": [], "content": "side leaf"},
+        ]
+
+        summary = build_propagation_graph(posts, diffusion_node_limit=0)["diffusion_summary"]
+        edge_keys = {(edge["source"], edge["target"]) for edge in summary["tree_edges"]}
+
+        assert summary["primary_source"]["account_id"] == "source"
+        assert summary["primary_source"]["unique_directed_downstream_reach"] == 2
+        assert ("source", "independent") not in edge_keys
+        assert all(edge.get("type") != "parallel_root" for edge in summary["tree_edges"])
+        assert summary["independent_observations"]["root_count"] == 1
+        assert summary["independent_observations"]["node_count"] == 2
+        assert summary["independent_observations"]["status"] == "independent_observations_available"
+        assert summary["detail_index"]["nodes"]["independent"]["independent_status"] == "independent_root"
+        assert summary["detail_index"]["nodes"]["independent_leaf"]["independent_status"] == "independent_descendant"
+
+    def test_diffusion_layers_use_full_primary_connected_population_not_visible_limit(self):
+        posts = [
+            {"post_id": f"p{i}", "author_id": f"main_{i}", "author_name": f"Main {i}",
+             "timestamp": _ts(i), "url": "https://example.com/main-population",
+             "hashtags": [], "content": f"main {i}"}
+            for i in range(4)
+        ] + [
+            {"post_id": "p_side_0", "author_id": "side", "author_name": "Side",
+             "timestamp": _ts(10), "url": "https://example.com/side-population",
+             "hashtags": [], "content": "side"},
+            {"post_id": "p_side_1", "author_id": "side_leaf", "author_name": "Side Leaf",
+             "timestamp": _ts(11), "url": "https://example.com/side-population",
+             "hashtags": [], "content": "side leaf"},
+        ]
+
+        summary = build_propagation_graph(posts, diffusion_node_limit=2)["diffusion_summary"]
+
+        assert summary["meta"]["primary_connected_node_count"] == 4
+        assert summary["meta"]["independent_observation_node_count"] == 2
+        assert summary["layers"] == [
+            {"level": 0, "label": "源头层", "node_count": 1, "ratio": 0.25},
+            {"level": 1, "label": "第1层", "node_count": 1, "ratio": 0.25},
+            {"level": 2, "label": "第2层", "node_count": 1, "ratio": 0.25},
+            {"level": 3, "label": "第3层", "node_count": 1, "ratio": 0.25},
+        ]
+
+    def test_diffusion_layers_keep_actual_shortest_path_depth_beyond_legacy_display_limit(self):
+        posts = [
+            {"post_id": f"p{index}", "author_id": f"node_{index}", "author_name": f"Node {index}",
+             "timestamp": _ts(index), "url": "https://example.com/deep-path", "hashtags": [],
+             "content": f"node {index}"}
+            for index in range(9)
+        ]
+
+        summary = build_propagation_graph(posts, diffusion_node_limit=0)["diffusion_summary"]
+
+        assert summary["detail_index"]["nodes"]["node_8"]["connected_depth"] == 8
+        assert summary["layers"][-1] == {
+            "level": 8,
+            "label": "第8层",
+            "node_count": 1,
+            "ratio": 1 / 9,
+        }
+
+    def test_diffusion_summary_marks_standalone_observation_as_independent(self):
+        posts = [
+            {"post_id": "p0", "author_id": "source", "author_name": "Source",
+             "timestamp": _ts(0), "url": "https://example.com/main", "hashtags": [], "content": "source"},
+            {"post_id": "p1", "author_id": "leaf", "author_name": "Leaf",
+             "timestamp": _ts(1), "url": "https://example.com/main", "hashtags": [], "content": "leaf"},
+            {"post_id": "p2", "author_id": "standalone", "author_name": "Standalone",
+             "timestamp": _ts(2), "url": "", "hashtags": [], "content": "standalone"},
+        ]
+
+        summary = build_propagation_graph(posts, diffusion_node_limit=0)["diffusion_summary"]
+
+        assert summary["independent_observations"]["root_count"] == 1
+        assert summary["independent_observations"]["node_count"] == 1
+        assert summary["detail_index"]["nodes"]["standalone"]["independent_status"] == "independent_root"
+
+    def test_diffusion_role_contributions_require_path_evidence_and_downstream_reach(self):
+        posts = [
+            {"post_id": "p_source", "author_id": "source", "author_name": "Source",
+             "timestamp": _ts(0), "url": "https://example.com/path", "hashtags": [], "content": "source"},
+            {"post_id": "p_bridge", "author_id": "bridge", "author_name": "Bridge",
+             "timestamp": _ts(1), "url": "https://example.com/path", "hashtags": [], "content": "bridge"},
+            {"post_id": "p_amp", "author_id": "amplifier", "author_name": "Amplifier",
+             "timestamp": _ts(2), "url": "https://example.com/path", "hashtags": [], "content": "amp"},
+            {"post_id": "p_leaf", "author_id": "leaf", "author_name": "Leaf",
+             "timestamp": _ts(3), "url": "https://example.com/path", "hashtags": [], "content": "leaf"},
+            {"post_id": "p_parent_a", "author_id": "parent_a", "author_name": "Parent A",
+             "timestamp": _ts(4), "url": "", "hashtags": [], "content": "parent a"},
+            {"post_id": "p_parent_b", "author_id": "parent_b", "author_name": "Parent B",
+             "timestamp": _ts(5), "url": "", "hashtags": [], "content": "parent b"},
+            {"post_id": "p_parent_c", "author_id": "parent_c", "author_name": "Parent C",
+             "timestamp": _ts(6), "url": "", "hashtags": [], "content": "parent c"},
+        ]
+        comments = [
+            {"comment_id": "c_sink_a", "post_id": "p_parent_a", "author_id": "high_indegree_sink",
+             "author_name": "High In-degree Sink", "timestamp": _ts(7), "reply_to": "p_parent_a", "content": "reply a"},
+            {"comment_id": "c_sink_b", "post_id": "p_parent_b", "author_id": "high_indegree_sink",
+             "author_name": "High In-degree Sink", "timestamp": _ts(8), "reply_to": "p_parent_b", "content": "reply b"},
+            {"comment_id": "c_sink_c", "post_id": "p_parent_c", "author_id": "high_indegree_sink",
+             "author_name": "High In-degree Sink", "timestamp": _ts(9), "reply_to": "p_parent_c", "content": "reply c"},
+        ]
+
+        summary = build_propagation_graph(posts, comments, diffusion_node_limit=0)["diffusion_summary"]
+        roles = summary["role_contributions"]
+        bridge_ids = {row["account_id"] for row in roles["bridges"]}
+        amplifier_ids = {row["account_id"] for row in roles["amplifiers"]}
+        bridge = next(row for row in roles["bridges"] if row["account_id"] == "bridge")
+
+        assert roles["sources"][0]["account_id"] == "source"
+        assert "bridge" in bridge_ids
+        assert bridge["betweenness"] > 0
+        assert bridge["direct_downstream_count"] > 0
+        assert bridge["unique_directed_downstream_reach"] > 0
+        assert bridge["key_path_refs"]
+        assert "上游" in bridge["evidence_reason"]
+        assert "amplifier" in amplifier_ids
+        assert "high_indegree_sink" not in amplifier_ids
+
+    def test_diffusion_object_rows_expose_timestamp_and_path_availability(self):
+        posts = [
+            {"post_id": "p0", "author_id": "source", "author_name": "Source",
+             "timestamp": _ts(0), "url": "https://example.com/path-object", "hashtags": [], "content": "source"},
+            {"post_id": "p1", "author_id": "mid", "author_name": "Mid",
+             "timestamp": _ts(1), "url": "https://example.com/path-object", "hashtags": [], "content": "mid"},
+            {"post_id": "p2", "author_id": "leaf", "author_name": "Leaf",
+             "timestamp": _ts(2), "url": "https://example.com/path-object", "hashtags": [], "content": "leaf"},
+            {"post_id": "p3", "author_id": "solo", "author_name": "Solo",
+             "timestamp": _ts(3), "url": "https://example.com/solo-object", "hashtags": [], "content": "solo"},
+        ]
+
+        objects = build_propagation_graph(posts, diffusion_node_limit=0)["diffusion_summary"]["detail_index"]["objects"]
+
+        path_object = objects["https://example.com/path-object"]
+        solo_object = objects["https://example.com/solo-object"]
+        assert path_object["first_observed_ts"] == "2024-01-01 10:00:00+00:00"
+        assert path_object["path_evidence_status"] == "available"
+        assert path_object["representative_path_refs"]
+        assert path_object["representative_path_refs"][0]["claim_id"] == "https://example.com/path-object"
+        assert solo_object["first_observed_ts"] == "2024-01-01 10:03:00+00:00"
+        assert solo_object["path_evidence_status"] == "unavailable"
+        assert solo_object["representative_path_refs"] is None
+
     def test_diffusion_summary_uses_observed_root_and_readable_backbone(self):
         posts = [
             {"post_id": "p0", "author_id": "root", "author_name": "Root", "timestamp": _ts(0),
