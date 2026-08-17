@@ -14,5 +14,10 @@ def build_propagation_graph(*args, **kwargs):
     return _build_propagation_graph(*args, **kwargs)
 
 
+def build_propagation_branch(*args, **kwargs):
+    from app.core.propagation_legacy import build_propagation_branch as _build_propagation_branch
 
-__all__ = ["build_propagation_graph"]
+    return _build_propagation_branch(*args, **kwargs)
+
+
+__all__ = ["build_propagation_branch", "build_propagation_graph"]

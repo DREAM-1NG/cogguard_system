@@ -15,7 +15,7 @@ from app.core.analysis.query_result_cache import (
     build_query_cache_key,
     get_or_build_query_result,
 )
-from app.core.propagation_analysis import build_propagation_graph
+from app.core.propagation_analysis import build_propagation_branch, build_propagation_graph
 from app.db.mongodb import get_mongo_db
 from app.services.event_data import (
     analysis_scope_metadata,
@@ -137,6 +137,53 @@ async def analyze_observed_propagation(
         node_limit=node_limit,
         layer_budget=layer_budget,
     )
+
+
+async def analyze_observed_propagation_branch(
+    *,
+    event_id: str | None,
+    platform: str | None,
+    account_id: str,
+) -> dict:
+    """Read one complete observed branch for a visible propagation account."""
+    mongo_db = get_mongo_db()
+    source_fingerprint = await event_data_fingerprint(
+        mongo_db,
+        event_id=event_id,
+        platform=platform,
+    )
+    if not source_fingerprint:
+        return {
+            "status": "not_found",
+            "blocking_reason": "no_analyzable_posts_in_scope",
+            "account_id": account_id,
+            "nodes": [],
+            "edges": [],
+        }
+
+    cache_key = build_query_cache_key(
+        "propagation-observed-branch-v1",
+        event_id or "*",
+        platform or "*",
+        account_id,
+        source_fingerprint,
+    )
+
+    async def build() -> dict:
+        posts = await load_event_posts(mongo_db, event_id=event_id, platform=platform)
+        comments = await load_event_comments(mongo_db, event_id=event_id, platform=platform)
+        result = build_propagation_branch(posts, comments, account_id=account_id)
+        result["event_id"] = event_id
+        result["platform"] = platform
+        result["data_scope"] = analysis_scope_metadata(
+            event_id=event_id,
+            platform=platform,
+            posts_count=len(posts),
+            comments_count=len(comments),
+        )
+        return result
+
+    return await get_or_build_query_result(cache_key, build)
 
 
 async def _build_observed_propagation_result(

@@ -13,3 +13,4 @@ def test_propagation_monitoring_routes_share_the_release_api_surface():
     assert "/api/v1/propagation/alerts/unresolved-count" in paths
     assert "/api/v1/propagation/alerts/{alert_id}" in paths
     assert "/api/v1/propagation/alerts/{alert_id}/actions" in paths
+    assert "/api/v1/propagation/branch" in paths

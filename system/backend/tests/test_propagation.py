@@ -45,6 +45,42 @@ def test_layered_visibility_keeps_early_layers_and_key_path_connectors():
     assert "noise" not in visible
 
 
+def test_key_path_projection_keeps_only_role_accounts_and_their_real_ancestor_closure():
+    posts = [
+        {"post_id": "root", "author_id": "root", "author_name": "Root", "timestamp": _ts(0), "url": "https://example.com/main", "hashtags": ["#branch"], "content": "root"},
+        {"post_id": "relay", "author_id": "relay", "author_name": "Relay", "timestamp": _ts(1), "url": "https://example.com/main", "hashtags": [], "content": "relay"},
+        {"post_id": "amplifier", "author_id": "amplifier", "author_name": "Amplifier", "timestamp": _ts(2), "url": "https://example.com/main", "hashtags": [], "content": "amplifier"},
+        {"post_id": "ordinary-leaf", "author_id": "ordinary-leaf", "author_name": "Ordinary Leaf", "timestamp": _ts(3), "url": "https://example.com/main", "hashtags": [], "content": "ordinary leaf"},
+        {"post_id": "independent", "author_id": "independent", "author_name": "Independent", "timestamp": _ts(4), "url": "https://example.com/independent", "hashtags": [], "content": "independent"},
+        {"post_id": "independent-leaf", "author_id": "independent-leaf", "author_name": "Independent Leaf", "timestamp": _ts(5), "url": "https://example.com/independent", "hashtags": [], "content": "independent leaf"},
+    ]
+
+    projection = build_propagation_graph(posts, diffusion_node_limit=0)["diffusion_summary"]["key_path_projection"]
+
+    assert projection["root_node"]["id"] == "root"
+    assert projection["key_account_limit"] == 24
+    assert {row["id"] for row in projection["nodes"]}.issuperset({"root", "relay", "amplifier"})
+    assert "ordinary-leaf" not in {row["id"] for row in projection["nodes"]}
+    assert all(edge["source"] != "root" or edge["target"] != "independent" for edge in projection["edges"])
+    assert projection["independent_islands"]
+
+
+def test_expanded_branch_projection_contains_only_real_descendants_and_observed_edges():
+    posts = [
+        {"post_id": "root", "author_id": "root", "author_name": "Root", "timestamp": _ts(0), "url": "https://example.com/main", "hashtags": [], "content": "root"},
+        {"post_id": "branch", "author_id": "branch", "author_name": "Branch", "timestamp": _ts(1), "url": "https://example.com/main", "hashtags": [], "content": "branch"},
+        {"post_id": "leaf", "author_id": "leaf", "author_name": "Leaf", "timestamp": _ts(2), "url": "https://example.com/main", "hashtags": [], "content": "leaf"},
+        {"post_id": "side", "author_id": "side", "author_name": "Side", "timestamp": _ts(3), "url": "https://example.com/side", "hashtags": [], "content": "side"},
+    ]
+
+    projection = propagation_legacy.build_propagation_branch(posts, [], account_id="branch")
+
+    assert projection["status"] == "ready"
+    assert {row["id"] for row in projection["nodes"]} == {"branch", "leaf"}
+    assert {(edge["source"], edge["target"]) for edge in projection["edges"]} == {("branch", "leaf")}
+    assert projection["edges"][0]["is_synthetic"] is False
+
+
 # ---------------------------------------------------------------------------
 # Fixtures: 构造测试数据
 # ---------------------------------------------------------------------------
