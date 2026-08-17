@@ -1306,3 +1306,24 @@
   configuration permissions are unchanged.
 - Added frontend and backend route-aggregation contract tests so a future
   client-prefix or v2 router mount regression is caught before delivery.
+
+## 2026-08-17: 协同与传播语义闭环恢复
+
+- 修复主张回应服务把窗口化 EventSnapshot 与事件全量原始查询结果直接比较的误判。
+  现在加载 ready semantic artifact 时，读取其持久化 `core_window` / `context_window`，
+  通过 `AnalysisRegistry.build_current_event_snapshot()` 重建当前 fingerprint；窗口外
+  的真实数据不会使 artifact 过期，窗口内数据变更仍返回
+  `semantic_artifact_snapshot_mismatch`。
+- 语义 artifact 是事件级制品，平台参数只在事实型主张回应投影阶段筛选，不参与 freshness
+  fingerprint。路径 overlay 仍只接受同一 ready artifact 中存在的精确
+  `<platform>:post:<id>` / `<platform>:comment:<id>` 引用。
+- 传播页首屏只加载观察路径，模型、时间线、预警和主张回应标签按需加载；协同页的数据集
+  切换通过请求代次保护，详情、结果、图谱失败分别提供重试状态。
+- 真实 API 验证：`trump_visit_2026_05_21` semantic `ready`，快照
+  `snapshot_77e1f630b35eb8134b958bc4`，运行
+  `run_trump_visit_2026_05_21_semantic_77e1f630b35e`，26 条传播 overlay，主张回应
+  semantic `available`，1 条精确主张回应路径 overlay。
+- 验证：后端聚焦 `73 passed, 1 warning`；前端 `npm test` `150 passed`，
+  `vue-tsc -b` 通过，生产构建与 `scripts/verify-build.mjs` 通过；warning 为 Transformers
+  的 `TRANSFORMERS_CACHE` 弃用提示。`features/crawl/model.ts` 的未使用参数只做了下划线
+  命名清理，采集工作台其他 WIP 边界未改变。

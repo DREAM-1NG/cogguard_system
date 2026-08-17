@@ -67,7 +67,7 @@ test('propagation analysis reload cancels stale prediction requests unless expli
   assert.match(analyze, /loadAnalysis\(true\)/)
 })
 
-test('propagation initial and route loads preserve the concurrently read forecast cache', () => {
+test('propagation initial and route loads defer forecast cache reads until the model tab opens', () => {
   const mountedStart = propagationView.indexOf('onMounted(() =>')
   const mounted = propagationView.slice(
     mountedStart,
@@ -78,11 +78,17 @@ test('propagation initial and route loads preserve the concurrently read forecas
     watcherStart,
     propagationView.indexOf('watch(displayLayerRows', watcherStart),
   )
+  const tabWatcherStart = propagationView.indexOf('watch(activeTab')
+  const tabWatcher = propagationView.slice(
+    tabWatcherStart,
+    propagationView.indexOf('watch(modelPredictionReady', tabWatcherStart),
+  )
 
   assert.match(mounted, /void loadAnalysis\(false, true\)/)
-  assert.match(mounted, /void loadCachedPrediction\(\)/)
+  assert.doesNotMatch(mounted, /void loadCachedPrediction\(\)/)
   assert.match(watcher, /void loadAnalysis\(false, true\)/)
-  assert.match(watcher, /void loadCachedPrediction\(\)/)
+  assert.doesNotMatch(watcher, /void loadCachedPrediction\(\)/)
+  assert.match(tabWatcher, /activeTab\.value === 'model'[\s\S]*?void loadCachedPrediction\(\)/)
 })
 
 test('propagation trend prediction retries the current event without platform when the selected platform has no data', () => {

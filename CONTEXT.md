@@ -107,6 +107,21 @@ It is never inferred from account identity, text similarity, graph adjacency,
 or event-level aggregates, and cannot change any propagation or risk result.
 _Avoid_: path classification, inferred response, path risk score
 
+Semantic artifact freshness is checked against the immutable Event Snapshot's
+own `core_window` and `context_window`. The current event snapshot is rebuilt
+without persistence before a ready artifact is served; raw event rows outside
+those windows do not invalidate the artifact. A platform filter scopes the
+factual landscape after the event-wide freshness check and never changes the
+semantic artifact fingerprint requirement. A mismatch is fail-closed as
+`semantic_artifact_snapshot_mismatch`.
+
+The `/propagation` workspace loads the observed propagation projection on entry.
+Forecast, timeline, alerts, and claim-response projections are loaded when
+their tabs are opened. A generic semantic artifact is loaded only for a
+non-claim path drill-down, while claim-response overlays are returned by the
+claim-response projection itself. These boundaries prevent stale or unused
+semantic data from replacing observed path facts.
+
 **Review**:
 The internal review routing boundary that produces advisory input and confirmed-decision prompts behind the case workspace.
 _Avoid_: generic analysis, unbounded internal loop

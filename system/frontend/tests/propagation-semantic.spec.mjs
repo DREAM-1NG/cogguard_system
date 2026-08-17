@@ -118,8 +118,10 @@ test('loads the semantic projection for the selected propagation event', () => {
   assert.match(loadSemanticProjection, /requestedEventId !== eventId\.value\.trim\(\)/)
 })
 
-test('clears semantic projection state when event or platform scope changes', () => {
+test('clears semantic projection state when an analyst applies an event or platform scope', () => {
   const resetSemanticProjection = bodyOf(propagationView, 'resetSemanticProjection')
+  const resetScopeDependentProjections = bodyOf(propagationView, 'resetScopeDependentProjections')
+  const handleAnalyze = bodyOf(propagationView, 'handleAnalyze')
   const scopeWatchStart = propagationView.indexOf('watch([eventId, platform]')
   const scopeWatch = propagationView.slice(
     scopeWatchStart,
@@ -129,8 +131,10 @@ test('clears semantic projection state when event or platform scope changes', ()
   assert.match(resetSemanticProjection, /semanticProjection\.value = null/)
   assert.match(resetSemanticProjection, /linkedPropagationArtifact\.value = null/)
   assert.match(resetSemanticProjection, /semanticLoading\.value = false/)
-  assert.match(scopeWatch, /resetSemanticProjection\(\)/)
-  assert.match(scopeWatch, /void loadSemanticProjection\(\)/)
+  assert.match(resetScopeDependentProjections, /resetSemanticProjection\(\)/)
+  assert.match(handleAnalyze, /resetScopeDependentProjections\(\)/)
+  assert.match(handleAnalyze, /await loadAnalysis\(true\)/)
+  assert.doesNotMatch(scopeWatch, /loadSemanticProjection\(\)/)
 })
 
 test('verifies linked propagation artifacts before semantic drill-down can use them', () => {
@@ -410,9 +414,15 @@ test('renders active-window controls and evidence zoom without assigning timesta
   assert.match(bodyOf(propagationView, 'buildModelTrendOption'), /模型相对步/)
 })
 
-test('refreshes the evidence timeline after an analyst changes the event scope', () => {
-  assert.match(bodyOf(propagationView, 'handleAnalyze'), /loadEvidenceTimeline\(\)/)
-  assert.match(bodyOf(propagationView, 'handlePredict'), /loadEvidenceTimeline\(\)/)
+test('defers the evidence timeline until the analyst opens the model tab after scope reset', () => {
+  const handleAnalyze = bodyOf(propagationView, 'handleAnalyze')
+  const tabWatchStart = propagationView.indexOf('watch(activeTab')
+  const tabWatch = propagationView.slice(tabWatchStart, propagationView.indexOf('watch(modelPredictionReady', tabWatchStart))
+
+  assert.match(handleAnalyze, /resetScopeDependentProjections\(\)/)
+  assert.doesNotMatch(handleAnalyze, /loadEvidenceTimeline\(\)/)
+  assert.match(tabWatch, /activeTab\.value === 'model'[\s\S]*?void loadCachedPrediction\(\)/)
+  assert.match(tabWatch, /activeTab\.value === 'model'[\s\S]*?void loadEvidenceTimeline\(\)/)
 })
 
 test('claim response stance styling is disabled until semantic coverage is ready', () => {

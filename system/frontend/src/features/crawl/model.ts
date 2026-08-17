@@ -53,7 +53,7 @@ export function parseJobSummary(summary: string | null | undefined): { postsCoun
 }
 
 export function resetPreviewForJob(
-  previous: CrawlPreviewState,
+  _previous: CrawlPreviewState,
   selectedJobId: number | null,
 ): CrawlPreviewState {
   return {

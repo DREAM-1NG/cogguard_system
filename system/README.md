@@ -140,6 +140,14 @@ metric, the page explicitly shows that it is unavailable instead of displaying
 zero. The available semantic fields are sentiment, raw NLI stance, keywords,
 topics, entities, platform/time scope, and the exact evidence references.
 
+Semantic artifact freshness is evaluated against the artifact snapshot's own
+analysis windows. The backend rebuilds a non-persisted current snapshot with
+those windows before serving a ready projection; event rows outside the windows
+are factual landscape input but cannot make the semantic artifact stale. A
+changed row inside the windows blocks the semantic projection. The propagation
+page loads only observed paths initially and fetches optional forecast, timeline,
+alert, and claim-response projections when their tabs are opened.
+
 ## Account Profile
 
 The NLPCC TwiBot-20 checkpoint is available separately as a hash-verified
