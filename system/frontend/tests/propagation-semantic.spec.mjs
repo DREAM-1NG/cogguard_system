@@ -399,6 +399,9 @@ test('distributes same-layer propagation nodes within compact deterministic band
   assert.match(positions, /const radialJitter/)
   assert.match(positions, /stableLayoutFraction\(`angle:/)
   assert.match(positions, /stableLayoutFraction\(`radius:/)
+  assert.match(positions, /const radius = 96 \+ \(depth - 1\) \* 70/)
+  assert.match(positions, /Math\.min\(12, Math\.max\(4, radius \* 0\.04\)\)/)
+  assert.doesNotMatch(positions, /minSpacingRadius/)
   assert.match(fitted, /Math\.min\(460 \/ width, 380 \/ height, 0\.92\)/)
 })
 

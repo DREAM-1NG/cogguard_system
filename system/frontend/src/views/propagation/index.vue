@@ -2862,9 +2862,7 @@ function buildConcentricEvidencePositions(
       if (angleOrder) return angleOrder
       return String(left.id).localeCompare(String(right.id))
     })
-    const baseRadius = 86 + (depth - 1) * 82 + Math.min(depth - 1, 4) * 10
-    const minSpacingRadius = (ordered.length * 11.5) / (Math.PI * 2)
-    const radius = Math.max(baseRadius, minSpacingRadius)
+    const radius = 96 + (depth - 1) * 70
     const ringAngles = ordered.map((node) => (
       angleByNode.get(String(node.id))
       ?? ((stableLayoutFraction(`node:${node.id}`) * Math.PI * 2) - (Math.PI / 2))
@@ -2877,7 +2875,7 @@ function buildConcentricEvidencePositions(
       const localGap = Math.max(0, Math.min(angle - previousAngle, nextAngle - angle))
       const angularJitterLimit = Math.min(0.16, Math.max(0.012, localGap * 0.32))
       const angularJitter = ((stableLayoutFraction(`angle:${depth}:${id}`) - 0.5) * 2) * angularJitterLimit
-      const radialJitterLimit = Math.min(16, Math.max(6, radius * 0.065))
+      const radialJitterLimit = Math.min(12, Math.max(4, radius * 0.04))
       const radialJitter = ((stableLayoutFraction(`radius:${depth}:${id}`) - 0.5) * 2) * radialJitterLimit
       const nodeRadius = radius + radialJitter
       positions.set(id, {
