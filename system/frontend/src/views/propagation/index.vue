@@ -2694,9 +2694,86 @@ function nodeConnectedDepth(node: DiffusionNode, rootId: string) {
   return Math.max(1, Math.floor(Number(node.layer ?? 1)))
 }
 
-function buildConcentricEvidencePositions(
+function buildPrimaryEvidenceBackbone(
   nodes: DiffusionNode[],
   treeEdges: DiffusionEdge[],
+  rootId: string,
+) {
+  const nodeById = new Map(nodes.map((node) => [String(node.id), node]))
+  const primaryNodeIds = new Set(
+    nodes.filter((node) => !isIndependentObservation(node)).map((node) => String(node.id)),
+  )
+  const candidatesByTarget = new Map<string, DiffusionEdge[]>()
+  const independentEdgesByKey = new Map<string, DiffusionEdge>()
+
+  for (const edge of treeEdges) {
+    const source = String(edge.source || '')
+    const target = String(edge.target || '')
+    if (!source || !target || source === target || edge.is_parallel_root || edge.is_synthetic) continue
+
+    const sourceNode = nodeById.get(source)
+    const targetNode = nodeById.get(target)
+    if (!sourceNode || !targetNode) continue
+
+    const sourceIndependent = isIndependentObservation(sourceNode)
+    const targetIndependent = isIndependentObservation(targetNode)
+    if (sourceIndependent || targetIndependent) {
+      if (sourceIndependent && targetIndependent) {
+        independentEdgesByKey.set(`${source}->${target}`, edge)
+      }
+      continue
+    }
+    if (!primaryNodeIds.has(source) || !primaryNodeIds.has(target)) continue
+
+    const sourceDepth = nodeConnectedDepth(sourceNode, rootId)
+    const targetDepth = nodeConnectedDepth(targetNode, rootId)
+    if (targetDepth !== sourceDepth + 1) continue
+    if (targetDepth === 1 && source !== rootId) continue
+    if (sourceDepth === 0 && source !== rootId) continue
+
+    const candidates = candidatesByTarget.get(target) ?? []
+    candidates.push(edge)
+    candidatesByTarget.set(target, candidates)
+  }
+
+  const evidenceRank = (edge: DiffusionEdge) => {
+    if (edge.evidence_type === 'explicit' || edge.type === 'explicit') return 0
+    if (edge.evidence_type === 'reconstructed' || edge.type === 'reconstructed') return 1
+    return 2
+  }
+  const orderedCandidateGroups = Array.from(candidatesByTarget.entries())
+    .sort(([left], [right]) => {
+      const leftDepth = nodeConnectedDepth(nodeById.get(left) as DiffusionNode, rootId)
+      const rightDepth = nodeConnectedDepth(nodeById.get(right) as DiffusionNode, rootId)
+      return leftDepth - rightDepth || left.localeCompare(right)
+    })
+  const connectedNodeIds = new Set<string>([rootId])
+  const primaryEdges: DiffusionEdge[] = []
+  for (const [, candidates] of orderedCandidateGroups) {
+    const edge = [...candidates]
+      .sort((left, right) => {
+        const evidenceOrder = evidenceRank(left) - evidenceRank(right)
+        if (evidenceOrder) return evidenceOrder
+        const weightOrder = Number(right.weight ?? 0) - Number(left.weight ?? 0)
+        if (weightOrder) return weightOrder
+        return String(left.source).localeCompare(String(right.source))
+      })
+      .find((candidate) => connectedNodeIds.has(String(candidate.source)))
+    if (!edge) continue
+    primaryEdges.push(edge)
+    connectedNodeIds.add(String(edge.target))
+  }
+
+  return {
+    primaryEdges,
+    independentEdges: Array.from(independentEdgesByKey.values())
+      .sort((left, right) => `${left.source}->${left.target}`.localeCompare(`${right.source}->${right.target}`)),
+  }
+}
+
+function buildConcentricEvidencePositions(
+  nodes: DiffusionNode[],
+  backboneEdges: DiffusionEdge[],
   rootId: string,
 ) {
   const positions = new Map<string, { x: number; y: number; layer: number }>()
@@ -2704,30 +2781,44 @@ function buildConcentricEvidencePositions(
 
   const primaryNodes = nodes.filter((node) => !isIndependentObservation(node))
   const primaryNodeIds = new Set(primaryNodes.map((node) => String(node.id)))
-  const parentByChild = new Map<string, string>()
-  for (const edge of treeEdges) {
+  const childrenByParent = new Map<string, string[]>()
+  for (const edge of backboneEdges) {
     const source = String(edge.source || '')
     const target = String(edge.target || '')
     if (!source || !target || !primaryNodeIds.has(source) || !primaryNodeIds.has(target)) continue
-    const existing = parentByChild.get(target)
-    if (!existing || source.localeCompare(existing) < 0) parentByChild.set(target, source)
+    const children = childrenByParent.get(source) ?? []
+    children.push(target)
+    childrenByParent.set(source, children)
   }
 
-  const branchByNode = new Map<string, string>()
-  const branchFor = (nodeId: string) => {
-    if (branchByNode.has(nodeId)) return branchByNode.get(nodeId) as string
-    const seen = new Set<string>()
-    let cursor = nodeId
-    let parent = parentByChild.get(cursor)
-    while (parent && parent !== rootId && !seen.has(parent)) {
-      seen.add(parent)
-      cursor = parent
-      parent = parentByChild.get(cursor)
-    }
-    const branch = parent === rootId ? cursor : nodeId
-    branchByNode.set(nodeId, branch)
-    return branch
+  for (const children of childrenByParent.values()) {
+    children.sort((left, right) => left.localeCompare(right))
   }
+
+  const subtreeWeightByNode = new Map<string, number>()
+  const nodesByDescendingDepth = [...primaryNodes]
+    .sort((left, right) => nodeConnectedDepth(right, rootId) - nodeConnectedDepth(left, rootId))
+  for (const node of nodesByDescendingDepth) {
+    const id = String(node.id)
+    const childWeight = (childrenByParent.get(id) ?? [])
+      .reduce((total, childId) => total + (subtreeWeightByNode.get(childId) ?? 1), 0)
+    subtreeWeightByNode.set(id, Math.max(1, 1 + childWeight))
+  }
+
+  const angleByNode = new Map<string, number>()
+  const assignAngles = (parentId: string, start: number, end: number) => {
+    const childIds = childrenByParent.get(parentId) ?? []
+    if (!childIds.length) return
+    const totalWeight = childIds.reduce((total, childId) => total + (subtreeWeightByNode.get(childId) ?? 1), 0)
+    let cursor = start
+    for (const childId of childIds) {
+      const childSpan = ((end - start) * (subtreeWeightByNode.get(childId) ?? 1)) / totalWeight
+      angleByNode.set(childId, cursor + (childSpan / 2))
+      assignAngles(childId, cursor, cursor + childSpan)
+      cursor += childSpan
+    }
+  }
+  assignAngles(rootId, -Math.PI / 2, (Math.PI * 3) / 2)
 
   const nodesByDepth = new Map<number, DiffusionNode[]>()
   for (const node of primaryNodes) {
@@ -2742,22 +2833,19 @@ function buildConcentricEvidencePositions(
   let outerRadius = 0
   for (const [depth, ringNodes] of Array.from(nodesByDepth.entries()).sort(([left], [right]) => left - right)) {
     const ordered = [...ringNodes].sort((left, right) => {
-      const branchOrder = branchFor(String(left.id)).localeCompare(branchFor(String(right.id)))
-      if (branchOrder) return branchOrder
-      const degreeOrder = Number(right.out_degree ?? 0) - Number(left.out_degree ?? 0)
-      if (degreeOrder) return degreeOrder
+      const leftAngle = angleByNode.get(String(left.id)) ?? (stableLayoutFraction(`node:${left.id}`) * Math.PI * 2)
+      const rightAngle = angleByNode.get(String(right.id)) ?? (stableLayoutFraction(`node:${right.id}`) * Math.PI * 2)
+      const angleOrder = leftAngle - rightAngle
+      if (angleOrder) return angleOrder
       return String(left.id).localeCompare(String(right.id))
     })
     const baseRadius = 104 + (depth - 1) * 102 + Math.min(depth - 1, 4) * 14
     const minSpacingRadius = (ordered.length * 13) / (Math.PI * 2)
     const radius = Math.max(baseRadius, minSpacingRadius)
     outerRadius = Math.max(outerRadius, radius)
-    const step = (Math.PI * 2) / Math.max(ordered.length, 1)
-    const offset = (-Math.PI / 2) + ((stableLayoutFraction(`ring:${depth}`) - 0.5) * Math.min(step, 0.36))
-    ordered.forEach((node, index) => {
+    ordered.forEach((node) => {
       const id = String(node.id)
-      const jitter = (stableLayoutFraction(`node:${id}`) - 0.5) * Math.min(step * 0.42, 0.26)
-      const angle = offset + (step * index) + jitter
+      const angle = angleByNode.get(id) ?? ((stableLayoutFraction(`node:${id}`) * Math.PI * 2) - (Math.PI / 2))
       positions.set(id, {
         x: Math.cos(angle) * radius,
         y: Math.sin(angle) * radius,
@@ -2793,8 +2881,9 @@ function buildPathGraphOption(summary?: DiffusionSummary | null): EChartsOption 
   const nodeById = new Map(nodes.map((node) => [String(node.id), node]))
   const rootId = String(summary?.root_node?.id || nodes.find((node) => node.is_root)?.id || nodes[0]?.id || '')
   const keyEdgeKeys = new Set(highlightEdges.map((edge) => `${edge.source}->${edge.target}`))
+  const backbone = buildPrimaryEvidenceBackbone(nodes, treeEdges, rootId)
 
-  const positions = buildConcentricEvidencePositions(nodes, treeEdges, rootId)
+  const positions = buildConcentricEvidencePositions(nodes, backbone.primaryEdges, rootId)
   const fittedPositions = fitGraphPositions(positions)
 
   const graphData = nodes.map((node) => {
@@ -2829,19 +2918,8 @@ function buildPathGraphOption(summary?: DiffusionSummary | null): EChartsOption 
     }
   })
 
-  const mergedEdges = new Map<string, DiffusionEdge>()
-  for (const edge of treeEdges) {
-    if (!edge.is_parallel_root && !edge.is_synthetic) {
-      mergedEdges.set(`${edge.source}->${edge.target}`, edge)
-    }
-  }
-  for (const edge of highlightEdges) {
-    const key = `${edge.source}->${edge.target}`
-    const existing = mergedEdges.get(key)
-    mergedEdges.set(key, existing ? { ...existing, is_key_path: true } : { ...edge, is_key_path: true })
-  }
-
-  const graphLinks = Array.from(mergedEdges.values())
+  const graphEdges = [...backbone.primaryEdges, ...backbone.independentEdges]
+  const graphLinks = graphEdges
     .filter((edge) => {
       const source = String(edge.source)
       const target = String(edge.target)
@@ -2853,20 +2931,15 @@ function buildPathGraphOption(summary?: DiffusionSummary | null): EChartsOption 
       if (sourceIndependent || targetIndependent) return sourceIndependent && targetIndependent
       const sourceLayer = nodeConnectedDepth(sourceNode as DiffusionNode, rootId)
       const targetLayer = nodeConnectedDepth(targetNode as DiffusionNode, rootId)
-      return targetLayer > sourceLayer
+      return targetLayer === sourceLayer + 1
     })
     .map((edge) => {
       const source = String(edge.source)
       const target = String(edge.target)
-      const sourceLayer = nodeConnectedDepth(nodeById.get(source) as DiffusionNode, rootId)
-      const targetLayer = nodeConnectedDepth(nodeById.get(target) as DiffusionNode, rootId)
       const key = `${source}->${target}`
       const isKeyPath = Boolean(edge.is_key_path) || keyEdgeKeys.has(key)
       const isConfirmed = edge.evidence_type === 'explicit' || edge.type === 'explicit'
       const isIndependent = isIndependentObservation(nodeById.get(source))
-      const hash = Array.from(key).reduce((value, character) => ((value * 33) + character.charCodeAt(0)) >>> 0, 5381)
-      const layerGap = Math.max(1, targetLayer - sourceLayer)
-      const curveness = (hash % 2 === 0 ? 1 : -1) * (0.1 + Math.min(0.16, layerGap * 0.035))
       return {
         source,
         target,
@@ -2878,7 +2951,7 @@ function buildPathGraphOption(summary?: DiffusionSummary | null): EChartsOption 
           color: isIndependent ? 'rgba(148, 163, 184, 0.58)' : isKeyPath ? 'rgba(56, 189, 248, 0.78)' : isConfirmed ? 'rgba(45, 212, 191, 0.52)' : 'rgba(148, 163, 184, 0.3)',
           width: isKeyPath ? 1.5 : isConfirmed ? 1 : 0.72,
           opacity: isKeyPath ? 0.72 : isConfirmed ? 0.48 : 0.28,
-          curveness,
+          curveness: isIndependent ? 0.08 : 0,
           type: (isIndependent ? 'dashed' : 'solid') as 'dashed' | 'solid',
         },
       }

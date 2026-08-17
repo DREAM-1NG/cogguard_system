@@ -4,15 +4,24 @@ import { test } from 'node:test'
 
 const source = readFileSync(new URL('../src/views/propagation/index.vue', import.meta.url), 'utf8')
 
-test('propagation path graph renders backend tree edges with forward-layer filtering', () => {
+test('propagation path graph renders one outward evidence backbone edge for each connected observation', () => {
   assert.match(source, /const treeEdges = summary\?\.tree_edges \?\? \[\]/)
-  assert.match(source, /targetLayer > sourceLayer/)
+  assert.match(source, /function buildPrimaryEvidenceBackbone\(/)
+  assert.match(source, /targetDepth !== sourceDepth \+ 1/)
+  assert.match(source, /targetDepth === 1 && source !== rootId/)
+  assert.match(source, /const connectedNodeIds = new Set<string>\(\[rootId\]\)/)
+  assert.match(source, /connectedNodeIds\.has\(String\(candidate\.source\)\)/)
+  assert.match(source, /const backbone = buildPrimaryEvidenceBackbone\(nodes, treeEdges, rootId\)/)
+  assert.match(source, /const graphEdges = \[\.\.\.backbone\.primaryEdges, \.\.\.backbone\.independentEdges\]/)
+  assert.doesNotMatch(source, /const mergedEdges = new Map<string, DiffusionEdge>\(\)/)
   assert.doesNotMatch(source, /links:\s*\[\]/)
 })
 
 test('propagation path graph uses deterministic concentric evidence positions instead of backend layout coordinates', () => {
   assert.match(source, /function stableLayoutFraction\(value: string\)/)
   assert.match(source, /connected_depth/)
+  assert.match(source, /const childIds = childrenByParent\.get\(parentId\) \?\? \[\]/)
+  assert.match(source, /assignAngles\(childId, cursor, cursor \+ childSpan\)/)
   assert.doesNotMatch(source, /node\.layout_x/)
   assert.doesNotMatch(source, /node\.layout_y/)
 })
