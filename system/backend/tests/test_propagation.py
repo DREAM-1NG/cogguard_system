@@ -381,6 +381,32 @@ class TestPropagationAnalysisEventInferenceAdapter:
         assert independent_source["source_kind"] == "independent_observation_root"
         assert independent_source["proven_source"] is False
 
+    def test_limited_diffusion_summary_reserves_visible_budget_for_primary_connected_nodes(self):
+        posts = [
+            {"post_id": "p0", "author_id": "source", "author_name": "Source",
+             "timestamp": _ts(0), "url": "https://example.com/main", "hashtags": [], "content": "source"},
+            {"post_id": "p1", "author_id": "mid", "author_name": "Mid",
+             "timestamp": _ts(1), "url": "https://example.com/main", "hashtags": [], "content": "mid"},
+            {"post_id": "p2", "author_id": "leaf", "author_name": "Leaf",
+             "timestamp": _ts(2), "url": "https://example.com/main", "hashtags": [], "content": "leaf"},
+            {"post_id": "p3", "author_id": "side", "author_name": "Side",
+             "timestamp": _ts(3), "url": "https://example.com/side", "hashtags": [], "content": "side"},
+            {"post_id": "p4", "author_id": "side_leaf", "author_name": "Side Leaf",
+             "timestamp": _ts(4), "url": "https://example.com/side", "hashtags": [], "content": "side leaf"},
+        ]
+
+        summary = build_propagation_graph(
+            posts,
+            diffusion_node_limit=3,
+            diffusion_layer_budget={"total": 3, "first_layer": 1, "second_layer": 1},
+        )["diffusion_summary"]
+
+        visible_ids = {node["id"] for node in summary["visible_nodes"]}
+        assert visible_ids <= {"source", "mid", "leaf"}
+        assert "side" not in visible_ids
+        assert "side_leaf" not in visible_ids
+        assert summary["independent_observations"]["node_count"] == 2
+
     def test_diffusion_layers_use_connected_population_not_visible_limit(self):
         posts = [
             {"post_id": f"p{i}", "author_id": f"main_{i}", "author_name": f"Main {i}",
@@ -746,6 +772,63 @@ class TestEdgeTypes:
         explicit = [e for e in result["graph"]["edges"] if e["type"] == "explicit"]
         # c1: u2 回复 p1(u1)，传播方向应为 u1→u2。
         assert any(e["source"] == "u1" and e["target"] == "u2" for e in explicit)
+
+    def test_first_level_comment_links_post_author_without_reply_to(self):
+        posts = [
+            {"post_id": "p1", "author_id": "origin", "author_name": "Origin",
+             "platform": "xhs", "timestamp": _ts(0), "url": "", "hashtags": [], "content": "source"},
+        ]
+        comments = [
+            {"comment_id": "c1", "post_id": "p1", "author_id": "commenter", "author_name": "Commenter",
+             "platform": "xhs", "timestamp": _ts(1), "reply_to": "", "content": "first-level comment"},
+        ]
+
+        result = build_propagation_graph(posts, comments)
+
+        assert any(
+            edge["source"] == "origin"
+            and edge["target"] == "commenter"
+            and edge["type"] == "explicit"
+            and edge["relation_type"] == "comment_on_post"
+            for edge in result["graph"]["edges"]
+        )
+
+    def test_native_repost_links_to_the_referenced_post_author(self):
+        posts = [
+            {"post_id": "p1", "author_id": "origin", "author_name": "Origin",
+             "platform": "weibo", "timestamp": _ts(0), "url": "", "hashtags": [], "content": "source"},
+            {"post_id": "p2", "author_id": "reposter", "author_name": "Reposter",
+             "platform": "weibo", "timestamp": _ts(1), "url": "", "hashtags": [], "content": "repost",
+             "repost_post_id": "p1"},
+        ]
+
+        result = build_propagation_graph(posts)
+
+        assert any(
+            edge["source"] == "origin"
+            and edge["target"] == "reposter"
+            and edge["type"] == "explicit"
+            and edge["relation_type"] == "native_repost"
+            for edge in result["graph"]["edges"]
+        )
+
+    def test_native_repost_never_resolves_an_id_from_another_platform(self):
+        posts = [
+            {"post_id": "p1", "author_id": "weibo_origin", "author_name": "Weibo Origin",
+             "platform": "weibo", "timestamp": _ts(0), "url": "", "hashtags": [], "content": "source"},
+            {"post_id": "p2", "author_id": "xhs_reposter", "author_name": "XHS Reposter",
+             "platform": "xhs", "timestamp": _ts(1), "url": "", "hashtags": [], "content": "repost",
+             "repost_post_id": "p1"},
+        ]
+
+        result = build_propagation_graph(posts)
+
+        assert not any(
+            edge["source"] == "weibo_origin"
+            and edge["target"] == "xhs_reposter"
+            and edge.get("relation_type") == "native_repost"
+            for edge in result["graph"]["edges"]
+        )
 
     def test_diffusion_root_requires_observed_post_evidence(self):
         posts = [

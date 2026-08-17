@@ -171,7 +171,8 @@ def build_propagation_graph(
                 ]),
             )
 
-    # --- 显式边：评论回复关系 ---
+    # --- 显式边：平台原生转发/引用与评论回复关系 ---
+    _add_native_post_reference_edges(G, df)
     _add_explicit_edges(G, df, comments or [])
 
     # --- 分析 ---
@@ -202,12 +203,16 @@ def build_propagation_graph(
 
     edges = []
     for u, v, _key, d in G.edges(data=True, keys=True):
-        edges.append({
+        edge = {
             "source": u,
             "target": v,
             "weight": d.get("weight", 1),
             "type": d.get("type", "implicit"),
-        })
+        }
+        relation_type = _clean_str(d.get("relation_type"))
+        if relation_type:
+            edge["relation_type"] = relation_type
+        edges.append(edge)
 
     return {
         "graph": {
@@ -230,43 +235,200 @@ def build_propagation_graph(
 # 显式边提取
 # ---------------------------------------------------------------------------
 
+_POST_IDENTITY_FIELDS = (
+    "post_id",
+    "note_id",
+    "aweme_id",
+    "item_id",
+    "mid",
+    "id",
+)
+
+_NATIVE_REFERENCE_ID_FIELDS = (
+    ("repost_post_id", "native_repost"),
+    ("repost_id", "native_repost"),
+    ("retweeted_status_id", "native_repost"),
+    ("retweeted_id", "native_repost"),
+    ("retweet_id", "native_repost"),
+    ("original_post_id", "native_repost"),
+    ("origin_post_id", "native_repost"),
+    ("quote_post_id", "native_quote"),
+    ("quoted_status_id", "native_quote"),
+    ("quote_id", "native_quote"),
+    ("referenced_post_id", "native_reference"),
+    ("reference_post_id", "native_reference"),
+    ("parent_post_id", "native_reference"),
+)
+
+_NATIVE_REFERENCE_OBJECT_FIELDS = (
+    ("repost", "native_repost"),
+    ("retweeted_status", "native_repost"),
+    ("retweeted_post", "native_repost"),
+    ("original_post", "native_repost"),
+    ("quote", "native_quote"),
+    ("quoted_status", "native_quote"),
+    ("referenced_post", "native_reference"),
+)
+
+
+def _as_mapping(value) -> dict:
+    return value if isinstance(value, dict) else {}
+
+
+def _post_reference_sources(record) -> list:
+    """Return known platform payload layers without guessing from post text."""
+    sources = [record]
+    raw_data = _as_mapping(record.get("raw_data"))
+    if raw_data:
+        sources.append(raw_data)
+    details = _as_mapping(raw_data.get("post_details_raw"))
+    if details:
+        sources.append(details)
+    details_raw = _as_mapping(details.get("raw"))
+    if details_raw:
+        sources.append(details_raw)
+    return sources
+
+
+def _post_identity_values(record) -> set[str]:
+    values: set[str] = set()
+    for source in _post_reference_sources(record):
+        for field in _POST_IDENTITY_FIELDS:
+            value = _clean_str(source.get(field))
+            if value:
+                values.add(value)
+    return values
+
+
+def _native_post_references(record) -> list[tuple[str, str]]:
+    """Extract only explicit native reference identifiers from platform payloads."""
+    references: list[tuple[str, str]] = []
+    seen: set[tuple[str, str]] = set()
+    for source in _post_reference_sources(record):
+        for field, relation_type in _NATIVE_REFERENCE_ID_FIELDS:
+            reference_id = _clean_str(source.get(field))
+            key = (reference_id, relation_type)
+            if reference_id and key not in seen:
+                references.append(key)
+                seen.add(key)
+        for field, relation_type in _NATIVE_REFERENCE_OBJECT_FIELDS:
+            nested = _as_mapping(source.get(field))
+            for identity_field in _POST_IDENTITY_FIELDS:
+                reference_id = _clean_str(nested.get(identity_field))
+                key = (reference_id, relation_type)
+                if reference_id and key not in seen:
+                    references.append(key)
+                    seen.add(key)
+    return references
+
+
+def _remember_unique(lookup: dict, key, value) -> None:
+    previous = lookup.get(key)
+    if previous is None and key not in lookup:
+        lookup[key] = value
+    elif previous != value:
+        lookup[key] = None
+
+
+def _add_native_post_reference_edges(G: nx.MultiDiGraph, df: pd.DataFrame) -> None:
+    """Add platform-native repost, quote and reference edges when IDs resolve exactly."""
+    by_platform: dict[tuple[str, str], tuple[str, str, str] | None] = {}
+
+    for _, row in df.iterrows():
+        author_id = _clean_str(row.get("author_id"))
+        post_id = _clean_str(row.get("post_id"))
+        platform = _clean_str(row.get("platform"))
+        if not author_id or not post_id:
+            continue
+        record = (author_id, post_id, platform)
+        for identity in _post_identity_values(row):
+            _remember_unique(by_platform, (platform, identity), record)
+
+    for _, row in df.iterrows():
+        child_author = _clean_str(row.get("author_id"))
+        child_post_id = _clean_str(row.get("post_id"))
+        platform = _clean_str(row.get("platform"))
+        if not child_author or not child_post_id:
+            continue
+        for reference_id, relation_type in _native_post_references(row):
+            parent = by_platform.get((platform, reference_id))
+            if parent is None:
+                continue
+            parent_author, parent_post_id, parent_platform = parent
+            if parent_author == child_author or parent_post_id == child_post_id:
+                continue
+            parent_ref = {"post_id": parent_post_id}
+            if parent_platform:
+                parent_ref["platform"] = parent_platform
+            G.add_edge(
+                parent_author,
+                child_author,
+                type="explicit",
+                relation_type=relation_type,
+                evidence_type=relation_type,
+                weight=1,
+                referenced_post_id=parent_post_id,
+                post_id=child_post_id,
+                evidence_refs=_deduplicate_evidence_refs([
+                    parent_ref,
+                    _post_evidence_ref(row),
+                ]),
+            )
+
 def _add_explicit_edges(
     G: nx.MultiDiGraph,
     df: pd.DataFrame,
     comments: list[dict],
 ) -> None:
-    """从评论的 reply_to 字段提取显式回复边并加入图。"""
+    """Add reply-to-comment/post and first-level-comment-to-post explicit edges."""
     if not comments:
         return
 
-    # 构建 post_id → author_id 查找表
-    post_author: dict[str, str] = {}
+    post_author_by_platform: dict[tuple[str, str], tuple[str, str] | None] = {}
+    post_author_global: dict[str, tuple[str, str] | None] = {}
     for _, row in df.iterrows():
         pid = _clean_str(row.get("post_id"))
         aid = _clean_str(row.get("author_id"))
         if pid and aid:
-            post_author[pid] = aid
+            value = (aid, _clean_str(row.get("author_name")) or aid)
+            platform = _clean_str(row.get("platform"))
+            _remember_unique(post_author_by_platform, (platform, pid), value)
+            _remember_unique(post_author_global, pid, value)
 
-    # 也把评论自身加入查找表（支持评论回复评论）
-    comment_author: dict[str, str] = {}
-    comment_author_name: dict[str, str] = {}
+    comment_author_by_platform: dict[tuple[str, str], tuple[str, str] | None] = {}
+    comment_author_global: dict[str, tuple[str, str] | None] = {}
     for c in comments:
         cid = _clean_str(c.get("comment_id"))
         aid = _clean_str(c.get("author_id"))
         if cid and aid:
-            comment_author[cid] = aid
-            comment_author_name[aid] = _clean_str(c.get("author_name")) or aid
+            value = (aid, _clean_str(c.get("author_name")) or aid)
+            platform = _clean_str(c.get("platform"))
+            _remember_unique(comment_author_by_platform, (platform, cid), value)
+            _remember_unique(comment_author_global, cid, value)
+
+    def resolve(reference_id: str, platform: str, by_platform: dict, global_unique: dict):
+        return by_platform.get((platform, reference_id)) or global_unique.get(reference_id)
 
     for c in comments:
         reply_to = _clean_str(c.get("reply_to"))
-        if not reply_to:
-            continue
         commenter = _clean_str(c.get("author_id"))
         if not commenter:
             continue
-
-        # reply_to 可能指向帖子或评论
-        parent_author = post_author.get(reply_to) or comment_author.get(reply_to)
+        platform = _clean_str(c.get("platform"))
+        post_id = _clean_str(c.get("post_id"))
+        if reply_to:
+            # Preserve the legacy post-first resolution for reply_to aliases.
+            parent = resolve(reply_to, platform, post_author_by_platform, post_author_global)
+            parent = parent or resolve(reply_to, platform, comment_author_by_platform, comment_author_global)
+            relation_type = "comment_reply"
+        else:
+            # A first-level comment has no reply target but is still a direct
+            # observed response to the author of its containing post.
+            parent = resolve(post_id, platform, post_author_by_platform, post_author_global)
+            relation_type = "comment_on_post"
+        if not parent:
+            continue
+        parent_author, parent_name = parent
         if not parent_author or parent_author == commenter:
             continue
 
@@ -274,7 +436,7 @@ def _add_explicit_edges(
         if parent_author not in G:
             G.add_node(
                 parent_author,
-                author_name=comment_author_name.get(parent_author, parent_author),
+                author_name=parent_name,
                 post_count=0,
                 first_ts="",
             )
@@ -290,9 +452,14 @@ def _add_explicit_edges(
         G.add_edge(
             parent_author, commenter,
             type="explicit",
+            relation_type=relation_type,
+            evidence_type=relation_type,
             weight=1,
             comment_id=_clean_str(c.get("comment_id")),
-            evidence_refs=_deduplicate_evidence_refs([_comment_evidence_ref(c)]),
+            evidence_refs=_deduplicate_evidence_refs([
+                _comment_evidence_ref(c),
+                {"post_id": post_id, "platform": platform} if relation_type == "comment_on_post" and post_id else None,
+            ]),
         )
 
 
@@ -463,13 +630,23 @@ def _build_diffusion_summary(
     primary_connected_nodes = set(primary_layers)
     independent_status_by_node = _independent_observation_statuses(simple_G, root_id, primary_connected_nodes)
     independent_node_count = len(independent_status_by_node)
+
+    # The first-screen graph only renders the selected source's observed
+    # propagation component. Detached observations remain in the full graph and
+    # audit summary, but must not consume the finite visual-node budget because
+    # the client deliberately does not render them in the propagation canvas.
+    visible_candidate_layers = (
+        primary_layers
+        if not is_full_view and primary_layers
+        else all_layers
+    )
     visible_nodes = _select_layered_visible_nodes(
         {
             node_id: {
-                "layer": all_layers.get(node_id, DIFFUSION_MAX_DEPTH),
+                "layer": visible_candidate_layers.get(node_id, DIFFUSION_MAX_DEPTH),
                 "score": _diffusion_node_priority(simple_G, G, node_id, key_node_set),
             }
-            for node_id in simple_G.nodes()
+            for node_id in visible_candidate_layers
         },
         list(simple_G.edges()),
         root_id=root_id,
@@ -477,7 +654,11 @@ def _build_diffusion_summary(
         total_limit=requested_budget["total"],
         first_layer_limit=requested_budget["first_layer"],
         second_layer_limit=requested_budget["second_layer"],
-        parallel_roots=parallel_roots[:requested_budget["parallel_roots"]],
+        parallel_roots=(
+            parallel_roots[:requested_budget["parallel_roots"]]
+            if is_full_view
+            else []
+        ),
     )
     node_layers = {node_id: all_layers.get(node_id, DIFFUSION_MAX_DEPTH) for node_id in visible_nodes}
     tree_edges: dict[tuple[str, str], dict] = {}
