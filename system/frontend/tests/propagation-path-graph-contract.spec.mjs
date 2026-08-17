@@ -40,6 +40,10 @@ test('propagation evidence workspace displays connected-population layer proport
   assert.doesNotMatch(source, /其它层/)
 })
 
+test('propagation defaults to an expanded first-screen node budget', () => {
+  assert.match(source, /const DEFAULT_DIFFUSION_NODE_LIMIT = 300/)
+})
+
 test('layer composition is clearly labelled as a connected-population statistic', () => {
   assert.match(source, /已连接账号层级占比/)
   assert.match(source, /仅基于已建立传播证据的账号计算，比例合计 100\.00%/)

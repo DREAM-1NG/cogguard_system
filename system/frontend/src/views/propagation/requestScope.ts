@@ -63,8 +63,8 @@ export function analysisRequestParamsFromScope(scope: PropagationAnalysisRequest
     params.platform = scope.platform
   }
   if (!scope.fullViewRequested) {
-    params.first_layer_limit = 40
-    params.second_layer_limit = 80
+    params.first_layer_limit = 80
+    params.second_layer_limit = 160
   }
   return params
 }

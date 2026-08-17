@@ -745,10 +745,10 @@ def _resolve_layer_budget(layer_budget: dict[str, int] | None, total_limit: int)
             return default
 
     return {
-        "total": min(max(1, value("total", min(total_limit, 160))), max(total_limit, 1)),
+        "total": min(max(1, value("total", min(total_limit, 300))), max(total_limit, 1)),
         "parallel_roots": value("parallel_roots", 8),
-        "first_layer": value("first_layer", 40),
-        "second_layer": value("second_layer", 80),
+        "first_layer": value("first_layer", 80),
+        "second_layer": value("second_layer", 160),
     }
 
 

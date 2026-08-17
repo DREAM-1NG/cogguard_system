@@ -73,9 +73,9 @@ async def _call_observed_analysis(
 async def analyze(
     platform: str | None = Query(None, description="Limit analysis to one platform."),
     event_id: str | None = Query(None, description="Limit analysis to one event id."),
-    node_limit: int = Query(160, ge=0, description="Maximum diffusion-summary nodes; 0 means all summary nodes."),
-    first_layer_limit: int = Query(40, ge=1, le=160),
-    second_layer_limit: int = Query(80, ge=1, le=160),
+    node_limit: int = Query(300, ge=0, description="Maximum diffusion-summary nodes; 0 means all summary nodes."),
+    first_layer_limit: int = Query(80, ge=1, le=160),
+    second_layer_limit: int = Query(160, ge=1, le=160),
     _current_user: User = Depends(get_current_user),
 ):
     """Analyze observed propagation paths, roles, objects, and evidence."""
@@ -93,9 +93,9 @@ async def analyze(
 async def observed_analysis(
     platform: str | None = Query(None, description="Limit analysis to one platform."),
     event_id: str | None = Query(None, description="Limit analysis to one event id."),
-    node_limit: int = Query(160, ge=0, description="Maximum diffusion-summary nodes; 0 means all summary nodes."),
-    first_layer_limit: int = Query(40, ge=1, le=160),
-    second_layer_limit: int = Query(80, ge=1, le=160),
+    node_limit: int = Query(300, ge=0, description="Maximum diffusion-summary nodes; 0 means all summary nodes."),
+    first_layer_limit: int = Query(80, ge=1, le=160),
+    second_layer_limit: int = Query(160, ge=1, le=160),
     _current_user: User = Depends(get_current_user),
 ):
     """Canonical observed-only Propagation Analysis endpoint."""
