@@ -21,7 +21,7 @@ test('uses the same readable tier for propagation controls and evidence lists, n
   assert.match(propagation, /\.toolbar-group-label \{[^}]*font-size: 14px/)
   assert.match(propagation, /\.sync-hint \{[^}]*font-size: 14px/)
   assert.match(propagation, /\.section-title \{[^}]*font-size: 15px/)
-  assert.match(propagation, /\.path-node-control-label,[^}]*font-size: 14px/)
+  assert.match(propagation, /\.path-node-control-count \{[^}]*font-size: 14px/)
   assert.match(propagation, /\.layer-row \{[^}]*font-size: 14px/)
   assert.match(propagation, /\.timeline-time \{[^}]*font-size: 14px/)
   assert.match(propagation, /\.forecast-label \{[^}]*font-size: 14px/)

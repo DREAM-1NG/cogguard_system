@@ -84,7 +84,6 @@ test('propagation resize passes active-tab ownership to every cached chart insta
   for (const [chartName, tabName] of [
     ['layerChart', 'path'],
     ['pathGraphChart', 'path'],
-    ['roleIgnitionGraph', 'evidence'],
     ['modelTrendChart', 'model'],
     ['modelBacktestChart', 'model'],
     ['evidenceTimelineChart', 'model'],

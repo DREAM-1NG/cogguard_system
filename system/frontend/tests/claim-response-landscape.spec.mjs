@@ -51,7 +51,7 @@ test('propagation page adds one claim-response tab without replacing existing pr
   for (const tab of [
     'key="path" tab="传播路径"',
     'key="objects" tab="传播对象"',
-    'key="evidence" tab="角色分析"',
+    'key="evidence" tab="角色与贡献"',
     'key="timeline" tab="时间线"',
     'key="model" tab="趋势预测"',
     'key="alerts" tab="预警处置"',
@@ -139,18 +139,22 @@ test('claim response path drawer presents exact observed evidence rather than fa
   assert.match(drawerSource, /claimResponsePathEvidence/)
 })
 
-test('claim response scope reset clears projection and related path and node drawers before reload', () => {
+test('claim response scope reset clears stale state while same-scope refreshes share the in-flight request', () => {
   const reset = bodyOf(propagationView, 'resetClaimResponseLandscape')
   const load = bodyOf(propagationView, 'loadClaimResponseLandscape')
 
   assert.match(reset, /claimResponseLandscape\.value = null/)
+  assert.match(reset, /claimResponsePendingScope = ''/)
   assert.match(reset, /selectedClaimPathDetail\.value = null/)
   assert.match(reset, /claimPathDetailOpen\.value = false/)
   assert.match(reset, /selectedNodeDetail\.value = null/)
   assert.match(reset, /nodeDetailOpen\.value = false/)
-  assert.match(load, /resetClaimResponseLandscape\(\)/)
+  assert.match(propagationView, /let claimResponsePendingScope = ''/)
+  assert.match(load, /const requestedScope = claimResponseScopeKey\(requestedEventId, requestedPlatform\)/)
+  assert.match(load, /if \(claimResponseLoading\.value && claimResponsePendingScope === requestedScope\) return/)
+  assert.match(load, /claimResponseLandscape\.value = null/)
   assert.ok(
-    load.indexOf('resetClaimResponseLandscape()') < load.indexOf('getClaimResponseLandscape'),
-    'Expected stale claim-response state to clear before a replacement request begins',
+    load.indexOf('resetClaimResponseLandscape()') < load.indexOf('const requestedPlatform'),
+    'The reset path must only handle an empty event, not restart a valid in-flight scope',
   )
 })

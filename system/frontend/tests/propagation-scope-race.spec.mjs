@@ -270,12 +270,11 @@ test('propagation page distinguishes a transport failure from backend no-data an
   assert.match(loadAnalysis, /analysisBusinessEmptyReason\.value = String\(res\.data\.error\)/)
 })
 
-test('path node controls stack inside the mobile propagation viewport', () => {
+test('path display-density controls remain inside the mobile propagation viewport', () => {
   const styles = styleBlock(propagationView)
 
-  assert.match(styles, /\.path-node-control \{[\s\S]*?grid-template-columns: auto minmax\(160px, 1fr\) auto auto/)
-  assert.match(styles, /@media \(max-width: 768px\) \{[\s\S]*?\.path-node-control \{[\s\S]*?grid-template-columns: minmax\(0, 1fr\)/)
-  assert.match(styles, /@media \(max-width: 768px\) \{[\s\S]*?\.path-node-control \{[\s\S]*?align-items: stretch/)
+  assert.match(styles, /\.density-group \{[\s\S]*?grid-template-columns: auto minmax\(88px, 1fr\) auto auto/)
+  assert.match(styles, /@media \(max-width: 768px\) \{[\s\S]*?\.density-group \{[\s\S]*?grid-template-columns: auto minmax\(0, 1fr\) auto auto/)
   assert.match(styles, /@media \(max-width: 768px\) \{[\s\S]*?\.path-node-slider \{[\s\S]*?width: 100%/)
-  assert.match(styles, /@media \(max-width: 768px\) \{[\s\S]*?\.path-node-control-label,[\s\S]*?\.path-node-control-count \{[\s\S]*?white-space: normal/)
+  assert.match(styles, /@media \(max-width: 768px\) \{[\s\S]*?\.path-node-control-count \{[\s\S]*?white-space: normal/)
 })

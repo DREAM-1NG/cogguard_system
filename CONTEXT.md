@@ -99,6 +99,25 @@ _Avoid_: detect shorthand, final verdict, event labeler
 The propagation boundary that estimates spread size, next-hop behavior, and tree structure from a snapshot.
 _Avoid_: trend guess, prediction blob
 
+For the propagation reading surface, the **Current Primary Source** is selected
+only from observed zero-in-degree accounts, ordered by observable downstream
+coverage, first observed time, then stable account ID. If there is no
+zero-in-degree candidate, the earliest observable node is marked as an
+unproven fallback; it is not presented as the factual origin. A
+**Primary-Source Layer** is the directed shortest-path distance over the full
+reachable observed set, so its percentage denominator never changes with the
+page's display-density control. An **Independent Observation Branch** is kept
+outside the primary-source rings with its actual internal edges; the system
+does not add a `parallel_root` or other synthetic edge to make it appear
+causally connected.
+
+**Role Contribution** is an evidence-bound propagation projection. Source,
+bridge, and amplifier rows must retain observed edge or path references.
+Bridge requires observable upstream and downstream evidence plus nonzero
+intermediary contribution; amplifier requires direct observable activation and
+downstream coverage. Account position, popularity, or in-degree alone cannot
+create a role.
+
 **Claim Response Path Semantic Overlay**:
 A read-only semantic evidence summary for one observed authority-claim response
 path. It is available only when every displayed platform-qualified post or

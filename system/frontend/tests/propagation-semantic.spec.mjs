@@ -372,12 +372,14 @@ test('renders all required semantic overlay fields without replacing observed pa
   assert.match(pathDrawer, /selectedClaimPathDetail\.chain\.supporting_posts/)
 })
 
-test('renders backend clustered propagation nodes with forward evidence relationships', () => {
+test('renders deterministic concentric propagation nodes with forward evidence relationships', () => {
   const graphOption = bodyOf(propagationView, 'buildPathGraphOption')
 
   assert.match(graphOption, /const treeEdges = summary\?\.tree_edges \?\? \[\]/)
-  assert.match(graphOption, /hasBackendLayout/)
-  assert.match(graphOption, /layout_x/)
+  assert.match(graphOption, /buildConcentricEvidencePositions/)
+  assert.match(propagationView, /function stableLayoutFraction\(value: string\)/)
+  assert.match(graphOption, /isIndependentObservation/)
+  assert.doesNotMatch(graphOption, /layout_x/)
   assert.match(graphOption, /targetLayer > sourceLayer/)
   assert.match(graphOption, /links:\s*graphLinks/)
   assert.match(graphOption, /draggable:\s*false/)

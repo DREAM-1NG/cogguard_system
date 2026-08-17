@@ -122,12 +122,14 @@ test('propagation tabs expose tab semantics and keep path details user-facing', 
   assert.doesNotMatch(propagation, /item\.evidence_refs\?\.join/)
 })
 
-test('groups propagation controls into compact filter and action areas', () => {
-  assert.match(propagation, /class="filter-group"/)
-  assert.match(propagation, /class="action-group"/)
-  assert.match(propagation, /aria-label="传播筛选条件"/)
-  assert.match(propagation, /aria-label="传播操作"/)
-  assert.match(propagation, /\.action-bar\s*\{[\s\S]*padding: 8px 10px/)
+test('groups propagation controls into compact scope, density, and action areas', () => {
+  assert.match(propagation, /class="toolbar-section filter-group"/)
+  assert.match(propagation, /class="toolbar-section density-group"/)
+  assert.match(propagation, /class="toolbar-section action-group"/)
+  assert.match(propagation, /aria-label="事件范围"/)
+  assert.match(propagation, /aria-label="显示密度"/)
+  assert.match(propagation, /aria-label="操作"/)
+  assert.match(propagation, /\.action-bar\s*\{[\s\S]*padding: 10px 12px/)
 })
 
 test('coordination graph honors reduced motion and provides a text summary', () => {
