@@ -450,7 +450,7 @@ def _build_diffusion_summary(
         for index in range(max(len(path.get("nodes", [])) - 1, 0))
     }
 
-    primary_source = _select_primary_source(simple_G, G)
+    primary_source = _select_primary_source(key_paths, simple_G, G)
     root_id = primary_source.get("account_id") or _select_key_path_root(key_paths, simple_G, G) or _select_diffusion_root(simple_G, G)
     parallel_roots = _select_parallel_roots(simple_G, G, root_id)
     post_index = _build_post_index(df)
@@ -965,11 +965,13 @@ def _select_diffusion_root(simple_G: nx.DiGraph, G: nx.MultiDiGraph) -> str:
     )[0]
 
 
-def _select_primary_source(simple_G: nx.DiGraph, G: nx.MultiDiGraph) -> dict:
+def _select_primary_source(
+    key_paths: list[dict],
+    simple_G: nx.DiGraph,
+    G: nx.MultiDiGraph,
+) -> dict:
     if simple_G.number_of_nodes() == 0:
         return {}
-
-    observed_nodes = [node for node in simple_G.nodes() if _node_has_observed_content(G, node)]
 
     def first_ts(node: str) -> pd.Timestamp:
         ts = G.nodes[node].get("first_ts", "") if G.has_node(node) else ""
@@ -985,42 +987,27 @@ def _select_primary_source(simple_G: nx.DiGraph, G: nx.MultiDiGraph) -> dict:
             "first_ts": attrs.get("first_ts", ""),
             "selection_basis": selection_basis,
             "is_fallback": is_fallback,
-            "proven_source": not is_fallback,
+            # A visual root is an analytical anchor, not proof of the
+            # event's original publisher.
+            "proven_source": False,
             "direct_downstream_count": int(simple_G.out_degree(node)) if simple_G.has_node(node) else 0,
             "unique_directed_downstream_reach": reach,
         }
 
-    zero_in_degree = [
-        node for node in observed_nodes
-        if simple_G.in_degree(node) == 0
-    ]
-    if zero_in_degree:
-        selected = sorted(
-            zero_in_degree,
-            key=lambda node: (
-                -len(nx.descendants(simple_G, node)),
-                first_ts(node),
-                str(node),
-            ),
-        )[0]
+    key_path_root = _select_key_path_root(key_paths, simple_G, G)
+    if key_path_root:
         return row(
-            selected,
-            selection_basis="zero_in_degree_observed_descendant_reach",
+            key_path_root,
+            selection_basis="key_path_observed_origin",
             is_fallback=False,
         )
 
-    if observed_nodes:
-        selected = sorted(observed_nodes, key=lambda node: (first_ts(node), str(node)))[0]
-        return row(
-            selected,
-            selection_basis="fallback_earliest_observed_no_zero_in_degree_source",
-            is_fallback=True,
-        )
-
-    selected = sorted(simple_G.nodes(), key=lambda node: str(node))[0]
+    selected = _select_diffusion_root(simple_G, G)
+    if not selected:
+        return {}
     return row(
         selected,
-        selection_basis="fallback_stable_node_no_observed_content",
+        selection_basis="diffusion_root_out_degree_then_time",
         is_fallback=True,
     )
 

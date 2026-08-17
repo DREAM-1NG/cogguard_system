@@ -302,7 +302,7 @@ class TestPropagationAnalysisEventInferenceAdapter:
         assert result["user_quality"]["verified_count"] == 1
         assert any(row["quality"] == "高" and row["count"] == 1 for row in result["user_quality"]["buckets"])
 
-    def test_diffusion_summary_selects_deterministic_primary_source_by_reach_time_and_id(self):
+    def test_diffusion_summary_prioritizes_key_path_origin_over_downstream_reach(self):
         posts = [
             {"post_id": "p_beta_0", "author_id": "beta", "author_name": "Beta",
              "timestamp": _ts(0), "url": "https://example.com/beta", "hashtags": [], "content": "beta source"},
@@ -320,11 +320,12 @@ class TestPropagationAnalysisEventInferenceAdapter:
 
         summary = build_propagation_graph(posts, diffusion_node_limit=0)["diffusion_summary"]
 
-        assert summary["primary_source"]["account_id"] == "alpha"
-        assert summary["primary_source"]["selection_basis"] == "zero_in_degree_observed_descendant_reach"
+        assert summary["primary_source"]["account_id"] == "beta"
+        assert summary["primary_source"]["selection_basis"] == "key_path_observed_origin"
         assert summary["primary_source"]["is_fallback"] is False
+        assert summary["primary_source"]["proven_source"] is False
         assert summary["primary_source"]["unique_directed_downstream_reach"] == 2
-        assert summary["root_node"]["id"] == "alpha"
+        assert summary["root_node"]["id"] == "beta"
 
     def test_diffusion_summary_labels_fallback_source_without_claiming_proven_source(self):
         posts = [
@@ -343,7 +344,7 @@ class TestPropagationAnalysisEventInferenceAdapter:
         summary = build_propagation_graph(posts, comments, diffusion_node_limit=0)["diffusion_summary"]
 
         assert summary["primary_source"]["account_id"] == "early"
-        assert summary["primary_source"]["selection_basis"] == "fallback_earliest_observed_no_zero_in_degree_source"
+        assert summary["primary_source"]["selection_basis"] == "diffusion_root_out_degree_then_time"
         assert summary["primary_source"]["is_fallback"] is True
         assert summary["primary_source"]["proven_source"] is False
 
