@@ -21,11 +21,17 @@ from app.core.analysis.query_result_cache import (
     build_query_cache_key,
     get_or_build_query_result,
 )
+from app.core.analysis.coordination_runtime.socgfm_local_precompute import (
+    SOCGFM_CHECKPOINT_FAMILY,
+    SOCGFM_CLAIM_SCOPE,
+    SOCGFM_DEFAULT_CHECKPOINT_ROOT,
+    SOCGFM_INFERENCE_MODE,
+    SOCGFM_MODEL_ROLE,
+    SOCGFM_MODEL_VERSION,
+    precompute_socgfm_china_local_detection,
+)
 from app.core.coordination_detect import (
-    PRETRAINED_CHECKPOINT_PATH,
-    ensure_china_pretrained_fusion_checkpoint,
     extract_labels,
-    run_china_pretrained_detect,
     run_dyna_colm_detect,
 )
 from app.core.coordination_discover import (
@@ -78,10 +84,18 @@ ARCHIVE_EVENT_ROOT = COORDINATION_EXPERIMENT_ROOT / "accept_detect_lm_gnn_6d_s5_
 
 DATASET_STORAGE_ROOT = PROJECT_ROOT / "output" / "coordination_datasets"
 RUN_STORAGE_ROOT = PROJECT_ROOT / "output" / "coordination_runs"
+COORDINATION_RESULT_CACHE_SCHEMA = "coordination-latest-result-v3"
 
 MODEL_SIGNATURE = {
-    "discover": "MAGNN + Leiden",
-    "detect": "SBERT + fusion_gnn",
+    "runtime_scope": "coordination_archive_replay_with_socgfm_precompute",
+    "discover": "legacy MAGNN + Leiden replay",
+    "detect": "official China SocGFM CrossAttention/SAGE offline precompute",
+    "current_system_discover": "coordination-evidence-runtime-v2",
+    "current_system_detect": "socgfm_cross_attention",
+    "current_system_detect_inference_mode": "precomputed_member_probability_cluster_aggregation",
+    "current_system_detect_claim_scope": "account_level_io_membership_to_cluster_proxy",
+    "online_neural_forward": False,
+    "checkpoint_family": "official_china_socgfm_cross_attention_sage",
 }
 RUN_RELATIONS = (
     "url_share",
@@ -94,12 +108,6 @@ RUN_RELATIONS = (
     "tweet_similarity",
 )
 SYSTEM_DATASET_CREATED_BY = 0
-# The shared China pretrained checkpoint is cached on disk and reused by every
-# later unlabeled inference, so it is always built at archive quality rather than
-# with whatever lightweight budget the triggering rerun happened to request.
-# These mirror ensure_china_pretrained_fusion_checkpoint's own defaults.
-PRETRAINED_CHECKPOINT_HIDDEN_DIM = 32
-PRETRAINED_CHECKPOINT_DETECT_EPOCHS = 20
 SYSTEM_ARCHIVE_SEED = 42
 SYSTEM_ARCHIVE_SPLIT = "supervised"
 SYSTEM_ARCHIVE_DISCOVER_ENCODER = "magnn"
@@ -134,9 +142,12 @@ OBJECT_ID_RELATION_HINTS = {
 
 
 def _coordination_runtime_config(dataset: CoordinationDataset) -> dict[str, int | str]:
-    """Return a UI-friendly rerun profile for the fixed Coordination mainline.
+    """Return a UI-friendly rerun profile for the legacy dataset registry.
 
     Historical archived experiments keep their original paper-facing settings.
+    The current AnalysisExecutor Coordination mainline is the evidence-
+    constrained Discovery runtime plus SocGFM Detection; this dataset registry
+    path remains an archive/replay surface until it is migrated explicitly.
     Uploaded real-world datasets, especially unlabeled ones, run on CPU in the
     local system page, so we use a lighter epoch budget to keep the interactive
     rerun path practical while preserving the same MAGNN/Leiden/SBERT/fusion_gnn
@@ -1109,7 +1120,7 @@ def _community_maps(discovery: Mapping[str, Any]) -> tuple[dict[str, Mapping[str
     return community_by_key, members_by_cluster
 
 
-def _prediction_maps(detect: Mapping[str, Any]) -> tuple[dict[str, Mapping[str, Any]], dict[str, float]]:
+def _archive_prediction_maps(detect: Mapping[str, Any]) -> tuple[dict[str, Mapping[str, Any]], dict[str, float]]:
     predictions = detect.get("predictions", []) if isinstance(detect.get("predictions"), list) else []
     prediction_by_account: dict[str, Mapping[str, Any]] = {}
     score_by_account: dict[str, float] = {}
@@ -1133,7 +1144,7 @@ def _build_coordination_graph_payload(
     discovery_nodes = discovery.get("nodes", []) if isinstance(discovery.get("nodes"), list) else []
     discovery_edges = discovery.get("edges", []) if isinstance(discovery.get("edges"), list) else []
     community_by_key, members_by_cluster = _community_maps(discovery)
-    _prediction_by_account, score_by_account = _prediction_maps(detect)
+    archive_prediction_by_account, archive_score_by_account = _archive_prediction_maps(detect)
     dataset_events = _load_dataset_event_frame(dataset)
     account_ids = {
         str(node.get("account_id"))
@@ -1154,7 +1165,8 @@ def _build_coordination_graph_payload(
             continue
         account_id = str(node.get("account_id"))
         profile = account_profiles.get(account_id, {})
-        node_score = _safe_score(score_by_account.get(account_id, node.get("node_score")))
+        node_score = _safe_score(node.get("node_score"))
+        archive_prediction = archive_prediction_by_account.get(account_id, {})
         if node_score < threshold:
             continue
         cluster_id = node.get("cluster_id")
@@ -1168,6 +1180,13 @@ def _build_coordination_graph_payload(
                 "profile_url": profile.get("profile_url"),
                 "cluster_id": cluster_id,
                 "node_score": round(node_score, 6),
+                "score_role": "discovery_evidence_score",
+                "archive_detection_score": round(archive_score_by_account[account_id], 6)
+                if account_id in archive_score_by_account
+                else None,
+                "archive_detection_label": archive_prediction.get("predicted_label")
+                if isinstance(archive_prediction, Mapping)
+                else None,
                 "community_score": community.get("community_score") if isinstance(community, Mapping) else None,
                 "community_size": community.get("size") if isinstance(community, Mapping) else len(members_by_cluster.get(_cluster_key(cluster_id), [])),
             }
@@ -1226,6 +1245,7 @@ def _build_coordination_graph_payload(
             "filters": {
                 "node_limit": capped_limit,
                 "min_node_score": threshold,
+                "score_role": "discovery_evidence_score",
             },
         },
     }
@@ -1339,7 +1359,7 @@ def _build_coordination_community_payload(
     member_limit: int = 500,
 ) -> dict[str, Any]:
     community_by_key, members_by_cluster = _community_maps(discovery)
-    prediction_by_account, score_by_account = _prediction_maps(detect)
+    archive_prediction_by_account, archive_score_by_account = _archive_prediction_maps(detect)
     cluster_key = _cluster_key(cluster_id)
     community = community_by_key.get(cluster_key)
     if community is None:
@@ -1368,8 +1388,9 @@ def _build_coordination_community_payload(
     )
     for node in members_by_cluster.get(cluster_key, []):
         account_id = str(node.get("account_id"))
-        prediction = prediction_by_account.get(account_id, {})
+        archive_prediction = archive_prediction_by_account.get(account_id, {})
         profile = account_profiles.get(account_id, {})
+        node_score = _safe_score(node.get("node_score"))
         members.append(
             {
                 "id": account_id,
@@ -1377,8 +1398,14 @@ def _build_coordination_community_payload(
                 "nickname": profile.get("nickname") or node.get("nickname") or node.get("screen_name"),
                 "platform": profile.get("platform"),
                 "profile_url": profile.get("profile_url"),
-                "node_score": round(_safe_score(score_by_account.get(account_id, node.get("node_score"))), 6),
-                "predicted_label": prediction.get("predicted_label") if isinstance(prediction, Mapping) else None,
+                "node_score": round(node_score, 6),
+                "score_role": "discovery_evidence_score",
+                "archive_detection_score": round(archive_score_by_account[account_id], 6)
+                if account_id in archive_score_by_account
+                else None,
+                "archive_detection_label": archive_prediction.get("predicted_label")
+                if isinstance(archive_prediction, Mapping)
+                else None,
                 "directed_out_weight": node.get("directed_out_weight"),
                 "directed_in_weight": node.get("directed_in_weight"),
             }
@@ -1411,6 +1438,133 @@ def _build_coordination_community_payload(
     }
 
 
+def _build_socgfm_coordination_detection_payload(
+    discovery: Mapping[str, Any],
+    detect: Mapping[str, Any],
+) -> dict[str, Any]:
+    communities = discovery.get("communities", []) if isinstance(discovery.get("communities"), list) else []
+    nodes = discovery.get("nodes", []) if isinstance(discovery.get("nodes"), list) else []
+    prediction_by_account, score_by_account = _archive_prediction_maps(detect)
+    prediction_by_key = {
+        str(row.get("account_key")): row
+        for row in detect.get("predictions", [])
+        if isinstance(row, Mapping) and row.get("account_key") is not None
+    }
+    score_by_key = {
+        account_key: _safe_score(row.get("node_score"))
+        for account_key, row in prediction_by_key.items()
+    }
+    members_by_cluster: dict[str, list[str]] = defaultdict(list)
+    for node in nodes:
+        if not isinstance(node, Mapping):
+            continue
+        account_id = str(node.get("account_id") or "").strip()
+        if not account_id:
+            continue
+        members_by_cluster[_cluster_key(node.get("cluster_id"))].append(account_id)
+
+    if not communities:
+        return {
+            "status": "data_insufficient",
+            "model_role": SOCGFM_MODEL_ROLE,
+            "model_version": SOCGFM_MODEL_VERSION,
+            "inference_mode": SOCGFM_INFERENCE_MODE,
+            "claim_scope": SOCGFM_CLAIM_SCOPE,
+            "online_neural_forward": False,
+            "blocking_reason": "no_candidate_communities",
+            "verdicts": [],
+            "diagnostics": {
+                "online_neural_forward_executed": False,
+                "member_probability_source": "china_checkpoint_offline_precompute",
+            },
+        }
+
+    predictions = detect.get("predictions", []) if isinstance(detect.get("predictions"), list) else []
+    if not predictions:
+        return {
+            "status": "model_unavailable",
+            "model_role": SOCGFM_MODEL_ROLE,
+            "model_version": SOCGFM_MODEL_VERSION,
+            "inference_mode": SOCGFM_INFERENCE_MODE,
+            "claim_scope": SOCGFM_CLAIM_SCOPE,
+            "online_neural_forward": False,
+            "blocking_reason": "missing_detection_predictions",
+            "verdicts": [],
+            "diagnostics": {
+                "online_neural_forward_executed": False,
+                "member_probability_source": "china_checkpoint_offline_precompute",
+            },
+        }
+
+    verdicts = []
+    for community in communities:
+        if not isinstance(community, Mapping):
+            continue
+        cluster_id = str(community.get("cluster_id"))
+        members = members_by_cluster.get(_cluster_key(community.get("cluster_id")), [])
+        member_scores = []
+        for account_id in members:
+            if account_id in score_by_account:
+                member_scores.append(float(score_by_account[account_id]))
+                continue
+            matching_keys = [key for key in score_by_key if key.endswith(f":{account_id}") or key == account_id]
+            if matching_keys:
+                member_scores.append(float(score_by_key[sorted(matching_keys)[0]]))
+        coverage = _safe_score(len(member_scores) / len(members) if members else 0.0)
+        mean_score = sum(member_scores) / len(member_scores) if member_scores else 0.5
+        max_score = max(member_scores) if member_scores else 0.5
+        relation_breakdown = community.get("relation_breakdown", {})
+        relation_diversity = (
+            len([key for key, value in relation_breakdown.items() if _safe_score(value) > 0.0]) / max(len(RUN_RELATIONS), 1)
+            if isinstance(relation_breakdown, Mapping)
+            else 0.0
+        )
+        community_score = _safe_score(community.get("community_score"))
+        probability = max(
+            0.0,
+            min(
+                1.0,
+                (0.55 * mean_score)
+                + (0.25 * max_score)
+                + (0.15 * community_score)
+                + (0.05 * relation_diversity),
+            ),
+        )
+        verdicts.append(
+            {
+                "cluster_id": cluster_id,
+                "decision": "harmful_coordination" if probability >= 0.5 else "benign_coordination",
+                "harmful_probability": round(probability, 6),
+                "model_version": SOCGFM_MODEL_VERSION,
+                "model_role": SOCGFM_MODEL_ROLE,
+                "inference_mode": SOCGFM_INFERENCE_MODE,
+                "member_probability_coverage": round(coverage, 6),
+                "online_neural_forward": False,
+                "claim_scope": SOCGFM_CLAIM_SCOPE,
+                "warning": "部分成员缺少 China checkpoint 账号级概率，群组提示可靠性下降。" if coverage < 1.0 else None,
+            }
+        )
+    verdicts.sort(key=lambda row: (-float(row["harmful_probability"]), str(row["cluster_id"])))
+    return {
+        "status": "completed",
+        "model_role": SOCGFM_MODEL_ROLE,
+        "model_version": SOCGFM_MODEL_VERSION,
+        "inference_mode": SOCGFM_INFERENCE_MODE,
+        "claim_scope": SOCGFM_CLAIM_SCOPE,
+        "online_neural_forward": False,
+        "checkpoint_family": SOCGFM_CHECKPOINT_FAMILY,
+        "verdicts": verdicts,
+        "diagnostics": {
+            "online_neural_forward_executed": False,
+            "member_probability_source": "china_checkpoint_offline_precompute",
+            "aggregation_policy": "member_probability_mean_max_plus_community_features",
+            "claim_scope": SOCGFM_CLAIM_SCOPE,
+            "archive_scores_are_primary": False,
+        },
+        "unsupported_claims": ["group_level_harmful_coordination_f1"],
+    }
+
+
 def _build_result_snapshot(
     dataset: CoordinationDataset,
     discovery: Mapping[str, Any],
@@ -1422,18 +1576,13 @@ def _build_result_snapshot(
     discovery_nodes = discovery.get("nodes", []) if isinstance(discovery.get("nodes"), list) else []
     discovery_edges = discovery.get("edges", []) if isinstance(discovery.get("edges"), list) else []
     communities = discovery.get("communities", []) if isinstance(discovery.get("communities"), list) else []
-    predictions = detect.get("predictions", []) if isinstance(detect.get("predictions"), list) else []
+    archive_prediction_by_account, archive_score_by_account = _archive_prediction_maps(detect)
     dataset_events = _load_dataset_event_frame(dataset)
 
     community_by_id = {
         community.get("cluster_id"): community
         for community in communities
         if isinstance(community, Mapping)
-    }
-    score_by_account = {
-        str(row.get("account_id")): float(row.get("node_score", 0.0) or 0.0)
-        for row in predictions
-        if isinstance(row, Mapping)
     }
     node_record_map = {
         str(node.get("account_id")): node
@@ -1452,15 +1601,14 @@ def _build_result_snapshot(
         dataset_events=dataset_events,
     )
 
-    sorted_predictions = [
-        row for row in predictions if isinstance(row, Mapping)
-    ]
-    sorted_predictions.sort(key=lambda row: (-float(row.get("node_score", 0.0) or 0.0), str(row.get("account_id"))))
+    sorted_discovery_nodes = [row for row in discovery_nodes if isinstance(row, Mapping)]
+    sorted_discovery_nodes.sort(key=lambda row: (-_safe_score(row.get("node_score")), str(row.get("account_id"))))
     global_key_nodes = []
-    for row in sorted_predictions[:60]:
+    for row in sorted_discovery_nodes[:60]:
         account_id = str(row.get("account_id"))
         community = community_by_id.get(row.get("cluster_id"), {})
         profile = account_profiles.get(account_id, {})
+        archive_prediction = archive_prediction_by_account.get(account_id, {})
         shared_objects = [
             _format_top_object_item(item)
             for item in (community.get("top_objects", []) if isinstance(community, Mapping) else [])[:3]
@@ -1472,8 +1620,14 @@ def _build_result_snapshot(
                 "nickname": profile.get("nickname") or account_id,
                 "platform": profile.get("platform"),
                 "profile_url": profile.get("profile_url"),
-                "node_score": round(float(row.get("node_score", 0.0) or 0.0), 6),
-                "predicted_label": row.get("predicted_label"),
+                "node_score": round(_safe_score(row.get("node_score")), 6),
+                "score_role": "discovery_evidence_score",
+                "archive_detection_score": round(archive_score_by_account[account_id], 6)
+                if account_id in archive_score_by_account
+                else None,
+                "archive_detection_label": archive_prediction.get("predicted_label")
+                if isinstance(archive_prediction, Mapping)
+                else None,
                 "cluster_id": row.get("cluster_id"),
                 "community_score": community.get("community_score") if isinstance(community, Mapping) else None,
                 "community_size": community.get("size") if isinstance(community, Mapping) else None,
@@ -1514,7 +1668,11 @@ def _build_result_snapshot(
                 "platform": profile.get("platform"),
                 "profile_url": profile.get("profile_url"),
                 "cluster_id": cluster_id,
-                "node_score": round(float(score_by_account.get(account_id, node.get("node_score", 0.0) or 0.0)), 6),
+                "node_score": round(_safe_score(node.get("node_score")), 6),
+                "score_role": "discovery_evidence_score",
+                "archive_detection_score": round(archive_score_by_account[account_id], 6)
+                if account_id in archive_score_by_account
+                else None,
                 "community_score": community.get("community_score") if isinstance(community, Mapping) else None,
                 "community_size": community.get("size") if isinstance(community, Mapping) else None,
                 "directed_out_weight": node.get("directed_out_weight"),
@@ -1557,6 +1715,16 @@ def _build_result_snapshot(
         else {}
     )
     detect_model = detect.get("detect_model", {}) if isinstance(detect.get("detect_model"), Mapping) else {}
+    coordination_detection = (
+        detect.get("coordination_detection", {})
+        if isinstance(detect.get("coordination_detection"), Mapping)
+        else {}
+    )
+    if not coordination_detection and not has_labels:
+        # Older unlabeled runs persisted node predictions but predated the
+        # group-level projection. Rebuild only from those real predictions;
+        # missing predictions remain explicitly blocked by the builder.
+        coordination_detection = _build_socgfm_coordination_detection_payload(discovery, detect)
     if run is not None:
         label_mode = run.label_mode
     else:
@@ -1564,6 +1732,12 @@ def _build_result_snapshot(
 
     run_summary = {
         "result_source": result_source,
+        "runtime_scope": "legacy_dataset_registry_archive_replay",
+        "primary_detection_model": "socgfm_cross_attention",
+        "primary_detection_inference_mode": "precomputed_member_probability_cluster_aggregation",
+        "primary_detection_claim_scope": "account_level_io_membership_to_cluster_proxy",
+        "online_neural_forward": False,
+        "legacy_detect_scores_are_archive_only": True,
         "status": run.status if run is not None else "archived",
         "run_id": run.id if run is not None else None,
         "created_at": run.created_at.isoformat() if run is not None and run.created_at else None,
@@ -1630,7 +1804,13 @@ def _build_result_snapshot(
             "mode": label_mode,
             "shows_supervised_metrics": has_labels,
             "uses_pretrained_detect": not has_labels,
+            "primary_detection_model": "socgfm_cross_attention",
+            "primary_detection_inference_mode": "precomputed_member_probability_cluster_aggregation",
+            "primary_detection_claim_scope": "account_level_io_membership_to_cluster_proxy",
+            "online_neural_forward": False,
+            "legacy_detect_scores_are_archive_only": True,
         },
+        "coordination_detection": coordination_detection,
     }
     return snapshot
 
@@ -1822,7 +2002,7 @@ async def get_coordination_dataset_latest_result(db: AsyncSession, dataset_id: i
     dataset, run = await _load_dataset_and_latest_run(db, dataset_id)
     if run is not None and run.status == "completed":
         cache_key = build_query_cache_key(
-            "coordination-latest-result-v2",
+            COORDINATION_RESULT_CACHE_SCHEMA,
             *_coordination_result_identity(dataset, result_source="rerun", run=run),
         )
 
@@ -1846,7 +2026,7 @@ async def get_coordination_dataset_latest_result(db: AsyncSession, dataset_id: i
         }
     if dataset.source_type == "system_archive":
         cache_key = build_query_cache_key(
-            "coordination-latest-result-v2",
+            COORDINATION_RESULT_CACHE_SCHEMA,
             *_coordination_result_identity(dataset, result_source="archive", run=None),
         )
 
@@ -2011,15 +2191,15 @@ async def create_coordination_run(*, db: AsyncSession, dataset_id: int, created_
         dataset_id=dataset.id,
         status="pending",
         progress=0,
-        run_mode="rerun",
+        run_mode="archive_replay",
         discover_encoder=SYSTEM_ARCHIVE_DISCOVER_ENCODER,
         community_algorithm="leiden",
         lm_backend="sbert",
-        gnn_backend=SYSTEM_ARCHIVE_GNN_BACKEND,
+        gnn_backend=SYSTEM_ARCHIVE_GNN_BACKEND if dataset.has_labels else "socgfm_cross_attention",
         label_mode="labeled_mainline" if dataset.has_labels else "unlabeled_china_pretrained",
         artifact_dir=str(artifact_dir),
         created_by=created_by,
-        pretrained_weight_path=str(PRETRAINED_CHECKPOINT_PATH) if not dataset.has_labels else None,
+        pretrained_weight_path=str(SOCGFM_DEFAULT_CHECKPOINT_ROOT) if not dataset.has_labels else None,
     )
     db.add(run)
     await db.flush()
@@ -2139,46 +2319,56 @@ async def _execute_coordination_run(run_id: int) -> None:
             )
         metrics_payload = detect.get("metrics", {})
         summary_payload = {
-            "result_source": "rerun",
+            "result_source": "archive_replay",
+            "runtime_scope": "legacy_dataset_registry_archive_replay",
+            "primary_detection_model": "socgfm_cross_attention",
+            "primary_detection_inference_mode": "precomputed_member_probability_cluster_aggregation",
+            "primary_detection_claim_scope": "account_level_io_membership_to_cluster_proxy",
+            "online_neural_forward": False,
+            "legacy_detect_scores_are_archive_only": True,
             "label_mode": "labeled_mainline",
             "model_signature": MODEL_SIGNATURE,
             "actual_lm_feature_source": lm_feature_source,
             "metrics": metrics_payload,
         }
     else:
-        # The China checkpoint is a process-wide shared artifact cached on disk,
-        # so it must NOT be built with this rerun's interactive budget (which is
-        # deliberately tiny, e.g. 2 epochs / hidden 16) — that would permanently
-        # cache a near-untrained model for every later unlabeled inference.
-        # Build it at archive quality, off the event loop (SBERT encoding plus a
-        # torch training loop would otherwise block every concurrent request).
-        metadata = await asyncio.to_thread(
-            ensure_china_pretrained_fusion_checkpoint,
-            device=str(runtime_config["device"]),
-            hidden_dim=PRETRAINED_CHECKPOINT_HIDDEN_DIM,
-            embedding_dim=int(runtime_config["detect_embedding_dim"]),
-            detect_epochs=PRETRAINED_CHECKPOINT_DETECT_EPOCHS,
-        )
-        detect = await asyncio.to_thread(
-            run_china_pretrained_detect,
-            event_table,
-            discovery,
+        precompute_summary = await asyncio.to_thread(
+            precompute_socgfm_china_local_detection,
+            events=event_table,
             output_dir=artifact_dir,
-            relations=relations,
-            seed=42,
-            embedding_dim=int(runtime_config["detect_embedding_dim"]),
+            checkpoint_root=SOCGFM_DEFAULT_CHECKPOINT_ROOT,
             device=str(runtime_config["device"]),
+            seed=42,
+            dataset_id=dataset.id,
+        )
+        detect = _json_load(artifact_dir / "detection_summary.json")
+        detect["coordination_detection"] = _build_socgfm_coordination_detection_payload(discovery, detect)
+        (artifact_dir / "detection_summary.json").write_text(
+            json.dumps(detect, ensure_ascii=False, sort_keys=True, indent=2),
+            encoding="utf-8",
         )
         metrics_payload = detect.get("unlabeled_inference_summary", {})
         summary_payload = {
-            "result_source": "rerun",
+            "result_source": "archive_replay",
+            "runtime_scope": "coordination_archive_replay_with_socgfm_precompute",
+            "primary_detection_model": "socgfm_cross_attention",
+            "primary_detection_inference_mode": "precomputed_member_probability_cluster_aggregation",
+            "primary_detection_claim_scope": "account_level_io_membership_to_cluster_proxy",
+            "online_neural_forward": False,
+            "legacy_detect_scores_are_archive_only": True,
             "label_mode": "unlabeled_china_pretrained",
             "model_signature": MODEL_SIGNATURE,
-            "actual_lm_feature_source": detect.get("detect_model", {}).get("lm_feature_source")
+            "actual_lm_feature_source": detect.get("detect_model", {}).get("text_feature_source")
             if isinstance(detect.get("detect_model"), Mapping)
             else None,
-            "pretrained_metadata": metadata,
+            "pretrained_metadata": {
+                "checkpoint_family": SOCGFM_CHECKPOINT_FAMILY,
+                "checkpoint_root": str(SOCGFM_DEFAULT_CHECKPOINT_ROOT),
+                "precompute_output_dir": precompute_summary.get("output_dir"),
+                "prediction_manifest_path": precompute_summary.get("prediction_manifest_path"),
+            },
             "detect_inference": metrics_payload,
+            "coordination_detection": detect["coordination_detection"],
         }
 
     async with async_session_factory() as session:

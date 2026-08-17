@@ -433,12 +433,13 @@ def test_default_ports_run_evidence_coordination_runtime_for_coordination_discov
         result = await executor.execute_run("run_coordination_discover")
         coordination_discover = result["results"]["coordination_discover"]
 
-        assert result["status"] == "completed"
-        assert coordination_discover["status"] == "ok"
+        assert result["status"] == "needs_evidence"
+        assert coordination_discover["status"] == "model_unavailable"
         assert coordination_discover["technology"] == "coordination_discover"
         assert coordination_discover["model_version"] == "coordination-evidence-runtime-v2"
+        assert coordination_discover["coordination_detection"]["status"] == "model_unavailable"
         assert coordination_discover["summary"]["coordinated_edges"] == 1
-        assert coordination_discover["evidence_edges"][0]["source"] in {"u1", "u2"}
+        assert coordination_discover["evidence_edges"][0]["source"] in {"weibo:u1", "weibo:u2"}
         assert coordination_discover["account_risk_tiers"][0]["tier"] == "light_coordination"
 
     asyncio.run(scenario())

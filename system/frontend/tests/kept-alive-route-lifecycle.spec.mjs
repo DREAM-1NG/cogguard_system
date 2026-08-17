@@ -11,6 +11,7 @@ const coordinationView = readFileSync(resolve(frontendRoot, 'src/views/coordinat
 const coordinationGraph = readFileSync(resolve(frontendRoot, 'src/views/coordination/CoordinationGraph3D.vue'), 'utf8')
 const crawlView = readFileSync(resolve(frontendRoot, 'src/views/crawl/index.vue'), 'utf8')
 const riskView = readFileSync(resolve(frontendRoot, 'src/views/risk/index.vue'), 'utf8')
+const dashboardView = readFileSync(resolve(frontendRoot, 'src/views/dashboard/index.vue'), 'utf8')
 
 function bodyOf(source, name) {
   const start = source.indexOf(`function ${name}`)
@@ -49,7 +50,7 @@ test('propagation route watcher synchronizes event and platform scope before rel
   assert.match(watcher, /route\.query\.event_id/)
   assert.match(watcher, /route\.query\.platform/)
   assert.match(watcher, /syncScopeFromRoute\(\)/)
-  assert.match(watcher, /void loadAnalysis\(false\)/)
+  assert.match(watcher, /void loadAnalysis\(false, true\)/)
   assert.doesNotMatch(watcher, /route\.name/)
 })
 
@@ -63,7 +64,25 @@ test('propagation analysis reload cancels stale prediction requests unless expli
   assert.match(loadAnalysis, /if \(!preservePrediction\) \{[\s\S]*predictionRequestGeneration \+= 1/)
   assert.match(loadAnalysis, /modelPrediction\.value = null/)
   assert.match(loadAnalysis, /disposeModelTrendChart\(\)/)
-  assert.match(analyze, /await loadAnalysis\(true\)/)
+  assert.match(analyze, /loadAnalysis\(true\)/)
+})
+
+test('propagation initial and route loads preserve the concurrently read forecast cache', () => {
+  const mountedStart = propagationView.indexOf('onMounted(() =>')
+  const mounted = propagationView.slice(
+    mountedStart,
+    propagationView.indexOf('watch(', mountedStart),
+  )
+  const watcherStart = propagationView.indexOf('() => [route.query.event_id')
+  const watcher = propagationView.slice(
+    watcherStart,
+    propagationView.indexOf('watch(displayLayerRows', watcherStart),
+  )
+
+  assert.match(mounted, /void loadAnalysis\(false, true\)/)
+  assert.match(mounted, /void loadCachedPrediction\(\)/)
+  assert.match(watcher, /void loadAnalysis\(false, true\)/)
+  assert.match(watcher, /void loadCachedPrediction\(\)/)
 })
 
 test('propagation trend prediction retries the current event without platform when the selected platform has no data', () => {
@@ -86,6 +105,22 @@ test('coordination pauses work while its cached page is inactive', () => {
   assert.match(coordinationGraph, /active: boolean/)
   assert.match(coordinationGraph, /graph\.pauseAnimation\?\.\(\)/)
   assert.match(coordinationGraph, /graph\.resumeAnimation\?\.\(\)/)
+})
+
+test('dashboard never resizes its ECharts map while the cached page is inactive', () => {
+  const resizeChart = bodyOf(dashboardView, 'resizeChart')
+  const deactivate = bodyOf(dashboardView, 'deactivateDashboardPage')
+  const activate = bodyOf(dashboardView, 'activateDashboardPage')
+
+  assert.match(dashboardView, /onActivated/)
+  assert.match(dashboardView, /onDeactivated/)
+  assert.match(resizeChart, /if \(!pageActive\.value \|\| !chart \|\| chart\.isDisposed\(\)\) return/)
+  assert.match(resizeChart, /chartDom\.isConnected === false/)
+  assert.match(resizeChart, /chartDom\.offsetWidth === 0 \|\| chartDom\.offsetHeight === 0/)
+  assert.match(deactivate, /pageActive\.value = false/)
+  assert.match(deactivate, /window\.removeEventListener\('resize', resizeChart\)/)
+  assert.match(activate, /pageActive\.value = true/)
+  assert.match(activate, /window\.addEventListener\('resize', resizeChart\)/)
 })
 
 test('crawl refreshes only while its kept-alive page is active', () => {

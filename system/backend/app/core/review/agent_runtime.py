@@ -22,6 +22,12 @@ AGENT_ORDER = (
     "CountermeasureAgent",
 )
 
+REVIEW_TASKS = {"interpersonal_harm", "claim_deception"}
+TASK_EXPERTS = {
+    "interpersonal_harm": "PostHarmAgent",
+    "claim_deception": "ClaimEvidenceAgent",
+}
+
 EXPERT_AGENTS = {
     "PostHarmAgent",
     "MultimodalConsistencyAgent",
@@ -39,6 +45,8 @@ __all__ = [
     "AGENT_ORDER",
     "EXPERT_AGENTS",
     "FOLLOWUP_AGENTS",
+    "REVIEW_TASKS",
+    "TASK_EXPERTS",
     "build_candidate_rule_hints",
     "build_execution_plan_for_runtime",
     "build_failure_mode_tags",
@@ -46,11 +54,32 @@ __all__ = [
     "has_multimodal_conflict",
     "has_uncertain_stance_or_view",
     "normalize_agent_names",
+    "normalize_review_task",
     "recommend_runtime_mode",
     "resolve_runtime_mode",
     "select_reflection_response_agents",
     "should_postpone_countermeasure",
 ]
+
+
+def normalize_review_task(value: str | None) -> str | None:
+    """Normalize the two text Review task contracts without inventing a flat label."""
+
+    if value is None or not str(value).strip():
+        return None
+    task = str(value).strip().lower()
+    aliases = {
+        "harm": "interpersonal_harm",
+        "hate": "interpersonal_harm",
+        "offense": "interpersonal_harm",
+        "misinformation": "claim_deception",
+        "misinfo": "claim_deception",
+        "claim": "claim_deception",
+    }
+    task = aliases.get(task, task)
+    if task not in REVIEW_TASKS:
+        raise ValueError(f"Unsupported Review task: {value}")
+    return task
 
 
 def normalize_agent_names(agent_names: list[str]) -> list[str]:
@@ -104,7 +133,12 @@ def resolve_runtime_mode(
         forced_complex_reasons.append("countermeasure_selected")
 
     if requested == "auto":
-        effective = recommended
+        if forced_complex_reasons:
+            effective = "complex"
+            upgraded = recommended != "complex"
+            reasons = [*reasons, *forced_complex_reasons]
+        else:
+            effective = recommended
     elif requested == "simple":
         if forced_complex_reasons:
             effective = "complex"
@@ -157,16 +191,32 @@ def build_execution_plan_for_runtime(
     forced_agent_names: list[str] | None = None,
 ) -> dict[str, Any]:
     requested = [agent for agent in requested_agents if agent in AGENT_ORDER]
+    review_task = normalize_review_task((context or {}).get("review_task"))
+    task_expert = TASK_EXPERTS.get(review_task)
+    if task_expert and task_expert not in requested:
+        requested.append(task_expert)
     capabilities = _derive_review_capabilities(report=report, context=context)
     capability_filtering_enabled = (report is not None or context is not None)
     forced = _ordered_agents(forced_agent_names or [])
     requested_experts = [agent for agent in requested if agent in EXPERT_AGENTS]
+    task_filtered_agents = [
+        {
+            "agent_name": agent,
+            "reason": "not_required_for_review_task",
+        }
+        for agent in requested_experts
+        if task_expert and agent != task_expert and agent not in forced
+    ]
+    if task_expert:
+        requested_experts = [
+            agent for agent in requested_experts if agent == task_expert or agent in forced
+        ]
     eligible_agents = [
         agent
         for agent in requested_experts
         if not capability_filtering_enabled or _agent_missing_capabilities(agent, capabilities) == []
     ]
-    skipped_agents = [
+    skipped_agents = task_filtered_agents + [
         {
             "agent_name": agent,
             "reason": _agent_skip_reason(agent, capabilities),
@@ -187,7 +237,7 @@ def build_execution_plan_for_runtime(
         and _agent_missing_capabilities(agent, capabilities)
     ]
     expert_agents = _ordered_agents([*eligible_agents, *[item["agent_name"] for item in overrides]])
-    if not expert_agents:
+    if not expert_agents and review_task != "claim_deception":
         expert_agents = ["PostHarmAgent"]
     if runtime_mode == "simple":
         if "HarmfulnessJudgeAgent" not in requested:
@@ -207,6 +257,8 @@ def build_execution_plan_for_runtime(
             "run_countermeasure": False,
             "claim_agent_enabled": "ClaimEvidenceAgent" in expert_agents,
             "multimodal_agent_enabled": "MultimodalConsistencyAgent" in expert_agents,
+            "review_task": review_task,
+            "task_expert": task_expert,
         }
     run_question_reflection = bool(expert_agents)
     followup_agents: list[str] = []
@@ -228,9 +280,11 @@ def build_execution_plan_for_runtime(
         "run_question_reflection": run_question_reflection,
         "run_reflection_responses": run_question_reflection,
         "deep_judge": bool(enable_deep_judge),
-        "run_countermeasure": bool(enable_countermeasure),
+        "run_countermeasure": bool(enable_countermeasure and "CountermeasureAgent" in requested),
         "claim_agent_enabled": "ClaimEvidenceAgent" in expert_agents,
         "multimodal_agent_enabled": "MultimodalConsistencyAgent" in expert_agents,
+        "review_task": review_task,
+        "task_expert": task_expert,
     }
 
 
@@ -250,6 +304,14 @@ def _derive_review_capabilities(
         or context.get("claim_rank")
         or any(post.get("claims") or _get(post, "post_view_detection", "claims") for post in selected_posts)
     )
+    claim_assessment_input = bool(
+        claim_context
+        or any(
+            str(post.get(field) or "").strip()
+            for post in selected_posts
+            for field in ("content", "text", "excerpt")
+        )
+    )
     usable_media = bool(
         any(_has_usable_media_input(item) for item in _as_list(context.get("media_inputs")))
         or any(_post_has_usable_media(post) for post in selected_posts)
@@ -257,6 +319,7 @@ def _derive_review_capabilities(
     cross_view_conflict = any(has_multimodal_conflict(post) for post in selected_posts)
     return {
         "claim_context": claim_context,
+        "claim_assessment_input": claim_assessment_input,
         "usable_media": usable_media,
         "cross_view_conflict": cross_view_conflict,
         "propagation_tree_or_post_post_edges": _has_propagation_tree_or_post_post_edges(report, context),
@@ -266,7 +329,7 @@ def _derive_review_capabilities(
 def _agent_missing_capabilities(agent_name: str, capabilities: dict[str, bool]) -> list[str]:
     requirements = {
         "PostHarmAgent": [],
-        "ClaimEvidenceAgent": ["claim_context"],
+        "ClaimEvidenceAgent": ["claim_assessment_input"],
         "MultimodalConsistencyAgent": ["usable_media_or_cross_view_conflict"],
         "PropagationTreeAgent": ["propagation_tree_or_post_post_edges"],
     }.get(agent_name, [])

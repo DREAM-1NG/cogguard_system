@@ -4,13 +4,16 @@ from dataclasses import dataclass
 from typing import Any, Protocol
 
 from app.core.analysis.contracts import AnalysisRunStatus, EventSnapshot, UnknownAnalysisStage, normalize_analysis_stage
+from app.core.analysis.coordination_runtime import (
+    CoordinationDetectionRuntime,
+    CoordinationGroupDiscovery,
+    CrossPlatformResolver,
+    build_coordination_group_label_cases,
+)
 from app.core.analysis.registry import AnalysisRegistry
 from app.core.analysis.runtime import InternalStudentRuntime, InternalTeacherJobPort
-from app.core.semantic.runtime import (
-    ModelWeightsBlockedError,
-    SemanticEnrichmentRuntime,
-    VerifiedPropagationArtifact,
-)
+from app.core.semantic.runtime import ModelWeightsBlockedError, SemanticEnrichmentRuntime, VerifiedPropagationArtifact
+from app.services.coordination_group_label_case_service import persist_coordination_group_label_cases
 
 
 class CoordinationEngine(Protocol):
@@ -90,6 +93,9 @@ class AnalysisExecutor:
             active_model = active_models.get(_stage_technology(stage))
             if active_model:
                 stage_options["active_model"] = active_model
+            coordination_detection_model = active_models.get("coordination_detection")
+            if coordination_detection_model is not None:
+                stage_options["coordination_detection_active_model"] = coordination_detection_model
             await self.registry.append_run_event(
                 run_id,
                 event_type="stage_started",
@@ -172,7 +178,13 @@ class AnalysisExecutor:
         if getter is None:
             return {}
         models: dict[str, dict[str, Any]] = {}
-        for technology in ("coordination_discover", "propagation_analysis", "review_student", "review_teacher"):
+        for technology in (
+            "coordination_discover",
+            "coordination_detection",
+            "propagation_analysis",
+            "review_student",
+            "review_teacher",
+        ):
             model = await getter(technology)
             if isinstance(model, dict) and model.get("status") == "active":
                 models[technology] = model
@@ -255,23 +267,135 @@ class AnalysisExecutor:
 
 
 class SnapshotCoordinationEngine:
+    def __init__(
+        self,
+        *,
+        resolver: CrossPlatformResolver | None = None,
+        discovery: CoordinationGroupDiscovery | None = None,
+        detection: CoordinationDetectionRuntime | None = None,
+    ) -> None:
+        self.resolver = resolver or CrossPlatformResolver()
+        self.discovery = discovery or CoordinationGroupDiscovery()
+        self.detection = detection or CoordinationDetectionRuntime()
+
     async def analyze(self, snapshot: EventSnapshot, options: dict[str, Any]) -> dict[str, Any]:
-        from app.core.analysis.coordination_discover import analyze_coordination_discover_snapshot
-        from app.core.analysis.coordination_discover_adapter import try_load_coordination_discover_result
+        resolved_view = self.resolver.resolve(snapshot)
+        discovery_result = self.discovery.analyze(resolved_view, options)
+        stage1_batch = discovery_result.batch
+        feature_rows = _coordination_detection_feature_rows(stage1_batch, options)
+        detection_model = options.get("coordination_detection_active_model") or options.get("active_model")
+        if isinstance(detection_model, dict) and str(detection_model.get("technology") or "").strip() != "coordination_detection":
+            detection_model = None
+        detection_result = self.detection.predict(stage1_batch, feature_rows, detection_model)
+        if isinstance(detection_result, dict):
+            detection_payload = detection_result
+        else:
+            detection_payload = _cluster_detection_batch_to_dict(detection_result)
 
-        research_options = dict(options)
-        active_model = research_options.get("active_model")
-        if isinstance(active_model, dict) and active_model.get("artifact_uri"):
-            research_options.setdefault("artifact_dir", active_model["artifact_uri"])
-        research_result, fallback_reason = try_load_coordination_discover_result(snapshot, research_options)
-        if research_result is not None:
-            return research_result
-
-        result = analyze_coordination_discover_snapshot(snapshot, options)
-        result["fallback"] = True
-        result["fallback_reason"] = fallback_reason or "coordination_discover_artifact_unavailable"
-        result["fallback_policy"] = "evidence_runtime_v2"
+        result = dict(discovery_result.result)
+        result["technology"] = "coordination_discover"
+        result["model_version"] = result.get("model_version") or "coordination-evidence-runtime-v2"
+        result["resolved_snapshot_id"] = resolved_view.snapshot.snapshot_id
+        result["coordination_resolution"] = {
+            "status": "ok",
+            "resolution_report": dict(resolved_view.resolution_report),
+            "account_mapping": dict(resolved_view.account_mapping),
+            "merged_account_groups": [list(group) for group in resolved_view.merged_account_groups],
+        }
+        result["coordination_discovery"] = _discovered_cluster_batch_to_dict(stage1_batch)
+        result["coordination_detection"] = detection_payload
+        result["coordination_group_label_cases"] = build_coordination_group_label_cases(
+            snapshot=snapshot,
+            discovery_batch=stage1_batch,
+            detection_payload=detection_payload,
+        )
+        result["coordination_group_label_case_collection"] = persist_coordination_group_label_cases(
+            result["coordination_group_label_cases"],
+            snapshot_id=snapshot.snapshot_id,
+            source_batch_id=stage1_batch.batch_id,
+        )
+        result["detection_status"] = (
+            detection_payload.get("status") if isinstance(detection_payload, dict) else detection_result.__class__.__name__
+        )
+        result["detection_model_version"] = (
+            detection_payload.get("model_version") if isinstance(detection_payload, dict) else detection_result.verdicts[0].model_version
+        )
+        if isinstance(detection_payload, dict) and detection_payload.get("status") == "model_unavailable":
+            result["status"] = "model_unavailable"
+            result["blocking_reason"] = detection_payload.get("blocking_reason")
+            result["fallback"] = False
+            result["fallback_reason"] = None
+            result["fallback_policy"] = "fail_closed_detection_required"
+        else:
+            result["status"] = str(result.get("status") or "ok")
+            result["fallback"] = False
+            result["fallback_reason"] = None
+            result["fallback_policy"] = "resolve_discover_detect"
         return result
+
+
+def _coordination_detection_feature_rows(batch: Any, options: dict[str, Any]) -> dict[str, dict[str, float]]:
+    features = options.get("coordination_detection_features")
+    if isinstance(features, dict):
+        rows: dict[str, dict[str, float]] = {}
+        for cluster_id, values in features.items():
+            if isinstance(values, dict):
+                rows[str(cluster_id)] = {str(key): float(value) for key, value in values.items()}
+        return rows
+    return {}
+
+
+def _discovered_cluster_batch_to_dict(batch: Any) -> dict[str, Any]:
+    return {
+        "schema_version": batch.schema_version,
+        "stage": batch.stage,
+        "claim_role": batch.claim_role,
+        "batch_id": batch.batch_id,
+        "timestamp": batch.timestamp,
+        "candidate_clusters": [cluster.to_dict() for cluster in batch.candidate_clusters],
+        "provenance": batch.provenance.to_dict(),
+        "runtime_diagnostics": batch.runtime_diagnostics.to_dict(),
+        "platforms": list(batch.platforms),
+        "quality_flags": list(batch.quality_flags),
+        "artifact_manifest_ref": batch.artifact_manifest_ref,
+        "batch_fingerprint": batch.batch_fingerprint,
+    }
+
+
+def _cluster_detection_batch_to_dict(batch: Any) -> dict[str, Any]:
+    return {
+        "technology": "coordination_detection",
+        "status": "ok",
+        "schema_version": batch.schema_version,
+        "model_role": batch.model_role,
+        "inference_mode": batch.inference_mode,
+        "claim_scope": batch.claim_scope,
+        "online_neural_forward": batch.online_neural_forward,
+        "runtime_diagnostics": dict(batch.runtime_diagnostics),
+        "batch_id": batch.batch_id,
+        "source_batch_id": batch.source_batch_id,
+        "source_batch_fingerprint": batch.source_batch_fingerprint,
+        "prediction_input_fingerprint": batch.prediction_input_fingerprint,
+        "model_artifact_hash": batch.model_artifact_hash,
+        "model_version": batch.verdicts[0].model_version if batch.verdicts else "unknown",
+        "verdicts": [
+            {
+                "cluster_id": verdict.cluster_id,
+                "decision": verdict.decision,
+                "harmful_probability": verdict.harmful_probability,
+                "model_version": verdict.model_version,
+                "model_role": verdict.model_role,
+                "artifact_hash": verdict.artifact_hash,
+                "ood_features": list(verdict.ood_features),
+                "warning": verdict.warning,
+                "inference_mode": verdict.inference_mode,
+                "member_probability_coverage": verdict.member_probability_coverage,
+                "online_neural_forward": verdict.online_neural_forward,
+                "claim_scope": verdict.claim_scope,
+            }
+            for verdict in batch.verdicts
+        ],
+    }
 
 
 class PropagationAnalysisPropagationEngine:

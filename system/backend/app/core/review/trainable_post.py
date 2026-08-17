@@ -22,9 +22,11 @@ from typing import Any
 import hashlib
 import json
 import math
-import re
 
 import numpy as np
+
+from app.core.review.review_task_schema import ATTACK_AXIS, MISINFO_AXIS, TEACHER_SILVER_SCHEMA
+from app.core.review.text_features import hash_text_features, tokenize
 
 try:  # pragma: no cover - import availability is environment dependent
     import torch
@@ -37,11 +39,7 @@ except Exception:  # pragma: no cover
 POSITIVE_LABEL = "harmful"
 NEGATIVE_LABEL = "non_harmful"
 LABELS = (NEGATIVE_LABEL, POSITIVE_LABEL)
-ATTACK_AXIS = "attack_hate_offense"
-MISINFO_AXIS = "misinfo_claim_risk"
-TEACHER_SILVER_SCHEMA = "review-teacher-silver-v1"
 VIEW_ORDER = ("tweet", "meme", "img", "video", "claim")
-TOKEN_RE = re.compile(r"[\u4e00-\u9fff]|[A-Za-z0-9_]+")
 HARM_TYPE_ORDER = (
     "misinformation",
     "hate_harassment",
@@ -211,28 +209,6 @@ def multitask_targets(cases: list[dict[str, Any]]) -> dict[str, np.ndarray]:
         "stance": stance,
         "rationale": rationale,
     }
-
-
-def tokenize(text: str) -> list[str]:
-    return TOKEN_RE.findall(text.lower())
-
-
-def hash_text_features(texts: list[str], *, dim: int = 256) -> np.ndarray:
-    rows = np.zeros((len(texts), dim), dtype="float32")
-    for row_index, text in enumerate(texts):
-        tokens = tokenize(text)
-        if not tokens:
-            continue
-        for token in tokens:
-            digest = hashlib.blake2b(token.encode("utf-8", errors="ignore"), digest_size=8).digest()
-            raw = int.from_bytes(digest, byteorder="little", signed=False)
-            index = raw % dim
-            sign = 1.0 if (raw >> 8) & 1 else -1.0
-            rows[row_index, index] += sign
-        norm = float(np.linalg.norm(rows[row_index]))
-        if norm > 0:
-            rows[row_index] /= norm
-    return rows
 
 
 def hash_case_image_features(cases: list[dict[str, Any]], *, dim: int = 256) -> np.ndarray:

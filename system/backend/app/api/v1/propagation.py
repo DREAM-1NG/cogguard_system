@@ -7,7 +7,7 @@ prediction endpoint estimates future trend and next-hop candidates.
 
 from inspect import Parameter, signature
 
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,11 +18,14 @@ from app.db.mysql import get_db
 from app.models.user import User
 from app.schemas.propagation import (
     ClaimResponseLandscapeResponse,
+    PropagationAlertActionRequest,
+    PropagationMonitorProfileRequest,
     PropagationPredictionResponse,
 )
 from app.services import (
     claim_response_landscape_service,
     propagation_model_service,
+    propagation_monitoring_service,
     propagation_observation_service,
 )
 from app.utils.response import success
@@ -122,6 +125,100 @@ async def get_claim_response_landscape(
         mongo_db=mongo_db,
     )
     return success(data=result)
+
+
+@router.get("/model-event-timeline")
+async def get_model_event_timeline(
+    event_id: Annotated[str, Query(min_length=1, description="Event id required for event-scoped timeline.")],
+    platform: Annotated[str | None, Query(description="Limit timeline to one platform.")] = None,
+    timeline_range: Annotated[
+        Literal["active", "24h", "7d", "all"],
+        Query(description="Evidence range: active period, 24 hours, 7 days, or full history."),
+    ] = "active",
+    _current_user: User = Depends(get_current_user),
+):
+    """Read a range-scoped evidence timeline without running prediction inference."""
+    result = await propagation_model_service.build_current_event_timeline(
+        event_id=event_id,
+        platform=platform,
+        timeline_range=timeline_range,
+    )
+    return success(data=result)
+
+
+@router.get("/monitor-profiles")
+async def get_monitor_profiles(
+    event_id: str | None = Query(None),
+    db: AsyncSession = Depends(get_db),
+    _current_user: User = Depends(get_current_user),
+):
+    return success(data=await propagation_monitoring_service.list_monitor_profiles(db, event_id=event_id))
+
+
+@router.put("/monitor-profiles")
+async def put_monitor_profile(
+    body: PropagationMonitorProfileRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if str(current_user.role or "") != "admin":
+        raise HTTPException(status_code=403, detail="Only administrators can manage propagation monitoring profiles.")
+    return success(data=await propagation_monitoring_service.upsert_monitor_profile(
+        payload=body.model_dump(), updated_by=int(current_user.id), db=db
+    ))
+
+
+@router.get("/alerts/unresolved-count")
+async def get_unresolved_alert_count(
+    db: AsyncSession = Depends(get_db),
+    _current_user: User = Depends(get_current_user),
+):
+    return success(data={"count": await propagation_monitoring_service.unresolved_alert_count(db)})
+
+
+@router.get("/alerts")
+async def get_alerts(
+    event_id: str | None = Query(None),
+    platform: str | None = Query(None),
+    unresolved_only: bool = Query(False),
+    limit: int = Query(100, ge=1, le=500),
+    db: AsyncSession = Depends(get_db),
+    _current_user: User = Depends(get_current_user),
+):
+    return success(data=await propagation_monitoring_service.list_alerts(
+        db, event_id=event_id, platform=platform, unresolved_only=unresolved_only, limit=limit
+    ))
+
+
+@router.get("/alerts/{alert_id}")
+async def get_alert(
+    alert_id: int,
+    db: AsyncSession = Depends(get_db),
+    _current_user: User = Depends(get_current_user),
+):
+    try:
+        return success(data=await propagation_monitoring_service.get_alert_detail(db, alert_id=alert_id))
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.post("/alerts/{alert_id}/actions")
+async def post_alert_action(
+    alert_id: int,
+    body: PropagationAlertActionRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if str(current_user.role or "") not in {"admin", "analyst"}:
+        raise HTTPException(status_code=403, detail="Propagation alert disposition is not permitted for this role.")
+    try:
+        result = await propagation_monitoring_service.apply_alert_action(
+            alert_id=alert_id, action=body.action, note=body.note, actor_id=int(current_user.id), db=db
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return success(data=result)
+
 
 @router.post("/model-event-predict", response_model=PropagationPredictionResponse)
 async def predict_model_event(

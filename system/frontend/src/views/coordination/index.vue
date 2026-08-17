@@ -2,7 +2,7 @@
   <div class="coordination-page">
     <PageHeader
       title="协同检测"
-      description="查看历史协同数据集，展示 MAGNN + Leiden 的协同网络发现结果，以及 SBERT + fusion_gnn 的关键节点识别结果。"
+      description="以群组为中心查看跨平台证据、协同结构和检测提示；模型输出只作为证据提示，最终结论由分析员确认。"
     />
 
     <a-card size="small" class="panel">
@@ -15,14 +15,70 @@
         </div>
         <div class="toolbar-right">
           <a-button v-if="selectedDatasetId" type="primary" :loading="running" @click="handleRerun">
-            重新运行主线模型
+            运行归档复现
           </a-button>
         </div>
       </div>
     </a-card>
 
-    <a-spin :spinning="loadingDetail">
+    <a-spin :spinning="loadingDetail || loadingResult">
+      <div v-if="datasetDetailError" class="resource-error resource-error--detail" role="alert">
+        <div>
+          <strong>数据集详情加载失败</strong>
+          <p>{{ datasetDetailError }}</p>
+        </div>
+        <a-button size="small" @click="retryDatasetDetail">重试数据集详情</a-button>
+      </div>
+
+      <div v-if="latestResultError" class="resource-error resource-error--result" role="alert">
+        <div>
+          <strong>历史结果加载失败</strong>
+          <p>{{ latestResultError }}</p>
+        </div>
+        <a-button size="small" @click="retryLatestResult">重试历史结果</a-button>
+      </div>
+
       <template v-if="selectedDataset && resultSnapshot">
+        <section class="workbench-panel" aria-label="协同检测概览">
+          <div v-if="detectionUnavailable" class="detection-status-strip" role="status">
+            <div>
+              <strong>检测结果暂不可用</strong>
+              <p>{{ detectionUnavailableReason }}</p>
+            </div>
+            <span>协同结构与四维证据仍可用于人工核查。</span>
+          </div>
+          <div class="workbench-metrics">
+            <div v-for="item in workbenchMetrics" :key="item.label" class="summary-item">
+              <span>{{ item.label }}</span>
+              <strong>{{ item.value }}</strong>
+              <small>{{ item.hint }}</small>
+            </div>
+          </div>
+        </section>
+
+        <section class="characterization-panel" aria-labelledby="characterization-title">
+          <div class="characterization-panel-head">
+            <h2 id="characterization-title">四维刻画</h2>
+            <a-tag v-if="activeCharacterizationClusterId" color="geekblue">
+              群组 {{ activeCharacterizationClusterId }}
+            </a-tag>
+          </div>
+          <div class="dimension-grid">
+            <div
+              v-for="item in characterizationDimensions"
+              :key="item.key"
+              class="dimension-card"
+            >
+              <div class="dimension-card-head">
+                <span>{{ item.label }}</span>
+                <strong>{{ item.value }}</strong>
+              </div>
+              <p>{{ item.summary }}</p>
+              <small>{{ item.evidence }}</small>
+            </div>
+          </div>
+        </section>
+
         <a-card size="small" class="panel">
           <template #title>
             <div class="network-panel-head">
@@ -62,7 +118,7 @@
                 <a-select-option :value="0">全部</a-select-option>
               </a-select>
               <div class="score-filter">
-                <span>风险阈值</span>
+                <span>协同证据阈值</span>
                 <a-slider
                   v-model:value="minNodeScore"
                   class="score-slider"
@@ -79,15 +135,33 @@
               <a-button size="small" @click="resetGraphCamera">重置视角</a-button>
             </div>
           </div>
-          <CoordinationGraph3D
-            ref="graph3dRef"
-            :nodes="graphPayload?.nodes || []"
-            :links="graphPayload?.links || []"
-            :show-labels="showNodeLabels"
-            :loading="loadingGraph"
-            :active="pageActive"
-            @node-click="handleNodeClick"
-          />
+          <p id="coordination-network-summary" class="network-summary">
+            {{ networkAccessibilitySummary }}
+          </p>
+          <a-spin :spinning="loadingGraph">
+            <div v-if="graphError" class="resource-error resource-error--graph" role="alert">
+              <div>
+                <strong>协同网络加载失败</strong>
+                <p>{{ graphError }}</p>
+              </div>
+              <a-button size="small" @click="retryGraph">重试协同网络</a-button>
+            </div>
+            <CoordinationGraph3D
+              v-else-if="graphPayload?.nodes?.length"
+              ref="graph3dRef"
+              :nodes="graphPayload.nodes"
+              :links="graphPayload.links"
+              :show-labels="showNodeLabels"
+              :loading="loadingGraph"
+              :active="pageActive"
+              @node-click="handleNodeClick"
+            />
+            <a-empty
+              v-else-if="!loadingGraph"
+              class="graph-empty-state"
+              description="暂无可展示的协同网络数据"
+            />
+          </a-spin>
         </a-card>
 
         <a-row :gutter="[16, 16]" class="panel-row panel-row--equal">
@@ -95,11 +169,11 @@
             <a-card size="small" title="社区发现结果" class="panel">
               <a-table
                 :columns="communityColumns"
-                :data-source="resultSnapshot?.communities || []"
+                :data-source="communityRows"
                 row-key="cluster_id"
                 :pagination="{ pageSize: 8 }"
                 size="small"
-                :scroll="{ x: 960 }"
+                :scroll="{ x: 1160 }"
               >
                 <template #bodyCell="{ column, record }">
                   <template v-if="column.key === 'cluster_id'">
@@ -119,12 +193,20 @@
                       </a>
                     </div>
                   </template>
+                  <template v-else-if="column.key === 'detection'">
+                    <div class="table-verdict">
+                      <a-tag :color="detectionTagColor(record.detection_verdict)">
+                        {{ detectionDecisionLabel(record.detection_verdict) }}
+                      </a-tag>
+                      <span>{{ formatPercent(record.detection_verdict?.harmful_probability) }}</span>
+                    </div>
+                  </template>
                 </template>
               </a-table>
             </a-card>
           </a-col>
           <a-col :xs="24" :xl="12" class="stretch-col">
-            <a-card size="small" title="全局关键节点" class="panel">
+            <a-card size="small" title="证据关键节点" class="panel">
               <a-table
                 :columns="keyNodeColumns"
                 :data-source="resultSnapshot?.global_key_nodes || []"
@@ -166,7 +248,8 @@
         </a-row>
       </template>
 
-      <a-empty v-else class="panel" description="请选择一个历史数据集查看协同检测结果" />
+      <a-empty v-else-if="!selectedDatasetId" class="panel" description="请选择一个历史数据集查看协同检测结果" />
+      <a-empty v-else-if="!latestResultError && !loadingResult" class="panel" description="暂无历史协同检测结果" />
     </a-spin>
 
     <a-drawer
@@ -185,12 +268,30 @@
             <div class="drawer-grid">
               <div><span>{{ drawerMode === 'community' ? '社区 ID' : '账号' }}</span><strong>{{ drawerMode === 'community' ? (communityDetail?.cluster_id ?? '-') : (selectedNode?.id ?? '-') }}</strong></div>
               <div><span>{{ drawerMode === 'community' ? '成员规模' : '平台' }}</span><strong>{{ drawerMode === 'community' ? (communityDetail?.size ?? '-') : formatPlatformLabel(selectedNode?.platform) }}</strong></div>
-              <div><span>{{ drawerMode === 'community' ? '社区分数' : '节点分数' }}</span><strong>{{ formatMetric(drawerMode === 'community' ? communityDetail?.community_score : selectedNode?.node_score) }}</strong></div>
+              <div><span>{{ drawerMode === 'community' ? '社区分数' : '证据分数' }}</span><strong>{{ formatMetric(drawerMode === 'community' ? communityDetail?.community_score : selectedNode?.node_score) }}</strong></div>
               <div><span>{{ drawerMode === 'community' ? '对象集中度' : '社区分数' }}</span><strong>{{ formatMetric(drawerMode === 'community' ? communityDetail?.object_concentration : selectedNode?.community_score) }}</strong></div>
               <div><span>社区规模</span><strong>{{ communityDetail?.size ?? selectedNode?.community_size ?? '-' }}</strong></div>
               <div><span>密度</span><strong>{{ formatMetric(communityDetail?.density) }}</strong></div>
               <div><span>对象集中度</span><strong>{{ formatMetric(communityDetail?.object_concentration) }}</strong></div>
               <div><span>社区</span><strong>{{ selectedNode?.cluster_id ?? communityDetail?.cluster_id ?? '-' }}</strong></div>
+            </div>
+          </div>
+
+          <div class="drawer-section">
+            <div class="section-head">四维刻画</div>
+            <div class="dimension-grid dimension-grid--drawer">
+              <div
+                v-for="item in characterizationDimensions"
+                :key="`drawer-${item.key}`"
+                class="dimension-card"
+              >
+                <div class="dimension-card-head">
+                  <span>{{ item.label }}</span>
+                  <strong>{{ item.value }}</strong>
+                </div>
+                <p>{{ item.summary }}</p>
+                <small>{{ item.evidence }}</small>
+              </div>
             </div>
           </div>
 
@@ -377,6 +478,9 @@ const loadingDatasets = ref(false)
 const loadingDetail = ref(false)
 const loadingResult = ref(false)
 const loadingGraph = ref(false)
+const datasetDetailError = ref<string | null>(null)
+const latestResultError = ref<string | null>(null)
+const graphError = ref<string | null>(null)
 const loadingCommunity = ref(false)
 const uploading = ref(false)
 const running = ref(false)
@@ -391,19 +495,141 @@ const selectedNode = ref<CoordinationGraphNode | null>(null)
 const communityDetail = ref<CoordinationCommunityDetail | null>(null)
 const drawerMode = ref<'account' | 'community'>('account')
 const pageActive = ref(false)
+
+const networkAccessibilitySummary = computed(() => {
+  const summary = graphPayload.value?.summary
+  const nodes = Number(summary?.total_nodes ?? resultSnapshot.value?.network?.total_nodes ?? 0)
+  const edges = Number(summary?.total_edges ?? resultSnapshot.value?.network?.total_edges ?? 0)
+  const communities = communityRows.value.length
+  if (!nodes && !edges && !communities) return '当前没有可读的网络摘要。'
+  return `当前网络包含 ${formatInteger(nodes)} 个账号节点、${formatInteger(edges)} 条关联边，识别出 ${formatInteger(communities)} 个候选群组。图谱用于定位关系，详细证据请查看下方列表。`
+})
 let pollTimer: number | null = null
 let graphReloadTimer: number | null = null
 let initialDatasetLoad: Promise<void> | null = null
 let graphRequestGeneration = 0
+let datasetDetailRequestGeneration = 0
+let latestResultRequestGeneration = 0
 
 const selectedDataset = computed(() =>
   datasets.value.find((item) => item.dataset_id === selectedDatasetId.value) || null,
 )
 
+const coordinationResolution = computed(() => resultSnapshot.value?.coordination_resolution || null)
+const resolutionReport = computed(() => coordinationResolution.value?.resolution_report || {})
+const coordinationDiscovery = computed(() => resultSnapshot.value?.coordination_discovery || null)
+const coordinationDetection = computed(() => resultSnapshot.value?.coordination_detection || null)
+const detectionPrimaryRole = 'primary_socgfm_cross_attention'
+const detectionStatus = computed(() => String(coordinationDetection.value?.status || resultSnapshot.value?.detection_status || 'not_connected'))
+const detectionUnavailable = computed(() => ['model_unavailable', 'data_insufficient', 'not_connected'].includes(detectionStatus.value))
+const detectionUnavailableReason = computed(() => {
+  if (coordinationDetection.value?.blocking_reason) return String(coordinationDetection.value.blocking_reason)
+  if (detectionStatus.value === 'not_connected') return '当前历史结果未包含检测提示，仅展示协同发现证据。'
+  if (detectionStatus.value === 'data_insufficient') return '候选群组不足，无法形成检测提示。'
+  return '未找到可用的协同攻击检测模型产物，系统不会回退到启发式结果。'
+})
+
+const detectionVerdicts = computed(() => (
+  Array.isArray(coordinationDetection.value?.verdicts) ? coordinationDetection.value.verdicts : []
+))
+const primaryDetectionVerdicts = computed(() => (
+  detectionVerdicts.value.filter((verdict: any) => {
+    return String(verdict?.model_role || '').trim() === detectionPrimaryRole
+  })
+))
+
+const detectionVerdictMap = computed(() => {
+  const mapping = new Map<string, any>()
+  for (const verdict of primaryDetectionVerdicts.value) {
+    const clusterId = String(verdict?.cluster_id || '').trim()
+    if (clusterId) mapping.set(clusterId, verdict)
+  }
+  return mapping
+})
+
+const communityRows = computed(() => {
+  const rows = Array.isArray(resultSnapshot.value?.communities) ? resultSnapshot.value.communities : []
+  return rows.map((community: any) => ({
+    ...community,
+    detection_verdict: detectionVerdictForCluster(community?.cluster_id),
+  }))
+})
+
+const highRiskClusterCount = computed(() => (
+  primaryDetectionVerdicts.value.filter((verdict: any) => isHighRiskVerdict(verdict)).length
+))
+
+const averageEvidenceCoverage = computed(() => {
+  const clusters = Array.isArray(coordinationDiscovery.value?.candidate_clusters)
+    ? coordinationDiscovery.value.candidate_clusters
+    : []
+  const values = clusters
+    .map((cluster: any) => Number(cluster?.coordination_metrics?.evidence_coverage))
+    .filter((value: number) => Number.isFinite(value))
+  if (!values.length) return null
+  return values.reduce((sum: number, value: number) => sum + value, 0) / values.length
+})
+
+const workbenchMetrics = computed(() => [
+  {
+    label: '跨平台归并',
+    value: formatInteger(resolutionReport.value?.cross_platform_merge_count),
+    hint: `同名不自动合并：${formatInteger(resolutionReport.value?.blocked_same_name_merge_count)}`,
+  },
+  {
+    label: '候选群组',
+    value: formatInteger(communityRows.value.length),
+    hint: `${formatInteger(resultSnapshot.value?.network?.total_nodes)} 个账号节点`,
+  },
+  {
+    label: '高风险群组',
+    value: formatInteger(highRiskClusterCount.value),
+    hint: detectionUnavailable.value ? '未生成检测结果' : '来自已激活的检测模型产物',
+  },
+  {
+    label: '证据覆盖',
+    value: formatPercent(averageEvidenceCoverage.value),
+    hint: `${formatInteger(resolutionReport.value?.canonical_url_count)} 个网址 / ${formatInteger(resolutionReport.value?.canonical_claim_count)} 条主张`,
+  },
+])
+
+const activeCommunityRecord = computed(() => {
+  const detailId = communityDetail.value?.cluster_id ?? selectedNode.value?.cluster_id
+  if (detailId !== null && detailId !== undefined) {
+    const matched = communityRows.value.find((community: any) => String(community?.cluster_id) === String(detailId))
+    if (matched) {
+      return {
+        ...matched,
+        ...(communityDetail.value || {}),
+        detection_verdict: detectionVerdictForCluster(detailId),
+      }
+    }
+    return {
+      ...(communityDetail.value || {}),
+      cluster_id: detailId,
+      detection_verdict: detectionVerdictForCluster(detailId),
+    }
+  }
+  return communityRows.value[0] || null
+})
+
+const activeCharacterizationClusterId = computed(() => activeCommunityRecord.value?.cluster_id ?? null)
+
+const characterizationDimensions = computed(() => {
+  const record = activeCommunityRecord.value || {}
+  return [
+    authenticitySummary(record),
+    harmfulnessSummary(record),
+    orchestrationSummary(record),
+    timeVarianceSummary(record),
+  ]
+})
+
 const communityColumns = [
   { title: '社区 ID', dataIndex: 'cluster_id', key: 'cluster_id', width: 90 },
   { title: '规模', dataIndex: 'size', key: 'size', width: 80 },
   { title: '社区分数', dataIndex: 'community_score', key: 'community_score', width: 110, customRender: ({ text }: any) => formatMetric(text) },
+  { title: '协同攻击检测', dataIndex: 'detection_verdict', key: 'detection', width: 150 },
   { title: '密度', dataIndex: 'density', key: 'density', width: 90, customRender: ({ text }: any) => formatMetric(text) },
   { title: '对象集中度', dataIndex: 'object_concentration', key: 'object_concentration', width: 120, customRender: ({ text }: any) => formatMetric(text) },
   {
@@ -418,7 +644,7 @@ const communityColumns = [
 const keyNodeColumns = [
   { title: '账号', dataIndex: 'account_id', key: 'account_id', width: 240 },
   { title: '平台', dataIndex: 'platform', key: 'platform', width: 90, customRender: ({ text }: any) => formatPlatformLabel(text) },
-  { title: '节点分数', dataIndex: 'node_score', key: 'node_score', width: 120, customRender: ({ text }: any) => formatMetric(text) },
+  { title: '证据分数', dataIndex: 'node_score', key: 'node_score', width: 120, customRender: ({ text }: any) => formatMetric(text) },
   { title: '社区 ID', dataIndex: 'cluster_id', key: 'cluster_id', width: 90 },
   { title: '社区分数', dataIndex: 'community_score', key: 'community_score', width: 110, customRender: ({ text }: any) => formatMetric(text) },
   { title: '社区规模', dataIndex: 'community_size', key: 'community_size', width: 100 },
@@ -434,7 +660,7 @@ const keyNodeColumns = [
 const memberColumns = [
   { title: '账号', dataIndex: 'id', key: 'id', width: 240 },
   { title: '平台', dataIndex: 'platform', key: 'platform', width: 90, customRender: ({ text }: any) => formatPlatformLabel(text) },
-  { title: '节点分数', dataIndex: 'node_score', key: 'node_score', width: 110, customRender: ({ text }: any) => formatMetric(text) },
+  { title: '证据分数', dataIndex: 'node_score', key: 'node_score', width: 110, customRender: ({ text }: any) => formatMetric(text) },
   { title: '出向权重', dataIndex: 'directed_out_weight', key: 'directed_out_weight', width: 110, customRender: ({ text }: any) => formatMetric(text) },
   { title: '入向权重', dataIndex: 'directed_in_weight', key: 'directed_in_weight', width: 110, customRender: ({ text }: any) => formatMetric(text) },
 ]
@@ -466,6 +692,163 @@ const communityNodeMap = computed(() => {
   return mapping
 })
 
+function detectionVerdictForCluster(clusterId: any) {
+  const normalizedId = clusterId === null || clusterId === undefined ? '' : String(clusterId).trim()
+  if (!normalizedId) return null
+  return (
+    detectionVerdictMap.value.get(normalizedId) ||
+    detectionVerdictMap.value.get(`resolved-${normalizedId}`) ||
+    (normalizedId.startsWith('resolved-') ? detectionVerdictMap.value.get(normalizedId.slice('resolved-'.length)) : null) ||
+    null
+  )
+}
+
+function candidateClusterFor(clusterId: any) {
+  const normalizedId = clusterId === null || clusterId === undefined ? '' : String(clusterId).trim()
+  if (!normalizedId) return null
+  const clusters = Array.isArray(coordinationDiscovery.value?.candidate_clusters)
+    ? coordinationDiscovery.value.candidate_clusters
+    : []
+  return clusters.find((cluster: any) => {
+    const candidateId = String(cluster?.cluster_id || '').trim()
+    return candidateId === normalizedId || candidateId === `resolved-${normalizedId}` || `resolved-${candidateId}` === normalizedId
+  }) || null
+}
+
+function isHighRiskVerdict(verdict: any) {
+  if (!verdict) return false
+  const decision = String(verdict.decision || '').toLowerCase()
+  const probability = Number(verdict.harmful_probability)
+  return ['harmful', 'malicious', 'cib', 'coordinated_attack', 'harmful_coordination'].includes(decision) || (Number.isFinite(probability) && probability >= 0.5)
+}
+
+function detectionDecisionLabel(verdict: any) {
+  if (detectionUnavailable.value) return '暂不可用'
+  if (!verdict) return '待检测'
+  const decision = String(verdict.decision || '').toLowerCase()
+  if (['harmful', 'malicious', 'cib', 'coordinated_attack', 'harmful_coordination'].includes(decision)) return '高风险提示'
+  if (['benign', 'legitimate', 'non_harmful', 'benign_coordination'].includes(decision)) return '暂未提示危害'
+  return verdict.decision || '证据不足'
+}
+
+function detectionTagColor(verdict: any) {
+  if (detectionUnavailable.value) return 'default'
+  if (!verdict) return 'default'
+  if (isHighRiskVerdict(verdict)) return 'volcano'
+  return 'green'
+}
+
+function authenticitySummary(record: any) {
+  const members = activeMembersFor(record)
+  const suspicious = members.filter((member: any) => {
+    const label = String(member?.botrhg_prediction ?? '').toLowerCase()
+    const score = Number(member?.botrhg_probability ?? member?.final_bot_probability)
+    return label.includes('bot') || label.includes('suspicious') || (Number.isFinite(score) && score >= 0.75)
+  })
+  if (!members.length) {
+    return {
+      key: 'authenticity',
+      label: '真实性',
+      value: '待展开',
+      summary: '账户画像页已承载社交机器人检测；打开群组后汇总成员真实性。',
+      evidence: '可从成员表跳转账号画像，复核 Bot 概率、活跃节律和相似账号。',
+    }
+  }
+  return {
+    key: 'authenticity',
+    label: '真实性',
+    value: formatPercent(suspicious.length / Math.max(members.length, 1)),
+    summary: `${suspicious.length}/${members.length} 个成员带有机器人或可疑账号信号。`,
+    evidence: '来源：账户画像页社交机器人检测与群组成员列表。',
+  }
+}
+
+function harmfulnessSummary(record: any) {
+  const verdict = detectionVerdictForCluster(record?.cluster_id)
+  const probability = Number(verdict?.harmful_probability)
+  if (detectionUnavailable.value) {
+    return {
+      key: 'harmfulness',
+      label: '危害性',
+      value: '暂不可用',
+      summary: '当前结果没有可用的检测提示，不能把协同群组直接定性为有害。',
+      evidence: '语义辅助分析仍可作为主张、立场、情绪和内容样例来源。',
+    }
+  }
+  return {
+    key: 'harmfulness',
+    label: '危害性',
+    value: Number.isFinite(probability) ? formatPercent(probability) : '待检测',
+    summary: verdict ? `模型给出 ${detectionDecisionLabel(verdict)}，需结合内容证据复核。` : '当前群组未出现在检测输出中。',
+    evidence: '来源：预计算成员概率聚合、群组特征与语义辅助分析。',
+  }
+}
+
+function orchestrationSummary(record: any) {
+  const candidate = candidateClusterFor(record?.cluster_id)
+  const metrics = candidate?.coordination_metrics || {}
+  const relationCount = relationTypeCount(record, candidate)
+  const density = firstFinite(record?.density, metrics?.tsgs_spectral_density)
+  const objectConcentration = firstFinite(record?.object_concentration, metrics?.mhcr_hyperedge_coherence)
+  return {
+    key: 'orchestration',
+    label: '组织性',
+    value: formatMetric(firstFinite(record?.community_score, metrics?.overall_coordination_score)),
+    summary: `密度 ${formatMetric(density)}，对象集中度 ${formatMetric(objectConcentration)}，关系类型 ${relationCount} 类。`,
+    evidence: '来源：共享网址/话题/主张/文本相似/原生关系形成的账号-对象证据网络。',
+  }
+}
+
+function timeVarianceSummary(record: any) {
+  const candidate = candidateClusterFor(record?.cluster_id)
+  const windows = Array.isArray(candidate?.window_ids) ? candidate.window_ids : []
+  const delta = Number(candidate?.coordination_metrics?.temporal_sync_delta_seconds)
+  if (windows.length) {
+    return {
+      key: 'timeVariance',
+      label: '时间变化',
+      value: `${windows.length} 窗`,
+      summary: `该群组出现在 ${windows.length} 个观测窗口，平均同步间隔 ${formatSeconds(delta)}。`,
+      evidence: '来源：1h/6h/24h 窗口谱系和动态社区结果。',
+    }
+  }
+  return {
+    key: 'timeVariance',
+    label: '时间变化',
+    value: '待同步',
+    summary: '当前历史结果没有窗口级 lineage；可在传播监测页核验时间线、爆发点和持续性。',
+    evidence: '来源待补：窗口级动态图、成员进入/退出和同步峰值。',
+  }
+}
+
+function activeMembersFor(record: any) {
+  const recordId = String(record?.cluster_id ?? '')
+  const detailId = String(communityDetail.value?.cluster_id ?? '')
+  if (recordId && detailId && recordId === detailId && Array.isArray(communityDetail.value?.members)) {
+    return communityDetail.value.members
+  }
+  return []
+}
+
+function relationTypeCount(record: any, candidate: any) {
+  const relationBreakdown = record?.relation_breakdown
+  if (relationBreakdown && typeof relationBreakdown === 'object') {
+    return Object.keys(relationBreakdown).length
+  }
+  if (Array.isArray(candidate?.relation_types)) {
+    return candidate.relation_types.length
+  }
+  return 0
+}
+
+function firstFinite(...values: any[]) {
+  for (const value of values) {
+    const numeric = Number(value)
+    if (Number.isFinite(numeric)) return numeric
+  }
+  return null
+}
+
 async function loadDatasets() {
   loadingDatasets.value = true
   try {
@@ -491,49 +874,99 @@ async function handleDatasetSelect(datasetId: number) {
 
 async function selectDataset(datasetId: number) {
   selectedDatasetId.value = datasetId
+  datasetDetail.value = null
+  resultSnapshot.value = null
+  graphPayload.value = null
+  datasetDetailError.value = null
+  latestResultError.value = null
+  graphError.value = null
   communityDrawerOpen.value = false
   selectedNode.value = null
   communityDetail.value = null
-  await Promise.all([loadDatasetDetail(datasetId), loadGraph()])
-  void loadLatestResult(datasetId)
+  await Promise.all([loadDatasetDetail(datasetId), loadLatestResult(datasetId), loadGraph()])
 }
 
 async function loadDatasetDetail(datasetId: number) {
+  const requestGeneration = ++datasetDetailRequestGeneration
   loadingDetail.value = true
+  datasetDetailError.value = null
   try {
     const resp = await getCoordinationDatasetDetail(datasetId)
+    if (requestGeneration !== datasetDetailRequestGeneration || datasetId !== selectedDatasetId.value) return
     datasetDetail.value = resp.data
+  } catch (error) {
+    if (requestGeneration !== datasetDetailRequestGeneration || datasetId !== selectedDatasetId.value) return
+    datasetDetail.value = null
+    datasetDetailError.value = resourceErrorMessage(error, '数据集详情加载失败')
   } finally {
-    loadingDetail.value = false
+    if (requestGeneration === datasetDetailRequestGeneration) {
+      loadingDetail.value = false
+    }
   }
 }
 
 async function loadLatestResult(datasetId: number) {
+  const requestGeneration = ++latestResultRequestGeneration
   loadingResult.value = true
+  latestResultError.value = null
   try {
     const resp = await getCoordinationDatasetLatestResult(datasetId)
+    if (requestGeneration !== latestResultRequestGeneration || datasetId !== selectedDatasetId.value) return
     resultSnapshot.value = resp.data
+  } catch (error) {
+    if (requestGeneration !== latestResultRequestGeneration || datasetId !== selectedDatasetId.value) return
+    resultSnapshot.value = null
+    latestResultError.value = resourceErrorMessage(error, '历史结果加载失败')
   } finally {
-    loadingResult.value = false
+    if (requestGeneration === latestResultRequestGeneration) {
+      loadingResult.value = false
+    }
   }
 }
 
 async function loadGraph() {
   if (!pageActive.value || !selectedDatasetId.value) return
+  const datasetId = selectedDatasetId.value
   const requestGeneration = ++graphRequestGeneration
   loadingGraph.value = true
+  graphError.value = null
   try {
-    const resp = await getCoordinationGraph(selectedDatasetId.value, {
+    const resp = await getCoordinationGraph(datasetId, {
       node_limit: nodeLimit.value,
       min_node_score: minNodeScore.value,
     })
-    if (!pageActive.value || requestGeneration !== graphRequestGeneration) return
+    if (!pageActive.value || requestGeneration !== graphRequestGeneration || datasetId !== selectedDatasetId.value) return
     graphPayload.value = resp.data
+  } catch (error) {
+    if (!pageActive.value || requestGeneration !== graphRequestGeneration || datasetId !== selectedDatasetId.value) return
+    graphPayload.value = null
+    graphError.value = resourceErrorMessage(error, '协同网络加载失败')
   } finally {
     if (requestGeneration === graphRequestGeneration) {
       loadingGraph.value = false
     }
   }
+}
+
+function retryDatasetDetail() {
+  if (selectedDatasetId.value) void loadDatasetDetail(selectedDatasetId.value)
+}
+
+function retryLatestResult() {
+  if (selectedDatasetId.value) void loadLatestResult(selectedDatasetId.value)
+}
+
+function retryGraph() {
+  void loadGraph()
+}
+
+function resourceErrorMessage(error: unknown, fallback: string) {
+  if (error && typeof error === 'object') {
+    const detail = (error as { response?: { data?: { detail?: unknown } } }).response?.data?.detail
+    if (typeof detail === 'string' && detail.trim()) return `${fallback}：${detail}`
+  }
+  if (error instanceof Error && error.message) return `${fallback}：${error.message}`
+  return fallback
 }
 
 function scheduleGraphReload() {
@@ -650,7 +1083,7 @@ async function handleRerun() {
       throw new Error('未返回运行任务 ID')
     }
     pollingRunId.value = runId
-    message.success(`已提交运行任务 #${runId}`)
+    message.success(`已提交归档复现任务 #${runId}`)
     await loadDatasetDetail(selectedDatasetId.value)
     startPolling(runId)
   } catch (error: any) {
@@ -676,9 +1109,9 @@ function startPolling(runId: number) {
         pollingRunId.value = null
         if (selectedDatasetId.value) {
           await Promise.all([loadDatasets(), loadDatasetDetail(selectedDatasetId.value), loadGraph()])
-          void loadLatestResult(selectedDatasetId.value)
+          await loadLatestResult(selectedDatasetId.value)
         }
-        message.success('协同检测模型运行完成')
+        message.success('归档复现运行完成')
         return
       }
       if (run.status === 'failed') {
@@ -686,7 +1119,7 @@ function startPolling(runId: number) {
         running.value = false
         pollingRunId.value = null
         await loadDatasetDetail(selectedDatasetId.value as number)
-        message.error(run.error || '协同检测模型运行失败')
+        message.error(run.error || '归档复现运行失败')
         return
       }
     } catch {
@@ -732,6 +1165,8 @@ function activateCoordinationPage() {
 
 function deactivateCoordinationPage() {
   pageActive.value = false
+  datasetDetailRequestGeneration += 1
+  latestResultRequestGeneration += 1
   graphRequestGeneration += 1
   stopPolling()
   if (graphReloadTimer !== null) {
@@ -753,6 +1188,19 @@ function formatMetric(value: any) {
   return Number.isFinite(numeric) ? numeric.toFixed(4) : String(value)
 }
 
+function formatInteger(value: any) {
+  if (value === null || value === undefined || value === '') return '-'
+  const numeric = Number(value)
+  return Number.isFinite(numeric) ? Math.round(numeric).toLocaleString('zh-CN') : String(value)
+}
+
+function formatSeconds(value: any) {
+  if (value === null || value === undefined || value === '') return '-'
+  const numeric = Number(value)
+  if (!Number.isFinite(numeric)) return String(value)
+  return numeric >= 60 ? `${(numeric / 60).toFixed(1)} 分钟` : `${numeric.toFixed(1)} 秒`
+}
+
 function formatPercent(value: any) {
   if (value === null || value === undefined || value === '') return '-'
   const numeric = Number(value)
@@ -761,7 +1209,7 @@ function formatPercent(value: any) {
 
 function formatRelationLabel(value: any) {
   const mapping: Record<string, string> = {
-    url_share: '共享 URL',
+    url_share: '共享网址',
     hashtag_share: '共享话题',
     retweet_target: '同转推目标',
     reply_target: '同回复目标',
@@ -769,7 +1217,7 @@ function formatRelationLabel(value: any) {
     mention_target: '同提及目标',
     fast_retweet: '快速转推',
     tweet_similarity: '文本相似',
-    courl: '共链 URL',
+    courl: '共链网址',
     cort: '共转推',
     fastrt: '快速转推',
     hashseq: '话题序列',
@@ -874,10 +1322,158 @@ onDeactivated(() => {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  font-variant-numeric: tabular-nums;
+}
+
+.coordination-page :deep(.ant-spin-container) > * + * {
+  margin-top: 20px;
 }
 
 .panel {
   border-radius: 14px;
+}
+
+.workbench-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.detection-status-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 12px 14px;
+  border: 1px solid #cbd8e5;
+  border-left: 3px solid #63809e;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #334155;
+}
+
+.detection-status-strip > div {
+  min-width: 0;
+}
+
+.detection-status-strip strong {
+  color: #1e293b;
+  font-size: 14px;
+}
+
+.detection-status-strip p {
+  margin: 4px 0 0;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.detection-status-strip > span {
+  max-width: 300px;
+  color: #52667c;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.workbench-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.workbench-metrics .summary-item {
+  min-height: 92px;
+  border: 1px solid #d7e1eb;
+  background: #fbfcfe;
+}
+
+.workbench-metrics .summary-item small {
+  color: #64748b;
+  line-height: 1.4;
+}
+
+.characterization-panel {
+  min-width: 0;
+  padding-top: 2px;
+}
+
+.dimension-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  min-width: 0;
+}
+
+.dimension-grid--drawer {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.dimension-card {
+  min-width: 0;
+  border: 1px solid #d7e1eb;
+  border-left: 3px solid #63809e;
+  border-radius: 8px;
+  background: #fbfcfe;
+  box-shadow: none;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 148px;
+}
+
+.characterization-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.characterization-panel-head h2 {
+  margin: 0;
+  color: #1e293b;
+  font-size: 16px;
+  font-weight: 650;
+  line-height: 1.5;
+}
+
+.dimension-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.dimension-card-head span {
+  color: #475569;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.dimension-card-head strong {
+  color: #0f172a;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.dimension-card p {
+  margin: 0;
+  color: #0f172a;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.dimension-card small {
+  color: #64748b;
+  line-height: 1.5;
+}
+
+.table-verdict {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .panel-row {
@@ -967,6 +1563,13 @@ onDeactivated(() => {
   flex-wrap: wrap;
   color: #64748b;
   font-size: 13px;
+}
+
+.network-summary {
+  margin: 0 0 10px;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.6;
 }
 
 .network-toolbar {
@@ -1213,7 +1816,17 @@ onDeactivated(() => {
   word-break: break-word;
 }
 
+@media (max-width: 1400px) {
+  .dimension-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 960px) {
+  .workbench-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .network-panel-head {
     align-items: flex-start;
     flex-direction: column;
@@ -1237,6 +1850,23 @@ onDeactivated(() => {
 
   .drawer-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .workbench-metrics,
+  .dimension-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .detection-status-strip {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .detection-status-strip > span {
+    max-width: none;
   }
 }
 </style>

@@ -6,6 +6,19 @@
 
 > 最后更新：2026-08-14
 
+## 2026-08-17 MARO Review Audit Workbench
+
+- [x] Added `GET /api/v2/review-cases/{case_id}/teacher-audit` as a bounded,
+  read-only projection of persisted review advisory data.
+- [x] Added the `/risk` audit workspace with explicit unavailable, queued,
+  completed, and failed states; role timeline, source excerpts, retrieval
+  queries, short rationale capsules, quality-gate status, and analyst-confirmed
+  decision boundary are visualized from real API fields.
+- [x] Added frontend/API and backend contract tests. No LLM, external retrieval,
+  dataset training, or multimodal consistency run belongs to this coding slice.
+- [ ] Authenticated browser/API smoke remains pending until the local MySQL and
+  Docker infrastructure is available.
+
 ## 2026-08-17 Claim Response Semantic Readout
 
 - [x] The Claim Response Landscape now returns a direct-comment path semantic
@@ -26,6 +39,20 @@
   passed. Docker Desktop Linux Engine cannot currently be reached locally, so
   authenticated API and browser smoke remain pending until it is restored.
 
+## 2026-08-14 Propagation Active-Window Timeline
+
+- [x] Add a fast, evidence-only propagation timeline projection at
+  `/api/v1/propagation/model-event-timeline`, independent of checkpoint
+  inference and its cache.
+- [x] Default the forecast workspace to the deterministic densest six-hour
+  active window, with minute aggregation and `24h` / `7d` / full-history
+  controls using hour, day, and week buckets.
+- [x] Keep date-backed observed and retrospective evidence in a zoomable chart;
+  keep model output explicitly as normalized relative steps so the UI never
+  manufactures forecast timestamps or leaks archived future evidence.
+- [x] Verify the route projection (`14 passed`), frontend contracts
+  (`55 passed`), and production frontend build.
+
 ## 2026-08-14 Real Semantic Evidence Frontend Closure
 
 - [x] Added a fail-closed, real-local-model semantic runtime using the fixed
@@ -41,11 +68,40 @@
   avoid all-pairs Python cosine comparison on the three-platform snapshot.
 - [x] Backend semantic regression tests (`43 passed`), frontend semantic
   contract tests (`48 passed`), and the production frontend build pass.
-- [ ] The real `trump_visit_2026_05_21` artifact is intentionally not claimed
-  as precomputed: the source manifest is ready (Weibo 165/2680, XHS 98/1905,
-  Douyin 31/10137), but the local Docker daemon is unavailable, so MongoDB,
-  MySQL, and Redis cannot be reached. The precompute script returns the
-  explicit `database_blocked` state and writes no successful semantic artifact.
+- [x] Precomputed the real `trump_visit_2026_05_21` three-platform semantic
+  artifact in `run_trump_visit_2026_05_21_semantic_v8`: Weibo `165/2680`,
+  XHS `98/1905`, Douyin `31/10137`. The fixed local model revisions produced
+  a `14773 x 512` BGE embedding manifest and persisted a ready semantic
+  artifact.
+- [x] Propagation overlays now require exact post/comment `evidence_refs`
+  carried by the observed path edges. Account graph nodes, text similarity,
+  and event-wide aggregates cannot create an overlay. The v8 artifact has 27
+  unique evidence-backed key-path overlays; each reference can be traced to
+  the immutable snapshot.
+- [x] The propagation path drawer loads the Propagation Analysis artifact from
+  the same ready semantic run, rather than matching a newly computed path.
+  It renders an overlay only when snapshot, non-fallback status, path ID, and
+  platform-qualified post/comment references all agree; malformed or stale
+  paths remain explicitly unavailable.
+
+## 2026-08-14 Propagation Overview Delivery Alignment
+
+- [x] Render the primary Propagation Analysis overview as deterministic
+  layer-based concentric rings without relationship lines; retain the edge and
+  evidence projection for API and drill-down use.
+- [x] Align the authenticated demo warmup query to the page's `160/40/80`
+  hierarchy budget, so first navigation reuses the versioned propagation
+  projection instead of calculating a separate `node_limit=300` result.
+- [x] Verify the static delivery page and repeat real request path against the
+  Trump event: `160` visible nodes, no overview lines, and repeat projection
+  reads around `0.5 s` after warmup.
+- [x] Support default startup when the complete compatible `cogguard-*`
+  infrastructure set already exists: apply the idempotent MongoDB index
+  operation through the named container rather than a foreign Compose project.
+- [x] Precompute the demonstration event's forecast cache during authenticated
+  warmup and preserve a concurrently read cache result while the observed-path
+  projection finishes. The trend tab can open directly from the static
+  delivery page without issuing an on-demand model inference.
 
 ## 2026-08-08 TwiBot-20 Research Runtime And Dataset Identity
 
@@ -191,6 +247,7 @@
   approvals, and the backend control-plane boundary are implemented; the
   deployment migration and real queue smoke remain environment gates.
 - [x] 本地原型验收脚本已贯通 EventSnapshot、Coordination Discover、Propagation Analysis、Student Review 和 Teacher Review，并明确输出 fallback/shadow/advisory/non-claimable 状态。
+- [x] 历史 Coordination Archive Replay 已补齐只读群体投影：存在已持久化成员预测时按原始社区成员关系聚合为可追溯证据提示；预测缺失时返回阻塞状态，绝不以规则或 shadow 分类器替代。特朗普访华微博演示运行读取到 108 个提示、其中 2 个高风险提示，仍须由分析员确认。
 - [ ] 研究级 Coordination Discover、Propagation Analysis 和 Student/Teacher checkpoint 尚未因缺少批准 artifact 而声明为可研究主张结果；Social Bot Detection 的 BotRHG Weibo transfer 已有真实 checkpoint，但当前指标低于同切分 TF-IDF 参考，研究 claim 仍 blocked。
 - [x] 前端 `npm run build`（包含 `vue-tsc -b`）已通过；本轮不修改前端展示页面。
 - [x] 账号模型控制面已完成真实 MySQL/Mongo/Redis/Celery smoke：迁移回环、transactional outbox、训练/评估队列注册、重复投递门禁、不可变 Encoder Version、Frozen Holdout 评估、训练导出 lineage、Active Pointer 失效拒绝和受限自动回滚均有代码与回归证据。
@@ -472,6 +529,51 @@
 - [NewsCrawler](../NewsCrawler-main/README.md) - 新闻爬虫参考
 - [CooRTweet](../CooRTweet-master/README.md) - 协调行为检测算法参考
 
+## 2026-08-15 Review Teacher + Student coding stage
+
+- [x] Add typed `EvidenceBundle`, `PolicyBundle`, and `RationaleCapsule`
+  contracts with strict rationale quality gating.
+- [x] Bound MARO-compatible QuestionReflection follow-ups to two targeted
+  expert responses and keep Countermeasure post-Judge and explicit-only.
+- [x] Add the gold-free offline hard-case manifest builder; it does not call
+  Teacher or create silver data.
+- [x] Keep Review Student task axes and rationale projections separate from
+  Teacher confidence, raw RAG context, and full Agent traces.
+- [x] Separate claim assessment, retrieval execution, and evidence relation;
+  prohibit raw-post factual queries and reserve `insufficient` for completed,
+  traceable claim verification only.
+- [x] Check out the eight reference repositories under the external reference
+  boundary and record commit/license/use metadata.
+- [x] Synchronize context, ubiquitous language, product/technology/workflow
+  guidance, ADR, and research implementation notes.
+- [x] Run targeted static and non-CUDA unit validation for this coding stage;
+  no training, provider call, or performance experiment was run.
+- [ ] Later track: integrate live EvidenceRAG/PolicyRAG providers, run Teacher
+  quality evaluation, and train/evaluate Student with an explicit experiment
+  protocol.
+
+## 2026-08-16 MARO Weibo21 experiment execution
+
+- [x] Add bounded provider concurrency, non-secret per-call Judge audit
+  telemetry, and same-configuration analysis-cache seeding for the offline
+  MARO Weibo21 adapter.
+- [x] Complete a 50-case DeepSeek/Exa concurrency-8 calibration without 429
+  or provider failure; preserve its report and telemetry for operational
+  sizing only.
+- [ ] Complete the pre-registered full-target local adaptation for `政治`,
+  `灾难事故`, and `科技` using 20 validation tasks, 3 rule iterations, 3 voting
+  rules, and full target-domain denominators. Blocked by DeepSeek HTTP 402;
+  neither the preceding mis-budgeted run nor the blocked retry has a valid
+  performance report.
+
+## 2026-08-15 传播观点格局
+
+- [x] 在 `/propagation` 提供权威主张锚点、官方发布、平台内影响回应和回应时间轴的只读投影。
+- [x] 强制权威账号精确绑定、权威原帖引用与路径证据引用；无精确路径时明确显示证据缺口。
+- [x] 为空响应通道、路径下钻和请求作用域补充 API/前端契约测试。
+- [x] 将已采集评论的 `post_id` 和 `reply_to` 关系投影为权威主张的精确评论回应路径；特朗普访华主主张当前有 130 条路径与 10 个平台内影响回应。
+- [ ] 后续采集带原帖/转发/引用父子关系的真实数据，以扩展评论树之外的影响回应覆盖；不得使用文本相似度或账号名称补造路径。
+
 ## 2026-08-10 Coordination 研究门禁
 
 - [x] 将冻结生产 `coordination-evidence-runtime-v2` 的静态图 prior 接入 IOHunter 同源评估。
@@ -486,3 +588,20 @@
 - [ ] 完全交叉 model seed 与 official fold，消除当前 seed-fold 耦合。
 - [ ] 使用可扩展但单独命名的生产社区 baseline；不得替换冻结 baseline 后沿用原方法身份。
 - [ ] 使用具备真实 coordination edge/community Gold 的数据验证 Discovery，并用 harmful-CIB Gold 单独验证 Detect。
+
+## 2026-08-17: HateCoT expanded MARO-compatible experiment coding
+
+- [x] Add deterministic source-train/source-dev splitting and exact held-out
+  target sampling for `cad`, `dynahate`, and `toraman`.
+- [x] Separate source-train strict-improvement candidate generation from
+  source-dev Macro-F1 rule selection.
+- [x] Add policy-off primary and isolated local-advisory ablation modes.
+- [x] Add split manifests, target-label prompt boundary, fold protocol hashes,
+  and explicit hash-checked `--resume` behavior.
+- [x] Run the no-provider dry-run: three folds, 300 target cases each, 100 per
+  class, with no case-ID overlap.
+- [x] Run focused protocol tests and static compilation.
+- [ ] Run the live 900-case two-arm DeepSeek evaluation and audit its provider
+  telemetry before reporting performance.
+- [ ] Use any future Teacher Silver output for Student/LRKD only after a
+  disjoint-source quality gate and a separately registered distillation study.

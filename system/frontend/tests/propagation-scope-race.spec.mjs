@@ -9,6 +9,19 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 const frontendRoot = resolve(__dirname, '..')
 const propagationView = readFileSync(resolve(frontendRoot, 'src/views/propagation/index.vue'), 'utf8')
 
+function functionBody(source, name) {
+  const start = source.indexOf(`function ${name}`)
+  assert.notEqual(start, -1, `Expected ${name} to exist`)
+  const bodyStart = source.indexOf('{', start)
+  let depth = 0
+  for (let index = bodyStart; index < source.length; index += 1) {
+    if (source[index] === '{') depth += 1
+    if (source[index] === '}') depth -= 1
+    if (depth === 0) return source.slice(start, index + 1)
+  }
+  throw new Error(`Could not extract ${name}`)
+}
+
 async function loadRequestScopeHelper() {
   const helperSource = readFileSync(resolve(frontendRoot, 'src/views/propagation/requestScope.ts'), 'utf8')
   const { outputText } = ts.transpileModule(helperSource, {
@@ -216,6 +229,45 @@ test('propagation lifecycle functions use the shared request-scope policy helper
   assert.match(propagationView, /from '\.\/requestScope'/)
   assert.match(propagationView, /acceptPropagationScopedResponse\(\{[\s\S]*?sameScope: samePropagationAnalysisScope/)
   assert.match(propagationView, /acceptPropagationScopedResponse\(\{[\s\S]*?sameScope: samePropagationAlertsScope/)
+})
+
+test('propagation page loads only observed paths on entry and defers optional projections to their tabs', () => {
+  const mounted = propagationView.slice(propagationView.indexOf('onMounted(() =>'), propagationView.indexOf('watch('))
+  const tabWatcher = propagationView.slice(propagationView.indexOf('watch(activeTab'), propagationView.indexOf('watch(modelPredictionReady'))
+
+  assert.match(mounted, /void loadAnalysis\(false, true\)/)
+  assert.doesNotMatch(mounted, /void loadCachedPrediction\(\)/)
+  assert.doesNotMatch(mounted, /void loadEvidenceTimeline\(\)/)
+  assert.doesNotMatch(mounted, /void loadPropagationAlerts\(\)/)
+  assert.doesNotMatch(mounted, /void loadClaimResponseLandscape\(\)/)
+  assert.doesNotMatch(mounted, /void loadSemanticProjection\(\)/)
+  assert.match(tabWatcher, /activeTab\.value === 'model'[\s\S]*?loadCachedPrediction\(\)/)
+  assert.match(tabWatcher, /activeTab\.value === 'model'[\s\S]*?loadEvidenceTimeline\(\)/)
+  assert.match(tabWatcher, /activeTab\.value === 'alerts'[\s\S]*?loadPropagationAlerts\(\)/)
+  assert.match(tabWatcher, /activeTab\.value === 'claim-response'[\s\S]*?loadClaimResponseLandscape\(\)/)
+})
+
+test('propagation page loads a generic semantic artifact only for a non-claim path drilldown', () => {
+  const openPath = functionBody(propagationView, 'openClaimPathDetail')
+  const lifecycleStart = propagationView.indexOf('\nonMounted(() => {')
+  const lifecycleEnd = propagationView.indexOf('\nwatch(', lifecycleStart)
+
+  assert.match(openPath, /path\?\.metadata\?\.claim_response !== true/)
+  assert.match(openPath, /void loadSemanticProjection\(\)/)
+  assert.notEqual(lifecycleStart, -1, 'Expected the lifecycle onMounted block to exist')
+  assert.notEqual(lifecycleEnd, -1, 'Expected a watcher after the lifecycle onMounted block')
+  assert.doesNotMatch(propagationView.slice(lifecycleStart, lifecycleEnd), /loadSemanticProjection\(\)/)
+})
+
+test('propagation page distinguishes a transport failure from backend no-data and an ordinary empty path', () => {
+  const loadAnalysis = functionBody(propagationView, 'loadAnalysis')
+
+  assert.match(propagationView, /传播分析加载失败/)
+  assert.match(propagationView, /当前范围无可分析内容/)
+  assert.match(propagationView, /当前范围暂未形成可展示路径/)
+  assert.match(propagationView, /重试当前范围/)
+  assert.match(loadAnalysis, /analysisRequestError\.value = requestErrorMessage/)
+  assert.match(loadAnalysis, /analysisBusinessEmptyReason\.value = String\(res\.data\.error\)/)
 })
 
 test('path node controls stack inside the mobile propagation viewport', () => {

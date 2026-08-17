@@ -192,7 +192,7 @@ def load_checkpoint(path: Path, *, device: str) -> tuple[Any, Any, dict[str, Any
     import torch
     from transformers import AutoTokenizer
 
-    payload = torch.load(path, map_location=device)
+    payload = torch.load(path, map_location=device, weights_only=False)
     config = payload.get("model_config") or payload.get("run_config") or {}
     backbone = str(config.get("backbone") or "FacebookAI/xlm-roberta-base")
     cache_dir = str(config.get("hf_cache_dir") or "")
@@ -210,7 +210,9 @@ def load_checkpoint(path: Path, *, device: str) -> tuple[Any, Any, dict[str, Any
         cache_dir=cache_dir or None,
         local_files_only=local_files_only,
     ).to(device)
-    model.load_state_dict(payload["model_state_dict"])
+    # Protocol heads were added after the original HateCoT LRKD checkpoint
+    # schema. They are irrelevant to this legacy binary transfer runner.
+    model.load_state_dict(payload["model_state_dict"], strict=False)
     model.eval()
     return model, tokenizer, payload
 

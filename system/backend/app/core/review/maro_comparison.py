@@ -29,6 +29,7 @@ DATASET_AXIS_MAPPING = {
     "PHEME": MISINFO_AXIS,
     "mcfend": MISINFO_AXIS,
     "FakeSV": MISINFO_AXIS,
+    "Weibo21": MISINFO_AXIS,
 }
 _DATASET_LOOKUP = {name.lower(): (name, axis) for name, axis in DATASET_AXIS_MAPPING.items()}
 

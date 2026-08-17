@@ -50,6 +50,13 @@ DECEPTION_FINE_LABELS = (
 )
 FINE_LABEL_ORDER = INTERPERSONAL_FINE_LABELS + DECEPTION_FINE_LABELS
 
+PROTOCOL_HEAD_DIMS = {
+    "hatexplain_3way": 3,
+    "latent_hate_3way": 3,
+    "hatecheck_binary": 2,
+    "hatecot_universal_3way": 3,
+}
+
 INTERPERSONAL_DATASETS = {"hatexplain", "hatecot", "multioff"}
 DECEPTION_DATASETS = {"pheme", "mcfend", "fakesv", "weibo21"}
 CLAIM_LINKED_DATASETS = {"pheme", "mcfend", "fakesv", "weibo21"}
@@ -79,7 +86,9 @@ NEGATIVE_LABELS = {
     "non-rumour",
 }
 
-FIELD_ORDER = ("text", "hashtags", "ocr", "asr", "caption")
+PRIMARY_FIELD_ORDER = ("text", "hashtags")
+DERIVED_TEXT_FIELD_ORDER = ("ocr", "asr", "caption")
+FIELD_ORDER = PRIMARY_FIELD_ORDER + DERIVED_TEXT_FIELD_ORDER
 RATIONALE_FIELDS = ("explain", "explanation", "rationale", "rationale_text")
 
 
@@ -181,11 +190,20 @@ def _field_value(case: Mapping[str, Any], field: str) -> str:
     return _clean_text(case.get(field))
 
 
-def build_textified_input(case: Mapping[str, Any]) -> str:
-    """Serialize social-media evidence fields for a text-only encoder."""
+def build_textified_input(
+    case: Mapping[str, Any],
+    *,
+    include_derived_text: bool = True,
+) -> str:
+    """Serialize social-media evidence fields for a text-only encoder.
+
+    The Student path uses only primary text fields. Derived media text remains
+    available to legacy callers behind an explicit compatibility option.
+    """
 
     segments = []
-    for field in FIELD_ORDER:
+    field_order = FIELD_ORDER if include_derived_text else PRIMARY_FIELD_ORDER
+    for field in field_order:
         value = _field_value(case, field)
         if value:
             segments.append(f"[{field.upper()}] {value}")
@@ -342,7 +360,7 @@ def build_textified_student_example(case: Mapping[str, Any]) -> TextifiedStudent
         case_id=_clean_text(case.get("case_id") or case.get("id")) or "unknown",
         dataset=dataset,
         split=_clean_text(case.get("split") or case.get("protocol_split")) or "unknown",
-        input_text=build_textified_input(case),
+        input_text=build_textified_input(case, include_derived_text=False),
         labels=labels,
         task_mask=task_mask,
         fine_labels=fine_label_targets(case),
@@ -401,6 +419,7 @@ class XLMRTextifiedReviewStudent(nn.Module if nn is not None else object):
         stance_count: int = len(STANCE_ORDER),
         rationale_dim: int = 768,
         dropout: float = 0.1,
+        protocol_head_dims: Mapping[str, int] | None = None,
         local_files_only: bool = False,
         cache_dir: str | None = None,
     ):
@@ -420,6 +439,15 @@ class XLMRTextifiedReviewStudent(nn.Module if nn is not None else object):
         self.stance = nn.Linear(hidden_size, stance_count)
         self.fine_labels = nn.Linear(hidden_size, fine_label_count)
         self.rationale_proj = nn.Linear(hidden_size, rationale_dim)
+        self.harm_rationale_proj = nn.Linear(hidden_size, rationale_dim)
+        self.evidence_rationale_proj = nn.Linear(hidden_size, rationale_dim)
+        self.policy_rationale_proj = nn.Linear(hidden_size, rationale_dim)
+        protocol_dims = dict(PROTOCOL_HEAD_DIMS)
+        if protocol_head_dims:
+            protocol_dims.update({str(name): int(size) for name, size in protocol_head_dims.items()})
+        self.protocol_heads = nn.ModuleDict({
+            name: nn.Linear(hidden_size, size) for name, size in protocol_dims.items()
+        })
 
     def forward(self, input_ids: Any, attention_mask: Any, **kwargs: Any) -> dict[str, Any]:
         output = self.backbone(input_ids=input_ids, attention_mask=attention_mask, **kwargs)
@@ -427,12 +455,19 @@ class XLMRTextifiedReviewStudent(nn.Module if nn is not None else object):
         mask = attention_mask.unsqueeze(-1).float()
         pooled = (token_embeddings * mask).sum(dim=1) / mask.sum(dim=1).clamp_min(1.0)
         pooled = self.dropout(pooled)
+        rationale_projection = self.rationale_proj(pooled)
         return {
             INTERPERSONAL_AXIS: self.interpersonal_aggression(pooled).squeeze(-1),
             DECEPTION_AXIS: self.ideological_deception(pooled).squeeze(-1),
             STANCE_AXIS: self.stance(pooled),
             "fine_labels": self.fine_labels(pooled),
-            "rationale_proj": self.rationale_proj(pooled),
+            "rationale_proj": rationale_projection,
+            "harm_rationale_proj": getattr(self, "harm_rationale_proj", self.rationale_proj)(pooled),
+            "evidence_rationale_proj": getattr(self, "evidence_rationale_proj", self.rationale_proj)(pooled),
+            "policy_rationale_proj": getattr(self, "policy_rationale_proj", self.rationale_proj)(pooled),
+            "protocol_logits": {
+                name: head(pooled) for name, head in self.protocol_heads.items()
+            },
             "pooled": pooled,
         }
 
@@ -491,6 +526,9 @@ class TextifiedStudentLoss(nn.Module if nn is not None else object):
         stance_weight: float = 0.1,
         fine_label_weight: float = 0.2,
         lrkd_weight: float = 0.0,
+        harm_rationale_weight: float = 0.0,
+        evidence_rationale_weight: float = 0.0,
+        policy_rationale_weight: float = 0.0,
     ):
         require_torch()
         super().__init__()
@@ -500,6 +538,9 @@ class TextifiedStudentLoss(nn.Module if nn is not None else object):
         self.stance_weight = stance_weight
         self.fine_label_weight = fine_label_weight
         self.lrkd_weight = lrkd_weight
+        self.harm_rationale_weight = harm_rationale_weight
+        self.evidence_rationale_weight = evidence_rationale_weight
+        self.policy_rationale_weight = policy_rationale_weight
 
     def forward(self, outputs: Mapping[str, Any], targets: Mapping[str, Any]) -> dict[str, Any]:
         interpersonal_loss = masked_mean(
@@ -540,6 +581,23 @@ class TextifiedStudentLoss(nn.Module if nn is not None else object):
             )
             lrkd_loss = masked_mean(per_row_lrkd, targets["teacher_vector_mask"])
             total = total + self.lrkd_weight * lrkd_loss
+        rationale_losses: dict[str, Any] = {}
+        rationale_specs = (
+            ("harm_rationale_proj", "harm_teacher_vector", "harm_teacher_vector_mask", self.harm_rationale_weight),
+            ("evidence_rationale_proj", "evidence_teacher_vector", "evidence_teacher_vector_mask", self.evidence_rationale_weight),
+            ("policy_rationale_proj", "policy_teacher_vector", "policy_teacher_vector_mask", self.policy_rationale_weight),
+        )
+        for output_key, target_key, mask_key, weight in rationale_specs:
+            loss = torch.zeros((), device=total.device)
+            if weight > 0.0 and output_key in outputs and target_key in targets and mask_key in targets:
+                target_similarity = torch.ones(
+                    outputs[output_key].shape[0],
+                    device=outputs[output_key].device,
+                )
+                per_row = self.cosine(outputs[output_key], targets[target_key], target_similarity)
+                loss = masked_mean(per_row, targets[mask_key])
+                total = total + weight * loss
+            rationale_losses[output_key] = loss
         return {
             "total_loss": total,
             INTERPERSONAL_AXIS: interpersonal_loss,
@@ -547,4 +605,5 @@ class TextifiedStudentLoss(nn.Module if nn is not None else object):
             STANCE_AXIS: stance_loss,
             "fine_labels": fine_loss,
             "lrkd": lrkd_loss,
+            **rationale_losses,
         }

@@ -150,6 +150,7 @@ async def _event_semantic_projection(event_id: str, registry: AnalysisRegistry) 
         )
 
     blocked: dict[str, Any] | None = None
+    current_snapshot_cache: dict[tuple[str, str, str, str, str], Any] = {}
     for run in candidates:
         run_id = str(run.get("run_id") or "")
         snapshot_id = _optional_text(run.get("snapshot_id"))
@@ -167,16 +168,26 @@ async def _event_semantic_projection(event_id: str, registry: AnalysisRegistry) 
             reason = "semantic_artifact_load_failed"
         else:
             if _is_ready_semantic_artifact(artifact):
-                return _semantic_projection(
+                freshness_reason = await _semantic_artifact_freshness(
                     event_id=event_id,
-                    run_id=run_id,
-                    snapshot_id=snapshot_id,
-                    status="ready",
-                    blocking_reason=None,
+                    run=run,
                     artifact=artifact,
+                    registry=registry,
+                    current_snapshot_cache=current_snapshot_cache,
                 )
-            payload = artifact if isinstance(artifact, dict) else {}
-            reason = _optional_text(payload.get("blocking_reason")) or "semantic_artifact_not_ready"
+                if freshness_reason is None:
+                    return _semantic_projection(
+                        event_id=event_id,
+                        run_id=run_id,
+                        snapshot_id=snapshot_id,
+                        status="ready",
+                        blocking_reason=None,
+                        artifact=artifact,
+                    )
+                reason = freshness_reason
+            else:
+                payload = artifact if isinstance(artifact, dict) else {}
+                reason = _optional_text(payload.get("blocking_reason")) or "semantic_artifact_not_ready"
 
         if blocked is None:
             blocked = _semantic_projection(
@@ -192,6 +203,79 @@ async def _event_semantic_projection(event_id: str, registry: AnalysisRegistry) 
         status="not_found",
         blocking_reason="semantic_artifact_not_found",
     )
+
+
+async def _semantic_artifact_freshness(
+    *,
+    event_id: str,
+    run: dict[str, Any],
+    artifact: dict[str, Any],
+    registry: AnalysisRegistry,
+    current_snapshot_cache: dict[tuple[str, str, str, str, str], Any],
+) -> str | None:
+    """Return a blocking reason unless artifact, snapshot, and source content agree."""
+    snapshot_id = _optional_text(run.get("snapshot_id"))
+    embedding_manifest = artifact.get("embedding_manifest")
+    embedding_fingerprint = (
+        _optional_text(embedding_manifest.get("snapshot_fingerprint"))
+        if isinstance(embedding_manifest, dict)
+        else None
+    )
+    artifact_manifest = run.get("artifact_manifest")
+    run_fingerprint = (
+        _optional_text(artifact_manifest.get("data_fingerprint"))
+        if isinstance(artifact_manifest, dict)
+        else None
+    )
+    if not snapshot_id or not embedding_fingerprint or not run_fingerprint:
+        return "semantic_artifact_snapshot_mismatch"
+
+    try:
+        snapshot = await registry.load_event_snapshot(snapshot_id)
+    except Exception:
+        return "semantic_snapshot_lookup_failed"
+
+    snapshot_fingerprint = _optional_text(getattr(snapshot, "data_fingerprint", None))
+    if (
+        _optional_text(getattr(snapshot, "snapshot_id", None)) != snapshot_id
+        or _optional_text(getattr(snapshot, "event_id", None)) != event_id
+        or not snapshot_fingerprint
+        or snapshot_fingerprint != embedding_fingerprint
+        or snapshot_fingerprint != run_fingerprint
+    ):
+        return "semantic_artifact_snapshot_mismatch"
+
+    core_window = getattr(snapshot, "core_window", None)
+    context_window = getattr(snapshot, "context_window", None)
+    cache_key = (
+        event_id,
+        _window_identity(core_window, "start"),
+        _window_identity(core_window, "end"),
+        _window_identity(context_window, "start"),
+        _window_identity(context_window, "end"),
+    )
+    try:
+        current_snapshot = current_snapshot_cache.get(cache_key)
+        if current_snapshot is None:
+            current_snapshot = await registry.build_current_event_snapshot(
+                event_id=event_id,
+                core_window=core_window,
+                context_window=context_window,
+            )
+            current_snapshot_cache[cache_key] = current_snapshot
+    except Exception:
+        return "semantic_current_source_lookup_failed"
+
+    if (
+        _optional_text(getattr(current_snapshot, "event_id", None)) != event_id
+        or _optional_text(getattr(current_snapshot, "data_fingerprint", None)) != snapshot_fingerprint
+    ):
+        return "semantic_artifact_snapshot_mismatch"
+    return None
+
+
+def _window_identity(window: Any, field: str) -> str:
+    return _optional_text(getattr(window, field, None)) or ""
 
 
 def _semantic_projection(

@@ -103,6 +103,64 @@ class ReviewAdvisory(ProductContract):
     received_at: datetime
 
 
+class TeacherAuditStage(ProductContract):
+    """A bounded, product-safe projection of one Teacher stage."""
+
+    name: str = Field(..., min_length=1, max_length=128)
+    status: str = Field(..., min_length=1, max_length=32)
+    role: str = Field(default="", max_length=64)
+    summary: str = Field(default="", max_length=1200)
+    query_count: int = Field(default=0, ge=0)
+    source_count: int = Field(default=0, ge=0)
+    rationale_available: bool = False
+
+
+class TeacherAuditSource(ProductContract):
+    """A traceable source excerpt without provider-internal payloads."""
+
+    source_id: str = Field(..., min_length=1, max_length=256)
+    source: str = Field(default="", max_length=256)
+    title: str = Field(default="", max_length=512)
+    url: str | None = Field(default=None, max_length=2048)
+    excerpt: str = Field(default="", max_length=4000)
+    relation: str = Field(default="", max_length=64)
+    status: str = Field(default="", max_length=64)
+
+
+class TeacherAuditRationale(ProductContract):
+    """Short input-grounded rationale capsule, never a full chain of thought."""
+
+    available: bool = False
+    text: str = Field(default="", max_length=1600)
+    input_spans: list[str] = Field(default_factory=list, max_length=20)
+    evidence_refs: list[str] = Field(default_factory=list, max_length=50)
+    policy_refs: list[str] = Field(default_factory=list, max_length=50)
+    quality_gate: bool = False
+    citation_coverage: float | None = Field(default=None, ge=0, le=1)
+
+
+class TeacherAudit(ProductContract):
+    """Read-only audit projection for the analyst-triggered Teacher review."""
+
+    case_id: str = Field(..., min_length=1, max_length=128)
+    status: str = Field(..., min_length=1, max_length=32)
+    execution_mode: str = Field(default="", max_length=64)
+    verdict_id: str | None = Field(default=None, max_length=128)
+    run_id: str | None = Field(default=None, max_length=128)
+    model_version: str = Field(default="", max_length=128)
+    provider_name: str = Field(default="", max_length=64)
+    model: str = Field(default="", max_length=128)
+    non_claimable: bool = True
+    analyst_approval_required: bool = True
+    requested_at: datetime | None = None
+    completed_at: datetime | None = None
+    stages: list[TeacherAuditStage] = Field(default_factory=list, max_length=32)
+    sources: list[TeacherAuditSource] = Field(default_factory=list, max_length=100)
+    queries: list[str] = Field(default_factory=list, max_length=100)
+    rationale: TeacherAuditRationale = Field(default_factory=TeacherAuditRationale)
+    quality: dict[str, str | int | float | bool | None] = Field(default_factory=dict, max_length=30)
+
+
 class ConfirmedDecision(ProductContract):
     decision_id: str = Field(..., min_length=1, max_length=128)
     decision_version: int = Field(..., ge=1)

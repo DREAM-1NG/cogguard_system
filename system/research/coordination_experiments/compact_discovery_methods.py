@@ -41,8 +41,10 @@ _COMPACT_METHOD_VARIANTS = frozenset(
         "tsgs_mhcr_compact",
         "frozen_system_evidence_prior",
         "frozen_system_account_score_prior",
+        "magnn_legacy",
         "edgebank",
         "dense_cosine_leiden",
+        "magnn_leiden_hybrid_discovery",
         "no_tsgs",
         "no_mhcr",
         "no_relation_specific",
@@ -522,6 +524,132 @@ def _input_embeddings(features: np.ndarray) -> tuple[np.ndarray, Mapping[str, An
     )
 
 
+def _magnn_leiden_embeddings(
+    features: np.ndarray,
+    relation_edges: tuple[tuple[np.ndarray, np.ndarray, np.ndarray], ...],
+    config: CompactDiscoveryMethodConfig,
+    effective_seed: int,
+) -> tuple[np.ndarray, Mapping[str, Any]]:
+    try:
+        import torch
+        from torch.nn import functional as functional
+    except ImportError as exc:
+        raise CompactDiscoveryMethodBlocked("MAGNN-Leiden hybrid requires the optional torch dependency") from exc
+    account_count, feature_count = features.shape
+    hidden_dimension = config.hidden_dimension
+    generator = torch.Generator(device="cpu")
+    generator.manual_seed(effective_seed)
+    input_features = torch.as_tensor(features, dtype=torch.float32)
+    base = torch.nn.Parameter(
+        torch.randn(feature_count, hidden_dimension, generator=generator, dtype=torch.float32)
+        / math.sqrt(max(feature_count, 1))
+    )
+    relation_transform = torch.nn.Parameter(
+        torch.randn(len(_RELATION_LAYERS), feature_count, hidden_dimension, generator=generator, dtype=torch.float32)
+        / math.sqrt(max(feature_count, 1))
+    )
+    relation_attention = torch.nn.Parameter(torch.zeros(len(_RELATION_LAYERS), dtype=torch.float32))
+    optimizer = torch.optim.Adam((base, relation_transform, relation_attention), lr=0.02)
+    relation_tensors = tuple(
+        (
+            torch.as_tensor(source, dtype=torch.int64),
+            torch.as_tensor(target, dtype=torch.int64),
+            torch.as_tensor(weight, dtype=torch.float32),
+        )
+        for source, target, weight in relation_edges
+    )
+    positive_sources = []
+    positive_targets = []
+    for source, target, weights in relation_tensors:
+        present = weights > 0
+        if bool(torch.any(present)):
+            positive_sources.append(source[present])
+            positive_targets.append(target[present])
+    if positive_sources:
+        edge_source = torch.cat(positive_sources)
+        edge_target = torch.cat(positive_targets)
+    else:
+        edge_source = torch.empty(0, dtype=torch.int64)
+        edge_target = torch.empty(0, dtype=torch.int64)
+
+    def encode(feature_view: torch.Tensor, dropout_seed: int, dropout_rate: float) -> torch.Tensor:
+        attention = torch.softmax(relation_attention, dim=0)
+        aggregate = torch.zeros((account_count, hidden_dimension), dtype=torch.float32)
+        normalization = torch.zeros((account_count, 1), dtype=torch.float32)
+        local_generator = torch.Generator(device="cpu")
+        local_generator.manual_seed(dropout_seed)
+        for relation_index, (source, target, weights) in enumerate(relation_tensors):
+            if weights.numel() == 0:
+                continue
+            keep = torch.rand(weights.numel(), generator=local_generator) >= dropout_rate
+            if not bool(torch.any(keep)):
+                continue
+            kept_source = source[keep]
+            kept_target = target[keep]
+            kept_weights = weights[keep] * attention[relation_index]
+            messages = feature_view @ relation_transform[relation_index]
+            aggregate.index_add_(0, kept_source, messages[kept_target] * kept_weights[:, None])
+            aggregate.index_add_(0, kept_target, messages[kept_source] * kept_weights[:, None])
+            normalization.index_add_(0, kept_source, kept_weights[:, None])
+            normalization.index_add_(0, kept_target, kept_weights[:, None])
+        return torch.tanh(feature_view @ base + aggregate / normalization.clamp_min(1.0))
+
+    losses = []
+    for epoch in range(config.epochs):
+        embedding = functional.normalize(
+            encode(input_features, effective_seed + 313 * epoch + 1, config.edge_dropout_rate),
+            p=2.0,
+            dim=1,
+        )
+        if edge_source.numel() == 0 or account_count < 2:
+            losses.append(0.0)
+            continue
+        edge_count = min(config.batch_size, int(edge_source.numel()))
+        selected = torch.randperm(int(edge_source.numel()), generator=generator)[:edge_count]
+        positive_source = edge_source[selected]
+        positive_target = edge_target[selected]
+        negative_source = positive_source
+        negative_target = torch.randint(0, account_count, (edge_count,), generator=generator, dtype=torch.int64)
+        negative_target = torch.where(
+            negative_target == negative_source,
+            (negative_target + 1) % account_count,
+            negative_target,
+        )
+        positive_logits = torch.sum(embedding[positive_source] * embedding[positive_target], dim=1) / config.temperature
+        negative_logits = torch.sum(embedding[negative_source] * embedding[negative_target], dim=1) / config.temperature
+        logits = torch.cat((positive_logits, negative_logits))
+        targets = torch.cat((torch.ones_like(positive_logits), torch.zeros_like(negative_logits)))
+        loss = functional.binary_cross_entropy_with_logits(logits, targets)
+        optimizer.zero_grad(set_to_none=True)
+        loss.backward()
+        optimizer.step()
+        losses.append(float(loss.detach().cpu()))
+    with torch.no_grad():
+        embeddings = encode(input_features, effective_seed + 10_000, 0.0)
+        attention = torch.softmax(relation_attention, dim=0).detach().cpu().numpy().astype(float)
+    diagnostics = MappingProxyType(
+        {
+            "objective": "self_supervised_magnn_edge_reconstruction",
+            "relation_transform_count": len(_RELATION_LAYERS),
+            "relation_specific": True,
+            "relation_attention": {
+                _RELATION_NAMES[index]: float(attention[index])
+                for index in range(len(_RELATION_LAYERS))
+            },
+            "batch_negatives": min(config.batch_size, account_count) - 1,
+            "seed": effective_seed,
+            "feature_names": _relation_feature_names(),
+            "augmentation": {
+                "relation_edge_dropout": config.edge_dropout_rate,
+                "feature_mask_rate": 0.0,
+            },
+            "epoch_edge_reconstruction_losses": losses,
+            "evaluator_labels_absent": True,
+        }
+    )
+    return embeddings.cpu().numpy().astype(np.float32, copy=False), diagnostics
+
+
 def _edge_affinity(embeddings: np.ndarray, endpoints: np.ndarray) -> np.ndarray:
     if endpoints.size == 0:
         return np.empty(0, dtype=np.float32)
@@ -766,7 +894,8 @@ class GraphNativeDiscoveryImplementation(DiscoveryImplementation):
                 execution_input.discovery_view.account_count,
                 config,
                 effective_seed,
-                use_tsgs=config.method_variant not in {"no_tsgs", "edgebank"},
+                use_tsgs=config.method_variant
+                not in {"no_tsgs", "edgebank", "magnn_leiden_hybrid_discovery", "magnn_legacy"},
             )
             if config.method_variant == "edgebank":
                 tsgs_diagnostics = MappingProxyType(
@@ -776,10 +905,25 @@ class GraphNativeDiscoveryImplementation(DiscoveryImplementation):
                         "spectral_guarantee": "not_applicable_static_baseline",
                     }
                 )
+            elif config.method_variant == "magnn_leiden_hybrid_discovery":
+                tsgs_diagnostics = MappingProxyType(
+                    {
+                        **tsgs_diagnostics,
+                        "resistance_backend": "not_run_evidence_constrained_magnn_candidate_edges",
+                        "spectral_guarantee": "not_applicable_hybrid_evidence_constraint",
+                    }
+                )
         tsgs_seconds = time.perf_counter() - tsgs_started
         mhcr_started = time.perf_counter()
         features = _relation_features(execution_input.discovery_view.account_count, endpoints, relation_weights)
-        if config.method_variant in {"edgebank", "no_mhcr", "dense_cosine_leiden"}:
+        if config.method_variant in {"magnn_leiden_hybrid_discovery", "magnn_legacy"}:
+            embeddings, mhcr_diagnostics = _magnn_leiden_embeddings(
+                features,
+                _relation_edge_arrays(endpoints, relation_weights),
+                config,
+                effective_seed,
+            )
+        elif config.method_variant in {"edgebank", "no_mhcr", "dense_cosine_leiden"}:
             embeddings, mhcr_diagnostics = _input_embeddings(features)
         else:
             embeddings, mhcr_diagnostics = _mhcr_embeddings(
@@ -792,11 +936,14 @@ class GraphNativeDiscoveryImplementation(DiscoveryImplementation):
         mhcr_seconds = time.perf_counter() - mhcr_started
         affinity = _edge_affinity(embeddings, endpoints)
         normalized_weight = _normalized(candidate_weights)
-        edge_scores = (
-            normalized_weight
-            if config.method_variant in {"edgebank", "dense_cosine_leiden"}
-            else normalized_weight * affinity
-        ).astype(np.float32)
+        if config.method_variant in {"edgebank", "dense_cosine_leiden"}:
+            edge_scores = normalized_weight
+        elif config.method_variant == "magnn_leiden_hybrid_discovery":
+            edge_scores = (0.5 * normalized_weight + 0.5 * affinity).astype(np.float32)
+        elif config.method_variant == "magnn_legacy":
+            edge_scores = affinity
+        else:
+            edge_scores = (normalized_weight * affinity).astype(np.float32)
         leiden_started = time.perf_counter()
         assignments = _leiden_assignments(
             execution_input.discovery_view.account_count,
@@ -828,6 +975,10 @@ class GraphNativeDiscoveryImplementation(DiscoveryImplementation):
             "method_role": (
                 "static_edge_memory_baseline"
                 if config.method_variant == "edgebank"
+                else "research_only_magnn_leiden_hybrid_discovery"
+                if config.method_variant == "magnn_leiden_hybrid_discovery"
+                else "research_only_legacy_magnn_leiden_discovery"
+                if config.method_variant == "magnn_legacy"
                 else "research_only_graph_native_discovery"
             ),
             "time_semantics": IOHUNTER_STATIC_TIME_SEMANTICS,
@@ -844,6 +995,10 @@ class GraphNativeDiscoveryImplementation(DiscoveryImplementation):
             "edge_score_formula": (
                 "static_normalized_edge_weight"
                 if config.method_variant in {"edgebank", "dense_cosine_leiden"}
+                else "0.5_normalized_evidence_weight_plus_0.5_magnn_edge_affinity"
+                if config.method_variant == "magnn_leiden_hybrid_discovery"
+                else "magnn_edge_affinity_only"
+                if config.method_variant == "magnn_legacy"
                 else "normalized_tsgs_evidence_weight_times_mhcr_affinity"
             ),
             "account_score_formula": "mean(normalized_weighted_degree,candidate_incident_strength,cluster_coherence)",
@@ -1353,6 +1508,16 @@ def default_compact_discovery_registry() -> CompactDiscoveryRegistry:
         {
             "tsgs_mhcr_compact": implementation(
                 "tsgs_mhcr_compact", "tsgs-mhcr-compact-v1", unavailable_reason=mhcr_reason
+            ),
+            "magnn_legacy": implementation(
+                "magnn_legacy",
+                "magnn-legacy-compact-v1",
+                unavailable_reason=mhcr_reason,
+            ),
+            "magnn_leiden_hybrid_discovery": implementation(
+                "magnn_leiden_hybrid_discovery",
+                "magnn-leiden-hybrid-discovery-v1",
+                unavailable_reason=mhcr_reason,
             ),
             "frozen_system_evidence_prior": FrozenSystemEvidencePriorImplementation(),
             "frozen_system_account_score_prior": FrozenSystemAccountScorePriorImplementation(),

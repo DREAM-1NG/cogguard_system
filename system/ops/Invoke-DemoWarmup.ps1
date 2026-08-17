@@ -286,7 +286,8 @@ if ($datasetsResponse) {
 }
 
 [void](Invoke-WarmupRequest -Method GET -Path '/api/v1/accounts/profiles' -Token $accessToken)
-[void](Invoke-WarmupRequest -Method GET -Path '/api/v1/propagation/observed-analysis' -Query @{ event_id = $EventId; node_limit = 300 } -Token $accessToken)
+[void](Invoke-WarmupRequest -Method GET -Path '/api/v1/propagation/observed-analysis' -Query @{ event_id = $EventId; node_limit = 160; first_layer_limit = 40; second_layer_limit = 80 } -Token $accessToken)
+[void](Invoke-WarmupRequest -Method POST -Path '/api/v1/propagation/model-event-predict' -Query @{ event_id = $EventId; observation_ratio = 0.5; top_k = 10; force_refresh = $true } -Token $accessToken)
 
 $caseSearchResponse = Invoke-WarmupRequest -Method GET -Path '/api/v2/review-cases' -Query @{ query = $EventId; limit = 20 } -Token $accessToken
 $caseItem = $null

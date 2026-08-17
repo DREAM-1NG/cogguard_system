@@ -28,3 +28,29 @@
 
 The focused backend invocation emitted existing local-environment warnings for the unavailable
 pytest async plugin/configuration and a Transformers cache deprecation warning.
+
+## Review Fix: Robust, Fail-Closed Propagation Overlay Matching
+
+### RED
+
+- Replaced source-regex-only regression coverage with executable tests that evaluate the extracted
+  propagation matcher and validator.
+- `node --test tests/propagation-semantic.spec.mjs` failed as expected before the repair:
+  numeric `path_id` caused `path.path_id?.trim is not a function`, and the nested-overlay test
+  demonstrated that the original validator accepted malformed required fields.
+
+### GREEN
+
+- Path identifiers now normalize finite numeric and string values before matching. Matching still
+  prefers `path_id`, then falls back to exact evidence-reference equality.
+- Required nested overlay fields now fail closed: non-empty numeric sentiment/stance distributions;
+  non-empty, runtime-shaped keyword/topic/entity records; non-empty platforms and evidence refs;
+  and complete non-empty time ranges are required before the existing empty state is bypassed.
+
+### Verification
+
+- `node --test tests/propagation-semantic.spec.mjs`: passed, 6 tests.
+- `npm test`: passed, 48 tests.
+- `npx vue-tsc -b`: passed.
+- `npm run build`: passed, including delivery preload and budget checks.
+- `git diff --check -- system/frontend/src/views/propagation/index.vue system/frontend/tests/propagation-semantic.spec.mjs`: passed.

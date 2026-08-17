@@ -2,6 +2,7 @@
 
 - Status: accepted
 - Date: 2026-08-08
+- Amended: 2026-08-16
 - Decision owners: CogGuard research and backend maintainers
 - Related: ADR 0012
 
@@ -38,6 +39,14 @@ The `heuristic_baseline_v1` fixed Bayesian weights remain an explicit baseline.
 They cannot be trained, silently selected, used as a learned detector, or used
 to activate a model.
 
+The 2026-08-16 system decision selects `socgfm_cross_attention` as the current
+Coordination Detect primary artifact type for group-level evidence hints. The
+older learned/logistic classifier remains a shadow baseline and rollback/audit
+comparison only. This product activation decision is separate from a research
+superiority claim: SocGFM still must beat the shadow classifier and strongest
+fair baselines under task-aligned data before any paper-level performance claim
+is made.
+
 Experiment outputs, caches, temporary files, reports, and signed artifacts for
 this work must use explicit G-drive locations. C-drive temporary paths are not
 valid artifact roots.
@@ -71,7 +80,9 @@ valid artifact roots.
 | True coordination recovery | blocked | External edge/community ground truth. |
 | Harmful-CIB Detection | blocked | Target-task Gold labels, Stage 2 evaluation, leakage-safe campaign/platform/time holdouts, calibration and abstention results. |
 | Observed-time coordination claim | blocked for IOHunter processed graphs | Dataset with recorded event timestamps. |
-| Production activation | blocked | All task-aligned gates plus independent review and model governance approval. |
+| SocGFM primary runtime selection | supported as product decision | Hash-verified artifact, official validation metadata, shadow classifier record, leakage checks, and governance approval. |
+| Research superiority over classifier/SOTA baselines | blocked | Multi-dataset task-aligned Gold, same-protocol comparison, calibration, runtime/memory reporting, and independent review. |
+| Production Discovery replacement | blocked | All task-aligned gates plus independent review and model governance approval. |
 
 ## Rejected Alternatives
 

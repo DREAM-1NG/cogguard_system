@@ -75,6 +75,25 @@ def test_hatecot_explanation_enables_rationale_lrkd_mask():
     assert batch["rationale_texts"][0] == "The post attacks a protected identity group."
 
 
+def test_student_examples_use_primary_text_fields_without_derived_media_text():
+    example = build_textified_student_example(
+        {
+            "case_id": "text-only-1",
+            "dataset": "HateXplain",
+            "text": "post text",
+            "hashtags": ["topic"],
+            "media": {"ocr": "derived image text", "asr": "derived audio text", "caption": "derived caption"},
+            "labels": {"raw_label": "normal"},
+        }
+    )
+
+    assert "[TEXT] post text" in example.input_text
+    assert "[HASHTAGS] topic" in example.input_text
+    assert "derived image text" not in example.input_text
+    assert "derived audio text" not in example.input_text
+    assert "derived caption" not in example.input_text
+
+
 def test_multioff_maps_to_interpersonal_offense_axis():
     example = build_textified_student_example(
         {
@@ -153,3 +172,37 @@ def test_textified_student_loss_is_task_masked():
 
     assert losses["total_loss"].shape == torch.Size([])
     assert float(losses["total_loss"]) > 0.0
+
+
+@pytest.mark.skipif(importlib.util.find_spec("torch") is None, reason="torch not installed")
+def test_textified_student_forward_exports_protocol_head_dimensions_without_loading_backbone():
+    import torch
+    from torch import nn
+
+    from app.core.review.taxonomy_student import XLMRTextifiedReviewStudent
+
+    student = object.__new__(XLMRTextifiedReviewStudent)
+    nn.Module.__init__(student)
+    student.backbone = type("Backbone", (nn.Module,), {
+        "forward": lambda self, input_ids, attention_mask, **kwargs: type(
+            "Output", (), {"last_hidden_state": torch.ones((len(input_ids), 2, 4))}
+        )()
+    })()
+    student.dropout = nn.Identity()
+    student.interpersonal_aggression = nn.Linear(4, 1)
+    student.ideological_deception = nn.Linear(4, 1)
+    student.stance = nn.Linear(4, 5)
+    student.fine_labels = nn.Linear(4, 13)
+    student.rationale_proj = nn.Linear(4, 8)
+    student.protocol_heads = nn.ModuleDict({
+        "hatexplain_3way": nn.Linear(4, 3),
+        "latent_hate_3way": nn.Linear(4, 3),
+        "hatecheck_binary": nn.Linear(4, 2),
+        "hatecot_universal_3way": nn.Linear(4, 3),
+    })
+
+    outputs = student(torch.ones((2, 2), dtype=torch.long), torch.ones((2, 2), dtype=torch.long))
+
+    assert outputs["protocol_logits"]["hatexplain_3way"].shape == (2, 3)
+    assert outputs["protocol_logits"]["latent_hate_3way"].shape == (2, 3)
+    assert outputs["protocol_logits"]["hatecheck_binary"].shape == (2, 2)

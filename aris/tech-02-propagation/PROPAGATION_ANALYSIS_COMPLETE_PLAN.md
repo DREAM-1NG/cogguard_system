@@ -1,5 +1,7 @@
 # Propagation Analysis 完整技术方案：CascadeSwitch — 事件条件体制切换级联预测
 
+> 状态更新（2026-08-15）：本文件保留 CascadeSwitch 的历史研究方案，不是当前系统的部署模型或正式实验记录。当前实现为 `system/research/propagation_analysis/` 中的 `PropagationSequenceJointModel`；最新 Macro/Micro 正式实验记录位于 `system/research/propagation_analysis/benchmark/formal_36x_fair_protocol_20260815.md`。
+
 **定位**：领域时序预测研究（信息级联预测方向）
 **关键技术**：LLM + 时序预测
 **日期**：2026-04-28

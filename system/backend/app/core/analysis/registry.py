@@ -120,17 +120,33 @@ class AnalysisRegistry:
         platform: str | None = None,
         created_by: int = 0,
     ) -> EventSnapshot:
+        snapshot = await self.build_current_event_snapshot(
+            event_id=event_id,
+            core_window=core_window,
+            context_window=context_window,
+            platform=platform,
+        )
+        await self._persist_snapshot(snapshot, created_by=created_by)
+        return snapshot
+
+    async def build_current_event_snapshot(
+        self,
+        *,
+        event_id: str,
+        core_window: TimeWindow,
+        context_window: TimeWindow,
+        platform: str | None = None,
+    ) -> EventSnapshot:
+        """Build the current event content fingerprint without persisting a snapshot."""
         posts = await load_event_posts(self.mongo_db, event_id=event_id, platform=platform)
         comments = await load_event_comments(self.mongo_db, event_id=event_id, platform=platform)
-        snapshot = build_event_snapshot(
+        return build_event_snapshot(
             event_id=event_id,
             posts=posts,
             comments=comments,
             core_window=core_window,
             context_window=context_window,
         )
-        await self._persist_snapshot(snapshot, created_by=created_by)
-        return snapshot
 
     async def create_run(
         self,

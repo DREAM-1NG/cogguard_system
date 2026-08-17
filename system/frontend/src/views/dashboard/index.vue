@@ -3,18 +3,21 @@
     <PageHeader title="数据大屏" description="跨平台事件态势、采集规模、风险与地理位置概览" />
 
     <div class="toolbar">
-      <a-select
-        v-model:value="eventId"
-        class="event-input"
-        show-search
-        :filter-option="false"
-        :options="eventOptions"
-        :loading="eventSearchLoading"
-        placeholder="搜索事件…"
-        aria-label="搜索事件"
-        @search="scheduleEventSearch"
-        @change="loadOverview"
-      />
+      <div class="event-scope-control">
+        <span class="event-scope-label">事件范围</span>
+        <a-select
+          v-model:value="eventId"
+          class="event-input"
+          show-search
+          :filter-option="false"
+          :options="eventOptions"
+          :loading="eventSearchLoading"
+          placeholder="搜索事件…"
+          aria-label="选择事件范围"
+          @search="scheduleEventSearch"
+          @change="loadOverview"
+        />
+      </div>
       <a-button :loading="loading" aria-label="刷新数据大屏" @click="loadOverview">
         <ReloadOutlined aria-hidden="true" />
         刷新
@@ -46,6 +49,15 @@
               role="img"
               aria-describedby="dashboard-map-summary"
             />
+            <div v-if="mapState === 'loading'" class="map-state map-state--loading" role="status" aria-live="polite">
+              <a-spin size="small" />
+              <span>地图加载中…</span>
+            </div>
+            <div v-else-if="mapState === 'error'" class="map-state map-state--error" role="alert">
+              <strong>地图加载失败</strong>
+              <span>{{ mapError }}</span>
+              <a-button size="small" @click="retryMap">重试加载地图</a-button>
+            </div>
             <p id="dashboard-map-summary" class="sr-only">{{ mapAccessibilitySummary }}</p>
             <div class="heatmap-panel">
               <div class="heatmap-title">事件热力</div>
@@ -146,7 +158,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onActivated, onBeforeUnmount, onDeactivated, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
 import { ArrowRightOutlined, ReloadOutlined } from '@ant-design/icons-vue'
@@ -180,8 +192,11 @@ const caseItems = ref<ReviewCaseSummary[]>([])
 const eventSearchLoading = ref(false)
 const loading = ref(false)
 const loadError = ref('')
+const mapState = ref<'loading' | 'ready' | 'error'>('loading')
+const mapError = ref('')
 const overview = ref<DashboardOverview | null>(null)
 const mapRef = ref<HTMLDivElement | null>(null)
+const pageActive = ref(true)
 let chart: ECharts | null = null
 let worldMapPromise: Promise<void> | null = null
 let eventSearchTimer: number | undefined
@@ -192,7 +207,10 @@ const eventOptions = computed(() => {
     value: item.event_id,
   }))
   if (eventId.value && !options.some((item) => item.value === eventId.value)) {
-    options.unshift({ label: '当前事件', value: eventId.value })
+    options.unshift({
+      label: eventId.value === DEFAULT_EVENT_ID ? '特朗普访华事件' : '已选事件',
+      value: eventId.value,
+    })
   }
   return options
 })
@@ -436,20 +454,31 @@ function buildMapOption(points: typeof mapPoints.value): EChartsOption {
 
 async function renderMap() {
   await nextTick()
-  if (!mapRef.value || mapRef.value.offsetWidth === 0 || mapRef.value.offsetHeight === 0) return
+  if (!pageActive.value || !mapRef.value || mapRef.value.offsetWidth === 0 || mapRef.value.offsetHeight === 0) return
+  mapState.value = 'loading'
+  mapError.value = ''
   try {
     await ensureWorldMap()
   } catch (error) {
     const detail = error instanceof Error ? error.message : '世界底图加载失败'
-    loadError.value = detail
+    mapState.value = 'error'
+    mapError.value = detail
     message.warning('世界底图加载失败')
     return
   }
+  if (!pageActive.value || !mapRef.value || mapRef.value.offsetWidth === 0 || mapRef.value.offsetHeight === 0) return
   if (!chart) {
     chart = echarts.init(mapRef.value)
   }
   chart.setOption(buildMapOption(mapPoints.value), true)
   chart.resize()
+  mapState.value = 'ready'
+}
+
+function retryMap() {
+  chart?.dispose()
+  chart = null
+  void renderMap()
 }
 
 async function loadOverview() {
@@ -499,7 +528,21 @@ function enterReview() {
 }
 
 function resizeChart() {
-  chart?.resize()
+  if (!pageActive.value || !chart || chart.isDisposed()) return
+  const chartDom = chart.getDom()
+  if (!chartDom || chartDom.isConnected === false || chartDom.offsetWidth === 0 || chartDom.offsetHeight === 0) return
+  chart.resize()
+}
+
+function activateDashboardPage() {
+  pageActive.value = true
+  window.addEventListener('resize', resizeChart)
+  void nextTick().then(resizeChart)
+}
+
+function deactivateDashboardPage() {
+  pageActive.value = false
+  window.removeEventListener('resize', resizeChart)
 }
 
 watch(mapPoints, () => {
@@ -516,11 +559,18 @@ onMounted(() => {
   void renderMap()
   void loadOverview()
   void loadEventOptions()
-  window.addEventListener('resize', resizeChart)
+})
+
+onActivated(() => {
+  activateDashboardPage()
+})
+
+onDeactivated(() => {
+  deactivateDashboardPage()
 })
 
 onBeforeUnmount(() => {
-  window.removeEventListener('resize', resizeChart)
+  deactivateDashboardPage()
   chart?.dispose()
   chart = null
   if (eventSearchTimer) window.clearTimeout(eventSearchTimer)
@@ -540,8 +590,34 @@ onBeforeUnmount(() => {
   flex-wrap: wrap;
 }
 
+.event-scope-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 4px 10px 4px 12px;
+  border: 1px solid #d9e2f2;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.event-scope-label {
+  flex: 0 0 auto;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 .event-input {
   width: min(420px, 100%);
+}
+
+:deep(.event-scope-control .ant-select-selector) {
+  border: 0 !important;
+  box-shadow: none !important;
+  padding-left: 4px !important;
 }
 
 .generated-at {
@@ -598,6 +674,36 @@ onBeforeUnmount(() => {
   min-width: 0;
   height: 460px;
   width: 100%;
+}
+
+.map-state {
+  position: absolute;
+  inset: 12px;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 10px;
+  color: #dbeafe;
+  font-size: 14px;
+  text-align: center;
+  background: rgba(4, 10, 33, 0.78);
+  border: 1px solid rgba(147, 197, 253, 0.26);
+  border-radius: 8px;
+  backdrop-filter: blur(3px);
+}
+
+.map-state--error strong {
+  color: #fecaca;
+  font-size: 16px;
+}
+
+.map-state--error span {
+  max-width: 420px;
+  color: #dbeafe;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
 }
 
 .sr-only {
@@ -668,6 +774,17 @@ onBeforeUnmount(() => {
     width: 100%;
     height: 132px;
     align-self: stretch;
+  }
+}
+
+@media (max-width: 720px) {
+  .event-scope-control {
+    width: 100%;
+  }
+
+  .event-input {
+    flex: 1 1 auto;
+    min-width: 0;
   }
 }
 

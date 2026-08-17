@@ -553,6 +553,7 @@ def verify_registered_artifact(
         raise ValueError("Model artifact manifest must be a JSON object")
     if str(manifest.get("technology") or "") != str(technology):
         raise ValueError("Model artifact manifest capability does not match the registered model")
+    _validate_coordination_detection_manifest_claim_boundaries(technology, manifest)
 
     if not artifact_is_directory:
         checkpoint_path = artifact_path
@@ -592,6 +593,23 @@ def evaluate_quality_gates(technology: str, metrics: dict[str, Any]) -> dict[str
             "stability_passed": metrics.get("stability_passed") is True,
             "evidence_coverage_passed": metrics.get("evidence_coverage_passed") is True,
         }
+    elif capability == "coordination_detection":
+        if metrics.get("system_primary_model") == "socgfm_cross_attention":
+            checks = {
+                "macro_f1": _metric_at_least(metrics, "macro_f1", 0.75),
+                "auprc": _metric_at_least(metrics, "auprc", 0.75),
+                "roc_auc": _metric_at_least(metrics, "roc_auc", 0.75),
+                "p95_latency_seconds": _metric_at_most(metrics, "p95_latency_seconds", 5.0),
+                "official_validation_protocol": metrics.get("official_validation_protocol") is True,
+                "shadow_classifier_recorded": metrics.get("shadow_classifier_recorded") is True,
+                "no_feature_leakage": metrics.get("no_feature_leakage", True) is True,
+            }
+        else:
+            checks = {
+                "primary_model_is_socgfm_cross_attention": False,
+                "shadow_classifier_recorded": metrics.get("shadow_classifier_recorded") is True,
+                "no_feature_leakage": metrics.get("no_feature_leakage", True) is True,
+            }
     elif capability == "propagation_analysis":
         checks = {
             "coverage_80": _metric_at_least(metrics, "coverage_80", 0.78),
@@ -612,12 +630,61 @@ def evaluate_quality_gates(technology: str, metrics: dict[str, Any]) -> dict[str
     else:
         checks = {"registered_capability_policy": False}
     failed = [name for name, passed in checks.items() if not passed]
+    diagnostics: dict[str, Any] = {}
+    if capability == "coordination_detection" and metrics.get("system_primary_model") == "socgfm_cross_attention":
+        diagnostics = {
+            "ece": metrics.get("ece"),
+            "calibration_warning": _metric_at_most(metrics, "ece", 0.12) is False,
+        }
     return {
         "technology": capability,
         "activation_allowed": not failed,
         "checks": checks,
         "failed_gates": failed,
+        "diagnostics": diagnostics,
     }
+
+
+def _validate_coordination_detection_manifest_claim_boundaries(
+    technology: str,
+    manifest: dict[str, Any],
+) -> None:
+    if str(technology or "").strip() != "coordination_detection":
+        return
+    metrics = manifest.get("metrics")
+    if isinstance(metrics, dict):
+        forbidden_metric_keys = {
+            "group_level_harmful_coordination_f1",
+            "group-level harmful coordination f1",
+            "群组级有害协同检测 f1",
+        }
+        for key in metrics:
+            if str(key).strip().lower() in forbidden_metric_keys:
+                raise ValueError("Coordination Detection manifest cannot claim group-level harmful coordination F1")
+    backend_text = " ".join(
+        str(value or "").strip().lower()
+        for value in (
+            manifest.get("backend"),
+            manifest.get("model"),
+            manifest.get("version"),
+            metrics.get("system_primary_model") if isinstance(metrics, dict) else None,
+        )
+    )
+    if "socgfm_cross_attention" not in backend_text:
+        return
+    required = {
+        "inference_mode": "precomputed_member_probability_cluster_aggregation",
+        "claim_scope": "account_level_io_membership_to_cluster_proxy",
+        "online_neural_forward": False,
+    }
+    for field_name, expected in required.items():
+        if manifest.get(field_name) != expected:
+            raise ValueError(f"SocGFM Coordination Detection manifest {field_name} must be {expected!r}")
+    unsupported_claims = manifest.get("unsupported_claims")
+    if not isinstance(unsupported_claims, list) or "group_level_harmful_coordination_f1" not in {
+        str(value) for value in unsupported_claims
+    }:
+        raise ValueError("SocGFM Coordination Detection manifest unsupported_claims must include group_level_harmful_coordination_f1")
 
 
 def _governance_decision(

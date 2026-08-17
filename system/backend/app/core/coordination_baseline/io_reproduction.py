@@ -9,6 +9,7 @@ fallbacks keep tests and small server runs reproducible.
 from __future__ import annotations
 
 import csv
+import hashlib
 import importlib.util
 import json
 import math
@@ -23,7 +24,7 @@ import time
 import urllib.request
 import zipfile
 from collections import Counter, defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable, Mapping, Sequence
@@ -52,6 +53,12 @@ IOHUNTER_DATASETS = ("UAE", "cuba", "russia", "venezuela", "iran", "china")
 IOHUNTER_PRIMARY_SCRIPT = "run_MultiModalGNN_CrossAttention.py"
 IOHUNTER_CROSS_COUNTRY_SCRIPT = "run_MultiModalGNN_CrossAttention_CrossCountryPlusFineTuning.py"
 IOHUNTER_BASELINE_SCRIPTS = ("run_NodePruning.py", "run_Node2Vec.py")
+IOHUNTER_SAME_COUNTRY_METHOD_SCRIPTS = {
+    "GNN": "run_GNN.py",
+    "GNNPlusLLM": "run_GNNPlusLLM.py",
+    "MultiModalGNN": "run_MultiModalGNN.py",
+    "MultiModalGNN_CrossAttention": "run_MultiModalGNN_CrossAttention.py",
+}
 IOHUNTER_REQUIRED_PACKAGES = (
     "numpy",
     "pandas",
@@ -99,7 +106,19 @@ DISCOVER_STRUCTURE_FILTERS = ("none", "node_pruning")
 DISCOVER_STRUCTURE_FILTER_METRICS = ("degree", "pagerank", "eigenvector")
 _LM_FEATURE_CACHE: dict[tuple[str, int, int, int, tuple[str, ...]], tuple[np.ndarray, str]] = {}
 TOKEN_RE = re.compile(r"[A-Za-z0-9_#@:/.-]+", re.UNICODE)
-METRIC_FIELDS = ("precision", "recall", "f1", "auc", "support", "positive_count")
+DETECTION_EVALUATION_PROTOCOL = "train_val_selected_threshold_heldout_test"
+METRIC_FIELDS = (
+    "precision",
+    "recall",
+    "f1",
+    "macro_f1",
+    "macro_f1_at_selected_threshold",
+    "selected_threshold",
+    "threshold_policy",
+    "auc",
+    "support",
+    "positive_count",
+)
 IOHUNTER_LOG_METRIC_RE = re.compile(
     r"^[\ufeff\s]*\[(?P<split>[^\]]+)\]\s+(?P<metric>[A-Za-z0-9_]+):\s+"
     r"(?P<mean>[-+0-9.eE]+|nan|None)\+\-(?P<std>[-+0-9.eE]+|nan|None)",
@@ -121,6 +140,7 @@ class MetricResult:
 class Split:
     train: np.ndarray
     test: np.ndarray
+    val: np.ndarray = field(default_factory=lambda: np.asarray([], dtype=int))
 
 
 @dataclass(slots=True)
@@ -355,7 +375,35 @@ def iohunter_processed_to_event_table(
     events.attrs["timestamp_policy"] = "processed_graph_edge_order_proxy"
     events.attrs["timestamp_unit"] = "edge_order_hours"
     events.attrs["platform_policy"] = "not_available_in_processed_iohunter_graph"
+    official_splits = _iohunter_official_splits(dataset)
+    if official_splits:
+        events.attrs["iohunter_official_splits"] = official_splits
     return events
+
+
+def _iohunter_official_splits(dataset: Mapping[str, object]) -> dict[int, dict[str, np.ndarray]]:
+    raw_splits = dataset.get("splits")
+    if not isinstance(raw_splits, Mapping):
+        return {}
+    output: dict[int, dict[str, np.ndarray]] = {}
+    for raw_split_id, raw_split in raw_splits.items():
+        if not isinstance(raw_split, Mapping):
+            continue
+        try:
+            split_id = int(raw_split_id)
+        except (TypeError, ValueError):
+            continue
+        split_masks: dict[str, np.ndarray] = {}
+        for name in ("train", "val", "test"):
+            if name not in raw_split:
+                continue
+            mask = np.asarray(raw_split[name], dtype=bool)
+            if mask.ndim != 1:
+                continue
+            split_masks[name] = mask
+        if "train" in split_masks and "test" in split_masks:
+            output[split_id] = split_masks
+    return output
 
 
 def write_iohunter_event_table(
@@ -556,24 +604,35 @@ def _metric_to_dict(metric: MetricResult | None) -> dict[str, object] | None:
     }
 
 
-def _detection_metric_dict(y_true: Sequence[int], y_score: Sequence[float]) -> dict[str, object]:
+def _detection_metric_dict(
+    y_true: Sequence[int],
+    y_score: Sequence[float],
+    *,
+    threshold: float = 0.5,
+    threshold_policy: str = "fixed_0_5",
+) -> dict[str, object]:
     y = np.asarray(y_true, dtype=int)
     scores = np.asarray(y_score, dtype=float)
-    metric = binary_metrics(y, scores)
+    metric = binary_metrics(y, scores, threshold=threshold)
     result = _metric_to_dict(metric) or {}
     auprc = _average_precision_score(y, scores)
     precision_at_k, recall_at_k = _precision_recall_at_k(y, scores)
     max_f1, max_f1_threshold = _max_f1(y, scores)
-    predictions = (scores >= 0.5).astype(int)
+    predictions = (scores >= threshold).astype(int)
+    macro_f1 = _macro_f1_at_threshold(y, scores, threshold=threshold)
     result.update(
         {
             "auprc": round(float(auprc), 6) if auprc is not None else None,
+            "macro_f1": round(float(macro_f1), 6),
+            "macro_f1_at_selected_threshold": round(float(macro_f1), 6),
+            "selected_threshold": round(float(threshold), 6),
+            "threshold_policy": threshold_policy,
             "max_f1": round(float(max_f1), 6),
             "max_f1_threshold": round(float(max_f1_threshold), 6),
             "precision_at_k": round(precision_at_k, 6),
             "recall_at_k": round(recall_at_k, 6),
             "accuracy": round(_safe_divide(float(np.sum(predictions == y)), float(y.size)), 6),
-            "primary_f1_metric": "max_f1",
+            "primary_f1_metric": "macro_f1_at_selected_threshold",
             "fixed_threshold_f1_policy": "diagnostic_only",
         }
     )
@@ -632,10 +691,16 @@ def _max_f1(y_true: np.ndarray, y_score: np.ndarray) -> tuple[float, float]:
     return best_f1, best_threshold
 
 
-def _amdn_hage_style_metrics(y_true: Sequence[int], y_score: Sequence[float]) -> dict[str, object]:
+def _amdn_hage_style_metrics(
+    y_true: Sequence[int],
+    y_score: Sequence[float],
+    *,
+    threshold: float = 0.5,
+) -> dict[str, object]:
     y = np.asarray(y_true, dtype=int)
     scores = np.asarray(y_score, dtype=float)
     metric = binary_metrics(y, scores, threshold=0.5)
+    selected_metric = binary_metrics(y, scores, threshold=threshold)
     ap = _average_precision_score(y, scores)
     max_f1, best_threshold = _max_f1(y, scores)
     return {
@@ -647,6 +712,131 @@ def _amdn_hage_style_metrics(y_true: Sequence[int], y_score: Sequence[float]) ->
         "max_f1": round(float(max_f1), 6),
         "max_f1_threshold": round(float(best_threshold), 6),
         "macro_f1_at_0_5": round(_macro_f1_at_threshold(y, scores, threshold=0.5), 6),
+        "f1_at_selected_threshold": selected_metric.f1,
+        "precision_at_selected_threshold": selected_metric.precision,
+        "recall_at_selected_threshold": selected_metric.recall,
+        "macro_f1_at_selected_threshold": round(_macro_f1_at_threshold(y, scores, threshold=threshold), 6),
+        "selected_threshold": round(float(threshold), 6),
+    }
+
+
+def _expected_calibration_error(y_true: Sequence[int], y_score: Sequence[float], *, bins: int = 10) -> float | None:
+    y = np.asarray(y_true, dtype=float)
+    scores = np.asarray(y_score, dtype=float)
+    if y.size == 0:
+        return None
+    clipped = np.clip(scores, 0.0, 1.0)
+    total = float(y.size)
+    ece = 0.0
+    for bin_index in range(max(1, int(bins))):
+        low = bin_index / max(1, int(bins))
+        high = (bin_index + 1) / max(1, int(bins))
+        if bin_index == 0:
+            mask = (clipped >= low) & (clipped <= high)
+        else:
+            mask = (clipped > low) & (clipped <= high)
+        if not np.any(mask):
+            continue
+        confidence = float(np.mean(clipped[mask]))
+        accuracy = float(np.mean(y[mask]))
+        ece += (float(np.sum(mask)) / total) * abs(confidence - accuracy)
+    return round(float(ece), 6)
+
+
+def _brier_score(y_true: Sequence[int], y_score: Sequence[float]) -> float | None:
+    y = np.asarray(y_true, dtype=float)
+    scores = np.asarray(y_score, dtype=float)
+    if y.size == 0:
+        return None
+    return round(float(np.mean((np.clip(scores, 0.0, 1.0) - y) ** 2)), 6)
+
+
+def _fit_validation_calibration(scores: np.ndarray, y: np.ndarray, split: Split) -> tuple[np.ndarray, dict[str, object]]:
+    val = split.val
+    if val.size == 0 or len(set(y[val].tolist())) < 2:
+        return scores.copy(), {
+            "method": "identity_no_validation",
+            "validation_count": int(val.size),
+            "validation_positive_count": int(np.sum(y[val] == 1)) if val.size else 0,
+        }
+    val_scores = np.asarray(scores[val], dtype=float)
+    val_labels = np.asarray(y[val], dtype=int)
+    candidates: list[tuple[str, np.ndarray, float | None]] = [
+        ("identity", scores.copy(), _brier_score(val_labels, val_scores)),
+    ]
+    try:
+        from sklearn.linear_model import LogisticRegression
+
+        platt = LogisticRegression(solver="lbfgs", random_state=0)
+        platt.fit(val_scores.reshape(-1, 1), val_labels)
+        calibrated = platt.predict_proba(np.asarray(scores, dtype=float).reshape(-1, 1))[:, 1]
+        candidates.append(("platt_logistic", calibrated, _brier_score(val_labels, calibrated[val])))
+    except Exception:
+        pass
+    if len(set(np.round(val_scores, 12).tolist())) >= 3:
+        try:
+            from sklearn.isotonic import IsotonicRegression
+
+            isotonic = IsotonicRegression(out_of_bounds="clip")
+            isotonic.fit(val_scores, val_labels)
+            calibrated = np.asarray(isotonic.transform(np.asarray(scores, dtype=float)), dtype=float)
+            candidates.append(("isotonic", calibrated, _brier_score(val_labels, calibrated[val])))
+        except Exception:
+            pass
+    best_method, best_scores, best_brier = min(
+        candidates,
+        key=lambda item: float("inf") if item[2] is None else float(item[2]),
+    )
+    return np.clip(best_scores, 0.0, 1.0), {
+        "method": best_method,
+        "validation_count": int(val.size),
+        "validation_positive_count": int(np.sum(val_labels == 1)),
+        "validation_brier": best_brier,
+        "validation_ece": _expected_calibration_error(val_labels, best_scores[val]),
+        "candidate_methods": [name for name, _, _ in candidates],
+    }
+
+
+def _select_validation_threshold(scores: np.ndarray, y: np.ndarray, split: Split) -> tuple[float, dict[str, object]]:
+    val = split.val
+    if val.size == 0 or len(set(y[val].tolist())) < 2:
+        return 0.5, {
+            "policy": "fixed_0_5_no_validation",
+            "validation_count": int(val.size),
+            "validation_macro_f1": None,
+        }
+    val_scores = np.asarray(scores[val], dtype=float)
+    val_labels = np.asarray(y[val], dtype=int)
+    best_macro = -1.0
+    best_threshold = 0.5
+    thresholds = sorted(set(float(value) for value in val_scores.tolist()))
+    thresholds.append(0.5)
+    for threshold in thresholds:
+        macro = _macro_f1_at_threshold(val_labels, val_scores, threshold=threshold)
+        if macro > best_macro:
+            best_macro = macro
+            best_threshold = float(threshold)
+    return best_threshold, {
+        "policy": "validation_macro_f1",
+        "validation_count": int(val.size),
+        "validation_positive_count": int(np.sum(val_labels == 1)),
+        "validation_macro_f1": round(float(best_macro), 6),
+        "threshold": round(float(best_threshold), 6),
+    }
+
+
+def _apply_validation_protocol(
+    scores: np.ndarray,
+    y: np.ndarray,
+    split: Split,
+) -> tuple[np.ndarray, float, dict[str, object]]:
+    calibrated_scores, calibration = _fit_validation_calibration(scores, y, split)
+    threshold, threshold_report = _select_validation_threshold(calibrated_scores, y, split)
+    return calibrated_scores, threshold, {
+        "calibration": calibration,
+        "threshold_selection": threshold_report,
+        "selected_threshold": round(float(threshold), 6),
+        "threshold_policy": threshold_report.get("policy", "validation_macro_f1"),
     }
 
 
@@ -1608,19 +1798,102 @@ def _structural_embedding(graph: nx.Graph, nodes: Sequence[str], dim: int = 16) 
     return np.pad(matrix, ((0, 0), (0, dim - matrix.shape[1])))
 
 
-def _make_split(y: np.ndarray, *, seed: int = 42, train_ratio: float = 0.7) -> Split:
+def _make_split(
+    y: np.ndarray,
+    *,
+    seed: int = 42,
+    train_ratio: float = 0.7,
+    val_ratio: float = 0.15,
+) -> Split:
     rng = np.random.default_rng(seed)
     train_indices: list[int] = []
+    val_indices: list[int] = []
     test_indices: list[int] = []
     for label in sorted(set(y.tolist())):
         indices = np.where(y == label)[0]
         rng.shuffle(indices)
-        cut = max(1, int(round(len(indices) * train_ratio))) if len(indices) > 1 else len(indices)
-        train_indices.extend(indices[:cut].tolist())
-        test_indices.extend(indices[cut:].tolist())
+        if len(indices) <= 2:
+            cut = 1 if len(indices) > 1 else len(indices)
+            train_indices.extend(indices[:cut].tolist())
+            test_indices.extend(indices[cut:].tolist())
+            continue
+        train_cut = max(1, int(round(len(indices) * train_ratio)))
+        train_cut = min(train_cut, len(indices) - 2)
+        remaining = len(indices) - train_cut
+        val_count = max(1, int(round(len(indices) * val_ratio)))
+        val_count = min(val_count, remaining - 1)
+        train_indices.extend(indices[:train_cut].tolist())
+        val_indices.extend(indices[train_cut : train_cut + val_count].tolist())
+        test_indices.extend(indices[train_cut + val_count :].tolist())
     if not test_indices and len(y) > 1:
         test_indices.append(train_indices.pop())
-    return Split(train=np.asarray(sorted(train_indices)), test=np.asarray(sorted(test_indices)))
+    return Split(
+        train=np.asarray(sorted(train_indices), dtype=int),
+        test=np.asarray(sorted(test_indices), dtype=int),
+        val=np.asarray(sorted(val_indices), dtype=int),
+    )
+
+
+def _official_split_id_from_mode(mode: str, seed: int, available_split_ids: Sequence[int]) -> int:
+    match = re.fullmatch(r"(?:iohunter_)?official(?::|_)?(\d+)?", mode)
+    if match and match.group(1) is not None:
+        return int(match.group(1))
+    sorted_ids = sorted(int(split_id) for split_id in available_split_ids)
+    if not sorted_ids:
+        return int(seed)
+    return sorted_ids[int(seed) % len(sorted_ids)]
+
+
+def _split_from_iohunter_official_masks(
+    events: pd.DataFrame,
+    nodes: Sequence[str],
+    y: np.ndarray,
+    *,
+    mode: str,
+    seed: int,
+) -> tuple[Split | None, str]:
+    raw_splits = events.attrs.get("iohunter_official_splits", {})
+    if not isinstance(raw_splits, Mapping) or not raw_splits:
+        return None, "iohunter_official_fallback_missing_masks"
+    split_id = _official_split_id_from_mode(mode, seed, list(raw_splits))
+    raw_split = raw_splits.get(split_id)
+    if not isinstance(raw_split, Mapping):
+        return None, f"iohunter_official_fallback_missing_split:{split_id}"
+    train_mask = np.asarray(raw_split.get("train", []), dtype=bool)
+    val_mask = np.asarray(raw_split.get("val", []), dtype=bool)
+    test_mask = np.asarray(raw_split.get("test", []), dtype=bool)
+    if train_mask.ndim != 1 or test_mask.ndim != 1 or train_mask.size == 0 or test_mask.size == 0:
+        return None, f"iohunter_official_fallback_invalid_masks:{split_id}"
+    train_indices: list[int] = []
+    val_indices: list[int] = []
+    test_indices: list[int] = []
+    missing_nodes = 0
+    for local_index, node in enumerate(nodes):
+        try:
+            node_index = int(str(node))
+        except ValueError:
+            missing_nodes += 1
+            continue
+        if 0 <= node_index < train_mask.size and bool(train_mask[node_index]):
+            train_indices.append(local_index)
+        if 0 <= node_index < val_mask.size and bool(val_mask[node_index]):
+            val_indices.append(local_index)
+        if 0 <= node_index < test_mask.size and bool(test_mask[node_index]):
+            test_indices.append(local_index)
+    train = np.asarray(sorted(set(train_indices)), dtype=int)
+    val = np.asarray(sorted(set(val_indices)), dtype=int)
+    test = np.asarray(sorted(set(test_indices)), dtype=int)
+    if train.size == 0 or test.size == 0:
+        return None, f"iohunter_official_fallback_empty_train_or_test:{split_id}"
+    if len(set(y[train].tolist())) < 2:
+        return None, f"iohunter_official_fallback_single_train_class:{split_id}"
+    detail = (
+        f"iohunter_official_split:{split_id}:"
+        f"train={int(train.size)}:val={int(val.size)}:test={int(test.size)}"
+    )
+    if missing_nodes:
+        detail += f":unmapped_nodes={missing_nodes}"
+    return Split(train=train, test=test, val=val), detail
 
 
 def _split_for_detect(
@@ -1632,6 +1905,11 @@ def _split_for_detect(
     seed: int = 42,
 ) -> tuple[Split, str]:
     mode = split_mode.lower().strip()
+    if mode.startswith("iohunter_official") or mode.startswith("official"):
+        official_split, detail = _split_from_iohunter_official_masks(events, nodes, y, mode=mode, seed=seed)
+        if official_split is not None:
+            return official_split, detail
+        return _make_split(y, seed=seed), detail
     if mode == "scarce_supervised":
         return _make_split(y, seed=seed, train_ratio=0.2), "scarce_supervised"
     if mode != "cross_io":
@@ -1657,7 +1935,10 @@ def _split_for_detect(
     train_indices = np.asarray([index for index, node in enumerate(nodes) if str(node_group.get(node, "")) != test_group], dtype=int)
     if train_indices.size == 0 or test_indices.size == 0 or len(set(y[train_indices].tolist())) < 2:
         return _make_split(y, seed=seed), "cross_io_fallback_supervised_unusable_group"
-    return Split(train=np.asarray(sorted(train_indices)), test=np.asarray(sorted(test_indices))), f"cross_io:{group_column}:{test_group}"
+    return Split(
+        train=np.asarray(sorted(train_indices), dtype=int),
+        test=np.asarray(sorted(test_indices), dtype=int),
+    ), f"cross_io:{group_column}:{test_group}"
 
 
 def _standardize_train_test(x_train: np.ndarray, x_test: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
@@ -3301,7 +3582,7 @@ def prepare_dyna_colm_detect_inputs(
     graphs: dict[str, nx.Graph] = {}
     reweighted_edge_count = 0
     uses_discover_reweighted_edges = False
-    if gnn_backend in {"relation_gnn", "fusion_gnn", "gfm_lm_gnn", "gfm_lm_gnn_cpu_light"}:
+    if gnn_backend in {"relation_gnn", "fusion_gnn", "gfm_lm_gnn", "gfm_lm_gnn_cpu_light", "socgfm_cross_attention"}:
         raw_graphs = build_unmasking_similarity_graphs(_label_free_events(events), relations=relations, include_text_similarity=False)
         graphs, reweighted_edge_count = _apply_discover_edge_scores_to_relation_graphs(raw_graphs, discovery)
         uses_discover_reweighted_edges = reweighted_edge_count > 0
@@ -3343,23 +3624,27 @@ def _fit_transductive_scores_with_split(
         return np.zeros(y.size, dtype=float), "single_class"
     split = split or _make_split(y, seed=seed)
     scores = np.zeros(y.size, dtype=float)
-    if split.test.size:
+    scored = np.zeros(y.size, dtype=bool)
+    eval_indices = np.asarray(sorted(set(split.val.tolist() + split.test.tolist())), dtype=int)
+    if eval_indices.size:
         try:
             from sklearn.ensemble import RandomForestClassifier
 
             classifier = RandomForestClassifier(n_estimators=200, random_state=seed, class_weight="balanced")
             classifier.fit(features[split.train], y[split.train])
-            scores[split.test] = classifier.predict_proba(features[split.test])[:, 1]
+            scores[eval_indices] = classifier.predict_proba(features[eval_indices])[:, 1]
             backend = "discover_features_random_forest"
         except Exception:
-            scores[split.test] = _fit_numpy_logistic(features[split.train], y[split.train], features[split.test])
+            scores[eval_indices] = _fit_numpy_logistic(features[split.train], y[split.train], features[eval_indices])
             backend = "discover_features_numpy_logistic"
+        scored[eval_indices] = True
     else:
         backend = "discover_features_no_test_split"
     if split.train.size:
         scores[split.train] = _fit_numpy_logistic(features[split.train], y[split.train], features[split.train])
+        scored[split.train] = True
     fallback = _normalize_vector(features[:, 0]) if features.shape[1] else np.zeros(y.size, dtype=float)
-    scores = np.where(scores > 0.0, scores, fallback)
+    scores = np.where(scored, scores, fallback)
     return scores, backend
 
 
@@ -3583,8 +3868,7 @@ def _torch_relation_gnn_scores(
             relation: round(float(attention[index].detach().cpu().item()), 6)
             for index, relation in enumerate(relation_names)
         }
-    scores = np.zeros(y.size, dtype=float)
-    scores[split.test] = probabilities[split.test]
+    scores = probabilities.astype(float, copy=True)
     details = {
         "fusion_architecture": "single_graph_branch",
         "relation_attention": attention_map,
@@ -3731,8 +4015,7 @@ def _torch_fusion_gnn_scores(
             "struct_to_lm": round(float(cross_means[0].detach().cpu().item()), 6),
             "lm_to_struct": round(float(cross_means[1].detach().cpu().item()), 6),
         }
-    scores = np.zeros(y.size, dtype=float)
-    scores[split.test] = probabilities[split.test]
+    scores = probabilities.astype(float, copy=True)
     details = {
         "fusion_architecture": "discover_lm_graph_attention",
         "relation_attention": relation_attention_map,
@@ -3948,8 +4231,7 @@ def _torch_gfm_lm_gnn_scores(
             reconstruction_metrics = _detection_metric_dict(reconstruction_labels.tolist(), reconstruction_scores.tolist())
         else:
             reconstruction_metrics = {}
-    scores = np.zeros(y.size, dtype=float)
-    scores[split.test] = probabilities[split.test]
+    scores = probabilities.astype(float, copy=True)
     details = {
         "fusion_architecture": "iohunter_style_graph_foundation_lm_gnn",
         "relation_attention": relation_attention_map,
@@ -3980,6 +4262,219 @@ def _torch_gfm_lm_gnn_scores(
         "edge_aux": bool(edge_pair_tensor.numel()),
     }
     return scores, f"gfm_lm_gnn_torch:{json.dumps(backend, sort_keys=True)}", details
+
+
+def _torch_socgfm_cross_attention_scores(
+    features: np.ndarray,
+    y: np.ndarray,
+    graphs: Mapping[str, nx.Graph],
+    nodes: Sequence[str],
+    *,
+    discover_feature_count: int,
+    lm_feature_count: int,
+    seed: int = 42,
+    epochs: int = 120,
+    hidden_dim: int = 32,
+    lr: float = 1e-3,
+    device: str = "auto",
+    split: Split | None = None,
+    gnn_type: str = "sage",
+) -> tuple[np.ndarray, str, dict[str, object]]:
+    if y.size == 0 or len(set(y.tolist())) < 2:
+        return np.zeros(y.size, dtype=float), "socgfm_cross_attention_single_class", {}
+    try:
+        import torch
+        import torch.nn as nn
+        import torch.nn.functional as functional
+    except Exception as exc:
+        details = {
+            "fusion_architecture": "socgfm_cross_attention_torch",
+            "status": "dependency_missing",
+            "dependency_error": repr(exc),
+            "uses_logistic_fallback": False,
+        }
+        return np.zeros(y.size, dtype=float), "socgfm_cross_attention_dependency_missing", details
+
+    split = split or _make_split(y, seed=seed)
+    if split.test.size == 0 or split.train.size == 0:
+        return np.zeros(y.size, dtype=float), "socgfm_cross_attention_no_test_split", {}
+    if len(set(y[split.train].tolist())) < 2:
+        return np.zeros(y.size, dtype=float), "socgfm_cross_attention_single_train_class", {}
+
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+    target_device = "cuda" if device == "auto" and torch.cuda.is_available() else ("cpu" if device == "auto" else device)
+    if target_device == "cuda" and not torch.cuda.is_available():
+        target_device = "cpu"
+
+    struct_matrix, lm_matrix = _split_detect_feature_groups(
+        features,
+        discover_feature_count=discover_feature_count,
+        lm_feature_count=lm_feature_count,
+    )
+    if struct_matrix.shape[1] == 0 or lm_matrix.shape[1] == 0:
+        return np.zeros(y.size, dtype=float), "socgfm_cross_attention_missing_feature_branch", {}
+
+    x_struct = torch.as_tensor(struct_matrix, dtype=torch.float32, device=target_device)
+    x_lm = torch.as_tensor(lm_matrix, dtype=torch.float32, device=target_device)
+    union_graph = nx.Graph()
+    union_graph.add_nodes_from(nodes)
+    for graph in graphs.values():
+        for source, target, attrs in graph.edges(data=True):
+            if source not in union_graph or target not in union_graph:
+                continue
+            weight = max(float(attrs.get("weight", 1.0)), 1e-6)
+            existing = float(union_graph[source][target].get("weight", 0.0)) if union_graph.has_edge(source, target) else 0.0
+            union_graph.add_edge(source, target, weight=existing + weight)
+    _, adjacency_tensors = _build_relation_adjacency_tensors(torch, {"union": union_graph}, nodes, target_device)
+    adjacency = adjacency_tensors[0]
+    labels = torch.as_tensor(y.astype(np.float32), dtype=torch.float32, device=target_device)
+    train_index = torch.as_tensor(split.train, dtype=torch.long, device=target_device)
+
+    conv_name = gnn_type.lower().strip()
+    if conv_name not in {"sage", "graphsage"}:
+        return np.zeros(y.size, dtype=float), f"socgfm_cross_attention_unsupported_gnn:{conv_name}", {}
+
+    class GraphSAGEBlock(nn.Module):
+        def __init__(self, input_dim: int, output_dim: int):
+            super().__init__()
+            self.self_linear = nn.Linear(input_dim, output_dim)
+            self.neighbor_linear = nn.Linear(input_dim, output_dim)
+
+        def forward(self, values, graph_adjacency):
+            neighbor_values = torch.sparse.mm(graph_adjacency, values)
+            return self.self_linear(values) + self.neighbor_linear(neighbor_values)
+
+    class SocGFMCrossAttention(nn.Module):
+        def __init__(self, struct_dim: int, lm_dim: int, hidden: int):
+            super().__init__()
+            self.struct_projector = nn.Sequential(nn.Linear(struct_dim, hidden), nn.ReLU(), nn.Dropout(0.2))
+            self.text_projector = nn.Sequential(nn.Linear(lm_dim, hidden), nn.ReLU(), nn.Dropout(0.2))
+            self.struct_gate = nn.Linear(lm_dim, hidden)
+            self.text_gate = nn.Linear(struct_dim, hidden)
+            self.conv1 = GraphSAGEBlock(hidden * 2, hidden * 2)
+            self.conv2 = GraphSAGEBlock(hidden * 2, hidden)
+            self.graph_output = nn.Linear(hidden, 1)
+            self.residual_fusion_output = nn.Sequential(
+                nn.Linear(hidden * 3, hidden),
+                nn.ReLU(),
+                nn.Dropout(0.2),
+                nn.Linear(hidden, 1),
+            )
+            self.dropout = nn.Dropout(0.2)
+
+        def forward(self, struct_x, lm_x, graph_adjacency):
+            struct_hidden = self.struct_projector(struct_x) * torch.sigmoid(self.struct_gate(lm_x))
+            text_hidden = self.text_projector(lm_x) * torch.sigmoid(self.text_gate(struct_x))
+            fused_input = torch.cat([text_hidden, struct_hidden], dim=1)
+            graph_hidden = functional.relu(self.conv1(fused_input, graph_adjacency))
+            graph_hidden = self.dropout(graph_hidden)
+            graph_hidden = functional.relu(self.conv2(graph_hidden, graph_adjacency))
+            graph_hidden = self.dropout(graph_hidden)
+            graph_logits = self.graph_output(graph_hidden).squeeze(1)
+            fused_logits = self.residual_fusion_output(torch.cat([graph_hidden, fused_input], dim=1)).squeeze(1)
+            return fused_logits, {
+                "text_gate_mean": text_hidden.detach().mean(),
+                "struct_gate_mean": struct_hidden.detach().mean(),
+                "graph_logit_mean": graph_logits.detach().mean(),
+                "residual_logit_mean": fused_logits.detach().mean(),
+            }
+
+    model = SocGFMCrossAttention(
+        x_struct.shape[1],
+        x_lm.shape[1],
+        max(4, int(hidden_dim)),
+    ).to(target_device)
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=1e-4)
+    positives = max(float(np.sum(y[split.train] == 1)), 1.0)
+    negatives = max(float(np.sum(y[split.train] == 0)), 1.0)
+    pos_weight = torch.as_tensor([negatives / positives], dtype=torch.float32, device=target_device)
+    final_loss = 0.0
+    val_index = torch.as_tensor(split.val, dtype=torch.long, device=target_device)
+    patience = max(5, min(25, max(1, int(epochs)) // 5))
+    best_state = None
+    best_epoch = -1
+    best_val_loss = float("inf")
+    epochs_without_improvement = 0
+    for epoch in range(max(1, int(epochs))):
+        model.train()
+        optimizer.zero_grad()
+        logits, _ = model(x_struct, x_lm, adjacency)
+        loss = functional.binary_cross_entropy_with_logits(
+            logits[train_index],
+            labels[train_index],
+            pos_weight=pos_weight,
+        )
+        loss.backward()
+        optimizer.step()
+        final_loss = float(loss.detach().cpu().item())
+        if val_index.numel():
+            model.eval()
+            with torch.no_grad():
+                val_logits, _ = model(x_struct, x_lm, adjacency)
+                val_loss = functional.binary_cross_entropy_with_logits(
+                    val_logits[val_index],
+                    labels[val_index],
+                    pos_weight=pos_weight,
+                )
+                current_val_loss = float(val_loss.detach().cpu().item())
+            if current_val_loss + 1e-6 < best_val_loss:
+                best_val_loss = current_val_loss
+                best_epoch = epoch
+                best_state = {
+                    key: value.detach().clone().cpu()
+                    for key, value in model.state_dict().items()
+                }
+                epochs_without_improvement = 0
+            else:
+                epochs_without_improvement += 1
+                if epochs_without_improvement >= patience:
+                    break
+    if best_state is not None:
+        model.load_state_dict(best_state)
+
+    model.eval()
+    with torch.no_grad():
+        logits, gates = model(x_struct, x_lm, adjacency)
+        probabilities = torch.sigmoid(logits).detach().cpu().numpy()
+        gate_summary = {
+            key: round(float(value.detach().cpu().item()), 6)
+            for key, value in gates.items()
+        }
+    scores = probabilities.astype(float, copy=True)
+    details = {
+        "fusion_architecture": "socgfm_cross_attention_torch",
+        "gnn_type": conv_name,
+        "edge_count": int(union_graph.number_of_edges()),
+        "feature_group_sizes": {
+            "discover": int(discover_feature_count),
+            "lm": int(lm_feature_count),
+        },
+        "pretraining_objectives": {
+            "supervised_node_classification": True,
+            "edge_reconstruction_auxiliary": False,
+            "discover_lm_alignment_auxiliary": False,
+        },
+        "cross_attention_gates": gate_summary,
+        "residual_tabular_branch": True,
+        "final_training_losses": {"classification": round(final_loss, 6)},
+        "validation_early_stopping": {
+            "enabled": bool(val_index.numel()),
+            "patience": int(patience),
+            "best_epoch": int(best_epoch) if best_epoch >= 0 else None,
+            "best_val_loss": round(float(best_val_loss), 6) if best_val_loss < float("inf") else None,
+            "used_val_split": bool(val_index.numel()),
+        },
+        "uses_logistic_fallback": False,
+        "paper_reference_style": "SocGFM/InfoOpsGFM official CrossAttention-style LM+GraphSAGE node classification",
+    }
+    backend = {
+        "gnn_type": conv_name,
+        "edge_count": int(union_graph.number_of_edges()),
+        "uses_logistic_fallback": False,
+    }
+    return scores, f"socgfm_cross_attention_torch:{json.dumps(backend, sort_keys=True)}", details
 
 
 def _cpu_light_gfm_lm_gnn_scores(
@@ -4047,13 +4542,28 @@ def _cpu_light_gfm_lm_gnn_scores(
         graph_branch += float(relation_attention[index]) * relation_matrix
     fused = np.concatenate([struct_matrix, lm_matrix, graph_branch], axis=1)
     scores = np.zeros(y.size, dtype=float)
-    scores[split.test] = _fit_numpy_logistic(
-        fused[split.train],
-        y[split.train],
-        fused[split.test],
-        epochs=80,
-        learning_rate=0.08,
-    )
+    scored = np.zeros(y.size, dtype=bool)
+    eval_indices = np.asarray(sorted(set(split.val.tolist() + split.test.tolist())), dtype=int)
+    if eval_indices.size:
+        scores[eval_indices] = _fit_numpy_logistic(
+            fused[split.train],
+            y[split.train],
+            fused[eval_indices],
+            epochs=80,
+            learning_rate=0.08,
+        )
+        scored[eval_indices] = True
+    if split.train.size:
+        scores[split.train] = _fit_numpy_logistic(
+            fused[split.train],
+            y[split.train],
+            fused[split.train],
+            epochs=80,
+            learning_rate=0.08,
+        )
+        scored[split.train] = True
+    fallback = _normalize_vector(fused[:, 0]) if fused.shape[1] else np.zeros(y.size, dtype=float)
+    scores = np.where(scored, scores, fallback)
     backend = "gfm_lm_gnn_cpu_light_numpy_logistic"
     relation_attention_map = {
         relation: round(float(relation_attention[index]), 6)
@@ -4085,19 +4595,31 @@ def _prediction_rows_from_discover_features(
     labels: Mapping[str, int],
     node_records: Mapping[str, Mapping[str, object]],
     split: Split | None = None,
+    *,
+    threshold: float = 0.5,
 ) -> list[dict[str, object]]:
     train_nodes = {nodes[int(index)] for index in split.train.tolist()} if split is not None else set()
+    val_nodes = {nodes[int(index)] for index in split.val.tolist()} if split is not None else set()
     test_nodes = {nodes[int(index)] for index in split.test.tolist()} if split is not None else set()
     rows = []
     for index, account_id in enumerate(nodes):
         node = node_records.get(account_id, {})
         score = float(scores[index]) if index < scores.size else 0.0
-        evaluation_split = "test" if account_id in test_nodes else "train" if account_id in train_nodes else "unassigned"
+        evaluation_split = (
+            "test"
+            if account_id in test_nodes
+            else "val"
+            if account_id in val_nodes
+            else "train"
+            if account_id in train_nodes
+            else "unassigned"
+        )
         rows.append(
             {
                 "account_id": account_id,
-                "node_score": round(score, 6),
-                "predicted_label": int(score >= 0.5),
+                "node_score": float(score),
+                "predicted_label": int(score >= threshold),
+                "decision_threshold": float(threshold),
                 "label": int(labels.get(account_id, 0)),
                 "evaluation_split": evaluation_split,
                 "cluster_id": node.get("cluster_id"),
@@ -4108,6 +4630,36 @@ def _prediction_rows_from_discover_features(
             }
         )
     return sorted(rows, key=lambda row: (-float(row["node_score"]), row["account_id"]))
+
+
+def _metric_bundle_for_prediction_rows(
+    predictions: Sequence[Mapping[str, object]],
+    *,
+    evaluation_split: str | None = None,
+    threshold: float = 0.5,
+    threshold_policy: str = "fixed_0_5",
+) -> dict[str, object]:
+    rows = [
+        row
+        for row in predictions
+        if evaluation_split is None or row.get("evaluation_split") == evaluation_split
+    ]
+    if not rows:
+        return {}
+    y_true = [int(row["label"]) for row in rows]
+    y_score = [float(row["node_score"]) for row in rows]
+    metrics = _detection_metric_dict(
+        y_true,
+        y_score,
+        threshold=threshold,
+        threshold_policy=threshold_policy,
+    )
+    metrics["amdn_hage_style"] = _amdn_hage_style_metrics(
+        y_true,
+        y_score,
+        threshold=threshold,
+    )
+    return metrics
 
 
 def _community_scores(result: Mapping[str, object], predictions: Sequence[Mapping[str, object]]) -> list[dict[str, object]]:
@@ -4721,7 +5273,7 @@ def run_dyna_colm_detect(
     reweighted_edge_count = 0
     uses_discover_reweighted_edges = False
     fusion_details: dict[str, object] = {}
-    if gnn_backend in {"relation_gnn", "fusion_gnn", "gfm_lm_gnn", "gfm_lm_gnn_cpu_light"}:
+    if gnn_backend in {"relation_gnn", "fusion_gnn", "gfm_lm_gnn", "gfm_lm_gnn_cpu_light", "socgfm_cross_attention"}:
         graphs = build_unmasking_similarity_graphs(_label_free_events(events), relations=relations, include_text_similarity=False)
         graphs, reweighted_edge_count = _apply_discover_edge_scores_to_relation_graphs(graphs, discovery)
         uses_discover_reweighted_edges = reweighted_edge_count > 0
@@ -4737,6 +5289,20 @@ def run_dyna_colm_detect(
                 discover_feature_count=discover_feature_count,
                 lm_feature_count=lm_feature_count,
                 seed=seed,
+                split=split,
+            )
+        elif gnn_backend == "socgfm_cross_attention":
+            scores, classifier_backend, fusion_details = _torch_socgfm_cross_attention_scores(
+                features,
+                y,
+                graphs,
+                nodes,
+                discover_feature_count=discover_feature_count,
+                lm_feature_count=lm_feature_count,
+                seed=seed,
+                epochs=supervised_epochs,
+                hidden_dim=hidden_dim,
+                device=device,
                 split=split,
             )
         elif gnn_backend == "gfm_lm_gnn":
@@ -4781,18 +5347,36 @@ def run_dyna_colm_detect(
             )
     else:
         scores, classifier_backend = _fit_transductive_scores_with_split(features, y, seed=seed, split=split)
-    predictions = _prediction_rows_from_discover_features(nodes, scores, labels, node_records, split=split)
-    test_predictions = [row for row in predictions if row.get("evaluation_split") == "test"]
-    test_y_true = [int(row["label"]) for row in test_predictions]
-    test_y_score = [float(row["node_score"]) for row in test_predictions]
-    all_y_true = [int(row["label"]) for row in predictions]
-    all_y_score = [float(row["node_score"]) for row in predictions]
+    scores, selected_threshold, validation_protocol = _apply_validation_protocol(scores, y, split)
+    threshold_policy = str(validation_protocol.get("threshold_policy", "validation_macro_f1"))
+    predictions = _prediction_rows_from_discover_features(
+        nodes,
+        scores,
+        labels,
+        node_records,
+        split=split,
+        threshold=selected_threshold,
+    )
+    val_predictions = [row for row in predictions if row.get("evaluation_split") == "val"]
     # Paper-facing Detect metrics are held-out only. The all-node version is
     # retained for audits because train rows still receive diagnostic scores.
-    metrics = _detection_metric_dict(test_y_true, test_y_score) if test_predictions else {}
-    metrics["amdn_hage_style"] = _amdn_hage_style_metrics(test_y_true, test_y_score) if test_predictions else {}
-    all_node_metrics = _detection_metric_dict(all_y_true, all_y_score)
-    all_node_metrics["amdn_hage_style"] = _amdn_hage_style_metrics(all_y_true, all_y_score)
+    metrics = _metric_bundle_for_prediction_rows(
+        predictions,
+        evaluation_split="test",
+        threshold=selected_threshold,
+        threshold_policy=threshold_policy,
+    )
+    val_metrics = _metric_bundle_for_prediction_rows(
+        predictions,
+        evaluation_split="val",
+        threshold=selected_threshold,
+        threshold_policy=threshold_policy,
+    )
+    all_node_metrics = _metric_bundle_for_prediction_rows(
+        predictions,
+        threshold=selected_threshold,
+        threshold_policy=threshold_policy,
+    )
     legacy_full: dict[str, object] = {}
     ablations: dict[str, dict[str, object]] = {}
     if include_diagnostics:
@@ -4821,8 +5405,18 @@ def run_dyna_colm_detect(
             "split_mode": split_mode,
             "split_detail": split_detail,
             "train_count": int(split.train.size),
+            "val_count": int(split.val.size),
             "test_count": int(split.test.size),
-            "evaluation_protocol": "heldout_test_only",
+            "evaluation_protocol": DETECTION_EVALUATION_PROTOCOL,
+            "selected_threshold": round(float(selected_threshold), 6),
+            "threshold_policy": threshold_policy,
+            "calibration_method": (
+                validation_protocol.get("calibration", {}).get("method")
+                if isinstance(validation_protocol.get("calibration"), Mapping)
+                else None
+            ),
+            "calibration": validation_protocol.get("calibration", {}),
+            "threshold_selection": validation_protocol.get("threshold_selection", {}),
             "feature_count": int(features.shape[1]) if features.ndim == 2 else 0,
             "discover_feature_count": discover_feature_count,
             "lm_feature_count": lm_feature_count,
@@ -4846,8 +5440,10 @@ def run_dyna_colm_detect(
             "fusion_details": fusion_details,
         },
         "metrics": metrics,
+        "validation_metrics": val_metrics,
         "all_node_metrics": all_node_metrics,
         "predictions": predictions,
+        "validation_predictions": val_predictions,
         "node_scores": {row["account_id"]: row["node_score"] for row in predictions},
         "community_scores": _community_scores(discovery, predictions),
         "discovery": _detect_discovery_snapshot(discovery),
@@ -4903,6 +5499,7 @@ def run_dyna_colm_detect(
             "label",
             "evaluation_split",
             "predicted_label",
+            "decision_threshold",
             "node_score",
             "cluster_id",
             "directed_out_weight",
@@ -4946,7 +5543,7 @@ def run_dyna_colm_detect_from_prepared(
     node_records = prepared.node_records
     split, split_detail = _split_for_detect(events, nodes, y, split_mode=split_mode, seed=seed)
     fusion_details: dict[str, object] = {}
-    if gnn_backend in {"relation_gnn", "fusion_gnn", "gfm_lm_gnn", "gfm_lm_gnn_cpu_light"}:
+    if gnn_backend in {"relation_gnn", "fusion_gnn", "gfm_lm_gnn", "gfm_lm_gnn_cpu_light", "socgfm_cross_attention"}:
         graphs = prepared.graphs
         supervised_epochs = max(1, int(detect_epochs)) if detect_epochs is not None else max(20, int(discover_epochs) * 5)
         if gnn_backend == "gfm_lm_gnn_cpu_light":
@@ -4958,6 +5555,20 @@ def run_dyna_colm_detect_from_prepared(
                 discover_feature_count=prepared.discover_feature_count,
                 lm_feature_count=prepared.lm_feature_count,
                 seed=seed,
+                split=split,
+            )
+        elif gnn_backend == "socgfm_cross_attention":
+            scores, classifier_backend, fusion_details = _torch_socgfm_cross_attention_scores(
+                features,
+                y,
+                graphs,
+                nodes,
+                discover_feature_count=prepared.discover_feature_count,
+                lm_feature_count=prepared.lm_feature_count,
+                seed=seed,
+                epochs=supervised_epochs,
+                hidden_dim=hidden_dim,
+                device=device,
                 split=split,
             )
         elif gnn_backend == "gfm_lm_gnn":
@@ -5002,16 +5613,34 @@ def run_dyna_colm_detect_from_prepared(
             )
     else:
         scores, classifier_backend = _fit_transductive_scores_with_split(features, y, seed=seed, split=split)
-    predictions = _prediction_rows_from_discover_features(nodes, scores, labels, node_records, split=split)
-    test_predictions = [row for row in predictions if row.get("evaluation_split") == "test"]
-    test_y_true = [int(row["label"]) for row in test_predictions]
-    test_y_score = [float(row["node_score"]) for row in test_predictions]
-    all_y_true = [int(row["label"]) for row in predictions]
-    all_y_score = [float(row["node_score"]) for row in predictions]
-    metrics = _detection_metric_dict(test_y_true, test_y_score) if test_predictions else {}
-    metrics["amdn_hage_style"] = _amdn_hage_style_metrics(test_y_true, test_y_score) if test_predictions else {}
-    all_node_metrics = _detection_metric_dict(all_y_true, all_y_score)
-    all_node_metrics["amdn_hage_style"] = _amdn_hage_style_metrics(all_y_true, all_y_score)
+    scores, selected_threshold, validation_protocol = _apply_validation_protocol(scores, y, split)
+    threshold_policy = str(validation_protocol.get("threshold_policy", "validation_macro_f1"))
+    predictions = _prediction_rows_from_discover_features(
+        nodes,
+        scores,
+        labels,
+        node_records,
+        split=split,
+        threshold=selected_threshold,
+    )
+    val_predictions = [row for row in predictions if row.get("evaluation_split") == "val"]
+    metrics = _metric_bundle_for_prediction_rows(
+        predictions,
+        evaluation_split="test",
+        threshold=selected_threshold,
+        threshold_policy=threshold_policy,
+    )
+    val_metrics = _metric_bundle_for_prediction_rows(
+        predictions,
+        evaluation_split="val",
+        threshold=selected_threshold,
+        threshold_policy=threshold_policy,
+    )
+    all_node_metrics = _metric_bundle_for_prediction_rows(
+        predictions,
+        threshold=selected_threshold,
+        threshold_policy=threshold_policy,
+    )
     legacy_full: dict[str, object] = {}
     ablations: dict[str, dict[str, object]] = {}
     if include_diagnostics:
@@ -5040,8 +5669,18 @@ def run_dyna_colm_detect_from_prepared(
             "split_mode": split_mode,
             "split_detail": split_detail,
             "train_count": int(split.train.size),
+            "val_count": int(split.val.size),
             "test_count": int(split.test.size),
-            "evaluation_protocol": "heldout_test_only",
+            "evaluation_protocol": DETECTION_EVALUATION_PROTOCOL,
+            "selected_threshold": round(float(selected_threshold), 6),
+            "threshold_policy": threshold_policy,
+            "calibration_method": (
+                validation_protocol.get("calibration", {}).get("method")
+                if isinstance(validation_protocol.get("calibration"), Mapping)
+                else None
+            ),
+            "calibration": validation_protocol.get("calibration", {}),
+            "threshold_selection": validation_protocol.get("threshold_selection", {}),
             "feature_count": int(features.shape[1]) if features.ndim == 2 else 0,
             "discover_feature_count": prepared.discover_feature_count,
             "lm_feature_count": prepared.lm_feature_count,
@@ -5069,8 +5708,10 @@ def run_dyna_colm_detect_from_prepared(
             "fusion_details": fusion_details,
         },
         "metrics": metrics,
+        "validation_metrics": val_metrics,
         "all_node_metrics": all_node_metrics,
         "predictions": predictions,
+        "validation_predictions": val_predictions,
         "node_scores": {row["account_id"]: row["node_score"] for row in predictions},
         "community_scores": _community_scores(discovery, predictions) if include_community_scores else [],
         "discovery": _detect_discovery_snapshot(discovery),
@@ -5149,6 +5790,7 @@ def run_dyna_colm_detect_from_prepared(
             "label",
             "evaluation_split",
             "predicted_label",
+            "decision_threshold",
             "node_score",
             "cluster_id",
             "directed_out_weight",
@@ -5417,6 +6059,30 @@ def _iohunter_shell_command(cwd: Path, script: Path, args: Sequence[str]) -> str
     return " ".join(["cd", shlex.quote(str(cwd)), "&&", "python", shlex.quote(script.name), *quoted_args])
 
 
+def _normalize_iohunter_same_country_methods(methods: Sequence[str] | None) -> list[tuple[str, str]]:
+    if not methods:
+        return [("MultiModalGNN_CrossAttention", IOHUNTER_PRIMARY_SCRIPT)]
+    normalized: list[tuple[str, str]] = []
+    by_script = {script: method for method, script in IOHUNTER_SAME_COUNTRY_METHOD_SCRIPTS.items()}
+    aliases = {
+        "gnn+llm": "GNNPlusLLM",
+        "gnn_plus_llm": "GNNPlusLLM",
+        "crossattention": "MultiModalGNN_CrossAttention",
+        "cross_attention": "MultiModalGNN_CrossAttention",
+        "multimodalgnn_crossattention": "MultiModalGNN_CrossAttention",
+    }
+    for raw_method in methods:
+        text = str(raw_method).strip()
+        if not text:
+            continue
+        method = by_script.get(text) or aliases.get(text.lower()) or text
+        if method not in IOHUNTER_SAME_COUNTRY_METHOD_SCRIPTS:
+            supported = ", ".join(sorted(IOHUNTER_SAME_COUNTRY_METHOD_SCRIPTS))
+            raise ValueError(f"Unsupported IOHunter official method '{raw_method}'. Supported: {supported}")
+        normalized.append((method, IOHUNTER_SAME_COUNTRY_METHOD_SCRIPTS[method]))
+    return normalized
+
+
 def build_iohunter_run_plan(
     workspace: Path,
     *,
@@ -5435,69 +6101,72 @@ def build_iohunter_run_plan(
     include_primary: bool = True,
     include_official_baselines: bool = True,
     include_cross_country: bool = False,
+    official_methods: Sequence[str] | None = None,
 ) -> list[dict[str, object]]:
     """Build executable IOHunter commands with the correct official working directory."""
     src_dir = _iohunter_src_dir(workspace)
     plan: list[dict[str, object]] = []
     if include_primary:
+        same_country_methods = _normalize_iohunter_same_country_methods(official_methods)
         for dataset in datasets:
-            for gnn in gnns:
-                for learning_rate in learning_rates:
-                    for seed in seeds:
-                        for under in undersampling:
-                            script = _iohunter_script_path(workspace, IOHUNTER_PRIMARY_SCRIPT)
-                            args = [
-                                "--dataset",
-                                dataset,
-                                "--lr",
-                                f"{learning_rate:g}",
-                                "--early",
-                                str(early),
-                                "--gnn",
-                                gnn,
-                                "--seed",
-                                str(seed),
-                                "--splits",
-                                str(splits),
-                                "--device",
-                                device,
-                            ]
-                            if epochs is not None:
-                                args.extend(["--epochs", str(epochs)])
-                            if check is not None:
-                                args.extend(["--check", str(check)])
-                            if latent is not None:
-                                args.extend(["--latent", str(latent)])
-                            if embed_type is not None:
-                                args.extend(["--embed_type", embed_type])
-                            setting = "supervised" if under is None else "scarce_supervised"
-                            if under is not None:
-                                args.extend(["--under", str(under)])
-                            command = _iohunter_run_command(src_dir, script, args)
-                            shell_command = _iohunter_shell_command(src_dir, script, args)
-                            plan.append(
-                                {
-                                    "family": "iohunter",
-                                    "method": "MultiModalGNN_CrossAttention",
-                                    "setting": setting,
-                                    "dataset": dataset,
-                                    "seed": seed,
-                                    "gnn": gnn,
-                                    "lr": learning_rate,
-                                    "early": early,
-                                    "splits": splits,
-                                    "epochs": epochs,
-                                    "check": check,
-                                    "latent": latent,
-                                    "embed_type": embed_type,
-                                    "undersampling": under,
-                                    "cwd": str(src_dir),
-                                    "script": str(script),
-                                    "args": args,
-                                    "command": command,
-                                    "shell_command": shell_command,
-                                }
-                            )
+            for method, script_name in same_country_methods:
+                for gnn in gnns:
+                    for learning_rate in learning_rates:
+                        for seed in seeds:
+                            for under in undersampling:
+                                script = _iohunter_script_path(workspace, script_name)
+                                args = [
+                                    "--dataset",
+                                    dataset,
+                                    "--lr",
+                                    f"{learning_rate:g}",
+                                    "--early",
+                                    str(early),
+                                    "--gnn",
+                                    gnn,
+                                    "--seed",
+                                    str(seed),
+                                    "--splits",
+                                    str(splits),
+                                    "--device",
+                                    device,
+                                ]
+                                if epochs is not None:
+                                    args.extend(["--epochs", str(epochs)])
+                                if check is not None:
+                                    args.extend(["--check", str(check)])
+                                if latent is not None:
+                                    args.extend(["--latent", str(latent)])
+                                if embed_type is not None and method != "GNNPlusLLM":
+                                    args.extend(["--embed_type", embed_type])
+                                setting = "supervised" if under is None else "scarce_supervised"
+                                if under is not None:
+                                    args.extend(["--under", str(under)])
+                                command = _iohunter_run_command(src_dir, script, args)
+                                shell_command = _iohunter_shell_command(src_dir, script, args)
+                                plan.append(
+                                    {
+                                        "family": "iohunter",
+                                        "method": method,
+                                        "setting": setting,
+                                        "dataset": dataset,
+                                        "seed": seed,
+                                        "gnn": gnn,
+                                        "lr": learning_rate,
+                                        "early": early,
+                                        "splits": splits,
+                                        "epochs": epochs,
+                                        "check": check,
+                                        "latent": latent,
+                                        "embed_type": embed_type,
+                                        "undersampling": under,
+                                        "cwd": str(src_dir),
+                                        "script": str(script),
+                                        "args": args,
+                                        "command": command,
+                                        "shell_command": shell_command,
+                                    }
+                                )
     if include_official_baselines:
         for script_name in IOHUNTER_BASELINE_SCRIPTS:
             method = script_name.removeprefix("run_").removesuffix(".py")
@@ -5608,6 +6277,7 @@ def build_iohunter_commands(
     include_primary: bool = True,
     include_official_baselines: bool = False,
     include_cross_country: bool = False,
+    official_methods: Sequence[str] | None = None,
 ) -> list[str]:
     plan = build_iohunter_run_plan(
         workspace,
@@ -5626,6 +6296,7 @@ def build_iohunter_commands(
         include_primary=include_primary,
         include_official_baselines=include_official_baselines,
         include_cross_country=include_cross_country,
+        official_methods=official_methods,
     )
     return [str(item["command"]) for item in plan]
 
@@ -5796,7 +6467,24 @@ def _run_plan_item_id(item: Mapping[str, object], index: int) -> str:
         parts.append(_slug(item["gnn"]))
     if item.get("undersampling") not in {None, "None", ""}:
         parts.append(f"under{_slug(item.get('undersampling'))}")
-    return "__".join(parts)
+    run_id = "__".join(parts)
+    if len(run_id) <= 56:
+        return run_id
+    digest = hashlib.sha1(run_id.encode("utf-8")).hexdigest()[:10]
+    return "__".join(
+        [
+            f"{index:04d}",
+            _slug(item.get("method", "method"))[:28],
+            _slug(item.get("dataset", "dataset"))[:12],
+            f"seed{_slug(item.get('seed', 'na'))}",
+            digest,
+        ]
+    )
+
+
+def _run_plan_log_stem(run_id: str, index: int) -> str:
+    digest = hashlib.sha1(run_id.encode("utf-8")).hexdigest()[:12]
+    return f"{index:04d}_{digest}"
 
 
 def _iohunter_completed_despite_cleanup_error(stdout: str, stderr: str) -> bool:
@@ -5835,8 +6523,9 @@ def run_iohunter_plan(
         script = Path(str(item["script"]))
         args = [str(value) for value in item.get("args", [])]
         run_id = _run_plan_item_id(item, index)
-        stdout_path = log_dir / f"{run_id}.stdout.log"
-        stderr_path = log_dir / f"{run_id}.stderr.log"
+        log_stem = _run_plan_log_stem(run_id, index)
+        stdout_path = log_dir / f"{log_stem}.stdout.log"
+        stderr_path = log_dir / f"{log_stem}.stderr.log"
         record = {
             **dict(item),
             "run_id": run_id,
@@ -5854,8 +6543,19 @@ def run_iohunter_plan(
             stderr_path.touch()
             record.update({"returncode": None, "status": "dry_run"})
             records.append(record)
+            _write_iohunter_run_manifest(
+                manifest_path,
+                dry_run=dry_run,
+                resume=resume,
+                python_executable=python_executable,
+                run_plan=run_plan,
+                selected=selected,
+                records=records,
+            )
             continue
+        print(f"[iohunter-start] {run_id}", flush=True)
         started_at = datetime.now(timezone.utc).isoformat()
+        started_clock = time.perf_counter()
         process = subprocess.run(
             [python_executable, script.name, *args],
             cwd=cwd,
@@ -5863,8 +6563,9 @@ def run_iohunter_plan(
             capture_output=True,
             check=False,
         )
-        stdout_path.write_text(process.stdout, encoding="utf-8", errors="replace")
-        stderr_path.write_text(process.stderr, encoding="utf-8", errors="replace")
+        runtime_seconds = round(time.perf_counter() - started_clock, 3)
+        _write_text_resilient(stdout_path, process.stdout)
+        _write_text_resilient(stderr_path, process.stderr)
         finished_at = datetime.now(timezone.utc).isoformat()
         status = "passed" if process.returncode == 0 else "failed"
         warning = ""
@@ -5878,11 +6579,44 @@ def run_iohunter_plan(
                 "warning": warning,
                 "started_at": started_at,
                 "finished_at": finished_at,
+                "runtime_seconds": runtime_seconds,
             }
         )
         records.append(record)
+        print(f"[iohunter-done] {run_id} status={status} runtime={runtime_seconds}s", flush=True)
+        _write_iohunter_run_manifest(
+            manifest_path,
+            dry_run=dry_run,
+            resume=resume,
+            python_executable=python_executable,
+            run_plan=run_plan,
+            selected=selected,
+            records=records,
+        )
         if status == "failed" and stop_on_error:
             break
+    manifest = _write_iohunter_run_manifest(
+        manifest_path,
+        dry_run=dry_run,
+        resume=resume,
+        python_executable=python_executable,
+        run_plan=run_plan,
+        selected=selected,
+        records=records,
+    )
+    return manifest
+
+
+def _write_iohunter_run_manifest(
+    manifest_path: Path,
+    *,
+    dry_run: bool,
+    resume: bool,
+    python_executable: str,
+    run_plan: Sequence[Mapping[str, object]],
+    selected: Sequence[Mapping[str, object]],
+    records: Sequence[Mapping[str, object]],
+) -> dict[str, object]:
     manifest = {
         "created_at": datetime.now(timezone.utc).isoformat(),
         "dry_run": dry_run,
@@ -5892,10 +6626,22 @@ def run_iohunter_plan(
         "total_selected": len(selected),
         "completed": len(records),
         "failed": sum(1 for item in records if item.get("status") == "failed"),
-        "records": records,
+        "records": list(records),
     }
     manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
     return manifest
+
+
+def _write_text_resilient(path: Path, text: str) -> None:
+    for attempt in range(3):
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(text, encoding="utf-8", errors="replace")
+            return
+        except FileNotFoundError:
+            if attempt == 2:
+                raise
+            time.sleep(0.1)
 
 
 def _parse_float_maybe(value: str) -> float | None:
@@ -5944,6 +6690,24 @@ def summarize_iohunter_runs(run_output_dir: Path, *, output_dir: Path | None = N
                     "undersampling": record.get("undersampling"),
                     "status": record.get("status"),
                     **metric,
+                    "run_id": record.get("run_id"),
+                }
+            )
+        if record.get("runtime_seconds") is not None:
+            rows.append(
+                {
+                    "family": record.get("family"),
+                    "method": record.get("method"),
+                    "setting": record.get("setting"),
+                    "dataset": record.get("dataset"),
+                    "seed": record.get("seed"),
+                    "gnn": record.get("gnn"),
+                    "undersampling": record.get("undersampling"),
+                    "status": record.get("status"),
+                    "split": "RUN",
+                    "metric": "runtime_seconds",
+                    "mean": record.get("runtime_seconds"),
+                    "std": 0.0,
                     "run_id": record.get("run_id"),
                 }
             )

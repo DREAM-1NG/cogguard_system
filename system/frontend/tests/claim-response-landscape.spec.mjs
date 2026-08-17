@@ -70,7 +70,7 @@ test('claim response tab renders anchored claim, two evidence lanes, and explici
 
   assert.match(tabSource, /权威主张锚点/)
   assert.match(tabSource, /claimResponseLandscape\?\.claim_anchor/)
-  assert.match(tabSource, /authority_source_id/)
+  assert.match(tabSource, /claimResponseLandscape\?\.claim_anchor\?\.account/)
   assert.match(tabSource, /claim-response-official-lane/)
   assert.match(tabSource, /官方发布/)
   assert.match(tabSource, /claim-response-response-lane/)
@@ -131,7 +131,7 @@ test('claim response path drawer presents exact observed evidence rather than fa
   assert.match(openPathDetail, /drilldown\.pathScore/)
   assert.match(openPathDetail, /authority_account/)
   assert.match(openPathDetail, /authority_source_id/)
-  assert.match(drawerSource, /精确证据引用/)
+  assert.match(drawerSource, /精确证据链/)
   assert.match(drawerSource, /权威来源账号/)
   assert.match(drawerSource, /路径贡献/)
   assert.match(drawerSource, /路径评分/)

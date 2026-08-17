@@ -4,6 +4,7 @@ import argparse
 import copy
 import csv
 import json
+import re
 import statistics
 import sys
 import time
@@ -28,12 +29,24 @@ from app.core.coordination_baseline.io_reproduction import (  # noqa: E402
 
 DEFAULT_DATASETS = ("UAE", "cuba", "russia", "venezuela", "iran", "china")
 DEFAULT_DISCOVER_ENCODERS = (STABLE_DISCOVER_ENCODER,)
-DEFAULT_GNN_BACKENDS = ("gfm_lm_gnn", "gfm_lm_gnn_cpu_light", "fusion_gnn", "relation_gnn", "classifier")
+DEFAULT_GNN_BACKENDS = (
+    "socgfm_cross_attention",
+    "gfm_lm_gnn",
+    "gfm_lm_gnn_cpu_light",
+    "fusion_gnn",
+    "relation_gnn",
+    "classifier",
+)
 DEFAULT_LM_BACKENDS = ("tfidf", "sbert")
 DEFAULT_SPLIT_MODES = ("supervised", "scarce_supervised", "cross_io")
 METRIC_FIELDS = (
     "auc",
     "auprc",
+    "macro_f1_at_selected_threshold",
+    "selected_threshold",
+    "validation_macro_f1",
+    "validation_ece",
+    "validation_brier",
     "max_f1",
     "max_f1_threshold",
     "precision_at_k",
@@ -41,6 +54,8 @@ METRIC_FIELDS = (
     "accuracy",
     "amdn_hage_ap",
     "amdn_hage_auc",
+    "macro_f1_at_0_5",
+    "diagnostic_f1_at_0_5",
     "runtime_seconds",
 )
 
@@ -117,7 +132,15 @@ def main() -> None:
                                 f"{dataset}_seed{seed}_{discover_encoder}_"
                                 f"{split_mode}_{gnn_backend}_{lm_backend}"
                             )
-                            run_output = output_dir / dataset / f"seed_{seed}" / discover_encoder / split_mode / gnn_backend / lm_backend
+                            run_output = _run_output_dir(
+                                output_dir,
+                                dataset=dataset,
+                                seed=seed,
+                                discover_encoder=discover_encoder,
+                                split_mode=split_mode,
+                                gnn_backend=gnn_backend,
+                                lm_backend=lm_backend,
+                            )
                             summary_path = run_output / "detection_summary.json"
                             if args.resume and summary_path.exists():
                                 print(f"[skip] {run_id}", flush=True)
@@ -234,16 +257,15 @@ def _try_reuse_equivalent_lm_result(
 ) -> dict[str, object] | None:
     if lm_backend != "sbert":
         return None
-    source_path = (
-        output_dir
-        / dataset
-        / f"seed_{seed}"
-        / discover_encoder
-        / split_mode
-        / gnn_backend
-        / "tfidf"
-        / "detection_summary.json"
-    )
+    source_path = _run_output_dir(
+        output_dir,
+        dataset=dataset,
+        seed=seed,
+        discover_encoder=discover_encoder,
+        split_mode=split_mode,
+        gnn_backend=gnn_backend,
+        lm_backend="tfidf",
+    ) / "detection_summary.json"
     if not source_path.exists():
         return None
     source = json.loads(source_path.read_text(encoding="utf-8"))
@@ -265,6 +287,34 @@ def _try_reuse_equivalent_lm_result(
     if source_predictions.exists():
         (run_output / "predictions.csv").write_text(source_predictions.read_text(encoding="utf-8"), encoding="utf-8")
     return reused
+
+
+def _safe_path_segment(value: object) -> str:
+    text = str(value).strip()
+    text = re.sub(r'[<>:"/\\|?*\x00-\x1f]+', "_", text)
+    text = re.sub(r"_+", "_", text).strip(" ._")
+    return text or "unnamed"
+
+
+def _run_output_dir(
+    output_dir: Path,
+    *,
+    dataset: str,
+    seed: int,
+    discover_encoder: str,
+    split_mode: str,
+    gnn_backend: str,
+    lm_backend: str,
+) -> Path:
+    return (
+        output_dir
+        / _safe_path_segment(dataset)
+        / f"seed_{int(seed)}"
+        / _safe_path_segment(discover_encoder)
+        / _safe_path_segment(split_mode)
+        / _safe_path_segment(gnn_backend)
+        / _safe_path_segment(lm_backend)
+    )
 
 
 def _load_or_run_discovery(
@@ -319,8 +369,11 @@ def _row_from_result(
     status: str = "passed",
 ) -> dict[str, object]:
     metrics = summary.get("metrics") if isinstance(summary.get("metrics"), dict) else {}
+    validation_metrics = summary.get("validation_metrics") if isinstance(summary.get("validation_metrics"), dict) else {}
     model = summary.get("detect_model") if isinstance(summary.get("detect_model"), dict) else {}
     amdn = metrics.get("amdn_hage_style") if isinstance(metrics.get("amdn_hage_style"), dict) else {}
+    calibration = model.get("calibration") if isinstance(model.get("calibration"), dict) else {}
+    threshold_selection = model.get("threshold_selection") if isinstance(model.get("threshold_selection"), dict) else {}
     return {
         "dataset": dataset,
         "seed": seed,
@@ -344,9 +397,20 @@ def _row_from_result(
         "reweighted_edge_count": model.get("reweighted_edge_count"),
         "edge_score_source": model.get("edge_score_source"),
         "train_count": model.get("train_count"),
+        "val_count": model.get("val_count"),
         "test_count": model.get("test_count"),
+        "selected_threshold": metrics.get("selected_threshold", model.get("selected_threshold")),
+        "threshold_policy": metrics.get("threshold_policy", model.get("threshold_policy")),
+        "calibration_method": model.get("calibration_method", calibration.get("method")),
+        "validation_macro_f1": validation_metrics.get(
+            "macro_f1_at_selected_threshold",
+            threshold_selection.get("validation_macro_f1"),
+        ),
+        "validation_ece": calibration.get("validation_ece"),
+        "validation_brier": calibration.get("validation_brier"),
         "auc": metrics.get("auc"),
         "auprc": metrics.get("auprc"),
+        "macro_f1_at_selected_threshold": metrics.get("macro_f1_at_selected_threshold"),
         "max_f1": metrics.get("max_f1", amdn.get("max_f1")),
         "max_f1_threshold": metrics.get("max_f1_threshold", amdn.get("max_f1_threshold")),
         "precision_at_k": metrics.get("precision_at_k"),
@@ -354,6 +418,7 @@ def _row_from_result(
         "accuracy": metrics.get("accuracy"),
         "amdn_hage_ap": amdn.get("ap"),
         "amdn_hage_auc": amdn.get("auc"),
+        "macro_f1_at_0_5": amdn.get("macro_f1_at_0_5"),
         "diagnostic_f1_at_0_5": amdn.get("f1_at_0_5", metrics.get("f1")),
         "runtime_seconds": runtime,
         "output_dir": output_dir,
@@ -451,7 +516,7 @@ def _write_acceptance_report(output_dir: Path, records: list[dict[str, object]])
         f"- Reused equivalent LM runs: {len(reused)}",
         f"- Failed: {len(failed)}",
         f"- Runs with fallback markers: {fallback_count}",
-        "- Main F1-style metric: `MaxF1`; fixed-threshold F1@0.5 is diagnostic only.",
+        "- Main F1-style metric: `macro_f1_at_selected_threshold`; `MaxF1` and F1@0.5 are diagnostic only.",
         "",
         "Main tables:",
         "",

@@ -2,7 +2,8 @@
 param(
     [string]$Database,
     [switch]$DryRun,
-    [string]$DockerExecutable
+    [string]$DockerExecutable,
+    [string]$ContainerName
 )
 
 Set-StrictMode -Version Latest
@@ -54,15 +55,22 @@ if (-not $mongoPassword) {
 }
 
 $arguments = @(
-    'compose', '-f', $composeFile,
-    'exec', '-T',
-    '-e', "MONGO_DATABASE=$Database"
+    if ($ContainerName) {
+        'exec'
+    } else {
+        'compose'
+        '-f'
+        $composeFile
+        'exec'
+        '-T'
+    }
 )
+$arguments += @('-e', "MONGO_DATABASE=$Database")
 if ($DryRun) {
     $arguments += @('-e', 'MONGO_PERFORMANCE_INDEXES_DRY_RUN=1')
 }
+$arguments += if ($ContainerName) { @($ContainerName) } else { @('mongodb') }
 $arguments += @(
-    'mongodb',
     'mongosh', '--quiet',
     '--username', $mongoUser,
     '--password', $mongoPassword,

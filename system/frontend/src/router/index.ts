@@ -61,12 +61,6 @@ const router = createRouter({
           component: () => import('@/views/risk/index.vue'),
           meta: { title: '事件研判' },
         },
-        {
-          path: 'analysis',
-          name: 'Analysis',
-          component: () => import('@/views/analysis/index.vue'),
-          meta: { title: '语义辅助分析' },
-        },
       ],
     },
   ],

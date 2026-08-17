@@ -1,8 +1,8 @@
 # CogGuard Performance Operations
 
-> Scope: delivery, database-operation, and server-side projection-cache
-> optimizations that preserve the public product response contracts and do not
-> change `system/frontend/src/` presentation behavior.
+> Scope: delivery, database-operation, server-side projection-cache, and
+> propagation-view presentation optimizations that preserve the public product
+> response contracts.
 >
 > Owner: maintainers operating the `system/` product root.
 
@@ -191,20 +191,16 @@ build or mocked API server.
 | Authentication | Login and authenticated route access succeeded with a local analyst test account |
 | MongoDB indexes | Historical 2026-08-05 baseline used 8 indexes; current 2026-08-07 set contains 11 |
 
-The existing MySQL, MongoDB, and Redis containers were already owned by another
-Compose project and used the fixed `cogguard-*` container names. The normal
-startup command therefore hit a Docker name-conflict before changing anything.
-The measured run reused the healthy containers with:
-
-```powershell
-powershell.exe -ExecutionPolicy Bypass -File .\start-system.ps1 -SkipDocker
-```
-
-The database migrations and static frontend build still ran. In this reuse
-mode, MongoDB index preparation was applied directly through the active
-container after a dry-run because the index helper's Compose `exec` path cannot
-resolve a container owned by the other project. A clean Compose-owned stack can
-use the canonical no-flag startup path above.
+This workstation can contain a complete existing MySQL, MongoDB, and Redis
+set under the fixed `cogguard-*` names but owned by another Compose project.
+The normal startup helper recognizes that complete, image-compatible set,
+reuses its data volumes, and runs the MongoDB index operation through
+`docker exec cogguard-mongodb` rather than the current Compose project's
+service lookup. Both the dry-run and apply paths remain idempotent. A partial
+or image-mismatched set still fails before any container is created.
+On Windows, the static frontend port check also recognizes the `wslrelay.exe`
+listener paired with the Docker backend; an unrelated listener is still
+rejected before Compose is invoked.
 
 ### Measured API Costs
 
@@ -353,6 +349,39 @@ after that work completes. Redis is an acceleration layer rather than the
 source of truth; disabling it leaves the process-local cache and preserves
 correctness. Configure the behavior with `ANALYSIS_RESULT_CACHE_*` in
 `system/.env`.
+
+### Propagation Demonstration Projection (2026-08-14)
+
+The propagation page requests a bounded hierarchy projection with
+`node_limit=160`, `first_layer_limit=40`, and `second_layer_limit=80`. The demo
+warmup uses the same dimensions so its cached projection is reused on the first
+page load; changing any of these query values intentionally creates a new cache
+identity. The page renders the root and layer nodes on concentric rings without
+relationship lines in the primary overview. Propagation edge and evidence data
+remain available to detail views and the API, but are not used to create a
+visually dense overview graph.
+
+This is a presentation and cache-key alignment measure, not a claim that the
+underlying propagation computation is cheap. A cold snapshot still computes the
+bounded projection; repeat requests should read the versioned process/Redis
+projection cache.
+
+### Propagation Forecast Cache Closure (2026-08-14)
+
+The authenticated demo warmup also runs `POST /api/v1/propagation/model-event-predict`
+for the default event with `observation_ratio=0.5` and `top_k=10`. This stores a
+MongoDB entry in `propagation_prediction_cache_v1`, keyed by event, platform,
+observation cutoff, observation ratio, and Top-K. The propagation page reads
+that cache on initial load and does not issue the slower prediction request
+until the analyst selects **刷新趋势预测**.
+
+Observed propagation and cached forecast reads begin concurrently. Initial
+load and route scope changes preserve a valid cached forecast when the observed
+projection completes later; analyst-triggered resynchronization intentionally
+continues to clear the prior forecast. A strict real-data warmup completed the
+forecast generation in about 1.0 s, and an authenticated browser check then
+opened the trend tab with cached observed size, predicted final size, direction,
+and Top-10 candidates without a manual refresh.
 
 ### Cache Cutover Verification (2026-08-06)
 

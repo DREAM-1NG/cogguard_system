@@ -10,13 +10,22 @@ from app.core.review.propagation_agent import build_propagation_agent_output_con
 from app.core.review.propagation_agent import build_propagation_agent_prompt_note
 from app.core.review.agent_policy import adjudicate_policy
 from app.core.review.agent_policy import normalize_rule_provenance
+from app.core.review.evidence_contracts import EvidenceBundle
+from app.core.review.evidence_contracts import PolicyBundle
+from app.core.review.evidence_contracts import RationaleCapsule
+from app.core.review.evidence_contracts import rationale_quality_gate
+from app.core.review.review_context import scope_agent_context
 
 
 MAX_PROMPT_TEXT_CHARS = 2_000
 JUDGE_DECISION_BEGIN = "<REVIEW_JUDGE_DECISION>"
 JUDGE_DECISION_END = "</REVIEW_JUDGE_DECISION>"
+CLAIM_EVIDENCE_BEGIN = "<REVIEW_CLAIM_EVIDENCE>"
+CLAIM_EVIDENCE_END = "</REVIEW_CLAIM_EVIDENCE>"
 JUDGE_AXIS_LABELS = {"harmful", "non_harmful", "uncertain", "unavailable"}
 JUDGE_STANCE_LABELS = {"support", "deny", "query", "neutral", "unlinked", "uncertain"}
+CLAIM_ASSESSMENT_LABELS = {"not_assessed", "checkable", "no_verifiable_claim", "extraction_failed"}
+CLAIM_EVIDENCE_RELATIONS = {"not_applicable", "supported", "contradicted", "insufficient", "conflicting"}
 
 AGENT_REPORT_SECTIONS: dict[str, list[str]] = {
     "PostHarmAgent": ["帖子内容摘要", "检测结论复核", "危害类型与目标对象分析", "证据充分性", "需要人工确认的问题"],
@@ -30,6 +39,9 @@ AGENT_REPORT_SECTIONS: dict[str, list[str]] = {
 
 __all__ = [
     "AGENT_REPORT_SECTIONS",
+    "EvidenceBundle",
+    "PolicyBundle",
+    "RationaleCapsule",
     "build_agent_output_contract",
     "build_agent_system_prompt",
     "build_agent_user_prompt",
@@ -40,7 +52,10 @@ __all__ = [
     "build_revision_system_prompt",
     "build_revision_user_prompt",
     "build_safety_flags",
+    "parse_claim_evidence_footer",
     "parse_judge_decision_footer",
+    "rationale_quality_gate",
+    "scope_agent_context",
     "validate_judge_decision_against_policy",
 ]
 
@@ -56,7 +71,14 @@ def build_agent_system_prompt(agent_name: str) -> str:
         f"{JUDGE_DECISION_BEGIN} and {JUDGE_DECISION_END}. The footer must be strict JSON with "
         "main_axes.attack_hate_offense, main_axes.misinfo_claim_risk, stance, review_required, "
         "review_reason, and fine_labels. Each axis contains available, label, and confidence. "
-        "Use label harmful, non_harmful, uncertain, or unavailable; never infer unavailable axes.\n"
+        "For each main axis, label must be exactly harmful, non_harmful, uncertain, or unavailable. "
+        "For stance, label must be exactly support, deny, query, neutral, unlinked, or uncertain. "
+        "All footer labels are lowercase ASCII identifiers, never Chinese translations. If a main axis "
+        "is unavailable, set available=false and label=unavailable; if no claim stance can be assessed, "
+        "set stance.available=false and stance.label=unlinked. Do not add fields or Markdown fences. "
+        "Example footer: "
+        f"{JUDGE_DECISION_BEGIN}{{\"main_axes\":{{\"attack_hate_offense\":{{\"available\":false,\"label\":\"unavailable\",\"confidence\":0.0}},\"misinfo_claim_risk\":{{\"available\":true,\"label\":\"uncertain\",\"confidence\":0.5}}}},\"stance\":{{\"available\":false,\"label\":\"unlinked\",\"confidence\":0.0}},\"review_required\":true,\"review_reason\":[\"evidence_gap\"],\"fine_labels\":[]}}{JUDGE_DECISION_END}. "
+        "Confidence is audit metadata, not a calibrated Student training target.\n"
         if agent_name == "HarmfulnessJudgeAgent"
         else ""
     )
@@ -72,18 +94,44 @@ def build_agent_system_prompt(agent_name: str) -> str:
         if agent_name == "QuestionReflectionAgent"
         else ""
     )
+    claim_evidence_note = (
+        "\nFor ClaimEvidenceAgent: first assess whether the input contains one externally verifiable factual "
+        "claim. Never use the whole post as a factual query. After the Chinese report, append exactly one strict "
+        f"JSON footer between {CLAIM_EVIDENCE_BEGIN} and {CLAIM_EVIDENCE_END} with claim_assessment, claim, "
+        "assessment_reason, relation, source_ref_ids, and quoted_spans. Use relation=not_applicable unless a "
+        "checkable claim, completed retrieval, cited sources, and quotations support the relation. "
+        "No evidence, a provider fault, or zero relevant results are not insufficient evidence.\n"
+        if agent_name == "ClaimEvidenceAgent"
+        else ""
+    )
     return (
         "You are a MARO-style social media governance review expert. Write a role-specific natural-language "
         "analysis report in Chinese for platform governance analysts. Treat public platform rules as reference "
         "templates, never automatic legal authority. Do not output JSON as the main report or claim final "
         "classifier authority. Separate evidence, uncertainty, and human confirmation.\n\n"
-        f"Agent: {agent_name}\nRequired report sections:\n{sections}\n{judge_policy_note}{countermeasure_note}"
+        f"Agent: {agent_name}\nRequired report sections:\n{sections}\n{judge_policy_note}{countermeasure_note}{claim_evidence_note}"
         f"{reflection_note}{build_propagation_agent_prompt_note(agent_name)}\n"
         "Policy optimization is not a selectable judgement role; cite policy provenance without changing it.\n"
     )
 
 
 def build_agent_output_contract(agent_name: str) -> dict[str, Any]:
+    if agent_name == "ClaimEvidenceAgent":
+        return {
+            "main_output": "natural_language_chinese_report",
+            "machine_footer": {
+                "begin": CLAIM_EVIDENCE_BEGIN,
+                "end": CLAIM_EVIDENCE_END,
+                "schema": {
+                    "claim_assessment": sorted(CLAIM_ASSESSMENT_LABELS),
+                    "claim": "str",
+                    "assessment_reason": "str",
+                    "relation": sorted(CLAIM_EVIDENCE_RELATIONS),
+                    "source_ref_ids": "list[str]",
+                    "quoted_spans": "list[str]",
+                },
+            },
+        }
     if agent_name == "HarmfulnessJudgeAgent":
         return {
             "main_output": "natural_language_chinese_report",
@@ -92,10 +140,22 @@ def build_agent_output_contract(agent_name: str) -> dict[str, Any]:
                 "end": JUDGE_DECISION_END,
                 "schema": {
                     "main_axes": {
-                        "attack_hate_offense": {"available": "bool", "label": "enum", "confidence": "0..1"},
-                        "misinfo_claim_risk": {"available": "bool", "label": "enum", "confidence": "0..1"},
+                        "attack_hate_offense": {
+                            "available": "bool",
+                            "label": sorted(JUDGE_AXIS_LABELS),
+                            "confidence": "0..1",
+                        },
+                        "misinfo_claim_risk": {
+                            "available": "bool",
+                            "label": sorted(JUDGE_AXIS_LABELS),
+                            "confidence": "0..1",
+                        },
                     },
-                    "stance": {"available": "bool", "label": "enum", "confidence": "0..1"},
+                    "stance": {
+                        "available": "bool",
+                        "label": sorted(JUDGE_STANCE_LABELS),
+                        "confidence": "0..1",
+                    },
                     "review_required": "bool",
                     "review_reason": "list[str]",
                     "fine_labels": "list[str]",
@@ -175,6 +235,43 @@ def parse_judge_decision_footer(report_text: str) -> tuple[str, dict[str, Any] |
     }, None
 
 
+def parse_claim_evidence_footer(report_text: str) -> tuple[str, dict[str, Any] | None, str | None]:
+    """Parse ClaimEvidenceAgent's bounded assessment without treating it as a verdict."""
+
+    text = str(report_text or "").strip()
+    begin = text.rfind(CLAIM_EVIDENCE_BEGIN)
+    end = text.rfind(CLAIM_EVIDENCE_END)
+    if begin < 0 or end < begin:
+        return text, None, "missing_claim_evidence_footer"
+    footer_text = text[begin + len(CLAIM_EVIDENCE_BEGIN) : end].strip()
+    clean_text = (text[:begin] + text[end + len(CLAIM_EVIDENCE_END) :]).strip()
+    try:
+        raw = json.loads(footer_text)
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return clean_text, None, "invalid_claim_evidence_json"
+    if not isinstance(raw, dict):
+        return clean_text, None, "invalid_claim_evidence_schema"
+    assessment = str(raw.get("claim_assessment") or "").strip().lower()
+    relation = str(raw.get("relation") or "").strip().lower()
+    if assessment not in CLAIM_ASSESSMENT_LABELS:
+        return clean_text, None, "invalid_claim_assessment"
+    if relation not in CLAIM_EVIDENCE_RELATIONS:
+        return clean_text, None, "invalid_claim_evidence_relation"
+    claim = str(raw.get("claim") or "").strip()
+    if assessment == "checkable" and not claim:
+        return clean_text, None, "checkable_claim_missing_text"
+    if assessment != "checkable" and (claim or relation != "not_applicable"):
+        return clean_text, None, "noncheckable_claim_has_relation"
+    return clean_text, {
+        "claim_assessment": assessment,
+        "claim": claim,
+        "assessment_reason": str(raw.get("assessment_reason") or "").strip(),
+        "relation": relation,
+        "source_ref_ids": _string_list(raw.get("source_ref_ids")),
+        "quoted_spans": _string_list(raw.get("quoted_spans")),
+    }, None
+
+
 def validate_judge_decision_against_policy(
     teacher_prediction: dict[str, Any] | None,
     policy_decision_frame: dict[str, Any] | None,
@@ -235,11 +332,15 @@ def build_agent_user_prompt(
     policy_guidance: dict[str, Any],
 ) -> str:
     memory_enabled = agent_name in {"QuestionReflectionAgent", "HarmfulnessJudgeAgent", "CountermeasureAgent"}
-    selected_context = context if memory_enabled else {
-        key: value for key, value in context.items() if key != "error_memory_summary"
-    }
+    selected_context = scope_agent_context(agent_name, context)
+    if memory_enabled:
+        selected_context = {
+            **selected_context,
+            "error_memory_summary": context.get("error_memory_summary") or {},
+        }
     payload = {
         "agent_name": agent_name,
+        "review_task": context.get("review_task"),
         "task_boundary": "这是分析员触发的复核任务。只生成自然语言分析报告，不发布内容，不覆盖系统判定。",
         "policy_guidance": _compact_prompt_value(policy_guidance),
         "output_contract": build_agent_output_contract(agent_name),
@@ -266,7 +367,7 @@ def build_reflection_response_prompt(
             "task_boundary": "这是问题追问后的专家补充步骤。只用自然语言修订或补充原分析。",
             "original_expert_report": _compact_prior_report(expert_report),
             "question_reflection_report": _compact_prior_report(reflection_report),
-            "selected_context": _compact_prompt_value(context),
+            "selected_context": _compact_prompt_value(scope_agent_context(agent_name, context)),
             "error_memory_summary": _compact_prompt_value(context.get("error_memory_summary") or {}),
             "expected_response": ["哪些追问影响原始分析", "仍缺少哪些证据", "哪些结论需要降低确定性", "裁决阶段应视为何种不确定性"],
         },

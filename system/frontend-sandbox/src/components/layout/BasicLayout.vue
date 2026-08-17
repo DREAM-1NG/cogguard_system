@@ -1,12 +1,12 @@
 <template>
   <a-layout class="app-layout">
     <a class="skip-link" href="#main-content">跳转到主内容</a>
-    <a-layout-sider v-model:collapsed="collapsed" collapsible theme="light" class="app-sider">
+    <a-layout-sider v-model:collapsed="collapsed" collapsible theme="dark" class="app-sider">
       <div class="logo">
         <span v-if="!collapsed">CogGuard</span>
         <span v-else>CG</span>
       </div>
-      <a-menu theme="light" mode="inline" :selectedKeys="selectedKeys" @click="handleMenuClick">
+      <a-menu theme="dark" mode="inline" :selectedKeys="selectedKeys" @click="handleMenuClick">
         <a-menu-item v-for="item in visibleMenuItems" :key="item.path" :disabled="item.disabled">
           <a-tooltip :title="item.desc" placement="right" :mouseEnterDelay="0.4">
             <component :is="item.icon" />
@@ -203,18 +203,18 @@ onMounted(async () => {
   font-size: 18px;
   font-weight: 700;
   letter-spacing: 0;
-  border-bottom: 1px solid #E4E4E7;
+  border-bottom: 1px solid #27272A;
 }
 
 .app-header {
-  background: #FFFFFF;
+  background: #09090B;
   padding: 0 20px;
   height: 52px;
   line-height: 52px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid #E4E4E7;
+  border-bottom: 1px solid #27272A;
 }
 
 .header-left {
@@ -225,7 +225,7 @@ onMounted(async () => {
 .header-module {
   font-size: 15px;
   font-weight: 600;
-  color: #18181B;
+  color: #FAFAFA;
   letter-spacing: 0;
 }
 
@@ -242,23 +242,24 @@ onMounted(async () => {
   font: inherit;
   padding: 4px 12px;
   border-radius: 6px;
-  background: #FFFFFF;
-  border: 1px solid #E4E4E7;
+  background: #09090B;
+  border: 1px solid #27272A;
+  color: #FAFAFA;
   transition: background-color 0.2s, border-color 0.2s, box-shadow 0.2s;
 
   &:hover {
-    background: #FAF9F6;
-    border-color: #D4D4D8;
+    background: #18181B;
+    border-color: #3F3F46;
   }
 
   &:focus-visible {
-    outline: 2px solid #18181B;
+    outline: 2px solid #FAFAFA;
     outline-offset: 2px;
   }
 }
 
 .user-name {
-  color: #18181B;
+  color: #FAFAFA;
   font-weight: 500;
   font-size: 13px;
 }

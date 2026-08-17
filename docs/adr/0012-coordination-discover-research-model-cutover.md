@@ -40,6 +40,11 @@ Deprecate the `TemporalMAGNN + Leiden` research branch for activation and
 paper-facing claims. It remains in the repository only for historical replay,
 negative-result analysis, and comparison.
 
+`magnn_leiden_hybrid_discovery` is allowed only as a new research identity. It
+does not revive the deprecated TemporalMAGNN runtime: it must start from the
+evidence-constrained candidate graph, learn relation-aware edge affinities, and
+use Leiden only as a community explanation head.
+
 Redirect the research model line to a goal-aligned continuous-time heterogeneous
 evidence model:
 

@@ -27,6 +27,7 @@ Current semantic package paths: `system/research/coordination_discover/`, `syste
 | **Event Review Case** | The product-facing aggregate that binds one event, its evidence, its advisory history, and its analyst decision trail. | Ticket, issue, review job |
 | **Preliminary Finding** | The first structured case finding produced before analyst confirmation. | First guess, preliminary score |
 | **Review Advisory** | An internal or manually requested advisory verdict that can differ from the preliminary finding. | Final verdict, automatic decision |
+| **Review Audit** | A bounded read-only projection of a persisted review advisory run, including stages, source excerpts, queries, and available short rationale capsules. | Model trace, final verdict, chain-of-thought dump |
 | **Confirmed Decision** | The immutable analyst-confirmed case decision. | Mutable decision, draft approval |
 | **Evidence Sufficiency** | The assessment of whether the current evidence set is enough to support a case action. | Completeness score, confidence score |
 | **Evidence Annotation** | A note attached to a specific evidence item, including its assessment and supporting context. | Comment, tag, annotation blob |
@@ -68,12 +69,20 @@ Current semantic package paths: `system/research/coordination_discover/`, `syste
 | **Coordination Signal** | A platform-generic observable cue that multiple accounts acted around the same object or target with temporal proximity. | Platform feature, risk feature, handcrafted feature |
 | **Evidence Object** | A shared URL, domain, topic, keyword, entity, target, discussion target, or near-duplicate template referenced by content. | Media object, feature |
 | **Evidence Graph** | A temporal graph connecting accounts to **Evidence Objects** through typed observed relations. | Coordination network, feature graph |
-| **Coordination Discover** | The unsupervised process that learns temporal coordination structure from an **Evidence Graph**. | Dynamic discover, detection, classifier, scoring rule |
-| **Coordination Detect** | A supervised validation layer used on public labeled data to test whether **Coordination Discover** representations improve detection. | Detect validation, main detector, event labeler |
+| **Evidence-Constrained Discovery** | The system **Coordination Discover** mainline that discovers candidate coordination groups from observable account-object evidence, time proximity, weighted graph construction, and community lineage. | MAGNN mainline, GFM discovery, classifier discovery |
+| **Coordination Discover** | The label-free process that resolves cross-platform evidence and discovers candidate coordination groups from an **Evidence Graph**. | Dynamic discover, detection, classifier, scoring rule |
+| **Coordination Detect** | The governed runtime that consumes **Coordination Discover** output and an active detection artifact to emit harmful/benign coordination evidence hints. | Detect validation only, final verdict, event labeler |
+| **SocGFM Cross-Attention Detection** | The offline deep Detection family used to produce account-level IO membership probabilities from SocGFM-style text/graph experiments. | Logistic mainline, heuristic detector, final CIB judge |
+| **China Checkpoint Local Precompute** | The G-drive offline bridge that loads the official China SocGFM CrossAttention/SAGE `model0.pth` through `model4.pth`, builds local account text/graph features, executes Torch/PyG forward, and writes precomputed account probabilities for Coordination Detect v1. | Online neural forward, internal fusion checkpoint, group-level harmful F1 |
+| **Precomputed Member Probability Aggregation** | The deployed SocGFM v1 inference mode that aggregates precomputed account-level probabilities and cluster features into cluster-level proxy verdict hints without online neural forward. | Live Cross-Attention forward, group-level harmful F1, heuristic fallback |
+| **Historical Detection Projection** | A read-time group-level projection reconstructed only from persisted member predictions and stored Coordination Community membership when an archive artifact has no materialized `coordination_detection` block. | New inference, heuristic completion, automatic decision |
+| **Shadow Coordination Classifier** | The retained learned/logistic detector used for backend audit, rollback comparison, and research tables but not frontend primary display. | Primary classifier, fallback detector |
+| **Coordination Archive Replay** | The legacy dataset-registry rerun surface for historical MAGNN/Leiden/SBERT results, used for visualization and comparison but not as the current **Coordination Detect** primary output. | Current Detection run, primary model, live SocGFM inference |
+| **MAGNN-Leiden Hybrid Discovery** | A research-only **Coordination Discover** candidate that learns relation-aware account embeddings and edge affinities on the evidence-constrained graph, then uses Leiden only as the community explanation head. | System discovery, deprecated MAGNN, production model |
 | **Learned Edge Score** | A scored weight for an account-object or account-account coordination edge. | Rule score, degree score, fixed weight |
 | **Coordination Community** | A group of accounts partitioned from a learned weighted account graph. | Cluster, campaign, botnet |
 | **Topology Audit Feature** | A descriptive graph statistic used only for auditing, baselines, or ablations, not as main model input. | Main feature, risk score |
-| **Evidence Runtime Fallback** | The `coordination-evidence-runtime-v2` path used when no compatible **Coordination Discover** output is available. | Research model, primary method |
+| **Evidence Runtime Mainline** | The `coordination-evidence-runtime-v2` path used as the system **Evidence-Constrained Discovery** implementation. | Research model, fallback-only method |
 | **Platform-Generic Policy** | The rule that excludes video, audio, image, OCR, ASR, and platform-specific media fields from the current main coordination method. | Multimodal policy, media policy |
 
 ## Propagation Analysis
@@ -98,13 +107,42 @@ Current semantic package paths: `system/research/coordination_discover/`, `syste
 | **Review Queue** | The structured set of posts, accounts, communities, retrieval requests, and review tasks that need attention. | Manual queue, task dump |
 | **Review Graph** | A heterogeneous graph export of post, account, claim, community, target, media, coordination, and propagation evidence. | Graph dump, feature graph |
 | **Teacher Silver Record** | A distillation supervision record derived from approved or replayed teacher review traces. | Pseudo label, generated label |
-| **Selective Student** | A student runtime that predicts main review axes and defers uncertain cases. | Gate model, shortcut classifier |
+| **Selective Student** | Historical compatibility terminology for the retired student defer-head design; it is not the target architecture for the current Review Student. | Gate model, defer classifier, current Student |
+| **Review Student** | The low-cost synchronous text encoder that predicts independent Review task axes and emits auxiliary rationale projections. | Unified risk classifier, defer model |
+| **Review Teacher** | The analyst-triggered asynchronous MARO-compatible expert chain that produces an advisory report and typed sidecars. | Automatic reviewer, final verdict |
+| **Claim Assessment** | The explicit state that says whether a supplied or extracted statement is an externally checkable factual claim. | Missing claim, evidence insufficiency |
+| **Retrieval Status** | The execution and coverage state of a claim retrieval attempt, independent of factual truth. | Evidence relation, truth label |
+| **Evidence Relation** | The relation between a checkable claim and completed, traceable quoted evidence. | Provider result, retrieval score |
+| **EvidenceRAG** | Claim-gated retrieval of traceable external evidence; it may not query a raw post before **Claim Assessment** is `checkable`. | General web search, policy search |
+| **PolicyRAG** | Retrieval of currently effective governance clauses and allowed/prohibited action references. | Fact evidence, legal authority |
+| **ReasonBank** | Offline retrieval of rationale examples for analysis or auxiliary supervision; it cannot establish factual support. | Evidence store, truth database |
+| **Rationale Capsule** | A short rationale linked to input spans and, when applicable, evidence or policy references, subject to a quality gate. | Full chain of thought, confidence explanation |
+| **Hard-Case Candidate** | An offline Student-derived manifest row selected for later analyst or explicitly authorized Teacher review. | Deferred prediction, automatic escalation |
 | **Active Pointer** | The currently selected version reference for a review capability. | Default model, live model |
 | **Model Candidate** | A registered, versioned model artifact that is eligible for review but is not yet selected by an Active Pointer. | Live model, deployed model |
 | **Model Candidate Approval** | An authenticated administrator action that verifies a candidate artifact and its capability gates before recording approval evidence. | Caller-supplied approval, automatic activation |
 | **Model Activation Approval** | An immutable database record linking one Model Candidate to one authenticated administrator; the records are the evidence used by the deployment approval policy. | Approval flag, approver list |
 | **Deployment Approval Policy** | The environment-specific rule for the number of distinct active administrators required before Model Activation. | UI approval setting, client policy |
 | **Teacher Dispatch Policy** | The environment-specific rule that determines whether Teacher Review may use local inline execution or must use a durable queue. | Silent fallback, in-process queue |
+
+## MARO-Compatible Harm Evaluation
+
+| Term | Definition | Aliases to avoid |
+| --- | --- | --- |
+| **HateCoT Harm Adaptation** | The text-only three-way MARO-compatible research protocol that applies source-domain rule optimization to interpersonal-harm labels. | Official MARO reproduction, hate misinformation model |
+| **Source-Train Pool** | The source-domain cases visible to rule proposal and strict-improvement evaluation. | Training set, target support |
+| **Source-Dev Pool** | A disjoint source-domain case pool used only to rank the fixed candidate rules after proposal generation. | Validation feedback loop, proposer set |
+| **Held-Out Target Test** | The target-domain sample whose labels are withheld from every prompt and read only for final metrics. | Target training set, support pool |
+| **Strict Candidate Rule** | A rule retained only when its source-train accuracy strictly exceeds the current best rule. | Prompt variant, rejected rule |
+| **Local Advisory Policy Context** | A fixed local governance reference context used as an ablation and audit aid, not as a label source or semantic PolicyRAG adaptation. | Policy-trained classifier, factual evidence |
+| **Fold Protocol Hash** | A digest of the MARO protocol version, split manifests, label mapping, policy arm, and run parameters used to authorize resume. | Cache key, model hash |
+
+## Relationships
+
+- A **Source-Train Pool** generates **Strict Candidate Rules**; a **Source-Dev Pool** ranks them but never feeds scores back to the proposer.
+- A **Held-Out Target Test** is evaluated only after the **Source-Dev Pool** selects the final odd rule set.
+- **Local Advisory Policy Context** is independent of the primary policy-off arm and cannot alter the declared harm label space.
+- A **Fold Protocol Hash** must match before a persisted fold report or current analysis cache can be resumed.
 
 ## Account Detection
 
@@ -140,12 +178,22 @@ Current semantic package paths: `system/research/coordination_discover/`, `syste
 - Automatic routing can request an internal review advisory after successful collection when evidence sufficiency or urgency warrants it.
 - A **Coordination Signal** creates one or more **Evidence Objects**.
 - An **Evidence Graph** links accounts to **Evidence Objects** and preserves relation type plus timestamp.
-- **Coordination Discover** consumes an **Evidence Graph** and produces **Learned Edge Scores**.
-- **Coordination Communities** are partitioned from learned weighted edges, not from fixed topology scores.
-- **Coordination Detect** can consume **Coordination Discover** representations, but it does not label unlabeled project events.
+- **Evidence-Constrained Discovery** consumes an **Evidence Graph** and produces candidate **Coordination Communities** with auditable evidence references.
+- **MAGNN-Leiden Hybrid Discovery** may produce **Learned Edge Scores** in offline research, but it is not the system **Coordination Discover** mainline.
+- **Coordination Communities** are partitioned from weighted evidence edges or research learned edges, not from a harmfulness label.
+- **Coordination Detect** consumes **Coordination Discover** communities and a governed active artifact; its output is an evidence hint and does not replace a **Confirmed Decision**.
+- **SocGFM Cross-Attention Detection** produces account-level IO probabilities offline; **China Checkpoint Local Precompute** is the local bridge for uploaded unlabeled data, and **Precomputed Member Probability Aggregation** is the frontend-visible primary **Coordination Detect** result in v1.
+- A **Historical Detection Projection** may aggregate persisted real member predictions into a group evidence hint, but it must return `model_unavailable` when those predictions are absent; it cannot invent a group verdict.
+- The **Shadow Coordination Classifier** remains backend-only unless an analyst explicitly inspects diagnostics.
+- A **Coordination Archive Replay** may expose historical account scores as `archive_detection_*` audit fields, but `node_score` in the Coordination workspace is a **Coordination Discover** evidence score.
 - **Propagation Analysis** consumes an **Event Snapshot** and may emit a **Propagation Forecast**, **Next-Hop Ranking**, and **Propagation Tree** evidence.
+- A **Claim Response Path Semantic Overlay** is auxiliary evidence for one observed path only. It never creates a path, supplies an uncomputed downstream-reach value, or changes a **Propagation Analysis** or **Review** conclusion.
 - **Review** consumes content, coordination, and propagation evidence and produces a **Review Verdict**.
-- **Teacher Review** may create **Teacher Silver Records** for **Selective Student** distillation after governance approval.
+- **Teacher Review** may create quality-gated **Teacher Silver Records** for **Review Student** auxiliary supervision after the appropriate review and provenance checks.
+- **Review Student** may create a **Hard-Case Candidate**, but only an analyst Review API request activates **Review Teacher** in production.
+- **EvidenceRAG**, **PolicyRAG**, and **ReasonBank** are separate retrieval boundaries; policy text cannot be treated as factual evidence, and factual retrieval cannot authorize a governance action.
+- An **Evidence Relation** is `not_applicable` until **Claim Assessment** is `checkable` and **Retrieval Status** is completed with traceable sources and quoted spans; only then can it be `supported`, `contradicted`, `conflicting`, or `insufficient`.
+- **Rationale Capsules** are auxiliary supervision artifacts, not faithful reconstructions of an Agent chain or causal explanations.
 - An **Artifact Manifest** must match the snapshot fingerprint before an artifact-first result can serve a backend response.
 - A **Model Candidate Approval** creates at most one **Model Activation Approval** per candidate and authenticated administrator.
 - Production **Model Activation** requires two distinct active administrator records, including the activating administrator; local activation requires one accountable operator.
@@ -168,9 +216,9 @@ Current semantic package paths: `system/research/coordination_discover/`, `syste
 >
 > **Domain expert:** "No. Use **Event Review Case**, **Preliminary Finding**, **Review Advisory**, and **Confirmed Decision** in product copy; keep runtime-only terms inside engineering docs."
 >
-> **Dev:** "If there is no compatible coordination output, what should the backend return?"
+> **Dev:** "If there is no compatible coordination detection artifact, what should the backend return?"
 >
-> **Domain expert:** "Use **Evidence Runtime Fallback** and record the fallback reason explicitly."
+> **Domain expert:** "Return `model_unavailable`; **Coordination Detect** must not pretend a heuristic or shadow classifier is the active model."
 
 ## Flagged Ambiguities
 
@@ -181,4 +229,8 @@ Current semantic package paths: `system/research/coordination_discover/`, `syste
 - A **Model Candidate** is not an active model. Use **Model Candidate Approval** for the action and **Model Activation Approval** for the persisted evidence record.
 - "feature" can mean a model input or a descriptive statistic; use **Coordination Signal** for evidence and **Topology Audit Feature** for audit statistics.
 - "community" is not automatically a campaign or botnet; use **Coordination Community** unless human review or external labels justify a stronger claim.
+- "Detection" can mean a system evidence hint or a research superiority claim; use **Coordination Detect** for the governed runtime and state separately whether a paper/result claim is supported.
+- "MAGNN" can mean the deprecated TemporalMAGNN-style runtime, the retained `magnn_legacy` baseline, or the new **MAGNN-Leiden Hybrid Discovery** candidate; name the exact method in code and reports.
 - Numbered shorthand was previously used for the three research workstreams; current code and documentation must use **Coordination Discover**, **Coordination Detect**, **Propagation Analysis**, and **Review** instead.
+- "MARO" can mean the official binary misinformation protocol or this three-way **HateCoT Harm Adaptation**; always state the dataset, label space, and protocol boundary.
+- "policy context" can mean local advisory governance text or semantic PolicyRAG retrieval; use **Local Advisory Policy Context** for this experiment and do not conflate them.

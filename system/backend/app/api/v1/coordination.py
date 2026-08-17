@@ -6,8 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.security import get_current_user
 from app.db.mysql import get_db
 from app.models.user import User
-from app.schemas.coordination import CoordinationRunRequest
-from app.services import coordination_service
+from app.schemas.coordination import CoordinationGroupLabelReviewRequest, CoordinationRunRequest
+from app.services.coordination_group_label_case_service import record_coordination_group_label_review
 from app.services.coordination_model_service import (
     create_coordination_run,
     get_coordination_community_detail,
@@ -33,14 +33,27 @@ async def run_detection(
     event_id: str | None = Query(None, description="限定事件 ID"),
     _current_user: User = Depends(get_current_user),
 ):
-    result = await coordination_service.run_coordination_detection(
-        time_window=time_window,
-        min_participation=min_participation,
-        edge_weight=edge_weight,
-        platform=platform,
-        event_id=event_id,
+    return success(
+        data={
+            "technology": "coordination_detection",
+            "status": "model_unavailable",
+            "fallback": False,
+            "model_role": "primary_socgfm_cross_attention",
+            "model_version": "unavailable",
+            "blocking_reason": "legacy_coordination_detect_endpoint_disabled_use_analysis_run",
+            "requested_scope": {
+                "event_id": event_id,
+                "platform": platform,
+                "time_window": time_window,
+                "min_participation": min_participation,
+                "edge_weight": edge_weight,
+            },
+            "replacement": {
+                "analysis_stage": "coordination_discover",
+                "dataset_run_endpoint": "/api/v1/coordination/runs",
+            },
+        }
     )
-    return success(data=result)
 
 
 @router.get("/datasets")
@@ -133,6 +146,20 @@ async def create_run(
     run = await create_coordination_run(db=db, dataset_id=body.dataset_id, created_by=current_user.id)
     background_tasks.add_task(run_coordination_model_job, int(run["run_id"]))
     return success(data=run)
+
+
+@router.post("/group-label-cases/reviews")
+async def submit_group_label_review(
+    body: CoordinationGroupLabelReviewRequest,
+    current_user: User = Depends(get_current_user),
+):
+    result = record_coordination_group_label_review(
+        case=body.case,
+        cluster_harm_label=body.cluster_harm_label,
+        reviewer_id=int(current_user.id),
+        reviewer_notes=body.reviewer_notes,
+    )
+    return success(data=result)
 
 
 @router.get("/runs/{run_id}")

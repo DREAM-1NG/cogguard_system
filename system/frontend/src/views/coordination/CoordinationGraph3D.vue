@@ -8,7 +8,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import ForceGraph3D from '3d-force-graph'
 import SpriteText from 'three-spritetext'
 import * as THREE from 'three'
@@ -41,6 +41,8 @@ const emit = defineEmits<{
 const containerRef = ref<HTMLDivElement | null>(null)
 let graph: any = null
 let resizeObserver: ResizeObserver | null = null
+const reducedMotion = ref(false)
+let reducedMotionMediaQuery: MediaQueryList | null = null
 
 const palette = [
   '#2563eb',
@@ -97,6 +99,18 @@ function buildGraphData() {
   return { nodes, links }
 }
 
+function syncReducedMotion() {
+  reducedMotion.value = Boolean(reducedMotionMediaQuery?.matches)
+  if (!graph) return
+  graph.linkDirectionalParticles(reducedMotion.value ? 0 : 1)
+  graph.linkDirectionalParticleSpeed(reducedMotion.value ? 0 : 0.004)
+  if (reducedMotion.value) {
+    graph.pauseAnimation?.()
+  } else if (props.active) {
+    graph.resumeAnimation?.()
+  }
+}
+
 function initGraph() {
   if (!containerRef.value || graph) return
   graph = new ForceGraph3D(containerRef.value) as any
@@ -105,9 +119,9 @@ function initGraph() {
     .showNavInfo(false)
     .nodeRelSize(4)
     .nodeResolution(16)
-    .linkDirectionalParticles(1)
+    .linkDirectionalParticles(reducedMotion.value ? 0 : 1)
     .linkDirectionalParticleWidth(1.3)
-    .linkDirectionalParticleSpeed(0.004)
+    .linkDirectionalParticleSpeed(reducedMotion.value ? 0 : 0.004)
     .linkOpacity(0.36)
     .linkWidth((link: GraphLink) => Math.max(0.5, Math.min(4, Number(link.edge_score ?? link.weight ?? 0) * 2.8)))
     .nodeLabel((node: GraphNode) => {
@@ -127,7 +141,7 @@ function initGraph() {
           z: (node.z || 0) * distRatio,
         },
         node,
-        900,
+        reducedMotion.value ? 0 : 900,
       )
     })
 
@@ -145,6 +159,8 @@ function updateDimensions() {
 
 function syncAnimationState() {
   if (!graph) return
+  syncReducedMotion()
+  if (reducedMotion.value) return
   if (props.active) {
     graph.resumeAnimation?.()
     updateDimensions()
@@ -189,7 +205,7 @@ async function ensureGraph() {
 }
 
 function resetCamera() {
-  graph?.cameraPosition({ x: 0, y: 0, z: 420 }, { x: 0, y: 0, z: 0 }, 900)
+  graph?.cameraPosition({ x: 0, y: 0, z: 420 }, { x: 0, y: 0, z: 0 }, reducedMotion.value ? 0 : 900)
 }
 
 watch(
@@ -218,7 +234,15 @@ watch(
   },
 )
 
+onMounted(() => {
+  reducedMotionMediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
+  syncReducedMotion()
+  reducedMotionMediaQuery.addEventListener?.('change', syncReducedMotion)
+})
+
 onBeforeUnmount(() => {
+  reducedMotionMediaQuery?.removeEventListener?.('change', syncReducedMotion)
+  reducedMotionMediaQuery = null
   resizeObserver?.disconnect()
   resizeObserver = null
   if (graph) {

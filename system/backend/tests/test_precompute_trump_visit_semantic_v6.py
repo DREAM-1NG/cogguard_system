@@ -405,3 +405,48 @@ def test_precompute_validation_only_does_not_create_snapshot_or_run(monkeypatch,
     assert summary["run_id"] is None
     assert "data_mutation" not in events
     assert "manifest_reconciliation" not in events
+
+
+def test_precompute_run_id_is_derived_from_the_new_snapshot(monkeypatch, tmp_path: Path, capsys):
+    script = _load_script()
+    events: list[str] = []
+    captures: dict[str, object] = {}
+    _PrebuiltRuntime.events = events
+    snapshot = _Snapshot()
+
+    class FakeRegistry:
+        def __init__(self, **_kwargs):
+            pass
+
+        async def create_event_snapshot(self, **_kwargs):
+            return snapshot
+
+        async def create_run(self, **kwargs):
+            captures["run_id"] = kwargs["run_id"]
+            return {"run_id": kwargs["run_id"]}
+
+    class FakeExecutor:
+        def __init__(self, **_kwargs):
+            pass
+
+        async def execute_run(self, run_id):
+            return {
+                "run_id": run_id,
+                "status": "completed",
+                "results": {"semantic_enrichment": {"status": "ok", "runtime_status": "ready"}},
+            }
+
+    monkeypatch.setattr(script, "import_mediacrawler_data_runs", _fake_importer(events))
+    monkeypatch.setattr(script, "SemanticEnrichmentRuntime", _PrebuiltRuntime)
+    monkeypatch.setattr(script, "async_session_factory", lambda: _AsyncContext(_FakeSession(events)))
+    monkeypatch.setattr(script, "get_mongo_db", lambda: _FakeMongo(events))
+    monkeypatch.setattr(script, "SqlAlchemyAnalysisStore", lambda _db: object())
+    monkeypatch.setattr(script, "AnalysisRegistry", FakeRegistry)
+    monkeypatch.setattr(script, "AnalysisExecutor", FakeExecutor)
+    monkeypatch.setattr(script, "close_mongo", lambda: asyncio.sleep(0))
+
+    exit_code = asyncio.run(script.main_async(_args(tmp_path)))
+    capsys.readouterr()
+
+    assert exit_code == 0
+    assert captures["run_id"] == "run_trump_visit_2026_05_21_semantic_fingerprint_"

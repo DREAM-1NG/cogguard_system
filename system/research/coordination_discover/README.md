@@ -15,6 +15,22 @@ detection-only features, and fits its classifier/calibration on labeled
 train/validation cases. The fixed Bayesian rule is retained only as
 `heuristic_baseline_v1`.
 
+The system Coordination Discover mainline is still the evidence-constrained
+network-science runtime (`coordination-evidence-runtime-v2`) reached through
+`app.core.analysis.coordination_runtime`. It performs conservative
+cross-platform resolution, evidence extraction, shared-object/time-neighbor
+group discovery, weighted coordination-network construction, dynamic windows,
+and community lineage. It is not replaced by MAGNN, GFM, or a classifier.
+
+The new `magnn_leiden_hybrid_discovery` method is research-only. It reuses the
+same evidence-constrained candidate graph, learns relation-aware account
+embeddings with a self-supervised edge-reconstruction objective, fuses the
+learned affinity with normalized evidence weight, and keeps Leiden as the
+community partition/explanation head. It is registered only in the compact
+offline runner and must be compared against `coordination-evidence-runtime-v2`,
+`magnn_legacy`, EdgeBank, dense cosine Leiden, and TSGS/MHCR compact baselines
+before any cutover discussion.
+
 The two-stage implementation is supported as research code and contract
 coverage, not as a product cutover. The current IOHunter smoke covers only one
 Russia campaign/seed external-account proxy. Its G-drive artifact and blocked

@@ -95,9 +95,9 @@ class BaselineSpec:
         if self.selection_eligible and not (
             self.method_id == "learned_fused_detector"
             and self.stage == "detection"
-            and self.model_role == "primary_learned"
+            and self.model_role == "shadow_learned"
         ):
-            raise ValueError("only the fused primary learned detector is selection eligible")
+            raise ValueError("only the fused shadow learned detector is selection eligible")
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -385,7 +385,7 @@ def default_baseline_registry() -> BaselineRegistry:
             ("binary_coordination_detection", "external_label_evaluation"),
         ),
         BaselineSpec(
-            "learned_fused_detector", "learned-coordination-logistic-v1", "detection", "primary_learned",
+            "learned_fused_detector", "learned-coordination-logistic-v1", "detection", "shadow_learned",
             "learned-fused-implementation-v1",
             ("binary_coordination_detection", "external_label_evaluation"), selection_eligible=True,
         ),

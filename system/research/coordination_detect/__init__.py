@@ -30,8 +30,26 @@ DetectValidationRequest = _cached.DetectValidationRequest
 DetectValidationResult = _cached.DetectValidationResult
 run_detect_validation = _cached.run_detect_validation
 
+from .contracts import ClusterDetectionBatch, ClusterDetectionVerdict, DetectionModelArtifact
+# Shadow/baseline-only: the system primary Detection artifact is SocGFM.
+from .learned import LearnedCoordinationDetector
+from .socgfm import (
+    SOCGFM_CROSS_ATTENTION_MODEL_ROLE,
+    SOCGFM_CROSS_ATTENTION_MODEL_VERSION,
+    SocGFMCrossAttentionArtifact,
+    SocGFMCrossAttentionDetector,
+)
+
 __all__ = [
+    "ClusterDetectionBatch",
+    "ClusterDetectionVerdict",
     "DetectValidationRequest",
     "DetectValidationResult",
+    "DetectionModelArtifact",
+    "LearnedCoordinationDetector",
+    "SOCGFM_CROSS_ATTENTION_MODEL_ROLE",
+    "SOCGFM_CROSS_ATTENTION_MODEL_VERSION",
+    "SocGFMCrossAttentionArtifact",
+    "SocGFMCrossAttentionDetector",
     "run_detect_validation",
 ]

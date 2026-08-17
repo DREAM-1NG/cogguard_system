@@ -5,14 +5,20 @@ from app.core.coordination_baseline.io_reproduction import make_sample_events
 from app.models.coordination_registry import CoordinationDataset
 from app.core.coordination_baseline.io_reproduction import normalize_event_table
 from app.services.coordination_model_service import (
+    COORDINATION_RESULT_CACHE_SCHEMA,
     _build_coordination_community_payload,
     _build_coordination_graph_payload,
     _build_result_snapshot,
+    _build_socgfm_coordination_detection_payload,
     _build_account_profile_url,
     _enrich_top_object_item,
     _format_top_object_item,
     _summarize_event_table,
 )
+
+
+def test_coordination_latest_result_cache_schema_invalidates_pre_projection_snapshots():
+    assert COORDINATION_RESULT_CACHE_SCHEMA == "coordination-latest-result-v3"
 
 
 def test_summarize_event_table_detects_labeled_dataset():
@@ -70,10 +76,29 @@ def test_build_result_snapshot_marks_unlabeled_pretrained_mode():
         "predictions": [
             {"account_id": "u1", "node_score": 0.93, "predicted_label": 1, "cluster_id": 0},
             {"account_id": "u2", "node_score": 0.61, "predicted_label": 1, "cluster_id": 0},
-            {"account_id": "u3", "node_score": 0.44, "predicted_label": 0, "cluster_id": 1},
+            {"account_id": "u3", "node_score": 0.99, "predicted_label": 0, "cluster_id": 1},
         ],
         "metrics": {},
         "unlabeled_inference_summary": {"score_mean": 0.66, "positive_at_0_5": 2},
+        "coordination_detection": {
+            "status": "completed",
+            "model_role": "primary_socgfm_cross_attention",
+            "inference_mode": "precomputed_member_probability_cluster_aggregation",
+            "claim_scope": "account_level_io_membership_to_cluster_proxy",
+            "online_neural_forward": False,
+            "verdicts": [
+                {
+                    "cluster_id": "0",
+                    "decision": "harmful_coordination",
+                    "harmful_probability": 0.82,
+                    "model_role": "primary_socgfm_cross_attention",
+                    "member_probability_coverage": 1.0,
+                    "inference_mode": "precomputed_member_probability_cluster_aggregation",
+                    "claim_scope": "account_level_io_membership_to_cluster_proxy",
+                    "online_neural_forward": False,
+                }
+            ],
+        },
     }
 
     snapshot = _build_result_snapshot(dataset, discovery, detect, result_source="rerun")
@@ -83,6 +108,125 @@ def test_build_result_snapshot_marks_unlabeled_pretrained_mode():
     assert snapshot["metrics"]["detect"] == {}
     assert snapshot["metrics"]["detect_inference"]["positive_at_0_5"] == 2
     assert snapshot["global_key_nodes"][0]["account_id"] == "u1"
+    assert snapshot["global_key_nodes"][0]["score_role"] == "discovery_evidence_score"
+    assert snapshot["global_key_nodes"][0]["archive_detection_score"] == 0.93
+    assert snapshot["label_status"]["primary_detection_model"] == "socgfm_cross_attention"
+    assert snapshot["label_status"]["legacy_detect_scores_are_archive_only"] is True
+    assert snapshot["coordination_detection"]["verdicts"][0]["cluster_id"] == "0"
+    assert snapshot["coordination_detection"]["verdicts"][0]["model_role"] == "primary_socgfm_cross_attention"
+    assert snapshot["coordination_detection"]["online_neural_forward"] is False
+
+
+def test_build_socgfm_coordination_detection_payload_aggregates_member_probabilities():
+    discovery = {
+        "metrics": {"cluster_count": 2},
+        "nodes": [
+            {"account_id": "u1", "cluster_id": 0},
+            {"account_id": "u2", "cluster_id": 0},
+            {"account_id": "u3", "cluster_id": 1},
+        ],
+        "communities": [
+            {"cluster_id": 0, "size": 2, "community_score": 0.8, "relation_breakdown": {"url_share": 3}},
+            {"cluster_id": 1, "size": 1, "community_score": 0.2, "relation_breakdown": {"reply_target": 1}},
+        ],
+    }
+    detect = {
+        "predictions": [
+            {"account_id": "u1", "account_key": "weibo:u1", "node_score": 0.9},
+            {"account_id": "u2", "account_key": "weibo:u2", "node_score": 0.7},
+            {"account_id": "u3", "account_key": "weibo:u3", "node_score": 0.2},
+        ],
+        "detect_model": {
+            "gnn_backend": "socgfm_cross_attention",
+            "online_neural_forward": False,
+            "checkpoint_family": "official_china_socgfm_cross_attention_sage",
+        },
+    }
+
+    payload = _build_socgfm_coordination_detection_payload(discovery, detect)
+
+    assert payload["status"] == "completed"
+    assert payload["model_role"] == "primary_socgfm_cross_attention"
+    assert payload["inference_mode"] == "precomputed_member_probability_cluster_aggregation"
+    assert payload["claim_scope"] == "account_level_io_membership_to_cluster_proxy"
+    assert payload["online_neural_forward"] is False
+    assert payload["diagnostics"]["online_neural_forward_executed"] is False
+    assert payload["diagnostics"]["member_probability_source"] == "china_checkpoint_offline_precompute"
+    assert payload["verdicts"][0]["cluster_id"] == "0"
+    assert payload["verdicts"][0]["member_probability_coverage"] == 1.0
+    assert payload["verdicts"][0]["harmful_probability"] > payload["verdicts"][1]["harmful_probability"]
+
+
+def test_build_result_snapshot_backfills_missing_unlabeled_detection_projection(tmp_path: Path):
+    source_path = tmp_path / "events.csv"
+    source_path.write_text("account_id,relation,object_id,timestamp,content_id,content\nu1,url_share,url:a,1,c1,alpha\n", encoding="utf-8")
+    dataset = CoordinationDataset(
+        id=17,
+        slug="legacy-unlabeled",
+        display_name="Legacy Unlabeled",
+        source_type="uploaded",
+        source_format="csv",
+        source_path=str(source_path),
+        metadata_json="{}",
+        has_labels=False,
+        event_rows=1,
+        account_nodes=1,
+        object_ids=1,
+        user_user_edges=0,
+        available_relations='["url_share"]',
+        latest_run_id=None,
+        created_by=1,
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
+    )
+    discovery = {
+        "nodes": [{"account_id": "u1", "cluster_id": 0, "node_score": 0.4}],
+        "edges": [],
+        "communities": [{"cluster_id": 0, "size": 1, "community_score": 0.4, "relation_breakdown": {"url_share": 1}}],
+    }
+    detect = {
+        "predictions": [{"account_id": "u1", "node_score": 0.8, "cluster_id": 0}],
+        "detect_model": {"lm_feature_source": "sbert:sentence-transformers/all-MiniLM-L6-v2"},
+        "unlabeled_inference_summary": {"score_mean": 0.8, "positive_at_0_5": 1},
+    }
+
+    snapshot = _build_result_snapshot(dataset, discovery, detect, result_source="rerun")
+
+    assert snapshot["coordination_detection"]["status"] == "completed"
+    assert snapshot["coordination_detection"]["verdicts"][0]["cluster_id"] == "0"
+
+
+def test_build_result_snapshot_blocks_unlabeled_detection_without_predictions(tmp_path: Path):
+    dataset = CoordinationDataset(
+        id=18,
+        slug="missing-detection",
+        display_name="Missing Detection",
+        source_type="uploaded",
+        source_format="csv",
+        source_path=str(tmp_path / "missing.csv"),
+        metadata_json="{}",
+        has_labels=False,
+        event_rows=0,
+        account_nodes=1,
+        object_ids=0,
+        user_user_edges=0,
+        available_relations='["url_share"]',
+        latest_run_id=None,
+        created_by=1,
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
+    )
+    discovery = {
+        "nodes": [{"account_id": "u1", "cluster_id": 0, "node_score": 0.4}],
+        "edges": [],
+        "communities": [{"cluster_id": 0, "size": 1, "community_score": 0.4, "relation_breakdown": {"url_share": 1}}],
+    }
+
+    snapshot = _build_result_snapshot(dataset, discovery, {}, result_source="rerun")
+
+    assert snapshot["coordination_detection"]["status"] == "model_unavailable"
+    assert snapshot["coordination_detection"]["blocking_reason"] == "missing_detection_predictions"
+    assert snapshot["coordination_detection"]["verdicts"] == []
 
 
 def _make_graph_fixture(tmp_path: Path):
@@ -155,6 +299,11 @@ def test_build_coordination_graph_payload_filters_nodes_and_edges(tmp_path):
     )
 
     assert [node["id"] for node in payload["nodes"]] == ["u1", "u2"]
+    assert payload["nodes"][0]["node_score"] == 0.7
+    assert payload["nodes"][0]["score_role"] == "discovery_evidence_score"
+    assert payload["nodes"][0]["archive_detection_score"] == 0.95
+    assert payload["nodes"][0]["archive_detection_label"] == 1
+    assert payload["summary"]["filters"]["score_role"] == "discovery_evidence_score"
     assert payload["summary"]["total_nodes"] == 3
     assert payload["summary"]["rendered_node_count"] == 2
     assert payload["summary"]["rendered_edge_count"] == 1
@@ -175,7 +324,11 @@ def test_build_coordination_community_payload_returns_members_and_topwords(tmp_p
 
     assert payload["cluster_id"] == 0
     assert [member["id"] for member in payload["members"]] == ["u1", "u2"]
-    assert payload["members"][0]["node_score"] == 0.95
+    assert payload["members"][0]["node_score"] == 0.7
+    assert payload["members"][0]["score_role"] == "discovery_evidence_score"
+    assert payload["members"][0]["archive_detection_score"] == 0.95
+    assert payload["members"][0]["archive_detection_label"] == 1
+    assert "predicted_label" not in payload["members"][0]
     assert payload["topwords"][0] == {"term": "alpha", "account_count": 2, "frequency": 2}
     assert all(item["term"] != "should_ignore" for item in payload["topwords"])
     assert payload["top_objects"][0]["object_id"] == "url:a"

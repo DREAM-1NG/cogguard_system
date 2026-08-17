@@ -378,7 +378,7 @@ class ResultRow:
         learned_success = (
             self.status == "success"
             and self.task == "detection"
-            and self.model_role in {"primary_learned", "learned_comparison"}
+            and self.model_role in {"shadow_learned", "learned_comparison"}
         )
         if learned_success:
             artifact, derived_audit = _rehydrate_and_verify_detection_artifact(
@@ -523,7 +523,7 @@ def _validate_result_row_artifact_audit(row: ResultRow) -> None:
     if not (
         row.status == "success"
         and row.task == "detection"
-        and row.model_role in {"primary_learned", "learned_comparison"}
+        and row.model_role in {"shadow_learned", "learned_comparison"}
     ):
         return
     _, derived_audit = _rehydrate_and_verify_detection_artifact(

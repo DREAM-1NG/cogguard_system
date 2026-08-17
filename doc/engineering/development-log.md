@@ -1,5 +1,20 @@
 ﻿# 开发变更日志
 
+## 2026-08-17: 协同检测历史结果投影与演示修复
+
+- 修复历史协同运行存在真实成员级预测、但缺少群体级
+  `coordination_detection` 投影时，前端只显示“模型未就绪”的问题。服务现在只用
+  已持久化的成员预测和同一运行的社区成员关系构造可追溯的群体证据提示；缺少预测
+  时仍明确返回 `model_unavailable` 与 `missing_detection_predictions`，不使用
+  规则、启发式或 shadow 分类器补造结果。
+- 协同最新结果缓存升级为 `coordination-latest-result-v3`，使旧的空投影缓存失效；
+  前端高风险计数改为依据完整 verdict 集合而不是当前表格页，并在重跑完成后等待最新
+  结果刷新，避免显示旧状态。
+- 实机 API 验证：特朗普访华微博协同数据集的运行 `4` 已完成，读取到 `108` 个群体
+  证据提示和 `2` 个高风险提示。该数字是模型证据输入，不构成分析员最终结论。
+- 验证：`tests/test_coordination_model_service.py` `16 passed`；前端
+  `npm test` `140 passed`；`npm run build` 通过。
+
 ## 2026-08-17 主张回应路径语义展示闭环
 
 - `/propagation` 的“主张回应图谱”路径抽屉现在可以直接读取后端投影的
@@ -14,6 +29,102 @@
 - 验证：后端主张回应服务/API 聚焦测试 `38 passed`；前端语义路径契约测试
   `28 passed`；`vue-tsc -b` 通过。Docker Desktop Linux Engine 当前不可用，
   因此认证 API 与浏览器实机验收待其恢复后执行。
+
+## 2026-08-16 Coordination 主线 Detection 切换与 Hybrid Discovery 候选
+
+- Coordination 系统主线收敛为跨平台解析、证据约束协同发现、SocGFM
+  Cross-Attention 预计算成员概率聚合。Detection 运行时只接受
+  `socgfm_cross_attention` 主判 artifact；线上 v1 不执行 Torch/PyG
+  Cross-Attention 前向，旧 learned/logistic classifier 保留为后端 shadow
+  baseline、回滚和研究对照，不进入前端主结果。
+- 新增 SocGFM Detection 产物化与部署脚本：
+  `system/backend/scripts/build_socgfm_detection_artifact.py` 从离线
+  `predictions.csv` 生成 `checkpoint.json`、`manifest.json`、
+  `account_probabilities.csv`、`provenance.json`；
+  `system/backend/scripts/register_socgfm_detection_artifact.py` 生成/注册
+  G 盘 artifact 的治理载荷并可激活 active pointer。manifest 强制
+  `inference_mode=precomputed_member_probability_cluster_aggregation`、
+  `claim_scope=account_level_io_membership_to_cluster_proxy`、
+  `online_neural_forward=false`，并禁止主张群组级有害协同 F1。
+- 前端协同页面只展示中文主判结果和四维刻画，不展示 shadow classifier；
+  空 `model_role`、`primary_learned` 或其它非 SocGFM verdict 不会被合并进
+  群组检测表；图节点和关键节点排序使用 Discovery 证据分，而不是旧
+  MAGNN/Leiden/SBERT 归档 Detection 分数。
+- 新增 `magnn_leiden_hybrid_discovery` 研究候选：在证据约束候选图上学习
+  relation-aware 账号嵌入与边亲和度，再与证据权重融合，Leiden 仅作为社区
+  划分/解释头。该候选只进入 compact offline runner 和 proxy/stability 对比，
+  不替换系统 Discovery 主线。
+- 旧 `coordination_model_service` 仍是历史数据集注册与 MAGNN/Leiden/SBERT
+  归档复现面，已在模型签名和 run metadata 中标记为 archive replay；
+  其账号级旧 Detection 分数只保留为 `archive_detection_*` 审计字段，
+  当前系统主线以 AnalysisExecutor 的 Coordination runtime 为准。
+- 旧 `/api/v1/coordination/detect` 入口不再调用规则/网络统计服务生成检测
+  结果；它保留兼容响应但直接返回 `model_unavailable`，引导使用新的分析运行
+  或数据集运行接口。learned/logistic detector 的 role 已改为 `shadow_learned`。
+- 同步更新 `CONTEXT.md`、`UBIQUITOUS_LANGUAGE.md`、Conductor 上下文、
+  Coordination Detect/Discover README 和相关运行时/前端契约测试。
+
+## 2026-08-16 MARO Weibo21 并发校准与 provider 阻断
+
+- MARO Weibo21 离线 runner 增加只读 `--seed-analysis-cache`，用于复用同一
+  模型、提示、检索配置和分析协议下已完成的多智能体分析，不复用 Judge 投票、
+  规则轨迹或指标。当前运行 cache 优先于 seed cache，输出记录 cache provenance。
+- 并发 LLM provider telemetry 改为 task-local，并在 Judge audit 中记录非敏感
+  HTTP 状态、provider 错误类型和重试计数，避免并发请求覆盖审计字段；不写入
+  API key、请求鉴权头或原始 provider 错误体。
+- 50 条 analysis-only 校准在 DeepSeek/Exa 并发 `8` 下完成且未出现 429 或
+  provider failure。随后全量优先领域运行的第一次调用漏传本地预算，错误继承
+  `500` validation / `500` iteration 默认值；该目录仅保留分析 cache，未产生
+  可用于性能结论的 fold report。
+- 使用显式 `20` validation、`3` iterations、`3` rules、全量 `政治`/
+  `灾难事故`/`科技` 的更正运行，在第一轮 validation Judge 调用即收到 DeepSeek
+  HTTP `402`。当前 MARO 全量性能实验因此被外部 provider 额度阻断；没有报告
+  Accuracy、F1 或对论文的数值比较。
+- 验证：MARO runner、DeepSeek provider、并发执行器相关单元测试 `22 passed`；
+  `py_compile` 通过。TensorFlow protobuf 与 pytest asyncio 配置警告为既有环境
+  警告，未出现测试失败。
+
+## 2026-08-14 传播活跃期时间线
+
+- 新增只读的事件传播时间线接口
+  `GET /api/v1/propagation/model-event-timeline`。它从带时间戳的事件证据
+  中确定最密集的连续六小时传播窗口，不触发预测模型推理。
+- 趋势预测页默认显示该活跃期的分钟级真实累计序列，并可切换为 24 小时、
+  7 天和全部历史的小时、日、周聚合；页面同时提供框选与滑块缩放。
+- 真实时间证据、归档回测实际值和模型输出保持分离：模型图仅使用观测终点和
+  归一化模型相对步，不为预测点虚构日期，也不把归档后验数据送入模型输入。
+- 验证：传播预测后端测试 `14 passed`，前端契约测试 `55 passed`，生产前端
+  typecheck/Vite 构建通过。
+
+## 2026-08-14 真实语义路径证据闭环
+
+- Propagation Analysis 的共享对象边和评论回复边现在保留准确的帖子或
+  评论证据引用；关键路径以主张作用域内唯一的路径 ID 投影这些引用。
+- 语义叠加只接受已持久化、同一快照的 Propagation Analysis artifact 中的
+  `evidence_refs`。账号节点或看似内容 ID 的路径节点不能生成语义结论。
+- 在本机 RTX 4060 上完成 `trump_visit_2026_05_21` 的真实三平台
+  `semantic_v8` 预计算。运行使用固定的 BGE、情感、立场和中文 NER 模型，
+  生成 14,773 条文本的 `512` 维 embedding，且 27 条路径 overlay 均有
+  可追溯的精确证据引用。
+- 传播路径抽屉读取同一语义运行已持久化的 Propagation Analysis artifact，
+  而非重新计算的路径编号。展示 overlay 前必须同时验证同一快照、非 fallback
+  状态、相同 path ID 及平台限定的帖子/评论证据引用；任何不一致均显示为空态。
+- 语义路径映射只接受 `<platform>:post:<id>`、
+  `<platform>:comment:<id>` 或同等的结构化引用，拒绝账号节点、原始 ID、
+  文本和通用 `id/doc_id` 字段，避免跨平台同 ID 误绑定。
+
+## 2026-08-14 HateCoT XLM-R Protocol Experiment
+
+- Added a research-only, HateCoT-aligned XLM-R protocol runner with separate
+  source three-way transfer, `K={32,64,128,256}` target adaptation and
+  full-data no-explanation controls for HateCheck, HateXplain and Latent_Hate.
+- Added protocol heads without changing the production Review taxonomy heads or
+  online APIs. Source labels with unstable three-way semantics are excluded and
+  target label spaces, split manifests, hashes, predictions, confusion matrices
+  and checkpoints are persisted for audit.
+- Completed a 12-source-case HateCheck plumbing smoke. It verifies manifests,
+  checkpoint reload and artifact outputs only; it is explicitly not a
+  performance claim. The complete GPU experiment remains pending.
 
 ## 2026-08-12 Official InfoOpsGFM IOHunter Reproduction
 
@@ -874,3 +985,292 @@
   protocol, production network, and adapter tests. The independent experiment
   audit returned `WARN` for incomplete proxy scope, with no fake-ground-truth,
   score-normalization, phantom-result, or checksum finding.
+
+## 2026-08-14: Propagation Overview And Warmup Alignment
+
+- Changed the propagation overview graph to a deterministic concentric-ring
+  layout: the root stays centered, nodes are placed by propagation layer, and
+  the overview draws no relationship lines. Existing edge and evidence data
+  remain available for drill-down views.
+- Added a frontend contract test for the no-line hierarchy rendering and fixed
+  the demo warmup request to use the page's `160/40/80` hierarchy budget. This
+  prevents a `node_limit=300` warmup projection from missing the page cache key
+  and forcing a second cold calculation on first navigation.
+- Frontend contracts pass (`51 passed`), production typecheck/build passes,
+  and the production page was visually checked after a real authenticated
+  warmup. The matching cached projection returned `160` nodes in about `0.5 s`
+  on two immediate repeat requests.
+- Fixed the standard startup path for a complete, pre-existing named Docker
+  infrastructure set: index preparation now uses the active MongoDB container
+  directly instead of resolving a `mongodb` Compose service owned by another
+  project. The `11` expected indexes were confirmed by dry-run.
+- Fixed two further Windows startup false failures: successful PowerShell
+  warmup no longer reads a stale native-command exit code, and a Docker-paired
+  `wslrelay.exe` listener no longer blocks the static frontend port check. The
+  default `start-system.ps1 -DemoWarmup` path now completed with exit code `0`.
+
+## 2026-08-14: Propagation Forecast Cache Closure
+
+- Fixed the forecast tab's empty initial state. The authenticated demo warmup
+  now invokes the current-event prediction endpoint with the page's default
+  `event_id`, `50%` observation ratio, and `Top-10` candidate budget, which
+  persists a MongoDB prediction-cache entry before the static frontend is
+  exposed.
+- Fixed a frontend race where the observed-path response could clear a valid
+  concurrently loaded forecast-cache projection. Initial route loading and
+  route-scope changes now preserve that result; an analyst-initiated path
+  resynchronization still clears it as intended.
+- Verified strict warmup against the real Trump event, rebuilt the static
+  frontend container, and opened the trend tab in an authenticated browser.
+  It displayed observed size, predicted final size, direction, and Top-10
+  candidates without a manual refresh or console error.
+
+## 2026-08-15: MARO Teacher + Text Student coding boundary
+
+- Added serializable Review contracts for `EvidenceBundle`, `PolicyBundle`,
+  and `RationaleCapsule`; rationale supervision is blocked unless the required
+  schema, provenance, citation, evidence-relation, and policy checks pass.
+- Kept Review Student as a text-only, task-separated XLM-R runtime. Teacher
+  probability/confidence, full Agent traces, and raw RAG documents remain
+  audit metadata rather than Student loss targets.
+- Preserved the MARO-compatible chain as an analyst-triggered Teacher path:
+  necessary experts, optional QuestionReflection for complex cases, at most
+  two targeted responses, and a task-specific Judge. Countermeasure is
+  post-Judge and explicit-only.
+- Added a gold-free hard-case candidate manifest generator using uncertainty,
+  evidence conflict, OOD, and task/dataset stratification. It does not call an
+  LLM, read gold labels, generate Teacher Silver, or train a model.
+- Added torch-free Review task/text helper modules so RAG and Teacher-contract
+  checks do not import the native training runtime. Added role-scoped Agent
+  context projections and explicit task routing; an invalid claim now reaches
+  Judge as insufficient evidence instead of silently changing task.
+- Checked out MARO, HateCOT, Adaptive-RAG, RAGAs, Distilling Step-by-Step,
+  IRCoT, DPR, and Huawei Pretrained-Language-Model under the external reference
+  boundary. Their commit, license-file status, and intended use are recorded
+  in the Review implementation research note.
+- This entry records coding and context synchronization only. No dataset
+  training, DeepSeek/API call, RAG evaluation, Teacher cost/latency benchmark,
+  continuous pretraining, or multimodal consistency implementation was run.
+
+## 2026-08-15: Propagation Claim Response Landscape Integrity
+
+- The propagation workspace now displays a claim-response view as observed
+  evidence: the approved authority-claim anchor, exact-bound authority-account
+  publications, platform-local influential responses, and their evidence refs.
+- A ready authority claim remains visible even when this event has no exact
+  bound publication, no path-backed response, or no response timeline. These
+  are explicit evidence gaps rather than inferred empty results.
+- Path drill-down consumes only returned observed nodes, canonical evidence
+  references, account context, path score, and path contribution. It does not
+  infer an account-to-account path or create a supporting post.
+- `461f830` rejects whitespace-only required claim-anchor fields at the API
+  response boundary. `291e5c6` and `71e3c40` add and centralize executable
+  presentation behavior for the empty lanes and observed-path drill-down.
+- The normalized comments already contain an exact `post_id` source relation
+  and, where available, a `reply_to` comment relation. The landscape now
+  projects these observed comment threads directly, retaining the authority
+  post and every recorded comment reference without graph-adjacency or text
+  similarity inference.
+- The current Trump-visit primary authority post yields 130 qualifying comment
+  paths and 10 platform-local influential-response rows. The timeline uses the
+  response-path evidence timestamp, rather than an account's unrelated first
+  event post.
+- Repost and quote parent-child relations are still absent from this snapshot.
+  They remain an explicit coverage gap and cannot be backfilled from account
+  names, engagement, topic overlap, or semantic similarity.
+
+## 2026-08-15: Claim Deception Evidence-State Correction
+
+- Reviewed FEVER, MultiFC, CheckThat!, AVeriTeC, Adaptive-RAG, RAGAs, and MARO
+  in `research-wiki/literature_runs/20260815T132401Z-cogguard-claim-deception-teacher-review-rag-prov/`.
+  The review confirms that claim eligibility, retrieval execution, and evidence
+  relation are distinct task states; the old collapsed `insufficient` default
+  was an implementation error, not a research gap.
+- `EvidenceBundle`, `EvidenceRAG`, active retrieval, ClaimEvidenceAgent output,
+  Judge masking, and Teacher Silver gates now enforce this separation. Raw post
+  text is not a factual query. A no-claim, provider-failure, or zero-hit path
+  cannot produce `insufficient` or an available factual-risk axis.
+- Added focused tests for typed-state validity, provider non-invocation before
+  claim assessment, complex MARO-compatible claim-to-query-to-response flow,
+  Judge axis masking, and claim-deception silver rejection. Validation ran
+  locally with `39 passed`; no DeepSeek call, external provider call, dataset
+  experiment, or performance claim was made.
+
+## 2026-08-16: MARO INS Weibo21 experiment implementation
+
+- Implemented the paper-aligned MARO reflection chain as an offline adapter:
+  initial linguistic/comment/fact analysis, bounded Questioning Agent output,
+  one targeted response per analysis dimension, and a separate INS Judge path.
+  The analysis-only path does not run an extra final Judge before INS.
+- Added cross-domain validation task construction and Algorithm 1 rule search:
+  Weibo21 source-domain exclusion, four other-domain demonstrations, 2 fake/2
+  real demonstration balance, strict improvement retention, top-10 trajectory,
+  `Niter`/`Natt` stopping, top-3 rule output, and majority-vote inference.
+- Added `scripts/run_maro_weibo21_ins_experiment.py` with case conversion,
+  report caching, process-scoped DeepSeek provider use, traceable retrieval
+  gating, fold reports, and explicit paper/local protocol comparison notes.
+- The local dry-run converted 9,128 Weibo21 cases across 9 domains and passed
+  the demonstration-domain isolation checks without external calls. The real
+  performance run was not executed because the current process has no
+  `DEEPSEEK_API_KEY` or configured traceable retrieval provider.
+- Targeted pytest reported `19 passed`; the Python process then remained alive
+  during native Transformers/TensorFlow cleanup and was interrupted after the
+  completed test report. No dataset performance metric is claimed from this
+  coding pass.
+
+## 2026-08-16: MARO Weibo21 stratified sampled run
+
+- Fixed the local evaluation budget to three held-out domains (`政治`,
+  `灾难事故`, `科技`), 50 target rows per domain, exact 25/25 fake-real
+  stratification, 20 validation tasks, three rule iterations, three returned
+  rules, and concurrency 8.
+- Rebuilt the final output in the clean directory
+  `G:\\CISCN\\.tmp\\maro_weibo21_stratified_3domain_final_c8_20260816`.
+  The earlier resume directory is not the source of the reported metrics
+  because its audit file contains repeated continuation records.
+- The final local results were: 政治 `0.8200 / 0.81935`, 灾难事故
+  `0.6600 / 0.65000`, 科技 `0.7800 / 0.78000` for Accuracy/Macro-F1; mean
+  Accuracy `0.753333` and mean Macro-F1 `0.750822`.
+- All target samples received three binary rule votes and remained in the
+  metric denominator. The clean run recorded 659 completed DeepSeek calls,
+  zero DeepSeek failures, zero 429 events, and zero new Exa calls because the
+  analysis stage was served from the completed cache. Retrieval provenance is
+  retained in the cached analysis records.
+- This is a sampled local Weibo21 MARO adaptation, not an official AMTCele or
+  MC_Fake reproduction. It must not be compared as an equivalent replacement
+  for the paper's full cross-validation result.
+
+## 2026-08-16: MARO Weibo21 all-domain live Exa run
+
+- Ran all 9 local Weibo21 domains in a new directory without
+  `--seed-analysis-cache`, using live Exa retrieval and the fixed sampled
+  protocol: 50 targets per domain, exact 25/25 label balance, 20 validation
+  tasks, 3 rule iterations, 3 returned rules, and concurrency 8.
+- Final output:
+  `G:\\CISCN\\.tmp\\maro_weibo21_all9_stratified_live_exa_c8_20260816`.
+  The 9-domain mean was Accuracy `0.766667` and Macro-F1 `0.757093` across
+  450 target samples.
+- Per-domain Accuracy/Macro-F1: 财经商业 `0.88/0.88`, 教育考试
+  `0.68/0.64`, 军事 `0.80/0.80`, 科技 `0.68/0.66`, 社会生活
+  `0.70/0.70`, 文体娱乐 `0.84/0.84`, 医药健康 `0.76/0.75`, 灾难事故
+  `0.70/0.68`, 政治 `0.86/0.859944`.
+- Provider telemetry: Exa `1,446` completed, `0` failed, `0` retried;
+  DeepSeek `6,989` logical calls with 8 provider-level failures recorded.
+  All target samples had three votes, and no target Judge provider-error
+  record was emitted.
+- This result is a live-retrieval local MARO adaptation on Weibo21, not an
+  official AMTCele/MC_Fake reproduction or a claim of equivalence to the
+  paper's full result.
+
+## 2026-08-16: MARO-compatible HateCoT harm sampling evaluation
+
+- Added a distinct text-only interpersonal-harm adaptation rather than
+  reusing MARO's fact-questioning, Exa retrieval, comment analysis, or binary
+  fake/real chain. The completed chain is PostHarm -> local advisory policy
+  references -> QuestionReflection -> one PostHarm refinement -> independent
+  three-way rule-conditioned Judge.
+- Added audited three-way labels, strict source-row de-duplication, and
+  cross-domain target sampling. The raw 52,137-row HateCoT CSV contains exact
+  triplicates; the experiment retained 16,937 unique eligible cases and
+  excluded the ambiguous `Animosity` source label.
+- Tightened analysis-cache validity: completed role status alone is
+  insufficient; every PostHarm and reflection response must have a parseable
+  structured sidecar. This prevents malformed reasoning from entering a
+  Teacher-silver pipeline.
+- Final sampled result is at
+  `G:\CISCN\.tmp\maro_hatecot_harm_final_dedup_contract_c8_20260816\report.json`.
+  It evaluates three held-out domains, 60 exact-stratified target cases per
+  domain, 30 source-only validation tasks, three rule iterations, and three
+  returned rules. Mean Accuracy/Macro-F1 is `0.555555/0.515258` over 180 target
+  cases.
+- All 250 unique analysis artifacts passed the input-span and advisory-policy
+  rationale gate; all 180 target samples retained three votes and no target
+  row left the metric denominator. DeepSeek recorded 1,600 completed calls,
+  zero provider failures, and zero 429 events; Exa was intentionally unused.
+- This result establishes a runnable, auditable adaptation only. Its accuracy
+  is not sufficient to claim a strong cross-domain hate Teacher or a Student
+  distillation gain. Target-fold rows remain evaluation-only; any future
+  Teacher-silver training must use a disjoint source/train or hard-case pool.
+
+## 2026-08-16: Coordination Detection SocGFM deployment artifact
+
+- Built the deployable `socgfm_cross_attention` Coordination Detection v1
+  artifact from the six-dataset IOHunter official-split run:
+  `G:\CISCN\CogGuard\.worktrees\refactor-system\system\artifacts\coordination_detection\socgfm_cross_attention\precomputed_member_probability_six_datasets_20260816`.
+- The artifact contains `checkpoint.json`, `manifest.json`,
+  `account_probabilities.csv`, `provenance.json`, and
+  `registration_payload.json`. It merges 30 SocGFM prediction files into
+  23,028 `iohunter:<account_id>` member probabilities and records source
+  hashes for each prediction and summary file.
+- The builder now treats IOHunter `unassigned` rows as the official validation
+  partition when train/test rows are also present, selects thresholds on
+  validation rows, evaluates on held-out test rows, and macro-averages metrics
+  per prediction run. This avoids pooling scores across campaigns with
+  different score scales.
+- The deployment manifest reports account-level IO membership proxy metrics:
+  Macro-F1 `0.803487`, AUPRC `0.907040`, ROC-AUC `0.955763`, and ECE
+  `0.369824`. ECE is a calibration diagnostic warning for v1, not a
+  hard activation gate, because online inference is only precomputed member
+  probability aggregation.
+- The allowed online claim remains
+  `account_level_io_membership_to_cluster_proxy`; the manifest explicitly
+  forbids `group_level_harmful_coordination_f1`. Runtime diagnostics continue
+  to state that no Cross-Attention neural forward pass is executed online.
+- A real activation attempt was blocked by local infrastructure, not by the
+  artifact: MySQL on `localhost` refused the connection. Re-run the generated
+  registration command after the local database is online.
+
+## 2026-08-17: HateCoT expanded MARO-compatible protocol
+
+- Implemented the strict `source-train -> source-dev -> held-out target-test`
+  protocol for the unique eligible HateCoT cases. The local CSV has 52,137
+  rows and 16,937 unique eligible cases after excluding ambiguous `Animosity`
+  and exact duplicates.
+- The no-provider dry-run confirmed three target folds (`cad`, `dynahate`,
+  `toraman`), 300 cases per fold, exact 100/label sampling, 120 balanced
+  source-train tasks, 120 balanced source-dev tasks, and disjoint case IDs.
+- Corrected the rule boundary so rejected source-train trajectory entries do
+  not enter source-dev selection. Added policy-off/local-advisory cache
+  separation and hash-checked `--resume` behavior.
+- Focused validation passed after the protocol update. A one-domain DeepSeek
+  smoke was then attempted with the same strict candidate-pool contract; the
+  first three-iteration attempt stopped correctly after only one accepted rule,
+  and the ten-iteration resume attempt stalled in a provider request before a
+  fold report was produced. Its partial analysis/Judge audit is retained under
+  `G:\CISCN\.tmp\maro_hatecot_expanded_smoke_20260817`; it is not a performance
+  result. No Exa, external fact retrieval, Student training, LRKD, multimodal,
+  or Countermeasure execution was performed.
+
+## 2026-08-17: MARO Review Audit frontend integration
+
+- Added `GET /api/v2/review-cases/{case_id}/teacher-audit`, projecting the
+  persisted `ReviewVerdictVersion` into bounded execution stages, source
+  excerpts, retrieval queries, rationale capsules, and quality metadata.
+  Raw prompts, full free-form chain-of-thought, provider credentials, and model
+  confidence targets remain outside the product contract.
+- Updated the `/risk` Event Review Case workbench to load the audit alongside
+  case detail, evidence, and activities. The visual workspace distinguishes
+  unavailable, queued, completed, and failed states and keeps the existing
+  analyst-triggered review request as the only execution trigger.
+- Research migration is bounded by MARO role/stage decomposition, RAGAs-style
+  provenance separation, ERASER input-grounded spans, and rationale-as-auxiliary
+  supervision from Distilling Step-by-Step/HateCOT. The UI is an analyst audit
+  surface, not a benchmark dashboard or automatic risk decision.
+- Verification: backend targeted audit/API contracts `16 passed`; frontend
+  tests `127 passed`; `npm run build` passed with product-language and bundle
+  checks. Real browser screenshots were captured at desktop and 390px widths;
+  the page had no horizontal overflow. Authenticated API/browser smoke remains
+  blocked by local MySQL refusal and Docker Desktop Linux Engine unavailability.
+
+## 2026-08-17: System operations API-version contract repair
+
+- Audited every mounted product page API against the running backend OpenAPI.
+  Coordination, Propagation, Accounts, Crawl, Dashboard, and Event Review Case
+  routes matched their current methods and version prefixes. The confirmed
+  break was System Operations: its default v1 client combined with `/v2/system`
+  paths and requested the nonexistent `/api/v1/v2/system/...` routes.
+- The System Operations client now owns an `/api/v2` base URL and sends
+  version-relative `/system/...` paths. The page's analyst read-only and admin
+  configuration permissions are unchanged.
+- Added frontend and backend route-aggregation contract tests so a future
+  client-prefix or v2 router mount regression is caught before delivery.

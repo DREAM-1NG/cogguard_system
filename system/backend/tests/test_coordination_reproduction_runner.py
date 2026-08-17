@@ -79,7 +79,7 @@ def _row(
     seed=42,
     method_id="learned_fused_detector",
     method_version="learned-coordination-logistic-v1",
-    model_role="primary_learned",
+    model_role="shadow_learned",
     status="success",
     metrics=None,
     reason=None,
@@ -102,7 +102,7 @@ def _row(
     if (
         status == "success"
         and task == "detection"
-        and model_role in {"primary_learned", "learned_comparison"}
+        and model_role in {"shadow_learned", "learned_comparison"}
         and audit is None
     ):
         train, validation, test, artifact = _detection_fixture(package)
@@ -1271,7 +1271,7 @@ def test_comparison_roles_and_selection_eligibility_are_registry_enforced():
     assert coordination.model_role == detection_only.model_role == "learned_comparison"
     assert not coordination.selection_eligible
     assert not detection_only.selection_eligible
-    assert fused.model_role == "primary_learned"
+    assert fused.model_role == "shadow_learned"
     assert fused.selection_eligible
 
     comparison_rows = (
@@ -1320,8 +1320,8 @@ def test_successful_rows_require_complete_task_metric_suites():
 @pytest.mark.parametrize(
     ("method_id", "method_version", "model_role", "warning"),
     (
-        ("heuristic_baseline_v1", "heuristic_baseline_v1", "primary_learned", None),
-        ("learned_fused_detector", "heuristic_baseline_v1", "primary_learned", None),
+        ("heuristic_baseline_v1", "heuristic_baseline_v1", "shadow_learned", None),
+        ("learned_fused_detector", "heuristic_baseline_v1", "shadow_learned", None),
         ("learned_fused_detector", "learned-coordination-logistic-v1", "heuristic_baseline", None),
         ("heuristic_baseline_v1", "heuristic_baseline_v1", "heuristic_baseline", None),
     ),

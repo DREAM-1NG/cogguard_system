@@ -98,9 +98,9 @@ test('keeps event review summary cards content-sized instead of stretching empty
   assert.doesNotMatch(risk, /\.summary-card\s*\{\s*min-height:/)
 })
 
-test('uses a readable baseline for semantic evidence controls and matrix text', () => {
-  assert.match(semantic, /\.toolbar-label[\s\S]*font-size: 14px/)
-  assert.match(semantic, /\.semantic-matrix-table[\s\S]*font-size: 13px/)
+test('uses a readable hierarchy for semantic evidence controls and matrix text', () => {
+  assert.match(semantic, /\.toolbar-label,[^}]*font-size: 14px/)
+  assert.match(semantic, /\.semantic-matrix-table \{[^}]*font-size: 14px/)
   assert.match(risk, /\.semantic-summary-label,[\s\S]*font-size: 13px/)
 })
 

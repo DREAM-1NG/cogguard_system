@@ -8,6 +8,8 @@ import ts from 'typescript'
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const frontendRoot = resolve(__dirname, '..')
 const riskView = readFileSync(resolve(frontendRoot, 'src/views/risk/index.vue'), 'utf8')
+const workbenchView = readFileSync(resolve(frontendRoot, 'src/components/SemanticEvidenceWorkbench.vue'), 'utf8')
+const mainView = readFileSync(resolve(frontendRoot, 'src/main.ts'), 'utf8')
 
 function bodyOf(source, name) {
   const start = source.indexOf(`function ${name}(`)
@@ -45,9 +47,8 @@ function between(source, startMarker, endMarker) {
 
 function semanticEvidenceValidator() {
   const validator = bodyOf(riskView, 'hasSemanticEvidenceStructure')
-  const objectHelper = bodyOf(riskView, 'objectValue')
   const compiled = ts.transpileModule(
-    `${objectHelper}\n${validator}\nmodule.exports = hasSemanticEvidenceStructure`,
+    `${validator}\nmodule.exports = hasSemanticEvidenceStructure`,
     {
       compilerOptions: {
         module: ts.ModuleKind.CommonJS,
@@ -224,21 +225,28 @@ test('renders ready semantic evidence from its layers and cross-analysis slices'
   const semanticPanel = between(riskView, '<section class="semantic-panel"', '<section class="workspace-grid"')
 
   assert.match(semanticPanel, /v-else-if="semanticReady"/)
-  assert.match(semanticPanel, /topSemanticKeywords/)
-  assert.match(semanticPanel, /topSemanticTopics/)
-  assert.match(semanticPanel, /semanticSentiment/)
-  assert.match(semanticPanel, /semanticStance/)
-  assert.match(semanticPanel, /topSemanticEntities/)
-  assert.match(semanticPanel, /semanticTimeSlices/)
-  assert.match(semanticPanel, /semanticPlatformSlices/)
-  assert.match(semanticPanel, /semanticCommunities/)
-  assert.match(semanticPanel, /semanticMatrixRows/)
-  assert.match(semanticPanel, /帖子与评论语义矩阵/)
-  assert.match(riskView, /semanticLayerItems\('posts'\)/)
-  assert.match(riskView, /semanticLayerItems\('comments'\)/)
-  assert.match(riskView, /semanticCrossAnalysis\.value\.time_slices/)
-  assert.match(riskView, /semanticCrossAnalysis\.value\.platform_slices/)
-  assert.match(riskView, /semanticCrossAnalysis\.value\.community_slices/)
+  assert.match(semanticPanel, /SemanticEvidenceWorkbench/)
+  assert.match(workbenchView, /SemanticKeywordCloud/)
+  assert.match(workbenchView, /主题轨道/)
+  assert.match(workbenchView, /情感与立场/)
+  assert.match(workbenchView, /实体清单/)
+  assert.match(workbenchView, /内容时间条带/)
+  assert.match(workbenchView, /平台情感分布/)
+  assert.match(workbenchView, /协同群体语义比较/)
+  assert.match(workbenchView, /帖子与评论语义矩阵/)
+  assert.match(workbenchView, /entity-frequency-track/)
+  assert.match(mainView, /import \{[\s\S]*Pagination,[\s\S]*Skeleton,[\s\S]*\} from 'ant-design-vue'/)
+  assert.match(mainView, /\n  Pagination,\n/)
+  assert.match(mainView, /\n  Skeleton,\n/)
+})
+
+test('delegates semantic evidence presentation to the interactive workbench', () => {
+  const semanticPanel = between(riskView, '<section class="semantic-panel"', '<section class="workspace-grid"')
+
+  assert.match(riskView, /import SemanticEvidenceWorkbench from '@\/components\/SemanticEvidenceWorkbench\.vue'/)
+  assert.match(semanticPanel, /<SemanticEvidenceWorkbench v-else-if="semanticReady" :evidence="semanticEvidence" \/>/)
+  assert.doesNotMatch(semanticPanel, /semantic-summary-grid/)
+  assert.doesNotMatch(semanticPanel, /semantic-matrix-table/)
 })
 
 test('fails closed when semantic evidence is missing or blocked', () => {
@@ -265,7 +273,7 @@ test('requires complete semantic evidence containers before the panel is ready',
   assert.match(hasSemanticEvidenceStructure, /hasRecords\(platformSlices, hasPlatformSlice\)/)
   assert.match(hasSemanticEvidenceStructure, /platformSlices\.length > 0/)
   assert.match(hasSemanticEvidenceStructure, /hasRecords\(crossAnalysis\.community_slices, hasCommunitySlice\)/)
-  assert.match(hasSemanticEvidenceStructure, /hasRecords\(crossAnalysis\.propagation_path_overlays, hasPathOverlay\)/)
+  assert.doesNotMatch(hasSemanticEvidenceStructure, /hasRecords\(crossAnalysis\.propagation_path_overlays, hasPathOverlay\)/)
 })
 
 test('accepts only runtime-shaped nested semantic evidence artifacts', () => {
@@ -292,7 +300,7 @@ test('accepts only runtime-shaped nested semantic evidence artifacts', () => {
 
   const malformedOverlays = structuredClone(valid)
   delete malformedOverlays.cross_analysis.propagation_path_overlays[0].semantic_overlay
-  assert.equal(validate(malformedOverlays), false)
+  assert.equal(validate(malformedOverlays), true)
 
   const emptyEvidence = structuredClone(valid)
   emptyEvidence.layers.posts = []
@@ -321,6 +329,24 @@ test('requires time and platform slices when semantic layers contain items', () 
   assert.equal(validate(populatedLayersWithoutRequiredSlices), false)
 })
 
+test('accepts ready semantic evidence when no trustworthy community projection exists', () => {
+  const validate = semanticEvidenceValidator()
+  const evidenceWithoutCommunities = validSemanticEvidence()
+
+  evidenceWithoutCommunities.cross_analysis.community_slices = []
+
+  assert.equal(validate(evidenceWithoutCommunities), true)
+})
+
+test('does not let an optional propagation overlay block the risk workbench', () => {
+  const validate = semanticEvidenceValidator()
+  const evidenceWithRuntimePathShape = validSemanticEvidence()
+
+  delete evidenceWithRuntimePathShape.cross_analysis.propagation_path_overlays[0].semantic_overlay.associated_claim
+
+  assert.equal(validate(evidenceWithRuntimePathShape), true)
+})
+
 test('requires blocked missing-primary-claim stances to have a null label', () => {
   const validate = semanticEvidenceValidator()
   const blockedItemWithLabel = validSemanticEvidence()
@@ -328,4 +354,10 @@ test('requires blocked missing-primary-claim stances to have a null label', () =
   blockedItemWithLabel.layers.comments[0].stance.label = 'neutral'
 
   assert.equal(validate(blockedItemWithLabel), false)
+})
+
+test('stacks the event review shell on narrow screens before showing semantic evidence', () => {
+  assert.match(riskView, /@media \(max-width: 720px\) \{[\s\S]*?\.selector-bar \{[\s\S]*?align-items: stretch[\s\S]*?flex-direction: column/)
+  assert.match(riskView, /@media \(max-width: 720px\) \{[\s\S]*?\.summary-grid \{[\s\S]*?grid-template-columns: 1fr/)
+  assert.match(riskView, /@media \(max-width: 720px\) \{[\s\S]*?\.case-select \{[\s\S]*?width: 100%/)
 })

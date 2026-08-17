@@ -23,6 +23,8 @@ from app.core.review.active_retrieval import build_sidecar_for_agent
 from app.core.review.active_retrieval import retrieve_active_evidence
 from app.core.review.active_retrieval import should_trigger_light_debate
 from app.core.review.agent_contracts import AGENT_REPORT_SECTIONS
+from app.core.review.agent_contracts import CLAIM_EVIDENCE_BEGIN
+from app.core.review.agent_contracts import CLAIM_EVIDENCE_END
 from app.core.review.agent_contracts import build_agent_output_contract
 from app.core.review.agent_contracts import build_agent_system_prompt
 from app.core.review.agent_contracts import build_agent_user_prompt
@@ -33,6 +35,7 @@ from app.core.review.agent_contracts import build_report_role_name
 from app.core.review.agent_contracts import build_revision_system_prompt
 from app.core.review.agent_contracts import build_revision_user_prompt
 from app.core.review.agent_contracts import build_safety_flags
+from app.core.review.agent_contracts import parse_claim_evidence_footer
 from app.core.review.agent_contracts import parse_judge_decision_footer
 from app.core.review.agent_contracts import validate_judge_decision_against_policy
 from app.core.review.agent_media import agent_requires_vision
@@ -56,10 +59,14 @@ from app.core.review.agent_runtime import has_countermeasure_context
 from app.core.review.agent_runtime import has_multimodal_conflict
 from app.core.review.agent_runtime import has_uncertain_stance_or_view
 from app.core.review.agent_runtime import normalize_agent_names
+from app.core.review.agent_runtime import normalize_review_task
 from app.core.review.agent_runtime import recommend_runtime_mode
 from app.core.review.agent_runtime import resolve_runtime_mode
 from app.core.review.agent_runtime import select_reflection_response_agents
 from app.core.review.agent_runtime import should_postpone_countermeasure
+from app.core.review.evidence_contracts import EvidenceBundle
+from app.core.review.evidence_contracts import apply_claim_assessment
+from app.core.review.evidence_contracts import initialize_claim_evidence_bundle
 from app.core.review.governance_reference import build_governance_reference_context
 from app.core.review.governance_reference import build_governance_report_sidecar
 from app.core.review.propagation_agent import has_propagation_tree_context
@@ -148,9 +155,11 @@ async def run_manual_agent_review(
     enable_countermeasure: bool = True,
     reflection_target_agent_names: list[str] | None = None,
     max_agent_calls_per_case: int = 12,
+    review_task: str | None = None,
 ) -> dict[str, Any]:
     """Run analyst-triggered natural-language Review agent reports."""
     normalized_agents = _normalize_agent_names(agent_names)
+    normalized_review_task = normalize_review_task(review_task)
     existing_reviews = _as_list(report.get("agent_reviews"))
     context = _build_agent_context(
         report,
@@ -168,6 +177,8 @@ async def run_manual_agent_review(
         error_memory_summary or {},
         case_tags=case_signals["case_tags"],
     )
+    context["review_task"] = normalized_review_task
+    context["evidence_bundle"] = initialize_claim_evidence_bundle(context).to_dict()
     runtime_decision = _resolve_runtime_mode(
         report=report,
         context=context,
@@ -200,18 +211,7 @@ async def run_manual_agent_review(
         and execution_plan["claim_agent_enabled"]
         and "ClaimEvidenceAgent" in execution_plan["expert_agents"]
     )
-    retrieval_bundle = (
-        await retrieve_active_evidence(
-            context=context,
-            top_k=retrieval_top_k,
-            external_provider=active_retriever,
-            external_enabled=external_retrieval_enabled,
-        )
-        if retrieval_enabled
-        else None
-    )
-    if retrieval_bundle is not None:
-        context["active_retrieval"] = retrieval_bundle
+    retrieval_bundle = None
     debate_requested = bool(
         effective_runtime_mode == "complex"
         and execution_plan["multimodal_agent_enabled"]
@@ -277,6 +277,7 @@ async def run_manual_agent_review(
             "enable_countermeasure": enable_countermeasure,
             "reflection_target_agent_names": reflection_target_agent_names or [],
             "max_agent_calls_per_case": max_agent_calls_per_case,
+            "review_task": normalized_review_task,
             "debate_max_rounds": debate_max_rounds,
             "policy_id": (policy or {}).get("policy_id"),
             "context": context,
@@ -298,6 +299,7 @@ async def run_manual_agent_review(
         "requested_runtime_mode": runtime_mode,
         "enable_deep_judge": enable_deep_judge,
         "enable_countermeasure": enable_countermeasure,
+        "review_task": normalized_review_task,
         "runtime_reasons": runtime_decision["runtime_reasons"],
         "recommended_runtime_mode": runtime_decision["recommended_runtime_mode"],
         "runtime_upgraded_by_requested_features": runtime_decision["runtime_upgraded_by_requested_features"],
@@ -327,6 +329,20 @@ async def run_manual_agent_review(
     )
     results.extend(expert_results)
     reports_by_agent.update(_completed_by_agent(expert_results))
+    _apply_claim_assessment_from_results(context, expert_results)
+
+    # Claim assessment precedes factual retrieval. A skipped bundle is still
+    # recorded for audit, but no provider call is made without a checkable claim.
+    if retrieval_enabled:
+        retrieval_bundle = await retrieve_active_evidence(
+            context=context,
+            top_k=retrieval_top_k,
+            external_provider=active_retriever,
+            external_enabled=external_retrieval_enabled,
+        )
+        context["active_retrieval"] = retrieval_bundle
+        context["evidence_bundle"] = (retrieval_bundle.get("evidence_bundle") or context["evidence_bundle"])
+        state["retrieval_bundle"] = retrieval_bundle
 
     if execution_plan["run_question_reflection"] and "QuestionReflectionAgent" in followup_agents:
         [reflection_result] = await _run_agent_batch(
@@ -343,7 +359,7 @@ async def run_manual_agent_review(
                 expert_agents=expert_agents,
                 reports_by_agent=reports_by_agent,
                 explicit_targets=reflection_target_agent_names,
-            )
+            )[:2]
             reflection_responses = await _run_reflection_response_batch(
                 response_agents,
                 context=context,
@@ -353,6 +369,7 @@ async def run_manual_agent_review(
             )
             results.extend(reflection_responses)
             reports_by_agent.update(_completed_by_agent(reflection_responses))
+            _apply_claim_assessment_from_results(context, reflection_responses)
 
     if "HarmfulnessJudgeAgent" in followup_agents:
         context["policy_decision_frame"] = build_policy_decision_frame(context, reports_by_agent)
@@ -406,9 +423,11 @@ async def run_manual_agent_review(
         "model": model,
         "method_trace": AGENT_METHOD_TRACE,
         "active_retrieval": retrieval_bundle,
+        "evidence_bundle": context["evidence_bundle"],
         "light_debate": debate_bundle,
         "full_debate": debate_bundle if debate_bundle.get("schema_version") == "review-full-debate-v1" else None,
         "policy_id": (policy or {}).get("policy_id"),
+        "review_task": normalized_review_task,
         "recommended_runtime_mode": runtime_decision["recommended_runtime_mode"],
         "effective_runtime_mode": effective_runtime_mode,
         "runtime_reasons": runtime_decision["runtime_reasons"],
@@ -452,6 +471,7 @@ async def run_manual_agent_review(
         "input_bundle": context,
         "agent_reports": results,
         "active_retrieval": retrieval_bundle,
+        "evidence_bundle": context["evidence_bundle"],
         "light_debate": debate_bundle,
         "full_debate": debate_bundle if debate_bundle.get("schema_version") == "review-full-debate-v1" else None,
         "summary": {
@@ -479,6 +499,7 @@ async def run_manual_agent_review(
             "runtime_upgraded_by_requested_features": runtime_decision["runtime_upgraded_by_requested_features"],
             "candidate_rule_hints": audit["candidate_rule_hints"],
             "countermeasure_enabled": enable_countermeasure,
+            "review_task": normalized_review_task,
         },
     }
 
@@ -772,11 +793,16 @@ async def _run_single_reflection_response(
         "created_at": state["created_at"],
         "human_triggered_by": state["human_triggered_by"],
     }
+    claim_footer_note = (
+        f" Append the strict ClaimEvidenceAgent footer between {CLAIM_EVIDENCE_BEGIN} and {CLAIM_EVIDENCE_END}."
+        if _is_claim_evidence_agent(agent_name)
+        else ""
+    )
     system_prompt = (
         "You are the same Review expert agent responding to the QuestionReflectionAgent. "
         "Write a concise natural-language supplement in Chinese. Address missing "
         "evidence, conflicts, and what should change in your original analysis. "
-        "Do not output JSON and do not claim final classifier authority."
+        f"Do not claim final classifier authority.{claim_footer_note}"
     )
     user_prompt = _reflection_response_prompt(agent_name, context, reports_by_agent)
     try:
@@ -826,6 +852,10 @@ async def _run_single_reflection_response(
             "prompt_telemetry": _failed_prompt_telemetry(state),
             "safety_flags": ["provider_failure", "no_synthetic_fallback"],
         }
+    clean_report_text, claim_evidence_assessment, claim_evidence_error = _prepare_claim_evidence_assessment(
+        response_agent_name,
+        str(report_text).strip(),
+    )
     sidecar = build_sidecar_for_agent(
         agent_name=agent_name,
         context=context,
@@ -836,17 +866,19 @@ async def _run_single_reflection_response(
         sidecar,
         agent_name=response_agent_name,
         context=context,
-        report_text=str(report_text).strip(),
+        report_text=clean_report_text,
+        claim_evidence_assessment=claim_evidence_assessment,
+        claim_evidence_error=claim_evidence_error,
     )
     return {
         **base,
         "status": "completed",
         "analysis_report": _analysis_report_payload(
             agent_name=response_agent_name,
-            report_text=str(report_text).strip(),
+            report_text=clean_report_text,
             status="completed",
         ),
-        "report_text": str(report_text).strip(),
+        "report_text": clean_report_text,
         "report_format": "maro_style_reflection_response_report",
         "system_audit_sidecar": sidecar,
         "structured_sidecar": sidecar,
@@ -936,9 +968,14 @@ async def _run_single_revision_step(
             "prompt_telemetry": _failed_prompt_telemetry(state),
             "safety_flags": ["provider_failure", "no_synthetic_fallback"],
         }
+    raw_report_text = str(report_text).strip()
+    clean_report_text, claim_evidence_assessment, claim_evidence_error = _prepare_claim_evidence_assessment(
+        agent_name,
+        raw_report_text,
+    )
     clean_report_text, teacher_prediction, teacher_prediction_error = _prepare_agent_report_text(
         agent_name,
-        str(report_text).strip(),
+        clean_report_text,
     )
     sidecar = build_sidecar_for_agent(
         agent_name=agent_name,
@@ -953,6 +990,8 @@ async def _run_single_revision_step(
         report_text=clean_report_text,
         teacher_prediction=teacher_prediction,
         teacher_prediction_error=teacher_prediction_error,
+        claim_evidence_assessment=claim_evidence_assessment,
+        claim_evidence_error=claim_evidence_error,
     )
     return {
         **base,
@@ -1101,9 +1140,14 @@ async def _run_single_agent(
             "vision_input_status": _vision_input_status(context),
             "safety_flags": ["provider_failure", "no_synthetic_fallback"],
         }
+    raw_report_text = str(report_text).strip()
+    clean_report_text, claim_evidence_assessment, claim_evidence_error = _prepare_claim_evidence_assessment(
+        agent_name,
+        raw_report_text,
+    )
     clean_report_text, teacher_prediction, teacher_prediction_error = _prepare_agent_report_text(
         agent_name,
-        str(report_text).strip(),
+        clean_report_text,
     )
     sidecar = build_sidecar_for_agent(
         agent_name=agent_name,
@@ -1118,6 +1162,8 @@ async def _run_single_agent(
         report_text=clean_report_text,
         teacher_prediction=teacher_prediction,
         teacher_prediction_error=teacher_prediction_error,
+        claim_evidence_assessment=claim_evidence_assessment,
+        claim_evidence_error=claim_evidence_error,
     )
     analysis_report = _analysis_report_payload(
         agent_name=agent_name,
@@ -1181,6 +1227,8 @@ def _enrich_agent_sidecar(
     report_text: str | None = None,
     teacher_prediction: dict[str, Any] | None = None,
     teacher_prediction_error: str | None = None,
+    claim_evidence_assessment: dict[str, Any] | None = None,
+    claim_evidence_error: str | None = None,
 ) -> dict[str, Any]:
     enriched = dict(sidecar)
     governance_reference = context.get("governance_reference") or build_governance_reference_context(context)
@@ -1190,6 +1238,11 @@ def _enrich_agent_sidecar(
         "report_template": governance_reference.get("report_template") or {},
         "usage_boundary": governance_reference.get("usage_boundary") or {},
     }
+    evidence_bundle = EvidenceBundle.from_mapping(context.get("evidence_bundle"))
+    enriched["evidence_bundle"] = evidence_bundle.to_dict()
+    if _is_claim_evidence_agent(agent_name):
+        enriched["claim_evidence_assessment"] = claim_evidence_assessment
+        enriched["claim_evidence_error"] = claim_evidence_error
     if agent_name == "HarmfulnessJudgeAgent":
         policy_decision_frame = context.get("policy_decision_frame") or build_policy_decision_frame(
             context,
@@ -1209,6 +1262,15 @@ def _enrich_agent_sidecar(
             context=context,
             report_text=report_text,
         )
+        if context.get("review_task") == "claim_deception" and not evidence_bundle.claim_risk_available:
+            enriched["teacher_prediction"] = _mask_unavailable_claim_axis(teacher_prediction)
+            enriched["claim_axis_availability"] = {
+                "available": False,
+                "reason": "claim_evidence_relation_not_valid",
+                "claim_assessment": evidence_bundle.claim_assessment,
+                "retrieval_status": evidence_bundle.retrieval_status,
+                "relation": evidence_bundle.relation,
+            }
     return enriched
 
 
@@ -1219,6 +1281,46 @@ def _prepare_agent_report_text(
     if agent_name != "HarmfulnessJudgeAgent":
         return report_text, None, None
     return parse_judge_decision_footer(report_text)
+
+
+def _prepare_claim_evidence_assessment(
+    agent_name: str,
+    report_text: str,
+) -> tuple[str, dict[str, Any] | None, str | None]:
+    if not _is_claim_evidence_agent(agent_name):
+        return report_text, None, None
+    return parse_claim_evidence_footer(report_text)
+
+
+def _is_claim_evidence_agent(agent_name: str) -> bool:
+    return str(agent_name or "").split(":", 1)[0].replace("ReflectionResponse", "") == "ClaimEvidenceAgent"
+
+
+def _mask_unavailable_claim_axis(teacher_prediction: dict[str, Any] | None) -> dict[str, Any] | None:
+    if not isinstance(teacher_prediction, dict):
+        return teacher_prediction
+    masked = dict(teacher_prediction)
+    axes = dict(masked.get("main_axes") or {})
+    axes["misinfo_claim_risk"] = {"available": False, "label": "unavailable", "confidence": 0.0}
+    masked["main_axes"] = axes
+    return masked
+
+
+def _apply_claim_assessment_from_results(context: dict[str, Any], results: list[dict[str, Any]]) -> None:
+    """Promote parsed ClaimEvidenceAgent metadata into the shared typed bundle."""
+
+    bundle = EvidenceBundle.from_mapping(context.get("evidence_bundle"))
+    for result in results:
+        if result.get("status") != "completed" or not _is_claim_evidence_agent(str(result.get("agent_name") or "")):
+            continue
+        sidecar = result.get("structured_sidecar") or {}
+        assessment = sidecar.get("claim_evidence_assessment") if isinstance(sidecar, dict) else None
+        error = sidecar.get("claim_evidence_error") if isinstance(sidecar, dict) else None
+        if isinstance(assessment, dict):
+            bundle = apply_claim_assessment(bundle, assessment)
+        elif error and bundle.claim_assessment == "not_assessed":
+            bundle = apply_claim_assessment(bundle, None)
+    context["evidence_bundle"] = bundle.to_dict()
 
 
 class _CallBudgetExceeded(RuntimeError):
@@ -1353,7 +1455,12 @@ def _planned_llm_call_count(
     count = len(expert_agents) + 1
     if execution_plan["run_question_reflection"]:
         count += 1
-        count += len(reflection_target_agent_names) if reflection_target_agent_names is not None else min(2, len(expert_agents))
+        count += min(
+            2,
+            len(reflection_target_agent_names)
+            if reflection_target_agent_names is not None
+            else len(expert_agents),
+        )
     if execution_plan["deep_judge"]:
         count += 2
     if execution_plan["run_countermeasure"] and countermeasure_requested:

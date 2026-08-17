@@ -51,20 +51,23 @@ IOHUNTER_COMPACT_METHODS = (
     "tsgs_mhcr_compact",
     "frozen_system_evidence_prior",
     "frozen_system_account_score_prior",
+    "magnn_legacy",
+    "magnn_leiden_hybrid_discovery",
     "edgebank",
     "dense_cosine_leiden",
     "no_tsgs",
     "no_mhcr",
     "no_relation_specific",
 )
-IOHUNTER_COMPACT_MATRIX_SCHEMA_VERSION = "cogguard.iohunter-compact-matrix/v3"
-IOHUNTER_COMPACT_ROW_SCHEMA_VERSION = "cogguard.iohunter-compact-matrix-row/v3"
-IOHUNTER_COMPACT_AGGREGATE_SCHEMA_VERSION = "cogguard.iohunter-compact-aggregates/v3"
-IOHUNTER_COMPACT_CLAIM_SCHEMA_VERSION = "cogguard.iohunter-compact-claims/v5"
-IOHUNTER_COMPACT_IMPLEMENTATION_VERSION = "full-crossed-compact-matrix-v6"
+IOHUNTER_COMPACT_MATRIX_SCHEMA_VERSION = "cogguard.iohunter-compact-matrix/v4"
+IOHUNTER_COMPACT_ROW_SCHEMA_VERSION = "cogguard.iohunter-compact-matrix-row/v4"
+IOHUNTER_COMPACT_AGGREGATE_SCHEMA_VERSION = "cogguard.iohunter-compact-aggregates/v4"
+IOHUNTER_COMPACT_CLAIM_SCHEMA_VERSION = "cogguard.iohunter-compact-claims/v6"
+IOHUNTER_COMPACT_IMPLEMENTATION_VERSION = "full-crossed-compact-matrix-v7"
 IOHUNTER_COMPACT_METHOD_CONFIG_VERSION = "compact-discovery-method-config/v1"
 COMPACT_PREDICTION_ARTIFACT_SCHEMA_VERSION = "cogguard.compact-discovery-prediction-artifact/v2"
 IOHUNTER_EXTERNAL_EVALUATION_SCOPE = "external_account_recovery_not_coordination_ground_truth"
+IOHUNTER_STRUCTURAL_EVALUATION_SCOPE = "partition_quality_on_method_candidate_edge_score_graph"
 _EVALUATION_CONFIG = {"threshold_objective": "macro_f1"}
 _CLAIMABLE_PROXY_METRICS = frozenset(
     {
@@ -826,6 +829,8 @@ def _blocked_load_row(
         "reason": reason,
         "diagnostics_summary": {},
         "proxy_metrics": {},
+        "structural_metrics": {},
+        "structural_metric_scope": IOHUNTER_STRUCTURAL_EVALUATION_SCOPE,
         "evaluation_scope": IOHUNTER_EXTERNAL_EVALUATION_SCOPE,
         "claim_markers": ["iohunter_compact_load_blocked"],
         "account_count": None,
@@ -848,6 +853,102 @@ def _prediction_compact_array_bytes(prediction: Any) -> int:
             "cluster_assignments",
         )
     )
+
+
+def _compact_partition_structural_metrics(prediction: CompactDiscoveryPrediction) -> dict[str, float]:
+    """Evaluate partition structure without consulting labels, folds, or evaluator state."""
+    account_count = int(prediction.account_count)
+    assignments = np.asarray(prediction.cluster_assignments, dtype=np.int64)
+    endpoints = np.asarray(prediction.candidate_endpoints)
+    edge_scores = np.asarray(prediction.edge_scores, dtype=np.float64)
+    if assignments.shape != (account_count,):
+        raise ValueError("cluster assignments must cover the account universe")
+    cluster_count = int(np.max(assignments)) + 1 if assignments.size else 0
+    if cluster_count <= 0:
+        return {
+            "cluster_count": 0.0,
+            "mean_cluster_size": 0.0,
+            "largest_cluster_ratio": 0.0,
+            "singleton_ratio": 0.0,
+            "candidate_edge_count": 0.0,
+            "weighted_edge_sum": 0.0,
+            "internal_edge_fraction": 0.0,
+            "weighted_internal_edge_fraction": 0.0,
+            "partition_density": 0.0,
+            "weighted_partition_density": 0.0,
+            "weighted_modularity": 0.0,
+            "mean_conductance": 0.0,
+            "median_conductance": 0.0,
+        }
+
+    cluster_sizes = np.bincount(assignments, minlength=cluster_count).astype(np.float64)
+    possible_internal_pairs = np.maximum(cluster_sizes * (cluster_sizes - 1.0) / 2.0, 0.0)
+    total_possible_internal_pairs = float(np.sum(possible_internal_pairs))
+    edge_count = int(len(endpoints))
+    total_weight = float(np.sum(edge_scores)) if edge_count else 0.0
+
+    internal_count = np.zeros(cluster_count, dtype=np.float64)
+    internal_weight = np.zeros(cluster_count, dtype=np.float64)
+    degree_weight = np.zeros(account_count, dtype=np.float64)
+    cut_weight = np.zeros(cluster_count, dtype=np.float64)
+    if edge_count:
+        left = endpoints[:, 0].astype(np.int64, copy=False)
+        right = endpoints[:, 1].astype(np.int64, copy=False)
+        np.add.at(degree_weight, left, edge_scores)
+        np.add.at(degree_weight, right, edge_scores)
+        same_cluster = assignments[left] == assignments[right]
+        if np.any(same_cluster):
+            internal_clusters = assignments[left[same_cluster]]
+            np.add.at(internal_count, internal_clusters, 1.0)
+            np.add.at(internal_weight, internal_clusters, edge_scores[same_cluster])
+        if np.any(~same_cluster):
+            cross_scores = edge_scores[~same_cluster]
+            np.add.at(cut_weight, assignments[left[~same_cluster]], cross_scores)
+            np.add.at(cut_weight, assignments[right[~same_cluster]], cross_scores)
+
+    volume = np.bincount(assignments, weights=degree_weight, minlength=cluster_count)
+    graph_volume = 2.0 * total_weight
+    conductance_values = []
+    for cluster_id in range(cluster_count):
+        denominator = min(float(volume[cluster_id]), float(graph_volume - volume[cluster_id]))
+        if denominator > 0.0:
+            conductance_values.append(float(cut_weight[cluster_id] / denominator))
+        elif cluster_count > 1 and cluster_sizes[cluster_id] > 0:
+            conductance_values.append(0.0)
+
+    if total_weight > 0.0:
+        modularity = float(
+            np.sum(
+                (internal_weight / total_weight)
+                - np.square(volume / graph_volume)
+            )
+        )
+        weighted_internal_edge_fraction = float(np.sum(internal_weight) / total_weight)
+    else:
+        modularity = 0.0
+        weighted_internal_edge_fraction = 0.0
+
+    internal_edge_total = float(np.sum(internal_count))
+    conductance_array = np.asarray(conductance_values, dtype=np.float64)
+    return {
+        "cluster_count": float(cluster_count),
+        "mean_cluster_size": float(account_count / max(cluster_count, 1)),
+        "largest_cluster_ratio": float(np.max(cluster_sizes) / max(account_count, 1)),
+        "singleton_ratio": float(np.count_nonzero(cluster_sizes == 1.0) / max(cluster_count, 1)),
+        "candidate_edge_count": float(edge_count),
+        "weighted_edge_sum": total_weight,
+        "internal_edge_fraction": float(internal_edge_total / max(edge_count, 1)),
+        "weighted_internal_edge_fraction": weighted_internal_edge_fraction,
+        "partition_density": float(internal_edge_total / total_possible_internal_pairs)
+        if total_possible_internal_pairs > 0.0
+        else 0.0,
+        "weighted_partition_density": float(np.sum(internal_weight) / total_possible_internal_pairs)
+        if total_possible_internal_pairs > 0.0
+        else 0.0,
+        "weighted_modularity": modularity,
+        "mean_conductance": float(np.mean(conductance_array)) if conductance_array.size else 0.0,
+        "median_conductance": float(np.median(conductance_array)) if conductance_array.size else 0.0,
+    }
 
 
 def _run_campaign(
@@ -1080,6 +1181,7 @@ def _run_campaign(
             except Exception as exc:
                 prediction_load_error = exc
         metrics: Mapping[str, float] = {}
+        structural_metrics: Mapping[str, float] = {}
         claim_markers = set(prediction.claim_markers if prediction is not None else ())
         status = execution.status
         reason = execution.reason
@@ -1099,6 +1201,10 @@ def _run_campaign(
                 "prediction artifact load failed: "
                 f"{type(prediction_load_error).__name__}: {prediction_load_error}"
             )
+        elif prediction is not None:
+            structural_metrics = _compact_partition_structural_metrics(prediction)
+        if prediction_load_error is not None:
+            pass
         elif evaluator_load_error is not None:
             status = "failed"
             reason = (
@@ -1165,6 +1271,8 @@ def _run_campaign(
             "reason": reason,
             "diagnostics_summary": _plain_compact(prediction.diagnostics if prediction is not None else {}),
             "proxy_metrics": _plain_compact(metrics),
+            "structural_metrics": _plain_compact(structural_metrics),
+            "structural_metric_scope": IOHUNTER_STRUCTURAL_EVALUATION_SCOPE,
             "evaluation_scope": IOHUNTER_EXTERNAL_EVALUATION_SCOPE,
             "claim_markers": sorted(claim_markers),
             "account_count": view.account_count,
@@ -1200,24 +1308,50 @@ def aggregate_compact_matrix_rows(
     bootstrap_resamples: int = 2_000,
 ) -> tuple[dict[str, Any], ...]:
     groups: dict[
-        tuple[str, str | None, str, str],
+        tuple[str, str, str | None, str, str],
         list[tuple[str, int, str, float]],
     ] = defaultdict(list)
     for row in rows:
         if row.get("status") != "success":
             continue
-        for metric_name, raw_value in row.get("proxy_metrics", {}).items():
-            value = float(raw_value)
-            observation = (
-                str(row["campaign"]),
-                int(row["seed"]),
-                str(row["fold_id"]),
-                value,
-            )
-            groups[("campaign", str(row["campaign"]), str(row["method_id"]), metric_name)].append(observation)
-            groups[("matrix", None, str(row["method_id"]), metric_name)].append(observation)
+        for metric_group, metric_values in (
+            ("proxy", row.get("proxy_metrics", {})),
+            ("structural", row.get("structural_metrics", {})),
+        ):
+            if not isinstance(metric_values, MappingABC):
+                continue
+            for metric_name, raw_value in metric_values.items():
+                if isinstance(raw_value, bool) or not isinstance(raw_value, (int, float)):
+                    continue
+                value = float(raw_value)
+                if not math.isfinite(value):
+                    continue
+                observation = (
+                    str(row["campaign"]),
+                    int(row["seed"]),
+                    str(row["fold_id"]),
+                    value,
+                )
+                groups[
+                    (
+                        metric_group,
+                        "campaign",
+                        str(row["campaign"]),
+                        str(row["method_id"]),
+                        str(metric_name),
+                    )
+                ].append(observation)
+                groups[
+                    (
+                        metric_group,
+                        "matrix",
+                        None,
+                        str(row["method_id"]),
+                        str(metric_name),
+                    )
+                ].append(observation)
     aggregates = []
-    for (scope, campaign, method_id, metric_name), observations in sorted(
+    for (metric_group, scope, campaign, method_id, metric_name), observations in sorted(
         groups.items(), key=lambda item: tuple("" if part is None else part for part in item[0])
     ):
         raw_values = tuple(value for _campaign, _seed, _fold, value in observations)
@@ -1237,6 +1371,7 @@ def aggregate_compact_matrix_rows(
         )
         aggregates.append(
             {
+                "metric_group": metric_group,
                 "scope": scope,
                 "campaign": campaign,
                 "method_id": method_id,
@@ -1324,6 +1459,8 @@ def _campaign_level_summary(
 def _paired_method_rows(
     successful: Mapping[tuple[str, int, str, str], Mapping[str, Any]],
     baseline_method_id: str,
+    *,
+    candidate_method_id: str = "tsgs_mhcr_compact",
 ) -> tuple[
     tuple[tuple[str, int, str, Mapping[str, Any], Mapping[str, Any]], ...],
     tuple[tuple[str, int, str], ...],
@@ -1331,7 +1468,7 @@ def _paired_method_rows(
     pairs = []
     provenance_mismatches = []
     for campaign, seed, fold_id in sorted(_REQUIRED_PROXY_PAIRS):
-        candidate = successful.get((campaign, seed, fold_id, "tsgs_mhcr_compact"))
+        candidate = successful.get((campaign, seed, fold_id, candidate_method_id))
         baseline = successful.get((campaign, seed, fold_id, baseline_method_id))
         if candidate is None or baseline is None:
             continue
@@ -1347,6 +1484,7 @@ def _proxy_comparison_rows(
     provenance_mismatches: Sequence[tuple[str, int, str]],
     *,
     baseline_method_id: str,
+    candidate_method_id: str,
     mean_field: str,
     supported_decision: str,
     bootstrap_seed: int,
@@ -1407,7 +1545,7 @@ def _proxy_comparison_rows(
             )
         comparisons.append(
             {
-                "candidate_method_id": "tsgs_mhcr_compact",
+                "candidate_method_id": candidate_method_id,
                 "baseline_method_id": baseline_method_id,
                 "metric_name": metric_name,
                 "pair_count": len(observations),
@@ -1436,6 +1574,7 @@ def _runtime_comparison(
     pairs: Sequence[tuple[str, int, str, Mapping[str, Any], Mapping[str, Any]]],
     provenance_mismatches: Sequence[tuple[str, int, str]],
     *,
+    candidate_method_id: str = "tsgs_mhcr_compact",
     bootstrap_seed: int,
     bootstrap_resamples: int,
 ) -> dict[str, Any]:
@@ -1489,7 +1628,7 @@ def _runtime_comparison(
             "do not cover identical boundaries"
         )
     return {
-        "candidate_method_id": "tsgs_mhcr_compact",
+        "candidate_method_id": candidate_method_id,
         "baseline_method_id": "frozen_system_evidence_prior",
         "pair_count": len(observations),
         "required_pair_count": len(required_executions),
@@ -1538,6 +1677,7 @@ def build_compact_claim_decisions(
         edgebank_pairs,
         edgebank_mismatches,
         baseline_method_id="edgebank",
+        candidate_method_id="tsgs_mhcr_compact",
         mean_field="mean_candidate_minus_edgebank",
         supported_decision="supported_external_account_proxy_only",
         bootstrap_seed=bootstrap_seed,
@@ -1547,6 +1687,7 @@ def build_compact_claim_decisions(
         system_pairs,
         system_mismatches,
         baseline_method_id="frozen_system_evidence_prior",
+        candidate_method_id="tsgs_mhcr_compact",
         mean_field="mean_candidate_minus_baseline",
         supported_decision="supported_candidate_over_frozen_system_proxy_only",
         bootstrap_seed=bootstrap_seed,
@@ -1558,6 +1699,7 @@ def build_compact_claim_decisions(
         system_score_pairs,
         system_score_mismatches,
         baseline_method_id="frozen_system_account_score_prior",
+        candidate_method_id="tsgs_mhcr_compact",
         mean_field="mean_candidate_minus_baseline",
         supported_decision="supported_candidate_over_frozen_system_account_score_only",
         bootstrap_seed=bootstrap_seed,
@@ -1571,12 +1713,39 @@ def build_compact_claim_decisions(
             pairs,
             mismatches,
             baseline_method_id=method_id,
+            candidate_method_id="tsgs_mhcr_compact",
             mean_field="mean_candidate_minus_ablation",
             supported_decision="supported_candidate_over_ablation_proxy_only",
             bootstrap_seed=bootstrap_seed,
             bootstrap_resamples=bootstrap_resamples,
         )
         for method_id, (pairs, mismatches) in ablation_pairs.items()
+    }
+    hybrid_pairs = {
+        baseline_method_id: _paired_method_rows(
+            successful,
+            baseline_method_id,
+            candidate_method_id="magnn_leiden_hybrid_discovery",
+        )
+        for baseline_method_id in (
+            "frozen_system_evidence_prior",
+            "frozen_system_account_score_prior",
+            "edgebank",
+            "tsgs_mhcr_compact",
+        )
+    }
+    paired_hybrid = {
+        baseline_method_id: _proxy_comparison_rows(
+            pairs,
+            mismatches,
+            baseline_method_id=baseline_method_id,
+            candidate_method_id="magnn_leiden_hybrid_discovery",
+            mean_field="mean_hybrid_minus_baseline",
+            supported_decision="supported_hybrid_over_baseline_proxy_only",
+            bootstrap_seed=bootstrap_seed,
+            bootstrap_resamples=bootstrap_resamples,
+        )
+        for baseline_method_id, (pairs, mismatches) in hybrid_pairs.items()
     }
     fixed = (
         ("harmful_cib_detection", "IOHunter lacks harmful-CIB Gold labels and Stage 2 Detection was not executed"),
@@ -1603,9 +1772,11 @@ def build_compact_claim_decisions(
         "paired_frozen_system_proxy": system_paired,
         "paired_frozen_system_account_score_proxy": system_score_paired,
         "paired_ablations": paired_ablations,
+        "paired_magnn_leiden_hybrid_proxy": paired_hybrid,
         "paired_frozen_system_runtime": _runtime_comparison(
             system_pairs,
             system_mismatches,
+            candidate_method_id="tsgs_mhcr_compact",
             bootstrap_seed=bootstrap_seed,
             bootstrap_resamples=bootstrap_resamples,
         ),
@@ -1619,8 +1790,8 @@ def build_compact_claim_decisions(
 
 def _write_aggregate_csv(path: Path, rows: Sequence[Mapping[str, Any]]) -> None:
     fields = (
-        "scope", "campaign", "method_id", "metric_name", "count", "mean", "sample_std",
-        "ci_95_low", "ci_95_high", "inference_unit", "inference_unit_count",
+        "metric_group", "scope", "campaign", "method_id", "metric_name", "count", "mean",
+        "sample_std", "ci_95_low", "ci_95_high", "inference_unit", "inference_unit_count",
         "seed_fold_policy", "bootstrap_seed", "bootstrap_resamples",
     )
     output = io.StringIO(newline="")

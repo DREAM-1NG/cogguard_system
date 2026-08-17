@@ -5,47 +5,47 @@ import { ConfigProvider, theme } from 'ant-design-vue';
 <template>
   <ConfigProvider
     :theme="{
-      algorithm: theme.defaultAlgorithm,
+      algorithm: theme.darkAlgorithm,
       token: {
-        colorPrimary: '#18181B',       // Deep Graphite
-        colorInfo: '#2563EB',          // Slate Blue
-        colorSuccess: '#059669',       // Emerald
-        colorWarning: '#D97706',       // Amber
-        colorError: '#DC2626',         // Crimson
-        colorBgBase: '#FAF9F6',        // Warm Alabaster canvas
-        colorBgContainer: '#FFFFFF',   // Pure White container
-        colorBgElevated: '#FFFFFF',    // Pure White popovers/modals
-        colorBgLayout: '#FAF9F6',      // Layout background
-        colorBorder: '#E4E4E7',        // Subtle Stone border
-        colorBorderSecondary: '#F4F4F5',
-        colorText: '#18181B',          // Deep Graphite primary text
-        colorTextBase: '#18181B',
-        colorTextHeading: '#09090B',
-        colorTextSecondary: '#71717A', // Muted Grey text
+        colorPrimary: '#FAFAFA',       // White text/buttons for dark theme
+        colorInfo: '#3B82F6',          // Bright Slate Blue
+        colorSuccess: '#10B981',       // Emerald
+        colorWarning: '#F59E0B',       // Amber
+        colorError: '#EF4444',         // Crimson
+        colorBgBase: '#000000',        // Pure black canvas
+        colorBgContainer: '#09090B',   // Vercel dark container
+        colorBgElevated: '#18181B',    // Popovers/modals
+        colorBgLayout: '#000000',      // Layout background
+        colorBorder: '#27272A',        // Subtle zinc border
+        colorBorderSecondary: '#18181B',
+        colorText: '#FAFAFA',          // Light text
+        colorTextBase: '#FAFAFA',
+        colorTextHeading: '#FFFFFF',
+        colorTextSecondary: '#A1A1AA', // Muted Grey text
         borderRadius: 6,               // Swiss Spa 6px radius
         wireframe: false
       },
       components: {
         Alert: {
-          colorWarningBg: '#FEF3C7',
-          colorWarningBorder: '#FDE68A',
-          colorErrorBg: '#FEF2F2',
-          colorErrorBorder: '#FECACA',
-          colorInfoBg: '#EFF6FF',
-          colorInfoBorder: '#BFDBFE'
+          colorWarningBg: '#451A03',
+          colorWarningBorder: '#B45309',
+          colorErrorBg: '#450A0A',
+          colorErrorBorder: '#B91C1C',
+          colorInfoBg: '#1E3A8A',
+          colorInfoBorder: '#1D4ED8'
         },
         Card: {
-          colorBgContainer: '#FFFFFF',
-          colorBorderSecondary: '#F4F4F5'
+          colorBgContainer: '#09090B',
+          colorBorderSecondary: '#27272A'
         },
         Layout: {
-          colorBgBody: '#FAF9F6',
-          colorBgHeader: '#FFFFFF',
-          colorBgTrigger: '#FAF9F6'
+          colorBgBody: '#000000',
+          colorBgHeader: '#09090B',
+          colorBgTrigger: '#09090B'
         },
         Table: {
-          colorBgContainer: '#FFFFFF',
-          colorFillAlter: '#FAF9F6'
+          colorBgContainer: '#09090B',
+          colorFillAlter: '#000000'
         }
       }
     }"
@@ -55,13 +55,13 @@ import { ConfigProvider, theme } from 'ant-design-vue';
 </template>
 
 <style lang="less">
-/* 全局 Swiss Spa Minimalist 画布重置 */
+/* 全局 Swiss Spa Dark 重置 */
 body {
   margin: 0;
   padding: 0;
-  background-color: #FAF9F6 !important;
+  background-color: #000000 !important;
   background-image: none !important;
-  color: #18181B;
+  color: #FAFAFA;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
@@ -73,16 +73,17 @@ body {
 }
 
 .ant-card {
-  border: 1px solid #E4E4E7 !important;
+  border: 1px solid #27272A !important;
   border-radius: 8px !important;
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.02) !important;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.4) !important;
+  background-color: #09090B !important;
 }
 
 .ant-card-head {
-  border-bottom: 1px solid #F4F4F5 !important;
+  border-bottom: 1px solid #27272A !important;
   font-weight: 600 !important;
   font-size: 14px !important;
-  color: #18181B !important;
+  color: #FAFAFA !important;
   min-height: 44px !important;
 }
 
@@ -98,66 +99,68 @@ body {
   background: transparent !important;
 }
 .ant-table-thead > tr > th {
-  background: #FAF9F6 !important;
-  border-bottom: 1px solid #E4E4E7 !important;
+  background: #000000 !important;
+  border-bottom: 1px solid #27272A !important;
   font-weight: 600 !important;
-  color: #71717A !important;
+  color: #A1A1AA !important;
   text-transform: uppercase;
   font-size: 12px;
   letter-spacing: 0.5px;
 }
 .ant-table-tbody > tr > td {
-  border-bottom: 1px solid #F4F4F5 !important;
-  color: #18181B !important;
+  border-bottom: 1px solid #18181B !important;
+  color: #FAFAFA !important;
 }
 .ant-table-tbody > tr:hover > td {
-  background: #F4F4F5 !important;
+  background: #18181B !important;
 }
 
-/* 标签高级化：低饱和度、柔和边框 */
+/* 标签高级化：深色发光质感 */
 .ant-tag {
-  border: 1px solid #E4E4E7 !important;
-  background: #FFFFFF !important;
-  color: #18181B !important;
+  border: 1px solid #27272A !important;
+  background: #09090B !important;
+  color: #FAFAFA !important;
   border-radius: 4px !important;
   font-weight: 500;
   padding: 0 6px !important;
 }
 .ant-tag-success {
-  background: #ECFDF5 !important;
-  border-color: #D1FAE5 !important;
-  color: #065F46 !important;
+  background: rgba(16, 185, 129, 0.1) !important;
+  border-color: rgba(16, 185, 129, 0.2) !important;
+  color: #34D399 !important;
 }
 .ant-tag-processing, .ant-tag-blue {
-  background: #EFF6FF !important;
-  border-color: #DBEAFE !important;
-  color: #1E40AF !important;
+  background: rgba(59, 130, 246, 0.1) !important;
+  border-color: rgba(59, 130, 246, 0.2) !important;
+  color: #60A5FA !important;
 }
 .ant-tag-error {
-  background: #FEF2F2 !important;
-  border-color: #FEE2E2 !important;
-  color: #991B1B !important;
+  background: rgba(239, 68, 68, 0.1) !important;
+  border-color: rgba(239, 68, 68, 0.2) !important;
+  color: #F87171 !important;
 }
 .ant-tag-warning, .ant-tag-orange {
-  background: #FFFBEB !important;
-  border-color: #FEF3C7 !important;
-  color: #92400E !important;
+  background: rgba(245, 158, 11, 0.1) !important;
+  border-color: rgba(245, 158, 11, 0.2) !important;
+  color: #FBBF24 !important;
 }
 
 /* 按钮高级化 */
 .ant-btn {
   border-radius: 6px !important;
-  box-shadow: 0 1px 2px 0 rgba(0,0,0,0.02) !important;
+  box-shadow: 0 1px 2px 0 rgba(0,0,0,0.2) !important;
 }
 
 /* 表单与输入框 */
 .ant-input, .ant-input-number, .ant-select-selector {
   border-radius: 6px !important;
-  border-color: #E4E4E7 !important;
+  border-color: #27272A !important;
+  background-color: #000000 !important;
+  color: #FAFAFA !important;
 }
 .ant-input:focus, .ant-input-focused, .ant-input-number:focus, .ant-select-focused .ant-select-selector {
-  border-color: #18181B !important;
-  box-shadow: 0 0 0 2px rgba(24,24,27,0.1) !important;
+  border-color: #FAFAFA !important;
+  box-shadow: 0 0 0 2px rgba(255,255,255,0.1) !important;
 }
 
 /* 现代极简滚动条 */
@@ -169,16 +172,16 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #D4D4D8;
+  background: #3F3F46;
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #A1A1AA;
+  background: #71717A;
 }
 
 /* 极简焦点轮廓 */
 *:focus-visible {
-  outline: 2px solid #18181B !important;
+  outline: 2px solid #FAFAFA !important;
   outline-offset: 2px;
 }
 </style>

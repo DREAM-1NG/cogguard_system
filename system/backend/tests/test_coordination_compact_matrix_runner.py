@@ -135,19 +135,21 @@ def test_compact_matrix_api_and_exact_canonical_identity():
         "fold-004",
     )
     assert package.IOHUNTER_COMPACT_CLAIM_SCHEMA_VERSION == (
-        "cogguard.iohunter-compact-claims/v5"
+        "cogguard.iohunter-compact-claims/v6"
     )
     assert package.IOHUNTER_COMPACT_METHODS == (
         "tsgs_mhcr_compact",
         "frozen_system_evidence_prior",
         "frozen_system_account_score_prior",
+        "magnn_legacy",
+        "magnn_leiden_hybrid_discovery",
         "edgebank",
         "dense_cosine_leiden",
         "no_tsgs",
         "no_mhcr",
         "no_relation_specific",
     )
-    assert len(coordinates) == 6 * 5 * 5 * 8
+    assert len(coordinates) == 6 * 5 * 5 * 10
     assert len(set(coordinates)) == len(coordinates)
     assert {(row.seed, row.fold_id) for row in coordinates} == {
         (seed, fold_id)
@@ -196,6 +198,27 @@ def test_fully_crossed_runner_reuses_one_unsupervised_execution_across_all_folds
         assert evaluation_folds == list(package.IOHUNTER_COMPACT_FOLDS)
         assert len({row["prediction_artifact_identity"] for row in result.rows}) == 1
         assert result.status_counts == {"success": 5}
+        first_row = result.rows[0]
+        structural = first_row["structural_metrics"]
+        assert first_row["structural_metric_scope"] == package.IOHUNTER_STRUCTURAL_EVALUATION_SCOPE
+        assert {
+            "weighted_modularity",
+            "mean_conductance",
+            "median_conductance",
+            "internal_edge_fraction",
+            "weighted_internal_edge_fraction",
+            "partition_density",
+            "singleton_ratio",
+            "largest_cluster_ratio",
+        } <= set(structural)
+        assert all(isinstance(structural[key], float) for key in structural)
+        aggregate = json.loads((output / "aggregate_table.json").read_text(encoding="utf-8"))
+        aggregate_keys = {
+            (row["metric_group"], row["metric_name"])
+            for row in aggregate["rows"]
+        }
+        assert ("structural", "weighted_modularity") in aggregate_keys
+        assert ("proxy", "external_account_macro_f1") in aggregate_keys
     finally:
         shutil.rmtree(output, ignore_errors=True)
 
@@ -943,6 +966,7 @@ def test_claim_decisions_compare_candidate_with_frozen_system_separately_from_ed
             for fold_id in package.IOHUNTER_COMPACT_FOLDS:
                 for method_id, score in (
                     ("tsgs_mhcr_compact", 0.65),
+                    ("magnn_leiden_hybrid_discovery", 0.72),
                     ("edgebank", 0.50),
                     ("frozen_system_evidence_prior", 0.70),
                     ("frozen_system_account_score_prior", 0.70),
@@ -976,6 +1000,15 @@ def test_claim_decisions_compare_candidate_with_frozen_system_separately_from_ed
     assert system["provenance_mismatch_count"] == 0
     assert system["mean_candidate_minus_baseline"] == pytest.approx(-0.05)
     assert system["decision"] == "not_supported"
+
+    hybrid_rows = {
+        row["metric_name"]: row
+        for row in decisions["paired_magnn_leiden_hybrid_proxy"]["frozen_system_evidence_prior"]
+    }
+    assert hybrid_rows["external_account_auprc"]["candidate_method_id"] == "magnn_leiden_hybrid_discovery"
+    assert decisions["paired_magnn_leiden_hybrid_proxy"]["tsgs_mhcr_compact"][0]["candidate_method_id"] == "magnn_leiden_hybrid_discovery"
+    assert decisions["paired_magnn_leiden_hybrid_proxy"]["edgebank"][0]["candidate_method_id"] == "magnn_leiden_hybrid_discovery"
+
     runtime = decisions["paired_frozen_system_runtime"]
     assert runtime["mean_candidate_minus_baseline_seconds"] == pytest.approx(1.0)
     assert runtime["decision"] == "blocked_noncomparable_measurement_boundary"

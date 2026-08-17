@@ -632,11 +632,11 @@ onBeforeUnmount(() => {
 .crawl-sidebar {
   flex: 0 0 340px;
   width: 100%;
-  background: #FFFFFF;
+  background: #09090B;
   border-radius: 8px;
-  border: 1px solid #E4E4E7;
+  border: 1px solid #27272A;
   overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
 }
 
 .crawl-main {
@@ -649,14 +649,14 @@ onBeforeUnmount(() => {
 
 .panel-header {
   padding: 16px 20px;
-  border-bottom: 1px solid #F4F4F5;
-  background: #FFFFFF;
+  border-bottom: 1px solid #27272A;
+  background: #09090B;
 }
 
 .panel-title {
   font-size: 15px;
   font-weight: 600;
-  color: #18181B;
+  color: #FAFAFA;
 }
 
 .panel-body {
@@ -670,7 +670,7 @@ onBeforeUnmount(() => {
 .minimal-form .group-title {
   font-size: 13px;
   font-weight: 600;
-  color: #71717A;
+  color: #A1A1AA;
   margin-bottom: 12px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -693,11 +693,11 @@ onBeforeUnmount(() => {
 }
 
 .main-paper {
-  background: #FFFFFF;
+  background: #09090B;
   border-radius: 8px;
-  border: 1px solid #E4E4E7;
+  border: 1px solid #27272A;
   padding: 12px 24px 24px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -731,7 +731,7 @@ onBeforeUnmount(() => {
 }
 
 .tab-desc {
-  color: #71717A;
+  color: #A1A1AA;
   font-size: 13px;
 }
 

@@ -4,7 +4,7 @@
 > **受众**：Propagation Analysis 研究实现者、传播监控模块维护者、答辩材料编写者。  
 > **维护规则**：只写关键技术背景与研究方案；产品接口和任务状态放入工程文档。
 
-> 方向更新（2026-06-23）：Propagation Analysis 主功能收敛为 **规模预测 + 角色定位 + 下一跳预测**。传播时间线、证据链、范围估计、立场/危害/情感线索、影响力指数和前端可视化均为 auxiliary。方法层不绑定 CascadeSwitch、HyperIDP 或任何单一模型，允许根据数据条件选择轻量启发式、传统模型、图模型、多尺度扩散模型或组合方案。
+> 方向更新（2026-08-15）：当前系统传播预测主线为 `PropagationSequenceJointModel` 的 **规模/趋势预测 + 下一跳候选排序**。传播时间线、证据链、范围估计、立场/危害/情感线索、影响力指数和前端可视化均为 auxiliary。方法层不绑定单一模型，但需明确当前部署检查点、正式实验结论和未来能力的边界。
 
 ## 1. 问题定义
 
@@ -25,21 +25,32 @@ Propagation Analysis 要回答的核心问题是：**一个传播事件接下来
 当前代码落点：
 
 - `system/backend/app/core/propagation_legacy.py`：传播子图、关键角色、证据链、关键路径回溯。
-- `system/backend/app/core/propagation/`：时序特征、事件上下文、体制模型、趋势预测等规模预测基础实现。
-- `system/backend/app/services/propagation_service.py`
+- `system/research/propagation_analysis/benchmark/adapters/sequence_model.py`：`PropagationSequenceJointModel`，包含 RelationGNN、DynamicCasHGNN、SharedLSTM、宏观增长/趋势头和下一用户解码器。
+- `system/research/propagation_analysis/benchmark/adapters/event_adapter.py`：观测前缀、合法候选桶和身份映射元数据构造。
+- `system/backend/app/services/propagation_model_service.py`：检查点调用、结果缓存与预测契约。
 - `system/backend/app/api/v1/propagation.py`
 
 当前已实现或已有基础：
 
 - 传播图构建、时间线、关键角色、证据链、关键路径回溯。
-- 规模/趋势预测相关特征和轻量预测流程。
-- 前端传播监控页的部分展示能力。
+- 基于 `observed_until` 的无未来泄漏前缀构造、宏观规模/趋势估计和微观候选排序。
+- 只对当前事件中可唯一映射的用户输出重激活排序，并返回候选覆盖、映射和可用性状态。
+- 前端传播监控页和模型事件预测接口。
+
+### 2.1 正式验证结果
+
+最新正式实验为 3 个数据集 × 3 个随机种子 × 200 epochs，Macro 和 Micro 分表，36/36 行报告 `fair_protocol_passed=true`。完整指标见 [`system/research/propagation_analysis/benchmark/formal_36x_fair_protocol_20260815.md`](../../../system/research/propagation_analysis/benchmark/formal_36x_fair_protocol_20260815.md)。
+
+- **Macro**：Ours 在三个数据集的趋势 MAE 和趋势 RMSE 上均优于 MINDS；CasFT 仍是多数规模和趋势指标的最强基线。
+- **Micro**：Ours 稳定优于 FOREST，与 MINDS 接近；Douban/Twitter 的多数排序指标由 MINDS 略优，Memetracker 的 MAP@10、MAP@100 和 MRR 由 Ours 略优。
+- **可支持结论**：统一 Macro/Micro 建模显著改善了相对 MINDS 的趋势建模能力，并保持接近 MINDS 的下一跳排序性能；不是全面 SOTA 结论。
 
 当前需要补齐：
 
-- 规模预测在公开数据集上的基准验证和与 baseline 的对比。
 - 角色定位与 Coordination Discover / Detect 协同用户集合的显式联动。
-- 下一跳预测的候选集构造、排序模型和无未来泄漏评估协议。
+- 开放世界下一跳候选：从截止时间前的参与用户和时序邻居生成候选，使用显式证据做身份解析，并对未知身份保留 unknown/new-user 桶。
+- 真实时间预测范围：重新训练或适配含时间分桶/时长条件目标的检查点，才能支持 1 小时、6 小时或 24 小时等 `prediction_horizon`。
+- 预测不确定性：使用时间留出的校准集增加 conformal residual 区间，并逐步评估 Bayesian last layer、异方差似然、深度集成或 MC-dropout posterior。
 - 辅助能力与主功能的边界说明，避免把内容分析或前端展示写成主功能本体。
 
 ## 3. 方法空间

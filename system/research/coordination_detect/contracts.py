@@ -13,6 +13,13 @@ from typing import Any, Mapping
 DETECTION_ARTIFACT_SCHEMA_VERSION = "cogguard.coordination-detection-artifact/v1"
 DETECTION_BATCH_SCHEMA_VERSION = "cogguard.cluster-detection-batch/v1"
 LEARNED_MODEL_VERSION = "learned_coordination_logistic_platt/v1"
+LEARNED_MODEL_ROLE = "shadow_learned"
+PRIMARY_DETECTION_MODEL_ROLES = frozenset(
+    {
+        "primary_socgfm_cross_attention",
+    }
+)
+DETECTION_MODEL_ROLES = frozenset({LEARNED_MODEL_ROLE, *PRIMARY_DETECTION_MODEL_ROLES})
 
 
 def _required_text(value: Any, field_name: str) -> str:
@@ -236,7 +243,7 @@ class DetectionModelArtifact:
     validation_threshold_case_ids_fingerprint: str
     validation_ood_case_ids_fingerprint: str
     model_version: str = LEARNED_MODEL_VERSION
-    model_role: str = "primary_learned"
+    model_role: str = LEARNED_MODEL_ROLE
     schema_version: str = DETECTION_ARTIFACT_SCHEMA_VERSION
 
     _FIELDS = frozenset(
@@ -257,8 +264,8 @@ class DetectionModelArtifact:
             raise ValueError("feature_schema must be a DetectionFeatureSchema")
         if self.schema_version != DETECTION_ARTIFACT_SCHEMA_VERSION:
             raise ValueError(f"unsupported schema_version: {self.schema_version}")
-        if self.model_version != LEARNED_MODEL_VERSION or self.model_role != "primary_learned":
-            raise ValueError("artifact must identify the primary learned model")
+        if self.model_version != LEARNED_MODEL_VERSION or self.model_role != LEARNED_MODEL_ROLE:
+            raise ValueError("artifact must identify the shadow learned model")
         size = len(self.feature_schema.names)
         for field_name in (
             "scaler_mean", "scaler_scale", "coefficients", "validation_ood_min", "validation_ood_max"
@@ -375,6 +382,10 @@ class ClusterDetectionVerdict:
     artifact_hash: str | None = None
     ood_features: tuple[str, ...] = ()
     warning: str | None = None
+    inference_mode: str | None = None
+    member_probability_coverage: float | None = None
+    online_neural_forward: bool | None = None
+    claim_scope: str | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "cluster_id", _required_text(self.cluster_id, "cluster_id"))
@@ -391,6 +402,17 @@ class ClusterDetectionVerdict:
             object.__setattr__(self, "artifact_hash", _required_text(self.artifact_hash, "artifact_hash"))
         if self.warning is not None:
             object.__setattr__(self, "warning", _required_text(self.warning, "warning"))
+        if self.inference_mode is not None:
+            object.__setattr__(self, "inference_mode", _required_text(self.inference_mode, "inference_mode"))
+        if self.member_probability_coverage is not None:
+            coverage = _finite_float(self.member_probability_coverage, "member_probability_coverage")
+            if not 0.0 <= coverage <= 1.0:
+                raise ValueError("member_probability_coverage must be within [0, 1]")
+            object.__setattr__(self, "member_probability_coverage", coverage)
+        if self.online_neural_forward is not None and not isinstance(self.online_neural_forward, bool):
+            raise ValueError("online_neural_forward must be a boolean when provided")
+        if self.claim_scope is not None:
+            object.__setattr__(self, "claim_scope", _required_text(self.claim_scope, "claim_scope"))
 
 
 @dataclass(frozen=True, slots=True)
@@ -402,13 +424,17 @@ class ClusterDetectionBatch:
     model_artifact_hash: str
     verdicts: tuple[ClusterDetectionVerdict, ...]
     schema_version: str = DETECTION_BATCH_SCHEMA_VERSION
-    model_role: str = "primary_learned"
+    model_role: str = LEARNED_MODEL_ROLE
+    inference_mode: str | None = None
+    claim_scope: str | None = None
+    online_neural_forward: bool | None = None
+    runtime_diagnostics: Mapping[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if self.schema_version != DETECTION_BATCH_SCHEMA_VERSION:
             raise ValueError(f"unsupported schema_version: {self.schema_version}")
-        if self.model_role != "primary_learned":
-            raise ValueError("ClusterDetectionBatch is reserved for the primary learned model")
+        if self.model_role not in DETECTION_MODEL_ROLES:
+            raise ValueError("ClusterDetectionBatch is reserved for approved detection model roles")
         for field_name in (
             "batch_id", "source_batch_id", "source_batch_fingerprint",
             "prediction_input_fingerprint", "model_artifact_hash",
@@ -423,11 +449,19 @@ class ClusterDetectionBatch:
         if len(ids) != len(set(ids)):
             raise ValueError("verdicts contain duplicate cluster IDs")
         object.__setattr__(self, "verdicts", verdicts)
+        if self.inference_mode is not None:
+            object.__setattr__(self, "inference_mode", _required_text(self.inference_mode, "inference_mode"))
+        if self.claim_scope is not None:
+            object.__setattr__(self, "claim_scope", _required_text(self.claim_scope, "claim_scope"))
+        if self.online_neural_forward is not None and not isinstance(self.online_neural_forward, bool):
+            raise ValueError("online_neural_forward must be a boolean when provided")
+        object.__setattr__(self, "runtime_diagnostics", _immutable_mapping(self.runtime_diagnostics, "runtime_diagnostics"))
 
 
 __all__ = [
     "ClusterDetectionBatch", "ClusterDetectionVerdict", "DETECTION_ARTIFACT_SCHEMA_VERSION",
+    "DETECTION_MODEL_ROLES",
     "DETECTION_BATCH_SCHEMA_VERSION", "DetectionFeatureSchema", "DetectionModelArtifact",
-    "DetectionTrainingCase", "LEARNED_MODEL_VERSION", "case_id_fingerprint",
+    "DetectionTrainingCase", "LEARNED_MODEL_ROLE", "LEARNED_MODEL_VERSION", "PRIMARY_DETECTION_MODEL_ROLES", "case_id_fingerprint",
     "prediction_input_fingerprint",
 ]

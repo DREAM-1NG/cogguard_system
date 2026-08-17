@@ -187,7 +187,7 @@ async def main_async(args: argparse.Namespace) -> int:
                 "semantic_enrichment": {"claim": args.primary_claim},
             },
             created_by=0,
-            run_id=f"run_{EVENT_ID}_semantic_v8",
+            run_id=f"run_{EVENT_ID}_semantic_{snapshot.data_fingerprint[:12]}",
         )
         engines = default_analysis_engine_ports(semantic_runtime=runtime)
         engines.propagation = SnapshotObservedPropagationEngine()

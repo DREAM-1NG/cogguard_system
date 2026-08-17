@@ -391,33 +391,6 @@ def test_generate_network_handles_isolates_and_single_edges():
 
 @pytest.mark.asyncio
 async def test_coordination_api_uses_authenticated_user_dependency(client: AsyncClient, monkeypatch):
-    calls = {}
-
-    async def fake_run_coordination_detection(**kwargs):
-        calls.update(kwargs)
-        return {
-            "network": {
-                "nodes": [{"id": "u1", "cluster_id": 0, "cluster_size": 2, "cluster_degree": 2}],
-                "edges": [{"source": "u1", "target": "u2", "weight": 1.5}],
-                "node_count": 2,
-                "edge_count": 1,
-                "component_count": 1,
-                "components": [["u1", "u2"]],
-                "cluster_count": 1,
-                "clusters": [{"cluster_id": 0, "size": 2, "members": ["u1", "u2"]}],
-            },
-            "account_stats": [],
-            "group_stats": [],
-            "cluster_stats": [{"cluster_id": 0, "size": 2, "members": ["u1", "u2"]}],
-            "summary": {"coordinated_accounts": 2, "cluster_count": 1},
-        }
-
-    monkeypatch.setattr(
-        coordination_api.coordination_service,
-        "run_coordination_detection",
-        fake_run_coordination_detection,
-    )
-
     app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(id=1, role="analyst", is_active=True)
     try:
         response = await client.post("/api/v1/coordination/detect?time_window=45&min_participation=1&edge_weight=0.4")
@@ -425,14 +398,18 @@ async def test_coordination_api_uses_authenticated_user_dependency(client: Async
         app.dependency_overrides.pop(get_current_user, None)
 
     assert response.status_code == 200
-    assert calls == {
+    payload = response.json()["data"]
+    assert payload["status"] == "model_unavailable"
+    assert payload["fallback"] is False
+    assert payload["model_role"] == "primary_socgfm_cross_attention"
+    assert payload["blocking_reason"] == "legacy_coordination_detect_endpoint_disabled_use_analysis_run"
+    assert payload["requested_scope"] == {
+        "event_id": None,
+        "platform": None,
         "time_window": 45,
         "min_participation": 1,
         "edge_weight": 0.4,
-        "platform": None,
-        "event_id": None,
     }
-    assert response.json()["data"]["summary"]["coordinated_accounts"] == 2
 
 
 def test_propagation_analysis_filters_posts_and_comments_by_event(monkeypatch):
@@ -504,46 +481,25 @@ def test_account_profiles_filters_by_event_and_platform(monkeypatch):
     assert profiles[0]["account_id"] == "u1"
 
 
-def test_coordination_api_passes_event_id_to_service(monkeypatch):
-    calls = {}
-
-    async def fake_run_coordination_detection(**kwargs):
-        calls.update(kwargs)
-        return {"summary": {}}
-
-    monkeypatch.setattr(coordination_api.coordination_service, "run_coordination_detection", fake_run_coordination_detection)
-
-    asyncio.run(coordination_api.run_detection(event_id="event-1", platform="weibo", _current_user=object()))
-
-    assert calls["event_id"] == "event-1"
-    assert calls["platform"] == "weibo"
-
-
-def test_coordination_api_accepts_cluster_enriched_payload(monkeypatch):
-    async def fake_run_coordination_detection(**kwargs):
-        return {
-            "network": {
-                "nodes": [{"id": "u1", "cluster_id": 0, "cluster_size": 2, "cluster_degree": 3}],
-                "edges": [],
-                "node_count": 1,
-                "edge_count": 0,
-                "component_count": 1,
-                "components": [{"size": 1, "members": ["u1"]}],
-                "cluster_count": 1,
-                "clusters": [{"cluster_id": 0, "size": 1, "members": ["u1"]}],
-            },
-            "account_stats": [],
-            "group_stats": [],
-            "cluster_stats": [{"cluster_id": 0, "size": 1, "members": ["u1"]}],
-            "summary": {"coordinated_accounts": 1, "coordinated_edges": 0, "total_pairs": 0, "cluster_count": 1},
-        }
-
-    monkeypatch.setattr(coordination_api.coordination_service, "run_coordination_detection", fake_run_coordination_detection)
-
+def test_coordination_api_preserves_scope_when_legacy_endpoint_fails_closed():
     payload = asyncio.run(coordination_api.run_detection(event_id="event-1", platform="weibo", _current_user=object()))
 
-    assert payload["data"]["summary"]["cluster_count"] == 1
-    assert payload["data"]["network"]["clusters"][0]["cluster_id"] == 0
+    assert payload["data"]["status"] == "model_unavailable"
+    assert payload["data"]["requested_scope"]["event_id"] == "event-1"
+    assert payload["data"]["requested_scope"]["platform"] == "weibo"
+    assert payload["data"]["replacement"]["analysis_stage"] == "coordination_discover"
+
+
+def test_coordination_api_does_not_return_legacy_cluster_payload(monkeypatch):
+    async def forbidden_run_coordination_detection(**kwargs):
+        raise AssertionError("legacy coordination service must not be called by /coordination/detect")
+
+    monkeypatch.setattr(coordination_service, "run_coordination_detection", forbidden_run_coordination_detection)
+    payload = asyncio.run(coordination_api.run_detection(event_id="event-1", platform="weibo", _current_user=object()))
+
+    assert payload["data"]["status"] == "model_unavailable"
+    assert "network" not in payload["data"]
+    assert "summary" not in payload["data"]
 
 
 def test_propagation_api_passes_event_id_to_observed_analysis(monkeypatch):

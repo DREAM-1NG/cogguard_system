@@ -36,8 +36,8 @@ system/
     tests/                     backend unit, contract, integration, and governance tests
   frontend/                    Vue 3 and TypeScript UI
   research/
-    coordination_discover/     platform-generic discovery pipeline and outputs
-    coordination_detect/       public-label validation boundary
+    coordination_discover/     evidence-constrained system Discovery plus research candidates
+    coordination_detect/       SocGFM primary runtime artifact and shadow public-label baselines
     propagation_analysis/      hindcast protocol, loaders, baselines, intervals
     review_teacher/            internal review research DAG
     social_bot_detection/      internal trainable BotRHG Weibo transfer
@@ -58,12 +58,50 @@ Canonical semantic paths:
 
 These paths are runtime/research-only boundaries; do not surface them in product copy unless the path itself is the point of the discussion.
 
+## Coordination Boundary
+
+The current product Coordination path is the AnalysisExecutor runtime:
+conservative cross-platform resolution, evidence-constrained Coordination
+Discover, and group-level Coordination Detect. Discovery stays on
+`coordination-evidence-runtime-v2`; MAGNN/GFM variants are not the product
+Discovery decision path.
+
+Coordination Detect uses `socgfm_cross_attention` as the primary artifact type.
+If the active `coordination_detection` pointer is absent or not SocGFM, the
+runtime returns `model_unavailable` and does not fall back to the older
+learned/logistic classifier or a heuristic rule. The learned classifier remains
+shadow/baseline-only for audit, rollback comparison, and public dataset tables.
+
+`system/backend/app/services/coordination_model_service.py` is a legacy
+dataset registry and Coordination Archive Replay surface for historical
+MAGNN/Leiden/SBERT results. Its outputs are useful for comparison and
+visualization, but they are not the current system mainline. Legacy account
+Detection scores from this surface are exposed only as `archive_detection_*`
+audit fields; frontend key-node ranking and score filtering use Discovery
+evidence scores. `magnn_leiden_hybrid_discovery` is registered only in offline
+research runners until it beats the evidence-constrained Discovery mainline and
+retained baselines under the same protocol.
+
+Some historical runs have persisted real member predictions but no materialized
+group-level `coordination_detection` block. The service can reconstruct a
+traceable group evidence projection from those predictions and the stored
+community membership. If predictions are missing, it returns
+`model_unavailable` instead of making up a verdict. The result cache is keyed
+with `coordination-latest-result-v3` to prevent an older empty projection from
+being served after this compatibility repair. High-risk groups are analyst
+prompts, never Confirmed Decisions.
+
 ## Case Workspace
 
 The current product workspace is `/api/v2/review-cases/*`.
 
 - `GET /api/v2/review-cases/latest` returns the latest case.
 - `GET /api/v2/review-cases/{case_id}` returns case detail.
+- `GET /api/v2/review-cases/{case_id}/teacher-audit` returns the bounded,
+  read-only review audit projection: execution state, role stages, traceable
+  source excerpts, retrieval queries, and short rationale capsules when
+  persisted. It never returns raw prompts, full chain-of-thought, provider
+  credentials, or model confidence targets.
 - `GET /api/v2/review-cases/{case_id}/evidence` returns assessment-group counts and one
   cursor-paginated evidence group. It accepts `assessment`, `cursor`, and `limit`; the
   default is the first 40 unresolved items.
@@ -78,6 +116,7 @@ The application-facing ports are the `ReviewCaseService` methods that power thos
 - `latest()`
 - `search()`
 - `detail(case_id)`
+- `teacher_audit(case_id)`
 - `evidence(case_id, assessment, cursor, limit)`
 - `request_review(case_id, request, actor)`
 - `add_annotation(case_id, request, actor)`
@@ -230,6 +269,20 @@ than every evidence page. See
 `../doc/engineering/performance-operations.md` for cache identity, the measured
 baseline, and the remaining optimization gates.
 
+For the default demonstration event, warmup also materializes the propagation
+forecast cache at the page's `50%` observation ratio and `Top-10` budget. The
+**趋势预测** tab then reads that persisted result on first visit and does not
+wait for model inference. Use **刷新趋势预测** only when an analyst needs an
+explicit recomputation for the current event scope.
+
+The same tab loads a separate, evidence-only timeline from
+`GET /api/v1/propagation/model-event-timeline`. It opens at the event's
+deterministic densest six-hour active period with minute-level aggregation.
+Operators can switch to **24小时**, **7天**, or **全部** and use the chart's
+slider or in-chart zoom. Date-backed observed and retrospective evidence are
+kept separate from the model chart: model points remain labelled as relative
+steps because the checkpoint does not provide a calibrated wall-clock horizon.
+
 Use the development frontend only while changing frontend source:
 
 ```powershell
@@ -356,3 +409,54 @@ Production deployments must set `BACKEND_ENV=production`, a random `JWT_SECRET_K
 
 The internal social bot transfer boundary lives under `system/research/social_bot_detection/`. The local and strict paths stay text-only on the current corpora, and they remain transfer results rather than superiority claims.
 The same research package now also owns account active-learning acquisition, approved-label corpus export, and active-round evaluation gates for Chinese account detection.
+
+## Review Student and MARO Teacher boundary
+
+The Review runtime has two separate delivery lines:
+
+```text
+Review Student: synchronous XLM-R text analysis -> preliminary Review output
+Review Teacher: analyst Review API -> MARO-compatible advisory audit
+```
+
+The Teacher chain is task-scoped. Interpersonal harm uses the harm expert and
+active policy context; claim deception uses claim eligibility, EvidenceRAG,
+and source-bound evidence. Complex cases add QuestionReflection and at most
+two targeted expert responses before the Judge. Simple cases run necessary
+experts and one Judge only. Countermeasure is an explicit post-Judge option.
+
+For claim deception, the ClaimEvidenceAgent assesses claim applicability before
+any factual query is built. `not_assessed`, `no_verifiable_claim`, provider
+failure, and no relevant retrieval evidence are audit states, not
+`insufficient`. The Judge exposes `misinfo_claim_risk` only when a completed,
+traceable evidence relation is available; otherwise it emits `unavailable`.
+
+Student input is text-only in this stage. Raw image/video, OCR/ASR/caption
+fusion, and multimodal consistency are deferred candidate capabilities. The
+Student does not consume Teacher confidence or full free-form traces as
+training targets. Quality-gated Rationale Capsules may provide auxiliary
+alignment supervision, while the natural-language Teacher report remains an
+audit artifact.
+
+Production Student output may create an internal Hard-Case Candidate. Only an
+analyst-triggered Review API request activates Teacher; offline data-production
+scripts are the only future path allowed to batch-call Teacher. Neither line
+overwrites the analyst-owned Confirmed Decision or changes Coordination and
+Propagation responsibilities.
+
+The paper-aligned local Weibo21 MARO/INS experiment is isolated in
+`system/backend/scripts/run_maro_weibo21_ins_experiment.py`. It caches the
+multi-dimensional analysis stage, optimizes decision rules only on source-domain
+validation tasks, and evaluates top-3-rule majority voting on a held-out local
+domain. It requires process-scoped DeepSeek and traceable retrieval credentials;
+`--dry-run` validates the local protocol without external calls. Its results
+must not be presented as official MARO reproduction or as Student performance.
+
+The HateCoT harm adaptation is isolated in
+`system/backend/scripts/run_maro_hatecot_harm_experiment.py`. It uses the
+three-way `non_harmful/offensive/hate` label space, source-train/source-dev
+rule separation, and held-out target sampling for `cad`, `dynahate`, and
+`toraman`. Policy-off is the primary arm; `local_advisory` is a local context
+ablation only. The runner's dry-run performs no DeepSeek, Exa, or external
+retrieval call. It does not alter Student training, LRKD, product Review
+routing, or multimodal capabilities.

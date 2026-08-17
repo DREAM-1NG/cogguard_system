@@ -6,6 +6,8 @@ from pathlib import Path
 from typing import Any
 import base64
 
+from app.core.review.review_context import scope_agent_context
+
 
 __all__ = [
     "agent_requires_vision",
@@ -120,9 +122,7 @@ def build_provider_input_bundle_for_agent(
     """Trim heavy visual payloads for text-only Agents."""
     if provider_should_receive_media(agent_name):
         return context
-    trimmed = dict(context)
-    trimmed["media_inputs"] = []
-    return trimmed
+    return scope_agent_context(agent_name, context)
 
 
 def provider_should_receive_media(agent_name: str) -> bool:

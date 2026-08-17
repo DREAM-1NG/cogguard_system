@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import inspect
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from app.main import app
@@ -98,11 +99,126 @@ def test_current_event_prediction_service_returns_frontend_trend_contract(monkey
     assert result["data_scope"]["platform"] == "weibo"
 
 
+def test_current_event_prediction_exposes_observed_and_realized_timelines_without_leakage(monkeypatch):
+    posts = [
+        {"post_id": "p1", "author_id": "u1", "timestamp": "2026-05-11T00:00:00Z"},
+        {"post_id": "p3", "author_id": "u3", "timestamp": "2026-05-11T00:02:00Z"},
+    ]
+    comments = [
+        {"comment_id": "c2", "author_id": "u2", "timestamp": "2026-05-11T00:01:00Z"},
+        {"comment_id": "c4", "author_id": "u4", "timestamp": "2026-05-11T00:03:00Z"},
+    ]
+
+    async def fake_event_data(**_kwargs):
+        return posts, comments
+
+    async def fake_predict_event_macro_micro(**kwargs):
+        assert kwargs["posts"] == posts
+        assert kwargs["comments"] == comments
+        assert kwargs["observation_ratio"] == 0.5
+        return {
+            "status": "ok",
+            "model_status": "available",
+            "macro": {
+                "observed_size": 2,
+                "predicted_size": 4,
+                "trend_points": [{"step": 1, "predicted_size": 4}],
+                "intervals": None,
+                "direction": "rising",
+                "score_concentration": 0.2,
+                "calibration_status": "unavailable",
+            },
+            "micro": {"top_users": [], "candidate_count": 0, "coverage": {}},
+        }
+
+    monkeypatch.setattr(propagation_model_service, "_load_prediction_event_data", fake_event_data)
+    monkeypatch.setattr(propagation_prediction_service, "predict_event_macro_micro", fake_predict_event_macro_micro)
+
+    result = asyncio.run(
+        propagation_model_service.predict_current_event_model(event_id="event-1", observation_ratio=0.5)
+    )
+
+    observed_points = result["macro"]["observed_points"]
+    realized_points = result["macro"]["realized_points"]
+    assert observed_points[-1]["cumulative_size"] == 2
+    assert all(point["at"] for point in observed_points)
+    assert realized_points[0]["cumulative_size"] == 2
+    assert realized_points[-1]["cumulative_size"] == 4
+    assert all(point["at"] for point in realized_points)
+
+
+def _timeline_fixture() -> tuple[list[dict], list[dict]]:
+    active_start = datetime(2026, 5, 16, 12, tzinfo=timezone.utc)
+    posts = [
+        {"post_id": "stale", "author_id": "stale-user", "timestamp": "2025-03-04T06:29:43Z"},
+    ]
+    posts.extend(
+        {
+            "post_id": f"active-{index}",
+            "author_id": f"active-user-{index}",
+            "timestamp": (active_start + timedelta(minutes=index * 5)).isoformat(),
+        }
+        for index in range(72)
+    )
+    return posts, []
+
+
+def test_event_timeline_defaults_to_densest_six_hour_window(monkeypatch):
+    async def fake_event_data(**_kwargs):
+        return _timeline_fixture()
+
+    monkeypatch.setattr(propagation_model_service, "_load_prediction_event_data", fake_event_data)
+
+    result = asyncio.run(
+        propagation_model_service.build_current_event_timeline(event_id="event-1")
+    )
+
+    assert result["range"] == "active"
+    assert result["resolution"] == "minute"
+    assert result["active_window"]["start"] < result["active_window"]["end"]
+    assert len(result["observed_points"]) > 24
+    assert all("2026-05-16" in point["at"] for point in result["observed_points"])
+
+
+def test_event_timeline_uses_resolution_for_requested_range(monkeypatch):
+    async def fake_event_data(**_kwargs):
+        return _timeline_fixture()
+
+    monkeypatch.setattr(propagation_model_service, "_load_prediction_event_data", fake_event_data)
+
+    hour_projection = asyncio.run(
+        propagation_model_service.build_current_event_timeline(
+            event_id="event-1", timeline_range="24h"
+        )
+    )
+    day_projection = asyncio.run(
+        propagation_model_service.build_current_event_timeline(
+            event_id="event-1", timeline_range="7d"
+        )
+    )
+    week_projection = asyncio.run(
+        propagation_model_service.build_current_event_timeline(
+            event_id="event-1", timeline_range="all"
+        )
+    )
+
+    assert hour_projection["resolution"] == "hour"
+    assert day_projection["resolution"] == "day"
+    assert week_projection["resolution"] == "week"
+
+
 def test_event_prediction_route_exposes_observed_prefix_parameters():
     parameters = app.openapi()["paths"]["/api/v1/propagation/model-event-predict"]["post"]["parameters"]
     names = {parameter["name"] for parameter in parameters}
 
     assert {"event_id", "platform", "top_k", "observed_until", "t_obs", "observation_ratio"}.issubset(names)
+
+
+def test_event_timeline_route_exposes_range_parameter():
+    parameters = app.openapi()["paths"]["/api/v1/propagation/model-event-timeline"]["get"]["parameters"]
+    names = {parameter["name"] for parameter in parameters}
+
+    assert {"event_id", "platform", "timeline_range"}.issubset(names)
 
 
 def test_cached_event_prediction_uses_snapshot_fingerprint_and_marks_stale(monkeypatch):

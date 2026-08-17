@@ -44,6 +44,10 @@ from app.schemas.review_case import (
     EvidenceAssessment,
     EvidencePage,
     ReviewAdvisory,
+    TeacherAudit,
+    TeacherAuditRationale,
+    TeacherAuditSource,
+    TeacherAuditStage,
     ReviewCaseDetail,
     ReviewCaseEvidence,
     ReviewCaseList,
@@ -117,6 +121,33 @@ class ReviewCaseService:
 
     async def detail(self, case_id: str) -> ReviewCaseDetail:
         return await self._detail_from_row(await self._get_case(case_id))
+
+    async def teacher_audit(self, case_id: str) -> TeacherAudit:
+        """Return a bounded projection of the latest Teacher advisory trace.
+
+        The persisted verdict is the source of truth for the audit view. Raw
+        prompts, provider credentials, confidence values, and full reports are
+        deliberately excluded from the product contract.
+        """
+
+        await self._get_case(case_id)
+        revision = await self._latest_revision(case_id)
+        if revision is None:
+            return TeacherAudit(case_id=case_id, status="unavailable")
+        result = await self.db.execute(
+            select(ReviewVerdictVersion)
+            .where(
+                ReviewVerdictVersion.snapshot_id == revision.snapshot_id,
+                ReviewVerdictVersion.verdict_type == "teacher_advisory",
+            )
+            .order_by(desc(ReviewVerdictVersion.created_at), desc(ReviewVerdictVersion.id))
+            .limit(1)
+        )
+        row = result.scalar_one_or_none()
+        if row is None:
+            return TeacherAudit(case_id=case_id, status="unavailable")
+        verdict = _json_loads(row.verdict_json, {})
+        return _teacher_audit_model(case_id=case_id, row=row, verdict=verdict)
 
     async def evidence(
         self,
@@ -1056,6 +1087,201 @@ def _legacy_report_payload(detail: ReviewCaseDetail, *, platform: str | None = N
 def _legacy_source_ref(*parts: str) -> str:
     raw = "\x1f".join(parts)
     return f"legacy_{hashlib.sha256(raw.encode('utf-8')).hexdigest()[:32]}"
+
+
+def _teacher_audit_model(*, case_id: str, row: ReviewVerdictVersion, verdict: dict[str, Any]) -> TeacherAudit:
+    evidence = verdict.get("evidence") if isinstance(verdict.get("evidence"), dict) else {}
+    raw_reports = evidence.get("agent_reports") or verdict.get("agent_reports") or []
+    reports = [item for item in raw_reports if isinstance(item, dict)]
+    stages: list[TeacherAuditStage] = []
+    seen_stage_keys: set[str] = set()
+    dag = verdict.get("dag") if isinstance(verdict.get("dag"), dict) else {}
+    dag_nodes = dag.get("nodes") if isinstance(dag.get("nodes"), list) else []
+    report_by_name = {str(item.get("agent_name") or ""): item for item in reports}
+
+    for node in dag_nodes:
+        if not isinstance(node, dict):
+            continue
+        name = _bounded_text(node.get("node"), 128)
+        if not name or name in seen_stage_keys:
+            continue
+        report = report_by_name.get(name, {})
+        stages.append(_teacher_stage(name=name, report=report, node=node))
+        seen_stage_keys.add(name)
+
+    for report in reports:
+        name = _bounded_text(report.get("agent_name") or report.get("report_role") or "Agent", 128)
+        if name in seen_stage_keys:
+            continue
+        stages.append(_teacher_stage(name=name, report=report, node={}))
+        seen_stage_keys.add(name)
+
+    all_sources: list[TeacherAuditSource] = []
+    all_queries: list[str] = []
+    rationale = TeacherAuditRationale()
+    for report in reports:
+        sidecar = _teacher_sidecar(report)
+        all_sources.extend(_teacher_sources(sidecar))
+        all_queries.extend(_teacher_queries(sidecar))
+        if not rationale.available:
+            rationale = _teacher_rationale(sidecar)
+    sources = _dedupe_teacher_sources(all_sources)
+    queries = _dedupe_text(all_queries)
+    signals = verdict.get("signals") if isinstance(verdict.get("signals"), dict) else {}
+    maro = signals.get("maro") if isinstance(signals.get("maro"), dict) else {}
+    advisory = verdict.get("advisory") if isinstance(verdict.get("advisory"), dict) else {}
+    summary = verdict.get("summary") if isinstance(verdict.get("summary"), dict) else {}
+    quality = {
+        "stage_count": len(stages),
+        "completed_stage_count": sum(item.status == "completed" for item in stages),
+        "source_count": len(sources),
+        "query_count": len(queries),
+        "rationale_available": rationale.available,
+        "rationale_quality_gate": rationale.quality_gate,
+        "external_followup_required": bool(advisory.get("external_followup_required")),
+        "audit_source": "persisted_teacher_verdict",
+    }
+    raw_status = _bounded_text(verdict.get("status") or row.status, 32).lower()
+    status = "failed" if raw_status == "failed" else "completed" if raw_status == "completed" else "queued"
+    return TeacherAudit(
+        case_id=case_id,
+        status=status,
+        execution_mode=_bounded_text(verdict.get("execution_mode"), 64),
+        verdict_id=_optional_bounded(verdict.get("verdict_id") or row.verdict_id, 128),
+        run_id=_optional_bounded(verdict.get("run_id") or row.run_id, 128),
+        model_version=_bounded_text(verdict.get("model_version"), 128),
+        provider_name=_bounded_text(maro.get("provider_name"), 64),
+        model=_bounded_text(maro.get("model"), 128),
+        non_claimable=bool(verdict.get("non_claimable", True)),
+        analyst_approval_required=bool(
+            (verdict.get("capability_boundary") or {}).get("analyst_approval_required", True)
+            if isinstance(verdict.get("capability_boundary"), dict)
+            else True
+        ),
+        requested_at=row.created_at,
+        completed_at=row.created_at if status == "completed" else None,
+        stages=stages,
+        sources=sources,
+        queries=queries,
+        rationale=rationale,
+        quality=quality,
+    )
+
+
+def _teacher_stage(*, name: str, report: dict[str, Any], node: dict[str, Any]) -> TeacherAuditStage:
+    sidecar = _teacher_sidecar(report)
+    analysis = report.get("analysis_report") if isinstance(report.get("analysis_report"), dict) else {}
+    report_text = analysis.get("text") or report.get("report_text") or node.get("summary") or ""
+    status = _bounded_text(report.get("status") or node.get("status") or "skipped", 32).lower()
+    return TeacherAuditStage(
+        name=name,
+        status=status,
+        role=_bounded_text(report.get("report_role"), 64),
+        summary=_bounded_text(report_text, 1200),
+        query_count=len(_teacher_queries(sidecar)),
+        source_count=len(_teacher_sources(sidecar)),
+        rationale_available=_teacher_rationale(sidecar).available,
+    )
+
+
+def _teacher_sidecar(report: dict[str, Any]) -> dict[str, Any]:
+    for key in ("system_audit_sidecar", "structured_sidecar", "sidecar"):
+        value = report.get(key)
+        if isinstance(value, dict):
+            return value
+    return {}
+
+
+def _teacher_queries(sidecar: dict[str, Any]) -> list[str]:
+    values = sidecar.get("retrieval_queries") or sidecar.get("queries") or []
+    if isinstance(values, str):
+        values = [values]
+    return [_bounded_text(item.get("query") if isinstance(item, dict) else item, 512) for item in values if _bounded_text(item.get("query") if isinstance(item, dict) else item, 512)]
+
+
+def _teacher_sources(sidecar: dict[str, Any]) -> list[TeacherAuditSource]:
+    values: list[Any] = []
+    for key in ("source_refs", "evidence_refs", "retrieval_results", "sources"):
+        candidate = sidecar.get(key)
+        if isinstance(candidate, list):
+            values.extend(candidate)
+    result: list[TeacherAuditSource] = []
+    for item in values:
+        if not isinstance(item, dict):
+            continue
+        source_id = _bounded_text(item.get("doc_id") or item.get("source_id") or item.get("id") or item.get("url"), 256)
+        if not source_id:
+            continue
+        result.append(
+            TeacherAuditSource(
+                source_id=source_id,
+                source=_bounded_text(item.get("source") or item.get("source_origin"), 256),
+                title=_bounded_text(item.get("title") or item.get("name"), 512),
+                url=_optional_bounded(item.get("url") or item.get("source_uri"), 2048),
+                excerpt=_bounded_text(item.get("quoted_span") or item.get("quote") or item.get("excerpt") or item.get("text"), 4000),
+                relation=_bounded_text(item.get("relation"), 64),
+                status=_bounded_text(item.get("status") or item.get("retrieval_status"), 64),
+            )
+        )
+    return result
+
+
+def _teacher_rationale(sidecar: dict[str, Any]) -> TeacherAuditRationale:
+    raw = sidecar.get("rationale_capsule") or sidecar.get("rationale")
+    if not isinstance(raw, dict):
+        return TeacherAuditRationale()
+    text = _bounded_text(raw.get("capsule_text") or raw.get("short_rationale") or raw.get("text"), 1600)
+    spans = _dedupe_text(raw.get("input_spans") or raw.get("spans") or [])[:20]
+    evidence_refs = _dedupe_text(raw.get("evidence_refs") or [])[:50]
+    policy_refs = _dedupe_text(raw.get("policy_refs") or [])[:50]
+    coverage = raw.get("citation_coverage")
+    try:
+        coverage_value = max(0.0, min(1.0, float(coverage))) if coverage is not None else None
+    except (TypeError, ValueError):
+        coverage_value = None
+    return TeacherAuditRationale(
+        available=bool(text),
+        text=text,
+        input_spans=spans,
+        evidence_refs=evidence_refs,
+        policy_refs=policy_refs,
+        quality_gate=bool(raw.get("capsule_quality_gate") or raw.get("quality_gate")),
+        citation_coverage=coverage_value,
+    )
+
+
+def _dedupe_teacher_sources(values: list[TeacherAuditSource]) -> list[TeacherAuditSource]:
+    result: list[TeacherAuditSource] = []
+    seen: set[str] = set()
+    for value in values:
+        if value.source_id in seen:
+            continue
+        seen.add(value.source_id)
+        result.append(value)
+    return result[:100]
+
+
+def _dedupe_text(values: Any) -> list[str]:
+    if isinstance(values, str):
+        values = [values]
+    result: list[str] = []
+    seen: set[str] = set()
+    for value in values if isinstance(values, (list, tuple, set)) else []:
+        text = _bounded_text(value, 512)
+        if text and text not in seen:
+            seen.add(text)
+            result.append(text)
+    return result
+
+
+def _bounded_text(value: Any, limit: int) -> str:
+    text = str(value or "").strip()
+    return text[:limit]
+
+
+def _optional_bounded(value: Any, limit: int) -> str | None:
+    text = _bounded_text(value, limit)
+    return text or None
 
 
 def _actor_id(actor: User | None) -> int:

@@ -118,7 +118,7 @@ def parse_args() -> argparse.Namespace:
     detect_parser.add_argument("--lm-backend", choices=("sbert", "tfidf"), default="sbert")
     detect_parser.add_argument(
         "--gnn-backend",
-        choices=("gfm_lm_gnn", "gfm_lm_gnn_cpu_light", "fusion_gnn", "relation_gnn", "classifier"),
+        choices=("socgfm_cross_attention", "gfm_lm_gnn", "gfm_lm_gnn_cpu_light", "fusion_gnn", "relation_gnn", "classifier"),
         default="gfm_lm_gnn",
     )
     detect_parser.add_argument(
@@ -216,6 +216,12 @@ def parse_args() -> argparse.Namespace:
     iohunter_parser.add_argument("--latent", type=int, default=0, help="Optional latent dimension override")
     iohunter_parser.add_argument("--embed-type", default="", help="Optional structural embedding type override")
     iohunter_parser.add_argument("--under", nargs="*", default=[])
+    iohunter_parser.add_argument(
+        "--official-methods",
+        nargs="*",
+        default=[],
+        help="Official same-country SocGFM methods to run. Empty keeps the primary CrossAttention script.",
+    )
     iohunter_parser.add_argument("--skip-primary", action="store_true")
     iohunter_parser.add_argument("--include-official-baselines", action="store_true")
     iohunter_parser.add_argument("--include-cross-country", action="store_true")
@@ -456,6 +462,7 @@ def main() -> None:
                 include_primary=not args.skip_primary,
                 include_official_baselines=args.include_official_baselines,
                 include_cross_country=args.include_cross_country,
+                official_methods=tuple(args.official_methods) if args.official_methods else None,
             )
             summary = {
                 "workspace": str(workspace),
@@ -481,6 +488,7 @@ def main() -> None:
                     include_primary=not args.skip_primary,
                     include_official_baselines=args.include_official_baselines,
                     include_cross_country=args.include_cross_country,
+                    official_methods=tuple(args.official_methods) if args.official_methods else None,
                 ),
             }
         if args.export_dir:
@@ -501,6 +509,7 @@ def main() -> None:
                 include_primary=not args.skip_primary,
                 include_official_baselines=args.include_official_baselines,
                 include_cross_country=args.include_cross_country,
+                official_methods=tuple(args.official_methods) if args.official_methods else None,
             )
             summary["exports"] = write_iohunter_run_exports(
                 workspace,

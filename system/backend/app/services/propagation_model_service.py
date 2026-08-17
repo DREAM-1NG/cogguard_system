@@ -9,13 +9,14 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime, timezone
+import math
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from pydantic import ValidationError
 
 from app.db.mongodb import get_mongo_db
-from app.schemas.propagation import PropagationPredictionData
+from app.schemas.propagation import EventTimelineProjection, PropagationPredictionData
 from app.services.event_data import (
     analysis_scope_metadata,
     event_data_fingerprint,
@@ -39,6 +40,18 @@ PREDICTION_MODEL_CAPABILITY = {
 }
 
 SUPPORTED_CHECKPOINT_OBSERVATION_RATIOS = (0.1, 0.3, 0.5)
+MAX_CUMULATIVE_TIMELINE_POINTS = 24
+ACTIVE_TIMELINE_WINDOW = timedelta(hours=6)
+TIMELINE_RANGE_SPANS = {
+    "24h": timedelta(hours=24),
+    "7d": timedelta(days=7),
+}
+TIMELINE_RESOLUTIONS = {
+    "active": "minute",
+    "24h": "hour",
+    "7d": "day",
+    "all": "week",
+}
 
 
 def _prediction_cache_filter(
@@ -181,6 +194,8 @@ def empty_prediction_result(event_id: str | None, platform: str | None) -> dict:
             "observed_size": 0,
             "predicted_size": None,
             "trend_points": [],
+            "observed_points": [],
+            "realized_points": [],
             "intervals": None,
             "direction": None,
             "score_concentration": None,
@@ -313,6 +328,222 @@ def _parse_timestamp(value: Any, *, require_timezone: bool = False) -> datetime 
     if require_timezone and parsed.tzinfo is None:
         return None
     return (parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)).astimezone(timezone.utc)
+
+
+def _timeline_event_records(posts: list[dict[str, Any]], comments: list[dict[str, Any]]) -> list[datetime]:
+    """Return the same timestamped, authored event rows accepted by checkpoint inference."""
+
+    records: list[tuple[datetime, int]] = []
+    for index, row in enumerate([*posts, *comments]):
+        author_id = str(row.get("author_id") or row.get("user_id") or row.get("account_id") or row.get("uid") or "").strip()
+        timestamp = _row_timestamp(row)
+        if author_id and timestamp is not None:
+            records.append((timestamp, index))
+    return [timestamp for timestamp, _index in sorted(records, key=lambda item: (item[0], item[1]))]
+
+
+def _partition_timeline_records(
+    records: list[datetime],
+    *,
+    observed_until: str | None,
+    observation_ratio: float,
+) -> tuple[list[datetime], list[datetime]]:
+    """Partition evidence at the exact observation boundary without exposing holdout rows to inference."""
+
+    if observed_until is not None:
+        cutoff = validate_observed_until(observed_until)
+        if cutoff is not None:
+            return [timestamp for timestamp in records if timestamp <= cutoff], [timestamp for timestamp in records if timestamp > cutoff]
+
+    observation_count = max(1, min(len(records), int(math.ceil(len(records) * float(observation_ratio))))) if records else 0
+    return records[:observation_count], records[observation_count:]
+
+
+def _cumulative_timeline_points(
+    records: list[datetime],
+    *,
+    initial_size: int = 0,
+    initial_at: datetime | None = None,
+) -> list[dict[str, Any]]:
+    """Downsample timestamped evidence into bounded, equally spaced cumulative windows."""
+
+    points: list[dict[str, Any]] = []
+    if initial_at is not None:
+        points.append({"at": initial_at.isoformat(), "cumulative_size": int(initial_size)})
+    if not records:
+        return points
+
+    start, end = records[0], records[-1]
+    bucket_count = min(MAX_CUMULATIVE_TIMELINE_POINTS, len(records))
+    if start == end:
+        terminal = {"at": end.isoformat(), "cumulative_size": int(initial_size) + len(records)}
+        if points and points[-1]["at"] == terminal["at"]:
+            points[-1] = terminal
+        else:
+            points.append(terminal)
+        return points
+
+    span_seconds = (end - start).total_seconds()
+    record_index = 0
+    for bucket_index in range(1, bucket_count + 1):
+        bucket_end = end if bucket_index == bucket_count else start + timedelta(seconds=span_seconds * bucket_index / bucket_count)
+        while record_index < len(records) and records[record_index] <= bucket_end:
+            record_index += 1
+        point = {"at": bucket_end.isoformat(), "cumulative_size": int(initial_size) + record_index}
+        if points and points[-1]["at"] == point["at"]:
+            points[-1] = point
+        else:
+            points.append(point)
+    return points
+
+
+def _bucket_floor(timestamp: datetime, resolution: str) -> datetime:
+    if resolution == "minute":
+        return timestamp.replace(second=0, microsecond=0)
+    if resolution == "hour":
+        return timestamp.replace(minute=0, second=0, microsecond=0)
+    if resolution == "day":
+        return timestamp.replace(hour=0, minute=0, second=0, microsecond=0)
+    week_start = timestamp - timedelta(days=timestamp.weekday())
+    return week_start.replace(hour=0, minute=0, second=0, microsecond=0)
+
+
+def _bucket_step(resolution: str) -> timedelta:
+    return {
+        "minute": timedelta(minutes=1),
+        "hour": timedelta(hours=1),
+        "day": timedelta(days=1),
+        "week": timedelta(weeks=1),
+    }[resolution]
+
+
+def _densest_timeline_window(records: list[datetime]) -> tuple[datetime, datetime] | None:
+    if not records:
+        return None
+    left = 0
+    best_left = 0
+    best_right = 0
+    for right, timestamp in enumerate(records):
+        while timestamp - records[left] > ACTIVE_TIMELINE_WINDOW:
+            left += 1
+        if right - left > best_right - best_left:
+            best_left, best_right = left, right
+    start = records[best_left]
+    end = min(start + ACTIVE_TIMELINE_WINDOW, records[-1])
+    return start, max(start, end)
+
+
+def _timeline_window_for_range(
+    records: list[datetime],
+    active_window: tuple[datetime, datetime] | None,
+    timeline_range: str,
+) -> tuple[datetime, datetime] | None:
+    if not records:
+        return None
+    if timeline_range == "all":
+        return records[0], records[-1]
+    if active_window is None:
+        return records[0], records[-1]
+    if timeline_range == "active":
+        return active_window
+    span = TIMELINE_RANGE_SPANS[timeline_range]
+    end = active_window[1]
+    return max(records[0], end - span), end
+
+
+def _window_dict(window: tuple[datetime, datetime] | None) -> dict[str, str] | None:
+    if window is None:
+        return None
+    return {"start": window[0].isoformat(), "end": window[1].isoformat()}
+
+
+def _project_cumulative_series(
+    records: list[datetime],
+    *,
+    window: tuple[datetime, datetime],
+    resolution: str,
+    initial_size: int = 0,
+    anchor_at: datetime | None = None,
+) -> list[dict[str, Any]]:
+    if not records:
+        return []
+    window_start, window_end = window
+    if window_end < records[0] or window_start > records[-1]:
+        return []
+    series_start = max(window_start, anchor_at or records[0])
+    series_end = min(window_end, records[-1])
+    if series_end < series_start:
+        return []
+
+    start_bucket = _bucket_floor(series_start, resolution)
+    end_bucket = _bucket_floor(series_end, resolution)
+    step = _bucket_step(resolution)
+    record_index = 0
+    while record_index < len(records) and records[record_index] < start_bucket:
+        record_index += 1
+    cumulative = initial_size + record_index
+    points: list[dict[str, Any]] = []
+    bucket = start_bucket
+    while bucket <= end_bucket:
+        bucket_end = bucket + step
+        while record_index < len(records) and records[record_index] < bucket_end:
+            record_index += 1
+        cumulative = initial_size + record_index
+        points.append({"at": bucket.isoformat(), "cumulative_size": cumulative})
+        bucket = bucket_end
+    return points
+
+
+async def build_current_event_timeline(
+    *,
+    event_id: str,
+    platform: str | None = None,
+    timeline_range: str = "active",
+    observation_ratio: float = 0.5,
+) -> dict[str, Any]:
+    """Build a range-scoped evidence timeline without invoking checkpoint inference."""
+
+    if timeline_range not in TIMELINE_RESOLUTIONS:
+        raise ValueError("timeline_range must be one of active, 24h, 7d, or all")
+    posts, comments = await _load_prediction_event_data(event_id=event_id, platform=platform)
+    records = _timeline_event_records(posts, comments)
+    active_window = _densest_timeline_window(records)
+    window = _timeline_window_for_range(records, active_window, timeline_range)
+    resolution = TIMELINE_RESOLUTIONS[timeline_range]
+    if window is None:
+        return EventTimelineProjection(
+            range=timeline_range,
+            resolution=resolution,
+            active_window=None,
+            window=None,
+        ).model_dump(mode="json")
+
+    observed_records, realized_records = _partition_timeline_records(
+        records,
+        observed_until=None,
+        observation_ratio=observation_ratio,
+    )
+    observed_points = _project_cumulative_series(
+        observed_records,
+        window=window,
+        resolution=resolution,
+    )
+    realized_anchor = observed_records[-1] if observed_records else None
+    realized_points = _project_cumulative_series(
+        realized_records,
+        window=window,
+        resolution=resolution,
+        initial_size=len(observed_records),
+        anchor_at=realized_anchor,
+    )
+    return EventTimelineProjection(
+        range=timeline_range,
+        resolution=resolution,
+        active_window=_window_dict(active_window),
+        window=_window_dict(window),
+        observed_points=observed_points,
+        realized_points=realized_points,
+    ).model_dump(mode="json")
 
 
 def attach_prediction_scope(
@@ -462,6 +693,12 @@ async def predict_current_event_model(
         effective_observation_ratio = nearest_checkpoint_observation_ratio(
             float(cutoff_event_count) / float(source_event_count)
         )
+    timeline_records = _timeline_event_records(posts, comments)
+    timeline_observed_records, timeline_realized_records = _partition_timeline_records(
+        timeline_records,
+        observed_until=observed_until,
+        observation_ratio=effective_observation_ratio,
+    )
     try:
         prediction_kwargs = {
             "posts": observed_posts,
@@ -548,6 +785,13 @@ async def predict_current_event_model(
             "checkpoint_conditioning_ratio": float(effective_observation_ratio),
             "prefix_selection": "timestamp_cutoff" if observed_until is not None else "observation_ratio",
         }
+    )
+    macro = scoped_result.setdefault("macro", {})
+    macro["observed_points"] = _cumulative_timeline_points(timeline_observed_records)
+    macro["realized_points"] = _cumulative_timeline_points(
+        timeline_realized_records,
+        initial_size=len(timeline_observed_records),
+        initial_at=timeline_observed_records[-1] if timeline_observed_records else None,
     )
     normalized = enforce_prediction_contract(scoped_result, event_id=event_id, platform=platform)
     await store_cached_current_event_prediction(

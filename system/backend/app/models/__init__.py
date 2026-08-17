@@ -25,6 +25,9 @@ from app.models.analysis import AnalysisModelActivation
 from app.models.analysis import AnalysisModelActivationApproval
 from app.models.analysis import AnalysisModelGovernanceDecision
 from app.models.analysis import AnalysisModelVersion
+from app.models.analysis import PropagationAlert
+from app.models.analysis import PropagationAlertAction
+from app.models.analysis import PropagationMonitorProfile
 from app.models.analysis import AnalysisRun
 from app.models.analysis import AnalysisRunEvent
 from app.models.analysis import EventSnapshotRecord
@@ -87,6 +90,9 @@ __all__ = [
     "AnalysisModelActivationApproval",
     "AnalysisModelGovernanceDecision",
     "AnalysisModelVersion",
+    "PropagationAlert",
+    "PropagationAlertAction",
+    "PropagationMonitorProfile",
     "AnalysisRun",
     "AnalysisRunEvent",
     "EventSnapshotRecord",

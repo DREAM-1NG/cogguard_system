@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 
 import httpx
 
@@ -131,7 +132,33 @@ def test_openai_provider_cache_off_records_usage_and_never_reads_cache(monkeypat
     assert telemetry["total_tokens"] == 18
 
 
-def test_active_retrieval_bounds_concurrency_preserves_order_and_isolates_failures():
+def test_openai_provider_sends_configured_temperature():
+    client, requests = _mock_provider_client()
+    config = OpenAICompatibleConfig(
+        api_key="test-key",
+        base_url="https://provider.example/v1",
+        model="test-model",
+        temperature=1.0,
+        cache_enabled=False,
+    )
+    provider = OpenAICompatibleAgentProvider(config, client=client)
+
+    async def exercise() -> None:
+        await provider(
+            agent_name="MARODecisionRuleOptimizationAgent",
+            system_prompt="system",
+            user_prompt="user",
+            input_bundle={},
+            model="",
+        )
+        await client.aclose()
+
+    asyncio.run(exercise())
+
+    assert json.loads(requests[0].content)["temperature"] == 1.0
+
+
+def test_active_retrieval_records_provider_failure_without_factual_relation():
     active_calls = 0
     maximum_active_calls = 0
 
@@ -141,7 +168,7 @@ def test_active_retrieval_bounds_concurrency_preserves_order_and_isolates_failur
         maximum_active_calls = max(maximum_active_calls, active_calls)
         try:
             await asyncio.sleep(0.03)
-            if query == "query-2":
+            if query.startswith("query-2"):
                 raise RuntimeError("provider unavailable")
             return [{"doc_id": query, "text": f"evidence for {query}", "score": 0.8}]
         finally:
@@ -150,8 +177,9 @@ def test_active_retrieval_bounds_concurrency_preserves_order_and_isolates_failur
     result = asyncio.run(
         retrieve_active_evidence(
             context={
-                "review_queue": {
-                    "retrieval_tasks": [{"query": f"query-{index}"} for index in range(5)]
+                "evidence_bundle": {
+                    "claim": "query-2",
+                    "claim_assessment": "checkable",
                 }
             },
             external_provider=external_provider,
@@ -159,17 +187,40 @@ def test_active_retrieval_bounds_concurrency_preserves_order_and_isolates_failur
         )
     )
 
-    assert maximum_active_calls == 4
-    assert [item["query"] for item in result["external_results"]] == [
-        "query-0",
-        "query-1",
-        "query-3",
-        "query-4",
-    ]
+    assert maximum_active_calls == 2
+    assert result["external_results"] == []
     assert result["audit"]["failures"] == [
         {
             "query": "query-2",
             "error_type": "RuntimeError",
             "message": "provider unavailable",
-        }
+        },
+        {
+            "query": "query-2 evidence verification",
+            "error_type": "RuntimeError",
+            "message": "provider unavailable",
+        },
     ]
+    assert result["evidence_bundle"]["retrieval_status"] == "provider_failed"
+    assert result["evidence_bundle"]["relation"] == "not_applicable"
+
+
+def test_active_retrieval_does_not_call_a_provider_before_claim_assessment():
+    calls = {"count": 0}
+
+    async def external_provider(*, query: str, context: dict[str, object], top_k: int) -> list[dict[str, object]]:
+        calls["count"] += 1
+        return []
+
+    result = asyncio.run(
+        retrieve_active_evidence(
+            context={"selected_posts": [{"content": "An unassessed post body."}]},
+            external_provider=external_provider,
+            external_enabled=True,
+        )
+    )
+
+    assert calls["count"] == 0
+    assert result["evidence_bundle"]["claim_assessment"] == "not_assessed"
+    assert result["evidence_bundle"]["retrieval_status"] == "skipped_non_eligible_claim"
+    assert result["evidence_bundle"]["relation"] == "not_applicable"

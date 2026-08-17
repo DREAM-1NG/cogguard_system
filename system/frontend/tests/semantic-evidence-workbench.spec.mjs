@@ -163,12 +163,33 @@ test('keeps the risk workbench readable on a phone without removing navigation',
   assert.match(workbench, /\.semantic-matrix-table td::before \{[\s\S]*?content: attr\(data-label\)/)
 })
 
+test('keeps multi-value semantic evidence compact inside mobile record fields', () => {
+  const workbench = readFileSync(workbenchPath, 'utf8')
+
+  assert.match(workbench, /class="matrix-value-list"/)
+  assert.match(workbench, /\.matrix-value-list \{[\s\S]*?display: flex/)
+  assert.match(workbench, /\.matrix-value-list \{[\s\S]*?flex-wrap: wrap/)
+})
+
+test('keeps the entity ledger focused until an analyst expands all entity types', () => {
+  const workbench = readFileSync(workbenchPath, 'utf8')
+
+  assert.match(workbench, /const DEFAULT_ENTITY_GROUP_LIMIT = 3/)
+  assert.match(workbench, /const visibleEntityGroups = computed\(\(\) =>/)
+  assert.match(workbench, /entityGroups\.value\.slice\(0, DEFAULT_ENTITY_GROUP_LIMIT\)/)
+  assert.match(workbench, /v-for="group in visibleEntityGroups"/)
+  assert.match(workbench, /class="entity-expand-button"/)
+  assert.match(workbench, /:aria-expanded="entityGroupsExpanded"/)
+  assert.match(workbench, /entityGroupsExpanded \? '收起' : '展开'/)
+  assert.doesNotMatch(workbench, /展开全部|收起为前三类/)
+})
+
 test('keeps semantic evidence numbers stable and supporting text readable', () => {
   const workbench = readFileSync(workbenchPath, 'utf8')
   assert.match(workbench, /\.semantic-workbench \{[\s\S]*?font-variant-numeric: tabular-nums/)
-  assert.match(workbench, /\.toolbar-label,[\s\S]*?font-size: 13px/)
-  assert.match(workbench, /\.entity-type \{[\s\S]*?font-size: 12px/)
-  assert.match(workbench, /\.time-column \{[\s\S]*?font-size: 12px/)
+  assert.match(workbench, /\.toolbar-label,[^}]*font-size: 14px/)
+  assert.match(workbench, /\.entity-type \{[^}]*font-size: 13px/)
+  assert.match(workbench, /\.time-column \{[^}]*font-size: 13px/)
 })
 
 test('uses Chinese semantic labels and aligned visual sections for the evidence workbench', () => {

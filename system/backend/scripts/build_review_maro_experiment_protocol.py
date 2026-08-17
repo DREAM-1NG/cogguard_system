@@ -31,7 +31,9 @@ from app.core.review.trainable_post import NEGATIVE_LABEL, POSITIVE_LABEL, binar
 from run_review_post_multiview_ablation import build_splits  # noqa: E402
 
 
-DEFAULT_DATASETS = list(DATASET_AXIS_MAPPING)
+# Preserve the historical five-dataset protocol as this script's default.
+# Additional supported datasets, such as Weibo21, must be selected explicitly.
+DEFAULT_DATASETS = ["HateXplain", "MultiOFF", "PHEME", "mcfend", "FakeSV"]
 
 
 def _identity(case: dict[str, Any], *, protocol_split: str) -> dict[str, str]:
@@ -126,11 +128,16 @@ def _population_audit(
 def build_experiment_protocol(
     cases_by_dataset: dict[str, list[dict[str, Any]]],
     *,
+    datasets: list[str] | None = None,
     test_per_dataset: int = 100,
     teacher_per_dataset: int = 200,
     validation_tasks_per_axis: int = 500,
     random_state: int = 42,
 ) -> tuple[dict[str, list[dict[str, str]]], dict[str, Any]]:
+    selected_datasets = list(datasets or DEFAULT_DATASETS)
+    unknown_datasets = [dataset for dataset in selected_datasets if dataset not in DATASET_AXIS_MAPPING]
+    if unknown_datasets:
+        raise ValueError(f"unsupported protocol datasets: {unknown_datasets}")
     rng = np.random.default_rng(random_state)
     split_cases: dict[str, dict[str, list[dict[str, Any]]]] = {}
     split_policies: dict[str, str] = {}
@@ -141,7 +148,7 @@ def build_experiment_protocol(
 
     test_selected: list[dict[str, Any]] = []
     teacher_selected: list[dict[str, Any]] = []
-    for dataset in DEFAULT_DATASETS:
+    for dataset in selected_datasets:
         splits = split_cases.get(dataset, {})
         test_selected.extend(_select_balanced(splits.get("test", []), test_per_dataset, rng=rng))
         teacher_selected.extend(
@@ -149,10 +156,12 @@ def build_experiment_protocol(
         )
 
     validation_selected: list[dict[str, Any]] = []
-    for axis in dict.fromkeys(DATASET_AXIS_MAPPING.values()):
+    selected_axes = list(dict.fromkeys(DATASET_AXIS_MAPPING[dataset] for dataset in selected_datasets))
+    for axis in selected_axes:
         candidates = [
             case
-            for dataset, mapped_axis in DATASET_AXIS_MAPPING.items()
+            for dataset in selected_datasets
+            for mapped_axis in [DATASET_AXIS_MAPPING[dataset]]
             if mapped_axis == axis
             for case in split_cases.get(dataset, {}).get("validation", [])
         ]
@@ -185,17 +194,17 @@ def build_experiment_protocol(
         "populations": {
             "test": _population_audit(
                 test_selected,
-                requested_count=test_per_dataset * len(DEFAULT_DATASETS),
+                requested_count=test_per_dataset * len(selected_datasets),
                 protocol_split="test",
             ),
             "teacher": _population_audit(
                 teacher_selected,
-                requested_count=teacher_per_dataset * len(DEFAULT_DATASETS),
+                requested_count=teacher_per_dataset * len(selected_datasets),
                 protocol_split="train",
             ),
             "rule_validation": _population_audit(
                 validation_selected,
-                requested_count=validation_tasks_per_axis * len(set(DATASET_AXIS_MAPPING.values())),
+                requested_count=validation_tasks_per_axis * len(selected_axes),
                 protocol_split="validation",
             ),
         },
@@ -243,6 +252,7 @@ def write_experiment_protocol(
     }
     manifests, audit = build_experiment_protocol(
         cases_by_dataset,
+        datasets=datasets,
         test_per_dataset=test_per_dataset,
         teacher_per_dataset=teacher_per_dataset,
         validation_tasks_per_axis=validation_tasks_per_axis,
@@ -299,8 +309,9 @@ def main() -> int:
     parser.add_argument("--random-state", type=int, default=42)
     parser.add_argument("--allow-shortfall", action="store_true")
     args = parser.parse_args()
-    if list(args.datasets) != DEFAULT_DATASETS:
-        raise SystemExit(f"protocol requires exactly: {', '.join(DEFAULT_DATASETS)}")
+    unsupported_datasets = [dataset for dataset in args.datasets if dataset not in DATASET_AXIS_MAPPING]
+    if unsupported_datasets:
+        raise SystemExit(f"unsupported datasets: {', '.join(unsupported_datasets)}")
     try:
         audit = write_experiment_protocol(
             case_dir=Path(args.case_dir),

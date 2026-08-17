@@ -224,27 +224,34 @@ function Stop-StaleLocalPortOwner {
 function Stop-StaleDevelopmentFrontend {
     param([int]$Port)
 
-    foreach ($processId in Get-LocalPortOwners -Port $Port) {
-        if (-not $processId) {
-            continue
+    $portOwnerProcesses = @(
+        foreach ($processId in Get-LocalPortOwners -Port $Port) {
+            if ($processId) {
+                Get-CimInstance Win32_Process -Filter "ProcessId = $processId" -ErrorAction SilentlyContinue
+            }
         }
+    )
+    $hasDockerOwner = $portOwnerProcesses | Where-Object {
+        $commandLine = [string]$_.CommandLine
+        $executablePath = [string]$_.ExecutablePath
+        $commandLine -match 'docker|com\.docker' -or $executablePath -match 'docker'
+    }
 
-        $process = Get-CimInstance Win32_Process -Filter "ProcessId = $processId" -ErrorAction SilentlyContinue
-        if (-not $process) {
-            continue
-        }
-
+    foreach ($process in $portOwnerProcesses) {
         $commandLine = [string]$process.CommandLine
         if ($commandLine -match 'vite(\.js)?|npm(\.cmd)?\s+run\s+dev') {
-            Write-Host "Stopping stale Vite process on 127.0.0.1:${Port} (PID $processId)..."
-            Stop-Process -Id $processId -Force
+            Write-Host "Stopping stale Vite process on 127.0.0.1:${Port} (PID $($process.ProcessId))..."
+            Stop-Process -Id $process.ProcessId -Force
             Start-Sleep -Seconds 1
             continue
         }
         if ($commandLine -match 'docker|com\.docker') {
             continue
         }
-        throw "Frontend port $Port is already used by PID ${processId}: $commandLine"
+        if ($hasDockerOwner -and $process.Name -ieq 'wslrelay.exe') {
+            continue
+        }
+        throw "Frontend port $Port is already used by PID $($process.ProcessId): $commandLine"
     }
 }
 
@@ -263,6 +270,8 @@ function Get-DockerContainerState {
     }
 }
 
+$reusedInfrastructure = $false
+
 if (-not $SkipDocker) {
     Write-Host 'Starting MySQL / MongoDB / Redis with Docker Compose...'
     $requiredInfrastructure = @(
@@ -280,6 +289,7 @@ if (-not $SkipDocker) {
     )
 
     if ($existingInfrastructure.Count -eq $requiredInfrastructure.Count) {
+        $reusedInfrastructure = $true
         foreach ($required in $requiredInfrastructure) {
             $state = $existingInfrastructure | Where-Object Name -eq $required.Name | Select-Object -First 1
             if ($state.Image -ne $required.Image) {
@@ -309,8 +319,13 @@ if (-not $SkipDocker) {
     if (-not $SkipIndexPreparation) {
         Write-Host 'Preparing idempotent MongoDB delivery indexes...'
         $indexScript = Join-Path $root 'ops\Apply-MongoPerformanceIndexes.ps1'
-        & $indexScript -DockerExecutable $dockerExe -DryRun
-        & $indexScript -DockerExecutable $dockerExe
+        if ($reusedInfrastructure) {
+            & $indexScript -DockerExecutable $dockerExe -ContainerName 'cogguard-mongodb' -DryRun
+            & $indexScript -DockerExecutable $dockerExe -ContainerName 'cogguard-mongodb'
+        } else {
+            & $indexScript -DockerExecutable $dockerExe -DryRun
+            & $indexScript -DockerExecutable $dockerExe
+        }
     }
 } elseif (-not $SkipIndexPreparation) {
     Write-Host 'Skipping MongoDB index preparation because -SkipDocker was requested.'
@@ -321,7 +336,7 @@ Stop-StaleLocalPortOwner -Port 8000 -Name 'backend' -ExpectedPattern 'uvicorn\s+
 Write-Host 'Applying database migrations...'
 Push-Location $backendDir
 try {
-    & $backendPython -m alembic upgrade head
+    & $backendPython -m alembic upgrade heads
 
     if ($SyncHistoricalData) {
         Write-Host 'Importing existing social runtime JSONL data into MongoDB...'
@@ -457,9 +472,6 @@ if ($runDemoWarmup) {
     }
     Write-Host 'Preloading authenticated demo data before frontend delivery...'
     & $warmupScript @warmupParameters
-    if ($LASTEXITCODE -ne 0) {
-        throw "Demo data warmup failed with exit code $LASTEXITCODE."
-    }
 }
 
 if (-not $SkipFrontend) {

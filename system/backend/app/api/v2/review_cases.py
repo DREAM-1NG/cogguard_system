@@ -92,6 +92,15 @@ async def get_case_evidence(
     return await _read_response(operation)
 
 
+@router.get("/{case_id}/teacher-audit")
+async def get_teacher_audit(
+    case_id: str,
+    service: ReviewCaseService = Depends(get_review_case_service),
+    _current_user: User = Depends(require_case_reader),
+):
+    return await _read_response(lambda: service.teacher_audit(case_id))
+
+
 @router.post("/{case_id}/review-requests")
 async def request_case_review(
     case_id: str,

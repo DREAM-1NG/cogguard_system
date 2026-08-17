@@ -26,6 +26,7 @@ if str(ROOT) not in sys.path:
 from app.core.review.agent_provider import OpenAICompatibleAgentProvider  # noqa: E402
 from app.core.review.agent_provider import OpenAICompatibleConfig  # noqa: E402
 from app.core.review.agent_review import run_manual_agent_review  # noqa: E402
+from app.core.review.maro_protocol import run_maro_reference_review  # noqa: E402
 from app.core.review.propagation_context import build_propagation_context_for_case  # noqa: E402
 from app.core.review.post_semantics import assess_post_semantics  # noqa: E402
 from app.core.review.trainable_post import build_teacher_silver_record  # noqa: E402
@@ -291,6 +292,8 @@ async def evaluate_dataset(
     max_agent_calls_per_case: int = 0,
     case_manifest: dict[str, list[dict[str, str]]] | None = None,
     resume: bool = False,
+    include_propagation_agent: bool = True,
+    maro_reference_protocol: bool = False,
 ) -> dict[str, Any]:
     output_dir.mkdir(parents=True, exist_ok=True)
     dataset_started_at = time.perf_counter()
@@ -356,6 +359,8 @@ async def evaluate_dataset(
                         active_retriever=active_retriever,
                         policy=policy,
                         error_memory_summary=error_memory_summary,
+                        include_propagation_agent=include_propagation_agent,
+                        maro_reference_protocol=maro_reference_protocol,
                     ),
                     timeout=case_timeout_seconds,
                 )
@@ -432,11 +437,56 @@ async def evaluate_case(
     active_retriever,
     policy: dict[str, Any] | None = None,
     error_memory_summary: dict[str, Any] | None = None,
+    include_propagation_agent: bool = True,
+    maro_reference_protocol: bool = False,
 ) -> dict[str, Any]:
+    if maro_reference_protocol:
+        agent_result = await run_maro_reference_review(
+            case=case,
+            provider=provider,
+            model=model,
+            active_retriever=active_retriever,
+            external_retrieval_enabled=enable_external_retrieval,
+            retrieval_top_k=retrieval_top_k,
+            max_agent_calls_per_case=max_agent_calls_per_case,
+        )
+        judge_report = next(
+            (item for item in agent_result["agent_reports"] if item.get("report_role") == "judge_final"),
+            {},
+        )
+        return {
+            "case_id": case.get("case_id"),
+            "dataset": case.get("dataset"),
+            "split": case.get("split"),
+            "source_id": case.get("source_id"),
+            "agent_summary": agent_result.get("summary") or {},
+            "judge_status": judge_report.get("status"),
+            "judge_report_text": judge_report.get("report_text"),
+            "judge_sidecar": judge_report.get("structured_sidecar") or {},
+            "runtime_profile": experiment_profile,
+            "runtime_audit": agent_result.get("audit") or {},
+            "llm_call_audit": (agent_result.get("audit") or {}).get("llm_call_audit") or [],
+            "retrieval_audit": ((agent_result.get("active_retrieval") or {}).get("audit") or {}),
+            "teacher_silver": build_teacher_silver_record(case, agent_result),
+            "all_agent_reports": [
+                {
+                    "agent_name": item.get("agent_name"),
+                    "maro_role": item.get("maro_role"),
+                    "report_role": item.get("report_role"),
+                    "status": item.get("status"),
+                    "report_text": item.get("report_text"),
+                }
+                for item in agent_result.get("agent_reports") or []
+            ],
+        }
+
     report = build_minimal_report(case, prefer_embeddings=prefer_embeddings)
     selected_post_ids = [item.get("post_id") for item in (report.get("post_semantics") or {}).get("posts") or [] if item.get("post_id")]
     selected_tree_ids = tree_ids_of(case)
-    effective_agent_names = agent_names_for_case(agent_names, has_tree=bool(selected_tree_ids))
+    effective_agent_names = agent_names_for_case(
+        agent_names,
+        has_tree=bool(selected_tree_ids) and include_propagation_agent,
+    )
     review_kwargs: dict[str, Any] = {
         "report": report,
         "agent_names": effective_agent_names,

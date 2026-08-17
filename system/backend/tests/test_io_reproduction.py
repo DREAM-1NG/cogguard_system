@@ -1,6 +1,8 @@
 import json
 import pickle
 import importlib.util
+import subprocess
+import sys
 from argparse import Namespace
 from pathlib import Path
 
@@ -15,6 +17,7 @@ from scripts import run_discover_stability_batch as stability_batch
 from scripts.run_detect_encoder_batch import (
     _load_or_run_discovery as _detect_batch_load_or_run_discovery,
     _row_from_result as _detect_batch_row_from_result,
+    _run_output_dir as _detect_batch_run_output_dir,
 )
 
 from app.core.coordination_baseline.deep_graph import DeepGraphDiscoverConfig, run_deep_graph_discover
@@ -64,8 +67,38 @@ from app.core.coordination_baseline.io_reproduction import (
     _apply_discover_edge_scores_to_relation_graphs,
     _dynamic_edge_records_from_graph,
     _is_valid_zip,
+    _metric_bundle_for_prediction_rows,
+    _prediction_rows_from_discover_features,
+    _split_for_detect,
     normalize_event_table,
 )
+
+
+_TORCH_RUNTIME_PROBE_CACHE: dict[tuple[str, ...], str | None] = {}
+
+
+def _skip_if_torch_runtime_unavailable(*modules: str) -> None:
+    module_tuple = tuple(modules or ("torch",))
+    if module_tuple not in _TORCH_RUNTIME_PROBE_CACHE:
+        imports = "; ".join(f"import {module_name}" for module_name in module_tuple)
+        try:
+            completed = subprocess.run(
+                [sys.executable, "-c", imports],
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+        except subprocess.TimeoutExpired:
+            _TORCH_RUNTIME_PROBE_CACHE[module_tuple] = "torch runtime probe timed out"
+        else:
+            _TORCH_RUNTIME_PROBE_CACHE[module_tuple] = (
+                None
+                if completed.returncode == 0
+                else (completed.stderr or completed.stdout or "torch runtime is not available").strip()
+            )
+    skip_reason = _TORCH_RUNTIME_PROBE_CACHE[module_tuple]
+    if skip_reason:
+        pytest.skip(skip_reason)
 
 
 def test_unmasking_similarity_graph_and_fused_graph_are_constructed():
@@ -488,7 +521,7 @@ def test_dyna_colm_detect_outputs_predictions_metrics_and_ablations(tmp_path: Pa
     assert result["detect_model"]["gnn_backend"] == "relation_gnn"
     assert result["detect_model"]["split_mode"] == "supervised"
     assert result["detect_model"]["split_detail"] == "supervised"
-    assert result["detect_model"]["evaluation_protocol"] == "heldout_test_only"
+    assert result["detect_model"]["evaluation_protocol"] == "train_val_selected_threshold_heldout_test"
     assert result["detect_model"]["feature_count"] > 0
     assert result["detect_model"]["uses_full_discover_embeddings"] is True
     assert result["detect_model"]["discover_embedding_dim"] == 8
@@ -498,14 +531,19 @@ def test_dyna_colm_detect_outputs_predictions_metrics_and_ablations(tmp_path: Pa
     assert result["detect_model"]["edge_score_source"] == "magnn_edge_reconstruction"
     assert result["metrics"] is not None
     assert "max_f1" in result["metrics"]
-    assert result["metrics"]["primary_f1_metric"] == "max_f1"
+    assert result["metrics"]["primary_f1_metric"] == "macro_f1_at_selected_threshold"
+    assert "macro_f1_at_selected_threshold" in result["metrics"]
+    assert "selected_threshold" in result["metrics"]
     assert result["metrics"]["fixed_threshold_f1_policy"] == "diagnostic_only"
     assert "auc" in result["metrics"]
-    assert {"ap", "max_f1", "macro_f1_at_0_5"}.issubset(result["metrics"]["amdn_hage_style"])
+    assert {"ap", "max_f1", "macro_f1_at_0_5", "macro_f1_at_selected_threshold"}.issubset(result["metrics"]["amdn_hage_style"])
     assert result["all_node_metrics"] is not None
-    assert set(row["evaluation_split"] for row in result["predictions"]).issuperset({"train", "test"})
+    prediction_splits = {row["evaluation_split"] for row in result["predictions"]}
+    assert {"train", "test"}.issubset(prediction_splits)
+    if result["detect_model"]["val_count"] > 0:
+        assert "val" in prediction_splits
     assert result["predictions"]
-    assert {"account_id", "node_score", "predicted_label", "evaluation_split", "cluster_id"}.issubset(result["predictions"][0])
+    assert {"account_id", "node_score", "predicted_label", "evaluation_split", "cluster_id", "decision_threshold"}.issubset(result["predictions"][0])
     assert result["community_scores"]
     assert result["characterization"]["task"] == "coordination_characterization"
     assert result["characterization"]["communities"]
@@ -555,12 +593,12 @@ def test_dyna_colm_detect_fusion_gnn_outputs_fusion_details_when_torch_is_availa
     assert "relation_attention" in fusion
     assert "cross_attention_mean" in fusion
     assert result["metrics"]
-    assert result["detect_model"]["evaluation_protocol"] == "heldout_test_only"
+    assert result["detect_model"]["evaluation_protocol"] == "train_val_selected_threshold_heldout_test"
+    assert "selected_threshold" in result["detect_model"]
 
 
 def test_dyna_colm_detect_gfm_lm_gnn_outputs_iohunter_style_details_when_torch_is_available(tmp_path: Path):
-    if importlib.util.find_spec("torch") is None:
-        pytest.skip("torch is not installed in this environment")
+    _skip_if_torch_runtime_unavailable("torch")
     events = make_sample_events()
     result = run_dyna_colm_detect(
         events,
@@ -584,7 +622,8 @@ def test_dyna_colm_detect_gfm_lm_gnn_outputs_iohunter_style_details_when_torch_i
     assert result["detect_model"]["uses_discover_outputs"] is True
     assert result["detect_model"]["uses_full_discover_embeddings"] is True
     assert result["detect_model"]["uses_discover_reweighted_edges"] is True
-    assert result["detect_model"]["evaluation_protocol"] == "heldout_test_only"
+    assert result["detect_model"]["evaluation_protocol"] == "train_val_selected_threshold_heldout_test"
+    assert "selected_threshold" in result["detect_model"]
     fusion = result["detect_model"]["fusion_details"]
     assert fusion["fusion_architecture"] == "iohunter_style_graph_foundation_lm_gnn"
     assert set(fusion["branch_attention"]) == {"discover", "lm", "graph"}
@@ -597,7 +636,40 @@ def test_dyna_colm_detect_gfm_lm_gnn_outputs_iohunter_style_details_when_torch_i
     assert result["all_node_metrics"]
 
 
+def test_dyna_colm_detect_socgfm_cross_attention_uses_deep_torch_path(tmp_path: Path):
+    _skip_if_torch_runtime_unavailable("torch")
+    events = make_sample_events()
+    result = run_dyna_colm_detect(
+        events,
+        output_dir=tmp_path,
+        relations=("url_share", "hashtag_share", "retweet_target"),
+        seed=42,
+        discover_encoder="magnn",
+        discover_epochs=1,
+        embedding_dim=8,
+        hidden_dim=8,
+        device="cpu",
+        lm_backend="tfidf",
+        gnn_backend="socgfm_cross_attention",
+        detect_epochs=2,
+        split_mode="supervised",
+    )
+
+    assert result["detect_model"]["gnn_backend"] == "socgfm_cross_attention"
+    assert result["detect_model"]["classifier_backend"].startswith("socgfm_cross_attention_torch:")
+    assert result["detect_model"]["uses_discover_outputs"] is True
+    assert result["detect_model"]["uses_discover_reweighted_edges"] is True
+    fusion = result["detect_model"]["fusion_details"]
+    assert fusion["fusion_architecture"] == "socgfm_cross_attention_torch"
+    assert fusion["pretraining_objectives"]["supervised_node_classification"] is True
+    assert fusion["uses_logistic_fallback"] is False
+    assert fusion["residual_tabular_branch"] is True
+    assert fusion["edge_count"] > 0
+    assert result["metrics"]
+
+
 def test_dyna_colm_detect_cpu_light_gfm_lm_gnn_runs_full_feature_path(tmp_path: Path):
+    _skip_if_torch_runtime_unavailable("torch")
     events = make_sample_events()
     result = run_dyna_colm_detect(
         events,
@@ -673,7 +745,7 @@ def test_detect_batch_row_flattens_required_fields():
             "lm_backend": "tfidf",
             "lm_feature_source": "tfidf_object_bag_fallback",
             "classifier_backend": "relation_gnn_torch:{}",
-            "evaluation_protocol": "heldout_test_only",
+            "evaluation_protocol": "train_val_selected_threshold_heldout_test",
             "feature_count": 12,
             "discover_feature_count": 20,
             "lm_feature_count": 8,
@@ -683,12 +755,19 @@ def test_detect_batch_row_flattens_required_fields():
             "reweighted_edge_count": 4,
             "edge_score_source": "magnn_edge_reconstruction",
             "train_count": 3,
+            "val_count": 1,
             "test_count": 1,
+            "selected_threshold": 0.42,
+            "threshold_policy": "validation_macro_f1",
+            "calibration_method": "platt_logistic",
         },
         "metrics": {
             "auc": 0.75,
             "auprc": 0.8,
             "macro_f1": 0.5,
+            "macro_f1_at_selected_threshold": 0.55,
+            "selected_threshold": 0.42,
+            "threshold_policy": "validation_macro_f1",
             "precision_at_k": 1.0,
             "recall_at_k": 0.5,
             "accuracy": 0.5,
@@ -698,6 +777,7 @@ def test_detect_batch_row_flattens_required_fields():
                 "f1_at_0_5": 0.5,
                 "max_f1": 0.667,
                 "macro_f1_at_0_5": 0.5,
+                "macro_f1_at_selected_threshold": 0.55,
             },
         },
     }
@@ -707,16 +787,37 @@ def test_detect_batch_row_flattens_required_fields():
     assert row["discover_encoder"] == "magnn"
     assert row["lm_feature_source"] == "tfidf_object_bag_fallback"
     assert row["gnn_backend"] == "relation_gnn"
-    assert row["evaluation_protocol"] == "heldout_test_only"
+    assert row["evaluation_protocol"] == "train_val_selected_threshold_heldout_test"
+    assert row["val_count"] == 1
+    assert row["selected_threshold"] == 0.42
+    assert row["threshold_policy"] == "validation_macro_f1"
+    assert row["calibration_method"] == "platt_logistic"
     assert row["uses_full_discover_embeddings"] is True
     assert row["uses_discover_reweighted_edges"] is True
     assert row["reweighted_edge_count"] == 4
     assert row["amdn_hage_ap"] == 0.8
     assert row["max_f1"] == 0.667
+    assert row["macro_f1_at_selected_threshold"] == 0.55
     assert row["diagnostic_f1_at_0_5"] == 0.5
+    assert row["macro_f1_at_0_5"] == 0.5
     assert "diagnostic_macro_f1_at_0_5" not in row
     assert "amdn_hage_macro_f1_at_0_5" not in row
     assert row["runtime_seconds"] == 1.23
+
+
+def test_detect_batch_run_output_dir_sanitizes_split_mode_for_windows_paths(tmp_path: Path):
+    output_dir = _detect_batch_run_output_dir(
+        tmp_path,
+        dataset="UAE",
+        seed=0,
+        discover_encoder="magnn_legacy",
+        split_mode="iohunter_official:0",
+        gnn_backend="socgfm_cross_attention",
+        lm_backend="tfidf",
+    )
+
+    assert "iohunter_official:0" not in str(output_dir)
+    assert output_dir.parts[-3:] == ("iohunter_official_0", "socgfm_cross_attention", "tfidf")
 
 
 def test_detect_batch_row_supports_fusion_gnn_backend():
@@ -729,7 +830,7 @@ def test_detect_batch_row_supports_fusion_gnn_backend():
             "lm_backend": "tfidf",
             "lm_feature_source": "tfidf_object_bag_fallback",
             "classifier_backend": "fusion_gnn_torch:{}",
-            "evaluation_protocol": "heldout_test_only",
+            "evaluation_protocol": "train_val_selected_threshold_heldout_test",
             "feature_count": 16,
             "discover_feature_count": 12,
             "lm_feature_count": 4,
@@ -739,6 +840,7 @@ def test_detect_batch_row_supports_fusion_gnn_backend():
             "reweighted_edge_count": 5,
             "edge_score_source": "magnn_edge_reconstruction",
             "train_count": 3,
+            "val_count": 1,
             "test_count": 1,
             "fusion_details": {
                 "fusion_architecture": "discover_lm_graph_attention",
@@ -780,7 +882,7 @@ def test_detect_batch_row_supports_gfm_lm_gnn_backend():
             "lm_backend": "tfidf",
             "lm_feature_source": "tfidf_object_bag_fallback",
             "classifier_backend": "gfm_lm_gnn_torch:{}",
-            "evaluation_protocol": "heldout_test_only",
+            "evaluation_protocol": "train_val_selected_threshold_heldout_test",
             "feature_count": 20,
             "discover_feature_count": 14,
             "lm_feature_count": 6,
@@ -790,6 +892,7 @@ def test_detect_batch_row_supports_gfm_lm_gnn_backend():
             "reweighted_edge_count": 6,
             "edge_score_source": "magnn_edge_reconstruction",
             "train_count": 3,
+            "val_count": 1,
             "test_count": 1,
             "fusion_details": {
                 "fusion_architecture": "iohunter_style_graph_foundation_lm_gnn",
@@ -878,6 +981,74 @@ def test_dyna_colm_detect_cross_io_split_uses_group_column_when_available():
     assert result["detect_model"]["split_mode"] == "cross_io"
     assert result["detect_model"]["split_detail"].startswith("cross_io:campaign:")
     assert result["detect_model"]["uses_lm_features"] is True
+
+
+def test_iohunter_event_table_preserves_official_split_masks():
+    graph = nx.Graph()
+    graph.add_edge(0, 1, weight=1.0)
+    dataset = {
+        "graph": graph,
+        "labels": np.asarray([0, 1, 0, 1], dtype=int),
+        "splits": {
+            0: {
+                "train": np.asarray([True, True, False, False]),
+                "val": np.asarray([False, False, True, False]),
+                "test": np.asarray([False, False, False, True]),
+            }
+        },
+    }
+
+    events = iohunter_processed_to_event_table(dataset, dataset_name="toy")
+
+    assert "iohunter_official_splits" in events.attrs
+    assert int(events.attrs["iohunter_official_splits"][0]["train"].sum()) == 2
+
+
+def test_split_for_detect_can_use_iohunter_official_masks():
+    events = pd.DataFrame({"account_id": ["0", "1", "2", "3"]})
+    events.attrs["iohunter_official_splits"] = {
+        0: {
+            "train": np.asarray([True, False, True, False]),
+            "val": np.asarray([False, True, False, False]),
+            "test": np.asarray([False, False, False, True]),
+        }
+    }
+    nodes = ["3", "0", "2", "1"]
+    y = np.asarray([1, 0, 1, 0], dtype=int)
+
+    split, detail = _split_for_detect(events, nodes, y, split_mode="iohunter_official:0", seed=42)
+
+    assert detail.startswith("iohunter_official_split:0:")
+    assert split.train.tolist() == [1, 2]
+    assert split.val.tolist() == [3]
+    assert split.test.tolist() == [0]
+
+
+def test_prediction_metrics_preserve_threshold_precision_at_boundary():
+    threshold = 0.9137931034482759
+    nodes = ["positive", "negative"]
+    labels = {"positive": 1, "negative": 0}
+    rows = _prediction_rows_from_discover_features(
+        nodes,
+        np.asarray([threshold, 0.0], dtype=float),
+        labels,
+        {
+            "positive": {"cluster_id": 0},
+            "negative": {"cluster_id": 1},
+        },
+        split=type("SplitLike", (), {"train": np.asarray([], dtype=int), "val": np.asarray([], dtype=int), "test": np.asarray([0, 1], dtype=int)})(),
+        threshold=threshold,
+    )
+
+    metrics = _metric_bundle_for_prediction_rows(
+        rows,
+        evaluation_split="test",
+        threshold=threshold,
+        threshold_policy="validation_macro_f1",
+    )
+
+    assert rows[0]["predicted_label"] == 1
+    assert metrics["macro_f1_at_selected_threshold"] == 1.0
 
 
 def test_dyna_colm_ablation_suite_includes_required_variants():
@@ -1314,6 +1485,37 @@ def test_iohunter_run_plan_uses_src_cwd_and_exports_commands(tmp_path: Path):
     assert Path(exports["run_plan_json"]).exists()
     assert Path(exports["powershell"]).read_text(encoding="utf-8").count("run_MultiModalGNN_CrossAttention.py") == 2
     assert "cd " in Path(exports["shell"]).read_text(encoding="utf-8")
+
+
+def test_iohunter_run_plan_can_expand_official_same_country_methods(tmp_path: Path):
+    workspace = tmp_path / "iohunter"
+    script_dir = workspace / "SocGFM" / "src"
+    script_dir.mkdir(parents=True)
+    for script_name in (
+        "run_GNN.py",
+        "run_GNNPlusLLM.py",
+        "run_MultiModalGNN.py",
+        "run_MultiModalGNN_CrossAttention.py",
+    ):
+        (script_dir / script_name).write_text("", encoding="utf-8")
+
+    run_plan = build_iohunter_run_plan(
+        workspace,
+        datasets=("russia",),
+        seeds=(7,),
+        gnns=("sage",),
+        include_official_baselines=False,
+        official_methods=("GNN", "GNNPlusLLM", "MultiModalGNN", "MultiModalGNN_CrossAttention"),
+    )
+
+    assert [item["method"] for item in run_plan] == [
+        "GNN",
+        "GNNPlusLLM",
+        "MultiModalGNN",
+        "MultiModalGNN_CrossAttention",
+    ]
+    assert "run_GNNPlusLLM.py" in run_plan[1]["script"]
+    assert "--embed_type" not in run_plan[1]["args"]
 
 
 def test_iohunter_run_plan_can_include_cross_country(tmp_path: Path):

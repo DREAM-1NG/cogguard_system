@@ -44,7 +44,33 @@
       </div>
     </div>
 
-    <a-tabs v-model:activeKey="activeTab" class="propagation-tabs">
+    <a-alert
+      v-if="analysisTransportFailed"
+      class="analysis-state-alert"
+      type="error"
+      show-icon
+      message="传播分析加载失败"
+      :description="analysisRequestError"
+    >
+      <template #action>
+        <a-button size="small" danger @click="loadAnalysis(true, true)">重试当前范围</a-button>
+      </template>
+    </a-alert>
+    <a-alert
+      v-else-if="analysisBusinessEmptyReason"
+      class="analysis-state-alert"
+      type="info"
+      show-icon
+      message="当前范围无可分析内容"
+      :description="analysisBusinessEmptyReason"
+    />
+
+    <a-tabs
+      v-model:activeKey="activeTab"
+      class="propagation-tabs"
+      aria-label="传播分析标签"
+      role="tablist"
+    >
       <a-tab-pane key="path" tab="传播路径">
         <a-row :gutter="16" style="margin-bottom: 16px">
           <a-col :xs="24" :xl="16">
@@ -71,7 +97,11 @@
                   <div ref="pathGraphRef" class="path-graph" />
                 </div>
               </div>
-              <a-empty v-if="!diffusionReady" description="暂无可展示的分层传播路径" :image-style="{ height: '36px' }" />
+              <a-empty
+                v-else-if="!analysisTransportFailed && !analysisBusinessEmptyReason"
+                description="当前范围暂未形成可展示路径"
+                :image-style="{ height: '36px' }"
+              />
             </a-card>
           </a-col>
 
@@ -87,7 +117,11 @@
                 </div>
               </div>
               <div ref="layerChartRef" class="layer-chart" />
-              <a-empty v-if="!displayLayerRows.length" description="暂无层级分布" :image-style="{ height: '36px' }" />
+              <a-empty
+                v-if="!displayLayerRows.length && !analysisTransportFailed && !analysisBusinessEmptyReason"
+                description="暂无层级分布"
+                :image-style="{ height: '36px' }"
+              />
             </a-card>
           </a-col>
         </a-row>
@@ -178,14 +212,12 @@
             <template #title>权威主张锚点</template>
             <a-descriptions size="small" :column="1" bordered>
               <a-descriptions-item label="主张文本">{{ claimResponseLandscape?.claim_anchor?.text || '--' }}</a-descriptions-item>
-              <a-descriptions-item label="权威来源">{{ claimResponseLandscape?.claim_anchor?.authority_source_id || '--' }}</a-descriptions-item>
+              <a-descriptions-item label="权威来源">{{ claimResponseLandscape?.claim_anchor?.account ? '已核验权威来源' : '--' }}</a-descriptions-item>
               <a-descriptions-item label="发布账号">{{ claimResponseLandscape?.claim_anchor?.account || '--' }}</a-descriptions-item>
               <a-descriptions-item label="发布时间">{{ formatTimestamp(claimResponseLandscape?.claim_anchor?.published_at) }}</a-descriptions-item>
-              <a-descriptions-item label="证据引用">
-                <a-space v-if="claimResponseLandscape?.claim_anchor?.evidence_refs?.length" wrap :size="4">
-                  <a-tag v-for="ref in claimResponseLandscape.claim_anchor.evidence_refs" :key="ref">{{ ref }}</a-tag>
-                </a-space>
-                <span v-else>--</span>
+              <a-descriptions-item label="证据链">
+                <span v-if="claimResponseLandscape?.claim_anchor?.evidence_refs?.length">已关联 {{ claimResponseLandscape.claim_anchor.evidence_refs.length }} 条原帖与路径证据</span>
+                <span v-else>暂无可核验引用</span>
               </a-descriptions-item>
             </a-descriptions>
           </a-card>
@@ -258,7 +290,7 @@
                       class="claim-path-link"
                       @click="openClaimResponsePathDetail(item, pathRef, index)"
                     >
-                      路径 {{ pathRef.path_id }} · {{ pathRef.evidence_refs.length }} 条证据
+                      查看路径证据 · {{ pathRef.evidence_refs.length }} 条
                     </button>
                   </div>
                   <a-tag v-if="claimResponseSemanticReady && claimResponseResponseStance(item)" class="claim-response-stance-tag">
@@ -281,7 +313,7 @@
                   <span>{{ claimResponseTimelineLabel(item) }}</span>
                   <span class="timeline-time">{{ formatTimestamp(item.at) }}</span>
                 </p>
-                <p class="timeline-content">{{ item.evidence_refs?.join('、') || '暂无证据引用' }}</p>
+                <p class="timeline-content">{{ item.evidence_refs?.length ? `已关联 ${item.evidence_refs.length} 条证据` : '暂无可核验引用' }}</p>
               </a-timeline-item>
             </a-timeline>
             <a-empty v-else description="暂无回应时间轴" :image-style="{ height: '36px' }" />
@@ -576,11 +608,9 @@
             <a-descriptions-item label="路径贡献">
               {{ claimResponsePathEvidence.pathContribution === undefined ? '--' : formatScore(claimResponsePathEvidence.pathContribution) }}
             </a-descriptions-item>
-            <a-descriptions-item label="精确证据引用">
-              <a-space v-if="claimResponsePathEvidence.evidenceRefs.length" wrap :size="4">
-                <a-tag v-for="ref in claimResponsePathEvidence.evidenceRefs" :key="ref">{{ ref }}</a-tag>
-              </a-space>
-              <span v-else>--</span>
+            <a-descriptions-item label="精确证据链">
+              <span v-if="claimResponsePathEvidence.evidenceRefs.length">已关联 {{ claimResponsePathEvidence.evidenceRefs.length }} 条原帖与路径证据</span>
+              <span v-else>暂无可核验引用</span>
             </a-descriptions-item>
           </a-descriptions>
         </template>
@@ -1437,6 +1467,8 @@ function alignSliderMax(rawMax: number, min: number, step: number) {
 const analyzing = ref(false)
 const predicting = ref(false)
 const analysisResult = ref<AnalysisResult | null>(null)
+const analysisRequestError = ref<string | null>(null)
+const analysisBusinessEmptyReason = ref<string | null>(null)
 const modelPrediction = ref<EventModelPrediction | null>(null)
 const evidenceTimeline = ref<PropagationEventTimelineProjection | null>(null)
 const evidenceTimelineLoading = ref(false)
@@ -1571,6 +1603,7 @@ const claimResponseEmptyDescription = computed(() => {
 })
 
 const analysisReady = computed(() => !!analysisResult.value && !analysisResult.value.error)
+const analysisTransportFailed = computed(() => Boolean(analysisRequestError.value))
 const keyRoles = computed(() => analysisResult.value?.key_roles ?? null)
 const claims = computed(() => analysisResult.value?.claims ?? [])
 const timeline = computed(() => analysisResult.value?.timeline ?? [])
@@ -3282,6 +3315,9 @@ function openClaimDetail(item: ClaimGroupItem) {
 function openClaimPathDetail(chain: EvidenceChain, path: EvidencePath, index: number) {
   selectedClaimPathDetail.value = { chain, path, index }
   claimPathDetailOpen.value = true
+  if (path?.metadata?.claim_response !== true && !semanticProjection.value && !semanticLoading.value) {
+    void loadSemanticProjection()
+  }
 }
 
 function openClaimResponsePublication(publication: ClaimResponsePublication) {
@@ -3389,6 +3425,23 @@ function resetClaimResponseLandscape() {
   nodeDetailOpen.value = false
 }
 
+function resetScopeDependentProjections() {
+  analysisRequestGeneration += 1
+  predictionRequestGeneration += 1
+  evidenceTimelineRequestGeneration += 1
+  alertsRequestGeneration += 1
+  analysisResult.value = null
+  analysisRequestError.value = null
+  analysisBusinessEmptyReason.value = null
+  modelPrediction.value = null
+  evidenceTimeline.value = null
+  propagationAlerts.value = []
+  disposeModelTrendChart()
+  disposeEvidenceTimelineChart()
+  resetSemanticProjection()
+  resetClaimResponseLandscape()
+}
+
 async function loadSemanticProjection() {
   const requestedEventId = eventId.value.trim()
   const requestGeneration = ++semanticRequestGeneration
@@ -3426,6 +3479,9 @@ async function loadAnalysis(showToast = false, preservePrediction = false) {
     predictionRequestGeneration += 1
   }
   analyzing.value = true
+  analysisResult.value = null
+  analysisRequestError.value = null
+  analysisBusinessEmptyReason.value = null
   try {
     const res = (await analyzeObservedPropagation(requestedParams)) as { data: AnalysisResult }
     if (!acceptPropagationScopedResponse({
@@ -3440,6 +3496,7 @@ async function loadAnalysis(showToast = false, preservePrediction = false) {
     analysisResult.value = res.data
 
     if (res.data.error) {
+      analysisBusinessEmptyReason.value = String(res.data.error)
       if (showToast) {
         message.warning(res.data.error)
       }
@@ -3454,8 +3511,10 @@ async function loadAnalysis(showToast = false, preservePrediction = false) {
     timelineFocusPostId.value = ''
     updateSyncTime()
     await renderPathTabCharts()
-  } catch {
-    /* handled in interceptor */
+  } catch (error) {
+    if (requestGeneration !== analysisRequestGeneration) return
+    analysisResult.value = null
+    analysisRequestError.value = requestErrorMessage(error, '无法连接当前范围的传播分析服务')
   } finally {
     if (requestGeneration === analysisRequestGeneration) {
       analyzing.value = false
@@ -3464,10 +3523,21 @@ async function loadAnalysis(showToast = false, preservePrediction = false) {
 }
 
 async function handleAnalyze() {
+  resetScopeDependentProjections()
   diffusionFullViewRequested.value = false
   diffusionNodeLimit.value = Math.min(DEFAULT_DIFFUSION_NODE_LIMIT, diffusionSliderMax.value)
   diffusionPendingNodeLimit.value = diffusionNodeLimit.value
-  await Promise.all([loadAnalysis(true), loadEvidenceTimeline(), loadClaimResponseLandscape()])
+  await loadAnalysis(true)
+}
+
+function requestErrorMessage(error: unknown, fallback: string) {
+  if (error && typeof error === 'object') {
+    const response = (error as { response?: { data?: { detail?: unknown; message?: unknown } } }).response
+    const detail = response?.data?.detail ?? response?.data?.message
+    if (typeof detail === 'string' && detail.trim()) return `${fallback}：${detail}`
+  }
+  if (error instanceof Error && error.message) return `${fallback}：${error.message}`
+  return fallback
 }
 
 function handleDiffusionLimitChange(value: number) {
@@ -3725,11 +3795,6 @@ async function selectTimelineRange(nextRange: PropagationTimelineRange) {
 onMounted(() => {
   syncScopeFromRoute()
   void loadAnalysis(false, true)
-  void loadCachedPrediction()
-  void loadEvidenceTimeline()
-  void loadPropagationAlerts()
-  void loadClaimResponseLandscape()
-  void loadSemanticProjection()
   window.addEventListener('resize', resizeCharts)
 })
 
@@ -3737,22 +3802,16 @@ watch(
   () => [route.query.event_id, route.query.platform],
   () => {
     syncScopeFromRoute()
+    resetScopeDependentProjections()
     diffusionFullViewRequested.value = false
     diffusionNodeLimit.value = DEFAULT_DIFFUSION_NODE_LIMIT
     diffusionPendingNodeLimit.value = DEFAULT_DIFFUSION_NODE_LIMIT
     void loadAnalysis(false, true)
-    void loadCachedPrediction()
-    void loadEvidenceTimeline()
-    void loadPropagationAlerts()
-    void loadClaimResponseLandscape()
   },
 )
 
 watch([eventId, platform], () => {
-  resetSemanticProjection()
-  void loadSemanticProjection()
   claimResponsePlatform.value = platform.value.trim()
-  void loadClaimResponseLandscape()
 })
 
 watch(displayLayerRows, () => {
@@ -3774,6 +3833,10 @@ watch(roleIgnitionOverview, () => {
 
 watch(activeTab, () => {
   void renderActiveTabCharts()
+  if (activeTab.value === 'model') {
+    void loadCachedPrediction()
+    void loadEvidenceTimeline()
+  }
   if (activeTab.value === 'alerts') void loadPropagationAlerts()
   if (activeTab.value === 'claim-response') void loadClaimResponseLandscape()
 })
@@ -3841,7 +3904,7 @@ onBeforeUnmount(() => {
 .toolbar-group-label {
   flex: 0 0 auto;
   color: #475569;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   line-height: 1.4;
   white-space: nowrap;
@@ -3862,7 +3925,7 @@ onBeforeUnmount(() => {
 
 .sync-hint {
   color: #64748b;
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.4;
   text-align: right;
 }
@@ -3892,7 +3955,7 @@ onBeforeUnmount(() => {
 
 .section-title {
   color: #1f1f1f;
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 600;
   margin-bottom: 10px;
 }
@@ -3908,7 +3971,7 @@ onBeforeUnmount(() => {
 
 .claim-response-toolbar-label {
   color: #475569;
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.5;
 }
 
@@ -3958,7 +4021,7 @@ onBeforeUnmount(() => {
   gap: 8px;
   margin-bottom: 10px;
   color: #0f172a;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
 }
 
@@ -4027,19 +4090,19 @@ onBeforeUnmount(() => {
 }
 
 .claim-response-node-main strong {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
 }
 
 .claim-response-node-main small {
   color: #64748b;
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.45;
 }
 
 .claim-response-node-main span {
   color: #475569;
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.45;
 }
 
@@ -4087,7 +4150,7 @@ onBeforeUnmount(() => {
 .path-node-control-label,
 .path-node-control-count {
   color: #475569;
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.4;
   white-space: nowrap;
 }
@@ -4129,7 +4192,7 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 8px;
   color: #475569;
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.4;
 }
 
@@ -4171,7 +4234,7 @@ onBeforeUnmount(() => {
   background: #f8fafc;
   color: #334155;
   font-family: Consolas, 'Courier New', monospace;
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.55;
   white-space: pre-wrap;
   word-break: break-word;
@@ -4199,7 +4262,7 @@ onBeforeUnmount(() => {
 
 .timeline-time {
   color: #999;
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.45;
   margin-left: 8px;
 }
@@ -4246,7 +4309,7 @@ onBeforeUnmount(() => {
 
 .forecast-label {
   color: #8c8c8c;
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.45;
   margin-bottom: 8px;
 }
@@ -4261,7 +4324,7 @@ onBeforeUnmount(() => {
 .forecast-interval {
   margin-top: 10px;
   color: #595959;
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.45;
 }
 
@@ -4281,7 +4344,7 @@ onBeforeUnmount(() => {
   gap: 12px;
   margin-bottom: 8px;
   color: #64748b;
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.45;
   flex-wrap: wrap;
 }

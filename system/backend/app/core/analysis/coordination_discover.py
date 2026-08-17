@@ -32,7 +32,7 @@ def build_coordination_discover_evidence_edges(
 
     for row in [*snapshot.posts, *snapshot.comments]:
         content_ref = _content_ref(row)
-        account_id = _text(row.get("author_id"))
+        account_id = _account_id(row)
         timestamp = _timestamp_seconds(row.get("timestamp"))
         platform = _text(row.get("platform")) or "unknown"
         for edge in _content_evidence_edges(
@@ -654,7 +654,7 @@ def _build_content_index(snapshot: EventSnapshot) -> dict[str, dict[str, Any]]:
             content_ref = _content_ref(row, kind=kind)
             timestamp_share = _timestamp_seconds(row.get("timestamp"))
             index[content_ref] = {
-                "account_id": _text(row.get("author_id")),
+                "account_id": _account_id(row),
                 "content_ref": content_ref,
                 "timestamp_share": timestamp_share,
                 "platform": _text(row.get("platform")) or "unknown",
@@ -1034,6 +1034,10 @@ def _as_list(value: Any) -> list[Any]:
 
 def _text(value: Any) -> str:
     return " ".join(str(value or "").split()).strip()
+
+
+def _account_id(row: dict[str, Any]) -> str:
+    return _text(row.get("discovery_account_id") or row.get("source_account_id") or row.get("author_id"))
 
 
 __all__ = [

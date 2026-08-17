@@ -103,6 +103,8 @@ def test_compact_registry_exposes_candidate_fair_baseline_and_explicit_blocks():
 
     assert {
         "tsgs_mhcr_compact",
+        "magnn_legacy",
+        "magnn_leiden_hybrid_discovery",
         "edgebank",
         "dense_cosine_leiden",
         "frozen_system_evidence_prior",
@@ -266,6 +268,59 @@ def test_candidate_is_label_free_deterministic_and_graph_native():
     )
     feature_names = first.prediction.diagnostics["mhcr"]["feature_names"]
     assert len(feature_names) == len(set(feature_names)) == 10
+
+
+def test_magnn_leiden_hybrid_is_research_only_and_uses_evidence_constrained_edges():
+    package = _load_experiments()
+    implementation = package.default_compact_discovery_registry().implementation(
+        "magnn_leiden_hybrid_discovery"
+    )
+    outcome = package.execute_compact_discovery_method(
+        {"magnn_leiden_hybrid_discovery": implementation},
+        "magnn_leiden_hybrid_discovery",
+        _input(package),
+    )
+
+    assert outcome.status == "success"
+    assert outcome.prediction is not None
+    assert outcome.prediction.method_id == "magnn_leiden_hybrid_discovery"
+    assert outcome.prediction.diagnostics["method_role"] == (
+        "research_only_magnn_leiden_hybrid_discovery"
+    )
+    assert outcome.prediction.diagnostics["mhcr"]["objective"] == (
+        "self_supervised_magnn_edge_reconstruction"
+    )
+    assert outcome.prediction.diagnostics["edge_score_formula"] == (
+        "0.5_normalized_evidence_weight_plus_0.5_magnn_edge_affinity"
+    )
+    assert outcome.prediction.diagnostics["clustering"]["backend"] == (
+        "leiden_interpretation_partition"
+    )
+    assert "iohunter_no_ground_truth_communities" in outcome.prediction.claim_markers
+
+
+def test_magnn_legacy_is_research_only_and_uses_embedding_affinity():
+    package = _load_experiments()
+    implementation = package.default_compact_discovery_registry().implementation("magnn_legacy")
+    outcome = package.execute_compact_discovery_method(
+        {"magnn_legacy": implementation},
+        "magnn_legacy",
+        _input(package),
+    )
+
+    assert outcome.status == "success"
+    assert outcome.prediction is not None
+    assert outcome.prediction.method_id == "magnn_legacy"
+    assert outcome.prediction.diagnostics["method_role"] == (
+        "research_only_legacy_magnn_leiden_discovery"
+    )
+    assert outcome.prediction.diagnostics["mhcr"]["objective"] == (
+        "self_supervised_magnn_edge_reconstruction"
+    )
+    assert outcome.prediction.diagnostics["edge_score_formula"] == "magnn_edge_affinity_only"
+    assert outcome.prediction.diagnostics["clustering"]["backend"] == (
+        "leiden_interpretation_partition"
+    )
 
 
 def test_edgebank_is_available_on_static_data_and_carries_static_claim_marker():

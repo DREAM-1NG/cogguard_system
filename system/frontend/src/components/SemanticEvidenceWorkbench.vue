@@ -165,10 +165,21 @@
             <span class="section-kicker">命名实体</span>
             <h3 id="entity-ledger-title">实体清单</h3>
           </div>
-          <span>按类型分组</span>
+          <div class="entity-section-meta">
+            <span>按类型分组</span>
+            <button
+              v-if="entityGroups.length > DEFAULT_ENTITY_GROUP_LIMIT"
+              class="entity-expand-button"
+              type="button"
+              :aria-expanded="entityGroupsExpanded"
+              @click="entityGroupsExpanded = !entityGroupsExpanded"
+            >
+              {{ entityGroupsExpanded ? '收起' : '展开' }}
+            </button>
+          </div>
         </div>
         <div v-if="entityGroups.length" class="entity-groups">
-          <div v-for="group in entityGroups" :key="group.label" class="entity-group">
+          <div v-for="group in visibleEntityGroups" :key="group.label" class="entity-group">
             <span class="entity-type">{{ entityTypeLabel(group.label) }}</span>
             <button
               v-for="item in group.items.slice(0, 5)"
@@ -300,24 +311,30 @@
               <td data-label="平台">{{ item.platform }}</td>
               <td data-label="时间">{{ item.timestamp }}</td>
               <td data-label="关键词">
-                <span v-for="keyword in item.keywords" :key="keyword" :class="{ 'is-evidence-match': filters.keyword === keyword }">
-                  {{ keyword }}
+                <span class="matrix-value-list">
+                  <span v-for="keyword in item.keywords" :key="keyword" :class="{ 'is-evidence-match': filters.keyword === keyword }">
+                    {{ keyword }}
+                  </span>
                 </span>
               </td>
               <td data-label="主题">
-                <span v-for="topic in item.topics" :key="topic" :class="{ 'is-evidence-match': filters.topic === topic }">
-                  {{ topic }}
+                <span class="matrix-value-list">
+                  <span v-for="topic in item.topics" :key="topic" :class="{ 'is-evidence-match': filters.topic === topic }">
+                    {{ topic }}
+                  </span>
                 </span>
               </td>
               <td data-label="情感">{{ displaySemanticLabel('sentiment', item.sentiment) }}</td>
               <td data-label="立场">{{ displaySemanticLabel('stance', item.stance) }}</td>
               <td data-label="实体">
-                <span
-                  v-for="entity in item.entities"
-                  :key="entity.key"
-                  :class="{ 'is-evidence-match': filters.entity === entity.key }"
-                >
-                  {{ entity.text }}
+                <span class="matrix-value-list">
+                  <span
+                    v-for="entity in item.entities"
+                    :key="entity.key"
+                    :class="{ 'is-evidence-match': filters.entity === entity.key }"
+                  >
+                    {{ entity.text }}
+                  </span>
                 </span>
               </td>
             </tr>
@@ -363,6 +380,7 @@ import {
 } from '@/features/semantic-evidence/model'
 
 const PAGE_SIZE = 20
+const DEFAULT_ENTITY_GROUP_LIMIT = 3
 
 const props = defineProps<{
   evidence: Record<string, unknown> | null
@@ -373,6 +391,7 @@ type EntityGroup = { label: string; items: SemanticCount[] }
 
 const filters = reactive(createSemanticFilters())
 const currentPage = ref(1)
+const entityGroupsExpanded = ref(false)
 const layerOptions = [
   { label: '全部', value: 'all' },
   { label: '主帖', value: 'posts' },
@@ -405,8 +424,15 @@ const entityGroups = computed<EntityGroup[]>(() => {
   }
   return [...groups.entries()]
     .map(([label, items]) => ({ label, items }))
-    .sort((left, right) => entityTypeLabel(left.label).localeCompare(entityTypeLabel(right.label), 'zh-CN'))
+    .sort((left, right) => {
+      const countDifference = right.items.reduce((sum, item) => sum + item.count, 0)
+        - left.items.reduce((sum, item) => sum + item.count, 0)
+      return countDifference || entityTypeLabel(left.label).localeCompare(entityTypeLabel(right.label), 'zh-CN')
+    })
 })
+const visibleEntityGroups = computed(() => (
+  entityGroupsExpanded.value ? entityGroups.value : entityGroups.value.slice(0, DEFAULT_ENTITY_GROUP_LIMIT)
+))
 const hasActiveFilters = computed(() => {
   const initial = createSemanticFilters()
   return filters.layer !== initial.layer
@@ -437,6 +463,7 @@ watch(filters, () => {
 
 watch(() => props.evidence, () => {
   resetFilters()
+  entityGroupsExpanded.value = false
 })
 
 watch(pageData, (value) => {
@@ -530,7 +557,16 @@ function stanceClass(value: string): string {
 }
 
 function entityTypeLabel(value: string): string {
-  const labels: Record<string, string> = { PER: '人物', ORG: '组织', LOC: '地点', OTHER: '其他' }
+  const labels: Record<string, string> = {
+    PER: '人物',
+    ORG: '组织',
+    LOC: '地点',
+    GPE: '地区',
+    TIME: '时间',
+    DATE: '时间',
+    EVENT: '事件',
+    OTHER: '其他',
+  }
   return labels[value] || value
 }
 
@@ -658,7 +694,7 @@ function namedCountsText(items: SemanticCount[]): string {
 
 .section-heading h3 {
   color: #1f2933;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
   line-height: 1.4;
   margin: 0;
@@ -683,7 +719,7 @@ function namedCountsText(items: SemanticCount[]): string {
 
 .distribution-title {
   color: #4e5969;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   grid-column: 1 / -1;
 }
@@ -716,7 +752,7 @@ function namedCountsText(items: SemanticCount[]): string {
 
 .distribution-donut-hole span {
   color: #86909c;
-  font-size: 12px;
+  font-size: 13px;
   margin-top: 2px;
 }
 
@@ -757,7 +793,7 @@ function namedCountsText(items: SemanticCount[]): string {
   cursor: pointer;
   display: inline-flex;
   font: inherit;
-  font-size: 13px;
+  font-size: 14px;
   gap: 4px;
   padding: 2px 0;
 }
@@ -833,6 +869,30 @@ function namedCountsText(items: SemanticCount[]): string {
   gap: 10px;
 }
 
+.entity-section-meta {
+  align-items: center;
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.entity-expand-button {
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  color: #1769aa;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  padding: 1px 0;
+}
+
+.entity-expand-button:hover,
+.entity-expand-button:focus-visible {
+  border-bottom-color: currentColor;
+  color: #0f4f84;
+}
+
 .entity-group {
   display: grid;
   gap: 4px;
@@ -840,7 +900,7 @@ function namedCountsText(items: SemanticCount[]): string {
 
 .entity-type {
   color: #6b7785;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
 }
 
@@ -898,7 +958,7 @@ function namedCountsText(items: SemanticCount[]): string {
   flex: 0 0 34px;
   flex-direction: column;
   font: inherit;
-  font-size: 12px;
+  font-size: 13px;
   gap: 5px;
   height: 124px;
   justify-content: end;
@@ -959,7 +1019,7 @@ function namedCountsText(items: SemanticCount[]): string {
   align-items: baseline;
   border-bottom: 1px solid #edf0f2;
   display: grid;
-  font-size: 12px;
+  font-size: 13px;
   gap: 8px 16px;
   grid-template-columns: minmax(96px, 0.7fr) minmax(126px, 1fr) minmax(128px, 1fr) minmax(148px, 1.2fr) minmax(180px, 1.4fr);
   padding: 8px 0;
@@ -975,7 +1035,7 @@ function namedCountsText(items: SemanticCount[]): string {
 
 .semantic-matrix-table {
   border-collapse: collapse;
-  font-size: 13px;
+  font-size: 14px;
   min-width: 900px;
   width: 100%;
 }
@@ -1000,6 +1060,13 @@ function namedCountsText(items: SemanticCount[]): string {
 .semantic-matrix-table td span + span::before {
   color: #a1a8b0;
   content: '、';
+}
+
+.matrix-value-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 0;
+  min-width: 0;
 }
 
 .is-evidence-match {

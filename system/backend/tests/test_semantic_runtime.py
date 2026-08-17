@@ -563,6 +563,8 @@ def test_dependency_import_failure_is_reported_as_a_model_weights_blocker(monkey
     original_import = importlib.import_module
 
     def broken_transformers(name, *args, **kwargs):
+        if name == "torch":
+            return ModuleType("torch")
         if name == "transformers":
             raise OSError("torch CUDA DLL unavailable")
         return original_import(name, *args, **kwargs)
@@ -571,6 +573,20 @@ def test_dependency_import_failure_is_reported_as_a_model_weights_blocker(monkey
 
     with pytest.raises(ModelWeightsBlockedError, match="transformers runtime dependency unavailable"):
         SemanticEnrichmentRuntime.ensure_runtime_dependencies()
+
+
+def test_runtime_dependency_check_verifies_torch_before_transformers(monkeypatch):
+    imported_modules: list[str] = []
+
+    def record_import(name, *args, **kwargs):
+        imported_modules.append(name)
+        return object()
+
+    monkeypatch.setattr(importlib, "import_module", record_import)
+
+    SemanticEnrichmentRuntime.ensure_runtime_dependencies()
+
+    assert imported_modules.index("torch") < imported_modules.index("transformers")
 
 
 def test_verified_same_snapshot_propagation_artifact_builds_exact_path_semantic_overlay(tmp_path: Path):

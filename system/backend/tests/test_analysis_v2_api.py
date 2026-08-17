@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from types import SimpleNamespace
 from typing import Any
 from urllib.parse import quote
 
@@ -72,11 +73,15 @@ class SemanticProjectionRegistry:
         artifacts: dict[tuple[str, str], Any],
         roots: list[dict[str, Any]] | None = None,
         errors=None,
+        snapshot_fingerprints: dict[str, str] | None = None,
+        current_fingerprints: dict[str, str] | None = None,
     ) -> None:
         self.runs = {str(run["run_id"]): dict(run) for run in runs}
         self.artifacts = dict(artifacts)
         self.errors = dict(errors or {})
         self.candidate_roots = list(roots or [])
+        self.snapshot_fingerprints = dict(snapshot_fingerprints or {})
+        self.current_fingerprints = dict(current_fingerprints or {})
 
     @property
     def mongo_db(self):
@@ -112,12 +117,37 @@ class SemanticProjectionRegistry:
         )
         return [run for run, _created_at in candidates]
 
+    async def load_event_snapshot(self, snapshot_id: str):
+        fingerprint = self.snapshot_fingerprints[str(snapshot_id)]
+        run = next(run for run in self.runs.values() if run.get("snapshot_id") == snapshot_id)
+        return SimpleNamespace(
+            snapshot_id=snapshot_id,
+            event_id=run["event_id"],
+            data_fingerprint=fingerprint,
+            core_window=SimpleNamespace(),
+            context_window=SimpleNamespace(),
+        )
+
+    async def build_current_event_snapshot(self, *, event_id: str, **_kwargs):
+        fingerprint = self.current_fingerprints[event_id]
+        return SimpleNamespace(event_id=event_id, data_fingerprint=fingerprint)
+
 
 def _semantic_root(run_id: str, created_at: str) -> dict[str, str]:
     return {
         "run_id": run_id,
         "artifact_key": "stage:semantic_enrichment:result",
         "created_at": created_at,
+    }
+
+
+def _ready_semantic_artifact(fingerprint: str, **overrides: Any) -> dict[str, Any]:
+    return {
+        "technology": "semantic_enrichment",
+        "status": "ok",
+        "runtime_status": "ready",
+        "embedding_manifest": {"snapshot_fingerprint": fingerprint},
+        **overrides,
     }
 
 
@@ -277,21 +307,21 @@ def test_semantic_event_projection_selects_latest_ready_artifact():
                     "event_id": "event_1",
                     "snapshot_id": "snap_blocked_newer",
                     "created_at": "2026-08-14T03:00:00+00:00",
-                    "artifact_manifest": {"stages": {"semantic_enrichment": {"result_artifact": {"stored": True}}}},
+                    "artifact_manifest": {"data_fingerprint": "fingerprint_blocked"},
                 },
                 {
                     "run_id": "run_new",
                     "event_id": "event_1",
                     "snapshot_id": "snap_new",
                     "created_at": "2026-08-14T02:00:00+00:00",
-                    "artifact_manifest": {"stages": {"semantic_enrichment": {"result_artifact": {"stored": True}}}},
+                    "artifact_manifest": {"data_fingerprint": "fingerprint_new"},
                 },
                 {
                     "run_id": "run_old",
                     "event_id": "event_1",
                     "snapshot_id": "snap_old",
                     "created_at": "2026-08-14T01:00:00+00:00",
-                    "artifact_manifest": {"stages": {"semantic_enrichment": {"result_artifact": {"stored": True}}}},
+                    "artifact_manifest": {"data_fingerprint": "fingerprint_old"},
                 },
             ],
             artifacts={
@@ -301,12 +331,9 @@ def test_semantic_event_projection_selects_latest_ready_artifact():
                     "runtime_status": "blocked",
                     "blocking_reason": "fixed local weights unavailable",
                 },
-                ("run_new", artifact_key): {
-                    "technology": "semantic_enrichment",
-                    "status": "ok",
-                    "runtime_status": "ready",
-                    "layers": {"posts": [], "comments": []},
-                },
+                ("run_new", artifact_key): _ready_semantic_artifact(
+                    "fingerprint_new", layers={"posts": [], "comments": []}
+                ),
                 ("run_old", artifact_key): {"status": "ok", "runtime_status": "ready", "marker": "old"},
             },
             roots=[
@@ -314,6 +341,8 @@ def test_semantic_event_projection_selects_latest_ready_artifact():
                 _semantic_root("run_blocked_newer", "2026-08-14T03:00:00+00:00"),
                 _semantic_root("run_new", "2026-08-14T01:00:00+00:00"),
             ],
+            snapshot_fingerprints={"snap_new": "fingerprint_new"},
+            current_fingerprints={"event_1": "fingerprint_new"},
         )
         app = _product_app(registry)
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
@@ -330,6 +359,7 @@ def test_semantic_event_projection_selects_latest_ready_artifact():
                 "technology": "semantic_enrichment",
                 "status": "ok",
                 "runtime_status": "ready",
+                "embedding_manifest": {"snapshot_fingerprint": "fingerprint_new"},
                 "layers": {"posts": [], "comments": []},
             },
         }
@@ -347,32 +377,33 @@ def test_semantic_event_projection_uses_registry_candidates_and_never_selects_ot
                     "event_id": "event_target",
                     "snapshot_id": "snapshot_target",
                     "created_at": "2026-08-14T02:00:00+00:00",
+                    "artifact_manifest": {"data_fingerprint": "fingerprint_target"},
                 },
                 {
                     "run_id": "run_other_newer_ready",
                     "event_id": "event_other",
                     "snapshot_id": "snapshot_other",
                     "created_at": "2026-08-14T10:00:00+00:00",
+                    "artifact_manifest": {"data_fingerprint": "fingerprint_other"},
                 },
             ],
             artifacts={
-                ("run_target_ready", artifact_key): {
-                    "technology": "semantic_enrichment",
-                    "status": "ok",
-                    "runtime_status": "ready",
-                    "marker": "target",
-                },
-                ("run_other_newer_ready", artifact_key): {
-                    "technology": "semantic_enrichment",
-                    "status": "ok",
-                    "runtime_status": "ready",
-                    "marker": "other",
-                },
+                ("run_target_ready", artifact_key): _ready_semantic_artifact(
+                    "fingerprint_target", marker="target"
+                ),
+                ("run_other_newer_ready", artifact_key): _ready_semantic_artifact(
+                    "fingerprint_other", marker="other"
+                ),
             },
             roots=[
                 _semantic_root("run_target_ready", "2026-08-14T03:00:00+00:00"),
                 _semantic_root("run_other_newer_ready", "2026-08-14T11:00:00+00:00"),
             ],
+            snapshot_fingerprints={
+                "snapshot_target": "fingerprint_target",
+                "snapshot_other": "fingerprint_other",
+            },
+            current_fingerprints={"event_target": "fingerprint_target"},
         )
         app = _deployed_v2_app(registry)
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
@@ -389,6 +420,7 @@ def test_semantic_event_projection_uses_registry_candidates_and_never_selects_ot
                 "technology": "semantic_enrichment",
                 "status": "ok",
                 "runtime_status": "ready",
+                "embedding_manifest": {"snapshot_fingerprint": "fingerprint_target"},
                 "marker": "target",
             },
         }
@@ -463,6 +495,88 @@ def test_semantic_event_projection_returns_not_found_without_a_ready_artifact():
             "snapshot_id": None,
             "status": "not_found",
             "blocking_reason": "semantic_artifact_not_found",
+            "artifact": None,
+        }
+
+    asyncio.run(scenario())
+
+
+def test_semantic_event_projection_rejects_stale_artifact_and_uses_fresh_candidate():
+    async def scenario():
+        artifact_key = "stage:semantic_enrichment:result"
+        registry = SemanticProjectionRegistry(
+            runs=[
+                {
+                    "run_id": "run_stale_newer",
+                    "event_id": "event_1",
+                    "snapshot_id": "snapshot_stale",
+                    "created_at": "2026-08-17T03:00:00+00:00",
+                    "artifact_manifest": {"data_fingerprint": "fingerprint_stale"},
+                },
+                {
+                    "run_id": "run_fresh_older",
+                    "event_id": "event_1",
+                    "snapshot_id": "snapshot_fresh",
+                    "created_at": "2026-08-17T02:00:00+00:00",
+                    "artifact_manifest": {"data_fingerprint": "fingerprint_fresh"},
+                },
+            ],
+            artifacts={
+                ("run_stale_newer", artifact_key): _ready_semantic_artifact("fingerprint_stale"),
+                ("run_fresh_older", artifact_key): _ready_semantic_artifact("fingerprint_fresh"),
+            },
+            roots=[
+                _semantic_root("run_stale_newer", "2026-08-17T03:00:00+00:00"),
+                _semantic_root("run_fresh_older", "2026-08-17T02:00:00+00:00"),
+            ],
+            snapshot_fingerprints={
+                "snapshot_stale": "fingerprint_stale",
+                "snapshot_fresh": "fingerprint_fresh",
+            },
+            current_fingerprints={"event_1": "fingerprint_fresh"},
+        )
+        app = _product_app(registry)
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            response = await client.get("/api/v2/analysis/events/event_1/semantic")
+
+        assert response.status_code == 200
+        assert response.json()["data"]["status"] == "ready"
+        assert response.json()["data"]["run_id"] == "run_fresh_older"
+
+    asyncio.run(scenario())
+
+
+def test_semantic_event_projection_blocks_when_current_source_or_manifest_differs():
+    async def scenario():
+        artifact_key = "stage:semantic_enrichment:result"
+        registry = SemanticProjectionRegistry(
+            runs=[
+                {
+                    "run_id": "run_stale",
+                    "event_id": "event_stale",
+                    "snapshot_id": "snapshot_stale",
+                    "created_at": "2026-08-17T03:00:00+00:00",
+                    "artifact_manifest": {"data_fingerprint": "fingerprint_snapshot"},
+                }
+            ],
+            artifacts={
+                ("run_stale", artifact_key): _ready_semantic_artifact("fingerprint_snapshot"),
+            },
+            roots=[_semantic_root("run_stale", "2026-08-17T03:00:00+00:00")],
+            snapshot_fingerprints={"snapshot_stale": "fingerprint_snapshot"},
+            current_fingerprints={"event_stale": "fingerprint_current"},
+        )
+        app = _product_app(registry)
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            response = await client.get("/api/v2/analysis/events/event_stale/semantic")
+
+        assert response.status_code == 200
+        assert response.json()["data"] == {
+            "event_id": "event_stale",
+            "run_id": "run_stale",
+            "snapshot_id": "snapshot_stale",
+            "status": "blocked",
+            "blocking_reason": "semantic_artifact_snapshot_mismatch",
             "artifact": None,
         }
 

@@ -77,7 +77,10 @@ class SemanticEnrichmentRuntime:
         be reported as a blocked semantic stage rather than an import crash.
         """
 
-        for module_name in ("jieba", "numpy", "sklearn", "transformers", "torch"):
+        # Transformers queries Torch metadata during its import. Verify that
+        # native dependency first so a broken Torch installation is reported
+        # truthfully instead of surfacing as an opaque Transformers error.
+        for module_name in ("jieba", "numpy", "sklearn", "torch", "transformers"):
             try:
                 importlib.import_module(module_name)
             except Exception as exc:

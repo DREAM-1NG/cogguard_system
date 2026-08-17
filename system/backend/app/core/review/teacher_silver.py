@@ -4,15 +4,17 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.core.review.trainable_post import (
+from app.core.review.review_task_schema import (
     ATTACK_AXIS,
     MISINFO_AXIS,
     TEACHER_SILVER_SCHEMA,
     claim_context_text,
 )
+from app.core.review.evidence_contracts import EvidenceBundle, PolicyBundle, RationaleCapsule, rationale_quality_gate
 
 __all__ = [
     "build_teacher_silver_record",
+    "build_teacher_silver_quality_gate",
     "load_teacher_silver_index",
 ]
 
@@ -129,11 +131,39 @@ def build_teacher_silver_record(
     )
     stance_prediction = teacher_prediction.get("stance") if isinstance(teacher_prediction, dict) else {}
     stance_prediction = stance_prediction if isinstance(stance_prediction, dict) else {}
-    distillation_eligible = bool(
+    legacy_distillation_eligible = bool(
         judge_report.get("status") == "completed"
         and judge_sidecar.get("teacher_prediction_valid") is True
         and any(axis.get("available") and axis.get("label") in {"harmful", "non_harmful"} for axis in main_axes.values())
     )
+    evidence_bundle = EvidenceBundle.from_mapping(
+        judge_sidecar.get("evidence_bundle")
+        or review_result.get("evidence_bundle")
+        or (context_bundle := (review_result.get("input_bundle") or {}).get("evidence_bundle"))
+    )
+    policy_bundles = [
+        PolicyBundle.from_mapping(item)
+        for item in _as_list(judge_sidecar.get("policy_bundles") or review_result.get("policy_bundles"))
+        if isinstance(item, dict)
+    ]
+    rationale_capsules = [
+        RationaleCapsule.from_mapping(item)
+        for item in _as_list(judge_sidecar.get("rationale_capsules") or review_result.get("rationale_capsules"))
+        if isinstance(item, dict)
+    ]
+    claim_supervision_requested = bool(main_axes.get(MISINFO_AXIS, {}).get("available"))
+    quality_gate = build_teacher_silver_quality_gate(
+        judge_report=judge_report,
+        judge_sidecar=judge_sidecar,
+        evidence_bundle=evidence_bundle,
+        policy_bundles=policy_bundles,
+        rationale_capsules=rationale_capsules,
+        requires_evidence=claim_supervision_requested,
+        requires_policy=bool(main_axes.get(ATTACK_AXIS, {}).get("available")),
+    )
+    claim_supervision_eligible = not claim_supervision_requested or evidence_bundle.relation_valid
+    distillation_eligible = bool(legacy_distillation_eligible and claim_supervision_eligible)
+    distillation_ready = bool(distillation_eligible and quality_gate["eligible"])
     return {
         "schema_version": TEACHER_SILVER_SCHEMA,
         "case_id": case.get("case_id"),
@@ -153,13 +183,81 @@ def build_teacher_silver_record(
         "sample_mode": sample_mode,
         "review_required": bool(teacher_prediction.get("review_required")) if isinstance(teacher_prediction, dict) else False,
         "distillation_eligible": distillation_eligible,
-        "distillation_blocker": None if distillation_eligible else (
-            judge_sidecar.get("teacher_prediction_error") or "missing_valid_judge_teacher_prediction"
+        "distillation_ready": distillation_ready,
+        "distillation_blocker": None if distillation_ready else (
+            ";".join(quality_gate["blockers"])
+            or judge_sidecar.get("teacher_prediction_error")
+            or "missing_valid_judge_teacher_prediction"
         ),
+        "quality_gate": quality_gate,
+        "evidence_bundle": evidence_bundle.to_dict(),
+        "policy_bundles": [item.to_dict() for item in policy_bundles],
+        "rationale_capsules": [item.to_dict() for item in rationale_capsules],
+        "audit": {
+            "teacher_confidence": confidence,
+            "teacher_confidence_is_training_target": False,
+            "source": "judge_footer_and_typed_evidence",
+        },
     }
 
 
-def load_teacher_silver_index(rows: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+def build_teacher_silver_quality_gate(
+    *,
+    judge_report: dict[str, Any],
+    judge_sidecar: dict[str, Any],
+    evidence_bundle: EvidenceBundle,
+    policy_bundles: list[PolicyBundle],
+    rationale_capsules: list[RationaleCapsule],
+    requires_evidence: bool,
+    requires_policy: bool,
+) -> dict[str, Any]:
+    """Gate new Student supervision without trusting Teacher confidence."""
+
+    blockers: list[str] = []
+    if judge_report.get("status") != "completed":
+        blockers.append("judge_not_completed")
+    if judge_sidecar.get("teacher_prediction_valid") is not True:
+        blockers.append("invalid_judge_prediction")
+    if judge_sidecar.get("provider_failure") is True or judge_sidecar.get("status") == "failed":
+        blockers.append("provider_failure")
+    if requires_evidence:
+        if evidence_bundle.claim_assessment != "checkable":
+            blockers.append("claim_not_checkable")
+        if evidence_bundle.retrieval_status != "completed":
+            blockers.append(f"retrieval_not_completed:{evidence_bundle.retrieval_status}")
+        if not evidence_bundle.has_traceable_evidence:
+            blockers.append("missing_traceable_evidence")
+        if not evidence_bundle.relation_valid:
+            blockers.append("invalid_claim_evidence_relation")
+    if requires_policy and not any(policy.usable for policy in policy_bundles):
+        blockers.append("missing_active_policy_clause")
+    if not rationale_capsules:
+        blockers.append("missing_rationale_capsule")
+    capsule_blockers: list[str] = []
+    for capsule in rationale_capsules:
+        eligible, reasons = rationale_quality_gate(
+            capsule,
+            requires_evidence=capsule.task == "claim_deception",
+            requires_policy=capsule.task == "interpersonal_harm",
+        )
+        if not eligible:
+            capsule_blockers.extend(reasons)
+    blockers.extend(sorted(set(capsule_blockers)))
+    return {
+        "schema_version": "review-teacher-silver-quality-gate-v1",
+        "eligible": not blockers,
+        "blockers": blockers,
+        "teacher_confidence_is_training_target": False,
+        "evidence_required": requires_evidence,
+        "policy_required": requires_policy,
+    }
+
+
+def load_teacher_silver_index(
+    rows: list[dict[str, Any]],
+    *,
+    require_quality_gate: bool = False,
+) -> dict[str, dict[str, Any]]:
     index: dict[str, dict[str, Any]] = {}
     duplicate_case_ids: set[str] = set()
     for row in rows:
@@ -168,6 +266,7 @@ def load_teacher_silver_index(rows: list[dict[str, Any]]) -> dict[str, dict[str,
             not case_id
             or row.get("schema_version") != TEACHER_SILVER_SCHEMA
             or row.get("distillation_eligible") is not True
+            or (require_quality_gate and row.get("distillation_ready") is not True)
             or not str(row.get("dataset") or "").strip()
             or not str(row.get("split") or "").strip()
         ):

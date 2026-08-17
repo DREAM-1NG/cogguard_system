@@ -11,6 +11,9 @@ export type CoordinationGraphNode = {
   profile_url?: string | null
   cluster_id?: string | number | null
   node_score?: number | null
+  score_role?: string | null
+  archive_detection_score?: number | null
+  archive_detection_label?: string | number | null
   community_score?: number | null
   community_size?: number | null
 }
@@ -52,7 +55,9 @@ export type CoordinationCommunityDetail = {
     platform?: string | null
     profile_url?: string | null
     node_score?: number | null
-    predicted_label?: string | number | null
+    score_role?: string | null
+    archive_detection_score?: number | null
+    archive_detection_label?: string | number | null
     directed_out_weight?: number | null
     directed_in_weight?: number | null
   }>
@@ -82,6 +87,26 @@ export type CoordinationCommunityDetail = {
     run_id?: number | null
     status?: string
   }
+}
+
+export type CoordinationDetectionVerdict = {
+  cluster_id: string | number
+  decision: 'harmful_coordination' | 'benign_coordination' | string
+  harmful_probability: number
+  model_version: string
+  model_role: 'primary_socgfm_cross_attention' | string
+  artifact_hash?: string | null
+  warning?: string | null
+  inference_mode: 'precomputed_member_probability_cluster_aggregation' | string
+  member_probability_coverage: number
+  online_neural_forward: false
+  claim_scope: 'account_level_io_membership_to_cluster_proxy' | string
+}
+
+export type CoordinationGroupLabelReviewPayload = {
+  case: Record<string, unknown>
+  cluster_harm_label: 'harmful_coordination' | 'benign_coordination'
+  reviewer_notes?: string
 }
 
 export function runCoordinationDetection(params: {
@@ -127,6 +152,10 @@ export function createCoordinationRun(datasetId: number) {
 
 export function getCoordinationRun(runId: number) {
   return request.get(`/coordination/runs/${runId}`)
+}
+
+export function submitCoordinationGroupLabelReview(payload: CoordinationGroupLabelReviewPayload) {
+  return request.post('/coordination/group-label-cases/reviews', payload)
 }
 
 export function uploadCoordinationDataset(file: File, displayName = '') {

@@ -12,6 +12,8 @@ from typing import Any, Protocol
 import asyncio
 import re
 
+from app.core.review.evidence_contracts import EvidenceBundle
+
 
 TOKEN_PATTERN = re.compile(r"[\u4e00-\u9fff]|[A-Za-z0-9_]+")
 DEFAULT_TOP_K = 3
@@ -41,7 +43,10 @@ async def retrieve_active_evidence(
 ) -> dict[str, Any]:
     """Retrieve local evidence and optionally enrich it with external sources."""
     top_k = max(1, min(int(top_k or DEFAULT_TOP_K), 10))
-    base_queries = _build_queries(context)
+    evidence_bundle = EvidenceBundle.from_mapping(context.get("evidence_bundle"))
+    if not evidence_bundle.claim_eligible:
+        return _skipped_claim_retrieval(evidence_bundle)
+    base_queries = _build_queries(context, claim=evidence_bundle.claim)
     query_plan = _refine_queries(base_queries, context)
     queries = query_plan["queries"]
     local_corpus = _build_local_corpus(context)
@@ -79,6 +84,13 @@ async def retrieve_active_evidence(
         for query in conflict_queries
     ]
     source_quality = _aggregate_source_quality(local_results, external_results, conflict_requery_results)
+    typed_evidence = _evidence_bundle_from_retrieval(
+        evidence_bundle=evidence_bundle,
+        local_results=local_results,
+        external_results=external_results,
+        conflict_requery_results=conflict_requery_results,
+        failures=failures,
+    )
     return {
         "schema_version": "review-active-evidence-v1",
         "created_at": _utc_now(),
@@ -89,6 +101,7 @@ async def retrieve_active_evidence(
         "local_results": local_results,
         "external_results": external_results,
         "source_quality": source_quality,
+        "evidence_bundle": typed_evidence.to_dict(),
         "conflict_requery_results": conflict_requery_results,
         "audit": {
             "external_enabled": bool(external_enabled),
@@ -341,104 +354,43 @@ async def build_full_debate_trace(
     }
 
 
-def _build_queries(context: dict[str, Any]) -> list[str]:
-    queries = []
-    for task in (context.get("review_queue") or {}).get("retrieval_tasks") or []:
-        query = _text(task.get("query"))
-        if query:
-            queries.append(query)
-    for post in context.get("selected_posts") or []:
-        parts = [
-            post.get("excerpt"),
-            _get(post, "primary_claim", "claim_text"),
-            _get(post, "evidence", "text"),
-            _get(post, "evidence", "ocr_text"),
-            _get(post, "evidence", "asr_text"),
-        ]
-        query = " ".join(_text(part) for part in parts if _text(part))[:220]
-        if query:
-            queries.append(query)
-    if not queries:
-        refs = context.get("input_refs") or {}
-        queries.append(" ".join(_text(value) for value in refs.values() if _text(value)) or "review harmfulness review")
-    return _dedupe(queries)[:8]
+def _build_queries(context: dict[str, Any], *, claim: str) -> list[str]:
+    """Build factual queries from an already assessed claim, never from raw posts."""
+
+    del context
+    normalized_claim = _text(claim)
+    return [normalized_claim] if normalized_claim else []
 
 
 def _refine_queries(base_queries: list[str], context: dict[str, Any]) -> dict[str, Any]:
-    """Build RAMA-style claim-to-query refinements from local context."""
-    refined = list(base_queries)
-    trace = []
-    for post in context.get("selected_posts") or []:
-        claim_text = _text(_get(post, "primary_claim", "claim_text"))
-        stance_label = _text(_get(post, "stance", "label"))
-        uncertainty = bool(_get(post, "stance", "abstain")) or stance_label in {"uncertain", "query"}
-        entity_clues = _entity_time_event_clues(post)
-        if claim_text:
-            query = " ".join(
-                part
-                for part in [
-                    claim_text,
-                    stance_label,
-                    "uncertain stance" if uncertainty else "",
-                    entity_clues,
-                    "evidence verification",
-                ]
-                if part
-            )[:240]
-            refined.append(query)
-            trace.append(
-                {
-                    "source": "claim_to_query",
-                    "post_id": _text(post.get("post_id")),
-                    "base_claim": claim_text[:160],
-                    "stance": stance_label,
-                    "uncertain": uncertainty,
-                    "entity_event_time_clues": entity_clues,
-                    "query": query,
-                }
-            )
-        media_text = " ".join(
-            _text(value)
-            for value in [
-                _get(post, "evidence", "ocr_text"),
-                _get(post, "evidence", "asr_text"),
-                _get(post, "evidence", "caption"),
-            ]
-            if _text(value)
-        )
-        if media_text:
-            conflict_note = ""
-            if _get(post, "post_view_detection", "conflict") or _as_float(_get(post, "post_view_detection", "conflict", "score")) >= 0.35:
-                conflict_note = "multimodal conflict check"
-            query = " ".join(part for part in [media_text[:180], conflict_note, "multimodal context consistency"] if part)
-            refined.append(query)
-            trace.append(
-                {
-                    "source": "multimodal_to_query",
-                    "post_id": _text(post.get("post_id")),
-                    "entity_event_time_clues": entity_clues,
-                    "query": query,
-                }
-            )
-    for claim in _get(context, "propagation_context", "claim_rank") or []:
-        claim_text = _text(claim.get("claim_text"))
-        if claim_text:
-            query = f"{claim_text[:200]} propagation stance evidence event verification"
-            refined.append(query)
-            trace.append(
-                {
-                    "source": "propagation_claim_to_query",
-                    "claim_id": _text(claim.get("claim_id")),
-                    "query": query,
-                }
-            )
-    queries = _dedupe(refined)[:10]
+    """Create bounded reformulations of the same already assessed claim."""
+
+    del context
+    claim = _text(base_queries[0]) if base_queries else ""
+    if not claim:
+        return {
+            "queries": [],
+            "trace": [],
+            "capability_boundary": {
+                "claim_to_query": True,
+                "multimodal_context_to_query": False,
+                "local_first": True,
+            },
+        }
+    verification_query = f"{claim} evidence verification"[:240]
+    queries = _dedupe([claim, verification_query])[:2]
     return {
         "queries": queries,
-        "trace": trace,
+        "trace": [
+            {
+                "source": "claim_to_query",
+                "base_claim": claim[:160],
+                "query": verification_query,
+            }
+        ],
         "capability_boundary": {
             "claim_to_query": True,
-            "multimodal_context_to_query": True,
+            "multimodal_context_to_query": False,
             "local_first": True,
         },
     }
@@ -453,32 +405,98 @@ def _build_conflict_requeries(
     missing_queries = [result.get("query") for result in local_results if not result.get("top_evidence")]
     if missing_queries:
         queries.extend(f"{_text(query)} corroborating source" for query in missing_queries[:3] if _text(query))
-    for post in context.get("selected_posts") or []:
-        view = post.get("post_view_detection") or {}
-        conflict = view.get("conflict")
-        confirmed_conflict = (
-            conflict is True
-            or (isinstance(conflict, dict) and (
-                conflict.get("has_conflict") is True
-                or conflict.get("label_conflict") is True
-            ))
-            or _as_float(_get(view, "conflict", "score")) >= 0.35
-        )
-        if confirmed_conflict:
-            query = " ".join(
-                _text(value)
-                for value in [
-                    post.get("excerpt"),
-                    _get(post, "primary_claim", "claim_text"),
-                    "cross modal conflict evidence",
-                ]
-                if _text(value)
-            )
-            if query:
-                queries.append(query[:240])
+    del context
     if external_results and any(not result.get("top_evidence") for result in external_results):
         queries.append("external evidence conflict fallback local report evidence")
     return _dedupe(queries)[:5]
+
+
+def _skipped_claim_retrieval(evidence_bundle: EvidenceBundle) -> dict[str, Any]:
+    skipped = EvidenceBundle(
+        claim=evidence_bundle.claim if evidence_bundle.claim_eligible else "",
+        claim_assessment=evidence_bundle.claim_assessment,
+        assessment_provenance=evidence_bundle.assessment_provenance,
+        assessment_reason=evidence_bundle.assessment_reason,
+        relation="not_applicable",
+        retrieval_status="skipped_non_eligible_claim",
+        missing_fields=("claim",) if not evidence_bundle.claim else (),
+    )
+    return {
+        "schema_version": "review-active-evidence-v2",
+        "created_at": _utc_now(),
+        "queries": [],
+        "base_queries": [],
+        "query_refinement_trace": [],
+        "local_corpus_size": 0,
+        "local_results": [],
+        "external_results": [],
+        "source_quality": {"quality_note": "retrieval_not_applicable_without_checkable_claim"},
+        "conflict_requery_results": [],
+        "evidence_bundle": skipped.to_dict(),
+        "audit": {
+            "external_enabled": False,
+            "external_provider_configured": False,
+            "external_calls": 0,
+            "failures": [],
+            "claim_gated": True,
+            "skip_reason": "claim_not_checkable",
+        },
+        "capability_boundary": {
+            "runs_only_in_manual_agent_review": True,
+            "claim_to_query_requires_checkable_claim": True,
+        },
+    }
+
+
+def _evidence_bundle_from_retrieval(
+    *,
+    evidence_bundle: EvidenceBundle,
+    local_results: list[dict[str, Any]],
+    external_results: list[dict[str, Any]],
+    conflict_requery_results: list[dict[str, Any]],
+    failures: list[dict[str, Any]],
+) -> EvidenceBundle:
+    source_refs: list[dict[str, Any]] = []
+    quoted_spans: list[str] = []
+    seen_source_refs: set[tuple[str, str]] = set()
+    for result in [*local_results, *external_results, *conflict_requery_results]:
+        origin = "external_provider" if result.get("mode") == "external_provider" else "review_input"
+        for evidence in result.get("top_evidence") or []:
+            source_key = (origin, _text(evidence.get("doc_id")))
+            if not source_key[1] or source_key in seen_source_refs:
+                continue
+            seen_source_refs.add(source_key)
+            source_refs.append(
+                {
+                    "doc_id": _text(evidence.get("doc_id")),
+                    "source": _text(evidence.get("source")),
+                    "source_uri": _text(evidence.get("url") or evidence.get("source_uri")),
+                    "source_snapshot_hash": _text(evidence.get("source_snapshot_hash")),
+                    "source_origin": origin,
+                }
+            )
+            text = _text(evidence.get("text"))
+            if text and text not in quoted_spans:
+                quoted_spans.append(text)
+    if source_refs:
+        status = "completed"
+    elif failures:
+        status = "provider_failed"
+    else:
+        status = "completed_no_relevant_evidence"
+    return EvidenceBundle(
+        claim=evidence_bundle.claim,
+        claim_assessment=evidence_bundle.claim_assessment,
+        assessment_provenance=evidence_bundle.assessment_provenance,
+        assessment_reason=evidence_bundle.assessment_reason,
+        query=evidence_bundle.claim,
+        source_refs=tuple(source_refs),
+        quoted_spans=tuple(quoted_spans),
+        relation="not_applicable",
+        source_quality="retrieval_candidates_not_yet_entailment_checked" if source_refs else "unknown",
+        retrieval_status=status,  # type: ignore[arg-type]
+        retrieved_at=_utc_now(),
+    )
 
 
 def _aggregate_source_quality(

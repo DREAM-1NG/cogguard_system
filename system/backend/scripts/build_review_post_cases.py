@@ -9,7 +9,9 @@ full validation; it is not a trained-model result.
 from __future__ import annotations
 
 import argparse
+import ast
 import csv
+import hashlib
 import json
 import sys
 from collections import Counter, defaultdict
@@ -24,6 +26,8 @@ from app.core.review.propagation_context import build_thread_context_from_pheme
 
 
 SCHEMA = "review-post-case-v1"
+WEIBO21_INPUT_PROFILES = {"post_only", "post_and_comments"}
+DEFAULT_WEIBO21_INPUT_PROFILE = "post_and_comments"
 
 DEFAULT_DATASETS = [
     "MultiOFF",
@@ -38,6 +42,7 @@ DEFAULT_DATASETS = [
     "FACTIFY3M",
     "FakeSV",
     "mcfend",
+    "Weibo21",
     "Twitter15_16_dataset",
     "Fakeddit",
     "MuMiN",
@@ -63,6 +68,16 @@ def main() -> int:
         default=0,
         help="Optional cap for quick smoke conversion. 0 means no cap.",
     )
+    parser.add_argument(
+        "--weibo21-input-profile",
+        choices=sorted(WEIBO21_INPUT_PROFILES),
+        default=DEFAULT_WEIBO21_INPUT_PROFILE,
+        help=(
+            "MARO input protocol for Weibo21. post_only is a strict post-time "
+            "text protocol; post_and_comments mirrors MARO's dual-input analysis "
+            "and records the unknown comment time scope."
+        ),
+    )
     args = parser.parse_args()
 
     dataset_root = Path(args.dataset_root)
@@ -85,6 +100,7 @@ def main() -> int:
         "Twitter15_16_dataset": convert_twitter1516,
         "HateXplain": convert_hatexplain,
         "FakeSV": convert_fakesv,
+        "Weibo21": convert_weibo21,
         "Jigsaw Toxicity": convert_jigsaw_toxicity,
         "Hateful Memes": convert_hateful_memes,
         "MAMI": convert_mami,
@@ -104,7 +120,15 @@ def main() -> int:
             }
             continue
         output_path = output_dir / f"{safe_name(dataset)}.jsonl"
-        dataset_manifest = converter(dataset_root, output_path, args.max_per_dataset)
+        if dataset == "Weibo21":
+            dataset_manifest = convert_weibo21(
+                dataset_root,
+                output_path,
+                args.max_per_dataset,
+                input_profile=args.weibo21_input_profile,
+            )
+        else:
+            dataset_manifest = converter(dataset_root, output_path, args.max_per_dataset)
         manifest["datasets"][dataset] = dataset_manifest
 
     manifest["summary"] = summarize_manifest(manifest["datasets"])
@@ -306,6 +330,197 @@ def convert_pheme(dataset_root: Path, output_path: Path, max_cases: int) -> dict
                         return manifest
     finalize_manifest(manifest)
     return manifest
+
+
+WEIBO21_SPLIT_VERSION = "weibo21-source-label-category-hash-v1"
+
+
+def convert_weibo21(
+    dataset_root: Path,
+    output_path: Path,
+    max_cases: int,
+    *,
+    input_profile: str = DEFAULT_WEIBO21_INPUT_PROFILE,
+) -> dict[str, Any]:
+    """Convert Weibo21 into reproducible MARO-style claim-review cases.
+
+    MARO separates ``Original_news`` from ``Original_news_and_comment``. The
+    normalized case preserves post content and comments as distinct typed
+    fields. The comment-enabled profile is not a post-time detection protocol:
+    Weibo21 does not provide a verifiable comment timestamp window.
+    """
+
+    if input_profile not in WEIBO21_INPUT_PROFILES:
+        raise ValueError(f"Unsupported Weibo21 input profile: {input_profile}")
+
+    root = dataset_root / "weibo21"
+    source_files = {
+        "fake": root / "fake_release_all.json",
+        "real": root / "real_release_all.json",
+    }
+    manifest = dataset_manifest("Weibo21", root, output_path, ["tweet"])
+    missing = [path for path in source_files.values() if not path.is_file()]
+    if missing:
+        return missing_manifest(manifest, missing)
+
+    records: list[dict[str, Any]] = []
+    for source_label, source_path in source_files.items():
+        for index, row in enumerate(iter_jsonl(source_path)):
+            source_id = str(row.get("id") or f"{source_label}-{index}").strip()
+            if not source_id:
+                continue
+            records.append(
+                {
+                    "case_id": f"weibo21::{source_label}::{source_id}",
+                    "source_id": source_id,
+                    "source_label": source_label,
+                    "category": str(row.get("category") or "unknown").strip() or "unknown",
+                    "content": str(row.get("content") or "").strip(),
+                    "comments": normalize_weibo21_comments(row.get("comments")),
+                    "timestamp": str(row.get("timestamp") or "").strip(),
+                    "source_file": source_path.name,
+                }
+            )
+
+    split_by_case_id = assign_weibo21_splits(records)
+    records.sort(key=lambda record: str(record["case_id"]))
+    if max_cases > 0:
+        records = records[:max_cases]
+
+    include_comments = input_profile == "post_and_comments"
+    manifest["split_policy"] = WEIBO21_SPLIT_VERSION
+    manifest["input_protocol"] = f"weibo21_maro_{input_profile}_v1"
+    manifest["notes"].extend(
+        [
+            "The source fake/real file defines the gold label; original row label is retained only as source provenance.",
+            "Original post and comments are preserved as separate typed MARO input views; neither contains a gold label.",
+            (
+                "Comments are excluded from the active input profile, so this is a post-only text protocol."
+                if not include_comments
+                else "Comments are enabled for the MARO Comment Analysis Agent only; comment temporal scope is unknown and post-time leakage risk is recorded."
+            ),
+            "Image references are not emitted because this is a text-only MARO-compatible claim-review protocol.",
+        ]
+    )
+    with output_path.open("w", encoding="utf-8", newline="\n") as out:
+        for record in records:
+            source_label = str(record["source_label"])
+            harmful = source_label == "fake"
+            text = str(record["content"])
+            comments = list(record["comments"])
+            original_news_and_comment = build_weibo21_original_news_and_comment(
+                text,
+                comments if include_comments else [],
+            )
+            case = {
+                **base_case("Weibo21", split_by_case_id[record["case_id"]], record["case_id"]),
+                "source_id": record["source_id"],
+                "language": "zh",
+                "text": text,
+                "labels": {
+                    "harmfulness": "harmful" if harmful else "non_harmful",
+                    "harm_type": ["misinformation"] if harmful else [],
+                    "raw_label": source_label,
+                    "veracity": "false" if harmful else "true",
+                },
+                "views": {
+                    "tweet": {"available": bool(text)},
+                    "meme": {"available": False},
+                    "img": {"available": False, "excluded_by_protocol": True},
+                    "video": {"available": False},
+                },
+                "claim_context": {
+                    "available": bool(text),
+                    "claim_text": text,
+                    "source_scope": "post_text_only" if not include_comments else "post_text_with_separate_comment_view",
+                },
+                "maro_inputs": {
+                    "schema_version": "maro-input-views-v1",
+                    "input_profile": input_profile,
+                    "original_news": text,
+                    "comments": comments if include_comments else [],
+                    "original_news_and_comment": original_news_and_comment,
+                    "comment_count": len(comments) if include_comments else 0,
+                    "comment_temporal_scope": "unknown" if include_comments else "not_used",
+                    "post_time_leakage_risk": bool(include_comments and comments),
+                },
+                "metadata": {
+                    "task": "chinese_fake_news_detection",
+                    "platform": "weibo",
+                    "category": record["category"],
+                    "timestamp": record["timestamp"],
+                    "source_file": record["source_file"],
+                    "comments_included_by_protocol": include_comments,
+                    "comments_excluded_by_protocol": not include_comments,
+                    "comment_temporal_scope": "unknown" if include_comments else "not_used",
+                    "post_time_leakage_risk": bool(include_comments and comments),
+                    "media_excluded_by_protocol": True,
+                    "split_policy": WEIBO21_SPLIT_VERSION,
+                },
+            }
+            write_case(out, case)
+            update_manifest(manifest, case)
+            if not text:
+                manifest["text_missing"] += 1
+    finalize_manifest(manifest)
+    return manifest
+
+
+def normalize_weibo21_comments(value: Any) -> list[str]:
+    """Return source comments without treating them as fact evidence or labels."""
+
+    if isinstance(value, list):
+        values = value
+    elif isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return []
+        try:
+            parsed = ast.literal_eval(text)
+        except (SyntaxError, ValueError):
+            parsed = text
+        values = parsed if isinstance(parsed, (list, tuple)) else [parsed]
+    else:
+        return []
+    return [str(item).strip() for item in values if str(item).strip()]
+
+
+def build_weibo21_original_news_and_comment(post_text: str, comments: list[str]) -> str:
+    """Preserve MARO's second input without flattening comments into post text."""
+
+    if not comments:
+        return post_text
+    joined_comments = "\n".join(f"[COMMENT {index}] {comment}" for index, comment in enumerate(comments, start=1))
+    return f"[POST]\n{post_text}\n[COMMENTS]\n{joined_comments}"
+
+
+def assign_weibo21_splits(records: list[dict[str, Any]]) -> dict[str, str]:
+    """Return deterministic 70/15/15 splits stratified by label and category."""
+
+    grouped: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
+    for record in records:
+        grouped[(str(record["source_label"]), str(record["category"]))].append(record)
+
+    split_by_case_id: dict[str, str] = {}
+    for group_key, rows in grouped.items():
+        ordered = sorted(
+            rows,
+            key=lambda row: hashlib.sha256(
+                f"{WEIBO21_SPLIT_VERSION}:{group_key[0]}:{group_key[1]}:{row['case_id']}".encode("utf-8")
+            ).hexdigest(),
+        )
+        count = len(ordered)
+        train_count = round(count * 0.70)
+        validation_count = round(count * 0.15)
+        for index, row in enumerate(ordered):
+            if index < train_count:
+                split = "train"
+            elif index < train_count + validation_count:
+                split = "validation"
+            else:
+                split = "test"
+            split_by_case_id[str(row["case_id"])] = split
+    return split_by_case_id
 
 
 def convert_twitter1516(dataset_root: Path, output_path: Path, max_cases: int) -> dict[str, Any]:

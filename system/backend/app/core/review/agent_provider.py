@@ -10,6 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 import asyncio
+from contextvars import ContextVar
 import random
 import re
 
@@ -36,6 +37,7 @@ class OpenAICompatibleConfig:
     require_vision: bool = False
     max_retries: int = 2
     retry_backoff_seconds: float = 2.0
+    temperature: float = 0.2
     # ``None`` preserves the application-level LLM_CACHE_MODE. Performance
     # experiments pass ``False`` so a replayed response cannot hide latency.
     cache_enabled: bool | None = None
@@ -53,7 +55,18 @@ class OpenAICompatibleAgentProvider:
         self.config = config
         self._client = client
         self._owns_client = client is None
-        self.last_call_telemetry: dict[str, Any] = {}
+        self._last_call_telemetry: ContextVar[dict[str, Any] | None] = ContextVar(
+            "openai_compatible_agent_provider_telemetry",
+            default=None,
+        )
+
+    @property
+    def last_call_telemetry(self) -> dict[str, Any]:
+        return dict(self._last_call_telemetry.get() or {})
+
+    @last_call_telemetry.setter
+    def last_call_telemetry(self, value: dict[str, Any]) -> None:
+        self._last_call_telemetry.set(dict(value))
 
     async def aclose(self) -> None:
         """Close the client only when this provider created it."""
@@ -80,13 +93,14 @@ class OpenAICompatibleAgentProvider:
                 user_prompt,
                 input_bundle,
                 model=payload_model,
+                temperature=self.config.temperature,
             )
         else:
             url = self.config.base_url.rstrip("/") + "/chat/completions"
             payload = {
                 "model": payload_model,
                 "messages": _openai_messages(system_prompt, user_prompt, input_bundle),
-                "temperature": 0.2,
+                "temperature": self.config.temperature,
             }
         use_cache = self.config.cache_enabled
         if use_cache is None:
@@ -121,6 +135,7 @@ class OpenAICompatibleAgentProvider:
         last_error: Exception | None = None
         http_status: int | None = None
         error_class: str | None = None
+        retry_statuses: list[int] = []
         max_attempts = max(1, int(self.config.max_retries or 0) + 1)
         for attempt in range(1, max_attempts + 1):
             try:
@@ -136,6 +151,8 @@ class OpenAICompatibleAgentProvider:
                 status_code = exc.response.status_code if exc.response is not None else None
                 http_status = status_code
                 error_class = type(exc).__name__
+                if status_code is not None:
+                    retry_statuses.append(int(status_code))
                 if attempt >= max_attempts or not _should_retry_status(status_code):
                     body = _redact_provider_detail(
                         exc.response.text[:1000] if exc.response is not None else "",
@@ -147,6 +164,7 @@ class OpenAICompatibleAgentProvider:
                         error_class=error_class,
                         cache_hit=False,
                         cache_status=cache_status,
+                        retry_statuses=retry_statuses,
                     )
                     raise RuntimeError(f"{agent_name} provider HTTP {status_code if status_code else 'error'}: {body}") from exc
             except Exception as exc:
@@ -160,6 +178,7 @@ class OpenAICompatibleAgentProvider:
                         error_class=error_class,
                         cache_hit=False,
                         cache_status=cache_status,
+                        retry_statuses=retry_statuses,
                     )
                     raise RuntimeError(f"{agent_name} provider request failed: {detail}") from exc
             await asyncio.sleep(_retry_delay_seconds(self.config.retry_backoff_seconds, attempt))
@@ -171,6 +190,7 @@ class OpenAICompatibleAgentProvider:
                 error_class=error_class or "UnknownProviderError",
                 cache_hit=False,
                 cache_status=cache_status,
+                retry_statuses=retry_statuses,
             )
             raise RuntimeError(f"{agent_name} provider request failed: {detail}")
         if wire_api == "responses":
@@ -196,6 +216,8 @@ class OpenAICompatibleAgentProvider:
             "retry_count": max(0, attempt - 1),
             "http_status": http_status,
             "error_class": None,
+            "retry_statuses": retry_statuses,
+            "rate_limit_retry_count": retry_statuses.count(429),
             **usage,
         }
         if use_cache and cache_key is not None:
@@ -252,6 +274,7 @@ def _openai_responses_payload(
     input_bundle: dict[str, Any],
     *,
     model: str,
+    temperature: float,
 ) -> dict[str, Any]:
     content: list[dict[str, Any]] = [{"type": "input_text", "text": user_prompt}]
     for item in _as_list(input_bundle.get("media_inputs")):
@@ -262,7 +285,7 @@ def _openai_responses_payload(
         "model": model,
         "instructions": system_prompt,
         "input": [{"role": "user", "content": content}],
-        "temperature": 0.2,
+        "temperature": temperature,
     }
 
 
@@ -348,6 +371,7 @@ def _provider_error_telemetry(
     error_class: str | None,
     cache_hit: bool,
     cache_status: str,
+    retry_statuses: list[int],
 ) -> dict[str, Any]:
     return {
         "cache_hit": cache_hit,
@@ -356,6 +380,8 @@ def _provider_error_telemetry(
         "retry_count": max(0, attempt - 1),
         "http_status": http_status,
         "error_class": error_class,
+        "retry_statuses": list(retry_statuses),
+        "rate_limit_retry_count": retry_statuses.count(429),
         "usage_available": False,
         "input_tokens": None,
         "output_tokens": None,

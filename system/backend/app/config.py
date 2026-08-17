@@ -153,6 +153,16 @@ class Settings(BaseSettings):
     LLM_INCLUDE_MEDIA_BASE64: bool = False
     LLM_REQUIRE_VISION: bool = False
 
+    # Isolated MARO experiments use DeepSeek directly. Keep this separate from
+    # the product LLM provider so experiment credentials cannot alter runtime
+    # provider selection.
+    DEEPSEEK_API_KEY: str = ""
+    DEEPSEEK_BASE_URL: str = "https://api.deepseek.com/v1"
+    DEEPSEEK_MODEL: str = "deepseek-chat"
+    DEEPSEEK_TIMEOUT_SECONDS: float = 180.0
+    DEEPSEEK_MAX_RETRIES: int = 2
+    DEEPSEEK_RETRY_BACKOFF_SECONDS: float = 2.0
+
     # ----- LLM response cache (demo stability) -----
     # Recorded successful LLM responses can be replayed so a walkthrough does
     # not depend on live network access. Only genuine responses are ever

@@ -109,6 +109,36 @@ def test_missing_structured_judge_prediction_is_not_distillable():
     assert load_teacher_silver_index([silver]) == {}
 
 
+def test_teacher_silver_requires_quality_gate_for_new_student_supervision():
+    silver = build_teacher_silver_record(_case("harmful"), _review_with_prediction())
+
+    assert silver["distillation_eligible"] is True
+    assert silver["distillation_ready"] is False
+    assert "missing_rationale_capsule" in silver["quality_gate"]["blockers"]
+    assert silver["audit"]["teacher_confidence_is_training_target"] is False
+    assert load_teacher_silver_index([silver], require_quality_gate=True) == {}
+
+
+def test_claim_deception_silver_requires_a_valid_claim_evidence_relation():
+    review = _review_with_prediction()
+    prediction = review["agent_reports"][0]["structured_sidecar"]["teacher_prediction"]
+    prediction["main_axes"]["attack_hate_offense"] = {"available": False, "label": "unavailable", "confidence": 0.0}
+    prediction["main_axes"]["misinfo_claim_risk"] = {"available": True, "label": "harmful", "confidence": 0.91}
+    review["agent_reports"][0]["structured_sidecar"]["evidence_bundle"] = {
+        "claim": "A factual claim.",
+        "claim_assessment": "checkable",
+        "retrieval_status": "not_attempted",
+        "relation": "not_applicable",
+    }
+
+    silver = build_teacher_silver_record(_case("harmful"), review)
+
+    assert silver["distillation_eligible"] is False
+    assert silver["distillation_ready"] is False
+    assert "retrieval_not_completed:not_attempted" in silver["quality_gate"]["blockers"]
+    assert "invalid_claim_evidence_relation" in silver["quality_gate"]["blockers"]
+
+
 def test_teacher_silver_index_rejects_wrong_schema_and_duplicate_case_ids():
     valid = build_teacher_silver_record(_case("harmful"), _review_with_prediction())
     wrong_schema = copy.deepcopy(valid)
