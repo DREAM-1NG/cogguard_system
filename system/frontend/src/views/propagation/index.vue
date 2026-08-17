@@ -2862,7 +2862,7 @@ function buildConcentricEvidencePositions(
       if (angleOrder) return angleOrder
       return String(left.id).localeCompare(String(right.id))
     })
-    const radius = 70 + (depth - 1) * 60
+    const radius = 70 + (depth - 1) * 40
     const ringAngles = ordered.map((node) => (
       angleByNode.get(String(node.id))
       ?? ((stableLayoutFraction(`node:${node.id}`) * Math.PI * 2) - (Math.PI / 2))
@@ -2914,7 +2914,7 @@ function buildPathGraphOption(summary?: DiffusionSummary | null): EChartsOption 
       y: position.y,
       value,
       category: isRoot ? 0 : isKey ? 1 : 2,
-      symbolSize: isRoot ? 26 : isKey ? 20 : 15,
+      symbolSize: isRoot ? 36 : isKey ? 20 : 15,
       label: {
         show: true,
         color: isRoot ? '#f8fafc' : '#dbeafe',
