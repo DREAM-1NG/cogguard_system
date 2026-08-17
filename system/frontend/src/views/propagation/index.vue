@@ -2803,13 +2803,14 @@ function blendRadialAngle(uniformAngle: number, parentAngle: number, parentWeigh
 function resolveRadialPositionCollisions(
   angle: number,
   radius: number,
+  maxRadius: number,
   layer: number,
   positions: Map<string, { x: number; y: number; layer: number }>,
 ) {
   const angleOffsets = [0, 0.05, -0.05, 0.1, -0.1, 0.16, -0.16, 0.22, -0.22]
 
   for (let radialStep = 0; radialStep <= 12; radialStep += 1) {
-    const resolvedRadius = radius + (radialStep * 10)
+    const resolvedRadius = Math.min(maxRadius, radius + (radialStep * 10))
     for (const angleOffset of angleOffsets) {
       const resolvedAngle = angle + angleOffset
       const x = Math.cos(resolvedAngle) * resolvedRadius
@@ -2825,8 +2826,8 @@ function resolveRadialPositionCollisions(
   }
 
   return {
-    x: Math.cos(angle) * (radius + 130),
-    y: Math.sin(angle) * (radius + 130),
+    x: Math.cos(angle) * maxRadius,
+    y: Math.sin(angle) * maxRadius,
     layer,
   }
 }
@@ -2867,7 +2868,10 @@ function buildCompactRadialEvidencePositions(
       const rightOrder = stableLayoutFraction(`radial:${depth}:${right.id}`)
       return leftOrder - rightOrder || String(left.id).localeCompare(String(right.id))
     })
-    const baseRadius = 50 + (depth - 1) * 36
+    const baseRadius = 64 + (depth - 1) * 72
+    const radialBand = 24
+    const maxRadius = baseRadius + radialBand
+    const minRadius = Math.max(32, baseRadius - radialBand)
     const minimumNodeSpacing = 14
     const circumference = Math.PI * 2 * baseRadius
     const laneCount = Math.max(1, Math.ceil((ordered.length * minimumNodeSpacing) / circumference))
@@ -2879,11 +2883,14 @@ function buildCompactRadialEvidencePositions(
         ? uniformAngle
         : blendRadialAngle(uniformAngle, parentAngle, 0.35)
       const laneOffset = ((index % laneCount) - ((laneCount - 1) / 2)) * minimumNodeSpacing
-      const radius = Math.max(
-        32,
-        baseRadius + laneOffset + ((stableLayoutFraction(`radial-radius:${depth}:${id}`) - 0.5) * 4),
+      const radius = Math.min(
+        maxRadius,
+        Math.max(
+          minRadius,
+          baseRadius + laneOffset + ((stableLayoutFraction(`radial-radius:${depth}:${id}`) - 0.5) * 4),
+        ),
       )
-      positions.set(id, resolveRadialPositionCollisions(radialAngle, radius, depth, positions))
+      positions.set(id, resolveRadialPositionCollisions(radialAngle, radius, maxRadius, depth, positions))
       angleByNode.set(id, radialAngle)
     })
   }

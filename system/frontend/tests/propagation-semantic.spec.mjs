@@ -393,14 +393,16 @@ test('renders deterministic compact radial propagation nodes without visual conn
   assert.doesNotMatch(graphOption, /focus:\s*'adjacency'/)
 })
 
-test('keeps radial propagation compact with parent-guided local collision resolution', () => {
+test('keeps propagation hops in distinct radial bands with parent-guided local collision resolution', () => {
   const positions = bodyOf(propagationView, 'buildCompactRadialEvidencePositions')
   const fitted = bodyOf(propagationView, 'fitGraphPositions')
 
   assert.match(positions, /const parentByChild = new Map/)
-  assert.match(positions, /const baseRadius = 50 \+ \(depth - 1\) \* 36/)
+  assert.match(positions, /const baseRadius = 64 \+ \(depth - 1\) \* 72/)
+  assert.match(positions, /const radialBand = 24/)
+  assert.match(positions, /const maxRadius = baseRadius \+ radialBand/)
   assert.match(positions, /blendRadialAngle\(uniformAngle, parentAngle, 0\.35\)/)
-  assert.match(positions, /resolveRadialPositionCollisions/)
+  assert.match(positions, /resolveRadialPositionCollisions\(radialAngle, radius, maxRadius, depth, positions\)/)
   assert.doesNotMatch(positions, /branchContextByChild/)
   assert.doesNotMatch(positions, /sectorsByNode/)
   assert.match(fitted, /rootId: string/)
