@@ -374,6 +374,7 @@ test('renders all required semantic overlay fields without replacing observed pa
 
 test('renders deterministic concentric propagation nodes without visual connection lines', () => {
   const graphOption = bodyOf(propagationView, 'buildPathGraphOption')
+  const labelUpdater = bodyOf(propagationView, 'updatePathGraphLabelsByZoom')
 
   assert.match(graphOption, /const treeEdges = summary\?\.tree_edges \?\? \[\]/)
   assert.match(graphOption, /buildConcentricEvidencePositions/)
@@ -383,6 +384,8 @@ test('renders deterministic concentric propagation nodes without visual connecti
   assert.match(graphOption, /buildPrimaryEvidenceBackbone\(nodes, treeEdges, rootId\)/)
   assert.match(graphOption, /links:\s*\[\]/)
   assert.doesNotMatch(graphOption, /const graphEdges = \[\.\.\.backbone\.primaryEdges, \.\.\.backbone\.independentEdges\]/)
+  assert.match(graphOption, /zoom:\s*0\.58/)
+  assert.match(labelUpdater, /zoom < 0\.48/)
   assert.match(graphOption, /draggable:\s*false/)
   assert.doesNotMatch(graphOption, /edgeSymbol:/)
   assert.doesNotMatch(graphOption, /focus:\s*'adjacency'/)

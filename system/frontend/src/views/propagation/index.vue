@@ -2677,7 +2677,7 @@ function updatePathGraphLabelsByZoom(event?: unknown) {
     : undefined
   const zoom = Number(eventZoom ?? optionZoom ?? 1)
   const rootId = String(diffusionSummary.value?.root_node?.id || diffusionSummary.value?.visible_nodes?.find((node) => node.is_root)?.id || '')
-  const compact = Number.isFinite(zoom) && zoom < 0.65
+  const compact = Number.isFinite(zoom) && zoom < 0.48
   const data = (series?.data ?? []).map((node: any) => ({
     ...node,
     label: {
@@ -2955,7 +2955,7 @@ function buildPathGraphOption(summary?: DiffusionSummary | null): EChartsOption 
         type: 'graph',
         layout: 'none',
         roam: 'scale',
-        zoom: 0.94,
+        zoom: 0.58,
         center: ['50%', '50%'],
         draggable: false,
         top: 54,
