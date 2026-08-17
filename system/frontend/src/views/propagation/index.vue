@@ -32,9 +32,19 @@
         </a-space>
       </section>
       <section v-if="activeTab === 'path'" class="toolbar-section density-group" aria-label="显示密度">
-        <span class="toolbar-group-label">关键脉络</span>
-        <span class="path-node-control-count">{{ keyPathAccountCount }} 个关键账号</span>
-        <span class="sync-hint">点击关键账号展开可观察后续分支</span>
+        <span class="toolbar-group-label">显示密度</span>
+        <a-slider
+          v-model:value="diffusionPendingNodeLimit"
+          class="path-node-slider"
+          :min="diffusionSliderMin"
+          :max="diffusionSliderMax"
+          :step="diffusionSliderStep"
+          :tooltipOpen="false"
+          @change="handleDiffusionLimitChange"
+          @afterChange="handleDiffusionLimitCommit"
+        />
+        <span class="path-node-control-count">{{ diffusionVisibleCount }} / {{ diffusionTotalNodes }}</span>
+        <a-button size="small" type="link" @click="showFullDiffusionGraph">全量</a-button>
       </section>
       <section class="toolbar-section action-group" aria-label="操作">
         <span class="toolbar-group-label">操作</span>
@@ -84,14 +94,14 @@
               <div v-if="diffusionReady" class="path-visual-layout">
                 <div class="path-graph-shell">
                   <span v-if="hasIndependentObservations" class="independent-observation-band">
-                    独立观测岛
+                    独立观察分支：未证实从当前主源头传播
                   </span>
                   <div ref="pathGraphRef" class="path-graph" />
                 </div>
               </div>
               <a-empty
                 v-else-if="!analysisTransportFailed && !analysisBusinessEmptyReason"
-                :description="diffusionEmptyDescription"
+                description="当前范围暂未形成可展示路径"
                 :image-style="{ height: '36px' }"
               />
             </a-card>
@@ -740,7 +750,6 @@ import type { EChartsOption } from 'echarts'
 import {
   applyPropagationAlertAction,
   analyzeObservedPropagation,
-  getPropagationBranch,
   getCachedPropagationPrediction,
   getClaimResponseLandscape,
   getPropagationAlertDetail,
@@ -754,7 +763,6 @@ import {
   type ClaimResponseSemanticOverlay,
   type PropagationAlert,
   type PropagationAlertAction,
-  type PropagationBranchProjection,
   predictPropagationCurrentEvent,
   type PropagationEventTimelineProjection,
   type PropagationTimelineRange,
@@ -926,13 +934,7 @@ type DiffusionNode = {
   is_key?: boolean
   shared_object_ids?: string[]
   connected_depth?: number | null
-  display_depth?: number | null
-  display_parent_id?: string | null
   independent_status?: string | null
-  is_key_account?: boolean
-  key_roles?: string[]
-  branch_depth?: number
-  is_branch_root?: boolean
 }
 
 type DiffusionEdge = {
@@ -950,25 +952,6 @@ type DiffusionEdge = {
   is_key_path?: boolean
   is_parallel_root?: boolean
   is_synthetic?: boolean
-  is_branch_backbone?: boolean
-  evidence_refs?: Array<Record<string, string>>
-}
-
-type KeyPropagationIsland = {
-  root_id: string
-  nodes: DiffusionNode[]
-  edges: DiffusionEdge[]
-  observable_descendant_count?: number
-}
-
-type KeyPropagationPathProjection = {
-  root_node?: DiffusionNode | null
-  nodes?: DiffusionNode[]
-  edges?: DiffusionEdge[]
-  independent_islands?: KeyPropagationIsland[]
-  key_account_ids?: string[]
-  key_account_limit?: number
-  key_account_count?: number
 }
 
 type DiffusionDetailNeighbor = {
@@ -1053,7 +1036,6 @@ type DiffusionSummary = {
     bridges?: DiffusionRoleContribution[]
     amplifiers?: DiffusionRoleContribution[]
   }
-  key_path_projection?: KeyPropagationPathProjection
   detail_index?: {
     nodes?: Record<string, DiffusionNodeDetail>
     objects?: Record<string, DiffusionObjectDetail>
@@ -1527,9 +1509,6 @@ const CLAIM_GROUP_COLLAPSED_LIMIT = 6
 const diffusionNodeLimit = ref(DEFAULT_DIFFUSION_NODE_LIMIT)
 const diffusionPendingNodeLimit = ref(DEFAULT_DIFFUSION_NODE_LIMIT)
 const diffusionFullViewRequested = ref(false)
-const expandedBranchProjections = ref<Record<string, PropagationBranchProjection>>({})
-const expandingBranchAccountId = ref('')
-let branchRequestGeneration = 0
 const route = useRoute()
 const layerChartRef = ref<HTMLDivElement | null>(null)
 const pathGraphRef = ref<HTMLDivElement | null>(null)
@@ -1634,25 +1613,20 @@ const semanticDrilldownEvidenceChains = computed(() => (
   linkedPropagationEvidenceChains.value.length ? linkedPropagationEvidenceChains.value : evidenceChains.value
 ))
 const pathAnalysis = computed(() => analysisResult.value?.path_analysis ?? null)
-const propagationSummary = computed(() => analysisResult.value?.diffusion_summary ?? null)
 const diffusionSummary = computed(() => {
-  const serverSummary = propagationSummary.value
-  return serverSummary?.key_path_projection?.nodes?.length ? serverSummary : null
+  const serverSummary = analysisResult.value?.diffusion_summary
+  return serverSummary?.visible_nodes?.length ? serverSummary : null
 })
-const diffusionReady = computed(() => (diffusionSummary.value?.key_path_projection?.nodes?.length ?? 0) > 0)
-const diffusionEmptyDescription = computed(() => {
-  const summary = propagationSummary.value
-  if (!summary) return '当前范围未返回传播投影，请同步传播结果后重试'
-  if (!summary.key_path_projection) return '当前传播结果尚未生成关键脉络投影，请同步传播结果后重试'
-  if (!(summary.key_path_projection.nodes ?? []).length) return '当前范围未观察到可连接的传播账号'
-  return '当前范围暂未形成可展示路径'
-})
-const diffusionMeta = computed(() => propagationSummary.value?.meta ?? {})
+const diffusionReady = computed(() => (diffusionSummary.value?.visible_nodes?.length ?? 0) > 0)
+const diffusionMeta = computed(() => diffusionSummary.value?.meta ?? {})
 const diffusionTotalNodes = computed(() => {
   const total = Number(diffusionMeta.value.total_nodes ?? analysisResult.value?.graph?.node_count ?? 0)
   return Number.isFinite(total) && total > 0 ? Math.floor(total) : DEFAULT_DIFFUSION_NODE_LIMIT
 })
-const keyPathAccountCount = computed(() => Number(diffusionSummary.value?.key_path_projection?.key_account_count ?? 0))
+const diffusionVisibleCount = computed(() => {
+  const count = Number(diffusionMeta.value.visible_node_count ?? diffusionSummary.value?.visible_nodes?.length ?? 0)
+  return Number.isFinite(count) && count > 0 ? Math.floor(count) : 0
+})
 const diffusionSliderStep = computed(() => {
   const rawMax = Math.max(diffusionTotalNodes.value, DEFAULT_DIFFUSION_NODE_LIMIT)
   return rawMax > 1000 ? 50 : 10
@@ -1662,9 +1636,10 @@ const diffusionSliderMax = computed(() => {
   const min = Math.min(DEFAULT_DIFFUSION_NODE_LIMIT, rawMax)
   return alignSliderMax(rawMax, min, diffusionSliderStep.value)
 })
-const layerRows = computed(() => propagationSummary.value?.layers?.length ? propagationSummary.value.layers : (pathAnalysis.value?.layer_distribution ?? []))
+const diffusionSliderMin = computed(() => Math.min(DEFAULT_DIFFUSION_NODE_LIMIT, diffusionSliderMax.value))
+const layerRows = computed(() => diffusionSummary.value?.layers?.length ? diffusionSummary.value.layers : (pathAnalysis.value?.layer_distribution ?? []))
 const displayLayerRows = computed(() => normalizeLayerRows(layerRows.value))
-const hasIndependentObservations = computed(() => Number(propagationSummary.value?.independent_observations?.node_count ?? 0) > 0)
+const hasIndependentObservations = computed(() => Number(diffusionSummary.value?.independent_observations?.node_count ?? 0) > 0)
 const userNameById = computed(() => {
   const map = new Map<string, string>()
   for (const node of analysisResult.value?.graph?.nodes ?? []) {
@@ -1676,7 +1651,7 @@ const userNameById = computed(() => {
   }
   return map
 })
-const roleContributions = computed(() => propagationSummary.value?.role_contributions ?? null)
+const roleContributions = computed(() => diffusionSummary.value?.role_contributions ?? null)
 const roleContributionGroups = computed(() => {
   const contributions = roleContributions.value
   if (!contributions) return []
@@ -2714,50 +2689,85 @@ function isIndependentObservation(node?: DiffusionNode) {
 
 function nodeConnectedDepth(node: DiffusionNode, rootId: string) {
   if (String(node.id) === rootId) return 0
-  const displayDepth = Number(node.display_depth)
-  if (Number.isFinite(displayDepth) && displayDepth >= 0) return Math.floor(displayDepth)
   const depth = Number(node.connected_depth)
   if (Number.isFinite(depth) && depth >= 0) return Math.floor(depth)
   return Math.max(1, Math.floor(Number(node.layer ?? 1)))
 }
 
-function buildKeyPropagationGraph(summary?: DiffusionSummary | null) {
-  const projection = summary?.key_path_projection
-  const nodesById = new Map<string, DiffusionNode>()
-  const edgesByKey = new Map<string, DiffusionEdge>()
-  const addNodes = (nodes: DiffusionNode[] = []) => {
-    for (const node of nodes) {
-      const id = String(node.id || '').trim()
-      if (!id) continue
-      nodesById.set(id, { ...nodesById.get(id), ...node, id })
+function buildPrimaryEvidenceBackbone(
+  nodes: DiffusionNode[],
+  treeEdges: DiffusionEdge[],
+  rootId: string,
+) {
+  const nodeById = new Map(nodes.map((node) => [String(node.id), node]))
+  const primaryNodeIds = new Set(
+    nodes.filter((node) => !isIndependentObservation(node)).map((node) => String(node.id)),
+  )
+  const candidatesByTarget = new Map<string, DiffusionEdge[]>()
+  const independentEdgesByKey = new Map<string, DiffusionEdge>()
+
+  for (const edge of treeEdges) {
+    const source = String(edge.source || '')
+    const target = String(edge.target || '')
+    if (!source || !target || source === target || edge.is_parallel_root || edge.is_synthetic) continue
+
+    const sourceNode = nodeById.get(source)
+    const targetNode = nodeById.get(target)
+    if (!sourceNode || !targetNode) continue
+
+    const sourceIndependent = isIndependentObservation(sourceNode)
+    const targetIndependent = isIndependentObservation(targetNode)
+    if (sourceIndependent || targetIndependent) {
+      if (sourceIndependent && targetIndependent) {
+        independentEdgesByKey.set(`${source}->${target}`, edge)
+      }
+      continue
     }
-  }
-  const addEdges = (edges: DiffusionEdge[] = []) => {
-    for (const edge of edges) {
-      const source = String(edge.source || '').trim()
-      const target = String(edge.target || '').trim()
-      if (!source || !target || source === target || edge.is_synthetic) continue
-      const key = `${source}->${target}`
-      edgesByKey.set(key, { ...edgesByKey.get(key), ...edge, source, target })
-    }
+    if (!primaryNodeIds.has(source) || !primaryNodeIds.has(target)) continue
+
+    const sourceDepth = nodeConnectedDepth(sourceNode, rootId)
+    const targetDepth = nodeConnectedDepth(targetNode, rootId)
+    if (targetDepth !== sourceDepth + 1) continue
+    if (targetDepth === 1 && source !== rootId) continue
+    if (sourceDepth === 0 && source !== rootId) continue
+
+    const candidates = candidatesByTarget.get(target) ?? []
+    candidates.push(edge)
+    candidatesByTarget.set(target, candidates)
   }
 
-  addNodes(projection?.nodes)
-  addEdges(projection?.edges)
-  for (const island of projection?.independent_islands ?? []) {
-    addNodes(island.nodes)
-    addEdges(island.edges)
+  const evidenceRank = (edge: DiffusionEdge) => {
+    if (edge.evidence_type === 'explicit' || edge.type === 'explicit') return 0
+    if (edge.evidence_type === 'reconstructed' || edge.type === 'reconstructed') return 1
+    return 2
   }
-  for (const branch of Object.values(expandedBranchProjections.value)) {
-    if (branch.status !== 'ready') continue
-    addNodes(branch.nodes as DiffusionNode[])
-    addEdges(branch.edges as DiffusionEdge[])
+  const orderedCandidateGroups = Array.from(candidatesByTarget.entries())
+    .sort(([left], [right]) => {
+      const leftDepth = nodeConnectedDepth(nodeById.get(left) as DiffusionNode, rootId)
+      const rightDepth = nodeConnectedDepth(nodeById.get(right) as DiffusionNode, rootId)
+      return leftDepth - rightDepth || left.localeCompare(right)
+    })
+  const connectedNodeIds = new Set<string>([rootId])
+  const primaryEdges: DiffusionEdge[] = []
+  for (const [, candidates] of orderedCandidateGroups) {
+    const edge = [...candidates]
+      .sort((left, right) => {
+        const evidenceOrder = evidenceRank(left) - evidenceRank(right)
+        if (evidenceOrder) return evidenceOrder
+        const weightOrder = Number(right.weight ?? 0) - Number(left.weight ?? 0)
+        if (weightOrder) return weightOrder
+        return String(left.source).localeCompare(String(right.source))
+      })
+      .find((candidate) => connectedNodeIds.has(String(candidate.source)))
+    if (!edge) continue
+    primaryEdges.push(edge)
+    connectedNodeIds.add(String(edge.target))
   }
 
   return {
-    rootId: String(projection?.root_node?.id || projection?.nodes?.find((node) => node.is_root)?.id || ''),
-    nodes: Array.from(nodesById.values()),
-    edges: Array.from(edgesByKey.values()),
+    primaryEdges,
+    independentEdges: Array.from(independentEdgesByKey.values())
+      .sort((left, right) => `${left.source}->${left.target}`.localeCompare(`${right.source}->${right.target}`)),
   }
 }
 
@@ -2847,84 +2857,40 @@ function buildConcentricEvidencePositions(
   const independentNodes = nodes
     .filter((node) => isIndependentObservation(node))
     .sort((left, right) => String(left.id).localeCompare(String(right.id)))
-  const independentNodeIds = new Set(independentNodes.map((node) => String(node.id)))
-  const independentChildren = new Map<string, string[]>()
-  const independentIncoming = new Set<string>()
-  for (const edge of backboneEdges) {
-    const source = String(edge.source || '')
-    const target = String(edge.target || '')
-    if (
-      !source || !target || edge.is_branch_backbone === false
-      || !independentNodeIds.has(source) || !independentNodeIds.has(target)
-    ) continue
-    const children = independentChildren.get(source) ?? []
-    children.push(target)
-    independentChildren.set(source, children)
-    independentIncoming.add(target)
-  }
-  for (const children of independentChildren.values()) {
-    children.sort((left, right) => left.localeCompare(right))
-  }
-  const independentRoots = independentNodes
-    .filter((node) => node.independent_status === 'independent_root' || !independentIncoming.has(String(node.id)))
-    .map((node) => String(node.id))
-  const isolatedIds = independentNodes.map((node) => String(node.id)).filter((id) => !independentRoots.includes(id))
-  const islandRoots = [...independentRoots, ...isolatedIds]
-  const independentRadius = Math.max(outerRadius + 154, 292)
-  const islandStep = (Math.PI * 0.9) / Math.max(islandRoots.length, 1)
-  const assignedIndependentIds = new Set<string>()
-
-  islandRoots.forEach((root, index) => {
-    if (assignedIndependentIds.has(root)) return
-    const rootAngle = (-Math.PI * 0.44) + (islandStep * (index + 0.5))
-    positions.set(root, {
-      x: Math.cos(rootAngle) * independentRadius,
-      y: Math.sin(rootAngle) * independentRadius,
-      layer: 0,
+  const independentRadius = Math.max(outerRadius + 118, 246)
+  const independentStep = (Math.PI * 1.28) / Math.max(independentNodes.length, 1)
+  independentNodes.forEach((node, index) => {
+    const id = String(node.id)
+    const jitter = (stableLayoutFraction(`independent:${id}`) - 0.5) * Math.min(independentStep * 0.3, 0.18)
+    const angle = (-Math.PI * 0.17) + (independentStep * index) + jitter
+    const radius = independentRadius + ((index % 3) * 14)
+    positions.set(id, {
+      x: Math.cos(angle) * radius,
+      y: Math.sin(angle) * radius,
+      layer: Math.max(1, Number(node.layer ?? 1)),
     })
-    assignedIndependentIds.add(root)
-    const queue: Array<{ id: string; depth: number; angle: number }> = [{ id: root, depth: 0, angle: rootAngle }]
-    let cursor = 0
-    while (cursor < queue.length) {
-      const current = queue[cursor]
-      cursor += 1
-      const children = independentChildren.get(current.id) ?? []
-      const angularStep = Math.min(0.34, 0.72 / Math.max(children.length, 1))
-      children.forEach((child, childIndex) => {
-        if (assignedIndependentIds.has(child)) return
-        const childAngle = current.angle + ((childIndex - ((children.length - 1) / 2)) * angularStep)
-        const childRadius = independentRadius + ((current.depth + 1) * 84)
-        positions.set(child, {
-          x: Math.cos(childAngle) * childRadius,
-          y: Math.sin(childAngle) * childRadius,
-          layer: current.depth + 1,
-        })
-        assignedIndependentIds.add(child)
-        queue.push({ id: child, depth: current.depth + 1, angle: childAngle })
-      })
-    }
   })
 
   return positions
 }
 
 function buildPathGraphOption(summary?: DiffusionSummary | null): EChartsOption {
-  const projection = buildKeyPropagationGraph(summary)
-  const nodes = projection.nodes
-  const treeEdges = projection.edges
+  const nodes = summary?.visible_nodes ?? []
+  const treeEdges = summary?.tree_edges ?? []
   const highlightEdges = summary?.highlight_edges ?? []
   const nodeById = new Map(nodes.map((node) => [String(node.id), node]))
-  const rootId = projection.rootId
+  const rootId = String(summary?.root_node?.id || nodes.find((node) => node.is_root)?.id || nodes[0]?.id || '')
   const keyEdgeKeys = new Set(highlightEdges.map((edge) => `${edge.source}->${edge.target}`))
+  const backbone = buildPrimaryEvidenceBackbone(nodes, treeEdges, rootId)
 
-  const positions = buildConcentricEvidencePositions(nodes, treeEdges, rootId)
+  const positions = buildConcentricEvidencePositions(nodes, backbone.primaryEdges, rootId)
   const fittedPositions = fitGraphPositions(positions)
 
   const graphData = nodes.map((node) => {
     const id = String(node.id)
     const position = fittedPositions.get(id) || { x: 0, y: 0, layer: Number(node.layer ?? 0) }
     const isRoot = id === rootId
-    const isKey = Boolean(node.is_key_account)
+    const isKey = Boolean(node.is_key)
     const isIndependent = isIndependentObservation(node)
     const objectFocused = Boolean(selectedObjectId.value) && (node.shared_object_ids ?? []).includes(selectedObjectId.value)
     const value = Math.max(1, Number(node.post_count ?? 1))
@@ -2936,11 +2902,9 @@ function buildPathGraphOption(summary?: DiffusionSummary | null): EChartsOption 
       y: position.y,
       value,
       category: isRoot ? 0 : isIndependent ? 3 : isKey ? 1 : 2,
-      expandable: isKey && !isRoot,
-      expanded: Boolean(expandedBranchProjections.value[id]),
-      symbolSize: isRoot ? 34 : isIndependent ? (isKey ? 9 : 6.8) : isKey ? 9 : Math.max(3.2, Math.min(6.4, Math.sqrt(value) * 1.05 + 1.7)),
+      symbolSize: isRoot ? 34 : isIndependent ? 6.8 : isKey ? 8 : Math.max(2.8, Math.min(5.8, Math.sqrt(value) * 1.05 + 1.7)),
       label: {
-        show: isRoot || isKey,
+        show: true,
         color: isRoot ? '#f8fafc' : isIndependent ? '#cbd5e1' : '#dbeafe',
         fontSize: isRoot ? 12 : 9,
         fontWeight: isRoot ? 700 : 500,
@@ -2954,7 +2918,7 @@ function buildPathGraphOption(summary?: DiffusionSummary | null): EChartsOption 
     }
   })
 
-  const graphEdges = treeEdges
+  const graphEdges = [...backbone.primaryEdges, ...backbone.independentEdges]
   const graphLinks = graphEdges
     .filter((edge) => {
       const source = String(edge.source)
@@ -2964,7 +2928,6 @@ function buildPathGraphOption(summary?: DiffusionSummary | null): EChartsOption 
       const targetNode = nodeById.get(target)
       const sourceIndependent = isIndependentObservation(sourceNode)
       const targetIndependent = isIndependentObservation(targetNode)
-      if (edge.is_branch_backbone === false) return false
       if (sourceIndependent || targetIndependent) return sourceIndependent && targetIndependent
       const sourceLayer = nodeConnectedDepth(sourceNode as DiffusionNode, rootId)
       const targetLayer = nodeConnectedDepth(targetNode as DiffusionNode, rootId)
@@ -3080,64 +3043,13 @@ async function renderPathGraph() {
   pathGraphChart.off('georoam')
   pathGraphChart.on('click', (params: any) => {
     if (params.dataType !== 'node') return
-    const nodeId = String(params.data?.userId || params.data?.id || '')
-    if (params.data?.expandable) {
-      void togglePropagationBranch(nodeId)
-      return
-    }
-    openNodeDetail(nodeId)
+    openNodeDetail(String(params.data?.userId || params.data?.id || ''))
   })
   pathGraphChart.on('graphRoam', updatePathGraphLabelsByZoom)
   pathGraphChart.on('georoam', updatePathGraphLabelsByZoom)
   pathGraphChart.setOption(buildPathGraphOption(diffusionSummary.value), true)
   updatePathGraphLabelsByZoom()
   pathGraphChart.resize()
-}
-
-async function togglePropagationBranch(accountId: string) {
-  const normalizedId = String(accountId || '').trim()
-  if (!normalizedId || expandingBranchAccountId.value === normalizedId) return
-  if (expandedBranchProjections.value[normalizedId]) {
-    const { [normalizedId]: _removed, ...remaining } = expandedBranchProjections.value
-    expandedBranchProjections.value = remaining
-    await renderPathGraph()
-    return
-  }
-
-  const requestedEventId = eventId.value.trim()
-  const requestedPlatform = platform.value.trim()
-  if (!requestedEventId) return
-  const requestGeneration = ++branchRequestGeneration
-  expandingBranchAccountId.value = normalizedId
-  try {
-    const response = await getPropagationBranch({
-      account_id: normalizedId,
-      event_id: requestedEventId,
-      platform: requestedPlatform || undefined,
-    })
-    if (
-      requestGeneration !== branchRequestGeneration
-      || requestedEventId !== eventId.value.trim()
-      || requestedPlatform !== platform.value.trim()
-    ) return
-    if (response.data.status !== 'ready') {
-      message.info('该账号在当前范围没有可展开的观察分支。')
-      return
-    }
-    expandedBranchProjections.value = {
-      ...expandedBranchProjections.value,
-      [normalizedId]: response.data,
-    }
-    await renderPathGraph()
-  } catch {
-    if (requestGeneration === branchRequestGeneration) {
-      message.error('无法加载该账号的观察分支。')
-    }
-  } finally {
-    if (requestGeneration === branchRequestGeneration) {
-      expandingBranchAccountId.value = ''
-    }
-  }
 }
 
 function observeModelTrendContainer(container: HTMLDivElement) {
@@ -3505,7 +3417,6 @@ function resetClaimResponseLandscape() {
 
 function resetScopeDependentProjections() {
   analysisRequestGeneration += 1
-  branchRequestGeneration += 1
   predictionRequestGeneration += 1
   evidenceTimelineRequestGeneration += 1
   alertsRequestGeneration += 1
@@ -3515,8 +3426,6 @@ function resetScopeDependentProjections() {
   modelPrediction.value = null
   evidenceTimeline.value = null
   propagationAlerts.value = []
-  expandedBranchProjections.value = {}
-  expandingBranchAccountId.value = ''
   selectedObjectId.value = ''
   selectedClaim.value = null
   claimDetailOpen.value = false
@@ -3568,9 +3477,6 @@ async function loadAnalysis(showToast = false, preservePrediction = false) {
     predictionRequestGeneration += 1
   }
   analyzing.value = true
-  branchRequestGeneration += 1
-  expandedBranchProjections.value = {}
-  expandingBranchAccountId.value = ''
   analysisResult.value = null
   analysisRequestError.value = null
   analysisBusinessEmptyReason.value = null
@@ -3617,7 +3523,7 @@ async function loadAnalysis(showToast = false, preservePrediction = false) {
 async function handleAnalyze() {
   resetScopeDependentProjections()
   diffusionFullViewRequested.value = false
-  diffusionNodeLimit.value = DEFAULT_DIFFUSION_NODE_LIMIT
+  diffusionNodeLimit.value = Math.min(DEFAULT_DIFFUSION_NODE_LIMIT, diffusionSliderMax.value)
   diffusionPendingNodeLimit.value = diffusionNodeLimit.value
   await loadAnalysis(true)
 }
@@ -3630,6 +3536,28 @@ function requestErrorMessage(error: unknown, fallback: string) {
   }
   if (error instanceof Error && error.message) return `${fallback}：${error.message}`
   return fallback
+}
+
+function handleDiffusionLimitChange(value: number) {
+  diffusionPendingNodeLimit.value = Math.max(1, Math.floor(Number(value) || DEFAULT_DIFFUSION_NODE_LIMIT))
+}
+
+async function handleDiffusionLimitCommit(value: number) {
+  const nextLimit = Math.max(1, Math.floor(Number(value) || DEFAULT_DIFFUSION_NODE_LIMIT))
+  diffusionPendingNodeLimit.value = nextLimit
+  const shouldRequestFull = diffusionTotalNodes.value > DEFAULT_DIFFUSION_NODE_LIMIT && nextLimit >= diffusionSliderMax.value
+  if (nextLimit === diffusionNodeLimit.value && shouldRequestFull === diffusionFullViewRequested.value) return
+  diffusionNodeLimit.value = nextLimit
+  diffusionFullViewRequested.value = shouldRequestFull
+  await loadAnalysis(false, true)
+}
+
+async function showFullDiffusionGraph() {
+  const fullLimit = diffusionSliderMax.value
+  diffusionPendingNodeLimit.value = fullLimit
+  diffusionNodeLimit.value = fullLimit
+  diffusionFullViewRequested.value = true
+  await loadAnalysis(false, true)
 }
 
 async function handlePredict() {

@@ -374,18 +374,15 @@ test('renders all required semantic overlay fields without replacing observed pa
 
 test('renders deterministic concentric propagation nodes with one outward evidence backbone relationship per observation', () => {
   const graphOption = bodyOf(propagationView, 'buildPathGraphOption')
-  const keyProjection = bodyOf(propagationView, 'buildKeyPropagationGraph')
 
-  assert.match(keyProjection, /summary\?\.key_path_projection/)
-  assert.match(graphOption, /const projection = buildKeyPropagationGraph\(summary\)/)
-  assert.match(graphOption, /const treeEdges = projection\.edges/)
+  assert.match(graphOption, /const treeEdges = summary\?\.tree_edges \?\? \[\]/)
   assert.match(graphOption, /buildConcentricEvidencePositions/)
   assert.match(propagationView, /function stableLayoutFraction\(value: string\)/)
   assert.match(graphOption, /isIndependentObservation/)
   assert.doesNotMatch(graphOption, /layout_x/)
-  assert.match(graphOption, /if \(edge\.is_branch_backbone === false\) return false/)
+  assert.match(graphOption, /buildPrimaryEvidenceBackbone\(nodes, treeEdges, rootId\)/)
   assert.match(graphOption, /targetLayer === sourceLayer \+ 1/)
-  assert.match(graphOption, /const graphEdges = treeEdges/)
+  assert.match(graphOption, /const graphEdges = \[\.\.\.backbone\.primaryEdges, \.\.\.backbone\.independentEdges\]/)
   assert.match(graphOption, /links:\s*graphLinks/)
   assert.match(graphOption, /draggable:\s*false/)
   assert.match(graphOption, /edgeSymbol:/)

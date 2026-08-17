@@ -8,48 +8,6 @@ export function analyzeObservedPropagation(params?: { platform?: string; event_i
   return request.get('/propagation/observed-analysis', { params })
 }
 
-export type PropagationBranchNode = {
-  id: string
-  author_name?: string
-  connected_depth?: number | null
-  branch_depth?: number
-  display_depth?: number
-  is_branch_root?: boolean
-  independent_status?: string | null
-}
-
-export type PropagationBranchEdge = {
-  source: string
-  target: string
-  weight?: number
-  type?: string
-  evidence_refs?: Array<Record<string, string>>
-  is_synthetic: false
-  is_branch_backbone?: boolean
-}
-
-export type PropagationBranchProjection = {
-  status: 'ready' | 'not_found'
-  account_id: string
-  blocking_reason?: string
-  nodes: PropagationBranchNode[]
-  edges: PropagationBranchEdge[]
-  meta?: {
-    source?: string
-    branch_node_count?: number
-    branch_edge_count?: number
-    synthetic_edges?: false
-  }
-}
-
-export function getPropagationBranch(params: {
-  account_id: string
-  event_id?: string
-  platform?: string
-}): Promise<{ code: number; data: PropagationBranchProjection; msg: string }> {
-  return request.get('/propagation/branch', { params }) as unknown as Promise<{ code: number; data: PropagationBranchProjection; msg: string }>
-}
-
 export type PropagationPredictionParams = {
   platform?: string
   event_id?: string

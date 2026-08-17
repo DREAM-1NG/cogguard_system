@@ -4,37 +4,15 @@ import { test } from 'node:test'
 
 const source = readFileSync(new URL('../src/views/propagation/index.vue', import.meta.url), 'utf8')
 
-function functionBody(name) {
-  const start = source.indexOf(`function ${name}(`)
-  assert.notEqual(start, -1, `Expected ${name} to exist`)
-  const paramsStart = source.indexOf('(', start)
-  let paramsDepth = 0
-  let paramsEnd = -1
-  for (let index = paramsStart; index < source.length; index += 1) {
-    const char = source[index]
-    if (char === '(') paramsDepth += 1
-    if (char === ')') paramsDepth -= 1
-    if (paramsDepth === 0) {
-      paramsEnd = index
-      break
-    }
-  }
-  const bodyStart = source.indexOf('{', paramsEnd)
-  let depth = 0
-  for (let index = bodyStart; index < source.length; index += 1) {
-    const char = source[index]
-    if (char === '{') depth += 1
-    if (char === '}') depth -= 1
-    if (depth === 0) return source.slice(start, index + 1)
-  }
-  throw new Error(`Expected ${name} to close`)
-}
-
-test('propagation path graph renders only outward observed display-backbone edges', () => {
-  assert.match(source, /const treeEdges = projection\.edges/)
-  assert.match(source, /if \(edge\.is_branch_backbone === false\) return false/)
-  assert.match(source, /return targetLayer === sourceLayer \+ 1/)
-  assert.match(source, /const graphEdges = treeEdges/)
+test('propagation path graph renders one outward evidence backbone edge for each connected observation', () => {
+  assert.match(source, /const treeEdges = summary\?\.tree_edges \?\? \[\]/)
+  assert.match(source, /function buildPrimaryEvidenceBackbone\(/)
+  assert.match(source, /targetDepth !== sourceDepth \+ 1/)
+  assert.match(source, /targetDepth === 1 && source !== rootId/)
+  assert.match(source, /const connectedNodeIds = new Set<string>\(\[rootId\]\)/)
+  assert.match(source, /connectedNodeIds\.has\(String\(candidate\.source\)\)/)
+  assert.match(source, /const backbone = buildPrimaryEvidenceBackbone\(nodes, treeEdges, rootId\)/)
+  assert.match(source, /const graphEdges = \[\.\.\.backbone\.primaryEdges, \.\.\.backbone\.independentEdges\]/)
   assert.doesNotMatch(source, /const mergedEdges = new Map<string, DiffusionEdge>\(\)/)
   assert.doesNotMatch(source, /links:\s*\[\]/)
 })
@@ -51,7 +29,7 @@ test('propagation path graph uses deterministic concentric evidence positions in
 test('propagation path graph marks independent observations outside the primary-source rings', () => {
   assert.match(source, /independent-observation-band/)
   assert.match(source, /independent_status/)
-  assert.match(source, /独立观测岛/)
+  assert.match(source, /未证实从当前主源头传播/)
 })
 
 test('propagation evidence workspace keeps exact layer counts and displays two-decimal proportions', () => {
@@ -98,29 +76,4 @@ test('changing the propagation scope clears stale graph focus and evidence drawe
   assert.match(resetScope, /selectedClaim\.value = null/)
   assert.match(resetScope, /claimDetailOpen\.value = false/)
   assert.match(resetScope, /pathGraphChart\?\.dispose\(\)/)
-})
-
-test('propagation path opens with the backend key-path projection instead of all visible nodes', () => {
-  const graphOption = functionBody('buildPathGraphOption')
-  const projection = functionBody('buildKeyPropagationGraph')
-
-  assert.match(projection, /summary\?\.key_path_projection/)
-  assert.match(projection, /projection\?\.nodes/)
-  assert.match(projection, /projection\?\.edges/)
-  assert.match(graphOption, /const projection = buildKeyPropagationGraph\(summary\)/)
-  assert.doesNotMatch(graphOption, /const nodes = summary\?\.visible_nodes \?\? \[\]/)
-})
-
-test('propagation path can expand and collapse only a backend-returned observed branch', () => {
-  assert.match(source, /getPropagationBranch/)
-  assert.match(source, /expandedBranchProjections/)
-  assert.match(source, /async function togglePropagationBranch\(/)
-  assert.match(source, /expandedBranchProjections\.value = \{\}/)
-  assert.match(source, /togglePropagationBranch\(/)
-})
-
-test('layer composition reads the full server population even when no compact path is drawable', () => {
-  assert.match(source, /const propagationSummary = computed\(\(\) => analysisResult\.value\?\.diffusion_summary \?\? null\)/)
-  assert.match(source, /const layerRows = computed\(\(\) => propagationSummary\.value\?\.layers\?\.length/)
-  assert.doesNotMatch(source, /const layerRows = computed\(\(\) => diffusionSummary\.value\?\.layers/)
 })

@@ -28,9 +28,6 @@ from app.core.propagation.quality import build_user_quality_portrait
 from app.core.propagation.roles import identify_key_roles
 
 
-KEY_PROPAGATION_ROLE_LIMIT = 24
-
-
 # ---------------------------------------------------------------------------
 # Row-value coercion
 #
@@ -210,8 +207,6 @@ def build_propagation_graph(
             "target": v,
             "weight": d.get("weight", 1),
             "type": d.get("type", "implicit"),
-            "evidence_refs": _deduplicate_evidence_refs(d.get("evidence_refs", [])),
-            "is_synthetic": False,
         })
 
     return {
@@ -228,106 +223,6 @@ def build_propagation_graph(
         "path_analysis": path_analysis,
         "diffusion_summary": diffusion_summary,
         "user_quality": user_quality,
-    }
-
-
-def build_propagation_branch(
-    posts: list[dict],
-    comments: list[dict] | None,
-    *,
-    account_id: str,
-) -> dict:
-    """Return one account's complete observed descendant branch.
-
-    The branch is rebuilt from the full observed graph instead of the
-    first-screen summary. Each returned link is an observed directed edge,
-    never a display-only or inferred parent relation.
-    """
-    root_id = _clean_str(account_id)
-    if not root_id:
-        return {"status": "not_found", "blocking_reason": "account_id_required", "nodes": [], "edges": []}
-
-    result = build_propagation_graph(posts, comments or [], diffusion_node_limit=0)
-    graph = result.get("graph") or {}
-    graph_nodes = {str(node.get("id")): node for node in graph.get("nodes", []) if node.get("id")}
-    if root_id not in graph_nodes:
-        return {
-            "status": "not_found",
-            "blocking_reason": "account_not_observed_in_scope",
-            "account_id": root_id,
-            "nodes": [],
-            "edges": [],
-        }
-
-    observed = nx.DiGraph()
-    observed.add_nodes_from(graph_nodes)
-    for edge in graph.get("edges", []):
-        source, target = _clean_str(edge.get("source")), _clean_str(edge.get("target"))
-        if source and target and source != target:
-            observed.add_edge(source, target)
-
-    descendant_ids = {root_id, *nx.descendants(observed, root_id)}
-    branch_depths = nx.single_source_shortest_path_length(observed, root_id)
-    summary = result.get("diffusion_summary") or {}
-    full_rows = {
-        str(node.get("id")): dict(node)
-        for node in summary.get("visible_nodes", [])
-        if node.get("id")
-    }
-    node_rows = []
-    root_summary_row = full_rows.get(root_id) or {}
-    root_display_depth = int(root_summary_row.get("connected_depth", 0) or 0)
-    branch_parent_by_id: dict[str, str] = {}
-    for node_id in sorted(descendant_ids - {root_id}, key=lambda item: (branch_depths.get(item, 0), str(item))):
-        path = _stable_observed_shortest_path(observed, root_id, node_id)
-        if len(path) > 1:
-            branch_parent_by_id[node_id] = path[-2]
-    for node_id in sorted(descendant_ids, key=lambda item: (branch_depths.get(item, 0), str(item))):
-        row = dict(full_rows.get(node_id) or graph_nodes.get(node_id) or {"id": node_id})
-        row["branch_depth"] = int(branch_depths.get(node_id, 0))
-        row["display_depth"] = root_display_depth + row["branch_depth"]
-        row["display_parent_id"] = branch_parent_by_id.get(node_id)
-        row["is_branch_root"] = node_id == root_id
-        node_rows.append(row)
-
-    combined_edges: dict[tuple[str, str], dict] = {}
-    for edge in graph.get("edges", []):
-        source, target = _clean_str(edge.get("source")), _clean_str(edge.get("target"))
-        if source not in descendant_ids or target not in descendant_ids or source == target:
-            continue
-        key = (source, target)
-        existing = combined_edges.get(key)
-        if existing is None:
-            combined_edges[key] = {
-                "source": source,
-                "target": target,
-                "weight": float(edge.get("weight", 1) or 1),
-                "type": edge.get("type", "implicit"),
-                "evidence_refs": _deduplicate_evidence_refs(edge.get("evidence_refs", [])),
-                "is_synthetic": False,
-                "is_branch_backbone": branch_parent_by_id.get(target) == source,
-            }
-            continue
-        existing["weight"] += float(edge.get("weight", 1) or 1)
-        if edge.get("type") == "explicit":
-            existing["type"] = "explicit"
-        existing["is_branch_backbone"] = bool(existing["is_branch_backbone"] or branch_parent_by_id.get(target) == source)
-        existing["evidence_refs"] = _deduplicate_evidence_refs([
-            *(existing.get("evidence_refs") or []),
-            *(edge.get("evidence_refs") or []),
-        ])
-
-    return {
-        "status": "ready",
-        "account_id": root_id,
-        "nodes": node_rows,
-        "edges": [combined_edges[key] for key in sorted(combined_edges)],
-        "meta": {
-            "source": "full_observed_graph",
-            "branch_node_count": len(node_rows),
-            "branch_edge_count": len(combined_edges),
-            "synthetic_edges": False,
-        },
     }
 
 
@@ -762,25 +657,6 @@ def _build_diffusion_summary(
         primary_layers,
         independent_status_by_node,
     )
-    role_contributions = _build_role_contributions(
-        G,
-        simple_G,
-        root_id,
-        primary_source,
-        primary_layers,
-        independent_status_by_node,
-        key_paths,
-        bc or {},
-    )
-    key_path_projection = _build_key_propagation_path_projection(
-        G,
-        simple_G,
-        root_id,
-        primary_layers,
-        independent_status_by_node,
-        key_node_set,
-        role_contributions,
-    )
 
     return {
         "primary_source": primary_source if primary_source.get("account_id") else None,
@@ -813,8 +689,16 @@ def _build_diffusion_summary(
         "tree_edges": tree_edge_rows,
         "highlight_edges": highlight_edges,
         "layers": layers,
-        "role_contributions": role_contributions,
-        "key_path_projection": key_path_projection,
+        "role_contributions": _build_role_contributions(
+            G,
+            simple_G,
+            root_id,
+            primary_source,
+            primary_layers,
+            independent_status_by_node,
+            key_paths,
+            bc or {},
+        ),
         "detail_index": detail_index,
         "meta": {
             "mode": "layered_summary",
@@ -833,167 +717,6 @@ def _build_diffusion_summary(
             "highlight_edge_count": len(highlight_edges),
         },
     }
-
-
-def _build_key_propagation_path_projection(
-    G: nx.MultiDiGraph,
-    simple_G: nx.DiGraph,
-    root_id: str,
-    primary_layers: dict[str, int],
-    independent_status_by_node: dict[str, str],
-    key_node_set: set[str],
-    role_contributions: dict,
-) -> dict:
-    """Build the compact, evidence-backed first-screen propagation tree."""
-    empty = {
-        "root_node": None,
-        "nodes": [],
-        "edges": [],
-        "independent_islands": [],
-        "key_account_ids": [],
-        "key_account_limit": KEY_PROPAGATION_ROLE_LIMIT,
-        "key_account_count": 0,
-    }
-    if not root_id or not simple_G.has_node(root_id):
-        return empty
-
-    role_labels_by_id: dict[str, set[str]] = {}
-    role_rows_by_id: dict[str, dict] = {}
-    for role_key, rows in (
-        ("source", role_contributions.get("sources", []) or []),
-        ("bridge", role_contributions.get("bridges", []) or []),
-        ("amplifier", role_contributions.get("amplifiers", []) or []),
-    ):
-        for row in rows:
-            node_id = _clean_str(row.get("account_id"))
-            if not node_id or not simple_G.has_node(node_id):
-                continue
-            role_labels_by_id.setdefault(node_id, set()).add(role_key)
-            existing = role_rows_by_id.get(node_id)
-            if existing is None or (
-                int(row.get("unique_directed_downstream_reach", 0) or 0),
-                int(row.get("direct_downstream_count", 0) or 0),
-            ) > (
-                int(existing.get("unique_directed_downstream_reach", 0) or 0),
-                int(existing.get("direct_downstream_count", 0) or 0),
-            ):
-                role_rows_by_id[node_id] = row
-
-    # Sources establish component anchors; the 24-account budget is reserved
-    # for bridge/amplifier accounts so ancestor connectors do not consume it.
-    rankable_role_ids = [
-        node_id for node_id, labels in role_labels_by_id.items()
-        if node_id != root_id and labels - {"source"}
-    ]
-    rankable_role_ids.sort(
-        key=lambda node_id: (
-            -int(role_rows_by_id[node_id].get("unique_directed_downstream_reach", 0) or 0),
-            -int(role_rows_by_id[node_id].get("direct_downstream_count", 0) or 0),
-            str(node_id),
-        )
-    )
-    selected_role_ids = set(rankable_role_ids[:KEY_PROPAGATION_ROLE_LIMIT])
-
-    def node_row(node_id: str, *, display_parent_id: str | None = None) -> dict:
-        row = _diffusion_node_row(
-            G,
-            simple_G,
-            node_id,
-            primary_layers.get(node_id, 0),
-            key_node_set,
-            root_id,
-            connected_depth=primary_layers.get(node_id),
-            independent_status=independent_status_by_node.get(node_id),
-        )
-        row["is_key_account"] = node_id in selected_role_ids or node_id == root_id
-        row["key_roles"] = sorted(role_labels_by_id.get(node_id, set()))
-        row["display_parent_id"] = display_parent_id
-        return row
-
-    primary_node_ids: set[str] = {root_id}
-    primary_edges: dict[tuple[str, str], dict] = {}
-    display_parent_by_id: dict[str, str] = {}
-    for node_id in sorted(
-        (item for item in selected_role_ids if item in primary_layers),
-        key=lambda item: (primary_layers.get(item, 0), str(item)),
-    ):
-        path = _stable_observed_shortest_path(simple_G, root_id, node_id)
-        if not path:
-            continue
-        for source, target in zip(path, path[1:]):
-            primary_node_ids.update((source, target))
-            display_parent_by_id.setdefault(target, source)
-            edge = _diffusion_tree_edge(simple_G, source, target)
-            edge["is_key_path"] = True
-            primary_edges[(source, target)] = edge
-
-    primary_rows = [
-        node_row(node_id, display_parent_id=display_parent_by_id.get(node_id))
-        for node_id in sorted(primary_node_ids, key=lambda item: (primary_layers.get(item, 0), str(item)))
-    ]
-
-    independent_islands = []
-    independent_root_ids = sorted(
-        [node_id for node_id, status in independent_status_by_node.items() if status == "independent_root"],
-        key=lambda item: str(item),
-    )
-    for island_root in independent_root_ids:
-        island_node_ids: set[str] = {island_root}
-        island_edges: dict[tuple[str, str], dict] = {}
-        island_parent_by_id: dict[str, str] = {}
-        descendants = nx.descendants(simple_G, island_root)
-        for node_id in sorted(selected_role_ids & descendants, key=lambda item: str(item)):
-            path = _stable_observed_shortest_path(simple_G, island_root, node_id)
-            for source, target in zip(path, path[1:]):
-                island_node_ids.update((source, target))
-                island_parent_by_id.setdefault(target, source)
-                edge = _diffusion_tree_edge(simple_G, source, target)
-                edge["is_key_path"] = True
-                island_edges[(source, target)] = edge
-        independent_islands.append({
-            "root_id": island_root,
-            "nodes": [
-                node_row(node_id, display_parent_id=island_parent_by_id.get(node_id))
-                for node_id in sorted(island_node_ids, key=lambda item: str(item))
-            ],
-            "edges": [island_edges[key] for key in sorted(island_edges)],
-            "observable_descendant_count": len(descendants),
-        })
-
-    return {
-        "root_node": node_row(root_id),
-        "nodes": primary_rows,
-        "edges": [primary_edges[key] for key in sorted(primary_edges)],
-        "independent_islands": independent_islands,
-        "key_account_ids": sorted(selected_role_ids),
-        "key_account_limit": KEY_PROPAGATION_ROLE_LIMIT,
-        "key_account_count": len(selected_role_ids),
-    }
-
-
-def _stable_observed_shortest_path(simple_G: nx.DiGraph, source: str, target: str) -> list[str]:
-    """Return a reproducible directed shortest path over observed edges."""
-    if not source or not target or not simple_G.has_node(source) or not simple_G.has_node(target):
-        return []
-    if source == target:
-        return [source]
-    parents: dict[str, str | None] = {source: None}
-    queue = [source]
-    cursor = 0
-    while cursor < len(queue):
-        node_id = queue[cursor]
-        cursor += 1
-        for child_id in sorted(simple_G.successors(node_id), key=lambda item: str(item)):
-            if child_id in parents:
-                continue
-            parents[child_id] = node_id
-            if child_id == target:
-                path = [target]
-                while parents[path[-1]] is not None:
-                    path.append(parents[path[-1]])
-                return list(reversed(path))
-            queue.append(child_id)
-    return []
 
 
 def _resolve_diffusion_node_limit(node_limit: int | None, total_nodes: int) -> int:
@@ -1116,15 +839,6 @@ def _empty_diffusion_summary(
         "highlight_edges": [],
         "layers": [],
         "role_contributions": {"sources": [], "bridges": [], "amplifiers": []},
-        "key_path_projection": {
-            "root_node": None,
-            "nodes": [],
-            "edges": [],
-            "independent_islands": [],
-            "key_account_ids": [],
-            "key_account_limit": KEY_PROPAGATION_ROLE_LIMIT,
-            "key_account_count": 0,
-        },
         "detail_index": {"nodes": {}, "objects": {}},
         "meta": {
             "mode": "layered_summary",
@@ -1151,7 +865,6 @@ def _to_weighted_digraph(G: nx.MultiDiGraph) -> nx.DiGraph:
         weight = float(data.get("weight", 1) or 1)
         edge_type = data.get("type", "implicit")
         object_id = data.get("object_id")
-        evidence_refs = _deduplicate_evidence_refs(data.get("evidence_refs", []))
         confirmed_weight = weight if _edge_data_is_confirmed(data) else 0.0
         inferred_weight = 0.0 if confirmed_weight else weight
         if simple_G.has_edge(u, v):
@@ -1162,10 +875,6 @@ def _to_weighted_digraph(G: nx.MultiDiGraph) -> nx.DiGraph:
                 simple_G[u][v]["type"] = "explicit"
             if not simple_G[u][v].get("object_id") and object_id:
                 simple_G[u][v]["object_id"] = object_id
-            simple_G[u][v]["evidence_refs"] = _deduplicate_evidence_refs([
-                *(simple_G[u][v].get("evidence_refs") or []),
-                *evidence_refs,
-            ])
         else:
             simple_G.add_edge(
                 u,
@@ -1175,7 +884,6 @@ def _to_weighted_digraph(G: nx.MultiDiGraph) -> nx.DiGraph:
                 object_id=object_id,
                 confirmed_weight=confirmed_weight,
                 inferred_weight=inferred_weight,
-                evidence_refs=evidence_refs,
             )
     return simple_G
 
@@ -1556,8 +1264,6 @@ def _diffusion_tree_edge(simple_G: nx.DiGraph, source: str, target: str, *, defa
         "type": edge_data.get("type", default_type),
         "object_id": edge_data.get("object_id"),
         "is_parallel_root": False,
-        "is_synthetic": False,
-        "evidence_refs": _deduplicate_evidence_refs(edge_data.get("evidence_refs", [])),
     }
 
 

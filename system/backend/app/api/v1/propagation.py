@@ -109,22 +109,6 @@ async def observed_analysis(
     return success(data=result)
 
 
-@router.get("/branch")
-async def observed_branch(
-    account_id: str = Query(..., min_length=1, description="Visible propagation account to expand."),
-    platform: str | None = Query(None, description="Limit branch to one platform."),
-    event_id: str | None = Query(None, description="Limit branch to one event id."),
-    _current_user: User = Depends(get_current_user),
-):
-    """Read the selected account's complete observed descendant branch."""
-    result = await propagation_observation_service.analyze_observed_propagation_branch(
-        account_id=account_id,
-        platform=platform,
-        event_id=event_id,
-    )
-    return success(data=result)
-
-
 @router.get("/claim-response-landscape", response_model=ClaimResponseLandscapeResponse)
 async def get_claim_response_landscape(
     event_id: Annotated[str, Query(min_length=1, description="Event id required for the Event Review Case landscape.")],
