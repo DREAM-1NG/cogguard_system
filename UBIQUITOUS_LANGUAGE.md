@@ -61,6 +61,10 @@ Current semantic package paths: `system/research/coordination_discover/`, `syste
 | **Social Runtime** | The vendored social crawler runtime used for `weibo`, `douyin`, and `xhs`. | External crawler, reference repository |
 | **News Runtime** | The vendored news extraction runtime used for `news` URLs. | External extractor, reference repository |
 | **Mock Platform** | The test-only adapter used for synthetic crawl data. | Production platform |
+| **Keyword Group** | An analyst-created, named and ordered set of retrieval terms used to prepare one **Crawl Request**. Groups are flattened and stably de-duplicated into the existing crawler keyword array; they are not model-generated topic classes. | Topic cluster, automatic category |
+| **Crawl Evidence Workbench** | The `/crawl` workspace that combines scoped Crawl Request controls with a read-only, selected-job content preview. | Crawler dashboard, global content search |
+| **Local Media Preview** | A browser preview of an already downloaded, authorized media file whose resolved path is contained by `MEDIA_DOWNLOAD_ROOT` and listed in its download manifest. | Remote preview, media URL fallback |
+| **Media Download Item** | One manifest-backed media file from a media-download job, identified by its job and item index rather than a filesystem path exposed to the browser. | Local path, static asset |
 
 ## Coordination Discover And Detect
 

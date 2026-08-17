@@ -48,6 +48,30 @@ case decision remains an analyst-confirmed `Confirmed Decision`.
 
 ---
 
+## Crawl Evidence Workbench (Active Delivery, 2026-08-17)
+
+The `/crawl` product page is being reshaped into an analyst acquisition and
+evidence-reading workspace. The left pane owns the **Crawl Request**, the
+selected **Crawl Job**, and its current counts. The right pane reads only
+content whose `crawl_job_id` matches that selected job; it is not an
+event-wide, unscoped content search.
+
+Analysts create retrieval terms as explicit **Keyword Groups**. A group is a
+user-owned label and an ordered collection of retrieval terms; it does not
+imply semantic, platform, or model classification. Before a Crawl Request is
+sent, groups are flattened and de-duplicated in stable input order so the
+existing `keywords: string[]` crawler contract remains unchanged.
+
+The **Local Media Preview** reads only a downloaded file that is contained by
+`MEDIA_DOWNLOAD_ROOT`, belongs to an authorized media-download job, and is
+listed in that job's manifest. It never requests a platform media URL as a
+playback fallback. A missing, unowned, outside-root, or browser-unsupported
+file remains an explicit unavailable state. Local media content is served by an
+authenticated, range-capable endpoint; filesystem paths and raw manifests are
+not product-facing data.
+
+---
+
 ## Internal Diagnostics
 
 **Event Snapshot**:

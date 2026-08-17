@@ -31,6 +31,10 @@ diagnostic concepts, not primary product copy.
 - Coordination workspace now surfaces cross-platform resolution, evidence-constrained group discovery, four-dimensional characterization, and SocGFM-backed group-level detection evidence without exposing shadow classifier or archive replay scores as the primary result.
 - Historical archive runs with persisted member predictions, but no stored group projection, are reconstructed into traceable group evidence hints at read time. A missing prediction remains explicitly unavailable; no heuristic verdict is created, and high-risk prompts remain analyst review inputs.
 - Semantic Evidence Assistance for the event-review workspace, with model/runtime state remaining diagnostic.
+- Crawl Evidence Workbench delivery is in progress: grouped analyst retrieval
+  terms, selected-job scoped content reading, and authenticated local image or
+  video preview will extend the existing crawler without changing its request
+  contract or treating remote media URLs as locally playable evidence.
 - Claim Response Landscape as an observed Propagation Analysis projection: it
   aligns a bound authority claim, exact official-account publications,
   influential account responses, and path-backed evidence without changing a
@@ -44,6 +48,9 @@ diagnostic concepts, not primary product copy.
 - Coordination Detect outputs are evidence hints, not analyst-confirmed harmful-CIB verdicts. SocGFM Cross-Attention is the current primary Detection artifact type by product decision; historical dataset reruns are archive replay surfaces, and research superiority claims still require the gates in ADR 0014 and ADR 0015.
 - Propagation prediction does not claim wall-clock horizons, open-world new-user identity, or calibrated intervals until their checkpoint and calibration contracts are implemented.
 - An advisory never replaces the analyst-owned Confirmed Decision.
+- A Local Media Preview may only show downloaded, manifest-backed files within
+  the configured media root after an ownership check; a platform URL is not a
+  preview fallback.
 
 ## Success criteria
 
