@@ -372,13 +372,13 @@ test('renders all required semantic overlay fields without replacing observed pa
   assert.match(pathDrawer, /selectedClaimPathDetail\.chain\.supporting_posts/)
 })
 
-test('renders deterministic branch-sector propagation nodes without visual connection lines', () => {
+test('renders deterministic compact radial propagation nodes without visual connection lines', () => {
   const graphOption = bodyOf(propagationView, 'buildPathGraphOption')
   const labelUpdater = bodyOf(propagationView, 'updatePathGraphLabelsByZoom')
 
   assert.match(graphOption, /const treeEdges = summary\?\.tree_edges \?\? \[\]/)
-  assert.match(graphOption, /buildBranchSectorEvidencePositions/)
-  assert.doesNotMatch(graphOption, /buildConcentricEvidencePositions/)
+  assert.match(graphOption, /buildCompactRadialEvidencePositions/)
+  assert.doesNotMatch(graphOption, /buildBranchSectorEvidencePositions/)
   assert.match(propagationView, /function stableLayoutFraction\(value: string\)/)
   assert.match(graphOption, /isIndependentObservation/)
   assert.doesNotMatch(graphOption, /layout_x/)
@@ -386,26 +386,29 @@ test('renders deterministic branch-sector propagation nodes without visual conne
   assert.match(graphOption, /links:\s*\[\]/)
   assert.doesNotMatch(graphOption, /const graphEdges = \[\.\.\.backbone\.primaryEdges, \.\.\.backbone\.independentEdges\]/)
   assert.match(graphOption, /zoom:\s*0\.32/)
-  assert.match(labelUpdater, /zoom < 0\.32/)
+  assert.match(labelUpdater, /const expanded = Number\.isFinite\(zoom\) && zoom > 0\.7/)
+  assert.match(labelUpdater, /show: expanded \|\| String\(node\.userId \|\| node\.id\) === rootId \|\| Number\(node\.category\) === 1/)
   assert.match(graphOption, /draggable:\s*false/)
   assert.doesNotMatch(graphOption, /edgeSymbol:/)
   assert.doesNotMatch(graphOption, /focus:\s*'adjacency'/)
 })
 
-test('keeps propagation branches compact while resolving only local node collisions', () => {
-  const positions = bodyOf(propagationView, 'buildBranchSectorEvidencePositions')
+test('keeps radial propagation compact with parent-guided local collision resolution', () => {
+  const positions = bodyOf(propagationView, 'buildCompactRadialEvidencePositions')
   const fitted = bodyOf(propagationView, 'fitGraphPositions')
 
-  assert.match(positions, /const branchContextByChild = new Map/)
-  assert.match(positions, /const childWeight = parentId === rootId \? 1/)
-  assert.match(positions, /const baseRadius = 52 \+ \(depth - 1\) \* 46/)
-  assert.match(positions, /const laneCount = Math\.max\(1, Math\.ceil\(\(context\.siblingCount \* minimumNodeSpacing\) \/ availableArc\)\)/)
-  assert.match(positions, /resolveBranchPositionCollisions/)
-  assert.doesNotMatch(positions, /previousRingRadius/)
-  assert.doesNotMatch(positions, /collisionSafeRadius/)
-  assert.match(fitted, /Math\.min\(460 \/ width, 380 \/ height, 0\.92\)/)
+  assert.match(positions, /const parentByChild = new Map/)
+  assert.match(positions, /const baseRadius = 50 \+ \(depth - 1\) \* 36/)
+  assert.match(positions, /blendRadialAngle\(uniformAngle, parentAngle, 0\.35\)/)
+  assert.match(positions, /resolveRadialPositionCollisions/)
+  assert.doesNotMatch(positions, /branchContextByChild/)
+  assert.doesNotMatch(positions, /sectorsByNode/)
+  assert.match(fitted, /rootId: string/)
+  assert.match(fitted, /const rootPosition = positions\.get\(rootId\)/)
+  assert.doesNotMatch(fitted, /centerX/)
 
   const graphOption = bodyOf(propagationView, 'buildPathGraphOption')
+  assert.match(graphOption, /fitGraphPositions\(positions, rootId\)/)
   assert.match(graphOption, /symbolSize: isRoot \? 36 : isKey \? 20 : 10/)
   assert.match(graphOption, /show: isRoot \|\| isKey/)
 })
