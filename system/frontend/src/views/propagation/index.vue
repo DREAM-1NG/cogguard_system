@@ -2337,9 +2337,37 @@ function normalizeLayerRows(rows: LayerRow[]) {
   }
   const normalized = Array.from(counts.values()).sort((left, right) => left.level - right.level)
   const total = normalized.reduce((sum, row) => sum + row.node_count, 0)
-  return normalized.map((row) => ({
+  return distributeLayerRatioHundredths(normalized.map((row) => ({
     ...row,
     ratio: Number.isFinite(row.ratio) && row.ratio > 0 ? row.ratio : (total ? row.node_count / total : 0),
+  })))
+}
+
+function distributeLayerRatioHundredths(rows: LayerRow[]): LayerRow[] {
+  const TOTAL_HUNDREDTHS = 10_000
+  const ratioTotal = rows.reduce((sum, row) => sum + Math.max(Number(row.ratio) || 0, 0), 0)
+  if (!rows.length || ratioTotal <= 0) return rows
+
+  const allocations = rows.map((row, index) => {
+    const exactHundredths = Math.max(Number(row.ratio) || 0, 0) / ratioTotal * TOTAL_HUNDREDTHS
+    const hundredths = Math.floor(exactHundredths)
+    return {
+      index,
+      hundredths,
+      fractionalUnits: exactHundredths - hundredths,
+    }
+  })
+  let remaining = TOTAL_HUNDREDTHS - allocations.reduce((sum, item) => sum + item.hundredths, 0)
+  const byRemainder = [...allocations].sort((left, right) => (
+    right.fractionalUnits - left.fractionalUnits
+    || rows[left.index].level - rows[right.index].level
+  ))
+  for (let index = 0; remaining > 0; index += 1, remaining -= 1) {
+    byRemainder[index % byRemainder.length].hundredths += 1
+  }
+  return rows.map((row, index) => ({
+    ...row,
+    ratio: allocations[index].hundredths / TOTAL_HUNDREDTHS,
   }))
 }
 

@@ -45,6 +45,12 @@ test('layer composition is clearly labelled as a connected-population statistic'
   assert.match(source, /仅基于已建立传播证据的账号计算，比例合计 100\.00%/)
 })
 
+test('two-decimal layer proportions use deterministic remainder allocation', () => {
+  assert.match(source, /function distributeLayerRatioHundredths\(/)
+  assert.match(source, /const TOTAL_HUNDREDTHS = 10_000/)
+  assert.match(source, /fractionalUnits/)
+})
+
 test('propagation objects are ranked evidence rows with representative-path availability', () => {
   assert.match(source, /object-evidence-list/)
   assert.match(source, /参与账号/)
