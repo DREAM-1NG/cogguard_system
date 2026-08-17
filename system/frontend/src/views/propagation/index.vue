@@ -31,7 +31,7 @@
           </a-select>
         </a-space>
       </section>
-      <section v-if="activeTab === 'path' && diffusionTotalNodes > DEFAULT_DIFFUSION_NODE_LIMIT" class="toolbar-section density-group" aria-label="显示密度">
+      <section v-if="activeTab === 'path'" class="toolbar-section density-group" aria-label="显示密度">
         <span class="toolbar-group-label">显示密度</span>
         <a-slider
           v-model:value="diffusionPendingNodeLimit"
@@ -43,7 +43,7 @@
           @change="handleDiffusionLimitChange"
           @afterChange="handleDiffusionLimitCommit"
         />
-        <span class="path-node-control-count">{{ diffusionVisibleCount }} / {{ diffusionTotalNodes }} 个已连接账号</span>
+        <span class="path-node-control-count">{{ diffusionVisibleCount }} / {{ diffusionTotalNodes }}</span>
         <a-button size="small" type="link" @click="showFullDiffusionGraph">全量</a-button>
       </section>
       <section class="toolbar-section action-group" aria-label="操作">
@@ -1615,14 +1615,15 @@ const diffusionSummary = computed(() => {
   const serverSummary = analysisResult.value?.diffusion_summary
   return serverSummary?.visible_nodes?.length ? serverSummary : null
 })
-const diffusionReady = computed(() => (diffusionSummary.value?.visible_nodes ?? []).some((node) => !isIndependentObservation(node)))
+const diffusionReady = computed(() => (diffusionSummary.value?.visible_nodes?.length ?? 0) > 0)
 const diffusionMeta = computed(() => diffusionSummary.value?.meta ?? {})
-const diffusionVisibleCount = computed(() => {
-  return (diffusionSummary.value?.visible_nodes ?? []).filter((node) => !isIndependentObservation(node)).length
-})
 const diffusionTotalNodes = computed(() => {
-  const total = Number(diffusionMeta.value.primary_connected_node_count)
-  return Number.isFinite(total) && total > 0 ? Math.floor(total) : diffusionVisibleCount.value
+  const total = Number(diffusionMeta.value.total_nodes ?? analysisResult.value?.graph?.node_count ?? 0)
+  return Number.isFinite(total) && total > 0 ? Math.floor(total) : DEFAULT_DIFFUSION_NODE_LIMIT
+})
+const diffusionVisibleCount = computed(() => {
+  const count = Number(diffusionMeta.value.visible_node_count ?? diffusionSummary.value?.visible_nodes?.length ?? 0)
+  return Number.isFinite(count) && count > 0 ? Math.floor(count) : 0
 })
 const diffusionSliderStep = computed(() => {
   const rawMax = Math.max(diffusionTotalNodes.value, DEFAULT_DIFFUSION_NODE_LIMIT)
