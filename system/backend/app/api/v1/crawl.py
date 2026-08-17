@@ -1,11 +1,16 @@
 """Data collection API routes."""
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Query
+from pathlib import Path
+
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
+from fastapi.responses import FileResponse
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import get_current_user
 from app.db.mysql import get_db
 from app.models.user import User
+from app.models.task import CrawlJob
 from app.schemas.crawl import (
     CrawlDataQuery,
     CrawlJobResponse,
@@ -45,6 +50,22 @@ SUPPORTED_PLATFORMS = [
         "hint": "在“链接”中填写文章 URL，系统将使用仓库内置 news runtime 提取内容",
     },
 ]
+
+
+async def _require_readable_job(
+    *,
+    job_id: int,
+    db: AsyncSession,
+    current_user: User,
+    expected_job_type: str | None = None,
+) -> CrawlJob:
+    result = await db.execute(select(CrawlJob).where(CrawlJob.id == job_id))
+    job = result.scalar_one_or_none()
+    if job is None or (expected_job_type is not None and job.job_type != expected_job_type):
+        raise HTTPException(status_code=404, detail="任务不存在")
+    if job.created_by not in {current_user.id, 0}:
+        raise HTTPException(status_code=403, detail="无权读取该任务")
+    return job
 
 
 @router.get("/platforms")
@@ -125,8 +146,14 @@ async def create_media_download(
 async def get_media_download(
     job_id: int,
     db: AsyncSession = Depends(get_db),
-    _current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
+    await _require_readable_job(
+        job_id=job_id,
+        db=db,
+        current_user=current_user,
+        expected_job_type=media_download_service.MEDIA_DOWNLOAD_JOB_TYPE,
+    )
     job = await media_download_service.get_media_download_job(job_id, db)
     if job is None:
         return success(data=None, msg="下载任务不存在")
@@ -159,15 +186,20 @@ async def cancel_job(
 
 @router.get("/data")
 async def query_data(
+    crawl_job_id: int | None = None,
     platform: str | None = None,
     keyword: str | None = None,
     event_id: str | None = None,
     has_media: bool | None = None,
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
-    _current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
+    if crawl_job_id is not None:
+        await _require_readable_job(job_id=crawl_job_id, db=db, current_user=current_user)
     query = CrawlDataQuery(
+        crawl_job_id=crawl_job_id,
         platform=platform,
         keyword=keyword,
         event_id=event_id,
@@ -177,3 +209,63 @@ async def query_data(
     )
     items, total = await crawl_service.query_posts(query)
     return success(data={"total": total, "items": items})
+
+
+@router.get("/posts/{platform}/{post_id}/comments")
+async def get_post_comments(
+    platform: str,
+    post_id: str,
+    crawl_job_id: int = Query(..., ge=1),
+    limit: int = Query(3, ge=1, le=3),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    await _require_readable_job(job_id=crawl_job_id, db=db, current_user=current_user)
+    items = await crawl_service.query_post_comments(
+        platform=platform,
+        post_id=post_id,
+        crawl_job_id=crawl_job_id,
+        limit=limit,
+    )
+    return success(data={"items": items})
+
+
+@router.get("/posts/{platform}/{post_id}/media")
+async def get_post_media(
+    platform: str,
+    post_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    items = await media_download_service.find_downloaded_post_media(
+        platform=platform,
+        post_id=post_id,
+        user_id=current_user.id,
+        db=db,
+    )
+    return success(data={"items": items})
+
+
+@router.get("/media-downloads/{job_id}/items/{item_index}/content")
+async def get_media_download_content(
+    job_id: int,
+    item_index: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    job = await _require_readable_job(
+        job_id=job_id,
+        db=db,
+        current_user=current_user,
+        expected_job_type=media_download_service.MEDIA_DOWNLOAD_JOB_TYPE,
+    )
+    item = media_download_service.resolve_manifest_media_item(
+        media_download_service.read_job_manifest(job),
+        item_index=item_index,
+    )
+    if item is None:
+        raise HTTPException(status_code=404, detail="本地媒体文件不存在或不可用")
+    content_type = media_download_service.preview_content_type(item)
+    if content_type is None:
+        raise HTTPException(status_code=415, detail="该本地媒体格式暂不支持浏览器预览")
+    return FileResponse(Path(item["path"]), media_type=content_type)

@@ -91,6 +91,7 @@ class PostListResponse(BaseModel):
 
 class CrawlDataQuery(BaseModel):
     """采集数据查询参数。"""
+    crawl_job_id: int | None = None
     platform: str | None = None
     keyword: str | None = None
     event_id: str | None = None

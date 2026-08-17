@@ -114,23 +114,12 @@ async def build_claim_response_landscape(
     posts = await load_event_posts(mongo_db, event_id=event_id, platform=platform)
     comments = await load_event_comments(mongo_db, event_id=event_id, platform=platform)
     if semantic_projection is None:
-        semantic_projection = await _load_latest_semantic_projection(event_id, db=db, mongo_db=mongo_db)
-    if (
-        isinstance(semantic_projection, dict)
-        and semantic_projection.get("status") == "ready"
-        and _is_ready_semantic_artifact(semantic_projection.get("artifact"))
-        and not _semantic_projection_matches_current_source(
-            semantic_projection,
-            posts=posts,
-            comments=comments,
+        semantic_projection = await _load_latest_semantic_projection(
+            event_id,
+            db=db,
+            mongo_db=mongo_db,
             platform=platform,
         )
-    ):
-        semantic_projection = {
-            "status": "blocked",
-            "blocking_reason": "semantic_artifact_snapshot_mismatch",
-            "artifact": None,
-        }
 
     evidence_index = _build_evidence_index(posts, comments)
     engagement_percentiles = _platform_engagement_percentiles(posts, comments)
@@ -294,6 +283,7 @@ async def _load_latest_semantic_projection(
     *,
     db: AsyncSession,
     mongo_db: Any,
+    platform: str | None = None,
 ) -> dict[str, Any]:
     registry = AnalysisRegistry(mongo_db=mongo_db, store=SqlAlchemyAnalysisStore(db))
     try:
@@ -325,7 +315,7 @@ async def _load_latest_semantic_projection(
                     reason = "semantic_snapshot_load_failed"
                 else:
                     if _semantic_artifact_matches_snapshot(artifact, snapshot, snapshot_id=snapshot_id):
-                        return {
+                        projection = {
                             "status": "ready",
                             "run_id": run_id,
                             "snapshot_id": snapshot_id,
@@ -333,6 +323,13 @@ async def _load_latest_semantic_projection(
                             "snapshot": snapshot,
                             "artifact": artifact,
                         }
+                        if await _semantic_projection_matches_current_source(
+                            projection,
+                            event_id=event_id,
+                            registry=registry,
+                            platform=platform,
+                        ):
+                            return projection
                     reason = "semantic_artifact_snapshot_mismatch"
             else:
                 reason = _semantic_artifact_unavailable_reason(artifact)
@@ -1431,11 +1428,11 @@ def _semantic_artifact_matches_snapshot(artifact: dict[str, Any], snapshot: Any,
     return expected_fingerprint is not None and _optional_text(manifest.get("snapshot_fingerprint")) == expected_fingerprint
 
 
-def _semantic_projection_matches_current_source(
+async def _semantic_projection_matches_current_source(
     projection: dict[str, Any],
     *,
-    posts: list[dict[str, Any]],
-    comments: list[dict[str, Any]],
+    event_id: str,
+    registry: AnalysisRegistry,
     platform: str | None,
 ) -> bool:
     snapshot = projection.get("snapshot")
@@ -1443,35 +1440,25 @@ def _semantic_projection_matches_current_source(
     snapshot_id = _optional_text(projection.get("snapshot_id"))
     if not isinstance(artifact, dict) or not _semantic_artifact_matches_snapshot(artifact, snapshot, snapshot_id=snapshot_id):
         return False
-    snapshot_posts = getattr(snapshot, "posts", None)
-    snapshot_comments = getattr(snapshot, "comments", None)
-    if not isinstance(snapshot_posts, list) or not isinstance(snapshot_comments, list):
+    core_window = getattr(snapshot, "core_window", None)
+    context_window = getattr(snapshot, "context_window", None)
+    if core_window is None or context_window is None:
+        return False
+    try:
+        # Semantic artifacts are event-wide; platform only scopes factual projection output.
+        current_snapshot = await registry.build_current_event_snapshot(
+            event_id=event_id,
+            core_window=core_window,
+            context_window=context_window,
+            platform=None,
+        )
+    except Exception:
         return False
     return (
-        _same_scoped_source_rows(posts, snapshot_posts, platform=platform)
-        and _same_scoped_source_rows(comments, snapshot_comments, platform=platform)
+        _optional_text(getattr(current_snapshot, "event_id", event_id)) == event_id
+        and _optional_text(getattr(current_snapshot, "data_fingerprint", None))
+        == _optional_text(getattr(snapshot, "data_fingerprint", None))
     )
-
-
-def _same_scoped_source_rows(
-    current_rows: list[dict[str, Any]],
-    snapshot_rows: list[dict[str, Any]],
-    *,
-    platform: str | None,
-) -> bool:
-    def canonical_rows(rows: list[dict[str, Any]]) -> list[str] | None:
-        selected: list[str] = []
-        for row in rows:
-            if not isinstance(row, dict):
-                return None
-            if platform is not None and _optional_text(row.get("platform")) != platform:
-                continue
-            selected.append(json.dumps(row, ensure_ascii=False, sort_keys=True, default=str, separators=(",", ":")))
-        return sorted(selected)
-
-    current = canonical_rows(current_rows)
-    snapshot = canonical_rows(snapshot_rows)
-    return current is not None and snapshot is not None and current == snapshot
 
 
 def _semantic_artifact_unavailable_reason(artifact: Any) -> str:

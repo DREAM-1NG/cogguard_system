@@ -6,6 +6,7 @@ import asyncio
 import hashlib
 import ipaddress
 import json
+import mimetypes
 import re
 import socket
 from datetime import datetime, timezone
@@ -236,6 +237,67 @@ async def get_media_download_job(job_id: int, db: AsyncSession) -> dict[str, Any
     return payload
 
 
+def read_job_manifest(job: CrawlJob) -> dict[str, Any]:
+    """Read a job manifest only when the manifest itself stays in the media root."""
+
+    summary = _parse_json(job.result_summary) if job.result_summary else None
+    manifest_path = summary.get("manifest_path") if isinstance(summary, dict) else None
+    if not manifest_path:
+        return {}
+    root = Path(settings.MEDIA_DOWNLOAD_ROOT).resolve()
+    try:
+        path = Path(str(manifest_path)).resolve()
+        path.relative_to(root)
+    except (OSError, ValueError):
+        return {}
+    return read_manifest(path)
+
+
+async def find_downloaded_post_media(
+    *,
+    platform: str,
+    post_id: str,
+    user_id: int,
+    db: AsyncSession,
+) -> list[dict[str, Any]]:
+    """List manifest-backed local media for one platform-qualified post."""
+
+    result = await db.execute(
+        select(CrawlJob)
+        .where(
+            CrawlJob.job_type == MEDIA_DOWNLOAD_JOB_TYPE,
+            CrawlJob.created_by.in_([user_id, 0]),
+        )
+        .order_by(CrawlJob.created_at.desc())
+    )
+    previews: list[dict[str, Any]] = []
+    seen_paths: set[Path] = set()
+    for job in result.scalars().all():
+        manifest = read_job_manifest(job)
+        for item_index, raw_item in enumerate(manifest.get("items") or []):
+            if not isinstance(raw_item, dict):
+                continue
+            if str(raw_item.get("platform") or "") != platform or str(raw_item.get("post_id") or "") != post_id:
+                continue
+            resolved = resolve_manifest_media_item(manifest, item_index=item_index)
+            if resolved is None or resolved["path"] in seen_paths:
+                continue
+            seen_paths.add(resolved["path"])
+            previews.append(
+                {
+                    "job_id": job.id,
+                    "item_index": item_index,
+                    "media_type": resolved["media_type"],
+                    "filename": resolved["filename"],
+                    "status": "ready",
+                    "content_type": preview_content_type(resolved),
+                    "previewable": preview_content_type(resolved) is not None,
+                    "preview_url": f"/api/v1/crawl/media-downloads/{job.id}/items/{item_index}/content",
+                }
+            )
+    return previews
+
+
 def read_manifest(path: Path) -> dict[str, Any]:
     try:
         if path.is_file():
@@ -243,6 +305,70 @@ def read_manifest(path: Path) -> dict[str, Any]:
     except (OSError, json.JSONDecodeError):
         return {}
     return {}
+
+
+def resolve_manifest_media_item(
+    manifest: dict[str, Any],
+    *,
+    item_index: int,
+    media_root: Path | None = None,
+) -> dict[str, Any] | None:
+    """Resolve one ready manifest item without exposing an arbitrary path.
+
+    A manifest is output produced from crawled content and must therefore be
+    treated as untrusted input when it is read back for browser preview.
+    """
+
+    items = manifest.get("items")
+    if not isinstance(items, list) or item_index < 0 or item_index >= len(items):
+        return None
+    raw_item = items[item_index]
+    if not isinstance(raw_item, dict) or raw_item.get("status") not in {"downloaded", "skipped"}:
+        return None
+
+    raw_path = str(raw_item.get("local_path") or "").strip()
+    if not raw_path:
+        return None
+    root = (media_root or Path(settings.MEDIA_DOWNLOAD_ROOT)).resolve()
+    try:
+        path = Path(raw_path).resolve()
+        path.relative_to(root)
+    except (OSError, ValueError):
+        return None
+    if not path.is_file():
+        return None
+
+    media_type = str(raw_item.get("media_type") or "").strip().lower()
+    if media_type not in DEFAULT_MEDIA_TYPES:
+        return None
+    return {
+        "path": path,
+        "filename": path.name,
+        "media_type": media_type,
+        "content_type": str(raw_item.get("content_type") or "").strip() or None,
+        "platform": str(raw_item.get("platform") or "").strip(),
+        "post_id": str(raw_item.get("post_id") or "").strip(),
+    }
+
+
+def preview_content_type(item: dict[str, Any]) -> str | None:
+    """Return a browser preview MIME type for a validated local media item."""
+
+    path = Path(item["path"])
+    suffix = path.suffix.lower()
+    allowed = {
+        "image": {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp", ".gif": "image/gif"},
+        "video": {".mp4": "video/mp4", ".webm": "video/webm", ".ogv": "video/ogg"},
+    }
+    media_type = str(item.get("media_type") or "")
+    if suffix in allowed.get(media_type, {}):
+        return allowed[media_type][suffix]
+    declared = str(item.get("content_type") or "").strip().lower()
+    guessed, _encoding = mimetypes.guess_type(path.name)
+    accepted_types = set(allowed.get(media_type, {}).values())
+    if declared in accepted_types:
+        return declared
+    return guessed if guessed in accepted_types else None
 
 
 def run_media_download_job(job_id: int, params_json: str) -> dict[str, Any]:

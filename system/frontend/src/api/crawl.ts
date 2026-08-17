@@ -45,6 +45,7 @@ export function cancelCrawlJob(jobId: number) {
 
 /** 查询已采集的帖子数据（分页 + 筛选） */
 export function queryCrawlData(params: {
+  crawl_job_id?: number
   platform?: string
   keyword?: string
   event_id?: string
@@ -53,6 +54,21 @@ export function queryCrawlData(params: {
   page_size?: number
 }) {
   return request.get('/crawl/data', { params })
+}
+
+/** 获取选中任务内一条帖子的前三条评论摘要 */
+export function getPostComments(platform: string, postId: string, params: { crawl_job_id: number; limit?: number }) {
+  return request.get(`/crawl/posts/${encodeURIComponent(platform)}/${encodeURIComponent(postId)}/comments`, { params })
+}
+
+/** 获取一条帖子已下载且可验证的本地媒体 */
+export function getPostMedia(platform: string, postId: string) {
+  return request.get(`/crawl/posts/${encodeURIComponent(platform)}/${encodeURIComponent(postId)}/media`)
+}
+
+/** 受保护媒体内容地址；浏览器预览前必须带 Bearer 请求读取 */
+export function getMediaContentPath(jobId: number, itemIndex: number) {
+  return `/api/v1/crawl/media-downloads/${jobId}/items/${itemIndex}/content`
 }
 
 /** 创建已采集媒体下载任务 */

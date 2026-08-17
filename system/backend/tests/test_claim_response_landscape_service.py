@@ -956,6 +956,8 @@ def test_ready_semantic_artifact_rejects_malformed_or_duplicate_layer_members():
 def test_latest_semantic_projection_continues_after_newest_candidate_is_unavailable(monkeypatch):
     async def scenario():
         load_order: list[str] = []
+        core_window = SimpleNamespace(start="core-start", end="core-end")
+        context_window = SimpleNamespace(start="context-start", end="context-end")
 
         class FakeRegistry:
             def __init__(self, **_kwargs) -> None:
@@ -985,7 +987,25 @@ def test_latest_semantic_projection_continues_after_newest_candidate_is_unavaila
 
             async def load_event_snapshot(self, snapshot_id):
                 assert snapshot_id == "snapshot-old"
-                return SimpleNamespace(snapshot_id=snapshot_id, data_fingerprint="older-fingerprint")
+                return SimpleNamespace(
+                    snapshot_id=snapshot_id,
+                    data_fingerprint="older-fingerprint",
+                    core_window=core_window,
+                    context_window=context_window,
+                )
+
+            async def build_current_event_snapshot(
+                self,
+                *,
+                event_id,
+                core_window,
+                context_window,
+                platform=None,
+            ):
+                assert event_id == "event-1"
+                assert core_window is not None
+                assert context_window is not None
+                return SimpleNamespace(data_fingerprint="older-fingerprint")
 
         monkeypatch.setattr(claim_response_landscape_service, "AnalysisRegistry", FakeRegistry)
 
@@ -999,6 +1019,117 @@ def test_latest_semantic_projection_continues_after_newest_candidate_is_unavaila
         assert result["run_id"] == "older-ready"
         assert result["snapshot_id"] == "snapshot-old"
         assert load_order == ["newest-missing", "older-ready"]
+
+    asyncio.run(scenario())
+
+
+def test_latest_semantic_projection_rebuilds_current_source_with_persisted_snapshot_windows(monkeypatch):
+    async def scenario():
+        core_window = SimpleNamespace(start="core-start", end="core-end")
+        context_window = SimpleNamespace(start="context-start", end="context-end")
+        persisted_snapshot = SimpleNamespace(
+            snapshot_id="snapshot-current",
+            data_fingerprint="current-fingerprint",
+            core_window=core_window,
+            context_window=context_window,
+        )
+        rebuild_calls: list[dict] = []
+
+        class FakeRegistry:
+            def __init__(self, **_kwargs):
+                pass
+
+            async def list_semantic_artifact_candidates(self, event_id):
+                assert event_id == "event-1"
+                return [{"run_id": "current-run", "snapshot_id": "snapshot-current"}]
+
+            async def load_event_snapshot(self, snapshot_id):
+                assert snapshot_id == "snapshot-current"
+                return persisted_snapshot
+
+            async def load_run_artifact(self, run_id, artifact_key):
+                assert run_id == "current-run"
+                assert artifact_key == claim_response_landscape_service.SEMANTIC_ARTIFACT_KEY
+                return {
+                    "technology": "semantic_enrichment",
+                    "status": "ok",
+                    "runtime_status": "ready",
+                    "fallback": False,
+                    "embedding_manifest": {"snapshot_fingerprint": "current-fingerprint"},
+                    "layers": {"posts": [], "comments": []},
+                }
+
+            async def build_current_event_snapshot(self, **kwargs):
+                rebuild_calls.append(kwargs)
+                return SimpleNamespace(data_fingerprint="current-fingerprint")
+
+        monkeypatch.setattr(claim_response_landscape_service, "AnalysisRegistry", FakeRegistry)
+
+        result = await claim_response_landscape_service._load_latest_semantic_projection(
+            "event-1",
+            db=SimpleNamespace(),
+            mongo_db=SimpleNamespace(),
+            platform="weibo",
+        )
+
+        assert result["status"] == "ready"
+        assert rebuild_calls == [
+            {
+                "event_id": "event-1",
+                "core_window": core_window,
+                "context_window": context_window,
+                "platform": None,
+            }
+        ]
+
+    asyncio.run(scenario())
+
+
+def test_latest_semantic_projection_blocks_when_current_source_changes_inside_snapshot_window(monkeypatch):
+    async def scenario():
+        snapshot = SimpleNamespace(
+            snapshot_id="snapshot-current",
+            data_fingerprint="snapshot-fingerprint",
+            core_window=SimpleNamespace(start="core-start", end="core-end"),
+            context_window=SimpleNamespace(start="context-start", end="context-end"),
+        )
+
+        class FakeRegistry:
+            def __init__(self, **_kwargs):
+                pass
+
+            async def list_semantic_artifact_candidates(self, event_id):
+                return [{"run_id": "current-run", "snapshot_id": "snapshot-current"}]
+
+            async def load_event_snapshot(self, snapshot_id):
+                return snapshot
+
+            async def load_run_artifact(self, run_id, artifact_key):
+                return {
+                    "technology": "semantic_enrichment",
+                    "status": "ok",
+                    "runtime_status": "ready",
+                    "fallback": False,
+                    "embedding_manifest": {"snapshot_fingerprint": "snapshot-fingerprint"},
+                    "layers": {"posts": [], "comments": []},
+                }
+
+            async def build_current_event_snapshot(self, **_kwargs):
+                return SimpleNamespace(data_fingerprint="changed-fingerprint")
+
+        monkeypatch.setattr(claim_response_landscape_service, "AnalysisRegistry", FakeRegistry)
+
+        result = await claim_response_landscape_service._load_latest_semantic_projection(
+            "event-1",
+            db=SimpleNamespace(),
+            mongo_db=SimpleNamespace(),
+        )
+
+        assert result == {
+            "status": "blocked",
+            "blocking_reason": "semantic_artifact_snapshot_mismatch",
+            "artifact": None,
+        }
 
     asyncio.run(scenario())
 
@@ -1049,38 +1180,49 @@ def test_latest_semantic_projection_rejects_artifact_with_stale_snapshot_fingerp
     asyncio.run(scenario())
 
 
-def test_semantic_projection_rejects_current_rows_that_do_not_match_its_snapshot():
-    projection = {
-        "status": "ready",
-        "snapshot_id": "snapshot-current",
-        "snapshot": SimpleNamespace(
+def test_semantic_projection_freshness_compares_rebuilt_snapshot_fingerprint():
+    async def scenario():
+        snapshot = SimpleNamespace(
             snapshot_id="snapshot-current",
             data_fingerprint="current-fingerprint",
-            posts=[{"platform": "weibo", "post_id": "official", "content": "old claim"}],
-            comments=[{"platform": "weibo", "comment_id": "response", "content": "old response"}],
-        ),
-        "artifact": {
-            "technology": "semantic_enrichment",
-            "status": "ok",
-            "runtime_status": "ready",
-            "fallback": False,
-            "embedding_manifest": {"snapshot_fingerprint": "current-fingerprint"},
-            "layers": {"posts": [], "comments": []},
-        },
-    }
+            core_window=SimpleNamespace(start="core-start", end="core-end"),
+            context_window=SimpleNamespace(start="context-start", end="context-end"),
+        )
+        projection = {
+            "status": "ready",
+            "snapshot_id": "snapshot-current",
+            "snapshot": snapshot,
+            "artifact": {
+                "technology": "semantic_enrichment",
+                "status": "ok",
+                "runtime_status": "ready",
+                "fallback": False,
+                "embedding_manifest": {"snapshot_fingerprint": "current-fingerprint"},
+                "layers": {"posts": [], "comments": []},
+            },
+        }
 
-    assert claim_response_landscape_service._semantic_projection_matches_current_source(
-        projection,
-        posts=[{"platform": "weibo", "post_id": "official", "content": "old claim"}],
-        comments=[{"platform": "weibo", "comment_id": "response", "content": "old response"}],
-        platform="weibo",
-    )
-    assert not claim_response_landscape_service._semantic_projection_matches_current_source(
-        projection,
-        posts=[{"platform": "weibo", "post_id": "official", "content": "updated claim"}],
-        comments=[{"platform": "weibo", "comment_id": "response", "content": "old response"}],
-        platform="weibo",
-    )
+        class FakeRegistry:
+            def __init__(self, fingerprint):
+                self.fingerprint = fingerprint
+
+            async def build_current_event_snapshot(self, **_kwargs):
+                return SimpleNamespace(data_fingerprint=self.fingerprint)
+
+        assert await claim_response_landscape_service._semantic_projection_matches_current_source(
+            projection,
+            event_id="event-1",
+            registry=FakeRegistry("current-fingerprint"),
+            platform="weibo",
+        )
+        assert not await claim_response_landscape_service._semantic_projection_matches_current_source(
+            projection,
+            event_id="event-1",
+            registry=FakeRegistry("updated-fingerprint"),
+            platform="weibo",
+        )
+
+    asyncio.run(scenario())
 
 
 def test_landscape_accepts_database_object_that_disallows_truthiness(monkeypatch):

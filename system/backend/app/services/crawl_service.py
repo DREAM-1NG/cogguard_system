@@ -123,6 +123,8 @@ async def query_posts(query: CrawlDataQuery) -> tuple[list[dict], int]:
     collection = mongo_db["raw_posts"]
 
     mongo_filter: dict = {}
+    if query.crawl_job_id is not None:
+        mongo_filter["crawl_job_id"] = query.crawl_job_id
     if query.platform:
         mongo_filter["platform"] = query.platform
     if query.keyword:
@@ -151,3 +153,29 @@ async def query_posts(query: CrawlDataQuery) -> tuple[list[dict], int]:
     )
     items = await cursor.to_list(length=query.page_size)
     return items, total
+
+
+async def query_post_comments(
+    *,
+    platform: str,
+    post_id: str,
+    crawl_job_id: int,
+    limit: int,
+) -> list[dict]:
+    """Return a bounded comment preview from the same selected crawl job."""
+
+    mongo_db = get_mongo_db()
+    cursor = (
+        mongo_db["raw_comments"]
+        .find(
+            {
+                "platform": platform,
+                "post_id": post_id,
+                "crawl_job_id": crawl_job_id,
+            },
+            {"_id": 0},
+        )
+        .sort("timestamp", -1)
+        .limit(limit)
+    )
+    return await cursor.to_list(length=limit)

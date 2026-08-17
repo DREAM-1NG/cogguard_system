@@ -144,6 +144,24 @@ def _args(tmp_path: Path, *, execute: bool = True):
     )
 
 
+def test_precompute_closes_mongo_and_mysql_resources(monkeypatch):
+    script = _load_script()
+    events: list[str] = []
+
+    async def close_mongo():
+        events.append("mongo_closed")
+
+    async def close_mysql():
+        events.append("mysql_closed")
+
+    monkeypatch.setattr(script, "close_mongo", close_mongo)
+    monkeypatch.setattr(script, "close_mysql", close_mysql)
+
+    asyncio.run(script._close_resources_safely())
+
+    assert events == ["mongo_closed", "mysql_closed"]
+
+
 def test_precompute_persists_observed_propagation_before_semantic_enrichment(monkeypatch, tmp_path: Path, capsys):
     script = _load_script()
     events: list[str] = []
