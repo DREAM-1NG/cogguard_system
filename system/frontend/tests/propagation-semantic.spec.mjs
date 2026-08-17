@@ -398,9 +398,11 @@ test('keeps propagation hops in distinct radial bands with parent-guided local c
   const fitted = bodyOf(propagationView, 'fitGraphPositions')
 
   assert.match(positions, /const parentByChild = new Map/)
-  assert.match(positions, /const baseRadius = 64 \+ \(depth - 1\) \* 72/)
-  assert.match(positions, /const radialBand = 24/)
+  assert.match(positions, /const firstHopBaseRadius = 50/)
+  assert.match(positions, /const baseRadius = depth === 1\s*\? firstHopBaseRadius\s*:\s*64 \+ \(depth - 1\) \* 72/)
+  assert.match(positions, /const radialBand = depth === 1 \? 20 : 24/)
   assert.match(positions, /const maxRadius = baseRadius \+ radialBand/)
+  assert.match(positions, /const minRadius = Math\.max\(30, baseRadius - radialBand\)/)
   assert.match(positions, /blendRadialAngle\(uniformAngle, parentAngle, 0\.35\)/)
   assert.match(positions, /resolveRadialPositionCollisions\(radialAngle, radius, maxRadius, depth, positions\)/)
   assert.doesNotMatch(positions, /branchContextByChild/)

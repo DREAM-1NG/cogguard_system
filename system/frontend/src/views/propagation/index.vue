@@ -2868,10 +2868,13 @@ function buildCompactRadialEvidencePositions(
       const rightOrder = stableLayoutFraction(`radial:${depth}:${right.id}`)
       return leftOrder - rightOrder || String(left.id).localeCompare(String(right.id))
     })
-    const baseRadius = 64 + (depth - 1) * 72
-    const radialBand = 24
+    const firstHopBaseRadius = 50
+    const baseRadius = depth === 1
+      ? firstHopBaseRadius
+      : 64 + (depth - 1) * 72
+    const radialBand = depth === 1 ? 20 : 24
     const maxRadius = baseRadius + radialBand
-    const minRadius = Math.max(32, baseRadius - radialBand)
+    const minRadius = Math.max(30, baseRadius - radialBand)
     const minimumNodeSpacing = 14
     const circumference = Math.PI * 2 * baseRadius
     const laneCount = Math.max(1, Math.ceil((ordered.length * minimumNodeSpacing) / circumference))
