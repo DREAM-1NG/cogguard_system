@@ -372,12 +372,13 @@ test('renders all required semantic overlay fields without replacing observed pa
   assert.match(pathDrawer, /selectedClaimPathDetail\.chain\.supporting_posts/)
 })
 
-test('renders deterministic concentric propagation nodes without visual connection lines', () => {
+test('renders deterministic branch-sector propagation nodes without visual connection lines', () => {
   const graphOption = bodyOf(propagationView, 'buildPathGraphOption')
   const labelUpdater = bodyOf(propagationView, 'updatePathGraphLabelsByZoom')
 
   assert.match(graphOption, /const treeEdges = summary\?\.tree_edges \?\? \[\]/)
-  assert.match(graphOption, /buildConcentricEvidencePositions/)
+  assert.match(graphOption, /buildBranchSectorEvidencePositions/)
+  assert.doesNotMatch(graphOption, /buildConcentricEvidencePositions/)
   assert.match(propagationView, /function stableLayoutFraction\(value: string\)/)
   assert.match(graphOption, /isIndependentObservation/)
   assert.doesNotMatch(graphOption, /layout_x/)
@@ -391,22 +392,17 @@ test('renders deterministic concentric propagation nodes without visual connecti
   assert.doesNotMatch(graphOption, /focus:\s*'adjacency'/)
 })
 
-test('uses compact collision-safe layer bands with readable non-root propagation nodes', () => {
-  const positions = bodyOf(propagationView, 'buildConcentricEvidencePositions')
+test('keeps propagation branches compact while resolving only local node collisions', () => {
+  const positions = bodyOf(propagationView, 'buildBranchSectorEvidencePositions')
   const fitted = bodyOf(propagationView, 'fitGraphPositions')
 
-  assert.match(positions, /const angularJitter/)
-  assert.match(positions, /const radialJitter/)
-  assert.match(positions, /stableLayoutFraction\(`angle:/)
-  assert.match(positions, /stableLayoutFraction\(`radius:/)
-  assert.match(positions, /const radius = 70 \+ \(depth - 1\) \* 40/)
-  assert.match(positions, /const minimumArcSpacing = 14/)
-  assert.match(positions, /const minimumRadius = \(ordered\.length \* minimumArcSpacing\) \/ \(Math\.PI \* 2 \* 0\.92\)/)
-  assert.match(positions, /const minimumAngularGap = Math\.max\(0\.001, Math\.min\(\.\.\.ringGaps\)\)/)
-  assert.match(positions, /const localGapRadius = minimumArcSpacing \/ \(minimumAngularGap \* 0\.92\)/)
-  assert.match(positions, /const collisionSafeRadius = Math\.max\(radius, minimumRadius, localGapRadius, previousRingRadius \+ 40\)/)
-  assert.match(positions, /Math\.min\(12, Math\.max\(4, radius \* 0\.04\)\)/)
-  assert.doesNotMatch(positions, /minSpacingRadius/)
+  assert.match(positions, /const branchContextByChild = new Map/)
+  assert.match(positions, /const childWeight = parentId === rootId \? 1/)
+  assert.match(positions, /const baseRadius = 52 \+ \(depth - 1\) \* 46/)
+  assert.match(positions, /const laneCount = Math\.max\(1, Math\.ceil\(\(context\.siblingCount \* minimumNodeSpacing\) \/ availableArc\)\)/)
+  assert.match(positions, /resolveBranchPositionCollisions/)
+  assert.doesNotMatch(positions, /previousRingRadius/)
+  assert.doesNotMatch(positions, /collisionSafeRadius/)
   assert.match(fitted, /Math\.min\(460 \/ width, 380 \/ height, 0\.92\)/)
 
   const graphOption = bodyOf(propagationView, 'buildPathGraphOption')

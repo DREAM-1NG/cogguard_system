@@ -2795,7 +2795,43 @@ function buildPrimaryEvidenceBackbone(
   }
 }
 
-function buildConcentricEvidencePositions(
+function resolveBranchPositionCollisions(
+  angle: number,
+  radius: number,
+  sectorStart: number,
+  sectorEnd: number,
+  layer: number,
+  positions: Map<string, { x: number; y: number; layer: number }>,
+) {
+  const angleOffsets = [0, 0.05, -0.05, 0.1, -0.1, 0.16, -0.16, 0.22, -0.22]
+  const canAdjustAngle = (sectorEnd - sectorStart) > 0.012
+
+  for (let radialStep = 0; radialStep <= 12; radialStep += 1) {
+    const resolvedRadius = radius + (radialStep * 10)
+    for (const angleOffset of angleOffsets) {
+      const resolvedAngle = canAdjustAngle
+        ? Math.min(sectorEnd - 0.006, Math.max(sectorStart + 0.006, angle + angleOffset))
+        : angle
+      const x = Math.cos(resolvedAngle) * resolvedRadius
+      const y = Math.sin(resolvedAngle) * resolvedRadius
+      const collides = Array.from(positions.values()).some((position) => {
+        const minimumDistance = position.layer === 0 ? 28 : 14
+        const deltaX = x - position.x
+        const deltaY = y - position.y
+        return (deltaX * deltaX) + (deltaY * deltaY) < (minimumDistance * minimumDistance)
+      })
+      if (!collides) return { x, y, layer }
+    }
+  }
+
+  return {
+    x: Math.cos(angle) * (radius + 130),
+    y: Math.sin(angle) * (radius + 130),
+    layer,
+  }
+}
+
+function buildBranchSectorEvidencePositions(
   nodes: DiffusionNode[],
   backboneEdges: DiffusionEdge[],
   rootId: string,
@@ -2829,74 +2865,84 @@ function buildConcentricEvidencePositions(
     subtreeWeightByNode.set(id, Math.max(1, 1 + childWeight))
   }
 
-  const angleByNode = new Map<string, number>()
-  const assignAngles = (parentId: string, start: number, end: number) => {
+  const sectorsByNode = new Map<string, { start: number; end: number }>()
+  const branchContextByChild = new Map<string, {
+    parentStart: number
+    parentEnd: number
+    siblingIndex: number
+    siblingCount: number
+  }>()
+  const assignSectors = (parentId: string, start: number, end: number) => {
     const childIds = childrenByParent.get(parentId) ?? []
     if (!childIds.length) return
-    const totalWeight = childIds.reduce((total, childId) => total + (subtreeWeightByNode.get(childId) ?? 1), 0)
+    const totalWeight = childIds.reduce((total, childId) => {
+      const childWeight = parentId === rootId ? 1 : (subtreeWeightByNode.get(childId) ?? 1)
+      return total + childWeight
+    }, 0)
     let cursor = start
-    for (const childId of childIds) {
-      const childSpan = ((end - start) * (subtreeWeightByNode.get(childId) ?? 1)) / totalWeight
-      angleByNode.set(childId, cursor + (childSpan / 2))
-      assignAngles(childId, cursor, cursor + childSpan)
+    for (const [siblingIndex, childId] of childIds.entries()) {
+      const childWeight = parentId === rootId ? 1 : (subtreeWeightByNode.get(childId) ?? 1)
+      const childSpan = ((end - start) * childWeight) / totalWeight
+      const childStart = cursor
+      const childEnd = cursor + childSpan
+      sectorsByNode.set(childId, { start: childStart, end: childEnd })
+      branchContextByChild.set(childId, {
+        parentStart: start,
+        parentEnd: end,
+        siblingIndex,
+        siblingCount: childIds.length,
+      })
+      assignSectors(childId, childStart, childEnd)
       cursor += childSpan
     }
   }
-  assignAngles(rootId, -Math.PI / 2, (Math.PI * 3) / 2)
-
-  const nodesByDepth = new Map<number, DiffusionNode[]>()
-  for (const node of primaryNodes) {
-    const id = String(node.id)
-    if (!id || id === rootId) continue
-    const depth = nodeConnectedDepth(node, rootId)
-    if (!nodesByDepth.has(depth)) nodesByDepth.set(depth, [])
-    nodesByDepth.get(depth)?.push(node)
-  }
+  const rootSector = { start: -Math.PI / 2, end: (Math.PI * 3) / 2 }
+  sectorsByNode.set(rootId, rootSector)
+  assignSectors(rootId, rootSector.start, rootSector.end)
 
   positions.set(rootId, { x: 0, y: 0, layer: 0 })
-  let previousRingRadius = 0
-  for (const [depth, ringNodes] of Array.from(nodesByDepth.entries()).sort(([left], [right]) => left - right)) {
-    const ordered = [...ringNodes].sort((left, right) => {
-      const leftAngle = angleByNode.get(String(left.id)) ?? (stableLayoutFraction(`node:${left.id}`) * Math.PI * 2)
-      const rightAngle = angleByNode.get(String(right.id)) ?? (stableLayoutFraction(`node:${right.id}`) * Math.PI * 2)
-      const angleOrder = leftAngle - rightAngle
-      if (angleOrder) return angleOrder
-      return String(left.id).localeCompare(String(right.id))
+  const orderedNodes = primaryNodes
+    .filter((node) => String(node.id) !== rootId)
+    .sort((left, right) => {
+      const leftDepth = nodeConnectedDepth(left, rootId)
+      const rightDepth = nodeConnectedDepth(right, rootId)
+      if (leftDepth !== rightDepth) return leftDepth - rightDepth
+      const leftSector = sectorsByNode.get(String(left.id)) ?? rootSector
+      const rightSector = sectorsByNode.get(String(right.id)) ?? rootSector
+      return leftSector.start - rightSector.start || String(left.id).localeCompare(String(right.id))
     })
-    const radius = 70 + (depth - 1) * 40
-    const ringAngles = ordered.map((node) => (
-      angleByNode.get(String(node.id))
-      ?? ((stableLayoutFraction(`node:${node.id}`) * Math.PI * 2) - (Math.PI / 2))
-    ))
-    const ringGaps = ringAngles.map((angle, index) => {
-      const nextAngle = index === ringAngles.length - 1
-        ? ringAngles[0] + (Math.PI * 2)
-        : ringAngles[index + 1]
-      return nextAngle - angle
-    })
-    const minimumArcSpacing = 14
-    const minimumRadius = (ordered.length * minimumArcSpacing) / (Math.PI * 2 * 0.92)
-    const minimumAngularGap = Math.max(0.001, Math.min(...ringGaps))
-    const localGapRadius = minimumArcSpacing / (minimumAngularGap * 0.92)
-    const collisionSafeRadius = Math.max(radius, minimumRadius, localGapRadius, previousRingRadius + 40)
-    ordered.forEach((node, index) => {
-      const id = String(node.id)
-      const angle = ringAngles[index]
-      const previousAngle = index === 0 ? ringAngles[ringAngles.length - 1] - (Math.PI * 2) : ringAngles[index - 1]
-      const nextAngle = index === ringAngles.length - 1 ? ringAngles[0] + (Math.PI * 2) : ringAngles[index + 1]
-      const localGap = Math.max(0, Math.min(angle - previousAngle, nextAngle - angle))
-      const angularJitterLimit = Math.min(0.16, Math.max(0.012, localGap * 0.32))
-      const angularJitter = ((stableLayoutFraction(`angle:${depth}:${id}`) - 0.5) * 2) * angularJitterLimit
-      const radialJitterLimit = Math.min(12, Math.max(4, radius * 0.04))
-      const radialJitter = ((stableLayoutFraction(`radius:${depth}:${id}`) - 0.5) * 2) * radialJitterLimit
-      const nodeRadius = collisionSafeRadius + radialJitter
-      positions.set(id, {
-        x: Math.cos(angle + angularJitter) * nodeRadius,
-        y: Math.sin(angle + angularJitter) * nodeRadius,
-        layer: depth,
-      })
-    })
-    previousRingRadius = collisionSafeRadius
+
+  for (const node of orderedNodes) {
+    const id = String(node.id)
+    const depth = nodeConnectedDepth(node, rootId)
+    const sector = sectorsByNode.get(id) ?? rootSector
+    const context = branchContextByChild.get(id) ?? {
+      parentStart: rootSector.start,
+      parentEnd: rootSector.end,
+      siblingIndex: 0,
+      siblingCount: 1,
+    }
+    const angle = (sector.start + sector.end) / 2
+    const baseRadius = 52 + (depth - 1) * 46
+    const minimumNodeSpacing = 14
+    const availableArc = Math.max(1, (context.parentEnd - context.parentStart) * baseRadius)
+    const laneCount = Math.max(1, Math.ceil((context.siblingCount * minimumNodeSpacing) / availableArc))
+    const laneOffset = ((context.siblingIndex % laneCount) - ((laneCount - 1) / 2)) * minimumNodeSpacing
+    const branchRadius = Math.max(
+      32,
+      baseRadius + laneOffset + ((stableLayoutFraction(`branch:${depth}:${id}`) - 0.5) * 4),
+    )
+    positions.set(
+      id,
+      resolveBranchPositionCollisions(
+        angle,
+        branchRadius,
+        sector.start,
+        sector.end,
+        depth,
+        positions,
+      ),
+    )
   }
 
   return positions
@@ -2909,7 +2955,7 @@ function buildPathGraphOption(summary?: DiffusionSummary | null): EChartsOption 
   const rootId = String(summary?.root_node?.id || nodes.find((node) => node.is_root)?.id || nodes[0]?.id || '')
   const backbone = buildPrimaryEvidenceBackbone(nodes, treeEdges, rootId)
 
-  const positions = buildConcentricEvidencePositions(nodes, backbone.primaryEdges, rootId)
+  const positions = buildBranchSectorEvidencePositions(nodes, backbone.primaryEdges, rootId)
   const fittedPositions = fitGraphPositions(positions)
 
   const graphData = nodes.map((node) => {
