@@ -372,7 +372,7 @@ test('renders all required semantic overlay fields without replacing observed pa
   assert.match(pathDrawer, /selectedClaimPathDetail\.chain\.supporting_posts/)
 })
 
-test('renders deterministic concentric propagation nodes with one outward evidence backbone relationship per observation', () => {
+test('renders deterministic concentric propagation nodes without visual connection lines', () => {
   const graphOption = bodyOf(propagationView, 'buildPathGraphOption')
 
   assert.match(graphOption, /const treeEdges = summary\?\.tree_edges \?\? \[\]/)
@@ -381,12 +381,11 @@ test('renders deterministic concentric propagation nodes with one outward eviden
   assert.match(graphOption, /isIndependentObservation/)
   assert.doesNotMatch(graphOption, /layout_x/)
   assert.match(graphOption, /buildPrimaryEvidenceBackbone\(nodes, treeEdges, rootId\)/)
-  assert.match(graphOption, /targetLayer === sourceLayer \+ 1/)
-  assert.match(graphOption, /const graphEdges = \[\.\.\.backbone\.primaryEdges, \.\.\.backbone\.independentEdges\]/)
-  assert.match(graphOption, /links:\s*graphLinks/)
+  assert.match(graphOption, /links:\s*\[\]/)
+  assert.doesNotMatch(graphOption, /const graphEdges = \[\.\.\.backbone\.primaryEdges, \.\.\.backbone\.independentEdges\]/)
   assert.match(graphOption, /draggable:\s*false/)
-  assert.match(graphOption, /edgeSymbol:/)
-  assert.match(graphOption, /focus:\s*'adjacency'/)
+  assert.doesNotMatch(graphOption, /edgeSymbol:/)
+  assert.doesNotMatch(graphOption, /focus:\s*'adjacency'/)
 })
 
 test('keeps evidence time series separate from relative model forecast steps', () => {

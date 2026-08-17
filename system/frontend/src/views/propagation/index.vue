@@ -2906,10 +2906,8 @@ function buildConcentricEvidencePositions(
 function buildPathGraphOption(summary?: DiffusionSummary | null): EChartsOption {
   const nodes = summary?.visible_nodes ?? []
   const treeEdges = summary?.tree_edges ?? []
-  const highlightEdges = summary?.highlight_edges ?? []
   const nodeById = new Map(nodes.map((node) => [String(node.id), node]))
   const rootId = String(summary?.root_node?.id || nodes.find((node) => node.is_root)?.id || nodes[0]?.id || '')
-  const keyEdgeKeys = new Set(highlightEdges.map((edge) => `${edge.source}->${edge.target}`))
   const backbone = buildPrimaryEvidenceBackbone(nodes, treeEdges, rootId)
 
   const positions = buildConcentricEvidencePositions(nodes, backbone.primaryEdges, rootId)
@@ -2947,53 +2945,11 @@ function buildPathGraphOption(summary?: DiffusionSummary | null): EChartsOption 
     }
   })
 
-  const graphEdges = [...backbone.primaryEdges, ...backbone.independentEdges]
-  const graphLinks = graphEdges
-    .filter((edge) => {
-      const source = String(edge.source)
-      const target = String(edge.target)
-      if (!source || !target || source === target || !nodeById.has(source) || !nodeById.has(target)) return false
-      const sourceNode = nodeById.get(source)
-      const targetNode = nodeById.get(target)
-      const sourceIndependent = isIndependentObservation(sourceNode)
-      const targetIndependent = isIndependentObservation(targetNode)
-      if (sourceIndependent || targetIndependent) return sourceIndependent && targetIndependent
-      const sourceLayer = nodeConnectedDepth(sourceNode as DiffusionNode, rootId)
-      const targetLayer = nodeConnectedDepth(targetNode as DiffusionNode, rootId)
-      return targetLayer === sourceLayer + 1
-    })
-    .map((edge) => {
-      const source = String(edge.source)
-      const target = String(edge.target)
-      const key = `${source}->${target}`
-      const isKeyPath = Boolean(edge.is_key_path) || keyEdgeKeys.has(key)
-      const isConfirmed = edge.evidence_type === 'explicit' || edge.type === 'explicit'
-      const isIndependent = isIndependentObservation(nodeById.get(source))
-      return {
-        source,
-        target,
-        value: Number(edge.weight ?? 1) || 1,
-        relationLabel: edge.relation_type || edge.type || '传播关系',
-        evidenceLabel: edge.evidence_type === 'explicit' ? '确认关系' : edge.evidence_type === 'reconstructed' ? '重建关系' : '推断关系',
-        objectId: edge.object_id,
-        lineStyle: {
-          color: isIndependent ? 'rgba(148, 163, 184, 0.58)' : isKeyPath ? 'rgba(56, 189, 248, 0.78)' : isConfirmed ? 'rgba(45, 212, 191, 0.52)' : 'rgba(148, 163, 184, 0.3)',
-          width: isKeyPath ? 1.5 : isConfirmed ? 1 : 0.72,
-          opacity: isKeyPath ? 0.72 : isConfirmed ? 0.48 : 0.28,
-          curveness: isIndependent ? 0.08 : 0,
-          type: (isIndependent ? 'dashed' : 'solid') as 'dashed' | 'solid',
-        },
-      }
-    })
-
   return {
     backgroundColor: '#101826',
     tooltip: {
       trigger: 'item',
       formatter: (params: any) => {
-        if (params.dataType === 'edge') {
-          return `${displayUserName(params.data.source)}<br/>→ ${displayUserName(params.data.target)}<br/>${params.data.relationLabel || '传播关系'}：${params.data.evidenceLabel || '推断关系'}${params.data.objectId ? `<br/>共享对象：${params.data.objectId}` : ''}`
-        }
         const node = nodeById.get(String(params.data.userId))
         const degreeText = `出度：${node?.out_degree ?? 0} / 入度：${node?.in_degree ?? 0}`
         return `${displayUserName(params.data.userId)}<br/>用户ID：${params.data.userId}<br/>${degreeText}`
@@ -3026,7 +2982,7 @@ function buildPathGraphOption(summary?: DiffusionSummary | null): EChartsOption 
           { name: '独立观察', itemStyle: { color: '#94a3b8' } },
         ],
         data: graphData,
-        links: graphLinks,
+        links: [],
         label: {
           color: '#eef6ff',
           fontSize: 10,
@@ -3034,17 +2990,6 @@ function buildPathGraphOption(summary?: DiffusionSummary | null): EChartsOption 
         },
         labelLayout: {
           hideOverlap: true,
-        },
-        edgeSymbol: ['none', 'arrow'],
-        edgeSymbolSize: [0, 7],
-        lineStyle: {
-          color: 'source',
-          opacity: 0.18,
-          curveness: 0.02,
-        },
-        emphasis: {
-          focus: 'adjacency',
-          lineStyle: { width: 3 },
         },
       },
     ],
