@@ -26,10 +26,10 @@ test('propagation path graph uses deterministic concentric evidence positions in
   assert.doesNotMatch(source, /node\.layout_y/)
 })
 
-test('propagation path graph marks independent observations outside the primary-source rings', () => {
-  assert.match(source, /independent-observation-band/)
-  assert.match(source, /independent_status/)
-  assert.match(source, /未证实从当前主源头传播/)
+test('propagation path graph excludes independent observations from the primary-source view', () => {
+  assert.match(source, /const nodes = \(summary\?\.visible_nodes \?\? \[\]\)\.filter\(\(node\) => !isIndependentObservation\(node\)\)/)
+  assert.doesNotMatch(source, /independent-observation-band/)
+  assert.doesNotMatch(source, /独立观察分支：未证实从当前主源头传播/)
 })
 
 test('propagation evidence workspace displays connected-population layer proportions only', () => {

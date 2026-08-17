@@ -93,9 +93,6 @@
             <a-card size="small" :loading="analyzing && !analysisReady" class="analysis-card path-card">
               <div v-if="diffusionReady" class="path-visual-layout">
                 <div class="path-graph-shell">
-                  <span v-if="hasIndependentObservations" class="independent-observation-band">
-                    独立观察分支：未证实从当前主源头传播
-                  </span>
                   <div ref="pathGraphRef" class="path-graph" />
                 </div>
               </div>
@@ -1640,7 +1637,6 @@ const diffusionSliderMax = computed(() => {
 const diffusionSliderMin = computed(() => Math.min(DEFAULT_DIFFUSION_NODE_LIMIT, diffusionSliderMax.value))
 const layerRows = computed(() => diffusionSummary.value?.layers?.length ? diffusionSummary.value.layers : (pathAnalysis.value?.layer_distribution ?? []))
 const displayLayerRows = computed(() => normalizeLayerRows(layerRows.value))
-const hasIndependentObservations = computed(() => Number(diffusionSummary.value?.independent_observations?.node_count ?? 0) > 0)
 const userNameById = computed(() => {
   const map = new Map<string, string>()
   for (const node of analysisResult.value?.graph?.nodes ?? []) {
@@ -2859,7 +2855,6 @@ function buildConcentricEvidencePositions(
   }
 
   positions.set(rootId, { x: 0, y: 0, layer: 0 })
-  let outerRadius = 0
   for (const [depth, ringNodes] of Array.from(nodesByDepth.entries()).sort(([left], [right]) => left - right)) {
     const ordered = [...ringNodes].sort((left, right) => {
       const leftAngle = angleByNode.get(String(left.id)) ?? (stableLayoutFraction(`node:${left.id}`) * Math.PI * 2)
@@ -2871,7 +2866,6 @@ function buildConcentricEvidencePositions(
     const baseRadius = 104 + (depth - 1) * 102 + Math.min(depth - 1, 4) * 14
     const minSpacingRadius = (ordered.length * 13) / (Math.PI * 2)
     const radius = Math.max(baseRadius, minSpacingRadius)
-    outerRadius = Math.max(outerRadius, radius)
     ordered.forEach((node) => {
       const id = String(node.id)
       const angle = angleByNode.get(id) ?? ((stableLayoutFraction(`node:${id}`) * Math.PI * 2) - (Math.PI / 2))
@@ -2883,28 +2877,11 @@ function buildConcentricEvidencePositions(
     })
   }
 
-  const independentNodes = nodes
-    .filter((node) => isIndependentObservation(node))
-    .sort((left, right) => String(left.id).localeCompare(String(right.id)))
-  const independentRadius = Math.max(outerRadius + 118, 246)
-  const independentStep = (Math.PI * 1.28) / Math.max(independentNodes.length, 1)
-  independentNodes.forEach((node, index) => {
-    const id = String(node.id)
-    const jitter = (stableLayoutFraction(`independent:${id}`) - 0.5) * Math.min(independentStep * 0.3, 0.18)
-    const angle = (-Math.PI * 0.17) + (independentStep * index) + jitter
-    const radius = independentRadius + ((index % 3) * 14)
-    positions.set(id, {
-      x: Math.cos(angle) * radius,
-      y: Math.sin(angle) * radius,
-      layer: Math.max(1, Number(node.layer ?? 1)),
-    })
-  })
-
   return positions
 }
 
 function buildPathGraphOption(summary?: DiffusionSummary | null): EChartsOption {
-  const nodes = summary?.visible_nodes ?? []
+  const nodes = (summary?.visible_nodes ?? []).filter((node) => !isIndependentObservation(node))
   const treeEdges = summary?.tree_edges ?? []
   const nodeById = new Map(nodes.map((node) => [String(node.id), node]))
   const rootId = String(summary?.root_node?.id || nodes.find((node) => node.is_root)?.id || nodes[0]?.id || '')
@@ -2918,7 +2895,6 @@ function buildPathGraphOption(summary?: DiffusionSummary | null): EChartsOption 
     const position = fittedPositions.get(id) || { x: 0, y: 0, layer: Number(node.layer ?? 0) }
     const isRoot = id === rootId
     const isKey = Boolean(node.is_key)
-    const isIndependent = isIndependentObservation(node)
     const objectFocused = Boolean(selectedObjectId.value) && (node.shared_object_ids ?? []).includes(selectedObjectId.value)
     const value = Math.max(1, Number(node.post_count ?? 1))
     return {
@@ -2928,19 +2904,19 @@ function buildPathGraphOption(summary?: DiffusionSummary | null): EChartsOption 
       x: position.x,
       y: position.y,
       value,
-      category: isRoot ? 0 : isIndependent ? 3 : isKey ? 1 : 2,
-      symbolSize: isRoot ? 34 : isIndependent ? 6.8 : isKey ? 8 : Math.max(2.8, Math.min(5.8, Math.sqrt(value) * 1.05 + 1.7)),
+      category: isRoot ? 0 : isKey ? 1 : 2,
+      symbolSize: isRoot ? 34 : isKey ? 8 : Math.max(2.8, Math.min(5.8, Math.sqrt(value) * 1.05 + 1.7)),
       label: {
         show: true,
-        color: isRoot ? '#f8fafc' : isIndependent ? '#cbd5e1' : '#dbeafe',
+        color: isRoot ? '#f8fafc' : '#dbeafe',
         fontSize: isRoot ? 12 : 9,
         fontWeight: isRoot ? 700 : 500,
         formatter: shortNodeLabel(node.author_name || displayUserName(id)),
       },
       itemStyle: {
         opacity: objectFocused || isRoot || isKey ? 1 : 0.42,
-        borderColor: objectFocused ? '#facc15' : isIndependent ? '#94a3b8' : undefined,
-        borderWidth: objectFocused ? 2 : isIndependent ? 1 : 0,
+        borderColor: objectFocused ? '#facc15' : undefined,
+        borderWidth: objectFocused ? 2 : 0,
       },
     }
   })
@@ -2961,7 +2937,7 @@ function buildPathGraphOption(summary?: DiffusionSummary | null): EChartsOption 
       itemWidth: 18,
       itemHeight: 10,
       textStyle: { color: '#cbd5e1', fontSize: 11 },
-      data: ['当前主源头', '关键路径节点', '观察节点', '独立观察'],
+      data: ['当前主源头', '关键路径节点', '观察节点'],
     },
     series: [
       {
@@ -2979,7 +2955,6 @@ function buildPathGraphOption(summary?: DiffusionSummary | null): EChartsOption 
           { name: '当前主源头', itemStyle: { color: '#facc15' } },
           { name: '关键路径节点', itemStyle: { color: '#00d9ff' } },
           { name: '观察节点', itemStyle: { color: '#60a5fa' } },
-          { name: '独立观察', itemStyle: { color: '#94a3b8' } },
         ],
         data: graphData,
         links: [],
@@ -4134,21 +4109,6 @@ onBeforeUnmount(() => {
   z-index: 1;
   width: 100%;
   height: 560px;
-}
-
-.independent-observation-band {
-  position: absolute;
-  z-index: 2;
-  top: 12px;
-  right: 12px;
-  max-width: min(240px, calc(100% - 24px));
-  padding: 5px 8px;
-  border: 1px dashed rgba(203, 213, 225, 0.68);
-  border-radius: 4px;
-  background: rgba(15, 23, 42, 0.86);
-  color: #cbd5e1;
-  font-size: 12px;
-  line-height: 1.45;
 }
 
 .layer-card {
