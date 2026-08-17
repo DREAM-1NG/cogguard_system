@@ -197,7 +197,13 @@
         </div>
 
         <a-result
-          v-if="claimResponseBlocked"
+          v-if="claimResponseLoading"
+          status="info"
+          title="正在加载主张回应图谱"
+          sub-title="正在核验权威来源、观察路径和语义证据，请稍候。"
+        />
+        <a-result
+          v-else-if="claimResponseBlocked"
           status="warning"
           title="主张回应图谱暂不可用"
           :sub-title="claimResponseEmptyDescription"

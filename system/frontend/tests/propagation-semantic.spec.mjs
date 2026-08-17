@@ -437,3 +437,15 @@ test('claim response stance styling is disabled until semantic coverage is ready
   assert.match(stanceClass, /claimResponseResponseStance\(response\)/)
   assert.match(stanceClass, /return stance \? `claim-response-node-stance-\$\{stance\}` : 'claim-response-node-stance-neutral'/)
 })
+
+test('shows an explicit loading state instead of an empty claim-response landscape while evidence is loading', () => {
+  const claimResponsePane = propagationView.slice(
+    propagationView.indexOf('<a-tab-pane key="claim-response"'),
+    propagationView.indexOf('<a-tab-pane key="evidence"'),
+  )
+
+  assert.match(claimResponsePane, /v-if="claimResponseLoading"/)
+  assert.match(claimResponsePane, /正在加载主张回应图谱/)
+  assert.match(claimResponsePane, /v-else-if="claimResponseBlocked"/)
+  assert.match(claimResponsePane, /v-else-if="!claimResponseReady"/)
+})
