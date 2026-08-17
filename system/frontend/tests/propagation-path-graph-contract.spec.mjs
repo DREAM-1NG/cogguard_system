@@ -41,7 +41,7 @@ test('propagation evidence workspace displays connected-population layer proport
 })
 
 test('propagation defaults to an expanded first-screen node budget', () => {
-  assert.match(source, /const DEFAULT_DIFFUSION_NODE_LIMIT = 300/)
+  assert.match(source, /const DEFAULT_DIFFUSION_NODE_LIMIT = 500/)
 })
 
 test('layer composition is clearly labelled as a connected-population statistic', () => {

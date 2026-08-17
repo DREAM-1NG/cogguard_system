@@ -526,7 +526,7 @@ class TestPropagationAnalysisEventInferenceAdapter:
         summary = result["diffusion_summary"]
 
         assert summary["root_node"]["id"] == "root"
-        assert len(summary["visible_nodes"]) <= 300
+        assert len(summary["visible_nodes"]) <= 500
         assert summary["tree_edges"]
         assert summary["layers"][0]["level"] == 0
         visible_ids = {node["id"] for node in summary["visible_nodes"]}

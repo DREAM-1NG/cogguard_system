@@ -99,7 +99,7 @@ async def analyze_observed_propagation(
     platform: str | None = None,
     event_id: str | None = None,
     *,
-    node_limit: int = 300,
+    node_limit: int = 500,
     layer_budget: dict[str, int] | None = None,
 ) -> dict:
     """Analyze only observed propagation facts for an optional event/platform scope."""

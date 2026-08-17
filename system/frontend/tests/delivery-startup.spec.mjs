@@ -45,10 +45,10 @@ test('warms the propagation projection with the delivery page hierarchy budget',
   )
 
   assert.ok(observedAnalysisRequest, 'the demo warmup must request observed propagation analysis')
-  assert.match(observedAnalysisRequest[0], /node_limit\s*=\s*300/)
-  assert.match(observedAnalysisRequest[0], /first_layer_limit\s*=\s*80/)
-  assert.match(observedAnalysisRequest[0], /second_layer_limit\s*=\s*160/)
-  assert.doesNotMatch(observedAnalysisRequest[0], /node_limit\s*=\s*160/)
+  assert.match(observedAnalysisRequest[0], /node_limit\s*=\s*500/)
+  assert.match(observedAnalysisRequest[0], /first_layer_limit\s*=\s*160/)
+  assert.match(observedAnalysisRequest[0], /second_layer_limit\s*=\s*320/)
+  assert.doesNotMatch(observedAnalysisRequest[0], /node_limit\s*=\s*300/)
 })
 
 test('warms the demo event prediction cache for the propagation forecast tab', () => {

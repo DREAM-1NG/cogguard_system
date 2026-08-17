@@ -121,8 +121,8 @@ test('slower analysis response for scope A cannot overwrite scope B analysis sta
       event_id: 'evt-a',
       platform: 'weibo',
       node_limit: 160,
-      first_layer_limit: 80,
-      second_layer_limit: 160,
+      first_layer_limit: 160,
+      second_layer_limit: 320,
     },
     {
       event_id: 'evt-b',
