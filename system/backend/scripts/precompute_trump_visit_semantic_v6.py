@@ -24,7 +24,7 @@ from app.core.analysis.contracts import TimeWindow
 from app.core.analysis.executor import AnalysisExecutor, default_analysis_engine_ports
 from app.core.analysis.registry import AnalysisRegistry, SqlAlchemyAnalysisStore
 from app.db.mongodb import close_mongo, get_mongo_db
-from app.db.mysql import async_session_factory
+from app.db.mysql import async_session_factory, close_mysql
 from app.core.semantic.runtime import ModelWeightsBlockedError, SemanticEnrichmentRuntime
 from sqlalchemy import text
 import import_mediacrawler_data_runs
@@ -48,12 +48,15 @@ async def _check_database_readiness() -> None:
         await execute(text("SELECT 1"))
 
 
-async def _close_mongo_safely() -> None:
-    try:
-        await close_mongo()
-    except Exception:
-        # Readiness failures should retain their original diagnostic.
-        return
+async def _close_resources_safely() -> None:
+    """Dispose database clients before the command closes its event loop."""
+
+    for closer in (close_mongo, close_mysql):
+        try:
+            await closer()
+        except Exception:
+            # Cleanup must not mask the original readiness or analysis error.
+            continue
 
 
 def _platform_counts(normalized: list[Any]) -> dict[str, dict[str, int]]:
@@ -143,16 +146,16 @@ async def main_async(args: argparse.Namespace) -> int:
         )
         await _check_database_readiness()
     except ModelWeightsBlockedError as exc:
-        await _close_mongo_safely()
+        await _close_resources_safely()
         print(json.dumps(_summary(platform_counts=platform_counts, semantic_status="model_weights_blocked", blocking_reason=str(exc)), ensure_ascii=False, indent=2, default=str))
         return 2
     except Exception as exc:
-        await _close_mongo_safely()
+        await _close_resources_safely()
         print(json.dumps(_summary(platform_counts=platform_counts, semantic_status="database_blocked", blocking_reason=str(exc)), ensure_ascii=False, indent=2, default=str))
         return 3
 
     if not args.execute:
-        await _close_mongo_safely()
+        await _close_resources_safely()
         print(json.dumps(_summary(platform_counts=platform_counts, semantic_status="validation_only"), ensure_ascii=False, indent=2, default=str))
         return 0
 
@@ -204,7 +207,7 @@ async def main_async(args: argparse.Namespace) -> int:
             semantic_status="completed",
         )
         print(json.dumps(summary, ensure_ascii=False, indent=2, default=str))
-    await _close_mongo_safely()
+    await _close_resources_safely()
     semantic = ((result.get("results") or {}).get("semantic_enrichment") or {})
     semantic_status = str(semantic.get("status") or "").strip().lower()
     runtime_status = str(semantic.get("runtime_status") or "").strip().lower()
