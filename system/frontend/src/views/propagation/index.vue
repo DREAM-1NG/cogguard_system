@@ -108,12 +108,12 @@
           </a-col>
 
           <a-col :xs="24" :xl="8">
-            <a-card size="small" title="全量层级构成" :loading="analyzing && !analysisReady" class="analysis-card layer-card">
-              <p class="layer-scope-note">基于当前范围全部观察账号统计；独立观察分支按各自可观察源头分层。</p>
+            <a-card size="small" title="已连接账号层级占比" :loading="analyzing && !analysisReady" class="analysis-card layer-card">
+              <p class="layer-scope-note">仅基于已建立传播证据的账号计算，比例合计 100.00%。</p>
               <div v-if="displayLayerRows.length" class="layer-visual">
                 <div v-for="item in displayLayerRows" :key="item.level" class="layer-row">
                   <span class="layer-name">{{ item.label }}</span>
-                  <strong>{{ item.node_count }} 节点 · {{ formatRatio(item.ratio) }}</strong>
+                  <strong>{{ formatRatio(item.ratio) }}</strong>
                   <div class="layer-track">
                     <div class="layer-bar" :style="{ width: `${ratioPercent(item.ratio)}%` }" />
                   </div>
@@ -2357,7 +2357,7 @@ function buildLayerOption(rows: LayerRow[]): EChartsOption {
       formatter: (params: any) => {
         const item = params?.[0]
         const row = rows[item?.dataIndex]
-        return row ? `${row.label}<br/>节点数：${row.node_count}<br/>占比：${formatRatio(row.ratio)}` : ''
+        return row ? `${row.label}<br/>占比：${formatRatio(row.ratio)}` : ''
       },
     },
     xAxis: {
@@ -2368,13 +2368,13 @@ function buildLayerOption(rows: LayerRow[]): EChartsOption {
     },
     yAxis: {
       type: 'value',
-      axisLabel: { color: '#64748b' },
+      axisLabel: { color: '#64748b', formatter: (value: number) => `${value}%` },
       splitLine: { lineStyle: { color: 'rgba(148, 163, 184, 0.28)' } },
     },
     series: [
       {
         type: 'bar',
-        data: rows.map((item) => item.node_count),
+        data: rows.map((item) => Number((item.ratio * 100).toFixed(2))),
         barWidth: 28,
         itemStyle: {
           color: '#d7e51f',

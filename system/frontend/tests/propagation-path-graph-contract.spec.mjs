@@ -32,15 +32,17 @@ test('propagation path graph marks independent observations outside the primary-
   assert.match(source, /未证实从当前主源头传播/)
 })
 
-test('propagation evidence workspace keeps exact layer counts and displays two-decimal proportions', () => {
-  assert.match(source, /item\.node_count.*formatRatio\(item\.ratio\)/)
+test('propagation evidence workspace displays connected-population layer proportions only', () => {
+  assert.match(source, /\{\{ formatRatio\(item\.ratio\) \}\}/)
   assert.match(source, /toFixed\(2\)/)
+  assert.match(source, /rows\.map\(\(item\) => Number\(\(item\.ratio \* 100\)\.toFixed\(2\)\)\)/)
+  assert.doesNotMatch(source, /\{\{ item\.node_count \}\} 节点/)
   assert.doesNotMatch(source, /其它层/)
 })
 
-test('layer composition is clearly labelled as a full-scope statistic', () => {
-  assert.match(source, /全量层级构成/)
-  assert.match(source, /基于当前范围全部观察账号统计/)
+test('layer composition is clearly labelled as a connected-population statistic', () => {
+  assert.match(source, /已连接账号层级占比/)
+  assert.match(source, /仅基于已建立传播证据的账号计算，比例合计 100\.00%/)
 })
 
 test('propagation objects are ranked evidence rows with representative-path availability', () => {
