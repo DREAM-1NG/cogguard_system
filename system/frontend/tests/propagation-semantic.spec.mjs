@@ -391,7 +391,7 @@ test('renders deterministic concentric propagation nodes without visual connecti
   assert.doesNotMatch(graphOption, /focus:\s*'adjacency'/)
 })
 
-test('distributes same-layer propagation nodes within compact deterministic bands', () => {
+test('uses compact layer bands with readable non-root propagation nodes', () => {
   const positions = bodyOf(propagationView, 'buildConcentricEvidencePositions')
   const fitted = bodyOf(propagationView, 'fitGraphPositions')
 
@@ -399,10 +399,13 @@ test('distributes same-layer propagation nodes within compact deterministic band
   assert.match(positions, /const radialJitter/)
   assert.match(positions, /stableLayoutFraction\(`angle:/)
   assert.match(positions, /stableLayoutFraction\(`radius:/)
-  assert.match(positions, /const radius = 70 \+ \(depth - 1\) \* 110/)
+  assert.match(positions, /const radius = 70 \+ \(depth - 1\) \* 80/)
   assert.match(positions, /Math\.min\(12, Math\.max\(4, radius \* 0\.04\)\)/)
   assert.doesNotMatch(positions, /minSpacingRadius/)
   assert.match(fitted, /Math\.min\(460 \/ width, 380 \/ height, 0\.92\)/)
+
+  const graphOption = bodyOf(propagationView, 'buildPathGraphOption')
+  assert.match(graphOption, /symbolSize: isRoot \? 26 : isKey \? 9 : Math\.max\(4\.5, Math\.min\(7\.5, Math\.sqrt\(value\) \* 1\.05 \+ 1\.7\)\)/)
 })
 
 test('keeps evidence time series separate from relative model forecast steps', () => {
