@@ -2854,6 +2854,7 @@ function buildConcentricEvidencePositions(
   }
 
   positions.set(rootId, { x: 0, y: 0, layer: 0 })
+  let previousRingRadius = 0
   for (const [depth, ringNodes] of Array.from(nodesByDepth.entries()).sort(([left], [right]) => left - right)) {
     const ordered = [...ringNodes].sort((left, right) => {
       const leftAngle = angleByNode.get(String(left.id)) ?? (stableLayoutFraction(`node:${left.id}`) * Math.PI * 2)
@@ -2867,6 +2868,17 @@ function buildConcentricEvidencePositions(
       angleByNode.get(String(node.id))
       ?? ((stableLayoutFraction(`node:${node.id}`) * Math.PI * 2) - (Math.PI / 2))
     ))
+    const ringGaps = ringAngles.map((angle, index) => {
+      const nextAngle = index === ringAngles.length - 1
+        ? ringAngles[0] + (Math.PI * 2)
+        : ringAngles[index + 1]
+      return nextAngle - angle
+    })
+    const minimumArcSpacing = 14
+    const minimumRadius = (ordered.length * minimumArcSpacing) / (Math.PI * 2 * 0.92)
+    const minimumAngularGap = Math.max(0.001, Math.min(...ringGaps))
+    const localGapRadius = minimumArcSpacing / (minimumAngularGap * 0.92)
+    const collisionSafeRadius = Math.max(radius, minimumRadius, localGapRadius, previousRingRadius + 40)
     ordered.forEach((node, index) => {
       const id = String(node.id)
       const angle = ringAngles[index]
@@ -2877,13 +2889,14 @@ function buildConcentricEvidencePositions(
       const angularJitter = ((stableLayoutFraction(`angle:${depth}:${id}`) - 0.5) * 2) * angularJitterLimit
       const radialJitterLimit = Math.min(12, Math.max(4, radius * 0.04))
       const radialJitter = ((stableLayoutFraction(`radius:${depth}:${id}`) - 0.5) * 2) * radialJitterLimit
-      const nodeRadius = radius + radialJitter
+      const nodeRadius = collisionSafeRadius + radialJitter
       positions.set(id, {
         x: Math.cos(angle + angularJitter) * nodeRadius,
         y: Math.sin(angle + angularJitter) * nodeRadius,
         layer: depth,
       })
     })
+    previousRingRadius = collisionSafeRadius
   }
 
   return positions
@@ -2914,9 +2927,9 @@ function buildPathGraphOption(summary?: DiffusionSummary | null): EChartsOption 
       y: position.y,
       value,
       category: isRoot ? 0 : isKey ? 1 : 2,
-      symbolSize: isRoot ? 36 : isKey ? 20 : 15,
+      symbolSize: isRoot ? 36 : isKey ? 20 : 10,
       label: {
-        show: true,
+        show: isRoot || isKey,
         color: isRoot ? '#f8fafc' : '#dbeafe',
         fontSize: isRoot ? 12 : 9,
         fontWeight: isRoot ? 700 : 500,

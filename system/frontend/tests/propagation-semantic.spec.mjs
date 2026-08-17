@@ -391,7 +391,7 @@ test('renders deterministic concentric propagation nodes without visual connecti
   assert.doesNotMatch(graphOption, /focus:\s*'adjacency'/)
 })
 
-test('uses compact layer bands with readable non-root propagation nodes', () => {
+test('uses compact collision-safe layer bands with readable non-root propagation nodes', () => {
   const positions = bodyOf(propagationView, 'buildConcentricEvidencePositions')
   const fitted = bodyOf(propagationView, 'fitGraphPositions')
 
@@ -400,12 +400,18 @@ test('uses compact layer bands with readable non-root propagation nodes', () => 
   assert.match(positions, /stableLayoutFraction\(`angle:/)
   assert.match(positions, /stableLayoutFraction\(`radius:/)
   assert.match(positions, /const radius = 70 \+ \(depth - 1\) \* 40/)
+  assert.match(positions, /const minimumArcSpacing = 14/)
+  assert.match(positions, /const minimumRadius = \(ordered\.length \* minimumArcSpacing\) \/ \(Math\.PI \* 2 \* 0\.92\)/)
+  assert.match(positions, /const minimumAngularGap = Math\.max\(0\.001, Math\.min\(\.\.\.ringGaps\)\)/)
+  assert.match(positions, /const localGapRadius = minimumArcSpacing \/ \(minimumAngularGap \* 0\.92\)/)
+  assert.match(positions, /const collisionSafeRadius = Math\.max\(radius, minimumRadius, localGapRadius, previousRingRadius \+ 40\)/)
   assert.match(positions, /Math\.min\(12, Math\.max\(4, radius \* 0\.04\)\)/)
   assert.doesNotMatch(positions, /minSpacingRadius/)
   assert.match(fitted, /Math\.min\(460 \/ width, 380 \/ height, 0\.92\)/)
 
   const graphOption = bodyOf(propagationView, 'buildPathGraphOption')
-  assert.match(graphOption, /symbolSize: isRoot \? 36 : isKey \? 20 : 15/)
+  assert.match(graphOption, /symbolSize: isRoot \? 36 : isKey \? 20 : 10/)
+  assert.match(graphOption, /show: isRoot \|\| isKey/)
 })
 
 test('keeps evidence time series separate from relative model forecast steps', () => {
