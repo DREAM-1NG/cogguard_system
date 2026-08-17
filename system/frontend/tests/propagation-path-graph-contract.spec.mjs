@@ -38,6 +38,11 @@ test('propagation evidence workspace keeps exact layer counts and displays two-d
   assert.doesNotMatch(source, /其它层/)
 })
 
+test('layer composition is clearly labelled as a full-scope statistic', () => {
+  assert.match(source, /全量层级构成/)
+  assert.match(source, /基于当前范围全部观察账号统计/)
+})
+
 test('propagation objects are ranked evidence rows with representative-path availability', () => {
   assert.match(source, /object-evidence-list/)
   assert.match(source, /参与账号/)

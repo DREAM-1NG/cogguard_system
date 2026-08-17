@@ -416,7 +416,7 @@ def _build_layer_distribution(G: nx.MultiDiGraph) -> list[dict]:
             "level": level,
             "label": label,
             "node_count": count,
-            "ratio": round(count / total, 4),
+            "ratio": count / total,
         })
     return rows
 
@@ -645,7 +645,11 @@ def _build_diffusion_summary(
         simple_G,
     )
 
-    layers = _diffusion_connected_layer_rows(primary_layers)
+    # The graph is deliberately node-limited for first-screen readability, but
+    # layer composition is a current-scope statistic. Count every observed
+    # component from its own observable source rather than pairing the primary
+    # component numerator with the full-graph denominator.
+    layers = _build_layer_distribution(G)
     detail_index = _build_diffusion_detail_index(
         visible_node_ids,
         shared_objects,

@@ -108,7 +108,8 @@
           </a-col>
 
           <a-col :xs="24" :xl="8">
-            <a-card size="small" title="层级构成" :loading="analyzing && !analysisReady" class="analysis-card layer-card">
+            <a-card size="small" title="全量层级构成" :loading="analyzing && !analysisReady" class="analysis-card layer-card">
+              <p class="layer-scope-note">基于当前范围全部观察账号统计；独立观察分支按各自可观察源头分层。</p>
               <div v-if="displayLayerRows.length" class="layer-visual">
                 <div v-for="item in displayLayerRows" :key="item.level" class="layer-row">
                   <span class="layer-name">{{ item.label }}</span>
@@ -4179,6 +4180,13 @@ onBeforeUnmount(() => {
 
 .layer-card {
   min-height: 560px;
+}
+
+.layer-scope-note {
+  margin: 0 0 12px;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 .layer-visual {

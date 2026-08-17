@@ -380,7 +380,7 @@ class TestPropagationAnalysisEventInferenceAdapter:
         assert independent_source["source_kind"] == "independent_observation_root"
         assert independent_source["proven_source"] is False
 
-    def test_diffusion_layers_use_full_primary_connected_population_not_visible_limit(self):
+    def test_diffusion_layers_use_all_observed_nodes_not_visible_limit(self):
         posts = [
             {"post_id": f"p{i}", "author_id": f"main_{i}", "author_name": f"Main {i}",
              "timestamp": _ts(i), "url": "https://example.com/main-population",
@@ -399,12 +399,11 @@ class TestPropagationAnalysisEventInferenceAdapter:
 
         assert summary["meta"]["primary_connected_node_count"] == 4
         assert summary["meta"]["independent_observation_node_count"] == 2
-        assert summary["layers"] == [
-            {"level": 0, "label": "源头层", "node_count": 1, "ratio": 0.25},
-            {"level": 1, "label": "第1层", "node_count": 1, "ratio": 0.25},
-            {"level": 2, "label": "第2层", "node_count": 1, "ratio": 0.25},
-            {"level": 3, "label": "第3层", "node_count": 1, "ratio": 0.25},
+        assert [(row["level"], row["node_count"]) for row in summary["layers"]] == [
+            (0, 2), (1, 2), (2, 1), (3, 1),
         ]
+        assert sum(row["node_count"] for row in summary["layers"]) == 6
+        assert sum(row["ratio"] for row in summary["layers"]) == pytest.approx(1.0)
 
     def test_diffusion_layers_keep_actual_shortest_path_depth_beyond_legacy_display_limit(self):
         posts = [
