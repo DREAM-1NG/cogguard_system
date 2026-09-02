@@ -162,6 +162,11 @@ system/**/runtime-logs/
 system/**/.uv-cache*/
 system/frontend/dist/
 system/frontend/node_modules/
+system/frontend/output/
+/.playwright-cli/
+system/**/.playwright-cli/
+system/backend/output/
+system/frontend-sandbox/
 system/output/logs/
 system/output/playwright/
 
