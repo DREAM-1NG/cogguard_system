@@ -1,0 +1,32 @@
+{
+  /* TypeScript 编译配置
+   *
+   * - 目标 ES2020，与现代浏览器兼容
+   * - 开启 strict 模式，强制类型安全
+   * - 路径别名 @/* -> src/*，与 vite.config.ts 保持一致
+   * - noEmit: true，由 Vite 处理实际编译，TSC 仅做类型检查
+   */
+  "compilerOptions": {
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "module": "ESNext",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+    "jsx": "preserve",
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedSideEffectImports": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"]
+    }
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.vue"]
+}

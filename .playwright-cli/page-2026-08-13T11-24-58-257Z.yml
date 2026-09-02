@@ -1,0 +1,185 @@
+- generic [ref=f1e3]:
+  - complementary [ref=f1e4]:
+    - generic [ref=f1e5]:
+      - generic [ref=f1e6]: CogGuard
+      - menu [ref=f1e8]:
+        - menuitem [ref=f1e9] [cursor=pointer]:
+          - generic [ref=f1e11]:
+            - img "dashboard" [ref=f1e12]
+            - text: 数据大屏
+        - menuitem [ref=f1e15] [cursor=pointer]:
+          - generic [ref=f1e17]:
+            - img "cloud-download" [ref=f1e18]
+            - text: 数据采集
+        - menuitem [ref=f1e22] [cursor=pointer]:
+          - generic [ref=f1e24]:
+            - img "apartment" [ref=f1e25]
+            - text: 协同发现
+        - menuitem [ref=f1e28] [cursor=pointer]:
+          - generic [ref=f1e30]:
+            - img "share-alt" [ref=f1e31]
+            - text: 传播分析
+        - menuitem [ref=f1e34] [cursor=pointer]:
+          - generic [ref=f1e36]:
+            - img "fund" [ref=f1e37]
+            - text: 综合分析
+        - menuitem [ref=f1e40] [cursor=pointer]:
+          - generic [ref=f1e42]:
+            - img "user" [ref=f1e43]
+            - text: 账号画像
+        - menuitem [ref=f1e46] [cursor=pointer]:
+          - generic [ref=f1e48]:
+            - img "alert" [ref=f1e49]
+            - text: 风险研判
+    - img "left" [ref=f1e53] [cursor=pointer]
+  - generic [ref=f1e56]:
+    - generic [ref=f1e57]:
+      - generic [ref=f1e58]: 综合分析
+      - generic [ref=f1e61] [cursor=pointer]:
+        - generic [ref=f1e62]: P
+        - generic [ref=f1e64]: Preview
+    - generic [ref=f1e65]: 综合分析
+    - main [ref=f1e68]:
+      - generic [ref=f1e69]:
+        - generic [ref=f1e70]:
+          - heading "Unified Analysis" [level=2] [ref=f1e71]
+          - img "question-circle" [ref=f1e72]
+        - alert [ref=f1e76]:
+          - img "info-circle" [ref=f1e77]
+          - generic [ref=f1e81]:
+            - generic [ref=f1e82]: V2 analysis runtime
+            - generic [ref=f1e83]: This workbench uses /api/v2/analysis, EventSnapshot, AnalysisRun events, REST recovery, and SSE backlog through Last-Event-ID compatible cursors.
+        - generic [ref=f1e84]:
+          - generic [ref=f1e85]:
+            - generic [ref=f1e86]:
+              - generic [ref=f1e87]: 1. EventSnapshot
+              - generic [ref=f1e90]:
+                - generic [ref=f1e91]:
+                  - generic [ref=f1e93]:
+                    - generic "Event ID" [ref=f1e95]
+                    - textbox "trump_visit_2026_05_21" [ref=f1e99]
+                  - generic [ref=f1e101]:
+                    - generic "Platform filter" [ref=f1e103]
+                    - generic [ref=f1e108] [cursor=pointer]:
+                      - combobox [ref=f1e110]
+                      - generic: All platforms
+                  - generic [ref=f1e111]:
+                    - generic [ref=f1e113]:
+                      - generic "Core start" [ref=f1e115]
+                      - textbox [ref=f1e119]: 2026-05-11T00:00:00Z
+                    - generic [ref=f1e121]:
+                      - generic "Core end" [ref=f1e123]
+                      - textbox [ref=f1e127]: 2026-05-22T00:00:00Z
+                    - generic [ref=f1e129]:
+                      - generic "Context start" [ref=f1e131]
+                      - textbox [ref=f1e135]: 2026-05-01T00:00:00Z
+                    - generic [ref=f1e137]:
+                      - generic "Context end" [ref=f1e139]
+                      - textbox [ref=f1e143]: 2026-05-31T00:00:00Z
+                  - button "Create snapshot" [ref=f1e144] [cursor=pointer]
+                - separator [ref=f1e146]
+                - paragraph [ref=f1e161]: No snapshot yet
+            - generic [ref=f1e162]:
+              - generic [ref=f1e163]: 2. AnalysisRun
+              - generic [ref=f1e167]:
+                - generic [ref=f1e169]:
+                  - generic "Event ID" [ref=f1e171]
+                  - textbox [ref=f1e175]: trump_visit_2026_05_21
+                - generic [ref=f1e177]:
+                  - generic "Snapshot ID" [ref=f1e179]
+                  - textbox [ref=f1e183]
+                - generic [ref=f1e185]:
+                  - generic "Stages" [ref=f1e187]
+                  - generic [ref=f1e191] [cursor=pointer]:
+                    - generic [ref=f1e192]:
+                      - checkbox "Coordination Discover" [checked] [ref=f1e194]
+                      - generic [ref=f1e196]: Coordination Discover
+                    - generic [ref=f1e197]:
+                      - checkbox "Propagation Analysis" [checked] [ref=f1e199]
+                      - generic [ref=f1e201]: Propagation Analysis
+                    - generic [ref=f1e202]:
+                      - checkbox "Semantic enrichment" [checked] [ref=f1e204]
+                      - generic [ref=f1e206]: Semantic enrichment
+                    - generic [ref=f1e207]:
+                      - checkbox "Student review" [checked] [ref=f1e209]
+                      - generic [ref=f1e211]: Student review
+                    - generic [ref=f1e212]:
+                      - checkbox "Teacher review" [checked] [ref=f1e214]
+                      - generic [ref=f1e216]: Teacher review
+                - generic [ref=f1e218]:
+                  - generic "Options JSON" [ref=f1e220]
+                  - textbox [ref=f1e224]: "{ \"coordination_discover\": { \"time_window\": 3600, \"min_participation\": 2, \"edge_weight\": 0.5 }, \"propagation_analysis\": { \"top_k\": 10 }, \"semantic_enrichment\": { \"claim\": \"特朗普访华相关叙事\" }, \"student\": {}, \"teacher\": { \"teacher_max_review_items\": 20 } }"
+                - generic [ref=f1e225]:
+                  - button "Create run" [ref=f1e227] [cursor=pointer]
+                  - button "Execute run" [ref=f1e230] [cursor=pointer]
+                  - button "Refresh status" [ref=f1e233] [cursor=pointer]
+          - generic [ref=f1e235]:
+            - generic [ref=f1e236]:
+              - generic [ref=f1e237]: Run status
+              - paragraph [ref=f1e255]: No run yet
+            - generic [ref=f1e256]:
+              - generic [ref=f1e257]:
+                - generic [ref=f1e258]: Semantic enrichment
+                - paragraph [ref=f1e276]: Run semantic enrichment to view keywords, topics, sentiment, stance, and entities
+              - generic [ref=f1e277]:
+                - generic [ref=f1e278]: Coordination Discover communities
+                - generic [ref=f1e281]:
+                  - generic [ref=f1e282]:
+                    - generic [ref=f1e283]: not run
+                    - generic [ref=f1e285]: "-"
+                  - generic [ref=f1e287]:
+                    - generic [ref=f1e288]: Evidence edges
+                    - generic [ref=f1e289]: "0"
+                  - generic [ref=f1e292]:
+                    - generic [ref=f1e293]: Lineages
+                    - generic [ref=f1e294]: "0"
+              - generic [ref=f1e297]:
+                - generic [ref=f1e298]: Propagation Analysis hindcast
+                - generic [ref=f1e301]:
+                  - generic [ref=f1e302]:
+                    - generic [ref=f1e303]: not run
+                    - generic [ref=f1e305]: "-"
+                  - generic [ref=f1e307]:
+                    - generic [ref=f1e308]: Active accounts forecast
+                    - generic [ref=f1e309]: "0"
+                  - generic [ref=f1e312]:
+                    - generic [ref=f1e313]: 80% -
+                    - generic [ref=f1e314]: 95% -
+              - generic [ref=f1e315]:
+                - generic [ref=f1e316]: Student Review
+                - generic [ref=f1e319]:
+                  - generic [ref=f1e320]:
+                    - generic [ref=f1e321]: not run
+                    - generic [ref=f1e323]: "-"
+                    - generic [ref=f1e325]: "-"
+                  - generic [ref=f1e327]:
+                    - generic [ref=f1e328]: Score
+                    - generic [ref=f1e330]:
+                      - generic [ref=f1e331]: "0"
+                      - text: ".000"
+                  - paragraph [ref=f1e332]: "Label: -"
+                  - paragraph [ref=f1e333]: "Active learning: -"
+              - generic [ref=f1e334]:
+                - generic [ref=f1e335]: Teacher Review
+                - generic [ref=f1e338]:
+                  - generic [ref=f1e339]:
+                    - generic [ref=f1e340]: not run
+                    - generic [ref=f1e342]: "-"
+                  - paragraph [ref=f1e344]: "Decision: -"
+                  - paragraph [ref=f1e345]: "Canonical allowed: -"
+            - generic [ref=f1e346]:
+              - generic [ref=f1e347]: Run events and recovery
+              - generic [ref=f1e350]:
+                - generic [ref=f1e351]:
+                  - textbox "run_id" [ref=f1e353]: precomputed_trump_visit_2026_05_21_semantic_v3
+                  - generic [ref=f1e355]:
+                    - generic [ref=f1e356]:
+                      - button "Increase Value" [ref=f1e357] [cursor=pointer]:
+                        - img "up" [ref=f1e358]
+                      - button "Decrease Value" [disabled] [ref=f1e361]:
+                        - img "down" [ref=f1e362]
+                    - spinbutton [ref=f1e366]: "0"
+                  - button "REST refresh" [ref=f1e368] [cursor=pointer]
+                  - button "SSE backlog" [ref=f1e371] [cursor=pointer]
+                  - button "Stop stream" [disabled] [ref=f1e374]
+                - paragraph [ref=f1e390]: No run events
