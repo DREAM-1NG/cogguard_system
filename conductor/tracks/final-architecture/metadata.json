@@ -1,0 +1,11 @@
+{
+  "id": "final-architecture",
+  "type": "refactor-stabilization",
+  "priority": "P0",
+  "status": "in_progress",
+  "branch": "cleanup/final-architecture",
+  "target_branch": "release-0.2",
+  "started_at": "2026-09-02",
+  "implementation_mode": "subagent-driven-tdd",
+  "review_policy": "task-review-and-final-branch-review"
+}

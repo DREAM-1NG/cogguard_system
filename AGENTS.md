@@ -13,14 +13,16 @@ Future coding sessions should treat this file as the quick-start project context
 
 Read these files before making substantial changes:
 
-1. `doc/engineering/development-roadmap.md`
-2. `doc/engineering/environment-setup.md`
-3. `doc/engineering/development-log.md`
-4. `system/README.md`
-5. `UBIQUITOUS_LANGUAGE.md`
-6. `doc/engineering/system-governance.md`
-7. `README.md`
-8. If the task is ARIS-driven or targets a research capability, also read:
+1. `conductor/index.md`
+2. `conductor/tracks.md` and the active track
+3. `doc/engineering/development-roadmap.md`
+4. `doc/engineering/environment-setup.md`
+5. `doc/engineering/development-log.md`
+6. `system/README.md`
+7. `UBIQUITOUS_LANGUAGE.md`
+8. `doc/engineering/system-governance.md`
+9. `README.md`
+10. If the task is ARIS-driven or targets a research capability, also read:
    - `aris/README.md`
    - the selected `aris/tech-*/README.md`
    - the selected `aris/tech-*/ACCEPTANCE.md`
@@ -51,7 +53,7 @@ If code and docs disagree, trust code first, then update docs in the same change
   - `doc/engineering/development-roadmap.md`
   - `doc/engineering/development-log.md`
   - `README.md` or `system/README.md` when behavior or architecture changes
-  - `docs/adr/` when the decision should remain durable
+  - `doc/adr/` when the decision should remain durable
 - Prefer extending `system/backend/app/` and `system/frontend/src/` rather than adding duplicate entrypoints elsewhere.
 - Keep Review, Coordination Discover, Coordination Detect, and Propagation Analysis outputs evidence-backed and explainable.
 - Do not vendor upstream ARIS skill code into this repository; keep only local workspace docs under `aris/`.

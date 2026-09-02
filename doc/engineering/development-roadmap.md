@@ -4,7 +4,17 @@
 > **受众**：开发者、项目维护者、后续执行任务的 AI agent。  
 > **维护规则**：只维护可执行工程路线和状态；研究定位、文献依据和关键技术背景放入 `../research/`。
 
-> 最后更新：2026-08-05
+> 最后更新：2026-09-02
+
+## 2026-09-02 Final Architecture Cleanup
+
+- [x] 建立 Conductor context、track specification、实施顺序和质量门禁。
+- [x] 合并 `origin/feature` 并恢复受保护的本地工作树。
+- [ ] 恢复后端绿色基线并整理 GitHub 发布表面。
+- [ ] 按 Propagation Monitoring、Coordination、Student Review、Analysis Run 顺序深化 module。
+- [ ] 完成全量验证、最终 code review，并向 `release-0.2` 创建 PR。
+
+---
 
 ## 2026-08-03 Durable Review And Model Governance
 

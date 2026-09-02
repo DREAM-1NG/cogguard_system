@@ -21,9 +21,9 @@ research notes. If this file conflicts with older documents, this file wins.
 | `system/research/propagation_analysis/` | Propagation Analysis loaders, hindcast protocol, conformal intervals, and baseline registry. | System-readable research; do not point product code at external research workspaces. |
 | `system/research/review_teacher/` | Multi-agent Teacher Review advisory DAG. | System-readable research; advisory only unless an analyst approves a canonical verdict. |
 | `system/research/social_bot_detection/` | Internal trainable BotRHG transfer pipeline for labeled Weibo accounts. | System-readable research and checkpoint export; text-only transfer until property/social graph coverage is available. |
+| `conductor/` | Product, technology, workflow, and active-track context. | Update before implementation and keep track status synchronized with verified work. |
 | `doc/engineering/` | Long-lived engineering documentation. | Keep setup, governance, roadmap, project map, and development log aligned with code. |
-| `doc/adr/` | Historical accepted architecture decision records. | Never rewrite or renumber an accepted record in place. |
-| `docs/adr/` | Current ADR index and new decisions. | Record supersession in the index and keep one numbered file per new durable decision. |
+| `doc/adr/` | Canonical architecture decision records and status index. | Never renumber an accepted record; record supersession in `index.md`. |
 | `doc/research/` | Research positioning and literature notes. | Use for method positioning, references, and research context. |
 | `aris/` | Historical research workspace. | Read for provenance; do not copy numbered workspace labels into current product language. |
 | `research-wiki/` | Local research knowledge base and literature notes. | Local note workspace; do not commit generated local wiki output by default. |
@@ -32,7 +32,7 @@ research notes. If this file conflicts with older documents, this file wins.
 ## Governance Sources
 
 - [system-governance.md](system-governance.md) is the normative source for naming, package boundaries, and structure rules.
-- `docs/adr/index.md` is the ADR status source and links to historical records under `doc/adr/`.
+- `doc/adr/index.md` is the ADR status source.
 - [UBIQUITOUS_LANGUAGE.md](../../UBIQUITOUS_LANGUAGE.md) is the canonical glossary for domain terms and aliases to avoid.
 - [system/README.md](../../system/README.md) is the runnable-system guide.
 

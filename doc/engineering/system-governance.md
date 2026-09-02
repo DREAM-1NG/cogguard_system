@@ -234,7 +234,7 @@ Every completed code task must perform a documentation sync before final reply:
 2. If package structure or ownership changed, update this file and `doc/engineering/project-map.md`.
 3. If the change affects status or priorities, update `doc/engineering/development-roadmap.md`.
 4. If the change is a completed deliverable, add an entry to `doc/engineering/development-log.md`.
-5. If the change records a lasting decision, add or update an ADR under `docs/adr/`.
+5. If the change records a lasting decision, add or update an ADR under `doc/adr/`.
 6. If APIs, setup, or runtime behavior changed, update `README.md` or `system/README.md`.
 7. If future agents need a new rule, update `AGENTS.md` and, when relevant, `CLAUDE.md`.
 

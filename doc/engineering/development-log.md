@@ -16,6 +16,25 @@
 - `路径/文件`：具体改动说明
 ```
 
+## 2026-09-02 Final Architecture Context
+
+- 新增 `conductor/`，固化产品、技术栈、工作流和 `final-architecture` track；实现状态保持 `in progress`。
+- 将 ADR 0007 至 0009 迁入 canonical `doc/adr/`，新增 ADR 0010，以 XLM-R 多头分类、latent rationale distillation 和外部 Hardcase 路由 supersede ADR 0004。
+- `UBIQUITOUS_LANGUAGE.md` 继续作为全局词汇事实源；`CONTEXT.md` 收缩为产品与内部分析上下文的关系规则。
+- 工作分支为 `cleanup/final-architecture`，目标为 `release-0.2`；开发采用便宜 subagent、TDD、任务级评审和原子提交。
+
+---
+
+---
+
+## 2026-08-15
+
+- 收紧 LLM 响应回放缓存的完整性边界：缓存 schema 升级到 v2，回放前校验内嵌 key 与响应 SHA-256，拒绝被篡改或不可验证的本地缓存文件，并同步演示缓存说明，避免把本地文件标记误表述为实时调用证明。
+- `system/backend/app/core/llm_cache.py`、`system/backend/tests/test_llm_cache.py`：新增响应摘要写入与回放校验，覆盖篡改响应和 key 不匹配回归场景；`cache_stats()` 现在区分可回放与无效缓存条目。
+- `system/backend/app/config.py`、`system/.env.example`：将缓存说明从“手写内容不可能存在”改为“运行时写入、回放前校验”。
+- `UBIQUITOUS_LANGUAGE.md`：清理一个残留编号 shorthand alias，保持 canonical governance source 只使用正式方法名或描述性禁用语。
+- 验证：`G:\CISCN\CogGuard\system\backend\.venv\Scripts\python.exe -m pytest tests/test_llm_cache.py tests/test_dashboard.py -q`；`G:\CISCN\CogGuard\system\backend\.venv\Scripts\python.exe -m pytest tests/test_risk.py -k "OpenAI or Responses or provider" -q`；`G:\CISCN\CogGuard\system\backend\.venv\Scripts\python.exe -m pytest tests/test_governance_docs.py -q`。
+
 ---
 
 ## 2026-08-05
@@ -67,9 +86,9 @@
 
 ## 2026-08-02
 
-- 完成 Event Review Case 文档同步：更新 `UBIQUITOUS_LANGUAGE.md`、`CONTEXT.md`、`README.md`、`system/README.md`、`doc/engineering/system-governance.md`、`doc/engineering/development-roadmap.md`、`doc/engineering/development-log.md`，并新增 `docs/adr/index.md`、`docs/adr/0007-event-review-case-product-boundary.md`、`docs/adr/0008-lan-prototype-governance-boundary.md`。
-- `docs/adr/index.md`：仅在索引中标注旧 ADR 的 superseded 状态，保留既有 accepted ADR 正文不变。
-- `docs/adr/0007-event-review-case-product-boundary.md`、`docs/adr/0008-lan-prototype-governance-boundary.md`：分别记录自动复核路由与 LAN prototype governance boundary。
+- 完成 Event Review Case 文档同步：更新 `UBIQUITOUS_LANGUAGE.md`、`CONTEXT.md`、`README.md`、`system/README.md`、`doc/engineering/system-governance.md`、`doc/engineering/development-roadmap.md`、`doc/engineering/development-log.md`，并新增 `doc/adr/index.md`、`doc/adr/0007-event-review-case-product-boundary.md`、`doc/adr/0008-lan-prototype-governance-boundary.md`。
+- `doc/adr/index.md`：仅在索引中标注旧 ADR 的 superseded 状态，保留既有 accepted ADR 正文不变。
+- `doc/adr/0007-event-review-case-product-boundary.md`、`doc/adr/0008-lan-prototype-governance-boundary.md`：分别记录自动复核路由与 LAN prototype governance boundary。
 
 ## 2026-08-01
 
@@ -98,7 +117,7 @@
 - 收口仓库入口与 Risk Review 上下文命名：`README.md`、`system/README.md`、`AGENTS.md`、`CLAUDE.md`、`CONTEXT.md` 与 `plan/progress.md` 的当前-facing 术语统一为正式方法名与工作流表述。
 - 收口全局系统治理：新增统一术语表、系统治理文档和 ADR，要求后续代码变更同步文档、术语和架构决策。
 - `UBIQUITOUS_LANGUAGE.md`：新增跨系统术语、别名禁用、run/job/task、artifact/checkpoint/model version、Teacher Silver 与 Selective Student 定义。
-- `doc/engineering/system-governance.md`、`docs/adr/0002-system-governance-and-documentation-sync.md`：新增代码结构、公共边界、文档同步与长期迭代规则。
+- `doc/engineering/system-governance.md`、`doc/adr/0005-system-governance-and-documentation-sync.md`：新增代码结构、公共边界、文档同步与长期迭代规则。
 - `AGENTS.md`、`CLAUDE.md`、`README.md`、`system/README.md`、`doc/engineering/project-map.md`：同步 Codex/Claude 读取顺序、文档更新要求和当前产品根 `system/`。
 - `system/backend/app/core/review/teacher_silver.py`、`system/backend/app/core/review/selective_student.py`：从 `trainable_post.py` 拆出 Teacher Silver 和 2+1 Selective Student 职责，原文件保留懒加载兼容导出。
 - 追加收口 Coordination Discover / Detect 正式方法名：`Coordination Discover` / `Coordination Detect`，同步 `UBIQUITOUS_LANGUAGE.md`、`doc/engineering/system-governance.md`、`README.md`、`system/README.md` 和研究总览。

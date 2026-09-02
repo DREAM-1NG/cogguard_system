@@ -29,9 +29,9 @@ event -> evidence -> Coordination Discover -> Propagation Analysis -> Review -> 
 | `system/frontend/` | Vue 3 and TypeScript case workspace. |
 | `system/runtimes/` | Vendored executable runtimes used by product code. |
 | `system/research/` | System-readable research packages consumed through explicit adapters. |
+| `conductor/` | Product, technology, workflow, and active-track context for implementation sessions. |
 | `doc/engineering/` | Long-lived engineering documentation, governance, maps, setup, roadmap, and log. |
-| `docs/adr/` | Current ADR index and new durable decisions. |
-| `doc/adr/` | Historical accepted ADR bodies retained for reference. |
+| `doc/adr/` | Canonical ADR index and accepted durable decisions. |
 | `doc/research/` | Research positioning and literature notes. |
 | `aris/` | Historical research workspace. Its physical names are not canonical product vocabulary. |
 | `MediaCrawler-main/`, `NewsCrawler-main/`, `CooRTweet-master/` | Reference boundaries only; product runtime code must not execute from these directories. |
@@ -40,8 +40,8 @@ event -> evidence -> Coordination Discover -> Propagation Analysis -> Review -> 
 
 - `UBIQUITOUS_LANGUAGE.md` is the canonical glossary.
 - `doc/engineering/system-governance.md` is the normative naming and package-boundary policy.
-- `docs/adr/index.md` records the current architecture and product-boundary decisions.
-- `doc/adr/` retains accepted ADR bodies as historical reference material.
+- `doc/adr/index.md` records current ADR status and supersession.
+- `conductor/index.md` records the active product, technology, workflow, and track context.
 
 New code and current documentation must use formal capability names: `Coordination Discover`, `Coordination Detect`, `Propagation Analysis`, `Review`, and `Event Review Case`.
 
@@ -91,7 +91,7 @@ The analyst-facing frontend remains business-first: it shows event status,
 evidence sufficiency, preliminary and advisory findings, required actions, and
 confirmed decisions. Model activation, artifact verification, queue recovery,
 and rollback are authenticated backend control-plane operations documented in
-[ADR 0009](docs/adr/0009-durable-review-and-model-governance-boundary.md).
+[ADR 0009](doc/adr/0009-durable-review-and-model-governance-boundary.md).
 
 ## Runtime And Attribution
 

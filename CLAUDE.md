@@ -9,11 +9,12 @@ names are provenance unless a task explicitly targets them.
 Read maps before details:
 
 1. `AGENTS.md`
-2. `doc/engineering/project-map.md`
-3. `doc/engineering/system-governance.md`
-4. `doc/engineering/development-roadmap.md`
-5. `system/README.md`
-6. `UBIQUITOUS_LANGUAGE.md`
+2. `conductor/index.md` and the active track
+3. `doc/engineering/project-map.md`
+4. `doc/engineering/system-governance.md`
+5. `doc/engineering/development-roadmap.md`
+6. `system/README.md`
+7. `UBIQUITOUS_LANGUAGE.md`
 
 Read `research-wiki/` only for literature or claim work. Read a semantic
 research package only when the task touches that capability.

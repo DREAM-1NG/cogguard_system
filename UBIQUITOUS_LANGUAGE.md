@@ -74,7 +74,7 @@ Current semantic package paths: `system/research/coordination_discover/`, `syste
 
 | Term | Definition | Aliases to avoid |
 | --- | --- | --- |
-| **Propagation Monitoring** | The product capability that combines observed propagation analysis and gated propagation prediction for one event snapshot. | Propagation page, KT2, propagation monitor |
+| **Propagation Monitoring** | The product capability that combines observed propagation analysis and gated propagation prediction for one event snapshot. | Propagation page, numbered propagation shorthand, propagation monitor |
 | **Propagation Forecast** | The output that estimates spread size and next-hop behavior from a snapshot. | Trend guess, prediction blob |
 | **Observed Propagation Analysis** | A non-predictive reconstruction of paths, objects, roles, provenance, timelines, and stability from the event snapshot. | Forecast, causal proof |
 | **Propagation Evidence Type** | `explicit`, `reconstructed`, or `inferred`; respectively platform-observed, parent-ID-rebuilt, or shared-object temporal-proximity evidence. | All edges are reposts |
@@ -100,7 +100,9 @@ Current semantic package paths: `system/research/coordination_discover/`, `syste
 | **Review Queue** | The structured set of posts, accounts, communities, retrieval requests, and review tasks that need attention. | Manual queue, task dump |
 | **Review Graph** | A heterogeneous graph export of post, account, claim, community, target, media, coordination, and propagation evidence. | Graph dump, feature graph |
 | **Teacher Silver Record** | A distillation supervision record derived from approved or replayed teacher review traces. | Pseudo label, generated label |
-| **Selective Student** | A student runtime that predicts main review axes and defers uncertain cases. | Gate model, shortcut classifier |
+| **Hardcase** | A review input selected for Teacher Review because Student uncertainty or a governance signal exceeds the active routing policy. | Deferred class, model reject label |
+| **Latent Rationale Target** | A Teacher-derived embedding used only as offline Student distillation supervision. | Generated product explanation, hidden verdict |
+| **Selective Student** | Deprecated name for the earlier Student design with an internal defer head. | Canonical Student, current runtime |
 | **Active Pointer** | The currently selected version reference for a review capability. | Default model, live model |
 | **Model Candidate** | A registered, versioned model artifact that is eligible for review but is not yet selected by an Active Pointer. | Live model, deployed model |
 | **Model Candidate Approval** | An authenticated administrator action that verifies a candidate artifact and its capability gates before recording approval evidence. | Caller-supplied approval, automatic activation |
@@ -138,7 +140,8 @@ Current semantic package paths: `system/research/coordination_discover/`, `syste
 - **Candidate Coverage** and **Calibration Status** qualify a **Propagation Forecast**; they are not evidence that a future outcome is certain.
 - **Propagation Analysis** consumes an **Event Snapshot** and may emit a **Propagation Forecast**, **Next-Hop Ranking**, and **Propagation Tree** evidence.
 - **Review** consumes content, coordination, and propagation evidence and produces a **Review Verdict**.
-- **Teacher Review** may create **Teacher Silver Records** for **Selective Student** distillation after governance approval.
+- **Student Review** may route a **Hardcase** to **Teacher Review** without predicting a defer class.
+- **Teacher Review** may create **Teacher Silver Records** containing a **Latent Rationale Target** for governed Student distillation.
 - An **Artifact Manifest** must match the snapshot fingerprint before an artifact-first result can serve a backend response.
 - A **Model Candidate Approval** creates at most one **Model Activation Approval** per candidate and authenticated administrator.
 - Production **Model Activation** requires two distinct active administrator records, including the activating administrator; local activation requires one accountable operator.

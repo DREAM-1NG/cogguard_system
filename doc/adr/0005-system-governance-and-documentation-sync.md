@@ -22,7 +22,7 @@ The project adopts a durable governance stack:
 - `doc/engineering/system-governance.md` is the code structure and documentation
   sync source.
 - `doc/engineering/project-map.md` remains the repository boundary map.
-- `docs/adr/` records durable architecture and method decisions.
+- `doc/adr/` records durable architecture and method decisions.
 - `AGENTS.md` and `CLAUDE.md` must instruct future agents to update docs when
   code or architecture changes.
 
