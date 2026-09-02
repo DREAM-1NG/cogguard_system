@@ -77,7 +77,12 @@ class AnalysisExecutor:
                 status=AnalysisRunStatus.RUNNING,
                 payload={"stage": stage, "options": stage_options},
             )
-            result = await self._execute_stage(stage, snapshot, stage_options)
+            result = await self._execute_stage(
+                stage,
+                snapshot,
+                stage_options,
+                run_id=run_id,
+            )
             results[stage] = result
             artifact_ref = await self.registry.save_run_artifact(
                 run_id=run_id,
@@ -149,15 +154,21 @@ class AnalysisExecutor:
         stage: str,
         snapshot: EventSnapshot,
         options: dict[str, Any],
+        *,
+        run_id: str | None = None,
     ) -> dict[str, Any]:
         if stage == "coordination_discover":
             return await self.engines.coordination.analyze(snapshot, options)
         if stage == "propagation_analysis":
             return await self.engines.propagation.hindcast(snapshot, options)
         if stage == "student":
-            return await self.engines.student.predict(_case_from_snapshot(snapshot, options=options))
+            return await self.engines.student.predict(
+                _case_from_snapshot(snapshot, options=options, run_id=run_id)
+            )
         if stage == "teacher":
-            return await self.engines.teacher.submit(_case_from_snapshot(snapshot, options=options))
+            return await self.engines.teacher.submit(
+                _case_from_snapshot(snapshot, options=options, run_id=run_id)
+            )
         raise UnknownAnalysisStage(f"Unknown analysis stage: {stage}")
 
 
@@ -189,7 +200,7 @@ class PropagationAnalysisPropagationEngine:
             posts=snapshot.posts,
             comments=snapshot.comments,
             top_k=int(options.get("top_k", 10) or 10),
-            checkpoint_path=(options.get("active_model") or {}).get("artifact_uri"),
+            checkpoint_path=(options.get("active_model") or {}).get("checkpoint_path"),
         )
         return {"technology": "propagation_analysis", **result}
 
@@ -230,8 +241,13 @@ def default_analysis_engine_ports() -> AnalysisEnginePorts:
     )
 
 
-def _case_from_snapshot(snapshot: EventSnapshot, *, options: dict[str, Any]) -> dict[str, Any]:
-    return {
+def _case_from_snapshot(
+    snapshot: EventSnapshot,
+    *,
+    options: dict[str, Any],
+    run_id: str | None = None,
+) -> dict[str, Any]:
+    case = {
         "snapshot_id": snapshot.snapshot_id,
         "event_id": snapshot.event_id,
         "platforms": list(snapshot.platforms),
@@ -242,6 +258,9 @@ def _case_from_snapshot(snapshot: EventSnapshot, *, options: dict[str, Any]) -> 
         "provenance": [record.model_dump(mode="json") for record in snapshot.provenance],
         "options": dict(options),
     }
+    if run_id:
+        case["run_id"] = run_id
+    return case
 
 
 def _single_platform(snapshot: EventSnapshot) -> str | None:
@@ -309,6 +328,8 @@ def _normalize_stage(stage: Any) -> str:
 
 
 def _final_status(results: dict[str, Any]) -> AnalysisRunStatus:
+    if _teacher_dispatch_failed(results.get("teacher")):
+        return AnalysisRunStatus.NEEDS_EVIDENCE
     if _teacher_job_id(results.get("teacher")):
         return AnalysisRunStatus.AWAITING_REVIEW
     if any(_needs_evidence(result) for result in results.values()):
@@ -323,6 +344,8 @@ def _teacher_job_id(result: Any) -> str:
 
 
 def _stage_completed_event_type(stage: str, result: Any) -> str:
+    if stage == "teacher" and _teacher_dispatch_failed(result):
+        return "teacher_job_failed"
     if stage == "teacher" and _teacher_job_id(result):
         return "teacher_job_submitted"
     return "stage_completed"
@@ -337,6 +360,19 @@ def _needs_evidence(result: Any) -> bool:
         "model_unavailable",
         "missing_checkpoint",
         "data_insufficient",
+        "failed",
+        "dispatch_failed",
+        "persistence_failed",
+    }
+
+
+def _teacher_dispatch_failed(result: Any) -> bool:
+    if not isinstance(result, dict):
+        return False
+    return str(result.get("status") or "").strip() in {
+        "failed",
+        "dispatch_failed",
+        "persistence_failed",
     }
 
 
@@ -507,6 +543,8 @@ def _stage_execution_state(
 ) -> tuple[str, str]:
     """Classify runtime evidence without upgrading a demo into a claim."""
 
+    if status in {"failed", "dispatch_failed", "persistence_failed"}:
+        return "failed", "needs_evidence"
     if status in {"missing_data", "missing_checkpoint", "model_unavailable", "data_insufficient", "unavailable"}:
         return "blocked", "needs_evidence"
     model_name = str(result.get("model_version") or result.get("model") or "").lower()

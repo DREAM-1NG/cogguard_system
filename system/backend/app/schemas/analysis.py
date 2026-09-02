@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.core.analysis.contracts import (
     AnalysisRunStatus,
@@ -66,9 +66,19 @@ class ModelVersionCreateRequest(BaseModel):
 
 
 class ModelActivationRequest(BaseModel):
-    approved_by: list[int] = Field(..., min_length=2)
-    quality_gates: dict[str, bool] = Field(default_factory=dict)
+    model_config = ConfigDict(extra="forbid")
+
+    reason: str = Field(..., min_length=1, max_length=4000)
+
+
+class ModelCandidateApprovalRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    approval_notes: str = Field("", max_length=4000)
 
 
 class ModelRollbackRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     reason: str = Field(..., min_length=1, max_length=4000)
+    target_model_version_id: int | None = Field(default=None, ge=1)

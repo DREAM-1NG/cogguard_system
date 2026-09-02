@@ -1,16 +1,28 @@
 <template>
   <div class="dashboard-page">
-    <PageHeader title="数据看板" description="跨平台事件态势、采集规模、风险与地理位置概览" />
+    <PageHeader title="数据大屏" description="跨平台事件态势、采集规模、风险与地理位置概览" />
 
     <div class="toolbar">
-      <a-input
+      <a-select
         v-model:value="eventId"
         class="event-input"
-        allow-clear
-        placeholder="event_id"
-        @pressEnter="loadOverview"
+        show-search
+        :filter-option="false"
+        :options="eventOptions"
+        :loading="eventSearchLoading"
+        placeholder="搜索事件…"
+        aria-label="搜索事件"
+        @search="scheduleEventSearch"
+        @change="loadOverview"
       />
-      <a-button type="primary" :loading="loading" @click="loadOverview">刷新</a-button>
+      <a-button :loading="loading" aria-label="刷新数据大屏" @click="loadOverview">
+        <ReloadOutlined aria-hidden="true" />
+        刷新
+      </a-button>
+      <a-button type="primary" :disabled="!eventId" @click="enterReview">
+        进入研判
+        <ArrowRightOutlined aria-hidden="true" />
+      </a-button>
       <span v-if="overview?.meta.generated_at" class="generated-at">
         {{ formatTime(overview.meta.generated_at) }}
       </span>
@@ -28,7 +40,13 @@
       <a-col :xs="24" :xl="16">
         <a-card title="事件位置地图" size="small">
           <div class="map-shell">
-            <div ref="mapRef" class="map-canvas" />
+            <div
+              ref="mapRef"
+              class="map-canvas"
+              role="img"
+              aria-describedby="dashboard-map-summary"
+            />
+            <p id="dashboard-map-summary" class="sr-only">{{ mapAccessibilitySummary }}</p>
             <div class="heatmap-panel">
               <div class="heatmap-title">事件热力</div>
               <div class="heatmap-bar" />
@@ -98,7 +116,6 @@
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'event'">
                 <div class="event-cell-title">{{ record.event_name }}</div>
-                <div class="event-cell-meta">{{ record.event_id || '-' }}</div>
               </template>
               <template v-else-if="column.key === 'origin'">
                 <div>{{ record.origin_author || '-' }}</div>
@@ -130,22 +147,55 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
-import * as echarts from 'echarts'
+import { ArrowRightOutlined, ReloadOutlined } from '@ant-design/icons-vue'
+import * as echarts from 'echarts/core'
+import { EffectScatterChart, HeatmapChart, ScatterChart } from 'echarts/charts'
+import { GeoComponent, TooltipComponent, VisualMapComponent } from 'echarts/components'
+import { CanvasRenderer } from 'echarts/renderers'
+import type { ECharts } from 'echarts/core'
 import type { EChartsOption } from 'echarts'
 import PageHeader from '@/components/PageHeader.vue'
 import { getDashboardOverview, type DashboardOverview, type EventLocation } from '@/api/dashboard'
+import { searchReviewCases } from '@/api/reviewCases'
+import type { ReviewCaseSummary } from '@/types/reviewCase'
 
 const DEFAULT_EVENT_ID = 'trump_visit_2026_05_21'
 const WORLD_GEOJSON_URL = new URL('../../assets/world-countries.geojson', import.meta.url).href
+const router = useRouter()
+
+echarts.use([
+  HeatmapChart,
+  EffectScatterChart,
+  ScatterChart,
+  GeoComponent,
+  TooltipComponent,
+  VisualMapComponent,
+  CanvasRenderer,
+])
 
 const eventId = ref(DEFAULT_EVENT_ID)
+const caseItems = ref<ReviewCaseSummary[]>([])
+const eventSearchLoading = ref(false)
 const loading = ref(false)
 const loadError = ref('')
 const overview = ref<DashboardOverview | null>(null)
 const mapRef = ref<HTMLDivElement | null>(null)
-let chart: echarts.ECharts | null = null
+let chart: ECharts | null = null
 let worldMapPromise: Promise<void> | null = null
+let eventSearchTimer: number | undefined
+
+const eventOptions = computed(() => {
+  const options = caseItems.value.map((item) => ({
+    label: item.title,
+    value: item.event_id,
+  }))
+  if (eventId.value && !options.some((item) => item.value === eventId.value)) {
+    options.unshift({ label: '当前事件', value: eventId.value })
+  }
+  return options
+})
 
 function ensureWorldMap() {
   if (!worldMapPromise) {
@@ -168,6 +218,14 @@ function ensureWorldMap() {
 }
 
 const resolvedLocations = computed(() => (overview.value?.event_locations || []).filter((item) => item.resolved && item.coordinates))
+const mapAccessibilitySummary = computed(() => {
+  if (resolvedLocations.value.length === 0) {
+    return '当前事件没有可解析的地理位置；完整事件数据见下方定位明细。'
+  }
+  const total = resolvedLocations.value.reduce((sum, item) => sum + item.posts + item.comments, 0)
+  const regions = resolvedLocations.value.map((item) => item.location_region).filter(Boolean).join('、')
+  return `地图显示 ${resolvedLocations.value.length} 个事件位置，覆盖 ${regions}，共 ${total} 条帖子和评论；完整数据见下方定位明细。`
+})
 const mapPoints = computed(() => {
   return resolvedLocations.value.map((item) => ({
     name: item.event_name,
@@ -412,6 +470,34 @@ async function loadOverview() {
   }
 }
 
+async function loadEventOptions(query = '') {
+  eventSearchLoading.value = true
+  try {
+    const response = await searchReviewCases({ query, limit: 30 })
+    caseItems.value = response.data.items
+  } finally {
+    eventSearchLoading.value = false
+  }
+}
+
+function scheduleEventSearch(query: string) {
+  if (eventSearchTimer) window.clearTimeout(eventSearchTimer)
+  eventSearchTimer = window.setTimeout(() => {
+    void loadEventOptions(query)
+  }, 250)
+}
+
+function enterReview() {
+  const selected = caseItems.value.find((item) => item.event_id === eventId.value)
+  void router.push({
+    path: '/risk',
+    query: {
+      event_id: eventId.value,
+      ...(selected ? { case_id: selected.case_id } : {}),
+    },
+  })
+}
+
 function resizeChart() {
   chart?.resize()
 }
@@ -429,6 +515,7 @@ watch(loading, (value) => {
 onMounted(() => {
   void renderMap()
   void loadOverview()
+  void loadEventOptions()
   window.addEventListener('resize', resizeChart)
 })
 
@@ -436,6 +523,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('resize', resizeChart)
   chart?.dispose()
   chart = null
+  if (eventSearchTimer) window.clearTimeout(eventSearchTimer)
 })
 </script>
 
@@ -510,6 +598,18 @@ onBeforeUnmount(() => {
   min-width: 0;
   height: 460px;
   width: 100%;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .heatmap-panel {

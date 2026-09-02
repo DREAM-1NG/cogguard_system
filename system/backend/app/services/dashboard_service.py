@@ -305,10 +305,6 @@ async def get_dashboard_overview(
             "event_id": effective_event_id,
             "default_event_id": DEFAULT_EVENT_ID,
             "generated_at": datetime.now(timezone.utc).isoformat(),
-            "mongo_filter": build_event_filter(effective_event_id),
-            "data_source_status": {
-                "mongo": "ok",
-                "mysql": mysql_status,
-            },
+            "data_availability": "available" if mysql_status == "ok" else "partial",
         },
     }

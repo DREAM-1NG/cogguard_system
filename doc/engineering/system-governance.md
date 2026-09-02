@@ -36,12 +36,12 @@ system/
       api/v1/           legacy thin compatibility layer
       api/v2/           current product API surface
       core/
-        analysis/       EventSnapshot, AnalysisRun, SSE, Coordination Discover, Propagation Analysis, Review ports, governance
+        analysis/       internal EventSnapshot diagnostics, SSE, Coordination Discover, Propagation Analysis, Review ports, governance
         coordination_baseline/ CooRTweet-style fallback baseline implementation
         coordination/   legacy compatibility aliases for coordination_baseline
         crawler/        social/news/mock acquisition adapters
-        propagation/    observed propagation projection and compatibility helpers
-        review/         Review, Teacher, Student, and governance helpers
+        propagation/    observed propagation projection, heuristics, and compatibility helpers
+        review/         Event Review Case orchestration, Review/Teacher/Student helpers, advisory routing, and governance
         risk/           legacy compatibility aliases for review
         security.py     auth and crypto utilities
       models/           SQLAlchemy and persisted domain records
@@ -111,12 +111,21 @@ system/
 
 Use the glossary in `UBIQUITOUS_LANGUAGE.md` for domain terms. The system-level anchors are:
 
+- `Event Review Case`
+- `Preliminary Finding`
+- `Review Advisory`
+- `Confirmed Decision`
+- `Evidence Sufficiency`
+- `Evidence Annotation`
+- `Case Activity`
+- `Coordination Discover`
+- `Coordination Detect`
+- `Propagation Analysis`
+- `Review`
 - `EventSnapshot`
 - `AnalysisRun`
 - `Analysis Stage`
 - `Coordination Signal`
-- `Coordination Discover`
-- `Coordination Detect`
 - `Evidence Object`
 - `Evidence Graph`
 - `Coordination Community`
@@ -136,19 +145,37 @@ Use the glossary in `UBIQUITOUS_LANGUAGE.md` for domain terms. The system-level 
 - Legacy compatibility code must be thin mapping only; business logic lives in the current canonical module.
 - `app.core.risk` and `app.core.coordination` are legacy application aliases.
 - `system/research/*_legacy_alias` and `system/runtimes/*_legacy_alias` are import-only compatibility packages.
+- `system/backend/app/services/review_case_service.py` and `system/backend/app/api/v2/review_cases.py` are the product case boundary.
 - `system/research/coordination_discover`, `system/research/coordination_detect`, `system/research/propagation_analysis`, `system/research/review_teacher`, and `system/runtimes/review_student` are canonical semantic boundaries.
 - `system/research/social_bot_detection` is the canonical internal boundary for trainable BotRHG transfer. It must record dataset fingerprint, model checkpoint hash, missing property/social graph coverage, and comparison against a shallow reference baseline.
 - `system/research/propagation_analysis` owns the deployed propagation sequence model and checkpoint. Public event prediction must use a timezone-aware observation cutoff, must not import `subsystems/`, and must abstain rather than invoke the legacy speed/acceleration runtime when the model is unavailable.
+
+### Prototype Boundary
+
+- The LAN/local prototype uses the existing login dependency for the event-review workspace; it does not introduce a second preview-only permission model.
+- Internal activation remains a single accountable operator action. Do not add multi-approver activation payloads to the prototype surface.
+
+### Durable Review And Model Governance
+
+- The primary frontend is a business-facing Event Review Case workspace. It may show case state, Evidence Sufficiency, evidence references, the Preliminary Finding, Review Advisory differences, analyst activity, and the Confirmed Decision.
+- Model versions, artifact paths and hashes, agent graphs, queue internals, active pointers, and rollback controls belong to the authenticated backend control plane. Do not add a technical governance page to the primary frontend.
+- `ANALYSIS_TEACHER_DISPATCH_MODE=auto` permits `local_inline_fallback` only for local deployments. Production resolves to `queue_required`; a broker failure is persisted as a retryable failed Teacher advisory and is never silently completed in API process memory.
+- `ANALYSIS_MODEL_ACTIVATION_APPROVAL_MODE=auto` permits one accountable operator locally. Production requires two distinct active administrator records in `analysis_model_activation_approvals`, created through authenticated approval actions; activation requests must not accept caller-supplied approver identities.
+- Artifact hash verification and capability quality gates apply before both approval and activation. Rollback is an audited recovery action against a previously approved artifact.
+- Teacher Review remains advisory and Canonical Verdict creation remains an analyst-owned action. Queue completion or model activation cannot create a Canonical Verdict.
 
 ### Security And Deployment Contract
 
 - `BACKEND_ENV=production` requires explicit `JWT_SECRET_KEY`,
   `DEFAULT_ADMIN_PASSWORD`, `MYSQL_PASSWORD`, `MONGO_PASSWORD`, and
   `REDIS_PASSWORD`; no public placeholder is accepted.
-- `PREVIEW_AUTH_ENABLED` defaults to `false`. A preview token is accepted only
-  when `BACKEND_ENV=local`, `BACKEND_DEBUG=true`, and
-  `PREVIEW_AUTH_TOKEN` is explicitly configured. Dashboard access uses the
-  shared security dependency and must not define a second token.
+- Production also requires the effective policies `queue_required` for Teacher
+  dispatch and `dual_operator` for model activation. Leave both settings at
+  `auto` unless a deployment profile explicitly sets a stricter mode.
+- All authenticated API surfaces use the shared JWT bearer dependency. Local
+  walkthroughs must log in as a real user or use an explicit test dependency
+  override; static bearer-token bypasses are not part of the deployment
+  contract.
 - `ensure_default_admin` does not create an account when the seed password is
   empty. Production bootstrap must provide the password intentionally.
 
@@ -174,8 +201,9 @@ Use the glossary in `UBIQUITOUS_LANGUAGE.md` for domain terms. The system-level 
 ### Terminology Gate
 
 - Do not introduce numbered capability labels in code, file names, API fields, tests, or current documentation.
-- Use `Coordination Discover`, `Coordination Detect`, `Propagation Analysis`, `Student Review`, and `Teacher Review`.
-- Use `Analysis Run`, `Teacher Job`, and `Celery Task` for distinct lifecycle concepts; do not use them interchangeably.
+- Use `Event Review Case`, `Preliminary Finding`, `Review Advisory`, `Confirmed Decision`, `Evidence Sufficiency`, `Evidence Annotation`, `Case Activity`, `Coordination Discover`, `Coordination Detect`, `Propagation Analysis`, and `Review`.
+- Use `AnalysisRun`, `Analysis Stage`, `Teacher Job`, and `Celery Task` only for internal diagnostic or runtime lifecycle concepts; do not use them interchangeably.
+- `Student Review` and `Teacher Review` are runtime/research terms only and must not appear in product copy.
 - Use `Reference Boundary` for upstream source trees and `Vendored Runtime` for code executed from `system/runtimes/`.
 
 ## Structural Rules
@@ -185,6 +213,7 @@ Use the glossary in `UBIQUITOUS_LANGUAGE.md` for domain terms. The system-level 
 - Keep product API models in `schemas/`, persistent records in `models/`, and orchestration in `services/` or `core/`.
 - Keep analysis lifecycle logic in `app/core/analysis/`.
 - Keep analysis capability-specific research logic in semantic research packages: `coordination_discover`, `coordination_detect`, `propagation_analysis`, and `review_teacher`.
+- Keep Event Review Case orchestration, review advisory routing, and decision confirmation in `app/services/review_case_service.py` and `app/api/v2/review_cases.py`.
 - Keep deployable ML/runtime code in `system/runtimes/*`.
 
 ## Governance Change Checklist
@@ -205,7 +234,7 @@ Every completed code task must perform a documentation sync before final reply:
 2. If package structure or ownership changed, update this file and `doc/engineering/project-map.md`.
 3. If the change affects status or priorities, update `doc/engineering/development-roadmap.md`.
 4. If the change is a completed deliverable, add an entry to `doc/engineering/development-log.md`.
-5. If the change records a lasting decision, add or update an ADR under `doc/adr/`.
+5. If the change records a lasting decision, add or update an ADR under `docs/adr/`.
 6. If APIs, setup, or runtime behavior changed, update `README.md` or `system/README.md`.
 7. If future agents need a new rule, update `AGENTS.md` and, when relevant, `CLAUDE.md`.
 

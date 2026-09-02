@@ -10,7 +10,9 @@ research notes. If this file conflicts with older documents, this file wins.
 | --- | --- | --- |
 | `system/` | Active product system: backend, frontend, deployment files, vendored runtimes, system-readable research packages, and tests. | Edit for runnable system work. |
 | `system/backend/` | FastAPI, Celery, MySQL/MongoDB/Redis access, services, tasks, schemas, and backend tests. | Edit for product backend behavior. |
-| `system/frontend/` | Vue 3 and TypeScript UI. | Edit for product UI work only; current governance cleanup does not change the display pages. |
+| `system/backend/app/services/analysis_governance_service.py` | Authenticated control plane for durable Teacher dispatch outcomes, model candidates, activation approvals, active pointers, and rollback decisions. | Keep separate from product-facing case schemas and frontend. |
+| `system/backend/alembic/versions/` | Versioned MySQL schema changes, including durable review and model approval tables. | Apply migrations before enabling the corresponding production endpoint. |
+| `system/frontend/` | Vue 3 and TypeScript UI. | Keep `/dashboard` as the homepage and `/risk` as the Event Review Case workspace. |
 | `system/runtimes/social_runtime/` | Vendored social crawler runtime for `weibo`, `douyin`, and `xhs`. | Product runtime code; keep dependencies local to this runtime. |
 | `system/runtimes/news_runtime/` | Vendored news extraction runtime for `news`. | Product runtime code; keep dependencies local to this runtime. |
 | `system/runtimes/review_student/` | Deployable Student Review runtime used by `StudentRuntime.predict(case)`. | Product runtime code; keep synchronous, checkpoint-gated, and governance-aware. |
@@ -20,7 +22,8 @@ research notes. If this file conflicts with older documents, this file wins.
 | `system/research/review_teacher/` | Multi-agent Teacher Review advisory DAG. | System-readable research; advisory only unless an analyst approves a canonical verdict. |
 | `system/research/social_bot_detection/` | Internal trainable BotRHG transfer pipeline for labeled Weibo accounts. | System-readable research and checkpoint export; text-only transfer until property/social graph coverage is available. |
 | `doc/engineering/` | Long-lived engineering documentation. | Keep setup, governance, roadmap, project map, and development log aligned with code. |
-| `doc/adr/` | Accepted architecture decision records. | One numbered file per durable decision; never renumber an accepted record in place. |
+| `doc/adr/` | Historical accepted architecture decision records. | Never rewrite or renumber an accepted record in place. |
+| `docs/adr/` | Current ADR index and new decisions. | Record supersession in the index and keep one numbered file per new durable decision. |
 | `doc/research/` | Research positioning and literature notes. | Use for method positioning, references, and research context. |
 | `aris/` | Historical research workspace. | Read for provenance; do not copy numbered workspace labels into current product language. |
 | `research-wiki/` | Local research knowledge base and literature notes. | Local note workspace; do not commit generated local wiki output by default. |
@@ -29,7 +32,7 @@ research notes. If this file conflicts with older documents, this file wins.
 ## Governance Sources
 
 - [system-governance.md](system-governance.md) is the normative source for naming, package boundaries, and structure rules.
-- `doc/adr/` holds the accepted decision records behind those boundaries.
+- `docs/adr/index.md` is the ADR status source and links to historical records under `doc/adr/`.
 - [UBIQUITOUS_LANGUAGE.md](../../UBIQUITOUS_LANGUAGE.md) is the canonical glossary for domain terms and aliases to avoid.
 - [system/README.md](../../system/README.md) is the runnable-system guide.
 
@@ -56,10 +59,13 @@ CogGuard/
       app/core/crawler/               Crawler adapters and collect seam
       app/core/coordination_baseline/ Compatibility baseline
       app/core/propagation/           Propagation Analysis app support
-      app/core/review/                Risk Review app support
+      app/core/review/                Internal Review runtime support
+      app/services/analysis_governance_service.py
+                                      Authenticated model and dispatch control plane
+      app/services/review_case_*      Event Review Case service and orchestration
       scripts/                        Explicit local utility entrypoints
       tests/                          Backend regression and governance tests
-    frontend/                         Vue 3 + TypeScript UI
+    frontend/                         Dashboard and Event Review Case UI
     research/
       coordination_discover/          Coordination Discover research pipeline
       coordination_detect/            Coordination Detect validation boundary
@@ -94,3 +100,10 @@ reported as unavailable rather than successful research results.
 The upstream reference directories remain in place only for provenance, license
 review, and diffing. Product execution, tests, documentation, and configuration
 must not depend on them as runtime roots.
+
+Model governance is persisted in MySQL. `analysis_model_versions` stores
+registered Model Candidates, `analysis_model_activation_approvals` stores one
+immutable authenticated approval per candidate and administrator, and
+`analysis_model_activations` stores the active pointer. These records are
+control-plane data and must not be copied into the business-safe frontend
+contracts.

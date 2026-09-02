@@ -512,6 +512,8 @@ class SqlAlchemyAnalysisStore:
         if row is None:
             return None
         activation, version = row
+        provenance = _json_loads(activation.provenance_json, {})
+        artifact = provenance.get("artifact") if isinstance(provenance, dict) else None
         return {
             "technology": activation.technology,
             "model_version_id": activation.model_version_id,
@@ -519,8 +521,9 @@ class SqlAlchemyAnalysisStore:
             "model": version.model,
             "artifact_uri": version.artifact_uri,
             "artifact_hash": version.artifact_hash,
+            "checkpoint_path": artifact.get("checkpoint_path") if isinstance(artifact, dict) else None,
             "status": version.status,
-            "provenance": _json_loads(activation.provenance_json, {}),
+            "provenance": provenance,
         }
 
 

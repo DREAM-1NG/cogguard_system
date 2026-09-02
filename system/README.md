@@ -1,14 +1,13 @@
 # CogGuard System
 
-`system/` is the only active product system root. It contains the backend,
-frontend, vendored runtimes, system-readable research packages, deployment
-files, and tests.
+`system/` is the only active product system root. It contains the backend, frontend, vendored runtimes, system-readable research packages, deployment files, and tests.
 
 Canonical capabilities:
 
+- `Event Review Case`
 - `Coordination Discover` and `Coordination Detect`
 - `Propagation Analysis`
-- `Risk Review`, including `Student Review` and `Teacher Review`
+- `Review`
 - `Crawler`
 
 ## Directory Layout
@@ -17,15 +16,15 @@ Canonical capabilities:
 system/
   backend/
     app/
-      api/v1/                  legacy thin API mappings
-      api/v2/                  current Analysis API surface
+      api/v1/                  legacy thin compatibility layer
+      api/v2/                  current product API surface
       core/
-        analysis/              EventSnapshot, AnalysisRun, ports, SSE recovery
+        analysis/              internal snapshot and diagnostics boundary
         coordination_baseline/ reference-style fallback baseline
         coordination/          legacy compatibility alias for coordination_baseline
         crawler/               Crawler interface, social/news/mock adapters
-        propagation/           observed propagation projection and compatibility helpers
-        review/                Risk Review, Student Review, Teacher Review, governance
+        propagation/           observed propagation projection, services, and fallback logic
+        review/                Event Review Case orchestration, Review/Teacher/Student helpers, advisory routing, governance
         risk/                  legacy compatibility alias for review
       models/                  SQLAlchemy and persisted domain records
       schemas/                 Pydantic request and response schemas
@@ -37,15 +36,15 @@ system/
     tests/                     backend unit, contract, integration, and governance tests
   frontend/                    Vue 3 and TypeScript UI
   research/
-    coordination_discover/     platform-generic discovery pipeline and artifacts
+    coordination_discover/     platform-generic discovery pipeline and outputs
     coordination_detect/       public-label validation boundary
-    propagation_analysis/      deployed sequence model, checkpoint, loaders, benchmarks
-    review_teacher/            asynchronous Teacher Review DAG
-    social_bot_detection/       internal trainable BotRHG social-bot transfer
+    propagation_analysis/      deployed sequence model, checkpoint, loaders, hindcast, and benchmarks
+    review_teacher/            asynchronous Teacher Review research DAG
+    social_bot_detection/     internal trainable BotRHG social-bot transfer, including Weibo
   runtimes/
     social_runtime/            vendored social crawler runtime
     news_runtime/              vendored news extractor runtime
-    review_student/            deployable Student Review runtime
+    review_student/            internal review runtime
 ```
 
 Canonical semantic paths:
@@ -57,13 +56,7 @@ Canonical semantic paths:
 - `system/research/social_bot_detection/`
 - `system/runtimes/review_student/`
 
-The social-bot research package supports independent account-level transfer
-runs on Botection, Cresci-2015, Cresci-2017, and Midterm-2018. It uses the
-repository-local RoBERTa-family checkpoint configured by the experiment and
-records source-label provenance, archive fingerprints, training configuration,
-checkpoint hashes, predictions, and reference metrics. The public corpus
-experiments are text-only transfer implementations; their outputs are not
-publication claims of superiority over strong text baselines.
+These paths are runtime/research-only boundaries; do not surface them in product copy unless the path itself is the point of the discussion.
 
 Propagation is split into two product boundaries. `GET /api/v1/propagation/analyze`
 performs observed-only path, object, role, timeline, provenance, and stability
@@ -75,18 +68,43 @@ abstain; the public event endpoint does not use the legacy speed/acceleration
 runtime. Deployment is verified, while formal multi-seed performance validation
 remains a separate research requirement.
 
-## Analysis API
+## Case Workspace
 
-The current product entrypoint is `/api/v2/analysis/*`.
+The current product workspace is `/api/v2/review-cases/*`.
+
+- `GET /api/v2/review-cases/latest` returns the latest case.
+- `GET /api/v2/review-cases/{case_id}` returns case detail.
+- `GET /api/v2/review-cases/{case_id}/evidence` returns grouped evidence and annotations.
+- `POST /api/v2/review-cases/{case_id}/review-requests` requests an internal review advisory.
+- `PUT /api/v2/review-cases/{case_id}/decision-draft` saves a draft decision.
+- `POST /api/v2/review-cases/{case_id}/decisions/confirm` confirms an immutable decision.
+- `GET /api/v2/review-cases/{case_id}/activities` returns the business activity stream.
+- `GET /api/v2/review-cases/{case_id}/events/stream` streams case events with `Last-Event-ID` recovery.
+
+The application-facing ports are the `ReviewCaseService` methods that power those routes:
+
+- `latest()`
+- `search()`
+- `detail(case_id)`
+- `evidence(case_id)`
+- `request_review(case_id, request, actor)`
+- `add_annotation(case_id, request, actor)`
+- `save_draft(case_id, request, actor)`
+- `confirm_decision(case_id, request, actor)`
+- `activities(case_id, after_id, limit)`
+
+### Analysis Run Diagnostics
+
+The internal Analysis Run diagnostic entrypoint remains `/api/v2/analysis/*`.
 
 - `POST /api/v2/analysis/snapshots` builds and registers an immutable `EventSnapshot` from MongoDB content.
 - `POST /api/v2/analysis/runs` creates an `AnalysisRun` for one snapshot and an ordered stage list.
 - `POST /api/v2/analysis/runs/{run_id}/execute` calls the configured analysis ports.
-  - `GET /api/v2/analysis/runs/{run_id}` returns run state, stage outputs, and an `artifact_manifest` with data fingerprint, model/checkpoint references, fallback reason, and claimability. Fallback, shadow, advisory-only, and missing-checkpoint stages are non-claimable.
+- `GET /api/v2/analysis/runs/{run_id}` returns run state, stage outputs, and an `artifact_manifest` with data fingerprint, model/checkpoint references, fallback reason, and claimability. Fallback, shadow, advisory-only, and missing-checkpoint stages are non-claimable.
 - `GET /api/v2/analysis/runs/{run_id}/events?after_id=<id>` is the REST recovery path.
 - `GET /api/v2/analysis/runs/{run_id}/events/stream` streams backlog events and supports `Last-Event-ID`.
 
-The application-facing ports are:
+The application-facing analysis ports are:
 
 - `CoordinationEngine.analyze(snapshot, options)`
 - `PropagationEngine.hindcast(snapshot, options)`
@@ -97,6 +115,14 @@ When `requested_stages` is omitted, a prototype run executes
 `coordination_discover`, `propagation_analysis`, `student`, and `teacher` in
 that order. A narrower list remains available for focused diagnostics.
 
+## Internal Diagnostics
+
+The internal diagnostic boundary remains under `/api/v2/governance/*` for authenticated reads, approvals, feedback, and governance actions.
+
+- `/api/v2/governance` reads are diagnostic only and stay behind authenticated access.
+- Model governance remains a backend control-plane concern. Candidate approvals are recorded by the authenticated administrator at `/api/v2/governance/models/{model_version_id}/approvals`; production activation requires two distinct persisted approvals, while local `auto` mode keeps one accountable operator. The main frontend does not expose these controls.
+- Teacher dispatch is local-inline only in local `auto` mode. Production `auto` mode requires Celery and persists dispatch or execution failures for recovery.
+
 ## Prototype Acceptance
 
 From `system/backend/`, run:
@@ -105,19 +131,13 @@ From `system/backend/`, run:
 python scripts/prototype_acceptance.py
 ```
 
-The command uses an isolated fixture and temporary artifact directory. It
-does not create labels, activate models, persist database rows, or modify the
-frontend. Expected output explicitly reports strict Leiden, propagation
-fallback/abstain, Student `shadow_untrained`, and Teacher advisory status.
+The command uses an isolated fixture and temporary working directory. It does not create labels, activate any capability, persist database rows, or modify the frontend. Expected output explicitly reports strict Leiden, propagation fallback/abstain, and review advisory/confirmation boundaries.
 
 ## Runtime Boundary
 
-Product code executes crawler and review runtime code from `system/runtimes/`.
-Reference repositories may remain in the repository for provenance, license
-review, and diffing, but they are not runtime roots.
+Product code executes crawler and review runtime code from `system/runtimes/`. Reference repositories may remain in the repository for provenance, license review, and diffing, but they are not runtime roots.
 
-Supported production crawl platforms are `weibo`, `douyin`, `xhs`, and `news`.
-`mock_weibo` is test-only.
+Supported production crawl platforms are `weibo`, `douyin`, `xhs`, and `news`. `mock_weibo` is test-only.
 
 Useful crawler configuration:
 
@@ -183,45 +203,10 @@ python -m pytest tests/test_coordination_local_discover_detect_script.py -q
 - Update `../UBIQUITOUS_LANGUAGE.md` when domain terms change.
 - Update `../doc/engineering/system-governance.md` when package boundaries or public interfaces change.
 - Update `../doc/engineering/development-log.md` after meaningful code or documentation work.
-- Keep generated outputs out of commits unless an artifact is explicitly promoted with a manifest.
+- Keep generated outputs out of commits unless a specific output is explicitly promoted with a manifest.
 
-Production deployments must set `BACKEND_ENV=production`, a random
-`JWT_SECRET_KEY`, `DEFAULT_ADMIN_PASSWORD`, and non-empty MySQL, MongoDB, and
-Redis credentials. Preview authentication is disabled by default and is only
-allowed for an explicitly configured local token.
+Production deployments must set `BACKEND_ENV=production`, a random `JWT_SECRET_KEY`, `DEFAULT_ADMIN_PASSWORD`, and non-empty MySQL, MongoDB, and Redis credentials. The system has no preview authentication bypass; local and LAN deployments use the same login flow.
 
-Model governance is fail-closed: a model version needs a valid SHA-256 digest
-and a locally readable artifact, or an explicitly implemented deployment
-resolver, before activation. Remote `http(s)`, `s3`, and `gs` URIs are recorded
-as candidates but are not treated as verified by the current backend.
+## Internal Transfer Boundary
 
-## Weibo Bot Detection Transfer
-
-The NLPCC BotRHG transfer implementation is internalized under
-`system/research/social_bot_detection/`. The legacy transfer proxy remains
-available for Botection, and the strict NLPCC-aligned path can be selected
-for Cresci-2015, Cresci-2017, and Midterm-2018 with `--strict-method`. Both
-paths use a local Chinese Transformer, a trainable low-order detector,
-target-centered KNN support hyperedges, label-free reliability routing, and
-selective residual correction. The Botection corpus currently provides account
-labels and text only; property fields and an explicit social graph are
-recorded as unavailable, so this remains a text-only Weibo transfer path and
-not an exact reproduction of the paper benchmark.
-
-Train with the local model cache:
-
-```powershell
-cd system
-$env:PYTHONPATH='.'
-python -m research.social_bot_detection.cli `
-  --strict-method `
-  --dataset-name cresci_2015 `
-  --dataset-root G:\CISCN\_tmp\Botection `
-  --output-dir .\output\botrhg_strict `
-  --text-model-path G:\CISCN\hf_models\models--hfl--chinese-roberta-wwm-ext\snapshots\5c58d0b8ec1d9014354d691c538661bf00bfdb44 `
-  --device cpu --base-epochs 3 --correction-epochs 3
-```
-
-The backend only uses `checkpoint.pt` when it is present and its manifest
-fingerprint matches `BOTRHG_DATA_FINGERPRINT`; otherwise the account API
-returns the explicitly non-claimable deterministic fallback.
+The internal social bot transfer boundary lives under `system/research/social_bot_detection/`. The local and strict paths stay text-only on the current corpora, and they remain transfer results rather than superiority claims.

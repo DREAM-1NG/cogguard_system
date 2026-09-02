@@ -438,12 +438,26 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { message } from 'ant-design-vue'
-import * as echarts from 'echarts'
+import * as echarts from 'echarts/core'
+import { BarChart, GraphChart, LineChart } from 'echarts/charts'
+import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components'
+import { CanvasRenderer } from 'echarts/renderers'
+import type { ECharts } from 'echarts/core'
 import type { EChartsOption } from 'echarts'
 import { analyzeObservedPropagation, predictPropagationCurrentEvent } from '@/api/propagation'
 import PageHeader from '@/components/PageHeader.vue'
 
 const DEFAULT_EVENT_ID = 'trump_visit_2026_05_21'
+
+echarts.use([
+  BarChart,
+  LineChart,
+  GraphChart,
+  GridComponent,
+  LegendComponent,
+  TooltipComponent,
+  CanvasRenderer,
+])
 
 type KeyRoleItem = {
   account_id: string
@@ -1019,9 +1033,9 @@ const route = useRoute()
 const layerChartRef = ref<HTMLDivElement | null>(null)
 const pathGraphRef = ref<HTMLDivElement | null>(null)
 const modelTrendChartRef = ref<HTMLDivElement | null>(null)
-let layerChart: echarts.ECharts | null = null
-let pathGraphChart: echarts.ECharts | null = null
-let modelTrendChart: echarts.ECharts | null = null
+let layerChart: ECharts | null = null
+let pathGraphChart: ECharts | null = null
+let modelTrendChart: ECharts | null = null
 let modelTrendResizeObserver: ResizeObserver | null = null
 let predictionRequestGeneration = 0
 

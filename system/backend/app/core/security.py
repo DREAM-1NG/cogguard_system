@@ -10,13 +10,11 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
-from app.db.mysql import async_session_factory, get_db
+from app.db.mysql import get_db
 from app.models.user import User
 from app.utils.exceptions import AuthError
 
 security_scheme = HTTPBearer()
-optional_security_scheme = HTTPBearer(auto_error=False)
-PREVIEW_ACCESS_TOKEN = ""
 
 # bcrypt hash of an unguessable value, used to spend the same amount of time
 # hashing when a username does not exist so login cannot be timed to enumerate
@@ -43,11 +41,6 @@ def spend_dummy_password_verify() -> None:
     same wall-clock time as a wrong password.
     """
     verify_password("cogguard-timing-equalizer", _DUMMY_PASSWORD_HASH)
-
-
-def preview_token_allowed() -> bool:
-    """Whether the static preview token may stand in for authentication."""
-    return settings.preview_auth_allowed
 
 
 def create_access_token(user_id: int, role: str) -> str:
@@ -85,18 +78,6 @@ async def _get_active_user_by_id(user_id: int, db: AsyncSession) -> User:
     return user
 
 
-async def _get_preview_backing_user(db: AsyncSession) -> User:
-    if not preview_token_allowed():
-        raise AuthError(msg="Preview access is disabled")
-    result = await db.execute(
-        select(User).where(User.is_active.is_(True)).order_by(User.id.asc()).limit(1)
-    )
-    user = result.scalar_one_or_none()
-    if user is None:
-        raise AuthError(msg="Preview mode requires at least one active user")
-    return user
-
-
 async def _resolve_user_from_token(token: str, db: AsyncSession) -> User:
     payload = decode_token(token)
     if payload.get("type") != "access":
@@ -129,28 +110,3 @@ def require_roles(*allowed_roles: str):
         return current_user
 
     return _require_role
-
-
-async def get_current_user_or_preview(
-    credentials: HTTPAuthorizationCredentials = Depends(security_scheme),
-    db: AsyncSession = Depends(get_db),
-) -> User:
-    token = credentials.credentials
-    if token and token == settings.PREVIEW_AUTH_TOKEN and preview_token_allowed():
-        return await _get_preview_backing_user(db)
-    return await _resolve_user_from_token(token, db)
-
-
-async def get_current_user_or_local_preview(
-    credentials: HTTPAuthorizationCredentials | None = Depends(optional_security_scheme),
-) -> User | None:
-    """Allow the local preview token without forcing a backing DB user lookup."""
-    if credentials is None:
-        raise AuthError(msg="Authentication required")
-
-    token = credentials.credentials
-    if token and token == settings.PREVIEW_AUTH_TOKEN and preview_token_allowed():
-        return None
-
-    async with async_session_factory() as session:
-        return await _resolve_user_from_token(token, session)

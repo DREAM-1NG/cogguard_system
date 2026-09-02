@@ -38,7 +38,10 @@
           <a-form-item label="用户名" name="username">
             <a-input
               v-model:value="loginForm.username"
-              placeholder="请输入用户名"
+              name="username"
+              autocomplete="username"
+              :spellcheck="false"
+              placeholder="请输入用户名…"
               size="large"
               @change="loginError = ''"
             />
@@ -46,7 +49,9 @@
           <a-form-item label="密码" name="password">
             <a-input-password
               v-model:value="loginForm.password"
-              placeholder="请输入密码"
+              name="password"
+              autocomplete="current-password"
+              placeholder="请输入密码…"
               size="large"
               @change="loginError = ''"
             />
@@ -70,13 +75,33 @@
           @finish="handleRegister"
         >
           <a-form-item label="用户名" name="username">
-            <a-input v-model:value="registerForm.username" placeholder="3-64 个字符" size="large" />
+            <a-input
+              v-model:value="registerForm.username"
+              name="new-username"
+              autocomplete="username"
+              :spellcheck="false"
+              placeholder="3-64 个字符…"
+              size="large"
+            />
           </a-form-item>
           <a-form-item label="邮箱" name="email">
-            <a-input v-model:value="registerForm.email" placeholder="请输入邮箱" size="large" />
+            <a-input
+              v-model:value="registerForm.email"
+              name="email"
+              autocomplete="email"
+              :spellcheck="false"
+              placeholder="请输入邮箱…"
+              size="large"
+            />
           </a-form-item>
           <a-form-item label="密码" name="password">
-            <a-input-password v-model:value="registerForm.password" placeholder="至少 6 位" size="large" />
+            <a-input-password
+              v-model:value="registerForm.password"
+              name="new-password"
+              autocomplete="new-password"
+              placeholder="至少 6 位…"
+              size="large"
+            />
           </a-form-item>
           <a-form-item>
             <a-button type="primary" html-type="submit" size="large" :loading="loading" block>
@@ -106,7 +131,7 @@ const loading = ref(false)
 const isRegister = ref(false)
 const loginError = ref('')
 
-const loginForm = reactive({ username: 'admin', password: '123123' })
+const loginForm = reactive({ username: '', password: '' })
 const registerForm = reactive({ username: '', email: '', password: '' })
 
 const loginRules = {

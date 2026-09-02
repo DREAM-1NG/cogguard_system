@@ -2,12 +2,20 @@
 
 from app.models.coordination_registry import CoordinationDataset, CoordinationRun
 from app.models.analysis import AnalysisModelActivation
+from app.models.analysis import AnalysisModelActivationApproval
+from app.models.analysis import AnalysisModelGovernanceDecision
 from app.models.analysis import AnalysisModelVersion
 from app.models.analysis import AnalysisRun
 from app.models.analysis import AnalysisRunEvent
 from app.models.analysis import EventSnapshotRecord
 from app.models.analysis import ReviewFeedback
 from app.models.analysis import ReviewVerdictVersion
+from app.models.review_case import CaseActivity
+from app.models.review_case import EvidenceAnnotation
+from app.models.review_case import ReviewCase
+from app.models.review_case import ReviewCaseSnapshotRevision
+from app.models.review_case import ReviewDecision
+from app.models.review_case import ReviewDecisionDraft
 from app.models.review_system import ReviewAgentDebateTrace
 from app.models.review_system import ReviewAgentFeedback
 from app.models.review_system import ReviewAgentReport
@@ -35,12 +43,20 @@ __all__ = [
     "CoordinationRun",
     "CrawlJob",
     "AnalysisModelActivation",
+    "AnalysisModelActivationApproval",
+    "AnalysisModelGovernanceDecision",
     "AnalysisModelVersion",
     "AnalysisRun",
     "AnalysisRunEvent",
     "EventSnapshotRecord",
     "ReviewFeedback",
     "ReviewVerdictVersion",
+    "CaseActivity",
+    "EvidenceAnnotation",
+    "ReviewCase",
+    "ReviewCaseSnapshotRevision",
+    "ReviewDecision",
+    "ReviewDecisionDraft",
     "ReviewAgentDebateTrace",
     "ReviewAgentFeedback",
     "ReviewAgentReport",

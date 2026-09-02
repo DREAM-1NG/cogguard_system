@@ -3,7 +3,7 @@
 from fastapi import APIRouter, BackgroundTasks, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.security import get_current_user, get_current_user_or_preview
+from app.core.security import get_current_user
 from app.db.mysql import get_db
 from app.models.user import User
 from app.schemas.crawl import (
@@ -57,7 +57,7 @@ async def create_social_crawl(
     req: CrawlRequest,
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user_or_preview),
+    current_user: User = Depends(get_current_user),
 ):
     job = await crawl_service.create_crawl_job(req, current_user.id, db)
 
@@ -86,7 +86,7 @@ async def list_jobs(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user_or_preview),
+    current_user: User = Depends(get_current_user),
 ):
     jobs, total = await crawl_service.list_jobs(
         db,
@@ -104,7 +104,7 @@ async def create_media_download(
     req: MediaDownloadRequest,
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user_or_preview),
+    current_user: User = Depends(get_current_user),
 ):
     job = await media_download_service.create_media_download_job(req, current_user.id, db)
     celery_task_id = f"local:{job.id}"
@@ -125,7 +125,7 @@ async def create_media_download(
 async def get_media_download(
     job_id: int,
     db: AsyncSession = Depends(get_db),
-    _current_user: User = Depends(get_current_user_or_preview),
+    _current_user: User = Depends(get_current_user),
 ):
     job = await media_download_service.get_media_download_job(job_id, db)
     if job is None:
@@ -165,7 +165,7 @@ async def query_data(
     has_media: bool | None = None,
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
-    _current_user: User = Depends(get_current_user_or_preview),
+    _current_user: User = Depends(get_current_user),
 ):
     query = CrawlDataQuery(
         platform=platform,

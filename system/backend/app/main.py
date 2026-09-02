@@ -13,7 +13,7 @@ from app.api.v1.router import api_router as api_v1_router
 from app.api.v2.router import api_router as api_v2_router
 from app.config import settings
 from app.db.mongodb import close_mongo
-from app.db.mysql import async_session_factory
+from app.db.mysql import async_session_factory, close_mysql
 from app.db.redis import close_redis
 from app.services.auth_service import ensure_default_admin
 from app.utils.exceptions import AppException, app_exception_handler, generic_exception_handler
@@ -30,6 +30,7 @@ async def lifespan(app: FastAPI):
     logger.info("CogGuard backend shutting down...")
     await close_mongo()
     await close_redis()
+    await close_mysql()
 
 
 app = FastAPI(

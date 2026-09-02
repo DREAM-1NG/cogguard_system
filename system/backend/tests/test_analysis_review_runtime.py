@@ -1,5 +1,12 @@
 from __future__ import annotations
 
+import asyncio
+import json
+from unittest.mock import AsyncMock
+
+import pytest
+
+from app.core.analysis import runtime
 from app.core.analysis.governance import (
     approve_canonical_verdict,
     build_model_activation_decision,
@@ -91,6 +98,111 @@ def test_teacher_runtime_runs_5_plus_1_plus_1_dag_without_canonicalizing():
         "critic_judge",
     ]
     assert teacher["signals"]["student_reference"]["verdict_id"] == student["verdict_id"]
+
+
+def test_completed_teacher_job_fails_when_advisory_is_not_persisted(monkeypatch):
+    verdict = {"verdict_id": "teacher_job_test", "status": "completed"}
+
+    async def persistence_failed(**_kwargs):
+        return False
+
+    monkeypatch.setattr(runtime, "build_teacher_advisory_verdict", lambda *_args, **_kwargs: verdict)
+    monkeypatch.setattr(runtime, "_persist_teacher_review_row", persistence_failed)
+
+    with pytest.raises(RuntimeError, match="was not persisted"):
+        asyncio.run(runtime.finalize_teacher_review_job("teacher_job_test", _case()))
+
+
+def test_completed_teacher_job_preserves_analysis_run_lineage(monkeypatch):
+    captured: dict = {}
+    verdict = {"verdict_id": "teacher_job_test", "status": "completed"}
+    case = {**_case(), "run_id": "run_teacher_1"}
+
+    async def persisted(**kwargs):
+        captured.update(kwargs)
+        return True
+
+    monkeypatch.setattr(runtime, "build_teacher_advisory_verdict", lambda *_args, **_kwargs: verdict)
+    monkeypatch.setattr(runtime, "_persist_teacher_review_row", persisted)
+
+    asyncio.run(runtime.finalize_teacher_review_job("teacher_job_test", case))
+
+    assert captured["case"]["run_id"] == "run_teacher_1"
+
+
+def test_queue_required_policy_persists_a_dispatch_failure(monkeypatch):
+    class FailingTask:
+        def delay(self, *_args, **_kwargs):
+            raise ConnectionError("broker unavailable")
+
+    async def scenario():
+        persisted = AsyncMock(return_value=True)
+        monkeypatch.setattr(
+            "app.tasks.analysis_tasks.execute_analysis_teacher_review",
+            FailingTask(),
+        )
+        monkeypatch.setattr(runtime, "_persist_teacher_review_row", persisted)
+        monkeypatch.setattr(runtime.settings, "ANALYSIS_TEACHER_DISPATCH_MODE", "queue_required")
+        monkeypatch.setattr(runtime.settings, "BACKEND_ENV", "production")
+        runtime.TEACHER_JOB_CACHE.clear()
+
+        result = await runtime._queue_teacher_review_job(
+            job_id="teacher_failure",
+            case={"snapshot_id": "snapshot_1", "event_id": "event_1", "platforms": ["weibo"]},
+        )
+
+        assert result["status"] == "failed"
+        assert result["task_state"] == "dispatch_failed"
+        assert result["dispatch_backend"] == "queue_required"
+        assert result["retryable"] is True
+        persisted.assert_awaited_once()
+        assert persisted.await_args.kwargs["status"] == "failed"
+        assert runtime.TEACHER_JOB_CACHE["teacher_failure"]["status"] == "failed"
+
+    asyncio.run(scenario())
+
+
+def test_local_dispatch_failure_uses_the_explicit_inline_fallback(monkeypatch):
+    class FailingTask:
+        def delay(self, *_args, **_kwargs):
+            raise ConnectionError("broker unavailable")
+
+    async def scenario():
+        scheduled = []
+
+        def capture_task(coroutine):
+            scheduled.append(coroutine)
+            coroutine.close()
+            return object()
+
+        monkeypatch.setattr(
+            "app.tasks.analysis_tasks.execute_analysis_teacher_review",
+            FailingTask(),
+        )
+        monkeypatch.setattr(runtime.asyncio, "create_task", capture_task)
+        monkeypatch.setattr(runtime.settings, "ANALYSIS_TEACHER_DISPATCH_MODE", "local_inline_fallback")
+        monkeypatch.setattr(runtime.settings, "BACKEND_ENV", "local")
+        runtime.TEACHER_JOB_CACHE.clear()
+
+        result = await runtime._queue_teacher_review_job(
+            job_id="teacher_local_failure",
+            case={"snapshot_id": "snapshot_1", "event_id": "event_1", "platforms": ["weibo"]},
+        )
+
+        assert result["dispatch_backend"] == "local_inline_fallback"
+        assert "dispatch_error" in result
+        assert len(scheduled) == 1
+
+    asyncio.run(scenario())
+
+
+def test_teacher_advisory_payload_is_serializable_for_persistence():
+    verdict = build_teacher_advisory_verdict(_case(), job_id="teacher_job_test")
+
+    persisted = json.loads(runtime._json_dumps(verdict))
+
+    assert persisted["verdict_id"] == "teacher_job_test"
+    assert persisted["status"] == "completed"
 
 
 def test_governance_requires_analyst_approval_for_canonical_verdict():

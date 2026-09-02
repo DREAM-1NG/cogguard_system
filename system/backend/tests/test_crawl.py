@@ -137,16 +137,7 @@ async def test_list_jobs_includes_system_owned_records_for_user(
 
 @pytest.mark.asyncio
 @needs_db
-async def test_preview_token_can_read_crawl_jobs(setup_database, client: AsyncClient):
-    await client.post(
-        "/api/v1/auth/register",
-        json={
-            "username": "previewuser",
-            "email": "preview@example.com",
-            "password": "testpass123",
-        },
-    )
-
+async def test_authenticated_user_can_read_system_owned_crawl_jobs(setup_database, auth_client: AsyncClient):
     async with test_session_factory() as session:
         session.add(
             CrawlJob(
@@ -160,8 +151,7 @@ async def test_preview_token_can_read_crawl_jobs(setup_database, client: AsyncCl
         )
         await session.commit()
 
-    client.headers["Authorization"] = "Bearer cogguard-preview-token"
-    response = await client.get("/api/v1/crawl/jobs?page=1&page_size=20")
+    response = await auth_client.get("/api/v1/crawl/jobs?page=1&page_size=20")
     assert response.status_code == 200
     items = response.json()["data"]["items"]
     assert any(item["platform"] == "douyin" for item in items)

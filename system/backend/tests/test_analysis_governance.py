@@ -1,11 +1,19 @@
 from __future__ import annotations
 
 import hashlib
+import json
 
 import pytest
 
 from app.core.analysis.governance import approve_canonical_verdict, build_model_activation_decision
-from app.services.analysis_governance_service import _artifact_matches_hash, _is_sha256_digest
+from app.config import settings
+from app.services.analysis_governance_service import (
+    _resolve_activation_approvers,
+    _artifact_matches_hash,
+    _is_sha256_digest,
+    evaluate_quality_gates,
+    verify_registered_artifact,
+)
 
 
 def test_artifact_hash_validation_requires_a_local_sha256_match(tmp_path):
@@ -62,3 +70,136 @@ def test_model_activation_requires_two_distinct_approvers_and_all_quality_gates(
     assert decision["activation_allowed"] is False
     assert decision["gates"]["dual_approval"] is False
 
+
+def test_production_activation_requires_two_distinct_active_administrators(monkeypatch):
+    monkeypatch.setattr(settings, "BACKEND_ENV", "production")
+    monkeypatch.setattr(settings, "ANALYSIS_MODEL_ACTIVATION_APPROVAL_MODE", "auto")
+
+    with pytest.raises(ValueError, match="two distinct active administrator"):
+        _resolve_activation_approvers(
+            operator_id=7,
+            recorded_approvers={7},
+            active_admin_ids={7, 9},
+        )
+
+    assert _resolve_activation_approvers(
+        operator_id=7,
+        recorded_approvers={7, 9},
+        active_admin_ids={7, 9},
+    ) == (7, 9)
+
+
+def test_local_activation_records_one_accountable_administrator(monkeypatch):
+    monkeypatch.setattr(settings, "BACKEND_ENV", "local")
+    monkeypatch.setattr(settings, "ANALYSIS_MODEL_ACTIVATION_APPROVAL_MODE", "auto")
+
+    assert _resolve_activation_approvers(
+        operator_id=7,
+        recorded_approvers={7},
+        active_admin_ids={7},
+    ) == (7,)
+
+
+def test_registered_artifact_must_resolve_inside_root_and_match_manifest(tmp_path):
+    root = tmp_path / "artifacts"
+    artifact_dir = root / "review_student" / "v1"
+    artifact_dir.mkdir(parents=True)
+    checkpoint = artifact_dir / "checkpoint.pt"
+    checkpoint.write_bytes(b"student-checkpoint")
+    digest = hashlib.sha256(checkpoint.read_bytes()).hexdigest()
+    (artifact_dir / "manifest.json").write_text(
+        json.dumps(
+            {
+                "technology": "review_student",
+                "checkpoint_path": "checkpoint.pt",
+                "metrics": {
+                    "teacher_macro_f1_gap": 0.02,
+                    "ece": 0.07,
+                    "p95_latency_seconds": 1.8,
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    verified = verify_registered_artifact(
+        artifact_uri=str(artifact_dir),
+        expected_hash=digest,
+        technology="review_student",
+        artifact_root=root,
+    )
+
+    assert verified.checkpoint_path == checkpoint.resolve()
+    assert verified.manifest["technology"] == "review_student"
+    assert verified.quality_gates["activation_allowed"] is True
+
+    outside = tmp_path / "outside.pt"
+    outside.write_bytes(b"outside")
+    with pytest.raises(ValueError, match="artifact root"):
+        verify_registered_artifact(
+            artifact_uri=str(outside),
+            expected_hash=hashlib.sha256(outside.read_bytes()).hexdigest(),
+            technology="review_student",
+            artifact_root=root,
+        )
+
+
+def test_directory_manifest_checkpoint_cannot_escape_its_artifact_directory(tmp_path):
+    root = tmp_path / "artifacts"
+    artifact_dir = root / "review_student" / "v1"
+    sibling_dir = root / "review_student" / "v2"
+    artifact_dir.mkdir(parents=True)
+    sibling_dir.mkdir(parents=True)
+    sibling_checkpoint = sibling_dir / "checkpoint.pt"
+    sibling_checkpoint.write_bytes(b"sibling-checkpoint")
+    (artifact_dir / "manifest.json").write_text(
+        json.dumps(
+            {
+                "technology": "review_student",
+                "checkpoint_path": "../v2/checkpoint.pt",
+                "metrics": {
+                    "teacher_macro_f1_gap": 0.02,
+                    "ece": 0.07,
+                    "p95_latency_seconds": 1.8,
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="artifact directory"):
+        verify_registered_artifact(
+            artifact_uri=str(artifact_dir),
+            expected_hash=hashlib.sha256(sibling_checkpoint.read_bytes()).hexdigest(),
+            technology="review_student",
+            artifact_root=root,
+        )
+
+
+@pytest.mark.parametrize(
+    ("technology", "metrics", "allowed"),
+    [
+        (
+            "coordination_discover",
+            {"strict_leiden": True, "stability_passed": True, "evidence_coverage_passed": True},
+            True,
+        ),
+        (
+            "propagation_analysis",
+            {"coverage_80": 0.79, "coverage_95": 0.94, "beats_strong_baseline": True},
+            True,
+        ),
+        (
+            "review_student",
+            {"teacher_macro_f1_gap": 0.04, "ece": 0.07, "p95_latency_seconds": 1.0},
+            False,
+        ),
+        (
+            "review_teacher",
+            {"beats_best_single_agent": True, "beats_majority_vote": False},
+            False,
+        ),
+    ],
+)
+def test_quality_gates_are_computed_by_capability(technology, metrics, allowed):
+    assert evaluate_quality_gates(technology, metrics)["activation_allowed"] is allowed

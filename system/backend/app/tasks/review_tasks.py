@@ -20,14 +20,7 @@ from app.core.review.agent_review import OpenAICompatibleAgentProvider
 from app.core.review.agent_review import OpenAICompatibleConfig
 from app.models.risk_assessment import RiskAssessment
 from app.services import review_system_service, risk_service
-
-
-def _run_async(coro):
-    loop = asyncio.new_event_loop()
-    try:
-        return loop.run_until_complete(coro)
-    finally:
-        loop.close()
+from app.tasks.async_runtime import run_async
 
 
 @celery_app.task(name="review.execute", bind=True)
@@ -63,7 +56,7 @@ def _execute_review_job_with_audit(
                 time.sleep(claim_delay_seconds)
         if not claimed:
             return {"job_id": job_id, "status": last_status or "not_found_or_not_ready"}
-        result = _run_async(_execute_review_job_async(job_id))
+        result = run_async(_execute_review_job_async(job_id))
         _update_job(job_id, status="completed", progress=100, result=result)
         return result
     except Exception:
@@ -495,15 +488,22 @@ async def _provider_for_policy_refine(db: AsyncSession) -> dict[str, Any]:
     provider = provider_info["provider"]
     if provider is None:
         return {"rule_generator": None, "source": provider_info["source"]}
+    worker_loop = asyncio.get_running_loop()
 
     def _rule_generator(**kwargs):
-        return _run_async(
-            _generate_policy_rule_candidates(
-                provider=provider,
-                provider_model=str(provider_info["model"] or ""),
-                **kwargs,
-            )
+        coroutine = _generate_policy_rule_candidates(
+            provider=provider,
+            provider_model=str(provider_info["model"] or ""),
+            **kwargs,
         )
+        try:
+            current_loop = asyncio.get_running_loop()
+        except RuntimeError:
+            current_loop = None
+        if current_loop is worker_loop:
+            coroutine.close()
+            raise RuntimeError("Policy rule generation must run outside the worker loop thread")
+        return asyncio.run_coroutine_threadsafe(coroutine, worker_loop).result()
 
     return {"rule_generator": _rule_generator, "source": provider_info["source"]}
 

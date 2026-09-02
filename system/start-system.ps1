@@ -155,7 +155,8 @@ Write-Host ''
 Write-Host 'System startup commands have been launched in new terminal windows.'
 Write-Host 'Backend health: http://127.0.0.1:8000/api/v1/health'
 if (-not $SkipFrontend) {
-    Write-Host 'Frontend preview: http://127.0.0.1:5173/preview'
-    Write-Host 'Coordination page: http://127.0.0.1:5173/coordination?preview=1'
+    Write-Host 'Login: http://127.0.0.1:5173/login'
+    Write-Host 'Dashboard: http://127.0.0.1:5173/dashboard'
+    Write-Host 'Event review: http://127.0.0.1:5173/risk'
 }
 Write-Host 'Keep the opened terminal windows running while using the system.'

@@ -130,7 +130,7 @@ async def predict_macro_micro_model(
     dataset: str = Query("twitter", description="Experiment dataset: twitter, douban, or memetracker."),
     seed: int | None = Query(42, description="Experiment seed; empty aggregates all available seeds."),
     run_live: bool = Query(False, description="Run a local small-run instead of reading cached results."),
-    _current_user: User | None = Depends(get_current_user_or_local_preview),
+    _current_user: User = Depends(get_current_user),
 ):
     """Read macro-size and next-hop prediction-model experiment evidence."""
     result = await propagation_model_service.predict_benchmark_model_evidence(

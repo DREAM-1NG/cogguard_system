@@ -1,6 +1,5 @@
 """Celery tasks for crawl jobs."""
 
-import asyncio
 import json
 import traceback
 
@@ -10,15 +9,9 @@ from app.celery_app import celery_app
 from app.config import settings
 from app.core.crawler.factory import build_crawler
 from app.core.crawler.types import CrawlRequestOptions
-
-
-def _run_async(coro):
-    """Run an async coroutine from synchronous Celery context."""
-    loop = asyncio.new_event_loop()
-    try:
-        return loop.run_until_complete(coro)
-    finally:
-        loop.close()
+from app.services.review_case_orchestrator import process_successful_crawl
+from app.tasks.async_runtime import run_async
+from app.utils.logger import logger
 
 
 def _create_task_mongo_client():
@@ -145,17 +138,31 @@ def run_crawl_job(job_id: int, params_json: str):
                     )
                 await _write_documents(mongo_db["raw_comments"], all_comments)
 
-            return {
+            result = {
                 "posts_count": len(post_dicts),
                 "comments_count": len(all_comments) if request.crawl_comments else 0,
                 "platform": platform,
                 "crawl_metadata": batch.crawl_metadata,
             }
+            try:
+                result["review_case"] = await _orchestrate_successful_crawl(
+                    job_id=job_id,
+                    params=params,
+                    result=result,
+                    mongo_db=mongo_db,
+                )
+            except Exception as exc:
+                logger.exception("Review case orchestration failed after crawl job {}", job_id)
+                result["review_case"] = {
+                    "failed": True,
+                    "reason": f"{type(exc).__name__}: {exc}",
+                }
+            return result
         finally:
             mongo_client.close()
 
     try:
-        result = _run_async(_do_crawl())
+        result = run_async(_do_crawl())
     except Exception:
         err = traceback.format_exc()
         _update_job_in_db(job_id, "failed", 0, json.dumps({"error": err[-8000:]}, ensure_ascii=False))
@@ -163,6 +170,42 @@ def run_crawl_job(job_id: int, params_json: str):
 
     _update_job_in_db(job_id, "completed", 100, json.dumps(result, ensure_ascii=False))
     return result
+
+
+async def _orchestrate_successful_crawl(
+    *,
+    job_id: int,
+    params: dict,
+    result: dict,
+    mongo_db,
+    session_factory=None,
+) -> dict:
+    event_id = str(params.get("event_id") or "").strip()
+    if not event_id:
+        return {"skipped": True, "reason": "event_id_not_provided"}
+
+    if session_factory is None:
+        from app.db.mysql import async_session_factory
+
+        session_factory = async_session_factory
+
+    title = str(
+        params.get("event_title")
+        or params.get("source_keyword")
+        or _first_keyword(params)
+        or event_id
+    ).strip()
+    async with session_factory() as db:
+        outcome = await process_successful_crawl(
+            job_id=job_id,
+            event_id=event_id,
+            title=title,
+            created_by=int(params.get("_created_by") or 0),
+            db=db,
+            mongo_db=mongo_db,
+        )
+        await db.commit()
+        return outcome
 
 
 @celery_app.task(name="crawl.execute", bind=True)

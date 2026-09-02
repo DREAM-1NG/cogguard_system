@@ -199,7 +199,7 @@ def test_governance_docs_describe_semantic_current_paths():
     for text in (project_map, system_readme, root_readme, glossary):
         assert "Coordination Discover" in text
         assert "Propagation Analysis" in text
-        assert "Risk Review" in text
+        assert "Event Review Case" in text
         assert "system/research/coordination_discover/" in text
         assert "system/research/coordination_detect/" in text
         assert "system/research/propagation_analysis/" in text
@@ -223,6 +223,44 @@ def test_current_guidance_documents_use_system_boundary():
         text = path.read_text(encoding="utf-8")
         assert "new-system/" not in text
         assert "state_ktN" not in text
+
+
+def test_product_templates_do_not_expose_internal_runtime_vocabulary():
+    repo_root = Path(__file__).resolve().parents[3]
+    frontend_root = repo_root / "system" / "frontend" / "src"
+    product_templates = (
+        frontend_root / "views" / "dashboard" / "index.vue",
+        frontend_root / "views" / "risk" / "index.vue",
+        frontend_root / "components" / "layout" / "BasicLayout.vue",
+        frontend_root / "views" / "login" / "index.vue",
+    )
+    forbidden = re.compile(
+        r"\b(?:student|teacher|agent|checkpoint|artifact|model[_ -]?version|run[_ -]?id|job[_ -]?id|task[_ -]?id)\b",
+        re.IGNORECASE,
+    )
+    offenders: list[str] = []
+    for path in product_templates:
+        source = path.read_text(encoding="utf-8")
+        template = source.split("<script", 1)[0]
+        for line_number, line in enumerate(template.splitlines(), start=1):
+            if forbidden.search(line):
+                offenders.append(f"{path.relative_to(repo_root).as_posix()}:{line_number}")
+
+    assert offenders == []
+
+
+def test_frontend_has_no_preview_product_entrypoint():
+    repo_root = Path(__file__).resolve().parents[3]
+    frontend_root = repo_root / "system" / "frontend" / "src"
+    offenders: list[str] = []
+    for path in frontend_root.rglob("*"):
+        if not path.is_file() or path.suffix.lower() not in {".ts", ".vue"}:
+            continue
+        for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+            if "/preview" in line.lower():
+                offenders.append(f"{path.relative_to(repo_root).as_posix()}:{line_number}")
+
+    assert offenders == []
 
 
 def _load_package(path: Path, module_name: str):

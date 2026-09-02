@@ -4,13 +4,50 @@
 > **受众**：开发者、项目维护者、后续执行任务的 AI agent。  
 > **维护规则**：只维护可执行工程路线和状态；研究定位、文献依据和关键技术背景放入 `../research/`。
 
-> 最后更新：2026-08-01
+> 最后更新：2026-08-05
+
+## 2026-08-03 Durable Review And Model Governance
+
+- [x] Teacher dispatch policy is explicit: local inline fallback is allowed
+  only for local deployments; production broker or worker failures become
+  durable failed advisories instead of in-process successes.
+- [x] Model Candidate Approval is authenticated and persisted in
+  `analysis_model_activation_approvals`; activation no longer accepts a list
+  of approver IDs from the caller.
+- [x] Production activation requires two distinct active administrators,
+  including the activating administrator; local activation records one
+  accountable operator.
+- [x] Artifact SHA-256 verification and capability quality gates run before
+  both candidate approval and activation; rollback remains an audited backend
+  recovery action.
+- [x] The dashboard-first frontend remains business-facing and unchanged; no
+  model-governance page is part of the product surface.
+- [x] Applied migration `a2d8e5c1b904` to the active local MySQL database.
+  Apply it to each production database and run a real Celery queue smoke before
+  enabling production activation.
+- [x] Started the local `analysis` Celery worker and verified Redis control
+  ping/worker readiness.
+- [x] Backend full regression passed (`510 passed, 19 skipped`); frontend
+  component tests passed (`13 passed`) and production build/typecheck passed.
+- [ ] Run an authenticated Teacher Advisory submission through the product API
+  with a deliberately provisioned local administrator account; no known admin
+  password is present in the current environment, so this smoke is not claimed.
+
+## 2026-08-02 文档同步
+
+- [x] Event Review Case 术语、ADR 索引、系统上下文和系统 README 已同步到当前代码边界。
+- [x] 产品文案已切换为 Event Review Case / Preliminary Finding / Review Advisory / Confirmed Decision / Evidence Sufficiency / Evidence Annotation / Case Activity。
+- [x] 旧有待决议编号已从后续决议表中移除，改用 Coordination Discover / Coordination Detect / Propagation Analysis / Review 的正式名称。
+- [ ] 生产级上线和真实数据 smoke 仍需在对应环境中验证。
 
 ## 2026-08-01 状态收口
 
 - [x] 安全与部署阻塞收口：生产秘密强制配置、Preview 旁路默认关闭、Compose 凭据必填。
 - [x] Analysis Run、SSE `Last-Event-ID` 恢复、阶段 Artifact Manifest 和 active model pointer 已通过后端回归测试。
 - [x] Canonical Verdict、反馈持久化、双人模型激活、回滚决策和本地 SHA-256 artifact 校验已接通。
+- [x] Teacher dispatch failure classification, authenticated persisted model
+  approvals, and the backend control-plane boundary are implemented; the
+  deployment migration and real queue smoke remain environment gates.
 - [x] 本地原型验收脚本已贯通 EventSnapshot、Coordination Discover、Propagation Analysis、Student Review 和 Teacher Review，并明确输出 fallback/shadow/advisory/non-claimable 状态。
 - [ ] 研究级 Coordination Discover、Propagation Analysis 和 Student/Teacher checkpoint 尚未因缺少批准 artifact 而声明为可研究主张结果；Social Bot Detection 的 BotRHG Weibo transfer 已有真实 checkpoint，但当前指标低于同切分 TF-IDF 参考，研究 claim 仍 blocked。
 - [x] 前端 `npm run build`（包含 `vue-tsc -b`）已通过；本轮不修改前端展示页面。
@@ -64,8 +101,8 @@
 | 前端 - 采集管理页 | ✅ 已完成 | P0 | 后端采集模块 |
 | 数据采集模块（内置 Social/News Runtime） | ✅ 已完成 | P1 | Mock 模块完成 |
 | Coordination Discover / Detect | 🔧 可运行原型，研究 claim blocked | P1 | 标签数据、批准 checkpoint |
-| Propagation Analysis | ✅ 观测分析与 Twitter checkpoint 推理已部署；研究 claim blocked | P1 | 严格时间切分、多 seed、覆盖率与校准验证 |
-| Risk Review | 🔧 Student/Teacher 原型，canonical 需审批 | P1 | 蒸馏 checkpoint、真实 provider、分析员工作流 |
+| Propagation Analysis | ✅ 观测分析与 Twitter checkpoint 推理已部署；缺失时 fallback/abstain，研究 claim blocked | P1 | 严格时间切分、多 seed、覆盖率与校准验证 |
+| Review / Event Review Case | 🔧 Student/Teacher 原型与案例工作台，canonical 需分析员审批 | P1 | 蒸馏 checkpoint、真实 provider、解析工作流、分析员工作流 |
 | 账户监测模块 | ✅ 已完成（含 BotRHG API） | P1 | 数据采集 |
 | 前端 - 协同检测页（网络可视化） | ✅ 已完成 | P1 | 后端协同检测 |
 | 前端 - 传播监控页（时间线+角色） | ✅ 已完成 | P1 | 后端传播监控 |
@@ -274,15 +311,12 @@
 
 ## 待决议事项（后续）
 
-| 编号 | 事项 | 说明 | 状态 |
-|------|------|------|------|
-| T-01 | Neo4j 接入 | 当前用 NetworkX 内存图分析，后续可切换到 Neo4j | 📋 待定 |
-| T-02 | LLM 接入 | 报告研判模块预留了接口，可接入通义千问/智谱/DeepSeek | 📋 待定 |
-| T-03 | DISARM 战术映射 | 将操纵行为映射为 DISARM tactics/techniques | 📋 待定 |
-| T-04 | 线上部署 | 当前本地部署，后续可云服务器部署 | 📋 待定 |
-| T-05 | 更多平台支持 | 当前仅 Mock 微博，逐步接入真实平台 | 📋 待定 |
-| T-06 | 模型训练与微调 | 使用公开数据集微调 NLP 模型 | 📋 待定 |
-| T-07 | GPU 环境适配 | NLP 模型推理加速 | 📋 待定 |
+- Coordination Discover：当前用 NetworkX 内存图分析，后续可切换到 Neo4j。
+- Coordination Detect：报告研判模块预留了接口，可接入更完整的验证流程。
+- Propagation Analysis：当前本地推理与 fallback 可运行，公开数据训练和更强覆盖仍需补齐。
+- Review：当前案例工作台可用，仍需要更完整的生产上线、分析员工作流和内部治理验证。
+- Crawler：当前仅 Mock 微博和有限真实平台通路，后续继续扩展平台支持。
+- Social Bot Detection：继续推进公开数据训练与推理加速。
 
 ---
 

@@ -8,6 +8,7 @@ from app.core.analysis import AnalysisRunStatus, TimeWindow, build_event_snapsho
 from app.core.analysis.executor import (
     AnalysisEnginePorts,
     AnalysisExecutor,
+    PropagationAnalysisPropagationEngine,
     UnavailableTeacherJobPort,
     default_analysis_engine_ports,
 )
@@ -163,6 +164,16 @@ class RecordingTeacherJobPort:
         return {"job_id": "teacher_job_1", "status": "queued"}
 
 
+class FailedTeacherJobPort:
+    async def submit(self, case):
+        return {
+            "job_id": "teacher_job_1",
+            "status": "failed",
+            "task_state": "dispatch_failed",
+            "review_required": True,
+        }
+
+
 def _dt(day: int, hour: int = 0) -> datetime:
     return datetime(2026, 5, day, hour, tzinfo=timezone.utc)
 
@@ -271,6 +282,8 @@ def test_executor_loads_snapshot_and_runs_requested_stage_ports():
         assert propagation.calls == [(snapshot.snapshot_id, {})]
         assert student.calls[0]["snapshot_id"] == snapshot.snapshot_id
         assert teacher.calls[0]["snapshot_id"] == snapshot.snapshot_id
+        assert student.calls[0]["run_id"] == "run_a"
+        assert teacher.calls[0]["run_id"] == "run_a"
         assert [event["event_type"] for event in events] == [
             "run_started",
             "stage_started",
@@ -437,6 +450,35 @@ def test_executor_marks_missing_checkpoint_as_needs_evidence():
     asyncio.run(scenario())
 
 
+def test_propagation_engine_uses_verified_checkpoint_path(monkeypatch):
+    async def scenario():
+        captured: dict[str, Any] = {}
+
+        async def fake_predict_event_macro_micro(**kwargs):
+            captured.update(kwargs)
+            return {"status": "ok"}
+
+        monkeypatch.setattr(
+            "app.services.propagation_prediction_service.predict_event_macro_micro",
+            fake_predict_event_macro_micro,
+        )
+        engine = PropagationAnalysisPropagationEngine()
+
+        await engine.hindcast(
+            _snapshot(),
+            {
+                "active_model": {
+                    "artifact_uri": "artifacts/propagation/v1",
+                    "checkpoint_path": "artifacts/propagation/v1/weights/model.pt",
+                }
+            },
+        )
+
+        assert captured["checkpoint_path"] == "artifacts/propagation/v1/weights/model.pt"
+
+    asyncio.run(scenario())
+
+
 def test_stage_manifest_marks_live_propagation_as_fallback_only():
     from app.core.analysis.executor import _stage_artifact_record
 
@@ -550,6 +592,59 @@ def test_executor_does_not_emit_teacher_submitted_event_without_job_id():
             "run_started",
             "stage_started",
             "stage_completed",
+            "run_needs_evidence",
+        ]
+
+    asyncio.run(scenario())
+
+
+def test_executor_marks_a_failed_teacher_dispatch_as_needing_evidence():
+    async def scenario():
+        snapshot = _snapshot()
+        store = FakeAnalysisStore(
+            snapshot_record={
+                "snapshot_id": snapshot.snapshot_id,
+                "mongo_collection": "analysis_event_snapshots",
+                "mongo_key": snapshot.snapshot_id,
+            },
+            run={
+                "run_id": "run_teacher_failed",
+                "event_id": snapshot.event_id,
+                "snapshot_id": snapshot.snapshot_id,
+                "status": "queued",
+                "requested_stages": ["teacher"],
+                "options": {},
+                "finished_at": None,
+            },
+        )
+        registry = AnalysisRegistry(
+            mongo_db={
+                "analysis_event_snapshots": FakeSnapshotCollection(
+                    {snapshot.snapshot_id: snapshot.model_dump(mode="json")}
+                )
+            },
+            store=store,
+        )
+        executor = AnalysisExecutor(
+            registry=registry,
+            engines=AnalysisEnginePorts(
+                coordination=RecordingCoordinationEngine(),
+                propagation=RecordingPropagationEngine(),
+                student=RecordingStudentRuntime(),
+                teacher=FailedTeacherJobPort(),
+            ),
+        )
+
+        result = await executor.execute_run("run_teacher_failed")
+        events = await registry.list_run_events("run_teacher_failed")
+
+        assert result["status"] == "needs_evidence"
+        assert result["results"]["teacher"]["status"] == "failed"
+        assert result["artifact_manifest"]["stages"]["teacher"]["execution_mode"] == "failed"
+        assert [event["event_type"] for event in events] == [
+            "run_started",
+            "stage_started",
+            "teacher_job_failed",
             "run_needs_evidence",
         ]
 

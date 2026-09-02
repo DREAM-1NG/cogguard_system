@@ -1,400 +1,1348 @@
-﻿<template>
-  <div class="risk-page">
-    <PageHeader title="风险研判" />
+<template>
+  <div class="review-page">
+    <PageHeader title="事件研判" />
 
-    <div class="risk-page-actions">
-      <a-button type="primary" size="small" :loading="assessing" @click="handleAssess">重新评估</a-button>
-    </div>
+    <a-alert
+      v-if="liveMessage"
+      class="live-region"
+      type="info"
+      show-icon
+      :message="liveMessage"
+      aria-live="polite"
+    />
 
-    <a-card v-if="!report && (historyLoading || assessing)" size="small" class="risk-empty-card">
-      <a-spin tip="正在加载风险研判结果..." />
-    </a-card>
+    <section class="selector-bar" aria-labelledby="case-selector-title">
+      <div>
+        <h3 id="case-selector-title" class="section-title">事件搜索与切换</h3>
+        <p class="section-subtitle">按事件名称或复核条目搜索</p>
+      </div>
+      <a-space class="selector-actions" :size="8" wrap>
+        <a-select
+          v-model:value="selectedCaseId"
+          show-search
+          allow-clear
+          :filter-option="false"
+          :options="caseOptions"
+          :loading="searching"
+          class="case-select"
+          placeholder="搜索事件"
+          aria-label="搜索事件"
+          @search="handleCaseSearch"
+          @change="handleCaseChange"
+        />
+        <a-button :loading="loading" aria-label="刷新当前事件" @click="refreshCurrentCase">刷新</a-button>
+      </a-space>
+    </section>
 
-    <template v-else-if="report">
-      <a-tabs v-model:activeKey="activeTab" class="risk-tabs">
-        <a-tab-pane key="evidence" tab="证据研判">
-          <EvidenceReviewPane
-            :all-posts="claimEvidencePosts"
-            :support-posts="claimSupportPosts"
-            :deny-posts="claimDenyPosts"
-            @select-post="selectPostForReview"
+    <a-spin :spinning="loading">
+      <a-empty v-if="!currentCase" description="暂无可复核事件" class="empty-state" />
+
+      <template v-else>
+        <section class="summary-grid" aria-label="事件复核摘要">
+          <a-card size="small" class="summary-card">
+            <template #title>系统初判</template>
+            <div class="case-title">{{ currentCase.title }}</div>
+            <div class="case-meta">
+              <span>更新：{{ formatTime(currentCase.updated_at) }}</span>
+            </div>
+            <a-space class="tag-row" :size="8" wrap>
+              <a-tag :color="conclusionColor(currentCase.preliminary_finding.conclusion)">
+                {{ conclusionLabel(currentCase.preliminary_finding.conclusion) }}
+              </a-tag>
+              <a-tag :color="sufficiencyColor(currentCase.evidence_sufficiency)">
+                证据充分度：{{ sufficiencyLabel(currentCase.evidence_sufficiency) }}
+              </a-tag>
+              <a-tag :color="urgencyColor(currentCase.urgency)">
+                {{ urgencyLabel(currentCase.urgency) }}
+              </a-tag>
+              <a-tag>{{ dispositionLabel(currentCase.disposition) }}</a-tag>
+            </a-space>
+            <p class="rationale">{{ currentCase.preliminary_finding.rationale }}</p>
+            <a-alert
+              :type="currentCase.action_required === 'none' ? 'success' : 'warning'"
+              show-icon
+              :message="actionRequiredLabel(currentCase.action_required)"
+            />
+          </a-card>
+
+          <a-card size="small" title="证据充分度" class="summary-card">
+            <a-list size="small" :data-source="sufficiencyLines">
+              <template #renderItem="{ item }">
+                <a-list-item>{{ item }}</a-list-item>
+              </template>
+            </a-list>
+            <a-empty
+              v-if="sufficiencyLines.length === 0"
+              description="暂无补充说明"
+              :image-style="{ height: '36px' }"
+            />
+          </a-card>
+
+          <a-card size="small" title="协调摘要" class="summary-card">
+            <p class="rationale">{{ currentCase.coordination_summary.narrative }}</p>
+            <div class="mini-list">
+              <span class="mini-label">重点群体</span>
+              <a-tag v-for="item in currentCase.coordination_summary.key_communities" :key="item">
+                {{ item }}
+              </a-tag>
+              <span v-if="currentCase.coordination_summary.key_communities.length === 0" class="muted">暂无</span>
+            </div>
+            <div class="mini-list">
+              <span class="mini-label">重点账号</span>
+              <a-tag v-for="item in currentCase.coordination_summary.key_accounts" :key="item">
+                {{ item }}
+              </a-tag>
+              <span v-if="currentCase.coordination_summary.key_accounts.length === 0" class="muted">暂无</span>
+            </div>
+          </a-card>
+
+          <a-card size="small" title="传播摘要" class="summary-card">
+            <p class="rationale">{{ currentCase.propagation_summary.narrative }}</p>
+            <a-descriptions size="small" :column="1" bordered>
+              <a-descriptions-item label="趋势">{{ currentCase.propagation_summary.trend }}</a-descriptions-item>
+              <a-descriptions-item label="预估范围">
+                {{ currentCase.propagation_summary.forecast_range || '暂无' }}
+              </a-descriptions-item>
+              <a-descriptions-item label="可能延伸">
+                <span v-if="currentCase.propagation_summary.likely_next_targets.length === 0">暂无</span>
+                <template v-else>
+                  <a-tag
+                    v-for="item in currentCase.propagation_summary.likely_next_targets"
+                    :key="item"
+                  >
+                    {{ item }}
+                  </a-tag>
+                </template>
+              </a-descriptions-item>
+            </a-descriptions>
+          </a-card>
+        </section>
+
+        <section class="workspace-grid">
+          <a-card size="small" class="evidence-panel">
+            <template #title>证据分组与标注</template>
+            <template #extra>
+              <a-button
+                size="small"
+                aria-label="申请复核"
+                @click="openReviewRequest"
+              >
+                申请复核
+              </a-button>
+            </template>
+
+            <a-tabs v-model:activeKey="activeEvidenceGroup" size="small">
+              <a-tab-pane
+                v-for="group in evidenceGroups"
+                :key="group.key"
+                :tab="`${group.label} (${group.items.length})`"
+              >
+                <div class="evidence-list" role="list" :aria-label="`${group.label}证据`">
+                  <article
+                    v-for="item in group.items"
+                    :key="item.evidence_ref"
+                    class="evidence-item"
+                    role="listitem"
+                  >
+                    <div class="evidence-heading">
+                      <a-checkbox
+                        :checked="selectedEvidenceRefs.includes(item.evidence_ref)"
+                        :aria-label="`选择证据 ${item.title}`"
+                        @change="toggleEvidenceRef(item.evidence_ref)"
+                      />
+                      <div>
+                        <h4>{{ item.title }}</h4>
+                        <div class="case-meta">
+                          <span>{{ evidenceTypeLabel(item.evidence_type) }}</span>
+                          <span>{{ item.platform || '来源未标明' }}</span>
+                          <span>{{ formatTime(item.observed_at) }}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <p class="evidence-excerpt">{{ item.excerpt || '暂无摘要' }}</p>
+                    <div class="evidence-footer">
+                      <a-space :size="8" wrap>
+                        <a-tag :color="assessmentColor(item.assessment)">
+                          {{ assessmentLabel(item.assessment) }}
+                        </a-tag>
+                        <a-button size="small" aria-label="标注证据" @click="openAnnotation(item)">
+                          标注
+                        </a-button>
+                        <a v-if="item.source_url" :href="item.source_url" target="_blank" rel="noopener noreferrer">
+                          原始链接
+                        </a>
+                      </a-space>
+                    </div>
+                    <a-list
+                      v-if="item.annotations.length"
+                      class="annotation-list"
+                      size="small"
+                      :data-source="item.annotations"
+                    >
+                      <template #renderItem="{ item: annotation }">
+                        <a-list-item>
+                          <div>
+                            <a-tag :color="assessmentColor(annotation.assessment)">
+                              {{ assessmentLabel(annotation.assessment) }}
+                            </a-tag>
+                            <span class="annotation-note">{{ annotation.note }}</span>
+                            <div class="case-meta">
+                              {{ annotation.created_by_name }} · {{ formatTime(annotation.created_at) }}
+                            </div>
+                          </div>
+                        </a-list-item>
+                      </template>
+                    </a-list>
+                  </article>
+                  <a-empty
+                    v-if="group.items.length === 0"
+                    description="该分组暂无证据"
+                    :image-style="{ height: '42px' }"
+                  />
+                </div>
+              </a-tab-pane>
+            </a-tabs>
+          </a-card>
+
+          <div class="decision-column">
+            <a-card size="small" title="复核建议" class="side-card">
+              <template v-if="currentCase.review_advisory">
+                <a-space class="tag-row" :size="8" wrap>
+                  <a-tag :color="conclusionColor(currentCase.review_advisory.conclusion)">
+                    {{ conclusionLabel(currentCase.review_advisory.conclusion) }}
+                  </a-tag>
+                  <a-tag :color="urgencyColor(currentCase.review_advisory.urgency)">
+                    {{ urgencyLabel(currentCase.review_advisory.urgency) }}
+                  </a-tag>
+                  <a-tag>{{ dispositionLabel(currentCase.review_advisory.disposition) }}</a-tag>
+                </a-space>
+                <p class="rationale">{{ currentCase.review_advisory.rationale }}</p>
+                <a-divider orientation="left">差异摘要</a-divider>
+                <a-list size="small" :data-source="differenceLines">
+                  <template #renderItem="{ item }">
+                    <a-list-item>{{ item }}</a-list-item>
+                  </template>
+                </a-list>
+              </template>
+              <a-empty v-else description="暂无复核建议" :image-style="{ height: '42px' }" />
+            </a-card>
+
+            <a-card size="small" title="确认结论" class="side-card">
+              <a-form v-if="!decisionLocked" layout="vertical" :disabled="savingDraft || confirming">
+                <a-form-item label="确认结论" required>
+                  <a-segmented
+                    v-model:value="draftForm.conclusion"
+                    :options="conclusionOptions"
+                    aria-label="确认结论"
+                  />
+                </a-form-item>
+                <a-form-item label="紧急程度" required>
+                  <a-segmented
+                    v-model:value="draftForm.urgency"
+                    :options="urgencyOptions"
+                    aria-label="紧急程度"
+                  />
+                </a-form-item>
+                <a-form-item label="处置方式" required>
+                  <a-select
+                    v-model:value="draftForm.disposition"
+                    :options="dispositionOptions"
+                    aria-label="处置方式"
+                  />
+                </a-form-item>
+                <a-form-item label="结论依据" required>
+                  <a-textarea
+                    v-model:value="draftForm.rationale"
+                    :rows="4"
+                    show-count
+                    :maxlength="8000"
+                    aria-label="结论依据"
+                  />
+                </a-form-item>
+                <a-form-item label="关键证据">
+                  <a-textarea
+                    v-model:value="keyEvidenceInput"
+                    :rows="2"
+                    placeholder="每行一条证据引用…"
+                    aria-label="关键证据"
+                  />
+                </a-form-item>
+                <a-form-item label="待补事项">
+                  <a-textarea
+                    v-model:value="unresolvedInput"
+                    :rows="2"
+                    placeholder="每行一条待补事项…"
+                    aria-label="待补事项"
+                  />
+                </a-form-item>
+              </a-form>
+              <template v-if="!decisionLocked">
+                <a-alert
+                  v-if="draftConflict"
+                  class="draft-conflict"
+                  type="error"
+                  show-icon
+                  message="草稿已被其他分析员更新"
+                  description="请刷新案件后再继续编辑，避免覆盖他人的修改。"
+                />
+                <div class="draft-status" aria-live="polite">{{ draftStatusText }}</div>
+                <a-space :size="8" wrap>
+                  <a-button :disabled="!draftDirty || Boolean(draftConflict)" :loading="savingDraft" @click="saveDraftNow">
+                    保存草稿
+                  </a-button>
+                  <a-button
+                    type="primary"
+                    danger
+                    :disabled="!canConfirmDecision"
+                    :loading="confirming"
+                    @click="openConfirmDecision"
+                  >
+                    明确确认
+                  </a-button>
+                </a-space>
+              </template>
+              <a-descriptions v-else :column="1" size="small" bordered>
+                <a-descriptions-item label="结论">
+                  {{ conclusionLabel(currentCase.confirmed_decision!.conclusion) }}
+                </a-descriptions-item>
+                <a-descriptions-item label="紧迫度">
+                  {{ urgencyLabel(currentCase.confirmed_decision!.urgency) }}
+                </a-descriptions-item>
+                <a-descriptions-item label="处置">
+                  {{ dispositionLabel(currentCase.confirmed_decision!.disposition) }}
+                </a-descriptions-item>
+                <a-descriptions-item label="理由">
+                  {{ currentCase.confirmed_decision!.rationale }}
+                </a-descriptions-item>
+              </a-descriptions>
+              <a-alert
+                v-if="currentCase.confirmed_decision"
+                class="confirmed-alert"
+                type="success"
+                show-icon
+                :message="`已确认：${conclusionLabel(currentCase.confirmed_decision.conclusion)}`"
+                :description="`${currentCase.confirmed_decision.confirmed_by_name} · ${formatTime(currentCase.confirmed_decision.confirmed_at)}`"
+              />
+            </a-card>
+
+            <a-card size="small" title="业务活动记录" class="side-card">
+              <a-list
+                size="small"
+                :data-source="activities"
+                :loading="activityLoading"
+                class="activity-list"
+              >
+                <template #renderItem="{ item }">
+                  <a-list-item>
+                    <div class="activity-item">
+                      <div class="activity-summary">{{ activityLabel(item.activity_type) }}</div>
+                      <div class="case-meta">
+                        {{ item.actor_name }} · {{ formatTime(item.occurred_at) }}
+                      </div>
+                      <div v-if="item.detail_lines.length" class="activity-detail">
+                        {{ item.detail_lines.join('；') }}
+                      </div>
+                    </div>
+                  </a-list-item>
+                </template>
+              </a-list>
+              <a-empty
+                v-if="!activityLoading && activities.length === 0"
+                description="暂无活动记录"
+                :image-style="{ height: '42px' }"
+              />
+            </a-card>
+          </div>
+        </section>
+      </template>
+    </a-spin>
+
+    <a-modal
+      v-model:open="annotationOpen"
+      title="标注证据"
+      ok-text="保存标注"
+      cancel-text="取消"
+      :confirm-loading="annotationSaving"
+      @ok="submitAnnotation"
+    >
+      <a-form layout="vertical">
+        <a-form-item label="证据条目">
+          <a-input :value="annotationTarget?.title" disabled aria-label="证据条目" />
+        </a-form-item>
+        <a-form-item label="证据关系" required>
+          <a-select
+            v-model:value="annotationForm.assessment"
+            :options="assessmentOptions"
+            aria-label="证据关系"
           />
-        </a-tab-pane>
-
-        <a-tab-pane key="review" tab="智能研判">
-          <IntelligentReviewPane
-            :report="report"
-            :all-analysis-names="allAnalysisNames"
-            :recommended-runtime-mode="recommendedRuntimeMode"
-            :runtime-reasons="runtimeReasons"
-            v-model:selectedNames="selectedAnalysisNames"
-            v-model:selectedPostIds="selectedPostIds"
-            v-model:selectedTreeIds="selectedTreeIds"
-            v-model:runtimeMode="runtimeMode"
-            v-model:enableActiveRetrieval="enableActiveRetrieval"
-            v-model:enableLightDebate="enableLightDebate"
-            v-model:enableFullDebate="enableFullDebate"
-            v-model:enableDeepJudge="enableDeepJudge"
-            v-model:retrievalTopK="retrievalTopK"
-            v-model:debateMaxRounds="debateMaxRounds"
-            :loading="reviewLoading"
-            :current-job="currentJob"
-            :reviews="analysisReports"
-            @fill-suggested="fillSuggestedAnalysis"
-            @start-review="startReviewJob"
+        </a-form-item>
+        <a-form-item label="标注说明" required>
+          <a-textarea
+            v-model:value="annotationForm.note"
+            :rows="4"
+            :maxlength="4000"
+            show-count
+            aria-label="标注说明"
           />
-        </a-tab-pane>
+        </a-form-item>
+        <a-form-item label="补充链接">
+          <a-input v-model:value="annotationForm.source_url" allow-clear aria-label="补充链接" />
+        </a-form-item>
+      </a-form>
+    </a-modal>
 
-        <a-tab-pane key="history" tab="历史报告">
-          <HistoryReportsPane
-            :items="historyItems"
-            :total="historyTotal"
-            :page="historyPage"
-            :loading="historyLoading"
-            @page-change="handleHistoryPageChange"
-            @open-report="openRiskReport"
+    <a-modal
+      v-model:open="reviewRequestOpen"
+      title="申请复核"
+      ok-text="提交申请"
+      cancel-text="取消"
+      :confirm-loading="reviewRequestSaving"
+      @ok="submitReviewRequest"
+    >
+      <a-form layout="vertical">
+        <a-form-item label="复核原因" required>
+          <a-textarea
+            v-model:value="reviewRequestReason"
+            :rows="4"
+            :maxlength="4000"
+            show-count
+            aria-label="复核原因"
           />
-        </a-tab-pane>
-      </a-tabs>
-    </template>
-
-    <a-card v-else size="small" class="risk-empty-card">
-      <a-empty description="暂无数据" />
-    </a-card>
+        </a-form-item>
+        <a-form-item label="关联证据">
+          <a-select
+            v-model:value="selectedEvidenceRefs"
+            mode="multiple"
+            :options="evidenceRefOptions"
+            aria-label="关联证据"
+          />
+        </a-form-item>
+      </a-form>
+    </a-modal>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
-import { message } from 'ant-design-vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { Modal, message } from 'ant-design-vue'
 import PageHeader from '@/components/PageHeader.vue'
 import {
-  assessRisk,
-  getReviewJob,
-  getRiskReportDetail,
-  listRiskReports,
-  runReviewAgentReview,
-} from '@/api/risk'
-import EvidenceReviewPane from './components/EvidenceReviewPane.vue'
-import IntelligentReviewPane from './components/IntelligentReviewPane.vue'
-import HistoryReportsPane from './components/HistoryReportsPane.vue'
+  annotateReviewCaseEvidence,
+  confirmDecision,
+  getLatestReviewCase,
+  getReviewCase,
+  getReviewCaseEvidence,
+  listCaseActivities,
+  readCaseEventStream,
+  requestReviewAdvisory,
+  saveDecisionDraft,
+  searchReviewCases,
+} from '@/api/reviewCases'
+import type {
+  ActionRequired,
+  CaseActivity,
+  CaseActivityType,
+  DecisionDraft,
+  Disposition,
+  EvidenceAssessment,
+  EvidenceItem,
+  EvidenceSufficiency,
+  ReviewCaseDetail,
+  ReviewCaseEvidence,
+  ReviewCaseSummary,
+  ReviewConclusion,
+  ReviewUrgency,
+} from '@/types/reviewCase'
 
-const params = ref({
-  platform: 'weibo',
-  time_window: 24,
-  min_participation: 3,
-  edge_weight: 0.5,
+type SelectOption = { label: string; value: string }
+type EvidenceGroup = { key: EvidenceAssessment; label: string; items: EvidenceItem[] }
+
+const route = useRoute()
+const router = useRouter()
+
+const currentCase = ref<ReviewCaseDetail | null>(null)
+const evidence = ref<ReviewCaseEvidence | null>(null)
+const caseItems = ref<ReviewCaseSummary[]>([])
+const selectedCaseId = ref<string | undefined>()
+const loading = ref(false)
+const searching = ref(false)
+const activityLoading = ref(false)
+const liveMessage = ref('')
+const activeEvidenceGroup = ref<EvidenceAssessment>('supports')
+const selectedEvidenceRefs = ref<string[]>([])
+const activities = ref<CaseActivity[]>([])
+const activityCursor = ref(0)
+
+const annotationOpen = ref(false)
+const annotationSaving = ref(false)
+const annotationTarget = ref<EvidenceItem | null>(null)
+const annotationForm = reactive<{
+  assessment: EvidenceAssessment
+  note: string
+  source_url: string
+}>({
+  assessment: 'supports',
+  note: '',
+  source_url: '',
 })
 
-const activeTab = ref<'evidence' | 'review' | 'history'>('evidence')
-const assessing = ref(false)
-const report = ref<any>(null)
+const reviewRequestOpen = ref(false)
+const reviewRequestSaving = ref(false)
+const reviewRequestReason = ref('')
 
-const reviewLoading = ref(false)
-const currentJob = ref<any>(null)
-const selectedAnalysisNames = ref<string[]>([])
-const selectedPostIds = ref('')
-const selectedTreeIds = ref('')
-const runtimeMode = ref<'auto' | 'simple' | 'complex'>('auto')
-const enableActiveRetrieval = ref(true)
-const enableLightDebate = ref(true)
-const enableFullDebate = ref(false)
-const enableDeepJudge = ref(false)
-const retrievalTopK = ref(3)
-const debateMaxRounds = ref(3)
+const savingDraft = ref(false)
+const confirming = ref(false)
+const draftVersion = ref(0)
+const draftSavedAt = ref('')
+const draftHydrating = ref(false)
+const draftDirty = ref(false)
+const draftConflict = ref('')
+const draftEditRevision = ref(0)
+const draftSaveTimer = ref<number | undefined>()
+let draftSavePromise: Promise<DecisionDraft | null> | null = null
+let caseSearchTimer: number | undefined
+let caseSearchSequence = 0
+let activityRecoveryTimer: number | undefined
+let activityRecoveryController: AbortController | null = null
+const draftForm = reactive<{
+  conclusion: ReviewConclusion
+  urgency: ReviewUrgency
+  disposition: Disposition
+  rationale: string
+}>({
+  conclusion: 'insufficient_evidence',
+  urgency: 'watch',
+  disposition: 'gather_evidence',
+  rationale: '',
+})
+const keyEvidenceInput = ref('')
+const unresolvedInput = ref('')
 
-const historyItems = ref<any[]>([])
-const historyTotal = ref(0)
-const historyPage = ref(1)
-const historyLoading = ref(false)
+const conclusionLabels: Record<ReviewConclusion, string> = {
+  harmful: '存在风险',
+  non_harmful: '风险不成立',
+  insufficient_evidence: '证据不足',
+}
 
-const postSemantics = computed(() => report.value?.post_semantics || null)
-const analysisSuggestions = computed(() => report.value?.review_harmfulness?.agent_review_suggestions || null)
-const suggestedAnalysis = computed(() => analysisSuggestions.value?.suggested_agents || [])
-const recommendedRuntimeMode = computed(() => analysisSuggestions.value?.recommended_runtime_mode || 'simple')
-const runtimeReasons = computed(() => analysisSuggestions.value?.runtime_reasons || [])
-const allAnalysisNames = computed(() => analysisSuggestions.value?.all_agents || [
-  'PostHarmAgent',
-  'MultimodalConsistencyAgent',
-  'ClaimEvidenceAgent',
-  'PropagationTreeAgent',
-  'QuestionReflectionAgent',
-  'HarmfulnessJudgeAgent',
-  'CountermeasureAgent',
-])
-const analysisReports = computed(() => report.value?.agent_reviews || [])
+const sufficiencyLabels: Record<EvidenceSufficiency, string> = {
+  sufficient: '充分',
+  limited: '有限',
+  insufficient: '不足',
+}
 
-watch(recommendedRuntimeMode, (value) => {
-  if (runtimeMode.value === 'auto') {
-    if (value !== 'complex') {
-      enableActiveRetrieval.value = false
-      enableLightDebate.value = false
-      enableFullDebate.value = false
-      enableDeepJudge.value = false
+const urgencyLabels: Record<ReviewUrgency, string> = {
+  routine: '常规关注',
+  watch: '持续观察',
+  urgent: '需尽快处理',
+  critical: '需立即处理',
+}
+
+const dispositionLabels: Record<Disposition, string> = {
+  monitor: '继续监测',
+  gather_evidence: '补充证据',
+  escalate: '升级处置',
+  respond: '对外回应',
+  archive: '归档',
+}
+
+const assessmentLabels: Record<EvidenceAssessment, string> = {
+  supports: '支持',
+  contradicts: '反驳',
+  irrelevant: '无关',
+  unresolved: '待判定',
+}
+
+const actionLabels: Record<ActionRequired, string> = {
+  none: '当前无需进一步动作',
+  add_evidence: '需要补充证据',
+  review_available: '复核建议已可查看',
+  confirm_decision: '需要确认结论',
+  reconfirm_decision: '新证据出现，需要重新确认',
+}
+
+const activityLabels: Record<CaseActivityType, string> = {
+  case_created: '建立复核条目',
+  snapshot_added: '更新事件材料',
+  evidence_annotated: '证据标注',
+  evidence_requested: '请求补充证据',
+  review_requested: '申请复核',
+  review_advisory_available: '复核建议可用',
+  decision_draft_saved: '保存草稿',
+  decision_confirmed: '确认结论',
+  correction_recorded: '记录修正',
+  reconfirmation_required: '需要重新确认',
+}
+
+const conclusionOptions = typedOptions(conclusionLabels)
+const urgencyOptions = typedOptions(urgencyLabels)
+const dispositionOptions = typedOptions(dispositionLabels)
+const assessmentOptions = typedOptions(assessmentLabels)
+
+const caseOptions = computed<SelectOption[]>(() => {
+  return caseItems.value.map((item) => ({
+    label: item.title,
+    value: item.case_id,
+  }))
+})
+
+const evidenceGroups = computed<EvidenceGroup[]>(() => {
+  const data = evidence.value
+  return [
+    { key: 'supports', label: '支持', items: data?.supports || [] },
+    { key: 'contradicts', label: '反驳', items: data?.contradicts || [] },
+    { key: 'irrelevant', label: '无关', items: data?.irrelevant || [] },
+    { key: 'unresolved', label: '待判定', items: data?.unresolved || [] },
+  ]
+})
+
+const allEvidenceItems = computed(() => evidenceGroups.value.flatMap((group) => group.items))
+
+const evidenceRefOptions = computed<SelectOption[]>(() => {
+  return allEvidenceItems.value.map((item) => ({
+    label: item.title,
+    value: item.evidence_ref,
+  }))
+})
+
+const sufficiencyLines = computed(() => {
+  if (!currentCase.value) return []
+  return [
+    ...currentCase.value.sufficiency_reasons.map((item) => `理由：${item}`),
+    ...currentCase.value.missing_evidence.map((item) => `待补：${item}`),
+  ]
+})
+
+const differenceLines = computed(() => {
+  const advisory = currentCase.value?.review_advisory
+  if (!advisory) return []
+  if (advisory.differences_from_preliminary.length > 0) {
+    return advisory.differences_from_preliminary
+  }
+  const preliminary = currentCase.value?.preliminary_finding.conclusion
+  return preliminary && preliminary !== advisory.conclusion
+    ? [`复核建议为「${conclusionLabel(advisory.conclusion)}」，系统初判为「${conclusionLabel(preliminary)}」。`]
+    : ['复核建议与系统初判未见实质差异。']
+})
+
+const decisionLocked = computed(() => {
+  return Boolean(
+    currentCase.value?.confirmed_decision
+    && currentCase.value.action_required !== 'reconfirm_decision',
+  )
+})
+
+const canConfirmDecision = computed(() => {
+  return Boolean(
+    currentCase.value
+    && !decisionLocked.value
+    && !draftConflict.value
+    && !savingDraft.value
+    && !confirming.value
+    && draftForm.rationale.trim(),
+  )
+})
+
+const draftStatusText = computed(() => {
+  if (draftConflict.value) return '草稿存在版本冲突，请刷新案件'
+  if (savingDraft.value) return '草稿正在保存'
+  if (draftDirty.value) return '有尚未保存的修改'
+  if (draftSavedAt.value) return `草稿已保存：${formatTime(draftSavedAt.value)}`
+  return '草稿尚未保存'
+})
+
+watch(
+  () => [
+    draftForm.conclusion,
+    draftForm.urgency,
+    draftForm.disposition,
+    draftForm.rationale,
+    keyEvidenceInput.value,
+    unresolvedInput.value,
+  ],
+  () => {
+    if (!draftHydrating.value && currentCase.value && !decisionLocked.value) {
+      draftDirty.value = true
+      draftConflict.value = ''
+      draftEditRevision.value += 1
+      scheduleDraftSave()
+    }
+  },
+)
+
+function typedOptions<T extends string>(labels: Record<T, string>) {
+  return Object.entries(labels).map(([value, label]) => ({ value, label })) as Array<{ value: T; label: string }>
+}
+
+function handleCaseSearch(value: string) {
+  if (caseSearchTimer) window.clearTimeout(caseSearchTimer)
+  caseSearchTimer = window.setTimeout(() => {
+    void loadCaseOptions(value)
+  }, 250)
+}
+
+async function handleCaseChange(value: string | undefined) {
+  if (!value) return
+  await loadCase(value)
+}
+
+async function loadCaseOptions(query = '') {
+  const requestSequence = ++caseSearchSequence
+  searching.value = true
+  try {
+    const res = await searchReviewCases({ query, limit: 20 })
+    if (requestSequence === caseSearchSequence) {
+      caseItems.value = res.data.items
+    }
+  } finally {
+    if (requestSequence === caseSearchSequence) {
+      searching.value = false
     }
   }
-})
+}
 
-watch(runtimeMode, (value) => {
-  if (value === 'simple') {
-    enableActiveRetrieval.value = false
-    enableLightDebate.value = false
-    enableFullDebate.value = false
-    enableDeepJudge.value = false
-  }
-})
-
-const claimEvidencePosts = computed(() => {
-  const rows = postSemantics.value?.aggregation_posts || postSemantics.value?.posts || []
-  return rows.map(normalizeClaimPost).filter((item: any) => item.post_id || item.excerpt)
-})
-
-const claimSupportPosts = computed(() => {
-  return claimEvidencePosts.value
-    .filter((item: any) => item.stanceLabel === 'support' || item.harmLabel === 'harmful')
-    .slice(0, 12)
-})
-
-const claimDenyPosts = computed(() => {
-  return claimEvidencePosts.value
-    .filter((item: any) => item.stanceLabel === 'deny' || item.stanceLabel === 'query')
-    .slice(0, 12)
-})
-
-function normalizeClaimPost(post: any) {
-  const primaryClaim = post?.primary_claim || {}
-  const stance = post?.stance || {}
-  const harmfulness = post?.harmfulness || {}
-  const postView = post?.post_view_detection || {}
-  return {
-    ...post,
-    post_id: String(post?.post_id || ''),
-    authorName: post?.author_name || post?.author_id || '',
-    platformName: post?.platform || post?.source_platform || report.value?.platform || '',
-    excerpt: post?.excerpt || post?.text || '',
-    primaryClaimId: primaryClaim?.claim_id || '',
-    primaryClaimText: primaryClaim?.claim_text || '',
-    claimScore: typeof primaryClaim?.score === 'number' ? primaryClaim.score : undefined,
-    stanceLabel: stance?.label || postView?.stance?.label || 'unlinked',
-    stanceConfidence: stance?.confidence || postView?.stance?.confidence || 0,
-    stanceAbstain: Boolean(stance?.abstain || postView?.stance?.abstain),
-    harmLabel: harmfulness?.label || postView?.final_harmfulness || 'uncertain',
-    harmScore: harmfulness?.score || postView?.harm_score || 0,
-    primaryType: harmfulness?.primary_type || postView?.harm_types?.[0] || '',
+async function refreshCurrentCase() {
+  if (currentCase.value) {
+    await loadCase(currentCase.value.case_id)
+  } else {
+    await loadInitialCase()
   }
 }
 
-function selectPostForReview(post: any) {
-  if (!post?.post_id) return
-  selectedPostIds.value = post.post_id
-  if (selectedAnalysisNames.value.length === 0) {
-    selectedAnalysisNames.value = ['ClaimEvidenceAgent', 'HarmfulnessJudgeAgent']
+async function loadInitialCase() {
+  const linkedCaseId = queryText(route.query.case_id)
+  const linkedEventId = queryText(route.query.event_id)
+  if (linkedCaseId) {
+    await loadCase(linkedCaseId)
+    return
   }
-  activeTab.value = 'review'
-  message.success(`已选择帖子 ${post.post_id}`)
+  if (linkedEventId) {
+    await loadCaseOptions(linkedEventId)
+    const matched = caseItems.value.find((item) => item.event_id === linkedEventId)
+    if (matched) {
+      await loadCase(matched.case_id)
+      return
+    }
+    currentCase.value = null
+    evidence.value = null
+    liveMessage.value = `未找到事件：${linkedEventId}`
+    return
+  }
+  loading.value = true
+  try {
+    const res = await getLatestReviewCase()
+    await applyCase(res.data)
+    await loadCaseOptions('')
+  } catch {
+    currentCase.value = null
+    evidence.value = null
+  } finally {
+    loading.value = false
+  }
 }
 
-function fillSuggestedAnalysis() {
-  const suggested = suggestedAnalysis.value.map((item: any) => item.agent_name).filter(Boolean)
-  selectedAnalysisNames.value = suggested.length ? suggested : allAnalysisNames.value.slice(0, 2)
+async function loadCase(caseId: string) {
+  loading.value = true
+  try {
+    const [detailRes, evidenceRes] = await Promise.all([
+      getReviewCase(caseId),
+      getReviewCaseEvidence(caseId),
+    ])
+    await applyCase(detailRes.data, evidenceRes.data)
+  } finally {
+    loading.value = false
+  }
 }
 
-function normalizeSelectedAnalysis() {
-  return Array.from(new Set(selectedAnalysisNames.value.filter(Boolean)))
+async function applyCase(detail: ReviewCaseDetail, evidenceData?: ReviewCaseEvidence) {
+  currentCase.value = detail
+  selectedCaseId.value = detail.case_id
+  evidence.value = evidenceData || null
+  selectedEvidenceRefs.value = []
+  hydrateDraft(detail)
+  liveMessage.value = `已打开事件：${detail.title}`
+  void router.replace({
+    query: {
+      ...route.query,
+      case_id: detail.case_id,
+      event_id: detail.event_id,
+    },
+  })
+  if (!evidenceData) {
+    const res = await getReviewCaseEvidence(detail.case_id)
+    evidence.value = res.data
+  }
+  await loadActivities(detail.case_id)
+  startActivityRecovery(detail.case_id)
 }
 
-function splitCsvLike(value: string) {
+function hydrateDraft(detail: ReviewCaseDetail) {
+  draftHydrating.value = true
+  const serverDraft = detail.decision_draft
+  if (serverDraft) {
+    draftForm.conclusion = serverDraft.conclusion
+    draftForm.urgency = serverDraft.urgency
+    draftForm.disposition = serverDraft.disposition
+    draftForm.rationale = serverDraft.rationale
+    keyEvidenceInput.value = serverDraft.key_evidence_refs.join('\n')
+    unresolvedInput.value = serverDraft.unresolved_items.join('\n')
+  } else if (detail.confirmed_decision) {
+    draftForm.conclusion = detail.confirmed_decision.conclusion
+    draftForm.urgency = detail.confirmed_decision.urgency
+    draftForm.disposition = detail.confirmed_decision.disposition
+    draftForm.rationale = detail.confirmed_decision.rationale
+    keyEvidenceInput.value = detail.confirmed_decision.key_evidence_refs.join('\n')
+    unresolvedInput.value = detail.confirmed_decision.unresolved_items.join('\n')
+  } else if (detail.review_advisory) {
+    draftForm.conclusion = detail.review_advisory.conclusion
+    draftForm.urgency = detail.review_advisory.urgency
+    draftForm.disposition = detail.review_advisory.disposition
+    draftForm.rationale = detail.review_advisory.rationale
+    keyEvidenceInput.value = detail.review_advisory.key_evidence_refs.join('\n')
+    unresolvedInput.value = detail.missing_evidence.join('\n')
+  } else {
+    draftForm.conclusion = detail.preliminary_finding.conclusion
+    draftForm.urgency = detail.urgency
+    draftForm.disposition = detail.disposition
+    draftForm.rationale = detail.preliminary_finding.rationale
+    keyEvidenceInput.value = detail.preliminary_finding.key_evidence_refs.join('\n')
+    unresolvedInput.value = detail.missing_evidence.join('\n')
+  }
+  draftVersion.value = serverDraft?.draft_version || 0
+  draftSavedAt.value = serverDraft?.saved_at || ''
+  draftConflict.value = ''
+  draftDirty.value = !decisionLocked.value && !serverDraft
+  window.setTimeout(() => {
+    draftHydrating.value = false
+    if (draftDirty.value) scheduleDraftSave()
+  }, 0)
+}
+
+async function loadActivities(caseId: string) {
+  activityLoading.value = true
+  try {
+    const res = await listCaseActivities(caseId, { limit: 100 })
+    activities.value = res.data.items
+    activityCursor.value = res.data.next_cursor || 0
+  } finally {
+    activityLoading.value = false
+  }
+}
+
+function startActivityRecovery(caseId: string) {
+  if (activityRecoveryTimer) window.clearInterval(activityRecoveryTimer)
+  activityRecoveryController?.abort()
+  activityRecoveryTimer = window.setInterval(() => {
+    void recoverCaseActivities(caseId)
+  }, 10000)
+}
+
+async function recoverCaseActivities(caseId: string) {
+  if (currentCase.value?.case_id !== caseId || activityRecoveryController) return
+  const controller = new AbortController()
+  activityRecoveryController = controller
+  try {
+    const events = await readCaseEventStream(caseId, activityCursor.value, controller.signal)
+    if (events.length === 0) return
+    const response = await listCaseActivities(caseId, {
+      after_id: activityCursor.value,
+      limit: 100,
+    })
+    const known = new Set(activities.value.map((item) => item.cursor))
+    activities.value.push(...response.data.items.filter((item) => !known.has(item.cursor)))
+    activityCursor.value = response.data.next_cursor || activityCursor.value
+
+    const detail = await getReviewCase(caseId)
+    if (currentCase.value?.case_id === caseId) {
+      const localDraft = currentCase.value.decision_draft
+      currentCase.value = detail.data
+      if (draftDirty.value || savingDraft.value) {
+        currentCase.value.decision_draft = localDraft
+      } else {
+        hydrateDraft(detail.data)
+      }
+      liveMessage.value = events[events.length - 1]?.message || '案件活动已更新'
+    }
+
+    if (events.some((item) => ['snapshot_added', 'reconfirmation_required'].includes(item.activity_type))) {
+      const evidenceResponse = await getReviewCaseEvidence(caseId)
+      evidence.value = evidenceResponse.data
+    }
+  } catch (error) {
+    if ((error as { name?: string }).name !== 'AbortError') {
+      liveMessage.value = '活动记录将在下次连接时继续恢复'
+    }
+  } finally {
+    if (activityRecoveryController === controller) activityRecoveryController = null
+  }
+}
+
+function toggleEvidenceRef(evidenceRef: string) {
+  selectedEvidenceRefs.value = selectedEvidenceRefs.value.includes(evidenceRef)
+    ? selectedEvidenceRefs.value.filter((item) => item !== evidenceRef)
+    : [...selectedEvidenceRefs.value, evidenceRef]
+}
+
+function openAnnotation(item: EvidenceItem) {
+  annotationTarget.value = item
+  annotationForm.assessment = item.assessment
+  annotationForm.note = ''
+  annotationForm.source_url = item.source_url || ''
+  annotationOpen.value = true
+}
+
+async function submitAnnotation() {
+  if (!currentCase.value || !annotationTarget.value) return
+  if (!annotationForm.note.trim()) {
+    message.warning('请填写标注说明')
+    return
+  }
+  if (!(await flushDraftBeforeCaseMutation())) return
+  annotationSaving.value = true
+  try {
+    await annotateReviewCaseEvidence(currentCase.value.case_id, {
+      evidence_ref: annotationTarget.value.evidence_ref,
+      assessment: annotationForm.assessment,
+      note: annotationForm.note.trim(),
+      source_url: annotationForm.source_url.trim() || null,
+    })
+    annotationOpen.value = false
+    liveMessage.value = '证据标注已保存'
+    await loadCase(currentCase.value.case_id)
+  } finally {
+    annotationSaving.value = false
+  }
+}
+
+function openReviewRequest() {
+  reviewRequestReason.value = ''
+  reviewRequestOpen.value = true
+}
+
+async function submitReviewRequest() {
+  if (!currentCase.value) return
+  if (!reviewRequestReason.value.trim()) {
+    message.warning('请填写复核原因')
+    return
+  }
+  if (!(await flushDraftBeforeCaseMutation())) return
+  reviewRequestSaving.value = true
+  try {
+    const res = await requestReviewAdvisory(currentCase.value.case_id, {
+      reason: reviewRequestReason.value.trim(),
+      evidence_refs: selectedEvidenceRefs.value,
+    })
+    reviewRequestOpen.value = false
+    liveMessage.value = res.data.message || '复核申请已提交'
+    await loadCase(currentCase.value.case_id)
+  } finally {
+    reviewRequestSaving.value = false
+  }
+}
+
+function scheduleDraftSave() {
+  if (draftSaveTimer.value) {
+    window.clearTimeout(draftSaveTimer.value)
+  }
+  draftSaveTimer.value = window.setTimeout(() => {
+    void saveDraftNow({ silent: true })
+  }, 1200)
+}
+
+async function saveDraftNow(options: { silent?: boolean } = {}): Promise<DecisionDraft | null> {
+  if (!currentCase.value || decisionLocked.value || !draftForm.rationale.trim()) return null
+  if (draftSaveTimer.value) {
+    window.clearTimeout(draftSaveTimer.value)
+    draftSaveTimer.value = undefined
+  }
+  if (draftSavePromise) await draftSavePromise
+  if (!draftDirty.value && draftVersion.value > 0) return currentCase.value.decision_draft
+
+  const editRevision = draftEditRevision.value
+  const caseId = currentCase.value.case_id
+  const payload = {
+    conclusion: draftForm.conclusion,
+    urgency: draftForm.urgency,
+    disposition: draftForm.disposition,
+    rationale: draftForm.rationale.trim(),
+    key_evidence_refs: splitLines(keyEvidenceInput.value),
+    unresolved_items: splitLines(unresolvedInput.value),
+    expected_version: draftVersion.value,
+  }
+
+  savingDraft.value = true
+  draftSavePromise = saveDecisionDraft(caseId, payload)
+    .then((res) => {
+      applyDraftReceipt(res.data)
+      if (draftEditRevision.value === editRevision) {
+        draftDirty.value = false
+      } else {
+        scheduleDraftSave()
+      }
+      if (!options.silent) message.success('草稿已保存')
+      return res.data
+    })
+    .catch((error: unknown) => {
+      if (isConflictError(error)) {
+        draftConflict.value = 'version_conflict'
+        liveMessage.value = '草稿已被其他分析员更新，请刷新案件后继续'
+      }
+      return null
+    })
+
+  try {
+    return await draftSavePromise
+  } finally {
+    draftSavePromise = null
+    savingDraft.value = false
+  }
+}
+
+function applyDraftReceipt(draft: DecisionDraft) {
+  draftVersion.value = draft.draft_version
+  draftSavedAt.value = draft.saved_at
+  liveMessage.value = '确认结论草稿已自动保存'
+  if (currentCase.value) currentCase.value.decision_draft = draft
+}
+
+async function flushDraftBeforeCaseMutation() {
+  if (decisionLocked.value || (!draftDirty.value && draftVersion.value > 0)) return true
+  return Boolean(await saveDraftNow({ silent: true }))
+}
+
+function openConfirmDecision() {
+  Modal.confirm({
+    title: '确认提交当前结论？',
+    content: '提交后将形成不可变更的确认结论。后续如有新证据，需要重新确认。',
+    okText: '明确确认',
+    cancelText: '再检查',
+    okButtonProps: { danger: true },
+    onOk: submitDecisionConfirmation,
+  })
+}
+
+async function submitDecisionConfirmation() {
+  if (!currentCase.value || decisionLocked.value || draftConflict.value) return
+  confirming.value = true
+  try {
+    while (draftDirty.value || draftVersion.value === 0) {
+      const saved = await saveDraftNow({ silent: true })
+      if (!saved) return
+    }
+    const res = await confirmDecision(currentCase.value.case_id, {
+      expected_draft_version: draftVersion.value,
+      confirmation_note: '已完成业务复核并确认结论。',
+    })
+    liveMessage.value = `确认结论已提交：${conclusionLabel(res.data.decision.conclusion)}`
+    message.success('确认结论已提交')
+    await loadCase(currentCase.value.case_id)
+  } finally {
+    confirming.value = false
+  }
+}
+
+function queryText(value: unknown) {
+  return Array.isArray(value) ? String(value[0] || '') : String(value || '')
+}
+
+function isConflictError(error: unknown) {
+  return Number((error as { response?: { status?: number } })?.response?.status) === 409
+}
+
+function splitLines(value: string) {
   return value
-    .split(/[,，\s]+/)
+    .split(/\r?\n/)
     .map((item) => item.trim())
     .filter(Boolean)
 }
 
-function buildReviewPayload() {
-  const effectiveRuntimeMode = runtimeMode.value === 'auto'
-    ? recommendedRuntimeMode.value
-    : runtimeMode.value
-  return {
-    report_id: report.value.report_id,
-    selected_post_ids: splitCsvLike(selectedPostIds.value),
-    selected_tree_ids: splitCsvLike(selectedTreeIds.value),
-    agent_names: normalizeSelectedAnalysis(),
-    runtime_mode: runtimeMode.value,
-    enable_active_retrieval: effectiveRuntimeMode === 'complex' ? enableActiveRetrieval.value : false,
-    enable_light_debate: effectiveRuntimeMode === 'complex' ? enableLightDebate.value : false,
-    enable_full_debate: effectiveRuntimeMode === 'complex' ? enableFullDebate.value : false,
-    enable_deep_judge: effectiveRuntimeMode === 'complex' ? enableDeepJudge.value : false,
-    debate_max_rounds: debateMaxRounds.value,
-    retrieval_top_k: retrievalTopK.value,
-  }
+function conclusionLabel(value: ReviewConclusion) {
+  return conclusionLabels[value]
 }
 
-async function startReviewJob() {
-  if (!report.value?.report_id) {
-    message.warning('请先打开一份风险报告')
-    return
-  }
-  if (normalizeSelectedAnalysis().length === 0) {
-    message.warning('请至少选择一种分析方式')
-    return
-  }
-  reviewLoading.value = true
-  try {
-    const res = await runReviewAgentReview(buildReviewPayload())
-    currentJob.value = res.data
-    message.success(`研判任务已启动：${displayOrdinal(res.data?.job_id)}`)
-    await pollReviewJob(res.data?.job_id)
-  } catch (e: any) {
-    message.error(e.response?.data?.detail || e.response?.data?.msg || e.message || '研判任务启动失败')
-  } finally {
-    reviewLoading.value = false
-  }
+function sufficiencyLabel(value: EvidenceSufficiency) {
+  return sufficiencyLabels[value]
 }
 
-async function pollReviewJob(jobId: number | string | undefined) {
-  if (!jobId) return
-  let transientNotFoundCount = 0
-  for (let attempt = 0; attempt < 150; attempt += 1) {
-    let res
-    try {
-      res = await getReviewJob(jobId)
-    } catch (e: any) {
-      const status = e?.response?.status
-      if (status === 404 && transientNotFoundCount < 8) {
-        transientNotFoundCount += 1
-        await wait(800)
-        continue
-      }
-      throw e
-    }
-    currentJob.value = res.data
-    if (['completed', 'failed'].includes(String(res.data?.status))) {
-      if (res.data?.status === 'completed') {
-        message.success(`研判任务 ${displayOrdinal(jobId)} 已完成`)
-        await refreshCurrentReport()
-      } else {
-        message.error(res.data?.error || `研判任务 ${displayOrdinal(jobId)} 执行失败`)
-      }
-      return
-    }
-    await wait(2000)
-  }
-  message.warning(`研判任务 ${displayOrdinal(jobId)} 仍在执行，请稍后查看。`)
+function urgencyLabel(value: ReviewUrgency) {
+  return urgencyLabels[value]
 }
 
-async function refreshCurrentReport() {
-  if (!report.value?.report_id) return
-  const res = await getRiskReportDetail(report.value.report_id)
-  if (res.data) {
-    report.value = res.data
-  }
+function dispositionLabel(value: Disposition) {
+  return dispositionLabels[value]
 }
 
-async function handleAssess(notify: boolean | unknown = true) {
-  const shouldNotify = notify !== false
-  assessing.value = true
-  try {
-    const res = await assessRisk(params.value)
-    report.value = res.data
-    activeTab.value = 'evidence'
-    if (shouldNotify) {
-      message.success('评估完成')
-    }
-    await loadHistory(false)
-  } catch (e: any) {
-    if (shouldNotify) {
-      message.error(e.response?.data?.msg || e.message || '评估失败')
-    }
-  } finally {
-    assessing.value = false
-  }
+function assessmentLabel(value: EvidenceAssessment) {
+  return assessmentLabels[value]
 }
 
-async function openRiskReport(reportId: string | undefined) {
-  if (!reportId) return
-  try {
-    const res = await getRiskReportDetail(reportId)
-    report.value = res.data
-    activeTab.value = 'evidence'
-    if (!postSemantics.value) {
-      await handleAssess(false)
-    }
-  } catch (e: any) {
-    message.error(e.response?.data?.msg || e.message || '加载风险报告失败')
-  }
+function actionRequiredLabel(value: ActionRequired) {
+  return actionLabels[value]
 }
 
-async function loadHistory(openLatest = false) {
-  historyLoading.value = true
-  try {
-    const res = await listRiskReports({ page: historyPage.value, page_size: 10 })
-    const d = res.data
-    historyItems.value = d.items || []
-    historyTotal.value = d.total || 0
-    if (openLatest && !report.value && historyItems.value.length > 0) {
-      await openRiskReport(historyItems.value[0]?.report_id)
-    } else if (openLatest && !report.value && historyItems.value.length === 0) {
-      await handleAssess(false)
-    }
-  } catch (e: any) {
-    message.error(e.response?.data?.msg || e.message || '加载历史报告失败')
-    if (openLatest && !report.value) {
-      await handleAssess(false)
-    }
-  } finally {
-    historyLoading.value = false
-  }
+function activityLabel(value: CaseActivityType) {
+  return activityLabels[value]
 }
 
-function handleHistoryPageChange(page: number) {
-  historyPage.value = page
-  loadHistory(false)
+function evidenceTypeLabel(value: string) {
+  return value === 'comment' ? '评论' : value === 'post' ? '帖文' : '其他材料'
 }
 
-function displayOrdinal(value: string | number | undefined) {
-  const text = String(value ?? '').trim()
-  if (!text) return ''
-  const numeric = Number(text)
-  return Number.isFinite(numeric) ? `第 ${numeric} 个` : '当前任务'
+function conclusionColor(value: ReviewConclusion) {
+  return value === 'harmful' ? 'red' : value === 'non_harmful' ? 'green' : 'gold'
 }
 
-function wait(ms: number) {
-  return new Promise((resolve) => window.setTimeout(resolve, ms))
+function sufficiencyColor(value: EvidenceSufficiency) {
+  return value === 'sufficient' ? 'green' : value === 'limited' ? 'gold' : 'red'
+}
+
+function urgencyColor(value: ReviewUrgency) {
+  if (value === 'critical') return 'red'
+  if (value === 'urgent') return 'orange'
+  if (value === 'watch') return 'gold'
+  return 'blue'
+}
+
+function assessmentColor(value: EvidenceAssessment) {
+  if (value === 'supports') return 'green'
+  if (value === 'contradicts') return 'red'
+  if (value === 'irrelevant') return 'default'
+  return 'gold'
+}
+
+function formatTime(value?: string | null) {
+  if (!value) return '暂无'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return date.toLocaleString('zh-CN', { hour12: false })
 }
 
 onMounted(() => {
-  loadHistory(true)
+  void loadInitialCase()
+})
+
+onBeforeUnmount(() => {
+  if (draftSaveTimer.value) {
+    window.clearTimeout(draftSaveTimer.value)
+  }
+  if (caseSearchTimer) window.clearTimeout(caseSearchTimer)
+  if (activityRecoveryTimer) window.clearInterval(activityRecoveryTimer)
+  activityRecoveryController?.abort()
 })
 </script>
 
 <style scoped>
-.risk-page {
-  display: flex;
-  flex-direction: column;
+.review-page {
+  color: #1f2329;
 }
 
-.risk-page-actions {
-  align-items: center;
-  display: flex;
-  justify-content: flex-end;
+.live-region {
   margin-bottom: 12px;
 }
 
-.risk-tabs :deep(.ant-tabs-nav) {
-  margin-bottom: 14px;
+.selector-bar {
+  align-items: center;
+  background: #fff;
+  border: 1px solid #eef0f4;
+  border-radius: 8px;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  padding: 14px 16px;
 }
 
-.risk-tabs :deep(.ant-tabs-tab) {
-  font-size: 15px;
-  padding: 10px 4px;
+.section-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
 }
 
-.risk-empty-card {
+.section-subtitle {
+  color: #86909c;
+  font-size: 12px;
+  margin: 4px 0 0;
+}
+
+.selector-actions {
+  justify-content: flex-end;
+}
+
+.case-select {
+  width: min(460px, 58vw);
+}
+
+.empty-state {
+  background: #fff;
+  border-radius: 8px;
+  padding: 80px 0;
+}
+
+.summary-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(320px, 1.2fr) repeat(3, minmax(220px, 1fr));
+  margin-bottom: 16px;
+}
+
+.summary-card {
+  min-height: 224px;
+}
+
+.case-title {
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.4;
+  margin-bottom: 8px;
+}
+
+.case-meta {
+  color: #86909c;
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 12px;
+  gap: 8px;
+  line-height: 1.5;
+}
+
+.tag-row {
+  margin: 12px 0;
+}
+
+.rationale {
+  line-height: 1.7;
+  margin: 8px 0 12px;
+  white-space: pre-wrap;
+}
+
+.mini-list {
   align-items: center;
   display: flex;
-  justify-content: center;
-  margin-bottom: 16px;
-  min-height: 320px;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.mini-label {
+  color: #4e5969;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.muted {
+  color: #86909c;
+  font-size: 12px;
+}
+
+.workspace-grid {
+  align-items: start;
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(560px, 1fr) minmax(360px, 420px);
+}
+
+.evidence-panel,
+.side-card {
+  border-radius: 8px;
+}
+
+.decision-column {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.evidence-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-right: 4px;
+}
+
+.evidence-item {
+  border: 1px solid #eef0f4;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.evidence-heading {
+  align-items: flex-start;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: auto 1fr;
+}
+
+.evidence-heading h4 {
+  font-size: 14px;
+  line-height: 1.45;
+  margin: 0 0 4px;
+}
+
+.evidence-excerpt {
+  background: #f7f8fa;
+  border-radius: 6px;
+  line-height: 1.7;
+  margin: 10px 0;
+  padding: 10px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.evidence-footer {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.annotation-list {
+  margin-top: 8px;
+}
+
+.annotation-note {
+  margin-left: 6px;
+}
+
+.draft-status {
+  color: #4e5969;
+  font-size: 12px;
+  margin: 0 0 12px;
+  min-height: 20px;
+}
+
+.confirmed-alert {
+  margin-top: 12px;
+}
+
+.activity-list {
+  width: 100%;
+}
+
+.activity-item {
+  width: 100%;
+}
+
+.activity-summary {
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.activity-detail {
+  color: #4e5969;
+  line-height: 1.6;
+  margin-top: 4px;
+}
+
+@media (max-width: 1280px) {
+  .summary-grid {
+    grid-template-columns: repeat(2, minmax(280px, 1fr));
+  }
+
+  .workspace-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .case-select {
+    width: min(420px, 70vw);
+  }
 }
 </style>
-

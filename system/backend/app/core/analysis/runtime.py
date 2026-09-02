@@ -23,8 +23,10 @@ from app.core.review.trainable_post import build_agent_review
 from app.core.review.trainable_post import fuse_detector_outputs
 from app.core.review.trainable_post import standard_detector_output
 from app.core.review.post_semantics import assess_post_semantics
+from app.config import settings
 from app.db.mysql import async_session_factory
 from app.models.analysis import ReviewVerdictVersion
+from app.utils.logger import logger
 
 
 ANALYSIS_STUDENT_MODEL_VERSION = "analysis-student-runtime-v1"
@@ -312,7 +314,14 @@ async def submit_teacher_review_job(case: dict[str, Any]) -> dict[str, Any]:
 async def finalize_teacher_review_job(job_id: str, case: dict[str, Any]) -> dict[str, Any]:
     verdict = build_teacher_advisory_verdict(case, job_id=job_id)
     TEACHER_JOB_CACHE[job_id] = verdict
-    await _persist_teacher_review_row(job_id=job_id, case=_normalize_case(case), verdict=verdict, status="completed")
+    persisted = await _persist_teacher_review_row(
+        job_id=job_id,
+        case=_normalize_case(case),
+        verdict=verdict,
+        status="completed",
+    )
+    if not persisted:
+        raise RuntimeError(f"Teacher advisory was not persisted: {job_id}")
     return verdict
 
 
@@ -323,15 +332,70 @@ async def _queue_teacher_review_job(job_id: str, case: dict[str, Any]) -> dict[s
         async_result = execute_analysis_teacher_review.delay(job_id, case)
         return {"task_id": async_result.id, "dispatch_backend": "celery"}
     except Exception as exc:
-        asyncio.create_task(_finalize_teacher_job_inline(job_id, case))
-        return {
-            "dispatch_backend": "inline_fallback",
-            "dispatch_error": f"{type(exc).__name__}: {exc}",
-        }
+        if settings.teacher_inline_fallback_allowed:
+            asyncio.create_task(_finalize_teacher_job_inline(job_id, case))
+            return {
+                "dispatch_backend": "local_inline_fallback",
+                "dispatch_error": f"{type(exc).__name__}: {exc}",
+            }
+        return await mark_teacher_review_failed(
+            job_id,
+            case,
+            task_state="dispatch_failed",
+            dispatch_backend="queue_required",
+            error_type=type(exc).__name__,
+        )
 
 
 async def _finalize_teacher_job_inline(job_id: str, case: dict[str, Any]) -> dict[str, Any]:
     return await finalize_teacher_review_job(job_id, case)
+
+
+async def mark_teacher_review_failed(
+    job_id: str,
+    case: dict[str, Any],
+    *,
+    task_state: str,
+    dispatch_backend: str,
+    error_type: str,
+) -> dict[str, Any]:
+    """Persist an actionable failure instead of leaving a draft advisory stranded."""
+
+    normalized = _normalize_case(case)
+    verdict = {
+        "technology": "teacher",
+        "job_id": job_id,
+        "verdict_id": job_id,
+        "status": "failed",
+        "verdict_type": "teacher_advisory",
+        "snapshot_id": normalized["snapshot_id"],
+        "event_id": normalized["event_id"],
+        "platforms": normalized["platforms"],
+        "model_version": ANALYSIS_TEACHER_MODEL_VERSION,
+        "task_state": task_state,
+        "dispatch_backend": dispatch_backend,
+        "dispatch_error": error_type,
+        "retryable": True,
+        "review_required": True,
+        "reason": "The independent review could not be completed. Retry the review or continue evidence collection.",
+        "capability_boundary": _capability_boundary("teacher"),
+    }
+    TEACHER_JOB_CACHE[job_id] = verdict
+    persisted = await _persist_teacher_review_row(
+        job_id=job_id,
+        case=normalized,
+        verdict=verdict,
+        status="failed",
+    )
+    if not persisted:
+        verdict = {
+            **verdict,
+            "status": "persistence_failed",
+            "task_state": "persistence_failed",
+            "retryable": True,
+        }
+        TEACHER_JOB_CACHE[job_id] = verdict
+    return verdict
 
 
 async def _persist_teacher_review_row(
@@ -340,7 +404,7 @@ async def _persist_teacher_review_row(
     case: dict[str, Any],
     verdict: dict[str, Any],
     status: str,
-) -> None:
+) -> bool:
     try:
         async with async_session_factory() as db:
             result = await db.execute(
@@ -377,9 +441,25 @@ async def _persist_teacher_review_row(
                 row.canonical_source_id = None
                 row.approval_notes = None
                 row.created_by = int(case.get("created_by") or 0)
+            from app.services.review_case_orchestrator import record_teacher_advisory
+
+            if status == "completed":
+                await record_teacher_advisory(
+                    snapshot_id=case["snapshot_id"],
+                    verdict=verdict,
+                    db=db,
+                )
             await db.commit()
-    except Exception:
-        TEACHER_JOB_CACHE[job_id] = {**TEACHER_JOB_CACHE.get(job_id, {}), "verdict": verdict, "status": status}
+        return True
+    except Exception as exc:
+        logger.exception("Failed to persist Teacher advisory {}", job_id)
+        TEACHER_JOB_CACHE[job_id] = {
+            **TEACHER_JOB_CACHE.get(job_id, {}),
+            "verdict": verdict,
+            "status": "persistence_failed",
+            "persistence_error": f"{type(exc).__name__}: {exc}",
+        }
+        return False
 
 
 def _normalize_case(case: dict[str, Any]) -> dict[str, Any]:
@@ -395,6 +475,7 @@ def _normalize_case(case: dict[str, Any]) -> dict[str, Any]:
     return {
         "snapshot_id": str(case.get("snapshot_id") or ""),
         "event_id": str(case.get("event_id") or ""),
+        "run_id": str(case.get("run_id") or ""),
         "platforms": platforms,
         "platform": platforms[0] if len(platforms) == 1 else None,
         "posts": posts,
@@ -891,6 +972,10 @@ def _case_digest(case: dict[str, Any]) -> str:
     }
     raw = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"), default=str)
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
+def _json_dumps(value: Any) -> str:
+    return json.dumps(value, ensure_ascii=False, sort_keys=True, default=str)
 
 
 def _stable_id(value: str) -> str:

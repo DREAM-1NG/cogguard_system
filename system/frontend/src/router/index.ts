@@ -10,11 +10,6 @@ const router = createRouter({
       meta: { requiresAuth: false },
     },
     {
-      path: '/preview',
-      redirect: '/?preview=1',
-      meta: { requiresAuth: false },
-    },
-    {
       path: '/',
       redirect: '/dashboard',
       meta: { requiresAuth: true },
@@ -58,13 +53,13 @@ const router = createRouter({
           path: 'system',
           name: 'SystemManagement',
           component: () => import('@/views/system/index.vue'),
-          meta: { title: '系统管理', roles: ['admin'] },
+          meta: { title: '系统运维', roles: ['admin'] },
         },
         {
           path: 'risk',
           name: 'Risk',
           component: () => import('@/views/risk/index.vue'),
-          meta: { title: '风险研判' },
+          meta: { title: '事件研判' },
         },
       ],
     },
@@ -72,19 +67,6 @@ const router = createRouter({
 })
 
 router.beforeEach(async (to, _from, next) => {
-  const wantsPreview = to.query.preview === '1' || to.path === '/preview'
-  if (wantsPreview) {
-    const { useAuthStore } = await import('@/stores/auth')
-    const authStore = useAuthStore()
-    authStore.enablePreview()
-    if (to.path === '/preview') {
-      next('/')
-    } else {
-      next({ path: to.path, query: {}, replace: true })
-    }
-    return
-  }
-
   const token = localStorage.getItem('access_token')
   if (to.meta.requiresAuth !== false && !token) {
     next('/login')

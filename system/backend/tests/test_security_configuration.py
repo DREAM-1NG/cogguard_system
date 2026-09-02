@@ -11,21 +11,8 @@ def test_local_settings_use_ephemeral_jwt_and_disable_preview_by_default():
     assert settings.BACKEND_ENV == "local"
     assert settings.BACKEND_DEBUG is False
     assert settings.JWT_SECRET_KEY
-    assert settings.preview_auth_allowed is False
+    assert all(not (field.startswith("PREVIEW") and "AUTH" in field) for field in Settings.model_fields)
     assert settings.DEFAULT_ADMIN_PASSWORD == ""
-
-
-def test_preview_requires_explicit_local_configuration():
-    settings = Settings(
-        _env_file=None,
-        BACKEND_ENV="local",
-        BACKEND_DEBUG=True,
-        PREVIEW_AUTH_ENABLED=True,
-        PREVIEW_AUTH_TOKEN="local-only-random-token",
-        JWT_SECRET_KEY="local-random-secret",
-    )
-
-    assert settings.preview_auth_allowed is True
 
 
 def test_production_rejects_missing_jwt_and_admin_seed():
@@ -41,15 +28,15 @@ def test_production_rejects_missing_jwt_and_admin_seed():
         )
 
 
-def test_production_disables_preview_even_when_token_is_present():
+def test_production_uses_jwt_and_admin_seed_without_debug_bypass():
     settings = Settings(
         _env_file=None,
         BACKEND_ENV="production",
         BACKEND_DEBUG=True,
-        PREVIEW_AUTH_ENABLED=True,
-        PREVIEW_AUTH_TOKEN="configured-token",
         JWT_SECRET_KEY="production-random-secret",
         DEFAULT_ADMIN_PASSWORD="configured-admin-password",
     )
 
-    assert settings.preview_auth_allowed is False
+    assert settings.BACKEND_ENV == "production"
+    assert settings.BACKEND_DEBUG is True
+    assert settings.JWT_SECRET_KEY == "production-random-secret"
