@@ -2,52 +2,18 @@
   <div class="account-workbench">
     <a-card size="small" class="panel">
       <template #title>
-        社交机器人检测
+        BotRHG 账号判别
       </template>
       <template #extra>
         <a-space>
           <a-button size="small" :loading="loading" @click="loadProfiles">刷新画像</a-button>
-          <a-button type="primary" size="small" :loading="detectLoading" @click="runDetection">运行检测</a-button>
+          <a-button type="primary" size="small" :loading="detectLoading" @click="runDetection">运行 / 刷新 BotRHG</a-button>
         </a-space>
       </template>
 
-      <a-alert
-        v-if="!detectionSummary"
-        type="info"
-        show-icon
-        message="点击“运行检测”后，页面会显示账户级机器人判别摘要，并按 account_id 回填到列表。"
-      />
-
-      <template v-else>
-        <a-descriptions bordered size="small" :column="3" class="section">
-          <a-descriptions-item label="方法">{{ detectionMethodCard.method || 'BotRHG' }}</a-descriptions-item>
-          <a-descriptions-item label="运行模式">{{ detectionMethodCard.runtime_mode || '-' }}</a-descriptions-item>
-          <a-descriptions-item label="账号数">{{ detectionSummary.account_count ?? 0 }}</a-descriptions-item>
-          <a-descriptions-item label="高风险账号">{{ detectionSummary.bot_count ?? 0 }}</a-descriptions-item>
-          <a-descriptions-item label="路由修正">{{ detectionSummary.routed_count ?? 0 }}</a-descriptions-item>
-          <a-descriptions-item label="支持邻域">{{ detectionSummary.support_k ?? '-' }}</a-descriptions-item>
-          <a-descriptions-item label="路由预算">{{ formatPercent(detectionSummary.routing_budget) }}</a-descriptions-item>
-          <a-descriptions-item label="数据范围">
-            {{ detectionScopeLabel }}
-          </a-descriptions-item>
-          <a-descriptions-item label="帖子数">{{ detectionSummary.post_count ?? 0 }}</a-descriptions-item>
-        </a-descriptions>
-
-        <a-alert
-          v-if="detectionMethodCard.note"
-          class="section"
-          type="info"
-          show-icon
-          :message="detectionMethodCard.note"
-        />
-        <a-alert
-          v-if="detectionSummaryMessage"
-          class="section"
-          type="success"
-          show-icon
-          :message="detectionSummaryMessage"
-        />
-      </template>
+      <div class="botrhg-toolbar-note">
+        结果直接回填到下方画像表：算法判别、最终概率、基线概率与路由修正状态。
+      </div>
     </a-card>
 
     <a-card size="small" class="panel">
@@ -63,22 +29,32 @@
         rowKey="account_id"
         :pagination="{ pageSize }"
         size="middle"
-        >
+      >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'account_id'">
             <a @click.prevent="openDetail(record)" href="#">{{ record.account_id }}</a>
           </template>
-          <template v-if="column.key === 'detection_result'">
+          <template v-else-if="column.key === 'botrhg_prediction'">
             <template v-if="getDetectionAccount(record)">
               <a-tag :color="predictionColor(getDetectionAccount(record)?.final_prediction)">
                 {{ predictionLabel(getDetectionAccount(record)?.final_prediction) }}
               </a-tag>
-              <div class="metric-note">{{ detectionProbabilityText(getDetectionAccount(record)) }}</div>
             </template>
             <span v-else class="metric-note">未运行</span>
           </template>
-          <template v-if="column.key === 'automation_score'">
-            <a-tag :color="scoreColor(record.automation_score)">{{ scoreLabel(record.automation_score) }}</a-tag>
+          <template v-else-if="column.key === 'botrhg_probability'">
+            <span v-if="getDetectionAccount(record)">{{ formatPercent(getDetectionAccount(record)?.final_bot_probability) }}</span>
+            <span v-else class="metric-note">-</span>
+          </template>
+          <template v-else-if="column.key === 'botrhg_base_probability'">
+            <span v-if="getDetectionAccount(record)">{{ formatPercent(getDetectionAccount(record)?.base_bot_probability) }}</span>
+            <span v-else class="metric-note">-</span>
+          </template>
+          <template v-else-if="column.key === 'botrhg_routed'">
+            <a-tag v-if="getDetectionAccount(record)" :color="getDetectionAccount(record)?.routed ? 'blue' : 'default'">
+              {{ getDetectionAccount(record)?.routed ? '已修正' : '未路由' }}
+            </a-tag>
+            <span v-else class="metric-note">-</span>
           </template>
         </template>
       </a-table>
@@ -99,30 +75,29 @@
             <a-descriptions-item label="昵称">{{ detail.author_name || detail.account_id }}</a-descriptions-item>
             <a-descriptions-item label="平台">{{ detail.platform || '-' }}</a-descriptions-item>
             <a-descriptions-item label="发言数">{{ detail.post_count ?? 0 }}</a-descriptions-item>
-            <a-descriptions-item label="自动化评分">
-              <a-tag :color="scoreColor(detail.automation_score)">{{ detail.automation_score ?? 0 }}</a-tag>
-            </a-descriptions-item>
-            <a-descriptions-item label="判别状态">
+            <a-descriptions-item label="算法判别">
               <a-tag :color="detectionTagColor">{{ detectionLabel }}</a-tag>
+            </a-descriptions-item>
+            <a-descriptions-item label="BotRHG 最终概率">
+              {{ formatPercent(detectorAccount.final_bot_probability) }}
             </a-descriptions-item>
           </a-descriptions>
 
           <a-row :gutter="16" class="section">
             <a-col :span="12">
-              <a-card size="small" title="判别结果" class="subpanel">
+              <a-card size="small" title="BotRHG 判别结果" class="subpanel">
                 <a-descriptions bordered size="small" :column="1">
                   <a-descriptions-item label="方法">{{ detectionMethod }}</a-descriptions-item>
                   <a-descriptions-item label="运行模式">{{ detectionMode }}</a-descriptions-item>
                   <a-descriptions-item label="最终概率">{{ formatPercent(detectorAccount.final_bot_probability) }}</a-descriptions-item>
                   <a-descriptions-item label="基线概率">{{ formatPercent(detectorAccount.base_bot_probability) }}</a-descriptions-item>
                   <a-descriptions-item label="局部可靠性">{{ formatPercent(detectorAccount.local_reliability) }}</a-descriptions-item>
+                  <a-descriptions-item label="路由修正">{{ detectorAccount.routed ? '已进入支持邻域修正' : '未路由修正' }}</a-descriptions-item>
                 </a-descriptions>
-                <a-divider />
-                <div class="method-note">{{ methodNote }}</div>
               </a-card>
             </a-col>
             <a-col :span="12">
-              <a-card size="small" title="相近用户" class="subpanel">
+              <a-card size="small" title="支持邻域用户" class="subpanel">
                 <a-list :dataSource="similarUsers" size="small">
                   <template #renderItem="{ item }">
                     <a-list-item>
@@ -151,7 +126,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { getAccountDetail, getAccountProfiles, runSocialBotDetection } from '@/api/accounts'
+import { getAccountDetail, getAccountProfiles, getLatestSocialBotDetection, runSocialBotDetection } from '@/api/accounts'
 
 type AccountProfile = Record<string, any>
 type DetectionAccount = Record<string, any>
@@ -174,52 +149,29 @@ const columns = [
   { title: '账号ID', dataIndex: 'account_id', key: 'account_id', width: 180, ellipsis: true },
   { title: '昵称', dataIndex: 'author_name', key: 'author_name', width: 160, ellipsis: true },
   { title: '发言数', dataIndex: 'post_count', key: 'post_count', width: 90 },
-  { title: '自动化评分', dataIndex: 'automation_score', key: 'automation_score', width: 120 },
-  { title: '判别结果', dataIndex: 'detection_result', key: 'detection_result', width: 160 },
+  { title: '算法判别', dataIndex: 'botrhg_prediction', key: 'botrhg_prediction', width: 120 },
+  { title: 'BotRHG 最终概率', dataIndex: 'botrhg_probability', key: 'botrhg_probability', width: 140 },
+  { title: 'BotRHG 基线概率', dataIndex: 'botrhg_base_probability', key: 'botrhg_base_probability', width: 140 },
+  { title: '路由修正', dataIndex: 'botrhg_routed', key: 'botrhg_routed', width: 100 },
   { title: '活跃时段', dataIndex: 'active_hours', key: 'active_hours', width: 100 },
   { title: '最短间隔', dataIndex: 'min_interval_seconds', key: 'min_interval_seconds', width: 100 },
 ]
 
-const detectionSummary = computed(() => detectionResult.value?.summary || null)
 const detectionMethodCard = computed(() => detectionResult.value?.method_card || {})
 const detectionAccountMap = computed(() => {
   return new Map(
     (detectionResult.value?.accounts || []).map((row) => [String(row.account_id), row]),
   )
 })
-const detectionSummaryMessage = computed(() => {
-  if (!detectionSummary.value) return ''
-  const parts = [
-    `账号 ${detectionSummary.value.account_count ?? 0} 个`,
-    `高风险 ${detectionSummary.value.bot_count ?? 0} 个`,
-    `路由修正 ${detectionSummary.value.routed_count ?? 0} 个`,
-  ]
-  if (detectionSummary.value.event_id) {
-    parts.push(`事件 ${detectionSummary.value.event_id}`)
-  }
-  if (detectionSummary.value.platform) {
-    parts.push(`平台 ${detectionSummary.value.platform}`)
-  }
-  return parts.join(' · ')
+const detectorAccount = computed(() => {
+  if (!detail.value) return {}
+  return getDetectionAccount(detail.value) || detail.value?.detection_result?.account || {}
 })
-const detectionScopeLabel = computed(() => {
-  const eventId = detectionSummary.value?.event_id
-  const platform = detectionSummary.value?.platform
-  if (eventId && platform) return `${eventId} / ${platform}`
-  if (eventId) return String(eventId)
-  if (platform) return String(platform)
-  return '全量数据'
-})
-const detectorAccount = computed(() => detail.value?.detection_result?.account || {})
 const similarUsers = computed(() => detail.value?.similar_users || detail.value?.detection_result?.similar_users || [])
-const detectionMethod = computed(() => detail.value?.detection_result?.method || detail.value?.detection?.method || 'BotRHG proxy')
-const detectionMode = computed(() => detail.value?.detection_result?.method_card?.runtime_mode || 'proxy')
-const methodNote = computed(() => detail.value?.detection_result?.method_card?.note || '暂无方法说明')
-const detectionLabel = computed(() => {
-  const label = detectorAccount.value?.final_prediction || 'human'
-  return label === 'bot' ? '高风险' : '正常'
-})
-const detectionTagColor = computed(() => (detectorAccount.value?.final_prediction === 'bot' ? 'red' : 'green'))
+const detectionMethod = computed(() => detectionMethodCard.value?.method || detail.value?.detection_result?.method || detail.value?.detection?.method || 'BotRHG')
+const detectionMode = computed(() => detectionMethodCard.value?.runtime_mode || detail.value?.detection_result?.method_card?.runtime_mode || '-')
+const detectionLabel = computed(() => predictionLabel(detectorAccount.value?.final_prediction))
+const detectionTagColor = computed(() => predictionColor(detectorAccount.value?.final_prediction))
 const detailTitle = computed(() => `账号详情 · ${detail.value?.author_name || detail.value?.account_id || '-'}`)
 
 async function loadProfiles() {
@@ -229,6 +181,15 @@ async function loadProfiles() {
     profiles.value = response?.data || []
   } finally {
     loading.value = false
+  }
+}
+
+async function loadLatestDetection() {
+  try {
+    const response = await getLatestSocialBotDetection()
+    detectionResult.value = response?.data || null
+  } catch {
+    detectionResult.value = null
   }
 }
 
@@ -259,40 +220,21 @@ function getDetectionAccount(record: AccountProfile) {
 }
 
 function predictionLabel(prediction: string | undefined) {
-  if (prediction === 'bot') return '高风险'
-  if (prediction === 'human') return '正常'
+  if (prediction === 'bot') return 'Bot'
+  if (prediction === 'human') return 'Human'
   return '未运行'
 }
 
 function predictionColor(prediction: string | undefined) {
-  if (prediction === 'bot') return 'red'
+  if (prediction === 'bot') return 'volcano'
   if (prediction === 'human') return 'green'
   return 'default'
-}
-
-function scoreLabel(score: number) {
-  if (Number(score) >= 60) return '高风险'
-  if (Number(score) >= 30) return '可疑'
-  return '正常'
-}
-
-function scoreColor(score: number) {
-  if (Number(score) >= 60) return 'red'
-  if (Number(score) >= 30) return 'orange'
-  return 'green'
 }
 
 function formatPercent(value: unknown) {
   const number = Number(value)
   if (!Number.isFinite(number)) return '-'
   return `${(number * 100).toFixed(1)}%`
-}
-
-function detectionProbabilityText(account: DetectionAccount | undefined) {
-  if (!account) return '未运行'
-  const finalProbability = formatPercent(account.final_bot_probability)
-  const baseProbability = formatPercent(account.base_bot_probability)
-  return `最终 ${finalProbability} · 基线 ${baseProbability}`
 }
 
 function postTitle(post: Record<string, any>) {
@@ -304,10 +246,14 @@ function postDesc(post: Record<string, any>) {
 }
 
 function similarUserDesc(user: Record<string, any>) {
-  return `相似度 ${formatPercent(user.similarity)} · 判别 ${user.final_prediction || '-'} · 概率 ${formatPercent(user.final_bot_probability)}`
+  return `相似度 ${formatPercent(user.similarity)} · 判别 ${predictionLabel(user.final_prediction)} · 概率 ${formatPercent(user.final_bot_probability)}`
 }
 
-onMounted(loadProfiles)
+async function loadPage() {
+  await Promise.allSettled([loadProfiles(), loadLatestDetection()])
+}
+
+onMounted(loadPage)
 </script>
 
 <style scoped>
@@ -324,14 +270,15 @@ onMounted(loadProfiles)
   min-height: 100%;
 }
 
-.method-note {
-  color: rgba(0, 0, 0, 0.65);
-  line-height: 1.6;
-}
-
 .metric-note {
   color: rgba(0, 0, 0, 0.45);
   line-height: 1.5;
   margin-top: 4px;
+}
+
+.botrhg-toolbar-note {
+  color: rgba(0, 0, 0, 0.55);
+  font-size: 13px;
+  line-height: 1.6;
 }
 </style>

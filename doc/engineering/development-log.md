@@ -18,6 +18,16 @@
 
 ---
 
+## 2026-08-15
+
+- 收紧 LLM 响应回放缓存的完整性边界：缓存 schema 升级到 v2，回放前校验内嵌 key 与响应 SHA-256，拒绝被篡改或不可验证的本地缓存文件，并同步演示缓存说明，避免把本地文件标记误表述为实时调用证明。
+- `system/backend/app/core/llm_cache.py`、`system/backend/tests/test_llm_cache.py`：新增响应摘要写入与回放校验，覆盖篡改响应和 key 不匹配回归场景；`cache_stats()` 现在区分可回放与无效缓存条目。
+- `system/backend/app/config.py`、`system/.env.example`：将缓存说明从“手写内容不可能存在”改为“运行时写入、回放前校验”。
+- `UBIQUITOUS_LANGUAGE.md`：清理一个残留编号 shorthand alias，保持 canonical governance source 只使用正式方法名或描述性禁用语。
+- 验证：`G:\CISCN\CogGuard\system\backend\.venv\Scripts\python.exe -m pytest tests/test_llm_cache.py tests/test_dashboard.py -q`；`G:\CISCN\CogGuard\system\backend\.venv\Scripts\python.exe -m pytest tests/test_risk.py -k "OpenAI or Responses or provider" -q`；`G:\CISCN\CogGuard\system\backend\.venv\Scripts\python.exe -m pytest tests/test_governance_docs.py -q`。
+
+---
+
 ## 2026-08-05
 
 - 将传播能力拆分为观测传播分析与传播预测两个独立运行边界：观测接口不调用预测代码，预测接口只消费截止时间前的事件快照。

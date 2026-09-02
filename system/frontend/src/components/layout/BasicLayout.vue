@@ -1,6 +1,13 @@
 ﻿<template>
   <a-layout class="app-layout">
-    <a-layout-sider v-model:collapsed="collapsed" collapsible theme="dark">
+    <a-layout-sider
+      v-model:collapsed="collapsed"
+      collapsible
+      theme="dark"
+      :collapsed-width="isCompact ? 0 : 80"
+      breakpoint="lg"
+      @breakpoint="handleBreakpoint"
+    >
       <div class="logo">
         <span v-if="!collapsed">CogGuard</span>
         <span v-else>CG</span>
@@ -74,6 +81,7 @@ import {
   CloudDownloadOutlined,
   ApartmentOutlined,
   ShareAltOutlined,
+  FundOutlined,
   UserOutlined,
   AlertOutlined,
   SettingOutlined,
@@ -86,13 +94,15 @@ const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 
-const collapsed = ref(false)
+const collapsed = ref(typeof window !== 'undefined' && window.innerWidth < 992)
+const isCompact = ref(typeof window !== 'undefined' && window.innerWidth < 992)
 
 const menuItems = [
   { path: '/dashboard', label: '数据大屏', icon: DashboardOutlined, desc: '系统首页的大屏总览，保留本地地图资产和平台分布可视化', disabled: false },
   { path: '/crawl', label: '数据采集', icon: CloudDownloadOutlined, desc: '创建采集请求并管理多平台数据获取', disabled: false },
   { path: '/coordination', label: '协同发现', icon: ApartmentOutlined, desc: '发现协同行为并构建协同网络', disabled: false },
   { path: '/propagation', label: '传播分析', icon: ShareAltOutlined, desc: '查看传播预测、证据链和传播角色', disabled: false },
+  { path: '/analysis', label: '综合分析', icon: FundOutlined, desc: '查看事件快照、语义辅助、协同和传播证据', disabled: false },
   { path: '/accounts', label: '账号画像', icon: UserOutlined, desc: '账号画像、活跃节律和自动化倾向', disabled: false },
   { path: '/risk', label: '风险研判', icon: AlertOutlined, desc: '风险研判、证据融合和治理分析', disabled: false },
   { path: '/system', label: '系统管理', icon: SettingOutlined, desc: '管理研判服务、评测数据集、策略、任务和回填', disabled: false, roles: ['admin'] },
@@ -141,6 +151,11 @@ function handleMenuClick({ key }: { key: string }) {
 
 function handleLogout() {
   authStore.logout()
+}
+
+function handleBreakpoint(broken: boolean) {
+  isCompact.value = broken
+  collapsed.value = broken
 }
 
 onMounted(async () => {
@@ -283,5 +298,16 @@ onMounted(async () => {
   border-radius: 6px;
   min-height: 360px;
 }
-</style>
 
+@media (max-width: 991px) {
+  .app-content {
+    margin: 8px;
+    padding: 16px;
+  }
+
+  .tab-bar {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+}
+</style>

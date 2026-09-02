@@ -2,7 +2,7 @@
   <div class="analysis-page">
     <PageHeader
       title="Unified Analysis"
-      description="Run Coordination Discover, Propagation Analysis, Student review, and asynchronous Teacher review from one EventSnapshot."
+      description="Run Coordination Discover, Propagation Analysis, semantic enrichment, Student review, and asynchronous Teacher review from one EventSnapshot."
     />
 
     <a-alert
@@ -96,6 +96,81 @@
         </a-card>
 
         <div class="result-grid">
+          <a-card title="Semantic enrichment" size="small" class="result-card semantic-card">
+            <template v-if="semantic">
+              <template v-if="semanticReady">
+                <a-space wrap>
+                  <a-tag color="green">{{ semantic.runtime_backend }}</a-tag>
+                  <a-tag>{{ semantic.validation_status }}</a-tag>
+                </a-space>
+                <a-descriptions size="small" :column="1" bordered style="margin-top: 10px">
+                  <a-descriptions-item label="Embeddings">{{ semantic.embedding_manifest?.count || 0 }}</a-descriptions-item>
+                  <a-descriptions-item label="Model cache">{{ semantic.cache_dir }}</a-descriptions-item>
+                </a-descriptions>
+                <div class="semantic-summary-grid">
+                  <section class="semantic-summary-panel">
+                    <h4>Top keywords</h4>
+                    <a-space v-if="semanticSummary.keywords.length" wrap>
+                      <a-tag v-for="item in semanticSummary.keywords" :key="item.label" color="blue">
+                        {{ item.label }} {{ item.count }}
+                      </a-tag>
+                    </a-space>
+                    <span v-else class="semantic-empty">No keyword result</span>
+                  </section>
+                  <section class="semantic-summary-panel">
+                    <h4>Topics</h4>
+                    <a-space v-if="semanticSummary.topics.length" wrap>
+                      <a-tag v-for="item in semanticSummary.topics" :key="item.label" color="purple">
+                        {{ item.label }} {{ item.count }}
+                      </a-tag>
+                    </a-space>
+                    <span v-else class="semantic-empty">No topic result</span>
+                  </section>
+                  <section class="semantic-summary-panel">
+                    <h4>Sentiment</h4>
+                    <div v-if="semanticSummary.sentiment.length" class="distribution-list">
+                      <span v-for="item in semanticSummary.sentiment" :key="item.label" class="distribution-item">
+                        <a-tag :color="sentimentColor(item.label)">{{ item.label }}</a-tag>
+                        <strong>{{ item.count }}</strong>
+                      </span>
+                    </div>
+                    <span v-else class="semantic-empty">No sentiment result</span>
+                  </section>
+                  <section class="semantic-summary-panel">
+                    <h4>Stance</h4>
+                    <div v-if="semanticSummary.stance.length" class="distribution-list">
+                      <span v-for="item in semanticSummary.stance" :key="item.label" class="distribution-item">
+                        <a-tag :color="stanceColor(item.label)">{{ item.label }}</a-tag>
+                        <strong>{{ item.count }}</strong>
+                      </span>
+                    </div>
+                    <span v-else class="semantic-empty">No stance result</span>
+                  </section>
+                  <section class="semantic-summary-panel">
+                    <h4>Named entities</h4>
+                    <a-space v-if="semanticSummary.entities.length" wrap>
+                      <a-tag v-for="item in semanticSummary.entities" :key="item.label" color="cyan">
+                        {{ item.label }} {{ item.count }}
+                      </a-tag>
+                    </a-space>
+                    <span v-else class="semantic-empty">No entity result</span>
+                  </section>
+                </div>
+              </template>
+              <template v-else>
+                <a-alert
+                  type="error"
+                  show-icon
+                  :message="semantic.blocking_reason || 'Semantic models are not ready'"
+                />
+                <a-descriptions size="small" :column="1" bordered style="margin-top: 10px">
+                  <a-descriptions-item label="Blocker">{{ semantic.blocking_reason || 'Model runtime is blocked' }}</a-descriptions-item>
+                  <a-descriptions-item label="Weights cache">{{ semanticCacheDirectory }}</a-descriptions-item>
+                </a-descriptions>
+              </template>
+            </template>
+            <a-empty v-else description="Run semantic enrichment to view keywords, topics, sentiment, stance, and entities" :image-style="{ height: '36px' }" />
+          </a-card>
           <a-card title="Coordination Discover communities" size="small" class="result-card">
             <a-space wrap>
               <a-tag :color="statusColor(coordinationDiscover?.status)">{{ coordinationDiscover?.status || 'not run' }}</a-tag>
@@ -155,6 +230,183 @@
           </a-card>
         </div>
 
+        <template v-if="semanticReady">
+          <a-card title="Main-post / comment semantic matrix" size="small" class="analysis-card">
+            <div class="semantic-matrix-toolbar">
+              <a-segmented v-model:value="semanticLayer" :options="semanticLayerOptions" />
+              <a-select
+                v-model:value="semanticPlatformFilter"
+                class="semantic-platform-filter"
+                allow-clear
+                placeholder="All platforms"
+                :options="semanticPlatformOptions"
+              />
+              <a-input v-model:value="semanticQuery" class="semantic-query" allow-clear placeholder="Filter text, keyword, topic, or entity" />
+            </div>
+            <a-table
+              :columns="semanticMatrixColumns"
+              :data-source="semanticMatrixRows"
+              :pagination="semanticMatrixPagination"
+              :scroll="{ x: 1250 }"
+              row-key="id"
+              size="small"
+            >
+              <template #bodyCell="{ column, record }">
+                <template v-if="column.key === 'source'">
+                  <a-tag>{{ record.platform || '-' }}</a-tag>
+                  <span class="matrix-id">{{ record.id }}</span>
+                </template>
+                <template v-else-if="column.key === 'timestamp'">
+                  {{ formatTimestamp(record.timestamp) }}
+                </template>
+                <template v-else-if="column.key === 'text'">
+                  <span class="semantic-text">{{ record.text || '-' }}</span>
+                </template>
+                <template v-else-if="column.key === 'sentiment'">
+                  <a-tag :color="sentimentColor(semanticValueLabel(record.sentiment))">
+                    {{ semanticValueLabel(record.sentiment) }}
+                  </a-tag>
+                </template>
+                <template v-else-if="column.key === 'stance'">
+                  <a-tag :color="stanceColor(semanticValueLabel(record.stance))">
+                    {{ semanticValueLabel(record.stance) }}
+                  </a-tag>
+                </template>
+                <template v-else-if="column.key === 'topics'">
+                  <a-tag v-for="(item, index) in semanticEntries(record.topics).slice(0, 3)" :key="`${record.id}-topic-${index}`" color="purple">
+                    {{ semanticEntryLabel(item, 'label') }}
+                  </a-tag>
+                </template>
+                <template v-else-if="column.key === 'keywords'">
+                  <a-tag v-for="(item, index) in semanticEntries(record.keywords).slice(0, 3)" :key="`${record.id}-keyword-${index}`" color="blue">
+                    {{ semanticEntryLabel(item, 'term') }}
+                  </a-tag>
+                </template>
+                <template v-else-if="column.key === 'entities'">
+                  <a-tag v-for="(item, index) in semanticEntries(record.entities).slice(0, 3)" :key="`${record.id}-entity-${index}`" color="cyan">
+                    {{ semanticEntryLabel(item, 'text') }}
+                  </a-tag>
+                </template>
+              </template>
+            </a-table>
+          </a-card>
+
+          <section class="semantic-cross-analysis" aria-label="Semantic cross analysis">
+            <div class="semantic-section-heading">
+              <div>
+                <h3>Semantic cross analysis</h3>
+                <p>Time, platform, coordination-community, and propagation-path evidence projections.</p>
+              </div>
+            </div>
+            <div class="semantic-cross-grid">
+              <section class="semantic-cross-panel">
+                <h4>Time slices</h4>
+                <a-list v-if="timeSliceRows.length" :data-source="timeSliceRows" size="small">
+                  <template #renderItem="{ item }">
+                    <a-list-item>
+                      <span>{{ item.date || '-' }}</span>
+                      <strong>{{ item.count || 0 }} records</strong>
+                    </a-list-item>
+                  </template>
+                </a-list>
+                <a-empty v-else description="No time slice" :image-style="{ height: '30px' }" />
+              </section>
+              <section class="semantic-cross-panel">
+                <h4>Platform slices</h4>
+                <a-list v-if="platformSliceRows.length" :data-source="platformSliceRows" size="small">
+                  <template #renderItem="{ item }">
+                    <a-list-item>
+                      <div>
+                        <strong>{{ item.platform || '-' }}</strong>
+                        <span class="slice-detail">{{ formatCounter(item.sentiment) }}</span>
+                      </div>
+                      <strong>{{ item.count || 0 }}</strong>
+                    </a-list-item>
+                  </template>
+                </a-list>
+                <a-empty v-else description="No platform slice" :image-style="{ height: '30px' }" />
+              </section>
+              <section class="semantic-cross-panel">
+                <h4>Coordination communities</h4>
+                <a-list v-if="communitySliceRows.length" :data-source="communitySliceRows" size="small">
+                  <template #renderItem="{ item }">
+                    <a-list-item>
+                      <div>
+                        <strong>{{ item.community_id || '-' }}</strong>
+                        <span class="slice-detail">{{ communitySummary(item) }}</span>
+                      </div>
+                      <strong>{{ item.item_count || 0 }}</strong>
+                    </a-list-item>
+                  </template>
+                </a-list>
+                <a-empty v-else :description="communitySlicesUnavailableReason || 'No coordination community available'" :image-style="{ height: '30px' }" />
+              </section>
+            </div>
+
+            <section class="path-overlay-section">
+              <div class="path-overlay-heading">
+                <h4>Propagation path semantic overlays</h4>
+                <span>{{ propagationPathOverlays.length }} paths</span>
+              </div>
+              <div v-if="propagationPathOverlays.length" class="path-overlay-grid">
+                <article v-for="path in propagationPathOverlays.slice(0, 12)" :key="path.path_id" class="path-overlay-card">
+                  <div class="path-overlay-title">
+                    <strong>{{ path.path_id }}</strong>
+                    <a-tag>{{ path.source || 'propagation path' }}</a-tag>
+                  </div>
+                  <dl class="path-overlay-details">
+                    <div>
+                      <dt>Sentiment</dt>
+                      <dd>{{ formatCounter(path.semantic_overlay?.sentiment) }}</dd>
+                    </div>
+                    <div>
+                      <dt>Stance</dt>
+                      <dd>{{ formatCounter(path.semantic_overlay?.stance) }}</dd>
+                    </div>
+                    <div>
+                      <dt>Platforms</dt>
+                      <dd>{{ semanticTextList(path.semantic_overlay?.platforms) }}</dd>
+                    </div>
+                    <div>
+                      <dt>Time</dt>
+                      <dd>{{ formatTimeRange(path.semantic_overlay?.time_range) }}</dd>
+                    </div>
+                  </dl>
+                  <div v-if="path.semantic_overlay?.associated_claim" class="path-overlay-claim">
+                    <span>Claim</span>
+                    <strong>{{ path.semantic_overlay.associated_claim }}</strong>
+                  </div>
+                  <div class="path-overlay-tags">
+                    <span>Topics</span>
+                    <a-tag v-for="(item, index) in semanticEntries(path.semantic_overlay?.topics).slice(0, 4)" :key="`${path.path_id}-topic-${index}`" color="purple">
+                      {{ semanticEntryLabel(item, 'label') }}
+                    </a-tag>
+                  </div>
+                  <div class="path-overlay-tags">
+                    <span>Keywords</span>
+                    <a-tag v-for="(item, index) in semanticEntries(path.semantic_overlay?.keywords).slice(0, 4)" :key="`${path.path_id}-keyword-${index}`" color="blue">
+                      {{ semanticEntryLabel(item, 'term') }}
+                    </a-tag>
+                  </div>
+                  <div class="path-overlay-tags">
+                    <span>Entities</span>
+                    <a-tag v-for="(item, index) in semanticEntries(path.semantic_overlay?.entities).slice(0, 4)" :key="`${path.path_id}-entity-${index}`" color="cyan">
+                      {{ semanticEntryLabel(item, 'text') }}
+                    </a-tag>
+                  </div>
+                  <div class="path-overlay-evidence">
+                    <span>Evidence</span>
+                    <a-tag v-for="(reference, index) in semanticTextEntries(path.semantic_overlay?.evidence_refs).slice(0, 4)" :key="`${path.path_id}-ref-${index}`">
+                      {{ reference }}
+                    </a-tag>
+                  </div>
+                </article>
+              </div>
+              <a-empty v-else description="No propagation-path evidence overlay" :image-style="{ height: '34px' }" />
+            </section>
+          </section>
+        </template>
+
         <a-card title="Run events and recovery" size="small" class="analysis-card">
           <a-space class="event-actions" wrap>
             <a-input v-model:value="currentRunId" class="run-input" placeholder="run_id" />
@@ -189,7 +441,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import PageHeader from '@/components/PageHeader.vue'
 import {
@@ -200,6 +452,7 @@ import {
   executeAnalysisRun,
   getAnalysisRun,
   listAnalysisRunEvents,
+  getAnalysisArtifact,
   type AnalysisRunEvent,
   type AnalysisStage,
 } from '@/api/analysis'
@@ -222,10 +475,11 @@ const snapshotForm = ref({
 const runForm = ref({
   event_id: defaultEventId,
   snapshot_id: '',
-  requested_stages: ['coordination_discover', 'propagation_analysis', 'student', 'teacher'] as AnalysisStage[],
+  requested_stages: ['coordination_discover', 'propagation_analysis', 'semantic_enrichment', 'student', 'teacher'] as AnalysisStage[],
   options_json: JSON.stringify({
     coordination_discover: { time_window: 3600, min_participation: 2, edge_weight: 0.5 },
     propagation_analysis: { top_k: 10 },
+    semantic_enrichment: { claim: '特朗普访华相关叙事' },
     student: {},
     teacher: { teacher_max_review_items: 20 },
   }, null, 2),
@@ -234,6 +488,7 @@ const runForm = ref({
 const stageOptions = [
   { label: 'Coordination Discover', value: 'coordination_discover' },
   { label: 'Propagation Analysis', value: 'propagation_analysis' },
+  { label: 'Semantic enrichment', value: 'semantic_enrichment' },
   { label: 'Student review', value: 'student' },
   { label: 'Teacher review', value: 'teacher' },
 ]
@@ -241,7 +496,7 @@ const stageOptions = [
 const snapshot = ref<any>(null)
 const runDetail = ref<any>(null)
 const events = ref<AnalysisRunEvent[]>([])
-const currentRunId = ref('')
+const currentRunId = ref('precomputed_trump_visit_2026_05_21_semantic_v5')
 const afterId = ref(0)
 const snapshotLoading = ref(false)
 const runLoading = ref(false)
@@ -258,6 +513,55 @@ const coordinationDiscover = computed(() => runResults.value.coordination_discov
 const propagationAnalysis = computed(() => runResults.value.propagation_analysis || null)
 const student = computed(() => runResults.value.student || null)
 const teacher = computed(() => runResults.value.teacher || null)
+const semantic = ref<any>(null)
+const semanticLayer = ref<'posts' | 'comments'>('posts')
+const semanticPlatformFilter = ref<string | undefined>()
+const semanticQuery = ref('')
+const semanticLayerOptions = [
+  { label: 'Main posts', value: 'posts' },
+  { label: 'Comments', value: 'comments' },
+]
+const semanticMatrixColumns = [
+  { title: 'Source', key: 'source', width: 150, fixed: 'left' },
+  { title: 'Time', key: 'timestamp', width: 172 },
+  { title: 'Text', key: 'text', width: 280 },
+  { title: 'Sentiment', key: 'sentiment', width: 128 },
+  { title: 'Stance', key: 'stance', width: 150 },
+  { title: 'Topics', key: 'topics', width: 180 },
+  { title: 'Keywords', key: 'keywords', width: 210 },
+  { title: 'Entities', key: 'entities', width: 210 },
+]
+const semanticMatrixPagination = { pageSize: 20, showSizeChanger: true, pageSizeOptions: ['20', '50', '100'] }
+const semanticReady = computed(() => semantic.value?.runtime_status === 'ready')
+const semanticCacheDirectory = computed(() => String(semantic.value?.cache_dir || 'G:\\CISCN\\hf_models'))
+const allSemanticRows = computed<any[]>(() => [
+  ...semanticEntries(semantic.value?.layers?.posts),
+  ...semanticEntries(semantic.value?.layers?.comments),
+])
+const semanticPlatformOptions = computed(() => {
+  const platforms = new Set(allSemanticRows.value.map((row) => String(row.platform || '')).filter(Boolean))
+  return Array.from(platforms).sort().map((value) => ({ label: value, value }))
+})
+const semanticMatrixRows = computed<any[]>(() => {
+  const query = semanticQuery.value.trim().toLocaleLowerCase()
+  return semanticEntries(semantic.value?.layers?.[semanticLayer.value]).filter((row) => {
+    if (semanticPlatformFilter.value && row.platform !== semanticPlatformFilter.value) return false
+    if (!query) return true
+    return semanticSearchText(row).toLocaleLowerCase().includes(query)
+  })
+})
+const semanticSummary = computed(() => ({
+  keywords: summarizeSemanticEntries(allSemanticRows.value, 'keywords', 'term'),
+  topics: summarizeSemanticEntries(allSemanticRows.value, 'topics', 'label'),
+  sentiment: summarizeSemanticLabels(allSemanticRows.value, 'sentiment'),
+  stance: summarizeSemanticLabels(allSemanticRows.value, 'stance'),
+  entities: summarizeSemanticEntries(allSemanticRows.value, 'entities', 'text'),
+}))
+const timeSliceRows = computed<any[]>(() => semanticEntries(semantic.value?.cross_analysis?.time_slices))
+const platformSliceRows = computed<any[]>(() => semanticEntries(semantic.value?.cross_analysis?.platform_slices))
+const communitySliceRows = computed<any[]>(() => semanticEntries(semantic.value?.cross_analysis?.community_slices))
+const communitySlicesUnavailableReason = computed(() => String(semantic.value?.cross_analysis?.community_slices_unavailable_reason || ''))
+const propagationPathOverlays = computed<any[]>(() => semanticEntries(semantic.value?.cross_analysis?.propagation_path_overlays))
 const communityRows = computed(() => (coordinationDiscover.value?.community_lineage || []).slice(0, 5))
 const nextHopRows = computed(() => (propagationAnalysis.value?.next_hop_ranking?.items || []).slice(0, 5))
 const teacherNodes = computed(() => teacher.value?.dag?.nodes || [])
@@ -302,6 +606,7 @@ async function handleCreateRun() {
     }) as { data: any }
     runDetail.value = res.data
     currentRunId.value = res.data.run_id
+    semantic.value = null
     await handleLoadEvents()
     message.success('AnalysisRun created')
   } finally {
@@ -313,8 +618,10 @@ async function handleExecuteRun() {
   if (!currentRunId.value) return
   executeLoading.value = true
   try {
+    semantic.value = null
     const res = await executeAnalysisRun(currentRunId.value) as { data: any }
     runDetail.value = res.data
+    await loadSemanticArtifact()
     await handleLoadEvents()
     message.success('AnalysisRun executed')
   } finally {
@@ -322,11 +629,28 @@ async function handleExecuteRun() {
   }
 }
 
+async function loadSemanticArtifact() {
+  if (!currentRunId.value) return
+  semantic.value = null
+  try {
+    const res = await getAnalysisArtifact(currentRunId.value, 'stage:semantic_enrichment:result') as { data: any }
+    semantic.value = res.data
+  } catch {
+    semantic.value = runResults.value.semantic_enrichment || null
+  }
+}
+
 async function handleLoadRun() {
   if (!currentRunId.value) return
+  semantic.value = null
   const res = await getAnalysisRun(currentRunId.value) as { data: any }
   runDetail.value = res.data
+  await loadSemanticArtifact()
 }
+
+onMounted(() => {
+  void handleLoadRun()
+})
 
 async function handleLoadEvents() {
   if (!currentRunId.value) return
@@ -439,6 +763,118 @@ function formatJson(value: unknown) {
   return JSON.stringify(value || {}, null, 2)
 }
 
+function semanticEntries(value: unknown): any[] {
+  return Array.isArray(value) ? value : []
+}
+
+function semanticTextEntries(value: unknown): string[] {
+  return semanticEntries(value).map((item) => String(item || '')).filter(Boolean)
+}
+
+function semanticEntryLabel(entry: unknown, preferredKey: string): string {
+  if (typeof entry === 'string' || typeof entry === 'number') return String(entry)
+  if (!entry || typeof entry !== 'object') return '-'
+  const row = entry as Record<string, unknown>
+  return String(row[preferredKey] || row.label || row.text || row.term || row.id || '-')
+}
+
+function semanticValueLabel(value: unknown): string {
+  if (typeof value === 'string' || typeof value === 'number') return String(value)
+  if (Array.isArray(value)) return semanticValueLabel(value[0])
+  if (!value || typeof value !== 'object') return 'unavailable'
+  const row = value as Record<string, unknown>
+  return String(row.label || row.status || 'unavailable')
+}
+
+function semanticSearchText(row: any): string {
+  return [
+    row.text,
+    row.platform,
+    semanticValueLabel(row.sentiment),
+    semanticValueLabel(row.stance),
+    ...semanticEntries(row.keywords).map((item) => semanticEntryLabel(item, 'term')),
+    ...semanticEntries(row.topics).map((item) => semanticEntryLabel(item, 'label')),
+    ...semanticEntries(row.entities).map((item) => semanticEntryLabel(item, 'text')),
+  ].filter(Boolean).join(' ')
+}
+
+function summarizeSemanticEntries(rows: any[], field: string, preferredKey: string) {
+  const counts = new Map<string, number>()
+  for (const row of rows) {
+    for (const item of semanticEntries(row?.[field])) {
+      const label = semanticEntryLabel(item, preferredKey)
+      if (label !== '-') counts.set(label, (counts.get(label) || 0) + 1)
+    }
+  }
+  return Array.from(counts, ([label, count]) => ({ label, count }))
+    .sort((left, right) => right.count - left.count || left.label.localeCompare(right.label))
+    .slice(0, 12)
+}
+
+function summarizeSemanticLabels(rows: any[], field: string) {
+  const counts = new Map<string, number>()
+  for (const row of rows) {
+    const label = semanticValueLabel(row?.[field])
+    if (label !== 'unavailable') counts.set(label, (counts.get(label) || 0) + 1)
+  }
+  return Array.from(counts, ([label, count]) => ({ label, count }))
+    .sort((left, right) => right.count - left.count || left.label.localeCompare(right.label))
+}
+
+function formatCounter(value: unknown): string {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return '-'
+  const entries = Object.entries(value as Record<string, unknown>)
+  return entries.length ? entries.map(([label, count]) => `${label}: ${count}`).join(', ') : '-'
+}
+
+function semanticTextList(value: unknown): string {
+  const entries = semanticTextEntries(value)
+  return entries.length ? entries.join(', ') : '-'
+}
+
+function formatTimestamp(value: unknown): string {
+  const raw = String(value || '')
+  if (!raw) return '-'
+  const parsed = new Date(raw)
+  return Number.isNaN(parsed.getTime()) ? raw : parsed.toLocaleString()
+}
+
+function formatTimeRange(value: unknown): string {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return '-'
+  const range = value as Record<string, unknown>
+  const start = formatTimestamp(range.start)
+  const end = formatTimestamp(range.end)
+  return start === end ? start : `${start} - ${end}`
+}
+
+function sentimentColor(label: string): string {
+  const normalized = label.toLocaleLowerCase()
+  if (normalized.includes('negative') || normalized.includes('neg') || normalized.includes('消极')) return 'red'
+  if (normalized.includes('positive') || normalized.includes('pos') || normalized.includes('积极')) return 'green'
+  return 'default'
+}
+
+function stanceColor(label: string): string {
+  const normalized = label.toLocaleLowerCase()
+  if (normalized.includes('entail') || normalized.includes('support') || normalized.includes('支持')) return 'green'
+  if (normalized.includes('contradict') || normalized.includes('oppose') || normalized.includes('反对')) return 'red'
+  if (normalized.includes('blocked') || normalized.includes('unavailable')) return 'warning'
+  return 'blue'
+}
+
+function communitySummary(item: any): string {
+  const memberCount = semanticEntries(item?.members).length
+  const keywords = semanticEntries(item?.top_keywords)
+    .map((entry) => semanticEntryLabel(entry, 'term'))
+    .filter((label) => label !== '-')
+  const summary = [
+    memberCount ? `${memberCount} members` : '',
+    item?.sentiment_distribution ? formatCounter(item.sentiment_distribution) : '',
+    keywords.length ? `keywords: ${keywords.join(', ')}` : '',
+  ].filter(Boolean)
+  return summary.length ? summary.join(' | ') : 'Coordination membership only'
+}
+
 function numberValue(value: unknown) {
   const numeric = Number(value)
   return Number.isFinite(numeric) ? numeric : 0
@@ -473,6 +909,9 @@ onBeforeUnmount(() => {
 <style scoped lang="less">
 .analysis-page {
   min-height: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 .analysis-alert {
@@ -481,6 +920,8 @@ onBeforeUnmount(() => {
 
 .analysis-card {
   margin-bottom: 16px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .full-width {
@@ -540,6 +981,243 @@ onBeforeUnmount(() => {
   font-size: 12px;
 }
 
+.semantic-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.semantic-summary-panel {
+  min-width: 0;
+  padding: 9px;
+  border: 1px solid #e5e7eb;
+  background: #fafcff;
+}
+
+.semantic-summary-panel h4,
+.semantic-cross-panel h4,
+.path-overlay-heading h4 {
+  margin: 0 0 8px;
+  color: #1f2937;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.semantic-summary-panel:last-child {
+  grid-column: 1 / -1;
+}
+
+.semantic-empty,
+.slice-detail,
+.semantic-section-heading p,
+.path-overlay-heading span,
+.path-overlay-evidence span,
+.path-overlay-tags > span {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.distribution-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.distribution-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.semantic-matrix-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.semantic-platform-filter {
+  min-width: 150px;
+}
+
+.semantic-query {
+  flex: 1 1 280px;
+  min-width: 220px;
+}
+
+.matrix-id {
+  display: block;
+  max-width: 130px;
+  margin-top: 4px;
+  overflow: hidden;
+  color: #64748b;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.semantic-text {
+  display: -webkit-box;
+  overflow: hidden;
+  color: #334155;
+  line-height: 1.5;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.analysis-page :deep(.ant-table-wrapper),
+.analysis-page :deep(.ant-table-container) {
+  max-width: 100%;
+}
+
+.analysis-page :deep(.ant-table-content) {
+  overflow-x: auto;
+}
+
+.semantic-cross-analysis {
+  margin-bottom: 16px;
+}
+
+.semantic-section-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  margin-bottom: 10px;
+}
+
+.semantic-section-heading h3 {
+  margin: 0;
+  color: #1f2937;
+  font-size: 16px;
+}
+
+.semantic-section-heading p {
+  margin: 4px 0 0;
+}
+
+.semantic-cross-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.semantic-cross-panel,
+.path-overlay-section {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+}
+
+.semantic-cross-panel :deep(.ant-list-item) {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.semantic-cross-panel :deep(.ant-list-item > div) {
+  min-width: 0;
+}
+
+.slice-detail {
+  display: block;
+  margin-top: 2px;
+  line-height: 1.45;
+}
+
+.path-overlay-section {
+  margin-top: 12px;
+}
+
+.path-overlay-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.path-overlay-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.path-overlay-card {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid #dbe4ee;
+  background: #fbfdff;
+}
+
+.path-overlay-title {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+}
+
+.path-overlay-title strong {
+  min-width: 0;
+  overflow: hidden;
+  color: #1e3a5f;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.path-overlay-details {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.path-overlay-details dt {
+  color: #64748b;
+  font-size: 11px;
+}
+
+.path-overlay-details dd {
+  margin: 2px 0 0;
+  overflow-wrap: anywhere;
+  color: #334155;
+  font-size: 12px;
+}
+
+.path-overlay-tags,
+.path-overlay-evidence {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+  margin-top: 7px;
+}
+
+.path-overlay-claim {
+  display: flex;
+  gap: 6px;
+  margin-top: 7px;
+  color: #475569;
+  font-size: 12px;
+}
+
+.path-overlay-claim span {
+  flex: 0 0 52px;
+  color: #64748b;
+}
+
+.path-overlay-claim strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.path-overlay-tags > span,
+.path-overlay-evidence > span {
+  min-width: 52px;
+}
+
 .event-actions {
   margin-bottom: 12px;
 }
@@ -577,12 +1255,25 @@ pre {
 
 @media (max-width: 992px) {
   .result-grid,
-  .form-grid {
+  .form-grid,
+  .semantic-cross-grid,
+  .path-overlay-grid {
     grid-template-columns: 1fr;
   }
 
   .run-input {
     width: 100%;
+  }
+}
+
+@media (max-width: 640px) {
+  .semantic-summary-grid,
+  .path-overlay-details {
+    grid-template-columns: 1fr;
+  }
+
+  .analysis-page :deep(.ant-table-wrapper) {
+    overflow-x: hidden;
   }
 }
 </style>

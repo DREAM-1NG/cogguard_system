@@ -3,6 +3,9 @@
 from app.models.coordination_registry import CoordinationDataset, CoordinationRun
 from app.models.analysis import AnalysisModelActivation
 from app.models.analysis import AnalysisModelVersion
+from app.models.analysis import PropagationAlert
+from app.models.analysis import PropagationAlertAction
+from app.models.analysis import PropagationMonitorProfile
 from app.models.analysis import AnalysisRun
 from app.models.analysis import AnalysisRunEvent
 from app.models.analysis import EventSnapshotRecord
@@ -36,6 +39,9 @@ __all__ = [
     "CrawlJob",
     "AnalysisModelActivation",
     "AnalysisModelVersion",
+    "PropagationAlert",
+    "PropagationAlertAction",
+    "PropagationMonitorProfile",
     "AnalysisRun",
     "AnalysisRunEvent",
     "EventSnapshotRecord",

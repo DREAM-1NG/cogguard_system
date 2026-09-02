@@ -57,6 +57,11 @@ class FakeAnalysisRegistry:
     async def list_run_events(self, run_id: str, *, after_id: int = 0, limit: int = 100):
         return [event for event in self.events if event["run_id"] == run_id and event["id"] > after_id][:limit]
 
+    async def load_run_artifact(self, *, run_id: str, artifact_key: str):
+        if run_id == "run_a" and artifact_key == "stage:semantic_enrichment:result":
+            return {"runtime_status": "ready", "layers": {"posts": [], "comments": []}}
+        return None
+
 
 class FakeAnalysisExecutor:
     def __init__(self) -> None:
@@ -113,6 +118,7 @@ def test_v2_analysis_routes_create_runs_and_recover_events():
                 },
             )
             run_detail = await client.get("/api/v2/analysis/runs/run_a", headers=headers)
+            artifact = await client.get("/api/v2/analysis/runs/run_a/artifacts/stage%3Asemantic_enrichment%3Aresult", headers=headers)
             events = await client.get(
                 "/api/v2/analysis/runs/run_a/events",
                 headers=headers,
@@ -130,6 +136,8 @@ def test_v2_analysis_routes_create_runs_and_recover_events():
         assert run.status_code == 200
         assert run.json()["data"]["run_id"] == "run_a"
         assert run_detail.json()["data"]["status"] == "queued"
+        assert artifact.status_code == 200
+        assert artifact.json()["data"]["runtime_status"] == "ready"
         assert [event["id"] for event in events.json()["data"]["events"]] == [2]
         assert execute.status_code == 200
         assert execute.json()["data"]["status"] == "awaiting_review"

@@ -1,4 +1,7 @@
 import asyncio
+import copy
+from datetime import datetime
+from pathlib import Path
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -48,6 +51,27 @@ class FakeCollection:
 
 class FakeMongoDB(dict):
     pass
+
+
+class FakeRedis:
+    def __init__(self):
+        self.values = {}
+        self.set_calls = []
+
+    async def get(self, key):
+        return self.values.get(key)
+
+    async def setex(self, key, ttl, value):
+        self.set_calls.append((key, ttl, value))
+        self.values[key] = value
+
+
+class EmptyRedis:
+    async def get(self, key):
+        return None
+
+    async def setex(self, key, ttl, value):
+        return None
 
 
 def _post(account_id, timestamp, content, *, author_name=None, profile=None, likes=0, reposts=0):
@@ -105,11 +129,38 @@ def test_botrhg_detection_routes_low_reliability_accounts_and_preserves_others()
         assert support_row["routed"] == support_account["routed"]
 
 
+def test_botrhg_detection_normalizes_mixed_timezone_timestamps():
+    posts = [
+        _post("u1", datetime(2026, 5, 21, 8, 0, 0), "first"),
+        _post("u1", "2026-05-21T08:00:20+00:00", "second"),
+    ]
+
+    result = run_botrhg_detection(posts)
+
+    assert result["summary"]["account_count"] == 1
+    assert result["accounts"][0]["signals"]["burst"] > 0
+
+
+def test_accounts_page_exposes_botrhg_probability_not_legacy_automation_score():
+    source_path = Path(__file__).parents[2] / "frontend" / "src" / "views" / "accounts" / "index.vue"
+    source = source_path.read_text(encoding="utf-8")
+
+    assert "自动化评分" not in source
+    assert "scoreLabel(" not in source
+    assert "scoreColor(" not in source
+    assert "BotRHG 最终概率" in source
+    assert "final_bot_probability" in source
+    assert "base_bot_probability" in source
+
+
 def test_botrhg_service_filters_posts_by_event_and_platform(monkeypatch):
     posts = [_post("u1", "2026-05-21T00:00:00+00:00", "hello")]
     raw_posts = FakeCollection(posts)
     fake_db = FakeMongoDB(raw_posts=raw_posts)
+    fake_redis = FakeRedis()
     monkeypatch.setattr(bot_detection_service, "get_mongo_db", lambda: fake_db)
+    monkeypatch.setattr(bot_detection_service, "get_redis", lambda: fake_redis, raising=False)
+    bot_detection_service.clear_detection_cache()
 
     result = asyncio.run(
         bot_detection_service.detect_social_bots(
@@ -161,6 +212,28 @@ def test_botrhg_api_allows_preview_token_and_passes_parameters(monkeypatch, prev
     }
 
 
+def test_account_profiles_allows_preview_token(monkeypatch, preview_auth_enabled):
+    calls = {}
+
+    async def fake_get_account_profiles(**kwargs):
+        calls.update(kwargs)
+        return [{"account_id": "u1"}]
+
+    monkeypatch.setattr(accounts_api.account_service, "get_account_profiles", fake_get_account_profiles)
+
+    async def _request():
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            client.headers["Authorization"] = f"Bearer {preview_auth_enabled}"
+            return await client.get("/api/v1/accounts/profiles?event_id=event-1&platform=weibo")
+
+    response = asyncio.run(_request())
+
+    assert response.status_code == 200
+    assert response.json()["data"] == [{"account_id": "u1"}]
+    assert calls == {"platform": "weibo", "event_id": "event-1"}
+
+
 def test_account_detail_includes_detection_result_and_recent_posts(monkeypatch, preview_auth_enabled):
     posts = [
         _post("u1", "2026-05-21T00:00:00+00:00", "hello"),
@@ -184,3 +257,168 @@ def test_account_detail_includes_detection_result_and_recent_posts(monkeypatch, 
     assert payload["detection_result"]["method"] == "BotRHG"
     assert payload["detection_result"]["similar_users"] == payload["similar_users"]
     assert len(payload["recent_posts"]) == 2
+
+
+def test_botrhg_detection_reuses_cached_result_for_same_scope(monkeypatch):
+    posts = [_post("u1", "2026-05-21T00:00:00+00:00", "hello")]
+    raw_posts = FakeCollection(posts)
+    fake_db = FakeMongoDB(raw_posts=raw_posts)
+    monkeypatch.setattr(bot_detection_service, "get_mongo_db", lambda: fake_db)
+    bot_detection_service.clear_detection_cache()
+
+    first = asyncio.run(bot_detection_service.detect_social_bots(event_id="event-1", platform="weibo"))
+    second = asyncio.run(bot_detection_service.detect_social_bots(event_id="event-1", platform="weibo"))
+
+    assert second == first
+    assert len(raw_posts.calls) == 1
+
+
+def test_botrhg_detection_recovers_from_redis_cache_after_memory_reset(monkeypatch):
+    posts = [_post("u1", "2026-05-21T00:00:00+00:00", "hello")]
+    raw_posts = FakeCollection(posts)
+    fake_db = FakeMongoDB(raw_posts=raw_posts)
+    fake_redis = FakeRedis()
+    fake_result = {
+        "method": "BotRHG",
+        "accounts": [
+            {
+                "account_id": "u1",
+                "final_prediction": "human",
+                "base_bot_probability": 0.1,
+                "final_bot_probability": 0.1,
+            }
+        ],
+        "summary": {"account_count": 1, "bot_count": 0, "routed_count": 0},
+        "model_card": {"method": "BotRHG"},
+    }
+    monkeypatch.setattr(bot_detection_service, "get_mongo_db", lambda: fake_db)
+    monkeypatch.setattr(bot_detection_service, "get_redis", lambda: fake_redis, raising=False)
+    monkeypatch.setattr(bot_detection_service, "run_trained_botrhg_detection", lambda posts: None)
+    monkeypatch.setattr(bot_detection_service, "run_botrhg_detection", lambda posts, routing_budget=0.2, support_k=8: copy.deepcopy(fake_result))
+    bot_detection_service.clear_detection_cache()
+
+    first = asyncio.run(bot_detection_service.detect_social_bots(event_id="event-1", platform="weibo"))
+    bot_detection_service.clear_detection_cache()
+
+    cached = asyncio.run(bot_detection_service.get_cached_detection("event-1", "weibo"))
+
+    assert fake_redis.set_calls
+    assert len(raw_posts.calls) == 1
+    assert cached == first
+
+
+def test_latest_botrhg_detection_returns_cached_result(monkeypatch, preview_auth_enabled):
+    result = {"method": "BotRHG", "accounts": [], "summary": {"account_count": 0}}
+    asyncio.run(bot_detection_service.set_detection_cache("event-1", "weibo", result))
+
+    async def _request():
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            client.headers["Authorization"] = f"Bearer {preview_auth_enabled}"
+            return await client.get("/api/v1/accounts/bot-detection/latest?event_id=event-1&platform=weibo")
+
+    response = asyncio.run(_request())
+    assert response.status_code == 200
+    payload = response.json()["data"]
+    assert payload["method"] == result["method"]
+    assert payload["accounts"] == []
+    assert payload["summary"] == result["summary"]
+    assert payload["response_compacted"] is True
+    bot_detection_service.clear_detection_cache()
+
+
+def test_latest_botrhg_detection_computes_when_cache_is_empty(monkeypatch, preview_auth_enabled):
+    posts = [_post("u1", "2026-05-21T00:00:00+00:00", "hello")]
+    raw_posts = FakeCollection(posts)
+    fake_db = FakeMongoDB(raw_posts=raw_posts)
+    fake_result = {
+        "method": "BotRHG",
+        "accounts": [
+            {
+                "account_id": "u1",
+                "final_prediction": "human",
+                "base_bot_probability": 0.1,
+                "final_bot_probability": 0.1,
+            }
+        ],
+        "summary": {"account_count": 1, "bot_count": 0, "routed_count": 0},
+        "model_card": {"method": "BotRHG"},
+    }
+    monkeypatch.setattr(bot_detection_service, "get_mongo_db", lambda: fake_db)
+    monkeypatch.setattr(bot_detection_service, "get_redis", lambda: FakeRedis(), raising=False)
+    monkeypatch.setattr(bot_detection_service, "run_trained_botrhg_detection", lambda posts: None)
+    monkeypatch.setattr(
+        bot_detection_service,
+        "run_botrhg_detection",
+        lambda posts, routing_budget=0.2, support_k=8: copy.deepcopy(fake_result),
+    )
+    bot_detection_service.clear_detection_cache()
+
+    async def _request():
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            client.headers["Authorization"] = f"Bearer {preview_auth_enabled}"
+            return await client.get("/api/v1/accounts/bot-detection/latest?event_id=event-1&platform=weibo")
+
+    response = asyncio.run(_request())
+
+    assert response.status_code == 200
+    assert response.json()["data"]["accounts"][0]["final_bot_probability"] == 0.1
+    assert len(raw_posts.calls) == 1
+    bot_detection_service.clear_detection_cache()
+
+
+def test_latest_botrhg_detection_returns_compact_account_payload(monkeypatch, preview_auth_enabled):
+    result = {
+        "method": "BotRHG",
+        "accounts": [
+            {
+                "account_id": "u1",
+                "final_prediction": "human",
+                "base_prediction": "human",
+                "base_bot_probability": 0.1,
+                "final_bot_probability": 0.2,
+                "local_reliability": 0.9,
+                "routed": True,
+                "support_evidence": [{"account_id": "neighbor", "similarity": 0.99}],
+                "signals": {"burst": 0.1},
+                "hyperedge": {"center": "u1", "support_nodes": ["neighbor"]},
+            }
+        ],
+        "summary": {"account_count": 1, "bot_count": 0, "routed_count": 1},
+        "method_card": {"method": "BotRHG"},
+    }
+    asyncio.run(bot_detection_service.set_detection_cache("event-1", "weibo", result))
+
+    async def _request():
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            client.headers["Authorization"] = f"Bearer {preview_auth_enabled}"
+            return await client.get("/api/v1/accounts/bot-detection/latest?event_id=event-1&platform=weibo")
+
+    response = asyncio.run(_request())
+    account = response.json()["data"]["accounts"][0]
+
+    assert response.status_code == 200
+    assert account["final_bot_probability"] == 0.2
+    assert account["base_bot_probability"] == 0.1
+    assert account["local_reliability"] == 0.9
+    assert account["routed"] is True
+    assert "support_evidence" not in account
+    assert "signals" not in account
+    assert "hyperedge" not in account
+    bot_detection_service.clear_detection_cache()
+
+
+def test_botrhg_detection_cache_expires(monkeypatch):
+    result = {"method": "BotRHG", "accounts": [], "summary": {"account_count": 0}}
+    monkeypatch.setattr(settings, "BOTRHG_CACHE_TTL_SECONDS", 1)
+    monkeypatch.setattr(bot_detection_service, "get_redis", lambda: EmptyRedis(), raising=False)
+    asyncio.run(bot_detection_service.set_detection_cache("event-1", "weibo", result))
+    monkeypatch.setattr(bot_detection_service.time, "monotonic", lambda: 2.0)
+    monkeypatch.setattr(bot_detection_service, "_DETECTION_CACHE", {
+        ("event-1", "weibo", 0.2, 8): (0.0, result),
+    })
+
+    assert asyncio.run(bot_detection_service.get_cached_detection("event-1", "weibo")) is None
+    bot_detection_service.clear_detection_cache()

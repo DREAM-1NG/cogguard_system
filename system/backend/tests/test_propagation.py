@@ -388,6 +388,31 @@ class TestPropagationAnalysisEventInferenceAdapter:
         assert all(edge["type"] != "parallel_root" for edge in summary["tree_edges"])
         assert all(not edge.get("is_parallel_root") for edge in summary["tree_edges"])
 
+    def test_diffusion_summary_keeps_only_the_primary_root_in_layer_zero(self):
+        posts = [
+            {"post_id": "p1", "author_id": "root", "author_name": "Root", "timestamp": _ts(0), "url": "https://example.com/a", "hashtags": [], "content": "root"},
+            {"post_id": "p2", "author_id": "child", "author_name": "Child", "timestamp": _ts(1), "url": "https://example.com/a", "hashtags": [], "content": "child"},
+            {"post_id": "p3", "author_id": "parallel", "author_name": "Parallel", "timestamp": _ts(2), "url": "https://example.com/b", "hashtags": [], "content": "parallel"},
+            {"post_id": "p4", "author_id": "parallel_child", "author_name": "ParallelChild", "timestamp": _ts(3), "url": "https://example.com/b", "hashtags": [], "content": "parallel child"},
+        ]
+        summary = build_propagation_graph(posts)["diffusion_summary"]
+
+        primary_root_id = summary["root_node"]["id"]
+        layer_zero_nodes = {
+            node["id"] for node in summary["visible_nodes"]
+            if node["layer"] == 0
+        }
+
+        assert layer_zero_nodes == {primary_root_id}
+
+    def test_diffusion_summary_edges_expand_away_from_the_primary_root(self):
+        result = build_propagation_graph(_make_posts(), _make_comments(), diffusion_node_limit=0)
+        summary = result["diffusion_summary"]
+        layer_by_node = {node["id"]: node["layer"] for node in summary["visible_nodes"]}
+
+        for edge in summary["tree_edges"] + summary["highlight_edges"]:
+            assert layer_by_node[edge["source"]] < layer_by_node[edge["target"]]
+
     def test_path_analysis_and_diffusion_summary_share_layers(self):
         result = build_propagation_graph(_make_posts(), _make_comments(), diffusion_node_limit=0)
         path_layers = {row["level"]: row["node_count"] for row in result["path_analysis"]["layer_distribution"]}
@@ -651,6 +676,86 @@ class TestKeyPaths:
         result = build_propagation_graph(_make_posts(), _make_comments())
         for chain in result["evidence_chains"]:
             assert len(chain["key_paths"]) <= 5
+
+
+# ---------------------------------------------------------------------------
+# 路径证据测试
+# ---------------------------------------------------------------------------
+
+class TestPathEvidenceRefs:
+    def test_path_analysis_preserves_precise_evidence_refs(self):
+        posts = [
+            {
+                "post_id": "p1",
+                "author_id": "u1",
+                "author_name": "ImplicitSource",
+                "platform": "weibo",
+                "timestamp": _ts(0),
+                "url": "https://example.com/implicit",
+                "hashtags": [],
+                "content": "implicit source",
+            },
+            {
+                "post_id": "p2",
+                "author_id": "u2",
+                "author_name": "ImplicitFollower",
+                "platform": "xhs",
+                "timestamp": _ts(1),
+                "url": "https://example.com/implicit",
+                "hashtags": [],
+                "content": "implicit follower",
+            },
+            {
+                "post_id": "p3",
+                "author_id": "u3",
+                "author_name": "ExplicitSource",
+                "platform": "douyin",
+                "timestamp": _ts(2),
+                "url": "https://example.com/explicit",
+                "hashtags": [],
+                "content": "explicit source",
+            },
+            {
+                "post_id": "p4",
+                "author_id": "u4",
+                "author_name": "ExplicitFollower",
+                "platform": "douyin",
+                "timestamp": _ts(3),
+                "url": "https://example.com/explicit",
+                "hashtags": [],
+                "content": "explicit follower",
+            },
+        ]
+        comments = [
+            {
+                "comment_id": "c1",
+                "post_id": "p3",
+                "author_id": "u4",
+                "author_name": "ExplicitFollower",
+                "platform": "douyin",
+                "timestamp": _ts(4),
+                "reply_to": "p3",
+                "content": "reply",
+            }
+        ]
+
+        result = build_propagation_graph(posts, comments)
+        key_paths = result["path_analysis"]["key_paths"]
+
+        implicit_path = next(path for path in key_paths if path["claim_id"] == "https://example.com/implicit")
+        explicit_path = next(path for path in key_paths if path["claim_id"] == "https://example.com/explicit")
+
+        assert "evidence_refs" in implicit_path
+        assert "evidence_refs" in explicit_path
+        assert implicit_path["evidence_refs"] == [
+            {"post_id": "p1", "platform": "weibo"},
+            {"post_id": "p2", "platform": "xhs"},
+        ]
+        assert explicit_path["evidence_refs"] == [
+            {"comment_id": "c1", "platform": "douyin"},
+        ]
+        assert all("author_id" not in ref and "content" not in ref for ref in implicit_path["evidence_refs"])
+        assert all("author_id" not in ref and "content" not in ref for ref in explicit_path["evidence_refs"])
 
 
 # ---------------------------------------------------------------------------

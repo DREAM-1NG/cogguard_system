@@ -49,6 +49,12 @@ const router = createRouter({
           meta: { title: '传播分析' },
         },
         {
+          path: 'analysis',
+          name: 'Analysis',
+          component: () => import('@/views/analysis/index.vue'),
+          meta: { title: '综合分析' },
+        },
+        {
           path: 'accounts',
           name: 'Accounts',
           component: () => import('@/views/accounts/index.vue'),

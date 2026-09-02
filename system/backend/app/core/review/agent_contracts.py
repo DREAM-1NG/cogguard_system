@@ -10,9 +10,33 @@ from __future__ import annotations
 from typing import Any
 import json
 
+from pydantic import BaseModel, Field
+
 from app.core.review.propagation_agent import PROPAGATION_AGENT_REPORT_SECTIONS
 from app.core.review.propagation_agent import build_propagation_agent_output_contract
 from app.core.review.propagation_agent import build_propagation_agent_prompt_note
+
+class ActiveRetrievalBundle(BaseModel):
+    queries: list[str] = Field(default_factory=list, description="The list of queries executed")
+    local_evidence: list[dict] = Field(default_factory=list, description="Retrieved local evidence items")
+    external_evidence: list[dict] = Field(default_factory=list, description="Retrieved external evidence items")
+    source_quality_score: float = Field(default=0.0, description="Overall quality score of sources")
+
+class ClaimEvidenceBundle(BaseModel):
+    claims: list[str] = Field(default_factory=list, description="帖子中提取的核心主张")
+    supporting_evidence: list[str] = Field(default_factory=list, description="支撑该主张的事实证据")
+    contradicting_evidence: list[str] = Field(default_factory=list, description="反驳该主张的事实证据")
+    evidence_gap: str = Field(default="", description="目前缺失的证据")
+
+class CompliancePolicyBundle(BaseModel):
+    active_policies: list[str] = Field(default_factory=list, description="适用的社区安全规则")
+    violation_risk: str = Field(default="", description="违反规则的潜在风险说明")
+
+class JudgeRationaleBundle(BaseModel):
+    risk_type: str = Field(description="判定的最终风险类型 (如 hate_speech, misinformation)")
+    confidence: float = Field(description="判定置信度 (0.0 到 1.0)")
+    rationale_report: str = Field(description="自然语言研判报告 (此字段将用于 SBERT 向量化蒸馏)")
+    human_confirmation_required: bool = Field(description="是否必须人工介入")
 
 
 AGENT_REPORT_SECTIONS: dict[str, list[str]] = {
@@ -66,6 +90,9 @@ AGENT_REPORT_SECTIONS: dict[str, list[str]] = {
 
 __all__ = [
     "AGENT_REPORT_SECTIONS",
+    "ClaimEvidenceBundle",
+    "CompliancePolicyBundle",
+    "JudgeRationaleBundle",
     "build_agent_output_contract",
     "build_agent_system_prompt",
     "build_agent_user_prompt",
@@ -135,6 +162,10 @@ def build_agent_system_prompt(agent_name: str) -> str:
 
 
 def build_agent_output_contract(agent_name: str) -> dict[str, Any]:
+    if agent_name == "ClaimEvidenceAgent":
+        return ClaimEvidenceBundle.model_json_schema()
+    if agent_name == "HarmfulnessJudgeAgent":
+        return JudgeRationaleBundle.model_json_schema()
     return build_propagation_agent_output_contract(agent_name)
 
 

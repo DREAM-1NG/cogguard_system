@@ -1146,6 +1146,8 @@ def _build_agent_context(
     include_media_base64: bool,
     max_keyframes: int,
 ) -> dict[str, Any]:
+    from app.core.review.agent_contracts import CompliancePolicyBundle
+
     posts = _select_posts(report.get("post_semantics") or {}, selected_post_ids)
     propagation_context = _select_propagation_context(report, selected_tree_ids)
     media_inputs = []
@@ -1165,12 +1167,21 @@ def _build_agent_context(
         "post_ids": [_text(post.get("post_id")) for post in posts if _text(post.get("post_id"))],
         "tree_ids": selected_tree_ids,
     }
+    
+    # 构建 typed policy bundle
+    raw_policy = report.get("policy") or {}
+    policy_bundle = CompliancePolicyBundle(
+        active_policies=[_text(r.get("rule_id")) for r in (raw_policy.get("candidate_rules") or []) if r.get("status") in {"accepted_for_round", "activated"}],
+        violation_risk="Review manually based on active policies."
+    ).model_dump()
+
     context = {
-        "schema_version": "review-agent-input-bundle-v1",
+        "schema_version": "review-agent-input-bundle-v2-typed",
         "input_refs": input_refs,
         "selected_posts": posts,
         "media_inputs": media_inputs,
         "propagation_context": propagation_context,
+        "policy_bundle": policy_bundle,
         "review_queue": _get(report, "harmfulness", "review_queue") or {},
         "review_execution": _get(report, "harmfulness", "review_execution") or {},
         "disarm_analysis": report.get("disarm_analysis") or {},

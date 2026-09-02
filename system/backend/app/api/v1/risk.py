@@ -6,7 +6,7 @@ import json
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.security import get_current_user, require_roles
+from app.core.security import get_current_user, get_current_user_or_local_preview, require_roles
 from app.core.review.gate_dataset import get_gate_dataset_contract_spec
 from app.core.review.gate_dataset import validate_gate_dataset_contract
 from app.db.mysql import get_db
@@ -46,7 +46,7 @@ async def assess_risk(
     min_participation: int = Query(2, ge=1, description="最低参与次数"),
     edge_weight: float = Query(0.5, ge=0, le=1, description="边权百分位阈值"),
     run_legacy_multi_agent: bool = Query(False, description="Run legacy deterministic Review multi-agent runtime"),
-    current_user: User = Depends(get_current_user),
+    current_user: User | None = Depends(get_current_user_or_local_preview),
     db: AsyncSession = Depends(get_db),
 ):
     """执行风险评估：阶段检测 + D-S 融合 + DISARM 攻击路径分析。"""
@@ -58,7 +58,7 @@ async def assess_risk(
         min_participation=min_participation,
         edge_weight=edge_weight,
         run_legacy_multi_agent=bool(legacy_multi_agent),
-        user_id=current_user.id,
+        user_id=getattr(current_user, "id", 0),
         db=db,
     )
     return success(data=report)
@@ -67,7 +67,7 @@ async def assess_risk(
 @router.post("/review/gate-suite")
 async def assess_gate_suite(
     request: ReviewGateSuiteRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User | None = Depends(get_current_user_or_local_preview),
 ):
     """执行 Review 三层 Gate Suite 离线评测，不持久化 gold/control 评测报告。"""
     report = await risk_service.assess_risk(
@@ -76,7 +76,7 @@ async def assess_gate_suite(
         time_window=request.time_window,
         min_participation=request.min_participation,
         edge_weight=request.edge_weight,
-        user_id=current_user.id,
+        user_id=getattr(current_user, "id", 0),
         db=None,
         gate_dataset=request.gate_dataset,
     )
@@ -103,7 +103,7 @@ async def assess_gate_suite(
 
 @router.get("/review/gate-dataset/contract")
 async def get_gate_dataset_contract(
-    _current_user: User = Depends(get_current_user),
+    _current_user: User | None = Depends(get_current_user_or_local_preview),
 ):
     """Return the machine-readable Review Gate Dataset contract."""
     return success(data=get_gate_dataset_contract_spec())
@@ -112,7 +112,7 @@ async def get_gate_dataset_contract(
 @router.post("/review/gate-dataset/validate")
 async def validate_gate_dataset(
     request: ReviewGateDatasetValidationRequest,
-    _current_user: User = Depends(get_current_user),
+    _current_user: User | None = Depends(get_current_user_or_local_preview),
 ):
     """Validate a Review Gate Dataset without running risk assessment or persistence."""
     return success(data=validate_gate_dataset_contract(request.gate_dataset))
@@ -158,7 +158,7 @@ async def upload_gate_dataset_json(
 async def list_gate_datasets(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
-    _current_user: User = Depends(get_current_user),
+    _current_user: User | None = Depends(get_current_user_or_local_preview),
     db: AsyncSession = Depends(get_db),
 ):
     return success(data=await review_system_service.list_gate_datasets(db, page=page, page_size=page_size))
@@ -167,7 +167,7 @@ async def list_gate_datasets(
 @router.get("/review/gate-datasets/{dataset_db_id}")
 async def get_gate_dataset_detail(
     dataset_db_id: int,
-    _current_user: User = Depends(get_current_user),
+    _current_user: User | None = Depends(get_current_user_or_local_preview),
     db: AsyncSession = Depends(get_db),
 ):
     result = await review_system_service.get_gate_dataset_detail(dataset_db_id, db)
@@ -297,7 +297,7 @@ async def record_review_agent_feedback(
 @router.post("/review/policies/optimize")
 async def optimize_review_policy(
     request: ReviewPolicyOptimizeRequest,
-    _current_user: User = Depends(get_current_user),
+    _current_user: User | None = Depends(get_current_user_or_local_preview),
 ):
     """Optimize a Review MARO-style Agent review policy from an explicit validation split."""
     try:
@@ -351,7 +351,7 @@ async def activate_review_policy(
 async def list_review_policies(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
-    _current_user: User = Depends(get_current_user),
+    _current_user: User | None = Depends(get_current_user_or_local_preview),
     db: AsyncSession = Depends(get_db),
 ):
     return success(data=await review_system_service.list_policies(db, page=page, page_size=page_size))
@@ -405,7 +405,7 @@ async def get_review_job(
 @router.get("/review/policies/{policy_id}")
 async def get_review_policy(
     policy_id: str,
-    _current_user: User = Depends(get_current_user),
+    _current_user: User | None = Depends(get_current_user_or_local_preview),
     db: AsyncSession = Depends(get_db),
 ):
     """Return an auditable Review Agent review policy artifact."""
@@ -427,7 +427,7 @@ async def list_reports(
     phase: str | None = Query(None),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
-    _current_user: User = Depends(get_current_user),
+    _current_user: User | None = Depends(get_current_user_or_local_preview),
     db: AsyncSession = Depends(get_db),
 ):
     """查询历史风险报告列表。"""
@@ -446,7 +446,7 @@ async def list_reports(
 @router.get("/reports/{report_id}")
 async def get_report_detail(
     report_id: str,
-    _current_user: User = Depends(get_current_user),
+    _current_user: User | None = Depends(get_current_user_or_local_preview),
     db: AsyncSession = Depends(get_db),
 ):
     """获取单个风险报告详情。"""

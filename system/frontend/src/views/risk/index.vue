@@ -59,7 +59,7 @@
     </template>
 
     <a-card v-else size="small" class="risk-empty-card">
-      <a-empty description="暂无数据" />
+      <a-empty description="暂无可查看的历史报告，请点击“重新评估”生成当前风险研判结果。" />
     </a-card>
   </div>
 </template>
@@ -316,9 +316,6 @@ async function openRiskReport(reportId: string | undefined) {
     const res = await getRiskReportDetail(reportId)
     report.value = res.data
     activeTab.value = 'evidence'
-    if (!postSemantics.value) {
-      await handleAssess(false)
-    }
   } catch (e: any) {
     message.error(e.response?.data?.msg || e.message || '加载风险报告失败')
   }
@@ -333,14 +330,9 @@ async function loadHistory(openLatest = false) {
     historyTotal.value = d.total || 0
     if (openLatest && !report.value && historyItems.value.length > 0) {
       await openRiskReport(historyItems.value[0]?.report_id)
-    } else if (openLatest && !report.value && historyItems.value.length === 0) {
-      await handleAssess(false)
     }
   } catch (e: any) {
     message.error(e.response?.data?.msg || e.message || '加载历史报告失败')
-    if (openLatest && !report.value) {
-      await handleAssess(false)
-    }
   } finally {
     historyLoading.value = false
   }
@@ -363,6 +355,7 @@ function wait(ms: number) {
 }
 
 onMounted(() => {
+  activeTab.value = 'history'
   loadHistory(true)
 })
 </script>
@@ -397,4 +390,3 @@ onMounted(() => {
   min-height: 320px;
 }
 </style>
-

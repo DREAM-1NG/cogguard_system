@@ -8,6 +8,8 @@ the chart.
 
 from __future__ import annotations
 
+import asyncio
+
 import pytest
 from httpx import ASGITransport, AsyncClient
 from pathlib import Path
@@ -90,6 +92,108 @@ async def _request_prediction(query: str):
         return await client.post(f"/api/v1/propagation/model-event-predict?{query}")
 
 
+def test_observed_analysis_route_reuses_cached_payload(monkeypatch):
+    calls = 0
+
+    async def fake_observed_analysis(*, platform, event_id, node_limit):
+        nonlocal calls
+        calls += 1
+        return {
+            "status": "ok",
+            "event_id": event_id,
+            "platform": platform,
+            "graph": {"nodes": [], "edges": []},
+            "diffusion_summary": {"visible_nodes": [], "tree_edges": []},
+        }
+
+    async def fake_preview_user():
+        return None
+
+    async def exercise_routes():
+        propagation_api.clear_observed_analysis_cache()
+        monkeypatch.setattr(propagation_api, "_call_observed_analysis", fake_observed_analysis)
+        app.dependency_overrides[get_current_user_or_local_preview] = fake_preview_user
+        try:
+            transport = ASGITransport(app=app)
+            async with AsyncClient(transport=transport, base_url="http://test") as client:
+                first = await client.get(
+                    "/api/v1/propagation/observed-analysis?event_id=event-1&platform=weibo&node_limit=50"
+                )
+                second = await client.get(
+                    "/api/v1/propagation/observed-analysis?event_id=event-1&platform=weibo&node_limit=50"
+                )
+        finally:
+            app.dependency_overrides.pop(get_current_user_or_local_preview, None)
+            propagation_api.clear_observed_analysis_cache()
+        return first, second
+
+    first, second = asyncio.run(exercise_routes())
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert calls == 1
+    assert second.json()["data"]["event_id"] == "event-1"
+
+
+def test_observed_analysis_route_compacts_full_graph_to_node_limit(monkeypatch):
+    async def fake_observed_analysis(*, platform, event_id, node_limit):
+        nodes = [{"id": f"u{i}", "author_name": f"user-{i}"} for i in range(10)]
+        edges = [{"source": f"u{i}", "target": f"u{i + 1}"} for i in range(9)]
+        visible = nodes[:node_limit]
+        return {
+            "status": "ok",
+            "event_id": event_id,
+            "platform": platform,
+            "graph": {"nodes": nodes, "edges": edges, "node_count": len(nodes), "edge_count": len(edges)},
+            "provenance_graph": {"nodes": nodes, "edges": edges, "large_blob": "x" * 1024},
+            "timeline": [{"post_id": f"p{i}", "content": "x" * 500} for i in range(10)],
+            "evidence_chains": [
+                {
+                    "claim_id": "claim-1",
+                    "supporting_posts": [{"post_id": f"p{i}", "content": "x" * 500} for i in range(10)],
+                }
+            ],
+            "diffusion_summary": {
+                "visible_nodes": visible,
+                "tree_edges": edges[: max(0, node_limit - 1)],
+                "highlight_edges": [],
+                "meta": {"total_nodes": len(nodes), "visible_node_count": node_limit},
+            },
+        }
+
+    async def fake_preview_user():
+        return None
+
+    async def exercise_route():
+        propagation_api.clear_observed_analysis_cache()
+        monkeypatch.setattr(propagation_api, "_call_observed_analysis", fake_observed_analysis)
+        app.dependency_overrides[get_current_user_or_local_preview] = fake_preview_user
+        try:
+            transport = ASGITransport(app=app)
+            async with AsyncClient(transport=transport, base_url="http://test") as client:
+                return await client.get(
+                    "/api/v1/propagation/observed-analysis?event_id=event-1&platform=weibo&node_limit=3"
+                )
+        finally:
+            app.dependency_overrides.pop(get_current_user_or_local_preview, None)
+            propagation_api.clear_observed_analysis_cache()
+
+    response = asyncio.run(exercise_route())
+
+    assert response.status_code == 200
+    graph = response.json()["data"]["graph"]
+    assert graph["node_count"] == 10
+    assert len(graph["nodes"]) == 3
+    assert all(edge["source"] in {"u0", "u1", "u2"} and edge["target"] in {"u0", "u1", "u2"} for edge in graph["edges"])
+    payload = response.json()["data"]
+    assert "nodes" not in payload["provenance_graph"]
+    assert payload["provenance_graph"]["summary"]["node_count"] == 10
+    assert len(payload["timeline"]) == 3
+    assert len(payload["timeline"][0]["content"]) < 200
+    assert len(payload["evidence_chains"][0]["supporting_posts"]) == 3
+    assert len(payload["evidence_chains"][0]["supporting_posts"][0]["content"]) < 200
+
+
 def test_cached_benchmark_evidence_is_research_only_route():
     paths = {
         route.path
@@ -111,6 +215,14 @@ def test_frontend_api_does_not_export_research_prediction_route():
     assert "request.post('/propagation/model-event-predict'" in source
 
 
+def test_propagation_page_uses_demo_safe_default_node_limit():
+    source_path = Path(__file__).parents[2] / "frontend" / "src" / "views" / "propagation" / "index.vue"
+    source = source_path.read_text(encoding="utf-8")
+
+    assert "const DEFAULT_DIFFUSION_NODE_LIMIT = 80" in source
+    assert "const DEFAULT_DIFFUSION_NODE_LIMIT = 300" not in source
+
+
 def test_frontend_prediction_normalizer_preserves_scope_and_identity_coverage():
     source_path = Path(__file__).parents[2] / "frontend" / "src" / "views" / "propagation" / "index.vue"
     source = source_path.read_text(encoding="utf-8")
@@ -120,6 +232,19 @@ def test_frontend_prediction_normalizer_preserves_scope_and_identity_coverage():
     assert "scope: typeof rawModel.scope" in source
     assert "checkpoint_conditioning_ratio" in source
     assert ':disabled="!eventId.trim()"' in source
+    assert "data_unavailable" in source
+    assert "当前事件数据源不可用" in source
+
+
+def test_frontend_prediction_button_switches_to_prediction_tab_before_waiting_for_api():
+    source_path = Path(__file__).parents[2] / "frontend" / "src" / "views" / "propagation" / "index.vue"
+    source = source_path.read_text(encoding="utf-8")
+
+    handler_start = source.index("async function handlePredict()")
+    first_api_call = source.index("await predictPropagationCurrentEvent", handler_start)
+    first_tab_switch = source.index("activeTab.value = 'model'", handler_start)
+
+    assert first_tab_switch < first_api_call
 
 
 def test_prediction_contract_exposes_coverage_calibration_and_model_scope():
@@ -167,6 +292,26 @@ def test_prediction_service_description_does_not_claim_checkpoint_unavailable():
 
     assert "event checkpoint inference stay unavailable" not in description
     assert "deployed checkpoint inference" in description
+
+
+def test_observed_analysis_returns_controlled_empty_result_when_mongodb_unavailable(monkeypatch):
+    async def fail_load_posts(*_args, **_kwargs):
+        raise ConnectionError("mongodb unavailable")
+
+    monkeypatch.setattr(propagation_observation_service, "load_event_posts", fail_load_posts)
+
+    result = asyncio.run(
+        propagation_observation_service.analyze_observed_propagation(
+            event_id="event-1",
+            platform="twitter",
+        )
+    )
+
+    assert result["status"] == "data_unavailable"
+    assert result["event_id"] == "event-1"
+    assert result["platform"] == "twitter"
+    assert result["data_scope"]["posts"] == 0
+    assert result["data_scope"]["comments"] == 0
 
 
 @pytest.mark.asyncio

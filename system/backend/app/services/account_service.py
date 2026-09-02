@@ -2,19 +2,43 @@
 
 from __future__ import annotations
 
+import copy
+import time
 from typing import Any
 
+from app.config import settings
 from app.core.account_detection import build_account_detection_detail
 from app.core.account_profiler import build_account_profiles
 from app.db.mongodb import get_mongo_db
 from app.services.event_data import build_event_filter, load_event_posts
 
+_ACCOUNT_PROFILE_CACHE: dict[tuple[str, str], tuple[float, list[dict]]] = {}
+
+
+def _cache_key(event_id: str | None, platform: str | None) -> tuple[str, str]:
+    return (event_id or "", platform or "")
+
+
+def clear_account_profile_cache() -> None:
+    _ACCOUNT_PROFILE_CACHE.clear()
+
 
 async def get_account_profiles(platform: str | None = None, event_id: str | None = None) -> list[dict]:
     """Return account behavior profiles over optionally event-scoped posts."""
+    cache_key = _cache_key(event_id, platform)
+    cached = _ACCOUNT_PROFILE_CACHE.get(cache_key)
+    ttl_seconds = max(0, int(settings.BOTRHG_CACHE_TTL_SECONDS))
+    if cached is not None:
+        created, profiles = cached
+        if time.monotonic() - created < ttl_seconds:
+            return copy.deepcopy(profiles)
+        _ACCOUNT_PROFILE_CACHE.pop(cache_key, None)
+
     mongo_db = get_mongo_db()
     posts = await load_event_posts(mongo_db, event_id=event_id, platform=platform)
-    return build_account_profiles(posts)
+    profiles = build_account_profiles(posts)
+    _ACCOUNT_PROFILE_CACHE[cache_key] = (time.monotonic(), copy.deepcopy(profiles))
+    return profiles
 
 
 async def get_account_detail(

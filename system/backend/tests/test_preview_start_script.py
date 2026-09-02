@@ -12,3 +12,12 @@ def test_preview_start_script_enables_backend_preview_auth() -> None:
     assert "BACKEND_DEBUG='true'" in source
     assert "$env:PREVIEW_AUTH_ENABLED" in source
     assert "$env:PREVIEW_AUTH_TOKEN" in source
+
+
+def test_preview_start_script_supports_frontend_port_fallback() -> None:
+    script = Path(__file__).resolve().parents[1].parent / "start-preview.ps1"
+    source = script.read_text(encoding="utf-8")
+
+    assert "Get-FreePort" in source
+    assert "5173" in source
+    assert "Frontend preview:" in source

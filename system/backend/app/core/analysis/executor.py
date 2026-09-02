@@ -28,12 +28,18 @@ class TeacherJobPort(Protocol):
         ...
 
 
+class SemanticEngine(Protocol):
+    async def enrich(self, snapshot: EventSnapshot, *, options: dict[str, Any], coordination: dict[str, Any] | None, propagation: dict[str, Any] | None) -> dict[str, Any]:
+        ...
+
+
 @dataclass(slots=True)
 class AnalysisEnginePorts:
     coordination: CoordinationEngine
     propagation: PropagationEngine
     student: StudentRuntime
     teacher: TeacherJobPort
+    semantic: SemanticEngine | None = None
 
 
 class AnalysisExecutor:
@@ -77,7 +83,7 @@ class AnalysisExecutor:
                 status=AnalysisRunStatus.RUNNING,
                 payload={"stage": stage, "options": stage_options},
             )
-            result = await self._execute_stage(stage, snapshot, stage_options)
+            result = await self._execute_stage(stage, snapshot, stage_options, results)
             results[stage] = result
             artifact_ref = await self.registry.save_run_artifact(
                 run_id=run_id,
@@ -149,6 +155,7 @@ class AnalysisExecutor:
         stage: str,
         snapshot: EventSnapshot,
         options: dict[str, Any],
+        results: dict[str, Any],
     ) -> dict[str, Any]:
         if stage == "coordination_discover":
             return await self.engines.coordination.analyze(snapshot, options)
@@ -158,6 +165,26 @@ class AnalysisExecutor:
             return await self.engines.student.predict(_case_from_snapshot(snapshot, options=options))
         if stage == "teacher":
             return await self.engines.teacher.submit(_case_from_snapshot(snapshot, options=options))
+        if stage == "semantic_enrichment":
+            engine = self.engines.semantic or DefaultSemanticEngine()
+            try:
+                return await engine.enrich(
+                    snapshot,
+                    options=options,
+                    coordination=results.get("coordination_discover"),
+                    propagation=results.get("propagation_analysis"),
+                )
+            except Exception as exc:
+                from app.core.semantic.runtime import ModelWeightsBlockedError
+                if isinstance(exc, ModelWeightsBlockedError):
+                    return {
+                        "technology": "semantic_enrichment",
+                        "status": "model_weights_blocked",
+                        "runtime_status": "blocked",
+                        "blocking_reason": str(exc),
+                        "fallback": False,
+                    }
+                raise
         raise UnknownAnalysisStage(f"Unknown analysis stage: {stage}")
 
 
@@ -227,7 +254,15 @@ def default_analysis_engine_ports() -> AnalysisEnginePorts:
         propagation=PropagationAnalysisPropagationEngine(),
         student=InternalStudentRuntime(),
         teacher=InternalTeacherJobPort(),
+        semantic=DefaultSemanticEngine(),
     )
+
+
+class DefaultSemanticEngine:
+    async def enrich(self, snapshot, *, options, coordination, propagation):
+        from app.core.semantic.runtime import SemanticEnrichmentRuntime
+        runtime = SemanticEnrichmentRuntime(model_root=options.get("model_root", r"G:\CISCN\hf_models"))
+        return runtime.enrich(snapshot, coordination=coordination, propagation=propagation, claim=options.get("claim"))
 
 
 def _case_from_snapshot(snapshot: EventSnapshot, *, options: dict[str, Any]) -> dict[str, Any]:
@@ -337,6 +372,8 @@ def _needs_evidence(result: Any) -> bool:
         "model_unavailable",
         "missing_checkpoint",
         "data_insufficient",
+        "blocked",
+        "model_weights_blocked",
     }
 
 

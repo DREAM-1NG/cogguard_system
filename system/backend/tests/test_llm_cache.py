@@ -78,6 +78,36 @@ def test_replay_mode_returns_recorded_response_and_reports_misses(cache_dir, mon
     assert llm_cache.load_cached_response("review_agent-does-not-exist") is None
 
 
+def test_replay_refuses_tampered_recorded_response(cache_dir, monkeypatch):
+    monkeypatch.setattr(settings, "LLM_CACHE_MODE", "record")
+    key = _key()
+    llm_cache.record_response(key, "real response", channel=CHANNEL, model="m")
+
+    path = cache_dir / f"{key}.json"
+    entry = json.loads(path.read_text(encoding="utf-8"))
+    entry["response"] = "tampered response"
+    path.write_text(json.dumps(entry), encoding="utf-8")
+
+    monkeypatch.setattr(settings, "LLM_CACHE_MODE", "replay")
+
+    assert llm_cache.load_cached_response(key) is None
+
+
+def test_replay_refuses_entry_with_mismatched_embedded_key(cache_dir, monkeypatch):
+    monkeypatch.setattr(settings, "LLM_CACHE_MODE", "record")
+    key = _key()
+    llm_cache.record_response(key, "real response", channel=CHANNEL, model="m")
+
+    path = cache_dir / f"{key}.json"
+    entry = json.loads(path.read_text(encoding="utf-8"))
+    entry["key"] = "review_agent-other-key"
+    path.write_text(json.dumps(entry), encoding="utf-8")
+
+    monkeypatch.setattr(settings, "LLM_CACHE_MODE", "replay")
+
+    assert llm_cache.load_cached_response(key) is None
+
+
 def test_replay_refuses_entries_not_recorded_from_a_live_call(cache_dir, monkeypatch):
     """A hand-authored entry must never be replayed as if the model said it."""
     monkeypatch.setattr(settings, "LLM_CACHE_MODE", "replay")

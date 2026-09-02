@@ -1,5 +1,9 @@
 """Coordination detection and CoordinationDiscover dataset model routes."""
 
+import copy
+import asyncio
+import time
+
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, Query, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -22,6 +26,49 @@ from app.services.coordination_model_service import (
 from app.utils.response import success
 
 router = APIRouter()
+COORDINATION_RESPONSE_CACHE_TTL_SECONDS = 300
+_COORDINATION_RESPONSE_CACHE: dict[tuple, tuple[float, object]] = {}
+_COORDINATION_RESPONSE_IN_FLIGHT: dict[tuple, asyncio.Task] = {}
+
+
+def clear_coordination_response_cache() -> None:
+    _COORDINATION_RESPONSE_CACHE.clear()
+    _COORDINATION_RESPONSE_IN_FLIGHT.clear()
+
+
+def _get_cached_response(key: tuple) -> object | None:
+    item = _COORDINATION_RESPONSE_CACHE.get(key)
+    if item is None:
+        return None
+    created_at, payload = item
+    if time.monotonic() - created_at >= COORDINATION_RESPONSE_CACHE_TTL_SECONDS:
+        _COORDINATION_RESPONSE_CACHE.pop(key, None)
+        return None
+    return copy.deepcopy(payload)
+
+
+def _set_cached_response(key: tuple, payload: object) -> None:
+    _COORDINATION_RESPONSE_CACHE[key] = (time.monotonic(), copy.deepcopy(payload))
+
+
+async def _cached_response(key: tuple, loader):
+    cached = _get_cached_response(key)
+    if cached is not None:
+        return cached
+    task = _COORDINATION_RESPONSE_IN_FLIGHT.get(key)
+    if task is None or task.done():
+        async def compute():
+            payload = await loader()
+            _set_cached_response(key, payload)
+            return copy.deepcopy(payload)
+
+        task = asyncio.create_task(compute())
+        _COORDINATION_RESPONSE_IN_FLIGHT[key] = task
+    try:
+        return copy.deepcopy(await task)
+    finally:
+        if task.done():
+            _COORDINATION_RESPONSE_IN_FLIGHT.pop(key, None)
 
 
 @router.post("/detect")
@@ -48,7 +95,9 @@ async def list_registered_datasets(
     db: AsyncSession = Depends(get_db),
     _current_user: User = Depends(get_current_user_or_preview),
 ):
-    return success(data=await list_coordination_datasets(db))
+    cache_key = ("datasets",)
+    data = await _cached_response(cache_key, lambda: list_coordination_datasets(db))
+    return success(data=data)
 
 
 @router.post("/datasets/upload")
@@ -66,6 +115,7 @@ async def upload_dataset(
         created_by=current_user.id,
         display_name=display_name,
     )
+    clear_coordination_response_cache()
     return success(data=result)
 
 
@@ -77,14 +127,17 @@ async def get_dataset_graph(
     db: AsyncSession = Depends(get_db),
     _current_user: User = Depends(get_current_user_or_preview),
 ):
-    return success(
-        data=await get_coordination_dataset_graph(
+    cache_key = ("graph", int(dataset_id), int(node_limit), round(float(min_node_score), 6))
+    data = await _cached_response(
+        cache_key,
+        lambda: get_coordination_dataset_graph(
             db,
             dataset_id,
             node_limit=node_limit,
             min_node_score=min_node_score,
-        )
+        ),
     )
+    return success(data=data)
 
 
 @router.get("/datasets/{dataset_id}/communities/{cluster_id}")
@@ -111,7 +164,9 @@ async def get_dataset_detail(
     db: AsyncSession = Depends(get_db),
     _current_user: User = Depends(get_current_user_or_preview),
 ):
-    return success(data=await get_coordination_dataset_detail(db, dataset_id))
+    cache_key = ("detail", int(dataset_id))
+    data = await _cached_response(cache_key, lambda: get_coordination_dataset_detail(db, dataset_id))
+    return success(data=data)
 
 
 @router.get("/datasets/{dataset_id}/latest-result")
@@ -120,7 +175,12 @@ async def get_dataset_latest_result(
     db: AsyncSession = Depends(get_db),
     _current_user: User = Depends(get_current_user_or_preview),
 ):
-    return success(data=await get_coordination_dataset_latest_result(db, dataset_id))
+    cache_key = ("latest", int(dataset_id))
+    data = await _cached_response(
+        cache_key,
+        lambda: get_coordination_dataset_latest_result(db, dataset_id),
+    )
+    return success(data=data)
 
 
 @router.post("/runs")
@@ -130,6 +190,7 @@ async def create_run(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user_or_preview),
 ):
+    clear_coordination_response_cache()
     run = await create_coordination_run(db=db, dataset_id=body.dataset_id, created_by=current_user.id)
     background_tasks.add_task(run_coordination_model_job, int(run["run_id"]))
     return success(data=run)

@@ -509,6 +509,23 @@ def test_account_profiles_filters_by_event_and_platform(monkeypatch):
     assert profiles[0]["account_id"] == "u1"
 
 
+def test_account_profiles_reuses_cached_result_for_same_scope(monkeypatch):
+    posts = [_post("event-1", "weibo", "p1", "u1", "2026-05-21T00:00:00+00:00")]
+    raw_posts = FakeCollection(posts)
+    fake_db = FakeMongoDB(raw_posts=raw_posts)
+    monkeypatch.setattr(account_service, "get_mongo_db", lambda: fake_db)
+    if hasattr(account_service, "clear_account_profile_cache"):
+        account_service.clear_account_profile_cache()
+
+    first = asyncio.run(account_service.get_account_profiles(event_id="event-1", platform="weibo"))
+    second = asyncio.run(account_service.get_account_profiles(event_id="event-1", platform="weibo"))
+
+    assert second == first
+    assert len(raw_posts.calls) == 1
+    if hasattr(account_service, "clear_account_profile_cache"):
+        account_service.clear_account_profile_cache()
+
+
 def test_coordination_api_passes_event_id_to_service(monkeypatch):
     calls = {}
 

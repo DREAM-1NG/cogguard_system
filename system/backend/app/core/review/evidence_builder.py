@@ -71,6 +71,26 @@ class EvidencePack:
     timeline: list = field(default_factory=list)
     claims: list = field(default_factory=list)
 
+    def to_claim_evidence_bundle(self) -> dict:
+        """映射结构化特征到 ClaimEvidenceBundle 格式以供 Agent 使用。"""
+        claims_text = [c.get("claim_text", "") for c in self.claims if c.get("claim_text")]
+        
+        supporting = []
+        if self.coordinated_accounts > 0:
+            supporting.append(f"检测到 {self.coordinated_accounts} 个协同账户，边密度 {self.features.coordination_density:.2f}")
+        if self.high_automation_count > 0:
+            supporting.append(f"发现 {self.high_automation_count} 个高自动化评分账户参与传播")
+        if self.bridge_count > 0:
+            supporting.append(f"存在 {self.bridge_count} 个桥接节点加速跨集群传播")
+            
+        return {
+            "claims": claims_text,
+            "supporting_evidence": supporting,
+            "contradicting_evidence": [],
+            "evidence_gap": "需要具体内容层面的事实核查" if not supporting else ""
+        }
+
+
 
 # ---------------------------------------------------------------------------
 # 辅助函数

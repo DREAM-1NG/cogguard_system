@@ -124,6 +124,34 @@ def test_snapshot_relationships_only_capture_observed_parent_references():
     }
 
 
+def test_snapshot_links_comment_post_id_when_no_comment_parent_is_available():
+    snapshot = _snapshot(
+        [
+            {
+                "platform": "douyin",
+                "post_id": "p1",
+                "author_id": "u1",
+                "content": "source post",
+                "timestamp": _dt(12),
+            }
+        ],
+        [
+            {
+                "platform": "douyin",
+                "comment_id": "c1",
+                "post_id": "p1",
+                "author_id": "u2",
+                "content": "top-level comment",
+                "timestamp": _dt(12, 1),
+            }
+        ],
+    )
+
+    assert {(edge.relation_type, edge.source_id, edge.target_id) for edge in snapshot.relationships} == {
+        ("parent", "douyin:post:p1", "douyin:comment:c1"),
+    }
+
+
 def test_analysis_run_state_machine_rejects_terminal_reversal():
     assert transition_run_status(AnalysisRunStatus.QUEUED, AnalysisRunStatus.RUNNING) == AnalysisRunStatus.RUNNING
     assert transition_run_status(AnalysisRunStatus.RUNNING, AnalysisRunStatus.AWAITING_REVIEW) == AnalysisRunStatus.AWAITING_REVIEW

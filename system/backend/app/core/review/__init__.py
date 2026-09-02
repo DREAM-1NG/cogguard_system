@@ -28,7 +28,7 @@ __all__ = [
     "rag",
     "review_queue",
     "review_executor",
-    "selective_student",
+    "legacy_smoke_adapter",
     "teacher_silver",
     "trainable_post",
     "user_gate",

@@ -8,12 +8,16 @@ It must not call future-prediction model code.
 
 from __future__ import annotations
 
+import asyncio
+import logging
 from inspect import Parameter, signature
 
 from app.core.propagation_analysis import build_propagation_graph
 from app.db.mongodb import get_mongo_db
 from app.services.event_data import analysis_scope_metadata, load_event_comments, load_event_posts
 
+
+logger = logging.getLogger(__name__)
 
 OBSERVED_ANALYSIS_CAPABILITY = {
     "name": "observed_propagation_analysis",
@@ -26,6 +30,7 @@ OBSERVED_ANALYSIS_CAPABILITY = {
 
 def empty_observed_result(event_id: str | None, platform: str | None) -> dict:
     return {
+        "status": "data_insufficient",
         "error": "No analyzable posts found. Run data collection or choose another event/platform.",
         "event_id": event_id,
         "platform": platform,
@@ -80,14 +85,25 @@ async def analyze_observed_propagation(
     node_limit: int = 300,
 ) -> dict:
     """Analyze only observed propagation facts for an optional event/platform scope."""
-    mongo_db = get_mongo_db()
+    try:
+        mongo_db = get_mongo_db()
+        posts = await load_event_posts(mongo_db, event_id=event_id, platform=platform)
+        comments = await load_event_comments(mongo_db, event_id=event_id, platform=platform)
+    except Exception:
+        logger.exception(
+            "Observed propagation data is unavailable for event_id=%r platform=%r",
+            event_id,
+            platform,
+        )
+        result = empty_observed_result(event_id, platform)
+        result["status"] = "data_unavailable"
+        result["error"] = "Current event data source is unavailable."
+        return result
 
-    posts = await load_event_posts(mongo_db, event_id=event_id, platform=platform)
     if not posts:
         return empty_observed_result(event_id, platform)
 
-    comments = await load_event_comments(mongo_db, event_id=event_id, platform=platform)
-    result = build_observed_propagation_graph(posts, comments, node_limit=node_limit)
+    result = await asyncio.to_thread(build_observed_propagation_graph, posts, comments, node_limit=node_limit)
 
     return attach_observed_scope(
         result,

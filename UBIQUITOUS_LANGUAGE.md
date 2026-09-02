@@ -62,7 +62,7 @@ Current semantic package paths: `system/research/coordination_discover/`, `syste
 
 | Term | Definition | Aliases to avoid |
 | --- | --- | --- |
-| **Propagation Monitoring** | The product capability that combines observed propagation analysis and gated propagation prediction for one event snapshot. | Propagation page, KT2, propagation monitor |
+| **Propagation Monitoring** | The product capability that combines observed propagation analysis and gated propagation prediction for one event snapshot. | Propagation page, numbered propagation shorthand, propagation monitor |
 | **Propagation Forecast** | The output that estimates spread size and next-hop behavior from a snapshot. | Trend guess, prediction blob |
 | **Observed Propagation Analysis** | A non-predictive reconstruction of paths, objects, roles, provenance, timelines, and stability from the event snapshot. | Forecast, causal proof |
 | **Propagation Evidence Type** | `explicit`, `reconstructed`, or `inferred`; respectively platform-observed, parent-ID-rebuilt, or shared-object temporal-proximity evidence. | All edges are reposts |

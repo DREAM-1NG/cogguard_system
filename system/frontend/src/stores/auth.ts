@@ -17,7 +17,7 @@ const PREVIEW_USER = {
   id: 0,
   username: 'Preview',
   email: 'preview@local',
-  role: 'designer',
+  role: 'admin',
 } satisfies AuthUserInfo
 
 export const useAuthStore = defineStore('auth', () => {
