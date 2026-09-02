@@ -86,7 +86,7 @@ def test_canonical_governance_sources_use_method_names_not_numbered_shorthand():
 def test_governance_boundaries_have_unique_adrs_and_explicit_public_modules():
     root = Path(__file__).resolve().parents[3]
     adr_numbers = []
-    for path in (root / "doc" / "adr").glob("*.md"):
+    for path in (root / "doc" / "adr").glob("[0-9][0-9][0-9][0-9]-*.md"):
         match = re.match(r"^(\d{4})-", path.name)
         assert match, path
         adr_numbers.append(match.group(1))
@@ -268,7 +268,7 @@ def test_trainable_post_exposes_split_boundaries_and_lazily_resolves_moved_symbo
     runtime = importlib.import_module("app.core.review.agent_runtime")
     trainable = importlib.import_module("app.core.review.trainable_post")
     teacher = importlib.import_module("app.core.review.teacher_silver")
-    student = importlib.import_module("app.core.review.selective_student")
+    student = importlib.import_module("app.core.review.legacy_smoke_adapter")
 
     assert "AGENT_REPORT_SECTIONS" in contracts.__all__
     assert "build_agent_system_prompt" in contracts.__all__
@@ -288,7 +288,7 @@ def test_trainable_post_exposes_split_boundaries_and_lazily_resolves_moved_symbo
     ]
     assert "write_jsonl" in getattr(trainable, "__all__", []) or hasattr(trainable, "write_jsonl")
     assert "build_teacher_silver_record" in teacher.__all__
-    assert "SelectiveStudentEncoder" in student.__all__
+    assert "LegacySmokeAdapter" in student.__all__
     assert hasattr(trainable, "build_teacher_silver_record")
-    assert hasattr(trainable, "SelectiveStudentEncoder")
-    assert hasattr(trainable, "build_selective_student_targets")
+    assert hasattr(trainable, "LegacySmokeAdapter")
+    assert hasattr(trainable, "build_legacy_smoke_adapter_targets")

@@ -73,6 +73,60 @@ def _edge_id(source: str, target: str, key: object) -> str:
     return f"edge:{source}:{target}:{key}"
 
 
+def _claim_path_prefix(claim_obj_id: str) -> str:
+    claim_key = _clean_str(claim_obj_id) or "claim"
+    return hashlib.sha1(claim_key.encode("utf-8")).hexdigest()[:10]
+
+
+def _evidence_ref_from_content_ref(content_ref: str, platform: str = "") -> dict:
+    ref_text = _clean_str(content_ref)
+    if not ref_text:
+        return {}
+    ref_kind, _separator, ref_id = ref_text.partition(":")
+    if ref_kind not in {"post", "comment"} or not ref_id:
+        return {}
+    ref = {f"{ref_kind}_id": ref_id}
+    ref_platform = _clean_str(platform)
+    if ref_platform:
+        ref["platform"] = ref_platform
+    return ref
+
+
+def _edge_evidence_refs(edge: dict) -> list[dict]:
+    if edge.get("type") == "explicit":
+        comment_id = _clean_str(edge.get("comment_id"))
+        if not comment_id:
+            return []
+        ref = {"comment_id": comment_id}
+        comment_platform = _clean_str(edge.get("comment_platform"))
+        if comment_platform:
+            ref["platform"] = comment_platform
+        return [ref]
+
+    refs: list[dict] = []
+    for ref_key, platform_key in (
+        ("source_content_ref", "source_platform"),
+        ("target_content_ref", "target_platform"),
+    ):
+        ref = _evidence_ref_from_content_ref(edge.get(ref_key, ""), edge.get(platform_key, ""))
+        if ref:
+            refs.append(ref)
+    return refs
+
+
+def _collect_path_evidence_refs(path_edges: list[dict]) -> list[dict]:
+    refs: list[dict] = []
+    seen: set[tuple] = set()
+    for edge in path_edges:
+        for ref in _edge_evidence_refs(edge):
+            ref_key = tuple(sorted(ref.items()))
+            if ref_key in seen:
+                continue
+            seen.add(ref_key)
+            refs.append(ref)
+    return refs
+
+
 def _inferred_edge_confidence(time_delta: float) -> float:
     """Time proximity supports, but never confirms, a reconstructed relation."""
     return max(0.1, min(0.7, 0.7 / (1.0 + max(float(time_delta), 0.0) / 3600.0)))
@@ -189,6 +243,7 @@ def build_propagation_graph(
             shared_objects[obj].append({
                 "author_id": author_id,
                 "post_id": _clean_str(row.get("post_id")),
+                "platform": _clean_str(row.get("platform")),
                 "ts": row["ts"],
             })
 
@@ -219,6 +274,8 @@ def build_propagation_graph(
                 relation_type="shared_object_temporal_proximity",
                 weight=1,
                 object_id=obj_id,
+                source_platform=_clean_str(predecessor.get("platform")),
+                target_platform=_clean_str(follower.get("platform")),
                 time_delta=round(time_delta, 1),
                 source_content_ref=f"post:{predecessor['post_id']}" if predecessor.get("post_id") else "",
                 target_content_ref=f"post:{follower['post_id']}" if follower.get("post_id") else "",
@@ -382,6 +439,7 @@ def _add_explicit_edges(
             relation_type="replies_to",
             weight=1,
             comment_id=_clean_str(c.get("comment_id")),
+            comment_platform=_clean_str(c.get("platform")),
             source_content_ref=(
                 f"post:{reply_to}" if reply_to in post_author else f"comment:{reply_to}"
             ),
@@ -458,6 +516,7 @@ def _build_path_analysis(
                 "confidence": path.get("confidence", "unknown"),
                 "path_length": (path.get("metadata") or {}).get("path_length", len(path.get("nodes", []))),
                 "explanation": path.get("explanation", ""),
+                "evidence_refs": [dict(ref) for ref in (path.get("evidence_refs") or [])],
             })
     key_paths.sort(key=lambda item: item.get("score", 0), reverse=True)
 
@@ -576,9 +635,6 @@ def _build_diffusion_summary(
 
     add_node(root_id, 0)
     queue: list[tuple[str, int]] = [(root_id, 0)] if root_id else []
-    for parallel_root in parallel_roots:
-        if add_node(parallel_root, 0):
-            queue.append((parallel_root, 0))
 
     visited_for_expansion = {root_id} if root_id else set()
     while queue:
@@ -618,10 +674,12 @@ def _build_diffusion_summary(
     for path in key_paths:
         nodes = [node for node in path.get("nodes", []) if simple_G.has_node(node)]
         starts_at_root = bool(nodes) and nodes[0] == root_id
+        # Keep independent sources out of the primary tree. They remain
+        # provenance metadata rather than implied connections to the root.
+        if not starts_at_root:
+            continue
         for index, node in enumerate(nodes):
-            path_layer = min(index, DIFFUSION_MAX_DEPTH) if starts_at_root else (
-                0 if node == root_id else min(index + 1, DIFFUSION_MAX_DEPTH)
-            )
+            path_layer = min(index, DIFFUSION_MAX_DEPTH)
             if not add_node(node, path_layer, force=len(visible_nodes) < resolved_node_limit):
                 continue
             if index > 0:
@@ -648,7 +706,7 @@ def _build_diffusion_summary(
                 continue
             source_layer = node_layers.get(source)
             target_layer = node_layers.get(target)
-            if source_layer == target_layer:
+            if source_layer is None or target_layer is None or target_layer <= source_layer:
                 continue
             tree_edges.setdefault((source, target), {
                 "source": source,
@@ -671,13 +729,15 @@ def _build_diffusion_summary(
     tree_edge_rows = [
         edge for edge in tree_edges.values()
         if edge["source"] in visible_node_ids and edge["target"] in visible_node_ids
-        and node_layers.get(edge["source"]) != node_layers.get(edge["target"])
+        and node_layers.get(edge["source"], -1) >= 0
+        and node_layers.get(edge["target"], -1) > node_layers.get(edge["source"], -1)
     ]
     highlight_edges = [
         _diffusion_highlight_edge(simple_G, source, target)
         for source, target in key_edge_set
         if source in visible_node_ids and target in visible_node_ids
-        and node_layers.get(source) != node_layers.get(target)
+        and node_layers.get(source, -1) >= 0
+        and node_layers.get(target, -1) > node_layers.get(source, -1)
     ]
     visible_node_rows = _apply_clustered_diffusion_layout(
         visible_node_rows,
@@ -688,9 +748,6 @@ def _build_diffusion_summary(
     )
 
     all_node_layers = _diffusion_all_node_layers(simple_G, root_id)
-    for parallel_root in parallel_roots:
-        if parallel_root in all_node_layers:
-            all_node_layers[parallel_root] = 0
     if is_full_view:
         visible_node_rows = [
             _diffusion_node_row(G, simple_G, node_id, all_node_layers.get(node_id, -1), key_node_set, root_id)
@@ -713,9 +770,15 @@ def _build_diffusion_summary(
     return {
         "root_node": _diffusion_node_row(G, simple_G, root_id, 0, key_node_set, root_id) if root_id else None,
         "parallel_roots": [
-            _diffusion_node_row(G, simple_G, node_id, node_layers.get(node_id, 1), key_node_set, root_id)
+            _diffusion_node_row(
+                G,
+                simple_G,
+                node_id,
+                all_node_layers.get(node_id, DIFFUSION_MAX_DEPTH),
+                key_node_set,
+                root_id,
+            )
             for node_id in parallel_roots
-            if node_id in visible_node_ids
         ],
         "visible_nodes": visible_node_rows,
         "tree_edges": tree_edge_rows,
@@ -914,17 +977,6 @@ def _diffusion_all_node_layers(simple_G: nx.DiGraph, root_id: str) -> dict[str, 
     if root_id and simple_G.has_node(root_id):
         for node, layer in nx.single_source_shortest_path_length(simple_G, root_id).items():
             layers[node] = min(int(layer), DIFFUSION_MAX_DEPTH)
-
-    roots = [
-        node for node in simple_G.nodes()
-        if node != root_id and simple_G.in_degree(node) == 0 and simple_G.out_degree(node) > 0
-    ]
-    for root in roots:
-        root_layer = 0
-        layers[root] = min(root_layer, layers.get(root, root_layer))
-        for node, layer in nx.single_source_shortest_path_length(simple_G, root).items():
-            candidate_layer = min(root_layer + int(layer), DIFFUSION_MAX_DEPTH)
-            layers[node] = min(candidate_layer, layers.get(node, candidate_layer))
 
     for node in simple_G.nodes():
         layers.setdefault(node, DIFFUSION_MAX_DEPTH)
@@ -1740,6 +1792,7 @@ def _extract_key_paths_for_claim(
             total_edges = explicit_count + implicit_count
             explicit_ratio = round(explicit_count / total_edges, 2) if total_edges else 0
             confidence = "high" if explicit_ratio >= 0.5 else ("medium" if explicit_ratio > 0 else "low")
+            evidence_refs = _collect_path_evidence_refs(path_edges)
 
             all_paths.append({
                 "nodes": path_nodes,
@@ -1747,6 +1800,7 @@ def _extract_key_paths_for_claim(
                 "score": score,
                 "explanation": explanation,
                 "confidence": confidence,
+                "evidence_refs": evidence_refs,
                 "metadata": {
                     "explicit_edges": explicit_count,
                     "implicit_edges": implicit_count,
@@ -1768,7 +1822,7 @@ def _extract_key_paths_for_claim(
 
     # 添加 path_id
     for i, p in enumerate(selected):
-        p["path_id"] = i
+        p["path_id"] = f"claim-{_claim_path_prefix(claim_obj_id)}-{i}"
 
     return selected
 

@@ -31,18 +31,18 @@ from app.core.review.trainable_post import (
 from app.core.review.teacher_silver import load_teacher_silver_index
 
 __all__ = [
-    "SelectiveStudentEncoder",
-    "build_selective_student_prediction_rows",
-    "build_selective_student_targets",
+    "LegacySmokeAdapter",
+    "build_legacy_smoke_adapter_prediction_rows",
+    "build_legacy_smoke_adapter_targets",
     "load_teacher_silver_index",
-    "predict_selective_student_outputs",
+    "predict_legacy_smoke_adapter_outputs",
     "student_main_axis_metrics",
     "student_overall_probability_for_case",
-    "train_selective_student_model",
+    "train_legacy_smoke_adapter_model",
 ]
 
 
-def build_selective_student_targets(
+def build_legacy_smoke_adapter_targets(
     cases: list[dict[str, Any]],
     teacher_silver_by_case: dict[str, dict[str, Any]] | None = None,
 ) -> dict[str, np.ndarray]:
@@ -102,7 +102,7 @@ def build_selective_student_targets(
     }
 
 
-class SelectiveStudentEncoder(nn.Module if nn is not None else object):
+class LegacySmokeAdapter(nn.Module if nn is not None else object):
     def __init__(self, input_dim: int, hidden_dim: int = 128, stance_count: int = len(STANCE_ORDER)):
         require_torch()
         super().__init__()
@@ -134,7 +134,7 @@ def _masked_weighted_mean(losses: Any, mask: Any, sample_weight: Any | None = No
     return (losses * weighted_mask).sum() / total
 
 
-def train_selective_student_model(
+def train_legacy_smoke_adapter_model(
     model: Any,
     features: np.ndarray,
     targets: dict[str, np.ndarray],
@@ -206,7 +206,7 @@ def train_selective_student_model(
     }
 
 
-def predict_selective_student_outputs(
+def predict_legacy_smoke_adapter_outputs(
     model: Any,
     features: np.ndarray,
     *,
@@ -251,7 +251,7 @@ def student_overall_probability_for_case(case: dict[str, Any], attack_probabilit
     return 1.0 - product
 
 
-def build_selective_student_prediction_rows(
+def build_legacy_smoke_adapter_prediction_rows(
     cases: list[dict[str, Any]],
     predictions: dict[str, np.ndarray],
     *,

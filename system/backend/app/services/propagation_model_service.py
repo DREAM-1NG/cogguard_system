@@ -32,7 +32,6 @@ PREDICTION_MODEL_CAPABILITY = {
     "predicts_future": True,
 }
 
-SUPPORTED_PREDICTION_PLATFORMS = frozenset({"twitter"})
 SUPPORTED_CHECKPOINT_OBSERVATION_RATIOS = (0.1, 0.3, 0.5)
 
 
@@ -79,38 +78,11 @@ def empty_prediction_result(event_id: str | None, platform: str | None) -> dict:
     }
 
 
-def is_supported_prediction_platform(platform: str | None) -> bool:
-    """Return whether the deployed current-event model supports this platform."""
-    if platform is None or not str(platform).strip():
-        return True
-    return str(platform).strip().lower() in SUPPORTED_PREDICTION_PLATFORMS
-
-
 def nearest_checkpoint_observation_ratio(actual_ratio: float) -> float:
     """Select the checkpoint condition nearest to the real timestamp-cut prefix."""
     return min(
         SUPPORTED_CHECKPOINT_OBSERVATION_RATIOS,
         key=lambda supported: (abs(float(actual_ratio) - supported), supported),
-    )
-
-
-def unsupported_platform_prediction_result(
-    event_id: str | None,
-    platform: str | None,
-    *,
-    observation_ratio: float,
-) -> dict:
-    result = empty_prediction_result(event_id, platform)
-    result["status"] = "unsupported_platform"
-    result["model_status"] = "unavailable"
-    result["note"] = "The deployed propagation prediction model supports only Twitter current-event data."
-    return attach_prediction_scope(
-        result,
-        event_id=event_id,
-        platform=platform,
-        posts_count=0,
-        comments_count=0,
-        observation_ratio=observation_ratio,
     )
 
 
@@ -286,18 +258,7 @@ async def predict_current_event_model(
         )
         return enforce_prediction_contract(result, event_id=None, platform=platform)
 
-    if not is_supported_prediction_platform(platform):
-        return enforce_prediction_contract(
-            unsupported_platform_prediction_result(
-                event_id,
-                platform,
-                observation_ratio=observation_ratio,
-            ),
-            event_id=event_id,
-            platform=platform,
-        )
-
-    platform = str(platform or "").strip().lower() or "twitter"
+    platform = str(platform).strip().lower() if platform is not None and str(platform).strip() else None
     effective_observation_ratio = observation_ratio
     try:
         posts, comments = await asyncio.wait_for(

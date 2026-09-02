@@ -504,6 +504,23 @@ def test_account_profiles_filters_by_event_and_platform(monkeypatch):
     assert profiles[0]["account_id"] == "u1"
 
 
+def test_account_profiles_reuses_cached_result_for_same_scope(monkeypatch):
+    posts = [_post("event-1", "weibo", "p1", "u1", "2026-05-21T00:00:00+00:00")]
+    raw_posts = FakeCollection(posts)
+    fake_db = FakeMongoDB(raw_posts=raw_posts)
+    monkeypatch.setattr(account_service, "get_mongo_db", lambda: fake_db)
+    if hasattr(account_service, "clear_account_profile_cache"):
+        account_service.clear_account_profile_cache()
+
+    first = asyncio.run(account_service.get_account_profiles(event_id="event-1", platform="weibo"))
+    second = asyncio.run(account_service.get_account_profiles(event_id="event-1", platform="weibo"))
+
+    assert second == first
+    assert len(raw_posts.calls) == 1
+    if hasattr(account_service, "clear_account_profile_cache"):
+        account_service.clear_account_profile_cache()
+
+
 def test_coordination_api_passes_event_id_to_service(monkeypatch):
     calls = {}
 
@@ -762,7 +779,7 @@ def test_propagation_prediction_api_rejects_invalid_or_timezone_free_cutoff():
     async def fake_preview_user():
         return None
 
-    app.dependency_overrides[get_current_user_or_local_preview] = fake_preview_user
+    app.dependency_overrides[get_current_user] = fake_preview_user
 
     async def run_requests():
         from httpx import ASGITransport
@@ -780,7 +797,7 @@ def test_propagation_prediction_api_rejects_invalid_or_timezone_free_cutoff():
     try:
         malformed, timezone_free = asyncio.run(run_requests())
     finally:
-        app.dependency_overrides.pop(get_current_user_or_local_preview, None)
+        app.dependency_overrides.pop(get_current_user, None)
 
     assert malformed.status_code == 422
     assert timezone_free.status_code == 422

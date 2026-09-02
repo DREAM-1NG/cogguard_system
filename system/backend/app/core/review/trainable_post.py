@@ -1121,31 +1121,31 @@ def __getattr__(name: str) -> Any:
             "load_teacher_silver_index": load_teacher_silver_index,
         }[name]
     if name in {
-        "SelectiveStudentEncoder",
-        "build_selective_student_prediction_rows",
-        "build_selective_student_targets",
-        "predict_selective_student_outputs",
+        "LegacySmokeAdapter",
+        "build_legacy_smoke_adapter_prediction_rows",
+        "build_legacy_smoke_adapter_targets",
+        "predict_legacy_smoke_adapter_outputs",
         "student_main_axis_metrics",
         "student_overall_probability_for_case",
-        "train_selective_student_model",
+        "train_legacy_smoke_adapter_model",
     }:
-        from app.core.review.selective_student import (
-            SelectiveStudentEncoder,
-            build_selective_student_prediction_rows,
-            build_selective_student_targets,
-            predict_selective_student_outputs,
+        from app.core.review.legacy_smoke_adapter import (
+            LegacySmokeAdapter,
+            build_legacy_smoke_adapter_prediction_rows,
+            build_legacy_smoke_adapter_targets,
+            predict_legacy_smoke_adapter_outputs,
             student_main_axis_metrics,
             student_overall_probability_for_case,
-            train_selective_student_model,
+            train_legacy_smoke_adapter_model,
         )
 
         return {
-            "SelectiveStudentEncoder": SelectiveStudentEncoder,
-            "build_selective_student_prediction_rows": build_selective_student_prediction_rows,
-            "build_selective_student_targets": build_selective_student_targets,
-            "predict_selective_student_outputs": predict_selective_student_outputs,
+            "LegacySmokeAdapter": LegacySmokeAdapter,
+            "build_legacy_smoke_adapter_prediction_rows": build_legacy_smoke_adapter_prediction_rows,
+            "build_legacy_smoke_adapter_targets": build_legacy_smoke_adapter_targets,
+            "predict_legacy_smoke_adapter_outputs": predict_legacy_smoke_adapter_outputs,
             "student_main_axis_metrics": student_main_axis_metrics,
             "student_overall_probability_for_case": student_overall_probability_for_case,
-            "train_selective_student_model": train_selective_student_model,
+            "train_legacy_smoke_adapter_model": train_legacy_smoke_adapter_model,
         }[name]
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

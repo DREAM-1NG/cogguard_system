@@ -99,3 +99,16 @@ class PropagationPredictionResponse(BaseModel):
     code: int = 0
     data: PropagationPredictionData
     msg: str = "ok"
+
+
+class PropagationMonitorProfileRequest(BaseModel):
+    event_id: str = Field(min_length=1, max_length=128)
+    platform: str | None = Field(default=None, max_length=32)
+    enabled: bool = True
+    interval_minutes: int = Field(default=5, ge=1, le=1440)
+    thresholds: dict[str, dict[str, float | int]] = Field(default_factory=dict)
+
+
+class PropagationAlertActionRequest(BaseModel):
+    action: Literal["acknowledge", "close", "ignore"]
+    note: str | None = Field(default=None, max_length=2000)

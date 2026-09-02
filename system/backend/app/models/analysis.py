@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import DateTime, Integer, String, Text, UniqueConstraint, func
+from sqlalchemy import Boolean, DateTime, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.mysql import Base
@@ -147,6 +147,66 @@ class AnalysisModelGovernanceDecision(Base):
     decision_type: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
     decision_json: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
     decided_by: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
+class PropagationMonitorProfile(Base):
+    """Event-level settings and the latest successful monitoring snapshot."""
+
+    __tablename__ = "propagation_monitor_profiles"
+    __table_args__ = (
+        UniqueConstraint("event_id", "platform", name="uq_propagation_monitor_profiles_event_platform"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    event_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    platform: Mapped[str] = mapped_column(String(32), nullable=False, default="", index=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, index=True)
+    interval_minutes: Mapped[int] = mapped_column(Integer, nullable=False, default=5)
+    thresholds_json: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
+    last_snapshot_id: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
+    last_snapshot_json: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
+    last_success_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    updated_by: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+
+
+class PropagationAlert(Base):
+    """A deduplicated, evidence-backed propagation monitoring alert."""
+
+    __tablename__ = "propagation_alerts"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    event_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    platform: Mapped[str] = mapped_column(String(32), nullable=False, default="", index=True)
+    alert_type: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    severity: Mapped[str] = mapped_column(String(16), nullable=False, index=True)
+    state: Mapped[str] = mapped_column(String(16), nullable=False, default="new", index=True)
+    dedupe_key: Mapped[str] = mapped_column(String(320), nullable=False, index=True)
+    trigger_count: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    first_triggered_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
+    last_triggered_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
+    snapshot_id: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
+    model_version_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    assigned_to: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    evidence_json: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class PropagationAlertAction(Base):
+    """Append-only analyst action audit for a propagation alert."""
+
+    __tablename__ = "propagation_alert_actions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    alert_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    action: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    actor_id: Mapped[int] = mapped_column(Integer, nullable=False, default=0, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
 

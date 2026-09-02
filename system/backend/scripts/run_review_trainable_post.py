@@ -66,17 +66,17 @@ from app.core.review.trainable_post import (  # noqa: E402
     multitask_targets,
     write_jsonl,
 )
-from app.core.review.selective_student import (  # noqa: E402
+from app.core.review.legacy_smoke_adapter import (  # noqa: E402
     ATTACK_AXIS,
     MISINFO_AXIS,
-    SelectiveStudentEncoder,
-    build_selective_student_prediction_rows,
-    build_selective_student_targets,
+    LegacySmokeAdapter,
+    build_legacy_smoke_adapter_prediction_rows,
+    build_legacy_smoke_adapter_targets,
     load_teacher_silver_index,
-    predict_selective_student_outputs,
+    predict_legacy_smoke_adapter_outputs,
     student_main_axis_metrics,
     student_overall_probability_for_case,
-    train_selective_student_model,
+    train_legacy_smoke_adapter_model,
 )
 from app.core.review.teacher_silver import build_teacher_silver_record  # noqa: E402
 from app.core.review.rag import LocalHashRag, augment_context_with_rag  # noqa: E402
@@ -442,24 +442,24 @@ def evaluate_student_dataset(dataset: str, *, case_dir: Path, output_dir: Path, 
     )
     student_matrix = np.concatenate([post_bundle.matrix, claim_bundle.matrix], axis=-1)
     train_x, validation_x, test_x = split_feature_matrix(student_matrix, train, validation, test)
-    targets = build_selective_student_targets(all_cases, teacher_silver_index)
+    targets = build_legacy_smoke_adapter_targets(all_cases, teacher_silver_index)
     train_target_count = len(train)
     train_targets = {key: value[:train_target_count] for key, value in targets.items()}
 
-    model = SelectiveStudentEncoder(input_dim=train_x.shape[1], hidden_dim=args.hidden_dim, stance_count=len(STANCE_ORDER))
-    train_info = train_selective_student_model(
+    model = LegacySmokeAdapter(input_dim=train_x.shape[1], hidden_dim=args.hidden_dim, stance_count=len(STANCE_ORDER))
+    train_info = train_legacy_smoke_adapter_model(
         model,
         train_x,
         train_targets,
         epochs=args.epochs,
         batch_size=args.batch_size,
     )
-    validation_predictions = predict_selective_student_outputs(model, validation_x)
-    test_predictions = predict_selective_student_outputs(model, test_x)
+    validation_predictions = predict_legacy_smoke_adapter_outputs(model, validation_x)
+    test_predictions = predict_legacy_smoke_adapter_outputs(model, test_x)
     validation_metrics = student_main_axis_metrics(validation, validation_predictions, teacher_silver_index=teacher_silver_index)
     test_metrics = student_main_axis_metrics(test, test_predictions, teacher_silver_index=teacher_silver_index)
 
-    prediction_rows = build_selective_student_prediction_rows(test, test_predictions, teacher_silver_index=teacher_silver_index)
+    prediction_rows = build_legacy_smoke_adapter_prediction_rows(test, test_predictions, teacher_silver_index=teacher_silver_index)
     prediction_path = output_dir / "trainable_post_predictions.jsonl"
     write_jsonl(prediction_path, prediction_rows)
 

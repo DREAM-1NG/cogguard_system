@@ -43,7 +43,6 @@ def test_legacy_risk_submodule_imports_resolve_to_review_boundary():
         "rag",
         "review_executor",
         "review_queue",
-        "selective_student",
         "teacher_silver",
         "trainable_post",
         "user_gate",

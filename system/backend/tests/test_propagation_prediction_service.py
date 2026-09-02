@@ -368,22 +368,36 @@ def test_model_runtime_error_returns_structured_unavailable_result(monkeypatch):
     assert result["data_scope"]["posts"] == 3
 
 
-def test_unsupported_current_event_platform_abstains_before_data_or_model_access(monkeypatch):
-    calls = []
+def test_current_event_platform_filters_data_without_blocking_model(monkeypatch):
+    calls = {}
 
-    def fail_get_mongo_db():
-        calls.append("mongo")
-        raise AssertionError("unsupported platforms must not access MongoDB")
+    async def fake_posts(_mongo_db, *, event_id, platform):
+        calls["posts_scope"] = {"event_id": event_id, "platform": platform}
+        return _posts()
 
-    async def fail_predictor(**_kwargs):
-        calls.append("checkpoint")
-        raise AssertionError("unsupported platforms must not load the checkpoint")
+    async def fake_comments(_mongo_db, *, event_id, platform):
+        calls["comments_scope"] = {"event_id": event_id, "platform": platform}
+        return []
 
-    monkeypatch.setattr(propagation_model_service, "get_mongo_db", fail_get_mongo_db)
+    async def fake_predictor(**kwargs):
+        calls["predictor"] = kwargs
+        result = propagation_model_service.empty_prediction_result("event-1", "weibo")
+        result["status"] = "ok"
+        result["model_status"] = "available"
+        result["macro"].update({
+            "observed_size": 3,
+            "predicted_size": 5,
+            "trend_points": [{"step": 1, "predicted_size": 5}],
+        })
+        return result
+
+    monkeypatch.setattr(propagation_model_service, "get_mongo_db", lambda: object())
+    monkeypatch.setattr(propagation_model_service, "load_event_posts", fake_posts)
+    monkeypatch.setattr(propagation_model_service, "load_event_comments", fake_comments)
     monkeypatch.setattr(
         propagation_model_service.propagation_prediction_service,
         "predict_event_macro_micro",
-        fail_predictor,
+        fake_predictor,
     )
 
     result = asyncio.run(
@@ -394,15 +408,18 @@ def test_unsupported_current_event_platform_abstains_before_data_or_model_access
         )
     )
 
-    assert result["status"] == "unsupported_platform"
-    assert result["model_status"] == "unavailable"
+    assert result["status"] == "ok"
+    assert result["model_status"] == "available"
     assert result["data_scope"]["event_id"] == "event-1"
     assert result["data_scope"]["platform"] == "weibo"
-    assert result["data_scope"]["observation_ratio"] == 0.3
-    assert calls == []
+    assert result["data_scope"]["observation_ratio"] == 1.0
+    assert result["data_scope"]["checkpoint_conditioning_ratio"] == 0.3
+    assert calls["posts_scope"] == {"event_id": "event-1", "platform": "weibo"}
+    assert calls["comments_scope"] == {"event_id": "event-1", "platform": "weibo"}
+    assert calls["predictor"]["posts"] == _posts()
 
 
-def test_unspecified_current_event_platform_is_scoped_to_twitter(monkeypatch):
+def test_unspecified_current_event_platform_uses_all_platform_data(monkeypatch):
     captured = {}
 
     async def fake_event_data(*, event_id, platform):
@@ -422,9 +439,9 @@ def test_unspecified_current_event_platform_is_scoped_to_twitter(monkeypatch):
         )
     )
 
-    assert captured == {"event_id": "event-1", "platform": "twitter"}
-    assert result["platform"] == "twitter"
-    assert result["data_scope"]["platform"] == "twitter"
+    assert captured == {"event_id": "event-1", "platform": None}
+    assert result["platform"] is None
+    assert result["data_scope"]["platform"] is None
 
 
 def test_missing_event_id_abstains_before_data_access(monkeypatch):
@@ -726,9 +743,9 @@ def test_empty_current_event_is_an_abstain_response():
     assert result["micro"]["top_users"] == []
 
 
-def test_unsupported_platform_abstains_before_loading_event_data(monkeypatch):
+def test_platform_scoped_prediction_reports_data_unavailable_when_data_access_fails(monkeypatch):
     def fail_database_access():
-        raise AssertionError("unsupported platform must not access MongoDB")
+        raise RuntimeError("database down")
 
     monkeypatch.setattr(propagation_model_service, "get_mongo_db", fail_database_access)
 
@@ -739,7 +756,7 @@ def test_unsupported_platform_abstains_before_loading_event_data(monkeypatch):
         )
     )
 
-    assert result["status"] == "unsupported_platform"
+    assert result["status"] == "data_unavailable"
     assert result["model_status"] == "unavailable"
     assert result["micro"]["top_users"] == []
     assert result["data_scope"]["platform"] == "weibo"
