@@ -1074,6 +1074,7 @@ let layerChart: ECharts | null = null
 let pathGraphChart: ECharts | null = null
 let modelTrendChart: ECharts | null = null
 let modelTrendResizeObserver: ResizeObserver | null = null
+let analysisRequestGeneration = 0
 let predictionRequestGeneration = 0
 
 const analysisReady = computed(() => !!analysisResult.value && !analysisResult.value.error)
@@ -2101,6 +2102,7 @@ function firstQueryValue(value: unknown) {
 }
 
 function syncScopeFromRoute() {
+  analysisRequestGeneration += 1
   predictionRequestGeneration += 1
   predicting.value = false
   eventId.value = firstQueryValue(route.query.event_id) || DEFAULT_EVENT_ID
@@ -2109,12 +2111,22 @@ function syncScopeFromRoute() {
 }
 
 async function loadAnalysis(showToast = false, preservePrediction = false) {
+  const requestGeneration = ++analysisRequestGeneration
+  const requestedEventId = eventId.value.trim()
+  const requestedPlatform = platform.value.trim()
   if (!preservePrediction) {
     predictionRequestGeneration += 1
   }
   analyzing.value = true
   try {
     const res = (await analyzeObservedPropagation(requestParams.value)) as { data: AnalysisResult }
+    if (
+      requestGeneration !== analysisRequestGeneration
+      || requestedEventId !== eventId.value.trim()
+      || requestedPlatform !== platform.value.trim()
+    ) {
+      return
+    }
     analysisResult.value = res.data
 
     if (res.data.error) {
@@ -2135,7 +2147,9 @@ async function loadAnalysis(showToast = false, preservePrediction = false) {
   } catch {
     /* handled in interceptor */
   } finally {
-    analyzing.value = false
+    if (requestGeneration === analysisRequestGeneration) {
+      analyzing.value = false
+    }
   }
 }
 

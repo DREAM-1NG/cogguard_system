@@ -391,6 +391,9 @@ const communityDetail = ref<CoordinationCommunityDetail | null>(null)
 const drawerMode = ref<'account' | 'community'>('account')
 let pollTimer: number | null = null
 let graphReloadTimer: number | null = null
+let datasetDetailRequestGeneration = 0
+let latestResultRequestGeneration = 0
+let graphRequestGeneration = 0
 
 const selectedDataset = computed(() =>
   datasets.value.find((item) => item.dataset_id === selectedDatasetId.value) || null,
@@ -487,44 +490,86 @@ async function handleDatasetSelect(datasetId: number) {
 
 async function selectDataset(datasetId: number) {
   selectedDatasetId.value = datasetId
+  datasetDetailRequestGeneration += 1
+  latestResultRequestGeneration += 1
+  graphRequestGeneration += 1
   communityDrawerOpen.value = false
   selectedNode.value = null
   communityDetail.value = null
   await Promise.all([loadDatasetDetail(datasetId), loadGraph()])
-  void loadLatestResult(datasetId)
+  if (selectedDatasetId.value === datasetId) {
+    void loadLatestResult(datasetId)
+  }
 }
 
 async function loadDatasetDetail(datasetId: number) {
+  const requestGeneration = ++datasetDetailRequestGeneration
   loadingDetail.value = true
   try {
     const resp = await getCoordinationDatasetDetail(datasetId)
+    if (
+      requestGeneration !== datasetDetailRequestGeneration
+      || datasetId !== selectedDatasetId.value
+    ) {
+      return
+    }
     datasetDetail.value = resp.data
   } finally {
-    loadingDetail.value = false
+    if (
+      requestGeneration === datasetDetailRequestGeneration
+      && datasetId === selectedDatasetId.value
+    ) {
+      loadingDetail.value = false
+    }
   }
 }
 
 async function loadLatestResult(datasetId: number) {
+  const requestGeneration = ++latestResultRequestGeneration
   loadingResult.value = true
   try {
     const resp = await getCoordinationDatasetLatestResult(datasetId)
+    if (
+      requestGeneration !== latestResultRequestGeneration
+      || datasetId !== selectedDatasetId.value
+    ) {
+      return
+    }
     resultSnapshot.value = resp.data
   } finally {
-    loadingResult.value = false
+    if (
+      requestGeneration === latestResultRequestGeneration
+      && datasetId === selectedDatasetId.value
+    ) {
+      loadingResult.value = false
+    }
   }
 }
 
 async function loadGraph() {
-  if (!selectedDatasetId.value) return
+  const requestedDatasetId = selectedDatasetId.value
+  if (!requestedDatasetId) return
+  const requestGeneration = ++graphRequestGeneration
   loadingGraph.value = true
   try {
-    const resp = await getCoordinationGraph(selectedDatasetId.value, {
+    const resp = await getCoordinationGraph(requestedDatasetId, {
       node_limit: nodeLimit.value,
       min_node_score: minNodeScore.value,
     })
+    if (
+      requestGeneration !== graphRequestGeneration
+      || requestedDatasetId !== selectedDatasetId.value
+    ) {
+      return
+    }
     graphPayload.value = resp.data
   } finally {
-    loadingGraph.value = false
+    if (
+      requestGeneration === graphRequestGeneration
+      && requestedDatasetId === selectedDatasetId.value
+    ) {
+      loadingGraph.value = false
+    }
   }
 }
 
