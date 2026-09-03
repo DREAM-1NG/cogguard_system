@@ -18,14 +18,13 @@ It does not apply to archive material except for read-only reference.
 | --- | --- | --- |
 | Product shell | `system/backend`, `system/frontend` | Code reachable from product APIs, UI, tasks, or demo flows. |
 | Product runtimes | `system/runtimes/social_runtime`, `system/runtimes/news_runtime`, `system/runtimes/review_student` | Vendored executable engines used by product code. |
-| System-readable research | `system/research/coordination_discover`, `system/research/coordination_detect`, `system/research/propagation_analysis`, `system/research/review_teacher`, `system/research/social_bot_detection` | Research code that is importable by product adapters but not a separate runtime dependency. |
+| System-readable research | `system/research/coordination_discover`, `system/research/coordination_detect`, `system/research/propagation_analysis`, `system/research/review_student`, `system/research/review_teacher`, `system/research/social_bot_detection` | Research code that is importable by product adapters but not a separate runtime dependency. |
 | Documentation | `doc/engineering`, `doc/research` | Normative engineering docs and research notes. |
 | Reference boundaries | `MediaCrawler-main`, `NewsCrawler-main`, `CooRTweet-master` | Provenance only; never runtime dependencies. |
 
 Semantic research packages and deployable review runtimes are canonical
 product boundaries. Compatibility aliases are limited to legacy application
-paths such as `app.core.coordination` and `app.core.risk`, plus explicitly
-named `*_legacy_alias` packages.
+paths such as `app.core.coordination` and `app.core.risk`.
 
 ## Code Structure
 
@@ -36,13 +35,15 @@ system/
       api/v1/           legacy thin compatibility layer
       api/v2/           current product API surface
       core/
-        analysis/       internal EventSnapshot diagnostics, SSE, Coordination Discover, Propagation Analysis, Review ports, governance
-        coordination_baseline/ CooRTweet-style fallback baseline implementation
+        analysis/       Analysis Run lifecycle, SSE, artifacts, and uniform stage adapters
+        coordination_baseline/ focused fallback implementation modules plus compatibility facade
         coordination/   legacy compatibility aliases for coordination_baseline
         crawler/        social/news/mock acquisition adapters
-        propagation/    observed propagation projection, heuristics, and compatibility helpers
+        propagation/    observed propagation projection and compatibility helpers
+        propagation_monitoring/ shared HTTP/Celery monitoring interface
         review/         Event Review Case orchestration, Review/Teacher/Student helpers, advisory routing, and governance
         risk/           legacy compatibility aliases for review
+        semantic/       internal semantic enrichment runtime
         security.py     auth and crypto utilities
       models/           SQLAlchemy and persisted domain records
       schemas/          Pydantic request/response schemas
@@ -54,14 +55,13 @@ system/
     coordination_discover/ platform-generic Coordination Discover pipeline
     coordination_detect/   public-label Coordination Detect validation boundary
     propagation_analysis/  deployed sequence inference, checkpoint, and benchmark boundary
+    review_student/        offline training, Hardcase selection, losses, and artifact export
     review_teacher/        multi-agent Teacher DAG
     social_bot_detection/  trainable BotRHG Weibo transfer
-    *_legacy_alias/        one-version import-only compatibility packages
   runtimes/
     social_runtime/    vendored social crawler runtime
     news_runtime/      vendored news extractor runtime
     review_student/    deployable Student runtime
-    review_student_legacy_alias/ one-version import-only compatibility package
   frontend/
     src/
       api/             HTTP client wrappers
@@ -144,11 +144,13 @@ Use the glossary in `UBIQUITOUS_LANGUAGE.md` for domain terms. The system-level 
 - `system/research/*` may contain training, evaluation, and export code, but should remain system-readable and small enough to load through explicit adapters.
 - Legacy compatibility code must be thin mapping only; business logic lives in the current canonical module.
 - `app.core.risk` and `app.core.coordination` are legacy application aliases.
-- `system/research/*_legacy_alias` and `system/runtimes/*_legacy_alias` are import-only compatibility packages.
 - `system/backend/app/services/review_case_service.py` and `system/backend/app/api/v2/review_cases.py` are the product case boundary.
-- `system/research/coordination_discover`, `system/research/coordination_detect`, `system/research/propagation_analysis`, `system/research/review_teacher`, and `system/runtimes/review_student` are canonical semantic boundaries.
+- `system/research/coordination_discover`, `system/research/coordination_detect`, `system/research/propagation_analysis`, `system/research/review_student`, `system/research/review_teacher`, and `system/runtimes/review_student` are canonical semantic boundaries.
 - `system/research/social_bot_detection` is the canonical internal boundary for trainable BotRHG transfer. It must record dataset fingerprint, model checkpoint hash, missing property/social graph coverage, and comparison against a shallow reference baseline.
 - `system/research/propagation_analysis` owns the deployed propagation sequence model and checkpoint. Public event prediction must use a timezone-aware observation cutoff, must not import `subsystems/`, and must abstain rather than invoke the legacy speed/acceleration runtime when the model is unavailable.
+- `system/runtimes/review_student` owns checkpoint-gated XLM-R inference. It must return `shadow_untrained` and abstain when no compatible active checkpoint is available.
+- `system/research/review_student` owns masked losses, staged training, external Hardcase routing, and artifact export; the model has no defer head.
+- `app.core.analysis.stages` is the canonical Analysis Stage registry. New stages implement `AnalysisStagePort.execute(AnalysisStageContext)` instead of adding role-specific executor interfaces.
 
 ### Prototype Boundary
 
@@ -212,7 +214,7 @@ Use the glossary in `UBIQUITOUS_LANGUAGE.md` for domain terms. The system-level 
 - Keep UI, API, runtime, research, and docs separate.
 - Keep product API models in `schemas/`, persistent records in `models/`, and orchestration in `services/` or `core/`.
 - Keep analysis lifecycle logic in `app/core/analysis/`.
-- Keep analysis capability-specific research logic in semantic research packages: `coordination_discover`, `coordination_detect`, `propagation_analysis`, and `review_teacher`.
+- Keep analysis capability-specific research logic in semantic research packages: `coordination_discover`, `coordination_detect`, `propagation_analysis`, `review_student`, and `review_teacher`.
 - Keep Event Review Case orchestration, review advisory routing, and decision confirmation in `app/services/review_case_service.py` and `app/api/v2/review_cases.py`.
 - Keep deployable ML/runtime code in `system/runtimes/*`.
 

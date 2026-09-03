@@ -4,4 +4,4 @@
 - [Implementation Plan](plan.md)
 - [Metadata](metadata.json)
 
-当前状态：`in progress`。远端 `origin/feature` 已合并到工作分支，本地工作树已从可恢复 stash 恢复，正式实现从文档提交后开始。
+当前状态：`in progress / final verification`。代码与发布表面任务已完成；剩余工作是全量验证、最终 branch review、推送和创建面向 `release-0.2` 的 PR。

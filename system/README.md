@@ -6,7 +6,7 @@ Canonical capabilities:
 
 - `Event Review Case`
 - `Coordination Discover` and `Coordination Detect`
-- `Propagation Analysis`
+- `Propagation Monitoring`
 - `Review`
 - `Crawler`
 
@@ -19,12 +19,14 @@ system/
       api/v1/                  legacy thin compatibility layer
       api/v2/                  current product API surface
       core/
-        analysis/              internal snapshot and diagnostics boundary
+        analysis/              Analysis Run lifecycle and uniform stage adapters
         coordination_baseline/ reference-style fallback baseline
         coordination/          legacy compatibility alias for coordination_baseline
         crawler/               Crawler interface, social/news/mock adapters
-        propagation/           observed propagation projection, services, and fallback logic
+        propagation/           observed propagation implementation
+        propagation_monitoring/ shared HTTP/Celery monitoring interface
         review/                Event Review Case orchestration, Review/Teacher/Student helpers, advisory routing, governance
+        semantic/              semantic enrichment runtime
         risk/                  legacy compatibility alias for review
       models/                  SQLAlchemy and persisted domain records
       schemas/                 Pydantic request and response schemas
@@ -39,6 +41,7 @@ system/
     coordination_discover/     platform-generic discovery pipeline and outputs
     coordination_detect/       public-label validation boundary
     propagation_analysis/      deployed sequence model, checkpoint, loaders, hindcast, and benchmarks
+    review_student/            offline Student training, Hardcase selection, losses, and artifact export
     review_teacher/            asynchronous Teacher Review research DAG
     social_bot_detection/     internal trainable BotRHG social-bot transfer, including Weibo
   runtimes/
@@ -52,6 +55,7 @@ Canonical semantic paths:
 - `system/research/coordination_discover/`
 - `system/research/coordination_detect/`
 - `system/research/propagation_analysis/`
+- `system/research/review_student/`
 - `system/research/review_teacher/`
 - `system/research/social_bot_detection/`
 - `system/runtimes/review_student/`
@@ -95,25 +99,29 @@ The application-facing ports are the `ReviewCaseService` methods that power thos
 
 ### Analysis Run Diagnostics
 
-The internal Analysis Run diagnostic entrypoint remains `/api/v2/analysis/*`.
+Internal Analysis Runs are created and executed by the Event Review Case
+orchestrator. Authenticated diagnostic reads remain under `/api/v2/governance`:
 
-- `POST /api/v2/analysis/snapshots` builds and registers an immutable `EventSnapshot` from MongoDB content.
-- `POST /api/v2/analysis/runs` creates an `AnalysisRun` for one snapshot and an ordered stage list.
-- `POST /api/v2/analysis/runs/{run_id}/execute` calls the configured analysis ports.
-- `GET /api/v2/analysis/runs/{run_id}` returns run state, stage outputs, and an `artifact_manifest` with data fingerprint, model/checkpoint references, fallback reason, and claimability. Fallback, shadow, advisory-only, and missing-checkpoint stages are non-claimable.
-- `GET /api/v2/analysis/runs/{run_id}/events?after_id=<id>` is the REST recovery path.
-- `GET /api/v2/analysis/runs/{run_id}/events/stream` streams backlog events and supports `Last-Event-ID`.
+- `GET /api/v2/governance/runs/{run_id}` returns persisted run state and its artifact manifest.
+- `GET /api/v2/governance/runs/{run_id}/artifacts/{artifact_key}` restores one chunked stage artifact.
+- `GET /api/v2/governance/runs/{run_id}/events?after_id=<id>` is the REST recovery path.
+- `GET /api/v2/governance/runs/{run_id}/events/stream` streams backlog events and supports `Last-Event-ID`.
 
-The application-facing analysis ports are:
+The executor uses one internal interface for every capability:
 
-- `CoordinationEngine.analyze(snapshot, options)`
-- `PropagationEngine.hindcast(snapshot, options)`
-- `StudentRuntime.predict(case)`
-- `TeacherJobPort.submit(case)`
+- `AnalysisStageContext` carries stage, run, snapshot, options, and prior results.
+- `AnalysisStagePort.execute(context)` is implemented by explicit Coordination Discover, Propagation Analysis, semantic enrichment, Student Review, and Teacher Review adapters.
+- `AnalysisEnginePorts` remains a one-release compatibility adapter for older tests and scripts.
 
 When `requested_stages` is omitted, a prototype run executes
 `coordination_discover`, `propagation_analysis`, `student`, and `teacher` in
 that order. A narrower list remains available for focused diagnostics.
+
+Student Review loads XLM-R weights only from an active, compatible artifact
+whose manifest and SHA-256 match the registered model. Missing or incompatible
+checkpoints return `shadow_untrained`/`abstain`. Offline training, latent
+rationale distillation, Hardcase selection, and artifact export live under
+`system/research/review_student/`.
 
 ## Internal Diagnostics
 
@@ -182,6 +190,7 @@ celery -A app.celery_app worker --loglevel=info -Q crawl,analysis,review
 ```powershell
 cd system\backend
 python -m pytest tests -q
+uv export --frozen --extra dev --no-hashes --format requirements-txt --output-file requirements.txt
 
 cd ..\frontend
 npm run build
@@ -204,6 +213,7 @@ python -m pytest tests/test_coordination_local_discover_detect_script.py -q
 - Update `../doc/engineering/system-governance.md` when package boundaries or public interfaces change.
 - Update `../doc/engineering/development-log.md` after meaningful code or documentation work.
 - Keep generated outputs out of commits unless a specific output is explicitly promoted with a manifest.
+- Edit dependencies only in `backend/pyproject.toml`; `requirements.txt` is a frozen `uv export` artifact.
 
 Production deployments must set `BACKEND_ENV=production`, a random `JWT_SECRET_KEY`, `DEFAULT_ADMIN_PASSWORD`, and non-empty MySQL, MongoDB, and Redis credentials. The system has no preview authentication bypass; local and LAN deployments use the same login flow.
 

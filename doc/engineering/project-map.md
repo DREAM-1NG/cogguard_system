@@ -10,6 +10,9 @@ research notes. If this file conflicts with older documents, this file wins.
 | --- | --- | --- |
 | `system/` | Active product system: backend, frontend, deployment files, vendored runtimes, system-readable research packages, and tests. | Edit for runnable system work. |
 | `system/backend/` | FastAPI, Celery, MySQL/MongoDB/Redis access, services, tasks, schemas, and backend tests. | Edit for product backend behavior. |
+| `system/backend/app/core/analysis/` | Analysis Run lifecycle, artifact summaries, and uniform Analysis Stage adapters. | Every stage implements `AnalysisStagePort.execute(context)`; keep role-specific engines compatibility-only. |
+| `system/backend/app/core/propagation_monitoring/` | Shared Propagation Monitoring use cases for HTTP and Celery adapters. | Own observed cache/compaction, forecast validation, profiles, and alert delegation. |
+| `system/backend/app/core/semantic/` | Internal semantic enrichment of Event Snapshot evidence. | No rule fallback when required local weights are unavailable. |
 | `system/backend/app/services/analysis_governance_service.py` | Authenticated control plane for durable Teacher dispatch outcomes, model candidates, activation approvals, active pointers, and rollback decisions. | Keep separate from product-facing case schemas and frontend. |
 | `system/backend/alembic/versions/` | Versioned MySQL schema changes, including durable review and model approval tables. | Apply migrations before enabling the corresponding production endpoint. |
 | `system/frontend/` | Vue 3 and TypeScript UI. | Keep `/dashboard` as the homepage and `/risk` as the Event Review Case workspace. |
@@ -19,6 +22,7 @@ research notes. If this file conflicts with older documents, this file wins.
 | `system/research/coordination_discover/` | Platform-generic Coordination Discover pipeline and artifact export boundary. | System-readable research; backend consumes it through analysis adapters. |
 | `system/research/coordination_detect/` | Public-label Coordination Detect validation boundary. | Validation boundary; do not label unlabeled project events. |
 | `system/research/propagation_analysis/` | Propagation Analysis loaders, hindcast protocol, conformal intervals, and baseline registry. | System-readable research; do not point product code at external research workspaces. |
+| `system/research/review_student/` | Student Review losses, staged training, Hardcase selection, and governed artifact export. | Offline research only; export a manifest and SHA-256 before activation. |
 | `system/research/review_teacher/` | Multi-agent Teacher Review advisory DAG. | System-readable research; advisory only unless an analyst approves a canonical verdict. |
 | `system/research/social_bot_detection/` | Internal trainable BotRHG transfer pipeline for labeled Weibo accounts. | System-readable research and checkpoint export; text-only transfer until property/social graph coverage is available. |
 | `conductor/` | Product, technology, workflow, and active-track context. | Update before implementation and keep track status synchronized with verified work. |
@@ -55,10 +59,12 @@ explicit user-provided path. They must not default to a reference boundary.
 CogGuard/
   system/
     backend/
-      app/core/analysis/              Analysis lifecycle and ports
+      app/core/analysis/              Analysis lifecycle and uniform stage ports
       app/core/crawler/               Crawler adapters and collect seam
-      app/core/coordination_baseline/ Compatibility baseline
+      app/core/coordination_baseline/ Focused baseline modules plus compatibility facade
       app/core/propagation/           Propagation Analysis app support
+      app/core/propagation_monitoring/ Shared monitoring interface
+      app/core/semantic/              Semantic enrichment runtime
       app/core/review/                Internal Review runtime support
       app/services/analysis_governance_service.py
                                       Authenticated model and dispatch control plane
@@ -70,6 +76,7 @@ CogGuard/
       coordination_discover/          Coordination Discover research pipeline
       coordination_detect/            Coordination Detect validation boundary
       propagation_analysis/           Propagation Analysis protocol and baselines
+      review_student/                  Student training and artifact export
       review_teacher/                 Teacher Review advisory DAG
       social_bot_detection/           trainable BotRHG Weibo transfer
     runtimes/

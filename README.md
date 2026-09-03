@@ -16,8 +16,8 @@ event -> evidence -> Coordination Discover -> Propagation Analysis -> Review -> 
 | Event Review Case | `system/backend/app/services/review_case_service.py`, `system/backend/app/api/v2/review_cases.py`, `system/frontend/src/views/risk/index.vue` | Case list/detail, evidence annotations, review request, decision draft, confirmation, and activity stream are available. |
 | Coordination Discover | `system/research/coordination_discover/` | CPU research pipeline, platform-generic evidence graph, strict Leiden, and backend fallback are runnable; no claimable research result is asserted here. |
 | Coordination Detect | `system/research/coordination_detect/` | Public-label validation boundary exists; the current unlabeled event remains non-claimable. |
-| Propagation Analysis | `system/research/propagation_analysis/`, `system/backend/app/core/propagation/` | Hindcast protocol, baselines, intervals, and live fallback are runnable; current live/cached paths remain prototype-only. |
-| Review | `system/backend/app/core/review/`, `system/backend/app/services/review_case_orchestrator.py`, `system/research/review_teacher/`, `system/runtimes/review_student/` | Internal advisory routing is wired, and confirmed decision remains analyst-owned. |
+| Propagation Monitoring | `system/backend/app/core/propagation_monitoring/`, `system/research/propagation_analysis/` | Observed analysis, governed forecast, response compaction, caching, profiles, alerts, and Celery evaluation share one internal interface. |
+| Review | `system/backend/app/core/review/`, `system/backend/app/services/review_case_orchestrator.py`, `system/research/review_student/`, `system/research/review_teacher/`, `system/runtimes/review_student/` | XLM-R Student inference is checkpoint-gated, Teacher output remains advisory, and confirmed decisions remain analyst-owned. |
 | Social Bot Detection | `system/research/social_bot_detection/`, `system/backend/app/core/trained_bot_detection.py` | Internal transfer is runnable on Botection and the strict path is runnable on Cresci-2015, Cresci-2017, and Midterm-2018; public benchmark runs remain transfer results, not superiority claims. |
 
 ## Repository Map
@@ -80,6 +80,10 @@ python scripts/prototype_acceptance.py
 cd ..\frontend
 npm run build
 ```
+
+Backend dependencies are edited in `system/backend/pyproject.toml` and exported
+from the frozen `uv.lock` into `requirements.txt`. Generated outputs, caches,
+Playwright captures, local experiments, and model artifacts are not release files.
 
 `npm run build` runs `vue-tsc -b` before the Vite production build.
 

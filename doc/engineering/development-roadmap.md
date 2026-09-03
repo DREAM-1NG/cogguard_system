@@ -4,14 +4,17 @@
 > **受众**：开发者、项目维护者、后续执行任务的 AI agent。  
 > **维护规则**：只维护可执行工程路线和状态；研究定位、文献依据和关键技术背景放入 `../research/`。
 
-> 最后更新：2026-09-02
+> 最后更新：2026-09-03
 
 ## 2026-09-02 Final Architecture Cleanup
 
 - [x] 建立 Conductor context、track specification、实施顺序和质量门禁。
 - [x] 合并 `origin/feature` 并恢复受保护的本地工作树。
-- [ ] 恢复后端绿色基线并整理 GitHub 发布表面。
-- [ ] 按 Propagation Monitoring、Coordination、Student Review、Analysis Run 顺序深化 module。
+- [x] 恢复后端绿色基线并整理 GitHub 发布表面：停止跟踪 80 个生成物路径，依赖改为 frozen `uv export`。
+- [x] 深化 Propagation Monitoring：HTTP/Celery 共享 cache、compaction、forecast、profile 和 alert interface。
+- [x] 折叠 Coordination facades，并将 6,492 行 reproduction 与 2,058 行 registry 拆为 focused modules。
+- [x] 统一 Student Review：checkpoint-gated XLM-R、多头分类、latent rationale distillation、外部 Hardcase routing。
+- [x] 统一 Analysis Run：所有 stage 使用 `AnalysisStageContext` 与 `AnalysisStagePort.execute(context)`。
 - [ ] 完成全量验证、最终 code review，并向 `release-0.2` 创建 PR。
 
 ---

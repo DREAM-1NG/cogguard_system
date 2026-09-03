@@ -25,6 +25,16 @@
 
 ---
 
+## 2026-09-03 Final Architecture Implementation
+
+- 建立 `app.core.propagation_monitoring` deep module，HTTP 与 Celery adapters 共享 observed cache/compaction、forecast validation、monitor profile 和 alert interface。
+- Coordination canonical facades 直达 baseline implementation；reproduction 与 registry 巨型文件拆为 focused modules，旧路径保留薄兼容 facade。
+- Student Review 统一为 checkpoint-gated XLM-R runtime；训练、masked loss、Hardcase ranking 和 artifact export 迁入 `system/research/review_student/`。
+- Analysis Run 改用 `AnalysisStageContext` 与统一 `AnalysisStagePort.execute(context)` registry；semantic enrichment 成为内部 stage，旧 role-specific engines 仅保留一版兼容 adapter。
+- 从索引停止跟踪 80 个运行输出/截图/临时文件；`requirements.txt` 改由 frozen `uv.lock` 导出，并增加发布表面与依赖一致性测试。
+- 收紧 LLM replay cache 完整性、Review typed contracts、BotRHG/account caches，并完成 canonical frontend 的响应式、协调加载和传播图展示优化。
+- 代码提交：`05883fa`、`7618771`、`5f78afa`、`cb5a030`、`434ff0d`、`b18c412`、`b1a9306`、`452020c`、`f3f4335`、`ef3ed34`。
+
 ---
 
 ## 2026-08-15

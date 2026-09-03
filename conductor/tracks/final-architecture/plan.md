@@ -2,14 +2,14 @@
 
 ## Ordered Tasks
 
-1. 恢复绿色基线：修复传播参数、传播 evidence refs、角色依赖和失效 Student alias。
-2. 整理发布表面：停止跟踪生成物，收口 frontend-sandbox，归档 placeholder，统一依赖源。
-3. 深化 Propagation Monitoring module。
-4. 折叠 Coordination facades，拆分 reproduction 与 registry 巨型文件。
-5. 统一 XLM-R Student Review runtime、training package 和 checkpoint governance。
-6. 以 `AnalysisStageContext` + `AnalysisStagePort.execute` 深化 Analysis Run seam。
-7. 统一 glossary、CONTEXT、ADR、governance、roadmap、development log 和 README。
-8. 执行完整验证、最终 code review、推送分支并创建 PR。
+- [x] 恢复绿色基线：修复传播参数、传播 evidence refs、角色依赖和失效 Student alias。
+- [x] 整理发布表面：停止跟踪生成物，收口 frontend-sandbox，归档 placeholder，统一依赖源。
+- [x] 深化 Propagation Monitoring module。
+- [x] 折叠 Coordination facades，拆分 reproduction 与 registry 巨型文件。
+- [x] 统一 XLM-R Student Review runtime、training package 和 checkpoint governance。
+- [x] 以 `AnalysisStageContext` + `AnalysisStagePort.execute` 深化 Analysis Run seam。
+- [x] 统一 glossary、CONTEXT、ADR、governance、roadmap、development log 和 README。
+- [ ] 执行完整验证、最终 code review、推送分支并创建 PR。
 
 ## Commit Sequence
 
