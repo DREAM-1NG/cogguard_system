@@ -4,10 +4,11 @@ A live walkthrough should not fail because an upstream API is slow, rate
 limited, or unreachable. This module records genuine successful responses and
 replays them on a later identical request.
 
-Integrity rule: the cache is only ever written from a real successful provider
-response. Nothing in this module fabricates model output, and a cache miss is
-reported as a miss rather than being filled with a plausible-looking answer. A
-replayed response is therefore always something the model actually returned.
+Integrity rule: the runtime only writes cache entries after a successful
+provider response, and replay accepts only entries whose schema, key, live-call
+marker, and response digest are internally consistent. Nothing in this module
+fabricates model output, and a cache miss is reported as a miss rather than
+being filled with a plausible-looking answer.
 
 Modes (``settings.LLM_CACHE_MODE``):
 
@@ -47,7 +48,7 @@ _REPLAY = "replay"
 _RECORD = "record"
 _VALID_MODES = (_OFF, _REPLAY, _RECORD)
 
-CACHE_SCHEMA = "cogguard.llm.response_cache.v1"
+CACHE_SCHEMA = "cogguard.llm.response_cache.v2"
 
 
 def cache_mode() -> str:
@@ -92,6 +93,37 @@ def _entry_path(key: str) -> Path:
     return cache_root() / f"{key}.json"
 
 
+def _response_sha256(response: str) -> str:
+    return hashlib.sha256(response.encode("utf-8")).hexdigest()
+
+
+def _warn_invalid_entry(message: str, source: str | None) -> None:
+    if source:
+        logger.warning(message, source)
+
+
+def _entry_has_live_integrity(
+    *,
+    key: str,
+    entry: dict[str, Any],
+    response: str,
+    source: str | None = None,
+) -> bool:
+    if entry.get("schema") != CACHE_SCHEMA:
+        return False
+    if entry.get("key") != key:
+        _warn_invalid_entry("Ignoring LLM cache entry with mismatched key: %s", source)
+        return False
+    if entry.get("recorded_from_live_call") is not True:
+        _warn_invalid_entry("Ignoring LLM cache entry not recorded from a live call: %s", source)
+        return False
+    response_digest = entry.get("response_sha256")
+    if not isinstance(response_digest, str) or response_digest != _response_sha256(response):
+        _warn_invalid_entry("Ignoring LLM cache entry with response integrity mismatch: %s", source)
+        return False
+    return True
+
+
 def load_cached_response(key: str) -> str | None:
     """Return a recorded response for ``key``, or ``None`` on a miss."""
     if cache_mode() != _REPLAY:
@@ -104,14 +136,10 @@ def load_cached_response(key: str) -> str | None:
     except (OSError, ValueError):
         logger.warning("Ignoring unreadable LLM cache entry: %s", path.name)
         return None
-    if entry.get("schema") != CACHE_SCHEMA:
-        return None
     response = entry.get("response")
     if not isinstance(response, str) or not response.strip():
         return None
-    if not entry.get("recorded_from_live_call"):
-        # Defensive: refuse anything not marked as a genuine recorded response.
-        logger.warning("Ignoring LLM cache entry not recorded from a live call: %s", path.name)
+    if not _entry_has_live_integrity(key=key, entry=entry, response=response, source=path.name):
         return None
     return response
 
@@ -139,6 +167,7 @@ def record_response(
         "channel": channel,
         "model": model,
         "response": response,
+        "response_sha256": _response_sha256(response),
         "recorded_from_live_call": True,
         "recorded_at": datetime.now(timezone.utc).isoformat(),
     }
@@ -158,11 +187,22 @@ def cache_stats() -> dict[str, Any]:
     root = cache_root()
     entries = sorted(root.glob("*.json")) if root.is_dir() else []
     channels: dict[str, int] = {}
+    valid_entry_count = 0
+    invalid_entry_count = 0
     for path in entries:
         try:
             entry = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, ValueError):
+            invalid_entry_count += 1
             continue
+        response = entry.get("response")
+        if not isinstance(response, str) or not response.strip():
+            invalid_entry_count += 1
+            continue
+        if not _entry_has_live_integrity(key=path.stem, entry=entry, response=response):
+            invalid_entry_count += 1
+            continue
+        valid_entry_count += 1
         channel = str(entry.get("channel") or "unknown")
         channels[channel] = channels.get(channel, 0) + 1
     return {
@@ -170,6 +210,11 @@ def cache_stats() -> dict[str, Any]:
         "mode": cache_mode(),
         "root": str(root),
         "entry_count": len(entries),
+        "valid_entry_count": valid_entry_count,
+        "invalid_entry_count": invalid_entry_count,
         "channels": channels,
-        "integrity": "entries are recorded from real successful provider responses only",
+        "integrity": (
+            "replay requires a runtime-recorded marker plus matching cache key "
+            "and response SHA-256; invalid files are ignored"
+        ),
     }
