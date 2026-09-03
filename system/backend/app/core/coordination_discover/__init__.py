@@ -1,18 +1,22 @@
-"""Canonical Coordination Discover facade.
+"""Canonical Coordination Discover facade over ``app.core.coordination_baseline``.
 
-The current implementation remains in ``app.core.coordination`` during the
-semantic migration window. This package exposes Coordination Discover entry points
-without duplicating baseline business logic.
+The historical ``app.core.coordination`` package remains a one-release
+compatibility alias. This facade reaches the baseline implementation directly
+without duplicating business logic or routing new callers through that alias.
 """
 
-from app.core.coordination.characterization_runner import run_dyna_colm_characterize
-from app.core.coordination.io_reproduction import DEFAULT_RELATIONS
-from app.core.coordination.io_reproduction import build_unmasking_similarity_graphs
-from app.core.coordination.io_reproduction import fuse_similarity_graphs
-from app.core.coordination.io_reproduction import normalize_event_table
-from app.core.coordination.io_reproduction import read_event_table
-from app.core.coordination.io_reproduction import run_dyna_colm_discover
-from app.core.coordination.network import generate_coordinated_network, graph_to_dict
+from app.core.coordination_baseline.characterization_runner import run_dyna_colm_characterize
+from app.core.coordination_baseline.network import generate_coordinated_network, graph_to_dict
+from app.core.coordination_baseline.reproduction_common import (
+    DEFAULT_RELATIONS,
+    normalize_event_table,
+    read_event_table,
+)
+from app.core.coordination_baseline.reproduction_discover_runtime import run_dyna_colm_discover
+from app.core.coordination_baseline.reproduction_graphs import (
+    build_unmasking_similarity_graphs,
+    fuse_similarity_graphs,
+)
 
 __all__ = [
     "DEFAULT_RELATIONS",

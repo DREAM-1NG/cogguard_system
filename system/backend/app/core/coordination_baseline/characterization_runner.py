@@ -6,7 +6,8 @@ from typing import Mapping, Sequence
 import pandas as pd
 
 from app.core.coordination_baseline.characterization import CharacterizationConfig, characterize_detect_output
-from app.core.coordination_baseline.io_reproduction import DEFAULT_RELATIONS, run_dyna_colm_detect
+from app.core.coordination_baseline.reproduction_common import DEFAULT_RELATIONS
+from app.core.coordination_baseline.reproduction_detect import run_dyna_colm_detect
 
 
 def run_dyna_colm_characterize(
@@ -46,4 +47,3 @@ def run_dyna_colm_characterize(
             encoding="utf-8",
         )
     return characterization
-

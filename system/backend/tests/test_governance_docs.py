@@ -136,6 +136,9 @@ def test_public_package_initializers_use_readable_boundary_docstrings():
 
 
 def test_coordination_method_facades_alias_current_baseline_implementation():
+    root = Path(__file__).resolve().parents[3]
+    detect_source = (root / "system/backend/app/core/coordination_detect/__init__.py").read_text(encoding="utf-8")
+    discover_source = (root / "system/backend/app/core/coordination_discover/__init__.py").read_text(encoding="utf-8")
     baseline = importlib.import_module("app.core.coordination")
     detect = importlib.import_module("app.core.coordination_detect")
     discover = importlib.import_module("app.core.coordination_discover")
@@ -147,8 +150,10 @@ def test_coordination_method_facades_alias_current_baseline_implementation():
     assert discover.generate_coordinated_network is baseline.generate_coordinated_network
     assert discover.graph_to_dict.__module__ == "app.core.coordination_baseline.network"
     assert discover.run_dyna_colm_characterize is baseline.run_dyna_colm_characterize
-    assert "app.core.coordination" in (detect.__doc__ or "")
-    assert "app.core.coordination" in (discover.__doc__ or "")
+    assert "app.core.coordination_baseline" in (detect.__doc__ or "")
+    assert "app.core.coordination_baseline" in (discover.__doc__ or "")
+    assert "from app.core.coordination." not in detect_source
+    assert "from app.core.coordination." not in discover_source
     assert "independent" in (detect.__doc__ or "")
     assert "duplicating" in (discover.__doc__ or "")
 
@@ -157,14 +162,21 @@ def test_current_coordination_service_uses_canonical_facades():
     root = Path(__file__).resolve().parents[3]
     service_path = root / "system" / "backend" / "app" / "services" / "coordination_service.py"
     model_service_path = root / "system" / "backend" / "app" / "services" / "coordination_model_service.py"
+    registry_common_path = root / "system" / "backend" / "app" / "services" / "coordination_registry_common.py"
+    run_execution_path = root / "system" / "backend" / "app" / "services" / "coordination_run_execution.py"
     service_text = service_path.read_text(encoding="utf-8")
     model_service_text = model_service_path.read_text(encoding="utf-8")
+    registry_common_text = registry_common_path.read_text(encoding="utf-8")
+    run_execution_text = run_execution_path.read_text(encoding="utf-8")
 
     assert "from app.core.coordination_detect import account_stats, detect_groups, group_stats" in service_text
     assert "from app.core.coordination_discover import generate_coordinated_network, graph_to_dict" in service_text
-    assert "from app.core.coordination_detect import (" in model_service_text
-    assert "from app.core.coordination_discover import (" in model_service_text
-    for text in (service_text, model_service_text):
+    assert "from app.services.coordination_registry_" in model_service_text
+    assert "from app.core.coordination_detect import (" in registry_common_text
+    assert "from app.core.coordination_discover import (" in registry_common_text
+    assert "run_dyna_colm_discover" in run_execution_text
+    assert "run_dyna_colm_detect" in run_execution_text
+    for text in (service_text, model_service_text, registry_common_text, run_execution_text):
         assert "from app.core.coordination import" not in text
         assert "from app.core.coordination." not in text
 

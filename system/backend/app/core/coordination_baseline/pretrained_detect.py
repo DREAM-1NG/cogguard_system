@@ -12,20 +12,24 @@ import numpy as np
 import pandas as pd
 
 from app.config import PROJECT_ROOT
-from app.core.coordination_baseline.io_reproduction import (
-    DEFAULT_RELATIONS,
-    STABLE_DISCOVER_ENCODER,
+from app.core.coordination_baseline.deep_graph import STABLE_DISCOVER_ENCODER
+from app.core.coordination_baseline.reproduction_common import DEFAULT_RELATIONS, _normalize_vector, read_event_table
+from app.core.coordination_baseline.reproduction_deep_discover import _discover_node_feature_table
+from app.core.coordination_baseline.reproduction_detect_adapter import (
     _apply_discover_edge_scores_to_relation_graphs,
+    prepare_dyna_colm_detect_inputs,
+)
+from app.core.coordination_baseline.reproduction_detect_models import (
     _community_scores,
     _detect_discovery_snapshot,
-    _discover_node_feature_table,
+    _split_detect_feature_groups,
+)
+from app.core.coordination_baseline.reproduction_features import (
     _label_free_events,
     _lm_feature_matrix,
-    _normalize_vector,
-    _split_detect_feature_groups,
+)
+from app.core.coordination_baseline.reproduction_graphs import (
     build_unmasking_similarity_graphs,
-    prepare_dyna_colm_detect_inputs,
-    read_event_table,
 )
 
 def _resolve_coordination_experiment_root() -> Path:
