@@ -181,6 +181,7 @@ MediaCrawler-main/__pycache__/
 MediaCrawler-main/**/__pycache__/
 MediaCrawler-main/browser_data/
 MediaCrawler-main/data_runs/
+system/*DIAGNOSTIC_REPORT*.md
 
 NewsCrawler-main/**/__pycache__/
 NewsCrawler-main/**/.pytest_cache/

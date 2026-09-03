@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from fnmatch import fnmatchcase
 import os
 import subprocess
 from pathlib import Path
@@ -12,6 +13,12 @@ ROOT_GENERATED_PREFIXES = (
     "system/frontend/output/",
     "system/backend/output/",
     "tmp/",
+)
+RELEASE_SURFACE_PREFIXES = (
+    "MediaCrawler-main/data_runs/",
+)
+RELEASE_SURFACE_GLOBS = (
+    "system/*DIAGNOSTIC_REPORT*.md",
 )
 
 
@@ -30,7 +37,13 @@ def _tracked_paths(root: Path) -> list[str]:
 
 
 def _is_generated_release_path(path: str) -> bool:
-    if any(path.startswith(prefix) for prefix in ROOT_GENERATED_PREFIXES):
+    if any(
+        path.startswith(prefix)
+        for prefix in ROOT_GENERATED_PREFIXES + RELEASE_SURFACE_PREFIXES
+    ):
+        return True
+
+    if any(fnmatchcase(path, pattern) for pattern in RELEASE_SURFACE_GLOBS):
         return True
 
     path_parts = path.split("/")
