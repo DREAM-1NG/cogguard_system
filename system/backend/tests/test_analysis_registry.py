@@ -6,7 +6,7 @@ from typing import Any
 
 import pytest
 
-from app.core.analysis import AnalysisRunStatus, InvalidRunTransition, TimeWindow
+from app.core.analysis import AnalysisRunStatus, InvalidRunTransition, TimeWindow, build_event_snapshot
 from app.core.analysis.registry import AnalysisRegistry, SqlAlchemyAnalysisStore
 from app.models.analysis import AnalysisRun
 
@@ -258,6 +258,38 @@ def test_registry_builds_immutable_snapshot_from_mongo_and_manifest_store():
         assert manifest["mongo_key"] == snapshot.snapshot_id
         assert manifest["created_by"] == 7
         assert mongo["raw_posts"].find_calls[-1]["query"] == {"event_id": "trump_visit"}
+
+    asyncio.run(scenario())
+
+
+def test_registry_registers_an_already_built_snapshot_for_precomputation():
+    async def scenario():
+        mongo = {"analysis_event_snapshots": FakeCollection()}
+        store = FakeAnalysisStore()
+        registry = AnalysisRegistry(mongo_db=mongo, store=store)
+        snapshot = build_event_snapshot(
+            event_id="trump_visit_2026_05_21",
+            posts=[
+                {
+                    "event_id": "trump_visit_2026_05_21",
+                    "platform": "weibo",
+                    "post_id": "p1",
+                    "author_id": "u1",
+                    "timestamp": _dt(21),
+                    "content": "real imported post",
+                }
+            ],
+            comments=[],
+            core_window=TimeWindow(start=_dt(11), end=_dt(22)),
+            context_window=TimeWindow(start=_dt(1), end=_dt(31)),
+        )
+
+        registered = await registry.register_event_snapshot(snapshot, created_by=0)
+        restored = await registry.load_event_snapshot(snapshot.snapshot_id)
+
+        assert registered.snapshot_id == snapshot.snapshot_id
+        assert restored.data_fingerprint == snapshot.data_fingerprint
+        assert store.snapshots[snapshot.snapshot_id]["event_id"] == "trump_visit_2026_05_21"
 
     asyncio.run(scenario())
 

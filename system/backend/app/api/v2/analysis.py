@@ -6,10 +6,11 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.analysis.executor import AnalysisExecutor, default_analysis_engine_ports
+from app.core.analysis.executor import AnalysisExecutor
 from app.core.analysis.registry import AnalysisRegistry, SqlAlchemyAnalysisStore
+from app.core.analysis.stages import default_analysis_stage_registry
 from app.core.analysis.sse import iter_sse_events, parse_last_event_id
-from app.core.security import require_roles
+from app.core.security import get_current_user, require_roles
 from app.db.mongodb import get_mongo_db
 from app.db.mysql import get_db
 from app.models.user import User
@@ -37,7 +38,7 @@ def get_analysis_registry(
 def get_analysis_executor(
     registry: AnalysisRegistry = Depends(get_analysis_registry),
 ) -> AnalysisExecutor:
-    return AnalysisExecutor(registry=registry, engines=default_analysis_engine_ports())
+    return AnalysisExecutor(registry=registry, stages=default_analysis_stage_registry())
 
 
 @router.get("/runs/{run_id}")
@@ -50,6 +51,24 @@ async def get_run(
     if run is None:
         raise HTTPException(status_code=404, detail="Analysis run not found")
     return success(data=run)
+
+
+@router.get("/runs/{run_id}/artifacts/{artifact_key:path}")
+async def get_run_artifact(
+    run_id: str,
+    artifact_key: str,
+    registry: AnalysisRegistry = Depends(get_analysis_registry),
+    _current_user: User = Depends(require_roles("admin")),
+):
+    if await registry.get_run(run_id) is None:
+        raise HTTPException(status_code=404, detail="Analysis run not found")
+    try:
+        artifact = await registry.load_run_artifact(run_id=run_id, artifact_key=artifact_key)
+    except KeyError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    if artifact is None:
+        raise HTTPException(status_code=404, detail="Analysis artifact not found")
+    return success(data=artifact)
 
 
 @router.get("/runs/{run_id}/events")

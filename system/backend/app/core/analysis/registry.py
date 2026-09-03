@@ -131,6 +131,21 @@ class AnalysisRegistry:
         await self._persist_snapshot(snapshot, created_by=created_by)
         return snapshot
 
+    async def register_event_snapshot(
+        self,
+        snapshot: EventSnapshot,
+        *,
+        created_by: int = 0,
+    ) -> EventSnapshot:
+        """Persist a caller-built immutable snapshot without re-reading raw data.
+
+        Offline precomputation already has a deterministically sampled snapshot;
+        registering that exact object preserves its fingerprint and lets the UI
+        retrieve its artifacts through the normal AnalysisRun API.
+        """
+        await self._persist_snapshot(snapshot, created_by=created_by)
+        return snapshot
+
     async def create_run(
         self,
         *,
@@ -285,6 +300,20 @@ class AnalysisRegistry:
             "payload_size_chars": len(payload_text),
             "chunk_count": len(chunks),
         }
+
+    async def load_run_artifact(self, *, run_id: str, artifact_key: str) -> Any:
+        artifact_id = f"{run_id}:{artifact_key}"
+        collection = _get_collection(self.mongo_db, RUN_ARTIFACT_COLLECTION)
+        root = await collection.find_one({"artifact_id": artifact_id}, {"_id": 0})
+        if root is None:
+            return None
+        expected = int(root.get("chunk_count", 0) or 0)
+        cursor = collection.find({"root_artifact_id": artifact_id}, {"_id": 0, "chunk_index": 1, "payload": 1})
+        rows = await cursor.to_list(length=expected or None)
+        payload = "".join(str(row.get("payload") or "") for row in sorted(rows, key=lambda row: int(row.get("chunk_index", 0) or 0)))
+        if expected and len(rows) != expected:
+            raise KeyError(f"Analysis artifact chunks incomplete: {artifact_id}")
+        return json.loads(payload)
 
     async def append_run_event(
         self,

@@ -57,6 +57,11 @@ class FakeAnalysisRegistry:
     async def list_run_events(self, run_id: str, *, after_id: int = 0, limit: int = 100):
         return [event for event in self.events if event["run_id"] == run_id and event["id"] > after_id][:limit]
 
+    async def load_run_artifact(self, *, run_id: str, artifact_key: str):
+        if run_id == "run_a" and artifact_key == "stage:semantic_enrichment:result":
+            return {"runtime_status": "ready", "layers": {"posts": [], "comments": []}}
+        return None
+
 
 class FakeUser:
     def __init__(self, role: str) -> None:
@@ -101,6 +106,10 @@ def test_v2_governance_routes_are_read_only_and_recover_events():
                 },
             )
             run_detail = await client.get("/api/v2/governance/runs/run_a", headers=headers)
+            artifact = await client.get(
+                "/api/v2/governance/runs/run_a/artifacts/stage%3Asemantic_enrichment%3Aresult",
+                headers=headers,
+            )
             events = await client.get(
                 "/api/v2/governance/runs/run_a/events",
                 headers=headers,
@@ -120,6 +129,8 @@ def test_v2_governance_routes_are_read_only_and_recover_events():
         assert create_snapshot.status_code in {404, 405}
         assert create_run.status_code in {404, 405}
         assert run_detail.json()["data"]["status"] == "queued"
+        assert artifact.status_code == 200
+        assert artifact.json()["data"]["runtime_status"] == "ready"
         assert [event["id"] for event in events.json()["data"]["events"]] == [2]
         assert execute.status_code in {404, 405}
         assert status_update.status_code in {404, 405}

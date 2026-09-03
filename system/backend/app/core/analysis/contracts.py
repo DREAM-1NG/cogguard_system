@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import StrEnum
 from typing import Any, Literal
@@ -16,10 +18,10 @@ ANALYSIS_STAGE_ALIASES: dict[str, str] = {
     "propagation_analysis": "propagation_analysis",
     "review_student": "student",
     "review_teacher": "teacher",
-    "review_student": "student",
-    "review_teacher": "teacher",
+    "semantic": "semantic_enrichment",
+    "semantic_enrichment": "semantic_enrichment",
 }
-ANALYSIS_STAGE_ALLOWLIST = frozenset({"coordination_discover", "propagation_analysis", "student", "teacher"})
+ANALYSIS_STAGE_ALLOWLIST = frozenset({"coordination_discover", "propagation_analysis", "student", "teacher", "semantic_enrichment"})
 # A prototype run should exercise the complete capability chain by default.
 # Callers may still request a narrower stage list for focused diagnostics.
 DEFAULT_ANALYSIS_STAGES = (
@@ -96,6 +98,31 @@ class EventSnapshot(BaseModel):
     provenance: list[ProvenanceRecord]
     data_fingerprint: str
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+@dataclass(frozen=True, slots=True)
+class AnalysisStageContext:
+    """One context shape shared by every Analysis Stage adapter."""
+
+    stage: str
+    run_id: str
+    snapshot: EventSnapshot
+    options: dict[str, Any]
+    prior_results: Mapping[str, dict[str, Any]]
+
+    def review_case(self) -> dict[str, Any]:
+        return {
+            "run_id": self.run_id,
+            "snapshot_id": self.snapshot.snapshot_id,
+            "event_id": self.snapshot.event_id,
+            "platforms": list(self.snapshot.platforms),
+            "posts": list(self.snapshot.posts),
+            "comments": list(self.snapshot.comments),
+            "relationships": [edge.model_dump(mode="json") for edge in self.snapshot.relationships],
+            "quality_report": self.snapshot.quality_report.model_dump(mode="json"),
+            "provenance": [record.model_dump(mode="json") for record in self.snapshot.provenance],
+            "options": dict(self.options),
+        }
 
 
 class AnalysisRunStatus(StrEnum):

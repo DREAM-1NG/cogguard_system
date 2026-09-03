@@ -14,6 +14,7 @@ from app.core.analysis.executor import (
 )
 from app.core.analysis.registry import AnalysisRegistry
 from app.core.analysis import UnknownAnalysisStage
+from app.core.semantic.runtime import ModelWeightsBlockedError
 
 
 class FakeSnapshotCollection:
@@ -174,6 +175,15 @@ class FailedTeacherJobPort:
         }
 
 
+class RecordingSemanticEngine:
+    def __init__(self):
+        self.calls = []
+
+    async def enrich(self, snapshot, *, options, coordination, propagation):
+        self.calls.append((snapshot.snapshot_id, coordination, propagation))
+        return {"runtime_status": "ready", "status": "ok", "layers": {"posts": [], "comments": []}}
+
+
 def _dt(day: int, hour: int = 0) -> datetime:
     return datetime(2026, 5, day, hour, tzinfo=timezone.utc)
 
@@ -296,6 +306,67 @@ def test_executor_loads_snapshot_and_runs_requested_stage_ports():
             "teacher_job_submitted",
             "run_awaiting_review",
         ]
+
+    asyncio.run(scenario())
+
+
+def test_semantic_stage_receives_prior_results_and_blocks_only_semantic_when_weights_are_missing():
+    async def scenario():
+        snapshot = _snapshot()
+        store = FakeAnalysisStore(
+            snapshot_record={
+                "snapshot_id": snapshot.snapshot_id,
+                "mongo_collection": "analysis_event_snapshots",
+                "mongo_key": snapshot.snapshot_id,
+            },
+            run={
+                "run_id": "run_semantic",
+                "event_id": snapshot.event_id,
+                "snapshot_id": snapshot.snapshot_id,
+                "status": "queued",
+                "requested_stages": ["coordination_discover", "propagation_analysis", "semantic_enrichment"],
+                "options": {},
+                "finished_at": None,
+            },
+        )
+        registry = AnalysisRegistry(
+            mongo_db={"analysis_event_snapshots": FakeSnapshotCollection({snapshot.snapshot_id: snapshot.model_dump(mode="json")})},
+            store=store,
+        )
+        semantic = RecordingSemanticEngine()
+        executor = AnalysisExecutor(
+            registry=registry,
+            engines=AnalysisEnginePorts(
+                coordination=RecordingCoordinationEngine(),
+                propagation=RecordingPropagationEngine(),
+                student=RecordingStudentRuntime(),
+                teacher=UnavailableTeacherJobPort(),
+                semantic=semantic,
+            ),
+        )
+
+        result = await executor.execute_run("run_semantic")
+
+        assert result["status"] == "completed"
+        assert semantic.calls[0][1]["community_count"] == 2
+        assert semantic.calls[0][2]["scale_interval"] == [1, 3]
+
+        class MissingWeightsSemanticEngine:
+            async def enrich(self, *_args, **_kwargs):
+                raise ModelWeightsBlockedError("bge_embedding unavailable")
+
+        store.runs["run_semantic_blocked"] = {
+            **store.runs["run_semantic"],
+            "run_id": "run_semantic_blocked",
+            "status": "queued",
+            "requested_stages": ["semantic_enrichment"],
+            "finished_at": None,
+        }
+        executor.engines.semantic = MissingWeightsSemanticEngine()
+        blocked = await executor.execute_run("run_semantic_blocked")
+        assert blocked["status"] == "needs_evidence"
+        assert blocked["results"]["semantic_enrichment"]["status"] == "model_weights_blocked"
+        assert blocked["results"]["semantic_enrichment"]["fallback"] is False
 
     asyncio.run(scenario())
 

@@ -1,45 +1,59 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Protocol
+from typing import Any
 
-from app.core.analysis.contracts import AnalysisRunStatus, EventSnapshot, UnknownAnalysisStage, normalize_analysis_stage
+from app.core.analysis.contracts import (
+    AnalysisRunStatus,
+    AnalysisStageContext,
+    EventSnapshot,
+    UnknownAnalysisStage,
+    normalize_analysis_stage,
+)
 from app.core.analysis.registry import AnalysisRegistry
-from app.core.analysis.runtime import InternalStudentRuntime, InternalTeacherJobPort
-
-
-class CoordinationEngine(Protocol):
-    async def analyze(self, snapshot: EventSnapshot, options: dict[str, Any]) -> dict[str, Any]:
-        ...
-
-
-class PropagationEngine(Protocol):
-    async def hindcast(self, snapshot: EventSnapshot, options: dict[str, Any]) -> dict[str, Any]:
-        ...
-
-
-class StudentRuntime(Protocol):
-    async def predict(self, case: dict[str, Any]) -> dict[str, Any]:
-        ...
-
-
-class TeacherJobPort(Protocol):
-    async def submit(self, case: dict[str, Any]) -> dict[str, Any]:
-        ...
+from app.core.analysis.stages import (
+    AnalysisStagePort,
+    DefaultSemanticEngine,
+    PropagationAnalysisPropagationEngine,
+    SemanticEnrichmentStage,
+    SnapshotCoordinationEngine,
+    StudentReviewStage,
+    TeacherReviewStage,
+    UnavailableStudentRuntime,
+    UnavailableTeacherJobPort,
+    default_analysis_stage_registry,
+)
 
 
 @dataclass(slots=True)
 class AnalysisEnginePorts:
-    coordination: CoordinationEngine
-    propagation: PropagationEngine
-    student: StudentRuntime
-    teacher: TeacherJobPort
+    """One-release adapter for callers that still construct role-specific engines."""
+
+    coordination: Any
+    propagation: Any
+    student: Any
+    teacher: Any
+    semantic: Any | None = None
 
 
 class AnalysisExecutor:
-    def __init__(self, *, registry: AnalysisRegistry, engines: AnalysisEnginePorts) -> None:
+    def __init__(
+        self,
+        *,
+        registry: AnalysisRegistry,
+        stages: dict[str, AnalysisStagePort] | None = None,
+        engines: AnalysisEnginePorts | None = None,
+    ) -> None:
+        if stages is not None and engines is not None:
+            raise ValueError("Configure either Analysis Stage ports or legacy engine ports, not both")
         self.registry = registry
         self.engines = engines
+        if stages is not None:
+            self.stages = dict(stages)
+        elif engines is not None:
+            self.stages = _legacy_stage_registry(engines)
+        else:
+            self.stages = default_analysis_stage_registry()
 
     async def execute_run(self, run_id: str) -> dict[str, Any]:
         run = await self.registry.get_run(run_id)
@@ -81,6 +95,7 @@ class AnalysisExecutor:
                 stage,
                 snapshot,
                 stage_options,
+                results,
                 run_id=run_id,
             )
             results[stage] = result
@@ -154,162 +169,85 @@ class AnalysisExecutor:
         stage: str,
         snapshot: EventSnapshot,
         options: dict[str, Any],
+        results: dict[str, Any],
         *,
         run_id: str | None = None,
     ) -> dict[str, Any]:
-        if stage == "coordination_discover":
-            return await self.engines.coordination.analyze(snapshot, options)
-        if stage == "propagation_analysis":
-            return await self.engines.propagation.hindcast(snapshot, options)
-        if stage == "student":
-            return await self.engines.student.predict(
-                _case_from_snapshot(snapshot, options=options, run_id=run_id)
+        port = self.stages.get(stage)
+        if port is None:
+            raise UnknownAnalysisStage(f"Unknown analysis stage: {stage}")
+        return await port.execute(
+            AnalysisStageContext(
+                stage=stage,
+                run_id=run_id or "",
+                snapshot=snapshot,
+                options=dict(options),
+                prior_results=dict(results),
             )
-        if stage == "teacher":
-            return await self.engines.teacher.submit(
-                _case_from_snapshot(snapshot, options=options, run_id=run_id)
-            )
-        raise UnknownAnalysisStage(f"Unknown analysis stage: {stage}")
-
-
-class SnapshotCoordinationEngine:
-    async def analyze(self, snapshot: EventSnapshot, options: dict[str, Any]) -> dict[str, Any]:
-        from app.core.analysis.coordination_discover import analyze_coordination_discover_snapshot
-        from app.core.analysis.coordination_discover_adapter import try_load_coordination_discover_result
-
-        research_options = dict(options)
-        active_model = research_options.get("active_model")
-        if isinstance(active_model, dict) and active_model.get("artifact_uri"):
-            research_options.setdefault("artifact_dir", active_model["artifact_uri"])
-        research_result, fallback_reason = try_load_coordination_discover_result(snapshot, research_options)
-        if research_result is not None:
-            return research_result
-
-        result = analyze_coordination_discover_snapshot(snapshot, options)
-        result["fallback"] = True
-        result["fallback_reason"] = fallback_reason or "coordination_discover_artifact_unavailable"
-        result["fallback_policy"] = "evidence_runtime_v2"
-        return result
-
-
-class PropagationAnalysisPropagationEngine:
-    async def hindcast(self, snapshot: EventSnapshot, options: dict[str, Any]) -> dict[str, Any]:
-        from app.services.propagation_prediction_service import predict_event_macro_micro
-
-        result = await predict_event_macro_micro(
-            posts=snapshot.posts,
-            comments=snapshot.comments,
-            top_k=int(options.get("top_k", 10) or 10),
-            checkpoint_path=(options.get("active_model") or {}).get("checkpoint_path"),
         )
-        return {"technology": "propagation_analysis", **result}
 
 
-class UnavailableStudentRuntime:
-    async def predict(self, case: dict[str, Any]) -> dict[str, Any]:
-        return {
-            "technology": "student",
-            "status": "unavailable",
-            "verdict_type": "preliminary",
-            "snapshot_id": case.get("snapshot_id"),
-            "event_id": case.get("event_id"),
-            "reason": "Student runtime is not configured for this executor.",
-            "abstain": True,
-            "review_required": True,
-        }
+@dataclass(slots=True)
+class _LegacyCoordinationStage:
+    engines: AnalysisEnginePorts
+
+    async def execute(self, context: AnalysisStageContext) -> dict[str, Any]:
+        return await self.engines.coordination.analyze(context.snapshot, context.options)
 
 
-class UnavailableTeacherJobPort:
-    async def submit(self, case: dict[str, Any]) -> dict[str, Any]:
-        return {
-            "technology": "teacher",
-            "status": "unavailable",
-            "verdict_type": "teacher_advisory",
-            "snapshot_id": case.get("snapshot_id"),
-            "event_id": case.get("event_id"),
-            "reason": "Teacher job port is not configured for this executor.",
-            "review_required": True,
-        }
+@dataclass(slots=True)
+class _LegacyPropagationStage:
+    engines: AnalysisEnginePorts
+
+    async def execute(self, context: AnalysisStageContext) -> dict[str, Any]:
+        return await self.engines.propagation.hindcast(context.snapshot, context.options)
+
+
+@dataclass(slots=True)
+class _LegacyStudentStage:
+    engines: AnalysisEnginePorts
+
+    async def execute(self, context: AnalysisStageContext) -> dict[str, Any]:
+        return await self.engines.student.predict(context.review_case())
+
+
+@dataclass(slots=True)
+class _LegacyTeacherStage:
+    engines: AnalysisEnginePorts
+
+    async def execute(self, context: AnalysisStageContext) -> dict[str, Any]:
+        return await self.engines.teacher.submit(context.review_case())
+
+
+@dataclass(slots=True)
+class _LegacySemanticStage:
+    engines: AnalysisEnginePorts
+
+    async def execute(self, context: AnalysisStageContext) -> dict[str, Any]:
+        return await SemanticEnrichmentStage(self.engines.semantic).execute(context)
+
+
+def _legacy_stage_registry(engines: AnalysisEnginePorts) -> dict[str, AnalysisStagePort]:
+    return {
+        "coordination_discover": _LegacyCoordinationStage(engines),
+        "propagation_analysis": _LegacyPropagationStage(engines),
+        "semantic_enrichment": _LegacySemanticStage(engines),
+        "student": _LegacyStudentStage(engines),
+        "teacher": _LegacyTeacherStage(engines),
+    }
 
 
 def default_analysis_engine_ports() -> AnalysisEnginePorts:
+    """Build the one-release role-specific adapter used by legacy callers."""
+    from app.core.analysis.runtime import InternalStudentRuntime, InternalTeacherJobPort
+
     return AnalysisEnginePorts(
         coordination=SnapshotCoordinationEngine(),
         propagation=PropagationAnalysisPropagationEngine(),
         student=InternalStudentRuntime(),
         teacher=InternalTeacherJobPort(),
+        semantic=DefaultSemanticEngine(),
     )
-
-
-def _case_from_snapshot(
-    snapshot: EventSnapshot,
-    *,
-    options: dict[str, Any],
-    run_id: str | None = None,
-) -> dict[str, Any]:
-    case = {
-        "snapshot_id": snapshot.snapshot_id,
-        "event_id": snapshot.event_id,
-        "platforms": list(snapshot.platforms),
-        "posts": list(snapshot.posts),
-        "comments": list(snapshot.comments),
-        "relationships": [edge.model_dump(mode="json") for edge in snapshot.relationships],
-        "quality_report": snapshot.quality_report.model_dump(mode="json"),
-        "provenance": [record.model_dump(mode="json") for record in snapshot.provenance],
-        "options": dict(options),
-    }
-    if run_id:
-        case["run_id"] = run_id
-    return case
-
-
-def _single_platform(snapshot: EventSnapshot) -> str | None:
-    return snapshot.platforms[0] if len(snapshot.platforms) == 1 else None
-
-
-def _coordination_community_lineage(network: dict[str, Any]) -> list[dict[str, Any]]:
-    return [
-        {
-            "community_id": str(cluster.get("cluster_id", index)),
-            "size": int(cluster.get("size", 0) or 0),
-            "members": [str(member) for member in cluster.get("members", [])],
-            "evidence": {
-                "edge_count": int(cluster.get("edge_count", 0) or 0),
-                "total_weight": int(cluster.get("total_weight", 0) or 0),
-                "shared_objects": list(cluster.get("shared_objects", [])),
-            },
-        }
-        for index, cluster in enumerate(network.get("clusters", []) or [])
-        if isinstance(cluster, dict)
-    ]
-
-
-def _coordination_account_risk_tiers(account_rows: Any) -> list[dict[str, Any]]:
-    if not isinstance(account_rows, list):
-        return []
-    tiers: list[dict[str, Any]] = []
-    for row in account_rows:
-        if not isinstance(row, dict):
-            continue
-        account_id = str(row.get("account_id") or "").strip()
-        if not account_id:
-            continue
-        tiers.append(
-            {
-                "account_id": account_id,
-                "account_label": row.get("account_label") or account_id,
-                "tier": "observed_coordination",
-                "evidence": {
-                    "degree": int(row.get("degree", 0) or 0),
-                    "avg_weight": float(row.get("avg_weight", 0) or 0),
-                    "avg_time_delta": float(row.get("avg_time_delta", 0) or 0),
-                    "coordinated_shares_count": int(row.get("coordinated_shares_count", 0) or 0),
-                    "shared_objects_preview": list(row.get("shared_objects_preview", []) or []),
-                },
-            }
-        )
-    return tiers
-
 
 def _stage_options(options: dict[str, Any], stage: str) -> dict[str, Any]:
     value = options.get(stage)
@@ -363,6 +301,8 @@ def _needs_evidence(result: Any) -> bool:
         "failed",
         "dispatch_failed",
         "persistence_failed",
+        "blocked",
+        "model_weights_blocked",
     }
 
 

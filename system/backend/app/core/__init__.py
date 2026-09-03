@@ -22,4 +22,5 @@ __all__ = [
     "review",
     "risk",
     "security",
+    "semantic",
 ]

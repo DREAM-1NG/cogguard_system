@@ -183,12 +183,14 @@ def _build_relationships(
     for row in comments:
         platform = str(row.get("platform") or "unknown")
         comment_id = str(row.get("comment_id") or "")
-        parent_id = str(row.get("reply_to") or row.get("parent_comment_id") or "").strip()
+        reply_to = str(row.get("reply_to") or row.get("parent_comment_id") or "").strip()
+        post_id = str(row.get("post_id") or "").strip()
+        parent_id = reply_to or post_id
         if not parent_id or not comment_id:
             continue
-        parent_type = "comment" if (platform, parent_id) in comment_ids else "post"
+        parent_type = "comment" if reply_to and (platform, parent_id) in comment_ids else "post"
         edge = EvidenceRelation(
-            relation_type="reply",
+            relation_type="reply" if reply_to else "parent",
             source_id=_content_ref(platform, parent_type, parent_id),
             target_id=_content_ref(platform, "comment", comment_id),
             platform=platform,
