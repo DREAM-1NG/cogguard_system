@@ -7,7 +7,7 @@ Create Date: 2026-07-02 12:55:00.000000
 
 from typing import Sequence, Union
 
-from alembic import op
+from alembic import context, op
 import sqlalchemy as sa
 from sqlalchemy import inspect
 
@@ -27,12 +27,12 @@ def _has_index(table_name: str, index_name: str) -> bool:
 
 
 def _create_index_if_missing(index_name: str, table_name: str, columns: list[str], unique: bool = False) -> None:
-    if not _has_index(table_name, index_name):
+    if context.is_offline_mode() or not _has_index(table_name, index_name):
         op.create_index(index_name, table_name, columns, unique=unique)
 
 
 def upgrade() -> None:
-    if not _has_table("risk_assessments"):
+    if context.is_offline_mode() or not _has_table("risk_assessments"):
         op.create_table(
             "risk_assessments",
             sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
@@ -71,5 +71,5 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    if _has_table("risk_assessments"):
+    if context.is_offline_mode() or _has_table("risk_assessments"):
         op.drop_table("risk_assessments")
