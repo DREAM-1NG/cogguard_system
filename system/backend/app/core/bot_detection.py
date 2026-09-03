@@ -13,7 +13,7 @@ import math
 import re
 from collections import Counter, defaultdict
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 import numpy as np
@@ -185,8 +185,8 @@ def _build_account_evidence(posts: list[dict[str, Any]]) -> list[AccountEvidence
 
 
 def _activity_features(posts: list[dict[str, Any]]) -> dict[str, Any]:
-    timestamps = sorted(_parse_timestamp(post.get("timestamp")) for post in posts)
-    timestamps = [ts for ts in timestamps if ts is not None]
+    timestamps = [_parse_timestamp(post.get("timestamp")) for post in posts]
+    timestamps = sorted(ts for ts in timestamps if ts is not None)
     intervals = np.diff([ts.timestamp() for ts in timestamps]) if len(timestamps) >= 2 else np.asarray([])
     post_count = len(posts)
     min_interval = float(np.min(intervals)) if intervals.size else 0.0
@@ -432,12 +432,17 @@ def _parse_timestamp(value: Any) -> datetime | None:
     if value is None:
         return None
     if isinstance(value, datetime):
-        return value
+        if value.tzinfo is None:
+            return value.replace(tzinfo=timezone.utc)
+        return value.astimezone(timezone.utc)
     text = str(value).strip()
     if not text:
         return None
     try:
-        return pd.to_datetime(text, errors="coerce", utc=True).to_pydatetime()
+        parsed = pd.to_datetime(text, errors="coerce", utc=True)
+        if pd.isna(parsed):
+            return None
+        return parsed.to_pydatetime()
     except Exception:
         return None
 

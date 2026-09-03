@@ -94,6 +94,9 @@ class Settings(BaseSettings):
     BOTRHG_CHECKPOINT_PATH: str = str(PROJECT_ROOT / "output" / "botrhg_weibo" / "checkpoint.pt")
     BOTRHG_DATA_FINGERPRINT: str = "50327a90e7b9fa6cb65140af3e1573d139925033b184af2ed43aa938ab42c0ae"
     BOTRHG_DEVICE: str = "cpu"
+    # Account detection results are immutable for a short window so revisiting
+    # the accounts page does not rerun the expensive detector.
+    BOTRHG_CACHE_TTL_SECONDS: int = 300
 
     # ----- Coordination Discover research artifact runtime -----
     COORDINATION_DISCOVER_MODE: str = "artifact_first"
@@ -121,9 +124,9 @@ class Settings(BaseSettings):
 
     # ----- LLM response cache (demo stability) -----
     # Recorded successful LLM responses can be replayed so a walkthrough does
-    # not depend on live network access. Only genuine responses are ever
-    # written: the cache is populated by real calls in RECORD mode, never by
-    # hand-authored text. Modes: "off" | "replay" | "record".
+    # not depend on live network access. The runtime only writes entries after
+    # real provider calls in RECORD mode; replay still validates local cache
+    # integrity before serving an entry. Modes: "off" | "replay" | "record".
     LLM_CACHE_MODE: str = "off"
     LLM_CACHE_ROOT: str = str(PROJECT_ROOT / "output" / "llm_cache")
     REVIEW_EXTERNAL_RETRIEVAL_ENABLED: bool = False

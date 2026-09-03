@@ -13,6 +13,15 @@ export function runSocialBotDetection(params?: {
   return request.post('/accounts/bot-detection', null, { params })
 }
 
+export function getLatestSocialBotDetection(params?: {
+  platform?: string
+  event_id?: string
+  routing_budget?: number
+  support_k?: number
+}) {
+  return request.get('/accounts/bot-detection/latest', { params })
+}
+
 export function getAccountDetail(accountId: string) {
   return request.get(`/accounts/detail/${accountId}`)
 }
