@@ -15,7 +15,9 @@
 - [x] 折叠 Coordination facades，并将 6,492 行 reproduction 与 2,058 行 registry 拆为 focused modules。
 - [x] 统一 Student Review：checkpoint-gated XLM-R、多头分类、latent rationale distillation、外部 Hardcase routing。
 - [x] 统一 Analysis Run：所有 stage 使用 `AnalysisStageContext` 与 `AnalysisStagePort.execute(context)`。
-- [ ] 完成全量验证、最终 code review，并向 `release-0.2` 创建 PR。
+- [x] 首轮完整验证通过：backend `631 passed, 19 skipped`，frontend production build 通过，Alembic 单 head 与 offline SQL 通过。
+- [ ] 整改最终 branch review 的 Important findings：发布泄露、Student 制品完整性、监控 snapshot/并发/缓存、前端请求竞态。
+- [ ] 第二轮 branch review 通过后，向 `release-0.2` 创建 PR。
 
 ---
 

@@ -9,7 +9,14 @@
 - [x] 统一 XLM-R Student Review runtime、training package 和 checkpoint governance。
 - [x] 以 `AnalysisStageContext` + `AnalysisStagePort.execute` 深化 Analysis Run seam。
 - [x] 统一 glossary、CONTEXT、ADR、governance、roadmap、development log 和 README。
-- [ ] 执行完整验证、最终 code review、推送分支并创建 PR。
+- [x] 执行首轮完整验证与最终 branch review。
+- [ ] 清除 `MediaCrawler-main/data_runs/` 与生成诊断报告等发布泄露，并扩展 release guard。
+- [ ] 将 Student checkpoint 与 canonical manifest 绑定为同一可验证制品，并补齐不可伪造的激活指标输入契约。
+- [ ] 修复 Propagation Monitoring snapshot 可重建性、内容寻址、并发 claim、告警唯一性和状态转换。
+- [ ] 在成功 crawl/import 变更后失效 observed propagation cache。
+- [ ] 修复 Propagation 与 Coordination 页面在快速切换 scope/dataset 时的陈旧响应覆盖。
+- [ ] 运行完整验证和 Alembic smoke，完成第二轮 branch review。
+- [ ] 推送分支并创建 PR；不自动合并。
 
 ## Commit Sequence
 

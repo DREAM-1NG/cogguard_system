@@ -16,6 +16,12 @@
 - `路径/文件`：具体改动说明
 ```
 
+## 2026-09-03 Final Branch Review Remediation
+
+- 首轮完整验证通过：backend `631 passed, 19 skipped`，frontend production build、Alembic 单 head 和 offline SQL 均通过。
+- 最终 branch review 未放行：确认 7 个 Important 与 1 个 Minor 问题，覆盖发布数据泄露、Student manifest 完整性、Propagation Monitoring snapshot/并发/缓存、前端请求竞态和告警状态转换。
+- Conductor track 进入 `final_review_remediation`。所有行为修复继续执行 test-first；整改完成后必须重新运行完整验证和全分支复审，未通过前不推送、不创建 PR。
+
 ## 2026-09-02 Final Architecture Context
 
 - 新增 `conductor/`，固化产品、技术栈、工作流和 `final-architecture` track；实现状态保持 `in progress`。
