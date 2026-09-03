@@ -42,6 +42,7 @@ from app.services.coordination_registry_common import (
     _runnable_relations,
     _safe_json_loads,
 )
+from app.services.coordination_query_cache import clear_coordination_query_cache
 
 async def run_coordination_model_job(run_id: int) -> None:
     async with async_session_factory() as session:
@@ -76,6 +77,8 @@ async def run_coordination_model_job(run_id: int) -> None:
                 run.finished_at = datetime.now(timezone.utc)
                 await session.commit()
         raise
+    finally:
+        clear_coordination_query_cache()
 
 
 async def _execute_coordination_run(run_id: int) -> None:

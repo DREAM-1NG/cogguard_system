@@ -93,29 +93,64 @@
       <a-tab-pane key="objects" tab="传播对象">
         <a-card size="small" style="margin-bottom: 16px" :loading="analyzing && !analysisReady">
           <template #title>高频共享对象</template>
-          <div v-if="claimGroups.length" class="claim-groups">
-            <div v-for="group in claimGroups" :key="group.type" class="claim-group">
+          <div v-if="claimGroups.length" class="claim-object-layout">
+            <section class="primary-hashtag-panel">
               <div class="claim-group-title">
-                <span>共享对象：{{ group.label }}</span>
-                <a-tag>{{ group.items.length }} 条</a-tag>
+                <span>高频 Hashtag</span>
+                <a-tag>{{ primaryHashtagClaims.length }} 条</a-tag>
               </div>
-              <a-list :dataSource="group.items" size="small">
-                <template #renderItem="{ item }">
-                  <a-list-item>
-                    <div class="claim-item">
-                      <a-button type="link" class="claim-inline-button" @click="openClaimDetail(item)">
-                        {{ item.display }}
-                      </a-button>
-                      <div class="claim-meta">
-                        <a-tag color="blue">分享 {{ item.share_count }}</a-tag>
-                        <a-tag color="purple">账户 {{ item.account_count }}</a-tag>
-                        <span>首次分享 {{ formatTimestamp(item.first_share) }}</span>
-                      </div>
-                    </div>
-                  </a-list-item>
-                </template>
-              </a-list>
-            </div>
+              <div v-if="primaryHashtagClaims.length" class="hashtag-cloud">
+                <button
+                  v-for="item in primaryHashtagClaims"
+                  :key="item.object_id"
+                  type="button"
+                  class="hashtag-pill"
+                  @click="openClaimDetail(item)"
+                >
+                  <span>{{ item.display }}</span>
+                  <small>{{ item.share_count }} 次</small>
+                </button>
+              </div>
+              <a-empty v-else description="暂无 hashtag 对象" :image-style="{ height: '36px' }" />
+            </section>
+
+            <aside class="secondary-object-panel">
+              <div class="claim-group-title">
+                <span>其他对象分类</span>
+                <a-tag>{{ secondaryClaimGroups.length }} 类</a-tag>
+              </div>
+              <a-collapse size="small" class="object-collapse">
+                <a-collapse-panel v-for="group in secondaryClaimGroups" :key="group.type">
+                  <template #header>
+                    <span>{{ group.label }} · {{ group.items.length }} 条</span>
+                  </template>
+                  <a-list :dataSource="visibleClaimGroupItems(group)" size="small">
+                    <template #renderItem="{ item }">
+                      <a-list-item>
+                        <div class="claim-item">
+                          <a-button type="link" class="claim-inline-button" @click="openClaimDetail(item)">
+                            {{ item.display }}
+                          </a-button>
+                          <div class="claim-meta">
+                            <a-tag color="blue">分享 {{ item.share_count }}</a-tag>
+                            <a-tag color="purple">账户 {{ item.account_count }}</a-tag>
+                          </div>
+                        </div>
+                      </a-list-item>
+                    </template>
+                  </a-list>
+                  <a-button
+                    v-if="group.items.length > CLAIM_GROUP_COLLAPSED_LIMIT"
+                    type="link"
+                    size="small"
+                    class="claim-more-button"
+                    @click="showMoreClaimGroup(group.type)"
+                  >
+                    {{ isClaimGroupExpanded(group.type) ? '收起' : '... 查看全部' }}
+                  </a-button>
+                </a-collapse-panel>
+              </a-collapse>
+            </aside>
           </div>
           <a-empty v-else description="数据库中暂无可展示的高频共享对象" :image-style="{ height: '40px' }" />
         </a-card>
@@ -1025,7 +1060,9 @@ const observationRatio = ref(0.5)
 const activeTab = ref('path')
 const selectedObjectId = ref('')
 const timelineFocusPostId = ref('')
-const DEFAULT_DIFFUSION_NODE_LIMIT = 300
+const expandedClaimGroupTypes = ref<Set<string>>(new Set())
+const DEFAULT_DIFFUSION_NODE_LIMIT = 80
+const CLAIM_GROUP_COLLAPSED_LIMIT = 6
 const diffusionNodeLimit = ref(DEFAULT_DIFFUSION_NODE_LIMIT)
 const diffusionPendingNodeLimit = ref(DEFAULT_DIFFUSION_NODE_LIMIT)
 const diffusionFullViewRequested = ref(false)
@@ -1097,11 +1134,20 @@ const claimGroups = computed(() => {
       href: claimHref(claim.object_id),
     })
   }
-  return Array.from(groups.values()).sort((left, right) => {
-    const order = ['tweet', 'url', 'hashtag', 'keyword', 'other']
-    return order.indexOf(left.type) - order.indexOf(right.type)
-  })
+  return Array.from(groups.values())
+    .map((group) => ({
+      ...group,
+      items: group.items.sort((left, right) => Number(right.share_count ?? 0) - Number(left.share_count ?? 0)),
+    }))
+    .sort((left, right) => {
+      const order = ['hashtag', 'keyword', 'url', 'tweet', 'other']
+      const leftOrder = order.indexOf(left.type)
+      const rightOrder = order.indexOf(right.type)
+      return (leftOrder === -1 ? order.length : leftOrder) - (rightOrder === -1 ? order.length : rightOrder)
+    })
 })
+const primaryHashtagClaims = computed(() => claimGroups.value.find((group) => group.type === 'hashtag')?.items.slice(0, 18) || [])
+const secondaryClaimGroups = computed(() => claimGroups.value.filter((group) => group.type !== 'hashtag'))
 const claimTimelineMatches = computed(() => {
   if (!selectedClaim.value) return []
   const objectTimeline = (diffusionSummary.value?.detail_index?.objects?.[selectedClaim.value.object_id] as any)?.timeline
@@ -1174,7 +1220,9 @@ const modelPredictionReady = computed(() => {
 
 const predictionEmptyDescription = computed(() => {
   const status = `${String(modelPrediction.value?.status || '')} ${String(modelPrediction.value?.model_status || '')}`.toLowerCase()
+  if (status.includes('data_unavailable')) return '当前事件数据源不可用，暂无法生成趋势预测'
   if (/(abstain|insufficient)/.test(status)) return '当前事件数据不足，暂无法生成趋势预测'
+  if (status.includes('unsupported_platform')) return '当前平台暂无可用趋势预测'
   if (/(unavailable|missing)/.test(status)) return '预测模型暂不可用'
   if (/(error|failed)/.test(status)) return '模型推理失败，请稍后重试'
   if (modelPrediction.value?.note) return modelPrediction.value.note
@@ -1642,10 +1690,49 @@ function stableHash(value: string) {
   return Math.abs(hash)
 }
 
-function layeredEdgeCurveness(source: string, target: string, sourceLayer: number, targetLayer: number) {
+function stableEdgeCurveness(source: string, target: string, sourceLayer: number, targetLayer: number) {
   const layerGap = Math.max(1, Math.abs(targetLayer - sourceLayer))
   const direction = stableHash(`${source}->${target}`) % 2 === 0 ? 1 : -1
-  return direction * Math.min(0.28, 0.1 + layerGap * 0.055)
+  return direction * Math.min(0.06, 0.02 + (layerGap - 1) * 0.012)
+}
+
+function stableLayeredPositions(nodes: DiffusionNode[], rootId: string) {
+  const nodesByLayer = new Map<number, DiffusionNode[]>()
+  for (const node of nodes) {
+    const layer = Math.max(0, Number(node.layer ?? 0))
+    if (!nodesByLayer.has(layer)) nodesByLayer.set(layer, [])
+    nodesByLayer.get(layer)?.push(node)
+  }
+
+  const positions = new Map<string, { x: number; y: number; layer: number }>()
+  const horizontalGap = 150
+  const defaultVerticalGap = 34
+  const maxLayerHeight = 390
+  positions.set(rootId, { x: 0, y: 0, layer: 0 })
+
+  const sortedLayers = Array.from(nodesByLayer.keys()).sort((left, right) => left - right)
+  for (const layer of sortedLayers) {
+    const layerNodes = (nodesByLayer.get(layer) || [])
+      .filter((node) => String(node.id) !== rootId)
+      .sort((left, right) => {
+        const leftScore = Number(left.out_degree ?? 0) + Number(left.post_count ?? 0) + (left.is_key ? 100 : 0)
+        const rightScore = Number(right.out_degree ?? 0) + Number(right.post_count ?? 0) + (right.is_key ? 100 : 0)
+        return rightScore - leftScore
+      })
+    const count = layerNodes.length
+    if (!count) continue
+    const verticalGap = Math.max(18, Math.min(defaultVerticalGap, maxLayerHeight / Math.max(count - 1, 1)))
+    const startY = -((count - 1) * verticalGap) / 2
+    layerNodes.forEach((node, index) => {
+      positions.set(String(node.id), {
+        x: Math.max(0, layer) * horizontalGap + (layer === 0 ? 52 : 0),
+        y: startY + index * verticalGap,
+        layer,
+      })
+    })
+  }
+
+  return positions
 }
 
 function updatePathGraphLabelsByZoom(event?: unknown) {
@@ -1687,53 +1774,7 @@ function buildPathGraphOption(summary?: DiffusionSummary | null): EChartsOption 
   const rootId = String(summary?.root_node?.id || nodes.find((node) => node.is_root)?.id || nodes[0]?.id || '')
   const keyEdgeKeys = new Set(highlightEdges.map((edge) => `${edge.source}->${edge.target}`))
 
-  const nodesByLayer = new Map<number, DiffusionNode[]>()
-  for (const node of nodes) {
-    const layer = Math.max(0, Number(node.layer ?? 0))
-    if (!nodesByLayer.has(layer)) nodesByLayer.set(layer, [])
-    nodesByLayer.get(layer)?.push(node)
-  }
-
-  const positions = new Map<string, { x: number; y: number; layer: number }>()
-  const radialGap = 95
-  positions.set(rootId, { x: 0, y: 0, layer: 0 })
-
-  const hasBackendLayout = nodes.some((node) => Number.isFinite(Number(node.layout_x)) && Number.isFinite(Number(node.layout_y)))
-  if (hasBackendLayout) {
-    for (const node of nodes) {
-      const id = String(node.id)
-      if (Number.isFinite(Number(node.layout_x)) && Number.isFinite(Number(node.layout_y))) {
-        positions.set(id, {
-          x: Number(node.layout_x),
-          y: Number(node.layout_y),
-          layer: Number(node.layer ?? 0),
-        })
-      }
-    }
-  } else {
-    for (const [layer, layerNodes] of nodesByLayer.entries()) {
-      if (layer === 0) continue
-      const ringNodes = layerNodes
-        .filter((node) => String(node.id) !== rootId)
-        .sort((left, right) => {
-          const leftScore = Number(left.out_degree ?? 0) + Number(left.post_count ?? 0) + (left.is_key ? 100 : 0)
-          const rightScore = Number(right.out_degree ?? 0) + Number(right.post_count ?? 0) + (right.is_key ? 100 : 0)
-          return rightScore - leftScore
-        })
-      if (!ringNodes.length) continue
-      const radius = Math.max(1, layer) * radialGap
-      const step = (Math.PI * 2) / Math.max(ringNodes.length, 1)
-      const offset = layer % 2 === 0 ? -Math.PI / 2 : -Math.PI / 2 + step / 2
-      ringNodes.forEach((node, index) => {
-        const angle = offset + step * index
-        positions.set(String(node.id), {
-          x: Math.cos(angle) * radius,
-          y: Math.sin(angle) * radius,
-          layer,
-        })
-      })
-    }
-  }
+  const positions = stableLayeredPositions(nodes, rootId)
 
   const graphData = nodes.map((node) => {
     const id = String(node.id)
@@ -1782,7 +1823,7 @@ function buildPathGraphOption(summary?: DiffusionSummary | null): EChartsOption 
       if (!isPropagationEdge(edge) || !source || !target || source === target || !nodeById.has(source) || !nodeById.has(target)) return false
       const sourceLayer = Number(nodeById.get(source)?.layer ?? -1)
       const targetLayer = Number(nodeById.get(target)?.layer ?? -1)
-      return sourceLayer !== targetLayer
+      return sourceLayer >= 0 && targetLayer > sourceLayer
     })
     .map((edge) => {
       const source = String(edge.source)
@@ -1799,7 +1840,7 @@ function buildPathGraphOption(summary?: DiffusionSummary | null): EChartsOption 
         lineStyle: {
           color: objectFocused ? 'rgba(250, 204, 21, 0.92)' : highlighted ? 'rgba(56, 189, 248, 0.72)' : confirmed ? 'rgba(45, 212, 191, 0.52)' : 'rgba(148, 163, 184, 0.3)',
           width: objectFocused ? 2.2 : highlighted ? 1.35 : confirmed ? 1 : 0.72,
-          curveness: layeredEdgeCurveness(source, target, sourceLayer, targetLayer),
+          curveness: stableEdgeCurveness(source, target, sourceLayer, targetLayer),
           opacity: objectFocused ? 0.94 : highlighted ? 0.62 : confirmed ? 0.48 : 0.28,
         },
         relationLabel: relationTypeLabel(edge),
@@ -1866,12 +1907,12 @@ function buildPathGraphOption(summary?: DiffusionSummary | null): EChartsOption 
         labelLayout: {
           hideOverlap: true,
         },
-        edgeSymbol: ['none', 'none'],
-        edgeSymbolSize: [0, 0],
+        edgeSymbol: ['none', 'arrow'],
+        edgeSymbolSize: [0, 7],
         lineStyle: {
           color: 'source',
           opacity: 0.18,
-          curveness: 0.16,
+          curveness: 0.02,
         },
         emphasis: {
           focus: 'adjacency',
@@ -2007,6 +2048,26 @@ function claimHref(value: string) {
   return /^https?:\/\//i.test(text) ? text : undefined
 }
 
+function isClaimGroupExpanded(type: string) {
+  return expandedClaimGroupTypes.value.has(type)
+}
+
+function visibleClaimGroupItems(group: { type: string; items: ClaimGroupItem[] }) {
+  return isClaimGroupExpanded(group.type)
+    ? group.items
+    : group.items.slice(0, CLAIM_GROUP_COLLAPSED_LIMIT)
+}
+
+function showMoreClaimGroup(type: string) {
+  const next = new Set(expandedClaimGroupTypes.value)
+  if (next.has(type)) {
+    next.delete(type)
+  } else {
+    next.add(type)
+  }
+  expandedClaimGroupTypes.value = next
+}
+
 function openClaimDetail(item: ClaimGroupItem) {
   selectedClaim.value = item
   selectedObjectId.value = item.object_id
@@ -2113,6 +2174,7 @@ async function handlePredict() {
   const requestGeneration = ++predictionRequestGeneration
   const requestedPlatform = platform.value.trim()
   predicting.value = true
+  activeTab.value = 'model'
   try {
     const response = await predictPropagationCurrentEvent(predictionRequestParams.value)
     if (
@@ -2343,6 +2405,106 @@ onBeforeUnmount(() => {
 .layer-chart {
   width: 100%;
   height: 230px;
+}
+
+.claim-object-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(300px, 0.85fr);
+  gap: 16px;
+}
+
+.primary-hashtag-panel,
+.secondary-object-panel {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid #eef2f7;
+  border-radius: 12px;
+  background: #fbfdff;
+}
+
+.claim-group-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+  color: #1f2937;
+  font-weight: 600;
+}
+
+.hashtag-cloud {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.hashtag-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  padding: 7px 11px;
+  border: 1px solid rgba(22, 119, 255, 0.22);
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(22, 119, 255, 0.08), rgba(14, 165, 233, 0.1));
+  color: #0958d9;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.hashtag-pill:hover {
+  border-color: rgba(22, 119, 255, 0.48);
+  background: rgba(22, 119, 255, 0.12);
+}
+
+.hashtag-pill span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hashtag-pill small {
+  flex: 0 0 auto;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.object-collapse {
+  background: transparent;
+}
+
+.claim-item {
+  min-width: 0;
+  width: 100%;
+}
+
+.claim-inline-button {
+  max-width: 100%;
+  height: auto;
+  padding: 0;
+  white-space: normal;
+  text-align: left;
+}
+
+.claim-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 5px;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.claim-more-button {
+  margin-top: 6px;
+  padding-left: 0;
+}
+
+@media (max-width: 1100px) {
+  .claim-object-layout {
+    grid-template-columns: 1fr;
+  }
 }
 
 .timeline-wrap {

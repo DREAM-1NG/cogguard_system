@@ -1,7 +1,14 @@
 ﻿<template>
   <a-layout class="app-layout">
     <a class="skip-link" href="#main-content">跳转到主内容</a>
-    <a-layout-sider v-model:collapsed="collapsed" collapsible theme="dark">
+    <a-layout-sider
+      v-model:collapsed="collapsed"
+      collapsible
+      theme="dark"
+      :collapsed-width="isCompact ? 0 : 80"
+      breakpoint="lg"
+      @breakpoint="handleBreakpoint"
+    >
       <div class="logo">
         <span v-if="!collapsed">CogGuard</span>
         <span v-else>CG</span>
@@ -90,7 +97,8 @@ const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 
-const collapsed = ref(false)
+const collapsed = ref(typeof window !== 'undefined' && window.innerWidth < 992)
+const isCompact = ref(typeof window !== 'undefined' && window.innerWidth < 992)
 
 const menuItems = [
   { path: '/dashboard', label: '数据大屏', icon: DashboardOutlined, desc: '系统首页的大屏总览，保留本地地图资产和平台分布可视化', disabled: false },
@@ -145,6 +153,11 @@ function handleMenuClick({ key }: { key: string }) {
 
 function handleLogout() {
   authStore.logout()
+}
+
+function handleBreakpoint(broken: boolean) {
+  isCompact.value = broken
+  collapsed.value = broken
 }
 
 onMounted(async () => {
@@ -330,7 +343,6 @@ onMounted(async () => {
   border-radius: 6px;
   min-height: 360px;
 }
-
 .app-content:focus-visible {
   outline: 3px solid #91caff;
   outline-offset: -3px;
@@ -344,5 +356,16 @@ onMounted(async () => {
     transition: none;
   }
 }
-</style>
 
+@media (max-width: 991px) {
+  .app-content {
+    margin: 8px;
+    padding: 16px;
+  }
+
+  .tab-bar {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+}
+</style>

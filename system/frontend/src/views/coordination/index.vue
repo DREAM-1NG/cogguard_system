@@ -21,8 +21,8 @@
       </div>
     </a-card>
 
-    <a-spin :spinning="loadingDetail || loadingResult">
-      <template v-if="selectedDataset && resultSnapshot">
+    <a-spin :spinning="loadingDetail">
+      <template v-if="selectedDataset">
         <a-card size="small" class="panel">
           <template #title>
             <div class="network-panel-head">
@@ -45,11 +45,11 @@
             <div class="network-meta">
               <span>
                 当前显示 {{ graphPayload?.summary?.rendered_node_count || 0 }} /
-                {{ graphPayload?.summary?.total_nodes || resultSnapshot.network?.total_nodes || 0 }} 个节点
+                {{ graphPayload?.summary?.total_nodes || resultSnapshot?.network?.total_nodes || 0 }} 个节点
               </span>
               <span>
                 显示边 {{ graphPayload?.summary?.rendered_edge_count || 0 }} /
-                {{ graphPayload?.summary?.total_edges || resultSnapshot.network?.total_edges || 0 }}
+                {{ graphPayload?.summary?.total_edges || resultSnapshot?.network?.total_edges || 0 }}
               </span>
             </div>
             <div class="network-controls">
@@ -94,7 +94,7 @@
             <a-card size="small" title="社区发现结果" class="panel">
               <a-table
                 :columns="communityColumns"
-                :data-source="resultSnapshot.communities || []"
+                :data-source="resultSnapshot?.communities || []"
                 row-key="cluster_id"
                 :pagination="{ pageSize: 8 }"
                 size="small"
@@ -126,7 +126,7 @@
             <a-card size="small" title="全局关键节点" class="panel">
               <a-table
                 :columns="keyNodeColumns"
-                :data-source="resultSnapshot.global_key_nodes || []"
+                :data-source="resultSnapshot?.global_key_nodes || []"
                 row-key="account_id"
                 :pagination="{ pageSize: 10 }"
                 size="small"
@@ -490,7 +490,8 @@ async function selectDataset(datasetId: number) {
   communityDrawerOpen.value = false
   selectedNode.value = null
   communityDetail.value = null
-  await Promise.all([loadDatasetDetail(datasetId), loadLatestResult(datasetId), loadGraph()])
+  await Promise.all([loadDatasetDetail(datasetId), loadGraph()])
+  void loadLatestResult(datasetId)
 }
 
 async function loadDatasetDetail(datasetId: number) {

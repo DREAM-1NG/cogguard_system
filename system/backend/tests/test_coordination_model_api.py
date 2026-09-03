@@ -1,8 +1,14 @@
+import asyncio
 import json
 import time
 
 import pytest
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
+
+from app.api.v1 import coordination as coordination_api
+from app.core.security import get_current_user
+from app.db.mysql import get_db
+from app.main import app
 
 
 @pytest.mark.asyncio
@@ -29,6 +35,65 @@ async def test_coordination_datasets_api_lists_system_archives(setup_database, c
     assert body["code"] == 0
     names = {item["display_name"] for item in body["data"]}
     assert {"UAE", "cuba", "russia", "venezuela", "iran", "china"}.issubset(names)
+
+
+def test_coordination_result_routes_reuse_cached_payload(monkeypatch):
+    calls = {"latest": 0, "graph": 0}
+
+    async def fake_latest(_db, dataset_id):
+        calls["latest"] += 1
+        return {"dataset_summary": {"dataset_id": dataset_id}, "status": "completed"}
+
+    async def fake_graph(_db, dataset_id, *, node_limit, min_node_score):
+        calls["graph"] += 1
+        return {
+            "nodes": [{"id": "u1", "label": "u1"}],
+            "links": [],
+            "summary": {
+                "total_nodes": 1,
+                "total_edges": 0,
+                "rendered_node_count": 1,
+                "rendered_edge_count": 0,
+                "filters": {"node_limit": node_limit, "min_node_score": min_node_score},
+            },
+        }
+
+    async def fake_db():
+        yield object()
+
+    async def fake_user():
+        return None
+
+    async def exercise_routes():
+        coordination_api.clear_coordination_response_cache()
+        monkeypatch.setattr(coordination_api, "get_coordination_dataset_latest_result", fake_latest)
+        monkeypatch.setattr(coordination_api, "get_coordination_dataset_graph", fake_graph)
+        previous_db_override = app.dependency_overrides.get(get_db)
+        app.dependency_overrides[get_db] = fake_db
+        app.dependency_overrides[get_current_user] = fake_user
+        try:
+            transport = ASGITransport(app=app)
+            async with AsyncClient(transport=transport, base_url="http://test") as client:
+                first_latest = await client.get("/api/v1/coordination/datasets/123/latest-result")
+                second_latest = await client.get("/api/v1/coordination/datasets/123/latest-result")
+                first_graph = await client.get("/api/v1/coordination/datasets/123/graph?node_limit=50&min_node_score=0")
+                second_graph = await client.get("/api/v1/coordination/datasets/123/graph?node_limit=50&min_node_score=0")
+        finally:
+            app.dependency_overrides.pop(get_current_user, None)
+            if previous_db_override is None:
+                app.dependency_overrides.pop(get_db, None)
+            else:
+                app.dependency_overrides[get_db] = previous_db_override
+            coordination_api.clear_coordination_response_cache()
+        return first_latest, second_latest, first_graph, second_graph
+
+    first_latest, second_latest, first_graph, second_graph = asyncio.run(exercise_routes())
+
+    assert first_latest.status_code == 200
+    assert second_latest.status_code == 200
+    assert first_graph.status_code == 200
+    assert second_graph.status_code == 200
+    assert calls == {"latest": 1, "graph": 1}
 
 
 @pytest.mark.asyncio

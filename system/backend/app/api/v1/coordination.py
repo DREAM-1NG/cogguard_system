@@ -19,9 +19,17 @@ from app.services.coordination_model_service import (
     run_coordination_model_job,
     upload_coordination_dataset,
 )
+from app.services.coordination_query_cache import (
+    cached_coordination_query,
+    clear_coordination_query_cache,
+)
 from app.utils.response import success
 
 router = APIRouter()
+
+
+def clear_coordination_response_cache() -> None:
+    clear_coordination_query_cache()
 
 
 @router.post("/detect")
@@ -48,7 +56,9 @@ async def list_registered_datasets(
     db: AsyncSession = Depends(get_db),
     _current_user: User = Depends(get_current_user),
 ):
-    return success(data=await list_coordination_datasets(db))
+    cache_key = ("datasets",)
+    data = await cached_coordination_query(cache_key, lambda: list_coordination_datasets(db))
+    return success(data=data)
 
 
 @router.post("/datasets/upload")
@@ -66,6 +76,7 @@ async def upload_dataset(
         created_by=current_user.id,
         display_name=display_name,
     )
+    clear_coordination_response_cache()
     return success(data=result)
 
 
@@ -77,14 +88,17 @@ async def get_dataset_graph(
     db: AsyncSession = Depends(get_db),
     _current_user: User = Depends(get_current_user),
 ):
-    return success(
-        data=await get_coordination_dataset_graph(
+    cache_key = ("graph", int(dataset_id), int(node_limit), round(float(min_node_score), 6))
+    data = await cached_coordination_query(
+        cache_key,
+        lambda: get_coordination_dataset_graph(
             db,
             dataset_id,
             node_limit=node_limit,
             min_node_score=min_node_score,
-        )
+        ),
     )
+    return success(data=data)
 
 
 @router.get("/datasets/{dataset_id}/communities/{cluster_id}")
@@ -111,7 +125,9 @@ async def get_dataset_detail(
     db: AsyncSession = Depends(get_db),
     _current_user: User = Depends(get_current_user),
 ):
-    return success(data=await get_coordination_dataset_detail(db, dataset_id))
+    cache_key = ("detail", int(dataset_id))
+    data = await cached_coordination_query(cache_key, lambda: get_coordination_dataset_detail(db, dataset_id))
+    return success(data=data)
 
 
 @router.get("/datasets/{dataset_id}/latest-result")
@@ -120,7 +136,12 @@ async def get_dataset_latest_result(
     db: AsyncSession = Depends(get_db),
     _current_user: User = Depends(get_current_user),
 ):
-    return success(data=await get_coordination_dataset_latest_result(db, dataset_id))
+    cache_key = ("latest", int(dataset_id))
+    data = await cached_coordination_query(
+        cache_key,
+        lambda: get_coordination_dataset_latest_result(db, dataset_id),
+    )
+    return success(data=data)
 
 
 @router.post("/runs")
@@ -130,6 +151,7 @@ async def create_run(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    clear_coordination_response_cache()
     run = await create_coordination_run(db=db, dataset_id=body.dataset_id, created_by=current_user.id)
     background_tasks.add_task(run_coordination_model_job, int(run["run_id"]))
     return success(data=run)
