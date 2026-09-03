@@ -1,115 +1,218 @@
-"""Review Student deployable runtime.
-
-The runtime exposes a stable ``predict(case) -> ReviewVerdict`` seam. A fitted
-checkpoint can be registered later; until then the runtime returns a shadow
-preliminary verdict and explicitly requires review.
-"""
+"""Checkpoint-gated XLM-R runtime for Student Review."""
 
 from __future__ import annotations
 
 import hashlib
 import json
 import math
-from collections import Counter, defaultdict
-from datetime import datetime, timezone
-from statistics import mean
+from collections.abc import Callable, Mapping, Sequence
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Mapping
+from statistics import mean
+from typing import Any, Protocol
+
+import torch
+from torch import nn
+from transformers import AutoModel, AutoTokenizer
 
 
-STUDENT_MODEL_VERSION = "review-student-runtime-v2"
+STUDENT_MODEL_VERSION = "review-student-xlmr-v3"
+STANCE_LABELS = ("support", "deny", "query")
 ARCHITECTURE = {
     "post_encoder": "xlm-roberta-base",
-    "multimodal": "frozen_feature_inputs",
-    "post_fusion": "learned_gating_contract",
-    "user_level": "attention_mil_temporal_contract",
-    "community_level": "heterogeneous_gnn_contract",
-    "distillation_losses": ["gold_ce", "teacher_kl", "evidence_alignment", "contrastive", "disagreement_weight"],
+    "input": "post_text_claim_context_decodable_evidence",
+    "prediction_heads": ["attack_hate_offense", "misinfo_claim_risk", "stance"],
+    "distillation_head": "rationale_proj",
+    "hardcase_routing": "external_uncertainty_and_governance_policy",
+    "distillation_losses": ["gold_bce", "teacher_soft_bce", "stance_ce", "latent_cosine"],
 }
-HARM_TERMS = {
-    "rumor": 0.12,
-    "fake": 0.12,
-    "hoax": 0.12,
-    "attack": 0.1,
-    "hate": 0.16,
-    "threat": 0.16,
-    "\u8c23\u8a00": 0.14,
-    "\u717d\u52a8": 0.16,
-    "\u4ec7\u6068": 0.18,
-    "\u653b\u51fb": 0.12,
-    "\u9020\u5047": 0.14,
-    "\u9634\u8c0b": 0.1,
-}
+
+
+@dataclass(frozen=True, slots=True)
+class ReviewStudentInput:
+    post_text: str = ""
+    claim_context: str = ""
+    hashtags: str = ""
+    ocr_text: str = ""
+    asr_transcript: str = ""
+    caption: str = ""
+
+    @classmethod
+    def from_post(cls, post: Mapping[str, Any]) -> "ReviewStudentInput":
+        return cls(
+            post_text=_first_text(post, ("content", "text", "title")),
+            claim_context=_flatten_text(post.get("claim_context") or post.get("claim")),
+            hashtags=_flatten_text(post.get("hashtags")),
+            ocr_text=_flatten_text(post.get("ocr_text") or post.get("ocr")),
+            asr_transcript=_flatten_text(post.get("asr_transcript") or post.get("asr")),
+            caption=_flatten_text(post.get("caption") or post.get("alt_text")),
+        )
+
+    def serialize(self) -> str:
+        parts = (
+            ("TEXT", self.post_text),
+            ("CLAIM", self.claim_context),
+            ("HASHTAGS", self.hashtags),
+            ("OCR", self.ocr_text),
+            ("ASR", self.asr_transcript),
+            ("CAPTION", self.caption),
+        )
+        return " ".join(f"[{label}] {value}" for label, value in parts if value)
+
+
+class XLMRReviewStudent(nn.Module):
+    """Shared encoder with three prediction heads and one distillation head."""
+
+    def __init__(
+        self,
+        *,
+        backbone: str = "xlm-roberta-base",
+        encoder: nn.Module | None = None,
+        hidden_size: int | None = None,
+        stance_count: int = len(STANCE_LABELS),
+        rationale_dim: int = 768,
+    ) -> None:
+        super().__init__()
+        self.encoder = encoder or AutoModel.from_pretrained(backbone)
+        resolved_hidden_size = hidden_size or int(getattr(self.encoder.config, "hidden_size"))
+        self.attack_hate_offense = nn.Linear(resolved_hidden_size, 1)
+        self.misinfo_claim_risk = nn.Linear(resolved_hidden_size, 1)
+        self.stance = nn.Linear(resolved_hidden_size, stance_count)
+        self.rationale_proj = nn.Linear(resolved_hidden_size, rationale_dim)
+
+    def forward(self, input_ids: torch.Tensor, attention_mask: torch.Tensor) -> dict[str, torch.Tensor]:
+        encoded = self.encoder(input_ids=input_ids, attention_mask=attention_mask)
+        pooled = encoded.last_hidden_state[:, 0, :]
+        return {
+            "attack_hate_offense": self.attack_hate_offense(pooled).squeeze(-1),
+            "misinfo_claim_risk": self.misinfo_claim_risk(pooled).squeeze(-1),
+            "stance": self.stance(pooled),
+            "rationale_proj": self.rationale_proj(pooled),
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class StudentCheckpoint:
+    checkpoint_path: Path
+    manifest_path: Path
+    manifest: dict[str, Any]
+    sha256: str
+    version: str
+
+
+class StudentPredictor(Protocol):
+    def predict(self, inputs: Sequence[ReviewStudentInput]) -> list[dict[str, Any]]: ...
+
+
+class TorchStudentPredictor:
+    def __init__(self, descriptor: StudentCheckpoint) -> None:
+        manifest = descriptor.manifest
+        backbone = str(manifest.get("backbone") or "xlm-roberta-base")
+        self._device = torch.device(str(manifest.get("device") or "cpu"))
+        self._tokenizer = AutoTokenizer.from_pretrained(backbone)
+        self._model = XLMRReviewStudent(
+            backbone=backbone,
+            stance_count=int(manifest.get("stance_count") or len(STANCE_LABELS)),
+            rationale_dim=int(manifest.get("rationale_dim") or 768),
+        ).to(self._device)
+        payload = torch.load(descriptor.checkpoint_path, map_location=self._device, weights_only=True)
+        state_dict = payload.get("state_dict") if isinstance(payload, Mapping) else payload
+        if not isinstance(state_dict, Mapping):
+            raise ValueError("Student checkpoint does not contain a state_dict")
+        self._model.load_state_dict(state_dict, strict=True)
+        self._model.eval()
+
+    def predict(self, inputs: Sequence[ReviewStudentInput]) -> list[dict[str, Any]]:
+        if not inputs:
+            return []
+        encoded = self._tokenizer(
+            [item.serialize() for item in inputs],
+            padding=True,
+            truncation=True,
+            max_length=512,
+            return_tensors="pt",
+        ).to(self._device)
+        with torch.no_grad():
+            outputs = self._model(
+                input_ids=encoded["input_ids"],
+                attention_mask=encoded["attention_mask"],
+            )
+        attack = torch.sigmoid(outputs["attack_hate_offense"]).cpu().tolist()
+        misinfo = torch.sigmoid(outputs["misinfo_claim_risk"]).cpu().tolist()
+        stance = torch.softmax(outputs["stance"], dim=-1).cpu().tolist()
+        return [
+            {
+                "attack_hate_offense": float(attack[index]),
+                "misinfo_claim_risk": float(misinfo[index]),
+                "stance": [float(value) for value in stance[index]],
+            }
+            for index in range(len(inputs))
+        ]
 
 
 class StudentRuntime:
-    """Synchronous runtime for deployed Review review."""
+    """Synchronous Student Review interface used by the Analysis Run adapter."""
+
+    def __init__(
+        self,
+        *,
+        predictor_factory: Callable[[StudentCheckpoint], StudentPredictor] = TorchStudentPredictor,
+    ) -> None:
+        self._predictor_factory = predictor_factory
 
     def predict_sync(self, case: dict[str, Any]) -> dict[str, Any]:
         normalized = _normalize_case(case)
         if not normalized["posts"]:
-            return _insufficient_verdict(normalized, reason="No posts are available in the EventSnapshot.")
+            return _shadow_verdict(normalized, model_status="shadow_untrained", reason="No posts are available.")
 
-        options = dict(normalized.get("options") or {})
-        active_model = options.get("active_model") if isinstance(options.get("active_model"), Mapping) else {}
-        checkpoint = _checkpoint_status(
-            options.get("student_checkpoint")
-            or options.get("student_checkpoint_path")
-            or active_model.get("artifact_uri")
-        )
-        post_scores = [_score_post(row) for row in normalized["posts"]]
-        user_scores = _attention_mil_scores(post_scores)
-        community_scores = _community_message_passing(normalized, user_scores)
-        score = _fuse_case_score(post_scores, user_scores, community_scores)
-        confidence = round(max(score, 1.0 - score), 6)
+        active_model = normalized["options"].get("active_model")
+        try:
+            checkpoint = _resolve_active_checkpoint(active_model)
+        except ValueError as exc:
+            status = "shadow_untrained" if not active_model else "checkpoint_incompatible"
+            return _shadow_verdict(normalized, model_status=status, reason=str(exc))
+
+        inputs = [ReviewStudentInput.from_post(post) for post in normalized["posts"]]
+        try:
+            predictions = self._predictor_factory(checkpoint).predict(inputs)
+            result = _aggregate_predictions(predictions)
+        except Exception as exc:
+            return _shadow_verdict(
+                normalized,
+                model_status="checkpoint_incompatible",
+                reason=f"Student checkpoint inference failed: {exc}",
+            )
+
+        score = result["score"]
+        confidence = result["confidence"]
         label = _label(score, confidence)
         active_learning = build_active_learning_signal(
             score=score,
             confidence=confidence,
             case=normalized,
-            teacher_reference=options.get("teacher_reference"),
+            teacher_reference=normalized["options"].get("teacher_reference"),
         )
-        model_status = "checkpoint_active" if checkpoint["available"] and active_model else (
-            "checkpoint_registered_shadow" if checkpoint["available"] else "shadow_untrained"
+        return _verdict(
+            normalized,
+            model_status="checkpoint_active",
+            label=label,
+            score=score,
+            confidence=confidence,
+            abstain=label == "uncertain",
+            active_learning=active_learning,
+            checkpoint={
+                "status": "active",
+                "path": str(checkpoint.checkpoint_path),
+                "manifest_path": str(checkpoint.manifest_path),
+                "sha256": checkpoint.sha256,
+                "version": checkpoint.version,
+            },
+            signals={
+                "axes": result["axes"],
+                "stance": result["stance"],
+                "input_count": len(inputs),
+            },
         )
-        review_required = bool(model_status != "checkpoint_active" or active_learning["priority"] >= 0.35)
-
-        return {
-            "technology": "student",
-            "schema": "cogguard.review.review_verdict.v2",
-            "status": "ok",
-            "verdict_type": "preliminary",
-            "verdict_id": _verdict_id("student", normalized),
-            "snapshot_id": normalized["snapshot_id"],
-            "event_id": normalized["event_id"],
-            "platforms": normalized["platforms"],
-            "model_version": STUDENT_MODEL_VERSION,
-            "model_status": model_status,
-            "label": label,
-            "score": round(score, 6),
-            "confidence": confidence,
-            "risk_level": _risk_level(score, community_scores),
-            "abstain": confidence < 0.62 or model_status != "checkpoint_active",
-            "review_required": review_required,
-            "review_reason": _review_reasons(active_learning, model_status=model_status),
-            "architecture": ARCHITECTURE,
-            "checkpoint": checkpoint,
-            "distillation": build_distillation_plan(
-                teacher_traces=options.get("teacher_traces") or [],
-                approved_verdicts=options.get("approved_verdicts") or [],
-            ),
-            "signals": {
-                "post": _summarize_post_scores(post_scores),
-                "user_mil": user_scores,
-                "community_gnn": community_scores,
-                "active_learning": active_learning,
-            },
-            "evidence": {
-                "top_posts": _top_post_evidence(post_scores),
-                "active_learning": active_learning,
-                "capability_boundary": _capability_boundary(model_status),
-            },
-        }
 
 
 def build_active_learning_signal(
@@ -123,31 +226,28 @@ def build_active_learning_signal(
     uncertainty = 1.0 - abs(float(score) - 0.5) * 2.0
     if uncertainty >= 0.45:
         reasons.append("uncertainty")
-
     teacher_disagreement = 0.0
     if isinstance(teacher_reference, Mapping):
         teacher_label = str(teacher_reference.get("label") or teacher_reference.get("decision") or "")
-        student_label = _label(score, confidence)
-        if teacher_label and teacher_label not in {student_label, "uncertain"}:
+        if teacher_label and teacher_label not in {_label(score, confidence), "uncertain"}:
             teacher_disagreement = 1.0
             reasons.append("teacher_student_disagreement")
-
-    platforms = list(case.get("platforms") or [])
-    if len(platforms) > 1:
+    if len(list(case.get("platforms") or [])) > 1:
         reasons.append("diversity")
-    if _ood_score(case) >= 0.5:
+    ood = _ood_score(case)
+    drift = _drift_score(case)
+    if ood >= 0.5:
         reasons.append("ood")
-    if _drift_score(case) >= 0.5:
+    if drift >= 0.5:
         reasons.append("drift")
     if _random_audit_bucket(case) == 0:
         reasons.append("random_audit")
-
     priority = min(
         1.0,
         0.38 * uncertainty
         + 0.25 * teacher_disagreement
-        + 0.15 * _ood_score(case)
-        + 0.12 * _drift_score(case)
+        + 0.15 * ood
+        + 0.12 * drift
         + (0.1 if "diversity" in reasons else 0.0)
         + (0.03 if "random_audit" in reasons else 0.0),
     )
@@ -164,8 +264,8 @@ def build_active_learning_signal(
 
 
 def build_distillation_plan(*, teacher_traces: list[Any], approved_verdicts: list[Any]) -> dict[str, Any]:
-    trace_count = len([row for row in teacher_traces if isinstance(row, Mapping)])
-    approved_count = len([row for row in approved_verdicts if isinstance(row, Mapping)])
+    trace_count = sum(isinstance(row, Mapping) for row in teacher_traces)
+    approved_count = sum(isinstance(row, Mapping) for row in approved_verdicts)
     return {
         "status": "ready_for_candidate_training" if approved_count >= 200 else "insufficient_approved_feedback",
         "teacher_trace_count": trace_count,
@@ -179,130 +279,146 @@ def build_distillation_plan(*, teacher_traces: list[Any], approved_verdicts: lis
     }
 
 
-def _score_post(row: Mapping[str, Any]) -> dict[str, Any]:
-    text = _text(row.get("content") or row.get("text") or row.get("title") or "")
-    lowered = text.lower()
-    score = 0.18
-    matched = []
-    for term, weight in HARM_TERMS.items():
-        if term.lower() in lowered:
-            score += weight
-            matched.append(term)
-    media_fields = _flatten(row.get("media_urls")) + _flatten(row.get("images")) + _flatten(row.get("video_url"))
-    multimodal_score = 0.08 if media_fields and any(
-        term in lowered for term in ("fake", "\u8c23\u8a00", "\u653b\u51fb", "hate")
-    ) else 0.0
-    score = min(0.95, score + multimodal_score)
+def _resolve_active_checkpoint(value: Any) -> StudentCheckpoint:
+    if not isinstance(value, Mapping) or str(value.get("status") or "") != "active":
+        raise ValueError("No approved active Student checkpoint is configured")
+    if str(value.get("technology") or "review_student") != "review_student":
+        raise ValueError("Active model technology is not review_student")
+
+    artifact_path = Path(str(value.get("artifact_uri") or "")).expanduser()
+    checkpoint_value = value.get("checkpoint_path")
+    checkpoint_path = Path(str(checkpoint_value)).expanduser() if checkpoint_value else artifact_path
+    if artifact_path.is_dir() and not checkpoint_value:
+        checkpoint_path = artifact_path / "checkpoint.pt"
+    manifest_path = artifact_path / "manifest.json" if artifact_path.is_dir() else checkpoint_path.parent / "manifest.json"
+    if not checkpoint_path.is_file() or not manifest_path.is_file():
+        raise ValueError("Active Student checkpoint or manifest is missing")
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError("Student checkpoint manifest is invalid") from exc
+    if not isinstance(manifest, dict) or str(manifest.get("technology") or "") != "review_student":
+        raise ValueError("Student checkpoint manifest technology is incompatible")
+    expected = str(value.get("artifact_hash") or "").strip().lower()
+    actual = _sha256_file(checkpoint_path)
+    if len(expected) != 64 or expected != actual:
+        raise ValueError("Student checkpoint SHA-256 does not match the active model")
+    return StudentCheckpoint(
+        checkpoint_path=checkpoint_path.resolve(),
+        manifest_path=manifest_path.resolve(),
+        manifest=manifest,
+        sha256=actual,
+        version=str(value.get("version") or manifest.get("version") or "unknown"),
+    )
+
+
+def _aggregate_predictions(predictions: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+    if not predictions:
+        raise ValueError("Student predictor returned no outputs")
+    attack = [_probability(row.get("attack_hate_offense")) for row in predictions]
+    misinfo = [_probability(row.get("misinfo_claim_risk")) for row in predictions]
+    stance_rows = [row.get("stance") for row in predictions]
+    if any(not isinstance(row, Sequence) or isinstance(row, (str, bytes)) for row in stance_rows):
+        raise ValueError("Student predictor returned an invalid stance output")
+    stance_width = len(stance_rows[0])
+    if stance_width != len(STANCE_LABELS) or any(len(row) != stance_width for row in stance_rows):
+        raise ValueError("Student predictor returned incompatible stance dimensions")
+    stance = [mean(_probability(row[index]) for row in stance_rows) for index in range(stance_width)]
+    attack_score = mean(attack)
+    misinfo_score = mean(misinfo)
+    score = max(attack_score, misinfo_score)
     return {
-        "post_id": _first_text(row, ("post_id", "note_id", "item_id", "id")),
-        "author_id": _first_text(row, ("author_id", "user_id", "uid", "account_id")),
-        "platform": _first_text(row, ("platform",)) or "unknown",
-        "timestamp": _timestamp_key(row.get("timestamp") or row.get("created_at") or row.get("publish_time")),
         "score": round(score, 6),
-        "text_score": round(score - multimodal_score, 6),
-        "multimodal_score": round(multimodal_score, 6),
-        "matched_terms": matched,
-        "excerpt": text[:240],
+        "confidence": round(max(score, 1.0 - score), 6),
+        "axes": {
+            "attack_hate_offense": round(attack_score, 6),
+            "misinfo_claim_risk": round(misinfo_score, 6),
+        },
+        "stance": {label: round(stance[index], 6) for index, label in enumerate(STANCE_LABELS)},
     }
 
 
-def _attention_mil_scores(post_scores: list[dict[str, Any]]) -> dict[str, Any]:
-    by_user: defaultdict[str, list[dict[str, Any]]] = defaultdict(list)
-    for row in post_scores:
-        author_id = row.get("author_id")
-        if author_id:
-            by_user[author_id].append(row)
-    accounts = []
-    for author_id, rows in sorted(by_user.items()):
-        weights = _softmax([float(row["score"]) for row in rows])
-        score = sum(float(row["score"]) * weight for row, weight in zip(rows, weights))
-        accounts.append(
-            {
-                "account_id": author_id,
-                "score": round(score, 6),
-                "post_count": len(rows),
-                "attention": [
-                    {"post_id": row["post_id"], "weight": round(weight, 6)}
-                    for row, weight in zip(rows, weights)
-                ],
+def _shadow_verdict(case: Mapping[str, Any], *, model_status: str, reason: str) -> dict[str, Any]:
+    active_learning = build_active_learning_signal(score=0.5, confidence=0.0, case=case)
+    return _verdict(
+        case,
+        model_status=model_status,
+        label="uncertain",
+        score=0.5,
+        confidence=0.0,
+        abstain=True,
+        active_learning=active_learning,
+        checkpoint={"status": model_status, "path": ""},
+        signals={"axes": {}, "stance": {}, "input_count": len(case.get("posts") or [])},
+        reason=reason,
+    )
+
+
+def _verdict(
+    case: Mapping[str, Any],
+    *,
+    model_status: str,
+    label: str,
+    score: float,
+    confidence: float,
+    abstain: bool,
+    active_learning: Mapping[str, Any],
+    checkpoint: Mapping[str, Any],
+    signals: Mapping[str, Any],
+    reason: str | None = None,
+) -> dict[str, Any]:
+    review_required = bool(abstain or active_learning.get("priority", 0.0) >= 0.35)
+    result = {
+        "technology": "student",
+        "schema": "cogguard.review.review_verdict.v2",
+        "status": "ok",
+        "verdict_type": "preliminary",
+        "verdict_id": _verdict_id(case),
+        "snapshot_id": case.get("snapshot_id"),
+        "event_id": case.get("event_id"),
+        "platforms": list(case.get("platforms") or []),
+        "model_version": STUDENT_MODEL_VERSION,
+        "model_status": model_status,
+        "label": label,
+        "score": score,
+        "confidence": confidence,
+        "risk_level": "unknown" if abstain else ("high" if score >= 0.72 else "medium" if score >= 0.5 else "low"),
+        "abstain": abstain,
+        "review_required": review_required,
+        "review_reason": sorted(set(active_learning.get("reasons") or []) | ({"student_checkpoint_not_active"} if model_status != "checkpoint_active" else set())),
+        "architecture": ARCHITECTURE,
+        "checkpoint": dict(checkpoint),
+        "distillation": build_distillation_plan(
+            teacher_traces=list(case.get("options", {}).get("teacher_traces") or []),
+            approved_verdicts=list(case.get("options", {}).get("approved_verdicts") or []),
+        ),
+        "signals": {**dict(signals), "active_learning": dict(active_learning)},
+        "evidence": {
+            "capability_boundary": {
+                "runtime": "system/runtimes/review_student",
+                "model_status": model_status,
+                "canonical_allowed": False,
+                "reason": "Only an analyst-confirmed decision can become canonical.",
             }
-        )
-    accounts.sort(key=lambda row: (row["score"], row["post_count"], row["account_id"]), reverse=True)
-    return {
-        "schema": "review-student-user-mil-v1",
-        "accounts": accounts,
-        "summary": {
-            "account_count": len(accounts),
-            "high_risk_accounts": sum(1 for row in accounts if row["score"] >= 0.65),
         },
     }
+    if reason:
+        result["reason"] = reason
+    return result
 
 
-def _community_message_passing(case: Mapping[str, Any], user_scores: Mapping[str, Any]) -> dict[str, Any]:
-    base = {row["account_id"]: float(row["score"]) for row in user_scores.get("accounts", [])}
-    adjacency: defaultdict[str, set[str]] = defaultdict(set)
-    content_author = {}
-    for row in list(case.get("posts") or []) + list(case.get("comments") or []):
-        author = _first_text(row, ("author_id", "user_id", "uid", "account_id"))
-        content_id = _first_text(row, ("post_id", "comment_id", "note_id", "item_id", "id"))
-        if author and content_id:
-            content_author[content_id] = author
-    for relation in case.get("relationships") or []:
-        if not isinstance(relation, Mapping):
-            continue
-        source = content_author.get(str(relation.get("source_id") or relation.get("source_ref") or ""))
-        target = content_author.get(str(relation.get("target_id") or relation.get("target_ref") or ""))
-        if source and target and source != target:
-            adjacency[source].add(target)
-            adjacency[target].add(source)
-
-    propagated = dict(base)
-    for account, neighbors in adjacency.items():
-        neighbor_scores = [base.get(neighbor, 0.0) for neighbor in neighbors]
-        if neighbor_scores:
-            propagated[account] = 0.7 * base.get(account, 0.0) + 0.3 * mean(neighbor_scores)
-    communities = _components(adjacency)
-    community_rows = []
-    for index, members in enumerate(communities):
-        scores = [propagated.get(member, 0.0) for member in members]
-        community_rows.append(
-            {
-                "community_id": f"community_{index}",
-                "members": sorted(members),
-                "score": round(mean(scores), 6) if scores else 0.0,
-                "edge_count": sum(len(adjacency.get(member, set())) for member in members) // 2,
-            }
-        )
-    return {
-        "schema": "review-student-community-gnn-v1",
-        "checkpoint_status": "untrained_message_passing_scaffold",
-        "communities": community_rows,
-        "summary": {
-            "community_count": len(community_rows),
-            "high_risk_communities": sum(1 for row in community_rows if row["score"] >= 0.65),
-        },
-    }
-
-
-def _fuse_case_score(
-    post_scores: list[dict[str, Any]],
-    user_scores: Mapping[str, Any],
-    community_scores: Mapping[str, Any],
-) -> float:
-    post_mean = mean([float(row["score"]) for row in post_scores]) if post_scores else 0.5
-    user_rows = list(user_scores.get("accounts") or [])
-    user_mean = mean([float(row["score"]) for row in user_rows]) if user_rows else post_mean
-    community_rows = list(community_scores.get("communities") or [])
-    community_mean = mean([float(row["score"]) for row in community_rows]) if community_rows else user_mean
-    return min(0.99, max(0.01, 0.5 * post_mean + 0.3 * user_mean + 0.2 * community_mean))
-
-
-def _normalize_case(case: dict[str, Any]) -> dict[str, Any]:
+def _normalize_case(case: Mapping[str, Any]) -> dict[str, Any]:
     posts = [dict(row) for row in case.get("posts") or [] if isinstance(row, Mapping)]
     comments = [dict(row) for row in case.get("comments") or [] if isinstance(row, Mapping)]
-    platforms = [str(row) for row in case.get("platforms") or [] if str(row).strip()]
+    platforms = [str(value) for value in case.get("platforms") or [] if str(value).strip()]
     if not platforms:
-        platforms = sorted({str(row.get("platform") or "").strip() for row in posts + comments if str(row.get("platform") or "").strip()})
+        platforms = sorted(
+            {
+                str(row.get("platform") or "").strip()
+                for row in posts + comments
+                if str(row.get("platform") or "").strip()
+            }
+        )
     return {
         "snapshot_id": str(case.get("snapshot_id") or ""),
         "event_id": str(case.get("event_id") or ""),
@@ -315,95 +431,22 @@ def _normalize_case(case: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _insufficient_verdict(case: Mapping[str, Any], *, reason: str) -> dict[str, Any]:
-    return {
-        "technology": "student",
-        "schema": "cogguard.review.review_verdict.v2",
-        "status": "data_insufficient",
-        "verdict_type": "preliminary",
-        "verdict_id": _verdict_id("student", case),
-        "snapshot_id": case.get("snapshot_id"),
-        "event_id": case.get("event_id"),
-        "model_version": STUDENT_MODEL_VERSION,
-        "model_status": "shadow_untrained",
-        "reason": reason,
-        "architecture": ARCHITECTURE,
-        "review_required": True,
-        "abstain": True,
-    }
-
-
-def _checkpoint_status(value: Any) -> dict[str, Any]:
-    if not value:
-        return {"available": False, "path": "", "status": "missing_checkpoint"}
-    path = Path(str(value))
-    return {
-        "available": path.exists(),
-        "path": str(path),
-        "status": "registered" if path.exists() else "missing_checkpoint",
-    }
-
-
-def _review_reasons(active_learning: Mapping[str, Any], *, model_status: str) -> list[str]:
-    reasons = list(active_learning.get("reasons") or [])
-    if model_status != "checkpoint_active":
-        reasons.append("student_checkpoint_not_active")
-    return sorted(set(reasons))
-
-
-def _summarize_post_scores(post_scores: list[dict[str, Any]]) -> dict[str, Any]:
-    scores = [float(row["score"]) for row in post_scores]
-    labels = Counter(_label(score, max(score, 1.0 - score)) for score in scores)
-    return {
-        "post_count": len(post_scores),
-        "mean_score": round(mean(scores), 6) if scores else 0.0,
-        "max_score": round(max(scores), 6) if scores else 0.0,
-        "label_counts": dict(labels),
-    }
-
-
-def _top_post_evidence(post_scores: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    ranked = sorted(post_scores, key=lambda row: (row["score"], row["post_id"]), reverse=True)
-    return [
-        {
-            "post_id": row["post_id"],
-            "author_id": row["author_id"],
-            "platform": row["platform"],
-            "score": row["score"],
-            "matched_terms": row["matched_terms"],
-            "excerpt": row["excerpt"],
-        }
-        for row in ranked[:5]
-    ]
-
-
-def _capability_boundary(model_status: str) -> dict[str, Any]:
-    return {
-        "runtime": "system/runtimes/review_student",
-        "model_status": model_status,
-        "canonical_allowed": False,
-        "reason": "Student output is preliminary until analyst approval creates an immutable canonical verdict.",
-    }
-
-
 def _label(score: float, confidence: float) -> str:
     if confidence < 0.58:
         return "uncertain"
     return "harmful" if score >= 0.5 else "non_harmful"
 
 
-def _risk_level(score: float, community_scores: Mapping[str, Any]) -> str:
-    if score >= 0.72 or int(dict(community_scores.get("summary") or {}).get("high_risk_communities") or 0) > 0:
-        return "high"
-    if score >= 0.5:
-        return "medium"
-    return "low"
+def _probability(value: Any) -> float:
+    number = float(value)
+    if not math.isfinite(number) or number < 0.0 or number > 1.0:
+        raise ValueError("Student predictor probabilities must be finite values in [0, 1]")
+    return number
 
 
 def _ood_score(case: Mapping[str, Any]) -> float:
     platforms = list(case.get("platforms") or [])
-    known = {"weibo", "douyin", "xhs", "news"}
-    unknown = [platform for platform in platforms if platform not in known]
+    unknown = [platform for platform in platforms if platform not in {"weibo", "douyin", "xhs", "news"}]
     return min(1.0, len(unknown) / max(len(platforms), 1))
 
 
@@ -419,81 +462,49 @@ def _random_audit_bucket(case: Mapping[str, Any]) -> int:
     return int(digest[:8], 16) % 100
 
 
-def _components(adjacency: Mapping[str, set[str]]) -> list[set[str]]:
-    remaining = set(adjacency)
-    components = []
-    while remaining:
-        node = remaining.pop()
-        stack = [node]
-        component = {node}
-        while stack:
-            current = stack.pop()
-            for neighbor in adjacency.get(current, set()):
-                if neighbor not in component:
-                    component.add(neighbor)
-                    stack.append(neighbor)
-                    remaining.discard(neighbor)
-        components.append(component)
-    return components
+def _verdict_id(case: Mapping[str, Any]) -> str:
+    return f"student_{hashlib.sha256(_json(case).encode('utf-8')).hexdigest()[:24]}"
 
 
-def _softmax(values: list[float]) -> list[float]:
-    if not values:
-        return []
-    top = max(values)
-    exps = [math.exp(value - top) for value in values]
-    total = sum(exps) or 1.0
-    return [value / total for value in exps]
-
-
-def _timestamp_key(value: Any) -> str:
-    if isinstance(value, datetime):
-        timestamp = value
-    elif value in (None, ""):
-        return ""
-    else:
-        try:
-            timestamp = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
-        except ValueError:
-            return str(value)
-    if timestamp.tzinfo is None:
-        timestamp = timestamp.replace(tzinfo=timezone.utc)
-    return timestamp.astimezone(timezone.utc).isoformat()
-
-
-def _verdict_id(prefix: str, case: Mapping[str, Any]) -> str:
-    return f"{prefix}_{hashlib.sha256(_json(case).encode('utf-8')).hexdigest()[:24]}"
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def _json(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"), default=str)
 
 
-def _flatten(value: Any) -> list[str]:
-    if value is None:
-        return []
-    if isinstance(value, str):
-        return [value]
-    if isinstance(value, Mapping):
-        result = []
-        for item in value.values():
-            result.extend(_flatten(item))
-        return result
-    if isinstance(value, (list, tuple, set)):
-        result = []
-        for item in value:
-            result.extend(_flatten(item))
-        return result
-    return [str(value)]
-
-
-def _first_text(row: Mapping[str, Any], keys: tuple[str, ...]) -> str:
+def _first_text(row: Mapping[str, Any], keys: Sequence[str]) -> str:
     for key in keys:
-        text = _text(row.get(key))
-        if text:
-            return text
+        value = _flatten_text(row.get(key))
+        if value:
+            return value
     return ""
 
 
-def _text(value: Any) -> str:
-    return " ".join(str(value or "").split()).strip()
+def _flatten_text(value: Any) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return " ".join(value.split()).strip()
+    if isinstance(value, Mapping):
+        return " ".join(filter(None, (_flatten_text(item) for item in value.values())))
+    if isinstance(value, Sequence) and not isinstance(value, (str, bytes)):
+        return " ".join(filter(None, (_flatten_text(item) for item in value)))
+    return " ".join(str(value).split()).strip()
+
+
+__all__ = [
+    "ReviewStudentInput",
+    "STUDENT_MODEL_VERSION",
+    "StudentCheckpoint",
+    "StudentRuntime",
+    "TorchStudentPredictor",
+    "XLMRReviewStudent",
+    "build_active_learning_signal",
+    "build_distillation_plan",
+]

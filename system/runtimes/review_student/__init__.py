@@ -1,5 +1,21 @@
-"""Deployable Review Student runtime boundary."""
+"""Deployable Student Review runtime boundary."""
 
-from .runtime import StudentRuntime, build_active_learning_signal, build_distillation_plan
+from .runtime import (
+    ReviewStudentInput,
+    StudentCheckpoint,
+    StudentRuntime,
+    TorchStudentPredictor,
+    XLMRReviewStudent,
+    build_active_learning_signal,
+    build_distillation_plan,
+)
 
-__all__ = ["StudentRuntime", "build_active_learning_signal", "build_distillation_plan"]
+__all__ = [
+    "ReviewStudentInput",
+    "StudentCheckpoint",
+    "StudentRuntime",
+    "TorchStudentPredictor",
+    "XLMRReviewStudent",
+    "build_active_learning_signal",
+    "build_distillation_plan",
+]

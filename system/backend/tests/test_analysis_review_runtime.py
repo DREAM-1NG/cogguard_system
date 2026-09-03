@@ -70,11 +70,13 @@ def test_student_runtime_returns_preliminary_verdict_and_active_learning_signal(
     assert verdict["technology"] == "student"
     assert verdict["schema"] == "cogguard.review.review_verdict.v2"
     assert verdict["verdict_type"] == "preliminary"
-    assert verdict["model_version"] == "review-student-runtime-v2"
+    assert verdict["model_version"] == "review-student-xlmr-v3"
     assert verdict["model_status"] == "shadow_untrained"
+    assert verdict["label"] == "uncertain"
+    assert verdict["abstain"] is True
     assert verdict["review_required"] is True
     assert verdict["architecture"]["post_encoder"] == "xlm-roberta-base"
-    assert "teacher_kl" in verdict["distillation"]["losses"]
+    assert "latent_cosine" in verdict["distillation"]["losses"]
     assert verdict["signals"]["active_learning"]["policy"]["feedback_threshold"] == 200
 
 

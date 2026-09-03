@@ -67,6 +67,7 @@ def test_research_runtime_semantic_packages_load():
     detect = _load_package(PROJECT_ROOT / "research" / "coordination_detect", "_test_coordination_detect")
     propagation = _load_package(PROJECT_ROOT / "research" / "propagation_analysis", "_test_propagation_analysis")
     teacher = _load_package(PROJECT_ROOT / "research" / "review_teacher", "_test_review_teacher")
+    student_research = _load_package(PROJECT_ROOT / "research" / "review_student", "_test_review_student_research")
     student = _load_package(PROJECT_ROOT / "runtimes" / "review_student", "_test_review_student")
 
     assert "run_dynamic_discover" in discover.__all__
@@ -74,6 +75,8 @@ def test_research_runtime_semantic_packages_load():
     assert detect.run_detect_validation is not None
     assert "runtime" in propagation.__all__
     assert teacher.run_teacher_dag is not None
+    assert student_research.ReviewStudentJointLoss is not None
+    assert student_research.rank_hardcases is not None
     assert student.build_distillation_plan is not None
 
 
