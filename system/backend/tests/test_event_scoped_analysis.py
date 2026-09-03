@@ -566,7 +566,7 @@ def test_coordination_api_accepts_cluster_enriched_payload(monkeypatch):
 def test_propagation_api_passes_event_id_to_observed_analysis(monkeypatch):
     calls = {}
 
-    async def fake_analyze_propagation(platform=None, event_id=None):
+    async def fake_analyze_propagation(platform=None, event_id=None, node_limit=80):
         calls["analyze"] = {"platform": platform, "event_id": event_id}
         return {}
 
@@ -713,7 +713,7 @@ def test_propagation_api_accepts_authenticated_dependency_override(monkeypatch):
     async def fake_current_user():
         return SimpleNamespace(id=1, role="analyst", is_active=True)
 
-    async def fake_analyze_propagation(platform=None, event_id=None):
+    async def fake_analyze_propagation(platform=None, event_id=None, node_limit=80):
         calls["analyze"] = {"platform": platform, "event_id": event_id}
         return {"event_id": event_id, "platform": platform}
 

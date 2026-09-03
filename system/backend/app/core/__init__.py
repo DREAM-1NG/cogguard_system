@@ -18,6 +18,7 @@ __all__ = [
     "propagation",
     "propagation_analysis",
     "propagation_legacy",
+    "propagation_monitoring",
     "review",
     "risk",
     "security",

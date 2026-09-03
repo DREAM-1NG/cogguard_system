@@ -5,8 +5,11 @@ from __future__ import annotations
 import asyncio
 
 from app.celery_app import celery_app
+from app.core.propagation_monitoring import build_default_propagation_monitoring
 from app.db.mysql import async_session_factory
-from app.services.propagation_monitoring_service import run_due_monitor_profiles
+
+
+_PROPAGATION_MONITORING = build_default_propagation_monitoring()
 
 
 def _run_async(coro):
@@ -19,7 +22,7 @@ def _run_async(coro):
 
 async def _run_due_profiles() -> list[dict]:
     async with async_session_factory() as db:
-        result = await run_due_monitor_profiles(db)
+        result = await _PROPAGATION_MONITORING.run_due_monitor_profiles(db)
         await db.commit()
         return result
 
