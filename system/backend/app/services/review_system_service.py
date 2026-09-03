@@ -18,7 +18,7 @@ from uuid import uuid4
 
 from cryptography.fernet import Fernet, InvalidToken
 from sqlalchemy import desc, select, update
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
@@ -476,15 +476,23 @@ async def update_provider_config(
 
 
 async def list_provider_configs(db: AsyncSession, *, include_env_fallback: bool = True) -> dict[str, Any]:
-    result = await db.execute(select(ReviewProviderConfig).order_by(ReviewProviderConfig.provider_type, desc(ReviewProviderConfig.is_active), ReviewProviderConfig.id))
-    items = [provider_public_view(row) for row in result.scalars().all()]
+    unavailable = False
+    try:
+        result = await db.execute(select(ReviewProviderConfig).order_by(ReviewProviderConfig.provider_type, desc(ReviewProviderConfig.is_active), ReviewProviderConfig.id))
+        items = [provider_public_view(row) for row in result.scalars().all()]
+    except SQLAlchemyError:
+        unavailable = True
+        items = []
     if include_env_fallback:
         for provider_type in ("text_llm", "vision_llm", "retrieval"):
             if not any(item["provider_type"] == provider_type and item["is_active"] for item in items):
                 env_item = env_provider_public_view(provider_type)
                 if env_item:
                     items.append(env_item)
-    return {"items": items}
+    response = {"items": items}
+    if unavailable:
+        response["unavailable"] = True
+    return response
 
 
 async def activate_provider_config(
@@ -602,7 +610,10 @@ async def persist_gate_dataset_upload(
 
 async def list_gate_datasets(db: AsyncSession, *, page: int = 1, page_size: int = 20) -> dict[str, Any]:
     stmt = select(ReviewGateDataset).order_by(desc(ReviewGateDataset.created_at)).offset((page - 1) * page_size).limit(page_size)
-    result = await db.execute(stmt)
+    try:
+        result = await db.execute(stmt)
+    except SQLAlchemyError:
+        return {"items": [], "page": page, "page_size": page_size, "unavailable": True}
     rows = []
     for row in result.scalars().all():
         rows.append(
@@ -671,7 +682,10 @@ async def list_review_jobs(db: AsyncSession, *, page: int = 1, page_size: int = 
     if job_type:
         stmt = stmt.where(ReviewJob.job_type == job_type)
     stmt = stmt.order_by(desc(ReviewJob.created_at)).offset((page - 1) * page_size).limit(page_size)
-    result = await db.execute(stmt)
+    try:
+        result = await db.execute(stmt)
+    except SQLAlchemyError:
+        return {"items": [], "page": page, "page_size": page_size, "unavailable": True}
     rows = [review_job_public_view(row) for row in result.scalars().all()]
     return {"items": rows, "page": page, "page_size": page_size}
 
@@ -957,7 +971,10 @@ async def get_policy_artifact_from_db(policy_id: str, db: AsyncSession) -> dict[
 
 async def list_policies(db: AsyncSession, *, page: int = 1, page_size: int = 20) -> dict[str, Any]:
     stmt = select(ReviewPolicy).order_by(desc(ReviewPolicy.created_at)).offset((page - 1) * page_size).limit(page_size)
-    result = await db.execute(stmt)
+    try:
+        result = await db.execute(stmt)
+    except Exception:
+        return {"items": [], "page": page, "page_size": page_size, "unavailable": True}
     rows = [_policy_artifact_summary_from_row(row) for row in result.scalars().all()]
     return {"items": rows, "page": page, "page_size": page_size}
 

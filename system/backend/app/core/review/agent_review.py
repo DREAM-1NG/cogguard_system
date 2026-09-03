@@ -22,6 +22,7 @@ from app.core.review.active_retrieval import build_sidecar_for_agent
 from app.core.review.active_retrieval import retrieve_active_evidence
 from app.core.review.active_retrieval import should_trigger_light_debate
 from app.core.review.agent_contracts import AGENT_REPORT_SECTIONS
+from app.core.review.agent_contracts import CompliancePolicyBundle
 from app.core.review.agent_contracts import build_agent_output_contract
 from app.core.review.agent_contracts import build_agent_system_prompt
 from app.core.review.agent_contracts import build_agent_user_prompt
@@ -1165,12 +1166,25 @@ def _build_agent_context(
         "post_ids": [_text(post.get("post_id")) for post in posts if _text(post.get("post_id"))],
         "tree_ids": selected_tree_ids,
     }
+
+    # 构建 typed policy bundle
+    raw_policy = report.get("policy") or {}
+    policy_bundle = CompliancePolicyBundle(
+        active_policies=[
+            _text(rule.get("rule_id"))
+            for rule in (raw_policy.get("candidate_rules") or [])
+            if rule.get("status") in {"accepted_for_round", "activated"}
+        ],
+        violation_risk="Review manually based on active policies.",
+    ).model_dump()
+
     context = {
-        "schema_version": "review-agent-input-bundle-v1",
+        "schema_version": "review-agent-input-bundle-v2-typed",
         "input_refs": input_refs,
         "selected_posts": posts,
         "media_inputs": media_inputs,
         "propagation_context": propagation_context,
+        "policy_bundle": policy_bundle,
         "review_queue": _get(report, "harmfulness", "review_queue") or {},
         "review_execution": _get(report, "harmfulness", "review_execution") or {},
         "disarm_analysis": report.get("disarm_analysis") or {},
