@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from . import benchmark, runtime
+
 
 PropagationAnalysisForecast = dict[str, Any]
 

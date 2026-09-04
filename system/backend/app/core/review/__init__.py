@@ -5,7 +5,10 @@ governance helpers, and legacy DISARM-style review evidence. The old
 ``app.core.risk`` package is a compatibility alias for this boundary.
 """
 
-__all__ = [
+from importlib import import_module as _import_module
+from typing import Any as _Any
+
+_PUBLIC_MODULES = (
     "disarm_scorer",
     "ds_fusion",
     "evidence_builder",
@@ -38,4 +41,17 @@ __all__ = [
     "phase_detector",
     "post_semantics",
     "report_builder",
-]
+)
+
+
+def __getattr__(name: str) -> _Any:
+    if name in _PUBLIC_MODULES:
+        return _import_module(f"{__name__}.{name}")
+    raise AttributeError(name)
+
+
+def __dir__() -> list[str]:
+    return sorted(set(globals()) | set(_PUBLIC_MODULES))
+
+
+__all__ = list(_PUBLIC_MODULES)

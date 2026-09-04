@@ -22,6 +22,21 @@ def test_canonical_packages_publish_explicit_public_boundaries():
     assert "detect_groups" in coordination_baseline.__all__
 
 
+def test_public_exports_are_bound_and_source_checkout_is_declared():
+    review = importlib.import_module("app.core.review")
+    propagation = _load_package(PROJECT_ROOT / "research" / "propagation_analysis", "_test_propagation_exports")
+
+    for package in (review, propagation):
+        for name in package.__all__:
+            assert hasattr(package, name), (package.__name__, name)
+
+    pyproject = (PROJECT_ROOT / "backend" / "pyproject.toml").read_text(encoding="utf-8")
+    assert 'distribution = "source-checkout"' in pyproject
+    assert 'standalone_backend_wheel = false' in pyproject
+    assert (PROJECT_ROOT / "research").is_dir()
+    assert (PROJECT_ROOT / "runtimes").is_dir()
+
+
 def test_legacy_risk_submodule_imports_resolve_to_review_boundary():
     legacy_names = [
         "active_retrieval",

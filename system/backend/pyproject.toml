@@ -51,4 +51,12 @@ packages = ["app"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-testpaths = ["tests"]
+pythonpath = [".."]
+testpaths = ["tests", "../research/social_bot_detection/tests"]
+
+# The backend is released from the source checkout; sibling research and
+# runtime trees are part of that checkout and are intentionally not bundled in
+# a standalone wheel.
+[tool.cogguard.release]
+distribution = "source-checkout"
+standalone_backend_wheel = false
