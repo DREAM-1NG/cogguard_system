@@ -202,6 +202,25 @@ def test_due_monitor_profiles_allow_only_one_competing_claim(monkeypatch):
     assert results[1] == []
 
 
+def test_claim_recheck_reads_current_database_row_after_lease_commit():
+    profile = SimpleNamespace(id=7, claim_token="claim-a")
+
+    class _Result:
+        def scalar_one_or_none(self):
+            return None
+
+    class _DB:
+        async def execute(self, _statement):
+            return _Result()
+
+    assert asyncio.run(
+        propagation_monitoring_service._claim_is_current(
+            _DB(), profile=profile, claim_token="claim-a",
+            reference=datetime(2026, 8, 15, 8, 0, tzinfo=timezone.utc),
+        )
+    ) is False
+
+
 def test_propagation_alerts_have_nullable_unique_open_dedupe_key():
     from app.models.analysis import PropagationAlert
 

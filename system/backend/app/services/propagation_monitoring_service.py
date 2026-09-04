@@ -306,9 +306,9 @@ async def run_monitoring_cycle(
     """Capture one event snapshot, evaluate alert rules, and persist evidence."""
     if not profile.enabled:
         return {"profile_id": profile.id, "status": "disabled", "alerts": []}
-    if claim_token is not None and profile.claim_token != claim_token:
-        return {"profile_id": profile.id, "status": "claim_lost", "alerts": []}
     reference = _as_utc(now) or datetime.now(timezone.utc)
+    if not await _claim_is_current(db, profile=profile, claim_token=claim_token, reference=reference):
+        return {"profile_id": profile.id, "status": "claim_lost", "alerts": []}
     platform = profile.platform or None
     try:
         observed = await propagation_observation_service.analyze_observed_propagation(
@@ -325,7 +325,7 @@ async def run_monitoring_cycle(
 
     prediction = await _safe_prediction(event_id=profile.event_id, platform=platform, observed_until=reference.isoformat())
     coordination = await _safe_coordination(event_id=profile.event_id, platform=platform)
-    if claim_token is not None and profile.claim_token != claim_token:
+    if not await _claim_is_current(db, profile=profile, claim_token=claim_token, reference=reference):
         return {"profile_id": profile.id, "status": "claim_lost", "alerts": []}
     previous_snapshot = _json_loads(profile.last_snapshot_json, {})
     total_items = _analysis_total_items(observed)
@@ -352,6 +352,8 @@ async def run_monitoring_cycle(
         profile.last_error = f"snapshot_persist: {type(exc).__name__}: {exc}"
         await db.flush()
         return {"profile_id": profile.id, "status": "failed", "alerts": []}
+    if not await _claim_is_current(db, profile=profile, claim_token=claim_token, reference=reference):
+        return {"profile_id": profile.id, "status": "claim_lost", "alerts": []}
     evidence = _evidence_snapshot(
         snapshot_id=snapshot.snapshot_id, captured_at=reference, current_window=current_window,
         observed=observed, prediction=prediction, coordination=coordination, signals=signals,
@@ -373,6 +375,24 @@ async def run_monitoring_cycle(
     profile.last_error = None
     await db.flush()
     return {"profile_id": profile.id, "status": "ok", "snapshot_id": snapshot.snapshot_id, "alerts": alerts}
+
+
+async def _claim_is_current(
+    db: AsyncSession,
+    *,
+    profile: PropagationMonitorProfile,
+    claim_token: str | None,
+    reference: datetime,
+) -> bool:
+    if claim_token is None:
+        return True
+    statement = select(PropagationMonitorProfile).where(
+        PropagationMonitorProfile.id == profile.id,
+        PropagationMonitorProfile.claim_token == claim_token,
+        PropagationMonitorProfile.claim_expires_at > reference,
+    )
+    result = await db.execute(statement)
+    return result.scalar_one_or_none() is not None
 
 
 async def _safe_prediction(*, event_id: str, platform: str | None, observed_until: str) -> dict[str, Any]:
