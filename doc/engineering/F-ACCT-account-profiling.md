@@ -1,5 +1,7 @@
 # F-ACCT（深度账号画像）代码开发需求文档
 
+> **Historical / Non-normative**：这是早期功能提案，保留用于追溯。当前账户能力以产品路由、`system-governance.md` 和 `UBIQUITOUS_LANGUAGE.md` 为准；本文不得作为产品 runtime 输入。
+
 > **功能类型**：横向支撑功能（supporting function），不是第 4 个关键技术
 > **主要技术**：预训练 Bot 检测模型（Botometer / RoBERTa Twibot-22）+ 账号级 stance 聚合 + 规则化 KOL 识别
 > **文档类型**：功能级代码开发需求（research / engineering 拆分）

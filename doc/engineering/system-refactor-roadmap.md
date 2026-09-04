@@ -1,5 +1,7 @@
 ﻿# CogGuard System Refactor Roadmap
 
+> **Historical / Non-normative**：该 refactor lane 已由 `cleanup/final-architecture` 完成并由 release-governance track 接替。当前计划以 `conductor/tracks/release-governance/`、`system-governance.md` 和 `UBIQUITOUS_LANGUAGE.md` 为准；本文不得作为产品 runtime 输入。
+
 ## Goal
 
 Improve reuse, locality, and long-term maintainability across the CogGuard system without changing externally visible behavior.
@@ -106,4 +108,3 @@ For each phase, run fresh verification before claiming completion:
 - Backend: targeted pytest first, then broader dependent tests when touched
 - Frontend: `npm run build`
 - If an extracted seam is not behavior-locked yet, add or extend regression coverage before larger movement
-

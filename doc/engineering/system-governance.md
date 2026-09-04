@@ -12,6 +12,23 @@ This governance applies to:
 
 It does not apply to archive material except for read-only reference.
 
+## Release Governance Language
+
+Product terms: Event Review Case, Propagation Monitoring, Review Advisory, Confirmed Decision.
+
+Internal terms: Review, Propagation Analysis, Student Review, Teacher Review.
+
+Both V1 capability APIs and V2 case/governance APIs are current contracts.
+Only explicitly deprecated endpoints are legacy. The `app/core/review` package
+is internal Review runtime/helper support; Event Review Case orchestration
+belongs to `review_case_service.py` and V2 routes. `/risk`,
+`/coordination/detect`, F-* names, and old numbered labels are compatibility or
+historical identifiers, not current domain terms.
+
+app/core/review is internal Review runtime/helper support. Event Review Case
+orchestration belongs to review_case_service.py and V2 routes.
+Event Review Case orchestration belongs to review_case_service.py and V2 routes.
+
 ## Canonical Layers
 
 | Layer | Canonical paths | Rule |

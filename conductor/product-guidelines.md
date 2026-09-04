@@ -4,7 +4,7 @@
 
 - 产品叙事使用 `事件 -> 证据 -> 协同 -> 传播 -> 风险 -> 处置`。
 - 领域术语以 `UBIQUITOUS_LANGUAGE.md` 为全局事实源，`CONTEXT.md` 只补充上下文专用术语。
-- 使用 **Coordination Discover**、**Coordination Detect**、**Propagation Monitoring**、**Student Review**、**Teacher Review** 和 **Event Review Case**。
+- 使用 **Coordination Discover**、**Coordination Detect**、**Propagation Monitoring**、**Review Advisory**、**Confirmed Decision** 和 **Event Review Case**；Student Review 与 Teacher Review 仅用于内部 runtime/research 文档。
 - 禁止用编号技术、`risk shortcut`、`prediction blob`、`final model output` 替代 canonical 术语。
 
 ## User-Facing Behavior

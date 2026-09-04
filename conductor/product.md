@@ -14,7 +14,7 @@
 
 ## Users
 
-- **Analyst**：运行分析、检查证据、发起 Teacher Review、形成研判决策。
+- **Analyst**：运行分析、检查证据、请求复核建议并形成研判决策。
 - **Administrator**：管理模型激活、运行配置、用户和系统治理。
 - **Viewer**：查看已授权的分析与研判结果。
 
@@ -23,7 +23,7 @@
 - Crawler 与 Event Snapshot 数据入口。
 - Coordination Discover / Coordination Detect。
 - Propagation Monitoring，包括 Observed Propagation Analysis 与受治理的 Propagation Forecast。
-- Student Review、Teacher Review 与 Canonical Verdict 人工审批。
+- Preliminary Finding、Review Advisory、Canonical Verdict 审批与 Confirmed Decision。
 - Event Review Case、证据标注、复核请求和活动流。
 
 ## Current Goal

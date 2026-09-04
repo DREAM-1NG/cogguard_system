@@ -6,6 +6,10 @@ research notes. If this file conflicts with older documents, this file wins.
 
 ## Main Boundaries
 
+V1 capability APIs and V2 case/governance APIs are both current contracts;
+only individually deprecated routes are legacy. `/risk`, `/coordination/detect`
+and F-* labels are compatibility or historical identifiers, not domain terms.
+
 | Path | Role | Default edit policy |
 | --- | --- | --- |
 | `system/` | Active product system: backend, frontend, deployment files, vendored runtimes, system-readable research packages, and tests. | Edit for runnable system work. |

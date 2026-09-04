@@ -1,5 +1,7 @@
 # CogGuard MediaCrawler 数据契约
 
+> **Historical / Non-normative**：这是 2026-05 的采集数据契约快照，保留用于追溯。当前采集接口和运行规则以 `system/README.md`、`system-governance.md` 和 `UBIQUITOUS_LANGUAGE.md` 为准；本文不得作为产品 runtime 输入。
+
 > 事件样本：`event_id=trump_visit_2026_05_21`  
 > 数据库：MongoDB `cogguard`  
 > 集合：`raw_posts`、`raw_comments`  

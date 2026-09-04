@@ -1,5 +1,7 @@
 # CogGuard research / engineering 分工总览
 
+> **Historical / Non-normative**：这是早期研究/工程拆分提案，保留用于追溯。当前包归属和运行规则以 `system-governance.md`、`project-map.md` 和 `UBIQUITOUS_LANGUAGE.md` 为准；本文不得作为产品 runtime 输入。
+
 > **用途**：作为后续团队分工的权威分割表。把三大核心功能（F-COORD / F-PROP / F-RISK）+ 横向支撑功能（F-ACCT）按"算法创新（research）"与"工程拼装（engineering）"二分，明确哪些任务由 Claude Code 在本仓库快速完成、哪些任务需要本地实验探究。
 > **维护规则**：每条 research 任务完成本地实验产出后，要回写参数 / 结论到对应 `aris/tech-NN/REQUIREMENTS.md` 或 `doc/engineering/F-ACCT-account-profiling.md`；每条 engineering 任务完成提交后，要勾选状态并同步 `development-log.md`。
 > **最后更新**：2026-05-20

@@ -372,6 +372,52 @@ def test_release_governance_terms_and_lifecycles_are_explicit():
     assert "explicitly marked deprecated" in combined
 
 
+def test_canonical_language_split_api_contract_and_legacy_banners_are_explicit():
+    root = Path(__file__).resolve().parents[3]
+    canonical_paths = [
+        root / "README.md",
+        root / "system" / "README.md",
+        root / "doc" / "engineering" / "project-map.md",
+        root / "doc" / "engineering" / "system-governance.md",
+        root / "doc" / "engineering" / "development-roadmap.md",
+        root / "doc" / "engineering" / "development-log.md",
+        root / "conductor" / "product.md",
+        root / "conductor" / "product-guidelines.md",
+        root / "conductor" / "tech-stack.md",
+        root / "conductor" / "workflow.md",
+        root / "CONTEXT.md",
+        root / "UBIQUITOUS_LANGUAGE.md",
+        root / "doc" / "adr" / "index.md",
+    ]
+    canonical_text = "\n".join(path.read_text(encoding="utf-8") for path in canonical_paths)
+
+    for term in (
+        "Product terms: Event Review Case, Propagation Monitoring, Review Advisory, Confirmed Decision",
+        "Internal terms: Review, Propagation Analysis, Student Review, Teacher Review",
+        "Both V1 capability APIs and V2 case/governance APIs are current contracts",
+        "Only explicitly deprecated endpoints are legacy",
+        "app/core/review is internal Review runtime/helper support",
+        "Event Review Case orchestration belongs to review_case_service.py and V2 routes",
+        "/risk",
+        "/coordination/detect",
+        "compatibility or historical identifiers",
+    ):
+        assert term in canonical_text
+
+    legacy_paths = [
+        root / "doc" / "engineering" / "product-requirements.md",
+        root / "doc" / "engineering" / "research-engineering-split.md",
+        root / "doc" / "engineering" / "F-ACCT-account-profiling.md",
+        root / "doc" / "engineering" / "data-contract-mediacrawler.md",
+        root / "doc" / "engineering" / "system-refactor-roadmap.md",
+    ]
+    for path in legacy_paths:
+        header = "\n".join(path.read_text(encoding="utf-8").splitlines()[:12])
+        assert "Historical / Non-normative" in header, path
+        assert "system-governance.md" in header, path
+        assert "UBIQUITOUS_LANGUAGE.md" in header, path
+
+
 def test_release_governance_adrs_and_architecture_report_are_reconciled():
     root = Path(__file__).resolve().parents[3]
     adr_dir = root / "doc" / "adr"

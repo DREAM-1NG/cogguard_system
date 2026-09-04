@@ -25,8 +25,8 @@ Current API contract prefixes:
 system/
   backend/
     app/
-      api/v1/                  legacy thin compatibility layer
-      api/v2/                  current product API surface
+      api/v1/                  current capability APIs; only deprecated routes are legacy
+      api/v2/                  current case, analysis, governance, and operations APIs
       core/
         analysis/              Analysis Run lifecycle and uniform stage adapters
         coordination_baseline/ reference-style fallback baseline
@@ -34,7 +34,7 @@ system/
         crawler/               Crawler interface, social/news/mock adapters
         propagation/           observed propagation implementation
         propagation_monitoring/ shared HTTP/Celery monitoring interface
-        review/                Event Review Case orchestration, Review/Teacher/Student helpers, advisory routing, governance
+        review/                internal Review runtime/helper support
         semantic/              semantic enrichment runtime
         risk/                  legacy compatibility alias for review
       models/                  SQLAlchemy and persisted domain records
