@@ -39,6 +39,20 @@ from playwright.async_api import Cookie, Page
 from . import utils
 from .httpx_util import make_async_client
 
+__all__ = [
+    "find_login_qrcode",
+    "find_qrcode_img_from_canvas",
+    "show_qrcode",
+    "get_user_agent",
+    "get_mobile_user_agent",
+    "convert_cookies",
+    "convert_str_cookie_to_dict",
+    "match_interact_info_count",
+    "format_proxy_info",
+    "extract_text_from_html",
+    "extract_url_params_to_dict",
+]
+
 
 async def find_login_qrcode(page: Page, selector: str) -> str:
     """find login qrcode image from target selector"""

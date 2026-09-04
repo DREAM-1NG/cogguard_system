@@ -19,11 +19,37 @@
 
 
 import argparse
+import importlib
 import logging
+import sys
 
-from .crawler_util import *
-from .slider_util import *
-from .time_util import *
+
+_LAZY_EXPORTS = {
+    "find_login_qrcode": (".crawler_util", "find_login_qrcode"),
+    "find_qrcode_img_from_canvas": (".crawler_util", "find_qrcode_img_from_canvas"),
+    "show_qrcode": (".crawler_util", "show_qrcode"),
+    "get_user_agent": (".crawler_util", "get_user_agent"),
+    "get_mobile_user_agent": (".crawler_util", "get_mobile_user_agent"),
+    "convert_cookies": (".crawler_util", "convert_cookies"),
+    "convert_str_cookie_to_dict": (".crawler_util", "convert_str_cookie_to_dict"),
+    "match_interact_info_count": (".crawler_util", "match_interact_info_count"),
+    "format_proxy_info": (".crawler_util", "format_proxy_info"),
+    "extract_text_from_html": (".crawler_util", "extract_text_from_html"),
+    "extract_url_params_to_dict": (".crawler_util", "extract_url_params_to_dict"),
+    "Slide": (".slider_util", "Slide"),
+    "get_track_simple": (".slider_util", "get_track_simple"),
+    "get_tracks": (".slider_util", "get_tracks"),
+    "get_current_timestamp": (".time_util", "get_current_timestamp"),
+    "get_current_time": (".time_util", "get_current_time"),
+    "get_current_time_hour": (".time_util", "get_current_time_hour"),
+    "get_current_date": (".time_util", "get_current_date"),
+    "get_time_str_from_unix_time": (".time_util", "get_time_str_from_unix_time"),
+    "get_date_str_from_unix_time": (".time_util", "get_date_str_from_unix_time"),
+    "get_unix_time_from_time_str": (".time_util", "get_unix_time_from_time_str"),
+    "get_unix_timestamp": (".time_util", "get_unix_timestamp"),
+    "rfc2822_to_china_datetime": (".time_util", "rfc2822_to_china_datetime"),
+    "rfc2822_to_timestamp": (".time_util", "rfc2822_to_timestamp"),
+}
 
 
 def init_loging_config():
@@ -43,6 +69,21 @@ def init_loging_config():
 
 
 logger = init_loging_config()
+
+
+def __getattr__(name):
+    if name == "utils":
+        return sys.modules[__name__]
+    target = _LAZY_EXPORTS.get(name)
+    if target is None:
+        raise AttributeError(name)
+    module = importlib.import_module(target[0], __package__)
+    value = getattr(module, target[1])
+    globals()[name] = value
+    return value
+
+
+__all__ = ["init_loging_config", "logger", "str2bool", "utils", *_LAZY_EXPORTS]
 
 def str2bool(v):
     if isinstance(v, bool):
