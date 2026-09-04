@@ -237,10 +237,10 @@ async def import_pair(
     if not dry_run:
         await write_documents(mongo_db["raw_posts"], post_documents)
         for event_id in sorted({document["event_id"] for document in post_documents}):
-            invalidate_observed_cache(event_id=event_id, platform=platform)
+            await invalidate_observed_cache(event_id=event_id, platform=platform)
         await write_documents(mongo_db["raw_comments"], comment_documents)
         for event_id in sorted({document["event_id"] for document in comment_documents}):
-            invalidate_observed_cache(event_id=event_id, platform=platform)
+            await invalidate_observed_cache(event_id=event_id, platform=platform)
 
     return {
         "platform": platform,

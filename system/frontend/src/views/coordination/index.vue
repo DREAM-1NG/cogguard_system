@@ -496,9 +496,17 @@ async function selectDataset(datasetId: number) {
   communityDrawerOpen.value = false
   selectedNode.value = null
   communityDetail.value = null
-  await Promise.all([loadDatasetDetail(datasetId), loadGraph()])
-  if (selectedDatasetId.value === datasetId) {
-    void loadLatestResult(datasetId)
+  datasetDetail.value = null
+  resultSnapshot.value = null
+  graphPayload.value = null
+  stopPolling()
+  running.value = false
+  try {
+    await Promise.all([loadDatasetDetail(datasetId), loadGraph()])
+  } finally {
+    if (selectedDatasetId.value === datasetId) {
+      void loadLatestResult(datasetId)
+    }
   }
 }
 
@@ -697,9 +705,16 @@ async function handleRerun() {
 
 function startPolling(runId: number) {
   stopPolling()
+  const requestedDatasetId = selectedDatasetId.value
   const loop = async () => {
     try {
       const resp = await getCoordinationRun(runId)
+      if (
+        requestedDatasetId !== selectedDatasetId.value
+        || pollingRunId.value !== runId
+      ) {
+        return
+      }
       const run = resp.data
       if (datasetDetail.value?.runs?.length) {
         datasetDetail.value.runs = [run, ...datasetDetail.value.runs.filter((item: any) => item.run_id !== run.run_id)].slice(0, 10)
@@ -721,6 +736,12 @@ function startPolling(runId: number) {
         return
       }
     } catch {
+      if (
+        requestedDatasetId !== selectedDatasetId.value
+        || pollingRunId.value !== runId
+      ) {
+        return
+      }
       stopPolling()
       running.value = false
       return

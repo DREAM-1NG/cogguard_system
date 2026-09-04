@@ -530,7 +530,7 @@ async def _persist_triggered_alerts(
             PropagationAlert.platform == platform,
             PropagationAlert.alert_type == alert_type,
             PropagationAlert.state.in_(MONITORING_OPEN_ALERT_STATES),
-        ).order_by(PropagationAlert.last_triggered_at.desc())
+        ).order_by(PropagationAlert.last_triggered_at.desc()).with_for_update()
         existing = next(iter((await db.execute(statement)).scalars().all()), None)
         item_evidence = {**_as_mapping(evidence), "trigger_signal": _as_mapping(signal)}
         if existing is None:
@@ -601,7 +601,8 @@ async def _insert_alert_with_dedupe(
             await db.execute(
                 select(PropagationAlert).where(
                     PropagationAlert.open_dedupe_key == dedupe_key,
-                )
+                    PropagationAlert.state.in_(MONITORING_OPEN_ALERT_STATES),
+                ).with_for_update()
             )
         ).scalar_one_or_none()
         if existing is None:

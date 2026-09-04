@@ -409,7 +409,7 @@ async def upsert_platform_result(
             resolved_event_id = str(
                 (result.posts or result.comments or [{}])[0].get("event_id") or ""
             ).strip()
-        invalidate_observed_cache(event_id=resolved_event_id or None, platform=result.platform)
+        await invalidate_observed_cache(event_id=resolved_event_id or None, platform=result.platform)
     return counts
 
 

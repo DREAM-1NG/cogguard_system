@@ -9,7 +9,10 @@ const propagationView = readFileSync(resolve(frontendRoot, 'src/views/propagatio
 const coordinationView = readFileSync(resolve(frontendRoot, 'src/views/coordination/index.vue'), 'utf8')
 
 function functionBody(source, name) {
-  const start = source.indexOf(`async function ${name}`)
+  const start = Math.max(
+    source.indexOf(`async function ${name}`),
+    source.indexOf(`function ${name}`),
+  )
   assert.notEqual(start, -1, `Expected ${name} to exist`)
   const brace = source.indexOf('{', start)
   let depth = 0
@@ -101,6 +104,17 @@ test('ignores propagation analysis responses outside their captured event and pl
   await olderRequest
 
   assert.deepEqual(harness.analysisResult.value, activeData)
+})
+
+test('ignores a propagation response when scope changes without starting another request', async () => {
+  const harness = propagationHarness()
+  const request = harness.loadAnalysis()
+  harness.eventId.value = 'event-b'
+  harness.platform.value = 'douyin'
+  harness.pending[0].resolve({ data: { graph: { nodes: [{ id: 'event-a' }] } } })
+  await request
+
+  assert.equal(harness.analysisResult.value, null)
 })
 
 test('keeps propagation loading owned by the active generation when an older request finishes first', async () => {
@@ -201,4 +215,20 @@ test('keeps coordination detail, result, and graph responses scoped to the activ
     assert.deepEqual(harness.state.value, item.response)
     assert.equal(harness.loading.value, false)
   }
+})
+
+test('dataset selection clears prior projections and always starts latest-result loading for the active dataset', () => {
+  const selectionBody = functionBody(coordinationView, 'selectDataset')
+
+  assert.match(selectionBody, /datasetDetail\.value\s*=\s*null/)
+  assert.match(selectionBody, /resultSnapshot\.value\s*=\s*null/)
+  assert.match(selectionBody, /graphPayload\.value\s*=\s*null/)
+  assert.match(selectionBody, /finally\s*\{[\s\S]*loadLatestResult\(datasetId\)/)
+})
+
+test('coordination polling ignores runs belonging to a superseded dataset', () => {
+  const pollingBody = functionBody(coordinationView, 'startPolling')
+
+  assert.match(pollingBody, /requestedDatasetId\s*=\s*selectedDatasetId\.value/)
+  assert.match(pollingBody, /requestedDatasetId\s*!==\s*selectedDatasetId\.value/)
 })

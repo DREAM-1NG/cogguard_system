@@ -128,7 +128,7 @@ def test_module_invalidate_observed_cache_reaches_facade_instances():
         asyncio.run(monitoring.observed(platform="weibo", event_id="event-1", node_limit=80))
         asyncio.run(monitoring.observed(platform="xhs", event_id="event-1", node_limit=80))
 
-    invalidate_observed_cache(event_id="event-1", platform="weibo")
+    asyncio.run(invalidate_observed_cache(event_id="event-1", platform="weibo"))
 
     for monitoring in (first_monitoring, second_monitoring):
         asyncio.run(monitoring.observed(platform="weibo", event_id="event-1", node_limit=80))
@@ -183,6 +183,30 @@ def test_invalidate_observed_cache_cannot_allow_an_inflight_result_to_repopulate
 
     asyncio.run(scenario())
     assert calls == 2
+
+
+def test_shared_revision_change_invalidates_cache_across_process_boundaries():
+    calls = 0
+    revision = {"value": "0"}
+
+    async def observe(**_kwargs):
+        nonlocal calls
+        calls += 1
+        return {"call": calls}
+
+    async def shared_revision(**_scope):
+        return revision["value"]
+
+    monitoring = PropagationMonitoring(
+        build_ports(observe=observe),
+        shared_revision=shared_revision,
+    )
+    asyncio.run(monitoring.observed(platform="weibo", event_id="event-1", node_limit=80))
+    revision["value"] = "1"
+    result = asyncio.run(monitoring.observed(platform="weibo", event_id="event-1", node_limit=80))
+
+    assert calls == 2
+    assert result["call"] == 2
 
 
 @pytest.mark.parametrize("ratio", [0.2, 0.4, 0.6])

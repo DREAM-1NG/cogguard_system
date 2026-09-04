@@ -210,6 +210,8 @@ class AnalysisRegistry:
             raise ValueError(f"Event snapshot identity mismatch: {snapshot_id}")
         if manifest_fingerprint is not None and snapshot.data_fingerprint != str(manifest_fingerprint):
             raise ValueError(f"Event snapshot fingerprint mismatch: {snapshot_id}")
+        if _snapshot_content_fingerprint(snapshot) != snapshot.data_fingerprint:
+            raise ValueError(f"Event snapshot content fingerprint mismatch: {snapshot_id}")
         return snapshot
 
     async def transition_run_status(
@@ -661,6 +663,20 @@ def _mapping(value: Any) -> dict[str, Any]:
 
 def _json_dumps(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False, sort_keys=True)
+
+
+def _snapshot_content_fingerprint(snapshot: EventSnapshot) -> str:
+    payload = {
+        "event_id": snapshot.event_id,
+        "core_window": snapshot.core_window.model_dump(mode="json"),
+        "context_window": snapshot.context_window.model_dump(mode="json"),
+        "posts": snapshot.posts,
+        "comments": snapshot.comments,
+        "relationships": [item.model_dump(mode="json") for item in snapshot.relationships],
+        "provenance": [item.model_dump(mode="json") for item in snapshot.provenance],
+    }
+    canonical = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
 def _json_loads(value: str | None, default: Any) -> Any:

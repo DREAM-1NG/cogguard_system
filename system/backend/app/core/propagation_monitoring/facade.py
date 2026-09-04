@@ -15,6 +15,7 @@ SUPPORTED_OBSERVATION_RATIOS = frozenset({0.1, 0.3, 0.5})
 DEFAULT_CACHE_TTL_SECONDS = 300
 DEFAULT_TEXT_PREVIEW_CHARS = 160
 _PROPAGATION_MONITORING_INSTANCES: WeakSet["PropagationMonitoring"] = WeakSet()
+SHARED_REVISION_PREFIX = "cogguard:propagation:observed:revision"
 
 
 class MonitoringPersistencePort(Protocol):
@@ -51,13 +52,15 @@ class PropagationMonitoring:
         *,
         cache_ttl_seconds: int = DEFAULT_CACHE_TTL_SECONDS,
         clock: Callable[[], float] = time.monotonic,
+        shared_revision: Callable[..., Awaitable[str]] | None = None,
     ) -> None:
         self._ports = ports
         self._cache_ttl_seconds = cache_ttl_seconds
         self._clock = clock
-        self._observed_cache: dict[tuple[str, str, int], tuple[float, dict]] = {}
-        self._observed_in_flight: dict[tuple[str, str, int], asyncio.Task] = {}
-        self._observed_generation: dict[tuple[str, str, int], int] = {}
+        self._shared_revision = shared_revision
+        self._observed_cache: dict[tuple[str, str, int, str], tuple[float, dict]] = {}
+        self._observed_in_flight: dict[tuple[str, str, int, str], asyncio.Task] = {}
+        self._observed_generation: dict[tuple[str, str, int, str], int] = {}
         _PROPAGATION_MONITORING_INSTANCES.add(self)
 
     def clear_observed_cache(self) -> None:
@@ -96,7 +99,12 @@ class PropagationMonitoring:
         event_id: str | None,
         node_limit: int,
     ) -> dict:
-        key = (str(platform or "").strip().lower(), str(event_id or "").strip(), int(node_limit))
+        normalized_platform = str(platform or "").strip().lower()
+        normalized_event = str(event_id or "").strip()
+        revision = "local"
+        if self._shared_revision is not None:
+            revision = await self._shared_revision(platform=normalized_platform, event_id=normalized_event)
+        key = (normalized_platform, normalized_event, int(node_limit), revision)
         cached = self._observed_cache.get(key)
         if cached is not None:
             created_at, payload = cached
@@ -186,14 +194,15 @@ class PropagationMonitoring:
         return await self._ports.persistence.run_due_monitor_profiles(db)
 
 
-def invalidate_observed_cache(
+async def invalidate_observed_cache(
     *,
     event_id: str | None = None,
     platform: str | None = None,
 ) -> None:
-    """Invalidate one scope across all local monitoring facades."""
+    """Invalidate one scope locally and publish a cross-process revision."""
     for monitoring in tuple(_PROPAGATION_MONITORING_INSTANCES):
         monitoring.invalidate_observed_cache(event_id=event_id, platform=platform)
+    await _publish_shared_revision(event_id=event_id, platform=platform)
 
 
 def build_default_propagation_monitoring(
@@ -220,8 +229,42 @@ def build_default_propagation_monitoring(
             validate_cutoff=propagation_model_service.validate_observed_until,
             enforce_forecast=propagation_model_service.enforce_prediction_contract,
             persistence=propagation_monitoring_service,
-        )
+        ),
+        shared_revision=_read_shared_revision,
     )
+
+
+def _revision_key(*, platform: str, event_id: str) -> str:
+    return f"{SHARED_REVISION_PREFIX}:{platform or '*'}:{event_id or '*'}"
+
+
+async def _read_shared_revision(*, platform: str, event_id: str) -> str:
+    try:
+        from app.db.redis import get_redis
+
+        value = await get_redis().get(_revision_key(platform=platform, event_id=event_id))
+        return str(value or "0")
+    except Exception:
+        return "unavailable"
+
+
+async def _publish_shared_revision(*, event_id: str | None, platform: str | None) -> None:
+    normalized_platform = str(platform or "").strip().lower()
+    normalized_event = str(event_id or "").strip()
+    keys = {
+        _revision_key(platform=normalized_platform, event_id=normalized_event),
+        _revision_key(platform="", event_id=normalized_event),
+        _revision_key(platform=normalized_platform, event_id=""),
+        _revision_key(platform="", event_id=""),
+    }
+    try:
+        from app.db.redis import get_redis
+
+        client = get_redis()
+        for key in keys:
+            await client.incr(key)
+    except Exception:
+        return
 
 
 def _truncate_text(value: Any, *, max_chars: int = DEFAULT_TEXT_PREVIEW_CHARS) -> Any:

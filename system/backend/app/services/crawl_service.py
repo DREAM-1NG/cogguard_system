@@ -98,8 +98,8 @@ async def delete_job(job_id: int, user_id: int, db: AsyncSession) -> bool:
             params = json.loads(job.params_json or "{}")
         except (TypeError, ValueError):
             params = {}
-        invalidate_observed_cache(
-            event_id=str(params.get("event_id") or "").strip() or None,
+        await invalidate_observed_cache(
+            event_id=str(params.get("event_id") or "").strip() or f"crawl_job_{job_id}",
             platform=str(job.platform or params.get("platform") or "").strip() or None,
         )
 

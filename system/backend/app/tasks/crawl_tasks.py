@@ -125,7 +125,7 @@ def run_crawl_job(job_id: int, params_json: str):
                 )
             await _write_documents(mongo_db["raw_posts"], post_dicts)
             if post_dicts:
-                invalidate_observed_cache(
+                await invalidate_observed_cache(
                     event_id=_resolve_event_id(params, job_id),
                     platform=platform,
                 )
@@ -144,7 +144,7 @@ def run_crawl_job(job_id: int, params_json: str):
                     )
                 await _write_documents(mongo_db["raw_comments"], all_comments)
                 if all_comments:
-                    invalidate_observed_cache(
+                    await invalidate_observed_cache(
                         event_id=_resolve_event_id(params, job_id),
                         platform=platform,
                     )

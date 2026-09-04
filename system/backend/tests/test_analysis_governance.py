@@ -227,6 +227,31 @@ def test_directory_manifest_checkpoint_cannot_escape_its_artifact_directory(tmp_
         )
 
 
+def test_file_artifact_rejects_manifest_checkpoint_path_mismatch(tmp_path):
+    checkpoint = tmp_path / "checkpoint.pt"
+    checkpoint.write_bytes(b"checkpoint")
+    other = tmp_path / "other.pt"
+    other.write_bytes(b"other")
+    manifest = {
+        "technology": "review_student",
+        "checkpoint_path": other.name,
+        "checkpoint_sha256": hashlib.sha256(checkpoint.read_bytes()).hexdigest(),
+        "metrics": {"teacher_macro_f1_gap": 0.02, "ece": 0.07, "p95_latency_seconds": 1.8},
+    }
+    manifest["manifest_sha256"] = hashlib.sha256(
+        json.dumps(manifest, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    (tmp_path / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="checkpoint path"):
+        verify_registered_artifact(
+            artifact_uri=str(checkpoint),
+            expected_hash=manifest["checkpoint_sha256"],
+            technology="review_student",
+            artifact_root=tmp_path,
+        )
+
+
 @pytest.mark.parametrize(
     ("technology", "metrics", "allowed"),
     [
