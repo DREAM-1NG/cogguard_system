@@ -4,4 +4,4 @@
 - [Implementation Plan](plan.md)
 - [Metadata](metadata.json)
 
-当前状态：`in progress / final review remediation`。首轮完整验证已通过，但最终 branch review 发现发布表面、模型制品完整性、传播监控并发/缓存和前端请求竞态问题；修复并复审通过后，才能推送并创建面向 `release-0.2` 的 PR。
+当前状态：`complete / ready to merge`。最终 branch review 已确认无 Critical/Important findings；全量验证通过，下一步为推送 `cleanup/final-architecture` 并创建面向 `release-0.2` 的 PR。

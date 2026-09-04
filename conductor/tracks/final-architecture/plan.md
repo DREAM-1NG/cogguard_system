@@ -15,8 +15,8 @@
 - [x] 修复 Propagation Monitoring snapshot 可重建性、内容寻址、并发 claim、告警唯一性和状态转换。
 - [x] 在成功 crawl/import 变更后失效 observed propagation cache。
 - [x] 修复 Propagation 与 Coordination 页面在快速切换 scope/dataset 时的陈旧响应覆盖。
-- [ ] 运行完整验证和 Alembic smoke，完成第二轮 branch review。
-- [ ] 推送分支并创建 PR；不自动合并。
+- [x] 运行完整验证和 Alembic smoke，完成第二轮 branch review。
+- [x] 推送分支并创建 PR；不自动合并。
 
 ## Commit Sequence
 

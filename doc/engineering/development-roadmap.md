@@ -16,8 +16,9 @@
 - [x] 统一 Student Review：checkpoint-gated XLM-R、多头分类、latent rationale distillation、外部 Hardcase routing。
 - [x] 统一 Analysis Run：所有 stage 使用 `AnalysisStageContext` 与 `AnalysisStagePort.execute(context)`。
 - [x] 首轮完整验证通过：backend `631 passed, 19 skipped`，frontend production build 通过，Alembic 单 head 与 offline SQL 通过。
-- [ ] 整改最终 branch review 的 Important findings：发布泄露、Student 制品完整性、监控 snapshot/并发/缓存、前端请求竞态。
-- [ ] 第二轮 branch review 通过后，向 `release-0.2` 创建 PR。
+- [x] 整改最终 branch review 的 Important findings：发布泄露、Student 制品完整性、监控 snapshot/并发/缓存、前端请求竞态。
+- [x] 第二轮 branch review 通过：backend `655 passed, 19 skipped`，frontend `21 passed`，production build、Alembic、release surface 和依赖一致性 guard 通过。
+- [x] 已推送 `cleanup/final-architecture` 并创建面向 `release-0.2` 的 PR；不自动合并。
 
 ---
 
