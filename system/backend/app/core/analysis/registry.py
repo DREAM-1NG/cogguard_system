@@ -193,7 +193,9 @@ class AnalysisRegistry:
             raise KeyError(f"Event snapshot document not found: {snapshot_id}")
         if document.get("snapshot_id") != str(manifest["snapshot_id"]):
             raise ValueError(f"Event snapshot identity mismatch: {snapshot_id}")
-        if document.get("data_fingerprint") != str(manifest["data_fingerprint"]):
+        manifest_fingerprint = manifest.get("data_fingerprint")
+        document_fingerprint = document.get("data_fingerprint")
+        if manifest_fingerprint is not None and document_fingerprint is not None and document_fingerprint != str(manifest_fingerprint):
             raise ValueError(f"Event snapshot fingerprint mismatch: {snapshot_id}")
         if document.get("schema") == SNAPSHOT_CHUNK_SCHEMA:
             payload = await _load_snapshot_payload_chunks(
@@ -206,7 +208,7 @@ class AnalysisRegistry:
             snapshot = EventSnapshot.model_validate(document)
         if snapshot.snapshot_id != str(manifest["snapshot_id"]):
             raise ValueError(f"Event snapshot identity mismatch: {snapshot_id}")
-        if snapshot.data_fingerprint != str(manifest["data_fingerprint"]):
+        if manifest_fingerprint is not None and snapshot.data_fingerprint != str(manifest_fingerprint):
             raise ValueError(f"Event snapshot fingerprint mismatch: {snapshot_id}")
         return snapshot
 
