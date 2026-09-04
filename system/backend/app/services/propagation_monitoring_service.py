@@ -307,7 +307,7 @@ async def run_monitoring_cycle(
     if not profile.enabled:
         return {"profile_id": profile.id, "status": "disabled", "alerts": []}
     reference = _as_utc(now) or datetime.now(timezone.utc)
-    if not await _claim_is_current(db, profile=profile, claim_token=claim_token, reference=reference):
+    if not await _claim_is_current(db, profile=profile, claim_token=claim_token, reference=datetime.now(timezone.utc)):
         return {"profile_id": profile.id, "status": "claim_lost", "alerts": []}
     platform = profile.platform or None
     try:
@@ -325,7 +325,7 @@ async def run_monitoring_cycle(
 
     prediction = await _safe_prediction(event_id=profile.event_id, platform=platform, observed_until=reference.isoformat())
     coordination = await _safe_coordination(event_id=profile.event_id, platform=platform)
-    if not await _claim_is_current(db, profile=profile, claim_token=claim_token, reference=reference):
+    if not await _claim_is_current(db, profile=profile, claim_token=claim_token, reference=datetime.now(timezone.utc)):
         return {"profile_id": profile.id, "status": "claim_lost", "alerts": []}
     previous_snapshot = _json_loads(profile.last_snapshot_json, {})
     total_items = _analysis_total_items(observed)
@@ -352,7 +352,7 @@ async def run_monitoring_cycle(
         profile.last_error = f"snapshot_persist: {type(exc).__name__}: {exc}"
         await db.flush()
         return {"profile_id": profile.id, "status": "failed", "alerts": []}
-    if not await _claim_is_current(db, profile=profile, claim_token=claim_token, reference=reference):
+    if not await _claim_is_current(db, profile=profile, claim_token=claim_token, reference=datetime.now(timezone.utc)):
         return {"profile_id": profile.id, "status": "claim_lost", "alerts": []}
     evidence = _evidence_snapshot(
         snapshot_id=snapshot.snapshot_id, captured_at=reference, current_window=current_window,
