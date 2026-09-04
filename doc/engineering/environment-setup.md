@@ -151,7 +151,7 @@ Backend:
 
 ```powershell
 cd system\backend
-uv run python -m pytest tests -q
+uv run python -m pytest -q
 uv run python -m alembic current
 uv run python scripts/verify_product_contract.py
 ```
@@ -161,7 +161,7 @@ uv run python scripts/verify_product_contract.py
 
 ```powershell
 $env:COGGUARD_REQUIRE_EXTERNAL_SERVICES = "1"
-uv run python -m pytest tests -q
+uv run python -m pytest -q
 ```
 
 严格模式下，所请求的 MySQL、MongoDB 或 Redis 集成依赖不可达会直接失败，

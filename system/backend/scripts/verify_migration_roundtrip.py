@@ -252,6 +252,8 @@ def _database_guard(settings: Any) -> str | None:
             "MYSQL_DATABASE_TEST must differ from MYSQL_DATABASE; "
             "refusing to run against the production database"
         )
+    if "test" not in test_database.casefold():
+        return "MYSQL_DATABASE_TEST must identify a disposable test database"
     return None
 
 

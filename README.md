@@ -72,7 +72,7 @@ Useful URLs after startup:
 
 ```powershell
 cd system\backend
-python -m pytest tests -q
+python -m pytest -q
 
 # Run the complete local prototype chain without changing the database or UI.
 python scripts/prototype_acceptance.py

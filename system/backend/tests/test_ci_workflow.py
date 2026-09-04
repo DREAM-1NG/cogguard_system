@@ -24,3 +24,5 @@ def test_release_workflow_declares_all_required_cross_platform_gates():
     assert "concurrency:" in text
     assert "CREATE DATABASE IF NOT EXISTS cogguard_test" in text
     assert "pytest tests -q" not in text
+    assert "verify_migration_roundtrip.py --check-services" in text
+    assert "git diff --check origin/release-0.2...HEAD" in text

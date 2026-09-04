@@ -52,10 +52,16 @@ def main() -> int:
         student = build_student_verdict(case)
         teacher = build_teacher_advisory_verdict(case, job_id="product_contract_teacher_job")
 
+    _require(snapshot.snapshot_id.startswith("snapshot_"), "snapshot identity is missing")
+    _require(snapshot.event_id == "trump_visit_prototype", "snapshot event identity drifted")
     _require(snapshot.data_fingerprint != "", "snapshot fingerprint is missing")
+    _require(snapshot.quality_report.status == "pass", "fixture snapshot quality is not passing")
     _require(discover["manifest"]["claimability"] == "non_claimable", "Coordination fallback is claimable")
     _require(bool(fallback.get("fallback")), "Coordination fallback is not explicit")
     _require(missing_propagation.get("status") == "missing_checkpoint", "missing propagation checkpoint did not abstain")
+    _require(missing_propagation.get("model_status") == "unavailable", "missing propagation checkpoint was not unavailable")
+    _require((missing_propagation.get("macro") or {}).get("predicted_size") is None, "abstain returned a predicted size")
+    _require(not (missing_propagation.get("micro") or {}).get("top_users"), "abstain returned predicted users")
     _require(student.get("model_status") == "shadow_untrained" and student.get("abstain") is True, "Student did not abstain")
     _require(teacher.get("canonical_allowed") is False, "Teacher advisory became canonical")
 

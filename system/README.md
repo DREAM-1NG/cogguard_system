@@ -214,7 +214,7 @@ are required before merging to `release-0.2`.
 
 ```powershell
 cd system\backend
-python -m pytest tests -q
+python -m pytest -q
 uv export --frozen --extra dev --no-hashes --format requirements-txt --output-file requirements.txt
 
 cd ..\frontend
