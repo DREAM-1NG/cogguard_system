@@ -37,6 +37,12 @@
 - 保留的 19 个 skips 均为明确的外部数据库、队列、GPU、模型或环境条件测试，不作为本地绿色基线失败。
 - PR #1 已从 `cleanup/final-architecture` 创建，目标为 `release-0.2`，保持 OPEN，等待维护者审阅，不自动合并。
 
+## 2026-09-04 Release Governance Gates
+
+- 完成 release-governance track 的 Python package、严格外部服务、真实迁移命令、当前产品契约 smoke、Vue component/build smoke 与 GitHub CI workflow。
+- 最新验证：backend `689 passed, 20 skipped`；frontend Node `21 passed`、Vitest `2 passed`；`npm run build:smoke` 通过（3 routes / 33 assets）；Alembic single head `c1d4e8f2a706`；release surface、requirements export、product contract 和 workflow contract 通过。
+- 当前 PR 仍需以最新提交更新并完成最终全分支 review；真实 MySQL/MongoDB/Redis/Celery integration 与 migration round-trip 由 Ubuntu CI service containers 执行。
+
 ## 2026-09-02 Final Architecture Context
 
 - 新增 `conductor/`，固化产品、技术栈、工作流和 `final-architecture` track；实现状态保持 `in progress`。

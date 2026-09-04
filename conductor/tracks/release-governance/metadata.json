@@ -3,7 +3,7 @@
   "type": "release-governance",
   "priority": "P0",
   "status": "in_progress",
-  "phase": "context-baseline",
+  "phase": "final_review",
   "branch": "cleanup/final-architecture",
   "target": "release-0.2",
   "target_branch": "release-0.2",
