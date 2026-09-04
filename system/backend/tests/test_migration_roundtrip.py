@@ -73,8 +73,6 @@ def test_real_migration_roundtrip_uses_disposable_test_database_only():
     result = _run_script(env=env)
     output = f"{result.stdout}\n{result.stderr}"
 
-    if result.returncode == 2 and "MySQL test database is unavailable" in output:
-        pytest.skip("MySQL test database unavailable in local environment")
     assert result.returncode == 0, output
     assert "MYSQL_DATABASE_TEST" in output
     assert "upgrade head" in output
