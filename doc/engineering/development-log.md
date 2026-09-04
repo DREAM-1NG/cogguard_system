@@ -49,6 +49,7 @@
 - Final branch review：`Ready`，无 Critical/Important findings。
 - 最终验证：backend `689 passed, 20 skipped`；frontend Node `21 passed`；Vitest component `2 passed`；`npm run build:smoke` 通过（3 routes / 33 assets）；migration/readiness/product/CI/governance gates 通过。
 - 真实 Ubuntu service-container integration、migration round-trip 和 required checks 将由 GitHub Actions 执行；本地环境未启动 Docker，因此本地对应集成用例保持明确 skips。
+- GitHub workflow 已推送到 `cleanup/final-architecture`；尝试配置 `release-0.2` branch protection 时 API 返回权限不足，当前账号为 repository `write` 而非 `admin`。需要仓库管理员手动将七个 job 配置为 required checks。
 
 ## 2026-09-02 Final Architecture Context
 

@@ -4,7 +4,7 @@
 - [Implementation Plan](plan.md)
 - [Metadata](metadata.json)
 
-Current status: `complete / ready to merge`.
+Current status: `in_progress / CI ready; branch protection pending repository admin`.
 
 This track establishes the release-0.2 context for PR #1 on
 `cleanup/final-architecture`. The current product contract is complete for
@@ -26,4 +26,6 @@ The architecture review report audits five candidates. The first, second, and
 fourth are `Strong`; the third is `Worth exploring`; the fifth is `Speculative`.
 All five code deepenings are deferred to a planned post-release track. This
 release-governance track puts release gating first. PR #1 is open against
-`release-0.2`; branch protection requires all seven CI checks before merge.
+`release-0.2`; repository administration must require all seven CI checks
+before merge. The current GitHub token has write permission but not admin
+permission, so this setting could not be applied by the coding agent.
