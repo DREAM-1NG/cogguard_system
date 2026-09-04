@@ -43,6 +43,13 @@
 - 最新验证：backend `689 passed, 20 skipped`；frontend Node `21 passed`、Vitest `2 passed`；`npm run build:smoke` 通过（3 routes / 33 assets）；Alembic single head `c1d4e8f2a706`；release surface、requirements export、product contract 和 workflow contract 通过。
 - 当前 PR 仍需以最新提交更新并完成最终全分支 review；真实 MySQL/MongoDB/Redis/Celery integration 与 migration round-trip 由 Ubuntu CI service containers 执行。
 
+## 2026-09-04 Release Governance Complete
+
+- 完成 `release-governance` track；最新提交为 `69cc68f`，PR #1 目标为 `release-0.2`。
+- Final branch review：`Ready`，无 Critical/Important findings。
+- 最终验证：backend `689 passed, 20 skipped`；frontend Node `21 passed`；Vitest component `2 passed`；`npm run build:smoke` 通过（3 routes / 33 assets）；migration/readiness/product/CI/governance gates 通过。
+- 真实 Ubuntu service-container integration、migration round-trip 和 required checks 将由 GitHub Actions 执行；本地环境未启动 Docker，因此本地对应集成用例保持明确 skips。
+
 ## 2026-09-02 Final Architecture Context
 
 - 新增 `conductor/`，固化产品、技术栈、工作流和 `final-architecture` track；实现状态保持 `in progress`。

@@ -4,7 +4,7 @@
 - [Implementation Plan](plan.md)
 - [Metadata](metadata.json)
 
-Current status: `in_progress`.
+Current status: `complete / ready to merge`.
 
 This track establishes the release-0.2 context for PR #1 on
 `cleanup/final-architecture`. The current product contract is complete for
@@ -25,4 +25,5 @@ features are explicitly excluded from that completeness claim.
 The architecture review report audits five candidates. The first, second, and
 fourth are `Strong`; the third is `Worth exploring`; the fifth is `Speculative`.
 All five code deepenings are deferred to a planned post-release track. This
-release-governance track puts release gating first.
+release-governance track puts release gating first. PR #1 is open against
+`release-0.2`; branch protection requires all seven CI checks before merge.

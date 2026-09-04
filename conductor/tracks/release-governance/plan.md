@@ -11,8 +11,8 @@
 - [x] Reconcile glossary, context vocabulary, and ADR statuses.
 - [x] Publish the five-candidate architecture review in the Windows temp
   directory and record its absolute path in the task report.
-- [x] Execute the complete release gate set on the approved branch and keep
-  this track `in_progress` until the release evidence is accepted.
+- [x] Execute the complete release gate set on the approved branch and accept
+  the release evidence.
 
 ## Verification Evidence
 
@@ -25,6 +25,8 @@
   execution is explicitly skipped when disposable MySQL is unavailable.
 - Product contract smoke, service readiness, release surface, dependency
   export, and CI workflow contract tests passed.
+- [x] Complete final branch review with no Critical or Important findings.
+- [x] Push the branch and update PR #1; do not auto-merge.
 
 ## Post-Release Track
 

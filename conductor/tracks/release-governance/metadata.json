@@ -2,8 +2,8 @@
   "id": "release-governance",
   "type": "release-governance",
   "priority": "P0",
-  "status": "in_progress",
-  "phase": "final_review",
+  "status": "complete",
+  "phase": "ready_to_merge",
   "branch": "cleanup/final-architecture",
   "target": "release-0.2",
   "target_branch": "release-0.2",
@@ -22,7 +22,16 @@
     "Ubuntu CI",
     "required GitHub checks",
     "real migration validation",
-    "real authenticated integration validation"
+    "real authenticated integration validation",
+    "final branch review"
   ],
-  "post_release": "planned architecture deepening track"
+  "post_release": "planned architecture deepening track",
+  "validation": {
+    "backend": "689 passed, 20 skipped",
+    "frontend_node": "21 passed",
+    "frontend_component": "2 passed",
+    "frontend_build_smoke": "3 routes, 33 assets",
+    "alembic_head": "c1d4e8f2a706",
+    "governance_review": "ready_to_merge"
+  }
 }

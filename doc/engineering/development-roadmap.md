@@ -19,6 +19,7 @@
 - [x] 整改最终 branch review 的 Important findings：发布泄露、Student 制品完整性、监控 snapshot/并发/缓存、前端请求竞态。
 - [x] 第二轮 branch review 通过：backend `655 passed, 19 skipped`，frontend `21 passed`，production build、Alembic、release surface 和依赖一致性 guard 通过。
 - [x] 已推送 `cleanup/final-architecture` 并创建面向 `release-0.2` 的 PR；不自动合并。
+- [x] Release governance gates 完成：Windows + Ubuntu CI、strict external-service mode、真实迁移命令、产品契约 smoke、Vue component/build smoke 和 release/security guard 已加入 PR #1。
 
 ---
 
