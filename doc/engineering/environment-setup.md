@@ -140,6 +140,13 @@ New successful collection jobs carrying an `event_id` automatically create or re
 
 ## Verification
 
+GitHub release gates run on both Windows and Ubuntu. The required checks are
+`backend-unit`, `backend-integration`, `migration-roundtrip`,
+`frontend-unit-component`, `frontend-build-smoke`, `release-security`, and
+`source-deployment-smoke`. Integration jobs use disposable service containers
+and set `COGGUARD_REQUIRE_EXTERNAL_SERVICES=1`; local unit runs may keep the
+explicit environment-dependent skips.
+
 Backend:
 
 ```powershell

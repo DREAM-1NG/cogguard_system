@@ -207,6 +207,11 @@ celery -A app.celery_app worker --loglevel=info -Q crawl,analysis,review
 
 ## Verification
 
+The source-checkout release gate is defined in
+`.github/workflows/release-gates.yml`. It runs Windows unit/build jobs and
+Ubuntu service-container integration/migration jobs. All seven named checks
+are required before merging to `release-0.2`.
+
 ```powershell
 cd system\backend
 python -m pytest tests -q
