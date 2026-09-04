@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import importlib
+import json
 import re
+import tempfile
 from pathlib import Path
 
 
@@ -304,3 +306,121 @@ def test_trainable_post_exposes_split_boundaries_and_lazily_resolves_moved_symbo
     assert hasattr(trainable, "build_teacher_silver_record")
     assert hasattr(trainable, "LegacySmokeAdapter")
     assert hasattr(trainable, "build_legacy_smoke_adapter_targets")
+
+
+def test_release_governance_track_is_active_and_pins_release_context():
+    root = Path(__file__).resolve().parents[3]
+    track = root / "conductor" / "tracks" / "release-governance"
+
+    for name in ("index.md", "spec.md", "plan.md", "metadata.json"):
+        assert (track / name).exists(), track / name
+
+    metadata = json.loads((track / "metadata.json").read_text(encoding="utf-8"))
+    assert metadata["id"] == "release-governance"
+    assert metadata["status"] == "in_progress"
+    assert metadata["branch"] == "cleanup/final-architecture"
+    assert metadata["target"] == "release-0.2"
+    assert metadata["pull_request"] == "#1"
+    assert metadata["current_product_contract"]["excludes"] == [
+        "future roadmap features"
+    ]
+
+    track_text = "\n".join(
+        (track / name).read_text(encoding="utf-8")
+        for name in ("index.md", "spec.md", "plan.md")
+    )
+    for phrase in (
+        "source-checkout deployment",
+        "Windows",
+        "Ubuntu",
+        "required GitHub checks",
+        "post-release",
+    ):
+        assert phrase in track_text
+    assert "final-architecture" in (root / "conductor" / "index.md").read_text(encoding="utf-8")
+    assert "release-governance" in (root / "conductor" / "index.md").read_text(encoding="utf-8")
+    assert '"active_track": "release-governance"' in (
+        root / "conductor" / "setup_state.json"
+    ).read_text(encoding="utf-8")
+
+
+def test_release_governance_terms_and_lifecycles_are_explicit():
+    root = Path(__file__).resolve().parents[3]
+    glossary = (root / "UBIQUITOUS_LANGUAGE.md").read_text(encoding="utf-8")
+    context = (root / "CONTEXT.md").read_text(encoding="utf-8")
+    combined = f"{glossary}\n{context}"
+
+    for term in (
+        "Event Review Case",
+        "Propagation Monitoring",
+        "Review Advisory",
+        "Confirmed Decision",
+        "Review",
+        "Propagation Analysis",
+        "Student Review",
+        "Teacher Review",
+        "Artifact Manifest",
+        "Celery Task",
+    ):
+        assert term in combined
+
+    assert "internal analyst-approved" in combined
+    assert "product case decision" in combined
+    assert "may cite a Canonical Verdict" in combined
+    assert "V1 capability APIs" in combined
+    assert "V2 case/governance APIs" in combined
+    assert "explicitly marked deprecated" in combined
+
+
+def test_release_governance_adrs_and_architecture_report_are_reconciled():
+    root = Path(__file__).resolve().parents[3]
+    adr_dir = root / "doc" / "adr"
+    adr_index = (adr_dir / "index.md").read_text(encoding="utf-8")
+
+    for number in ("0011", "0012"):
+        assert list(adr_dir.glob(f"{number}-*.md")), number
+        assert f"| {number} |" in adr_index
+
+    adr_text = "\n".join(
+        path.read_text(encoding="utf-8")
+        for path in adr_dir.glob("[0-9][0-9][0-9][0-9]-*.md")
+    )
+    for phrase in (
+        "source-checkout",
+        "no standalone backend wheel",
+        "Windows",
+        "Ubuntu",
+        "real migration",
+        "real authenticated integration",
+        "required GitHub checks",
+    ):
+        assert phrase in adr_text
+
+    assert "0001" in adr_index and "partially superseded" in adr_index
+    assert "0003" in adr_index and "partially superseded" in adr_index
+    assert "0004" in adr_index and "superseded" in adr_index
+    assert "0008" in adr_index and "accepted" in adr_index
+    assert "ADR 0007" in adr_index and "ADR 0010" in adr_index
+    assert "ADR 0009" in adr_index
+
+    report_record = root / ".tmp" / "release-governance-task-1-report.md"
+    assert report_record.exists(), report_record
+    report = report_record.read_text(encoding="utf-8")
+    report_path_match = re.search(r"(?m)^Report path: `([^`]+\.html)`$", report)
+    assert report_path_match, report_record
+    report_path = Path(report_path_match.group(1))
+    assert report_path.is_absolute()
+    assert report_path.parent == Path(tempfile.gettempdir())
+    html = report_path.read_text(encoding="utf-8")
+    for candidate in (
+        "Event Review Case/V1 adapter split",
+        "legacy Analysis Engine seam retirement",
+        "Propagation Monitoring persistence seam",
+        "Crawl Execution deep module",
+        "typed Student/Teacher outcome",
+    ):
+        assert candidate in html
+    for strength in ("Strong", "Worth exploring", "Speculative"):
+        assert strength in html
+    assert "Top recommendation" in html
+    assert "release gating" in html

@@ -2,7 +2,8 @@
 
 ## Status
 
-Accepted.
+Partially superseded by ADR 0007 and ADR 0010. The semantic package and
+compatibility-alias rules remain current.
 
 ## Context
 
@@ -73,4 +74,3 @@ routes, and page structure can be migrated in a later product pass.
   window keeps the migration reversible and testable.
 - Update frontend display pages in this pass. Rejected because the current
   scope explicitly freezes frontend presentation.
-

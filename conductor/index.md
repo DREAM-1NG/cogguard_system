@@ -12,7 +12,11 @@ CogGuard 的持久项目上下文入口。实现前先读本目录，再按链�
 
 ## Active Track
 
-- [Final Architecture Cleanup](tracks/final-architecture/index.md)
+- [Release Governance Context](tracks/release-governance/index.md)
+
+## Completed Tracks
+
+- [Final Architecture Cleanup](tracks/final-architecture/index.md) - complete
 
 ## Normative Sources
 

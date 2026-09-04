@@ -2,8 +2,8 @@
   "schema_version": 1,
   "project_type": "brownfield",
   "status": "configured",
-  "active_track": "final-architecture",
+  "active_track": "release-governance",
   "canonical_product_root": "system",
   "canonical_glossary": "UBIQUITOUS_LANGUAGE.md",
-  "updated_at": "2026-09-02"
+  "updated_at": "2026-09-04"
 }

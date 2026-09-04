@@ -4,7 +4,8 @@ Date: 2026-06-30
 
 ## Status
 
-Accepted
+Partially superseded by ADR 0007. The manual-trigger-only product rule is
+superseded; the evidence and advisory constraints remain current.
 
 ## Context
 
@@ -46,4 +47,3 @@ The first online Agent set is:
 ## Verification
 
 Test with mock providers that manual review creates natural-language reports, records failures without synthetic fallback, and leaves `/risk/assess` deterministic by default.
-

@@ -25,7 +25,7 @@ Current semantic package paths: `system/research/coordination_discover/`, `syste
 | **Event Review Case** | The product-facing aggregate that binds one event, its evidence, its advisory history, and its analyst decision trail. | Ticket, issue, review job |
 | **Preliminary Finding** | The first structured case finding produced before analyst confirmation. | First guess, preliminary score |
 | **Review Advisory** | An internal or manually requested advisory verdict that can differ from the preliminary finding. | Final verdict, automatic decision |
-| **Confirmed Decision** | The immutable analyst-confirmed case decision. | Mutable decision, draft approval |
+| **Confirmed Decision** | The immutable product case decision confirmed by an analyst. It is a product lifecycle, not an internal review artifact. | Mutable decision, draft approval |
 | **Evidence Sufficiency** | The assessment of whether the current evidence set is enough to support a case action. | Completeness score, confidence score |
 | **Evidence Annotation** | A note attached to a specific evidence item, including its assessment and supporting context. | Comment, tag, annotation blob |
 | **Case Activity** | An append-only business activity record that explains what happened to a case and when. | Audit spam, task log |
@@ -39,7 +39,8 @@ Current semantic package paths: `system/research/coordination_discover/`, `syste
 | **Analysis Stage** | One item in the ordered analysis chain such as `coordination_discover`, `propagation_analysis`, `student_review`, or `teacher_review`. | Mode, phase, numbered stage |
 | **Analysis Port** | A typed seam used by the executor to call `Coordination Discover`, `Propagation Analysis`, `Student Review`, or `Teacher Review`. | Service, plugin |
 | **Review Verdict** | A review output produced by `Student Review` or `Teacher Review` before human approval. | Scorecard, opinion |
-| **Canonical Verdict** | An analyst-approved immutable verdict version. | Final guess, model output |
+| **Canonical Verdict** | An internal analyst-approved immutable review artifact. It may support a case decision but is not itself a product decision. | Final guess, model output |
+| **Artifact Manifest** | The stage-keyed inventory of artifact or checkpoint references, status, fallback reason, and claimability for an analysis result. | Artifact list, model dump |
 | **Model Activation** | The governed decision that selects the active model version pointer. | Deploy, publish |
 | **Rollback Decision** | The governed decision to move the active pointer back to a prior version. | Undo, reset |
 
@@ -96,6 +97,7 @@ Current semantic package paths: `system/research/coordination_discover/`, `syste
 | **Student Review** | The synchronous deployable review runtime used for preliminary verdicts. Runtime-only term. | Demo model, inline classifier |
 | **Teacher Review** | The asynchronous multi-agent research review pipeline used to generate advisory verdicts. Runtime-only term. | Chain, workflow, prompt graph |
 | **Teacher Job** | The queued asynchronous execution unit for **Teacher Review**. | Task, batch job |
+| **Celery Task** | The worker-queue execution lifecycle for a dispatched job. Completion of a Celery Task does not create a Canonical Verdict or Confirmed Decision. | Teacher Job, analysis run |
 | **Teacher Advisory** | A non-canonical verdict produced by **Teacher Review**. | Final verdict, automatic decision |
 | **Review Queue** | The structured set of posts, accounts, communities, retrieval requests, and review tasks that need attention. | Manual queue, task dump |
 | **Review Graph** | A heterogeneous graph export of post, account, claim, community, target, media, coordination, and propagation evidence. | Graph dump, feature graph |
@@ -143,12 +145,14 @@ Current semantic package paths: `system/research/coordination_discover/`, `syste
 - **Student Review** may route a **Hardcase** to **Teacher Review** without predicting a defer class.
 - **Teacher Review** may create **Teacher Silver Records** containing a **Latent Rationale Target** for governed Student distillation.
 - An **Artifact Manifest** must match the snapshot fingerprint before an artifact-first result can serve a backend response.
+- A **Confirmed Decision** may cite a **Canonical Verdict**, but the two artifacts have different owners and lifecycles: Canonical Verdict is an internal analyst-approved review artifact, while Confirmed Decision is the product case decision.
 - A **Model Candidate Approval** creates at most one **Model Activation Approval** per candidate and authenticated administrator.
 - Production **Model Activation** requires two distinct active administrator records, including the activating administrator; local activation requires one accountable operator.
 - A **Teacher Dispatch Policy** may allow local inline fallback only in local deployments. Production dispatch failure is a durable failed advisory, never an API-process success.
 - A **BotRHG Transfer** artifact must record the dataset fingerprint, checkpoint hash, text sampling policy, missing property/social graph coverage, and same-split reference baseline.
 - A **Compatibility Alias** may forward to a canonical package, but it must not be imported by new product code.
 - An **Offline Experiment Input** may point to a **Vendored Data Root** or an explicit user path, but never to a reference boundary by default.
+- Both **V1 capability APIs** and **V2 case/governance APIs** are current contracts. Only endpoints explicitly marked deprecated are legacy.
 
 ## Example Dialogue
 

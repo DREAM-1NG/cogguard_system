@@ -1,0 +1,28 @@
+{
+  "id": "release-governance",
+  "type": "release-governance",
+  "priority": "P0",
+  "status": "in_progress",
+  "phase": "context-baseline",
+  "branch": "cleanup/final-architecture",
+  "target": "release-0.2",
+  "target_branch": "release-0.2",
+  "pull_request": "#1",
+  "current_product_contract": {
+    "status": "complete",
+    "scope": "implemented capabilities in the source checkout",
+    "excludes": ["future roadmap features"]
+  },
+  "distribution": {
+    "canonical": "source-checkout deployment",
+    "standalone_backend_wheel": false
+  },
+  "acceptance_gates": [
+    "Windows CI",
+    "Ubuntu CI",
+    "required GitHub checks",
+    "real migration validation",
+    "real authenticated integration validation"
+  ],
+  "post_release": "planned architecture deepening track"
+}

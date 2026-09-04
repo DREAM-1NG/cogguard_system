@@ -1,6 +1,7 @@
 ---
 status: accepted
 date: 2026-08-02
+extended_by: ADR-0009
 ---
 
 # ADR 0008: LAN Prototype Governance Boundary

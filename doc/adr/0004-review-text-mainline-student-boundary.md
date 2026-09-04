@@ -1,6 +1,7 @@
 ---
-status: accepted
+status: superseded
 date: 2026-07-20
+superseded_by: ADR-0010
 ---
 
 # Review First-Stage Student Boundary
