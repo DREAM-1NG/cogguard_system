@@ -1,0 +1,162 @@
+param(
+    [switch]$SyncHistoricalData,
+    [switch]$SkipDocker,
+    [switch]$SkipFrontend
+)
+
+$ErrorActionPreference = 'Stop'
+
+$root = Split-Path -Parent $MyInvocation.MyCommand.Path
+$backendDir = Join-Path $root 'backend'
+$frontendDir = Join-Path $root 'frontend'
+$backendPython = Join-Path $backendDir '.venv\Scripts\python.exe'
+
+$dockerExe = if (Get-Command docker.exe -ErrorAction SilentlyContinue) {
+    (Get-Command docker.exe -ErrorAction SilentlyContinue).Source
+} elseif (Test-Path 'C:\Program Files\Docker\Docker\resources\bin\docker.exe') {
+    'C:\Program Files\Docker\Docker\resources\bin\docker.exe'
+} else {
+    $null
+}
+
+$frontendNpm = if (Get-Command npm.cmd -ErrorAction SilentlyContinue) {
+    (Get-Command npm.cmd -ErrorAction SilentlyContinue).Source
+} elseif (Test-Path 'D:\node\npm.cmd') {
+    'D:\node\npm.cmd'
+} else {
+    $null
+}
+
+if (-not (Test-Path $backendPython)) {
+    throw "Backend Python not found: $backendPython"
+}
+
+if (-not $SkipFrontend -and -not $frontendNpm) {
+    throw 'npm.cmd not found in PATH and D:\node\npm.cmd is unavailable.'
+}
+
+if (-not $SkipDocker -and -not $dockerExe) {
+    throw 'docker.exe not found. Start Docker Desktop first, or rerun with -SkipDocker if services are already up.'
+}
+
+function Test-TcpPort {
+    param(
+        [string]$Hostname,
+        [int]$Port
+    )
+
+    try {
+        $client = New-Object System.Net.Sockets.TcpClient
+        $iar = $client.BeginConnect($Hostname, $Port, $null, $null)
+        $ok = $iar.AsyncWaitHandle.WaitOne(1000, $false)
+        if (-not $ok) {
+            $client.Close()
+            return $false
+        }
+        $client.EndConnect($iar)
+        $client.Close()
+        return $true
+    } catch {
+        return $false
+    }
+}
+
+function Wait-TcpPort {
+    param(
+        [string]$Name,
+        [int]$Port,
+        [int]$TimeoutSeconds = 90
+    )
+
+    $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+    while ((Get-Date) -lt $deadline) {
+        if (Test-TcpPort -Hostname '127.0.0.1' -Port $Port) {
+            Write-Host "$Name is ready on 127.0.0.1:$Port"
+            return
+        }
+        Start-Sleep -Seconds 2
+    }
+
+    throw "$Name did not become ready on 127.0.0.1:$Port within $TimeoutSeconds seconds."
+}
+
+function Stop-StaleLocalPortOwner {
+    param(
+        [int]$Port,
+        [string]$Name,
+        [string]$ExpectedPattern
+    )
+
+    $owners = Get-NetTCPConnection -LocalAddress '127.0.0.1' -LocalPort $Port -State Listen -ErrorAction SilentlyContinue |
+        Select-Object -ExpandProperty OwningProcess -Unique
+
+    foreach ($pid in $owners) {
+        if (-not $pid) {
+            continue
+        }
+
+        $process = Get-CimInstance Win32_Process -Filter "ProcessId = $pid" -ErrorAction SilentlyContinue
+        if (-not $process) {
+            continue
+        }
+
+        $commandLine = [string]$process.CommandLine
+        if ($commandLine -notmatch $ExpectedPattern) {
+            throw "$Name port $Port is already used by PID $pid and does not look like a CogGuard process: $commandLine"
+        }
+
+        Write-Host "Stopping stale $Name process on 127.0.0.1:$Port (PID $pid)..."
+        Stop-Process -Id $pid -Force
+        Start-Sleep -Seconds 1
+    }
+}
+
+if (-not $SkipDocker) {
+    Write-Host 'Starting MySQL / MongoDB / Redis with Docker Compose...'
+    & $dockerExe compose -f (Join-Path $root 'docker-compose.yml') up -d
+    Wait-TcpPort -Name 'MySQL' -Port 3306
+    Wait-TcpPort -Name 'MongoDB' -Port 27017
+    Wait-TcpPort -Name 'Redis' -Port 6379
+}
+
+Stop-StaleLocalPortOwner -Port 8000 -Name 'backend' -ExpectedPattern 'uvicorn\s+app\.main:app'
+if (-not $SkipFrontend) {
+    Stop-StaleLocalPortOwner -Port 5173 -Name 'frontend' -ExpectedPattern 'vite(\.js)?|npm.*run\s+dev'
+}
+
+Write-Host 'Applying database migrations...'
+Push-Location $backendDir
+try {
+    & $backendPython -m alembic upgrade head
+
+    if ($SyncHistoricalData) {
+        Write-Host 'Importing existing MediaCrawler JSONL data into MongoDB...'
+        & $backendPython (Join-Path $backendDir 'scripts\import_mediacrawler_jsonl.py')
+    }
+} finally {
+    Pop-Location
+}
+
+$backendCommand = "cd /d `"$backendDir`" && `"$backendPython`" -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload"
+Start-Process cmd.exe -ArgumentList @(
+    '/k',
+    $backendCommand
+)
+
+if (-not $SkipFrontend) {
+    $frontendCommand = "cd /d `"$frontendDir`" && `"$frontendNpm`" run dev -- --host 127.0.0.1 --port 5173"
+    Start-Process cmd.exe -ArgumentList @(
+        '/k',
+        $frontendCommand
+    )
+}
+
+Write-Host ''
+Write-Host 'System startup commands have been launched in new terminal windows.'
+Write-Host 'Backend health: http://127.0.0.1:8000/api/v1/health'
+if (-not $SkipFrontend) {
+    Write-Host 'Login: http://127.0.0.1:5173/login'
+    Write-Host 'Dashboard: http://127.0.0.1:5173/dashboard'
+    Write-Host 'Event review: http://127.0.0.1:5173/risk'
+}
+Write-Host 'Keep the opened terminal windows running while using the system.'

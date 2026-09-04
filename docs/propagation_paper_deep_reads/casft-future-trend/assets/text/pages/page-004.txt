@@ -1,0 +1,56 @@
+Global Graph                     GraphWave       Observed Cascade Graph          Incrementaltptp     Popularityll                                                               ̂P̂P
+                                                                                                                PiPi                                ∑∑                      EcEc                                                        u1u1             u4u4       PP == ∫∫toto λ*(τ)dτλ*(τ)dτ ==                                                                                                                                                                                                                       ii
+                                                u0u0         u2u2                          YY == (P1,(P1, P2,P2, .. .. .. ,, Pl)Pl)              MLP
+                           add                               u3u3               ……
+     NetSMF                      ZtZt      {P1P1 {P2P2 {P3P3 {{{{PlPl                                                                                                                                                                                             ht0ht0   Y0Y0
+                                                                                                                                                                                                                                                                                                                                           tptp Time     Prediction  EgEg                                                                                                                                          tsts == 00      t1t1       t2t2               t3t3          t4t4                toto
+                      Time-Encoder
+                                                                                                                  Y0Y0                                                                                                               s2s2                  s4s4  λ*λ*   Sub-sequence                                                          s0s0                        …                                                                                                                         Λts1Λts1 Λts2Λts2      ΛtslΛtsl                                                            …                                                                       s0s0                              s1s1                s3s3
+                                                                      s1s1                                        c   Attention                            ODE-GRU                 Λts1Λts1                                                 Yk−1Yk−1                                                                      s2s2                                                          Λts2Λts2 ……
+            Attention                                                                       s3s3                                                                                    pθ(Yk−1|Yk,pθ(Yk−1|Yk, c)c)
+                                                                                                                           YkYk                                                                      s4s4              htshts      ht1ht1     ht2ht2     ht3ht3     ht4ht4    ht0ht0    Parameterize                                                                   htht                                                 ODE            Time                q(Yk|Yk−1)q(Yk|Yk−1)  Historical Spatiotemporal Modeling                                                                     Interpretation of Future Trends
+
+                                 Figure 2: An overview of our proposed model CasFT.
+
+The initial embedding of each sub-sequence Sj is specified      changes over time in dynamic systems. We introduce a neu-
+by:                                                                        ral ODEs to model the continuous-time growth rate during
+                 x(i) = z(ti) + Ec(ui),             (11)       the observation period, capturing its evolving tendency. Af-
+                                                                 terward, the future growth rate between the observation and
+           Ejc = {x(0), x(1), ..., x(i)},           (12)       prediction periods can be autoregressively predicted using
+        Ejg = { Eg(u0), Eg(u1), ..., Eg(ui)},       (13)        this neural ODEs. Finally, the dynamic cues of popularity in-
+                                                          crement are derived through an integration operation based
+where ui ∈Sj, and ti is its associated time stamp. We then     on these predicted growth rates. However, one limitation of
+encode Ejc and Ejg via two independent self-attention layers.    ODEs is that they are constrained by the initial state of the
+Specifically, the scaled dot-product attention (Vaswani et al.      dynamic system, leading to popularity predictions based on
+2017) is defined as:                                              the estimated growth rate that are biased and lack realistic
+                                                                           variability. Accordingly, we further divide the estimated pe-
+    s = Attention(Q, K, V ) = Softmax(QKT√   )V,    (14)       riod into several time spans and employ diffusion models
+                                   d                     to generate incremental popularity in each time span, condi-
+                                                                tioned on the growth rate.where Q, K, V represent queries, keys, and values. In our
+case, the self-attention operation takes Ejc or Ejg as input     Dynamic Cues Learning with Neural ODEs:  We lever-
+and converts them into different groups of Q, K, and V      age neural ODEs to model the continuous-time growth rate
+through separate linear transformations. By applying the      dynamics with a vector representation hti at every times-
+above self-attention operation to all sub-sequences, we ob-     tamp ti. Here we parameterize the growth rate using hidden
+tain sets of hidden representations sc = {s0c, s1c, . . . , sNc }       state dynamics:
+and sg = {s0g, s1g, . . . , sNg } for the local-view and global-                          λ∗(t) = f1(ht),                 (15)
+view, respectively. Finally, we concatenate these two views                                                       where f is a linear neural network with the softplus function
+of hidden representations at the sub-sequence level to form                                                                     to ensure the output is positive. As for the continuous-time
+the final historical spatiotemporal features of S, denoted by                                                           hidden state hti, we use a multi-layer fully connected neural
+{s0, s1, . . . , sN}.                                                         network f2 to model the continuous change in the form of
+                                                        an ODE. When a new retweeting action occurs at time ti,
+Interpretation of Future Trends                                              we use a GRU function g to model instantaneous changes
+As we discussed in the Introduction section, the real dynam-       triggered by a newly observed event:
+ics of cascade evolution between the observation and pre-                                                                                dhti
+diction periods are invisible and difficult to depict due to                 = f2(t, hti−1),               (16)
+                                                                               dt
+their fluctuations. To address this challenge, we designed                                  ′
+a dynamic cues-driven diffusion model to simulate future           h ti = ODESolve(f2, hti−1, (ti−1, ti)),      (17)
+trends based solely on the observed cascades. Specifically,                                                                      ′
+                                                                                        hti = g(h ti, si),                 (18)this model consists of two components: (1) a dynamic cues
+                                                       and the popularity at time ti can be calculated as:learning module and (2) a diffusion model-based future
+trends simulation module. To acquire the dynamic cues, we                     Z  ti
+are inspired by ODEs, which are used to model quantity                       Pti =    λ∗(τ)dτ = Λti.            (19)
+                                                                                           0
+
+
+                                                  11909

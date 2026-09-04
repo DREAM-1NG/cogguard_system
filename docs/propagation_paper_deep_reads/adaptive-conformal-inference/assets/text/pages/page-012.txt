@@ -1,0 +1,57 @@
+[15] Rina Foygel Barber, Emmanuel J Candès, Aaditya Ramdas, and Ryan J Tibshirani. The
+      limits of distribution-free conditional predictive inference.  Information and Inference: A
+     Journal of the IMA, 08 2020. ISSN 2049-8772. doi: 10.1093/imaiai/iaaa017. URL https:
+    //doi.org/10.1093/imaiai/iaaa017. iaaa017.
+[16] Alexander Gammerman and Vladimir Vovk. Hedging predictions in machine learning. The
+    Computer Journal, 50(2):151–163, 2007. doi: 10.1093/comjnl/bxl065.
+[17] Elad Hazan.    Introduction  to  online convex  optimization.    arXiv  preprint,  2019.
+     arXiv:1909.05207.
+[18] Wassily Hoeffding. Probability inequalities for sums of bounded random variables. Journal
+     of the American Statistical Association, 58(301):13–30, 1963. doi: 10.1080/01621459.1963.
+    10500830.
+[19] Bai Jiang, Qiang Sun, and Jianqing Fan. Bernstein’s inequality for general markov chains.
+     arXiv preprint, 2020. arXiv:1805.10721.
+[20] Danijel Kivaranovic, Kory D. Johnson, and Hannes Leeb. Adaptive, distribution-free prediction
+      intervals for deep networks. In Proceedings of the Twenty Third International Conference on
+     Artiﬁcial Intelligence and Statistics, volume 108 of Proceedings of Machine Learning Research,
+     pages 4346–4356. PMLR, 26–28 Aug 2020.
+[21] Danijel Kivaranovic, Robin Ristl, Martin Posch, and Hannes Leeb. Conformal prediction
+      intervals for the individual treatment effect. arXiv preprint, 2020. arXiv:2006.01474.
+[22] Jing Lei and Larry Wasserman. Distribution-free prediction bands for non-parametric regression.
+     Journal of the Royal Statistical Society: Series B (Statistical Methodology), 76, 01 2014. doi:
+     10.1111/rssb.12021.
+[23] Jing Lei, Max G’Sell, Alessandro Rinaldo, Ryan  J. Tibshirani, and Larry Wasserman.
+     Distribution-free predictive inference for regression.  Journal of the American Statistical
+     Association, 113(523):1094–1111, 2018.   doi:  10.1080/01621459.2017.1307116.  URL
+    https://doi.org/10.1080/01621459.2017.1307116.
+[24] Lihua Lei and Emmanuel J. Candès. Conformal inference of counterfactuals and individual
+     treatment effects. arXiv preprint, 2021. arXiv:2006.06138.
+[25] David Leip. Dave leip’s atlas of u.s. presidential elections., 2020. http://uselectionatlas.
+     org.
+[26] Harris Papadopoulos. Inductive conformal prediction: Theory and application to neural net-
+     works. In Tools in Artiﬁcial Intelligence,, pages 315–330, 2008.
+[27] Harris Papadopoulos, Kostas Proedrou, Volodya Vovk, and Alex Gammerman.  Inductive
+    conﬁdence machines for regression. In Tapio Elomaa, Heikki Mannila, and Hannu Toivonen,
+      editors, Machine Learning: ECML 2002, pages 345–356, Berlin, Heidelberg, 2002. Springer
+     Berlin Heidelberg. ISBN 978-3-540-36755-0.
+[28] Yaniv Romano, Evan Patterson, and Emmanuel Candes.  Conformalized quantile regres-
+      sion.  In H. Wallach, H. Larochelle, A. Beygelzimer, F. d'Alché-Buc, E. Fox, and R. Gar-
+      nett,  editors, Advances in Neural Information Processing Systems, volume 32. Curran
+     Associates, Inc., 2019. URL https://proceedings.neurips.cc/paper/2019/file/
+    5103c3584b063c431bd1268e9b5e76fb-Paper.pdf.
+[29] Yaniv Romano, Matteo Sesia, and Emmanuel Candes.   Classiﬁcation with valid and
+     adaptive coverage.  In Advances in Neural Information Processing Systems, volume 33,
+     pages 3581–3591, 2020. URL https://proceedings.neurips.cc/paper/2020/file/
+    244edd7e85dc81602b7615cd705545f5-Paper.pdf.
+[30] Yaniv Romano, Matteo Sesia, and Emmanuel Candes.  Classiﬁcation with valid and adap-
+      tive coverage.  In H. Larochelle, M. Ranzato, R. Hadsell, M. F. Balcan, and H. Lin, ed-
+      itors, Advances in Neural Information Processing Systems, volume 33, pages 3581–3591.
+     Curran Associates, Inc., 2020. URL https://proceedings.neurips.cc/paper/2020/
+    file/244edd7e85dc81602b7615cd705545f5-Paper.pdf.
+[31] Mauricio Sadinle, Jing Lei, and Larry Wasserman. Least ambiguous set-valued classiﬁers with
+    bounded error levels. Journal of the American Statistical Association, 114(525):223–234, 2019.
+      doi: 10.1080/01621459.2017.1395341. URL https://doi.org/10.1080/01621459.2017.
+    1395341.
+
+
+                                       12

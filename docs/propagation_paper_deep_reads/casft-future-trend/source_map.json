@@ -1,0 +1,120 @@
+{
+  "schema_version": 3,
+  "paper": {
+    "title": "CasFT: Future Trend Modeling for Information Popularity Prediction with Dynamic Cues-Driven Diffusion",
+    "authors": "Jing 等",
+    "venue": "AAAI 2025",
+    "version": "本地 PDF 抽取版本",
+    "sources": [
+      {
+        "type": "pdf",
+        "location": "H:\\Zotero\\attenger\\Projects\\CISCN\\Propagation\\Jing 等 - 2025 - CasFT future trend modeling for information popularity prediction with dynamic cues-driven diffusio.pdf",
+        "sha256": "a5db7d2daf2c9aa39da1705d6aeec42e4725ab9580ff95035369eacf0a87426c",
+        "role": "primary"
+      }
+    ],
+    "page_convention": "1-based PDF page numbers"
+  },
+  "reader_profile": {
+    "domain": "computer-science-ai",
+    "selected_lenses": [
+      "computer-science-ai"
+    ],
+    "audience": "cross-disciplinary",
+    "goal": "reproduce",
+    "depth": "deep",
+    "language": "zh-CN"
+  },
+  "execution": {
+    "visual_mode": "text-only",
+    "visual_verification": "not-performed",
+    "text_evidence_sources": [
+      "pdf-text-layer",
+      "caption",
+      "body-references",
+      "structured-text-cards"
+    ]
+  },
+  "claims": [
+    {
+      "id": "C1",
+      "claim": "传统 popularity prediction 忽略观测后到预测时刻之间的未来趋势。",
+      "status": "strong",
+      "inference": false,
+      "evidence": [
+        {
+          "type": "figure",
+          "locator": "Figure 1, PDF p.1",
+          "note": "问题图注"
+        },
+        {
+          "type": "body",
+          "locator": "PDF p.1-2",
+          "note": "作者动机"
+        }
+      ],
+      "caveats": []
+    },
+    {
+      "id": "C2",
+      "claim": "CasFT 使用 neural ODE 与 diffusion 生成未来趋势。",
+      "status": "strong",
+      "inference": false,
+      "evidence": [
+        {
+          "type": "figure",
+          "locator": "Figure 2, PDF p.4",
+          "note": "模型总览"
+        },
+        {
+          "type": "body",
+          "locator": "PDF p.3-4",
+          "note": "方法描述"
+        }
+      ],
+      "caveats": []
+    },
+    {
+      "id": "C3",
+      "claim": "CasFT 在论文数据协议下改善 MSLE/MAPE。",
+      "status": "strong",
+      "inference": false,
+      "evidence": [
+        {
+          "type": "table",
+          "locator": "Table 2, PDF p.6",
+          "note": "主结果"
+        },
+        {
+          "type": "table",
+          "locator": "Table 3, PDF p.6",
+          "note": "变体比较"
+        }
+      ],
+      "caveats": [
+        "不能直接外推到 CogGuard 事件"
+      ]
+    },
+    {
+      "id": "C4",
+      "claim": "ODE solver、diffusion steps、hidden dimension 和 interval number 会影响性能。",
+      "status": "partial",
+      "inference": false,
+      "evidence": [
+        {
+          "type": "figure",
+          "locator": "Figure 3-5, PDF p.7",
+          "note": "正文引用的敏感性分析"
+        },
+        {
+          "type": "table",
+          "locator": "Table 4, PDF p.7",
+          "note": "solver 比较"
+        }
+      ],
+      "caveats": [
+        "本轮未做像素级曲线核验"
+      ]
+    }
+  ]
+}

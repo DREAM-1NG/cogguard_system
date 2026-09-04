@@ -1,0 +1,27 @@
+[project]
+name = "cogguard-news-runtime"
+version = "0.1.0"
+description = "CogGuard's vendored URL news extraction runtime"
+requires-python = ">=3.10"
+dependencies = [
+    "news-extractor-core",
+]
+
+[tool.uv]
+package = false
+
+[tool.uv.sources]
+news-extractor-core = { workspace = true }
+
+[tool.uv.workspace]
+members = [
+    "news_extractor_core",
+]
+
+[[tool.uv.index]]
+url = "https://pypi.org/simple"
+default = true
+
+[[tool.uv.index]]
+url = "https://pypi.tuna.tsinghua.edu.cn/simple"
+default = false

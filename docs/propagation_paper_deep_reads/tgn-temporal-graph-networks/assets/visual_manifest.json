@@ -1,0 +1,964 @@
+{
+  "schema_version": 2,
+  "generated_at": "2026-08-08T05:54:25.649692+00:00",
+  "source_pdf": "H:\\Zotero\\attenger\\Projects\\CISCN\\Propagation\\Rossi 等 - 2020 - Temporal graph networks for deep learning on dynamic graphs.pdf",
+  "source_sha256": "580113858f363b80388bbf7c1b2a42482cfb9b6debdb3db2cdde8cb6db8166c0",
+  "page_count": 16,
+  "render_dpi": 180,
+  "selected_pages": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16
+  ],
+  "analysis_mode": "text-only",
+  "text_layer_available": true,
+  "text_layer_characters": 63464,
+  "automatic_crops_are_unverified": true,
+  "pages": [
+    {
+      "page": 1,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-001.txt",
+      "text_characters": 4863,
+      "caption_count": 0
+    },
+    {
+      "page": 2,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-002.txt",
+      "text_characters": 4158,
+      "caption_count": 0
+    },
+    {
+      "page": 3,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-003.txt",
+      "text_characters": 4055,
+      "caption_count": 1
+    },
+    {
+      "page": 4,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-004.txt",
+      "text_characters": 4166,
+      "caption_count": 0
+    },
+    {
+      "page": 5,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-005.txt",
+      "text_characters": 4552,
+      "caption_count": 1
+    },
+    {
+      "page": 6,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-006.txt",
+      "text_characters": 4659,
+      "caption_count": 1
+    },
+    {
+      "page": 7,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-007.txt",
+      "text_characters": 4624,
+      "caption_count": 3
+    },
+    {
+      "page": 8,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-008.txt",
+      "text_characters": 5541,
+      "caption_count": 1
+    },
+    {
+      "page": 9,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-009.txt",
+      "text_characters": 3706,
+      "caption_count": 0
+    },
+    {
+      "page": 10,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-010.txt",
+      "text_characters": 3368,
+      "caption_count": 0
+    },
+    {
+      "page": 11,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-011.txt",
+      "text_characters": 3455,
+      "caption_count": 0
+    },
+    {
+      "page": 12,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-012.txt",
+      "text_characters": 3583,
+      "caption_count": 0
+    },
+    {
+      "page": 13,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-013.txt",
+      "text_characters": 2955,
+      "caption_count": 0
+    },
+    {
+      "page": 14,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-014.txt",
+      "text_characters": 3259,
+      "caption_count": 2
+    },
+    {
+      "page": 15,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-015.txt",
+      "text_characters": 4218,
+      "caption_count": 1
+    },
+    {
+      "page": 16,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-016.txt",
+      "text_characters": 2302,
+      "caption_count": 2
+    }
+  ],
+  "visuals": [
+    {
+      "id": "figure-1-p003",
+      "label": "Figure 1",
+      "kind": "figure",
+      "number": "1",
+      "page": 3,
+      "caption": "Computations performed by TGN on a batch of time-stamped interactions. Top: embeddings are produced by the embedding module using the temporal graph and the node’s memory (1). The embeddings are then used to predict the batch interactions and compute the loss (2, 3). Bottom: these same interactions are used to update the memory (4, 5, 6). This is a simpliﬁed ﬂow of operations which would prevent the training of all the modules in the bottom as they would not receiving a gradient. Section 3.2 explains how to change the ﬂow of operations to solve this problem and ﬁgure 2 shows the complete diagram.",
+      "raw_text": "Figure 1: Computations performed by TGN on a batch of time-stamped interactions. Top: embeddings are produced by the embedding module using the temporal graph and the node’s memory (1). The embeddings are then used to predict the batch interactions and compute the loss (2, 3). Bottom: these same interactions are used to update the memory (4, 5, 6). This is a simpliﬁed ﬂow of operations which would prevent the training of all the modules in the bottom as they would not receiving a gradient. Section 3.2 explains how to change the ﬂow of operations to solve this problem and ﬁgure 2 shows the complete diagram.",
+      "caption_bbox_points": [
+        107.641,
+        238.87,
+        504.004,
+        314.684
+      ],
+      "caption_bbox_pixels": [
+        269,
+        597,
+        1260,
+        787
+      ],
+      "suggested_crop_bbox_points": [
+        97.641,
+        60.524,
+        514.004,
+        324.684
+      ],
+      "suggested_crop_bbox_pixels": [
+        244,
+        151,
+        1285,
+        812
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-003.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": true,
+      "claim_ids": [
+        "C1"
+      ],
+      "text_asset": "text\\visuals\\figure-1-p003.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "complete",
+        "sources": [
+          "caption",
+          "pdf-text-layer",
+          "body-references",
+          "text/visuals/figure-1-p003.md"
+        ],
+        "notes": "已核对图表编号、页码、标题、正文引用和可恢复文字；未将像素级视觉观察写入报告。",
+        "limitations": "本轮为 text-only 精读，未直接核验像素、坐标轴、颜色、曲线形状、面板布局、裁剪完整性或视觉显著性。"
+      }
+    },
+    {
+      "id": "figure-2-p005",
+      "label": "Figure 2",
+      "kind": "figure",
+      "number": "2",
+      "page": 5,
+      "caption": "Flow of operations of TGN used to train the memory-related modules. Raw Message Store stores the necessary raw information to compute messages, i.e. the input to the message functions, which we call raw messages, for interactions which have been processed by the model in the past. This allows the model to delay the memory update brought by an interaction to later batches. At ﬁrst, the memory is updated using messages computed from raw messages stored in previous batches (1, 2, 3). The embeddings can then be computed using the just updated memory (grey link) (4). By doing this, the computation of the memory-related modules directly inﬂuences the loss (5, 6), and they receive a gradient. Finally, the raw messages for this batch interactions are stored in the raw message store (6) to be used in future batches.",
+      "raw_text": "Figure 2: Flow of operations of TGN used to train the memory-related modules. Raw Message Store stores the necessary raw information to compute messages, i.e. the input to the message functions, which we call raw messages, for interactions which have been processed by the model in the past. This allows the model to delay the memory update brought by an interaction to later batches. At ﬁrst, the memory is updated using messages computed from raw messages stored in previous batches (1, 2, 3). The embeddings can then be computed using the just updated memory (grey link) (4). By doing this, the computation of the memory-related modules directly inﬂuences the loss (5, 6), and they receive a gradient. Finally, the raw messages for this batch interactions are stored in the raw message store (6) to be used in future batches.",
+      "caption_bbox_points": [
+        107.641,
+        243.822,
+        505.742,
+        341.585
+      ],
+      "caption_bbox_pixels": [
+        269,
+        610,
+        1264,
+        854
+      ],
+      "suggested_crop_bbox_points": [
+        97.641,
+        55.63,
+        515.742,
+        351.585
+      ],
+      "suggested_crop_bbox_pixels": [
+        244,
+        139,
+        1289,
+        879
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-005.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": true,
+      "claim_ids": [
+        "C1"
+      ],
+      "text_asset": "text\\visuals\\figure-2-p005.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "complete",
+        "sources": [
+          "caption",
+          "pdf-text-layer",
+          "body-references",
+          "text/visuals/figure-2-p005.md"
+        ],
+        "notes": "已核对图表编号、页码、标题、正文引用和可恢复文字；未将像素级视觉观察写入报告。",
+        "limitations": "本轮为 text-only 精读，未直接核验像素、坐标轴、颜色、曲线形状、面板布局、裁剪完整性或视觉显著性。"
+      }
+    },
+    {
+      "id": "table-1-p006",
+      "label": "Table 1",
+      "kind": "table",
+      "number": "1",
+      "page": 6,
+      "caption": "Previous models for deep learning on continuous-time dynamic graphs are speciﬁc case of our TGN framework. Shown are multiple variants of TGN used in our ablation studies. method (l,n) refers to graph convolution using l layers and n neighbors. †uses t-batches. ∗uses uniform sampling of neighbors, while the default is sampling the most recent neighbors. ‡message aggregation not explained in the paper. ∥uses a summary of the destination node neighborhood (obtained through graph attention) as additional input to the message function.",
+      "raw_text": "Table 1: Previous models for deep learning on continuous-time dynamic graphs are speciﬁc case of our TGN framework. Shown are multiple variants of TGN used in our ablation studies. method (l,n) refers to graph convolution using l layers and n neighbors. †uses t-batches. ∗uses uniform sampling of neighbors, while the default is sampling the most recent neighbors. ‡message aggregation not explained in the paper. ∥uses a summary of the destination node neighborhood (obtained through graph attention) as additional input to the message function.",
+      "caption_bbox_points": [
+        107.691,
+        512.81,
+        504.667,
+        578.618
+      ],
+      "caption_bbox_pixels": [
+        269,
+        1282,
+        1262,
+        1447
+      ],
+      "suggested_crop_bbox_points": [
+        97.691,
+        502.81,
+        514.667,
+        772.157
+      ],
+      "suggested_crop_bbox_pixels": [
+        244,
+        1257,
+        1287,
+        1930
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-006.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": false,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\table-1-p006.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "complete",
+        "sources": [
+          "caption",
+          "pdf-text-layer",
+          "body-references",
+          "text/visuals/table-1-p006.md"
+        ],
+        "notes": "已核对图表编号、页码、标题、正文引用和可恢复文字；未将像素级视觉观察写入报告。",
+        "limitations": "本轮为 text-only 精读，未直接核验像素、坐标轴、颜色、曲线形状、面板布局、裁剪完整性或视觉显著性。"
+      }
+    },
+    {
+      "id": "table-2-p007",
+      "label": "Table 2",
+      "kind": "table",
+      "number": "2",
+      "page": 7,
+      "caption": "Average Precision (%) for future edge prediction task in transductive and inductive settings. First, Second, Third best performing method. ∗Static graph method. †Does not support inductive.",
+      "raw_text": "Table 2: Average Precision (%) for future edge prediction task in transductive and inductive settings. First, Second, Third best performing method. ∗Static graph method. †Does not support inductive.",
+      "caption_bbox_points": [
+        107.691,
+        82.004,
+        505.74,
+        102.899
+      ],
+      "caption_bbox_pixels": [
+        269,
+        205,
+        1264,
+        257
+      ],
+      "suggested_crop_bbox_points": [
+        82.626,
+        72.004,
+        526.047,
+        446.012
+      ],
+      "suggested_crop_bbox_pixels": [
+        207,
+        180,
+        1315,
+        1115
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-007.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": true,
+      "claim_ids": [
+        "C2"
+      ],
+      "text_asset": "text\\visuals\\table-2-p007.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "complete",
+        "sources": [
+          "caption",
+          "pdf-text-layer",
+          "body-references",
+          "text/visuals/table-2-p007.md"
+        ],
+        "notes": "已核对图表编号、页码、标题、正文引用和可恢复文字；未将像素级视觉观察写入报告。",
+        "limitations": "本轮为 text-only 精读，未直接核验像素、坐标轴、颜色、曲线形状、面板布局、裁剪完整性或视觉显著性。"
+      }
+    },
+    {
+      "id": "table-3-p007",
+      "label": "Table 3",
+      "kind": "table",
+      "number": "3",
+      "page": 7,
+      "caption": "ROC AUC % for the dynamic node classiﬁcation. ∗Static graph method.",
+      "raw_text": "Table 3: ROC AUC % for the dynamic node classiﬁcation. ∗Static graph method.",
+      "caption_bbox_points": [
+        319.439,
+        553.881,
+        503.999,
+        574.878
+      ],
+      "caption_bbox_pixels": [
+        799,
+        1385,
+        1260,
+        1437
+      ],
+      "suggested_crop_bbox_points": [
+        82.626,
+        174.124,
+        526.047,
+        584.878
+      ],
+      "suggested_crop_bbox_pixels": [
+        207,
+        435,
+        1315,
+        1462
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-007.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": true,
+      "claim_ids": [
+        "C2"
+      ],
+      "text_asset": "text\\visuals\\table-3-p007.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "complete",
+        "sources": [
+          "caption",
+          "pdf-text-layer",
+          "body-references",
+          "text/visuals/table-3-p007.md"
+        ],
+        "notes": "已核对图表编号、页码、标题、正文引用和可恢复文字；未将像素级视觉观察写入报告。",
+        "limitations": "本轮为 text-only 精读，未直接核验像素、坐标轴、颜色、曲线形状、面板布局、裁剪完整性或视觉显著性。"
+      }
+    },
+    {
+      "id": "table-2-p007",
+      "label": "Table 2",
+      "kind": "table",
+      "number": "2",
+      "page": 7,
+      "caption": "presents the results on future edge predic- tion. Our model clearly outperforms the baselines by a large margin in both transductive and induc- tive settings on all datasets. The gap is particularly large on the Twitter dataset, where we outperfom the second-best method (DyRep) by over 4% and 10% in the transductive and inductive case respec- tively. Table 3 shows the results on dynamic node classiﬁcation, where again our model obtains state- of-the-art results, with a large improvement over all other methods.",
+      "raw_text": "Table 2 presents the results on future edge predic- tion. Our model clearly outperforms the baselines by a large margin in both transductive and induc- tive settings on all datasets. The gap is particularly large on the Twitter dataset, where we outperfom the second-best method (DyRep) by over 4% and 10% in the transductive and inductive case respec- tively. Table 3 shows the results on dynamic node classiﬁcation, where again our model obtains state- of-the-art results, with a large improvement over all other methods.",
+      "caption_bbox_points": [
+        107.253,
+        551.87,
+        311.441,
+        671.497
+      ],
+      "caption_bbox_pixels": [
+        268,
+        1380,
+        779,
+        1679
+      ],
+      "suggested_crop_bbox_points": [
+        82.626,
+        174.124,
+        526.047,
+        681.497
+      ],
+      "suggested_crop_bbox_pixels": [
+        207,
+        435,
+        1315,
+        1704
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-007.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": true,
+      "claim_ids": [
+        "C2"
+      ],
+      "text_asset": "text\\visuals\\table-2-p007.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "complete",
+        "sources": [
+          "caption",
+          "pdf-text-layer",
+          "body-references",
+          "text/visuals/table-2-p007.md"
+        ],
+        "notes": "已核对图表编号、页码、标题、正文引用和可恢复文字；未将像素级视觉观察写入报告。",
+        "limitations": "本轮为 text-only 精读，未直接核验像素、坐标轴、颜色、曲线形状、面板布局、裁剪完整性或视觉显著性。"
+      }
+    },
+    {
+      "id": "figure-3-p008",
+      "label": "Figure 3",
+      "kind": "figure",
+      "number": "3",
+      "page": 8,
+      "caption": "Ablation studies on the Wikipedia dataset for the transductive setting of the future edge prediction task. Means and standard deviations were computed over 10 runs.",
+      "raw_text": "Figure 3: Ablation studies on the Wikipedia dataset for the transductive setting of the future edge prediction task. Means and standard deviations were computed over 10 runs.",
+      "caption_bbox_points": [
+        108.0,
+        247.406,
+        503.998,
+        268.403
+      ],
+      "caption_bbox_pixels": [
+        270,
+        619,
+        1260,
+        671
+      ],
+      "suggested_crop_bbox_points": [
+        98.0,
+        57.689,
+        514.0,
+        278.403
+      ],
+      "suggested_crop_bbox_pixels": [
+        245,
+        144,
+        1285,
+        696
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-008.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": false,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\figure-3-p008.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "complete",
+        "sources": [
+          "caption",
+          "pdf-text-layer",
+          "body-references",
+          "text/visuals/figure-3-p008.md"
+        ],
+        "notes": "已核对图表编号、页码、标题、正文引用和可恢复文字；未将像素级视觉观察写入报告。",
+        "limitations": "本轮为 text-only 精读，未直接核验像素、坐标轴、颜色、曲线形状、面板布局、裁剪完整性或视觉显著性。"
+      }
+    },
+    {
+      "id": "figure-4-p014",
+      "label": "Figure 4",
+      "kind": "figure",
+      "number": "4",
+      "page": 14,
+      "caption": "Schematic diagram of TGN. m_raw(t) is the raw message generated by event e(t), ˜t is the instant of time of the last event involving each node, and t−the one immediately preceding t.",
+      "raw_text": "Figure 4: Schematic diagram of TGN. m_raw(t) is the raw message generated by event e(t), ˜t is the instant of time of the last event involving each node, and t−the one immediately preceding t.",
+      "caption_bbox_points": [
+        108.0,
+        214.135,
+        504.0,
+        237.125
+      ],
+      "caption_bbox_pixels": [
+        270,
+        535,
+        1260,
+        593
+      ],
+      "suggested_crop_bbox_points": [
+        98.0,
+        95.336,
+        514.0,
+        247.125
+      ],
+      "suggested_crop_bbox_pixels": [
+        245,
+        238,
+        1285,
+        618
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-014.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": true,
+      "claim_ids": [
+        "C1"
+      ],
+      "text_asset": "text\\visuals\\figure-4-p014.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "complete",
+        "sources": [
+          "caption",
+          "pdf-text-layer",
+          "body-references",
+          "text/visuals/figure-4-p014.md"
+        ],
+        "notes": "已核对图表编号、页码、标题、正文引用和可恢复文字；未将像素级视觉观察写入报告。",
+        "limitations": "本轮为 text-only 精读，未直接核验像素、坐标轴、颜色、曲线形状、面板布局、裁剪完整性或视觉显著性。"
+      }
+    },
+    {
+      "id": "algorithm-1-p014",
+      "label": "Algorithm 1",
+      "kind": "algorithm",
+      "number": "1",
+      "page": 14,
+      "caption": "Training TGN",
+      "raw_text": "Algorithm 1: Training TGN",
+      "caption_bbox_points": [
+        107.641,
+        474.039,
+        222.121,
+        484.092
+      ],
+      "caption_bbox_pixels": [
+        269,
+        1185,
+        555,
+        1210
+      ],
+      "suggested_crop_bbox_points": [
+        21.42,
+        410.679,
+        590.58,
+        721.692
+      ],
+      "suggested_crop_bbox_pixels": [
+        54,
+        1027,
+        1476,
+        1804
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-014.txt",
+      "crop_confidence": "low",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": true,
+      "claim_ids": [
+        "C1"
+      ],
+      "text_asset": "text\\visuals\\algorithm-1-p014.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "complete",
+        "sources": [
+          "caption",
+          "pdf-text-layer",
+          "body-references",
+          "text/visuals/algorithm-1-p014.md"
+        ],
+        "notes": "已核对图表编号、页码、标题、正文引用和可恢复文字；未将像素级视觉观察写入报告。",
+        "limitations": "本轮为 text-only 精读，未直接核验像素、坐标轴、颜色、曲线形状、面板布局、裁剪完整性或视觉显著性。"
+      }
+    },
+    {
+      "id": "table-4-p015",
+      "label": "Table 4",
+      "kind": "table",
+      "number": "4",
+      "page": 15,
+      "caption": "Statistics of the datasets used in the experiments.",
+      "raw_text": "Table 4: Statistics of the datasets used in the experiments.",
+      "caption_bbox_points": [
+        190.908,
+        277.645,
+        420.785,
+        287.607
+      ],
+      "caption_bbox_pixels": [
+        477,
+        694,
+        1052,
+        719
+      ],
+      "suggested_crop_bbox_points": [
+        97.253,
+        267.645,
+        515.739,
+        662.548
+      ],
+      "suggested_crop_bbox_pixels": [
+        243,
+        669,
+        1289,
+        1656
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-015.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": false,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\table-4-p015.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "complete",
+        "sources": [
+          "caption",
+          "pdf-text-layer",
+          "body-references",
+          "text/visuals/table-4-p015.md"
+        ],
+        "notes": "已核对图表编号、页码、标题、正文引用和可恢复文字；未将像素级视觉观察写入报告。",
+        "limitations": "本轮为 text-only 精读，未直接核验像素、坐标轴、颜色、曲线形状、面板布局、裁剪完整性或视觉显著性。"
+      }
+    },
+    {
+      "id": "table-5-p016",
+      "label": "Table 5",
+      "kind": "table",
+      "number": "5",
+      "page": 16,
+      "caption": "Model Hyperparameters.",
+      "raw_text": "Table 5: Model Hyperparameters.",
+      "caption_bbox_points": [
+        238.439,
+        81.977,
+        373.253,
+        91.94
+      ],
+      "caption_bbox_pixels": [
+        596,
+        205,
+        933,
+        230
+      ],
+      "suggested_crop_bbox_points": [
+        97.253,
+        71.977,
+        514.346,
+        356.445
+      ],
+      "suggested_crop_bbox_pixels": [
+        243,
+        180,
+        1286,
+        891
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-016.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": false,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\table-5-p016.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "complete",
+        "sources": [
+          "caption",
+          "pdf-text-layer",
+          "body-references",
+          "text/visuals/table-5-p016.md"
+        ],
+        "notes": "已核对图表编号、页码、标题、正文引用和可恢复文字；未将像素级视觉观察写入报告。",
+        "limitations": "本轮为 text-only 精读，未直接核验像素、坐标轴、颜色、曲线形状、面板布局、裁剪完整性或视觉显著性。"
+      }
+    },
+    {
+      "id": "figure-5-p016",
+      "label": "Figure 5",
+      "kind": "figure",
+      "number": "5",
+      "page": 16,
+      "caption": "Comparison of two TGN-attn models using different neighbor sampling strategies (when sampling 10 neighbors). Sampling the most recent edges clearly outperforms uniform sampling. Means and standard deviations (visualized as ellipses) were computed over 10 runs.",
+      "raw_text": "Figure 5: Comparison of two TGN-attn models using different neighbor sampling strategies (when sampling 10 neighbors). Sampling the most recent edges clearly outperforms uniform sampling. Means and standard deviations (visualized as ellipses) were computed over 10 runs.",
+      "caption_bbox_points": [
+        108.0,
+        481.549,
+        505.745,
+        513.43
+      ],
+      "caption_bbox_pixels": [
+        270,
+        1204,
+        1264,
+        1284
+      ],
+      "suggested_crop_bbox_points": [
+        98.0,
+        322.635,
+        515.745,
+        523.43
+      ],
+      "suggested_crop_bbox_pixels": [
+        245,
+        807,
+        1289,
+        1309
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-016.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": false,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\figure-5-p016.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "complete",
+        "sources": [
+          "caption",
+          "pdf-text-layer",
+          "body-references",
+          "text/visuals/figure-5-p016.md"
+        ],
+        "notes": "已核对图表编号、页码、标题、正文引用和可恢复文字；未将像素级视觉观察写入报告。",
+        "limitations": "本轮为 text-only 精读，未直接核验像素、坐标轴、颜色、曲线形状、面板布局、裁剪完整性或视觉显著性。"
+      }
+    }
+  ]
+}

@@ -1,0 +1,60 @@
+Adaptive Alpha    Fixed Alpha    Bernoulli Sequence
+
+       1.0    Nvidia                                     AMD
+    Level
+      Coverage 0.80.6
+    Local
+       0.4
+
+
+       1.0    BlackBerry                                                 Fannie Mae
+    Level
+      Coverage 0.80.6
+    Local 0.4
+
+
+           2005                     2010                     2015                     2020               2000           2005           2010           2015           2020
+                                                Time
+
+Figure 2: Local coverage frequencies for adaptive conformal (blue), a non-adaptive method that holds
+αt = α ﬁxed (red), and an i.i.d. Bernoulli(0.1) sequence (grey) for the prediction of stock market
+volatility with conformity score ˜St. The coloured dotted lines mark the average coverage obtained
+across all time points, while the black line indicates the target level of 1 −α = 0.9.
+
+
+interval width can be used to obtain smaller prediction sets [e.g. 28, 29, 20, 12]. Adaptive conformal
+inference can work with any conformity score St(·) and quantile function ˆQt(·) and thus can be
+directly combined with other improvements in conformal inference to obtain shorter intervals. One
+important caveat here is that the lengths of conformal prediction sets depend directly on the quality
+of the ﬁtted regression model. Thus, to obtain smaller intervals one should re-ﬁt the model at each
+time step using the most recent data to build the most accurate predictions. This is exactly what we
+have done in our experiments in Sections 2.2 and 6.
+
+In addition to this, the choice of St(·) can also have a direct effect on the coverage properties of
+adaptive conformal inference. Theorems 4.1 and 4.2 show that the performance of adaptive conformal
+inference is controlled by the size of the shift in the optimal parameter α∗t across time. Moreover,
+α∗t itself is in one-to-one correspondence with the 1 −α quantile of St(Xt, Yt). Thus, the coverage
+properties of adaptive conformal inference depend on how close St(Xt, Yt) is to being stationary.
+
+For a simple example illustrating the impact of this dependence, note that in Section 2.2 we formed
+prediction sets using the conformity score
+                                                 |Vt −ˆσ2t |
+                                    St :=               .
+                                                             ˆσ2t
+An a priori reasonable alternative to this is the unnormalized score
+                                                      ˜St := |Vt −ˆσ2t |.
+However, after a more careful examination it becomes unsurprising that normalization by ˆσ2t  is
+critical for obtaining an approximately stationary conformity score and thus ˜St leads to much worse
+coverage properties. Figure 2 shows the local coverage frequency (see (4)) of adaptive conformal
+inference using ˜St. In comparison to Figure 1 the coverage now undergoes much wider swings away
+from the target level of 0.9. This issue can be partially mitigated by choosing a larger value of γ that
+gives greater adaptivity to the algorithm.
+
+6  Real data example: election night predictions
+
+During the 2020 US presidential election The Washington Post used conformalized quantile regression
+(CQR) (see (1) and Section 1.1) to produce county level predictions of the vote total on election night
+[13]. Here we replicate the core elements of this method using both ﬁxed and adaptive quantiles.
+
+
+                                       9

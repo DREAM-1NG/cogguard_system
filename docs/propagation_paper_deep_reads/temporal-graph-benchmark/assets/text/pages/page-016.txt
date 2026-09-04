@@ -1,0 +1,65 @@
+fomer at a semantic level. Specifically, TCL utilizes two separate encoders to extract representations
+  from temporal neighborhoods surrounding the two nodes involved in an edge.
+
+• CAWN [46] predicts dynamic links based on extracting temporal random walks and retrieves
+  temporal network motifs to represent network dynamics. It utilizes a neural network model to
+  encode Causal Anonymous Walks (CAWs) to support online training and inference. Particularly, it
+   starts by relabeling nodes with encoded temporal anonymous walks starting at the nodes involved
+  in an interaction. Then, the temporal walks themselves are further encoded using the generated
+  node labels and encodings of the elapsed times. Finally, the existence of a link is predicted based
+  on aggregating the walks encoding through a pooling module.
+
+• TGAT [48] captures both temporal and structural characteristics of dynamic graphs using a self-
+  attention mechanism. At a specific timestamp t, TGAT first concatenates the raw features of a node
+  with a trainable encoding of time t. Upon the observation of an interaction among a pair of nodes,
+ TGAT utilizes the self-attention mechanism to apply message passing to the time augmented node
+  features and generates the latest node representations.
+
+• NAT [25] adopts a novel dictionary-type neighborhood representation for nodes. Such represen-
+  tation records a downsampled set of node neighbors as keys and constructs features for joint
+  neighborhood of multiple nodes. A dedicated data structure called N-cache supports GPU accelera-
+  tion for the dictionary representations.
+
+• EdgeBank∞[33] is a simple heuristic storing all observed edges in a memory (implemented as a
+  hashtable). At inference time, if the queried node pair is in the memory then EdgeBank∞predicts
+  true, otherwise EdgeBank∞predicts false.
+• EdgeBanktw [33] is another variation of EdgeBank which only memorizes edges from a fixed
+  duration in the recent past. Therefore, it has a strong recency bias.
+
+Models Used for Evaluation of Dynamic Node Property Prediction Task.
+
+• TGN [35] is discussed above. We utilize the TGN embedding of a node from the memory at the
+  query time t to predict the node labels.
+
+• DyRep [42] same as discussed above. We use the node embedding to predict the node labels.
+
+• Persistant Forecast [36] is a simple yet powerful baseline for time series forecasting and complex
+  systems. Here, we extend the core idea by simply outputting the recently observed node label for
+  the current time t.
+
+• Moving Average [31] considers the average of the node labels observed in the previous k steps (we
+  set k = 7).
+
+
+E  Computing Resources
+
+Dynamic link property prediction. For this task, we ran all experiments on either Narval or Béluga
+cluster of Digital Research Alliance of Canada. For the experiments on Narval cluster, we ran each
+experiment on a Nvidia A100 (40G memory) GPU with 4 CPU nodes (from either of the AMD Rome
+7532 @ 2.40 GHz 256M cache L3, AMD Rome 7502 @ 2.50 GHz 128M cache L3, or AMD Milan
+7413 @ 2.65 GHz 128M cache L3 available type) each with 100G memory. For the experiments on
+Béluga, we ran each experiment on a NVidia V100SXM2 (16G memory) GPU with 4 CPU nodes
+(from either of the Intel Gold 6148 Skylake @ 2.4 GHz, Intel Gold 6148 Skylake @ 2.4 GHz, Intel
+Gold 6148 Skylake @ 2.4 GHz, or Intel Gold 6148 Skylake @ 2.4 GHz) each with 100G memory.
+A five-day time limit is considered for each experiment. We repeated each experiments five times
+and reported the average and standard deviation of different runs. It is noteworthy that except for the
+TGN [35] and DyRep [42] models that we ported them into the PyTorch Geometric environment,
+the other models (evaluated by their original source code or by using the DyGLib repository) throw
+an out of memory error for the medium and large datasets on both Narval and Béluga clusters.
+
+Dynamic Node Property Prediction For this task, we ran experiments with 4 standard CPU and
+either RTX8000, V100, A100 or A6000 GPUs. The longest experiment takes around 2 days on the
+tgbl-comment and tgbn-token dataset.
+
+
+                                       16

@@ -1,0 +1,71 @@
+tgbl-coin                                                tgbl-comment                                                                   tgbl-flight
+             4           ×                  103
+            (s)             3           ×                  103                                                              (s) 9 × 104103                                                                 (s) 1.82 ×× 104104
+                Time 2 × 103                                                                                   Time 87 ×× 103103                                                                                       Time 1.6 × 104
+                Test   103                                                                                   Test 6 × 103                                                                                       Test 1.4 × 104
+                                                                             5 × 103                                                                           1.2 × 104
+                     DyRep      TGN      EdgeBanktw    EdgeBank                DyRep      TGN      EdgeBanktw    EdgeBank                  DyRep      TGN      EdgeBanktw    EdgeBank
+
+           (a) tgbl-coin dataset.        (b) tgbl-comment dataset.        (c) tgbl-flight dataset.
+
+                     Figure 6: Inference time comparison of TG methods.
+
+
+
+                      tgbn-trade         tgbn-genre         tgbn-reddit         tgbn-token
+ Method            NDCG@10       NDCG@10       NDCG@10        NDCG@10
+                        Validation  Test        Validation  Test        Validation  Test        Validation  Test
+
+ DyRep [42]           0.394±0.001 0.374±0.001 0.357±0.001 0.351±0.001 0.344± 0.001 0.312± 0.001 0.151± 0.006 0.141± 0.006
+ TGN [35]             0.395±0.002 0.374±0.001 0.403±0.010 0.367±0.058 0.379± 0.004 0.315± 0.020 0.189± 0.005 0.169± 0.006
+ persistence Fore. [36] 0.860      0.855      0.350      0.357      0.380      0.369      0.403      0.430
+ Moving Avg. [31]    0.841      0.823      0.499      0.509      0.574      0.559      0.491      0.508
+
+                           Table 4: Node affinity prediction results.
+
+
+6  Conclusion
+
+To enable realistic, reproducible, and robust evaluation for machine learning on temporal graphs,
+we present the Temporal Graph Benchmark, a collection of challenging and diverse datasets. TGB
+datasets are diverse in their dataset properties as well as being orders of magnitude larger than existing
+ones. TGB includes both dynamic link property prediction and dynamic node property prediction
+tasks, while providing an automated pipeline for researchers to evaluate novel methods and compare
+them on the TGB leaderboards. In dynamic link property prediction, we find that model rankings
+can vary significantly across datasets, thus demonstrating the necessity to evaluate on the diverse
+range of TGB datasets. Surprisingly for dynamic node property prediction, simple heuristics such as
+persistence forecast and moving average outperforms SOTA methods such as TGN. This motivates
+the development of more TG methods for node-level tasks.
+
+Impact on Temporal Graph Learning. Significant advancements in machine learning are often ac-
+celerated by the availability of public and well-curated datasets such as ImageNet [10] and OGB [17].
+We expect TGB to be a common and standard benchmark for temporal graph learning, helping to
+facilitate novel methodological changes.
+
+Potential Negative Impact. If TGB becomes a widely-used benchmark for temporal graph learning,
+it is possible that future papers might focus on TGB datasets and tasks, which may limit the use of
+other TG tasks and datasets for benchmarking. To avoid this issue, we plan to update TGB regularly
+with community feedback as well as adding additional datasets and tasks.
+
+Limitations. Firstly, TGB only considers the most common TG evaluation setting as discussed in
+Section 3, namely the streaming setting. We also discuss other possible settings in Appendix C.
+Depending on a specific application, a different setting might be more suitable (such as forbidding test
+time node updates). Secondly, TGB currently only contains datasets from five domains, while many
+other domains such as biological networks are not included. We plan to continue adding datasets to
+TGB to further increase the dataset diversity in TGB.
+
+
+Acknowledgments and Disclosure of Funding
+
+
+We thank the OGB team for sharing their website theme in the construction of this project’s website.
+We also thank Elahe Kooshafar for giving advice on the collection of the tgbn-genre dataset. This
+research was supported by the Canadian Institute for Advanced Research (CIFAR AI chair program),
+Natural Sciences and Engineering Research Council of Canada (NSERC) Postgraduate Scholarship-
+Doctoral (PGS D) Award and Fonds de recherche du Québec - Nature et Technologies (FRQNT)
+Doctoral Award. We would like to thank Samsung Electronics Co., Ldt. for partially funding this
+research. Michael Bronstein and Emanuele Rossi are supported in part by ERC Consolidator Grant
+No. 274228 (LEMAN).
+
+
+                                       10

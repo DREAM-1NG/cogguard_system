@@ -1,0 +1,76 @@
+The Thirty-Eighth AAAI Conference on Artiﬁcial Intelligence (AAAI-24)
+
+utilizes the outcomes of micro-prediction to guide macro-       val, then ui being connected to hyperedge em only occurs in
+prediction, lacking a comprehensive recognition of the mu-       diffusion hypergraph GtD.
+tually reinforcing synergy inherent in these two tasks. Sim-         In this work, we aim to address both the macroscopic
+ilarly, while DMT-LIC (Chen et al. 2019a) incorporates a      and microscopic diffusion prediction problems based on the
+shared representation layer to capture cascade graph repre-      above introductions.
+sentations and diffusion processes, it fails to address the is-        Macroscopic Diffusion Prediction: Given a social graph
+sue of potential contamination and redundancy between the     GS, diffusion hypergraphs GD and an observed diffusion
+shared features and task-specific features. Moreover, both      sequence dm = {(umi  , tmi )|umi ∈U}, estimate the final size
+methods primarily concentrate on user interactions within      |dm| of cascade dm.
+individual cascades, neglecting the intricate interactions and        Microscopic Diffusion Prediction: Given a social graph
+dynamics among cascades at a global level.                 GS, diffusion hypergraphs GD and an observed diffusion
+  To address the above challenges, we propose MINDS, a      sequence dm = {(umi  , tmi )|umi ∈U}, predict which user
+streamlined and efficient model for Multi-scale INformation       will participate in dm in the next step.
+DiffuSion prediction. Specifically, at the macro level, we
+construct sequential hypergraphs to effectively capture the                   Method
+interactions and dynamics among cascades. From a global       In this section, we will provide a comprehensive introduc-
+perspective, modeling complex interactions among users       tion to the proposed model. The architectural overview of
+and cascades is consistent with the concept of the hyper-       the proposed model is depicted in Fig. 2, which comprises
+graph. Constructing sequential hypergraphs by dividing the       four primary modules:
+time period into sequential time windows can accurately de-       User Global Interactive Learning Module: This module
+scribe the dynamic evolution of the cascades. At the mi-        is responsible for extracting user preferences at each time
+cro level, we focus on understanding the social homophily       interval and characterizing the dynamic changes of cascades.
+among users within social networks. We design a shared    A fusion layer at the cascade level facilitates this process.
+module to learn shared features for both macro and micro       User Social Homophily Learning Module: It captures
+tasks. Furthermore, we incorporate adversarial training and       users’ social relationship at the individual user level using
+orthogonality constraints to mitigate feature redundancy and     Graph Convolutional Networks (GCN).
+contamination between shared and task-specific features. In        Shared-private Representation Learning Module: This
+summary, the main contributions of this paper are three-fold:     module learns task-specific representations and shared rep-
+ • We propose an effective and straightforward model that       resentations to facilitate diffusion prediction.
+                                                               Diffusion Prediction Module: This module concatenates   tackles both macro and micro prediction, leveraging their
+   mutual reinforcement to enhance overall performance.         task-specific features with shared representation for macro-
+                                                               scopic and microscopic diffusion prediction, respectively.
+ • We introduce an approach that captures the interactions
+   and dynamics among cascades by modeling information     User Global Interactive Learning
+   diffusion in sequential hypergraphs. To address feature
+                                                                In order to simultaneously account for global interactions
+   redundancy, we incorporate adversarial training and or-
+                                                 among cascades and dynamic changes of cascades. On the
+   thogonality constraints.
+                                                                   basis of the constructed sequential diffusion hypergraphs,
+ • We conducted comprehensive experiments to evaluate     we introduce the HGNN to learn the user global interactions
+   our model’s performance. The results demonstrate its su-       of each independent time interval at the cascade level, and
+   periority over state-of-the-art methods in both macro and      add a fusion layer between two continuous time intervals to
+   micro prediction.                                     model the dynamics of cascades.
+
+                                                   Hypergraph Neural Network  At each time interval, we
+          Problem Formulation                  model the interactions of users through HGNN. The process
+                                                                of HGNN is illustrated in Fig. 3. For a simple graph, graph
+To commence, we present the social graph and diffusion hy-
+                                                              convolution takes the aggregation of its neighbor vertices to
+pergraphs that constitute the foundation for diffusion pre-
+                                                                 get a new representation of the central vertex. The informa-
+diction within our model. The social graph is denoted as
+                                                                     tion of vertices is passed through edges in a simple graph.
+GS = (U, E), where U is the user set and E is the edge
+                                                                    Similarly, hyperedges play a role in information transmis-
+set. Each edge (ui, uj) ∈E represents a social relationship
+                                                                sion in a hypergraph. The message aggregating in the hy-
+between user ui and uj. The observed diffusion cascades
+                                                            pergraph can be summarized in a two-stage procedure: 1)
+D = {d1, d2, . . . , dM}, |D| = N are split into T subsets ac-
+                                                             Vertex-to-Hyperedge; 2) Hyperedge-to-Vertex.
+cording to timestamps for constructing sequential diffusion
+                                                            Vertex-to-Hyperedge. Given a diffusion hypergraph GtD,hypergraphs GD = {GtD|t = 1, 2, . . . , T}, GtD = (U t, Et),            t                                                        the first stage of HGNN aims to update the feature yj,t ofwhere U   is the user set and Et is the hyperedge set. In
+                                                          hyperedge etj by aggregating the information of all its con-the diffusion hypergraph, users participate in the same cas-
+                                                             nected vertices, which can be defined as:
+cade and are connected by a hyperedge, in other words, a
+                                                  
+hyperedge represents a cascade. Note that the set of nodes                                             xli,t                           Xconnected         by            hyperedge                               is different                                      in each                                          hypergraph.                                                                            It                  ylj,t = σ wetj ·                                                                    ,        (1)                                                                                           |Nv(etj)|means that                 participates                                         the t-th                                             time inter-               if ui                             in dm during                                                                                                   uti∈Nv(et                                                                                                                      j)
+
+
+
+
+                                                   8572

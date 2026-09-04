@@ -1,0 +1,65 @@
+Table 2: Results for dynamic link property prediction on small datasets.
+
+              MRR                   MRR
+ Method                            Method
+                   Validation  Test                           Validation  Test
+
+ DyRep [42]       0.072±0.009 0.050±0.017  DyRep [42]       0.216±0.031 0.220±0.030
+ TGN [35]        0.435±0.069 0.396±0.060  TGN [35]        0.313±0.012 0.349±0.020
+ CAWN [46]      0.743±0.004 0.711± 0.006  CAWN[46]       0.200±0.001 0.193±0.001
+ TCL [45]         0.198±0.016 0.207±0.025  TCL [45]         0.199±0.007 0.193±0.009
+ GraphMixer [9]   0.113±0.003 0.118±0.002  GraphMixer [9]   0.428±0.019 0.521±0.015
+ TGAT [48]       0.131±0.008 0.141±0.007  TGAT [48]       0.324±0.006 0.355±0.012
+ NAT [25]         0.773±0.011 0.749±0.010  NAT [25]         0.302±0.011 0.341±0.020
+ EdgeBanktw [33] 0.600      0.571       EdgeBanktw [33] 0.0242     0.0253
+ EdgeBank∞[33] 0.527      0.495      EdgeBank∞[33] 0.0229     0.0229
+(a) tgbl-wiki dataset with surprise index: 0.108     (b) tgbl-review dataset with surprise index: 0.987
+(with all negative edges per each positive edge).       (with 100 negative edges per each positive edge).
+
+
+
+                                         tgbl-wiki                                                      tgbl-review
+           104                                                                               104
+        (s)                                                                  (s)
+           103
+           Time                                                                                        Time 103
+           Test 102                                                                                   Test
+
+             DyRep TGN CAWN TCLGraphMixerTGAT NATEdgeBanktwEdgeBank         DyRep TGN CAWN TCLGraphMixerTGAT NATEdgeBanktwEdgeBank
+
+                    (a) tgbl-wiki dataset.                          (b) tgbl-review dataset.
+
+Figure 4: Test set inference time of TG methods can have up to two orders of magnitude difference.
+
+
+
+5.1  Dynamic Link Property Prediction
+
+Table 2a shows the performance of TG methods for dynamic link property prediction on the
+tgbl-wiki dataset. tgbl-wiki is an existing dataset where many methods achieve over-optimistic
+performance in the literature [35, 46, 9]. With TGB’s evaluation protocol, there is now a clear
+distinction in model performance and NAT achieves the best result on this dataset. As tgbl-wiki is
+the smallest dataset in this task, it is computationally feasible to sample all possible destinations of
+a given source node. Thus, we compare the true destination with all possible negative destinations
+in this dataset. In Table 2b, we report the results on tgbl-review where we sample 100 negative
+edges per positive edge. Here, we observe that many of the best performing methods on tgbl-wiki
+has a significant drop in performance including NAT, CAWN and Edgebank. More notably, the
+method rankings also changed significantly with GraphMixer and TGAT being the top two methods.
+This observation emphasizes the importance of dataset diversity when benchmarking TG methods.
+In Appendix H, we conduct an ablation study on the effect of number of negative samples on the
+performance of dynamic link property prediction.
+
+One explanation for the significant performance reduction of some methods on tgbl-review is that
+it has a higher surprise index compared to tgbl-wiki (see Table 1). The surprise index reflects the
+ratio of edges in the test set that have not been seen during training. Therefore, a dataset with a high
+surprise index requires more inductive reasoning, as most of the test edges are unobserved during
+training. As a heuristic that memorizes past edges, EdgeBank performance is inversely correlated
+with the surprise index and it achieves higher performance when the suprise index of the dataset is low.
+An interesting future direction is the investigation of the performance of certain category of methods
+with the surprise index. For example, the top two methods NAT and CAWN on wikipedia both
+utilizes features from the joint neighborhood of nodes in the queried edge [25]. On the tgbl-review
+dataset, the best performing TGAT is designed for inductive representation learning on temporal
+graph [48] which fits the inductive nature of tgbl-review which has high surprise index.
+
+
+                                       8

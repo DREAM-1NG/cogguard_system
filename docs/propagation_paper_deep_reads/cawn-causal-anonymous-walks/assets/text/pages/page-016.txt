@@ -1,0 +1,61 @@
+Published as a conference paper at ICLR 2021
+
+
+
+
+B  TREE-STRUCTURED SAMPLING
+
+We may further decrease the sampling complexity by revising Alg. 1 into tree-structured sampling.
+Alg. 1 originally requires to sample link Mm times because we need to search M links that connected
+to w0 in the ﬁrst step and then sample one link for each of the M nodes in each following step. A
+tree-structured sampling strategy may reduce this number: Speciﬁcally, we sample ki links for each
+node in step i but we make sure Qmi=1 ki = M, which does not change the total number of walks.
+In this way, the times of link search decrease to Pmi=1 k1k2...ki. Suppose M = 64, m = 3, and
+k1 = 4, k2 = 4, k3 = 4, then the times of link search decrease to about 0.44Mm . Though empirical
+results below show that tree-structured sampling achieves slightly worse performance, it provides an
+opportunity to tradeoff between prediction performance and time complexity.
+
+
+
+
+
+           Figure 7: Effect of sampling of different tree structures on inductive performance.
+We conduct more experiment to investigate this topic with Wikipedia and UCI datasets. The setup is
+as follows: ﬁrst, we ﬁx CAW sampling number M = 64 = 26 and length m = 2, so that we always
+have k1k2 = M = 26; next, we assign different values to k1, so that the shape of the tree changes
+accordingly; controlling other hyperparameters to be the optimal combination found by grid search,
+we plot the corresponding inductive AUC scores of CAW-N-mean on all testing edges in Fig. 7. It is
+observed that while tree-structured sampling may affect the performance to some extent, its negative
+impact is less prominent when the ﬁrst-step sampling number k1 is relatively large, and our model
+still achieves state-of-the-art performance compared to our baselines. That makes the tree-structured
+sampling a reasonable strategy that can further reduce time complexity.
+
+C  ADDITIONAL EXPERIMENTAL SETUP DETAILS
+
+C.1  DATASET INTRODUCTION AND ACCESS
+
+We list the introduction of the six datasets as follows.
+
+        • Reddit1 is a dataset of posts made by users on subredditts over a month. Its nodes are users
+        and posts, and its links are the timestamped posting requests.
+        • Wikipedia2 is a dataset of edits over wiki pages over a month, whose nodes represent human
+         editors and wiki pages and whose links represent timestamped edits.
+        • Social Evolution3 is a dataset recording the detailed evolving physical proximity between
+         students in a dormitory over a year, deterimined from wireless signals of their mobile
+         devices.
+        • Enron4 is a communication network whose links are email communication between core
+        employees of a cooperation over several years.
+        • UCI5 is a dataset recording online posts made by university students on a forum, but is
+         non-attributed.
+        • MOOC6 is a dataset of online courses where nodes represent students and course content
+         units such as videos and problem sets, and links represent student’s access behavior to a
+          particular unit.
+  1http://snap.stanford.edu/jodie/reddit.csv
+  2http://snap.stanford.edu/jodie/wikipedia.csv
+  3http://realitycommons.media.mit.edu/socialevolution.html
+  4https://www.cs.cmu.edu/~./enron/
+  5http://konect.cc/networks/opsahl-ucforum/
+  6http://snap.stanford.edu/jodie/mooc.csv
+
+
+                                       16

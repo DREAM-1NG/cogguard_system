@@ -1,0 +1,68 @@
+A  Appendix
+
+A.1  Connection to online learning
+
+In Section 2 we motivated the update (2) as a way to adjust the size of our prediction sets in response
+to the realized historical miscoverage frequency. Alternatively, one could also derive (2) as an online
+gradient descent algorithm with respect to the pinball loss. To be more precise let
+                                 βt := sup{β : Yt ∈ˆCt(β)},
+where we remark that ˆCt(βt) can be thought of as the smallest prediction set containing Yt. Addi-
+tionally, deﬁne the pinball loss
+
+                                   αu, u > 0,
+                           ρα(u) =                                     .
+                               −(1 −α)u, u ≤0.
+
+and consider the loss ℓ(αt, βt) = ρα(βt −αt). Then, one directly computes that
+               αt −γ∂αtℓ(αt, βt) = αt + γ(α −1αt>βt) = αt + γ(α −errt).
+Because the pinball loss is convex, this gradient descent update falls within a well understood class
+of algorithms that have been extensively studied in the online learning literature (see e.g. [17]). A
+standard analysis may then be to bound the regret of αt deﬁned as
+
+                                 T                T
+                      RegT := X ℓ(αt, βt) −min X ℓ(β, βt).
+                                                 β
+                                   t=1                t=1
+Unfortunately, this notion of regret fails to capture our intuition that αt is adaptively tracking the
+moving target α∗t . Thus, we make the connection to online gradient descent only in passing and
+develop alternative theoretical tools in Section 4.
+
+A.2  Stock prices
+
+Figure 4 shows daily open prices for the four stocks considered in Section 2.2.
+
+           Nvidia                                 AMD
+       600
+
+
+                                                                               100
+       400   Price
+
+
+                                                                                50  Open 200
+
+
+
+         0                                                                       0
+       150  BlackBerry                                           Fannie Mae
+
+                                                                               75
+   Price 100                                                                     50
+  Open 50                                                                     25
+
+
+
+         0                                                                      0
+              2000          2005          2010          2015          2020                             2000                  2010                  2020
+                                             Time
+
+            Figure 4: Daily open prices for the four stocks considered in Section 2.2.
+
+
+A.3  Trajectories of αtαtαt
+
+In this section we show the realized trajectories of αt obtained in our experiments from Sections 2.2
+and 6.
+
+
+                                       14

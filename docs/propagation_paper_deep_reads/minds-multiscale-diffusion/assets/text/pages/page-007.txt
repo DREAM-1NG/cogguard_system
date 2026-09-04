@@ -1,0 +1,79 @@
+The Thirty-Eighth AAAI Conference on Artiﬁcial Intelligence (AAAI-24)
+
+
+                                                Christianity                    Douban
+                     Models
+                               Hits@100  MAP@100  MSLE   Hits@100  MAP@100  MSLE
+
+                    w/o AdvDiff    0.5893       0.1958      0.971     0.3682       0.1170      0.642
+                    w/o Diff        0.6004       0.1949      1.222     0.3688       0.1173      0.712
+                    w/o Adv        0.5915       0.1926      0.861     0.3572       0.1193      0.742
+                    w/o HGNN      0.5871       0.2013      1.074     0.3692       0.1178      0.581
+
+                    w/o Macro      0.5580       0.1874      9.255     0.3665       0.1191      4.669
+                    w/o Micro       0.5871       0.1937      0.865     0.3591       0.1174      0.711
+
+               MINDS         0.6250       0.2054      0.572     0.3736       0.1213      0.549
+
+Table 5: Ablation study on Christianity and Douban datasets. We design six variants to demonstrate the rationale behind our
+model: w/o AdvDiff removes Ladv and Ldiff. w/o Diff removes Ldiff. w/o Adv removes Ladv. w/o HGNN replaces sequential
+hypergraphs with sequential digraphs and HGNN with GAT. w/o Macro removes Lmacro. w/o Micro removes Lmicro.
+
+
+         MAP@100      MAP@10         Hits@50       MSLE           MAP@100      MAP@10         Hits@50       MSLE
+         MAP@50         Hits@100        Hits@10                     MAP@50         Hits@100        Hits@10
+     0.122                                                                   0.0                                                                                0.0
+                                                                                0.072
+                                                                              0.2                                                                                0.2
+     0.120
+                                                                                0.070
+                                                                              0.4                                                                                0.4
+     0.118
+                                                                              0.6      0.068                                                                   0.6
+     0.116
+                                                                              0.8      0.066                                                                   0.8
+     0.114
+                                                                              1.0      0.064                                                                   1.0
+               0.25    0.50    0.75         2   4   6   8   10  12                    0.25    0.50    0.75         2   4   6   8   10  12
+                                                             Intervals                                                                             Intervals
+     0.375                                                                   0.0                                                                                0.0                                                                                0.275
+                                                                              0.2      0.235                                                                   0.2     0.325
+                                                                              0.4      0.195                                                                   0.4
+     0.275
+                                                                              0.6      0.155                                                                   0.6
+     0.225
+                                                                              0.8      0.115                                                                   0.8
+
+     0.175                                                                   1.0      0.075                                                                   1.0
+              0.025   0.050   0.075        8   16  32  64  128 256                  0.025   0.050   0.075        8   16  32  64  128 256
+                                            Embedding…size                                                     Embedding…size
+
+                                 (a) Douban                                                          (b) Android
+
+Figure 4: Parameter sensitivity on Douban and Android dataset. For balance parameter λ ∈(0, 1) and the number of
+time intervals ∈[2, 12], we evaluate all map and MSLE scores. For hyper parameter γ ∈(0, 0.1) and embedding size
+∈{8, 16, 32, 64, 128, 256}, we evaluate all hits scores and MSLE score. In this figure, the macro indicator (MSLE) is pre-
+sented with an inverted Y-axis to align with the increasing trend of the micro indicator (MAP and Hits).
+
+
+γ, embedding size, and the number of time intervals, test-                     Conclusion
+ing each parameter while keeping others fixed. Fig. 4 illus-
+                                                                In this paper, we propose MINDS, a streamlined yet effec-trates the model’s performance on multi-scale prediction un-
+                                                                         tive multi-scale diffusion prediction model, capable of han-der various hyperparameter configurations.
+                                                                 dling both microscopic and macroscopic predictions. Our
+  During the process of parameter value selection, we care-      approach involves constructing sequential hypergraphs to
+fully consider both macro and micro indicators. Optimal      capture intricate influences and dynamics among cascades
+model performance occurs when the macro index is mini-      from a macro perspective. Simultaneously, we learn implicit
+mized, and the micro index is maximized. Remarkably, we       structures and user characteristics in social networks from
+observe that MINDS maintains stable performance when hy-      a micro perspective. A shared LSTM is then employed to
+perparameters are varied within a reasonable range. This       extract common features between macro- and micro-tasks,
+experiment highlights the robustness of our model. Finally,      while adversarial training and orthogonality constraints en-
+we determine that the optimal hyperparameter configuration       sure the purity of these shared features. Experimental re-
+corresponds to (λ, γ, embedding size, number of time inter-       sults on the next-influenced user and cascade size predic-
+vals) = (0.3, 0.05, 64, 8).                                           tions demonstrate the effectiveness of our method.
+
+
+
+
+
+                                                   8577

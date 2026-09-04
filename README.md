@@ -1,222 +1,105 @@
-# CogGuard：面向跨域认知操纵的智能联合防御系统
+# CogGuard
 
-## 项目背景
+CogGuard is a research-oriented product system for evidence-driven event review. The active runnable system is `system/`; upstream source trees remain reference boundaries for provenance and license review.
 
-随着社交媒体平台深度融入社会生活，规模化、高度隐蔽的网络水军及虚假信息传播已从早期的商业黑灰产演变为针对公共舆论的认知操纵威胁。这种群体级协调操纵（Coordinated Inauthentic Behavior, CIB）通过跨平台的协同注入、虚假互动和叙事劫持，试图干预公共舆论、撕裂社会共识。
+The current product narrative is:
 
-**核心挑战：**
-
-- **数据孤岛**：各平台间数据隔离严重，跨平台协同行为难以追踪
-- **部分可观测**：安全管理员无法获取完整社交图谱，传统图模型失效
-- **人机共生**：LLM 驱动的高级水军与真人难以区分，传统静态画像检测失效
-- **上下文劫持**：恶意账号通过回复真实讨论植入宣传叙事，表面语义相关但深层逻辑断裂
-
-CogGuard 系统旨在构建一个面向实战的"跨平台隐蔽协同操纵网络溯源引擎"，实现从数据采集、协同检测、传播归因、账户监测到风险研判的全链路闭环防御。
-
-## 系统架构
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                         表示层 (Frontend)                        │
-│    Vue 3 + TypeScript + Ant Design Vue + ECharts/D3.js          │
-│  ┌──────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────────┐  │
-│  │ 监测看板  │ │任务管理│ │研判工作台│ │预警中心│ │ 报告中心    │  │
-│  └──────────┘ └────────┘ └────────┘ └────────┘ └────────────┘  │
-└───────────────────────────┬─────────────────────────────────────┘
-                            │ RESTful API / WebSocket
-┌───────────────────────────┴─────────────────────────────────────┐
-│                         服务层 (Backend)                         │
-│                    Python 3.11+ / FastAPI                        │
-│  ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌──────────────┐  │
-│  │身份认证│ │任务管理│ │结果分析│ │用户管理│ │  预警管理     │  │
-│  └────────┘ └────────┘ └────────┘ └────────┘ └──────────────┘  │
-└───────────────────────────┬─────────────────────────────────────┘
-                            │
-┌───────────────────────────┴─────────────────────────────────────┐
-│                       业务逻辑层 (Core)                          │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌────────┐ ┌────────┐  │
-│  │ 爬虫引擎 │ │协同检测  │ │社交机器人│ │意图识别│ │追踪溯源│  │
-│  │MediaCrawl│ │CooRTweet │ │  检测    │ │  NLP   │ │传播归因│  │
-│  │NewsCrawl │ │Python重写│ │          │ │        │ │        │  │
-│  └──────────┘ └──────────┘ └──────────┘ └────────┘ └────────┘  │
-│  ┌──────────┐ ┌──────────────────────────────────────────────┐  │
-│  │结果分析  │ │         风险研判引擎 (规则+NLP, 预留LLM)      │  │
-│  └──────────┘ └──────────────────────────────────────────────┘  │
-└───────────────────────────┬─────────────────────────────────────┘
-                            │
-┌───────────────────────────┴─────────────────────────────────────┐
-│                      数据访问层 (DAL)                             │
-│     ┌───────────────┐  ┌──────────────┐  ┌──────────────────┐   │
-│     │ MySQL (ORM)   │  │MongoDB (ODM) │  │Redis (Cache/MQ)  │   │
-│     │ SQLAlchemy    │  │ Motor/Beanie │  │                  │   │
-│     └───────┬───────┘  └──────┬───────┘  └────────┬─────────┘   │
-└─────────────┼────────────────┼────────────────────┼─────────────┘
-              │                │                    │
-┌─────────────┴────────────────┴────────────────────┴─────────────┐
-│                       数据存储层                                  │
-│  ┌───────────┐       ┌────────────┐         ┌─────────────┐     │
-│  │  MySQL    │       │  MongoDB   │         │    Redis    │     │
-│  │结构化数据 │       │非结构化数据 │         │ 缓存/队列  │     │
-│  │用户/任务  │       │帖子/评论   │         │ 会话/锁    │     │
-│  │告警/案例  │       │爬取原始数据 │         │            │     │
-│  └───────────┘       └────────────┘         └─────────────┘     │
-│                                                                  │
-│  [预留] Neo4j 图数据库 - 协同网络持久化与复杂图查询               │
-└──────────────────────────────────────────────────────────────────┘
+```text
+event -> evidence -> Coordination Discover -> Propagation Analysis -> Review -> Event Review Case -> governance action
 ```
 
-## 技术选型
+## Active Capabilities
 
-### 后端
+| Capability | Canonical implementation | Status |
+| --- | --- | --- |
+| Crawler | `system/backend/app/core/crawler/`, `system/runtimes/social_runtime/`, `system/runtimes/news_runtime/` | Internal social and news runtime boundaries are wired into product collection. |
+| Event Review Case | `system/backend/app/services/review_case_service.py`, `system/backend/app/api/v2/review_cases.py`, `system/frontend/src/views/risk/index.vue` | Case list/detail, evidence annotations, review request, decision draft, confirmation, and activity stream are available. |
+| Coordination Discover | `system/research/coordination_discover/` | CPU research pipeline, platform-generic evidence graph, strict Leiden, and backend fallback are runnable; no claimable research result is asserted here. |
+| Coordination Detect | `system/research/coordination_detect/` | Public-label validation boundary exists; the current unlabeled event remains non-claimable. |
+| Propagation Monitoring | `system/backend/app/core/propagation_monitoring/`, `system/research/propagation_analysis/` | Observed analysis, governed forecast, response compaction, caching, profiles, alerts, and Celery evaluation share one internal interface. |
+| Review | `system/backend/app/core/review/`, `system/backend/app/services/review_case_orchestrator.py`, `system/research/review_student/`, `system/research/review_teacher/`, `system/runtimes/review_student/` | XLM-R Student inference is checkpoint-gated, Teacher output remains advisory, and confirmed decisions remain analyst-owned. |
+| Social Bot Detection | `system/research/social_bot_detection/`, `system/backend/app/core/trained_bot_detection.py` | Internal transfer is runnable on Botection and the strict path is runnable on Cresci-2015, Cresci-2017, and Midterm-2018; public benchmark runs remain transfer results, not superiority claims. |
 
-| 类别 | 技术 | 版本 | 说明 |
-|------|------|------|------|
-| 语言 | Python | ≥3.11 | 与 MediaCrawler 保持一致 |
-| Web 框架 | FastAPI | 最新 | 异步高性能，自动生成 OpenAPI 文档 |
-| ORM | SQLAlchemy | 2.0+ | 异步支持，MySQL 访问 |
-| ODM | Motor + Beanie | 最新 | 异步 MongoDB 驱动 |
-| 任务队列 | Celery + Redis | 最新 | 异步任务调度（爬虫、分析等耗时操作） |
-| 数据校验 | Pydantic | v2 | 请求/响应模型校验 |
-| 认证 | JWT (python-jose) | - | Token 认证 |
-| NLP | Transformers + Sentence-Transformers | 最新 | 文本表示、语义相似度 |
-| 图分析 | NetworkX + igraph | 最新 | 内存图分析，预留 Neo4j 扩展接口 |
+## Repository Map
 
-### 前端
+| Path | Role |
+| --- | --- |
+| `system/` | Active product system: backend, frontend, vendored runtimes, research packages, deployment files, and tests. |
+| `system/backend/` | FastAPI, Celery, database access, product services, and backend tests. |
+| `system/frontend/` | Vue 3 and TypeScript case workspace. |
+| `system/runtimes/` | Vendored executable runtimes used by product code. |
+| `system/research/` | System-readable research packages consumed through explicit adapters. |
+| `conductor/` | Product, technology, workflow, and active-track context for implementation sessions. |
+| `doc/engineering/` | Long-lived engineering documentation, governance, maps, setup, roadmap, and log. |
+| `doc/adr/` | Canonical ADR index and accepted durable decisions. |
+| `doc/research/` | Research positioning and literature notes. |
+| `aris/` | Historical research workspace. Its physical names are not canonical product vocabulary. |
+| `MediaCrawler-main/`, `NewsCrawler-main/`, `CooRTweet-master/` | Reference boundaries only; product runtime code must not execute from these directories. |
 
-| 类别 | 技术 | 版本 | 说明 |
-|------|------|------|------|
-| 框架 | Vue 3 | 3.x | Composition API |
-| 语言 | TypeScript | 5.x | 类型安全 |
-| 构建 | Vite | 5.x | 快速构建 |
-| UI 组件库 | Ant Design Vue | 4.x | 中后台管理组件 |
-| 状态管理 | Pinia | 最新 | Vue 3 官方推荐 |
-| 路由 | Vue Router | 4.x | - |
-| HTTP | Axios | 最新 | API 请求 |
-| 图表 | ECharts | 5.x | 数据可视化 |
-| 图可视化 | vis-network / D3.js | 最新 | 协同网络、传播路径可视化 |
+## Naming Sources
 
-### 数据存储
+- `UBIQUITOUS_LANGUAGE.md` is the canonical glossary.
+- `doc/engineering/system-governance.md` is the normative naming and package-boundary policy.
+- `doc/adr/index.md` records current ADR status and supersession.
+- `conductor/index.md` records the active product, technology, workflow, and track context.
 
-| 类别 | 技术 | 用途 |
-|------|------|------|
-| MySQL | 8.0+ | 结构化数据：用户、任务、告警、案例、账户画像 |
-| MongoDB | 6.0+ | 非结构化数据：爬取的帖子、评论、原始数据 |
-| Redis | 7.0+ | 缓存、会话管理、Celery 消息队列 |
-| [预留] Neo4j | 5.x | 协同网络图存储与查询（当前用 NetworkX 内存分析） |
+New code and current documentation must use formal capability names: `Coordination Discover`, `Coordination Detect`, `Propagation Analysis`, `Review`, and `Event Review Case`.
 
-### 参考项目集成
+## Quick Start
 
-| 参考项目 | 集成方式 | 用途 |
-|---------|---------|------|
-| MediaCrawler | Python 包封装调用 | 社交媒体数据采集（微博、抖音、小红书、B站等） |
-| NewsCrawler | Python 包封装调用 | 新闻平台数据采集（公众号、头条、网易等） |
-| CooRTweet | **核心算法 Python 重写** | 协调行为检测、协同网络构建（原 R 语言） |
-
-## 功能模块
-
-系统由五大核心模块组成：
-
-### 1. 数据采集模块
-- 跨平台社交媒体数据采集（封装 MediaCrawler）
-- 新闻平台内容采集（封装 NewsCrawler）
-- 数据标准化与证据编码
-- 任务化增量采集
-
-### 2. 协同检测模块
-- 时间窗口内共享行为检测（重写 CooRTweet 算法）
-- 多行为异构协同网络构建
-- 显著性筛查（区分自然共振与人为协同）
-- 可疑协同群体发现与排序
-
-### 3. 传播归因模块
-- 传播子图重建与时序分析
-- 关键角色识别（起爆/桥接/扩散节点）
-- 高危实体定位（claim/thread 级别）
-- 归因证据链生成
-
-### 4. 账户监测模块
-- 账户行为画像（发文频率、作息节律、互动模式）
-- 自动化倾向评估
-- 历史参与追踪
-- 账户级动态预警
-
-### 5. 风险研判模块
-- 三维评估：真实性 × 操纵性 × 危害性
-- 多源证据汇聚
-- 结构化研判报告
-- 预留 LLM 接口（后续用于证据编排与解释生成）
-
-## 项目结构
-
-```
-cogguard_system/
-├── README.md                       # 项目总览（本文件）
-├── doc/                            # 项目文档
-│   ├── 开题报告.doc                 # 开题报告
-│   ├── TODO_LIST.md                # 设计方案与开发进度
-│   └── ENV_SETUP.md                # 环境搭建指南
-├── new-system/                     # 系统源码
-│   ├── README.md                   # 系统开发文档（部署/测试/使用/API）
-│   ├── docker-compose.yml          # Docker 服务编排
-│   ├── .env.example                # 环境变量模板
-│   ├── backend/                    # 后端 (Python 3.11+ / FastAPI)
-│   │   ├── app/                    # 应用代码
-│   │   │   ├── api/v1/             # REST API 路由
-│   │   │   ├── core/               # 核心业务逻辑（认证、爬虫）
-│   │   │   ├── models/             # ORM 模型
-│   │   │   ├── schemas/            # 请求/响应数据模式
-│   │   │   ├── services/           # 业务服务层
-│   │   │   ├── tasks/              # Celery 异步任务
-│   │   │   ├── db/                 # 数据库连接管理
-│   │   │   └── utils/              # 通用工具
-│   │   ├── tests/                  # 测试套件
-│   │   └── alembic/                # 数据库迁移
-│   └── frontend/                   # 前端 (Vue 3 + TypeScript + Ant Design Vue)
-│       └── src/
-│           ├── api/                # API 请求封装
-│           ├── views/              # 页面视图
-│           ├── components/         # 公共组件
-│           ├── stores/             # Pinia 状态管理
-│           └── router/             # 路由配置
-├── MediaCrawler-main/              # [参考] 社交媒体爬虫
-├── NewsCrawler-main/               # [参考] 新闻爬虫
-└── CooRTweet-master/               # [参考] 协调行为检测 (R)
-```
-
-## 快速开始
-
-```bash
-# 1. 启动基础服务（需要 Docker）
-cd new-system
-cp .env.example .env
+```powershell
+cd system
+copy .env.example .env
 docker compose up -d
 
-# 2. 启动后端
 cd backend
-uv sync                          # 安装依赖
-alembic upgrade head             # 数据库迁移
-uvicorn app.main:app --reload    # 启动 API 服务
+uv sync
+uv run alembic upgrade head
+uv run uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 
-# 3. 启动前端
-cd ../frontend
+cd ..\frontend
 npm install
-npm run dev                      # http://localhost:5173
+npm run dev -- --host 127.0.0.1 --port 5173
 ```
 
-> 详细步骤见 [doc/ENV_SETUP.md](doc/ENV_SETUP.md)，
-> 完整开发文档见 [new-system/README.md](new-system/README.md)
+Useful URLs after startup:
 
-## 开发计划
+- Backend API docs: `http://127.0.0.1:8000/docs`
+- Frontend: `http://127.0.0.1:5173`
+- Review case API prefix: `/api/v2/review-cases`
 
-| 阶段 | 内容 | 状态 |
-|------|------|------|
-| 第一阶段 | 项目骨架、认证模块、数据采集（Mock 模式）、前端骨架 | ✅ 已完成 |
-| 第二阶段 | 真实爬虫接入、协同检测、传播归因、账户监测 | 🔲 待开发 |
-| 第三阶段 | 风险研判、预警管理、监测看板、报告中心 | 🔲 待开发 |
-| 第四阶段 | 集成测试、性能优化、全栈 Docker 部署 | 🔲 待开发 |
+## Verification
 
-> 详细进度请查看 [doc/TODO_LIST.md](doc/TODO_LIST.md)
+```powershell
+cd system\backend
+python -m pytest -q
 
-## 许可证
+# Run the complete local prototype chain without changing the database or UI.
+python scripts/prototype_acceptance.py
 
-本项目仅用于学术研究和学习用途。
+cd ..\frontend
+npm run build
+```
+
+Backend dependencies are edited in `system/backend/pyproject.toml` and exported
+from the frozen `uv.lock` into `requirements.txt`. Generated outputs, caches,
+Playwright captures, local experiments, and model artifacts are not release files.
+
+`npm run build` runs `vue-tsc -b` before the Vite production build.
+
+The prototype acceptance output is intentionally non-claimable. It verifies EventSnapshot wiring, strict Leiden behavior, propagation fallback/abstain behavior, review advisory behavior, and confirmation boundaries. Research claims still require labels, temporal evaluation, and approved runtime evidence.
+
+Runtime-specific dependency setup stays inside each vendored runtime. Do not move Playwright or news extraction dependencies into the main backend package unless the runtime boundary itself changes.
+
+The analyst-facing frontend remains business-first: it shows event status,
+evidence sufficiency, preliminary and advisory findings, required actions, and
+confirmed decisions. Model activation, artifact verification, queue recovery,
+and rollback are authenticated backend control-plane operations documented in
+[ADR 0009](doc/adr/0009-durable-review-and-model-governance-boundary.md).
+
+## Runtime And Attribution
+
+- `system/runtimes/social_runtime/` preserves the source lineage and license attribution for the social crawler runtime.
+- `system/runtimes/news_runtime/` preserves the source lineage and license attribution for the news extraction runtime.
+- Product code must call the vendored runtime boundaries, not upstream reference directories.
+- Generated experiment outputs under `system/output/` and local research notes under `research-wiki/` are not part of product commits unless a task explicitly promotes a specific output.

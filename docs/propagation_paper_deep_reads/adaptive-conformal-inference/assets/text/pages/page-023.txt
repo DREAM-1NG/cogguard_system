@@ -1,0 +1,52 @@
+Lemma A.3 Assume that ∃0 < c < 1/(2γ) such that for all a ∈A and all p ∈[−γ, 1 + γ],
+                          |M(p|a) −M(α∗a|a)| ≥c|p −α∗a|.
+Then, for all a ∈A, k ∈{0, 1, 2, . . . }, and T ∈N
+E[(α1 −α∗A1)2|A1+k = a]
+ ≤(1 −2cγ)T −1E[(α1 −α∗A1)2|AT +k = a]
+    T
++ X(1 −2cγ)T −t  γ2 + 2(1 + γ)E[|α∗At−1 −α∗At||AT +k = a] + E[(α∗At−1 −α∗At)2|AT +k = a]   .
+   t=2
+
+Furthermore, if we assume that ∀a ∈A and k ∈{0, 1, 2, . . . },
+         E[|α∗At−k −α∗At−k−1||At = a] ≤ϵ1 and E[(α∗At−k −α∗At−k−1)2|At = a] ≤ϵ2,
+
+then we ﬁnd that
+
+                                         1
+                 E[(α1 −α∗A1)2|A1+k = a] ≤     γ2 + 2(1 + γ)ϵ1 + ϵ2  .                                          2cγ
+
+Proof:  Fix any T ∈N. Since {(αt, At)}t∈N is stationary we have that
+                     E[(α1 −α∗A1)2|A1+k] = E[(αT −α∗AT )2|AT +k].
+Now note that
+E[(αT −α∗AT )2|AT +k] = E[(αT −α∗AT −1)2|AT +k] + 2E[(αT −α∗AT −1)(α∗AT −1 −α∗AT )|AT +k]
+              + E[(α∗AT −1 −α∗AT )2|AT +k]
+                 ≤E[(αT −α∗AT −1)2|AT +k] + 2(1 + γ)E[|α∗AT −1 −α∗AT ||AT +k]
+              + E[(α∗AT −1 −α∗AT )2|AT +k],
+
+where on the last line we have applied Lemma 4.1. The ﬁrst term above can be bounded as
+      E[(αT −α∗AT −1)2|AT +k]
+      ≤E[(αT −1 −α∗AT −1)2|AT +k] + 2E[γ(α −errT −1)(αT −1 −α∗AT −1)|AT +k] + γ2,
+
+where we additionally have that
+            E[(α −errT )(αT −1 −α∗AT −1)|AT +k]
+        = E[(α −E[errT −1|AT −1, αT −1, AT +k])(αT −1 −α∗AT −1)|AT +k]
+        = E[(M(α∗AT −1|AT1) −M(αT −1|AT −1))(αT −1 −α∗AT −1)|AT +k]
+           ≤−cE[(αT −1 −α∗AT −1)2|AT +k].
+
+Whence,
+          E[(αT −α∗AT −1)2|AT +k] ≤(1 −2cγ)E[(αT −1 −α∗AT −1)2|AT +k] + γ2,
+
+and plugging this into our ﬁrst inequality yields
+  E[(αT −α∗AT )2|AT +k] ≤(1 −2cγ)E[(αT −1 −α∗AT −1)2|AT +k] + γ2
+               + 2(1 + γ)E[|α∗AT −1 −α∗AT ||AT +k] + E[(α∗AT −1 −α∗AT )2|AT +k].
+
+Repeating this argument inductively gives
+E[(αT −α∗AT )2|AT +k = a]
+ ≤(1 −2cγ)T −1E[(α1 −α∗A1)2|AT +k = a]
+    T
++ X(1 −2cγ)T −t  γ2 + 2(1 + γ)E[|α∗At−1 −α∗At||AT +k = a] + E[(α∗At−1 −α∗At)2|AT +k = a]   .
+   t=2
+The ﬁnal part of the lemma follows by sending T →∞.                     □
+
+
+                                       23

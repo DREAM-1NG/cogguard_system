@@ -1,0 +1,43 @@
+Figure 5: PINT. Following the MP-TGN protocol, PINT updates memory states as events unroll.
+Meanwhile, we use Eqs. (7-11) to update positional features. To extract the embedding for node v,
+we build its TCT, annotate nodes with memory + positional features, and run (injective) MP.
+
+we highlight that there may exist many other ways to achieve injective temporal MP — we have
+presented a solution that captures the ‘recency’ inductive bias of real-world temporal networks.
+Relative positional features. To boost the power of PINT, we propose augmenting memory states
+with relative positional features. These features count how many temporal walks of a given length
+exist between two nodes, or equivalently, how many times nodes appear at different levels of TCTs.
+Formally, let P be the d ⇥d matrix obtained by padding a (d −1)-dimensional identity matrix
+with zeros on its top row and its rightmost column. Also, let r(t)    Nd denote the positional                                                j!u 2feature vector of node j relative to u’s TCT at time t.  For each event (u, v, t), with u and
+v not participating in other events at t, we recursively update the positional feature vectors as
+
+                                               u  =                                                                         v                                                                    u                (9)                                                          V(t+)                                                                 v  = V(t)                                              [ V(t)       V(0)             i = {i}(   8i                        (7)    V(t+)
+                    [1, 0, . . . , 0]>    if i = j            r(t+) = P r(t) + r(t)         u      (10)        r(0) =                                 (8)    i!v      i!u   i!v  8i 2 V(t)
+       i!j      [0, 0, . . . , 0]>    if i   j            r(t+) = P r(t) + r(t)           v      (11)                                       6=           j!u     j!v   j!u  8j 2 V(t)
+where we use t+ to denote values “right after” t. The set Vi keeps track of the nodes for whichwe need to update positional features when i participates in an interaction. For simplicity, we have
+assumed that there are no other events involving u or v at time t. Appendix B.10 provides equations
+for the general case where nodes can participate in multiple events at the same timestamp.
+The value r(t)i!v[k] (the k-th component of r(t)i!v) correspondsto how many different ways we can get from v to i in k steps
+through temporal walks. Additionally, we provide in Lemma 2
+an interpretation of relative positional features in terms of the so-
+called monotone TCTs (Deﬁnition 2). In this regard, Figure 4
+shows how the TCT of v evolves due to an event (u, v, t) and
+provides an intuition about the updates in Eqs. 10-11. The
+procedure amounts to appending the monotone TCT of u to the
+ﬁrst level of the monotone TCT of v.
+Deﬁnition 2. The monotone TCT of a node u at time t, denoted
+by ˜Tu(t), is the maximal subtree of the TCT of u s.t. for any path   Figure 4: The effect of (u, v, t) on the
+                                                           monotone TCT of v. Also, note how the
+p = (u, t1, u1, t2, u2, . . . ) from the root u to leaf nodes of ˜Tu(t)                                                                         positional features of a node i, relative
+time monotonically decreases, i.e., we have that t1 > t2 > . . . .  to v, can be incrementally updated.
+Lemma 2. For any pair of nodes i, u of a temporal graph G(t), the k-th component of the positional
+feature vector r(t)  stores the number of times i appears at the k-th layer of the monotone TCT of u.
+            i!u
+Edge and node embeddings. To obtain the embedding hγ for an event γ = (u, v, t), an L-layer
+PINT computes embeddings for node u and v using L steps of temporal message passing. However,
+when computing the embedding hLu(t) of u, we concatenate node states sj(t) with the positional
+features r(t)  and r(t)  for all node j in the L-hop temporal neighborhood of u. We apply the same
+       j!u     j!v
+procedure to obtain hLv (t), and then combine hLv (t) and hLu(t) using a readout function.
+
+                                       7
