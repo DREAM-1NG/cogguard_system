@@ -134,6 +134,7 @@ def test_create_event_snapshot_registers_reconstructable_snapshot_with_stable_co
     }]
     common = {
         "db": object(),
+        "mongo_db": object(),
         "event_id": "event-1",
         "platform": "weibo",
         "observed": {"data_scope": {"posts": 1, "comments": 1}},

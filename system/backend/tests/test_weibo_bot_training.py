@@ -1,6 +1,14 @@
+import pytest
+
 from app.core.bot_training import DEFAULT_DATASET_ROOT
 from app.core.bot_training import load_weibo_corpus
 from app.core.bot_training import train_weibo_bot_model
+
+
+pytestmark = pytest.mark.skipif(
+    not DEFAULT_DATASET_ROOT.exists(),
+    reason="Botection corpus is an optional external test fixture",
+)
 
 
 def test_weibo_corpus_loads_labeled_rows():
