@@ -16,8 +16,6 @@ from typing import Any, Callable
 from sqlalchemy import create_engine, inspect, text
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
-if str(BACKEND_ROOT) not in sys.path:
-    sys.path.insert(0, str(BACKEND_ROOT))
 
 EXPECTED_HEAD = "c1d4e8f2a706"
 STRICT_VALUES = frozenset({"1", "true", "yes", "on"})
