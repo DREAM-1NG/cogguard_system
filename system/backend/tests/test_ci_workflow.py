@@ -22,3 +22,4 @@ def test_release_workflow_declares_all_required_cross_platform_gates():
     assert "ubuntu-latest" in text
     assert "COGGUARD_REQUIRE_EXTERNAL_SERVICES: \"1\"" in text
     assert "concurrency:" in text
+    assert "CREATE DATABASE IF NOT EXISTS cogguard_test" in text

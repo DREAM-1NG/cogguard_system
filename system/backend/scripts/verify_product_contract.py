@@ -13,6 +13,11 @@ from app.core.analysis.runtime import build_student_verdict, build_teacher_advis
 from app.services.propagation_prediction_service import predict_event_macro_micro
 
 
+def _require(condition: bool, message: str) -> None:
+    if not condition:
+        raise RuntimeError(f"Product contract smoke failed: {message}")
+
+
 def _load_prototype_module():
     path = Path(__file__).with_name("prototype_acceptance.py")
     spec = importlib.util.spec_from_file_location("cogguard_prototype_acceptance", path)
@@ -46,6 +51,13 @@ def main() -> int:
         )
         student = build_student_verdict(case)
         teacher = build_teacher_advisory_verdict(case, job_id="product_contract_teacher_job")
+
+    _require(snapshot.data_fingerprint != "", "snapshot fingerprint is missing")
+    _require(discover["manifest"]["claimability"] == "non_claimable", "Coordination fallback is claimable")
+    _require(bool(fallback.get("fallback")), "Coordination fallback is not explicit")
+    _require(missing_propagation.get("status") == "missing_checkpoint", "missing propagation checkpoint did not abstain")
+    _require(student.get("model_status") == "shadow_untrained" and student.get("abstain") is True, "Student did not abstain")
+    _require(teacher.get("canonical_allowed") is False, "Teacher advisory became canonical")
 
     projection = {
         "event_id": snapshot.event_id,
@@ -92,7 +104,8 @@ def main() -> int:
         },
     }
     print(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True))
-    return 0 if not leaked else 1
+    _require(not leaked, f"internal fields leaked: {leaked}")
+    return 0
 
 
 if __name__ == "__main__":
