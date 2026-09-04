@@ -30,6 +30,21 @@ if sys.platform.startswith("win"):
 _DB_AVAILABLE = None
 
 
+def external_services_required() -> bool:
+    return os.environ.get("COGGUARD_REQUIRE_EXTERNAL_SERVICES", "").strip().lower() in {
+        "1", "true", "yes", "on"
+    }
+
+
+def require_external_service(name: str, *, available: bool) -> None:
+    if available:
+        return
+    message = f"{name} is required but unavailable"
+    if external_services_required():
+        raise RuntimeError(message)
+    pytest.skip(f"{name} not available")
+
+
 def _check_db_available() -> bool:
     """Quick sync check to see if MySQL test database is reachable."""
     global _DB_AVAILABLE
@@ -86,7 +101,7 @@ def ensure_default_event_loop():
 async def setup_database():
     """Create and tear down all tables. Only used by tests that request it."""
     if test_engine is None:
-        pytest.skip("MySQL not available")
+        require_external_service("MySQL test database", available=False)
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     yield
@@ -98,7 +113,7 @@ async def setup_database():
 async def db_session(setup_database) -> AsyncGenerator[AsyncSession]:
     """Provide a committed test MySQL session for persistence-backed tests."""
     if test_session_factory is None:
-        pytest.skip("MySQL not available")
+        require_external_service("MySQL test database", available=False)
     async with test_session_factory() as session:
         yield session
         await session.commit()

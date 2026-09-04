@@ -143,6 +143,18 @@ uv run python -m pytest tests -q
 uv run python -m alembic current
 ```
 
+默认测试模式允许在本机未启动 MySQL 时对数据库集成用例做明确原因的
+`skip`。GitHub CI 和发布验证必须设置：
+
+```powershell
+$env:COGGUARD_REQUIRE_EXTERNAL_SERVICES = "1"
+uv run python -m pytest tests -q
+```
+
+严格模式下，所请求的 MySQL、MongoDB 或 Redis 集成依赖不可达会直接失败，
+不会被静默计入绿色结果。纯内存单元测试不要求这些服务。Ubuntu CI 使用
+workflow service containers；Windows 本地验证使用 `docker compose up -d`。
+
 Frontend:
 
 ```powershell
