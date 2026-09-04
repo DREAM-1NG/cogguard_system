@@ -28,4 +28,3 @@ def test_weibo_training_builds_artifact(tmp_path):
     assert report["metrics"]["macro_f1"] >= 0.5
     assert (tmp_path / "weibo_bot_detector.joblib").exists()
     assert (tmp_path / "weibo_bot_detector.json").exists()
-

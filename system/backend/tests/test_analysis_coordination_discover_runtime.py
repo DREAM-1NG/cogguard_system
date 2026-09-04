@@ -126,4 +126,3 @@ def test_coordination_discover_analysis_uses_overlapping_windows_and_reports_lin
     assert 0.0 <= result["perturbation_robustness"]["median_retained_ratio"] <= 1.0
     assert "kind_counts" in result["evidence_coverage"]
     assert result["domain_shift"]["status"] in {"measured", "not_evaluated"}
-

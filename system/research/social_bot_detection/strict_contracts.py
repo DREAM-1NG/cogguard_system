@@ -75,4 +75,3 @@ class StrictCorpus:
     records: list[StrictAccountRecord]
     graph: StrictGraph
     manifest: DatasetManifest
-

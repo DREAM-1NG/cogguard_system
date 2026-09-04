@@ -1,4 +1,4 @@
-﻿# ADR 0002: Review MARO-style self-iteration uses auditable policy refinement
+# ADR 0002: Review MARO-style self-iteration uses auditable policy refinement
 
 Date: 2026-07-01
 
@@ -55,4 +55,3 @@ The `DecisionRuleOptimizerAgent` capability is represented by rule proposal inpu
 ## Verification
 
 Implemented tests cover policy refinement, invalid LLM rule rejection, feedback memory, explicit activation, Judge policy coupling, and optional full debate triggering.
-

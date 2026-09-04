@@ -1,4 +1,4 @@
-﻿# BotRHG Social Bot Detection Integration Plan
+# BotRHG Social Bot Detection Integration Plan
 
 ## Goal
 
@@ -23,4 +23,3 @@ Integrate an account-level social bot detection surface into the current CogGuar
 ## Research Boundary
 
 The production integration is an inference-compatible BotRHG system adapter, not a claim that CogGuard embeds the full trained NLPCC experiment pipeline. The full research implementation remains in `G:/Research/BotDetection/LLMbot`, where the method maps to RoBERTa/property encoding, HyperScan-style KNN hypergraph construction, conformal KNN residual-risk routing, and residual second-view correction.
-

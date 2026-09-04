@@ -188,22 +188,22 @@
 
 ### 问题定位
 
-**不是**："如何更准确地给信息操纵事件打分"  
+**不是**："如何更准确地给信息操纵事件打分"
 **而是**："如何把上游检测结果转化为可操作的风险预判，提前识别战役升级，并给出可复核的反制路径"
 
 ### 方法论主张
 
-**不是**："我们提出一个三维评分框架"  
+**不是**："我们提出一个三维评分框架"
 **而是**："我们提出一个 phase-aware, contradiction-aware, DISARM-path-aware 报告研判框架，用阶段预测回答'接下来会发生什么'，用攻击路径回答'应该如何拦截'，用 evidential fusion 回答'结论有多可信'"
 
 ### 价值主张
 
-**不是**："我们的评分更准确"  
+**不是**："我们的评分更准确"
 **而是**："我们从 detection 升级到 anticipation + countermeasure，让报告研判从'告诉你有风险'变成'告诉你下一步会发生什么、应该如何应对'"
 
 ## 验证重点
 
-**不验证**："分数是否准确"  
+**不验证**："分数是否准确"
 **验证**：
 1. 阶段识别是否合理（5 状态分类是否符合真实战役演化）
 2. 转换预测是否有用（hazard estimation 能否在 breakout 前提供有效预警）
@@ -215,7 +215,7 @@
 
 ### 标题方向
 
-❌ "A Three-Dimensional Risk Scoring Framework for Information Manipulation"  
+❌ "A Three-Dimensional Risk Scoring Framework for Information Manipulation"
 ✅ "Phase-Aware Risk Forecasting and DISARM Attack-Path Reasoning for Information Manipulation Campaigns"
 
 ### Abstract 结构
@@ -227,7 +227,7 @@
 
 ### Introduction 开场
 
-❌ "Risk assessment is important for combating information manipulation..."  
+❌ "Risk assessment is important for combating information manipulation..."
 ✅ "While detection of coordinated inauthentic behavior has advanced significantly, translating detection results into actionable risk forecasts remains an open challenge. Analysts need not just to know *what* manipulation techniques are observed, but *what will happen next* and *how to intervene*..."
 
 ### Related Work 定位

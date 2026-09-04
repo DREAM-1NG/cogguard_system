@@ -145,7 +145,7 @@ path_score = w_d · depth + w_b · breadth + w_c · completeness
 
 depth：路径长度（observed 技术数）
 breadth：可触达的下一步技术数
-completeness：路径覆盖的 DISARM 阶段数（reconnaissance / development / 
+completeness：路径覆盖的 DISARM 阶段数（reconnaissance / development /
                                           establishment / deployment / closure）
 ```
 

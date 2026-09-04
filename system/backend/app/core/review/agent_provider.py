@@ -1,4 +1,4 @@
-﻿"""Review LLM provider adapters.
+"""Review LLM provider adapters.
 
 The manual agent review runner depends on the provider protocol, but provider
 wire details belong in this module. Keep OpenAI-compatible HTTP behavior here
@@ -238,4 +238,3 @@ def _as_list(value: Any) -> list[Any]:
     if isinstance(value, list):
         return value
     return [value]
-

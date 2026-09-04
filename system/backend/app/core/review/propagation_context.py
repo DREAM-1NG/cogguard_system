@@ -1,4 +1,4 @@
-﻿"""Propagation thread context helpers for Review agent review.
+"""Propagation thread context helpers for Review agent review.
 
 This module turns source-post/reaction threads into a compact, auditable
 context that an LLM agent can read. It does not train or run graph models.
@@ -418,4 +418,3 @@ def _safe_int(value: Any) -> int:
 
 def _text(value: Any) -> str:
     return str(value or "").strip()
-

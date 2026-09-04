@@ -1,9 +1,9 @@
-﻿# CogGuard 产品需求文档（PRD）
+# CogGuard 产品需求文档（PRD）
 
 > **Historical / Non-normative**：这是早期产品提案，保留用于追溯。当前实现以 `system/README.md`、`system-governance.md`、`CONTEXT.md` 和 `UBIQUITOUS_LANGUAGE.md` 为准；本文不得作为产品 runtime 输入。
 
-> **用途**：定义产品目标、用户场景、页面信息架构、API/数据模型与验收口径。  
-> **受众**：系统开发者、产品/竞赛答辩准备者、AI 开发工具。  
+> **用途**：定义产品目标、用户场景、页面信息架构、API/数据模型与验收口径。
+> **受众**：系统开发者、产品/竞赛答辩准备者、AI 开发工具。
 > **维护规则**：只记录产品和工程契约；研究论证、文献依据和关键技术探索放入 `../research/` 并在本文中引用。
 
 | 项目 | 内容 |

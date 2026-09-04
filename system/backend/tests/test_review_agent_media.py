@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import base64
 
@@ -106,4 +106,3 @@ def test_vision_input_status_reports_payload_availability():
         "media_types": ["image", "video_keyframe_reference"],
         "requires_base64_or_accessible_image_url": True,
     }
-

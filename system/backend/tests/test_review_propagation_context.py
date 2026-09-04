@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from app.core.review.agent_review import _has_propagation_tree_context
 from app.core.review.agent_review import _agent_output_contract
@@ -182,4 +182,3 @@ def test_agent_contracts_module_owns_prompt_sections_roles_and_payloads():
     assert "\"policy_guidance\"" in user_prompt
     assert build_default_report_role("QuestionReflectionAgent") == "reflection"
     assert "advisory_judgement_only" in build_safety_flags("HarmfulnessJudgeAgent")
-

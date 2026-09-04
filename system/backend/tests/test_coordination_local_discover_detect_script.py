@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import importlib.util
 import json
@@ -144,4 +144,3 @@ def test_local_discover_detect_script_normalizes_jsonl_and_abstains_without_labe
 def test_local_discover_detect_script_defaults_to_vendored_social_runtime_boundary():
     script = _load_script()
     assert script.DEFAULT_LOCAL_DATA_ROOT == script.SYSTEM_ROOT / "runtimes" / "social_runtime" / "data_runs"
-

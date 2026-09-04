@@ -1,4 +1,4 @@
-﻿"""Runtime policy for analyst-triggered Review Agent review.
+"""Runtime policy for analyst-triggered Review Agent review.
 
 This module owns the rules that decide which Agents run, whether the review
 uses simple or complex mode, and which audit hints are emitted. It does not
@@ -308,4 +308,3 @@ def _text(value: Any) -> str:
     if value is None:
         return ""
     return str(value).strip()
-

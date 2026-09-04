@@ -515,4 +515,3 @@ def characterize_detect_output(
         "communities": characterization_records,
         "summary": summary,
     }
-

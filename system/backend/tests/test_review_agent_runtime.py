@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from app.core.review.agent_runtime import build_candidate_rule_hints
 from app.core.review.agent_runtime import build_execution_plan_for_runtime
@@ -97,4 +97,3 @@ def test_agent_runtime_promotes_complex_mode_and_emits_audit_tags():
         "external_retrieval_failure",
         "propagation_context_present",
     }
-

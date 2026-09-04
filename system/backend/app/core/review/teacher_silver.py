@@ -1,4 +1,4 @@
-﻿"""Teacher Silver supervision contract for Review Student distillation."""
+"""Teacher Silver supervision contract for Review Student distillation."""
 
 from __future__ import annotations
 
@@ -167,4 +167,3 @@ def load_teacher_silver_index(rows: list[dict[str, Any]]) -> dict[str, dict[str,
         if case_id and case_id not in index:
             index[case_id] = row
     return index
-

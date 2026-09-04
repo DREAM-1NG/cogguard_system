@@ -11,8 +11,8 @@ Bot detection, troll identification, and misinformation classification are auxil
 
 ## 1. Primary Baseline: CooRTweet Percentile Method
 
-**Source**: CooRTweet R package (Giglietto et al., 2020)  
-**Status**: ✅ 已有代码基础 (detector.py 中的 detect_groups)  
+**Source**: CooRTweet R package (Giglietto et al., 2020)
+**Status**: ✅ 已有代码基础 (detector.py 中的 detect_groups)
 **Implementation**: 复用现有 `flag_speed_share()` 逻辑
 
 **Method**:
@@ -31,7 +31,7 @@ Bot detection, troll identification, and misinformation classification are auxil
 
 ## 2. Secondary Baseline: Single-Channel Ablations
 
-**Purpose**: 验证 C2 (多通道覆盖) 声明  
+**Purpose**: 验证 C2 (多通道覆盖) 声明
 **Status**: ⚠️ 需实现
 
 **Variants**:
@@ -68,7 +68,7 @@ Bot detection, troll identification, and misinformation classification are auxil
 
 ## 4. Optional Baseline: Cross-Platform Method (Cinus WWW 2025)
 
-**Source**: "Cross-Platform Coordinated Inauthentic Behavior" (Cinus et al., 2025)  
+**Source**: "Cross-Platform Coordinated Inauthentic Behavior" (Cinus et al., 2025)
 **Status**: ❌ 不适用 (当前只做单平台)
 
 **Reason**: Coordination Discover 范围限定在单平台窗口内检测，跨平台属于未来工作

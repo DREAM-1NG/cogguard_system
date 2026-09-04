@@ -1,4 +1,4 @@
-﻿"""Media and vision-input boundary for Review manual Agents."""
+"""Media and vision-input boundary for Review manual Agents."""
 
 from __future__ import annotations
 
@@ -146,4 +146,3 @@ def _text(value: Any) -> str:
     if value is None:
         return ""
     return str(value).strip()
-

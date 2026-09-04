@@ -2,10 +2,10 @@
 
 > **Historical / Non-normative**：这是 2026-05 的采集数据契约快照，保留用于追溯。当前采集接口和运行规则以 `system/README.md`、`system-governance.md` 和 `UBIQUITOUS_LANGUAGE.md` 为准；本文不得作为产品 runtime 输入。
 
-> 事件样本：`event_id=trump_visit_2026_05_21`  
-> 数据库：MongoDB `cogguard`  
-> 集合：`raw_posts`、`raw_comments`  
-> 覆盖平台：`weibo`、`xhs`、`douyin`  
+> 事件样本：`event_id=trump_visit_2026_05_21`
+> 数据库：MongoDB `cogguard`
+> 集合：`raw_posts`、`raw_comments`
+> 覆盖平台：`weibo`、`xhs`、`douyin`
 > 生成日期：2026-05-21
 
 本文档基于当前 MongoDB 中目标事件的真实入库数据，以及代码中的标准模型与 MediaCrawler 归一化逻辑整理。标准模型定义见 `system/backend/app/models/post.py`，MediaCrawler 字段映射见 `system/backend/app/core/crawler/social.py`。

@@ -230,10 +230,10 @@ Gate Suite 的核心不是“多传几个 gold 字段”，而是把 Risk Review
 
 Risk Review 的端到端路径分为无 gold 与有 gold 两种：
 
-1. 默认线上风险研判路径  
+1. 默认线上风险研判路径
    用户调用 `/risk/assess`，系统读取 Coordination Discover 协同检测、Propagation Analysis 传播分析、账户画像和事件帖子，生成 `post_semantics`、`review_harmfulness.user_level`、`review_harmfulness.community_level`、`graph_export`、`review_queue` 和 `review_execution`。由于没有显式 gold/control set，`gate_suite.summary.executed_gates = 0`，三层 Gate 全部 skipped。该路径证明 Risk Review runtime aggregation 可以进入报告，但不证明三层模型在标注集上达标。
 
-2. 离线 gold/control 验收路径  
+2. 离线 gold/control 验收路径
    分析师或评测脚本调用 `/risk/review/gate-suite`，请求体中提供 `review_gate_dataset`。系统在同一风险上下文中执行 Post/User/Community Gate：帖子级检查 claim、stance、harm、evidence 和 abstain；用户级检查 harmful flag、persistence、trajectory、role 和代表性证据；社区级检查 collective harm、amplification、harm type、role、claim coverage、key account evidence 和 graph export readiness。结果返回 `dataset_contract`、metrics、failed thresholds 和 review items，但不持久化到默认报告库。该路径证明“给定明确 gold/control set，Risk Review 可以被可复现验收”，仍不代表 future model 已训练完成。
 
 ## 5. 帖子级需求
@@ -783,13 +783,13 @@ Agent / RAG 适合承担：
 
 Risk Review 的合理落地顺序应为：
 
-1. 先做帖子级正式化  
+1. 先做帖子级正式化
    把当前 prototype / similarity 脚手架提升为可训练、可评测、可蒸馏、可复核的帖子级统一输出模块。
 
-2. 再做用户级聚合  
+2. 再做用户级聚合
    用帖子级输出构建账户级 persistence / role / trajectory。
 
-3. 再完成社区级 harmfulness  
+3. 再完成社区级 harmfulness
    在已有协调和传播结构之上，加入帖子级与用户级语义，形成异构图 harmfulness。
 
 这个顺序不是偏好问题，而是依赖关系决定的：

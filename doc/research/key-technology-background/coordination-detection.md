@@ -1,7 +1,7 @@
 # 关键技术一：跨平台协同发现（共同行为特征复用融合检测）
 
-> **用途**：定义 Coordination Discover / Detect 的研究问题、当前工程落点、研究目标、实现方向和验证方式。  
-> **受众**：Coordination Discover / Detect 研究实现者、协同检测模块维护者。  
+> **用途**：定义 Coordination Discover / Detect 的研究问题、当前工程落点、研究目标、实现方向和验证方式。
+> **受众**：Coordination Discover / Detect 研究实现者、协同检测模块维护者。
 > **维护规则**：只写关键技术背景与研究方案；产品接口和任务状态放入 `../../engineering/`。
 
 > 方向更新（2026-06-02）：Coordination Discover / Detect 是本项目核心关键技术。最新定位为 **跨平台协同发现——利用平台无关的“共同行为特征”做复用融合检测；具体的内容检测不作为协同发现的信号**。

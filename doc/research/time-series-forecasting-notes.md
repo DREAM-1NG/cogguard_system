@@ -1,7 +1,7 @@
 # Time Series Forecasting Notes
 
-> **用途**：记录多变量时间序列预测与变量相关性建模的阅读笔记，支撑 Propagation Analysis 传播趋势预测。  
-> **受众**：Propagation Analysis 研究实现者、趋势预测模型设计者、论文/答辩材料撰写者。  
+> **用途**：记录多变量时间序列预测与变量相关性建模的阅读笔记，支撑 Propagation Analysis 传播趋势预测。
+> **受众**：Propagation Analysis 研究实现者、趋势预测模型设计者、论文/答辩材料撰写者。
 > **维护规则**：本文只保留研究笔记和模型脉络；产品接口和工程任务放入 `../engineering/`。
 
 ## 1. 建模脉络

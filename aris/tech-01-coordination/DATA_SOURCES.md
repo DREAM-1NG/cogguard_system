@@ -4,8 +4,8 @@
 
 ### 1.1 MediaCrawler (Social Media)
 
-**Status**: ✅ 已集成到 `new-system/backend`  
-**Implementation**: [social.py](../../../new-system/backend/app/core/crawler/social.py)  
+**Status**: ✅ 已集成到 `new-system/backend`
+**Implementation**: [social.py](../../../new-system/backend/app/core/crawler/social.py)
 **Supported Platforms**: 微博、抖音、小红书、快手、B站、贴吧、知乎
 
 **Current Capabilities**:
@@ -37,8 +37,8 @@ MEDIACRAWLER_COOKIES=<platform_cookies>
 
 ### 1.2 NewsCrawler (News Articles)
 
-**Status**: ✅ 已集成到 `new-system/backend`  
-**Implementation**: [news.py](../../../new-system/backend/app/core/crawler/news.py)  
+**Status**: ✅ 已集成到 `new-system/backend`
+**Implementation**: [news.py](../../../new-system/backend/app/core/crawler/news.py)
 **Supported Platforms**: 通用新闻站点 (via news_extractor_core)
 
 **Current Capabilities**:
@@ -92,8 +92,8 @@ MEDIACRAWLER_COOKIES=<platform_cookies>
 
 ### 2.3 Synthetic Data (MockCrawler)
 
-**Status**: ✅ 已实现  
-**Implementation**: [mock.py](../../../new-system/backend/app/core/crawler/mock.py)  
+**Status**: ✅ 已实现
+**Implementation**: [mock.py](../../../new-system/backend/app/core/crawler/mock.py)
 **Use Case**: M0 (Sanity) 里程碑的管线测试
 
 **Current Capabilities**:

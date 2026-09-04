@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from app.core.review.graph_exporter import export_review_heterogeneous_graph
 
@@ -57,4 +57,3 @@ def test_graph_export_adds_thread_context_reply_edges_as_post_relations():
     assert reply_edges[0]["attrs"]["source"] == "propagation.thread_context.edges"
     assert graph["summary"]["node_types"]["post"] == 2
     assert graph["summary"]["edge_types"]["replies_to"] == 1
-

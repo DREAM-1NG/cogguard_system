@@ -1,4 +1,4 @@
-﻿"""Selective 2+1 Review Student model and evaluation helpers."""
+"""Selective 2+1 Review Student model and evaluation helpers."""
 
 from __future__ import annotations
 
@@ -386,4 +386,3 @@ def student_main_axis_metrics(
         "abstain_rate": round(abstain_rate, 6),
         "high_risk_recall": round(float(high_risk_recall), 6),
     }
-

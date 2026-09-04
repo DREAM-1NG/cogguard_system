@@ -1,4 +1,4 @@
-﻿"""add_review_system_tables
+"""add_review_system_tables
 
 Revision ID: 7b4c2f9a0d31
 Revises: 1e7f4d2b3c90
@@ -374,4 +374,3 @@ def downgrade() -> None:
         "review_provider_configs",
     ]:
         op.drop_table(table)
-
