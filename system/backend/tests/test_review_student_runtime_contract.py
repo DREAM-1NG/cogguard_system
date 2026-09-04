@@ -36,6 +36,13 @@ def _case(*, options=None):
     }
 
 
+def _manifest_sha256(manifest):
+    payload = {key: value for key, value in manifest.items() if key != "manifest_sha256"}
+    return hashlib.sha256(
+        json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+
+
 def test_review_student_input_serializes_claim_and_decodable_evidence():
     item = student_module.ReviewStudentInput.from_post(_case()["posts"][0])
 
@@ -88,17 +95,15 @@ def test_active_checkpoint_uses_predictor_after_manifest_and_hash_validation(tmp
     checkpoint = tmp_path / "checkpoint.pt"
     checkpoint.write_bytes(b"approved-checkpoint")
     digest = hashlib.sha256(checkpoint.read_bytes()).hexdigest()
-    (tmp_path / "manifest.json").write_text(
-        json.dumps(
-            {
-                "technology": "review_student",
-                "checkpoint_path": checkpoint.name,
-                "backbone": "xlm-roberta-base",
-                "rationale_dim": 6,
-            }
-        ),
-        encoding="utf-8",
-    )
+    manifest = {
+        "technology": "review_student",
+        "checkpoint_path": checkpoint.name,
+        "checkpoint_sha256": digest,
+        "backbone": "xlm-roberta-base",
+        "rationale_dim": 6,
+    }
+    manifest["manifest_sha256"] = _manifest_sha256(manifest)
+    (tmp_path / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
     calls = []
 
     class FakePredictor:
@@ -117,6 +122,7 @@ def test_active_checkpoint_uses_predictor_after_manifest_and_hash_validation(tmp
                     "checkpoint_path": str(checkpoint),
                     "artifact_uri": str(tmp_path),
                     "artifact_hash": digest,
+                    "artifact_manifest_sha256": manifest["manifest_sha256"],
                 }
             }
         )
@@ -128,6 +134,84 @@ def test_active_checkpoint_uses_predictor_after_manifest_and_hash_validation(tmp
     assert verdict["abstain"] is False
     assert len(calls) == 1
     assert isinstance(calls[0], student_module.ReviewStudentInput)
+
+
+def test_active_checkpoint_rejects_post_registration_manifest_mutation(tmp_path):
+    checkpoint = tmp_path / "checkpoint.pt"
+    checkpoint.write_bytes(b"approved-checkpoint")
+    digest = hashlib.sha256(checkpoint.read_bytes()).hexdigest()
+    manifest = {
+        "technology": "review_student",
+        "checkpoint_path": checkpoint.name,
+        "checkpoint_sha256": digest,
+        "backbone": "xlm-roberta-base",
+        "rationale_dim": 6,
+    }
+    manifest["manifest_sha256"] = _manifest_sha256(manifest)
+    manifest_path = tmp_path / "manifest.json"
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+    class FakePredictor:
+        def predict(self, _inputs):
+            return [{"attack_hate_offense": 0.8, "misinfo_claim_risk": 0.2, "stance": [0.1, 0.2, 0.7]}]
+
+    active_model = {
+        "technology": "review_student",
+        "status": "active",
+        "version": "v1",
+        "checkpoint_path": str(checkpoint),
+        "artifact_uri": str(tmp_path),
+        "artifact_hash": digest,
+        "artifact_manifest_sha256": manifest["manifest_sha256"],
+    }
+    runtime = student_module.StudentRuntime(predictor_factory=lambda _descriptor: FakePredictor())
+    assert runtime.predict_sync(_case(options={"active_model": active_model}))[
+        "model_status"
+    ] == "checkpoint_active"
+
+    manifest["backbone"] = "mutated-backbone"
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+    verdict = runtime.predict_sync(_case(options={"active_model": active_model}))
+
+    assert verdict["model_status"] == "checkpoint_incompatible"
+    assert verdict["abstain"] is True
+
+
+def test_active_checkpoint_rejects_checkpoint_outside_artifact_directory(tmp_path):
+    artifact_dir = tmp_path / "artifact"
+    artifact_dir.mkdir()
+    checkpoint = tmp_path / "outside.pt"
+    checkpoint.write_bytes(b"outside-checkpoint")
+    digest = hashlib.sha256(checkpoint.read_bytes()).hexdigest()
+    manifest = {
+        "technology": "review_student",
+        "checkpoint_path": "../outside.pt",
+        "checkpoint_sha256": digest,
+        "backbone": "xlm-roberta-base",
+        "rationale_dim": 6,
+    }
+    manifest["manifest_sha256"] = _manifest_sha256(manifest)
+    (artifact_dir / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    active_model = {
+        "technology": "review_student",
+        "status": "active",
+        "version": "v1",
+        "artifact_uri": str(artifact_dir),
+        "checkpoint_path": str(checkpoint),
+        "artifact_hash": digest,
+        "artifact_manifest_sha256": manifest["manifest_sha256"],
+    }
+
+    class FakePredictor:
+        def predict(self, _inputs):
+            return [{"attack_hate_offense": 0.8, "misinfo_claim_risk": 0.2, "stance": [0.1, 0.2, 0.7]}]
+
+    runtime = student_module.StudentRuntime(predictor_factory=lambda _descriptor: FakePredictor())
+    verdict = runtime.predict_sync(_case(options={"active_model": active_model}))
+
+    assert verdict["model_status"] == "checkpoint_incompatible"
+    assert verdict["abstain"] is True
 
 
 def test_incompatible_checkpoint_abstains_instead_of_loading(tmp_path):

@@ -6,7 +6,11 @@ from dataclasses import dataclass
 
 import pytest
 
-from app.core.propagation_monitoring import PropagationMonitoring, PropagationMonitoringPorts
+from app.core.propagation_monitoring import (
+    PropagationMonitoring,
+    PropagationMonitoringPorts,
+    invalidate_observed_cache,
+)
 
 
 def test_propagation_monitoring_is_a_public_core_module():
@@ -18,6 +22,7 @@ def test_propagation_monitoring_is_a_public_core_module():
         "PropagationMonitoring",
         "PropagationMonitoringPorts",
         "build_default_propagation_monitoring",
+        "invalidate_observed_cache",
     ]
 
 
@@ -85,6 +90,99 @@ def test_observed_coalesces_concurrent_calls():
     assert calls == 1
     assert results[0] == results[1]
     assert results[0] is not results[1]
+
+
+def test_invalidate_observed_cache_only_removes_affected_scope():
+    calls: list[tuple[str | None, str | None]] = []
+
+    async def observe(**kwargs):
+        calls.append((kwargs["platform"], kwargs["event_id"]))
+        return {"scope": [kwargs["platform"], kwargs["event_id"]]}
+
+    monitoring = PropagationMonitoring(build_ports(observe=observe))
+    asyncio.run(monitoring.observed(platform="weibo", event_id="event-1", node_limit=80))
+    asyncio.run(monitoring.observed(platform="xhs", event_id="event-1", node_limit=80))
+
+    monitoring.invalidate_observed_cache(event_id="event-1", platform="weibo")
+
+    asyncio.run(monitoring.observed(platform="weibo", event_id="event-1", node_limit=80))
+    asyncio.run(monitoring.observed(platform="xhs", event_id="event-1", node_limit=80))
+
+    assert calls == [
+        ("weibo", "event-1"),
+        ("xhs", "event-1"),
+        ("weibo", "event-1"),
+    ]
+
+
+def test_module_invalidate_observed_cache_reaches_facade_instances():
+    calls: list[tuple[str | None, str | None]] = []
+
+    async def observe(**kwargs):
+        calls.append((kwargs["platform"], kwargs["event_id"]))
+        return {"scope": [kwargs["platform"], kwargs["event_id"]]}
+
+    first_monitoring = PropagationMonitoring(build_ports(observe=observe))
+    second_monitoring = PropagationMonitoring(build_ports(observe=observe))
+    for monitoring in (first_monitoring, second_monitoring):
+        asyncio.run(monitoring.observed(platform="weibo", event_id="event-1", node_limit=80))
+        asyncio.run(monitoring.observed(platform="xhs", event_id="event-1", node_limit=80))
+
+    invalidate_observed_cache(event_id="event-1", platform="weibo")
+
+    for monitoring in (first_monitoring, second_monitoring):
+        asyncio.run(monitoring.observed(platform="weibo", event_id="event-1", node_limit=80))
+        asyncio.run(monitoring.observed(platform="xhs", event_id="event-1", node_limit=80))
+
+    assert calls.count(("weibo", "event-1")) == 4
+    assert calls.count(("xhs", "event-1")) == 2
+
+
+def test_invalidate_observed_cache_also_removes_wildcard_query_scopes():
+    calls: list[tuple[str | None, str | None]] = []
+
+    async def observe(**kwargs):
+        calls.append((kwargs["platform"], kwargs["event_id"]))
+        return {"scope": [kwargs["platform"], kwargs["event_id"]]}
+
+    monitoring = PropagationMonitoring(build_ports(observe=observe))
+    for platform, event_id in [("weibo", "event-1"), (None, "event-1"), ("weibo", None), (None, None)]:
+        asyncio.run(monitoring.observed(platform=platform, event_id=event_id, node_limit=80))
+
+    monitoring.invalidate_observed_cache(event_id="event-1", platform="weibo")
+
+    for platform, event_id in [("weibo", "event-1"), (None, "event-1"), ("weibo", None), (None, None)]:
+        asyncio.run(monitoring.observed(platform=platform, event_id=event_id, node_limit=80))
+
+    assert calls == [
+        ("weibo", "event-1"), (None, "event-1"), ("weibo", None), (None, None),
+        ("weibo", "event-1"), (None, "event-1"), ("weibo", None), (None, None),
+    ]
+
+
+def test_invalidate_observed_cache_cannot_allow_an_inflight_result_to_repopulate_cache():
+    calls = 0
+
+    async def scenario():
+        nonlocal calls
+        gate = asyncio.Event()
+
+        async def observe(**kwargs):
+            nonlocal calls
+            calls += 1
+            await gate.wait()
+            return {"scope": [kwargs["platform"], kwargs["event_id"]], "call": calls}
+
+        monitoring = PropagationMonitoring(build_ports(observe=observe))
+        pending = asyncio.create_task(monitoring.observed(platform="weibo", event_id="event-1", node_limit=80))
+        await asyncio.sleep(0)
+        monitoring.invalidate_observed_cache(event_id="event-1", platform="weibo")
+        gate.set()
+        await pending
+        await monitoring.observed(platform="weibo", event_id="event-1", node_limit=80)
+
+    asyncio.run(scenario())
+    assert calls == 2
 
 
 @pytest.mark.parametrize("ratio", [0.2, 0.4, 0.6])

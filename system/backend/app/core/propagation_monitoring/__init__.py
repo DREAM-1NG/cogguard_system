@@ -4,10 +4,12 @@ from app.core.propagation_monitoring.facade import (
     PropagationMonitoring,
     PropagationMonitoringPorts,
     build_default_propagation_monitoring,
+    invalidate_observed_cache,
 )
 
 __all__ = [
     "PropagationMonitoring",
     "PropagationMonitoringPorts",
     "build_default_propagation_monitoring",
+    "invalidate_observed_cache",
 ]

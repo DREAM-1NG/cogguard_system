@@ -340,6 +340,30 @@ def test_registry_persists_large_event_snapshots_as_chunks_and_restores_them():
     asyncio.run(scenario())
 
 
+def test_registry_rejects_snapshot_document_with_mutated_fingerprint():
+    async def scenario():
+        mongo = {"analysis_event_snapshots": FakeCollection()}
+        store = FakeAnalysisStore()
+        registry = AnalysisRegistry(mongo_db=mongo, store=store)
+        snapshot = build_event_snapshot(
+            event_id="event-1",
+            posts=[{
+                "event_id": "event-1", "platform": "weibo", "post_id": "p1",
+                "author_id": "u1", "timestamp": _dt(21), "content": "claim",
+            }],
+            comments=[],
+            core_window=TimeWindow(start=_dt(11), end=_dt(22)),
+            context_window=TimeWindow(start=_dt(1), end=_dt(31)),
+        )
+        await registry.register_event_snapshot(snapshot, created_by=0)
+        mongo["analysis_event_snapshots"].documents[snapshot.snapshot_id]["data_fingerprint"] = "tampered"
+
+        with pytest.raises(ValueError, match="fingerprint"):
+            await registry.load_event_snapshot(snapshot.snapshot_id)
+
+    asyncio.run(scenario())
+
+
 def test_registry_creates_run_events_and_recovers_after_cursor():
     async def scenario():
         store = FakeAnalysisStore()

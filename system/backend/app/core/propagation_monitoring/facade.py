@@ -8,11 +8,13 @@ import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Any, Protocol
+from weakref import WeakSet
 
 
 SUPPORTED_OBSERVATION_RATIOS = frozenset({0.1, 0.3, 0.5})
 DEFAULT_CACHE_TTL_SECONDS = 300
 DEFAULT_TEXT_PREVIEW_CHARS = 160
+_PROPAGATION_MONITORING_INSTANCES: WeakSet["PropagationMonitoring"] = WeakSet()
 
 
 class MonitoringPersistencePort(Protocol):
@@ -55,10 +57,37 @@ class PropagationMonitoring:
         self._clock = clock
         self._observed_cache: dict[tuple[str, str, int], tuple[float, dict]] = {}
         self._observed_in_flight: dict[tuple[str, str, int], asyncio.Task] = {}
+        self._observed_generation: dict[tuple[str, str, int], int] = {}
+        _PROPAGATION_MONITORING_INSTANCES.add(self)
 
     def clear_observed_cache(self) -> None:
+        for task in self._observed_in_flight.values():
+            if not task.done():
+                task.cancel()
         self._observed_cache.clear()
         self._observed_in_flight.clear()
+        self._observed_generation.clear()
+
+    def invalidate_observed_cache(
+        self,
+        *,
+        event_id: str | None = None,
+        platform: str | None = None,
+    ) -> None:
+        """Drop observed results for one event/platform scope."""
+        normalized_platform = str(platform or "").strip().lower()
+        normalized_event = str(event_id or "").strip()
+        matching_keys = [
+            key
+            for key in set(self._observed_cache) | set(self._observed_in_flight)
+            if (platform is None or key[0] in {"", normalized_platform})
+            and (event_id is None or key[1] in {"", normalized_event})
+        ]
+        for key in matching_keys:
+            self._observed_cache.pop(key, None)
+            self._observed_in_flight.pop(key, None)
+            self._observed_generation[key] = self._observed_generation.get(key, 0) + 1
+
 
     async def observed(
         self,
@@ -67,7 +96,7 @@ class PropagationMonitoring:
         event_id: str | None,
         node_limit: int,
     ) -> dict:
-        key = (platform or "", event_id or "", int(node_limit))
+        key = (str(platform or "").strip().lower(), str(event_id or "").strip(), int(node_limit))
         cached = self._observed_cache.get(key)
         if cached is not None:
             created_at, payload = cached
@@ -77,6 +106,8 @@ class PropagationMonitoring:
 
         task = self._observed_in_flight.get(key)
         if task is None or task.done():
+            generation = self._observed_generation.get(key, 0)
+
             async def compute() -> dict:
                 result = await self._ports.observe(
                     platform=platform,
@@ -84,7 +115,8 @@ class PropagationMonitoring:
                     node_limit=node_limit,
                 )
                 compact = _compact_observed_result(result, node_limit=node_limit)
-                self._observed_cache[key] = (self._clock(), copy.deepcopy(compact))
+                if self._observed_generation.get(key, 0) == generation:
+                    self._observed_cache[key] = (self._clock(), copy.deepcopy(compact))
                 return compact
 
             task = asyncio.create_task(compute())
@@ -152,6 +184,16 @@ class PropagationMonitoring:
 
     async def run_due_monitor_profiles(self, db: Any) -> list[dict]:
         return await self._ports.persistence.run_due_monitor_profiles(db)
+
+
+def invalidate_observed_cache(
+    *,
+    event_id: str | None = None,
+    platform: str | None = None,
+) -> None:
+    """Invalidate one scope across all local monitoring facades."""
+    for monitoring in tuple(_PROPAGATION_MONITORING_INSTANCES):
+        monitoring.invalidate_observed_cache(event_id=event_id, platform=platform)
 
 
 def build_default_propagation_monitoring(

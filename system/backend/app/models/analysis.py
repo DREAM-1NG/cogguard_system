@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Integer, String, Text, UniqueConstraint, func
+from sqlalchemy import Boolean, DateTime, Index, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.mysql import Base
@@ -168,6 +168,8 @@ class PropagationMonitorProfile(Base):
     last_snapshot_json: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
     last_success_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    claim_token: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
+    claim_expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
     updated_by: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
@@ -177,6 +179,9 @@ class PropagationAlert(Base):
     """A deduplicated, evidence-backed propagation monitoring alert."""
 
     __tablename__ = "propagation_alerts"
+    __table_args__ = (
+        Index("uq_propagation_alerts_open_dedupe_key", "open_dedupe_key", unique=True),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     event_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
@@ -185,6 +190,8 @@ class PropagationAlert(Base):
     severity: Mapped[str] = mapped_column(String(16), nullable=False, index=True)
     state: Mapped[str] = mapped_column(String(16), nullable=False, default="new", index=True)
     dedupe_key: Mapped[str] = mapped_column(String(320), nullable=False, index=True)
+    # NULL releases the key for a later alert after this one is resolved.
+    open_dedupe_key: Mapped[str | None] = mapped_column(String(320), nullable=True)
     trigger_count: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     first_triggered_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
     last_triggered_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)

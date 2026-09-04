@@ -8,6 +8,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.mongodb import get_mongo_db
+from app.core.propagation_monitoring import invalidate_observed_cache
 from app.models.task import CrawlJob
 from app.schemas.crawl import CrawlDataQuery, CrawlRequest
 
@@ -93,6 +94,14 @@ async def delete_job(job_id: int, user_id: int, db: AsyncSession) -> bool:
         mongo_db = get_mongo_db()
         await mongo_db["raw_posts"].delete_many({"crawl_job_id": job_id})
         await mongo_db["raw_comments"].delete_many({"crawl_job_id": job_id})
+        try:
+            params = json.loads(job.params_json or "{}")
+        except (TypeError, ValueError):
+            params = {}
+        invalidate_observed_cache(
+            event_id=str(params.get("event_id") or "").strip() or None,
+            platform=str(job.platform or params.get("platform") or "").strip() or None,
+        )
 
     await db.delete(job)
     await db.flush()

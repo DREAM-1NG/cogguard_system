@@ -22,6 +22,14 @@
 - 最终 branch review 未放行：确认 7 个 Important 与 1 个 Minor 问题，覆盖发布数据泄露、Student manifest 完整性、Propagation Monitoring snapshot/并发/缓存、前端请求竞态和告警状态转换。
 - Conductor track 进入 `final_review_remediation`。所有行为修复继续执行 test-first；整改完成后必须重新运行完整验证和全分支复审，未通过前不推送、不创建 PR。
 
+## 2026-09-04 Final Review Findings Implemented
+
+- 发布表面 guard 现在拒绝 `MediaCrawler-main/data_runs/` 和生成诊断报告；15 个本地运行产物已从 Git 索引移除并保留在本机。
+- Student Review artifact 将 checkpoint 与 canonical manifest digest 绑定；runtime 增加 manifest/path 校验，Phase 3 只接受显式评估指标且拒绝越界值。
+- Propagation Monitoring 使用可重建 EventSnapshot、内容指纹、profile lease、open-alert 唯一键和 terminal action 约束；crawl、删除和历史导入路径统一失效 observed cache。
+- Propagation/Coordination 前端增加 request generation/scope guards；registry load 校验 snapshot identity 与 fingerprint。
+- Focused verification：Student `27 passed`、Monitoring/Cache `22 passed`、Registry `7 passed`、Frontend `16 passed`；新增 migration offline SQL 通过。
+
 ## 2026-09-02 Final Architecture Context
 
 - 新增 `conductor/`，固化产品、技术栈、工作流和 `final-architecture` track；实现状态保持 `in progress`。

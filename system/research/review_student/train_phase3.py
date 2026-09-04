@@ -8,9 +8,11 @@ Instead of relying on online Agent APIs, we use pre-encoded textual explanations
 import argparse
 import json
 import logging
+import math
 import random
+from collections.abc import Mapping
 from pathlib import Path
-from typing import List, Dict
+from typing import Any, Dict, List
 
 import torch
 import torch.nn as nn
@@ -23,6 +25,60 @@ from system.runtimes.review_student import ReviewStudentInput, XLMRReviewStudent
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("train_phase3_distill")
+
+PHASE3_ACTIVATION_METRICS = (
+    "teacher_macro_f1_gap",
+    "ece",
+    "p95_latency_seconds",
+)
+
+
+def build_phase3_export_metrics(
+    *,
+    validation_loss: float,
+    validation_accuracy: float,
+    evaluated_metrics: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    """Combine training measurements with explicitly evaluated gate metrics.
+
+    The validation loop does not evaluate teacher parity, calibration, or
+    deployment latency. Those values therefore enter the manifest only from a
+    separate evaluation input; missing or non-finite values stay absent so the
+    governance gates remain closed.
+    """
+
+    metrics: dict[str, Any] = {
+        "training_stage": "phase3_latent_distillation",
+        "validation_loss": float(validation_loss),
+        "validation_accuracy": float(validation_accuracy),
+    }
+    if not isinstance(evaluated_metrics, Mapping):
+        return metrics
+    for name in PHASE3_ACTIVATION_METRICS:
+        value = evaluated_metrics.get(name)
+        if isinstance(value, bool):
+            continue
+        try:
+            numeric = float(value)
+        except (TypeError, ValueError):
+            continue
+        if math.isfinite(numeric):
+            metrics[name] = numeric
+    return metrics
+
+
+def load_evaluated_metrics(path: str | Path | None) -> dict[str, Any] | None:
+    """Load an explicit JSON evaluation result for Phase 3 activation gates."""
+
+    if path is None:
+        return None
+    try:
+        payload = json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError(f"Unable to read evaluated metrics JSON: {path}") from exc
+    if not isinstance(payload, dict):
+        raise ValueError("Evaluated metrics JSON must be an object")
+    return payload
 
 
 class HateCOTDistillDataset(Dataset):
@@ -81,7 +137,11 @@ def load_and_encode_hatecot(filepath: str, sbert_model_name: str, device: torch.
     return data
 
 
-def train(args: argparse.Namespace):
+def train(
+    args: argparse.Namespace,
+    *,
+    evaluated_metrics: Mapping[str, Any] | None = None,
+):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     logger.info(f"Using device: {device}")
 
@@ -126,6 +186,11 @@ def train(args: argparse.Namespace):
     best_val_loss = float("inf")
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
+    resolved_evaluated_metrics = (
+        evaluated_metrics
+        if evaluated_metrics is not None
+        else getattr(args, "evaluated_metrics", None)
+    )
 
     for epoch in range(args.epochs):
         model.train()
@@ -211,11 +276,11 @@ def train(args: argparse.Namespace):
                 version="review-student-phase3-distilled",
                 backbone=args.student_backbone,
                 rationale_dim=768,
-                metrics={
-                    "training_stage": "phase3_latent_distillation",
-                    "validation_loss": avg_val_loss,
-                    "validation_accuracy": val_acc,
-                },
+                metrics=build_phase3_export_metrics(
+                    validation_loss=avg_val_loss,
+                    validation_accuracy=val_acc,
+                    evaluated_metrics=resolved_evaluated_metrics,
+                ),
             )
             logger.info("Saved best distilled model to %s", artifact["checkpoint_path"])
 
@@ -226,6 +291,12 @@ def main():
     parser.add_argument("--sbert-model", default="sentence-transformers/all-mpnet-base-v2", help="768d SBERT model")
     parser.add_argument("--phase1-weights", type=str, default="", help="Optional path to phase1 weights to warm-start")
     parser.add_argument("--output-dir", default="./outputs_phase3")
+    parser.add_argument(
+        "--evaluated-metrics-json",
+        type=Path,
+        default=None,
+        help="JSON output from an independent evaluation of activation gate metrics",
+    )
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--epochs", type=int, default=5)
     parser.add_argument("--learning-rate", type=float, default=2e-5)
@@ -234,7 +305,7 @@ def main():
     parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()
 
-    train(args)
+    train(args, evaluated_metrics=load_evaluated_metrics(args.evaluated_metrics_json))
 
 if __name__ == "__main__":
     main()

@@ -31,6 +31,7 @@ from app.core.crawler.social import (
     weibo_comment_line_to_comment,
     weibo_content_line_to_post,
 )
+from app.core.propagation_monitoring import invalidate_observed_cache
 from app.db.mongodb import close_mongo, get_mongo_db
 from app.models.post import StandardComment, StandardPost
 
@@ -370,7 +371,12 @@ def _attach_job_id(documents: list[dict[str, Any]], job_id: int) -> list[dict[st
     return documents
 
 
-async def upsert_platform_result(result: PlatformImportResult, *, job_id: int) -> dict[str, int]:
+async def upsert_platform_result(
+    result: PlatformImportResult,
+    *,
+    job_id: int,
+    event_id: str | None = None,
+) -> dict[str, int]:
     mongo_db = get_mongo_db()
     await ensure_mongo_indexes()
 
@@ -397,6 +403,13 @@ async def upsert_platform_result(result: PlatformImportResult, *, job_id: int) -
         write_result = await mongo_db["raw_comments"].bulk_write(comment_ops, ordered=False)
         counts["comment_upserts"] = len(write_result.upserted_ids)
         counts["comment_modified"] = write_result.modified_count
+    if post_ops or comment_ops:
+        resolved_event_id = str(event_id or "").strip()
+        if not resolved_event_id:
+            resolved_event_id = str(
+                (result.posts or result.comments or [{}])[0].get("event_id") or ""
+            ).strip()
+        invalidate_observed_cache(event_id=resolved_event_id or None, platform=result.platform)
     return counts
 
 
@@ -437,7 +450,11 @@ async def run_import(args: argparse.Namespace) -> int:
     try:
         for result in results:
             job_id = ensure_mysql_import_job(result, event_id=args.event_id, keyword=args.keyword)
-            write_counts = await upsert_platform_result(result, job_id=job_id)
+            write_counts = await upsert_platform_result(
+                result,
+                job_id=job_id,
+                event_id=args.event_id,
+            )
             print(json.dumps({
                 "platform": result.platform,
                 "crawl_job_id": job_id,

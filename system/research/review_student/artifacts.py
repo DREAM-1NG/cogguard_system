@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 from pathlib import Path
+from collections.abc import Mapping
 from typing import Any
 
 import torch
@@ -37,6 +38,8 @@ def export_student_checkpoint(
         "rationale_dim": int(rationale_dim),
         "metrics": dict(metrics),
     }
+    manifest_sha256 = _manifest_sha256(manifest)
+    manifest["manifest_sha256"] = manifest_sha256
     manifest_path = directory / "manifest.json"
     manifest_path.write_text(
         json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
@@ -46,6 +49,7 @@ def export_student_checkpoint(
         "checkpoint_path": str(checkpoint_path),
         "checkpoint_sha256": digest,
         "manifest_path": str(manifest_path),
+        "manifest_sha256": manifest_sha256,
     }
 
 
@@ -55,6 +59,18 @@ def _sha256(path: Path) -> str:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def _manifest_sha256(manifest: Mapping[str, Any]) -> str:
+    payload = {str(key): value for key, value in manifest.items() if key != "manifest_sha256"}
+    canonical = json.dumps(
+        payload,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+        default=str,
+    ).encode("utf-8")
+    return hashlib.sha256(canonical).hexdigest()
 
 
 __all__ = ["export_student_checkpoint"]

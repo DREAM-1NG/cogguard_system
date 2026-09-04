@@ -10,6 +10,7 @@ from torch import nn
 
 
 RESEARCH_ROOT = Path(__file__).resolve().parents[2] / "research" / "review_student"
+REPO_ROOT = RESEARCH_ROOT.parents[2]
 
 
 def _load_research_package():
@@ -22,6 +23,22 @@ def _load_research_package():
         RESEARCH_ROOT / "__init__.py",
         submodule_search_locations=[str(RESEARCH_ROOT)],
     )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def _load_phase3_module():
+    package = _load_research_package()
+    name = f"{package.__name__}.train_phase3"
+    existing = sys.modules.get(name)
+    if existing is not None:
+        return existing
+    if str(REPO_ROOT) not in sys.path:
+        sys.path.insert(0, str(REPO_ROOT))
+    spec = importlib.util.spec_from_file_location(name, RESEARCH_ROOT / "train_phase3.py")
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     sys.modules[name] = module
@@ -97,3 +114,41 @@ def test_checkpoint_export_writes_activation_manifest_and_hash(tmp_path):
     assert manifest["checkpoint_path"] == "student.pt"
     assert manifest["version"] == "student-test-v1"
     assert manifest["metrics"]["ece"] == 0.05
+    assert len(artifact["manifest_sha256"]) == 64
+    assert manifest["manifest_sha256"] == artifact["manifest_sha256"]
+
+
+def test_phase3_export_emits_only_explicit_evaluated_activation_metrics():
+    phase3 = _load_phase3_module()
+
+    metrics = phase3.build_phase3_export_metrics(
+        validation_loss=0.42,
+        validation_accuracy=0.81,
+        evaluated_metrics={
+            "teacher_macro_f1_gap": 0.02,
+            "ece": None,
+            "p95_latency_seconds": 1.2,
+        },
+    )
+
+    assert metrics["validation_loss"] == 0.42
+    assert metrics["validation_accuracy"] == 0.81
+    assert metrics["teacher_macro_f1_gap"] == 0.02
+    assert metrics["p95_latency_seconds"] == 1.2
+    assert "ece" not in metrics
+
+
+def test_phase3_export_does_not_fabricate_missing_activation_metrics():
+    phase3 = _load_phase3_module()
+
+    metrics = phase3.build_phase3_export_metrics(
+        validation_loss=0.42,
+        validation_accuracy=0.81,
+        evaluated_metrics=None,
+    )
+
+    assert not {
+        "teacher_macro_f1_gap",
+        "ece",
+        "p95_latency_seconds",
+    } & metrics.keys()

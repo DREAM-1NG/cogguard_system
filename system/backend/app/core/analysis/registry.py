@@ -191,14 +191,24 @@ class AnalysisRegistry:
         document = await collection.find_one({"snapshot_id": str(manifest["mongo_key"])}, {"_id": 0})
         if document is None:
             raise KeyError(f"Event snapshot document not found: {snapshot_id}")
+        if document.get("snapshot_id") != str(manifest["snapshot_id"]):
+            raise ValueError(f"Event snapshot identity mismatch: {snapshot_id}")
+        if document.get("data_fingerprint") != str(manifest["data_fingerprint"]):
+            raise ValueError(f"Event snapshot fingerprint mismatch: {snapshot_id}")
         if document.get("schema") == SNAPSHOT_CHUNK_SCHEMA:
             payload = await _load_snapshot_payload_chunks(
                 collection,
                 root_snapshot_id=str(document["snapshot_id"]),
                 expected_chunks=int(document.get("chunk_count", 0) or 0),
             )
-            return EventSnapshot.model_validate(json.loads(payload))
-        return EventSnapshot.model_validate(document)
+            snapshot = EventSnapshot.model_validate(json.loads(payload))
+        else:
+            snapshot = EventSnapshot.model_validate(document)
+        if snapshot.snapshot_id != str(manifest["snapshot_id"]):
+            raise ValueError(f"Event snapshot identity mismatch: {snapshot_id}")
+        if snapshot.data_fingerprint != str(manifest["data_fingerprint"]):
+            raise ValueError(f"Event snapshot fingerprint mismatch: {snapshot_id}")
+        return snapshot
 
     async def transition_run_status(
         self,

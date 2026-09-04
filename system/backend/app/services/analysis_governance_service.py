@@ -28,6 +28,10 @@ from app.models.analysis import (
 from app.models.user import User
 
 
+REGISTERED_MANIFEST_HASH_KEY = "artifact_manifest_sha256"
+MANIFEST_HASH_FIELD = "manifest_sha256"
+
+
 async def approve_run_verdict(
     *,
     run_id: str,
@@ -142,13 +146,25 @@ async def register_model_version(
         raise ValueError("A model version requires an artifact URI and hash")
     if not _is_sha256_digest(artifact_hash):
         raise ValueError("A model version requires a 64-character SHA-256 artifact hash")
+    config = dict(payload.get("config") or {})
+    # This value is derived from the artifact below. Never accept a caller's
+    # claim for the binding digest.
+    config.pop(REGISTERED_MANIFEST_HASH_KEY, None)
+    if _artifact_uri_is_local(artifact_uri, artifact_root=settings.MODEL_ARTIFACT_ROOT):
+        verified = verify_registered_artifact(
+            artifact_uri=artifact_uri,
+            expected_hash=artifact_hash,
+            technology=str(payload["technology"]).strip(),
+            artifact_root=settings.MODEL_ARTIFACT_ROOT,
+        )
+        config[REGISTERED_MANIFEST_HASH_KEY] = verified.manifest_sha256
     row = AnalysisModelVersion(
         technology=str(payload["technology"]).strip(),
         model=str(payload["model"]).strip(),
         version=str(payload["version"]).strip(),
         artifact_hash=artifact_hash,
         artifact_uri=artifact_uri,
-        config_json=_json_dumps(payload.get("config") or {}),
+        config_json=_json_dumps(config),
         metrics_json=_json_dumps(payload.get("metrics") or {}),
         status="candidate",
         created_by=created_by,
@@ -174,6 +190,7 @@ async def activate_model_version(
         expected_hash=row.artifact_hash,
         technology=row.technology,
         artifact_root=artifact_root or settings.MODEL_ARTIFACT_ROOT,
+        expected_manifest_hash=_registered_manifest_sha256(row),
     )
     if not verified.quality_gates["activation_allowed"]:
         failed = ", ".join(verified.quality_gates["failed_gates"])
@@ -272,6 +289,7 @@ async def approve_model_candidate(
         expected_hash=row.artifact_hash,
         technology=row.technology,
         artifact_root=artifact_root or settings.MODEL_ARTIFACT_ROOT,
+        expected_manifest_hash=_registered_manifest_sha256(row),
     )
     if not verified.quality_gates["activation_allowed"]:
         failed = ", ".join(verified.quality_gates["failed_gates"])
@@ -362,6 +380,7 @@ async def rollback_model_version(
         expected_hash=previous.artifact_hash,
         technology=technology,
         artifact_root=artifact_root or settings.MODEL_ARTIFACT_ROOT,
+        expected_manifest_hash=_registered_manifest_sha256(previous),
     )
     if not verified.quality_gates["activation_allowed"]:
         raise ValueError("Rollback target no longer satisfies its capability quality gates")
@@ -507,6 +526,7 @@ class VerifiedArtifact:
     manifest_path: Path
     manifest: dict[str, Any]
     checkpoint_sha256: str
+    manifest_sha256: str
     quality_gates: dict[str, Any]
 
 
@@ -516,6 +536,7 @@ def verify_registered_artifact(
     expected_hash: str,
     technology: str,
     artifact_root: str | Path,
+    expected_manifest_hash: str | None = None,
 ) -> VerifiedArtifact:
     root = Path(artifact_root).expanduser().resolve()
     candidate = Path(str(artifact_uri or "").strip()).expanduser()
@@ -569,6 +590,23 @@ def verify_registered_artifact(
     actual = _sha256_file(checkpoint_path)
     if actual != expected:
         raise ValueError("Model checkpoint SHA-256 does not match the registered hash")
+    declared_checkpoint_hash = str(manifest.get("checkpoint_sha256") or "").strip().lower()
+    if declared_checkpoint_hash and declared_checkpoint_hash != actual:
+        raise ValueError("Model manifest checkpoint SHA-256 does not match the checkpoint")
+    manifest_sha256 = _manifest_sha256(manifest)
+    declared_manifest_hash = str(manifest.get(MANIFEST_HASH_FIELD) or "").strip().lower()
+    if technology == "review_student" and not declared_manifest_hash:
+        raise ValueError("Model artifact manifest SHA-256 is required for review_student")
+    if declared_manifest_hash and (
+        not _is_sha256_digest(declared_manifest_hash) or declared_manifest_hash != manifest_sha256
+    ):
+        raise ValueError("Model artifact manifest SHA-256 does not match its canonical contents")
+    expected_manifest = str(expected_manifest_hash or "").strip().lower()
+    if expected_manifest:
+        if not _is_sha256_digest(expected_manifest):
+            raise ValueError("Registered model manifest hash is not a SHA-256 digest")
+        if manifest_sha256 != expected_manifest:
+            raise ValueError("Model artifact manifest SHA-256 does not match the registered hash")
     metrics = manifest.get("metrics")
     if not isinstance(metrics, dict):
         raise ValueError("Model artifact manifest metrics are required")
@@ -579,6 +617,7 @@ def verify_registered_artifact(
         manifest_path=manifest_path.resolve(),
         manifest=manifest,
         checkpoint_sha256=actual,
+        manifest_sha256=manifest_sha256,
         quality_gates=quality_gates,
     )
 
@@ -600,9 +639,9 @@ def evaluate_quality_gates(technology: str, metrics: dict[str, Any]) -> dict[str
         }
     elif capability == "review_student":
         checks = {
-            "teacher_macro_f1_gap": _metric_at_most(metrics, "teacher_macro_f1_gap", 0.03),
-            "ece": _metric_at_most(metrics, "ece", 0.08),
-            "p95_latency_seconds": _metric_at_most(metrics, "p95_latency_seconds", 2.0),
+            "teacher_macro_f1_gap": _metric_between(metrics, "teacher_macro_f1_gap", 0.0, 0.03),
+            "ece": _metric_between(metrics, "ece", 0.0, 0.08),
+            "p95_latency_seconds": _metric_between(metrics, "p95_latency_seconds", 0.0, 2.0),
         }
     elif capability == "review_teacher":
         checks = {
@@ -649,6 +688,7 @@ def _governance_decision(
         "reason": reason,
         "artifact": {
             "checkpoint_sha256": verified.checkpoint_sha256,
+            "manifest_sha256": verified.manifest_sha256,
             "checkpoint_path": str(verified.checkpoint_path),
             "manifest_path": str(verified.manifest_path),
         },
@@ -665,6 +705,40 @@ def _require_within_root(path: Path, root: Path, *, boundary_name: str = "artifa
         raise ValueError(f"Model artifact path resolves outside the configured {boundary_name}") from exc
 
 
+def _registered_manifest_sha256(row: AnalysisModelVersion) -> str | None:
+    config = _json_loads(row.config_json, {})
+    if not isinstance(config, dict):
+        return None
+    value = str(config.get(REGISTERED_MANIFEST_HASH_KEY) or "").strip().lower()
+    return value or None
+
+
+def _artifact_uri_is_local(uri: str, *, artifact_root: str | Path) -> bool:
+    value = str(uri or "").strip()
+    if not value or value.startswith(("s3://", "gs://", "http://", "https://")):
+        return False
+    candidate = Path(value).expanduser()
+    if not candidate.is_absolute():
+        candidate = Path(artifact_root).expanduser() / candidate
+    return True
+
+
+def _manifest_sha256(manifest: dict[str, Any]) -> str:
+    payload = {
+        str(key): value
+        for key, value in manifest.items()
+        if str(key) != MANIFEST_HASH_FIELD
+    }
+    canonical = json.dumps(
+        payload,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+        default=str,
+    ).encode("utf-8")
+    return hashlib.sha256(canonical).hexdigest()
+
+
 def _metric_at_least(metrics: dict[str, Any], name: str, threshold: float) -> bool:
     try:
         return float(metrics[name]) >= threshold
@@ -677,6 +751,14 @@ def _metric_at_most(metrics: dict[str, Any], name: str, threshold: float) -> boo
         return float(metrics[name]) <= threshold
     except (KeyError, TypeError, ValueError):
         return False
+
+
+def _metric_between(metrics: dict[str, Any], name: str, minimum: float, maximum: float) -> bool:
+    try:
+        value = float(metrics[name])
+    except (KeyError, TypeError, ValueError):
+        return False
+    return minimum <= value <= maximum
 
 
 def _artifact_matches_hash(uri: str, expected_hash: str) -> bool:
@@ -692,9 +774,19 @@ def _artifact_matches_hash(uri: str, expected_hash: str) -> bool:
         return _sha256_file(path) == str(expected_hash).lower()
     if path.is_dir():
         manifest = path / "manifest.json"
-        checkpoint = path / "checkpoint.pt"
-        source = manifest if manifest.is_file() else checkpoint
-        return source.is_file() and _sha256_file(source) == str(expected_hash).lower()
+        if not manifest.is_file():
+            return False
+        try:
+            payload = json.loads(manifest.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return False
+        checkpoint_name = str(payload.get("checkpoint_path") or "checkpoint.pt")
+        checkpoint = (path / checkpoint_name).resolve()
+        try:
+            checkpoint.relative_to(path.resolve())
+        except ValueError:
+            return False
+        return checkpoint.is_file() and _sha256_file(checkpoint) == str(expected_hash).lower()
     return False
 
 
@@ -754,6 +846,7 @@ def _model_mapping(row: AnalysisModelVersion) -> dict[str, Any]:
         "model": row.model,
         "version": row.version,
         "artifact_hash": row.artifact_hash,
+        "artifact_manifest_sha256": _registered_manifest_sha256(row),
         "artifact_uri": row.artifact_uri,
         "status": row.status,
         "config": _json_loads(row.config_json, {}),

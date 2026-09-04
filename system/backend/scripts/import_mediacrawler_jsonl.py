@@ -25,6 +25,7 @@ from app.core.crawler.social import (
     weibo_comment_line_to_comment,
     weibo_content_line_to_post,
 )
+from app.core.propagation_monitoring import invalidate_observed_cache
 from app.db.mongodb import close_mongo, get_mongo_db
 from app.models.post import StandardComment, StandardPost
 
@@ -235,7 +236,11 @@ async def import_pair(
 
     if not dry_run:
         await write_documents(mongo_db["raw_posts"], post_documents)
+        for event_id in sorted({document["event_id"] for document in post_documents}):
+            invalidate_observed_cache(event_id=event_id, platform=platform)
         await write_documents(mongo_db["raw_comments"], comment_documents)
+        for event_id in sorted({document["event_id"] for document in comment_documents}):
+            invalidate_observed_cache(event_id=event_id, platform=platform)
 
     return {
         "platform": platform,
@@ -244,7 +249,7 @@ async def import_pair(
         "comment_file": str(comment_path) if comment_path else None,
         "posts": len(post_documents),
         "comments": len(comment_documents),
-        "event_ids": sorted({document["event_id"] for document in post_documents})[:10],
+        "event_ids": sorted({document["event_id"] for document in [*post_documents, *comment_documents]})[:10],
     }
 
 

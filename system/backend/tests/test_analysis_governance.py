@@ -107,20 +107,20 @@ def test_registered_artifact_must_resolve_inside_root_and_match_manifest(tmp_pat
     checkpoint = artifact_dir / "checkpoint.pt"
     checkpoint.write_bytes(b"student-checkpoint")
     digest = hashlib.sha256(checkpoint.read_bytes()).hexdigest()
-    (artifact_dir / "manifest.json").write_text(
-        json.dumps(
-            {
+    manifest = {
                 "technology": "review_student",
                 "checkpoint_path": "checkpoint.pt",
+                "checkpoint_sha256": digest,
                 "metrics": {
                     "teacher_macro_f1_gap": 0.02,
                     "ece": 0.07,
                     "p95_latency_seconds": 1.8,
                 },
             }
-        ),
-        encoding="utf-8",
-    )
+    manifest["manifest_sha256"] = hashlib.sha256(
+        json.dumps(manifest, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    (artifact_dir / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
 
     verified = verify_registered_artifact(
         artifact_uri=str(artifact_dir),
@@ -139,6 +139,57 @@ def test_registered_artifact_must_resolve_inside_root_and_match_manifest(tmp_pat
         verify_registered_artifact(
             artifact_uri=str(outside),
             expected_hash=hashlib.sha256(outside.read_bytes()).hexdigest(),
+            technology="review_student",
+            artifact_root=root,
+        )
+
+
+def test_registered_artifact_rejects_post_registration_manifest_mutation(tmp_path):
+    root = tmp_path / "artifacts"
+    artifact_dir = root / "review_student" / "v1"
+    artifact_dir.mkdir(parents=True)
+    checkpoint = artifact_dir / "checkpoint.pt"
+    checkpoint.write_bytes(b"student-checkpoint")
+    checkpoint_digest = hashlib.sha256(checkpoint.read_bytes()).hexdigest()
+    manifest = {
+        "schema": "cogguard.review_student.artifact.v1",
+        "technology": "review_student",
+        "version": "v1",
+        "checkpoint_path": checkpoint.name,
+        "checkpoint_sha256": checkpoint_digest,
+        "backbone": "xlm-roberta-base",
+        "rationale_dim": 768,
+        "metrics": {
+            "teacher_macro_f1_gap": 0.02,
+            "ece": 0.07,
+            "p95_latency_seconds": 1.8,
+        },
+    }
+    manifest["manifest_sha256"] = hashlib.sha256(
+        json.dumps(
+            manifest,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    ).hexdigest()
+    manifest_path = artifact_dir / "manifest.json"
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+    verify_registered_artifact(
+        artifact_uri=str(artifact_dir),
+        expected_hash=checkpoint_digest,
+        technology="review_student",
+        artifact_root=root,
+    )
+
+    manifest["metrics"]["ece"] = 0.01
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="manifest"):
+        verify_registered_artifact(
+            artifact_uri=str(artifact_dir),
+            expected_hash=checkpoint_digest,
             technology="review_student",
             artifact_root=root,
         )
@@ -203,3 +254,21 @@ def test_directory_manifest_checkpoint_cannot_escape_its_artifact_directory(tmp_
 )
 def test_quality_gates_are_computed_by_capability(technology, metrics, allowed):
     assert evaluate_quality_gates(technology, metrics)["activation_allowed"] is allowed
+
+
+def test_review_student_quality_gates_reject_negative_activation_metrics():
+    result = evaluate_quality_gates(
+        "review_student",
+        {
+            "teacher_macro_f1_gap": -1,
+            "ece": -1,
+            "p95_latency_seconds": -1,
+        },
+    )
+
+    assert result["activation_allowed"] is False
+    assert set(result["failed_gates"]) == {
+        "teacher_macro_f1_gap",
+        "ece",
+        "p95_latency_seconds",
+    }

@@ -9,6 +9,7 @@ from app.celery_app import celery_app
 from app.config import settings
 from app.core.crawler.factory import build_crawler
 from app.core.crawler.types import CrawlRequestOptions
+from app.core.propagation_monitoring import invalidate_observed_cache
 from app.services.review_case_orchestrator import process_successful_crawl
 from app.tasks.async_runtime import run_async
 from app.utils.logger import logger
@@ -123,6 +124,11 @@ def run_crawl_job(job_id: int, params_json: str):
                     )
                 )
             await _write_documents(mongo_db["raw_posts"], post_dicts)
+            if post_dicts:
+                invalidate_observed_cache(
+                    event_id=_resolve_event_id(params, job_id),
+                    platform=platform,
+                )
 
             all_comments: list = []
             if request.crawl_comments:
@@ -137,6 +143,11 @@ def run_crawl_job(job_id: int, params_json: str):
                         )
                     )
                 await _write_documents(mongo_db["raw_comments"], all_comments)
+                if all_comments:
+                    invalidate_observed_cache(
+                        event_id=_resolve_event_id(params, job_id),
+                        platform=platform,
+                    )
 
             result = {
                 "posts_count": len(post_dicts),

@@ -97,6 +97,7 @@ class StudentCheckpoint:
     manifest_path: Path
     manifest: dict[str, Any]
     sha256: str
+    manifest_sha256: str
     version: str
 
 
@@ -205,6 +206,7 @@ class StudentRuntime:
                 "path": str(checkpoint.checkpoint_path),
                 "manifest_path": str(checkpoint.manifest_path),
                 "sha256": checkpoint.sha256,
+                "manifest_sha256": checkpoint.manifest_sha256,
                 "version": checkpoint.version,
             },
             signals={
@@ -299,15 +301,39 @@ def _resolve_active_checkpoint(value: Any) -> StudentCheckpoint:
         raise ValueError("Student checkpoint manifest is invalid") from exc
     if not isinstance(manifest, dict) or str(manifest.get("technology") or "") != "review_student":
         raise ValueError("Student checkpoint manifest technology is incompatible")
+    artifact_root = artifact_path.resolve() if artifact_path.is_dir() else artifact_path.parent.resolve()
+    resolved_checkpoint = checkpoint_path.resolve()
+    try:
+        resolved_checkpoint.relative_to(artifact_root)
+    except ValueError as exc:
+        raise ValueError("Student checkpoint resolves outside its artifact directory") from exc
+    declared_checkpoint_path = (artifact_root / str(manifest.get("checkpoint_path") or "checkpoint.pt")).resolve()
+    try:
+        declared_checkpoint_path.relative_to(artifact_root)
+    except ValueError as exc:
+        raise ValueError("Student manifest checkpoint resolves outside its artifact directory") from exc
+    if resolved_checkpoint != declared_checkpoint_path:
+        raise ValueError("Student checkpoint does not match the manifest checkpoint path")
     expected = str(value.get("artifact_hash") or "").strip().lower()
     actual = _sha256_file(checkpoint_path)
     if len(expected) != 64 or expected != actual:
         raise ValueError("Student checkpoint SHA-256 does not match the active model")
+    declared_checkpoint = str(manifest.get("checkpoint_sha256") or "").strip().lower()
+    if declared_checkpoint != actual:
+        raise ValueError("Student checkpoint SHA-256 does not match the manifest")
+    manifest_sha256 = _manifest_sha256(manifest)
+    declared_manifest = str(manifest.get("manifest_sha256") or "").strip().lower()
+    if len(declared_manifest) != 64 or declared_manifest != manifest_sha256:
+        raise ValueError("Student manifest SHA-256 does not match its canonical contents")
+    expected_manifest = _active_manifest_sha256(value)
+    if len(expected_manifest) != 64 or expected_manifest != manifest_sha256:
+        raise ValueError("Student manifest SHA-256 does not match the active model")
     return StudentCheckpoint(
         checkpoint_path=checkpoint_path.resolve(),
         manifest_path=manifest_path.resolve(),
         manifest=manifest,
         sha256=actual,
+        manifest_sha256=manifest_sha256,
         version=str(value.get("version") or manifest.get("version") or "unknown"),
     )
 
@@ -464,6 +490,23 @@ def _random_audit_bucket(case: Mapping[str, Any]) -> int:
 
 def _verdict_id(case: Mapping[str, Any]) -> str:
     return f"student_{hashlib.sha256(_json(case).encode('utf-8')).hexdigest()[:24]}"
+
+
+def _active_manifest_sha256(value: Mapping[str, Any]) -> str:
+    direct = str(value.get("artifact_manifest_sha256") or value.get("manifest_sha256") or "").strip().lower()
+    if direct:
+        return direct
+    provenance = value.get("provenance")
+    if isinstance(provenance, Mapping):
+        artifact = provenance.get("artifact")
+        if isinstance(artifact, Mapping):
+            return str(artifact.get("manifest_sha256") or "").strip().lower()
+    return ""
+
+
+def _manifest_sha256(manifest: Mapping[str, Any]) -> str:
+    payload = {str(key): value for key, value in manifest.items() if str(key) != "manifest_sha256"}
+    return hashlib.sha256(_json(payload).encode("utf-8")).hexdigest()
 
 
 def _sha256_file(path: Path) -> str:
