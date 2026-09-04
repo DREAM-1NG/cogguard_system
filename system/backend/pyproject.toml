@@ -53,6 +53,7 @@ packages = ["app"]
 asyncio_mode = "auto"
 pythonpath = [".."]
 testpaths = ["tests", "../research/social_bot_detection/tests"]
+markers = ["integration: requires disposable external services"]
 
 # The backend is released from the source checkout; sibling research and
 # runtime trees are part of that checkout and are intentionally not bundled in

@@ -155,6 +155,14 @@ uv run python -m pytest tests -q
 不会被静默计入绿色结果。纯内存单元测试不要求这些服务。Ubuntu CI 使用
 workflow service containers；Windows 本地验证使用 `docker compose up -d`。
 
+真实迁移往返只允许使用独立测试库 `MYSQL_DATABASE_TEST`：
+
+```powershell
+$env:COGGUARD_RUN_MIGRATION_ROUNDTRIP = "1"
+python scripts/verify_migration_roundtrip.py
+python scripts/verify_migration_roundtrip.py --check-services
+```
+
 Frontend:
 
 ```powershell
