@@ -394,6 +394,7 @@ let graphReloadTimer: number | null = null
 let datasetDetailRequestGeneration = 0
 let latestResultRequestGeneration = 0
 let graphRequestGeneration = 0
+let communityDetailRequestGeneration = 0
 
 const selectedDataset = computed(() =>
   datasets.value.find((item) => item.dataset_id === selectedDatasetId.value) || null,
@@ -493,6 +494,7 @@ async function selectDataset(datasetId: number) {
   datasetDetailRequestGeneration += 1
   latestResultRequestGeneration += 1
   graphRequestGeneration += 1
+  communityDetailRequestGeneration += 1
   communityDrawerOpen.value = false
   selectedNode.value = null
   communityDetail.value = null
@@ -600,17 +602,30 @@ async function openCommunityDetail(
   options: { preserveSelectedNode?: boolean } = {},
 ) {
   if (!selectedDatasetId.value || clusterId === null || clusterId === undefined) return
+  const requestedDatasetId = selectedDatasetId.value
+  const requestGeneration = ++communityDetailRequestGeneration
   drawerMode.value = 'community'
   communityDrawerOpen.value = true
   loadingCommunity.value = true
   try {
-    const resp = await getCoordinationCommunityDetail(selectedDatasetId.value, clusterId)
+    const resp = await getCoordinationCommunityDetail(requestedDatasetId, clusterId)
+    if (
+      requestGeneration !== communityDetailRequestGeneration
+      || requestedDatasetId !== selectedDatasetId.value
+    ) {
+      return
+    }
     communityDetail.value = resp.data
     if (!options.preserveSelectedNode) {
       selectedNode.value = null
     }
   } finally {
-    loadingCommunity.value = false
+    if (
+      requestGeneration === communityDetailRequestGeneration
+      && requestedDatasetId === selectedDatasetId.value
+    ) {
+      loadingCommunity.value = false
+    }
   }
 }
 
@@ -686,26 +701,29 @@ async function beforeUpload(file: File) {
 
 async function handleRerun() {
   if (!selectedDatasetId.value) return
+  const requestedDatasetId = selectedDatasetId.value
   running.value = true
   try {
-    const resp = await createCoordinationRun(selectedDatasetId.value)
+    const resp = await createCoordinationRun(requestedDatasetId)
     const runId = resp.data?.run_id
     if (!runId) {
       throw new Error('未返回运行任务 ID')
     }
     pollingRunId.value = runId
     message.success(`已提交运行任务 #${runId}`)
-    await loadDatasetDetail(selectedDatasetId.value)
-    startPolling(runId)
+    if (requestedDatasetId !== selectedDatasetId.value) return
+    await loadDatasetDetail(requestedDatasetId)
+    if (requestedDatasetId !== selectedDatasetId.value) return
+    startPolling(runId, requestedDatasetId)
   } catch (error: any) {
     running.value = false
     throw error
   }
 }
 
-function startPolling(runId: number) {
+function startPolling(runId: number, datasetId = selectedDatasetId.value) {
   stopPolling()
-  const requestedDatasetId = selectedDatasetId.value
+  const requestedDatasetId = datasetId
   const loop = async () => {
     try {
       const resp = await getCoordinationRun(runId)

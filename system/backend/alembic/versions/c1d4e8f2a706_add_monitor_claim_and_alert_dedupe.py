@@ -40,6 +40,21 @@ def upgrade() -> None:
         "propagation_alerts",
         sa.Column("open_dedupe_key", sa.String(length=320), nullable=True),
     )
+    op.execute(
+        sa.text(
+            "UPDATE propagation_alerts SET open_dedupe_key = NULL "
+            "WHERE state IN ('new', 'acknowledged')"
+        )
+    )
+    op.execute(
+        sa.text(
+            "UPDATE propagation_alerts SET open_dedupe_key = dedupe_key "
+            "WHERE id IN (SELECT keeper_id FROM ("
+            "SELECT MAX(id) AS keeper_id FROM propagation_alerts "
+            "WHERE state IN ('new', 'acknowledged') GROUP BY dedupe_key"
+            ") AS open_alert_keepers)"
+        )
+    )
     op.create_index(
         "uq_propagation_alerts_open_dedupe_key",
         "propagation_alerts",

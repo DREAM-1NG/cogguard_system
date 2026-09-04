@@ -325,6 +325,8 @@ async def run_monitoring_cycle(
 
     prediction = await _safe_prediction(event_id=profile.event_id, platform=platform, observed_until=reference.isoformat())
     coordination = await _safe_coordination(event_id=profile.event_id, platform=platform)
+    if claim_token is not None and profile.claim_token != claim_token:
+        return {"profile_id": profile.id, "status": "claim_lost", "alerts": []}
     previous_snapshot = _json_loads(profile.last_snapshot_json, {})
     total_items = _analysis_total_items(observed)
     total_nodes = _analysis_total_nodes(observed)

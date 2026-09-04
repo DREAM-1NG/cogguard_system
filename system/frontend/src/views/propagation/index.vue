@@ -2114,6 +2114,7 @@ async function loadAnalysis(showToast = false, preservePrediction = false) {
   const requestGeneration = ++analysisRequestGeneration
   const requestedEventId = eventId.value.trim()
   const requestedPlatform = platform.value.trim()
+  const requestedNodeLimit = requestParams.value.node_limit
   if (!preservePrediction) {
     predictionRequestGeneration += 1
   }
@@ -2124,6 +2125,7 @@ async function loadAnalysis(showToast = false, preservePrediction = false) {
       requestGeneration !== analysisRequestGeneration
       || requestedEventId !== eventId.value.trim()
       || requestedPlatform !== platform.value.trim()
+      || requestedNodeLimit !== requestParams.value.node_limit
     ) {
       return
     }

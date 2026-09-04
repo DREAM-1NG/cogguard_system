@@ -9,12 +9,14 @@ const propagationView = readFileSync(resolve(frontendRoot, 'src/views/propagatio
 const coordinationView = readFileSync(resolve(frontendRoot, 'src/views/coordination/index.vue'), 'utf8')
 
 function functionBody(source, name) {
-  const start = Math.max(
+  const candidates = [
     source.indexOf(`async function ${name}`),
     source.indexOf(`function ${name}`),
-  )
+  ].filter((index) => index >= 0)
+  const start = candidates.length ? Math.min(...candidates) : -1
   assert.notEqual(start, -1, `Expected ${name} to exist`)
-  const brace = source.indexOf('{', start)
+  const signatureEnd = source.indexOf(') {', start)
+  const brace = signatureEnd >= 0 ? signatureEnd + 2 : source.indexOf('{', start)
   let depth = 0
   for (let index = brace; index < source.length; index += 1) {
     const char = source[index]
@@ -229,6 +231,27 @@ test('dataset selection clears prior projections and always starts latest-result
 test('coordination polling ignores runs belonging to a superseded dataset', () => {
   const pollingBody = functionBody(coordinationView, 'startPolling')
 
-  assert.match(pollingBody, /requestedDatasetId\s*=\s*selectedDatasetId\.value/)
+  assert.match(pollingBody, /requestedDatasetId\s*=\s*datasetId/)
   assert.match(pollingBody, /requestedDatasetId\s*!==\s*selectedDatasetId\.value/)
+})
+
+test('community detail requests are scoped to the active dataset and request generation', () => {
+  const source = coordinationView
+  const start = source.indexOf('async function openCommunityDetail')
+  assert.notEqual(start, -1)
+  const body = functionBody(source, 'openCommunityDetail')
+
+  assert.match(source, /let communityDetailRequestGeneration\s*=\s*0/)
+  assert.match(body, /requestedDatasetId\s*=\s*selectedDatasetId\.value/)
+  assert.match(body, /communityDetailRequestGeneration/)
+  assert.match(body, /requestedDatasetId\s*!==\s*selectedDatasetId\.value/)
+})
+
+test('rerun polling remains bound to the dataset that submitted the run', () => {
+  const body = functionBody(coordinationView, 'handleRerun')
+
+  assert.match(body, /requestedDatasetId\s*=\s*selectedDatasetId\.value/)
+  assert.match(body, /createCoordinationRun\(requestedDatasetId\)/)
+  assert.match(body, /startPolling\(runId,\s*requestedDatasetId\)/)
+  assert.match(body, /await loadDatasetDetail\(requestedDatasetId\)[\s\S]*selectedDatasetId\.value/)
 })

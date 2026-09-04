@@ -133,7 +133,7 @@ class PropagationMonitoring:
         try:
             return copy.deepcopy(await task)
         finally:
-            if task.done():
+            if task.done() and self._observed_in_flight.get(key) is task:
                 self._observed_in_flight.pop(key, None)
 
     async def forecast(
@@ -242,8 +242,14 @@ async def _read_shared_revision(*, platform: str, event_id: str) -> str:
     try:
         from app.db.redis import get_redis
 
-        value = await get_redis().get(_revision_key(platform=platform, event_id=event_id))
-        return str(value or "0")
+        client = get_redis()
+        values = await asyncio.gather(
+            client.get(_revision_key(platform=platform, event_id=event_id)),
+            client.get(_revision_key(platform="", event_id=event_id)),
+            client.get(_revision_key(platform=platform, event_id="")),
+            client.get(_revision_key(platform="", event_id="")),
+        )
+        return ":".join(str(value or "0") for value in values)
     except Exception:
         return "unavailable"
 

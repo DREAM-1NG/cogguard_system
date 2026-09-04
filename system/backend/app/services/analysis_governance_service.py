@@ -578,8 +578,12 @@ def verify_registered_artifact(
     if not artifact_is_directory:
         checkpoint_path = artifact_path
         declared_path = str(manifest.get("checkpoint_path") or "").strip()
-        if declared_path and Path(declared_path).name != checkpoint_path.name:
-            raise ValueError("Model manifest checkpoint path does not match the artifact file")
+        if technology == "review_student" and declared_path:
+            declared_checkpoint = Path(declared_path).expanduser()
+            if not declared_checkpoint.is_absolute():
+                declared_checkpoint = artifact_path.parent / declared_checkpoint
+            if declared_checkpoint.resolve() != checkpoint_path.resolve():
+                raise ValueError("Model manifest checkpoint path does not match the artifact file")
     else:
         relative_checkpoint = str(manifest.get("checkpoint_path") or "checkpoint.pt").strip()
         checkpoint_path = (artifact_path / relative_checkpoint).resolve(strict=True)

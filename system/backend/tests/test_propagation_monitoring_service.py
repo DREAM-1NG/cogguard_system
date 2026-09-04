@@ -221,6 +221,7 @@ def test_monitoring_claim_and_alert_dedupe_columns_have_an_alembic_migration():
     assert 'sa.Column("claim_expires_at"' in migration_sources
     assert 'sa.Column("open_dedupe_key"' in migration_sources
     assert '"uq_propagation_alerts_open_dedupe_key"' in migration_sources
+    assert "UPDATE propagation_alerts" in migration_sources
 
 
 def test_monitor_window_uses_snapshot_deltas_and_keeps_three_previous_windows():
