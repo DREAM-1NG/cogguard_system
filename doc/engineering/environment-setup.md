@@ -29,9 +29,14 @@ MYSQL_PASSWORD=<database password>
 MYSQL_ROOT_PASSWORD=<database root password>
 MONGO_PASSWORD=<database password>
 REDIS_PASSWORD=<database password>
+# Dedicated disposable database used only by migration round-trip validation.
+MYSQL_DATABASE_TEST=cogguard_migration_test
 ```
 
 Do not commit `system/.env`, crawler cookies, API keys, or provider credentials.
+`MYSQL_DATABASE_TEST` must be a dedicated disposable database and must differ
+from `MYSQL_DATABASE`; the migration gate refuses to run when the two names are
+equal.
 
 ## Infrastructure
 
@@ -141,6 +146,7 @@ Backend:
 cd system\backend
 uv run python -m pytest tests -q
 uv run python -m alembic current
+uv run python scripts/verify_product_contract.py
 ```
 
 默认测试模式允许在本机未启动 MySQL 时对数据库集成用例做明确原因的
@@ -158,10 +164,25 @@ workflow service containers；Windows 本地验证使用 `docker compose up -d`�
 真实迁移往返只允许使用独立测试库 `MYSQL_DATABASE_TEST`：
 
 ```powershell
+$env:MYSQL_DATABASE_TEST = "cogguard_migration_test"
+$env:COGGUARD_REQUIRE_EXTERNAL_SERVICES = "1"
 $env:COGGUARD_RUN_MIGRATION_ROUNDTRIP = "1"
-python scripts/verify_migration_roundtrip.py
 python scripts/verify_migration_roundtrip.py --check-services
+python scripts/verify_migration_roundtrip.py
 ```
+
+The database must already exist and be disposable, with the configured
+`MYSQL_USER` granted access to it. The command runs
+`alembic upgrade head`, `alembic downgrade base`, and `alembic upgrade head`,
+then inspects the final head and monitoring/model-governance tables and
+indexes. It never targets `MYSQL_DATABASE`. `--check-services` performs real
+MySQL, MongoDB, and Redis readiness checks and reports each configured
+host/port and the connection failure reason; it does not report a service as
+ready based on configuration alone.
+
+When `COGGUARD_REQUIRE_EXTERNAL_SERVICES` is unset, an unreachable MySQL test
+database produces an explicit local `SKIP`. Strict mode (`=1`, or another
+truthy value) exits non-zero so CI cannot silently pass without MySQL.
 
 Frontend:
 

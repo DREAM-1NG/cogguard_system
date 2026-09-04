@@ -10,6 +10,15 @@ Canonical capabilities:
 - `Review`
 - `Crawler`
 
+Current API contract prefixes:
+
+- `/api/v1/auth`, `/api/v1/crawl`, `/api/v1/coordination`,
+  `/api/v1/propagation`, `/api/v1/accounts`, `/api/v1/dashboard`, and
+  `/api/v1/risk` are current capability APIs; only individually deprecated
+  routes are legacy.
+- `/api/v2/review-cases`, `/api/v2/analysis`, `/api/v2/governance`, and
+  `/api/v2/system` are current case, analysis, governance, and operations APIs.
+
 ## Directory Layout
 
 ```text
@@ -138,6 +147,17 @@ From `system/backend/`, run:
 ```powershell
 python scripts/prototype_acceptance.py
 ```
+
+For the complete current-product contract smoke, run:
+
+```powershell
+python scripts/verify_product_contract.py
+```
+
+This command uses only deterministic fixtures and temporary artifacts. It
+checks Event Snapshot, Coordination Discover fallback, Propagation Analysis
+abstain behavior, Student/Teacher review projections, and the product/internal
+field split. It is not a production infrastructure test or a research claim.
 
 The command uses an isolated fixture and temporary working directory. It does not create labels, activate any capability, persist database rows, or modify the frontend. Expected output explicitly reports strict Leiden, propagation fallback/abstain, and review advisory/confirmation boundaries.
 
