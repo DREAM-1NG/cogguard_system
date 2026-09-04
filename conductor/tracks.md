@@ -2,7 +2,7 @@
 
 | Track | Type | Priority | Status | Target |
 | --- | --- | --- | --- | --- |
-| [final-architecture](tracks/final-architecture/index.md) | refactor/stabilization | P0 | in progress | `release-0.2` |
+| [final-architecture](tracks/final-architecture/index.md) | refactor/stabilization | P0 | complete | `release-0.2` |
 
 ## Status Rules
 

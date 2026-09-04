@@ -35,7 +35,7 @@
 - 最终整改提交序列收口至 `9772d9c`；最终 branch review verdict 为 `Ready to merge`，无 Critical/Important findings。
 - 全量验证：backend `655 passed, 19 skipped`；frontend `21 passed`；`npm run build` 与 chunk guard 通过；Alembic 单 head 为 `c1d4e8f2a706`，offline SQL、release surface、requirements export 和 `git diff --check` 通过。
 - 保留的 19 个 skips 均为明确的外部数据库、队列、GPU、模型或环境条件测试，不作为本地绿色基线失败。
-- 下一步：推送 `cleanup/final-architecture`，创建目标为 `release-0.2` 的 PR，不自动合并。
+- PR #1 已从 `cleanup/final-architecture` 创建，目标为 `release-0.2`，保持 OPEN，等待维护者审阅，不自动合并。
 
 ## 2026-09-02 Final Architecture Context
 
