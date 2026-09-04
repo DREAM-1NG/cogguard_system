@@ -188,7 +188,9 @@ jobs:
           fi
           python - <<'PY'
           import pathlib, re, subprocess, sys
-          pattern = re.compile(r"(?:JWT_SECRET_KEY|DEFAULT_ADMIN_PASSWORD)\s*=\s*['\"]?([^\s'\"]*)")
+          pattern = re.compile(
+              r"(?:JWT_SECRET_KEY|DEFAULT_ADMIN_PASSWORD)\s*(?:=\s*|:\s*(?!str\b))['\"]?([^\s'\"]*)"
+          )
           offenders = []
           paths = subprocess.check_output(["git", "ls-files"], text=True).splitlines()
           for name in paths:
