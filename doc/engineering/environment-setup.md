@@ -189,7 +189,9 @@ Frontend:
 ```powershell
 cd system\frontend
 npm test
+npm run test:component
 npm run build
+npm run build:smoke
 ```
 
 The frontend build enforces a local map payload below 2 MB and every generated JavaScript chunk below 1 MB.

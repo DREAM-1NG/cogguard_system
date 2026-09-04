@@ -214,6 +214,8 @@ uv export --frozen --extra dev --no-hashes --format requirements-txt --output-fi
 
 cd ..\frontend
 npm run build
+npm run test:component
+npm run build:smoke
 ```
 
 `npm run build` runs `vue-tsc -b` before the Vite production build.
