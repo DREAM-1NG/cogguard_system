@@ -259,8 +259,80 @@
             </a-table>
           </a-card>
         </template>
-        <a-empty v-else :description="predictionEmptyDescription" :image-style="{ height: '48px' }" />
+        <a-empty v-else description="暂无趋势预测结果" :image-style="{ height: '48px' }" />
         </a-spin>
+      </a-tab-pane>
+
+      <a-tab-pane key="alerts" tab="预警处置">
+        <a-row :gutter="16">
+          <a-col :xs="24" :xl="16">
+            <a-card size="small" title="传播预警" :loading="alertsLoading">
+              <template #extra>
+                <a-button size="small" @click="loadPropagationAlerts">刷新</a-button>
+              </template>
+              <a-table
+                :columns="alertColumns"
+                :data-source="propagationAlerts"
+                :pagination="false"
+                size="small"
+                rowKey="id"
+              >
+                <template #bodyCell="{ column, record }">
+                  <template v-if="column.key === 'severity'">
+                    <a-tag :color="alertSeverityColor(record as MonitoringAlert)">{{ (record as MonitoringAlert).severity_label }}</a-tag>
+                  </template>
+                  <template v-else-if="column.key === 'state'">
+                    <a-tag :color="alertStateColor(record as MonitoringAlert)">{{ (record as MonitoringAlert).state_label }}</a-tag>
+                  </template>
+                  <template v-else-if="column.key === 'time'">
+                    {{ formatTimestamp((record as MonitoringAlert).last_triggered_at) }}
+                  </template>
+                  <template v-else-if="column.key === 'owner'">
+                    {{ (record as MonitoringAlert).assigned_to ? `用户 ${(record as MonitoringAlert).assigned_to}` : '--' }}
+                  </template>
+                  <template v-else-if="column.key === 'action'">
+                    <a-button size="small" type="link" @click="openAlertDetail(record as MonitoringAlert)">查看处置</a-button>
+                  </template>
+                </template>
+              </a-table>
+              <a-empty v-if="!propagationAlerts.length && !alertsLoading" description="暂无待处置传播预警" :image-style="{ height: '40px' }" />
+            </a-card>
+          </a-col>
+          <a-col :xs="24" :xl="8">
+            <a-card size="small" title="监测配置" :loading="monitorProfileLoading">
+              <a-form layout="vertical" size="small">
+                <a-form-item label="监测状态">
+                  <a-switch v-model:checked="monitorConfig.enabled" checked-children="启用" un-checked-children="停用" :disabled="!canManageMonitor" />
+                </a-form-item>
+                <a-form-item label="检查间隔（分钟）">
+                  <a-input-number v-model:value="monitorConfig.intervalMinutes" :min="1" :max="1440" style="width: 100%" :disabled="!canManageMonitor" />
+                </a-form-item>
+                <a-form-item label="传播突增">
+                  <a-space compact>
+                    <a-input-number v-model:value="monitorConfig.surgeMinimumItems" :min="1" :disabled="!canManageMonitor" />
+                    <a-input-number v-model:value="monitorConfig.surgeMultiplier" :min="1" :step="0.1" :disabled="!canManageMonitor" />
+                  </a-space>
+                </a-form-item>
+                <a-form-item label="预测规模跃升">
+                  <a-space compact>
+                    <a-input-number v-model:value="monitorConfig.forecastMultiplier" :min="1" :step="0.1" :disabled="!canManageMonitor" />
+                    <a-input-number v-model:value="monitorConfig.forecastMinimumIncrement" :min="1" :disabled="!canManageMonitor" />
+                  </a-space>
+                </a-form-item>
+                <a-form-item label="路径结构变化">
+                  <a-space compact>
+                    <a-input-number v-model:value="monitorConfig.depthIncrease" :min="1" :disabled="!canManageMonitor" />
+                    <a-input-number v-model:value="monitorConfig.minimumNewNodes" :min="1" :disabled="!canManageMonitor" />
+                  </a-space>
+                </a-form-item>
+                <a-form-item label="协同传播">
+                  <a-input-number v-model:value="monitorConfig.minimumGroupAccounts" :min="2" :disabled="!canManageMonitor" style="width: 100%" />
+                </a-form-item>
+                <a-button type="primary" block :loading="monitorProfileSaving" :disabled="!canManageMonitor || !eventId.trim()" @click="savePropagationMonitorProfile">保存配置</a-button>
+              </a-form>
+            </a-card>
+          </a-col>
+        </a-row>
       </a-tab-pane>
     </a-tabs>
 
@@ -402,6 +474,9 @@
           <a-descriptions-item label="研判类型">{{ nextHopAssessmentLabel(selectedNextHopUser) }}</a-descriptions-item>
           <a-descriptions-item label="候选分数">{{ formatScore(selectedNextHopUser.score) }}</a-descriptions-item>
           <a-descriptions-item label="候选来源">{{ candidateSourceLabel(selectedNextHopUser.candidate_source) }}</a-descriptions-item>
+          <a-descriptions-item label="全部候选来源">
+            {{ (selectedNextHopUser.candidate_sources || []).map(candidateSourceLabel).join('、') || '--' }}
+          </a-descriptions-item>
           <a-descriptions-item label="身份映射">{{ identityResolutionLabel(selectedNextHopUser.identity_resolution) }}</a-descriptions-item>
           <a-descriptions-item label="同桶候选数">{{ selectedNextHopUser.bucket_collision_size ?? 1 }}</a-descriptions-item>
           <a-descriptions-item label="当前事件出现次数">{{ selectedNextHopUser.event_count ?? 0 }}</a-descriptions-item>
@@ -432,16 +507,77 @@
         <a-empty v-else description="暂无关联记录" :image-style="{ height: '32px' }" />
       </template>
     </a-drawer>
+
+    <a-drawer v-model:open="alertDetailOpen" width="680" title="传播预警处置" placement="right">
+      <template v-if="selectedAlert">
+        <a-descriptions size="small" :column="1" bordered style="margin-bottom: 16px">
+          <a-descriptions-item label="预警类型">{{ selectedAlert.alert_type_label }}</a-descriptions-item>
+          <a-descriptions-item label="等级">{{ selectedAlert.severity_label }}</a-descriptions-item>
+          <a-descriptions-item label="状态">{{ selectedAlert.state_label }}</a-descriptions-item>
+          <a-descriptions-item label="触发时间">{{ formatTimestamp(selectedAlert.last_triggered_at) }}</a-descriptions-item>
+          <a-descriptions-item label="触发次数">{{ selectedAlert.trigger_count }}</a-descriptions-item>
+          <a-descriptions-item label="负责人">{{ selectedAlert.assigned_to ? `用户 ${selectedAlert.assigned_to}` : '--' }}</a-descriptions-item>
+          <a-descriptions-item label="触发信号">{{ alertSignalLabels(selectedAlert) }}</a-descriptions-item>
+        </a-descriptions>
+
+        <div class="section-title">证据快照</div>
+        <a-space wrap style="margin-bottom: 16px">
+          <a-tag v-for="signal in alertSignals(selectedAlert)" :key="signal" color="blue">{{ signal }}</a-tag>
+        </a-space>
+        <a-space wrap style="margin-bottom: 16px">
+          <a-button size="small" @click="navigateAlert('path')">传播路径</a-button>
+          <a-button size="small" @click="navigateAlert('timeline')">时间线</a-button>
+          <a-button size="small" @click="navigateAlert('objects')">传播对象</a-button>
+          <a-button size="small" @click="navigateAlert('model')">趋势预测</a-button>
+          <a-button size="small" @click="navigateAlert('coordination')">协同检测</a-button>
+        </a-space>
+
+        <template v-if="selectedAlert.state !== 'closed'">
+          <div class="section-title drawer-section">处置备注</div>
+          <a-textarea v-model:value="alertActionNote" :rows="3" :maxlength="2000" />
+          <a-space style="margin-top: 12px">
+            <a-button size="small" type="primary" :loading="alertActionLoading" @click="handleAlertAction('acknowledge')">确认</a-button>
+            <a-button size="small" :loading="alertActionLoading" @click="handleAlertAction('ignore')">忽略</a-button>
+            <a-button size="small" danger :loading="alertActionLoading" @click="handleAlertAction('close')">关闭</a-button>
+          </a-space>
+        </template>
+
+        <div class="section-title drawer-section">处置记录</div>
+        <a-list v-if="selectedAlert.actions?.length" :dataSource="selectedAlert.actions" size="small">
+          <template #renderItem="{ item }">
+            <a-list-item>
+              <div>
+                <strong>{{ alertActionLabel(item.action) }}</strong>
+                <span class="timeline-time">用户 {{ item.actor_id }} · {{ formatTimestamp(item.created_at) }}</span>
+                <p v-if="item.note" class="timeline-content">{{ item.note }}</p>
+              </div>
+            </a-list-item>
+          </template>
+        </a-list>
+        <a-empty v-else description="暂无处置记录" :image-style="{ height: '32px' }" />
+      </template>
+    </a-drawer>
   </div>
 </template>
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
 import * as echarts from 'echarts'
 import type { EChartsOption } from 'echarts'
-import { analyzeObservedPropagation, predictPropagationCurrentEvent } from '@/api/propagation'
+import {
+  analyzeObservedPropagation,
+  getPropagationAlertDetail,
+  getPropagationAlerts,
+  getPropagationMonitorProfiles,
+  postPropagationAlertAction,
+  predictPropagationCurrentEvent,
+  putPropagationMonitorProfile,
+  type PropagationAlert,
+  type PropagationMonitorProfile,
+} from '@/api/propagation'
 import PageHeader from '@/components/PageHeader.vue'
+import { useAuthStore } from '@/stores/auth'
 
 const DEFAULT_EVENT_ID = 'trump_visit_2026_05_21'
 
@@ -653,6 +789,7 @@ type AnalysisResult = {
 
 type ModelTrendPoint = {
   step: number | string
+  horizon_hours?: number
   predicted_size: number
   at?: string
   timestamp?: string
@@ -685,6 +822,7 @@ type NextHopUser = {
   author_name?: string
   score?: number
   candidate_source?: string
+  candidate_sources?: string[]
   event_count?: number
   first_seen_at?: string
   last_seen_at?: string
@@ -696,6 +834,20 @@ type NextHopUser = {
   identity_resolution?: string
   score_semantics?: string
   bucket_collision_size?: number
+}
+
+type MonitoringAlert = PropagationAlert
+
+type MonitorConfig = {
+  enabled: boolean
+  intervalMinutes: number
+  surgeMinimumItems: number
+  surgeMultiplier: number
+  forecastMultiplier: number
+  forecastMinimumIncrement: number
+  depthIncrease: number
+  minimumNewNodes: number
+  minimumGroupAccounts: number
 }
 
 type PredictionCoverage = {
@@ -822,6 +974,7 @@ function normalizeTrendPoints(value: unknown): ModelTrendPoint[] {
     if (predictedSize === undefined) return []
     return [{
       step: (item.step ?? item.index ?? index + 1) as number | string,
+      horizon_hours: firstFiniteNumber(item.horizon_hours),
       predicted_size: predictedSize,
       at: typeof item.at === 'string' ? item.at : typeof item.time === 'string' ? item.time : undefined,
       timestamp: typeof item.timestamp === 'string' ? item.timestamp : typeof item.date === 'string' ? item.date : undefined,
@@ -872,6 +1025,9 @@ function normalizePredictionResponse(value: unknown): EventModelPrediction | nul
       author_name: String(item.author_name ?? item.username ?? item.name ?? authorId),
       score: firstFiniteNumber(item.score, item.probability, item.value),
       candidate_source: typeof item.candidate_source === 'string' ? item.candidate_source : undefined,
+      candidate_sources: Array.isArray(item.candidate_sources)
+        ? item.candidate_sources.filter((source): source is string => typeof source === 'string')
+        : [],
       event_count: firstFiniteNumber(item.event_count, item.count),
       first_seen_at: typeof item.first_seen_at === 'string' ? item.first_seen_at : undefined,
       last_seen_at: typeof item.last_seen_at === 'string' ? item.last_seen_at : undefined,
@@ -940,7 +1096,7 @@ function hasPredictionOutput(result: EventModelPrediction | null) {
   if (!result) return false
   if (result.model?.scope && result.model.scope !== 'current_event') return false
   const status = `${String(result.status || '')} ${String(result.model_status || '')}`.toLowerCase()
-  if (/(error|failed|unavailable|missing|insufficient|abstain)/.test(status)) return false
+  if (/(error|failed|unavailable|missing|insufficient)/.test(status)) return false
   const macro = result.macro
   const micro = result.micro
   return Boolean(
@@ -1003,6 +1159,16 @@ const selectedNodeDetail = ref<DiffusionNodeDetail | null>(null)
 const nodeDetailOpen = ref(false)
 const selectedNextHopUser = ref<NextHopUser | null>(null)
 const nextHopDetailOpen = ref(false)
+const propagationAlerts = ref<MonitoringAlert[]>([])
+const selectedAlert = ref<MonitoringAlert | null>(null)
+const alertDetailOpen = ref(false)
+const alertsLoading = ref(false)
+const alertActionLoading = ref(false)
+const alertActionNote = ref('')
+const monitorProfileLoading = ref(false)
+const monitorProfileSaving = ref(false)
+const monitorProfile = ref<PropagationMonitorProfile | null>(null)
+const monitorConfig = ref<MonitorConfig>(defaultMonitorConfig())
 const lastSyncedAt = ref('')
 const eventId = ref(DEFAULT_EVENT_ID)
 const platform = ref('')
@@ -1016,6 +1182,8 @@ const diffusionNodeLimit = ref(DEFAULT_DIFFUSION_NODE_LIMIT)
 const diffusionPendingNodeLimit = ref(DEFAULT_DIFFUSION_NODE_LIMIT)
 const diffusionFullViewRequested = ref(false)
 const route = useRoute()
+const router = useRouter()
+const authStore = useAuthStore()
 const layerChartRef = ref<HTMLDivElement | null>(null)
 const pathGraphRef = ref<HTMLDivElement | null>(null)
 const modelTrendChartRef = ref<HTMLDivElement | null>(null)
@@ -1158,14 +1326,7 @@ const modelPredictionReady = computed(() => {
   return hasPredictionOutput(modelPrediction.value)
 })
 
-const predictionEmptyDescription = computed(() => {
-  const status = `${String(modelPrediction.value?.status || '')} ${String(modelPrediction.value?.model_status || '')}`.toLowerCase()
-  if (/(abstain|insufficient)/.test(status)) return '当前事件数据不足，暂无法生成趋势预测'
-  if (/(unavailable|missing)/.test(status)) return '预测模型暂不可用'
-  if (/(error|failed)/.test(status)) return '模型推理失败，请稍后重试'
-  if (modelPrediction.value?.note) return modelPrediction.value.note
-  return predicting.value ? '正在生成趋势预测' : '暂无趋势预测结果'
-})
+const canManageMonitor = computed(() => authStore.userInfo?.role === 'admin')
 
 const modelForecastCards = computed(() => {
   if (!modelPredictionReady.value) {
@@ -1182,9 +1343,9 @@ const modelForecastCards = computed(() => {
     },
     {
       key: 'predicted',
-      label: '预测最终规模',
+      label: '24小时预测规模',
       value: formatNumber(macro.predicted_size),
-      extra: `参考数据：${modelPrediction.value?.model?.dataset || 'twitter'}`,
+      extra: `模型版本：${modelPrediction.value?.model?.name || '--'}`,
     },
     {
       key: 'candidate',
@@ -1249,6 +1410,43 @@ const nextHopColumns = computed(() => [
   },
 ])
 
+const alertColumns = computed(() => [
+  {
+    title: '预警类型',
+    dataIndex: 'alert_type_label',
+    key: 'type',
+  },
+  {
+    title: '等级',
+    key: 'severity',
+    width: 86,
+  },
+  {
+    title: '触发信号',
+    dataIndex: 'trigger_count',
+    customRender: ({ record }: { record: MonitoringAlert }) => `${record.trigger_count} 次`,
+  },
+  {
+    title: '最近触发',
+    key: 'time',
+  },
+  {
+    title: '状态',
+    key: 'state',
+    width: 92,
+  },
+  {
+    title: '负责人',
+    key: 'owner',
+    width: 108,
+  },
+  {
+    title: '操作',
+    key: 'action',
+    width: 100,
+  },
+])
+
 function formatRatio(value?: number | null) {
   if (value == null || Number.isNaN(value)) {
     return '--'
@@ -1263,7 +1461,7 @@ function ratioPercent(value?: number | null) {
   return Math.round(Number(value) * 1000) / 10
 }
 
-function formatTimestamp(value?: string) {
+function formatTimestamp(value?: string | null) {
   if (!value) {
     return '--'
   }
@@ -1296,6 +1494,11 @@ function candidateSourceLabel(value?: string) {
     observed_comment: '当前事件评论用户',
     comment_interaction: '评论互动邻居',
     shared_object: '同共享对象参与者',
+    event_participant: '事件参与账户',
+    explicit_interaction_neighbor: '显式互动邻居',
+    shared_object_participant: '共享对象参与账户',
+    coordination_account: '协同传播账户',
+    historical_interaction_account: '历史互动账户',
   }
   return labels[value || ''] || value || '--'
 }
@@ -1360,6 +1563,206 @@ function nextHopRowProps(record: NextHopUser) {
 function openNextHopTrace(record: NextHopUser) {
   selectedNextHopUser.value = record
   nextHopDetailOpen.value = true
+}
+
+function alertSeverityColor(alert: MonitoringAlert) {
+  const colors: Record<string, string> = {
+    medium: 'gold',
+    high: 'orange',
+    critical: 'red',
+  }
+  return colors[alert.severity] || 'blue'
+}
+
+function alertStateColor(alert: MonitoringAlert) {
+  const colors: Record<string, string> = {
+    new: 'red',
+    acknowledged: 'blue',
+    closed: 'default',
+    ignored: 'default',
+  }
+  return colors[alert.state] || 'default'
+}
+
+function alertActionLabel(action?: string) {
+  const labels: Record<string, string> = {
+    acknowledge: '确认',
+    close: '关闭',
+    ignore: '忽略',
+  }
+  return labels[action || ''] || action || '--'
+}
+
+function alertSignals(alert: MonitoringAlert) {
+  const raw = alert.evidence?.signals
+  if (!Array.isArray(raw)) return []
+  return raw.map((signal) => {
+    if (!isRecord(signal)) return String(signal)
+    return String(signal.label || signal.type || '').trim()
+  }).filter(Boolean)
+}
+
+function alertSignalLabels(alert: MonitoringAlert) {
+  return alertSignals(alert).join('、') || '--'
+}
+
+function defaultMonitorConfig(): MonitorConfig {
+  return {
+    enabled: true,
+    intervalMinutes: 5,
+    surgeMinimumItems: 10,
+    surgeMultiplier: 2,
+    forecastMultiplier: 1.5,
+    forecastMinimumIncrement: 20,
+    depthIncrease: 1,
+    minimumNewNodes: 10,
+    minimumGroupAccounts: 3,
+  }
+}
+
+function thresholdNumber(
+  profile: PropagationMonitorProfile,
+  signal: string,
+  field: string,
+  fallback: number,
+) {
+  const value = Number(profile.thresholds?.[signal]?.[field])
+  return Number.isFinite(value) ? value : fallback
+}
+
+async function loadPropagationMonitorProfile() {
+  const event = eventId.value.trim()
+  if (!event) return
+  monitorProfileLoading.value = true
+  try {
+    const response = await getPropagationMonitorProfiles({ event_id: event })
+    const normalizedPlatform = platform.value.trim().toLowerCase()
+    const profile = (response.data || []).find((item) => String(item.platform || '').toLowerCase() === normalizedPlatform) || null
+    monitorProfile.value = profile
+    const fallback = defaultMonitorConfig()
+    if (!profile) {
+      monitorConfig.value = fallback
+      return
+    }
+    monitorConfig.value = {
+      enabled: profile.enabled,
+      intervalMinutes: profile.interval_minutes,
+      surgeMinimumItems: thresholdNumber(profile, 'propagation_surge', 'minimum_new_items', fallback.surgeMinimumItems),
+      surgeMultiplier: thresholdNumber(profile, 'propagation_surge', 'median_multiplier', fallback.surgeMultiplier),
+      forecastMultiplier: thresholdNumber(profile, 'forecast_scale_jump', 'growth_multiplier', fallback.forecastMultiplier),
+      forecastMinimumIncrement: thresholdNumber(profile, 'forecast_scale_jump', 'minimum_increment', fallback.forecastMinimumIncrement),
+      depthIncrease: thresholdNumber(profile, 'path_structure_change', 'minimum_depth_increase', fallback.depthIncrease),
+      minimumNewNodes: thresholdNumber(profile, 'path_structure_change', 'minimum_new_nodes', fallback.minimumNewNodes),
+      minimumGroupAccounts: thresholdNumber(profile, 'coordination_spread', 'minimum_group_accounts', fallback.minimumGroupAccounts),
+    }
+  } catch {
+    monitorProfile.value = null
+  } finally {
+    monitorProfileLoading.value = false
+  }
+}
+
+async function savePropagationMonitorProfile() {
+  const event = eventId.value.trim()
+  if (!event || !canManageMonitor.value) return
+  const config = monitorConfig.value
+  monitorProfileSaving.value = true
+  try {
+    const response = await putPropagationMonitorProfile({
+      event_id: event,
+      platform: platform.value.trim() || undefined,
+      enabled: config.enabled,
+      interval_minutes: Math.max(1, Math.floor(config.intervalMinutes)),
+      thresholds: {
+        propagation_surge: {
+          minimum_new_items: Math.max(1, Math.floor(config.surgeMinimumItems)),
+          median_multiplier: Math.max(1, config.surgeMultiplier),
+        },
+        forecast_scale_jump: {
+          growth_multiplier: Math.max(1, config.forecastMultiplier),
+          minimum_increment: Math.max(1, Math.floor(config.forecastMinimumIncrement)),
+        },
+        path_structure_change: {
+          minimum_depth_increase: Math.max(1, Math.floor(config.depthIncrease)),
+          minimum_new_nodes: Math.max(1, Math.floor(config.minimumNewNodes)),
+        },
+        coordination_spread: {
+          minimum_group_accounts: Math.max(2, Math.floor(config.minimumGroupAccounts)),
+        },
+      },
+    })
+    monitorProfile.value = response.data
+    message.success('监测配置已保存')
+  } finally {
+    monitorProfileSaving.value = false
+  }
+}
+
+async function loadPropagationAlerts() {
+  alertsLoading.value = true
+  try {
+    const response = await getPropagationAlerts({
+      event_id: eventId.value.trim() || undefined,
+      platform: platform.value.trim() || undefined,
+      unresolved_only: true,
+      limit: 100,
+    })
+    propagationAlerts.value = Array.isArray(response.data) ? response.data : []
+  } catch {
+    propagationAlerts.value = []
+  } finally {
+    alertsLoading.value = false
+  }
+}
+
+async function openAlertDetail(alert: MonitoringAlert) {
+  selectedAlert.value = alert
+  alertActionNote.value = ''
+  alertDetailOpen.value = true
+  try {
+    const response = await getPropagationAlertDetail(alert.id)
+    selectedAlert.value = response.data
+  } catch {
+    // Keep the list payload visible if the detail request is transiently unavailable.
+  }
+}
+
+async function handleAlertAction(action: 'acknowledge' | 'close' | 'ignore') {
+  const alert = selectedAlert.value
+  if (!alert) return
+  alertActionLoading.value = true
+  try {
+    await postPropagationAlertAction(alert.id, { action, note: alertActionNote.value.trim() || undefined })
+    message.success(`${alertActionLabel(action)}已记录`)
+    alertActionNote.value = ''
+    await loadPropagationAlerts()
+    await openAlertDetail(alert)
+  } finally {
+    alertActionLoading.value = false
+  }
+}
+
+async function navigateAlert(target: 'path' | 'timeline' | 'objects' | 'model' | 'coordination') {
+  const alert = selectedAlert.value
+  if (alert) {
+    eventId.value = alert.event_id
+    platform.value = alert.platform || ''
+    observedUntil.value = undefined
+    await loadAnalysis(false, true)
+  }
+  if (target === 'coordination') {
+    await router.push({
+      path: '/coordination',
+      query: {
+        event_id: alert?.event_id,
+        platform: alert?.platform || undefined,
+      },
+    })
+    return
+  }
+  activeTab.value = target
+  await nextTick()
+  await renderActiveTabCharts()
 }
 
 async function locateNextHopOnPath(record: NextHopUser) {
@@ -1504,7 +1907,7 @@ function buildModelTrendOption(): EChartsOption {
     ? macro.observed_points
     : [{ step: '观测截止', predicted_size: observedSize }]
   const trendPoints = (Array.isArray(macro.trend_points) ? macro.trend_points : []).map((item, index) => ({
-    label: (item.at || item.timestamp) ? formatTimestamp(item.at || item.timestamp) : `预测 ${item.step || index + 1}`,
+    label: item.horizon_hours ? `${item.horizon_hours}小时后` : (item.at || item.timestamp) ? formatTimestamp(item.at || item.timestamp) : `预测 ${item.step || index + 1}`,
     value: Number(item.predicted_size ?? 0),
   }))
   if (!trendPoints.length && macro.predicted_size != null) {
@@ -2144,6 +2547,8 @@ async function handlePredict() {
 onMounted(() => {
   syncScopeFromRoute()
   void loadAnalysis(false)
+  void loadPropagationAlerts()
+  void loadPropagationMonitorProfile()
   window.addEventListener('resize', resizeCharts)
 })
 
@@ -2155,6 +2560,8 @@ watch(
     diffusionNodeLimit.value = DEFAULT_DIFFUSION_NODE_LIMIT
     diffusionPendingNodeLimit.value = DEFAULT_DIFFUSION_NODE_LIMIT
     void loadAnalysis(false)
+    void loadPropagationAlerts()
+    void loadPropagationMonitorProfile()
   },
 )
 
@@ -2172,6 +2579,11 @@ watch(diffusionSummary, () => {
 })
 
 watch(activeTab, (tab) => {
+  if (tab === 'alerts') {
+    void loadPropagationAlerts()
+    void loadPropagationMonitorProfile()
+    return
+  }
   if (tab === 'model' && eventId.value.trim() && !modelPredictionReady.value && !predicting.value) {
     void handlePredict()
     return

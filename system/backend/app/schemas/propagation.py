@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 
 class TrendPoint(BaseModel):
     step: int
+    horizon_hours: int | None = None
     at: str | None = None
     predicted_size: int
 
@@ -37,6 +38,7 @@ class NextHopUser(BaseModel):
     author_name: str
     score: float
     candidate_source: str
+    candidate_sources: list[str] = Field(default_factory=list)
     activation_type: Literal["reactivation", "new_activation"]
     identity_resolution: str | None = None
     score_semantics: str | None = None
@@ -99,3 +101,16 @@ class PropagationPredictionResponse(BaseModel):
     code: int = 0
     data: PropagationPredictionData
     msg: str = "ok"
+
+
+class PropagationMonitorProfileRequest(BaseModel):
+    event_id: str = Field(min_length=1, max_length=128)
+    platform: str | None = Field(default=None, max_length=32)
+    enabled: bool = True
+    interval_minutes: int = Field(default=5, ge=1, le=1440)
+    thresholds: dict[str, dict[str, float | int]] = Field(default_factory=dict)
+
+
+class PropagationAlertActionRequest(BaseModel):
+    action: Literal["acknowledge", "close", "ignore"]
+    note: str | None = Field(default=None, max_length=2000)

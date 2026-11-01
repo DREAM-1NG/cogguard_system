@@ -9,15 +9,17 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import math
+from collections import defaultdict
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Mapping
 
 from pydantic import ValidationError
 
 from app.db.mongodb import get_mongo_db
 from app.schemas.propagation import PropagationPredictionData
 from app.services.event_data import analysis_scope_metadata, load_event_comments, load_event_posts
-from app.services import propagation_prediction_service
+from app.services import coordination_service, propagation_prediction_service
 
 
 logger = logging.getLogger(__name__)
@@ -32,8 +34,22 @@ PREDICTION_MODEL_CAPABILITY = {
     "predicts_future": True,
 }
 
-SUPPORTED_PREDICTION_PLATFORMS = frozenset({"twitter"})
 SUPPORTED_CHECKPOINT_OBSERVATION_RATIOS = (0.1, 0.3, 0.5)
+PREDICTION_HORIZON_HOURS = (1, 6, 24)
+CANDIDATE_SOURCE_PRIORITY = (
+    "coordination_account",
+    "explicit_interaction_neighbor",
+    "shared_object_participant",
+    "historical_interaction_account",
+    "event_participant",
+)
+CANDIDATE_SOURCE_ORDER = (
+    "event_participant",
+    "explicit_interaction_neighbor",
+    "shared_object_participant",
+    "coordination_account",
+    "historical_interaction_account",
+)
 
 
 def empty_prediction_result(event_id: str | None, platform: str | None) -> dict:
@@ -79,38 +95,11 @@ def empty_prediction_result(event_id: str | None, platform: str | None) -> dict:
     }
 
 
-def is_supported_prediction_platform(platform: str | None) -> bool:
-    """Return whether the deployed current-event model supports this platform."""
-    if platform is None or not str(platform).strip():
-        return True
-    return str(platform).strip().lower() in SUPPORTED_PREDICTION_PLATFORMS
-
-
 def nearest_checkpoint_observation_ratio(actual_ratio: float) -> float:
     """Select the checkpoint condition nearest to the real timestamp-cut prefix."""
     return min(
         SUPPORTED_CHECKPOINT_OBSERVATION_RATIOS,
         key=lambda supported: (abs(float(actual_ratio) - supported), supported),
-    )
-
-
-def unsupported_platform_prediction_result(
-    event_id: str | None,
-    platform: str | None,
-    *,
-    observation_ratio: float,
-) -> dict:
-    result = empty_prediction_result(event_id, platform)
-    result["status"] = "unsupported_platform"
-    result["model_status"] = "unavailable"
-    result["note"] = "The deployed propagation prediction model supports only Twitter current-event data."
-    return attach_prediction_scope(
-        result,
-        event_id=event_id,
-        platform=platform,
-        posts_count=0,
-        comments_count=0,
-        observation_ratio=observation_ratio,
     )
 
 
@@ -215,6 +204,330 @@ def _parse_timestamp(value: Any, *, require_timezone: bool = False) -> datetime 
     return (parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)).astimezone(timezone.utc)
 
 
+def materialize_prediction_horizons(result: dict[str, Any], *, observed_until: str | None) -> dict[str, Any]:
+    """Project normalized model trend steps onto the fixed product horizons.
+
+    The checkpoint emits monotonic cumulative values at normalized steps. The
+    system view always presents the same 1/6/24-hour checkpoints so an
+    analyst can compare one event snapshot with another without a second
+    model invocation.
+    """
+    if str(result.get("status") or "") != "ok":
+        return result
+    macro = result.get("macro")
+    if not isinstance(macro, dict):
+        return result
+    observed_size = max(0, int(_as_number(macro.get("observed_size"))))
+    raw_points = macro.get("trend_points")
+    point_values = [
+        max(observed_size, int(_as_number(point.get("predicted_size"))))
+        for point in raw_points
+        if isinstance(point, dict) and point.get("predicted_size") is not None
+    ] if isinstance(raw_points, list) else []
+    final_size = max(observed_size, int(_as_number(macro.get("predicted_size"))))
+    if not point_values:
+        point_values = [final_size]
+    point_values[-1] = max(point_values[-1], final_size)
+    point_values = _monotonic_values(point_values, floor=observed_size)
+
+    # The model exposes steps rather than wall-clock times. Map its final
+    # cumulative step to the system's 24-hour forecast window and interpolate
+    # the interior values monotonically.
+    anchors = [(0.0, observed_size)]
+    step_count = len(point_values)
+    anchors.extend(
+        (24.0 * float(index) / float(step_count), value)
+        for index, value in enumerate(point_values, start=1)
+    )
+    cutoff = _parse_timestamp(observed_until, require_timezone=True)
+    projected_points = []
+    for step, horizon in enumerate(PREDICTION_HORIZON_HOURS, start=1):
+        projected_value = int(round(_interpolate_cumulative_value(anchors, float(horizon))))
+        projected_points.append(
+            {
+                "step": step,
+                "horizon_hours": horizon,
+                "at": (cutoff + _hours_delta(horizon)).isoformat() if cutoff is not None else None,
+                "predicted_size": projected_value,
+            }
+        )
+    macro["trend_points"] = projected_points
+    macro["predicted_size"] = max(final_size, projected_points[-1]["predicted_size"])
+    return result
+
+
+def _as_number(value: Any) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _monotonic_values(values: list[int], *, floor: int) -> list[int]:
+    current = floor
+    normalized: list[int] = []
+    for value in values:
+        current = max(current, int(value))
+        normalized.append(current)
+    return normalized
+
+
+def _interpolate_cumulative_value(anchors: list[tuple[float, int]], horizon: float) -> float:
+    for (left_time, left_value), (right_time, right_value) in zip(anchors, anchors[1:]):
+        if horizon <= right_time:
+            span = max(right_time - left_time, 1e-9)
+            proportion = max(0.0, min(1.0, (horizon - left_time) / span))
+            return left_value + (right_value - left_value) * proportion
+    return float(anchors[-1][1])
+
+
+def _hours_delta(hours: int):
+    from datetime import timedelta
+
+    return timedelta(hours=hours)
+
+
+def enrich_next_hop_traceability(
+    result: dict[str, Any],
+    *,
+    posts: list[dict[str, Any]],
+    comments: list[dict[str, Any]],
+    coordinated_account_ids: set[str] | None = None,
+) -> dict[str, Any]:
+    """Attach observed-prefix evidence categories without changing model scores."""
+    micro = result.get("micro")
+    if not isinstance(micro, dict) or not isinstance(micro.get("top_users"), list):
+        return result
+    source_index = _candidate_source_index(
+        [*posts, *comments],
+        coordinated_account_ids=coordinated_account_ids,
+    )
+    for candidate in micro["top_users"]:
+        if not isinstance(candidate, dict):
+            continue
+        author_id = str(candidate.get("author_id") or "").strip()
+        sources = source_index.get(author_id, {"event_participant"})
+        ordered_sources = [source for source in CANDIDATE_SOURCE_ORDER if source in sources]
+        if not ordered_sources:
+            ordered_sources = ["event_participant"]
+        candidate["candidate_sources"] = ordered_sources
+        primary_source = next(
+            source for source in CANDIDATE_SOURCE_PRIORITY if source in ordered_sources
+        )
+        candidate["candidate_source"] = primary_source
+        evidence_refs = candidate.get("evidence_refs")
+        if isinstance(evidence_refs, list):
+            candidate["evidence_refs"] = [
+                ({**reference, "candidate_source": primary_source}
+                 if isinstance(reference, dict) else reference)
+                for reference in evidence_refs
+            ]
+    micro["candidate_source_counts"] = _candidate_source_counts(source_index)
+    return result
+
+
+def _candidate_source_index(
+    records: list[dict[str, Any]],
+    *,
+    coordinated_account_ids: set[str] | None = None,
+) -> dict[str, set[str]]:
+    sources: defaultdict[str, set[str]] = defaultdict(set)
+    object_members: defaultdict[str, set[str]] = defaultdict(set)
+    for record in records:
+        author_id = _candidate_author_id(record)
+        if not author_id:
+            continue
+        sources[author_id].add("event_participant")
+        for related_id in _relationship_account_ids(record):
+            sources[author_id].add("explicit_interaction_neighbor")
+            sources[related_id].add("explicit_interaction_neighbor")
+        for object_id in _candidate_shared_objects(record):
+            object_members[object_id].add(author_id)
+        if _has_coordination_marker(record):
+            sources[author_id].add("coordination_account")
+        for account_id in _account_id_values(record.get("coordination_accounts")):
+            sources[account_id].add("coordination_account")
+        for account_id in _account_id_values(record.get("coordination_members")):
+            sources[account_id].add("coordination_account")
+        for account_id in _account_id_values(record.get("historical_interaction_accounts")):
+            sources[account_id].add("historical_interaction_account")
+        for account_id in _account_id_values(record.get("interacted_accounts")):
+            sources[account_id].add("historical_interaction_account")
+    for account_id in coordinated_account_ids or set():
+        normalized_id = str(account_id).strip()
+        if normalized_id:
+            sources[normalized_id].add("coordination_account")
+    for members in object_members.values():
+        if len(members) > 1:
+            for author_id in members:
+                sources[author_id].add("shared_object_participant")
+    return dict(sources)
+
+
+def _candidate_source_counts(source_index: Mapping[str, set[str]]) -> dict[str, int]:
+    return {
+        source: sum(1 for sources in source_index.values() if source in sources)
+        for source in CANDIDATE_SOURCE_ORDER
+    }
+
+
+def _model_observed_prefix_rows(
+    posts: list[dict[str, Any]],
+    comments: list[dict[str, Any]],
+    *,
+    observation_ratio: float,
+    prefix_is_preselected: bool,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Mirror the adapter's prefix boundary before deriving evidence labels.
+
+    The checkpoint ranks users from its observed prefix only. Source labels and
+    coordination annotations must use that same prefix so future rows cannot
+    influence a current-event next-hop assessment.
+    """
+    records: list[tuple[datetime, int, str, dict[str, Any]]] = []
+    for index, row in enumerate(posts):
+        timestamp = _row_timestamp(row)
+        if timestamp is not None and _candidate_author_id(row):
+            records.append((timestamp, index, "post", row))
+    post_count = len(posts)
+    for index, row in enumerate(comments):
+        timestamp = _row_timestamp(row)
+        if timestamp is not None and _candidate_author_id(row):
+            records.append((timestamp, post_count + index, "comment", row))
+    records.sort(key=lambda item: (item[0], item[1]))
+    if not records:
+        return [], []
+    limit = len(records) if prefix_is_preselected else max(
+        1,
+        min(len(records), int(math.ceil(len(records) * float(observation_ratio)))),
+    )
+    selected_posts: list[dict[str, Any]] = []
+    selected_comments: list[dict[str, Any]] = []
+    for _timestamp_value, _index, record_type, row in records[:limit]:
+        if record_type == "post":
+            selected_posts.append(row)
+        else:
+            selected_comments.append(row)
+    return selected_posts, selected_comments
+
+
+async def _observed_coordination_account_ids(
+    posts: list[dict[str, Any]],
+    comments: list[dict[str, Any]],
+    *,
+    event_id: str,
+    platform: str | None,
+) -> set[str]:
+    """Return coordinated accounts from the same observed prefix as inference."""
+    if not posts and not comments:
+        return set()
+    try:
+        coordination = await asyncio.to_thread(
+            coordination_service.analyze_coordination_records,
+            posts,
+            comments,
+            event_id=event_id,
+            platform=platform,
+        )
+    except Exception:
+        logger.warning(
+            "Unable to derive coordination candidate context for event_id=%r platform=%r",
+            event_id,
+            platform,
+            exc_info=True,
+        )
+        return set()
+    return _coordination_account_ids(coordination)
+
+
+def _coordination_account_ids(coordination: Mapping[str, Any]) -> set[str]:
+    accounts: set[str] = set()
+    network = coordination.get("network")
+    if isinstance(network, Mapping):
+        nodes = network.get("nodes")
+        if isinstance(nodes, list):
+            for node in nodes:
+                if not isinstance(node, Mapping):
+                    continue
+                account_id = str(
+                    node.get("account_id") or node.get("author_id") or node.get("id") or ""
+                ).strip()
+                if account_id:
+                    accounts.add(account_id)
+    account_stats = coordination.get("account_stats")
+    if isinstance(account_stats, list):
+        for account in account_stats:
+            if not isinstance(account, Mapping):
+                continue
+            account_id = str(account.get("account_id") or account.get("author_id") or "").strip()
+            if account_id:
+                accounts.add(account_id)
+    return accounts
+
+
+def _candidate_author_id(record: Mapping[str, Any]) -> str:
+    return str(
+        record.get("author_id")
+        or record.get("user_id")
+        or record.get("account_id")
+        or record.get("uid")
+        or ""
+    ).strip()
+
+
+def _relationship_account_ids(record: Mapping[str, Any]) -> set[str]:
+    values: set[str] = set()
+    for key in (
+        "parent_author_id",
+        "reply_to_user_id",
+        "reply_to_author_id",
+        "target_author_id",
+        "quoted_author_id",
+        "repost_author_id",
+    ):
+        value = str(record.get(key) or "").strip()
+        if value:
+            values.add(value)
+    return values
+
+
+def _candidate_shared_objects(record: Mapping[str, Any]) -> set[str]:
+    values: set[str] = set()
+    for field in ("url", "claim_id", "object_id"):
+        value = str(record.get(field) or "").strip()
+        if value:
+            values.add(value)
+    for field in ("shared_urls", "hashtags", "keywords"):
+        raw = record.get(field)
+        if isinstance(raw, str):
+            raw = [raw]
+        if isinstance(raw, (list, tuple, set)):
+            values.update(str(item).strip() for item in raw if str(item).strip())
+    return values
+
+
+def _account_id_values(value: Any) -> set[str]:
+    if isinstance(value, str):
+        return {value.strip()} if value.strip() else set()
+    if isinstance(value, Mapping):
+        return {
+            str(item).strip()
+            for item in value.values()
+            if str(item).strip()
+        }
+    if isinstance(value, (list, tuple, set)):
+        return {str(item).strip() for item in value if str(item).strip()}
+    return set()
+
+
+def _has_coordination_marker(record: Mapping[str, Any]) -> bool:
+    return bool(
+        record.get("coordination_group_id")
+        or record.get("coordination_signal")
+        or record.get("is_coordinated")
+    )
+
+
 def attach_prediction_scope(
     result: dict,
     *,
@@ -286,18 +599,7 @@ async def predict_current_event_model(
         )
         return enforce_prediction_contract(result, event_id=None, platform=platform)
 
-    if not is_supported_prediction_platform(platform):
-        return enforce_prediction_contract(
-            unsupported_platform_prediction_result(
-                event_id,
-                platform,
-                observation_ratio=observation_ratio,
-            ),
-            event_id=event_id,
-            platform=platform,
-        )
-
-    platform = str(platform or "").strip().lower() or "twitter"
+    platform = str(platform or "").strip().lower() or None
     effective_observation_ratio = observation_ratio
     try:
         posts, comments = await asyncio.wait_for(
@@ -386,6 +688,25 @@ async def predict_current_event_model(
         platform=platform,
         observed_size=len(observed_posts) + len(observed_comments),
     )
+    prefix_is_preselected = observed_until is not None
+    trace_posts, trace_comments = _model_observed_prefix_rows(
+        observed_posts,
+        observed_comments,
+        observation_ratio=effective_observation_ratio,
+        prefix_is_preselected=prefix_is_preselected,
+    )
+    coordinated_account_ids = await _observed_coordination_account_ids(
+        trace_posts,
+        trace_comments,
+        event_id=event_id,
+        platform=platform,
+    )
+    enrich_next_hop_traceability(
+        result,
+        posts=trace_posts,
+        comments=trace_comments,
+        coordinated_account_ids=coordinated_account_ids,
+    )
     inference_scope = result.get("inference_scope") if isinstance(result.get("inference_scope"), dict) else {}
     effective_cutoff = (
         observed_until
@@ -447,6 +768,9 @@ async def predict_current_event_model(
             "prefix_selection": "timestamp_cutoff" if observed_until is not None else "observation_ratio",
         }
     )
+    materialize_prediction_horizons(scoped_result, observed_until=effective_cutoff)
+    scoped_result["data_scope"]["prediction_horizon_hours"] = 24
+    scoped_result["data_scope"]["trajectory_time_basis"] = "fixed_wall_clock_horizons_1h_6h_24h"
     return enforce_prediction_contract(scoped_result, event_id=event_id, platform=platform)
 
 

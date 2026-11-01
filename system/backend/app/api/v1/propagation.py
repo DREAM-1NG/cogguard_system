@@ -10,16 +10,37 @@ from inspect import Parameter, signature
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import get_current_user_or_local_preview
+from app.db.mysql import get_db
 from app.models.user import User
-from app.schemas.propagation import PropagationPredictionResponse
-from app.services import propagation_model_service, propagation_observation_service
+from app.schemas.propagation import (
+    PropagationAlertActionRequest,
+    PropagationMonitorProfileRequest,
+    PropagationPredictionResponse,
+)
+from app.services import (
+    propagation_model_service,
+    propagation_monitoring_service,
+    propagation_observation_service,
+)
 from app.utils.response import success
 
 router = APIRouter()
 
 SUPPORTED_OBSERVATION_RATIOS = frozenset({0.1, 0.3, 0.5})
+
+
+def _require_monitor_role(current_user: User | None, *, allow_admin_only: bool = False) -> int:
+    """Apply monitoring roles while preserving local preview access."""
+    if current_user is None:
+        return 0
+    role = str(current_user.role or "")
+    allowed = {"admin"} if allow_admin_only else {"admin", "analyst"}
+    if role not in allowed:
+        raise HTTPException(status_code=403, detail="Propagation monitoring operation is not permitted for this role.")
+    return int(current_user.id)
 
 
 async def _call_observed_analysis(*, platform: str | None, event_id: str | None, node_limit: int) -> dict:
@@ -58,6 +79,102 @@ async def observed_analysis(
     """Canonical observed-only Propagation Analysis endpoint."""
     result = await _call_observed_analysis(platform=platform, event_id=event_id, node_limit=node_limit)
     return success(data=result)
+
+
+@router.get("/monitor-profiles")
+async def get_monitor_profiles(
+    event_id: str | None = Query(None, description="Optionally limit profiles to one event."),
+    db: AsyncSession = Depends(get_db),
+    _current_user: User | None = Depends(get_current_user_or_local_preview),
+):
+    """List event-level propagation monitoring configurations."""
+    return success(data=await propagation_monitoring_service.list_monitor_profiles(db, event_id=event_id))
+
+
+@router.put("/monitor-profiles")
+async def put_monitor_profile(
+    body: PropagationMonitorProfileRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User | None = Depends(get_current_user_or_local_preview),
+):
+    """Create or update one event-level propagation monitoring configuration."""
+    actor_id = _require_monitor_role(current_user, allow_admin_only=True)
+    try:
+        profile = await propagation_monitoring_service.upsert_monitor_profile(
+            payload=body.model_dump(),
+            updated_by=actor_id,
+            db=db,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return success(data=profile)
+
+
+@router.get("/alerts/unresolved-count")
+async def get_unresolved_alert_count(
+    db: AsyncSession = Depends(get_db),
+    _current_user: User | None = Depends(get_current_user_or_local_preview),
+):
+    """Return the global count of not-yet-disposed propagation alerts."""
+    return success(data={"count": await propagation_monitoring_service.unresolved_alert_count(db)})
+
+
+@router.get("/alerts")
+async def get_alerts(
+    event_id: str | None = Query(None),
+    platform: str | None = Query(None),
+    state: str | None = Query(None),
+    unresolved_only: bool = Query(False),
+    limit: int = Query(100, ge=1, le=500),
+    db: AsyncSession = Depends(get_db),
+    _current_user: User | None = Depends(get_current_user_or_local_preview),
+):
+    """List propagation alerts for monitoring and analyst disposition."""
+    return success(
+        data=await propagation_monitoring_service.list_alerts(
+            db,
+            event_id=event_id,
+            platform=platform,
+            state=state,
+            unresolved_only=unresolved_only,
+            limit=limit,
+        )
+    )
+
+
+@router.get("/alerts/{alert_id}")
+async def get_alert(
+    alert_id: int,
+    db: AsyncSession = Depends(get_db),
+    _current_user: User | None = Depends(get_current_user_or_local_preview),
+):
+    """Read one propagation alert with its evidence snapshot and action audit."""
+    try:
+        return success(data=await propagation_monitoring_service.get_alert_detail(db, alert_id=alert_id))
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.post("/alerts/{alert_id}/actions")
+async def post_alert_action(
+    alert_id: int,
+    body: PropagationAlertActionRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User | None = Depends(get_current_user_or_local_preview),
+):
+    """Record an analyst confirmation, closure, or ignore action for an alert."""
+    actor_id = _require_monitor_role(current_user)
+    try:
+        alert = await propagation_monitoring_service.apply_alert_action(
+            alert_id=alert_id,
+            action=body.action,
+            note=body.note,
+            actor_id=actor_id,
+            db=db,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return success(data=alert)
 
 
 @router.post("/model-event-predict", response_model=PropagationPredictionResponse)

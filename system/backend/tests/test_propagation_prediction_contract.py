@@ -101,6 +101,46 @@ def test_cached_benchmark_evidence_is_research_only_route():
     assert "/research/model-predict" in paths
 
 
+def test_propagation_monitoring_routes_expose_profiles_alerts_and_actions():
+    paths = {
+        route.path
+        for route in propagation_api.router.routes
+        if hasattr(route, "path")
+    }
+
+    assert "/monitor-profiles" in paths
+    assert "/alerts" in paths
+    assert "/alerts/unresolved-count" in paths
+    assert "/alerts/{alert_id}" in paths
+    assert "/alerts/{alert_id}/actions" in paths
+
+
+def test_monitor_roles_allow_preview_admin_and_analyst_actions_but_only_admin_profile_writes():
+    from types import SimpleNamespace
+
+    from fastapi import HTTPException
+
+    from app.api.v1.propagation import _require_monitor_role
+
+    assert _require_monitor_role(None) == 0
+    assert _require_monitor_role(SimpleNamespace(id=3, role="admin"), allow_admin_only=True) == 3
+    assert _require_monitor_role(SimpleNamespace(id=4, role="analyst")) == 4
+
+    try:
+        _require_monitor_role(SimpleNamespace(id=4, role="analyst"), allow_admin_only=True)
+    except HTTPException as exc:
+        assert exc.status_code == 403
+    else:
+        raise AssertionError("analysts must not update monitor profiles")
+
+    try:
+        _require_monitor_role(SimpleNamespace(id=5, role="viewer"))
+    except HTTPException as exc:
+        assert exc.status_code == 403
+    else:
+        raise AssertionError("viewers must not dispose alerts")
+
+
 def test_frontend_api_does_not_export_research_prediction_route():
     source_path = Path(__file__).parents[2] / "frontend" / "src" / "api" / "propagation.ts"
     source = source_path.read_text(encoding="utf-8")
@@ -120,6 +160,23 @@ def test_frontend_prediction_normalizer_preserves_scope_and_identity_coverage():
     assert "scope: typeof rawModel.scope" in source
     assert "checkpoint_conditioning_ratio" in source
     assert ':disabled="!eventId.trim()"' in source
+
+
+def test_frontend_propagation_monitoring_surfaces_alert_disposition_and_global_count():
+    frontend_root = Path(__file__).parents[2] / "frontend" / "src"
+    propagation_view = (frontend_root / "views" / "propagation" / "index.vue").read_text(encoding="utf-8")
+    propagation_api = (frontend_root / "api" / "propagation.ts").read_text(encoding="utf-8")
+    basic_layout = (frontend_root / "components" / "layout" / "BasicLayout.vue").read_text(encoding="utf-8")
+
+    assert 'key="alerts" tab="预警处置"' in propagation_view
+    assert "loadPropagationAlerts" in propagation_view
+    assert "openAlertDetail" in propagation_view
+    assert "getPropagationAlerts" in propagation_api
+    assert "postPropagationAlertAction" in propagation_api
+    assert "getPropagationUnresolvedAlertCount" in propagation_api
+    assert "putPropagationMonitorProfile" in propagation_api
+    assert "loadPropagationMonitorProfile" in propagation_view
+    assert "unresolvedPropagationAlertCount" in basic_layout
 
 
 def test_prediction_contract_exposes_coverage_calibration_and_model_scope():

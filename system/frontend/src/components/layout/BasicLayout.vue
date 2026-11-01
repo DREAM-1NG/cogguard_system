@@ -8,7 +8,15 @@
       <a-menu theme="dark" mode="inline" :selectedKeys="selectedKeys" @click="handleMenuClick">
         <a-menu-item v-for="item in visibleMenuItems" :key="item.path" :disabled="item.disabled">
           <a-tooltip :title="item.desc" placement="right" :mouseEnterDelay="0.4">
-            <component :is="item.icon" />
+            <a-badge
+              v-if="item.path === '/propagation'"
+              :count="unresolvedPropagationAlertCount"
+              :overflow-count="99"
+              :offset="[8, -2]"
+            >
+              <component :is="item.icon" />
+            </a-badge>
+            <component v-else :is="item.icon" />
             <span>{{ item.label }}</span>
           </a-tooltip>
         </a-menu-item>
@@ -67,7 +75,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onBeforeUnmount, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import {
   DashboardOutlined,
@@ -81,18 +89,21 @@ import {
   CloseOutlined,
 } from '@ant-design/icons-vue'
 import { useAuthStore } from '@/stores/auth'
+import { getPropagationUnresolvedAlertCount } from '@/api/propagation'
 
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 
 const collapsed = ref(false)
+const unresolvedPropagationAlertCount = ref(0)
+let alertCountTimer: ReturnType<typeof window.setInterval> | null = null
 
 const menuItems = [
   { path: '/dashboard', label: '数据大屏', icon: DashboardOutlined, desc: '系统首页的大屏总览，保留本地地图资产和平台分布可视化', disabled: false },
   { path: '/crawl', label: '数据采集', icon: CloudDownloadOutlined, desc: '创建采集请求并管理多平台数据获取', disabled: false },
   { path: '/coordination', label: '协同发现', icon: ApartmentOutlined, desc: '发现协同行为并构建协同网络', disabled: false },
-  { path: '/propagation', label: '传播分析', icon: ShareAltOutlined, desc: '查看传播预测、证据链和传播角色', disabled: false },
+  { path: '/propagation', label: '传播监测', icon: ShareAltOutlined, desc: '查看传播路径、趋势研判和预警处置', disabled: false },
   { path: '/accounts', label: '账号画像', icon: UserOutlined, desc: '账号画像、活跃节律和自动化倾向', disabled: false },
   { path: '/risk', label: '风险研判', icon: AlertOutlined, desc: '风险研判、证据融合和治理分析', disabled: false },
   { path: '/system', label: '系统管理', icon: SettingOutlined, desc: '管理研判服务、评测数据集、策略、任务和回填', disabled: false, roles: ['admin'] },
@@ -143,6 +154,15 @@ function handleLogout() {
   authStore.logout()
 }
 
+async function loadPropagationAlertCount() {
+  try {
+    const response = await getPropagationUnresolvedAlertCount()
+    unresolvedPropagationAlertCount.value = Number(response.data?.count || 0)
+  } catch {
+    unresolvedPropagationAlertCount.value = 0
+  }
+}
+
 onMounted(async () => {
   if (authStore.isLoggedIn && !authStore.userInfo) {
     try {
@@ -151,6 +171,12 @@ onMounted(async () => {
       // The request interceptor handles auth failures globally.
     }
   }
+  await loadPropagationAlertCount()
+  alertCountTimer = window.setInterval(() => void loadPropagationAlertCount(), 60_000)
+})
+
+onBeforeUnmount(() => {
+  if (alertCountTimer) window.clearInterval(alertCountTimer)
 })
 </script>
 
@@ -284,4 +310,3 @@ onMounted(async () => {
   min-height: 360px;
 }
 </style>
-

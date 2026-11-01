@@ -68,12 +68,24 @@ publication claims of superiority over strong text baselines.
 Propagation is split into two product boundaries. `GET /api/v1/propagation/analyze`
 performs observed-only path, object, role, timeline, provenance, and stability
 analysis. `POST /api/v1/propagation/model-event-predict` applies a strict
-timezone-aware observation cutoff and runs the system-owned Twitter
-`PropagationSequenceJointModel` checkpoint for monotonic size/trend prediction
-and identity-mapped next-hop reactivation ranking. Missing model/data states
-abstain; the public event endpoint does not use the legacy speed/acceleration
-runtime. Deployment is verified, while formal multi-seed performance validation
-remains a separate research requirement.
+timezone-aware observation cutoff and runs the active unified
+`PropagationSequenceJointModel` checkpoint for 1/6/24-hour cumulative trend
+points and identity-mapped next-hop ranking. The same deployed checkpoint is
+used for the current event platform scope; the UI records its version and data
+scope but does not claim cross-platform effectiveness has been validated. The
+public endpoint does not use the legacy speed/acceleration runtime.
+
+Propagation Monitoring adds an event-level `PropagationMonitorProfile`, an
+evidence-backed `PropagationAlert` lifecycle, and append-only analyst action
+records. Celery Beat checks enabled profiles once per minute and each profile
+enforces its own interval (five minutes by default). Each due cycle creates an
+`EventSnapshot`, runs observed analysis, prediction, and coordination detection,
+then evaluates propagation surge, forecast scale jump, path structure change,
+and coordination spread. The product APIs are `GET/PUT
+/api/v1/propagation/monitor-profiles`, `GET
+/api/v1/propagation/alerts`, `GET
+/api/v1/propagation/alerts/unresolved-count`, and `POST
+/api/v1/propagation/alerts/{alert_id}/actions`.
 
 ## Analysis API
 
@@ -108,7 +120,7 @@ python scripts/prototype_acceptance.py
 The command uses an isolated fixture and temporary artifact directory. It
 does not create labels, activate models, persist database rows, or modify the
 frontend. Expected output explicitly reports strict Leiden, propagation
-fallback/abstain, Student `shadow_untrained`, and Teacher advisory status.
+fallback/unavailable, Student `shadow_untrained`, and Teacher advisory status.
 
 ## Runtime Boundary
 

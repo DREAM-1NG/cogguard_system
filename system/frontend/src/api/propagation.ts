@@ -20,6 +20,7 @@ export type PredictionCalibrationStatus = 'available' | 'unavailable'
 
 export type PredictionTrendPoint = {
   step: number
+  horizon_hours?: number | null
   at?: string | null
   predicted_size: number
 }
@@ -110,4 +111,79 @@ export type PropagationPredictionResponse = {
 
 export function predictPropagationCurrentEvent(params?: PropagationPredictionParams): Promise<PropagationPredictionResponse> {
   return request.post('/propagation/model-event-predict', null, { params }) as unknown as Promise<PropagationPredictionResponse>
+}
+
+export type PropagationMonitorProfile = {
+  id: number
+  event_id: string
+  platform?: string | null
+  enabled: boolean
+  interval_minutes: number
+  thresholds: Record<string, Record<string, number>>
+  last_snapshot_id?: string | null
+  last_success_at?: string | null
+  last_error?: string | null
+}
+
+export type PropagationAlert = {
+  id: number
+  event_id: string
+  platform?: string | null
+  alert_type: string
+  alert_type_label: string
+  severity: 'medium' | 'high' | 'critical' | string
+  severity_label: string
+  state: 'new' | 'acknowledged' | 'closed' | 'ignored' | string
+  state_label: string
+  trigger_count: number
+  first_triggered_at?: string | null
+  last_triggered_at?: string | null
+  snapshot_id?: string | null
+  model_version_id?: number | null
+  assigned_to?: number | null
+  evidence: Record<string, unknown>
+  closed_at?: string | null
+  actions?: Array<{
+    id: number
+    action: string
+    note?: string | null
+    actor_id: number
+    created_at?: string | null
+  }>
+}
+
+export function getPropagationMonitorProfiles(params?: { event_id?: string }) {
+  return request.get('/propagation/monitor-profiles', { params }) as unknown as Promise<{ data: PropagationMonitorProfile[] }>
+}
+
+export function putPropagationMonitorProfile(payload: {
+  event_id: string
+  platform?: string
+  enabled: boolean
+  interval_minutes: number
+  thresholds?: Record<string, Record<string, number>>
+}) {
+  return request.put('/propagation/monitor-profiles', payload) as unknown as Promise<{ data: PropagationMonitorProfile }>
+}
+
+export function getPropagationAlerts(params?: {
+  event_id?: string
+  platform?: string
+  state?: string
+  unresolved_only?: boolean
+  limit?: number
+}) {
+  return request.get('/propagation/alerts', { params }) as unknown as Promise<{ data: PropagationAlert[] }>
+}
+
+export function getPropagationAlertDetail(alertId: number) {
+  return request.get(`/propagation/alerts/${alertId}`) as unknown as Promise<{ data: PropagationAlert }>
+}
+
+export function postPropagationAlertAction(alertId: number, payload: { action: 'acknowledge' | 'close' | 'ignore'; note?: string }) {
+  return request.post(`/propagation/alerts/${alertId}/actions`, payload) as unknown as Promise<{ data: PropagationAlert }>
+}
+
+export function getPropagationUnresolvedAlertCount() {
+  return request.get('/propagation/alerts/unresolved-count') as unknown as Promise<{ data: { count: number } }>
 }

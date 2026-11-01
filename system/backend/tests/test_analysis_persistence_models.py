@@ -170,3 +170,38 @@ def test_review_verdict_feedback_metadata_contracts():
     assert "ix_analysis_review_feedback_feedback_id" in unique_index_names(feedback_table)
     for name in ["run_id", "verdict_id", "snapshot_id", "created_by"]:
         assert f"ix_analysis_review_feedback_{name}" in index_names(feedback_table)
+
+
+def test_propagation_monitoring_metadata_contracts():
+    from app.models.analysis import (
+        PropagationAlert,
+        PropagationAlertAction,
+        PropagationMonitorProfile,
+    )
+
+    profile = PropagationMonitorProfile.__table__
+    alert = PropagationAlert.__table__
+    action = PropagationAlertAction.__table__
+
+    assert profile.name == "propagation_monitor_profiles"
+    assert column(profile, "event_id").type.length == 128
+    assert column(profile, "platform").type.length == 32
+    assert isinstance(column(profile, "thresholds_json").type, Text)
+    assert isinstance(column(profile, "last_snapshot_json").type, Text)
+    assert "ix_propagation_monitor_profiles_event_id" in index_names(profile)
+    assert ("event_id", "platform") in unique_constraint_column_sets(profile)
+
+    assert alert.name == "propagation_alerts"
+    assert column(alert, "event_id").type.length == 128
+    assert column(alert, "alert_type").type.length == 64
+    assert column(alert, "severity").type.length == 16
+    assert column(alert, "state").type.length == 16
+    assert isinstance(column(alert, "evidence_json").type, Text)
+    for name in ["event_id", "platform", "alert_type", "state", "last_triggered_at"]:
+        assert f"ix_propagation_alerts_{name}" in index_names(alert)
+
+    assert action.name == "propagation_alert_actions"
+    assert isinstance(column(action, "alert_id").type, Integer)
+    assert column(action, "action").type.length == 32
+    assert isinstance(column(action, "note").type, Text)
+    assert "ix_propagation_alert_actions_alert_id" in index_names(action)

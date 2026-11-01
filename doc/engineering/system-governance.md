@@ -138,7 +138,11 @@ Use the glossary in `UBIQUITOUS_LANGUAGE.md` for domain terms. The system-level 
 - `system/research/*_legacy_alias` and `system/runtimes/*_legacy_alias` are import-only compatibility packages.
 - `system/research/coordination_discover`, `system/research/coordination_detect`, `system/research/propagation_analysis`, `system/research/review_teacher`, and `system/runtimes/review_student` are canonical semantic boundaries.
 - `system/research/social_bot_detection` is the canonical internal boundary for trainable BotRHG transfer. It must record dataset fingerprint, model checkpoint hash, missing property/social graph coverage, and comparison against a shallow reference baseline.
-- `system/research/propagation_analysis` owns the deployed propagation sequence model and checkpoint. Public event prediction must use a timezone-aware observation cutoff, must not import `subsystems/`, and must abstain rather than invoke the legacy speed/acceleration runtime when the model is unavailable.
+- `system/research/propagation_analysis` owns the deployed propagation sequence model and checkpoint. Public event prediction must use a timezone-aware observation cutoff, must not import `subsystems/`, and must return a typed unavailable result rather than invoke the legacy speed/acceleration runtime when the model is unavailable.
+- `app.services.propagation_observation_service` owns observed propagation reconstruction; `app.services.propagation_model_service` owns current-event forecast orchestration; `app.services.propagation_monitoring_service` owns profile persistence, EventSnapshot capture, alert deduplication, and analyst disposition; `app.services.propagation_alert_service` owns pure alert-rule evaluation only.
+- `PropagationMonitorProfile`, `PropagationAlert`, and `PropagationAlertAction` are persisted system records. A monitoring cycle must save the effective thresholds and evidence summary with every alert update; it may not place alert state in the propagation graph builder or only in frontend memory.
+- `app.tasks.propagation_monitor_tasks` is the only periodic entrypoint for propagation monitoring. It opens a database session, calls due profiles, and commits; it must reuse the existing observation, prediction, and coordination services rather than duplicate their algorithms.
+- Monitor-profile writes require an administrator. Alert dispositions require an administrator or analyst and append the actor, timestamp, action, and note.
 
 ### Security And Deployment Contract
 

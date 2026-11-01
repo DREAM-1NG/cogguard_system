@@ -368,22 +368,25 @@ def test_model_runtime_error_returns_structured_unavailable_result(monkeypatch):
     assert result["data_scope"]["posts"] == 3
 
 
-def test_unsupported_current_event_platform_abstains_before_data_or_model_access(monkeypatch):
+def test_unified_checkpoint_runs_for_any_event_platform(monkeypatch):
     calls = []
 
-    def fail_get_mongo_db():
-        calls.append("mongo")
-        raise AssertionError("unsupported platforms must not access MongoDB")
+    async def fake_event_data(*, event_id, platform):
+        calls.append((event_id, platform))
+        return _posts(), []
 
-    async def fail_predictor(**_kwargs):
-        calls.append("checkpoint")
-        raise AssertionError("unsupported platforms must not load the checkpoint")
+    async def fake_predictor(**_kwargs):
+        return {
+            "status": "ok",
+            "macro": {"observed_size": 3, "predicted_size": 5, "trend_points": []},
+            "micro": {"top_users": []},
+        }
 
-    monkeypatch.setattr(propagation_model_service, "get_mongo_db", fail_get_mongo_db)
+    monkeypatch.setattr(propagation_model_service, "_load_prediction_event_data", fake_event_data)
     monkeypatch.setattr(
         propagation_model_service.propagation_prediction_service,
         "predict_event_macro_micro",
-        fail_predictor,
+        fake_predictor,
     )
 
     result = asyncio.run(
@@ -394,15 +397,14 @@ def test_unsupported_current_event_platform_abstains_before_data_or_model_access
         )
     )
 
-    assert result["status"] == "unsupported_platform"
-    assert result["model_status"] == "unavailable"
+    assert result["status"] == "ok"
+    assert result["model_status"] == "available"
     assert result["data_scope"]["event_id"] == "event-1"
     assert result["data_scope"]["platform"] == "weibo"
-    assert result["data_scope"]["observation_ratio"] == 0.3
-    assert calls == []
+    assert calls == [("event-1", "weibo")]
 
 
-def test_unspecified_current_event_platform_is_scoped_to_twitter(monkeypatch):
+def test_unspecified_current_event_platform_reads_all_platform_data(monkeypatch):
     captured = {}
 
     async def fake_event_data(*, event_id, platform):
@@ -422,9 +424,9 @@ def test_unspecified_current_event_platform_is_scoped_to_twitter(monkeypatch):
         )
     )
 
-    assert captured == {"event_id": "event-1", "platform": "twitter"}
-    assert result["platform"] == "twitter"
-    assert result["data_scope"]["platform"] == "twitter"
+    assert captured == {"event_id": "event-1", "platform": None}
+    assert result["platform"] is None
+    assert result["data_scope"]["platform"] is None
 
 
 def test_missing_event_id_abstains_before_data_access(monkeypatch):
@@ -629,7 +631,7 @@ def test_invalid_or_timezone_free_cutoff_never_falls_back_to_full_snapshot():
             raise AssertionError(f"invalid cutoff {value!r} must be rejected")
 
 
-def test_current_event_result_records_cutoff_and_normalized_trajectory_without_heuristic(monkeypatch):
+def test_current_event_result_records_cutoff_and_fixed_product_horizons(monkeypatch):
     async def fake_posts(*_args, **_kwargs):
         return _posts() + [
             {"post_id": "p4", "author_id": "future", "timestamp": "2026-05-11T02:00:00Z"}
@@ -651,8 +653,9 @@ def test_current_event_result_records_cutoff_and_normalized_trajectory_without_h
 
     assert result["model_status"] == "available"
     assert result["data_scope"]["observed_until"] == "2026-05-11T00:02:00Z"
-    assert result["data_scope"]["prediction_horizon_hours"] is None
-    assert result["data_scope"]["trajectory_time_basis"] == "normalized_model_steps"
+    assert result["data_scope"]["prediction_horizon_hours"] == 24
+    assert result["data_scope"]["trajectory_time_basis"] == "fixed_wall_clock_horizons_1h_6h_24h"
+    assert [point["horizon_hours"] for point in result["macro"]["trend_points"]] == [1, 6, 24]
     assert result["data_scope"]["excluded_after_cutoff"]["posts"] == 1
     assert "future" not in {row["author_id"] for row in result["micro"]["top_users"]}
 
@@ -726,11 +729,14 @@ def test_empty_current_event_is_an_abstain_response():
     assert result["micro"]["top_users"] == []
 
 
-def test_unsupported_platform_abstains_before_loading_event_data(monkeypatch):
-    def fail_database_access():
-        raise AssertionError("unsupported platform must not access MongoDB")
+def test_unified_checkpoint_reads_empty_platform_scope_before_reporting_no_data(monkeypatch):
+    captured = {}
 
-    monkeypatch.setattr(propagation_model_service, "get_mongo_db", fail_database_access)
+    async def fake_event_data(*, event_id, platform):
+        captured.update({"event_id": event_id, "platform": platform})
+        return [], []
+
+    monkeypatch.setattr(propagation_model_service, "_load_prediction_event_data", fake_event_data)
 
     result = asyncio.run(
         propagation_model_service.predict_current_event_model(
@@ -739,10 +745,11 @@ def test_unsupported_platform_abstains_before_loading_event_data(monkeypatch):
         )
     )
 
-    assert result["status"] == "unsupported_platform"
+    assert result["status"] == "data_insufficient"
     assert result["model_status"] == "unavailable"
     assert result["micro"]["top_users"] == []
     assert result["data_scope"]["platform"] == "weibo"
+    assert captured == {"event_id": "event-1", "platform": "weibo"}
 
 
 def test_comment_only_event_is_sent_to_model_instead_of_being_marked_empty(monkeypatch):
@@ -818,3 +825,141 @@ def test_propagation_analysis_public_dataset_loader_normalizes_jsonl_fixture(tmp
     assert result["schema"] == "cogguard.propagation_analysis.public_cascade_fixture.v1"
     assert result["cascade_count"] == 1
     assert result["cascades"][0]["targets"]["independent_active_accounts"] == 2
+
+
+def test_prediction_horizon_projection_exposes_one_six_and_twenty_four_hours():
+    result = {
+        "status": "ok",
+        "macro": {
+            "observed_size": 5,
+            "predicted_size": 17,
+            "trend_points": [
+                {"step": 1, "predicted_size": 8},
+                {"step": 2, "predicted_size": 11},
+                {"step": 3, "predicted_size": 14},
+                {"step": 4, "predicted_size": 17},
+            ],
+        },
+    }
+
+    propagation_model_service.materialize_prediction_horizons(
+        result,
+        observed_until="2026-08-15T00:00:00+00:00",
+    )
+
+    points = result["macro"]["trend_points"]
+    assert [point["horizon_hours"] for point in points] == [1, 6, 24]
+    assert points[0]["at"] == "2026-08-15T01:00:00+00:00"
+    assert points[-1]["at"] == "2026-08-16T00:00:00+00:00"
+    assert [point["predicted_size"] for point in points] == sorted(
+        point["predicted_size"] for point in points
+    )
+
+
+def test_next_hop_candidates_keep_traceable_event_interaction_and_object_sources():
+    result = {
+        "micro": {
+            "top_users": [
+                {
+                    "author_id": "u2",
+                    "author_name": "Bob",
+                    "candidate_source": "observed_user_hash_bucket_proxy",
+                    "evidence_refs": [{"post_id": "p2"}],
+                }
+            ]
+        }
+    }
+    records = [
+        {
+            "post_id": "p1",
+            "author_id": "u1",
+            "author_name": "Alice",
+            "shared_urls": ["https://example.test/a"],
+        },
+        {
+            "post_id": "p2",
+            "author_id": "u2",
+            "author_name": "Bob",
+            "parent_author_id": "u1",
+            "shared_urls": ["https://example.test/a"],
+        },
+    ]
+
+    propagation_model_service.enrich_next_hop_traceability(result, posts=records, comments=[])
+
+    candidate = result["micro"]["top_users"][0]
+    assert candidate["candidate_source"] == "explicit_interaction_neighbor"
+    assert candidate["candidate_sources"] == [
+        "event_participant",
+        "explicit_interaction_neighbor",
+        "shared_object_participant",
+    ]
+    assert candidate["evidence_refs"][0]["candidate_source"] == "explicit_interaction_neighbor"
+
+
+def test_current_event_traceability_uses_model_prefix_and_detected_coordination_accounts(monkeypatch):
+    captured = {}
+
+    async def fake_posts(*_args, **_kwargs):
+        return [
+            {"post_id": "p1", "author_id": "u1", "author_name": "Alice", "timestamp": "2026-05-11T00:00:00Z"},
+            {"post_id": "p2", "author_id": "u2", "author_name": "Bob", "timestamp": "2026-05-11T00:01:00Z"},
+            {"post_id": "p3", "author_id": "future-1", "author_name": "Future", "timestamp": "2026-05-11T00:02:00Z"},
+            {"post_id": "p4", "author_id": "future-2", "author_name": "Later", "timestamp": "2026-05-11T00:03:00Z"},
+        ]
+
+    async def fake_comments(*_args, **_kwargs):
+        return []
+
+    async def fake_predictor(**_kwargs):
+        result = propagation_model_service.empty_prediction_result("event-1", "weibo")
+        result["status"] = "ok"
+        result["model_status"] = "available"
+        result["macro"].update({
+            "observed_size": 2,
+            "predicted_size": 4,
+            "trend_points": [{"step": 1, "predicted_size": 4}],
+        })
+        result["micro"]["top_users"] = [{
+            "rank": 1,
+            "author_id": "u2",
+            "author_name": "Bob",
+            "score": 0.8,
+            "candidate_source": "observed_user_hash_bucket_proxy",
+            "candidate_sources": [],
+            "activation_type": "reactivation",
+            "evidence_refs": [{"post_id": "p2"}],
+        }]
+        return result
+
+    def fake_coordination(posts, comments, **_kwargs):
+        captured["authors"] = [row["author_id"] for row in [*posts, *comments]]
+        return {"network": {"nodes": [{"id": "u2"}]}, "account_stats": []}
+
+    monkeypatch.setattr(propagation_model_service, "get_mongo_db", lambda: object())
+    monkeypatch.setattr(propagation_model_service, "load_event_posts", fake_posts)
+    monkeypatch.setattr(propagation_model_service, "load_event_comments", fake_comments)
+    monkeypatch.setattr(
+        propagation_model_service.propagation_prediction_service,
+        "predict_event_macro_micro",
+        fake_predictor,
+    )
+    monkeypatch.setattr(
+        propagation_model_service.coordination_service,
+        "analyze_coordination_records",
+        fake_coordination,
+    )
+
+    result = asyncio.run(
+        propagation_model_service.predict_current_event_model(
+            event_id="event-1",
+            platform="weibo",
+            observation_ratio=0.5,
+        )
+    )
+
+    candidate = result["micro"]["top_users"][0]
+    assert captured["authors"] == ["u1", "u2"]
+    assert candidate["candidate_source"] == "coordination_account"
+    assert candidate["candidate_sources"] == ["event_participant", "coordination_account"]
+    assert result["micro"]["candidate_source_counts"]["coordination_account"] == 1

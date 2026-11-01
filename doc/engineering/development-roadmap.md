@@ -4,7 +4,7 @@
 > **受众**：开发者、项目维护者、后续执行任务的 AI agent。  
 > **维护规则**：只维护可执行工程路线和状态；研究定位、文献依据和关键技术背景放入 `../research/`。
 
-> 最后更新：2026-08-01
+> 最后更新：2026-08-15
 
 ## 2026-08-01 状态收口
 
@@ -15,6 +15,13 @@
 - [ ] 研究级 Coordination Discover、Propagation Analysis 和 Student/Teacher checkpoint 尚未因缺少批准 artifact 而声明为可研究主张结果；Social Bot Detection 的 BotRHG Weibo transfer 已有真实 checkpoint，但当前指标低于同切分 TF-IDF 参考，研究 claim 仍 blocked。
 - [x] 前端 `npm run build`（包含 `vue-tsc -b`）已通过；本轮不修改前端展示页面。
 - [ ] 真实 MySQL/Mongo/Redis/Celery 部署 smoke 和 GPU 长实验仍需在具备对应环境时执行。
+
+## 2026-08-15 传播监测收口
+
+- [x] 传播预测输出固定为 1/6/24 小时累计趋势点，并保留当前事件的预测规模与下一跳可追溯证据。
+- [x] 新增事件级监测配置、四类信号规则、30 分钟告警去重、快照留存与确认/忽略/关闭操作审计。
+- [x] Celery Beat 已接入到期 profile 调度；全局导航和传播监测页均显示未处理告警，管理员可更新事件阈值。
+- [ ] 真实 MySQL/Mongo/Redis/Celery 组合部署 smoke 仍需在部署环境验证；本地单元测试和前端构建不替代该验证。
 
 ## 技术决策记录
 
@@ -64,15 +71,15 @@
 | 前端 - 采集管理页 | ✅ 已完成 | P0 | 后端采集模块 |
 | 数据采集模块（内置 Social/News Runtime） | ✅ 已完成 | P1 | Mock 模块完成 |
 | Coordination Discover / Detect | 🔧 可运行原型，研究 claim blocked | P1 | 标签数据、批准 checkpoint |
-| Propagation Analysis | ✅ 观测分析与 Twitter checkpoint 推理已部署；研究 claim blocked | P1 | 严格时间切分、多 seed、覆盖率与校准验证 |
+| Propagation Analysis | ✅ 观测分析、统一 checkpoint 预测与事件级预警处置已部署；跨平台效果不作验证声明 | P1 | 部署 smoke、严格时间切分、多 seed、覆盖率与校准验证 |
 | Risk Review | 🔧 Student/Teacher 原型，canonical 需审批 | P1 | 蒸馏 checkpoint、真实 provider、分析员工作流 |
 | 账户监测模块 | ✅ 已完成（含 BotRHG API） | P1 | 数据采集 |
 | 前端 - 协同检测页（网络可视化） | ✅ 已完成 | P1 | 后端协同检测 |
-| 前端 - 传播监控页（时间线+角色） | ✅ 已完成 | P1 | 后端传播监控 |
+| 前端 - 传播监测页（路径、趋势、预警处置） | ✅ 已完成 | P1 | 后端传播监测 |
 | 前端 - 账户监测页（画像+评分） | ✅ 已完成 | P1 | 后端账户监测 |
 | 前端 - 报告研判页 | ✅ 已完成 | P1 | 后端报告研判 |
 | 前端 - UX 增强（密度/分页/引导） | ✅ 已完成 | P1 | 各前端页面 |
-| 报告研判模块 | ✅ MVP 已完成 | P2 | 协同检测、传播监控、账户监测 |
+| 报告研判模块 | ✅ MVP 已完成 | P2 | 协同检测、传播监测、账户监测 |
 | 前端 - 监测看板 | 🔧 开发中（真实数据 + 地图） | P1 | Dashboard API、Mongo 事件数据 |
 | 系统联调与测试 | 🔧 部分（新增 BotRHG 后端回归测试） | P2 | 所有模块 |
 
@@ -142,19 +149,19 @@
 - [ ] 用户聚类与聚类解释（平台内聚类 + 跨平台聚类）
 - [ ] 自然共振 vs 人为协同显著性筛查
 
-#### 2.2 传播监控模块 ✅
+#### 2.2 传播监测模块 ✅
 
 - [x] 传播子图构建（基于共享对象时序关系，`core/propagation.py`）
 - [x] 传播时间线重建
 - [x] 关键角色识别算法（起爆/桥接/扩散节点，介数中心性）
 - [x] 高危 claim/thread 定位与排序
-- [x] 传播监控 API 接口（`GET /api/v1/propagation/analyze`）
+- [x] 传播监测 API 接口（`GET /api/v1/propagation/analyze`）
 - [x] 前端传播时间线 + 关键角色卡片 + Claim 表格
 - [x] 页面统一命名为“传播监测”，并拆分传播路径、对象、角色、时间线和模型预测页签
 - [x] 显式、重建、推断传播证据分类及异构 provenance 图
 - [x] 源头、关键路径、角色证据与时间/删边/删节点稳定性摘要
 - [x] Twitter `PropagationSequenceJointModel` checkpoint 当前事件推理
-- [x] 严格 `observed_until` 截断、实名再激活 Top-K 和不可用时 abstain
+- [x] 严格 `observed_until` 截断、实名再激活 Top-K 和模型不可用时的统一错误响应
 - [ ] 独立校准集上的规模区间与下一跳概率校准
 - [ ] 严格时间切分、多 seed、完整 MINDS/FOREST/动态图基线对比
 
@@ -175,7 +182,7 @@
 
 #### 2.4 前端 UX 增强 ✅
 
-- [x] 侧边栏启用协同检测、传播监控、账户监测
+- [x] 侧边栏启用协同检测、传播监测、账户监测
 - [x] 登录页增加注册表单切换
 - [x] 采集任务列表增加删除/取消操作
 - [x] 侧边栏模块悬浮描述提示

@@ -13,7 +13,12 @@ celery_app = Celery(
     "cogguard",
     broker=settings.redis_url,
     backend=settings.redis_url,
-    include=["app.tasks.analysis_tasks", "app.tasks.crawl_tasks", "app.tasks.review_tasks"],
+    include=[
+        "app.tasks.analysis_tasks",
+        "app.tasks.crawl_tasks",
+        "app.tasks.propagation_monitor_tasks",
+        "app.tasks.review_tasks",
+    ],
 )
 
 celery_app.conf.update(
@@ -26,9 +31,17 @@ celery_app.conf.update(
     task_routes={
         "crawl.*": {"queue": "crawl"},
         "analysis.*": {"queue": "analysis"},
+        "propagation.*": {"queue": "analysis"},
         "review.*": {"queue": "review"},
+    },
+    beat_schedule={
+        "propagation-monitor-due-profiles": {
+            "task": "propagation.monitor_due_profiles",
+            "schedule": 60.0,
+        },
     },
 )
 
 # Import side-effect registers the task on the app instance for workers and tests.
 from app.tasks import analysis_tasks  # noqa: E402,F401
+from app.tasks import propagation_monitor_tasks  # noqa: E402,F401

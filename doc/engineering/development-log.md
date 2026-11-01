@@ -18,12 +18,23 @@
 
 ---
 
+## 2026-08-15
+
+- 完成传播监测的预测、预警与人工处置系统功能收口，不引入新的训练任务或研究模型。
+- `system/backend/app/services/propagation_model_service.py`：将当前事件输出统一投影为 1/6/24 小时累计趋势点；同一激活 checkpoint 覆盖当前平台范围，并只在内部记录版本与数据范围；下一跳结果补充事件参与、显式互动、共享对象、协同标记和历史互动来源。
+- `system/backend/app/services/propagation_monitoring_service.py`、`propagation_alert_service.py`、`models/analysis.py` 和 Alembic `f4c7b9e1a602`：新增事件级监测配置、EventSnapshot 指纹、四类告警规则、30 分钟去重、证据快照和处置审计记录。
+- `system/backend/app/tasks/propagation_monitor_tasks.py`、`celery_app.py`：新增 `propagation.monitor_due_profiles` Celery Task，Beat 每分钟检查一次到期 profile，profile 默认每五分钟运行。
+- `system/frontend/src/views/propagation/index.vue`、`src/api/propagation.ts`、`components/layout/BasicLayout.vue`：新增“预警处置”页签、证据抽屉、确认/忽略/关闭操作、跨页定位、管理员配置面板与全局未处理数量。
+- 验证：传播相关后端回归 `108 passed`；Alembic head 为 `f4c7b9e1a602`；前端 `vue-tsc -b --pretty false` 和 `npm run build` 均通过。
+
+---
+
 ## 2026-08-05
 
 - 将传播能力拆分为观测传播分析与传播预测两个独立运行边界：观测接口不调用预测代码，预测接口只消费截止时间前的事件快照。
 - `system/backend/app/core/propagation_legacy.py`：新增用户、帖子、评论、共享对象和事件 provenance 图；传播边区分 `explicit`、`reconstructed`、`inferred`，布局关系不再混入事实边；补源头、路径、角色及时间前缀稳定性，并移除 `user_quality` 返回。
 - `system/research/propagation_analysis/benchmark/adapters/event_adapter.py`：系统内化 `PropagationSequenceJointModel`，真实加载 Twitter checkpoint，输出单调趋势和实名下一跳再激活排序；匿名 bucket 仅进入覆盖审计。
-- `system/backend/app/services/propagation_model_service.py`、`app/api/v1/propagation.py`、`app/schemas/propagation.py`：严格校验带时区的 `observed_until`，统一成功/abstain 响应，删除公开事件预测路径中的速度、加速度和活动度替代预测。
+- `system/backend/app/services/propagation_model_service.py`、`app/api/v1/propagation.py`、`app/schemas/propagation.py`：严格校验带时区的 `observed_until`，统一成功/不可用响应，删除公开事件预测路径中的速度、加速度和活动度替代预测。
 - `system/frontend/src/views/propagation/index.vue`：消费真实趋势时间点、预测范围、证据类型和实名下一跳结果；本地时间转 UTC 后提交，不可用时保持预测区为空。
 - 验证：后端全量 `458 passed, 18 skipped`；前端 `vue-tsc` 与生产构建通过；Twitter checkpoint CPU smoke 输出四个趋势点和实名 Top-K。当前样本实验仍为 `full_validation_passed=false`，不构成模型优越性结论。
 
@@ -31,7 +42,7 @@
 
 ## 2026-08-01
 
-- 完成本轮三项关键能力的原型交付收口：新增 `system/backend/scripts/prototype_acceptance.py`，用隔离 EventSnapshot 验证 Coordination Discover 严格 Leiden artifact、Propagation Analysis fallback/abstain、Student shadow 和 Teacher advisory 运行边界；不写数据库、不生成标签、不修改前端。
+- 完成本轮三项关键能力的原型交付收口：新增 `system/backend/scripts/prototype_acceptance.py`，用隔离 EventSnapshot 验证 Coordination Discover 严格 Leiden artifact、Propagation Analysis fallback/unavailable、Student shadow 和 Teacher advisory 运行边界；不写数据库、不生成标签、不修改前端。
 - `system/backend/app/core/analysis/contracts.py`：默认 Analysis Run 现在执行完整的 Coordination Discover、Propagation Analysis、Student Review、Teacher Review 链路；窄阶段运行仍可显式指定。
 - `system/backend/app/core/analysis/executor.py`：artifact manifest 增加 `run_id`、prototype 标记、`execution_mode`、`prototype_status` 和 `research_claim`，防止 fallback/live runtime/shadow/advisory 输出被误认为研究结果。
 - `system/research/coordination_discover/{artifacts.py,contracts.py}`：研究 artifact 对已写入结果文件记录 SHA-256，加载时校验完整性；manifest 默认 non-claimable。
@@ -123,10 +134,10 @@
 - 代码盘点（实际验证）：
   - 后端约 5,664 行 Python，前端约 1,710 行 Vue/TS。
   - Coordination Discover / Detect 协同检测（旧方向 CooRTweet）：`core/coordination/` 452 行 MVP；Coordination Discover / Detect 新方向 PSL 设计已在 `aris/tech-01-coordination/systemDesign.md` 落盘，但 `new-system/` 尚无对应实现。
-  - Propagation Analysis 传播监控（Hybrid TS+LLM）：`core/propagation/` 含 4 个文件 ~673 行 → **WP1-3 完整完成**（`ts_features.py` 107 / `llm_context.py` 162 / `trend_predictor.py` 180 / `regime_model.py` 224）；**WP4 `stance_detector.py` 与 WP5 `harm_assessor.py` 完全未启动**；WP6-7 服务层与测试已存在但极薄。旧方向 `core/propagation_legacy.py` 仍在 import 路径并存。
+  - Propagation Analysis 传播监测（Hybrid TS+LLM）：`core/propagation/` 含 4 个文件 ~673 行 → **WP1-3 完整完成**（`ts_features.py` 107 / `llm_context.py` 162 / `trend_predictor.py` 180 / `regime_model.py` 224）；**WP4 `stance_detector.py` 与 WP5 `harm_assessor.py` 完全未启动**；WP6-7 服务层与测试已存在但极薄。旧方向 `core/propagation_legacy.py` 仍在 import 路径并存。
   - Risk Review 报告研判：`core/risk/` 6 模块 1,340 行 + `services/risk_service.py` 153 行 + `api/v1/risk.py` 68 行 + `frontend/src/views/risk/index.vue` + `tests/test_risk.py` 348 行 — **MVP 已完成，端到端串通**，但 README/roadmap 此前仍标"待开发"。
 - 文档对齐：
-  - `README.md` 模块状态表：风险研判 `待开发 → MVP 已完成`；协同检测拆分新旧方向；传播监控按 WP1-3/WP4-5 分粒度；看板继续保留"待开发"（`dashboard/index.vue` 仍是占位）。
+  - `README.md` 模块状态表：风险研判 `待开发 → MVP 已完成`；协同检测拆分新旧方向；传播监测按 WP1-3/WP4-5 分粒度；看板继续保留"待开发"（`dashboard/index.vue` 仍是占位）。
   - `doc/engineering/development-roadmap.md`：头注释日期 `2026-04-08 → 2026-05-17`；总览模块表细化到 WP 粒度；第 3.1 节风险研判模块由"🔲"翻面为"✅ MVP 已完成"，并把 8 个已完成子项打勾；保留 2 个未完成子项（alembic 迁移、LLM 桥接）。
   - ARIS 治理段：tech-03 落地条目勾选；tech-02 标 `[~]` 表示 WP1-3 已完、WP4-5 未启动。
 - 仓库治理风险（本次未处理，需后续单独提交）：
