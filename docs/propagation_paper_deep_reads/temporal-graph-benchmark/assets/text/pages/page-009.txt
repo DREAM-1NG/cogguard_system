@@ -1,0 +1,66 @@
+(s)                              tgbl-wiki                           (s)                          tgbl-review
+           Time                                                                                        Time 105
+           104
+        Val                                                                  Val 104
+        and 103                                                              and
+              Train 102                                                                                                        Train 103
+              Total                                                                                                              Total 102
+             DyRep TGN CAWN TCLGraphMixerTGAT NATEdgeBanktwEdgeBank         DyRep TGN CAWN TCLGraphMixerTGAT NATEdgeBanktwEdgeBank
+
+                    (a) tgbl-wiki dataset.                          (b) tgbl-review dataset.
+
+Figure 5: Total train and validation time of TG methods can have two orders of magnitude difference.
+
+
+                   tgbl-coin        tgbl-comment       tgbl-flight
+ Method          MRR         MRR         MRR
+                   Validation  Test        Validation  Test        Validation  Test
+
+ DyRep [42]       0.512±0.014 0.452±0.046 0.291±0.028 0.289±0.033 0.573±0.013 0.556±0.014
+ TGN [35]        0.607±0.014 0.586±0.037 0.356±0.019 0.379±0.021 0.731±0.010 0.705±0.020
+ EdgeBanktw [33] 0.492      0.580      0.124      0.149      0.363      0.387
+ EdgeBank∞[33] 0.315      0.359      0.109      0.129      0.166      0.167
+
+     Table 3: Results for dynamic link property prediction task on medium and large datasets.
+
+
+Figure 4a and 4b show the inference time of different methods for the test set of tgbl-wiki and
+tgbl-review, respectively. Similarly, Figure 5a and 5b show the total training and validation time
+of TG methods for tgbl-wiki and tgbl-review. Notice that as a heuristic baseline, EdgeBank
+inference, train, or validation time is generally at least one order of magnitude lower than neural
+network based methods. We also observe an order of difference in inference time within TG methods.
+We believe one important future direction is to improve the computational time of these models to be
+closer to baselines such as EdgeBank, which can better scale to large real-world temporal graphs.
+
+Table 3 shows the performance of TG methods on medium and large TGB datasets. Note that some
+methods, including CAWN, TCL, and GraphMixer, ran out of memory on GPU for these datasets,
+thus their performance is not reported. Overall, TGN has the best performance on all of these three
+datasets. Surprisingly, the EdgeBank heuristic is highly competitive on the tgbl-coin dataset where
+it even significantly outperforms DyRep. Therefore, it is important to include EdgeBank as a baseline
+for all datasets. Another observation is that for medium and large TGB datasets, there can be a
+significant performance change for a single model between the validation and test set. This is because
+TGB datasets span over a long time (such as tgbl-comment, lasting 5 years) and one can expect
+that models need to deal with potential distribution shifts between the validation set and the test
+set. Figure 6a, 6b and 6c reports the test time for TG methods on tgbl-coin, tgbl-flight and
+tgbl-comment, respectively. On both tgbl-coin and tgbl-comment, Edgebank is at least one
+order of magnitude faster than TGN and DyRep while on the tgbl-flight, due to the large number
+of temporal edges, DyRep is the fastest method.
+
+
+5.2  Dynamic Node Property Prediction
+
+Table 4 shows the performance of various methods on the node affinity prediction task in the dynamic
+node property prediction category. As node-level tasks have received less attention compared to
+edge-level tasks in the literature, adopting methods that are specially designed for link prediction to
+this task is non-trivial. As a result, these methods are omitted in this section. Considering Table 4,
+the key observation is that simple heuristics like persistence forecast and moving average are strong
+contenders to TG methods such as DyRep and TGN. Notably, persistence forecast is SOTA on
+tgbn-trade while moving average is the best performing on other datasets. TGN is second place on
+tgbn-genre dataset. Different from link prediction where the existence of a link is casted as binary
+classification, the node affinity prediction task compares the likelihood or weight that the model
+assigns to different target nodes (mostly positive links). These results highlight the need for the future
+development of TG methods that can acquire flexible node representations capable of learning how
+user preferences evolve over time.
+
+
+                                       9

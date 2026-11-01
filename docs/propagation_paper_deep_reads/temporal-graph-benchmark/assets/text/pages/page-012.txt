@@ -1,0 +1,67 @@
+[18] X. Huang, Y. Yang, Y. Wang, C. Wang, Z. Zhang, J. Xu, and L. Chen. DGraph: A large-scale
+      financial dataset for graph anomaly detection. In Thirty-sixth Conference on Neural Information
+     Processing Systems Datasets and Benchmarks Track, 2022.
+
+[19] K. Järvelin and J. Kekäläinen.  Cumulated gain-based evaluation of ir techniques. ACM
+     Transactions on Information Systems (TOIS), 20(4):422–446, 2002.
+
+[20] M. Jin, Y.-F. Li, and S. Pan. Neural temporal walks: Motif-aware representation learning on
+     continuous-time dynamic graphs. In Advances in Neural Information Processing Systems, 2022.
+
+[21] S. M. Kazemi, R. Goel, K. Jain, I. Kobyzev, A. Sethi, P. Forsyth, and P. Poupart. Representation
+     learning for dynamic graphs: A survey. The Journal of Machine Learning Research, 21(1):2648–
+     2720, 2020.
+
+[22] T. N. Kipf and M. Welling. Semi-supervised classification with graph convolutional networks.
+     In International Conference on Learning Representations.
+
+[23] D. Kreuzer, D. Beaini, W. Hamilton, V. Létourneau, and P. Tossou. Rethinking graph trans-
+     formers with spectral attention. Advances in Neural Information Processing Systems, 34:21618–
+     21629, 2021.
+
+[24] S. Kumar, X. Zhang, and J. Leskovec. Predicting dynamic embedding trajectory in temporal
+     interaction networks. In Proceedings of the 25th ACM SIGKDD international conference on
+     knowledge discovery & data mining, pages 1269–1278, 2019.
+
+[25] Y. Luo and P. Li. Neighborhood-aware scalable temporal network representation learning. In
+     Learning on Graphs Conference, pages 1–1. PMLR, 2022.
+
+[26] G. K. MacDonald, K. A. Brauman, S. Sun, K. M. Carlson, E. S. Cassidy, J. S. Gerber, and
+      P. C. West. Rethinking agricultural trade relationships in an era of globalization. BioScience,
+     65(3):275–289, 2015.
+
+[27] R. Milo, S. Shen-Orr, S. Itzkovitz, N. Kashtan, D. Chklovskii, and U. Alon. Network motifs:
+     simple building blocks of complex networks. Science, 298(5594):824–827, 2002.
+
+[28] A. Nadiri and F. W. Takes. A large-scale temporal analysis of user lifespan durability on the
+     reddit social media platform. In Companion Proceedings of the Web Conference 2022, pages
+     677–685, 2022.
+
+[29]  J. Ni, J. Li, and J. McAuley. Justifying recommendations using distantly-labeled reviews and
+     fine-grained aspects. In Proceedings of the 2019 conference on empirical methods in natural
+     language processing and the 9th international joint conference on natural language processing
+    (EMNLP-IJCNLP), pages 188–197, 2019.
+
+[30] J.-P. Onnela, D. J. Fenn, S. Reid, M. A. Porter, P. J. Mucha, M. D. Fricker, and N. S. Jones.
+    Taxonomies of networks from community structure. Physical Review E, 86(3):036104, 2012.
+
+[31] T. Panch, P. Szolovits, and R. Atun. Artificial intelligence, machine learning and health systems.
+     Journal of global health, 8(2), 2018.
+
+[32] A. Pareja, G. Domeniconi, J. Chen, T. Ma, T. Suzumura, H. Kanezashi, T. Kaler, T. Schardl,
+    and C. Leiserson. Evolvegcn: Evolving graph convolutional networks for dynamic graphs. In
+     Proceedings of the AAAI conference on artificial intelligence, volume 34, pages 5363–5370,
+     2020.
+
+[33] F. Poursafaei, S. Huang, K. Pelrine, and R. Rabbany. Towards better evaluation for dynamic
+      link prediction. Advances in Neural Information Processing Systems, 35:32928–32941, 2022.
+
+[34] L. Rampášek, M. Galkin, V. P. Dwivedi, A. T. Luu, G. Wolf, and D. Beaini. Recipe for a general,
+     powerful, scalable graph transformer. Advances in Neural Information Processing Systems,
+     35:14501–14515, 2022.
+
+[35] E. Rossi, B. Chamberlain, F. Frasca, D. Eynard, F. Monti, and M. Bronstein. Temporal graph
+     networks for deep learning on dynamic graphs. arXiv preprint arXiv:2006.10637, 2020.
+
+
+                                       12

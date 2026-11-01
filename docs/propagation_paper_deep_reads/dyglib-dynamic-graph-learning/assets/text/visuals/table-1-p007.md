@@ -1,0 +1,79 @@
+# Text evidence: Table 1
+
+> This file contains extracted text, not a visual interpretation. The image pixels, layout, axes, colors, and panels were not verified.
+
+- **PDF page:** 7
+- **Text extraction status:** partial
+- **Available sources:** caption, suggested-region-text, body-references
+- **Suggested region:** [97.691, 69.092, 513.997, 464.324]
+
+## Caption
+
+Table 1: AP for transductive dynamic link prediction with random, historical, and inductive negative sampling strategies. NSS is the abbreviation of Negative Sampling Strategies.
+
+## Text from suggested visual region
+
+~~~text
+Table 1: AP for transductive dynamic link prediction with random, historical, and inductive negative
+sampling strategies. NSS is the abbreviation of Negative Sampling Strategies.
+  NSS   Datasets    JODIE     DyRep     TGAT     TGN    CAWN    EdgeBank    TCL     GraphMixer  DyGFormer
+        Wikipedia  96.50 ± 0.14 94.86 ± 0.06 96.94 ± 0.06 98.45 ± 0.06 98.76 ± 0.03 90.37 ± 0.00 96.47 ± 0.16 97.25 ± 0.03 99.03 ± 0.02
+          Reddit   98.31 ± 0.14 98.22 ± 0.04 98.52 ± 0.02 98.63 ± 0.06 99.11 ± 0.01 94.86 ± 0.00 97.53 ± 0.02 97.31 ± 0.01 99.22 ± 0.01
+      MOOC   80.23 ± 2.44 81.97 ± 0.49 85.84 ± 0.15 89.15 ± 1.60 80.15 ± 0.25 57.97 ± 0.00 82.38 ± 0.24 82.78 ± 0.15 87.52 ± 0.49
+        LastFM   70.85 ± 2.13 71.92 ± 2.21 73.42 ± 0.21 77.07 ± 3.97 86.99 ± 0.06 79.29 ± 0.00 67.27 ± 2.16 75.61 ± 0.24 93.00 ± 0.12
+         Enron    84.77 ± 0.30 82.38 ± 3.36 71.12 ± 0.97 86.53 ± 1.11 89.56 ± 0.09 83.53 ± 0.00 79.70 ± 0.71 82.25 ± 0.16 92.47 ± 0.12
+        Social Evo. 89.89 ± 0.55 88.87 ± 0.30 93.16 ± 0.17 93.57 ± 0.17 84.96 ± 0.09 74.95 ± 0.00 93.13 ± 0.16 93.37 ± 0.07 94.73 ± 0.01
+        UCI    89.43 ± 1.09 65.14 ± 2.30 79.63 ± 0.70 92.34 ± 1.04 95.18 ± 0.06 76.20 ± 0.00 89.57 ± 1.63 93.25 ± 0.57 95.79 ± 0.17
+   rnd
+           Flights   95.60 ± 1.73 95.29 ± 0.72 94.03 ± 0.18 97.95 ± 0.14 98.51 ± 0.01 89.35 ± 0.00 91.23 ± 0.02 90.99 ± 0.05 98.91 ± 0.01
+        Can. Parl.  69.26 ± 0.31 66.54 ± 2.76 70.73 ± 0.72 70.88 ± 2.34 69.82 ± 2.34 64.55 ± 0.00 68.67 ± 2.67 77.04 ± 0.46 97.36 ± 0.45
+      US Legis.  75.05 ± 1.52 75.34 ± 0.39 68.52 ± 3.16 75.99 ± 0.58 70.58 ± 0.48 58.39 ± 0.00 69.59 ± 0.48 70.74 ± 1.02 71.11 ± 0.59
+     UN Trade  64.94 ± 0.31 63.21 ± 0.93 61.47 ± 0.18 65.03 ± 1.37 65.39 ± 0.12 60.41 ± 0.00 62.21 ± 0.03 62.61 ± 0.27 66.46 ± 1.29
+      UN Vote  63.91 ± 0.81 62.81 ± 0.80 52.21 ± 0.98 65.72 ± 2.17 52.84 ± 0.10 58.49 ± 0.00 51.90 ± 0.30 52.11 ± 0.16 55.55 ± 0.42
+         Contact   95.31 ± 1.33 95.98 ± 0.15 96.28 ± 0.09 96.89 ± 0.56 90.26 ± 0.28 92.58 ± 0.00 92.44 ± 0.12 91.92 ± 0.03 98.29 ± 0.01
+        Avg. Rank      5.08         5.85         5.69         2.54         4.31         7.54         6.92         5.46         1.62
+        Wikipedia  83.01 ± 0.66 79.93 ± 0.56 87.38 ± 0.22 86.86 ± 0.33 71.21 ± 1.67 73.35 ± 0.00 89.05 ± 0.39 90.90 ± 0.10 82.23 ± 2.54
+          Reddit   80.03 ± 0.36 79.83 ± 0.31 79.55 ± 0.20 81.22 ± 0.61 80.82 ± 0.45 73.59 ± 0.00 77.14 ± 0.16 78.44 ± 0.18 81.57 ± 0.67
+      MOOC   78.94 ± 1.25 75.60 ± 1.12 82.19 ± 0.62 87.06 ± 1.93 74.05 ± 0.95 60.71 ± 0.00 77.06 ± 0.41 77.77 ± 0.92 85.85 ± 0.66
+        LastFM   74.35 ± 3.81 74.92 ± 2.46 71.59 ± 0.24 76.87 ± 4.64 69.86 ± 0.43 73.03 ± 0.00 59.30 ± 2.31 72.47 ± 0.49 81.57 ± 0.48
+         Enron    69.85 ± 2.70 71.19 ± 2.76 64.07 ± 1.05 73.91 ± 1.76 64.73 ± 0.36 76.53 ± 0.00 70.66 ± 0.39 77.98 ± 0.92 75.63 ± 0.73
+        Social Evo. 87.44 ± 6.78 93.29 ± 0.43 95.01 ± 0.44 94.45 ± 0.56 85.53 ± 0.38 80.57 ± 0.00 94.74 ± 0.31 94.93 ± 0.31 97.38 ± 0.14
+        UCI    75.24 ± 5.80 55.10 ± 3.14 68.27 ± 1.37 80.43 ± 2.12 65.30 ± 0.43 65.50 ± 0.00 80.25 ± 2.74 84.11 ± 1.35 82.17 ± 0.82
+   hist
+           Flights   66.48 ± 2.59 67.61 ± 0.99 72.38 ± 0.18 66.70 ± 1.64 64.72 ± 0.97 70.53 ± 0.00 70.68 ± 0.24 71.47 ± 0.26 66.59 ± 0.49
+        Can. Parl.  51.79 ± 0.63 63.31 ± 1.23 67.13 ± 0.84 68.42 ± 3.07 66.53 ± 2.77 63.84 ± 0.00 65.93 ± 3.00 74.34 ± 0.87 97.00 ± 0.31
+      US Legis.  51.71 ± 5.76 86.88 ± 2.25 62.14 ± 6.60 74.00 ± 7.57 68.82 ± 8.23 63.22 ± 0.00 80.53 ± 3.95 81.65 ± 1.02 85.30 ± 3.88
+     UN Trade  61.39 ± 1.83 59.19 ± 1.07 55.74 ± 0.91 58.44 ± 5.51 55.71 ± 0.38 81.32 ± 0.00 55.90 ± 1.17 57.05 ± 1.22 64.41 ± 1.40
+      UN Vote  70.02 ± 0.81 69.30 ± 1.12 52.96 ± 2.14 69.37 ± 3.93 51.26 ± 0.04 84.89 ± 0.00 52.30 ± 2.35 51.20 ± 1.60 60.84 ± 1.58
+         Contact   95.31 ± 2.13 96.39 ± 0.20 96.05 ± 0.52 93.05 ± 2.35 84.16 ± 0.49 88.81 ± 0.00 93.86 ± 0.21 93.36 ± 0.41 97.57 ± 0.06
+        Avg. Rank      5.46         5.08         5.08         3.85         7.54         5.92         5.46         4.00         2.62
+        Wikipedia  75.65 ± 0.79 70.21 ± 1.58 87.00 ± 0.16 85.62 ± 0.44 74.06 ± 2.62 80.63 ± 0.00 86.76 ± 0.72 88.59 ± 0.17 78.29 ± 5.38
+          Reddit   86.98 ± 0.16 86.30 ± 0.26 89.59 ± 0.24 88.10 ± 0.24 91.67 ± 0.24 85.48 ± 0.00 87.45 ± 0.29 85.26 ± 0.11 91.11 ± 0.40
+      MOOC   65.23 ± 2.19 61.66 ± 0.95 75.95 ± 0.64 77.50 ± 2.91 73.51 ± 0.94 49.43 ± 0.00 74.65 ± 0.54 74.27 ± 0.92 81.24 ± 0.69
+        LastFM   62.67 ± 4.49 64.41 ± 2.70 71.13 ± 0.17 65.95 ± 5.98 67.48 ± 0.77 75.49 ± 0.00 58.21 ± 0.89 68.12 ± 0.33 73.97 ± 0.50
+         Enron    68.96 ± 0.98 67.79 ± 1.53 63.94 ± 1.36 70.89 ± 2.72 75.15 ± 0.58 73.89 ± 0.00 71.29 ± 0.32 75.01 ± 0.79 77.41 ± 0.89
+        Social Evo. 89.82 ± 4.11 93.28 ± 0.48 94.84 ± 0.44 95.13 ± 0.56 88.32 ± 0.27 83.69 ± 0.00 94.90 ± 0.36 94.72 ± 0.33 97.68 ± 0.10
+        UCI    65.99 ± 1.40 54.79 ± 1.76 68.67 ± 0.84 70.94 ± 0.71 64.61 ± 0.48 57.43 ± 0.00 76.01 ± 1.11 80.10 ± 0.51 72.25 ± 1.71
+   ind
+           Flights   69.07 ± 4.02 70.57 ± 1.82 75.48 ± 0.26 71.09 ± 2.72 69.18 ± 1.52 81.08 ± 0.00 74.62 ± 0.18 74.87 ± 0.21 70.92 ± 1.78
+        Can. Parl.  48.42 ± 0.66 58.61 ± 0.86 68.82 ± 1.21 65.34 ± 2.87 67.75 ± 1.00 62.16 ± 0.00 65.85 ± 1.75 69.48 ± 0.63 95.44 ± 0.57
+      US Legis.  50.27 ± 5.13 83.44 ± 1.16 61.91 ± 5.82 67.57 ± 6.47 65.81 ± 8.52 64.74 ± 0.00 78.15 ± 3.34 79.63 ± 0.84 81.25 ± 3.62
+     UN Trade  60.42 ± 1.48 60.19 ± 1.24 60.61 ± 1.24 61.04 ± 6.01 62.54 ± 0.67 72.97 ± 0.00 61.06 ± 1.74 60.15 ± 1.29 55.79 ± 1.02
+      UN Vote  67.79 ± 1.46 67.53 ± 1.98 52.89 ± 1.61 67.63 ± 2.67 52.19 ± 0.34 66.30 ± 0.00 50.62 ± 0.82 51.60 ± 0.73 51.91 ± 0.84
+         Contact   93.43 ± 1.78 94.18 ± 0.10 94.35 ± 0.48 90.18 ± 3.28 89.31 ± 0.27 85.20 ± 0.00 91.35 ± 0.21 90.87 ± 0.35 94.75 ± 0.28
+        Avg. Rank      6.62         6.38         4.15         4.38         5.46         5.62         4.69         4.46         3.23
+
+
+Since EdgeBank can be only evaluated for transductive dynamic link prediction, we do not show its
+performance under the inductive setting. From the results, we have two main observations.
+
+Firstly DyGFormer usually outperforms baselines and achieves an average rank of 2 49/2 69 on
+~~~
+
+## Body references
+
+- [PDF p.6] We report the performance of different methods on the AP metric for transductive dynamic link prediction with three negative sampling strategies in Table 1. The best and second-best results are emphasized by bold and underlined fonts. Note that the results are multiplied by 100 for a better display layout. Please refer to Section C.1 and Section C.2 for the results of AP for inductive dynamic link prediction as well as AUC-ROC for transductive and inductive dynamic link prediction tasks.
+
+## Mandatory limitation
+
+A text-only model must not claim direct observation of visual trends, layout, axes, colors, panels, qualitative examples, or crop completeness.

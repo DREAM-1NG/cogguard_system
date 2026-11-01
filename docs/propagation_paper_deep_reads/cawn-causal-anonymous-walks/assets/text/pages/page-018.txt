@@ -1,0 +1,70 @@
+Published as a conference paper at ICLR 2021
+
+
+
+
+
+JODIE. The model with code provided here is adapted into our evaluation pipeline. JODIE calculates
+the L2 distances between the predicted item embedding to other items and uses the rankings to evaluate
+ their performance. Here, we consider the negative distances as the prediction score. Based on the
+prediction score, we calculate mAP and AUC. We split the data according to the setting in section
+ 5.1. The model is trained for 50 epoches. The dimensions of the dynamic embedding is searched
+in{64, 128} and the best performance is reported.
+
+DyRep. The model with code provided here is adapted into our evaluation pipeline. We follow
+most of the settings in the paper. That is, we set the number of samples for survival to 5, gradient
+clipping to 100. And we tune the hidden unit size and embedding size in {32, 64} to report the best
+performance. The model uses likelihood based on point process to predict links and therefore we use
+these likelihood scores to compute AUC and AP.
+
+VGRNN. The model with code provided here is adapted into our evaluation pipeline. We use several
+of its default settings: one-hot node features as input when node attributes are unavailable as suggested
+by the original paper (Hajiramezanali et al., 2019), one layer of GRU network as the history tracking
+backbone, a learning rate of 1e-2, and training for 1000 epochs. Its hidden dimension is searched in
+{32, 64} and the best performance is reported.
+
+EvolveGCN. The model with code provided here is adapted into our evaluation pipeline. We
+ utilize EvolveGCN-O version since it can capture more graph structural information. For most
+hyperparameters, we follow the default values. According to our setting, we sample an equal amount
+of negative links, which means we set negative_mult_training and negative_mult_test to 1. One
+central hyperparameter needs to be further tuned is number of previous snapshots used for training
+and testing. We search its optimal value in {3, 4, 6, 8, 10} when tuning the model for most datasets.
+Since Enron only contains 11 snapshots, we search its optimal value in {3,4,5,6}.
+
+TGAT. The model with code provided here is adapted into our evaluation pipeline. We use several
+of their default settings. That is, we use product attention, set the number of attention heads to 2, set
+the number of graph attention layers to 2, and use 100 as their default hidden dimension. One central
+hyperparameter that needs to be further tuned is the degree of their neighbor sampling. We search its
+optimal value in {10, 20, 30} when tuning the model.
+
+
+C.3  EVALUATION OF SNAPSHOT-BASED BASELINES
+
+
+                       Reddit     Wikipedia  MOOC   Social Evo.   Enron     UCI
+  total snapshots          174         20        20         27         11         88
+  exact split          122 / 26 / 26   14 / 3 / 3   14 / 3 / 3    19 / 4 / 4    7 / 2 / 2   62 / 13 / 13
+  referenced baseline  EvolveGCN          -               -     VGRNN   VGRNN  EvolveGCN
+
+                 Table 5: Snapshot split for evaluating snapshot-based baselines.
+
+
+We make the following decisions to evaluate snapshot-based baselines in a fair manner, so that their
+performances are comparable to those derived from the stream-based evaluation procedure. The
+ﬁrst step we do is to evenly split the whole dataset chronologically into a number of snapshots. We
+determine the exact number of snapshots by referring the three snapshot-based baselines we use. For
+Wikipedia and MOOC dataset which are not used by any snapshot-based baseline, we split them into
+a total of 20 snapshots. Next, we need to determine the proportions of these snapshots assigned each
+ to training, validation, and testing set. In doing this, our principle is that the proportions of these three
+ sets should be close to 70:15:15 as much as possible, since that ratio is what we use for evaluating
+stream-based baselines and our proposed method. These decisions lead to our ﬁnal splitting scheme
+summarized in Tab. 5.
+
+Extra care should also be taken when testing snapshot-based methods. For a queried link in a snapshot,
+usually snapshot-based methods only make a binary prediction whether or not that link may exist
+ at any time in that snapshot. They do not, however, take care of the case that the link may appear
+multiple times at different time points within that snapshot’s time range. This lead to a different
+evaluation scheme than stream-based methods, which do consider the multiplicity of links. Therefore,
+
+
+                                       18

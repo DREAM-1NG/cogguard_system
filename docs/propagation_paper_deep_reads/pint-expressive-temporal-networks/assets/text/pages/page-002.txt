@@ -1,0 +1,63 @@
+Overview of the theoretical results
+            PINT
+                                        Relationship between CTDGs and DTDGs               Prop. 1
+          Injective        CAW
+      MP-TGNs                            Injective MP-TGNs ⌫MP-TGNs                       Prop. 2
+                                        Sufﬁciently deep MP-TGNs do not need memory         Prop. 3
+           SOTA               SOTA MP-TGNs        MP-TGNs                 Prop. 4                                                      ≺Injective           MP-TGNs
+                            MP-TGNs 6≻WA-TGNs and WA-TGNs 6≻MP-TGNs    Prop. 5
+                                            Injective MP-TGNs ⇠= temporal-WL test                 Prop. 6
+                             MP-TGNs/CAWs cannot recognize graph properties      Prop. 7
+                                        Constructing injective temporal MP                     Prop. 8
+               Open
+                problems             PINT (ours) ≻both MP-TGNs and WA-TGNs           Prop. 9
+                                         Limitations of PINT                                   Prop. 10
+
+                Figure 1: Schematic diagram and summary of our contributions.
+
+
+We establish a series of results to address these fundamental questions. We begin by showing that
+discrete-time dynamic graphs (DTDGs) can always be converted to continuous-time analogues
+(CTDGs) without loss of information, so we can focus on analyzing the ability of TGNs to distinguish
+nodes/links of CTDGs. We consider a general framework for message-passing TGNs (MP-TGNs)
+[27] that subsumes a wide variety of methods [e.g., 16, 32, 42]. We prove that equipping MP-TGNs
+with injective aggregation and update functions leads to the class of most expressive anonymous
+MP-TGNs (i.e., those that do not leverage node ids). Extending the color-reﬁnement algorithm to
+temporal settings, we show that these most powerful MP-TGNs are as expressive as the temporal
+WL method. Notably, existing MP-TGNs do not enforce injectivity. We also delineate the role of
+memory in MP-TGNs: nodes in a network with only a few layers of message passing fail to aggregate
+information from a sufﬁciently wide receptive ﬁeld (i.e., from distant nodes), so memory serves
+to offset this highly local view with additional global information. In contrast, sufﬁciently deep
+architectures obviate the need for memory modules.
+
+Different from MP-TGNs, walk-aggregating TGNs (WA-TGNs) such as CAW [38] obtain represen-
+tations from anonymized temporal walks. We provide constructions that expose shortcomings of
+each framework, establishing that WA-TGNs can distinguish links in cases where MP-TGNs fail and
+vice-versa. Consequently, neither class is more expressive than the other. Additionally, we show that
+MP-TGNs and CAWs cannot decide temporal graph properties such as diameter, girth, or number of
+cycles. Strikingly, our analysis unravels the subtle relationship between the walk computations in
+CAWs and the MP steps in MP-TGNs.
+
+Equipped with these theoretical insights, we propose PINT (short for position-encoding injective
+temporal graph net), founded on a new temporal layer that leverages the strengths of both MP-TGNs
+and WA-TGNs. Like the most expressive MP-TGNs, PINT deﬁnes injective message passing and
+update steps. PINT also augments memory states with novel relative positional features, and these
+features can replicate all the discriminative beneﬁts available to WA-TGNs. Interestingly, the time
+complexity of computing our positional features is less severe than the sampling overhead in CAW,
+thus PINT can often be trained faster than CAW. Importantly, we establish that PINT is provably
+more expressive than CAW as well as MP-TGNs.
+Our contributions are three-fold:
+        • a rigorous theoretical foundation for TGNs is laid - elucidating the role of memory, beneﬁts
+         of injective message passing, limits of existing TGN models, temporal extension of the
+      1-WL test and its implications, impossibility results about temporal graph properties, and
+         the relationship between main classes of TGNs — as summarized in Figure 1;
+
+        • explicit injective temporal functions are introduced, and a novel method for temporal graphs
+           is proposed that is provably more expressive than state-of-the-art TGNs;
+
+        • extensive empirical investigations underscore practical beneﬁts of this work. The proposed
+       method is either competitive or signiﬁcantly better than existing models on several real
+        benchmarks for dynamic link prediction, in transductive as well as inductive settings.
+
+
+                                       2

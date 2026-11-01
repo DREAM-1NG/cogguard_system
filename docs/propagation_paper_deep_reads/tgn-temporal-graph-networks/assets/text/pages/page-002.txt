@@ -1,0 +1,60 @@
+and evolving (i.e. new nodes join the graph continuously). Only recently, several approaches have
+been proposed that support the continuous-time scenario (Xu et al., 2020; Trivedi et al., 2019; Kumar
+et al., 2019; Ma et al., 2018; Nguyen et al., 2018; Bastas et al., 2019).
+
+Contributions.  In this paper, we ﬁrst propose the generic inductive framework of Temporal Graph
+Networks (TGNs) operating on continuous-time dynamic graphs represented as a sequence of
+events, and show that many previous methods are speciﬁc instances of TGNs. Second, we propose
+a novel training strategy allowing the model to learn from the sequentiality of the data while
+maintaining highly efﬁcient parallel processing. Third, we perform a detailed ablation study of
+different components of our framework and analyze the tradeoff between speed and accuracy. Finally,
+we show state-of-the-art performance on multiple tasks and datasets in both transductive and inductive
+settings, while being much faster than previous methods.
+
+2  BACKGROUND
+
+Deep learning on static graphs. A static graph G = (V, E) comprises nodes V = {1, . . . , n} and
+edges E ⊆V × V, which are endowed with features, denoted by vi and eij for all i, j = 1, . . . , n,
+respectively. A typical graph neural network (GNN) creates an embedding zi of the nodes by learning
+a local aggregation rule of the form
+                       zi = X h(mij, vi)      mij = msg(vi, vj, eij),
+                           j∈Ni
+which is interpreted as message passing from the neighbors j of i. Here, Ni = {j  : (i, j) ∈E}
+denotes the neighborhood of node i and msg and h are learnable functions.
+
+Dynamic Graphs.  There exist two main models for dynamic graphs. Discrete-time dynamic graphs
+(DTDG) are sequences of static graph snapshots taken at intervals in time. Continuos-time dynamic
+graphs (CTDG) are more general and can be represented as timed lists of events, which may include
+edge addition or deletion, node addition or deletion and node or edge feature transformations.
+
+Our temporal (multi-)graph is modeled as a sequence of time-stamped events G = {x(t1), x(t2), . . .},
+representing addition or change of a node or interaction between a pair of nodes at times 0 ≤t1 ≤
+t2 ≤. . .. An event x(t) can be of two types: 1) A node-wise event is represented by vi(t), where i
+denotes the index of the node and v is the vector attribute associated with the event. If the index i
+has not been seen before, the event creates node i (with the given features), otherwise it updates the
+features. 2) An interaction event between nodes i and j is represented by a (directed) temporal edge
+eij(t) (there might be more than one edge between a pair of nodes, so technically this is a multigraph).
+We denote by V(T) = {i  : ∃vi(t) ∈G, t ∈T} and E(T) = {(i, j)  : ∃eij(t) ∈G, t ∈T}
+the temporal set of vertices and edges, respectively, and by Ni(T) = {j  :  (i, j) ∈E(T)} the
+neighborhood of node i in time interval T. Nki (T) denotes the k-hop neighborhood. A snapshot of
+the temporal graph G at time t is the (multi-)graph G(t) = (V[0, t], E[0, t]) with n(t) nodes. Deletion
+events are discussed in Appendix A.1.
+
+3  TEMPORAL GRAPH NETWORKS
+
+Following the terminology in (Kazemi et al., 2020), a neural model for dynamic graphs can be
+regarded as an encoder-decoder pair, where an encoder is a function that maps from a dynamic
+graph to node embeddings, and a decoder takes as input one or more node embeddings and makes a
+task-speciﬁc prediction e.g. node classiﬁcation or edge prediction. The key contribution of this paper
+is a novel Temporal Graph Network (TGN) encoder applied on a continuous-time dynamic graph
+represented as a sequence of time-stamped events and producing, for each time t, the embedding of
+the graph nodes Z  t) = (z1(t), . . . , zn(t)(t)  .
+
+3.1  CORE MODULES
+
+Memory.  The memory (state) of the model at time t consists of a vector si(t) for each node i the
+model has seen so far. The memory of a node is updated after an event (e.g. interaction with another
+node or node-wise change), and its purpose is to represent the node’s history in a compressed format.
+
+
+                                       2

@@ -1,0 +1,66 @@
+Nvidia                                  AMD
+
+       0.15
+
+
+ αt 0.10
+
+
+
+       0.05
+
+
+        BlackBerry                                             Fannie Mae
+
+       0.15
+
+
+ αt 0.10
+
+
+
+       0.05
+
+
+            2005                  2010                  2015                  2020             2000         2005         2010         2015         2020
+                                             Time
+
+Figure 5: Realized trajectories of αt for predicting stock market volatility as outlined in Section 2.2
+using update (2).
+
+
+
+
+
+         Nvidia                                  AMD
+
+       0.15
+
+
+ αt 0.10
+
+
+
+       0.05
+
+
+        BlackBerry                                             Fannie Mae
+
+       0.15
+
+
+ αt 0.10
+
+
+
+       0.05
+
+
+            2005                  2010                  2015                  2020             2000         2005         2010         2015         2020
+                                             Time
+
+Figure 6: Realized trajectories of αt for predicting stock market volatility as outlined in Section 2.2
+using update (3) with ws ∝0.95t−s.
+
+
+                                       15

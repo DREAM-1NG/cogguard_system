@@ -1,0 +1,58 @@
+8  Acknowledgements
+
+E.C. was supported by Ofﬁce of Naval Research grant N00014-20-12157, by the National Science
+Foundation grants OAC 1934578 and DMS 2032014, by the Army Research Ofﬁce (ARO) under
+grant W911NF-17-1-0304, and by the Simons Foundation under award 814641. We thank John
+Cherian for valuable discussions related to Presidential Election Night 2020 and Lihua Lei for helpful
+comments on the relationship to online learning.
+
+References
+
+ [1] Julia Angwin,  Jeff  Larson,  Surya  Mattu,  and  Lauren  Kirchner.    Machine  bias:
+     There’s  software  used  across  the  country  to  predict  future  criminals. and  it’s  bi-
+     ased   against   blacks,   2016.    URL  https://www.propublica.org/article/
+    machine-bias-risk-assessments-in-criminal-sentencing.
+ [2] Claudine Badue, Rânik Guidolini, Raphael Vivacqua Carneiro, Pedro Azevedo, Vinicius B.
+     Cardoso, Avelino Forechi, Luan Jesus, Rodrigo Berriel, Thiago M. Paixão, Filipe Mutz, Lucas
+    de Paula Veronese, Thiago Oliveira-Santos, and Alberto F. De Souza. Self-driving cars: A
+     survey. Expert Systems with Applications, 165:113816, 2021. ISSN 0957-4174. doi: https:
+     //doi.org/10.1016/j.eswa.2020.113816. URL https://www.sciencedirect.com/science/
+    article/pii/S095741742030628X.
+ [3] Rina Foygel Barber, Emmanuel J. Candès, Aaditya Ramdas, and Ryan J. Tibshirani. Predictive
+     inference with the jackknife+. The Annals of Statistics, 49(1):486 – 507, 2021. doi: 10.1214/
+    20-AOS1965. URL https://doi.org/10.1214/20-AOS1965.
+ [4] Tim Bollerslev.   Generalized autoregressive conditional heteroskedasticity.   Journal of
+     Econometrics, 31(3):307–327, 1986.  ISSN 0304-4076.   doi:  https://doi.org/10.1016/
+     0304-4076(86)90063-1.  URL https://www.sciencedirect.com/science/article/
+    pii/0304407686900631.
+ [5] United States Census Bureau. County characteristics resident population estimates, 2019. data
+     retrieved from https://www.census.gov/data/tables/time-series/demo/popest/
+    2010s-counties-detail.html.
+ [6] United States Census Bureau. 2015-2019 american community survey 5-year average county-
+      level estimates, 2019. data retrieved from https://www.ers.usda.gov/data-products/
+    county-level-data-sets/download-data/.
+ [7] United  States Census Bureau.    Small  area income and  poverty  estimates:   2019,
+     2019.         data   retrieved   from  https://www.ers.usda.gov/data-products/
+    county-level-data-sets/download-data/.
+ [8] Emmanuel J. Candès, Lihua Lei, and Zhimei Ren. Conformalized survival analysis. arXiv
+      preprint, 2021. arXiv:2103.09763.
+ [9] X. Cao, J. Zhang, and H. V. Poor. On the time-varying distributions of online stochastic
+     optimization. In 2019 American Control Conference (ACC), pages 1494–1500, 2019. doi:
+    10.23919/ACC.2019.8814889.
+[10] Maxime Cauchois, Suyash Gupta, Alnur Ali, and John C. Duchi. Robust validation: Conﬁdent
+     predictions even when distributions shift. arXiv preprint, 2020. arXiv:2008.04267.
+[11] Maxime Cauchois, Suyash Gupta, and John C. Duchi. Knowing what you know: valid and
+     validated conﬁdence sets in multiclass and multilabel prediction. Journal of Machine Learning
+     Research, 22(81):1–42, 2021. URL http://jmlr.org/papers/v22/20-753.html.
+[12] Haoxian Chen, Ziyi Huang, Henry Lam, Huajie Qian, and Haofeng Zhang. Learning prediction
+      intervals for regression: Generalization and calibration. In Proceedings of The 24th International
+     Conference on Artiﬁcial Intelligence and Statistics, volume 130 of Proceedings of Machine
+     Learning Research, pages 820–828. PMLR, 13–15 Apr 2021.
+[13] John Cherian and Lenny Bronner. How the washington post estimates outstanding votes
+     for the 2020 presidential election.  https://elex-models-prod.s3.amazonaws.com/
+    2020-general/write-up/election_model_writeup.pdf, 2020.
+[14] MIT Election Data and Science Lab. County Presidential Election Returns 2000-2016, 2018.
+   URL https://doi.org/10.7910/DVN/VOQCHQ.
+
+
+                                       11

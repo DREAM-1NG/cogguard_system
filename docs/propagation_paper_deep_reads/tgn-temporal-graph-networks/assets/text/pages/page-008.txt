@@ -1,0 +1,69 @@
+99
+            TGN-attn    TGN-2l                TGN-mean
+                                                                             98
+          TGN-sum
+                                                                             97                                                                                                                                                                                                                                                          Precision
+                                                                                                                                                                                                  Average 96
+                                                                             95           TGN-id                                                                                                                                                                              1l-no_mem-last                                                                  TGAT                       Test                                                                                                                                                                              2l-no_mem-last
+                                                                             94                                                              1l-mem-last
+  TGN-nomem DyRep                                                                                                                                                          2l-mem-last
+             Jodie                                                                                                                                                      1l-mem-uniform
+                                                                             93
+                                                                        012   5    10          20          30          40
+                                                                                      Number of sampled neighbors per layer
+
+(a) Tradeoff between accuracy (test average preci-         (b) Performance of methods with different number
+sion in %) and speed (time per epoch in sec) of         of layers and with or without memory when sam-
+different models.                                           pling an increasing number of neighbors. Last and
+                                                      uniform refer to neighbor sampling strategy.
+
+Figure 3: Ablation studies on the Wikipedia dataset for the transductive setting of the future edge
+prediction task. Means and standard deviations were computed over 10 runs.
+
+5.2  CHOICE OF MODULES
+
+We perform a detailed ablation study comparing different instances of our TGN framework, focusing
+on the speed vs accuracy tradeoff resulting from the choice of modules and their combination. The
+variants we experiment with are reported in Table 1 and their results are depicted in Figure 3a.
+
+
+Memory.  We compare a model that does not make use of a memory (TGN-no-mem), with a model
+which uses memory (TGN-attn) but is otherwise identical. While TGN-att is about 3× slower, it has
+nearly 4% higher precision than TGN-no-mem, conﬁrming the importance of memory for learning
+on dynamic graphs, due to its ability to store long-term information about a node which is otherwise
+hard to capture. This ﬁnding is conﬁrmed in Figure 3b where we compare different models when
+increasing the number of sampled neighbors: the models with memory consistently outperform the
+models without memory. Moreover, using the memory in conjunction with sampling the most recent
+neighbors reduces the number of neighbors needed to achieve the best performance when used.
+
+
+Embedding Module.  Figure 3a compare models with different embedding modules (TGN-id,
+TGN-time, TGN-attn, TGN-sum). The ﬁrst interesting insight is that projecting the embedding in
+time seems to slightly hurt, as TGN-time underperforms TGN-id. Moreover, the ability to exploit the
+graph is crucial for performance: we note that all graph-based projections (TGN-attn, TGN-sum)
+outperform the graph-less TGN-id model by a large margin, with TGN-attn being the top performer
+at the expense of being only slightly slower than the simpler TGN-sum. This indicates that the ability
+to obtain more recent information through the graph, and to select which neighbors are the most
+important are critical factors for the performance of the model.
+
+
+Message Aggregator. We compare two further models, one using the last message aggregator
+(TGN-attn) and another a mean aggregator (TGN-mean) but otherwise the same. While TGN-mean
+performs slightly better, it is more than 3× slower.
+
+
+Number of layers.  While in TGAT having 2 layers is of fundamental importance for obtaining
+good performances (TGAT vs TGAT-1l has over 10% difference in average precision), in TGN the
+presence of the memory makes it enough to use just one layer to obtain very high performance
+(TGN-attn vs TGN-2l). This is because when accessing the memory of the 1-hop neighbors, we are
+indirectly accessing information from hops further away. Moreover, being able to use only one layer
+of graph attention speeds up the model dramatically.
+
+
+6  CONCLUSION
+
+We introduce TGN, a generic framework for learning on continuous-time dynamic graphs. We
+obtain state-of-the-art results on several tasks and datasets while being faster than previous methods.
+
+
+                                       8

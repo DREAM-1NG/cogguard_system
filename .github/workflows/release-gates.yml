@@ -1,0 +1,227 @@
+name: CogGuard Release Gates
+
+on:
+  pull_request:
+    branches: [release-0.2]
+  push:
+    branches: [cleanup/final-architecture, release-0.2]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cogguard-release-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend-unit:
+    name: backend-unit
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: system/backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: latest
+      - run: uv sync --frozen --extra dev
+      - run: uv run --frozen --extra dev pytest -q
+
+  backend-integration:
+    name: backend-integration
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: cogguard
+          MYSQL_USER: cogguard
+          MYSQL_PASSWORD: cogguard
+        ports: ["3306:3306"]
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -u root -proot"
+          --health-interval=10s --health-timeout=5s --health-retries=12
+      mongodb:
+        image: mongo:7.0
+        env:
+          MONGO_INITDB_ROOT_USERNAME: cogguard
+          MONGO_INITDB_ROOT_PASSWORD: cogguard
+        ports: ["27017:27017"]
+        options: >-
+          --health-cmd="mongosh --eval \"db.adminCommand('ping')\""
+          --health-interval=10s --health-timeout=5s --health-retries=12
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=10s --health-timeout=5s --health-retries=12
+    defaults:
+      run:
+        working-directory: system/backend
+    env:
+      COGGUARD_REQUIRE_EXTERNAL_SERVICES: "1"
+      COGGUARD_TEST_DB: "1"
+      MYSQL_HOST: 127.0.0.1
+      MYSQL_USER: cogguard
+      MYSQL_PASSWORD: cogguard
+      MYSQL_DATABASE: cogguard
+      MYSQL_DATABASE_TEST: cogguard_test
+      MONGO_HOST: 127.0.0.1
+      MONGO_USER: cogguard
+      MONGO_PASSWORD: cogguard
+      REDIS_HOST: 127.0.0.1
+      REDIS_PASSWORD: ""
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: latest
+      - name: Create disposable test database
+        run: mysql -h 127.0.0.1 -u root -proot -e "CREATE DATABASE IF NOT EXISTS cogguard_test; GRANT ALL PRIVILEGES ON cogguard_test.* TO 'cogguard'@'%'; FLUSH PRIVILEGES;"
+      - run: uv sync --frozen --extra dev
+      - run: uv run --frozen python scripts/verify_migration_roundtrip.py --check-services
+      - run: uv run --frozen --extra dev pytest tests/test_auth.py tests/test_crawl.py tests/test_review_case_v2_api.py -q
+
+  migration-roundtrip:
+    name: migration-roundtrip
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: cogguard
+          MYSQL_USER: cogguard
+          MYSQL_PASSWORD: cogguard
+        ports: ["3306:3306"]
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -u root -proot"
+          --health-interval=10s --health-timeout=5s --health-retries=12
+    defaults:
+      run:
+        working-directory: system/backend
+    env:
+      COGGUARD_REQUIRE_EXTERNAL_SERVICES: "1"
+      COGGUARD_RUN_MIGRATION_ROUNDTRIP: "1"
+      MYSQL_HOST: 127.0.0.1
+      MYSQL_USER: cogguard
+      MYSQL_PASSWORD: cogguard
+      MYSQL_DATABASE: cogguard
+      MYSQL_DATABASE_TEST: cogguard_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: latest
+      - name: Create disposable test database
+        run: mysql -h 127.0.0.1 -u root -proot -e "CREATE DATABASE IF NOT EXISTS cogguard_test; GRANT ALL PRIVILEGES ON cogguard_test.* TO 'cogguard'@'%'; FLUSH PRIVILEGES;"
+      - run: uv sync --frozen --extra dev
+      - run: uv run --frozen python scripts/verify_migration_roundtrip.py
+
+  frontend-unit-component:
+    name: frontend-unit-component
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: system/frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: system/frontend/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: npm run test:component
+
+  frontend-build-smoke:
+    name: frontend-build-smoke
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: system/frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: system/frontend/package-lock.json
+      - run: npm ci
+      - run: npm run build:smoke
+
+  release-security:
+    name: release-security
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: system/backend
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: latest
+      - run: uv sync --frozen --extra dev
+      - run: uv run --frozen --extra dev pytest tests/test_release_surface.py tests/test_system_naming_governance.py -q
+      - name: Check branch diff whitespace
+        working-directory: .
+        run: git diff --check origin/release-0.2...HEAD
+      - name: Reject tracked secrets and generated outputs
+        shell: bash
+        working-directory: .
+        run: |
+          ! git ls-files | grep -E '(^|/)(\.env$|data_runs/|.*DIAGNOSTIC_REPORT.*\.md$)' || {
+            echo "Tracked release-sensitive path detected" >&2
+            exit 1
+          }
+          sensitive=$(git ls-files | grep -E '(^|/)\.env($|\.)|\.(pem|key|p12|pfx)$' | grep -Ev '(^|/)\.env\.example$' || true)
+          if [ -n "$sensitive" ]; then
+            echo "Tracked sensitive file detected:" >&2
+            echo "$sensitive" >&2
+            exit 1
+          fi
+          python - <<'PY'
+          import pathlib, re, subprocess, sys
+          pattern = re.compile(
+              r"(?:JWT_SECRET_KEY|DEFAULT_ADMIN_PASSWORD)\s*(?:=\s*|:\s*(?!str\b))['\"]?([^\s'\"]*)"
+          )
+          offenders = []
+          paths = subprocess.check_output(["git", "ls-files"], text=True).splitlines()
+          for name in paths:
+              path = pathlib.Path(name)
+              if path.name == ".env.example" or path.suffix.lower() == ".md" or ".github/workflows" in path.as_posix() or "tests/" in path.as_posix():
+                  continue
+              try:
+                  text = path.read_text(encoding="utf-8")
+              except (OSError, UnicodeDecodeError):
+                  continue
+              for match in pattern.finditer(text):
+                  value = match.group(1)
+                  if value and value not in {"''", '""'} and "(" not in value:
+                      offenders.append(name)
+                      break
+          if offenders:
+              print("Tracked populated secret assignment detected:", *offenders, sep="\n")
+              sys.exit(1)
+          PY
+
+  source-deployment-smoke:
+    name: source-deployment-smoke
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: system/backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: latest
+      - run: uv sync --frozen --extra dev
+      - run: uv run --frozen python scripts/verify_product_contract.py
+      - run: uv run --frozen python -m compileall -q app ../research ../runtimes

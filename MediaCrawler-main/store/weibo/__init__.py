@@ -23,12 +23,143 @@
 # @Desc    :
 
 import re
-from typing import List
+from typing import Any, Dict, List
 
 from var import source_keyword_var
 
 from .weibo_store_media import *
 from ._store_impl import *
+
+
+def _normalize_media_url(value: Any) -> str | None:
+    if not isinstance(value, str):
+        return None
+    text = value.strip()
+    if not text:
+        return None
+    if text.startswith("//"):
+        return f"https:{text}"
+    if text.startswith(("http://", "https://")):
+        return text
+    return None
+
+
+def _append_media_url(target: List[str], value: Any) -> None:
+    url = _normalize_media_url(value)
+    if url:
+        target.append(url)
+
+
+def _append_dict_url(target: List[str], value: Any, key: str = "url") -> None:
+    if isinstance(value, dict):
+        _append_media_url(target, value.get(key))
+
+
+def _append_page_info_media_urls(target: List[str], page_info: Any) -> None:
+    if not isinstance(page_info, dict):
+        return
+
+    _append_dict_url(target, page_info.get("page_pic"))
+
+    media_info = page_info.get("media_info")
+    if isinstance(media_info, dict):
+        for key in (
+            "stream_url",
+            "stream_url_hd",
+            "mp4_sd_url",
+            "mp4_hd_url",
+            "mp4_720p_mp4",
+            "mp4_1080p_mp4",
+        ):
+            _append_media_url(target, media_info.get(key))
+
+    urls = page_info.get("urls")
+    if isinstance(urls, dict):
+        for key, value in urls.items():
+            key_text = str(key).lower()
+            value_text = str(value).lower()
+            if "mp4" in key_text or ".mp4" in value_text:
+                _append_media_url(target, value)
+
+
+def _append_pic_media_urls(target: List[str], pics: Any) -> None:
+    if not isinstance(pics, list):
+        return
+    for pic in pics:
+        if isinstance(pic, str):
+            _append_media_url(target, pic)
+            continue
+        if not isinstance(pic, dict):
+            continue
+        _append_media_url(target, pic.get("url"))
+        _append_dict_url(target, pic.get("large"))
+
+
+def _append_pic_infos_media_urls(target: List[str], pic_infos: Any) -> None:
+    if not isinstance(pic_infos, dict):
+        return
+    for pic_info in pic_infos.values():
+        if not isinstance(pic_info, dict):
+            continue
+        for key in ("thumbnail", "bmiddle", "large", "original"):
+            _append_dict_url(target, pic_info.get(key))
+
+
+def _append_mix_media_urls(target: List[str], mix_media_info: Any) -> None:
+    if not isinstance(mix_media_info, dict):
+        return
+    for item in mix_media_info.get("items") or []:
+        if not isinstance(item, dict):
+            continue
+        data = item.get("data")
+        if not isinstance(data, dict):
+            continue
+        _append_pic_media_urls(target, data.get("pics"))
+        _append_page_info_media_urls(target, data.get("page_info"))
+        _append_media_url(target, data.get("thumbnail_pic"))
+        _append_media_url(target, data.get("bmiddle_pic"))
+        _append_media_url(target, data.get("original_pic"))
+
+
+def _unique_preserve_order(items: List[str]) -> List[str]:
+    seen = set()
+    result: List[str] = []
+    for item in items:
+        if item in seen:
+            continue
+        seen.add(item)
+        result.append(item)
+    return result
+
+
+def _extract_mblog_media_fields(mblog: Dict) -> Dict[str, Any]:
+    media_urls: List[str] = []
+    media_fields: Dict[str, Any] = {}
+
+    for key in (
+        "pics",
+        "pic_ids",
+        "pic_num",
+        "pic_infos",
+        "thumbnail_pic",
+        "bmiddle_pic",
+        "original_pic",
+        "page_info",
+        "mix_media_info",
+    ):
+        if key in mblog and mblog.get(key) is not None:
+            media_fields[key] = mblog.get(key)
+
+    _append_pic_media_urls(media_urls, mblog.get("pics"))
+    _append_pic_infos_media_urls(media_urls, mblog.get("pic_infos"))
+    for key in ("thumbnail_pic", "bmiddle_pic", "original_pic"):
+        _append_media_url(media_urls, mblog.get(key))
+    _append_page_info_media_urls(media_urls, mblog.get("page_info"))
+    _append_mix_media_urls(media_urls, mblog.get("mix_media_info"))
+
+    media_fields["media_urls"] = _unique_preserve_order(media_urls)
+    media_fields["post_details_raw"] = {"note_id": mblog.get("id"), "raw": mblog}
+    return media_fields
 
 
 class WeibostoreFactory:
@@ -81,7 +212,7 @@ async def update_weibo_note(note_item: Dict):
     mblog: Dict = note_item.get("mblog")
     user_info: Dict = mblog.get("user")
     note_id = mblog.get("id")
-    content_text = mblog.get("text")
+    content_text = mblog.get("text") or ""
     clean_text = re.sub(r"<.*?>", "", content_text)
     save_content_item = {
         # Weibo information
@@ -104,6 +235,7 @@ async def update_weibo_note(note_item: Dict):
         "avatar": user_info.get("profile_image_url", ""),
         "source_keyword": source_keyword_var.get(),
     }
+    save_content_item.update(_extract_mblog_media_fields(mblog))
     utils.logger.info(f"[store.weibo.update_weibo_note] weibo note id:{note_id}, title:{save_content_item.get('content')[:24]} ...")
     await WeibostoreFactory.create_store().store_content(content_item=save_content_item)
 

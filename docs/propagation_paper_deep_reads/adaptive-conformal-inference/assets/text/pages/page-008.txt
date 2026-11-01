@@ -1,0 +1,56 @@
+A formal proof of this result can be found in Section A.7. The quality of this concentration inequality
+will depend critically on the size of the bias terms B and σ2B. Before proceeding, it is important that
+we emphasize that the deﬁnitions of B and σ2B are independent of the choice of t owing to the fact
+that (αt, At, errt) is assumed stationary. Now, to understand these quantities, let
+                    M(p|a) := P(S(Xt, Yt) > ˆQ(1 −p)|At = a)
+denote the realized miscoverage level in state a ∈A obtained by the quantile ˆQ(1 −p). Assume that
+M(p|a) is continuous. This will happen for example when ˆQ(·) is continuous and S(Xt, Yt)|At = a
+is continuously distributed. Then, there exists an optimal value α∗a such that M(α∗a|a) = α. Lemma
+A.4 in the Appendix shows that if in addition M(·|a) admits a second order Taylor expansion, then
+
+      B ≤C  γ + γ−1 sup sup E[|α∗At+1 −α∗At| At+k = a]    and  σ2B ≤B2.
+                      a∈A k∈N
+Here, the constant C will depend on how much M(·|a) differs from the ideal case in which ˆQ(·) is
+the true quantile function for S(Xt, Yt)|At = a. In this case we would have that M(·|a) is the linear
+function M(p|a) = p, ∀p ∈[0, 1] and C ≤2.
+We remark that the term E[|α∗At+1 −α∗At| At+k = a] can be seen as a quantitative measurement of
+the size of the distribution shift in terms of the change in the critical value α∗a. Thus, we interpret
+these results as showing that if the distribution shift is small and ∀a ∈A, ˆQ(·) gives reasonable
+coverage of the distribution of S(Xt, Yt)|At = a, then T −1 PTt=1 errt will concentrate well around
+α.
+
+4.2.3  Achieving approximate marginal coverage
+
+Theorem 4.1 bounds the distance between the average miscoverage rate and the target level over
+long stretches of time. On the other hand, it provides no information about the marginal coverage
+frequency at a single time step. The following result shows that if the distribution shift is small, the
+realized marginal coverage rate M(αt|At) will be close to α on average.
+
+Theorem 4.2 Assume that there exists a constant L > 0 such that for all a ∈A and all α1, α2 ∈R,
+
+                        |M(α2|a) −M(α1|a)| ≤L|α2 −α1|.
+Assume additionally that for all a ∈A there exists α∗a ∈(0, 1) such that M(α∗a|a) = α. Then,
+                E[(M(αt|At) −α)2] ≤L(1 + γ) E[|α∗At+1 −α∗At|] + L γ.                 (7)                                      γ                     2
+
+Once again we emphasize that (7) holds for any choice of t owing to the fact that (αt, At, errt) is
+assumed stationary and thus the quantities appearing in the bound are invariant across t. Proof of
+this result can be found in Section A.8 of the Appendix. We remark that the right-hand side of (7) is
+minimized by choosing γ = (2E[|α∗At+1 −α∗At|])1/2, which gives the inequality
+                       √
+                 E[(M(αt|At) −α)2] ≤L(  2 + 1) q E[|α∗At+1 −α∗At|].
+
+As above we have that in the ideal case ˆQ(·) is a perfect estimate of the quantiles of S(Xt, Yt)|At = a
+and thus M(p|a) = p and L = 1. Moreover, we once again have the interpretation that E[|α∗At+1 −
+α∗At|] is a quantitative measurement of the distribution shift. Thus, this result can be interpreted as
+bounding the average difference between the realized and target marginal coverage in terms of the
+size of the underlying distribution shift. Finally, note that the choice γ = (2E[|α∗At+1 −α∗At|])1/2
+formalizes our intuition that γ should be chosen to be larger in domains with greater distribution shift,
+while not being so large as to cause αt to be overly volatile.
+
+5  Impact of StStSt(·) on the performance
+
+The performance of all conformal inference methods depends heavily on the design of the conformity
+score. Previous work has shown how carefully chosen scores or even explicit optimization of the
+
+
+                                       8

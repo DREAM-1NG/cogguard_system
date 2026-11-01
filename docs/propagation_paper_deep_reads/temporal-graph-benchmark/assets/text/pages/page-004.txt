@@ -1,0 +1,65 @@
+graph dataset for anomalous node detection in financial networks and compared the performance
+of different graph anomaly detection methods. In this work, TGB datasets have more edges and
+timestamps while covering both edge and node tasks.
+
+Temporal Graph Methods. With the growing interest in temporal graph learning, several recent
+models achieved outstanding performance on existing benchmark datasets. However, due to the
+limitations of the current evaluation, many methods achieve over-optimistic and similar performance
+for the dynamic link prediction task [46, 35, 9, 40, 25, 24]. In this work, TGB datasets and evaluation
+show a clear distinction between SOTA model performance, which helps facilitate future advancement
+of TG learning methods. Temporal graphs are categorized into discrete-time and continuous-time
+temporal graphs [21]. In this work, we focus on the continuous-time temporal graphs as it is more
+general. Continuous-time TG methods can be divided into node or edge representation learning
+methods. Node-based models such as TGN [35], DyRep [42] and TCL [45] first leverage the node
+information such as temporal neighborhood or previous node history to generate node embeddings
+and then aggregate node embeddings from both source and destination node of an edge to predict
+its existence. In comparison, edge-based methods such as CAWN [46] and GraphMixer [9] aim
+to directly generate embeddings for the edge of interest and then predict its existence. Lastly, the
+simple memory-based heuristic EdgeBank [33] without any learning component has shown surprising
+performance based on existing evaluation. We compare these methods on TGB datasets in Section 5.
+For more discussion on TG methods see Appendix D.
+
+3  Task Evaluation on Temporal Graphs
+
+Temporal graphs are often used to model networks that evolve over time where nodes are entities and
+temporal edges are relations between entities through time. In this work, we focus on continuous-time
+temporal graphs and denote them as timestamped edge streams consisting of triplets of source, desti-
+nation, and timestamp; i.e., G = {(s0, d0, t0), (s1, d1, t1), . . . , (sT , dT , tT )} where the timestamps
+are ordered (0 ≤t1 ≤t2 ≤... ≤tT ) [33, 21]. Note that temporal graph edges can have different
+properties namely being weighted, directed, or attributed. We consider Gt as the augmented graph of
+all edges observed in the stream up to the time t with nodes as Vt and edges as Et. Optionally, Gt can
+contain node features Xt ∈R|Vt|×kn where kn is the size of a node feature vector, and edge features
+Mt ∈R|Et|×km where km is the size of an edge feature vector. We consider a fixed chronological
+split to form the training, validation, and test set.
+
+Evaluation Settings. There are several possible evaluation settings in the temporal graph based
+on the available information of the test set. We categorize and discuss these settings in detail in
+Appendix C. In this work, we consider the streaming setting where the deployed models need to
+adapt to new information at inference time. More specifically, we follow the setting in [35] where
+previously observed test edges can be accessed by the model but back-propagation and weight updates
+with the test information are not permitted.
+
+
+3.1  Dynamic Link Property Prediction
+
+The goal of dynamic link property prediction is to predict the property (oftentimes the existence)
+of a link between a node pair at a future timestamp. The timeline is chronologically split at two
+fixed points resulting in three sets of edges Etrain, Eval., and Etest. In TGB, we improve the evaluation
+setting in the following ways.
+
+Negative edge sampling. In current evaluation [24, 48, 35, 45, 40, 51, 6, 53], only one negative
+edge is sampled uniformly randomly from all possible node pairs to evaluate against each positive
+edge. In contrast, in real applications where the true edges are not known in advance, the edges with
+the highest probabilities predicted by a given model are used to decide which connections should
+be prioritized. With that in mind, we treat the link prediction task as a ranking problem and sample
+multiple negative edges per each positive edge. In particular, for a given positive edge ep : (s, d, t),
+we fix the source node s and timestamp t, and sample q different destination nodes. For each dataset,
+we select the number of negative edges q based on the trade-off between evaluation completeness and
+the test set inference time.
+
+We sample the negative edges from both the historical and random negative edges.  Historical
+negatives are sampled from the set of edges that are observed in the training set but are not present at
+the current timestamp t (i.e. Et \ Etrain), they are shown to be more difficult for models to predict
+
+
+                                       4

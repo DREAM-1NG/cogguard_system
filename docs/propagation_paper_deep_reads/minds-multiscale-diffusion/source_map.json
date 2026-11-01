@@ -1,0 +1,116 @@
+{
+  "schema_version": 3,
+  "paper": {
+    "title": "Enhancing Multi-Scale Diffusion Prediction via Sequential Hypergraphs and Adversarial Learning",
+    "authors": "Pengfei Jiao, Hongqian Chen, Qing Bao, Wang Zhang, Huaming Wu",
+    "venue": "AAAI 2024",
+    "version": "本地 PDF 抽取版本",
+    "sources": [
+      {
+        "type": "pdf",
+        "location": "H:\\Zotero\\attenger\\Projects\\CISCN\\Propagation\\Jiao 等 - 2024 - Enhancing multi-scale diffusion prediction via sequential hypergraphs and adversarial learning.pdf",
+        "sha256": "4a3c6d974000d7cc9f87c286d5ba20a033fcfc869407066e7b8e6f3df32f0951",
+        "role": "primary"
+      }
+    ],
+    "page_convention": "1-based PDF page numbers"
+  },
+  "reader_profile": {
+    "domain": "computer-science-ai",
+    "selected_lenses": [
+      "computer-science-ai"
+    ],
+    "audience": "cross-disciplinary",
+    "goal": "reproduce",
+    "depth": "deep",
+    "language": "zh-CN"
+  },
+  "execution": {
+    "visual_mode": "text-only",
+    "visual_verification": "not-performed",
+    "text_evidence_sources": [
+      "pdf-text-layer",
+      "caption",
+      "body-references",
+      "structured-text-cards"
+    ]
+  },
+  "claims": [
+    {
+      "id": "C1",
+      "claim": "MINDS 以顺序超图和共享—私有学习统一 macro 与 micro 任务。",
+      "status": "strong",
+      "inference": false,
+      "evidence": [
+        {
+          "type": "figure",
+          "locator": "Figure 2, PDF p.3",
+          "note": "整体框架"
+        },
+        {
+          "type": "figure",
+          "locator": "Figure 3, PDF p.3",
+          "note": "超图消息传递"
+        },
+        {
+          "type": "body",
+          "locator": "PDF p.2-3",
+          "note": "问题定义与方法描述"
+        }
+      ],
+      "caveats": []
+    },
+    {
+      "id": "C2",
+      "claim": "顺序超图承担跨时间窗的扩散动态建模。",
+      "status": "strong",
+      "inference": false,
+      "evidence": [
+        {
+          "type": "figure",
+          "locator": "Figure 3, PDF p.3",
+          "note": "两阶段聚合"
+        },
+        {
+          "type": "body",
+          "locator": "PDF p.2",
+          "note": "作者对全局交互和时间窗的说明"
+        }
+      ],
+      "caveats": []
+    },
+    {
+      "id": "C3",
+      "claim": "论文同时报告 micro 排序指标和 macro 规模指标。",
+      "status": "strong",
+      "inference": false,
+      "evidence": [
+        {
+          "type": "table",
+          "locator": "Table 2/3, PDF p.6",
+          "note": "Hits@K 与 MAP@K"
+        },
+        {
+          "type": "table",
+          "locator": "Table 4, PDF p.6",
+          "note": "MSLE"
+        }
+      ],
+      "caveats": []
+    },
+    {
+      "id": "C4",
+      "claim": "宏观/微观、HGNN、对抗和 diffusion 组件具有消融证据。",
+      "status": "strong",
+      "inference": false,
+      "evidence": [
+        {
+          "type": "table",
+          "locator": "Table 5, PDF p.7",
+          "note": "消融表"
+        }
+      ],
+      "caveats": []
+    }
+  ]
+}

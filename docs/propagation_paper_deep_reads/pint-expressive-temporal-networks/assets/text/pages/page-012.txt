@@ -1,0 +1,73 @@
+[22] C. Morris, M. Ritzert, M. Fey, W. L. Hamilton, J. E. Lenssen, G. Rattan, and M. Grohe. Weisfeiler and
+    leman go neural: Higher-order graph neural networks. In AAAI Conference on Artiﬁcial Intelligence
+     (AAAI), 2019.
+
+[23] H. Nguyen and T. Maehara. Graph homomorphism convolution. In International Conference on Machine
+     Learning (ICML), 2020.
+
+[24] F. Orsini, P. Frasconi, and L. D. Raedt. Graph invariant kernels. In International Joint Conference on
+     Artiﬁcial Intelligence (IJCAI), 2015.
+
+[25] A. Paszke, S. Gross, S. Chintala, G. Chanan, E. Yang, Z. DeVito, Z. Lin, A. Desmaison, L. Antiga, and
+    A. Lerer. Automatic differentiation in pytorch. In Advances in Neural Information Processing Systems
+     (NeurIPS - Workshop), 2017.
+
+[26]  J. Pérez, J. Marinkovi´c, and P. Barceló. On the turing completeness of modern neural network architectures.
+     In International Conference on Learning Representations (ICLR), 2019.
+
+[27] E. Rossi, B. Chamberlain, F. Frasca, D. Eynard, E. Monti, and M. Bronstein. Temporal graph networks for
+     deep learning on dynamic graphs. In ICML 2020 Workshop on Graph Representation Learning, 2020.
+
+[28] A. Sanchez-Gonzalez, J. Godwin, T. Pfaff, R. Ying, J. Leskovec, and P. Battaglia. Learning to simulate
+     complex physics with graph networks. In International Conference on Machine Learning (ICML), 2020.
+
+[29] R. Sato, M. Yamada, and H. Kashima. Approximation ratios of graph neural networks for combinatorial
+     problems. In Advances in Neural Information Processing Systems (NeurIPS), 2019.
+
+[30]  F. Scarselli, M. Gori, A. C. Tsoi, M. Hagenbuchner, and G. Monfardini. The graph neural network model.
+    IEEE Transactions on Neural Networks, 20(1):61–80, 2009.
+
+[31]  J. M. Stokes, K. Yang, K. Swanson, W. Jin, A. Cubillos-Ruiz, N. M. Donghia, C. R. MacNair, S. French,
+     L. A. Carfrae, Z. Bloom-Ackermann, V. M. Tran, A. Chiappino-Pepe, A. H. Badran, I. W. Andrews, E. J.
+     Chory, G. M. Church, E. D. Brown, T. S. Jaakkola, R. Barzilay, and J. J. Collins. A deep learning approach
+      to antibiotic discovery. Cell, 180(4):688 – 702, 2020.
+
+[32] R. Trivedi, M. Farajtabar, P. Biswal, and H. Zha. DyRep: Learning representations over dynamic graphs.
+     In International Conference on Learning Representations (ICLR), 2019.
+
+[33] A. Vaswani, N. Shazeer, N. Parmar, J. Uszkoreit, L. Jones, A. N. Gomez, L. Kaiser, and I. Polosukhin.
+     Attention is all you need. In Advances in Neural Information Processing Systems (NeurIPS), 2017.
+
+[34]  P. Velickovic, G. Cucurull, A. Casanova, A. Romero, P. Liò, and Y. Bengio. Graph Attention Networks. In
+     International Conference on Learning Representations (ICLR), 2018.
+
+[35] S. Verma and Z.-L. Zhang.  Stability and generalization of graph convolutional neural networks.  In
+     International Conference on Knowledge Discovery & Data Mining (KDD), 2019.
+
+[36] Y. Verma, S. Kaski, M. Heinonen, and V. Garg. Modular ﬂows: Differential molecular generation. In
+     Advances in Neural Information Processing Systems (NeurIPS), 2022.
+
+[37] C. Vignac, A. Loukas, and P. Frossard. Building powerful and equivariant graph neural networks with
+      structural message-passing. In Neural Information Processing Systems (NeurIPS), 2020.
+
+[38] Y. Wang, Y. Chang, Y. Liu, J. Leskovec, and P. Li. Inductive representation learning in temporal networks
+     via causal anonymous walks. In International Conference on Learning Representations (ICLR), 2021.
+
+[39] Z. Wu, S. Pan, F. Chen, G. Long, C. Zhang, and P. S. Yu. A comprehensive survey on graph neural
+     networks. IEEE Transactions on Neural Networks and Learning Systems, pages 1–21, 2020.
+
+[40] D. Xu, W. Cheng, D. Luo, Y. Gu, X. Liu, J. Ni, B. Zong, H. Chen, and X. Zhang. Adaptive neural network
+      for node classiﬁcation in dynamic networks. In IEEE International Conference on Data Mining (ICDM),
+     2019.
+
+[41] D. Xu, C. Ruan, E. Korpeoglu, S. Kumar, and K. Achan. Self-attention with functional time representation
+      learning. In Advances in Neural Information Processing Systems (NeurIPS), 2019.
+
+[42] D. Xu, C. Ruan, E. Korpeoglu, S. Kumar, and K. Achan. Inductive representation learning on temporal
+     graphs. In International Conference on Learning Representations (ICLR), 2020.
+
+[43] K. Xu, W. Hu, J. Leskovec, and S. Jegelka. How powerful are graph neural networks? In International
+     Conference on Learning Representations (ICLR), 2019.
+
+
+                                       12

@@ -1,0 +1,19 @@
+# Visual inventory
+
+> Text-only mode: inspect the generated text evidence; visual pixels remain unverified.
+
+| ID | Label | PDF page | Caption | Candidate crop | Review |
+|---|---|---:|---|---|---|
+| figure-1-p005 | Figure 1 | 5 | Local coverage frequencies for adaptive conformal (blue), a non-adaptive method that holds αt = α ﬁxed (red), and an i.i.d. Bernoulli(0.1) sequence (grey) for the prediction of stock market volatility. The coloured dotted lines mark the average coverage obtained across all time points, while the black line indicates the target level of 1 −α = 0.9. | `not generated` | TEXT REVIEW REQUIRED |
+| figure-2-p009 | Figure 2 | 9 | Local coverage frequencies for adaptive conformal (blue), a non-adaptive method that holds αt = α ﬁxed (red), and an i.i.d. Bernoulli(0.1) sequence (grey) for the prediction of stock market volatility with conformity score ˜St. The coloured dotted lines mark the average coverage obtained across all time points, while the black line indicates the target level of 1 −α = 0.9. | `not generated` | TEXT REVIEW REQUIRED |
+| figure-3-p010 | Figure 3 | 10 | Local coverage frequencies of adaptive conformal (blue), a non-adaptive method that holds αt = α ﬁxed (red), and an i.i.d. Bernoulli(0.1) sequence (grey) for county-level election predictions. Coloured dotted lines show the average coverage across all time points, while the black line indicates the target coverage level of 1 −α = 0.9. | `not generated` | TEXT REVIEW REQUIRED |
+| figure-4-p014 | Figure 4 | 14 | shows daily open prices for the four stocks considered in Section 2.2. | `not generated` | TEXT REVIEW REQUIRED |
+| figure-4-p014 | Figure 4 | 14 | Daily open prices for the four stocks considered in Section 2.2. | `not generated` | TEXT REVIEW REQUIRED |
+| figure-5-p015 | Figure 5 | 15 | Realized trajectories of αt for predicting stock market volatility as outlined in Section 2.2 using update (2). | `not generated` | TEXT REVIEW REQUIRED |
+| figure-6-p015 | Figure 6 | 15 | Realized trajectories of αt for predicting stock market volatility as outlined in Section 2.2 using update (3) with ws ∝0.95t−s. | `not generated` | TEXT REVIEW REQUIRED |
+| figure-7-p016 | Figure 7 | 16 | Realized trajectory of αt for election night forecasting as outlined in Section 6 using update (2). | `not generated` | TEXT REVIEW REQUIRED |
+| figure-8-p016 | Figure 8 | 16 | Realized trajectory of αt for election night forecasting as outlined in Section 6 using update (3) with ws ∝0.95t−s. | `not generated` | TEXT REVIEW REQUIRED |
+| figure-9-p016 | Figure 9 | 16 | shows the local coverage level of adaptive and non-adaptive conformal inference for the prediction of market volatility (see Section 2.2) for 8 additional stocks/indices. | `not generated` | TEXT REVIEW REQUIRED |
+| figure-9-p017 | Figure 9 | 17 | Local coverage frequencies for adaptive conformal (blue), a non-adaptive method that holds αt = α ﬁxed (red), and an i.i.d. Bernoulli(0.1) sequence (grey) for the prediction of market volatility. The coloured dotted lines mark the average coverage obtained across all time points, while the black line indicates the target level of 1 −α = 0.9. | `not generated` | TEXT REVIEW REQUIRED |
+| algorithm-1-p018 | Algorithm 1 | 18 | below outlines the core conformal inference method used to predict election results. An R implementation of this algorithm as well as the core method outlined in Section 2.2 can be found at https://github.com/isgibbs/AdaptiveConformal. | `not generated` | TEXT REVIEW REQUIRED |
+| algorithm-1-p019 | Algorithm 1 | 19 | CQR method for election night prediction Data: Observed sequence of county-level votes counts and covariates {(Xt, Yt)}1≤t≤T and vote counts for the democratic candidate in the previous election {Y prev t }1≤t≤T . for t = 1, 2, . . . , T do | `not generated` | TEXT REVIEW REQUIRED |

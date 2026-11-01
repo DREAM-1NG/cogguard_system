@@ -1,0 +1,62 @@
+TGB         TGB            novel         TGB          TGB
+          Datasets          Dataloaders     TG model         Evaluators        Leaderboards
+
+
+Figure 2: Overview of the Temporal Graph Benchmark (TGB) pipeline: (a) TGB includes
+large-scale and realistic datasets from five different domains with both dynamic link prediction and
+node property prediction tasks. (b) TGB automatically downloads datasets and processes them into
+numpy, PyTorch and PyG compatible TemporalData formats. (c) Novel TG models can be easily
+evaluated on TGB datasets via reproducible and realistic evaluation protocols. (d) TGB provides
+public and online leaderboards to track recent developments in temporal graph learning domain. The
+code is publicly available as a Python library.
+
+
+
+
+metric serves to determine whether the methods’ predictions for class importance adhere to the
+same ordering as the ground truth. In Section 5.2, we show that simple heuristics can outperform
+state-of-the-art TG methods in achieving superior performance for this task.
+
+Overall, our proposed Temporal Graph Benchmark has the following contributions:
+
+        • Large and diverse datasets. TGB includes datasets coming from a diverse range of domains
+       and spanning both edge and node-level tasks. We contributed seven novel datasets which
+         are orders of magnitude larger than existing ones in terms of number of edges, nodes and
+        timestamps.
+        • Improved evaluation. We propose an improved and standardized evaluation pipeline
+        motivated by real-world applications. For dynamic link property prediction, we sample
+         multiple negative instances per positive edge and ensure a mix of both historical and random
+         negative samples, while using the MRR metric. For the node affinity prediction task, we use
+         the NDCG metric to evaluate the relative importance of classes within the top ranking ones.
+        • Empirical findings. We show that for the dynamic link property prediction task, model
+        performances can vary drastically across datasets. For example, the best performing model
+       on tgbl-wiki encounters a 40% test MRR drop on tgbl-review and the surprise index
+         of a dataset affects model performance. On the node affinity prediction task, we find that
+        simple heuristics can often outperform state-of-the-art TG methods, thus leaving ample
+       room for development of future methods targeting this task.
+        • Public leaderboard and reproducible results. Following the good practice of OGB,
+     TGB also provides an automated and reproducible pipeline for both link and node property
+         prediction tasks. Researchers can submit and compare method performance on the TGB
+         leaderboard.
+
+Reproducibility: TGB code, datasets, leaderboards and details are on the TGB website. The code is
+also publicly available on GitHub with documentations seen here.
+
+2  Related Work
+Temporal Graph Datasets and Libraries. Recently, Poursafaei et al. [33] collected six novel datasets
+for link prediction on continuous-time dynamic graphs while proposing more difficult negative
+samplings for evaluation. In comparison, we curated seven novel temporal graph datasets spanning
+both edge and node-level tasks for realistic evaluation of machine learning on temporal graphs. Yu et
+al. [52] presented DyGLib, a platform for reproducible training and evaluation of existing TG models
+on common benchmark datasets. DyGLib demonstrates the discrepancy of the model performance
+across different datasets and argues that diverse evaluation protocols of previous works caused an
+inconsistency in performance reports. Similarly, Skarding et al. [39] provided a comprehensive
+comparative analysis of heuristics, static GNNs, discrete dynamic GNN, and continuous dynamic
+GNN on dynamic link prediction task. They showed that dynamic models outperforms their static
+counterparts consistently and heuristic approaches can achieve strong performance. In all of the
+above benchmarks, the included datasets only contain a few million edges. In comparison, TGB
+datasets are orders of magnitude larger in scale in terms of number of nodes, edges and timestamps.
+TGB also includes both node and edge-level tasks. Huang et al. [18] collected a novel dynamic
+
+
+                                       3

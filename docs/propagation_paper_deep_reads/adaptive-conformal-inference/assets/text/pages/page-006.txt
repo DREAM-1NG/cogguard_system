@@ -1,0 +1,65 @@
+4  Coverage guarantees
+
+4.1  Distribution-free results
+
+In this section we outline the theoretical coverage guarantees of adaptive conformal inference. We will
+assume throughout that with probability one α1 ∈[0, 1] and ˆQt is non-decreasing with ˆQt(x) = −∞
+for all x < 0 and ˆQt(x) = ∞for all x > 1. Our ﬁrst result shows that over long time intervals
+adaptive conformal inference obtains the correct coverage frequency irrespective of any assumptions
+on the data-generating distribution.
+
+Lemma 4.1 With probability one we have that ∀t ∈N, αt ∈[−γ, 1 + γ].
+
+Proof:  Assume by contradiction that with positive probability {αt}t∈N is such that inft αt < −γ
+(the case where supt αt > 1 + γ is identical). Note that supt |αt+1 −αt| = supt γ|α −errt| < γ.
+Thus, with positive probability we may ﬁnd t ∈N such that αt < 0 and αt+1 < αt. However,
+      αt < 0 =⇒ˆQt(1 −αt) = ∞=⇒errt = 0 =⇒αt+1 = αt + γ(α −errt) ≥αt
+and thus P(∃t such that αt+1 < αt < 0) = 0. We have reached a contradiction.         □
+
+Proposition 4.1 With probability one we have that for all T ∈N,
+
+                            T
+                       1                      1 −α1} + γ         X errt −α ≤max{α1,                   .                         (5)
+                    T                  Tγ
+                             t=1
+In particular, limT →∞1T PTt=1 errt a.s.= α.
+
+Proof:  By expanding the recursion deﬁned in (2) and applying Lemma 4.1 we ﬁnd that
+
+                                                 T
+                      [−γ, 1 + γ] ∋αT +1 = α1 + X γ(α −errt).
+                                                    t=1
+Rearranging this gives the result.                                 □
+
+Proposition 4.1 puts no constraints on the data generating distribution. One may immediately ask
+whether these results can be improved by making mild assumptions on the distribution shifts. We
+argue that without assumptions on the quality of the initialization the answer to this question is
+negative. To understand this, consider a setting in which there is a single ﬁxed optimal target
+α∗∈[0, 1] and assume that
+                           α + 1−α∗(p1−α   −α∗), if p > α∗,                 Mt(p) = M(p) =      α                                        .
+                           α + α∗(p −α∗) if p ≤α∗.
+Suppose additionally that E[errt|αt] = M(αt).1 In order to simplify the calculations consider the
+noiseless update αt+1 = αt + γ(α −M(αt)) = αt + γ(α −E[errt|αt]). Intuitively, the noiseless
+update can be viewed as the average case behaviour of (2). Now, for any initialization α1 and any γ ≤
+min{ 1−α∗1−α , α∗α } there exists a constant c ∈{ 1−α∗,1−α  α∗}α  such that for all t, M(αt) −α = c(αt −α∗).
+So, we have that
+ E[errt] −α = cE[αt −α∗] = cE[αt−1 + γ(α −Mt−1(αt−1)) −α∗] = c(1 −cγ)E[αt−1 −α∗].
+Repeating this calculation recursively gives that
+                 E[errt] −α = c(1 −cγ)t−1E[α1 −α∗] = c(1 −cγ)t−1(α1 −α∗),
+and thus,
+                         T
+                     1                 1 −(1 −cγ)T
+        X E[errt] −α =               |α1 −α∗|.
+                  T                 Tγ
+                           t=1
+The comparison of this bound to (5) is self-evident. The main difference is that we have replaced
+max{1 −α1, α1} with |α1 −α∗|. This arises from the fact that α∗∈(0, 1) is arbitrary and thus
+max{1 −α1, α1} is the best possible upper bound on |α1 −α∗|. So, we view Proposition 4.1 as
+both an agnostic guarantee that shows that our method gives the correct long-term empirical coverage
+frequency irrespective of the true data generating process, and as an approximately tight bound on
+the worst-case behaviour immediately after initialization.
+
+   1This last assumption is in general only true if ˆQt(·) and αt are ﬁt independently of one another.
+
+
+                                       6

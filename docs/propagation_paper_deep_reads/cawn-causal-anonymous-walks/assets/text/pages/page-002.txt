@@ -1,0 +1,66 @@
+Published as a conference paper at ICLR 2021
+
+
+
+
+
+   𝑤       𝑤               CAWs extracted:              𝑤       𝑤  CAWs extracted:                                                                                                    𝑡1                                              𝑡2                                  𝑡1                                                                                                               𝑡2                                                                                                        v                                            v             𝑡1    𝑡2      𝑡1    𝑡2      w                             u   ,  w                                                                                 u    ,  w 𝑡1    𝑡2      𝑡1    𝑡2    w
+𝑢    𝑣    𝑢  𝑡3 𝑣 Law explanation: Two nodes      𝑢    𝑣    𝑢  𝑡3 𝑣 Law explanation: One node (w) activates
+                           that share a common node            Feed-forward control  another node first (u) and then activates a    Triadic closure
+                          directly connected to them tend to          (𝑡1 < 𝑡2 < 𝑡3)      third node (v). Mostly the third node will       (𝑡1, 𝑡2 < 𝑡3)                     be connected.                                                     inhibit the second node later.
+
+Figure 1: Triadic closure and feed-forward loops: Causal anonymous walks (CAW) capture the laws.
+
+
+ A temporal graph with timestamped links and a             Example: three 3-step walks (𝑡𝑥, 𝑋are the default timestamp
+  queried link at certain time:                               and the default node when no historical links can be found)
+                        d                                                                                       8                                                                                             7                                                                                                   6                                                           6                                                                3                                                                       1                                                                                    v                                                                                                     e                                                                                                u            b                                                        u                                                              b                                                                            a                                                                                   c                                     3,9                                                                                                      b✓                     2                                         ✓                                            g                   3,6     0,3,8                                         9                                                                                                                         𝑡𝑥                                                                                       3                                                                                             2                                                           5                                                                3                                                                                    v                                                                       0                                                                                          d                                                                                                u                                                                  x                                                        u                                                                     c                                                        𝑆𝑢:                                                                                   a     𝑆𝑣:                                                      0,3,7                               ?   𝒗               𝑡= 10             𝒖                                                                    b✓             3  a
+                                                                 0                                                                                                      v       1                    4, 5      7,9                                   8    4,8  h           u  3  b                                                                            a                                                                                      𝑡𝑥 x         v  9  g  7  h  4                                         ✓            c                                 e
+ Backtrack m-step random walks over time before t=10:    Count number of 𝑏’s in different positions:
+                                                                          0,     2,     1,    0 𝑇           0,     0,     0,    1 𝑇
+   u  6  b  3   a  1   c     𝑀walks starting at 𝒖                                                  𝐼𝐶𝐴𝑊𝑏; 𝑆𝑢, 𝑆𝑣= 𝑔𝑏; 𝑆𝑢, 𝑔𝑏; 𝑆𝑣   (Relative node identity)
+ …
+                                               Anonymize  u  6  b  3  a  1   c    :
+   v  8  e  7  u  6  b     𝑀walks starting at 𝒗                       6         3                                                 𝐼𝐶𝐴𝑊𝑢    𝐼𝐶𝐴𝑊𝑏   𝐼𝐶𝐴𝑊𝑎1 𝐼𝐶𝐴𝑊𝑐 …
+         Causality Extraction                     Set-based Anonymization
+
+  Figure 2: Causal anonymous walks (CAW): causality extraction and set-based anonymization.
+
+
+temporal networks have been frequently discussed. First, the entanglement of structural and temporal
+patterns requires an elegant model to digest the two-side information. Second, the model scalability
+becomes more crucial over temporal networks as new arriving links need to be processed timely while
+a huge link set due to the repetitive links between two nodes needs to be digested simultaneously.
+
+In contrast to the above two challenges, another challenge, the inductive capability of the temporal-
+network representation, is often ignored. However, it is equally important if not more, as the inductive
+capability indicates whether the models indeed capture the dynamic laws of the systems and can
+be further generalized to the system that share the same laws but have not been used to train these
+models. These laws may only depend on structures such as the triadic closure or feed-forward control
+loops as aforementioned. These laws may also correlate with node attributes, such as interactions
+between people affected by their gender and age (Kovanen et al., 2013). But in both cases, the laws
+should be independent from network node identities. Although previous works tend to learn inductive
+models by removing node identities (Trivedi et al., 2019; Xu et al., 2020), they run into other issues
+to inductively represent the dynamic laws, for which we leave more detailed discussion in Sec. 2.
+
+Here we propose Causal Anonymous Walks (CAW) for modeling temporal networks. Our idea for
+inductive learning is inspired by the recent investigation on temporal network motifs that correspond
+to connected subgraphs with links that appear within a restricted time range (Kovanen et al., 2011;
+Paranjape et al., 2017). Temporal network motifs essentially reﬂect network dynamics: Both triadic
+closure and feed-forward control can be viewed as temporal network motifs evolving (Fig. 1); An
+inductive model should predict the 3rd link in both cases when it captures the correlation of these two
+links as they share a common node, while the model is agnostic to the node identities of these motifs.
+
+Our CAW model has two important properties (Fig. 2): (1) Causality extraction — a CAW starts
+from a link of interest and backtracks several adjacent links over time to encode the underlying
+causality of network dynamics. Each walk essentially gives a temporal network motif; (2) Set-based
+anonymization — CAWs remove the node identities over the walks to guarantee inductive learning
+while encoding relative node identities based on the counts that they appear at a certain position
+according to a set of sampled walks. Relative node identities guarantee that the structures of motifs
+and their correlations are still kept after removing node identities. To predict temporal links between
+two nodes of interest, we propose a model CAW-Network (CAW-N) that samples a few CAWs related
+to the two nodes of interest, encodes and aggregates these CAWs via RNNs (Rumelhart et al., 1986)
+and set-pooling respectively to make the prediction.
+
+
+                                       2

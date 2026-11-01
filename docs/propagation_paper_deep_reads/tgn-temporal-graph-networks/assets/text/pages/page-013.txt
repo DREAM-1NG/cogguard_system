@@ -1,0 +1,60 @@
+Da Xu, Chuanwei Ruan, Evren Korpeoglu, Sushant Kumar, and Kannan Achan. Inductive repre-
+   sentation learning on temporal graphs. In ICLR, 2020. URL https://openreview.net/
+  forum?id=rJeW1yHYwH.
+
+Lin Yao, Luning Wang, Lv Pan, and Kai Yao. Link prediction based on common-neighbors for
+  dynamic social network. Procedia Computer Science, 83:82–89, 2016.
+
+Rex Ying, Ruining He, Kaifeng Chen, Pong Eksombatchai, William L. Hamilton, and Jure Leskovec.
+  Graph convolutional neural networks for web-scale recommender systems. In KDD ’18, 2018.
+
+Bing Yu, Mengzhang Li, Jiyong Zhang, and Zhanxing Zhu. 3d graph convolutional networks with
+  temporal graphs: A spatial information free framework for trafﬁc forecasting. arXiv:1903.00919,
+  2019.
+
+Wenchao Yu, Wei Cheng, Charu C Aggarwal, Haifeng Chen, and Wei Wang. Link prediction with
+   spatial and temporal consistency in dynamic networks. In IJCAI, pp. 3343–3349, 2017.
+
+Wenchao Yu, Wei Cheng, Charu C Aggarwal, Kai Zhang, Haifeng Chen, and Wei Wang. Netwalk: A
+  ﬂexible deep embedding approach for anomaly detection in dynamic networks. In KDD ’18, pp.
+  2672–2681, 2018.
+
+Jiani Zhang, Xingjian Shi, Junyuan Xie, Hao Ma, Irwin King, and Dit-Yan Yeung. Gaan: Gated
+   attention networks for learning on large and spatiotemporal graphs. Conference on Uncertainty in
+  Artiﬁcial Intelligence, 2018.
+
+Muhan Zhang and Yixin Chen. Link prediction based on graph neural networks. In NIPS, 2018.
+
+Lekui Zhou, Yang Yang, Xiang Ren, Fei Wu, and Yueting Zhuang. Dynamic network embedding by
+  modeling triadic closure process. In AAAI, 2018.
+
+Jia Zhu, Qing Xie, and Eun Jung Chin. A hybrid time-series link prediction framework for large
+   social network. In DEXA, pp. 345–359. Springer, 2012.
+
+Yu Zhu, Hao Li, Yikang Liao, Beidou Wang, Ziyu Guan, Haifeng Liu, and Deng Cai. What to do
+   next: Modeling user behaviors by time-lstm. In IJCAI, volume 17, pp. 3602–3608, 2017.
+
+Marinka Zitnik, Monica Agrawal, and Jure Leskovec. Modeling polypharmacy side effects with
+  graph convolutional networks. Bioinformatics, 34(13):i457–i466, 2018.
+
+
+A  APPENDIX
+
+
+A.1  DELETION EVENTS
+
+The TGN frameworks also support edge and node deletions events.
+In the case of an edge deletion event (i, j, t′, t) where an edge between nodes i and j which was
+created at time t′ is deleted at time t, two messages can be computed for the source and target nodes
+that respectively started and received the interaction:
+
+mi(t) = msgs′  si(t−), sj(t−), ∆t, eij(t)  ,    mj(t) = msgd′  sj(t−), si(t−), ∆t, eij(t)  (12)
+
+
+In case of a node deletion event, we simply remove the node (and its incoming and outgoing edges)
+from the temporal graph so that when computing other nodes embedding this node is not used during
+the temporal graph attention. Additionally, it would be possible to compute a message from the
+node’s feature and memory and use it to update the memories of all its neighbors.
+
+
+                                       13

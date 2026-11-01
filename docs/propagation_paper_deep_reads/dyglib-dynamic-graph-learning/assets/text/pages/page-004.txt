@@ -1,0 +1,47 @@
+Figure 1: Framework of the proposed model.
+
+
+
+Encoding Neighbors, Links, and Time Intervals.  For source node u, we retrieve the fea-
+tures of involved neighbors and links in sequence Stu based on the given features to represent
+their encodings, which are denoted by Xtu,N ∈R|Stu|×dN and Xtu,E ∈R|Stu|×dE.  Following
+[64], we learn the periodic temporal patterns by encoding the time interval ∆t′ =  t −t′ via
+q 1      [cos (w1∆t′) , sin (w1∆t′) , · · · , cos (wdT ∆t′) , sin (wdT ∆t′)], where w1, · · · , wdT are train-   dT
+able parameters. dT is the encoding dimension. The time interval encodings of interactions in Stu
+is denoted by Xtu,T ∈R|Stu|×dT . We use the same process to get the corresponding encodings for
+destination node v, i.e., Xtv,N ∈R|Stv|×dN , Xtv,E ∈R|Stv|×dE, and Xtv,T ∈R|Stv|×dT .
+
+Neighbor Co-occurrence Encoding Scheme. Existing methods separately compute representations
+of node u and v without modeling their correlations. We present a neighbor co-occurrence encoding
+scheme to tackle this issue, which assumes the appearing frequency of a neighbor in a sequence
+indicates its importance, and the occurrences of a neighbor in sequences of u and v (i.e., co-
+occurrence) could reflect the correlations between u and v. That is to say, if u and v have more
+common historical neighbors in their sequences, they are more likely to interact in the future.
+Formally, for each neighbor in the interaction sequence Stu and Stv, we count its occurrences in
+both Stu and Stv, and derive a two-dimensional vector. By packing the vectors of all the neighbors
+together, we can get the neighbor co-occurrence features for u and v, which are represented by
+Ctu ∈R|Stu|×2 and Ctv ∈R|Stv|×2. For example, suppose the historical neighbors of u and v are
+{a, b, a} and {b, b, a, c}. The appearing frequencies of a, b, and c in u/v’s historical interactions are
+2/1, 1/2, and 0/1, respectively. Therefore, the neighbor co-occurrence features of u and v are denoted
+by Ctu = [[2, 1] , [1, 2] , [2, 1]]⊤and Ctv = [[1, 2] , [1, 2] , [2, 1] , [0, 1]]⊤. Then, we apply a function
+f (·) to encode the neighbor co-occurrence features by
+
+               Xt∗,C = f Ct∗[:, 0] + f Ct∗[:, 1] ∈R|St∗|×dC,                       (1)
+
+where ∗could be u or v. The input and output dimensions of f (·) are 1 and dC. In this paper, we
+implement f (·) by a two-layer perceptron with ReLU activation [37]. It is important to note that the
+neighbor co-occurrence encoding scheme is general and can be easily integrated into some dynamic
+graph learning methods for better results. We will demonstrate its generalizability in Section 5.3.
+
+Patching Technique. Instead of focusing on the interaction level, we divide the encoding sequence
+into multiple non-overlapping patches to break through the bottleneck of existing methods in capturing
+long-term temporal dependencies. Let P denote the patch size. Each patch is composed of P
+temporally adjacent interactions with flattened encodings and can preserve local temporal proximities.
+Take the patching of Xtu,N ∈R|Stu|×dN as an example. Xtu,N will be divided into ltu = ⌈|StPu| ⌉
+patches in total (note that we will pad Xtu,N if its length |Stu| cannot be divided by P), and the
+patched encoding is represented by M u,Nt   ∈Rltu×dN·P . Similarly, we can also get the patched
+encodings Mu,Et  ∈Rltu×dE·P , M u,Tt  ∈Rltu×dT ·P , Mu,Ct  ∈Rltu×dC·P , M v,Nt   ∈Rltv×dN·P ,
+Mv,Et  ∈Rltv×dE·P , M v,Tt  ∈Rltv×dT ·P , and Mv,Ct  ∈Rltv×dC·P . Note that when |Stu| becomes
+
+
+                                       4

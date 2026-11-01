@@ -1,0 +1,58 @@
+Published as a conference paper at ICLR 2021
+
+
+
+
+
+        Figure 9: Visualizing all AWs, and their occurrence ratios with positive / negative samples.
+
+
+     Task          Reddit       Wikipedia    MOOC      Social Evo.      Enron        UCI
+ New vs. New   98.25 ± 0.14   98.73 ± 0.12   86.94 ± 0.12   95.37 ± 0.04   70.51 ± 0.21   75.47 ± 0.08
+ New vs. Old    97.33 ± 0.07   97.06 ± 0.03   89.13 ± 0.79   93.35 ± 0.07   78.12 ± 0.23   80.53 ± 0.16
+  Transductive   98.68 ± 0.03   98.39 ± 0.05   90.83 ± 0.17   95.44 ± 0.08   87.56 ± 0.10   78.91 ± 0.08
+
+Table 7: TGN performance in AUC (mean in percentage ± 95% conﬁdence level). Bond font
+highlights the case when TGN out performs CAW-N. TGN generally outperforms other baselines.
+
+
+predicted. Therefore, CAW-N essentially adaptively samples a temporal motif closure pattern that
+is very informative to predict this link. CAW-N does not explicitly enumerating or counting these
+motif patterns. In contrast, when CAWs do not bridge the two nodes, as shown in top-2 lowest-scored
+CAWs, very unlikely there will exist a link. Fig. 8 also displays each of the 6 CAW’s occurrence
+ratio with positive and negative links. The difference within each pair of ratios is an indicator of the
+corresponding CAW’s discriminatory power. We also see that the discriminatory power of CAWs is
+very strong: highest-scored CAWs almost never occur with negative links, and lowest-scored CAWs
+also seldom occur with positive links.
+
+We further apply the similar procedure to analyze the AWs introduced in Sec. 4.1 and the model
+Ab.5 of Tab. 3 used for ablation study. Note that AW cannot establish the correlation between walks,
+each single AW itself, say W = (v0, v1, ..., vm), decides its own shape sAW (W). We directly set
+sAW (W) = IAW (v0; W) →IAW (v2; W) →· · · →IAW (vm; W) with IAW (w; W) deﬁned in Eq.
+2. As the Wikipedia dataset is a bipartite graph, there are in total four different shapes when m = 3
+as listed align with the x-axis of Fig. 9. For illustration, we explain one shape of AW as an example,
+say 0 →1 →2 →1: The corresponding walks have the second and the fourth nodes correspond to
+the same node, which the ﬁrst, second and third nodes are different. As shown in Fig. 9, we can see
+that AW’s occurrence with positive versus negative links are highly mixed-up, compared to CAW’s.
+That suggests that AWs possess signiﬁcantly less discriminatory power than CAWs. The main reason
+is that AWs do not have set-based anonymization, so they cannot capture the correlation between
+walks/motifs but CAWs can do that. This observation further gives a reason on why the model Ab.5
+of Tab. 3 only achieves some performance on-par with the model Ab.2 where we totally remove the
+anonymization procedure: the anonymization adopted by AWs loses too much information of the
+structure and cannot beneﬁt the prediction much. However, the original CAW-N well captures such
+information via the set-based anonymization.
+
+F  COMPARISON WITH THE MOST RECENT WORK
+
+Temporal Graph Networks(TGN) (Rossi et al., 2020) is a recent work that performs representation
+learning on temporal networks, which has been developed in parallel with this work. We were not
+aware of it until our paper was published. We would like to further conduct some experiments to
+compare TGN with CAW-N, in both inductive (New vs. New, New vs. Old) and transductive settings.
+The implementation details of TGN experiments are as follows. We adapt the code of TGN code7
+into our evaluation pipeline. We use the the default architecture and hyperparameter reported by
+the code: the backbone is TGN-attn variant with memory updater; the number of heads for graph
+
+  7https://github.com/twitter-research/tgn
+
+
+                                       21

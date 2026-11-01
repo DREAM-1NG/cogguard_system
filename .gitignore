@@ -1,29 +1,210 @@
 # ===== Python =====
 __pycache__/
 *.py[cod]
+*$py.class
+*.so
+*.egg
 *.egg-info/
+.eggs/
+build/
+dist/
+pip-wheel-metadata/
+
+# Virtual environments and package manager caches
 .venv/
 venv/
-dist/
-build/
+ENV/
+env/
+.python-version
+.uv-cache*/
+uv-cache*/
 
-# ===== Node.js =====
+# Python test, type-check, and coverage artifacts
+.pytest_cache/
+.mypy_cache/
+.pyre/
+.ruff_cache/
+.tox/
+.nox/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.hypothesis/
+
+# ===== Node.js / Vite =====
 node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.npm/
+.pnpm-store/
+.yarn/cache/
+.yarn/unplugged/
+.yarn/build-state.yml
+.yarn/install-state.gz
+*.tsbuildinfo
+coverage/
+dist/
+.vite/
 
-# ===== 环境与配置 =====
+# ===== Environment and local secrets =====
 .env
+.env.*
 *.local
+!.env.example
+!.env.*.example
 
-# ===== IDE =====
+# ===== Logs, runtime output, and temporary files =====
+logs/
+runtime-logs/
+*.log
+*.log.*
+tmp/
+temp/
+.tmp/
+.tmp*/
+.cache/
+*.tmp
+*.temp
+
+# Databases and local state
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+*.pid
+*.seed
+
+# Data, experiment, and model artifacts
+*.csv
+*.tsv
+*.jsonl
+*.ndjson
+*.geojson
+!system/frontend/src/assets/world-countries.geojson
+*.parquet
+*.feather
+*.npy
+*.npz
+*.pkl
+*.pickle
+*.joblib
+*.pt
+*.pth
+*.ckpt
+*.onnx
+*.safetensors
+*.h5
+*.hdf5
+*.bin
+*.pdf
+!doc/**/*.csv
+!doc/**/*.tsv
+!doc/**/*.pdf
+!docs/**/*.csv
+!docs/**/*.tsv
+!docs/**/*.pdf
+
+# ===== IDE / editor =====
 .vscode/
 .idea/
+*.swp
+*.swo
+*.swn
+*~
 
-# ===== 日志与缓存 =====
-logs/
-*.log
-.pytest_cache/
-.coverage
-
-# ===== 系统文件 =====
+# ===== OS files =====
 .DS_Store
 Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# ===== Project runtime artifacts =====
+experiments/
+**/experiments/
+data/
+**/data/
+dataset/
+**/dataset/
+datasets/
+**/datasets/
+data_runs/
+**/data_runs/
+outputs/
+**/outputs/
+results/
+**/results/
+runs/
+**/runs/
+artifacts/
+**/artifacts/
+checkpoints/
+**/checkpoints/
+!system/research/propagation_analysis/benchmark/checkpoints/
+system/research/propagation_analysis/benchmark/checkpoints/*
+!system/research/propagation_analysis/benchmark/checkpoints/propagation_analysis_sequence_twitter_system.pt
+wandb/
+**/wandb/
+mlruns/
+**/mlruns/
+.tmp_*
+**/.tmp_*
+tmp_*
+**/tmp_*
+tmp_*/
+**/tmp_*/
+system/**/.tmp*/
+system/**/tmp/
+system/**/logs/
+system/**/runtime-logs/
+system/**/.uv-cache*/
+system/frontend/dist/
+system/frontend/node_modules/
+system/frontend/output/
+/.playwright-cli/
+system/**/.playwright-cli/
+system/backend/output/
+system/frontend-sandbox/
+system/output/logs/
+system/output/playwright/
+
+# Nested repositories and local worktrees should be committed separately.
+subsystems/cogguard_dev/
+subsystems/kt2_repos/*/
+
+MediaCrawler-main/.uv-cache*/
+MediaCrawler-main/.pytest_cache/
+MediaCrawler-main/.venv/
+MediaCrawler-main/__pycache__/
+MediaCrawler-main/**/__pycache__/
+MediaCrawler-main/browser_data/
+MediaCrawler-main/data_runs/
+system/*DIAGNOSTIC_REPORT*.md
+
+NewsCrawler-main/**/__pycache__/
+NewsCrawler-main/**/.pytest_cache/
+NewsCrawler-main/**/.venv/
+NewsCrawler-main/**/node_modules/
+NewsCrawler-main/**/dist/
+
+subsystems/**/.pytest_cache/
+subsystems/**/__pycache__/
+subsystems/**/.venv/
+subsystems/**/outputs/
+subsystems/**/tmp/
+
+# ===== ARIS workspace artifacts =====
+aris/**/outputs/
+aris/**/logs/
+aris/**/refine-logs/
+aris/**/.cache/
+aris/**/scratch/
+
+# ===== Local-only workspace memory =====
+/memory/
+/.worktrees/
+/.agents/
+research-wiki/
+system/output/

@@ -1,0 +1,27 @@
+import request from '@/utils/request'
+
+export function getAccountProfiles(params?: { platform?: string; event_id?: string }) {
+  return request.get('/accounts/profiles', { params })
+}
+
+export function runSocialBotDetection(params?: {
+  platform?: string
+  event_id?: string
+  routing_budget?: number
+  support_k?: number
+}) {
+  return request.post('/accounts/bot-detection', null, { params })
+}
+
+export function getLatestSocialBotDetection(params?: {
+  platform?: string
+  event_id?: string
+  routing_budget?: number
+  support_k?: number
+}) {
+  return request.get('/accounts/bot-detection/latest', { params })
+}
+
+export function getAccountDetail(accountId: string) {
+  return request.get(`/accounts/detail/${accountId}`)
+}

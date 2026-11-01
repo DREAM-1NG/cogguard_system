@@ -1,0 +1,55 @@
+Similarly, to compute representations for node-level prediction, for each node j in the L-hop neigh-
+borhood of u, we concatenate node states sj(t) with features r(t)j!u. Then, we use our injective MP tocombine the information stored in u and its neighboring nodes. Figure 5 illustrates the process.
+Notably, Proposition 9 states that PINT is strictly more powerful than existing TGNs. In fact, the
+relative positional features mimic the discriminative power of WA-TGNs, while eliminate their
+temporal monotonicity constraints. Additionally, PINT can implement injective temporal message
+passing (either over states or states + positional features), akin to maximally-expressive MP-TGNs.
+Proposition 9 (Expressiveness of PINT: link prediction). PINT (with relative positional features) is
+strictly more powerful than MP-TGNs and CAWs in distinguishing events in temporal graphs.
+When does PINT fail?  Naturally, whenever the TCTs (annotated with
+positional features) for the endpoints of two edges (u, v, t) and (u0, v0, t)
+are pairwise isomorphic, PINT returns the same edge embedding and is
+not able to differentiate the events. Figure 6 shows an example in which
+this happens — we assume that all node/edge features are identical. Due
+to graph symmetries, u and z occur the same number of times in each level
+                                                                              Figure 6: PINT cannotof v’s monotone TCT. Also, the sets of temporal walks starting at u and z                                                                                     distinguish  the  events
+are identical if we swap the labels of these nodes. Importantly, CAWs and                                                                                 (u, v, t3) and (v, z, t3).
+MP-TGNs also fail here, as stated in Proposition 9.
+Proposition 10 (Limitations of PINT). There are synchronous events of temporal graphs that PINT
+cannot distinguish (as seen in Figure 6).
+Implementation⇣ and computational⌘   cost. The online updates for PINT’s positional features have
+
+                 u                               vcomplexity O  d |V(t)                                 | + d |V(t)                                                |  . Similarly to CAW’s sampling procedure, our online update
+is a sequential process better done in CPUs. However, while CAW may require signiﬁcant CPU-
+GPU memory exchange — proportional to both the number of walks and their depth —, we only
+communicate the positional features. We can also speed-up the training of PINT by pre-computing
+the positional features for each batch, avoiding redundant computations at each epoch. Apart from
+positional features, the computational cost of PINT is similar to that of TGN-Att. Following standard
+MP-TGN procedure, we control the branching factor of TCTs using neighborhood sampling.
+Note that the positional features monotonically increase with time, which is undesirable for practical
+generalization purposes. Since our theoretical results hold for any ﬁxed t, this issue can be solved
+by dividing the positional features by a time-dependent normalization factor. Nonetheless, we have
+found that employing L1-normalization leads to good empirical results for all evaluated datasets.
+
+5  Experiments
+We now assess the performance of PINT on several popular and large-scale benchmarks for TGNs.
+We run experiments using PyTorch [25] and code is available at www.github.com/AaltoPML/PINT.
+Tasks and datasets.  We evaluate PINT on dynamic link prediction, closely following the evaluation
+setup employed by Rossi et al. [27] and Xu et al. [42]. We use six popular benchmark datasets:
+Reddit, Wikipedia, Twitter, UCI, Enron, and LastFM [16, 27, 38, 42]. Notably, UCI, Enron, and
+LastFM are non-attributed networks, i.e., they do not contain feature vectors associated with the
+events. Node features are absent in all datasets, thus following previous works we set them to vectors
+of zeros [27, 42]. Since Twitter is not publicly available, we follow the guidelines by Rossi et al. [27]
+to create our version. We provide more details regarding datasets in the supplementary material.
+Baselines.  We compare PINT against ﬁve prominent TGNs: Jodie [16], DyRep [32], TGAT [42],
+TGN-Att [27], and CAW [38]. For completeness, we also report results using two static GNNs: GAT
+[34] and GraphSage [12]. Since we adopt the same setup as TGN-Att, we use their table numbers
+for all baselines but CAW on Wikipedia and Reddit. The remaining results were obtained using the
+implementations and guidelines available from the ofﬁcial repositories. As an ablation study, we also
+include a version of PINT without relative positional features in the comparison. We provide detailed
+information about hyperparameters and the training of each model in the supplementary material.
+Experimental setup.  We follow Xu et al. [42] and use a 70%-15%-15% (train-val-test) temporal
+split for all datasets. We adopt average precision (AP) as the performance metric. We also analyze
+separately predictions involving only nodes seen during training (transductive), and those involving
+
+                                       8

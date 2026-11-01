@@ -1,0 +1,51 @@
+Figure 2: Limitations of TGNs. [Left] Temporal graph with nodes u, v that TGN-Att/TGAT cannot
+distinguish. Colors are node features, edge features are identical, and t3 > t2 > t1. [Center] TCTs
+of u and v are non-isomorphic. However, the attention layers of TGAT/TGN-Att compute weighted
+averages over a same multiset of values, returning identical messages for u and v. [Right] MP-TGNs
+fail to distinguish the events (u, v, t3) and (v, z, t3) as TCTs of z and u are isomorphic. Meanwhile,
+CAW cannot separate (u, z, t3) and (u0, z, t3): the 3-depth TCTs of u and u0 are not isomorphic, but
+the temporal walks from u and u0 have length 1, keeping CAW from capturing structural differences.
+
+                                L  denote the class of MP-TGNs with recurrent memoryProposition 3 (The role of memory). Let Q[M]
+and L layers. Similarly, we denote by QL the family of memoryless MP-TGNs with L layers. Let ∆
+be the temporal diameter of G(t) (see Deﬁnition B2). Then, it holds that:
+      1.  If L < ∆: Q[M]                L   is strictly more powerful than QL in distinguishing nodes of G(t);
+      2. For any L : QL+∆is at least as powerful as Q[M]                                         L   in distinguishing nodes of G(t).
+The MP-TGN framework is rather general and subsumes many modern methods for temporal graphs
+[e.g., 16, 32, 42]. We now analyze the theoretical limitations of two concrete instances of MP-TGNs:
+TGAT [42] and TGN-Att [27]. Remarkably, these models are among the best-performing MP-TGNs.
+Nonetheless, we can show that there are nodes of very simple temporal graphs that TGAT and
+TGN-Att cannot distinguish (see Figure 2). We formalize this in Proposition 4 by establishing that
+there are cases in which TGNs with injective layers can succeed, but TGAT and TGN-Att cannot.
+Proposition 4 (Limitations of TGAT/TGN-Att). There exist temporal graphs containing nodes u, v
+that have non-isomorphic TCTs, yet no TGAT nor TGN-Att with mean memory aggregator (i.e., using
+MEAN as MEMAGG) can distinguish u and v.
+This limitation stems from the fact that the attention mechanism employed by TGAT and TGN-Att is
+proportion invariant [26]. The memory module of TGN-Att cannot counteract this limitation due to
+its mean-based aggregation scheme. We provide more details in Appendix B.6.
+
+3.2  Predicting temporal links
+Models for dynamic graphs are usually trained and evaluated on temporal link prediction [18], which
+consists in predicting whether an event would occur at a given time. To predict an event between
+nodes u and v at t, MP-TGNs combine the node embeddings h(L)u  (t) and h(L)v  (t), and push the
+resulting vector through an MLP. On the other hand, CAW is originally designed for link prediction
+tasks and directly computes edge embeddings, bypasssing the computation of node representations.
+We can extend the notion of node distinguishability to edges/events. We say that a model distinguishes
+two synchronous events γ = (u, v, t) and γ0 = (u0, v0, t) of a temporal graph if it assigns different
+edge embeddings hγ 6= hγ0 for γ and γ0. Proposition 5 asserts that CAWs are not strictly moreexpressive than MP-TGNs, and vice-versa. Intuitively, CAW’s advantage over MP-TGNs lies in its
+ability to exploit node identities and capture correlation between walks. However, CAW imposes
+temporal constraints on random walks, i.e., walks have timestamps in decreasing order, which can
+limit its ability to distinguish events. Figure 2(Right) sketches constructions for Proposition 5.
+Proposition 5 (Limitations of MP-TGNs and CAW). There exist distinct synchronous events of a
+temporal graph that CAW can distinguish but MP-TGNs with injective layers cannot, and vice-versa.
+
+3.3  Connections with the WL test
+The Weisfeiler-Leman test (1-WL) has been used as a key tool to analyze the expressive power of
+GNNs. We now study the power of MP-TGNs under a temporally-extended version of 1-WL, and
+prove negative results regarding whether TGNs can recognize properties of temporal graphs.
+Temporal WL test. We can extend the WL test for temporal settings in a straightforward manner by
+exploiting the equivalence between temporal graphs and multi-graphs with timestamped edges [24].
+In particular, the temporal variant of 1-WL assigns colors for all nodes in an input dynamic graph
+G(t) by applying the following iterative procedure:
+
+                                       5

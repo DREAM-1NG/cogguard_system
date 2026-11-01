@@ -1,0 +1,57 @@
+Table 6: Results for dynamic link property prediction on small datasets with 20 negative samples.
+
+              MRR                      MRR
+ Method                                Method
+                   Validation  Test                                Validation  Test
+
+ DyRep [42]       0.411±0.015 0.366±0.014     DyRep [42]       0.356±0.016 0.367±0.013
+ TGN [35]        0.737±0.004 0.721±0.004     TGN [35]        0.465±0.010 0.532±0.020
+ CAWN [46]      0.794±0.014 0.791± 0.015     CAWN[46]       0.201±0.002 0.194±0.004
+ TCL [45]         0.734±0.007 0.712±0.007     TCL [45]         0.194±0.012 0.200 ±0.010
+ GraphMixer [9]   0.707±0.014 0.701±0.014      GraphMixer [9]   0.411±0.025 0.514±0.020
+ EdgeBanktw [33] 0.641      0.641           EdgeBanktw [33] 0.0894     0.0836
+ EdgeBank∞[33] 0.551      0.538          EdgeBank∞[33] 0.0786     0.0795
+(a) tgbl-wiki dataset with surprise index: 0.108.     (b) tgbl-review dataset with surprise index: 0.987.
+(with 20 negative edges per positive edge).            (with 20 negatives edges per positive edge).
+
+               Table 7: Transductive vs. Inductive Setting on tgbl-wiki Dataset.
+
+                                         Val. MRR               Test MRR
+             Method
+                                 Transductive Inductive   Transductive Inductive
+
+            DyRep [42]       0.058±0.013   0.049±0.021  0.040±0.017   0.053±0.021
+          TGN [35]        0.395±0.028   0.231±0.028  0.325±0.055   0.268±0.043
+           TCL [45]         0.187±0.012   0.212±0.016  0.194±0.014   0.182±0.009
+              GraphMixer [9]   0.113±0.005   0.130±0.004  0.122±0.005   0.107±0.005
+           NAT [25]         0.784±0.012   0.745±0.002  0.763±0.011   0.717±0.005
+         CAWN [46]      0.749±0.009  0.742± 0.004 0.720±0.010  0.709± 0.005
+           TGAT [48]       0.147±0.009   0.150±0.020  0.155±0.007  0.152± 0.016
+              EdgeBanktw [33] 0.605       0.566      0.575       0.551
+             EdgeBank∞[33] 0.520       0.566      0.481       0.562
+
+
+tgbl-review across five trials, respectively. When contrasting these findings with those presented in
+Table 2a and 2b, which involve a higher quantity of negative samples, the insights outlined in Section 5
+are reaffirmed. For example, there is a significant drop in performance for the top performing method,
+i.e. CAWN, from tgbl-wiki to tgbl-review. In addition, Edgebank performance has a significant
+drop when the surprise index is high (which is the case in tgbl-review). However, we can also
+clearly see that with lower number of negatives (particularly on tgbl-wiki), the MRR scores are
+significantly higher for most methods. Therefore, if computationally feasible, it is best to use more
+negative samples. In our case, more negative samples are used for small TGB datasets.
+
+I  Transductive and Inductive Comparison
+
+In this section, we compare method performance following the commonly used transductive and
+inductive setting as seen in prior literature [48, 46] across five trials. We define inductive nodes as
+nodes that are unseen in the training set and transduction nodes as nodes that are observed in the
+training set. The transductive MRR is computed from all edges which has a transdustive source node
+and inductive MRR is computed from all edges that has an inductive source node. We observe that
+for a method to achieve strong performance on tgbl-wiki such as NAT, it should perform well in
+both transductive and inductive reasoning.
+
+
+
+
+
+                                       18

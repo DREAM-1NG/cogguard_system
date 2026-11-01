@@ -1,0 +1,62 @@
+# Text evidence: Table 6
+
+> This file contains extracted text, not a visual interpretation. The image pixels, layout, axes, colors, and panels were not verified.
+
+- **PDF page:** 19
+- **Text extraction status:** partial
+- **Available sources:** caption, suggested-region-text
+- **Suggested region:** [97.641, 188.96, 514.168, 571.674]
+
+## Caption
+
+Table 6: Performance in Average Precision (AP) (mean in percentage ± 95% conﬁdence level.) † highlights the best baselines. ∗, bold font, bold font∗respectively highlights the case where our models’ performance exceeds the best baseline on average, by 70% conﬁdence, by 95% conﬁdence.
+
+## Text from suggested visual region
+
+~~~text
+C.5  COMPUTING INFRASTRUCTURE
+
+All the experiments were carried out on a Ubuntu 16.04 server with Xeon Gold 6148 2.4 GHz 40-core
+CPU, Nvidia 2080 Ti RTX 11GB GPU, and 768 GB memory.
+
+D  ADDITIONAL EXPERIMENTAL RESULTS
+
+D.1  PERFORMANCE IN AVERAGE PRECISION
+
+
+  Task   Methods            Reddit        Wikipedia     MOOC        Social Evo.       Enron        UCI
+       DynAERNN     58.63 ± 5.42    54.94 ± 2.29    59.84 ± 1.26    54.76 ± 1.33    54.89 ± 3.79    51.59 ± 3.92
+        JODIE          80.03 ± 0.13    76.90 ± 0.49    82.27 ± 0.46†   87.96 ± 0.12†   79.80 ± 1.48†   71.64 ± 0.62
+       new  DyRep          61.28 ± 1.89    57.57 ± 2.56    62.29 ± 2.09    75.42 ± 0.32    69.97 ± 0.92    63.08 ± 7.40
+      VGRNN        60.64 ± 0.68    52.55 ± 0.82    65.44 ± 0.82    67.83 ± 0.53    67.93 ± 0.88    67.50 ± 0.92
+          v.s.        EvolveGCN     62.99 ± 0.17    55.64 ± 1.03    52.28 ± 1.80    52.26 ± 1.16    47.36 ± 1.24    80.98 ± 1.09†
+       new  TGAT          95.17 ± 0.91†   93.18 ± 0.73†   72.91 ± 0.92   52.17± 1.94    63.83 ± 3.70    75.27 ± 2.34
+        CAW-N-mean   97.90 ± 0.08∗   99.35 ± 0.15∗   90.70 ± 0.12∗   95.70 ± 0.23∗   96.92 ± 0.34∗   95.19 ± 0.21∗
+        CAW-N-attn    97.95 ± 0.09∗   99.34 ± 0.25∗   90.75 ± 0.11∗   95.35 ± 0.36∗   96.53 ± 0.28∗   95.18 ± 0.21∗
+       DynAERNN     66.59 ± 2.90    63.76 ± 2.82    82.02 ± 1.59    52.54 ± 0.22    55.50 ± 2.07    57.29 ± 2.52     Inductive        JODIE          83.15 ± 0.03    80.54 ± 0.06    87.95 ± 0.08    91.40 ± 0.04†   89.57 ± 0.30    76.34 ± 0.17
+       old  DyRep          66.73 ± 1.99    76.89 ± 0.31    88.25 ± 1.20†   89.41 ± 0.29    95.97 ± 0.28†   93.60 ± 1.47†
+          v.s. VGRNN        52.84 ± 0.66    60.99 ± 0.55    62.95 ± 0.58    69.20 ± 0.52    67.93 ± 0.88    67.50 ± 0.92
+        EvolveGCN     66.29 ± 0.52    53.82 ± 1.64    51.53 ± 0.92    52.01 ± 0.67    46.56 ± 1.89    76.30 ± 0.33
+       new  TGAT          97.09 ± 0.18†   95.17 ± 0.15†   71.77 ± 0.23    52.48 ± 0.52    59.70 ± 1.49    75.01 ± 0.72
+        CAW-N-mean   97.21 ± 0.12∗   98.87 ± 0.11∗   91.40 ± 0.15∗   90.01 ± 0.10    93.47 ± 0.29    93.27 ± 0.42
+        CAW-N-attn    97.06 ± 0.13∗   98.96 ± 0.11∗   91.48 ± 0.19∗   90.03 ± 0.11    94.01 ± 0.30    93.80 ± 0.30
+       DynAERNN     85.58 ± 2.12    76.58 ± 1.41    89.29 ± 0.49    66.58 ± 1.84    60.90 ± 2.70    84.95 ± 2.13
+        JODIE          91.14 ± 0.01    91.39 ± 0.04    91.19 ± 0.03†   89.22 ± 0.01    91.94 ± 0.01    80.27 ± 0.08
+        DyRep          67.54 ± 2.02    77.36 ± 0.25    90.49 ± 0.03    94.48 ± 0.01†   97.14 ± 0.07†   95.29 ± 0.13†
+      VGRNN        50.87 ± 0.81    67.66 ± 0.89    83.70 ± 0.56    78.66 ± 0.67    94.02 ± 0.52    82.23 ± 0.56
+        EvolveGCN     54.49 ± 0.73    55.84 ± 0.37    51.80 ± 0.46    56.90 ± 0.54    69.72 ± 0.49    81.63 ± 0.23                  Transductive   TGAT          98.38 ± 0.01†   96.65 ± 0.06†   69.75 ± 0.23    57.37 ± 1.18    57.37 ± 0.18    60.25 ± 0.31
+        CAW-N-mean   98.72 ± 0.09∗   98.82 ± 0.12∗   94.50 ± 0.13∗   94.36 ± 0.18    92.12 ± 0.09    95.33 ± 0.30∗
+        CAW-N-attn    98.80 ± 0.07∗   98.84 ± 0.11∗   94.55 ± 0.14∗   93.80 ± 0.16    92.29 ± 0.09    95.02 ± 0.14
+
+Table 6: Performance in Average Precision (AP) (mean in percentage ± 95% conﬁdence level.) †
+highlights the best baselines. ∗, bold font, bold font∗respectively highlights the case where our
+models’ performance exceeds the best baseline on average, by 70% conﬁdence, by 95% conﬁdence.
+~~~
+
+## Body references
+
+- [No body reference recovered]
+
+## Mandatory limitation
+
+A text-only model must not claim direct observation of visual trends, layout, axes, colors, panels, qualitative examples, or crop completeness.

@@ -1,0 +1,291 @@
+{
+  "schema": "review-post-benchmark-registry-v1",
+  "description": "Machine-readable benchmark registry for Review post-level MV-PostGuard validation. Dataset files are not stored in git.",
+  "benchmarks": [
+    {
+      "name": "MultiOFF",
+      "priority": "P0",
+      "task": "offensive meme detection",
+      "views": ["tweet", "meme", "img"],
+      "paper": {
+        "title": "A Dataset of Offensive German Memes? / MultiOFF: A Multimodal Dataset for Offensive Content Identification",
+        "venue": "TRAC 2020",
+        "url": "https://aclanthology.org/2020.trac-1.6/"
+      },
+      "dataset_url": "https://github.com/FirojAlam/multioff",
+      "repository_url": "https://github.com/FirojAlam/multioff",
+      "access": "public_download",
+      "license_note": "Check upstream repository/readme before redistribution.",
+      "local_aliases": ["MultiOFF", "multioff"],
+      "required_files": ["Split Dataset", "Labelled Images"],
+      "requires_media_binary": true,
+      "validation_role": "meme text/image/fusion ablation"
+    },
+    {
+      "name": "HateXplain",
+      "priority": "P0",
+      "task": "text hate/offensive detection with target and rationale",
+      "views": ["tweet"],
+      "paper": {
+        "title": "HateXplain: A Benchmark Dataset for Explainable Hate Speech Detection",
+        "venue": "AAAI 2021",
+        "url": "https://ojs.aaai.org/index.php/AAAI/article/view/17745"
+      },
+      "dataset_url": "https://github.com/hate-alert/HateXplain",
+      "repository_url": "https://github.com/hate-alert/HateXplain",
+      "access": "public_github",
+      "license_note": "Check upstream repository license and data terms.",
+      "local_aliases": ["HateXplain", "hatexplain"],
+      "required_files": [],
+      "requires_media_binary": false,
+      "validation_role": "text harmfulness, target, rationale"
+    },
+    {
+      "name": "Jigsaw Toxicity",
+      "priority": "P0",
+      "task": "text toxicity classification",
+      "views": ["tweet"],
+      "paper": {
+        "title": "Jigsaw Toxic Comment Classification Challenge",
+        "venue": "Kaggle/Jigsaw",
+        "url": "https://www.kaggle.com/competitions/jigsaw-toxic-comment-classification-challenge"
+      },
+      "dataset_url": "https://www.kaggle.com/competitions/jigsaw-toxic-comment-classification-challenge/data",
+      "repository_url": "",
+      "access": "kaggle_terms_required",
+      "license_note": "Requires Kaggle account and competition data terms.",
+      "local_aliases": ["Jigsaw Toxicity", "jigsaw", "jigsaw-toxic-comment-classification-challenge"],
+      "required_files": [],
+      "requires_media_binary": false,
+      "validation_role": "text toxicity calibration baseline"
+    },
+    {
+      "name": "Hateful Memes",
+      "priority": "P0",
+      "task": "hateful meme detection",
+      "views": ["tweet", "meme", "img"],
+      "paper": {
+        "title": "The Hateful Memes Challenge: Detecting Hate Speech in Multimodal Memes",
+        "venue": "NeurIPS 2020",
+        "url": "https://proceedings.neurips.cc/paper/2020/hash/1b84c4cee2b8b3d823b30e2d604b1878-Abstract.html"
+      },
+      "dataset_url": "https://ai.meta.com/tools/hatefulmemes/",
+      "repository_url": "https://github.com/facebookresearch/mmf/tree/main/projects/hateful_memes",
+      "access": "application_or_terms_required",
+      "license_note": "Dataset access is governed by Meta/Facebook AI terms.",
+      "local_aliases": ["Hateful Memes", "hateful_memes", "hateful-memes"],
+      "required_files": [],
+      "requires_media_binary": true,
+      "validation_role": "hard multimodal meme benchmark"
+    },
+    {
+      "name": "MAMI",
+      "priority": "P0",
+      "task": "multimedia automatic misogyny identification",
+      "views": ["tweet", "meme", "img"],
+      "paper": {
+        "title": "SemEval-2022 Task 5: Multimedia Automatic Misogyny Identification",
+        "venue": "SemEval 2022",
+        "url": "https://aclanthology.org/2022.semeval-1.74/"
+      },
+      "dataset_url": "https://forms.gle/AGWMiGicBHiQx4q98",
+      "repository_url": "https://github.com/MIND-Lab/MAMI",
+      "access": "google_form_or_codalab_terms_required",
+      "license_note": "The official GitHub repository contains baselines/evaluation and states that data are distributed upon request for academic purposes only. Local code clone is not sufficient for full validation.",
+      "local_aliases": ["MAMI", "mami", "semeval2022-task5"],
+      "required_files": ["TRAINING", "train.csv", "test.csv", "ref"],
+      "requires_media_binary": true,
+      "validation_role": "meme harmfulness subtype benchmark"
+    },
+    {
+      "name": "MMHS150K",
+      "priority": "P0",
+      "task": "multimodal hate speech detection",
+      "views": ["tweet", "img"],
+      "paper": {
+        "title": "Multimodal Hate Speech Detection from Tweets and Images",
+        "venue": "ICWSM 2019",
+        "url": "https://ojs.aaai.org/index.php/ICWSM/article/view/3252"
+      },
+      "dataset_url": "https://www.kaggle.com/datasets/victorcallejasf/multimodal-hate-speech",
+      "repository_url": "https://gombru.github.io/2019/10/09/MMHS/",
+      "access": "kaggle_terms_required",
+      "license_note": "The previously referenced GitHub repository is unavailable; use the author project page and Kaggle mirror, subject to Kaggle/Twitter media redistribution terms.",
+      "local_aliases": ["MMHS150K", "mmhs150k"],
+      "required_files": [],
+      "requires_media_binary": true,
+      "validation_role": "tweet-image hate speech benchmark"
+    },
+    {
+      "name": "PHEME",
+      "priority": "P0",
+      "task": "rumour thread veracity",
+      "views": ["tweet"],
+      "paper": {
+        "title": "PHEME rumour dataset",
+        "venue": "Figshare / social media rumour research",
+        "url": "https://figshare.com/articles/dataset/PHEME_dataset_for_Rumour_Detection_and_Veracity_Classification/6392078"
+      },
+      "dataset_url": "https://figshare.com/articles/dataset/PHEME_dataset_for_Rumour_Detection_and_Veracity_Classification/6392078",
+      "repository_url": "",
+      "access": "public_download",
+      "license_note": "Check Figshare license and citation requirements.",
+      "local_aliases": ["PHEME"],
+      "required_files": ["all-rnr-annotated-threads"],
+      "requires_media_binary": false,
+      "validation_role": "claim-conditioned text misinformation event holdout"
+    },
+    {
+      "name": "Twitter15_16_dataset",
+      "priority": "P1",
+      "task": "rumour event classification with propagation trees",
+      "views": ["tweet"],
+      "paper": {
+        "title": "Rumor Detection on Twitter with Tree-structured Recursive Neural Networks",
+        "venue": "ACL 2018",
+        "url": "https://aclanthology.org/P18-1184/"
+      },
+      "dataset_url": "https://github.com/gszswork/Twitter15_16_dataset",
+      "repository_url": "https://github.com/majingCUHK/Rumor_RvNN",
+      "access": "public_github_or_author_dropbox",
+      "license_note": "Check upstream repository/readme and Twitter data redistribution terms.",
+      "local_aliases": ["Twitter15_16_dataset", "twitter15_16_dataset", "Twitter15", "Twitter16"],
+      "required_files": ["twitter15", "twitter16"],
+      "requires_media_binary": false,
+      "validation_role": "rumour propagation/text benchmark; local copy currently lacks source_tweets.txt"
+    },
+    {
+      "name": "RumourEval 2019",
+      "priority": "P0",
+      "task": "stance and veracity classification",
+      "views": ["tweet"],
+      "paper": {
+        "title": "SemEval-2019 Task 7: RumourEval, Determining Rumour Veracity and Support for Rumours",
+        "venue": "SemEval 2019",
+        "url": "https://aclanthology.org/S19-2147/"
+      },
+      "dataset_url": "https://competitions.codalab.org/competitions/19938",
+      "repository_url": "https://github.com/kochkinaelena/RumourEval2019",
+      "access": "codalab_terms_required",
+      "license_note": "The GitHub repository contains baseline code/results; original data must be downloaded from CodaLab under task terms.",
+      "local_aliases": ["RumourEval 2019", "RumourEval2019", "rumoureval"],
+      "required_files": ["rumoureval-2019-training-data", "rumoureval-2019-test-data"],
+      "requires_media_binary": false,
+      "validation_role": "stance and veracity benchmark"
+    },
+    {
+      "name": "MOCHEG",
+      "priority": "P0",
+      "task": "multimodal claim verification with evidence and explanation",
+      "views": ["tweet", "img"],
+      "paper": {
+        "title": "MOCHEG: Multimodal Fact Checking and Explanation Generation",
+        "venue": "SIGIR 2023",
+        "url": "https://dl.acm.org/doi/10.1145/3539618.3591879"
+      },
+      "dataset_url": "https://docs.google.com/forms/d/e/1FAIpQLScAGehM6X9ARZWW3Fgt7fWMhc_Cec6iiAAN4Rn1BHAk6KOfbw/viewform?usp=sf_link",
+      "repository_url": "https://github.com/VT-NLP/Mocheg",
+      "access": "google_form_required",
+      "license_note": "The GitHub repository contains official implementation and dataset builder; MOCHEG v1 data requires the upstream Google Form.",
+      "local_aliases": ["MOCHEG", "Mocheg", "mocheg"],
+      "required_files": ["Corpus2.csv", "train", "dev", "test"],
+      "requires_media_binary": true,
+      "validation_role": "claim-evidence multimodal fact checking"
+    },
+    {
+      "name": "FACTIFY3M",
+      "priority": "P0",
+      "task": "multimodal fact verification with 5W QA",
+      "views": ["tweet", "img"],
+      "paper": {
+        "title": "FACTIFY3M: A Benchmark for Multimodal Fact Verification with Explainability through 5W Question-Answering",
+        "venue": "EMNLP 2023",
+        "url": "https://aclanthology.org/2023.emnlp-main.945/"
+      },
+      "dataset_url": "https://aclanthology.org/2023.emnlp-main.945/",
+      "repository_url": "",
+      "access": "manual_contact_required",
+      "license_note": "The previously referenced GitHub repository is unavailable. Use the paper/author channel or official release notes to obtain FACTIFY3M data; the older Factify baseline repository does not include the dataset files.",
+      "local_aliases": ["FACTIFY3M", "factify3m"],
+      "required_files": ["train", "validation", "test"],
+      "requires_media_binary": true,
+      "validation_role": "large multimodal fact verification"
+    },
+    {
+      "name": "FakeSV",
+      "priority": "P0",
+      "task": "short-video fake news detection",
+      "views": ["tweet", "video"],
+      "paper": {
+        "title": "FakeSV: A Multimodal Benchmark with Rich Social Context for Fake News Detection on Short Video Platforms",
+        "venue": "AAAI 2023",
+        "url": "https://ojs.aaai.org/index.php/AAAI/article/view/26689"
+      },
+      "dataset_url": "https://github.com/ICTMCG/FakeSV",
+      "repository_url": "https://github.com/ICTMCG/FakeSV",
+      "access": "public_github",
+      "license_note": "Check upstream repository/readme and platform data terms.",
+      "local_aliases": ["FakeSV", "fakesv"],
+      "required_files": [],
+      "requires_media_binary": true,
+      "validation_role": "video view benchmark"
+    },
+    {
+      "name": "mcfend",
+      "priority": "P0",
+      "task": "multi-source Chinese fake news detection",
+      "views": ["tweet"],
+      "paper": {
+        "title": "MCFEND: A Multi-source Benchmark Dataset for Chinese Fake News Detection",
+        "venue": "WWW 2024 companion / dataset benchmark",
+        "url": "https://github.com/ICTMCG/MCFEND"
+      },
+      "dataset_url": "https://github.com/ICTMCG/MCFEND",
+      "repository_url": "https://github.com/ICTMCG/MCFEND",
+      "access": "public_github",
+      "license_note": "Check upstream repository/readme and platform data terms.",
+      "local_aliases": ["mcfend", "MCFEND"],
+      "required_files": ["news.csv", "social_context.csv", "user.csv"],
+      "requires_media_binary": false,
+      "validation_role": "Chinese text/social fake news benchmark; local conversion currently text-only"
+    },
+    {
+      "name": "Fakeddit",
+      "priority": "P1",
+      "task": "multimodal fake news detection",
+      "views": ["tweet", "img"],
+      "paper": {
+        "title": "Fakeddit: A New Multimodal Benchmark Dataset for Fine-grained Fake News Detection",
+        "venue": "LREC 2020",
+        "url": "https://aclanthology.org/2020.lrec-1.755/"
+      },
+      "dataset_url": "https://fakeddit.netlify.app/",
+      "repository_url": "https://github.com/entitize/Fakeddit",
+      "access": "google_drive_or_codalab_download",
+      "license_note": "The GitHub repository contains downloader code and instructions only; v2.0 TSV files and images must be downloaded from the project Google Drive/CodaLab links under Reddit/media terms.",
+      "local_aliases": ["Fakeddit", "fakeddit"],
+      "required_files": ["multimodal_only_samples", "all_train.tsv"],
+      "requires_media_binary": true,
+      "validation_role": "optional multimodal fake news benchmark"
+    },
+    {
+      "name": "MuMiN",
+      "priority": "P1",
+      "task": "multimodal misinformation graph",
+      "views": ["tweet", "img"],
+      "paper": {
+        "title": "MuMiN: A Large-Scale Multilingual Multimodal Fact-Checked Misinformation Social Network Dataset",
+        "venue": "SIGIR 2022",
+        "url": "https://dl.acm.org/doi/10.1145/3477495.3531744"
+      },
+      "dataset_url": "https://mumin-dataset.github.io/",
+      "repository_url": "https://github.com/MuMiN-dataset/mumin",
+      "access": "public_with_download_instructions",
+      "license_note": "Check dataset website and platform data terms.",
+      "local_aliases": ["MuMiN", "mumin"],
+      "required_files": [],
+      "requires_media_binary": true,
+      "validation_role": "optional graph-connected misinformation benchmark"
+    }
+  ]
+}

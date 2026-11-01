@@ -1,0 +1,63 @@
+# Text evidence: Table 3
+
+> This file contains extracted text, not a visual interpretation. The image pixels, layout, axes, colors, and panels were not verified.
+
+- **PDF page:** 7
+- **Text extraction status:** partial
+- **Available sources:** caption, suggested-region-text
+- **Suggested region:** [82.626, 174.124, 526.047, 584.878]
+
+## Caption
+
+Table 3: ROC AUC % for the dynamic node classiﬁcation. ∗Static graph method.
+
+## Text from suggested visual region
+
+~~~text
+DeepWalk∗     90.71 ± 0.6          †        83.10 ± 0.5          †      —               †
+Node2Vec∗     91.48 ± 0.3          †        84.58 ± 0.5          †      —               †
+GAT∗          94.73 ± 0.2   91.27 ± 0.4   97.33 ± 0.2   95.37 ± 0.3   67.57 ± 0.4   62.32 ± 0.5
+GraphSAGE∗   93.56 ± 0.3   91.09 ± 0.3   97.65 ± 0.2   96.27 ± 0.2   65.79 ± 0.6   60.13 ± 0.6
+CTDNE        92.17 ± 0.5          †        91.41 ± 0.3          †      —               †
+Jodie           94.62 ± 0.5   93.11 ± 0.4   97.11 ± 0.3   94.36 ± 1.1   85.20 ± 2.4   79.83 ± 2.5
+TGAT          95.34 ± 0.1   93.99 ± 0.3   98.12 ± 0.2   96.62 ± 0.3   70.02 ± 0.6   66.35 ± 0.8
+DyRep         94.59 ± 0.2   92.05 ± 0.3   97.98 ± 0.1   95.68 ± 0.2   83.52 ± 3.0   78.38 ± 4.0
+TGN-attn      98.46 ± 0.1   97.81 ± 0.1   98.70 ± 0.1   97.55 ± 0.1   94.52 ± 0.5   91.37 ± 1.1
+
+   5  EXPERIMENTS
+
+
+    Datasets.  We use three datasets in our experiments: Wikipedia, Reddit (Kumar et al., 2019), and
+    Twitter, which are described in detail in Appendix A.3. Our experimental setup closely follows (Xu
+    et al., 2020) and focuses on the tasks of future edge (‘link’) prediction and dynamic node classiﬁcation.
+    In future edge prediction, the goal is to predict the probability of an edge occurring between two
+   nodes at a given time. Our encoder is combined with a simple MLP decoder mapping from the
+    concatenation of two node embeddings to the probability of the edge. We study both the transductive
+   and inductive settings. In the transductive task, we predict future links of the nodes observed during
+    training, whereas in the inductive tasks we predict future links of nodes never observed before. For
+   node classiﬁcation, the transductive setting is used. For all tasks and datasets we perform the same
+   70%-15%-15% chronological split as in Xu et al. (2020). All the results were averaged over 10 runs.
+   Hyperparameters and additional details can be found in Appendix A.4.
+
+
+    Baselines.  Our strong baselines are state-of-the-art approaches for continuous time dynamic graphs
+  (CTDNE (Nguyen et al., 2018), Jodie (Kumar et al., 2019), DyRep (Trivedi et al., 2019) and
+  TGAT (Xu et al., 2020)) as well as state-of-the-art models for static graphs (GAE (Kipf & Welling,
+    2016), VGAE (Kipf & Welling, 2016), DeepWalk (Perozzi et al., 2014), Node2Vec (Grover &
+   Leskovec, 2016), GAT (Velickovic et al., 2018) and GraphSAGE (Hamilton et al., 2017b)).
+
+
+   5.1  PERFORMANCE
+
+   Table 2 presents the results on future edge predic-  Table 3: ROC AUC % for the dynamic node
+    tion. Our model clearly outperforms the baselines   classiﬁcation. ∗Static graph method.
+   by a large margin in both transductive and induc-
+~~~
+
+## Body references
+
+- [No body reference recovered]
+
+## Mandatory limitation
+
+A text-only model must not claim direct observation of visual trends, layout, axes, colors, panels, qualitative examples, or crop completeness.

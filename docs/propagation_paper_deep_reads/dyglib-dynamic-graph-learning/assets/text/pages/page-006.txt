@@ -1,0 +1,65 @@
+Comprehensive Evaluating Protocols. DyGLib supports both transductive/inductive dynamic link
+prediction and dynamic node classification tasks. Most previous works evaluate their methods on the
+dynamic link prediction task with the random negative sampling strategy but a few models already
+reach saturation performance under such a strategy, making it hard to distinguish more advanced
+designs. For more reliable comparisons, we adopt three strategies (i.e., random, historical, and
+inductive negative sampling strategies) in [44] to comprehensively evaluate the model performance.
+
+
+5  Experiments
+
+In this section, we report the results of various approaches by using DyGLib. We show the superiority
+of DyGFormer over existing methods and also give an in-depth analysis of DyGFormer.
+
+
+5.1  Experimental Settings
+
+Datasets and Baselines. We experiment with thirteen datasets (Wikipedia, Reddit, MOOC, LastFM,
+Enron, Social Evo., UCI, Flights, Can. Parl., US Legis., UN Trade, UN Vote, and Contact), which are
+collected by [44] and cover diverse domains. Details of the datasets are shown in Section B.1. We
+compare DyGFormer with eight popular continuous-time dynamic graph learning baselines that are
+based on graph convolutions, memory networks, random walks, and sequential models, including
+JODIE [28], DyRep [55], TGAT [64], TGN [45], CAWN [60], EdgeBank [44], TCL [57], and
+GraphMixer [12]. We give the descriptions of baselines in Section B.2.
+
+Evaluation Tasks and Metrics. We follow [64, 45, 60, 44] to evaluate models for dynamic link
+prediction, which predicts the probability of a link occurring between two given nodes at a specific
+time. This task has two settings: the transductive setting aims to predict future links between nodes
+that are observed during training, and the inductive setting predicts future links between unseen
+nodes. We use a multi-layer perceptron to take the concatenated representations of two nodes as
+inputs and return the probability of a link as the output. Average Precision (AP) and Area Under the
+Receiver Operating Characteristic Curve (AUC-ROC) are adopted as the evaluation metrics. We adopt
+random (rnd), historical (hist), and inductive (ind) negative sampling strategies in [44] for evaluation,
+where the latter two strategies are more challenging. Please refer to [44] for more details. We also
+follow [64, 45] to conduct dynamic node classification, which estimates the state of a node in a given
+interaction at a specific time. A multi-layer perceptron is employed to map the node representations
+to the labels. We use AUC-ROC as the evaluation metric due to the label imbalance. For both tasks,
+we chronologically split each dataset with the ratio of 70%/15%/15% for training/validation/testing.
+
+Model Configurations. For baselines, in addition to following their official settings, we also perform
+an exhaustive grid search to find the optimal configurations of some critical hyperparameters for
+more reliable comparisons. As DyGFormer can access longer histories, we vary each node’s input
+sequence length from 32 to 4096 by a factor of 2. To keep the computational complexity at a constant
+level that is irrelevant to the input length, we correspondingly increase the patch size from 1 to 128.
+Please see Section B.5 for the detailed configurations of different models.
+
+Implementation Details. For both tasks, we optimize all models (i.e., excluding EdgeBank which has
+no trainable parameters) by Adam [27] and use supervised binary cross-entropy loss as the objective
+function. We train the models for 100 epochs and use the early stopping strategy with a patience of
+20. We select the model that achieves the best performance on the validation set for testing. We set
+the learning rate and batch size to 0.0001 and 200 for all the methods on all the datasets. We run the
+methods five times with seeds from 0 to 4 and report the average performance to eliminate deviations.
+Experiments are conducted on an Ubuntu machine equipped with one Intel(R) Xeon(R) Gold 6130
+CPU @ 2.10GHz with 16 physical cores. The GPU device is NVIDIA Tesla T4 with 15 GB memory.
+
+
+5.2  Performance Comparisons and Discussions
+
+We report the performance of different methods on the AP metric for transductive dynamic link
+prediction with three negative sampling strategies in Table 1. The best and second-best results are
+emphasized by bold and underlined fonts. Note that the results are multiplied by 100 for a better
+display layout. Please refer to Section C.1 and Section C.2 for the results of AP for inductive dynamic
+link prediction as well as AUC-ROC for transductive and inductive dynamic link prediction tasks.
+
+
+                                       6

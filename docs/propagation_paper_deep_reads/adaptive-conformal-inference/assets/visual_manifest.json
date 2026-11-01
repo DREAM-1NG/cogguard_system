@@ -1,0 +1,1131 @@
+{
+  "schema_version": 2,
+  "generated_at": "2026-08-08T05:54:20.595474+00:00",
+  "source_pdf": "H:\\Zotero\\attenger\\Projects\\CISCN\\Propagation\\Gibbs和Candès - 2021 - Adaptive conformal inference under distribution shift.pdf",
+  "source_sha256": "15f35bf6d3ff2abfc21eaff1f1a7df2a51a5c891f2bed752f6fd75d3e47a5ff7",
+  "page_count": 25,
+  "render_dpi": 180,
+  "selected_pages": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25
+  ],
+  "analysis_mode": "text-only",
+  "text_layer_available": true,
+  "text_layer_characters": 77775,
+  "automatic_crops_are_unverified": true,
+  "pages": [
+    {
+      "page": 1,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-001.txt",
+      "text_characters": 4540,
+      "caption_count": 0
+    },
+    {
+      "page": 2,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-002.txt",
+      "text_characters": 4310,
+      "caption_count": 0
+    },
+    {
+      "page": 3,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-003.txt",
+      "text_characters": 3897,
+      "caption_count": 0
+    },
+    {
+      "page": 4,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-004.txt",
+      "text_characters": 4117,
+      "caption_count": 0
+    },
+    {
+      "page": 5,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-005.txt",
+      "text_characters": 3703,
+      "caption_count": 1
+    },
+    {
+      "page": 6,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-006.txt",
+      "text_characters": 3793,
+      "caption_count": 0
+    },
+    {
+      "page": 7,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-007.txt",
+      "text_characters": 4574,
+      "caption_count": 0
+    },
+    {
+      "page": 8,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-008.txt",
+      "text_characters": 3835,
+      "caption_count": 0
+    },
+    {
+      "page": 9,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-009.txt",
+      "text_characters": 3471,
+      "caption_count": 1
+    },
+    {
+      "page": 10,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-010.txt",
+      "text_characters": 3628,
+      "caption_count": 1
+    },
+    {
+      "page": 11,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-011.txt",
+      "text_characters": 4034,
+      "caption_count": 0
+    },
+    {
+      "page": 12,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-012.txt",
+      "text_characters": 4228,
+      "caption_count": 0
+    },
+    {
+      "page": 13,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-013.txt",
+      "text_characters": 1055,
+      "caption_count": 0
+    },
+    {
+      "page": 14,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-014.txt",
+      "text_characters": 2927,
+      "caption_count": 2
+    },
+    {
+      "page": 15,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-015.txt",
+      "text_characters": 1124,
+      "caption_count": 2
+    },
+    {
+      "page": 16,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-016.txt",
+      "text_characters": 886,
+      "caption_count": 3
+    },
+    {
+      "page": 17,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-017.txt",
+      "text_characters": 1245,
+      "caption_count": 1
+    },
+    {
+      "page": 18,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-018.txt",
+      "text_characters": 3952,
+      "caption_count": 1
+    },
+    {
+      "page": 19,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-019.txt",
+      "text_characters": 3319,
+      "caption_count": 1
+    },
+    {
+      "page": 20,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-020.txt",
+      "text_characters": 2979,
+      "caption_count": 0
+    },
+    {
+      "page": 21,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-021.txt",
+      "text_characters": 2466,
+      "caption_count": 0
+    },
+    {
+      "page": 22,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-022.txt",
+      "text_characters": 4070,
+      "caption_count": 0
+    },
+    {
+      "page": 23,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-023.txt",
+      "text_characters": 2166,
+      "caption_count": 0
+    },
+    {
+      "page": 24,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-024.txt",
+      "text_characters": 2464,
+      "caption_count": 0
+    },
+    {
+      "page": 25,
+      "width_pixels": null,
+      "height_pixels": null,
+      "width_points": 612.0,
+      "height_points": 792.0,
+      "image": null,
+      "text": "text\\pages\\page-025.txt",
+      "text_characters": 992,
+      "caption_count": 0
+    }
+  ],
+  "visuals": [
+    {
+      "id": "figure-1-p005",
+      "label": "Figure 1",
+      "kind": "figure",
+      "number": "1",
+      "page": 5,
+      "caption": "Local coverage frequencies for adaptive conformal (blue), a non-adaptive method that holds αt = α ﬁxed (red), and an i.i.d. Bernoulli(0.1) sequence (grey) for the prediction of stock market volatility. The coloured dotted lines mark the average coverage obtained across all time points, while the black line indicates the target level of 1 −α = 0.9.",
+      "raw_text": "Figure 1: Local coverage frequencies for adaptive conformal (blue), a non-adaptive method that holds αt = α ﬁxed (red), and an i.i.d. Bernoulli(0.1) sequence (grey) for the prediction of stock market volatility. The coloured dotted lines mark the average coverage obtained across all time points, while the black line indicates the target level of 1 −α = 0.9.",
+      "caption_bbox_points": [
+        107.751,
+        284.006,
+        504.003,
+        326.62
+      ],
+      "caption_bbox_pixels": [
+        269,
+        710,
+        1260,
+        817
+      ],
+      "suggested_crop_bbox_points": [
+        97.751,
+        60.793,
+        514.003,
+        336.62
+      ],
+      "suggested_crop_bbox_pixels": [
+        244,
+        152,
+        1285,
+        842
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-005.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": true,
+      "claim_ids": [
+        "C1",
+        "C2"
+      ],
+      "text_asset": "text\\visuals\\figure-1-p005.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "complete",
+        "sources": [
+          "caption",
+          "pdf-text-layer",
+          "body-references",
+          "text/visuals/figure-1-p005.md"
+        ],
+        "notes": "已核对图表编号、页码、标题、正文引用和可恢复文字；未将像素级视觉观察写入报告。",
+        "limitations": "本轮为 text-only 精读，未直接核验像素、坐标轴、颜色、曲线形状、面板布局、裁剪完整性或视觉显著性。"
+      }
+    },
+    {
+      "id": "figure-2-p009",
+      "label": "Figure 2",
+      "kind": "figure",
+      "number": "2",
+      "page": 9,
+      "caption": "Local coverage frequencies for adaptive conformal (blue), a non-adaptive method that holds αt = α ﬁxed (red), and an i.i.d. Bernoulli(0.1) sequence (grey) for the prediction of stock market volatility with conformity score ˜St. The coloured dotted lines mark the average coverage obtained across all time points, while the black line indicates the target level of 1 −α = 0.9.",
+      "raw_text": "Figure 2: Local coverage frequencies for adaptive conformal (blue), a non-adaptive method that holds αt = α ﬁxed (red), and an i.i.d. Bernoulli(0.1) sequence (grey) for the prediction of stock market volatility with conformity score ˜St. The coloured dotted lines mark the average coverage obtained across all time points, while the black line indicates the target level of 1 −α = 0.9.",
+      "caption_bbox_points": [
+        107.751,
+        289.763,
+        504.003,
+        333.793
+      ],
+      "caption_bbox_pixels": [
+        269,
+        724,
+        1260,
+        834
+      ],
+      "suggested_crop_bbox_points": [
+        97.751,
+        60.755,
+        514.003,
+        343.793
+      ],
+      "suggested_crop_bbox_pixels": [
+        244,
+        152,
+        1285,
+        859
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-009.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": true,
+      "claim_ids": [
+        "C3"
+      ],
+      "text_asset": "text\\visuals\\figure-2-p009.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "complete",
+        "sources": [
+          "caption",
+          "pdf-text-layer",
+          "body-references",
+          "text/visuals/figure-2-p009.md"
+        ],
+        "notes": "已核对图表编号、页码、标题、正文引用和可恢复文字；未将像素级视觉观察写入报告。",
+        "limitations": "本轮为 text-only 精读，未直接核验像素、坐标轴、颜色、曲线形状、面板布局、裁剪完整性或视觉显著性。"
+      }
+    },
+    {
+      "id": "figure-3-p010",
+      "label": "Figure 3",
+      "kind": "figure",
+      "number": "3",
+      "page": 10,
+      "caption": "Local coverage frequencies of adaptive conformal (blue), a non-adaptive method that holds αt = α ﬁxed (red), and an i.i.d. Bernoulli(0.1) sequence (grey) for county-level election predictions. Coloured dotted lines show the average coverage across all time points, while the black line indicates the target coverage level of 1 −α = 0.9.",
+      "raw_text": "Figure 3: Local coverage frequencies of adaptive conformal (blue), a non-adaptive method that holds αt = α ﬁxed (red), and an i.i.d. Bernoulli(0.1) sequence (grey) for county-level election predictions. Coloured dotted lines show the average coverage across all time points, while the black line indicates the target coverage level of 1 −α = 0.9.",
+      "caption_bbox_points": [
+        108.0,
+        278.229,
+        505.747,
+        320.855
+      ],
+      "caption_bbox_pixels": [
+        270,
+        696,
+        1264,
+        802
+      ],
+      "suggested_crop_bbox_points": [
+        98.0,
+        63.401,
+        515.747,
+        330.855
+      ],
+      "suggested_crop_bbox_pixels": [
+        245,
+        159,
+        1289,
+        827
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-010.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": true,
+      "claim_ids": [
+        "C2"
+      ],
+      "text_asset": "text\\visuals\\figure-3-p010.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "complete",
+        "sources": [
+          "caption",
+          "pdf-text-layer",
+          "body-references",
+          "text/visuals/figure-3-p010.md"
+        ],
+        "notes": "已核对图表编号、页码、标题、正文引用和可恢复文字；未将像素级视觉观察写入报告。",
+        "limitations": "本轮为 text-only 精读，未直接核验像素、坐标轴、颜色、曲线形状、面板布局、裁剪完整性或视觉显著性。"
+      }
+    },
+    {
+      "id": "figure-4-p014",
+      "label": "Figure 4",
+      "kind": "figure",
+      "number": "4",
+      "page": 14,
+      "caption": "shows daily open prices for the four stocks considered in Section 2.2.",
+      "raw_text": "Figure 4 shows daily open prices for the four stocks considered in Section 2.2.",
+      "caption_bbox_points": [
+        108.0,
+        401.088,
+        420.148,
+        411.051
+      ],
+      "caption_bbox_pixels": [
+        270,
+        1003,
+        1050,
+        1028
+      ],
+      "suggested_crop_bbox_points": [
+        98.0,
+        391.088,
+        507.518,
+        643.49
+      ],
+      "suggested_crop_bbox_pixels": [
+        245,
+        978,
+        1269,
+        1609
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-014.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": false,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\figure-4-p014.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "complete",
+        "sources": [
+          "caption",
+          "pdf-text-layer",
+          "body-references",
+          "text/visuals/figure-4-p014.md"
+        ],
+        "notes": "已核对图表编号、页码、标题、正文引用和可恢复文字；未将像素级视觉观察写入报告。",
+        "limitations": "本轮为 text-only 精读，未直接核验像素、坐标轴、颜色、曲线形状、面板布局、裁剪完整性或视觉显著性。"
+      }
+    },
+    {
+      "id": "figure-4-p014",
+      "label": "Figure 4",
+      "kind": "figure",
+      "number": "4",
+      "page": 14,
+      "caption": "Daily open prices for the four stocks considered in Section 2.2.",
+      "raw_text": "Figure 4: Daily open prices for the four stocks considered in Section 2.2.",
+      "caption_bbox_points": [
+        160.711,
+        652.01,
+        451.29,
+        661.973
+      ],
+      "caption_bbox_pixels": [
+        402,
+        1630,
+        1128,
+        1655
+      ],
+      "suggested_crop_bbox_points": [
+        104.478,
+        412.803,
+        507.518,
+        671.973
+      ],
+      "suggested_crop_bbox_pixels": [
+        261,
+        1032,
+        1269,
+        1680
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-014.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": false,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\figure-4-p014.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "complete",
+        "sources": [
+          "caption",
+          "pdf-text-layer",
+          "body-references",
+          "text/visuals/figure-4-p014.md"
+        ],
+        "notes": "已核对图表编号、页码、标题、正文引用和可恢复文字；未将像素级视觉观察写入报告。",
+        "limitations": "本轮为 text-only 精读，未直接核验像素、坐标轴、颜色、曲线形状、面板布局、裁剪完整性或视觉显著性。"
+      }
+    },
+    {
+      "id": "figure-5-p015",
+      "label": "Figure 5",
+      "kind": "figure",
+      "number": "5",
+      "page": 15,
+      "caption": "Realized trajectories of αt for predicting stock market volatility as outlined in Section 2.2 using update (2).",
+      "raw_text": "Figure 5: Realized trajectories of αt for predicting stock market volatility as outlined in Section 2.2 using update (2).",
+      "caption_bbox_points": [
+        108.0,
+        273.619,
+        504.004,
+        294.721
+      ],
+      "caption_bbox_pixels": [
+        270,
+        684,
+        1260,
+        737
+      ],
+      "suggested_crop_bbox_points": [
+        98.0,
+        62.002,
+        514.004,
+        304.721
+      ],
+      "suggested_crop_bbox_pixels": [
+        245,
+        155,
+        1285,
+        762
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-015.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": false,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\figure-5-p015.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "complete",
+        "sources": [
+          "caption",
+          "pdf-text-layer",
+          "body-references",
+          "text/visuals/figure-5-p015.md"
+        ],
+        "notes": "已核对图表编号、页码、标题、正文引用和可恢复文字；未将像素级视觉观察写入报告。",
+        "limitations": "本轮为 text-only 精读，未直接核验像素、坐标轴、颜色、曲线形状、面板布局、裁剪完整性或视觉显著性。"
+      }
+    },
+    {
+      "id": "figure-6-p015",
+      "label": "Figure 6",
+      "kind": "figure",
+      "number": "6",
+      "page": 15,
+      "caption": "Realized trajectories of αt for predicting stock market volatility as outlined in Section 2.2 using update (3) with ws ∝0.95t−s.",
+      "raw_text": "Figure 6: Realized trajectories of αt for predicting stock market volatility as outlined in Section 2.2 using update (3) with ws ∝0.95t−s.",
+      "caption_bbox_points": [
+        108.0,
+        699.148,
+        504.004,
+        721.385
+      ],
+      "caption_bbox_pixels": [
+        270,
+        1748,
+        1260,
+        1803
+      ],
+      "suggested_crop_bbox_points": [
+        98.0,
+        487.531,
+        514.004,
+        731.385
+      ],
+      "suggested_crop_bbox_pixels": [
+        245,
+        1219,
+        1285,
+        1828
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-015.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": false,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\figure-6-p015.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "complete",
+        "sources": [
+          "caption",
+          "pdf-text-layer",
+          "body-references",
+          "text/visuals/figure-6-p015.md"
+        ],
+        "notes": "已核对图表编号、页码、标题、正文引用和可恢复文字；未将像素级视觉观察写入报告。",
+        "limitations": "本轮为 text-only 精读，未直接核验像素、坐标轴、颜色、曲线形状、面板布局、裁剪完整性或视觉显著性。"
+      }
+    },
+    {
+      "id": "figure-7-p016",
+      "label": "Figure 7",
+      "kind": "figure",
+      "number": "7",
+      "page": 16,
+      "caption": "Realized trajectory of αt for election night forecasting as outlined in Section 6 using update (2).",
+      "raw_text": "Figure 7: Realized trajectory of αt for election night forecasting as outlined in Section 6 using update (2).",
+      "caption_bbox_points": [
+        107.671,
+        289.457,
+        503.997,
+        310.559
+      ],
+      "caption_bbox_pixels": [
+        269,
+        724,
+        1260,
+        776
+      ],
+      "suggested_crop_bbox_points": [
+        97.671,
+        62.0,
+        513.997,
+        320.559
+      ],
+      "suggested_crop_bbox_pixels": [
+        244,
+        155,
+        1285,
+        801
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-016.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": false,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\figure-7-p016.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "complete",
+        "sources": [
+          "caption",
+          "pdf-text-layer",
+          "body-references",
+          "text/visuals/figure-7-p016.md"
+        ],
+        "notes": "已核对图表编号、页码、标题、正文引用和可恢复文字；未将像素级视觉观察写入报告。",
+        "limitations": "本轮为 text-only 精读，未直接核验像素、坐标轴、颜色、曲线形状、面板布局、裁剪完整性或视觉显著性。"
+      }
+    },
+    {
+      "id": "figure-8-p016",
+      "label": "Figure 8",
+      "kind": "figure",
+      "number": "8",
+      "page": 16,
+      "caption": "Realized trajectory of αt for election night forecasting as outlined in Section 6 using update (3) with ws ∝0.95t−s.",
+      "raw_text": "Figure 8: Realized trajectory of αt for election night forecasting as outlined in Section 6 using update (3) with ws ∝0.95t−s.",
+      "caption_bbox_points": [
+        107.671,
+        603.31,
+        503.997,
+        625.547
+      ],
+      "caption_bbox_pixels": [
+        269,
+        1508,
+        1260,
+        1564
+      ],
+      "suggested_crop_bbox_points": [
+        97.671,
+        311.559,
+        513.997,
+        635.547
+      ],
+      "suggested_crop_bbox_pixels": [
+        244,
+        779,
+        1285,
+        1589
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-016.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": false,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\figure-8-p016.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "complete",
+        "sources": [
+          "caption",
+          "pdf-text-layer",
+          "body-references",
+          "text/visuals/figure-8-p016.md"
+        ],
+        "notes": "已核对图表编号、页码、标题、正文引用和可恢复文字；未将像素级视觉观察写入报告。",
+        "limitations": "本轮为 text-only 精读，未直接核验像素、坐标轴、颜色、曲线形状、面板布局、裁剪完整性或视觉显著性。"
+      }
+    },
+    {
+      "id": "figure-9-p016",
+      "label": "Figure 9",
+      "kind": "figure",
+      "number": "9",
+      "page": 16,
+      "caption": "shows the local coverage level of adaptive and non-adaptive conformal inference for the prediction of market volatility (see Section 2.2) for 8 additional stocks/indices.",
+      "raw_text": "Figure 9 shows the local coverage level of adaptive and non-adaptive conformal inference for the prediction of market volatility (see Section 2.2) for 8 additional stocks/indices.",
+      "caption_bbox_points": [
+        108.0,
+        701.46,
+        503.997,
+        722.407
+      ],
+      "caption_bbox_pixels": [
+        270,
+        1754,
+        1260,
+        1806
+      ],
+      "suggested_crop_bbox_points": [
+        98.0,
+        626.547,
+        513.997,
+        732.407
+      ],
+      "suggested_crop_bbox_pixels": [
+        245,
+        1566,
+        1285,
+        1831
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-016.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": false,
+      "claim_ids": [],
+      "text_asset": "text\\visuals\\figure-9-p016.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "complete",
+        "sources": [
+          "caption",
+          "pdf-text-layer",
+          "body-references",
+          "text/visuals/figure-9-p016.md"
+        ],
+        "notes": "已核对图表编号、页码、标题、正文引用和可恢复文字；未将像素级视觉观察写入报告。",
+        "limitations": "本轮为 text-only 精读，未直接核验像素、坐标轴、颜色、曲线形状、面板布局、裁剪完整性或视觉显著性。"
+      }
+    },
+    {
+      "id": "figure-9-p017",
+      "label": "Figure 9",
+      "kind": "figure",
+      "number": "9",
+      "page": 17,
+      "caption": "Local coverage frequencies for adaptive conformal (blue), a non-adaptive method that holds αt = α ﬁxed (red), and an i.i.d. Bernoulli(0.1) sequence (grey) for the prediction of market volatility. The coloured dotted lines mark the average coverage obtained across all time points, while the black line indicates the target level of 1 −α = 0.9.",
+      "raw_text": "Figure 9: Local coverage frequencies for adaptive conformal (blue), a non-adaptive method that holds αt = α ﬁxed (red), and an i.i.d. Bernoulli(0.1) sequence (grey) for the prediction of market volatility. The coloured dotted lines mark the average coverage obtained across all time points, while the black line indicates the target level of 1 −α = 0.9.",
+      "caption_bbox_points": [
+        107.691,
+        678.562,
+        505.741,
+        721.177
+      ],
+      "caption_bbox_pixels": [
+        269,
+        1696,
+        1264,
+        1803
+      ],
+      "suggested_crop_bbox_points": [
+        97.691,
+        62.0,
+        515.741,
+        731.177
+      ],
+      "suggested_crop_bbox_pixels": [
+        244,
+        155,
+        1289,
+        1828
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-017.txt",
+      "crop_confidence": "medium",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": true,
+      "claim_ids": [
+        "C2"
+      ],
+      "text_asset": "text\\visuals\\figure-9-p017.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text",
+        "body-references"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "complete",
+        "sources": [
+          "caption",
+          "pdf-text-layer",
+          "body-references",
+          "text/visuals/figure-9-p017.md"
+        ],
+        "notes": "已核对图表编号、页码、标题、正文引用和可恢复文字；未将像素级视觉观察写入报告。",
+        "limitations": "本轮为 text-only 精读，未直接核验像素、坐标轴、颜色、曲线形状、面板布局、裁剪完整性或视觉显著性。"
+      }
+    },
+    {
+      "id": "algorithm-1-p018",
+      "label": "Algorithm 1",
+      "kind": "algorithm",
+      "number": "1",
+      "page": 18,
+      "caption": "below outlines the core conformal inference method used to predict election results. An R implementation of this algorithm as well as the core method outlined in Section 2.2 can be found at https://github.com/isgibbs/AdaptiveConformal.",
+      "raw_text": "Algorithm 1 below outlines the core conformal inference method used to predict election results. An R implementation of this algorithm as well as the core method outlined in Section 2.2 can be found at https://github.com/isgibbs/AdaptiveConformal.",
+      "caption_bbox_points": [
+        107.641,
+        598.656,
+        504.002,
+        630.639
+      ],
+      "caption_bbox_pixels": [
+        269,
+        1497,
+        1260,
+        1577
+      ],
+      "suggested_crop_bbox_points": [
+        21.42,
+        535.296,
+        590.58,
+        792.0
+      ],
+      "suggested_crop_bbox_pixels": [
+        54,
+        1338,
+        1476,
+        1980
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-018.txt",
+      "crop_confidence": "low",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": true,
+      "claim_ids": [
+        "C2"
+      ],
+      "text_asset": "text\\visuals\\algorithm-1-p018.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "complete",
+        "sources": [
+          "caption",
+          "pdf-text-layer",
+          "body-references",
+          "text/visuals/algorithm-1-p018.md"
+        ],
+        "notes": "已核对图表编号、页码、标题、正文引用和可恢复文字；未将像素级视觉观察写入报告。",
+        "limitations": "本轮为 text-only 精读，未直接核验像素、坐标轴、颜色、曲线形状、面板布局、裁剪完整性或视觉显著性。"
+      }
+    },
+    {
+      "id": "algorithm-1-p019",
+      "label": "Algorithm 1",
+      "kind": "algorithm",
+      "number": "1",
+      "page": 19,
+      "caption": "CQR method for election night prediction Data: Observed sequence of county-level votes counts and covariates {(Xt, Yt)}1≤t≤T and vote counts for the democratic candidate in the previous election {Y prev t }1≤t≤T . for t = 1, 2, . . . , T do",
+      "raw_text": "Algorithm 1: CQR method for election night prediction Data: Observed sequence of county-level votes counts and covariates {(Xt, Yt)}1≤t≤T and vote counts for the democratic candidate in the previous election {Y prev t }1≤t≤T . for t = 1, 2, . . . , T do",
+      "caption_bbox_points": [
+        107.641,
+        76.911,
+        488.968,
+        124.082
+      ],
+      "caption_bbox_pixels": [
+        269,
+        192,
+        1222,
+        310
+      ],
+      "suggested_crop_bbox_points": [
+        21.42,
+        13.551,
+        590.58,
+        361.682
+      ],
+      "suggested_crop_bbox_pixels": [
+        54,
+        34,
+        1476,
+        904
+      ],
+      "candidate_crop": null,
+      "selected_asset": null,
+      "candidate_crop_size_pixels": null,
+      "source_page_image": null,
+      "source_page_text": "text\\pages\\page-019.txt",
+      "crop_confidence": "low",
+      "crop_review_required": true,
+      "visual_verification": "not-performed",
+      "review_notes": "",
+      "key": true,
+      "claim_ids": [
+        "C2"
+      ],
+      "text_asset": "text\\visuals\\algorithm-1-p019.md",
+      "available_text_sources": [
+        "caption",
+        "suggested-region-text"
+      ],
+      "text_extraction_status": "partial",
+      "text_review": {
+        "status": "complete",
+        "sources": [
+          "caption",
+          "pdf-text-layer",
+          "body-references",
+          "text/visuals/algorithm-1-p019.md"
+        ],
+        "notes": "已核对图表编号、页码、标题、正文引用和可恢复文字；未将像素级视觉观察写入报告。",
+        "limitations": "本轮为 text-only 精读，未直接核验像素、坐标轴、颜色、曲线形状、面板布局、裁剪完整性或视觉显著性。"
+      }
+    }
+  ]
+}

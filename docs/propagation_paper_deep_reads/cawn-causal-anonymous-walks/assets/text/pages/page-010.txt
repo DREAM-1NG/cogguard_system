@@ -1,0 +1,71 @@
+Published as a conference paper at ICLR 2021
+
+
+
+
+
+feedback on the abstract. We also gratefully acknowledge the support of DARPA under Nos.
+FA865018C7880 (ASED), N660011924033 (MCS); ARO under Nos. W911NF-16-1-0342 (MURI),
+W911NF-16-1-0171 (DURIP); NSF under Nos. OAC-1835598 (CINES), OAC-1934578 (HDR),
+CCF-1918940 (Expeditions), IIS-2030477 (RAPID); Stanford Data Science Initiative, Wu Tsai
+Neurosciences Institute, Chan Zuckerberg Biohub, Amazon, Boeing, JPMorgan Chase, Docomo,
+Hitachi, JD.com, KDDI, NVIDIA, Dell. J. L. is a Chan Zuckerberg Biohub investigator.
+
+REFERENCES
+
+Ghadeer AbuOda, Gianmarco De Francisci Morales, and Ashraf Aboulnaga. Link prediction via
+   higher-order motif features. In Joint European Conference on Machine Learning and Knowledge
+  Discovery in Databases. Springer, 2019.
+
+Nesreen K Ahmed, Jennifer Neville, Ryan A Rossi, and Nick Dufﬁeld. Efﬁcient graphlet counting
+   for large networks. In International Conference on Data Mining. IEEE, 2015.
+
+Peter W Battaglia, Jessica B Hamrick, Victor Bapst, Alvaro Sanchez-Gonzalez, Vinicius Zambaldi,
+  Mateusz Malinowski, Andrea Tacchetti, David Raposo, Adam Santoro, Ryan Faulkner, et al.
+   Relational inductive biases, deep learning, and graph networks. arXiv preprint arXiv:1806.01261,
+  2018.
+
+Austin R Benson, David F Gleich, and Jure Leskovec. Higher-order organization of complex networks.
+  Science, 353(6295), 2016.
+
+Austin R Benson, Rediet Abebe, Michael T Schaub, Ali Jadbabaie, and Jon Kleinberg. Simplicial
+   closure and higher-order link prediction. Proceedings of the National Academy of Sciences, 115
+  (48):E11221–E11230, 2018.
+
+Salomon Bochner. A theorem on Fourier-Stieltjes integrals. Collected Papers of Salomon Bochner, 2,
+  1992.
+
+Jinyin Chen, Jian Zhang, Xuanheng Xu, Chenbo Fu, Dan Zhang, Qingpeng Zhang, and Qi Xuan.
+   E-lstm-d: A deep learning framework for dynamic network link prediction. IEEE Transactions on
+  Systems, Man, and Cybernetics: Systems, 2019.
+
+Lun Du, Yun Wang, Guojie Song, Zhicong Lu, and Junshan Wang. Dynamic network embedding:
+  An extended approach for skip-gram based network embedding. In International Joint Conference
+  on Artiﬁcial Intelligence, 2018.
+
+Thomas E Gorochowski, Claire S Grierson, and Mario di Bernardo. Organization of feed-forward
+  loop motifs reveals architectural principles in natural and engineered networks. Science advances,
+   4(3), 2018.
+
+Palash Goyal, Sujit Rokka Chhetri, and Arquimedes Canedo. dyngraph2vec: Capturing network
+  dynamics using dynamic graph representation learning. Knowledge-Based Systems, 187, 2020.
+
+Mark S Granovetter. The strength of weak ties. American journal of sociology, 78(6), 1973.
+
+Ehsan Hajiramezanali, Arman Hasanzadeh, Krishna Narayanan, Nick Dufﬁeld, Mingyuan Zhou, and
+  Xiaoning Qian. Variational graph recurrent neural networks. In Advances in Neural Information
+  Processing Systems, 2019.
+
+Will Hamilton, Zhitao Ying, and Jure Leskovec. Inductive representation learning on large graphs. In
+  Advances in Neural Information Processing Systems, 2017a.
+
+William L Hamilton, Rex Ying, and Jure Leskovec. Representation learning on graphs: Methods and
+   applications. IEEE Data Engineering Bulletin, 40(3), 2017b.
+
+Petter Holme and Jari Saramäki. Temporal networks. Physics reports, 519(3), 2012.
+
+Sergey Ivanov and Evgeny Burnaev. Anonymous walk embeddings. In International Conference on
+  Machine Learning, 2018.
+
+
+                                       10

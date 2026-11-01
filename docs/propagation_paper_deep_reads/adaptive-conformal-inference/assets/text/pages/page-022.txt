@@ -1,0 +1,56 @@
+Then, our main result is Lemma A.4 which shows that
+              B ≤C(γ + γ−1(ϵ1 + ϵ2))  and  σ2B ≤B2,                      (11)
+
+where the constant C depends on how close M(·|a) is to the ideal linear function M(p|a) = p.
+
+Plugging (11) into Theorem 4.1 gives a concentration inequality for |T −1 PTt=1 errt−α|. In particular,
+suppose we use an optimal stepsize of γ ∝√ϵ1. Then, combining (11) with Theorem 4.1 roughly
+tells us that
+                  T            (               )!               1                        1     √ϵ1      √ϵ1
+      X errt −α ≤O  max √   ,                   ,                     .            (12)
+            T                   t=1                  T pT(1 −η) T(1 −η)
+As a comparison it may be instructive to note that the more naive bound given in Proposition 4.1 can
+be written as
+                          T
+                      1                  1           1
+        X errt −α ≤O    = O                .                     (13)                   T              Tγ       T√ϵ1                            t=1
+A sharp reader may notice that the naive bound given in (13) actually goes to 0 faster in T than the
+HMM-based bound shown in (12). While this is true, the bound (13) has the highly undesirable
+property of increasing in 1/√ϵ1, i.e. the bound increases as the size of the distribution shift decreases.
+On the other hand, the HMM-based bound has the more intuitive property of decreasing with the
+distribution shift.
+The only remaining issue is to determine the size of pϵ1/(1 −η). To provide some insight into this
+quantity note that there are two main regimes in which we expect |T −1 PTt=1 errt −α| to be small:
+      1. Environments in which the state At changes frequently, but |α∗At+1 −α∗At| is always small.
+         In this case it is reasonable to expect 1 −η to not be too small and so we anticipate that (12)
+         will give a reasonable bound.
+      2. Environments in which the state changes very infrequently.  In this case {At}t∈N will
+       mix slowly and so we expect 1 −η to be quite small. Additionally, we also have that
+       α∗At+1 = α∗At a large proportion of the time and thus ϵ1 will also be small. As a result, it
+           is not immediately clear what (12) tells us about |T −1 PTt=1 errt −α|. Below we give one
+        simple example that demonstrates that (12) can also be a reasonable bound in this instance.
+
+Example A.1 Let {At}t∈N be the Markov chain with states {1, . . . , n} and transition matrix
+                    P =  p −1 −p  I + 1 −p      ,                             n −1     n −111T
+where p ∈[0, 1] is taken to be very close to 1. Let ∆:= maxi̸=j |α∗i −α∗j|. Then, we have that
+ϵ1, ϵ2 ≤∆(1 −p). Moreover, note that this chain has spectral gap 1 −η ∼= 1 −p. Thus, (12)
+simpliﬁes to
+                        T                 √                           (        )!                    1                         1    ∆
+        X errt −α ≤O  max √   ,                     .                  (14)
+                 T                                    T√1 −p                         t=1                   T
+                                             √
+In particular, for T > ∆/(1 −p) we ﬁnd that the error sequence concentrates at a rate of O(1/  T),
+which is consistent with the behaviour of an i.i.d. Bernoulli sequence. Finally, to understand this
+restriction on T note that given a starting state j ∈{1, . . . , n} we expect αt to contract towards α∗j
+at a rate of (1 −γ) and therefore to have that
+                T                T                 √
+             1                             ∆     X |αt −α∗j| ∝1           X(1 −γ)t−1|α1 −α∗j| ≤∆ =           T             T                   Tγ  T√1 −p,
+                 t=1               t=1
+where here we assumed that α1 ∈{α∗1, . . . , α∗n}. Thus, the second term in the maximum in (14) can
+be seen as accounting for the rate of covergence of αt to α∗j during the time that the Markov chain is
+in state j and given that α1 starts at some α∗i , 1 ≤i ≤n.
+
+We now derive (11).
+
+
+                                       22
