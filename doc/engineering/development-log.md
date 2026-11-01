@@ -16,6 +16,26 @@
 - `路径/文件`：具体改动说明
 ```
 
+## 2026-11-01 Repository Archive And Cleanup
+
+- Archived every unmerged line to `origin` before removing local worktrees:
+  `archive/coordination-deep-detection-upgrade`(+`-wip-20260818`),
+  `archive/case-workbench-wip-20260812`, `archive/propagation-monitor-alerts-wip-20260815`,
+  the `archive/cogguard-dev-*-wip-20260812` propagation benchmark branch,
+  `archive/propagation-fair-benchmark`, plus
+  `archive/*` and `verified/*` tags (including the former `stash@{0}`). None of
+  these lines is merged into `cleanup/final-architecture`.
+- Removed 8 auxiliary worktrees and redundant local branches; only
+  `cleanup/final-architecture` remains checked out. A full `git bundle` and the
+  ignored checkpoints/results were copied to the workspace `05_models_and_artifacts/`.
+- Restored the gitignored runtime checkpoints into `system/output/botrhg_weibo/`
+  and `system/artifacts/` (previously only present in a removed worktree).
+- `system/backend/app/core/bot_training.py`: replaced the absolute worktree
+  output default with `system/output/weibo_bot_detection/`, and made the dataset
+  root configurable via `BOTECTION_DATASET_ROOT`.
+- `doc/engineering/environment-setup.md`, `system/README.md`: documented local
+  artifact paths and `BOTECTION_DATASET_ROOT`.
+
 ## 2026-09-03 Final Branch Review Remediation
 
 - 首轮完整验证通过：backend `631 passed, 19 skipped`，frontend production build、Alembic 单 head 和 offline SQL 均通过。

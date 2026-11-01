@@ -181,6 +181,12 @@ MEDIA_DOWNLOAD_ROOT=./media
 
 External-root settings from earlier designs are not product runtime inputs.
 
+Trained checkpoints (`output/botrhg_weibo/`, `artifacts/review_student/`, and
+other `artifacts/` entries) are gitignored local files; see
+`doc/engineering/environment-setup.md` for the expected paths.
+`BOTECTION_DATASET_ROOT` locates the external corpus for the offline Weibo bot
+baseline only.
+
 ## Local Startup
 
 ```powershell

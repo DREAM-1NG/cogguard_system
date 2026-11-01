@@ -1,9 +1,9 @@
 """Local training utilities for Weibo bot detection.
 
-This module turns the vendored Botection corpus into a reproducible local
+This module turns the local Botection corpus into a reproducible local
 training baseline. It intentionally stays small and deterministic:
 
-- input is the labeled Weibo corpus shipped with the repository
+- input is the labeled Weibo corpus located by ``BOTECTION_DATASET_ROOT``
 - features are bag-of-words text plus compact profile/activity metadata
 - output is a joblib artifact with the fitted pipeline and metadata
 """
@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
 import zipfile
 from xml.etree import ElementTree
@@ -32,8 +33,14 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
 
-DEFAULT_DATASET_ROOT = Path(r"G:\CISCN\_tmp\Botection")
-DEFAULT_OUTPUT_DIR = Path(r"G:\CISCN\CogGuard\.worktrees\refactor-system\system\output\weibo_bot_detection")
+# ``system/`` root, matching ``app.config.PROJECT_ROOT``.
+_SYSTEM_ROOT = Path(__file__).resolve().parents[3]
+
+# The Botection corpus is an external local dataset, not part of the repository.
+DEFAULT_DATASET_ROOT = Path(
+    os.environ.get("BOTECTION_DATASET_ROOT", r"G:\CISCN\05_models_and_artifacts\datasets\Botection")
+)
+DEFAULT_OUTPUT_DIR = _SYSTEM_ROOT / "output" / "weibo_bot_detection"
 
 
 @dataclass(slots=True)

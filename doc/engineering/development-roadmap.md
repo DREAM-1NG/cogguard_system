@@ -4,7 +4,14 @@
 > **受众**：开发者、项目维护者、后续执行任务的 AI agent。
 > **维护规则**：只维护可执行工程路线和状态；研究定位、文献依据和关键技术背景放入 `../research/`。
 
-> 最后更新：2026-09-03
+> 最后更新：2026-11-01
+
+## 2026-11-01 Repository Archive
+
+- [x] 未合并的研究/功能线全部推送为 `archive/*` 分支或 tag，并移除本地辅助 worktree。
+- [x] 运行所需的 gitignored checkpoint 恢复到主工作区 `system/output/` 与 `system/artifacts/`。
+- [x] `main` 由空的孤立提交更新为最终架构，GitHub 默认分支内容与交付版本一致。
+- [ ] 如需复用 claim-response 视图、语义分析页、预测时间窗等归档功能，需从对应 `archive/*` 分支有选择地移植，不能直接合并。
 
 ## 2026-09-02 Final Architecture Cleanup
 

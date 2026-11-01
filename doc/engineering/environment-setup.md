@@ -138,6 +138,25 @@ cd system
 
 New successful collection jobs carrying an `event_id` automatically create or revise an Event Review Case and run the internal analysis pipeline. Re-importing an unchanged data fingerprint does not create a duplicate revision.
 
+## Local Model Artifacts And Datasets
+
+Trained checkpoints are gitignored and must exist locally for the trained
+runtime paths; without them the backend reports the explicit proxy or
+unavailable status instead of trained output.
+
+| Path (under `system/`) | Used by |
+| --- | --- |
+| `output/botrhg_weibo/checkpoint.pt` | `BOTRHG_CHECKPOINT_PATH` default, gated by `BOTRHG_DATA_FINGERPRINT` |
+| `artifacts/review_student/` | Student Review checkpoint under `MODEL_ARTIFACT_ROOT` |
+| `artifacts/coordination_discover/` | `COORDINATION_DISCOVER_ARTIFACT_ROOT` default (artifact-first Coordination Discover) |
+| other `artifacts/*` entries | Local files referenced by governed `artifact_uri` values under `MODEL_ARTIFACT_ROOT` |
+
+`BOTECTION_DATASET_ROOT` points the offline Weibo bot baseline
+(`scripts/train_weibo_bot_detection.py`) and its optional tests at the external
+Botection corpus. The training output defaults to `system/output/weibo_bot_detection/`.
+Archived copies of these artifacts live outside the repository in the
+workspace `05_models_and_artifacts/` folder.
+
 ## Verification
 
 GitHub release gates run on both Windows and Ubuntu. The required checks are

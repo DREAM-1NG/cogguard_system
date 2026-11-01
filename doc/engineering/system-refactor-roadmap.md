@@ -8,8 +8,8 @@ Improve reuse, locality, and long-term maintainability across the CogGuard syste
 
 This refactor lane runs in:
 
-- Branch: `refactor-system`
-- Worktree: `G:\CISCN\CogGuard\.worktrees\refactor-system`
+- Branch: `refactor-system` (historical; the worktree was removed on 2026-11-01 and the
+  lane's later work is archived as `archive/coordination-deep-detection-upgrade*`)
 
 ## Installed Project Skills
 
