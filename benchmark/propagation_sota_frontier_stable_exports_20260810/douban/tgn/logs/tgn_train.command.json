@@ -1,0 +1,19 @@
+{
+  "command": [
+    "D:\\Anaconda\\python.exe",
+    "train_self_supervised.py",
+    "-d",
+    "kt2_douban_tgn",
+    "--prefix",
+    "kt2_kt2_douban_tgn",
+    "--n_runs",
+    "1",
+    "--n_epoch",
+    "1",
+    "--bs",
+    "16",
+    "--n_degree",
+    "10"
+  ],
+  "returncode": 0
+}

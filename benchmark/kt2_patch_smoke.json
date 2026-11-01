@@ -1,0 +1,159 @@
+{
+  "schema": "cogguard.kt2.minds_comparison.v1",
+  "status": "partial",
+  "config_id": "kt2-patch-smoke",
+  "evidence_level": "preflight",
+  "full_validation_passed": false,
+  "full_run_requirements": {
+    "checks": {
+      "dataset_count_at_least_3": false,
+      "seed_count_at_least_3": false,
+      "minds_epochs_at_least_5": false,
+      "kt2_epochs_at_least_5": false,
+      "minds_uses_all_available_cascades": false,
+      "kt2_uses_all_train_and_test_cascades": false,
+      "kt2_unbudgeted_training_and_eval": true,
+      "no_missing_model_pairs": false,
+      "has_completed_comparisons": false
+    },
+    "passed": false,
+    "minimums": {
+      "datasets": 3,
+      "seeds": 3,
+      "epochs": 5
+    }
+  },
+  "boundary": "Compares trainable original MINDS public-code baseline against KT2SequenceJointModel on the same FOREST-source datasets. Handcrafted/heuristic baselines are excluded from the improvement verdict. preflight evidence proves the pipeline and a directional comparison only; full_validation_passed=true is required before claiming final KT2 improvement over MINDS.",
+  "comparison_model_filter": {
+    "allowed_models": [
+      "KT2SequenceJointModel",
+      "MINDS"
+    ],
+    "aliases": {
+      "KT2": "KT2SequenceJointModel",
+      "KT2Sequence": "KT2SequenceJointModel",
+      "KT2JointModel": "legacy_candidate_level_kt2"
+    },
+    "ignored_non_comparison_rows": [],
+    "ignored_non_comparison_row_count": 0,
+    "rule": "Only trainable MINDS and KT2SequenceJointModel rows can enter pair verdicts and metric deltas."
+  },
+  "datasets": [
+    "memetracker"
+  ],
+  "seeds": [
+    42
+  ],
+  "common_metrics": [
+    "msle",
+    "hits@10",
+    "hits@50",
+    "hits@100",
+    "map@10",
+    "map@50",
+    "map@100"
+  ],
+  "overall_verdict": "insufficient_evidence",
+  "metric_summary": {},
+  "comparisons": [],
+  "missing_pairs": [
+    {
+      "dataset": "memetracker",
+      "seed": 42,
+      "minds_status": "ok",
+      "kt2_status": "missing_data"
+    }
+  ],
+  "schema_report": {
+    "schema": "cogguard.kt2.benchmark_result.v1",
+    "ok": false,
+    "rows": 2,
+    "errors": [
+      "row 1: KT2SequenceJointModel must include candidate_protocol_audit"
+    ],
+    "warnings": []
+  },
+  "rows": [
+    {
+      "model": "MINDS",
+      "dataset": "memetracker",
+      "adapter_dataset": "kt2_memetracker",
+      "task": "multi_scale",
+      "status": "ok",
+      "reproduction_level": "public_code_adapter",
+      "seed": 42,
+      "config_id": "kt2-patch-smoke",
+      "epochs": 1,
+      "selection": "best_valid_map@100",
+      "best_epoch": 1,
+      "methodology": "Original MINDS public-code adapter: sequential hypergraphs, adversarial learning, macro/micro diffusion prediction.",
+      "protocol_source": "converted from FOREST memetracker cascade.txt",
+      "valid_map@100": 0.014236298700173696,
+      "valid_msle": 7.841015815734863,
+      "hits@10": 0.14285714285714285,
+      "map@10": 0.04365079317774091,
+      "hits@50": 0.2857142857142857,
+      "map@50": 0.05300144212586539,
+      "hits@100": 0.6428571428571429,
+      "map@100": 0.05762891684259687,
+      "msle": 9.0,
+      "mae": null,
+      "command": [
+        "D:\\Anaconda\\python.exe",
+        "G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\adapters\\minds_runner.py",
+        "--dataset_name",
+        "kt2_memetracker",
+        "--report_dataset",
+        "memetracker",
+        "--protocol_source",
+        "converted from FOREST memetracker cascade.txt",
+        "--epochs",
+        "1",
+        "--batch_size",
+        "4",
+        "--emb_dim",
+        "16",
+        "--step_split",
+        "4",
+        "--max_seq_length",
+        "200",
+        "--device",
+        "cuda",
+        "--reproduction_level",
+        "public_code_adapter",
+        "--config_id",
+        "kt2-patch-smoke",
+        "--seed",
+        "42"
+      ],
+      "cwd": "G:\\CISCN\\CogGuard\\subsystems\\kt2_repos\\MINDS\\.kt2_extracted\\MINDS",
+      "returncode": 0,
+      "elapsed_s": 10.5,
+      "log_path": "benchmark\\logs\\MINDS_memetracker_seed42_kt2-patch-smoke.log",
+      "comparison_role": "trainable_original_minds_baseline",
+      "minds_staged_dataset": {
+        "status": "ok",
+        "dataset_name": "kt2_memetracker",
+        "path": "G:\\CISCN\\CogGuard\\subsystems\\kt2_repos\\MINDS\\.kt2_extracted\\MINDS\\data\\kt2_memetracker",
+        "cascades": 20,
+        "users": 159,
+        "edges": 0
+      }
+    },
+    {
+      "model": "KT2SequenceJointModel",
+      "dataset": "memetracker",
+      "task": "multi_scale",
+      "status": "missing_data",
+      "reproduction_level": "kt2_sequence_joint_model_small_run",
+      "seed": 42,
+      "note": "FOREST train/test cascades are not available.",
+      "comparison_role": "trainable_kt2_sequence_candidate",
+      "config_id": "kt2-patch-smoke",
+      "experiment_seed": 42,
+      "experiment_dataset": "memetracker",
+      "experiment_scope": "kt2_sequence_vs_original_minds_same_source"
+    }
+  ],
+  "elapsed_s": 10.9
+}

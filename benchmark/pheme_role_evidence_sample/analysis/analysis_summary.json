@@ -1,0 +1,222 @@
+{
+  "dataset_events": 5,
+  "focus_event_id": "552784600502915072",
+  "totals": {
+    "nodes": 99,
+    "edges": 94,
+    "participants": 54
+  },
+  "event_summaries": [
+    {
+      "event_id": "552784600502915072",
+      "label": "non-rumour",
+      "topic": "charliehebdo",
+      "claim": null,
+      "source_node": "552784600502915072",
+      "source_user": "331658004",
+      "source_text": "Charlie Hebdo became well known for publishing the Muhammed cartoons two years ago",
+      "node_count": 40,
+      "edge_count": 39,
+      "participant_count": 13,
+      "max_depth": 14,
+      "max_width": 8,
+      "avg_branching": 0.975,
+      "leaf_ratio": 0.275,
+      "duration_minutes": 1254.0,
+      "top_spreaders": [
+        {
+          "node_id": "552784600502915072",
+          "out_degree": 8
+        },
+        {
+          "node_id": "552786803884060672",
+          "out_degree": 3
+        },
+        {
+          "node_id": "552977959003242496",
+          "out_degree": 2
+        },
+        {
+          "node_id": "552787979224092672",
+          "out_degree": 1
+        },
+        {
+          "node_id": "552788534269341696",
+          "out_degree": 1
+        }
+      ]
+    },
+    {
+      "event_id": "552784898743099392",
+      "label": "non-rumour",
+      "topic": "charliehebdo",
+      "claim": null,
+      "source_node": "552784898743099392",
+      "source_user": "465973",
+      "source_text": "Charlie Hebdo’s Last Tweet Before Shootings http://t.co/9Oa2xAqOcM http://t.co/skJHNEQcn0",
+      "node_count": 10,
+      "edge_count": 9,
+      "participant_count": 10,
+      "max_depth": 2,
+      "max_width": 8,
+      "avg_branching": 0.9,
+      "leaf_ratio": 0.8,
+      "duration_minutes": 6380.6,
+      "top_spreaders": [
+        {
+          "node_id": "552784898743099392",
+          "out_degree": 8
+        },
+        {
+          "node_id": "552785520028557314",
+          "out_degree": 1
+        },
+        {
+          "node_id": "552785988234125313",
+          "out_degree": 0
+        },
+        {
+          "node_id": "552786454007783424",
+          "out_degree": 0
+        },
+        {
+          "node_id": "552787579096293377",
+          "out_degree": 0
+        }
+      ]
+    },
+    {
+      "event_id": "552785391653494784",
+      "label": "non-rumour",
+      "topic": "charliehebdo",
+      "claim": null,
+      "source_node": "552785391653494784",
+      "source_user": "15798091",
+      "source_text": "Prediction: the #CharlieHebdo massacre will not dent the political class's complacency one iota",
+      "node_count": 32,
+      "edge_count": 31,
+      "participant_count": 17,
+      "max_depth": 6,
+      "max_width": 7,
+      "avg_branching": 0.96875,
+      "leaf_ratio": 0.46875,
+      "duration_minutes": 383.43333333333334,
+      "top_spreaders": [
+        {
+          "node_id": "552790186904788992",
+          "out_degree": 6
+        },
+        {
+          "node_id": "552785391653494784",
+          "out_degree": 6
+        },
+        {
+          "node_id": "552789590747410432",
+          "out_degree": 3
+        },
+        {
+          "node_id": "552785793375539200",
+          "out_degree": 2
+        },
+        {
+          "node_id": "552793377620910080",
+          "out_degree": 2
+        }
+      ]
+    },
+    {
+      "event_id": "552786116404072448",
+      "label": "non-rumour",
+      "topic": "charliehebdo",
+      "claim": null,
+      "source_node": "552786116404072448",
+      "source_user": "465973",
+      "source_text": "10:28am Charlie Hebdo account mocks ISIS leader, wishing him \"good health and best wishes\" http://t.co/9Oa2xAqOcM http://t.co/uYXayKLA7q",
+      "node_count": 6,
+      "edge_count": 5,
+      "participant_count": 6,
+      "max_depth": 2,
+      "max_width": 4,
+      "avg_branching": 0.8333333333333334,
+      "leaf_ratio": 0.6666666666666666,
+      "duration_minutes": 241.81666666666666,
+      "top_spreaders": [
+        {
+          "node_id": "552786116404072448",
+          "out_degree": 4
+        },
+        {
+          "node_id": "552788316840796160",
+          "out_degree": 1
+        },
+        {
+          "node_id": "552786749957865472",
+          "out_degree": 0
+        },
+        {
+          "node_id": "552788568813215744",
+          "out_degree": 0
+        },
+        {
+          "node_id": "552789980666662912",
+          "out_degree": 0
+        }
+      ]
+    },
+    {
+      "event_id": "552786299875520512",
+      "label": "non-rumour",
+      "topic": "charliehebdo",
+      "claim": null,
+      "source_node": "552786299875520512",
+      "source_user": "144301368",
+      "source_text": "If your faith isn't strong enough to cope with satirical poke, it oughtn't be strong enough to induce you to kill. Barbaric #CharlieHebdo",
+      "node_count": 11,
+      "edge_count": 10,
+      "participant_count": 10,
+      "max_depth": 2,
+      "max_width": 8,
+      "avg_branching": 0.9090909090909091,
+      "leaf_ratio": 0.7272727272727273,
+      "duration_minutes": 151.8,
+      "top_spreaders": [
+        {
+          "node_id": "552786299875520512",
+          "out_degree": 8
+        },
+        {
+          "node_id": "552787827608793088",
+          "out_degree": 1
+        },
+        {
+          "node_id": "552790456770527232",
+          "out_degree": 1
+        },
+        {
+          "node_id": "552787601653239808",
+          "out_degree": 0
+        },
+        {
+          "node_id": "552788009381560321",
+          "out_degree": 0
+        }
+      ]
+    }
+  ],
+  "role_evidence_quality": {
+    "scope": "coordinated_users",
+    "target_user_count": 9,
+    "evidence_user_count": 9,
+    "coordination_user_coverage": 1.0,
+    "path_complete_rate": 1.0,
+    "role_stability": {
+      "multi_event_user_count": 1,
+      "stable_user_count": 1,
+      "stable_user_rate": 1.0,
+      "mean_dominant_role_share": 1.0
+    },
+    "manual_review_required": true,
+    "note": "Role evidence is an observed-graph explanation. Coverage/stability metrics support review, but do not turn rule labels into supervised ground truth."
+  },
+  "narrative": "共分析 5 个事件，最大事件为 552784600502915072，规模 40 个节点；最深传播链来自 552784600502915072，深度 14。系统识别出 18 个潜在引爆点，主要依据为时间窗口增量异常和节点结构影响力。"
+}

@@ -1,47 +1,53 @@
-# KT2 / F-PROP 传播监控完成计划
+# KT2 / F-PROP 传播监控后续实现计划
 
-> 更新时间：2026-06-26  
-> 当前阶段：`request.md` 研究复现与数据集验证闭环已完成，系统落地后置。
+> 更新时间：2026-06-28
+> 当前阶段：baseline 与实验协议已搭建，前沿复现和系统落地继续推进。
+> 统一入口：KT2 当前需求、状态标签与验收标准以 `KT2_REQUIREMENTS.md` 为准；本文仅保留阶段计划。
+> 状态边界：`small_run_passed` 不等于 `full_validation_passed`。当前 full validation 仍为 `false`，以 `benchmark/KT2_COMPLETION_GATE.md` 为准。
 
-## 当前判断
+## 当前定位
 
-当前仓库已经完成 `request.md` 要求的研究对齐、协议修正、可运行 baseline、主复现目标 protocol-level reproduction、公开数据集验证和文档同步。规模预测与下一节点预测仍应标记为研究/离线 baseline，不应写成产品级 KT2 核心功能完成。
+KT2 传播监控模块固定围绕三项主功能推进：
 
-本轮路线从原 CascadeSwitch 设想收敛为：
+1. **规模预测**：给定早期观测窗口，预测未来或最终传播规模。
+2. **协同用户角色定位与证据追溯**：对 KT1 已判定协同用户，在已观测传播图中解释其起爆、桥接、放大或二级扩散角色。
+3. **下一跳预测**：在不注入未来真实节点的前提下，预测未来时间窗内可能被激活的用户或传播边。
 
-1. 以 HyperIDP 作为唯一主复现目标。
-2. 以 MINDS / FOREST 作为可运行统一多尺度 baseline。
-3. 保留 RandomForestRegressor 和 LogisticRegression 作为传统 baseline。
-4. 在进入产品 API 和前端展示前，先完成无泄漏协议与完整训练对比。
+当前实现不能写成 KT2 完成。更准确的状态是：基础传播分析、baseline、proxy 和部分公开代码 adapter 已落地；CasFT、DyGFormer/DyGLib 与 TGN 已完成 small-run 证据；跨事件协同角色验收、正式多数据多种子复现和产品 API 仍待开发。
 
-## 与 CascadeSwitch 的关系
+## 模型路线
 
-CascadeSwitch 暂不作为本轮主实现。若后续恢复该路线，LLM 或事件抽取模块应作为外生上下文/事件阶段特征抽取器，而不是直接输出传播规模数值。
+本轮不设置唯一主复现模型。各路线定位如下：
 
-替代路线的关系：
-
-| 原设计关注点 | 当前替代实现 | 缺口 |
+| 路线 | 作用 | 当前状态 |
 |---|---|---|
-| 事件条件体制切换 | HyperIDP/MINDS temporal hypergraph 协议参照 | 尚未显式建模 seeding/amplification/peak/decay |
-| 规模预测 | TemporalSizeBaseline + RF baseline + MINDS macro MSLE + HyperIDP protocol/adversarial proxy | 已有简单时间外推 baseline；MINDS Christianity 已完成 30 epochs；HyperIDP proxy 已产出 douban macro/micro 联合指标与 t_obs 曲线；douban/android 数据仍待补齐 |
-| 下一节点预测 | ProspectiveRanker + ProspectiveHeuristic + LR observed-candidate baseline + FOREST/MINDS micro metrics + HyperIDP protocol/adversarial proxy | 已有严格前瞻浅层学习排序 baseline；HyperIDP proxy 已补 temporal hyperedge proxy 和 adversarial multi-task proxy；MINDS Christianity 与 FOREST douban 已完成 30 epochs；强 temporal graph/GNN 排序模型仍待补 |
-| 系统解释 | 已观测图角色和证据链 | 与协同检测结果的联动接口需固化 |
+| CasFT / ConCat / CasDO | 规模预测前沿候选 | CasFT 仓库已 clone，CasFT 格式导出 adapter 与上游 small-run 已接入；当前 CasFT small-run 是 500 cascades / 1 epoch / seed=0 / CPU Windows shim，仍不是多数据多种子 full-run |
+| DyGFormer / DyGLib / TGN | 下一跳 temporal graph 强模型候选 | DyGFormer/DyGLib 与 TGN 均已完成 20 cascades / 1 epoch / 3 次重复 small-run；temporal edge stream 导出与无未来节点候选协议已接入；仍不是多随机种子 full-run |
+| MINDS / FOREST | 多尺度公开代码 baseline | 已有 adapter 和部分结果，数据覆盖仍需补齐 |
+| RF / Temporal / ProspectiveRanker | 本地 sanity baseline | 已落地，用于下限对比 |
+| HyperIDP | 多尺度论文参考 | 当前只有 protocol proxy，不是原架构复现 |
 
 ## 分阶段计划
 
 | 阶段 | 目标 | 交付物 | 完成标准 |
 |---|---|---|---|
-| P0 | 固化当前 baseline 与文档口径 | `benchmark/`、`REPRODUCTION_REPORT.md`、状态矩阵 | RF/LR/Temporal/Prospective/MINDS/FOREST 均有可复现实验记录，并明确泄漏边界 |
-| P1 | 完整训练可运行 baseline | MINDS 30 epochs、FOREST 30 epochs、固定时间窗规模预测对照 | MINDS Christianity 与 FOREST douban 已完成；MINDS douban/android 需数据继续补齐；FOREST network 模式因 DeepWalk 嵌入缺失仍不可用 |
-| P2 | prospective next-hop 协议 | 候选生成、Candidate Recall、Hits/MAP/MRR/NDCG | 已完成非学习和浅层学习排序 sanity baseline；下一步增强特征或接入 temporal graph/GNN |
-| P3 | HyperIDP protocol-level 模型 | temporal hypergraph + adversarial/macro-micro loss 最小复现 | 已完成 douban temporal coactivation hyperedge proxy、gradient-reversal adversarial proxy 与 t_obs 曲线；剩余为 NAS 或官方实现 |
-| P4 | 系统集成 | 预测 API、dashboard/前端展示口径 | 仅展示已验证能力，未完成能力带实验标签 |
+| P0 | 修正文档和协议口径 | 状态矩阵、标准级联协议、benchmark task 分组 | 不再写“request 已闭环完成”或“唯一主复现目标” |
+| P1 | 协同角色证据闭环 | `role_evidence.csv`、KT1 协同用户过滤、dashboard 证据表 | 给定协同用户集合后，只优先展示相关用户角色与证据链 |
+| P2 | 规模预测前沿复现 | CasFT small-run、数据适配报告、与 RF/Temporal 对比 | `small_run_passed`：CasFT 已跑通；`full_validation_not_passed`：仍需多窗口、多数据、多种子的 MSLE/MAE/RMSE/MAPE/Direction Accuracy 曲线 |
+| P3 | 下一跳前沿复现 | DyGFormer/DyGLib 与 TGN 3 次重复 small-run 已完成；继续扩展更多数据集、观测窗口和多随机种子并比较落地性 | `small_run_passed`：DyGLib/TGN 已跑通；`full_validation_not_passed`：仍需 Candidate Recall、Hits@K、MAP@K、MRR、NDCG@K 与上游训练 AP/AUC 的正式对比 |
+| P4 | 系统展示集成 | dashboard/前端实验预测面板 | 预测结果带模型名、观测窗口和“实验预测”标识 |
 
 ## 当前禁止项
 
-- 不把 LR 离线边分类 AUC/AP 写成线上下一节点预测完成。
-- 不把 ProspectiveHeuristic 写成最终模型；它只是无泄漏协议和候选覆盖/排序拆分的 sanity baseline。
-- 不把按最终序列比例切分的 RF 结果当成唯一规模预测证据；固定时间窗 baseline 应作为更接近早期预警的最低对照。
-- 不把 FOREST sequence-only 30 epochs 写成完整论文复现结果；其 DeepWalk network 模式缺失且训练 loss 为 nan。MINDS Christianity 与 FOREST douban 30 epochs 可作为当前完整训练 baseline，但不代表 douban/android 已全部完成。
-- 不把 HyperIDPProtocolProxy / HyperIDPAdversarialProxy 写成 HyperIDP 论文架构复现；它们只证明 macro/micro 协议支架、temporal hyperedge proxy 和 adversarial multi-task 代理可运行。
-- 不把 HyperIDP 预设为最终落地模型；当前只是主复现目标。
+- 不把 LR 离线边分类 AUC/AP 写成线上下一跳预测完成。
+- 不把 ProspectiveHeuristic / ProspectiveRanker 写成最终模型。
+- 不把 RF 或 TemporalSizeBaseline 写成规模预测主模型。
+- 不把 FOREST sequence-only 30 epochs 写成完整论文复现结果。
+- 不把 HyperIDPProtocolProxy / HyperIDPAdversarialProxy 写成 HyperIDP 原论文架构复现。
+- 不把 CasFT、DyGFormer/DyGLib 或 TGN 写成 full-run 或产品级已完成。当前三者只能按已有日志写为 `frontier_reproduction_small_run`。
+
+## 本地复现目录
+
+- 外部复现仓库统一位于 `G:\CISCN\CogGuard\subsystems\kt2_repos`：CasFT `ebb7e8e`、DyGLib `3aacc36`、TGN `d55bbe6`、FOREST `637c748` 等。
+- 数据仓库位于 `G:\CISCN\dataset`：Twitter15/16 `6a33ebd`、Rumor_RvNN `6d3bb25`。PHEME 已下载并解压到 `G:\CISCN\dataset\PHEME`，当前审计脚本已解析 5 个样例事件用于时间线与角色证据验证。
+- 现阶段 benchmark 可运行 export-only 命令生成 CasFT `dataset.txt` 与 DyGLib/TGN temporal edge stream；CasFT、DyGLib/TGN 显式 external small-run 均已记录为 `frontier_reproduction_small_run`。

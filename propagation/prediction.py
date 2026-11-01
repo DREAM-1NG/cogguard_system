@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from itertools import combinations
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import networkx as nx
 import numpy as np
@@ -23,14 +23,131 @@ from .analysis import _depths, _influence_scores
 from .models import PropagationEvent, sorted_nodes_by_time
 
 
-def run_prediction(events: List[PropagationEvent], output_dir: str, observation_ratio: float = 0.3) -> Dict:
+def run_prediction(
+    events: List[PropagationEvent],
+    output_dir: str,
+    observation_ratio: float = 0.3,
+    dataset: Optional[str] = None,
+) -> Dict:
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
     path_report = path_prediction(events, observation_ratio)
     size_report = size_prediction(events, observation_ratio)
-    report = {"observation_ratio": observation_ratio, "path_prediction": path_report, "size_prediction": size_report}
+    dataset_name = dataset or "local_events"
+    _attach_task_metadata(
+        size_report,
+        dataset_name=dataset_name,
+        observation_ratio=observation_ratio,
+        model_name="RandomForestRegressor",
+        model_scope="local size baseline / experimental",
+        uncertainty_note="No calibrated confidence interval yet; use MAE/RMSE/MSLE/MAPE as current error evidence.",
+    )
+    _attach_task_metadata(
+        path_report,
+        dataset_name=dataset_name,
+        observation_ratio=observation_ratio,
+        model_name="LogisticRegression offline edge classifier",
+        model_scope="offline/prospective baseline depending on candidate protocol",
+        uncertainty_note="No calibrated probability interval yet; use candidate recall, Hits@K, MAP@K, AUC/AP as current evidence.",
+    )
+    report = {
+        "schema": "cogguard.kt2.prediction_report.v1",
+        "dataset": dataset_name,
+        "observation_ratio": observation_ratio,
+        "t_obs": observation_ratio,
+        "prediction_label": "实验预测",
+        "reproduction_level": "local_baseline",
+        "path_prediction": path_report,
+        "size_prediction": size_report,
+        "macro_micro_framework": _macro_micro_framework_report(size_report, path_report),
+    }
     (out / "prediction_report.json").write_text(json.dumps(report, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
     return report
+
+
+def _attach_task_metadata(
+    report: Dict,
+    dataset_name: str,
+    observation_ratio: float,
+    model_name: str,
+    model_scope: str,
+    uncertainty_note: str,
+) -> None:
+    report.setdefault("dataset", dataset_name)
+    report.setdefault("observation_ratio", observation_ratio)
+    report.setdefault("t_obs", observation_ratio)
+    report.setdefault("model_name", model_name)
+    report.setdefault("model_scope", model_scope)
+    report.setdefault("prediction_label", "实验预测")
+    report.setdefault("reproduction_level", "local_baseline")
+    report.setdefault("uncertainty_note", uncertainty_note)
+
+
+def _macro_micro_framework_report(size_report: Dict, path_report: Dict) -> Dict:
+    if size_report.get("status") != "ok" or path_report.get("status") != "ok":
+        return {
+            "schema": "cogguard.kt2.macro_micro_framework.v1",
+            "status": "partial",
+            "framework_role": "local_report_summary",
+            "macro_micro_consistency": None,
+            "consistency_mode": "missing_scale_or_micro_branch",
+            "note": "Macro/micro framework summary requires both scale and next-hop experimental outputs.",
+        }
+    macro_quality = _safe_unit_score_from_error(size_report.get("msle"), size_report.get("mape_percent"))
+    micro_quality = _safe_unit_average(
+        [
+            path_report.get("candidate_recall_full"),
+            path_report.get("candidate_recall_observed"),
+            path_report.get("hits@100"),
+            path_report.get("map@100"),
+            path_report.get("auc"),
+        ]
+    )
+    consistency = _safe_unit_average([macro_quality, micro_quality])
+    return {
+        "schema": "cogguard.kt2.macro_micro_framework.v1",
+        "status": "ok",
+        "framework_role": "local_report_summary",
+        "scale_branch": size_report.get("model_name", "RandomForestRegressor"),
+        "micro_branch": path_report.get("model_name", "LogisticRegression offline edge classifier"),
+        "macro_micro_consistency": consistency,
+        "consistency_mode": "local_quality_proxy",
+        "reproduction_level": "local_baseline",
+        "note": (
+            "Local macro/micro proxy for dashboard alignment only. "
+            "It is not FOREST/MINDS/CasFT unified-model reproduction evidence."
+        ),
+    }
+
+
+def _safe_unit_score_from_error(msle_value, mape_value) -> Optional[float]:
+    msle = _as_float(msle_value)
+    if msle is not None:
+        return float(max(0.0, min(1.0, 1.0 / (1.0 + max(msle, 0.0)))))
+    mape = _as_float(mape_value)
+    if mape is not None:
+        return float(max(0.0, min(1.0, 1.0 / (1.0 + max(mape, 0.0) / 100.0))))
+    return None
+
+
+def _safe_unit_average(values: List[object]) -> Optional[float]:
+    parsed = []
+    for value in values:
+        number = _as_float(value)
+        if number is not None:
+            parsed.append(max(0.0, min(1.0, number)))
+    if not parsed:
+        return None
+    return float(sum(parsed) / len(parsed))
+
+
+def _as_float(value) -> Optional[float]:
+    if value is None:
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
 
 
 def path_prediction(events: List[PropagationEvent], observation_ratio: float) -> Dict:

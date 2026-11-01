@@ -3,23 +3,49 @@ from __future__ import annotations
 import json
 from collections import Counter, defaultdict
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Set
 
 import networkx as nx
 import numpy as np
 import pandas as pd
 
 from .models import PropagationEvent, sorted_nodes_by_time
+from .protocol import CoordinationScope
 
 
-def analyze_events(events: List[PropagationEvent], output_dir: str, focus_event_id: Optional[str] = None) -> Dict:
+_ROLE_EVIDENCE_COLUMNS = [
+    "event_id",
+    "user_id",
+    "coord_group_id",
+    "is_coordinated",
+    "role",
+    "evidence_summary",
+    "node_ids",
+    "evidence_paths",
+    "first_evidence_node",
+    "first_seen",
+    "out_degree_sum",
+    "betweenness_sum",
+    "pagerank_sum",
+    "post_count",
+]
+
+
+def analyze_events(
+    events: List[PropagationEvent],
+    output_dir: str,
+    focus_event_id: Optional[str] = None,
+    coordination: Optional[CoordinationScope] = None,
+) -> Dict:
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
 
     summaries = [summarize_event(event) for event in events]
-    participants = pd.concat([participant_table(event) for event in events], ignore_index=True) if events else pd.DataFrame()
+    participants = pd.concat([participant_table(event, coordination) for event in events], ignore_index=True) if events else pd.DataFrame()
     ignitions = pd.concat([ignition_points(event) for event in events], ignore_index=True) if events else pd.DataFrame()
     paths = {event.event_id: key_paths(event) for event in events}
+    role_evidence = pd.concat([role_evidence_table(event, coordination) for event in events], ignore_index=True) if events else pd.DataFrame()
+    role_quality = role_evidence_quality(role_evidence, participants, coordination)
     focus_event = _pick_focus_event(events, focus_event_id)
 
     summary = {
@@ -31,12 +57,15 @@ def analyze_events(events: List[PropagationEvent], output_dir: str, focus_event_
             "participants": int(participants["user_id"].nunique()) if not participants.empty else 0,
         },
         "event_summaries": summaries,
+        "role_evidence_quality": role_quality,
         "narrative": build_narrative(summaries, ignitions),
     }
 
     (out / "analysis_summary.json").write_text(json.dumps(summary, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
     participants.to_csv(out / "participants.csv", index=False)
     ignitions.to_csv(out / "ignition_points.csv", index=False)
+    role_evidence.to_csv(out / "role_evidence.csv", index=False)
+    (out / "role_evidence_quality.json").write_text(json.dumps(role_quality, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
     (out / "paths.json").write_text(json.dumps(paths, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
     write_event_report(out / "event_report.md", focus_event, summaries, participants, ignitions, paths)
     return summary
@@ -53,6 +82,7 @@ def summarize_event(event: PropagationEvent) -> Dict:
     if timestamps:
         duration_minutes = (max(timestamps) - min(timestamps)).total_seconds() / 60.0
     out_degrees = dict(graph.out_degree())
+    top_spreaders = sorted(out_degrees.items(), key=lambda item: item[1], reverse=True)[:5]
     avg_branching = float(np.mean(list(out_degrees.values()))) if out_degrees else 0.0
     leaf_ratio = sum(1 for _, deg in graph.out_degree() if deg == 0) / max(node_count, 1)
     source = _source_node(event)
@@ -72,12 +102,14 @@ def summarize_event(event: PropagationEvent) -> Dict:
         "avg_branching": avg_branching,
         "leaf_ratio": leaf_ratio,
         "duration_minutes": duration_minutes,
-        "top_spreaders": [n for n, _ in Counter(out_degrees).most_common(5)],
+        "top_spreaders": [{"node_id": node_id, "out_degree": int(degree)} for node_id, degree in top_spreaders],
     }
 
 
-def participant_table(event: PropagationEvent) -> pd.DataFrame:
+def participant_table(event: PropagationEvent, coordination: Optional[CoordinationScope] = None) -> pd.DataFrame:
     graph = event.to_graph()
+    coord_users = coordination.users if coordination else set()
+    coord_groups = coordination.groups if coordination else {}
     pagerank = _influence_scores(graph)
     undirected = graph.to_undirected()
     betweenness = nx.betweenness_centrality(undirected) if graph.number_of_nodes() < 2000 else {n: 0 for n in graph.nodes}
@@ -85,9 +117,14 @@ def participant_table(event: PropagationEvent) -> pd.DataFrame:
     by_user = defaultdict(list)
     for node_id, data in graph.nodes(data=True):
         by_user[data.get("user_id", node_id)].append(node_id)
+    depths = _depths(graph)
     for user_id, node_ids in by_user.items():
         times = [graph.nodes[n].get("timestamp") for n in node_ids if graph.nodes[n].get("timestamp")]
         participant = event.participants.get(user_id)
+        out_degree_sum = sum(graph.out_degree(n) for n in node_ids)
+        in_degree_sum = sum(graph.in_degree(n) for n in node_ids)
+        betweenness_sum = sum(betweenness.get(n, 0.0) for n in node_ids)
+        min_depth = min((depths.get(n, 0) for n in node_ids), default=0)
         rows.append(
             {
                 "event_id": event.event_id,
@@ -95,15 +132,96 @@ def participant_table(event: PropagationEvent) -> pd.DataFrame:
                 "screen_name": participant.screen_name if participant else None,
                 "followers_count": participant.followers_count if participant else None,
                 "verified": participant.verified if participant else None,
+                "is_coordinated": user_id in coord_users or user_id in coord_groups,
+                "coord_group_id": coord_groups.get(user_id),
                 "post_count": len(node_ids),
                 "first_seen": min(times) if times else None,
-                "out_degree_sum": sum(graph.out_degree(n) for n in node_ids),
+                "out_degree_sum": out_degree_sum,
+                "in_degree_sum": in_degree_sum,
+                "min_depth": min_depth,
                 "pagerank_sum": sum(pagerank.get(n, 0.0) for n in node_ids),
-                "betweenness_sum": sum(betweenness.get(n, 0.0) for n in node_ids),
-                "role": _participant_role(sum(graph.out_degree(n) for n in node_ids), sum(betweenness.get(n, 0.0) for n in node_ids)),
+                "betweenness_sum": betweenness_sum,
+                "role": _participant_role(out_degree_sum, betweenness_sum, in_degree_sum, min_depth),
             }
         )
     return pd.DataFrame(rows)
+
+
+def role_evidence_table(event: PropagationEvent, coordination: Optional[CoordinationScope] = None, limit: int = 50) -> pd.DataFrame:
+    """Return role labels with auditable graph evidence for coordinated users.
+
+    If no coordination scope is supplied, the table falls back to the top structural
+    participants so existing demos still produce an inspectable artifact.
+    """
+
+    participants = participant_table(event, coordination)
+    if participants.empty:
+        return pd.DataFrame(columns=_ROLE_EVIDENCE_COLUMNS)
+    if coordination and (coordination.users or coordination.groups):
+        participants = participants[participants["is_coordinated"] == True]  # noqa: E712
+    sort_cols = [col for col in ["pagerank_sum", "betweenness_sum", "out_degree_sum", "post_count"] if col in participants.columns]
+    if sort_cols:
+        participants = participants.sort_values(sort_cols, ascending=False)
+    graph = event.to_graph()
+    depths = _depths(graph)
+    paths = key_paths(event, limit=30)
+    rows = []
+    for _, row in participants.head(limit).iterrows():
+        user_id = str(row["user_id"])
+        node_ids = [node for node, data in graph.nodes(data=True) if str(data.get("user_id")) == user_id]
+        evidence_paths = _paths_touching_nodes(paths, set(node_ids), max_paths=3)
+        first_node = min(node_ids, key=lambda node: (depths.get(node, 0), node), default=None)
+        rows.append(
+            {
+                "event_id": event.event_id,
+                "user_id": user_id,
+                "coord_group_id": row.get("coord_group_id"),
+                "is_coordinated": bool(row.get("is_coordinated", False)),
+                "role": row.get("role"),
+                "evidence_summary": _role_evidence_summary(row, node_ids, evidence_paths),
+                "node_ids": node_ids,
+                "evidence_paths": evidence_paths,
+                "first_evidence_node": first_node,
+                "first_seen": row.get("first_seen"),
+                "out_degree_sum": int(row.get("out_degree_sum", 0)),
+                "betweenness_sum": float(row.get("betweenness_sum", 0.0)),
+                "pagerank_sum": float(row.get("pagerank_sum", 0.0)),
+                "post_count": int(row.get("post_count", 0)),
+            }
+        )
+    return pd.DataFrame(rows, columns=_ROLE_EVIDENCE_COLUMNS)
+
+
+def role_evidence_quality(
+    role_evidence: pd.DataFrame,
+    participants: pd.DataFrame,
+    coordination: Optional[CoordinationScope] = None,
+) -> Dict:
+    """Summarize coverage and stability of the rule-based role evidence output."""
+
+    coordinated_users = set(coordination.users) | set(coordination.groups) if coordination else set()
+    evidence_users = set(role_evidence["user_id"].astype(str)) if not role_evidence.empty and "user_id" in role_evidence else set()
+    participant_users = set(participants["user_id"].astype(str)) if not participants.empty and "user_id" in participants else set()
+    target_users = coordinated_users or participant_users
+
+    path_rows = 0
+    if not role_evidence.empty and "evidence_paths" in role_evidence:
+        path_rows = sum(1 for value in role_evidence["evidence_paths"] if _has_evidence_path(value))
+
+    stability = _role_stability(role_evidence)
+    return {
+        "scope": "coordinated_users" if coordinated_users else "structural_sample",
+        "target_user_count": len(target_users),
+        "evidence_user_count": len(evidence_users),
+        "coordination_user_coverage": len(evidence_users & target_users) / max(len(target_users), 1),
+        "path_complete_rate": path_rows / max(len(role_evidence), 1),
+        "role_stability": stability,
+        "manual_review_required": True,
+        "note": (
+            "Role evidence is an observed-graph explanation. Coverage/stability metrics "
+            "support review, but do not turn rule labels into supervised ground truth."
+        ),
+    }
 
 
 def ignition_points(event: PropagationEvent, bins: int = 12) -> pd.DataFrame:
@@ -278,14 +396,16 @@ def _depths(graph: nx.DiGraph) -> Dict[str, int]:
     return depths
 
 
-def _participant_role(out_degree: int, betweenness: float) -> str:
-    if out_degree >= 5:
-        return "amplifier/KOL"
+def _participant_role(out_degree: int, betweenness: float, in_degree: int = 0, min_depth: int = 0) -> str:
+    if out_degree > 0 and (min_depth == 0 or in_degree == 0):
+        return "起爆/源头"
     if betweenness > 0.05:
-        return "bridge"
+        return "桥接"
+    if out_degree >= 5:
+        return "放大"
     if out_degree > 0:
-        return "secondary-spreader"
-    return "ordinary-participant"
+        return "二级扩散"
+    return "普通参与者"
 
 
 def _influence_scores(graph: nx.DiGraph, exact_limit: int = 5000) -> Dict[str, float]:
@@ -295,6 +415,73 @@ def _influence_scores(graph: nx.DiGraph, exact_limit: int = 5000) -> Dict[str, f
         return nx.pagerank(graph)
     total = sum(deg for _, deg in graph.out_degree()) or 1
     return {node: graph.out_degree(node) / total for node in graph.nodes}
+
+
+def _paths_touching_nodes(paths: List[Dict], node_ids: Set[str], max_paths: int) -> List[List[str]]:
+    if not node_ids:
+        return []
+    matches: List[List[str]] = []
+    for row in paths:
+        path_nodes = [str(node) for node in row.get("nodes", [])]
+        if node_ids.intersection(path_nodes):
+            matches.append(path_nodes)
+        if len(matches) >= max_paths:
+            break
+    return matches
+
+
+def _has_evidence_path(value) -> bool:
+    if isinstance(value, list):
+        return bool(value)
+    if value is None:
+        return False
+    if isinstance(value, float) and pd.isna(value):
+        return False
+    text = str(value).strip()
+    return text not in {"", "[]", "nan", "None"}
+
+
+def _role_stability(role_evidence: pd.DataFrame) -> Dict:
+    if role_evidence.empty or not {"user_id", "role"}.issubset(role_evidence.columns):
+        return {
+            "multi_event_user_count": 0,
+            "stable_user_count": 0,
+            "stable_user_rate": 0.0,
+            "mean_dominant_role_share": 0.0,
+        }
+
+    multi_event = 0
+    stable = 0
+    shares = []
+    for _, rows in role_evidence.groupby("user_id"):
+        observation_count = rows["event_id"].nunique() if "event_id" in rows else len(rows)
+        if observation_count < 2:
+            continue
+        multi_event += 1
+        counts = rows["role"].value_counts()
+        dominant_share = float(counts.iloc[0] / max(counts.sum(), 1))
+        shares.append(dominant_share)
+        if dominant_share >= 0.6:
+            stable += 1
+    return {
+        "multi_event_user_count": multi_event,
+        "stable_user_count": stable,
+        "stable_user_rate": stable / max(multi_event, 1),
+        "mean_dominant_role_share": float(np.mean(shares)) if shares else 0.0,
+    }
+
+
+def _role_evidence_summary(row: pd.Series, node_ids: List[str], evidence_paths: List[List[str]]) -> str:
+    role = row.get("role") or "unknown"
+    out_degree = int(row.get("out_degree_sum", 0))
+    post_count = int(row.get("post_count", 0))
+    betweenness = float(row.get("betweenness_sum", 0.0))
+    path_count = len(evidence_paths)
+    return (
+        f"角色 {role} 基于 {post_count} 条观测帖、{out_degree} 条出边贡献、"
+        f"介数中心性 {betweenness:.4f} 判定；"
+        f"证据覆盖 {len(node_ids)} 个节点、{path_count} 条关键传播路径。"
+    )
 
 
 def _pick_focus_event(events: List[PropagationEvent], event_id: Optional[str]) -> Optional[PropagationEvent]:

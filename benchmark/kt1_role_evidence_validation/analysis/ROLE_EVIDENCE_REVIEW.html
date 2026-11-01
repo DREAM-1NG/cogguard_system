@@ -1,0 +1,635 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>KT2 角色证据人工抽查</title>
+  <style>
+    :root {
+      --ink: #18202a;
+      --muted: #5a6675;
+      --line: #d8e0ea;
+      --paper: #fbf8f1;
+      --card: #ffffff;
+      --accent: #1f6f68;
+      --warn: #a15620;
+    }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 12% 8%, rgba(31, 111, 104, 0.12), transparent 28rem),
+        linear-gradient(135deg, #fbf8f1 0%, #eef4f0 100%);
+      font-family: "Source Han Serif SC", "Noto Serif CJK SC", "Songti SC", serif;
+      line-height: 1.65;
+    }
+    header {
+      padding: 36px clamp(18px, 5vw, 72px) 20px;
+      border-bottom: 1px solid var(--line);
+    }
+    h1 {
+      margin: 0 0 12px;
+      font-size: clamp(26px, 4vw, 46px);
+      letter-spacing: 0.02em;
+    }
+    main {
+      width: min(1180px, calc(100% - 32px));
+      margin: 24px auto 56px;
+    }
+    .notice, .card {
+      background: rgba(255, 255, 255, 0.86);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      box-shadow: 0 16px 42px rgba(25, 37, 49, 0.08);
+    }
+    .notice {
+      padding: 18px 20px;
+      margin-bottom: 20px;
+    }
+    .card {
+      padding: 22px;
+      margin: 18px 0;
+    }
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 10px 0 16px;
+    }
+    .pill {
+      display: inline-flex;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 4px 10px;
+      color: var(--muted);
+      background: #fff;
+      font-size: 13px;
+    }
+    pre {
+      white-space: pre-wrap;
+      word-break: break-word;
+      background: #f3f6f5;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+      overflow-x: auto;
+      font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+      font-size: 13px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 10px;
+      margin: 14px 0;
+    }
+    .metric {
+      border-left: 4px solid var(--accent);
+      background: #f7faf8;
+      padding: 8px 10px;
+      border-radius: 10px;
+    }
+    .hint {
+      color: var(--warn);
+      font-weight: 700;
+    }
+    .decision {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 10px;
+      margin-top: 16px;
+      padding-top: 14px;
+      border-top: 1px dashed var(--line);
+    }
+    label {
+      display: grid;
+      gap: 4px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    input, select, textarea {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 9px 10px;
+      font: inherit;
+      background: #fff;
+      color: var(--ink);
+    }
+    textarea {
+      min-height: 72px;
+      resize: vertical;
+    }
+    .actions {
+      position: sticky;
+      bottom: 0;
+      margin-top: 26px;
+      padding: 16px;
+      background: rgba(251, 248, 241, 0.95);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      box-shadow: 0 -10px 30px rgba(25, 37, 49, 0.08);
+    }
+    button {
+      border: 0;
+      border-radius: 999px;
+      padding: 10px 16px;
+      margin-right: 8px;
+      background: var(--accent);
+      color: #fff;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    #csvOutput {
+      width: 100%;
+      min-height: 140px;
+      margin-top: 12px;
+      font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>KT2 角色证据人工抽查</h1>
+    <p>本页面只展示审核样本和证据，不自动判定通过。审核结论仍需填写到 CSV 的 <code>review_pass</code> 字段。</p>
+  </header>
+  <main>
+    <section class="notice">
+      <strong>填写目标：</strong>打开 <code>benchmark\kt1_role_evidence_validation\analysis\role_evidence_manual_review_template.csv</code>，另存为 <code>role_evidence_manual_review.csv</code>，逐行填写 <code>review_pass</code>、<code>reviewer</code>、<code>evidence_match</code>、<code>confidence_1to5</code>；若不通过，还必须填写 <code>reason_if_fail</code>。
+      <br>
+      <span class="hint">注意：</span>本页面可在浏览器中生成 CSV 文本/下载文件，但不会直接写入本地仓库，也不会让 completion gate 自动通过。
+    </section>
+    
+    <article class="card">
+      <h2>样本 1: synthetic_0 / u1 / 桥接</h2>
+      <div class="meta">
+        <span class="pill">协同组：0</span>
+        <span class="pill">是否协同：True</span>
+        <span class="pill">首次节点：10</span>
+        <span class="pill">首次时间：2024-01-01 09:10:00</span>
+      </div>
+      <div class="grid"><div class="metric"><strong>出度贡献</strong><br>2</div><div class="metric"><strong>介数中心性</strong><br>0.11586452762923351</div><div class="metric"><strong>PageRank</strong><br>0.05615687561947987</div><div class="metric"><strong>发帖数</strong><br>2</div></div>
+      <p><strong>自动摘要：</strong>角色 桥接 基于 2 条观测帖、2 条出边贡献、介数中心性 0.1159 判定；证据覆盖 2 个节点、3 条关键传播路径。</p>
+      <p><strong>命中节点：</strong></p>
+      <pre>[&#x27;10&#x27;, &#x27;33&#x27;]</pre>
+      <p><strong>关键路径：</strong></p>
+      <pre>[[&#x27;0&#x27;, &#x27;4&#x27;, &#x27;10&#x27;, &#x27;22&#x27;], [&#x27;0&#x27;, &#x27;4&#x27;, &#x27;10&#x27;, &#x27;23&#x27;], [&#x27;0&#x27;, &#x27;2&#x27;, &#x27;15&#x27;, &#x27;33&#x27;]]</pre>
+      <p><strong>审核建议：</strong></p>
+      <ul><li>检查关键路径是否多次经过该用户。</li><li>检查介数中心性是否是主要证据，而不只是普通转发节点。</li></ul>
+      <p class="hint">填写建议：若路径、时间和结构指标能支撑该角色，在 CSV 中填写 review_pass=true；否则填写 false 并说明原因。</p>
+      <div class="decision">
+        <label>review_pass
+          <select name="review_pass_0">
+            <option value="">待审核</option>
+            <option value="true">true / 通过</option>
+            <option value="false">false / 不通过</option>
+          </select>
+        </label>
+        <label>evidence_match
+          <select name="evidence_match_0">
+            <option value="">未填写</option>
+            <option value="yes">yes</option>
+            <option value="partial">partial</option>
+            <option value="no">no</option>
+          </select>
+        </label>
+        <label>confidence_1to5
+          <input name="confidence_0" type="number" min="1" max="5" placeholder="1-5">
+        </label>
+        <label>reviewer
+          <input name="reviewer_0" placeholder="审核人">
+        </label>
+        <label>review_timestamp
+          <input name="timestamp_0" placeholder="YYYY-MM-DD">
+        </label>
+        <label>reason_if_fail
+          <textarea name="reason_0" placeholder="不通过时说明原因"></textarea>
+        </label>
+        <label>reviewer_note
+          <textarea name="note_0" placeholder="补充说明"></textarea>
+        </label>
+      </div>
+    </article>
+    
+
+    <article class="card">
+      <h2>样本 2: synthetic_0 / u2 / 普通参与者</h2>
+      <div class="meta">
+        <span class="pill">协同组：0</span>
+        <span class="pill">是否协同：True</span>
+        <span class="pill">首次节点：20</span>
+        <span class="pill">首次时间：2024-01-01 09:20:00</span>
+      </div>
+      <div class="grid"><div class="metric"><strong>出度贡献</strong><br>0</div><div class="metric"><strong>介数中心性</strong><br>0.0</div><div class="metric"><strong>PageRank</strong><br>0.02854293311417318</div><div class="metric"><strong>发帖数</strong><br>1</div></div>
+      <p><strong>自动摘要：</strong>角色 普通参与者 基于 1 条观测帖、0 条出边贡献、介数中心性 0.0000 判定；证据覆盖 1 个节点、1 条关键传播路径。</p>
+      <p><strong>命中节点：</strong></p>
+      <pre>[&#x27;20&#x27;]</pre>
+      <p><strong>关键路径：</strong></p>
+      <pre>[[&#x27;0&#x27;, &#x27;2&#x27;, &#x27;9&#x27;, &#x27;20&#x27;]]</pre>
+      <p><strong>审核建议：</strong></p>
+      <ul><li>检查该用户是否缺少出边、桥接或源头证据。</li><li>若路径显示明显传播贡献，应标记为不通过并说明。</li></ul>
+      <p class="hint">填写建议：若路径、时间和结构指标能支撑该角色，在 CSV 中填写 review_pass=true；否则填写 false 并说明原因。</p>
+      <div class="decision">
+        <label>review_pass
+          <select name="review_pass_1">
+            <option value="">待审核</option>
+            <option value="true">true / 通过</option>
+            <option value="false">false / 不通过</option>
+          </select>
+        </label>
+        <label>evidence_match
+          <select name="evidence_match_1">
+            <option value="">未填写</option>
+            <option value="yes">yes</option>
+            <option value="partial">partial</option>
+            <option value="no">no</option>
+          </select>
+        </label>
+        <label>confidence_1to5
+          <input name="confidence_1" type="number" min="1" max="5" placeholder="1-5">
+        </label>
+        <label>reviewer
+          <input name="reviewer_1" placeholder="审核人">
+        </label>
+        <label>review_timestamp
+          <input name="timestamp_1" placeholder="YYYY-MM-DD">
+        </label>
+        <label>reason_if_fail
+          <textarea name="reason_1" placeholder="不通过时说明原因"></textarea>
+        </label>
+        <label>reviewer_note
+          <textarea name="note_1" placeholder="补充说明"></textarea>
+        </label>
+      </div>
+    </article>
+    
+
+    <article class="card">
+      <h2>样本 3: synthetic_1 / u1 / 起爆/源头</h2>
+      <div class="meta">
+        <span class="pill">协同组：0</span>
+        <span class="pill">是否协同：True</span>
+        <span class="pill">首次节点：0</span>
+        <span class="pill">首次时间：2024-01-01 09:00:00</span>
+      </div>
+      <div class="grid"><div class="metric"><strong>出度贡献</strong><br>7</div><div class="metric"><strong>介数中心性</strong><br>0.8199767711962834</div><div class="metric"><strong>PageRank</strong><br>0.03901970464815562</div><div class="metric"><strong>发帖数</strong><br>2</div></div>
+      <p><strong>自动摘要：</strong>角色 起爆/源头 基于 2 条观测帖、7 条出边贡献、介数中心性 0.8200 判定；证据覆盖 2 个节点、3 条关键传播路径。</p>
+      <p><strong>命中节点：</strong></p>
+      <pre>[&#x27;0&#x27;, &#x27;23&#x27;]</pre>
+      <p><strong>关键路径：</strong></p>
+      <pre>[[&#x27;0&#x27;, &#x27;3&#x27;, &#x27;8&#x27;, &#x27;19&#x27;, &#x27;40&#x27;], [&#x27;0&#x27;, &#x27;3&#x27;, &#x27;8&#x27;, &#x27;19&#x27;, &#x27;41&#x27;], [&#x27;0&#x27;, &#x27;2&#x27;, &#x27;9&#x27;, &#x27;20&#x27;, &#x27;42&#x27;]]</pre>
+      <p><strong>审核建议：</strong></p>
+      <ul><li>检查该用户是否足够早出现，且命中节点是否位于根节点或浅层传播路径。</li><li>检查出边贡献是否确实支撑源头/起爆解释。</li></ul>
+      <p class="hint">填写建议：若路径、时间和结构指标能支撑该角色，在 CSV 中填写 review_pass=true；否则填写 false 并说明原因。</p>
+      <div class="decision">
+        <label>review_pass
+          <select name="review_pass_2">
+            <option value="">待审核</option>
+            <option value="true">true / 通过</option>
+            <option value="false">false / 不通过</option>
+          </select>
+        </label>
+        <label>evidence_match
+          <select name="evidence_match_2">
+            <option value="">未填写</option>
+            <option value="yes">yes</option>
+            <option value="partial">partial</option>
+            <option value="no">no</option>
+          </select>
+        </label>
+        <label>confidence_1to5
+          <input name="confidence_2" type="number" min="1" max="5" placeholder="1-5">
+        </label>
+        <label>reviewer
+          <input name="reviewer_2" placeholder="审核人">
+        </label>
+        <label>review_timestamp
+          <input name="timestamp_2" placeholder="YYYY-MM-DD">
+        </label>
+        <label>reason_if_fail
+          <textarea name="reason_2" placeholder="不通过时说明原因"></textarea>
+        </label>
+        <label>reviewer_note
+          <textarea name="note_2" placeholder="补充说明"></textarea>
+        </label>
+      </div>
+    </article>
+    
+
+    <article class="card">
+      <h2>样本 4: synthetic_1 / u2 / 桥接</h2>
+      <div class="meta">
+        <span class="pill">协同组：0</span>
+        <span class="pill">是否协同：True</span>
+        <span class="pill">首次节点：10</span>
+        <span class="pill">首次时间：2024-01-01 09:20:00</span>
+      </div>
+      <div class="grid"><div class="metric"><strong>出度贡献</strong><br>2</div><div class="metric"><strong>介数中心性</strong><br>0.09407665505226481</div><div class="metric"><strong>PageRank</strong><br>0.04459340474752098</div><div class="metric"><strong>发帖数</strong><br>2</div></div>
+      <p><strong>自动摘要：</strong>角色 桥接 基于 2 条观测帖、2 条出边贡献、介数中心性 0.0941 判定；证据覆盖 2 个节点、3 条关键传播路径。</p>
+      <p><strong>命中节点：</strong></p>
+      <pre>[&#x27;10&#x27;, &#x27;33&#x27;]</pre>
+      <p><strong>关键路径：</strong></p>
+      <pre>[[&#x27;0&#x27;, &#x27;4&#x27;, &#x27;10&#x27;, &#x27;22&#x27;], [&#x27;0&#x27;, &#x27;4&#x27;, &#x27;10&#x27;, &#x27;23&#x27;], [&#x27;0&#x27;, &#x27;2&#x27;, &#x27;15&#x27;, &#x27;33&#x27;]]</pre>
+      <p><strong>审核建议：</strong></p>
+      <ul><li>检查关键路径是否多次经过该用户。</li><li>检查介数中心性是否是主要证据，而不只是普通转发节点。</li></ul>
+      <p class="hint">填写建议：若路径、时间和结构指标能支撑该角色，在 CSV 中填写 review_pass=true；否则填写 false 并说明原因。</p>
+      <div class="decision">
+        <label>review_pass
+          <select name="review_pass_3">
+            <option value="">待审核</option>
+            <option value="true">true / 通过</option>
+            <option value="false">false / 不通过</option>
+          </select>
+        </label>
+        <label>evidence_match
+          <select name="evidence_match_3">
+            <option value="">未填写</option>
+            <option value="yes">yes</option>
+            <option value="partial">partial</option>
+            <option value="no">no</option>
+          </select>
+        </label>
+        <label>confidence_1to5
+          <input name="confidence_3" type="number" min="1" max="5" placeholder="1-5">
+        </label>
+        <label>reviewer
+          <input name="reviewer_3" placeholder="审核人">
+        </label>
+        <label>review_timestamp
+          <input name="timestamp_3" placeholder="YYYY-MM-DD">
+        </label>
+        <label>reason_if_fail
+          <textarea name="reason_3" placeholder="不通过时说明原因"></textarea>
+        </label>
+        <label>reviewer_note
+          <textarea name="note_3" placeholder="补充说明"></textarea>
+        </label>
+      </div>
+    </article>
+    
+
+    <article class="card">
+      <h2>样本 5: synthetic_2 / u2 / 起爆/源头</h2>
+      <div class="meta">
+        <span class="pill">协同组：0</span>
+        <span class="pill">是否协同：True</span>
+        <span class="pill">首次节点：0</span>
+        <span class="pill">首次时间：2024-01-01 09:00:00</span>
+      </div>
+      <div class="grid"><div class="metric"><strong>出度贡献</strong><br>9</div><div class="metric"><strong>介数中心性</strong><br>0.8791836734693879</div><div class="metric"><strong>PageRank</strong><br>0.053464880167080765</div><div class="metric"><strong>发帖数</strong><br>3</div></div>
+      <p><strong>自动摘要：</strong>角色 起爆/源头 基于 3 条观测帖、9 条出边贡献、介数中心性 0.8792 判定；证据覆盖 3 个节点、3 条关键传播路径。</p>
+      <p><strong>命中节点：</strong></p>
+      <pre>[&#x27;0&#x27;, &#x27;23&#x27;, &#x27;46&#x27;]</pre>
+      <p><strong>关键路径：</strong></p>
+      <pre>[[&#x27;0&#x27;, &#x27;3&#x27;, &#x27;8&#x27;, &#x27;19&#x27;, &#x27;40&#x27;], [&#x27;0&#x27;, &#x27;3&#x27;, &#x27;8&#x27;, &#x27;19&#x27;, &#x27;41&#x27;], [&#x27;0&#x27;, &#x27;2&#x27;, &#x27;9&#x27;, &#x27;20&#x27;, &#x27;42&#x27;]]</pre>
+      <p><strong>审核建议：</strong></p>
+      <ul><li>检查该用户是否足够早出现，且命中节点是否位于根节点或浅层传播路径。</li><li>检查出边贡献是否确实支撑源头/起爆解释。</li></ul>
+      <p class="hint">填写建议：若路径、时间和结构指标能支撑该角色，在 CSV 中填写 review_pass=true；否则填写 false 并说明原因。</p>
+      <div class="decision">
+        <label>review_pass
+          <select name="review_pass_4">
+            <option value="">待审核</option>
+            <option value="true">true / 通过</option>
+            <option value="false">false / 不通过</option>
+          </select>
+        </label>
+        <label>evidence_match
+          <select name="evidence_match_4">
+            <option value="">未填写</option>
+            <option value="yes">yes</option>
+            <option value="partial">partial</option>
+            <option value="no">no</option>
+          </select>
+        </label>
+        <label>confidence_1to5
+          <input name="confidence_4" type="number" min="1" max="5" placeholder="1-5">
+        </label>
+        <label>reviewer
+          <input name="reviewer_4" placeholder="审核人">
+        </label>
+        <label>review_timestamp
+          <input name="timestamp_4" placeholder="YYYY-MM-DD">
+        </label>
+        <label>reason_if_fail
+          <textarea name="reason_4" placeholder="不通过时说明原因"></textarea>
+        </label>
+        <label>reviewer_note
+          <textarea name="note_4" placeholder="补充说明"></textarea>
+        </label>
+      </div>
+    </article>
+    
+
+    <article class="card">
+      <h2>样本 6: synthetic_2 / u1 / 桥接</h2>
+      <div class="meta">
+        <span class="pill">协同组：0</span>
+        <span class="pill">是否协同：True</span>
+        <span class="pill">首次节点：13</span>
+        <span class="pill">首次时间：2024-01-01 09:39:00</span>
+      </div>
+      <div class="grid"><div class="metric"><strong>出度贡献</strong><br>2</div><div class="metric"><strong>介数中心性</strong><br>0.07918367346938776</div><div class="metric"><strong>PageRank</strong><br>0.044324053288752</div><div class="metric"><strong>发帖数</strong><br>2</div></div>
+      <p><strong>自动摘要：</strong>角色 桥接 基于 2 条观测帖、2 条出边贡献、介数中心性 0.0792 判定；证据覆盖 2 个节点、3 条关键传播路径。</p>
+      <p><strong>命中节点：</strong></p>
+      <pre>[&#x27;13&#x27;, &#x27;36&#x27;]</pre>
+      <p><strong>关键路径：</strong></p>
+      <pre>[[&#x27;0&#x27;, &#x27;5&#x27;, &#x27;13&#x27;, &#x27;28&#x27;], [&#x27;0&#x27;, &#x27;5&#x27;, &#x27;13&#x27;, &#x27;29&#x27;], [&#x27;0&#x27;, &#x27;7&#x27;, &#x27;17&#x27;, &#x27;36&#x27;]]</pre>
+      <p><strong>审核建议：</strong></p>
+      <ul><li>检查关键路径是否多次经过该用户。</li><li>检查介数中心性是否是主要证据，而不只是普通转发节点。</li></ul>
+      <p class="hint">填写建议：若路径、时间和结构指标能支撑该角色，在 CSV 中填写 review_pass=true；否则填写 false 并说明原因。</p>
+      <div class="decision">
+        <label>review_pass
+          <select name="review_pass_5">
+            <option value="">待审核</option>
+            <option value="true">true / 通过</option>
+            <option value="false">false / 不通过</option>
+          </select>
+        </label>
+        <label>evidence_match
+          <select name="evidence_match_5">
+            <option value="">未填写</option>
+            <option value="yes">yes</option>
+            <option value="partial">partial</option>
+            <option value="no">no</option>
+          </select>
+        </label>
+        <label>confidence_1to5
+          <input name="confidence_5" type="number" min="1" max="5" placeholder="1-5">
+        </label>
+        <label>reviewer
+          <input name="reviewer_5" placeholder="审核人">
+        </label>
+        <label>review_timestamp
+          <input name="timestamp_5" placeholder="YYYY-MM-DD">
+        </label>
+        <label>reason_if_fail
+          <textarea name="reason_5" placeholder="不通过时说明原因"></textarea>
+        </label>
+        <label>reviewer_note
+          <textarea name="note_5" placeholder="补充说明"></textarea>
+        </label>
+      </div>
+    </article>
+    
+
+    <article class="card">
+      <h2>样本 7: synthetic_3 / u1 / 桥接</h2>
+      <div class="meta">
+        <span class="pill">协同组：0</span>
+        <span class="pill">是否协同：True</span>
+        <span class="pill">首次节点：3</span>
+        <span class="pill">首次时间：2024-01-01 09:03:00</span>
+      </div>
+      <div class="grid"><div class="metric"><strong>出度贡献</strong><br>3</div><div class="metric"><strong>介数中心性</strong><br>0.19903206291591047</div><div class="metric"><strong>PageRank</strong><br>0.046007149274725406</div><div class="metric"><strong>发帖数</strong><br>3</div></div>
+      <p><strong>自动摘要：</strong>角色 桥接 基于 3 条观测帖、3 条出边贡献、介数中心性 0.1990 判定；证据覆盖 3 个节点、3 条关键传播路径。</p>
+      <p><strong>命中节点：</strong></p>
+      <pre>[&#x27;3&#x27;, &#x27;26&#x27;, &#x27;49&#x27;]</pre>
+      <p><strong>关键路径：</strong></p>
+      <pre>[[&#x27;0&#x27;, &#x27;3&#x27;, &#x27;8&#x27;, &#x27;19&#x27;, &#x27;40&#x27;], [&#x27;0&#x27;, &#x27;3&#x27;, &#x27;8&#x27;, &#x27;19&#x27;, &#x27;41&#x27;], [&#x27;0&#x27;, &#x27;4&#x27;, &#x27;10&#x27;, &#x27;23&#x27;, &#x27;49&#x27;]]</pre>
+      <p><strong>审核建议：</strong></p>
+      <ul><li>检查关键路径是否多次经过该用户。</li><li>检查介数中心性是否是主要证据，而不只是普通转发节点。</li></ul>
+      <p class="hint">填写建议：若路径、时间和结构指标能支撑该角色，在 CSV 中填写 review_pass=true；否则填写 false 并说明原因。</p>
+      <div class="decision">
+        <label>review_pass
+          <select name="review_pass_6">
+            <option value="">待审核</option>
+            <option value="true">true / 通过</option>
+            <option value="false">false / 不通过</option>
+          </select>
+        </label>
+        <label>evidence_match
+          <select name="evidence_match_6">
+            <option value="">未填写</option>
+            <option value="yes">yes</option>
+            <option value="partial">partial</option>
+            <option value="no">no</option>
+          </select>
+        </label>
+        <label>confidence_1to5
+          <input name="confidence_6" type="number" min="1" max="5" placeholder="1-5">
+        </label>
+        <label>reviewer
+          <input name="reviewer_6" placeholder="审核人">
+        </label>
+        <label>review_timestamp
+          <input name="timestamp_6" placeholder="YYYY-MM-DD">
+        </label>
+        <label>reason_if_fail
+          <textarea name="reason_6" placeholder="不通过时说明原因"></textarea>
+        </label>
+        <label>reviewer_note
+          <textarea name="note_6" placeholder="补充说明"></textarea>
+        </label>
+      </div>
+    </article>
+    
+
+    <article class="card">
+      <h2>样本 8: synthetic_3 / u2 / 桥接</h2>
+      <div class="meta">
+        <span class="pill">协同组：0</span>
+        <span class="pill">是否协同：True</span>
+        <span class="pill">首次节点：13</span>
+        <span class="pill">首次时间：2024-01-01 09:13:00</span>
+      </div>
+      <div class="grid"><div class="metric"><strong>出度贡献</strong><br>2</div><div class="metric"><strong>介数中心性</strong><br>0.10102843315184513</div><div class="metric"><strong>PageRank</strong><br>0.037964359683007806</div><div class="metric"><strong>发帖数</strong><br>2</div></div>
+      <p><strong>自动摘要：</strong>角色 桥接 基于 2 条观测帖、2 条出边贡献、介数中心性 0.1010 判定；证据覆盖 2 个节点、3 条关键传播路径。</p>
+      <p><strong>命中节点：</strong></p>
+      <pre>[&#x27;13&#x27;, &#x27;36&#x27;]</pre>
+      <p><strong>关键路径：</strong></p>
+      <pre>[[&#x27;0&#x27;, &#x27;5&#x27;, &#x27;13&#x27;, &#x27;28&#x27;, &#x27;58&#x27;], [&#x27;0&#x27;, &#x27;5&#x27;, &#x27;13&#x27;, &#x27;29&#x27;], [&#x27;0&#x27;, &#x27;7&#x27;, &#x27;17&#x27;, &#x27;36&#x27;]]</pre>
+      <p><strong>审核建议：</strong></p>
+      <ul><li>检查关键路径是否多次经过该用户。</li><li>检查介数中心性是否是主要证据，而不只是普通转发节点。</li></ul>
+      <p class="hint">填写建议：若路径、时间和结构指标能支撑该角色，在 CSV 中填写 review_pass=true；否则填写 false 并说明原因。</p>
+      <div class="decision">
+        <label>review_pass
+          <select name="review_pass_7">
+            <option value="">待审核</option>
+            <option value="true">true / 通过</option>
+            <option value="false">false / 不通过</option>
+          </select>
+        </label>
+        <label>evidence_match
+          <select name="evidence_match_7">
+            <option value="">未填写</option>
+            <option value="yes">yes</option>
+            <option value="partial">partial</option>
+            <option value="no">no</option>
+          </select>
+        </label>
+        <label>confidence_1to5
+          <input name="confidence_7" type="number" min="1" max="5" placeholder="1-5">
+        </label>
+        <label>reviewer
+          <input name="reviewer_7" placeholder="审核人">
+        </label>
+        <label>review_timestamp
+          <input name="timestamp_7" placeholder="YYYY-MM-DD">
+        </label>
+        <label>reason_if_fail
+          <textarea name="reason_7" placeholder="不通过时说明原因"></textarea>
+        </label>
+        <label>reviewer_note
+          <textarea name="note_7" placeholder="补充说明"></textarea>
+        </label>
+      </div>
+    </article>
+    
+    <section class="actions">
+      <strong>审核导出</strong>
+      <p>填写每张卡片后，点击生成 CSV。随后将下载内容保存/覆盖为 <code>role_evidence_manual_review.csv</code>，再运行 <code>python -m benchmark.role_evidence_review validate</code>。</p>
+      <button type="button" onclick="generateCsv()">生成 CSV 文本</button>
+      <button type="button" onclick="downloadCsv()">下载 role_evidence_manual_review.csv</button>
+      <textarea id="csvOutput" placeholder="生成后的 CSV 会显示在这里，便于复制检查。"></textarea>
+    </section>
+  </main>
+  <script>
+    const reviewRows = [{"event_id": "synthetic_0", "user_id": "u1", "coord_group_id": "0", "is_coordinated": "True", "role": "桥接", "evidence_summary": "角色 桥接 基于 2 条观测帖、2 条出边贡献、介数中心性 0.1159 判定；证据覆盖 2 个节点、3 条关键传播路径。", "node_ids": "['10', '33']", "evidence_paths": "[['0', '4', '10', '22'], ['0', '4', '10', '23'], ['0', '2', '15', '33']]", "first_evidence_node": "10", "first_seen": "2024-01-01 09:10:00", "out_degree_sum": "2", "betweenness_sum": "0.11586452762923351", "pagerank_sum": "0.05615687561947987", "post_count": "2", "reviewer": "", "review_pass": "", "evidence_match": "", "confidence_1to5": "", "review_timestamp": "", "reason_if_fail": "", "reviewer_note": ""}, {"event_id": "synthetic_0", "user_id": "u2", "coord_group_id": "0", "is_coordinated": "True", "role": "普通参与者", "evidence_summary": "角色 普通参与者 基于 1 条观测帖、0 条出边贡献、介数中心性 0.0000 判定；证据覆盖 1 个节点、1 条关键传播路径。", "node_ids": "['20']", "evidence_paths": "[['0', '2', '9', '20']]", "first_evidence_node": "20", "first_seen": "2024-01-01 09:20:00", "out_degree_sum": "0", "betweenness_sum": "0.0", "pagerank_sum": "0.02854293311417318", "post_count": "1", "reviewer": "", "review_pass": "", "evidence_match": "", "confidence_1to5": "", "review_timestamp": "", "reason_if_fail": "", "reviewer_note": ""}, {"event_id": "synthetic_1", "user_id": "u1", "coord_group_id": "0", "is_coordinated": "True", "role": "起爆/源头", "evidence_summary": "角色 起爆/源头 基于 2 条观测帖、7 条出边贡献、介数中心性 0.8200 判定；证据覆盖 2 个节点、3 条关键传播路径。", "node_ids": "['0', '23']", "evidence_paths": "[['0', '3', '8', '19', '40'], ['0', '3', '8', '19', '41'], ['0', '2', '9', '20', '42']]", "first_evidence_node": "0", "first_seen": "2024-01-01 09:00:00", "out_degree_sum": "7", "betweenness_sum": "0.8199767711962834", "pagerank_sum": "0.03901970464815562", "post_count": "2", "reviewer": "", "review_pass": "", "evidence_match": "", "confidence_1to5": "", "review_timestamp": "", "reason_if_fail": "", "reviewer_note": ""}, {"event_id": "synthetic_1", "user_id": "u2", "coord_group_id": "0", "is_coordinated": "True", "role": "桥接", "evidence_summary": "角色 桥接 基于 2 条观测帖、2 条出边贡献、介数中心性 0.0941 判定；证据覆盖 2 个节点、3 条关键传播路径。", "node_ids": "['10', '33']", "evidence_paths": "[['0', '4', '10', '22'], ['0', '4', '10', '23'], ['0', '2', '15', '33']]", "first_evidence_node": "10", "first_seen": "2024-01-01 09:20:00", "out_degree_sum": "2", "betweenness_sum": "0.09407665505226481", "pagerank_sum": "0.04459340474752098", "post_count": "2", "reviewer": "", "review_pass": "", "evidence_match": "", "confidence_1to5": "", "review_timestamp": "", "reason_if_fail": "", "reviewer_note": ""}, {"event_id": "synthetic_2", "user_id": "u2", "coord_group_id": "0", "is_coordinated": "True", "role": "起爆/源头", "evidence_summary": "角色 起爆/源头 基于 3 条观测帖、9 条出边贡献、介数中心性 0.8792 判定；证据覆盖 3 个节点、3 条关键传播路径。", "node_ids": "['0', '23', '46']", "evidence_paths": "[['0', '3', '8', '19', '40'], ['0', '3', '8', '19', '41'], ['0', '2', '9', '20', '42']]", "first_evidence_node": "0", "first_seen": "2024-01-01 09:00:00", "out_degree_sum": "9", "betweenness_sum": "0.8791836734693879", "pagerank_sum": "0.053464880167080765", "post_count": "3", "reviewer": "", "review_pass": "", "evidence_match": "", "confidence_1to5": "", "review_timestamp": "", "reason_if_fail": "", "reviewer_note": ""}, {"event_id": "synthetic_2", "user_id": "u1", "coord_group_id": "0", "is_coordinated": "True", "role": "桥接", "evidence_summary": "角色 桥接 基于 2 条观测帖、2 条出边贡献、介数中心性 0.0792 判定；证据覆盖 2 个节点、3 条关键传播路径。", "node_ids": "['13', '36']", "evidence_paths": "[['0', '5', '13', '28'], ['0', '5', '13', '29'], ['0', '7', '17', '36']]", "first_evidence_node": "13", "first_seen": "2024-01-01 09:39:00", "out_degree_sum": "2", "betweenness_sum": "0.07918367346938776", "pagerank_sum": "0.044324053288752", "post_count": "2", "reviewer": "", "review_pass": "", "evidence_match": "", "confidence_1to5": "", "review_timestamp": "", "reason_if_fail": "", "reviewer_note": ""}, {"event_id": "synthetic_3", "user_id": "u1", "coord_group_id": "0", "is_coordinated": "True", "role": "桥接", "evidence_summary": "角色 桥接 基于 3 条观测帖、3 条出边贡献、介数中心性 0.1990 判定；证据覆盖 3 个节点、3 条关键传播路径。", "node_ids": "['3', '26', '49']", "evidence_paths": "[['0', '3', '8', '19', '40'], ['0', '3', '8', '19', '41'], ['0', '4', '10', '23', '49']]", "first_evidence_node": "3", "first_seen": "2024-01-01 09:03:00", "out_degree_sum": "3", "betweenness_sum": "0.19903206291591047", "pagerank_sum": "0.046007149274725406", "post_count": "3", "reviewer": "", "review_pass": "", "evidence_match": "", "confidence_1to5": "", "review_timestamp": "", "reason_if_fail": "", "reviewer_note": ""}, {"event_id": "synthetic_3", "user_id": "u2", "coord_group_id": "0", "is_coordinated": "True", "role": "桥接", "evidence_summary": "角色 桥接 基于 2 条观测帖、2 条出边贡献、介数中心性 0.1010 判定；证据覆盖 2 个节点、3 条关键传播路径。", "node_ids": "['13', '36']", "evidence_paths": "[['0', '5', '13', '28', '58'], ['0', '5', '13', '29'], ['0', '7', '17', '36']]", "first_evidence_node": "13", "first_seen": "2024-01-01 09:13:00", "out_degree_sum": "2", "betweenness_sum": "0.10102843315184513", "pagerank_sum": "0.037964359683007806", "post_count": "2", "reviewer": "", "review_pass": "", "evidence_match": "", "confidence_1to5": "", "review_timestamp": "", "reason_if_fail": "", "reviewer_note": ""}];
+    const reviewFields = ["event_id", "user_id", "coord_group_id", "is_coordinated", "role", "evidence_summary", "node_ids", "evidence_paths", "first_evidence_node", "first_seen", "out_degree_sum", "betweenness_sum", "pagerank_sum", "post_count", "reviewer", "review_pass", "evidence_match", "confidence_1to5", "review_timestamp", "reason_if_fail", "reviewer_note"];
+
+    function csvEscape(value) {
+      const text = String(value ?? "");
+      if (/[",
+]/.test(text)) {
+        return '"' + text.replace(/"/g, '""') + '"';
+      }
+      return text;
+    }
+
+    function collectRows() {
+      return reviewRows.map((row, index) => {
+        const out = {...row};
+        const pass = document.querySelector(`[name="review_pass_${index}"]`)?.value || "";
+        out.review_pass = pass;
+        out.evidence_match = document.querySelector(`[name="evidence_match_${index}"]`)?.value || "";
+        out.confidence_1to5 = document.querySelector(`[name="confidence_${index}"]`)?.value || "";
+        out.reviewer = document.querySelector(`[name="reviewer_${index}"]`)?.value || "";
+        out.review_timestamp = document.querySelector(`[name="timestamp_${index}"]`)?.value || "";
+        out.reason_if_fail = document.querySelector(`[name="reason_${index}"]`)?.value || "";
+        out.reviewer_note = document.querySelector(`[name="note_${index}"]`)?.value || "";
+        return out;
+      });
+    }
+
+    function generateCsv() {
+      const lines = [reviewFields.join(",")];
+      for (const row of collectRows()) {
+        lines.push(reviewFields.map((field) => csvEscape(row[field])).join(","));
+      }
+      const csv = lines.join("\n") + "\n";
+      document.getElementById("csvOutput").value = csv;
+      return csv;
+    }
+
+    function downloadCsv() {
+      const csv = generateCsv();
+      const blob = new Blob([csv], {type: "text/csv;charset=utf-8"});
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "role_evidence_manual_review.csv";
+      link.click();
+      URL.revokeObjectURL(url);
+    }
+  </script>
+</body>
+</html>

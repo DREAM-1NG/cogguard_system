@@ -1,0 +1,41 @@
+[
+  {
+    "model": "FOREST",
+    "dataset": "douban",
+    "task": "multi_scale",
+    "status": "ok",
+    "reproduction_level": "public_code_adapter",
+    "epochs": 1,
+    "max_train_batches": 1,
+    "max_eval_batches": 1,
+    "rl_epochs": 1,
+    "rl_max_batches": 1,
+    "rl_rollout_len": 32,
+    "methodology": "Original FOREST public-code adapter with recurrent next-user prediction; optional RRModel policy-gradient fine-tuning uses macro cascade-size reward.",
+    "selection": "best_valid_map@100",
+    "best_epoch": 1,
+    "valid_map@100": 0.0,
+    "hits@10": 0.0,
+    "map@10": 0.0,
+    "hits@50": 0.0,
+    "map@50": 0.0,
+    "hits@100": 0.0,
+    "map@100": 0.0,
+    "msle": null,
+    "mae": null,
+    "forest_rl": {
+      "enabled": true,
+      "rl_epochs": 1,
+      "start_size": 5,
+      "max_batches": 1,
+      "rollout_len": 32,
+      "train_rewards": [
+        -0.33104386925697327
+      ],
+      "test_reward": -2.3098702430725098,
+      "reward_definition": "-square(log(predicted_eos_position)-log(true_eos_position))",
+      "policy_loss": "-sum(sampled_step_log_probs) * centered_macro_reward"
+    },
+    "elapsed_s": 16.2
+  }
+]

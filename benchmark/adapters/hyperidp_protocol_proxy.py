@@ -34,9 +34,19 @@ def parse_cascade(line: str) -> List[Tuple[int, int]]:
         if len(parts) != 2:
             continue
         try:
-            cascade.append((int(parts[0]), int(parts[1])))
+            user_id = int(parts[0])
+        except ValueError:
+            try:
+                user_id = int(float(parts[0]))
+            except ValueError:
+                continue
+        try:
+            # FOREST's Twitter/Memetracker files use float/scientific notation
+            # timestamps, while Douban uses integer timestamps.
+            timestamp = int(float(parts[1]))
         except ValueError:
             continue
+        cascade.append((user_id, timestamp))
     return sorted(cascade, key=lambda item: item[1])
 
 

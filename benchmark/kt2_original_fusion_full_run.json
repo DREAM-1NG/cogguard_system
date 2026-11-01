@@ -1,0 +1,442 @@
+{
+  "schema": "cogguard.kt2.original_fusion_experiment.v1",
+  "status": "ok",
+  "reproduction_level": "kt2_joint_model_full_run",
+  "boundary": "Runs KT2JointModel with upstream MINDS Module.forward, FOREST RNNModel/RRModel, and CasFT GaussianDiffusion_ST plus CombinedSpatiotemporalModel5 auxiliary and main-fusion subpaths as a same-protocol KT2 joint-model full-run evidence row. This is KT2's integrated model evidence, not a frontier-paper full reproduction label; completion still requires same-protocol MINDS, FOREST, and CasFT baseline full-run comparison.",
+  "required_original_subpaths": {
+    "minds_component_status": "original_dynamic_cas_hgnn_fusion_shared_lstm",
+    "minds_module_runtime_status": "original_module_forward_auxiliary",
+    "forest_runtime_status": "original_rnnmodel_rrmodel_auxiliary",
+    "casft_diffusion_status": "original_gaussian_diffusion_st",
+    "casft_spatiotemporal_runtime_status": "original_combined_spatiotemporal_model5_auxiliary",
+    "casft_spatiotemporal_fusion_status": "original_combined_spatiotemporal_model5_main_fused"
+  },
+  "original_subpath_audit": {
+    "required_original_subpaths": {
+      "minds_component_status": "original_dynamic_cas_hgnn_fusion_shared_lstm",
+      "minds_module_runtime_status": "original_module_forward_auxiliary",
+      "forest_runtime_status": "original_rnnmodel_rrmodel_auxiliary",
+      "casft_diffusion_status": "original_gaussian_diffusion_st",
+      "casft_spatiotemporal_runtime_status": "original_combined_spatiotemporal_model5_auxiliary",
+      "casft_spatiotemporal_fusion_status": "original_combined_spatiotemporal_model5_main_fused"
+    },
+    "required_alignment_fields": {
+      "minds_module_alignment_loss_mean": "MINDS Module.forward macro teacher alignment",
+      "forest_size_alignment_loss_mean": "FOREST RRModel sampled EOS-size teacher alignment",
+      "casft_spatiotemporal_alignment_loss_mean": "CasFT CombinedSpatiotemporalModel5 size teacher alignment"
+    },
+    "rows_total": 1,
+    "rows_ok": 1,
+    "rows_with_all_original_subpaths": 1,
+    "rows_with_all_alignment_losses": 1,
+    "all_original_subpaths_passed": true,
+    "all_alignment_losses_recorded": true,
+    "subpath_missing": [],
+    "alignment_missing": []
+  },
+  "matrix_coverage": {
+    "expected_runs": 1,
+    "completed_expected_runs": 1,
+    "coverage_ratio": 1.0,
+    "completed_keys": [
+      {
+        "dataset": "douban",
+        "seed": 42,
+        "obs_ratio": 0.3,
+        "config_id": "full-run-preflight"
+      }
+    ],
+    "pending_keys": []
+  },
+  "datasets": [
+    "douban"
+  ],
+  "seeds": [
+    42
+  ],
+  "obs_ratios": [
+    0.3
+  ],
+  "config_id": "full-run-preflight",
+  "runs": 1,
+  "failures": [],
+  "schema_report": {
+    "schema": "cogguard.kt2.benchmark_result.v1",
+    "ok": true,
+    "rows": 1,
+    "errors": [],
+    "warnings": []
+  },
+  "metric_summary": {
+    "msle": {
+      "mean": 1.2347272344612874,
+      "std": 0.0,
+      "n": 1
+    },
+    "mae": {
+      "mean": 17.6559100151062,
+      "std": 0.0,
+      "n": 1
+    },
+    "rmse": {
+      "mean": 22.563374983916518,
+      "std": 0.0,
+      "n": 1
+    },
+    "direction_accuracy": {
+      "mean": 0.8333333333333334,
+      "std": 0.0,
+      "n": 1
+    },
+    "candidate_recall_full": {
+      "mean": 0.1111111111111111,
+      "std": 0.0,
+      "n": 1
+    },
+    "hits@10": {
+      "mean": 0.016666666666666666,
+      "std": 0.0,
+      "n": 1
+    },
+    "hits@50": {
+      "mean": 0.13333333333333333,
+      "std": 0.0,
+      "n": 1
+    },
+    "hits@100": {
+      "mean": 0.17500000000000002,
+      "std": 0.0,
+      "n": 1
+    },
+    "map@100": {
+      "mean": 0.013336653659557255,
+      "std": 0.0,
+      "n": 1
+    },
+    "mrr": {
+      "mean": 0.07364718614718614,
+      "std": 0.0,
+      "n": 1
+    },
+    "macro_micro_consistency": {
+      "mean": 0.5695809473734673,
+      "std": 0.0,
+      "n": 1
+    }
+  },
+  "by_dataset": {
+    "douban": {
+      "msle": {
+        "mean": 1.2347272344612874,
+        "std": 0.0,
+        "n": 1
+      },
+      "mae": {
+        "mean": 17.6559100151062,
+        "std": 0.0,
+        "n": 1
+      },
+      "rmse": {
+        "mean": 22.563374983916518,
+        "std": 0.0,
+        "n": 1
+      },
+      "direction_accuracy": {
+        "mean": 0.8333333333333334,
+        "std": 0.0,
+        "n": 1
+      },
+      "candidate_recall_full": {
+        "mean": 0.1111111111111111,
+        "std": 0.0,
+        "n": 1
+      },
+      "hits@10": {
+        "mean": 0.016666666666666666,
+        "std": 0.0,
+        "n": 1
+      },
+      "hits@50": {
+        "mean": 0.13333333333333333,
+        "std": 0.0,
+        "n": 1
+      },
+      "hits@100": {
+        "mean": 0.17500000000000002,
+        "std": 0.0,
+        "n": 1
+      },
+      "map@100": {
+        "mean": 0.013336653659557255,
+        "std": 0.0,
+        "n": 1
+      },
+      "mrr": {
+        "mean": 0.07364718614718614,
+        "std": 0.0,
+        "n": 1
+      },
+      "macro_micro_consistency": {
+        "mean": 0.5695809473734673,
+        "std": 0.0,
+        "n": 1
+      }
+    }
+  },
+  "by_seed": {
+    "42": {
+      "msle": {
+        "mean": 1.2347272344612874,
+        "std": 0.0,
+        "n": 1
+      },
+      "mae": {
+        "mean": 17.6559100151062,
+        "std": 0.0,
+        "n": 1
+      },
+      "rmse": {
+        "mean": 22.563374983916518,
+        "std": 0.0,
+        "n": 1
+      },
+      "direction_accuracy": {
+        "mean": 0.8333333333333334,
+        "std": 0.0,
+        "n": 1
+      },
+      "candidate_recall_full": {
+        "mean": 0.1111111111111111,
+        "std": 0.0,
+        "n": 1
+      },
+      "hits@10": {
+        "mean": 0.016666666666666666,
+        "std": 0.0,
+        "n": 1
+      },
+      "hits@50": {
+        "mean": 0.13333333333333333,
+        "std": 0.0,
+        "n": 1
+      },
+      "hits@100": {
+        "mean": 0.17500000000000002,
+        "std": 0.0,
+        "n": 1
+      },
+      "map@100": {
+        "mean": 0.013336653659557255,
+        "std": 0.0,
+        "n": 1
+      },
+      "mrr": {
+        "mean": 0.07364718614718614,
+        "std": 0.0,
+        "n": 1
+      },
+      "macro_micro_consistency": {
+        "mean": 0.5695809473734673,
+        "std": 0.0,
+        "n": 1
+      }
+    }
+  },
+  "elapsed_s": 47.631,
+  "rows": [
+    {
+      "model": "KT2JointModel",
+      "mode": "joint_macro_micro_training",
+      "task": "multi_scale",
+      "status": "ok",
+      "reproduction_level": "kt2_joint_model_full_run",
+      "obs_ratio": 0.3,
+      "events_test_macro": 6,
+      "events_test_micro": 6,
+      "events_test": 6,
+      "relevant_users_test": 81,
+      "candidate_recall_full": 0.1111111111111111,
+      "candidate_protocol_audit": {
+        "candidate_source": "train-set popularity/transitions/hyper-coactivation plus observed-prefix social neighbors",
+        "future_nodes_injected": false,
+        "candidate_generation_reads_future_tail": false,
+        "observed_user_candidate_violations": 0,
+        "future_only_candidate_matches_from_allowed_sources": 3,
+        "candidates_checked": 480,
+        "leakage_check_passed": true
+      },
+      "msle": 1.2347272344612874,
+      "mae": 17.6559100151062,
+      "rmse": 22.563374983916518,
+      "mape_percent": 65.08392261279809,
+      "smape_percent": 66.75137746582163,
+      "direction_accuracy": 0.8333333333333334,
+      "trend_mae": 12.775705178578697,
+      "trend_rmse": 14.882065772157855,
+      "trend_direction_accuracy": 1.0,
+      "trend_steps": 4,
+      "trend_time_supervision": "timestamp-aware full-horizon normalized checkpoints with count-proportional fallback",
+      "mrr": 0.07364718614718614,
+      "macro_predicted_growth": 9.005335648854574,
+      "mean_predicted_growth": 9.005335648854574,
+      "micro_predicted_growth_mean": 40.65996424357096,
+      "macro_micro_consistency": 0.5695809473734673,
+      "consistency_mode": "joint_training_growth_count_alignment",
+      "methodology": "MINDS-style sequential hypergraph attention and dynamic prefix-hyperedge memory (original_dynamic_cas_hgnn_fusion_shared_lstm) + FOREST-style masked next-user policy with sampled growth reward and macro/micro consistency + CasFT continuous trend branch (original_gaussian_diffusion_st; original_combined_spatiotemporal_model5_auxiliary; original_combined_spatiotemporal_model5_main_fused)",
+      "auc": null,
+      "average_precision": null,
+      "note": "KT2 formal local joint model: prefix-feature encoder plus GRU sequence encoder, MINDS-style sequential transition/social/hyper-coactivation context with attention pooling and dynamic prefix-hyperedge memory, macro size head, micro next-hop policy head, CasFT-style Euler neural-ODE trend decoder, CasFT original GaussianDiffusion_ST auxiliary; upstream CasFT spatiotemporal/TPP auxiliary status=original_combined_spatiotemporal_model5_auxiliary; main fusion status=original_combined_spatiotemporal_model5_main_fused, and FOREST-style masked next-user policy plus sampled growth reward and macro/micro consistency loss. It is not an original FOREST, MINDS, CasFT, DyGFormer, or HyperIDP reproduction.",
+      "research_migration": {
+        "MINDS": "sequential transition/social/hyper-coactivation context GRU with attention pooling, dynamic prefix-hyperedge memory, optional upstream MINDS DynamicCasHGNN/Fusion/SharedLSTM components (original_dynamic_cas_hgnn_fusion_shared_lstm), optional upstream Module.forward/RelationGNN auxiliary status=original_module_forward_auxiliary, gradient-reversal task/stage adversaries, and macro/micro orthogonality regularizer approximate cross-cascade diffusion state and task disentanglement; this is a KT2 bridge, not the original full MINDS Module with RelationGNN and original dataset protocol",
+        "FOREST": "observed activation-sequence GRU, event-level masked next-user policy loss, REINFORCE-style sampled growth reward over legal candidates, macro-quality reward weighting, and macro/micro count-consistency constrain scale and next-hop predictions; optional upstream FOREST RNNModel/RRModel auxiliary status=original_rnnmodel_rrmodel; this is a KT2 bridge and optional original-component auxiliary, not the full FOREST training protocol or paper-scale RRModel validation",
+        "CasFT": "trend branch uses an Euler neural-ODE-style decoder and calls CasFT's original GaussianDiffusion_ST/ST_Diffusion as an auxiliary loss on min-max normalized future trend checkpoints; it is still not the full CasFT temporal point-process encoder or full training protocol; optional upstream CombinedSpatiotemporalModel5/NeuralPointProcess auxiliary status=original_combined_spatiotemporal_model5_auxiliary; prefix-only continuous-time main fusion status=original_combined_spatiotemporal_model5_main_fused; this still remains a KT2 bridge unless the full CasFT data protocol and multi-run validation are used",
+        "DyGFormer_TGN": "micro branch remains a temporal next-hop ranking task over leak-checked candidates"
+      },
+      "casft_diffusion_status": "original_gaussian_diffusion_st",
+      "casft_diffusion_error": null,
+      "casft_spatiotemporal_status": "original_combined_spatiotemporal_model5_neural_point_process",
+      "casft_spatiotemporal_error": null,
+      "casft_spatiotemporal_runtime_status": "original_combined_spatiotemporal_model5_auxiliary",
+      "casft_spatiotemporal_runtime_error": null,
+      "casft_spatiotemporal_fusion_status": "original_combined_spatiotemporal_model5_main_fused",
+      "casft_spatiotemporal_fusion_error": null,
+      "minds_component_status": "original_dynamic_cas_hgnn_fusion_shared_lstm",
+      "minds_component_error": null,
+      "minds_module_status": "original_module_forward_relationgnn_dynamiccashgnn",
+      "minds_module_error": null,
+      "minds_module_runtime_status": "original_module_forward_auxiliary",
+      "minds_module_runtime_error": null,
+      "forest_component_status": "original_rnnmodel_rrmodel",
+      "forest_component_error": null,
+      "forest_runtime_status": "original_rnnmodel_rrmodel_auxiliary",
+      "forest_runtime_error": null,
+      "hits@10": 0.016666666666666666,
+      "map@10": 0.0027083333333333334,
+      "ndcg@10": 0.02576238992973304,
+      "hits@50": 0.13333333333333333,
+      "map@50": 0.0113134504903439,
+      "ndcg@50": 0.06310158563356162,
+      "hits@100": 0.17500000000000002,
+      "map@100": 0.013336653659557255,
+      "ndcg@100": 0.07608218532078377,
+      "dataset": "douban",
+      "train_macro_samples": 6,
+      "train_micro_samples": 83,
+      "train_cascades_used": 6,
+      "train_cascades_with_micro": 6,
+      "train_positive_candidates": 35,
+      "positive_rate": 0.42168673872947693,
+      "epochs": 1,
+      "batch_size": 8,
+      "hidden_dim": 16,
+      "seed": 42,
+      "device": "cpu",
+      "bucket_seconds": 86400,
+      "macro_log_support": {
+        "min": 0.386294,
+        "max": 4.89182,
+        "margin": 1.0,
+        "source": "train macro and CasFT-style trend log-size labels"
+      },
+      "joint_training": {
+        "shared_encoder": "fusion of prefix/candidate MLP, observed-sequence GRU, and cross-cascade context encoder",
+        "macro_log_support": {
+          "min": 0.386294,
+          "max": 4.89182,
+          "margin": 1.0,
+          "source": "train macro and CasFT-style trend log-size labels"
+        },
+        "sequence_encoder": "GRU over observed t_obs activation sequence, fused with upstream FOREST RNNModel hidden state when enabled",
+        "cross_context_encoder": "GRU plus attention pooling over MINDS-style sequential transition/social/hyper-coactivation context fused with dynamic prefix-hyperedge memory",
+        "minds_dynamic_hypergraph": "upstream MINDS DynamicCasHGNN over dhg.Hypergraph prefix snapshots when enabled; otherwise event-level DynamicCasHGNN bridge aggregates prefix user embeddings as sequential hyperedges and fuses them over time with a MINDS-style Fusion gate",
+        "minds_dynamic_hgnn_runtime_status": "original_dynamic_cas_hgnn",
+        "minds_dynamic_hgnn_runtime_error": null,
+        "minds_component_status": "original_dynamic_cas_hgnn_fusion_shared_lstm",
+        "minds_component_error": null,
+        "minds_module_status": "original_module_forward_relationgnn_dynamiccashgnn",
+        "minds_module_error": null,
+        "minds_module_runtime_status": "original_module_forward_auxiliary",
+        "minds_module_runtime_error": null,
+        "minds_module_macro_loss_mean": 26.770496,
+        "minds_module_micro_loss_mean": 9.896721,
+        "minds_module_alignment_loss_mean": 27.729616,
+        "forest_component_status": "original_rnnmodel_rrmodel",
+        "forest_component_error": null,
+        "forest_hidden_fusion_status": "original_rnnmodel_hidden_fused",
+        "forest_hidden_fusion_error": null,
+        "forest_runtime_status": "original_rnnmodel_rrmodel_auxiliary",
+        "forest_runtime_error": null,
+        "forest_auxiliary": "FOREST upstream RNNModel CE auxiliary and optional RRModel EOS rollout reward",
+        "forest_auxiliary_loss_mean": -0.039074,
+        "forest_auxiliary_ce_mean": 9.878044,
+        "forest_auxiliary_rl_mean": -236.634737,
+        "forest_size_alignment_loss_mean": 35.773105,
+        "trend_auxiliary": "Euler neural-ODE-style trend decoder supervised on 4 future cumulative-size checkpoints",
+        "diffusion_auxiliary": "CasFT original GaussianDiffusion_ST auxiliary over min-max normalized future trend checkpoints",
+        "casft_diffusion_status": "original_gaussian_diffusion_st",
+        "casft_diffusion_error": null,
+        "casft_spatiotemporal_status": "original_combined_spatiotemporal_model5_neural_point_process",
+        "casft_spatiotemporal_error": null,
+        "casft_spatiotemporal_runtime_status": "original_combined_spatiotemporal_model5_auxiliary",
+        "casft_spatiotemporal_runtime_error": null,
+        "casft_spatiotemporal_fusion_status": "original_combined_spatiotemporal_model5_main_fused",
+        "casft_spatiotemporal_fusion_error": null,
+        "casft_spatiotemporal_main_fusion": "CasFT CombinedSpatiotemporalModel5 prefix-only continuous-time size signal is gated into KT2 macro/trend outputs",
+        "casft_spatiotemporal_loss_mean": 0.475376,
+        "casft_spatiotemporal_alignment_loss_mean": 18.835935,
+        "adversarial_regularizer": "gradient-reversal task/stage adversaries over shared propagation state",
+        "orthogonality_regularizer": "macro/micro task-specific representation cosine-squared penalty",
+        "reinforced_coupling": "FOREST-style event policy bridge: masked next-user policy loss plus REINFORCE-style sampled growth reward over legal candidates",
+        "consistency_candidate_scope": "full_candidate_set",
+        "max_consistency_candidates_per_event": 0,
+        "methodology": "MINDS sequential hypergraph attention plus dynamic prefix-hyperedge memory with adversarial disentanglement, FOREST RNN hidden-state fusion plus masked next-user policy, sampled growth reward and macro/micro consistency, CasFT neural-ODE-style trend decoding with CasFT original GaussianDiffusion_ST auxiliary over min-max normalized future trend checkpoints and CasFT CombinedSpatiotemporalModel5 prefix-only continuous-time size signal is gated into KT2 macro/trend outputs",
+        "macro_target": "log1p(final cascade size)",
+        "micro_target": "candidate activated within future window",
+        "trend_target": "future cumulative cascade size checkpoints after t_obs",
+        "trend_time_supervision": "timestamp-aware full-horizon normalized checkpoints with count-proportional fallback",
+        "macro_loss_weight": 1.0,
+        "micro_loss_weight": 1.0,
+        "original_minds_module_loss_weight": 0.01,
+        "original_minds_diff_loss_weight": 0.05,
+        "trend_loss_weight": 0.4,
+        "consistency_loss_weight": 0.2,
+        "orthogonality_loss_weight": 0.05,
+        "adversarial_loss_weight": 0.02,
+        "diffusion_loss_weight": 0.05,
+        "original_casft_spatiotemporal_loss_weight": 0.01,
+        "forest_pg_loss_weight": 0.02,
+        "forest_pg_rollout_samples": 2,
+        "original_forest_ce_loss_weight": 0.02,
+        "original_forest_rl_loss_weight": 0.001,
+        "original_forest_rollout_samples": 1,
+        "original_forest_start_size": 3,
+        "adversary_alpha": 1.0,
+        "diffusion_noise_std": 0.15,
+        "consistency_loss": "MSE(log1p(macro predicted growth), log1p(sum sigmoid(candidate logits))) plus macro-reward-weighted event-level masked next-user policy loss and FOREST-style sampled growth reward",
+        "original_component_distillation": "When enabled, upstream MINDS Module.forward macro predictions, FOREST RRModel sampled EOS sizes, and CasFT CombinedSpatiotemporalModel5 size predictions are used as training teacher signals; CasFT CombinedSpatiotemporalModel5 also provides a prefix-only continuous-time size/trend signal gated into KT2's main macro/trend outputs.",
+        "max_sequence_len": 8,
+        "user_hash_buckets": 20000,
+        "final_epoch_loss": 4.194387
+      },
+      "experiment_dataset": "douban",
+      "experiment_seed": 42,
+      "experiment_obs_ratio": 0.3,
+      "experiment_config_id": "full-run-preflight",
+      "full_run_protocol": {
+        "same_protocol": true,
+        "original_subpaths_passed": true,
+        "teacher_alignment_recorded": true,
+        "config_id": "full-run-preflight",
+        "datasets": [
+          "douban"
+        ],
+        "seeds": [
+          42
+        ],
+        "obs_ratios": [
+          0.3
+        ]
+      }
+    }
+  ]
+}

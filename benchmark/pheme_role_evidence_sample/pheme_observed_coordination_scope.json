@@ -1,0 +1,149 @@
+{
+  "schema": "cogguard.kt2.pheme_observed_coordination_scope.v1",
+  "source": "pheme_observed_sample",
+  "data_dir": "G:\\CISCN\\dataset\\PHEME",
+  "selection_rule": {
+    "users_per_event": 2,
+    "note": "Observed PHEME users are selected only to validate KT2 role-evidence analysis on real timelines; this is not KT1 model output."
+  },
+  "users": [
+    "135554155",
+    "144301368",
+    "19453154",
+    "2885643027",
+    "465973",
+    "702591266",
+    "802335128",
+    "842574937",
+    "885363181"
+  ],
+  "groups": [
+    {
+      "group_id": "pheme_552784600502915072",
+      "users": [
+        "702591266",
+        "885363181"
+      ]
+    },
+    {
+      "group_id": "pheme_552784898743099392",
+      "users": [
+        "19453154",
+        "465973"
+      ]
+    },
+    {
+      "group_id": "pheme_552785391653494784",
+      "users": [
+        "802335128",
+        "842574937"
+      ]
+    },
+    {
+      "group_id": "pheme_552786116404072448",
+      "users": [
+        "2885643027",
+        "465973"
+      ]
+    },
+    {
+      "group_id": "pheme_552786299875520512",
+      "users": [
+        "135554155",
+        "144301368"
+      ]
+    }
+  ],
+  "records": [
+    {
+      "user_id": "702591266",
+      "group_id": "pheme_552784600502915072",
+      "predicted_label": "observed_sample",
+      "node_score": 10,
+      "source": "pheme_observed_sample",
+      "event_id": "552784600502915072",
+      "rank": 1
+    },
+    {
+      "user_id": "885363181",
+      "group_id": "pheme_552784600502915072",
+      "predicted_label": "observed_sample",
+      "node_score": 8,
+      "source": "pheme_observed_sample",
+      "event_id": "552784600502915072",
+      "rank": 2
+    },
+    {
+      "user_id": "465973",
+      "group_id": "pheme_552784898743099392",
+      "predicted_label": "observed_sample",
+      "node_score": 1,
+      "source": "pheme_observed_sample",
+      "event_id": "552784898743099392",
+      "rank": 1
+    },
+    {
+      "user_id": "19453154",
+      "group_id": "pheme_552784898743099392",
+      "predicted_label": "observed_sample",
+      "node_score": 1,
+      "source": "pheme_observed_sample",
+      "event_id": "552784898743099392",
+      "rank": 2
+    },
+    {
+      "user_id": "842574937",
+      "group_id": "pheme_552785391653494784",
+      "predicted_label": "observed_sample",
+      "node_score": 7,
+      "source": "pheme_observed_sample",
+      "event_id": "552785391653494784",
+      "rank": 1
+    },
+    {
+      "user_id": "802335128",
+      "group_id": "pheme_552785391653494784",
+      "predicted_label": "observed_sample",
+      "node_score": 5,
+      "source": "pheme_observed_sample",
+      "event_id": "552785391653494784",
+      "rank": 2
+    },
+    {
+      "user_id": "465973",
+      "group_id": "pheme_552786116404072448",
+      "predicted_label": "observed_sample",
+      "node_score": 1,
+      "source": "pheme_observed_sample",
+      "event_id": "552786116404072448",
+      "rank": 1
+    },
+    {
+      "user_id": "2885643027",
+      "group_id": "pheme_552786116404072448",
+      "predicted_label": "observed_sample",
+      "node_score": 1,
+      "source": "pheme_observed_sample",
+      "event_id": "552786116404072448",
+      "rank": 2
+    },
+    {
+      "user_id": "135554155",
+      "group_id": "pheme_552786299875520512",
+      "predicted_label": "observed_sample",
+      "node_score": 2,
+      "source": "pheme_observed_sample",
+      "event_id": "552786299875520512",
+      "rank": 1
+    },
+    {
+      "user_id": "144301368",
+      "group_id": "pheme_552786299875520512",
+      "predicted_label": "observed_sample",
+      "node_score": 1,
+      "source": "pheme_observed_sample",
+      "event_id": "552786299875520512",
+      "rank": 2
+    }
+  ]
+}

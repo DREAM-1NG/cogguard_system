@@ -1,0 +1,49 @@
+[
+  {
+    "events_test": 1066,
+    "relevant_users_test": 16153,
+    "candidate_recall_full": 0.8535875688726552,
+    "candidate_protocol_audit": {
+      "candidate_source": "train+valid popularity and train+valid transition statistics plus observed-prefix users",
+      "future_nodes_injected": false,
+      "observed_user_candidate_violations": 0,
+      "future_only_candidate_violations": 0,
+      "candidates_checked": 5504512,
+      "leakage_check_passed": true
+    },
+    "hits@10": 0.11430846823320408,
+    "hits@50": 0.2038614199118079,
+    "hits@100": 0.25316164061870033,
+    "map@10": 0.05999060367096789,
+    "map@50": 0.07266018924536845,
+    "map@100": 0.07558635660628935,
+    "ndcg@10": 0.15400063296116498,
+    "ndcg@50": 0.16839189782901987,
+    "ndcg@100": 0.18689242192002553,
+    "mrr": 0.33104047056249314,
+    "model": "TGN",
+    "dataset": "douban",
+    "task": "next_hop",
+    "status": "ok",
+    "reproduction_level": "frontier_reproduction_small_run",
+    "temporal_edge_csv": "benchmark\\propagation_sota_stable_smoke_20260810\\frontier_tgn_retry\\douban\\tgn\\kt2_douban_tgn_temporal_edges.csv",
+    "repo_head": "d55bbe6",
+    "note": "TGN upstream self-supervised training completed; event-level Top-K uses KT2 protocol metrics for comparability.",
+    "seed": 0,
+    "num_runs": 1,
+    "epochs": 1,
+    "batch_size": 16,
+    "log_dir": "benchmark\\propagation_sota_stable_smoke_20260810\\frontier_tgn_retry\\douban\\tgn\\logs",
+    "preprocess_stdout_log": "benchmark\\propagation_sota_stable_smoke_20260810\\frontier_tgn_retry\\douban\\tgn\\logs\\tgn_preprocess.stdout.log",
+    "preprocess_stderr_log": "benchmark\\propagation_sota_stable_smoke_20260810\\frontier_tgn_retry\\douban\\tgn\\logs\\tgn_preprocess.stderr.log",
+    "preprocess_command_log": "benchmark\\propagation_sota_stable_smoke_20260810\\frontier_tgn_retry\\douban\\tgn\\logs\\tgn_preprocess.command.json",
+    "train_stdout_log": "benchmark\\propagation_sota_stable_smoke_20260810\\frontier_tgn_retry\\douban\\tgn\\logs\\tgn_train.stdout.log",
+    "train_stderr_log": "benchmark\\propagation_sota_stable_smoke_20260810\\frontier_tgn_retry\\douban\\tgn\\logs\\tgn_train.stderr.log",
+    "train_command_log": "benchmark\\propagation_sota_stable_smoke_20260810\\frontier_tgn_retry\\douban\\tgn\\logs\\tgn_train.command.json",
+    "tgn_generated_outputs_cleaned": true,
+    "tgn_generated_cleanup_paths": [
+      "G:\\CISCN\\CogGuard\\subsystems\\kt2_repos\\tgn\\saved_models"
+    ],
+    "elapsed_s": 18.9
+  }
+]

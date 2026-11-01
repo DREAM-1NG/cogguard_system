@@ -1,0 +1,20 @@
+﻿{
+    "schema":  "cogguard.propagation.training_sufficiency_queue.v1",
+    "status":  "running",
+    "current_step":  "sequence_joint_200ep_h64_seq200_fullsource_3seed_next_row",
+    "updated_at":  "2026-08-12T12:03:20.9255402+08:00",
+    "results":  [
+                    "[2026-08-11T01:26:37] START sequence_joint_200ep_h64_seq200_300c_3seed",
+                    "python -u -m benchmark.propagation_training_adequacy_20260810 --datasets douban,twitter,memetracker --seeds 42,43,44 --models Ours,MINDS --epoch_grid 200 --train_cascades 300 --eval_cascades 100 --hidden_dims 64 --max_sequence_lens 200 --batch_size 32 --device cuda --out benchmark\\propagation_training_sufficiency_sequence_200ep_h64_seq200_300c_3seed_20260811.json --report G:\\CISCN\\CogGuard\\.worktrees\\refactor-system\\system\\doc\\research\\propagation_paper_deep_reads\\propagation_training_sufficiency_sequence_200ep_h64_seq200_300c_3seed_20260811.md --resume",
+                    "{\"status\": \"ok\", \"out\": \"benchmark\\\\propagation_training_sufficiency_sequence_200ep_h64_seq200_300c_3seed_20260811.json\", \"report\": \"G:\\\\CISCN\\\\CogGuard\\\\.worktrees\\\\refactor-system\\\\system\\\\doc\\\\research\\\\propagation_paper_deep_reads\\\\propagation_training_sufficiency_sequence_200ep_h64_seq200_300c_3seed_20260811.md\"}",
+                    {
+                        "name":  "sequence_joint_200ep_h64_seq200_300c_3seed",
+                        "command":  "python -u -m benchmark.propagation_training_adequacy_20260810 --datasets douban,twitter,memetracker --seeds 42,43,44 --models Ours,MINDS --epoch_grid 200 --train_cascades 300 --eval_cascades 100 --hidden_dims 64 --max_sequence_lens 200 --batch_size 32 --device cuda --out benchmark\\propagation_training_sufficiency_sequence_200ep_h64_seq200_300c_3seed_20260811.json --report G:\\CISCN\\CogGuard\\.worktrees\\refactor-system\\system\\doc\\research\\propagation_paper_deep_reads\\propagation_training_sufficiency_sequence_200ep_h64_seq200_300c_3seed_20260811.md --resume",
+                        "log":  "G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\logs\\propagation_training_sufficiency_sequence_200ep_h64_seq200_300c_3seed_20260811.log",
+                        "started_at":  "2026-08-11T01:26:37.8600628+08:00",
+                        "ended_at":  "2026-08-11T09:48:03.7486164+08:00",
+                        "elapsed_seconds":  30085.9,
+                        "exit_code":  0
+                    }
+                ]
+}

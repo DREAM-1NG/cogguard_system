@@ -1,0 +1,61 @@
+[
+  {
+    "events_test": 1066,
+    "relevant_users_test": 16153,
+    "candidate_recall_full": 0.8535875688726552,
+    "candidate_protocol_audit": {
+      "candidate_source": "train+valid popularity and train+valid transition statistics plus observed-prefix users",
+      "future_nodes_injected": false,
+      "observed_user_candidate_violations": 0,
+      "future_only_candidate_violations": 0,
+      "candidates_checked": 5504512,
+      "leakage_check_passed": true
+    },
+    "hits@10": 0.11430846823320408,
+    "hits@50": 0.2038614199118079,
+    "hits@100": 0.25316164061870033,
+    "map@10": 0.05999060367096789,
+    "map@50": 0.07266018924536845,
+    "map@100": 0.07558635660628935,
+    "ndcg@10": 0.15400063296116498,
+    "ndcg@50": 0.16839189782901987,
+    "ndcg@100": 0.18689242192002553,
+    "mrr": 0.33104047056249314,
+    "model": "TGN",
+    "dataset": "douban",
+    "task": "next_hop",
+    "status": "train_failed",
+    "reproduction_level": "frontier_reproduction_attempted",
+    "temporal_edge_csv": "benchmark\\propagation_sota_stable_smoke_20260810\\frontier\\douban\\tgn\\kt2_douban_tgn_temporal_edges.csv",
+    "repo_head": "d55bbe6",
+    "note": "External temporal graph run failed; do not claim frontier reproduction completion.",
+    "command": [
+      "D:\\Anaconda\\python.exe",
+      "utils/preprocess_data.py",
+      "--data",
+      "kt2_douban_tgn"
+    ],
+    "log_dir": "benchmark\\propagation_sota_stable_smoke_20260810\\frontier\\douban\\tgn\\logs",
+    "stdout_log": "benchmark\\propagation_sota_stable_smoke_20260810\\frontier\\douban\\tgn\\logs\\tgn_preprocess.stdout.log",
+    "stderr_log": "benchmark\\propagation_sota_stable_smoke_20260810\\frontier\\douban\\tgn\\logs\\tgn_preprocess.stderr.log",
+    "command_log": "benchmark\\propagation_sota_stable_smoke_20260810\\frontier\\douban\\tgn\\logs\\tgn_preprocess.command.json",
+    "train_stdout_log": "benchmark\\propagation_sota_stable_smoke_20260810\\frontier\\douban\\tgn\\logs\\tgn_train.stdout.log",
+    "train_stderr_log": "benchmark\\propagation_sota_stable_smoke_20260810\\frontier\\douban\\tgn\\logs\\tgn_train.stderr.log",
+    "train_command_log": "benchmark\\propagation_sota_stable_smoke_20260810\\frontier\\douban\\tgn\\logs\\tgn_train.command.json",
+    "tgn_generated_outputs_cleaned": true,
+    "tgn_generated_cleanup_paths": [
+      "G:\\CISCN\\CogGuard\\subsystems\\kt2_repos\\tgn\\saved_models"
+    ],
+    "stderr_tail": [
+      "    new_node_test_data = get_data(DATA,",
+      "                         ^^^^^^^^^^^^^^",
+      "  File \"G:\\CISCN\\CogGuard\\subsystems\\kt2_repos\\tgn\\utils\\data_processing.py\", line 81, in get_data",
+      "    new_test_node_set = set(random.sample(test_node_set, int(0.1 * n_total_unique_nodes)))",
+      "                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+      "  File \"D:\\Anaconda\\Lib\\random.py\", line 413, in sample",
+      "    raise TypeError(\"Population must be a sequence.  \"",
+      "TypeError: Population must be a sequence.  For dicts or sets, use sorted(d)."
+    ],
+    "elapsed_s": 14.9
+  }
+]

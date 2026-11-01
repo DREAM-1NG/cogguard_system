@@ -1,0 +1,50 @@
+2026-08-10 18:10:48,563 - Namespace(data='kt2_douban_casft_stable_smoke', observation_time='86400', prediction_time='1296000', max_events=50, lr=0.002, interval_num=4, tpp_hdims='32', loss_type='l2', timesteps=1, sampling_timesteps=1, objective='pred_x0', loss_scale=0.5, FC=1, ode_solver='dopri5', max_seq='100', max_epoch=1, ngpus=1, seed=42, model='ode_diff_increase', cg_emb_dim=80, t1=1, d_model=80, d_inner_hid=64, d_k=32, d_v=32, n_head=2, n_layers=1, dropout=0.1, t_scale=1, global_attention=False, actfn='swish', tpp_actfn='softplus', layer_type='concat', tpp_cond=True, tpp_style='gru', share_hidden=True, solve_reverse=False, l2_attn=False, naive_hutch=False, tol=0.0001, otreg_strength=0.0001, tpp_otreg_strength=0.0001, warmup_itrs=0, momentum=0.9, weight_decay=1e-06, gradclip=10000000000.0, test_bsz=16, experiment_dir='G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\propagation_sota_stable_smoke_20260810\\casft_douban_seed42\\experiments', experiment_id='20260810_181044', resume=None, logfreq=10, testfreq=1, port=19884)
+2026-08-10 18:10:48,564 - Saving to G:\CISCN\CogGuard\subsystems\cogguard_dev\benchmark\propagation_sota_stable_smoke_20260810\casft_douban_seed42\experiments\kt2_douban_casft_stable_smoke_t86400_s100\ode_diff_increase_h32_im4_T1_ls0.5_lr0.002_bsz50_FC1
+2026-08-10 18:10:48,649 - Found 1 CUDA devices.
+2026-08-10 18:10:48,661 - NVIDIA GeForce RTX 4060 Laptop GPU 	 Memory: 8.00GB
+2026-08-10 18:10:49,508 - 21 training examples, 4 val examples, 4 test examples
+2026-08-10 18:10:49,574 - Traceback (most recent call last):
+  File "G:\CISCN\CogGuard\subsystems\kt2_repos\CasFT\.kt2_windows_shim\train_spawn.py", line 328, in main
+    _main(rank, world_size, args, savepath, logger)
+  File "G:\CISCN\CogGuard\subsystems\kt2_repos\CasFT\.kt2_windows_shim\train_spawn.py", line 124, in _main
+    model = CombinedSpatiotemporalModel5(tpp_model, encoder_model, args).to(device)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "G:\CISCN\CogGuard\subsystems\kt2_repos\CasFT\model\spatiotemporal.py", line 70, in __init__
+    diffusion = GaussianDiffusion_ST(
+                ^^^^^^^^^^^^^^^^^^^^^
+  File "G:\CISCN\CogGuard\subsystems\kt2_repos\CasFT\model\diffusion\DiffusionModel.py", line 320, in __init__
+    register_buffer('posterior_log_variance_clipped', torch.log(posterior_variance.clamp(min = posterior_variance[1])))
+                                                                                               ~~~~~~~~~~~~~~~~~~^^^
+IndexError: index 1 is out of bounds for dimension 0 with size 1
+
+2026-08-10 18:10:50,150 - Traceback (most recent call last):
+  File "G:\CISCN\CogGuard\subsystems\kt2_repos\CasFT\.kt2_windows_shim\train_spawn.py", line 427, in <module>
+    mp.spawn(main,
+  File "D:\Anaconda\Lib\site-packages\torch\multiprocessing\spawn.py", line 328, in spawn
+    return start_processes(fn, args, nprocs, join, daemon, start_method="spawn")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Anaconda\Lib\site-packages\torch\multiprocessing\spawn.py", line 284, in start_processes
+    while not context.join():
+              ^^^^^^^^^^^^^^
+  File "D:\Anaconda\Lib\site-packages\torch\multiprocessing\spawn.py", line 203, in join
+    raise ProcessRaisedException(msg, error_index, failed_process.pid)
+torch.multiprocessing.spawn.ProcessRaisedException: 
+
+-- Process 0 terminated with the following error:
+Traceback (most recent call last):
+  File "D:\Anaconda\Lib\site-packages\torch\multiprocessing\spawn.py", line 90, in _wrap
+    fn(i, *args)
+  File "G:\CISCN\CogGuard\subsystems\kt2_repos\CasFT\.kt2_windows_shim\train_spawn.py", line 328, in main
+    _main(rank, world_size, args, savepath, logger)
+  File "G:\CISCN\CogGuard\subsystems\kt2_repos\CasFT\.kt2_windows_shim\train_spawn.py", line 124, in _main
+    model = CombinedSpatiotemporalModel5(tpp_model, encoder_model, args).to(device)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "G:\CISCN\CogGuard\subsystems\kt2_repos\CasFT\model\spatiotemporal.py", line 70, in __init__
+    diffusion = GaussianDiffusion_ST(
+                ^^^^^^^^^^^^^^^^^^^^^
+  File "G:\CISCN\CogGuard\subsystems\kt2_repos\CasFT\model\diffusion\DiffusionModel.py", line 320, in __init__
+    register_buffer('posterior_log_variance_clipped', torch.log(posterior_variance.clamp(min = posterior_variance[1])))
+                                                                                               ~~~~~~~~~~~~~~~~~~^^^
+IndexError: index 1 is out of bounds for dimension 0 with size 1
+
+

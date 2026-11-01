@@ -1,0 +1,183 @@
+{
+  "dataset_events": 4,
+  "focus_event_id": "synthetic_3",
+  "totals": {
+    "nodes": 188,
+    "edges": 184,
+    "participants": 23
+  },
+  "event_summaries": [
+    {
+      "event_id": "synthetic_0",
+      "label": "non-rumour",
+      "topic": null,
+      "claim": null,
+      "source_node": "0",
+      "source_user": "u0",
+      "source_text": "Synthetic post 0",
+      "node_count": 35,
+      "edge_count": 34,
+      "participant_count": 23,
+      "max_depth": 3,
+      "max_width": 16,
+      "avg_branching": 0.9714285714285714,
+      "leaf_ratio": 0.5428571428571428,
+      "duration_minutes": 34.0,
+      "top_spreaders": [
+        {
+          "node_id": "0",
+          "out_degree": 7
+        },
+        {
+          "node_id": "2",
+          "out_degree": 4
+        },
+        {
+          "node_id": "4",
+          "out_degree": 2
+        },
+        {
+          "node_id": "7",
+          "out_degree": 2
+        },
+        {
+          "node_id": "9",
+          "out_degree": 2
+        }
+      ]
+    },
+    {
+      "event_id": "synthetic_1",
+      "label": "rumour",
+      "topic": null,
+      "claim": null,
+      "source_node": "0",
+      "source_user": "u1",
+      "source_text": "Synthetic post 0",
+      "node_count": 43,
+      "edge_count": 42,
+      "participant_count": 23,
+      "max_depth": 4,
+      "max_width": 21,
+      "avg_branching": 0.9767441860465116,
+      "leaf_ratio": 0.5348837209302325,
+      "duration_minutes": 84.0,
+      "top_spreaders": [
+        {
+          "node_id": "0",
+          "out_degree": 7
+        },
+        {
+          "node_id": "2",
+          "out_degree": 4
+        },
+        {
+          "node_id": "4",
+          "out_degree": 2
+        },
+        {
+          "node_id": "7",
+          "out_degree": 2
+        },
+        {
+          "node_id": "9",
+          "out_degree": 2
+        }
+      ]
+    },
+    {
+      "event_id": "synthetic_2",
+      "label": "non-rumour",
+      "topic": null,
+      "claim": null,
+      "source_node": "0",
+      "source_user": "u2",
+      "source_text": "Synthetic post 0",
+      "node_count": 51,
+      "edge_count": 50,
+      "participant_count": 23,
+      "max_depth": 4,
+      "max_width": 21,
+      "avg_branching": 0.9803921568627451,
+      "leaf_ratio": 0.5294117647058824,
+      "duration_minutes": 150.0,
+      "top_spreaders": [
+        {
+          "node_id": "0",
+          "out_degree": 7
+        },
+        {
+          "node_id": "2",
+          "out_degree": 4
+        },
+        {
+          "node_id": "4",
+          "out_degree": 2
+        },
+        {
+          "node_id": "7",
+          "out_degree": 2
+        },
+        {
+          "node_id": "9",
+          "out_degree": 2
+        }
+      ]
+    },
+    {
+      "event_id": "synthetic_3",
+      "label": "rumour",
+      "topic": null,
+      "claim": null,
+      "source_node": "0",
+      "source_user": "u3",
+      "source_text": "Synthetic post 0",
+      "node_count": 59,
+      "edge_count": 58,
+      "participant_count": 23,
+      "max_depth": 4,
+      "max_width": 21,
+      "avg_branching": 0.9830508474576272,
+      "leaf_ratio": 0.5254237288135594,
+      "duration_minutes": 58.0,
+      "top_spreaders": [
+        {
+          "node_id": "0",
+          "out_degree": 7
+        },
+        {
+          "node_id": "2",
+          "out_degree": 4
+        },
+        {
+          "node_id": "4",
+          "out_degree": 2
+        },
+        {
+          "node_id": "7",
+          "out_degree": 2
+        },
+        {
+          "node_id": "9",
+          "out_degree": 2
+        }
+      ]
+    }
+  ],
+  "role_evidence_quality": {
+    "scope": "coordinated_users",
+    "target_user_count": 2,
+    "evidence_user_count": 2,
+    "coordination_user_coverage": 1.0,
+    "path_complete_rate": 1.0,
+    "role_stability": {
+      "multi_event_user_count": 2,
+      "stable_user_count": 1,
+      "stable_user_rate": 0.5,
+      "mean_dominant_role_share": 0.625
+    },
+    "manual_review_required": true,
+    "note": "Role evidence is an observed-graph explanation. Coverage/stability metrics support review, but do not turn rule labels into supervised ground truth."
+  },
+  "narrative": "共分析 4 个事件，最大事件为 synthetic_3，规模 59 个节点；最深传播链来自 synthetic_1，深度 4。系统识别出 96 个潜在引爆点，主要依据为时间窗口增量异常和节点结构影响力。"
+}

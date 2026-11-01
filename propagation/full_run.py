@@ -29,7 +29,7 @@ from .analysis import (
 )
 from .loaders import build_weibo_rumor_event, iter_weibo_rumor_rows
 from .models import PropagationEvent, sorted_nodes_by_time
-from .prediction import _cascade_features, _edge_features
+from .prediction import _attach_task_metadata, _cascade_features, _edge_features
 from .visualization import build_dashboard_from_artifacts
 
 
@@ -146,10 +146,33 @@ def run_weibo_rumor_full(
     if write_ignition_header:
         _write_empty_csv(ignitions_path, ["event_id", "node_id", "user_id", "timestamp", "reason", "score"])
 
+    path_prediction = _fit_path_prediction(path_X, path_y, sampled_path_candidates, path_sample_limit, processed_events)
+    size_prediction = _fit_size_prediction(size_X, size_y)
+    _attach_task_metadata(
+        path_prediction,
+        dataset_name="weibo_rumor",
+        observation_ratio=observation_ratio,
+        model_name="LogisticRegression reservoir-sampled edge classifier",
+        model_scope="full-streaming local baseline / experimental",
+        uncertainty_note="No calibrated confidence interval yet; bounded-memory sampling is reported through sample_limit and candidate_edges_seen_estimate.",
+    )
+    _attach_task_metadata(
+        size_prediction,
+        dataset_name="weibo_rumor",
+        observation_ratio=observation_ratio,
+        model_name="RandomForestRegressor",
+        model_scope="full-streaming local size baseline / experimental",
+        uncertainty_note="No calibrated confidence interval yet; use MAE/RMSE/MSLE/MAPE as current error evidence.",
+    )
     prediction_report = {
+        "schema": "cogguard.kt2.prediction_report.v1",
+        "dataset": "weibo_rumor",
         "observation_ratio": observation_ratio,
-        "path_prediction": _fit_path_prediction(path_X, path_y, sampled_path_candidates, path_sample_limit, processed_events),
-        "size_prediction": _fit_size_prediction(size_X, size_y),
+        "t_obs": observation_ratio,
+        "prediction_label": "实验预测",
+        "reproduction_level": "local_baseline",
+        "path_prediction": path_prediction,
+        "size_prediction": size_prediction,
     }
     (out / "prediction_report.json").write_text(json.dumps(prediction_report, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
 

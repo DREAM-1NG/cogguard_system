@@ -1,0 +1,1306 @@
+
+
+===== PAGE 1 =====
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021 1
+LGB: Language Model and Graph Neural
+Network-Driven Social Bot Detection
+Ming Zhou, Dan Zhang, Yuandong Wang, Yangli-ao Geng, Yuxiao Dong, and Jie Tang, Fellow, IEEE
+Abstract—Malicious social bots achieve their malicious pur-
+isolated 300000
+poses by spreading misinformation and inciting social public
+opinion, seriously endangering social security, making their densely 250000
+detection a critical concern. Recently, graph-based bot detection linked 200000
+methods have achieved state-of-the-art (SOTA) performance.
+150000 However, our research finds many isolated and poorly linked
+nodes in social networks, as shown in Fig. 1, which graph- 100000
+based methods cannot effectively detect. To address this problem, 50000
+our research focuses on effectively utilizing node semantics and sparsely
+linked
+network structure to jointly detect sparsely linked nodes. Given 0 0 1 2 3 4 5 6 7 8 9 10 > 10
+the excellent performance of language models (LMs) in natural Number of neighbors
+language understanding (NLU), we propose a novel social bot
+detection framework LGB, which consists of two main compo-
+nents: language model (LM) and graph neural network (GNN).
+Specifically, the social account information is first extracted into
+unified user textual sequences, which is then used to perform
+supervised fine-tuning (SFT) of the language model to improve
+its ability to understand social account semantics. Next, the
+semantically enriched node representation is fed into the pre-
+trained GNN to further enhance the node representation by
+aggregating information from neighbors. Finally, LGB fuses
+the information from both modalities to improve the detection
+performance of sparsely linked nodes. Extensive experiments
+on two real-world datasets demonstrate that LGB consistently
+outperforms state-of-the-art baseline models by up to 10.95%.
+LGB is already online: https://botdetection.aminer.cn/robotmain.
+Index Terms—Social networks, social bot detection, large
+language model, graph neural network, multimodal.
+I. INTRODUCTION
+A S multimedia-rich social networks become deeply inte-
+grated into our daily lives, and their influence grows
+inevitable. Concurrently, the rapidly developing artificial in-
+telligence (AI) technology has achieved remarkable success
+in various fields, alongside new challenges, notably the rise of
+malicious social bots. Social bots are automated agents that
+are fully or partially controlled by computer programs [1].
+These bots are evolving to think, speak, and interact in an
+increasingly human-like manner for malicious purposes. Over
+the last decade, such bots have been implicated in spreading
+misinformation and fake news, impacting public opinion and
+financial markets [2], [3], [4]. During the COVID-19 pan-
+demic, social bots were found to contribute 9.27% of tweets
+to discussions about the pandemic on Twitter/X, and studies
+Ming Zhou, Dan Zhang, Yuandong Wang, Yuxiao Dong, and Jie
+Tang are with the Department of Computer Science and Technology,
+Tsinghua Univerisity, China. E-mail: zhou-m19@mails.tsinghua.edu.cn, ji-
+etang@tsinghua.edu.cn
+Yangli-ao Geng is with the Department of Computer Science and Technol-
+ogy, Beijing Jiaotong University, China.
+Corresponding author: Jie Tang.
+sedonforebmuN
+1.0
+0.9
+0.8
+0.7
+0.6
+0.5
+0.4
+0.3
+0.2
+0.1
+0.0
+sedonfoegatnecrepevitalumuC
+0.082
+Fig. 1. We conduct a Pareto analysis of the distribution of social relationships
+on TwiBot-22 [15], a real-world social network dataset (left), and find that
+there are a large number of isolated and poorly linked nodes in the social
+network (right). Specifically, isolated nodes account for as high as 30.62% of
+all nodes, nodes with only one neighbor make up about 24.71%, but nodes
+with more than ten neighbors constitute only 8.2%.
+show they successfully spread anger toward humans [5] and
+are involved in the generation and dissemination of false infor-
+mation about the COVID-19 vaccine [6]. Recent research finds
+that social bots are widely used in network information warfare
+in the Russia-Ukraine war [7], [8]. For example, De Faveri et
+al. [9] find that around 12% of commentators on the Russia-
+Ukraine war during the 2022 Italian general election were bots,
+and their analysis shows that bots influenced people’s opinions
+by distorting the way war issues were treated. Furthermore,
+bots are involved in manipulating election outcomes to un-
+dermine regional security [10]. Specifically, they influence
+public opinion by distorting facts, spreading fake news, and
+attacking opponents, for example, the 2019 Spanish general
+election [11], the 2016 U.S. presidential election [12], the
+2018 U.S. midterm elections [13], etc. Elon Musk’s proposed
+$44 billion acquisition of Twitter was halted due to concerns
+over the prevalence of fake accounts [14], highlighting the
+seriousness of the social bot problem. Social bots distort facts
+and manipulate public opinion by spreading false information,
+posing serious threats to financial security, health and epidemic
+prevention, social security, and world peace. Hence, there is
+a critical need for effective and reliable social bot detection
+techniques to ensure social safety and harmony.
+In the early days of the development of social bot detection
+technology, the primary approaches are featured-based. These
+methods construct user features from information such as user
+attributes [16], user behaviors [17], [18], and tweets [19],
+[20] based on statistical tools and expert knowledge. However,
+such methods have poor scalability and are easily attacked by
+feature forgery [21], where bot developers modify features
+to evade detectors. To combat the dissemination of misin-
+formation by social bots, content-based detection methods
+are proposed, where natural language processing (NLP) tech-
+4202
+nuJ
+41
+]IS.sc[
+2v26780.6042:viXra
+
+===== PAGE 2 =====
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021 2
+nologies are widely used to detect accounts by evaluating the mately 55.34% of nodes in the network are isolated or have
+authenticity and purpose of tweet content. For example, Wei only one neighbor, as shown in Fig. 1. Traditional graph-
+Feng et al. employ bidirectional Long Short-term Memory based detection methods have difficulty in identifying these
+(BiLSTM) to extract content features to detect bots [22]. nodes. Considering the rich semantic information of social
+Cai et al. adopt convolutional neural networks (CNNs) to accounts and the social semantic knowledge learned by the
+obtain the features of tweets for bot detection [18]. However, LM during pre-training, we investigate the effectiveness of
+the emergence of Large-scale Language Models (LLMs) in LM and GNN in the social bot detection task. We find that
+recent years is empowering social bots with stronger con- for isolated and sparsely linked nodes, the supervised fine-
+tent creation capabilities. For example, OpenAI’s newly re- tuned LM can effectively detect them, whereas for densely
+leased content classifier can only correctly identify 26% of linked nodes, GNN achieves better detection performance.
+AI-written content [23]. This new challenge is weakening Additionally, our structural analysis of social relationships
+the performance of content-based detection methods. Given reveals an intrinsic link between social relationship struc-
+that social bots mainly achieve their malicious purposes by ture and bot probability, which proves the importance of
+spreading false information, inspired by the research finding structural information for account detection tasks. All these
+that the strength [24] and structural diversity [25], [26] of findings inspire us to fuse node semantics with network
+social relationships play an important role in the spread of structure to improve detection performance.
+information, graph-based methods that detect accounts by • We propose LGB, a novel bot detection framework that
+modeling social relationships are proposed and have great combines the semantic understanding ability of LMs and
+promise in detecting bot group attacks [27], [28]. For example, the network structure extraction ability of GNNs to achieve
+Zhou et al. [29] propose a contrastive learning-based social bot cross-modal joint social account detection. Moreover, at the
+detection approach CBD. However, our research reveals that system architecture design level, the design paradigm based
+social networks contain a significant number of isolated and on online and offline dual systems is adopted to improve
+sparsely linked nodes. Specifically, up to 30.62% of nodes are the system’s scalability.
+isolated, and approximately 24.71% have only one neighbor, • The LGB detection model comprises two primary modules:
+as shown in Fig. 1. For such nodes, the detection performance semantic understanding and structure extraction. In the se-
+of traditional graph-based methods will decline, which greatly mantic understanding module, we perform supervised fine-
+weakens the detector’s ability to identify bots in the early and tuning on the LM using constructed user text sequences to
+hidden stages. These bots will be quickly activated to establish enhance its semantic comprehension of the node’s social
+links with humans when performing malicious tasks to spread information, thereby providing semantically enriched node
+false information and engage in malicious activities. Such bots representations for the entire system. In the structure extrac-
+are extremely harmful and difficult to detect using single- tion module, the GNN enhances the model’s representation
+modality detection methods, posing significant challenges to capabilities by extracting and integrating the structural infor-
+the social bot detection task. mation of social relationships into the semantically enriched
+To effectively detect isolated and sparsely linked nodes, node representations.
+we propose LGB, a novel multimodal social bot detection • We conduct extensive experiments on two public and in-
+framework, which combines the semantic understanding capa- dependent datasets, and the results demonstrate the effec-
+bilities of language models (LMs) with the network structure tiveness of fusing social semantics with network struc-
+extraction capabilities of graph neural networks (GNNs) to ture to jointly detect accounts and the superior detection
+achieve cross-modal joint detection of social accounts. Specifi- performance of LGB compared with various state-of-the-
+cally, first, social information such as user attributes, personal art baseline models. Furthermore, studies on online smart
+descriptions, and tweets of social accounts are extracted to feedback and robustness prove the effectiveness of the online
+form user text. Second, based on the user text, supervised smart feedback function and the strong robustness of LGB.
+fine-tuning is performed on the LM to improve its ability to Comparison with the conference version [29] of this work,
+understand social account information. Then, the semantically the following extensions are made:
+enhanced node representation is fed into GNN to further • We further analyze the social human-bot network data and
+integrate network structure information. Finally, our model find that up to 30.62% of the total nodes are isolated nodes,
+improves the detection performance of isolated and sparsely about 24.71% have only one neighbor, and only 8.2% have
+linked nodes by fusing the two modalities of text semantics more than 10 neighbors, as shown in Fig. 1. These findings
+and network structure. For LGB’s system architecture, our explain that the performance improvement bottleneck of
+framework adopts the design paradigm of online and offline traditional graph-based methods is the presence of a large
+dual systems to achieve better scalability. In the online system, number of isolated and sparsely linked nodes in the network.
+we innovatively propose a smart feedback strategy to correct To address this issue, we explore the detection performance
+erroneous prediction results in time. These corrected results of LM and GNN for sparsely linked and densely linked
+are fed back into the offline system for adjustment in the next nodes in Section III-A and find that the supervised fine-tuned
+round of model training. LM can effectively detect sparsely linked nodes, while GNN
+Contributions: In summary, the main contributions of this is more effective for detecting densely linked nodes. These
+work include: findings inspire us to combine LM and GNN to enhance the
+• By analyzing social network data, we find that approxi- model’s performance.
+
+===== PAGE 3 =====
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021 3
+• Our structural analysis of social relationships in Sec- input is a social account v i , and the system gathers its attribute
+tion III-B reveals an intrinsic link between social relation- information, personal description, and tweets to construct a
+ship structure and bot probability. This finding underscores unified user textual sequence s
+i
+∈ DLi, where L
+i
+denotes the
+the importance of the structural information of social rela- length of its textual sequence, and D represents the dictionary
+tionships for account detection tasks and motivates us to fuse of tokens or words. The detailed construction process of text
+node semantics with network structure for more effective sequences for social users will be presented in Section IV. The
+social account detection. output is the predicted label y = f (s ) obtained by model
+(cid:98)i i
+• Inspired by the data analysis and findings in Section III, we inference, where f (·) denotes the model’s inference function.
+propose LGB in Section IV, a novel multimodal information Let y ∈ {0, 1} represent the ground truth of account v , where
+i i
+fusion-driven social bot detection framework, to achieve y = 0 means that v is a normal user, while y = 1 means
+i i i
+efficient detection of both sparsely and densely linked nodes. that v is a social bot. Therefore, the goal of this study is to
+i
+• To enhance the efficiency of multimodal information fusion- learn a function f for y (cid:98)i −→ y i .
+driven social bot detection, we design a new system architec-
+ture detailed in Section IV. Specifically, the LGB’s offline B. Language Models for Social Bot Detection
+training system is divided into two parts: LM and GNN For the social bot detection task, LMs are used to extract
+model training, incorporating a multimodal information fu- the social semantic information from users’ textual content
+sion operation. In addition, the data preprocessing module and encode it into the feature matrix. Formally, let LM (·)
+adds the unified user text sequence construction function. denote a text encoder based on a pre-trained language model,
+• In Section V, a new large-scale dataset TwiBot-20 [30] is such as RoBERTa [32], T5 [33], etc. The textual sequence of
+added. Additionally, more performance comparison experi- node i is represented as s
+i
+∈ DLi, and by feeding it into the
+ments, online smart feedback studies, ablation studies, and pre-trained LM, we obtain the node representation, which is
+robustness studies are conducted to validate our model. denoted as:
+Organization: The remaining sections of this paper are
+1 (cid:88)
+|si|
+organized as follows. In Section II, we formally define the x i = |s | LM (s i ) t , (1)
+social bot detection problem. In Section III, we analyze the i t=1
+relationship between the structural diversity of social relation- where |s i | represents the number of tokens in the textual
+ships and the probability of bots and answer the question of sequence s i . Here, we average the output of the LM for the
+who is better and when, LM vs. GNN, through comparative token to obtain a representation vector x i , which is then fed
+experiments. In Section IV, we propose a novel LM and GNN- into an MLP to predict the node category y (cid:98)i =MLP(x i ).
+driven social bot detection framework, LGB, and introduce LMs, with their extensive semantic knowledge acquired
+it in detail from both the system and model architecture from large-scale corpora in the pre-training stage and their
+levels. In Section V, extensive experimental results are shown. significant number of parameters, have achieved success in
+In Section VI, we present the related work, and finally we numerous natural language tasks, such as text classification
+conclude this work in Section VII. tasks. However, their huge model size results in high memory
+overhead. Moreover, in social networks, LMs only use each
+II. PRELIMINARY AND DEFINITION node’s text information, neglecting social relationships and
+interaction information between nodes, which leads to their
+A. Social Bot Detection
+performance bottleneck, especially for nodes that lack text
+Considering social users as nodes and social relationships as information.
+edges [28], [31], a social network can be regarded as a directed
+graph formally represented as G (V, E), where the set of edges C. Graph Neural Networks for Social Bot Detection
+E ⊂ V × V represents social relationships between users, and Different from LMs, graph neural networks can aggregate
+the set of nodes V = {v 1 , v 2 , ..., v N } represents social users. the node representations of neighbors based on the social
+Let v i indicate the node i in graph G, the set of its neighbors relationships between nodes to detect social accounts. To be
+can be denoted as N (v i ) = {u : (v i , u) ∈ E}. Let h i ∈ Rd specific, GNNs mainly consist of the following two steps:
+represent the feature vector of node i, where d denotes the 1) message passing and aggregation, shown in (2), and 2)
+feature dimension. The feature matrix of nodes in graph updating node representations, shown in (3):
+G can be represented as H = [h , h , . . . , h ]⊤∈RN×d.
+1 2 N
+(cid:16)(cid:110) (cid:111)(cid:17)
+To formalize the social relationship between nodes, let the m(l) = AGGREGATE(l) h(l−1) : v ∈ N (v ) , (2)
+existence of an edge between node i and node j be represented i j j i
+as 1, and the absence of an edge as 0. The adjacency matrix
+(cid:16) (cid:17)
+A ∈ RN×N of the graph G can be obtained, where A h(l) = UPDATE(l) h(l−1), m(l) , (3)
+ij i i i
+denotes the relationship between node i and node j. Based
+on A, we can derive its diagonal degree matrix D ∈ RN×N , where h(l) represents the feature vector of node i in layer l,
+i
+where D = (cid:80) A if i = j, otherwise D = 0. and UPDATE(l) (·) is the update function of the l-th layer,
+ij j ij ij
+Problem Formulation: The purpose of this work is to iden- which can be implemented by a neural network, such as an
+tify whether a given social account v ∈ V is a human or a bot, attention network or a multi-layer perceptron. By inputting
+i
+which is treated as a node classification task. Specifically, the the representation of node i from the previous layer and
+
+===== PAGE 4 =====
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021 4
+the information aggregated from neighbors into this function,
+the next layer representation of node i can be obtained.
+AGGREGATE(l) (·) is the aggregation function of the l-th
+layer, which usually adopts operations such as average, maxi-
+mum, and summation. By inputting the node representations in
+the previous layer of the neighbors of node i into this function,
+the aggregation vector m(l) of node i in the l-th layer can
+i
+be obtained. Next, the node representation containing network
+structure information is fed into a multi-layer perceptron with
+a softmax layer to identify the node category.
+Based on the message-passing mechanism, graph neural
+networks [29], [34], [35] can effectively utilize the structural
+and interactive information between nodes to detect social
+accounts, achieving superior results in social bot detection
+tasks. However, for isolated and sparsely linked nodes in
+social networks, GNNs suffer from performance degradation
+because of the lack of required social relationship information
+to enhance node representation.
+The major notations used in this paper are listed in Ap-
+pendix A. Before we start to analyze the human-bot network
+data, several key definitions to be used are described below.
+Connected Components (CC)1: In graph theory, a com-
+ponent (also known as connected component) is a maximal
+connected subgraph of an undirected graph G, and any two
+of its vertices are connected to each other. In this paper,
+we denote connected components as CC and the number of
+connected components as NumCC.
+Ego network: An ego network G (V , E ) is a subnetwork
+v v
+in a social network consisting of node v, named ego, and its
+first-order neighbors, where E and V denote the edge set and
+v v
+node set in the ego network, respectively.
+III. HUMAN-BOT NETWORK ANALYSIS
+To better motivate the core design of LGB, this section
+provides an empirical analysis of a popular social network,
+TwiBot-22 [15], which includes both humans and bots. Specif-
+ically, we investigate the comparative efficacy of LMs and
+GNNs for nodes with varying numbers of neighbors in Sec-
+tion III-A. Subsequently, we explore the structure of social re-
+lationships and examine their correlation with the distribution
+of account categories, thereby underscoring the significance
+of network structure in social bot detection, as detailed in
+Section III-B.
+92
+88
+84
+80
+76
+0 1 2 3 4 5 6 > 6
+Number of Neighbors
+)%(ycaruccA
+of the nodes are isolated, and approximately 24.71% of the
+nodes have only one neighbor. In contrast, nodes with more
+than ten neighbors account for only 8.2%. This indicates a
+significant presence of isolated nodes and nodes with few links
+in the social network. For graph-based methods, isolated nodes
+can cause the aggregation vector m(l) = 0 in (2) and (3),
+i
+which degenerates the GNN into a multi-layer perceptron and
+weakens its detection performance.
+In such a case, a powerful representation model for node
+features becomes a more promising choice. Motivated by the
+strong representation modeling capability of LMs [36]–[39],
+we perform supervised fine-tuning to align them to the social
+bot detection task, and experimentally compare the detection
+accuracy of LMs and GNNs for nodes with different numbers
+of neighbors. Specifically, RoBERTa [32] and GIN [40] are
+chosen for LMs and GNNs in our experiments, respectively.
+The results are plotted in Fig. 2.
+The comparison reveals that for isolated nodes and nodes
+with only one neighbor, the LM achieves higher detection
+accuracy. In contrast, for nodes with more than two neighbors,
+the GNN performs better. This can be attributed to the fact
+that for isolated nodes and nodes with few neighbors, the
+advantage of GNNs in modeling graph structure information
+diminishes due to the lack of social relationships. Meanwhile,
+LMs, having absorbed extensive social semantic knowledge
+during pre-training, can transfer this knowledge effectively
+through supervised fine-tuning, thereby producing informative
+representations for isolated and sparsely linked nodes, which
+benefits bot detection. As the number of neighbors increases,
+GNNs can effectively leverage social relationships to aggregate
+information from neighbors to the central node, thereby en-
+hancing node representation and improving detection accuracy.
+For nodes with more than six neighbors or exactly four
+neighbors, as shown in Fig. 2, the presence of more edges may
+introduce noise from neighbors, causing some performance
+fluctuations. However, the overall trend shows that as the
+number of neighbors increases, GNNs consistently outperform
+LMs in detection accuracy. The importance of structural
+information in social relationships will be further examined
+in Section III-B.
+Based on the above analysis, we conclude that for isolated
+nodes and nodes with few neighbors, LMs can achieve more
+effective detection by understanding the semantic information
+GNN of social accounts; as the number of neighbor nodes increases,
+LM
+GNNs can achieve higher detection performance by capturing
+network structure information. These findings suggest that
+combining LMs and GNNs to exploit both social semantics
+and network structure can enhance detection performance.
+B. Structural Analysis of Social Relationships
+In Section III-A, we have analyzed the impact of the
+Fig. 2. LM vs. GNN for nodes with different numbers of neighbors. X-axis: number of neighbors (i.e., different numbers of edges) on
+the number of neighbors; Y-axis: the detection accuracy of models. detection performance. Inspired by structural diversity [25],
+A. Comparative Analysis of LMs and GNNs [26], which suggests that different social relationship struc-
+tures affect users’ behavior differently, we explore the rela-
+By analyzing the neighbor distribution of nodes in the social
+tionship between the structure of a user’s friend circle and
+network depicted in Fig. 1, we observe that up to 30.62%
+its bot probability below. Specifically, we first export users’
+1https://en.wikipedia.org/wiki/Component (graph theory) ego networks, which are the induced subgraphs formed by
+
+===== PAGE 5 =====
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021 5
+14
+12
+10
+8
+6
+4
+1 2 3 4 5
+NumCC of Human Neighbors
+)%(ytilibaborP
+toB
+23
+5-neighbors
+4-neighbors 20
+3-neighbors
+2-neighbors 17
+14
+11
+8
+5
+1 2 3 4 5
+NumCC of Bot Neighbors
+(a)
+)%(ytilibaborP
+toB
+17
+5-neighbors
+4-neighbors 14
+3-neighbors
+2-neighbors
+11
+8
+5
+2
+1 2 3 4 5 6 7 8 9
+NumCC of Total Neighbors
+(b)
+)%(ytilibaborP
+toB
+9-neighbors 5-neighbors
+8-neighbors 4-neighbors
+7-neighbors 3-neighbors
+6-neighbors 2-neighbors
+(c)
+Fig. 3. Social relationship structure analysis. The Y-axis represents bot probability, and the X-axis indicates the number of connected components (NumCC)
+of (a) human neighbors, (b) bot neighbors, or (c) total neighbors.
+their friend circles. Next, we count the number of connected • Aligning LMs to the social account detection task through
+components (NumCC) of human neighbors (Fig. 3a), bot supervised fine-tuning enables them to fully exploit the tex-
+neighbors (Fig. 3b), and total neighbors (Fig. 3c) in ego tual semantics of accounts, thereby achieving effective de-
+networks with varying numbers of friends, and analyze users’ tection of isolated and less-linked nodes compared to graph-
+bot probability under different NumCC. Our analysis yields based methods. While, as the number of edges connected to
+several intriguing discoveries: nodes (i.e., the number of neighbors) increases, graph-based
+CC Analysis for Human Neighbors. Fig. 3a shows that methods can achieve more effective account detection than
+the bot probability decreases as the number of connected LMs by capturing network structure information.
+components (NumCC) of human neighbors increases. In social • By analyzing the relationship between the structure of users’
+activities, social bots influence humans’ behavior through the social relationships and the probability that they are social
+spread of misinformation, whose scope is determined by the bots, we find that the probability of social accounts being
+time and speed of transmission. A network structure with bots is negatively correlated to the number of connected
+fewer connected components is more cohesive, leading to components formed by humans or bots in their friend circle.
+faster propagation of information. For propagation time, social
+IV. LGB FRAMEWORK
+researchers find that more structural diversity makes more
+Through the analysis of social network data, as illustrated
+knowledge sharing [41], allowing people to quickly verify the
+in Fig. 1, we have identified numerous isolated and sparsely
+correctness of messages. Therefore, in the ego networks of
+linked nodes that can weaken graph-based approaches. To
+human neighbors, more connected components are not good
+address this issue, inspired by the comparative experiments and
+for the spread of misinformation and bots’ survival.
+data analysis in Section III, we propose a Language model and
+CC Analysis for Bot Neighbors. Fig. 3b illustrates that
+Graph neural network-driven social Bot detection framework
+the bot probability decreases as the number of connected
+(LGB). This framework jointly utilizes LMs and GNNs to
+components (NumCC) of bot neighbors increases. Studies find
+capture bimodal information of node semantics and network
+that bots collaborate to spread misinformation and carry out
+structure, achieving high-performance social bot detection.
+malicious behavior, reducing the risk of being detected [42].
+Fewer connected components make the bots’ networks more A. Framework Overview
+cohesive, facilitating bot collaboration. So, in the ego networks
+The overall system architecture of LGB is depicted in Fig. 4.
+of bot neighbors, more connected components are not good for
+It consists of two subsystems: offline model training and online
+the interaction of bots and their gang sabotage.
+real-time detection. These subsystems collaborate through
+CC Analysis for Total Neighbors. Fig. 3c shows that
+continuous data interaction to enable real-time social account
+the bot probability decreases as the number of connected
+detection with a smart feedback function while enhancing the
+components (NumCC) of total neighbors increases. This is
+system’s scalability to meet the needs of distributed deploy-
+the superposition of ego networks of human neighbors and bot
+ment. The working principles of the system are as follows:
+neighbors, indicating that less structural diversity facilitates the
+Offline Training. This part provides model offline training
+spread of misinformation and bot collaboration.
+and data preprocessing services. As highlighted in the offline
+The above structural analysis of social relationships reveals
+training subsystem of Fig. 4, model training primarily involves
+an inherent link between bot probability and social relationship
+the optimization of LMs and GNNs, allowing for the flexible
+structure, underscoring the significance of social relationship
+deployment of various models and training strategies. Data
+structure in social account detection tasks. This finding moti-
+preprocessing services include data collection, processing,
+vates us to integrate social relationship structure with account
+and persistence, with the data source collected from major
+semantics to improve the detector’s performance.
+social platforms such as Weibo and Twitter/X. Additionally,
+C. Summaries LGB offers data acquisition and storage tools and information
+processing components, all supporting distributed deployment.
+We get the following discoveries from the above analyses:
+
+===== PAGE 6 =====
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021 6
+Online Detection
+Online Detection Model
+Social Graph
+Smart
+Feedback
+Online Manager
+Social
+Account
+yreuQ stluser
+Offline Training
+GNN Fine-tuning Stage Update regularly
+Detection
+Pre-trained model Results
+Labeled
+GNN Pre-training Stage
+Language Model Data
+Save
+Feature matrix Supervised Fine-tuning
+Supervised Fine-tuned Labeled data Detection Tuned
+Language Model Results
+Frozen
+User textual sequences
+Textual Unlabeled Update Data Preprocessing
+sequences Data feedback
+results
+Social Data Source
+… Data Provider
+Unlabeled data
+Fig. 4. The overall system architecture of LGB primarily comprises two subsystems: offline training and online detection. These subsystems work collaboratively
+through data interaction.
+Online Detection. This part is mainly responsible for online information, including account attributes, tweets, comments,
+real-time account detection and processing user feedback likes, and reposts, is gathered for each node within the
+information. Specifically, logged-in users can submit feedback constructed social graph.
+to the system for questionable account detection results, which, 2) Construction of Unified User Textual Sequences: During
+if validated, is updated in the detection results database. The the phase of social graph collection and construction, various
+updated data is then provided to the offline training subsystem user attributes, personal descriptions, and tweets are collected
+for the next round of model training. Subsequently, the model, and stored. To conform to the text input requirements of LMs,
+which is regularly trained offline, is sent back to the online we create unified textual sequences for users. Initially, user
+detection subsystem to update its detection model, ensuring attribute information (such as name, fans count, and friend
+the latest knowledge is applied to online account detection. count), personal descriptions, and tweets are extracted from
+Besides the account detection functionality on the web page, the raw data and separately organized. These components are
+APIs supporting batch detection are provided, allowing social then merged into cohesive sequences, as illustrated in Fig. 5,
+applications to incorporate malicious account identification where User profile, Description, and Tweet represent the
+capabilities for safer online socialization. initial symbols denoting user attributes, personal descriptions,
+In the following sections, data preprocessing and model and tweets, respectively. The delimiter < /s > indicates the
+training of the offline subsystem are detailed in Section IV-B boundary between segments.
+and Section IV-C, respectively. Section IV-D then introduces
+the principles of real-time online detection and smart feedback. User profile: Name: XXX </s> Created time: 2013-04-01 09:43:01 </s>
+Location: This is an address </s> protected: False </s> Fans count: 187
+B. Data Preprocessing </s> Friend count: 551 </s> Tweet count: 1470 </s> List count: 3 </s>
+verified: False </s>
+The data preprocessing module is designed to perform Description: This is a personal description. </s>
+essential functions such as data collection, processing, and Tweet: @USER Hi , please send me an invite if any are left </s> @USER
+storage, thereby constructing a comprehensive social informa- Just leaving this here in case you missed it HTTPURL </s> @USER
+@USER #HASHTAG Huge inspiration to novices in DTC as we embark
+tion database.
+on our startup journey ! </s> ...
+1) Graph Collection: The process of social graph collec-
+tion comprises three key stages: seed user selection, graph Fig. 5. The unified user textual sequence.
+expansion, and feature alignment. Given that social user information often contains noise such
+Seed User Selection. The seed user selection phase estab- as emoticons, mentions, hashtags, and web addresses, which
+lishes a foundational pool of influential social users spanning may hinder LMs’ comprehension of textual content, noise
+ten social domains. From this pool, a subset of seed users reduction techniques are applied. Initially, TweetTokenizer
+is chosen to form a seed set S. Graph Expansion. Based [43] is employed to tokenize user text information. Subse-
+on the selected seed users, the breadth-first search method quently, emoticons, mentions, hashtags, and web addresses
+is employed to expand the social graph. Initially, seed users are replaced with text descriptions of emoticons, @USER,
+s ∈ S are integrated into the graph as unique nodes during #HASHTAG, and HTTPURL, respectively. This process yields
+i
+the first iteration. Subsequently, at each iteration, the followers unified textual sequences, which are then fed into supervised
+and followed users of each node are incorporated into the fine-tuned LMs for encoding to generate user feature matrices.
+graph, along with their corresponding follow relationships. These textual sequences are stored in the offline system’s
+Feature Alignment. During this stage, comprehensive social database for subsequent model training and account detection.
+
+===== PAGE 7 =====
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021 7
+(1) LM Supervised Fine-tuning (3) GNN Fine-tuning
+Textual Sequence
+User profile: ______
+Description: ______ LM
+Tweet: ___________
+Remove Edges 𝑖
+GGNNNNLLaayyeerr
+𝑖 Contrastive
+Learning
+Remove Edges
+Unlabeled Social Graph
+(2) GNN Pre-training
+Follower Following Positive pair Inter-view negative pair Intra-view negative pair Tuned Frozen
+erahS
+Textual Sequence
+User profile: ____
+Description: ____ LM
+User profile: ____
+MLP Tweet: _________
+Description: ____ LM ℒ Account
+!"
+Tweet: _________ Semantics
+Pre-trained MLP
+Unified Textual 𝑖 ℒ
+Sequences Graph GNN #$$
+Structure
+Labeled Social Graph
+Account
+Semantics
+GNN Layer
+𝑖
+GGGNNNNNNLLLaaayyyeeerrr
+Fig. 6. Illustration of the model architecture of LGB: (1) The LM is fine-tuned with supervision based on online annotated data to better align with the social
+bot detection task, thereby enhancing its understanding of social semantics. (2) The GNN acquires valuable knowledge from unlabeled data through graph
+contrastive learning. (3) The GNN is fine-tuned to improve the overall detection performance by integrating the bimodal information of account semantics
+and network structure.
+Each data query is routed to the data provider, and if the the GNN and user feedback, is utilized for supervised fine-
+requested data record is absent in the database, real-time data tuning of the LM, aligning it with the social account detection
+collection and processing are initiated. task. The integration of network structure knowledge and
+user feedback into the LM is depicted in the upper left of
+Fig. 6. Specifically, unified textual sequences S are processed
+C. Model Learning
+by a language model LM to generate node representation
+The goal of offline model training is to extract semantic matrix X, which is then fed into a multi-layer perceptron with
+information from social accounts and structural information softmax to produce prediction results Yˆ :
+from social relationships using both collected unlabeled data Yˆ = softmax (MLP (X)) , X = LM (S) . (4)
+and online labeled data. This process aims to enhance the
+The LM is optimized and aligned to the social account
+detection of social accounts. As illustrated in the upper left
+detection task with the following objective:
+part of Fig. 4, offline model training is divided into two parts:
+1 (cid:88) (cid:16) (cid:17)
+LM and GNN. L
+LM
+=
+|Ω |
+CrossEntropy Y
+i
+, Y(cid:98)
+i
+, (5)
+In the LM part, supervised fine-tuning is employed on online l i∈Ωl
+annotated data to align the LM to the account detection task. where Y
+i
+and Y(cid:98)
+i
+represent the ground truth and prediction
+The GNN part is bifurcated into two stages: pre-training with result for node i, respectively. Ω denotes the annotated data
+l
+unlabeled data and fine-tuning with online labeled data. This incorporating network structure knowledge learned by GNN
+multimodal staged offline training architecture enables the and user feedback.
+model to effectively mine semantic information from nodes GNN pre-training based on GCL. Building on the success
+and structural information from social networks, leveraging of CBD [29] in addressing the scarcity of annotated data in
+both large-scale unlabeled data and continuously growing on- social bot detection through graph contrastive learning (GCL),
+line annotated data. Consequently, the model achieves efficient a similar approach is employed in the GNN pre-training stage
+detection of both sparsely and densely linked nodes. The of LGB. This method leverages GCL to extract valuable in-
+subsequent sections detail the LM and GNN parts of LGB. sights from newly collected unlabeled data, thereby enhancing
+Supervised fine-tuning of language models. Inspired by the model’s capacity to capture structural information within
+experimental results that demonstrate the effectiveness of social networks, as illustrated in the lower part of Fig. 6.
+supervised fine-tuning of LMs in detecting isolated and less- Initially, the supervised fine-tuned LM encodes unified user
+linked nodes (Section III-A), the offline subsystem initiates textual sequences to produce the user feature matrix X. This
+each training round using annotated data derived from online matrix, combined with the adjacency matrix A representing
+user feedback and detection results (detailed in Section IV-D). the network structure, forms a social graph G = (X, A) as the
+This data, enriched with network structure knowledge from GNN model input. By randomly removing edges from A, two
+
+===== PAGE 8 =====
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021 8
+(cid:16) (cid:17) (cid:16) (cid:17)
+views G(cid:101)1 = X, A(cid:101)
+1
+and G(cid:101)2 = X, A(cid:101)
+2
+are generated from concatenate the outputs of the LM and GNN. This combined
+the graph G. These views are fed into the GNN to obtain the output is then processed through an MLP for information
+feature matrices incorporating network structure information: fusion, leading to the final predicted result Yˆ for the nodes,
+(cid:16) (cid:17) obtained via the softmax function:
+H
+(m)
+= GNN X, A(cid:101)
+m
+∈ RN×d, (6)
+Yˆ = softmax (MLP (Concat (X, H))) , (11)
+where A(cid:101)
+m
+and H
+(m)
+denote the adjacency matrix and node
+where Concat (·, ·) is the concatenation function. The opti-
+representation of G(cid:101)m (m = 1, 2), respectively. GNN(·) repre-
+mization goal during the GNN fine-tuning stage is to minimize
+sents the GNN encoder.
+For the representations H and H of the two views,
+the cross-entropy loss between the predicted result Y(cid:98)
+i
+and the
+(1) (2)
+ground truth Y for each node, which is formulated as follows:
+the goal of contrastive learning is to maximize the distinction i
+between representations of the same nodes and other nodes. 1 (cid:88) (cid:16) (cid:17)
+Specifically, the representations H i,(1) and H i,(2) of the same
+L
+GNN
+=
+|Ω l |
+CrossEntropy Y
+i
+, Y(cid:98)
+i
+, (12)
+node i form a positive pair, while representations of different i∈Ωl
+nodes form negative pairs. The InfoNCE [44] loss for any where Ω represents annotated data based on online detec-
+l
+node i’s positive pair is computed as follows: tion results and user feedback, encompassing node semantic
+knowledge learned by the LM and user feedback information.
+L (cid:0) H , H (cid:1) = − log
+eSim(Hi,(1),Hi,(2) )/τ
+, (7) Through the above offline model training, we develop a
+i,(1) i,(2) eSim(Hi,(1),Hi,(2) )/τ
++ N eg model that integrates account semantics and network structure
+multi-modal information. This model is regularly deployed to
+where τ is the temperature hyperparameter, and Sim(·, ·)
+the online system for ongoing account detection, as discussed
+denotes the similarity function (e.g., cosine similarity). The
+in Section IV-D below.
+term Neg represents the penalty from negative pairs:
+N eg = (cid:88) eSim(Hi,(1),Hj,(2) )/τ + eSim(Hi,(1),Hj,(1) )/τ , (8) D. Online Detection and Smart Feedback
+i̸=j The online detection subsystem primarily consists of the
+where the first part penalizes inter-view negative pairs, and the online manager and the detection model (shown in the right
+second part penalizes intra-view negative pairs. half of Fig. 4), offering two key services: real-time social
+Given the symmetry of the two views, their loss functions account detection and smart feedback. The principles and
+are similar. The total loss for the graph pre-training stage is: workflows of these services are elaborated below.
+1 (cid:88) (cid:2) (cid:0) (cid:1) (cid:0) (cid:1)(cid:3) Online real-time social account detection. For accounts
+L = L H , H + L H , H ,
+GCL 2|Ω | i,(1) i,(2) i,(2) i,(1) suspected of being bots in social networks, users can input
+u
+i∈Ωu them into the detection box and click the detection button on
+(9)
+the detection system website (accessible at https://botdetection.
+where Ω indicates the unlabeled data collected in the offline
+u aminer.cn/robotmain) to initiate detection, as depicted in
+subsystem.
+Fig. 7. When the online manager receives an account detection
+GNN fine-tuning based on multi-modal fusion. The pre-
+request, it first checks if the detection result for that account
+trained GNN model is fine-tuned using annotated data derived
+already exists in the detection results database. If the result is
+from online detection results and user feedback, which will
+not found, the manager requests relevant information about the
+be detailed in Section IV-D. This fine-tuning process aims
+account from the data provider and forwards it to the online
+to further align the model with the social bot detection task.
+detection model for real-time analysis. Specifically, the ego
+To effectively detect isolated and sparsely linked nodes in
+network G of the detected target node is constructed in real-
+social networks, we utilize a multi-modal fusion approach at
+time and analyzed by the online detection model. Based on the
+this stage, integrating semantic knowledge learned by the LM
+social network G, the model assesses the target node and its
+into the GNN. As depicted in the upper right part of Fig.
+neighbors, ultimately generating a risk detection report for the
+6, the annotated data based on online detection results and
+entire network, which is displayed in the lower part of Fig. 7.
+user feedback is fed into both the supervised fine-tuned LM
+In addition, these detection results are stored in the detection
+and the pre-trained GNN model to extract semantic and graph
+results database for use in subsequent rounds of offline model
+structure information, respectively. This process is represented
+training. This approach allows the online bimodal information
+as follows:
+of account semantics and network structure to be continuously
+H = GNN (X, A) ; X = LM (S) , (10) incorporated into the offline model training process, thereby
+enhancing its performance.
+where S represents the users’ textual sequences from the
+online detection results database. These sequences are encoded Smart feedback. Recent research [21] has revealed that social
+by the LM to produce the users’ feature matrix X. By inputting bots are rapidly evolving to evade detection. To counter this,
+the adjacency matrix A and the feature matrix X into the we have introduced an online smart feedback function, as
+GNN model, we obtain the node representation H, which shown in the middle part of Fig. 7. This function enables
+incorporates network structure information. the model to continuously acquire the latest bot information
+To further enhance the model’s representation capability by provided by expert users, facilitating quick self-upgrades for
+fusing node semantics and social relationship structure, we effective detection of new bots. Specifically, when expert users
+
+===== PAGE 9 =====
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021 9
+APPNP [50], LINKX [51], and H2GCN [52]; two recently re-
+leased state-of-the-art social bot detection models: SIRAN [28]
+and CBD [29]; two popular large-scale language models
+(LLMs): Vicuna-7B-v1.5 [53] and ChatGLM3-6B [36], [54].
+The same unified user textual sequences, as shown in Fig. 5,
+are used as input for all experiments. More details of the
+baselines are described in Appendix B.
+Implementation details. Based on the directional attributes
+of social relationships between users, we construct the social
+network data as a directed graph, where the content of each
+node is the user’s social information described by the unified
+user textual sequence, which is shown in Fig. 5. The AdamW
+optimizer [55] is employed during model training and opti-
+mization. For the LM part of the LGB model, weight decay
+and learning rate in the supervised fine-tuning phase are 10−2
+and 10−5 respectively. For the GNN part of the LGB model,
+weight decay is 10−5, and the learning rate is set differently in
+Fig. 7. Functional demonstration of LGB. The personal profile module different training stages. Specifically, in the pre-training stage,
+displays the basic information of the detected account. The bot probability the learning rate is 10−3 on both TwiBot-22 and TwiBot-
+module indicates the likelihood that this user is a social bot. The relationship 20, and in the fine-tuning stage, it is 5 × 10−4 and 10−2
+network illustrates the detection results for the account and its neighbors.
+High-risk bot accounts are marked in red, while other accounts are marked on TwiBot-22 and TwiBot-20, respectively. During the model
+in blue. training process, early stopping techniques and dropout [56]
+question the model’s detection results, they can submit feed- are employed to avoid overfitting.
+back to correct them. This feedback undergoes a review pro- We apply grid search to adjust the hyperparameters of the
+cess by both machines and humans. If approved, the feedback LGB model to get the best model configuration for account
+is recorded in the detection results database and incorporated detection. Specifically, the GNN part of the model adopts
+into the next round of offline training, allowing the model two hidden layers, each of which has 512 channels. During
+to learn knowledge from human experts. The effectiveness of GNN pre-training, the temperature parameter τ is 0.4, and
+this smart feedback mechanism will be evaluated through an on TwiBot-22, the probabilities of dropping edges for the
+online smart feedback study in Section V-C. two views are 0.2 and 0.4, and on TwiBot-20, they are 0.4
+and 0.6. Vicuna-7B-v1.5 and ChatGLM3-6B adopt the pre-
+V. EXPERIMENTS trained model parameters published in [53] and [36], [54],
+A. Experimental Setup respectively, and test them in the zero-shot setting. Model
+configurations for other baselines follow previous work [28],
+Datasets. To verify the performance of LGB on real social [29], [51]. All experiments are performed on NVIDIA A100
+networks, we use two independent and publicly available 80GB GPU, where PyTorch [57] and PyTorch Geometric [58]
+datasets collected from real social networks, namely TwiBot- are used in the experimental implementation.
+22 [15] and TwiBot-20 [30]. Their statistical information is
+B. Overall Results
+shown in Table I. We randomly select 81, 432 social bots and
+81, 433 normal users from TwiBot-22, constructing a sampling For comparative experiments, each experiment is run five
+set containing 162, 865 accounts in total. This set is randomly times with random weight initialization. The mean and stan-
+divided into training, validation, and test sets in a ratio of dard deviation (mean ± std%) on the test set are then calcu-
+7 : 2 : 1 to ensure the fairness of the experiments. For TwiBot- lated and presented in Table II. From the experimental results,
+20, we adopt the same data settings as in [30]. we have the following observations and discussions:
+(1) From the experimental results, our models LGB (GCN)
+TABLE I
+and LGB (GIN) achieve the best and second-best detection re-
+DATASET STATISTICS.
+sults, respectively. Additionally, the test results on two datasets
+Dataset Human Bot Nodes Edges Classes show that our models have achieved significant performance
+TwiBot-22 [15] 81,433 81,432 162,865 151,841 2 improvement. Specifically, our model LGB (GCN) improves
+TwiBot-20 [30] 5,237 6,589 229,580 33,716,171 2 the detection accuracy by 10.95% and 9.98% compared with
+SIRAN and MixHop, the best baseline models on TwiBot-20
+Baselines. In the comparative experiments, we use three and TwiBot-22, respectively.
+representative GNN models, namely, GIN [40], GCN [45], (2) For the general and advanced GNNs, our model LGB
+GAT [46], and the general language model RoBERTa [32] (GCN) outperforms the best baselines among them on TwiBot-
+to build the LGB model, and we compare them with twelve 22 and TwiBot-20 by 9.98% and 11.08% in accuracy, respec-
+baseline models. These baseline models include two gen- tively. This improvement is attributed to the enhanced semantic
+eral GNN models: GCN [45] and GIN [40]; six advanced information that helps the model effectively detect sparsely
+GNN models: GCNII [47], GPR-GNN [48], MixHop [49], linked nodes, thereby improving detection performance.
+
+===== PAGE 10 =====
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021 10
+TABLE II
+OVERALL RESULTS. BOLD AND UNDERLINE REPRESENT THE BEST AND SECOND BEST PERFORMANCE, RESPECTIVELY.
+Datasets TwiBot-22 TwiBot-20
+Method Accuracy F1-Score ROC-AUC Accuracy F1-Score ROC-AUC
+GCN 49.96 ± 0.00 66.63 ± 0.00 50.00 ± 0.00 57.80 ± 0.00 73.26 ± 0.00 50.00 ± 0.00
+GIN 68.42 ± 1.67 68.93 ± 2.80 68.40 ± 1.66 71.79 ± 1.00 77.30 ± 0.56 71.73 ± 0.96
+GCNII 68.91 ± 0.11 68.83 ± 0.54 68.90 ± 0.11 76.60 ± 0.51 80.86 ± 0.52 75.75 ± 0.72
+GPR-GNN 72.51 ± 0.15 74.63 ± 0.09 72.53 ± 0.14 76.18 ± 0.67 80.00 ± 0.27 75.41 ± 0.52
+MixHop 73.12 ± 0.09 75.04 ± 0.20 73.11 ± 0.09 76.11 ± 0.91 80.41 ± 0.59 75.66 ± 1.14
+APPNP 62.51 ± 1.41 58.78 ± 8.28 62.49 ± 1.42 65.13 ± 4.17 74.77 ± 0.88 61.55 ± 6.62
+LINKX 72.00 ± 0.06 74.47 ± 0.27 72.01 ± 0.06 62.88 ± 2.12 73.40 ± 0.94 60.59 ± 1.80
+H2GCN 72.24 ± 0.19 74.55 ± 0.20 72.27 ± 0.20 75.96 ± 0.55 81.02 ± 0.56 75.30 ± 0.42
+SIRAN 70.42 ± 0.06 71.42 ± 0.21 70.49 ± 0.15 76.69 ± 0.75 80.69 ± 0.63 75.83 ± 0.77
+CBD (GCN) 68.58 ± 0.34 69.40 ± 0.52 68.58 ± 0.34 68.78 ± 2.61 70.08 ± 0.61 68.78 ± 2.64
+CBD (GIN) 70.55 ± 0.38 71.33 ± 0.51 70.55 ± 0.37 76.48 ± 1.58 77.20 ± 1.55 77.41 ± 2.20
+Vicuna-7B-v1.5 50.74 ± 0.18 21.98 ± 0.22 50.39 ± 0.18 47.56 ± 0.78 50.93 ± 0.81 47.31 ± 0.78
+ChatGLM3-6B 49.60 ± 0.20 66.01 ± 0.04 49.93 ± 0.23 53.64 ± 0.17 69.73 ± 0.14 49.62 ± 0.17
+LGB (GAT) 80.30 ± 0.06 81.06 ± 0.05 80.30 ± 0.06 84.83 ± 0.52 87.33 ± 0.47 83.79 ± 0.53
+LGB (GIN) 80.33 ± 0.03 80.93 ± 0.03 80.33 ± 0.03 84.89 ± 0.68 87.16 ± 0.63 84.17 ± 0.63
+LGB (GCN) 80.42 ± 0.05 81.31 ± 0.08 80.42 ± 0.05 85.09 ± 0.51 87.44 ± 0.31 84.23 ± 0.71
+(3) For the two dedicated social bot detection models, our 66
+model LGB (GCN) can still achieve a large improvement in 64
+detection accuracy, that is, more than 13.99% and 10.95% 62
+60
+on TwiBot-22 and TwiBot-20 respectively, which indicates
+58
+the effectiveness of the fusion of network structure and node
+56
+semantics for the social bot detection task. 54
+(4) For the two popular LLMs, our model LGB (GCN) 52
+0 1 5 10 15 20
+achieves significant accuracy improvements of over 58.49% K-shot
+and 58.63% on TwiBot-22 and TwiBot-20, respectively, which
+demonstrates the effectiveness of the fusion of structural in-
+formation with enhanced semantics for detection performance
+improvement, which we will further verify in Section V-D.
+All these observations above suggest that our model can
+achieve a great improvement in the social bot detection task
+by effectively fusing structural and semantic information.
+C. Online Smart feedback Study
+To verify the effective detection of new social bots by
+our model with the assistance of the online smart feedback
+function, we conduct the following experiments. Specifically,
+we first prepare the LGB model trained on TwiBot-20, then
+randomly select only K samples of each category from the
+TwiBot-22 training set to continue training the LGB model,
+and then test it on the TwiBot-22 test set. From the exper-
+imental results in Fig. 8, we can observe that the detection
+accuracy of LGB on the TwiBot-22 test set shows a consistent
+upward trend with the increase of K, and there is no sign of
+slowing down. This should be attributed to the fact that the
+model learns similar semantic and structural knowledge as in
+TwiBot-22 during training on TwiBot-20. This knowledge can
+help the model quickly recognize new social bots. Meanwhile,
+the online smart feedback function will continuously inject the
+latest user feedback knowledge into the model, which together
+ensure the effective detection of constantly evolving bots.
+D. Ablation Study
+To verify the effectiveness of each part of LGB, we conduct
+ablation studies on TwiBot-22 and TwiBot-20, as follows:
+)%(ycaruccA
+LGB(GIN)
+LGB(GCN) LGB(GAT)
+Fig. 8. Online smart feedback study. X-axis: the number of random samples
+from each category in the TwiBot-22 training set; Y-axis: the detection
+accuracy of the model on the TwiBot-22 test set.
+• w/o LM Supervised Fine-tuning (SFT): During the training
+process of the LGB, no SFT of the LM is performed to
+align it to the social bot detection task.
+• w/o GNN Fine-tuning: During the training process of the
+LGB, the fine-tuning operation on the GNN is removed.
+• w/o GNN Pre-training: During the training process of the
+LGB, the pre-training operation of the GNN is removed.
+• w/o Concat: In the process of the LGB training, no concate-
+nation operation is used to fuse semantic information and
+network structure information.
+• w/ Average: In the process of the LGB training, the aver-
+aging operation is used to replace the concatenation to fuse
+semantic information and network structure information.
+• w/ Max: In the process of the LGB training, the maximum
+operation is used to replace the concatenation operation to
+fuse multimodal information.
+• w/ Supervised Fine-tuned LM: Only the supervised fine-
+tuned LM (i.e., RoBERTa) in the LGB model is used for
+account detection.
+From the results of the ablation experiments in Table III,
+the following observations can be obtained:
+(1) Replacing or removing any component of the full model
+results in performance degradation, demonstrating that each
+component contributes to the effectiveness of LGB.
+(2) From w/o LM Supervised Fine-tuning, we can see
+that using the LM without supervised fine-tuning during
+
+===== PAGE 11 =====
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021 11
+TABLE III
+ACCURACY OF ABLATION EXPERIMENTS. model performance, indicating that the network structure plays
+a role in improving the detection accuracy. In addition, we
+Ablation Settings TwiBot-22 TwiBot-20
+will further verify in Section V-E that when the node text
+LGB (GCN) (full model) 80.42 ± 0.05 85.09 ± 0.51 information is destroyed, the model can enhance its detection
+w/o LM Supervised Fine-tuning 69.19 ± 0.43 67.71 ± 2.16
+performance by fully mining the relationship information
+w/o GNN Fine-tuning 51.15 ± 12.28 54.74 ± 7.01
+w/o GNN Pre-training 80.26 ± 0.22 84.83 ± 0.41 contained in the network structure.
+w/o Concat 55.75 ± 12.77 72.76 ± 1.98
+w/ Average 56.04 ± 13.67 85.08 ± 0.49 E. Robustness Study
+w/ Max 55.95 ± 13.74 84.53 ± 0.57
+Existing social bot detection models usually rely on a large
+LGB (GIN) (full model) 80.33 ± 0.03 84.89 ± 0.68
+number of high-quality labeled data. However, due to the
+w/o LM Supervised Fine-tuning 70.45 ± 0.19 75.64 ± 1.73
+w/o GNN Fine-tuning 44.61 ± 6.05 43.36 ± 10.79 high cost of data acquisition and manual annotation and the
+w/o GNN Pre-training 80.02 ± 0.11 84.55 ± 0.13 bots’ rapid evolution, these needs cannot be met, resulting in
+w/o Concat 79.88 ± 0.22 84.00 ± 0.40
+degraded detector performance. Given this, we select the best
+w/ Average 80.08 ± 0.23 84.10 ± 0.70
+w/ Max 79.91 ± 0.29 84.47 ± 0.58 two LGB models to carry out robustness studies on TwiBot-20
+LGB (GAT) (full model) 80.30 ± 0.06 84.83 ± 0.52 to evaluate their robustness.
+w/o LM Supervised Fine-tuning 67.69 ± 0.51 68.89 ± 1.16 Label robustness study. Firstly, to simulate the scenario
+w/o GNN Fine-tuning 48.68 ± 2.90 42.12 ± 0.92
+where labels are scarce to verify the robustness of the model,
+w/o GNN Pre-training 80.24 ± 0.09 84.72 ± 0.67
+w/o Concat 55.81 ± 13.24 77.58 ± 1.20 we only randomly sample 0.1% − 1% of the labels from
+w/ Average 55.98 ± 13.58 84.44 ± 0.41 the training set for model training and then test it on the
+w/ Max 56.01 ± 13.58 84.64 ± 0.28
+test set. The experimental results are presented in Fig. 9a.
+w/ Supervised Fine-tuned LM 80.01 ± 0.15 84.70 ± 0.22 Edge robustness study. Secondly, given that bots evade
+detection by establishing social relationships with humans,
+the training of the GNN part significantly degrades the
+to verify the robustness of the model for the network struc-
+performance of the model, i.e., the detection accuracy on
+ture, we randomly sample 10% − 100% of the edges (i.e.,
+TwiBot-22 and TwiBot-20 decreases by 12.30%−15.70% and
+social relationships) from the network to carry out the edge
+10.90% − 20.43%, respectively. This decline is attributed to
+robustness studies. The experimental results are shown in
+the numerous isolated and less-linked nodes in the network.
+Fig. 9b. Feature robustness study. Thirdly, considering that
+Without the injection of enhanced semantic information, the
+the creators of social bots deliberately miss or forge account
+LGB model cannot distinguish them effectively. This further
+attribute information to increase the difficulty of detection,
+verifies the importance of fusing node semantics and network
+we conduct feature robustness studies to verify the robustness
+structure for account detection tasks.
+of the model to perturbations of input user text information.
+(3) From w/o GNN Fine-tuning, we observe that with-
+Specifically, for each user’s text sequence in the training set
+out fine-tuning the GNN, the model performance decreases
+(shown in Fig. 5), we randomly remove 10% of the sequence
+greatly, i.e., the performance drops by 36.40% − 44.47% and
+with a probability of 10% − 100%. Then we train the model
+35.67% − 50.35% on TwiBot-22 and TwiBot-20, respectively.
+using these corrupted sequences and evaluate it on the test set.
+This decline occurs because the semantic information input by
+The results are shown in Fig. 9c.
+the LM and the structural information extracted by the GNN
+Analysis and discussion. Based on the experimental results
+are not fused and aligned to the account detection task through
+in Fig. 9, we have the following analyses and discussions:
+fine-tuning. Therefore, the effective fusion of multi-modal
+(1) From the results of robustness experiments, it can be seen
+information is crucial for improving the model performance.
+that our model consistently outperforms the baseline models,
+Meanwhile, we further explore it in the following experiments
+which proves that our model is more robust. (2) For the
+w/o Concat, w/ Average, and w/ Max.
+label robustness study, when the training sample labels are
+(4) From w/o GNN Pre-training, removing the pre-training extremely scarce, that is, 0.1% − 1% of the training labels, the
+stage from the GNN training process will cause the model performance of LGB can still consistently exceed that of the
+performance to degrade, which proves that it has a certain baselines by a large margin (more than 2.64%) and shows
+contribution to the model detection performance. Moreover, a trend of continuous growth. This is due to the valuable
+our label robustness experiments in Section V-E further verify knowledge learned by the GNN model from unlabeled data
+the valuable knowledge learned from unlabeled data in the in the pre-training stage, which helps the model reduce its
+GNN pre-training stage helps reduce the model’s dependence dependence on labels and achieve performance improvements
+on labels to achieve performance improvement in the case of with fewer labels. (3) For the edge robustness study, our
+extreme lack of labels. model always outperforms the baseline models by a large
+(5) From w/o Concat, w/ Average, and w/ Max, we observe margin (more than 10.11%) with various edge percentages,
+that removing or replacing the concat operation in the GNN and the performance is more stable. This is because when
+fine-tuning stage results in varying degrees of degradation in the number of edges is small, the LM can effectively extract
+the performance of the model, illustrating the effectiveness of semantic knowledge from node text sequences to enhance
+the concat operation for multi-modal information fusion. detection performance. (4) For the feature robustness study,
+(6) From w/ Supervised Fine-tuned LM, we find that the performance of LGB is consistently better than that of
+removing the GNN part leads to a certain degradation of the the baselines by a large margin (more than 9.10%), and the
+
+===== PAGE 12 =====
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021 12
+69
+66
+63
+60
+57
+54
+0 1 2 3 4 5 6 7 8 9 10
+Label Percentage(‰)
+)%(ycaruccA
+86
+84
+82
+80
+LGB(GCN) 78
+LGB(GIN)
+SIRAN 76
+MixHop
+74
+10 20 30 40 50 60 70 80 90100
+Edge Percentage(%)
+(a)
+)%(ycaruccA
+86
+84
+82
+LGB(GCN)
+LGB(GIN) 80
+SIRAN
+MixHop 78
+76
+74
+10 20 30 40 50 60 70 80 90100
+Probability of Drop Text(%)
+(b)
+)%(ycaruccA
+LGB(GCN)
+LGB(GIN)
+SIRAN
+MixHop
+(c)
+Fig. 9. Robustness study. Y-axis: the detection accuracy of the model on the TwiBot-20 test set; X-axis: (a) the proportion of sample labels, (b) the proportion
+of edges sampled from the TwiBot-20 training set, and (c) the probability of randomly dropping 10% of each user’s text sequence.
+performance is more stable. This is because when the textual this method aggregates the information from neighbors to
+sequences of nodes are destroyed, the GNN model can still the central node to enhance the representation capability for
+ensure effective detection of social accounts by extracting stronger detection performance. For example, Ali Alhosseini et
+structural information from the network. al. [65] use graph convolutional networks (GCN) to learn low-
+dimensional representations of nodes for bot detection. Zhou
+VI. RELATED WORK OF SOCIAL BOT DETECTION et al. [28] design a semi-supervised initial residual relation
+attention networks (SIRAN), which improves the model per-
+Based on the way social data is used, social bot detection
+formance by employing a heterophily-aware relation attention
+can be divided into the following three categories: feature-
+strategy. However, our research reveals that about 55.34% of
+based, content-based, and graph-based approaches.
+nodes in social networks are either isolated or have only one
+Feature-based approaches: Crowdsourcing and statistical
+neighbor, as shown in Fig. 1. For the detection of these nodes,
+learning approaches based on feature engineering are em-
+due to the lack of social relationships, it is impossible to
+ployed for account detection by extracting features such as
+effectively aggregate social information to obtain enhanced
+attribute information [16], tweets [19], [20], and social behav-
+node representation, resulting in the performance of traditional
+iors [17], [18] of users. Recent work focuses on improving
+graph-based approaches being significantly weakened. These
+the performance of feature-based detectors through feature
+sparsely linked nodes contain hidden bots that will be quickly
+selection [59], multiple feature fusion [60], and extraction of
+activated to establish links with humans when performing
+balanced distribution features [61]. However, such methods are
+malicious tasks to spread false information and engage in
+vulnerable to feature forgery attacks [21], [27].
+malicious activities. These covert and harmful bots pose new
+Content-based approaches: Compared with feature-based
+challenges to the account detection task. Therefore, the main
+approaches, inspired by the fact that social bots often achieve
+purpose of this work is to explore a more effective detection
+their malicious purposes through the dissemination of fake
+method for sparsely linked bots in social networks.
+tweets, content-based approaches mainly focus on tweet con-
+tent. Such methods leverage content analysis technology to
+evaluate the authenticity and intent of tweets for bot detec-
+VII. CONCLUSION
+tion. For example, bidirectional Long Short-Term Memory In this paper, we focus on the task of social bot detection.
+(BiLSTM) is used to extract content features from tweets By analyzing real-world social network data, we find that there
+for bot detection [22]. Heidari et al. [62] use Embeddings are a large number of isolated and poorly linked nodes, posing
+from Language Models (ELMo) [63] to encode users’ tweets a significant challenge to graph-based detection methods. To
+to obtain better representations. Recent research in this area solve this issue, we propose a novel social bot detection frame-
+combines tweet content analysis with information such as work LGB, which comprises two main parts: GNN and LM.
+user attributes [60] or geographical location [64] for account Specifically, first, the unified user text, constructed from social
+detection. However, the recent rapid development of LLM account information, is fed into the LM for supervised fine-
+applications, such as ChatGPT, has enhanced the creative tuning to better understand social account semantics. Then,
+capabilities of social bots, posing significant challenges to the node representations encoded by the supervised fine-tuned
+content-based detection approaches. LM are input into the pre-trained GNN to further enhance
+Graph-based approaches: Different from content-based and them by injecting network structure information. Finally, the
+feature-based approaches, inspired by the important role LGB model improves its ability for account detection by
+played by the strength [24] and structural diversity [25], [26] of fusing information from two modalities: node semantics and
+social relationships in the spread of false information, graph- network structure. Meanwhile, to combat the rapid evolution
+based approaches treat social accounts as nodes and social of bots, at the system architecture level, we design a smart
+relationships as edges to model social networks for bot de- feedback function, enabling the model to evolve continually by
+tection. Specifically, through the message-passing mechanism, incorporating feedback information from online expert users,
+
+===== PAGE 13 =====
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021 13
+thereby further enhancing its account detection capabilities. [17] M. Sayyadiharikandeh, O. Varol, K.-C. Yang, A. Flammini, and
+Extensive experiments on two real-world social bot detection F. Menczer, “Detection of novel social bots by ensembles of specialized
+classifiers,” in Proceedings of the 29th ACM international conference
+benchmarks demonstrate that LGB consistently outperforms
+on information & knowledge management, 2020, pp. 2725–2732.
+state-of-the-art baselines. To better help people identify mali- [18] C. Cai, L. Li, and D. Zengi, “Behavior enhanced deep bot detection in
+cious social bots and promote social safety, we have released social media,” in 2017 IEEE International Conference on Intelligence
+and Security Informatics (ISI). IEEE, 2017, pp. 128–130.
+LGB online, which receives widespread attention.
+[19] M. Heidari, H. James Jr, and O. Uzuner, “An empirical study of machine
+Limitation and future work: Because of the high data learning algorithms for social media bot detection,” in 2021 IEEE Inter-
+acquisition costs and the different distribution of user data national IOT, Electronics and Mechatronics Conference (IEMTRONICS).
+IEEE, 2021, pp. 1–5.
+across various social platforms, joint detection across multiple
+[20] Y. Wang, C. Wu, K. Zheng, and X. Wang, “Social bot detection using
+platforms remains an open issue in this field, and LGB does tweets similarity,” in International conference on security and privacy
+not yet support this capability. We will study it in future work. in communication systems. Springer, 2018, pp. 63–78.
+[21] S. Cresci, “A decade of social bot detection,” Communications of the
+ACM, vol. 63, no. 10, pp. 72–83, 2020.
+REFERENCES [22] F. Wei and U. T. Nguyen, “Twitter bot detection using bidirectional long
+short-term memory neural networks and word embeddings,” in 2019
+First IEEE International conference on trust, privacy and security in
+[1] Wikipedia, “Social bot,” 2023, https://en.wikipedia.org/wiki/Social bot, intelligent systems and applications (TPS-ISA). IEEE, 2019, pp. 101–
+Accessed: 2023-05-30. 109.
+[2] C. Shao, G. L. Ciampaglia, O. Varol, K.-C. Yang, A. Flammini, and [23] O. AI, “New ai classifier for indicating ai-written text,” 2023, https:
+F. Menczer, “The spread of low-credibility content by social bots,” //openai.com/blog/new-ai-classifier-for-indicating-ai-written-text/, Ac-
+Nature communications, vol. 9, no. 1, pp. 1–9, 2018. cessed: 2024-03-21.
+[3] M. Azzimonti and M. Fernandes, “Social media networks, fake news, [24] E. Bakshy, I. Rosenn, C. Marlow, and L. Adamic, “The role of
+and polarization,” European journal of political economy, vol. 76, p. social networks in information diffusion,” in Proceedings of the 21st
+102256, 2023. international conference on World Wide Web, 2012, pp. 519–528.
+[4] M. Cai, H. Luo, X. Meng, Y. Cui, and W. Wang, “Network distribution [25] J. Ugander, L. Backstrom, C. Marlow, and J. Kleinberg, “Structural
+and sentiment interaction: Information diffusion mechanisms between diversity in social contagion,” Proceedings of the national academy of
+social bots and human users on social media,” Information Processing sciences, vol. 109, no. 16, pp. 5962–5966, 2012.
+& Management, vol. 60, no. 2, p. 103197, 2023. [26] J. Zhang, B. Liu, J. Tang, T. Chen, and J. Li, “Social influence locality
+[5] W. Shi, D. Liu, J. Yang, J. Zhang, S. Wen, and J. Su, “Social bots’ for modeling retweeting behaviors.” in IJCAI, vol. 13, 2013, pp. 2761–
+sentiment engagement in health emergencies: A topic-based analysis of 2767.
+the covid-19 pandemic discussions on twitter,” International Journal of [27] M. Latah, “Detection of malicious social bots: A survey and a refined
+Environmental Research and Public Health, vol. 17, no. 22, p. 8701, taxonomy,” Expert Systems with Applications, vol. 151, p. 113383, 2020.
+2020. [28] M. Zhou, W. Feng, Y. Zhu, D. Zhang, Y. Dong, and J. Tang, “Semi-
+[6] M. Zhang, X. Qi, Z. Chen, and J. Liu, “Social bots’ involvement in supervised social bot detection with initial residual relation attention
+the covid-19 vaccine discussions on twitter,” International Journal of networks,” in Joint European Conference on Machine Learning and
+Environmental Research and Public Health, vol. 19, no. 3, p. 1651, Knowledge Discovery in Databases. Springer, 2023, pp. 207–224.
+2022. [29] M. Zhou, D. Zhang, Y. Wang, Y.-A. Geng, and J. Tang, “Detecting
+[7] B. Smart, J. Watt, S. Benedetti, L. Mitchell, and M. Roughan, “# istand- social bot on the fly using contrastive learning,” in Proceedings of the
+withputin versus# istandwithukraine: The interaction of bots and humans 32nd ACM International Conference on Information and Knowledge
+in discussion of the russia/ukraine war,” in International Conference on Management, 2023, pp. 4995–5001.
+Social Informatics. Springer, 2022, pp. 34–53. [30] S. Feng, H. Wan, N. Wang, J. Li, and M. Luo, “Twibot-20: A comprehen-
+[8] Q. Li, Q. Liu, S. Liu, X. Di, S. Chen, and H. Zhang, “Influence of sive twitter bot detection benchmark,” in Proceedings of the 30th ACM
+social bots in information warfare: A case study on@ uaweapons twitter international conference on information & knowledge management,
+account in the context of russia–ukraine conflict,” Communication and 2021, pp. 4485–4494.
+the Public, vol. 8, no. 2, pp. 54–80, 2023. [31] D. Zhang, Y. Geng, W. Gong, Z. Qi, Z. Chen, X. Tang, Y. Shan, Y. Dong,
+[9] F. L. De Faveri, L. Cosuti, P. P. Tricomi, and M. Conti, “Twitter bots and J. Tang, “Recdcl: Dual contrastive learning for recommendation,” in
+influence on the russo-ukrainian war during the 2022 italian general Proceedings of the ACM on Web Conference 2024, 2024, pp. 3655–3666.
+elections,” in International Symposium on Security and Privacy in Social [32] Y. Liu, M. Ott, N. Goyal, J. Du, M. Joshi, D. Chen, O. Levy, M. Lewis,
+Networks and Big Data. Springer, 2023, pp. 38–57. L. Zettlemoyer, and V. Stoyanov, “Roberta: A robustly optimized bert
+[10] S. C. Woolley, “Automating power: Social bot interference in global pretraining approach,” arXiv preprint arXiv:1907.11692, 2019.
+politics,” First Monday, 2016. [33] C. Raffel, N. Shazeer, A. Roberts, K. Lee, S. Narang, M. Matena,
+[11] J. Pastor-Galindo, M. Zago, P. Nespoli, S. L. Bernal, A. H. Celdra´n, Y. Zhou, W. Li, and P. J. Liu, “Exploring the limits of transfer learning
+M. G. Pe´rez, J. A. Ruipe´rez-Valiente, G. M. Pe´rez, and F. G. Ma´rmol, with a unified text-to-text transformer,” Journal of machine learning
+“Spotting political social bots in twitter: A use case of the 2019 research, vol. 21, no. 140, pp. 1–67, 2020.
+spanish general election,” IEEE Transactions on Network and Service [34] D. Zhang, Y. Zhu, Y. Dong, Y. Wang, W. Feng, E. Kharlamov, and
+Management, vol. 17, no. 4, pp. 2156–2170, 2020. J. Tang, “Apegnn: node-wise adaptive aggregation in gnns for recom-
+[12] L. Luceri, A. Deb, S. Giordano, and E. Ferrara, “Evolution of bot and mendation,” in Proceedings of the ACM Web Conference 2023, 2023,
+human behavior during elections,” First Monday, 2019. pp. 759–769.
+[13] L. Luceri, A. Deb, A. Badawy, and E. Ferrara, “Red bots do it better: [35] D. Zhang, W. Feng, Y. Wang, Z. Qi, Y. Shan, and J. Tang, “Dropconn:
+Comparative analysis of social bot partisan behavior,” in Companion Dropout connection based random gnns for molecular property predic-
+proceedings of the 2019 world wide web conference, 2019, pp. 1007– tion,” IEEE Transactions on Knowledge and Data Engineering, 2023.
+1012. [36] Z. Du, Y. Qian, X. Liu, M. Ding, J. Qiu, Z. Yang, and J. Tang,
+[14] N. Y. Times, “Musk says twitter committed fraud in dispute over “Glm: General language model pretraining with autoregressive blank
+fake accounts,” 2022, https://www.nytimes.com/2022/08/04/technology/ infilling,” in Proceedings of the 60th Annual Meeting of the Association
+musk-twitter-fraud.html, Accessed: 2023-02-26. for Computational Linguistics (Volume 1: Long Papers), 2022, pp. 320–
+[15] S. Feng, Z. Tan, H. Wan, N. Wang, Z. Chen, B. Zhang, Q. Zheng, 335.
+W. Zhang, Z. Lei, S. Yang et al., “Twibot-22: Towards graph-based [37] D. Zhang, Z. Hu, S. Zhoubian, Z. Du, K. Yang, Z. Wang, Y. Yue,
+twitter bot detection,” Advances in Neural Information Processing Y. Dong, and J. Tang, “Sciglm: Training scientific language models
+Systems, vol. 35, pp. 35 254–35 269, 2022. with self-reflective instruction annotation and tuning,” arXiv preprint
+[16] K.-C. Yang, O. Varol, P.-M. Hui, and F. Menczer, “Scalable and arXiv:2401.07950, 2024.
+generalizable social bot detection through data selection,” in Proceedings [38] X. Lilong, Z. Dan, D. Yuxiao, and T. Jie, “Autore: Document-
+of the AAAI conference on artificial intelligence, vol. 34, no. 01, 2020, level relation extraction with large language models,” arXiv preprint
+pp. 1096–1103. arXiv:2403.14888, 2024.
+
+===== PAGE 14 =====
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021 14
+[39] D. Zhang, S. Zhoubian, Y. Yue, Y. Dong, and J. Tang, “Rest-mcts*: [64] C. Ravazzi, F. Malandrino, and F. Dabbene, “Towards proactive moder-
+Llm self-training via process reward guided tree search,” arXiv preprint ation of malicious content via bot detection in fringe social networks,”
+arXiv:2406.03816, 2024. IEEE Control Systems Letters, 2022.
+[40] K. Xu, W. Hu, J. Leskovec, and S. Jegelka, “How powerful are graph [65] S. Ali Alhosseini, R. Bin Tareaf, P. Najafi, and C. Meinel, “Detect me if
+neural networks?” arXiv preprint arXiv:1810.00826, 2018. you can: Spam bot detection using inductive representation learning,” in
+[41] J. N. Cummings, “Work groups, structural diversity, and knowledge Companion proceedings of the 2019 world wide web conference, 2019,
+sharing in a global organization,” Management science, vol. 50, no. 3, pp. 148–153.
+pp. 352–364, 2004.
+[42] J. Zhang, R. Zhang, Y. Zhang, and G. Yan, “The rise of social botnets:
+Ming Zhou is a PhD candidate in the Department
+Attacks and countermeasures,” IEEE Transactions on Dependable and
+of Computer Science and Technology, Tsinghua
+Secure Computing, vol. 15, no. 6, pp. 1068–1082, 2016.
+University. Before joining Tsinghua, he worked in
+[43] NLTK, “Tweettokenizer,” 2024, https://www.nltk.org/api/nltk.tokenize.
+research and development at Baidu and Tencent. His
+casual.html, Accessed: 2024-04-18.
+research interests include social networks, language
+[44] A. v. d. Oord, Y. Li, and O. Vinyals, “Representation learning with
+models, and graph representation learning. He re-
+contrastive predictive coding,” arXiv preprint arXiv:1807.03748, 2018.
+ceived the 2023 ECML PKDD Best Student Paper
+[45] T. N. Kipf and M. Welling, “Semi-supervised classification with graph
+Award.
+convolutional networks,” arXiv preprint arXiv:1609.02907, 2016.
+[46] P. Velickovic, G. Cucurull, A. Casanova, A. Romero, P. Lio, Y. Bengio
+et al., “Graph attention networks,” stat, vol. 1050, no. 20, pp. 10–48 550,
+2017. Dan Zhang is a PhD candidate in the Department
+[47] M. Chen, Z. Wei, Z. Huang, B. Ding, and Y. Li, “Simple and deep of Computer Science and Technology, Tsinghua
+graph convolutional networks,” in International Conference on Machine University. She got her master’s degree from Soft-
+Learning. PMLR, 2020, pp. 1725–1735. ware of School, Tsinghua University. Her research
+[48] E. Chien, J. Peng, P. Li, and O. Milenkovic, “Adaptive universal general- interests include language models, graph represen-
+ized pagerank graph neural network,” arXiv preprint arXiv:2006.07988, tation learning, and recommendation systems. She
+2020. has published papers at top conferences and journals,
+[49] S. Abu-El-Haija, B. Perozzi, A. Kapoor, N. Alipourfard, K. Lerman, such as WWW, TKDE, KDD, etc.
+H. Harutyunyan, G. Ver Steeg, and A. Galstyan, “Mixhop: Higher-order
+graph convolutional architectures via sparsified neighborhood mixing,”
+in international conference on machine learning. PMLR, 2019, pp.
+21–29.
+[50] J. Klicpera, A. Bojchevski, and S. Gu¨nnemann, “Predict then propagate: Yuandong Wang is currently an assistant researcher
+Graph neural networks meet personalized pagerank,” arXiv preprint with the Department of Computer Science and Tech-
+arXiv:1810.05997, 2018. nology, Tsinghua University. She received her PhD
+[51] D. Lim, F. Hohne, X. Li, S. L. Huang, V. Gupta, O. Bhalerao, and S. N. degree in computer science from Beihang University.
+Lim, “Large scale learning on non-homophilous graphs: New bench- Her research interests include natural language un-
+marks and strong simple methods,” Advances in Neural Information derstanding, spatiotemporal prediction, applications
+Processing Systems, vol. 34, 2021. of pre-trained models, and graph neural networks in
+[52] J. Zhu, Y. Yan, L. Zhao, M. Heimann, L. Akoglu, and D. Koutra, cross-domains. She has more than 10 papers pub-
+“Beyond homophily in graph neural networks: Current limitations and lished in top international conferences and journals,
+effective designs,” Advances in Neural Information Processing Systems, such as KDD, ICDE, TKDE, etc.
+vol. 33, pp. 7793–7804, 2020.
+[53] L. Zheng, W.-L. Chiang, Y. Sheng, S. Zhuang, Z. Wu, Y. Zhuang, Z. Lin,
+Z. Li, D. Li, E. P. Xing, H. Zhang, J. E. Gonzalez, and I. Stoica, “Judging Yangli-ao Geng received his Ph.D. in Computer
+llm-as-a-judge with mt-bench and chatbot arena,” 2023. Science and Technology from Beijing Jiaotong Uni-
+[54] A. Zeng, X. Liu, Z. Du, Z. Wang, H. Lai, M. Ding, Z. Yang, Y. Xu, versity, Beijing, China, in 2021. He is currently an
+W. Zheng, X. Xia et al., “Glm-130b: An open bilingual pre-trained assistant Professor at Beijing Jiaotong University.
+model,” arXiv preprint arXiv:2210.02414, 2022. His research interests include graph neural networks
+[55] D. P. Kingma and J. Ba, “Adam: A method for stochastic optimization,” and spatiotemporal data mining.
+arXiv preprint arXiv:1412.6980, 2014.
+[56] N. Srivastava, G. Hinton, A. Krizhevsky, I. Sutskever, and R. Salakhut-
+dinov, “Dropout: a simple way to prevent neural networks from over-
+fitting,” The journal of machine learning research, vol. 15, no. 1, pp.
+1929–1958, 2014.
+[57] A. Paszke, S. Gross, F. Massa, A. Lerer, J. Bradbury, G. Chanan, Yuxiao Dong is an assistant professor of computer
+T. Killeen, Z. Lin, N. Gimelshein, L. Antiga et al., “Pytorch: An science at Tsinghua University. His research fo-
+imperative style, high-performance deep learning library,” Advances in cuses on data mining, graph representation learn-
+neural information processing systems, vol. 32, 2019. ing, pre-training models, and social networks, with
+[58] M. Fey and J. E. Lenssen, “Fast graph representation learning with an emphasis on developing machine learning mod-
+PyTorch Geometric,” in ICLR Workshop on Representation Learning els to addressing problems in Web-scale systems.
+on Graphs and Manifolds, 2019. He received the 2017 SIGKDD Dissertation Award
+[59] I. Mbona and J. H. Eloff, “Feature selection using benford’s law to Honorable Mention and 2022 SIGKDD Rising Star
+support detection of malicious social media bots,” Information Sciences, Award.
+vol. 582, pp. 369–381, 2022.
+[60] M. Fazil, A. K. Sah, and M. Abulaish, “Deepsbd: a deep neural
+network model with attention mechanism for socialbot detection,” IEEE
+Jie Tang is a Professor of the Department of Com-
+Transactions on Information Forensics and Security, vol. 16, pp. 4211–
+puter Science and Technology at Tsinghua Univer-
+4223, 2021.
+sity. His interests include data mining, social net-
+[61] T. Li, Z. Zeng, S. Sun, and J. Sun, “A novel integrated framework
+works, and machine learning. He has published over
+based on multi-view features for multidimensional social bot detection,”
+200 research papers in top international journals and
+Journal of Information Science, p. 01655515221116517, 2022.
+conferences. He served as Associate General Chair
+[62] M. Heidari, J. H. Jones, and O. Uzuner, “Deep contextualized word
+of KDD 2018, and acting Editor-in-Chief of ACM
+embedding for text-based online user profiling to detect social bots on
+TKDD. He was honored with NSFC Distinguished
+twitter,” in 2020 International Conference on Data Mining Workshops
+Young Scholar, and 2018 SIGKDD Service Award.
+(ICDMW). IEEE, 2020, pp. 480–487.
+[63] M. E. Peters, M. Neumann, M. Iyyer, M. Gardner, C. Clark, K. Lee,
+and L. Zettlemoyer, “Deep contextualized word representations,” 2018.

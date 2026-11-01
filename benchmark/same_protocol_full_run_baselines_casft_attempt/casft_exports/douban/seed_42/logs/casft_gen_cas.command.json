@@ -1,0 +1,11 @@
+{
+  "command": [
+    "D:\\Anaconda\\python.exe",
+    "gen_cas.py",
+    "--data=data/kt2_douban_casft/",
+    "--observation_time=15000000",
+    "--prediction_time=100000000",
+    "--interval_num=4"
+  ],
+  "returncode": 0
+}

@@ -1,0 +1,255 @@
+{
+  "schema": "cogguard.kt2.experiment_audit.v1",
+  "status": "incomplete",
+  "summary": {
+    "status": "incomplete",
+    "section_counts": {
+      "passed": 3,
+      "partial": 1
+    },
+    "critical_open_sections": [
+      "role_evidence"
+    ],
+    "full_validation_complete": false
+  },
+  "sections": [
+    {
+      "id": "scale_prediction",
+      "title": "规模预测",
+      "status": "passed",
+      "critical": true,
+      "checks": [
+        {
+          "id": "scale_baselines",
+          "status": "passed",
+          "detail": "RF/Temporal scale baselines have regression metrics.",
+          "evidence": [
+            "benchmark/results.json"
+          ]
+        },
+        {
+          "id": "observation_sensitivity",
+          "status": "passed",
+          "detail": "Observation-window sensitivity exists.",
+          "evidence": [
+            "benchmark/observation_sensitivity.json"
+          ]
+        },
+        {
+          "id": "casft_frontier_scale",
+          "status": "passed",
+          "detail": "CasFT upstream small-run completed.",
+          "evidence": [
+            "benchmark/casft_external_attempt.json",
+            "benchmark/frontier_status.json",
+            "G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\frontier_exports\\douban\\casft\\logs\\casft_train.stdout.log",
+            "G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\frontier_exports\\douban\\casft\\logs\\casft_train.stderr.log",
+            "G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\frontier_exports\\douban\\casft\\logs\\casft_train.command.json"
+          ]
+        }
+      ],
+      "next_steps": [
+        "Repeat CasFT scale results across observation windows, datasets and at least three seeds before claiming full-run.",
+        "Compare CasFT against RF/Temporal and CasDO/ConCat fallback rows before selecting the production scale model.",
+        "Keep current evidence labelled frontier_reproduction_small_run, not frontier_reproduction_full_run."
+      ]
+    },
+    {
+      "id": "next_hop_prediction",
+      "title": "下一跳预测",
+      "status": "passed",
+      "critical": true,
+      "checks": [
+        {
+          "id": "next_hop_baselines",
+          "status": "passed",
+          "detail": "Next-hop baselines have ranking metrics.",
+          "evidence": [
+            "benchmark/results.json"
+          ]
+        },
+        {
+          "id": "dyglib_small_run",
+          "status": "passed",
+          "detail": "DyGFormer/DyGLib small-run completed with no future-node injection audit.",
+          "evidence": [
+            "benchmark/dyglib_external_attempt.json",
+            "G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\frontier_exports\\douban\\dyglib\\logs\\dyglib_train.stdout.log",
+            "G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\frontier_exports\\douban\\dyglib\\logs\\dyglib_train.stderr.log",
+            "G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\frontier_exports\\douban\\dyglib\\logs\\dyglib_train.command.json"
+          ]
+        },
+        {
+          "id": "tgn_small_run",
+          "status": "passed",
+          "detail": "TGN small-run completed with no future-node injection audit.",
+          "evidence": [
+            "benchmark/tgn_external_attempt.json",
+            "G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\frontier_exports\\douban\\tgn\\logs\\tgn_train.stdout.log",
+            "G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\frontier_exports\\douban\\tgn\\logs\\tgn_train.stderr.log",
+            "G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\frontier_exports\\douban\\tgn\\logs\\tgn_train.command.json"
+          ]
+        },
+        {
+          "id": "repeated_small_run_evidence",
+          "status": "passed",
+          "detail": "Small-run evidence records at least 3 repeated runs. This is not multi-seed full validation; seed-diverse larger runs remain required before final model selection.",
+          "evidence": [
+            "benchmark/dyglib_external_attempt.json",
+            "G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\frontier_exports\\douban\\dyglib\\logs\\dyglib_train.stdout.log",
+            "G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\frontier_exports\\douban\\dyglib\\logs\\dyglib_train.stderr.log",
+            "G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\frontier_exports\\douban\\dyglib\\logs\\dyglib_train.command.json",
+            "benchmark/tgn_external_attempt.json",
+            "G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\frontier_exports\\douban\\tgn\\logs\\tgn_train.stdout.log",
+            "G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\frontier_exports\\douban\\tgn\\logs\\tgn_train.stderr.log",
+            "G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\frontier_exports\\douban\\tgn\\logs\\tgn_train.command.json"
+          ]
+        }
+      ],
+      "next_steps": [
+        "Expand DyGLib/TGN from 20 cascades / 1 epoch / seed=0 to multi-seed and larger cascade caps.",
+        "Parse upstream AP/AUC into the unified benchmark rows alongside KT2 candidate ranking metrics.",
+        "Compare against ProspectiveRanker before selecting the final next-hop implementation."
+      ]
+    },
+    {
+      "id": "role_evidence",
+      "title": "协同角色定位与证据追溯",
+      "status": "partial",
+      "critical": true,
+      "checks": [
+        {
+          "id": "role_evidence_code",
+          "status": "passed",
+          "detail": "Role evidence service and quality metrics are implemented and covered by tests.",
+          "evidence": [
+            "propagation/analysis.py",
+            "propagation/protocol.py",
+            "tests/test_smoke.py"
+          ]
+        },
+        {
+          "id": "real_kt1_coordination_input",
+          "status": "passed",
+          "detail": "KT1 coordination file parsed with 2 coordinated users and 1 groups: G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\kt1_role_evidence_validation\\kt1_coordination_scope.json",
+          "evidence": [
+            "G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\kt1_role_evidence_validation\\kt1_coordination_scope.json"
+          ]
+        },
+        {
+          "id": "role_evidence_artifacts",
+          "status": "passed",
+          "detail": "KT1-driven role evidence generated with 8 rows; coverage=1.0, path_complete_rate=1.0.",
+          "evidence": [
+            "G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\kt1_role_evidence_validation\\kt1_role_evidence_validation.json",
+            "G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\kt1_role_evidence_validation\\analysis\\role_evidence.csv",
+            "G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\kt1_role_evidence_validation\\analysis\\role_evidence_quality.json"
+          ]
+        },
+        {
+          "id": "pheme_dataset_validation",
+          "status": "passed",
+          "detail": "PHEME parsed 5 sample events with 99 nodes, 94 edges and 99 timestamps.",
+          "evidence": [
+            "G:\\CISCN\\dataset\\PHEME"
+          ]
+        },
+        {
+          "id": "pheme_role_evidence_artifacts",
+          "status": "passed",
+          "detail": "PHEME observed-user role evidence generated with 10 rows across 5 events; coverage=1.0, path_complete_rate=1.0.",
+          "evidence": [
+            "G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\pheme_role_evidence_sample\\pheme_role_evidence_sample.json",
+            "G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\pheme_role_evidence_sample\\analysis\\role_evidence.csv",
+            "G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\pheme_role_evidence_sample\\analysis\\role_evidence_quality.json"
+          ]
+        },
+        {
+          "id": "manual_review_packet_ready",
+          "status": "passed",
+          "detail": "Manual review packet is ready with 8 sampled rows; review_pass is intentionally not prefilled.",
+          "evidence": [
+            "G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\kt1_role_evidence_validation\\analysis\\role_evidence_manual_review_template.csv",
+            "G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\kt1_role_evidence_validation\\analysis\\role_evidence_manual_review_template.json",
+            "G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\kt1_role_evidence_validation\\analysis\\ROLE_EVIDENCE_REVIEW_GUIDE.md",
+            "G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\kt1_role_evidence_validation\\analysis\\ROLE_EVIDENCE_REVIEW_PACKET.md",
+            "G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\kt1_role_evidence_validation\\analysis\\ROLE_EVIDENCE_REVIEW.html"
+          ]
+        },
+        {
+          "id": "manual_review_records",
+          "status": "partial",
+          "detail": "manual review has no recognized pass/fail values",
+          "evidence": [
+            "G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\kt1_role_evidence_validation\\analysis\\role_evidence_manual_review.csv",
+            "G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\kt1_role_evidence_validation\\analysis\\role_evidence_manual_review_template.csv"
+          ]
+        }
+      ],
+      "next_steps": [
+        "Keep PHEME observed-user role evidence as real-timeline validation, not as KT1 prediction output.",
+        "Use ROLE_EVIDENCE_REVIEW_GUIDE.md, ROLE_EVIDENCE_REVIEW_PACKET.md and ROLE_EVIDENCE_REVIEW.html to complete sampled manual pass/fail review rows.",
+        "Initialize/fill analysis/role_evidence_manual_review.csv, then run python -m benchmark.role_evidence_review status and validate.",
+        "Promote role evidence from partial to passed only after manual review records are available."
+      ]
+    },
+    {
+      "id": "frontend_and_protocol",
+      "title": "前端展示与实验协议",
+      "status": "passed",
+      "critical": false,
+      "checks": [
+        {
+          "id": "benchmark_schema",
+          "status": "passed",
+          "detail": "Benchmark rows satisfy schema and anti-overclaim checks.",
+          "evidence": [
+            "benchmark/schema.py",
+            "benchmark/*.schema.json"
+          ]
+        },
+        {
+          "id": "dashboard_experimental_label",
+          "status": "passed",
+          "detail": "Dashboard prediction panels default to 实验预测 and expose dataset/window/model/reproduction metadata.",
+          "evidence": [
+            "propagation/visualization.py",
+            "propagation/prediction.py",
+            "tests/test_smoke.py"
+          ]
+        },
+        {
+          "id": "macro_micro_framework_protocol",
+          "status": "passed",
+          "detail": "Macro/micro framework audit layer is implemented as a protocol summary, not as a new frontier reproduction claim.",
+          "evidence": [
+            "benchmark/macro_micro.py",
+            "benchmark/run_benchmark.py",
+            "propagation/prediction.py",
+            "propagation/visualization.py",
+            "tests/test_smoke.py"
+          ]
+        },
+        {
+          "id": "kt2_joint_model_small_run",
+          "status": "passed",
+          "detail": "KT2JointModel adapter is implemented and covered by tests; run `python -m benchmark.run_benchmark --models kt2_joint ... --output benchmark/results.json` to make it the current audit row. Absence from results.json is not treated as a legacy-frontier failure.",
+          "evidence": [
+            "benchmark/adapters/kt2_joint_model.py",
+            "benchmark/run_benchmark.py",
+            "benchmark/schema.py",
+            "tests/test_smoke.py",
+            "benchmark/results.json",
+            "benchmark/kt2_joint_smoke.json"
+          ]
+        }
+      ],
+      "next_steps": [
+        "Keep predictions marked as experimental until final model selection is complete.",
+        "Use KT2JointModel rows as KT2-owned local joint-model evidence; keep paper-model reproductions labelled separately.",
+        "Expose result JSON/log links only for rows with verified reproduction levels."
+      ]
+    }
+  ],
+  "required_completion_rule": "KT2 full validation is complete only when every critical section is passed and no section remains partial, missing, or blocked."
+}

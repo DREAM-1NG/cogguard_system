@@ -1,24 +1,30 @@
-# 传播监控核心功能：复现实验报告
+﻿# 传播监控核心功能：复现实验报告
+
+> 统一入口：KT2 当前需求、状态标签与验收标准以 `../KT2_REQUIREMENTS.md` 为准；本文仅记录复现实验、数据协议、指标和命令证据。
+> 状态快照：当前 CasFT、DyGFormer/DyGLib 与 TGN 均只能声明为 `frontier_reproduction_small_run`；`benchmark/KT2_COMPLETION_GATE.md` 仍为 `incomplete`，唯一 critical 开放项是 `role_evidence/manual_review_records`。
 
 ## 1. 文献复现说明
 
-### 1.1 主复现目标
+### 1.1 当前复现定位
 
-**HyperIDP** (COLING 2025): *Customizing Temporal Hypergraph Neural Networks for Multi-Scale Information Diffusion Prediction*
+本报告记录当前可运行 baseline、公开代码 adapter、protocol proxy 和前沿仓库数据适配入口。它不表示 KT2 前沿复现已经完成，也不设置唯一主复现模型。HyperIDP 作为多尺度参考，CasFT、DyGFormer/DyGLib 与 TGN 作为下一阶段前沿复现目标。
 
-复现范围：
-- 多尺度任务定义：宏观级联最终规模预测 + 微观下一受影响用户预测
-- 数据协议：Christianity、Android、Douban 数据集上的时间序列划分
-- 评价指标：MSLE（宏观）、Hits@K / MAP@K（微观）
-- 模型核心思想：temporal hypergraph neural architecture + collaborative-adversarial learning
+当前新增的前沿复现准备状态是：外部仓库已统一 clone 到 `G:\CISCN\CogGuard\subsystems\kt2_repos`，benchmark 已能导出 CasFT `dataset.txt` 与 DyGLib/TGN temporal edge stream；CasFT、DyGFormer/DyGLib 与 TGN 均已完成上游 small-run，并记录为 `frontier_reproduction_small_run`。CasFT 当前是 500 cascades / 1 epoch / seed=0 / CPU Windows shim；DyGFormer/DyGLib 与 TGN 当前是 20 cascades / 1 epoch / seed=0 / num_runs=3 的重复 small-run。这里的 small-run 都不是多数据多随机种子 full-run，也不能写成产品级最终模型。
+
+当前覆盖范围：
+- 多尺度任务定义：宏观级联最终规模预测 + 微观下一受影响用户预测。
+- 数据协议：Christianity、Android、Douban 数据集上的时间序列划分。
+- 评价指标：MSLE（宏观）、Hits@K / MAP@K（微观）。
+- HyperIDP proxy 覆盖：temporal hypergraph neural architecture + collaborative-adversarial learning 的协议级近似，不是原论文架构复现。
+- 全量实验验证审计：`python -m benchmark.experiment_audit` 生成 `benchmark/KT2_EXPERIMENT_AUDIT.json/.md`，当前总状态为 `incomplete`。
 
 ### 1.2 复现边界
 
-HyperIDP 论文 PDF 标注代码地址为 `https://github.com/HowieHsu0126/HyperIDP`，但截至本报告日期（2026-06-26）公开访问返回 GitHub 404，`git ls-remote` 返回 `Repository not found`。因此采用 **protocol-level reproduction**：
+HyperIDP 论文 PDF 标注代码地址为 `https://github.com/HowieHsu0126/HyperIDP`，但截至本报告日期（2026-06-26）公开访问返回 GitHub 404，`git ls-remote` 返回 `Repository not found`。GitHub 可访问性可能随时间变化；若后续重新评估 HyperIDP，应先复验该仓库状态并更新时间戳。因此当前仅采用 **protocol-level proxy**：
 
 1. 复现其任务协议（观测窗口定义、无泄漏划分、联合宏观/微观评价）
 2. 使用 MINDS（AAAI 2024）和 FOREST（IJCAI 2019）的公开代码作为可运行统一 baseline
-3. 对照 HyperIDP 论文报告的指标数值作为性能上界参照
+3. 对照 HyperIDP 论文报告的指标数值作为参考，不声明复现完成
 4. 不复现 HyperIDP 的 architecture search 模块（缺少代码细节）
 
 ### 1.3 已运行的可复现 baseline
@@ -34,6 +40,11 @@ HyperIDP 论文 PDF 标注代码地址为 `https://github.com/HowieHsu0126/Hyper
 | ProspectiveRanker | scikit-learn LogisticRegression 排序器 | 自建 | 已成功运行（douban prospective learned ranker protocol） |
 | HyperIDPProtocolProxy | temporal coactivation hyperedge proxy + RF/LR | 自建 | 已成功运行（douban protocol-level macro/micro proxy） |
 | HyperIDPAdversarialProxy | shared MLP + macro/micro heads + gradient reversal task adversary | 自建 | 已成功运行（douban protocol-level adversarial proxy） |
+| CasFT | AAAI 2025, github.com/UM-Data-Intelligence-Lab/CasFT | 公开可用，本地 HEAD `ebb7e8e` | 已完成 500 cascades / 1 epoch / seed=0 / CPU Windows shim small-run；结果见 `benchmark/casft_external_attempt.json`，但不是多随机种子 full-run |
+| KT2JointModel 原组件融合 small matrix | MINDS + FOREST + CasFT 子路径 | 自建联合模型 + 公开仓库子组件 | 已接入 MINDS `DynamicCasHGNN/Fusion/SharedLSTM` 与 `Module.forward`、FOREST `RNNModel/RRModel` CE/RL auxiliary、CasFT `GaussianDiffusion_ST/ST_Diffusion` 与 `CombinedSpatiotemporalModel5/NeuralPointProcess`；并将 MINDS macro 输出、FOREST RRModel sampled EOS size、CasFT spatiotemporal size 输出作为 teacher signal 对齐 KT2 macro head。当前 `benchmark/kt2_original_fusion_experiment_small_matrix.json` 覆盖 Douban/Twitter/Memetracker × seeds 42/43/44 共 9 行，`matrix_coverage.coverage_ratio=1.0`、`original_subpath_audit.all_original_subpaths_passed=true`、`all_alignment_losses_recorded=true`；仍不是三篇论文原数据协议、完整训练脚本和多种子 full-run reproduction |
+| KT2JointModel 观测窗口 sweep smoke | MINDS + FOREST + CasFT 子路径 | 自建联合模型 + 公开仓库子组件 | `benchmark/kt2_original_fusion_experiment_obs_sweep_smoke.json` 已验证 `--obs_ratios 0.3,0.5`、`--config_id obs-sweep-smoke` 与 `--resume` 可共同工作；当前覆盖 Douban / seed 42 / 2 个观测窗口，`matrix_coverage.coverage_ratio=1.0`。这只证明多观测窗口复现实验基础设施可运行，不是论文 full-run |
+| DyGFormer/DyGLib | NeurIPS 2023, github.com/yule-BUAA/DyGLib | 公开可用，本地 HEAD `3aacc36` | 已完成 20 cascades / 1 epoch / 3 次重复 small-run；结果见 `benchmark/dyglib_external_attempt.json`，但不是多随机种子 full-run |
+| TGN | twitter-research/tgn | 公开可用，本地 HEAD `d55bbe6` | 已完成 20 cascades / 1 epoch / 3 次重复 small-run；结果见 `benchmark/tgn_external_attempt.json`，但不是多随机种子 full-run |
 
 ---
 
@@ -135,6 +146,7 @@ HyperIDP 论文 PDF 标注代码地址为 `https://github.com/HowieHsu0126/Hyper
 | RF_Baseline | douban | 0.4961 | 5.2125 | — | 观测窗口为级联前 10% 序列，作为强传统监督 baseline |
 | HyperIDPProtocolProxy | douban | 0.0228 | 2.0966 | — | 观测窗口为级联前 30% 序列；用于 protocol-level proxy，不可与固定时间窗 baseline 直接等价比较 |
 | HyperIDPAdversarialProxy | douban | 0.0293 | 4.3287 | 1.0000 | 观测窗口为级联前 30% 序列；5 epochs adversarial proxy |
+| CasFT | douban | 10.9604 | 2.7008 | — | 500 cascades / 1 epoch / seed=0 / CPU Windows shim small-run；另有 `smape=0.5824`、`pcc=-0.4065`、`r2=-0.6614` |
 | MINDS | christianity | 0.0807 | — | — | 30 epochs，best valid MAP@100 epoch=29，test-only final evaluation |
 | HyperIDP (论文) | christianity | 0.2836 | — | — | 论文报告值 |
 | HyperIDP (论文) | douban | 0.3218 | — | — | 论文报告值 |
@@ -172,43 +184,84 @@ HyperIDP 论文 PDF 标注代码地址为 `https://github.com/HowieHsu0126/Hyper
 
 ### 5.1 判断
 
-**HyperIDP 当前阶段不适合直接落地，但适合作为研究复现主目标持续推进。**
+**HyperIDP 当前阶段不适合直接落地，也不再作为唯一主复现目标；它只作为多尺度论文参考与 proxy baseline。**
 
 理由：
-1. HyperIDP 是目前唯一联合优化宏观+微观的前沿统一模型，性能显著优于 baseline
-2. 论文标注的官方仓库当前不可公开访问，完整复现需从论文重建 temporal hypergraph NAS + adversarial learning
-3. 本地已补 HyperIDPProtocolProxy 和 HyperIDPAdversarialProxy，证明 protocol-level macro/micro 输出链路与 adversarial multi-task 训练支架可运行，但还不是 HyperIDP 原架构
-4. 本地 MINDS Christianity 数据已验证可运行；douban/android 仍需获取后补齐
+1. HyperIDP 可作为 macro/micro 多尺度协议参考，但不能锁定 KT2 功能路线。
+2. 规模预测前沿复现优先接入 CasFT；下一跳预测前沿复现优先接入 DyGFormer/DyGLib 或 TGN。
+3. 本地已补 HyperIDPProtocolProxy 和 HyperIDPAdversarialProxy，证明 protocol-level macro/micro 输出链路与 adversarial multi-task 训练支架可运行，但还不是 HyperIDP 原架构。
+4. 本地 MINDS Christianity 数据已验证可运行；douban/android 仍需获取后补齐。
 
 ### 5.2 推荐路线
 
 | 阶段 | 行动 | 产出 |
 |------|------|------|
 | 当前 | 以 MINDS Christianity 与 FOREST douban 为可运行统一 baseline，完成 30 epochs 对齐论文指标 | 完整训练结果 + 性能差距量化 |
-| 短期 | 在 HyperIDP proxy 基础上补 temporal hypergraph NAS | 更接近论文的 protocol-level reproduction 代码 |
-| 中期 | 若 HyperIDP 官方仓库可公开访问，验证并替换自建实现 | 完整复现或证伪 |
+| 短期 | 扩展已跑通的 CasFT、DyGFormer/DyGLib 与 TGN small-run 至多种子/多数据集；保留 HyperIDP proxy 作为参考 | 产出上游训练日志、随机种子、指标 JSON，并将对应状态从 small-run 升级为可比较的 full-run 候选证据 |
+| 中期 | 若 HyperIDP 官方仓库可公开访问，验证并作为候选 baseline 接入 | 完整复现或证伪 |
 | 落地 | 将验证后的最优模型封装为 CogGuard 传播预测 API | 系统集成 |
 
 ### 5.3 当前瓶颈
 
-1. **训练成本**：FOREST douban CPU 30 epochs 已完成一次，耗时约 2.5 小时；重复长训仍建议后台任务或 GPU
+1. **训练成本与环境**：FOREST douban CPU 30 epochs 已完成一次，耗时约 2.5 小时；CasFT 已完成 500 cascades / 1 epoch / seed=0 / CPU Windows shim small-run；KT2JointModel 已完成真实 CasFT `CombinedSpatiotemporalModel5/NeuralPointProcess` auxiliary smoke、FOREST `RRModel` rollout smoke，以及 Douban/Twitter/Memetracker × seeds 42/43/44 的 original-subpath fusion small matrix。该矩阵已支持 `--resume`、`--max_runs`、`--obs_ratios` 与 `--config_id`，并报告 `matrix_coverage`、original subpath audit 和 teacher alignment audit；下一步瓶颈是按原论文数据协议、更多 epoch/观测窗口和官方 baseline 指标扩展，而不是 small-run 可运行性
 2. **DeepWalk 嵌入缺失**：FOREST network 模式无法启用，当前结果为 sequence-only
 3. **数据集覆盖**：本地 MINDS 仓库仅有 Christianity；douban/android 需获取数据后进一步验证
 4. **HyperIDP 复现深度**：已有 protocol/adversarial proxy，但从论文复现 NAS 模块工程量仍大，MINDS/FOREST 30 epochs 已可作为当前统一 baseline 参照
+5. **全量验证审计**：`KT2_EXPERIMENT_AUDIT` 当前标记规模预测 `passed`、下一跳预测 `passed`、角色证据 `partial`、前端协议 `passed`；因此不得声明 KT2 全量实验验证完成，除非人工抽查记录补齐并通过
 
 ---
 
 ## 附录：实验环境与命令
 
-**环境：**
-- Python 3.12.13
-- `/Users/albert/Desktop/cogguard_system/.venv`：numpy、scikit-learn，用于 RF/LR benchmark orchestrator
-- `/Users/albert/Desktop/xas/.venv`：PyTorch CPU 环境，用于 MINDS/FOREST adapter 子进程
-- Apple Silicon (darwin), 无 GPU
+**当前本机环境：**
+- Windows / PowerShell，Python 来自 `D:\Anaconda\python.exe`
+- GPU：RTX 4060 Laptop 8GB，可承诺 small-run，不承诺完整长训
+- 外部仓库目录：`G:\CISCN\CogGuard\subsystems\kt2_repos`
+- 数据目录：`G:\CISCN\dataset`
 
 **运行命令：**
 
 ```bash
+# 前沿仓库 export-only 状态检查（不会声明上游模型已复现）
+python -m benchmark.run_benchmark \
+  --models casft dyglib tgn \
+  --datasets douban \
+  --forest_dir G:\CISCN\CogGuard\subsystems\kt2_repos\FOREST \
+  --casft_dir G:\CISCN\CogGuard\subsystems\kt2_repos\CasFT \
+  --dyglib_dir G:\CISCN\CogGuard\subsystems\kt2_repos\DyGLib \
+  --tgn_dir G:\CISCN\CogGuard\subsystems\kt2_repos\tgn \
+  --frontier_max_cascades 100 \
+  --frontier_timeout 120 \
+  --output benchmark\frontier_status.json
+
+# DyGFormer/DyGLib 上游 small-run（已完成一次）
+python -m benchmark.run_benchmark \
+  --models dyglib \
+  --datasets douban \
+  --forest_dir G:\CISCN\CogGuard\subsystems\kt2_repos\FOREST \
+  --dyglib_dir G:\CISCN\CogGuard\subsystems\kt2_repos\DyGLib \
+  --frontier_max_cascades 20 \
+  --frontier_epochs 1 \
+  --frontier_batch_size 16 \
+  --frontier_gpu -1 \
+  --frontier_timeout 120 \
+  --run_external_frontier \
+  --output benchmark\dyglib_external_attempt.json
+
+# TGN 上游 small-run（已完成一次）
+python -m benchmark.run_benchmark \
+  --models tgn \
+  --datasets douban \
+  --forest_dir G:\CISCN\CogGuard\subsystems\kt2_repos\FOREST \
+  --tgn_dir G:\CISCN\CogGuard\subsystems\kt2_repos\tgn \
+  --frontier_max_cascades 20 \
+  --frontier_epochs 1 \
+  --frontier_batch_size 16 \
+  --frontier_gpu -1 \
+  --frontier_timeout 120 \
+  --run_external_frontier \
+  --output benchmark\tgn_external_attempt.json
+
 # 完整 benchmark suite（需指定外部模型仓库路径）
 python -m benchmark.run_benchmark \
   --models minds forest rf temporal lr heuristic ranker hyperidp_proxy hyperidp_adv_proxy \
@@ -243,4 +296,8 @@ python -m benchmark.run_benchmark \
 
 # 查看帮助
 python -m benchmark.run_benchmark --help
+
+# 全量实验验证审计（不运行长训练，只汇总当前证据和缺口）
+python -m benchmark.experiment_audit
 ```
+

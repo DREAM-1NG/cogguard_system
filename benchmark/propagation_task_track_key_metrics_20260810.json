@@ -1,0 +1,824 @@
+{
+  "schema": "cogguard.propagation.task_track_key_metrics.v1",
+  "source_audit": {
+    "fair_protocol_passed": true,
+    "fair_rows": 18,
+    "fair_protocol_id": "propagation_fair_sequence_forestsplit_v1",
+    "primary_stable_source": "G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\propagation_sota_primary_stable_20260810.json",
+    "temporal_stable_source": "G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\propagation_sota_frontier_temporal_stable_20260810.json"
+  },
+  "tracks": {
+    "macro_fair": {
+      "task": "cascade final size and future trend prediction",
+      "verdict_comparable": true,
+      "summary": [
+        {
+          "dataset": "douban",
+          "model": "MINDS",
+          "n": 3,
+          "seeds": [
+            42,
+            43,
+            44
+          ],
+          "statuses": [
+            "ok"
+          ],
+          "msle_mean": 0.126320429248552,
+          "msle_std": 0.026310758517155187,
+          "msle_n": 3,
+          "mae_mean": 6.639836962487963,
+          "mae_std": 1.2421214855294374,
+          "mae_n": 3,
+          "trend_mae_mean": 323.6602580970857,
+          "trend_mae_std": 33.86118167583331,
+          "trend_mae_n": 3,
+          "trend_rmse_mean": 423.72181315642257,
+          "trend_rmse_std": 46.28572405753477,
+          "trend_rmse_n": 3,
+          "direction_accuracy_mean": 1.0,
+          "direction_accuracy_std": 0.0,
+          "direction_accuracy_n": 3
+        },
+        {
+          "dataset": "douban",
+          "model": "Ours",
+          "n": 3,
+          "seeds": [
+            42,
+            43,
+            44
+          ],
+          "statuses": [
+            "ok"
+          ],
+          "msle_mean": 0.1023323261240984,
+          "msle_std": 0.012359808549485868,
+          "msle_n": 3,
+          "mae_mean": 5.637822941144307,
+          "mae_std": 0.9339802298979512,
+          "mae_n": 3,
+          "trend_mae_mean": 225.6769423167242,
+          "trend_mae_std": 28.87146404925453,
+          "trend_mae_n": 3,
+          "trend_rmse_mean": 292.8088819435214,
+          "trend_rmse_std": 41.83481435919574,
+          "trend_rmse_n": 3,
+          "direction_accuracy_mean": 1.0,
+          "direction_accuracy_std": 0.0,
+          "direction_accuracy_n": 3
+        },
+        {
+          "dataset": "memetracker",
+          "model": "MINDS",
+          "n": 3,
+          "seeds": [
+            42,
+            43,
+            44
+          ],
+          "statuses": [
+            "ok"
+          ],
+          "msle_mean": 0.15000530204022874,
+          "msle_std": 0.01251396722444623,
+          "msle_n": 3,
+          "mae_mean": 2.192241768836975,
+          "mae_std": 0.13736251944204797,
+          "mae_n": 3,
+          "trend_mae_mean": 63.41626144713826,
+          "trend_mae_std": 1.8984379255025405,
+          "trend_mae_n": 3,
+          "trend_rmse_mean": 64.35356834422521,
+          "trend_rmse_std": 1.8960133827781316,
+          "trend_rmse_n": 3,
+          "direction_accuracy_mean": 1.0,
+          "direction_accuracy_std": 0.0,
+          "direction_accuracy_n": 3
+        },
+        {
+          "dataset": "memetracker",
+          "model": "Ours",
+          "n": 3,
+          "seeds": [
+            42,
+            43,
+            44
+          ],
+          "statuses": [
+            "ok"
+          ],
+          "msle_mean": 0.12611275112717352,
+          "msle_std": 0.02749797406927853,
+          "msle_n": 3,
+          "mae_mean": 2.375661923090617,
+          "mae_std": 0.12117018179069872,
+          "mae_n": 3,
+          "trend_mae_mean": 53.45629325800472,
+          "trend_mae_std": 3.38048961631825,
+          "trend_mae_n": 3,
+          "trend_rmse_mean": 54.3505380959903,
+          "trend_rmse_std": 3.405783454511221,
+          "trend_rmse_n": 3,
+          "direction_accuracy_mean": 1.0,
+          "direction_accuracy_std": 0.0,
+          "direction_accuracy_n": 3
+        },
+        {
+          "dataset": "twitter",
+          "model": "MINDS",
+          "n": 3,
+          "seeds": [
+            42,
+            43,
+            44
+          ],
+          "statuses": [
+            "ok"
+          ],
+          "msle_mean": 0.13429874030637057,
+          "msle_std": 0.022503868270356202,
+          "msle_n": 3,
+          "mae_mean": 4.373989692529043,
+          "mae_std": 0.4910655419944006,
+          "mae_n": 3,
+          "trend_mae_mean": 245.274347162048,
+          "trend_mae_std": 17.01761392329276,
+          "trend_mae_n": 3,
+          "trend_rmse_mean": 291.5604322820328,
+          "trend_rmse_std": 18.94853256205546,
+          "trend_rmse_n": 3,
+          "direction_accuracy_mean": 1.0,
+          "direction_accuracy_std": 0.0,
+          "direction_accuracy_n": 3
+        },
+        {
+          "dataset": "twitter",
+          "model": "Ours",
+          "n": 3,
+          "seeds": [
+            42,
+            43,
+            44
+          ],
+          "statuses": [
+            "ok"
+          ],
+          "msle_mean": 0.12410172364816749,
+          "msle_std": 0.028370095582987444,
+          "msle_n": 3,
+          "mae_mean": 5.244932487805684,
+          "mae_std": 1.3582817313616982,
+          "mae_n": 3,
+          "trend_mae_mean": 187.90850154899888,
+          "trend_mae_std": 25.813916495657196,
+          "trend_mae_n": 3,
+          "trend_rmse_mean": 221.5502730935072,
+          "trend_rmse_std": 30.248748040470836,
+          "trend_rmse_n": 3,
+          "direction_accuracy_mean": 1.0,
+          "direction_accuracy_std": 0.0,
+          "direction_accuracy_n": 3
+        }
+      ],
+      "deltas_vs_minds": [
+        {
+          "dataset": "douban",
+          "baseline": "MINDS",
+          "target": "Ours",
+          "msle_ours": 0.1023323261240984,
+          "msle_minds": 0.126320429248552,
+          "msle_relative_delta_percent": 18.98988411229498,
+          "mae_ours": 5.637822941144307,
+          "mae_minds": 6.639836962487963,
+          "mae_relative_delta_percent": 15.09094315123362,
+          "trend_mae_ours": 225.6769423167242,
+          "trend_mae_minds": 323.6602580970857,
+          "trend_mae_relative_delta_percent": 30.2735085105723,
+          "trend_rmse_ours": 292.8088819435214,
+          "trend_rmse_minds": 423.72181315642257,
+          "trend_rmse_relative_delta_percent": 30.895962196917377,
+          "direction_accuracy_ours": 1.0,
+          "direction_accuracy_minds": 1.0,
+          "direction_accuracy_relative_delta_percent": 0.0
+        },
+        {
+          "dataset": "memetracker",
+          "baseline": "MINDS",
+          "target": "Ours",
+          "msle_ours": 0.12611275112717352,
+          "msle_minds": 0.15000530204022874,
+          "msle_relative_delta_percent": 15.927804276309962,
+          "mae_ours": 2.375661923090617,
+          "mae_minds": 2.192241768836975,
+          "mae_relative_delta_percent": -8.366784944114515,
+          "trend_mae_ours": 53.45629325800472,
+          "trend_mae_minds": 63.41626144713826,
+          "trend_mae_relative_delta_percent": 15.705700654454139,
+          "trend_rmse_ours": 54.3505380959903,
+          "trend_rmse_minds": 64.35356834422521,
+          "trend_rmse_relative_delta_percent": 15.543862610273626,
+          "direction_accuracy_ours": 1.0,
+          "direction_accuracy_minds": 1.0,
+          "direction_accuracy_relative_delta_percent": 0.0
+        },
+        {
+          "dataset": "twitter",
+          "baseline": "MINDS",
+          "target": "Ours",
+          "msle_ours": 0.12410172364816749,
+          "msle_minds": 0.13429874030637057,
+          "msle_relative_delta_percent": 7.592786525726909,
+          "mae_ours": 5.244932487805684,
+          "mae_minds": 4.373989692529043,
+          "mae_relative_delta_percent": -19.911862087015155,
+          "trend_mae_ours": 187.90850154899888,
+          "trend_mae_minds": 245.274347162048,
+          "trend_mae_relative_delta_percent": 23.388440852784584,
+          "trend_rmse_ours": 221.5502730935072,
+          "trend_rmse_minds": 291.5604322820328,
+          "trend_rmse_relative_delta_percent": 24.012229176832626,
+          "direction_accuracy_ours": 1.0,
+          "direction_accuracy_minds": 1.0,
+          "direction_accuracy_relative_delta_percent": 0.0
+        }
+      ]
+    },
+    "micro_fair": {
+      "task": "cascade prefix next-hop user ranking",
+      "verdict_comparable": true,
+      "summary": [
+        {
+          "dataset": "douban",
+          "model": "MINDS",
+          "n": 3,
+          "seeds": [
+            42,
+            43,
+            44
+          ],
+          "statuses": [
+            "ok"
+          ],
+          "candidate_recall_full_mean": 0.9233333333333333,
+          "candidate_recall_full_std": 0.0,
+          "candidate_recall_full_n": 3,
+          "hits@10_mean": 0.007777777777777778,
+          "hits@10_std": 0.005665577237325317,
+          "hits@10_n": 3,
+          "hits@50_mean": 0.024444444444444446,
+          "hits@50_std": 0.005665577237325316,
+          "hits@50_n": 3,
+          "hits@100_mean": 0.051111111111111114,
+          "hits@100_std": 0.005665577237325315,
+          "hits@100_n": 3,
+          "mrr_mean": 0.00554810707523138,
+          "mrr_std": 0.002487147408040416,
+          "mrr_n": 3,
+          "ndcg@100_mean": 0.012077068735332111,
+          "ndcg@100_std": 0.003227066241340103,
+          "ndcg@100_n": 3
+        },
+        {
+          "dataset": "douban",
+          "model": "Ours",
+          "n": 3,
+          "seeds": [
+            42,
+            43,
+            44
+          ],
+          "statuses": [
+            "ok"
+          ],
+          "candidate_recall_full_mean": 0.9233333333333333,
+          "candidate_recall_full_std": 0.0,
+          "candidate_recall_full_n": 3,
+          "hits@10_mean": 0.007777777777777778,
+          "hits@10_std": 0.00415739709641549,
+          "hits@10_n": 3,
+          "hits@50_mean": 0.024444444444444446,
+          "hits@50_std": 0.0041573970964154895,
+          "hits@50_n": 3,
+          "hits@100_mean": 0.051111111111111114,
+          "hits@100_std": 0.004157397096415488,
+          "hits@100_n": 3,
+          "mrr_mean": 0.004938588280348612,
+          "mrr_std": 0.0017660817493841726,
+          "mrr_n": 3,
+          "ndcg@100_mean": 0.011617651397577792,
+          "ndcg@100_std": 0.0019673623184043683,
+          "ndcg@100_n": 3
+        },
+        {
+          "dataset": "memetracker",
+          "model": "MINDS",
+          "n": 3,
+          "seeds": [
+            42,
+            43,
+            44
+          ],
+          "statuses": [
+            "ok"
+          ],
+          "candidate_recall_full_mean": 0.8366666666666667,
+          "candidate_recall_full_std": 0.0,
+          "candidate_recall_full_n": 3,
+          "hits@10_mean": 0.02888888888888889,
+          "hits@10_std": 0.010999438818457406,
+          "hits@10_n": 3,
+          "hits@50_mean": 0.04888888888888889,
+          "hits@50_std": 0.010999438818457408,
+          "hits@50_n": 3,
+          "hits@100_mean": 0.10555555555555556,
+          "hits@100_std": 0.010999438818457403,
+          "hits@100_n": 3,
+          "mrr_mean": 0.012402036325243823,
+          "mrr_std": 0.0052109760239825685,
+          "mrr_n": 3,
+          "ndcg@100_mean": 0.026684966066179663,
+          "ndcg@100_std": 0.006680146537287184,
+          "ndcg@100_n": 3
+        },
+        {
+          "dataset": "memetracker",
+          "model": "Ours",
+          "n": 3,
+          "seeds": [
+            42,
+            43,
+            44
+          ],
+          "statuses": [
+            "ok"
+          ],
+          "candidate_recall_full_mean": 0.8366666666666667,
+          "candidate_recall_full_std": 0.0,
+          "candidate_recall_full_n": 3,
+          "hits@10_mean": 0.02888888888888889,
+          "hits@10_std": 0.010999438818457406,
+          "hits@10_n": 3,
+          "hits@50_mean": 0.04888888888888889,
+          "hits@50_std": 0.010999438818457408,
+          "hits@50_n": 3,
+          "hits@100_mean": 0.10555555555555556,
+          "hits@100_std": 0.010999438818457403,
+          "hits@100_n": 3,
+          "mrr_mean": 0.012362051610434585,
+          "mrr_std": 0.005289261042002952,
+          "mrr_n": 3,
+          "ndcg@100_mean": 0.026659938132761407,
+          "ndcg@100_std": 0.0067573022203111935,
+          "ndcg@100_n": 3
+        },
+        {
+          "dataset": "twitter",
+          "model": "MINDS",
+          "n": 3,
+          "seeds": [
+            42,
+            43,
+            44
+          ],
+          "statuses": [
+            "ok"
+          ],
+          "candidate_recall_full_mean": 0.9233333333333333,
+          "candidate_recall_full_std": 0.0,
+          "candidate_recall_full_n": 3,
+          "hits@10_mean": 0.005555555555555556,
+          "hits@10_std": 0.0015713484026367724,
+          "hits@10_n": 3,
+          "hits@50_mean": 0.012222222222222223,
+          "hits@50_std": 0.0015713484026367726,
+          "hits@50_n": 3,
+          "hits@100_mean": 0.028888888888888888,
+          "hits@100_std": 0.001571348402636771,
+          "hits@100_n": 3,
+          "mrr_mean": 0.002670223033543056,
+          "mrr_std": 0.0006792108069550265,
+          "mrr_n": 3,
+          "ndcg@100_mean": 0.006360513598736346,
+          "ndcg@100_std": 0.0008774654816627927,
+          "ndcg@100_n": 3
+        },
+        {
+          "dataset": "twitter",
+          "model": "Ours",
+          "n": 3,
+          "seeds": [
+            42,
+            43,
+            44
+          ],
+          "statuses": [
+            "ok"
+          ],
+          "candidate_recall_full_mean": 0.9233333333333333,
+          "candidate_recall_full_std": 0.0,
+          "candidate_recall_full_n": 3,
+          "hits@10_mean": 0.005555555555555556,
+          "hits@10_std": 0.0015713484026367724,
+          "hits@10_n": 3,
+          "hits@50_mean": 0.012222222222222223,
+          "hits@50_std": 0.0015713484026367726,
+          "hits@50_n": 3,
+          "hits@100_mean": 0.028888888888888888,
+          "hits@100_std": 0.001571348402636771,
+          "hits@100_n": 3,
+          "mrr_mean": 0.0023374031815937397,
+          "mrr_std": 0.0003536403678060821,
+          "mrr_n": 3,
+          "ndcg@100_mean": 0.006089316991695329,
+          "ndcg@100_std": 0.0006450743217557278,
+          "ndcg@100_n": 3
+        }
+      ],
+      "deltas_vs_minds": [
+        {
+          "dataset": "douban",
+          "baseline": "MINDS",
+          "target": "Ours",
+          "candidate_recall_full_ours": 0.9233333333333333,
+          "candidate_recall_full_minds": 0.9233333333333333,
+          "candidate_recall_full_relative_delta_percent": 0.0,
+          "hits@10_ours": 0.007777777777777778,
+          "hits@10_minds": 0.007777777777777778,
+          "hits@10_relative_delta_percent": 0.0,
+          "hits@50_ours": 0.024444444444444446,
+          "hits@50_minds": 0.024444444444444446,
+          "hits@50_relative_delta_percent": 0.0,
+          "hits@100_ours": 0.051111111111111114,
+          "hits@100_minds": 0.051111111111111114,
+          "hits@100_relative_delta_percent": 0.0,
+          "mrr_ours": 0.004938588280348612,
+          "mrr_minds": 0.00554810707523138,
+          "mrr_relative_delta_percent": -10.98606761942042,
+          "ndcg@100_ours": 0.011617651397577792,
+          "ndcg@100_minds": 0.012077068735332111,
+          "ndcg@100_relative_delta_percent": -3.8040467254299006
+        },
+        {
+          "dataset": "memetracker",
+          "baseline": "MINDS",
+          "target": "Ours",
+          "candidate_recall_full_ours": 0.8366666666666667,
+          "candidate_recall_full_minds": 0.8366666666666667,
+          "candidate_recall_full_relative_delta_percent": 0.0,
+          "hits@10_ours": 0.02888888888888889,
+          "hits@10_minds": 0.02888888888888889,
+          "hits@10_relative_delta_percent": 0.0,
+          "hits@50_ours": 0.04888888888888889,
+          "hits@50_minds": 0.04888888888888889,
+          "hits@50_relative_delta_percent": 0.0,
+          "hits@100_ours": 0.10555555555555556,
+          "hits@100_minds": 0.10555555555555556,
+          "hits@100_relative_delta_percent": 0.0,
+          "mrr_ours": 0.012362051610434585,
+          "mrr_minds": 0.012402036325243823,
+          "mrr_relative_delta_percent": -0.3224044323096401,
+          "ndcg@100_ours": 0.026659938132761407,
+          "ndcg@100_minds": 0.026684966066179663,
+          "ndcg@100_relative_delta_percent": -0.09379038877615996
+        },
+        {
+          "dataset": "twitter",
+          "baseline": "MINDS",
+          "target": "Ours",
+          "candidate_recall_full_ours": 0.9233333333333333,
+          "candidate_recall_full_minds": 0.9233333333333333,
+          "candidate_recall_full_relative_delta_percent": 0.0,
+          "hits@10_ours": 0.005555555555555556,
+          "hits@10_minds": 0.005555555555555556,
+          "hits@10_relative_delta_percent": 0.0,
+          "hits@50_ours": 0.012222222222222223,
+          "hits@50_minds": 0.012222222222222223,
+          "hits@50_relative_delta_percent": 0.0,
+          "hits@100_ours": 0.028888888888888888,
+          "hits@100_minds": 0.028888888888888888,
+          "hits@100_relative_delta_percent": 0.0,
+          "mrr_ours": 0.0023374031815937397,
+          "mrr_minds": 0.002670223033543056,
+          "mrr_relative_delta_percent": -12.464121826846263,
+          "ndcg@100_ours": 0.006089316991695329,
+          "ndcg@100_minds": 0.006360513598736346,
+          "ndcg@100_relative_delta_percent": -4.263753277642484
+        }
+      ]
+    },
+    "macro_only_external": {
+      "task": "macro-only scale/trend prediction",
+      "verdict_comparable": false,
+      "summary": [
+        {
+          "dataset": "douban",
+          "model": "CasFT",
+          "n": 3,
+          "seeds": [
+            42,
+            43,
+            44
+          ],
+          "statuses": [
+            "ok"
+          ],
+          "msle_mean": 13.644033333333333,
+          "msle_std": 0.4036276281701025,
+          "msle_n": 3,
+          "mae_mean": 3.0043333333333333,
+          "mae_std": 0.04860701824039637,
+          "mae_n": 3,
+          "mape_percent_mean": 0.4998666666666667,
+          "mape_percent_std": 0.005074336300334122,
+          "mape_percent_n": 3,
+          "smape_mean": 0.4998666666666667,
+          "smape_std": 0.005074336300334122,
+          "smape_n": 3
+        },
+        {
+          "dataset": "memetracker",
+          "model": "CasFT",
+          "n": 3,
+          "seeds": [
+            42,
+            43,
+            44
+          ],
+          "statuses": [
+            "ok"
+          ],
+          "msle_mean": 9.6215,
+          "msle_std": 0.28566166467810594,
+          "msle_n": 3,
+          "mae_mean": 2.4730333333333334,
+          "mae_std": 0.024604922723354086,
+          "mae_n": 3,
+          "mape_percent_mean": 0.48056666666666664,
+          "mape_percent_std": 0.00241430919496425,
+          "mape_percent_n": 3,
+          "smape_mean": 0.48056666666666664,
+          "smape_std": 0.00241430919496425,
+          "smape_n": 3
+        },
+        {
+          "dataset": "twitter",
+          "model": "CasFT",
+          "n": 3,
+          "seeds": [
+            42,
+            43,
+            44
+          ],
+          "statuses": [
+            "ok"
+          ],
+          "msle_mean": 10.755766666666666,
+          "msle_std": 0.5098614343350772,
+          "msle_n": 3,
+          "mae_mean": 2.924,
+          "mae_std": 0.08716425108188942,
+          "mae_n": 3,
+          "mape_percent_mean": 0.5088666666666667,
+          "mape_percent_std": 0.015570556259242066,
+          "mape_percent_n": 3,
+          "smape_mean": 0.5088666666666667,
+          "smape_std": 0.015570556259242066,
+          "smape_n": 3
+        }
+      ],
+      "boundary": "CasFT rows are external macro-only evidence and not part of the same macro/micro verdict."
+    },
+    "temporal_link_prediction": {
+      "task": "temporal edge/link prediction",
+      "verdict_comparable": false,
+      "rows": [
+        {
+          "dataset": "douban",
+          "model": "TGN",
+          "status": "ok",
+          "test_ap": 0.8266898529362445,
+          "new_node_test_ap": 0.6390411280727413,
+          "train_loss": 1.3562785801680193,
+          "source_file": "G:\\CISCN\\CogGuard\\subsystems\\kt2_repos\\tgn\\results\\kt2_kt2_douban_tgn.pkl",
+          "track_note": "Native temporal link prediction AP from upstream TGN result pickle; not a cascade next-hop Top-K metric."
+        },
+        {
+          "dataset": "twitter",
+          "model": "TGN",
+          "status": "ok",
+          "test_ap": 0.5735084105137592,
+          "new_node_test_ap": 0.5267141245642935,
+          "train_loss": 1.381274771183095,
+          "source_file": "G:\\CISCN\\CogGuard\\subsystems\\kt2_repos\\tgn\\results\\kt2_kt2_twitter_tgn.pkl",
+          "track_note": "Native temporal link prediction AP from upstream TGN result pickle; not a cascade next-hop Top-K metric."
+        },
+        {
+          "dataset": "memetracker",
+          "model": "TGN",
+          "status": "ok",
+          "test_ap": 0.6569140492297029,
+          "new_node_test_ap": 0.6263496480639688,
+          "train_loss": 1.3744238376617433,
+          "source_file": "G:\\CISCN\\CogGuard\\subsystems\\kt2_repos\\tgn\\results\\kt2_kt2_memetracker_tgn.pkl",
+          "track_note": "Native temporal link prediction AP from upstream TGN result pickle; not a cascade next-hop Top-K metric."
+        },
+        {
+          "dataset": "douban",
+          "model": "DyGFormer/DyGLib",
+          "status": "training_completed_metric_not_structured",
+          "test_ap": null,
+          "new_node_test_ap": null,
+          "track_note": "The stable run logs show upstream training completed, but AP/AUC were not captured into a structured artifact."
+        },
+        {
+          "dataset": "memetracker",
+          "model": "DyGFormer/DyGLib",
+          "status": "training_completed_metric_not_structured",
+          "test_ap": null,
+          "new_node_test_ap": null,
+          "track_note": "The stable run logs show upstream training completed, but AP/AUC were not captured into a structured artifact."
+        },
+        {
+          "dataset": "twitter",
+          "model": "DyGFormer/DyGLib",
+          "status": "training_completed_metric_not_structured",
+          "test_ap": null,
+          "new_node_test_ap": null,
+          "track_note": "The stable run logs show upstream training completed, but AP/AUC were not captured into a structured artifact."
+        }
+      ],
+      "boundary": "Native AP/AUC are not cascade next-hop Top-K metrics."
+    },
+    "adapted_next_hop": {
+      "task": "event-level next-hop ranking adapted from temporal edge scores",
+      "verdict_comparable": false,
+      "rows": [
+        {
+          "dataset": "douban",
+          "model": "DyGFormer/DyGLib",
+          "status": "ok",
+          "upstream_training": "completed",
+          "event_topk_score_source": "transition_popularity_proxy_not_learned",
+          "learned_event_topk_available": false,
+          "proxy_hits@100_removed_from_verdict": 0.25316164061870033,
+          "note": "DyGLib upstream training completed; event-level Top-K still uses KT2 candidate protocol metrics for comparability."
+        },
+        {
+          "dataset": "douban",
+          "model": "TGN",
+          "status": "ok",
+          "upstream_training": "completed",
+          "event_topk_score_source": "transition_popularity_proxy_not_learned",
+          "learned_event_topk_available": false,
+          "proxy_hits@100_removed_from_verdict": 0.25316164061870033,
+          "note": "TGN upstream self-supervised training completed; event-level Top-K uses KT2 protocol metrics for comparability."
+        },
+        {
+          "dataset": "twitter",
+          "model": "DyGFormer/DyGLib",
+          "status": "ok",
+          "upstream_training": "completed",
+          "event_topk_score_source": "transition_popularity_proxy_not_learned",
+          "learned_event_topk_available": false,
+          "proxy_hits@100_removed_from_verdict": 0.2814814512141529,
+          "note": "DyGLib upstream training completed; event-level Top-K still uses KT2 candidate protocol metrics for comparability."
+        },
+        {
+          "dataset": "twitter",
+          "model": "TGN",
+          "status": "ok",
+          "upstream_training": "completed",
+          "event_topk_score_source": "transition_popularity_proxy_not_learned",
+          "learned_event_topk_available": false,
+          "proxy_hits@100_removed_from_verdict": 0.2814814512141529,
+          "note": "TGN upstream self-supervised training completed; event-level Top-K uses KT2 protocol metrics for comparability."
+        },
+        {
+          "dataset": "memetracker",
+          "model": "DyGFormer/DyGLib",
+          "status": "ok",
+          "upstream_training": "completed",
+          "event_topk_score_source": "transition_popularity_proxy_not_learned",
+          "learned_event_topk_available": false,
+          "proxy_hits@100_removed_from_verdict": 0.452990145618731,
+          "note": "DyGLib upstream training completed; event-level Top-K still uses KT2 candidate protocol metrics for comparability."
+        },
+        {
+          "dataset": "memetracker",
+          "model": "TGN",
+          "status": "ok",
+          "upstream_training": "completed",
+          "event_topk_score_source": "transition_popularity_proxy_not_learned",
+          "learned_event_topk_available": false,
+          "proxy_hits@100_removed_from_verdict": 0.452990145618731,
+          "note": "TGN upstream self-supervised training completed; event-level Top-K uses KT2 protocol metrics for comparability."
+        }
+      ],
+      "boundary": "Pending learned scorer; proxy Top-K metrics are excluded from verdict."
+    },
+    "pending_methods": {
+      "forest_rows": [
+        {
+          "dataset": "douban",
+          "model": "FOREST",
+          "seed": 42,
+          "status": "ok",
+          "hits@100": 0.0,
+          "msle": null,
+          "mae": null,
+          "track_status": "pending_fair_adapter",
+          "note": "FOREST public-code adapter ran, but macro values are missing/non-finite under the current local capped run."
+        },
+        {
+          "dataset": "douban",
+          "model": "FOREST",
+          "seed": 43,
+          "status": "ok",
+          "hits@100": 0.0,
+          "msle": null,
+          "mae": null,
+          "track_status": "pending_fair_adapter",
+          "note": "FOREST public-code adapter ran, but macro values are missing/non-finite under the current local capped run."
+        },
+        {
+          "dataset": "douban",
+          "model": "FOREST",
+          "seed": 44,
+          "status": "ok",
+          "hits@100": 0.008368200836820083,
+          "msle": null,
+          "mae": null,
+          "track_status": "pending_fair_adapter",
+          "note": "FOREST public-code adapter ran, but macro values are missing/non-finite under the current local capped run."
+        },
+        {
+          "dataset": "twitter",
+          "model": "FOREST",
+          "seed": 42,
+          "status": "ok",
+          "hits@100": 0.01990049751243781,
+          "msle": null,
+          "mae": null,
+          "track_status": "pending_fair_adapter",
+          "note": "FOREST public-code adapter ran, but macro values are missing/non-finite under the current local capped run."
+        },
+        {
+          "dataset": "twitter",
+          "model": "FOREST",
+          "seed": 43,
+          "status": "ok",
+          "hits@100": 0.004975124378109453,
+          "msle": null,
+          "mae": null,
+          "track_status": "pending_fair_adapter",
+          "note": "FOREST public-code adapter ran, but macro values are missing/non-finite under the current local capped run."
+        },
+        {
+          "dataset": "twitter",
+          "model": "FOREST",
+          "seed": 44,
+          "status": "ok",
+          "hits@100": 0.004975124378109453,
+          "msle": null,
+          "mae": null,
+          "track_status": "pending_fair_adapter",
+          "note": "FOREST public-code adapter ran, but macro values are missing/non-finite under the current local capped run."
+        },
+        {
+          "dataset": "memetracker",
+          "model": "FOREST",
+          "seed": 42,
+          "status": "ok",
+          "hits@100": 0.021739130434782608,
+          "msle": null,
+          "mae": null,
+          "track_status": "pending_fair_adapter",
+          "note": "FOREST public-code adapter ran, but macro values are missing/non-finite under the current local capped run."
+        },
+        {
+          "dataset": "memetracker",
+          "model": "FOREST",
+          "seed": 43,
+          "status": "ok",
+          "hits@100": 0.036231884057971016,
+          "msle": null,
+          "mae": null,
+          "track_status": "pending_fair_adapter",
+          "note": "FOREST public-code adapter ran, but macro values are missing/non-finite under the current local capped run."
+        },
+        {
+          "dataset": "memetracker",
+          "model": "FOREST",
+          "seed": 44,
+          "status": "ok",
+          "hits@100": 0.036231884057971016,
+          "msle": null,
+          "mae": null,
+          "track_status": "pending_fair_adapter",
+          "note": "FOREST public-code adapter ran, but macro values are missing/non-finite under the current local capped run."
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "schema": "cogguard.kt2.role_evidence_manual_review_template.v1",
+  "source": "benchmark\\kt1_role_evidence_validation\\analysis\\role_evidence.csv",
+  "output": "benchmark\\kt1_role_evidence_validation\\analysis\\role_evidence_manual_review_template.csv",
+  "rows_available": 8,
+  "rows_sampled": 8,
+  "sample_size": 30,
+  "per_role": 5,
+  "seed": 0,
+  "role_counts": {
+    "普通参与者": 1,
+    "桥接": 5,
+    "起爆/源头": 2
+  },
+  "review_pass_prefilled": false,
+  "instructions": "Template only: leave review_pass empty until a human reviewer checks whether the role label is supported by the observed propagation path, timestamp and structural evidence. The experiment audit only passes after a filled review CSV is saved as analysis/role_evidence_manual_review.csv or analysis/manual_review.csv.",
+  "guide": "benchmark\\kt1_role_evidence_validation\\analysis\\ROLE_EVIDENCE_REVIEW_GUIDE.md",
+  "packet": "benchmark\\kt1_role_evidence_validation\\analysis\\ROLE_EVIDENCE_REVIEW_PACKET.md",
+  "html": "benchmark\\kt1_role_evidence_validation\\analysis\\ROLE_EVIDENCE_REVIEW.html"
+}

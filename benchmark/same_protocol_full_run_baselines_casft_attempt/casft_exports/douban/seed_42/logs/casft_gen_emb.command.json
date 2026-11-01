@@ -1,0 +1,10 @@
+{
+  "command": [
+    "D:\\Anaconda\\python.exe",
+    "gen_emb.py",
+    "--data=data/kt2_douban_casft/",
+    "--observation_time=15000000",
+    "--max_seq=100"
+  ],
+  "returncode": 0
+}

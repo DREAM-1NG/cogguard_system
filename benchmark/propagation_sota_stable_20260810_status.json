@@ -1,0 +1,63 @@
+﻿{
+    "status":  "finished",
+    "updated_at":  "2026-08-10T18:49:26.2935665+08:00",
+    "evidence_level":  "resource_bounded_stable_matrix",
+    "boundary":  "This run completes the multi-dataset method matrix with local resource caps; it does not replace strict uncapped full validation.",
+    "results":  [
+                    {
+                        "name":  "sequence_joint_vs_minds_stable_reused",
+                        "command":  "Copy-Item G:\\CISCN\\CogGuard\\.worktrees\\refactor-system\\system\\research\\propagation_analysis\\benchmark\\sequence_vs_minds_sample_300c_5ep_3seed.json G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\propagation_sota_sequence_vs_minds_stable_20260810.json",
+                        "log":  "G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\logs\\propagation_sota_sequence_vs_minds_stable_20260810.log",
+                        "source":  "G:\\CISCN\\CogGuard\\.worktrees\\refactor-system\\system\\research\\propagation_analysis\\benchmark\\sequence_vs_minds_sample_300c_5ep_3seed.json",
+                        "output":  "G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\propagation_sota_sequence_vs_minds_stable_20260810.json",
+                        "started_at":  "2026-08-10T18:21:26.9316109+08:00",
+                        "ended_at":  "2026-08-10T18:21:26.9685677+08:00",
+                        "elapsed_seconds":  0,
+                        "exit_code":  0
+                    },
+                    {
+                        "name":  "primary_forest_casft_stable",
+                        "command":  "python -u -m benchmark.same_protocol_full_run_baselines --datasets douban,twitter,memetracker --seeds 42,43,44 --models FOREST,CasFT --forest_data_root G:\\CISCN\\dataset\\forest-data --forest_repo G:\\CISCN\\CogGuard\\subsystems\\kt2_repos\\FOREST --casft_repo G:\\CISCN\\CogGuard\\subsystems\\kt2_repos\\CasFT --out benchmark\\propagation_sota_primary_stable_20260810.json --config_id propagation-sota-primary-stable-20260810 --device cuda --timeout 1200 --forest_epochs 1 --forest_batch_size 4 --forest_d_model 32 --forest_max_train_batches 2 --forest_max_eval_batches 2 --forest_rl_epochs 0 --forest_rl_max_batches 0 --forest_rl_rollout_len 0 --casft_max_events 50 --casft_max_epoch 1 --casft_interval_num 4 --casft_timesteps 2",
+                        "log":  "G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\logs\\propagation_sota_primary_stable_20260810.log",
+                        "started_at":  "2026-08-10T18:21:26.9811125+08:00",
+                        "ended_at":  "2026-08-10T18:26:49.8822466+08:00",
+                        "elapsed_seconds":  322.9,
+                        "exit_code":  0
+                    },
+                    {
+                        "name":  "frontier_temporal_stable",
+                        "command":  "python -u -m benchmark.run_benchmark --datasets douban twitter memetracker --models dyglib tgn --forest_dir G:\\CISCN\\dataset\\forest-data --dyglib_dir G:\\CISCN\\CogGuard\\subsystems\\kt2_repos\\DyGLib --tgn_dir G:\\CISCN\\CogGuard\\subsystems\\kt2_repos\\tgn --frontier_export_dir benchmark\\propagation_sota_frontier_stable_exports_20260810 --frontier_max_cascades 50 --frontier_epochs 1 --frontier_num_runs 1 --frontier_batch_size 16 --frontier_timeout 900 --frontier_gpu -1 --run_external_frontier --device cpu --output benchmark\\propagation_sota_frontier_temporal_stable_20260810.json",
+                        "log":  "G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\logs\\propagation_sota_frontier_temporal_stable_20260810.log",
+                        "started_at":  "2026-08-10T18:26:49.8932473+08:00",
+                        "ended_at":  "2026-08-10T18:28:35.3755184+08:00",
+                        "elapsed_seconds":  105.5,
+                        "exit_code":  0
+                    },
+                    {
+                        "name":  "stable_matrix_report",
+                        "command":  "python -u benchmark\\summarize_propagation_sota_stable_20260810.py --primary benchmark\\propagation_sota_primary_stable_20260810.json --sequence benchmark\\propagation_sota_sequence_vs_minds_stable_20260810.json --frontier benchmark\\propagation_sota_frontier_temporal_stable_20260810.json --strict-primary benchmark\\propagation_sota_primary_full_20260810.json --out-md G:\\CISCN\\CogGuard\\.worktrees\\refactor-system\\system\\doc\\research\\propagation_paper_deep_reads\\propagation_sota_stable_matrix_report_20260810.md --out-json benchmark\\propagation_sota_stable_matrix_summary_20260810.json",
+                        "log":  "G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\logs\\propagation_sota_stable_matrix_report_20260810.log",
+                        "started_at":  "2026-08-10T18:28:35.3785049+08:00",
+                        "ended_at":  "2026-08-10T18:28:35.6284301+08:00",
+                        "elapsed_seconds":  0.2,
+                        "exit_code":  0
+                    },
+                    {
+                        "name":  "primary_forest_casft_stable_rerun_max_events_200",
+                        "command":  "python -u -m benchmark.same_protocol_full_run_baselines --datasets douban,twitter,memetracker --seeds 42,43,44 --models FOREST,CasFT --casft_max_events 200 ...",
+                        "log":  "G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\propagation_sota_primary_stable_20260810.json",
+                        "output":  "G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\propagation_sota_primary_stable_20260810.json",
+                        "note":  "Reran primary stage with CasFT max_events=200 to fix Twitter max_tokens assertion and stale Douban staging; final primary status is ok with 18/18 ok rows.",
+                        "ended_at":  "2026-08-10T18:49:26.2895548+08:00",
+                        "exit_code":  0
+                    },
+                    {
+                        "name":  "stable_matrix_report_regenerated_after_casft_rerun",
+                        "command":  "python -u benchmark\\summarize_propagation_sota_stable_20260810.py ...",
+                        "output":  "G:\\CISCN\\CogGuard\\.worktrees\\refactor-system\\system\\doc\\research\\propagation_paper_deep_reads\\propagation_sota_stable_matrix_report_20260810.md",
+                        "note":  "Regenerated summary after primary rerun; selected_rows=42.",
+                        "ended_at":  "2026-08-10T18:49:26.2930126+08:00",
+                        "exit_code":  0
+                    }
+                ]
+}

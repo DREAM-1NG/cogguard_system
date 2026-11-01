@@ -1,5 +1,7 @@
 # 知微传播分析复现：传播分析、路径、参与者、引爆点与预测
 
+> KT2 统一需求、当前状态与验收标准以 `KT2_REQUIREMENTS.md` 为准；本文是传播分析原型的使用说明，不作为前沿复现完成状态源；本地审计数据路径以 `KT2_REQUIREMENTS.md` 的“数据与本地路径”小节为准。
+
 本项目提供一个本地可运行的传播分析原型，用于复现知微传播分析中常见的四类能力：
 
 1. **传播分析**：规模、深度、宽度、时间序列、增长率、结构指标。
@@ -158,6 +160,18 @@ python -m propagation.cli dashboard \
   --observation-ratio 0.3
 ```
 
+若需要接入 KT1 协同检测结果，可传入 JSON/CSV/TSV 协同用户文件，并导出 KT2 标准级联协议：
+
+```bash
+python -m propagation.cli dashboard \
+  --dataset weibo_rumor \
+  --data-dir /path/to/weibo-rumor \
+  --output outputs/weibo_dashboard \
+  --observation-ratio 0.3 \
+  --coordination-file outputs/kt1/coordinated_users.json \
+  --export-protocol
+```
+
 也可以在分析或预测时附加 `--dashboard`：
 
 ```bash
@@ -174,6 +188,8 @@ python -m propagation.cli predict --dataset pheme --data-dir /path/to/pheme --ou
 - 事件规模矩阵：规模、深度、宽度、持续时间；
 - 参与者角色分布：KOL、桥接节点、二级传播者、普通参与者；
 - TOP 参与者表；
+- 协同角色证据表：仅解释已观测传播图，接入 KT1 协同用户后优先过滤；
+- 规模预测与下一跳实验面板：展示模型指标和观测窗口，明确标注为实验预测；
 - 引爆点清单；
 - 关键传播链路表。
 
@@ -227,9 +243,9 @@ python -m propagation.cli report --output outputs/FINAL_REPORT.md
 
 将事件按时间分桶，计算每个窗口新增节点数和 z-score。若窗口增量显著高于历史均值，则窗口内高出度、高 PageRank 或高后续级联贡献的节点会被标为引爆点。
 
-### 传播路径预测
+### 传播路径/下一跳预测
 
-当前实现为可解释 baseline：
+当前 CLI 内置实现仍为可解释 baseline，其中旧路径预测是离线候选边分类，不等于产品级下一跳；benchmark 中的 ProspectiveHeuristic/ProspectiveRanker 才是更接近无未来泄漏协议的下一跳 sanity baseline。
 
 - 观察早期 `observation-ratio` 比例节点；
 - 为已观察节点构造候选父节点；

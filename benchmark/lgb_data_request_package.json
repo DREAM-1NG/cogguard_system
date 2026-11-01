@@ -1,0 +1,45 @@
+{
+  "schema": "cogguard.kt2.lgb_data_request_package.v1",
+  "paper": "LGB: Language Model and Graph Neural Network-Driven Social Bot Detection",
+  "task": "bot_detection",
+  "kt2_position": "auxiliary_participant_risk_module",
+  "status": "pending_authorized_data",
+  "strict_reproduction_unblocked": false,
+  "dataset_root": "G:\\CISCN\\dataset",
+  "artifacts_root": "G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\lgb_strict",
+  "datasets": [
+    {
+      "dataset": "TwiBot-22",
+      "official_repository": "https://github.com/LuoUndergradXJTU/TwiBot-22",
+      "access_note": "Official repository states the full dataset is available through a Google Drive request with authorized/institutional contact.",
+      "target_directory": "G:\\CISCN\\dataset\\TwiBot-22",
+      "required_files": [
+        "label.csv",
+        "split.csv",
+        "edge.csv",
+        "user.json or user.jsonl or node.json or node.jsonl",
+        "tweet_*.json or tweet_*.jsonl"
+      ],
+      "strict_preflight": "Must pass --inspect_data before running --strict_pipeline."
+    },
+    {
+      "dataset": "TwiBot-20",
+      "official_repository": "https://github.com/BunsenFeng/TwiBot-20",
+      "access_note": "Official repository does not treat the sample file as the full strict-reproduction dataset; request/use authorized full train/dev/test files.",
+      "target_directory": "G:\\CISCN\\dataset\\TwiBot-20",
+      "required_files": [
+        "train.json or train.jsonl",
+        "dev.json/dev.jsonl or valid.json/valid.jsonl",
+        "test.json or test.jsonl"
+      ],
+      "strict_preflight": "TwiBot-20_sample.json is insufficient for strict reproduction."
+    }
+  ],
+  "sample_data_policy": "TwiBot-20_sample.json may be used for converter smoke tests only; it must not pass strict LGB reproduction or be reported as paper-level evidence.",
+  "commands": {
+    "preflight": "python -m benchmark.adapters.lgb_bot_detection --inspect_data --dataset_root G:\\CISCN\\dataset",
+    "strict_pipeline": "python -m benchmark.adapters.lgb_bot_detection --strict_pipeline --dataset_root G:\\CISCN\\dataset --artifacts_root G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\lgb_strict --device cuda --encoder_backend transformers_roberta_sft --model_name roberta-base --seeds 42,43,44,45,46",
+    "strict_gate": "python -m benchmark.adapters.lgb_bot_detection --strict_gate --artifacts_root G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\lgb_strict --write_report_md G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\lgb_strict_gate.md"
+  },
+  "completion_rule": "Strict reproduction can be claimed only after official data passes preflight and strict gate reports strict_reproduction_complete=true."
+}

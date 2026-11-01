@@ -1,0 +1,22 @@
+{
+  "command": [
+    "D:\\Anaconda\\python.exe",
+    "G:\\CISCN\\CogGuard\\subsystems\\kt2_repos\\CasFT\\.kt2_windows_shim\\train_spawn.py",
+    "--data=kt2_douban_casft_stable_smoke",
+    "--observation_time=86400",
+    "--prediction_time=1296000",
+    "--max_events=50",
+    "--max_epoch=1",
+    "--interval_num=4",
+    "--seed=42",
+    "--tpp_hdims=32",
+    "--FC=1",
+    "--lr=2e-3",
+    "--timesteps=1",
+    "--sampling_timesteps=1",
+    "--test_bsz=16",
+    "--testfreq=1",
+    "--experiment_dir=G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\propagation_sota_stable_smoke_20260810\\casft_douban_seed42\\experiments"
+  ],
+  "returncode": 1
+}

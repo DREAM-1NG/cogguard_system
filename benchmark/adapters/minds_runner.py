@@ -29,7 +29,6 @@ torch.autograd.Variable = _variable_compat
 sys.path.insert(0, os.getcwd())  # ensure MINDS/ modules are importable when run as subprocess
 
 from HypergraphUtil import RelationGraph, DynamicCasHypergraph
-from Metrics import compute_metric
 from Module import Module
 from DataSet import SplitData, DataLoader
 import Constants
@@ -47,20 +46,39 @@ def MSLE(y, y_predicted):
     return float(np.mean(np.square(np.log2(predicted) - np.log2(label))))
 
 
-def get_previous_user_mask(seq, user_size):
+def mask_previous_users_(logits, seq):
+    """Match MINDS' previous-user mask without allocating a separate dense mask."""
+
     assert seq.dim() == 2
-    prev_shape = (seq.size(0), seq.size(1), seq.size(1))
-    seqs = seq.repeat(1, 1, seq.size(1)).view(seq.size(0), seq.size(1), seq.size(1))
-    previous_mask = np.tril(np.ones(prev_shape)).astype('float32')
-    previous_mask = torch.from_numpy(previous_mask)
-    if seq.is_cuda:
-        previous_mask = previous_mask.cuda()
-    masked_seq = previous_mask * seqs.data.float()
-    PAD_tmp = torch.zeros(seq.size(0), seq.size(1), 1)
-    masked_seq = torch.cat([masked_seq, PAD_tmp], dim=2)
-    ans_tmp = torch.zeros(seq.size(0), seq.size(1), user_size)
-    masked_seq = ans_tmp.scatter_(2, masked_seq.long(), float('-inf'))
-    return masked_seq
+    assert logits.dim() == 3
+    batch_size, seq_len = seq.size()
+    for step in range(seq_len):
+        history = seq[:, : step + 1].clamp(min=0, max=logits.size(-1) - 1)
+        logits[:, step, :].scatter_(1, history.long(), float('-inf'))
+        logits[:, step, 0] = float('-inf')
+    return logits
+
+
+def update_topk_scores_from_logits(scores, logits, gold, k_list):
+    """Compute the same single-target Hits/MAP@K as MINDS without full argsort."""
+
+    max_k = min(max(k_list), logits.size(-1))
+    topk = torch.topk(logits, k=max_k, dim=1).indices
+    valid = gold.ne(Constants.PAD)
+    valid_count = int(valid.sum().item())
+    if valid_count == 0:
+        return 0.0
+    topk = topk[valid]
+    labels = gold[valid].unsqueeze(1)
+    matches = topk.eq(labels)
+    for k in k_list:
+        k_eff = min(k, max_k)
+        hit = matches[:, :k_eff].any(dim=1).float()
+        scores[f"hits@{k}"] += float(hit.sum().item())
+        positions = matches[:, :k_eff].float().argmax(dim=1) + 1
+        ap = torch.where(hit.bool(), 1.0 / positions.float(), torch.zeros_like(hit))
+        scores[f"map@{k}"] += float(ap.sum().item())
+    return float(valid_count)
 
 
 def train_epoch(model, loader, relation_graph, hypergraph_list, crit, optimizer,
@@ -74,8 +92,8 @@ def train_epoch(model, loader, relation_graph, hypergraph_list, crit, optimizer,
         n_words = gold.data.ne(Constants.PAD).sum().float()
         n_total_words += n_words
         pred_micro, pred_macro, loss_adv, loss_diff = model(hypergraph_list, relation_graph, tgt)
-        mask = get_previous_user_mask(tgt[:, :-1].cpu(), user_size).to(device)
-        pred_flat = (pred_micro[:, :-1, :] + mask).view(-1, pred_micro.size(-1))
+        pred_masked = mask_previous_users_(pred_micro[:, :-1, :].clone(), tgt[:, :-1])
+        pred_flat = pred_masked.reshape(-1, pred_micro.size(-1))
         micro_loss = crit(pred_flat, gold.contiguous().view(-1))
         macro_loss = MAE(tgt_len.float(), pred_macro)
         loss = (1 - lambda_loss) * micro_loss + lambda_loss * macro_loss + loss_adv + gamma_loss * loss_diff
@@ -95,15 +113,12 @@ def test_epoch(model, loader, relation_graph, hypergraph_list, user_size, device
     with torch.no_grad():
         for batch in loader:
             tgt, tgt_ts, tgt_idx, tgt_len = (x.to(device) for x in batch)
-            gold = tgt[:, 1:].contiguous().view(-1).detach().cpu().numpy()
+            gold = tgt[:, 1:].contiguous().view(-1)
             pred_micro, pred_macro, _, _ = model(hypergraph_list, relation_graph, tgt)
-            mask = get_previous_user_mask(tgt[:, :-1].cpu(), user_size).to(device)
-            y_pred = (pred_micro[:, :-1, :] + mask).view(-1, pred_micro.size(-1)).detach().cpu().numpy()
-            scores_batch, scores_len = compute_metric(y_pred, gold, k_list)
+            pred_masked = mask_previous_users_(pred_micro[:, :-1, :].clone(), tgt[:, :-1])
+            y_pred = pred_masked.reshape(-1, pred_micro.size(-1))
+            scores_len = update_topk_scores_from_logits(scores, y_pred, gold, k_list)
             n_total_words += scores_len
-            for k in k_list:
-                scores[f"hits@{k}"] += scores_batch[f"hits@{k}"] * scores_len
-                scores[f"map@{k}"] += scores_batch[f"map@{k}"] * scores_len
             msle_vals.append(MSLE(tgt_len.float(), pred_macro))
     for k in k_list:
         scores[f"hits@{k}"] /= n_total_words
@@ -114,7 +129,7 @@ def test_epoch(model, loader, relation_graph, hypergraph_list, user_size, device
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset_name", default="douban")
-    parser.add_argument("--epochs", type=int, default=30)
+    parser.add_argument("--epochs", type=int, default=200)
     parser.add_argument("--batch_size", type=int, default=64)
     parser.add_argument("--emb_dim", type=int, default=64)
     parser.add_argument("--k_list", nargs="+", type=int, default=[10, 50, 100])
@@ -124,10 +139,19 @@ def main():
     parser.add_argument("--max_seq_length", type=int, default=200)
     parser.add_argument("--lr", type=float, default=0.001)
     parser.add_argument("--device", default="cpu")
+    parser.add_argument(
+        "--reproduction_level",
+        default="public_code_adapter",
+        choices=["public_code_adapter", "frontier_reproduction_full_run"],
+    )
+    parser.add_argument("--config_id", default="")
+    parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--report_dataset", default="", help="Dataset name to report when running a staged same-source dataset")
+    parser.add_argument("--protocol_source", default="", help="Source/protocol note for staged same-source runs")
     args = parser.parse_args()
 
-    torch.manual_seed(42)
-    np.random.seed(42)
+    torch.manual_seed(args.seed)
+    np.random.seed(args.seed)
     device = torch.device("cuda" if args.device == "cuda" and torch.cuda.is_available() else "cpu")
 
     print(f"[MINDS] Loading data: {args.dataset_name}")
@@ -178,10 +202,18 @@ def main():
 
     result = {
         "model": "MINDS",
-        "dataset": args.dataset_name,
+        "dataset": args.report_dataset or args.dataset_name,
+        "adapter_dataset": args.dataset_name,
+        "task": "multi_scale",
+        "status": "ok",
+        "reproduction_level": args.reproduction_level,
+        "seed": args.seed,
+        "config_id": args.config_id,
         "epochs": args.epochs,
         "selection": f"best_valid_map@{last_k}",
         "best_epoch": best_epoch,
+        "methodology": "Original MINDS public-code adapter: sequential hypergraphs, adversarial learning, macro/micro diffusion prediction.",
+        "protocol_source": args.protocol_source or "MINDS public-code native dataset",
         f"valid_map@{last_k}": float(best_valid_scores[f"map@{last_k}"]) if best_valid_scores else None,
         "valid_msle": float(best_valid_msle) if best_valid_msle is not None else None,
     }
@@ -190,6 +222,17 @@ def main():
         result[f"map@{k}"] = float(test_scores[f"map@{k}"])
     result["msle"] = float(test_msle)
     result["mae"] = None  # MAE not separately tracked at inference; MSLE is the primary macro metric
+    if args.reproduction_level == "frontier_reproduction_full_run":
+        result["same_protocol"] = True
+        result["full_run_protocol"] = {
+            "same_protocol": True,
+            "config_id": args.config_id,
+            "adapter": "benchmark.adapters.minds_runner",
+            "original_public_code": True,
+            "source_dataset": args.report_dataset or args.dataset_name,
+            "adapter_dataset": args.dataset_name,
+            "protocol_source": args.protocol_source or "MINDS public-code native dataset",
+        }
 
     print(json.dumps(result))
 

@@ -1,0 +1,807 @@
+{
+  "schema": "cogguard.kt2.baseline_comparison.v1",
+  "status": "ok",
+  "boundary": "Compares available KT2 fusion, MINDS, FOREST, and CasFT evidence; does not imply full original-paper reproduction.",
+  "source_files": {
+    "historical_results": 9,
+    "casft_external_attempt": 1,
+    "forest_rl_smoke": 1,
+    "minds_zip_smoke": 1,
+    "kt2_original_fusion_small_matrix": 27,
+    "kt2_original_fusion_ablation_smoke": 5,
+    "kt2_original_fusion_full_run": 1,
+    "same_protocol_full_run_baselines": 3
+  },
+  "rows": [
+    {
+      "model": "CasFT",
+      "dataset": "douban",
+      "task": "scale",
+      "reproduction_level": "frontier_reproduction_full_run",
+      "scope": "same_protocol_full_run_baselines",
+      "sources": [
+        "same_protocol_full_run_baselines"
+      ],
+      "runs": 1,
+      "status_counts": {
+        "ok": 1
+      },
+      "metric_summary": {
+        "msle": {
+          "mean": 6.6279,
+          "std": 0.0,
+          "n": 1
+        },
+        "mae": {
+          "mean": 2.1203,
+          "std": 0.0,
+          "n": 1
+        }
+      },
+      "comparability": "same_protocol_full_run"
+    },
+    {
+      "model": "CasFT",
+      "dataset": "douban",
+      "task": "scale",
+      "reproduction_level": "frontier_reproduction_small_run",
+      "scope": "casft_external_attempt",
+      "sources": [
+        "casft_external_attempt"
+      ],
+      "runs": 1,
+      "status_counts": {
+        "ok": 1
+      },
+      "metric_summary": {
+        "msle": {
+          "mean": 10.9604,
+          "std": 0.0,
+          "n": 1
+        },
+        "mae": {
+          "mean": 2.7008,
+          "std": 0.0,
+          "n": 1
+        }
+      },
+      "comparability": "frontier_small_run_not_full_protocol"
+    },
+    {
+      "model": "FOREST",
+      "dataset": "douban",
+      "task": "multi_scale",
+      "reproduction_level": "frontier_reproduction_full_run",
+      "scope": "same_protocol_full_run_baselines",
+      "sources": [
+        "same_protocol_full_run_baselines"
+      ],
+      "runs": 1,
+      "status_counts": {
+        "ok": 1
+      },
+      "metric_summary": {
+        "hits@100": {
+          "mean": 0.001182033096926714,
+          "std": 0.0,
+          "n": 1
+        },
+        "map@100": {
+          "mean": 5.372877713303246e-05,
+          "std": 0.0,
+          "n": 1
+        }
+      },
+      "comparability": "same_protocol_full_run"
+    },
+    {
+      "model": "FOREST",
+      "dataset": "douban",
+      "task": "multi_scale",
+      "reproduction_level": "public_code_adapter",
+      "scope": "forest_rl_smoke",
+      "sources": [
+        "forest_rl_smoke"
+      ],
+      "runs": 1,
+      "status_counts": {
+        "ok": 1
+      },
+      "metric_summary": {
+        "hits@100": {
+          "mean": 0.0,
+          "std": 0.0,
+          "n": 1
+        },
+        "map@100": {
+          "mean": 0.0,
+          "std": 0.0,
+          "n": 1
+        }
+      },
+      "comparability": "public_adapter_smoke_or_limited_run"
+    },
+    {
+      "model": "FOREST",
+      "dataset": "douban",
+      "task": "next_hop",
+      "reproduction_level": "historical_result_without_schema",
+      "scope": "historical_results",
+      "sources": [
+        "historical_results"
+      ],
+      "runs": 1,
+      "status_counts": {
+        "ok": 1
+      },
+      "metric_summary": {
+        "hits@100": {
+          "mean": 0.3288817728612496,
+          "std": 0.0,
+          "n": 1
+        },
+        "map@100": {
+          "mean": 0.08679841068518254,
+          "std": 0.0,
+          "n": 1
+        }
+      },
+      "comparability": "historical_baseline_result_needs_schema_refresh"
+    },
+    {
+      "model": "KT2JointModel",
+      "dataset": "douban",
+      "task": "multi_scale",
+      "reproduction_level": "kt2_joint_model_full_run",
+      "scope": "kt2_original_fusion_full_run",
+      "sources": [
+        "kt2_original_fusion_full_run"
+      ],
+      "runs": 1,
+      "status_counts": {
+        "ok": 1
+      },
+      "metric_summary": {
+        "msle": {
+          "mean": 1.2347272344612874,
+          "std": 0.0,
+          "n": 1
+        },
+        "mae": {
+          "mean": 17.6559100151062,
+          "std": 0.0,
+          "n": 1
+        },
+        "rmse": {
+          "mean": 22.563374983916518,
+          "std": 0.0,
+          "n": 1
+        },
+        "direction_accuracy": {
+          "mean": 0.8333333333333334,
+          "std": 0.0,
+          "n": 1
+        },
+        "candidate_recall_full": {
+          "mean": 0.1111111111111111,
+          "std": 0.0,
+          "n": 1
+        },
+        "hits@100": {
+          "mean": 0.17500000000000002,
+          "std": 0.0,
+          "n": 1
+        },
+        "map@100": {
+          "mean": 0.013336653659557255,
+          "std": 0.0,
+          "n": 1
+        },
+        "mrr": {
+          "mean": 0.07364718614718614,
+          "std": 0.0,
+          "n": 1
+        },
+        "macro_micro_consistency": {
+          "mean": 0.5695809473734673,
+          "std": 0.0,
+          "n": 1
+        }
+      },
+      "comparability": "kt2_integrated_same_protocol_full_run"
+    },
+    {
+      "model": "KT2JointModel",
+      "dataset": "douban",
+      "task": "multi_scale",
+      "reproduction_level": "kt2_joint_model_small_run",
+      "scope": "ablation:full_minds_forest_casft",
+      "sources": [
+        "kt2_original_fusion_ablation_smoke"
+      ],
+      "runs": 1,
+      "status_counts": {
+        "ok": 1
+      },
+      "metric_summary": {
+        "msle": {
+          "mean": 1.4732525665166278,
+          "std": 0.0,
+          "n": 1
+        },
+        "mae": {
+          "mean": 16.613123893737793,
+          "std": 0.0,
+          "n": 1
+        },
+        "rmse": {
+          "mean": 22.24402561653694,
+          "std": 0.0,
+          "n": 1
+        },
+        "direction_accuracy": {
+          "mean": 0.75,
+          "std": 0.0,
+          "n": 1
+        },
+        "candidate_recall_full": {
+          "mean": 0.0975609756097561,
+          "std": 0.0,
+          "n": 1
+        },
+        "hits@100": {
+          "mean": 0.1625,
+          "std": 0.0,
+          "n": 1
+        },
+        "map@100": {
+          "mean": 0.016493055555555556,
+          "std": 0.0,
+          "n": 1
+        },
+        "mrr": {
+          "mean": 0.046875,
+          "std": 0.0,
+          "n": 1
+        },
+        "macro_micro_consistency": {
+          "mean": 0.6542385082245334,
+          "std": 0.0,
+          "n": 1
+        }
+      },
+      "comparability": "component_ablation_small_run_not_full_protocol"
+    },
+    {
+      "model": "KT2JointModel",
+      "dataset": "douban",
+      "task": "multi_scale",
+      "reproduction_level": "kt2_joint_model_small_run",
+      "scope": "ablation:local_kt2_bridge",
+      "sources": [
+        "kt2_original_fusion_ablation_smoke"
+      ],
+      "runs": 1,
+      "status_counts": {
+        "ok": 1
+      },
+      "metric_summary": {
+        "msle": {
+          "mean": 1.4620630978024747,
+          "std": 0.0,
+          "n": 1
+        },
+        "mae": {
+          "mean": 16.541696548461914,
+          "std": 0.0,
+          "n": 1
+        },
+        "rmse": {
+          "mean": 22.21673802737962,
+          "std": 0.0,
+          "n": 1
+        },
+        "direction_accuracy": {
+          "mean": 0.75,
+          "std": 0.0,
+          "n": 1
+        },
+        "candidate_recall_full": {
+          "mean": 0.0975609756097561,
+          "std": 0.0,
+          "n": 1
+        },
+        "hits@100": {
+          "mean": 0.1625,
+          "std": 0.0,
+          "n": 1
+        },
+        "map@100": {
+          "mean": 0.015361590038314176,
+          "std": 0.0,
+          "n": 1
+        },
+        "mrr": {
+          "mean": 0.024245689655172414,
+          "std": 0.0,
+          "n": 1
+        },
+        "macro_micro_consistency": {
+          "mean": 0.6525422145884905,
+          "std": 0.0,
+          "n": 1
+        }
+      },
+      "comparability": "component_ablation_small_run_not_full_protocol"
+    },
+    {
+      "model": "KT2JointModel",
+      "dataset": "douban",
+      "task": "multi_scale",
+      "reproduction_level": "kt2_joint_model_small_run",
+      "scope": "ablation:minds_baseline",
+      "sources": [
+        "kt2_original_fusion_ablation_smoke"
+      ],
+      "runs": 1,
+      "status_counts": {
+        "ok": 1
+      },
+      "metric_summary": {
+        "msle": {
+          "mean": 1.4643360441908555,
+          "std": 0.0,
+          "n": 1
+        },
+        "mae": {
+          "mean": 16.544018745422363,
+          "std": 0.0,
+          "n": 1
+        },
+        "rmse": {
+          "mean": 22.22132265857964,
+          "std": 0.0,
+          "n": 1
+        },
+        "direction_accuracy": {
+          "mean": 0.75,
+          "std": 0.0,
+          "n": 1
+        },
+        "candidate_recall_full": {
+          "mean": 0.0975609756097561,
+          "std": 0.0,
+          "n": 1
+        },
+        "hits@100": {
+          "mean": 0.1625,
+          "std": 0.0,
+          "n": 1
+        },
+        "map@100": {
+          "mean": 0.01597222222222222,
+          "std": 0.0,
+          "n": 1
+        },
+        "mrr": {
+          "mean": 0.03645833333333333,
+          "std": 0.0,
+          "n": 1
+        },
+        "macro_micro_consistency": {
+          "mean": 0.6534950728815797,
+          "std": 0.0,
+          "n": 1
+        }
+      },
+      "comparability": "component_ablation_small_run_not_full_protocol"
+    },
+    {
+      "model": "KT2JointModel",
+      "dataset": "douban",
+      "task": "multi_scale",
+      "reproduction_level": "kt2_joint_model_small_run",
+      "scope": "ablation:minds_plus_casft",
+      "sources": [
+        "kt2_original_fusion_ablation_smoke"
+      ],
+      "runs": 1,
+      "status_counts": {
+        "ok": 1
+      },
+      "metric_summary": {
+        "msle": {
+          "mean": 1.4662940176976171,
+          "std": 0.0,
+          "n": 1
+        },
+        "mae": {
+          "mean": 16.56100082397461,
+          "std": 0.0,
+          "n": 1
+        },
+        "rmse": {
+          "mean": 22.22642310632393,
+          "std": 0.0,
+          "n": 1
+        },
+        "direction_accuracy": {
+          "mean": 0.75,
+          "std": 0.0,
+          "n": 1
+        },
+        "candidate_recall_full": {
+          "mean": 0.0975609756097561,
+          "std": 0.0,
+          "n": 1
+        },
+        "hits@100": {
+          "mean": 0.1625,
+          "std": 0.0,
+          "n": 1
+        },
+        "map@100": {
+          "mean": 0.01597222222222222,
+          "std": 0.0,
+          "n": 1
+        },
+        "mrr": {
+          "mean": 0.03645833333333333,
+          "std": 0.0,
+          "n": 1
+        },
+        "macro_micro_consistency": {
+          "mean": 0.6538162681392972,
+          "std": 0.0,
+          "n": 1
+        }
+      },
+      "comparability": "component_ablation_small_run_not_full_protocol"
+    },
+    {
+      "model": "KT2JointModel",
+      "dataset": "douban",
+      "task": "multi_scale",
+      "reproduction_level": "kt2_joint_model_small_run",
+      "scope": "ablation:minds_plus_forest",
+      "sources": [
+        "kt2_original_fusion_ablation_smoke"
+      ],
+      "runs": 1,
+      "status_counts": {
+        "ok": 1
+      },
+      "metric_summary": {
+        "msle": {
+          "mean": 1.4633538611955352,
+          "std": 0.0,
+          "n": 1
+        },
+        "mae": {
+          "mean": 16.540220260620117,
+          "std": 0.0,
+          "n": 1
+        },
+        "rmse": {
+          "mean": 22.219112533712412,
+          "std": 0.0,
+          "n": 1
+        },
+        "direction_accuracy": {
+          "mean": 0.75,
+          "std": 0.0,
+          "n": 1
+        },
+        "candidate_recall_full": {
+          "mean": 0.0975609756097561,
+          "std": 0.0,
+          "n": 1
+        },
+        "hits@100": {
+          "mean": 0.1625,
+          "std": 0.0,
+          "n": 1
+        },
+        "map@100": {
+          "mean": 0.01534722222222222,
+          "std": 0.0,
+          "n": 1
+        },
+        "mrr": {
+          "mean": 0.02395833333333333,
+          "std": 0.0,
+          "n": 1
+        },
+        "macro_micro_consistency": {
+          "mean": 0.6525559196249647,
+          "std": 0.0,
+          "n": 1
+        }
+      },
+      "comparability": "component_ablation_small_run_not_full_protocol"
+    },
+    {
+      "model": "KT2JointModel",
+      "dataset": "douban",
+      "task": "multi_scale",
+      "reproduction_level": "kt2_joint_model_small_run",
+      "scope": "kt2_original_fusion_small_matrix",
+      "sources": [
+        "kt2_original_fusion_small_matrix"
+      ],
+      "runs": 9,
+      "status_counts": {
+        "ok": 9
+      },
+      "metric_summary": {
+        "msle": {
+          "mean": 1.1969315765910078,
+          "std": 0.24500449856804324,
+          "n": 9
+        },
+        "mae": {
+          "mean": 15.038477314843071,
+          "std": 1.3923988354041184,
+          "n": 9
+        },
+        "rmse": {
+          "mean": 20.23976738490796,
+          "std": 2.635094986882941,
+          "n": 9
+        },
+        "direction_accuracy": {
+          "mean": 0.8333333333333334,
+          "std": 0.11785113019775792,
+          "n": 9
+        },
+        "candidate_recall_full": {
+          "mean": 0.11291899629959755,
+          "std": 0.04290025575602103,
+          "n": 9
+        },
+        "hits@100": {
+          "mean": 0.175,
+          "std": 0.027003086243366083,
+          "n": 9
+        },
+        "map@100": {
+          "mean": 0.020354889157073335,
+          "std": 0.012008753323333421,
+          "n": 9
+        },
+        "mrr": {
+          "mean": 0.0551417967471889,
+          "std": 0.045506257287321474,
+          "n": 9
+        },
+        "macro_micro_consistency": {
+          "mean": 0.6841362806925851,
+          "std": 0.10302806990141984,
+          "n": 9
+        }
+      },
+      "comparability": "fusion_small_matrix_not_full_protocol"
+    },
+    {
+      "model": "KT2JointModel",
+      "dataset": "memetracker",
+      "task": "multi_scale",
+      "reproduction_level": "kt2_joint_model_small_run",
+      "scope": "kt2_original_fusion_small_matrix",
+      "sources": [
+        "kt2_original_fusion_small_matrix"
+      ],
+      "runs": 9,
+      "status_counts": {
+        "ok": 9
+      },
+      "metric_summary": {
+        "msle": {
+          "mean": 1.3215296336248963,
+          "std": 0.5094914063844861,
+          "n": 9
+        },
+        "mae": {
+          "mean": 16.17279550764296,
+          "std": 2.350581754441538,
+          "n": 9
+        },
+        "rmse": {
+          "mean": 24.794933773292048,
+          "std": 4.6275009468594135,
+          "n": 9
+        },
+        "direction_accuracy": {
+          "mean": 0.8333333333333334,
+          "std": 0.11785113019775792,
+          "n": 9
+        },
+        "candidate_recall_full": {
+          "mean": 0.055146055146055147,
+          "std": 0.020744428328160383,
+          "n": 9
+        },
+        "hits@100": {
+          "mean": 0.025,
+          "std": 0.010206207261596574,
+          "n": 9
+        },
+        "map@100": {
+          "mean": 0.005064590846846729,
+          "std": 0.003652882170369065,
+          "n": 9
+        },
+        "mrr": {
+          "mean": 0.0685639070442992,
+          "std": 0.04681651807303257,
+          "n": 9
+        },
+        "macro_micro_consistency": {
+          "mean": 0.6114130334661667,
+          "std": 0.07844591834248754,
+          "n": 9
+        }
+      },
+      "comparability": "fusion_small_matrix_not_full_protocol"
+    },
+    {
+      "model": "KT2JointModel",
+      "dataset": "twitter",
+      "task": "multi_scale",
+      "reproduction_level": "kt2_joint_model_small_run",
+      "scope": "kt2_original_fusion_small_matrix",
+      "sources": [
+        "kt2_original_fusion_small_matrix"
+      ],
+      "runs": 9,
+      "status_counts": {
+        "ok": 9
+      },
+      "metric_summary": {
+        "msle": {
+          "mean": 7.662837495774881,
+          "std": 9.471643682297891,
+          "n": 9
+        },
+        "mae": {
+          "mean": 287.3987581729889,
+          "std": 663.8828718558033,
+          "n": 9
+        },
+        "rmse": {
+          "mean": 561.1669971411582,
+          "std": 1323.2195707181338,
+          "n": 9
+        },
+        "direction_accuracy": {
+          "mean": 0.6666666666666666,
+          "std": 0.16666666666666666,
+          "n": 9
+        },
+        "candidate_recall_full": {
+          "mean": 0.12337164750957855,
+          "std": 0.01408795119605382,
+          "n": 9
+        },
+        "hits@100": {
+          "mean": 0.24166666666666667,
+          "std": 0.005892556509887888,
+          "n": 9
+        },
+        "map@100": {
+          "mean": 0.02950323255762663,
+          "std": 0.012190930444709178,
+          "n": 9
+        },
+        "mrr": {
+          "mean": 0.07452428207576949,
+          "std": 0.03304271287491574,
+          "n": 9
+        },
+        "macro_micro_consistency": {
+          "mean": 0.6794446673313307,
+          "std": 0.08898678030341227,
+          "n": 9
+        }
+      },
+      "comparability": "fusion_small_matrix_not_full_protocol"
+    },
+    {
+      "model": "MINDS",
+      "dataset": "christianity",
+      "task": "multi_scale",
+      "reproduction_level": "historical_result_without_schema",
+      "scope": "historical_results",
+      "sources": [
+        "historical_results"
+      ],
+      "runs": 1,
+      "status_counts": {
+        "ok": 1
+      },
+      "metric_summary": {
+        "msle": {
+          "mean": 0.08066929131746292,
+          "std": 0.0,
+          "n": 1
+        },
+        "hits@100": {
+          "mean": 0.5848214285714286,
+          "std": 0.0,
+          "n": 1
+        },
+        "map@100": {
+          "mean": 0.18952656212709376,
+          "std": 0.0,
+          "n": 1
+        }
+      },
+      "comparability": "historical_baseline_result_needs_schema_refresh"
+    },
+    {
+      "model": "MINDS",
+      "dataset": "christianity",
+      "task": "multi_scale",
+      "reproduction_level": "public_code_adapter",
+      "scope": "minds_zip_smoke",
+      "sources": [
+        "minds_zip_smoke"
+      ],
+      "runs": 1,
+      "status_counts": {
+        "ok": 1
+      },
+      "metric_summary": {
+        "msle": {
+          "mean": 5.970704078674316,
+          "std": 0.0,
+          "n": 1
+        },
+        "hits@100": {
+          "mean": 0.296875,
+          "std": 0.0,
+          "n": 1
+        },
+        "map@100": {
+          "mean": 0.13981477777024556,
+          "std": 0.0,
+          "n": 1
+        }
+      },
+      "comparability": "public_adapter_smoke_or_limited_run"
+    },
+    {
+      "model": "MINDS",
+      "dataset": "douban",
+      "task": "multi_scale",
+      "reproduction_level": "frontier_reproduction_full_run",
+      "scope": "same_protocol_full_run_baselines",
+      "sources": [
+        "same_protocol_full_run_baselines"
+      ],
+      "runs": 1,
+      "status_counts": {
+        "ok": 1
+      },
+      "metric_summary": {
+        "msle": {
+          "mean": 16.27037239074707,
+          "std": 0.0,
+          "n": 1
+        },
+        "hits@100": {
+          "mean": 0.08571428571428572,
+          "std": 0.0,
+          "n": 1
+        },
+        "map@100": {
+          "mean": 0.0021401323988119512,
+          "std": 0.0,
+          "n": 1
+        }
+      },
+      "comparability": "same_protocol_full_run"
+    }
+  ],
+  "missing_requirements": []
+}

@@ -1,0 +1,45 @@
+{
+  "schema": "cogguard.kt2.kt1_coordination_scope.v1",
+  "source": "G:\\CISCN\\CogGuard\\system\\backend\\experiments\\kt1_io_reproduction\\detect_sample\\predictions.csv",
+  "selection_rule": {
+    "positive_labels": [
+      "1",
+      "coordinated",
+      "positive",
+      "true",
+      "y",
+      "yes"
+    ],
+    "min_score": null,
+    "note": "Rows are selected from KT1 user-level predictions; event-level metrics are not treated as coordinated users."
+  },
+  "users": [
+    "u1",
+    "u2"
+  ],
+  "groups": [
+    {
+      "group_id": "0",
+      "users": [
+        "u1",
+        "u2"
+      ]
+    }
+  ],
+  "records": [
+    {
+      "user_id": "u1",
+      "group_id": "0",
+      "predicted_label": "1",
+      "node_score": 1.0,
+      "source": "kt1_predictions"
+    },
+    {
+      "user_id": "u2",
+      "group_id": "0",
+      "predicted_label": "1",
+      "node_score": 0.997588,
+      "source": "kt1_predictions"
+    }
+  ]
+}

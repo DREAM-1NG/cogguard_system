@@ -428,7 +428,7 @@ def main() -> None:
     parser.add_argument("--negatives_per_cascade", type=int, default=120)
     parser.add_argument("--bucket_seconds", type=int, default=24 * 3600)
     parser.add_argument("--max_bucket_users", type=int, default=80)
-    parser.add_argument("--epochs", type=int, default=5)
+    parser.add_argument("--epochs", type=int, default=200)
     parser.add_argument("--batch_size", type=int, default=4096)
     parser.add_argument("--hidden_dim", type=int, default=64)
     parser.add_argument("--dropout", type=float, default=0.1)

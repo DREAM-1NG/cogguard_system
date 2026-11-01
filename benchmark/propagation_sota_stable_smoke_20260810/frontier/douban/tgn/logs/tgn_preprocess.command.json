@@ -1,0 +1,9 @@
+{
+  "command": [
+    "D:\\Anaconda\\python.exe",
+    "utils/preprocess_data.py",
+    "--data",
+    "kt2_douban_tgn"
+  ],
+  "returncode": 0
+}

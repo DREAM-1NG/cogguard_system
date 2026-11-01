@@ -1,0 +1,23 @@
+{
+  "command": [
+    "D:\\Anaconda\\python.exe",
+    "train_link_prediction.py",
+    "--dataset_name",
+    "wikipedia",
+    "--model_name",
+    "DyGFormer",
+    "--num_runs",
+    "1",
+    "--num_epochs",
+    "1",
+    "--batch_size",
+    "16",
+    "--patch_size",
+    "2",
+    "--max_input_sequence_length",
+    "32",
+    "--gpu",
+    "-1"
+  ],
+  "returncode": 0
+}

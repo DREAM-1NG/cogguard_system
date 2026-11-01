@@ -1,0 +1,3 @@
+user_id,group_id,predicted_label,node_score,source
+u1,0,1,1.0,kt1_predictions
+u2,0,1,0.997588,kt1_predictions

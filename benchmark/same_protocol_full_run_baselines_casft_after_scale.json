@@ -1,0 +1,88 @@
+{
+  "schema": "cogguard.kt2.same_protocol_full_run_baselines.v1",
+  "status": "partial",
+  "boundary": "Rows are real adapter runs only; failed rows remain failed and are not completion evidence.",
+  "datasets": [
+    "douban"
+  ],
+  "seeds": [
+    42
+  ],
+  "models": [
+    "CasFT"
+  ],
+  "config_id": "casft-after-scale-fix",
+  "ok_models_by_dataset": {
+    "douban": [
+      "CasFT"
+    ]
+  },
+  "completed_datasets": {},
+  "failures": [],
+  "rows": [
+    {
+      "msle": 6.6279,
+      "smape": 0.501,
+      "loglik": 2.3827,
+      "mae": 2.1203,
+      "mape_percent": 0.501,
+      "pcc": -0.4329,
+      "r2": -0.8918,
+      "model": "CasFT",
+      "dataset": "douban",
+      "status": "ok",
+      "task": "scale",
+      "reproduction_level": "frontier_reproduction_full_run",
+      "seed": 42,
+      "config_id": "casft-after-scale-fix",
+      "num_runs": 1,
+      "max_epoch": 1,
+      "command": [
+        "D:\\Anaconda\\python.exe",
+        "G:\\CISCN\\CogGuard\\subsystems\\kt2_repos\\CasFT\\.kt2_windows_shim\\train_spawn.py",
+        "--data=kt2_douban_casft",
+        "--observation_time=86400",
+        "--prediction_time=1296000",
+        "--max_events=80",
+        "--max_epoch=1",
+        "--interval_num=12",
+        "--seed=42",
+        "--tpp_hdims=32",
+        "--FC=1",
+        "--lr=2e-3",
+        "--timesteps=2",
+        "--sampling_timesteps=2",
+        "--test_bsz=16",
+        "--testfreq=1",
+        "--experiment_dir=G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\same_protocol_full_run_baselines_casft_after_scale\\casft_exports\\douban\\seed_42\\experiments"
+      ],
+      "log_dir": "G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\same_protocol_full_run_baselines_casft_after_scale\\casft_exports\\douban\\seed_42\\logs",
+      "stdout_log": "G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\same_protocol_full_run_baselines_casft_after_scale\\casft_exports\\douban\\seed_42\\logs\\casft_train.stdout.log",
+      "stderr_log": "G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\same_protocol_full_run_baselines_casft_after_scale\\casft_exports\\douban\\seed_42\\logs\\casft_train.stderr.log",
+      "command_log": "G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\same_protocol_full_run_baselines_casft_after_scale\\casft_exports\\douban\\seed_42\\logs\\casft_train.command.json",
+      "elapsed_s": 48.5,
+      "note": "Upstream CasFT script completed on prepared official/preprocessed data.",
+      "same_protocol": true,
+      "full_run_protocol": {
+        "same_protocol": true,
+        "config_id": "casft-after-scale-fix",
+        "adapter": "benchmark.adapters.casft_runner",
+        "original_public_code": true,
+        "source_dataset": "douban",
+        "casft_dataset": "kt2_douban_casft",
+        "run_external": true
+      },
+      "casft_staging_cleaned": true,
+      "casft_staging_cleanup_note": "removed generated CasFT staging directory data/kt2_douban_casft",
+      "casft_generated_cleanup_paths": [
+        "G:\\CISCN\\CogGuard\\subsystems\\kt2_repos\\CasFT\\data\\kt2_douban_casft",
+        "G:\\CISCN\\CogGuard\\subsystems\\kt2_repos\\CasFT\\graphwave\\__pycache__",
+        "G:\\CISCN\\CogGuard\\subsystems\\kt2_repos\\CasFT\\graphwave\\utils\\__pycache__"
+      ],
+      "repo_head": "ebb7e8e",
+      "cwd": "G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev",
+      "returncode": 0
+    }
+  ],
+  "elapsed_s": 68.4
+}

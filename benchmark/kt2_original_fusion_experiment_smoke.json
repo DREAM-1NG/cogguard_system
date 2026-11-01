@@ -1,0 +1,349 @@
+{
+  "schema": "cogguard.kt2.original_fusion_experiment.v1",
+  "status": "ok",
+  "reproduction_level": "kt2_joint_model_small_run",
+  "boundary": "Runs KT2JointModel with upstream MINDS Module.forward, FOREST RNNModel/RRModel, and CasFT GaussianDiffusion_ST plus CombinedSpatiotemporalModel5 auxiliary subpaths. This is a repeatable original-subpath fusion experiment, not full original-paper data protocol or full-run reproduction.",
+  "datasets": [
+    "douban"
+  ],
+  "seeds": [
+    42
+  ],
+  "runs": 1,
+  "failures": [],
+  "schema_report": {
+    "schema": "cogguard.kt2.benchmark_result.v1",
+    "ok": true,
+    "rows": 1,
+    "errors": [],
+    "warnings": []
+  },
+  "metric_summary": {
+    "msle": {
+      "mean": 1.4658977671741935,
+      "std": 0.0,
+      "n": 1
+    },
+    "mae": {
+      "mean": 16.56464910507202,
+      "std": 0.0,
+      "n": 1
+    },
+    "rmse": {
+      "mean": 22.22594484302532,
+      "std": 0.0,
+      "n": 1
+    },
+    "direction_accuracy": {
+      "mean": 0.75,
+      "std": 0.0,
+      "n": 1
+    },
+    "candidate_recall_full": {
+      "mean": 0.0975609756097561,
+      "std": 0.0,
+      "n": 1
+    },
+    "hits@10": {
+      "mean": 0.0125,
+      "std": 0.0,
+      "n": 1
+    },
+    "hits@50": {
+      "mean": 0.1625,
+      "std": 0.0,
+      "n": 1
+    },
+    "hits@100": {
+      "mean": 0.1625,
+      "std": 0.0,
+      "n": 1
+    },
+    "map@100": {
+      "mean": 0.016493055555555556,
+      "std": 0.0,
+      "n": 1
+    },
+    "mrr": {
+      "mean": 0.046875,
+      "std": 0.0,
+      "n": 1
+    },
+    "macro_micro_consistency": {
+      "mean": 0.6536335785459981,
+      "std": 0.0,
+      "n": 1
+    }
+  },
+  "by_dataset": {
+    "douban": {
+      "msle": {
+        "mean": 1.4658977671741935,
+        "std": 0.0,
+        "n": 1
+      },
+      "mae": {
+        "mean": 16.56464910507202,
+        "std": 0.0,
+        "n": 1
+      },
+      "rmse": {
+        "mean": 22.22594484302532,
+        "std": 0.0,
+        "n": 1
+      },
+      "direction_accuracy": {
+        "mean": 0.75,
+        "std": 0.0,
+        "n": 1
+      },
+      "candidate_recall_full": {
+        "mean": 0.0975609756097561,
+        "std": 0.0,
+        "n": 1
+      },
+      "hits@10": {
+        "mean": 0.0125,
+        "std": 0.0,
+        "n": 1
+      },
+      "hits@50": {
+        "mean": 0.1625,
+        "std": 0.0,
+        "n": 1
+      },
+      "hits@100": {
+        "mean": 0.1625,
+        "std": 0.0,
+        "n": 1
+      },
+      "map@100": {
+        "mean": 0.016493055555555556,
+        "std": 0.0,
+        "n": 1
+      },
+      "mrr": {
+        "mean": 0.046875,
+        "std": 0.0,
+        "n": 1
+      },
+      "macro_micro_consistency": {
+        "mean": 0.6536335785459981,
+        "std": 0.0,
+        "n": 1
+      }
+    }
+  },
+  "by_seed": {
+    "42": {
+      "msle": {
+        "mean": 1.4658977671741935,
+        "std": 0.0,
+        "n": 1
+      },
+      "mae": {
+        "mean": 16.56464910507202,
+        "std": 0.0,
+        "n": 1
+      },
+      "rmse": {
+        "mean": 22.22594484302532,
+        "std": 0.0,
+        "n": 1
+      },
+      "direction_accuracy": {
+        "mean": 0.75,
+        "std": 0.0,
+        "n": 1
+      },
+      "candidate_recall_full": {
+        "mean": 0.0975609756097561,
+        "std": 0.0,
+        "n": 1
+      },
+      "hits@10": {
+        "mean": 0.0125,
+        "std": 0.0,
+        "n": 1
+      },
+      "hits@50": {
+        "mean": 0.1625,
+        "std": 0.0,
+        "n": 1
+      },
+      "hits@100": {
+        "mean": 0.1625,
+        "std": 0.0,
+        "n": 1
+      },
+      "map@100": {
+        "mean": 0.016493055555555556,
+        "std": 0.0,
+        "n": 1
+      },
+      "mrr": {
+        "mean": 0.046875,
+        "std": 0.0,
+        "n": 1
+      },
+      "macro_micro_consistency": {
+        "mean": 0.6536335785459981,
+        "std": 0.0,
+        "n": 1
+      }
+    }
+  },
+  "elapsed_s": 20.239,
+  "rows": [
+    {
+      "model": "KT2JointModel",
+      "mode": "joint_macro_micro_training",
+      "task": "multi_scale",
+      "status": "ok",
+      "reproduction_level": "kt2_joint_model_small_run",
+      "obs_ratio": 0.3,
+      "events_test_macro": 4,
+      "events_test_micro": 4,
+      "events_test": 4,
+      "relevant_users_test": 41,
+      "candidate_recall_full": 0.0975609756097561,
+      "candidate_protocol_audit": {
+        "candidate_source": "train-set popularity/transitions/hyper-coactivation plus observed-prefix social neighbors",
+        "future_nodes_injected": false,
+        "candidate_generation_reads_future_tail": false,
+        "observed_user_candidate_violations": 0,
+        "future_only_candidate_matches_from_allowed_sources": 2,
+        "candidates_checked": 200,
+        "leakage_check_passed": true
+      },
+      "msle": 1.4658977671741935,
+      "mae": 16.56464910507202,
+      "rmse": 22.22594484302532,
+      "mape_percent": 87.74483612605503,
+      "smape_percent": 72.20046799064556,
+      "direction_accuracy": 0.75,
+      "trend_mae": 12.92345541715622,
+      "trend_rmse": 16.37127723754388,
+      "trend_direction_accuracy": 0.75,
+      "trend_steps": 4,
+      "mrr": 0.046875,
+      "macro_predicted_growth": 11.314649105072021,
+      "mean_predicted_growth": 11.314649105072021,
+      "micro_predicted_growth_mean": 23.343440532684326,
+      "macro_micro_consistency": 0.6536335785459981,
+      "consistency_mode": "joint_training_growth_count_alignment",
+      "methodology": "MINDS-style sequential hypergraph attention and dynamic prefix-hyperedge memory (original_dynamic_cas_hgnn_fusion_shared_lstm) + FOREST-style masked next-user policy with sampled growth reward and macro/micro consistency + CasFT continuous trend branch (original_gaussian_diffusion_st; original_combined_spatiotemporal_model5_auxiliary)",
+      "auc": null,
+      "average_precision": null,
+      "note": "KT2 formal local joint model: prefix-feature encoder plus GRU sequence encoder, MINDS-style sequential transition/social/hyper-coactivation context with attention pooling and dynamic prefix-hyperedge memory, macro size head, micro next-hop policy head, CasFT-style Euler neural-ODE trend decoder, CasFT original GaussianDiffusion_ST auxiliary; upstream CasFT spatiotemporal/TPP auxiliary status=original_combined_spatiotemporal_model5_auxiliary, and FOREST-style masked next-user policy plus sampled growth reward and macro/micro consistency loss. It is not an original FOREST, MINDS, CasFT, DyGFormer, or HyperIDP reproduction.",
+      "research_migration": {
+        "MINDS": "sequential transition/social/hyper-coactivation context GRU with attention pooling, dynamic prefix-hyperedge memory, optional upstream MINDS DynamicCasHGNN/Fusion/SharedLSTM components (original_dynamic_cas_hgnn_fusion_shared_lstm), optional upstream Module.forward/RelationGNN auxiliary status=original_module_forward_auxiliary, gradient-reversal task/stage adversaries, and macro/micro orthogonality regularizer approximate cross-cascade diffusion state and task disentanglement; this is a KT2 bridge, not the original full MINDS Module with RelationGNN and original dataset protocol",
+        "FOREST": "observed activation-sequence GRU, event-level masked next-user policy loss, REINFORCE-style sampled growth reward over legal candidates, macro-quality reward weighting, and macro/micro count-consistency constrain scale and next-hop predictions; optional upstream FOREST RNNModel/RRModel auxiliary status=original_rnnmodel_rrmodel; this is a KT2 bridge and optional original-component auxiliary, not the full FOREST training protocol or paper-scale RRModel validation",
+        "CasFT": "trend branch uses an Euler neural-ODE-style decoder and calls CasFT's original GaussianDiffusion_ST/ST_Diffusion as an auxiliary loss on min-max normalized future trend checkpoints; it is still not the full CasFT temporal point-process encoder or full training protocol; optional upstream CombinedSpatiotemporalModel5/NeuralPointProcess auxiliary status=original_combined_spatiotemporal_model5_auxiliary; this still remains a KT2 bridge unless the full CasFT data protocol and multi-run validation are used",
+        "DyGFormer_TGN": "micro branch remains a temporal next-hop ranking task over leak-checked candidates"
+      },
+      "casft_diffusion_status": "original_gaussian_diffusion_st",
+      "casft_diffusion_error": null,
+      "casft_spatiotemporal_status": "original_combined_spatiotemporal_model5_neural_point_process",
+      "casft_spatiotemporal_error": null,
+      "casft_spatiotemporal_runtime_status": "original_combined_spatiotemporal_model5_auxiliary",
+      "casft_spatiotemporal_runtime_error": null,
+      "minds_component_status": "original_dynamic_cas_hgnn_fusion_shared_lstm",
+      "minds_component_error": null,
+      "minds_module_status": "original_module_forward_relationgnn_dynamiccashgnn",
+      "minds_module_error": null,
+      "minds_module_runtime_status": "original_module_forward_auxiliary",
+      "minds_module_runtime_error": null,
+      "forest_component_status": "original_rnnmodel_rrmodel",
+      "forest_component_error": null,
+      "forest_runtime_status": "original_rnnmodel_rrmodel_auxiliary",
+      "forest_runtime_error": null,
+      "hits@10": 0.0125,
+      "map@10": 0.0015625,
+      "ndcg@10": 0.017357805484194317,
+      "hits@50": 0.1625,
+      "map@50": 0.016493055555555556,
+      "ndcg@50": 0.07016497049720298,
+      "hits@100": 0.1625,
+      "map@100": 0.016493055555555556,
+      "ndcg@100": 0.07016497049720298,
+      "dataset": "douban",
+      "train_macro_samples": 4,
+      "train_micro_samples": 51,
+      "train_cascades_used": 4,
+      "train_cascades_with_micro": 4,
+      "train_positive_candidates": 19,
+      "positive_rate": 0.37254902720451355,
+      "epochs": 1,
+      "batch_size": 8,
+      "hidden_dim": 16,
+      "seed": 42,
+      "device": "cpu",
+      "bucket_seconds": 86400,
+      "joint_training": {
+        "shared_encoder": "fusion of prefix/candidate MLP, observed-sequence GRU, and cross-cascade context encoder",
+        "sequence_encoder": "GRU over observed t_obs activation sequence",
+        "cross_context_encoder": "GRU plus attention pooling over MINDS-style sequential transition/social/hyper-coactivation context fused with dynamic prefix-hyperedge memory",
+        "minds_dynamic_hypergraph": "upstream MINDS DynamicCasHGNN over dhg.Hypergraph prefix snapshots when enabled; otherwise event-level DynamicCasHGNN bridge aggregates prefix user embeddings as sequential hyperedges and fuses them over time with a MINDS-style Fusion gate",
+        "minds_dynamic_hgnn_runtime_status": "original_dynamic_cas_hgnn",
+        "minds_dynamic_hgnn_runtime_error": null,
+        "minds_component_status": "original_dynamic_cas_hgnn_fusion_shared_lstm",
+        "minds_component_error": null,
+        "minds_module_status": "original_module_forward_relationgnn_dynamiccashgnn",
+        "minds_module_error": null,
+        "minds_module_runtime_status": "original_module_forward_auxiliary",
+        "minds_module_runtime_error": null,
+        "minds_module_macro_loss_mean": 18.992056,
+        "minds_module_micro_loss_mean": 9.924989,
+        "forest_component_status": "original_rnnmodel_rrmodel",
+        "forest_component_error": null,
+        "forest_runtime_status": "original_rnnmodel_rrmodel_auxiliary",
+        "forest_runtime_error": null,
+        "forest_auxiliary": "FOREST upstream RNNModel CE auxiliary and optional RRModel EOS rollout reward",
+        "forest_auxiliary_loss_mean": -0.286165,
+        "forest_auxiliary_ce_mean": 9.87976,
+        "forest_auxiliary_rl_mean": -483.759731,
+        "trend_auxiliary": "Euler neural-ODE-style trend decoder supervised on 4 future cumulative-size checkpoints",
+        "diffusion_auxiliary": "CasFT original GaussianDiffusion_ST auxiliary over min-max normalized future trend checkpoints",
+        "casft_diffusion_status": "original_gaussian_diffusion_st",
+        "casft_diffusion_error": null,
+        "casft_spatiotemporal_status": "original_combined_spatiotemporal_model5_neural_point_process",
+        "casft_spatiotemporal_error": null,
+        "casft_spatiotemporal_runtime_status": "original_combined_spatiotemporal_model5_auxiliary",
+        "casft_spatiotemporal_runtime_error": null,
+        "casft_spatiotemporal_loss_mean": 0.507338,
+        "adversarial_regularizer": "gradient-reversal task/stage adversaries over shared propagation state",
+        "orthogonality_regularizer": "macro/micro task-specific representation cosine-squared penalty",
+        "reinforced_coupling": "FOREST-style event policy bridge: masked next-user policy loss plus REINFORCE-style sampled growth reward over legal candidates",
+        "methodology": "MINDS sequential hypergraph attention plus dynamic prefix-hyperedge memory with adversarial disentanglement, FOREST masked next-user policy plus sampled growth reward and macro/micro consistency, CasFT neural-ODE-style trend decoding with CasFT original GaussianDiffusion_ST auxiliary over min-max normalized future trend checkpoints",
+        "macro_target": "log1p(final cascade size)",
+        "micro_target": "candidate activated within future window",
+        "trend_target": "future cumulative cascade size checkpoints after t_obs",
+        "macro_loss_weight": 1.0,
+        "micro_loss_weight": 1.0,
+        "original_minds_module_loss_weight": 0.01,
+        "original_minds_diff_loss_weight": 0.05,
+        "trend_loss_weight": 0.4,
+        "consistency_loss_weight": 0.2,
+        "orthogonality_loss_weight": 0.05,
+        "adversarial_loss_weight": 0.02,
+        "diffusion_loss_weight": 0.05,
+        "original_casft_spatiotemporal_loss_weight": 0.01,
+        "forest_pg_loss_weight": 0.02,
+        "forest_pg_rollout_samples": 1,
+        "original_forest_ce_loss_weight": 0.02,
+        "original_forest_rl_loss_weight": 0.001,
+        "original_forest_rollout_samples": 1,
+        "original_forest_start_size": 3,
+        "adversary_alpha": 1.0,
+        "diffusion_noise_std": 0.15,
+        "consistency_loss": "MSE(log1p(macro predicted growth), log1p(sum sigmoid(candidate logits))) plus macro-reward-weighted event-level masked next-user policy loss and FOREST-style sampled growth reward",
+        "max_sequence_len": 8,
+        "user_hash_buckets": 20000,
+        "final_epoch_loss": 2.994753
+      },
+      "experiment_dataset": "douban",
+      "experiment_seed": 42
+    }
+  ]
+}

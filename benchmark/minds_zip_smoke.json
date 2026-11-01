@@ -1,0 +1,24 @@
+[
+  {
+    "model": "MINDS",
+    "dataset": "christianity",
+    "task": "multi_scale",
+    "status": "ok",
+    "reproduction_level": "public_code_adapter",
+    "epochs": 1,
+    "selection": "best_valid_map@100",
+    "best_epoch": 1,
+    "methodology": "Original MINDS public-code adapter: sequential hypergraphs, adversarial learning, macro/micro diffusion prediction.",
+    "valid_map@100": 0.10394901074967046,
+    "valid_msle": 7.788330078125,
+    "hits@10": 0.15625,
+    "map@10": 0.13631572420634921,
+    "hits@50": 0.22991071428571427,
+    "map@50": 0.13887524252466352,
+    "hits@100": 0.296875,
+    "map@100": 0.13981477777024556,
+    "msle": 5.970704078674316,
+    "mae": null,
+    "elapsed_s": 22.3
+  }
+]

@@ -1,0 +1,123 @@
+{
+  "schema": "cogguard.kt2.lgb_reproduction_audit.v1",
+  "paper": "LGB: Language Model and Graph Neural Network-Driven Social Bot Detection",
+  "task": "bot_detection",
+  "kt2_position": "auxiliary_participant_risk_module",
+  "repo_root": "G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev",
+  "dataset_root": "G:\\CISCN\\dataset",
+  "twibot22_path": null,
+  "twibot20_path": null,
+  "missing_required_datasets": [
+    "TwiBot-22",
+    "TwiBot-20"
+  ],
+  "strict_reproduction_ready": false,
+  "official_data_readiness": {
+    "schema": "cogguard.kt2.lgb_official_data_readiness.v1",
+    "paper": "LGB: Language Model and Graph Neural Network-Driven Social Bot Detection",
+    "dataset_root": "G:\\CISCN\\dataset",
+    "required_datasets": [
+      "TwiBot-22",
+      "TwiBot-20"
+    ],
+    "strict_data_ready": false,
+    "datasets": [
+      {
+        "dataset": "TwiBot-22",
+        "source_format": "twibot22",
+        "path": null,
+        "required_files": [
+          "label.csv",
+          "split.csv",
+          "edge.csv",
+          "user.json/user.jsonl/node.json/node.jsonl",
+          "tweet_*.json/tweet_*.jsonl"
+        ],
+        "present_files": [],
+        "missing_files": [
+          "label.csv",
+          "split.csv",
+          "edge.csv",
+          "user.json/user.jsonl/node.json/node.jsonl",
+          "tweet_*.json/tweet_*.jsonl"
+        ],
+        "sample_only": false,
+        "strict_ready": false,
+        "open_items": [
+          "TwiBot-22: missing official TwiBot-22 directory under G:\\CISCN\\dataset"
+        ]
+      },
+      {
+        "dataset": "TwiBot-20",
+        "source_format": "twibot20",
+        "path": null,
+        "required_files": [
+          "train.json/train.jsonl",
+          "dev.json/dev.jsonl/valid.json/valid.jsonl",
+          "test.json/test.jsonl"
+        ],
+        "present_files": [],
+        "missing_files": [
+          "train.json/train.jsonl",
+          "dev.json/dev.jsonl/valid.json/valid.jsonl",
+          "test.json/test.jsonl"
+        ],
+        "sample_only": false,
+        "strict_ready": false,
+        "open_items": [
+          "TwiBot-20: missing official TwiBot-20 train/dev/test files under G:\\CISCN\\dataset"
+        ]
+      }
+    ],
+    "open_items": [
+      "TwiBot-22: missing official TwiBot-22 directory under G:\\CISCN\\dataset",
+      "TwiBot-20: missing official TwiBot-20 train/dev/test files under G:\\CISCN\\dataset"
+    ],
+    "download_sources": {
+      "TwiBot-22": "https://github.com/LuoUndergradXJTU/TwiBot-22",
+      "TwiBot-20": "https://github.com/BunsenFeng/TwiBot-20"
+    },
+    "note": "TwiBot-20_sample.json is accepted only for converter smoke tests, not for strict LGB reproduction."
+  },
+  "local_adapter_ready": true,
+  "official_converter_ready": true,
+  "lm_sft_feature_exporter_ready": true,
+  "external_lm_feature_input_ready": true,
+  "table3_ablation_scheduler_ready": true,
+  "strict_artifact_gate_ready": true,
+  "strict_pipeline_ready": true,
+  "data_request_package_ready": true,
+  "data_request_package_command": "python -m benchmark.adapters.lgb_bot_detection --write_data_request --dataset_root G:\\CISCN\\dataset --out_dir G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark",
+  "strict_pipeline_command": "python -m benchmark.adapters.lgb_bot_detection --strict_pipeline --dataset_root G:\\CISCN\\dataset --artifacts_root G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\lgb_strict --device cuda --encoder_backend transformers_roberta_sft",
+  "required_full_reproduction": {
+    "datasets": [
+      "TwiBot-22",
+      "TwiBot-20"
+    ],
+    "text_encoder": "supervised fine-tuned RoBERTa or T5",
+    "graph_stage": "edge-dropout GCL with InfoNCE, tau=0.4",
+    "fusion": "Concat(LM representation, GNN representation) + MLP",
+    "runs": "5 random initializations, mean +/- std",
+    "metrics": [
+      "Accuracy",
+      "F1-Score",
+      "ROC-AUC"
+    ],
+    "ablations": [
+      "w/o LM SFT",
+      "w/o GNN fine-tuning",
+      "w/o GNN pretraining",
+      "w/o concat",
+      "average fusion",
+      "max fusion",
+      "SFT LM only"
+    ]
+  },
+  "blockers": [
+    "Missing official dataset(s): TwiBot-22, TwiBot-20",
+    "Current local adapter uses HashingVectorizer; strict LGB requires supervised RoBERTa/T5 SFT features.",
+    "No verified five-seed TwiBot-22/TwiBot-20 mean +/- std result table is recorded locally.",
+    "No verified Table III ablation suite is recorded locally."
+  ],
+  "note": "Do not mark LGB as strict reproduction complete until all blockers are cleared."
+}

@@ -1,0 +1,500 @@
+{
+  "schema": "cogguard.propagation.training_sufficiency_200ep_summary.v1",
+  "generated_at": "2026-08-12T02:03:53",
+  "training_epoch": 200,
+  "status": "partial",
+  "queue_status": "running",
+  "current_step": "sequence_joint_200ep_h64_seq200_fullsource_3seed",
+  "sources": {
+    "queue": {
+      "path": "G:/CISCN/CogGuard/subsystems/cogguard_dev/benchmark/propagation_training_sufficiency_200ep_full_20260811_status.json",
+      "state": "running",
+      "payload_status": "running",
+      "rows": 0,
+      "expected_rows": null,
+      "last_write_time": "2026-08-11T22:31:13"
+    },
+    "sequence_sampled": {
+      "path": "G:/CISCN/CogGuard/subsystems/cogguard_dev/benchmark/propagation_training_sufficiency_sequence_200ep_h64_seq200_300c_3seed_20260811.json",
+      "state": "complete",
+      "payload_status": "ok",
+      "rows": 18,
+      "expected_rows": 18,
+      "last_write_time": "2026-08-11T09:48:00"
+    },
+    "sequence_full": {
+      "path": "G:/CISCN/CogGuard/subsystems/cogguard_dev/benchmark/propagation_training_sufficiency_sequence_200ep_h64_seq200_fullsource_3seed_20260811.json",
+      "state": "missing",
+      "payload_status": null,
+      "rows": 0,
+      "expected_rows": 18,
+      "last_write_time": null
+    },
+    "public_baselines": {
+      "path": "G:/CISCN/CogGuard/subsystems/cogguard_dev/benchmark/propagation_training_sufficiency_public_baselines_200ep_20260811.json",
+      "state": "missing",
+      "payload_status": null,
+      "rows": 0,
+      "expected_rows": 27,
+      "last_write_time": null
+    },
+    "temporal_native": {
+      "path": "G:/CISCN/CogGuard/subsystems/cogguard_dev/benchmark/propagation_training_sufficiency_temporal_graph_200ep_20260811.json",
+      "state": "missing",
+      "payload_status": null,
+      "rows": 0,
+      "expected_rows": 6,
+      "last_write_time": null
+    }
+  },
+  "tracks": {
+    "sequence_sampled": {
+      "task": "same-protocol cascade macro/micro prediction on capped training cascades",
+      "status_counts": {
+        "ok": 18
+      },
+      "macro_summary": [
+        {
+          "dataset": "douban",
+          "model": "MINDS",
+          "rows": 3,
+          "ok_rows": 3,
+          "statuses": [
+            "ok"
+          ],
+          "seeds": [
+            42,
+            43,
+            44
+          ],
+          "epochs": [
+            200
+          ],
+          "msle_mean": 0.06019617308671387,
+          "msle_std": 0.010955503396341465,
+          "msle_n": 3,
+          "mae_mean": 2.6609550719790986,
+          "mae_std": 0.14542686820323783,
+          "mae_n": 3,
+          "rmse_mean": 5.801668383558793,
+          "rmse_std": 0.06516640242411958,
+          "rmse_n": 3,
+          "trend_mae_mean": 240.76179005987115,
+          "trend_mae_std": 8.487278219787397,
+          "trend_mae_n": 3,
+          "trend_rmse_mean": 308.983597416695,
+          "trend_rmse_std": 10.15750515232557,
+          "trend_rmse_n": 3,
+          "direction_accuracy_mean": 1.0,
+          "direction_accuracy_std": 0.0,
+          "direction_accuracy_n": 3
+        },
+        {
+          "dataset": "douban",
+          "model": "Ours",
+          "rows": 3,
+          "ok_rows": 3,
+          "statuses": [
+            "ok"
+          ],
+          "seeds": [
+            42,
+            43,
+            44
+          ],
+          "epochs": [
+            200
+          ],
+          "msle_mean": 0.08127413869251048,
+          "msle_std": 0.005941434847994734,
+          "msle_n": 3,
+          "mae_mean": 5.347501926422119,
+          "mae_std": 0.23057561787541914,
+          "mae_n": 3,
+          "rmse_mean": 15.916566207983282,
+          "rmse_std": 0.4458356735320619,
+          "rmse_n": 3,
+          "trend_mae_mean": 188.19814258681404,
+          "trend_mae_std": 9.676435219905052,
+          "trend_mae_n": 3,
+          "trend_rmse_mean": 233.29052149676872,
+          "trend_rmse_std": 9.502573979571128,
+          "trend_rmse_n": 3,
+          "direction_accuracy_mean": 1.0,
+          "direction_accuracy_std": 0.0,
+          "direction_accuracy_n": 3
+        },
+        {
+          "dataset": "memetracker",
+          "model": "MINDS",
+          "rows": 3,
+          "ok_rows": 3,
+          "statuses": [
+            "ok"
+          ],
+          "seeds": [
+            42,
+            43,
+            44
+          ],
+          "epochs": [
+            200
+          ],
+          "msle_mean": 0.09140555372311773,
+          "msle_std": 0.003716068928777609,
+          "msle_n": 3,
+          "mae_mean": 1.6210878229141235,
+          "mae_std": 0.10166456845315794,
+          "mae_n": 3,
+          "rmse_mean": 2.6793104538636694,
+          "rmse_std": 0.2641295456486251,
+          "rmse_n": 3,
+          "trend_mae_mean": 66.99132703555955,
+          "trend_mae_std": 2.713889418791243,
+          "trend_mae_n": 3,
+          "trend_rmse_mean": 67.89822694936063,
+          "trend_rmse_std": 2.715239826236103,
+          "trend_rmse_n": 3,
+          "direction_accuracy_mean": 1.0,
+          "direction_accuracy_std": 0.0,
+          "direction_accuracy_n": 3
+        },
+        {
+          "dataset": "memetracker",
+          "model": "Ours",
+          "rows": 3,
+          "ok_rows": 3,
+          "statuses": [
+            "ok"
+          ],
+          "seeds": [
+            42,
+            43,
+            44
+          ],
+          "epochs": [
+            200
+          ],
+          "msle_mean": 0.11073517282326004,
+          "msle_std": 0.011347207194608412,
+          "msle_n": 3,
+          "mae_mean": 2.0762225013309057,
+          "mae_std": 0.12308995967385206,
+          "mae_n": 3,
+          "rmse_mean": 3.9282778222889667,
+          "rmse_std": 0.2895639678438477,
+          "rmse_n": 3,
+          "trend_mae_mean": 55.59939400341776,
+          "trend_mae_std": 1.4837354703095675,
+          "trend_mae_n": 3,
+          "trend_rmse_mean": 56.55483832387325,
+          "trend_rmse_std": 1.533417964494571,
+          "trend_rmse_n": 3,
+          "direction_accuracy_mean": 1.0,
+          "direction_accuracy_std": 0.0,
+          "direction_accuracy_n": 3
+        },
+        {
+          "dataset": "twitter",
+          "model": "MINDS",
+          "rows": 3,
+          "ok_rows": 3,
+          "statuses": [
+            "ok"
+          ],
+          "seeds": [
+            42,
+            43,
+            44
+          ],
+          "epochs": [
+            200
+          ],
+          "msle_mean": 0.10862796110962303,
+          "msle_std": 0.005962098652966739,
+          "msle_n": 3,
+          "mae_mean": 2.7380237409803603,
+          "mae_std": 0.15160797312154423,
+          "mae_n": 3,
+          "rmse_mean": 6.3281827399968344,
+          "rmse_std": 1.2257655642585659,
+          "rmse_n": 3,
+          "trend_mae_mean": 218.82478888150717,
+          "trend_mae_std": 3.372039003007713,
+          "trend_mae_n": 3,
+          "trend_rmse_mean": 260.7290868143075,
+          "trend_rmse_std": 4.260042115374336,
+          "trend_rmse_n": 3,
+          "direction_accuracy_mean": 1.0,
+          "direction_accuracy_std": 0.0,
+          "direction_accuracy_n": 3
+        },
+        {
+          "dataset": "twitter",
+          "model": "Ours",
+          "rows": 3,
+          "ok_rows": 3,
+          "statuses": [
+            "ok"
+          ],
+          "seeds": [
+            42,
+            43,
+            44
+          ],
+          "epochs": [
+            200
+          ],
+          "msle_mean": 0.1510109786403214,
+          "msle_std": 0.02348926861702676,
+          "msle_n": 3,
+          "mae_mean": 5.951667595969306,
+          "mae_std": 0.58058278328067,
+          "mae_n": 3,
+          "rmse_mean": 13.935935176240061,
+          "rmse_std": 1.012600465892304,
+          "rmse_n": 3,
+          "trend_mae_mean": 183.24861091706487,
+          "trend_mae_std": 9.766187371085927,
+          "trend_mae_n": 3,
+          "trend_rmse_mean": 218.30421482047217,
+          "trend_rmse_std": 12.160890974656981,
+          "trend_rmse_n": 3,
+          "direction_accuracy_mean": 1.0,
+          "direction_accuracy_std": 0.0,
+          "direction_accuracy_n": 3
+        }
+      ],
+      "micro_summary": [
+        {
+          "dataset": "douban",
+          "model": "MINDS",
+          "rows": 3,
+          "ok_rows": 3,
+          "statuses": [
+            "ok"
+          ],
+          "seeds": [
+            42,
+            43,
+            44
+          ],
+          "epochs": [
+            200
+          ],
+          "candidate_recall_full_mean": 0.9233333333333333,
+          "candidate_recall_full_std": 0.0,
+          "candidate_recall_full_n": 3,
+          "hits@10_mean": 0.008888888888888889,
+          "hits@10_std": 0.00415739709641549,
+          "hits@10_n": 3,
+          "hits@50_mean": 0.025555555555555557,
+          "hits@50_std": 0.00415739709641549,
+          "hits@50_n": 3,
+          "hits@100_mean": 0.052222222222222225,
+          "hits@100_std": 0.004157397096415489,
+          "hits@100_n": 3,
+          "mrr_mean": 0.0055464689491171604,
+          "mrr_std": 0.0004564670668830735,
+          "mrr_n": 3,
+          "ndcg@100_mean": 0.012358021015242481,
+          "ndcg@100_std": 0.0010633598732116794,
+          "ndcg@100_n": 3
+        },
+        {
+          "dataset": "douban",
+          "model": "Ours",
+          "rows": 3,
+          "ok_rows": 3,
+          "statuses": [
+            "ok"
+          ],
+          "seeds": [
+            42,
+            43,
+            44
+          ],
+          "epochs": [
+            200
+          ],
+          "candidate_recall_full_mean": 0.9233333333333333,
+          "candidate_recall_full_std": 0.0,
+          "candidate_recall_full_n": 3,
+          "hits@10_mean": 0.014444444444444444,
+          "hits@10_std": 0.005665577237325316,
+          "hits@10_n": 3,
+          "hits@50_mean": 0.03111111111111111,
+          "hits@50_std": 0.005665577237325316,
+          "hits@50_n": 3,
+          "hits@100_mean": 0.05777777777777778,
+          "hits@100_std": 0.005665577237325316,
+          "hits@100_n": 3,
+          "mrr_mean": 0.008445898191354143,
+          "mrr_std": 0.002049699373799244,
+          "mrr_n": 3,
+          "ndcg@100_mean": 0.01590248917695292,
+          "ndcg@100_std": 0.0025233894755304236,
+          "ndcg@100_n": 3
+        },
+        {
+          "dataset": "memetracker",
+          "model": "MINDS",
+          "rows": 3,
+          "ok_rows": 3,
+          "statuses": [
+            "ok"
+          ],
+          "seeds": [
+            42,
+            43,
+            44
+          ],
+          "epochs": [
+            200
+          ],
+          "candidate_recall_full_mean": 0.8366666666666667,
+          "candidate_recall_full_std": 0.0,
+          "candidate_recall_full_n": 3,
+          "hits@10_mean": 0.03111111111111111,
+          "hits@10_std": 0.00831479419283098,
+          "hits@10_n": 3,
+          "hits@50_mean": 0.051111111111111114,
+          "hits@50_std": 0.00831479419283098,
+          "hits@50_n": 3,
+          "hits@100_mean": 0.10666666666666666,
+          "hits@100_std": 0.007200822998230955,
+          "hits@100_n": 3,
+          "mrr_mean": 0.015340375036211202,
+          "mrr_std": 0.007382228411361532,
+          "mrr_n": 3,
+          "ndcg@100_mean": 0.029403886768306877,
+          "ndcg@100_std": 0.00728751407932795,
+          "ndcg@100_n": 3
+        },
+        {
+          "dataset": "memetracker",
+          "model": "Ours",
+          "rows": 3,
+          "ok_rows": 3,
+          "statuses": [
+            "ok"
+          ],
+          "seeds": [
+            42,
+            43,
+            44
+          ],
+          "epochs": [
+            200
+          ],
+          "candidate_recall_full_mean": 0.8366666666666667,
+          "candidate_recall_full_std": 0.0,
+          "candidate_recall_full_n": 3,
+          "hits@10_mean": 0.03888888888888889,
+          "hits@10_std": 0.0015713484026367726,
+          "hits@10_n": 3,
+          "hits@50_mean": 0.058888888888888886,
+          "hits@50_std": 0.0015713484026367726,
+          "hits@50_n": 3,
+          "hits@100_mean": 0.11222222222222222,
+          "hits@100_std": 0.0062853936105470905,
+          "hits@100_n": 3,
+          "mrr_mean": 0.01962803975447856,
+          "mrr_std": 0.003261246580768287,
+          "mrr_n": 3,
+          "ndcg@100_mean": 0.03421135695431787,
+          "ndcg@100_std": 0.00349016270190135,
+          "ndcg@100_n": 3
+        },
+        {
+          "dataset": "twitter",
+          "model": "MINDS",
+          "rows": 3,
+          "ok_rows": 3,
+          "statuses": [
+            "ok"
+          ],
+          "seeds": [
+            42,
+            43,
+            44
+          ],
+          "epochs": [
+            200
+          ],
+          "candidate_recall_full_mean": 0.9233333333333333,
+          "candidate_recall_full_std": 0.0,
+          "candidate_recall_full_n": 3,
+          "hits@10_mean": 0.016666666666666666,
+          "hits@10_std": 0.0027216552697590865,
+          "hits@10_n": 3,
+          "hits@50_mean": 0.023333333333333334,
+          "hits@50_std": 0.0027216552697590874,
+          "hits@50_n": 3,
+          "hits@100_mean": 0.04,
+          "hits@100_std": 0.0027216552697590874,
+          "hits@100_n": 3,
+          "mrr_mean": 0.009528073335517003,
+          "mrr_std": 0.003207493738295027,
+          "mrr_n": 3,
+          "ndcg@100_mean": 0.014248657427317653,
+          "ndcg@100_std": 0.0030617617910414243,
+          "ndcg@100_n": 3
+        },
+        {
+          "dataset": "twitter",
+          "model": "Ours",
+          "rows": 3,
+          "ok_rows": 3,
+          "statuses": [
+            "ok"
+          ],
+          "seeds": [
+            42,
+            43,
+            44
+          ],
+          "epochs": [
+            200
+          ],
+          "candidate_recall_full_mean": 0.9233333333333333,
+          "candidate_recall_full_std": 0.0,
+          "candidate_recall_full_n": 3,
+          "hits@10_mean": 0.014444444444444446,
+          "hits@10_std": 0.00628539361054709,
+          "hits@10_n": 3,
+          "hits@50_mean": 0.021111111111111112,
+          "hits@50_std": 0.006285393610547089,
+          "hits@50_n": 3,
+          "hits@100_mean": 0.03777777777777778,
+          "hits@100_std": 0.0062853936105470905,
+          "hits@100_n": 3,
+          "mrr_mean": 0.006364942612029876,
+          "mrr_std": 0.0021382833366844914,
+          "mrr_n": 3,
+          "ndcg@100_mean": 0.011353592129851908,
+          "ndcg@100_std": 0.0030976508427714737,
+          "ndcg@100_n": 3
+        }
+      ]
+    },
+    "sequence_full": {
+      "task": "same-protocol cascade macro/micro prediction on full local splits",
+      "status_counts": {},
+      "macro_summary": [],
+      "micro_summary": []
+    },
+    "public_baselines": {
+      "task": "public-code MINDS/FOREST/CasFT sufficient-epoch baselines",
+      "status_counts": {},
+      "macro_summary": [],
+      "micro_summary": [],
+      "failures": []
+    },
+    "temporal_native": {
+      "task": "native temporal graph link prediction; not mixed with cascade next-hop verdict",
+      "status_counts": {},
+      "summary": []
+    }
+  }
+}

@@ -8,6 +8,7 @@ from .diagnostics import inspect_dataset
 from .full_run import run_weibo_rumor_full
 from .loaders import load_dataset, make_synthetic_events
 from .prediction import run_prediction
+from .protocol import export_standard_cascades, load_coordination_scope
 from .reporting import build_final_report
 from .visualization import build_dashboard
 
@@ -34,6 +35,8 @@ def main() -> None:
     analyze.add_argument("--dashboard", action="store_true", help="Generate polished HTML dashboard")
     analyze.add_argument("--event-id", default=None, help="Focus the generated event_report.md and dashboard on one event/thread")
     analyze.add_argument("--max-events", type=int, default=None, help="Analyze only the largest N parsed events")
+    analyze.add_argument("--coordination-file", default=None, help="KT1 coordinated users JSON/CSV/TSV for role-evidence filtering")
+    analyze.add_argument("--export-protocol", action="store_true", help="Write standard_cascades.json for KT2 benchmark/API handoff")
 
     pred = sub.add_parser("predict", help="Run propagation path and size prediction")
     pred.add_argument("--dataset", required=True, choices=DATASET_CHOICES)
@@ -43,6 +46,8 @@ def main() -> None:
     pred.add_argument("--dashboard", action="store_true", help="Generate polished HTML dashboard")
     pred.add_argument("--event-id", default=None, help="Run prediction on one event/thread when applicable")
     pred.add_argument("--max-events", type=int, default=None, help="Use only the largest N parsed events")
+    pred.add_argument("--coordination-file", default=None, help="KT1 coordinated users JSON/CSV/TSV for dashboard role evidence")
+    pred.add_argument("--export-protocol", action="store_true", help="Write standard_cascades.json with observation protocol metadata")
 
     dash = sub.add_parser("dashboard", help="Analyze, predict, and generate a presentation dashboard")
     dash.add_argument("--dataset", required=True, choices=DATASET_CHOICES)
@@ -51,6 +56,8 @@ def main() -> None:
     dash.add_argument("--observation-ratio", type=float, default=0.3)
     dash.add_argument("--event-id", default=None, help="Focus the dashboard and event report on one event/thread")
     dash.add_argument("--max-events", type=int, default=None, help="Use only the largest N parsed events")
+    dash.add_argument("--coordination-file", default=None, help="KT1 coordinated users JSON/CSV/TSV for role-evidence filtering")
+    dash.add_argument("--export-protocol", action="store_true", help="Write standard_cascades.json with observation protocol metadata")
 
     weibo_full = sub.add_parser("weibo-full", help="Run full streaming ScienceDB/Ma-Weibo analysis")
     weibo_full.add_argument("--data-dir", required=True)
@@ -68,7 +75,7 @@ def main() -> None:
     if args.command == "demo":
         events = make_synthetic_events()
         summary = analyze_events(events, args.output)
-        report = run_prediction(events, args.output, 0.3)
+        report = run_prediction(events, args.output, 0.3, dataset="synthetic_demo")
         dashboard = build_dashboard(events, args.output, report)
         print(json.dumps({"summary": summary["narrative"], "prediction": report, "dashboard": str(dashboard)}, ensure_ascii=False, indent=2))
     elif args.command == "inspect":
@@ -76,24 +83,42 @@ def main() -> None:
         print(json.dumps(report, ensure_ascii=False, indent=2, default=str))
     elif args.command == "analyze":
         events = _select_events(load_dataset(args.dataset, args.data_dir, args.max_events, args.event_id), args.event_id, args.max_events)
-        summary = analyze_events(events, args.output, args.event_id)
+        coordination = load_coordination_scope(args.coordination_file)
+        summary = analyze_events(events, args.output, args.event_id, coordination)
+        if args.export_protocol:
+            summary["standard_protocol"] = str(export_standard_cascades(events, args.output, coordination))
         if args.dashboard:
-            dashboard = build_dashboard(events, args.output)
+            dashboard = build_dashboard(events, args.output, coordination=coordination)
             summary["dashboard"] = str(dashboard)
         print(json.dumps(summary, ensure_ascii=False, indent=2, default=str))
     elif args.command == "predict":
         events = _select_events(load_dataset(args.dataset, args.data_dir, args.max_events, args.event_id), args.event_id, args.max_events)
-        report = run_prediction(events, args.output, args.observation_ratio)
+        coordination = load_coordination_scope(args.coordination_file)
+        report = run_prediction(events, args.output, args.observation_ratio, dataset=args.dataset)
+        if args.export_protocol:
+            report["standard_protocol"] = str(
+                export_standard_cascades(
+                    events,
+                    args.output,
+                    coordination,
+                    t_obs=args.observation_ratio,
+                    split="local-cli",
+                    leakage_check="prediction uses observed prefix; legacy path baseline is marked offline when future child is used",
+                )
+            )
         if args.dashboard:
-            analyze_events(events, args.output, args.event_id)
-            dashboard = build_dashboard(events, args.output, report)
+            analyze_events(events, args.output, args.event_id, coordination)
+            dashboard = build_dashboard(events, args.output, report, coordination=coordination)
             report["dashboard"] = str(dashboard)
         print(json.dumps(report, ensure_ascii=False, indent=2, default=str))
     elif args.command == "dashboard":
         events = _select_events(load_dataset(args.dataset, args.data_dir, args.max_events, args.event_id), args.event_id, args.max_events)
-        summary = analyze_events(events, args.output, args.event_id)
-        report = run_prediction(events, args.output, args.observation_ratio)
-        dashboard = build_dashboard(events, args.output, report)
+        coordination = load_coordination_scope(args.coordination_file)
+        summary = analyze_events(events, args.output, args.event_id, coordination)
+        report = run_prediction(events, args.output, args.observation_ratio, dataset=args.dataset)
+        if args.export_protocol:
+            report["standard_protocol"] = str(export_standard_cascades(events, args.output, coordination, t_obs=args.observation_ratio, split="local-cli"))
+        dashboard = build_dashboard(events, args.output, report, coordination=coordination)
         print(json.dumps({"summary": summary["narrative"], "prediction": report, "dashboard": str(dashboard)}, ensure_ascii=False, indent=2, default=str))
     elif args.command == "weibo-full":
         summary = run_weibo_rumor_full(

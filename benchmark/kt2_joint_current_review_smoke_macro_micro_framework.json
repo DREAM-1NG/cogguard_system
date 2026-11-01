@@ -1,0 +1,23 @@
+{
+  "schema": "cogguard.kt2.macro_micro_framework.v1",
+  "status": "ok",
+  "definition": "KT2 macro/micro framework pairs macro scale/trend prediction with micro next-hop ranking under one leak-checked benchmark protocol.",
+  "macro_micro_consistency_mean": 0.501063,
+  "datasets": [
+    {
+      "dataset": "douban",
+      "status": "ok",
+      "scale_model": "KT2JointModel",
+      "micro_model": "KT2JointModel",
+      "scale_reproduction_level": "kt2_joint_model_small_run",
+      "micro_reproduction_level": "kt2_joint_model_small_run",
+      "macro_micro_consistency": 0.501063,
+      "consistency_mode": "growth_count_alignment",
+      "consistency_components": {
+        "count_alignment": 0.501063,
+        "candidate_leakage_ok": true
+      }
+    }
+  ],
+  "note": "This summary is an evaluation/protocol layer. It must not be cited as a new frontier model or full-run reproduction result."
+}

@@ -1,0 +1,22 @@
+{
+  "command": [
+    "D:\\Anaconda\\python.exe",
+    "G:\\CISCN\\CogGuard\\subsystems\\kt2_repos\\CasFT\\.kt2_windows_shim\\train_spawn.py",
+    "--data=kt2_douban_casft",
+    "--observation_time=15000000",
+    "--prediction_time=100000000",
+    "--max_events=50",
+    "--max_epoch=1",
+    "--interval_num=4",
+    "--seed=42",
+    "--tpp_hdims=32",
+    "--FC=1",
+    "--lr=2e-3",
+    "--timesteps=2",
+    "--sampling_timesteps=2",
+    "--test_bsz=16",
+    "--testfreq=1",
+    "--experiment_dir=benchmark\\same_protocol_full_run_baselines_casft_attempt\\casft_exports\\douban\\seed_42\\experiments"
+  ],
+  "returncode": 1
+}

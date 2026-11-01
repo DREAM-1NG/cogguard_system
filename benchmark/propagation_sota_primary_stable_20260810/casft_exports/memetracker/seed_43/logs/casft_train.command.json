@@ -1,0 +1,22 @@
+{
+  "command": [
+    "D:\\Anaconda\\python.exe",
+    "G:\\CISCN\\CogGuard\\subsystems\\kt2_repos\\CasFT\\.kt2_windows_shim\\train_spawn.py",
+    "--data=kt2_memetracker_casft",
+    "--observation_time=86400",
+    "--prediction_time=1296000",
+    "--max_events=200",
+    "--max_epoch=1",
+    "--interval_num=4",
+    "--seed=43",
+    "--tpp_hdims=32",
+    "--FC=1",
+    "--lr=2e-3",
+    "--timesteps=2",
+    "--sampling_timesteps=2",
+    "--test_bsz=16",
+    "--testfreq=1",
+    "--experiment_dir=benchmark\\propagation_sota_primary_stable_20260810\\casft_exports\\memetracker\\seed_43\\experiments"
+  ],
+  "returncode": 0
+}

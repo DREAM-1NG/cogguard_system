@@ -1,0 +1,10 @@
+{
+  "command": [
+    "D:\\Anaconda\\python.exe",
+    "gen_emb.py",
+    "--data=data/kt2_douban_casft_stable_smoke_t2/",
+    "--observation_time=86400",
+    "--max_seq=100"
+  ],
+  "returncode": 0
+}

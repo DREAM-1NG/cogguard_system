@@ -1,0 +1,17 @@
+{
+  "schema": "cogguard.kt2.macro_micro_framework.v1",
+  "status": "missing_pair",
+  "definition": "KT2 macro/micro framework pairs macro scale/trend prediction with micro next-hop ranking under one leak-checked benchmark protocol.",
+  "macro_micro_consistency_mean": null,
+  "datasets": [
+    {
+      "dataset": "douban",
+      "status": "missing_pair",
+      "scale_model": null,
+      "micro_model": "DyGFormer/DyGLib",
+      "macro_micro_consistency": null,
+      "consistency_mode": "missing_macro_or_micro_branch"
+    }
+  ],
+  "note": "This summary is an evaluation/protocol layer. It must not be cited as a new frontier model or full-run reproduction result."
+}

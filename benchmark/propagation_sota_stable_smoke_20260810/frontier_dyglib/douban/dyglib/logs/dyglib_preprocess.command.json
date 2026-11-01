@@ -1,0 +1,11 @@
+{
+  "command": [
+    "D:\\Anaconda\\python.exe",
+    "preprocess_data.py",
+    "--dataset_name",
+    "wikipedia",
+    "--node_feat_dim",
+    "16"
+  ],
+  "returncode": 0
+}

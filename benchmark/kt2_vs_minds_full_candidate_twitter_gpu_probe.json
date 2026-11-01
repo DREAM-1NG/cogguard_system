@@ -1,0 +1,137 @@
+{
+  "schema": "cogguard.kt2.minds_comparison.v1",
+  "status": "partial",
+  "config_id": "kt2-vs-minds-full-candidate-twitter-gpu-probe",
+  "evidence_level": "preflight",
+  "full_validation_passed": false,
+  "full_run_requirements": {
+    "checks": {
+      "dataset_count_at_least_3": false,
+      "seed_count_at_least_3": false,
+      "minds_epochs_at_least_5": true,
+      "kt2_epochs_at_least_5": true,
+      "minds_uses_all_available_cascades": true,
+      "kt2_uses_all_train_and_test_cascades": true,
+      "no_missing_model_pairs": false,
+      "has_completed_comparisons": false
+    },
+    "passed": false,
+    "minimums": {
+      "datasets": 3,
+      "seeds": 3,
+      "epochs": 5
+    }
+  },
+  "boundary": "Compares trainable original MINDS public-code baseline against KT2JointModel on the same FOREST-source datasets. Handcrafted/heuristic baselines are excluded from the improvement verdict. preflight evidence proves the pipeline and a directional comparison only; full_validation_passed=true is required before claiming final KT2 improvement over MINDS.",
+  "datasets": [
+    "twitter"
+  ],
+  "seeds": [
+    42
+  ],
+  "common_metrics": [
+    "msle",
+    "hits@10",
+    "hits@50",
+    "hits@100",
+    "map@10",
+    "map@50",
+    "map@100"
+  ],
+  "overall_verdict": "insufficient_evidence",
+  "metric_summary": {},
+  "comparisons": [],
+  "missing_pairs": [
+    {
+      "dataset": "twitter",
+      "seed": 42,
+      "minds_status": "ok",
+      "kt2_status": null
+    }
+  ],
+  "schema_report": {
+    "schema": "cogguard.kt2.benchmark_result.v1",
+    "ok": true,
+    "rows": 1,
+    "errors": [],
+    "warnings": []
+  },
+  "rows": [
+    {
+      "model": "MINDS",
+      "dataset": "twitter",
+      "adapter_dataset": "kt2_twitter",
+      "task": "multi_scale",
+      "status": "ok",
+      "reproduction_level": "frontier_reproduction_full_run",
+      "seed": 42,
+      "config_id": "kt2-vs-minds-full-candidate-twitter-gpu-probe",
+      "epochs": 5,
+      "selection": "best_valid_map@100",
+      "best_epoch": 5,
+      "methodology": "Original MINDS public-code adapter: sequential hypergraphs, adversarial learning, macro/micro diffusion prediction.",
+      "protocol_source": "converted from FOREST twitter cascade.txt",
+      "valid_map@100": 0.0515788413835916,
+      "valid_msle": 0.08295397838163707,
+      "hits@10": 0.07799564270152505,
+      "map@10": 0.04669438969003239,
+      "hits@50": 0.188961510530138,
+      "map@50": 0.051627171906558925,
+      "hits@100": 0.2673928830791576,
+      "map@100": 0.05272240176596104,
+      "msle": 0.07060759989286049,
+      "mae": null,
+      "same_protocol": true,
+      "full_run_protocol": {
+        "same_protocol": true,
+        "config_id": "kt2-vs-minds-full-candidate-twitter-gpu-probe",
+        "adapter": "benchmark.adapters.minds_runner",
+        "original_public_code": true,
+        "source_dataset": "twitter",
+        "adapter_dataset": "kt2_twitter",
+        "protocol_source": "converted from FOREST twitter cascade.txt"
+      },
+      "command": [
+        "D:\\Anaconda\\python.exe",
+        "G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\adapters\\minds_runner.py",
+        "--dataset_name",
+        "kt2_twitter",
+        "--report_dataset",
+        "twitter",
+        "--protocol_source",
+        "converted from FOREST twitter cascade.txt",
+        "--epochs",
+        "5",
+        "--batch_size",
+        "16",
+        "--emb_dim",
+        "32",
+        "--step_split",
+        "4",
+        "--max_seq_length",
+        "200",
+        "--device",
+        "cuda",
+        "--reproduction_level",
+        "frontier_reproduction_full_run",
+        "--config_id",
+        "kt2-vs-minds-full-candidate-twitter-gpu-probe",
+        "--seed",
+        "42"
+      ],
+      "cwd": "G:\\CISCN\\CogGuard\\subsystems\\kt2_repos\\MINDS\\.kt2_extracted\\MINDS",
+      "returncode": 0,
+      "elapsed_s": 466.3,
+      "comparison_role": "trainable_original_minds_baseline",
+      "minds_staged_dataset": {
+        "status": "ok",
+        "dataset_name": "kt2_twitter",
+        "path": "G:\\CISCN\\CogGuard\\subsystems\\kt2_repos\\MINDS\\.kt2_extracted\\MINDS\\data\\kt2_twitter",
+        "cascades": 2768,
+        "users": 12616,
+        "edges": 618040
+      }
+    }
+  ],
+  "elapsed_s": 467.1
+}

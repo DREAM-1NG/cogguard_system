@@ -1,0 +1,62 @@
+{
+  "schema": "cogguard.kt2.completion_gate.v1",
+  "status": "incomplete",
+  "full_validation_complete": false,
+  "audit_status": "incomplete",
+  "critical_open_sections": [
+    "role_evidence"
+  ],
+  "open_checks": [
+    {
+      "section": "role_evidence",
+      "check": "manual_review_records",
+      "status": "partial",
+      "detail": "manual review has no recognized pass/fail values"
+    }
+  ],
+  "manual_review_preflight": {
+    "schema": "cogguard.kt2.role_evidence_manual_review_validation.v1",
+    "ok": false,
+    "review_file": "G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\kt1_role_evidence_validation\\analysis\\role_evidence_manual_review.csv",
+    "rows": 8,
+    "reviewed_rows": 0,
+    "passed_rows": 0,
+    "pass_rate": 0.0,
+    "detail": "manual review has no recognized pass/fail values",
+    "blank_rows": 8,
+    "invalid_values": [],
+    "incomplete_metadata": [],
+    "min_pass_rate": 0.8,
+    "recognized_pass_values": [
+      "1",
+      "approved",
+      "ok",
+      "pass",
+      "passed",
+      "true",
+      "y",
+      "yes"
+    ],
+    "recognized_fail_values": [
+      "0",
+      "fail",
+      "failed",
+      "false",
+      "n",
+      "no",
+      "reject",
+      "rejected"
+    ],
+    "template_check": {
+      "ok": true,
+      "template": "G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\kt1_role_evidence_validation\\analysis\\role_evidence_manual_review_template.csv",
+      "template_rows": 8,
+      "review_rows": 8,
+      "missing_rows": [],
+      "extra_rows": [],
+      "duplicate_rows": [],
+      "detail": "review CSV covers all 8 template rows"
+    }
+  },
+  "required_next_action": "Fill all 8 sampled rows in role_evidence_manual_review.csv (0/8 currently reviewed; 8 blank review_pass values), including reviewer, evidence_match, confidence_1to5, and any required reason_if_fail. Then run benchmark.role_evidence_review status, benchmark.role_evidence_review validate, benchmark.experiment_audit, and benchmark.completion_gate."
+}

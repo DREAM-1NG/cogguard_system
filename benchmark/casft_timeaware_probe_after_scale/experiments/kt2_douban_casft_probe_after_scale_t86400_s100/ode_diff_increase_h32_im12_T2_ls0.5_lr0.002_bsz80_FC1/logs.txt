@@ -1,0 +1,130 @@
+2026-06-28 23:39:25,483 - Namespace(data='kt2_douban_casft_probe_after_scale', observation_time='86400', prediction_time='1296000', max_events=80, lr=0.002, interval_num=12, tpp_hdims='32', loss_type='l2', timesteps=2, sampling_timesteps=2, objective='pred_x0', loss_scale=0.5, FC=1, ode_solver='dopri5', max_seq='100', max_epoch=1, ngpus=1, seed=42, model='ode_diff_increase', cg_emb_dim=80, t1=1, d_model=80, d_inner_hid=64, d_k=32, d_v=32, n_head=2, n_layers=1, dropout=0.1, t_scale=1, global_attention=False, actfn='swish', tpp_actfn='softplus', layer_type='concat', tpp_cond=True, tpp_style='gru', share_hidden=True, solve_reverse=False, l2_attn=False, naive_hutch=False, tol=0.0001, otreg_strength=0.0001, tpp_otreg_strength=0.0001, warmup_itrs=0, momentum=0.9, weight_decay=1e-06, gradclip=10000000000.0, test_bsz=16, experiment_dir='G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\casft_timeaware_probe_after_scale\\experiments', experiment_id='20260628_233920', resume=None, logfreq=10, testfreq=1, port=19583)
+2026-06-28 23:39:25,483 - Saving to G:\CISCN\CogGuard\subsystems\cogguard_dev\benchmark\casft_timeaware_probe_after_scale\experiments\kt2_douban_casft_probe_after_scale_t86400_s100\ode_diff_increase_h32_im12_T2_ls0.5_lr0.002_bsz80_FC1
+2026-06-28 23:39:25,537 - Found 1 CUDA devices.
+2026-06-28 23:39:25,553 - NVIDIA GeForce RTX 4060 Laptop GPU 	 Memory: 8.00GB
+2026-06-28 23:39:26,559 - 35 training examples, 7 val examples, 7 test examples
+2026-06-28 23:39:32,024 - DistributedDataParallel(
+  (module): CombinedSpatiotemporalModel5(
+    (encoder): Encoder(
+      (layer_stack1): ModuleList(
+        (0): EncoderLayer(
+          (slf_attn): MultiHeadAttention(
+            (w_qs): Linear(in_features=40, out_features=64, bias=False)
+            (w_ks): Linear(in_features=40, out_features=64, bias=False)
+            (w_vs): Linear(in_features=40, out_features=64, bias=False)
+            (fc): Linear(in_features=64, out_features=40, bias=True)
+            (attention): ScaledDotProductAttention(
+              (dropout): Dropout(p=0.1, inplace=False)
+            )
+            (layer_norm): LayerNorm((40,), eps=1e-06, elementwise_affine=True)
+            (dropout): Dropout(p=0.1, inplace=False)
+          )
+          (pos_ffn): PositionwiseFeedForward(
+            (w_1): Linear(in_features=40, out_features=64, bias=True)
+            (w_2): Linear(in_features=64, out_features=40, bias=True)
+            (layer_norm): LayerNorm((40,), eps=1e-06, elementwise_affine=True)
+            (dropout): Dropout(p=0.1, inplace=False)
+          )
+        )
+      )
+      (layer_stack2): ModuleList(
+        (0): EncoderLayer(
+          (slf_attn): MultiHeadAttention(
+            (w_qs): Linear(in_features=40, out_features=64, bias=False)
+            (w_ks): Linear(in_features=40, out_features=64, bias=False)
+            (w_vs): Linear(in_features=40, out_features=64, bias=False)
+            (fc): Linear(in_features=64, out_features=40, bias=True)
+            (attention): ScaledDotProductAttention(
+              (dropout): Dropout(p=0.1, inplace=False)
+            )
+            (layer_norm): LayerNorm((40,), eps=1e-06, elementwise_affine=True)
+            (dropout): Dropout(p=0.1, inplace=False)
+          )
+          (pos_ffn): PositionwiseFeedForward(
+            (w_1): Linear(in_features=40, out_features=64, bias=True)
+            (w_2): Linear(in_features=64, out_features=40, bias=True)
+            (layer_norm): LayerNorm((40,), eps=1e-06, elementwise_affine=True)
+            (dropout): Dropout(p=0.1, inplace=False)
+          )
+        )
+      )
+    )
+    (temporal_model): NeuralPointProcess(
+      (hidden_state_dynamics): HiddenStateODEFuncList(
+        (odefuncs): ModuleList(
+          (0): GRUHiddenStateODEFunc(
+            (dstate_net): SequentialDiffEq(
+              (layers): ModuleList(
+                (0): ConcatLinear_v2(
+                  (_layer): Linear(in_features=32, out_features=32, bias=True)
+                  (_hyper_bias): Linear(in_features=1, out_features=32, bias=False)
+                )
+              )
+            )
+            (update_net): GRUCell(80, 32)
+          )
+        )
+      )
+      (ode_solver): TimeVariableODE(
+        method=dopri5, atol=0.0001, rtol=0.0001, energy=0.0001
+        (func): IntensityODEFunc(
+          (dstate_fn): HiddenStateODEFuncList(
+            (odefuncs): ModuleList(
+              (0): GRUHiddenStateODEFunc(
+                (dstate_net): SequentialDiffEq(
+                  (layers): ModuleList(
+                    (0): ConcatLinear_v2(
+                      (_layer): Linear(in_features=32, out_features=32, bias=True)
+                      (_hyper_bias): Linear(in_features=1, out_features=32, bias=False)
+                    )
+                  )
+                )
+                (update_net): GRUCell(80, 32)
+              )
+            )
+          )
+          (intensity_fn): Sequential(
+            (0): Linear(in_features=32, out_features=128, bias=True)
+            (1): Softplus(beta=1.0, threshold=20.0)
+            (2): Linear(in_features=128, out_features=1, bias=True)
+          )
+        )
+      )
+    )
+    (Model): Model_all(
+      (diffusion): GaussianDiffusion_ST(
+        (model): ST_Diffusion(
+          (time_mlp): Sequential(
+            (0): SinusoidalPosEmb()
+            (1): Linear(in_features=20, out_features=20, bias=True)
+            (2): GELU(approximate='none')
+            (3): Linear(in_features=20, out_features=20, bias=True)
+          )
+          (linears_mlp): Sequential(
+            (0): Linear(in_features=64, out_features=64, bias=True)
+            (1): ReLU()
+            (2): Linear(in_features=64, out_features=64, bias=True)
+            (3): ReLU()
+            (4): Linear(in_features=64, out_features=64, bias=True)
+            (5): ReLU()
+            (6): Linear(in_features=64, out_features=12, bias=True)
+          )
+        )
+      )
+    )
+    (pred): Predictor(
+      (linear1): Linear(in_features=44, out_features=88, bias=True)
+      (linear2): Linear(in_features=88, out_features=44, bias=True)
+      (linear3): Linear(in_features=44, out_features=1, bias=True)
+    )
+    (seq_feature): Sequential(
+      (0): Linear(in_features=12, out_features=24, bias=True)
+      (1): ReLU()
+      (2): Linear(in_features=24, out_features=24, bias=True)
+      (3): ReLU()
+      (4): Linear(in_features=24, out_features=12, bias=True)
+    )
+  )
+)
+2026-06-28 23:39:38,659 - Iter 0 | Epoch 0 | LR 0.00200 | Time 6.6 | msle 0.0872(0.0872) | smape 0.1199(0.1199) | loglik 0.4980(0.4980) | Mem 929.69 MB
+2026-06-28 23:41:23,314 - [Test] Iter 8 | Epoch 0| Val msle 6.7150 | Val smape 0.5335 | Val loglik 2.3893 | Test msle 6.6279 | Test smape 0.5010| Test loglik 2.3827 | Best Test msle 6.6279 | Best Val msle 6.7150 | Best Test smape 0.5010 | Best Val smape 0.5335 | Other Best Test metrics {'msle': 6.6279, 'male': 2.1203, 'pcc': -0.4329, 'mape': 0.501, 'smape': 0.6202, 'r2': -0.8918}

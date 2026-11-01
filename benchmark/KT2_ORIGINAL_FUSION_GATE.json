@@ -1,0 +1,271 @@
+{
+  "schema": "cogguard.kt2.original_fusion_gate.v1",
+  "status": "evidence_passed",
+  "objective": "Validate KT2 integrated MINDS/FOREST/CasFT-inspired joint-model evidence without overclaiming original-paper reproduction",
+  "claim": "KT2 integrated joint-model evidence passes the current gate; this is not a claim that MINDS/FOREST/CasFT original-paper architectures are fully reproduced.",
+  "completion_rule": "Gate pass requires upstream MINDS/FOREST/CasFT subpaths, CasFT main-output fusion, teacher-alignment evidence, same-protocol component ablation, multi-dataset/multi-seed/multi-observation coverage, required macro/micro metrics, leakage audit, a KT2 integrated full-run row, and same-protocol baseline comparison. It does not certify full original-paper reproduction.",
+  "checks": [
+    {
+      "id": "original_subpaths_and_teacher_alignment",
+      "status": "passed",
+      "detail": "All small-matrix KT2 rows ran MINDS/FOREST/CasFT original subpaths, recorded teacher alignment, and fused the CasFT continuous-time path into the main KT2 macro/trend outputs.",
+      "rows": 27,
+      "failures": [],
+      "evidence": [
+        "G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\kt2_original_fusion_experiment_small_matrix.json"
+      ]
+    },
+    {
+      "id": "small_matrix_coverage",
+      "status": "passed",
+      "detail": "Requires >= 3 datasets, >= 3 seeds, >= 3 observation ratios; found 3 datasets, 3 seeds, 3 observation ratios.",
+      "coverage": {
+        "expected_runs": 27,
+        "completed_expected_runs": 27,
+        "coverage_ratio": 1.0,
+        "completed_keys": [
+          {
+            "dataset": "douban",
+            "seed": 42,
+            "obs_ratio": 0.1,
+            "config_id": "default-small"
+          },
+          {
+            "dataset": "douban",
+            "seed": 42,
+            "obs_ratio": 0.3,
+            "config_id": "default-small"
+          },
+          {
+            "dataset": "douban",
+            "seed": 42,
+            "obs_ratio": 0.5,
+            "config_id": "default-small"
+          },
+          {
+            "dataset": "douban",
+            "seed": 43,
+            "obs_ratio": 0.1,
+            "config_id": "default-small"
+          },
+          {
+            "dataset": "douban",
+            "seed": 43,
+            "obs_ratio": 0.3,
+            "config_id": "default-small"
+          },
+          {
+            "dataset": "douban",
+            "seed": 43,
+            "obs_ratio": 0.5,
+            "config_id": "default-small"
+          },
+          {
+            "dataset": "douban",
+            "seed": 44,
+            "obs_ratio": 0.1,
+            "config_id": "default-small"
+          },
+          {
+            "dataset": "douban",
+            "seed": 44,
+            "obs_ratio": 0.3,
+            "config_id": "default-small"
+          },
+          {
+            "dataset": "douban",
+            "seed": 44,
+            "obs_ratio": 0.5,
+            "config_id": "default-small"
+          },
+          {
+            "dataset": "twitter",
+            "seed": 42,
+            "obs_ratio": 0.1,
+            "config_id": "default-small"
+          },
+          {
+            "dataset": "twitter",
+            "seed": 42,
+            "obs_ratio": 0.3,
+            "config_id": "default-small"
+          },
+          {
+            "dataset": "twitter",
+            "seed": 42,
+            "obs_ratio": 0.5,
+            "config_id": "default-small"
+          },
+          {
+            "dataset": "twitter",
+            "seed": 43,
+            "obs_ratio": 0.1,
+            "config_id": "default-small"
+          },
+          {
+            "dataset": "twitter",
+            "seed": 43,
+            "obs_ratio": 0.3,
+            "config_id": "default-small"
+          },
+          {
+            "dataset": "twitter",
+            "seed": 43,
+            "obs_ratio": 0.5,
+            "config_id": "default-small"
+          },
+          {
+            "dataset": "twitter",
+            "seed": 44,
+            "obs_ratio": 0.1,
+            "config_id": "default-small"
+          },
+          {
+            "dataset": "twitter",
+            "seed": 44,
+            "obs_ratio": 0.3,
+            "config_id": "default-small"
+          },
+          {
+            "dataset": "twitter",
+            "seed": 44,
+            "obs_ratio": 0.5,
+            "config_id": "default-small"
+          },
+          {
+            "dataset": "memetracker",
+            "seed": 42,
+            "obs_ratio": 0.1,
+            "config_id": "default-small"
+          },
+          {
+            "dataset": "memetracker",
+            "seed": 42,
+            "obs_ratio": 0.3,
+            "config_id": "default-small"
+          },
+          {
+            "dataset": "memetracker",
+            "seed": 42,
+            "obs_ratio": 0.5,
+            "config_id": "default-small"
+          },
+          {
+            "dataset": "memetracker",
+            "seed": 43,
+            "obs_ratio": 0.1,
+            "config_id": "default-small"
+          },
+          {
+            "dataset": "memetracker",
+            "seed": 43,
+            "obs_ratio": 0.3,
+            "config_id": "default-small"
+          },
+          {
+            "dataset": "memetracker",
+            "seed": 43,
+            "obs_ratio": 0.5,
+            "config_id": "default-small"
+          },
+          {
+            "dataset": "memetracker",
+            "seed": 44,
+            "obs_ratio": 0.1,
+            "config_id": "default-small"
+          },
+          {
+            "dataset": "memetracker",
+            "seed": 44,
+            "obs_ratio": 0.3,
+            "config_id": "default-small"
+          },
+          {
+            "dataset": "memetracker",
+            "seed": 44,
+            "obs_ratio": 0.5,
+            "config_id": "default-small"
+          }
+        ],
+        "pending_keys": []
+      },
+      "datasets": [
+        "douban",
+        "memetracker",
+        "twitter"
+      ],
+      "seeds": [
+        "42",
+        "43",
+        "44"
+      ],
+      "obs_ratios": [
+        "0.1",
+        "0.3",
+        "0.5"
+      ],
+      "evidence": [
+        "G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\kt2_original_fusion_experiment_small_matrix.json"
+      ]
+    },
+    {
+      "id": "metric_and_leakage_integrity",
+      "status": "passed",
+      "detail": "KT2 rows expose required macro/micro metrics and leak-check audit.",
+      "rows": 27,
+      "failures": [],
+      "evidence": [
+        "G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\kt2_original_fusion_experiment_small_matrix.json"
+      ]
+    },
+    {
+      "id": "small_matrix_metric_stability",
+      "status": "passed",
+      "detail": "Small-matrix metrics are finite and below conservative explosion thresholds.",
+      "thresholds": {
+        "msle": 100.0,
+        "mae": 10000.0,
+        "rmse": 20000.0
+      },
+      "rows": 27,
+      "failures": [],
+      "evidence": [
+        "G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\kt2_original_fusion_experiment_small_matrix.json"
+      ]
+    },
+    {
+      "id": "same_protocol_component_ablation",
+      "status": "passed",
+      "detail": "Same-protocol ablation covers MINDS baseline, FOREST, CasFT, full fusion and local bridge variants.",
+      "variants_found": [
+        "full_minds_forest_casft",
+        "local_kt2_bridge",
+        "minds_baseline",
+        "minds_plus_casft",
+        "minds_plus_forest"
+      ],
+      "variants_missing": [],
+      "has_full_vs_minds_delta": true,
+      "full_variant_original_subpaths_passed": true,
+      "full_variant_alignment_recorded": true,
+      "evidence": [
+        "G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\kt2_original_fusion_ablation_smoke.json"
+      ]
+    },
+    {
+      "id": "same_protocol_full_run_claimability",
+      "status": "passed",
+      "detail": "KT2 integrated full-run row and same-protocol baseline comparison support current integrated-model evidence.",
+      "full_run_rows": 1,
+      "baseline_comparison_status": "ok",
+      "baseline_missing_requirements": [],
+      "evidence": [
+        "G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\kt2_original_fusion_experiment_small_matrix.json",
+        "G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\kt2_baseline_comparison.json"
+      ]
+    }
+  ],
+  "required_next_actions": [
+    "All KT2 integrated-model evidence gates passed; keep reporting it as KT2 evidence, not full original-paper reproduction."
+  ]
+}

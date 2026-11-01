@@ -28,7 +28,7 @@ def load_dataset(
     if dataset == "rumor_rvnn_twitter":
         return load_rumor_rvnn_twitter(data_dir)
     if dataset in {"pheme", "pheme_rnr"}:
-        return load_pheme(data_dir)
+        return load_pheme(data_dir, max_events=max_events, event_id=event_id)
     raise ValueError(f"Unsupported dataset: {dataset}")
 
 
@@ -214,13 +214,21 @@ def load_weibo_tree_records(data_dir: str) -> List[PropagationEvent]:
 load_weibo_rvnn = load_weibo_auto
 
 
-def load_pheme(data_dir: str) -> List[PropagationEvent]:
+def load_pheme(data_dir: str, max_events: Optional[int] = None, event_id: Optional[str] = None) -> List[PropagationEvent]:
     """Load PHEME rumour/non-rumour thread JSON files into propagation events."""
 
     root = Path(data_dir)
     result: List[PropagationEvent] = []
 
-    for thread_dir in _iter_pheme_thread_dirs(root):
+    thread_dirs = _iter_pheme_thread_dirs(root)
+    if event_id:
+        thread_dirs = [path for path in thread_dirs if path.name == event_id]
+    if max_events is not None:
+        if max_events <= 0:
+            raise ValueError("max_events must be positive")
+        thread_dirs = thread_dirs[:max_events]
+
+    for thread_dir in thread_dirs:
         annotation = _load_pheme_annotation(thread_dir)
         label = _pheme_label(thread_dir, annotation)
         event = PropagationEvent(

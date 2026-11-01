@@ -1,0 +1,199 @@
+{
+  "schema": "cogguard.kt2.minds_comparison.v1",
+  "status": "partial",
+  "config_id": "kt2-sequence-vs-minds-full-protocol-30ep",
+  "evidence_level": "full_run_candidate",
+  "full_validation_passed": false,
+  "full_run_requirements": {
+    "checks": {
+      "dataset_count_at_least_3": true,
+      "seed_count_at_least_3": true,
+      "minds_epochs_at_least_5": true,
+      "kt2_epochs_at_least_5": true,
+      "minds_uses_all_available_cascades": true,
+      "kt2_uses_all_train_and_test_cascades": true,
+      "kt2_unbudgeted_training_and_eval": true,
+      "no_missing_model_pairs": false,
+      "has_completed_comparisons": false
+    },
+    "passed": false,
+    "minimums": {
+      "datasets": 3,
+      "seeds": 3,
+      "epochs": 5
+    }
+  },
+  "boundary": "Compares trainable original MINDS public-code baseline against KT2SequenceJointModel on the same FOREST-source datasets. Handcrafted/heuristic baselines are excluded from the improvement verdict. preflight evidence proves the pipeline and a directional comparison only; full_validation_passed=true is required before claiming final KT2 improvement over MINDS.",
+  "comparison_model_filter": {
+    "allowed_models": [
+      "KT2SequenceJointModel",
+      "MINDS"
+    ],
+    "aliases": {
+      "KT2": "KT2SequenceJointModel",
+      "KT2Sequence": "KT2SequenceJointModel",
+      "KT2JointModel": "legacy_candidate_level_kt2"
+    },
+    "ignored_non_comparison_rows": [],
+    "ignored_non_comparison_row_count": 0,
+    "rule": "Only trainable MINDS and KT2SequenceJointModel rows can enter pair verdicts and metric deltas."
+  },
+  "datasets": [
+    "douban",
+    "twitter",
+    "memetracker"
+  ],
+  "seeds": [
+    42,
+    43,
+    44
+  ],
+  "common_metrics": [
+    "msle",
+    "hits@10",
+    "hits@50",
+    "hits@100",
+    "map@10",
+    "map@50",
+    "map@100"
+  ],
+  "overall_verdict": "insufficient_evidence",
+  "metric_summary": {},
+  "comparisons": [],
+  "missing_pairs": [
+    {
+      "dataset": "douban",
+      "seed": 42,
+      "minds_status": "failed",
+      "kt2_status": null
+    },
+    {
+      "dataset": "douban",
+      "seed": 43,
+      "minds_status": null,
+      "kt2_status": null
+    },
+    {
+      "dataset": "douban",
+      "seed": 44,
+      "minds_status": null,
+      "kt2_status": null
+    },
+    {
+      "dataset": "twitter",
+      "seed": 42,
+      "minds_status": null,
+      "kt2_status": null
+    },
+    {
+      "dataset": "twitter",
+      "seed": 43,
+      "minds_status": null,
+      "kt2_status": null
+    },
+    {
+      "dataset": "twitter",
+      "seed": 44,
+      "minds_status": null,
+      "kt2_status": null
+    },
+    {
+      "dataset": "memetracker",
+      "seed": 42,
+      "minds_status": null,
+      "kt2_status": null
+    },
+    {
+      "dataset": "memetracker",
+      "seed": 43,
+      "minds_status": null,
+      "kt2_status": null
+    },
+    {
+      "dataset": "memetracker",
+      "seed": 44,
+      "minds_status": null,
+      "kt2_status": null
+    }
+  ],
+  "schema_report": {
+    "schema": "cogguard.kt2.benchmark_result.v1",
+    "ok": true,
+    "rows": 1,
+    "errors": [],
+    "warnings": []
+  },
+  "rows": [
+    {
+      "model": "MINDS",
+      "dataset": "douban",
+      "task": "multi_scale",
+      "status": "failed",
+      "reproduction_level": "frontier_reproduction_attempted",
+      "config_id": "kt2-sequence-vs-minds-full-protocol-30ep",
+      "seed": 42,
+      "command": [
+        "D:\\Anaconda\\python.exe",
+        "G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\adapters\\minds_runner.py",
+        "--dataset_name",
+        "kt2_douban",
+        "--report_dataset",
+        "douban",
+        "--protocol_source",
+        "converted from FOREST douban cascade.txt",
+        "--epochs",
+        "30",
+        "--batch_size",
+        "16",
+        "--emb_dim",
+        "64",
+        "--step_split",
+        "4",
+        "--max_seq_length",
+        "200",
+        "--device",
+        "cuda",
+        "--reproduction_level",
+        "frontier_reproduction_full_run",
+        "--config_id",
+        "kt2-sequence-vs-minds-full-protocol-30ep",
+        "--seed",
+        "42"
+      ],
+      "cwd": "G:\\CISCN\\CogGuard\\subsystems\\kt2_repos\\MINDS\\.kt2_extracted\\MINDS",
+      "returncode": 1,
+      "elapsed_s": 36.4,
+      "stdout_tail": [
+        "  testing size:849",
+        "total size:8487 ",
+        "average length:27.000236",
+        "maximum length:490.000000",
+        "minimum length:7.000000",
+        "user size:22307",
+        "[MINDS] Building graphs for kt2_douban...",
+        "#Link: 335791"
+      ],
+      "stderr_tail": [
+        "           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+        "  File \"G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\adapters\\minds_runner.py\", line 54, in get_previous_user_mask",
+        "    previous_mask = np.tril(np.ones(prev_shape)).astype('float32')",
+        "                            ^^^^^^^^^^^^^^^^^^^",
+        "  File \"D:\\Anaconda\\Lib\\site-packages\\numpy\\core\\numeric.py\", line 191, in ones",
+        "    a = empty(shape, dtype, order)",
+        "        ^^^^^^^^^^^^^^^^^^^^^^^^^^",
+        "numpy.core._exceptions._ArrayMemoryError: Unable to allocate 4.83 MiB for an array with shape (16, 199, 199) and data type float64"
+      ],
+      "note": "MINDS adapter produced no parseable JSON.",
+      "comparison_role": "trainable_original_minds_baseline",
+      "minds_staged_dataset": {
+        "status": "ok",
+        "dataset_name": "kt2_douban",
+        "path": "G:\\CISCN\\CogGuard\\subsystems\\kt2_repos\\MINDS\\.kt2_extracted\\MINDS\\data\\kt2_douban",
+        "cascades": 8529,
+        "users": 22307,
+        "edges": 671582
+      }
+    }
+  ],
+  "elapsed_s": 37.4
+}

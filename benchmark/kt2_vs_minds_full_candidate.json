@@ -1,0 +1,224 @@
+{
+  "schema": "cogguard.kt2.minds_comparison.v1",
+  "status": "partial",
+  "config_id": "kt2-vs-minds-full-candidate",
+  "evidence_level": "full_run_candidate",
+  "full_validation_passed": false,
+  "full_run_requirements": {
+    "checks": {
+      "dataset_count_at_least_3": true,
+      "seed_count_at_least_3": true,
+      "minds_epochs_at_least_5": true,
+      "kt2_epochs_at_least_5": true,
+      "minds_uses_all_available_cascades": true,
+      "kt2_uses_all_train_and_test_cascades": true,
+      "no_missing_model_pairs": false,
+      "has_completed_comparisons": false
+    },
+    "passed": false,
+    "minimums": {
+      "datasets": 3,
+      "seeds": 3,
+      "epochs": 5
+    }
+  },
+  "boundary": "Compares trainable original MINDS public-code baseline against KT2JointModel on the same FOREST-source datasets. Handcrafted/heuristic baselines are excluded from the improvement verdict. preflight evidence proves the pipeline and a directional comparison only; full_validation_passed=true is required before claiming final KT2 improvement over MINDS.",
+  "datasets": [
+    "douban",
+    "twitter",
+    "memetracker"
+  ],
+  "seeds": [
+    42,
+    43,
+    44
+  ],
+  "common_metrics": [
+    "msle",
+    "hits@10",
+    "hits@50",
+    "hits@100",
+    "map@10",
+    "map@50",
+    "map@100"
+  ],
+  "overall_verdict": "insufficient_evidence",
+  "metric_summary": {},
+  "comparisons": [],
+  "missing_pairs": [
+    {
+      "dataset": "douban",
+      "seed": 42,
+      "minds_status": "timeout",
+      "kt2_status": null
+    },
+    {
+      "dataset": "douban",
+      "seed": 43,
+      "minds_status": "timeout",
+      "kt2_status": null
+    },
+    {
+      "dataset": "douban",
+      "seed": 44,
+      "minds_status": null,
+      "kt2_status": null
+    },
+    {
+      "dataset": "twitter",
+      "seed": 42,
+      "minds_status": null,
+      "kt2_status": null
+    },
+    {
+      "dataset": "twitter",
+      "seed": 43,
+      "minds_status": null,
+      "kt2_status": null
+    },
+    {
+      "dataset": "twitter",
+      "seed": 44,
+      "minds_status": null,
+      "kt2_status": null
+    },
+    {
+      "dataset": "memetracker",
+      "seed": 42,
+      "minds_status": null,
+      "kt2_status": null
+    },
+    {
+      "dataset": "memetracker",
+      "seed": 43,
+      "minds_status": null,
+      "kt2_status": null
+    },
+    {
+      "dataset": "memetracker",
+      "seed": 44,
+      "minds_status": null,
+      "kt2_status": null
+    }
+  ],
+  "schema_report": {
+    "schema": "cogguard.kt2.benchmark_result.v1",
+    "ok": true,
+    "rows": 2,
+    "errors": [],
+    "warnings": []
+  },
+  "rows": [
+    {
+      "model": "MINDS",
+      "dataset": "douban",
+      "task": "multi_scale",
+      "status": "timeout",
+      "reproduction_level": "frontier_reproduction_attempted",
+      "config_id": "kt2-vs-minds-full-candidate",
+      "seed": 42,
+      "command": [
+        "D:\\Anaconda\\python.exe",
+        "G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\adapters\\minds_runner.py",
+        "--dataset_name",
+        "kt2_douban",
+        "--report_dataset",
+        "douban",
+        "--protocol_source",
+        "converted from FOREST douban cascade.txt",
+        "--epochs",
+        "5",
+        "--batch_size",
+        "16",
+        "--emb_dim",
+        "32",
+        "--step_split",
+        "4",
+        "--max_seq_length",
+        "200",
+        "--device",
+        "cpu",
+        "--reproduction_level",
+        "frontier_reproduction_full_run",
+        "--config_id",
+        "kt2-vs-minds-full-candidate",
+        "--seed",
+        "42"
+      ],
+      "cwd": "G:\\CISCN\\CogGuard\\subsystems\\kt2_repos\\MINDS\\.kt2_extracted\\MINDS",
+      "returncode": null,
+      "elapsed_s": 1800.2,
+      "stdout_tail": [],
+      "stderr_tail": [
+        "D:\\Anaconda\\Lib\\site-packages\\torch\\nn\\_reduction.py:51: UserWarning: size_average and reduce args will be deprecated, please use reduction='none' instead.",
+        "  warnings.warn(warning.format(ret))"
+      ],
+      "note": "MINDS adapter exceeded 1800s.",
+      "comparison_role": "trainable_original_minds_baseline",
+      "minds_staged_dataset": {
+        "status": "ok",
+        "dataset_name": "kt2_douban",
+        "path": "G:\\CISCN\\CogGuard\\subsystems\\kt2_repos\\MINDS\\.kt2_extracted\\MINDS\\data\\kt2_douban",
+        "cascades": 8529,
+        "users": 22307,
+        "edges": 671582
+      }
+    },
+    {
+      "model": "MINDS",
+      "dataset": "douban",
+      "task": "multi_scale",
+      "status": "timeout",
+      "reproduction_level": "frontier_reproduction_attempted",
+      "config_id": "kt2-vs-minds-full-candidate",
+      "seed": 43,
+      "command": [
+        "D:\\Anaconda\\python.exe",
+        "G:\\CISCN\\CogGuard\\subsystems\\cogguard_dev\\benchmark\\adapters\\minds_runner.py",
+        "--dataset_name",
+        "kt2_douban",
+        "--report_dataset",
+        "douban",
+        "--protocol_source",
+        "converted from FOREST douban cascade.txt",
+        "--epochs",
+        "5",
+        "--batch_size",
+        "16",
+        "--emb_dim",
+        "32",
+        "--step_split",
+        "4",
+        "--max_seq_length",
+        "200",
+        "--device",
+        "cpu",
+        "--reproduction_level",
+        "frontier_reproduction_full_run",
+        "--config_id",
+        "kt2-vs-minds-full-candidate",
+        "--seed",
+        "43"
+      ],
+      "cwd": "G:\\CISCN\\CogGuard\\subsystems\\kt2_repos\\MINDS\\.kt2_extracted\\MINDS",
+      "returncode": null,
+      "elapsed_s": 1800.3,
+      "stdout_tail": [],
+      "stderr_tail": [
+        "D:\\Anaconda\\Lib\\site-packages\\torch\\nn\\_reduction.py:51: UserWarning: size_average and reduce args will be deprecated, please use reduction='none' instead.",
+        "  warnings.warn(warning.format(ret))"
+      ],
+      "note": "MINDS adapter exceeded 1800s.",
+      "comparison_role": "trainable_original_minds_baseline",
+      "minds_staged_dataset": {
+        "status": "ok",
+        "dataset_name": "kt2_douban",
+        "path": "G:\\CISCN\\CogGuard\\subsystems\\kt2_repos\\MINDS\\.kt2_extracted\\MINDS\\data\\kt2_douban",
+        "cascades": 8529,
+        "users": 22307,
+        "edges": 671582
+      }
+    }
+  ],
+  "elapsed_s": 1801.5
+}

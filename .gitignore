@@ -14,3 +14,12 @@ outputs/*
 *.log
 *.exit
 *.result.json
+benchmark/frontier_exports/
+benchmark/frontier_status.json
+benchmark/frontier_status.json.schema.json
+benchmark/dyglib_external_attempt.json
+benchmark/dyglib_external_attempt.json.schema.json
+benchmark/tgn_external_attempt.json
+benchmark/tgn_external_attempt.json.schema.json
+benchmark/casft_external_attempt.json
+benchmark/casft_external_attempt.json.schema.json
