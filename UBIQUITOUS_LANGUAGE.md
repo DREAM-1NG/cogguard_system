@@ -44,7 +44,9 @@ Current semantic package paths: `system/research/coordination_discover/`, `syste
 | **Case Claim** | An authoritative-source evidence record containing a verbatim excerpt, exact source span, URL, account, publication time, **Source Tier**, and content hash. | Topic, generated summary, analyst paraphrase |
 | **Primary Claim** | The single approved **Case Claim** required by stance; approval triggers incremental stance plus **Risk Review**, while absence does not block other permitted stages or Risk Review. | Main topic, inferred claim, headline |
 | **Supplementary Claim** | An approved or pending **Case Claim** that adds authoritative context without replacing the **Primary Claim**. | Secondary verdict, supporting summary |
-| **Semantic Artifact** | An immutable, provenance-bound output of the explicit `semantic_enrichment` **Analysis Stage**. | Tag cache, model guess, score input |
+| **Semantic Artifact** | A fail-closed, provenance-bound output of the explicit `semantic_enrichment` **Analysis Stage** that records runtime status, model versions, and advisory semantic outputs. | Tag cache, model guess, score input, rule fallback |
+| **Semantic Blocker** | A visible **Case Blocker** raised when required semantic model weights or inference dependencies are unavailable. | Silent fallback, degraded success |
+| **Semantic Overlay** | Advisory semantic context attached to a layer, claim, or propagation path without changing CPR scores or closure gates. | Risk score, hidden feature, automatic decision |
 | **Semantic Decision Support** | A reportable summary of semantic coverage, candidate confidence, module availability, platform slices, time slices, and operator prompts that supports triage without changing any risk score. | Risk score, model verdict, automatic action |
 | **Semantic Traceability Pack** | A reportable bundle of review hints, module coverage, semantic examples, and action evidence references derived from one **Semantic Artifact** for human inspection. | Risk explanation, provenance proof, automatic action |
 | **Semantic Example** | A traceable excerpt-level example from a **Semantic Artifact** containing content identity, hint origin, platform, author, content kind, and excerpt. | Full source text, verified claim, platform evidence |
@@ -142,6 +144,8 @@ Current semantic package paths: `system/research/coordination_discover/`, `syste
 - **Student Review** and **Teacher Review** produce advisory **Review Verdicts**; analyst approval creates an immutable **Canonical Verdict**, and a later **Closeout Review** verifies closure gates rather than changing that verdict.
 - A **Case** can close only after it has an approved **Canonical Verdict**, every required **Case Action** is completed or explicitly waived, and a **Closeout Review** is submitted; no additional Closeout Review acceptance gate exists.
 - **Semantic Decision Support** belongs to one **Semantic Artifact** and may appear in the **Case Workbench**, acceptance export, or **Case Report Version**, but it never changes Coordination, Propagation, Review, or closure scores.
+- A **Semantic Artifact** is fail-closed: if the required runtime is unavailable, the **Case** returns a **Semantic Blocker** instead of fabricating a successful result.
+- A **Semantic Overlay** may attach to a **Case Graph Propagation Path**, semantic layer, or claim, but it remains advisory and never changes a lifecycle gate.
 - A **Semantic Traceability Pack** belongs to one **Semantic Artifact** and may cite **Case Actions**, but it remains an advisory inspection aid rather than source provenance or disposition logic.
 - A **Semantic Action Recommendation** may reference one **Case Action** and one or more evidence refs, but the **Case Action** still changes only through explicit analyst completion or waiver.
 - A **Semantic Example** may show an excerpt and content identity; it is not a **Case Claim** and must not be treated as full-text authoritative evidence.

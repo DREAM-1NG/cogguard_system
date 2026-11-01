@@ -4,13 +4,23 @@
 > **受众**：开发者、项目维护者、后续执行任务的 AI agent。  
 > **维护规则**：只维护可执行工程路线和状态；研究定位、文献依据和关键技术背景放入 `../research/`。
 
-> 最后更新：2026-08-11
+> 最后更新：2026-08-12
+
+## 2026-08-12 Case Workbench 真实 LM 语义辅助闭环
+
+- [x] `semantic_enrichment` 改为真实 runtime 契约：需要 HuggingFace 模型 runtime 才生成成功 artifact；模型缺失时只返回显式 `semantic_model_unavailable` 阻塞，不伪装规则结果。
+- [x] 共享 embedding 固定为 `BAAI/bge-small-zh-v1.5@7999e1d`，一次编码复用到关键词、主题、近重复、协调社区差异和传播路径 overlay。
+- [x] 语义模型版本固定记录：情感 `lxyuan/distilbert-base-multilingual-cased-sentiments-student@cf99110`，立场 `MoritzLaurer/multilingual-MiniLMv2-L6-mnli-xnli@0a71e92`，NER `shibing624/bert4ner-base-chinese@5d660ed`；真实推理后仍标记 `candidate_unvalidated`，等待本地评测。
+- [x] 使用内部轻量实现承接高水平方法形态：KeyBERT 式 cosine/MMR 关键词，BERTopic 式 embedding clustering + c-TF-IDF 主题；不 vendor KeyBERT、BERTopic、Hoaxy、DISARM 代码。
+- [x] Case payload 和前端补齐主帖/评论语义矩阵、时间/平台/协调社区 cross analysis、传播路径 `semantic_overlay`、模型阻塞提示和路径 drawer 下钻。
+- [x] 新增 `system/backend/scripts/prefetch_semantic_models.py`，权重缓存固定 `G:\CISCN\hf_models`。
+- [ ] 本地 300 条中文评测集、校准门槛和模型验证状态升级仍待后续完成；未完成前不得把模型标记为 validated。
 
 ## 2026-08-11 Case Workbench 原型闭环
 
 - [x] 新增 `/api/v2/cases` 读模型 MVP，面向特朗普访华归档案例聚合 Event Snapshot、Analysis Run、权威主张、语义辅助、处置项、反馈入口和报告版本占位。
 - [x] 新增显式 `semantic_enrichment` Analysis Stage；默认 Analysis Run 四阶段保持不变，Case 编排才显式请求语义阶段。
-- [x] 语义辅助已覆盖情感、关键词、主题、实体、近重复、平台/社区对比、时间切片、覆盖率/置信度摘要和立场；立场需已存在 Primary Claim。当前使用轻量确定性覆盖层和固定候选模型标识，状态保持 `candidate_unvalidated`，不改变 Coordination Discover、Propagation Analysis 或 Risk Review 分数。
+- [x] 语义辅助已覆盖情感、关键词、主题、实体、近重复、平台/社区对比、时间切片、覆盖率/置信度摘要和立场；立场需已存在 Primary Claim。2026-08-12 起成功 artifact 必须来自真实 LM runtime，状态保持 `candidate_unvalidated`，不改变 Coordination Discover、Propagation Analysis 或 Risk Review 分数。
 - [x] 前端新增“案例闭环”入口和 C 型密集五标签工作台：概览 / 证据矩阵 / 图谱 / 处置 / 报告。
 - [x] 新增进程内 demo mutation：平台缺口确认、处置项完成/豁免、反馈提交、结案复核提交；默认微博-only fallback 可在明确承认缺口后继续原型闭环，但不声称存在 XHS/抖音证据。
 - [x] 新增本地 Case Workbench 验收脚本，验证 demo fixture 从平台缺口确认到结案和 PDF fallback 报告预览的闭环，并保留 XHS 缺口可见。
@@ -84,7 +94,7 @@
 | 前端 - 报告研判页 | ✅ 已完成 | P1 | 后端报告研判 |
 | 前端 - UX 增强（密度/分页/引导） | ✅ 已完成 | P1 | 各前端页面 |
 | 案例闭环工作台 | 🔧 读模型 MVP 已接通 | P0 | EventSnapshot、AnalysisRun、特朗普访华归档证据 |
-| NLP 语义辅助 | 🔧 轻量原型已接入；模型验证 blocked | P0 | EventSnapshot、权威主张 |
+| NLP 语义辅助 | 🔧 真实 LM runtime 已接入；本地评测/校准 blocked | P0 | EventSnapshot、权威主张、HF 权重缓存 |
 | 报告研判模块 | ✅ MVP 已完成 | P2 | 协同检测、传播监控、账户监测 |
 | 前端 - 监测看板 | 🔧 开发中（真实数据 + 地图） | P1 | Dashboard API、Mongo 事件数据 |
 | 系统联调与测试 | 🔧 部分（新增 BotRHG 后端回归测试） | P2 | 所有模块 |

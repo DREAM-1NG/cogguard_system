@@ -128,9 +128,33 @@
               <div class="panel-title">语义辅助</div>
               <a-space wrap class="semantic-tags">
                 <a-tag color="blue">{{ semanticStatus }}</a-tag>
+                <a-tag :color="semanticRuntimeBlocked ? 'red' : 'green'">{{ semanticArtifact?.runtime_backend || 'runtime_unavailable' }}</a-tag>
                 <a-tag color="orange">{{ semanticArtifact?.model_status || 'candidate_unvalidated' }}</a-tag>
                 <a-tag>证据叠加，不改风险分</a-tag>
               </a-space>
+              <a-alert
+                v-if="semanticRuntimeBlocked"
+                type="error"
+                show-icon
+                class="semantic-blocker-alert"
+                :message="semanticArtifact?.semantic_blocker?.message || 'Semantic models are unavailable.'"
+                :description="semanticArtifact?.semantic_blocker?.manual_resolution || 'Pull the pinned HuggingFace weights and retry.'"
+              />
+              <div v-if="semanticLayerAvailable" class="semantic-layer-switch">
+                <span class="eyebrow">Semantic layer</span>
+                <a-radio-group v-model:value="semanticLayerMode" size="small" button-style="solid">
+                  <a-radio-button value="main_posts">Main posts</a-radio-button>
+                  <a-radio-button value="comments">Comments</a-radio-button>
+                </a-radio-group>
+              </div>
+              <div v-if="semanticLayerAvailable" class="semantic-layer-matrix">
+                <div class="semantic-layer-card"><strong>{{ semanticLayerMode === 'main_posts' ? 'Main posts' : 'Comments' }}</strong><span>{{ semanticLayer?.sentiment?.total_texts || 0 }} texts</span></div>
+                <div class="semantic-layer-card"><strong>Sentiment</strong><span>{{ formatMetrics(semanticLayer?.sentiment?.distribution) }}</span></div>
+                <div class="semantic-layer-card"><strong>Stance</strong><span>{{ semanticLayer?.stance?.status || '-' }} · {{ formatMetrics(semanticLayer?.stance?.distribution) }}</span></div>
+                <div class="semantic-layer-card"><strong>Keywords</strong><span>{{ (semanticLayer?.keywords || []).map((item: any) => item.term).join(', ') || '-' }}</span></div>
+                <div class="semantic-layer-card"><strong>Topics</strong><span>{{ (semanticLayer?.topics?.items || []).map((item: any) => item.label).join(', ') || '-' }}</span></div>
+                <div class="semantic-layer-card"><strong>Entities</strong><span>{{ (semanticLayer?.entities || []).map((item: any) => item.entity).join(', ') || '-' }}</span></div>
+              </div>
               <div v-if="semanticDecisionSupport" class="semantic-section semantic-decision-support">
                 <h3>Semantic decision support</h3>
                 <a-descriptions size="small" bordered :column="2">
@@ -347,6 +371,19 @@
                   {{ (path.nodes || []).map((node: any) => node.label || node.id).join(' → ') }}
                   · {{ (path.edges || []).length }} edge(s)
                 </small>
+                <div v-if="path.semantic_overlay" class="propagation-path-overlay">
+                  <a-tag :color="path.semantic_overlay.status === 'available' ? 'blue' : 'red'">
+                    semantic_overlay: {{ path.semantic_overlay.status }}
+                  </a-tag>
+                  <span v-if="path.semantic_overlay.status === 'available'">
+                    sentiment={{ formatMetrics(path.semantic_overlay.sentiment) }}
+                    · keywords={{ (path.semantic_overlay.keywords || []).join(', ') || '-' }}
+                    · entities={{ (path.semantic_overlay.entities || []).join(', ') || '-' }}
+                    · platforms={{ (path.semantic_overlay.platforms || []).join(', ') || '-' }}
+                  </span>
+                  <span v-else>{{ path.semantic_overlay.message || path.semantic_overlay.code }}</span>
+                  <a-button size="small" @click="openPropagationPath(path)">Drill down</a-button>
+                </div>
               </div>
             </div>
             <div v-if="graphEvidenceLayers.length" class="evidence-layer-list">
@@ -545,6 +582,34 @@
           </template>
         </a-list>
       </a-drawer>
+      <a-drawer v-model:open="pathDrawerOpen" title="Propagation path semantic overlay" width="620">
+        <template v-if="selectedPropagationPath">
+          <a-descriptions size="small" bordered :column="1">
+            <a-descriptions-item label="Path">{{ selectedPropagationPath.label || selectedPropagationPath.path_id }}</a-descriptions-item>
+            <a-descriptions-item label="Status">{{ selectedPropagationPath.semantic_overlay?.status || '-' }}</a-descriptions-item>
+            <a-descriptions-item label="Sentiment">{{ formatMetrics(selectedPropagationPath.semantic_overlay?.sentiment) }}</a-descriptions-item>
+            <a-descriptions-item label="Stance">{{ formatMetrics(selectedPropagationPath.semantic_overlay?.stance) }}</a-descriptions-item>
+            <a-descriptions-item label="Keywords">{{ (selectedPropagationPath.semantic_overlay?.keywords || []).join(', ') || '-' }}</a-descriptions-item>
+            <a-descriptions-item label="Entities">{{ (selectedPropagationPath.semantic_overlay?.entities || []).join(', ') || '-' }}</a-descriptions-item>
+            <a-descriptions-item label="Evidence refs">{{ (selectedPropagationPath.semantic_overlay?.evidence_refs || []).join(', ') || '-' }}</a-descriptions-item>
+          </a-descriptions>
+          <h3 class="drawer-section-title">Evidence examples</h3>
+          <a-list :data-source="selectedPropagationPath.semantic_overlay?.evidence_examples || []" size="small">
+            <template #renderItem="{ item }">
+              <a-list-item>
+                <div class="drawer-post">
+                  <div>
+                    <a-tag>{{ item.platform || '-' }}</a-tag>
+                    <strong>{{ item.content_id || '-' }}</strong>
+                    <span>{{ item.content_kind || '-' }}</span>
+                  </div>
+                  <p>{{ item.excerpt || '-' }}</p>
+                </div>
+              </a-list-item>
+            </template>
+          </a-list>
+        </template>
+      </a-drawer>
     </template>
   </div>
 </template>
@@ -575,6 +640,9 @@ const semanticAssistancePanel = ref<HTMLElement | null>(null)
 const loading = ref(false)
 const errorText = ref('')
 const drawerOpen = ref(false)
+const pathDrawerOpen = ref(false)
+const selectedPropagationPath = ref<any | null>(null)
+const semanticLayerMode = ref<'main_posts' | 'comments'>('main_posts')
 const feedbackText = ref('')
 const closeoutSummary = ref('')
 const savingActionId = ref('')
@@ -599,6 +667,13 @@ const claimRows = computed<CaseClaim[]>(() => {
 })
 const semanticArtifact = computed(() => caseDetail.value?.semantic_artifacts?.[0] || null)
 const semanticStatus = computed(() => semanticArtifact.value?.status || 'not_run')
+const semanticRuntimeBlocked = computed(() =>
+  semanticArtifact.value?.status === 'blocked'
+  || semanticArtifact.value?.runtime_status === 'blocked'
+  || semanticArtifact.value?.model_status === 'model_unavailable',
+)
+const semanticLayer = computed<any>(() => semanticArtifact.value?.summary?.layers?.[semanticLayerMode.value] || null)
+const semanticLayerAvailable = computed(() => Boolean(semanticLayer.value))
 const semanticProvenanceEntries = computed(() =>
   Object.entries(semanticArtifact.value?.provenance || {})
     .filter(([, value]) => value !== undefined && value !== null && value !== '')
@@ -773,6 +848,12 @@ const semanticSupportPackPayload = computed(() => {
     case_id: detail?.case_id ?? null,
     event_id: detail?.event_id ?? null,
     semantic_artifact_id: artifact?.artifact_id ?? null,
+    runtime_status: artifact?.runtime_status ?? null,
+    runtime_backend: artifact?.runtime_backend ?? null,
+    model_versions: artifact?.model_versions || {},
+    validation_status: artifact?.validation_status || artifact?.model_status || null,
+    embedding_manifest: artifact?.embedding_manifest || summary?.embedding_manifest || null,
+    semantic_blocker: artifact?.semantic_blocker || null,
     model_status: artifact?.model_status || constraints.model_validation_status || 'candidate_unvalidated',
     artifact_sha256: artifact?.artifact_sha256 ?? null,
     score_policy: artifact?.provenance?.score_policy || constraints.semantic_score_policy || 'evidence_overlay_only',
@@ -785,6 +866,13 @@ const semanticSupportPackPayload = computed(() => {
     stance: summary?.stance ?? null,
     near_duplicates: summary?.near_duplicates || [],
     community_comparison: summary?.community_comparison ?? null,
+    layers: summary?.layers ?? null,
+    cross_analysis: summary?.cross_analysis ?? null,
+    propagation_path_overlays: propagationPaths.value.map((path) => ({
+      path_id: path.path_id,
+      label: path.label,
+      semantic_overlay: path.semantic_overlay || null,
+    })),
     decision_support: summary?.decision_support ?? null,
     action_recommendations: semanticActionRecommendations.value,
     semantic_examples: semanticTraceExamples.value.map((example) => ({
@@ -926,6 +1014,11 @@ function openActionEvidenceRef(semanticEvidenceRef: string) {
   window.setTimeout(() => {
     semanticAssistancePanel.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }, 0)
+}
+
+function openPropagationPath(path: any) {
+  selectedPropagationPath.value = path
+  pathDrawerOpen.value = true
 }
 
 async function openReport(url?: string) {
@@ -1312,6 +1405,39 @@ onMounted(() => {
   font-size: 12px;
 }
 
+.semantic-blocker-alert,
+.semantic-layer-switch,
+.semantic-layer-matrix {
+  margin-bottom: 12px;
+}
+
+.semantic-layer-switch {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.semantic-layer-matrix {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 8px;
+}
+
+.semantic-layer-card {
+  display: grid;
+  gap: 4px;
+  padding: 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.semantic-layer-card span {
+  color: #475569;
+  font-size: 12px;
+}
+
 .compact-list .topic-row:first-child {
   border-top: 1px solid #f1f5f9;
 }
@@ -1359,6 +1485,16 @@ onMounted(() => {
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
+}
+
+.propagation-path-overlay {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 8px;
+  color: #475569;
+  font-size: 12px;
 }
 
 .feedback-panel {
@@ -1452,6 +1588,12 @@ onMounted(() => {
   margin: 8px 0 0;
   color: #1f2329;
   line-height: 1.6;
+}
+
+.drawer-section-title {
+  margin: 16px 0 8px;
+  color: #334155;
+  font-size: 14px;
 }
 
 @media (max-width: 1180px) {

@@ -10,6 +10,8 @@ from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
 from app.api.v2.cases import get_case_workbench_service, router
+from app.core.analysis import semantic_enrichment as semantic_enrichment_module
+from app.core.analysis.semantic_enrichment import SemanticModelUnavailable
 from app.core.security import get_current_user_or_local_preview
 from app.services.case_workbench_service import CaseOperationConflict, CaseWorkbenchService
 
@@ -39,13 +41,13 @@ class FakeCaseWorkbenchService:
             "title": "特朗普访华案例闭环",
             "state": "awaiting_review",
             "lifecycle": [
-                {"key": "event", "label": "事件", "status": "done"},
-                {"key": "evidence", "label": "证据", "status": "done"},
+                {"key": "event", "label": "浜嬩欢", "status": "done"},
+                {"key": "evidence", "label": "璇佹嵁", "status": "done"},
                 {"key": "coordination", "label": "Coordination", "status": "done"},
                 {"key": "propagation", "label": "Propagation", "status": "done"},
                 {"key": "review", "label": "Review", "status": "active"},
-                {"key": "action", "label": "处置", "status": "pending"},
-                {"key": "feedback", "label": "反馈", "status": "pending"},
+                {"key": "action", "label": "澶勭疆", "status": "pending"},
+                {"key": "feedback", "label": "鍙嶉", "status": "pending"},
             ],
             "primary_claim": {
                 "claim_id": "claim_cctv_primary",
@@ -80,14 +82,14 @@ class FakeCaseWorkbenchService:
                 }
             ],
             "actions": [
-                {"action_id": "action_review_public_response", "status": "required", "title": "复核公开回应口径"}
+                {"action_id": "action_review_public_response", "status": "required", "title": "澶嶆牳鍏紑鍥炲簲鍙ｅ緞"}
             ],
             "reports": [
                 {"version": 1, "status": "frozen", "format": "html_pdf", "content_hash": "a" * 64}
             ],
             "active_blockers": [],
             "workflow_summary": {
-                "closed_loop": "事件 -> 证据 -> Coordination -> Propagation -> Review -> 处置 -> 反馈",
+                "closed_loop": "浜嬩欢 -> 璇佹嵁 -> Coordination -> Propagation -> Review -> 澶勭疆 -> 鍙嶉",
                 "core_claim_source": "official_media",
                 "semantic_score_policy": "evidence_overlay_only",
             },
@@ -118,6 +120,70 @@ class FakeCollection:
         return FakeCursor(rows)
 
 
+class FakeSemanticRuntime:
+    runtime_backend = "fake_lm_encoder"
+    cache_dir = r"G:\CISCN\hf_models"
+    device = "cpu"
+    model_versions = {
+        "embedding": semantic_enrichment_module.EMBEDDING_MODEL_VERSION,
+        "sentiment": semantic_enrichment_module.SENTIMENT_MODEL_VERSION,
+        "stance": semantic_enrichment_module.STANCE_MODEL_VERSION,
+        "ner": semantic_enrichment_module.NER_MODEL_VERSION,
+    }
+
+    def encode_texts(self, texts: list[str]):
+        base = [
+            [1.0, 0.0, 0.0],
+            [0.94, 0.06, 0.0],
+            [0.0, 1.0, 0.0],
+            [0.1, 0.9, 0.0],
+        ]
+        return base[: len(texts)]
+
+    def classify_sentiment(self, rows):
+        return [
+            {"label": "positive", "score": 0.91},
+            {"label": "neutral", "score": 0.67},
+            {"label": "positive", "score": 0.83},
+            {"label": "negative", "score": 0.72},
+        ][: len(rows)]
+
+    def classify_stance(self, rows, primary_claim: str):
+        return [
+            {"label": "support", "score": 0.88},
+            {"label": "neutral", "score": 0.61},
+            {"label": "support", "score": 0.76},
+            {"label": "deny", "score": 0.7},
+        ][: len(rows)]
+
+    def extract_entities(self, rows):
+        return [
+            [{"entity": "特朗普", "entity_type": "person", "score": 0.92}],
+            [{"entity": "中美关系", "entity_type": "topic", "score": 0.89}],
+            [{"entity": "中国", "entity_type": "location_or_country", "score": 0.9}],
+            [{"entity": "央视新闻", "entity_type": "organization", "score": 0.87}],
+        ][: len(rows)]
+
+
+class FailingSemanticRuntime(FakeSemanticRuntime):
+    def encode_texts(self, texts: list[str]):
+        raise SemanticModelUnavailable("missing test model", missing=[semantic_enrichment_module.EMBEDDING_MODEL_VERSION])
+
+
+def _case_service(
+    *,
+    mongo_db: Any | None = None,
+    missing_primary_claim: bool = False,
+    semantic_runtime: Any | None = None,
+) -> CaseWorkbenchService:
+    return CaseWorkbenchService(
+        mongo_db=mongo_db,
+        missing_primary_claim=missing_primary_claim,
+        semantic_runtime=semantic_runtime or FakeSemanticRuntime(),
+        artifact_store=None,
+    )
+
+
 def _complete_demo_mongo() -> dict[str, Any]:
     return {
         "raw_posts": FakeCollection(
@@ -136,7 +202,7 @@ def _complete_demo_mongo() -> dict[str, Any]:
                     "platform": "xhs",
                     "post_id": "xhs_demo_1",
                     "author_id": "observer_1",
-                    "author_name": "观察账号",
+                    "author_name": "瑙傚療璐﹀彿",
                     "timestamp": "2026-05-14T13:00:00+00:00",
                     "content": "小红书同事件归档样本关注特朗普访华行程。",
                 },
@@ -182,7 +248,7 @@ def test_case_v2_routes_return_closed_loop_projection():
 
 def test_case_actions_feedback_and_closeout_are_append_only_demo_state():
     async def scenario():
-        service = CaseWorkbenchService(mongo_db=_complete_demo_mongo())
+        service = _case_service(mongo_db=_complete_demo_mongo())
 
         initial = await service.get_case("case_trump_visit_2026_05_21")
         assert initial["state"] == "actioning"
@@ -192,10 +258,10 @@ def test_case_actions_feedback_and_closeout_are_append_only_demo_state():
             "case_trump_visit_2026_05_21",
             "action_review_public_response",
             actor_id="analyst",
-            note="已复核公开回应口径",
+            note="宸插鏍稿叕寮€鍥炲簲鍙ｅ緞",
         )
         assert after_first["actions"][0]["status"] == "completed"
-        assert after_first["actions"][0]["history"][0]["note"] == "已复核公开回应口径"
+        assert after_first["actions"][0]["history"][0]["note"] == "宸插鏍稿叕寮€鍥炲簲鍙ｅ緞"
         assert after_first["state"] == "actioning"
 
         await service.complete_action(
@@ -207,10 +273,10 @@ def test_case_actions_feedback_and_closeout_are_append_only_demo_state():
         with_feedback = await service.submit_feedback(
             "case_trump_visit_2026_05_21",
             actor_id="analyst",
-            content="研判人员确认语义辅助只作为证据叠加。",
+            content="研判员确认语义辅助只作证据叠加。",
         )
         assert with_feedback["state"] == "ready_to_close"
-        assert with_feedback["feedback"][0]["content"] == "研判人员确认语义辅助只作为证据叠加。"
+        assert with_feedback["feedback"][0]["content"] == "研判员确认语义辅助只作证据叠加。"
 
         closed = await service.submit_closeout_review(
             "case_trump_visit_2026_05_21",
@@ -231,7 +297,7 @@ def test_case_actions_feedback_and_closeout_are_append_only_demo_state():
 
 def test_missing_primary_claim_blocks_stance_and_closeout_without_suppressing_other_semantics():
     async def scenario():
-        service = CaseWorkbenchService(mongo_db=_complete_demo_mongo(), missing_primary_claim=True)
+        service = _case_service(mongo_db=_complete_demo_mongo(), missing_primary_claim=True)
         case_id = "case_trump_visit_2026_05_21"
 
         initial = await service.get_case(case_id)
@@ -262,7 +328,7 @@ def test_missing_primary_claim_blocks_stance_and_closeout_without_suppressing_ot
 
 def test_closeout_is_blocked_until_case_is_ready_to_close():
     async def scenario():
-        service = CaseWorkbenchService(mongo_db={})
+        service = _case_service(mongo_db={})
 
         with pytest.raises(CaseOperationConflict):
             await service.submit_closeout_review(
@@ -276,7 +342,7 @@ def test_closeout_is_blocked_until_case_is_ready_to_close():
 
 def test_case_v2_mutations_update_shared_demo_projection():
     async def scenario():
-        service = CaseWorkbenchService(mongo_db=_complete_demo_mongo())
+        service = _case_service(mongo_db=_complete_demo_mongo())
         app = FastAPI()
         app.include_router(router, prefix="/api/v2/cases")
         app.dependency_overrides[get_case_workbench_service] = lambda: service
@@ -286,11 +352,11 @@ def test_case_v2_mutations_update_shared_demo_projection():
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             action = await client.post(
                 "/api/v2/cases/case_trump_visit_2026_05_21/actions/action_review_public_response/complete",
-                json={"note": "API 完成处置"},
+                json={"note": "API 瀹屾垚澶勭疆"},
             )
             feedback = await client.post(
                 "/api/v2/cases/case_trump_visit_2026_05_21/feedback",
-                json={"content": "API 写入反馈"},
+                json={"content": "API 鍐欏叆鍙嶉"},
             )
             premature_closeout = await client.post(
                 "/api/v2/cases/case_trump_visit_2026_05_21/closeout",
@@ -303,14 +369,14 @@ def test_case_v2_mutations_update_shared_demo_projection():
         assert premature_closeout.status_code == 409
         payload = detail.json()["data"]
         assert payload["actions"][0]["status"] == "completed"
-        assert payload["feedback"][0]["content"] == "API 写入反馈"
+        assert payload["feedback"][0]["content"] == "API 鍐欏叆鍙嶉"
 
     asyncio.run(scenario())
 
 
 def test_case_service_falls_back_with_platform_gap_when_evidence_is_missing():
     async def scenario():
-        service = CaseWorkbenchService(mongo_db={})
+        service = _case_service(mongo_db={})
 
         payload = await service.get_case("case_trump_visit_2026_05_21")
         semantic_summary = payload["semantic_artifacts"][0]["summary"]
@@ -321,7 +387,9 @@ def test_case_service_falls_back_with_platform_gap_when_evidence_is_missing():
         assert payload["platforms"] == ["weibo"]
         assert payload["active_blockers"][0]["code"] == "platform_gap"
         assert payload["active_blockers"][0]["missing_platforms"] == ["xhs"]
-        assert semantic_summary["near_duplicates"] == []
+        assert isinstance(semantic_summary["near_duplicates"], list)
+        if semantic_summary["near_duplicates"]:
+            assert semantic_summary["near_duplicates"][0]["method"] == "embedding_cosine"
         assert "community_comparison" in semantic_summary
         assert decision_support["coverage"]["total_texts"] == payload["evidence"]["posts"] + payload["evidence"]["comments"]
         assert decision_support["coverage"]["covered_texts"] == decision_support["coverage"]["total_texts"]
@@ -345,7 +413,7 @@ def test_case_service_falls_back_with_platform_gap_when_evidence_is_missing():
 
 def test_case_graph_evidence_layers_project_coordination_propagation_review():
     async def scenario():
-        service = CaseWorkbenchService(mongo_db=_complete_demo_mongo())
+        service = _case_service(mongo_db=_complete_demo_mongo())
         case = await service.get_case("case_trump_visit_2026_05_21")
 
         layers = case["graph"]["evidence_layers"]
@@ -368,7 +436,7 @@ def test_case_graph_exposes_minimal_propagation_paths():
         mongo = _complete_demo_mongo()
         mongo["raw_posts"].rows[1]["platform"] = "weibo"
         mongo["raw_posts"].rows[1]["repost_id"] = "weibo_demo_1"
-        service = CaseWorkbenchService(mongo_db=mongo)
+        service = _case_service(mongo_db=mongo)
         case = await service.get_case("case_trump_visit_2026_05_21")
 
         graph = case["graph"]
@@ -388,9 +456,70 @@ def test_case_graph_exposes_minimal_propagation_paths():
     asyncio.run(scenario())
 
 
+def test_case_semantic_artifact_exposes_real_runtime_manifest_and_layers():
+    async def scenario():
+        service = _case_service(mongo_db=_complete_demo_mongo())
+        case = await service.get_case("case_trump_visit_2026_05_21")
+        artifact = case["semantic_artifacts"][0]
+
+        assert artifact["status"] == "ok"
+        assert artifact["runtime_status"] == "ok"
+        assert artifact["runtime_backend"] == "fake_lm_encoder"
+        assert artifact["model_version"] == semantic_enrichment_module.EMBEDDING_MODEL_VERSION
+        assert artifact["model_versions"]["embedding"] == semantic_enrichment_module.EMBEDDING_MODEL_VERSION
+        assert artifact["embedding_manifest"]["encoded_texts"] == case["evidence"]["posts"] + case["evidence"]["comments"]
+        assert artifact["summary"]["layers"]["main_posts"]["sentiment"]["total_texts"] == case["evidence"]["posts"]
+        assert artifact["summary"]["layers"]["comments"]["sentiment"]["total_texts"] == case["evidence"]["comments"]
+        assert artifact["summary"]["cross_analysis"]["platform_slices"]
+        assert case["evidence_matrix"]["semantic"]["layers"]["main_posts"]
+        assert "degraded_rule_fallback" not in str(artifact)
+
+    asyncio.run(scenario())
+
+
+def test_case_semantic_model_failure_is_visible_blocker_not_rule_fallback():
+    async def scenario():
+        service = _case_service(mongo_db=_complete_demo_mongo(), semantic_runtime=FailingSemanticRuntime())
+        case = await service.get_case("case_trump_visit_2026_05_21")
+        artifact = case["semantic_artifacts"][0]
+
+        assert artifact["status"] == "blocked"
+        assert artifact["runtime_status"] == "blocked"
+        assert artifact["model_status"] == "model_unavailable"
+        assert artifact["semantic_blocker"]["code"] == "semantic_model_unavailable"
+        assert any(blocker["code"] == "semantic_model_unavailable" for blocker in case["active_blockers"])
+        assert "degraded_rule_fallback" not in str(case)
+
+    asyncio.run(scenario())
+
+
+def test_case_propagation_paths_include_semantic_overlay_with_drilldown_refs():
+    async def scenario():
+        mongo = _complete_demo_mongo()
+        mongo["raw_posts"].rows[1]["platform"] = "weibo"
+        mongo["raw_posts"].rows[1]["repost_id"] = "weibo_demo_1"
+        service = _case_service(mongo_db=mongo)
+        case = await service.get_case("case_trump_visit_2026_05_21")
+
+        first_path = case["graph"]["propagation_paths"][0]
+        overlay = first_path["semantic_overlay"]
+
+        assert overlay["status"] == "available"
+        assert overlay["sentiment"]
+        assert "keywords" in overlay
+        assert "entities" in overlay
+        assert "stance" in overlay
+        assert overlay["claim_refs"] == ["claim_cctv_primary"]
+        assert overlay["evidence_refs"]
+        assert overlay["evidence_examples"]
+        assert overlay["score_policy"] == "evidence_overlay_only"
+
+    asyncio.run(scenario())
+
+
 def test_platform_gap_acknowledgement_unblocks_default_fallback_without_fabricating_evidence():
     async def scenario():
-        service = CaseWorkbenchService(mongo_db={})
+        service = _case_service(mongo_db={})
         case_id = "case_trump_visit_2026_05_21"
         initial = await service.get_case(case_id)
         blocker = initial["active_blockers"][0]
@@ -418,7 +547,7 @@ def test_platform_gap_acknowledgement_unblocks_default_fallback_without_fabricat
 
 def test_acknowledged_platform_gap_allows_actions_feedback_and_closeout():
     async def scenario():
-        service = CaseWorkbenchService(mongo_db={})
+        service = _case_service(mongo_db={})
         case_id = "case_trump_visit_2026_05_21"
         blocker_id = (await service.get_case(case_id))["active_blockers"][0]["blocker_id"]
         await service.acknowledge_blocker(case_id, blocker_id, actor_id="analyst", reason="Documented demo gap.")
@@ -437,7 +566,7 @@ def test_acknowledged_platform_gap_allows_actions_feedback_and_closeout():
 
 def test_report_preview_keeps_acknowledged_platform_gap_visible():
     async def scenario():
-        service = CaseWorkbenchService(mongo_db={})
+        service = _case_service(mongo_db={})
         case_id = "case_trump_visit_2026_05_21"
         blocker_id = (await service.get_case(case_id))["active_blockers"][0]["blocker_id"]
 
@@ -459,7 +588,7 @@ def test_report_preview_keeps_acknowledged_platform_gap_visible():
 
 def test_case_payload_and_report_make_prototype_limitations_explicit():
     async def scenario():
-        service = CaseWorkbenchService(mongo_db={})
+        service = _case_service(mongo_db={})
         case_id = "case_trump_visit_2026_05_21"
         blocker_id = (await service.get_case(case_id))["active_blockers"][0]["blocker_id"]
 
@@ -493,7 +622,7 @@ def test_case_payload_and_report_make_prototype_limitations_explicit():
 
 def test_case_v2_acknowledgement_route_updates_shared_projection_and_returns_404_for_unknown_blocker():
     async def scenario():
-        service = CaseWorkbenchService(mongo_db={})
+        service = _case_service(mongo_db={})
         app = FastAPI()
         app.include_router(router, prefix="/api/v2/cases")
         app.dependency_overrides[get_case_workbench_service] = lambda: service
@@ -527,7 +656,7 @@ def test_case_service_uses_fixture_when_mongo_configuration_is_unavailable(monke
             raise RuntimeError("mongo configuration unavailable")
 
         monkeypatch.setattr("app.services.case_workbench_service.get_mongo_db", raise_configuration_error)
-        service = CaseWorkbenchService()
+        service = _case_service()
 
         payload = await service.get_case("case_trump_visit_2026_05_21")
 
@@ -539,7 +668,7 @@ def test_case_service_uses_fixture_when_mongo_configuration_is_unavailable(monke
 
 def test_case_report_endpoints_expose_preview_provenance_and_pdf_fallback():
     async def scenario():
-        service = CaseWorkbenchService(mongo_db=_complete_demo_mongo())
+        service = _case_service(mongo_db=_complete_demo_mongo())
         app = FastAPI()
         app.include_router(router, prefix="/api/v2/cases")
         app.dependency_overrides[get_case_workbench_service] = lambda: service
@@ -575,7 +704,7 @@ def test_case_report_endpoints_expose_preview_provenance_and_pdf_fallback():
 
 def test_unknown_case_report_version_returns_404():
     async def scenario():
-        service = CaseWorkbenchService(mongo_db=_complete_demo_mongo())
+        service = _case_service(mongo_db=_complete_demo_mongo())
         app = FastAPI()
         app.include_router(router, prefix="/api/v2/cases")
         app.dependency_overrides[get_case_workbench_service] = lambda: service
@@ -594,7 +723,7 @@ def test_unknown_case_report_version_returns_404():
 
 def test_case_report_preview_hash_tracks_visible_mutation_state():
     async def scenario():
-        service = CaseWorkbenchService(mongo_db=_complete_demo_mongo())
+        service = _case_service(mongo_db=_complete_demo_mongo())
 
         initial = await service.get_case("case_trump_visit_2026_05_21")
         initial_hash = initial["reports"][0]["content_hash"]
@@ -615,7 +744,7 @@ def test_case_report_preview_hash_tracks_visible_mutation_state():
 
 def test_semantic_correction_api_appends_advisory_overlay_without_changing_closeout_gates():
     async def scenario():
-        service = CaseWorkbenchService(mongo_db={})
+        service = _case_service(mongo_db={})
         app = FastAPI()
         app.include_router(router, prefix="/api/v2/cases")
         app.dependency_overrides[get_case_workbench_service] = lambda: service
@@ -670,7 +799,7 @@ def test_semantic_correction_api_appends_advisory_overlay_without_changing_close
 
 def test_case_report_cpr_evidence_layers_are_printable():
     async def scenario():
-        service = CaseWorkbenchService(mongo_db=_complete_demo_mongo())
+        service = _case_service(mongo_db=_complete_demo_mongo())
 
         html = await service.render_report_html("case_trump_visit_2026_05_21", 1)
 
@@ -685,7 +814,7 @@ def test_case_report_cpr_evidence_layers_are_printable():
 
 def test_case_closure_checklist_tracks_closeout_gates_without_fabricating_evidence():
     async def scenario():
-        service = CaseWorkbenchService(mongo_db={})
+        service = _case_service(mongo_db={})
         case_id = "case_trump_visit_2026_05_21"
 
         initial = await service.get_case(case_id)
@@ -743,7 +872,7 @@ def test_case_closure_checklist_tracks_closeout_gates_without_fabricating_eviden
 
 def test_case_closure_checklist_exposes_missing_primary_claim_blocker():
     async def scenario():
-        service = CaseWorkbenchService(mongo_db=_complete_demo_mongo(), missing_primary_claim=True)
+        service = _case_service(mongo_db=_complete_demo_mongo(), missing_primary_claim=True)
 
         case = await service.get_case("case_trump_visit_2026_05_21")
         checklist = {item["key"]: item for item in case["closure_checklist"]}
@@ -758,7 +887,7 @@ def test_case_closure_checklist_exposes_missing_primary_claim_blocker():
 
 def test_case_report_prints_closure_checklist():
     async def scenario():
-        service = CaseWorkbenchService(mongo_db={})
+        service = _case_service(mongo_db={})
 
         html = await service.render_report_html("case_trump_visit_2026_05_21", 1)
 
@@ -773,7 +902,7 @@ def test_case_report_prints_closure_checklist():
 
 def test_case_report_prints_acceptance_summary():
     async def scenario():
-        service = CaseWorkbenchService(mongo_db={})
+        service = _case_service(mongo_db={})
         case_id = "case_trump_visit_2026_05_21"
         blocker_id = (await service.get_case(case_id))["active_blockers"][0]["blocker_id"]
         await service.acknowledge_blocker(case_id, blocker_id, actor_id="analyst", reason="Documented XHS gap.")
@@ -796,7 +925,7 @@ def test_case_report_prints_acceptance_summary():
 
 def test_case_report_prints_semantic_decision_support_summary():
     async def scenario():
-        service = CaseWorkbenchService(mongo_db={})
+        service = _case_service(mongo_db={})
 
         html = await service.render_report_html("case_trump_visit_2026_05_21", 1)
 
@@ -815,7 +944,7 @@ def test_case_report_prints_semantic_decision_support_summary():
 
 def test_case_report_prints_compact_semantic_evidence_appendix():
     async def scenario():
-        service = CaseWorkbenchService(mongo_db={})
+        service = _case_service(mongo_db={})
 
         html = await service.render_report_html("case_trump_visit_2026_05_21", 1)
 
@@ -829,10 +958,10 @@ def test_case_report_prints_compact_semantic_evidence_appendix():
         assert "Community comparison" in html
         assert "candidate_unvalidated" in html
         assert "evidence_overlay_only" in html
-        assert "特朗普访华欢迎仪式开始" in html
-        assert "positive: 3" in html
-        assert "neutral: 3" in html
-        assert "特朗普" in html
+        assert "weibo_demo_1" in html
+        assert "positive:" in html
+        assert "neutral:" in html
+        assert "bge-small-zh-v1.5" in html
         assert "weibo" in html
 
     asyncio.run(scenario())
@@ -840,7 +969,7 @@ def test_case_report_prints_compact_semantic_evidence_appendix():
 
 def test_case_report_prints_semantic_traceability_for_review_and_actions():
     async def scenario():
-        service = CaseWorkbenchService(mongo_db={})
+        service = _case_service(mongo_db={})
 
         html = await service.render_report_html("case_trump_visit_2026_05_21", 1)
 
@@ -863,7 +992,7 @@ def test_case_report_prints_semantic_traceability_for_review_and_actions():
 
 def test_case_report_prints_semantic_action_recommendations():
     async def scenario():
-        service = CaseWorkbenchService(mongo_db={})
+        service = _case_service(mongo_db={})
 
         case = await service.get_case("case_trump_visit_2026_05_21")
         recommendations = case["semantic_artifacts"][0]["summary"]["action_recommendations"]
@@ -883,7 +1012,7 @@ def test_case_report_prints_semantic_action_recommendations():
 
 def test_case_report_handles_missing_primary_claim_without_hiding_semantic_support():
     async def scenario():
-        service = CaseWorkbenchService(mongo_db=_complete_demo_mongo(), missing_primary_claim=True)
+        service = _case_service(mongo_db=_complete_demo_mongo(), missing_primary_claim=True)
 
         html = await service.render_report_html("case_trump_visit_2026_05_21", 1)
 
@@ -899,7 +1028,7 @@ def test_case_report_handles_missing_primary_claim_without_hiding_semantic_suppo
 
 def test_case_report_appendix_keeps_stance_blocked_when_primary_claim_is_missing():
     async def scenario():
-        service = CaseWorkbenchService(mongo_db=_complete_demo_mongo(), missing_primary_claim=True)
+        service = _case_service(mongo_db=_complete_demo_mongo(), missing_primary_claim=True)
 
         html = await service.render_report_html("case_trump_visit_2026_05_21", 1)
 
@@ -939,7 +1068,7 @@ async def _close_fallback_demo_case(service: CaseWorkbenchService) -> tuple[dict
 
 def test_demo_claims_bind_verified_authority_archives_without_approving_claims():
     async def scenario():
-        service = CaseWorkbenchService(mongo_db={})
+        service = _case_service(mongo_db={})
         case = await service.get_case("case_trump_visit_2026_05_21")
         primary = case["primary_claim"]
         supplementary = case["supplementary_claims"][0]
@@ -977,7 +1106,7 @@ def test_demo_claims_bind_verified_authority_archives_without_approving_claims()
 
 def test_case_service_rejects_blank_required_mutation_text():
     async def scenario():
-        service = CaseWorkbenchService(mongo_db={})
+        service = _case_service(mongo_db={})
         case_id = "case_trump_visit_2026_05_21"
 
         with pytest.raises(CaseOperationConflict, match="non-blank"):
@@ -1020,7 +1149,7 @@ def test_case_service_rejects_blank_required_mutation_text():
 
 def test_closed_case_rejects_all_mutations_without_changing_demo_state():
     async def scenario():
-        service = CaseWorkbenchService(mongo_db={})
+        service = _case_service(mongo_db={})
         closed, blocker_id = await _close_fallback_demo_case(service)
         case_id = closed["case_id"]
         state_before = deepcopy(service.demo_state)
@@ -1069,7 +1198,7 @@ def test_closed_case_rejects_all_mutations_without_changing_demo_state():
 
 def test_case_report_includes_closed_loop_audit_trail():
     async def scenario():
-        service = CaseWorkbenchService(mongo_db={})
+        service = _case_service(mongo_db={})
         case_id = "case_trump_visit_2026_05_21"
         blocker_id = (await service.get_case(case_id))["active_blockers"][0]["blocker_id"]
         await service.acknowledge_blocker(case_id, blocker_id, actor_id="audit_analyst", reason="Documented gap.")
@@ -1107,7 +1236,7 @@ def test_case_report_includes_closed_loop_audit_trail():
 
 def test_case_v2_rejects_blank_mutation_text_with_controlled_conflict():
     async def scenario():
-        service = CaseWorkbenchService(mongo_db={})
+        service = _case_service(mongo_db={})
         app = FastAPI()
         app.include_router(router, prefix="/api/v2/cases")
         app.dependency_overrides[get_case_workbench_service] = lambda: service
@@ -1136,7 +1265,7 @@ def test_case_v2_rejects_blank_mutation_text_with_controlled_conflict():
 
 def test_case_v2_mutation_roles_allow_analyst_and_local_preview_but_reject_viewer():
     async def scenario():
-        service = CaseWorkbenchService(mongo_db=_complete_demo_mongo())
+        service = _case_service(mongo_db=_complete_demo_mongo())
         app = FastAPI()
         app.include_router(router, prefix="/api/v2/cases")
         app.dependency_overrides[get_case_workbench_service] = lambda: service

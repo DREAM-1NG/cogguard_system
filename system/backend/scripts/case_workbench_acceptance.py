@@ -6,6 +6,7 @@ import asyncio
 import json
 from typing import Any
 
+from app.core.analysis import semantic_enrichment as semantic_enrichment_module
 from app.services.case_workbench_service import CaseWorkbenchService
 
 __all__ = ["main", "run_acceptance"]
@@ -35,9 +36,49 @@ def _semantic_example_ids(semantic_summary: dict[str, Any]) -> list[str]:
     return ids
 
 
+class AcceptanceSemanticRuntime:
+    """Deterministic LM-shaped runtime for local Case Workbench acceptance.
+
+    The production path still fails closed when no HuggingFace runtime is
+    available. This acceptance runtime keeps the demo lifecycle independent of
+    network/model download state while preserving the real semantic contract.
+    """
+
+    runtime_backend = "acceptance_fake_lm_encoder"
+    cache_dir = r"G:\CISCN\hf_models"
+    device = "cpu"
+    model_versions = {
+        "embedding": semantic_enrichment_module.EMBEDDING_MODEL_VERSION,
+        "sentiment": semantic_enrichment_module.SENTIMENT_MODEL_VERSION,
+        "stance": semantic_enrichment_module.STANCE_MODEL_VERSION,
+        "ner": semantic_enrichment_module.NER_MODEL_VERSION,
+    }
+
+    def encode_texts(self, texts: list[str]) -> list[list[float]]:
+        base = ([1.0, 0.0, 0.0], [0.94, 0.06, 0.0], [0.0, 1.0, 0.0], [0.1, 0.9, 0.0])
+        return [list(base[index % len(base)]) for index, _text in enumerate(texts)]
+
+    def classify_sentiment(self, rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        labels = (("positive", 0.91), ("neutral", 0.67), ("positive", 0.83), ("negative", 0.72))
+        return [{"label": labels[index % len(labels)][0], "score": labels[index % len(labels)][1]} for index, _row in enumerate(rows)]
+
+    def classify_stance(self, rows: list[dict[str, Any]], primary_claim: str) -> list[dict[str, Any]]:
+        labels = (("support", 0.88), ("neutral", 0.61), ("support", 0.76), ("deny", 0.7))
+        return [{"label": labels[index % len(labels)][0], "score": labels[index % len(labels)][1]} for index, _row in enumerate(rows)]
+
+    def extract_entities(self, rows: list[dict[str, Any]]) -> list[list[dict[str, Any]]]:
+        entities = (
+            {"entity": "特朗普", "entity_type": "person", "score": 0.92},
+            {"entity": "中美关系", "entity_type": "topic", "score": 0.89},
+            {"entity": "中国", "entity_type": "location_or_country", "score": 0.9},
+            {"entity": "央视新闻", "entity_type": "organization", "score": 0.87},
+        )
+        return [[entities[index % len(entities)]] for index, _row in enumerate(rows)]
+
+
 async def run_acceptance() -> dict[str, Any]:
     """Exercise the default Weibo-only demo case through closeout."""
-    service = CaseWorkbenchService(mongo_db={})
+    service = CaseWorkbenchService(mongo_db={}, semantic_runtime=AcceptanceSemanticRuntime())
     initial = await service.get_case("case_trump_visit_2026_05_21")
     checklist_keys = [
         "canonical_verdict",

@@ -93,6 +93,40 @@ export interface SemanticDecisionSupport {
   operator_prompt?: string
 }
 
+export interface SemanticModelBlocker {
+  blocker_id?: string
+  code: string
+  message: string
+  missing_models?: string[]
+  cache_dir?: string
+  manual_resolution?: string
+}
+
+export interface SemanticEmbeddingManifest {
+  status?: string
+  embedding_model?: string
+  encoded_texts?: number
+  content_hashes?: string[]
+  cache_dir?: string
+  reuse_policy?: string
+}
+
+export interface SemanticLayerBundle {
+  sentiment?: Record<string, any>
+  stance?: Record<string, any>
+  topics?: Record<string, any>
+  keywords?: Array<Record<string, any>>
+  entities?: Array<Record<string, any>>
+  near_duplicates?: Array<Record<string, any>>
+}
+
+export interface SemanticCrossAnalysis {
+  time_slices?: Array<Record<string, any>>
+  platform_slices?: Array<Record<string, any>>
+  community_slices?: Array<Record<string, any>>
+  propagation_path_overlays?: Array<Record<string, any>>
+}
+
 export interface SemanticArtifactProvenance {
   embedding_reuse?: string
   device?: string
@@ -116,6 +150,13 @@ export interface SemanticArtifactSummary {
   }
   community_comparison?: { group_by?: string; items?: SemanticCommunityComparisonItem[] }
   near_duplicates?: SemanticNearDuplicateGroup[]
+  layers?: {
+    main_posts?: SemanticLayerBundle
+    comments?: SemanticLayerBundle
+    all_texts?: Array<Record<string, any>>
+  }
+  cross_analysis?: SemanticCrossAnalysis
+  embedding_manifest?: SemanticEmbeddingManifest
   decision_support?: SemanticDecisionSupport
   action_recommendations?: SemanticActionRecommendation[]
   top_keywords?: Array<{ term: string; count?: number }>
@@ -127,7 +168,14 @@ export interface SemanticArtifact {
   artifact_id: string
   artifact_type: string
   status: string
+  runtime_status?: string
+  runtime_backend?: string
   model_status: string
+  model_version?: string
+  model_versions?: Record<string, string>
+  validation_status?: string
+  embedding_manifest?: SemanticEmbeddingManifest
+  semantic_blocker?: SemanticModelBlocker
   artifact_sha256?: string
   summary?: SemanticArtifactSummary
   provenance?: SemanticArtifactProvenance
@@ -188,6 +236,19 @@ export interface CaseBlocker {
   severity: string
   message: string
   missing_platforms?: string[]
+  manual_resolution?: string
+  cache_dir?: string
+  missing_models?: string[]
+}
+
+export interface CaseGraphPropagationPath {
+  path_id: string
+  label?: string
+  nodes?: Array<Record<string, any>>
+  edges?: Array<Record<string, any>>
+  evidence_type?: string
+  explanation?: string
+  semantic_overlay?: Record<string, any>
 }
 
 export interface CaseBlockerAcknowledgement {
@@ -234,7 +295,7 @@ export interface CaseDetail {
   analysis_runs: Array<Record<string, any>>
   semantic_artifacts: SemanticArtifact[]
   evidence_matrix: Record<string, any>
-  graph: Record<string, any>
+  graph: Record<string, any> & { propagation_paths?: CaseGraphPropagationPath[] }
   actions: CaseAction[]
   feedback: CaseFeedback[]
   semantic_corrections: CaseSemanticCorrection[]

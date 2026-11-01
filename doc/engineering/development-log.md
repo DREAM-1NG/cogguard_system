@@ -18,6 +18,15 @@
 
 ---
 
+## 2026-08-12
+
+- Case Workbench 语义辅助从规则/特征工程原型切到真实 LM runtime 契约：`semantic_enrichment` 需要显式 runtime，默认 HuggingFace backend 加载 BGE embedding、情感、NLI 立场和 NER 模型；模型缺失或加载失败时返回 `semantic_model_unavailable` 阻塞 artifact，不生成成功语义结果、不走规则 fallback。
+- 语义 artifact 新增 `runtime_status`、`runtime_backend`、`model_versions`、`embedding_manifest`、`layers`、`cross_analysis` 和传播路径 `semantic_overlay`；BGE 一次编码复用到 KeyBERT 式 MMR 关键词、BERTopic-lite 聚类/c-TF-IDF 主题、近重复、协调社区差异和传播路径 overlay。前端证据矩阵新增主帖/评论语义层切换，图谱页路径卡片和 drawer 可下钻 overlay 证据。
+- 新增模型预热脚本 `system/backend/scripts/prefetch_semantic_models.py`，固定把四个 HuggingFace revision 下载到 `G:\CISCN\hf_models`；依赖显式声明 `transformers`、`scikit-learn`、`huggingface-hub` 和 `jieba`。
+- 验证：`uv run pytest tests/test_semantic_enrichment.py tests/test_case_workbench_mvp.py tests/test_case_frontend_mvp_contract.py -q` 通过 `64 passed`；前端 `npm.cmd run build` 通过（仅既有 chunk size warning）。
+
+---
+
 ## 2026-08-11
 
 - Case Workbench 新增语义处置建议原型：`semantic_enrichment` 将情感、立场、近重复和社区对比汇总为 `action_recommendations`，在 Case payload、证据矩阵、报告、验收 JSON 和语义辅助包中可见；建议保持 `candidate_unvalidated` / `evidence_overlay_only`，不改变 CPR 分数、Case 状态、处置状态或平台证据。

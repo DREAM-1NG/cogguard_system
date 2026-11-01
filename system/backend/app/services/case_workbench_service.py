@@ -9,11 +9,18 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from app.core.analysis.semantic_enrichment import analyze_semantic_enrichment_snapshot
+from app.core.analysis.semantic_enrichment import (
+    HuggingFaceSemanticRuntime,
+    SemanticModelUnavailable,
+    analyze_semantic_enrichment_snapshot,
+    blocked_semantic_artifact,
+    propagation_path_overlay,
+)
 from app.core.analysis.snapshots import build_event_snapshot
 from app.core.analysis.contracts import TimeWindow
 from app.db.mongodb import get_mongo_db
 from app.schemas.case_research import ResearchArchiveEntry
+from app.services.case_frozen_artifact import FrozenCaseArtifactStore
 from app.services.event_data import load_event_comments, load_event_posts
 from app.services.case_research_archive import verify_research_archive
 
@@ -42,6 +49,7 @@ PROTOTYPE_CONSTRAINTS = {
     "model_validation_status": "candidate_unvalidated",
     "pdf_export_status": "html_pdf_fallback",
 }
+_DEFAULT_ARTIFACT_STORE = object()
 PRIMARY_CLAIM = {
     "claim_id": "claim_cctv_primary",
     "role": "primary",
@@ -107,10 +115,17 @@ class CaseWorkbenchService:
         demo_state: dict[str, Any] | None = None,
         *,
         missing_primary_claim: bool = False,
+        semantic_runtime: Any | None = None,
+        artifact_store: FrozenCaseArtifactStore | None | object = _DEFAULT_ARTIFACT_STORE,
     ) -> None:
         self.mongo_db = mongo_db
         self.demo_state = demo_state if demo_state is not None else _new_demo_state()
         self.missing_primary_claim = missing_primary_claim
+        self.semantic_runtime = semantic_runtime
+        if artifact_store is _DEFAULT_ARTIFACT_STORE:
+            self.artifact_store = FrozenCaseArtifactStore() if mongo_db is None else None
+        else:
+            self.artifact_store = artifact_store
 
     async def list_cases(self, *, event_id: str | None = None) -> dict[str, Any]:
         case = await self.get_case(DEFAULT_CASE_ID)
@@ -128,18 +143,22 @@ class CaseWorkbenchService:
     async def get_case(self, case_id: str) -> dict[str, Any]:
         if case_id != DEFAULT_CASE_ID:
             raise KeyError(f"Case not found: {case_id}")
+        frozen_artifact = self._load_frozen_artifact(case_id)
+        if frozen_artifact is not None:
+            return _frozen_case_projection(frozen_artifact)
         posts, comments, source_mode = await self._load_evidence(DEFAULT_EVENT_ID)
         snapshot = _snapshot_from_evidence(posts, comments)
         primary_template, supplementary_claim = _archived_demo_claims()
         primary_claim = None if self.missing_primary_claim else PRIMARY_CLAIM
         if primary_claim is not None:
             primary_claim = primary_template
-        semantic = analyze_semantic_enrichment_snapshot(
-            snapshot,
-            {"primary_claim": primary_claim},
-        )
+        semantic = self._semantic_artifact(snapshot, {"primary_claim": primary_claim})
         platforms = _platforms(posts, comments)
-        blockers = [*_blockers(platforms), *_primary_claim_blockers(primary_claim)]
+        blockers = [
+            *_blockers(platforms),
+            *_primary_claim_blockers(primary_claim),
+            *semantic.get("active_blockers", []),
+        ]
         acknowledgements = list(self.demo_state["blocker_acknowledgements"])
         acknowledged_blocker_ids = {record["blocker_id"] for record in acknowledgements}
         active_blockers = [blocker for blocker in blockers if blocker["blocker_id"] not in acknowledged_blocker_ids]
@@ -258,7 +277,14 @@ class CaseWorkbenchService:
                     "artifact_id": "semantic_case_workbench_demo",
                     "artifact_type": "semantic_enrichment",
                     "status": semantic["status"],
+                    "runtime_status": semantic.get("runtime_status"),
+                    "runtime_backend": semantic.get("runtime_backend"),
                     "model_status": semantic["model_status"],
+                    "model_version": semantic.get("model_version"),
+                    "model_versions": semantic.get("model_versions") or semantic.get("candidate_models") or {},
+                    "validation_status": semantic.get("validation_status"),
+                    "embedding_manifest": semantic.get("embedding_manifest"),
+                    "semantic_blocker": semantic.get("semantic_blocker"),
                     "artifact_sha256": semantic["artifact_sha256"],
                     "summary": {
                         "sentiment": semantic["sentiment"]["summary"],
@@ -268,6 +294,9 @@ class CaseWorkbenchService:
                         "stance": semantic["stance"],
                         "near_duplicates": semantic["near_duplicates"]["main_posts"],
                         "community_comparison": semantic["community_comparison"],
+                        "layers": semantic.get("layers", {}),
+                        "cross_analysis": semantic.get("cross_analysis", {}),
+                        "embedding_manifest": semantic.get("embedding_manifest", {}),
                         "decision_support": semantic["decision_support"],
                         "action_recommendations": semantic["decision_support"]["action_recommendations"],
                     },
@@ -281,7 +310,12 @@ class CaseWorkbenchService:
                 primary_claim=primary_claim,
                 supplementary_claim=supplementary_claim,
             ),
-            "graph": _graph_projection(posts, snapshot.relationships),
+            "graph": _graph_projection(
+                posts,
+                snapshot.relationships,
+                semantic=semantic,
+                primary_claim_ref="claim_cctv_primary" if primary_claim else None,
+            ),
             "actions": actions,
             "feedback": feedback,
             "semantic_corrections": semantic_corrections,
@@ -312,6 +346,16 @@ class CaseWorkbenchService:
                 "default_analysis_stage_compatibility": "semantic_enrichment is explicit and does not change the four-stage default",
             },
         }
+
+    def _semantic_artifact(self, snapshot: Any, options: dict[str, Any]) -> dict[str, Any]:
+        runtime = self.semantic_runtime
+        try:
+            if runtime is None:
+                runtime = HuggingFaceSemanticRuntime()
+                self.semantic_runtime = runtime
+            return analyze_semantic_enrichment_snapshot(snapshot, options, runtime=runtime)
+        except SemanticModelUnavailable as exc:
+            return blocked_semantic_artifact(snapshot, exc)
 
     async def _load_evidence(self, event_id: str) -> tuple[list[dict[str, Any]], list[dict[str, Any]], str]:
         try:
@@ -479,6 +523,12 @@ class CaseWorkbenchService:
         self._assert_case(case_id)
         if version != 1:
             raise KeyError(f"Case report version not found: {version}")
+        if self.artifact_store is not None and self.artifact_store.exists(case_id):
+            report_path = self.artifact_store.report_path(case_id)
+            try:
+                return report_path.read_text(encoding="utf-8")
+            except OSError as exc:
+                raise KeyError(f"Frozen Case report is unreadable: {report_path}") from exc
 
         case = await self.get_case(case_id)
         semantic = case["semantic_artifacts"][0]
@@ -573,6 +623,8 @@ class CaseWorkbenchService:
                 f"<dt>Source tier</dt><dd>{_report_text(primary_claim['source']['tier'])}</dd>"
                 "</dl></section>"
             )
+        semantic_runtime_html = _report_semantic_runtime(semantic)
+        semantic_path_overlay_html = _report_semantic_path_overlays(case.get("graph", {}).get("propagation_paths", []))
         return f"""<!doctype html>
 <html lang=\"en\"><head><meta charset=\"utf-8\"><title>Case report {version}</title>
 <style>body{{font-family:Arial,sans-serif;line-height:1.5;margin:2rem;max-width:900px}}section{{border-top:1px solid #bbb;margin-top:1.25rem;padding-top:.75rem}}dt{{font-weight:bold}}dd{{margin:0 0 .6rem}}code{{word-break:break-all}}@media print{{body{{margin:1cm}}}}</style>
@@ -580,9 +632,11 @@ class CaseWorkbenchService:
 <section><dl><dt>Case ID</dt><dd>{_report_text(case['case_id'])}</dd><dt>Event ID</dt><dd>{_report_text(case['event_id'])}</dd><dt>Title</dt><dd>{_report_text(case['title'])}</dd><dt>State</dt><dd>{_report_text(case['state'])}</dd><dt>Snapshot ID</dt><dd><code>{_report_text(case['evidence']['snapshot_id'])}</code></dd><dt>Run ID</dt><dd><code>{_report_text(case['analysis_runs'][0]['run_id'])}</code></dd></dl></section>
 {primary_claim_html}
 <section><h2>Semantic evidence overlay</h2><dl><dt>artifact_sha256</dt><dd><code>{_report_text(semantic['artifact_sha256'])}</code></dd><dt>Model status</dt><dd>{_report_text(semantic['model_status'])}</dd><dt>Score policy</dt><dd>evidence_overlay_only</dd></dl></section>
+{semantic_runtime_html}
 {semantic_decision_support_html}
 {semantic_evidence_appendix_html}
 {semantic_traceability_html}
+{semantic_path_overlay_html}
 {semantic_corrections_html}
 {audit_trail_html}
 <section><h2>CPR evidence layers</h2><ul>{evidence_layers}</ul></section>
@@ -598,8 +652,15 @@ class CaseWorkbenchService:
 
     async def _assert_case_mutable(self, case_id: str) -> None:
         self._assert_case(case_id)
+        if self._load_frozen_artifact(case_id) is not None:
+            raise CaseOperationConflict("Frozen Case artifacts are immutable and cannot be modified.")
         if (await self.get_case(case_id))["state"] == "closed":
             raise CaseOperationConflict("Closed cases cannot be modified.")
+
+    def _load_frozen_artifact(self, case_id: str) -> dict[str, Any] | None:
+        if self.artifact_store is None:
+            return None
+        return self.artifact_store.load(case_id)
 
     def _append_audit(self, action: str, *, actor_id: str, target_id: str, payload: dict[str, Any]) -> None:
         self.demo_state["audit_events"].append(
@@ -681,6 +742,449 @@ def _summary(case: dict[str, Any]) -> dict[str, Any]:
         "platforms": case["platforms"],
         "evidence": case["evidence"],
     }
+
+
+def _frozen_case_projection(artifact: dict[str, Any]) -> dict[str, Any]:
+    """Expose an immutable precomputed Case without recalculating or approving it."""
+
+    case = artifact["case"]
+    snapshot = artifact["snapshot"]
+    semantic = _compact_frozen_semantic(artifact.get("semantic") or {})
+    runtime = semantic.get("runtime") or {}
+    review = artifact.get("review") or {}
+    claims = [_compact_frozen_claim(claim) for claim in artifact.get("authority_claims") or [] if isinstance(claim, dict)]
+    primary_claim = next((claim for claim in claims if claim.get("role") == "primary"), None)
+    supplementary_claims = [claim for claim in claims if claim.get("role") != "primary"]
+    platforms = _frozen_platforms(snapshot)
+    samples = _frozen_evidence_samples(snapshot)
+    coordination = _compact_frozen_coordination(artifact.get("coordination") or {})
+    propagation = _compact_frozen_propagation(artifact.get("propagation") or {})
+    graph = _frozen_graph_projection(coordination=coordination, propagation=propagation, semantic=semantic, review=review)
+    artifact_evidence = {
+        "schema_version": artifact.get("schema_version"),
+        "artifact_sha256": artifact.get("artifact_sha256"),
+        "content_hashes": dict(artifact.get("content_hashes") or {}),
+        "frozen_at": artifact.get("frozen_at"),
+        "report_manifest": {
+            key: value
+            for key, value in (artifact.get("report_manifest") or {}).items()
+            if key in {"version", "status", "format", "html_file"}
+        },
+    }
+    return {
+        "case_id": case["case_id"],
+        "event_id": case["event_id"],
+        "title": case.get("title") or case["case_id"],
+        "description": "冻结的三平台预计算案例；人工 Review 与结案仍需后续操作。",
+        "state": case.get("state", "awaiting_review"),
+        "state_options": list(CASE_STATES),
+        "created_at": artifact.get("frozen_at"),
+        "updated_at": artifact.get("frozen_at"),
+        "source_mode": "frozen_artifact",
+        "expected_platforms": ["weibo", "xhs", "douyin"],
+        "platforms": platforms,
+        "evidence": {
+            "snapshot_id": snapshot.get("snapshot_id"),
+            "data_fingerprint": snapshot.get("data_fingerprint"),
+            "posts": snapshot.get("post_count", len(snapshot.get("posts") or [])),
+            "comments": snapshot.get("comment_count", len(snapshot.get("comments") or [])),
+            "source_mode": "frozen_artifact",
+            "provenance": snapshot.get("provenance") or [],
+            "platform_distribution": _frozen_platform_distribution(snapshot),
+            "recent_posts": samples["posts"],
+            "samples": samples,
+        },
+        "lifecycle": _lifecycle(state=case.get("state", "awaiting_review")),
+        "primary_claim": primary_claim,
+        "supplementary_claims": supplementary_claims,
+        "canonical_verdict": review.get("canonical_verdict"),
+        "analysis_runs": [
+            {
+                "run_id": runtime.get("run_id"),
+                "snapshot_id": snapshot.get("snapshot_id"),
+                "status": review.get("status", "awaiting_human_review"),
+                "requested_stages": [
+                    "coordination_discover",
+                    "propagation_analysis",
+                    "semantic_enrichment",
+                    "student",
+                    "teacher",
+                ],
+                "semantic_enrichment_explicit": True,
+            }
+        ],
+        "semantic_artifacts": [
+            {
+                "artifact_id": semantic.get("artifact_id", "semantic_precomputed"),
+                "artifact_type": "semantic_enrichment",
+                "status": semantic.get("status"),
+                "runtime_status": runtime.get("runtime_status"),
+                "runtime_backend": runtime.get("runtime_backend"),
+                "model_status": semantic.get("validation_status") or semantic.get("model_status"),
+                "model_version": semantic.get("model_version"),
+                "model_versions": runtime.get("model_versions") or {},
+                "validation_status": semantic.get("validation_status"),
+                "artifact_sha256": artifact["content_hashes"].get("semantic"),
+                "summary": semantic["summary"],
+                "provenance": {
+                    "score_policy": semantic.get("score_policy", "evidence_overlay_only"),
+                    "frozen_artifact_sha256": artifact.get("artifact_sha256"),
+                },
+            }
+        ],
+        "evidence_matrix": {
+            "claims": claims,
+            "samples": samples,
+            "semantic": semantic,
+        },
+        "graph": graph,
+        "actions": [],
+        "feedback": [],
+        "semantic_corrections": [],
+        "closeout_review": None,
+        "closure_checklist": [
+            {"key": "canonical_verdict", "status": "pending"},
+            {"key": "required_actions", "status": "pending"},
+            {"key": "feedback", "status": "pending"},
+            {"key": "closeout_review", "status": "pending"},
+        ],
+        "prototype_constraints": {
+            **PROTOTYPE_CONSTRAINTS,
+            "platform_evidence_scope": "three_platform_frozen_precompute",
+            "frozen_artifact": "immutable_pending_human_review",
+        },
+        "reports": [
+            {
+                "version": artifact.get("report_manifest", {}).get("version", 1),
+                "status": artifact.get("report_manifest", {}).get("status", "frozen_pending_human_review"),
+                "format": artifact.get("report_manifest", {}).get("format", "html"),
+                "content_hash": artifact.get("content_hashes", {}).get("report_manifest"),
+                "html_url": f"/api/v2/cases/{case['case_id']}/reports/1.html",
+                "message": "Frozen report is pending human review and cannot close this Case.",
+            }
+        ],
+        "active_blockers": [
+            {
+                "blocker_id": "blocker_human_review_required",
+                "code": "awaiting_human_review",
+                "scope": "review",
+                "severity": "blocking",
+                "message": "A frozen precompute cannot approve canonical verdicts or close a Case.",
+            }
+        ],
+        "blocker_acknowledgements": [],
+        "audit_events": [],
+        "workflow_summary": {
+            "closed_loop": "事件 -> 证据 -> Coordination -> Propagation -> semantic_enrichment -> Review -> 处置 -> 反馈",
+            "core_claim_source": "official_media",
+            "semantic_score_policy": "evidence_overlay_only",
+            "frozen_artifact_status": "awaiting_human_review",
+        },
+        "artifact_evidence": artifact_evidence,
+    }
+
+
+def _compact_frozen_claim(claim: dict[str, Any]) -> dict[str, Any]:
+    return {
+        key: value
+        for key, value in claim.items()
+        if key
+        in {
+            "claim_id",
+            "role",
+            "status",
+            "excerpt",
+            "span",
+            "url",
+            "account",
+            "published_at",
+            "source_tier",
+            "source",
+            "source_archive_id",
+            "source_content_hash",
+            "source_markdown_hash",
+            "source_content_capture",
+            "excerpt_hash",
+        }
+    }
+
+
+def _compact_frozen_semantic(semantic: dict[str, Any]) -> dict[str, Any]:
+    runtime = dict(semantic.get("runtime") or {})
+    summary = {
+        "sentiment": _compact_frozen_mapping(semantic.get("sentiment") or {}, keys={"summary"}),
+        "top_keywords": _compact_frozen_list((semantic.get("keywords") or {}).get("main_posts"), limit=12),
+        "topics": _compact_frozen_mapping((semantic.get("topics") or {}).get("main_posts") or {}, keys={"items", "method", "topic_count"}),
+        "entities": _compact_frozen_list((semantic.get("entities") or {}).get("main_posts"), limit=12),
+        "stance": _compact_frozen_mapping(
+            semantic.get("stance") or {},
+            keys={"status", "distribution", "examples", "method", "model_version", "primary_claim_hash"},
+            list_limits={"examples": 8},
+        ),
+        "near_duplicates": _compact_frozen_list((semantic.get("near_duplicates") or {}).get("main_posts"), limit=8),
+        "community_comparison": _compact_frozen_mapping(
+            semantic.get("community_comparison") or {}, keys={"group_by", "items"}, list_limits={"items": 12}
+        ),
+        "layers": _compact_frozen_layers(semantic.get("layers") or {}),
+        "cross_analysis": _compact_frozen_cross_analysis(semantic.get("cross_analysis") or {}),
+        "embedding_manifest": _compact_frozen_mapping(
+            semantic.get("embedding_manifest") or {}, keys={"status", "embedding_model", "encoded_texts", "reuse_policy", "cache_dir"}
+        ),
+        "decision_support": _compact_frozen_decision_support(semantic.get("decision_support") or {}),
+    }
+    summary["action_recommendations"] = list(summary["decision_support"].get("action_recommendations") or [])
+    return {
+        "artifact_id": semantic.get("artifact_id", "semantic_precomputed"),
+        "status": semantic.get("status"),
+        "runtime_status": semantic.get("runtime_status") or runtime.get("runtime_status"),
+        "runtime_backend": semantic.get("runtime_backend") or runtime.get("runtime_backend"),
+        "model_status": semantic.get("model_status") or semantic.get("validation_status"),
+        "model_version": semantic.get("model_version"),
+        "model_versions": semantic.get("model_versions") or runtime.get("model_versions") or {},
+        "validation_status": semantic.get("validation_status"),
+        "embedding_manifest": summary["embedding_manifest"],
+        "semantic_blocker": _compact_frozen_mapping(semantic.get("semantic_blocker") or {}, keys={"code", "message", "manual_resolution", "missing_models"}),
+        "summary": summary,
+        "provenance": _compact_frozen_mapping(
+            semantic.get("provenance") or {}, keys={"cache_dir", "device", "does_not_modify", "embedding_reuse", "score_policy"}
+        ),
+        "score_policy": semantic.get("score_policy", "evidence_overlay_only"),
+        "runtime": runtime,
+    }
+
+
+def _compact_frozen_layers(layers: dict[str, Any]) -> dict[str, Any]:
+    return {
+        name: _compact_frozen_mapping(
+            value if isinstance(value, dict) else {},
+            keys={"sentiment", "stance", "keywords", "topics", "entities", "near_duplicates"},
+            list_limits={"keywords": 8, "entities": 8, "near_duplicates": 5},
+        )
+        for name, value in layers.items()
+        if name in {"main_posts", "comments"}
+    }
+
+
+def _compact_frozen_cross_analysis(cross_analysis: dict[str, Any]) -> dict[str, Any]:
+    return {
+        key: _compact_frozen_list(value, limit=12)
+        for key, value in cross_analysis.items()
+        if key in {"time_slices", "platform_slices", "community_slices", "propagation_path_overlays"}
+    }
+
+
+def _compact_frozen_decision_support(support: dict[str, Any]) -> dict[str, Any]:
+    return _compact_frozen_mapping(
+        support,
+        keys={"coverage", "confidence", "module_coverage", "operator_prompt", "review_hints", "action_recommendations", "platform_slices", "time_slices"},
+        list_limits={"review_hints": 8, "action_recommendations": 8, "platform_slices": 8, "time_slices": 12},
+    )
+
+
+def _compact_frozen_mapping(
+    value: Any,
+    *,
+    keys: set[str],
+    list_limits: dict[str, int] | None = None,
+) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        return {}
+    limits = list_limits or {}
+    return {
+        key: _compact_frozen_list(item, limit=limits[key]) if isinstance(item, list) and key in limits else item
+        for key, item in value.items()
+        if key in keys
+    }
+
+
+def _compact_frozen_list(value: Any, *, limit: int) -> list[Any]:
+    return list(value[:limit]) if isinstance(value, list) else []
+
+
+def _frozen_platforms(snapshot: dict[str, Any]) -> list[str]:
+    return _platforms(list(snapshot.get("posts") or []), list(snapshot.get("comments") or []))
+
+
+def _frozen_evidence_samples(snapshot: dict[str, Any]) -> dict[str, list[dict[str, Any]]]:
+    posts = list(snapshot.get("posts") or [])
+    comments = list(snapshot.get("comments") or [])
+    return {
+        "posts": _recent_posts(posts),
+        "comments": [
+            {
+                "comment_id": comment.get("comment_id"),
+                "post_id": comment.get("post_id"),
+                "platform": comment.get("platform"),
+                "author_name": comment.get("author_name") or comment.get("author_id"),
+                "timestamp": str(comment.get("timestamp") or ""),
+                "content": str(comment.get("content") or "")[:180],
+            }
+            for comment in comments[:6]
+        ],
+    }
+
+
+def _frozen_platform_distribution(snapshot: dict[str, Any]) -> list[dict[str, Any]]:
+    return _platform_distribution(list(snapshot.get("posts") or []), list(snapshot.get("comments") or []))
+
+
+def _compact_frozen_coordination(coordination: dict[str, Any]) -> dict[str, Any]:
+    compact = _compact_frozen_mapping(
+        coordination,
+        keys={"status", "implementation", "community_algorithm", "metrics", "graph_metrics", "communities", "detection_summary", "discovery_sha256", "detection_sha256"},
+        list_limits={"communities": 12},
+    )
+    detection = compact.get("detection_summary")
+    if isinstance(detection, dict):
+        compact["detection_summary"] = _compact_frozen_mapping(
+            detection,
+            keys={"task", "setting", "method", "relations", "metrics", "unlabeled_inference_summary"},
+        )
+    return compact
+
+
+def _compact_frozen_propagation(propagation: dict[str, Any]) -> dict[str, Any]:
+    return _compact_frozen_mapping(
+        propagation,
+        keys={"status", "implementation", "relationship_count", "source", "paths"},
+        list_limits={"paths": 12},
+    )
+
+
+def _frozen_graph_projection(
+    *,
+    coordination: dict[str, Any],
+    propagation: dict[str, Any],
+    semantic: dict[str, Any],
+    review: dict[str, Any],
+) -> dict[str, Any]:
+    paths = []
+    nodes: dict[str, dict[str, str]] = {}
+    edges = []
+    overlays_by_ref = _frozen_propagation_overlay_index(semantic)
+    for index, path in enumerate(propagation.get("paths") or [], start=1):
+        source_id = str(path.get("source_id") or "")
+        target_id = str(path.get("target_id") or "")
+        path_id = str(path.get("path_id") or f"frozen_path_{index}")
+        if source_id:
+            nodes.setdefault(source_id, {"id": source_id, "label": source_id, "type": "account"})
+        if target_id:
+            nodes.setdefault(target_id, {"id": target_id, "label": target_id, "type": "account"})
+        edge = {
+            "id": str(path.get("evidence_ref") or path_id),
+            "source": source_id,
+            "target": target_id,
+            "relation_type": str(path.get("relation_type") or "related"),
+            "platform": str(path.get("platform") or ""),
+            "evidence_ref": str(path.get("evidence_ref") or path_id),
+        }
+        if source_id and target_id:
+            edges.append(edge)
+        graph_path = {
+            "path_id": path_id,
+            "label": f"{source_id or 'unknown'} -> {target_id or 'unknown'}",
+            "nodes": [node for node in (nodes.get(source_id), nodes.get(target_id)) if node],
+            "edges": [edge] if source_id and target_id else [],
+            "evidence_type": "observed",
+            "explanation": f"Precomputed {edge['relation_type']} relationship.",
+        }
+        semantic_overlay = _frozen_path_semantic_overlay(path, overlays_by_ref)
+        if semantic_overlay:
+            graph_path["semantic_overlay"] = semantic_overlay
+        paths.append(graph_path)
+    return {
+        "nodes": list(nodes.values()),
+        "edges": edges,
+        "propagation_paths": paths,
+        "path_analysis": {"edge_count": len(edges), "key_paths": paths},
+        "evidence_layers": [
+            {
+                "key": "coordination",
+                "label": "Coordination",
+                "status": coordination.get("status", "precomputed"),
+                "summary": "Precomputed coordination summary from the frozen artifact.",
+                "metrics": coordination.get("metrics") or coordination.get("graph_metrics") or {},
+            },
+            {
+                "key": "propagation",
+                "label": "Propagation",
+                "status": propagation.get("status", "precomputed"),
+                "summary": "Observed propagation summary from the frozen artifact.",
+                "metrics": {"relationships": propagation.get("relationship_count", 0), "displayed_paths": len(paths)},
+            },
+            {
+                "key": "review",
+                "label": "Review",
+                "status": review.get("status", "awaiting_human_review"),
+                "summary": "Frozen artifacts remain pending human review.",
+                "metrics": {"canonical_verdict_status": (review.get("canonical_verdict") or {}).get("status")},
+            },
+        ],
+        "coordination": coordination,
+        "propagation": propagation,
+        "provenance": "frozen_precompute",
+    }
+
+
+def _frozen_propagation_overlay_index(semantic: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    cross_analysis = ((semantic.get("summary") or {}).get("cross_analysis") or {})
+    overlays = cross_analysis.get("propagation_path_overlays") or []
+    indexed: dict[str, dict[str, Any]] = {}
+    for overlay in overlays:
+        if not isinstance(overlay, dict):
+            continue
+        for key in (overlay.get("path_id"), overlay.get("evidence_ref")):
+            if key:
+                indexed[str(key)] = overlay
+        for evidence_ref in overlay.get("evidence_refs") or []:
+            if evidence_ref:
+                indexed.setdefault(str(evidence_ref), overlay)
+    return indexed
+
+
+def _frozen_path_semantic_overlay(path: dict[str, Any], overlays_by_ref: dict[str, dict[str, Any]]) -> dict[str, Any] | None:
+    overlay = path.get("semantic_overlay")
+    if not isinstance(overlay, dict):
+        for key in (
+            path.get("path_id"),
+            path.get("evidence_ref"),
+            path.get("source_ref"),
+            path.get("target_ref"),
+        ):
+            if key and str(key) in overlays_by_ref:
+                overlay = overlays_by_ref[str(key)]
+                break
+    if not isinstance(overlay, dict):
+        return None
+    return _compact_frozen_mapping(
+        overlay,
+        keys={
+            "status",
+            "sentiment",
+            "stance",
+            "keywords",
+            "entities",
+            "topics",
+            "platforms",
+            "time_range",
+            "claim_refs",
+            "evidence_refs",
+            "evidence_examples",
+            "score_policy",
+            "texts",
+            "message",
+            "code",
+        },
+        list_limits={
+            "keywords": 8,
+            "entities": 8,
+            "topics": 6,
+            "platforms": 6,
+            "claim_refs": 6,
+            "evidence_refs": 8,
+            "evidence_examples": 3,
+        },
+    )
 
 
 class CaseOperationConflict(ValueError):
@@ -939,6 +1443,13 @@ def _evidence_matrix(
             for comment in comments[:20]
         ],
         "semantic": {
+            "runtime_status": semantic.get("runtime_status"),
+            "runtime_backend": semantic.get("runtime_backend"),
+            "validation_status": semantic.get("validation_status"),
+            "semantic_blocker": semantic.get("semantic_blocker"),
+            "embedding_manifest": semantic.get("embedding_manifest"),
+            "layers": semantic.get("layers", {}),
+            "cross_analysis": semantic.get("cross_analysis", {}),
             "keywords": semantic["keywords"],
             "topics": semantic["topics"],
             "entities": semantic["entities"],
@@ -952,7 +1463,13 @@ def _evidence_matrix(
     }
 
 
-def _graph_projection(posts: list[dict[str, Any]], relationships: list[Any] | None = None) -> dict[str, Any]:
+def _graph_projection(
+    posts: list[dict[str, Any]],
+    relationships: list[Any] | None = None,
+    *,
+    semantic: dict[str, Any] | None = None,
+    primary_claim_ref: str | None = None,
+) -> dict[str, Any]:
     nodes = []
     seen = set()
     content_accounts: dict[str, dict[str, str]] = {}
@@ -970,6 +1487,40 @@ def _graph_projection(posts: list[dict[str, Any]], relationships: list[Any] | No
             }
     edges = _graph_relationship_edges(relationships or [], content_accounts)
     propagation_paths = _graph_propagation_paths(edges)
+    if semantic and semantic.get("runtime_status") == "ok":
+        semantic_rows = (
+            semantic.get("_runtime_rows")
+            or ((semantic.get("layers") or {}).get("all_texts") or [])
+        )
+        for path in propagation_paths:
+            path["semantic_overlay"] = propagation_path_overlay(
+                path,
+                semantic_rows,
+                primary_claim_ref=primary_claim_ref,
+            )
+        semantic.setdefault("cross_analysis", {})["propagation_path_overlays"] = [
+            {
+                "path_id": path["path_id"],
+                **path.get("semantic_overlay", {}),
+            }
+            for path in propagation_paths
+        ]
+    else:
+        semantic_blocker = (semantic or {}).get("semantic_blocker") or {}
+        for path in propagation_paths:
+            path["semantic_overlay"] = {
+                "status": "blocked",
+                "code": semantic_blocker.get("code", "semantic_unavailable"),
+                "message": semantic_blocker.get("message", "Semantic overlay unavailable."),
+                "score_policy": "evidence_overlay_only",
+                "evidence_refs": sorted(
+                    {
+                        str(edge.get("evidence_ref") or "")
+                        for edge in path.get("edges") or []
+                        if str(edge.get("evidence_ref") or "")
+                    }
+                ),
+            }
     return {
         "nodes": nodes,
         "edges": edges,
@@ -1255,6 +1806,54 @@ def _report_semantic_decision_support(semantic: dict[str, Any]) -> str:
         "</dl>"
         f"<h3>Platform slices</h3><ul>{platform_slices}</ul>"
         f"<h3>Time slices</h3><ul>{time_slices}</ul>"
+        "</section>"
+    )
+
+
+def _report_semantic_runtime(semantic: dict[str, Any]) -> str:
+    versions = semantic.get("model_versions") or {}
+    manifest = semantic.get("embedding_manifest") or {}
+    blocker = semantic.get("semantic_blocker") or {}
+    version_items = "".join(
+        f"<dt>{_report_text(name)}</dt><dd><code>{_report_text(version)}</code></dd>"
+        for name, version in versions.items()
+    ) or "<dt>models</dt><dd>unavailable</dd>"
+    blocker_html = (
+        f"<dt>Semantic blocker</dt><dd>{_report_text(blocker.get('code'))}: "
+        f"{_report_text(blocker.get('manual_resolution'))}</dd>"
+        if blocker
+        else ""
+    )
+    return (
+        "<section><h2>Semantic runtime manifest</h2><dl>"
+        f"<dt>Runtime status</dt><dd>{_report_text(semantic.get('runtime_status', 'unknown'))}</dd>"
+        f"<dt>Runtime backend</dt><dd>{_report_text(semantic.get('runtime_backend', 'unknown'))}</dd>"
+        f"<dt>Validation status</dt><dd>{_report_text(semantic.get('validation_status', 'unknown'))}</dd>"
+        f"<dt>Cache dir</dt><dd><code>{_report_text((semantic.get('provenance') or {}).get('cache_dir') or manifest.get('cache_dir') or 'unknown')}</code></dd>"
+        f"<dt>Encoded texts</dt><dd>{_report_text(manifest.get('encoded_texts', 'unknown'))}</dd>"
+        f"{blocker_html}"
+        f"{version_items}"
+        "</dl></section>"
+    )
+
+
+def _report_semantic_path_overlays(paths: list[dict[str, Any]]) -> str:
+    items = _report_term_items(
+        (
+            f"{path.get('path_id', '-')}: {path.get('label', '-')}; "
+            f"status={(path.get('semantic_overlay') or {}).get('status', '-')}; "
+            f"sentiment={_format_report_metrics((path.get('semantic_overlay') or {}).get('sentiment') or {})}; "
+            f"keywords={', '.join((path.get('semantic_overlay') or {}).get('keywords') or []) or '-'}; "
+            f"entities={', '.join((path.get('semantic_overlay') or {}).get('entities') or []) or '-'}; "
+            f"refs={', '.join((path.get('semantic_overlay') or {}).get('evidence_refs') or []) or '-'}"
+            for path in paths
+        ),
+        empty="No propagation path semantic overlay available",
+    )
+    return (
+        "<section><h2>Propagation path semantic overlays</h2>"
+        "<p>Path overlays are advisory semantic evidence and do not change CPR risk scores.</p>"
+        f"<ul>{items}</ul>"
         "</section>"
     )
 

@@ -1,12 +1,18 @@
 from __future__ import annotations
 
 import asyncio
+import sys
+import types
 from datetime import datetime, timezone
 from typing import Any
 
 from app.core.analysis import DEFAULT_ANALYSIS_STAGES, TimeWindow, build_event_snapshot
 from app.core.analysis import semantic_enrichment as semantic_enrichment_module
-from app.core.analysis.semantic_enrichment import analyze_semantic_enrichment_snapshot
+from app.core.analysis.semantic_enrichment import (
+    SemanticModelUnavailable,
+    analyze_semantic_enrichment_snapshot,
+    propagation_path_overlay,
+)
 from app.core.analysis.executor import (
     AnalysisEnginePorts,
     AnalysisExecutor,
@@ -94,6 +100,11 @@ class StaticPropagationEngine:
         return {"status": "ok", "next_hop_ranking": {"items": []}}
 
 
+class StaticSemanticEngine:
+    async def analyze(self, snapshot, options):
+        return analyze_semantic_enrichment_snapshot(snapshot, options, runtime=FakeSemanticRuntime())
+
+
 class StaticStudentRuntime:
     async def predict(self, case):
         return {"status": "ok", "verdict_type": "preliminary", "label": "uncertain"}
@@ -102,6 +113,64 @@ class StaticStudentRuntime:
 class QueuedTeacherJobPort:
     async def submit(self, case):
         return {"status": "queued", "job_id": "teacher_case_review_1", "verdict_type": "teacher_advisory"}
+
+
+class FakeSemanticRuntime:
+    runtime_backend = "fake_lm_encoder"
+    cache_dir = r"G:\CISCN\hf_models"
+    device = "cpu"
+    model_versions = {
+        "embedding": semantic_enrichment_module.EMBEDDING_MODEL_VERSION,
+        "sentiment": semantic_enrichment_module.SENTIMENT_MODEL_VERSION,
+        "stance": semantic_enrichment_module.STANCE_MODEL_VERSION,
+        "ner": semantic_enrichment_module.NER_MODEL_VERSION,
+    }
+
+    def __init__(self) -> None:
+        self.encoded_texts: list[str] = []
+        self.sentiment_call_sizes: list[int] = []
+        self.stance_call_sizes: list[int] = []
+        self.entity_call_sizes: list[int] = []
+
+    def encode_texts(self, texts: list[str]):
+        self.encoded_texts.extend(texts)
+        base = [
+            [1.0, 0.0, 0.0],
+            [0.94, 0.06, 0.0],
+            [0.0, 1.0, 0.0],
+            [0.1, 0.9, 0.0],
+        ]
+        return base[: len(texts)]
+
+    def classify_sentiment(self, rows):
+        self.sentiment_call_sizes.append(len(rows))
+        labels = [
+            {"label": "positive", "score": 0.91},
+            {"label": "neutral", "score": 0.67},
+            {"label": "positive", "score": 0.83},
+            {"label": "negative", "score": 0.72},
+        ]
+        return labels[: len(rows)]
+
+    def classify_stance(self, rows, primary_claim: str):
+        self.stance_call_sizes.append(len(rows))
+        labels = [
+            {"label": "support", "score": 0.88},
+            {"label": "neutral", "score": 0.61},
+            {"label": "support", "score": 0.76},
+            {"label": "deny", "score": 0.7},
+        ]
+        return labels[: len(rows)]
+
+    def extract_entities(self, rows):
+        self.entity_call_sizes.append(len(rows))
+        entities = [
+            [{"entity": "特朗普", "entity_type": "person", "score": 0.92}],
+            [{"entity": "中美关系", "entity_type": "topic", "score": 0.89}],
+            [{"entity": "中国", "entity_type": "location_or_country", "score": 0.9}],
+            [{"entity": "央视新闻", "entity_type": "organization", "score": 0.87}],
+        ]
+        return entities[: len(rows)]
 
 
 def _dt(day: int, hour: int = 0) -> datetime:
@@ -192,7 +261,7 @@ def test_executor_runs_explicit_semantic_enrichment_without_primary_claim():
             engines=AnalysisEnginePorts(
                 coordination=StaticCoordinationEngine(),
                 propagation=StaticPropagationEngine(),
-                semantic=None,
+                semantic=StaticSemanticEngine(),
                 student=StaticStudentRuntime(),
                 teacher=UnavailableTeacherJobPort(),
             ),
@@ -249,7 +318,7 @@ def test_missing_primary_claim_status_is_not_hidden_by_queued_teacher_job():
             engines=AnalysisEnginePorts(
                 coordination=StaticCoordinationEngine(),
                 propagation=StaticPropagationEngine(),
-                semantic=None,
+                semantic=StaticSemanticEngine(),
                 student=StaticStudentRuntime(),
                 teacher=QueuedTeacherJobPort(),
             ),
@@ -280,10 +349,12 @@ def test_semantic_artifact_hash_is_stable_for_identical_inputs(monkeypatch):
     first = semantic_enrichment_module.analyze_semantic_enrichment_snapshot(
         snapshot,
         {"primary_claim_text": "中美关系稳定前行"},
+        runtime=FakeSemanticRuntime(),
     )
     second = semantic_enrichment_module.analyze_semantic_enrichment_snapshot(
         snapshot,
         {"primary_claim_text": "中美关系稳定前行"},
+        runtime=FakeSemanticRuntime(),
     )
 
     assert first["generated_at"] != second["generated_at"]
@@ -296,6 +367,7 @@ def test_semantic_decision_support_recommends_action_refs_without_changing_score
     semantic = analyze_semantic_enrichment_snapshot(
         snapshot,
         {"primary_claim_text": "涓編鍏崇郴绋冲畾鍓嶈"},
+        runtime=FakeSemanticRuntime(),
     )
     recommendations = semantic["decision_support"]["action_recommendations"]
 
@@ -315,3 +387,333 @@ def test_semantic_decision_support_recommends_action_refs_without_changing_score
         "teacher",
     ]
     assert semantic["provenance"]["score_policy"] == "semantic_artifacts_are_evidence_overlay_only"
+
+
+def test_semantic_runtime_is_required_and_does_not_rule_fallback():
+    snapshot = _snapshot()
+
+    try:
+        analyze_semantic_enrichment_snapshot(
+            snapshot,
+            {"primary_claim_text": "中美关系稳定前行"},
+        )
+    except SemanticModelUnavailable as exc:
+        assert exc.blocker["code"] == "semantic_model_unavailable"
+        assert exc.blocker["cache_dir"] == r"G:\CISCN\hf_models"
+        assert "degraded_rule_fallback" not in str(exc.blocker)
+    else:
+        raise AssertionError("semantic enrichment must fail closed when no real runtime is supplied")
+
+
+def test_huggingface_runtime_uses_manual_local_snapshots_without_remote_revision(monkeypatch, tmp_path):
+    cache_dir = tmp_path / "hf_models"
+    local_root = cache_dir / "local_snapshots"
+    model_pairs = [
+        (semantic_enrichment_module.EMBEDDING_MODEL_ID, semantic_enrichment_module.EMBEDDING_MODEL_REVISION),
+        (semantic_enrichment_module.SENTIMENT_MODEL_ID, semantic_enrichment_module.SENTIMENT_MODEL_REVISION),
+        (semantic_enrichment_module.STANCE_MODEL_ID, semantic_enrichment_module.STANCE_MODEL_REVISION),
+        (semantic_enrichment_module.NER_MODEL_ID, semantic_enrichment_module.NER_MODEL_REVISION),
+    ]
+    local_paths = {
+        repo_id: local_root / f"{repo_id.replace('/', '__')}--{revision}" for repo_id, revision in model_pairs
+    }
+    for path in local_paths.values():
+        path.mkdir(parents=True)
+
+    sentence_calls: list[dict[str, Any]] = []
+    pipeline_calls: list[dict[str, Any]] = []
+    tokenizer_calls: list[dict[str, Any]] = []
+    sequence_calls: list[dict[str, Any]] = []
+    token_calls: list[dict[str, Any]] = []
+
+    class FakeSentenceTransformer:
+        def __init__(self, model_name_or_path, **kwargs):
+            sentence_calls.append({"model": model_name_or_path, "kwargs": kwargs})
+
+        def encode(self, *args, **kwargs):
+            return []
+
+    class FakeTokenizer:
+        @classmethod
+        def from_pretrained(cls, model, **kwargs):
+            tokenizer_calls.append({"model": model, "kwargs": kwargs})
+            return f"tokenizer:{model}"
+
+    class FakeSequenceModel:
+        @classmethod
+        def from_pretrained(cls, model, **kwargs):
+            sequence_calls.append({"model": model, "kwargs": kwargs})
+            return f"sequence:{model}"
+
+    class FakeTokenModel:
+        @classmethod
+        def from_pretrained(cls, model, **kwargs):
+            token_calls.append({"model": model, "kwargs": kwargs})
+            return f"token:{model}"
+
+    def fake_pipeline(task, **kwargs):
+        pipeline_calls.append({"task": task, "kwargs": kwargs})
+        return lambda *args, **pipe_kwargs: []
+
+    monkeypatch.setitem(
+        sys.modules,
+        "sentence_transformers",
+        types.SimpleNamespace(SentenceTransformer=FakeSentenceTransformer),
+    )
+    monkeypatch.setitem(
+        sys.modules,
+        "transformers",
+        types.SimpleNamespace(
+            AutoModelForSequenceClassification=FakeSequenceModel,
+            AutoModelForTokenClassification=FakeTokenModel,
+            AutoTokenizer=FakeTokenizer,
+            pipeline=fake_pipeline,
+        ),
+    )
+
+    semantic_enrichment_module.HuggingFaceSemanticRuntime(cache_dir=str(cache_dir), device="cpu")
+
+    assert sentence_calls[0]["model"] == str(local_paths[semantic_enrichment_module.EMBEDDING_MODEL_ID])
+    assert "revision" not in sentence_calls[0]["kwargs"]
+    loaded_models = {call["model"] for call in [*tokenizer_calls, *sequence_calls, *token_calls]}
+    assert loaded_models == {
+        str(local_paths[semantic_enrichment_module.SENTIMENT_MODEL_ID]),
+        str(local_paths[semantic_enrichment_module.STANCE_MODEL_ID]),
+        str(local_paths[semantic_enrichment_module.NER_MODEL_ID]),
+    }
+    assert all("revision" not in call["kwargs"] for call in [*tokenizer_calls, *sequence_calls, *token_calls])
+    assert all(call["kwargs"]["local_files_only"] is True for call in [*tokenizer_calls, *sequence_calls, *token_calls])
+    assert {call["task"] for call in pipeline_calls} == {
+        "sentiment-analysis",
+        "zero-shot-classification",
+        "token-classification",
+    }
+
+
+def test_huggingface_runtime_loads_transformer_objects_without_pipeline_tokenizer_kwargs(monkeypatch, tmp_path):
+    cache_dir = tmp_path / "hf_models"
+    for repo_id, revision in [
+        (semantic_enrichment_module.EMBEDDING_MODEL_ID, semantic_enrichment_module.EMBEDDING_MODEL_REVISION),
+        (semantic_enrichment_module.SENTIMENT_MODEL_ID, semantic_enrichment_module.SENTIMENT_MODEL_REVISION),
+        (semantic_enrichment_module.STANCE_MODEL_ID, semantic_enrichment_module.STANCE_MODEL_REVISION),
+        (semantic_enrichment_module.NER_MODEL_ID, semantic_enrichment_module.NER_MODEL_REVISION),
+    ]:
+        (cache_dir / "local_snapshots" / f"{repo_id.replace('/', '__')}--{revision}").mkdir(parents=True)
+
+    pipeline_calls: list[dict[str, Any]] = []
+    tokenizer_calls: list[dict[str, Any]] = []
+    sequence_calls: list[dict[str, Any]] = []
+    token_calls: list[dict[str, Any]] = []
+
+    class FakeSentenceTransformer:
+        def __init__(self, *args, **kwargs):
+            pass
+
+    class FakeTokenizer:
+        @classmethod
+        def from_pretrained(cls, model, **kwargs):
+            tokenizer_calls.append({"model": model, "kwargs": kwargs})
+            return f"tokenizer:{model}"
+
+    class FakeSequenceModel:
+        @classmethod
+        def from_pretrained(cls, model, **kwargs):
+            sequence_calls.append({"model": model, "kwargs": kwargs})
+            return f"sequence:{model}"
+
+    class FakeTokenModel:
+        @classmethod
+        def from_pretrained(cls, model, **kwargs):
+            token_calls.append({"model": model, "kwargs": kwargs})
+            return f"token:{model}"
+
+    def fake_pipeline(task, **kwargs):
+        pipeline_calls.append({"task": task, "kwargs": kwargs})
+        if "tokenizer_kwargs" in kwargs:
+            raise TypeError("pipeline should receive loaded tokenizer objects, not tokenizer_kwargs")
+        return lambda *args, **pipe_kwargs: []
+
+    monkeypatch.setitem(
+        sys.modules,
+        "sentence_transformers",
+        types.SimpleNamespace(SentenceTransformer=FakeSentenceTransformer),
+    )
+    monkeypatch.setitem(
+        sys.modules,
+        "transformers",
+        types.SimpleNamespace(
+            AutoModelForSequenceClassification=FakeSequenceModel,
+            AutoModelForTokenClassification=FakeTokenModel,
+            AutoTokenizer=FakeTokenizer,
+            pipeline=fake_pipeline,
+        ),
+    )
+
+    semantic_enrichment_module.HuggingFaceSemanticRuntime(cache_dir=str(cache_dir), device="cpu")
+
+    assert len(pipeline_calls) == 3
+    assert all("tokenizer_kwargs" not in call["kwargs"] for call in pipeline_calls)
+    assert len(tokenizer_calls) == 3
+    assert len(sequence_calls) == 2
+    assert len(token_calls) == 1
+    assert all(call["kwargs"]["local_files_only"] is True for call in tokenizer_calls)
+
+
+def test_huggingface_runtime_entity_pipeline_does_not_receive_unsupported_truncation(monkeypatch, tmp_path):
+    cache_dir = tmp_path / "hf_models"
+    for repo_id, revision in [
+        (semantic_enrichment_module.EMBEDDING_MODEL_ID, semantic_enrichment_module.EMBEDDING_MODEL_REVISION),
+        (semantic_enrichment_module.SENTIMENT_MODEL_ID, semantic_enrichment_module.SENTIMENT_MODEL_REVISION),
+        (semantic_enrichment_module.STANCE_MODEL_ID, semantic_enrichment_module.STANCE_MODEL_REVISION),
+        (semantic_enrichment_module.NER_MODEL_ID, semantic_enrichment_module.NER_MODEL_REVISION),
+    ]:
+        (cache_dir / "local_snapshots" / f"{repo_id.replace('/', '__')}--{revision}").mkdir(parents=True)
+
+    class FakeSentenceTransformer:
+        def __init__(self, *args, **kwargs):
+            pass
+
+    class FakeTokenizer:
+        @classmethod
+        def from_pretrained(cls, *args, **kwargs):
+            return "tokenizer"
+
+    class FakeSequenceModel:
+        @classmethod
+        def from_pretrained(cls, *args, **kwargs):
+            return "sequence"
+
+    class FakeTokenModel:
+        @classmethod
+        def from_pretrained(cls, *args, **kwargs):
+            return "token"
+
+    def fake_pipeline(task, **kwargs):
+        if task == "token-classification":
+            def ner_pipeline(_texts, **call_kwargs):
+                assert "truncation" not in call_kwargs
+                return [[{"word": "特朗普", "entity_group": "PER", "score": 0.99}]]
+
+            return ner_pipeline
+        return lambda *args, **pipe_kwargs: []
+
+    monkeypatch.setitem(
+        sys.modules,
+        "sentence_transformers",
+        types.SimpleNamespace(SentenceTransformer=FakeSentenceTransformer),
+    )
+    monkeypatch.setitem(
+        sys.modules,
+        "transformers",
+        types.SimpleNamespace(
+            AutoModelForSequenceClassification=FakeSequenceModel,
+            AutoModelForTokenClassification=FakeTokenModel,
+            AutoTokenizer=FakeTokenizer,
+            pipeline=fake_pipeline,
+        ),
+    )
+
+    runtime = semantic_enrichment_module.HuggingFaceSemanticRuntime(cache_dir=str(cache_dir), device="cpu")
+
+    assert runtime.extract_entities([{"text": "特朗普访华"}]) == [
+        [{"entity": "特朗普", "entity_type": "person", "score": 0.99}]
+    ]
+
+
+def test_fake_lm_runtime_reuses_one_embedding_pass_for_all_semantic_modules():
+    snapshot = _snapshot()
+    runtime = FakeSemanticRuntime()
+
+    semantic = analyze_semantic_enrichment_snapshot(
+        snapshot,
+        {"primary_claim_text": "中美关系稳定前行"},
+        runtime=runtime,
+    )
+
+    assert runtime.encoded_texts == [row["text"] for row in semantic["layers"]["all_texts"]]
+    assert semantic["runtime_status"] == "ok"
+    assert semantic["runtime_backend"] == "fake_lm_encoder"
+    assert semantic["model_version"] == semantic_enrichment_module.EMBEDDING_MODEL_VERSION
+    assert semantic["provenance"]["embedding_reuse"] == "single_bge_pass_reused_by_semantic_modules"
+    assert semantic["embedding_manifest"]["encoded_texts"] == 3
+    assert semantic["embedding_manifest"]["embedding_model"] == semantic_enrichment_module.EMBEDDING_MODEL_VERSION
+    assert semantic["keywords"]["main_posts"][0]["method"] == "keybert_mmr"
+    assert semantic["topics"]["main_posts"]["method"] == "bertopic_lite_embedding_cluster_ctfidf"
+    assert semantic["near_duplicates"]["main_posts"][0]["method"] == "embedding_cosine"
+    assert semantic["layers"]["main_posts"]["sentiment"]["total_texts"] == 2
+    assert semantic["layers"]["comments"]["sentiment"]["total_texts"] == 1
+    assert semantic["stance"]["main_posts"]["status"] == "ok"
+    assert semantic["stance"]["comments"]["status"] == "ok"
+    assert semantic["cross_analysis"]["time_slices"]
+    assert semantic["cross_analysis"]["platform_slices"]
+
+
+def test_semantic_inference_reuses_one_real_runtime_pass_before_layer_aggregation():
+    snapshot = _snapshot()
+    runtime = FakeSemanticRuntime()
+
+    semantic = analyze_semantic_enrichment_snapshot(
+        snapshot,
+        {"primary_claim_text": "中美关系稳定前行"},
+        runtime=runtime,
+    )
+
+    assert runtime.sentiment_call_sizes == [3]
+    assert runtime.stance_call_sizes == [3]
+    assert runtime.entity_call_sizes == [3]
+    assert semantic["sentiment"]["main_posts"]["total_texts"] == 2
+    assert semantic["sentiment"]["comments"]["total_texts"] == 1
+    assert semantic["stance"]["main_posts"]["status"] == "ok"
+    assert semantic["stance"]["comments"]["status"] == "ok"
+
+
+def test_community_comparison_prefers_coordination_community_ids():
+    snapshot = _snapshot()
+    snapshot.posts[0]["coordination_community_id"] = "community_alpha"
+    snapshot.posts[1]["coordination_community_id"] = "community_beta"
+
+    semantic = analyze_semantic_enrichment_snapshot(
+        snapshot,
+        {"primary_claim_text": "中美关系稳定前行"},
+        runtime=FakeSemanticRuntime(),
+    )
+
+    comparison = semantic["community_comparison"]
+    assert comparison["group_by"] == "coordination_community"
+    assert {item["community_id"] for item in comparison["items"]} >= {"community_alpha", "community_beta"}
+
+
+def test_propagation_path_overlay_refuses_unmatched_semantic_evidence():
+    semantic = analyze_semantic_enrichment_snapshot(
+        _snapshot(),
+        {"primary_claim_text": "中美关系稳定前行"},
+        runtime=FakeSemanticRuntime(),
+    )
+
+    overlay = propagation_path_overlay(
+        {
+            "evidence_refs": ["weibo:post:missing"],
+            "edges": [
+                {
+                    "source_ref": "weibo:post:missing-source",
+                    "target_ref": "weibo:comment:missing-target",
+                    "evidence_ref": "weibo:comment:missing-target",
+                }
+            ],
+        },
+        semantic["_runtime_rows"],
+        primary_claim_ref="claim_cctv_primary",
+    )
+
+    assert overlay["status"] == "unavailable_no_matched_evidence"
+    assert overlay["evidence_refs"] == [
+        "weibo:comment:missing-target",
+        "weibo:post:missing",
+        "weibo:post:missing-source",
+    ]
+    assert overlay["claim_refs"] == ["claim_cctv_primary"]
+    assert "sentiment" not in overlay
+    assert "stance" not in overlay
+    assert "keywords" not in overlay
+    assert "entities" not in overlay
+    assert "evidence_examples" not in overlay

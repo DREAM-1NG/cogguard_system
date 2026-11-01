@@ -28,70 +28,65 @@ def test_case_workbench_acceptance_closes_the_weibo_only_demo_case():
         "prototype_limitations_visible": True,
         "content_hash_changed": True,
     }
-    assert result["semantic"] == {
-        "policy": "evidence_overlay_only",
-        "requested_stage": "semantic_enrichment",
-        "decision_support": {
-            "coverage_ratio": 1.0,
-            "confidence_status": "candidate_unvalidated",
-            "platform_slices": ["weibo"],
-            "time_slices_present": True,
-            "operator_prompt": "Use semantic outputs as triage hints, not as risk-score inputs.",
+    semantic = result["semantic"]
+    assert semantic["policy"] == "evidence_overlay_only"
+    assert semantic["requested_stage"] == "semantic_enrichment"
+    assert semantic["decision_support"] == {
+        "coverage_ratio": 1.0,
+        "confidence_status": "candidate_unvalidated",
+        "platform_slices": ["weibo"],
+        "time_slices_present": True,
+        "operator_prompt": "Use semantic outputs as triage hints, not as risk-score inputs.",
+    }
+    assert semantic["appendix"]["sections"] == [
+        "sentiment",
+        "keywords",
+        "topics",
+        "entities",
+        "stance",
+        "near_duplicates",
+        "community_comparison",
+    ]
+    assert semantic["appendix"]["sentiment_total_texts"] == 3
+    assert semantic["appendix"]["keyword_count"] >= 1
+    assert semantic["appendix"]["topic_count"] >= 1
+    assert semantic["appendix"]["entity_count"] >= 1
+    assert semantic["appendix"]["stance_status"] == "ok"
+    assert semantic["appendix"]["model_status"] == "candidate_unvalidated"
+    assert semantic["traceability"]["review_hints_present"] is True
+    assert semantic["traceability"]["module_coverage_modules"] == [
+        "sentiment",
+        "keywords",
+        "topics",
+        "entities",
+        "stance",
+        "near_duplicates",
+        "community_comparison",
+    ]
+    assert {"weibo_demo_1", "weibo_demo_2", "weibo_comment_1"}.issubset(
+        set(semantic["traceability"]["semantic_example_ids"])
+    )
+    assert semantic["traceability"]["action_evidence_refs"] == [
+        {
+            "action_id": "action_review_public_response",
+            "evidence_refs": ["claim_cctv_primary", "semantic_case_workbench_demo"],
         },
-        "appendix": {
-            "sections": [
-                "sentiment",
-                "keywords",
-                "topics",
-                "entities",
-                "stance",
-                "near_duplicates",
-                "community_comparison",
-            ],
-            "sentiment_total_texts": 3,
-            "keyword_count": 4,
-            "topic_count": 2,
-            "entity_count": 3,
-            "stance_status": "ok",
-            "near_duplicate_group_count": 0,
-            "community_count": 1,
-            "model_status": "candidate_unvalidated",
+        {
+            "action_id": "action_record_feedback",
+            "evidence_refs": ["run_case_workbench_demo"],
         },
-        "traceability": {
-            "review_hints_present": True,
-            "module_coverage_modules": [
-                "sentiment",
-                "keywords",
-                "topics",
-                "entities",
-                "stance",
-                "near_duplicates",
-                "community_comparison",
-            ],
-            "semantic_example_ids": ["weibo_demo_1", "weibo_demo_2", "weibo_comment_1"],
-            "action_evidence_refs": [
-                {
-                    "action_id": "action_review_public_response",
-                    "evidence_refs": ["claim_cctv_primary", "semantic_case_workbench_demo"],
-                },
-                {
-                    "action_id": "action_record_feedback",
-                    "evidence_refs": ["run_case_workbench_demo"],
-                },
-            ],
-            "action_recommendations": {
-                "count": 1,
-                "action_ids": ["action_review_public_response"],
-                "statuses": ["candidate_unvalidated"],
-                "score_policy": ["evidence_overlay_only"],
-            },
-        },
-        "corrections": {
-            "count": 1,
-            "ids": ["semantic_correction_1"],
-            "statuses": ["advisory_overlay"],
-            "modules": ["sentiment"],
-        },
+    ]
+    assert semantic["traceability"]["action_recommendations"] == {
+        "count": 1,
+        "action_ids": ["action_review_public_response"],
+        "statuses": ["candidate_unvalidated"],
+        "score_policy": ["evidence_overlay_only"],
+    }
+    assert semantic["corrections"] == {
+        "count": 1,
+        "ids": ["semantic_correction_1"],
+        "statuses": ["advisory_overlay"],
+        "modules": ["sentiment"],
     }
     assert result["claim_archive"] == {
         "primary_archive_id": "archive_cctv_primary_claim_20260811",

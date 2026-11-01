@@ -8,6 +8,11 @@ The current product narrative is:
 event -> evidence -> Coordination Discover -> Propagation Analysis -> Risk Review -> governance action -> feedback
 ```
 
+Case Workbench semantic enrichment now uses a fail-closed HuggingFace runtime for
+successful artifacts. Model failures surface an explicit blocker instead of a
+rule-based success stub, and the pinned weights can be prefetched into
+`G:\CISCN\hf_models` via `system/backend/scripts/prefetch_semantic_models.py`.
+
 ## Active Capabilities
 
 | Capability | Canonical implementation | Status |

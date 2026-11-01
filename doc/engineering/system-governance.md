@@ -144,6 +144,7 @@ Use the glossary in `UBIQUITOUS_LANGUAGE.md` for domain terms. The system-level 
 - `system/research/coordination_discover`, `system/research/coordination_detect`, `system/research/propagation_analysis`, `system/research/review_teacher`, and `system/runtimes/review_student` are canonical semantic boundaries.
 - `system/research/social_bot_detection` is the canonical internal boundary for trainable BotRHG transfer. It must record dataset fingerprint, model checkpoint hash, missing property/social graph coverage, and comparison against a shallow reference baseline.
 - `system/research/propagation_analysis` owns the deployed propagation sequence model and checkpoint. Public event prediction must use a timezone-aware observation cutoff, must not import `subsystems/`, and must abstain rather than invoke the legacy speed/acceleration runtime when the model is unavailable.
+- Case Workbench `semantic_enrichment` must fail closed for successful semantic artifacts: missing HuggingFace weights or inference dependencies create a visible `semantic_model_unavailable` blocker and must not be replaced by rule-based fallback output. Semantic artifacts are evidence overlays only and cannot modify Coordination Discover, Propagation Analysis, Risk Review, Case Action, or Closeout gates.
 
 ### Security And Deployment Contract
 

@@ -133,6 +133,23 @@ be a prototype fallback until durable HTML/PDF rendering lands. Once the visible
 loop is stable, durable persistence and real report rendering are the next
 priorities.
 
+The semantic layer now uses a fail-closed HuggingFace runtime for successful
+artifacts. It records pinned versions for `BAAI/bge-small-zh-v1.5@7999e1d`,
+`lxyuan/distilbert-base-multilingual-cased-sentiments-student@cf99110`,
+`MoritzLaurer/multilingual-MiniLMv2-L6-mnli-xnli@0a71e92`, and
+`shibing624/bert4ner-base-chinese@5d660ed`. Pull the weights into
+`G:\CISCN\hf_models` with:
+
+```powershell
+cd system\backend
+uv run python scripts\prefetch_semantic_models.py
+```
+
+If a required model is missing or cannot load, the Case Workbench returns a
+visible `semantic_model_unavailable` blocker and does not display a rule-based
+fallback as a successful semantic result. Successful semantic artifacts remain
+`candidate_unvalidated` until a separate local evaluation upgrades them.
+
 ## Prototype Acceptance
 
 From `system/backend/`, run:
